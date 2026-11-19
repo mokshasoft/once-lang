@@ -40,7 +40,8 @@ open Once.Denotation.Program.IRFun using (fname; fdom; fcod; fbody)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 import Once.CCC.FrameSemantics
 import Once.IR.Semantics.Trace as TM
-open import Once.CCC.Machine.SMCore using (AbstractTrace; e-fn)
+open import Once.CCC.Machine.SMCore using (AbstractTrace)
+open import Once.CCC.Label using (e-fn)
 import Once.CCC.Codegen.IRToTrace as IT
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Codegen.CataNextSlot using (module CataNextSlot)

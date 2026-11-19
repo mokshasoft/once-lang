@@ -34,6 +34,17 @@ open import Once.Denotation.Program using (IRFun; tableEnv)
 module Once.CCC.Codegen.IRObsCorrect.CataBr.Branching (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.Bool using (false; true)
+open import Data.Empty using (⊥; ⊥-elim)
+open import Data.List using (List; _∷_; []; _++_; length)
+open import Data.Maybe using (just)
+open import Data.Nat using (ℕ; suc; _≤_; _+_)
+open import Data.Nat.Properties using (≤-trans)
+open import Data.Unit using (tt)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Once.IR using (IR; Cata; AllocMode; Heap)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; trans; sym; cong; cong₂)
 open import Once.CCC.Machine.SMCore using (ending)
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module ResuspBaseC)
 open import Once.CCC.Codegen.IRObsCorrect.Get o tbl using (module GetC)
@@ -64,7 +75,7 @@ open import Once.Res using (Res; returns; stopped; is-stopped; mapRes)
 open import Once.IR.Semantics.Iterative using (T∞)
 open import Once.Denotation.Approx using (Ap; done; cut; NotCut; budgetLeft)
 open import Data.List.Properties using (++-identityʳ)
-open import Data.Product using (Σ)
+open import Data.Product using (Σ; proj₁; proj₂; _,_)
 import Once.CCC.FrameSemantics
 open import Once.Spec.Numerics using (TargetNum)
 import Once.IR.Semantics.Trace as TM
@@ -72,6 +83,15 @@ import Once.IR.Semantics.Trace as TM
 module CataBranchC {FS : FrameSemantics} where
 
   open Core {FS}
+  open ClosureWellFormedBase′ using (Live; runAt; ⟪_⟫_; resultAt; eventsAt; stopsAt; BlocksKept; cell-inline; rep-prim; cell-flat; cell-ptr)
+  open ClosureWellFormedDef′ using (CellAt; ValidAtWF; ResultPlace; in-reg; in-unit; in-loc; module PairValidWF; decomposePairWF)
+  open FlatEventTrace′ using (chain-ctrls; chain-left; ctrls-≤ʳ; chain-events-++; ctrls-≤ˡ; chain-events)
+  open CataNextSlot′ using (AllSlotStable)
+  open FlatMachine′ using (FlatState)
+  open FlatMachine′.FlatState using (falloc; floc; fpc)
+  open FlatStepsAPI′ using (_∷_; []; FlatSteps; FlatSteps-++)
+  open FrontierInvariant′ using (BeforeFrontier; module BeforeFrontier)
+  open MemOps′ using (readLoc)
   open ResuspBaseC {FS} using (SegA; seg-bf; live-from)
   open GetC {FS} using (offset-zero)
 

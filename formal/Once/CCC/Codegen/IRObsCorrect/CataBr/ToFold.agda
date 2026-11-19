@@ -32,6 +32,17 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.CataBr.ToFold (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.Bool using (false)
+open import Data.Empty using (⊥)
+open import Data.List using ([]; _∷_; List; length; _++_)
+open import Data.List.Properties using (length-++)
+open import Data.Maybe using (just)
+open import Data.Nat.Properties using (m≤m+n; ≤-trans; ≤-refl; ≤-reflexive)
+open import Data.Product using (proj₁; proj₂)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Once.IR using (IR; Cata; AllocMode)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; sym; trans; cong)
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module ResuspBaseC)
 open import Once.CCC.Codegen.IRObsCorrect.CataConst.Setup o tbl using (module CataSetupC)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Meaning using (module PO)
@@ -60,8 +71,8 @@ open import Once.IR.Semantics.Value Carrier Carrier using (⟦_⟧F)
 open import Once.IR.Semantics.Iterative using (T∞)
 open import Once.Spec.Type using (Fun)
 open import Data.Sum using (inj₁; inj₂)
-open import Data.Unit using (⊤)
-open import Data.Nat using (_*_)
+open import Data.Unit using (⊤; tt)
+open import Data.Nat using (_*_; ℕ; suc; _+_; _≤_)
 
 open import Data.Nat.Solver using (module +-*-Solver)
 open +-*-Solver using (solve; _:+_; con; _:=_)
@@ -73,6 +84,13 @@ private
 module CataToFoldC {FS : FrameSemantics} where
 
   open Core {FS}
+  open ClosureWellFormedBase′ using (BlocksKept; Live)
+  open ClosureWellFormedDef′ using (CellAt; ValidAtWF)
+  open FlatMachine′ using (FlatState)
+  open FlatMachine′.FlatState using (floc; fpc; fret; fclosure; flink; falloc)
+  open FlatStepsAPI′ using ([]; _∷_)
+  open FrontierInvariant′ using (module BeforeFrontier)
+  open MemOps′ using (readLoc)
   open ResuspBaseC {FS} using (SRun; SegA; Seg; seg-rebase; Kp)
   open CataSetupC {FS} using (module Setup; SetupOut)
 

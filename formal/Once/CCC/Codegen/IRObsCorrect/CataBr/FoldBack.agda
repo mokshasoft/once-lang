@@ -17,6 +17,17 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.CataBr.FoldBack (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.Bool using (false)
+open import Data.Empty using (⊥)
+open import Data.List using (List; _∷_)
+open import Data.Maybe using (just)
+open import Data.Nat.Properties using (≤-trans; m≤m+n; <-irrefl; +-comm; n<1+n; ≤-refl)
+open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Data.Unit using (tt)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Once.IR using (IR)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; trans; subst; sym; cong; refl)
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module ResuspBaseC)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Stack o tbl using (module CataStackC)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Walk o tbl using (module CataWalkC)
@@ -35,11 +46,17 @@ open HeapLocation using (heap-ref)
 open HeapRef using (ref-id)
 open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; ⟦_⟧TI; ⌈_⌉F; μ-type)
 import Once.IRTy as IRTy′
-open import Data.Nat using (_*_)
+open import Data.Nat using (_*_; ℕ; _+_; _≤_; suc)
 
 module CataFoldBackC {FS : FrameSemantics} where
 
   open Core {FS}
+  open ClosureWellFormedBase′ using (Live)
+  open FlatMachine′ using (FlatState; fetch; do-jump)
+  open FlatMachine′.FlatState using (floc; fpc; falloc)
+  open FlatStepsAPI′ using (_∷_)
+  open FrontierInvariant′ using (module BeforeFrontier)
+  open MemOps′ using (readLoc)
   open ResuspBaseC {FS} hiding (X)
   open CataStackC {FS}
   open CataWalkC {FS}

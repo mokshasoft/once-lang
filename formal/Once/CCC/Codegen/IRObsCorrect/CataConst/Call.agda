@@ -25,6 +25,19 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.CataConst.Call (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.Bool using (false)
+open import Data.Empty using (⊥)
+open import Data.List using ([]; _∷_)
+open import Data.List.Relation.Unary.All.Properties using (++⁺)
+open import Data.Maybe using (just)
+open import Data.Product using (proj₁; _,_; proj₂)
+open import Data.Unit using (tt)
+open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
+open import Once.CCC.Machine.ValueRel using (valid-pair-wf)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Once.IR using (Heap)
+open import Relation.Binary.PropositionalEquality using (refl; _≡_; cong; sym; trans; _≢_; subst; cong₂)
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module ResuspBaseC)
 open import Once.CCC.Codegen.IRObsCorrect.CataConst.Steps o tbl using (module CataStepsC; Head; head-instr)
 import Once.CCC.Codegen.IRObsCorrect.CataConst.Steps o tbl as Steps
@@ -47,15 +60,25 @@ open import Once.CCC.Codegen.StraightRun using (module StraightRunAPI)
 import Once.CCC.Machine.FlatPut as FlatPut
 import Once.CCC.Machine.FlatAlloc as FlatAlloc
 import Once.CCC.Machine.SMPrimitives
-open import Data.List.Properties using (++-identityʳ)
-open import Data.List.Relation.Unary.All using ([]; _∷_)
-open import Data.Nat using (z≤n; s≤s; _⊔_)
-open import Data.Nat.Properties using (m≤n⊔m; m<m+n; +-monoʳ-<)
+open import Data.List.Properties using (++-identityʳ; ++-assoc)
+open import Data.List.Relation.Unary.All using ([]; _∷_; All)
+open import Data.Nat using (z≤n; s≤s; _⊔_; ℕ; suc; _≤_; _<_)
+open import Data.Nat.Properties using (m≤n⊔m; m<m+n; +-monoʳ-<; <-irrefl; ≤-trans; m≤m+n; <-≤-trans; ≤-reflexive; +-identityʳ; n≤1+n)
 import Data.Nat as ℕ
 
 module CataCallC {FS : FrameSemantics} where
 
   open Core {FS}
+  open ClosureWellFormedBase′ using (Live; BlocksKept)
+  open ClosureWellFormedDef′ using (ValidAtWF; CellAt)
+  open FlatEventTrace′ using (event-of; chain-events; chain-events-++)
+  open AbstractExec′ using (exec-abstract)
+  open FlatMachine′ using (StraightStep; FlatState; flat-exec-instr)
+  open FlatMachine′.FlatState using (floc; fpc; fret; flink; fclosure; falloc)
+  open FlatStepsAPI′ using ([]; _∷_; FlatSteps; FlatSteps-++)
+  open FrontierInvariant′ using (BeforeFrontier; module BeforeFrontier)
+  open MemOps′ using (readLoc)
+  open ReadLocEq′ using (readLoc-stack-heap-eq)
   open Mach {FS}
   open ResuspBaseC {FS} using (SegA; SRun; span-take; span-drop)
   open CataStepsC {FS} using (HeadOK; module HeadOK)

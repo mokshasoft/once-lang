@@ -24,6 +24,19 @@ open import Once.Denotation.Program using (IRFun; tableEnv)
 module Once.CCC.Codegen.IRObsCorrect.CataConst.Run (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open Interface.Prelude using ()
+open Interface.Prelude.IRToTrace using (ir-to-trace')
+open import Data.Bool using (false; true)
+open import Data.Empty using (⊥; ⊥-elim)
+open import Data.List using (List; length; _∷_; []; _++_)
+open import Data.Maybe using (just)
+open import Data.Nat using (ℕ; _+_; suc; _≤_)
+open import Data.Nat.Properties using (≤-refl; ≤-trans)
+open import Data.Product using (proj₁; proj₂; _,_; _×_)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Once.IR using (IR; Cata; Heap)
+open import Relation.Binary.PropositionalEquality using (_≡_; subst; refl; sym; trans; cong₂; cong)
 open import Once.CCC.Machine.SMCore using (ending)
 open import Once.CCC.Codegen.IRObsCorrect.BlockCall o tbl using (module BlockCallC)
 open import Once.CCC.Codegen.IRObsCorrect.NuForce o tbl using (module NuForceC)
@@ -56,6 +69,15 @@ import Once.IR.Semantics.Trace as TM
 module CataRunC {FS : FrameSemantics} where
 
   open Core {FS}
+  open ClosureWellFormedBase′ using (Live; BlocksKept; ResultPlaceP; ⟪_⟫_; runAt; resultAt; stopsAt; eventsAt)
+  open ClosureWellFormedDef′ using (ValidAtWF; CellAt; validityWF-heap-transport; InputAt; in-loc; CalleeRunP; VAt; module CalleeRunP; rp→place)
+  open FlatEventTrace′ using (chain-events; chain-events-subst-start; chain-events-++; chain-left; chain-ctrls; ctrls-≤ʳ; ctrls-≤ˡ)
+  open CataNextSlot′ using (AllSlotStable)
+  open FlatMachine′ using (FlatState; find-thunk; enter-call; flat-exec-instr; fetch; do-jump)
+  open FlatMachine′.FlatState using (floc; fpc; fret; fclosure; falloc)
+  open FlatStepsAPI′ using (_∷_; FlatSteps; step-at; []; FlatSteps-++)
+  open FrontierInvariant′ using (BeforeFrontier)
+  open MemOps′ using (readLoc)
   open ResuspBaseC {FS} using (SRun; SegA; segA-∘; bf-step; live-from)
   open CataLayoutC {FS} using (module Text)
   open NuForceC {FS} using (crun-retarget)

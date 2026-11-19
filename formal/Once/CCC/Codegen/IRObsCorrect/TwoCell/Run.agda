@@ -21,6 +21,14 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.TwoCell.Run (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.Bool using (false)
+open import Data.List using (_∷_; []; List)
+open import Data.Maybe using (just)
+open import Data.Nat.Properties using (<-irrefl; n<1+n)
+open import Data.Product using (proj₁; _,_; proj₂)
+open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
+open import Relation.Binary.PropositionalEquality using (_≡_; trans; sym; cong; refl; subst)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Label using (ℓ; LabelId)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtDynamic; AtStack)
@@ -33,8 +41,8 @@ open LocState using (halted; regs)
 open import Once.Memory.HeapAddress using (HeapLocation; heap-loc)
 import Once.CCC.Machine.FlatAlloc as FlatAlloc
 open import Once.CCC.Codegen.StraightRun using (module StraightRunAPI)
-open import Data.Nat using (z≤n; s≤s)
-open import Data.List.Relation.Unary.All using ([]; _∷_)
+open import Data.Nat using (z≤n; s≤s; ℕ; suc; _≤_; _+_)
+open import Data.List.Relation.Unary.All using ([]; _∷_; All)
 
 import Once.CCC.FrameSemantics
 import Once.CCC.Machine.SMPrimitives
@@ -49,6 +57,12 @@ import Once.IR.Semantics.Trace as TM
 module TwoCellRunC {FS : FrameSemantics} where
 
   open Core {FS}
+  open ClosureWellFormedBase′ using (InBlk)
+  open FlatEventTrace′ using (event-of; chain-events)
+  open AbstractExec′ using (exec-abstract)
+  open FlatMachine′ using (FlatState; StraightStep)
+  open FlatMachine′.FlatState using (floc)
+  open FlatStepsAPI′ using (_∷_; []; FlatSteps)
   open SMCore.AbstractExec {FS} using (exec-trace; exec-trace-cons; exec-load-from-slot-with-value)
   open SMCore.MemOps {FS} using (writeLoc; writeLoc-halted; writeLoc-regs; writeLoc-preserves-other; writeLoc-read-same-stack)
   open FlatEventTrace {FS} using (chain-events-subst)

@@ -349,7 +349,9 @@ pl-inv-ns i s p k meq =
         (plg-mem-cong (EA.exec1 val-x86-32 i s) s (readReg (regs s) ecx) p k meq)
 
 -- The GLOBAL region model (RuntimeContract linker guarantee) at the x86-32 layout.
-open import Once.CCC.Target.X86-32.Layout using (InStack; InHeap; stackAddr-write-preserves-heap)
+open import Once.CCC.Target.X86-32.Layout using (module FrameOps; module Regions)
+open FrameOps using (stackAddr-write-preserves-heap)
+open Regions using (InStack; InHeap)
 open import Once.Adequacy.ArchCorrectness.ArithSimPathLoadRegion
   InStack InHeap stackAddr-write-preserves-heap def word-bytes
   using (plg)
@@ -431,7 +433,7 @@ module _ (N : ℕ) where
 -- The instance.
 ------------------------------------------------------------------------
 
-  -- the instance, by name (no `public` re-export, plan 0.92)
+  -- `Core` at this ISA: its state, registers, memory and arith result register
   module Sim = Core
     State Reg
     rr mem

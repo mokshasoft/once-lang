@@ -32,4 +32,5 @@ module Once.Adequacy.ArchCorrectness.X86-32.RunContext (o : CanonicalName)
   (word-eq : frame-word FS ≡ slot-size)
   where
 
-open import Once.Adequacy.ArchCorrectness.FlatCore.RunContext o FS slot-size word-eq public
+import Once.Adequacy.ArchCorrectness.FlatCore.RunContext
+module RunContext = Once.Adequacy.ArchCorrectness.FlatCore.RunContext o FS slot-size word-eq

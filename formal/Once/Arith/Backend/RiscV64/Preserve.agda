@@ -69,6 +69,6 @@ AgreeCCC-trans : ∀ {a b c} → AgreeCCC a b → AgreeCCC b c → AgreeCCC a c
 AgreeCCC-trans (mkAgree p0 p1 p2 p3 p4 p5 p6 p7 p8 p9 p10 p11 p12 p13 p14 p15) (mkAgree q0 q1 q2 q3 q4 q5 q6 q7 q8 q9 q10 q11 q12 q13 q14 q15) =
   mkAgree (trans p0 q0) (trans p1 q1) (trans p2 q2) (trans p3 q3) (trans p4 q4) (trans p5 q5) (trans p6 q6) (trans p7 q7) (trans p8 q8) (trans p9 q9) (trans p10 q10) (trans p11 q11) (trans p12 q12) (trans p13 q13) (trans p14 q14) (trans p15 q15)
 
-open import Once.Arith.Backend.PreserveCore
+import Once.Arith.Backend.PreserveCore
+module PreserveCore = Once.Arith.Backend.PreserveCore
   writeReg NotCCC AgreeCCC agree-refl-ccc AgreeCCC-trans write-nonccc-agrees writes confined
-  public

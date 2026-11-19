@@ -82,6 +82,7 @@ Blocks = List (LabelId × ℕ × AbstractTrace)
 module Unique {FS : FrameSemantics} where
   open FlatMachine {FS} using (thunk-of?)
   open Scope {FS}
+  open ThunkIn using (in-range)
   open Layout {FS} using (NoThunk; NoThunks)
 
   ------------------------------------------------------------------------

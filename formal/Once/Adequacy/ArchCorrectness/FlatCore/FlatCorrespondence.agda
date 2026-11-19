@@ -110,7 +110,7 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong; cong₂; subst)
 
 open import Once.Memory.HeapAddress
-  using (HeapRef; sucHL; heap-loc; mkHeapRef; _≟HL_; HeapLocation; module HeapRef; module HeapLocation)
+  using (HeapRef; sucHL; heap-loc; mkHeapRef; _≟HL_; HeapLocation; module HeapRef; module HeapLocation; offsetHL)
 open HeapLocation using (heap-ref; heap-offset)
 open HeapRef using (ref-id)
 
@@ -138,6 +138,7 @@ readMem m a = m a
 writeMem : Memory → ℕ → Word → Memory
 writeMem m addr val = λ a → if a ≡ᵇ addr then just val else m a
 open import Once.CCC.Machine.SMCore
+open import Once.CCC.Label using (LabelId)
 open AllocState using (current-frame; frame-slots; saved-frames; next-heap-ref; block-size)
 open LocState using (regs; halted; heapMem; stackMem)
 open import Once.CCC.Machine.Locations using (AtDynamic; AtStack; Slot)
@@ -148,6 +149,7 @@ open ExecFinal {FS} using (exec-load-via-resolved; exec-load-suc-via-resolved; e
                           ; exec-load-at-resolved; exec-store-at-resolved; exec-store-in-block; in-block?; exec-addr-at-resolved; exec-addr-in-block)
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
+open FlatState using (floc; fclosure; falloc; fpc; fret)
 open FrameSemantics FS using (shift-frame)
 
 open import Once.CCC.Machine.FlatStoreWF FS using (sv-below; svm-below)
@@ -219,7 +221,7 @@ record HeapView : Set₁ where
     -- pointer must not read as the tag 0 (`tag-branch-step`'s pointer route).
     front-pos : 0 < hfront
     dom-pos   : ∀ {hl : HeapLocation} → HDom hl → 0 < haddr hl
-open HeapView public
+open HeapView
 
 ------------------------------------------------------------------------
 -- Value encoding: typed StoredValue → untyped x86 Word.
@@ -614,7 +616,7 @@ record FlatCorr (hv : HeapView) (fs : FlatState) (s : State) : Set where
     -- which the loader owns, are the abstract `nothing`).
     stack-eq : StackWindows (amap hv) (memory s) (stackMem (floc fs))
                             (lo hv) (frames-of (falloc fs))
-open FlatCorr public
+open FlatCorr
 
 ------------------------------------------------------------------------
 -- THE POST-STATE, NOT THE UPDATE (Plan 0.65 G1c step 2).

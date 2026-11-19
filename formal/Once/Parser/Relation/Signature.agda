@@ -19,7 +19,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.Parser.Token
 open import Once.Spec.Surface.Syntax using (Decl; DSignature)
 open import Once.Parser.Module.DeclTail using (colonHead; colDrop1)
-open import Once.Parser.Generic.PolyInst using (ParsesPolyType)
+open import Once.Parser.Generic.PolyInst using (module Gen′)
+open Gen′ using () renaming (ParsesTypeG to ParsesPolyType)
 
 data ParsesSignature : List Token → Decl → List Token → Set where
   psig-mk : ∀ {name residual ty rest'} →

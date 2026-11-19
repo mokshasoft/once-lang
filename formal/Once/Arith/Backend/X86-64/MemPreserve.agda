@@ -28,4 +28,5 @@ readMem-writeMem-other m addr val a neq with a ≡ᵇ addr in eq
 ... | false = refl
 ... | true  = ⊥-elim (neq (≡ᵇ⇒≡ a addr (subst T (sym eq) tt)))
 
-open import Once.Arith.Backend.MemPreserveCore readMem writeMem readMem-writeMem-other public
+import Once.Arith.Backend.MemPreserveCore
+module MemPreserveCore = Once.Arith.Backend.MemPreserveCore readMem writeMem readMem-writeMem-other

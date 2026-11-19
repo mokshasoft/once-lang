@@ -41,7 +41,7 @@ record Key : Set where
     kname : String
     kdom  : Type
     kcod  : Type
-open Key public
+open Key
 
 
 _≟K_ : DecidableEquality Key
@@ -134,7 +134,7 @@ record Impl (Σ : ISig) : Set where
   field
     answerI : List SigOpEvent → (k : Key) → k ∈ answerKeys Σ → M.⟦ kdom k ⟧ → M.⟦ kcod k ⟧
     pureI   : (k : Key) → k ∈ valueKeys Σ → M.⟦ kdom k ⟧ → M.⟦ kcod k ⟧
-open Impl public
+open Impl
 
 -- THE reading of a declared value contract: through the membership DECISION,
 -- so every reader (the Spec's meaning, the IR, the machines) takes the same

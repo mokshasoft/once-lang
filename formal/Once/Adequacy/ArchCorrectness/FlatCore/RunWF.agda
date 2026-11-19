@@ -67,7 +67,7 @@ open import Once.CCC.Machine.SMCore
 open AllocState using (frame-slots; saved-frames; block-size; next-heap-ref; current-frame)
 open LocState using (heapMem; regs; stackMem; halted)
 open import Once.CCC.Machine.Locations using (AtDynamic; Slot; AtStack; ValueLocation)
-open import Once.Memory.HeapAddress using (HeapLocation; module HeapRef; module HeapLocation)
+open import Once.Memory.HeapAddress using (HeapLocation; module HeapRef; module HeapLocation; sucHL; offsetHL)
 open HeapLocation using (heap-offset; heap-ref)
 open HeapRef using (ref-id)
 open MemOps {FS} using (readLoc)
@@ -78,6 +78,7 @@ open AbstractExec {FS} using (exec-load-from-slot-with-value; exec-restore-input
 open FrameSemantics FS using (Frame)
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
+open FlatState using (fpc; fclosure; floc; fret; falloc; flink)
 open import Once.CCC.Machine.FlatStoreWF FS
 open import Data.Product using (Σ; ∃; _,_; _×_; proj₁; proj₂)
 open import Once.CCC.Codegen.IRToTrace o using (ir-stack-budget; ir-to-unit)
@@ -106,7 +107,7 @@ open SigOpInfo using (baseA)
 open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Data.List.Relation.Unary.Any using (Any; here; there)
 open import Data.List.Relation.Unary.Any.Properties using () renaming (++⁺ˡ to Any++⁺ˡ; ++⁺ʳ to Any++⁺ʳ)
-open import Once.CCC.Label using (_≡ᵇᴱ_; ≡ᵇᴱ-refl)
+open import Once.CCC.Label using (_≡ᵇᴱ_; ≡ᵇᴱ-refl; e-fn; EntryId; LabelId; e-thunk)
 open import Once.CanonicalName using (_≟ᶜ_)
 open import Once.IRTy using (_≟IRTy_; Unit)
 open import Once.Denotation.Program using (IRFun; irProgram; Linked; LinkedAt; LinkedAt-at; LinkedProgram; Leaves; leaves-map)
@@ -123,9 +124,8 @@ open import Once.Type using (fits-int; fits-float)
 -- leaves the machine running (`halted s₁ ≡ false`) cannot have been a `call-sym`,
 -- i.e. `matchCall j ≡ nothing`. (The one absurd case is `call-sym`, ruled out by
 -- the halt clash; every other instruction is `matchCall … = nothing` definitionally.)
--- NOT `public`: `ConcFlatSim` already re-exports `RunContext` through its own
--- arch wrapper, and two public routes to one definition is a clash.
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunContext o FS slot-size word-eq
+open RunAt using (run-emit; run-ir; run-tbl; run-linked)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open FlatStepsAPI {FS} using ([]; _∷_)
 

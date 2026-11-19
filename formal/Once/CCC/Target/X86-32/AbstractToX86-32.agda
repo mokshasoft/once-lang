@@ -35,7 +35,9 @@ open import Once.Target.Symbol using (once-symbol-path)
 
 -- Import x86-32 syntax
 open import Once.CCC.Target.X86-32.Syntax
-  using (eax; ebx; ecx; esi; ebp; esp; base; base+disp; reg; mem; imm; mov; lea; add; sub; sbb; cmp; push; pop; call; call-sym; ret; je; jbe-fwd; local-1; label; call-l; mov-code; jmp-l; once; callee; e-fn; Program; slot-size; slots)
+  using (base; base+disp; reg; mem; imm; mov; lea; add; sub; sbb; cmp; push; pop; call; call-sym; ret; je; jbe-fwd; local-1; label; call-l; mov-code; jmp-l; Program; slot-size; slots)
+open import Once.CCC.Label using (once; callee; e-fn)
+open import Once.Target.X86-32.PhysReg using (eax; ecx; esp; esi; ebp; ebx)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.SigOp.Info using (SigOpInfo)
 open import Once.Type using (fits-int; fits-float)

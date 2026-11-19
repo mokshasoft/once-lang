@@ -25,6 +25,15 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.IterShape (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open Interface.Prelude using ()
+open Interface.Prelude.IRToTrace using (ir-to-trace')
+open import Data.List using (_∷_; []; _++_; length)
+open import Data.List.Properties using (++-assoc)
+open import Data.Maybe using (just; nothing) renaming (map to mmap)
+open import Data.Product using (proj₁; proj₂; _×_)
+open import Once.IR using (IR; Iter)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; cong; sym; subst)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Codegen.LabelResolve o using (module Resolve)
@@ -34,7 +43,7 @@ open LabelId using (idx)
 open import Once.CCC.Machine.SMCore
   using (instr-ctrl; c-branch-tag-zero; c-jmp; c-label; AbstractTrace; store-at-slot; instr-alloc-heap; mov-to-input;
          load-from-slot)
-open import Data.Nat.Properties using (1+n≰n)
+open import Data.Nat.Properties using (1+n≰n; +-comm; +-assoc; ≤-reflexive; ≤-trans; n≤1+n)
 open import Relation.Nullary using (¬_)
 open import Data.List.Relation.Unary.All using () renaming (_∷_ to _∷ᴬ_; [] to []ᴬ)
 open import Once.IRTy using (IRTy)
@@ -43,11 +52,13 @@ open import Once.CCC.Codegen.Size using (size)
 open import Once.CCC.Codegen.FlatLayout using (get; get-i; get-one; get-i-P; put; put-All)
 open import Once.CCC.Codegen.IRObsCorrect.Pair.Build o tbl using (module PairBuildC)
 open import Data.List.Relation.Unary.All.Properties using () renaming (++⁺ to All-++⁺)
-open import Data.Nat using (_⊔_)
+open import Data.Nat using (_⊔_; ℕ; suc; _+_; _≤_; _<_)
 
 module IterShapeC {FS : FrameSemantics} where
 
   open Core {FS}
+  open FlatMachine′ using (fetch; fetch-++-left; label-of?; find-label; fl-go; fl-at)
+  open FlatStepsAPI′ using (_∷_; [])
   open FlatStepsAPI {FS} using (fl-go-skip; fl-go-shift; fl-go-prefix)
   open Resolve {FS} using (found-in-window; noLabel-outside; NoLabel; fl-hit)
 

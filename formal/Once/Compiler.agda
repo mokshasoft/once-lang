@@ -45,18 +45,12 @@ module Once.Compiler
 -- this assembly point. `Once.Adequacy.Compile.WithCPU` itself stays
 -- free of those imports.
 open import Once.Adequacy.CPU using ()
-open import Once.Adequacy.ArchCorrectness
+import Once.Adequacy.ArchCorrectness
+module ArchCorrectness = Once.Adequacy.ArchCorrectness
        x86-64-reg-range x86-64-addr-no-wrap x86-64-lit-fits
        riscv64-reg-range riscv64-slot-addr-no-wrap
        riscv64-addr-no-wrap riscv64-lit-fits
        x86-32-reg-range x86-32-addr-no-wrap x86-32-lit-fits
        using (arch-correctness)
--- plan 0.92, and an honest note on its cost: `public` here is NOT convenience.
--- `Once.Certified` builds its apex from `arch-correctness`, and to name it one
--- level up it must be re-exported here. That propagation is exactly the
--- property that makes `public` expensive — but the alternative (Certified
--- re-importing `ArchCorrectness` with its full ten-parameter telescope) is
--- worse.
-       public
 -- The CLI is extracted from `Once.Extract.Root`; the correctness theorem over
 -- what it runs is `Once.Certified` (plan 0.121, D332).

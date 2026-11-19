@@ -18,15 +18,29 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.TwoCell (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
-open import Once.CCC.Machine.SMCore using (LocState; readReg; Input1; writeReg-same; Output; SV-Ptr; module LocState; AbstractTrace; AllocState; sucLoc; StoredValue; block-layout; e-thunk; offsetLoc; SV-Code; module AllocState)
+open Interface using (module Core)
+open Interface.Prelude using ()
+open Interface.Prelude.IRToTrace using (ir-to-trace')
+open import Data.Bool using (false)
+open import Data.Empty using (⊥-elim; ⊥)
+open import Data.List using ([]; List; length; _∷_)
+open import Data.Maybe using (just; nothing)
+open import Data.Nat using (ℕ; suc; _+_; _≤_)
+open import Data.Nat.Properties using (m≤m+n; ≤-refl)
+open import Data.Unit using (tt)
+open import Once.CCC.Machine.ValueRel using (valid-pair-wf; valid-closure-reg-wf; valid-closure-wf; valid-ν-wf)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Once.IR using (IR; AllocMode; curry; Heap; Ana; in-ν)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; sym; cong; trans)
+open import Once.CCC.Machine.SMCore using (LocState; readReg; Input1; writeReg-same; Output; SV-Ptr; module LocState; AbstractTrace; AllocState; sucLoc; StoredValue; block-layout; offsetLoc; SV-Code; module AllocState)
 open LocState using (regs; halted)
 open AllocState using (current-frame; next-heap-ref; saved-frames)
 open import Once.Memory.HeapAddress using (HeapLocation)
 open import Data.List.Relation.Unary.Any using (here; there)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic; ValueLocation)
-open import Once.CCC.Label using (ℓ)
-open import Once.IRTy using (_*_; WellFormedFI; ⟦_⟧TI; ν-type; IRTy)
+open import Once.CCC.Label using (ℓ; e-thunk)
+open import Once.IRTy using (_*_; WellFormedFI; ⟦_⟧TI; ν-type; IRTy; FitsInRegI)
 
 import Once.CCC.FrameSemantics
 import Once.CCC.Machine.SMPrimitives
@@ -50,13 +64,22 @@ open import Once.CCC.Codegen.FlatLayout using (Kind; word; flat; kind)
 open import Once.CCC.Codegen.Size using (size)
 open import Once.CCC.Codegen.IRToTrace o using (env-entry; env-prologue; with-copy; two-cell)
 open import Once.CCC.Codegen.IRObsCorrect.TwoCell.Copy o tbl using (module CopyTwoCellC)
-open import Data.Product using (Σ)
+open import Data.Product using (Σ; _,_; proj₁; proj₂; _×_)
 open import Once.Memory.HeapAddress using (heap-loc)
 open import Data.List.Relation.Unary.All using (_∷_; [])
 
 module TwoCellC {FS : FrameSemantics} where
 
   open Core {FS}
+  open ClosureWellFormedBase′ using (eventsAt; ⟪_⟫_; prim-sv; Live; BlocksKept; Foot; _∈ᶠ_; blk-live0; InBlk; cell-ptr; cell-inline; rep-prim; IsFlat; ResultPlaceP; live-heap; blk-refl; live-lift; live→bf; live-ns)
+  open ClosureWellFormedDef′ using (module NuV; ValidAtWF; foot; foot-live; CellAt; CallRuns; VAt; cellWF-heap-transport; CalleeRunP; in-loc; ResultPlace; module FootTransport; at-loc; InputAt; in-reg; in-unit; ForceRuns; NuV)
+  open FlatEventTrace′ using (chain-events)
+  open CataNextSlot′ using (AllSlotStable)
+  open FlatMachine′ using (find-thunk; FlatState; enter-call)
+  open FlatMachine′.FlatState using (floc; fpc; fret; flink; falloc; fclosure)
+  open FlatStepsAPI′ using ([]; FlatSteps; _∷_)
+  open FrontierInvariant′ using (BeforeFrontier; frontier-monotone)
+  open MemOps′ using (readLoc)
   open NuV
 
   curry-denot-[] : ∀ {A B C} (body : IR (A * B) C) (m : AllocMode)

@@ -34,7 +34,8 @@ open import Once.Arith.Backend.X86-64.Emit using (arith-reg)
 open import Once.CCC.Target.X86-64.Semantics using (State; RegFile; readReg; writeReg; readMem; writeMem; Word)
 open State
 import Once.Arith.Backend.X86-64.ExecArith as EA
-open import Once.Arith.Backend.X86-64.Preserve using (step-of-preserves)
+open import Once.Arith.Backend.X86-64.Preserve using (module PreserveCore)
+open PreserveCore using (step-of-preserves)
 open Once.Arith.Backend.X86-64.Preserve.AgreeCCC using (a-rsp)
 open import Once.Arith.Backend.X86-64.MemPreserve using (readMem-writeMem-other)
 open import Once.Adequacy.CPU.X86-64 using (val-x86-64; def; scratch-addr; path-load)
@@ -280,14 +281,14 @@ module _ (N : ℕ) where
       ne eq = [ (λ lo → <-irrefl eq (<-≤-trans lo (m≤m+n sp (8 * XScratch.slot sc′))))
               , (λ hi → <-irrefl (sym eq) (<-≤-trans (+-monoʳ-< sp inf) hi)) ]′ wf
 
-  -- the instance, by name (no `public` re-export, plan 0.92)
+  -- `Core` at this ISA: its state, registers, memory and arith result register
   module Sim = Core
     State Reg
     rr mem
     arith-reg rax
     def (λ _ → refl)
     scratch-addr path-load
-    (EA.exec1 val-x86-64 N) (EA.exec-arith-block val-x86-64 N)
+    (EA.exec1 val-x86-64 N) (EA.ExecArithCore′.exec-arith-block val-x86-64 N)
     (λ _ → refl) (λ _ _ _ → refl)
     sa-inv sa-inj mem-keep mem-spill-hit mem-spill-miss
     WF wf-e1

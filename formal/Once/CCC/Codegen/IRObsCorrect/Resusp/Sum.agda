@@ -24,6 +24,12 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.Resusp.Sum (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.Maybe using (just)
+open import Data.Nat using (ℕ)
+open import Data.Product using (_,_)
+open import Once.IR using (IR; Heap; Ana)
+open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.LocMatchesMode using (LocMatchesMode)
 open import Once.CCC.Label using (ℓ)
@@ -41,6 +47,9 @@ open import Once.CCC.Codegen.IRObsCorrect.Resusp.SumR o tbl using (module Resusp
 module ResuspSumC {FS : FrameSemantics} where
 
   open Core {FS}
+  open ClosureWellFormedBase′ using (VTy; Live; BlocksKept)
+  open ClosureWellFormedDef′ using (ValidAtWF)
+  open MemOps′ using (readLoc)
   open ResuspBaseC {FS}
   import Once.CCC.Machine.SMCore as SMCore
 

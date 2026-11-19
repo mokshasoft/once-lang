@@ -28,6 +28,19 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.CataConst.Layout (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open Interface.Prelude using ()
+open Interface.Prelude.IRToTrace using (ir-to-trace')
+open import Data.List using (_++_; _∷_; []; length)
+open import Data.List.Properties using (length-++; ++-assoc)
+open import Data.List.Relation.Unary.All.Properties using (++⁺)
+open import Data.Maybe using (just)
+open import Data.Nat using (ℕ; suc; _+_; zero)
+open import Data.Nat.Properties using (<-irrefl; <-≤-trans; m≤m+n)
+open import Data.Product using (proj₂; proj₁; _,_)
+open import Data.Unit using (tt)
+open import Once.IR using (IR; Cata)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; sym; trans; subst)
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module ResuspBaseC)
 open import Once.CCC.Codegen.IRToTrace o
   using (rec-count; cata-strategy; cata-dispatch; cata-call-setup; cata-call-from; cata-body;
@@ -39,7 +52,7 @@ open import Once.CCC.Codegen.Size using (size)
 open import Relation.Nullary using (¬_)
 open import Once.Spec.Type using (Fun)
 open import Once.CCC.Machine.MuRep using (mu-rep; mu-box; Unboxed)
-open import Data.Bool using (Bool)
+open import Data.Bool using (Bool; false; true)
 open import Once.IRTy using (wf-K; wf-Id; wf-Sum; wf-Prod; base-Int; base-Float; base-Unit; base-Void; base-Prod; base-Sum)
 import Data.List.Relation.Unary.All as All
 open import Once.CCC.Codegen.LabelResolve o using (module Resolve)
@@ -129,6 +142,8 @@ lsz-eq (F IRTy′.⊗ G) X e = cong₂ ℕ._+_ (lsz-eq F X e) (lsz-eq G X e)
 module CataLayoutC {FS : FrameSemantics} where
 
   open Core {FS}
+  open FlatMachine′ using (label-of?; find-label; fl-go; fetch)
+  open FlatStepsAPI′ using (_∷_; [])
   open ResuspBaseC {FS} using (span-take; span-drop; labels-take; labels-drop)
   open CataCallC {FS} using (callK; call-shape)
   open Resolve {FS} using (NoLabel; noLabel-outside; fl-hit)

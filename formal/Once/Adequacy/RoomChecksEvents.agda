@@ -32,6 +32,7 @@ open import Once.IR.Semantics.Out using (_▹_)
 
 module RoomEvents {FS : FrameSemantics} (t : AbstractTrace) where
   open FlatMachine {FS}
+  open FlatState using (fpc; floc)
   open RoomFacts {FS} using (fetch-room)
   open RoomSim {FS} t using (P′; lift; PcRel; step-lift)
   open FlatEventTrace {FS}

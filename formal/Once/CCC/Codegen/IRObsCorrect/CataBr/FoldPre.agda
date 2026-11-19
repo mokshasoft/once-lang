@@ -28,6 +28,14 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.CataBr.FoldPre (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.Bool using (false)
+open import Data.List using (List; _∷_)
+open import Data.Maybe using (just)
+open import Data.Product using (_,_; proj₂; proj₁)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Once.IR using (Heap; IR)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; _≢_; trans; subst; sym; cong)
 open import Once.CCC.Machine.MuRep using (Unboxed)
 open import Once.CCC.Codegen.IRObsCorrect.CataConst.Steps o tbl using (h-mov)
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module ResuspBaseC)
@@ -57,13 +65,22 @@ open HeapRef using (ref-id)
 open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; ⟦_⟧TI; ⌈_⌉F; μ-type)
 import Once.IRTy as IRTy′
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.Nat using (s≤s; z≤n; _*_)
-open import Data.Nat.Properties using (+-monoʳ-<)
-open import Data.Unit using (⊤)
+open import Data.Nat using (s≤s; z≤n; _*_; ℕ; _+_; suc; _≤_; _<_)
+open import Data.Nat.Properties using (+-monoʳ-<; m≤m+n; ≤-trans; ≤-refl; <-irrefl; +-comm; n<1+n; ≤-reflexive)
+open import Data.Unit using (⊤; tt)
 
 module CataFoldPreC {FS : FrameSemantics} where
 
   open Core {FS}
+  open import Once.CCC.Machine.SMPrimitives using (nhw-mov-to-input)
+  open ClosureWellFormedBase′ using (Live; BlocksKept)
+  open ClosureWellFormedDef′ using (ValidAtWF)
+  open FlatMachine′ using (FlatState; fetch)
+  open FlatMachine′.FlatState using (falloc; floc; fpc; fret; fclosure)
+  open FlatStepsAPI′ using (_∷_)
+  open FrontierInvariant′ using (module BeforeFrontier)
+  open InstrPrimitives′ using (exec-abstract-preserves-frame)
+  open MemOps′ using (readLoc)
   open ResuspBaseC {FS} hiding (X)
   open CataStepsC {FS}
   open CataStackC {FS}

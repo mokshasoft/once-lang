@@ -62,7 +62,8 @@ import Once.Type.Concrete as LW
 import Once.Spec.Type as LW
 import Once.IR.Semantics.Trace as LTr
 open import Once.IR.Semantics.Event using (SigOpEvent; toEvent; baseOf; valOf)
-open import Once.Contract using (Key; key; kname; kdom; kcod; valueKeys; answerKeys; value-step; answer-step; valueOf-at; _∈K?_; Impl)
+open import Once.Contract using (Key; key; valueKeys; answerKeys; value-step; answer-step; valueOf-at; _∈K?_; Impl; module Key)
+open Key using (kdom; kcod; kname)
 open import Once.ContractLaws using (value-∈; base-contract)
 import Once.Spec.Grade as SG
 import Once.Spec.Type as ST

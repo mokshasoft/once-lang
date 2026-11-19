@@ -29,6 +29,9 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.Cata (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Once.IR using (IR; Cata)
+open import Relation.Binary.PropositionalEquality using (refl; _≡_)
 open import Once.CCC.Codegen.IRObsCorrect.CataConst o tbl using (module CataConstC)
 -- The branching clause: `CataBr.Branching` (entry → fold head → loop → exit,
 -- against `CataBr.Meaning.cata-br-meaning`), whose import closure holds every

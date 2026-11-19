@@ -41,7 +41,7 @@ open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst)
 
 open import Once.Spec.Name using (CanonicalName; canonical)
-open import Once.CCC.Label using (Label; once; callee; e-thunk; e-fn; labelSym)
+open import Once.CCC.Label using (Label; once; callee; e-thunk; e-fn; labelSym; LabelId)
 open import Once.CCC.Machine.SMCore
 open import Once.CCC.Codegen.ImageSymbols using (instr-defs; adefs)
 open import Once.CCC.Codegen.LabelDefs using (Dst; clab-of; cl-at; clabs; fdef-of; fdefs)

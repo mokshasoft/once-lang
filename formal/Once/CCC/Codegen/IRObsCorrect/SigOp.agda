@@ -25,7 +25,8 @@
 open import Once.IR.Semantics.Boundary using (atTarget)
 open import Once.Res using (mapRes)
 open import Once.Spec.Name using (CanonicalName)
-open import Once.Spec.Type using (Base; b-*; b-+; b-Float; b-Int; b-Unit; b-Void; ∅ₖ)
+open import Once.Spec.Type using (Base; b-*; b-+; b-Float; b-Int; b-Unit; b-Void; ∅ₖ; Type)
+open import Once.Spec.Type using () renaming (Int to Intˢ)
 import Once.CCC.Machine.SMCore as SMCore
 
 import Data.List as DL
@@ -33,6 +34,21 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.SigOp (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open Interface.Prelude using (fits-erase)
+open import Data.Bool using (false; true)
+open import Data.Empty using (⊥; ⊥-elim)
+open import Data.List using (_∷_; [])
+open import Data.Maybe using (just; nothing; Maybe)
+open import Data.Nat using (ℕ; _+_; _≤_)
+open import Data.Nat.Properties using (m≤m+n)
+open import Data.Unit using (tt)
+open import Function using (case_of_)
+open import Once.CCC.Machine.ValueRel using (module ClosureWellFormedBase)
+open import Once.IR using (SigOp; Stack)
+open import Once.IRTy using (⌊_⌋; FitsInRegI; fits-int; fits-float)
+open import Once.Type using (FitsInReg; fits-in-reg?) renaming (fits-int to fits-intˢ; fits-float to fits-floatˢ)
+open import Relation.Binary.PropositionalEquality using (subst; sym; _≡_; cong; refl; trans)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic)
 open import Once.CCC.Machine.SMCore using (AllocState; module AbstractExec; LocState; readReg; Input1; AbstractTrace; StoredValue; instr-sigop; SV-Lit; sv-as-loc; writeReg-same; Output; module LocState)
@@ -51,12 +67,13 @@ import Once.Semantics.Machine as EvV
 import Once.Denotation.DenotTrace as DT
 import Once.IR.Semantics.Trace as TM
 open import Once.Denotation.ValueDomain using (forgetᵇ; injectᵇ; cohᴰ)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
 open import Once.Res using (returns)
 open import Once.Res using (returns-inj)
-open import Data.Product using (Σ)
+open import Data.Product using (Σ; _,_; proj₂; proj₁; _×_)
 open import Once.Contract using (key; _∈K?_)
 open import Once.ContractLaws using (yes-of)
-open import Relation.Nullary using (Dec)
+open import Relation.Nullary using (Dec; yes; no)
 open import Once.Type.Core using (isUnit?)
 open import Once.Denotation.Program using (Declared; Declared-at)
 open import Once.Name using (showCanonical)
@@ -71,6 +88,14 @@ open import Data.Bool using () renaming (_∨_ to _∨_)
 module SigOpC {FS : FrameSemantics} where
 
   open Core {FS}
+  open import Once.CCC.Machine.SMPrimitives using (nhw-instr-sigop)
+  open ClosureWellFormedBase′ using (prim-sv; runAt; ⟪_⟫_; eventsAt; stopsAt; resultAt)
+  open ClosureWellFormedDef′ using (ValidAtWF; InputAt; in-loc; in-reg; in-unit; ResultPlace; at-reg; unit-result)
+  open AbstractExec′ using (exec-sigop-output-of; exec-sigop-halts; exec-sigop-halts-of; exec-sigop-faults; exec-sigop-faults-of; pure-sigop-out-aux; pure-sigop-out-val; readReg-typed; pure-sigop-output; unread?)
+  open FlatMachine′ using (FlatState; flat-exec-instr)
+  open FlatMachine′.FlatState using (falloc; floc)
+  open FlatStepsAPI′ using (_∷_; [])
+  open RTA′ using (readTyped-adequate; readable-base; Readable; r-int; r-unit; r-float; r-sum; r-void; r-pair)
   open Mach {FS}
   open AbstractExec {FS} using (decode-at; machine-events; events-at-arg; sigop-events; sigop-events-of; exec-sigop-output; res-sv; call-sigop-val; call-sigop-output; call-sigop-ans; call-sigop-ans-at)
 
@@ -85,10 +110,10 @@ module SigOpC {FS : FrameSemantics} where
   -- result are first-order, so they cross the value domains at the info's
   -- base-type witnesses (`DenotTrace`'s `SigOp` clause).
   ------------------------------------------------------------------------
-  argOf : ∀ {A B} → SigOpInfo A B → ⟦ ⌊ A ⌋ ⟧ → EvV.⟦ A ⟧
+  argOf : ∀ {A B} → SigOpInfo A B → ⟦ ⌊ A ⌋ ⟧ → EvV.Value.⟦ A ⟧
   argOf {A} si x = forgetᵇ (baseA si) (subst idᶠ (cohᴰ A) x)
 
-  resOf : ∀ {A B} → SigOpInfo A B → EvV.⟦ B ⟧ → ⟦ ⌊ B ⌋ ⟧
+  resOf : ∀ {A B} → SigOpInfo A B → EvV.Value.⟦ B ⟧ → ⟦ ⌊ B ⌋ ⟧
   resOf {B = B} si v = subst idᶠ (sym (cohᴰ B)) (injectᵇ (conB si) v)
 
   -- plan 0.119 D5: the node means the finite block `E₀` embedded in `T∞`
@@ -235,16 +260,16 @@ module SigOpC {FS : FrameSemantics} where
         bl≡ : budgetLeft k (resultAt s (⟪ evalᴰ (SigOp si) x ⟫ k)) ≡ k
         bl≡ = trans (cong (λ ρ → budgetLeft k (proj₂ ρ)) (R k)) (budgetLeft-tag k (resultAt s E))
 
-  res-reg : ∀ {B} (fit : FitsInReg B) (ib : Base ∅ₖ B) (v : EvV.⟦ B ⟧)
+  res-reg : ∀ {B} (fit : FitsInReg B) (ib : Base ∅ₖ B) (v : EvV.Value.⟦ B ⟧)
           → SV-Lit fit v ≡ prim-sv (fits-erase fit) (subst idᶠ (sym (cohᴰ B)) (injectᵇ ib v))
   res-reg fits-intˢ   b-Int   v = refl
   res-reg fits-floatˢ b-Float v = refl
 
   -- A register-fitting input crosses unchanged.
-  forget-reg : ∀ (bt : Base ∅ₖ Intˢ) (x : EvV.⟦ Intˢ {0} ⟧) → x ≡ forgetᵇ bt x
+  forget-reg : ∀ (bt : Base ∅ₖ Intˢ) (x : EvV.Value.⟦ Intˢ {0} ⟧) → x ≡ forgetᵇ bt x
   forget-reg b-Int x = refl
 
-  forget-reg-float : ∀ (bt : Base ∅ₖ SpecTy.Float) (x : EvV.⟦ SpecTy.Float {0} ⟧) → x ≡ forgetᵇ bt x
+  forget-reg-float : ∀ (bt : Base ∅ₖ SpecTy.Float) (x : EvV.Value.⟦ SpecTy.Float {0} ⟧) → x ≡ forgetᵇ bt x
   forget-reg-float b-Float x = refl
 
   -- THE INPUT A CALL-FREE CONTRACT READS is the denotation's argument, in
@@ -293,7 +318,7 @@ module SigOpC {FS : FrameSemantics} where
   -- plan 0.105: a pure FFI contract is read at its DECLARATION — the shared
   -- membership decision is `yes`, so both readers take the implementation.
   pure-agree : ∀ {A B} (si : SigOpInfo A B) (c : SigOpSem A B) → effect-of c ≡ Pure → Declared-at σᶠ si c → ∀ a
-             → Σ (EvV.⟦ B ⟧) λ w → (Once.SigOp.Info.semM-of φ (name si) c fmt a ≡ returns w)
+             → Σ (EvV.Value.⟦ B ⟧) λ w → (Once.SigOp.Info.semM-of φ (name si) c fmt a ≡ returns w)
                                   × (DT.sigOpSemT fmt φ si c a ≡ TM.ret w)
   pure-agree si (blockV e refl refl) _ _ a = _ , refl , refl
   pure-agree si (primV p)  _ _ a = _ , refl , refl
@@ -431,7 +456,7 @@ module SigOpC {FS : FrameSemantics} where
   -- events have content; `Void` has no value, so a contract that returns one
   -- is never reached. What is left is a STRUCTURED codomain.
   ------------------------------------------------------------------------
-  void-empty : EvV.⟦ SpecTy.Void {0} ⟧ → ⊥
+  void-empty : EvV.Value.⟦ SpecTy.Void {0} ⟧ → ⊥
   void-empty ()
 
   -- A call-free contract into `Unit`: `pure-obs` without the register.

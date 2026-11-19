@@ -21,7 +21,8 @@ open import Once.Spec.Surface.Syntax using (Decl; DTypeSig)
 import Once.Parser.Module
 open import Once.Parser.Module.FunDef.Body using (eqHead)
 open import Once.Parser.Module.DeclTail using (colDrop1; colonHead)
-open import Once.Parser.Generic.PolyInst using (ParsesPolyType)
+open import Once.Parser.Generic.PolyInst using (module Gen′)
+open Gen′ using () renaming (ParsesTypeG to ParsesPolyType)
 
 open import Once.Parser.Relation.Import using (ParsesImport)
 open import Once.Parser.Relation.TypeAlias using (ParsesTypeAliasDecl)

@@ -19,12 +19,20 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.IterRoundsCont (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.Bool using (false)
+open import Data.List.Properties using (++-assoc)
+open import Data.Product using (proj₂; proj₁)
+open import Data.Unit using (tt)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Once.IR using (IR; Iter)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; cong; sym; subst; cong₂)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore
   using (AbstractTrace)
 open import Data.Sum using (inj₂)
-open import Data.Nat using (s≤s)
-open import Data.Nat.Properties using (+-monoˡ-≤; +-monoʳ-≤)
+open import Data.Nat using (s≤s; ℕ; _≤_; suc; _+_)
+open import Data.Nat.Properties using (+-monoˡ-≤; +-monoʳ-≤; ≤-trans; ≤-reflexive; m≤m+n)
 open import Data.Nat.Solver using (module +-*-Solver)
 open +-*-Solver using (solve; _:+_; con; _:=_)
 open import Once.IRTy using (IRTy)
@@ -41,6 +49,13 @@ open import Once.CCC.Codegen.IRObsCorrect.IterBody o tbl
 module IterRoundsContC {FS : FrameSemantics} where
 
   open Core {FS}
+  open ClosureWellFormedBase′ using (eventsAt; ⟪_⟫_; runAt; resultAt; stopsAt)
+  open ClosureWellFormedDef′ using (ResultPlace; at-loc)
+  open FlatEventTrace′ using (chain-events-++; chain-ctrls-++; chain-ctrls)
+  open CataNextSlot′ using (AllSlotStable)
+  open FlatMachine′ using (FlatState)
+  open FlatMachine′.FlatState using (floc; falloc)
+  open FlatStepsAPI′ using (FlatSteps-++)
   open IterInvC {FS}
   open IterContC {FS}
   open IterBodyC {FS}

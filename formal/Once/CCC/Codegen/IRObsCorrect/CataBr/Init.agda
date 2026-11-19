@@ -28,6 +28,14 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.CataBr.Init (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.Bool using (false)
+open import Data.List using (_∷_; []; _++_)
+open import Data.Maybe using (Maybe; just)
+open import Data.Nat.Properties using (≤-refl; <-irrefl; ≤-reflexive; m≤m+n; n≤1+n)
+open import Data.Product using (_,_; proj₂)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Relation.Binary.PropositionalEquality using (_≡_; trans; cong; refl; subst; _≢_; sym)
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module ResuspBaseC)
 open import Once.CCC.Codegen.IRObsCorrect.CataConst.Steps o tbl using (module CataStepsC)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Stack o tbl using (module CataStackC)
@@ -40,17 +48,27 @@ open import Once.CCC.Machine.SMCore
         ; instr-alloc-heap; instr-load-tag-lit)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic)
-open import Once.CCC.Machine.SMPrimitives using (nhw-store-at-slot)
+open import Once.CCC.Machine.SMPrimitives using (nhw-store-at-slot; nhw-instr-alloc-heap; nhw-mov-to-input; nhw-instr-load-tag-lit; nhw-load-from-slot; nhw-mov-to-output)
 open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; mkHeapRef)
 open import Once.IRTy using (IRTy; IRFunctor; μ-type)
-open import Data.Unit using (⊤)
-open import Data.Nat using (s≤s; z≤n)
+open import Data.Unit using (⊤; tt)
+open import Data.Nat using (s≤s; z≤n; ℕ; suc; _+_; _≤_)
 import Once.CCC.Machine.FlatAlloc as FlatAlloc
 import Once.CCC.Machine.SMPrimitives
 
 module CataInitC {FS : FrameSemantics} where
 
   open Core {FS}
+  open ClosureWellFormedBase′ using (InBlk; Live; BlocksKept)
+  open AbstractExec′ using (exec-abstract)
+  open FlatMachine′ using (FlatState)
+  open FlatMachine′.FlatState using (falloc; floc; fpc)
+  open FlatStepsAPI′ using (_∷_; [])
+  open FrontierInvariant′ using (BeforeFrontier; module BeforeFrontier)
+  open InstrPrimitives′ using (exec-abstract-preserves-frame)
+  open MemOps′ using (readLoc)
+  open RecSchemeSemantics′ using (exec-abstract-preserves-heap-ref)
+  open TracePrimitives′ using (exec-abstract-preserves-halted-WF; InstrWF)
   open ResuspBaseC {FS}
   open CataStepsC {FS}
   open CataStackC {FS}

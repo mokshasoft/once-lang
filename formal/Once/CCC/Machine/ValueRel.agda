@@ -26,7 +26,7 @@
 -- indexed by the function its block computes (`CallRuns` pins it), and the
 -- μ/ν layers go through `out-μ`/`Out`, whose meaning ignores the environment.
 -- The datatypes live in this UNPARAMETERISED module (a parameterised one makes
--- a distinct type per instantiation); `IRObsCorrect.Prelude` re-exports it.
+-- a distinct type per instantiation).
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.List.Relation.Unary.Any using (Any; here; there)
 open import Data.List.Relation.Unary.Any.Properties using (++⁺ˡ; ++⁺ʳ; ++⁻)
@@ -49,6 +49,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
+open import Once.CCC.Label using (LabelId)
 open AllocState using (next-slot; next-heap-ref; current-frame; saved-frames)
 open LocState using (regs; halted; stackMem; heapMem)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
@@ -74,9 +75,6 @@ import Once.Semantics.Machine as EvV
 open import Once.CCC.Machine.Allocation
 open import Once.CCC.Machine.SMPrimitives using (module TracePrimitives; TraceWritesAbove; TraceNoHeapWrites)
 
-
--- Plan 0.52 M2: μ-type/ν-type/WellFormedFI/⟦_⟧TI now come from Once.IR (IRTy tier)
--- via its public re-export of Once.IRTy — no surface Once.Type import needed.
 
 
 ------------------------------------------------------------------------
@@ -591,7 +589,8 @@ module ClosureWellFormedBase {FS : FrameSemantics} where
 -- PROGRAM, because the arrow case says the closure's label resolves in it.
 module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
   open ClosureWellFormedBase {FS}
-  open FlatMachine {FS} using (FlatState; fpc; floc; fret; falloc; flink; find-thunk; enter-call)
+  open FlatMachine {FS} using (FlatState; find-thunk; enter-call; module FlatState)
+  open FlatState using (floc; fpc; fret; flink; falloc)
   open FlatStepsAPI {FS} using (FlatSteps)
   open FlatEventTrace {FS} using (chain-events; chain-ctrls)
   open import Once.CCC.Machine.Validity

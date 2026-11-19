@@ -19,7 +19,18 @@ import Data.List as DL
 open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.Machine (o : CanonicalName) (tbl : DL.List IRFun) where
 
-open import Once.CCC.Codegen.IRObsCorrect.Interface o tbl public
+import Once.CCC.Codegen.IRObsCorrect.Interface
+module Interface = Once.CCC.Codegen.IRObsCorrect.Interface o tbl
+open Interface
+open import Data.Empty using (⊥-elim)
+open import Data.List using (List)
+open import Data.Maybe using (just; nothing)
+open import Data.Nat using (ℕ; suc; _≤_; _<_)
+open import Data.Nat.Properties using (<-≤-trans; <-irrefl; ≤-<-trans; ≤-reflexive; n≤1+n; ≤-refl)
+open import Data.Product using (proj₁)
+open import Data.Unit using (tt)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans; _≢_; subst; sym)
+open import Relation.Nullary using (yes; no)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (AtStack; ValueLocation; AtDynamic)
 open import Once.CCC.Machine.SMCore using (AllocState; AbstractTrace; store-at-slot; readReg; Output; LocState; sv-as-loc; Input1; store-indirect; StoredValue; sucLoc; load-indirect-suc; load-indirect; load-from-slot; writeReg-preserves; SV-Ptr; SV-Tag; SV-Lit; SV-Code; store-indirect-suc; writeReg-same; AbstractInstr; instr-alloc-heap; mov-to-input; mov-to-output; module LocState; module AllocState)
@@ -41,6 +52,14 @@ import Once.IR.Semantics.Trace as TM
 module Mach {FS : FrameSemantics} where
 
   open Core {FS}
+  open import Once.CCC.Machine.SMPrimitives using (InstrNoHeapWrite; instr-writes-slot; nhw-load-from-slot; nhw-mov-to-input; nhw-instr-alloc-heap; nhw-mov-to-output)
+  open AbstractExec′ using (exec-abstract)
+  open FlatMachine′ using (FlatState; flat-exec-instr; flat-step-straight)
+  open FlatMachine′.FlatState using (floc; falloc; fpc)
+  open FrontierInvariant′ using (BeforeFrontier; module BeforeFrontier)
+  open InstrPrimitives′ using (exec-abstract-preserves-heapMem; exec-abstract-preserves-stack-slot; store-at-slot-preserves-below; store-at-slot-preserves-ancestor; exec-abstract-preserves-frame)
+  open MemOps′ using (readLoc)
+  open RecSchemeSemantics′ using (exec-abstract-preserves-heap-ref)
 
   flat-store-floc : ∀ (slot : ℕ) (prog : AbstractTrace) (fs : FlatState)
     → floc (flat-exec-instr (store-at-slot slot) prog fs)
@@ -389,7 +408,8 @@ module Mach {FS : FrameSemantics} where
     (cf-u1      : current-frame (falloc u1) ≡ current-frame alloc)
     where
 
-    open NineSteps n i6 i8 u1 public
+    module NineSteps′ = NineSteps n i6 i8 u1
+    open NineSteps′
 
     hl : HeapLocation
     hl = heap-loc (mkHeapRef (next-heap-ref (falloc u2))) 0
@@ -464,8 +484,8 @@ module Mach {FS : FrameSemantics} where
     module NSP = NineStepPres n i6 i8 t1 s alloc heapref-t1 cf-t1
 
     t2 t3 t4 t5 t6 t7 t8 t9 t10 : FlatState
-    t2  = NSP.u2 ; t3 = NSP.u3 ; t4 = NSP.u4 ; t5 = NSP.u5 ; t6 = NSP.u6
-    t7  = NSP.u7 ; t8 = NSP.u8 ; t9 = NSP.u9 ; t10 = NSP.u10
+    t2  = NSP.NineSteps′.u2 ; t3 = NSP.NineSteps′.u3 ; t4 = NSP.NineSteps′.u4 ; t5 = NSP.NineSteps′.u5 ; t6 = NSP.NineSteps′.u6
+    t7  = NSP.NineSteps′.u7 ; t8 = NSP.NineSteps′.u8 ; t9 = NSP.NineSteps′.u9 ; t10 = NSP.NineSteps′.u10
 
     hl : HeapLocation
     hl = NSP.hl

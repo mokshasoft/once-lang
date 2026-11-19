@@ -27,7 +27,7 @@ open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality using (refl; sym; trans; subst)
 open import Once.IR using (IR)
 open import Once.IRTy using (Unit)
-open import Once.CCC.Machine.SMCore using (instr-ctrl; c-entry; e-fn; c-start; link-top)
+open import Once.CCC.Machine.SMCore using (instr-ctrl; c-entry; c-start; link-top)
 open import Once.CCC.Machine.FrameFree using (EmittableI; ImageI; emittable-image)
 open import Once.CCC.Codegen.AllocMin o using (AllocMinI)
 
@@ -45,7 +45,7 @@ open import Once.CCC.Codegen.LabelSeg using (LabelsIn; SegAgree; mention-at; li-
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Machine.SMCore using (AbstractTrace)
-open import Once.CCC.Label using (LabelId)
+open import Once.CCC.Label using (LabelId; e-fn)
 import Once.CCC.Codegen.IRToTrace as IT
 
 -- The counter a list of entries leaves behind, and that it never retreats.

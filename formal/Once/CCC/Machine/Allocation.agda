@@ -379,7 +379,7 @@ module FrontierInvariant {FS : FrameSemantics} where
       next-slot-delta     : ℕ
       next-heap-ref-delta : ℕ
 
-  open AllocBump public
+  open AllocBump
 
   -- Apply a bump to an alloc state. `current-frame` is preserved
   -- (every instruction preserves current-frame; see

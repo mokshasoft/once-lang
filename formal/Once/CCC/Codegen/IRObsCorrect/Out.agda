@@ -17,6 +17,18 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.Out (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.Bool using (false)
+open import Data.Empty using (⊥-elim)
+open import Data.List using (List; _∷_; [])
+open import Data.Maybe using (just)
+open import Data.Nat using (ℕ; suc; _+_; _≤_)
+open import Data.Product using (proj₁; _,_; proj₂)
+open import Data.Unit using (tt)
+open import Once.CCC.Machine.ValueRel using (valid-ν-wf)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Once.IR using (Out)
+open import Relation.Binary.PropositionalEquality using (_≡_; trans; refl; subst; sym; cong; cong₂)
 open import Once.CCC.Codegen.IRObsCorrect.Get o tbl using (module GetC)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
@@ -41,6 +53,15 @@ open import Once.Denotation.Approx using (done; NotCut; budgetLeft)
 module OutC {FS : FrameSemantics} where
 
   open Core {FS}
+  open import Once.CCC.Machine.SMPrimitives using (nhw-mov-to-input; nhw-load-at)
+  open ClosureWellFormedBase′ using (runAt; ⟪_⟫_; resultAt; stopsAt; eventsAt)
+  open ClosureWellFormedDef′ using (module NuV; in-reg; in-unit; in-loc; ValidAtWF; crun-map; ν-layer-place; ResultPlace)
+  open FlatEventTrace′ using (chain-left; chain-ctrls; ctrls-≤ʳ; chain-events; chain-events-++)
+  open FlatMachine′ using (FlatState; flat-exec-instr; enter-call; do-call-sv; do-call-code; do-call-at)
+  open FlatMachine′.FlatState using (floc; falloc; fclosure; fpc; fret)
+  open FlatStepsAPI′ using (_∷_; FlatSteps; []; FlatSteps-++)
+  open FrontierInvariant′ using (BeforeFrontier)
+  open TracePrimitives′ using (exec-abstract-preserves-halted-WF)
   open NuV
   open Mach {FS}
 

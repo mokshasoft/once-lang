@@ -46,6 +46,18 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.Pair (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.Bool using (false; true)
+open import Data.List using (List; _++_; [])
+open import Data.Maybe using (just)
+open import Data.Nat using (ℕ; _≤_; _+_; suc)
+open import Data.Nat.Properties using (+-identityʳ; ≤-trans; ≤-reflexive; n≤1+n; m≤m+n)
+open import Data.Product using (_,_; proj₂; proj₁)
+open import Data.Unit using (tt)
+open import Function using (case_of_)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Once.IR using (IR; ⟨_,_⟩; AllocMode; Heap)
+open import Relation.Binary.PropositionalEquality using (_≡_; sym; subst; cong; trans; refl; cong₂; subst₂)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.CCC.Machine.SMCore using (AllocState; AbstractTrace; LocState; StoredValue; restore-input; readReg; Output; module LocState; module AllocState)
@@ -54,7 +66,7 @@ open LocState using (halted; regs)
 open import Once.Memory.HeapAddress using (HeapLocation)
 open import Once.CCC.Codegen.IRObsCorrect.Pair.Chain    o tbl
 open import Once.CCC.Codegen.IRObsCorrect.Pair.Proof o tbl
-open import Data.List.Properties using (++-identityʳ)
+open import Data.List.Properties using (++-identityʳ; ++-assoc)
 
 import Once.CCC.FrameSemantics
 import Once.CCC.Machine.SMPrimitives
@@ -71,6 +83,14 @@ open import Once.Denotation.Approx using (Ap; done; cut; NotCut; budgetLeft; don
 
 module PairAsm {FS : FrameSemantics} where
   open Core  {FS}
+  open ClosureWellFormedBase′ using (Live; resultAt; ⟪_⟫_; runAt; eventsAt; stopsAt; BlocksKept)
+  open ClosureWellFormedDef′ using (InputAt; ResultPlace; at-loc)
+  open FlatEventTrace′ using (chain-ctrls; chain-ctrls-subst-start; chain-events; chain-left; ctrls-≤ʳ)
+  open CataNextSlot′ using (AllSlotStable)
+  open FlatMachine′ using (exec-flat)
+  open FlatMachine′.FlatState using (floc; falloc; fclosure)
+  open FlatStepsAPI′ using ([]; exec-flat-steps; FlatSteps; FlatSteps-++)
+  open FrontierInvariant′ using (BeforeFrontier; module BeforeFrontier; frontier-monotone)
   open Mach  {FS}
   open PairC {FS}
   open PairProofC {FS}

@@ -34,7 +34,8 @@ open import Once.CCC.Target.X86-64.Syntax using (Program; Instr; call-sym)
 open import Once.CCC.Target.X86-64.Semantics
   using (State; readReg; writeReg; writeMem; fetch; execInstr; Word)
 open State
-open import Once.Arith.Backend.X86-64.ExecArith using (exec-arith-block)
+open import Once.Arith.Backend.X86-64.ExecArith using (module ExecArithCore′)
+open ExecArithCore′ using (exec-arith-block)
 
 module _ (val : XInstr → State → Reg → Word) where
 

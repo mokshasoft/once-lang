@@ -34,6 +34,17 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.CaseRun (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.Bool using (false; true)
+open import Data.List using (length; _++_; []; List; _∷_)
+open import Data.List.Properties using (length-++)
+open import Data.Maybe using (just; nothing)
+open import Data.Nat using (ℕ; suc; _+_)
+open import Data.Nat.Properties using (+-comm; +-identityʳ)
+open import Data.Product using (_,_)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Once.IR using (IR; case)
+open import Relation.Binary.PropositionalEquality using (_≡_; trans; cong; subst; refl; sym; cong₂)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Label using (ℓ)
@@ -65,6 +76,12 @@ module RunC {FS : FrameSemantics} where
 
 
   open Core {FS}
+  open import Once.CCC.Machine.SMPrimitives using (nhw-mov-to-input)
+  open ClosureWellFormedDef′ using (InputAt)
+  open FlatEventTrace′ using (chain-events; event-of; chain-events-++)
+  open FlatMachine′ using (fetch; fetch-++-right; FlatState; flat-exec-instr; tag-test; flat-read-tag; do-jump; mkFlatFull)
+  open FlatMachine′.FlatState using (floc; fpc; falloc; fret; flink; fclosure)
+  open FlatStepsAPI′ using (FlatSteps; []; FlatSteps-++; _∷_)
   open Mach {FS}
   open FlatStepsAPI {FS} using (flat-step1; flat-tag-branch-yes; flat-tag-branch-not)
   -- The first half of this same clause: the shape, the four premise splits,

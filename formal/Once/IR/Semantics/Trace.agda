@@ -53,7 +53,9 @@ open import Data.List.Membership.Propositional using (_∈_)
 open import Once.Spec.Word using (Carrier)
 import Once.IR.Semantics.Value Carrier Carrier as M
 open import Once.IR.Semantics.Event using (SigOpEvent; mk-event)
-open import Once.Contract using (Key; key; kdom; kcod; _∈K?_; ISig; valueKeys; answerKeys; Impl; answerI; pureI)
+open import Once.Contract using (Key; key; _∈K?_; ISig; valueKeys; answerKeys; Impl; module Impl; module Key)
+open Impl using (answerI; pureI)
+open Key using (kdom; kcod)
 
 ------------------------------------------------------------------------
 -- The operations: one universal signature, keyed by the SigOp's identity

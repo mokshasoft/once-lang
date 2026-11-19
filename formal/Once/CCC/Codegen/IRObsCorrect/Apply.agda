@@ -27,6 +27,16 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.Apply (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.Bool using (false)
+open import Data.Empty using (⊥-elim; ⊥)
+open import Data.List using (_∷_; []; _++_; length)
+open import Data.List.Relation.Unary.All.Properties using (++⁺)
+open import Data.Maybe using (just)
+open import Data.Product using (_,_; proj₁; proj₂)
+open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
+open import Once.IR using (apply)
+open import Relation.Binary.PropositionalEquality using (_≡_; trans; cong; _≢_; sym; subst; refl; cong₂)
 open import Once.CCC.Machine.SMCore
   using (AbstractTrace; SV-Ptr; sucLoc; offsetLoc; SV-Code; instr-call-closure; StoredValue; LocState; module LocState;
          readReg; writeReg; Input1; Output; AllocState; module AllocState; module ExecFinal;
@@ -50,10 +60,10 @@ import Once.CCC.Machine.SMPrimitives
 import Once.IRTy
 import Once.IRTy as IRTy′
 import Once.IR
-open import Data.List.Properties using (++-identityʳ)
-open import Data.List.Relation.Unary.All using ([]; _∷_)
-open import Data.Nat using (_⊔_; z≤n; s≤s)
-open import Data.Nat.Properties using (m≤n⊔m)
+open import Data.List.Properties using (++-identityʳ; ++-assoc; length-++)
+open import Data.List.Relation.Unary.All using ([]; _∷_; All)
+open import Data.Nat using (_⊔_; z≤n; s≤s; ℕ; suc; _<_; _+_; _≤_)
+open import Data.Nat.Properties using (m≤n⊔m; <-irrefl; +-suc; n<1+n; ≤-trans; n≤1+n; +-identityʳ; ≤-refl)
 open import Once.Res using (is-stopped)
 import Once.Semantics.Machine as EvV
 import Once.CCC.Machine.ReadTypedAdequate as RTA
@@ -65,6 +75,15 @@ open import Once.Denotation.Approx using (done; NotCut; budgetLeft)
 module ApplyC {FS : FrameSemantics} where
 
   open Core {FS}
+  open ClosureWellFormedBase′ using (cell-inline; rep-prim; cell-ptr; InBlk; Live; ResultPlaceP; runAt; ⟪_⟫_; stopsAt; resultAt)
+  open ClosureWellFormedDef′ using (in-reg; in-unit; in-loc; module PairValidWF; decomposePairWF; CellAt; module ClosureValidWF; decomposeClosureWF; EnvAt; env-at-loc; env-in-cell; CalleeRunP; VAt; ResultPlace; rp→place)
+  open FlatEventTrace′ using (event-of; chain-events; chain-events-++; chain-left; chain-ctrls; ctrls-≤ʳ)
+  open AbstractExec′ using (exec-abstract)
+  open FlatMachine′ using (FlatState; find-thunk; flat-exec-instr; enter-call; do-call-sv; do-call-code; do-call-at; fetch; fetch-++-left; StraightStep; fetch-++-right)
+  open FlatMachine′.FlatState using (fclosure; floc; falloc; fpc; fret)
+  open FlatStepsAPI′ using (_∷_; []; FlatSteps; FlatSteps-++)
+  open FrontierInvariant′ using (module BeforeFrontier; BeforeFrontier; frontier-monotone)
+  open MemOps′ using (readLoc)
   open Mach {FS}
   open SMCore.AbstractExec {FS} using (exec-trace; exec-trace-cons; exec-load-from-slot-with-value)
   open SMCore.MemOps {FS} using (writeLoc; writeLoc-halted; writeLoc-preserves-other; writeLoc-read-same-stack)

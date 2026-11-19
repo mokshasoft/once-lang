@@ -24,6 +24,16 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.CataBr.FoldExit (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.Bool using (false)
+open import Data.Empty using (⊥)
+open import Data.List using (length; List; _∷_; [])
+open import Data.Maybe using (just)
+open import Data.Nat using (ℕ; _+_; suc)
+open import Data.Nat.Properties using (≤-refl)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Once.IR using (AllocMode; Heap; IR)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; sym; cong; trans)
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module ResuspBaseC)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Stack o tbl using (module CataStackC)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Walk o tbl using (module CataWalkC)
@@ -43,12 +53,20 @@ open import Once.CCC.Machine.Locations using (AtStack; AtDynamic)
 open import Once.Memory.HeapAddress using (HeapLocation)
 open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; ⟦_⟧TI)
 import Once.IRTy as IRTy′
-open import Data.Product using (Σ)
-open import Data.Unit using (⊤)
+open import Data.Product using (Σ; _,_)
+open import Data.Unit using (⊤; tt)
 
 module CataFoldExitC {FS : FrameSemantics} where
 
   open Core {FS}
+  open import Once.CCC.Machine.SMPrimitives using (nhw-mov-to-input; nhw-load-from-slot)
+  open ClosureWellFormedDef′ using (ResultPlace; at-loc; at-reg; unit-result)
+  open FlatEventTrace′ using (chain-events; chain-events-subst-start)
+  open FlatMachine′ using (FlatState; fetch; flat-exec-instr; do-jump)
+  open FlatMachine′.FlatState using (falloc; floc; fpc)
+  open FlatStepsAPI′ using (_∷_; FlatSteps; step-at; [])
+  open MemOps′ using (readLoc)
+  open TracePrimitives′ using (InstrWF; exec-abstract-preserves-halted-WF)
   open ResuspBaseC {FS} hiding (X)
   open CataStackC {FS}
   open CataWalkC {FS}

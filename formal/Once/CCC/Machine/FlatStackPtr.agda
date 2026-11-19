@@ -59,7 +59,8 @@ import Once.Allocator.AbstractInstance as AI
 open import Once.SigOp.Info using (SigOpInfo; effect; EffectShape; Pure; Emits; Halts; Answers; semM)
 open import Once.Res using (Res; stopped; returns)
 open import Once.Type using (FitsInReg; fits-in-reg?; fits-int; fits-float)
-open import Once.Semantics.Machine using (⟦_⟧)
+open import Once.Semantics.Machine using (module Value)
+open Value using (⟦_⟧)
 open import Once.CCC.Machine.SMCore
 open AllocState using (current-frame; next-heap-ref)
 open LocState using (regs; heapMem; stackMem; ev-log)
@@ -71,6 +72,7 @@ open AbstractExec {FS}
 open import Once.CCC.Machine.FrameFree using (EmittableI; ImageI)
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
+open FlatState using (floc; falloc; fret)
 
 ------------------------------------------------------------------------
 -- The per-value predicate. A CATCHALL for the non-stack-pointer shapes, which

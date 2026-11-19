@@ -36,6 +36,18 @@ open import Once.Denotation.Program using (IRFun; tableEnv)
 module Once.CCC.Codegen.IRObsCorrect.CataBr.FoldRound (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.Bool using (false; true)
+open import Data.Empty using (⊥; ⊥-elim)
+open import Data.List using (List; _∷_; []; _++_)
+open import Data.Maybe using (just)
+open import Data.Nat using (ℕ; suc; _≤_; _+_)
+open import Data.Nat.Properties using (≤-refl; n<1+n; ≤-trans)
+open import Data.Product using (_,_; proj₁; proj₂; _×_)
+open import Data.Unit using (tt)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Once.IR using (IR; Cata; Heap)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; sym; trans; cong₂; cong)
 open import Once.CCC.Machine.SMCore using (ending)
 open import Once.CCC.Machine.MuRep using (Unboxed)
 open import Once.CCC.Codegen.IRObsCorrect.BlockCall o tbl using (module BlockCallC)
@@ -75,6 +87,15 @@ import Once.IR.Semantics.Trace as TM
 module CataFoldRoundC {FS : FrameSemantics} where
 
   open Core {FS}
+  open ClosureWellFormedBase′ using (Live; ResultPlaceP; runAt; ⟪_⟫_; resultAt; stopsAt; BlocksKept; eventsAt; live-ns)
+  open ClosureWellFormedDef′ using (ValidAtWF; validityWF-heap-transport; InputAt; in-loc; CalleeRunP; VAt; module CalleeRunP; rp→place)
+  open FlatEventTrace′ using (chain-events; chain-events-++; chain-events-subst-start; chain-left; chain-ctrls; ctrls-≤ʳ; ctrls-≤ˡ)
+  open CataNextSlot′ using (AllSlotStable; exec-flat-keeps-next-slot)
+  open FlatMachine′ using (find-thunk; FlatState; enter-call; flat-exec-instr; fetch)
+  open FlatMachine′.FlatState using (falloc; fpc; fret; floc)
+  open FlatStepsAPI′ using (_∷_; FlatSteps; step-at; []; FlatSteps-++; exec-flat-steps)
+  open FrontierInvariant′ using (BeforeFrontier; module BeforeFrontier)
+  open MemOps′ using (readLoc)
   open ResuspBaseC {FS} using (SegA; Kp; bf-step; seg-bf; live-from)
   open CataVisitC {FS} using (place→word)
   open ApplyC {FS} using (call-at)

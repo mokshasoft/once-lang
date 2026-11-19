@@ -30,6 +30,7 @@
 open import Once.IR.Semantics.Trace using (Interp)
 open import Once.Target.Arch using (Arch)
 import Once.Adequacy.Compile as Compile
+import Once.Program as Program
 
 module Once.Adequacy.SpecApex
   (arch-correct : ∀ (ι : Interp) (arch : Arch) → Compile.ArchCorrect arch ι) where
@@ -118,8 +119,8 @@ record Bridges : Set₁ where
     -- Spec program, and the compiler's meaning of it is the Spec's behaviour.
     -- (plan 0.122: over the program's own signature, which declares the
     -- compiler's FFI words, in every Interpretation `J` of it)
-    sound : ∀ (arch : Arch) (src : Source) (srcC : B.Source) (tp : VC.Typed)
-          → toSource src ≡ just srcC → srcC VC.⊢R tp → VC.Admissible arch tp
+    sound : ∀ (arch : Arch) (src : Source) (srcC : B.Source) (tp : Program.Typed)
+          → toSource src ≡ just srcC → srcC Program.⊢R tp → VC.Admissible arch tp
           → Σ[ tp′ ∈ Typed ]
               (src ⊢ tp′) × Admissible (arch-numerics arch) tp′
               × Σ[ u ∈ VC.SigOf tp (signature tp′) ]
@@ -129,7 +130,7 @@ record Bridges : Set₁ where
     complete : ∀ (arch : Arch) (src : Source) (tp′ : Typed)
              → src ⊢ tp′ → Admissible (arch-numerics arch) tp′
              → Σ[ srcC ∈ B.Source ] (toSource src ≡ just srcC)
-               × Σ[ tp ∈ VC.Typed ] (srcC VC.⊢R tp) × VC.Admissible arch tp
+               × Σ[ tp ∈ Program.Typed ] (srcC Program.⊢R tp) × VC.Admissible arch tp
 
 ------------------------------------------------------------------------
 -- The Spec's claim, from the compiler's and the bridges
@@ -251,8 +252,8 @@ private
       tp′ : Typed
       tp′ = record { module′ = SS.mkModule dsU ; signature = Dn.Denoted.Σₛ D ; program = Mn.progS D }
 
-sound-of : ∀ (arch : Arch) (src : Source) (srcC : B.Source) (tp : VC.Typed)
-         → toSource src ≡ just srcC → srcC VC.⊢R tp → VC.Admissible arch tp
+sound-of : ∀ (arch : Arch) (src : Source) (srcC : B.Source) (tp : Program.Typed)
+         → toSource src ≡ just srcC → srcC Program.⊢R tp → VC.Admissible arch tp
          → Σ[ tp′ ∈ Typed ]
              (src ⊢ tp′) × Admissible (arch-numerics arch) tp′
              × Σ[ u ∈ VC.SigOf tp (signature tp′) ]
@@ -281,7 +282,7 @@ sound-of arch src srcC (mR , mt , hvm) ts (mU , pt , rmod) adm =
 complete-of : ∀ (arch : Arch) (src : Source) (tp′ : Typed)
             → src ⊢ tp′ → Admissible (arch-numerics arch) tp′
             → Σ[ srcC ∈ B.Source ] (toSource src ≡ just srcC)
-              × Σ[ tp ∈ VC.Typed ] (srcC VC.⊢R tp) × VC.Admissible arch tp
+              × Σ[ tp ∈ Program.Typed ] (srcC Program.⊢R tp) × VC.Admissible arch tp
 complete-of arch src tp′ (mm , pt′ , pms , den) adm =
   B.mkSource mm (SP.Source.text src) , Modules.source-of← src pms
   , (PM.resolved (SS.mkModule (TC.dsR T)) _ , TC.mt T , TC.hvm T)

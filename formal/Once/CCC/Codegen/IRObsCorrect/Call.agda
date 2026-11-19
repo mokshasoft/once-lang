@@ -22,6 +22,12 @@ open import Once.Denotation.Program using (IRFun; LinkedAt)
 module Once.CCC.Codegen.IRObsCorrect.Call (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.List using (_∷_; [])
+open import Data.Maybe using (just)
+open import Data.Nat using (_+_; _≤_; suc)
+open import Data.Product using (proj₁; _,_; proj₂)
+open import Relation.Binary.PropositionalEquality using (trans; cong; cong₂; subst; _≡_; sym; refl)
 open import Once.CCC.Machine.SMCore using (ending)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic; ValueLocation)
@@ -40,6 +46,13 @@ import Once.IR.Semantics.Trace as TM
 module CallC {FS : FrameSemantics} where
 
   open Core {FS}
+  open ClosureWellFormedBase′ using (runAt; ⟪_⟫_; stopsAt; resultAt; eventsAt)
+  open ClosureWellFormedDef′ using (InputAt)
+  open FlatEventTrace′ using (chain-ctrls; ctrls-≤ʳ; chain-events; chain-events-++)
+  open FlatMachine′ using (flat-exec-instr; enter-call; do-call-at)
+  open FlatMachine′.FlatState using (floc; falloc; fpc; fret)
+  open FlatStepsAPI′ using (_∷_; FlatSteps; []; FlatSteps-++)
+  open FrontierInvariant′ using (BeforeFrontier)
 
   obs-correct-call : ∀ {A B} (f : CanonicalName) → LinkedAt tbl f A B → IRObsCorrectF (Once.IR.Call {A} {B} f)
   obs-correct-call {A} {B} f lk n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh inp k rs = record

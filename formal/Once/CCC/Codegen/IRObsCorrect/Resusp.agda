@@ -24,6 +24,15 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.Resusp (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.Bool using (false)
+open import Data.List using ([])
+open import Data.Maybe using (just; nothing)
+open import Data.Nat using (ℕ; _+_; _≤_)
+open import Data.Nat.Properties using (≤-refl)
+open import Data.Product using (_,_; proj₂)
+open import Once.IR using (IR; Heap; Ana; AllocMode)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.CCC.Machine.SMCore using (ending)
 open import Once.CCC.Codegen.IRObsCorrect.NuForce o tbl
 open import Once.CCC.Codegen.IRToTrace o using (resuspend-layer)
@@ -34,7 +43,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack)
 open import Once.CCC.Machine.LocMatchesMode using (LocMatchesMode)
 open import Once.CCC.Label using (ℓ)
-open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; ⟦_⟧TI; ν-type; IsBaseTypeI; wf-K; wf-Id; wf-Sum; wf-Prod)
+open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; ⟦_⟧TI; ν-type; IsBaseTypeI; wf-K; wf-Id; wf-Sum; wf-Prod; FitsInRegI)
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module ResuspBaseC)
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Id o tbl using (module ResuspIdC)
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Prod o tbl using (module ResuspProdC)
@@ -46,6 +55,14 @@ import Once.Denotation.ValueDomain as ValueDomain
 module ResuspC {FS : FrameSemantics} where
 
   open Core {FS}
+  open ClosureWellFormedBase′ using (VTy; Live; BlocksKept; prim-sv; ResultPlaceP; LayerV)
+  open ClosureWellFormedDef′ using (ValidAtWF; valid→fo; validityWF-heap-transport; CellAt)
+  open FlatEventTrace′ using (chain-events; chain-events-nil)
+  open FlatMachine′ using (FlatState)
+  open FlatMachine′.FlatState using (floc; fpc; fret; flink; falloc)
+  open FlatStepsAPI′ using (FlatSteps; [])
+  open FrontierInvariant′ using (BeforeFrontier)
+  open MemOps′ using (readLoc)
   open LocState using (regs; halted)
   open AllocState using (next-slot; current-frame; saved-frames)
   open NuForceC {FS} using (module AnaDen)

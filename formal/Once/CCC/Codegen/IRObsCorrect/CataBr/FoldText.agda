@@ -30,6 +30,14 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.CataBr.FoldText (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.List using (_∷_; []; length; _++_)
+open import Data.List.Properties using (length-++; ++-assoc)
+open import Data.List.Relation.Unary.All.Properties using (++⁺)
+open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Product using (proj₁; proj₂; _,_)
+open import Once.IR using (IR)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; _≢_; cong; sym; trans; subst; cong₂)
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module ResuspBaseC)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Text o tbl using (module CataBrTextC)
 open import Once.CCC.Codegen.IRToTrace o
@@ -50,8 +58,8 @@ open import Once.CCC.Label using (ℓ; LabelId; module LabelId)
 open LabelId using (idx)
 open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; ⟦_⟧TI)
 import Once.IRTy as IRTy′
-open import Data.Nat using (s≤s; z≤n)
-open import Data.Nat.Properties using (+-monoʳ-<; +-monoʳ-≤)
+open import Data.Nat using (s≤s; z≤n; ℕ; _+_; suc; _<_; _≤_)
+open import Data.Nat.Properties using (+-monoʳ-<; +-monoʳ-≤; <-irrefl; <-≤-trans; +-comm; +-suc; m≤m+n; ≤-refl; n≤1+n; ≤-trans; +-identityʳ; +-assoc)
 open import Relation.Nullary using (¬_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.List.Relation.Unary.All using () renaming (_∷_ to _∷ᴬ_; [] to []ᴬ)
@@ -97,6 +105,8 @@ fold-hd n l1 =
 module CataFoldTextC {FS : FrameSemantics} where
 
   open Core {FS}
+  open FlatMachine′ using (label-of?; fetch; fetch-++-right; find-label)
+  open FlatStepsAPI′ using (_∷_; [])
   open ResuspBaseC {FS} using (span-take; span-drop)
   open Resolve {FS} using (NoLabel; noLabel-outside; label-resolves; found-in-window)
   open FlatStepsAPI {FS} using (find-label-distrib)

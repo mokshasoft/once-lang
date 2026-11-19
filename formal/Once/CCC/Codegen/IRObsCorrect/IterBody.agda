@@ -18,6 +18,15 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.IterBody (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.Bool using (false)
+open import Data.List using (length)
+open import Data.Maybe using (just; nothing)
+open import Data.Nat.Properties using (≤-trans; n≤1+n; +-identityʳ; ≤-reflexive)
+open import Data.Product using (_,_)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Once.IR using (IR; Iter)
+open import Relation.Binary.PropositionalEquality using (_≡_; trans; subst; sym; cong)
 open import Once.CCC.Machine.SMCore using (ending)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
@@ -25,7 +34,7 @@ open import Once.CCC.Machine.SMCore
   using (AllocState; AbstractTrace; LocState; module LocState; module AllocState)
 open AllocState using (next-slot; current-frame; saved-frames; next-heap-ref)
 open LocState using (halted)
-open import Data.Nat using (s≤s)
+open import Data.Nat using (s≤s; ℕ; _≤_; suc; _+_)
 open import Once.IRTy using (IRTy)
 import Once.IRTy as IRT
 open import Once.Res using (Res; returns)
@@ -39,6 +48,13 @@ open import Once.CCC.Codegen.IRObsCorrect.Pair.Proof o tbl using (module PairPro
 module IterBodyC {FS : FrameSemantics} where
 
   open Core {FS}
+  open ClosureWellFormedBase′ using (eventsAt; ⟪_⟫_; resultAt; Live; BlocksKept; stopsAt)
+  open FlatEventTrace′ using (chain-events; chain-events-subst-start; chain-ctrls; chain-ctrls-subst-start; chain-left)
+  open CataNextSlot′ using (AllSlotStable)
+  open FlatMachine′ using (FlatState; exec-flat)
+  open FlatMachine′.FlatState using (falloc; floc; fclosure; fpc; fret; flink)
+  open FlatStepsAPI′ using (FlatSteps; exec-flat-steps)
+  open FrontierInvariant′ using (BeforeFrontier; frontier-monotone; module BeforeFrontier)
   open IterShapeC {FS}
   open IterRunC {FS}
   open IterInvC {FS}

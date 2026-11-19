@@ -82,7 +82,7 @@ module Scope {FS : FrameSemantics} where
   record ThunkIn (lo hi : ℕ) (i : AbstractInstr) : Set where
     constructor mkThunkIn
     field in-range : ∀ (m : LabelId) → thunk-of? i ≡ just m → (lo ≤ idx m) × (idx m < hi)
-  open ThunkIn public
+  open ThunkIn
 
   ThunksIn : ℕ → ℕ → AbstractTrace → Set
   ThunksIn lo hi = All (ThunkIn lo hi)

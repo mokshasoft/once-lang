@@ -82,8 +82,8 @@ tagRun r ρ = proj₁ ρ , mapRes (λ x → done x r) (proj₂ ρ)
 
 run-approx-embedB : ∀ {X} (ι : Interp) (h : List SigOpEvent) (r : ℕ) (t : T X)
                   → run ι h (approxBlock r (embedBlock t)) ≡ tagRun r (run ι h t)
-run-approx-call   : ∀ {X} (ι : Interp) (h : List SigOpEvent) (r : ℕ) (o : CallOp) (a : M.⟦ cdom o ⟧)
-                      (k : M.⟦ ccod o ⟧ → T X) (ans : Maybe M.⟦ ccod o ⟧)
+run-approx-call   : ∀ {X} (ι : Interp) (h : List SigOpEvent) (r : ℕ) (o : CallOp) (a : M.Value.⟦ cdom o ⟧)
+                      (k : M.Value.⟦ ccod o ⟧ → T X) (ans : Maybe M.Value.⟦ ccod o ⟧)
                   → run-call ι h o a (λ b → approxBlock r (embedBlock (k b))) ans
                     ≡ tagRun r (run-call ι h o a k ans)
 run-approx-embedB ι h r (ret x)      = refl
@@ -140,8 +140,8 @@ mutual
   run-approx-bindB ι h r       (call o a k)   f = run-approx-bind-call ι h r o a k f (callAnswer ι h o a)
   run-approx-bindB ι h r       (halt o a)     f = refl
 
-  run-approx-bind-call : ∀ {X Y} (ι : Interp) (h : List SigOpEvent) (r : ℕ) (o : CallOp) (a : M.⟦ cdom o ⟧)
-                           (k : M.⟦ ccod o ⟧ → T (X ⊎ T∞ X)) (f : X → T∞ Y) (mb : Maybe M.⟦ ccod o ⟧)
+  run-approx-bind-call : ∀ {X Y} (ι : Interp) (h : List SigOpEvent) (r : ℕ) (o : CallOp) (a : M.Value.⟦ cdom o ⟧)
+                           (k : M.Value.⟦ ccod o ⟧ → T (X ⊎ T∞ X)) (f : X → T∞ Y) (mb : Maybe M.Value.⟦ ccod o ⟧)
                        → run-call ι h o a (λ b → approxBlock r (bindBlock (k b) f)) mb
                          ≡ thenAp ι h (proj₁ (run-call ι h o a (λ b → approxBlock r (k b)) mb))
                                       (proj₂ (run-call ι h o a (λ b → approxBlock r (k b)) mb)) f
@@ -194,9 +194,9 @@ mutual
   run-approx-iterB ι h r       (call o a k)          f = run-approx-iter-call ι h r o a k f (callAnswer ι h o a)
   run-approx-iterB ι h r       (halt o a)            f = refl
 
-  run-approx-iter-call : ∀ {A B} (ι : Interp) (h : List SigOpEvent) (r : ℕ) (o : CallOp) (a : M.⟦ cdom o ⟧)
-                           (k : M.⟦ ccod o ⟧ → T ((B ⊎ A) ⊎ T∞ (B ⊎ A))) (f : A → T∞ (B ⊎ A))
-                           (mb : Maybe M.⟦ ccod o ⟧)
+  run-approx-iter-call : ∀ {A B} (ι : Interp) (h : List SigOpEvent) (r : ℕ) (o : CallOp) (a : M.Value.⟦ cdom o ⟧)
+                           (k : M.Value.⟦ ccod o ⟧ → T ((B ⊎ A) ⊎ T∞ (B ⊎ A))) (f : A → T∞ (B ⊎ A))
+                           (mb : Maybe M.Value.⟦ ccod o ⟧)
                        → run-call ι h o a (λ b → approxBlock r (iterBlock f (k b))) mb
                          ≡ thenIter ι h (proj₁ (run-call ι h o a (λ b → approxBlock r (k b)) mb))
                                         (proj₂ (run-call ι h o a (λ b → approxBlock r (k b)) mb)) f
@@ -251,8 +251,8 @@ mutual
   done-≤B ι h r       (call o a k)   e    = done-≤-call ι h r o a k (callAnswer ι h o a) e
   done-≤B ι h r       (halt o a)     ()
 
-  done-≤-call : ∀ {X} (ι : Interp) (h : List SigOpEvent) (r : ℕ) (o : CallOp) (a : M.⟦ cdom o ⟧)
-                  (k : M.⟦ ccod o ⟧ → T (X ⊎ T∞ X)) (mb : Maybe M.⟦ ccod o ⟧) {v : X} {r′ : ℕ}
+  done-≤-call : ∀ {X} (ι : Interp) (h : List SigOpEvent) (r : ℕ) (o : CallOp) (a : M.Value.⟦ cdom o ⟧)
+                  (k : M.Value.⟦ ccod o ⟧ → T (X ⊎ T∞ X)) (mb : Maybe M.Value.⟦ ccod o ⟧) {v : X} {r′ : ℕ}
               → proj₂ (run-call ι h o a (λ b → approxBlock r (k b)) mb) ≡ returns (done v r′) → r′ ≤ r
   done-≤-call ι h r o a k (just b) e = done-≤B ι (h ++ [ callEvent o a ]) r (k b) e
   done-≤-call ι h r o a k nothing  ()

@@ -96,7 +96,8 @@ open _∼ᵖᵈ_ using (force-∼ᵖᵈ)
 open _∼ᵈ_ using (force-∼)
 open import Once.Adequacy.SpecRun Σ fmt using (≡ʳ-R; RunR; ret; left; return∞-R)
 open RunR using (forceR)
-open import Once.Semantics.Machine using (coerce-ν-out)
+open import Once.Semantics.Machine using (module Value)
+open Value using (coerce-ν-out)
 open import Once.Denotation.ValueDomain using (coerce-functor⁻¹-D; forgetᵇ; injectᵇ)
 open import Once.IR.Semantics.Iterative using (T∞; return∞; _>>=∞_; fmap∞; embed)
 import Once.Semantics.Machine as Val
@@ -264,11 +265,11 @@ ret-inv h = inv (forceS h)
 
 
 -- The same finite tree of first-order values, related to itself.
-emb-self : ∀ {C} (bC : Base ∅ₖ C) (t : T Val.⟦ C ⟧) → RelS (RelD C) (embed (fmapT (injectᵇ bC) t)) (embed (fmapT (injectᵇ bC) t))
+emb-self : ∀ {C} (bC : Base ∅ₖ C) (t : T Val.Value.⟦ C ⟧) → RelS (RelD C) (embed (fmapT (injectᵇ bC) t)) (embed (fmapT (injectᵇ bC) t))
 emb-self bC t = RelS-embed (RelT′-refl (base-refl bC) (fmapT (injectᵇ bC) t))
 
 -- A first-order pointer is related to itself.
-ptr-self : ∀ {Dom Cod} (bDom : Base ∅ₖ Dom) (bCod : Base ∅ₖ Cod) (f : Val.⟦ Dom ⟧ → T Val.⟦ Cod ⟧)
+ptr-self : ∀ {Dom Cod} (bDom : Base ∅ₖ Dom) (bCod : Base ∅ₖ Cod) (f : Val.Value.⟦ Dom ⟧ → T Val.Value.⟦ Cod ⟧)
              {a a′ : ⟦ Dom ⟧ᴰ} → RelD Dom a a′
          → RelS (RelD Cod) (embed (fmapT (injectᵇ bCod) (f (forgetᵇ bDom a)))) (embed (fmapT (injectᵇ bCod) (f (forgetᵇ bDom a′))))
 ptr-self bDom bCod f {a} r with base-eq bDom r
@@ -365,8 +366,8 @@ step-≡ h h' hr {x} refl = hr x
 ⊎⊤-base : Base ∅ₖ (Unit {0} + Unit)
 ⊎⊤-base = b-+ b-Unit b-Unit
 
-⊎⊤-rel : (v : Val.⟦ Unit {0} + Unit ⟧ᵍ)
-       → RelGM pure (Unit {0} + Unit) v (embed (ret (injectᵇ ⊎⊤-base (Val.eraseᵍ {B = Unit {0} + Unit} v))))
+⊎⊤-rel : (v : Val.Value.⟦ Unit {0} + Unit ⟧ᵍ)
+       → RelGM pure (Unit {0} + Unit) v (embed (ret (injectᵇ ⊎⊤-base (Val.Value.eraseᵍ {B = Unit {0} + Unit} v))))
 ⊎⊤-rel (inj₁ _) = emb-retᴿ tt
 ⊎⊤-rel (inj₂ _) = emb-retᴿ tt
 

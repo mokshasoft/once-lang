@@ -51,7 +51,9 @@ open import Once.Denotation.DenotTrace
   using (evalᴰ; cata-ev-algᴰ)
 open import Once.Denotation.MeaningD using (cata-ev-algᴰ-D; cata-sem)
 open import Once.Semantics.Machine
-  using (⟦_⟧F; coerce-μ-out; tF-coh)
+  using (module ValueIR; module Value)
+open Value using (⟦_⟧F; coerce-μ-out)
+open ValueIR using (tF-coh)
 open import Once.Spec.Word using (Carrier)
 open import Once.Spec.Type using (Type)
 open import Once.Spec.Type using (μ)

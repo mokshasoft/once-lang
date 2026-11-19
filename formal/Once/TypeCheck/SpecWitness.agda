@@ -251,8 +251,9 @@ module WMP {m} {ctx : NamedCtx m} (P : Pack ctx) = WM (Sg P) (S P) (nm P) (OkOf 
 -- …and the compiler's View there.
 module At {m} {ctx : NamedCtx m} (P : Pack ctx) where
   open WMP P
-  open Sc.Locals (Sg P) (S P) (nm P) public using (found)
-  open RS (Sg P) (S P) (nm P) (OkOf P) (OkSOf P) (inline P) (kinds ctx) public using (realize⇒; realize⇐; realize↦; ref)
+  module Locals = Sc.Locals (Sg P) (S P) (nm P) using (found)
+  module RS′ = RS (Sg P) (S P) (nm P) (OkOf P) (OkSOf P) (inline P) (kinds ctx) using (realize⇒; realize⇐; realize↦; ref)
+  open RS′
   module SU = SUT (Sg P) (S P) (nm P)
 
   sh = shape-lo {Ok = OkOf P} {OkS = OkSOf P} {Δ = kinds ctx} (lr P)
@@ -463,7 +464,7 @@ module _ {m} {ctx : NamedCtx m} where
 
   wt-var-local : ∀ {x A Ψ} {eV : Once.Context.SVar (debruijn ctx) Ψ A}
                → lookupLocal ctx x ≡ just (A , Ψ , eV) → WI ctx (SX.RVar x) A Ψ (SS.svar→expr eV)
-  wt-var-local {eV = svar i} lk = tt , λ P → let open At P using (found; subst-K) ; open WMP P using (w-var) in _ , w-var (found (lr P) i lk) , subst-K _ _
+  wt-var-local {eV = svar i} lk = tt , λ P → let open At P using (subst-K; module Locals) ; open Locals using (found) ; open WMP P using (w-var) in _ , w-var (found (lr P) i lk) , subst-K _ _
 
   wt-var-resolved : ∀ {cn T A} → WordName cn
                   → lookupImport (sig ctx) (showCanonical cn) ≡ just T → (k : IsConcrete T) → (eq : A ≡ wk₀ T)

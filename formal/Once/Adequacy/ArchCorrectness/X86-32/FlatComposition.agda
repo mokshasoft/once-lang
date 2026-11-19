@@ -40,7 +40,8 @@ open import Once.Type using (FitsInReg; fits-int; fits-float)
 import Once.CCC.Target.X86-32.Semantics as X
 import Once.CCC.Target.X86-32.Syntax as XS
 open import Once.CCC.Target.X86-32.Syntax
-  using (Program; mov; lea; add; sub; sbb; cmp; test; jmp; je; jne; call; call-sym; call-l; ret; push; pop; nop; ud2; jbe-fwd; local-1; label; mov-code; jmp-l; reg; imm; esp; slots)
+  using (Program; mov; lea; add; sub; sbb; cmp; test; jmp; je; jne; call; call-sym; call-l; ret; push; pop; nop; ud2; jbe-fwd; local-1; label; mov-code; jmp-l; reg; imm; slots)
+open import Once.Target.X86-32.PhysReg using (esp)
 open import Once.CCC.Target.X86-32.AbstractToX86-32 using (compile-abstract; compile-trace)
 
 ------------------------------------------------------------------------
@@ -119,9 +120,10 @@ label-miss ℓ t rest xi eq rewrite eq = refl
 
 -- `has-label` and the `HeadView` datatype are generic; only the 39-clause
 -- `headView` below is about this emitter.
-open import Once.Adequacy.ArchCorrectness.FlatCore.HeadView
+import Once.Adequacy.ArchCorrectness.FlatCore.HeadView
+module HeadView′ = Once.Adequacy.ArchCorrectness.FlatCore.HeadView
        FS XS.Instr compile-abstract is-label? label
-  public
+open HeadView′
 
 reg-op-no-label : ∀ (op : RegOp) → has-label (compile-abstract (instr-reg-op op)) ≡ false
 reg-op-no-label out-nz = refl
@@ -185,9 +187,9 @@ headView (instr-ctrl (c-branch-tag-zero m)) = hv-plain refl (λ _ _ _ → refl) 
 -- three lines: no `syscall`, and two constructors x86-64 does not have
 -- (`mov-code`, `jmp-l`, both non-labels).
 ------------------------------------------------------------------------
-open import Once.Adequacy.ArchCorrectness.FlatCore.FlatComposition FS XS.Instr
+import Once.Adequacy.ArchCorrectness.FlatCore.FlatComposition
+module FlatComposition = Once.Adequacy.ArchCorrectness.FlatCore.FlatComposition FS XS.Instr
        compile-abstract compile-trace refl (λ _ _ → refl)
        X.fetch (λ _ → refl) (λ _ _ → refl) (λ _ _ _ → refl)
        is-label? label X.find-label-go (λ _ _ → refl) skip-law
        label-hit label-miss headView
-  public

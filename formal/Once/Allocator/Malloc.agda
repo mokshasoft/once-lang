@@ -23,9 +23,9 @@ open import Once.Memory.MemoryLayoutSemantics
 module Once.Allocator.Malloc (layout : MemoryLayout) where
 
 open import Data.Nat using (ℕ)
-open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
-open import Data.Unit using (⊤; tt)
+open import Data.Maybe using (Maybe; just)
+open import Data.Product using (_×_; _,_)
+open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.Memory.Regions layout using (InHeap)
@@ -49,4 +49,3 @@ record Malloc : Set₁ where
                     alloc n s ≡ just (addr , s') →
                     InHeap addr
 
-open Malloc public

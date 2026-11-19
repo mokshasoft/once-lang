@@ -23,7 +23,17 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.Get (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
-open import Data.Nat using (z≤n; s≤s)
+open Interface using (module Core)
+open import Data.Bool using (false)
+open import Data.Empty using (⊥-elim; ⊥)
+open import Data.List using (_∷_; []; length)
+open import Data.Maybe using (just)
+open import Data.Product using (_,_; proj₂; proj₁)
+open import Once.CCC.Machine.ValueRel using (valid-unit-wf; valid-pair-wf)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Once.IR using (Heap; Stack; AllocMode)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans; sym; subst)
+open import Data.Nat using (z≤n; s≤s; ℕ; suc; _+_; _<_; zero)
 open import Data.Nat.Properties using (m+n≡0⇒m≡0; m+n≡0⇒n≡0)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore using (load-at; addr-at; mov-to-output; offsetLoc; module LocState; module ExecFinal; sv-as-loc;
@@ -33,12 +43,21 @@ open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.Memory.HeapAddress using (HeapLocation; heap-loc)
 open import Once.CCC.Codegen.FlatLayout using (word; flat; kind; get; get-k)
 open import Once.CCC.Codegen.Size using (size)
-open import Once.IRTy using (IRTy; Unit; Void; _*_; _⇛_; μ-type; ν-type; Int; Float)
+open import Once.IRTy using (IRTy; Unit; Void; _*_; _⇛_; μ-type; ν-type; Int; Float; FitsInRegI; fits-int; fits-float)
   renaming (_+_ to _+ᵀ_)
 open import Once.CCC.Machine.LocMatchesMode using (LocMatchesMode)
 
 module GetC {FS : FrameSemantics} where
   open Core {FS}
+  open ClosureWellFormedBase′ using (IsNode; IsFlat; InBlk; Live; cell-ptr; cell-inline; rep-prim; cell-flat)
+  open ClosureWellFormedDef′ using (ValidAtWF; CellAt; ResultPlace; validityWF-mem-only; at-loc; at-reg)
+  open FlatEventTrace′ using (chain-events; event-of)
+  open FlatMachine′ using (fetch; FlatState; flat-exec-instr)
+  open FlatMachine′.FlatState using (floc; fpc; falloc)
+  open FlatStepsAPI′ using (_∷_; []; FlatSteps)
+  open FrontierInvariant′ using (module BeforeFrontier)
+  open MemOps′ using (readLoc)
+  open ReadLocEq′ using (readLoc-stack-heap-eq)
 
   ------------------------------------------------------------------------
   -- The text: `get` is one instruction, decided by the component's kind.

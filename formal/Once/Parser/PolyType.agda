@@ -53,8 +53,6 @@ open import Once.Parser.Token
 -- | True iff `s` starts with a lowercase letter (a-z).
 -- (Definition relocated to Once.Parser.CharClass; re-exported here so existing
 -- importers `Once.Parser.PolyType using (isLowerWord)` keep working.)
-open import Once.Parser.CharClass public using (isLowerWord)
-
 ------------------------------------------------------------------------
 -- D196: THE HAND-WRITTEN POLY PARSER IS GONE.
 --
@@ -102,7 +100,10 @@ open import Data.Nat.Induction using (<-wellFounded)
 open import Data.Product using (Σ-syntax)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.Parser.Generic.PolyInst
-  using (parsePolyTypeP; sound-polyType; ParsesPolyType-shrink)
+  using (module Gen′; module Make′; module Make′′)
+open Make′ using (sound-polyType)
+open Make′′ using (parsePolyTypeP)
+open Gen′ using () renaming (typeShrink to ParsesPolyType-shrink)
 
 ParsePolyAtB : List Token → Set
 ParsePolyAtB toks =

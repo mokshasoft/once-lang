@@ -25,6 +25,16 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.IterCont (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.Bool using (false)
+open import Data.List using (_++_; length; _∷_; [])
+open import Data.Maybe using (just; nothing)
+open import Data.Nat.Properties using (<-≤-trans; n<1+n; ≤-trans; n≤1+n; ≤-reflexive)
+open import Data.Product using (_×_; _,_)
+open import Data.Unit using (tt)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Once.IR using (IR; Iter; AllocMode; Heap)
+open import Relation.Binary.PropositionalEquality using (_≡_; subst; refl; trans; cong; sym; cong₂)
 open import Once.CCC.Machine.SMCore using (ending)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
@@ -35,7 +45,7 @@ open import Once.CCC.Machine.SMCore
 open AllocState using (next-slot; current-frame; saved-frames; next-heap-ref)
 open LocState using (halted; regs)
 open import Data.Sum using (inj₂)
-open import Data.Nat using (s≤s; z≤n)
+open import Data.Nat using (s≤s; z≤n; ℕ; _+_; _≤_; suc)
 open import Data.Nat.Solver using (module +-*-Solver)
 open +-*-Solver using (solve; _:+_; con; _:=_)
 open import Once.IRTy using (IRTy)
@@ -55,6 +65,15 @@ open import Data.List.Properties using (++-identityʳ)
 module IterContC {FS : FrameSemantics} where
 
   open Core {FS}
+  open import Once.CCC.Machine.SMPrimitives using (nhw-mov-to-input)
+  open ClosureWellFormedBase′ using (BlocksKept; Live; live→bf)
+  open ClosureWellFormedDef′ using (ValidAtWF; validityWF-mem-preserved; in-loc)
+  open FlatEventTrace′ using (chain-ctrls; chain-events; event-of; chain-events-++; chain-ctrls-++; chain-left)
+  open FlatMachine′ using (FlatState; fetch; flat-exec-instr; tag-test; flat-read-tag; do-jump)
+  open FlatMachine′.FlatState using (floc; fpc; falloc; fret; flink)
+  open FlatStepsAPI′ using (FlatSteps; step-at; _∷_; FlatSteps-++; [])
+  open FrontierInvariant′ using (BeforeFrontier; module BeforeFrontier; frontier-monotone)
+  open TracePrimitives′ using (exec-abstract-preserves-halted-WF)
   open Mach {FS}
   open FlatStepsAPI {FS} using (flat-step1; flat-tag-branch-not; flat-jmp)
   open ShapeC {FS} using (tag-inr; payload-r)

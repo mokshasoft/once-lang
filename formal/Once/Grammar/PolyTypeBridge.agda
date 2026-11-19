@@ -22,7 +22,11 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Once.Parser.Token
 open import Once.Parser.PolyType using (parsePolyTypeB; ppB-go)
 open import Once.Parser.Generic.PolyInst
-  using (ParsesPolyType; parsePolyTypeP; sound-polyType; complete-polyType)
+  using (module Gen′; module Make; module Make′; module Make′′)
+open Make using (complete-polyType)
+open Make′ using (sound-polyType)
+open Make′′ using (parsePolyTypeP)
+open Gen′ using () renaming (ParsesTypeG to ParsesPolyType)
 
 -- Soundness: whatever the bounded parser accepts is in the relation.
 ppB-go-sound : ∀ (toks : List Token) (r : _) (pf : parsePolyTypeP toks ≡ r) {t rest bnd} →

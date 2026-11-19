@@ -30,14 +30,26 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.Compare (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.List using (_∷_; []; length)
+open import Data.Maybe using (just)
+open import Data.Nat.Properties using (m≤m+n; ≤-refl; n≤1+n; <-irrefl; n<1+n; +-suc)
+open import Data.Product using (proj₁; proj₂; _,_)
+open import Data.Unit using (tt)
+open import Function using (case_of_)
+open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
+open import Once.CCC.Machine.ValueRel using (valid-inr-flat-wf; valid-unit-wf; valid-inl-flat-wf)
+open import Once.IR using (SigOp; Heap)
+open import Once.Type using () renaming (fits-int to fits-intˢ)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans; sym; subst)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic; ValueLocation)
 open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; module HeapRef; module HeapLocation)
 open import Once.CCC.Machine.SMCore using (store-at; AbstractTrace; writeReg)
 import Once.CCC.Machine.FlatAlloc as FlatAlloc
 open import Once.CCC.Codegen.StraightRun using (module StraightRunAPI)
-open import Data.Nat using (z≤n; s≤s)
-open import Data.List.Relation.Unary.All using ([]; _∷_)
+open import Data.Nat using (z≤n; s≤s; _+_; _≤_; ℕ; suc)
+open import Data.List.Relation.Unary.All using ([]; _∷_; All)
 open import Once.CCC.Codegen.IRObsCorrect.SigOp o tbl using (module SigOpC)
 import Once.Type.Core as SpecTy
 import Once.Spec.Type as SpecTy
@@ -51,7 +63,7 @@ open import Once.SigOp.Info using (SigOpSem; Pure;
 open SigOpInfo using (sem; baseA; conB)
 open import Once.Arith.Prim using (p-add; p-sub; p-mul; p-div; p-mod; p-neg;
                                    p-fadd; p-fsub; p-fmul; p-fdiv; p-i2f; p-cmp; p-fneg; p-fcmp; bool; ArithPrim)
-open import Data.Bool using (Bool; if_then_else_)
+open import Data.Bool using (Bool; if_then_else_; true; false)
 import Data.Nat as ℕ
 open import Once.Arith.CmpOp using (cmp-word; fcmp; fcmp-word-at)
 open import Once.Spec.Theory using (module Models; ⟦_⟧ₛ)
@@ -77,6 +89,18 @@ open import Once.Res using (is-stopped)
 module CompareC {FS : FrameSemantics} where
 
   open Core {FS}
+  open import Once.CCC.Machine.SMPrimitives using (module InstrNoHeapWrite; nhw-instr-sigop)
+  open ClosureWellFormedBase′ using (resultAt; runAt; ⟪_⟫_; InBlk; Live)
+  open ClosureWellFormedDef′ using (ResultPlace; at-loc)
+  open FlatEventTrace′ using (event-of; chain-ctrls; chain-events)
+  open AbstractExec′ using (pure-sigop-output; exec-sigop-halts; exec-sigop-faults-of; pure-sigop-out-val; exec-abstract; unread?)
+  open FlatMachine′ using (FlatState; flat-exec-instr; flat-step-straight; do-nz; fetch; StraightStep)
+  open FlatMachine′.FlatState using (falloc; floc; fpc)
+  open FlatStepsAPI′ using (_∷_; []; FlatSteps)
+  open FrontierInvariant′ using (frontier-monotone; BeforeFrontier; module BeforeFrontier)
+  open InstrPrimitives′ using (exec-abstract-preserves-frame; exec-abstract-preserves-saved)
+  open RTA′ using (readable-base)
+  open RecSchemeSemantics′ using (exec-abstract-preserves-heap-ref)
   open Mach {FS}
   open AbstractExec {FS} using (exec-sigop-output; exec-trace; exec-trace-cons; exec-load-from-slot-with-value)
   open Once.CCC.Machine.SMPrimitives.MemoryOps {FS} using (readLoc-writeLoc-same)
@@ -110,7 +134,7 @@ module CompareC {FS : FrameSemantics} where
 
   -- The comparison's truth on an argument: on the words at `Int`, on the
   -- values they decode to at `Float`.
-  cbool : ∀ {A} → CmpAt A → EvV.⟦ A ⟧ → Bool
+  cbool : ∀ {A} → CmpAt A → EvV.Value.⟦ A ⟧ → Bool
   cbool (int-c op)         a = cmp-word (int-bits fmt) op (proj₁ a) (proj₂ a)
   cbool (flt-c (fcmp h o)) a =
     ⟦ o ⟧ₛ (Models.structure fmt h) (decode (float-format fmt) (proj₁ a) , decode (float-format fmt) (proj₂ a))
@@ -118,7 +142,7 @@ module CompareC {FS : FrameSemantics} where
   -- The denotation: a pure value, `bool` of that truth.
   E-at : ∀ {A} (si : SigOpInfo A (SpecTy.Unit SpecTy.+ SpecTy.Unit)) (cA : CmpAt A)
        → sem si ≡ primV (cprim cA)
-       → ∀ x → E₀ si x ≡ TM.ret (resOf si (EvV.eraseᵍ {0} (bool (cbool cA (argOf si x)))))
+       → ∀ x → E₀ si x ≡ TM.ret (resOf si (EvV.Value.eraseᵍ {0} (bool (cbool cA (argOf si x)))))
   E-at si (int-c op)         e x = evalᴰ-at si (primV (p-cmp op)) e x
   E-at si (flt-c (fcmp h o)) e x = evalᴰ-at si (primV (p-fcmp h o)) e x
 
@@ -191,7 +215,7 @@ module CompareC {FS : FrameSemantics} where
       span′ = subst (SpanAt prog base) em≡ span
 
       -- ── THE DENOTATION: a pure value, `bool` of the comparison.
-      a : EvV.⟦ A ⟧
+      a : EvV.Value.⟦ A ⟧
       a = argOf si x
 
       c : Bool
@@ -200,14 +224,14 @@ module CompareC {FS : FrameSemantics} where
       t : ℕ
       t = if c then 1 else 0
 
-      E≡ : E₀ si x ≡ TM.ret (resOf si (EvV.eraseᵍ (bool c)))
+      E≡ : E₀ si x ≡ TM.ret (resOf si (EvV.Value.eraseᵍ (bool c)))
       E≡ = E-at si cA e x
 
       -- The node's budgeted run: the block's, at the untouched budget.
       RE : ∀ k → runAt s (⟪ evalᴰ (SigOp si) x ⟫ k) ≡ tagRun k (runAt s (E₀ si x))
       RE k = run-approx-embed ιᶠ (SMCore.LocState.ev-log s) k (E₀ si x)
 
-      ER : runAt s (⟪ evalᴰ (SigOp si) x ⟫ k) ≡ (DL.[] , returns (done (resOf si (EvV.eraseᵍ (bool c))) k))
+      ER : runAt s (⟪ evalᴰ (SigOp si) x ⟫ k) ≡ (DL.[] , returns (done (resOf si (EvV.Value.eraseᵍ (bool c))) k))
       ER = trans (RE k) (cong (λ t → tagRun k (runAt s t)) E≡)
 
       -- The block's info decodes the SAME argument: the two base witnesses
@@ -413,7 +437,7 @@ module CompareC {FS : FrameSemantics} where
       place-at′ : ∀ (cb : Base ∅ₖ (SpecTy.Unit SpecTy.+ SpecTy.Unit)) → cb ≡ b-+ b-Unit b-Unit
                → ∀ (b : Bool) → SMCore.MemOps.readLoc t₇ L ≡ just (SV-Tag (if b then 1 else 0))
                → ResultPlace {prog = prog} (Once.IRTy._+_ Once.IRTy.Unit Once.IRTy.Unit) Heap A₁ A₁
-                             (subst idᶠ (sym (cohᴰ (SpecTy.Unit {0} SpecTy.+ SpecTy.Unit))) (injectᵇ cb (EvV.eraseᵍ (bool b)))) t₇
+                             (subst idᶠ (sym (cohᴰ (SpecTy.Unit {0} SpecTy.+ SpecTy.Unit))) (injectᵇ cb (EvV.Value.eraseᵍ (bool b)))) t₇
       place-at′ .(b-+ b-Unit b-Unit) refl true tg =
         at-loc L (valid-inr-flat-wf {mB = Heap} tt tt tg live-suc (λ ()) (λ _ ()) valid-unit-wf) live-L refl
                  (valid-inr-flat-wf {mB = Heap} tt tt tg live-suc (λ ()) (λ _ ()) valid-unit-wf) live-L
@@ -423,7 +447,7 @@ module CompareC {FS : FrameSemantics} where
 
       place-at : ∀ (b : Bool) → SMCore.MemOps.readLoc t₇ L ≡ just (SV-Tag (if b then 1 else 0))
                → ResultPlace {prog = prog} (Once.IRTy._+_ Once.IRTy.Unit Once.IRTy.Unit) Heap A₁ A₁
-                             (resOf si (EvV.eraseᵍ (bool b))) t₇
+                             (resOf si (EvV.Value.eraseᵍ (bool b))) t₇
       place-at = place-at′ (conB si) (bt-UU (conB si))
 
       place : ∀ {v} → resultAt s (E₀ si x) ≡ returns v

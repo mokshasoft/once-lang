@@ -71,6 +71,7 @@ import Once.Adequacy.ArchCorrectness.FlatCore.RunContext as RunContext
 
 module Run (FS : FrameSemantics) (prog : AbstractTrace) where
   open FlatMachine {FS}
+  open FlatState using (floc; fpc; falloc)
 
   -- The state after k steps of the run from fs₀.
   at : FlatState → ℕ → FlatState
@@ -124,5 +125,5 @@ NoLeak =
         prog      = program-image entry-owner (irProgram tbl ir)
     in RC.LinkedImage tbl ir
   → ∀ (fs₀ : FlatMachine.FlatState {FS})
-  → RC.EntryLike fs₀ → frame-slots (FlatMachine.falloc {FS} fs₀) ≡ 0
+  → RC.EntryLike fs₀ → frame-slots (FlatMachine.FlatState.falloc {FS} fs₀) ≡ 0
   → Run.LeakFree FS prog fs₀

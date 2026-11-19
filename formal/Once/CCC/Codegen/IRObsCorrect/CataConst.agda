@@ -42,6 +42,18 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.CataConst (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.Bool using (false)
+open import Data.Empty using (⊥; ⊥-elim)
+open import Data.List using (List; _∷_)
+open import Data.List.Properties using (length-++)
+open import Data.Maybe using (just)
+open import Data.Nat using (ℕ; _≤_; _+_)
+open import Data.Nat.Properties using (≤-trans; n≤1+n; ≤-reflexive)
+open import Data.Product using (proj₁; proj₂)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Once.IR using (IR; Cata)
+open import Relation.Binary.PropositionalEquality using (_≡_; subst; sym; trans; cong)
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module ResuspBaseC)
 open import Once.CCC.Codegen.IRObsCorrect.CataConst.Layout o tbl using (module CataLayoutC; strat-box-fun; unboxed-of; boxed-of)
 open import Once.CCC.Codegen.IRObsCorrect.CataConst.Steps o tbl using (module CataStepsC; Head; h-mov; h-box; head-strat; head-instr)
@@ -60,7 +72,7 @@ open import Once.CCC.Machine.SMCore
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.CCC.Label using (ℓ)
-open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; ⟦_⟧TI; ⌈_⌉F; μ-type)
+open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; ⟦_⟧TI; ⌈_⌉F; μ-type; FitsInRegI; fits-int; fits-float)
 import Once.IRTy as IRTy′
 import Once.Denotation.ValueDomain as ValueDomain
 open import Once.Memory.HeapAddress using (HeapLocation; module HeapLocation)
@@ -70,6 +82,13 @@ import Once.IR.Semantics.Trace as TM
 module CataConstC {FS : FrameSemantics} where
 
   open Core {FS}
+  open ClosureWellFormedBase′ using (Live; IsNode; IsFlat; cell-inline; rep-prim; cell-flat; cell-ptr; prim-sv)
+  open ClosureWellFormedDef′ using (CellAt; in-reg; in-unit; in-loc; module PairValidWF; decomposePairWF; μ-layer; μ-box-cell)
+  open CataNextSlot′ using (AllSlotStable)
+  open FlatMachine′ using (FlatState)
+  open FlatMachine′.FlatState using (floc; falloc; fpc)
+  open FlatStepsAPI′ using (_∷_)
+  open MemOps′ using (readLoc)
   open ResuspBaseC {FS} using (live-from; SRun)
   open CataLayoutC {FS} using (module Text)
   open CataSetupC {FS} using (module Setup; SetupOut)

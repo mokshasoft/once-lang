@@ -16,8 +16,6 @@
 --     SMCore       ─┘    (← FrameSemantics, HeapAddress)
 --
 -- so the denotational meaning's import closure no longer pulls in the machine.
--- `SMCore` re-exports these (`open import … public`), so its existing
--- importers are unaffected.
 ------------------------------------------------------------------------
 
 module Once.CCC.Machine.Locations where

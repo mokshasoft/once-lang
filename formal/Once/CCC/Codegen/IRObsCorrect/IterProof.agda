@@ -19,6 +19,16 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.IterProof (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.Bool using (false)
+open import Data.List using (List; _∷_; [])
+open import Data.Nat using (ℕ; _≤_; suc; _+_)
+open import Data.Nat.Properties using (≤-trans; n≤1+n; ≤-refl)
+open import Data.Product using (_,_; proj₂; proj₁)
+open import Data.Unit using (tt)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Once.IR using (IR; Iter; AllocMode)
+open import Relation.Binary.PropositionalEquality using (_≡_; subst; sym; refl; trans; cong; cong₂)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Label using (ℓ)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
@@ -39,6 +49,15 @@ open import Once.CCC.Codegen.IRObsCorrect.Get o tbl using (module GetC)
 module IterProofC {FS : FrameSemantics} where
 
   open Core {FS}
+  open ClosureWellFormedBase′ using (Live; live→bf; runAt; ⟪_⟫_)
+  open ClosureWellFormedDef′ using (ValidAtWF; CellAt; module PairValidWF; decomposePairWF; in-loc; validityWF-mem-preserved; in-reg; in-unit)
+  open FlatEventTrace′ using (chain-events; chain-events-++; chain-left; chain-ctrls; ctrls-≤ʳ)
+  open CataNextSlot′ using (AllSlotStable)
+  open FlatMachine′ using (FlatState; flat-exec-instr)
+  open FlatMachine′.FlatState using (floc; falloc)
+  open FlatStepsAPI′ using (FlatSteps; FlatSteps-++; _∷_; [])
+  open FrontierInvariant′ using (BeforeFrontier)
+  open TracePrimitives′ using (exec-abstract-preserves-halted-WF)
   open Mach {FS}
   open IterRunC {FS}
   open IterInvC {FS}

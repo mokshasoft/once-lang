@@ -20,6 +20,15 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.CataConst.Steps (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.Bool using (false)
+open import Data.List using ([]; _++_)
+open import Data.Maybe using (nothing; just)
+open import Data.Nat using (ℕ; _≤_; _+_)
+open import Data.Nat.Properties using (≤-reflexive; ≤-refl; n≤1+n)
+open import Data.Product using (_,_)
+open import Data.Unit using (tt)
+open import Relation.Binary.PropositionalEquality using (_≡_; sym; refl; trans; cong; cong₂)
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module ResuspBaseC)
 open import Once.CCC.Machine.SMCore
   using (LocState; module LocState; AbstractInstr; AllocState; module AllocState; readReg; Output; Input1; store-at-slot; store-indirect; store-indirect-suc; instr-alloc-heap; mov-to-output; load-at; offsetLoc; sv-as-loc; writeReg-same; StoredValue; SV-Ptr; AbstractTrace)
@@ -29,7 +38,7 @@ open import Once.CCC.Machine.FlatLog using (LogFree)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (AtDynamic)
 open import Once.CCC.Machine.FrameFree using (FrameFreeI; exec-abstract-preserves-next-slot)
-open import Once.CCC.Machine.SMPrimitives using (EffectPreservesNextHeapRef; instr-effect)
+open import Once.CCC.Machine.SMPrimitives using (EffectPreservesNextHeapRef; instr-effect; InstrNoHeapWrite; instr-writes-slot; nhw-instr-alloc-heap; nhw-mov-to-output; nhw-load-at)
 open import Once.Memory.HeapAddress using (HeapLocation; module HeapLocation; module HeapRef)
 open HeapLocation using (heap-ref)
 open HeapRef using (ref-id)
@@ -51,6 +60,14 @@ head-strat h-box = strat-box
 module CataStepsC {FS : FrameSemantics} where
 
   open Core {FS}
+  open FlatEventTrace′ using (event-of; chain-events-++)
+  open FlatMachine′ using (FlatState; flat-exec-instr)
+  open FlatMachine′.FlatState using (floc; falloc)
+  open FlatStepsAPI′ using ([]; FlatSteps-++)
+  open InstrPrimitives′ using (exec-abstract-preserves-frame; exec-abstract-preserves-saved)
+  open MemOps′ using (readLoc)
+  open RecSchemeSemantics′ using (exec-abstract-preserves-heap-ref)
+  open TracePrimitives′ using (exec-abstract-preserves-halted-WF)
   open Mach {FS}
   open ResuspBaseC {FS} using (St; X; SegA; SRun)
   open LocState using (regs; halted)

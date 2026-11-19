@@ -4,12 +4,8 @@
 ------------------------------------------------------------------------
 -- Once.Memory.Memory
 --
--- Common helper lemmas for memory proofs shared by all backends.
--- These are pure lemmas about natural numbers and boolean equality
--- that are used in memory-related proofs.
---
--- Usage in backend Correct.agda:
---   open import Once.Memory.Memory public
+-- Common helper lemmas for memory proofs shared by all backends:
+-- pure lemmas about natural numbers and boolean equality.
 ------------------------------------------------------------------------
 
 module Once.Memory.Memory where

@@ -37,7 +37,8 @@ open νᴵ using (forceᴵ)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; injectᵇ; forgetᵇ; coerce-functor⁻¹-D; coerce-functor-D)
 
 open import Once.Denotation.DenotTrace using (sigOpT)
-open import Once.Semantics.Machine using (sem-In; sem-cata; coerce-ν-out; ⟦_⟧F)
+open import Once.Semantics.Machine using (module Value)
+open Value using (⟦_⟧F; sem-cata; coerce-ν-out; sem-In)
 open import Once.Type.Concrete using (IsConcrete; con-base; con-fun)
 open import Once.Spec.Type using (b-Unit)
 import Data.List as L

@@ -59,8 +59,8 @@ ret-call : (List SigOpEvent → String → State → Maybe Word) → List SigOpE
 ret-call answer h lbl s = ret-with (answer h lbl s) s
 
 module _ (val : XInstr → State → Reg → Word) (answer : List SigOpEvent → String → State → Maybe Word) where
-  open Core.RunTrace State Program Instr (List XInstr × ℕ)
-    halted pc fetch execInstr matchCall (ret-call answer) (uncurry (dispatch-arith val)) public
+  module RunTrace = Core.RunTrace State Program Instr (List XInstr × ℕ)
+    halted pc fetch execInstr matchCall (ret-call answer) (uncurry (dispatch-arith val))
   -- D320: the same machine as a machine whose trace is read off by corecursion.
   module Run = RTM.RunMachine binary32 State Program Instr (List XInstr × ℕ)
     halted pc fetch execInstr matchCall (ret-call answer) (uncurry (dispatch-arith val))

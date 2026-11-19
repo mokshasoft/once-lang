@@ -82,7 +82,8 @@ open import Once.Compiler
        riscv64-reg-range riscv64-slot-addr-no-wrap
        riscv64-addr-no-wrap riscv64-lit-fits
        x86-32-reg-range x86-32-addr-no-wrap x86-32-lit-fits
-       using (arch-correctness)
+       using (module ArchCorrectness)
+open ArchCorrectness using (arch-correctness)
 import Once.Adequacy.SpecApex as SpecApex
 open import Once.TypeCheck.Verified using (VerifiedTypeChecker; verifiedTypeChecker)
 -- Plan 0.102 phase B (D276, D304): the language's own metatheory, stated in the

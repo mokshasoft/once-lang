@@ -472,7 +472,8 @@ module NeedFacts {FS : FrameSemantics} where
   open import Data.Product using (Σ; _,_)
   open import Data.Nat using (_≤_)
   open import Data.Nat.Properties using (m≤m⊔n; m≤n⊔m; ≤-trans)
-  open import Once.CCC.Machine.SMCore using (instr-ctrl; c-entry; EntryId)
+  open import Once.CCC.Machine.SMCore using (instr-ctrl; c-entry)
+  open import Once.CCC.Label using (EntryId)
   open import Once.CCC.Codegen.RoomChecks using (entry-frame)
 
   private

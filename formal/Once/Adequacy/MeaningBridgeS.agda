@@ -46,7 +46,8 @@ open import Once.Spec.Type using (Type; _⇒[_]_; _+_; _*_; Int; Float; Unit)
 open import Once.Spec.Type using (μ; ν; ⟦_⟧F)
 open import Once.Type.Concrete using (IsConcrete)
 open import Once.Spec.Type using (Base; WFFun; b-+; b-Unit; ∅ₖ)
-open import Once.Semantics.Machine using (sem-cata)
+open import Once.Semantics.Machine using (module Value)
+open Value using (sem-cata)
 open import Once.Adequacy.InErased fmt (calls σ) using (In-ir)
 open import Once.Context using (_↾_; _⊔ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many) renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ)
 open import Once.Spec.Context using (Ctx; _+ᵘ_; _*ᵘ_)
@@ -160,7 +161,7 @@ retype-R refl h = h
 bool-base : Base ∅ₖ (Unit {0} + Unit)
 bool-base = b-+ b-Unit b-Unit
 
-bool-R : ∀ {b} {c : Val.⟦ Unit {0} + Unit ⟧ᵍ} → b ≡ c → RelGV (Unit {0} + Unit) b (injectᵇ bool-base (Val.eraseᵍ {B = Unit {0} + Unit} c))
+bool-R : ∀ {b} {c : Val.Value.⟦ Unit {0} + Unit ⟧ᵍ} → b ≡ c → RelGV (Unit {0} + Unit) b (injectᵇ bool-base (Val.Value.eraseᵍ {B = Unit {0} + Unit} c))
 bool-R {inj₁ _} refl = tt
 bool-R {inj₂ _} refl = tt
 

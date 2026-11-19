@@ -93,25 +93,28 @@ open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong)
 -- Module application is by alias, so every one of these IS the arch's own
 -- instance whenever the arch applies this engine to the same arguments.
 ------------------------------------------------------------------------
-open import Once.Adequacy.ArchCorrectness.FlatCore.FlatComposition FS Instr
+import Once.Adequacy.ArchCorrectness.FlatCore.FlatComposition
+module FlatComposition = Once.Adequacy.ArchCorrectness.FlatCore.FlatComposition FS Instr
        compile-abstract compile-trace ct-nil ct-cons
        mfetch mfetch-nil mfetch-zero mfetch-suc
        is-label? mk-label find-label-go find-label-nil skip-law
        label-hit label-miss headView
-  public
+open FlatComposition
 
-open import Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
+import Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
+module CompiledCorrespondence = Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
        o FS slot-size word-eq Reg roles State rreg memory xhalted link-claim
        xpc (List Instr) compile-trace find-label blk-off blk-len exec modulus
-  public
+open CompiledCorrespondence
+open CompiledCorrespondence.CompiledCorr using (pc-off; dataCorr)
 
 -- D377: the machine runs the LOWERED image (`room-checks` of the program
 -- image), so the run context the engine carries is `RunLow` — a lift of the
 -- image's own run (`RunContext.RunAt`, which `RunWF` speaks of). Exported under
 -- the engine's name for it, `RunAt`: "the run of the program the machine runs".
-open import Once.Adequacy.ArchCorrectness.FlatCore.RunContext o FS slot-size word-eq
+import Once.Adequacy.ArchCorrectness.FlatCore.RunContext
+module RunContext′ = Once.Adequacy.ArchCorrectness.FlatCore.RunContext o FS slot-size word-eq
   hiding (RunAt; module RunAt; mkRunAt; run-tbl; run-ir; run-emit; run-linked; run-reach; run-sound; run-emitted)
-  public
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunLow o FS slot-size word-eq
   using (module RunLow; low-step-past)
   renaming (RunLow to RunAt)
@@ -140,7 +143,8 @@ open import Once.CCC.Machine.SMCore hiding (Instr)
 open AllocState using (next-heap-ref)
 open LocState using (halted; regs)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
-open FlatMachine {FS} using (FlatState; fpc; falloc; floc; fclosure; fetch; flat-exec-instr)
+open FlatMachine {FS} using (FlatState; fetch; flat-exec-instr; module FlatState)
+open FlatState using (falloc; fclosure; fpc; floc)
 open MemOps {FS} using (readLoc)
 open import Once.CCC.Machine.FlatStoreWF FS using (FlatWF; flat-wf-step; cl-step; sv-below)
 
@@ -339,7 +343,7 @@ sigop-run-arith ev env lg n prog fs s si pl cc h ftq env-eq =
   RT.run-events-arith ev env lg n (compile-trace prog) s
     (sigop-call (once-symbol-path (SigOpInfo.name si)))
     (once-symbol-path (SigOpInfo.name si)) pl
-    (trans (CFC.halt-eq (dataCorr cc)) h)
+    (trans (CFC.FlatCorr.halt-eq (dataCorr cc)) h)
     (sigop-concrete-fetch prog fs s si cc ftq)
     (sigop-matchCall (once-symbol-path (SigOpInfo.name si)))
     (λ q → leave≢osp (SigOpInfo.name si) (sym q))
@@ -361,7 +365,7 @@ sigop-run-external ev env lg n prog fs s si cc h ftq env-eq =
   RT.run-events-external ev env lg n (compile-trace prog) s
     (sigop-call (once-symbol-path (SigOpInfo.name si)))
     (once-symbol-path (SigOpInfo.name si))
-    (trans (CFC.halt-eq (dataCorr cc)) h)
+    (trans (CFC.FlatCorr.halt-eq (dataCorr cc)) h)
     (sigop-concrete-fetch prog fs s si cc ftq)
     (sigop-matchCall (once-symbol-path (SigOpInfo.name si)))
     (λ q → leave≢osp (SigOpInfo.name si) (sym q))
@@ -477,7 +481,7 @@ RoomStep : HeapView → AbstractTrace → FlatState → State → ℕ → Set
 RoomStep hv prog fs s k =
     Σ ℕ (λ c → Σ State (λ s' → (exec c (compile-trace prog) s ≡ just s')
                 × CompiledCorr hv prog (flat-exec-instr (instr-room k) prog fs) s'
-                × (CFC.hfront hv + slots k ≤ rreg s sp-reg)))
+                × (CFC.HeapView.hfront hv + slots k ≤ rreg s sp-reg)))
   ⊎ Σ ℕ (λ c → Σ State (λ s' → (exec c (compile-trace prog) s ≡ just s')
                 × xhalted s' ≡ false
                 × mfetch (compile-trace prog) (xpc s') ≡ just (sigop-call host-exhausted-symbol)))
@@ -535,7 +539,7 @@ record Supply : Set₁ where
                         → fetch prog (fpc fs) ≡ just (instr-sigop si)
                         -- D393: the room the check before it left for the
                         -- block's frame, and the run has not stopped
-                        → CFC.hfront hv + slots (spend (max-entry prog) (instr-sigop si)) ≤ rreg s sp-reg
+                        → CFC.HeapView.hfront hv + slots (spend (max-entry prog) (instr-sigop si)) ≤ rreg s sp-reg
                         → LocState.halted (floc fs) ≡ false
                         → Σ Payload (λ pl → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl
                             × CompiledCorr hv prog (flat-exec-instr (instr-sigop si) prog fs)
@@ -558,6 +562,4 @@ record Supply : Set₁ where
                              -- binary's log equals (`events-agree` runs from it).
                              × CompiledCorr hv prog (flat-exec-instr (instr-sigop si) prog fs)
                                  (ret-call (LocState.ev-log (floc fs)) (once-symbol-path (SigOpInfo.name si)) s)
--- NOT opened here: the dispatch opens it at its own `sup`, and a top-level
--- `open Supply public` would put the PROJECTIONS in scope under the same
--- names, making every use ambiguous.
+-- The dispatch opens `Supply` at its own `sup`.

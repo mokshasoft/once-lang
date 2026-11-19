@@ -42,6 +42,17 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.CataBr.Visit (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.Bool using (false; true)
+open import Data.List using (_∷_; []; List; length; _++_)
+open import Data.List.Properties using (length-++)
+open import Data.List.Relation.Unary.All.Properties using (++⁺)
+open import Data.Maybe using (just; Maybe; nothing)
+open import Data.Nat.Properties using (≤-trans; m≤m+n; <-≤-trans; <-irrefl; +-comm; m≤n+m; ≤-refl; n≤1+n)
+open import Data.Product using (proj₂; _,_; _×_; proj₁)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Once.IR using (AllocMode)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; sym; cong; trans; _≢_; cong₂)
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module ResuspBaseC)
 open import Once.CCC.Codegen.IRObsCorrect.CataConst.Steps o tbl using (module CataStepsC)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Stack o tbl using (module CataStackC)
@@ -66,7 +77,7 @@ open import Once.CCC.Machine.SMCore
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic)
-open import Once.CCC.Machine.SMPrimitives using (nhw-restore-input)
+open import Once.CCC.Machine.SMPrimitives using (nhw-restore-input; nhw-mov-to-output; nhw-mov-to-input)
 open import Once.CCC.Label using (ℓ; LabelId; module LabelId)
 open LabelId using (idx)
 open import Once.Memory.HeapAddress using (HeapLocation; heap-loc)
@@ -76,9 +87,9 @@ open import Relation.Nullary using (¬_)
 open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod; ⟦_⟧TI; ⌈_⌉F; μ-type)
 import Once.IRTy as I
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.Unit using (⊤)
+open import Data.Unit using (⊤; tt)
 open import Data.List.Relation.Unary.All using () renaming ([] to []ᴬ; _∷_ to _∷ᴬ_)
-open import Data.Nat using (s≤s; _*_)
+open import Data.Nat using (s≤s; _*_; ℕ; suc; _+_; _≤_; _<_)
 
 open import Data.Nat.Solver using (module +-*-Solver)
 open +-*-Solver using (solve; _:+_; _:*_; con; _:=_)
@@ -114,6 +125,15 @@ su-lt s k u p = <-≤-trans (subst (λ z → s < z) (sym (su-eqₛ s k)) (s≤s 
 module CataVisitC {FS : FrameSemantics} where
 
   open Core {FS}
+  open ClosureWellFormedBase′ using (Live; BlocksKept; InBlk)
+  open ClosureWellFormedDef′ using (ValidAtWF; ResultPlace; CellAt; cellWF-heap-transport; decomposePairWF; module PairValidWF)
+  open AbstractExec′ using (exec-abstract)
+  open FlatMachine′ using (FlatState; fetch; label-of?; find-label; fetch-++-left; tag-test; flat-read-tag; do-jump)
+  open FlatMachine′.FlatState using (falloc; floc; fpc)
+  open FlatStepsAPI′ using (_∷_; [])
+  open InstrPrimitives′ using (exec-abstract-preserves-frame)
+  open MemOps′ using (readLoc)
+  open TracePrimitives′ using (exec-abstract-preserves-halted-WF)
   open ResuspBaseC {FS}
   open CataStepsC {FS}
   open CataStackC {FS}

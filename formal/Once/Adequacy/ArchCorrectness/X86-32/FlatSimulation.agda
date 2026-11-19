@@ -66,7 +66,7 @@ open import Once.CCC.Machine.SMCore
 open AllocState using (frame-slots; current-frame; saved-frames; next-heap-ref)
 open LocState using (stackMem; halted; regs; heapMem)
 open import Once.CCC.Machine.Locations using (Slot; AtDynamic; AtStack)
-open import Once.Memory.HeapAddress using (module HeapLocation; module HeapRef)
+open import Once.Memory.HeapAddress using (module HeapLocation; module HeapRef; sucHL; offsetHL)
 open ExecFinal {FS} using (in-block?)
 open AllocState using (block-size)
 open HeapLocation using (heap-ref)
@@ -74,13 +74,15 @@ open HeapRef using (ref-id)
 open import Data.Unit using (tt)
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
+open FlatState using (falloc; fret; flink; floc; fpc; fclosure)
 open import Once.CCC.Machine.FlatStoreWF FS using (sv-below; svm-below)
 import Once.CCC.Target.X86-32.Semantics as X
 open X using (mkstate; execInstr; mkflags; _<ᵇ_; writeMem; updateFlags)
   renaming (readReg to xreadReg; writeReg to xwriteReg)
 open X.State using (memory; flags; pc) renaming (regs to xregs; halted to xhalted)
 open import Once.CCC.Target.X86-32.Syntax
-  using (eax; ecx; esp; esi; Reg; Program; reg; imm; mem; mov; add; sub; cmp; label; jmp-l; je; lea; sbb; ebx; base; base+disp; slots; slot-size; ret; call; mov-code; call-l; call-sym; jbe-fwd; local-1)
+  using (Program; reg; imm; mem; mov; add; sub; cmp; label; jmp-l; je; lea; sbb; base; base+disp; slots; slot-size; ret; call; mov-code; call-l; call-sym; jbe-fwd; local-1)
+open import Once.Target.X86-32.PhysReg using (Reg; esp; eax; ecx; ebx; esi)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Bool using (true; false; if_then_else_; _∨_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -92,14 +94,17 @@ open import Relation.Binary.PropositionalEquality using (refl)
 
 import Once.Adequacy.ArchCorrectness.X86-32.FlatCorrespondence as FC
 module C = FC FS word-eq   -- HeapView / enc-sv / FlatCorr data fields
-open C using (HeapView; haddr; HDom)
-open import Once.CCC.Label using (once; thunk; callee)
+open C using ()
+open C.FlatCorrespondence using (HeapView)
+open C.FlatCorrespondence.HeapView using (HDom; haddr)
+open import Once.CCC.Label using (once; thunk; callee; e-thunk; e-fn)
 -- Plan 0.65 G1c step 2: the register-poke sims take any post-state `SetsRole`
 -- describes; `C.sets-role-x86` is x86-32 exhibiting the one it builds.
 open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles
   using (role-sp; role-clos; role-heap; role-out; role-in1)
 open import Once.Adequacy.ArchCorrectness.X86-32.FlatComposition FS
-  using (blk-off; blk-len; blk-off-suc; fetch-block-head; find-label-corr; find-thunk-corr; fetch-block-2nd; fetch-block-3rd; fetch-block-nth)
+  using (module FlatComposition)
+open FlatComposition using (blk-off; blk-len; fetch-block-head; blk-off-suc; find-label-corr; fetch-block-2nd; find-thunk-corr; fetch-block-3rd; fetch-block-nth)
 open import Once.Adequacy.ArchCorrectness.X86-32.StepLemmas using (exec-1; step-mov-rr; step-mov-ri; step-label; step-jmp-l; step-mov-rm; step-mov-mr; step-add-ri; step-sub-ri; step-sub-rr; step-add-rr; step-sbb-rr; nz-val; step-cmp-ri; step-cmp-mi; step-je-taken; step-je-not; step-lea; step-mov-code; step-ret; step-call; step-call-l; step-jbe-taken; step-jbe-not; step-local-1; find-local-1-past-call)
 open import Once.CCC.Target.X86-32.AbstractToX86-32 using (compile-trace; compile-abstract; slot-to-disp)
 open import Data.Empty using (⊥)
@@ -134,12 +139,14 @@ xrreg s r = X.readReg (X.State.regs s) r
 x86-32-link-claim : X.State → ℕ → ℕ → Set
 x86-32-link-claim s a v = X.State.memory s a ≡ just v
 
-open import Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
+import Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
+module CompiledCorrespondence = Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
        o FS slot-size word-eq Reg x86-32-roles X.State xrreg X.State.memory X.State.halted
        x86-32-link-claim
        X.State.pc Program compile-trace X.find-label blk-off blk-len X.exec
        X.W.modulus
-  public
+open CompiledCorrespondence
+open CompiledCorrespondence.CompiledCorr using (dataCorr; ret-eq; code-eq; pc-off)
 
 ------------------------------------------------------------------------
 -- (B) execInstr-reduces facts. For each x86 instruction the codegen
@@ -196,7 +203,7 @@ b-cmp-reg-imm prog s dst n = refl
 -- these call sites are where that pays out.)
 RetSame : AbstractTrace → FlatState → AbstractInstr → Set
 RetSame prog fs i =
-  (C.frames-of (falloc (flat-exec-instr i prog fs)) ≡ C.frames-of (falloc fs))
+  (C.FlatCorrespondence.frames-of (falloc (flat-exec-instr i prog fs)) ≡ C.FlatCorrespondence.frames-of (falloc fs))
   × (fret (flat-exec-instr i prog fs) ≡ fret fs)
   × (flink (flat-exec-instr i prog fs) ≡ flink fs)
 
@@ -205,9 +212,9 @@ RetSame prog fs i =
 -- own post-memory, with a separation argument rather than this.
 ret-same : ∀ (prog : AbstractTrace) (fs : FlatState) (i : AbstractInstr)
              (mem : X.Memory) {LK : ℕ → ℕ → Set} (rs : RetSame prog fs i)
-         → C.RetAddrs (blk-off prog) mem LK (flink fs) (C.frames-of (falloc fs)) (fret fs)
-         → C.RetAddrs (blk-off prog) mem LK (flink (flat-exec-instr i prog fs))
-                      (C.frames-of (falloc (flat-exec-instr i prog fs)))
+         → C.FlatCorrespondence.RetAddrs (blk-off prog) mem LK (flink fs) (C.FlatCorrespondence.frames-of (falloc fs)) (fret fs)
+         → C.FlatCorrespondence.RetAddrs (blk-off prog) mem LK (flink (flat-exec-instr i prog fs))
+                      (C.FlatCorrespondence.frames-of (falloc (flat-exec-instr i prog fs)))
                       (fret (flat-exec-instr i prog fs))
 ret-same prog fs i _ (fr-eq , rt-eq , fl-eq) r
   rewrite fr-eq | rt-eq | fl-eq = r
@@ -220,22 +227,22 @@ ret-same prog fs i _ (fr-eq , rt-eq , fl-eq) r
 ret-heap-store : ∀ {hv : HeapView} (prog : AbstractTrace) (fs : FlatState) (s : X.State)
                    (a : ℕ) (v : X.Word)
                → CompiledCorr hv prog fs s
-               → a < C.lo hv
-               → C.RetAddrs (blk-off prog) (writeMem (X.State.memory s) a v)
+               → a < C.FlatCorrespondence.HeapView.lo hv
+               → C.FlatCorrespondence.RetAddrs (blk-off prog) (writeMem (X.State.memory s) a v)
                             (λ ad w → writeMem (X.State.memory s) a v ad ≡ just w)
-                            (flink fs) (C.frames-of (falloc fs)) (fret fs)
+                            (flink fs) (C.FlatCorrespondence.frames-of (falloc fs)) (fret fs)
 ret-heap-store {hv} prog fs s a v cc a<lo =
-  C.ret-agree-above (blk-off prog) (X.State.memory s) (writeMem (X.State.memory s) a v)
+  C.FlatCorrespondence.ret-agree-above (blk-off prog) (X.State.memory s) (writeMem (X.State.memory s) a v)
     (x86-32-link-claim s) (λ ad w → writeMem (X.State.memory s) a v ad ≡ just w)
     (flink fs)
-    (stackMem (floc fs)) (C.lo hv) (C.frames-of (falloc fs)) (fret fs)
-    (λ c le → C.read-write-miss (X.State.memory s) a v c (λ eq → <⇒≢ (<-≤-trans a<lo le) (sym eq)))
+    (stackMem (floc fs)) (C.FlatCorrespondence.HeapView.lo hv) (C.FlatCorrespondence.frames-of (falloc fs)) (fret fs)
+    (λ c le → C.FlatCorrespondence.read-write-miss (X.State.memory s) a v c (λ eq → <⇒≢ (<-≤-trans a<lo le) (sym eq)))
     -- THE HEAD ROW TRAVELS BY THE SAME MISS, because on x86-32 it IS the memory
     -- claim (`call` pushed the return address). This is the two-line adapter the
     -- plan promised, and it is why the ~21 call sites did not move.
-    (λ c w le p → trans (C.read-write-miss (X.State.memory s) a v c
+    (λ c w le p → trans (C.FlatCorrespondence.read-write-miss (X.State.memory s) a v c
                            (λ eq → <⇒≢ (<-≤-trans a<lo le) (sym eq))) p)
-    (C.stack-eq (dataCorr cc)) (ret-eq cc)
+    (C.FlatCorrespondence.FlatCorr.stack-eq (dataCorr cc)) (ret-eq cc)
 
 -- A STACK STORE MISSES EVERY PENDING RETURN (D093). The write is inside this
 -- frame's window (`slot < frame-slots`, the emitted-code discipline), and the
@@ -246,30 +253,30 @@ ret-slot-store : ∀ {hv : HeapView} (prog : AbstractTrace) (fs : FlatState) (s 
                    (slot : Slot) (v : X.Word)
                → CompiledCorr hv prog fs s
                → slot < frame-slots (falloc fs)
-               → C.RetAddrs (blk-off prog)
+               → C.FlatCorrespondence.RetAddrs (blk-off prog)
                    (writeMem (X.State.memory s) (X.readReg (xregs s) esp + slot-to-disp slot) v)
                    (λ ad w → writeMem (X.State.memory s)
                                (X.readReg (xregs s) esp + slot-to-disp slot) v ad ≡ just w)
-                   (flink fs) (C.frames-of (falloc fs)) (fret fs)
+                   (flink fs) (C.FlatCorrespondence.frames-of (falloc fs)) (fret fs)
 ret-slot-store {hv} prog fs s slot v cc slot<b =
-  C.ret-write-in-frame (blk-off prog) (X.State.memory s)
+  C.FlatCorrespondence.ret-write-in-frame (blk-off prog) (X.State.memory s)
     (x86-32-link-claim s)
     (λ ad w → writeMem (X.State.memory s)
                 (X.readReg (xregs s) esp + slot-to-disp slot) v ad ≡ just w)
     (flink fs) (stackMem (floc fs))
-    (X.readReg (xregs s) esp + slot-to-disp slot) v (C.lo hv)
+    (X.readReg (xregs s) esp + slot-to-disp slot) v (C.FlatCorrespondence.HeapView.lo hv)
     (current-frame (falloc fs)) (frame-slots (falloc fs))
     (saved-frames (falloc fs)) (fret fs)
     w<end
     -- the same adapter as `ret-heap-store`'s, at this write's own miss
-    (λ c w lt p → trans (C.read-write-miss (X.State.memory s)
+    (λ c w lt p → trans (C.FlatCorrespondence.read-write-miss (X.State.memory s)
                            (X.readReg (xregs s) esp + slot-to-disp slot) v c
                            (λ eq → <⇒≢ lt (sym eq))) p)
-    (C.stack-eq (dataCorr cc)) (ret-eq cc)
+    (C.FlatCorrespondence.FlatCorr.stack-eq (dataCorr cc)) (ret-eq cc)
   where
     w<end : X.readReg (xregs s) esp + slot-to-disp slot
           < frame-base FS (current-frame (falloc fs)) + slots (frame-slots (falloc fs))
-    w<end rewrite C.sp-eq (dataCorr cc) =
+    w<end rewrite C.FlatCorrespondence.FlatCorr.sp-eq (dataCorr cc) =
       +-monoʳ-< (frame-base FS (current-frame (falloc fs))) (*-monoˡ-< slot-size slot<b)
 
 -- The two `Maybe`-dispatched loads keep the INPUT allocator in both branches,
@@ -277,14 +284,14 @@ ret-slot-store {hv} prog fs s slot v cc slot<b =
 -- which is why these exist (`FlatStackSlot.ss-mv` is the same fact for
 -- `frame-slots` alone; `RetAddrs` needs the whole frame list).
 elfs-frames : ∀ (mv : Maybe (StoredValue FS)) (ls : LocState FS) (alloc : AllocState {FS})
-            → C.frames-of (proj₂ (AbstractExec.exec-load-from-slot-with-value {FS} mv ls alloc))
-              ≡ C.frames-of alloc
+            → C.FlatCorrespondence.frames-of (proj₂ (AbstractExec.exec-load-from-slot-with-value {FS} mv ls alloc))
+              ≡ C.FlatCorrespondence.frames-of alloc
 elfs-frames (just v) ls alloc = refl
 elfs-frames nothing  ls alloc = refl
 
 eris-frames : ∀ (mv : Maybe (StoredValue FS)) (ls : LocState FS) (alloc : AllocState {FS})
-            → C.frames-of (proj₂ (AbstractExec.exec-restore-input-with-value {FS} mv ls alloc))
-              ≡ C.frames-of alloc
+            → C.FlatCorrespondence.frames-of (proj₂ (AbstractExec.exec-restore-input-with-value {FS} mv ls alloc))
+              ≡ C.FlatCorrespondence.frames-of alloc
 eris-frames (just v) ls alloc = refl
 eris-frames nothing  ls alloc = refl
 
@@ -301,7 +308,7 @@ block-step-mov-rr : ∀ {hv : HeapView} (prog : AbstractTrace) (fs : FlatState) 
   → compile-abstract i ≡ mov (reg dst) (reg src) ∷ []
   → fpc (flat-exec-instr i prog fs) ≡ suc (fpc fs)         -- i is straight-line
   → RetSame prog fs i                                      -- …and moves no frame
-  → C.FlatCorr hv (flat-exec-instr i prog fs)
+  → C.FlatCorrespondence.FlatCorr hv (flat-exec-instr i prog fs)
                (record s { regs = xwriteReg (xregs s) dst (xreadReg (xregs s) src) ; pc = pc s + 1 })
   → BlockStep hv prog fs s i
 block-step-mov-rr {hv} prog fs s i dst src cc h-flat ft ca fpc-eq rsame dataPost =
@@ -311,7 +318,7 @@ block-step-mov-rr {hv} prog fs s i dst src cc h-flat ft ca fpc-eq rsame dataPost
   where
     dc = dataCorr cc ; po = pc-off cc
     halt-s : X.State.halted s ≡ false
-    halt-s = trans (C.halt-eq dc) h-flat
+    halt-s = trans (C.FlatCorrespondence.FlatCorr.halt-eq dc) h-flat
     fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (mov (reg dst) (reg src))
     fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
                       (trans (fetch-block-head prog (fpc fs) i ft)
@@ -334,12 +341,12 @@ block-step-mov-rr {hv} prog fs s i dst src cc h-flat ft ca fpc-eq rsame dataPost
 block-step-mov-to-output : ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just mov-to-output → BlockStep hv prog fs s mov-to-output
 block-step-mov-to-output {hv} prog fs s cc h ft =
-  block-step-mov-rr prog fs s mov-to-output eax ecx cc h ft refl refl (refl , refl , refl) (C.sim-mov-to-output fs s _ (dataCorr cc) (C.sets-role-x86 s role-out _ _ _))
+  block-step-mov-rr prog fs s mov-to-output eax ecx cc h ft refl refl (refl , refl , refl) (C.FlatCorrespondence.sim-mov-to-output fs s _ (dataCorr cc) (C.sets-role-x86 s role-out _ _ _))
 
 block-step-mov-to-input : ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just mov-to-input → BlockStep hv prog fs s mov-to-input
 block-step-mov-to-input {hv} prog fs s cc h ft =
-  block-step-mov-rr prog fs s mov-to-input ecx eax cc h ft refl refl (refl , refl , refl) (C.sim-mov-to-input fs s _ (dataCorr cc) (C.sets-role-x86 s role-in1 _ _ _))
+  block-step-mov-rr prog fs s mov-to-input ecx eax cc h ft refl refl (refl , refl , refl) (C.FlatCorrespondence.sim-mov-to-input fs s _ (dataCorr cc) (C.sets-role-x86 s role-in1 _ _ _))
 
 
 
@@ -359,7 +366,7 @@ block-step-mov-ri : ∀ {hv : HeapView} (prog : AbstractTrace) (fs : FlatState) 
   → n < X.W.modulus
   → fpc (flat-exec-instr i prog fs) ≡ suc (fpc fs)
   → RetSame prog fs i                                      -- …and moves no frame
-  → C.FlatCorr hv (flat-exec-instr i prog fs)
+  → C.FlatCorrespondence.FlatCorr hv (flat-exec-instr i prog fs)
                (record s { regs = xwriteReg (xregs s) dst n ; pc = pc s + 1 })
   → BlockStep hv prog fs s i
 block-step-mov-ri {hv} prog fs s i dst n cc h-flat ft ca fits fpc-eq rsame dataPost =
@@ -369,7 +376,7 @@ block-step-mov-ri {hv} prog fs s i dst n cc h-flat ft ca fits fpc-eq rsame dataP
   where
     dc = dataCorr cc ; po = pc-off cc
     halt-s : X.State.halted s ≡ false
-    halt-s = trans (C.halt-eq dc) h-flat
+    halt-s = trans (C.FlatCorrespondence.FlatCorr.halt-eq dc) h-flat
     fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (mov (reg dst) (imm n))
     fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
                       (trans (fetch-block-head prog (fpc fs) i ft)
@@ -398,7 +405,7 @@ block-step-load-tag-lit : ∀ {hv : HeapView} prog fs s n → CompiledCorr hv pr
   → fetch prog (fpc fs) ≡ just (instr-load-tag-lit n) → n < X.W.modulus
   → BlockStep hv prog fs s (instr-load-tag-lit n)
 block-step-load-tag-lit {hv} prog fs s n cc h ft fits =
-  block-step-mov-ri prog fs s (instr-load-tag-lit n) eax n cc h ft refl fits refl (refl , refl , refl) (C.sim-load-tag-lit n fs s _ (dataCorr cc) (C.sets-role-x86 s role-out _ _ _))
+  block-step-mov-ri prog fs s (instr-load-tag-lit n) eax n cc h ft refl fits refl (refl , refl , refl) (C.FlatCorrespondence.sim-load-tag-lit n fs s _ (dataCorr cc) (C.sets-role-x86 s role-out _ _ _))
 
 
 
@@ -410,16 +417,16 @@ block-step-load-tag-lit {hv} prog fs s n cc h ft fits =
 block-step-c-label : ∀ {hv : HeapView} prog fs s n → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-ctrl (c-label n)) → BlockStep hv prog fs s (instr-ctrl (c-label n))
 block-step-c-label {hv} prog fs s n cc h ft = post , exec-eq , record
-  { dataCorr = record { in1-eq = C.in1-eq (dataCorr cc)
-                      ; out-eq = C.out-eq (dataCorr cc)
-                      ; clos-eq = C.clos-eq (dataCorr cc) ; halt-eq = C.halt-eq (dataCorr cc) ; heap-eq = C.heap-eq (dataCorr cc)
-                      ; sp-eq = C.sp-eq (dataCorr cc) ; frontier-eq = C.frontier-eq (dataCorr cc) ; dom-fresh = C.dom-fresh (dataCorr cc) ; dom-written = C.dom-written (dataCorr cc) ; dom-sized = C.dom-sized (dataCorr cc)
-                      ; lo-le = C.lo-le (dataCorr cc) ; stack-eq = C.stack-eq (dataCorr cc) }
+  { dataCorr = record { in1-eq = C.FlatCorrespondence.FlatCorr.in1-eq (dataCorr cc)
+                      ; out-eq = C.FlatCorrespondence.FlatCorr.out-eq (dataCorr cc)
+                      ; clos-eq = C.FlatCorrespondence.FlatCorr.clos-eq (dataCorr cc) ; halt-eq = C.FlatCorrespondence.FlatCorr.halt-eq (dataCorr cc) ; heap-eq = C.FlatCorrespondence.FlatCorr.heap-eq (dataCorr cc)
+                      ; sp-eq = C.FlatCorrespondence.FlatCorr.sp-eq (dataCorr cc) ; frontier-eq = C.FlatCorrespondence.FlatCorr.frontier-eq (dataCorr cc) ; dom-fresh = C.FlatCorrespondence.FlatCorr.dom-fresh (dataCorr cc) ; dom-written = C.FlatCorrespondence.FlatCorr.dom-written (dataCorr cc) ; dom-sized = C.FlatCorrespondence.FlatCorr.dom-sized (dataCorr cc)
+                      ; lo-le = C.FlatCorrespondence.FlatCorr.lo-le (dataCorr cc) ; stack-eq = C.FlatCorrespondence.FlatCorr.stack-eq (dataCorr cc) }
   ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
   where
     dc = dataCorr cc ; po = pc-off cc
     halt-s : X.State.halted s ≡ false
-    halt-s = trans (C.halt-eq dc) h
+    halt-s = trans (C.FlatCorrespondence.FlatCorr.halt-eq dc) h
     fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (label (once n))
     fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
                       (fetch-block-head prog (fpc fs) (instr-ctrl (c-label n)) ft)
@@ -451,9 +458,9 @@ block-step-c-label {hv} prog fs s n cc h ft = post , exec-eq , record
 block-step-worklist-init : ∀ {hv : HeapView} prog fs s n → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (worklist-init n) → BlockStep hv prog fs s (worklist-init n)
 block-step-worklist-init {hv} prog fs s n cc h ft = s , refl , record
-  { dataCorr = record { in1-eq = C.in1-eq dc ; out-eq = C.out-eq dc
-                      ; clos-eq = C.clos-eq dc ; halt-eq = C.halt-eq dc ; sp-eq = C.sp-eq dc ; frontier-eq = C.frontier-eq dc ; dom-fresh = C.dom-fresh dc ; dom-written = C.dom-written dc ; dom-sized = C.dom-sized dc ; heap-eq = C.heap-eq dc
-                      ; lo-le = C.lo-le dc ; stack-eq = C.stack-eq dc }
+  { dataCorr = record { in1-eq = C.FlatCorrespondence.FlatCorr.in1-eq dc ; out-eq = C.FlatCorrespondence.FlatCorr.out-eq dc
+                      ; clos-eq = C.FlatCorrespondence.FlatCorr.clos-eq dc ; halt-eq = C.FlatCorrespondence.FlatCorr.halt-eq dc ; sp-eq = C.FlatCorrespondence.FlatCorr.sp-eq dc ; frontier-eq = C.FlatCorrespondence.FlatCorr.frontier-eq dc ; dom-fresh = C.FlatCorrespondence.FlatCorr.dom-fresh dc ; dom-written = C.FlatCorrespondence.FlatCorr.dom-written dc ; dom-sized = C.FlatCorrespondence.FlatCorr.dom-sized dc ; heap-eq = C.FlatCorrespondence.FlatCorr.heap-eq dc
+                      ; lo-le = C.FlatCorrespondence.FlatCorr.lo-le dc ; stack-eq = C.FlatCorrespondence.FlatCorr.stack-eq dc }
   ; pc-off = trans (pc-off cc)
              (sym (trans (blk-off-suc prog (fpc fs) (worklist-init n) ft) (+-identityʳ _)))
              ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
@@ -462,9 +469,9 @@ block-step-worklist-init {hv} prog fs s n cc h ft = s , refl , record
 block-step-worklist-check : ∀ {hv : HeapView} prog fs s n → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (worklist-check n) → BlockStep hv prog fs s (worklist-check n)
 block-step-worklist-check {hv} prog fs s n cc h ft = s , refl , record
-  { dataCorr = record { in1-eq = C.in1-eq dc ; out-eq = C.out-eq dc
-                      ; clos-eq = C.clos-eq dc ; halt-eq = C.halt-eq dc ; sp-eq = C.sp-eq dc ; frontier-eq = C.frontier-eq dc ; dom-fresh = C.dom-fresh dc ; dom-written = C.dom-written dc ; dom-sized = C.dom-sized dc ; heap-eq = C.heap-eq dc
-                      ; lo-le = C.lo-le dc ; stack-eq = C.stack-eq dc }
+  { dataCorr = record { in1-eq = C.FlatCorrespondence.FlatCorr.in1-eq dc ; out-eq = C.FlatCorrespondence.FlatCorr.out-eq dc
+                      ; clos-eq = C.FlatCorrespondence.FlatCorr.clos-eq dc ; halt-eq = C.FlatCorrespondence.FlatCorr.halt-eq dc ; sp-eq = C.FlatCorrespondence.FlatCorr.sp-eq dc ; frontier-eq = C.FlatCorrespondence.FlatCorr.frontier-eq dc ; dom-fresh = C.FlatCorrespondence.FlatCorr.dom-fresh dc ; dom-written = C.FlatCorrespondence.FlatCorr.dom-written dc ; dom-sized = C.FlatCorrespondence.FlatCorr.dom-sized dc ; heap-eq = C.FlatCorrespondence.FlatCorr.heap-eq dc
+                      ; lo-le = C.FlatCorrespondence.FlatCorr.lo-le dc ; stack-eq = C.FlatCorrespondence.FlatCorr.stack-eq dc }
   ; pc-off = trans (pc-off cc)
              (sym (trans (blk-off-suc prog (fpc fs) (worklist-check n) ft) (+-identityʳ _)))
              ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
@@ -477,10 +484,10 @@ block-step-worklist-check {hv} prog fs s n cc h ft = s , refl , record
 block-step-reclaim-to : ∀ {hv : HeapView} prog fs s n → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-reclaim-to n) → BlockStep hv prog fs s (instr-reclaim-to n)
 block-step-reclaim-to {hv} prog fs s n cc h ft = s , refl , record
-  { dataCorr = record { in1-eq = C.in1-eq dc ; out-eq = C.out-eq dc
-                      ; clos-eq = C.clos-eq dc ; halt-eq = C.halt-eq dc ; sp-eq = C.sp-eq dc ; frontier-eq = C.frontier-eq dc ; dom-fresh = C.dom-fresh dc ; dom-written = C.dom-written dc ; dom-sized = C.dom-sized dc
-                      ; heap-eq = C.heap-eq dc
-                      ; lo-le = C.lo-le dc ; stack-eq = C.stack-eq dc }   -- reclaim-to changes next-slot, not frame-slots ⇒ bound stable
+  { dataCorr = record { in1-eq = C.FlatCorrespondence.FlatCorr.in1-eq dc ; out-eq = C.FlatCorrespondence.FlatCorr.out-eq dc
+                      ; clos-eq = C.FlatCorrespondence.FlatCorr.clos-eq dc ; halt-eq = C.FlatCorrespondence.FlatCorr.halt-eq dc ; sp-eq = C.FlatCorrespondence.FlatCorr.sp-eq dc ; frontier-eq = C.FlatCorrespondence.FlatCorr.frontier-eq dc ; dom-fresh = C.FlatCorrespondence.FlatCorr.dom-fresh dc ; dom-written = C.FlatCorrespondence.FlatCorr.dom-written dc ; dom-sized = C.FlatCorrespondence.FlatCorr.dom-sized dc
+                      ; heap-eq = C.FlatCorrespondence.FlatCorr.heap-eq dc
+                      ; lo-le = C.FlatCorrespondence.FlatCorr.lo-le dc ; stack-eq = C.FlatCorrespondence.FlatCorr.stack-eq dc }   -- reclaim-to changes next-slot, not frame-slots ⇒ bound stable
   ; pc-off = trans (pc-off cc)
              (sym (trans (blk-off-suc prog (fpc fs) (instr-reclaim-to n) ft) (+-identityʳ _)))
              ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
@@ -497,7 +504,7 @@ block-step-c-jmp {hv} prog fs s n j cc h ft fl-eq = block-step
   where
     dc = dataCorr cc ; po = pc-off cc
     halt-s : X.State.halted s ≡ false
-    halt-s = trans (C.halt-eq dc) h
+    halt-s = trans (C.FlatCorrespondence.FlatCorr.halt-eq dc) h
     fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (jmp-l (once n))
     fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
                       (fetch-block-head prog (fpc fs) (instr-ctrl (c-jmp n)) ft)
@@ -511,10 +518,10 @@ block-step-c-jmp {hv} prog fs s n j cc h ft fl-eq = block-step
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
     block-step : BlockStep hv prog fs s (instr-ctrl (c-jmp n))
     block-step rewrite fl-eq = post , exec-eq , record
-      { dataCorr = record { in1-eq = C.in1-eq dc
-                          ; out-eq = C.out-eq dc
-                          ; clos-eq = C.clos-eq dc ; halt-eq = C.halt-eq dc ; sp-eq = C.sp-eq dc ; frontier-eq = C.frontier-eq dc ; dom-fresh = C.dom-fresh dc ; dom-written = C.dom-written dc ; dom-sized = C.dom-sized dc ; heap-eq = C.heap-eq dc
-                          ; lo-le = C.lo-le dc ; stack-eq = C.stack-eq dc }
+      { dataCorr = record { in1-eq = C.FlatCorrespondence.FlatCorr.in1-eq dc
+                          ; out-eq = C.FlatCorrespondence.FlatCorr.out-eq dc
+                          ; clos-eq = C.FlatCorrespondence.FlatCorr.clos-eq dc ; halt-eq = C.FlatCorrespondence.FlatCorr.halt-eq dc ; sp-eq = C.FlatCorrespondence.FlatCorr.sp-eq dc ; frontier-eq = C.FlatCorrespondence.FlatCorr.frontier-eq dc ; dom-fresh = C.FlatCorrespondence.FlatCorr.dom-fresh dc ; dom-written = C.FlatCorrespondence.FlatCorr.dom-written dc ; dom-sized = C.FlatCorrespondence.FlatCorr.dom-sized dc ; heap-eq = C.FlatCorrespondence.FlatCorr.heap-eq dc
+                          ; lo-le = C.FlatCorrespondence.FlatCorr.lo-le dc ; stack-eq = C.FlatCorrespondence.FlatCorr.stack-eq dc }
       ; pc-off = refl ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
 
 -- load-indirect: Output := *Input1 ↔ `mov eax, [ecx]`. The read VALUE comes
@@ -527,22 +534,22 @@ block-step-load-indirect : ∀ {hv : HeapView} prog fs s hl w → CompiledCorr h
   → heapMem (floc fs) hl ≡ just w
   → BlockStep hv prog fs s load-indirect
 block-step-load-indirect {hv} prog fs s hl w cc h ft i-eq live-hl h-eq =
-  post , exec-eq , record { dataCorr = C.sim-load-indirect hl w fs s _ dc i-eq h-eq (C.sets-role-x86 s role-out _ _ _) ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
+  post , exec-eq , record { dataCorr = C.FlatCorrespondence.sim-load-indirect hl w fs s _ dc i-eq h-eq (C.sets-role-x86 s role-out _ _ _) ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
   where
     dc = dataCorr cc ; po = pc-off cc
     halt-s : X.State.halted s ≡ false
-    halt-s = trans (C.halt-eq dc) h
+    halt-s = trans (C.FlatCorrespondence.FlatCorr.halt-eq dc) h
     fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (mov (reg eax) (mem (base ecx)))
     fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
                       (fetch-block-head prog (fpc fs) load-indirect ft)
     rdi-val : xreadReg (xregs s) ecx ≡ haddr hv hl
-    rdi-val = trans (C.in1-eq dc) (cong (C.enc-sv hv) i-eq)
-    rd : X.readMem (memory s) (X.effectiveAddr s (base ecx)) ≡ just (C.enc-sv hv w)
-    rd = trans (cong (X.readMem (memory s)) rdi-val) (C.heap-eq dc hl h-eq)
+    rdi-val = trans (C.FlatCorrespondence.FlatCorr.in1-eq dc) (cong (C.FlatCorrespondence.enc-sv hv) i-eq)
+    rd : X.readMem (memory s) (X.effectiveAddr s (base ecx)) ≡ just (C.FlatCorrespondence.enc-sv hv w)
+    rd = trans (cong (X.readMem (memory s)) rdi-val) (C.FlatCorrespondence.FlatCorr.heap-eq dc hl h-eq)
     post : X.State
-    post = record s { regs = xwriteReg (xregs s) eax (C.enc-sv hv w) ; pc = pc s + 1 }
+    post = record s { regs = xwriteReg (xregs s) eax (C.FlatCorrespondence.enc-sv hv w) ; pc = pc s + 1 }
     snh : X.step-not-halted (compile-trace prog) s ≡ just post
-    snh = step-mov-rm {compile-trace prog} {s} {eax} {base ecx} {C.enc-sv hv w} fetch-x86 rd
+    snh = step-mov-rm {compile-trace prog} {s} {eax} {base ecx} {C.FlatCorrespondence.enc-sv hv w} fetch-x86 rd
     exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
     pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr load-indirect prog fs))
@@ -558,24 +565,24 @@ block-step-load-indirect-suc : ∀ {hv : HeapView} prog fs s hl w → CompiledCo
   → heapMem (floc fs) (sucHL hl) ≡ just w
   → BlockStep hv prog fs s load-indirect-suc
 block-step-load-indirect-suc {hv} prog fs s hl w cc h ft i-eq live-shl h-eq =
-  post , exec-eq , record { dataCorr = C.sim-load-indirect-suc hl w fs s _ dc i-eq h-eq (C.sets-role-x86 s role-out _ _ _) ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
+  post , exec-eq , record { dataCorr = C.FlatCorrespondence.sim-load-indirect-suc hl w fs s _ dc i-eq h-eq (C.sets-role-x86 s role-out _ _ _) ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
   where
     dc = dataCorr cc ; po = pc-off cc
     halt-s : X.State.halted s ≡ false
-    halt-s = trans (C.halt-eq dc) h
+    halt-s = trans (C.FlatCorrespondence.FlatCorr.halt-eq dc) h
     fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (mov (reg eax) (mem (base+disp ecx slot-size)))
     fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
                       (fetch-block-head prog (fpc fs) load-indirect-suc ft)
     rdi-val : xreadReg (xregs s) ecx ≡ haddr hv hl
-    rdi-val = trans (C.in1-eq dc) (cong (C.enc-sv hv) i-eq)
+    rdi-val = trans (C.FlatCorrespondence.FlatCorr.in1-eq dc) (cong (C.FlatCorrespondence.enc-sv hv) i-eq)
     addr-eq : X.effectiveAddr s (base+disp ecx slot-size) ≡ haddr hv (sucHL hl)
-    addr-eq = trans (cong (_+ slot-size) rdi-val) (sym (C.haddr-suc hv hl))
-    rd : X.readMem (memory s) (X.effectiveAddr s (base+disp ecx slot-size)) ≡ just (C.enc-sv hv w)
-    rd = trans (cong (X.readMem (memory s)) addr-eq) (C.heap-eq dc (sucHL hl) h-eq)
+    addr-eq = trans (cong (_+ slot-size) rdi-val) (sym (C.FlatCorrespondence.HeapView.haddr-suc hv hl))
+    rd : X.readMem (memory s) (X.effectiveAddr s (base+disp ecx slot-size)) ≡ just (C.FlatCorrespondence.enc-sv hv w)
+    rd = trans (cong (X.readMem (memory s)) addr-eq) (C.FlatCorrespondence.FlatCorr.heap-eq dc (sucHL hl) h-eq)
     post : X.State
-    post = record s { regs = xwriteReg (xregs s) eax (C.enc-sv hv w) ; pc = pc s + 1 }
+    post = record s { regs = xwriteReg (xregs s) eax (C.FlatCorrespondence.enc-sv hv w) ; pc = pc s + 1 }
     snh : X.step-not-halted (compile-trace prog) s ≡ just post
-    snh = step-mov-rm {compile-trace prog} {s} {eax} {base+disp ecx slot-size} {C.enc-sv hv w} fetch-x86 rd
+    snh = step-mov-rm {compile-trace prog} {s} {eax} {base+disp ecx slot-size} {C.FlatCorrespondence.enc-sv hv w} fetch-x86 rd
     exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
     pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr load-indirect-suc prog fs))
@@ -592,24 +599,24 @@ block-step-load-from-slot : ∀ {hv : HeapView} prog fs s slot w → CompiledCor
   → stackMem (floc fs) (current-frame (falloc fs)) slot ≡ just w
   → BlockStep hv prog fs s (load-from-slot slot)
 block-step-load-from-slot {hv} prog fs s slot w cc h ft slot<ns st-eq =
-  post , exec-eq , record { dataCorr = C.sim-load-from-slot slot w fs s _ dc st-eq (C.sets-role-x86 s role-out _ _ _) ; pc-off = pco'
+  post , exec-eq , record { dataCorr = C.FlatCorrespondence.sim-load-from-slot slot w fs s _ dc st-eq (C.sets-role-x86 s role-out _ _ _) ; pc-off = pco'
                        ; ret-eq = ret-same prog fs (load-from-slot slot) (memory s)
                                      (elfs-frames (stackMem (floc fs) (current-frame (falloc fs)) slot) (floc fs) (falloc fs) , refl , refl) (ret-eq cc)
                        ; code-eq = code-eq cc }
   where
     dc = dataCorr cc ; po = pc-off cc
     halt-s : X.State.halted s ≡ false
-    halt-s = trans (C.halt-eq dc) h
+    halt-s = trans (C.FlatCorrespondence.FlatCorr.halt-eq dc) h
     fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s)
               ≡ just (mov (reg eax) (mem (base+disp esp (slot-to-disp slot))))
     fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
                       (fetch-block-head prog (fpc fs) (load-from-slot slot) ft)
-    rd : X.readMem (memory s) (X.effectiveAddr s (base+disp esp (slot-to-disp slot))) ≡ just (C.enc-sv hv w)
-    rd = C.stack-eq-cur dc slot slot<ns _ st-eq
+    rd : X.readMem (memory s) (X.effectiveAddr s (base+disp esp (slot-to-disp slot))) ≡ just (C.FlatCorrespondence.enc-sv hv w)
+    rd = C.FlatCorrespondence.stack-eq-cur dc slot slot<ns _ st-eq
     post : X.State
-    post = record s { regs = xwriteReg (xregs s) eax (C.enc-sv hv w) ; pc = pc s + 1 }
+    post = record s { regs = xwriteReg (xregs s) eax (C.FlatCorrespondence.enc-sv hv w) ; pc = pc s + 1 }
     snh : X.step-not-halted (compile-trace prog) s ≡ just post
-    snh = step-mov-rm {compile-trace prog} {s} {eax} {base+disp esp (slot-to-disp slot)} {C.enc-sv hv w} fetch-x86 rd
+    snh = step-mov-rm {compile-trace prog} {s} {eax} {base+disp esp (slot-to-disp slot)} {C.FlatCorrespondence.enc-sv hv w} fetch-x86 rd
     exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
     pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (load-from-slot slot) prog fs))
@@ -623,24 +630,24 @@ block-step-restore-input : ∀ {hv : HeapView} prog fs s slot w → CompiledCorr
   → stackMem (floc fs) (current-frame (falloc fs)) slot ≡ just w
   → BlockStep hv prog fs s (restore-input slot)
 block-step-restore-input {hv} prog fs s slot w cc h ft slot<ns st-eq =
-  post , exec-eq , record { dataCorr = C.sim-restore-input slot w fs s _ dc st-eq (C.sets-role-x86 s role-in1 _ _ _) ; pc-off = pco'
+  post , exec-eq , record { dataCorr = C.FlatCorrespondence.sim-restore-input slot w fs s _ dc st-eq (C.sets-role-x86 s role-in1 _ _ _) ; pc-off = pco'
                        ; ret-eq = ret-same prog fs (restore-input slot) (memory s)
                                      (eris-frames (stackMem (floc fs) (current-frame (falloc fs)) slot) (floc fs) (falloc fs) , refl , refl) (ret-eq cc)
                        ; code-eq = code-eq cc }
   where
     dc = dataCorr cc ; po = pc-off cc
     halt-s : X.State.halted s ≡ false
-    halt-s = trans (C.halt-eq dc) h
+    halt-s = trans (C.FlatCorrespondence.FlatCorr.halt-eq dc) h
     fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s)
               ≡ just (mov (reg ecx) (mem (base+disp esp (slot-to-disp slot))))
     fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
                       (fetch-block-head prog (fpc fs) (restore-input slot) ft)
-    rd : X.readMem (memory s) (X.effectiveAddr s (base+disp esp (slot-to-disp slot))) ≡ just (C.enc-sv hv w)
-    rd = C.stack-eq-cur dc slot slot<ns _ st-eq
+    rd : X.readMem (memory s) (X.effectiveAddr s (base+disp esp (slot-to-disp slot))) ≡ just (C.FlatCorrespondence.enc-sv hv w)
+    rd = C.FlatCorrespondence.stack-eq-cur dc slot slot<ns _ st-eq
     post : X.State
-    post = record s { regs = xwriteReg (xregs s) ecx (C.enc-sv hv w) ; pc = pc s + 1 }
+    post = record s { regs = xwriteReg (xregs s) ecx (C.FlatCorrespondence.enc-sv hv w) ; pc = pc s + 1 }
     snh : X.step-not-halted (compile-trace prog) s ≡ just post
-    snh = step-mov-rm {compile-trace prog} {s} {ecx} {base+disp esp (slot-to-disp slot)} {C.enc-sv hv w} fetch-x86 rd
+    snh = step-mov-rm {compile-trace prog} {s} {ecx} {base+disp esp (slot-to-disp slot)} {C.FlatCorrespondence.enc-sv hv w} fetch-x86 rd
     exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
     pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (restore-input slot) prog fs))
@@ -662,7 +669,7 @@ block-step-alloc-stack : ∀ {hv : HeapView} prog fs s n → CompiledCorr hv pro
   -- THE DESCENT (plan 0.54 rung D step 3): %esp drops, so the view's high-water
   -- mark drops with it and the step lands at the DESCENDED view. The ROOM premise
   -- (stack overflow) is what the dispatcher spends on `front-lo'`.
-  → (lo' : ℕ) (lo'≤lo : lo' ≤ C.lo hv) (front-lo' : C.hfront hv ≤ lo')
+  → (lo' : ℕ) (lo'≤lo : lo' ≤ C.FlatCorrespondence.HeapView.lo hv) (front-lo' : C.FlatCorrespondence.HeapView.hfront hv ≤ lo')
   → lo' ≤ X.readReg (xregs s) esp ∸ slots n
   -- THE FRAME FITS (Plan 0.63, D085) — see `C.sim-alloc-stack`.
   → slots n ≤ X.readReg (xregs s) esp
@@ -672,22 +679,22 @@ block-step-alloc-stack : ∀ {hv : HeapView} prog fs s n → CompiledCorr hv pro
   -- dispatch route is `⊥`-elim (`frame-op-absurd`) and this lemma has no
   -- caller; only a matched prologue/epilogue producer could discharge it, and
   -- `ir-to-trace` emits none.
-  → C.RetAddrs (blk-off prog) (X.State.memory s) (x86-32-link-claim s)
+  → C.FlatCorrespondence.RetAddrs (blk-off prog) (X.State.memory s) (x86-32-link-claim s)
                (flink (flat-exec-instr (instr-alloc-stack n) prog fs))
-               (C.frames-of (falloc (flat-exec-instr (instr-alloc-stack n) prog fs)))
+               (C.FlatCorrespondence.frames-of (falloc (flat-exec-instr (instr-alloc-stack n) prog fs)))
                (fret (flat-exec-instr (instr-alloc-stack n) prog fs))
   -- THE MACHINE IS FINITE (plan 0.70 phase C): `%esp` holds a value below the
   -- modulus. Same class as `StackRoom`/`HeapRoom` (D087) — a fact about the
   -- running program that the loader establishes — so it arrives as a premise
   -- rather than being assumed inside.
   → xreadReg (xregs s) esp < X.W.modulus
-  → BlockStepAt hv (C.descend-view hv lo' lo'≤lo front-lo') prog fs s (instr-alloc-stack n)
+  → BlockStepAt hv (C.FlatCorrespondence.descend-view hv lo' lo'≤lo front-lo') prog fs s (instr-alloc-stack n)
 block-step-alloc-stack {hv} prog fs s n cc h ft fresh-abs lo' lo'≤lo front-lo' lo'≤esp fits retPost esp<mod =
   post , exec-eq , record { dataCorr = dataPost ; pc-off = pco' ; ret-eq = retPost ; code-eq = code-eq cc }
   where
     dc = dataCorr cc ; po = pc-off cc
     halt-s : X.State.halted s ≡ false
-    halt-s = trans (C.halt-eq dc) h
+    halt-s = trans (C.FlatCorrespondence.FlatCorr.halt-eq dc) h
     fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (sub (reg esp) (imm (slots n)))
     fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
                       (fetch-block-head prog (fpc fs) (instr-alloc-stack n) ft)
@@ -720,9 +727,9 @@ block-step-alloc-stack {hv} prog fs s n cc h ft fresh-abs lo' lo'≤lo front-lo'
                 (step-sub-ri {compile-trace prog} {s} {esp} {slots n} fetch-x86)
     exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
-    dataPost : C.FlatCorr (C.descend-view hv lo' lo'≤lo front-lo')
+    dataPost : C.FlatCorrespondence.FlatCorr (C.FlatCorrespondence.descend-view hv lo' lo'≤lo front-lo')
                           (flat-exec-instr (instr-alloc-stack n) prog fs) post
-    dataPost = C.sim-alloc-stack n fs s _ dc fresh-abs
+    dataPost = C.FlatCorrespondence.sim-alloc-stack n fs s _ dc fresh-abs
                                  lo' lo'≤lo front-lo' lo'≤esp fits
                                  (C.sets-role-x86 s role-sp _ _ _)
     pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (instr-alloc-stack n) prog fs))
@@ -752,7 +759,7 @@ block-step-c-thunk : ∀ {hv : HeapView} prog fs s n b r rpc rest → CompiledCo
   -- NO freshness premise: `do-thunk` CLEARS the entered frame, so the callee
   -- window holds by computation. Neither the abstract nor the concrete
   -- freshness claim survives frame re-entry, and this is why neither is needed.
-  → (lo' : ℕ) (lo'≤lo : lo' ≤ C.lo hv) (front-lo' : C.hfront hv ≤ lo')
+  → (lo' : ℕ) (lo'≤lo : lo' ≤ C.FlatCorrespondence.HeapView.lo hv) (front-lo' : C.FlatCorrespondence.HeapView.hfront hv ≤ lo')
   → lo' ≤ X.readReg (xregs s) esp ∸ slots b
   → slots b ≤ X.readReg (xregs s) esp
   -- THE FRAME IT DEEPENS RESERVES NOTHING (D093). A body entry is reached by a
@@ -766,13 +773,13 @@ block-step-c-thunk : ∀ {hv : HeapView} prog fs s n b r rpc rest → CompiledCo
   → xreadReg (xregs s) esp < X.W.modulus
   → flink fs ≡ just r
   → fret fs ≡ rpc ∷ rest
-  → BlockStepAt hv (C.descend-view hv lo' lo'≤lo front-lo') prog fs s (instr-ctrl (c-entry n b))
+  → BlockStepAt hv (C.FlatCorrespondence.descend-view hv lo' lo'≤lo front-lo') prog fs s (instr-ctrl (c-entry n b))
 block-step-c-thunk {hv} prog fs s n b r rpc rest cc h ft lo' lo'≤lo front-lo' lo'≤esp fits empty-frame esp<mod no-link pend =
   post-sub , exec-eq , record { dataCorr = dataPost ; pc-off = pco' ; ret-eq = retPost ; code-eq = code-eq cc }
   where
     dc = dataCorr cc ; po = pc-off cc
     halt-s : X.State.halted s ≡ false
-    halt-s = trans (C.halt-eq dc) h
+    halt-s = trans (C.FlatCorrespondence.FlatCorr.halt-eq dc) h
     -- step 1: the body-entry label (pc only)
     fetch-lab : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (label (callee n))
     fetch-lab = trans (cong (X.fetch (compile-trace prog)) po)
@@ -811,9 +818,9 @@ block-step-c-thunk {hv} prog fs s n b r rpc rest cc h ft lo' lo'≤lo front-lo' 
     exec-eq : X.exec 2 (compile-trace prog) s ≡ just post-sub
     exec-eq = trans (exec-1 {compile-trace prog} {1} {s} {post-lab} halt-s step-lab halt-s)
                     (exec-1 {compile-trace prog} {0} {post-lab} {post-sub} halt-s step-sub halt-s)
-    dataPost : C.FlatCorr (C.descend-view hv lo' lo'≤lo front-lo')
+    dataPost : C.FlatCorrespondence.FlatCorr (C.FlatCorrespondence.descend-view hv lo' lo'≤lo front-lo')
                           (flat-exec-instr (instr-ctrl (c-entry n b)) prog fs) post-sub
-    dataPost = C.sim-thunk b fs s _ dc
+    dataPost = C.FlatCorrespondence.sim-thunk b fs s _ dc
                            lo' lo'≤lo front-lo' lo'≤esp fits
                            (C.sets-role-x86 s role-sp _ _ _)
     pco' : X.State.pc post-sub
@@ -827,7 +834,7 @@ block-step-c-thunk {hv} prog fs s n b r rpc rest cc h ft lo' lo'≤lo front-lo' 
     -- was, because the frame a CALL entered reserves nothing (`empty-frame`).
     -- `slots b ≤ frame-base` is `fits` read through `sp-eq`.
     fits-base : slots b ≤ frame-base FS (current-frame (falloc fs))
-    fits-base = subst (slots b ≤_) (C.sp-eq dc) fits
+    fits-base = subst (slots b ≤_) (C.FlatCorrespondence.FlatCorr.sp-eq dc) fits
     addr-eq : frame-base FS (shift-frame FS (current-frame (falloc fs)) b) + slots b
             ≡ frame-base FS (current-frame (falloc fs)) + slots (frame-slots (falloc fs))
     addr-eq =
@@ -843,17 +850,17 @@ block-step-c-thunk {hv} prog fs s n b r rpc rest cc h ft lo' lo'≤lo front-lo' 
     -- link claim to the stack cell, and on x86-32 that conversion is the
     -- IDENTITY: `call` wrote the cell, so the claim it left behind IS the cell's.
     -- riscv64's `sd ra` is where this becomes an instruction.
-    retPost : C.RetAddrs (blk-off prog) (X.State.memory post-sub) (x86-32-link-claim post-sub)
+    retPost : C.FlatCorrespondence.RetAddrs (blk-off prog) (X.State.memory post-sub) (x86-32-link-claim post-sub)
                          (flink (flat-exec-instr (instr-ctrl (c-entry n b)) prog fs))
-                         (C.frames-of (falloc (flat-exec-instr (instr-ctrl (c-entry n b)) prog fs)))
+                         (C.FlatCorrespondence.frames-of (falloc (flat-exec-instr (instr-ctrl (c-entry n b)) prog fs)))
                          (fret (flat-exec-instr (instr-ctrl (c-entry n b)) prog fs))
-    retPost = C.ret-head (blk-off prog) (X.State.memory s) (x86-32-link-claim s) nothing
+    retPost = C.FlatCorrespondence.ret-head (blk-off prog) (X.State.memory s) (x86-32-link-claim s) nothing
                          (current-frame (falloc fs))
                          (shift-frame FS (current-frame (falloc fs)) b)
                          (frame-slots (falloc fs)) b
                          (saved-frames (falloc fs)) (fret fs)
                          addr-eq
-                         (C.ret-unlink (blk-off prog) (X.State.memory s) (x86-32-link-claim s)
+                         (C.FlatCorrespondence.ret-unlink (blk-off prog) (X.State.memory s) (x86-32-link-claim s)
                             (flink fs) (current-frame (falloc fs)) (frame-slots (falloc fs))
                             (saved-frames (falloc fs)) (fret fs)
                             (λ v p → p) (ret-eq cc))
@@ -867,19 +874,19 @@ block-step-c-thunk {hv} prog fs s n b r rpc rest cc h ft lo' lo'≤lo front-lo' 
 ------------------------------------------------------------------------
 block-step-c-start : ∀ {hv : HeapView} prog fs s b → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-ctrl (c-start b))
-  → (lo' : ℕ) (lo'≤lo : lo' ≤ C.lo hv) (front-lo' : C.hfront hv ≤ lo')
+  → (lo' : ℕ) (lo'≤lo : lo' ≤ C.FlatCorrespondence.HeapView.lo hv) (front-lo' : C.FlatCorrespondence.HeapView.hfront hv ≤ lo')
   → lo' ≤ X.readReg (xregs s) esp ∸ slots b
   → slots b ≤ X.readReg (xregs s) esp
   → xreadReg (xregs s) esp < X.W.modulus
-  → C.hfront hv ≡ X.heap-base
+  → C.FlatCorrespondence.HeapView.hfront hv ≡ X.heap-base
   → fret fs ≡ []
-  → BlockStepAt hv (C.descend-view hv lo' lo'≤lo front-lo') prog fs s (instr-ctrl (c-start b))
+  → BlockStepAt hv (C.FlatCorrespondence.descend-view hv lo' lo'≤lo front-lo') prog fs s (instr-ctrl (c-start b))
 block-step-c-start {hv} prog fs s b cc h ft lo' lo'≤lo front-lo' lo'≤esp fits esp<mod _ nf =
   post-sub , exec-eq , record { dataCorr = dataPost ; pc-off = pco' ; ret-eq = retPost ; code-eq = code-eq cc }
   where
     dc = dataCorr cc ; po = pc-off cc
     halt-s : X.State.halted s ≡ false
-    halt-s = trans (C.halt-eq dc) h
+    halt-s = trans (C.FlatCorrespondence.FlatCorr.halt-eq dc) h
     fetch-sub : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (sub (reg esp) (imm (slots b)))
     fetch-sub = trans (cong (X.fetch (compile-trace prog)) po)
                       (fetch-block-head prog (fpc fs) (instr-ctrl (c-start b)) ft)
@@ -902,22 +909,22 @@ block-step-c-start {hv} prog fs s b cc h ft lo' lo'≤lo front-lo' lo'≤esp fit
                      (step-sub-ri {compile-trace prog} {s} {esp} {slots b} fetch-sub)
     exec-eq : X.exec 1 (compile-trace prog) s ≡ just post-sub
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post-sub} halt-s step-sub halt-s
-    dataPost : C.FlatCorr (C.descend-view hv lo' lo'≤lo front-lo')
+    dataPost : C.FlatCorrespondence.FlatCorr (C.FlatCorrespondence.descend-view hv lo' lo'≤lo front-lo')
                           (flat-exec-instr (instr-ctrl (c-start b)) prog fs) post-sub
-    dataPost = C.sim-thunk b fs s _ dc
+    dataPost = C.FlatCorrespondence.sim-thunk b fs s _ dc
                            lo' lo'≤lo front-lo' lo'≤esp fits
                            (C.sets-role-x86 s role-sp _ _ _)
     pco' : X.State.pc post-sub
          ≡ blk-off prog (fpc (flat-exec-instr (instr-ctrl (c-start b)) prog fs))
     pco' = trans (cong (_+ 1) po)
                  (sym (blk-off-suc prog (fpc fs) (instr-ctrl (c-start b)) ft))
-    retPost : C.RetAddrs (blk-off prog) (X.State.memory post-sub) (x86-32-link-claim post-sub)
+    retPost : C.FlatCorrespondence.RetAddrs (blk-off prog) (X.State.memory post-sub) (x86-32-link-claim post-sub)
                          (flink (flat-exec-instr (instr-ctrl (c-start b)) prog fs))
-                         (C.frames-of (falloc (flat-exec-instr (instr-ctrl (c-start b)) prog fs)))
+                         (C.FlatCorrespondence.frames-of (falloc (flat-exec-instr (instr-ctrl (c-start b)) prog fs)))
                          (fret (flat-exec-instr (instr-ctrl (c-start b)) prog fs))
-    retPost = subst (C.RetAddrs (blk-off prog) (X.State.memory post-sub) (x86-32-link-claim post-sub)
+    retPost = subst (C.FlatCorrespondence.RetAddrs (blk-off prog) (X.State.memory post-sub) (x86-32-link-claim post-sub)
                                 (flink (flat-exec-instr (instr-ctrl (c-start b)) prog fs))
-                                (C.frames-of (falloc (flat-exec-instr (instr-ctrl (c-start b)) prog fs))))
+                                (C.FlatCorrespondence.frames-of (falloc (flat-exec-instr (instr-ctrl (c-start b)) prog fs))))
                     (sym nf) tt
 
 ------------------------------------------------------------------------
@@ -947,7 +954,7 @@ block-step-call : ∀ {hv : HeapView} prog fs s hl ℓ j → CompiledCorr hv pro
   → heapMem (floc fs) (sucHL hl) ≡ just (SV-Code ℓ)
   → HDom hv (sucHL hl)                       -- the code cell is live
   → find-thunk prog ℓ ≡ just j               -- …and names a body
-  → (lo' : ℕ) (lo'≤lo : lo' ≤ C.lo hv) (front-lo' : C.hfront hv ≤ lo')
+  → (lo' : ℕ) (lo'≤lo : lo' ≤ C.FlatCorrespondence.HeapView.lo hv) (front-lo' : C.FlatCorrespondence.HeapView.hfront hv ≤ lo')
   → lo' ≤ X.readReg (xregs s) esp ∸ slot-size
   → slot-size ≤ X.readReg (xregs s) esp      -- room for the return address
   -- (the range premise is riscv64's — `call` reserves the slot in hardware here)
@@ -956,14 +963,14 @@ block-step-call : ∀ {hv : HeapView} prog fs s hl ℓ j → CompiledCorr hv pro
   -- head, so the one it pushes onto must be the stack-cell row this step
   -- carries across. The engine derives it from `run-link-at-thunk`.
   → flink fs ≡ nothing
-  → BlockStepAt hv (C.descend-view hv lo' lo'≤lo front-lo') prog fs s instr-call-closure
+  → BlockStepAt hv (C.FlatCorrespondence.descend-view hv lo' lo'≤lo front-lo') prog fs s instr-call-closure
 block-step-call {hv} prog fs s hl ℓ j cc h ft ceq heq live fteq lo' lo'≤lo front-lo' lo'≤esp fits esp<mod no-link =
   post , exec-eq , record { dataCorr = dataPost ; pc-off = pco' ; ret-eq = retPost
                           ; code-eq = code-eq cc }
   where
     dc = dataCorr cc ; po = pc-off cc
     halt-s : X.State.halted s ≡ false
-    halt-s = trans (C.halt-eq dc) h
+    halt-s = trans (C.FlatCorrespondence.FlatCorr.halt-eq dc) h
     fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s)
               ≡ just (call (mem (base+disp ebx slot-size)))
     fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
@@ -971,15 +978,15 @@ block-step-call {hv} prog fs s hl ℓ j cc h ft ceq heq live fteq lo' lo'≤lo f
     -- THE TARGET: `%ebx` is the closure pointer, its second cell is the code
     -- address, and that address is the body's index.
     r12-val : X.readReg (xregs s) ebx ≡ haddr hv hl
-    r12-val = trans (C.clos-eq dc) (cong (C.enc-sv hv) ceq)
+    r12-val = trans (C.FlatCorrespondence.FlatCorr.clos-eq dc) (cong (C.FlatCorrespondence.enc-sv hv) ceq)
     cell-addr : X.readReg (xregs s) ebx + slot-size ≡ haddr hv (sucHL hl)
-    cell-addr = trans (cong (_+ slot-size) r12-val) (sym (C.haddr-suc hv hl))
+    cell-addr = trans (cong (_+ slot-size) r12-val) (sym (C.FlatCorrespondence.HeapView.haddr-suc hv hl))
     conc-res : X.find-label (compile-trace prog) (thunk ℓ) ≡ just (blk-off prog j)
     conc-res = find-thunk-corr prog (e-thunk ℓ) 0 j fteq
     rd : X.readMem (X.State.memory s) (X.effectiveAddr s (base+disp ebx slot-size))
        ≡ just (blk-off prog j)
     rd = trans (cong (X.readMem (X.State.memory s)) cell-addr)
-        (trans (C.heap-eq dc (sucHL hl) heq)
+        (trans (C.FlatCorrespondence.FlatCorr.heap-eq dc (sucHL hl) heq)
                (cong just (code-eq cc ℓ (blk-off prog j) conc-res)))
     retAddr : ℕ
     retAddr = X.State.pc s + 1
@@ -1009,7 +1016,7 @@ block-step-call {hv} prog fs s hl ℓ j cc h ft ceq heq live fteq lo' lo'≤lo f
     -- window END is its own base — the very cell the call wrote.
     newbase : X.readReg (xregs s) esp ∸ slot-size
             ≡ frame-base FS (shift-frame FS (current-frame (falloc fs)) 1)
-    newbase = trans (cong (_∸ slot-size) (C.sp-eq dc))
+    newbase = trans (cong (_∸ slot-size) (C.FlatCorrespondence.FlatCorr.sp-eq dc))
                     (trans (cong (λ w → frame-base FS (current-frame (falloc fs)) ∸ 1 * w)
                                  (sym word-eq))
                            (sym (shift-base FS (current-frame (falloc fs)) 1)))
@@ -1021,13 +1028,13 @@ block-step-call {hv} prog fs s hl ℓ j cc h ft ceq heq live fteq lo' lo'≤lo f
     -- one the body marker uses.
     mid : X.State
     mid = record s { regs = xwriteReg (xregs s) esp (X.readReg (xregs s) esp ∸ slot-size) }
-    dataMid : C.FlatCorr (C.descend-view hv lo' lo'≤lo front-lo') absPost mid
-    dataMid = C.sim-call-frame j fs s mid dc lo' lo'≤lo front-lo' lo'≤esp fits
+    dataMid : C.FlatCorrespondence.FlatCorr (C.FlatCorrespondence.descend-view hv lo' lo'≤lo front-lo') absPost mid
+    dataMid = C.FlatCorrespondence.sim-call-frame j fs s mid dc lo' lo'≤lo front-lo' lo'≤esp fits
                 (C.sets-role-x86 s role-sp _ _ _)
-    gap-post : C.GapNext (frame-base FS (shift-frame FS (current-frame (falloc fs)) 1) + slots 0)
-                         (C.frames-of (falloc fs))
+    gap-post : C.FlatCorrespondence.GapNext (frame-base FS (shift-frame FS (current-frame (falloc fs)) 1) + slots 0)
+                         (C.FlatCorrespondence.frames-of (falloc fs))
     gap-post = trans (cong (_+ slot-size) (trans (+-identityʳ _) (sym newbase)))
-                     (trans (m∸n+n≡m fits) (C.sp-eq dc))
+                     (trans (m∸n+n≡m fits) (C.FlatCorrespondence.FlatCorr.sp-eq dc))
     mem-post : X.State.memory post
              ≡ writeMem (X.State.memory mid)
                  (frame-base FS (shift-frame FS (current-frame (falloc fs)) 1) + slots 0)
@@ -1035,27 +1042,27 @@ block-step-call {hv} prog fs s hl ℓ j cc h ft ceq heq live fteq lo' lo'≤lo f
     mem-post = cong (λ a → writeMem (memory s) a retAddr)
                     (trans (sym (+-identityʳ (X.readReg (xregs s) esp ∸ slot-size)))
                            (cong (_+ 0) newbase))
-    dataPost : C.FlatCorr (C.descend-view hv lo' lo'≤lo front-lo')
+    dataPost : C.FlatCorrespondence.FlatCorr (C.FlatCorrespondence.descend-view hv lo' lo'≤lo front-lo')
                           (flat-exec-instr instr-call-closure prog fs) post
-    dataPost = subst (λ z → C.FlatCorr (C.descend-view hv lo' lo'≤lo front-lo') z post)
+    dataPost = subst (λ z → C.FlatCorrespondence.FlatCorr (C.FlatCorrespondence.descend-view hv lo' lo'≤lo front-lo') z post)
                      (sym step-eq)
-                     (C.corr-store-gap absPost mid post retAddr dataMid
+                     (C.FlatCorrespondence.corr-store-gap absPost mid post retAddr dataMid
                         (λ r → refl) refl mem-post gap-post)
     pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr instr-call-closure prog fs))
     pco' = cong (λ z → blk-off prog (fpc z)) (sym step-eq)
     ret-val : retAddr ≡ blk-off prog (suc (fpc fs))
     ret-val = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) instr-call-closure ft))
     w<base : X.readReg (xregs s) esp ∸ slot-size < frame-base FS (current-frame (falloc fs))
-    w<base = subst (X.readReg (xregs s) esp ∸ slot-size <_) (C.sp-eq dc)
+    w<base = subst (X.readReg (xregs s) esp ∸ slot-size <_) (C.FlatCorrespondence.FlatCorr.sp-eq dc)
                    (subst (suc (X.readReg (xregs s) esp ∸ slot-size) ≤_) (m∸n+n≡m fits)
                           (m<m+n (X.readReg (xregs s) esp ∸ slot-size) (s≤s z≤n)))
-    retPost : C.RetAddrs (blk-off prog) (X.State.memory post) (x86-32-link-claim post)
+    retPost : C.FlatCorrespondence.RetAddrs (blk-off prog) (X.State.memory post) (x86-32-link-claim post)
                          (flink (flat-exec-instr instr-call-closure prog fs))
-                         (C.frames-of (falloc (flat-exec-instr instr-call-closure prog fs)))
+                         (C.FlatCorrespondence.frames-of (falloc (flat-exec-instr instr-call-closure prog fs)))
                          (fret (flat-exec-instr instr-call-closure prog fs))
-    retPost = subst (λ z → C.RetAddrs (blk-off prog) (X.State.memory post)
+    retPost = subst (λ z → C.FlatCorrespondence.RetAddrs (blk-off prog) (X.State.memory post)
                              (x86-32-link-claim post) (flink z)
-                             (C.frames-of (falloc z)) (fret z))
+                             (C.FlatCorrespondence.frames-of (falloc z)) (fret z))
                     (sym step-eq)
                     ( head-cell , gap , tail )
       where
@@ -1065,26 +1072,26 @@ block-step-call {hv} prog fs s hl ℓ j cc h ft ceq heq live fteq lo' lo'≤lo f
                     ≡ just (blk-off prog (suc (fpc fs)))
         head-cell = trans (cong (λ a → X.readMem (X.State.memory post) a)
                                (trans (+-identityʳ _) (sym newbase)))
-                          (trans (C.read-write-hit (memory s) waddr retAddr) (cong just ret-val))
-        gap : C.GapNext (frame-base FS (shift-frame FS (current-frame (falloc fs)) 1) + slots 0)
-                        (C.frames-of (falloc fs))
+                          (trans (C.FlatCorrespondence.read-write-hit (memory s) waddr retAddr) (cong just ret-val))
+        gap : C.FlatCorrespondence.GapNext (frame-base FS (shift-frame FS (current-frame (falloc fs)) 1) + slots 0)
+                        (C.FlatCorrespondence.frames-of (falloc fs))
         gap = trans (cong (_+ slot-size) (trans (+-identityʳ _) (sym newbase)))
-                    (trans (m∸n+n≡m fits) (C.sp-eq dc))
-        tail : C.RetAddrs (blk-off prog) (X.State.memory post) (x86-32-link-claim post)
-                          nothing (C.frames-of (falloc fs)) (fret fs)
-        tail = C.ret-agree-above (blk-off prog) (memory s) (X.State.memory post)
+                    (trans (m∸n+n≡m fits) (C.FlatCorrespondence.FlatCorr.sp-eq dc))
+        tail : C.FlatCorrespondence.RetAddrs (blk-off prog) (X.State.memory post) (x86-32-link-claim post)
+                          nothing (C.FlatCorrespondence.frames-of (falloc fs)) (fret fs)
+        tail = C.FlatCorrespondence.ret-agree-above (blk-off prog) (memory s) (X.State.memory post)
                  (x86-32-link-claim s) (x86-32-link-claim post) nothing
                  (stackMem (floc fs)) (frame-base FS (current-frame (falloc fs)))
-                 (C.frames-of (falloc fs)) (fret fs)
-                 (λ a le → C.read-write-miss (memory s) waddr retAddr a
+                 (C.FlatCorrespondence.frames-of (falloc fs)) (fret fs)
+                 (λ a le → C.FlatCorrespondence.read-write-miss (memory s) waddr retAddr a
                              (λ eq → <⇒≢ (<-≤-trans w<base le) (sym eq)))
-                 (λ a v le p → trans (C.read-write-miss (memory s) waddr retAddr a
+                 (λ a v le p → trans (C.FlatCorrespondence.read-write-miss (memory s) waddr retAddr a
                                         (λ eq → <⇒≢ (<-≤-trans w<base le) (sym eq))) p)
-                 (C.windows-reanchor (C.lo hv) (frame-base FS (current-frame (falloc fs)))
+                 (C.FlatCorrespondence.windows-reanchor (C.FlatCorrespondence.HeapView.lo hv) (frame-base FS (current-frame (falloc fs)))
                     (current-frame (falloc fs)) (frame-slots (falloc fs))
-                    (saved-frames (falloc fs)) ≤-refl (C.stack-eq dc))
-                 (subst (λ z → C.RetAddrs (blk-off prog) (memory s) (x86-32-link-claim s) z
-                                 (C.frames-of (falloc fs)) (fret fs))
+                    (saved-frames (falloc fs)) ≤-refl (C.FlatCorrespondence.FlatCorr.stack-eq dc))
+                 (subst (λ z → C.FlatCorrespondence.RetAddrs (blk-off prog) (memory s) (x86-32-link-claim s) z
+                                 (C.FlatCorrespondence.frames-of (falloc fs)) (fret fs))
                         no-link (ret-eq cc))
 
 ------------------------------------------------------------------------
@@ -1095,7 +1102,7 @@ block-step-call-fn : ∀ {hv : HeapView} prog fs s (f : CanonicalName) j → Com
   → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-ctrl (c-call-fn f))
   → find-fn prog f ≡ just j                  -- the function's entry
-  → (lo' : ℕ) (lo'≤lo : lo' ≤ C.lo hv) (front-lo' : C.hfront hv ≤ lo')
+  → (lo' : ℕ) (lo'≤lo : lo' ≤ C.FlatCorrespondence.HeapView.lo hv) (front-lo' : C.FlatCorrespondence.HeapView.hfront hv ≤ lo')
   → lo' ≤ X.readReg (xregs s) esp ∸ slot-size
   → slot-size ≤ X.readReg (xregs s) esp      -- room for the return address
   -- (the range premise is riscv64's — `call` reserves the slot in hardware here)
@@ -1104,14 +1111,14 @@ block-step-call-fn : ∀ {hv : HeapView} prog fs s (f : CanonicalName) j → Com
   -- head, so the one it pushes onto must be the stack-cell row this step
   -- carries across. The engine derives it from `run-link-at-thunk`.
   → flink fs ≡ nothing
-  → BlockStepAt hv (C.descend-view hv lo' lo'≤lo front-lo') prog fs s (instr-ctrl (c-call-fn f))
+  → BlockStepAt hv (C.FlatCorrespondence.descend-view hv lo' lo'≤lo front-lo') prog fs s (instr-ctrl (c-call-fn f))
 block-step-call-fn {hv} prog fs s f j cc h ft fteq lo' lo'≤lo front-lo' lo'≤esp fits esp<mod no-link =
   post , exec-eq , record { dataCorr = dataPost ; pc-off = pco' ; ret-eq = retPost
                           ; code-eq = code-eq cc }
   where
     dc = dataCorr cc ; po = pc-off cc
     halt-s : X.State.halted s ≡ false
-    halt-s = trans (C.halt-eq dc) h
+    halt-s = trans (C.FlatCorrespondence.FlatCorr.halt-eq dc) h
     fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s)
               ≡ just (call-l (callee (e-fn f)))
     fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
@@ -1144,7 +1151,7 @@ block-step-call-fn {hv} prog fs s f j cc h ft fteq lo' lo'≤lo front-lo' lo'≤
     -- window END is its own base — the very cell the call wrote.
     newbase : X.readReg (xregs s) esp ∸ slot-size
             ≡ frame-base FS (shift-frame FS (current-frame (falloc fs)) 1)
-    newbase = trans (cong (_∸ slot-size) (C.sp-eq dc))
+    newbase = trans (cong (_∸ slot-size) (C.FlatCorrespondence.FlatCorr.sp-eq dc))
                     (trans (cong (λ w → frame-base FS (current-frame (falloc fs)) ∸ 1 * w)
                                  (sym word-eq))
                            (sym (shift-base FS (current-frame (falloc fs)) 1)))
@@ -1156,13 +1163,13 @@ block-step-call-fn {hv} prog fs s f j cc h ft fteq lo' lo'≤lo front-lo' lo'≤
     -- one the body marker uses.
     mid : X.State
     mid = record s { regs = xwriteReg (xregs s) esp (X.readReg (xregs s) esp ∸ slot-size) }
-    dataMid : C.FlatCorr (C.descend-view hv lo' lo'≤lo front-lo') absPost mid
-    dataMid = C.sim-call-frame j fs s mid dc lo' lo'≤lo front-lo' lo'≤esp fits
+    dataMid : C.FlatCorrespondence.FlatCorr (C.FlatCorrespondence.descend-view hv lo' lo'≤lo front-lo') absPost mid
+    dataMid = C.FlatCorrespondence.sim-call-frame j fs s mid dc lo' lo'≤lo front-lo' lo'≤esp fits
                 (C.sets-role-x86 s role-sp _ _ _)
-    gap-post : C.GapNext (frame-base FS (shift-frame FS (current-frame (falloc fs)) 1) + slots 0)
-                         (C.frames-of (falloc fs))
+    gap-post : C.FlatCorrespondence.GapNext (frame-base FS (shift-frame FS (current-frame (falloc fs)) 1) + slots 0)
+                         (C.FlatCorrespondence.frames-of (falloc fs))
     gap-post = trans (cong (_+ slot-size) (trans (+-identityʳ _) (sym newbase)))
-                     (trans (m∸n+n≡m fits) (C.sp-eq dc))
+                     (trans (m∸n+n≡m fits) (C.FlatCorrespondence.FlatCorr.sp-eq dc))
     mem-post : X.State.memory post
              ≡ writeMem (X.State.memory mid)
                  (frame-base FS (shift-frame FS (current-frame (falloc fs)) 1) + slots 0)
@@ -1170,27 +1177,27 @@ block-step-call-fn {hv} prog fs s f j cc h ft fteq lo' lo'≤lo front-lo' lo'≤
     mem-post = cong (λ a → writeMem (memory s) a retAddr)
                     (trans (sym (+-identityʳ (X.readReg (xregs s) esp ∸ slot-size)))
                            (cong (_+ 0) newbase))
-    dataPost : C.FlatCorr (C.descend-view hv lo' lo'≤lo front-lo')
+    dataPost : C.FlatCorrespondence.FlatCorr (C.FlatCorrespondence.descend-view hv lo' lo'≤lo front-lo')
                           (flat-exec-instr (instr-ctrl (c-call-fn f)) prog fs) post
-    dataPost = subst (λ z → C.FlatCorr (C.descend-view hv lo' lo'≤lo front-lo') z post)
+    dataPost = subst (λ z → C.FlatCorrespondence.FlatCorr (C.FlatCorrespondence.descend-view hv lo' lo'≤lo front-lo') z post)
                      (sym step-eq)
-                     (C.corr-store-gap absPost mid post retAddr dataMid
+                     (C.FlatCorrespondence.corr-store-gap absPost mid post retAddr dataMid
                         (λ r → refl) refl mem-post gap-post)
     pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (instr-ctrl (c-call-fn f)) prog fs))
     pco' = cong (λ z → blk-off prog (fpc z)) (sym step-eq)
     ret-val : retAddr ≡ blk-off prog (suc (fpc fs))
     ret-val = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) (instr-ctrl (c-call-fn f)) ft))
     w<base : X.readReg (xregs s) esp ∸ slot-size < frame-base FS (current-frame (falloc fs))
-    w<base = subst (X.readReg (xregs s) esp ∸ slot-size <_) (C.sp-eq dc)
+    w<base = subst (X.readReg (xregs s) esp ∸ slot-size <_) (C.FlatCorrespondence.FlatCorr.sp-eq dc)
                    (subst (suc (X.readReg (xregs s) esp ∸ slot-size) ≤_) (m∸n+n≡m fits)
                           (m<m+n (X.readReg (xregs s) esp ∸ slot-size) (s≤s z≤n)))
-    retPost : C.RetAddrs (blk-off prog) (X.State.memory post) (x86-32-link-claim post)
+    retPost : C.FlatCorrespondence.RetAddrs (blk-off prog) (X.State.memory post) (x86-32-link-claim post)
                          (flink (flat-exec-instr (instr-ctrl (c-call-fn f)) prog fs))
-                         (C.frames-of (falloc (flat-exec-instr (instr-ctrl (c-call-fn f)) prog fs)))
+                         (C.FlatCorrespondence.frames-of (falloc (flat-exec-instr (instr-ctrl (c-call-fn f)) prog fs)))
                          (fret (flat-exec-instr (instr-ctrl (c-call-fn f)) prog fs))
-    retPost = subst (λ z → C.RetAddrs (blk-off prog) (X.State.memory post)
+    retPost = subst (λ z → C.FlatCorrespondence.RetAddrs (blk-off prog) (X.State.memory post)
                              (x86-32-link-claim post) (flink z)
-                             (C.frames-of (falloc z)) (fret z))
+                             (C.FlatCorrespondence.frames-of (falloc z)) (fret z))
                     (sym step-eq)
                     ( head-cell , gap , tail )
       where
@@ -1200,26 +1207,26 @@ block-step-call-fn {hv} prog fs s f j cc h ft fteq lo' lo'≤lo front-lo' lo'≤
                     ≡ just (blk-off prog (suc (fpc fs)))
         head-cell = trans (cong (λ a → X.readMem (X.State.memory post) a)
                                (trans (+-identityʳ _) (sym newbase)))
-                          (trans (C.read-write-hit (memory s) waddr retAddr) (cong just ret-val))
-        gap : C.GapNext (frame-base FS (shift-frame FS (current-frame (falloc fs)) 1) + slots 0)
-                        (C.frames-of (falloc fs))
+                          (trans (C.FlatCorrespondence.read-write-hit (memory s) waddr retAddr) (cong just ret-val))
+        gap : C.FlatCorrespondence.GapNext (frame-base FS (shift-frame FS (current-frame (falloc fs)) 1) + slots 0)
+                        (C.FlatCorrespondence.frames-of (falloc fs))
         gap = trans (cong (_+ slot-size) (trans (+-identityʳ _) (sym newbase)))
-                    (trans (m∸n+n≡m fits) (C.sp-eq dc))
-        tail : C.RetAddrs (blk-off prog) (X.State.memory post) (x86-32-link-claim post)
-                          nothing (C.frames-of (falloc fs)) (fret fs)
-        tail = C.ret-agree-above (blk-off prog) (memory s) (X.State.memory post)
+                    (trans (m∸n+n≡m fits) (C.FlatCorrespondence.FlatCorr.sp-eq dc))
+        tail : C.FlatCorrespondence.RetAddrs (blk-off prog) (X.State.memory post) (x86-32-link-claim post)
+                          nothing (C.FlatCorrespondence.frames-of (falloc fs)) (fret fs)
+        tail = C.FlatCorrespondence.ret-agree-above (blk-off prog) (memory s) (X.State.memory post)
                  (x86-32-link-claim s) (x86-32-link-claim post) nothing
                  (stackMem (floc fs)) (frame-base FS (current-frame (falloc fs)))
-                 (C.frames-of (falloc fs)) (fret fs)
-                 (λ a le → C.read-write-miss (memory s) waddr retAddr a
+                 (C.FlatCorrespondence.frames-of (falloc fs)) (fret fs)
+                 (λ a le → C.FlatCorrespondence.read-write-miss (memory s) waddr retAddr a
                              (λ eq → <⇒≢ (<-≤-trans w<base le) (sym eq)))
-                 (λ a v le p → trans (C.read-write-miss (memory s) waddr retAddr a
+                 (λ a v le p → trans (C.FlatCorrespondence.read-write-miss (memory s) waddr retAddr a
                                         (λ eq → <⇒≢ (<-≤-trans w<base le) (sym eq))) p)
-                 (C.windows-reanchor (C.lo hv) (frame-base FS (current-frame (falloc fs)))
+                 (C.FlatCorrespondence.windows-reanchor (C.FlatCorrespondence.HeapView.lo hv) (frame-base FS (current-frame (falloc fs)))
                     (current-frame (falloc fs)) (frame-slots (falloc fs))
-                    (saved-frames (falloc fs)) ≤-refl (C.stack-eq dc))
-                 (subst (λ z → C.RetAddrs (blk-off prog) (memory s) (x86-32-link-claim s) z
-                                 (C.frames-of (falloc fs)) (fret fs))
+                    (saved-frames (falloc fs)) ≤-refl (C.FlatCorrespondence.FlatCorr.stack-eq dc))
+                 (subst (λ z → C.FlatCorrespondence.RetAddrs (blk-off prog) (memory s) (x86-32-link-claim s) z
+                                 (C.FlatCorrespondence.frames-of (falloc fs)) (fret fs))
                         no-link (ret-eq cc))
 
 
@@ -1274,7 +1281,7 @@ block-step-c-ret {hv} prog fs s b rpc rest f₀ b₀ frs cc h ft req beq feq no-
                            (m≤n+m (slots b) slot-size))
                         no-wrap-suc
     halt-s : X.State.halted s ≡ false
-    halt-s = trans (C.halt-eq dc) h
+    halt-s = trans (C.FlatCorrespondence.FlatCorr.halt-eq dc) h
     -- step 1: the frame release
     fetch-add : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (add (reg esp) (imm (slots b)))
     fetch-add = trans (cong (X.fetch (compile-trace prog)) po)
@@ -1297,16 +1304,16 @@ block-step-c-ret {hv} prog fs s b rpc rest f₀ b₀ frs cc h ft req beq feq no-
                      wrap-free
                      (step-add-ri {compile-trace prog} {s} {esp} {slots b} fetch-add)
     -- THE COMPONENT, projected at the cons shape of `fret`
-    comp : C.RetAddrs (blk-off prog) (X.State.memory s) (x86-32-link-claim s) nothing
+    comp : C.FlatCorrespondence.RetAddrs (blk-off prog) (X.State.memory s) (x86-32-link-claim s) nothing
                       ((current-frame (falloc fs) , frame-slots (falloc fs)) ∷ saved-frames (falloc fs))
                       (rpc ∷ rest)
-    comp = subst₂ (λ lk rl → C.RetAddrs (blk-off prog) (X.State.memory s)
-                               (x86-32-link-claim s) lk (C.frames-of (falloc fs)) rl)
+    comp = subst₂ (λ lk rl → C.FlatCorrespondence.RetAddrs (blk-off prog) (X.State.memory s)
+                               (x86-32-link-claim s) lk (C.FlatCorrespondence.frames-of (falloc fs)) rl)
                   no-link req (ret-eq cc)
     -- …and the address it speaks about IS where the `add` left `%esp`
     addr-eq : X.readReg (X.State.regs post-add) esp
             ≡ frame-base FS (current-frame (falloc fs)) + slots (frame-slots (falloc fs))
-    addr-eq = trans (cong (_+ slots b) (C.sp-eq dc)) (cong (λ z → frame-base FS (current-frame (falloc fs)) + slots z) beq)
+    addr-eq = trans (cong (_+ slots b) (C.FlatCorrespondence.FlatCorr.sp-eq dc)) (cong (λ z → frame-base FS (current-frame (falloc fs)) + slots z) beq)
     rd : X.readMem (X.State.memory post-add) (X.readReg (X.State.regs post-add) esp)
        ≡ just (blk-off prog rpc)
     rd = trans (cong (X.readMem (X.State.memory s)) addr-eq) (proj₁ comp)
@@ -1327,7 +1334,7 @@ block-step-c-ret {hv} prog fs s b rpc rest f₀ b₀ frs cc h ft req beq feq no-
     -- the frame list's shape.
     gap : frame-base FS (current-frame (falloc fs)) + slots (frame-slots (falloc fs)) + slot-size
         ≡ frame-base FS f₀
-    gap = subst (λ fr → C.GapNext (frame-base FS (current-frame (falloc fs))
+    gap = subst (λ fr → C.FlatCorrespondence.GapNext (frame-base FS (current-frame (falloc fs))
                                    + slots (frame-slots (falloc fs))) fr)
                 feq (proj₁ (proj₂ comp))
     base-leave : saved-frames (falloc fs) ≡ (f₀ , b₀) ∷ frs
@@ -1336,24 +1343,24 @@ block-step-c-ret {hv} prog fs s b rpc rest f₀ b₀ frs cc h ft req beq feq no-
     restores : X.readReg (xregs s) esp + slots b + slot-size
              ≡ frame-base FS (current-frame (leave-frame (falloc fs)))
     restores = trans (cong (_+ slot-size) addr-eq) (trans gap (sym (base-leave feq)))
-    dataPost : C.FlatCorr hv (flat-exec-instr (instr-ctrl (c-ret b)) prog fs) post-ret
-    dataPost = C.sim-ret b rpc rest fs s _ dc req restores (C.sets-role-x86 s role-sp _ _ _)
+    dataPost : C.FlatCorrespondence.FlatCorr hv (flat-exec-instr (instr-ctrl (c-ret b)) prog fs) post-ret
+    dataPost = C.FlatCorrespondence.sim-ret b rpc rest fs s _ dc req restores (C.sets-role-x86 s role-sp _ _ _)
     pco' : X.State.pc post-ret ≡ blk-off prog (fpc (flat-exec-instr (instr-ctrl (c-ret b)) prog fs))
     pco' = cong (blk-off prog) (sym (do-ret-pc-∷ fs rpc rest req))
-    retPost : C.RetAddrs (blk-off prog) (X.State.memory post-ret) (x86-32-link-claim post-ret)
+    retPost : C.FlatCorrespondence.RetAddrs (blk-off prog) (X.State.memory post-ret) (x86-32-link-claim post-ret)
                          (flink (flat-exec-instr (instr-ctrl (c-ret b)) prog fs))
-                         (C.frames-of (falloc (flat-exec-instr (instr-ctrl (c-ret b)) prog fs)))
+                         (C.FlatCorrespondence.frames-of (falloc (flat-exec-instr (instr-ctrl (c-ret b)) prog fs)))
                          (fret (flat-exec-instr (instr-ctrl (c-ret b)) prog fs))
-    retPost = subst (λ lk → C.RetAddrs (blk-off prog) (X.State.memory s) (x86-32-link-claim s) lk
-                              (C.frames-of (falloc (flat-exec-instr (instr-ctrl (c-ret b)) prog fs)))
+    retPost = subst (λ lk → C.FlatCorrespondence.RetAddrs (blk-off prog) (X.State.memory s) (x86-32-link-claim s) lk
+                              (C.FlatCorrespondence.frames-of (falloc (flat-exec-instr (instr-ctrl (c-ret b)) prog fs)))
                               (fret (flat-exec-instr (instr-ctrl (c-ret b)) prog fs)))
                     (sym lk-post)
-                    (subst₂ (C.RetAddrs (blk-off prog) (X.State.memory s) (x86-32-link-claim s) nothing)
-                            (sym (trans (cong C.frames-of (do-ret-alloc fs)) (frames-leave feq)))
+                    (subst₂ (C.FlatCorrespondence.RetAddrs (blk-off prog) (X.State.memory s) (x86-32-link-claim s) nothing)
+                            (sym (trans (cong C.FlatCorrespondence.frames-of (do-ret-alloc fs)) (frames-leave feq)))
                             (sym (do-ret-fret-∷ fs rpc rest req))
                             (proj₂ (proj₂ comp)))
       where frames-leave : saved-frames (falloc fs) ≡ (f₀ , b₀) ∷ frs
-                         → C.frames-of (leave-frame (falloc fs)) ≡ saved-frames (falloc fs)
+                         → C.FlatCorrespondence.frames-of (leave-frame (falloc fs)) ≡ saved-frames (falloc fs)
             frames-leave e rewrite e = refl
             -- a RETURN threads the link (`flinkView`), and it was `nothing`
             lk-post : flink (flat-exec-instr (instr-ctrl (c-ret b)) prog fs) ≡ nothing
@@ -1371,9 +1378,9 @@ block-step-dealloc-stack : ∀ {hv : HeapView} prog fs s n → CompiledCorr hv p
   -- …and the return picture, a premise for the same reason as
   -- `block-step-alloc-stack`'s: this POPS a frame, and the instruction is
   -- unemittable, so no caller exists to discharge it.
-  → C.RetAddrs (blk-off prog) (X.State.memory s) (x86-32-link-claim s)
+  → C.FlatCorrespondence.RetAddrs (blk-off prog) (X.State.memory s) (x86-32-link-claim s)
                (flink (flat-exec-instr (instr-dealloc-stack n) prog fs))
-               (C.frames-of (falloc (flat-exec-instr (instr-dealloc-stack n) prog fs)))
+               (C.FlatCorrespondence.frames-of (falloc (flat-exec-instr (instr-dealloc-stack n) prog fs)))
                (fret (flat-exec-instr (instr-dealloc-stack n) prog fs))
   -- THE ADDRESS SPACE DOES NOT WRAP (plan 0.70 phase C), as in
   -- `block-step-c-ret`. `restores` just above already says this sum IS the
@@ -1386,7 +1393,7 @@ block-step-dealloc-stack {hv} prog fs s n cc h ft restores retPost no-wrap =
   where
     dc = dataCorr cc ; po = pc-off cc
     halt-s : X.State.halted s ≡ false
-    halt-s = trans (C.halt-eq dc) h
+    halt-s = trans (C.FlatCorrespondence.FlatCorr.halt-eq dc) h
     fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (add (reg esp) (imm (slots n)))
     fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
                       (fetch-block-head prog (fpc fs) (instr-dealloc-stack n) ft)
@@ -1409,8 +1416,8 @@ block-step-dealloc-stack {hv} prog fs s n cc h ft restores retPost no-wrap =
                 (step-add-ri {compile-trace prog} {s} {esp} {slots n} fetch-x86)
     exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
-    dataPost : C.FlatCorr hv (flat-exec-instr (instr-dealloc-stack n) prog fs) post
-    dataPost = C.sim-dealloc-stack n fs s _ dc restores (C.sets-role-x86 s role-sp _ _ _)
+    dataPost : C.FlatCorrespondence.FlatCorr hv (flat-exec-instr (instr-dealloc-stack n) prog fs) post
+    dataPost = C.FlatCorrespondence.sim-dealloc-stack n fs s _ dc restores (C.sets-role-x86 s role-sp _ _ _)
     pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (instr-dealloc-stack n) prog fs))
     pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) (instr-dealloc-stack n) ft))
 
@@ -1445,11 +1452,11 @@ block-step-load-const : ∀ {hv : HeapView} prog fs s (v : ℤ) → CompiledCorr
   → AbstractExec.lit-value {FS} fits-int v < X.W.modulus
   → BlockStep hv prog fs s (instr-load-const fits-int v)
 block-step-load-const {hv} prog fs s v cc h ft fits =
-  post , exec-eq , record { dataCorr = C.sim-load-const v fs s _ dc sr ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
+  post , exec-eq , record { dataCorr = C.FlatCorrespondence.sim-load-const v fs s _ dc sr ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
   where
     dc = dataCorr cc ; po = pc-off cc
     halt-s : X.State.halted s ≡ false
-    halt-s = trans (C.halt-eq dc) h
+    halt-s = trans (C.FlatCorrespondence.FlatCorr.halt-eq dc) h
     fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (mov (reg eax) (imm (IntW.fromℤ v)))
     fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
                       (fetch-block-head prog (fpc fs) (instr-load-const fits-int v) ft)
@@ -1458,8 +1465,8 @@ block-step-load-const {hv} prog fs s v cc h ft fits =
     -- the premise speaks of `8 * frame-word FS`; the emitter of 32
     fits32 : IntW.fromℤ v < X.W.modulus
     fits32 = subst (λ b → OnceWord.Width.fromℤ b v < X.W.modulus) bits-eq fits
-    sr : C.SetsRole s post role-out (C.lit-word (AbstractExec.lit-value {FS} fits-int v))
-    sr = subst (λ b → C.SetsRole s post role-out (C.lit-word (OnceWord.Width.fromℤ b v)))
+    sr : C.FlatCorrespondence.SetsRole s post role-out (C.FlatCorrespondence.lit-word (AbstractExec.lit-value {FS} fits-int v))
+    sr = subst (λ b → C.FlatCorrespondence.SetsRole s post role-out (C.FlatCorrespondence.lit-word (OnceWord.Width.fromℤ b v)))
                (sym bits-eq)
                (C.sets-role-x86 s role-out _ _ _)
     snh : X.step-not-halted (compile-trace prog) s ≡ just post
@@ -1492,11 +1499,11 @@ block-step-load-const-float : ∀ {hv : HeapView} prog fs s (v : Decimal) → Co
   → AbstractExec.lit-value {FS} fits-float v < X.W.modulus
   → BlockStep hv prog fs s (instr-load-const fits-float v)
 block-step-load-const-float {hv} prog fs s v cc h ft fits =
-  post , exec-eq , record { dataCorr = C.sim-load-const-float v fs s _ dc sr ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
+  post , exec-eq , record { dataCorr = C.FlatCorrespondence.sim-load-const-float v fs s _ dc sr ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
   where
     dc = dataCorr cc ; po = pc-off cc
     halt-s : X.State.halted s ≡ false
-    halt-s = trans (C.halt-eq dc) h
+    halt-s = trans (C.FlatCorrespondence.FlatCorr.halt-eq dc) h
     fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (mov (reg eax) (imm (round binary32 v)))
     fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
                       (fetch-block-head prog (fpc fs) (instr-load-const fits-float v) ft)
@@ -1522,8 +1529,8 @@ block-step-load-const-float {hv} prog fs s v cc h ft fits =
     -- `rewrite`: `rewrite` would generalise `float-format FS` over the whole
     -- type — including `post`, which does not mention it — and the abstraction
     -- fails. Transporting the FORMAT alone under a stated motive is exact.
-    sr : C.SetsRole s post role-out (C.lit-word (AbstractExec.lit-value {FS} fits-float v))
-    sr = subst (λ F → C.SetsRole s post role-out (C.lit-word (round F v)))
+    sr : C.FlatCorrespondence.SetsRole s post role-out (C.FlatCorrespondence.lit-word (AbstractExec.lit-value {FS} fits-float v))
+    sr = subst (λ F → C.FlatCorrespondence.SetsRole s post role-out (C.FlatCorrespondence.lit-word (round F v)))
                (sym fmt-eq)
                (C.sets-role-x86 s role-out _ _ _)
 
@@ -1533,12 +1540,12 @@ block-step-load-code-addr : ∀ {hv : HeapView} prog fs s n j → CompiledCorr h
   → X.find-label (compile-trace prog) (thunk n) ≡ just j
   → BlockStep hv prog fs s (instr-load-code-addr n)
 block-step-load-code-addr {hv} prog fs s n j cc h ft fl =
-  post , exec-eq , record { dataCorr = C.sim-load-code-addr n j fs s _ dc (code-eq cc n j fl) (C.sets-role-x86 s role-out _ _ _)
+  post , exec-eq , record { dataCorr = C.FlatCorrespondence.sim-load-code-addr n j fs s _ dc (code-eq cc n j fl) (C.sets-role-x86 s role-out _ _ _)
                           ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
   where
     dc = dataCorr cc ; po = pc-off cc
     halt-s : X.State.halted s ≡ false
-    halt-s = trans (C.halt-eq dc) h
+    halt-s = trans (C.FlatCorrespondence.FlatCorr.halt-eq dc) h
     fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (mov-code eax n)
     fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
                       (fetch-block-head prog (fpc fs) (instr-load-code-addr n) ft)
@@ -1557,11 +1564,11 @@ block-step-save-closure-reg : ∀ {hv : HeapView} prog fs s → CompiledCorr hv 
   → fetch prog (fpc fs) ≡ just instr-save-closure-reg
   → BlockStep hv prog fs s instr-save-closure-reg
 block-step-save-closure-reg {hv} prog fs s cc h ft =
-  post , exec-eq , record { dataCorr = C.sim-save-closure-reg fs s _ dc (C.sets-role-x86 s role-clos _ _ _) ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
+  post , exec-eq , record { dataCorr = C.FlatCorrespondence.sim-save-closure-reg fs s _ dc (C.sets-role-x86 s role-clos _ _ _) ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
   where
     dc = dataCorr cc ; po = pc-off cc
     halt-s : X.State.halted s ≡ false
-    halt-s = trans (C.halt-eq dc) h
+    halt-s = trans (C.FlatCorrespondence.FlatCorr.halt-eq dc) h
     fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (mov (reg ebx) (reg ecx))
     fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
                       (fetch-block-head prog (fpc fs) instr-save-closure-reg ft)
@@ -1589,7 +1596,7 @@ block-step-worklist-push {hv} prog fs s slot cc h ft slot<ns disj =
   where
     dc = dataCorr cc ; po = pc-off cc
     halt-s : X.State.halted s ≡ false
-    halt-s = trans (C.halt-eq dc) h
+    halt-s = trans (C.FlatCorrespondence.FlatCorr.halt-eq dc) h
     fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s)
               ≡ just (mov (mem (base+disp esp (slot-to-disp slot))) (reg eax))
     fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
@@ -1604,15 +1611,15 @@ block-step-worklist-push {hv} prog fs s slot cc h ft slot<ns disj =
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
     post-eq : post ≡ mkstate (xregs s)
                              (writeMem (memory s) (X.readReg (xregs s) esp + slot-to-disp slot)
-                                       (C.enc-sv hv (readReg (regs (floc fs)) Output)))
+                                       (C.FlatCorrespondence.enc-sv hv (readReg (regs (floc fs)) Output)))
                              (flags s) (pc s + 1) (xhalted s)
     post-eq = cong (λ v → mkstate (xregs s)
                             (writeMem (memory s) (X.readReg (xregs s) esp + slot-to-disp slot) v)
                             (flags s) (pc s + 1) (xhalted s))
-                   (C.out-eq dc)
-    dataPost : C.FlatCorr hv (flat-exec-instr (worklist-push slot) prog fs) post
-    dataPost = subst (C.FlatCorr hv (flat-exec-instr (worklist-push slot) prog fs)) (sym post-eq)
-                     (C.sim-store-at-slot slot fs s _ dc slot<ns disj (C.sets-mem-x86 s _ _ _ _))
+                   (C.FlatCorrespondence.FlatCorr.out-eq dc)
+    dataPost : C.FlatCorrespondence.FlatCorr hv (flat-exec-instr (worklist-push slot) prog fs) post
+    dataPost = subst (C.FlatCorrespondence.FlatCorr hv (flat-exec-instr (worklist-push slot) prog fs)) (sym post-eq)
+                     (C.FlatCorrespondence.sim-store-at-slot slot fs s _ dc slot<ns disj (C.sets-mem-x86 s _ _ _ _))
     pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (worklist-push slot) prog fs))
     pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) (worklist-push slot) ft))
 
@@ -1622,24 +1629,24 @@ block-step-worklist-pop : ∀ {hv : HeapView} prog fs s slot w → CompiledCorr 
   → stackMem (floc fs) (current-frame (falloc fs)) slot ≡ just w
   → BlockStep hv prog fs s (worklist-pop slot)
 block-step-worklist-pop {hv} prog fs s slot w cc h ft slot<ns st-eq =
-  post , exec-eq , record { dataCorr = C.sim-load-from-slot slot w fs s _ dc st-eq (C.sets-role-x86 s role-out _ _ _) ; pc-off = pco'
+  post , exec-eq , record { dataCorr = C.FlatCorrespondence.sim-load-from-slot slot w fs s _ dc st-eq (C.sets-role-x86 s role-out _ _ _) ; pc-off = pco'
                        ; ret-eq = ret-same prog fs (load-from-slot slot) (memory s)
                                      (elfs-frames (stackMem (floc fs) (current-frame (falloc fs)) slot) (floc fs) (falloc fs) , refl , refl) (ret-eq cc)
                        ; code-eq = code-eq cc }
   where
     dc = dataCorr cc ; po = pc-off cc
     halt-s : X.State.halted s ≡ false
-    halt-s = trans (C.halt-eq dc) h
+    halt-s = trans (C.FlatCorrespondence.FlatCorr.halt-eq dc) h
     fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s)
               ≡ just (mov (reg eax) (mem (base+disp esp (slot-to-disp slot))))
     fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
                       (fetch-block-head prog (fpc fs) (worklist-pop slot) ft)
-    rd : X.readMem (memory s) (X.effectiveAddr s (base+disp esp (slot-to-disp slot))) ≡ just (C.enc-sv hv w)
-    rd = C.stack-eq-cur dc slot slot<ns _ st-eq
+    rd : X.readMem (memory s) (X.effectiveAddr s (base+disp esp (slot-to-disp slot))) ≡ just (C.FlatCorrespondence.enc-sv hv w)
+    rd = C.FlatCorrespondence.stack-eq-cur dc slot slot<ns _ st-eq
     post : X.State
-    post = record s { regs = xwriteReg (xregs s) eax (C.enc-sv hv w) ; pc = pc s + 1 }
+    post = record s { regs = xwriteReg (xregs s) eax (C.FlatCorrespondence.enc-sv hv w) ; pc = pc s + 1 }
     snh : X.step-not-halted (compile-trace prog) s ≡ just post
-    snh = step-mov-rm {compile-trace prog} {s} {eax} {base+disp esp (slot-to-disp slot)} {C.enc-sv hv w} fetch-x86 rd
+    snh = step-mov-rm {compile-trace prog} {s} {eax} {base+disp esp (slot-to-disp slot)} {C.FlatCorrespondence.enc-sv hv w} fetch-x86 rd
     exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
     pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (worklist-pop slot) prog fs))
@@ -1660,22 +1667,22 @@ block-step-store-indirect : ∀ {hv : HeapView} prog fs s hl → CompiledCorr hv
   → BlockStep hv prog fs s store-indirect
 block-step-store-indirect {hv} prog fs s hl cc h ft i-eq live-hl guard =
   post , exec-eq , record { dataCorr = dataPost ; pc-off = pco'
-                          ; ret-eq = subst (λ m → C.RetAddrs (blk-off prog) m
+                          ; ret-eq = subst (λ m → C.FlatCorrespondence.RetAddrs (blk-off prog) m
                                                     (λ ad w → m ad ≡ just w) (flink fs)
-                                                    (C.frames-of (falloc fs)) (fret fs))
+                                                    (C.FlatCorrespondence.frames-of (falloc fs)) (fret fs))
                                            (cong₂ (writeMem (memory s)) (sym rdi-val) refl)
                                            (ret-heap-store prog fs s (haddr hv hl) _ cc
-                                              (≤-trans (C.dom-below hv live-hl) (C.front-lo hv)))
+                                              (≤-trans (C.FlatCorrespondence.HeapView.dom-below hv live-hl) (C.FlatCorrespondence.HeapView.front-lo hv)))
                           ; code-eq = code-eq cc }
   where
     dc = dataCorr cc ; po = pc-off cc
     halt-s : X.State.halted s ≡ false
-    halt-s = trans (C.halt-eq dc) h
+    halt-s = trans (C.FlatCorrespondence.FlatCorr.halt-eq dc) h
     fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (mov (mem (base ecx)) (reg eax))
     fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
                       (fetch-block-head prog (fpc fs) store-indirect ft)
     rdi-val : xreadReg (xregs s) ecx ≡ haddr hv hl
-    rdi-val = trans (C.in1-eq dc) (cong (C.enc-sv hv) i-eq)
+    rdi-val = trans (C.FlatCorrespondence.FlatCorr.in1-eq dc) (cong (C.FlatCorrespondence.enc-sv hv) i-eq)
     post : X.State
     post = record s { memory = writeMem (memory s) (X.effectiveAddr s (base ecx)) (xreadReg (xregs s) eax)
                     ; pc = pc s + 1 }
@@ -1684,13 +1691,13 @@ block-step-store-indirect {hv} prog fs s hl cc h ft i-eq live-hl guard =
     exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
     -- bridge post (raw) ≡ sim-post (encoded)
-    post-eq : post ≡ mkstate (xregs s) (writeMem (memory s) (haddr hv hl) (C.enc-sv hv (readReg (regs (floc fs)) Output)))
+    post-eq : post ≡ mkstate (xregs s) (writeMem (memory s) (haddr hv hl) (C.FlatCorrespondence.enc-sv hv (readReg (regs (floc fs)) Output)))
                              (flags s) (pc s + 1) (xhalted s)
     post-eq = cong (λ m → mkstate (xregs s) m (flags s) (pc s + 1) (xhalted s))
-                   (cong₂ (writeMem (memory s)) rdi-val (C.out-eq dc))
-    dataPost : C.FlatCorr hv (flat-exec-instr store-indirect prog fs) post
-    dataPost = subst (C.FlatCorr hv (flat-exec-instr store-indirect prog fs)) (sym post-eq)
-                     (C.sim-store-indirect hl fs s _ dc i-eq live-hl guard (C.sets-mem-x86 s _ _ _ _))
+                   (cong₂ (writeMem (memory s)) rdi-val (C.FlatCorrespondence.FlatCorr.out-eq dc))
+    dataPost : C.FlatCorrespondence.FlatCorr hv (flat-exec-instr store-indirect prog fs) post
+    dataPost = subst (C.FlatCorrespondence.FlatCorr hv (flat-exec-instr store-indirect prog fs)) (sym post-eq)
+                     (C.FlatCorrespondence.sim-store-indirect hl fs s _ dc i-eq live-hl guard (C.sets-mem-x86 s _ _ _ _))
     pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr store-indirect prog fs))
     pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) store-indirect ft))
 
@@ -1705,24 +1712,24 @@ block-step-store-indirect-suc : ∀ {hv : HeapView} prog fs s hl → CompiledCor
   → BlockStep hv prog fs s store-indirect-suc
 block-step-store-indirect-suc {hv} prog fs s hl cc h ft i-eq live-shl guard =
   post , exec-eq , record { dataCorr = dataPost ; pc-off = pco'
-                          ; ret-eq = subst (λ m → C.RetAddrs (blk-off prog) m
+                          ; ret-eq = subst (λ m → C.FlatCorrespondence.RetAddrs (blk-off prog) m
                                                     (λ ad w → m ad ≡ just w) (flink fs)
-                                                    (C.frames-of (falloc fs)) (fret fs))
+                                                    (C.FlatCorrespondence.frames-of (falloc fs)) (fret fs))
                                            (cong₂ (writeMem (memory s)) (sym addr-val) refl)
                                            (ret-heap-store prog fs s (haddr hv (sucHL hl)) _ cc
-                                              (≤-trans (C.dom-below hv live-shl) (C.front-lo hv)))
+                                              (≤-trans (C.FlatCorrespondence.HeapView.dom-below hv live-shl) (C.FlatCorrespondence.HeapView.front-lo hv)))
                           ; code-eq = code-eq cc }
   where
     dc = dataCorr cc ; po = pc-off cc
     halt-s : X.State.halted s ≡ false
-    halt-s = trans (C.halt-eq dc) h
+    halt-s = trans (C.FlatCorrespondence.FlatCorr.halt-eq dc) h
     fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (mov (mem (base+disp ecx slot-size)) (reg eax))
     fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
                       (fetch-block-head prog (fpc fs) store-indirect-suc ft)
     rdi-val : xreadReg (xregs s) ecx ≡ haddr hv hl
-    rdi-val = trans (C.in1-eq dc) (cong (C.enc-sv hv) i-eq)
+    rdi-val = trans (C.FlatCorrespondence.FlatCorr.in1-eq dc) (cong (C.FlatCorrespondence.enc-sv hv) i-eq)
     addr-val : xreadReg (xregs s) ecx + slot-size ≡ haddr hv (sucHL hl)
-    addr-val = trans (cong (_+ slot-size) rdi-val) (sym (C.haddr-suc hv hl))
+    addr-val = trans (cong (_+ slot-size) rdi-val) (sym (C.FlatCorrespondence.HeapView.haddr-suc hv hl))
     post : X.State
     post = record s { memory = writeMem (memory s) (X.effectiveAddr s (base+disp ecx slot-size)) (xreadReg (xregs s) eax)
                     ; pc = pc s + 1 }
@@ -1730,13 +1737,13 @@ block-step-store-indirect-suc {hv} prog fs s hl cc h ft i-eq live-shl guard =
     snh = step-mov-mr {compile-trace prog} {s} {base+disp ecx slot-size} {eax} fetch-x86
     exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
-    post-eq : post ≡ mkstate (xregs s) (writeMem (memory s) (haddr hv (sucHL hl)) (C.enc-sv hv (readReg (regs (floc fs)) Output)))
+    post-eq : post ≡ mkstate (xregs s) (writeMem (memory s) (haddr hv (sucHL hl)) (C.FlatCorrespondence.enc-sv hv (readReg (regs (floc fs)) Output)))
                              (flags s) (pc s + 1) (xhalted s)
     post-eq = cong (λ m → mkstate (xregs s) m (flags s) (pc s + 1) (xhalted s))
-                   (cong₂ (writeMem (memory s)) addr-val (C.out-eq dc))
-    dataPost : C.FlatCorr hv (flat-exec-instr store-indirect-suc prog fs) post
-    dataPost = subst (C.FlatCorr hv (flat-exec-instr store-indirect-suc prog fs)) (sym post-eq)
-                     (C.sim-store-indirect-suc hl fs s _ dc i-eq live-shl guard (C.sets-mem-x86 s _ _ _ _))
+                   (cong₂ (writeMem (memory s)) addr-val (C.FlatCorrespondence.FlatCorr.out-eq dc))
+    dataPost : C.FlatCorrespondence.FlatCorr hv (flat-exec-instr store-indirect-suc prog fs) post
+    dataPost = subst (C.FlatCorrespondence.FlatCorr hv (flat-exec-instr store-indirect-suc prog fs)) (sym post-eq)
+                     (C.FlatCorrespondence.sim-store-indirect-suc hl fs s _ dc i-eq live-shl guard (C.sets-mem-x86 s _ _ _ _))
     pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr store-indirect-suc prog fs))
     pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) store-indirect-suc ft))
 
@@ -1749,24 +1756,24 @@ block-step-load-at : ∀ {hv : HeapView} prog fs s k hl w → CompiledCorr hv pr
   → heapMem (floc fs) (offsetHL hl k) ≡ just w
   → BlockStep hv prog fs s (load-at k)
 block-step-load-at {hv} prog fs s k hl w cc h ft i-eq live h-eq =
-  post , exec-eq , record { dataCorr = C.sim-load-at k hl w fs s _ dc i-eq h-eq (C.sets-role-x86 s role-out _ _ _) ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
+  post , exec-eq , record { dataCorr = C.FlatCorrespondence.sim-load-at k hl w fs s _ dc i-eq h-eq (C.sets-role-x86 s role-out _ _ _) ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
   where
     dc = dataCorr cc ; po = pc-off cc
     halt-s : X.State.halted s ≡ false
-    halt-s = trans (C.halt-eq dc) h
+    halt-s = trans (C.FlatCorrespondence.FlatCorr.halt-eq dc) h
     fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (mov (reg eax) (mem (base+disp ecx (slot-to-disp k))))
     fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
                       (fetch-block-head prog (fpc fs) (load-at k) ft)
     rdi-val : xreadReg (xregs s) ecx ≡ haddr hv hl
-    rdi-val = trans (C.in1-eq dc) (cong (C.enc-sv hv) i-eq)
+    rdi-val = trans (C.FlatCorrespondence.FlatCorr.in1-eq dc) (cong (C.FlatCorrespondence.enc-sv hv) i-eq)
     addr-eq : X.effectiveAddr s (base+disp ecx (slot-to-disp k)) ≡ haddr hv (offsetHL hl k)
-    addr-eq = trans (cong (_+ slot-to-disp k) rdi-val) (sym (C.haddr-offset hv hl k))
-    rd : X.readMem (memory s) (X.effectiveAddr s (base+disp ecx (slot-to-disp k))) ≡ just (C.enc-sv hv w)
-    rd = trans (cong (X.readMem (memory s)) addr-eq) (C.heap-eq dc (offsetHL hl k) h-eq)
+    addr-eq = trans (cong (_+ slot-to-disp k) rdi-val) (sym (C.FlatCorrespondence.haddr-offset hv hl k))
+    rd : X.readMem (memory s) (X.effectiveAddr s (base+disp ecx (slot-to-disp k))) ≡ just (C.FlatCorrespondence.enc-sv hv w)
+    rd = trans (cong (X.readMem (memory s)) addr-eq) (C.FlatCorrespondence.FlatCorr.heap-eq dc (offsetHL hl k) h-eq)
     post : X.State
-    post = record s { regs = xwriteReg (xregs s) eax (C.enc-sv hv w) ; pc = pc s + 1 }
+    post = record s { regs = xwriteReg (xregs s) eax (C.FlatCorrespondence.enc-sv hv w) ; pc = pc s + 1 }
     snh : X.step-not-halted (compile-trace prog) s ≡ just post
-    snh = step-mov-rm {compile-trace prog} {s} {eax} {base+disp ecx (slot-to-disp k)} {C.enc-sv hv w} fetch-x86 rd
+    snh = step-mov-rm {compile-trace prog} {s} {eax} {base+disp ecx (slot-to-disp k)} {C.FlatCorrespondence.enc-sv hv w} fetch-x86 rd
     exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
     pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (load-at k) prog fs))
@@ -1781,19 +1788,19 @@ block-step-addr-at : ∀ {hv : HeapView} prog fs s k hl → CompiledCorr hv prog
   → in-block? (block-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ true
   → BlockStep hv prog fs s (addr-at k)
 block-step-addr-at {hv} prog fs s k hl cc h ft i-eq live ib =
-  post , exec-eq , record { dataCorr = C.sim-addr-at k hl fs s post dc i-eq ib (C.sets-role-x86 s role-out _ _ _)
+  post , exec-eq , record { dataCorr = C.FlatCorrespondence.sim-addr-at k hl fs s post dc i-eq ib (C.sets-role-x86 s role-out _ _ _)
                           ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
   where
     dc = dataCorr cc ; po = pc-off cc
     halt-s : X.State.halted s ≡ false
-    halt-s = trans (C.halt-eq dc) h
+    halt-s = trans (C.FlatCorrespondence.FlatCorr.halt-eq dc) h
     fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (lea eax (base+disp ecx (slot-to-disp k)))
     fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
                       (fetch-block-head prog (fpc fs) (addr-at k) ft)
     rdi-val : xreadReg (xregs s) ecx ≡ haddr hv hl
-    rdi-val = trans (C.in1-eq dc) (cong (C.enc-sv hv) i-eq)
+    rdi-val = trans (C.FlatCorrespondence.FlatCorr.in1-eq dc) (cong (C.FlatCorrespondence.enc-sv hv) i-eq)
     addr-eq : X.effectiveAddr s (base+disp ecx (slot-to-disp k)) ≡ haddr hv (offsetHL hl k)
-    addr-eq = trans (cong (_+ slot-to-disp k) rdi-val) (sym (C.haddr-offset hv hl k))
+    addr-eq = trans (cong (_+ slot-to-disp k) rdi-val) (sym (C.FlatCorrespondence.haddr-offset hv hl k))
     post : X.State
     post = record s { regs = xwriteReg (xregs s) eax (haddr hv (offsetHL hl k)) ; pc = pc s + 1 }
     snh : X.step-not-halted (compile-trace prog) s ≡ just post
@@ -1817,24 +1824,24 @@ block-step-store-at : ∀ {hv : HeapView} prog fs s k hl → CompiledCorr hv pro
   → BlockStep hv prog fs s (store-at k)
 block-step-store-at {hv} prog fs s k hl cc h ft i-eq live ib guard =
   post , exec-eq , record { dataCorr = dataPost ; pc-off = pco'
-                          ; ret-eq = subst (λ m → C.RetAddrs (blk-off prog) m
+                          ; ret-eq = subst (λ m → C.FlatCorrespondence.RetAddrs (blk-off prog) m
                                                     (λ ad w → m ad ≡ just w) (flink fs)
-                                                    (C.frames-of (falloc fs)) (fret fs))
+                                                    (C.FlatCorrespondence.frames-of (falloc fs)) (fret fs))
                                            (cong₂ (writeMem (memory s)) (sym addr-val) refl)
                                            (ret-heap-store prog fs s (haddr hv (offsetHL hl k)) _ cc
-                                              (≤-trans (C.dom-below hv live) (C.front-lo hv)))
+                                              (≤-trans (C.FlatCorrespondence.HeapView.dom-below hv live) (C.FlatCorrespondence.HeapView.front-lo hv)))
                           ; code-eq = code-eq cc }
   where
     dc = dataCorr cc ; po = pc-off cc
     halt-s : X.State.halted s ≡ false
-    halt-s = trans (C.halt-eq dc) h
+    halt-s = trans (C.FlatCorrespondence.FlatCorr.halt-eq dc) h
     fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (mov (mem (base+disp ecx (slot-to-disp k))) (reg eax))
     fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
                       (fetch-block-head prog (fpc fs) (store-at k) ft)
     rdi-val : xreadReg (xregs s) ecx ≡ haddr hv hl
-    rdi-val = trans (C.in1-eq dc) (cong (C.enc-sv hv) i-eq)
+    rdi-val = trans (C.FlatCorrespondence.FlatCorr.in1-eq dc) (cong (C.FlatCorrespondence.enc-sv hv) i-eq)
     addr-val : xreadReg (xregs s) ecx + slot-to-disp k ≡ haddr hv (offsetHL hl k)
-    addr-val = trans (cong (_+ slot-to-disp k) rdi-val) (sym (C.haddr-offset hv hl k))
+    addr-val = trans (cong (_+ slot-to-disp k) rdi-val) (sym (C.FlatCorrespondence.haddr-offset hv hl k))
     post : X.State
     post = record s { memory = writeMem (memory s) (X.effectiveAddr s (base+disp ecx (slot-to-disp k))) (xreadReg (xregs s) eax)
                     ; pc = pc s + 1 }
@@ -1842,13 +1849,13 @@ block-step-store-at {hv} prog fs s k hl cc h ft i-eq live ib guard =
     snh = step-mov-mr {compile-trace prog} {s} {base+disp ecx (slot-to-disp k)} {eax} fetch-x86
     exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
-    post-eq : post ≡ mkstate (xregs s) (writeMem (memory s) (haddr hv (offsetHL hl k)) (C.enc-sv hv (readReg (regs (floc fs)) Output)))
+    post-eq : post ≡ mkstate (xregs s) (writeMem (memory s) (haddr hv (offsetHL hl k)) (C.FlatCorrespondence.enc-sv hv (readReg (regs (floc fs)) Output)))
                              (flags s) (pc s + 1) (xhalted s)
     post-eq = cong (λ m → mkstate (xregs s) m (flags s) (pc s + 1) (xhalted s))
-                   (cong₂ (writeMem (memory s)) addr-val (C.out-eq dc))
-    dataPost : C.FlatCorr hv (flat-exec-instr (store-at k) prog fs) post
-    dataPost = subst (C.FlatCorr hv (flat-exec-instr (store-at k) prog fs)) (sym post-eq)
-                     (C.sim-store-at k hl fs s _ dc i-eq live ib guard (C.sets-mem-x86 s _ _ _ _))
+                   (cong₂ (writeMem (memory s)) addr-val (C.FlatCorrespondence.FlatCorr.out-eq dc))
+    dataPost : C.FlatCorrespondence.FlatCorr hv (flat-exec-instr (store-at k) prog fs) post
+    dataPost = subst (C.FlatCorrespondence.FlatCorr hv (flat-exec-instr (store-at k) prog fs)) (sym post-eq)
+                     (C.FlatCorrespondence.sim-store-at k hl fs s _ dc i-eq live ib guard (C.sets-mem-x86 s _ _ _ _))
     pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (store-at k) prog fs))
     pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) (store-at k) ft))
 
@@ -1868,7 +1875,7 @@ block-step-store-at-slot {hv} prog fs s slot cc h ft slot<ns disj =
   where
     dc = dataCorr cc ; po = pc-off cc
     halt-s : X.State.halted s ≡ false
-    halt-s = trans (C.halt-eq dc) h
+    halt-s = trans (C.FlatCorrespondence.FlatCorr.halt-eq dc) h
     fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s)
               ≡ just (mov (mem (base+disp esp (slot-to-disp slot))) (reg eax))
     fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
@@ -1883,15 +1890,15 @@ block-step-store-at-slot {hv} prog fs s slot cc h ft slot<ns disj =
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
     post-eq : post ≡ mkstate (xregs s)
                              (writeMem (memory s) (X.readReg (xregs s) esp + slot-to-disp slot)
-                                       (C.enc-sv hv (readReg (regs (floc fs)) Output)))
+                                       (C.FlatCorrespondence.enc-sv hv (readReg (regs (floc fs)) Output)))
                              (flags s) (pc s + 1) (xhalted s)
     post-eq = cong (λ v → mkstate (xregs s)
                             (writeMem (memory s) (X.readReg (xregs s) esp + slot-to-disp slot) v)
                             (flags s) (pc s + 1) (xhalted s))
-                   (C.out-eq dc)
-    dataPost : C.FlatCorr hv (flat-exec-instr (store-at-slot slot) prog fs) post
-    dataPost = subst (C.FlatCorr hv (flat-exec-instr (store-at-slot slot) prog fs)) (sym post-eq)
-                     (C.sim-store-at-slot slot fs s _ dc slot<ns disj (C.sets-mem-x86 s _ _ _ _))
+                   (C.FlatCorrespondence.FlatCorr.out-eq dc)
+    dataPost : C.FlatCorrespondence.FlatCorr hv (flat-exec-instr (store-at-slot slot) prog fs) post
+    dataPost = subst (C.FlatCorrespondence.FlatCorr hv (flat-exec-instr (store-at-slot slot) prog fs)) (sym post-eq)
+                     (C.FlatCorrespondence.sim-store-at-slot slot fs s _ dc slot<ns disj (C.sets-mem-x86 s _ _ _ _))
     pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (store-at-slot slot) prog fs))
     pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) (store-at-slot slot) ft))
 
@@ -1904,7 +1911,7 @@ block-step-out-nz : ∀ {hv : HeapView} prog fs s w → CompiledCorr hv prog fs 
 block-step-out-nz {hv} prog fs s w cc h ft o-eq rng =
   -- D367: `out-nz` steps only on an `Int` word — `o-eq` says this is one.
   post , exec-eq , subst (λ fs' → CompiledCorr hv prog fs' post) (sym nz-eq) (record
-    { dataCorr = C.sim-out-nz w fs s _ dc o-eq (C.sets-role-x86 s role-out _ _ _)
+    { dataCorr = C.FlatCorrespondence.sim-out-nz w fs s _ dc o-eq (C.sets-role-x86 s role-out _ _ _)
     ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc })
   where
     nz-eq : flat-exec-instr (instr-reg-op out-nz) prog fs ≡ flat-step-straight (instr-reg-op out-nz) fs
@@ -1913,9 +1920,9 @@ block-step-out-nz {hv} prog fs s w cc h ft o-eq rng =
     x : ℕ
     x = xreadReg (xregs s) eax
     x≡w : x ≡ w
-    x≡w = trans (C.out-eq dc) (cong (C.enc-sv hv) o-eq)
+    x≡w = trans (C.FlatCorrespondence.FlatCorr.out-eq dc) (cong (C.FlatCorrespondence.enc-sv hv) o-eq)
     halt-s : X.State.halted s ≡ false
-    halt-s = trans (C.halt-eq dc) h
+    halt-s = trans (C.FlatCorrespondence.FlatCorr.halt-eq dc) h
     t : ℕ
     t = if w Data.Nat.≡ᵇ 0 then 0 else 1
     f1 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (cmp (reg eax) (imm 1))
@@ -1985,7 +1992,7 @@ block-step-c-branch-tag-zero {hv} prog fs s n loc zero j cc h ft i-eq r-eq rd fl
   where
     dc = dataCorr cc ; po = pc-off cc
     halt-s : X.State.halted s ≡ false
-    halt-s = trans (C.halt-eq dc) h
+    halt-s = trans (C.FlatCorrespondence.FlatCorr.halt-eq dc) h
     fetch-cmp : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (cmp (mem (base ecx)) (imm 0))
     fetch-cmp = trans (cong (X.fetch (compile-trace prog)) po)
                       (fetch-block-head prog (fpc fs) (instr-ctrl (c-branch-tag-zero n)) ft)
@@ -2011,15 +2018,15 @@ block-step-c-branch-tag-zero {hv} prog fs s n loc zero j cc h ft i-eq r-eq rd fl
     cond-eq = cong tag-test (trans (cong (flat-read-at (floc fs)) (cong sv-as-loc i-eq)) r-eq)
     result : BlockStep hv prog fs s (instr-ctrl (c-branch-tag-zero n))
     result rewrite cond-eq | fl-eq = post-je , exec-eq , record
-      { dataCorr = record { in1-eq = C.in1-eq dc ; out-eq = C.out-eq dc
-                          ; clos-eq = C.clos-eq dc ; halt-eq = C.halt-eq dc ; sp-eq = C.sp-eq dc ; frontier-eq = C.frontier-eq dc ; dom-fresh = C.dom-fresh dc ; dom-written = C.dom-written dc ; dom-sized = C.dom-sized dc ; heap-eq = C.heap-eq dc
-                      ; lo-le = C.lo-le dc ; stack-eq = C.stack-eq dc }
+      { dataCorr = record { in1-eq = C.FlatCorrespondence.FlatCorr.in1-eq dc ; out-eq = C.FlatCorrespondence.FlatCorr.out-eq dc
+                          ; clos-eq = C.FlatCorrespondence.FlatCorr.clos-eq dc ; halt-eq = C.FlatCorrespondence.FlatCorr.halt-eq dc ; sp-eq = C.FlatCorrespondence.FlatCorr.sp-eq dc ; frontier-eq = C.FlatCorrespondence.FlatCorr.frontier-eq dc ; dom-fresh = C.FlatCorrespondence.FlatCorr.dom-fresh dc ; dom-written = C.FlatCorrespondence.FlatCorr.dom-written dc ; dom-sized = C.FlatCorrespondence.FlatCorr.dom-sized dc ; heap-eq = C.FlatCorrespondence.FlatCorr.heap-eq dc
+                      ; lo-le = C.FlatCorrespondence.FlatCorr.lo-le dc ; stack-eq = C.FlatCorrespondence.FlatCorr.stack-eq dc }
       ; pc-off = refl ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
 block-step-c-branch-tag-zero {hv} prog fs s n loc (suc m) j cc h ft i-eq r-eq rd fl-eq = result
   where
     dc = dataCorr cc ; po = pc-off cc
     halt-s : X.State.halted s ≡ false
-    halt-s = trans (C.halt-eq dc) h
+    halt-s = trans (C.FlatCorrespondence.FlatCorr.halt-eq dc) h
     fetch-cmp : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (cmp (mem (base ecx)) (imm 0))
     fetch-cmp = trans (cong (X.fetch (compile-trace prog)) po)
                       (fetch-block-head prog (fpc fs) (instr-ctrl (c-branch-tag-zero n)) ft)
@@ -2045,9 +2052,9 @@ block-step-c-branch-tag-zero {hv} prog fs s n loc (suc m) j cc h ft i-eq r-eq rd
     pco' = trans (+-assoc (pc s) 1 1) (trans (cong (_+ 2) po) (sym (blk-off-suc prog (fpc fs) (instr-ctrl (c-branch-tag-zero n)) ft)))
     result : BlockStep hv prog fs s (instr-ctrl (c-branch-tag-zero n))
     result rewrite cond-eq = post-je , exec-eq , record
-      { dataCorr = record { in1-eq = C.in1-eq dc ; out-eq = C.out-eq dc
-                          ; clos-eq = C.clos-eq dc ; halt-eq = C.halt-eq dc ; sp-eq = C.sp-eq dc ; frontier-eq = C.frontier-eq dc ; dom-fresh = C.dom-fresh dc ; dom-written = C.dom-written dc ; dom-sized = C.dom-sized dc ; heap-eq = C.heap-eq dc
-                      ; lo-le = C.lo-le dc ; stack-eq = C.stack-eq dc }
+      { dataCorr = record { in1-eq = C.FlatCorrespondence.FlatCorr.in1-eq dc ; out-eq = C.FlatCorrespondence.FlatCorr.out-eq dc
+                          ; clos-eq = C.FlatCorrespondence.FlatCorr.clos-eq dc ; halt-eq = C.FlatCorrespondence.FlatCorr.halt-eq dc ; sp-eq = C.FlatCorrespondence.FlatCorr.sp-eq dc ; frontier-eq = C.FlatCorrespondence.FlatCorr.frontier-eq dc ; dom-fresh = C.FlatCorrespondence.FlatCorr.dom-fresh dc ; dom-written = C.FlatCorrespondence.FlatCorr.dom-written dc ; dom-sized = C.FlatCorrespondence.FlatCorr.dom-sized dc ; heap-eq = C.FlatCorrespondence.FlatCorr.heap-eq dc
+                      ; lo-le = C.FlatCorrespondence.FlatCorr.lo-le dc ; stack-eq = C.FlatCorrespondence.FlatCorr.stack-eq dc }
       ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
 
 -- c-branch-tag-zero NOT TAKEN, label-free: a nonzero tag never consults the
@@ -2065,7 +2072,7 @@ block-step-c-branch-tag-nz {hv} prog fs s n loc m cc h ft i-eq r-eq rd = result
   where
     dc = dataCorr cc ; po = pc-off cc
     halt-s : X.State.halted s ≡ false
-    halt-s = trans (C.halt-eq dc) h
+    halt-s = trans (C.FlatCorrespondence.FlatCorr.halt-eq dc) h
     fetch-cmp : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (cmp (mem (base ecx)) (imm 0))
     fetch-cmp = trans (cong (X.fetch (compile-trace prog)) po)
                       (fetch-block-head prog (fpc fs) (instr-ctrl (c-branch-tag-zero n)) ft)
@@ -2091,9 +2098,9 @@ block-step-c-branch-tag-nz {hv} prog fs s n loc m cc h ft i-eq r-eq rd = result
     pco' = trans (+-assoc (pc s) 1 1) (trans (cong (_+ 2) po) (sym (blk-off-suc prog (fpc fs) (instr-ctrl (c-branch-tag-zero n)) ft)))
     result : BlockStep hv prog fs s (instr-ctrl (c-branch-tag-zero n))
     result rewrite cond-eq = post-je , exec-eq , record
-      { dataCorr = record { in1-eq = C.in1-eq dc ; out-eq = C.out-eq dc
-                          ; clos-eq = C.clos-eq dc ; halt-eq = C.halt-eq dc ; sp-eq = C.sp-eq dc ; frontier-eq = C.frontier-eq dc ; dom-fresh = C.dom-fresh dc ; dom-written = C.dom-written dc ; dom-sized = C.dom-sized dc ; heap-eq = C.heap-eq dc
-                      ; lo-le = C.lo-le dc ; stack-eq = C.stack-eq dc }
+      { dataCorr = record { in1-eq = C.FlatCorrespondence.FlatCorr.in1-eq dc ; out-eq = C.FlatCorrespondence.FlatCorr.out-eq dc
+                          ; clos-eq = C.FlatCorrespondence.FlatCorr.clos-eq dc ; halt-eq = C.FlatCorrespondence.FlatCorr.halt-eq dc ; sp-eq = C.FlatCorrespondence.FlatCorr.sp-eq dc ; frontier-eq = C.FlatCorrespondence.FlatCorr.frontier-eq dc ; dom-fresh = C.FlatCorrespondence.FlatCorr.dom-fresh dc ; dom-written = C.FlatCorrespondence.FlatCorr.dom-written dc ; dom-sized = C.FlatCorrespondence.FlatCorr.dom-sized dc ; heap-eq = C.FlatCorrespondence.FlatCorr.heap-eq dc
+                      ; lo-le = C.FlatCorrespondence.FlatCorr.lo-le dc ; stack-eq = C.FlatCorrespondence.FlatCorr.stack-eq dc }
       ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
 
 -- alloc-heap: `mov eax, esi ; add esi, n*8` (2 steps) ↔ the abstract fresh block.
@@ -2113,20 +2120,20 @@ block-step-alloc-heap : ∀ {hv : HeapView} prog fs s n → (cc : CompiledCorr h
   -- ROOM: the bump stays below `%esp` (heap exhaustion; plan 0.123 A.4 step 4 —
   -- measured against the stack pointer itself, now that `heap-eq` claims only
   -- written cells and a fresh block owes no concrete freshness).
-  → (room : C.hfront hv + slots n ≤ X.readReg (xregs s) esp)
+  → (room : C.FlatCorrespondence.HeapView.hfront hv + slots n ≤ X.readReg (xregs s) esp)
   -- THE LAYOUT FITS IN THE ADDRESS SPACE (plan 0.70 phase C). `add` computes
   -- `W.⊕` unconditionally (D054), so the bump's no-wrap is the consumer's to
   -- pay — but `room` above already bounds the bumped frontier by `%esp`, so the
   -- only thing missing is that `%esp` is representable: a register's range.
   → X.readReg (xregs s) esp < X.W.modulus
-  → BlockStep (C.extend-view hv (next-heap-ref (falloc fs)) n (C.dom-fresh (dataCorr cc)) room)
+  → BlockStep (C.FlatCorrespondence.extend-view hv (next-heap-ref (falloc fs)) n (C.FlatCorrespondence.FlatCorr.dom-fresh (dataCorr cc)) room)
               prog fs s (instr-alloc-heap n)
 block-step-alloc-heap {hv} prog fs s n cc h ft wf1 wfcl wf-heap wf-stack fresh-abs room sp-fits =
   post-add , exec-eq , record { dataCorr = dataPost ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
   where
     dc = dataCorr cc ; po = pc-off cc
     halt-s : X.State.halted s ≡ false
-    halt-s = trans (C.halt-eq dc) h
+    halt-s = trans (C.FlatCorrespondence.FlatCorr.halt-eq dc) h
     fetch-mov : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (mov (reg eax) (reg esi))
     fetch-mov = trans (cong (X.fetch (compile-trace prog)) po)
                       (fetch-block-head prog (fpc fs) (instr-alloc-heap n) ft)
@@ -2145,7 +2152,7 @@ block-step-alloc-heap {hv} prog fs s n cc h ft wf1 wfcl wf-heap wf-stack fresh-a
     -- `%esp`, and `sp-fits` carries it under the modulus.
     no-wrap : xreadReg (xregs post-mov) esi + slots n < X.W.modulus
     no-wrap = ≤-<-trans (subst (λ z → z + slots n ≤ X.readReg (xregs s) esp)
-                               (sym (C.frontier-eq dc)) room)
+                               (sym (C.FlatCorrespondence.FlatCorr.frontier-eq dc)) room)
                         sp-fits
     wrap-free : xreadReg (xregs post-mov) esi X.W.⊕ X.W.norm (slots n)
               ≡ xreadReg (xregs post-mov) esi + slots n
@@ -2163,9 +2170,9 @@ block-step-alloc-heap {hv} prog fs s n cc h ft wf1 wfcl wf-heap wf-stack fresh-a
     exec-eq : X.exec 2 (compile-trace prog) s ≡ just post-add
     exec-eq = trans (exec-1 {compile-trace prog} {1} {s} {post-mov} halt-s step1 halt-s)
                     (exec-1 {compile-trace prog} {0} {post-mov} {post-add} halt-s step2 halt-s)
-    dataPost : C.FlatCorr (C.extend-view hv (next-heap-ref (falloc fs)) n (C.dom-fresh dc) room)
+    dataPost : C.FlatCorrespondence.FlatCorr (C.FlatCorrespondence.extend-view hv (next-heap-ref (falloc fs)) n (C.FlatCorrespondence.FlatCorr.dom-fresh dc) room)
                           (flat-exec-instr (instr-alloc-heap n) prog fs) post-add
-    dataPost = C.sim-alloc-heap n fs s _ dc
+    dataPost = C.FlatCorrespondence.sim-alloc-heap n fs s _ dc
                  wf1 wfcl wf-heap wf-stack fresh-abs room
                  (C.sets-2roles-x86 s role-out role-heap _ _ _ _ (λ ()))
     pco' : X.State.pc post-add ≡ blk-off prog (fpc (flat-exec-instr (instr-alloc-heap n) prog fs))
@@ -2224,7 +2231,7 @@ room-step-x86-32 : ∀ {hv : HeapView} prog fs s k → CompiledCorr hv prog fs s
   → slots k < X.W.modulus
   → Σ ℕ (λ c → Σ X.State (λ s' → (X.exec c (compile-trace prog) s ≡ just s')
                 × CompiledCorr hv prog (flat-exec-instr (instr-room k) prog fs) s'
-                × (C.hfront hv + slots k ≤ xreadReg (xregs s) esp)))
+                × (C.FlatCorrespondence.HeapView.hfront hv + slots k ≤ xreadReg (xregs s) esp)))
     ⊎ Σ ℕ (λ c → Σ X.State (λ s' → (X.exec c (compile-trace prog) s ≡ just s')
                 × xhalted s' ≡ false
                 × X.fetch (compile-trace prog) (pc s') ≡ just (call-sym host-exhausted-symbol)))
@@ -2238,7 +2245,7 @@ room-step-x86-32 {hv} prog fs s k cc h ft esi<m esp<m k<m = go (X.Flags.cf (flag
     b = xreadReg (xregs s) esp
     I = M ∸ suc (slots k)
     halt-s : xhalted s ≡ false
-    halt-s = trans (C.halt-eq dc) h
+    halt-s = trans (C.FlatCorrespondence.FlatCorr.halt-eq dc) h
     at : ∀ n q → q ≡ pc s + n
        → X.fetch cp q ≡ X.fetch (drop n (compile-abstract i ++ compile-trace (drop (suc (fpc fs)) prog))) zero
     at n q eq = trans (cong (X.fetch cp) (trans eq (cong (_+ n) po))) (fetch-block-nth prog (fpc fs) n i ft)
@@ -2274,20 +2281,20 @@ room-step-x86-32 {hv} prog fs s k cc h ft esi<m esp<m k<m = go (X.Flags.cf (flag
     go : ∀ c → (X.Flags.cf (flags s3) ∨ X.Flags.zf (flags s3)) ≡ c
        → Σ ℕ (λ c → Σ X.State (λ s' → (X.exec c cp s ≡ just s')
                 × CompiledCorr hv prog (flat-exec-instr i prog fs) s'
-                × (C.hfront hv + slots k ≤ b)))
+                × (C.FlatCorrespondence.HeapView.hfront hv + slots k ≤ b)))
          ⊎ Σ ℕ (λ c → Σ X.State (λ s' → (X.exec c cp s ≡ just s')
                 × xhalted s' ≡ false
                 × X.fetch cp (pc s') ≡ just (call-sym host-exhausted-symbol)))
     go true be = inj₁ (7 , s7 , exec7 , record
-      { dataCorr = record { in1-eq = C.in1-eq d ; out-eq = C.out-eq d
-                          ; clos-eq = C.clos-eq d ; halt-eq = C.halt-eq d ; heap-eq = C.heap-eq d
-                          ; sp-eq = C.sp-eq d ; frontier-eq = C.frontier-eq d ; dom-fresh = C.dom-fresh d ; dom-written = C.dom-written d ; dom-sized = C.dom-sized d
-                          ; lo-le = C.lo-le d ; stack-eq = C.stack-eq d }
+      { dataCorr = record { in1-eq = C.FlatCorrespondence.FlatCorr.in1-eq d ; out-eq = C.FlatCorrespondence.FlatCorr.out-eq d
+                          ; clos-eq = C.FlatCorrespondence.FlatCorr.clos-eq d ; halt-eq = C.FlatCorrespondence.FlatCorr.halt-eq d ; heap-eq = C.FlatCorrespondence.FlatCorr.heap-eq d
+                          ; sp-eq = C.FlatCorrespondence.FlatCorr.sp-eq d ; frontier-eq = C.FlatCorrespondence.FlatCorr.frontier-eq d ; dom-fresh = C.FlatCorrespondence.FlatCorr.dom-fresh d ; dom-written = C.FlatCorrespondence.FlatCorr.dom-written d ; dom-sized = C.FlatCorrespondence.FlatCorr.dom-sized d
+                          ; lo-le = C.FlatCorrespondence.FlatCorr.lo-le d ; stack-eq = C.FlatCorrespondence.FlatCorr.stack-eq d }
       ; pc-off = pco ; ret-eq = ret-eq cc ; code-eq = code-eq cc } , le)
       where
         -- THE SKIP SAYS THE ROOM HOLDS THE NEED
         fr≤sp : a ≤ b
-        fr≤sp = subst (_≤ b) (sym (C.frontier-eq dc)) (C.sep dc)
+        fr≤sp = subst (_≤ b) (sym (C.FlatCorrespondence.FlatCorr.frontier-eq dc)) (C.FlatCorrespondence.sep dc)
         sD≤M : suc (b ∸ a) ≤ M
         sD≤M = ≤-trans (s≤s (m∸n≤m b a)) esp<m
         v₂-eq : v₂ ≡ M ∸ suc (b ∸ a)
@@ -2297,8 +2304,8 @@ room-step-x86-32 {hv} prog fs s k cc h ft esi<m esp<m k<m = go (X.Flags.cf (flag
         fits : slots k ≤ b ∸ a
         fits = co-≤ M (b ∸ a) (slots k) sD≤M k<m
                  (subst₂ _≤_ v₂-eq (X.WL.norm-id I<M) (be-≤ v₂ (X.W.norm I) be))
-        le : C.hfront hv + slots k ≤ b
-        le = subst (λ z → z + slots k ≤ b) (C.frontier-eq dc)
+        le : C.FlatCorrespondence.HeapView.hfront hv + slots k ≤ b
+        le = subst (λ z → z + slots k ≤ b) (C.FlatCorrespondence.FlatCorr.frontier-eq dc)
                    (subst (_≤ b) (+-comm (slots k) a) (m≤o∸n⇒m+n≤o (slots k) fr≤sp fits))
         -- …and the frontier register comes back
         s4 : X.State
@@ -2336,9 +2343,9 @@ room-step-x86-32 {hv} prog fs s k cc h ft esi<m esp<m k<m = go (X.Flags.cf (flag
         w-eq : w ≡ a
         w-eq = trans (cong (X.W._⊕ b) (X.WL.⊖⊕-cancel v₁ (X.W.norm 1) (X.WL.norm-range (a + (X.W.modulus ∸ b))) (<⇒≤ (X.WL.norm-range 1))))
                      (X.WL.⊖⊕-cancel a b esi<m (<⇒≤ esp<m))
-        kr : C.KeepsRoles s s7
+        kr : C.FlatCorrespondence.KeepsRoles s s7
         kr = C.keeps-esi4-x86 s v₁ v₂ v₃ w _ _ w-eq
-        d = C.keep-all dc kr
+        d = C.FlatCorrespondence.keep-all dc kr
         pco : pc s7 ≡ blk-off prog (fpc (flat-exec-instr i prog fs))
         pco = trans (room-a8 (pc s)) (trans (cong (_+ 8) po) (sym (blk-off-suc prog (fpc fs) i ft)))
     go false be = inj₂ (4 , s4 , exec4 , halt-s , f4)
@@ -2361,11 +2368,11 @@ block-step-lea-slot : ∀ {hv : HeapView} prog fs s slot → CompiledCorr hv pro
   → fetch prog (fpc fs) ≡ just (lea-slot slot)
   → BlockStep hv prog fs s (lea-slot slot)
 block-step-lea-slot {hv} prog fs s slot cc h ft =
-  post , exec-eq , record { dataCorr = C.sim-lea-slot slot fs s _ dc (C.sets-role-x86 s role-out _ _ _) ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
+  post , exec-eq , record { dataCorr = C.FlatCorrespondence.sim-lea-slot slot fs s _ dc (C.sets-role-x86 s role-out _ _ _) ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
   where
     dc = dataCorr cc ; po = pc-off cc
     halt-s : X.State.halted s ≡ false
-    halt-s = trans (C.halt-eq dc) h
+    halt-s = trans (C.FlatCorrespondence.FlatCorr.halt-eq dc) h
     fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s)
               ≡ just (lea eax (base+disp esp (slot-to-disp slot)))
     fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
@@ -2402,28 +2409,28 @@ block-step-load-indirect-stack {hv} prog fs s f k w cc h ft i-eq f-eq k<ss st-eq
   where
     dc = dataCorr cc ; po = pc-off cc
     halt-s : X.State.halted s ≡ false
-    halt-s = trans (C.halt-eq dc) h
+    halt-s = trans (C.FlatCorrespondence.FlatCorr.halt-eq dc) h
     fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (mov (reg eax) (mem (base ecx)))
     fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
                       (fetch-block-head prog (fpc fs) load-indirect ft)
     -- ecx is the slot's ADDRESS, and for the current frame that is esp-relative
     rdi-val : xreadReg (xregs s) ecx ≡ xreadReg (xregs s) esp + slot-to-disp k
-    rdi-val = trans (C.in1-eq dc)
-              (trans (cong (C.enc-sv hv) i-eq)
+    rdi-val = trans (C.FlatCorrespondence.FlatCorr.in1-eq dc)
+              (trans (cong (C.FlatCorrespondence.enc-sv hv) i-eq)
               (trans (cong (λ fr → slot-addr FS fr k) f-eq)
               (trans (slot-addr-linear FS (current-frame (falloc fs)) k)
-                     (cong₂ (λ b w' → b + k * w') (sym (C.sp-eq dc)) word-eq))))
-    rd : X.readMem (memory s) (X.effectiveAddr s (base ecx)) ≡ just (C.enc-sv hv w)
+                     (cong₂ (λ b w' → b + k * w') (sym (C.FlatCorrespondence.FlatCorr.sp-eq dc)) word-eq))))
+    rd : X.readMem (memory s) (X.effectiveAddr s (base ecx)) ≡ just (C.FlatCorrespondence.enc-sv hv w)
     rd = trans (cong (X.readMem (memory s)) rdi-val)
-               (C.stack-eq-cur dc k k<ss _ st-eq)
+               (C.FlatCorrespondence.stack-eq-cur dc k k<ss _ st-eq)
     post : X.State
-    post = record s { regs = xwriteReg (xregs s) eax (C.enc-sv hv w) ; pc = pc s + 1 }
+    post = record s { regs = xwriteReg (xregs s) eax (C.FlatCorrespondence.enc-sv hv w) ; pc = pc s + 1 }
     snh : X.step-not-halted (compile-trace prog) s ≡ just post
-    snh = step-mov-rm {compile-trace prog} {s} {eax} {base ecx} {C.enc-sv hv w} fetch-x86 rd
+    snh = step-mov-rm {compile-trace prog} {s} {eax} {base ecx} {C.FlatCorrespondence.enc-sv hv w} fetch-x86 rd
     exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
-    dataPost : C.FlatCorr hv (flat-exec-instr load-indirect prog fs) post
-    dataPost = C.sim-load-indirect-stack f k w fs s _ dc i-eq
+    dataPost : C.FlatCorrespondence.FlatCorr hv (flat-exec-instr load-indirect prog fs) post
+    dataPost = C.FlatCorrespondence.sim-load-indirect-stack f k w fs s _ dc i-eq
                  (trans (cong (λ fr → stackMem (floc fs) fr k) f-eq) st-eq)
                  (C.sets-role-x86 s role-out _ _ _)
     pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr load-indirect prog fs))
@@ -2445,7 +2452,7 @@ block-step-load-indirect-suc-stack {hv} prog fs s f k w cc h ft i-eq f-eq sk<ss 
   where
     dc = dataCorr cc ; po = pc-off cc
     halt-s : X.State.halted s ≡ false
-    halt-s = trans (C.halt-eq dc) h
+    halt-s = trans (C.FlatCorrespondence.FlatCorr.halt-eq dc) h
     fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s)
               ≡ just (mov (reg eax) (mem (base+disp ecx slot-size)))
     fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
@@ -2454,25 +2461,25 @@ block-step-load-indirect-suc-stack {hv} prog fs s f k w cc h ft i-eq f-eq sk<ss 
     addr-eq : xreadReg (xregs s) ecx + slot-size
             ≡ xreadReg (xregs s) esp + slot-to-disp (suc k)
     addr-eq = trans (cong (_+ slot-size)
-                      (trans (C.in1-eq dc)
-                      (trans (cong (C.enc-sv hv) i-eq)
+                      (trans (C.FlatCorrespondence.FlatCorr.in1-eq dc)
+                      (trans (cong (C.FlatCorrespondence.enc-sv hv) i-eq)
                       (trans (cong (λ fr → slot-addr FS fr k) f-eq)
                       (trans (slot-addr-linear FS (current-frame (falloc fs)) k)
-                             (cong₂ (λ b w' → b + k * w') (sym (C.sp-eq dc)) word-eq))))))
+                             (cong₂ (λ b w' → b + k * w') (sym (C.FlatCorrespondence.FlatCorr.sp-eq dc)) word-eq))))))
                     (trans (+-assoc (xreadReg (xregs s) esp) (k * slot-size) slot-size)
                            (cong (xreadReg (xregs s) esp +_)
                                  (+-comm (k * slot-size) slot-size)))
-    rd : X.readMem (memory s) (X.effectiveAddr s (base+disp ecx slot-size)) ≡ just (C.enc-sv hv w)
+    rd : X.readMem (memory s) (X.effectiveAddr s (base+disp ecx slot-size)) ≡ just (C.FlatCorrespondence.enc-sv hv w)
     rd = trans (cong (X.readMem (memory s)) addr-eq)
-               (C.stack-eq-cur dc (suc k) sk<ss _ st-eq)
+               (C.FlatCorrespondence.stack-eq-cur dc (suc k) sk<ss _ st-eq)
     post : X.State
-    post = record s { regs = xwriteReg (xregs s) eax (C.enc-sv hv w) ; pc = pc s + 1 }
+    post = record s { regs = xwriteReg (xregs s) eax (C.FlatCorrespondence.enc-sv hv w) ; pc = pc s + 1 }
     snh : X.step-not-halted (compile-trace prog) s ≡ just post
-    snh = step-mov-rm {compile-trace prog} {s} {eax} {base+disp ecx slot-size} {C.enc-sv hv w} fetch-x86 rd
+    snh = step-mov-rm {compile-trace prog} {s} {eax} {base+disp ecx slot-size} {C.FlatCorrespondence.enc-sv hv w} fetch-x86 rd
     exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
-    dataPost : C.FlatCorr hv (flat-exec-instr load-indirect-suc prog fs) post
-    dataPost = C.sim-load-indirect-suc-stack f k w fs s _ dc i-eq
+    dataPost : C.FlatCorrespondence.FlatCorr hv (flat-exec-instr load-indirect-suc prog fs) post
+    dataPost = C.FlatCorrespondence.sim-load-indirect-suc-stack f k w fs s _ dc i-eq
                  (trans (cong (λ fr → stackMem (floc fs) fr (suc k)) f-eq) st-eq)
                  (C.sets-role-x86 s role-out _ _ _)
     pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr load-indirect-suc prog fs))
@@ -2499,30 +2506,30 @@ block-step-store-indirect-stack {hv} prog fs s f k cc h ft i-eq f-eq k<ns disj =
     dc = dataCorr cc ; po = pc-off cc
     Out = readReg (regs (floc fs)) Output
     halt-s : X.State.halted s ≡ false
-    halt-s = trans (C.halt-eq dc) h
+    halt-s = trans (C.FlatCorrespondence.FlatCorr.halt-eq dc) h
     fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (mov (mem (base ecx)) (reg eax))
     fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
                       (fetch-block-head prog (fpc fs) store-indirect ft)
     rdi-val : xreadReg (xregs s) ecx ≡ xreadReg (xregs s) esp + slot-to-disp k
-    rdi-val = trans (C.in1-eq dc)
-              (trans (cong (C.enc-sv hv) i-eq)
+    rdi-val = trans (C.FlatCorrespondence.FlatCorr.in1-eq dc)
+              (trans (cong (C.FlatCorrespondence.enc-sv hv) i-eq)
               (trans (cong (λ fr → slot-addr FS fr k) f-eq)
               (trans (slot-addr-linear FS (current-frame (falloc fs)) k)
-                     (cong₂ (λ b w' → b + k * w') (sym (C.sp-eq dc)) word-eq))))
+                     (cong₂ (λ b w' → b + k * w') (sym (C.FlatCorrespondence.FlatCorr.sp-eq dc)) word-eq))))
     i-eq' : readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack (current-frame (falloc fs)) k)
     i-eq' = trans i-eq (cong (λ fr → SV-Ptr (AtStack fr k)) f-eq)
     post : X.State
     post = record s { memory = writeMem (memory s) (xreadReg (xregs s) esp + slot-to-disp k)
-                                        (C.enc-sv hv Out)
+                                        (C.FlatCorrespondence.enc-sv hv Out)
                     ; pc = pc s + 1 }
     snh : X.step-not-halted (compile-trace prog) s ≡ just post
     snh = trans (step-mov-mr {compile-trace prog} {s} {base ecx} {eax} fetch-x86)
                 (cong just (cong₂ (λ a v → record s { memory = writeMem (memory s) a v ; pc = pc s + 1 })
-                                  rdi-val (C.out-eq dc)))
+                                  rdi-val (C.FlatCorrespondence.FlatCorr.out-eq dc)))
     exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
-    dataPost : C.FlatCorr hv (flat-exec-instr store-indirect prog fs) post
-    dataPost = C.sim-store-indirect-stack k fs s _ dc i-eq' k<ns disj (C.sets-mem-x86 s _ _ _ _)
+    dataPost : C.FlatCorrespondence.FlatCorr hv (flat-exec-instr store-indirect prog fs) post
+    dataPost = C.FlatCorrespondence.sim-store-indirect-stack k fs s _ dc i-eq' k<ns disj (C.sets-mem-x86 s _ _ _ _)
     pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr store-indirect prog fs))
     pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) store-indirect ft))
 
@@ -2546,7 +2553,7 @@ block-step-store-indirect-suc-stack {hv} prog fs s f k cc h ft i-eq f-eq sk<ns d
     dc = dataCorr cc ; po = pc-off cc
     Out = readReg (regs (floc fs)) Output
     halt-s : X.State.halted s ≡ false
-    halt-s = trans (C.halt-eq dc) h
+    halt-s = trans (C.FlatCorrespondence.FlatCorr.halt-eq dc) h
     fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s)
               ≡ just (mov (mem (base+disp ecx slot-size)) (reg eax))
     fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
@@ -2555,11 +2562,11 @@ block-step-store-indirect-suc-stack {hv} prog fs s f k cc h ft i-eq f-eq sk<ns d
     addr-eq : xreadReg (xregs s) ecx + slot-size
             ≡ xreadReg (xregs s) esp + slot-to-disp (suc k)
     addr-eq = trans (cong (_+ slot-size)
-                      (trans (C.in1-eq dc)
-                      (trans (cong (C.enc-sv hv) i-eq)
+                      (trans (C.FlatCorrespondence.FlatCorr.in1-eq dc)
+                      (trans (cong (C.FlatCorrespondence.enc-sv hv) i-eq)
                       (trans (cong (λ fr → slot-addr FS fr k) f-eq)
                       (trans (slot-addr-linear FS (current-frame (falloc fs)) k)
-                             (cong₂ (λ b w' → b + k * w') (sym (C.sp-eq dc)) word-eq))))))
+                             (cong₂ (λ b w' → b + k * w') (sym (C.FlatCorrespondence.FlatCorr.sp-eq dc)) word-eq))))))
                     (trans (+-assoc (xreadReg (xregs s) esp) (k * slot-size) slot-size)
                            (cong (xreadReg (xregs s) esp +_)
                                  (+-comm (k * slot-size) slot-size)))
@@ -2567,16 +2574,16 @@ block-step-store-indirect-suc-stack {hv} prog fs s f k cc h ft i-eq f-eq sk<ns d
     i-eq' = trans i-eq (cong (λ fr → SV-Ptr (AtStack fr k)) f-eq)
     post : X.State
     post = record s { memory = writeMem (memory s) (xreadReg (xregs s) esp + slot-to-disp (suc k))
-                                        (C.enc-sv hv Out)
+                                        (C.FlatCorrespondence.enc-sv hv Out)
                     ; pc = pc s + 1 }
     snh : X.step-not-halted (compile-trace prog) s ≡ just post
     snh = trans (step-mov-mr {compile-trace prog} {s} {base+disp ecx slot-size} {eax} fetch-x86)
                 (cong just (cong₂ (λ a v → record s { memory = writeMem (memory s) a v ; pc = pc s + 1 })
-                                  addr-eq (C.out-eq dc)))
+                                  addr-eq (C.FlatCorrespondence.FlatCorr.out-eq dc)))
     exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
-    dataPost : C.FlatCorr hv (flat-exec-instr store-indirect-suc prog fs) post
-    dataPost = C.sim-store-indirect-suc-stack k fs s _ dc i-eq' sk<ns disj (C.sets-mem-x86 s _ _ _ _)
+    dataPost : C.FlatCorrespondence.FlatCorr hv (flat-exec-instr store-indirect-suc prog fs) post
+    dataPost = C.FlatCorrespondence.sim-store-indirect-suc-stack k fs s _ dc i-eq' sk<ns disj (C.sets-mem-x86 s _ _ _ _)
     pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr store-indirect-suc prog fs))
     pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) store-indirect-suc ft))
 

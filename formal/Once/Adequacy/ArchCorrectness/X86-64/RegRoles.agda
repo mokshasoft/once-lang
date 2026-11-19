@@ -19,7 +19,8 @@
 
 module Once.Adequacy.ArchCorrectness.X86-64.RegRoles where
 
-open import Once.CCC.Target.X86-64.Syntax using (Reg; rax; rdi; rsp; r12; r15)
+open import Once.CCC.Target.X86-64.Syntax using ()
+open import Once.Target.X86-64.PhysReg using (Reg; rsp; r12; r15; rax; rdi)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles
   using (RegRoles; Role; role-sp; role-clos; role-heap; role-out; role-in1)
 
@@ -33,4 +34,4 @@ x86-64-reg-of role-in1     = rdi
 x86-64-roles : RegRoles Reg
 x86-64-roles = record { reg-of = x86-64-reg-of }
 
-open RegRoles x86-64-roles public
+module RegRoles′ = RegRoles x86-64-roles

@@ -46,7 +46,7 @@ module Once.CCC.Codegen.FrameFreeTrace (o : CanonicalName) where
 open import Data.Nat using (ℕ; suc; _+_; _*_; _∸_)
 open import Data.Unit using (tt)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
-open import Once.CCC.Label using (ℓ)
+open import Once.CCC.Label using (ℓ; LabelId)
 open import Once.CCC.Machine.MuRep using (MuRep; mu-box; mu-unit; mu-ptr; mu-rep)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
@@ -59,7 +59,7 @@ open import Once.IRTy using (IRTy; IRFunctor; ⟦_⟧TI; ν-type; fits-int; fits
 open import Once.Spec.Type using (Fun; K; Id; _⊕_; _⊗_)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore using (blocks-layout; link-top)
-open import Once.CCC.Machine.SMCore using (LabelId; AbstractTrace)
+open import Once.CCC.Machine.SMCore using (AbstractTrace)
 open import Once.CCC.Machine.FrameFree using
   (EmittableI)
 open import Once.CCC.Machine.Flat using (module FlatMachine)

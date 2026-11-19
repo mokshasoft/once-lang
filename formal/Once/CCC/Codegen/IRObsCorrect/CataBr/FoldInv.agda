@@ -34,6 +34,14 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.CataBr.FoldInv (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.Bool using (false; true)
+open import Data.List using (List; _++_)
+open import Data.Maybe using (just; nothing)
+open import Data.Nat using (ℕ; suc; _+_; _≤_)
+open import Data.Product using (_×_)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.CCC.Machine.SMCore using (ending)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Stack o tbl using (module CataStackC)
 open import Once.CCC.Machine.SMCore
@@ -52,6 +60,13 @@ open import Once.Denotation.Approx using (done; NotCut; budgetLeft)
 module CataFoldInvC {FS : FrameSemantics} where
 
   open Core {FS}
+  open ClosureWellFormedBase′ using (eventsAt; ⟪_⟫_; resultAt; stopsAt; BlocksKept)
+  open FlatEventTrace′ using (chain-events; chain-ctrls)
+  open FlatMachine′ using (FlatState)
+  open FlatMachine′.FlatState using (floc; fpc; falloc; fret; flink)
+  open FlatStepsAPI′ using (FlatSteps)
+  open FrontierInvariant′ using (BeforeFrontier)
+  open MemOps′ using (readLoc)
   open CataStackC {FS} using (StackAt; NodeE; ValE; WordAt)
   open LocState using (halted)
   open AllocState using (next-slot; next-heap-ref; current-frame; saved-frames)

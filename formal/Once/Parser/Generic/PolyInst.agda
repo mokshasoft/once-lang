@@ -89,9 +89,7 @@ PolyAlg = record
 -- Derived: relation, parser, sound, complete for PolyType.
 ------------------------------------------------------------------------
 
-open Gen PolyAlg public
-  renaming ( ParsesTypeG to ParsesPolyType
-           ; typeShrink to ParsesPolyType-shrink )
-open P.Make PolyAlg public renaming (typeP to parsePolyTypeP)
-open S.Make PolyAlg public renaming (sound-type to sound-polyType)
-open C.Make PolyAlg public renaming (complete-type to complete-polyType)
+module Gen′ = Gen PolyAlg
+module Make′′ = P.Make PolyAlg renaming (typeP to parsePolyTypeP)
+module Make′ = S.Make PolyAlg renaming (sound-type to sound-polyType)
+module Make = C.Make PolyAlg renaming (complete-type to complete-polyType)

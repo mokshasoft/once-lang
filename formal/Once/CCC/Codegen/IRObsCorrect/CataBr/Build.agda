@@ -28,6 +28,19 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.CataBr.Build (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.Bool using (false)
+open import Data.Empty using (⊥)
+open import Data.List using (_∷_; _++_; []; length)
+open import Data.List.Relation.Unary.All.Properties using (++⁺)
+open import Data.Maybe using (just)
+open import Data.Product using (proj₁; _,_; proj₂; _×_)
+open import Data.Unit using (tt)
+open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
+open import Once.CCC.Machine.ValueRel using (module ClosureWellFormedBase; valid-pair-wf; valid-inl-wf; valid-inl-reg-wf; valid-inl-flat-wf; valid-inr-wf; valid-inr-reg-wf; valid-inr-flat-wf)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Once.IR using (Heap)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; _≢_; trans; sym; subst)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Stack o tbl using (module CataStackC)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Walk o tbl using (module CataWalkC)
 open import Once.CCC.Codegen.IRToTrace o using (wrap-sum)
@@ -44,10 +57,10 @@ import Once.IRTy as I
 open import Once.CCC.Codegen.Size using (size)
 open import Once.CCC.Codegen.FlatLayout using (kind; lkind; lsz; kind-skind; size-ssize; put; fill; put-All; fill-All)
 open import Data.List.Properties using (++-identityʳ)
-open import Data.Nat using (_⊔_; z≤n; s≤s)
+open import Data.Nat using (_⊔_; z≤n; s≤s; suc; _+_; ℕ; _≤_; _<_; _∸_)
 open import Data.Sum using (inj₁; inj₂)
-open import Data.List.Relation.Unary.All using ([]; _∷_)
-open import Data.Nat.Properties using (m≤n⊔m; m≤m⊔n; +-monoʳ-<; m+[n∸m]≡n)
+open import Data.List.Relation.Unary.All using ([]; _∷_; All)
+open import Data.Nat.Properties using (m≤n⊔m; m≤m⊔n; +-monoʳ-<; m+[n∸m]≡n; ≤-trans; m≤m+n; <-irrefl; <-≤-trans; ≤-reflexive; +-identityʳ; n≤1+n; n<1+n)
 open import Once.CCC.Codegen.StraightRun using (module StraightRunAPI)
 import Once.CCC.Machine.FlatPut as FlatPut
 import Once.CCC.Machine.FlatAlloc as FlatAlloc
@@ -87,6 +100,15 @@ arm-ty arm-r A B = B
 module CataBuildC {FS : FrameSemantics} where
 
   open Core {FS}
+  open ClosureWellFormedBase′ using (Live; InBlk; cell-ptr; cell-inline; cell-flat)
+  open ClosureWellFormedDef′ using (CellAt; ValidAtWF; validityWF-mem-only)
+  open FlatEventTrace′ using (event-of; chain-events)
+  open AbstractExec′ using (exec-abstract)
+  open FlatMachine′ using (FlatState; StraightStep)
+  open FlatMachine′.FlatState using (fpc; floc; falloc)
+  open FlatStepsAPI′ using (_∷_; []; FlatSteps)
+  open FrontierInvariant′ using (BeforeFrontier; module BeforeFrontier)
+  open MemOps′ using (readLoc)
   open Mach {FS}
   open CataStackC {FS} using (WordAt)
   open CataWalkC {FS} using (Walk)

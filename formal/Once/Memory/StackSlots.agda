@@ -32,7 +32,9 @@ open import Relation.Nullary using (yes; no)
 import Data.Nat.Properties as ℕP
 
 -- Import Regions for InStack and StackAddr
-open import Once.Memory.Regions layout public
+import Once.Memory.Regions
+module Regions = Once.Memory.Regions layout
+open Regions
   using (InStack)
 
 ------------------------------------------------------------------------
@@ -46,7 +48,7 @@ record StackAddr : Set where
     addr : Addr
     in-stack : InStack addr
 
-open StackAddr public
+open StackAddr
 
 -- | StackPointer is an alias for StackAddr
 StackPointer : Set
@@ -70,10 +72,9 @@ f₁ ≟SP f₂ with addr f₁ ℕP.≟ addr f₂
 -- Stack Growth Interface (from parameter)
 ------------------------------------------------------------------------
 
-open StackGrowth sg public
-  using (grow; grow-identity; grow-injective; grow-addr-injective;
-         FramePreserved; StackGrew; frame-preserved-under-growth;
-         slot-in-preserved-frame)
+module StackGrowth′ = StackGrowth sg
+open StackGrowth′
+  using (grow; grow-identity; grow-injective; grow-addr-injective)
 
 ------------------------------------------------------------------------
 -- Slot Address Computation

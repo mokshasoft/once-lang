@@ -33,6 +33,18 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.CaseShape (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open Interface.Prelude using ()
+open Interface.Prelude.IRToTrace using (ir-to-trace')
+open import Data.Bool using (true; false)
+open import Data.List using (_∷_; []; _++_; length)
+open import Data.List.Relation.Unary.All.Properties using (++⁻)
+open import Data.Maybe using (nothing; just) renaming (map to mmap)
+open import Data.Product using (proj₁; proj₂; _×_; _,_)
+open import Once.CCC.Machine.ValueRel using (module ClosureWellFormedBase; valid-inl-wf; valid-inl-reg-wf; valid-inl-flat-wf; valid-inr-wf; valid-inr-reg-wf; valid-inr-flat-wf)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Once.IR using (IR; case; AllocMode; Heap; Stack)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong₂; _≢_; trans; cong; subst; sym)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation)
@@ -46,12 +58,12 @@ open import Once.CCC.Codegen.FlatLayout using (get-i; get-one; get-i-P)
 open import Once.CCC.Machine.SMCore using (offsetLoc)
 open import Once.CCC.Machine.SMCore using (instr-ctrl; c-branch-tag-zero; c-jmp; c-label; AllocState; AbstractTrace; mov-to-input; LocState; SV-Tag; readReg; Input1; SV-Ptr; sucLoc; Output; module LocState)
 open LocState using (regs)
-open import Data.Nat.Properties using (1+n≰n)
+open import Data.Nat.Properties using (1+n≰n; ≤-refl; n≤1+n; +-comm; +-assoc; ≤-trans; ≤-reflexive)
 open import Data.List.Relation.Unary.All using () renaming (_∷_ to _∷ᴬ_; [] to []ᴬ)
 open import Data.Sum using (inj₁; inj₂)
 open import Once.IRTy using (IRTy)
 import Once.IRTy as IRT
-open import Data.Nat using (s≤s)
+open import Data.Nat using (s≤s; ℕ; suc; _+_; _≤_; _<_)
 open import Data.Nat.Solver using (module +-*-Solver)
 open +-*-Solver using (solve; _:+_; con; _:=_)
 
@@ -113,6 +125,11 @@ shuffle-end = solve 3 (λ a b c →
 module ShapeC {FS : FrameSemantics} where
 
   open Core {FS}
+  open ClosureWellFormedBase′ using (cell-ptr; cell-inline; cell-flat; live→bf)
+  open ClosureWellFormedDef′ using (ValidAtWF; CellAt; ResultPlace; InputAt; at-loc; in-loc; validityWF-mem-preserved; at-reg; in-reg; unit-result; in-unit)
+  open FlatMachine′ using (label-of?; fetch; fetch-++-left; fetch-++-right; find-label; fl-go; fl-at; tag-test; flat-read-tag)
+  open FlatStepsAPI′ using (_∷_; [])
+  open MemOps′ using (readLoc)
   open FlatStepsAPI {FS} using (fl-go-skip; fl-go-shift; fl-go-prefix)
   open Resolve {FS} using (found-in-window; noLabel-outside; NoLabel; fl-hit)
   open ClosureWellFormedBase {FS} using (SumTag)

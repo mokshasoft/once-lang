@@ -22,6 +22,19 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.Pair.Build (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.Bool using (false)
+open import Data.Empty using (⊥)
+open import Data.List using (_∷_; _++_; []; length)
+open import Data.List.Relation.Unary.All.Properties using (++⁺)
+open import Data.Maybe using (just)
+open import Data.Product using (proj₁; _,_; proj₂)
+open import Data.Unit using (tt)
+open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
+open import Once.CCC.Machine.ValueRel using (valid-pair-wf)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Once.IR using (Heap)
+open import Relation.Binary.PropositionalEquality using (subst; sym; _≡_; trans; cong; refl)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic; ValueLocation)
 open import Once.CCC.Machine.SMCore
@@ -40,13 +53,22 @@ import Once.CCC.Machine.FlatAlloc as FlatAlloc
 import Once.CCC.Machine.SMPrimitives
 open import Once.CCC.Codegen.IRObsCorrect.Inj o tbl using (module InjC)
 
-open import Data.Nat using (_⊔_)
-open import Data.Nat.Properties using (m≤n⊔m)
-open import Data.List.Relation.Unary.All using ([]; _∷_)
+open import Data.Nat using (_⊔_; ℕ; suc; _+_; _≤_; _<_)
+open import Data.Nat.Properties using (m≤n⊔m; <-irrefl; ≤-trans; n<1+n; n≤1+n; m≤m+n; <-≤-trans; ≤-reflexive; +-identityʳ; ≤-refl)
+open import Data.List.Relation.Unary.All using ([]; _∷_; All)
 
 module PairBuildC {FS : FrameSemantics} where
 
   open Core {FS}
+  open ClosureWellFormedBase′ using (Live; BlocksKept)
+  open ClosureWellFormedDef′ using (ResultPlace; at-loc; at-reg; unit-result; CellAt; ValidAtWF)
+  open FlatEventTrace′ using (event-of; chain-events)
+  open AbstractExec′ using (exec-abstract)
+  open FlatMachine′ using (FlatState; StraightStep)
+  open FlatMachine′.FlatState using (fpc; floc; falloc)
+  open FlatStepsAPI′ using (_∷_; []; FlatSteps)
+  open FrontierInvariant′ using (BeforeFrontier; module BeforeFrontier; frontier-monotone)
+  open MemOps′ using (readLoc)
   open Mach {FS}
   open MemOps {FS} using (writeLoc-preserves-other; writeLoc-read-same-stack)
   open AbstractExec {FS} using (exec-trace; exec-trace-cons; exec-load-from-slot-with-value)

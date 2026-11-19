@@ -37,8 +37,10 @@ open import Data.Maybe.Properties using (just-injective)
 open import Data.Product using (Σ; _×_; _,_)
 open import Data.Sum using (inj₁; inj₂)
 open import Once.CCC.Machine.SMCore
+open import Once.CCC.Label using (LabelId; EntryId; e-fn; e-thunk)
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
+open FlatState using (fpc; floc; falloc; flink; fret; fclosure)
 open import Once.CCC.Codegen.RoomChecks using (room-checks; need)
 open import Once.CCC.Codegen.RoomChecksFacts using (φ; module RoomFacts)
 open RoomFacts {FS} using (fetch-room)
@@ -46,6 +48,7 @@ open import Once.CCC.Codegen.RoomChecksSim using (module RoomSim)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open FlatStepsAPI {FS} using (Sound)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunContext o FS slot-size word-eq
+open RunAt using (run-tbl; run-ir; run-emit; run-linked; run-reach)
 
 -- THE RUN OF THE LOWERED IMAGE: `prog` is `t` with its checks, and `fs` is the
 -- lift of a state `t`'s run reaches, at a pc that stands for that state's.
@@ -115,7 +118,7 @@ import Once.Adequacy.ArchCorrectness.FlatCore.RunWF o FS slot-size word-eq as RW
 open import Data.List using (List; []; _∷_; map)
 open import Data.Maybe using () renaming (map to mmap)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtDynamic; AtStack; Slot)
-open import Once.Memory.HeapAddress using (HeapLocation; module HeapLocation; module HeapRef)
+open import Once.Memory.HeapAddress using (HeapLocation; module HeapLocation; module HeapRef; sucHL; offsetHL)
 open HeapLocation using (heap-offset; heap-ref)
 open import Once.SigOp.Info using (SigOpInfo; effect; Pure)
 open SigOpInfo using (baseA)

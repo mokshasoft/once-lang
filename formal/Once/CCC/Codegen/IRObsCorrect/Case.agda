@@ -33,6 +33,9 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.Case (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Once.IR using (IR; case)
+open import Relation.Binary.PropositionalEquality using (subst)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Data.Sum using (inj₁; inj₂)
 
@@ -53,6 +56,7 @@ module CaseC {FS : FrameSemantics} where
 
 
   open Core {FS}
+  open ClosureWellFormedDef′ using (in-loc; in-reg; in-unit)
   -- The first half of this same clause: the shape, the four premise splits,
   -- the two jump targets, and the residence lemmas.
   ----------------------------------------------------------------------

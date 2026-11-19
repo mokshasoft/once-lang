@@ -28,6 +28,14 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.CataBr.Flatten (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.Bool using (false)
+open import Data.Empty using (⊥-elim; ⊥)
+open import Data.List using (length; List; []; _∷_)
+open import Data.Maybe using (just)
+open import Data.Product using (proj₂; proj₁; _,_)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Relation.Binary.PropositionalEquality using (_≡_; trans; cong; sym; subst; refl)
 open import Once.CCC.Machine.MuRep using (Unboxed)
 open import Once.CCC.Codegen.IRObsCorrect.CataConst.Meaning o using (μ-layer-val)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Meaning using (module PO)
@@ -47,12 +55,17 @@ open import Once.IRTy.WF using (wf-⌈⌉)
 open import Once.Spec.Word using (Carrier)
 open import Once.IR.Semantics.Value Carrier Carrier using (⟦_⟧F)
 open import Once.IR.Semantics.Iterative using (T∞)
-open import Data.Nat using (_*_)
+open import Data.Nat using (_*_; ℕ; _+_; _≤_; suc; zero)
 open import Data.Nat.Properties using (suc-injective)
 
 module CataFlattenC {FS : FrameSemantics} where
 
   open Core {FS}
+  open ClosureWellFormedBase′ using (Live)
+  open FlatMachine′ using (find-label; FlatState)
+  open FlatMachine′.FlatState using (falloc; floc; fpc)
+  open FlatStepsAPI′ using ([]; _∷_)
+  open MemOps′ using (readLoc)
   open CataStackC {FS}
   open CataWalkC {FS}
   open CataRoundC {FS}

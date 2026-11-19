@@ -199,4 +199,3 @@ decode-encode F = decode-encode-at F (valid F)
 
 
 -- | Negation on words is negation on values (`EncodingLaws.Neg`).
-open import Once.Float.EncodingLaws.Neg public using (decode-fneg)

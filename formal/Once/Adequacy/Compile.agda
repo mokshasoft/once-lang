@@ -360,8 +360,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
 
   -- The typed program and its parse relation are the Spec's (plan 0.81), and
   -- world-free: typing does not run anything.
-  open Once.Program public using (Typed; _⊢R_)
-
+  open Once.Program using (Typed; _⊢R_)
   -- The bytes' run follows the meaning up to running out (D374; matches the
   -- record's `_⊑_`); the trace witnesses below are exactly proofs at this
   -- relation. Between two meanings the relation stays weak bisimilarity.

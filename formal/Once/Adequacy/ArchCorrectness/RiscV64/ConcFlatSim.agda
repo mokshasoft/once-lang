@@ -40,7 +40,9 @@ import Once.CCC.Target.RiscV64.Semantics as RS
 open import Once.CCC.Machine.SMCore using
   (AbstractTrace; lea-slot; instr-ctrl; c-ret; instr-load-tag-lit; instr-load-const; instr-room)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
-open import Once.CCC.Target.RiscV64.Syntax using (sp; slots) renaming (Reg to Reg')
+open import Once.CCC.Target.RiscV64.Syntax using (slots)
+open import Once.Target.RiscV64.PhysReg using (sp) renaming (Reg to Reg')
+open import Once.Target.RiscV64.PhysReg using (Reg)
 open import Once.CCC.Target.RiscV64.AbstractToRiscV using (slot-to-disp)
 open import Data.Nat using (ℕ; suc; _+_; _<_; _≤_)
 open import Once.Type using (fits-int; fits-float)
@@ -70,11 +72,11 @@ module Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim
   -- while the conclusion says `modulus * 8 < modulus`. A correspondence does
   -- not bound a slot INDEX; `RunAt` does. See `ResourceBounds.SlotAddrNoWrap`.
   (slot-addr-no-wrap :
-     ∀ {hv : FCr.HeapView FS word-eq} (prog : AbstractTrace)
+     ∀ {hv : FCr.FlatCorrespondence.HeapView FS word-eq} (prog : AbstractTrace)
        (fs : FlatMachine.FlatState {FS}) (s : RS.State) (slot : ℕ)
      → RLr.RunLow o FS slot-size word-eq prog fs
-     → FSimr.CompiledCorr o FS word-eq fmt-eq hv prog fs s
-     → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs) ≡ just (lea-slot slot)
+     → FSimr.CompiledCorrespondence.CompiledCorr o FS word-eq fmt-eq hv prog fs s
+     → FlatMachine.fetch {FS} prog (FlatMachine.FlatState.fpc {FS} fs) ≡ just (lea-slot slot)
      → RS.readReg (RS.State.regs s) sp + slot-to-disp slot < RS.W.modulus)
   -- …AND THE REST OF THE FAMILY (plan 0.65 G2). Bundled as the two records
   -- `RiscV64/ResourceBounds` defines, exactly as x86-64 threads them (the three
@@ -86,47 +88,47 @@ module Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim
   -- (it is what keeps this file reachable from the four clusters), so naming
   -- its types here is a cycle. x86-64 does the same, and its apex is where the
   -- two meet.
-  (reg-range : ∀ {hv : FCr.HeapView FS word-eq} (prog : AbstractTrace)
+  (reg-range : ∀ {hv : FCr.FlatCorrespondence.HeapView FS word-eq} (prog : AbstractTrace)
                  (fs : FlatMachine.FlatState {FS}) (s : RS.State) (r : Reg')
              → RLr.RunLow o FS slot-size word-eq prog fs
-             → FSimr.CompiledCorr o FS word-eq fmt-eq hv prog fs s
+             → FSimr.CompiledCorrespondence.CompiledCorr o FS word-eq fmt-eq hv prog fs s
              → RS.readReg (RS.State.regs s) r < RS.W.modulus)
   -- `suc b`: THE CALLER'S FRAME BASE, not just the frame. See D106.
-  (ret-no-wrap : ∀ {hv : FCr.HeapView FS word-eq} (prog : AbstractTrace)
+  (ret-no-wrap : ∀ {hv : FCr.FlatCorrespondence.HeapView FS word-eq} (prog : AbstractTrace)
                    (fs : FlatMachine.FlatState {FS}) (s : RS.State) (b : ℕ)
                → RLr.RunLow o FS slot-size word-eq prog fs
-               → FSimr.CompiledCorr o FS word-eq fmt-eq hv prog fs s
-               → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
+               → FSimr.CompiledCorrespondence.CompiledCorr o FS word-eq fmt-eq hv prog fs s
+               → FlatMachine.fetch {FS} prog (FlatMachine.FlatState.fpc {FS} fs)
                    ≡ just (instr-ctrl (c-ret b))
                → RS.readReg (RS.State.regs s) sp + slots (suc b) < RS.W.modulus)
-  (tag-fits : ∀ {hv : FCr.HeapView FS word-eq} (prog : AbstractTrace)
+  (tag-fits : ∀ {hv : FCr.FlatCorrespondence.HeapView FS word-eq} (prog : AbstractTrace)
                 (fs : FlatMachine.FlatState {FS}) (s : RS.State) (n : ℕ)
             → RLr.RunLow o FS slot-size word-eq prog fs
-            → FSimr.CompiledCorr o FS word-eq fmt-eq hv prog fs s
-            → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
+            → FSimr.CompiledCorrespondence.CompiledCorr o FS word-eq fmt-eq hv prog fs s
+            → FlatMachine.fetch {FS} prog (FlatMachine.FlatState.fpc {FS} fs)
                 ≡ just (instr-load-tag-lit n)
             → n < RS.W.modulus)
-  (lit-fits : ∀ {hv : FCr.HeapView FS word-eq} (prog : AbstractTrace)
+  (lit-fits : ∀ {hv : FCr.FlatCorrespondence.HeapView FS word-eq} (prog : AbstractTrace)
                 (fs : FlatMachine.FlatState {FS}) (s : RS.State) (v : ℤ)
             → RLr.RunLow o FS slot-size word-eq prog fs
-            → FSimr.CompiledCorr o FS word-eq fmt-eq hv prog fs s
-            → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
+            → FSimr.CompiledCorrespondence.CompiledCorr o FS word-eq fmt-eq hv prog fs s
+            → FlatMachine.fetch {FS} prog (FlatMachine.FlatState.fpc {FS} fs)
                 ≡ just (instr-load-const fits-int v)
             → Once.CCC.Machine.SMCore.AbstractExec.lit-value {FS} fits-int v < RS.W.modulus)
-  (float-fits : ∀ {hv : FCr.HeapView FS word-eq} (prog : AbstractTrace)
+  (float-fits : ∀ {hv : FCr.FlatCorrespondence.HeapView FS word-eq} (prog : AbstractTrace)
                   (fs : FlatMachine.FlatState {FS}) (s : RS.State) (v : Decimal)
               → RLr.RunLow o FS slot-size word-eq prog fs
-              → FSimr.CompiledCorr o FS word-eq fmt-eq hv prog fs s
-              → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
+              → FSimr.CompiledCorrespondence.CompiledCorr o FS word-eq fmt-eq hv prog fs s
+              → FlatMachine.fetch {FS} prog (FlatMachine.FlatState.fpc {FS} fs)
                   ≡ just (instr-load-const fits-float v)
               → Once.CCC.Machine.SMCore.AbstractExec.lit-value {FS} fits-float v < RS.W.modulus)
   -- D378: a room check's need, `8k`, is an emitted immediate (`li t2, 8k`)
   -- and fits a word — the literal seam, as `tag-fits`.
-  (room-fits : ∀ {hv : FCr.HeapView FS word-eq} (prog : AbstractTrace)
+  (room-fits : ∀ {hv : FCr.FlatCorrespondence.HeapView FS word-eq} (prog : AbstractTrace)
                  (fs : FlatMachine.FlatState {FS}) (s : RS.State) (k : ℕ)
              → RLr.RunLow o FS slot-size word-eq prog fs
-             → FSimr.CompiledCorr o FS word-eq fmt-eq hv prog fs s
-             → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
+             → FSimr.CompiledCorrespondence.CompiledCorr o FS word-eq fmt-eq hv prog fs s
+             → FlatMachine.fetch {FS} prog (FlatMachine.FlatState.fpc {FS} fs)
                  ≡ just (instr-room k)
              → slots k < RS.W.modulus)
   where
@@ -140,7 +142,7 @@ open import Data.Maybe.Properties using (just-injective)
 open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong)
 
 open import Once.CCC.Target.RiscV64.Syntax using
-  (Reg; Instr; label; ld; sd; add; sub; sltu; addi; li; auipc; lla; lla-sym; mv; beq; bne; jal; jalr; j; ret; call; call-sym; nop; unimp; bgeu-fwd; local-1)
+  (Instr; label; ld; sd; add; sub; sltu; addi; li; auipc; lla; lla-sym; mv; beq; bne; jal; jalr; j; ret; call; call-sym; nop; unimp; bgeu-fwd; local-1)
 import Once.CCC.Target.RiscV64.Semantics as R
 open import Once.CCC.Target.RiscV64.AbstractToRiscV using (compile-abstract; compile-trace)
 open import Once.Adequacy.ArchCorrectness.RiscV64.RegRoles using (riscv64-roles)
@@ -328,28 +330,19 @@ module EE = Engine o FS slot-size word-eq Reg riscv64-roles R.W.modulus
   using ( FlatInv; mkFlatInv; flat-inv-step; block-run-exec
         ; events-running-end; sigop-concrete-fetch; sigop-run-arith
         ; sigop-run-external; event-of-pure; StuckAt; StuckSteps
-        ; EntryLike; Reachable; reach-start
-        ; stuck-result; Supply; fetch-block-head; fetch-block-2nd
-        ; module CFC; module RT )
+        ; stuck-result; Supply
+        ; module CFC; module RT; module FlatComposition; module RunContext′ )
 
-open EE using (FlatInv; mkFlatInv; flat-inv-step; block-run-exec
-              ; events-running-end; sigop-concrete-fetch; sigop-run-arith
-              ; sigop-run-external; event-of-pure
-              -- …and what the four stuck routes name. `CompiledCorr`/`HeapView`
-              -- are NOT re-listed: `FlatSimulation` already binds them (the same
-              -- instance, by module application), and naming them twice makes
-              -- every use ambiguous.
-              ; StuckAt; StuckSteps
-              -- …and the run-context vocabulary the APEX needs to exhibit the
-              -- entry state as a legitimate start state
-              ; EntryLike; Reachable; reach-start) public
+open EE using (StuckAt; StuckSteps)
 
 -- the ABSTRACT machine's own vocabulary, which the stuck routes state their
 -- premises in (`hiding (Instr)`: this module's `Instr` is the CONCRETE one)
 open import Once.CCC.Machine.SMCore hiding (Instr)
+open import Once.Memory.HeapAddress using (offsetHL)
 open LocState using (halted; regs)
 open import Once.CCC.Machine.Locations using (AtDynamic)
-open FlatMachine {FS} using (fpc; floc; falloc; fetch; find-label; flat-exec-instr)
+open FlatMachine {FS} using (fetch; find-label; flat-exec-instr; module FlatState)
+open FlatState using (floc; fpc; falloc)
 open ExecFinal {FS} using (in-block?)
 open AllocState using (block-size)
 open MemOps {FS} using (readLoc)
@@ -361,7 +354,7 @@ open SigOpInfo using (sem)
 open import Once.Target.Symbol using (once-symbol-path)
 -- (`zero` is BOTH a riscv64 register and `ℕ`'s constructor; the register is
 -- renamed so the two never collide in this module.)
-open import Once.CCC.Target.RiscV64.Syntax using (a0; t0; t1) renaming (zero to rzero)
+open import Once.Target.RiscV64.PhysReg using (a0; t0; t1) renaming (zero to rzero)
 open import Once.Adequacy.ArchCorrectness.FlatCore.FlatComposition FS Instr
   compile-abstract compile-trace refl (λ _ _ → refl)
   R.fetch (λ _ → refl) (λ _ _ → refl) (λ _ _ _ → refl)
@@ -384,8 +377,9 @@ open import Once.Adequacy.ArchCorrectness.FlatCore.FlatComposition FS Instr
 --
 -- Stated at exactly the field's type, so `Supply`'s `bs-lea-slot` is this.
 ------------------------------------------------------------------------
-open import Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation o FS word-eq fmt-eq using
-  (block-step-lea-slot; BlockStep; BlockSteps; room-step-riscv64
+import Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation
+module FlatSimulation = Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation o FS word-eq fmt-eq using
+  (block-step-lea-slot; room-step-riscv64
   ; block-step-mov-to-output; block-step-mov-to-input
   ; block-step-c-label; block-step-reclaim-to
   ; block-step-worklist-init; block-step-worklist-check
@@ -402,20 +396,23 @@ open import Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation o FS word-eq fm
   ; block-step-c-thunk; block-step-c-start; block-step-out-nz; block-step-c-ret
   ; block-step-load-const; block-step-load-const-float
   ; block-step-load-code-addr; block-step-call; block-step-call-fn; block-step-alloc-heap
-  -- RE-EXPORTED (`public`): the APEX name `CompiledCorr`, when it exhibits the
-  -- entry correspondence. It comes from here rather than from `EE`'s public
-  -- open — listing it in both makes every use ambiguous, and this is the
-  -- binding that already existed.
+  -- `CompiledCorr`, `dataCorr`, `pc-off`, `BlockStep(s)` come from this copy's
+  -- `CompiledCorrespondence` (opened below), not from `EE`: binding them from
+  -- both would make every use ambiguous.
   --
-  -- `HeapView` is NOT here: it is not exported by `FlatSimulation` at all, and
-  -- naming it in this list was a no-op that Agda only warned about. Its real
-  -- source is the `FlatCorrespondence` import just below.
-  ; dataCorr; pc-off; CompiledCorr) public
+  -- `HeapView` is NOT here: it is not exported by `FlatSimulation` at all. Its
+  -- real source is the `FlatCorrespondence` import just below.
+  ; module CompiledCorrespondence)
+open FlatSimulation
+open FlatSimulation.CompiledCorrespondence using (CompiledCorr; BlockStep; BlockSteps)
+open FlatSimulation.CompiledCorrespondence.CompiledCorr using (dataCorr; pc-off)
 open import Once.Adequacy.ArchCorrectness.RiscV64.FlatCorrespondence FS word-eq using
-  (HeapView)
+  (module FlatCorrespondence)
+open FlatCorrespondence using (HeapView)
 -- plan 0.123 α′ (e): the arch-free frame lemma of an arith SigOp's run
 module CFr = FCr FS word-eq
-open import Once.Adequacy.ArchCorrectness.RiscV64.FlatComposition FS using (blk-off; blk-len; blk-off-suc)
+open import Once.Adequacy.ArchCorrectness.RiscV64.FlatComposition FS using (module FlatComposition)
+open FlatComposition using (blk-off; blk-len; blk-off-suc)
 open import Once.Adequacy.ArchCorrectness.FlatCore.SigOpFrame
        o FS slot-size word-eq Reg riscv64-roles R.State (FSimr.rreg' o FS word-eq fmt-eq) R.State.memory R.State.halted
        (FSimr.riscv64-link-claim o FS word-eq fmt-eq) R.State.pc Once.CCC.Target.RiscV64.Syntax.Program compile-trace
@@ -440,7 +437,7 @@ riscv64-addr-at : ∀ {hv : HeapView} prog fs s k hl → CompiledCorr hv prog fs
   → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (addr-at k)
   → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
-  → FCr.HDom hv (offsetHL hl k)
+  → FCr.FlatCorrespondence.HeapView.HDom hv (offsetHL hl k)
   → in-block? (block-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ true
   → RLr.RunLow o FS slot-size word-eq prog fs
   → BlockStep hv prog fs s (addr-at k)
@@ -470,10 +467,10 @@ stuck-c-jmp ev env prog fs s m cc h ftq fl-eq = λ lg →
             (EE.RT.run-events-halted ev env lg 0 (compile-trace prog) s' refl)
   where
     halt-s : R.State.halted s ≡ false
-    halt-s = trans (EE.CFC.halt-eq (dataCorr cc)) h
+    halt-s = trans (EE.CFC.FlatCorr.halt-eq (dataCorr cc)) h
     fetch-rv : R.fetch (compile-trace prog) (R.State.pc s) ≡ just (j (once m))
     fetch-rv = trans (cong (R.fetch (compile-trace prog)) (pc-off cc))
-                     (EE.fetch-block-head prog (fpc fs) (instr-ctrl (c-jmp m)) ftq)
+                     (EE.FlatComposition.fetch-block-head prog (fpc fs) (instr-ctrl (c-jmp m)) ftq)
     s' : R.State
     s' = record s { halted = true }
     step-eq : R.execInstr (compile-trace prog) s (j (once m)) ≡ just s'
@@ -497,10 +494,10 @@ stuck-c-branch-tag-zero ev env prog fs s m loc cc h ftq i-eq r-eq rd fl-eq = λ 
   where
     dc = dataCorr cc
     halt-s : R.State.halted s ≡ false
-    halt-s = trans (EE.CFC.halt-eq dc) h
+    halt-s = trans (EE.CFC.FlatCorr.halt-eq dc) h
     fetch-ld : R.fetch (compile-trace prog) (R.State.pc s) ≡ just (ld t1 t0 0)
     fetch-ld = trans (cong (R.fetch (compile-trace prog)) (pc-off cc))
-                     (EE.fetch-block-head prog (fpc fs)
+                     (EE.FlatComposition.fetch-block-head prog (fpc fs)
                         (instr-ctrl (c-branch-tag-zero m)) ftq)
     post-ld : R.State
     post-ld = record s { regs = R.writeReg (R.State.regs s) t1 0
@@ -510,7 +507,7 @@ stuck-c-branch-tag-zero ev env prog fs s m loc cc h ftq i-eq r-eq rd fl-eq = λ 
     fetch-beq : R.fetch (compile-trace prog) (R.State.pc post-ld)
               ≡ just (beq t1 rzero (once m))
     fetch-beq = trans (cong (λ p → R.fetch (compile-trace prog) (p + 1)) (pc-off cc))
-                      (EE.fetch-block-2nd prog (fpc fs)
+                      (EE.FlatComposition.fetch-block-2nd prog (fpc fs)
                          (instr-ctrl (c-branch-tag-zero m)) ftq)
     post-beq : R.State
     post-beq = record post-ld { halted = true }
@@ -599,7 +596,7 @@ postulate
                             × CompiledCorr hv prog
                                 (flat-exec-instr (instr-sigop si) prog fs)
                                 (RTr.ret-call (answer-at (Once.CCC.FrameSemantics.fs-numerics FS) (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-riscv64)
-                                   (LocState.ev-log (FlatMachine.floc {FS} fs)) (once-symbol-path (SigOpInfo.name si)) s)
+                                   (LocState.ev-log (FlatMachine.FlatState.floc {FS} fs)) (once-symbol-path (SigOpInfo.name si)) s)
 
 ------------------------------------------------------------------------
 -- Plan 0.129 B5: THE LOOKUP HALF IS A THEOREM. A compiler-owned SigOp of the
@@ -658,20 +655,20 @@ private
 arith-block-value  : ∀ {hv : HeapView} prog fs s {A B} (si : SigOpInfo A B)
                    → RLr.RunLow o FS slot-size word-eq prog fs
                    → Internal (sem si) → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-sigop si)
-                   → CFr.hfront hv + CFr.slots (spend (max-entry prog) (instr-sigop si)) ≤ FSimr.rreg' o FS word-eq fmt-eq s sp
+                   → CFr.FlatCorrespondence.HeapView.hfront hv + CFr.FlatCorrespondence.slots (spend (max-entry prog) (instr-sigop si)) ≤ FSimr.rreg' o FS word-eq fmt-eq s sp
                    → LocState.halted (floc fs) ≡ false
                    → ∀ (b : ArithBlock) → BlockOf si b
                    → FSimr.rreg' o FS word-eq fmt-eq (uncurry (dispatch-arith val-riscv64) (AE.block-payload b) s) a0
-                     ≡ CFr.enc-sv hv (AbstractExec.exec-sigop-output {FS} si (floc fs))
+                     ≡ CFr.FlatCorrespondence.enc-sv hv (AbstractExec.exec-sigop-output {FS} si (floc fs))
 arith-block-value {hv} prog fs s si r int cc ftq room h .(mk-block _ NInt e) (is-block {n = NInt} e refl refl eq) =
   ABV.value-int prog fs s si e eq r int cc ftq h
-    (≤-trans (+-monoʳ-≤ (CFr.hfront hv)
+    (≤-trans (+-monoʳ-≤ (CFr.FlatCorrespondence.HeapView.hfront hv)
                (subst (8 * required-scratch (normalize e) ≤_) (sym (cong (λ x → (5 + sigop-scratch x) * 8) eq))
                       (fits-W (required-scratch (normalize e)))))
              room)
 arith-block-value {hv} prog fs s si r int cc ftq room h .(mk-block _ NFloat e) (is-block {n = NFloat} e refl refl eq) =
   ABV.value-flt prog fs s si e eq r int cc ftq h
-    (≤-trans (+-monoʳ-≤ (CFr.hfront hv)
+    (≤-trans (+-monoʳ-≤ (CFr.FlatCorrespondence.HeapView.hfront hv)
                (subst (8 * required-scratch e ≤_) (sym (cong (λ x → (5 + sigop-scratch x) * 8) eq))
                       (fits-W (required-scratch e))))
              room)
@@ -679,24 +676,24 @@ arith-block-value {hv} prog fs s si r int cc ftq room h .(mk-block _ NFloat e) (
 arith-dispatch-run : ∀ {hv : HeapView} prog fs s {A B} (si : SigOpInfo A B)
                    → RLr.RunLow o FS slot-size word-eq prog fs
                    → Internal (sem si) → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-sigop si)
-                   → CFr.hfront hv + CFr.slots (spend (max-entry prog) (instr-sigop si)) ≤ FSimr.rreg' o FS word-eq fmt-eq s sp
+                   → CFr.FlatCorrespondence.HeapView.hfront hv + CFr.FlatCorrespondence.slots (spend (max-entry prog) (instr-sigop si)) ≤ FSimr.rreg' o FS word-eq fmt-eq s sp
                    → LocState.halted (floc fs) ≡ false
                    -- plan 0.123 α′ (f1): the block run is the SigOp's own (`arith-sigop-block`)
                    → ∀ (b : ArithBlock) → BlockOf si b
                    → ArithRun s (uncurry (dispatch-arith val-riscv64) (AE.block-payload b) s)
-                              (CFr.slots (spend (max-entry prog) (instr-sigop si)))
-                              (CFr.enc-sv hv (AbstractExec.exec-sigop-output {FS} si (floc fs)))
+                              (CFr.FlatCorrespondence.slots (spend (max-entry prog) (instr-sigop si)))
+                              (CFr.FlatCorrespondence.enc-sv hv (AbstractExec.exec-sigop-output {FS} si (floc fs)))
 arith-dispatch-run {hv} prog fs s si r int cc ftq room h .(mk-block _ NInt e) bo@(is-block {n = NInt} e eA eB eq) =
   frame-run s (required-scratch (normalize e)) (emit-program (compile-abs (normalize e))) _ _
     (block-spills (normalize e))
     (subst (8 * required-scratch (normalize e) ≤_) (sym (cong (λ x → (5 + sigop-scratch x) * 8) eq)) (fits-W (required-scratch (normalize e))))
-    (m+n≤o⇒n≤o (CFr.hfront hv) room)
+    (m+n≤o⇒n≤o (CFr.FlatCorrespondence.HeapView.hfront hv) room)
     (arith-block-value {hv} prog fs s si r int cc ftq room h _ bo)
 arith-dispatch-run {hv} prog fs s si r int cc ftq room h .(mk-block _ NFloat e) bo@(is-block {n = NFloat} e eA eB eq) =
   frame-run s (required-scratch e) (emit-program (compile-abs e)) _ _
     (block-spills e)
     (subst (8 * required-scratch e ≤_) (sym (cong (λ x → (5 + sigop-scratch x) * 8) eq)) (fits-W (required-scratch e)))
-    (m+n≤o⇒n≤o (CFr.hfront hv) room)
+    (m+n≤o⇒n≤o (CFr.FlatCorrespondence.HeapView.hfront hv) room)
     (arith-block-value {hv} prog fs s si r int cc ftq room h _ bo)
 
 ------------------------------------------------------------------------
@@ -707,7 +704,7 @@ arith-sigop-run : ∀ {hv : HeapView} (env : EE.RT.ArithEnv) prog fs s {A B} (si
                 → RLr.RunLow o FS slot-size word-eq prog fs
                 → riscv64-arith-table prog env
                 → Internal (sem si) → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-sigop si)
-                → CFr.hfront hv + CFr.slots (spend (max-entry prog) (instr-sigop si)) ≤ FSimr.rreg' o FS word-eq fmt-eq s sp
+                → CFr.FlatCorrespondence.HeapView.hfront hv + CFr.FlatCorrespondence.slots (spend (max-entry prog) (instr-sigop si)) ≤ FSimr.rreg' o FS word-eq fmt-eq s sp
                 → LocState.halted (floc fs) ≡ false
                 → ∀ (pl : List XInstr × ℕ) → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl
                 → CompiledCorr hv prog (flat-exec-instr (instr-sigop si) prog fs) (uncurry (dispatch-arith val-riscv64) pl s)
@@ -723,7 +720,7 @@ arith-sigop-contract : ∀ {hv : HeapView} (env : EE.RT.ArithEnv) prog fs s {A B
                      → RLr.RunLow o FS slot-size word-eq prog fs
                      → riscv64-arith-table prog env
                      → Internal (sem si) → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-sigop si)
-                     → CFr.hfront hv + CFr.slots (spend (max-entry prog) (instr-sigop si)) ≤ FSimr.rreg' o FS word-eq fmt-eq s sp
+                     → CFr.FlatCorrespondence.HeapView.hfront hv + CFr.FlatCorrespondence.slots (spend (max-entry prog) (instr-sigop si)) ≤ FSimr.rreg' o FS word-eq fmt-eq s sp
                      → LocState.halted (floc fs) ≡ false
                      → Σ (List XInstr × ℕ) (λ pl → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl
                          × CompiledCorr hv prog (flat-exec-instr (instr-sigop si) prog fs) (uncurry (dispatch-arith val-riscv64) pl s))
@@ -749,6 +746,6 @@ riscv64-supply = record
 -- module consumes: a module application copies every definition it lets
 -- through into this interface, and the unrestricted pair copied the whole
 -- dispatch twice.
-open Dispatch.Dispatch o FS slot-size word-eq Reg riscv64-roles RS.W.modulus
+module Dispatch′ = Dispatch.Dispatch o FS slot-size word-eq Reg riscv64-roles RS.W.modulus
                        riscv64-emitter riscv64-machine riscv64-traceloop riscv64-supply
-  using (events-agree; events-agree-start; events-agree-boot; AgreeAt) public
+  using (events-agree; events-agree-start; events-agree-boot; AgreeAt)

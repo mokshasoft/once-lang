@@ -18,6 +18,15 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.Resusp.SumCommon (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.Bool using (false)
+open import Data.List using ([]; _++_; _∷_)
+open import Data.Maybe using (just)
+open import Data.Nat.Properties using (≤-refl; <-irrefl)
+open import Data.Product using (_,_; proj₁)
+open import Once.CCC.Machine.ValueRel using (module ClosureWellFormedBase)
+open import Once.IR using (IR; Heap; Ana)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.CCC.Machine.LocMatchesMode using (LocMatchesMode)
@@ -36,11 +45,19 @@ open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module ResuspBaseC)
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.SumShape o tbl using (module ResuspSumShapeC)
 open import Data.Sum using (inj₁; inj₂)
-open import Data.Nat using (_⊔_)
+open import Data.Nat using (_⊔_; ℕ; suc; _∸_; _≤_)
 
 module ResuspSumCommonC {FS : FrameSemantics} where
 
   open Core {FS}
+  open ClosureWellFormedBase′ using (VTy; Live; BlocksKept; InBlk; cell-ptr; cell-inline; cell-flat)
+  open ClosureWellFormedDef′ using (ValidAtWF; CellAt; cellWF-heap-transport; validityWF-heap-transport)
+  open FlatEventTrace′ using (event-of; chain-events)
+  open AbstractExec′ using (exec-abstract)
+  open FlatMachine′ using (FlatState; fetch; flat-exec-instr)
+  open FlatMachine′.FlatState using (floc; fpc; falloc)
+  open FlatStepsAPI′ using ([]; _∷_)
+  open MemOps′ using (readLoc)
   open FlatStepsAPI {FS} using (flat-step1)
   open ResuspBaseC {FS}
   open ResuspSumShapeC {FS}

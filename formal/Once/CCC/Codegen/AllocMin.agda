@@ -45,11 +45,11 @@ open import Once.IR using (IR; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; t
 open import Once.IRTy using (IRTy; IRFunctor; ⟦_⟧TI; ν-type; fits-int; fits-float; ⌈_⌉F; WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod) renaming (_+_ to _+ᵀ_; _*_ to _*ᵀ_)
 open import Once.CCC.Codegen.Size using (size)
 open import Once.Spec.Type using (Fun; K; Id; _⊕_; _⊗_)
-open import Once.CCC.Label using (ℓ)
+open import Once.CCC.Label using (ℓ; LabelId)
 open import Once.CCC.Machine.MuRep using (MuRep; mu-box; mu-unit; mu-ptr; mu-rep)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore using (AbstractInstr; AbstractTrace; instr-alloc-heap
-  ; blocks-layout; blocks-layout-++; LabelId; link-top)
+  ; blocks-layout; blocks-layout-++; link-top)
 import Once.CCC.Machine.SMCore as SM
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Codegen.FlatLayout

@@ -34,7 +34,8 @@ open import Once.Memory.Regions layout
 
 -- Import from StackSlots
 open import Once.Memory.StackSlots layout sg
-  using (StackPointer; slot-addr; addr; init-slot-at-base)
+  using (StackPointer; slot-addr; init-slot-at-base; module StackAddr)
+open StackAddr using (addr)
 
 -- Import Memory operations
 open import Once.Memory.Memory

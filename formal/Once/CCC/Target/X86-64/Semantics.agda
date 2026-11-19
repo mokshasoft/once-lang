@@ -23,6 +23,7 @@
 module Once.CCC.Target.X86-64.Semantics where
 
 open import Once.CCC.Target.X86-64.Syntax
+open import Once.Target.X86-64.PhysReg using (Reg; rax; rbx; rcx; rdx; rsi; rdi; rbp; rsp; r8; r9; r10; r11; r12; r13; r14; r15)
 open import Once.CCC.Label using (Label; _≡ᵇᴸ_; thunk; module LabelId)
 open LabelId using (idx)
 -- Plan 0.70 phase C (PROBE): the machine's arithmetic is MODULAR.

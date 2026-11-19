@@ -43,7 +43,9 @@ open import Once.IRTy using (IRTy; eraseF; ⌈_⌉F; ⌈_⌉; ⌊_⌋; ⌊⟧T-c
 import Once.IRTy as IT
 open import Once.IRTy.WF using (wf-⌊⌋; wf-⌈⌉)
 open import Once.Spec.Polynomial using (SFunctor; SK; _S⊕_; _S⊗_; ⟦_⟧SF)
-open import Once.Semantics.Machine using (tF-coh; base-coh; coerce-ν-out)
+open import Once.Semantics.Machine using (module Value; module ValueIR)
+open Value using (coerce-ν-out)
+open ValueIR using (base-coh; tF-coh)
 open import Data.Product using (Σ-syntax; _×_)
 open import Once.IR.Semantics.Iterative using (T∞; fmap∞)
 open import Once.IR.Semantics.StreamInf using (νᴵ; module νᴵ)

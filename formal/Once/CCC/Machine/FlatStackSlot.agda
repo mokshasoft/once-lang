@@ -45,6 +45,7 @@ open AbstractExec {FS}
 open import Once.CCC.Machine.FrameFree using (FrameFreeI)
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
+open FlatState using (falloc; fret; floc)
 
 ------------------------------------------------------------------------
 -- "…leaves the frame stack alone". Plan 0.63: THREE equations, not one.

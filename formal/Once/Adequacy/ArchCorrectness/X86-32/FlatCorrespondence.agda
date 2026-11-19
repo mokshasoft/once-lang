@@ -44,7 +44,8 @@ import Once.CCC.Target.X86-32.Semantics as X
 -- it), and importing both would make the name ambiguous.
 open X using (mkstate) renaming (writeReg to xwriteReg)
 open X.State using (memory) renaming (regs to xregs; halted to xhalted)
-open import Once.CCC.Target.X86-32.Syntax using (Reg; esi)
+open import Once.CCC.Target.X86-32.Syntax using ()
+open import Once.Target.X86-32.PhysReg using (Reg; esi)
 open import Once.Adequacy.ArchCorrectness.X86-32.RegRoles using (x86-32-roles)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles
   using (RegRoles; Role; role-sp; role-clos; role-heap; role-out; role-in1)
@@ -54,9 +55,10 @@ open RegRoles x86-32-roles using (reg-of)
 rreg : X.State → Reg → ℕ
 rreg s r = X.readReg (X.State.regs s) r
 
-open import Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence
+import Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence
+module FlatCorrespondence = Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence
        FS slot-size word-eq Reg x86-32-roles X.State rreg memory xhalted
-  public
+open FlatCorrespondence
 open SetsRole using (at-role; off-role)
 
 

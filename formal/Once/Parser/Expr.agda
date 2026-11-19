@@ -60,7 +60,7 @@ open import Once.Parser.Type using (parseTypeWF)
 -- so callers keep importing it from Once.Parser.Expr.
 ------------------------------------------------------------------------
 
-open import Once.Parser.ExprRelation public using (isReserved)
+open import Once.Parser.ExprRelation using (isReserved)
 open import Once.Parser.ExprRelation
 
 ------------------------------------------------------------------------

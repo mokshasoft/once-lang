@@ -35,6 +35,15 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.CataBr.Rebuild (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.Bool using (false; true)
+open import Data.List using (_∷_; []; List; length; _++_)
+open import Data.List.Properties using (length-++)
+open import Data.List.Relation.Unary.All.Properties using (++⁺)
+open import Data.Maybe using (just; Maybe; nothing)
+open import Data.Product using (_×_; _,_; proj₂; proj₁)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; _≢_; sym; subst; trans; cong₂; subst₂; cong)
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module ResuspBaseC)
 open import Once.CCC.Codegen.IRObsCorrect.CataConst.Steps o tbl using (module CataStepsC)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Stack o tbl using (module CataStackC)
@@ -58,17 +67,17 @@ open import Once.CCC.Machine.SMCore
         ; instr-alloc-heap; instr-ctrl; c-branch-tag-zero; c-jmp; c-label; writeReg-preserves)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic)
-open import Once.CCC.Machine.SMPrimitives using (nhw-restore-input)
+open import Once.CCC.Machine.SMPrimitives using (nhw-restore-input; nhw-mov-to-output; nhw-mov-to-input)
 open import Once.CCC.Label using (ℓ; LabelId; module LabelId)
 open LabelId using (idx)
 open import Once.Memory.HeapAddress using (HeapLocation)
 open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod; ⟦_⟧TI; ⌈_⌉F; μ-type)
 import Once.IRTy as I
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.Unit using (⊤)
+open import Data.Unit using (⊤; tt)
 open import Data.List.Relation.Unary.All using () renaming ([] to []ᴬ; _∷_ to _∷ᴬ_)
-open import Data.Nat using (s≤s; z≤n; _*_; _⊔_)
-open import Data.Nat.Properties using (+-cancelˡ-≡; +-monoʳ-<)
+open import Data.Nat using (s≤s; z≤n; _*_; _⊔_; ℕ; _+_; suc; _<_; _≤_)
+open import Data.Nat.Properties using (+-cancelˡ-≡; +-monoʳ-<; +-comm; <-irrefl; <-≤-trans; m≤m+n; ≤-trans; n≤1+n; +-identityʳ; m≤n+m; ≤-refl)
 open import Data.Nat.Solver using (module +-*-Solver)
 open +-*-Solver using (solve; _:+_; _:*_; con; _:=_)
 
@@ -84,6 +93,14 @@ sum-end-r = solve 5 (λ wl vl wr vr b → con 1 :+ (wl :+ (vl :+ (con 4 :+ (wr :
 module CataRebuildC {FS : FrameSemantics} where
 
   open Core {FS}
+  open ClosureWellFormedBase′ using (Live)
+  open ClosureWellFormedDef′ using (decomposePairWF; CellAt; module PairValidWF)
+  open FlatMachine′ using (FlatState; find-label; fetch; fetch-++-left; tag-test; flat-read-tag; do-jump)
+  open FlatMachine′.FlatState using (falloc; floc; fpc)
+  open FlatStepsAPI′ using (_∷_; [])
+  open InstrPrimitives′ using (exec-abstract-preserves-frame)
+  open MemOps′ using (readLoc)
+  open TracePrimitives′ using (exec-abstract-preserves-halted-WF)
   open ResuspBaseC {FS}
   open CataStepsC {FS}
   open CataStackC {FS}

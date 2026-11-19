@@ -24,7 +24,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.Spec.Type using (Fun; K; Id; _⊕_; _⊗_)
 
-open import Once.Semantics.Machine using (⟦_⟧F)
+open import Once.Semantics.Machine using (module Value)
+open Value using (⟦_⟧F)
 open import Once.IR.Semantics.Trace
   using (T; RelT′; rel-ret)
 open import Once.Denotation.TraceMonadLaws using (RelT′-bind; RelT′-fmap)

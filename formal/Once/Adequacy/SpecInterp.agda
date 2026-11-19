@@ -50,8 +50,9 @@ import Once.Spec.Grade as G
 open import Once.Name using (showCanonical)
 open import Once.Core.Decl using (toISig)
 open import Once.Contract
-  using (Key; key; kdom; kcod; Contract; answers; effect; contract-eff; contractOf;
-         value-step; answer-step; valueKeys; answerKeys; Impl)
+  using (Key; key; Contract; answers; effect; contract-eff; contractOf;
+         value-step; answer-step; valueKeys; answerKeys; Impl; module Key)
+open Key using (kdom; kcod)
 import Once.Contract as C
 open import Once.IR.Semantics.Event using (SigOpEvent; toEvent)
 open import Once.IR.Semantics.Trace using (Interp; interp)

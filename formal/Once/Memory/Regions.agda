@@ -28,8 +28,7 @@ open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Empty using (⊥)
 
 -- Re-export Addr for convenience
-open import Once.Memory.MemoryLayoutSemantics public using (Addr)
-
+open import Once.Memory.MemoryLayoutSemantics using (Addr)
 ------------------------------------------------------------------------
 -- Region Bounds (from layout parameter)
 ------------------------------------------------------------------------

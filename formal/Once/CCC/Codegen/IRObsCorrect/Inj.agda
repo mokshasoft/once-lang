@@ -26,6 +26,19 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.Inj (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.Bool using (false)
+open import Data.Empty using (⊥)
+open import Data.List using (_++_; _∷_; []; length)
+open import Data.List.Relation.Unary.All.Properties using (++⁺)
+open import Data.Maybe using (just)
+open import Data.Product using (proj₁; _,_; proj₂)
+open import Data.Unit using (tt)
+open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
+open import Once.CCC.Machine.ValueRel using (module ClosureWellFormedBase; valid-inl-wf; valid-inl-reg-wf; valid-inl-flat-wf; valid-inr-wf; valid-inr-reg-wf; valid-inr-flat-wf)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Once.IR using (inl; Heap; inr)
+open import Relation.Binary.PropositionalEquality using (subst; _≡_; cong; trans; sym; _≢_; refl)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic; ValueLocation)
 open import Once.CCC.Machine.SMCore
@@ -46,14 +59,22 @@ import Once.CCC.Machine.FlatAlloc as FlatAlloc
 open import Once.CCC.Machine.SMPrimitives using (module MemoryOps)
 import Once.CCC.Machine.SMPrimitives
 
-open import Data.Nat using (_⊔_; z≤n; s≤s)
-open import Data.Nat.Properties using (m≤n⊔m; m≤m⊔n; +-monoʳ-<; m+[n∸m]≡n)
-open import Data.List.Relation.Unary.All using ([]; _∷_)
+open import Data.Nat using (_⊔_; z≤n; s≤s; _≤_; suc; _<_; _∸_; _+_; ℕ)
+open import Data.Nat.Properties using (m≤n⊔m; m≤m⊔n; +-monoʳ-<; m+[n∸m]≡n; ≤-trans; <-irrefl; n<1+n; +-identityʳ; <-≤-trans; m≤m+n; ≤-reflexive; n≤1+n; ≤-refl; <-trans)
+open import Data.List.Relation.Unary.All using ([]; _∷_; All)
 open import Data.Sum using (inj₁; inj₂)
 
 module InjC {FS : FrameSemantics} where
 
   open Core {FS}
+  open ClosureWellFormedBase′ using (InBlk; Live; eventsAt; ⟪_⟫_; cell-ptr; cell-inline; cell-flat)
+  open ClosureWellFormedDef′ using (CellAt; ValidAtWF; InputAt; in-loc; in-reg; in-unit; at-loc; validityWF-mem-only)
+  open FlatEventTrace′ using (event-of; chain-events)
+  open AbstractExec′ using (exec-abstract)
+  open FlatMachine′ using (StraightStep)
+  open FlatStepsAPI′ using (_∷_; []; FlatSteps)
+  open FrontierInvariant′ using (BeforeFrontier; module BeforeFrontier)
+  open MemOps′ using (readLoc)
   open Mach {FS}
   open MemOps {FS} using (writeLoc; writeLoc-halted; writeLoc-regs; writeLoc-preserves-other; writeLoc-read-same-stack)
   open AbstractExec {FS} using (exec-trace; exec-trace-cons)

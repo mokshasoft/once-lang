@@ -37,8 +37,19 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.InMu (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.Bool using (false)
+open import Data.Empty using (⊥; ⊥-elim)
+open import Data.List using (_∷_; []; length)
+open import Data.Maybe using (just)
+open import Data.Nat.Properties using (m≤m+n; ≤-refl; n≤1+n; n<1+n; ≤-reflexive; <-≤-trans; <-irrefl)
+open import Data.Unit using (tt)
+open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
+open import Once.CCC.Machine.ValueRel using (module ClosureWellFormedBase; valid-unit-wf)
+open import Once.IR using (out-μ; In; Heap; AllocMode)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans; subst; sym)
 import Once.CCC.Machine.FlatAlloc as FlatAlloc
-open import Data.Nat using (s≤s; z≤n)
+open import Data.Nat using (s≤s; z≤n; _+_; _≤_; suc; _<_)
 import Once.CCC.Machine.SMPrimitives
 open import Once.CCC.Codegen.IRObsCorrect.NuForce o tbl using (module NuForceC)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
@@ -56,7 +67,7 @@ open import Once.CCC.Codegen.IRObsCorrect.NodeCopy o tbl using (module NodeCopyC
 open import Once.CCC.Codegen.IRObsCorrect.Inj o tbl using (module InjC)
 open import Once.CCC.Codegen.StraightRun using (module StraightRunAPI)
 open import Once.IRTy using (WellFormedFI; ⟦_⟧TI; μ-type; ⌈_⌉; ⌈⟧TI-commute; wf-K; wf-Id; wf-Sum; wf-Prod;
-                             base-Int; base-Float; base-Unit; base-Void; base-Prod; base-Sum; Unit)
+                             base-Int; base-Float; base-Unit; base-Void; base-Prod; base-Sum; Unit; FitsInRegI; fits-int; fits-float)
 import Once.IRTy as IRTy′
 open import Once.IRTy.WF using (wf-⌈⌉)
 open import Relation.Binary.PropositionalEquality.Properties using (subst-sym-subst)
@@ -66,7 +77,7 @@ open import Once.Spec.Type using (WFFun; ∅ₖ)
 import Once.Spec.Type as TW
 import Once.Semantics.Machine as Val
 open import Data.Sum using (inj₁; inj₂)
-open import Data.Product using (Σ)
+open import Data.Product using (Σ; _,_; proj₂; proj₁)
 
 import Once.CCC.FrameSemantics
 import Once.CCC.Machine.SMPrimitives
@@ -79,6 +90,18 @@ import Once.IR.Semantics.Trace as TM
 module InMuC {FS : FrameSemantics} where
 
   open Core {FS}
+  open import Once.CCC.Machine.SMPrimitives using (nhw-instr-alloc-heap; nhw-mov-to-input; nhw-mov-to-output; nhw-load-from-slot)
+  open ClosureWellFormedBase′ using (eventsAt; ⟪_⟫_; live→bf; Live; InBlk; BlocksKept; cell-inline; rep-prim; prim-sv; IsNode; cell-ptr; cell-flat)
+  open ClosureWellFormedDef′ using (ValidAtWF; valid-μ; validityWF-mem-preserved; InputAt; ResultPlace; in-loc; at-loc; in-reg; in-unit; CellAt; valid-μbox; validityWF-mem-only)
+  open FlatEventTrace′ using (chain-events)
+  open FlatMachine′ using (fetch; flat-exec-instr; FlatState)
+  open FlatMachine′.FlatState using (falloc; floc; fpc)
+  open FlatStepsAPI′ using (_∷_; []; FlatSteps)
+  open FrontierInvariant′ using (BeforeFrontier; frontier-monotone; module BeforeFrontier)
+  open InstrPrimitives′ using (exec-abstract-preserves-frame; exec-abstract-preserves-saved; exec-abstract-preserves-stack-slot)
+  open MemOps′ using (readLoc)
+  open RecSchemeSemantics′ using (exec-abstract-preserves-heap-ref)
+  open TracePrimitives′ using (exec-abstract-preserves-halted-WF; InstrWF)
   open Mach {FS}
   open NuForceC {FS} using (base-rt; cf-rt)
   module SR = StraightRunAPI {FS}
@@ -89,8 +112,8 @@ module InMuC {FS : FrameSemantics} where
   -- `out-μ` UNDOES `In`: the coercions around the layer are inverse (the
   -- μ mirror of `NuForce.out-in-ν`).
   ------------------------------------------------------------------------
-  μ-rt : ∀ {F} (wf : WFFun ∅ₖ F) (X : Set) (x : Val.⟦ F ⟧F X)
-       → Val.coerce-μ-out wf X (Val.coerce-μ-in F X x) ≡ x
+  μ-rt : ∀ {F} (wf : WFFun ∅ₖ F) (X : Set) (x : Val.Value.⟦ F ⟧F X)
+       → Val.Value.coerce-μ-out wf X (Val.Value.coerce-μ-in F X x) ≡ x
   μ-rt (TW.wf-K b)       X x        = base-rt b x
   μ-rt TW.wf-Id          X x        = refl
   μ-rt (TW.wf-⊕ f g)   X (inj₁ x) = cong inj₁ (μ-rt f X x)

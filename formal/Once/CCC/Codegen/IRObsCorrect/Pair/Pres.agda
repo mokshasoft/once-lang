@@ -18,6 +18,14 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.Pair.Pres (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.List using (List)
+open import Data.Nat using (ℕ; suc; _≤_)
+open import Data.Nat.Properties using (≤-trans; n≤1+n; ≤-refl; ≤-reflexive)
+open import Data.Unit using (tt)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Once.IR using (IR)
+open import Relation.Binary.PropositionalEquality using (_≡_; subst; sym; trans; refl)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtDynamic; AtStack)
 open import Once.CCC.Machine.SMCore using (AllocState; AbstractTrace; LocState; StoredValue; mov-to-output; store-at-slot; restore-input; module LocState; module AllocState)
@@ -40,6 +48,13 @@ open import Once.Res using (returns)
 module PairPresC {FS : FrameSemantics} where
 
   open Core {FS}
+  open import Once.CCC.Machine.SMPrimitives using (nhw-mov-to-output)
+  open ClosureWellFormedBase′ using (resultAt; ⟪_⟫_)
+  open FlatMachine′ using (FlatState; flat-exec-instr)
+  open FlatMachine′.FlatState using (floc; fclosure; falloc)
+  open FrontierInvariant′ using (BeforeFrontier; frontier-monotone)
+  open InstrPrimitives′ using (exec-abstract-preserves-frame; exec-abstract-preserves-saved)
+  open RecSchemeSemantics′ using (exec-abstract-preserves-heap-ref)
   open Mach {FS}
 
   -- The prologue and the mid rows as TOP-LEVEL functions, so that `PairPres`'s

@@ -49,7 +49,9 @@ open import Once.Semantics.Functor.Laws
   using (_∼S_; ⟦_⟧SF-rel)
 open Once.Semantics.Functor.Laws._∼S_ using (unfoldS-∼)
 open import Once.Semantics.Machine
-  using (⟦_⟧F; ⟦_⟧; sem-ana; sfmapSemAna; semAnaLayer; coerce-ν-in; tF-coh; coerce-full-to-base; base-coh)
+  using (module ValueIR; module Value)
+open Value using (⟦_⟧F; sem-ana; coerce-ν-in; semAnaLayer; sfmapSemAna; ⟦_⟧; coerce-full-to-base)
+open ValueIR using (base-coh; tF-coh)
 open import Once.IRTy using (⌊_⌋; ⌈_⌉)
 open import Once.Res using (Res; stopped; returns; mapRes; Res-rel; rel-stopped; rel-returns)
 open import Once.IR.Semantics.Iterative using (T∞; return∞)

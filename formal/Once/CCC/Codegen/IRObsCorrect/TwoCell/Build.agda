@@ -16,6 +16,14 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.TwoCell.Build (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.Bool using (false)
+open import Data.Empty using (⊥)
+open import Data.List using (List)
+open import Data.Maybe using (just)
+open import Data.Nat using (ℕ; _≤_; suc)
+open import Data.Nat.Properties using (n≤1+n; ≤-refl; <-≤-trans; <-irrefl)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; cong; _≢_; sym)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (AtDynamic; AtStack; ValueLocation)
 open import Once.CCC.Machine.SMCore using (AllocState; AbstractTrace; LocState; StoredValue; sucLoc; readReg; Output; SV-Code; SV-Ptr; module LocState; module AllocState)
@@ -33,6 +41,11 @@ open import Once.CCC.Codegen.IRObsCorrect.TwoCell.Run o tbl
 module TwoCellBuildC {FS : FrameSemantics} where
 
   open Core {FS}
+  open ClosureWellFormedBase′ using (BlocksKept)
+  open ClosureWellFormedDef′ using (ValidAtWF; validityWF-frontier-advance; validityWF-mem-preserved)
+  open FlatMachine′ using ()
+  open FlatMachine′.FlatState using (falloc; floc)
+  open FrontierInvariant′ using (BeforeFrontier; module BeforeFrontier; frontier-monotone)
   open Mach {FS}
   open TwoCellRunC {FS}
   open SMCore.MemOps {FS} using (writeLoc-preserves-other)

@@ -39,7 +39,8 @@ open import Data.Empty using (⊥-elim)
 import Once.CCC.Target.RiscV64.Semantics as R
 open R using (mkstate) renaming (writeReg to rwriteReg)
 open R.State using (memory) renaming (regs to rregs; halted to rhalted)
-open import Once.CCC.Target.RiscV64.Syntax using (Reg; ra; t1; t2)
+open import Once.CCC.Target.RiscV64.Syntax using ()
+open import Once.Target.RiscV64.PhysReg using (Reg; ra; t1; t2)
 open import Once.Adequacy.ArchCorrectness.RiscV64.RegRoles using (riscv64-roles)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles
   using (RegRoles; Role; role-sp; role-clos; role-heap; role-out; role-in1)
@@ -48,9 +49,10 @@ open RegRoles riscv64-roles using (reg-of)
 rreg : R.State → Reg → ℕ
 rreg s r = R.readReg (R.State.regs s) r
 
-open import Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence
+import Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence
+module FlatCorrespondence = Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence
        FS slot-size word-eq Reg riscv64-roles R.State rreg memory rhalted
-  public
+open FlatCorrespondence
 open SetsRole using (at-role; off-role)
 
 ------------------------------------------------------------------------

@@ -21,6 +21,16 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.CataBr.FoldBind (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.Bool using (true; false)
+open import Data.Empty using (⊥; ⊥-elim)
+open import Data.List using (List; _++_; [])
+open import Data.Maybe using (nothing)
+open import Data.Nat using (ℕ; _≤_; _+_)
+open import Data.Nat.Properties using (≤-reflexive; m≤m+n)
+open import Data.Product using (proj₁; proj₂; _,_)
+open import Data.Unit using (tt)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; sym; cong; trans; cong₂)
 open import Once.CCC.Machine.SMCore using (ending)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.FoldInv o tbl using (module CataFoldInvC)
 open import Once.CCC.Machine.SMCore
@@ -30,13 +40,19 @@ open import Once.CCC.Machine.Locations using (AtDynamic)
 open import Once.Res using (Res; returns; stopped; is-stopped)
 open import Once.IR.Semantics.Iterative using (T∞; return∞; _>>=∞_)
 open import Once.Denotation.Approx using (Ap; done; cut; NotCut; budgetLeft; thenAp; run-approx-bind)
-open import Data.List.Properties using (++-identityʳ)
+open import Data.List.Properties using (++-identityʳ; ++-assoc)
 import Once.IR.Semantics.Trace as TM
 open import Once.IR.Semantics.Event using (SigOpEvent)
 
 module CataFoldBindC {FS : FrameSemantics} where
 
   open Core {FS}
+  open ClosureWellFormedBase′ using (Live; resultAt; ⟪_⟫_; eventsAt; runAt)
+  open FlatEventTrace′ using (chain-left; chain-ctrls; chain-events-++; chain-ctrls-++; chain-events-nil)
+  open FlatMachine′ using (FlatState)
+  open FlatMachine′.FlatState using (floc; falloc; flink)
+  open FlatStepsAPI′ using (FlatSteps-++; [])
+  open FrontierInvariant′ using (BeforeFrontier; module BeforeFrontier)
   open CataFoldInvC {FS} using (RoundRun; Same)
   open LocState using (halted)
 

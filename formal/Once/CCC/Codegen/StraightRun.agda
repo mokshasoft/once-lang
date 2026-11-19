@@ -37,6 +37,7 @@ open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
 
 module StraightRunAPI {FS : FrameSemantics} where
   open FlatMachine {FS}
+  open FlatState using (floc; falloc; fpc)
   open FlatStepsAPI {FS}
   open AbstractExec {FS} using (exec-trace; exec-trace-cons)
   open FlatEventTrace {FS} using (chain-events; event-of; chain-events-subst-start; chain-events-subst)

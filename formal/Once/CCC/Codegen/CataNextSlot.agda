@@ -49,6 +49,7 @@ open import Data.Product using (proj₂)
 
 module CataNextSlot {FS : FrameSemantics} where
   open FlatMachine {FS}
+  open FlatState using (falloc; fret; floc)
   open MemOps {FS} using (readLoc)
   open AbstractExec {FS} using (exec-abstract; exec-load-from-slot-with-value; exec-restore-input-with-value)
 

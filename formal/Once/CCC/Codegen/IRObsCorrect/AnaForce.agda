@@ -23,20 +23,31 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.AnaForce (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open Interface.Prelude using ()
+open Interface.Prelude.IRToTrace using (ir-to-trace')
+open Interface.Prelude.SlotBudget′ using (frontier-mono)
+open import Data.Bool using (false)
+open import Data.Empty using (⊥; ⊥-elim)
+open import Data.List using (_∷_; List; [])
+open import Data.Maybe using (just)
+open import Data.Product using (_×_; proj₁; proj₂; _,_)
+open import Once.IR using (IR; AllocMode; Heap; Ana)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; cong; sym; subst; cong₂)
 open import Once.CCC.Codegen.IRObsCorrect.NuForce o tbl
 open import Once.CCC.Codegen.IRToTrace o using (resuspend-layer)
 open import Data.List.Relation.Unary.Any using (here; there)
 open import Once.CCC.Machine.SMCore
   using (LocState; module LocState; AbstractTrace; AllocState; readReg; Input1; Output; writeReg-same; writeReg-preserves; SV-Code; SV-Ptr; sucLoc
-        ; mov-to-output; store-at-slot; block-layout; e-thunk)
+        ; mov-to-output; store-at-slot; block-layout)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.CCC.Machine.LocMatchesMode using (LocMatchesMode)
-open import Once.CCC.Label using (ℓ)
+open import Once.CCC.Label using (ℓ; e-thunk)
 open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; ⟦_⟧TI; ν-type; wf-K; wf-Id; wf-Sum; wf-Prod)
 import Once.IRTy as IRTy′
 open import Once.IR.Semantics.Iterative using (fmap∞)
-open import Data.Unit using (⊤)
+open import Data.Unit using (⊤; tt)
 import Data.Maybe as DM
 open import Once.CCC.Codegen.LabelScope o using (labels-in; resuspend-labels-in)
 open import Once.CCC.Codegen.LabelSeg using (LabelsIn)
@@ -45,9 +56,9 @@ open import Once.CCC.Codegen.IRObsCorrect.Resusp o tbl
 open import Data.Nat.Solver using (module +-*-Solver)
 open +-*-Solver using (solve; _:+_; _:=_; con)
 import Once.IR.Semantics.Trace as TM
-open import Data.Nat using (z≤n; s≤s)
-open import Data.Nat.Properties using (1+n≰n)
-open import Data.List.Properties using (++-identityʳ)
+open import Data.Nat using (z≤n; s≤s; ℕ; suc; _+_; _≤_)
+open import Data.Nat.Properties using (1+n≰n; +-suc; ≤-refl; +-assoc; +-identityʳ; ≤-trans)
+open import Data.List.Properties using (++-identityʳ; length-++)
 open import Once.Res using (Res; stopped; returns; mapRes; is-stopped)
 open import Once.Denotation.Approx using (Ap; done; cut; NotCut; budgetLeft)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
@@ -58,6 +69,17 @@ import Once.CCC.Machine.ValueRel as CWF
 module AnaForceC {FS : FrameSemantics} where
 
   open Core {FS}
+  open import Once.CCC.Machine.SMPrimitives using (nhw-mov-to-output)
+  open ClosureWellFormedBase′ using (Live; VTy; BlocksKept; LayerV; cell-ptr; cell-inline; cell-flat; ResultPlaceP; rp-unit; rp-loc; rp-reg; live-ns; runAt; ⟪_⟫_; resultAt; eventsAt; stopsAt; Foot; _∈ᶠ_; blk-live0; blk-refl)
+  open ClosureWellFormedDef′ using (ValidAtWF; validityWF-heap-transport; valid→fo; fo→valid; InputAt; in-loc; CellAt; cellWF-heap-transport; module PairValidWF; decomposePairWF; ResultPlace; at-loc; at-reg; unit-result; in-reg; in-unit; foot; foot-live; ForceRuns; module FootTransport; NuStep; NuV; module NuCoind)
+  open FlatEventTrace′ using (chain-left; chain-ctrls; ctrls-≤ʳ; chain-events-++; ctrls-≤ˡ)
+  open CataNextSlot′ using (AllSlotStable)
+  open FlatMachine′ using (find-thunk; FlatState; enter-call; flat-exec-instr; fetch; fetch-++-left; find-label; exec-flat; fetch-++-right)
+  open FlatMachine′.FlatState using (floc; falloc; fclosure; fpc)
+  open FlatStepsAPI′ using (_∷_; FlatSteps; []; FlatSteps-++; exec-flat-steps)
+  open FrontierInvariant′ using (module BeforeFrontier; BeforeFrontier; frontier-monotone)
+  open MemOps′ using (readLoc)
+  open TracePrimitives′ using (exec-abstract-preserves-halted-WF)
   open Mach {FS}
   open Resolve {FS} using (found-in-window; noLabel-outside)
   open FlatStepsAPI {FS} using (fl-go-skip; fl-go-shift; fl-go-prefix)

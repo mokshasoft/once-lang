@@ -26,6 +26,18 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.Resusp.Prod (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.Bool using (false)
+open import Data.Empty using (⊥)
+open import Data.List using (_∷_; [])
+open import Data.List.Relation.Unary.All.Properties using (++⁺)
+open import Data.Maybe using (just)
+open import Data.Product using (_,_; proj₁; proj₂)
+open import Data.Unit using (tt)
+open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
+open import Once.CCC.Machine.ValueRel using (module ClosureWellFormedBase)
+open import Once.IR using (IR; Heap; Ana; AllocMode)
+open import Relation.Binary.PropositionalEquality using (_≡_; trans; cong; sym; refl; subst; cong₂)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.CCC.Machine.LocMatchesMode using (LocMatchesMode)
@@ -54,19 +66,28 @@ open import Once.CCC.Codegen.SlotBudget o using (resuspend-mono)
 open import Once.CCC.Codegen.LabelScope o using (resuspend-labels-in)
 open import Once.CCC.Codegen.LabelResolve o using (module Resolve)
 open import Once.CCC.Codegen.LabelSeg using (LabelsIn; LabelIn; li-none)
-open import Data.List.Properties using (++-identityʳ)
-open import Data.Nat.Properties using (1+n≰n)
+open import Data.List.Properties using (++-identityʳ; length-++)
+open import Data.Nat.Properties using (1+n≰n; <-irrefl; n<1+n; ≤-trans; n≤1+n; m≤m+n; <-≤-trans; ≤-reflexive; +-identityʳ; ≤-refl)
 open import Relation.Nullary using (¬_)
 open import Data.Nat.Solver using (module +-*-Solver)
 open +-*-Solver using (solve; _:+_; con; _:=_)
 
-open import Data.Nat using (_⊔_; z≤n; s≤s)
+open import Data.Nat using (_⊔_; z≤n; s≤s; ℕ; suc; _+_; _≤_; _<_)
 open import Data.Nat.Properties using (m≤n⊔m)
-open import Data.List.Relation.Unary.All using ([]; _∷_)
+open import Data.List.Relation.Unary.All using ([]; _∷_; All)
 
 module ResuspProdC {FS : FrameSemantics} where
 
   open Core {FS}
+  open ClosureWellFormedBase′ using (VTy; Live; BlocksKept; live-ns)
+  open ClosureWellFormedDef′ using (ValidAtWF; decomposePairWF; CellAt; cellWF-heap-transport; module PairValidWF)
+  open FlatEventTrace′ using (event-of; chain-events; chain-left; chain-events-++)
+  open AbstractExec′ using (exec-abstract)
+  open FlatMachine′ using (FlatState; StraightStep; label-of?; fetch-++-left; find-label)
+  open FlatMachine′.FlatState using (fpc; floc; falloc)
+  open FlatStepsAPI′ using (_∷_; []; FlatSteps; FlatSteps-++)
+  open FrontierInvariant′ using (BeforeFrontier; module BeforeFrontier)
+  open MemOps′ using (readLoc)
   open Mach {FS}
   open MemOps {FS} using (writeLoc-preserves-other; writeLoc-read-same-stack)
   open AbstractExec {FS} using (exec-trace; exec-trace-cons; exec-load-from-slot-with-value)
@@ -104,6 +125,7 @@ module ResuspProdC {FS : FrameSemantics} where
                where
 
     open RBase wf coalg e prog lbl-n R mk-child R-tr
+    open PutLay using (put-lay-run; module PutOutL)
 
     Fν Gν : IRTy
     Fν = ⟦ F₁ ⟧TI Xν

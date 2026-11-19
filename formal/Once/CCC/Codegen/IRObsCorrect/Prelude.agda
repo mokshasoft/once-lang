@@ -4,15 +4,9 @@
 ------------------------------------------------------------------------
 -- Once.CCC.Codegen.IRObsCorrect.Prelude
 --
--- D200: the import block of `IRObsCorrectFlat`, re-exported.
---
--- The split of that module (see `IRObsCorrect.Interface`) would otherwise
--- have to repeat these eighty lines in every part. They are `public` here so
--- each part imports ONE thing and reads exactly as the single file did.
---
--- The `import X as Y` forms cannot be re-exported (Agda has no `public` for a
--- qualified alias), so the five of those are repeated per part — they are one
--- line each and name no contents.
+-- What the IRObsCorrect parts share at one definition (`o`, `tbl`):
+-- `fits-erase`, and the instances `ValidAtWFHalted`, `IRToTrace` and
+-- `SlotBudget′`, which the parts open through `Interface`.
 ------------------------------------------------------------------------
 
 open import Once.Spec.Name using (CanonicalName)
@@ -20,63 +14,21 @@ open import Once.Spec.Name using (CanonicalName)
 open import Data.List using (List)
 open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.Prelude (o : CanonicalName) (tbl : List IRFun) where
-open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; _+_; _∸_) public
-open import Data.Nat.Properties using (n<1+n; n≤1+n; ≤-refl; <-≤-trans) public
-open import Data.Empty using (⊥; ⊥-elim) public
-open import Relation.Nullary using (yes; no) public
-open import Data.Bool using (false; true) public
-open import Data.List using (List; length; take; []; _∷_; _++_; map) public
--- plan 0.91 S2: `BlocksAt` is `All` over the fragment's emitted block list,
--- the same shape `SlotBudget.blocks-below` already returns — so S5's proof
--- can follow that induction rather than invent one.
---
--- The CONSTRUCTORS are deliberately NOT re-exported. This prelude already
--- carries `[]`/`_∷_` from `Data.List` and from `FlatStepsAPI`, and a third
--- pair made every existing construction site ambiguous (Pair.agda:1628).
--- Nothing in S2 builds an `All` — leaves take the premise as `_`, composites
--- split it with `++⁻` — so only the type and the ++ lemmas are needed here.
-open import Data.List.Relation.Unary.All using (All) public
-open import Data.List.Relation.Unary.All.Properties using (++⁻; ++⁺) public
-open import Data.List.Properties using (++-assoc; length-++) public
-open import Data.Maybe using (Maybe; just; nothing) renaming (map to mmap) public
-open import Data.Product using (_×_; _,_; ∃; ∃-syntax; proj₁; proj₂) public
-open import Relation.Binary.PropositionalEquality using (_≡_) public
-
 -- SigOpInfo is over SURFACE Type (`SigOp : SigOpInfo A B → IR ⌊A⌋ ⌊B⌋`), so the
 -- surface `FitsInReg`/`fits-in-reg?` stay; the μ/functor + value-domain layer is IRTy.
-open import Once.Spec.Type using (Type) renaming (Int to Intˢ) public
-open import Once.Type using (FitsInReg; fits-in-reg?) renaming (fits-int to fits-intˢ; fits-float to fits-floatˢ) public
-open import Data.Integer using (ℤ) public
-open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧) public
-open import Once.IR using (IR; AllocMode; Stack; Heap; Cata; SigOp; Call; out-μ; _∘_;
-  -- Plan 0.68 step 0: the enumeration needs EVERY constructor in scope, not
-  -- just the ones with a clause of their own before it.
-  id; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial; curry; apply;
-  In; Out; in-ν; Ana; Iter; const) public
-open import Once.IRTy using (FitsInRegI; ⌊_⌋; fits-int; fits-float) public
-open import Data.Unit using (tt) public
+open import Once.Type using (FitsInReg) renaming (fits-int to fits-intˢ; fits-float to fits-floatˢ)
+open import Once.IRTy using (FitsInRegI; ⌊_⌋; fits-int; fits-float)
+open import Data.Unit using (tt)
 
 -- Surface `FitsInReg B` ⇒ erased `FitsInRegI ⌊B⌋`: `⌊Int⌋=Int`, `⌊Float⌋=Float`
 -- definitionally, so this is a match-to-refl coherence.
 fits-erase : ∀ {B} → FitsInReg B → FitsInRegI ⌊ B ⌋
 fits-erase fits-intˢ   = fits-int
 fits-erase fits-floatˢ = fits-float
-open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong; cong₂; subst; subst₂; _≢_) public
-open import Data.Nat.Properties using (≤-<-trans; ≤-trans; ≤-reflexive; m≤m+n; m≤n+m; n≤1+n; +-identityʳ; +-assoc; +-suc; +-comm; <-irrefl; <-trans) public
-open import Function using (case_of_) public
-import Once.Semantics.Machine as EvV
-open import Once.CCC.Machine.ValidAtWFHalted o tbl using (validAtWF-set-halted) public
-open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace; ir-to-trace') public
-open import Once.CCC.Codegen.SlotBudget o using (frontier-mono; budget-of) public
-open import Once.CCC.Machine.ValueRel
-  using (module ClosureWellFormedDef; module ClosureWellFormedBase
-        -- the value relation's constructor names (top-level pattern synonyms)
-        ; valid-unit-wf; valid-pair-wf; valid-inl-wf; valid-inr-wf; valid-inl-reg-wf; valid-inr-reg-wf
-        ; valid-inl-flat-wf; valid-inr-flat-wf
-        ; valid-closure-wf; valid-closure-reg-wf; valid-ν-wf; valid-μ-wf; valid-μbox-wf) public
-import Once.CCC.Machine.ReadTypedAdequate as RTA
-import Once.Denotation.DenotTrace as DT
-open import Once.IR.Semantics.Trace using ()
-import Once.IR.Semantics.Trace as TM
-open import Once.Adequacy.FlatEvents using (module FlatEventTrace) public
+import Once.CCC.Machine.ValidAtWFHalted
+module ValidAtWFHalted = Once.CCC.Machine.ValidAtWFHalted o tbl using (validAtWF-set-halted)
+import Once.CCC.Codegen.IRToTrace
+module IRToTrace = Once.CCC.Codegen.IRToTrace o using (ir-to-trace; ir-to-trace')
+import Once.CCC.Codegen.SlotBudget
+module SlotBudget′ = Once.CCC.Codegen.SlotBudget o using (frontier-mono; budget-of)
 

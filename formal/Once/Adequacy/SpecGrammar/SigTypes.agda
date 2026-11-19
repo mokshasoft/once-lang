@@ -19,7 +19,8 @@ open import Once.Spec.Surface.Grammar using (TypeAlg; module SigType; TypeVar; t
 import Once.Spec.Surface.Syntax as SS
 import Once.Parser.Token as P
 open import Once.Parser.CharClass using (isLowerWord)
-open import Once.Parser.Generic.PolyInst using (PolyAlg; TVarRel; ParsesPolyType)
+open import Once.Parser.Generic.PolyInst using (PolyAlg; TVarRel; module Gen′)
+open Gen′ using () renaming (ParsesTypeG to ParsesPolyType)
 import Once.Parser.Generic.PolyInst as PI
 open import Once.Adequacy.SpecLexing using (forget)
 open import Once.Adequacy.SpecGrammar.Tokens using (step)

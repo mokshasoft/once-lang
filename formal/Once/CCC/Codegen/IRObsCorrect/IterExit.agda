@@ -23,6 +23,17 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.IterExit (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.Bool using (false; true)
+open import Data.List using ([]; _++_; length; _∷_)
+open import Data.List.Properties using (length-++)
+open import Data.Maybe using (just)
+open import Data.Nat using (ℕ; _+_; suc)
+open import Data.Nat.Properties using (+-suc)
+open import Data.Unit using (tt)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Once.IR using (IR; Iter; AllocMode)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans; sym; cong₂)
 open import Once.CCC.Machine.SMCore using (ending)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
@@ -31,7 +42,7 @@ open import Once.CCC.Machine.Locations using (ValueLocation)
 open import Once.CCC.Machine.SMCore
   using (AbstractTrace; AbstractInstr; mov-to-input; LocState; readReg; Input1; Output; SV-Ptr; writeReg-same; module LocState)
 open LocState using (halted; regs)
-open import Data.Product using (Σ)
+open import Data.Product using (Σ; _,_)
 open import Data.Sum using (inj₁)
 open import Once.IRTy using (IRTy)
 import Once.IRTy as IRT
@@ -44,6 +55,14 @@ open import Once.CCC.Codegen.IRObsCorrect.Get o tbl using (module GetC)
 module IterExitC {FS : FrameSemantics} where
 
   open Core {FS}
+  open import Once.CCC.Machine.SMPrimitives using (nhw-mov-to-input)
+  open ClosureWellFormedBase′ using (Live; live→bf)
+  open ClosureWellFormedDef′ using (ValidAtWF; validityWF-mem-preserved; ResultPlace)
+  open FlatEventTrace′ using (event-of; chain-events; chain-events-++; chain-left)
+  open FlatMachine′ using (FlatState; fetch; flat-exec-instr; tag-test; flat-read-tag; do-jump)
+  open FlatMachine′.FlatState using (floc; fpc; falloc; fret; flink)
+  open FlatStepsAPI′ using ([]; FlatSteps; _∷_; FlatSteps-++)
+  open TracePrimitives′ using (exec-abstract-preserves-halted-WF)
   open Mach {FS}
   open FlatStepsAPI {FS} using (flat-step1; flat-tag-branch-yes)
   open ShapeC {FS} using (tag-inl; payload-l)

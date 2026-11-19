@@ -49,7 +49,8 @@ open import Once.SigOp.Info using (SigOpInfo; effect; EffectShape; Pure; Emits; 
 open import Once.IR.Semantics.Event using (SigOpEvent)
 open import Once.Res using (Res; stopped; returns)
 open import Once.Type using (FitsInReg; fits-in-reg?; fits-int; fits-float)
-open import Once.Semantics.Machine using (⟦_⟧; LitPayload)
+open import Once.Semantics.Machine using (LitPayload; module Value)
+open Value using (⟦_⟧)
 open import Once.CCC.Machine.SMCore
 open AllocState using (next-heap-ref; current-frame)
 open LocState using (regs; heapMem; stackMem; halted; ev-log)
@@ -60,6 +61,7 @@ open ExecFinal {FS}
 open AbstractExec {FS}
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
+open FlatState using (falloc; floc; fclosure; fret)
 
 ------------------------------------------------------------------------
 -- "Below the allocation frontier": a value/location references no block the

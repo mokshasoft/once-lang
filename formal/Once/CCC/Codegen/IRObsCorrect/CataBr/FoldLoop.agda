@@ -25,6 +25,14 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.CataBr.FoldLoop (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.List using (List; []; length; _∷_)
+open import Data.Maybe using (nothing; just)
+open import Data.Nat using (ℕ; suc)
+open import Data.Unit using (tt)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Once.IR using (IR; Cata)
+open import Relation.Binary.PropositionalEquality using (_≡_; subst; sym)
 open import Once.CCC.Machine.MuRep using (Unboxed)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Meaning using (module PO)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.FillOk using (module FillOk)
@@ -45,11 +53,15 @@ open import Once.Denotation.Approx using (NotCut)
 import Once.IR.Semantics.Trace as TM
 open import Once.Spec.Word using (Carrier)
 open import Once.IR.Semantics.Value Carrier Carrier using (sem-Out; ⟦_⟧F)
-open import Data.Product using (Σ)
+open import Data.Product using (Σ; _,_; _×_)
 
 module CataFoldLoopC {FS : FrameSemantics} where
 
   open Core {FS}
+  open CataNextSlot′ using (AllSlotStable)
+  open FlatMachine′ using (FlatState)
+  open FlatMachine′.FlatState using (flink)
+  open FlatStepsAPI′ using ([]; _∷_)
   open CataBrTextC {FS} using (module Text)
   open CataFoldInvC {FS} using (module Inv; RoundRun)
   open CataFoldTextC {FS} using (module FoldAt)

@@ -68,6 +68,7 @@ open import Once.IR.Semantics.Out using (Out; cut; stop; ended; end-of-left; _â–
 
 module FlatEventTrace {FS : FrameSemantics} where
   open FlatMachine {FS}
+  open FlatState using (floc; fpc)
   open FlatStepsAPI {FS}
 
   -- The decoder and the event a SigOp invocation is live in `SMCore`'s

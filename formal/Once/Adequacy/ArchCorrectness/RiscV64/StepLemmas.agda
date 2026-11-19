@@ -38,6 +38,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.CCC.Label using (thunk)
 open import Once.CCC.Target.RiscV64.Syntax
+open import Once.Target.RiscV64.PhysReg using (ra; zero)
 open import Once.CCC.Target.RiscV64.Semantics
 
 open State using (regs; memory; pc; halted)

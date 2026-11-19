@@ -47,11 +47,14 @@ import Once.IR.Semantics.Trace as TM
 import Once.CCC.FrameSemantics
 module Once.CCC.Codegen.IRObsCorrectFlat (o : CanonicalName) (tbl : DL.List IRFun) where
 
--- The shared vocabulary comes in ONCE, publicly: `Machine` re-exports
--- `Interface`, which re-exports `Prelude`. The parts import it WITHOUT
--- `public` — seven public re-exports of the same prelude is seven paths to
--- `Data.Nat._+_`, which Agda rejects as a clashing definition.
-open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl public
+-- `Machine`: the shared vocabulary of the parts at this definition (its
+-- `Interface` and that one's `Prelude`).
+import Once.CCC.Codegen.IRObsCorrect.Machine
+module Machine = Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Machine
+open Machine.Interface using (module Core)
+open import Data.Product using (_,_)
+open import Once.IR using (IR; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial; curry; apply; In; out-μ; Cata; Out; in-ν; Ana; Iter; const; SigOp; Call)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 
 open import Once.CCC.Codegen.IRObsCorrect.Simple  o tbl
@@ -64,8 +67,7 @@ open import Once.CCC.Codegen.IRObsCorrect.Out     o tbl
 open import Once.CCC.Codegen.IRObsCorrect.Comp    o tbl
 open import Once.CCC.Codegen.IRObsCorrect.Case    o tbl
 open import Once.CCC.Codegen.IRObsCorrect.Call    o tbl
--- `PairAssemble` imports `Pair` (the four clusters) itself, WITHOUT `public`
--- — same D200 rule: only this façade re-exports.
+-- `Pair`: the pair's four clusters, which `PairAssemble` also imports.
 open import Once.CCC.Codegen.IRObsCorrect.Pair o tbl
 -- plan 0.119 D5: the loop.
 open import Once.CCC.Codegen.IRObsCorrect.IterProof o tbl using (module IterProofC)
@@ -77,19 +79,30 @@ open import Once.CCC.Codegen.IRObsCorrect.InMu o tbl using (module InMuC)
 -- surface here is what the single file's `IRObsCorrectFlatness` had.
 module IRObsCorrectFlatness {FS : FrameSemantics} where
 
-  open Core     {FS} public
-  open Mach     {FS} public
-  open Simp     {FS} public
-  open SigOpC   {FS} public
-  open CompareC {FS} public
-  open InjC     {FS} public using (obs-correct-inl; obs-correct-inr)
-  open TwoCellC {FS} public
-  open ApplyC   {FS} public hiding (module SR)
-  open OutC     {FS} public
-  open CompC    {FS} public
-  open CaseC    {FS} public
-  open PairAsm  {FS} public
-  open CallC    {FS} public
+  module Core′ = Core     {FS}
+  open Core′
+  module Mach′ = Mach     {FS}
+  module Simp′ = Simp     {FS}
+  open Simp′
+  module SigOpC′ = SigOpC   {FS}
+  module CompareC′ = CompareC {FS}
+  open CompareC′
+  module InjC′ = InjC     {FS} using (obs-correct-inl; obs-correct-inr)
+  open InjC′
+  module TwoCellC′ = TwoCellC {FS}
+  open TwoCellC′
+  module ApplyC′ = ApplyC   {FS} hiding (module SR)
+  open ApplyC′
+  module OutC′ = OutC     {FS}
+  open OutC′
+  module CompC′ = CompC    {FS}
+  open CompC′
+  module CaseC′ = CaseC    {FS}
+  open CaseC′
+  module PairAsm′ = PairAsm  {FS}
+  open PairAsm′
+  module CallC′ = CallC    {FS}
+  open CallC′
   open CataC    {FS} using (cata-correct)
   open InMuC    {FS} using (obs-correct-In)
 

@@ -107,7 +107,8 @@ import Once.Adequacy.ArchCorrectness.FlatFromObs as FFO
 open import Once.CCC.Codegen.RoomChecks using (room-checks)
 open import Once.Adequacy.RoomChecksEvents using (module RoomEvents)
 import Once.CCC.Target.RiscV64.Semantics as RS
-open import Once.CCC.Target.RiscV64.Layout using (InStack)
+open import Once.CCC.Target.RiscV64.Layout using (module Regions)
+open Regions using (InStack)
 open import Once.Memory.StackSlots using (stack-addr)
 
 -- Plan 0.91 S1 (D213): `program-bound` is GONE. It was introduced by Plan 0.54
@@ -163,7 +164,11 @@ open import Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim o
   (RBr.AddrNoWrap.ret-no-wrap riscv64-addr-no-wrap)
   (RBr.LitFits.tag-fits riscv64-lit-fits) (RBr.LitFits.lit-fits riscv64-lit-fits)
   (RBr.float-fits o ι) (RBr.LitFits.room-fits riscv64-lit-fits)
-  using (events-agree-boot; AgreeAt; CompiledCorr; EntryLike; reach-start)
+  using (module EE; module FlatSimulation; module Dispatch′)
+open Dispatch′ using (events-agree-boot; AgreeAt)
+open EE.RunContext′ using (EntryLike; reach-start)
+open FlatSimulation using ()
+open FlatSimulation.CompiledCorrespondence using (CompiledCorr)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunContext o rv64-frame-semantics slot-size refl using (mkRunAt)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunLow o rv64-frame-semantics slot-size refl using (RunLow; low-start)
 
@@ -185,7 +190,7 @@ code-map prog ℓ = pick (RS.find-label prog (thunk ℓ))
         pick (just j) = j
         pick nothing  = 0
 
-entry-view : RVProgram → FCr.HeapView rv64-frame-semantics refl
+entry-view : RVProgram → FCr.FlatCorrespondence.HeapView rv64-frame-semantics refl
 entry-view cprog = record
   { haddr     = λ hl → slot-to-disp (heap-offset hl)
   ; caddr     = code-map cprog
