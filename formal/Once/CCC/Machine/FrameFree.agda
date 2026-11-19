@@ -36,6 +36,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Bool using (true; false)
 open import Data.Nat using (ℕ)
+open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 
 -- Shallow: no instruction carries a nested trace (plan 0.135).
 FrameFreeI : AbstractInstr → Set
@@ -48,11 +49,10 @@ FrameFreeI instr-pop-frame           = ⊥
 -- in the machine does). Plan 0.63 step 2b: it is emitted only by the four
 -- STACK-MODE clauses of `ir-to-trace'` (`⟨_,_⟩ Stack`, `curry _ Stack`,
 -- `inl/inr Stack`), so a HEAP-MODED trace contains none — which is why the
--- walk below (`FrameFreeTrace`) is now conditional on `HeapModed`, and why
--- `FlatStackPtr`'s invariant could be simplified to "there is no stack
--- pointer". Not a fossil: it is live codegen, just not on the heap-moded
--- path the flat↔x86-64 correspondence runs over.
-FrameFreeI (lea-slot _)              = ⊥
+-- walk below (`FrameFreeTrace`) is now conditional on `HeapModed`.
+-- (plan 0.146, D451/D452: the new image takes stack addresses; `lea-slot`
+-- moves no frame, so it is frame-free, and every access through the pointer
+-- it makes is checked against a live frame's window)
 -- The two closure markers are NOT fossils — they are the opposite,
 -- scaffolding ahead of their producer (Plan 0.63 step 1 added the
 -- constructors; step 2b puts closure BODIES into `ir-to-trace`, which is
@@ -68,7 +68,6 @@ FrameFreeI (lea-slot _)              = ⊥
 -- the `FlatCorr` field relating the ghost `fret` to the machine stack.
 FrameFreeI (instr-ctrl (c-entry _ _)) = ⊥
 FrameFreeI (instr-ctrl (c-start _)) = ⊥  -- plan 0.107: it reserves the outermost frame
-FrameFreeI (instr-free-heap _)      = ⊥  -- plan 0.123 M2: not emitted yet, so inside no fence
 FrameFreeI (instr-room _)           = ⊥  -- D377: the room-check pass adds checks AFTER the image
 -- plan 0.123 B.4 α: the four fixed-offset forms are retired — the flat layout
 -- reads and writes at `load-at`/`store-at`/`addr-at` offsets, so no emitter
@@ -112,13 +111,12 @@ EmittableI (instr-alloc-stack _)     = ⊥
 EmittableI (instr-dealloc-stack _)   = ⊥
 EmittableI (instr-push-frame _)      = ⊥
 EmittableI instr-pop-frame           = ⊥
-EmittableI (lea-slot _)              = ⊥
+-- D451: the new image takes stack addresses (an area, a structured argument
+-- or answer by address); D452 checks every access through one
 -- plan 0.107: the program's START is not in any unit — it is the image's
 -- header (`ProgramImage.program-image`), at pc 0 only.
 EmittableI (instr-ctrl (c-start _))  = ⊥
--- plan 0.123 M2: a free is in the instruction set before the compiler emits
--- one (M4); until then no image holds it.
-EmittableI (instr-free-heap _)       = ⊥
+-- (plan 0.146: the new image frees cells, `instr-free-heap`, emittable)
 -- D377: the image holds no check of its own; the room-check pass
 -- (`RoomChecks.room-checks`) adds them after it, to the lowered image.
 EmittableI (instr-room _)            = ⊥
@@ -176,7 +174,7 @@ emittable-image (instr-ctrl (c-ret _)) e = e
 emittable-image (instr-ctrl (c-entry _ _)) e = e
 emittable-image (instr-ctrl c-leave) e = e
 emittable-image (instr-ctrl (c-start _)) ()
-emittable-image (instr-free-heap _) ()
+emittable-image (instr-free-heap _) e = e
 emittable-image (instr-room _) e = e
 emittable-image (load-at _) e = e
 emittable-image (store-at _) e = e
@@ -190,10 +188,10 @@ frame-free-emittable (instr-alloc-stack _)     ()
 frame-free-emittable (instr-dealloc-stack _)   ()
 frame-free-emittable (instr-push-frame _)      ()
 frame-free-emittable instr-pop-frame           ()
-frame-free-emittable (lea-slot _)              ()
+frame-free-emittable (lea-slot _)              _ = tt
 frame-free-emittable (instr-ctrl (c-entry _ _)) ()
 frame-free-emittable (instr-ctrl (c-start _)) ()
-frame-free-emittable (instr-free-heap _)       ()
+frame-free-emittable (instr-free-heap _)       _ = tt
 frame-free-emittable (instr-room _)        ()
 frame-free-emittable (load-at _)           _ = tt
 frame-free-emittable (store-at _)          _ = tt
@@ -302,7 +300,7 @@ module _ {FS : FrameSemantics} where
     restore-input-alloc (stackMem s (current-frame alloc) k) s alloc
   exec-abstract-preserves-next-slot (instr-alloc-stack _)    s alloc ()
   exec-abstract-preserves-next-slot (instr-dealloc-stack _)  s alloc ()
-  exec-abstract-preserves-next-slot (instr-free-heap _)      s alloc ()
+  exec-abstract-preserves-next-slot (instr-free-heap _)      s alloc _ = refl
   exec-abstract-preserves-next-slot (instr-room _)      s alloc _ = refl
   exec-abstract-preserves-next-slot (load-at _)         s alloc _ = refl
   exec-abstract-preserves-next-slot (store-at _)        s alloc _ = refl
@@ -372,6 +370,13 @@ module _ {FS : FrameSemantics} where
   restore-input-alloc-full (just _) s alloc k = refl
   restore-input-alloc-full nothing  s alloc k = refl
 
+  -- D452: the frame gate reads the live frames, not `next-slot`
+  gate-nsi : ∀ (al : AllocState {FS}) (k n : ℕ) (ml : Maybe (ValueLocation FS))
+           → ExecFinal.frame-gate {FS} al n ml ≡ ExecFinal.frame-gate {FS} (record al { next-slot = k }) n ml
+  gate-nsi al k n (just (AtStack f j))  = refl
+  gate-nsi al k n (just (AtDynamic hl)) = refl
+  gate-nsi al k n nothing               = refl
+
   exec-abstract-state-nsi :
     ∀ (i : AbstractInstr) (s : LocState FS) (alloc : AllocState {FS}) (k : ℕ)
     → FrameFreeI i
@@ -391,11 +396,13 @@ module _ {FS : FrameSemantics} where
     restore-input-state (stackMem s (current-frame alloc) j) s alloc _
   exec-abstract-state-nsi (instr-alloc-stack _)    s alloc k ()
   exec-abstract-state-nsi (instr-dealloc-stack _)  s alloc k ()
-  exec-abstract-state-nsi (instr-free-heap _)      s alloc k ()
+  exec-abstract-state-nsi (instr-free-heap _)      s alloc k _ = refl
   exec-abstract-state-nsi (instr-room _)      s alloc k _ = refl
-  exec-abstract-state-nsi (load-at _)         s alloc k _ = refl
-  exec-abstract-state-nsi (store-at _)        s alloc k _ = refl
-  exec-abstract-state-nsi (addr-at _)         s alloc k _ = refl
+  exec-abstract-state-nsi (load-at x)         s alloc k _ =
+    Relation.Binary.PropositionalEquality.cong (λ g → ExecFinal.exec-load-at-resolved {FS} x Output g s) (gate-nsi alloc k x (sv-as-loc (readReg (LocState.regs s) Input1)))
+  exec-abstract-state-nsi (store-at x)        s alloc k _ =
+    Relation.Binary.PropositionalEquality.cong (λ g → ExecFinal.exec-store-at-resolved {FS} (AllocState.block-size alloc) x g (readReg (LocState.regs s) Output) s) (gate-nsi alloc k x (sv-as-loc (readReg (LocState.regs s) Input1)))
+  exec-abstract-state-nsi (addr-at x)         s alloc k _ = refl
   exec-abstract-state-nsi (instr-reclaim-to _)     s alloc k _ = refl
   exec-abstract-state-nsi (instr-push-frame _)     s alloc k ()
   exec-abstract-state-nsi instr-pop-frame          s alloc k ()
@@ -436,7 +443,7 @@ module _ {FS : FrameSemantics} where
     restore-input-alloc-full (stackMem s (current-frame alloc) j) s alloc k
   exec-abstract-alloc-nsi (instr-alloc-stack _)    s alloc k ()
   exec-abstract-alloc-nsi (instr-dealloc-stack _)  s alloc k ()
-  exec-abstract-alloc-nsi (instr-free-heap _)      s alloc k ()
+  exec-abstract-alloc-nsi (instr-free-heap _)      s alloc k _ = refl
   exec-abstract-alloc-nsi (instr-room _)      s alloc k _ = refl
   exec-abstract-alloc-nsi (load-at _)         s alloc k _ = refl
   exec-abstract-alloc-nsi (store-at _)        s alloc k _ = refl

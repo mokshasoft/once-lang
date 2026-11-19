@@ -25,6 +25,7 @@ import qualified MAlonzo.Code.Once.Extract.Names
 import qualified MAlonzo.Code.Once.Format
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.Inspect
+import qualified MAlonzo.Code.Once.LinCore.Emit
 import qualified MAlonzo.Code.Once.Measure
 import qualified MAlonzo.Code.Once.Parser
 import qualified MAlonzo.Code.Once.Parser.Module.Core
@@ -214,12 +215,12 @@ d_runs_62
       (coe MAlonzo.Code.Once.Extract.Names.d_module'45'imports_20)
       (coe MAlonzo.Code.Once.Extract.Names.d_import'45'path_24)
       (coe MAlonzo.Code.Once.Extract.Names.d_import'45'alias_28)
-      (coe MAlonzo.Code.Once.Compile.d_moduleToIR_1304)
+      (coe MAlonzo.Code.Once.Compile.d_moduleToIR_1298)
       (coe MAlonzo.Code.Once.Parser.Module.Resolve.d_resolveImports_884)
       (coe MAlonzo.Code.Once.Warnings.d_warningsFor_380)
-      (coe MAlonzo.Code.Once.Compile.d_assemblyFromModule_1628)
+      (coe MAlonzo.Code.Once.LinCore.Emit.d_assemblyCore_98)
       (coe MAlonzo.Code.Once.Inspect.d_signatures_40)
       (coe MAlonzo.Code.Once.Inspect.d_check_48)
       (coe MAlonzo.Code.Once.Inspect.d_dumpIR_68)
-      (coe MAlonzo.Code.Once.Measure.d_statsOf_4)
+      (\ v0 v1 -> coe MAlonzo.Code.Once.Measure.du_statsOf_22 v1)
       (coe MAlonzo.Code.Once.Format.d_formatSource_14)

@@ -71,6 +71,8 @@ layer5Tests = testGroup "Layer5"
       -- failure, not the segfault it was.
       [ foreverCases "a server that emits each round runs on" "loop-forever-emit" [0, 1, 2, 3, 4]
       , foreverCases "a silent server runs on and is never observed" "loop-forever-silent" []
+        -- the state is a list, rebuilt each round: passes only if the old nodes are freed
+      , foreverCases "a server whose state is a list runs on" "loop-forever-list" [100, 0, 101, 1, 102]
       ]
   , testGroup "memory runs out observably (plan 0.123 A.5)"
       -- A program whose LIVE data grows without bound ends `exhausted` on every

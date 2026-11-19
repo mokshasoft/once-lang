@@ -22439,3 +22439,1992 @@ expression syntax rebuilt the back end, and every back-end check carried the sur
 
 ### What programs see
 Nothing.
+
+## D420 — THE LINEAR CORE'S SHAPE: CELLS AND FRAMES, A LENDING CONTEXT, MANY-USE CLOSURES, EFFECTS ABOVE, REUSE AS A RULE (2026-11-08)
+
+**Decided** by the user 2026-11-12, after the review of the spike (every point, as amended below;
+point 3 with its decision). Was proposed (plan 0.146 §4 A, for the user's review before §4 B, the migration, starts). Worked out
+unattended in `Spikes/LinCore/` (POC-first, the user 2026-11-08), each part a checked Agda module
+(`--safe`, no postulates). **Applies**: D402 (static ownership, two heaps, choice A), D400 (no read of an
+unwritten cell), D317 (a server is the loop over a round), D131 (a fold's algebra is a closure obtained
+once). **Starts from**: `NbEPLinCore` (OCP-0009, `origin/plan-ref`).
+
+### Decision
+* **What memory a value occupies** (`Events.MV`). Flat, no cell (a frame slot or registers): `One`, `⊗`,
+  `⊕`, base words. One cell each, in the cell heap: a μ node (its layer), a ν (a suspension: its seed;
+  or a layer built by `lInν`), a closure (its environment). That is D402's two heaps; frames are LIFO, so
+  only cells need a theorem.
+* **What the core's generators do to memory** (`Events.Run`, a relation; `sound`: every run computes the
+  core's meaning `Lᶜ`). `dup` copies every cell of its value, `drop` frees every cell; `lIn`, `lAna`,
+  `lInν` and closure building allocate one cell; `lOutμ`, a one-shot application and an observation
+  free one; a fold frees each node as it consumes it. Nothing else touches the heap: moving data is not
+  copying it.
+* **Borrows are a second context, not a type** (`BTm E A B`, `lend`). A borrowing morphism reads a lent
+  `E` but never owns, frees or keeps it; it can zoom into `E`, branch on its tag, look inside a lent node
+  (a `peek` event: legal only while the cell is live) and copy it out (`bcopy`: choice A). The one new
+  core generator is the scope `lend : BTm E A B → LTm (E ⊗ A) (E ⊗ B)`; since `E` is no type of the core,
+  a borrow cannot escape into a result, a closure's environment or a ν's seed, with no side condition
+  anywhere. A fold reads its environment at every layer this way (`bcata`), at no cost.
+* **Two closure types** (QTT's 1 and ω arrows). `A ⇒ B` is one-shot: applying it consumes its
+  environment. `A ⇛ B` is many-use: its body only reads its environment, so it is applied while lent
+  (`bapp`), any number of times, and freed once. D131's algebra closure is a `⇛`, lent to the fold.
+* **Effects sit above the core** (`Act.ATm`, `Act.Loop`). A round is a finite block: core steps (which may
+  read a lent `E`), sequencing, pairs, cases, and the SigOps — Pure/Emits (an `io` event and the world's
+  answer, any answer) and Halts (the run ends). A server is the loop over a round (D317). The core stays
+  pure; effects add no heap event.
+* **In-place reuse is a machine rule** (`r-cata-reuse`). A fold that rebuilds each node with the same
+  functor may keep the consumed node's cell for the rebuilt one: no free, no alloc. The ordinary rule
+  still applies; the compiler picks.
+
+### What is proved (the invariants, D400 and the user's of 2026-11-08)
+* **The invariant: each block allocated is freed exactly once** (`Events.lifetimes`; the user,
+  2026-11-08). Per block `i`, on the trace: the events on `i` are lifetimes one after another — `alloc i`,
+  any number of reads of `i`, exactly one `free i` — and none outside them (`Life dead (on i t) dead`, the
+  language (alloc read* free)*). No double free, no free of a stranger and no read of a dead cell are its
+  consequences, not separate properties. With the exit exception (`Act.lifetimes-exit`): a program that
+  halts has the same lifetimes, except that a block's last one may be open (live at the exit).
+* **How it is proved: counts, then lifetimes.** The rules are proved with a count per block, checked
+  before every event (`OK`: an `alloc` needs 0, a `free` or a read needs 1), because counts add up and so
+  compose under sequencing, pairs and the frame. A pairing of allocs with frees stated on trace positions
+  would need interleaving arguments in every rule. One lemma about traces, nothing about the core
+  (`Events.life`, by induction on the trace), turns legal counts into lifetimes.
+* `exchange` (every generator, borrows, many-use closures and reuse included): if the heap holds a run's
+  input cells beside a frame (whatever else is live), the run's events are legal (`OK`), and afterwards
+  the heap holds the OUTPUT's cells instead of the input's, the frame untouched. The frame is the frame
+  rule; a lent value sits in it, so "the reader neither frees nor copies it" is a theorem, not a check.
+* `noleak`: a whole program that returns ends with the empty heap — with `OK`, the two hypotheses of
+  `life`; the shape of `Once.Implementation.NoLeak` (`Run.LeakFree`), here a theorem of the core's
+  structure.
+* `exchangeA`: the same for a round; a round that HALTS claims only legality — what is live at an exit
+  stays (the user's exception; `LeakFree`'s `StoppedAt`).
+* `loop-exchange`: after any number of rounds, the heap is the frame plus the current state's cells. A
+  server's memory is its state, round after round, with no "eventually" for a run that never ends: the
+  space claim at round boundaries (plan 0.146 §3).
+* Non-vacuity, by concrete runs (`Examples`): the gate's `loop-forever-emit` server (no heap event in two
+  rounds); a server whose state is a list rebuilt each round (events `free 0, free 1, alloc 2, alloc 3`,
+  and the heap afterwards holds exactly the new list); D131's fold with a lent algebra closure (the
+  closure allocated once, `peek`ed once per layer, freed once, never copied); and the same list round in
+  place (no event at all). And one block's lifetime by evaluation (`closure-life`): the closure's block
+  is `alloc, read, read, free`.
+
+### Consequences
+* The migration (plan 0.146 §4 B) compiles `Once.IR` through this core: `⟨f,g⟩` via `dup` or, when one
+  side only reads, via `lend`; `Cata`'s environment via `lend (bcata …)` and one `drop`; a closure that
+  may be applied more than once as a `⇛`; `Iter`/`Ana` into `Eff` as the loop over a round.
+* Costs: a `dup` of a structure is a deep copy (no sharing without run-time counts, D402); a `⇛`'s and a
+  lent value's reads cost nothing; frees are compiler-placed. In-place reuse removes the free/alloc pair
+  of every shape-preserving rebuild.
+* **Decided (the user, 2026-11-12): `dup` stays a deep copy; cheaper forms come later as proved
+  refinements.** A copy is needed only where BOTH sides own the value. Where one side only reads, the
+  pass lends instead (`lend`, no copy, no run-time bookkeeping); that is a refinement of D426 part 1's
+  faithful translation. Sharing between two owners without counts needs a static proof of which owner
+  frees (plan 0.145). Practical programs are mostly linear, so the copy is rare.
+* **Findings, open**: (1) `Ana` with an environment and a BRANCHING functor copies the environment once
+  per extra recursive position per unfold (a single-position functor — every stream and every `Eff`
+  loop — moves it, no copy); the corpus has no branching codata. (2) Cell SIZES are not yet in the
+  events (D402's free lists are per node size; the reuse rule needs equal sizes, which the same functor
+  gives). (3) Effectful closures and effectful folds (D131: an algebra may have effects) are the same
+  memory pattern one layer up, not yet written. (4) Termination of the run relation is not proved; the
+  examples show runs exist.
+* **The gate** (plan 0.146 §4): both gate servers keep an `Int`, which frames alone would pass; the
+  list-state server above is the proposed extra gate test (for the user to decide). Decided (the user,
+  2026-11-12): it is a gate test, `compiler/test/loop-forever-list.once` (a list of two nodes rebuilt by
+  an emitting fold every round; today it ends `exhausted` after about 3000 rounds on all three arches).
+
+### Amended (the user, 2026-11-10): the model is the backbone
+**Decided** by the user 2026-11-12 (the spike's review).
+* **The spike's model is the compiler's backbone, decorated.** Its terms, machine values, run relation and
+  memory theorems become the linear core as they are, not a design that a separate core re-implements.
+  What the compiler needs attaches in two ways, leaving the theorems as they are. Parameters decided by the
+  type: base types, SigOps, cell sizes, layout, frame or cell. Choices on a term: in-place reuse, local
+  temporaries, later stack regions (the machine is not a decoration: it is a simulation, by induction on
+  the run).
+* **`NoLeak` comes from the backbone.** The machine's cell events, temporaries removed, equal the run's
+  trace; `lifetimes` then gives the claim. The value relation between machine and run is first-order,
+  since a run of an application already contains the run of the closure's body.
+* **One term language.** `LTm`, `BTm` and `ATm` merge into one language `Tm E A B` indexed by its lent
+  context, so each theorem is proved once. This supersedes "effects sit above the core" and closes finding
+  (3): SigOps may occur inside folds, closures and coalgebras, and the loop is a generator (`liter`), as
+  the IR allows. A term means a computation in `T∞` (`evalᴰ`'s shape); `sound` says a run is a path through
+  that meaning.
+* **For the user's review: no effect index (A11, 2026-11-10).** The amendment first said the language would
+  also be indexed by whether a term may perform effects. Master's IR is ungraded (Plan 0.52 M2: one
+  exponential per `(A, B)`), and `evalᴰ` puts closures, ν layers and rounds in the one monad `T∞`. An index
+  would need graded arrows and a graded ν that the IR does not have, and a term built from an applied
+  closure could never be called pure. Set aside: (a) the index with graded arrows and ν; (b) an index where
+  "pure" forbids applying a closure. A term's effects are visible in its run's events; if a purity claim is
+  needed, it can be added as a predicate on terms or an index, mechanically.
+* **A run ends in an `Outcome`.** It gives a value, or it stopped: `halted`, or `exhausted`, which can happen
+  before any term or after a prefix of a term's events. A stopped run claims only that its events were legal
+  (the exit exception), and that what it did is a prefix of what the term means.
+* **Retired (A11): OCP-0009's cost count and `dyn-linear`** ("dup-free code allocates nothing"). It counted only
+  `dup`, the event trace has replaced that account, and with values in `T∞` the count has no place to live.
+  It remains on `origin/plan-ref` and in this branch's history.
+* **Local temporaries are allowed.** The lowering may allocate heap blocks the run does not have, if the
+  same generator's code frees them before it finishes and nothing in the result points into them. A
+  halt or `exhausted` in between falls under the exit exception. The space claim counts them: live data
+  plus temporaries.
+* **Termination of the run relation (finding 4) is a gate.** The memory theorems assume a run exists and
+  `NoLeak` covers every image, so every program must have one (D213, D360: a claim over an empty set).
+* **Stack or cell.** D420's split stands: words, pairs and sums in frames, μ/ν nodes and closures in cells,
+  free lists per size. Stack regions for nodes that stay inside a frame are a later optimization. A closure
+  with an empty environment gets no cell, decided with sizes (plan 0.146 A12).
+* **Order.** The spike continues until every question mark it can resolve is gone (plan 0.146 A10–A17); only
+  then does the integration (§4 B) start.
+
+## D421 — THE LINEAR CORE'S DECORATIONS: SIZED BLOCK NAMES, THE ABI LAYOUT, FLAT SIGOPS, NO CELL FOR AN EMPTY ENVIRONMENT (2026-11-11)
+
+**Decided** by the user 2026-11-12 (the spike's review; `lhalt` as its own generator accepted, the pass
+maps a `void`-answering operation to it). Was proposed (plan 0.146 A12, made unattended per the standing rule).
+**Applies**: D420 (amended: decorations decided by the type, the theorems unchanged), D402 (free lists
+per size), `Spec.ABI` (the layout of a base value), `Spec.Signature` (`BTy`, an operation answering `void`
+halts), plan 0.123 D6 (no run-time ownership information). Worked out in `Spikes/LinCore/` (`--safe`, no
+postulates); `exchange`, `noleak`, `lifetimes` and `lifetimes-exit` are stated as before.
+
+### Decision
+* **A block's name is its size and a serial** (`Events.Id = ℕ × ℕ`). A `free` names the block it frees,
+  so it carries the size its `alloc` did: what free lists per size need, given by `lifetimes` with no new
+  proof. Fresh means a serial at or above the run's counter.
+* **The layout is `Spec.ABI`'s, decided by the type** (`Events.words`): `Unit`/`Void` no words, a pair
+  both halves, a sum a tag word and the larger alternative, a base word `bw b` (a parameter; one word on
+  every target). A μ, a ν and a closure are a one-word pointer to their cell.
+* **What a cell holds.** A μ node: its layer (`szμ F`). A closure, a ν suspension, a ν layer: a CODE WORD
+  and the environment, seed or layer (`szclo`, `szν`, `szνv`). The code word is what applying, observing
+  or dropping the value runs, so an untagged machine knows what to do with it; it is the value's
+  behaviour, not ownership information (D6). Theorem `sized`: from a sized input and lent value, every
+  value a run gives names each cell with its type's size.
+* **No cell for an environment of no words** (`Events.Slot`, `newS`). A closure whose environment's type
+  has no words (`words E ≡ 0`) is a pointer to a static code block: building, applying, reading and
+  dropping it are no events. Decided by the environment's type at `lcurry`/`lcurryB` and at a copy;
+  `Sized` records it.
+* **SigOps take and answer flat types** (`LinCore.Flat.FTy`, the Spec's `BTy`: `unit void word * +`). A
+  flat value has no cell (`cnt-flat`). An emit answers `unit`, an exit `void`, as in the Spec.
+* **`Kzero`**: the constant `Void` in `LF`, as the Spec's `K Void`.
+
+### For the review
+* `lhalt` stays a generator of its own (the term chooses to halt), where the Spec halts by the TYPE (an
+  operation answering `void`). A `lop` at a `void` answer has no run that gives a value, only `exhausted`
+  ones; the pass (A15) maps such an operation to `lhalt`, and A14's totality is stated with that.
+* Not done, the same pattern: a ν suspension whose seed has no words could also be a static block; a μ
+  node whose layer has no words still gets a cell. Neither occurs in the corpus's servers.
+
+## D422 — NOTHING KNOWN AT COMPILE TIME IS KEPT AT RUN TIME: CLOSURES DEFUNCTIONALISED BY LABEL, A STRATIFIED TABLE (2026-11-11)
+
+**Accepted** (the user, 2026-11-11: the principle, and option 2 over option 1). **Applies**: `GOAL.md`
+("Nothing known at compile time is kept at run time"), D421 (amended: no code word, no closure cell),
+D420 point 5 (the two closure types, superseded), D131 (many-use closures, kept as a label kind), plan
+0.123 D6 (subsumed). Worked out in `Spikes/LinCore/` (plan 0.146 A12, step 1).
+
+### The principle
+A compiled program stores and tests only what the compiler cannot know. D421 put a code word in every
+closure and ν cell; the code is not run-time information when only one function can arrive, and when
+several can, what is unknown is WHICH OF THEM, a sum's tag, not a code address.
+
+### Decision
+* **A closure's type names its code.** `Ct l X`: an environment `X`, tagged with a LABEL `l` (one per
+  lambda of the program). It means its environment (`⟦ Ct l X ⟧ = ⟦ X ⟧`) and is laid out as it
+  (`words (Ct l X) = words X`): no code word, no cell, no pointer; an empty environment is no words.
+  Applying it is a direct call to `l`'s body. Where lambdas meet (a `case` returning different ones),
+  the type is a sum `Ct l₁ X₁ ⊕t Ct l₂ X₂`, and the sum's tag is the only run-time word, there because
+  the branch was taken at run time.
+* **The label table is STRATIFIED** (`Cx`, `Defs`): each body is typed over the labels before it, as a
+  lambda's body only builds the lambdas nested in it. `Tm Γ E A B` is indexed by the labels in scope;
+  a label is a position counted from the oldest, so it names the same entry in every extension. The
+  meaning is a structural recursion over the table (no knot, no silent step, no funext); the meaning of
+  a closure call is `lookup-body`, proved by induction on the label.
+  - Rejected: a table whose bodies may call any label. Its meaning is a knot that `--safe` Agda cannot
+    tie (no sized types; `>>=∞`'s continuation hides the guard). Probed and refused, 2026-11-11.
+* **Two kinds of label** (D131 kept): a ONE-SHOT body owns its environment (`Tm Γ One (X ⊗t A) B`); a
+  MANY-USE body reads it lent (`Tm Γ X A B`), so it can be applied while lent, at every layer of a fold.
+* **Option 2 contains option 1.** Per-type defunctionalisation is the table with one coarse sum per arrow
+  type. How fine the sums are is the pass's choice (A15), not the core's: start coarse, refine later, the
+  core and its theorems unchanged.
+* **A chain of closures of unbounded depth is data.** A body cannot call its own label, so a fold whose
+  carrier is a function (each layer's closure holding the previous one) is not a table entry: A15 turns
+  it into a μ (the chain, as Reynolds' defunctionalised continuation) applied by a loop. The unbounded
+  structure is then visible as what it is at run time, a list or a stack, in a cell per node.
+* **ν the same way** (step 2): a suspension is a labelled coalgebra and its seed, laid out as the seed.
+
+### What it costs
+* Build time of the proofs, not compile or run time: the index `Γ` is a plain variable, never computed
+  (DirectedHoTT LESSONS §3, "Generalise into functions, not into datatype indices"), and measured against
+  the baseline (cold: Act 49 s including Events, Examples 12 s).
+* Whole-program: the table is the program's. Only flat values cross the boundary (`Spec.ABI`), so a
+  closure never leaves it.
+
+## D423 — A ν IS A CLOSURE: ITS COALGEBRA A LABEL, ITS VALUE ITS SEED (2026-11-11)
+
+**Superseded** by D426 part 3 (ν), decided 2026-11-12; kept only as the representation where one
+coalgebra reaches a site. Was proposed (made unattended under D422's "ν the same way"). **Applies**: D422
+(step 2), D421 (amended: no ν cell, no ν code word). Worked out in `Spikes/LinCore/` (plan 0.146 A12′).
+
+### Decision
+* **No ν type in the core.** A coalgebra of `F` on seeds `S` is a one-shot LABEL of argument `One`,
+  `sg once S One (LF∙ F S)`, its body over the labels before it as every body. A ν of it is a closure
+  `Ct l S`: it means its seed and is laid out as its seed (a stream of `Int`s is one word, no cell).
+* **`ana` is tagging the seed** (`lana = lclo Idf`): no event.
+* **Observing is a call** (`lobs F p = lclo F p ∘l lapp p ∘l ρl⁻`): the coalgebra runs on the seed, and
+  the seeds of the layer it returns are tagged with the same label. The one generator change: `lclo F`
+  tags every environment at the `Idf` positions of a layer (`lclo Idf` is D422's `lclo`). No event
+  beyond what the body does: no cell freed, none allocated, no code word read.
+* **`in-ν` (a ν built from a layer) is another label**, whose body returns that layer; where it meets an
+  unfolded ν the type is a sum (D422). The pass's job (A15), not a generator.
+* **No ν inside a functor code** (`Kν` removed): the Spec's functor constants are base types (`WFFun`,
+  `wf-K : Base Δ A`), so no IR type holds a ν inside data.
+* **No coinductive type in the meaning**: `Nu`, `unfoldNu` and the `Coalg` package go; the meaning stays a
+  structural recursion. The IR's `νᴵ` is related to a seed and a label by the pass's proof (A15), as a
+  function is to a closure.
+
+### Consequences
+* `sound`, `sized`, `exchange`, `noleak`, the lifetimes, unchanged in statement; five run rules and the
+  six `wrap` lemmas replaced by `tag` and three lemmas (`tag-er`, `tag-sized`, `cnt-tag`).
+* Cold build 67 s (74 s before).
+* Open for the review: the coalgebra's kind is one-shot (it owns its seed). A many-use coalgebra (one that
+  reads its seed lent and returns copies) is not needed by any IR constructor seen so far.
+
+## D424 — TEMPORARIES: A DECORATION OF THE RUN, COUNTED BY SIZE, WITHOUT IDS (2026-11-11)
+
+**Decided** by the user 2026-11-12 (the spike's review). Was proposed (made unattended, under plan 0.146 §3 "local temporaries are allowed" and D421's
+amendment; for the user's review). Worked out in `Spikes/LinCore/` (plan 0.146 A13: `Events`, `Temps`).
+
+### Decision
+* **A temporary is an event, not a cell.** `tmp (tnew k)` / `tmp (tdel k)`: a block of `k` words the
+  lowering allocates (a fold's work stack, a deep copy's), with NO id. It is not a value, so nothing in a
+  result can point into it, by construction. The cell heap (`step`, `OK`), the world's view (`ios`) and
+  the lifetimes (`on`) ignore it, so every theorem of the run holds unchanged.
+* **A choice on a term** (as in-place reuse, D421): the rule `r-tmp` decorates a run of any term with its
+  own temporaries, WOVEN into its events. If the run gives a value they are BALANCED (each freed, by
+  size, before the term finishes); if it stopped, only LEGAL (the exit exception).
+* **The structure** (the user, 2026-11-11: proper structures, proved, not invented lemmas): traces are
+  the free monoid on events; a trace ACTS on ledgers (live temporaries by size) as a proved
+  `IsMonoidHomomorphism` into stdlib's endomaps of the ledger setoid (`Function.Endo.Setoid`); the legal
+  traces and the balanced ones are SUBMONOIDS (`IsSubmonoid`, defined here: stdlib 2.3 has no
+  substructures), the balanced ones the stabiliser of the empty ledger.
+* **The theorems** (`Temps`): `plain` — every run ERASES to a run of the same term with the same values
+  and cell events and no temporaries; `tsound` — every run's temporaries are balanced if it gives a value,
+  legal if it stopped. Weaving balanced temporaries into a balanced trace is balanced (`weave-post`).
+* **The run's ids are the machine's names for cells**; temporaries take none, so the map from the run's
+  ids to the machine's is the identity on cells. Addresses for both are the allocator's (A17).
+
+### Open for the review
+* Temporaries are attributed to the wrapped term, not placed: `r-tmp` allows them anywhere in its events,
+  including inside a sub-term's. The machine (A16) places them at the generator's own code.
+* A finer form: balanced = the kernel of a homomorphism into the bicyclic monoid per size (unmatched
+  frees, unmatched allocations). Not needed by any proof so far; the ledger action is what the weave
+  needs.
+
+## D425 — EVERY PROGRAM HAS A RUN: AN EVALUATOR THAT BUILDS IT; A WORLD MAY NOT ANSWER (2026-11-11)
+
+**Decided** by the user 2026-11-12 (the spike's review; an unanswered call ends `exhausted`, accepted).
+Worked out in `Spikes/LinCore/Total.agda` (plan
+0.146 A14, step 1).
+
+### Decision
+* **Totality by construction.** `exec` builds a `Run` of every term, from every lent value, input,
+  counter and world state, given FUEL: a number of loop rounds. A run that uses its fuel ends
+  `exhausted` after the rounds it ran (D374: a server's run is cut a round at a time).
+* **No relation on the type is needed** (D422 pays off). Applying a closure runs a body over a strictly
+  shorter prefix of the table, so the table's runners are built in order (`runners`, as `⟦_⟧D`); a fold
+  recurses on the value; the term shrinks everywhere else. Termination: fuel, then term, then value.
+* **A world is any machine answering SigOps** (a state and an answer function: every history-dependent
+  strategy). **It may give no answer**, and then the run is cut at that call (`r-exh`, which `sound`
+  already covers). It must not answer an op whose answer type is empty (an exit called by `lop`, not
+  `lhalt`): a world that had to answer every op would not exist for such a signature, and the theorem
+  would be vacuous.
+
+### Open for the review
+* An unanswered call ends the run as `exhausted`, the reason D374 gives to running out of memory. A
+  separate reason (the world did not answer) would need a new `Why` and an `RB` case.
+* Step 2 DONE: `Ran.cause` — a run found `exhausted` ran out of fuel at a loop or met a call the world
+  refused (`unanswered`, with the equation); `fuel-only`: a world that always answers cuts only at a loop.
+
+## D426 — THE PASS, FIRST-ORDER, PROVED; THE HIGHER-ORDER PASS NEEDS A LABELLING DECISION (2026-11-11)
+
+**Part 1 Decided** by the user 2026-11-12 (the spike's review). **Part 2 and part 3 decided below**;
+part 3's unattended entries (the ν, the pass) accepted 2026-11-12. Worked
+out in `Spikes/LinCore/Pass.agda`, `Whole.agda` (plan 0.146 A15).
+
+### Part 1: the first-order IR
+* `Pass.IR`: master's constructors but `curry`/`apply`, `Ana`/`Out`/`in-ν`, `Call`, over the core's types;
+  `ev`, their meaning clause for clause master's `evalᴰ` (`Once.Denotation.DenotTrace`).
+* `tr`: the faithful translation. `⟨f,g⟩` duplicates its input; `fst`/`snd`/`terminal` drop; a fold's and
+  a loop's environment is lent to the body and copied per use (`withE`: the IR's algebra owns `E`). The
+  cheaper choices (lend a pair's input, no copy of an environment the body only reads) are refinements of
+  this translation, to be proved the same way.
+* `pass-ok`: `Lᶜ (tr f) ≈ ev f`, BISIMILARITY of computations (a loop's meaning is coinductive). Proved
+  with the monad's congruences (`>>=-cong`, `iter-cong`, `cata-cong`) and one identity (`pair-drop`).
+* `Whole`: an IR program, translated, run by `exec` in any world: what the world saw is a path through the
+  IR program's meaning; a finished run leaks nothing. Example: the counter server, written in the IR.
+* The core gains `lconst` (the IR's `const`: a word, no event), with a case in every theorem.
+
+### Part 2, open: labelling the higher-order IR
+The pass must give every lambda (`curry`) and coalgebra (`Ana`) a label, and every arrow and ν type a sum of
+labels (D422, D423). D422 said "start coarse: one sum per arrow type". That is NOT expressible:
+* The coarse sum of `Int ⇛ Int` contains the closure of `compose f g`, whose environment holds two
+  `Int ⇛ Int` closures: the sum type is RECURSIVE. The core's only recursive types are `μ` codes, which
+  hold base data and other codes, never closures (`LF`, by design: positivity).
+* Its apply would call itself (applying `f` inside `compose`'s body): the label table is stratified, so a
+  body cannot call its own label (D422).
+
+The choices, each principled, with different costs:
+1. **Closures as data, apply as an interpreter loop** (Reynolds' defunctionalisation, D422's "chain as
+   data" made general): every arrow type is a `μ` code of its lambdas' environments; `apply` is a `liter`
+   with an explicit stack. Total coverage; every higher-order call goes through the loop, and closures with
+   cells for every node; the proof is a simulation through the loop.
+2. **A flow analysis (0-CFA-like) with per-lambda labels**: each application site gets the finite set of
+   lambdas that reach it; sums only of those; the table stays stratified when no lambda reaches its own
+   body. Fast code; needs the analysis and its soundness proof; falls back to 1 where a cycle exists.
+3. **Restrict the surface** (no higher-order recursion through closures of the same type): simplest,
+   rejects programs the IR accepts today.
+
+`Call` (named definitions) is the same question: a call graph without cycles inlines or becomes labels;
+a cycle needs 1. `in-ν` and a ν's observation are labels too (D423).
+
+### Part 2, decided by the user (2026-11-11): per-lambda labels, closures as data only where data decides
+Checked against GOAL.md and the Spec, not only against the log. The log's later entries override its
+earlier ones, and GOAL.md overrides both.
+* **The Spec's facts.**
+  * `⊢fold` takes any carrier, function types included, and `⊢iter` takes any state. So closures can nest
+    as deep as a fold's input, or as many rounds as a server has run.
+  * `μ` holds no functions (`WFFun`: base constants), so that nesting is never a surface data type.
+  * A definition refers only to earlier ones (`Core.Syntax`, GOAL.md "no definition that refers to
+    itself"), so `Call` never cycles. Each call becomes a label or is inlined, which needs no decision.
+* **Option 3 is rejected.** It rejects programs that the Spec types.
+* **D422's "start coarse" is withdrawn.** One sum per arrow type keeps a tag where the compiler knows the
+  lambda, which GOAL.md forbids ("no code pointer where the compiler knows which function is meant").
+* **Decision: option 2, with option 1 confined.**
+  * Flow analysis gives each application site the lambdas that reach it. Where one lambda reaches a site,
+    the call is direct and stores nothing.
+  * Closures as data, applied by the interpreter loop, are used only where closures nest through a fold's
+    carrier or a loop's state. There, which lambda is meant is decided by data at run time, the case
+    GOAL.md allows a tag for.
+  * The recursive type of environments is internal to the core and never a surface type.
+* **Order.** Build option 1 first (the general pass, proved like `pass-ok`), then option 2 as a refinement
+  proved against it.
+
+### Part 3, OPEN (2026-11-11): how a data-decided apply recurses, after D429
+Found before building option 1; the user's decision.
+* **Option 1 as written makes `apply` a `liter`.** D429 (decided later) makes a round, a fold's algebra
+  and a coalgebra finite BLOCKS, and a loop is not a block. So any of them that applies a closure nested
+  through data would no longer type: the pass could not produce what D429 requires.
+* **No structural measure covers it.** Applying a closure calls closures from its environment
+  (structurally smaller), from its argument (of a smaller type), and closures RETURNED by those calls
+  (neither). Termination is the simply typed calculus's normalization (Tait), not a fold over the closure
+  data. A fold into an arrow carrier kept as suspended data (applied by re-running the fold with the
+  argument) is structural, but does not cover closures that return closures or a server's closure state.
+* **Checked against GOAL.md and the Spec (the user, 2026-11-11), every candidate first proposed here
+  is WITHDRAWN:**
+  * **The interpreter loop (part 2's option 1) is withdrawn.** It is not in the Spec. The Spec's recursion
+    is `fold`, `unfold`, and the server `ana` into `Eff` (surface `c-loop`; core `iter`, D317), whose
+    rounds are finite blocks. A loop that runs `apply` is a while-loop inside a finite block. With it goes
+    part 2's order "option 1 first".
+  * **A label that may call itself is withdrawn.** It is fixpoint recursion: GOAL.md, "no general
+    recursion, no fixed-point combinator, no definition that refers to itself", and `Spec.Core.Program`,
+    "may refer only to the definitions before it". Arguing that only the source must be structured was a
+    deviation from GOAL.md, not a principled choice.
+  * **Rejecting what suspended folds don't cover is withdrawn**: it rejects Spec-typed programs.
+* **The principled direction, to be spiked:** keep the source's structure instead of defunctionalising it
+  away. The Spec's `fold` into an arrow (System T's strength: Ackermann is definable, so no first-order
+  fold can stand in for it) becomes a core generator of its own, its meaning a fold into a function
+  space, which Agda's termination checker accepts as structural or rejects, with no fuel. A closure it
+  produces is the data node and the environment; applying it runs the algebra at that node, as the
+  machine already runs a first-order fold. The open part: a server whose state is a closure, and
+  closures that calls return. Part 2's per-lambda labels (option 2) stand where one lambda reaches a site.
+
+### D426 part 3, decided by the user (2026-11-12): the exponential restored, with the Spec's graded meaning
+**The deviation, named.** D422 took the arrow out of the core: `Ct l X` names one lambda in its type,
+over a stratified label table. That is Reynolds' defunctionalisation, a compilation technique, written
+into the core's types. The Spec has graded exponentials (`⊢lam`/`⊢app` at `A ⇒[ mk-kind q π ] B`), and
+`⊢fold`/`⊢iter` take arrow carriers and state. Master's IR has `curry`/`apply`. So the core could not type
+a closure whose lambda is decided by data, and every repair withdrawn above was a workaround for that
+gap. The suggested direction above (a fold into an arrow as its own generator) is subsumed: with the
+exponential back, the Spec's fold into an arrow is `lcata` at an arrow carrier.
+* **Decided (the user): the arrow's meaning is the Spec's, graded.** `⟦ Fn k g A B ⟧ = ⟦ A ⟧ → Mg g ⟦ B ⟧`,
+  where `Mg act = T` (a finite block) and `Mg eff = T∞` (`Spec.Domain`: `⟦ A ⇒[ q π ] B ⟧ᵛ = ⟦ A ⟧ᵛ → M π ⟦ B ⟧ᵛ`).
+  Rejected: keeping every arrow in `T∞` with a finiteness predicate beside it. That is a precondition on
+  the meaning of a type, which then holds values the type does not mean, and the fact is tracked twice
+  (GOAL.md).
+* **Done, in `Spikes/LinCore/` (made unattended, for the user's review):**
+  * **Core** (`NbEPLinCore`): `Fn k g A B` (quantity once/many, grade act/eff), `llam`/`llamω` (the body a
+    subterm, closed over `One` or reading its environment lent), `lev`/`bev`. A block also means a `T`,
+    by induction on `Blk` (`Lᴮ`, with `cataB`); labels mean `Mg (gr σ)` too. Every meaning is structural
+    under `--safe`, with no fuel and no fixpoint.
+  * **`Grade`**: `blk-coh`: a block's computation is its block embedded, `Lᶜ t ≈ emb (Lᴮ φ)`. From it,
+    `blk-finite` and `liter-loop` (the loop is the Spec's `loop` of `Lᴮ`). `EnvOK`/`defs-ok` retired.
+  * **`Events`**: a closure of arrow type is ONE CELL holding a code word and its environment
+    (`mfn`, `Lam`; `words (Fn …) = 1`, `szc X = suc (words X)`). GOAL.md allows the code word: the arrow's
+    type does not say which lambda, data does. `r-lam`/`r-lamω` allocate it; `r-ev` frees it and runs
+    the body; `r-bev` reads it (`peek`). `sound`, `sized`, `exchange`, `noleak` and `lifetimes` cover them.
+    `sound` uses `blk-coh` for the act-graded bodies.
+  * **`Total`, by Tait's method**: `Good A v` by recursion on the type, where a closure is good when its
+    code, on any environment the same up to cell names and any good argument, has a run with a good
+    outcome. The evaluator takes good inputs to good outcomes. Building a closure proves it good by
+    running its body (a subterm, at any fuel), and applying it uses that proof. The measure is the term,
+    then the fuel, so the loop is its own function (`loop`). `allGood` holds by induction on the value, so
+    `exec` keeps its signature. This is the simply typed calculus's normalisation (the Spec's), not
+    fuel at applications.
+  * **`Machine`**: `apply`/`eapply`, an INDIRECT CALL into the body the closure's code word names,
+    compiled as a label's body (in a frame). Checked against GOAL.md, this is not the case the handoff
+    asked to bring back. "No code pointer where the compiler knows which function is meant": here it
+    does not know. `Frag` (a restriction on the term) is replaced by `Plain` (a restriction on the run:
+    every fold plain, the lowering's choice), because a closure's body comes from the data. `Held` covers
+    the two steps, so the instruction set stays linear.
+  * **Example §21**: the list [7, 5] folded into `Int → Int` (each layer's closure holds the one before),
+    applied to 0. It emits 7, then 5. Its events (`fn-events`) show every node and closure cell freed;
+    `noleak`, and `machine-noleak` on the machine.
+* **Kept**: `Ct l X` and the label table, as the representation where one lambda reaches a site (D426
+  part 2's flow analysis). It is a refinement of `Fn`, never the only closure.
+* **Still to align (next)**: ν (D423 makes a ν a label and its seed, so a ν whose coalgebra is decided
+  by data has no type, the same gap as the arrows had), the pass of the IR's `curry`/`apply` (A15), and
+  the Spec's quantity `Zero` and its grade `pure` (the core has once/many and act/eff).
+
+### D426 part 3, ν (2026-11-12, made unattended, for the user's review): the Spec's ν restored
+The same deviation as the arrow's: D423's ν is `Ct l S`, so its type names its coalgebra, while the
+Spec's `ν F` does not (`⊢unfold` takes any coalgebra term of arrow type). So a `case` choosing between two
+unfolds, or a fold whose carrier is a ν, had no type. Done in `Spikes/LinCore/`:
+* **Core**: `Nu F`, meaning `Nuᵐ F`, the Spec's `νM act` (a coinductive record, `outν : T (F (Nuᵐ F))`),
+  with `anaN`/`treeN`/`mapN` mirroring the Spec's `anaA`/`treeA`/`mapA` (guarded, no sized types).
+  `lunf` takes the coalgebra as a VALUE (`Fn many act S (F S)`) and a seed; `lout` observes, a block.
+* **Observation is a term**: `obsT F S`, made of the core's own generators. It applies the lent coalgebra
+  to the seed (`bev`), copies the coalgebra beside each new seed (`bcopy`), drops the original, and wraps
+  each pair (`lunf`). So it is linear, with one copy per recursive position (one for a stream, none at a
+  leaf). `Grade.obs-coh` proves it means the Spec's observation, block for block. Because observing a ν
+  runs `obsT`, `sound`, `exchange`, `noleak`, `tsound`, the simulation and `Held` all cover it.
+* **Memory**: a ν is one cell (`mnu`), holding its coalgebra and its seed. The seed's type is not the ν's,
+  so neither is its size. `r-unf` allocates the cell; `r-nout` frees it and runs `obsT`.
+* **`Total`**: Good for ν is COINDUCTIVE (`GoodNu`): every observation of it, or of a copy, has a run
+  whose layer's νs are good. `goodν` builds it by guarded corecursion (as `anaA`), from a good coalgebra
+  (Tait: the observation's run comes from the coalgebra's goodness, with no evaluator called).
+* **`Machine`/`Held`**: `nopen` frees the cell and continues into the compiled `obsT`, expanded when
+  reached, as `fold` is.
+* **Example §22**: a `case` picks one of two coalgebras (count up, stand still), both unfolding into
+  `Nu NatsF`. The stream from 3 is observed twice (3, then 4), then dropped, and every cell is freed, on
+  the machine too (`nu-events`).
+* **Kept**: D423's labelled ν (`lana`/`lobs`, `Ct l S`) as the representation where one coalgebra reaches
+  a site, as `Ct` is for closures.
+* **For review**: copying the coalgebra per position, then dropping the original, costs one copy and
+  one free per observation of a stream. Moving it into the one recursive position would cost nothing, but
+  needs a case analysis on the layer. That is a refinement of `obsT`, like in-place reuse (A8).
+
+### D426 part 3, the pass (2026-11-12, made unattended, for the user's review): the IR's arrows and ν's
+Plan 0.146 A15 part 2. Master's IR has `curry`/`apply` (real exponentials) and `Ana`/`Out`/`in-ν`, and no
+recursion; with D426 part 3 the core has the same, so the pass translates them directly. Done in
+`Spikes/LinCore/`:
+* **The IR copy, graded as the Spec** (as `Iter` already was, D429): `curry g f γ` takes its body at the
+  arrow's grade (`GdIR`: a block at `act`), into `Fn many g` (the IR's arrows are many-use, D131);
+  `Ana` takes a block coalgebra (`⊢unfold`). Its meaning: `ev` in `T∞` as master's `evalᴰ`, and a block's
+  in `T` (`evB`), as an `act` arrow means; `ev-coh` proves they agree (as `Grade.blk-coh` does for the
+  core). The IR's ν means the core's `Nuᵐ` (the Spec's `νM act`); `in-ν` is Lambek's inverse (`inν`, whose
+  observation is the layer given).
+* **The translation, faithful**:
+  * `curry`: the environment moves into the closure's cell (`llamω`) and is copied in per call
+    (`copyIn`), since the IR's body owns it;
+  * `apply`: the closure is applied while lent (`bev`), then dropped;
+  * `Ana`: the environment moves into the coalgebra's cell, beside the seed (`lunf`);
+  * `Out`: `lout`;
+  * `in-ν`: an unfold whose seeds are a layer still to give or a ν to observe (`InS F = F (ν F) + ν F`):
+    the layer is given as it is, a ν observed once and its layer given. (Observing the children while
+    building the ν would run their coalgebras early, so the meaning would differ.)
+* **★ The theorem is up to a LOGICAL RELATION** (`Pass.V`). A computation returning a function or a ν
+  cannot be compared by `≡` (no function extensionality; a ν is coinductive). So `pass-ok` says: related
+  inputs give computations bisimilar up to `V` (`Bisim._≈[_]_`). `V` relates arrows pointwise (related
+  arguments, related computations), ν's by a coinductive BISIMULATION (each observation, the same calls and
+  related layers: `VNu`), and first-order values by `≡`. An unfold is related to a ν when each seed's block
+  is related to the ν's observation (`Sim.ana-sim`, guarded corecursion like `anaN`); `ana-V` and `inν-V`
+  are its two uses.
+* **First-order programs keep the plain statement**: on flat types `V` is `≡` (`Vf≡`, `Vf-refl`), so
+  `pass-okᶠ` gives `≈`, which `Whole` uses unchanged.
+* **Bisimilarity moved to `LinCore.Bisim`**, with the relational form and `TR` (one block, up to a
+  relation), so that `Pass` can use `Grade`.
+* **Example §23**: an IR program with a closure, an unfold and `in-ν`, compiled, run, sound against the
+  IR's meaning (`whole-sound`), and leak-free. Its machine instance is not spelled out (normalising it
+  exceeds the type-checker's heap); `machine-noleak` covers it as every run.
+* **`Call` is a LABEL** (D426 part 2 allowed a label or inlining; the label is master's D064 direct call,
+  `call once_f`, and inlining would copy code). The IR copy is indexed by the program's earlier
+  definitions (`IR Γ A B`, `Γ` the core's own `Cx`); a program is a table `Prog Γ`, each definition over
+  the ones before (the Spec's `Program`: no recursion). A definition is a one-shot label with nothing in
+  its environment, `sg once g One A B`, its body `tr f` after `lul`; `Call p` is `lapp p` on the label's
+  closure (`lclo Idf p`, on `One`: no cell, no word). Its meaning reads the table's meaning, as
+  `evalᴰ`'s `CallEnv` does. The theorem holds at RELATED meanings of the labels (`VEnv`, entry by entry as
+  arrows), and `pass-okP` builds that relation for a whole program, definition by definition. `Whole`
+  takes a program and its main. Example §24: two definitions, one calling the other, main calling both;
+  on the machine too.
+* **With this, every constructor of master's IR is in the pass.**
+
+## D427 — A MODEL MACHINE: CODE, FRAMES IN HEAP BLOCKS, A SIMULATION BY THE RUN (2026-11-11)
+
+**Decided** by the user 2026-11-12 (the spike's review). Worked out in `Spikes/LinCore/Machine.agda` (plan
+0.146 A16).
+
+### Decision
+* **A typed stack machine with code**: instructions over an operand stack (`unpair`, `pair`, `swap`, a
+  generator's own step, `untag`), branching code on a sum's tag (`case`), and FRAMES (`enter` … `leave`).
+  A generator with no control of its own is one instruction whose step is its run (its events are the
+  generator's, by the run's rule).
+* **The lowering is continuation-passing** (`comp`): a term is compiled in front of the code after it; a
+  branch carries the code after it on both sides (no jumps yet: the real labels are B's).
+* **A fold and a closure's body run in a frame**, and a frame is a heap block: `enter`/`leave` are a
+  temporary's birth and death (A13, D424). A fold expands node by node (`fold` → the node freed, then in a
+  frame its children re-entering the fold, then the algebra), so the work stack is in the heap.
+* **The simulation** (`sim`), by induction on the run: the machine on the compiled code reaches the code
+  after it with the run's result; its events are the run's (temporaries erased) with BALANCED
+  temporaries woven in. No relation on values beyond the run's own (the stack holds the run's values).
+* **`machine-noleak`**: for a finished run of a closed program, the machine's own trace is legal on the
+  cell heap, leaves it empty, and frees every frame.
+* **The fragment**: every generator but the lent views, the loop and `lhalt`, and a fold that rebuilds in
+  place (A8; this lowering always folds plainly). Their lowering is the same pattern (an environment
+  register, a back jump, a stop) and is left for B.
+
+### Open for the review
+* Values on the machine's stack are the run's values: cells are still the run's, by id. Addresses, and an
+  allocator that reuses them, are A17.
+
+## D428 — THE ALLOCATOR PER SIZE; THE SPACE CLAIM PER SIZE'S PEAK, IN ONE SHARED REGION (2026-11-11)
+
+**Part 1 Decided** by the user 2026-11-12 (the spike's review). **Part 2 DECIDED by the user, 2026-11-11** (plan
+0.146 §3, "the space claim", open since 2026-11-08). Worked out in `Spikes/LinCore/Alloc.agda` (A17).
+
+### Part 1: the allocator, proved
+* One size class (free lists per size, D420). Block `j` of size `k` is the words `[base k + j·k, …)`;
+  the region holds blocks `0 … top-1`. A cell born takes the LOWEST FREE block below the top, else the top
+  grows by one; a cell freed frees its block; a temporary (a frame) likewise, newest first.
+* Every block has one owner (`who`: free, a cell by serial, a temporary by name). So addresses are reused,
+  the run's ids are not, and the map from ids to blocks is injective on live blocks BY CONSTRUCTION
+  (`live-injective`; a cell's block is never a temporary's, `cell-not-temp`).
+* The invariant (`Inv`: free above the top; a cell's block where its owner says; temporaries on a stack of
+  descending names) holds along every run of steps (`steps-inv`).
+* ★ **The space claim, per size**: the region grows only when it is FULL — every block below the top holds
+  a live cell or a live temporary, each its own (`grows-only-when-full`). So a run is cut for lack of room
+  of size `k` only when more blocks of size `k` are live at once (cells and frames) than the room holds.
+
+### Part 2, open: the claim's strong form
+The plan's form, "a run ends `exhausted` only when what it keeps live does not fit the region", is FALSE
+for free lists per size: blocks freed in one size cannot serve another (fragmentation). Counterexample: a
+run that frees a thousand one-word cells, then asks for a three-word one, with a region of a thousand words.
+The choices:
+1. **The claim per size class** (Part 1): honest, proved; the region is the sum of per-size peaks.
+2. **One size class per program**: every cell padded to the program's largest node (a program has finitely
+   many node types); then "live blocks × the largest size fit" is the claim, at the cost of padding.
+3. **A coalescing or compacting allocator**: the strong claim for the cost of a smarter allocator (and, if
+   it moves blocks, of updating the one pointer to each — a linear core has exactly one).
+
+### Not yet
+* The link from a legal run (`OK`, `TOK`) to the allocator never failing (a legal free is of a live cell;
+  a temporary freed is on the stack): the invariant's form says how; the proof is the relation between the
+  heap and `Live`, event by event.
+
+### D427, amended (2026-11-11): the whole core lowered; stopped runs; master's `LeakFree` form
+* The machine lowers EVERY generator but in-place reuse: an environment stack of lent views (`lend`,
+  `blift`, `bfst`, `bsnd`, `bcaseE`, `bout` with its read, `bcopy`, `bapp`), the loop as a round-by-round
+  expansion, `ehalt`. `sim` covers EVERY outcome: a stopped run (halted, or cut, a server after its last
+  round) is matched by a machine run whose events, erased, have the run's as a prefix; `machine-legal`:
+  what the machine did up to the run's last event is legal on the cell heap, its frames too. Example: the
+  IR counter server, compiled and cut after two rounds.
+* **For the review (a decision): master's `LeakFree` form does not fit a server with heap state.** Its
+  second field asks that every live block be freed LATER unless the run stops. A server whose round passes
+  a heap block through unchanged (state the linear core keeps by moving it) never frees it: live data, not
+  a leak, but `LeakFree` calls it one. What the spike proves instead: every finished run frees everything
+  (`machine-noleak`), and every prefix of a server is legal (`machine-legal`). The claim for an infinite
+  server could be "at every round boundary, the live cells are exactly the state's" (a per-round
+  `exchange`, `loop-exchange` already proves it of the run).
+
+### D427 amended, decided by the user (2026-11-11): no leak is a SAFETY claim, at every step
+Checked against GOAL.md and the Spec.
+* **The Spec says nothing about memory**, so the claim is the implementation's. GOAL.md asks for memory
+  "managed by the compiler from the program's structure", and a server's meaning is an infinite sequence
+  of effects. D400 settled what is live: a value's cells are its footprint.
+* **Master's form is a liveness claim**, "every live block is freed later, unless the run stops". It calls
+  a server's held state a leak, so no correct compiler meets it for a server with heap state. In a linear
+  core garbage cannot arise; what that form detects there is data the program holds forever.
+* **Decision: option 1.** "No leak" is: every free hits a live block, and AT EVERY STEP the allocated
+  blocks are exactly the footprints of the values the program still holds. One claim for runs that
+  finish, halt or run forever. A finished run holds nothing, so it frees everything: today's claim is a
+  corollary.
+* **Rejected:** two claims (finished runs, plus round boundaries for servers), since it special-cases the
+  loop; and master's form as it is, since it would restrict server state to words.
+* **Proved in the spike** (`Spikes/LinCore/Held.agda`, `held-always`): from a closed program's start, at
+  every configuration the machine reaches, every event so far was legal and the live cells are exactly
+  the cells of the values it holds (its operands, and the value each lend's slot keeps). It holds of any
+  code, not only compiled code, since the instruction set is linear: only `dup`/`ecopy` make a second
+  value (by allocating), only `drop` and a fold's node end one (by freeing), views come and go with no
+  event. To say which slot owns, an environment slot is a view or a lend's (`Machine.Slots`); the tag is
+  the lowering's knowledge, and the machine reads only the view. Frames (temporaries) are outside the
+  cells: each is freed by the `leave` its `enter` is matched with (`Machine.framed`). Example
+  (`Examples` §20): §2's list server as a closed program, compiled, run on the machine and cut after two
+  rounds; there it holds the last round's nil and cons and nothing of the earlier lists.
+* **Consequences.**
+  * The spike proves it on the model machine, of every reachable configuration (plan A16).
+  * B replaces `LeakFree.freed` in `formal/Once/Implementation.agda` by the per-step form. That file is
+    the apex but not a Spec module: no `spec-freeze` approval is needed, the user decided the form here.
+
+### D428, amended (2026-11-11): the legal-run link, done
+* `AllocRun.never-fails`: a legal run (cell heap `OK`, temporaries `TLeg`) never makes any size class's
+  allocator fail, its invariant holding along the run. The link, kept event by event: a cell of size `k`
+  is live in the pool exactly when the heap holds it; the pool's stack of temporaries is as long as the
+  ledger counts. Example: the list server's events, the new list taking the old blocks.
+
+### D428 part 2, decided by the user (2026-11-11): the claim per size's peak, over one shared region
+Checked against GOAL.md and the Spec.
+* **The Spec leaves the space claim to the implementation.** The source has unlimited memory
+  (`never-exhausted`), and a compiled run may end `exhausted` anywhere (`⊑`, D374).
+* **The strong form is impossible without moving blocks.** No allocator that never moves a block can
+  promise "only when the live data does not fit" (Robson 1974: some request sequence needs more, by a
+  factor that grows with the logarithm of the ratio of the largest to the smallest block size). Moving
+  blocks needs a runtime that finds and rewrites pointers, which is a collector, and GOAL.md excludes it.
+  So option 3 is rejected.
+* **Option 2 (padding to one size) is rejected.** It spends words at run time on a size difference the
+  compiler knows (GOAL.md, "nothing known at compile time is kept at run time").
+* **Decision: option 1, over ONE region.**
+  * The Host's region is shared by every size, with one top used from the bottom up. The compiler does
+    not split it between sizes, since it cannot know how.
+  * Each size keeps its pool, with lowest-free reuse. A pool that must grow takes the next `k` words.
+* **Proved** (`Spikes/LinCore/Region.agda`, `AllocRun.in-one-region`):
+  * the blocks of every size lie apart and below the top (`rinv`);
+  * the words in use are at most `Σ k · topₖ` (`space`);
+  * each `topₖ` is a peak: at some moment of the run, every block of size `k` below it had an owner
+    (`peak`, via `Alloc.grow-full`);
+  * a legal run drives the region from empty without a failed step.
+* **The claim (plan B2):** a run ends `exhausted` only when `Σ k · peakₖ`, over the program's sizes, does
+  not fit the region.
+
+## D429 — THE SPIKE CARRIES THE SPEC'S GRADES: A ROUND AND A COALGEBRA ARE FINITE BLOCKS (2026-11-11)
+
+**Decided by the user, 2026-11-11** ("first fix the spike so that it aligns with GOAL.md and the Spec regarding the
+iter problem"). **Amends**: A11's choice (plan 0.146 §3, "the effect index ... set aside"), which was made
+for review. Worked out in `Spikes/LinCore/NbEPLinCore.agda`, `Grade.agda`, `Pass.agda` (plan 0.146 §3).
+
+### Context
+* **The Spec.** `⊢iter` takes a round of grade `act`, a finite block, so a round never contains a loop.
+  `⊢unfold` takes a coalgebra of a finite grade. GOAL.md says "every round of a server is computed in
+  finite time".
+* **The spike before this entry.** `liter` took any term as its round. Every term meant a computation in
+  `T∞`, with no grade at all.
+
+### Decision
+* **A grade judgment, Curry-style, as the Spec's `⊢ t ∷ A ! π` is on its raw terms.** `Blk t` says that
+  `t` has grade `act`. Every generator except the loop is a block when its parts are. Building a closure
+  is a value, so it is always a block. Applying a closure is a block when its label has grade `act`.
+* **A label carries its arrow's grade.** `sg kd gr env dom cod`: `kd` is the Spec's quantity and `gr` its
+  purity, as in `mk-kind q π`. The core distinguishes only `act` and `eff`; the Spec's `pure` is a block
+  with no event. The table holds each body together with its judgment at its label's grade (`Gd`).
+* **The Spec's two restrictions:**
+  * `liter f φ` takes `φ : Blk f`;
+  * `lana`/`lobs` take a coalgebra label of grade `act`.
+* **★ The theorem (`LinCore.Grade`).**
+  * A block means a FINITE computation: its first block ends with a value or a halt, never with a silent
+    step (`blk-finite`, with every table's `act` labels finite, `defs-ok`). That is a block of `T`,
+    embedded (`toT`, `emb-toT`).
+  * So the core's loop means the Spec's `loop` of a round in `T`, up to bisimilarity (`liter-loop`).
+* **The spike's IR copy is graded the same way** (`BlkIR`, with `Iter` taking one), and the pass maps
+  blocks to blocks (`tr-blk`). Master's IR is ungraded (plan 0.52 M2), so B's pass carries the grade
+  from the typing.
+* The trace action in `Temps` is renamed `tact`, so that the grade keeps the Spec's name `act`.
+
+### Consequences
+Every theorem is unchanged: the run relation, the machine and the evaluator take the judgment along. The
+examples' rounds and bodies carry their judgments.
+
+## D430 — THE IR'S ARROW CARRIES THE SPEC'S PURITY (2026-11-12)
+
+**Proposed** (made unattended, plan 0.146 B1, for the user's review). **Amends**: plan 0.52 M2 (the IR's
+exponential ungraded, "one exponential per `(A, B)`"). **Applies**: D429 (a round and a coalgebra are finite
+blocks), plan 0.146 §3 ("owed for B: the pass must carry the grade from the typing into the IR").
+
+### Context
+* The core needs every arrow's grade: `Fn k g A B` means `⟦A⟧ → Mg g ⟦B⟧`, and `liter` takes a round that is
+  a BLOCK (D429). Master's IR erases the grade (`IRTy._⇛_`), so the pass cannot tell an `act` closure from
+  an `eff` one.
+* It is needed for every server: the elaborator compiles the Spec's `iter` as
+  `loopM = curry (Iter (apply ∘ ⟨ fst , snd ⟩))`, a round that APPLIES the round closure. With ungraded
+  arrows no server's round is a block.
+
+### Decision
+* **`IRTy`'s exponential is `A ⇛[ π ] B`, `π` the Spec's `Purity`** (`pure`, `act`, `eff`). `⌊_⌋` keeps the
+  arrow's purity; the quantity stays erased (the IR's arrows are many-use, D131; `Zero` is `Unit ⇛`).
+* **ν stays ungraded.** The Spec's ν is `ν F f` with `f : Finite`, never `eff`; the core's `Nu F` is
+  `νM act`, and a pure ν enters by `sub`. No pass needs its grade.
+* **Subsumption between arrow grades is the IR term the elaborator already emits**: `coeIR (sub-arr …)` is
+  `wrapArr`, an eta-expanded closure, and it types at the new grade. No new IR constructor.
+* **The IR's meaning stays grade-blind**: `⌈ A ⇛[ π ] B ⌉` is the canonical `effK` arrow, as before, so
+  `⟦_⟧ᴵ`, `evalᴰ` and the old backend's proofs read the grade nowhere.
+* The pass checks that each round and coalgebra is a block (the spike's `BlkIR`, decidable on the graded
+  IR). That every elaborated program passes is owed to the elaborator's grade preservation (the Spec
+  types a round at `act`).
+
+### Set aside
+* **Grade inference on the ungraded IR** (least solution of the constraints `curry`, `apply` and `Iter`
+  give over a lattice): no kernel change, but it re-derives a fact the typing already had, and its
+  completeness needs the same link to the Spec typing. GOAL.md: a fact the compiler knew is not to be
+  tracked twice.
+* **A second, graded IR beside master's**: two elaborations, two optimizers, or a proof that the optimizer
+  preserves a separate grading.
+
+## D431 — THE CORE IS MASTER'S: ITS MONAD, ITS VALUES, ITS SIGOPS (2026-11-12)
+
+**Proposed** (made unattended, plan 0.146 B1.2, for the user's review). **Applies**: D420 amended ("the
+model is the backbone, decorated": what the compiler needs attaches as parameters decided by the type),
+D421 (SigOps take and answer flat values), D425 (an unanswered call ends the run `exhausted`).
+
+### Decision
+* **One meaning monad.** The core's `T`/`T∞` are master's (`Once.IR.Semantics.Trace`/`.Iterative`), no
+  longer a copy; so are `iterRun`, `fmap∞`, `return∞`. The apex's trace semantics (`trT∞`) reads the
+  core's meaning as it reads `evalᴰ`'s.
+* **Master's values and SigOps.** The core's base words are `int`/`float`, each a `Carrier`. A core SigOp
+  is a `SigOpInfo` (`Sig`), its argument and answer the flat types of its base evidence (`baseA`, `conB`).
+  The core is parameterised, as `evalᴰ` is, by the target's numerics and the pure FFI answers.
+* **A SigOp means its contract's block** (`opF`/`opB`, from `DenotTrace.sigOpT`): a pure op (arith, pure
+  FFI) returns with no event; an emitting or answering op is a call; a halting op halts. Its run follows
+  that block (`OpPath`): each call an event with the world's answer, then a value, a halt, or a cut where
+  the world gave no answer (`r-op`, `r-opend`). Machine: `s-opend`, the machine stops there.
+* **`lhalt` is gone.** D421 kept it as a generator of its own while the Spec halts by an operation's
+  contract; now the core halts the way the Spec does.
+* **`--safe` is dropped from the core's modules**, as from every `formal/` module: master's are not
+  `--safe`, and `make pragma-gate` is how `formal/` rules out check-disabling pragmas.
+
+### Consequences
+* Every theorem keeps its statement. `exchange`, `noleak`, `lifetimes`, `tsound`, `sim`, `held-always`
+  cover an op's path by four small lemmas (it touches no cell and has no temporary).
+* `Examples` instantiates the core at x86-64's numerics; its world answers master's calls. An answered
+  `Int` is normalised to the target's width (`atTarget`), as `evalᴰ` reads it.
+
+## D432 — THE IMAGE'S CALL OPENS A FRAME OF ITS OWN: BLOCKS AT A CLOSED SHAPE (2026-11-12)
+
+**Proposed** (made unattended, plan 0.146 B1.4b, for the user's review). **Applies**: D427 ("a model
+machine: code, frames"), D424 (a frame is a temporary), D147 (a result goes to the caller's destination),
+D386 (a closure node `[env-word, code]`).
+
+### Context
+B1.4a's image ran a called block on the CALLER's two stacks: a block's code was polymorphic in the rest of
+both (`Block σ = ∀ {Es S} → …`), so one stack ran through every call. The flat machine has one frame per
+call, with its own slots. Lowering the shared stack would have to cut it at every call boundary (the
+continuation's type says where), so every frame's slots would be stated through list-append casts on the
+indexed stacks, and every block's code would have to be shown the same at every instantiation.
+
+### Decision
+* **A call opens a configuration of its own.** `call κ` runs `κ`'s block on a fresh configuration: the
+  caller's top view (a view: it owns nothing) and the argument. The return stack's call entry keeps the
+  continuation AND the caller's configuration below the argument; the return puts the result back on it.
+* **A block has a closed shape**: `Block σ = Codeᴵ (top σ ⊳ [] ∣ dom σ ∷ []) (top σ ⊳ [] ∣ cod σ ∷ [])`.
+  It is lowered once, at that shape, and every offset in it is a constant.
+* **The held invariant spans the frames.** The cells held are the current configuration's plus every
+  saved one's; a view sees cells owned by the slots below it, in its frame or in its callers'.
+
+### Consequences
+* Each image frame is one flat frame (B1.4b): its slots are its two stacks' words at offsets fixed by the
+  shape; the argument arrives at, and the result leaves to, the caller's destination (D147); the top view
+  arrives as an address.
+* `ImageRun` (`Ret`'s call entry, `i-call`, `i-ret`), `ImageSim` (the call combinators), `HeldI` and
+  `KeysRun` follow. No theorem changes its statement.
+
+## D433 — THE IMAGE'S WORDS: ABI VALUES IN FRAMES, CELLS `[contents-word, code, copy, free, contents]` (2026-11-12)
+
+**Proposed** (made unattended, plan 0.146 B1.4b, for the user's review). **Applies**: D379/D380 (values
+whose type fixes their size live in frames), D381 (flat values are their `Spec.ABI` words), D386/D390 (a
+closure node `[env-word, code]`, code at word 1), D147, D432.
+
+### Decision
+* **A value is words.** A flat value is its `Spec.ABI` words (`words`: `Unit` none, a scalar one, a pair
+  its two in order, a sum its tag then its payload padded to the larger side); a tagged closure (`Ct l X`)
+  is `X`'s words; a μ node, a closure and a ν are one word, the address of their cell.
+* **A frame is two regions at fixed offsets**: the environment's (a view is the ADDRESS of what it sees;
+  a lend is a buffer holding the lent pair's words, its view the buffer's address) and the operand
+  stack's, which grows DOWNWARD, so a pair on the stack is its two components in place: `pair`, `unpair`,
+  `untag` and `tag` move nothing. Each region is sized by its block's maximum.
+* **A cell** is a heap block: a μ node holds its layer's words; a closure and a ν are
+  `[contents-word, code, copy-code, free-code, contents…]` — D386's header (code at word 1), with the
+  contents (the environment; the coalgebra and seed) in the same block. (Amended: word 0 holds the cell's own
+  address — no code reads it, a trampoline reads the contents at `hdr` from the cell's pointer; an address
+  past a zero-word contents would be outside the block, which the flat machine faults on.)
+  The copy and free codes are the contents' type's (`kcopy`/`kfree`): a copy or a free of a closure or a ν
+  is deep (D420) and its contents' type is known only to the cell, so the cell names them, as it names its
+  body. One block per cell, as the run has one `alloc` per cell.
+* **A ν's code word names its observation block**, as a closure's names its body: `kobs` at the table
+  where the ν was built (a `lunf` site's table is an observer's too, and so is the empty table, where a
+  copy rebuilds a ν). Observing compiles `obsT`, which names no label, so its block's code is the same at
+  every table, and the image's `kobs` at the observer's table runs the block the cell names.
+
+### Consequences
+* Calls pass the argument's (and result's) address in `Input1` and the top view's in `Output` (both
+  survive a call); the callee copies its argument in and its result out (D147).
+
+## D434 — THE IMAGE'S CONTROL IS THE FLAT MACHINE'S: TRAMPOLINES ARE BLOCKS, POINTS BEFORE WORDS (2026-11-12)
+
+**Decided by the user** (2026-11-12, plan 0.146 B1.4b). **Applies**: D432 (a call opens a frame of its
+own), D433 (cells name their code), GOAL.md (proved correct; no runtime added).
+
+### Decision
+* **A dispatch through a cell calls a trampoline BLOCK.** `Key` gains a trampoline key per cell kind; the
+  image's `icall`, `icallω`, `iobs`, `ccopy`, `ncopy`, `cfree`, `nfree` call it, and its image code is the
+  cell's part, `call κ`, then the tail. The image's frames are then the flat run's frames, one to one.
+* **The image's simulation of the flat run goes through PROGRAM POINTS.** A word-free layer runs the
+  image over points (a block and a position in its code; a loop's continuation is its dispatch point),
+  in lock-step with the image's steps. The word layer then has one relation: the flat `pc` is the
+  point's address and the flat code there is the lowering at that point; each return-stack point a flat
+  saved frame.
+* **The flat code is unchanged.** A trampoline block lowers to the code `tramp` emits now; the loop's
+  dispatch is as now. No run-time cost.
+
+### Why
+The image built code at run time that was never lowered (a loop's continuation) and called a cell's
+block directly where the flat run goes through a trampoline's frame. A by-cases implementation relation
+would carry both mismatches inside the word-level proof, the heaviest layer (Agda's heap cap); moving
+them to the image's semantics and a word-free layer keeps every per-instruction lemma as is and makes
+the whole-run relation one case.
+
+### Consequences
+* `ImageRun`, `Keys`/`KeysRun`, `HeldI` and `ImageSim` are updated for the trampoline keys (symbolic).
+* New module `ImagePt` (points, the lock-step), then the word layer's relation and step theorem.
+
+## D435 — THE WORD LAYER'S RELATION: POINTS CARRY THEIR LOWERING'S MEMBERSHIP, FRAME FACTS COME FROM THE RUN, TRAMPOLINE POINTS PER KEY (2026-11-13)
+
+**Proposed** (unattended, for the user's review; plan 0.146 B1.4b, D434 step 3). **Applies**: D434 (refines
+its "one relation"), D433. Proof structure only: the flat code is unchanged, no run-time cost.
+
+### Decision
+* **A point carries the membership its lowering was made with** (`PointAt.Pnt`): a block point its
+  `p : (σ , κ) ∈ allK U` (the caller's `call` evidence, so the call's target `nameOf (idx p)` is that
+  block's entry), a trampoline point its `p : under κ ∈ allK U` (the cell's code word, `CodeOf`). The flat
+  code at a point is the ROOT's lowering at that path (`ptCode`), its way out `ptFin`.
+* **Block and start points relate by the uniform `CfgW`; a trampoline point by a relation per key and
+  depth.** The image's trampoline frame holds the operand (`mpair cell a`, `mnu i p`) on its own stack,
+  while the flat run keeps it in the caller's argument area until the cell part copies it in; `kbodyω`
+  and `kfree` save one slot, not two.
+* **What a run leaves alone** (the frame, the saved frames, the return pcs, every other frame's slots)
+  **is carried by the `LowerSim*` lemmas' results** (a `Keep` record, from the `Moved*` records they
+  already build), not proved per instruction.
+
+### Why
+`ImagePt.Placed` has no memberships, and `KeysRun`'s `CIn` is local evidence, not the root's (a key may be
+listed twice), so the code at a point must be the root's. D434's single relation assumed the image's
+trampoline frame holds what the flat one does; it does not, for the operand, until the cell part runs.
+A store through a pointer (`mvSP`, `store-at`) may write another frame (`call-out` writes the caller's
+area), so "other frames unchanged" is a fact about the run, which the move records already state.
+
+### Consequences
+* `PointAt` (done). Next: `Keep` in the `LowerSim*` results; the return-stack relation (`∷ⁱ`: the body's
+  `c-jmp Ld` resolves to its dispatch point, `image-label`; `frm`: a saved flat frame, its return pc the
+  continuation's point, the root's save slot the caller's area); the trampoline relation; the step theorem.
+
+## D436 — A RUN'S HEAP FACT: THE BLOCKS BELOW ITS START COUNTER STAND (2026-11-13)
+
+**Proposed** (unattended, for the user's review; plan 0.146 B1.4b, D434 step 3). **Applies**: D435, D428
+(the allocator), plan step B1.6. Proof structure only: the flat code is unchanged.
+
+### Decision
+* **Every straight `LowerSim*` run states that the heap's blocks below the heap counter where it began are
+  as they were** (`Moves.Ran n a lo`, field `r-old`, `lo` = the start counter), and the branch lemmas that
+  the heap is unchanged. A move into a block (`ranW`) is allowed only at or past `lo` (`fresh-block`).
+* With the run's steps and the heap counter (`r-next`), this is what keeps a saved frame's values' words
+  (`VW`) standing while a callee runs: every cell a frame holds is below the counter when it is saved.
+* **And its frame's slots from the budget up stand** (`Ran n a lo hi`, field `r-top`, `hi` = the frame's
+  budget): a block's save slots (`sv₁`, `sv₂`, at the budget) hold the caller's area until the way out
+  reads them. Every move is bounded inside the frame's regions (`ranS`/`ranP`/`ranD`/`ranF`/`ran-store`
+  take the bound; `ranW` writes no slot of the frame).
+* Freshness (no cell at or past the counter in any frame's slots or operands) is not part of the
+  relation: it follows from the image's own invariant (`FreshI`, from `HeldI.InvI`).
+
+### Why
+The flat machine today allocates by bump and its free leaves memory as it was (`keep-pc`), so a run writes
+the heap only in blocks it has just allocated. This is the weakest fact the return relation needs, and
+every lemma already has it (`m-heap`, `h-other`, `w-rest`).
+
+### Consequences
+* B1.6 (blocks reused, D428's allocator) breaks it: a freed block is reallocated below the counter. Then
+  `r-old` becomes "the cells no saved frame holds" (`HeldI`: the live cells are exactly the held ones, so a
+  freed cell is held by no frame), stated per run the same way.
+
+## D437 — THE WORD LAYER'S GLOBAL RELATION: A POINT, ITS FRAME, AND THE RETURN STACK BY ROOT AND WAY OUT (2026-11-13)
+
+**Proposed** (unattended, for the user's review; plan 0.146 B1.4b, D434 step 3). **Applies**: D434, D435,
+D436. Proof structure only.
+
+### Decision
+* **The image's state `(c , r , m , n)` relates to a flat state `fs`** by: a point `P : Pnt c` (D435) with
+  `HereP P m fs` (a path of the start or a block: the root's `Loc.Here`; a loop's dispatch: `HereQ` at
+  its address; a trampoline point: owed, per key; stopped: owed with `lop`), `n` the flat heap counter,
+  and `RetOK (rootOf P) (ptFin P) r ctx fs` over the frame context `ctx` = the current frame, the return
+  pcs, the saved frames.
+* **The return stack is related by the ROOT and the WAY OUT of the current point, not by the point**:
+  `[]ʳ` ↔ the start, way out `leave`; `k ∷ⁱ r` ↔ way out `jmp Ld`, `k` the dispatch point at `Ld` of the
+  same root, and `r` by that dispatch's way out; `frm k es os r` ↔ a block root `p`, way out `blockFin`,
+  a call site (a root and a path `s` to `call κ ⨾ k` with `callee s = p`), the return pc `k`'s address,
+  the caller's frame saved (strictly above), the block's first save slot its area, the caller's `es`
+  and `os` words in that frame over the current heap, and `r` by the caller's root and `k`'s way out.
+* Freshness comes from `HeldI.InvI` (`FreshI`), not from the relation.
+
+### Why
+A step within a root changes the point but neither its root nor its way out (a path's way out is
+inherited), so `RetOK` is untouched by every local step but for the frame facts each step's `Keep`,
+`Old` and top-slots fact carry. A loop's turn, its dispatch and its exit move between the body's way
+out (`jmp Ld`) and the loop's, exactly what `∷ⁱ` records.
+
+### Consequences
+* `Global` (next): `HereP`, `RetOK`, the relation, and the step theorem from `local-step`, `LoopStep`,
+  `CallStep.call-n`/`call-v`/`return`. Trampolines (per key, D435) and `lop` stay owed.
+
+## D438 — A TRAMPOLINE'S FRAME IS A BLOCK FRAME `frame 0 M` ONCE ITS CELL PART HAS RUN (2026-11-13)
+
+**Proposed** (unattended, for the user's review; plan 0.146 B1.4b, D434 step 3). **Refines**: D435 (the
+per-key relation of trampoline points). Proof structure only: the flat code is unchanged.
+
+### Decision
+* **A one-shot body's and an observation's trampoline (`ktr1`, `ktro`) run in the frame `frame 0 M`**
+  (no environment region; `M` = `tramp`'s `M`): its entry's budget `suc (suc M)` is that frame's
+  `fbudget`, its two saves (`M`, `suc M`) are its `sv₁`, `sv₂`, and the cell part leaves the operand's
+  words (`mpair x a`, the coalgebra and seed) at the region's top. So from the cell part on, the
+  trampoline's points relate by the uniform `CfgW` (D437's `HereP`), its inner call is a call from a
+  third kind of root (a `Site` in a trampoline), and its way out is `leave` at its second save slot.
+* **Only the point before the cell part has a relation of its own**: the cell in the first save slot
+  and in the heap, the operand's other part in the caller's area (D435).
+* The many-use body's (`ktrω`, view by pointer into the cell), the copy's and the free's trampolines
+  keep per-key relations at every depth (they do not copy into the frame).
+
+### Why
+`tramp`'s layout for `ktr1`/`ktro` is exactly a block's at `frame 0 M`: the copy-in lands at
+`M ∸ (wX + wA)` = the region's top less the operand, the inner call's area is `0 = M ∸ M`, the body's
+result lands at `M ∸ wB`. Reusing the block relation avoids a second proof of the call and return.
+
+### Consequences
+* `leave` generalised to any save slot; `Site` gains `s-tramp`; `RetOK` a constructor for a trampoline
+  frame (its way out at `sv₂`, the caller's area `Mc`-sized); the cell parts' lemmas (`open1`, `nopen`).
+
+## D439 — A ROOT'S CODE HAS NO TRAMPOLINE CELL PART: A CELL PART AT A ROOT'S PATH IS ABSURD (2026-11-13)
+
+**Proposed** (unattended, for the user's review; plan 0.146 B1.4b, D434 step 3). **Refines**: D434 (the
+cell-part instructions `open1 openω nopen copen reclose fopen`). Proof structure only: the flat code is
+unchanged.
+
+### Decision
+* **`NoCell`: the roots the word layer lowers have no cell part.** `NoCellC` (by the code: a cell part
+  is `⊥`) holds of `compᴵ`'s output, a fold's `travᴵ`, `copyᴵ`, `freeᴵ`, so of the start's code and of
+  every block of a non-trampoline key; every key of a program's universe is one (`allK-nt`, through
+  `tmGot`/`defsGot`/`key1`/`keyω` as `blocks-in`); a path keeps it (`sub-nc`).
+* So a cell-part step at a path of the start's or a block's code is refuted; only the trampoline points
+  (D435, D438) relate a cell part.
+* **Not chosen: `Keys.IIn` of a cell part `⊥`.** `CIn` is also the image run's universe invariant
+  (`KeysRun.keep`), which holds of a trampoline's block too (`i-icall` enters it); the lowering's
+  evidence and the run's invariant are one predicate, so it cannot exclude cell parts.
+
+### Why
+`lowI` of a cell part is `[]` (Lower: "only in a trampoline's block, which is never lowered here"); with
+nothing refuting an `open1` at a root's path, the step theorem would owe it a flat run of zero
+instructions that turns a cell pointer into the cell's contents — false. The fact is true by
+construction of the compiled code, and `NoCell` states it.
+
+### Consequences
+* The step theorem covers `open1` (at a trampoline's depth 0, by `tr-open1`; elsewhere absurd).
+
+## D440 — A ν IS OBSERVED AT THE EMPTY TABLE: ONE OBSERVATION BLOCK PER (F , S) (2026-11-13)
+
+**Proposed** (unattended, for the user's review; plan 0.146 B1.4b, D434 step 3). **Refines**: D433 (a ν's
+code word names `kobs` at the table where the ν was built). **Status** (implemented 2026-11-13): `Keys`
+gathers `(_ , ε)` for `lunf`/`lout`, `Words.vnu` names `kobs ε F S`, `ImageRun.i-iobs` enters `ktro ε F S`;
+`ObsTable` proves `obsT` table-free (`run-tf`, `obs-tbl`) and `ImageSim.simTF` simulates its run at `ε`
+(structurally, by the run). The word layer's dispatch `i-iobs` (`giobs`) is the next step.
+
+### The problem
+A ν's code word names `kobs d F S` for the table `d` where the ν was built (D433); the image's `iobs ds`
+enters `ktro ds F S` at the OBSERVER's table `ds`. When the two differ (a ν built in a body, observed in
+the start's code), the flat run jumps to one trampoline and the image runs another: their flat codes are
+the same (D433: `obsT` names no label), but they sit at different places in the image and the image codes
+differ syntactically (`compᴵ ds (obsT F S)` carries `ds` in its `prim ds …`), so the word layer's point
+(`p-tramp`, a membership and a path into one key's block) cannot relate them.
+
+### Decision (proposed)
+* **Observation blocks are table-free: compiled at the empty table `ε`.** A ν's code word names
+  `kobs ε F S`; `iobs` enters `ktro ε F S`; `lunf`/`lout` gather `(_ , ε)` (already in every universe).
+  One observation block per `(F , S)` — fewer blocks, the same flat code.
+* **Owed for it**: the source run observes at the observer's table (`Run ds (obsT F S)`, `Events.r-nout`),
+  so `ImageSim`'s `r-nout` case needs `obsT`'s runs to be table-independent:
+  `Run ds (obsT {Γ} F S) e p n o t → Run ε (obsT {∅} F S) e p n o t` — true, since `obsT` only restructures
+  and applies the lent coalgebra (`bev`, whose closure carries its own table).
+
+### Alternatives
+* The ν's value carrying its table (`mnu` with a `DS`): changes the core's values and every proof over them.
+* A cross-table point (the image in one key's block, the flat pc in another's of the same code): a second
+  point kind, a path translation between two syntactically different codes — larger and less clear.
+
+## D441 — THE WORD LAYER KNOWS EVERY CELL'S BLOCK: A FLAT BLOCK INVARIANT (2026-11-13)
+
+**Proposed** (unattended, for the user's review; plan 0.146 B1.4b, D434 step 3). **Applies**: D385/D386 (an
+embedded value records that its address is a live cell of its block; block sizes stay with the
+allocator), D433 (a cell is one heap block). **Status**: in progress — `Moves.InBlk` is carried by
+`Keep` (`k-inb`; so by every `Ran`, `r-inb`), by the call records (`Called.cd-inb`; from `CallIn`'s
+`ci-size`, `ClosIn`'s `cl-size`, `CallOut`'s `co-size` by `inb-pt`) and by the relation
+(`Related.g-blk`): every step of the step theorem keeps it. Not yet used: the `ktrf`/`ktrc`/`ktrω`
+dispatches.
+
+### The problem
+The dispatches through a cell's copy and free words (`ccopy`, `ncopy`, `cfree`, `nfree`: `addr-at 2`) and
+the many-use trampoline (`contentsAddr` = `addr-at hdr`) form an address inside the cell. The flat machine
+faults unless it lies in the pointer's block (`in-block?` against `AllocState.block-size`). The word
+layer's relation (`VW`, `CfgW`) knows a cell's WORDS (`At`), not its block, so these steps cannot be
+proved.
+
+### Decision (proposed)
+* **A block invariant over the flat state itself** (`Moves.InBlk`): every written heap word lies in its
+  block, below the allocation counter — `heapMem hl ≡ just v → ref-id < next × in-block? block-size hl`.
+  It mentions no abstract ledger: a word is in its block or the machine never wrote it. A flat
+  `instr-free-heap` does not change block sizes; an allocation sizes only the fresh reference (above every
+  written word); a write lands in its block (`inb-write`, from the cell's bound). So the invariant moves
+  with every run (`Ran.r-inb`: `inb-same`, `inb-alloc`, `inb-write`).
+* An address formed from a cell's pointer (`addr-at 2`, `contentsAddr`) is in its block because the
+  cell's words were written (its `At` holds `just`): the invariant gives the block from the written word.
+* It travels beside the relation (a hypothesis and a conclusion of the step theorem), not inside `VW`:
+  every simulation keeps `VW` over the heap's words only.
+* (First drafted as a ledger invariant, "every allocated id keeps its size"; the flat form needs no map
+  from ids to sizes and holds of the start state vacuously.)
+
+### Alternatives
+* Block sizes inside `VW` (as D386's `cell-flat`): every `VW`, `EnvW`, `StkW` and every simulation over
+  them gains the block map — the same facts, everywhere.
+
+## D442 — A MANY-USE TRAMPOLINE'S BODY WRITES INTO ITS DISPATCHER'S AREA: THE AREA'S FRAME APART FROM THE RETURN'S (2026-11-14)
+
+**Accepted** (2026-11-14, by the user: keep the generated code, runtime performance first; plan 0.146
+B1.4b, D434 step 3, D435). **Applies**: D434 (trampolines), D438 (frame-0 trampolines copy through their
+frame). **Status**: accepted; implemented (the step theorem covers `icallω` and the `ktrω` trampoline).
+
+### The problem
+A many-use body's trampoline (`ktrω`) keeps the cell (`peek`), passes the cell's contents as the body's
+environment view BY POINTER (`contentsAddr`), and hands the DISPATCHER's operand area straight through
+(`c-entry 1 ∷ store-at-slot 0` saves it; `restore-input 0` gives it to the body). So the body reads its
+argument from, and writes its result into, a frame two levels up, and returns into the trampoline, whose
+way out is a bare `c-ret 1`. The word layer's call records assume one frame for both roles: `call-out`
+writes the result into `cfc` and returns into `cfc`; `Called.cd-area` is in the caller's frame;
+`RetOK.ok-call` holds the area in the frame returned to.
+
+### Decision (proposed)
+* Keep the code (no copy through the trampoline's frame: a many-use body runs at every use, and the
+  pass-through is the cheap path).
+* Generalize the proof records over the AREA'S FRAME apart from the RETURN'S: `call-out` takes the area's
+  frame `af` beside the return frame `cfc` (the existing uses: `af = cfc`); `Called` takes the area's
+  frame; `RetOK` gains `ok-callω` (a trampoline's inner call: the area in the dispatcher's frame, the
+  dispatcher's own level `ok-trampω` above, no area there — the result already in place).
+* A heap-sourced view at a block's entry (`enter-jh`: the environment's words from the cell's contents,
+  through the pointer), shared with the copy trampoline (`ktrc`'s inner call reads the contents the same way).
+
+### Alternatives
+* Copy the argument and result through the trampoline's frame (as D438's frame-0 trampolines): one
+  record shape, but two extra moves per many-use call — a cost in the generated code for the proof's
+  convenience.
+
+## D443 — THE STEP THEOREM'S SIGOP CASE IS RELATIVE TO THE MACHINE'S WORLD; A HALT LANDS IN A HALTED MACHINE (2026-11-14)
+
+**Proposed** (unattended, for the user's review; plan 0.146 B1.4b, the last case: `lop`). **Applies**:
+D425 (a world answers any way it likes, or not at all), D431 (an op follows its contract's block,
+`OpPath`; the image stops at a halting op, `i-opend`), D437 (the word layer's global relation).
+
+### The problem
+The image's op step (`i-prim` at `lop s`, its `Run` an `r-op`) takes the world's answer `y` to each call
+as given: any `y`. The flat machine's `instr-sigop` answers by its effect class: a pure op by `semM` on
+the argument it reads, an answering op from its interpretation (`call-sigop-output`, `fs-interp`), an
+emit with the unit sentinel, a halting op by halting. A forward step lemma for EVERY image step would
+claim the machine gives every answer: false for answering ops. And `i-opend` lands the image in
+`halted`, where the relation (`Related`) has no point (`HereP p-halt = ⊥`).
+
+### Decision (proposed)
+* **The op case is relative to the machine's world.** The step theorem's motive gains a premise
+  `Agrees st fs`, by the step: at an op step, the answer of its `OpPath` is the machine's at `fs` (and
+  its trace the machine's events); every other step: `⊤`. `Agrees` is defined by one split on the step,
+  in a small module (as `StepEpop`). The whole-run theorem (B1.5) supplies it by running the image in
+  the world the machine's interpretation is (pure ops: `semM` at the target's numerics, the standing
+  `fmt-agree` premise; answering ops: `fs-interp`). The agreement also says the answer's words are none
+  or the machine's one Output word: a SigOp whose answer type is wider than a register (`conB` allows
+  pairs and sums) is outside the theorem, as the lowering already assumes (`Lower.answer`).
+* **A halt lands in a halted machine.** The step theorem's target is `Related` or, for the image's
+  `halted`, a flat state whose `halted` flag is set (`Lands`); the op's halting class sets it.
+
+### Alternatives
+* A theorem parameter that the machine answers as any path says (as `ld` for constants): unsatisfiable
+  for answering ops, so the theorem would hold vacuously for every program with a call.
+* Fix the image's world to the machine's interpretation inside `Run`: changes D425's run (every world),
+  which `sound`/`exchange` use.
+
+## D444 — THE WORD LAYER TRACKS THE MACHINE'S LOG: EVERY STEP BUT AN OP'S KEEPS IT, AN OP APPENDS ITS EVENTS (2026-11-14)
+
+**Proposed** (unattended, for the user's review; plan 0.146 B1.5). **Applies**: D443 (the op step relative to
+the machine's world), D441 (the pattern: a flat invariant threaded through the step records).
+
+### The problem
+B1.5's theorem is about events (the role of `FlatFromObs.flat-ends`): the flat machine's log against the
+run's observable trace. The word layer's relation does not mention the log. And an answering op's flat
+answer reads the log (`call-sigop-ans`: `answer (fs-interp FS) (ev-log s) …`), so `AgreesAll` can only be
+discharged where the log is the run's history.
+
+### Decision (proposed)
+* **Every step record keeps the log** beside its `halted` flag (`Keep.k-log`, and the call, dispatch,
+  cell and move records): the flat instructions other than `instr-sigop` never write it.
+* **`Related` is indexed by the log** (`g-log : ev-log (floc fs) ≡ L`). The step theorem lands at
+  `L ++ evs`, `evs` the step's observable events: `[]` for every step but an op's; an op's, the sigop's
+  events, which `Agrees` equates with the op's trace (its `io`/`stp` events as `SigOpEvent`s).
+* The whole run then gives `ev-log (floc fs′) ≡ obs t` from the empty log, `obs` the run's trace's
+  observable part (memory events erased).
+
+### Alternatives
+* A generic lemma over `FlatSteps` (no sigop executed ⇒ the log stands): needs every step's executed
+  instructions, which the step records do not keep; as much threading, less local.
+
+### Refinement (2026-11-14, steps 3–4 as built)
+* **Not an index on `Related`: a log equation on the arrival.** Every `Arrives`/`Onward`/`ArrivesAt` of
+  the `Global*` steps carries `ev-log (floc fs′) ≡ ev-log (floc fs)` (from the records' `*-log` fields);
+  `WordStep.Lands E` carries `ev-log (floc fs′) ≡ ev-log (floc fs) ++ E`. The relation's type stays as
+  it was, and a run composes the equations (`RunWord.log-join`).
+* **The observable part is `ios`** (the trace's `io`/`stp` events, `Events.ios`), shown to the log by
+  `StepOp.ioEvent` (`io-call o a _ ↦ Trace.callEvent o a`, `io-halt o a ↦ Trace.haltEvent o a`):
+  `evsOf t = map ioEvent (ios t)`. A step lands at `evsOf t`.
+* **An op's events are part of the world's agreement** (D443): `OpVal s x y E` and `OpHalt s x E` add
+  `sigop-events (info s) (at-arg fs d) ≡ E`, and `Agrees` takes `E = evsOf t` of the op's trace.
+* **Every other covered step shows nothing**: its trace is a cell's or a temporary's events (`refl`),
+  or, for a local `prim`, the run of an atomic primitive (`StepIos.prim-ios`, by `PrimIn`, which the
+  point's lowering carries: `here-prim`).
+* The whole run: `RunWord.from-start` lands at `ev-log (floc start-fs) ++ evsOf t` (`start-fs`'s log
+  is `[]`).
+
+## D445 — AN OP'S LOWERING FOLLOWS THE MACHINE'S SIGOP ABI: A SCALAR ARGUMENT IN ITS REGISTER, A COMPARE BY ITS BLOCK (2026-11-14)
+
+**Proposed** (unattended, for the user's review; plan 0.146 B1.5). **Applies**: D398 (a scalar sigop
+argument is its register), D389 (a scalar has no memory residence), D381 (a base value is its words in
+place), master's compare lowering (`IRToTrace.cmp-trace`, `Compare.cmp-of`).
+
+### The problem
+Found while stating what discharges `AgreesAll` (D443): the machine's sigop decodes its argument from
+`Input1` by `decode-at` — a scalar (`Int`, `Float`) is the register's literal, a compound base is a pointer
+read by `readTyped`. The new lowering of `lop` (`Lower.lowP`) always passes the argument's slot ADDRESS
+(`lea-slot ∷ mov-to-input`). At a scalar argument the machine then decodes nothing: an emitting or
+answering op logs no event, a pure one faults — the image's op and the machine's disagree, and no world
+makes them agree. Second, a pure op whose codomain does not fit a register (the compares, `Unit + Unit`)
+has its Output given by the postulate `structured-pure-sigop-output`: the word the lowering stores is
+unknowable. Master lowers a compare to its Int-returning block (`cmp-block-info`) and `out-nz`.
+
+### Decision (proposed)
+* **The argument by its base**: a scalar argument is loaded into `Input1` (`load-from-slot (bot ∸ 1) ∷
+  mov-to-input`), any other is its address (`lea-slot (bot ∸ wsz A) ∷ mov-to-input`), two instructions
+  either way. `decode-at` then reads the scalar from the register and a compound value in place
+  (`readTyped`, D381's layout, the same as the image's words: `wsz`/`tsize`).
+* **A compare** (`cmp-of (sem (info s)) ≡ just o`) is lowered as master's: its block's sigop (an `Int`),
+  then `out-nz` (the tag) stored in the result's one word (in place: a `Unit + Unit` is its tag).
+* `OpVal`/`OpHalt` (D443) are restated at the state the new code leaves (`at-arg` by the base).
+
+### Alternatives
+* Change the machine (decode a scalar through a pointer): reverses D398, and the arch layer's arith
+  blocks read a scalar input as the register (D396).
+
+## D446 — B1.5 TOP-DOWN: THE WORLD'S RUN, AND THE FLAT THEOREM STATED AT THE APEX'S SHAPE FIRST (2026-11-14)
+
+**Decided** with the user ("lets go with your proposal, but … connecting this at the top-level first … so we
+don't build proof islands"). **Applies**: D443 (relative to the machine's world), D444 (the log), the
+memory rule "top-down, no islands".
+
+### Decision
+* **The world's run**: the image run the flat theorem speaks of is the linear core's run in the world the
+  machine's interpretation is — `Total.exec` in `World` with state the log so far and answer
+  `Trace.callAnswer ι h` (its calls appended to the log). Each op's contract path is then
+  `Trace.run ι h (opF s a)`, which the machine's sigop computes from the same log (`AgreesAll`).
+* **Top first**: before more lemmas, a module states B1.5's theorem in the shape the apex consumes
+  (master's `FlatFromObs.flat-ends`/`flat-cut`/`start-sound`, for the new image), composed from what is
+  proved (`FromIR`, `BridgeProof.bridge`, `Whole.whole-sound`, `ImageSim.image-noleak`, `End.ends`), with
+  each missing link a named field of an explicit hypothesis record (no postulate). The fields are the work
+  list; each is discharged in place, so every lemma is reachable from the statement.
+
+## D447 — THE CORE'S EVALUATOR SPENDS ONE GLOBAL ROUND BUDGET, AS MASTER'S `approx` (2026-11-14)
+
+**Proposed** (unattended, for the user's review; plan 0.146 B1.5, found top-down stating `FlatTop.o-run`).
+**Applies**: plan 0.119 D5 (master's budget: `approx k` counts a loop's continuing rounds along the whole
+run), D374 (a run is cut a round at a time), A14 (`Total.exec`).
+
+### The problem
+The flat theorem must show, at every budget `k`, exactly what master's meaning shows at `approx k` (the
+apex's `flat-ends`). The meaning's steps are exactly loop rounds (`iter∞`: a step per continuing round;
+folds, closures, ops, embedded calls take none), counted globally. `Total.exec`'s fuel is per loop: each
+`liter` starts from the whole `k`, and charges before its first round. For a program with two loops one
+after the other, no fuel cuts the core's run where `approx k` cuts the meaning: `o-run` is false.
+
+### Decision (proposed)
+* `Total.exec` threads ONE budget through the run: a loop's continuing round (`minr`) spends a unit, a
+  continuing round with none left ends the run `exhausted` (as `approxBlock zero (ret (inj₂ _)) = ret cut`);
+  the first round is free. Termination by the term, then the remaining budget (well-founded).
+* A budgeted soundness lemma replaces the cut-anywhere path (`RB`) for the flat theorem: at budget `k` in
+  the world `Wι` (D446), the run's events and end are `Trace.run ι [] (approx k meaning)`'s.
+
+### Alternatives
+* Weaken the apex's per-budget fact (some fuel shows a prefix): changes master's trust-relevant top
+  statement (`BudgetApex`), for a property the core can simply match.
+
+### D446 refinement (2026-11-14): the image's halt is a halt
+The core's op may end where the world gave no answer (`OpPath.p-cut`: a run `exhausted`), which the image
+modelled as a halt (`i-opend` to `halted`). The flat machine does not halt there (an answering sigop never
+halts; it reads a sentinel answer), and master's run halts with the `unlinkedOp` event: the image's halt
+was not the machine's. Now `i-opend` takes only a HALTED path, and such runs are not the lowering's
+(`Machine.Plain (r-opend {w = exhausted})` is `⊥`, beside the in-place fold): a linked program's runs never
+meet an unanswered call (`Spends.UnCut`, owed at the top from linkedness). `spends-plain` takes it.
+
+## D448 — LINKEDNESS AT THE CORE: A PROGRAM'S OPS ARE IN ITS UNIVERSE (2026-11-14)
+
+**Proposed** (unattended, for the user's review; plan 0.146 B1.5, found top-down discharging
+`FlatTop.o-uncut` and `OpMachine.OwedOp.oo-unlinked`).
+**Applies**: D244/D245 (a linked program: `Denotation.Program.LinkedProgram`, master's apex premise
+`LinkedImage`), D446 (the world's run; an unanswered call is a cut), B1.4b (`Keys`: a program's finite
+universe, `KeysRun.inside`).
+
+### The problem
+Two owed links are linkedness: the world's run never meets a call the interpretation leaves unanswered
+(`o-uncut`), and an FFI value op the interpretation does not declare (which halts with the unlinked
+event, where the machine goes on) is never run (`oo-unlinked`). Master has its premise on the IR
+(`Linked Σ tbl ir`: every SigOp leaf `Declared-at`); the core is reached by structural translations
+(`FromIR.trI`, `Pass.tr`), and the machine runs the image, whose code is the lowering of the universe's
+blocks. What is needed is that every op a run (or the image) executes is one of the program's.
+
+### Decision (proposed)
+* The universe collects the program's ops as it collects keys (`Keys.Got` gets `p!`, `Univ` gets `ops`),
+  and an op instruction is inside when its op is among them (`PrimIn ds (lop s) = s ∈ ops U`). Then
+  `KeysRun.inside` gives, at every image step from the start, that the op is the program's, at no
+  new invariant.
+* The machine's per-op facts take that membership, with the declaredness of the universe's ops
+  (`Declared-at (sig ι)`, owed from master's `LinkedProgram` through the two translations).
+* The world's run records why it was cut at an op (an unanswered call, `Total`), and the run's ops are
+  the universe's; a declared op's call is answered by `Wι`, so the run is `UnCut`.
+
+### Alternatives
+* Thread an ops predicate through `Total.exec` (as its `Good` values): duplicates the universe's
+  closure bookkeeping.
+* Restrict the core's `Sig` to declared ops by construction: makes the core depend on the interpretation.
+
+### D447 refinement (2026-11-15): the budget is read in loop entries and control steps
+Found discharging `FlatTop.o-cut`/`o-sound` (master's `flat-cut`, `start-sound`). A cut run must show the
+machine has taken a control step per unit of the budget. The image simulation now counts loop entries
+(`ImageSim.OutI`/`PausedI` at least `j`, `simI` at the run's `Spends.rounds`, a round started at each
+`i-loop`); a run spends at most its rounds (`spent-rounds`) and a cut one all of its budget (`cut-zero`);
+the flat machine takes a control step at each loop entry (its label: `GlobalLocal.gloop-ctrl`, carried by
+`WordStep.word-stepC` and `RunWord.wholeC`). A cut pauses the image with exactly the run's events
+(`HaltIf exhausted`): a cut anywhere (`r-cut`, the cut-anywhere path) is no longer the lowering's run
+(`Machine.Plain (r-cut) = ⊥`), as `Spends` already said. The machine never faults (`o-sound`): a halted
+state the start reaches is the world's run's end at a budget past it (determinism), whose halting step
+keeps the machine's ending (an op's halt is not a fault: `StepOp.OpHalt`).
+
+## D449 — A SIGOP'S ANSWER IS ITS ABI WORDS AT THE RESULT'S SLOTS, AS EVERY OTHER VALUE'S (2026-11-15)
+
+**Decided** (the user, 2026-11-15; plan 0.146 B1.5, found top-down: the last owed link of the flat
+theorem, `OpMachine.OwedOp`, an FFI value op or answering call whose answer is a product or a non-compare
+sum). **Applies**: D379/D380 (values in frames are their `Spec.ABI` words), D381 (`readTyped`: a base value
+read in place), D382 (`Spec.ABI.answer`: an answer in the return registers or the caller's buffer), D398/D445
+(an op's argument: a scalar its register, any other its address), D061 (master's
+`structured-pure-sigop-output` postulate, the same gap).
+
+### The problem
+The machine's `instr-sigop` writes one register word (`Output`). A structured answer (a product, a sum) has
+no meaning there: master postulates it (`SMCore.structured-pure-sigop-output`,
+`IRObsCorrect.SigOp.obs-correct-sigop-rest`), and the new image owed it. Every other generator of the new
+image writes its result's ABI words in place in the frame (`linl`: the tag, then the payload); a SigOp is as
+much part of the IRs as they are, so it should not be handled differently for the base types.
+
+### Decision
+* **One `instr-sigop`, whose semantics is the ABI.** A scalar answer (`Int`, `Float`) is its `Output`
+  word, as today; `Unit` is no words. Any other base answer (a product, a sum) is written by the sigop, in
+  place (`writeTyped`, the mirror of `readTyped`: a product's words after each other, a sum's tag then its
+  payload, the padding left as it is), at the address `Output` holds when the sigop runs — the hidden
+  buffer of `Spec.ABI`'s `argument`/`answer`. The answer side mirrors the argument side (D445): scalar or
+  address.
+* **The lowering**: an op with a structured answer takes the result's address (`lea-slot` at the result's
+  slots) into `Output` after `mov-to-input`, before the sigop; nothing is stored after it. The answer may
+  overlap the argument's words: the sigop reads its argument before it writes, and at the arch boundary
+  the argument is passed by value (D382), so the buffer never aliases what the callee reads.
+* **Order**: change `instr-sigop` in SMCore; check master's apex and see what breaks (the generic
+  "a sigop writes no memory" lemmas and each arch's `ConcFlatSim`, which the old image satisfies with a
+  premise: its sigops answer in a register); repair; then the LinCore lowering and `OwedOp`. Master's
+  postulate goes, not moves. Registers versus buffer per procedure-call standard stays at the arch boundary
+  (plan 0.138's `ev-<arch>`/`ret-call`).
+* **(Co)inductive answers stay out** (the user: at least for now): a SigOp's codomain is a base type
+  (`SigOpInfo.conB`), which has no μ, ν or arrow.
+
+### Alternatives
+* Restrict SigOp answers to register words in the Spec/checker: contradicts `Spec.ABI` (D382 defines
+  structured answers).
+* A second instruction (`instr-sigop-to`) beside `instr-sigop`: two instructions for one construct; the
+  user rejected it.
+* Model the write only in LinCore's step relation, as an assumption: still owed.
+
+### Done (2026-11-15), and two details found doing it
+* **The gate is the codomain's type** (`SMCore.in-memory?`: a product or a sum). Master's "a sigop
+  writes no memory" facts (`nhw-instr-sigop`, `TraceNoHeapWrites`) need a static fact, so they take
+  `in-memory? B ≡ false`; every sigop the old image runs satisfies it (register, `Unit`, `Void` answers;
+  an arith block: `RewriteOwned.block-not-in-memory`). `Unit` stays out of memory (no words).
+* **A sum's padding is written, as zero words** (`writeZeros`). `Spec.ABI` leaves padding unspecified
+  (any words); the image's own sums write theirs (`linl`'s stores), and a value's every slot must hold a
+  word (`SlotsAt`), so the in-place writer writes them too. (Unattended, for the user's review.)
+* The flat theorem (`FlatTop.IRTop`) owes nothing now; master's `obs-correct-sigop-rest` (the old
+  lowering's structured case) goes with the old lowering in B1.7.
+
+## D450 — THE CORE'S CONSTANTS ARE LITERAL PAYLOADS, MATERIALIZED BY THEIR MEANING AND BY THE MACHINE (2026-11-15)
+
+**Proposed** (unattended, for the user's review; plan 0.146 B1.6, found stating the new image's arch apex:
+the image's constant load `ldConst` has to be a machine instruction). **Applies**: D113 (a literal reaches
+the target UN-ENCODED: its payload is source syntax — `ℤ`, a `Decimal` — and becomes bits only at a
+format; `SMCore.lit-value` is that one place), D054/D115 (the target's width).
+
+### The problem
+FromIR materialized a literal (`fromℤ (int-bits fmt)`, `round (float-format fmt)`) and the core's
+`lconst` held the bits. The machine's only literal load, `instr-load-const`, takes a payload and
+materializes it itself; a word the core holds (a rounded `Float`, an infinity) need not have a payload
+that gives it back. So the new image could not load a core constant.
+
+### Decision (proposed)
+* `Flat.Lit` is a literal's payload (master's `LitPayload`: `ℤ`, `Decimal`); the core's `lconst` and
+  Pass's `const` carry it, and their meaning materializes it (`lit`, at the target's format — the
+  function FromIR applied), so every semantics is as before.
+* FromIR passes the payload through; `ldConst` takes the payload — on a machine, `instr-load-const`,
+  whose `lit-value` agrees with `lit` at the machine's format.
+
+### Alternatives
+* Encode the core's bits back to a payload: impossible for a rounded `Float` with no decimal preimage.
+* A machine instruction loading a raw word: a second literal path, against D113's one place.
+
+## D451 — STACK POINTERS LIVE ON THE STACK, POINTING AT LIVE FRAMES; THE HEAP NEVER POINTS AT THE STACK (2026-11-15)
+
+**Decided** (the user, 2026-11-15; plan 0.146 B1.6 item 2, found top-down: `Owed.o-em`'s `em-image`, the
+arch layer's stack-pointer invariant at the new image). **Applies**: D380 (stack pointers live on all three
+arches), D424 (frames are the core's temporaries), D445/D449 (an argument or structured answer by address).
+
+### The problem
+Master's `FlatStackPtr` holds that every stack pointer addresses the CURRENT frame; it is true only because
+the old trace opens no frame. The new image opens one per call, and every block's prologue saves the
+caller's argument-area address in its own slot (`Lower.lowBlock`: `mov-to-output ∷ store-at-slot (sv₁ φ)`,
+the trampolines likewise), writing the answer back through it at the end. So stack pointers are stored in
+memory and point at older frames.
+
+### Decision
+* **The heap never points at the stack.** No word of a heap cell is a stack address. (The stack may point
+  at the heap, as today.)
+* **A stack pointer points at live data.** One held in a slot of frame `i`, or in a register while frame `i`
+  is current, addresses a live slot of frame `j ≤ i` (the frame itself or an ancestor): nothing is popped
+  while a pointer at it remains. The arch correspondence gives ancestor frames their addresses and admits
+  loads and stores through such pointers.
+* What foreign code does with an address a SigOp is passed stays outside the proof, as for any C ABI call.
+
+### Alternatives
+* Stack pointers anywhere, heap cells too (D380's full reading): a cell outlives or predeceases any frame,
+  so it needs a liveness argument this image never uses.
+* No saved pointer (the callee reaches the caller's area frame-relatively): a store and a load fewer per
+  call, but a new addressing form and layout on three arches; possible later as an optimization under this
+  invariant.
+
+## D452 — AN ACCESS THROUGH A STACK POINTER IS CHECKED AGAINST A LIVE FRAME'S WINDOW (2026-11-15)
+
+**Proposed** (unattended, for the user's review; plan 0.146 B1.6 item 2, D451's machine side). **Applies**:
+D385 (an offset store writes a cell of its block, or faults), D451, D367 (a reached state never faults).
+
+### The problem
+D451 lets frames hold stack pointers at older frames. The arch correspondence relates a frame's slots to
+memory only inside its window (`Window`: slots below its reservation), and frames lie next to each other, so
+a load or store through a stack pointer past its frame's window, or into a popped frame, would be a
+different cell on the hardware than in the machine. The machine does not check stack locations
+(`in-block? (AtStack …) = true`, "no register holds one" — no longer true).
+
+### Decision (proposed)
+* `load-at k`, `store-at k`, `addr-at k` resolve a stack location `AtStack f j` only when `f` is a LIVE frame
+  (the current one or a saved one, `live-frames`) and `k + j` is inside its window; else they fault (the
+  resolution is `nothing`, the existing fault). A heap location passes the gate unchanged, so D385 and every
+  heap proof stand as they are.
+* The image's no-fault theorem (FlatTop) is then the proof that it keeps D451's "a stack pointer points at
+  live data"; the arch layer needs no stack-pointer invariant (master's `FlatStackPtr`, "no stack pointer
+  anywhere", retires), only the gate's outcome at each access. Nothing is emitted for the check.
+* D451's "the heap never points at the stack" is a property of the lowering (stack addresses come only from
+  `lea-slot` and reach only registers and frame slots); the arch correspondence does not depend on it.
+* `addr-at k` forms an address at an offset of a HEAP block only (D385); through a stack pointer it faults:
+  `lea-slot` is the one producer of stack addresses (D451). (Found doing it, 2026-11-15: an offset address
+  into a frame is never emitted, and on riscv64 it would need a no-wrap bound of its own.)
+* A branch on a tag reads a tag or a heap pointer (a node, nonzero); a STACK pointer has no tag, so the
+  test faults on one (`tag-test`): its address is no data, and the frame model gives no base a lower bound.
+* A SigOp reaches words through pointer registers too: a compound argument through `Input1` (`decode-at`,
+  D445) and an in-memory answer's buffer through `Output` (`sigop-store`, D449). Its step checks the whole
+  range before anything else is trusted (`sigop-gate`): when the address is a stack one, the value's LAST
+  word must be inside a live window (`range-ok`; a window is a prefix of its frame, so every word below is
+  too). A scalar argument is its register (D398) and is not checked. A failed check faults and halts the
+  step, as a failed `load-at` does. (2026-11-15; the new image proves it from the frame's reservation:
+  the argument and the answer lie below the operand stack's top, a compare's pair below the budget plus
+  the frame's two save slots.)
+
+### Alternatives
+* A run fact in `Emitted` ("every access through a stack pointer is in a live window", proved for every
+  reachable state): the same arithmetic, but proved away from the simulation step that knows the frames.
+* A preserved invariant (master's `FlatStackPtr` generalized): must survive every call and return, and a
+  dead register still pointing into a popped frame breaks it although it is never used.
+
+## D453 — μ/ν NODES STAY CELLS; LAYERS ARE BUILT AND READ IN PLACE; FRAME-LOCAL NODES GO TO FRAMES (2026-11-16)
+
+**Decided** (the user, 2026-11-16, in a discussion of D451's cost). **Applies**: D420 (cells and frames:
+μ/ν nodes and closures are cells), D451 (the heap never points at the stack), plan 0.146 §3 ("Local
+temporaries are allowed", "Stack or cell"), A9 (stack regions), `loop-exchange` (a server's memory is its
+state, round after round).
+
+### The question
+Placement is by type: words, pairs, sums in frames; μ nodes (`lIn`), νs (`kobs`) and closures (`header`)
+in cells. Every value moves by copying words, so a cell is filled from the frame and emptied into it:
+`lIn` builds the layer in the frame and moves it into the fresh cell (`mvSP`), `lOutμ` moves it back
+(`mvPS`) and frees the cell. Copies at the cell boundary are a cost. Could an inductive value live on the
+stack instead, with the heap kept for an operation's internal temporaries only — a fold's result on the
+stack, its intermediates on the heap — and the same for coinductive values?
+
+### Findings
+* What crosses the boundary is one LAYER per node (`wsz (F (μF))` words: the head and one pointer per
+  recursive position), never the structure; a shape-preserving round with in-place reuse
+  (`r-cata-reuse`) has no move and no event at all. The waste is the extra move: a layer is built in the
+  frame and then moved into its cell, and taken apart by moving it out, although its fields could be
+  written into, and read from, the cell directly.
+* A μ value of unknown size cannot have a static frame slot. On a dynamic stack (the callee's result
+  pushed above its frame, or on a SECOND stack as Ada's secondary stack, Tofte–Talpin's region stack)
+  a value's space is reclaimed only in LIFO order, so it works exactly when values die in the reverse of
+  their allocation order.
+  - What works (the user, 2026-11-16): a value consumed WHOLE. A list's outermost node is on top, so a
+    fold pops the input as it unrolls it (the pending heads on its work stack, a temporary) and has
+    consumed it before the first output node is built: one stack suffices, and a server whose state is
+    a list rebuilt by a fold each round (`loop-forever-list.once`) stays in place. A branching functor
+    builds the left result while the right input is live, so the output goes to a SECOND stack and the
+    next fold reads it from there (toggling); two stacks growing toward each other share one region
+    (D428 part 2).
+  - What does not: (1) KEEPING a sub-value. In `b, nil, c₂, a, c₁` (the list `[a, b]`, top at the
+    right), a fold that keeps `a` (filter, reverse, partition over a list of structures) must move it
+    out of the way before `c₂` can be popped: a deep copy, or everything below pinned. A cell moves it by
+    one pointer word, and rearranging ownership is a linear program's everyday operation. (2) CROSSING
+    lifetimes chosen by the program (a queue as two lists; a branch-dependent order): every stack must
+    stay LIFO, a colouring of the values over the stacks, with no fixed number of stacks sufficing.
+    (3) An effectful algebra (D131) runs in the PROGRAM's order: no order is canonical, and Once's is
+    reading order, as `pair`'s (D221), so the programmer picks it by how they write the term and the
+    compiler may not reorder it. Producer and consumer follow the same reading order, so an effectful
+    producer allocates the left result first (deeper) and an effectful consumer visits it first: one
+    inversion against LIFO, every time (D221's own finding for the old fold's value stack). The
+    consumer cannot pop as it goes; more stacks do not help (the inversion recurs at every depth); it
+    can only read in place and free each subtree after its sibling, holding up to the whole input. A
+    pure algebra's order is the compiler's, so it visits the top first and pops. (4) A μ value stored in a cell (a closure's
+    environment, a ν's seed) must be copied to the heap whole (D451).
+* Coinductive values are the same, with an easier special case. The server loop (`c-loop`/`iter`) uses no
+  cell already: its state is rewritten in place in the loop's frame. A first-class ν has a STATIC
+  footprint (its seed and coalgebra); it is a cell only because it may outlive its frame.
+
+### Decision
+* **μ/ν nodes and closures stay cells** (D420 stands; no dynamic or secondary stack for values).
+* **Layers in place** (plan 0.146, B1.8): `lIn` allocates the cell and writes the layer's fields into
+  it directly (destination passing); `lOutμ` / an observation reads fields from the cell where it can,
+  rather than moving the whole layer into the frame first. The values' meaning and the events are
+  unchanged (one alloc, one free per node), only the moves go.
+* **Frame-local nodes in frames** (A9, after the integration): a μ node or a ν whose whole lifetime is
+  inside one frame (built and consumed there, not returned, not stored in a cell) gets frame slots,
+  decided statically from the term. It needs no change to D451. A secondary-stack extension (a callee's
+  result kept on a second stack until the caller's scope ends) is the case of A9 across one call: it
+  applies only where the lifetimes nest, and it needs no stored word beyond a saved stack mark.
+
+### Alternatives
+* μ values on a dynamic or secondary stack (or two, toggled), temporaries on the heap, as the GENERAL
+  rule: rejected above — a kept sub-value is a deep copy, crossing lifetimes need an unbounded number of
+  stacks. As an optimization it is open: a candidate beside A9, not decided. Its practical scope (the
+  user, 2026-11-16: the common cases, not all): μ values consumed whole — `map`, folds to a scalar,
+  `filter`/`reverse`/`append` over flat elements, a server's list state rebuilt each round — on ONE
+  stack (a list fold unrolls its input before it builds output; a size-preserving `map` rewrites in
+  place), pure tree rebuilds and a zip of two on TWO; chosen statically from the types and the term.
+  Cells stay for the rest: kept sub-values (a list of structures filtered, partitioned or sorted),
+  values stored in a closure or a ν's seed, anything needing more than two stacks. A ν consumed
+  depth-first needs one stack (observation allocates in the consumer's order, effects included).
+* Keep the moves: the simplest image, but every node costs two layer moves that GOAL.md's "memory is
+  managed by the compiler from the program's structure" does not require.
+
+## D454 — NOTHING FALLS INTO AN ENTRY: THE GUARD ADMITS `c-leave`; HALTED CODE ENDS IN `c-leave` (2026-11-16)
+
+**Proposed** (unattended, for the user's review; plan 0.146 B1.6, `Emitted.em-guard` for the new image).
+**Applies**: D094/D245 (the emitter's guard: what precedes an entry does not fall through), D320 (`c-leave`,
+the Host's leave, halts where it stands), D434 (the image's blocks and trampolines).
+
+### The problem
+`em-guard` says the instruction before an entry is a `c-jmp` or a `c-ret`; `RunWF.run-seg-wf` uses it to
+show that no step that moves the pc on lands on an entry. In the new image it is false in two places:
+* block 0's entry follows the main code's end, `c-leave`;
+* a code whose branch ends by halting (`Codeᴵ.halted`, after a Halts op) lowered to nothing, so the next
+  entry followed the halting op, and a halting op is a straight step (pc + 1, `halted`): the halted
+  state's pc IS the entry, a reachable state the invariant must cover.
+Master's own guard (`RunWF.emitted-thunk-guarded`, a postulate) is false in the first way: its first
+function entry follows `main`'s `c-leave` whenever `main` has no linked block.
+
+### Decision (proposed)
+* **The guard admits `c-leave`** (`Emitted.em-guard`, `RunWF.Guard`, the postulate's statement, now
+  weaker). `c-leave` halts in place (its step keeps the pc), so it does not fall through: every caller of
+  `no-fallthrough` already holds a step that moves the pc on (`adv`), which `c-leave`'s does not.
+* **Halted code ends in `c-leave`** (`Lower.lowC … halted = c-leave ∷ []`): never reached (the run has
+  halted), one dead instruction, and nothing falls past a halt — as master's units end in a terminator
+  by `link` ("it ended by falling off, which is only correct while nothing follows it").
+* Proved for the new image in `LinCore.ImageGuard` (stdlib `Linked`: "if the next is an entry, this is a
+  guard"; the lowered code holds no entry, `LabelsC`'s `Ok.ne`; a code ends in its `fin` or `c-leave`).
+
+### Alternatives
+* Halting ops halt in place (no pc + 1), as `c-leave` does: no dead instruction, but the step of every
+  sigop changes in the machine and every proof over it.
+* `SegWF` exempts halted states from "not at an entry": a weaker invariant whose consumers would each have
+  to show they run from a live state; the dead `c-leave` keeps the invariant as it is.
+* A `c-ret`/`c-jmp` as the dead terminator: a `c-ret` is what `em-ret-owes`/`em-ret-budget` quantify over,
+  and a halted state does not owe a return.
+
+## D455 — THE ARCH LAYER READS THE RUN'S FACTS, NOT MASTER'S POSITIONAL SCAN (2026-11-16)
+
+**Decided** (the user, 2026-11-16: option (b) of the B1.6 fork). **Applies**: D092/D094 (the frame and
+return stacks move together; a return lands one past a call), D451/D452 (check at the access, not by a
+positional invariant), D454 (the guard before an entry), plan 0.146 B1.6 (`RunContext.Emitted`).
+
+### The problem
+`Emitted.em-slots` (a slot an instruction addresses is below the segment in force) and `em-jump` (a jump
+stays in its segment) were stated over master's scan of the code, `seg-at`: an entry pushes a
+reservation, a `c-ret` pops one, walking the code in order. That fits master's layout of one entry and one
+return per unit. The new image copies a block's epilogue, `c-ret` included, into every branch of a case,
+so the scan pops back to the caller's segment while a later branch is still inside the block: both fields
+are false of it as stated.
+
+### Options
+* (a) Single-exit blocks: each branch jumps to one shared epilogue, so the scan holds unchanged. One
+  extra unconditional `jmp` per branch exit taken, smaller code; about 30 LinCore block-exit simulations
+  change, for no reason but the proof device.
+* (b) The facts the scan exists for, as the run's facts. No change to the emitted code.
+
+### Decision
+(b). Both are principled (neither keeps at run time what is known at compile time); (b) changes the
+proof, not the program, and follows D451/D452.
+* **`em-slots` is a run fact**: at a reached state, a slot the fetched instruction addresses is below the
+  current frame's reservation (`slot < frame-slots`). `em-jump` is gone.
+* **The shared invariant reads no scan** (`RunWF.FrameWF`): the frame and return stacks are paired and
+  every return address is one past a call (`RetMatch`), and an entry is reached with an empty
+  reservation, a live link and a pending return (`fw-entry`). Its induction reads two facts of the code:
+  what each instruction is (`ImageI`) and the guard before each entry (`GuardAt`, D454).
+* **Master's scan stays master's proof** (`FlatCore.OldSeg`): the reservation in force at each pc
+  (`SegCur`) and a saved frame's at its return pc (`RetSeg`), from the scan's static facts (`ScanFacts`:
+  the slots below the segment, label scoping); `scan-slots` proves `em-slots` for master's image, and
+  `old-emitted` lives there.
+* **The new image** proves `em-slots` from its simulation (FlatTop: a reached state is related, and the
+  lowered code's slots are below its frame's reservation), the route already planned for `em-call-site`,
+  `em-ret-owes`, `em-ret-budget`.
+
+### Alternatives
+* A machine gate on slot accesses (`slot < frame-slots`, else fault), as D452's for pointer accesses, with
+  FlatTop's no-fault proof as the new image's discharge. Deferred to after B1.7: every simulation of the
+  old lowering (`IRObsCorrect/**`, about a hundred modules over slot instructions) would have to carry the
+  frame bound to its no-fault proof, and that code is deleted in B1.7. With the old lowering gone the gate
+  is the smaller step (the run fact's one provider is the new image's simulation either way).
+* (a), above.
+
+## D456 — THE RUN'S FACTS ARE MACHINE GATES; B1.7 BEFORE THEM (2026-11-17)
+
+**Decided** (the user, 2026-11-17). **Applies**: D452 (check at the access), D455 (the arch layer reads the
+run's facts; its slot gate deferred), plan 0.146 B1.6/B1.7.
+
+### The problem
+D455 left four run facts for the new image to prove (`Emitted.em-slots`, `em-call-site`, `em-ret-owes`,
+`em-ret-budget`), by the route "from FlatTop's simulation: a reached state is related". Two things block
+that route. `Related` holds at image-step boundaries only, while the facts are about the flat states
+INSIDE a step's chain (the epilogue's `c-ret`, the dispatch's `instr-call-closure`), so every `Global*`
+step lemma would have to carry a predicate along its chain. And `Reachable` starts at ANY `EntryLike` sound
+state, while FlatTop runs from one `start-fs` (`EntryLike` leaves the log, the heap counter, `fclosure`,
+`faulted` and `left` free). Master's image does not prove three of the four either: they are postulates
+(`RunWF.call-site-shapeᴼ`, `ret-site-owesᴼ`, `ret-budget-matchesᴼ`). Today the flat machine checks none of
+them: `do-ret []` halts, `c-ret b` ignores `b`, `instr-call-closure` reads `fclosure` unchecked, and slot
+accesses are unbounded.
+
+### Options
+* (a) Thread a per-state predicate through every step chain, and pin `EntryLike` to master's entry.
+* (b) A static owner map (each pc's block fixes `frame-slots` and a pending return), by induction on
+  `Reachable`: a positional invariant again (what D455 left), and `em-call-site` (a data fact) still open.
+* (c) Machine gates, as D452: `c-ret b` faults unless a return is pending and `b ≡ frame-slots`;
+  `instr-call-closure` faults unless `fclosure` points at a cell whose code word names a body; a slot access
+  faults unless `slot < frame-slots`. The four facts then follow from `Sound`, which `Reachable` carries,
+  from any start.
+
+### Decision
+(c), and ORDERED after B1.7. The gates' one extra cost is that every simulation of the old lowering
+(`IRObsCorrect/**`, `OldSeg`) must prove they pass, and B1.7 deletes that code; it also discharges
+`o-table` (the compiled image is the new one) and master's three run postulates go with the old image.
+Between B1.7 and the gates the apex is `conc-trᴺ` with the four run facts as named `Owed` premises: the
+same gaps as today's postulates, stated in the apex's type instead of hidden in a `postulate` block.
+Each new-image step lemma proves its gate at the access (the frame's reservation `h-slots`, the pending
+return `RetOK`, the closure's cell are in hand there); `o-sound` then yields the facts.
+
+### Alternatives
+(a) and (b) above. (c) before B1.7: the gates' obligations on about a hundred modules about to be deleted.
+
+## D457 — WHAT IS COMPILED SEES NO INTERPRETATION: THE CORE'S SYNTAX AND LOWERING TAKE `fmt` ONLY (2026-11-17)
+
+**Decided** (the user, 2026-11-17). **Applies**: GOAL.md "three times" (items 2 and 3: no particular
+Interpretation is in sight when Once is built or a program compiled), plan 0.146 B1.7 step 2.
+
+### The problem
+The new image (`Lower.Program′.image` of `FromIR`'s translation) is defined in modules parameterized by
+`(fmt : TargetNum) (ans : FFIAnswers)`, `ans` being `pureHalf ι`: the interpretation's answers. Only the
+core's semantics reads `ans` (a sigop's meaning, `NbEPLinCore`), but Agda abstracts every definition over
+its module's parameters, so the image `compile` would emit (at some fixed `ans₀`) and the image the apex
+reasons about (at `fs-ffi Mach`) are different terms, not definitionally equal for a variable program.
+Master's image already sees no interpretation (`program-image : CanonicalName → IRProgram → AbstractTrace`).
+
+### Options
+* (a) Split: the syntax, the translation and the lowering take `fmt` only (the arch's numerics are known
+  at compile time); the semantics and the proofs keep `ans`. `compile`'s image is the apex's by `refl`.
+* (b) `compile` fixes `ans₀`; a lemma proves the image the same at any two `ans` (an induction through the
+  translation, the pass and the lowering, undoing a parameter that should not be there).
+* (c) As (a), by `module _ (ans : FFIAnswers)` sections inside each mixed file.
+
+### Decision
+(a). Each module takes the parameters it uses; a module that mixes syntax and proof is split into its
+syntax module (`fmt`) and its proof module (`fmt ans`). No re-export (`public`): importers name the
+module that defines what they use.
+
+## D458 — THE LINEAR CORE IS COMPILED FROM THE SPEC'S GRADED DERIVATION (2026-11-17)
+
+**Decided** (the user, 2026-11-17). **Applies**: plan 0.146 B1.7 step 2; GOAL.md (every gap proved);
+OCP-0009's "architecture bug" (`plan-ref` `bootstrap/poc/OCP0009/ARCHITECTURE.md` §3).
+
+### The problem
+The new image is built from `FromIR`'s translation of master's IR, and that IR records no grades: the
+translation re-derives them (`FromIR.blk?`: an act closure, an unfold's coalgebra, a loop's round must be a
+block) and is partial. `compile` is certified total (`MainBuilds.main⇒built`), so a program the elaborator
+accepts but `blk?` rejects is a gap. The grades exist in the Spec's derivation (`Γ ⊢[ρ] A`) and are erased
+by `elaborate` before the core sees them.
+
+### Options
+* (a) The core from the derivation: one clause per surface rule (plan 0.151's syntax-directed rules), the
+  usage indexing the target (`Lq⟦_⟧ : Γ ⊢[ρ] A → LTm`, the POC bridge): context addition is the tensor's
+  split, a copy only at ω. Total by construction.
+* (b) D430's route: `blk?` stays a checker; a completeness lemma per elaborator rule (after 0.151) proves it
+  accepts every elaborated program; an owed premise meanwhile.
+* (c) The grades in the IR's constructors (master's IR graded).
+
+### Decision
+(a), after plan 0.151 merges (the bridge is written against its rules, not against the rules it replaces).
+It keeps usage in the compiled program, which the later linear optimizations need (no copy at 1, reuse in
+place, free at last use, erasure at 0); (b) and (c) keep the cartesian IR in between and re-derive or
+re-carry what the derivation already has. The IR optimizer's passes move to the linear core as they are
+needed. Until 0.151 merges, B1.7 step 2's other parts (the library image, the arith blocks, `ldConst`)
+proceed; the translation's source is switched last.
+
+### Alternatives
+(b), (c) above.
+
+## D459 — THE BRIDGE'S SOURCE IS THE ELABORATOR'S GRADED `Expr`; ITS STRUCTURE MAPS ARE TABLE ENTRIES (2026-11-17)
+
+**Made unattended** (keep-going mode, for the user's review). **Applies**: D458, plan 0.146 B1.7 step 2.
+
+### The problem
+D458 compiles the linear core from the Spec's graded derivation. At compile time the compiler holds no
+Spec derivation as a value: the checker returns `Surface.Expr Γ Ψ A` (graded by usage `Ψ`), and the Spec's
+derivation of it is a proof (`TypeCheck.SpecWitness.WI`), whose realization (`Denotation.RealizeS`) is that
+`Expr` (plan 0.122 §5.6). `Expr` is the POC's source: its "architecture bug" is `elaborate : Expr Γ Ψ A →
+IR`. Two things in `Expr` are not yet graded data: the structure maps (`lift-morphism`, `morph-app`) carry
+IR built by the table (`TypeCheck.Table.mapAt?`), and terms carry no purity.
+
+### Decisions
+* **The source is the resolved `Expr`** (after linking, `TypeCheck.Link`: polymorphic definitions are
+  spliced as `closed` terms, so the bridge sees `closed`, `closure` (a call of a compiled definition),
+  `sigOp` and locals). `FromExpr.Lq : Expr Γ Ψ A → LinCore` replaces `elaborateFull` on the new path:
+  usage indexes the target's context object, context addition is the tensor's split, a `dup` only where
+  both halves use a slot (`Many`).
+* **A structure map is its table entry, not IR.** `lift-morphism`/`morph-app` carry a structure map
+  datum (`id`, `terminal`, `fst`, `snd`, `initial`, `inl`, `inr`, `In`, `Out`, `apply`, `toFloat`, at
+  their types and grades); its IR is a function of it (`elaborate` unchanged in meaning), and the bridge
+  translates it per entry. Rejected: translating the IR payload (FromIR's partial `trI`: the IR does not
+  say it came from the table).
+* **Grades by construction.** `Expr`'s `app` applies only pure arrows, and `effApp`, `loop`, `ana`, `lam`
+  build closures, so every `Lq e` is a finite block (`Blk`), proved by induction: a lambda's body at
+  `act` has its `Gd`, a coalgebra and a round are blocks. Nothing is checked, so nothing fails.
+* **Quantities and grades** (D426 part 3's "still to align"): the Spec's `Zero`/`One` arrow is `once`
+  (owned environment, `lev`), `Many` is `many` (lent environment, `bev`: a fold's algebra, a coalgebra, a
+  round, applied at every layer); `pure`/`act` are `act`, `eff` is `eff`. A `many` closure's body reads its
+  environment lent and copies what it keeps (`bcopy`), as D131.
+* **The correctness interface is the IR's meaning.** The bridge is proved against `elaborateFull`'s IR
+  meaning, so the front end's chain (source to IR) and the apex's statement (`conc-trᴺ` against
+  `⟦ irProgram tbl ir ⟧IR`) stay; FromIR's correctness (`BridgeProof`) is replaced by the bridge's.
+  The new path does not run the IR optimizer (D458: its passes move to the linear core as needed).
+
+### Alternatives
+The checker computing the Spec's core derivation as data (the witness is a proof today; a second checker
+output). Purity as an index of `Expr` (not needed: `Expr`'s discipline already makes every term a block).
+
+## D460 — THE BRIDGE'S LINKING INCLUDES GRADES: A REFERENCE NAMES ITS DEFINITION AT ITS DECLARED TYPE (2026-11-17)
+
+**Made unattended** (keep-going mode, for the user's review). **Applies**: D459, plan 0.146 B1.7 step 2c.
+
+### The problem
+Master's table finds a definition by its name and its call's two IR types (`tableCalls`); an arrow's grade
+is not among them. The bridge compiles a reference to a definition as a closure whose body calls the
+definition's label, and at grade `act` that body must be a finite block (`Blk`), so the label must be
+`act`. A reference typed `A ⇒[ act ] B` to a definition of type `A ⇒[ eff ] B` would therefore be
+unlinked in the core (it halts) while master calls the definition (it may run forever): the bridge
+cannot mean what master means there, and no hypothesis on the table alone (`CallsOK`) can hold for
+every key.
+
+### Decision
+The bridge's theorem (`FromExprOk.Main.Lq-ok`) is stated for an expression whose references are related
+(`SurfaceRefs.Refs` with `RefOK`: each reference's core term against `refIR`); the program level
+discharges it from the table (`Calls.rel-ref`, under `CallsOK`) and from linking with grades: a
+reference names its definition at its declared type, which the checker's `closure x : A` carries (the
+type of `x` in scope). This is master's own premise that the program is linked (`LinkedProgram`),
+extended to the arrow's grade.
+
+### Alternatives
+The table's key carrying the grade on master's side too (a change to the IR's linking); a reference at a
+mismatched grade compiled as master's (not a block, so not expressible at `act`).
+
+## D461 — THE NEW IMAGE IS EMITTED BESIDE MASTER'S UNTIL THE APEX TOP IS ITS OWN (2026-11-18)
+
+**Made unattended** (keep-going mode, for the user's review). **Applies**: D458–D460, plan 0.146 B1.7
+step 2d.
+
+### The problem
+The compiler can now build the image the arch apexes prove (`LinCore.Emit`: the bridge's program from the
+sources, lowered, with its room checks). Master's verified compiler is `Certified`'s statement about
+`Compile.assemblyFromModule`, whose image is master's lowering; the new image's apexes (`conc-trᴺ`) are
+proved, but the top that composes them with the front end (B1.7 step 3) is not yet. Switching `build` now
+would leave the shipped compiler outside the theorem until then.
+
+### Decision
+The CLI emits the new image under a flag (`build --core`, `Runs.assembly-core = Emit.assemblyCore`), so
+the codegen tests can run on it; the default stays master's until step 3 makes the new image's apex the
+top, when the flag becomes the default and master's lowering goes (step 4). The new path runs master's
+gates first (type errors, literal ranges, `main`'s type: `compileFileFromModule`), takes the sources
+unoptimized (D459: the bridge's facts hold at `opt ≡ false`), and leaves a library (no `main`) to master's
+file until the new image has a library form.
+
+### Alternatives
+Switching `build` at once (the shipped compiler unverified until step 3); a separate executable for the new
+path (two front ends to keep in step).
+
+## D462 — THE CORE'S ARITHMETIC PRIMITIVES BECOME ARITH BLOCKS BEFORE LOWERING (2026-11-18)
+
+**Decided by the user** (2026-11-18, option 1 of the `o-table` question). **Applies**: D458–D461, plan
+0.146 B1.7 step 3.
+
+### The problem
+The arch layer's arith table (`ArithTable`, used by `arith-sigop-lookup`/`-block` in `ConcFlatSim`) gives
+every internal sigop at the pc a `BlockOf si b`: only a `blockV` op has one. Master's image never runs an
+arithmetic primitive, because `Rewrite.rewrite-ir` lifts each into a block. The new image runs them
+(`instr-sigop` of `arith.mul.int`); the file defines a one-op block under the primitive's symbol, so the
+program runs, but the arch proofs do not cover it. An `ArithBlock` is an out-of-line assembly subroutine
+(its own label in `.text`, called), so a primitive per block is also one call per operation, where master's
+lifted subtree (`a*b + c`) is one call.
+
+### Decision
+Before lowering, each arithmetic primitive op of the core is the op of its block (a compare stays a
+primitive call with its compare block, as master's `bare-sigop`), with its meaning lemma. **As built
+(2026-11-18):** at the bridge's op leaf (`FromExpr.opL` emits `lop (sig (as-block si))`), not as a
+separate pass over the core: the core then never holds a primitive, and the lemma is op-local
+(`Arith.SigOp.AsBlock`: the primitive's block at the same types and base derivations, named by its
+digest as master's `block-info`; `AsBlockSound.as-block-ev`: master's op means the same, case for case
+`refl`; `FromExprOk.rel-op` composes it with the op's cast). A separate core pass would need a
+simulation over the whole core machine for a change at its leaves. The arch interface stays as it is: the arch layer knows
+blocks only, and turning a block into machine code is its one job; choosing what becomes a block is a
+target-independent rewrite of the program, so it belongs in the core. A second step fuses maximal
+arithmetic subtrees into one block (master's `rewrite-ir` on the core: a subtree's free base variables
+gathered into the block's input), with its own lemma, so the new image's code is no dearer than master's.
+
+### Alternatives
+The arch layer admits a primitive through its lifted block (`ArithTable`/`BlockOf` widened, the lifting
+lemma proved at the arch level): a target-independent fact proved in the arch layer, a second kind of op
+in its interface, and one call per operation for good.
+
+## D463 — ONE ARCH INTERFACE: THE ARCH-NEUTRAL LAYERS HAVE NO PER-ARCH MODULES (2026-11-18)
+
+**Decided by the user** (2026-11-18). **Applies**: plan 0.146 (the new image's apexes and emitter).
+
+### The problem
+The linear core's arch apexes are three near-identical modules (`LinCore.Arch<arch>`, about 175 lines
+each, differing only in which arch's modules they import), with three more for the tops
+(`LinCore.Top<arch>`), and the emitter cases on the arch (`LinCore.Emit.emitCore`). Arch-specific code is
+spread across `LinCore/`, `Adequacy/`, `CCC/Target/`, `Arith/Backend/` and `Target/`, so what a new arch
+must provide is not written down anywhere.
+
+### Decision
+An arch is one record (built on master's `Adequacy/CPU/Interface.ArchSemantics` where it fits): its machine
+and frame semantics, its lowering of the abstract trace (`compile-trace`), its block payloads and file
+(`block-payload`, `mkImage`), its literal loader, its resource-bound premises, and its simulation theorem
+(`events-agree-boot`, the entry facts, the arith table). Each arch builds its record inside its own
+directories; the linear core's apex, top and emitter are each one module over the record. Implementing a
+new arch is implementing that record.
+
+**As built (2026-11-18):** two records, so the code generator and its proof are separate interfaces
+over one backend. `Target.Backend` (codegen: `File`, `print`, `Payload`, `payload`, `file`), one per
+arch in `Target.<Arch>.Backend`, the only case split on the arch in `Target.Backends.backend`; and
+`Adequacy.ArchCorrectness.Interface.ArchSim o B` (proof, over the backend `B`: the flat machine, slot
+size and entry, the machine's table `block-env`, `ArithTable` and its constructor `table`, the machine
+`compile`/`δ`/`init`, and the one theorem `sim`), one per arch in `ArchCorrectness.<Arch>.Sim`. The
+block symbol is not in the interface: it is arch-neutral (`Compile.block-symbol`). The bytes level
+(decode, assemble, the CPU) stays master's `CPU.Interface.ArchSemantics`.
+
+### Alternatives
+Keeping the per-arch copies (the drift grows with every arch-level fact); merging only the tops (the apexes
+stay three copies).
+
+## D464 — CERTIFIED IS OVER THE LINEAR CORE'S FILE (2026-11-18)
+
+**Proposed** (unattended, plan 0.146 B1.7 step 3; for review). **Applies**: plan 0.146; `Adequacy.Compile`
+(`ArchCorrect`), the CLI's `build`.
+
+### The problem
+`Certified`'s statement (`Adequacy.Compile.ArchCorrect`) is over master's file
+(`Compile.compileFileFromModule`) at master's meaning (`rewrite-program` of the program, the optimizer at
+`--opt`). The new image's file has the program's trace on every arch (`LinCore.Top.Program.file★`), but
+three things stood between it and the statement: the file's well-formedness (`file-wf`, what `as`
+demands), the meaning it is stated at, and what the image still owes (`Owed`).
+
+### Decision
+1. **The compiler's file** is `LinCore.Emit.coreFileOf arch doOpt m`: master's gates first (type errors,
+   literal ranges, `main`'s type; their error is the compiler's), then a program's new image of its
+   sources; a library keeps master's file until the new image has one. The CLI builds it
+   (`assemblyCore`, `Extract.Root.runs.assembly`); D353 holds (the theorem is about the CLI's function).
+2. **The meaning**: `ArchCorrect.file-tr` is stated at the program the module compiles to,
+   `irProgram (moduleTable m) ir` with `moduleToIR m ≡ just ir`, at either build. The new image is the
+   sources', unoptimized (D459), so neither `rewrite-program-trace` nor `opt-trace` is between them;
+   `--opt` reaches only the gates until the core has its optimizations (D462's fusion).
+   `ArchCorrect.file-wf` takes the world's premise (`moduleSig m ≡ sig ι`) as `file-tr` does: the image is
+   built from the bridge's facts in that world.
+3. **Well-formedness**, proved: the image's symbols (`ImageExterns.ImageWF`) — its labels and entries are
+   distinct and each is a block's, so their symbols are (`LabelSymInj.sym-inj`, the owner read back from
+   the symbol); every jump names a label the image defines (`Jumps`); a call, a code word and an op name an
+   entry or a block of the image's; the file's externs are read off the image (`image-externs`). A block's
+   name is `once-lincore.b<j>` (was `once-lincore.<j>`): each part led by a letter, so its symbol reads its
+   parts back (`SymbolInjective.once-symbol-path-injective-peel`), and no source name has its form. Each
+   arch shows its file of such an image is `AsmWF` (`ArchSim.file-wf`, `CoreFileWF`; `Backend.AsmWF`).
+4. **What is owed**, named in one module (`ArchCorrectness.CoreOwed`): the image's four run facts
+   (`OwedRun`, B1.7b's machine gates; master postulates the same of its image) and, per arch, that an
+   external op's symbol is no block's (`ExtMiss`; master's `external-sigop-contract` assumes it of its
+   file). Master's run postulates go with the old lowering (step 4).
+
+### Alternatives
+Stating `file-tr` at master's meaning (`rewrite-program`, the optimizer) and relating the two programs'
+traces (`RewritePreserves`, `OptimizedTable`): proofs about a program the file does not run. Discharging
+`Owed` before switching: B1.7b is planned after step 4 (D456), which needs the switch.
+
+## D465 — MASTER'S LOWERING GOES: A LIBRARY'S FILE IS EMPTY, NOLEAK IS OVER THE NEW IMAGE (2026-11-18)
+
+**Proposed** (unattended, plan 0.146 B1.7 step 4; for review). **Applies**: plan 0.146; `Compile`,
+`LinCore.Emit`, `Implementation.NoLeak`, the CLI's `build --lib`.
+
+### The problem
+Step 4 deletes the old lowering (`IRToTrace`, `ProgramImage`, `IRObsCorrect/**`, master's arch apexes)
+now that `Certified` is over the new file (D464). Three things still use it: the gates run master's
+emission (`compileFileFromModule` builds master's file before the new image replaces it); a library
+(no `main`) is master's library file; and `NoLeak` is stated over master's image.
+
+### Decision
+1. **The gates** are a check (`Compile.checkModule`: the functions extract, the literals fit, the
+   definitions compile; the compiled functions or the error), and the file is written after it
+   (`Emit.coreFileOf`). Nothing builds master's image.
+2. **A library's file is empty** (`Backend.empty`: no code, no entry; `ArchSim.empty-wf`). The linear
+   core compiles a whole program from its sources, imports included, and nothing links a Once library
+   into a program; a library build runs the gates (types, literals, the definitions' compilation), which
+   is what `build --lib` is used for. A library image of the new path (definitions as entry points, for
+   linking from outside) waits for a use.
+3. **`NoLeak` is stated over the image the compiler emits** (`Implementation`): every run of the
+   room-checked new image of a module's sources (`ExprImage.imageAt`, at their `main`), as it was over
+   master's image. Same claim, same `LeakFree`; the premise "a linked program" becomes "the module's
+   sources compile" (`srcModule`, `mainOf`). Still stated and owed (§5 item 2).
+4. **The inspector** (`Certified.inspector`, D352): a built program's file is the image of exactly the
+   sources whose functions `once elaborate` prints (`Inspect.Proof.build-factors`). The build does not
+   run the optimizer (D459), so `once optimize` now shows an IR no file is built from, until the core
+   has its own optimizations. `once stats` measures the new image (`Measure`).
+
+### Alternatives
+Keeping master's lowering for libraries (the old lowering stays, and its proofs with it); a library
+image of the new path now (a design for exported entry points with no consumer).
+
+## D466 — TWO CALCULI, TWO KINDS OF PASS: SOURCE LAWS IN THE SPEC'S CALCULUS, RESOURCE LAWS IN THE LINEAR CORE; NO BCC BETWEEN (2026-11-19)
+
+**Proposed** (the user's discussion, 2026-11-19; for review). **Applies**: plan 0.146 §4 (the layer above the
+core), the plan that follows it; GOAL.md ("Programming is mathematics"); the Spec's core (D231); plan-ref's
+OCP-0009 (`bootstrap/poc/OCP0009/ARCHITECTURE.md` K0/K1, `PATHS.md`). **Amends**: D458 ("the IR optimizer's
+passes move to the linear core"); D459 (the bridge's source is `Expr`: it becomes the Spec term's derivation). **Would supersede**, once carried out: D035 (two stages: surface, then a
+point-free core IR), D046 (the grade-erased IR).
+
+### The problem
+Since D458 the linear core is compiled from the elaborator's graded `Expr`; no code goes through `Once.IR`.
+The IR is left with two roles: the middle term of the proof (`Lq-ok` meets the front end's bridge at
+`evalᴰ (elaborateFull e)`), and the optimizer's language (`Optimize`; `rewrite-ir`), which the new path does
+not run. The IR cannot be retired while that loses optimizations. The question is which pipeline the language
+calls for, argued from GOAL.md, the Spec and plan-ref, not from what the code does today.
+
+### What the sources say
+* **GOAL.md**: a program is a morphism; reasoning about it is "equational reasoning, naturality, fold
+  fusion". Optimizations are theorems about the meaning.
+* **The Spec** (D231): the core is a graded λ-calculus (de Bruijn, Church style, quantity and purity on
+  `lam`/`case`/`let′`); "the categorical combinators … are not formers: they are λ-terms over these"
+  (`Spec.Core.Derived`). Its metatheory proves typed substitution and `let x = u in t ≡ t[u/x]` for pure `u`.
+* **plan-ref**: K0 rejected a point-free kernel (substitution strict only up to `Hom`) for de Bruijn; K1
+  chose "linear SMCC core + QTT {𝟘,𝟙,ω} in front" (the Fox comonoid is the ω fragment), and names
+  `elaborate : Expr Γ Ψ A → IR` (Ψ discarded) the architecture bug. `PATHS.md`'s thesis: "make the linear SMCC
+  the IR core, recover cartesian/duplication as an explicit comonoid layer above it". A pass is a reduction
+  sequence (`NbEPDirPass`), correct by transport along it, stable under substitution on de Bruijn terms
+  (`NbEPDirDBPass`); the dependent kernel's conversion is `core(Hom)`, the symmetric part of the same
+  reduction, while optimization is its directed part.
+
+### Findings
+1. **A graded BCC is the linear core.** Grades written on a cartesian category describe nothing it does
+   (every object copies and drops for free), which is why plan 0.52 M2 could erase `mk-kind q π` and why
+   the quantity never came back (D143). Grades that mean something make copying exist only through the ω
+   comonoid: a linear symmetric monoidal closed category with a graded comonoid, the model of QTT, whose
+   point-free syntax is `LinCore`'s. There is no principled third language between the Spec's calculus and
+   the linear core.
+2. **The old optimizer's rules are the Spec calculus's β/η.** `fst ∘ ⟨f,g⟩ = f` is `fst (pair a b) ⟶ a`
+   (b pure; One is affine, D276); `case f g ∘ inl` is case-of-known-constructor; closure β is `app (lam t) u`
+   with the Spec's purity condition; `⟨fst,snd⟩ = id`, `[inl,inr] = id` and `terminal ∘ f = terminal` are η
+   for ×, + and Unit (the last for pure `f`, the old `has-effect?`); `id ∘ f` and associativity are artifacts
+   of the point-free form and do not arise. Fold fusion is a law of `fold`/`roll`.
+3. **The optimizer is not part of the elaborator.** The elaborator realizes the Spec derivation of the source
+   (checker sound and complete, D337; the inspector, D352). Checking and optimizing share one reduction
+   relation but use it differently: conversion compares and never rewrites, optimization rewrites one way.
+   Separate passes compose and are proved per step.
+4. **At the source level grades enter only through typing.** A reduction keeps the usage typing (the Spec's
+   substitution lemma); freeing is not its concern. Dup, drop and frees appear only after `Lq`.
+
+### Decision (proposed)
+The pipeline:
+```
+parse → resolve → check + elaborate         (t : Tm, d : its core derivation, graded): the Spec's calculus
+                                             (proved against the Spec)
+  → [L1] t ⟶* t′, one reduction relation     β (pure), case-of-known-constructor, ×/+/Unit η, δ (inline a
+                                             reference), fold fusion, dead code (pure, affine); each rule
+                                             sound for Spec.Core.Meaning; d′ for t′ by subject reduction,
+                                             proved ONCE for the relation (sr, sr*), not per pass
+  → Lq over the derivation d′                usage → split/dup/drop (the POC's Lq⟦_⟧ : Γ ⊢[ρ] A → LTm);
+                                             the one bridge, against the Spec's meaning
+  → [L2] resource passes, linear core        SMC/comonoid laws (Lq's moves), free at last use, reuse in place
+                                             (D428), borrowing (D420 pt 3), layers in place (B1.8), direct
+                                             calls (D409 labels), arith blocks (D462); core meaning + NoLeak
+  → image → room checks → arch backend
+```
+* **D458 amended**: the β/η family goes to L1; only resource optimizations go to the linear core.
+* **L1's terms are the Spec's `Tm`**, raw de Bruijn with the extrinsic graded judgment (amended, the user,
+  2026-11-19). D231: the Spec's core "is the non-dependent fragment of the POC's kernel. The dependent kernel
+  extends this judgment. It is never a second one." So rules written on `Tm` grow into the kernel, and the
+  dependent kernel's conversion is later built on the same relation (its symmetric part, plan-ref's
+  `core(Hom)`). This is plan-ref's own shape: raw terms, one reduction relation, `sr` once, passes as `⟶*`,
+  stable under substitution (`NbEPDirDBPass`). Rules written on the compiler's intrinsic `Expr Γ Ψ A` would be
+  rewritten for dependent types (`Expr` is the current checker's output), and their per-rule index work (Ψ
+  vectors, context splits) is not needed once subject reduction is one theorem.
+* **The checker outputs the Spec term and its derivation as data** (D459's rejected alternative, now taken).
+  Mostly shared with the proofs already: the checker's witness `TypeCheck.Witness.W⇒ L e A t Ψ =
+  Σ[ d ∈ L ⊢ e ⇒ A ↝ t ] Use⇒ d Ψ` is the Spec's surface derivation naming `t`, and the verified checker
+  returns it beside its result (`checkElabV ctx e A ≡ (success Ψ eE dd f , w)`). Owed: (i) the witness at
+  the program's own table (`WI`/`WC` hold for every `Pack`); (ii) the shipped checker keeping it (today
+  `Verified` takes `proj₁`; extraction size and speed to measure); (iii) the core judgment's derivation of
+  `t` from the surface derivation and its usage (likely in `Adequacy/SpecCore`, to check); (iv) subject
+  reduction of the graded core judgment for L1's rules (typed substitution exists in `Spec.Metatheory`; usage
+  scaling under β is new). `Lq` moves from `Expr` to the core derivation, the POC's original form; `Expr`
+  becomes the checker's internal detail.
+* **`Once.IR` retires** in this order: (1) measure on master which optimizer rules pay (`codegen-measure`,
+  `--opt` against none, per rule where possible); (2) port those to L1/L2 with proofs; (3) re-target `Lq-ok`
+  and the meaning half of the front end's bridge at `Spec.Core.Meaning`, so the IR leaves the proof chain;
+  (4) move the gates off the IR (`Compile.checkModule`) and `Interp`/the trace off `IR.Semantics.Trace`;
+  (5) delete `Once.IR`, `elaborateFull`, the IR semantics, `Optimize`, `Arith.Machine.Rewrite` and the
+  IR-side stacks. Timing: a plan after 0.146, unless the merge's cost criterion (§5 item 6) needs a port first.
+
+### Alternatives
+* Keep the IR, cleaned and renamed (`Comb`, `BCC`), as the semantic layer and the optimizer's language: an
+  ungraded layer kept only as a proof's middle term, and an optimizer that cannot state the resource laws.
+* Re-grade the IR (D458's option c): labels on a cartesian category, or, done properly, a second copy of the
+  linear core.
+* All optimizations in the linear core (D458 as written): the source laws then route explicit dups and drops,
+  and leave the relation the dependent kernel's conversion will use.
+* Optimizations inside the elaborator: the checker's proof and the inspector would be about a term the
+  source does not state.
+* L1 over the compiler's `Expr` (this entry's first draft): typed by construction, but every pass rebuilds
+  usage indices, and the work does not carry to the dependent kernel. The draft's reason, that `Tm` needs
+  subject reduction per pass, was wrong: it is one theorem about the relation.

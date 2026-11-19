@@ -31,9 +31,27 @@ open import Once.IR.Semantics.Trace using (Interp)
 open import Once.Target.Arch using (Arch)
 import Once.Adequacy.Compile as Compile
 import Once.Program as Program
+open import Data.Bool using (Bool)
+open import Relation.Binary.PropositionalEquality using (_≡_)
+import Data.Maybe
+import Data.Product
+import Data.Sum
+import Once.Parser.Module.Core
+import Once.IR
+import Once.IRTy
+import Once.Spec.Type
+import Once.Denotation.Admissible
+import Once.Compile
+import Once.LinCore.Emit
 
 module Once.Adequacy.SpecApex
-  (arch-correct : ∀ (ι : Interp) (arch : Arch) → Compile.ArchCorrect arch ι) where
+  (arch-correct : ∀ (ι : Interp) (arch : Arch) → Compile.ArchCorrect arch ι)
+  -- plan 0.146 (D464): a program Builds (the compiler's file, `LinCore.CoreFile`)
+  (core-built : ∀ (arch : Arch) (doOpt : Bool) (m : Once.Parser.Module.Core.Resolved)
+                  (ir : Once.IR.IR (Once.IRTy.⌊_⌋ (Once.Spec.Type.Unit {0})) (Once.IRTy.⌊_⌋ (Once.Spec.Type.Unit {0}))) →
+                Once.Denotation.Admissible.AdmissibleM arch (Once.Parser.Module.Core.Resolved.rmodule m) →
+                Once.Compile.moduleToIR m ≡ Data.Maybe.just ir →
+                Data.Product.Σ (Once.Compile.FileOf arch) (λ F → Once.LinCore.Emit.coreFileOf arch doOpt m ≡ Data.Sum.inj₂ F)) where
 
 open import Data.Bool using (Bool)
 open import Data.List using (List; map)
@@ -83,7 +101,7 @@ import Once.Adequacy.SpecFront.Words as Words
 import Once.Adequacy.SpecGrammar.Written as Written
 import Once.Adequacy.SpecFront.TypedBack
 
-module VC = Compile.WithCPU arch-correct
+module VC = Compile.WithCPU arch-correct core-built
   using (Admissible; SigOf; compile; correctᵈ; exec; ⟦_⟧ᵈᴵ)
 
 ------------------------------------------------------------------------

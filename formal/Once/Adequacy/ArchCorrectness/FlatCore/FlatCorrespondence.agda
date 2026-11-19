@@ -146,7 +146,7 @@ open MemOps {FS} using (writeLoc; writeLocToHeap; writeLocToStack; writeHeapMem
                        ; readLoc; writeLoc-read-same-stack; writeLoc-preserves-other)
 open ExecFinal {FS} using (exec-load-via-resolved; exec-load-suc-via-resolved; exec-load-with-value
                           ; exec-store-via-resolved; exec-store-suc-via-resolved
-                          ; exec-load-at-resolved; exec-store-at-resolved; exec-store-in-block; in-block?; exec-addr-at-resolved; exec-addr-in-block)
+                          ; exec-load-at-resolved; exec-store-at-resolved; exec-store-in-block; in-block?; exec-addr-at-resolved; exec-addr-in-block; frame-gate; heap-gate)
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
 open FlatState using (floc; fclosure; falloc; fpc; fret)
@@ -1374,9 +1374,9 @@ sim-load-at {hv} k hl w fs s s' corr i-eq h-eq st =
     cleanFlat : FlatState
     cleanFlat = record fs { floc = record (floc fs) { regs = writeReg (regs (floc fs)) Output w }
                           ; falloc = falloc fs ; fpc = suc (fpc fs) }
-    floc-eq : exec-load-at-resolved k Output (sv-as-loc (readReg (regs (floc fs)) Input1)) (floc fs)
+    floc-eq : exec-load-at-resolved k Output (frame-gate (falloc fs) k (sv-as-loc (readReg (regs (floc fs)) Input1))) (floc fs)
               ≡ record (floc fs) { regs = writeReg (regs (floc fs)) Output w }
-    floc-eq = trans (cong (λ m → exec-load-at-resolved k Output m (floc fs)) (cong sv-as-loc i-eq))
+    floc-eq = trans (cong (λ m → exec-load-at-resolved k Output m (floc fs)) (cong (λ x → frame-gate (falloc fs) k (sv-as-loc x)) i-eq))
                     (cong (λ mv → exec-load-with-value Output mv (floc fs)) h-eq)
     reduces : flat-exec-instr (load-at k) [] fs ≡ cleanFlat
     reduces = cong (λ fl → record fs { floc = fl ; falloc = falloc fs ; fpc = suc (fpc fs) }) floc-eq
@@ -1398,9 +1398,9 @@ sim-addr-at {hv} k hl fs s s' corr i-eq ib st =
     cleanFlat : FlatState
     cleanFlat = record fs { floc = record (floc fs) { regs = writeReg (regs (floc fs)) Output p }
                           ; falloc = falloc fs ; fpc = suc (fpc fs) }
-    floc-eq : exec-addr-at-resolved (block-size (falloc fs)) k (sv-as-loc (readReg (regs (floc fs)) Input1)) (floc fs)
+    floc-eq : exec-addr-at-resolved (block-size (falloc fs)) k (heap-gate (sv-as-loc (readReg (regs (floc fs)) Input1))) (floc fs)
               ≡ record (floc fs) { regs = writeReg (regs (floc fs)) Output p }
-    floc-eq = trans (cong (λ m → exec-addr-at-resolved (block-size (falloc fs)) k m (floc fs)) (cong sv-as-loc i-eq))
+    floc-eq = trans (cong (λ m → exec-addr-at-resolved (block-size (falloc fs)) k m (floc fs)) (cong (λ x → heap-gate (sv-as-loc x)) i-eq))
                     (cong (λ b → exec-addr-in-block b (AtDynamic (offsetHL hl k)) (floc fs)) ib)
     reduces : flat-exec-instr (addr-at k) [] fs ≡ cleanFlat
     reduces = cong (λ fl → record fs { floc = fl ; falloc = falloc fs ; fpc = suc (fpc fs) }) floc-eq
@@ -1424,9 +1424,9 @@ sim-store-at {hv} k hl fs s s' corr i-eq live guard-ib guard sm =
     bs = block-size (falloc fs)
     cleanFlat : FlatState
     cleanFlat = record fs { floc = writeLocToHeap (floc fs) (offsetHL hl k) v ; falloc = falloc fs ; fpc = suc (fpc fs) }
-    floc-eq : exec-store-at-resolved bs k (sv-as-loc (readReg (regs (floc fs)) Input1)) v (floc fs)
+    floc-eq : exec-store-at-resolved bs k (frame-gate (falloc fs) k (sv-as-loc (readReg (regs (floc fs)) Input1))) v (floc fs)
               ≡ writeLocToHeap (floc fs) (offsetHL hl k) v
-    floc-eq = trans (cong (λ m → exec-store-at-resolved bs k m v (floc fs)) (cong sv-as-loc i-eq))
+    floc-eq = trans (cong (λ m → exec-store-at-resolved bs k m v (floc fs)) (cong (λ x → frame-gate (falloc fs) k (sv-as-loc x)) i-eq))
                     (trans (cong (λ b → exec-store-in-block b (AtDynamic (offsetHL hl k)) v (floc fs)) guard-ib) guard)
     reduces : flat-exec-instr (store-at k) [] fs ≡ cleanFlat
     reduces = cong (λ fl → record fs { floc = fl ; falloc = falloc fs ; fpc = suc (fpc fs) }) floc-eq
@@ -1912,11 +1912,12 @@ sim-dealloc-stack {hv} n fs s s' corr restores st = record
 sim-ret : {hv : HeapView} (b rpc : ℕ) (rest : List ℕ)
           (fs : FlatState) (s s' : State) → FlatCorr hv fs s
         → fret fs ≡ rpc ∷ rest
+        → b ≡ frame-slots (falloc fs)
         → rreg s sp-reg + slots b + slot-size
             ≡ frame-base (current-frame (leave-frame (falloc fs)))
         → SetsRole s s' role-sp (rreg s sp-reg + slots b + slot-size)
-        → FlatCorr hv (do-ret (fret fs) fs) s'
-sim-ret {hv} b rpc rest fs s s' corr req restores st rewrite req = record
+        → FlatCorr hv (do-ret b (fret fs) fs) s'
+sim-ret {hv} b rpc rest fs s s' corr req beq restores st rewrite ret-pass b fs rpc rest req beq = record
   { in1-eq = keep-in1 corr st (λ ()) ; out-eq = keep-out corr st (λ ())
   ; clos-eq = keep-clos corr st (λ ()) ; halt-eq = keep-halt corr st ; sp-eq = trans (at-role st) restores ; frontier-eq = keep-heap-reg corr st (λ ())
   -- `%rsp` only RISES, so the high-water mark stays below it and the freed
@@ -2647,3 +2648,333 @@ ret-spill xoff {am} mem LK LK' stk r f b v ((f₀ , b₀) ∷ fr) (x ∷ rs) sw 
     a<next : frame-base f + slots b < frame-base f₀
     a<next = subst (frame-base f + slots b <_) g
                    (m<m+n (frame-base f + slots b) slot-size>0)
+
+------------------------------------------------------------------------
+-- D452: AN ACCESS THROUGH A STACK POINTER, IN ANY LIVE WINDOW.
+--
+-- The frame gate passes a stack location only inside a live frame's window
+-- (`in-window` over `live-frames`, which is `frames-of`). `StackWindows`
+-- relates every live window to memory, its floors separating the frames:
+-- so a read finds its word there, and a store into one window keeps every
+-- other (each lies wholly below the next one's floor).
+------------------------------------------------------------------------
+open ExecFinal {FS} using (in-window; live-frames; stack-gate-true)
+open FrameSemantics FS using (_≟F_)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
+import Data.Bool
+import Data.Bool.Properties
+import Data.Nat
+import Data.Nat.Properties
+
+private
+  ∨-true : ∀ (a b : Data.Bool.Bool) → (a Data.Bool.∨ b) ≡ true → (a ≡ true) ⊎ (b ≡ true)
+  ∨-true true  b _ = inj₁ refl
+  ∨-true false b e = inj₂ e
+
+  ltᵇ⇒< : ∀ m n → (m Data.Nat.<ᵇ n) ≡ true → m < n
+  ltᵇ⇒< m n e = Data.Nat.Properties.<ᵇ⇒< m n (subst Data.Bool.T (sym e) tt)
+
+-- the frame a passed slot lies in is at or above the floor
+window-floor : ∀ {am : AddrMap} {mem : Memory} {stk : StackMem FS} (fl : ℕ) (fr : List (Frame × ℕ)) (f : Frame) (j : Slot)
+             → in-window fr f j ≡ true → StackWindows am mem stk fl fr → fl ≤ frame-base f
+window-floor-at : ∀ {am : AddrMap} {mem : Memory} {stk : StackMem FS} (fl : ℕ) (g : Frame) (b : ℕ) (fr : List (Frame × ℕ)) (f : Frame) (j : Slot)
+                → (d : Dec (g ≡ f)) → win-pick d (j Data.Nat.<ᵇ b) (in-window fr f j) ≡ true
+                → StackWindows am mem stk fl ((g , b) ∷ fr) → fl ≤ frame-base f
+window-floor fl [] f j () sw
+window-floor fl ((g , b) ∷ fr) f j w sw = window-floor-at fl g b fr f j (g ≟F f) w sw
+window-floor-at fl g b fr .g j (yes refl) w (bd , win , rest) = bd
+window-floor-at fl g b fr f j (no _) w (bd , win , rest) =
+  ≤-trans (≤-trans bd (m≤m+n (frame-base g) (slots b))) (window-floor (frame-base g + slots b) fr f j w rest)
+
+-- a written slot of a live window reads its encoding
+window-read : ∀ {am : AddrMap} {mem : Memory} {stk : StackMem FS} (fl : ℕ) (fr : List (Frame × ℕ)) (f : Frame) (j : Slot)
+            → in-window fr f j ≡ true → StackWindows am mem stk fl fr
+            → ∀ (v : StoredValue FS) → stk f j ≡ just v
+            → readMem mem (frame-base f + slot-to-disp j) ≡ just (enc-sv-at am v)
+window-read-at : ∀ {am : AddrMap} {mem : Memory} {stk : StackMem FS} (fl : ℕ) (g : Frame) (b : ℕ) (fr : List (Frame × ℕ)) (f : Frame) (j : Slot)
+               → (d : Dec (g ≡ f)) → win-pick d (j Data.Nat.<ᵇ b) (in-window fr f j) ≡ true
+               → StackWindows am mem stk fl ((g , b) ∷ fr)
+               → ∀ (v : StoredValue FS) → stk f j ≡ just v
+               → readMem mem (frame-base f + slot-to-disp j) ≡ just (enc-sv-at am v)
+window-read-here : ∀ {am : AddrMap} {mem : Memory} {stk : StackMem FS} (fl : ℕ) (f : Frame) (b : ℕ) (fr : List (Frame × ℕ)) (j : Slot)
+                 → ((j Data.Nat.<ᵇ b) ≡ true) ⊎ (in-window fr f j ≡ true)
+                 → StackWindows am mem stk fl ((f , b) ∷ fr)
+                 → ∀ (v : StoredValue FS) → stk f j ≡ just v
+                 → readMem mem (frame-base f + slot-to-disp j) ≡ just (enc-sv-at am v)
+window-read fl [] f j () sw v ev
+window-read fl ((g , b) ∷ fr) f j w sw v ev = window-read-at fl g b fr f j (g ≟F f) w sw v ev
+window-read-at fl g b fr .g j (yes refl) w sw v ev = window-read-here fl g b fr j (∨-true (j Data.Nat.<ᵇ b) _ w) sw v ev
+window-read-at fl g b fr f j (no _) w (bd , win , rest) v ev = window-read (frame-base g + slots b) fr f j w rest v ev
+window-read-here fl f b fr j (inj₁ lt) (bd , win , rest) v ev = win j (ltᵇ⇒< j b lt) v ev
+window-read-here fl f b fr j (inj₂ w) (bd , win , rest) v ev = window-read (frame-base f + slots b) fr f j w rest v ev
+
+-- a window the store lands beyond is kept: its cells lie below the store's
+-- address, and it is not the written cell's frame at a slot it holds
+window-keep : ∀ {am : AddrMap} {s s' : State} (ls : LocState FS) (g : Frame) (b : ℕ) (f : Frame) (j : Slot) (Out : StoredValue FS)
+            → SetsMem s s' (frame-base f + slot-to-disp j) (enc-sv-at am Out)
+            → frame-base g + slots b ≤ frame-base f
+            → (∀ k → k < b → ¬ (AtStack {FS} f j ≡ AtStack g k))
+            → Window am (memory s) (stackMem ls) g b
+            → Window am (memory s') (stackMem (writeLoc ls (AtStack f j) Out)) g b
+window-keep {am} {s} {s'} ls g b f j Out sm le ne win k k<b v ev =
+  trans (off-addr sm (frame-base g + slot-to-disp k) (λ e → <⇒≢ below e))
+        (win k k<b v (trans (sym (writeLoc-preserves-other ls (AtStack f j) (AtStack g k) Out (ne k k<b))) ev))
+  where
+    below : frame-base g + slot-to-disp k < frame-base f + slot-to-disp j
+    below = <-≤-trans (+-monoʳ-< (frame-base g) (*-monoˡ-< slot-size k<b))
+              (≤-trans le (m≤m+n (frame-base f) (slot-to-disp j)))
+
+-- …so a store into any live window keeps them all
+windows-store-in : ∀ {am : AddrMap} {s s' : State} (ls : LocState FS) (fl : ℕ) (fr : List (Frame × ℕ)) (f : Frame) (j : Slot) (Out : StoredValue FS)
+                 → in-window fr f j ≡ true
+                 → SetsMem s s' (frame-base f + slot-to-disp j) (enc-sv-at am Out)
+                 → StackWindows am (memory s) (stackMem ls) fl fr
+                 → StackWindows am (memory s') (stackMem (writeLoc ls (AtStack f j) Out)) fl fr
+windows-store-at : ∀ {am : AddrMap} {s s' : State} (ls : LocState FS) (fl : ℕ) (g : Frame) (b : ℕ) (fr : List (Frame × ℕ)) (f : Frame) (j : Slot) (Out : StoredValue FS)
+                 → (d : Dec (g ≡ f)) → win-pick d (j Data.Nat.<ᵇ b) (in-window fr f j) ≡ true
+                 → SetsMem s s' (frame-base f + slot-to-disp j) (enc-sv-at am Out)
+                 → StackWindows am (memory s) (stackMem ls) fl ((g , b) ∷ fr)
+                 → StackWindows am (memory s') (stackMem (writeLoc ls (AtStack f j) Out)) fl ((g , b) ∷ fr)
+windows-store-here : ∀ {am : AddrMap} {s s' : State} (ls : LocState FS) (fl : ℕ) (f : Frame) (b : ℕ) (fr : List (Frame × ℕ)) (j : Slot) (Out : StoredValue FS)
+                   → ((j Data.Nat.<ᵇ b) ≡ true) ⊎ (in-window fr f j ≡ true)
+                   → SetsMem s s' (frame-base f + slot-to-disp j) (enc-sv-at am Out)
+                   → StackWindows am (memory s) (stackMem ls) fl ((f , b) ∷ fr)
+                   → StackWindows am (memory s') (stackMem (writeLoc ls (AtStack f j) Out)) fl ((f , b) ∷ fr)
+windows-store-in ls fl [] f j Out () sm sw
+windows-store-in ls fl ((g , b) ∷ fr) f j Out w sm sw = windows-store-at ls fl g b fr f j Out (g ≟F f) w sm sw
+windows-store-at ls fl g b fr .g j Out (yes refl) w sm sw = windows-store-here ls fl g b fr j Out (∨-true (j Data.Nat.<ᵇ b) _ w) sm sw
+windows-store-at {am} ls fl g b fr f j Out (no ne) w sm (bd , win , rest) =
+  bd
+  , window-keep ls g b f j Out sm (window-floor (frame-base g + slots b) fr f j w rest)
+      (λ k _ e → ne (sym (atstack-frame-inj e))) win
+  , windows-store-in ls (frame-base g + slots b) fr f j Out w sm rest
+windows-store-here ls fl f b fr j Out (inj₁ lt) sm sw = windows-slot-store ls f b j Out fl fr sm (ltᵇ⇒< j b lt) sw
+windows-store-here {am} ls fl f b fr j Out (inj₂ w) sm (bd , win , rest) =
+  bd
+  -- the slot lies in a later window, so this one's floor is at its own base:
+  -- it holds no slot at all
+  , (λ k k<b → ⊥-elim (<-irrefl refl (<-≤-trans (m<m+n (frame-base f) (*-monoˡ-< slot-size (≤-<-trans z≤n k<b)))
+                                                  (window-floor (frame-base f + slots b) fr f j w rest))))
+  , windows-store-in ls (frame-base f + slots b) fr f j Out w sm rest
+
+-- the gate's outcome at a stack location: the slot is inside a live window
+gate-win : ∀ (al : AllocState {FS}) (k : ℕ) (f : Frame) (j : Slot)
+         → frame-gate al k (just (AtStack f j)) ≡ just (AtStack f j)
+         → in-window (frames-of al) f (k + j) ≡ true
+gate-win al k f j g = stack-gate-true (in-window (live-frames al) f (k + j)) (AtStack f j) g
+
+-- the address an offset through a stack pointer reaches: the slot's
+stack-addr : ∀ {hv : HeapView} {fs : FlatState} {s : State} (k : ℕ) (f : Frame) (j : Slot) → FlatCorr hv fs s
+           → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f j)
+           → rreg s in1-reg + slot-to-disp k ≡ frame-base f + slot-to-disp (k + j)
+stack-addr {hv} {fs} {s} k f j corr i-eq =
+  trans (cong (_+ slot-to-disp k)
+          (trans (in1-eq corr) (trans (cong (enc-sv hv) i-eq)
+            (trans (slot-addr-linear f j) (cong (λ w → frame-base f + j * w) word-eq)))))
+    (trans (+-assoc (frame-base f) (j * slot-size) (k * slot-size))
+      (cong (frame-base f +_) (trans (+-comm (j * slot-size) (k * slot-size))
+                                     (sym (Data.Nat.Properties.*-distribʳ-+ slot-size k j)))))
+
+-- …and the word there, a written slot of a live window
+stack-read : ∀ {hv : HeapView} {fs : FlatState} {s : State} (k : ℕ) (f : Frame) (j : Slot) (w : StoredValue FS) → FlatCorr hv fs s
+           → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f j)
+           → frame-gate (falloc fs) k (just (AtStack f j)) ≡ just (AtStack f j)
+           → stackMem (floc fs) f (k + j) ≡ just w
+           → readMem (memory s) (rreg s in1-reg + slot-to-disp k) ≡ just (enc-sv hv w)
+stack-read {hv} {fs} {s} k f j w corr i-eq g h-eq =
+  trans (cong (readMem (memory s)) (stack-addr k f j corr i-eq))
+        (window-read (lo hv) (frames-of (falloc fs)) f (k + j) (gate-win (falloc fs) k f j g) (stack-eq corr) w h-eq)
+
+-- a stack slot of a live window is above every mapped heap cell
+stack-above-heap : ∀ {hv : HeapView} {fs : FlatState} {s : State} (f : Frame) (j : Slot) → FlatCorr hv fs s
+                 → in-window (frames-of (falloc fs)) f j ≡ true
+                 → ∀ (hl : HeapLocation) → HDom hv hl → ¬ (frame-base f + slot-to-disp j ≡ haddr hv hl)
+stack-above-heap {hv} {fs} f j corr w hl d e =
+  <⇒≢ (<-≤-trans (dom-below hv d)
+         (≤-trans (front-lo hv) (≤-trans (window-floor (lo hv) (frames-of (falloc fs)) f j w (stack-eq corr))
+                                          (m≤m+n (frame-base f) (slot-to-disp j)))))
+      (sym e)
+
+-- load-at k through a stack pointer: the slot's word into Output
+sim-load-at-stack : {hv : HeapView} (k : ℕ) (f : Frame) (j : Slot) (w : StoredValue FS) (fs : FlatState) (s s' : State) → FlatCorr hv fs s
+  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f j)
+  → frame-gate (falloc fs) k (just (AtStack f j)) ≡ just (AtStack f j)
+  → stackMem (floc fs) f (k + j) ≡ just w
+  → SetsRole s s' role-out (enc-sv hv w)
+  → FlatCorr hv (flat-exec-instr (load-at k) [] fs) s'
+sim-load-at-stack {hv} k f j w fs s s' corr i-eq g h-eq st =
+  subst (λ z → FlatCorr hv z s') (sym reduces) corr-clean
+  where
+    cleanFlat : FlatState
+    cleanFlat = record fs { floc = record (floc fs) { regs = writeReg (regs (floc fs)) Output w }
+                          ; falloc = falloc fs ; fpc = suc (fpc fs) }
+    floc-eq : exec-load-at-resolved k Output (frame-gate (falloc fs) k (sv-as-loc (readReg (regs (floc fs)) Input1))) (floc fs)
+              ≡ record (floc fs) { regs = writeReg (regs (floc fs)) Output w }
+    floc-eq = trans (cong (λ x → exec-load-at-resolved k Output (frame-gate (falloc fs) k (sv-as-loc x)) (floc fs)) i-eq)
+                (trans (cong (λ m → exec-load-at-resolved k Output m (floc fs)) g)
+                       (cong (λ mv → exec-load-with-value Output mv (floc fs)) h-eq))
+    reduces : flat-exec-instr (load-at k) [] fs ≡ cleanFlat
+    reduces = cong (λ fl → record fs { floc = fl ; falloc = falloc fs ; fpc = suc (fpc fs) }) floc-eq
+    corr-clean : FlatCorr hv cleanFlat s'
+    corr-clean = record
+      { in1-eq = keep-in1 corr st (λ ()) ; out-eq = at-role st
+      ; clos-eq = keep-clos corr st (λ ()) ; halt-eq = keep-halt corr st ; sp-eq = keep-sp corr st (λ ()) ; frontier-eq = keep-heap-reg corr st (λ ()) ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr ; dom-sized = dom-sized corr ; heap-eq = keep-heap corr st ; lo-le = keep-lo-le corr st (λ ()) ; stack-eq = keep-stack corr st }
+
+-- store-at k through a stack pointer: Output into the slot of its live window
+sim-store-at-stack : {hv : HeapView} (k : ℕ) (f : Frame) (j : Slot) (fs : FlatState) (s s' : State) → FlatCorr hv fs s
+  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f j)
+  → frame-gate (falloc fs) k (just (AtStack f j)) ≡ just (AtStack f j)
+  → SetsMem s s' (rreg s in1-reg + slot-to-disp k) (enc-sv hv (readReg (regs (floc fs)) Output))
+  → FlatCorr hv (flat-exec-instr (store-at k) [] fs) s'
+sim-store-at-stack {hv} k f j fs s s' corr i-eq g sm =
+  subst (λ z → FlatCorr hv z s') (sym reduces) corr-clean
+  where
+    v = readReg (regs (floc fs)) Output
+    bs = block-size (falloc fs)
+    win = gate-win (falloc fs) k f j g
+    cleanFlat : FlatState
+    cleanFlat = record fs { floc = writeLoc (floc fs) (AtStack f (k + j)) v ; falloc = falloc fs ; fpc = suc (fpc fs) }
+    floc-eq : exec-store-at-resolved bs k (frame-gate (falloc fs) k (sv-as-loc (readReg (regs (floc fs)) Input1))) v (floc fs)
+              ≡ writeLoc (floc fs) (AtStack f (k + j)) v
+    floc-eq = trans (cong (λ x → exec-store-at-resolved bs k (frame-gate (falloc fs) k (sv-as-loc x)) v (floc fs)) i-eq)
+                    (cong (λ m → exec-store-at-resolved bs k m v (floc fs)) g)
+    reduces : flat-exec-instr (store-at k) [] fs ≡ cleanFlat
+    reduces = cong (λ fl → record fs { floc = fl ; falloc = falloc fs ; fpc = suc (fpc fs) }) floc-eq
+    sm-base : SetsMem s s' (frame-base f + slot-to-disp (k + j)) (enc-sv hv v)
+    sm-base = subst (λ a → SetsMem s s' a (enc-sv hv v)) (stack-addr k f j corr i-eq) sm
+    corr-clean : FlatCorr hv cleanFlat s'
+    corr-clean = record
+      { in1-eq = mkeep-in1 corr sm ; out-eq = mkeep-out corr sm
+      ; clos-eq = mkeep-clos corr sm ; halt-eq = mkeep-halt corr sm ; sp-eq = mkeep-sp corr sm ; frontier-eq = mkeep-heap-reg corr sm ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr ; dom-sized = dom-sized corr
+      ; heap-eq = store-slot-heap-eq hv (frame-base f + slot-to-disp (k + j)) (enc-sv hv v) s s' (floc fs)
+                    sm-base (dom-written corr) (heap-eq corr) (λ hl d e → stack-above-heap f (k + j) corr win hl d e)
+      ; lo-le = mkeep-lo-le corr sm
+      ; stack-eq = windows-store-in (floc fs) (lo hv) (frames-of (falloc fs)) f (k + j) v win sm-base (stack-eq corr) }
+
+-- D452: A STORE INTO ANY LIVE WINDOW MISSES EVERY PENDING RETURN. Into the
+-- target frame's window it is `ret-write-in-frame`; a younger frame's return
+-- cell is its window END, one slot below the next frame's base (`GapNext`), so
+-- strictly below the target frame and the store.
+private
+  -- a frame further down the list is at or above the first one's base
+  head-floor : ∀ {am : AddrMap} {mem : Memory} {stk : StackMem FS} (fl : ℕ) (g : Frame) (b : ℕ) (fr : List (Frame × ℕ)) (f : Frame) (j : Slot)
+             → in-window ((g , b) ∷ fr) f j ≡ true → StackWindows am mem stk fl ((g , b) ∷ fr) → frame-base g ≤ frame-base f
+  head-floor fl g b fr f j w (bd , win , rest) = window-floor (frame-base g) ((g , b) ∷ fr) f j w (≤-refl , win , rest)
+
+ret-write-in-window : ∀ (xoff : ℕ → ℕ) {am : AddrMap} (mem : Memory)
+                        (LK LK' : ℕ → ℕ → Set) (lk : Maybe ℕ) (stk : StackMem FS)
+                        (v : Word) (fl : ℕ) (fr : List (Frame × ℕ)) (rs : List ℕ) (f : Frame) (j : Slot)
+                    → in-window fr f j ≡ true
+                    → (∀ (c w : ℕ) → ¬ (c ≡ frame-base f + slot-to-disp j) → LK c w → LK' c w)
+                    → StackWindows am mem stk fl fr
+                    → RetAddrs xoff mem LK lk fr rs
+                    → RetAddrs xoff (writeMem mem (frame-base f + slot-to-disp j) v) LK' lk fr rs
+ret-write-at : ∀ (xoff : ℕ → ℕ) {am : AddrMap} (mem : Memory)
+                 (LK LK' : ℕ → ℕ → Set) (lk : Maybe ℕ) (stk : StackMem FS)
+                 (v : Word) (fl : ℕ) (g : Frame) (b : ℕ) (fr : List (Frame × ℕ)) (rs : List ℕ) (f : Frame) (j : Slot)
+             → (d : Dec (g ≡ f)) → win-pick d (j Data.Nat.<ᵇ b) (in-window fr f j) ≡ true
+             → (∀ (c w : ℕ) → ¬ (c ≡ frame-base f + slot-to-disp j) → LK c w → LK' c w)
+             → StackWindows am mem stk fl ((g , b) ∷ fr)
+             → RetAddrs xoff mem LK lk ((g , b) ∷ fr) rs
+             → RetAddrs xoff (writeMem mem (frame-base f + slot-to-disp j) v) LK' lk ((g , b) ∷ fr) rs
+ret-write-here : ∀ (xoff : ℕ → ℕ) {am : AddrMap} (mem : Memory)
+                   (LK LK' : ℕ → ℕ → Set) (lk : Maybe ℕ) (stk : StackMem FS)
+                   (v : Word) (fl : ℕ) (f : Frame) (b : ℕ) (fr : List (Frame × ℕ)) (rs : List ℕ) (j : Slot)
+               → ((j Data.Nat.<ᵇ b) ≡ true) ⊎ (in-window fr f j ≡ true)
+               → (∀ (c w : ℕ) → ¬ (c ≡ frame-base f + slot-to-disp j) → LK c w → LK' c w)
+               → StackWindows am mem stk fl ((f , b) ∷ fr)
+               → RetAddrs xoff mem LK lk ((f , b) ∷ fr) rs
+               → RetAddrs xoff (writeMem mem (frame-base f + slot-to-disp j) v) LK' lk ((f , b) ∷ fr) rs
+-- past the head: the head's return cell is below the target frame
+ret-write-past : ∀ (xoff : ℕ → ℕ) {am : AddrMap} (mem : Memory)
+                   (LK LK' : ℕ → ℕ → Set) (lk : Maybe ℕ) (stk : StackMem FS)
+                   (v : Word) (fl : ℕ) (g : Frame) (b : ℕ) (fr : List (Frame × ℕ)) (rs : List ℕ) (f : Frame) (j : Slot)
+               → in-window fr f j ≡ true
+               → (∀ (c w : ℕ) → ¬ (c ≡ frame-base f + slot-to-disp j) → LK c w → LK' c w)
+               → StackWindows am mem stk fl ((g , b) ∷ fr)
+               → RetAddrs xoff mem LK lk ((g , b) ∷ fr) rs
+               → RetAddrs xoff (writeMem mem (frame-base f + slot-to-disp j) v) LK' lk ((g , b) ∷ fr) rs
+ret-write-in-window xoff mem LK LK' lk stk v fl [] rs f j () lag sw r
+ret-write-in-window xoff mem LK LK' lk stk v fl ((g , b) ∷ fr) rs f j w lag sw r =
+  ret-write-at xoff mem LK LK' lk stk v fl g b fr rs f j (g ≟F f) w lag sw r
+ret-write-at xoff mem LK LK' lk stk v fl g b fr rs .g j (yes refl) w lag sw r =
+  ret-write-here xoff mem LK LK' lk stk v fl g b fr rs j (∨-true (j Data.Nat.<ᵇ b) _ w) lag sw r
+ret-write-at xoff mem LK LK' lk stk v fl g b fr rs f j (no _) w lag sw r =
+  ret-write-past xoff mem LK LK' lk stk v fl g b fr rs f j w lag sw r
+ret-write-here xoff mem LK LK' lk stk v fl f b fr rs j (inj₁ lt) lag sw r =
+  ret-write-in-frame xoff mem LK LK' lk stk (frame-base f + slot-to-disp j) v fl f b fr rs
+    (+-monoʳ-< (frame-base f) (*-monoˡ-< slot-size (ltᵇ⇒< j b lt)))
+    (λ c w a<c → lag c w (λ e → <⇒≢ a<c (sym e))) sw r
+ret-write-here xoff mem LK LK' lk stk v fl f b fr rs j (inj₂ w) lag sw r =
+  ret-write-past xoff mem LK LK' lk stk v fl f b fr rs f j w lag sw r
+ret-write-past xoff mem LK LK' lk stk v fl g b fr [] f j w lag sw r = tt
+ret-write-past xoff mem LK LK' lk stk v fl g b [] (x ∷ rs) f j () lag sw r
+ret-write-past xoff {am} mem LK LK' (just _) stk v fl g b ((g′ , b′) ∷ fr) (x ∷ rs) f j w lag (bd , win , rest) (h , gp , t) =
+  lag (frame-base g + slots b) (xoff x) (λ e → <⇒≢ (cell<a) e) h
+  , gp
+  , ret-write-in-window xoff mem LK LK' nothing stk v (frame-base g + slots b) ((g′ , b′) ∷ fr) rs f j w lag rest t
+  where
+    cell<a : frame-base g + slots b < frame-base f + slot-to-disp j
+    cell<a = <-≤-trans (subst (frame-base g + slots b <_) gp (m<m+n (frame-base g + slots b) slot-size>0))
+               (≤-trans (head-floor (frame-base g + slots b) g′ b′ fr f j w rest) (m≤m+n (frame-base f) (slot-to-disp j)))
+ret-write-past xoff {am} mem LK LK' nothing stk v fl g b ((g′ , b′) ∷ fr) (x ∷ rs) f j w lag (bd , win , rest) (h , gp , t) =
+  trans (read-write-miss mem (frame-base f + slot-to-disp j) v (frame-base g + slots b) (λ e → <⇒≢ cell<a e)) h
+  , gp
+  , ret-write-in-window xoff mem LK LK' nothing stk v (frame-base g + slots b) ((g′ , b′) ∷ fr) rs f j w lag rest t
+  where
+    cell<a : frame-base g + slots b < frame-base f + slot-to-disp j
+    cell<a = <-≤-trans (subst (frame-base g + slots b <_) gp (m<m+n (frame-base g + slots b) slot-size>0))
+               (≤-trans (head-floor (frame-base g + slots b) g′ b′ fr f j w rest) (m≤m+n (frame-base f) (slot-to-disp j)))
+
+------------------------------------------------------------------------
+-- D452 (d): A SIGOP'S COMPOUND ARGUMENT AT A STACK ADDRESS. Its step's check
+-- (`sigop-gate`) passed at the value's last word; a window is a prefix of its
+-- frame, so every word of the value is in it, and reads its encoding at or
+-- above the stack pointer (every live frame is).
+------------------------------------------------------------------------
+open ExecFinal {FS} using (range-ok; stack-gate)
+
+private
+  tb : ∀ b → Data.Bool.T b → b ≡ true
+  tb true _ = refl
+
+window-down : ∀ (fr : List (Frame × ℕ)) (f : Frame) (i i′ : Slot) → i′ ≤ i
+            → in-window fr f i ≡ true → in-window fr f i′ ≡ true
+window-down-at : ∀ (g : Frame) (b : ℕ) (fr : List (Frame × ℕ)) (f : Frame) (i i′ : Slot) → i′ ≤ i
+               → (d : Dec (g ≡ f)) → win-pick d (i Data.Nat.<ᵇ b) (in-window fr f i) ≡ true
+               → win-pick d (i′ Data.Nat.<ᵇ b) (in-window fr f i′) ≡ true
+window-down-here : ∀ (b : ℕ) (fr : List (Frame × ℕ)) (f : Frame) (i i′ : Slot) → i′ ≤ i
+                 → ((i Data.Nat.<ᵇ b) ≡ true) ⊎ (in-window fr f i ≡ true)
+                 → ((i′ Data.Nat.<ᵇ b) Data.Bool.∨ in-window fr f i′) ≡ true
+window-down [] f i i′ le ()
+window-down ((g , b) ∷ fr) f i i′ le w = window-down-at g b fr f i i′ le (g ≟F f) w
+window-down-at g b fr f i i′ le (yes _) w = window-down-here b fr f i i′ le (∨-true (i Data.Nat.<ᵇ b) _ w)
+window-down-at g b fr f i i′ le (no _)  w = window-down fr f i i′ le w
+window-down-here b fr f i i′ le (inj₁ lt) =
+  cong (Data.Bool._∨ in-window fr f i′) (tb _ (Data.Nat.Properties.<⇒<ᵇ (≤-<-trans le (ltᵇ⇒< i b lt))))
+window-down-here b fr f i i′ le (inj₂ w) =
+  trans (cong ((i′ Data.Nat.<ᵇ b) Data.Bool.∨_) (window-down fr f i i′ le w)) (Data.Bool.Properties.∨-zeroʳ _)
+
+-- the words of a range the check passed are in the window
+range-win : ∀ (fr : List (Frame × ℕ)) (n : ℕ) (f : Frame) (j k : Slot) → k < n
+          → range-ok fr n (SV-Ptr (AtStack f j)) ≡ true → in-window fr f (k + j) ≡ true
+range-win fr zero    f j k ()        w
+range-win fr (suc n) f j k (s≤s le) w = window-down fr f (n + j) (k + j) (Data.Nat.Properties.+-monoˡ-≤ j le) w
+
+-- …so each reads its slot's encoding, at or above the stack pointer
+stack-arg-read : ∀ {hv : HeapView} {fs : FlatState} {s : State} (k : ℕ) (f : Frame) (j : Slot) (w : StoredValue FS)
+               → FlatCorr hv fs s
+               → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f j)
+               → in-window (frames-of (falloc fs)) f (k + j) ≡ true
+               → stackMem (floc fs) f (k + j) ≡ just w
+               → (readMem (memory s) (rreg s in1-reg + slot-to-disp k) ≡ just (enc-sv hv w))
+                 × (rreg s sp-reg ≤ rreg s in1-reg + slot-to-disp k)
+stack-arg-read {hv} {fs} {s} k f j w corr i-eq win h-eq =
+  stack-read k f j w corr i-eq (cong (λ b → stack-gate b (AtStack f j)) win) h-eq ,
+  subst (rreg s sp-reg ≤_) (sym (stack-addr k f j corr i-eq))
+    (≤-trans (window-floor (rreg s sp-reg) (frames-of (falloc fs)) f (k + j) win sw-sp)
+             (m≤m+n (frame-base f) (slot-to-disp (k + j))))
+  where
+    sw-sp : StackWindows (amap hv) (memory s) (stackMem (floc fs)) (rreg s sp-reg) (frames-of (falloc fs))
+    sw-sp = windows-reanchor (lo hv) (rreg s sp-reg) (current-frame (falloc fs)) (frame-slots (falloc fs))
+              (saved-frames (falloc fs)) (≤-reflexive (sp-eq corr)) (stack-eq corr)

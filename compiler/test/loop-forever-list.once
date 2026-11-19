@@ -1,0 +1,48 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+-- Plan 0.146's third gate server: its STATE IS HEAP-SHAPED. The state is a
+-- list, and each round rebuilds it by a fold that emits every element and
+-- adds one to it. The list never grows, so the live data is the same two
+-- nodes every round; what a round allocates replaces what it consumed. (The
+-- other two gate servers keep one `Int`, which frames alone would carry
+-- without freeing anything; this one passes only if the old nodes are freed.)
+-- The spike's `Examples` §2 (`list-server`) is the same round in the core.
+--
+-- Observed by `foreverCases` (Layer5Spec): still running when the timeout
+-- stops it. The fold runs the tail first, so from [0, 100] the trace starts
+-- 100, 0, 101, 1, 102. It has no expected exit, so tests/run-exit-tests*.sh
+-- skip it.
+--
+-- FAILS until plan 0.146 (memory by a linear core; this is its gate): each round
+-- allocates the new nodes on the bump heap, which nothing reclaims, so the
+-- heap fills; a room check sees it and the run ends `exhausted` (the Host's
+-- SIGABRT, D377) instead of running on.
+
+import I.Test.Emit as E
+
+nil : Unit -> Mu (K Unit + K Int * Id)
+nil _ = In (inl unit)
+
+cons : Int * Mu (K Unit + K Int * Id) -> Mu (K Unit + K Int * Id)
+cons p = In (inr (fst p + 1, snd p))
+
+-- the cons layer: emit the element, then rebuild the node with it plus one
+bumpCons : Act (Int * Mu (K Unit + K Int * Id)) (Mu (K Unit + K Int * Id))
+bumpCons = cons . (snd . pair (emit@E . fst) id)
+
+bumpAll : Act (Mu (K Unit + K Int * Id)) (Mu (K Unit + K Int * Id))
+bumpAll = cata (case nil bumpCons)
+
+next : Mu (K Unit + K Int * Id) -> Void + Mu (K Unit + K Int * Id)
+next l = inr l
+
+round : Act (Mu (K Unit + K Int * Id)) (Void + Mu (K Unit + K Int * Id))
+round = next . bumpAll
+
+serve : Eff (Mu (K Unit + K Int * Id)) Void
+serve = ana round
+
+-- [0, 100]
+main : Eff Unit Void
+main = serve . (\_ -> In (inr (0, In (inr (100, In (inl unit))))))

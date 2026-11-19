@@ -535,7 +535,7 @@ d_loopWarnings_352 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Resolved_8 -> [T_Warning_16]
 d_loopWarnings_352 v0
   = coe
-      du_go_360 (coe MAlonzo.Code.Once.Compile.d_silentRoundDefs_1238 v0)
+      du_go_360 (coe MAlonzo.Code.Once.Compile.d_silentRoundDefs_1232 v0)
 -- Once.Warnings._.go
 d_go_360 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Resolved_8 ->
@@ -557,7 +557,7 @@ d_eqWarnings_366 ::
 d_eqWarnings_366 v0
   = coe
       du_go_374
-      (coe MAlonzo.Code.Once.Compile.d_floatIdentityEqDefs_1240 v0)
+      (coe MAlonzo.Code.Once.Compile.d_floatIdentityEqDefs_1234 v0)
 -- Once.Warnings._.go
 d_go_374 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Resolved_8 ->

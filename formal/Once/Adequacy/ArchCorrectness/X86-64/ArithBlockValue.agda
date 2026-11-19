@@ -6,11 +6,11 @@
 --
 -- THE ARITH BLOCK'S VALUE, at the call site. At a non-faulting arith SigOp
 -- the argument decoded (D392): a scalar is the literal in `Input1`, so in
--- `rdi` (D398, `in1-eq`); a compound is a heap pointer (never a stack one,
--- `StackPtrWF`) whose typed leaves are written cells at their flat offsets
+-- `rdi` (D398, `in1-eq`); a compound is a pointer whose typed leaves are written cells at their flat offsets
 -- (`FlatLeaf.leaf-at`), so the words at `rdi + 8k` (`heap-eq`,
 -- `haddr-offset`), below the frontier and so below the block's frame (the
--- room check, D393). That is the block's `R-input` at its entry state; its
+-- room check, D393) — or, at a stack pointer (D452 (d)), the words of the live
+-- window the SigOp's check passed, above the block's frame. That is the block's `R-input` at its entry state; its
 -- `Int` leaves are words (the store invariant, D397). The Core then gives the
 -- out register: the block's meaning, which is the SigOp's output.
 ------------------------------------------------------------------------
@@ -36,11 +36,13 @@ open import Data.Nat.Properties
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Maybe using (just)
 open import Data.Empty using (⊥-elim)
-open import Data.Bool using (false)
+open import Data.Bool using (false; true)
 
 open import Once.CCC.Machine.SMCore
 open import Once.Memory.HeapAddress using (offsetHL)
-open AbstractExec {FS} using (decode-at; exec-sigop-output; readTyped)
+open AbstractExec {FS} using (decode-at; exec-sigop-output; readTyped; arg-words; tsize)
+open ExecFinal {FS} using (range-ok; live-frames)
+open MemOps {FS} using (readLoc)
 open LocState using (regs; heapMem)
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic)
 open import Once.CCC.Machine.Flat
@@ -67,7 +69,7 @@ open import Once.Arith.SigOp.BlockSem using (block-semM)
 open import Once.Arith.Backend.X86-64.Dispatch using (dispatch-arith)
 open import Once.Adequacy.CPU.X86-64 using (val-x86-64)
 import Once.Adequacy.ArchCorrectness.ArithSimX86-64 as AS
-open import Once.CCC.Machine.FlatLeaf FS using (leafM; fitsN; leaf-at)
+open import Once.CCC.Machine.FlatLeaf FS using (leafM; fitsN; leaf-at; off-lt; tsize-shape)
 
 open import Once.Adequacy.ArchCorrectness.X86-64.FlatSimulation o FS word-eq fmt-eq
   using (xrreg; module C; module CompiledCorrespondence)
@@ -77,8 +79,10 @@ open C using ()
 open C.FlatCorrespondence using (HeapView; enc-sv; module FlatCorr)
 open C.FlatCorrespondence.HeapView using (hfront; haddr)
 import Once.Adequacy.ArchCorrectness.FlatCore.RunLow as RL
-open RL o FS slot-size word-eq using (RunLow; sigop-decodes; run-flat-wf; run-stack-ptr)
-open import Once.CCC.Machine.FlatStackPtr FS using (StackPtrOK; module SPInv)
+open RL o FS slot-size word-eq using (RunLow; sigop-decodes; sigop-gated; run-flat-wf)
+import Data.Sum
+open import Data.Sum using (_⊎_)
+import Data.Bool
 import Once.Adequacy.ArchCorrectness.FlatCore.ArithOutput FS as AO
 open import Once.CCC.Machine.FlatStoreWF FS using (IMfs)
 
@@ -128,12 +132,13 @@ module _ {hv : HeapView} (prog : AbstractTrace) (fs : FlatState) (s : X.State)
                                    (m+n≤o⇒m≤o∸n (hfront hv) room))
 
     -- a compound input: a heap pointer, its leaves the cells at their offsets
-    mem-leaf : ∀ {l r′ m} (hl : _) {a} → readReg (regs ls) Input1 ≡ SV-Ptr (AtDynamic hl)
-             → readTyped (shape-as-type (shape-pair l r′)) (AtDynamic hl) ls ≡ just a
-             → (P : Path (shape-pair l r′) m)
-             → (X.readMem (X.State.memory s) (xrreg s rdi + 8 * flat-off P) ≡ just (leafℕ m (leafM P a)))
-               × (xrreg s rdi + 8 * flat-off P < (xrreg s rsp ∸ 8) ∸ 8 * n)
-    mem-leaf {m = m} hl {a} in1 dT P = val , bnd
+    mem-leaf′ : ∀ {l r′ m} (hl : _) {a} → readReg (regs ls) Input1 ≡ SV-Ptr (AtDynamic hl)
+              → readTyped (shape-as-type (shape-pair l r′)) (AtDynamic hl) ls ≡ just a
+              → (P : Path (shape-pair l r′) m)
+              → (X.readMem (X.State.memory s) (xrreg s rdi + 8 * flat-off P) ≡ just (leafℕ m (leafM P a)))
+                × ((xrreg s rdi + 8 * flat-off P < (xrreg s rsp ∸ 8) ∸ 8 * n)
+                   ⊎ ((xrreg s rsp ≤ xrreg s rdi + 8 * flat-off P) × (8 + 8 * n ≤ xrreg s rsp)))
+    mem-leaf′ {m = m} hl {a} in1 dT P = val , Data.Sum.inj₁ bnd
       where
         k = flat-off P
         cell : heapMem ls (offsetHL hl k) ≡ just (SV-Lit (fitsN m) (leafM P a))
@@ -148,31 +153,83 @@ module _ {hv : HeapView} (prog : AbstractTrace) (fs : FlatState) (s : X.State)
         bnd = subst (_< (xrreg s rsp ∸ 8) ∸ 8 * n) (sym addr)
                     (below (C.FlatCorrespondence.HeapView.dom-below hv (FlatCorr.dom-written (dataCorr cc) _ cell)))
 
+    mem-leaf : ∀ {l r′ m} (hl : _) {a} → readReg (regs ls) Input1 ≡ SV-Ptr (AtDynamic hl)
+             → readTyped (shape-as-type (shape-pair l r′)) (AtDynamic hl) ls ≡ just a
+             → (P : Path (shape-pair l r′) m)
+             → AS.EntryLeaf n s ⌊ P ⌋ᴾ (flat-off P) (leafℕ m (leafM P a))
+    mem-leaf {m = m} hl {a} in1 dT (go-fst P) = mem-leaf′ hl in1 dT (go-fst P)
+    mem-leaf {m = m} hl {a} in1 dT (go-snd P) = mem-leaf′ hl in1 dT (go-snd P)
+
+    -- D452 (d): a compound input at a stack address: its leaves the words of the
+    -- window the SigOp's check passed, above the block's frame
+    stack-leaf′ : ∀ {l r′ m} f j {a} → readReg (regs ls) Input1 ≡ SV-Ptr (AtStack f j)
+                → range-ok (live-frames (falloc fs)) (tsize (shape-as-type (shape-pair l r′))) (SV-Ptr (AtStack f j)) ≡ true
+                → readTyped (shape-as-type (shape-pair l r′)) (AtStack f j) ls ≡ just a
+                → (P : Path (shape-pair l r′) m)
+                → (X.readMem (X.State.memory s) (xrreg s rdi + 8 * flat-off P) ≡ just (leafℕ m (leafM P a)))
+                  × ((xrreg s rdi + 8 * flat-off P < (xrreg s rsp ∸ 8) ∸ 8 * n)
+                     ⊎ ((xrreg s rsp ≤ xrreg s rdi + 8 * flat-off P) × (8 + 8 * n ≤ xrreg s rsp)))
+    stack-leaf′ {l} {r′} {m} f j {a} in1 g dT P = val , Data.Sum.inj₂ (bnd , rm)
+      where
+        k = flat-off P
+        cell : LocState.stackMem ls f (k + j) ≡ just (SV-Lit (fitsN m) (leafM P a))
+        cell = leaf-at P (AtStack f j) ls a dT
+        win = C.range-win (live-frames (falloc fs)) _ f j k
+                (subst (k <_) (sym (tsize-shape (shape-pair l r′))) (off-lt P)) g
+        sar = C.stack-arg-read k f j _ (dataCorr cc) in1 win cell
+        addr : xrreg s rdi + 8 * k ≡ xrreg s rdi + k * 8
+        addr = cong (xrreg s rdi +_) (*-comm 8 k)
+        val = trans (cong (X.readMem (X.State.memory s)) addr)
+                    (trans (proj₁ sar) (cong just (enc-fitsN hv m (leafM P a))))
+        bnd = subst (xrreg s rsp ≤_) (sym addr) (proj₂ sar)
+        rm : 8 + 8 * n ≤ xrreg s rsp
+        rm = ≤-trans (Data.Nat.Properties.m≤n+m (8 + 8 * n) (hfront hv)) room
+
+    stack-leaf : ∀ {l r′ m} f j {a} → readReg (regs ls) Input1 ≡ SV-Ptr (AtStack f j)
+               → range-ok (live-frames (falloc fs)) (tsize (shape-as-type (shape-pair l r′))) (SV-Ptr (AtStack f j)) ≡ true
+               → readTyped (shape-as-type (shape-pair l r′)) (AtStack f j) ls ≡ just a
+               → (P : Path (shape-pair l r′) m)
+               → AS.EntryLeaf n s ⌊ P ⌋ᴾ (flat-off P) (leafℕ m (leafM P a))
+    stack-leaf f j in1 g dT (go-fst P) = stack-leaf′ f j in1 g dT (go-fst P)
+    stack-leaf f j in1 g dT (go-snd P) = stack-leaf′ f j in1 g dT (go-snd P)
+
   entry-leaves : ∀ {sh} (bt : Base ∅ₖ (shape-as-type sh)) {a}
+               → range-ok (live-frames (falloc fs)) (arg-words bt) (readReg (regs ls) Input1) ≡ true
                → decode-at bt (readReg (regs ls) Input1) ls ≡ just a
                → ∀ {m} (p : Path sh m) → AS.EntryLeaf n s ⌊ p ⌋ᴾ (flat-off p) (AS.Sim.leafWord (8 * n) p (fromM tn sh a))
-  entry-leaves {sh} bt {a} d p = subst (AS.EntryLeaf n s ⌊ p ⌋ᴾ (flat-off p)) (sym (leafWord-fromM (8 * n) p a)) (go bt (readReg (regs ls) Input1) refl d p)
+  entry-leaves {sh} bt {a} gw d p = subst (AS.EntryLeaf n s ⌊ p ⌋ᴾ (flat-off p)) (sym (leafWord-fromM (8 * n) p a)) (go bt (readReg (regs ls) Input1) refl gw d p)
     where
-      go : ∀ {sh} (bt : Base ∅ₖ (shape-as-type sh)) (sv : StoredValue FS) → readReg (regs ls) Input1 ≡ sv → ∀ {a}
+      go : ∀ {sh} (bt : Base ∅ₖ (shape-as-type sh)) (sv : StoredValue FS) → readReg (regs ls) Input1 ≡ sv
+         → range-ok (live-frames (falloc fs)) (arg-words bt) sv ≡ true → ∀ {a}
          → decode-at bt sv ls ≡ just a → ∀ {m} (p : Path sh m) → AS.EntryLeaf n s ⌊ p ⌋ᴾ (flat-off p) (leafℕ m (leafM p a))
-      go {shape-int}   b-Int   (SV-Lit fits-int v)   e refl here-int = trans rdi≡ (cong (enc-sv hv) e)
-      go {shape-int}   b-Int   (SV-Lit fits-float v) e () here-int
-      go {shape-int}   b-Int   (SV-Ptr _)            e () here-int
-      go {shape-int}   b-Int   (SV-Tag _)            e () here-int
-      go {shape-int}   b-Int   (SV-Code _)           e () here-int
-      go {shape-float} b-Float (SV-Lit fits-float v) e refl here-flt = trans rdi≡ (cong (enc-sv hv) e)
-      go {shape-float} b-Float (SV-Lit fits-int v)   e () here-flt
-      go {shape-float} b-Float (SV-Ptr _)            e () here-flt
-      go {shape-float} b-Float (SV-Tag _)            e () here-flt
-      go {shape-float} b-Float (SV-Code _)           e () here-flt
-      go {shape-unit} bt sv e d ()
-      go {shape-pair l r′} (b-* _ _) (SV-Ptr (AtDynamic hl)) e dT (go-fst q) = mem-leaf hl e dT (go-fst q)
-      go {shape-pair l r′} (b-* _ _) (SV-Ptr (AtDynamic hl)) e dT (go-snd q) = mem-leaf hl e dT (go-snd q)
-      go {shape-pair l r′} (b-* _ _) (SV-Ptr (AtStack f k))  e dT P =
-        ⊥-elim (subst StackPtrOK e (SPInv.sp-regs (run-stack-ptr prog fs r) Input1))
-      go {shape-pair l r′} (b-* _ _) (SV-Lit _ _) e () P
-      go {shape-pair l r′} (b-* _ _) (SV-Tag _)   e () P
-      go {shape-pair l r′} (b-* _ _) (SV-Code _)  e () P
+      go {shape-int}   b-Int   (SV-Lit fits-int v)   e g refl here-int = trans rdi≡ (cong (enc-sv hv) e)
+      go {shape-int}   b-Int   (SV-Lit fits-float v) e g () here-int
+      go {shape-int}   b-Int   (SV-Ptr _)            e g () here-int
+      go {shape-int}   b-Int   (SV-Tag _)            e g () here-int
+      go {shape-int}   b-Int   (SV-Code _)           e g () here-int
+      go {shape-float} b-Float (SV-Lit fits-float v) e g refl here-flt = trans rdi≡ (cong (enc-sv hv) e)
+      go {shape-float} b-Float (SV-Lit fits-int v)   e g () here-flt
+      go {shape-float} b-Float (SV-Ptr _)            e g () here-flt
+      go {shape-float} b-Float (SV-Tag _)            e g () here-flt
+      go {shape-float} b-Float (SV-Code _)           e g () here-flt
+      go {shape-unit} bt sv e g d ()
+      go {shape-pair l r′} (b-* _ _) (SV-Ptr (AtDynamic hl)) e g dT (go-fst q) = mem-leaf hl e dT (go-fst q)
+      go {shape-pair l r′} (b-* _ _) (SV-Ptr (AtDynamic hl)) e g dT (go-snd q) = mem-leaf hl e dT (go-snd q)
+      go {shape-pair l r′} (b-* _ _) (SV-Ptr (AtStack f k))  e g dT P = stack-leaf f k e g dT P
+      go {shape-pair l r′} (b-* _ _) (SV-Lit _ _) e g () P
+      go {shape-pair l r′} (b-* _ _) (SV-Tag _)   e g () P
+      go {shape-pair l r′} (b-* _ _) (SV-Code _)  e g () P
+
+-- the argument's half of the SigOp's window check (`sigop-gate`)
+private
+  ∧-l : ∀ a b → (a Data.Bool.∧ b) ≡ true → a ≡ true
+  ∧-l true b _ = refl
+  ∧-l false b ()
+
+gate-in : ∀ prog fs {A B} (si : SigOpInfo A B) → RunLow prog fs → LocState.halted (floc fs) ≡ false
+        → fetch prog (fpc fs) ≡ just (instr-sigop si)
+        → range-ok (live-frames (falloc fs)) (arg-words (baseA si)) (readReg (regs (floc fs)) Input1) ≡ true
+gate-in prog fs si r h ftq = ∧-l _ _ (sigop-gated prog fs si r h ftq)
 
 ------------------------------------------------------------------------
 -- THE VALUE: the dispatch's `rax` is the SigOp's output.
@@ -186,7 +243,7 @@ value-int : ∀ {hv : HeapView} prog fs s {sh} (si : SigOpInfo (shape-as-type sh
             ≡ enc-sv hv (exec-sigop-output si (floc fs))
 value-int {hv} prog fs s {sh} si e eq r int cc ftq h room with sigop-decodes prog fs si r h ftq (internal-pure int)
 ... | a , d =
-  trans (AS.block-value-x86-64 e (fromM tn sh a) s (entry-leaves prog fs s r cc n room (baseA si) d) ib)
+  trans (AS.block-value-x86-64 e (fromM tn sh a) s (entry-leaves prog fs s r cc n room (baseA si) (gate-in prog fs si r h ftq) d) ib)
     (trans (cong (block-semM e tn) (toWord-fromM tn sh a))
       (trans (cong (λ t → block-semM e t a) (sym numerics-agree))
              (cong (enc-sv hv) (sym (AO.block-output si e eq (floc fs) d)))))
@@ -205,7 +262,7 @@ value-flt : ∀ {hv : HeapView} prog fs s {sh} (si : SigOpInfo (shape-as-type sh
             ≡ enc-sv hv (exec-sigop-output si (floc fs))
 value-flt {hv} prog fs s {sh} si e eq r int cc ftq h room with sigop-decodes prog fs si r h ftq (internal-pure int)
 ... | a , d =
-  trans (AS.block-value-x86-64-flt e (fromM tn sh a) s (entry-leaves prog fs s r cc (required-scratch e) room (baseA si) d))
+  trans (AS.block-value-x86-64-flt e (fromM tn sh a) s (entry-leaves prog fs s r cc (required-scratch e) room (baseA si) (gate-in prog fs si r h ftq) d))
     (trans (cong (block-semM e tn) (toWord-fromM tn sh a))
       (trans (cong (λ t → block-semM e t a) (sym numerics-agree))
              (cong (enc-sv hv) (sym (AO.block-output-flt si e eq (floc fs) d)))))

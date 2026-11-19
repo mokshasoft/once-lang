@@ -1,0 +1,4 @@
+name: spikes
+include: .
+depend: standard-library-2.3
+flags: -W error

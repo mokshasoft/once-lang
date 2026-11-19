@@ -298,6 +298,13 @@ record BlockSteps : Set₁ where
       → halted (floc fs) ≡ false
       → fetch prog (fpc fs) ≡ just (instr-reclaim-to n)
       → BlockStep hv prog fs s (instr-reclaim-to n)
+    -- a free: no code on any arch, and a no-op in the machine (the bump
+    -- allocator does not reuse the block; D428's reuse is plan 0.146 B1.6)
+    bs-free-heap :
+      ∀ {hv : HeapView} prog fs s n → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just (instr-free-heap n)
+      → BlockStep hv prog fs s (instr-free-heap n)
     bs-worklist-init :
       ∀ {hv : HeapView} prog fs s n → CompiledCorr hv prog fs s
       → halted (floc fs) ≡ false
@@ -527,6 +534,24 @@ record BlockSteps : Set₁ where
       → in-block? (block-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ true
       → CRL.RunLow prog fs
       → BlockStep hv prog fs s (addr-at k)
+    -- D452: a load and a store through a STACK pointer — a slot inside a live
+    -- frame's window, the gate's outcome (the instruction is the heap's; an
+    -- offset ADDRESS is a heap block's only)
+    bs-load-at-stack :
+      ∀ {hv : HeapView} prog fs s k f j w → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just (load-at k)
+      → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f j)
+      → ExecFinal.frame-gate {FS} (falloc fs) k (just (AtStack f j)) ≡ just (AtStack f j)
+      → LocState.stackMem (floc fs) f (k + j) ≡ just w
+      → BlockStep hv prog fs s (load-at k)
+    bs-store-at-stack :
+      ∀ {hv : HeapView} prog fs s k f j → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just (store-at k)
+      → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f j)
+      → ExecFinal.frame-gate {FS} (falloc fs) k (just (AtStack f j)) ≡ just (AtStack f j)
+      → BlockStep hv prog fs s (store-at k)
     ------------------------------------------------------------------
     -- GROUP 3b, the band's other half — CONTROL, `out-nz`, and the two frame
     -- markers.
@@ -561,6 +586,7 @@ record BlockSteps : Set₁ where
       → halted (floc fs) ≡ false
       → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-tag-zero n))
       → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
+      → ExecFinal.frame-gate {FS} (falloc fs) 0 (just loc) ≡ just loc
       → readLoc (floc fs) loc ≡ just (SV-Tag k)
       → memory s (rreg s in1-reg + 0) ≡ just k
       → FlatMachine.find-label {FS} prog n ≡ just j
@@ -570,6 +596,7 @@ record BlockSteps : Set₁ where
       → halted (floc fs) ≡ false
       → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-tag-zero n))
       → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
+      → ExecFinal.frame-gate {FS} (falloc fs) 0 (just loc) ≡ just loc
       → FlatMachine.tag-test {FS} (readLoc (floc fs) loc) ≡ just false
       → memory s (rreg s in1-reg + 0) ≡ just (suc m)
       → BlockStep hv prog fs s (instr-ctrl (c-branch-tag-zero n))

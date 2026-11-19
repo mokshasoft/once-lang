@@ -40,8 +40,9 @@ open import Once.Target.AsmSymbol using (AsmSym)
 open import Once.Target.SymbolValid using (once-symbol-path-asm; once-symbol-own-asm; once-label-asm; callee-label-asm)
 open import Once.Arith.SigOp.Block using (block-name)
 open Once.Arith.Machine.IR.ArithBlock using (block-body)
-open import Once.Compile.Emit using (dedup-go; block-symbol; block-syms; dedup-blocks; image-of; program-blocks; lib-image; lib-blocks; calls-of; externs-of; is-extern?; rewrite-program; prog-externs)
-open import Once.Adequacy.ImageWF using (prog-defs; lib-defs)
+open import Once.Compile.Emit using (dedup-go; dedup-blocks; block-symbol; block-syms)
+open import Once.Parser.Module using ()
+open import Once.Parser.Module.Core using (Resolved)
 
 ------------------------------------------------------------------------
 -- What an image defines
@@ -132,33 +133,10 @@ block-syms-asm bs = fst-all {AsmSym} (dedup-blocks (map tag bs)) (dedup-all {Asm
 -- THE THEOREMS
 ------------------------------------------------------------------------
 
-private
-  entry-asm : AsmSym entry-symbol
-  entry-asm = tt , tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
-
-prog-defs-valid : ∀ (p : IRProgram) → All AsmSym (prog-defs p)
-prog-defs-valid p = entry-asm ∷ ++⁺ (adefs-asm (image-of p)) (block-syms-asm (program-blocks p))
-
-lib-defs-valid : ∀ (T : List IRFun) → All AsmSym (lib-defs T)
-lib-defs-valid T = ++⁺ (adefs-asm (lib-image T)) (block-syms-asm (lib-blocks T))
+entry-asm : AsmSym entry-symbol
+entry-asm = tt , tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
 
 -- Every symbol a SigOp calls — itself or (a comparison) its block.
 sigop-syms-asm : ∀ {A B} (si : SigOpInfo A B) (m : Maybe (CmpAt A)) → All AsmSym (sigop-syms si m)
 sigop-syms-asm si nothing  = once-symbol-path-asm (name si) ∷ []
 sigop-syms-asm si (just c) = once-symbol-path-asm (name (cmp-block-info c)) ∷ []
-
-calls-asm : ∀ (q : IRProgram) → All AsmSym (calls-of q)
-calls-asm q = ++⁺ (leaf-syms-all h (main q)) (tbl (table q))
-  where
-    h : ∀ {A B} (si : SigOpInfo A B) → All AsmSym (sigop-syms si (cmp-of (sem si)))
-    h si = sigop-syms-asm si (cmp-of (sem si))
-    tbl : ∀ (es : List IRFun) → All AsmSym (Data.List.concatMap (λ e → leaf-syms (fbody e)) es)
-    tbl []       = []
-    tbl (e ∷ es) = ++⁺ (leaf-syms-all h (fbody e)) (tbl es)
-
-externs-valid : ∀ (p : IRProgram) → All AsmSym (externs-of p)
-externs-valid p = filter⁺ (is-extern? p) (calls-asm (rewrite-program p))
-
--- D320: …and a program's, with the Host's `leave`.
-prog-externs-valid : ∀ (p : IRProgram) → All AsmSym (prog-externs p)
-prog-externs-valid p = (tt , tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []) ∷ (tt , tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []) ∷ externs-valid p

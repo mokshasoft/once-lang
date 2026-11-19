@@ -18,6 +18,7 @@
 module Once.CCC.Machine.FlatLog where
 
 open import Data.Unit using (⊤)
+open import Data.Nat using (ℕ)
 open import Data.Empty using (⊥)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_)
@@ -142,9 +143,9 @@ module LogPres {FS : FrameSemantics} where
   exec-abstract-log (instr-reg-op op)        _ s alloc = refl
   exec-abstract-log (instr-free-heap n)      _ s alloc = refl
   exec-abstract-log (instr-room n)      _ s alloc = refl
-  exec-abstract-log (load-at k)              _ s alloc = load-at-log k Output (sv-as-loc (readReg (regs s) Input1)) s
-  exec-abstract-log (store-at k)             _ s alloc = store-at-log (AllocState.block-size alloc) k (sv-as-loc (readReg (regs s) Input1)) (readReg (regs s) Output) s
-  exec-abstract-log (addr-at k)              _ s alloc = addr-at-log (AllocState.block-size alloc) k (sv-as-loc (readReg (regs s) Input1)) s
+  exec-abstract-log (load-at k)              _ s alloc = load-at-log k Output (ExecFinal.frame-gate {FS} alloc k (sv-as-loc (readReg (regs s) Input1))) s
+  exec-abstract-log (store-at k)             _ s alloc = store-at-log (AllocState.block-size alloc) k (ExecFinal.frame-gate {FS} alloc k (sv-as-loc (readReg (regs s) Input1))) (readReg (regs s) Output) s
+  exec-abstract-log (addr-at k)              _ s alloc = addr-at-log (AllocState.block-size alloc) k (ExecFinal.heap-gate {FS} (sv-as-loc (readReg (regs s) Input1))) s
   exec-abstract-log (instr-ctrl c)           _ s alloc = refl
 
   -- The control helpers of the flat machine, by their own cases.
@@ -172,9 +173,8 @@ module LogPres {FS : FrameSemantics} where
   do-nz-log (SV-Ptr _)            fs = refl
   do-nz-log (SV-Code _)           fs = refl
 
-  do-ret-log : ∀ (rl : List _) fs → flog (do-ret rl fs) ≡ flog fs
-  do-ret-log []         fs = refl
-  do-ret-log (pc' ∷ rs) fs = refl
+  do-ret-log : ∀ (b : ℕ) (rl : List _) fs → flog (do-ret b rl fs) ≡ flog fs
+  do-ret-log b rl fs = do-ret-keeps (λ s → flog s ≡ flog fs) b rl fs refl (λ _ _ _ _ → refl)
 
   do-call-at-log : ∀ (mj : Maybe _) fs → flog (do-call-at mj fs) ≡ flog fs
   do-call-at-log (just j) fs = refl
@@ -202,10 +202,10 @@ module LogPres {FS : FrameSemantics} where
   flat-exec-instr-log (instr-ctrl (c-start b))             _ prog fs = refl
   flat-exec-instr-log (instr-ctrl c-leave)                   _ prog fs = refl
   flat-exec-instr-log (instr-ctrl (c-call-fn f))             _ prog fs = do-call-at-log (find-fn prog f) fs
-  flat-exec-instr-log (instr-ctrl (c-ret b))                 _ prog fs = do-ret-log (fret fs) fs
+  flat-exec-instr-log (instr-ctrl (c-ret b))                 _ prog fs = do-ret-log b (fret fs) fs
   flat-exec-instr-log (instr-ctrl (c-jmp n))                 _ prog fs = do-jump-log (find-label prog n) fs
   flat-exec-instr-log (instr-ctrl (c-branch-tag-zero n))     _ prog fs =
-    do-test-log (tag-test (flat-read-tag (floc fs))) n prog fs
+    do-test-log (tag-test (flat-read-tag (falloc fs) (floc fs))) n prog fs
   flat-exec-instr-log instr-call-closure                     _ prog fs = do-call-sv-log prog (fclosure fs) fs
   flat-exec-instr-log instr-save-closure-reg                 _ prog fs = refl
   flat-exec-instr-log (instr-alloc-stack n)   lf prog fs = exec-abstract-log (instr-alloc-stack n) lf (floc fs) (falloc fs)

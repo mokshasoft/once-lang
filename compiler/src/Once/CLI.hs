@@ -334,11 +334,17 @@ runBuild opts = do
 emitWarnings :: Bridge.Arch -> T.Text -> Bridge.Resolved -> IO ()
 emitWarnings arch src m = mapM_ (hPutStrLn stderr . T.unpack) (Bridge.moduleWarnings arch src m)
 
+-- | The assembly of a resolved module: the verified compiler's file (plan 0.146
+-- D464: the linear core's image of a program, `Once.LinCore.Emit.assemblyCore`).
+assemblyOf :: BuildOptions -> Bridge.Arch -> Bridge.Resolved -> IO (Either T.Text T.Text)
+assemblyOf opts arch mod_ = pure (Bridge.assemblyFromModule (buildOptimize opts) arch mod_)
+
 runVerifiedBuild :: BuildOptions -> FilePath -> Bridge.Arch -> T.Text -> Bridge.Resolved
                  -> FilePath -> [[T.Text]] -> IO ()
 runVerifiedBuild opts outputBase arch source mod_ strataDir importPaths = do
   emitWarnings arch source mod_
-  case Bridge.assemblyFromModule (buildOptimize opts) arch mod_ of
+  asm <- assemblyOf opts arch mod_
+  case asm of
     Right asmText -> do
       let asmPath = outputBase ++ ".s"
           objPath = outputBase ++ ".o"
@@ -437,8 +443,8 @@ runImageBuild opts = do
     unless (Bridge.isProgram mod_) $
       orDie "Error" (Left (input ++ " defines no `main`, so it cannot be a program of an image"))
     emitWarnings arch source mod_
-    asmText <- orDie "Compilation error"
-                 (either (Left . T.unpack) Right (Bridge.assemblyFromModule (buildOptimize opts) arch mod_))
+    asm <- assemblyOf opts arch mod_
+    asmText <- orDie "Compilation error" (either (Left . T.unpack) Right asm)
     let base    = outputBase ++ ".p" ++ show n
         asmPath = base ++ ".s"
         objPath = base ++ ".o"
