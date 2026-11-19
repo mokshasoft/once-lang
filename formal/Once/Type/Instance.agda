@@ -34,7 +34,7 @@ open import Data.Fin using (Fin; zero; suc)
 open import Data.Maybe using (Maybe; just; nothing; maybe′)
 import Data.Maybe as Maybe
 open import Once.Spec.Type using (Kind; any; base)
-open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PK; PId; _P⊕_; _P⊗_; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PInt; PFloat; PTVar)
+open import Once.Spec.Surface.Type using (PolyType; PolyFunctor; PK; PId; _P⊕_; _P⊗_; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PInt; PFloat; PTVar)
 open import Once.Type.Poly using (ftv; substPoly)
 
 ------------------------------------------------------------------------

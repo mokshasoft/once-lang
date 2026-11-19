@@ -95,9 +95,6 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Once.CCC.Codegen.SlotSeg
 open SegState using (cur; saved)
 open SlotBelow using (below)
-import Once.CCC.Codegen.SlotBudget as SB
-import Once.CCC.Codegen.FrameFreeTrace as FFT
-import Once.CCC.Codegen.AllocMin as AM
 open import Once.CCC.Codegen.ProgramImage using (program-image; image-body; fns-image; fn-image; fn-next)
 import Once.CCC.Codegen.ImageInstrs as IIn
 open import Data.List.Relation.Unary.All using () renaming (map to All-mapL)

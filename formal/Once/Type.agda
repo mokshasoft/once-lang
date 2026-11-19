@@ -25,7 +25,7 @@ open import Data.Unit using (⊤; tt)
 open import Once.Spec.Grade using (Quantity; Zero; One; Many; Purity; pure; act; eff; ArrowKind; mk-kind; pureᶠ; actᶠ)
 open import Once.Spec.Type using (Ty; Fun; var; Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; K; Id; _⊕_; _⊗_)
 open import Once.Spec.Type using (μ; ν)
-open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PK; PId; _P⊕_; _P⊗_; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PInt; PFloat; PTVar)
+open import Once.Spec.Surface.Type using (PolyType; PolyFunctor; PK; PId; _P⊕_; _P⊗_; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PInt; PFloat; PTVar)
 open import Once.Type.Poly using (Ground; GroundF)
 
 

@@ -25,7 +25,6 @@ open import Data.Bool using (Bool; true; false; _∨_)
 open import Once.SigOp.Info using (SigOpInfo; effect; EffectShape; Pure; Halts; Emits; Answers)
 open import Once.Type using (fits-int; fits-float)
 open import Data.Product using (proj₁; proj₂)
-import Data.Nat
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)

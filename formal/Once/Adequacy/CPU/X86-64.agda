@@ -44,7 +44,6 @@ open import Once.Adequacy.CPU.Interface using (Byte; ArchSemantics)
 
 import Data.Maybe
 import Once.CCC.Target.X86-64.Semantics as X64
-import Once.CCC.Target.X86-64.Syntax    as X64S
 import Once.CCC.Target.X86-64.File as RF
 open import Data.Bool using (if_then_else_)
 open import Data.List.Relation.Unary.Any using (Any; here; there)

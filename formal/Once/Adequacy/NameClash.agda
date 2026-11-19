@@ -51,7 +51,7 @@ open import Once.Parser using
   ; allIdentContinue; guardDistinct; distinctOrErr; entryNameOf )
 open import Once.Parser.Module.Core using (Resolved; resolved)
 open import Once.Spec.Surface.Syntax using (mkModule)
-open import Once.Parser.Lexer using (isIdentContinue; isOpNameChar)
+open import Once.Name.Chars using (isIdentContinue; isOpNameChar)
 open import Once.Target.Symbol using (once-symbol-own)
 open import Once.Target.SymbolInjective using (ValidName; ValidIdentChars; OpNameChars; NameChars; once-symbol-own-≢)
 open import Once.Spec.Name using (bare)

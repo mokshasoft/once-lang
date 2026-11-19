@@ -13,7 +13,6 @@
 
 open import Once.Spec.Name using (CanonicalName)
 import Once.CCC.Machine.SMCore as SMCore
-import Once.CCC.FrameSemantics as FrameSemantics′
 
 import Data.List as DL
 open import Once.Denotation.Program using (IRFun)
@@ -45,14 +44,6 @@ open import Once.IRTy using (WellFormedFI; ⟦_⟧TI; μ-type; ⟦_,_⟧-baseI; 
                              base-Int; base-Float; base-Unit; base-Void; base-Prod; base-Sum; FitsInRegI; fits-int; fits-float)
 open import Once.CCC.Machine.MuRep using (mu-rep; mu-box; Unboxed; box-fit)
 
-import Once.CCC.FrameSemantics
-import Once.CCC.Machine.SMPrimitives
-import Once.IRTy
-import Once.IR
-import Once.Semantics.Machine as EvV
-import Once.CCC.Machine.ReadTypedAdequate as RTA
-import Once.Denotation.DenotTrace as DT
-import Once.IR.Semantics.Trace as TM
 
 module Simp {FS : FrameSemantics} where
 

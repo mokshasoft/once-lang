@@ -55,20 +55,13 @@ open import Once.CCC.Codegen.IRObsCorrect.Pair.Build o tbl using (module PairBui
 import Once.CCC.Machine.FlatPut as FlatPut
 import Once.CCC.Machine.FlatAlloc as FlatAlloc
 
-import Once.CCC.FrameSemantics
 import Once.CCC.Machine.SMPrimitives
-import Once.IRTy
 import Once.IRTy as IRTy′
-import Once.IR
 open import Data.List.Properties using (++-identityʳ; ++-assoc; length-++)
 open import Data.List.Relation.Unary.All using ([]; _∷_; All)
 open import Data.Nat using (_⊔_; z≤n; s≤s; ℕ; suc; _<_; _+_; _≤_)
 open import Data.Nat.Properties using (m≤n⊔m; <-irrefl; +-suc; n<1+n; ≤-trans; n≤1+n; +-identityʳ; ≤-refl)
 open import Once.Res using (is-stopped)
-import Once.Semantics.Machine as EvV
-import Once.CCC.Machine.ReadTypedAdequate as RTA
-import Once.Denotation.DenotTrace as DT
-import Once.IR.Semantics.Trace as TM
 open import Once.Res using (returns)
 open import Once.Denotation.Approx using (done; NotCut; budgetLeft)
 

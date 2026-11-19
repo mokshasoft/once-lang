@@ -37,6 +37,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Once.Target.Arch using (Arch; x86-64; x86-32; riscv64)
 import Once.Parser.Module.Core as Core
 import Once.Compile as C
+import Once.Compile.Emit as Emit
 import Once.IR as IR
 open import Once.Adequacy.Compile using (AsmWF-of)
 open import Once.Adequacy.EmitFile using (file-is-emit-at; file-is-lib-at)
@@ -72,7 +73,7 @@ module X8664W where
   open import Once.CCC.Target.X86-64.FileSymbols using (defs-lower; refs-lower)
 
   prog-wf : ∀ (T : List IRFun) (tn : TableNames T) ir {σ : ISig} → LinkedProgram σ (irProgram T ir)
-          → F.AsmWF (C.emitProgram x86-64 (irProgram T ir))
+          → F.AsmWF (Emit.emitProgram x86-64 (irProgram T ir))
   prog-wf T tn ir lk = record
     { defined-once = subst Unique (sym defs≡) (prog-unique-at T tn ir)
     ; resolved     = resolved-at defs≡ refs≡ (prog-resolved-at _ (irProgram T ir) lk)
@@ -82,35 +83,35 @@ module X8664W where
     }
     where
       p = irProgram T ir
-      G = C.emitProgram x86-64 p
-      code≡ : F.Image.code G ≡ L.compile-trace (C.image-of p)
-      code≡ = cong proj₂ (L.compile-trace-cnt-agrees C.entry-owner 0 (C.image-of p))
+      G = Emit.emitProgram x86-64 p
+      code≡ : F.Image.code G ≡ L.compile-trace (Emit.image-of p)
+      code≡ = cong proj₂ (L.compile-trace-cnt-agrees Emit.entry-owner 0 (Emit.image-of p))
       defs≡ : F.defs G ≡ prog-defs p
       defs≡ = cong ("once_main" ∷_)
-                (cong₂ _++_ (trans (cong F.label-defs code≡) (defs-lower (C.image-of p))) (map-fst _ _))
-      refs≡ : F.refs (F.Image.code G) ≡ arefs (C.image-of p)
-      refs≡ = trans (cong F.refs code≡) (refs-lower (C.image-of p))
+                (cong₂ _++_ (trans (cong F.label-defs code≡) (defs-lower (Emit.image-of p))) (map-fst _ _))
+      refs≡ : F.refs (F.Image.code G) ≡ arefs (Emit.image-of p)
+      refs≡ = trans (cong F.refs code≡) (refs-lower (Emit.image-of p))
 
   lib-wf : ∀ (T : List IRFun) (tn : TableNames T) {σ : ISig} → All (λ e → Linked σ T (fbody e)) T
-         → F.AsmWF (C.emitLibrary x86-64 T)
+         → F.AsmWF (Emit.emitLibrary x86-64 T)
   lib-wf T tn tl = record
     { defined-once = subst Unique (sym defs≡) (lib-unique-at T tn)
     ; resolved     = resolved-at defs≡ refs≡ (lib-resolved-at _ T tl)
     ; entry-in     = tt
     ; defs-valid    = subst (All AsmSym) (sym defs≡) (lib-defs-valid T)
-    ; externs-valid = externs-valid (C.lib-program T)
+    ; externs-valid = externs-valid (Emit.lib-program T)
     }
     where
-      G = C.emitLibrary x86-64 T
-      code≡ : F.Image.code G ≡ L.compile-trace (C.lib-image T)
-      code≡ = cong proj₂ (L.compile-trace-cnt-agrees C.entry-owner 0 (C.lib-image T))
+      G = Emit.emitLibrary x86-64 T
+      code≡ : F.Image.code G ≡ L.compile-trace (Emit.lib-image T)
+      code≡ = cong proj₂ (L.compile-trace-cnt-agrees Emit.entry-owner 0 (Emit.lib-image T))
       defs≡ : F.defs G ≡ lib-defs T
-      defs≡ = (cong₂ _++_ (trans (cong F.label-defs code≡) (defs-lower (C.lib-image T)))
+      defs≡ = (cong₂ _++_ (trans (cong F.label-defs code≡) (defs-lower (Emit.lib-image T)))
                             (map-fst _ _))
-      refs≡ : F.refs (F.Image.code G) ≡ arefs (C.lib-image T)
-      refs≡ = trans (cong F.refs code≡) (refs-lower (C.lib-image T))
+      refs≡ : F.refs (F.Image.code G) ≡ arefs (Emit.lib-image T)
+      refs≡ = trans (cong F.refs code≡) (refs-lower (Emit.lib-image T))
 
-  file-wf : ∀ (doOpt : Bool) (m : Core.Resolved) (G : C.FileOf x86-64) → C.compileFileFromModule IR.Heap doOpt x86-64 m ≡ inj₂ G
+  file-wf : ∀ (doOpt : Bool) (m : Core.Resolved) (G : Emit.FileOf x86-64) → C.compileFileFromModule IR.Heap doOpt x86-64 m ≡ inj₂ G
           → AsmWF-of x86-64 G
   file-wf doOpt m G eq = by (C.moduleToIR-aux (C.compileResolvedModule IR.Heap doOpt m)) refl
     where
@@ -130,7 +131,7 @@ module X8632W where
   open import Once.CCC.Target.X86-32.FileSymbols using (defs-lower; refs-lower)
 
   prog-wf : ∀ (T : List IRFun) (tn : TableNames T) ir {σ : ISig} → LinkedProgram σ (irProgram T ir)
-          → F.AsmWF (C.emitProgram x86-32 (irProgram T ir))
+          → F.AsmWF (Emit.emitProgram x86-32 (irProgram T ir))
   prog-wf T tn ir lk = record
     { defined-once = subst Unique (sym defs≡) (prog-unique-at T tn ir)
     ; resolved     = resolved-at defs≡ refs≡ (prog-resolved-at _ (irProgram T ir) lk)
@@ -140,35 +141,35 @@ module X8632W where
     }
     where
       p = irProgram T ir
-      G = C.emitProgram x86-32 p
-      code≡ : F.Image.code G ≡ L.compile-trace (C.image-of p)
-      code≡ = cong proj₂ (L.compile-trace-cnt-agrees C.entry-owner 0 (C.image-of p))
+      G = Emit.emitProgram x86-32 p
+      code≡ : F.Image.code G ≡ L.compile-trace (Emit.image-of p)
+      code≡ = cong proj₂ (L.compile-trace-cnt-agrees Emit.entry-owner 0 (Emit.image-of p))
       defs≡ : F.defs G ≡ prog-defs p
       defs≡ = cong ("once_main" ∷_)
-                (cong₂ _++_ (trans (cong F.label-defs code≡) (defs-lower (C.image-of p))) (map-fst _ _))
-      refs≡ : F.refs (F.Image.code G) ≡ arefs (C.image-of p)
-      refs≡ = trans (cong F.refs code≡) (refs-lower (C.image-of p))
+                (cong₂ _++_ (trans (cong F.label-defs code≡) (defs-lower (Emit.image-of p))) (map-fst _ _))
+      refs≡ : F.refs (F.Image.code G) ≡ arefs (Emit.image-of p)
+      refs≡ = trans (cong F.refs code≡) (refs-lower (Emit.image-of p))
 
   lib-wf : ∀ (T : List IRFun) (tn : TableNames T) {σ : ISig} → All (λ e → Linked σ T (fbody e)) T
-         → F.AsmWF (C.emitLibrary x86-32 T)
+         → F.AsmWF (Emit.emitLibrary x86-32 T)
   lib-wf T tn tl = record
     { defined-once = subst Unique (sym defs≡) (lib-unique-at T tn)
     ; resolved     = resolved-at defs≡ refs≡ (lib-resolved-at _ T tl)
     ; entry-in     = tt
     ; defs-valid    = subst (All AsmSym) (sym defs≡) (lib-defs-valid T)
-    ; externs-valid = externs-valid (C.lib-program T)
+    ; externs-valid = externs-valid (Emit.lib-program T)
     }
     where
-      G = C.emitLibrary x86-32 T
-      code≡ : F.Image.code G ≡ L.compile-trace (C.lib-image T)
-      code≡ = cong proj₂ (L.compile-trace-cnt-agrees C.entry-owner 0 (C.lib-image T))
+      G = Emit.emitLibrary x86-32 T
+      code≡ : F.Image.code G ≡ L.compile-trace (Emit.lib-image T)
+      code≡ = cong proj₂ (L.compile-trace-cnt-agrees Emit.entry-owner 0 (Emit.lib-image T))
       defs≡ : F.defs G ≡ lib-defs T
-      defs≡ = (cong₂ _++_ (trans (cong F.label-defs code≡) (defs-lower (C.lib-image T)))
+      defs≡ = (cong₂ _++_ (trans (cong F.label-defs code≡) (defs-lower (Emit.lib-image T)))
                             (map-fst _ _))
-      refs≡ : F.refs (F.Image.code G) ≡ arefs (C.lib-image T)
-      refs≡ = trans (cong F.refs code≡) (refs-lower (C.lib-image T))
+      refs≡ : F.refs (F.Image.code G) ≡ arefs (Emit.lib-image T)
+      refs≡ = trans (cong F.refs code≡) (refs-lower (Emit.lib-image T))
 
-  file-wf : ∀ (doOpt : Bool) (m : Core.Resolved) (G : C.FileOf x86-32) → C.compileFileFromModule IR.Heap doOpt x86-32 m ≡ inj₂ G
+  file-wf : ∀ (doOpt : Bool) (m : Core.Resolved) (G : Emit.FileOf x86-32) → C.compileFileFromModule IR.Heap doOpt x86-32 m ≡ inj₂ G
           → AsmWF-of x86-32 G
   file-wf doOpt m G eq = by (C.moduleToIR-aux (C.compileResolvedModule IR.Heap doOpt m)) refl
     where
@@ -188,7 +189,7 @@ module RiscV64W where
   open import Once.CCC.Target.RiscV64.FileSymbols using (defs-lower; refs-lower)
 
   prog-wf : ∀ (T : List IRFun) (tn : TableNames T) ir {σ : ISig} → LinkedProgram σ (irProgram T ir)
-          → F.AsmWF (C.emitProgram riscv64 (irProgram T ir))
+          → F.AsmWF (Emit.emitProgram riscv64 (irProgram T ir))
   prog-wf T tn ir lk = record
     { defined-once = subst Unique (sym defs≡) (prog-unique-at T tn ir)
     ; resolved     = resolved-at defs≡ refs≡ (prog-resolved-at _ (irProgram T ir) lk)
@@ -198,35 +199,35 @@ module RiscV64W where
     }
     where
       p = irProgram T ir
-      G = C.emitProgram riscv64 p
-      code≡ : F.Image.code G ≡ L.compile-trace (C.image-of p)
-      code≡ = cong proj₂ (L.compile-trace-cnt-agrees C.entry-owner 0 (C.image-of p))
+      G = Emit.emitProgram riscv64 p
+      code≡ : F.Image.code G ≡ L.compile-trace (Emit.image-of p)
+      code≡ = cong proj₂ (L.compile-trace-cnt-agrees Emit.entry-owner 0 (Emit.image-of p))
       defs≡ : F.defs G ≡ prog-defs p
       defs≡ = cong ("once_main" ∷_)
-                (cong₂ _++_ (trans (cong F.label-defs code≡) (defs-lower (C.image-of p))) (map-fst _ _))
-      refs≡ : F.refs (F.Image.code G) ≡ arefs (C.image-of p)
-      refs≡ = trans (cong F.refs code≡) (refs-lower (C.image-of p))
+                (cong₂ _++_ (trans (cong F.label-defs code≡) (defs-lower (Emit.image-of p))) (map-fst _ _))
+      refs≡ : F.refs (F.Image.code G) ≡ arefs (Emit.image-of p)
+      refs≡ = trans (cong F.refs code≡) (refs-lower (Emit.image-of p))
 
   lib-wf : ∀ (T : List IRFun) (tn : TableNames T) {σ : ISig} → All (λ e → Linked σ T (fbody e)) T
-         → F.AsmWF (C.emitLibrary riscv64 T)
+         → F.AsmWF (Emit.emitLibrary riscv64 T)
   lib-wf T tn tl = record
     { defined-once = subst Unique (sym defs≡) (lib-unique-at T tn)
     ; resolved     = resolved-at defs≡ refs≡ (lib-resolved-at _ T tl)
     ; entry-in     = tt
     ; defs-valid    = subst (All AsmSym) (sym defs≡) (lib-defs-valid T)
-    ; externs-valid = externs-valid (C.lib-program T)
+    ; externs-valid = externs-valid (Emit.lib-program T)
     }
     where
-      G = C.emitLibrary riscv64 T
-      code≡ : F.Image.code G ≡ L.compile-trace (C.lib-image T)
-      code≡ = cong proj₂ (L.compile-trace-cnt-agrees C.entry-owner 0 (C.lib-image T))
+      G = Emit.emitLibrary riscv64 T
+      code≡ : F.Image.code G ≡ L.compile-trace (Emit.lib-image T)
+      code≡ = cong proj₂ (L.compile-trace-cnt-agrees Emit.entry-owner 0 (Emit.lib-image T))
       defs≡ : F.defs G ≡ lib-defs T
-      defs≡ = (cong₂ _++_ (trans (cong F.label-defs code≡) (defs-lower (C.lib-image T)))
+      defs≡ = (cong₂ _++_ (trans (cong F.label-defs code≡) (defs-lower (Emit.lib-image T)))
                             (map-fst _ _))
-      refs≡ : F.refs (F.Image.code G) ≡ arefs (C.lib-image T)
-      refs≡ = trans (cong F.refs code≡) (refs-lower (C.lib-image T))
+      refs≡ : F.refs (F.Image.code G) ≡ arefs (Emit.lib-image T)
+      refs≡ = trans (cong F.refs code≡) (refs-lower (Emit.lib-image T))
 
-  file-wf : ∀ (doOpt : Bool) (m : Core.Resolved) (G : C.FileOf riscv64) → C.compileFileFromModule IR.Heap doOpt riscv64 m ≡ inj₂ G
+  file-wf : ∀ (doOpt : Bool) (m : Core.Resolved) (G : Emit.FileOf riscv64) → C.compileFileFromModule IR.Heap doOpt riscv64 m ≡ inj₂ G
           → AsmWF-of riscv64 G
   file-wf doOpt m G eq = by (C.moduleToIR-aux (C.compileResolvedModule IR.Heap doOpt m)) refl
     where
@@ -240,7 +241,7 @@ module RiscV64W where
 ------------------------------------------------------------------------
 -- THE THEOREM (was a postulate, D262).
 ------------------------------------------------------------------------
-file-wf : ∀ (arch : Arch) (doOpt : Bool) (m : Core.Resolved) (F : C.FileOf arch)
+file-wf : ∀ (arch : Arch) (doOpt : Bool) (m : Core.Resolved) (F : Emit.FileOf arch)
         → C.compileFileFromModule IR.Heap doOpt arch m ≡ inj₂ F
         → AsmWF-of arch F
 file-wf x86-64  = X8664W.file-wf

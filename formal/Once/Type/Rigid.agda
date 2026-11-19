@@ -22,7 +22,7 @@ open import Data.List.Membership.Propositional using (_∈_)
 open import Once.Spec.Grade
 open import Once.Spec.Type using (μ; ν)
 open import Once.Spec.Type using (Ty; KCtx; Unit; _*_; _+_; _⇒[_]_; K; _⊕_; _⊗_)
-open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PK; PId; _P⊕_; _P⊗_; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PInt; PFloat; PTVar)
+open import Once.Spec.Surface.Type using (PolyType; PolyFunctor; PK; PId; _P⊕_; _P⊗_; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PInt; PFloat; PTVar)
 open import Once.Type.Poly
 open import Once.Type.Instance
 

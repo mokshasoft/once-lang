@@ -19,7 +19,6 @@ module Once.ResolvedRefs where
 open import Data.List using (List; []; _∷_)
 open import Data.Product using (_×_)
 open import Data.String using (String; _≟_)
-import Data.String
 open import Data.Unit using (⊤; tt)
 import Data.Empty
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; cong)
@@ -29,7 +28,6 @@ open import Once.Spec.Name using (CanonicalName; canonical)
 open import Once.Spec.Surface.Syntax using (RVar; RQualified; RResolved; RGen; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
 open import Once.Spec.Surface.Syntax using (Expr)
 
-import Relation.Binary.PropositionalEquality
 
 -- A canonical name that is not `main`.
 GoodName : CanonicalName → Set

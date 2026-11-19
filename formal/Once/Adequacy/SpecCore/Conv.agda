@@ -20,7 +20,6 @@ open import Data.Nat using (ℕ)
 open import Once.Spec.Signature using (Signature)
 open import Once.Spec.Core.Syntax using (Defs)
 
-import Once.Spec.Grade
 module Once.Adequacy.SpecCore.Conv (Σ : Signature) {s : ℕ} (S : Defs s) where
 
 

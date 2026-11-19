@@ -191,7 +191,6 @@ open import Once.Core.Translate Σ using (t-def; wkI; wkT; impDefs; monoSchema)
 open import Once.Adequacy.ModuleProgram Σ using (names-monoF; names-polyF; fresh-mono; fresh-poly; monoDef; polyDef)
 import Once.Adequacy.ModuleProgram Σ as MP
 open import Once.Type.Instance using (kindsOf)
-import Once.Type.Instance
 import Once.Parser as Parser
 import Once.Compile as C
 import Once.TypeCheck.Elaborate as TE

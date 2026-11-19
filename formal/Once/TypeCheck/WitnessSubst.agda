@@ -39,7 +39,6 @@ open import Function using (_$_)
 open import Once.Spec.Core.Syntax using (Tm; _⟪_⟫ₜ; _!!_; coerce; module Schema)
 open Schema using (type)
 open import Once.Core.Decl using (declS)
-import Once.Spec.Core.Syntax
 open import Once.Metatheory.TermModel.TySubst Σ S using (⟦⟧F-⟨⟩; <:-⟨⟩; wf-⟨⟩; symCod-⟨⟩)
 open import Once.Spec.Theory using (int; float)
 open import Once.Spec.Surface.Operator using (binSym; BinSym)

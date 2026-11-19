@@ -55,7 +55,6 @@ import Once.Target.Arch
 open import Once.Adequacy.BudgetApex (Once.Target.Arch.arch-numerics Once.Target.Arch.x86-64) using (budget-apex-⊑; BudgetFact⊑; budget-fact-of)
 open import Once.Denotation.Program using (runIR)
 open import Once.IR.Semantics.Trace using (pureHalf)
-import Once.IR.Semantics.Trace as LT
 open import Data.Bool using (Bool)
 open import Data.Product using (proj₁; proj₂; _,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
@@ -83,12 +82,12 @@ import Once.CCC.Target.X86-64.Syntax as XS
 open import Once.CCC.Label using (LabelId; thunk)
 open import Once.IR using (IR)
 open import Once.IRTy using (Unit)  -- Plan 0.52 M2: IRTy Unit
-import Once.Denotation.Behavior
 open import Once.Adequacy.CPU using (arch-semantics)
 open import Once.Target.Arch using (x86-64)
 open import Once.Arith.Backend.CallAnswer using (answer-at)
 open import Once.Adequacy.SourceTrace using (⟦_⟧IRᵗ)
-open import Once.Compile using (rewrite-program)
+open import Once.Compile.Emit using (rewrite-program)
+import Once.Compile.Emit as Emit
 import Once.IR as IR
 open import Once.Denotation.Program using (irProgram; LinkedProgram; IRProgram)
 open Once.Denotation.Program.IRProgram using (main; table)
@@ -183,9 +182,6 @@ open FlatMachine {x86-64-frame-semantics} using (mkFlat)
 -- and moving it means the correspondence carries NO resource postulate at all.
 -- The unapplied imports let the statement be written before `ConcFlatSim` is
 -- instantiated (it is one of its arguments).
-import Once.Adequacy.ArchCorrectness.X86-64.FlatCorrespondence as FCx
-import Once.Adequacy.ArchCorrectness.X86-64.FlatSimulation as FSimx
-import Once.Adequacy.ArchCorrectness.X86-64.RunContext as RCx
 
 open import Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim o
   x86-64-frame-semantics refl refl
@@ -367,8 +363,8 @@ entry-like B = refl , refl , refl , refl , refl
 conc-tr :
   ∀ (p : IRProgram) (ir : IR Unit Unit)
     (lk : LinkedProgram (sig ι) (irProgram tbl ir))
-  → room-checks (FFOx.image ir) ≡ C.image-of p
-  → Machine.trace (RTx.Run.δ val-x86-64 (answer-at (arch-numerics x86-64) ι call-at-x86-64) ev-x86-64 (block-env (C.blocks-x86-64 p))
+  → room-checks (FFOx.image ir) ≡ Emit.image-of p
+  → Machine.trace (RTx.Run.δ val-x86-64 (answer-at (arch-numerics x86-64) ι call-at-x86-64) ev-x86-64 (block-env (Emit.blocks-x86-64 p))
                      (compile-trace (room-checks (FFOx.image ir)))) ([] , X.initState)
     ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (arch-numerics x86-64) ι
 conc-tr p ir lk img =
@@ -378,7 +374,7 @@ conc-tr p ir lk img =
     -- (`FFOx.flat-ends`/`flat-cut`) are the image's own, and `RoomEvents.ev-boot`
     -- turns the one into the other at a matching fuel.
     P′ = room-checks (FFOx.image ir)
-    δc = RTx.Run.δ val-x86-64 (answer-at (arch-numerics x86-64) ι call-at-x86-64) ev-x86-64 (block-env (C.blocks-x86-64 p))
+    δc = RTx.Run.δ val-x86-64 (answer-at (arch-numerics x86-64) ι call-at-x86-64) ev-x86-64 (block-env (Emit.blocks-x86-64 p))
                (compile-trace P′)
     run₀ : RunLow P′ FFOx.start-flat
     run₀ = low-start (FFOx.image ir) FFOx.start-flat
@@ -387,15 +383,15 @@ conc-tr p ir lk img =
              refl
     fact : BudgetFact⊑ δc ([] , X.initState) ι (runIR (arch-numerics x86-64) (pureHalf ι) (irProgram tbl ir))
     fact k = budget-fact-of δc ([] , X.initState) ι (runIR (arch-numerics x86-64) (pureHalf ι) (irProgram tbl ir)) k (proj₁ agree) _ _ _
-               (RTx.Run.runN-events val-x86-64 (answer-at (arch-numerics x86-64) ι call-at-x86-64) ev-x86-64 (block-env (C.blocks-x86-64 p)) (compile-trace P′) (proj₁ agree) [] X.initState)
-               (cong (RTx.Run.outObs val-x86-64 (answer-at (arch-numerics x86-64) ι call-at-x86-64) ev-x86-64 (block-env (C.blocks-x86-64 p)) (compile-trace P′)) (FFOx.flat-ends ir-obs-correct ir lk k))
+               (RTx.Run.runN-events val-x86-64 (answer-at (arch-numerics x86-64) ι call-at-x86-64) ev-x86-64 (block-env (Emit.blocks-x86-64 p)) (compile-trace P′) (proj₁ agree) [] X.initState)
+               (cong (RTx.Run.outObs val-x86-64 (answer-at (arch-numerics x86-64) ι call-at-x86-64) ev-x86-64 (block-env (Emit.blocks-x86-64 p)) (compile-trace P′)) (FFOx.flat-ends ir-obs-correct ir lk k))
                (FFOx.flat-cut ir-obs-correct ir lk k)
                (proj₂ agree)
       where
         open RoomEvents {x86-64-frame-semantics} (FFOx.image ir) using (ev-boot)
         boot = ev-boot (FFOx.flat-fuel ir-obs-correct ir lk k) FFOx.start-flat 0 refl _ refl
         agree₀ = events-agree-boot (proj₁ boot)
-                   ev-x86-64 (block-env (C.blocks-x86-64 p))
+                   ev-x86-64 (block-env (Emit.blocks-x86-64 p))
                    P′ FFOx.start-flat X.initState (ir-stack-budget ir) _ (entry-corr P′)
                    (entry-wf 0) tt refl (p , img , refl) run₀
                    refl refl refl refl refl refl
@@ -418,7 +414,7 @@ file-tr-x86-64 :
   ∀ (doOpt : Bool) (m : P.Resolved) (F : RF.Image)
   → C.compileFileFromModule IR.Heap doOpt x86-64 m ≡ inj₂ F
   → ∀ (ir : IR Unit Unit) (mi : C.moduleToIR-aux (C.compileResolvedModule IR.Heap doOpt m) ≡ just ir)
-  → (oq : o ≡ C.entry-owner)
+  → (oq : o ≡ Emit.entry-owner)
   → (teq : tbl ≡ table (rewrite-program (irProgram (C.tableOfResult (C.compileResolvedModule IR.Heap doOpt m)) ir)))
   → (lk : LinkedProgram (sig ι) (irProgram tbl (main (rewrite-program (irProgram (C.tableOfResult (C.compileResolvedModule IR.Heap doOpt m)) ir)))))
   → run-trace-x86-64 ι F (X.initStateAt (Data.Maybe.fromMaybe 0 (RF.Image.entry F)))
@@ -427,17 +423,17 @@ file-tr-x86-64 doOpt m F eq ir mi oq teq lk =
   subst (λ G → run-trace-x86-64 ι G (X.initStateAt (Data.Maybe.fromMaybe 0 (RF.Image.entry G)))
                ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir′) ⟧IRᵗ (arch-numerics x86-64) ι)
         (sym (file-is-emit-at doOpt x86-64 m F ir eq mi))
-        (subst (λ cd → Machine.trace (RTx.Run.δ val-x86-64 (answer-at (arch-numerics x86-64) ι call-at-x86-64) ev-x86-64 (block-env (C.blocks-x86-64 p)) cd) ([] , X.initState)
+        (subst (λ cd → Machine.trace (RTx.Run.δ val-x86-64 (answer-at (arch-numerics x86-64) ι call-at-x86-64) ev-x86-64 (block-env (Emit.blocks-x86-64 p)) cd) ([] , X.initState)
                        ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir′) ⟧IRᵗ (arch-numerics x86-64) ι)
                (sym code-eq) (conc-tr p ir′ lk img))
   where
     p   = irProgram (C.tableOfResult (C.compileResolvedModule IR.Heap doOpt m)) ir
     ir′ = main (rewrite-program p)
-    img : room-checks (FFOx.image ir′) ≡ C.image-of p
+    img : room-checks (FFOx.image ir′) ≡ Emit.image-of p
     img = img-at o oq tbl teq
-      where img-at : ∀ o′ → o′ ≡ C.entry-owner → ∀ t → t ≡ table (rewrite-program p)
-                   → room-checks (program-image o′ (irProgram t ir′)) ≡ C.image-of p
-            img-at .C.entry-owner refl .(table (rewrite-program p)) refl = refl
-    code-eq : proj₂ (compile-trace-cnt C.entry-owner 0 (C.image-of p)) ≡ compile-trace (room-checks (FFOx.image ir′))
-    code-eq = trans (cong proj₂ (compile-trace-cnt-agrees C.entry-owner 0 (C.image-of p)))
+      where img-at : ∀ o′ → o′ ≡ Emit.entry-owner → ∀ t → t ≡ table (rewrite-program p)
+                   → room-checks (program-image o′ (irProgram t ir′)) ≡ Emit.image-of p
+            img-at .Emit.entry-owner refl .(table (rewrite-program p)) refl = refl
+    code-eq : proj₂ (compile-trace-cnt Emit.entry-owner 0 (Emit.image-of p)) ≡ compile-trace (room-checks (FFOx.image ir′))
+    code-eq = trans (cong proj₂ (compile-trace-cnt-agrees Emit.entry-owner 0 (Emit.image-of p)))
                     (cong compile-trace (sym img))

@@ -65,7 +65,6 @@ open import Once.Core.Decl using (toISig)
 open import Once.Adequacy.ModuleLaws using (teleSig≡entrySig)
 open import Once.Adequacy.SpecSource using (parseModules; toSource)
 open import Data.Sum using (_⊎_)
-import Once.Core.Telescope as TL
 import Once.Parser as Parser
 import Once.Parser.Module.Core as PM
 open import Once.Parser.Module.Resolve using (collectUnaliased; collectAliases; importedOf)

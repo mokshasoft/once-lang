@@ -77,7 +77,6 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 open import Once.IR using (IR; Stack)
 open import Once.IRTy using (Unit)
-import Once.Denotation.Behavior
 open import Once.CCC.Codegen.ProgramImage using (program-image; fns-image; fn-next)
 import Once.CCC.Codegen.CataIRSlotStable as CIS
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
@@ -125,7 +124,6 @@ open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
 import Once.Compile as C
 import Once.CCC.Machine.SMCore as SMC
-import Once.Parser.Module.Core as P
 -- D100: the assembler's own precondition — the emitted local labels are
 -- pairwise distinct. Consumed by `AsmTraceCorrect` below.
 

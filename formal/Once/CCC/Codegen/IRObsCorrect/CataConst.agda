@@ -74,10 +74,7 @@ open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.CCC.Label using (ℓ)
 open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; ⟦_⟧TI; ⌈_⌉F; μ-type; FitsInRegI; fits-int; fits-float)
 import Once.IRTy as IRTy′
-import Once.Denotation.ValueDomain as ValueDomain
 open import Once.Memory.HeapAddress using (HeapLocation; module HeapLocation)
-import Once.CCC.FrameSemantics
-import Once.IR.Semantics.Trace as TM
 
 module CataConstC {FS : FrameSemantics} where
 

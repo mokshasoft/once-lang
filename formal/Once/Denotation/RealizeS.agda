@@ -47,7 +47,7 @@ open import Once.Surface.Syntax
          morph-app; coerce; cata; ana; loop; comp'; copair'; fork'; curry')
 import Once.Spec.Surface.Typing Σ S nm as SU
 open SU using (Locals)
-open import Once.Spec.Surface.Syntax using (signedDecimal)
+open import Once.Spec.Float.Decimal using (signedDecimal)
 open import Once.Spec.Theory using (‵neg)
 open import Once.Surface.Numeric using (numBin; toFloatIR)
 open import Once.TypeCheck.Use Σ S nm Ok OkS Δ

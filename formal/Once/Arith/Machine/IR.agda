@@ -18,11 +18,9 @@
 module Once.Arith.Machine.IR where
 
 open import Data.Integer using (ℤ)
-import Data.Integer as ℤ
 open import Once.Arith.CmpOp using (CmpOp; FCmpOp)
 open import Data.Nat using (ℕ)
 import Data.Nat as ℕ
-import Data.Sign as Sign
 
 open import Once.Spec.Type using (Type; Unit; Int)
 open import Once.Arith.Type using (NumType; NInt; NFloat)

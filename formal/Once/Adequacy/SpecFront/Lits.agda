@@ -17,12 +17,10 @@ module Once.Adequacy.SpecFront.Lits where
 
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.Integer using (ℤ)
-import Data.Product
 import Data.List.Relation.Unary.All
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 
 open import Once.Spec.Surface.Syntax using (RVar; RQualified; RResolved; RGen; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
-import Once.Spec.Surface.Syntax as S
 import Once.Spec.Source as SP
 open import Once.Denotation.Admissible using (rawIntLits; declIntLits; moduleIntLits; AdmissibleM)
 open import Once.Spec.Surface.Syntax using (Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport; mkModule)

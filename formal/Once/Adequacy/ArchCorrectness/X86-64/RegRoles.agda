@@ -19,7 +19,6 @@
 
 module Once.Adequacy.ArchCorrectness.X86-64.RegRoles where
 
-open import Once.CCC.Target.X86-64.Syntax using ()
 open import Once.Target.X86-64.PhysReg using (Reg; rsp; r12; r15; rax; rdi)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles
   using (RegRoles; Role; role-sp; role-clos; role-heap; role-out; role-in1)

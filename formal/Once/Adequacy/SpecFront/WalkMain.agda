@@ -114,10 +114,12 @@ module _ where
 -- An entry's written type is a concrete ground type
 ------------------------------------------------------------------------
 
-open import Once.Spec.Surface.Syntax as LP using (PolyType; PolyFunctor)
+open import Once.Spec.Surface.Type using (PolyType; PolyFunctor)
+
+open import Once.Spec.Surface.Syntax as LP using ()
+
+import Once.Spec.Surface.Type as LPᵗ
 open import Once.Type.Poly as LP using (Ground; GroundF; extractGround)
-import Once.Type.Core as LT
-import Once.Spec.Type as LT
 import Once.Spec.Grade as LG
 open import Once.Type.Concrete using (IsConcrete; con-base; con-fun)
 open import Once.Spec.Type using (Base; b-Unit; b-Void; ∅ₖ)
@@ -129,73 +131,73 @@ private
   mutual
     -- read without variables, it is ground
     g0 : ∀ (T : PolyType) {ns : Fin 0 → String} {A} → TypeOf ns (toPoly T) A → Ground T
-    g0 LP.PUnit           to-unit      = tt
-    g0 LP.PVoid           to-void      = tt
-    g0 LP.PInt            to-int       = tt
-    g0 LP.PFloat          to-float     = tt
-    g0 (A LP.P* B)        (to-* a b)   = g0 A a , g0 B b
-    g0 (A LP.P+ B)        (to-+ a b)   = g0 A a , g0 B b
-    g0 (A LP.P⇒[ q ] B)   (to-⇒ a b)   = g0 A a , g0 B b
-    g0 (LP.PEff A B)      (to-eff a b) = g0 A a , g0 B b
-    g0 (LP.PAct A B)      (to-act a b) = g0 A a , g0 B b
-    g0 (LP.Pμ F)     (to-μ f)     = g0F F f
-    g0 (LP.Pν F φ)   (to-ν f)     = g0F F f
-    g0 (LP.PTVar x)       (to-var () _)
+    g0 LPᵗ.PUnit           to-unit      = tt
+    g0 LPᵗ.PVoid           to-void      = tt
+    g0 LPᵗ.PInt            to-int       = tt
+    g0 LPᵗ.PFloat          to-float     = tt
+    g0 (A LPᵗ.P* B)        (to-* a b)   = g0 A a , g0 B b
+    g0 (A LPᵗ.P+ B)        (to-+ a b)   = g0 A a , g0 B b
+    g0 (A LPᵗ.P⇒[ q ] B)   (to-⇒ a b)   = g0 A a , g0 B b
+    g0 (LPᵗ.PEff A B)      (to-eff a b) = g0 A a , g0 B b
+    g0 (LPᵗ.PAct A B)      (to-act a b) = g0 A a , g0 B b
+    g0 (LPᵗ.Pμ F)     (to-μ f)     = g0F F f
+    g0 (LPᵗ.Pν F φ)   (to-ν f)     = g0F F f
+    g0 (LPᵗ.PTVar x)       (to-var () _)
 
     g0F : ∀ (F : PolyFunctor) {ns : Fin 0 → String} {G} → FunOf ns (toPolyF F) G → GroundF F
-    g0F (LP.PK A)     (fo-K a)   = g0 A a
-    g0F LP.PId        fo-Id      = tt
-    g0F (F LP.P⊕ G)   (fo-⊕ f g) = g0F F f , g0F G g
-    g0F (F LP.P⊗ G)   (fo-⊗ f g) = g0F F f , g0F G g
+    g0F (LPᵗ.PK A)     (fo-K a)   = g0 A a
+    g0F LPᵗ.PId        fo-Id      = tt
+    g0F (F LPᵗ.P⊕ G)   (fo-⊕ f g) = g0F F f , g0F G g
+    g0F (F LPᵗ.P⊗ G)   (fo-⊗ f g) = g0F F f , g0F G g
 
   -- a domain above `Unit` is `Unit`
   dom-base : ∀ (T : PolyType) {ns : Fin 0 → String} {X} (r : TypeOf ns (toPoly T) X) → ST.Unit SS.<: X
            → Base ∅ₖ (extractGround T (g0 T r))
-  dom-base LP.PUnit to-unit SS.sub-unit = b-Unit
-  dom-base LP.PVoid to-void ()
-  dom-base LP.PInt to-int ()
-  dom-base LP.PFloat to-float ()
-  dom-base (A LP.P* B) (to-* a b) ()
-  dom-base (A LP.P+ B) (to-+ a b) ()
-  dom-base (A LP.P⇒[ q ] B) (to-⇒ a b) ()
-  dom-base (LP.PEff A B) (to-eff a b) ()
-  dom-base (LP.PAct A B) (to-act a b) ()
-  dom-base (LP.Pμ F) (to-μ f) ()
-  dom-base (LP.Pν F φ) (to-ν f) ()
-  dom-base (LP.PTVar x) (to-var () _)
+  dom-base LPᵗ.PUnit to-unit SS.sub-unit = b-Unit
+  dom-base LPᵗ.PVoid to-void ()
+  dom-base LPᵗ.PInt to-int ()
+  dom-base LPᵗ.PFloat to-float ()
+  dom-base (A LPᵗ.P* B) (to-* a b) ()
+  dom-base (A LPᵗ.P+ B) (to-+ a b) ()
+  dom-base (A LPᵗ.P⇒[ q ] B) (to-⇒ a b) ()
+  dom-base (LPᵗ.PEff A B) (to-eff a b) ()
+  dom-base (LPᵗ.PAct A B) (to-act a b) ()
+  dom-base (LPᵗ.Pμ F) (to-μ f) ()
+  dom-base (LPᵗ.Pν F φ) (to-ν f) ()
+  dom-base (LPᵗ.PTVar x) (to-var () _)
 
   -- a codomain below `Unit` is `Unit` or `Void`
   cod-base : ∀ (T : PolyType) {ns : Fin 0 → String} {X} (r : TypeOf ns (toPoly T) X) → X SS.<: ST.Unit
            → Base ∅ₖ (extractGround T (g0 T r))
-  cod-base LP.PUnit to-unit SS.sub-unit = b-Unit
-  cod-base LP.PVoid to-void SS.sub-void = b-Void
-  cod-base LP.PInt to-int ()
-  cod-base LP.PFloat to-float ()
-  cod-base (A LP.P* B) (to-* a b) ()
-  cod-base (A LP.P+ B) (to-+ a b) ()
-  cod-base (A LP.P⇒[ q ] B) (to-⇒ a b) ()
-  cod-base (LP.PEff A B) (to-eff a b) ()
-  cod-base (LP.PAct A B) (to-act a b) ()
-  cod-base (LP.Pμ F) (to-μ f) ()
-  cod-base (LP.Pν F φ) (to-ν f) ()
-  cod-base (LP.PTVar x) (to-var () _)
+  cod-base LPᵗ.PUnit to-unit SS.sub-unit = b-Unit
+  cod-base LPᵗ.PVoid to-void SS.sub-void = b-Void
+  cod-base LPᵗ.PInt to-int ()
+  cod-base LPᵗ.PFloat to-float ()
+  cod-base (A LPᵗ.P* B) (to-* a b) ()
+  cod-base (A LPᵗ.P+ B) (to-+ a b) ()
+  cod-base (A LPᵗ.P⇒[ q ] B) (to-⇒ a b) ()
+  cod-base (LPᵗ.PEff A B) (to-eff a b) ()
+  cod-base (LPᵗ.PAct A B) (to-act a b) ()
+  cod-base (LPᵗ.Pμ F) (to-μ f) ()
+  cod-base (LPᵗ.Pν F φ) (to-ν f) ()
+  cod-base (LPᵗ.PTVar x) (to-var () _)
 
   conc : ∀ (T : PolyType) {ns : Fin 0 → String} {A} (r : TypeOf ns (toPoly T) A) → A SS.<: EffUU
        → IsConcrete (extractGround T (g0 T r))
-  conc LP.PVoid to-void SS.sub-void = con-base b-Void
-  conc LP.PUnit to-unit ()
-  conc LP.PInt to-int ()
-  conc LP.PFloat to-float ()
-  conc (A LP.P* B) (to-* a b) ()
-  conc (A LP.P+ B) (to-+ a b) ()
-  conc (A LP.P⇒[ LG.Many ] B) (to-⇒ a b) (SS.sub-arr d c _) = con-fun (dom-base A a d) (cod-base B b c)
-  conc (A LP.P⇒[ LG.One ] B) (to-⇒ a b) ()
-  conc (A LP.P⇒[ LG.Zero ] B) (to-⇒ a b) ()
-  conc (LP.PEff A B) (to-eff a b) (SS.sub-arr d c _) = con-fun (dom-base A a d) (cod-base B b c)
-  conc (LP.PAct A B) (to-act a b) (SS.sub-arr d c _) = con-fun (dom-base A a d) (cod-base B b c)
-  conc (LP.Pμ F) (to-μ f) ()
-  conc (LP.Pν F φ) (to-ν f) ()
-  conc (LP.PTVar x) (to-var () _)
+  conc LPᵗ.PVoid to-void SS.sub-void = con-base b-Void
+  conc LPᵗ.PUnit to-unit ()
+  conc LPᵗ.PInt to-int ()
+  conc LPᵗ.PFloat to-float ()
+  conc (A LPᵗ.P* B) (to-* a b) ()
+  conc (A LPᵗ.P+ B) (to-+ a b) ()
+  conc (A LPᵗ.P⇒[ LG.Many ] B) (to-⇒ a b) (SS.sub-arr d c _) = con-fun (dom-base A a d) (cod-base B b c)
+  conc (A LPᵗ.P⇒[ LG.One ] B) (to-⇒ a b) ()
+  conc (A LPᵗ.P⇒[ LG.Zero ] B) (to-⇒ a b) ()
+  conc (LPᵗ.PEff A B) (to-eff a b) (SS.sub-arr d c _) = con-fun (dom-base A a d) (cod-base B b c)
+  conc (LPᵗ.PAct A B) (to-act a b) (SS.sub-arr d c _) = con-fun (dom-base A a d) (cod-base B b c)
+  conc (LPᵗ.Pμ F) (to-μ f) ()
+  conc (LPᵗ.Pν F φ) (to-ν f) ()
+  conc (LPᵗ.PTVar x) (to-var () _)
 
 -- A written type the Spec reads as an entry is a concrete ground type.
 entry-concrete : ∀ (T : PolyType) {sc} → SchemaOf (toPoly T) sc → Entry sc → Σ[ g ∈ Ground T ] IsConcrete (extractGround T g)

@@ -53,8 +53,7 @@ import Once.Spec.Surface.Program as SPr
 open import Once.Name using (showCanonical; WordName)
 import Once.Parser as Parser
 open import Once.Parser using (Entry; e-fun; e-poly; mkFunInfo; PolyFunInfo; guardDistinct; namesDistinct; allValidNameB; validCharsB; opCharsB; emittedNames; funsOf; polysOf; entryNameOf)
-open import Once.Parser.Lexer using (isIdentStart; isOpNameChar; opNameChars)
-import Once.Parser.Module.Core as PC
+open import Once.Name.Chars using (isIdentStart; isOpNameChar; opNameChars)
 open import Once.Spec.Surface.Syntax using (DTypeSig; DFunDef; DSignature; DTypeAlias; DImport)
 open import Once.Adequacy.SpecFront.Extract using (XAlign; xa-nil; xa-pass; xa-mono; xa-poly; xa-nosig; xa-sig; IsSig; is-sig; FFIEntry)
 open import Once.Adequacy.SpecFront.Render using (render-inj)
@@ -211,12 +210,12 @@ private
   true≢false : true ≡ false → ⊥
   true≢false ()
 
-  any-eq : ∀ h ks → T (any (λ k → Once.Parser.Lexer.toNat h ≡ᵇ Once.Parser.Lexer.toNat k) ks) → Σ[ k ∈ Char ] (k ∈ ks) × (h ≡ k)
+  any-eq : ∀ h ks → T (any (λ k → Once.Name.Chars.toNat h ≡ᵇ Once.Name.Chars.toNat k) ks) → Σ[ k ∈ Char ] (k ∈ ks) × (h ≡ k)
   any-eq h []       ()
-  any-eq h (k ∷ ks) t = go (Once.Parser.Lexer.toNat h ≡ᵇ Once.Parser.Lexer.toNat k) refl t
+  any-eq h (k ∷ ks) t = go (Once.Name.Chars.toNat h ≡ᵇ Once.Name.Chars.toNat k) refl t
     where
-      go : ∀ b → (Once.Parser.Lexer.toNat h ≡ᵇ Once.Parser.Lexer.toNat k) ≡ b
-         → T (b ∨ any (λ k′ → Once.Parser.Lexer.toNat h ≡ᵇ Once.Parser.Lexer.toNat k′) ks) → Σ[ k′ ∈ Char ] (k′ ∈ k ∷ ks) × (h ≡ k′)
+      go : ∀ b → (Once.Name.Chars.toNat h ≡ᵇ Once.Name.Chars.toNat k) ≡ b
+         → T (b ∨ any (λ k′ → Once.Name.Chars.toNat h ≡ᵇ Once.Name.Chars.toNat k′) ks) → Σ[ k′ ∈ Char ] (k′ ∈ k ∷ ks) × (h ≡ k′)
       go true  e _ = k , here refl , CharP.≈⇒≡ (NatP.≡ᵇ⇒≡ (Data.Char.toℕ h) (Data.Char.toℕ k) (subst T (sym e) tt))
       go false _ t′ = let (k′ , m , e′) = any-eq h ks t′ in k′ , there m , e′
 

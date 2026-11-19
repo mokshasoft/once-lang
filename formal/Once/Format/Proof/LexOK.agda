@@ -27,7 +27,6 @@ open import Data.Nat.Properties using (+-mono-≤; ≤-refl; ≤-trans; <-≤-tr
 open import Data.Product using (_×_; _,_; ∃-syntax)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; cong; subst)
-import Relation.Binary.PropositionalEquality as Eq
 
 open import Once.Postulates using (toList∘fromList; isDigit-value)
 open import Once.Spec.Surface.Lexing

@@ -37,9 +37,7 @@ open HeapRef using (ref-id)
 
 module EscapeInterfaceDef {FS : FrameSemantics} where
   open FrameSemantics FS
-  open import Once.CCC.Machine.SMCore using ()
   open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
-  open import Once.CCC.Machine.Allocation using ()
   open import Once.CCC.Machine.Allocation using (module FrontierInvariant)
   open FrontierInvariant {FS}
 

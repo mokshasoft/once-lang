@@ -27,7 +27,6 @@ open import Once.Adequacy.CPU.Interface using (Byte; ArchSemantics)
 
 import Data.Maybe
 import Once.CCC.Target.X86-32.Semantics as X32
-import Once.CCC.Target.X86-32.Syntax    as X32S
 import Once.CCC.Target.X86-32.File as RF
 open import Data.Bool using (if_then_else_)
 open import Data.List.Relation.Unary.Any using (Any; here; there)

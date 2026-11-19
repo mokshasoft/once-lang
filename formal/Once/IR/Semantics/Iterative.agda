@@ -26,7 +26,6 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
 open import Once.Spec.Word using (Carrier)
-import Once.IR.Semantics.Value Carrier Carrier as V
 open import Once.IR.Semantics.Trace
   using (T; ret; call; halt)
 

@@ -46,7 +46,6 @@ open import Once.Adequacy.ModuleProgram Σ using (Names; names-monoF; names-poly
 import Once.Adequacy.ModuleProgram Σ as MP
 open import Once.Spec.Sub using (_<:_)
 import Once.Type.SubDecide
-import Once.Core.Translate Σ as TR
 import Once.Adequacy.SpecFront.Polys
 
 -- The entries: definitions (no FFI declaration), polymorphic exactly when one of `ps`.

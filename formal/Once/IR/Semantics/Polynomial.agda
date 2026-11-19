@@ -14,7 +14,6 @@
 
 module Once.IR.Semantics.Polynomial where
 
-import Once.Spec.Type
 
 open import Data.Product using (_,_)
 open import Data.Sum using (inj₁; inj₂)

@@ -51,7 +51,6 @@ open import Once.Denotation.Behavior using (Source)
 -- the run ended; two are the same when weakly bisimilar.
 open import Once.Spec.Trace using (Tr; _≈ᵗ⟨_⟩_; _⊑ᵗ⟨_⟩_)
 open import Once.Metatheory.Trace using (⊑≈-trans; WB-trans)
-import Once.Core.Telescope as TL
 open import Once.Spec.Signature using (Signature; WellFormed; Decl)
 open import Data.List.Relation.Unary.Unique.Propositional using (Unique)
 import Once.Spec.Observation as Obs
@@ -60,7 +59,9 @@ open import Once.Core.Decl using (toISig)
 import Data.Unit
 
 open import Once.Adequacy.SourceTrace using (⟦_⟧IRᵗ; srcToModule; srcToModule-just; srcToModule-inv)
-open import Once.Compile using (moduleToIR; moduleToProgram; moduleTable; programAt; rewrite-program)
+open import Once.Compile using (moduleToIR; moduleToProgram; moduleTable; programAt)
+open import Once.Compile.Emit using (rewrite-program)
+import Once.Compile.Emit as Emit
 open import Once.Adequacy.OptimizedModule using (moduleToIR-opt)
 open import Once.Adequacy.OptimizedTable using (optimized-trace)
 import Once.IR as IR
@@ -94,16 +95,13 @@ open import Function using (case_of_)
 open import Once.Adequacy.CPU.Interface using (Byte; ArchSemantics)
 open import Once.Target.Arch using (Arch)
 open import Once.Denotation.Admissible using (AdmissibleM; admissibleM?)
-import Once.Spec.Word as OnceWord
 open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Once.Target.Arch using (arch-numerics; x86-64; x86-32; riscv64)
 
 import Once.Compile as C
-import Once.Grammar as G
 import Once.Parser.Module.Core as P
 import Once.Spec.Surface.Syntax as Syn
 import Once.Parser.Module.Resolve as Resolve
-import Once.Parser.Module as Module
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Once.Parser using (parseStrict)
 -- Stage 1 adapter, now a real structural conversion (discharges the
@@ -166,24 +164,24 @@ import Once.Adequacy.CPU as CPU
 -- PLAN 0.107: THE FILE, PER ARCH. What the compiler emits (`C.FileOf arch`)
 -- and what the CPU model decodes are the SAME type, so a file's execution,
 -- well-formedness and bytes are read off the arch's own `ArchSemantics`.
-AsmWF-of : (arch : Arch) → C.FileOf arch → Set
+AsmWF-of : (arch : Arch) → Emit.FileOf arch → Set
 AsmWF-of x86-64  = ArchSemantics.AsmWF (CPU.arch-semantics x86-64)
 AsmWF-of x86-32  = ArchSemantics.AsmWF (CPU.arch-semantics x86-32)
 AsmWF-of riscv64 = ArchSemantics.AsmWF (CPU.arch-semantics riscv64)
 
 -- the environment hands the file's program over at its entry point, and it runs
-run-file : (arch : Arch) → Interp → C.FileOf arch → Tr Data.Unit.⊤
+run-file : (arch : Arch) → Interp → Emit.FileOf arch → Tr Data.Unit.⊤
 run-file x86-64  ι F = ArchSemantics.run-trace (CPU.arch-semantics x86-64)  ι F (ArchSemantics.initialState (CPU.arch-semantics x86-64)  F)
 run-file x86-32  ι F = ArchSemantics.run-trace (CPU.arch-semantics x86-32)  ι F (ArchSemantics.initialState (CPU.arch-semantics x86-32)  F)
 run-file riscv64 ι F = ArchSemantics.run-trace (CPU.arch-semantics riscv64) ι F (ArchSemantics.initialState (CPU.arch-semantics riscv64) F)
 
 -- the bytes: `as` on the file's canonical text
-file-bytes : (arch : Arch) → C.FileOf arch → List Byte
-file-bytes arch F = ArchSemantics.assemble (CPU.arch-semantics arch) (C.printFile arch F)
+file-bytes : (arch : Arch) → Emit.FileOf arch → List Byte
+file-bytes arch F = ArchSemantics.assemble (CPU.arch-semantics arch) (Emit.printFile arch F)
 
 -- …and THE ONLY TRUST about them (plan 0.107): assembled, a well-formed file runs
 -- its program (`as-faithful`, through `exec-print`).
-exec-file : ∀ (arch : Arch) (ι : Interp) (F : C.FileOf arch) → AsmWF-of arch F
+exec-file : ∀ (arch : Arch) (ι : Interp) (F : Emit.FileOf arch) → AsmWF-of arch F
           → ArchSemantics.exec-bytes (CPU.arch-semantics arch) ι (file-bytes arch F) ≡ run-file arch ι F
 exec-file x86-64  ι F wf = ArchSemantics.exec-print (CPU.arch-semantics x86-64)  ι F wf
 exec-file x86-32  ι F wf = ArchSemantics.exec-print (CPU.arch-semantics x86-32)  ι F wf
@@ -201,7 +199,7 @@ record ArchCorrect (arch : Arch) (ι : Interp) : Set where
     -- entry point an instruction. A PROOF obligation: the compiler must SHOW
     -- what the toolchain will check (D100/D167 were its postulated halves).
     file-wf :
-      ∀ (doOpt : Bool) (m : P.Resolved) (F : C.FileOf arch) →
+      ∀ (doOpt : Bool) (m : P.Resolved) (F : Emit.FileOf arch) →
       C.compileFileFromModule IR.Heap doOpt arch m ≡ inj₂ F →
       AsmWF-of arch F
     -- RUNNING THE FILE FOLLOWS THE TRACE OF THE PROGRAM IT WAS EMITTED FROM, UP
@@ -212,7 +210,7 @@ record ArchCorrect (arch : Arch) (ι : Interp) : Set where
     -- (At either build: the optimized build's file is the emission of its own
     -- program, plan 0.39.)
     file-tr :
-      ∀ (doOpt : Bool) (m : P.Resolved) (F : C.FileOf arch) →
+      ∀ (doOpt : Bool) (m : P.Resolved) (F : Emit.FileOf arch) →
       C.compileFileFromModule IR.Heap doOpt arch m ≡ inj₂ F →
       ∀ (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) (mi : C.moduleToIR-aux (C.compileResolvedModule IR.Heap doOpt m) ≡ just ir) →
       (ls : moduleSig m ≡ sig ι) →
@@ -277,7 +275,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
   compile-text arch (inj₁ _)   = nothing
   compile-text arch (inj₂ asm) = just (ArchSemantics.assemble (CPU.arch-semantics arch) asm)
 
-  compile-fe : (arch : Arch) → String ⊎ C.FileOf arch → Maybe (List Byte)
+  compile-fe : (arch : Arch) → String ⊎ Emit.FileOf arch → Maybe (List Byte)
   compile-fe arch fe = compile-text arch (C.printResult arch fe)
 
   compile-mir : Arch → Bool → P.Resolved → Maybe (IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) → Maybe (List Byte)
@@ -486,7 +484,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
     -- preserves the program's trace (`rewrite-program-trace`). Every link but the
     -- first is a proof.
     file-correct :
-      ∀ (arch : Arch) (m : P.Resolved) (F : C.FileOf arch) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) →
+      ∀ (arch : Arch) (m : P.Resolved) (F : Emit.FileOf arch) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) →
       C.compileFileFromModule IR.Heap false arch m ≡ inj₂ F →
       moduleToIR m ≡ just ir →
       moduleSig m ≡ sig ι →
@@ -584,7 +582,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
     -- that program, arith-rewritten or not, has the source program's trace: the
     -- optimizer keeps every function's run and the program's `main` is the same
     -- (`OptimizedTable.optimized-trace`, `OptimizedModule.moduleToIR-opt`).
-    opt-trace : ∀ (arch : Arch) (m : P.Resolved) (F : C.FileOf arch) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) →
+    opt-trace : ∀ (arch : Arch) (m : P.Resolved) (F : Emit.FileOf arch) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) →
       C.compileFileFromModule IR.Heap true arch m ≡ inj₂ F →
       moduleToIR m ≡ just ir →
       -- plan 0.105: in a world that declares the module's signatures
@@ -605,14 +603,14 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
     -- (the proven codegen chain for `false`; `opt-trace`, its optimized twin, for `true`).
     TraceAt : Arch → Bool → P.Resolved → IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋ → Set
     TraceAt arch doOpt m ir =
-      ∀ (F : C.FileOf arch) → C.compileFileFromModule IR.Heap doOpt arch m ≡ inj₂ F →
+      ∀ (F : Emit.FileOf arch) → C.compileFileFromModule IR.Heap doOpt arch m ≡ inj₂ F →
       exec arch (file-bytes arch F) ≋ ⟦ just (irProgram (moduleTable m) ir) ⟧IRᵗ (arch-numerics arch) ι
 
     -- Layer 3 — over the compile RESULT. The accept case is `PW.just` of the
     -- supplied trace witness; the three reject results are ruled out by
     -- `main⇒built` (a `main` always Builds), so `compile` here can only Build.
     correct-fe : ∀ (arch : Arch) (doOpt : Bool) (m : P.Resolved) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋)
-                   (fe : String ⊎ C.FileOf arch) → AdmissibleM arch (P.Resolved.rmodule m) →
+                   (fe : String ⊎ Emit.FileOf arch) → AdmissibleM arch (P.Resolved.rmodule m) →
                    C.compileFileFromModule IR.Heap doOpt arch m ≡ fe →
                    moduleToIR m ≡ just ir →
                    TraceAt arch doOpt m ir →

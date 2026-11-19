@@ -84,7 +84,6 @@ import Once.Memory.StackSlots
 module StackSlots = Once.Memory.StackSlots x86-layout x86-stack-growth
   using (StackPointer; _≟SP_; offset-distinct; slot-addr; stack-addr; stack-addr-inj; module StackAddr; module StackGrowth′)
 open StackSlots
-  hiding (InStack; module Regions)
 open StackSlots.StackAddr using (addr)
 open StackSlots.StackGrowth′ using (grow-identity)
 

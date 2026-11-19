@@ -68,7 +68,6 @@ open import Once.Spec.Theory using (NumTy; ⌜_⌝ⁿ; Has; Neg; ‵neg)
 open import Once.Spec.Surface.Operator using (binSym; BinSym)
 open BinSym using (theory; symbol)
 open import Once.TypeCheck.NumTable using (has-unique; binDom)
-import Once.IR as IR
 import Once.Spec.Surface.Typing Σ S nm as SU
 open SU hiding (_⊢_⇒_↝_; _⊢_⇐_↝_; _⊢_⇐_⇒[_]↦_↝_)
 open import Once.TypeCheck.Use Σ S nm Ok OkS Δ

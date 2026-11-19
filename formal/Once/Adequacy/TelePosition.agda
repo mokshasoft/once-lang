@@ -38,7 +38,6 @@ import Once.TypeCheck.SpecWitness
 import Once.TypeCheck.Scope
 import Once.TypeCheck.Classify
 import Once.Parser
-import Once.Parser.Module as Module
 import Once.Parser.Module.Core as P
 import Once.Spec.Surface.Syntax as Syn
 import Data.Maybe as Maybe
@@ -51,10 +50,8 @@ open import Data.Sum using (inj₁; inj₂)
 open import Data.Sum.Properties using (inj₂-injective)
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
-import Once.Type.Core
 import Once.Spec.Type
 import Once.Type
-import Once.Context as Ctx
 open import Once.TypeCheck.Scope using (PolyCtx; lookupPolyPrefix)
 open import Once.TypeCheck.Classify using (TopCtx)
 open import Once.Compile using (irFunOf; tableOf-go)

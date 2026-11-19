@@ -52,7 +52,7 @@ open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
 
 open import Once.Spec.Type using (Type; Unit)
-open import Once.Spec.Surface.Syntax using (PolyType)
+open import Once.Spec.Surface.Type using (PolyType)
 open import Once.Type.Instance using (KindedInstance)
 open import Once.Spec.Name using (bare)
 open import Once.Contract using (ISig)
@@ -67,7 +67,6 @@ import Once.Parser as Parser
 open Parser.FunInfo using (funName)
 open Parser.PolyFunInfo using (pfunName; pfunType; pfunBody)
 import Once.Parser.Module.Core as P
-import Once.Surface.Context as Ctx
 open import Once.Spec.Context using (Ctx; Usage; zeroUsage)
 open import Once.Spec.Context using ([]; _∷_)
 import Once.Spec.Context
@@ -89,7 +88,6 @@ import Once.Core.Translate as TR
 import Once.Adequacy.ModuleProgram as MP
 open import Once.Adequacy.ModuleSig using (sigOf; sig-in)
 open import Data.Fin using (zero)
-open import Once.Spec.Surface.Syntax using ()
 open import Once.Denotation.Program using (IRFun; irProgram; LinkedAt; Linked; LinkedProgram; TeleLinked; NamesDistinct)
 open Once.Denotation.Program.IRFun using (fbody)
 open import Once.Module using (ModTele; []; ffi; mono; poly; ModuleTyped-ef; EffUU; teleSig; moduleSig; moduleSig-ef)

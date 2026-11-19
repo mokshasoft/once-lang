@@ -32,7 +32,6 @@ open LocState using (halted; regs)
 open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; module HeapRef; module HeapLocation)
 import Once.CCC.Machine.FlatAlloc as FlatAlloc
 
-import Once.CCC.FrameSemantics
 import Once.CCC.Machine.SMPrimitives
 import Once.Denotation.ValueDomain as ValueDomain
 

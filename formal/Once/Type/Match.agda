@@ -24,7 +24,7 @@ open import Data.Nat using (ℕ)
 open import Once.Spec.Grade
 open import Once.Spec.Type using (μ; ν)
 open import Once.Spec.Type using (var; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
-open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PK; PId; _P⊕_; _P⊗_; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PInt; PFloat; PTVar)
+open import Once.Spec.Surface.Type using (PolyType; PolyFunctor; PK; PId; _P⊕_; _P⊗_; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PInt; PFloat; PTVar)
 open import Once.Type.DecEq using (_≟q_)
 open import Once.Type.DecEq using (_≟T_)
 

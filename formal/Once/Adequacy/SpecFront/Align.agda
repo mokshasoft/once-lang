@@ -35,16 +35,11 @@ open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Fin using (Fin)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; sym; trans)
 
-import Once.Type.Core as LT
-import Once.Spec.Type as LT
 
-import Once.Spec.Type as LT
-import Once.Type.Concrete as LW
-import Once.Spec.Type as LW
 open import Once.TypeCheck.DeciderComplete using (isGround-complete-at; Ground-irrelevant)
 open import Once.Functor.Decide using (isConcrete?)
 import Data.Sum
-open import Once.Spec.Surface.Syntax using (PolyType; PTVar; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PolyFunctor; PK; PId; _P⊕_; _P⊗_)
+open import Once.Spec.Surface.Type using (PolyType; PTVar; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PolyFunctor; PK; PId; _P⊕_; _P⊗_)
 open import Once.Type.Poly using (Ground; GroundF; extractGround; extractGroundF)
 import Once.Spec.Surface.Syntax as SX
 open import Once.Spec.Surface.Program

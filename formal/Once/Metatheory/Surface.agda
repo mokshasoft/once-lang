@@ -24,7 +24,6 @@ module Once.Metatheory.Surface (Σ : Signature) {s} (S : Defs s) (nm : Fin s →
 
 open import Data.Empty using (⊥-elim)
 open import Data.List.Membership.Propositional using (_∈_)
-import Data.List.Relation.Unary.All as All
 open import Data.Nat using (_<_)
 open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)

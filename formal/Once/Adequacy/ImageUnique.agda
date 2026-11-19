@@ -26,8 +26,6 @@ import Data.List
 import Data.List.Relation.Unary.All
 import Data.String
 import Data.Nat
-import Data.Digit
-import Data.List.Properties
 import Once.Arith.Machine.IR
 open import Data.List.Properties using (++-assoc; ++-identityʳ; map-++)
 open import Data.List.Relation.Unary.All using (All; []; _∷_) renaming ()
@@ -447,6 +445,7 @@ open import Once.Target.Symbol using (once-symbol-own)
 open import Once.Target.SymbolInjective using (ValidName)
 open import Once.Adequacy.NameClash using (guard-true; namesDistinct-sound; allValidNameB-sound; map-allpairs-own; ce-syms; ∧-elimˡ; ∧-elimʳ)
 import Once.Compile as C
+import Once.Compile.Emit as Emit
 import Once.IR as IR
 import Once.Parser as Parser
 
@@ -613,16 +612,16 @@ private
   DD : List String → List (String × ArithBlock) → Set
   DD seen xs = AllPairs _≢_ (Data.List.map proj₁ xs) × All (λ q → All (_≢ proj₁ q) seen) xs
 
-  dedup-dd : ∀ (seen : List String) (xs : List (String × ArithBlock)) → DD seen (C.dedup-go seen xs)
+  dedup-dd : ∀ (seen : List String) (xs : List (String × ArithBlock)) → DD seen (Emit.dedup-go seen xs)
   dedup-step : ∀ (seen : List String) (s : String) (b : ArithBlock) (bs : List (String × ArithBlock)) (r : _)
              → BLA.any (λ x → x Data.String.== s) seen ≡ r
-             → DD seen (if r then C.dedup-go seen bs else (s , b) ∷ C.dedup-go (s ∷ seen) bs)
+             → DD seen (if r then Emit.dedup-go seen bs else (s , b) ∷ Emit.dedup-go (s ∷ seen) bs)
   dedup-dd seen []             = [] , []
   dedup-dd seen ((s , b) ∷ bs) = dedup-step seen s b bs _ refl
   dedup-step seen s b bs true  _ = dedup-dd seen bs
   dedup-step seen s b bs false e =
     let (ap , al) = dedup-dd (s ∷ seen) bs
-    in (head-fresh (C.dedup-go (s ∷ seen) bs) al ∷ ap)
+    in (head-fresh (Emit.dedup-go (s ∷ seen) bs) al ∷ ap)
        , (any-false {s = s} seen e ∷ Data.List.Relation.Unary.All.map (λ {q} → tl {q}) al)
     where
       tl : ∀ {q : String × ArithBlock} → All (_≢ proj₁ q) (s ∷ seen) → All (_≢ proj₁ q) seen
@@ -633,17 +632,17 @@ private
       head-fresh (_ ∷ ys) ((p ∷ _) ∷ ps) = p ∷ head-fresh ys ps
 
   dedup-⊆ : ∀ {P : String → Set} (seen : List String) (xs : List (String × ArithBlock))
-          → All (λ q → P (proj₁ q)) xs → All (λ q → P (proj₁ q)) (C.dedup-go seen xs)
+          → All (λ q → P (proj₁ q)) xs → All (λ q → P (proj₁ q)) (Emit.dedup-go seen xs)
   dedup-⊆-step : ∀ {P : String → Set} (seen : List String) (s : String) (b : ArithBlock) (bs : List (String × ArithBlock)) (r : _)
                → P s → All (λ q → P (proj₁ q)) bs
-               → All (λ q → P (proj₁ q)) (if r then C.dedup-go seen bs else (s , b) ∷ C.dedup-go (s ∷ seen) bs)
+               → All (λ q → P (proj₁ q)) (if r then Emit.dedup-go seen bs else (s , b) ∷ Emit.dedup-go (s ∷ seen) bs)
   dedup-⊆ seen []             []       = []
   dedup-⊆ seen ((s , b) ∷ bs) (p ∷ ps) = dedup-⊆-step seen s b bs _ p ps
   dedup-⊆-step seen s b bs true  p ps = dedup-⊆ seen bs ps
   dedup-⊆-step seen s b bs false p ps = p ∷ dedup-⊆ (s ∷ seen) bs ps
 
   tag : ArithBlock → String × ArithBlock
-  tag b = C.block-symbol b , b
+  tag b = Emit.block-symbol b , b
 
   tagged : ∀ (bs : List ArithBlock) → All (λ q → BlockSym (proj₁ q)) (Data.List.map tag bs)
   tagged []       = []
@@ -653,11 +652,11 @@ private
   fsts []       []       = []
   fsts (_ ∷ xs) (p ∷ ps) = p ∷ fsts xs ps
 
-blocks-unique : ∀ (bs : List ArithBlock) → AllPairs _≢_ (C.block-syms bs)
+blocks-unique : ∀ (bs : List ArithBlock) → AllPairs _≢_ (Emit.block-syms bs)
 blocks-unique bs = proj₁ (dedup-dd [] (Data.List.map tag bs))
 
-blocks-sym : ∀ (bs : List ArithBlock) → All BlockSym (C.block-syms bs)
-blocks-sym bs = fsts (C.dedup-blocks (Data.List.map tag bs)) (dedup-⊆ [] (Data.List.map tag bs) (tagged bs))
+blocks-sym : ∀ (bs : List ArithBlock) → All BlockSym (Emit.block-syms bs)
+blocks-sym bs = fsts (Emit.dedup-blocks (Data.List.map tag bs)) (dedup-⊆ [] (Data.List.map tag bs) (tagged bs))
 
 ------------------------------------------------------------------------
 -- What an image's definition is: a counter label's (`.`-headed) or a
@@ -704,7 +703,7 @@ open import Once.Denotation.Program using (irProgram)
 open import Once.Adequacy.ImageWF using (prog-defs; lib-defs)
 
 private
-  rt-names : ∀ (T : List IRFun) → Data.List.map fname (C.rewrite-table T) ≡ Data.List.map fname T
+  rt-names : ∀ (T : List IRFun) → Data.List.map fname (Emit.rewrite-table T) ≡ Data.List.map fname T
   rt-names []       = refl
   rt-names (e ∷ es) = cong (fname e ∷_) (rt-names es)
 
@@ -724,7 +723,7 @@ private
   module Entries (T : List IRFun) (tn : TableNames T) where
     open TableNames tn
     EF : List String
-    EF = Data.List.map once-symbol-path (Data.List.map fname (C.rewrite-table T))
+    EF = Data.List.map once-symbol-path (Data.List.map fname (Emit.rewrite-table T))
     EF≡ : EF ≡ reverse (Data.List.map once-symbol-own names)
     EF≡ = trans (cong (Data.List.map once-symbol-path) (rt-names T)) (trans (sym (map-∘ T)) syms≡)
     EF-dist : AllPairs _≢_ EF
@@ -765,26 +764,26 @@ private
 -- build's too).
 prog-unique-at : ∀ (T : List IRFun) (tn : TableNames T) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) → Unique (prog-defs (irProgram T ir))
 prog-unique-at T tn ir =
-  entry-fresh D B cD cB ∷ defs++blocks D B cD cB uD (blocks-unique (C.program-blocks p))
+  entry-fresh D B cD cB ∷ defs++blocks D B cD cB uD (blocks-unique (Emit.program-blocks p))
   where
     p  = irProgram T ir
-    q  = C.rewrite-program p
-    img = C.image-of p
+    q  = Emit.rewrite-program p
+    img = Emit.image-of p
     fs = fdefs img
     fs≡ : Data.List.map once-symbol-path fs ≡ Entries.EF T tn
     -- D377: the image is the program image with its room checks, which define
     -- no function and no closure label (`fold-room`)
     fs≡ = cong (Data.List.map once-symbol-path)
-               (trans (fold-room fdefs (λ i xs → fdef-of i ++ xs) (λ _ _ → refl) (λ _ _ → refl) (program-image C.entry-owner q))
-                      (image-fdefs C.entry-owner q))
+               (trans (fold-room fdefs (λ i xs → fdef-of i ++ xs) (λ _ _ → refl) (λ _ _ → refl) (program-image Emit.entry-owner q))
+                      (image-fdefs Emit.entry-owner q))
     cl-room : Dst (clabs img)
-    cl-room = subst Dst (sym (fold-room clabs (λ i → cl-at (clab-of i)) (λ _ _ → refl) (λ _ _ → refl) (program-image C.entry-owner q)))
-                    (image-cl C.entry-owner q)
+    cl-room = subst Dst (sym (fold-room clabs (λ i → cl-at (clab-of i)) (λ _ _ → refl) (λ _ _ → refl) (program-image Emit.entry-owner q)))
+                    (image-cl Emit.entry-owner q)
     open Apart fs T tn fs≡
     D = adefs img
-    B = C.block-syms (C.program-blocks p)
+    B = Emit.block-syms (Emit.program-blocks p)
     cD = adefs-class img
-    cB = blocks-sym (C.program-blocks p)
+    cB = blocks-sym (Emit.program-blocks p)
     uD = adefs-unique img cl-room (subst (AllPairs _≢_) (sym fs≡) (Entries.EF-dist T tn))
 
 prog-unique : ∀ (m : Resolved) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) → Unique (prog-defs (irProgram (C.moduleTable m) ir))
@@ -793,18 +792,18 @@ prog-unique m ir = prog-unique-at (C.moduleTable m) (table-names m) ir
 -- THE LIBRARY (was `ImageWF.lib-unique`, a postulate).
 lib-unique-at : ∀ (T : List IRFun) (tn : TableNames T) → Unique (lib-defs T)
 lib-unique-at T tn =
-  defs++blocks D B cD cB uD (blocks-unique (C.lib-blocks T))
+  defs++blocks D B cD cB uD (blocks-unique (Emit.lib-blocks T))
   where
-    img = C.lib-image T
+    img = Emit.lib-image T
     fs = fdefs img
     fs≡ : Data.List.map once-symbol-path fs ≡ Entries.EF T tn
-    fs≡ = cong (Data.List.map once-symbol-path) (fns-fdefs 0 (C.rewrite-table T))
+    fs≡ = cong (Data.List.map once-symbol-path) (fns-fdefs 0 (Emit.rewrite-table T))
     open Apart fs T tn fs≡
     D = adefs img
-    B = C.block-syms (C.lib-blocks T)
+    B = Emit.block-syms (Emit.lib-blocks T)
     cD = adefs-class img
-    cB = blocks-sym (C.lib-blocks T)
-    uD = adefs-unique img (proj₁ (fns-cl 0 (C.rewrite-table T))) (subst (AllPairs _≢_) (sym fs≡) (Entries.EF-dist T tn))
+    cB = blocks-sym (Emit.lib-blocks T)
+    uD = adefs-unique img (proj₁ (fns-cl 0 (Emit.rewrite-table T))) (subst (AllPairs _≢_) (sym fs≡) (Entries.EF-dist T tn))
 
 lib-unique : ∀ (m : Resolved) → Unique (lib-defs (C.moduleTable m))
 lib-unique m = lib-unique-at (C.moduleTable m) (table-names m)

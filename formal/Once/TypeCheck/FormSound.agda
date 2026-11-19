@@ -32,7 +32,6 @@ import Once.Spec.Surface.Syntax as Raw
 import Once.Spec.Surface.Generators as G
 import Once.Spec.Surface.Typing as SUT
 import Once.Spec.Core.Syntax as SC
-import Once.Spec.Type as ST
 import Once.Type.Poly as TP
 import Once.Type
 open import Once.Type.Determined using (arrowSchema?; codVarsInDom?)

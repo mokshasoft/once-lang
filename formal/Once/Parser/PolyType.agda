@@ -40,9 +40,8 @@ open import Data.List using (List; length)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_)
 open import Data.String.Properties as StrProp using ()
-import Data.String as StrLib
 
-open import Once.Spec.Surface.Syntax using (PolyType)
+open import Once.Spec.Surface.Type using (PolyType)
 open import Once.Parser.Token
 
 ------------------------------------------------------------------------

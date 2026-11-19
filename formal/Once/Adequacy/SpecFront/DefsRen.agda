@@ -40,7 +40,6 @@ open import Once.Spec.Core.Syntax
 open import Once.Spec.Core.Derived
 open import Once.Adequacy.SpecFront.SchemaRen using (SchRen)
 import Once.Spec.Surface.Syntax
-import Relation.Nullary
 open Schema using (arity; kinds; type)
 import Once.Spec.Core.Typing Σ S₁ as C₁
 import Once.Spec.Core.Typing Σ S₂ as C₂

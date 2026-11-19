@@ -28,7 +28,6 @@ open import Once.Spec.Theory
   using (float-rounded; float-order; float-equality; ‵==ᵈ; ‵!=ᵈ; ‵<ᵈ; ‵<=ᵈ; ‵>ᵈ; ‵>=ᵈ; ‵<; ‵<=; ‵>; ‵>=; ‵==; ‵!=)
 open import Once.Spec.Type using (Base; b-*; b-Float; b-Int; b-Unit; ∅ₖ)
 open import Data.Integer using (ℤ; +_; -[1+_]) renaming ()
-import Data.Integer as ℤ
 open import Data.Nat using (suc)
 -- the decimal the symbol layer proves injective (`SymbolInjective.toList-showNat`)
 open import Once.Target.Symbol using () renaming (showNat to showℕ)

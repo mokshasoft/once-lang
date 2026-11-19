@@ -12,7 +12,6 @@ import Data.Nat
 open import Data.Nat using (ℕ; zero; suc; _+_; _*_; _∸_; _^_; _<_; _≤_; s≤s; z≤n)
 open import Data.Nat.Properties using (≤-trans)
 open import Data.Nat.DivMod using (m%n<n)
-import Data.Integer as ℤ
 open import Data.Integer using (+_; -[1+_]; ∣_∣)
 open import Data.Nat.Properties using (m^n≢0)
 open import Data.Nat.Properties using (m^n>0)

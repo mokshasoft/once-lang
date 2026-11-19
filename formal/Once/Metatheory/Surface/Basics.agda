@@ -18,7 +18,6 @@ module Once.Metatheory.Surface.Basics (Σ : Signature) {s} (S : Defs s) (nm : Fi
 
 
 open import Data.Empty using (⊥; ⊥-elim)
-import Data.List.Relation.Unary.All as All
 open import Data.List.Relation.Unary.Any using (here; there)
 open import Data.Nat using (_<_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)

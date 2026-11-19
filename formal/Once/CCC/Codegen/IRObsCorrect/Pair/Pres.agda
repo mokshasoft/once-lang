@@ -11,7 +11,6 @@
 
 open import Once.Spec.Name using (CanonicalName)
 import Once.CCC.Machine.SMCore as SMCore
-import Once.CCC.FrameSemantics as FrameSemantics′
 
 import Data.List as DL
 open import Once.Denotation.Program using (IRFun)
@@ -33,14 +32,7 @@ open AllocState using (current-frame; saved-frames; next-heap-ref)
 open import Once.IRTy using (IRTy)
 open import Once.Memory.HeapAddress using (HeapLocation)
 
-import Once.CCC.FrameSemantics
 import Once.CCC.Machine.SMPrimitives
-import Once.IRTy
-import Once.IR
-import Once.Semantics.Machine as EvV
-import Once.CCC.Machine.ReadTypedAdequate as RTA
-import Once.Denotation.DenotTrace as DT
-import Once.IR.Semantics.Trace as TM
 
 open import Once.Denotation.Approx using (NotCut; done)
 open import Once.Res using (returns)

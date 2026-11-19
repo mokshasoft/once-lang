@@ -225,7 +225,7 @@ discard-pure {Y} m h = found (Seq.split aWorld (λ _ → return∞ tt) m (proj�
 module _ {Σ″ : Signature} where
   private
     module E″ = Effect Σ″
-      using (BlockEq; T∞; _>>=∞_; _≈_; force; force≈; return∞; module _≈ν_)
+      using (BlockEq; T∞; _>>=∞_; _≈_; force; return∞; module _≈ν_)
     module B″ = Bisim Σ″
       using (≈-bind; ≈-refl; ≈-reflB; ≈-sym; ≈-trans)
 

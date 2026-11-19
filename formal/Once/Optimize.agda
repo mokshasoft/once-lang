@@ -33,7 +33,6 @@ import Once.IRTy as II
 
 open import Data.Bool using (Bool; true; false; _∨_; not)
 open import Data.Nat using (ℕ; zero; suc)
-import Data.Nat.Properties
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Nullary.Decidable using (isYes)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst)

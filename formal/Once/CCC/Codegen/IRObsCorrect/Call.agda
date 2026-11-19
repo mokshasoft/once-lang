@@ -35,12 +35,10 @@ open import Once.CCC.Machine.Locations using (AtStack; AtDynamic; ValueLocation)
 import Once.CCC.FrameSemantics
 open import Once.CCC.Machine.SMCore using (instr-ctrl; c-call-fn; module LocState)
 open LocState using (halted)
-import Once.IRTy
 import Once.IR
 open import Once.Res using (is-stopped)
 open import Once.Denotation.Approx using (NotCut; budgetLeft)
 open import Once.Denotation.Program using (tableCalls)
-import Once.Denotation.DenotTrace as DT
 import Once.IR.Semantics.Trace as TM
 
 module CallC {FS : FrameSemantics} where

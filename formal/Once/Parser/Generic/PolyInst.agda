@@ -21,7 +21,7 @@ open import Data.Nat.Properties using (≤-refl)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
 open import Axiom.UniquenessOfIdentityProofs.WithK using (uip)
 
-open import Once.Spec.Surface.Syntax using (PolyType; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PInt; PFloat; PTVar; PolyFunctor; PK; PId; _P⊕_; _P⊗_)
+open import Once.Spec.Surface.Type using (PolyType; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PInt; PFloat; PTVar; PolyFunctor; PK; PId; _P⊕_; _P⊗_)
 open import Once.Parser.Token
 open import Once.Parser.CharClass using (isLowerWord)
 open import Once.Parser.Generic.Relation

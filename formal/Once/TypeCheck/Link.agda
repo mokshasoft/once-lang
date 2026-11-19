@@ -21,7 +21,7 @@ open import Induction.WellFounded using (Acc; acc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 import Once.Spec.Context as SCx
 open import Once.Spec.Type using (Ty)
-open import Once.Spec.Surface.Syntax using (PolyType)
+open import Once.Spec.Surface.Type using (PolyType)
 import Once.Spec.Surface.Syntax as Syn
 import Once.Spec.Context as Surface
 open import Once.Surface.Syntax as Surface using ()

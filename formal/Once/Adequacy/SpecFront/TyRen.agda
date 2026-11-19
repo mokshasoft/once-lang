@@ -33,7 +33,6 @@ open import Once.Spec.Sub using (_<:_; _<:ᶜ_; _⊔_≔_; subᶜ-void; subᶜ-v
 open import Once.Spec.Core.Syntax
 open import Once.Spec.Core.Derived
 open Schema using (type)
-import Once.Spec.Surface.Syntax as SX
 import Once.Spec.Surface.Typing Σ S nm as U
 open import Once.Metatheory.TermModel.TySubst Σ S using (⟦⟧F-⟨⟩; <:-⟨⟩; wf-⟨⟩; ⌜⌝ᵈ-⟨⟩; symCod-⟨⟩)
 open import Once.Spec.Theory using (int; float)

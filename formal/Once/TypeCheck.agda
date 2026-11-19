@@ -21,11 +21,9 @@ module Once.TypeCheck where
 -- Raw syntax (parser output)
 open import Once.Spec.Surface.Syntax using (RVar; RApp; RLam; RUnit; RInt; RBinOp)
 open import Once.Surface.OpNames
-open import Once.Spec.Surface.Operator using (BinOp)
 open import Once.Spec.Surface.Syntax using (Expr)
 
 -- Typing contexts
-import Once.TypeCheck.Context
 
 -- Quantities (from Once.Type)
 
@@ -40,7 +38,6 @@ open import Once.TypeCheck.Classify using (emptyCtx)
 -- Thinning operations (weaken, exchange)
 
 -- Surface syntax (for empty context S∅)
-open import Once.Context using ()
 open import Once.Spec.Context using () renaming (∅ to S∅)
 
 -- Proof-bundled public API.

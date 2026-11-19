@@ -12,8 +12,6 @@ module Once.Denotation.MeaningD where
 
 import Once.Spec.Type
 
-import Data.Integer as ℤ
-import Once.Spec.Word as OnceWord
 import Once.Spec.Type as SpT
 open import Once.Spec.Type using (∅ₖ; KCtx)
 open import Once.Spec.Type using (Ty; Fun; WFFun; Base)
@@ -41,12 +39,10 @@ open import Once.Semantics.Machine using (module Value)
 open Value using (⟦_⟧F; sem-cata; coerce-ν-out; sem-In)
 open import Once.Type.Concrete using (IsConcrete; con-base; con-fun)
 open import Once.Spec.Type using (b-Unit)
-import Data.List as L
 open import Once.Context using (svar; SVar) renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ)
 open import Once.Spec.Context using (Ctx)
 open import Once.Spec.Context using () renaming (lookup to lookupᵗ)
 open import Once.Spec.Context using (_▸_)
-open import Once.Spec.Surface.Syntax using ()
 open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
 open import Once.IR.Semantics.Trace using (FFIAnswers)
 open SigOpInfo using (conB)

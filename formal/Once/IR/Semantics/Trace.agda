@@ -48,7 +48,6 @@ import Once.Spec.Type as SpecTy
 open import Once.Spec.Name using (CanonicalName; canonical)
 open import Once.Name using (showCanonical)
 open import Relation.Nullary using (Dec; yes; no)
-import Data.List.Membership.DecPropositional as DecMem
 open import Data.List.Membership.Propositional using (_∈_)
 open import Once.Spec.Word using (Carrier)
 import Once.IR.Semantics.Value Carrier Carrier as M

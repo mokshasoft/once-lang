@@ -36,7 +36,6 @@ open import Relation.Binary.PropositionalEquality using (subst; sym)
 
 open import Once.Spec.Grade using (Zero; One; Many; mk-kind)
 open import Once.Spec.Type using (Type; Unit; _⇒[_]_)
-open import Once.Spec.Type using ()
 open import Once.Context using (⟦_⟧ᶜ; _↾_; _⊔ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many)
 open import Once.Spec.Context using (Ctx; Usage; _*ᵘ_; lookup; zeroUsage)
 open import Once.Spec.Context using (_▸_)

@@ -50,7 +50,6 @@ import Once.IRTy as IRTy′
 open import Once.IRTy.WF using (wf-⌈⌉)
 open import Once.IR.Semantics.Iterative using (T∞)
 open import Once.Denotation.Approx using (NotCut)
-import Once.IR.Semantics.Trace as TM
 open import Once.Spec.Word using (Carrier)
 open import Once.IR.Semantics.Value Carrier Carrier using (sem-Out; ⟦_⟧F)
 open import Data.Product using (Σ; _,_; _×_)

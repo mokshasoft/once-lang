@@ -62,7 +62,7 @@ open import Once.IR using (IR)
 open import Once.IRTy using (Unit)
 open import Once.CCC.Codegen.ProgramImage using (program-image)
 open import Once.Denotation.Program using (IRFun; irProgram)
-open import Once.Compile using (entry-owner)
+open import Once.Compile.Emit using (entry-owner)
 import Once.Adequacy.ArchCorrectness.FlatCore.RunContext as RunContext
 
 ------------------------------------------------------------------------

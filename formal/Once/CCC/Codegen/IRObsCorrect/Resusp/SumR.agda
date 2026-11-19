@@ -61,7 +61,6 @@ module ResuspSumRC {FS : FrameSemantics} where
   open ResuspBaseC {FS}
   open ResuspSumArmC {FS}
   open ShapeC {FS} using (tag-inr; payload-r)
-  import Once.CCC.Machine.SMCore as SMCore
   open ResuspSumCommonC {FS}
 
   module RSumR {F : IRFunctor} (wf : WellFormedFI F) {E A : IRTy}

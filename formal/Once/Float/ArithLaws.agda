@@ -23,7 +23,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; cong;
 open import Once.Spec.Float.Dyadic using (binary32; binary64)
 open import Once.Spec.Float.Value
 open import Once.Spec.Float.Decimal using (roundDec; ⟨_⟩_/10^_)
-open import Once.Spec.Surface.Syntax using (signedDecimal)
+open import Once.Spec.Float.Decimal using (signedDecimal)
 open import Once.Spec.Float.Encoding using (encode; decode)
 open import Once.Spec.Float.Arith
   using (Operand; inf; fin; exact; onNumbers; addE; mulE; addAt; cancel; infAdd; infMul; addV; mulV; divV; i2fV;

@@ -52,27 +52,14 @@ import Once.Parser.Relation.Resolution as LR
 open import Once.Module using (ModTele; MainIn; MainsEffUU; emptyScope; entrySig)
 open import Once.Core.Translate using ([])
 open import Once.Adequacy.ModuleProgram using (toProgram; names₀; fresh₀)
-import Data.Empty
-import Once.Spec.Core.Syntax
-import Data.List.Relation.Unary.All
-import Once.TypeCheck.Scope
-import Once.Spec.Name
-import Once.Adequacy.SpecFront.Polys
-import Once.Adequacy.NameClash as NC
 import Once.Adequacy.SpecCore.Program as PG
 open import Once.Adequacy.SpecFront.Extract using (XAlign)
-import Once.Adequacy.SpecFront.Resolve as Res
-import Once.Adequacy.SpecFront.SigOf as SigOf
 open import Once.Adequacy.SpecFront.SigFacts using (rname; sig-in)
 open import Data.List.Relation.Unary.Unique.Propositional using (Unique)
 open import Data.List using (map)
 open import Once.Adequacy.SpecFront.Prefix using (Past)
 open import Once.Adequacy.SpecFront.Start using (names)
-import Once.Adequacy.SpecFront.Align as Al
-import Once.Adequacy.SpecFront.WalkState as WS
-import Once.Adequacy.SpecFront.Walk as Wk
 import Once.Adequacy.SpecFront.End as En
-import Once.Adequacy.SpecFront.EndNames as EN
 open import Once.Adequacy.SpecFront.Words using (DeclW; ModsW; KeysW; key-word)
 
 open import Once.Adequacy.SpecFront.DenoteModule using (module Parts; module Split)

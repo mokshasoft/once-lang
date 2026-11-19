@@ -41,6 +41,7 @@ open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
 open import Once.Spec.Type using (Unit)
 import Once.Compile as C
+import Once.Compile.Emit as Emit
 import Once.IR as IR
 import Once.Parser as Parser
 import Once.Type.Core as Type
@@ -56,7 +57,6 @@ open import Once.Spec.Surface.Syntax using (Expr)
 open import Once.Target.Arch using (Arch)
 import Once.Parser.Module.Core as P
 import Data.String as String
-import Once.Parser.Module as Module
 
 ------------------------------------------------------------------------
 -- Layer 0 — `compileFunBody-aux` success is `doOpt`-independent.
@@ -263,14 +263,14 @@ cfm-built-gated : ∀ (doOpt : Bool) (arch : Arch) (m : P.Resolved) (es : List P
   (d : Dec (AdmissibleM arch (P.Resolved.rmodule m))) → AdmissibleM arch (P.Resolved.rmodule m) →
   {c : List C.CompiledFun} →
   C.compileEntries IR.Heap doOpt C.emptyCScope es ≡ inj₂ c →
-  Σ-syntax (C.FileOf arch) (λ F → C.cfm-file-gated IR.Heap doOpt arch m es d ≡ inj₂ F)
+  Σ-syntax (Emit.FileOf arch) (λ F → C.cfm-file-gated IR.Heap doOpt arch m es d ≡ inj₂ F)
 cfm-built-gated doOpt arch m es (yes _)  adm eq = _ , cong (C.emitFromCompiled arch) eq
 cfm-built-gated doOpt arch m es (no ¬adm) adm eq = ⊥-elim (¬adm adm)
 
 cfm-built-aux : ∀ (doOpt : Bool) (arch : Arch) (m : P.Resolved) → AdmissibleM arch (P.Resolved.rmodule m) →
   (ef : String ⊎ List Parser.Entry) {c : List C.CompiledFun} →
   C.compileResolvedModule-aux IR.Heap doOpt m ef ≡ inj₂ c →
-  Σ-syntax (C.FileOf arch) (λ F → C.cfm-file-ef IR.Heap doOpt arch m ef ≡ inj₂ F)
+  Σ-syntax (Emit.FileOf arch) (λ F → C.cfm-file-ef IR.Heap doOpt arch m ef ≡ inj₂ F)
 cfm-built-aux doOpt arch m adm (inj₁ err) ()
 cfm-built-aux doOpt arch m adm (inj₂ es) eq =
   cfm-built-gated doOpt arch m es (admissibleM? arch (P.Resolved.rmodule m)) adm eq
@@ -278,7 +278,7 @@ cfm-built-aux doOpt arch m adm (inj₂ es) eq =
 cfm-built-from-crm : ∀ (doOpt : Bool) (arch : Arch) (m : P.Resolved) → AdmissibleM arch (P.Resolved.rmodule m) →
   {c : List C.CompiledFun} →
   C.compileResolvedModule IR.Heap doOpt m ≡ inj₂ c →
-  Σ-syntax (C.FileOf arch) (λ F → C.compileFileFromModule IR.Heap doOpt arch m ≡ inj₂ F)
+  Σ-syntax (Emit.FileOf arch) (λ F → C.compileFileFromModule IR.Heap doOpt arch m ≡ inj₂ F)
 cfm-built-from-crm doOpt arch m adm eq =
   cfm-built-aux doOpt arch m adm (Parser.extractFunctions m) eq
 
@@ -313,7 +313,7 @@ moduleToIR-inj₂ m eq = mtir-aux-inj₂ (C.compileResolvedModule IR.Heap false 
 main⇒built : ∀ (arch : Arch) (doOpt : Bool) (m : P.Resolved) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) →
   AdmissibleM arch (P.Resolved.rmodule m) →
   moduleToIR m ≡ just ir →
-  Σ-syntax (C.FileOf arch) (λ F → C.compileFileFromModule IR.Heap doOpt arch m ≡ inj₂ F)
+  Σ-syntax (Emit.FileOf arch) (λ F → C.compileFileFromModule IR.Heap doOpt arch m ≡ inj₂ F)
 main⇒built arch doOpt m ir adm mi =
   let (funs  , crm-false)  = moduleToIR-inj₂ m mi
       (funs' , crm-doOpt') = crm-doOpt doOpt m crm-false

@@ -39,7 +39,6 @@ open import Once.Spec.Grade using (Purity; pure; act; eff; mk-kind; Zero; One; M
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-pe; ⊑-pa)
 open import Once.Spec.Type using (_⟨_⟩; _⟨_⟩F; Type; Fun; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; K; Id; _⊕_; _⊗_)
 open import Once.Spec.Word using (Carrier)
-import Once.IR.Semantics.Polynomial as LPoly
 import Once.Spec.Polynomial as SPoly
 open import Once.IR.Semantics.FunctorMeaning using (translateF; ⟦_,_⟧-base)
 import Once.IR.Semantics.Trace as LTr

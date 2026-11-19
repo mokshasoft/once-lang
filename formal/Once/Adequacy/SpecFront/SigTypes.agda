@@ -24,7 +24,7 @@ import Once.Type.Core as LT
 
 import Once.Spec.Type as LT
 import Once.Spec.Grade as LG
-open import Once.Spec.Surface.Syntax using (PolyType; PTVar; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν)
+open import Once.Spec.Surface.Type using (PolyType; PTVar; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν)
 open import Once.Type.Poly using (Ground; extractGround)
 open import Once.Type.Concrete using (IsConcrete; con-base; con-fun)
 open import Once.Spec.Type using (Base; b-*; b-+; ∅ₖ)

@@ -14,7 +14,6 @@ open import Once.Spec.Core.Syntax using (Defs)
 
 module Once.Metatheory.Laws.Lets (Σ : Signature) (u : OneName Σ) (fmt : TargetNum) {s : ℕ} (S : Defs s) where
 
-import Data.Empty
 open import Data.Empty using (⊥-elim)
 open import Data.Fin using (zero)
 open import Data.Product using (_,_)

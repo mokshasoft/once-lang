@@ -16,7 +16,6 @@
 
 module Once.Adequacy.ModuleComplete where
 
-import Once.TypeCheck.SpecWitness
 open import Once.Spec.Context using (Usage)
 open import Once.Type.Instance using (kindsOf)
 open import Once.TypeCheck.Classify using (ctxAt)
@@ -69,7 +68,6 @@ open import Once.Adequacy.PrincipalDecide using (firstChecking-complete)
 import Once.Compile as C
 import Once.Adequacy.AcceptSound as AS
 open import Once.Parser using (FunInfo)
-import Once.Parser.Module as Module
 import Once.Parser.Module.Core as Core
 import Data.String as String
 open FunInfo

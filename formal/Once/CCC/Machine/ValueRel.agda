@@ -53,7 +53,6 @@ open import Once.CCC.Label using (LabelId)
 open AllocState using (next-slot; next-heap-ref; current-frame; saved-frames)
 open LocState using (regs; halted; stackMem; heapMem)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
-import Once.CCC.Machine.SMPrimitives as SMP
 -- Plan 0.52 M2: machine values are IRTy values (⟦_⟧ᴵ), renamed to ⟦_⟧ locally.
 -- D179: `⟦_⟧` in this module is now the MONADIC domain. `ValidAtWF` and
 -- `ResultPlace` index on it, so an arrow means a Kleisli arrow and a ν means a
@@ -71,7 +70,6 @@ open import Once.Type using () renaming (fits-int to fits-intˢ; fits-float to f
 open import Once.IR
 open import Once.IRTy using (IRTy; IRFunctor; FitsInRegI; fits-int; fits-float; Unit; _*_; _⇛_; WellFormedFI; ⟦_⟧TI; ν-type; _+_; μ-type; Int; Float)
 open import Once.CCC.Machine.LocMatchesMode using (LocMatchesMode)
-import Once.Semantics.Machine as EvV
 open import Once.CCC.Machine.Allocation
 open import Once.CCC.Machine.SMPrimitives using (module TracePrimitives; TraceWritesAbove; TraceNoHeapWrites)
 

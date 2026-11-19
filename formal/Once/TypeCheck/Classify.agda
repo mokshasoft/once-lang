@@ -27,7 +27,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Spec.Grade
 open import Once.Spec.Type using (Type)
-open import Once.Spec.Surface.Syntax using (PolyType)
+open import Once.Spec.Surface.Type using (PolyType)
 open import Once.Spec.Surface.Syntax using (Expr)
 open import Once.Spec.Surface.Syntax as Raw using ()
 open import Once.TypeCheck.Raw as Raw

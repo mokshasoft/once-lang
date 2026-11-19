@@ -59,12 +59,9 @@ open import Data.Empty using (⊥-elim)
 open import Data.Product using (proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≢_; refl; sym; subst)
 
-import Once.Type.Poly as TP
 import Once.Spec.Core.Syntax as SC
-import Once.Spec.Surface.Syntax as SX
 import Once.Spec.Surface.Program as SPr
 import Once.Spec.Core.Program Σ as SP
-import Once.Spec.Grade
 import Once.Spec.Surface.Typing
 import Data.String
 import Once.Compile as C
@@ -79,7 +76,6 @@ open import Once.Core.Translate Σ
 import Once.Adequacy.ModuleProgram Σ as MP
 open import Once.Adequacy.ModuleProgram Σ using (Names; names-monoF; names-polyF; fresh-mono; fresh-poly; monoDef; polyDef; polyBody; polyCheck; monoBody; monoCheck; monoSynth)
 open import Once.Adequacy.SpecFront.Expr using (rx-≡)
-import Once.Adequacy.SpecFront.ScopeNames as SN
 open import Once.Adequacy.SpecFront.WalkState Σ ps
 open import Once.Adequacy.SpecFront.End Σ ps using (EntryKind; End; endOf; no-ffi; all-tail)
 open import Once.Adequacy.SpecFront.Align Σ using (Align; al-nil; al-skip; al-mono; al-nosig; al-poly)

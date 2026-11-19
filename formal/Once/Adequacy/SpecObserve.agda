@@ -42,7 +42,6 @@ open import Once.Spec.Numerics using (module TargetNum)
 ev : SigOpEvent → Once.Spec.Signature.Event
 ev = toEvent (TargetNum.float-format fmt)
 import Once.IR.Semantics.Trace as LTr
-import Once.IR.Semantics.Iterative as LI
 open import Once.Denotation.TraceTr using (trT∞; δ∞)
 import Once.Denotation.TraceTr as TT
 open import Once.Adequacy.MachineTrace using (module Machine; listTr)
@@ -54,7 +53,6 @@ open import Once.Spec.Trace using (Tr; module Tr; End; halted; EndRel; returned�
 open Tr using (next)
 open _≈ᵗ⟨_⟩_ using (same)
 open import Once.Spec.Observation Σ using (World; module World; trace; blockD; after)
-import Once.Spec.Effect Σ as SE
 open import Once.Adequacy.SpecRun Σ fmt
 open RunR using (forceR)
 

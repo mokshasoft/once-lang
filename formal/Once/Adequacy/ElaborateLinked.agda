@@ -33,7 +33,6 @@ open import Once.CanonicalName using (_≟ᶜ_)
 open import Once.IR using (IR)
 import Once.IR as IR
 open import Once.IRTy using (IRTy; ⌊_⌋; _≟IRTy_; ⌊wk₀⌋)
-import Once.IRTy.WF
 open import Once.IR.Ref using (refIR)
 open import Once.Type.Concrete using (IsConcrete; con-base; con-fun)
 open import Once.Spec.Type using (b-*; b-+; b-Float; b-Int; b-Unit; b-Void)

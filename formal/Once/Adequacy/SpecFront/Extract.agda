@@ -38,7 +38,7 @@ open import Function using (_∋_)
 import Once.Type.Core as LT
 
 import Once.Spec.Type as LT
-open import Once.Spec.Surface.Syntax using (PolyType)
+open import Once.Spec.Surface.Type using (PolyType)
 open import Once.Type.Poly using (Ground; extractGround)
 open import Once.Type.Concrete using (IsConcrete)
 open import Once.Type.Honest using (HonestFFI)

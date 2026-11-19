@@ -44,6 +44,7 @@ open import Once.Spec.Grade using (Zero; One; Many; pureᶠ; actᶠ; fin; eff; m
 open import Once.Spec.Type using (Unit; Void; Int; Float; _⇒[_]_; μ; ν; K; Id; _⊕_; _⊗_)
 import Once.Spec.Type as T
 open import Once.Spec.Surface.Syntax
+open import Once.Spec.Surface.Type
 open import Once.Format.Doc using (Doc; toks; indent)
 open import Once.Format.Print
 open import Once.Format.Proof.Lexing using (Printable; p-word; p-int; p-float; p-sym; Sym; s-lparen; s-rparen;

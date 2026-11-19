@@ -39,7 +39,6 @@
 
 open import Once.Spec.Name using (CanonicalName)
 import Once.CCC.Machine.SMCore as SMCore
-import Once.CCC.FrameSemantics as FrameSemantics′
 
 import Data.List as DL
 open import Once.Denotation.Program using (IRFun)
@@ -68,14 +67,9 @@ open import Once.CCC.Codegen.IRObsCorrect.Pair.Chain    o tbl
 open import Once.CCC.Codegen.IRObsCorrect.Pair.Proof o tbl
 open import Data.List.Properties using (++-identityʳ; ++-assoc)
 
-import Once.CCC.FrameSemantics
 import Once.CCC.Machine.SMPrimitives
-import Once.IRTy
 import Once.IRTy as IRTy′
 import Once.IR
-import Once.Semantics.Machine as EvV
-import Once.CCC.Machine.ReadTypedAdequate as RTA
-import Once.Denotation.DenotTrace as DT
 import Once.Denotation.ValueDomain as ValueDomain
 import Once.IR.Semantics.Trace as TM
 open import Once.Res using (Res; stopped; returns; is-stopped)

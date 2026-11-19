@@ -54,21 +54,14 @@ open import Once.Spec.Context using (Ctx; _+ᵘ_; _*ᵘ_)
 open import Once.Spec.Context using (_∷_; _▸_)
 import Once.Surface.Syntax as Surface
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
-import Once.IR.Semantics.Stream
-import Once.IR.Semantics.Trace as TM
 open import Data.List.Membership.Propositional using (_∈_)
 open import Once.Denotation.DenotTrace using (liftFn)
-import Data.String.Properties as StrProp
 open import Once.Type.Sub
 open import Once.Spec.Sub using (_⊔_≔_; sub-arr)
 open import Once.Spec.Grade using (⊑-pure)
-open import Once.Spec.Surface.Syntax using ()
 open import Once.Denotation.Phase using (restrictᴰ; bindᴰ)
 open import Once.Denotation.SpecDomain Σ σ₀
   using (⟦_⟧ᵛ; M; returnM; bindM; fmapM; ⟦_⟧<:ᵛ; cata-semᵛ; restrictᵛ; bindᵛ)
-import Once.Spec.Effect Σ as SE
-import Once.Spec.Domain Σ as SDom
-import Once.Denotation.RefMeanings Σ σ₀ as RM
 open import Once.Adequacy.LiftFnReduce fmt (calls σ) using
   (liftFn-id; liftFn-fst; liftFn-snd; liftFn-terminal; liftFn-inl; liftFn-inr; liftFn-apply; liftFn-curry; now-fst; force-∘)
 import Once.IR as IR
@@ -121,7 +114,7 @@ open import Once.Adequacy.NumAgree using (num-agree; i2f-agree)
 open import Once.Float.EncodingLaws using (decode-encode)
 open import Once.Metatheory.Float.Range using (roundDec-inRange)
 open import Once.Spec.Float.Decimal using (roundDec)
-open import Once.Spec.Surface.Syntax using (signedDecimal)
+open import Once.Spec.Float.Decimal using (signedDecimal)
 open import Once.Core.DerivedTyping using (⊢toFloatᶜ)
 open import Once.TypeCheck.Use Σ S nm Ok OkS Δ
 open import Once.Type.Honest using (HonestFFI)

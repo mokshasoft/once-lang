@@ -43,7 +43,6 @@ import Once.CCC.Target.X86-64.Semantics as X
 -- it), and importing both would make the name ambiguous.
 open X using (mkstate) renaming (writeReg to xwriteReg)
 open X.State using (memory) renaming (regs to xregs; halted to xhalted)
-open import Once.CCC.Target.X86-64.Syntax using ()
 open import Once.Target.X86-64.PhysReg using (Reg; r11)
 open import Once.Adequacy.ArchCorrectness.X86-64.RegRoles using (x86-64-roles)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles

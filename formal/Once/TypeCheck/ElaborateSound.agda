@@ -17,7 +17,6 @@
 
 module Once.TypeCheck.ElaborateSound where
 
-import Once.Spec.Context
 open import Once.Type.Core using (wk₀)
 open import Once.Spec.Type using (μ; ν; ⟦_⟧F)
 open import Once.Spec.Type using (var; Ty; Base)
@@ -36,7 +35,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sub
 
 open import Once.Spec.Grade
 open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float)
-open import Once.Spec.Surface.Syntax using (PolyType)
+open import Once.Spec.Surface.Type using (PolyType)
 open import Once.Type.Poly
 open import Once.Type
 -- Plan 0.52 M2: IR re-exports the ungraded IRTy, whose Unit/K/μ-type/… clash
@@ -61,7 +60,6 @@ open import Once.TypeCheck.NumTable using (NumView; is-num; not-num; numView; _�
 open import Once.Spec.Float.Value using (Sign)
 open import Once.TypeCheck.Raw as Raw
 open import Once.TypeCheck.Error using (TypeError)
-import Once.TypeCheck.Context
 open import Once.Context as Surface using ()
 import Once.Spec.Context as Surface
 open import Once.Surface.Syntax as Surface using () renaming (Expr to SExpr)
@@ -71,12 +69,10 @@ open import Once.Surface.Elaborate as Elab using ()
 open import Once.TypeCheck.Scope
 open import Once.TypeCheck.SpecWitness
 open import Once.TypeCheck.Classify
-import Once.Type.Concrete
 open import Once.Spec.Type using (∅ₖ)
 import Once.Spec.Type
 open import Once.Type.Concrete using (IsConcrete; con-fun)
 open import Once.Functor.Decide using (wfFun?; isConcrete?; isBaseType?)
-import Once.Spec.Float.Decimal as Decimal
 open import Once.Spec.Sub using (_<:_)
 open import Once.Type.SubDecide using (_<:?_; _⊑π?_)
 open import Once.Type.Join using (Join?; joined; apart; join?; sound)

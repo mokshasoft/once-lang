@@ -14,16 +14,15 @@ module Once.Adequacy.SpecGrammar.Conv where
 import Once.Type.Core as LT
 import Once.Spec.Type as LT
 import Once.Spec.Type as LT
-import Once.Spec.Surface.Syntax as LP
-import Once.Type.Poly as LP
+import Once.Spec.Surface.Type as LPᵗ
 import Once.Spec.Type as ST
-import Once.Spec.Surface.Syntax as SS
+import Once.Spec.Surface.Type as SSᵗ
 
 -- Schemas.
-toPoly : LP.PolyType → SS.PolyType
+toPoly : LPᵗ.PolyType → SSᵗ.PolyType
 toPoly A = A
 
-toPolyF : LP.PolyFunctor → SS.PolyFunctor
+toPolyF : LPᵗ.PolyFunctor → SSᵗ.PolyFunctor
 toPolyF F = F
 
 -- Ground types, as the Spec's types: the same (plan 0.122).

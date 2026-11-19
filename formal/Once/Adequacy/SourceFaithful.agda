@@ -64,7 +64,6 @@ import Once.Spec.Context as SCx
 open import Once.Spec.Context using (_∷_; _⊑∷_; _▸_)
 open import Once.Surface.Syntax using (Expr)
 open import Once.Context using () renaming (_,_ to _,ᶜ_)
-import Once.Context as SrfS
 open import Once.Surface.Properties using (erase-arg-usage)
 open import Once.Surface.Elaborate using (elaborate; elaborateFull; projUsed; distribute; distribIR; compIR; copairIR; forkIR; curryIR; restrictEnv; bindEnv)
 open import Once.Denotation.Phase using (lookupᴰUsed; restrictᴰ; bindᴰ; env0)
@@ -89,7 +88,6 @@ open import Once.Denotation.ValueRel using (RelD; base-eq; base-refl; RelS-fmap�
 open import Once.Denotation.EvalRel using (liftFn-rel; RelT′-refl)
 open import Once.Adequacy.EnvRel using (restrict-rel; lookup-rel; bind-rel)
 open import Once.IRTy using (IRTy; ⌊_⌋)
-import Once.IRTy as IRT
 import Once.Denotation.SourceDenote as SD
 import Once.IR as IR
 open import Once.IR.Ref using (refIR)

@@ -157,7 +157,6 @@ open import Once.Denotation.ValueDomain using (cohᴰ)
 open import Once.Denotation.Program using (tableEnv)
 open import Once.Adequacy.TableCall fmt φ using (abiT; abi)
 import Data.Fin
-import Relation.Nullary
 open import Data.List.Properties using (++-assoc)
 open import Once.Adequacy.TelePosition
 

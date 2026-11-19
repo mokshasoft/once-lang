@@ -44,7 +44,6 @@ open import Once.Spec.Float.Encoding
   using ( signBitOf; signWeight; maxExpField; infW; nanW; subnormalW
         ; numAt; encode; decodeMax; decodeAt; decode)
 import Once.Float.Word as Word
-import Once.Spec.Float.Arith as FA
 
 open import Once.Float.DyadicLaws using (combine-bound)
 open import Once.Metatheory.Float.Canon using (canon-odd)

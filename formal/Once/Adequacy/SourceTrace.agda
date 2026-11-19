@@ -45,10 +45,9 @@ open import Relation.Nullary using (yes; no; Dec)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 
 open import Once.IR using (IR)
-import Once.Compile as C
 -- plan 0.107: the program is the COMPILER's (one walk) — defined in
 -- `Once.Compile` beside the emitter, and read from there.
-open import Once.Compile using (rewrite-fun; rewrite-table; rewrite-program)
+open import Once.Compile.Emit using (rewrite-table; rewrite-fun; rewrite-program)
 import Once.Parser.Module.Core as P
 import Once.Spec.Surface.Syntax as Syn
 -- D165: the arith-block lifting the BACKEND runs before codegen. Imported here

@@ -44,7 +44,6 @@ open import Once.Semantics.Machine using (module Value)
 open Value using (coerce-full-to-base; coerce-base-to-full; coerce-μ-in; coerce-μ-out)
 import Once.Semantics.Machine as Val
 open import Once.IR.Semantics.Iterative using (T∞; fmap∞; seqF∞)
-import Once.IR.Semantics.Iterative as LI
 open import Once.IR.Semantics.StreamInf using (anaᴵ; anaRun; anaBlock; mapAnaᴵ; anaFᴵ)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; forgetᵇ; injectᵇ; coerce-functor-D; coerce-functor⁻¹-D)
 open import Once.Denotation.MeaningD using (cata-sem; cata-ev-algᴰ-D)

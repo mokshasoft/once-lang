@@ -58,7 +58,6 @@ import Once.Parser.Relation.OpDecl as LO
 import Once.Parser.Relation.Parsing as LP
 import Once.Parser.Relation.Lexing as LL
 import Once.Parser
-import Once.Parser.Module.Core
 import Once.Parser.Module.Import
 import Once.Parser.Module.DeclTail
 import Once.Parser.Module.FunDef.Body

@@ -29,8 +29,14 @@ BACK = ['Once.CCC', 'Once.Arith', 'Once.Memory', 'Once.Semantics', 'Once.IR', 'O
 # the surface modules whose dependents the gate reports (what a surface change rebuilds)
 WATCH = ['Once.Spec.Surface.Syntax', 'Once.Spec.Surface.Generators', 'Once.Spec.Float.Decimal']
 
+# the types as written are the language's vocabulary, shared by both sides
+SHARED = ['Once.Spec.Surface.Type']
+
 def under(m, prefixes):
     return any(m == p or m.startswith(p + '.') for p in prefixes)
+
+def front(m):
+    return under(m, FRONT) and not under(m, SHARED)
 
 IMP = re.compile(r'^\s*(?:open\s+)?import\s+(Once\.[^\s;()]+)', re.M)
 deps = {}
@@ -48,14 +54,14 @@ def reach(m):
         for d in sorted(deps.get(x, ())):
             if d in prev: continue
             prev[d] = x
-            if under(d, FRONT):
+            if front(d):
                 path = [d]
                 while prev[path[-1]] is not None: path.append(prev[path[-1]])
                 return list(reversed(path))
             q.append(d)
     return None
 
-back = sorted(m for m in deps if under(m, BACK) and not under(m, FRONT))
+back = sorted(m for m in deps if under(m, BACK) and not front(m))
 bad = {m: reach(m) for m in back}
 bad = {m: p for m, p in bad.items() if p}
 

@@ -36,17 +36,8 @@ open import Once.CCC.Machine.SMCore using (AllocState; AbstractTrace; LocState; 
 open LocState using (regs; halted)
 open import Once.IRTy using (WellFormedFI; ν-type; ⟦_⟧TI)
 
-import Once.CCC.FrameSemantics
-import Once.CCC.Machine.SMPrimitives
-import Once.IRTy
-import Once.IRTy as IRTy′
-import Once.IR
 open import Data.List.Properties using (++-identityʳ)
 open import Once.Res using (is-stopped)
-import Once.Semantics.Machine as EvV
-import Once.CCC.Machine.ReadTypedAdequate as RTA
-import Once.Denotation.DenotTrace as DT
-import Once.IR.Semantics.Trace as TM
 open import Once.Res using (returns)
 open import Once.Denotation.Approx using (done; NotCut; budgetLeft)
 

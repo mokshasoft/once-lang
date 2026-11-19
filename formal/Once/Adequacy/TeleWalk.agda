@@ -63,9 +63,6 @@ open Parser.FunInfo using (funName)
 open import Once.IR using (IR)
 import Once.IR
 open import Once.IRTy using (⌊_⌋)
-import Once.Context as Ctx
-import Once.Surface.Syntax as Srf
-import Once.Denotation.SourceDenote as SD
 open import Once.Denotation.Program using (IRFun)
 open Once.Denotation.Program.IRFun using (fname)
 open import Once.Module using (ModTele; []; ffi; mono; poly; MainIn; EffUU; ctxOf; MonoWit)
@@ -96,8 +93,6 @@ open import Once.Compile using (irFunOf; tableOf-go)
 import Once.Adequacy.AcceptSound as AS
 import Once.Adequacy.FunBundle as FB
 import Once.Adequacy.MainIRForm as MIF
-import Once.Adequacy.MeaningBridge as MB
-import Once.Adequacy.CoreEnv as CE
 import Once.Adequacy.CoreMeaningBridge as CMB
 import Once.Adequacy.MonoEntry as ME
 
@@ -114,14 +109,10 @@ open import Once.Denotation.EvalRel using (eval-rel; table-self)
 open import Once.Spec.Grade using (eff)
 import Once.IR.Semantics.Trace
 
-import Once.Adequacy.SourceFaithful as SF
-import Once.Adequacy.ResolveFaithful as RF
-import Once.TypeCheck.Elaborate
 open import Once.Denotation.DenotTrace using (evalᴰ)
 open import Once.Denotation.Program using (tableEnv)
 open import Once.Adequacy.TableCall fmt φ using (tableEnv-skip; tableEnv-hit; uncurry-app; abiT)
 import Data.Fin
-import Relation.Nullary
 open import Once.Adequacy.TelePosition
 open import Once.IR.Semantics.Trace using ()
 open import Once.Denotation.Program using (tableCalls)

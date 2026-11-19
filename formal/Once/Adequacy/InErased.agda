@@ -39,7 +39,6 @@ open import Once.IR.Semantics.FunctorMeaning using (translateF)
 open import Once.IRTy using (eraseF; ⌈_⌉F; ⌊_⌋; ⌊⟧T-commute)
 open import Once.IRTy.WF using (wf-⌊⌋)
 open import Once.Spec.Polynomial using (SFunctor; inS; μS; ⟦_⟧SF)
-import Once.IR.Semantics.Polynomial
 open import Once.Semantics.Machine using (module Value; module ValueIR)
 open Value using (⟦_⟧F; coerce-μ-in)
 open ValueIR using (tF-coh)

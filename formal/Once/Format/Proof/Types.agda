@@ -25,8 +25,7 @@ open import Relation.Nullary using (¬_)
 open import Once.Spec.Grade using (Zero; One; Many; pureᶠ; actᶠ)
 open import Once.Spec.Surface.Lexing using (Token; TWord; TLParen; TRParen; TArrow; TCaret0; TCaret1; TCaretW)
 open import Once.Adequacy.SpecTokNames
-open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_;
-  PAct; PEff; Pμ; Pν; PTVar; PK; PId; _P⊕_; _P⊗_)
+open import Once.Spec.Surface.Type using (PolyType; PolyFunctor; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PAct; PEff; Pμ; Pν; PTVar; PK; PId; _P⊕_; _P⊗_)
 open import Once.Spec.Surface.Grammar using (Starts; g0; g1; TypeAlg; module Types)
 open import Once.Format.Doc using (toks)
 open import Once.Format.Print using (pty; pfun; pfunArg)

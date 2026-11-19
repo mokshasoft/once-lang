@@ -54,10 +54,8 @@ open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.Spec.Type using (Type)
-import Once.Type.Sub
 import Once.Spec.Sub
 import Once.Type.Join
-import Once.Type.Core
 import Once.Spec.Type
 import Once.Type
 import Once.Context
@@ -70,9 +68,7 @@ import Once.TypeCheck.Scope as Classify
 
 open import Data.Integer using (ℤ)
 open import Data.Sum using (_⊎_)
-import Data.String
 import Data.Bool
-import Data.Empty
 
 import Once.TypeCheck.Determinism  as Det
 import Once.TypeCheck.Totality     as Tot
@@ -82,7 +78,6 @@ import Once.TypeCheck.ErrorProofs  as EP
 import Once.TypeCheck.Identities   as Id
 import Once.Laws.Grade as Grade
 import Once.Laws.Order as Ord
-import Once.Type.Sub
 import Once.Spec.Sub
 import Once.Surface.GradeMatrix as GM
 import Algebra.Structures

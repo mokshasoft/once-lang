@@ -41,8 +41,8 @@ open import Data.Nat.Properties using (≤-refl)
 open import Once.Parser.Lexer using (headK; hkWS; hkNL; hkCaret; hkDash; hkLBrace; hkLt; hkGt; hkEq; hkBang;
   hkLParen; hkRParen; hkRBrace; hkColon; hkLambda; hkComma; hkSemi; hkAt; hkPipe; hkPlus; hkStar; hkSlash; hkPct;
   hkAmp; hkDot; hkStr; hkGen; d-comment; d-arrow; d-minus; c-1; c-0; c-w; c-gen; nlIndent; isEqHead; isDashHead;
-  dashClass; caretClass; drop1; drop1-≤; isDotHead; adv; collectStringB; collectIdentB; collectDigitsB; collectFracB; skipLineB; skipBlockB;
-  isIdentStart)
+  dashClass; caretClass; drop1; drop1-≤; isDotHead; adv; collectStringB; collectIdentB; collectDigitsB; collectFracB; skipLineB; skipBlockB)
+open import Once.Name.Chars using (isIdentStart)
 open import Once.Adequacy.SpecLexing using (line-sound)
 open import Once.Format.Lex using (Item; tok; comment; cont; consumed; items-WF; it-head; it-str; it-gen; it-num;
   it-nl; it-dot; it-cmp; it-eqop; it-lbrace; it-minus; it-caret; lexItems)

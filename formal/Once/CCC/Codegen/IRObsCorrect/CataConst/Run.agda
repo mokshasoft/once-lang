@@ -17,7 +17,6 @@
 ------------------------------------------------------------------------
 
 open import Once.Spec.Name using (CanonicalName)
-import Once.CCC.Machine.SMCore as SMCore
 
 import Data.List as DL
 open import Once.Denotation.Program using (IRFun; tableEnv)
@@ -57,7 +56,6 @@ open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.CCC.Label using (ℓ)
 open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; ⟦_⟧TI; ⌈_⌉F; μ-type)
 import Once.IRTy as IRTy′
-import Once.Denotation.ValueDomain as ValueDomain
 open import Once.Memory.HeapAddress using (HeapLocation; sucHL)
 open import Once.Res using (Res; returns; stopped; is-stopped)
 open import Once.IR.Semantics.Iterative using (T∞)

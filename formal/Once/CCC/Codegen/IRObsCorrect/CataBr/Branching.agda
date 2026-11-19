@@ -27,7 +27,6 @@
 ------------------------------------------------------------------------
 
 open import Once.Spec.Name using (CanonicalName)
-import Once.CCC.Machine.SMCore as SMCore
 
 import Data.List as DL
 open import Once.Denotation.Program using (IRFun; tableEnv)

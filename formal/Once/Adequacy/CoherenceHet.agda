@@ -32,6 +32,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong
 open import Once.Postulates using (extensionality)
 open import Once.Spec.Grade as T using (mk-kind; Many; Purity; Quantity)
 import Once.Spec.Surface.Syntax as T
+import Once.Spec.Surface.Type as Tᵗ
 import Once.Type.Poly as T
 open import Once.Spec.Type as T using (_*_; _+_; _⇒[_]_)
 open import Once.Spec.Type using (⟦_⟧F)
@@ -44,16 +45,12 @@ open _⊔_≔_ using () renaming (left to ⊔-left; right to ⊔-right)
 open import Once.Type.Join using (join-unique)
 import Once.Spec.Surface.Syntax as Raw
 
-import Data.String
 open import Once.Spec.Type using (WFFun)
 open import Once.Functor.Translate using (WFFun-irrelevant)
-import Once.Context as Surface
 open import Once.Spec.Context using (Ctx; Usage)
 open import Once.Spec.Context using (_∷_; _▸_)
 open import Once.Spec.Theory using (Has; Sym; symDom)
 open import Once.Surface.Syntax using (Expr; pair; num; let'; case'; app; effApp; comp'; copair'; fork'; curry'; cata; ana; loop; lam; coerce)
-import Once.IR as IR
-import Once.Denotation.SourceDenote as SD
 open import Once.Adequacy.CoherenceLaws fmt
 open import Once.Adequacy.CoherenceLawsWrap fmt
 
@@ -65,7 +62,7 @@ private
   all¬-irr [] [] = refl
   all¬-irr (f ∷ a) (g ∷ b) = cong₂ _∷_ (extensionality λ z → ⊥-elim (f z)) (all¬-irr a b)
 
-  as-grade : ∀ {s sd sc sd′ sc′ : T.PolyType} {π π′ : Purity}
+  as-grade : ∀ {s sd sc sd′ sc′ : Tᵗ.PolyType} {π π′ : Purity}
            → T.ArrowSchema s sd sc π → T.ArrowSchema s sd′ sc′ π′ → π ≡ π′
   as-grade T.as-pure T.as-pure = refl
   as-grade T.as-eff  T.as-eff  = refl

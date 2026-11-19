@@ -45,13 +45,7 @@ open import Once.CCC.Label using (module LabelId)
 open LabelId using (idx)
 open import Data.Nat.Properties using (1+n≰n; +-suc; +-assoc; +-comm; ≤-trans; +-identityʳ; ≤-reflexive; m≤n+m; ≤-refl; m≤m+n)
 
-import Once.CCC.FrameSemantics
-import Once.CCC.Machine.SMPrimitives
-import Once.IRTy
 import Once.IR
-import Once.Semantics.Machine as EvV
-import Once.CCC.Machine.ReadTypedAdequate as RTA
-import Once.Denotation.DenotTrace as DT
 import Once.Denotation.ValueDomain as ValueDomain
 import Once.IR.Semantics.Trace as TM
 open import Once.Denotation.Approx using (Ap; done; cut; NotCut; budgetLeft; thenAp; run-approx-bind)

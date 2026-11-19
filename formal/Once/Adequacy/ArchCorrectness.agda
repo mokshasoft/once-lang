@@ -40,33 +40,34 @@ import Once.Adequacy.ArchCorrectness.X86-32.ResourceBounds as RB32
 -- plan 0.107: the program's owner is the compiler's own (`Once.Compile.entry-owner`)
 -- — fixed, because the file the compiler emits is labelled with it.
 import Once.Compile as Co
+import Once.Compile.Emit as Emit
 
 module Once.Adequacy.ArchCorrectness
   -- (Each arch's three ROOM bounds — `HeapRoom`, `StackRoom`, `CallRoom` — were
   -- the first parameters here. Plan 0.123 A.4 step 5 retired all nine: the
   -- emitted room checks make running out observable, and the budget they
   -- re-arm, `FlatCore.Budget`, gives every spending instruction its room.)
-  (x86-64-reg-range : ∀ ι → RB.RegRange Co.entry-owner ι)
-  (x86-64-addr-no-wrap : ∀ ι → RB.AddrNoWrap Co.entry-owner ι)
-  (x86-64-lit-fits : ∀ ι → RB.LitFits Co.entry-owner ι)
+  (x86-64-reg-range : ∀ ι → RB.RegRange Emit.entry-owner ι)
+  (x86-64-addr-no-wrap : ∀ ι → RB.AddrNoWrap Emit.entry-owner ι)
+  (x86-64-lit-fits : ∀ ι → RB.LitFits Emit.entry-owner ι)
   -- riscv64's family, now the SAME as x86-64's plus `SlotAddrNoWrap` (plan 0.65
   -- G3): three of them were all that existed while its simulation was
   -- whole-cloth.
-  (riscv64-reg-range : ∀ ι → RBr.RegRange Co.entry-owner ι)
-  (riscv64-slot-addr-no-wrap : ∀ ι → RBr.SlotAddrNoWrap Co.entry-owner ι)
-  (riscv64-addr-no-wrap : ∀ ι → RBr.AddrNoWrap Co.entry-owner ι)
-  (riscv64-lit-fits : ∀ ι → RBr.LitFits Co.entry-owner ι)
+  (riscv64-reg-range : ∀ ι → RBr.RegRange Emit.entry-owner ι)
+  (riscv64-slot-addr-no-wrap : ∀ ι → RBr.SlotAddrNoWrap Emit.entry-owner ι)
+  (riscv64-addr-no-wrap : ∀ ι → RBr.AddrNoWrap Emit.entry-owner ι)
+  (riscv64-lit-fits : ∀ ι → RBr.LitFits Emit.entry-owner ι)
   -- …and x86-32's, the SAME family again (plan 0.66 X3). It had NONE until now,
   -- for the reason D107 names: its simulation was whole-cloth, so nothing above
   -- ever asked what resources the running program needs. One fewer than
   -- riscv64's — `SlotAddrNoWrap` is riscv64's alone (D104: x86-32 computes a slot address
   -- with `lea`, which carries no range obligation, exactly as x86-64 does).
-  (x86-32-reg-range : ∀ ι → RB32.RegRange Co.entry-owner ι)
-  (x86-32-addr-no-wrap : ∀ ι → RB32.AddrNoWrap Co.entry-owner ι)
-  (x86-32-lit-fits : ∀ ι → RB32.LitFits Co.entry-owner ι) where
+  (x86-32-reg-range : ∀ ι → RB32.RegRange Emit.entry-owner ι)
+  (x86-32-addr-no-wrap : ∀ ι → RB32.AddrNoWrap Emit.entry-owner ι)
+  (x86-32-lit-fits : ∀ ι → RB32.LitFits Emit.entry-owner ι) where
 
 o : CanonicalName
-o = Co.entry-owner
+o = Emit.entry-owner
 
 open import Once.Target.Arch using (Arch; x86-64; x86-32; riscv64)
 open import Once.Adequacy.Compile using (ArchCorrect)
@@ -75,7 +76,7 @@ open import Relation.Binary.PropositionalEquality using (refl)
 open import Once.Denotation.Program using (IRFun; irProgram; LinkedProgram)
 open Once.Denotation.Program.IRProgram using (table)
 open import Once.Adequacy.SourceTrace using (rewrite-program-linked)
-open import Once.Compile using (rewrite-program)
+open import Once.Compile.Emit using (rewrite-program)
 open import Once.Adequacy.OptimizedLinked using (build-linked)
 open import Data.Bool using (Bool)
 open import Once.IR using (IR)

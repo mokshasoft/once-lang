@@ -14,7 +14,6 @@ open import Once.Spec.Signature using (Signature; call)
 module Once.Metatheory.Coherence.Sigop (Σ : Signature) where
 
 open import Data.List.Membership.Propositional using (_∈_)
-import Data.List.Relation.Unary.All as All
 open import Data.Nat using (ℕ)
 open import Data.Sum using (inj₁)
 open import Data.Unit using (tt)

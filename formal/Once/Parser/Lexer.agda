@@ -19,15 +19,14 @@
 module Once.Parser.Lexer where
 
 open import Data.List using (List; []; _∷_; length)
-import Data.Bool.ListAction
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; Σ-syntax)
 open import Data.Bool using (Bool; true; false; _∨_; _∧_; if_then_else_)
-open import Data.Char using (Char; isAlpha; isDigit)
+open import Data.Char using (Char; isDigit)
 import Data.Char as Ch
 open import Data.Char.Properties using (_==_)
 open import Relation.Nullary using (does)
-open import Data.Nat using (ℕ; zero; suc; _≡ᵇ_; _≤_; _<_; s≤s; z≤n)
+open import Data.Nat using (ℕ; zero; suc; _≤_; _<_; s≤s; z≤n)
 -- `+` alone is ℤ's prefix constructor here (Data.Integer is imported below), so
 -- the ℕ addition in `adv` must be qualified.
 import Data.Nat as ℕ
@@ -36,11 +35,8 @@ open import Data.Nat.Induction using (<-wellFounded)
 open import Induction.WellFounded using (Acc; acc)
 open import Data.Integer using (+_)
 open import Data.String using (String; fromList; toList)
-open import Agda.Builtin.Char using (primCharToNat)
 
--- | Convert Char to ℕ (character code)
-toNat : Char → ℕ
-toNat = primCharToNat
+open import Once.Name.Chars using (isIdentStart; isIdentContinue)
 
 open import Once.Parser.Token
 open import Once.Spec.Surface.Operator using (Dottable; ‹_›; o%; o+; o-; o*; o/; o<; o<=; o>; o>=; o==; o!=)
@@ -50,28 +46,7 @@ import Once.Spec.Surface.Lexing as SL
 -- Character Classification
 ------------------------------------------------------------------------
 
--- | Is this character an identifier start? [a-zA-Z_]
-isIdentStart : Char → Bool
-isIdentStart c = isAlpha c ∨ (toNat c ≡ᵇ toNat '_')
-
--- | Is this character an identifier continuation? [a-zA-Z0-9_'+*!?]
-isIdentContinue : Char → Bool
-isIdentContinue c =
-  isAlpha c ∨ isDigit c ∨
-  (toNat c ≡ᵇ toNat '_') ∨
-  (toNat c ≡ᵇ toNat '\'') ∨
-  (toNat c ≡ᵇ toNat '+') ∨
-  (toNat c ≡ᵇ toNat '*') ∨
-  (toNat c ≡ᵇ toNat '!') ∨
-  (toNat c ≡ᵇ toNat '?')
-
--- | The characters an operator's name is made of (`(<+>)`; the grammar's
--- `OpChar`): `. + - * / % < > | & @`.
-opNameChars : List Char
-opNameChars = '.' ∷ '+' ∷ '-' ∷ '*' ∷ '/' ∷ '%' ∷ '<' ∷ '>' ∷ '|' ∷ '&' ∷ '@' ∷ []
-
-isOpNameChar : Char → Bool
-isOpNameChar c = Data.Bool.ListAction.any (λ k → toNat c ≡ᵇ toNat k) opNameChars
+-- The character classes of a name are `Once.Name.Chars`.
 
 ------------------------------------------------------------------------
 -- Bounded-consumption helpers.

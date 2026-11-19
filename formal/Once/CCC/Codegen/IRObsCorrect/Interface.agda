@@ -59,16 +59,11 @@ open import Once.CCC.Machine.Validity using (module ReadLocEq)
 open import Once.IRTy using (WellFormedFI; μ-type; ⟦_⟧TI; IRTy)
 open import Once.Memory.HeapAddress using (HeapLocation)
 open import Once.CCC.Machine.MuRep using (Unboxed)
-import Once.CCC.FrameSemantics as FrameSemantics′
 
 -- The bare `import` of FrameSemantics is for the fully qualified uses
 -- (`Once.CCC.FrameSemantics.fs-numerics`).
 import Once.CCC.FrameSemantics
-import Once.CCC.Machine.SMPrimitives
-import Once.IRTy
-import Once.IRTy as IRTy′
 import Once.IR
-import Once.Semantics.Machine as EvV
 import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
 import Once.Denotation.ValueDomain as ValueDomain

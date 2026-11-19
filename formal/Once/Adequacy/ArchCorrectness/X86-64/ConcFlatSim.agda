@@ -162,7 +162,7 @@ open import Once.CCC.Machine.FlatPtrBounds FS using
 -- Imports for the run-events event-trace correspondence (block-run-exec + the
 -- events-agree induction below).
 open import Once.Adequacy.CPU.X86-64 using (val-x86-64; ev-x86-64; block-env; call-at-x86-64)
-import Once.Compile as Cmp
+import Once.Compile.Emit as Emit
 import Once.Adequacy.BlockTable as BT
 import Once.Arith.Backend.X86-64.Emit as AE
 open import Once.Adequacy.CPU.X86-64 using (block-env-hit; block-env-sound)
@@ -386,7 +386,7 @@ x86-64-machine = record
 -- `arith-env-x86-64`, "read off the code"; the code does not hold it, the file does.
 x86-64-arith-table : AbstractTrace → (String → Maybe (List XInstr × ℕ)) → Set
 x86-64-arith-table prog env =
-  Σ IRProgram (λ p → (prog ≡ Cmp.image-of p) × (env ≡ block-env (Cmp.blocks-x86-64 p)))
+  Σ IRProgram (λ p → (prog ≡ Emit.image-of p) × (env ≡ block-env (Emit.blocks-x86-64 p)))
 
 x86-64-traceloop : EI.TraceLoop FS Reg x86-64-emitter x86-64-machine
 x86-64-traceloop = record
@@ -630,11 +630,11 @@ postulate
 arith-sigop-lookup : ∀ (env : RTx.RunTrace.ArithEnv val-x86-64 (answer-at (Once.CCC.FrameSemantics.fs-numerics FS) (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-64)) prog fs {A B} (si : SigOpInfo A B)
                    → x86-64-arith-table prog env → Internal (sem si) → fetch prog (fpc fs) ≡ just (instr-sigop si)
                    → Σ (List XInstr × ℕ) (λ pl → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl)
-arith-sigop-lookup .(block-env (Cmp.blocks-x86-64 p)) .(Cmp.image-of p) fs si (p , refl , refl) int ftq
+arith-sigop-lookup .(block-env (Emit.blocks-x86-64 p)) .(Emit.image-of p) fs si (p , refl , refl) int ftq
   with fetch-All {k = fpc fs} (BT.image-owned p) ftq int
 ... | b , m , e , _ =
-  subst (λ n → Σ (List XInstr × ℕ) (λ pl → block-env (Cmp.blocks-x86-64 p) (once-symbol-path n) ≡ just pl)) (sym e)
-        (block-env-hit (Cmp.blocks-x86-64 p) _ (BT.table-has AE.arith-block-symbol AE.block-payload (Cmp.program-blocks p) m))
+  subst (λ n → Σ (List XInstr × ℕ) (λ pl → block-env (Emit.blocks-x86-64 p) (once-symbol-path n) ≡ just pl)) (sym e)
+        (block-env-hit (Emit.blocks-x86-64 p) _ (BT.table-has AE.arith-block-symbol AE.block-payload (Emit.program-blocks p) m))
 
 -- plan 0.123 α′ (f1): …and what it finds is the SigOp's OWN block — the
 -- table entry under its symbol is a program block with that symbol, and one
@@ -643,10 +643,10 @@ arith-sigop-block : ∀ (env : RTx.RunTrace.ArithEnv val-x86-64 (answer-at (Once
                   → x86-64-arith-table prog env → Internal (sem si) → fetch prog (fpc fs) ≡ just (instr-sigop si)
                   → ∀ (pl : List XInstr × ℕ) → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl
                   → Σ ArithBlock (λ b → BlockOf si b × pl ≡ AE.block-payload b)
-arith-sigop-block .(block-env (Cmp.blocks-x86-64 p)) .(Cmp.image-of p) fs si (p , refl , refl) int ftq pl hit =
-  let (b , _ , bo , e) = BT.which-block AE.block-payload (Cmp.program-blocks p) si
+arith-sigop-block .(block-env (Emit.blocks-x86-64 p)) .(Emit.image-of p) fs si (p , refl , refl) int ftq pl hit =
+  let (b , _ , bo , e) = BT.which-block AE.block-payload (Emit.program-blocks p) si
                            (fetch-All {k = fpc fs} (BT.image-owned p) ftq int)
-                           (block-env-sound (Cmp.blocks-x86-64 p) _ hit)
+                           (block-env-sound (Emit.blocks-x86-64 p) _ hit)
   in b , bo , e
 
 ------------------------------------------------------------------------

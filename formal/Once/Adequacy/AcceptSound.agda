@@ -56,12 +56,10 @@ open import Once.Type.Instance using (rigidOf)
 open import Once.Type.Concrete using (IsConcrete)
 open import Once.Functor.Decide using (isConcrete?)
 open import Once.Type.Honest using (HonestFFI; honest?)
-import Once.Surface.Context
 open import Once.Compile using (moduleToIR)
 open import Once.Adequacy.MainBuilds using (moduleToIR-inj₂)
 import Once.Parser.Module.Core as P
 import Data.String as String
-import Once.Parser.Module as Module
 
 ------------------------------------------------------------------------
 -- Leaf — a successful `compileFunBody` means `checkElab` succeeded, so its

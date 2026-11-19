@@ -25,7 +25,6 @@ open import Once.Spec.Type using (Fun; μ; ν)
 open import Once.Spec.Surface.Lexing using (Token; TRParen)
 open import Once.Spec.Surface.Grammar using (TypeAlg; module Types; NoExtra; module Annot; module AliasType; GradeToken; g0; g1; gw)
 import Once.Spec.Type as ST
-import Once.Spec.Surface.Syntax as SS
 import Once.Parser.Token as P
 open import Once.Parser.TypeRelation
 open import Once.Adequacy.SpecLexing using (forget)

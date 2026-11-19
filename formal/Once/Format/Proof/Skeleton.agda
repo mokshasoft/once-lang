@@ -35,6 +35,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Once.Spec.Grade using (Zero; One; Many; pureᶠ; actᶠ)
 import Once.Spec.Surface.Generators
 open import Once.Spec.Surface.Syntax
+open import Once.Spec.Surface.Type
 open import Once.Spec.Name using (canonical)
 open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; TNewline; TEOF)
 open import Once.Adequacy.SpecTokNames

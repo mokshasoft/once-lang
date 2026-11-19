@@ -22,7 +22,6 @@ open import Data.Maybe using (just; nothing)
 import Data.Nat.Properties as ℕP
 open import Data.Product using (_×_; _,_; ∃-syntax)
 open import Data.String using (String; toList; _==_)
-import Data.String.Properties as StrP
 open import Data.Sum using (_⊎_)
 open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)

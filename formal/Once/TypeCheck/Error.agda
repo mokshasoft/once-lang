@@ -35,7 +35,7 @@ open import Data.String using (String; _++_)
 open import Once.Spec.Grade using (Quantity)
 open import Once.Spec.Type using (Ty; Type)
 open import Once.Type using (showQuantity; showType; showPolyType)
-open import Once.Spec.Surface.Syntax using (PolyType)
+open import Once.Spec.Surface.Type using (PolyType)
 open import Once.Spec.Theory using (NumTy; int; float)
 open import Once.Spec.Surface.Operator using (BinOp; Dottable; plain; dotted; ‹_›; o%; o+; o-; o*; o/; o<; o<=; o>; o>=; o==; o!=)
 

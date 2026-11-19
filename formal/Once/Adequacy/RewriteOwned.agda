@@ -51,7 +51,7 @@ open import Once.CCC.Codegen.CallOK using (Calls)
 open import Once.Denotation.Program using (leaves-map; IRFun; IRProgram; module IRProgram; module IRFun)
 open IRProgram using (main; table)
 open IRFun using (fbody)
-open import Once.Compile using (rewrite-program; rewrite-table; program-blocks; table-blocks)
+open import Once.Compile.Emit using (table-blocks; rewrite-table; program-blocks; rewrite-program)
 
 ------------------------------------------------------------------------
 -- A primitive that is not a comparison LIFTS: `SigOp si ∘ id` is one

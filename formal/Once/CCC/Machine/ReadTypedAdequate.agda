@@ -38,7 +38,6 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong
 open import Function using (id)
 
 open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_)
-import Once.Type
 open import Once.IRTy using (⌊_⌋; fits-int; fits-float)
 open import Once.Denotation.ValueDomain using (forgetᵇ; cohᴰ) renaming (⟦_⟧ᴰᴵ to ⟦_⟧ᴵ)
 open import Once.CCC.Machine.SMCore

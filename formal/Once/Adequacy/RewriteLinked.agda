@@ -13,7 +13,6 @@
 
 module Once.Adequacy.RewriteLinked where
 
-import Once.Type.Core
 
 import Once.Spec.Type
 import Once.SigOp.Info

@@ -14,12 +14,8 @@ open import Data.Product using (Σ; _,_)
 open import Data.String using (String)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
-import Data.List.Membership.DecPropositional as DecMem
 open import Once.Spec.Type using () renaming (Unit to UnitT)
-import Once.Type as Ty
 open import Data.Empty using (⊥-elim)
-open import Once.Spec.Word using (Carrier)
-import Once.IR.Semantics.Value Carrier Carrier as M
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Relation.Unary.Any using (here; there)
 open import Once.Contract

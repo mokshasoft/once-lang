@@ -40,10 +40,6 @@ import Once.Measure as Measure
 
 -- The datatypes the Haskell side builds or reads directly (the arith IR the
 -- test evaluator walks, the IR and type modules' constructors).
-import Once.IR
-import Once.Type
-import Once.Arith.IR
-import Once.Arith.Type
 
 ------------------------------------------------------------------------
 -- WHAT RUNS (D353): every function the Haskell side calls, and nothing

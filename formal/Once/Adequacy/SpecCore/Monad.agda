@@ -16,7 +16,6 @@
 
 open import Once.Spec.Signature using (Signature)
 
-import Once.Spec.Grade
 module Once.Adequacy.SpecCore.Monad (Σ : Signature) where
 
 
@@ -26,7 +25,6 @@ open import Relation.Binary.PropositionalEquality using (refl)
 import Once.Spec.Grade as SG
 import Once.Spec.Effect Σ as SE
 import Once.Spec.Polynomial as SPoly
-import Once.Spec.Signature as SSig
 open import Once.Adequacy.SpecCore.Index
 open import Once.Adequacy.SpecCore.Value Σ
 open T∞R

@@ -28,21 +28,19 @@ open import Data.Bool using (Bool; true; false; _∧_; _∨_; not; if_then_else_
 open import Data.Char using (Char)
 import Data.Char as Ch
 open import Data.Integer using (+_; -[1+_])
-import Data.Integer.Show as ℤS
 open import Data.List using (List; []; _∷_; _++_; reverse; map)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Nat using (ℕ; zero; suc; _∸_; _≡ᵇ_; _<ᵇ_)
-import Data.Nat.Show as ℕS
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.String using (String; fromList; toList; _==_)
-import Data.String as Str
 open import Relation.Nullary using (does)
 
 open import Once.Spec.Grade using (Quantity; Zero; One; Many; pureᶠ; actᶠ; fin; eff; mk-kind)
 open import Once.Spec.Type using (Ty; Fun; Unit; Void; Int; Float; _⇒[_]_; μ; ν; K; Id; _⊕_; _⊗_)
 import Once.Spec.Type as T
 import Once.Spec.Surface.Generators
-open import Once.Spec.Surface.Syntax using (RGen; PolyType; PolyFunctor; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PAct; PEff; Pμ; Pν; PTVar; PK; PId; _P⊕_; _P⊗_; Expr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg; Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport; mkImport; Module; mkModule)
+open import Once.Spec.Surface.Type using (PolyType; PolyFunctor; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PAct; PEff; Pμ; Pν; PTVar; PK; PId; _P⊕_; _P⊗_)
+open import Once.Spec.Surface.Syntax using (RGen; Expr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg; Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport; mkImport; Module; mkModule)
 open import Once.Spec.Surface.Operator using (BinOp; ‹_›;
   Level; comparison; additive; multiplicative; level)
 import Once.Spec.Surface.Operator as Op

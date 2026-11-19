@@ -24,7 +24,6 @@
 
 module Once.Adequacy.ArchCorrectness.RiscV64.RegRoles where
 
-open import Once.CCC.Target.RiscV64.Syntax using ()
 open import Once.Target.RiscV64.PhysReg using (Reg; sp; s1; s2; a0; t0)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles
   using (RegRoles; Role; role-sp; role-clos; role-heap; role-out; role-in1)

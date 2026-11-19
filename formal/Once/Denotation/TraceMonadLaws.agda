@@ -17,10 +17,6 @@ open import Data.Product using (∃-syntax; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans; sym)
 open import Once.Postulates using (extensionality)
 open import Once.Res using (Res; stopped; returns)
-import Once.Type.Core as SpecTy
-import Once.Spec.Type as SpecTy
-import Once.Type as Ty
-import Data.List.Membership.DecPropositional as DecMem
 open import Once.Spec.Word using (Carrier)
 import Once.IR.Semantics.Value Carrier Carrier as M
 open import Once.IR.Semantics.Event using (SigOpEvent)

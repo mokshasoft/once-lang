@@ -35,7 +35,6 @@ open import Once.Spec.Surface.Resolution as SR
   using (env; Resolves; rn-gen; rn-import; rn-own;
          r-local; r-name; r-gen; r-this; r-qual; r-qual-path; r-res; r-app; r-lam; r-let; r-pair; r-destruct; r-unit; r-int; r-float;
          r-annot; r-binop; r-neg)
-import Once.Spec.Surface.Resolution
 open import Once.ResolvedRefs using (GoodName; GoodRefs)
 open import Once.Adequacy.SpecFront.Expr
   using (RX; x-local; x-res; x-gen; x-app; x-lam; x-let; x-pair; x-destruct; x-unit; x-int; x-float; x-annot; x-binop; x-neg)
@@ -122,7 +121,6 @@ module Decls (Σ : Signature) where
 
 open import Once.Spec.Surface.Syntax using (mkModule)
 import Data.List
-import Data.Maybe
 open import Once.Parser.Module.Resolve using (collectAliases; collectUnaliased; sigNames)
 open import Once.Adequacy.ResolveBridge using (lookupMod-complete)
 open import Relation.Binary.PropositionalEquality using (trans; subst)

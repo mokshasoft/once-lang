@@ -72,14 +72,9 @@ open import Once.CCC.Codegen.IRObsCorrect.Pair.Chain    o tbl
 open import Once.CCC.Codegen.IRObsCorrect.Pair.Pres o tbl
 open import Data.Nat using (z≤n; _<_; ℕ; suc; _≤_; zero)
 
-import Once.CCC.FrameSemantics
 import Once.CCC.Machine.SMPrimitives
-import Once.IRTy
 import Once.IRTy as IRTy′
 import Once.IR
-import Once.Semantics.Machine as EvV
-import Once.CCC.Machine.ReadTypedAdequate as RTA
-import Once.Denotation.DenotTrace as DT
 import Once.Denotation.ValueDomain as ValueDomain
 import Once.IR.Semantics.Trace as TM
 open import Once.Denotation.Approx using (Ap; done; NotCut; thenAp; run-approx-bind)

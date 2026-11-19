@@ -42,7 +42,6 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 import Once.Adequacy.ArchCorrectness.RiscV64.FlatCorrespondence as FCr
 import Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation as FSimr
-import Once.Adequacy.ArchCorrectness.FlatCore.RunContext as RCr
 import Once.Adequacy.ArchCorrectness.FlatCore.RunLow as RLr
 import Once.CCC.Target.RiscV64.Semantics as R
 open import Once.CCC.Machine.SMCore
@@ -69,7 +68,6 @@ open import Data.Integer using (ℤ)
 -- (imported, not applied: the import alone is what makes it typechecked, and
 -- it now takes a resource parameter the apex will thread — `SlotAddrNoWrap`
 -- below.)
-import Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim as CFSr
 
 ------------------------------------------------------------------------
 -- (HEAP EXHAUSTION, STACK EXHAUSTION and CALL DEPTH — `HeapRoom`, `StackRoom`,

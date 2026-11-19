@@ -35,6 +35,7 @@ open import Once.Spec.Sub using (_<:_; _⊔_≔_)
 open import Once.Spec.Signature using (_∶_; ⌜_⌝ᵈ)
 open import Once.Spec.Surface.Generators using (Gen; kind; FromDomain; FromCodomain; Constant; Morphism; Final)
 open import Once.Spec.Surface.Syntax
+open import Once.Spec.Float.Decimal using (signedDecimal)
 open import Once.Spec.Core.Syntax
   using (Tm; lit; lit-int; lit-float; unit; var; sigop; ref; pair; prim; num; let′; case; coerce; app; lam;
          _!!_; module Schema)

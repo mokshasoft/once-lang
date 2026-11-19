@@ -374,7 +374,6 @@ open import Once.Format.Proof.Written using (cwords; render-words)
 open import Once.Format.Proof.Printed using (pmodule-DocC)
 open import Once.Format.Proof.WalkWords using (trivia-words; trivia-end; trivia-tops; kEnd; kEnd-anchors; anchorsP)
 open import Once.Format.Proof.Walk using (anchor-forget; end-forget)
-import Once.Parser.Token as PT
 open import Data.List.Properties using (map-++)
 
 private

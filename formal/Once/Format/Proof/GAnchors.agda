@@ -30,8 +30,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Once.Spec.Grade using (pureᶠ; actᶠ)
 open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; TNewline; TLParen; TRParen; TArrow; TCaret0; TCaret1; TCaretW)
 open import Once.Adequacy.SpecTokNames
-open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PUnit; PVoid; PInt; PFloat; _P*_; _P+_;
-  _P⇒[_]_; PAct; PEff; Pμ; Pν; PTVar; PK; PId; _P⊕_; _P⊗_)
+open import Once.Spec.Surface.Type using (PolyType; PolyFunctor; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PAct; PEff; Pμ; Pν; PTVar; PK; PId; _P⊕_; _P⊗_)
 open import Once.Spec.Surface.Grammar using (TypeAlg; module Types; GradeToken; g0; g1; gw)
 open import Once.Format.Proof.Counts using (anchors)
 open import Once.Format.Proof.Skeleton using (anchorTok; lineEndTok)

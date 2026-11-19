@@ -33,7 +33,6 @@ open import Once.Spec.Boundary using (readAt)
 open import Once.Spec.Domain Σ using (⟦_⟧ᵛ; toB; fromB)
 open import Once.Spec.Equivalence Σ using (Same)
 open import Once.Spec.Observation Σ using (Model; module Model)
-import Once.Spec.Word as Word
 open import Once.Metatheory.Coherence.Layer Σ
 open import Once.Metatheory.Coherence.Sigop Σ
 open import Once.Metatheory.Coherence.Env Σ fmt S using (SlotAgree)

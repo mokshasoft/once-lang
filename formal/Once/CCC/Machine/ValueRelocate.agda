@@ -24,7 +24,6 @@ open import Data.Nat.Properties using (+-assoc; +-suc; m≤m+n; m≤n⊔m; m≤m
 open import Data.Product using (_,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 open import Once.Memory.HeapAddress using (HeapRef; heap-loc)
-import Once.Memory.HeapAddress
 open import Once.CCC.Machine.Locations using (ValueLocation; AtDynamic)
 open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap; AbstractTrace)
 open MemOps {FS}

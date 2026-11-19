@@ -67,14 +67,6 @@ open import Data.Nat using (s≤s; ℕ; suc; _+_; _≤_; _<_)
 open import Data.Nat.Solver using (module +-*-Solver)
 open +-*-Solver using (solve; _:+_; con; _:=_)
 
-import Once.CCC.FrameSemantics
-import Once.CCC.Machine.SMPrimitives
-import Once.IRTy
-import Once.IR
-import Once.Semantics.Machine as EvV
-import Once.CCC.Machine.ReadTypedAdequate as RTA
-import Once.Denotation.DenotTrace as DT
-import Once.IR.Semantics.Trace as TM
 
 ------------------------------------------------------------------------
 -- THE `+` SHUFFLES, HOISTED TO THE TOP LEVEL.

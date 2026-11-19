@@ -51,7 +51,6 @@ module ResuspSumC {FS : FrameSemantics} where
   open ClosureWellFormedDef′ using (ValidAtWF)
   open MemOps′ using (readLoc)
   open ResuspBaseC {FS}
-  import Once.CCC.Machine.SMCore as SMCore
 
   -- the arms check in their own modules (`SumL`, `SumR`; shared: `SumCommon`)
   module RSum {F : IRFunctor} (wf : WellFormedFI F) {E A : IRTy}

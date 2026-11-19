@@ -42,15 +42,7 @@ open import Once.CCC.Machine.Locations using (AtStack; AtDynamic; ValueLocation)
 open import Once.CCC.Label using (ℓ; e-thunk)
 open import Once.IRTy using (_*_; WellFormedFI; ⟦_⟧TI; ν-type; IRTy; FitsInRegI)
 
-import Once.CCC.FrameSemantics
-import Once.CCC.Machine.SMPrimitives
-import Once.IRTy
 import Once.IRTy as IRTy′
-import Once.IR
-import Once.Semantics.Machine as EvV
-import Once.CCC.Machine.ReadTypedAdequate as RTA
-import Once.Denotation.DenotTrace as DT
-import Once.IR.Semantics.Trace as TM
 
 open import Once.CCC.Codegen.IRObsCorrect.TwoCell.Run o tbl
 open import Once.CCC.Codegen.IRObsCorrect.TwoCell.Build o tbl

@@ -16,7 +16,7 @@ open import Data.Product using (_,_)
 open import Data.Maybe using (just; nothing)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_)
-import Once.Spec.Surface.Syntax as TP
+import Once.Spec.Surface.Type as TPᵗ
 import Once.Spec.Core.Syntax as SC
 open import Once.TypeCheck.Scope using (Imports; PolyCtx; lookupImport; lookupPolyPrefix)
 
@@ -25,7 +25,7 @@ module Once.Adequacy.SpecFront.Scope
 
 record PolyAt (d : Fin s) (x : String) : Set where
   field
-    {sc}  : TP.PolyType
+    {sc}  : TPᵗ.PolyType
     {b}   : _
     {p}   : PolyCtx
     lki   : lookupImport imps x ≡ nothing

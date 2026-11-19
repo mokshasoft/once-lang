@@ -81,7 +81,7 @@ import Once.Type.Core as LT
 import Once.Spec.Type as LT
 open import Once.Type using (isGround)
 open import Once.Functor.Decide using (isConcrete?)
-open import Once.Spec.Surface.Syntax using (PolyType)
+open import Once.Spec.Surface.Type using (PolyType)
 open import Once.Spec.Signature using (Signature)
 import Once.Spec.Surface.Syntax as S
 import Once.Spec.Surface.Program as SPr

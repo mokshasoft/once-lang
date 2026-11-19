@@ -33,7 +33,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.Parser.Token
 open import Once.Spec.Surface.Operator using (Dottable; ‹_›; o+; o-; o*; o/; o<; o<=; o>; o>=; o==; o!=)
 open import Once.Parser.Lexer
-  using (adv; headK; isIdentStart;
+  using (adv; headK;
          collectStringB; collectDigitsB; collectFracB; collectIdentB;
          skipLineB; skipBlockB; digitsToNat; drop1;
          nlIndent; isEqHead; isDotHead; isDashHead; dashClass; caretClass;
@@ -41,6 +41,7 @@ open import Once.Parser.Lexer
          hkWS; hkNL; hkCaret; hkDash; hkLBrace; hkLt; hkGt; hkEq; hkBang;
          hkLParen; hkRParen; hkRBrace; hkColon; hkLambda; hkComma; hkSemi; hkAt;
          hkPipe; hkPlus; hkStar; hkSlash; hkPct; hkAmp; hkDot; hkStr; hkGen)
+open import Once.Name.Chars using (isIdentStart)
 
 ------------------------------------------------------------------------
 -- The relation.

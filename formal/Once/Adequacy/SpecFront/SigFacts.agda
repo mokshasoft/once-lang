@@ -41,7 +41,6 @@ open import Once.Type.Concrete using (IsConcrete)
 open import Once.Type.Honest using (HonestFFI)
 open import Once.Name using (showCanonical; WordName)
 open import Once.Spec.Signature using (Signature; Decl; _∶_; OneName; ⌜_⌝ᵈ)
-import Once.Spec.Type as ST
 import Once.Parser as Parser
 open import Once.Module using (entrySig)
 open import Once.TypeCheck.Scope using (lookupImport)

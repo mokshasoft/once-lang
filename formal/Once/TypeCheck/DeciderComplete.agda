@@ -35,7 +35,7 @@ open import Data.Empty using (⊥-elim)
 open import Relation.Nullary using (¬_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong₂; subst)
 
-open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PUnit; PVoid; PInt; PFloat; PTVar; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PK; PId; _P⊕_; _P⊗_)
+open import Once.Spec.Surface.Type using (PolyType; PolyFunctor; PUnit; PVoid; PInt; PFloat; PTVar; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PK; PId; _P⊕_; _P⊗_)
 open import Once.Type.Poly using (Ground; GroundF)
 open import Once.Type using (isGround; isGroundF)
 open import Once.Spec.Type using (wf-K; wf-Id)

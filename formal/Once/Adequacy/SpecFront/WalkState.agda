@@ -31,7 +31,6 @@ open import Data.List using ([]; _∷_; _++_; map)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Membership.Propositional.Properties using (∈-++⁺ˡ; ∈-++⁺ʳ)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
-import Data.List.Relation.Unary.All as All
 open import Data.List.Relation.Unary.Any using (here; there)
 open import Data.Maybe using (just; nothing)
 open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
@@ -42,8 +41,6 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym
 import Data.String.Properties as StrProp
 open import Data.List.Membership.DecPropositional StrProp._≟_ using (_∈?_)
 
-import Once.Spec.Type as LT
-import Once.Type.Concrete as LW
 import Once.Spec.Type as ST
 import Once.Spec.Core.Syntax as SC
 import Once.Compile as C

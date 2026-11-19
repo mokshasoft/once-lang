@@ -32,7 +32,6 @@ open import Once.Spec.Surface.Syntax using (Decl; DTypeSig; DFunDef; DSignature;
 import Once.Parser as Parser
 open Parser.FunInfo using (funName; funIsPrimitive)
 open Parser.PolyFunInfo using (pfunName)
-import Once.Parser.Relation.Resolution as LR
 import Data.List.Relation.Unary.All as All
 open import Data.Product using (Σ-syntax)
 open import Once.Adequacy.SpecFront.Extract

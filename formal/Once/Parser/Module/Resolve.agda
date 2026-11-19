@@ -42,7 +42,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Parser.Module.Core
 open import Once.Spec.Surface.Syntax using (Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport; Module; mkModule)
-open import Once.Spec.Surface.Syntax using (Import; mkImport; PolyType)
+open import Once.Spec.Surface.Type using (PolyType)
+open import Once.Spec.Surface.Syntax using (Import; mkImport)
 open import Once.Spec.Surface.Syntax using (RLam)
 open import Once.Spec.Surface.Syntax using (Expr)
 open import Once.ResolvedRefs using (GoodRefs; goodRefs?)

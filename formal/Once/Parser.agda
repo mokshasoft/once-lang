@@ -27,7 +27,7 @@ open import Data.List.Relation.Unary.AllPairs using (allPairs?)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.Spec.Type using (Type)
-open import Once.Spec.Surface.Syntax using (PolyType)
+open import Once.Spec.Surface.Type using (PolyType)
 open import Once.Type.Poly using (extractGround)
 open import Once.Type using (isGround; showPolyType)
 open import Once.Functor.Decide using (isConcrete?)
@@ -35,7 +35,8 @@ open import Once.Spec.Surface.Syntax using (RVar)
 open import Once.Spec.Surface.Syntax using (Expr)
 -- D072 M3: the principal-type oracle's sig-less schema criterion.
 open import Once.Parser.Token
-open import Once.Parser.Lexer using (tokenizeString; isIdentStart; isIdentContinue; isOpNameChar)
+open import Once.Name.Chars using (isIdentStart; isIdentContinue; isOpNameChar)
+open import Once.Parser.Lexer using (tokenizeString)
 open import Once.Parser.Type using (isUpperWord)
 open import Once.Parser.Module
 open import Once.Parser.Module.Core using (Resolved; resolved)

@@ -21,8 +21,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong
 
 open import Once.Spec.Grade using (Many; pureᶠ; actᶠ; fin; eff; mk-kind)
 open import Once.Spec.Type using (Fun; Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; K; Id; _⊕_; _⊗_)
-open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_;
-  PAct; PEff; Pμ; Pν; PTVar; PK; PId; _P⊕_; _P⊗_)
+open import Once.Spec.Surface.Type using (PolyType; PolyFunctor; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PAct; PEff; Pμ; Pν; PTVar; PK; PId; _P⊕_; _P⊗_)
 open import Once.Spec.Surface.Grammar using (TypeAlg; TypeVar; tvar; NoExtra; lowerWord)
 open import Once.Format.Print using (toPoly; toPolyF)
 import Once.Format.Proof.Types as PT

@@ -21,7 +21,6 @@
 
 module Once.TypeCheck.Elaborate where
 
-import Once.Spec.Context
 open import Once.Type.Core using (wk₀)
 open import Once.Spec.Type using (μ; ν; ⟦_⟧F)
 open import Once.Spec.Type using (var; Ty; Base)
@@ -43,7 +42,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; sym
 open import Once.Spec.Grade
 open import Once.Type.Grade
 open import Once.Spec.Type using (Type; Unit; Void; _⇒[_]_; Int; Float)
-open import Once.Spec.Surface.Syntax using (PolyType; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PTVar)
+open import Once.Spec.Surface.Type using (PolyType; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PTVar)
 open import Once.Type.Poly
 open import Once.Type
 -- Plan 0.52 M2: IR re-exports the ungraded IRTy, whose Unit/K/μ-type/… clash
@@ -68,7 +67,7 @@ open import Once.TypeCheck.NumTable
 open import Once.Surface.Numeric using (numBin; toFloatIR)
 open import Once.Spec.Surface.Operator using (binSym; BinSym)
 open BinSym using (theory; shape)
-open import Once.Spec.Surface.Syntax using (signedDecimal)
+open import Once.Spec.Float.Decimal using (signedDecimal)
 open import Once.TypeCheck.Raw as Raw
 open import Once.TypeCheck.Error using (TypeError; ComposeMiddleUndetermined;
   OperatorUndefined; MixedOperands; opText;
@@ -80,7 +79,6 @@ open import Once.TypeCheck.Error using (TypeError; ComposeMiddleUndetermined;
   UsageViolation; BuiltinTypeMismatch; NoInstance;
   BinOpLeftError; BinOpRightError;
   UnboundVariable; UnboundQualified; NonConcreteSigOpType)
-import Once.TypeCheck.Context
 open import Once.Context as Surface using ()
 import Once.Spec.Context as Surface
 open import Once.Spec.Context using () renaming (Ctx to SCtx)
@@ -90,12 +88,10 @@ open import Once.Surface.Elaborate as Elab using ()
 
 open import Once.TypeCheck.Scope
 open import Once.TypeCheck.Classify
-import Once.Type.Concrete
 open import Once.Spec.Type using (∅ₖ)
 import Once.Spec.Type
 open import Once.Type.Concrete using (IsConcrete; con-fun)
 open import Once.Functor.Decide using (wfFun?; isConcrete?; isBaseType?)
-import Once.Spec.Float.Decimal as Decimal
 open import Once.Spec.Sub using (_<:_; sub-arr)
 open import Once.Type.SubDecide using (_<:?_; _⊑π?_)
 open import Once.Type.Sub using (<:-refl; ⊑π-refl; <:ᶜ⇒<:)

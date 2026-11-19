@@ -81,11 +81,6 @@ open import Data.Product using (Σ; _,_; proj₂; proj₁)
 
 import Once.CCC.FrameSemantics
 import Once.CCC.Machine.SMPrimitives
-import Once.IR
-import Once.Semantics.Machine as EvV
-import Once.CCC.Machine.ReadTypedAdequate as RTA
-import Once.Denotation.DenotTrace as DT
-import Once.IR.Semantics.Trace as TM
 
 module InMuC {FS : FrameSemantics} where
 

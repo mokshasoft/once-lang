@@ -59,7 +59,6 @@ import Once.TypeCheck.Scope as Classify
 open import Data.Unit using (tt)
 open import Once.TypeCheck.Error
   using (TypeError; LambdaInInferMode; InlInInferMode; InrInInferMode; InitialInInferMode; InlNeedsSumType; FstNeedsPair; SndNeedsPair; CaseScrutineeNotSum; CaseBranchMismatch; TypeMismatch; UnboundVariable; UnboundQualified)
-import Once.Context
 import Once.Spec.Surface.Generators as G
 import Once.TypeCheck.Table
 import Relation.Nullary

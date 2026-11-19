@@ -34,7 +34,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Relation.Nullary using (Dec; yes; no)
 open import Once.Spec.Grade using (Quantity; Many)
 open import Once.Spec.Type using (Ty; Type; KCtx)
-open import Once.Spec.Surface.Syntax using (PolyType)
+open import Once.Spec.Surface.Type using (PolyType)
 import Once.Spec.Surface.Generators as G
 open import Once.Spec.Surface.Syntax using (Expr)
 import Once.Spec.Surface.Syntax as Raw

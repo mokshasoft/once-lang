@@ -48,7 +48,6 @@ open import Once.Spec.Effect Σ using (M; fmap; module νM)
 open νM using (outν)
 open import Once.Spec.Domain Σ using (⟦_⟧ᵛ; code; toL; fromL; foldM)
 open import Once.Spec.Metatheory using (SameDefs; Coherence)
-import Once.Spec.Word as Word
 open import Once.Metatheory.Types using (<:-unique)
 open import Once.Spec.Sub using (_<:_)
 open import Once.Metatheory.Erase Σ using (toT∞-fmap)

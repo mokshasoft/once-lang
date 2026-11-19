@@ -24,7 +24,6 @@ open import Data.Maybe using (just; nothing)
 import Data.Maybe
 import Data.Maybe.Properties
 import Data.Empty
-import Data.List.Relation.Unary.All
 open import Data.Nat using (ℕ; _<_)
 open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
 open import Data.String using (String)
@@ -33,8 +32,6 @@ import Relation.Binary.PropositionalEquality as PE
 open import Relation.Nullary using (¬_)
 open import Once.Spec.Name using (CanonicalName; canonical)
 open import Once.Spec.Signature using (Signature)
-import Once.Spec.Signature
-import Data.List.Membership.Propositional
 import Once.Spec.Grade as LG
 import Once.Spec.Type as ST
 import Once.Spec.Core.Syntax as SC
@@ -231,7 +228,7 @@ open import Once.TypeCheck.Scope using (lookupLocal)
 open import Once.Core.Decl using (⌜declS⌝)
 open import Once.Type.Grade using (_≤qᵇ_)
 open import Once.Type.Rigid using (ground-kinded)
-open import Once.Spec.Surface.Syntax using (signedDecimal)
+open import Once.Spec.Float.Decimal using (signedDecimal)
 open import Once.Spec.Surface.Operator using (binSym; BinSym)
 open BinSym using (theory; shape)
 open import Once.Spec.Theory using (NumTy; ⌜_⌝ⁿ; Has; Neg; symCod; ‵neg)

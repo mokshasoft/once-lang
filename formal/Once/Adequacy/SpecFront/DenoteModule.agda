@@ -45,7 +45,6 @@ import Once.Spec.Surface.Program as SPr
 import Once.Spec.Surface.Resolution as SR
 import Once.Spec.Core.Program as CoreProgram
 import Once.Spec.Core.Syntax as SC
-import Once.Core.Telescope as TL
 import Once.Parser as Parser
 open import Once.Spec.Surface.Syntax using (mkModule)
 import Once.Parser.Module.Core as Core
@@ -56,14 +55,10 @@ open import Once.Core.Translate using ([])
 open import Once.Adequacy.ModuleProgram using (names₀; fresh₀; Names)
 import Data.Empty
 open import Once.Postulates using (extensionality)
-import Once.Spec.Core.Syntax
 import Data.List.Relation.Unary.All
 import Once.TypeCheck.Scope
-import Once.Spec.Name
-import Once.Adequacy.SpecFront.Polys
 open import Once.Adequacy.ModuleLaws using (teleSig≡entrySig)
 import Once.Adequacy.NameClash as NC
-import Once.Adequacy.SpecCore.Program as PG
 open import Once.Adequacy.SpecFront.Extract using (XAlign; extract-align; nonSigs-none)
 import Once.Adequacy.SpecFront.Resolve as Res
 import Once.Adequacy.SpecFront.SigOf as SigOf

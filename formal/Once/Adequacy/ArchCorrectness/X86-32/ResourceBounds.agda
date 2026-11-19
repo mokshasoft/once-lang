@@ -36,7 +36,6 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 import Once.Adequacy.ArchCorrectness.X86-32.FlatCorrespondence as FCx
 import Once.Adequacy.ArchCorrectness.X86-32.FlatSimulation as FSimx
-import Once.Adequacy.ArchCorrectness.X86-32.RunContext as RCx
 import Once.Adequacy.ArchCorrectness.FlatCore.RunLow as RLx
 import Once.CCC.Target.X86-32.Semantics as X
 import Once.Spec.Word as W32

@@ -23,7 +23,6 @@ open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Membership.Propositional.Properties using (∈-tabulate⁺; ∈-map⁻)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 import Data.List.Relation.Unary.All as All
-import Data.List.Relation.Unary.All.Properties as AllP
 open import Data.List.Relation.Unary.AllPairs using (AllPairs)
 import Data.List.Relation.Unary.AllPairs
 open import Data.List.Properties using (map-++)
@@ -72,7 +71,6 @@ import Once.Adequacy.SpecFront.WalkMain as WM
 import Once.Adequacy.SpecFront.WalkState as WS
 import Once.Adequacy.SpecFront.Walk
 import Once.Compile
-import Once.Spec.Name
 import Once.Core.Translate
 
 ------------------------------------------------------------------------

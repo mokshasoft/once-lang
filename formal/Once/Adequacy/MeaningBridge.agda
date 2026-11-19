@@ -12,7 +12,6 @@
 -- (`MeaningBridgeS`, plan 0.122).
 ------------------------------------------------------------------------
 
-import Once.Spec.Context
 open import Once.Spec.Type using (Ty; Fun; KCtx)
 open import Once.Spec.Numerics using (TargetNum)
 
@@ -57,12 +56,9 @@ open import Once.Context using (_↾_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m;
 open import Once.Spec.Context using (Ctx; ∅; lookup; singleUse; zeroUsage; _⊑ᵘ_; []; _+ᵘ_; _*ᵘ_)
 open import Once.Spec.Context using (Usage)
 open import Once.Spec.Context using (_∷_; _⊑∷_; _▸_)
-import Once.Surface.Syntax as Surface
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; cohᴰ)
-import Once.IR.Semantics.Stream
 open import Once.IR.Semantics.Trace using (T; ret; fmapT)
 open import Once.Denotation.TraceMonadLaws using (RelT′-refl)
-import Once.IR.Semantics.Trace as TM
 open import Relation.Nullary using (yes; no)
 open import Once.Denotation.DenotTrace using (evalᴰ; liftFn)
 open import Once.TypeCheck.Scope using (NamedCtx; PolyCtx; lookupPolyPrefix; Imports; lookupImport)
@@ -74,7 +70,6 @@ open import Once.Spec.Sub using (sub-*; sub-+)
 open import Once.Spec.Sub using (_<:_; sub-void; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν)
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
 open import Once.Denotation.Sub using (⟦_⟧<:)
-open import Once.Spec.Surface.Syntax using ()
 open import Once.Denotation.Phase using (lookupᴰUsed; restrictᴰ; bindᴰ; bindᴰ0)
 open import Once.Denotation.PureBind using (_>>=ᵖ_)
 open import Once.Denotation.SpecDomain Σ σ₀
@@ -84,8 +79,6 @@ import Once.Spec.Domain Σ as SDom
 import Once.Denotation.RefMeanings Σ σ₀ as RM
 open RM using (DefMeanings; DefFamily; ImpMeanings; MeaningsOf)
 open RM.Meanings using (sigs; defs; entries)
-import Once.IR as IR
-import Data.List as L
 open import Once.Spec.Name using (bare)
 open import Once.Name using (showCanonical; WordName)
 import Once.Denotation.SourceDenote as SD

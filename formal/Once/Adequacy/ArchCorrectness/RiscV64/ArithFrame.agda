@@ -24,7 +24,6 @@ open import Data.Nat.Properties
   using (≤-trans; <-≤-trans; <-irrefl; m≤m+n; +-monoʳ-<; *-monoʳ-<; ∸-monoʳ-≤
         ; m∸n+n≡m)
 open import Data.Product using (_×_; _,_; proj₁)
-import Data.Nat.Properties
 open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_]′)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
 

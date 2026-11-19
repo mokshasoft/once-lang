@@ -39,8 +39,9 @@ open import Once.Parser.Lexer using (HeadK; hkWS; hkNL; hkCaret; hkDash; hkLBrac
   hkLParen; hkRParen; hkRBrace; hkColon; hkLambda; hkComma; hkSemi; hkAt; hkPipe; hkPlus; hkStar; hkSlash;
   hkPct; hkAmp; hkDot; hkStr; hkGen; headK; Dash3; d-comment; d-arrow; d-minus; Caret4; c-1; c-0; c-w; c-gen;
   nlIndent; isEqHead; isDashHead; dashClass; caretClass; isDotHead; drop1; drop1-≤; adv; collectStringB; collectIdentB;
-  collectDigitsB; collectFracB; skipLineB; skipBlockB; digitsToNat; isIdentStart; tokenize-WF; tokenize;
+  collectDigitsB; collectFracB; skipLineB; skipBlockB; digitsToNat; tokenize-WF; tokenize;
   tok-head; tok-str; tok-gen; tok-num; tok-nl; tok-dot; tok-cmp; tok-eqop; tok-lbrace; tok-minus; tok-caret)
+open import Once.Name.Chars using (isIdentStart)
 
 ------------------------------------------------------------------------
 -- What the lexer reads: tokens, and what it skips

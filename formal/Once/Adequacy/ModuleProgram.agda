@@ -65,8 +65,6 @@ import Once.Type.Poly as TP
 import Once.Compile as C
 import Once.Parser as Parser
 open import Once.Module using (Scope; ModTele; []; ffi; mono; poly; MainIn; EffUU; ctxOf; ctxOfAt; addImp; MonoWit; CheckRun)
-import Once.TypeCheck.Scope
-import Once.Surface.Syntax as SS
 open import Once.Type.Instance using (kindsOf; rigidOf)
 open import Once.Core.Translate Σ
   using (SigSig; ImpSig; TeleSig; []; s-ffi; i-def; t-def; wkI; wkT; impDefs; viewOf; impAt; telFind; monoSchema; u0;

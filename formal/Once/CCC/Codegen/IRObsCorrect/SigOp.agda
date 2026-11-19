@@ -60,8 +60,6 @@ open import Data.List.Properties using (++-identityʳ)
 open import Once.IR.Semantics.Event using (mk-event)
 
 import Once.CCC.FrameSemantics
-import Once.CCC.Machine.SMPrimitives
-import Once.IRTy
 import Once.IR
 import Once.Semantics.Machine as EvV
 import Once.Denotation.DenotTrace as DT

@@ -60,15 +60,8 @@ open import Once.IRTy using () renaming (_*_ to _*ᵀ_)
 open import Data.Nat.Solver using (module +-*-Solver)
 open +-*-Solver using (solve; _:+_; con)
 
-import Once.CCC.FrameSemantics
 import Once.CCC.Machine.SMPrimitives
-import Once.IRTy
-import Once.IR
-import Once.Semantics.Machine as EvV
-import Once.CCC.Machine.ReadTypedAdequate as RTA
-import Once.Denotation.DenotTrace as DT
 import Once.Denotation.ValueDomain as ValueDomain
-import Once.IR.Semantics.Trace as TM
 open import Once.Denotation.Approx using (done; NotCut)
 open import Once.Res using (returns; is-stopped)
 

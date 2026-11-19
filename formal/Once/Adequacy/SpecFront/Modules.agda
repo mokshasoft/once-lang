@@ -23,8 +23,6 @@ open import Data.Sum using (inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Parser using (parseStrict)
-import Once.Spec.Surface.Syntax as S
-import Once.Spec.Surface.Resolution as SR
 open import Once.Spec.Source using (ParsesModules)
 open import Once.Adequacy.SpecSource using (parseModules)
 open import Once.Adequacy.FrontEndBridge using (parseStrict-sound; parseStrict-complete)

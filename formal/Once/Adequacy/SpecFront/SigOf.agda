@@ -33,17 +33,13 @@ open import Data.Empty using (⊥-elim)
 open import Data.Bool using (true)
 open import Relation.Nullary using (yes; no; ¬_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
-import Data.String.Properties as StrProp
 
-import Once.Type.Core as LT
 
-import Once.Spec.Type as LT
 open import Once.Type.Concrete using (IsConcrete)
 open import Once.Type.Honest using (HonestFFI)
 open import Once.Spec.Name using (canonical)
 open import Once.Name using (showCanonical)
 open import Once.Spec.Signature using (Signature)
-import Once.Spec.Surface.Syntax as S
 open import Once.Spec.Surface.Program using (SignatureOf; SignaturesOf; so-nil; so-sig; so-other; ns-tsig; ns-def; ns-alias; ns-import;
   Imported; im-nil; im-import; im-other; ni-sig; ni-tsig; ni-def; ni-alias)
 import Once.Spec.Surface.Resolution as SR
@@ -54,7 +50,7 @@ open import Once.Spec.Surface.Syntax using (DTypeSig; DFunDef; DSignature; DType
 open import Once.Spec.Surface.Syntax using (mkImport)
 open import Once.Parser.Module.Resolve using (sigsOf; importedAt; importedOf; expandPath)
 open import Once.Adequacy.ResolveBridge using (lookupMod-complete)
-open import Once.Spec.Surface.Syntax using (PolyType)
+open import Once.Spec.Surface.Type using (PolyType)
 import Once.Parser.Relation.Resolution as LR
 open import Once.Module using (entrySig)
 open import Once.Adequacy.SpecInterp using (declTy)

@@ -40,7 +40,6 @@ import Once.IRTy as IRT
 open import Once.Res using (Res; stopped; returns; is-stopped)
 open import Once.Denotation.Approx using (Ap; done; cut; NotCut; budgetLeft; thenIter; run-approx-iter; done-≤)
 import Once.IR.Semantics.Trace as TM
-import Data.List.Properties as DLP
 
 open import Once.CCC.Codegen.IRObsCorrect.IterInv o tbl
 open import Once.CCC.Codegen.IRObsCorrect.IterCont o tbl

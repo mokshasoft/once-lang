@@ -41,7 +41,7 @@ open import Once.Spec.Grade using (Zero; One; Many; mk-kind; pure; act; eff; Fin
 open import Once.Spec.Context using (Ctx; _▸_; _∷_; Usage)
 open import Once.Spec.Core.Syntax using (Schema; _!!_)
 open Schema using (arity; kinds; type)
-open import Once.Spec.Surface.Syntax using (PolyType)
+open import Once.Spec.Surface.Type using (PolyType)
 open import Once.Type.Instance using (KindedInstance)
 open import Once.Type.Schema using (schemaOf; kinded-instance)
 open import Once.Type.Concrete using (IsConcrete)

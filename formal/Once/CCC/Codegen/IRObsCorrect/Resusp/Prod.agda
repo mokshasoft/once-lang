@@ -42,7 +42,6 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.CCC.Machine.LocMatchesMode using (LocMatchesMode)
 open import Once.CCC.Label using (ℓ)
-import Once.CCC.Machine.SMCore as SMCore
 open import Once.CCC.Machine.SMCore
   using (AbstractTrace; LocState; AllocState; module LocState; module AllocState; module MemOps; module AbstractExec;
          readReg; writeReg; Output; SV-Ptr; SV-Code; StoredValue; sucLoc; offsetLoc;

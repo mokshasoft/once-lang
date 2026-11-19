@@ -25,7 +25,6 @@ open import Data.Fin using (Fin; zero; suc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Spec.Grade using (Zero; One; Many; 0≤q; 1≤1; 1≤ω; ω≤ω)
-import Once.Spec.Grade as SG
 import Once.Spec.Context as SCx
 open SCx using (Ctx; ∅; _▸_; Usage; []; _∷_; _⊑ᵘ_; _⊑∷_; _+ᵘ_; _*ᵘ_)
 import Once.Spec.Type as ST

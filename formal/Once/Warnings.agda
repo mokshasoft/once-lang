@@ -63,7 +63,8 @@ open import Once.Parser.Lexer using (tokenize)
 open import Data.String using (toList)
 open import Once.Compile using (silentRoundDefs; floatIdentityEqDefs)
 open import Once.Parser.Module.Core using (Resolved)
-open import Once.Spec.Surface.Syntax using (signedDecimal; Module; mkModule; Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport)
+open import Once.Spec.Float.Decimal using (signedDecimal)
+open import Once.Spec.Surface.Syntax using (Module; mkModule; Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport)
 
 ------------------------------------------------------------------------
 -- An exact rational, unnormalised

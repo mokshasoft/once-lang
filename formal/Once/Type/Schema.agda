@@ -36,7 +36,7 @@ open import Once.Spec.Grade using (mk-kind; Many; act; eff; pure)
 open import Once.Spec.Type using (Ty; KCtx; TySub; Respects; _⟨_⟩; _⟨_⟩F; var; Unit;
   _*_; _+_; _⇒[_]_; μ; ν; K; _⊕_; _⊗_; base; any)
 open import Once.Spec.Core.Syntax using (Schema; schema)
-open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PTVar; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PK; PId; _P⊕_; _P⊗_)
+open import Once.Spec.Surface.Type using (PolyType; PolyFunctor; PTVar; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PK; PId; _P⊕_; _P⊗_)
 open import Once.Type.Poly using (substPoly; substPolyF; ftv; ftvF)
 open import Once.Type.Instance using (params; nubFrom; arityOf; kindsOf; memberB; positionOf;
   rigidSubst; rigidOf; ftvK; KindedInstance; RespectsKinds)

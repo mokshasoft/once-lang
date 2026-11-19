@@ -53,14 +53,6 @@ open import Once.IRTy using (IRTy)
 open import Once.CCC.Machine.SMCore using (instr-ctrl; c-branch-tag-zero; c-jmp; c-label; AllocState; AbstractTrace; AbstractInstr; mov-to-input; LocState; StoredValue; readReg; Input1; Output; writeReg-same; module LocState)
 open LocState using (halted; regs)
 
-import Once.CCC.FrameSemantics
-import Once.CCC.Machine.SMPrimitives
-import Once.IRTy
-import Once.IR
-import Once.Semantics.Machine as EvV
-import Once.CCC.Machine.ReadTypedAdequate as RTA
-import Once.Denotation.DenotTrace as DT
-import Once.IR.Semantics.Trace as TM
 
 open import Once.CCC.Codegen.IRObsCorrect.CaseShape o tbl
 open import Once.CCC.Codegen.IRObsCorrect.Get o tbl using (module GetC)

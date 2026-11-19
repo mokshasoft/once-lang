@@ -60,14 +60,6 @@ open import Data.List.Properties using () renaming (++-identityʳ to ++-idʳ)
 open import Once.IRTy using (IRTy)
 import Once.IRTy as IRT
 
-import Once.CCC.FrameSemantics
-import Once.CCC.Machine.SMPrimitives
-import Once.IRTy
-import Once.IR
-import Once.Semantics.Machine as EvV
-import Once.CCC.Machine.ReadTypedAdequate as RTA
-import Once.Denotation.DenotTrace as DT
-import Once.IR.Semantics.Trace as TM
 open import Once.Res using (Res; stopped; returns; is-stopped)
 open import Once.Denotation.Approx using (Ap; done; cut; NotCut; budgetLeft)
 

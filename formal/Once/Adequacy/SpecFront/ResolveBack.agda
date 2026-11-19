@@ -148,7 +148,6 @@ res-expr← nu na r-float w = _ , re-float , x-float , tt
 open import Once.Spec.Signature using (Signature)
 open import Once.Adequacy.SpecGrammar.Written using (DeclWritten)
 import Once.Spec.Surface.Program as SPr
-import Once.Adequacy.SpecFront.Resolve
 
 module Decls (Σ : Signature) where
   open import Once.Adequacy.SpecFront.Align Σ using (DR; dr-nil; dr-tsig; dr-def; dr-sig; dr-import; dr-alias)

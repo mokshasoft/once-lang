@@ -52,7 +52,6 @@ open import Relation.Binary.PropositionalEquality using (_≢_; refl; sym; trans
 open import Data.List.Membership.DecPropositional Data.String._≟_ using (_∈?_)
 
 import Once.Spec.Grade as SG
-import Once.Spec.Sub as SS
 import Once.Spec.Context as SCx
 import Once.Spec.Core.Syntax as SC
 import Once.Spec.Surface.Typing as SUT

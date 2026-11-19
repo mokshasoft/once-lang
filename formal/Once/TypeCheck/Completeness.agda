@@ -35,6 +35,7 @@ import Once.Spec.Grade as LG
 import Once.Spec.Type as ST
 import Once.Spec.Context as SCx
 import Once.Spec.Surface.Syntax as Raw
+import Once.Spec.Surface.Type as Rawᵗ
 import Once.Spec.Surface.Typing as SUT
 import Once.Spec.Surface.Generators as G
 open import Once.Spec.Sub using (_<:_)
@@ -56,7 +57,6 @@ open import Once.TypeCheck.ElaborateSound using (checkElabV; inferElabV; checkEl
 open import Once.TypeCheck.Completeness.Refs
 open import Once.TypeCheck.TableSound using (mapFrom?-complete; mapTo?-complete; mapAt?-complete)
 import Once.TypeCheck.FormSound as FS
-import Once.Metatheory.Surface.Basics
 open import Once.Generators using (fromCodomain?; fromDomain?)
 open import Once.Type.SubDecide using (_<:?_; _⊑π?_)
 open import Once.Spec.Sub using (_<:ᶜ_)
@@ -152,20 +152,20 @@ private
   mono-arity refl = refl
 
   -- no type variables: a ground schema
-  ground-of : ∀ (sc : Raw.PolyType) → arity (schemaOf sc) ≡ 0 → TP.Ground sc
+  ground-of : ∀ (sc : Rawᵗ.PolyType) → arity (schemaOf sc) ≡ 0 → TP.Ground sc
   ground-of sc a with Once.Type.isGround sc in eq
   ... | inj₁ g  = g
   ... | inj₂ tt = ⊥-elim (lt0 (subst (0 <_) a (open-arity sc (isGround-inj₂→¬Ground sc eq))))
 
   -- a ground entry's type, at any instance
-  ground-ty : ∀ {m} {Δ : ST.KCtx m} {sc′} (sc : Raw.PolyType) (e : sc′ ≡ schemaOf sc) (g : TP.Ground sc) (τ : ST.TySub (arity sc′) m)
+  ground-ty : ∀ {m} {Δ : ST.KCtx m} {sc′} (sc : Rawᵗ.PolyType) (e : sc′ ≡ schemaOf sc) (g : TP.Ground sc) (τ : ST.TySub (arity sc′) m)
             → type sc′ ST.⟨ τ ⟩ ≡ TP.extractGround sc g
   ground-ty {Δ = Δ} sc refl g τ =
     let K = kinded-instance sc (ground-kinded {Δ = Δ} sc g)
     in trans (sub0≡ (ground-arity sc g) (type (schemaOf sc)) τ _) (proj₂ (proj₂ K))
 
   -- a kinded instance of the entry's schema
-  poly-inst : ∀ {m} {Δ : ST.KCtx m} {sc′} (sc : Raw.PolyType) (e : sc′ ≡ schemaOf sc) (τ : ST.TySub (arity sc′) m)
+  poly-inst : ∀ {m} {Δ : ST.KCtx m} {sc′} (sc : Rawᵗ.PolyType) (e : sc′ ≡ schemaOf sc) (τ : ST.TySub (arity sc′) m)
             → ST.Respects (kinds sc′) Δ τ → KindedInstance Δ sc (type sc′ ST.⟨ τ ⟩)
   poly-inst {Δ = Δ} sc refl τ r = ki-of {Δ = Δ} sc τ r
 
@@ -202,13 +202,13 @@ head-fails refl e = e
 
 private
   -- a polymorphic entry is not ground
-  open-of : ∀ {sch} (sc : Raw.PolyType) → sch ≡ schemaOf sc → 0 < arity sch → ¬ TP.Ground sc
+  open-of : ∀ {sch} (sc : Rawᵗ.PolyType) → sch ≡ schemaOf sc → 0 < arity sch → ¬ TP.Ground sc
   open-of sc refl pos g = lt0 (subst (0 <_) (ground-arity sc g) pos)
 
   -- its arrow, read in the compiler's schema
-  arrow-of : ∀ {m} {Δ : ST.KCtx m} {sch} (sc : Raw.PolyType) → sch ≡ schemaOf sc
+  arrow-of : ∀ {m} {Δ : ST.KCtx m} {sch} (sc : Rawᵗ.PolyType) → sch ≡ schemaOf sc
            → ∀ {sd sco π′} → type sch ≡ sd ST.⇒[ LG.mk-kind LG.Many π′ ] sco → (∀ i → ST.Occurs i sco → ST.Occurs i sd)
-           → Σ[ sd₀ ∈ Raw.PolyType ] Σ[ sc₀ ∈ Raw.PolyType ] TP.ArrowSchema sc sd₀ sc₀ π′ × TP.CodVarsInDom sd₀ sc₀
+           → Σ[ sd₀ ∈ Rawᵗ.PolyType ] Σ[ sc₀ ∈ Rawᵗ.PolyType ] TP.ArrowSchema sc sd₀ sc₀ π′ × TP.CodVarsInDom sd₀ sc₀
   arrow-of {Δ = Δ} sc refl {π′ = π′} ty oc = In.arrow-at sc (schemaOf sc) refl ty oc π′ refl
 
   arr-inst : ∀ {m} {sch : Schema} (τ : ST.TySub (arity sch) m) {sd sco : ST.Ty (arity sch)} {A B : ST.Ty m} {π′}
@@ -217,7 +217,7 @@ private
   arr-inst τ ty ea eb = trans (cong (ST._⟨ τ ⟩) ty) (Relation.Binary.PropositionalEquality.cong₂ (λ X Y → X ST.⇒[ _ ] Y) ea eb)
 
 -- A polymorphic definition, given its domain.
-given-poly-at : ∀ {m} {ctx : NamedCtx m} (P : Pack ctx) (x : String) (sc : Raw.PolyType) {b p}
+given-poly-at : ∀ {m} {ctx : NamedCtx m} (P : Pack ctx) (x : String) (sc : Rawᵗ.PolyType) {b p}
                 → lookupImport (sig ctx) x ≡ nothing → lookupImport (imports ctx) x ≡ nothing
                 → (lp : lookupPolyPrefix (polys ctx) x ≡ just (sc , b , p))
                 → 0 < arity (S P !! TView.View.entry (V P) lp)

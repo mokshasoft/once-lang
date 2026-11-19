@@ -11,9 +11,7 @@ module Once.Adequacy.ModuleLaws where
 open import Data.Product using (_,_)
 open import Data.List using ([]; _∷_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
-import Once.Compile as C
 import Once.Parser as Parser
-import Once.Parser.Module.Core as P
 open import Once.Module
 open Parser.FunInfo using (funName)
 

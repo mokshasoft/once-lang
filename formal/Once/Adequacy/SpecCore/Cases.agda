@@ -23,7 +23,6 @@ open import Once.Spec.Core.Syntax using (Defs)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.Spec.Boundary using (readAt)
 
-import Once.Spec.Grade
 module Once.Adequacy.SpecCore.Cases (Σ : Signature) {s : ℕ} (S : Defs s) (fmt : TargetNum) where
 
 open import Data.Unit using (tt)

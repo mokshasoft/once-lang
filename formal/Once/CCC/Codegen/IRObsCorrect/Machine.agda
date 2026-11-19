@@ -42,13 +42,6 @@ open HeapLocation using (heap-ref)
 open HeapRef using (ref-id)
 
 import Once.CCC.FrameSemantics
-import Once.CCC.Machine.SMPrimitives
-import Once.IRTy
-import Once.IR
-import Once.Semantics.Machine as EvV
-import Once.CCC.Machine.ReadTypedAdequate as RTA
-import Once.Denotation.DenotTrace as DT
-import Once.IR.Semantics.Trace as TM
 
 module Mach {FS : FrameSemantics} where
 

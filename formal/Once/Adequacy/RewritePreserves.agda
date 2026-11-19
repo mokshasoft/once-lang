@@ -56,7 +56,7 @@ import Once.Type.Concrete as LW
 import Once.Spec.Type as LW
 open import Once.Spec.Word using (Carrier)
 open import Once.IR.Semantics.Value Carrier Carrier using () renaming (⟦_⟧F to ⟦_⟧F′)
-open import Once.Compile using (rewrite-program; rewrite-table; rewrite-fun)
+open import Once.Compile.Emit using (rewrite-table; rewrite-fun; rewrite-program)
 open import Once.Spec.Trace using (_≈ᵗ⟨_⟩_)
 open import Once.Denotation.TraceTr using (trT∞; RelS-tr)
 

@@ -83,7 +83,6 @@ open import Data.Product using (∃-syntax; _,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.IR.Semantics.Event using (SigOpEvent)
-import Once.Grammar as G
 
 ------------------------------------------------------------------------
 -- Behavior — THE observable: the ordered sequence of SigOp invocations

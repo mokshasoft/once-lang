@@ -23,7 +23,6 @@ open import Data.List using ([]; _∷_; map)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Relation.Unary.Any using (here; there)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
-import Data.List.Relation.Unary.All as All
 open import Data.List.Relation.Unary.AllPairs using (AllPairs; []; _∷_)
 open import Data.Product using (Σ-syntax; _×_; _,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -36,7 +35,6 @@ import Once.Spec.Core.Program Σ as SP
 import Once.Parser as Parser
 open Parser.FunInfo using (funName)
 open import Once.Spec.Name using (CanonicalName; canonical)
-import Once.Spec.Name
 open import Once.Module using (Scope; ModTele; []; ffi; mono; poly; MainsEffUU)
 open import Once.Type.Schema using (schemaOf)
 open Parser.PolyFunInfo using (pfunType)

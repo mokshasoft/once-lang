@@ -28,7 +28,6 @@ open LH using (HonestFFI)
 import Once.Spec.Grade as SG
 import Once.Spec.Signature as S
 open S using (Signature; _∶_; constant; value; operation; WellFormed; WellFormedDecl; []; _∷_)
-import Once.Parser as Parser
 open import Once.Module using (entrySig)
 open import Once.Adequacy.SpecInterp using (declTy; ⌞_⌟)
 open import Once.Core.Decl using (toISig)

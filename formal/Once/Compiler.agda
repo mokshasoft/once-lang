@@ -22,7 +22,7 @@ import Once.Adequacy.ArchCorrectness.X86-32.ResourceBounds as RB32
 
 -- Plan 0.107: the entry unit's owner is the EMITTER's (`Once.Compile.entry-owner`),
 -- not a parameter — the theorem is about the program actually emitted.
-open import Once.Compile using (entry-owner)
+open import Once.Compile.Emit using (entry-owner)
 
 module Once.Compiler
   (x86-64-reg-range : ∀ ι → RB.RegRange entry-owner ι)
