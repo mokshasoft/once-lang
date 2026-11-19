@@ -22380,3 +22380,62 @@ that copy only what is used, and a back end that no longer reaches the front end
 
 ### What programs see
 Nothing: the build only.
+
+## D418 — NO `public`: A SHARED INSTANCE IS NAMED, AND COPIES ONLY WHAT IS USED (2026-11-18)
+
+**Relates** D277, D306 (re-exports), D373 (checking cost), plan 0.152 A. **Decided** by the user
+2026-11-18 ("do the cleanup in that order and do it proper").
+
+### Context
+D277 kept `public` for one purpose, sharing a parameterised module's instance: a facade wrote `open
+import X args public` and its importers saw `X`'s names as the facade's. An importer then scopes
+against everything the facade re-exports, a reader cannot see where a name comes from, and the
+instance copies every name of `X` whether anyone uses it or not.
+
+### Decision
+1. No module outside the islands uses `public` (the public gate's baseline lists the islands only).
+   A shared instance is a named module application, made once where it is made today: `module N = X
+   args`, and the facade's own `open N`. An importer writes `open F using (module N)` and `open N
+   using (…)`. Record modules need no name: importers open the record module.
+2. An instance copies only the names used through it: `module N = X args using (…)`, the union of
+   what its importers and its facade open. Agda copies every name of a module application without
+   `using` into the interface.
+3. The rewrites are machine-made: the Agda fork's `--repair-reexports` moves each importer to the
+   source, its `--remove-dead-imports` removes what the repair left dead, and the uses come from its
+   `--name-resolution-report`.
+
+### Consequences
+- Interfaces of the apex cone: 259.6 MB → 248.7 MB (−4.2 %); the facades shrink most
+  (`IRObsCorrectFlat` −62 %, the three arch roots −32 %).
+- The heaviest module alone (`Resusp.SumR`) holds 0.86 GB live, from 3.4 GB (D417).
+
+## D419 — THE BACK END DOES NOT DEPEND ON THE FRONT END; THE TYPES AS WRITTEN ARE SHARED (2026-11-19)
+
+**Relates** D306 (the Spec owns its definitions), D417, plan 0.152 B–D. **Decided** by the user
+2026-11-19 (the Spec patch: `Spec.Surface.Type`, and `signedDecimal` into `Spec.Float.Decimal`).
+
+### Context
+225 of 363 back-end modules (code generator, machines, targets, their correctness, and the Spec's
+type and semantics parts) imported the surface language through one edge: `Once.Type` imported
+`Spec.Surface.Syntax` for the types as written (`PolyType`, `PolyFunctor`). Any change to the
+expression syntax rebuilt the back end, and every back-end check carried the surface's interfaces.
+
+### Decision
+1. The back end does not import the front end (the surface Spec, the parser, the type checker, the
+   surface IR, the grammar, the printer). `make layer-gate` (`scripts/layer-gate.py`) is a ratchet
+   on the back-end modules whose import closure reaches the front end.
+2. The types as written are the language's vocabulary, shared by both sides: `PolyType` and
+   `PolyFunctor` (with their fixities) move unchanged to the Spec module `Spec.Surface.Type`.
+   `signedDecimal`, a decimal literal's value, moves to `Spec.Float.Decimal` beside the `Decimal` it
+   builds. The Spec's statements are unchanged.
+3. What both sides use lives apart from either: `Once.Name.Chars` (the characters of a name, for the
+   lexer and the target's symbol encoding), `Once.Compile.Emit` (IR program → image → file, the back
+   end half of `Compile`).
+
+### Consequences
+- 246 → 6 back-end modules reach the front end: the three arch roots state their theorem over a
+  resolved module, and `FlatFromObs`/`FnLayout` reach the parser's function extraction through
+  `ImageUnique`. Dependents of `Spec.Surface.Syntax`: 599 → 280.
+
+### What programs see
+Nothing.

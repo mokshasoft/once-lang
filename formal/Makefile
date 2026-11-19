@@ -113,7 +113,7 @@ backstop:
 # then the backstop and the certified apex. (lint-imports is not part of it:
 # under -W error, the backstop and the apex already fail on a stale import.)
 .PHONY: merge-gate
-merge-gate: public-gate pragma-gate metatheory-gate spec-gate implementation-gate backstop certified
+merge-gate: public-gate layer-gate pragma-gate metatheory-gate spec-gate implementation-gate backstop certified
 	@echo "merge-gate: OK"
 
 # Per-module cost: wall time and peak memory, one Agda process per module,
