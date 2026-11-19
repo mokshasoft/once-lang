@@ -24231,3 +24231,86 @@ emission (`compileFileFromModule` builds master's file before the new image repl
 ### Alternatives
 Keeping master's lowering for libraries (the old lowering stays, and its proofs with it); a library
 image of the new path now (a design for exported entry points with no consumer).
+
+## D463 — TWO CALCULI, TWO KINDS OF PASS: SOURCE LAWS IN THE SPEC'S CALCULUS, RESOURCE LAWS IN THE LINEAR CORE; NO BCC BETWEEN (2026-11-19)
+
+**Proposed** (the user's discussion, 2026-11-19; for review). **Applies**: plan 0.146 §4 (the layer above the
+core), the plan that follows it; GOAL.md ("Programming is mathematics"); the Spec's core (D231); plan-ref's
+OCP-0009 (`bootstrap/poc/OCP0009/ARCHITECTURE.md` K0/K1, `PATHS.md`). **Amends**: D455 ("the IR optimizer's
+passes move to the linear core"). **Would supersede**, once carried out: D035 (two stages: surface, then a
+point-free core IR), D046 (the grade-erased IR).
+
+### The problem
+Since D455 the linear core is compiled from the elaborator's graded `Expr`; no code goes through `Once.IR`.
+The IR is left with two roles: the middle term of the proof (`Lq-ok` meets the front end's bridge at
+`evalᴰ (elaborateFull e)`), and the optimizer's language (`Optimize`; `rewrite-ir`), which the new path does
+not run. The IR cannot be retired while that loses optimizations. The question is which pipeline the language
+calls for, argued from GOAL.md, the Spec and plan-ref, not from what the code does today.
+
+### What the sources say
+* **GOAL.md**: a program is a morphism; reasoning about it is "equational reasoning, naturality, fold
+  fusion". Optimizations are theorems about the meaning.
+* **The Spec** (D231): the core is a graded λ-calculus (de Bruijn, Church style, quantity and purity on
+  `lam`/`case`/`let′`); "the categorical combinators … are not formers: they are λ-terms over these"
+  (`Spec.Core.Derived`). Its metatheory proves typed substitution and `let x = u in t ≡ t[u/x]` for pure `u`.
+* **plan-ref**: K0 rejected a point-free kernel (substitution strict only up to `Hom`) for de Bruijn; K1
+  chose "linear SMCC core + QTT {𝟘,𝟙,ω} in front" (the Fox comonoid is the ω fragment), and names
+  `elaborate : Expr Γ Ψ A → IR` (Ψ discarded) the architecture bug. `PATHS.md`'s thesis: "make the linear SMCC
+  the IR core, recover cartesian/duplication as an explicit comonoid layer above it". A pass is a reduction
+  sequence (`NbEPDirPass`), correct by transport along it, stable under substitution on de Bruijn terms
+  (`NbEPDirDBPass`); the dependent kernel's conversion is `core(Hom)`, the symmetric part of the same
+  reduction, while optimization is its directed part.
+
+### Findings
+1. **A graded BCC is the linear core.** Grades written on a cartesian category describe nothing it does
+   (every object copies and drops for free), which is why plan 0.52 M2 could erase `mk-kind q π` and why
+   the quantity never came back (D143). Grades that mean something make copying exist only through the ω
+   comonoid: a linear symmetric monoidal closed category with a graded comonoid, the model of QTT, whose
+   point-free syntax is `LinCore`'s. There is no principled third language between the Spec's calculus and
+   the linear core.
+2. **The old optimizer's rules are the Spec calculus's β/η.** `fst ∘ ⟨f,g⟩ = f` is `fst (pair a b) ⟶ a`
+   (b pure; One is affine, D276); `case f g ∘ inl` is case-of-known-constructor; closure β is `app (lam t) u`
+   with the Spec's purity condition; `⟨fst,snd⟩ = id`, `[inl,inr] = id` and `terminal ∘ f = terminal` are η
+   for ×, + and Unit (the last for pure `f`, the old `has-effect?`); `id ∘ f` and associativity are artifacts
+   of the point-free form and do not arise. Fold fusion is a law of `fold`/`roll`.
+3. **The optimizer is not part of the elaborator.** The elaborator realizes the Spec derivation of the source
+   (checker sound and complete, D337; the inspector, D352). Checking and optimizing share one reduction
+   relation but use it differently: conversion compares and never rewrites, optimization rewrites one way.
+   Separate passes compose and are proved per step.
+4. **At the source level grades enter only through typing.** A reduction keeps the usage typing (the Spec's
+   substitution lemma); freeing is not its concern. Dup, drop and frees appear only after `Lq`.
+
+### Decision (proposed)
+The pipeline:
+```
+parse → resolve → check + elaborate         the Spec's graded calculus (proved against the Spec)
+  → [L1] reduction passes, same calculus     β (pure), case-of-known-constructor, ×/+/Unit η, δ (inline a
+                                             reference), fold fusion, dead code (pure, affine); each rule
+                                             sound for Spec.Core.Meaning, typing kept by subject reduction
+  → Lq into the linear core                  usage → split/dup/drop; the one bridge, against the Spec's meaning
+  → [L2] resource passes, linear core        SMC/comonoid laws (Lq's moves), free at last use, reuse in place
+                                             (D425), borrowing (D417 pt 3), layers in place (B1.8), direct
+                                             calls (D409 labels), arith blocks (D459); core meaning + NoLeak
+  → image → room checks → arch backend
+```
+* **D455 amended**: the β/η family goes to L1; only resource optimizations go to the linear core.
+* **L1's terms** are the compiler's `Expr Γ Ψ A` (intrinsically typed and graded: a pass keeps typing by
+  construction; its meaning reaches the Spec by the existing realization), not the Spec's extrinsic `Tm`.
+  The rules are stated once, as a reduction relation, so the dependent kernel's conversion can later be built
+  on the same relation. To confirm with the user.
+* **`Once.IR` retires** in this order: (1) measure on master which optimizer rules pay (`codegen-measure`,
+  `--opt` against none, per rule where possible); (2) port those to L1/L2 with proofs; (3) re-target `Lq-ok`
+  and the meaning half of the front end's bridge at `Spec.Core.Meaning`, so the IR leaves the proof chain;
+  (4) move the gates off the IR (`Compile.checkModule`) and `Interp`/the trace off `IR.Semantics.Trace`;
+  (5) delete `Once.IR`, `elaborateFull`, the IR semantics, `Optimize`, `Arith.Machine.Rewrite` and the
+  IR-side stacks. Timing: a plan after 0.146, unless the merge's cost criterion (§5 item 6) needs a port first.
+
+### Alternatives
+* Keep the IR, cleaned and renamed (`Comb`, `BCC`), as the semantic layer and the optimizer's language: an
+  ungraded layer kept only as a proof's middle term, and an optimizer that cannot state the resource laws.
+* Re-grade the IR (D455's option c): labels on a cartesian category, or, done properly, a second copy of the
+  linear core.
+* All optimizations in the linear core (D455 as written): the source laws then route explicit dups and drops,
+  and leave the relation the dependent kernel's conversion will use.
+* Optimizations inside the elaborator: the checker's proof and the inspector would be about a term the
+  source does not state.
