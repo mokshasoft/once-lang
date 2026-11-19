@@ -96,7 +96,7 @@ low-step .(room-checks src) .(RoomSim.lift {FS} src fs₀ p) i (mkRunLow src fs�
 ... | at-image refl fi with RoomSim.step-lift {FS} src fs₀ i
 ...   | p′ , e , pr′ =
   mkRunLow src (flat-exec-instr i src fs₀) p′ refl
-    (mkRunAt (run-tbl r) (run-ir r) (run-emit r) (run-linked r) (reach-step i fs₀ (run-reach r) fi h))
+    (mkRunAt (run-em r) (reach-step i fs₀ (run-reach r) fi h))
     e pr′
 
 -- …and NEVER FAULTS (D367 carried across the pass, `sound-room`).
@@ -123,13 +123,12 @@ open HeapLocation using (heap-offset; heap-ref)
 open import Once.SigOp.Info using (SigOpInfo; effect; Pure)
 open SigOpInfo using (baseA)
 open import Data.Product using (∃)
-open AbstractExec {FS} using (decode-at)
+open AbstractExec {FS} using (decode-at; sigop-gate)
 open HeapRef using (ref-id)
 open import Once.Spec.Name using () renaming (CanonicalName to CN)
 open import Data.Nat using (_<_)
 open import Once.Type using (fits-int)
 open import Once.CCC.Machine.FlatStoreWF FS using (FlatWF)
-open import Once.CCC.Machine.FlatStackPtr FS using (StackPtrWF)
 open import Once.CCC.Machine.FlatPtrBounds FS using (PtrBoundsWF)
 open import Once.CCC.Machine.FrameFree using (ImageI)
 open import Once.CCC.Machine.InstrSlot using (slot-of)
@@ -245,7 +244,7 @@ branch-tag-scrutinee-wf : ∀ prog (fs : FlatState) (m : LabelId) → RunLow pro
                         → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-tag-zero m))
                         → Σ (ValueLocation FS) (λ loc → Σ (StoredValue FS) (λ v →
                             (readReg (LocState.regs (floc fs)) Input1 ≡ SV-Ptr loc)
-                            × (readLoc (floc fs) loc ≡ just v) × RW.TagCell v))
+                            × (readLoc (floc fs) loc ≡ just v) × RW.TagCell v × (ExecFinal.frame-gate {FS} (falloc fs) 0 (just loc) ≡ just loc)))
 branch-tag-scrutinee-wf prog fs m =
   lift-site (instr-ctrl (c-branch-tag-zero m)) (λ _ ()) _ (λ src fs₀ → RW.branch-tag-scrutinee-wf src fs₀ m)
     (λ _ _ _ c → c) prog fs
@@ -284,6 +283,15 @@ sigop-decodes prog fs si r h f pe =
     (λ g → ∃ (λ a → decode-at (baseA si) (readReg (LocState.regs (floc g)) Input1) (floc g) ≡ just a))
     (λ src fs₀ r′ h′ f′ → RW.sigop-decodes src fs₀ si r′ h′ f′ pe) (λ _ _ _ c → c) prog fs r h f
 
+-- D452 (d): a non-faulting SigOp passed its window check
+sigop-gated : ∀ prog (fs : FlatState) {A B} (si : SigOpInfo A B) → RunLow prog fs → LocState.halted (floc fs) ≡ false
+            → fetch prog (fpc fs) ≡ just (instr-sigop si)
+            → sigop-gate (falloc fs) si (floc fs) ≡ true
+sigop-gated prog fs si r h f =
+  lift-site (instr-sigop si) (λ _ ())
+    (λ g → sigop-gate (falloc g) si (floc g) ≡ true)
+    (λ src fs₀ r′ h′ f′ → RW.sigop-gated src fs₀ si r′ h′ f′) (λ _ _ _ c → c) prog fs r h f
+
 heap-load-at-written : ∀ prog (fs : FlatState) (k : ℕ) (hl : HeapLocation) → RunLow prog fs
                      → LocState.halted (floc fs) ≡ false → fetch prog (fpc fs) ≡ just (load-at k)
                      → readReg (LocState.regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
@@ -298,6 +306,33 @@ store-at-target-ptr : ∀ prog (fs : FlatState) (k : ℕ) → RunLow prog fs →
                     → Σ (ValueLocation FS) (λ loc → readReg (LocState.regs (floc fs)) Input1 ≡ SV-Ptr loc)
 store-at-target-ptr prog fs k =
   lift-site (store-at k) (λ _ ()) _ (λ src fs₀ → RW.store-at-target-ptr src fs₀ k) (λ _ _ _ c → c) prog fs
+
+-- D452's site facts, lifted
+load-at-gate : ∀ prog (fs : FlatState) (k : ℕ) (loc : ValueLocation FS) → RunLow prog fs → LocState.halted (floc fs) ≡ false
+             → fetch prog (fpc fs) ≡ just (load-at k) → readReg (LocState.regs (floc fs)) Input1 ≡ SV-Ptr loc
+             → ExecFinal.frame-gate {FS} (falloc fs) k (just loc) ≡ just loc
+load-at-gate prog fs k loc =
+  lift-site (load-at k) (λ _ ()) _ (λ src fs₀ r h f → RW.load-at-gate-wf src fs₀ k loc r h f) (λ _ _ _ c → c) prog fs
+
+store-at-gate : ∀ prog (fs : FlatState) (k : ℕ) (loc : ValueLocation FS) → RunLow prog fs → LocState.halted (floc fs) ≡ false
+              → fetch prog (fpc fs) ≡ just (store-at k) → readReg (LocState.regs (floc fs)) Input1 ≡ SV-Ptr loc
+              → ExecFinal.frame-gate {FS} (falloc fs) k (just loc) ≡ just loc
+store-at-gate prog fs k loc =
+  lift-site (store-at k) (λ _ ()) _ (λ src fs₀ r h f → RW.store-at-gate-wf src fs₀ k loc r h f) (λ _ _ _ c → c) prog fs
+
+stack-load-at-written : ∀ prog (fs : FlatState) (k : ℕ) (f : Frame) (j : ℕ) → RunLow prog fs
+                      → LocState.halted (floc fs) ≡ false → fetch prog (fpc fs) ≡ just (load-at k)
+                      → readReg (LocState.regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f j)
+                      → ExecFinal.frame-gate {FS} (falloc fs) k (just (AtStack f j)) ≡ just (AtStack f j)
+                      → LocState.stackMem (floc fs) f (k Data.Nat.+ j) ≡ nothing → ⊥
+stack-load-at-written prog fs k f j =
+  lift-site (load-at k) (λ _ ()) _ (λ src fs₀ r h ft → RW.stack-load-at-written-wf src fs₀ k f j r h ft) (λ _ _ _ c → c) prog fs
+
+addr-at-not-stack : ∀ prog (fs : FlatState) (k : ℕ) (f : Frame) (j : ℕ) → RunLow prog fs
+                  → LocState.halted (floc fs) ≡ false → fetch prog (fpc fs) ≡ just (addr-at k)
+                  → readReg (LocState.regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f j) → ⊥
+addr-at-not-stack prog fs k f j =
+  lift-site (addr-at k) (λ _ ()) _ (λ src fs₀ r h ft → RW.addr-at-not-stack-wf src fs₀ k f j r h ft) (λ _ _ _ c → c) prog fs
 
 addr-at-target-ptr : ∀ prog (fs : FlatState) (k : ℕ) → RunLow prog fs → LocState.halted (floc fs) ≡ false
                    → fetch prog (fpc fs) ≡ just (addr-at k)
@@ -370,21 +405,16 @@ entry-ret prog fs ℓ bb =
     (λ src fs₀ p (rpc , rest , e) → L.ret-map src rpc , map (L.ret-map src) rest , cong (map (L.ret-map src)) e)
     prog fs
 
-ret-site-owes : ∀ prog (fs : FlatState) (b : ℕ) → RunLow prog fs
+-- B1.7b (D456): a reached return passed the machine's gate (`Flat.ret-ok`, the run sound)
+ret-site-owes : ∀ prog (fs : FlatState) (b : ℕ) → RunLow prog fs → LocState.halted (floc fs) ≡ false
               → fetch prog (fpc fs) ≡ just (instr-ctrl (c-ret b))
               → Σ ℕ (λ rpc → Σ (List ℕ) (λ rest → fret fs ≡ rpc ∷ rest))
-ret-site-owes prog fs b =
-  lift-site′ (instr-ctrl (c-ret b)) (λ _ ()) (λ g → Σ ℕ (λ rpc → Σ (List ℕ) (λ rest → fret g ≡ rpc ∷ rest)))
-    (λ src fs₀ r f → RW.ret-site-owes src fs₀ b r f)
-    (λ src fs₀ p (rpc , rest , e) → L.ret-map src rpc , map (L.ret-map src) rest , cong (map (L.ret-map src)) e)
-    prog fs
+ret-site-owes prog fs b r h f = proj₁ (ret-ok b fs (step-ok prog fs _ r h f))
 
-ret-budget-matches : ∀ prog (fs : FlatState) (b : ℕ) → RunLow prog fs
+ret-budget-matches : ∀ prog (fs : FlatState) (b : ℕ) → RunLow prog fs → LocState.halted (floc fs) ≡ false
                    → fetch prog (fpc fs) ≡ just (instr-ctrl (c-ret b))
                    → b ≡ frame-slots (falloc fs)
-ret-budget-matches prog fs b =
-  lift-site′ (instr-ctrl (c-ret b)) (λ _ ()) (λ g → b ≡ frame-slots (falloc g))
-    (λ src fs₀ r f → RW.ret-budget-matches src fs₀ b r f) (λ _ _ _ c → c) prog fs
+ret-budget-matches prog fs b r h f = proj₂ (ret-ok b fs (step-ok prog fs _ r h f))
 
 -- a pending link means a call just happened, and the base run says so at every
 -- instruction that is not an entry; a check is never one either
@@ -403,16 +433,16 @@ run-link-nothing .(room-checks src) .(L.lift src fs₀ p) (mkRunLow src fs₀ p 
 ret-saved : ∀ prog (fs : FlatState) → RunLow prog fs → ∀ rpc rest → fret fs ≡ rpc ∷ rest
           → Σ Frame (λ f₀ → Σ ℕ (λ b₀ → Σ (List (Frame × ℕ)) (λ frs → saved-frames (falloc fs) ≡ (f₀ , b₀) ∷ frs)))
 ret-saved .(room-checks src) .(L.lift src fs₀ p) (mkRunLow src fs₀ p refl r refl pc) rpc rest req
-  = go (fret fs₀) refl (RW.SegWF.seg-stack (RW.run-seg-wf src fs₀ r)) req
+  = go (fret fs₀) refl (RW.FrameWF.fw-stack (RW.run-frame-wf-at src fs₀ r)) req
   where
-    go : ∀ (rs : List ℕ) → fret fs₀ ≡ rs → RW.RetMatch src 0 (saved-frames (falloc fs₀)) (fret fs₀)
+    go : ∀ (rs : List ℕ) → fret fs₀ ≡ rs → RW.RetMatch src (saved-frames (falloc fs₀)) (fret fs₀)
        → map (L.ret-map src) rs ≡ rpc ∷ rest
        → Σ Frame (λ f₀ → Σ ℕ (λ b₀ → Σ (List (Frame × ℕ)) (λ frs → saved-frames (falloc fs₀) ≡ (f₀ , b₀) ∷ frs)))
-    go (x ∷ xs) e rm _ = cons (saved-frames (falloc fs₀)) refl (subst (RW.RetMatch src 0 (saved-frames (falloc fs₀))) e rm)
+    go (x ∷ xs) e rm _ = cons (saved-frames (falloc fs₀)) refl (subst (RW.RetMatch src (saved-frames (falloc fs₀))) e rm)
       where
-        cons : ∀ (frs′ : List (Frame × ℕ)) → saved-frames (falloc fs₀) ≡ frs′ → RW.RetMatch src 0 frs′ (x ∷ xs)
+        cons : ∀ (frs′ : List (Frame × ℕ)) → saved-frames (falloc fs₀) ≡ frs′ → RW.RetMatch src frs′ (x ∷ xs)
              → Σ Frame (λ f₀ → Σ ℕ (λ b₀ → Σ (List (Frame × ℕ)) (λ frs → saved-frames (falloc fs₀) ≡ (f₀ , b₀) ∷ frs)))
-        cons .((_ , _) ∷ _) e′ (RW.rm-∷ _ _ _) = _ , _ , _ , e′
+        cons .((_ , _) ∷ _) e′ (RW.rm-∷ _ _) = _ , _ , _ , e′
 
 -- the emitter's fences: what an image instruction may be (a check is one)
 frame-op-absurd : ∀ prog (fs : FlatState) (i : AbstractInstr) → RunLow prog fs
@@ -434,9 +464,6 @@ slot-read-in-frame .(room-checks src) .(L.lift src fs₀ p) slot i (mkRunLow src
 ... | at-image _ fi = RW.slot-read-in-frame src fs₀ slot i r fi so
 
 -- the state invariants: the lift keeps what they speak of
-run-stack-ptr : ∀ prog (fs : FlatState) → RunLow prog fs → StackPtrWF fs
-run-stack-ptr .(room-checks src) .(L.lift src fs₀ p) (mkRunLow src fs₀ p refl r refl pc) = RW.run-stack-ptr src fs₀ r
-
 -- the store invariant (no forward pointer; every stored Int a word, D397)
 run-flat-wf : ∀ prog (fs : FlatState) → RunLow prog fs → FlatWF fs
 run-flat-wf .(room-checks src) .(L.lift src fs₀ p) (mkRunLow src fs₀ p refl r refl pc) =
@@ -445,18 +472,6 @@ run-flat-wf .(room-checks src) .(L.lift src fs₀ p) (mkRunLow src fs₀ p refl 
 
 run-ptr-bounds : ∀ prog (fs : FlatState) → RunLow prog fs → PtrBoundsWF fs
 run-ptr-bounds .(room-checks src) .(L.lift src fs₀ p) (mkRunLow src fs₀ p refl r refl pc) = RW.run-ptr-bounds src fs₀ r
-
-stack-ptr-current : ∀ prog (fs : FlatState) (f : Frame) (k : Slot) → RunLow prog fs
-                  → readReg (LocState.regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f k)
-                  → (f ≡ current-frame (falloc fs)) × (k < frame-slots (falloc fs))
-stack-ptr-current .(room-checks src) .(L.lift src fs₀ p) f k (mkRunLow src fs₀ p refl r refl pc) =
-  RW.stack-ptr-current src fs₀ f k r
-
-stack-ptr-current-suc : ∀ prog (fs : FlatState) (f : Frame) (k : Slot) → RunLow prog fs
-                      → readReg (LocState.regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f k)
-                      → (f ≡ current-frame (falloc fs)) × (suc k < frame-slots (falloc fs))
-stack-ptr-current-suc .(room-checks src) .(L.lift src fs₀ p) f k (mkRunLow src fs₀ p refl r refl pc) =
-  RW.stack-ptr-current-suc src fs₀ f k r
 
 -- a direct call resolves (the entry scan commutes with the map)
 emitted-call-fn-resolves : ∀ prog (fs : FlatState) (f : CN) → RunLow prog fs
@@ -468,18 +483,14 @@ emitted-call-fn-resolves .(room-checks src) .(L.lift src fs₀ p) f (mkRunLow sr
 ... | at-image _ fi with RW.emitted-call-fn-resolves src fs₀ f r fi
 ...   | j , e = φ src j , trans (find-entry-room src (e-fn f)) (cong (mmap (φ src)) e)
 
--- …and a closure call's shape (the base run's; its scan commutes too)
-call-site-shape : ∀ prog (fs : FlatState) → RunLow prog fs
+-- …and a closure call's shape: the machine's gate too (`Flat.call-ok`)
+call-site-shape : ∀ prog (fs : FlatState) → RunLow prog fs → LocState.halted (floc fs) ≡ false
                 → fetch prog (fpc fs) ≡ just instr-call-closure
                 → Σ HeapLocation (λ hl → Σ LabelId (λ ℓ → Σ ℕ (λ j →
                     (fclosure fs ≡ SV-Ptr (AtDynamic hl))
                     × (LocState.heapMem (floc fs) (sucHL hl) ≡ just (SV-Code ℓ))
                     × (find-thunk prog ℓ ≡ just j))))
-call-site-shape .(room-checks src) .(L.lift src fs₀ p) (mkRunLow src fs₀ p refl r refl pc) ft
-  with low-view src fs₀ p pc ft
-... | at-check k () _
-... | at-image _ fi with RW.call-site-shape src fs₀ r fi
-...   | hl , ℓ , j , ce , he , fe = hl , ℓ , φ src j , ce , he , trans (find-entry-room src (e-thunk ℓ)) (cong (mmap (φ src)) fe)
+call-site-shape prog fs r h f = call-ok prog fs (step-ok prog fs _ r h f)
 
 -- THE START IS BEHIND US: the base run past its pc 0 never fetches the start
 start-behind : ∀ prog (fs : FlatState) (b : ℕ) (r : RunLow prog fs) → (fpc (run-at r) ≡ 0 → ⊥)
@@ -502,7 +513,7 @@ low-step-past .(room-checks src) .(RoomSim.lift {FS} src fs₀ p) i (mkRunLow sr
 ... | at-image refl fi with RoomSim.step-lift {FS} src fs₀ i
 ...   | p′ , e , pr′ =
   mkRunLow src (flat-exec-instr i src fs₀) p′ refl
-    (mkRunAt (run-tbl r) (run-ir r) (run-emit r) (run-linked r) (reach-step i fs₀ (run-reach r) fi h))
+    (mkRunAt (run-em r) (reach-step i fs₀ (run-reach r) fi h))
     e pr′
   , RW.run-step-pc-pos src fs₀ i r fi
 
@@ -517,9 +528,7 @@ code-addr-has-body .(room-checks src) .(L.lift src fs₀ p) ℓ (mkRunLow src fs
 ... | at-image _ fi with base
   where
     base : Σ ℕ (λ j → find-thunk src ℓ ≡ just j)
-    base = subst (λ pr → Σ ℕ (λ j → find-thunk pr ℓ ≡ just j)) (sym (run-emit r))
-             (RW.emitted-code-addr-has-body (run-tbl r) (run-ir r) (fpc fs₀) ℓ
-               (subst (λ pr → fetch pr (fpc fs₀) ≡ just (instr-load-code-addr ℓ)) (run-emit r) fi))
+    base = em-code (run-em r) (fpc fs₀) ℓ fi
 ...   | j , e = φ src j , trans (find-entry-room src (e-thunk ℓ)) (cong (mmap (φ src)) e)
 
 -- a step that is not a check moves the base run on — past its pc 0, whatever
@@ -534,7 +543,7 @@ low-step-image .(room-checks src) .(RoomSim.lift {FS} src fs₀ p) i (mkRunLow s
 ... | at-image refl fi with RoomSim.step-lift {FS} src fs₀ i
 ...   | p′ , e , pr′ =
   mkRunLow src (flat-exec-instr i src fs₀) p′ refl
-    (mkRunAt (run-tbl r) (run-ir r) (run-emit r) (run-linked r) (reach-step i fs₀ (run-reach r) fi h))
+    (mkRunAt (run-em r) (reach-step i fs₀ (run-reach r) fi h))
     e pr′
   , RW.run-step-pc-pos src fs₀ i r fi
 
@@ -544,13 +553,13 @@ low-step-image .(room-checks src) .(RoomSim.lift {FS} src fs₀ p) i (mkRunLow s
 ret-lands-check : ∀ prog (fs : FlatState) → RunLow prog fs → ∀ rpc rest → fret fs ≡ rpc ∷ rest
                 → Σ ℕ (λ k → fetch prog rpc ≡ just (instr-room k))
 ret-lands-check .(room-checks src) .(L.lift src fs₀ p) (mkRunLow src fs₀ p refl r refl pc) rpc rest req
-  = go (fret fs₀) (saved-frames (falloc fs₀)) (RW.SegWF.seg-stack (RW.run-seg-wf src fs₀ r)) req
+  = go (fret fs₀) (saved-frames (falloc fs₀)) (RW.FrameWF.fw-stack (RW.run-frame-wf-at src fs₀ r)) req
   where
     open import Once.CCC.Codegen.RoomChecksFacts using (module NeedFacts)
     open NeedFacts {FS} using (boundary-next; call-boundary)
-    go : ∀ (rs : List ℕ) (frs : List (Frame × ℕ)) → RW.RetMatch src 0 frs rs → map (L.ret-map src) rs ≡ rpc ∷ rest
+    go : ∀ (rs : List ℕ) (frs : List (Frame × ℕ)) → RW.RetMatch src frs rs → map (L.ret-map src) rs ≡ rpc ∷ rest
        → Σ ℕ (λ k → fetch (room-checks src) rpc ≡ just (instr-room k))
-    go .(_ ∷ _) .(_ ∷ _) (RW.rm-∷ _ (q , refl , c , fq , ci) _) e =
+    go .(_ ∷ _) .(_ ∷ _) (RW.rm-∷ (q , refl , c , fq , ci) _) e =
       subst (λ z → Σ ℕ (λ k → fetch (room-checks src) z ≡ just (instr-room k))) (cong head′ e)
         (boundary-next src (φ src q) (trans (fetch-room src q) fq) (call-boundary c ci))
       where head′ : List ℕ → ℕ
@@ -573,7 +582,5 @@ check-need .(room-checks src) .(L.lift src fs₀ p) (mkRunLow src fs₀ p refl r
     open import Once.CCC.Codegen.RoomChecks using (till-check)
     open import Once.CCC.Codegen.RoomChecksFacts using (module CheckK; image-noroom; max-entry-room; NoRoom)
     open CheckK {FS} using (check-k)
-    open import Once.CCC.Codegen.ProgramImageFacts o using (image-frame-free)
     noroom : NoRoom src
-    noroom = image-noroom src (subst (All ImageI) (sym (RunAt.run-emit r))
-                                     (image-frame-free (RunAt.run-tbl r) (RunAt.run-ir r)))
+    noroom = image-noroom src (em-image (RunAt.run-em r))

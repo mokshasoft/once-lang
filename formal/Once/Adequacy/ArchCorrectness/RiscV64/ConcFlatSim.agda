@@ -50,6 +50,9 @@ open import Once.Spec.Float.Decimal using (Decimal)
 open import Data.Integer using (ℤ)
 open import Data.Maybe using (just)
 
+open import Data.Sum using (_⊎_; inj₁; inj₂)
+import Data.List.Relation.Unary.All
+open import Data.Product using (Σ)
 module Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim
   (o : CanonicalName)
   (FS : FrameSemantics)
@@ -151,9 +154,10 @@ open import Once.Adequacy.ArchCorrectness.RiscV64.StepLemmas using (execInstr-ld
 open import Once.Adequacy.CPU.RiscV64 using (ev-riscv64; block-env; call-at-riscv64)
 import Once.Compile.Emit as Emit
 import Once.Adequacy.BlockTable as BT
+open import Once.Target.Backend using (file-table)
 import Once.Arith.Backend.RiscV64.Emit as AE
 open import Once.Adequacy.CPU.RiscV64 using (block-env-hit; block-env-sound)
-open import Once.Adequacy.RewriteOwned using (BlockOf; is-block)
+open import Once.Adequacy.RewriteOwned using (BlockOf; is-block; block-not-in-memory)
 import Once.Adequacy.ArchCorrectness.RiscV64.ArithFrame as AF
 import Once.Adequacy.ArchCorrectness.RiscV64.ArithBlockValue o FS word-eq fmt-eq as ABV
 open import Once.Arith.Backend.XInstr.SpillBound using (SpillsWF; block-spills)
@@ -302,12 +306,19 @@ riscv64-machine = record
   }
 
 
+open import Once.SigOp.Info using (SigOpInfo; Internal; External; module SigOpInfo)
+open SigOpInfo using (sem)
+open import Once.Target.Symbol using (once-symbol-path)
+
 -- Plan 0.107: THE ARITH TABLE IS THE FILE'S — the block table `Once.Compile`
 -- emits for the program whose image this is. It was the postulated
 -- `arith-env-riscv64`, "read off the code"; the code does not hold it, the file does.
 riscv64-arith-table : AbstractTrace → (String → Maybe (List XInstr × ℕ)) → Set
 riscv64-arith-table prog env =
-  Σ IRProgram (λ p → (prog ≡ Emit.image-of p) × (env ≡ block-env (Emit.blocks-riscv64 p)))
+  Σ (List ArithBlock) (λ bs → Data.List.Relation.Unary.All.All (BT.SigNamed bs) prog
+                                × (env ≡ block-env (file-table AE.block-payload bs))
+                                × (∀ {A B} (si : SigOpInfo A B) k → External (sem si) → FlatMachine.fetch {FS} prog k ≡ just (AbstractInstr.instr-sigop si)
+                                     → env (once-symbol-path (SigOpInfo.name si)) ≡ nothing))
 
 riscv64-traceloop : EI.TraceLoop FS Reg riscv64-emitter riscv64-machine
 riscv64-traceloop = record
@@ -348,9 +359,6 @@ open MemOps {FS} using (readLoc)
 open import Once.CCC.Label using (once)
 open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
 open FlatEventTrace {FS} using (event-of)
-open import Once.SigOp.Info using (SigOpInfo; Internal; External; module SigOpInfo)
-open SigOpInfo using (sem)
-open import Once.Target.Symbol using (once-symbol-path)
 -- (`zero` is BOTH a riscv64 register and `ℕ`'s constructor; the register is
 -- renamed so the two never collide in this module.)
 open import Once.Target.RiscV64.PhysReg using (a0; t0; t1) renaming (zero to rzero)
@@ -380,7 +388,7 @@ import Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation
 module FlatSimulation = Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation o FS word-eq fmt-eq using
   (block-step-lea-slot; room-step-riscv64
   ; block-step-mov-to-output; block-step-mov-to-input
-  ; block-step-c-label; block-step-reclaim-to
+  ; block-step-c-label; block-step-reclaim-to; block-step-free-heap
   ; block-step-worklist-init; block-step-worklist-check
   ; block-step-save-closure-reg; block-step-load-tag-lit
   ; block-step-load-indirect; block-step-load-indirect-stack
@@ -389,7 +397,7 @@ module FlatSimulation = Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation o F
   ; block-step-store-at-slot; block-step-worklist-push
   ; block-step-store-indirect; block-step-store-indirect-stack
   ; block-step-store-indirect-suc; block-step-store-indirect-suc-stack
-  ; block-step-load-at; block-step-store-at; block-step-addr-at; addr-at-no-wrap
+  ; block-step-load-at; block-step-store-at; block-step-addr-at; addr-at-no-wrap; block-step-load-at-stack; block-step-store-at-stack
   ; block-step-c-jmp
   ; block-step-c-branch-tag-zero; block-step-c-branch-tag-nz
   ; block-step-c-thunk; block-step-c-start; block-step-out-nz; block-step-c-ret
@@ -534,6 +542,7 @@ riscv64-block-steps = record
   ; bs-mov-to-input         = block-step-mov-to-input
   ; bs-c-label              = block-step-c-label
   ; bs-reclaim-to           = block-step-reclaim-to
+  ; bs-free-heap            = block-step-free-heap
   ; bs-worklist-init        = block-step-worklist-init
   ; bs-worklist-check       = block-step-worklist-check
   -- the ONE shape that differs: riscv64 computes a slot address with `addi`,
@@ -558,6 +567,8 @@ riscv64-block-steps = record
   ; bs-addr-at                  = riscv64-addr-at
   ; bs-store-indirect-suc-stack = block-step-store-indirect-suc-stack
   ; bs-c-jmp                    = block-step-c-jmp
+  ; bs-load-at-stack            = block-step-load-at-stack
+  ; bs-store-at-stack           = block-step-store-at-stack
   ; bs-c-branch-tag-zero        = block-step-c-branch-tag-zero
   ; bs-c-branch-tag-nz          = block-step-c-branch-tag-nz
   ; bs-out-nz                   = block-step-out-nz
@@ -606,11 +617,10 @@ postulate
 arith-sigop-lookup : ∀ (env : EE.RT.ArithEnv) prog fs {A B} (si : SigOpInfo A B)
                    → riscv64-arith-table prog env → Internal (sem si) → fetch prog (fpc fs) ≡ just (instr-sigop si)
                    → Σ (List XInstr × ℕ) (λ pl → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl)
-arith-sigop-lookup .(block-env (Emit.blocks-riscv64 p)) .(Emit.image-of p) fs si (p , refl , refl) int ftq
-  with FlatMachine.fetch-All {FS} {k = fpc fs} (BT.image-owned p) ftq int
-... | b , m , e , _ =
-  subst (λ n → Σ (List XInstr × ℕ) (λ pl → block-env (Emit.blocks-riscv64 p) (once-symbol-path n) ≡ just pl)) (sym e)
-        (block-env-hit (Emit.blocks-riscv64 p) _ (BT.table-has AE.arith-block-symbol AE.block-payload (Emit.program-blocks p) m))
+arith-sigop-lookup .(block-env (file-table AE.block-payload bs)) prog fs si (bs , nm , refl , _) int ftq =
+  let (b , m , e , _) = FlatMachine.fetch-All {FS} {P = BT.SigNamed bs} {k = fpc fs} nm ftq si refl int
+  in subst (λ n → Σ (List XInstr × ℕ) (λ pl → block-env (file-table AE.block-payload bs) (once-symbol-path n) ≡ just pl)) (sym e)
+           (block-env-hit (file-table AE.block-payload bs) _ (BT.table-has Emit.block-symbol AE.block-payload bs m))
 
 -- plan 0.123 α′ (f1): …and what it finds is the SigOp's OWN block — the
 -- table entry under its symbol is a program block with that symbol, and one
@@ -619,10 +629,10 @@ arith-sigop-block : ∀ (env : EE.RT.ArithEnv) prog fs {A B} (si : SigOpInfo A B
                   → riscv64-arith-table prog env → Internal (sem si) → fetch prog (fpc fs) ≡ just (instr-sigop si)
                   → ∀ (pl : List XInstr × ℕ) → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl
                   → Σ ArithBlock (λ b → BlockOf si b × pl ≡ AE.block-payload b)
-arith-sigop-block .(block-env (Emit.blocks-riscv64 p)) .(Emit.image-of p) fs si (p , refl , refl) int ftq pl hit =
-  let (b , _ , bo , e) = BT.which-block AE.block-payload (Emit.program-blocks p) si
-                           (FlatMachine.fetch-All {FS} {k = fpc fs} (BT.image-owned p) ftq int)
-                           (block-env-sound (Emit.blocks-riscv64 p) _ hit)
+arith-sigop-block .(block-env (file-table AE.block-payload bs)) prog fs si (bs , nm , refl , _) int ftq pl hit =
+  let (b , _ , bo , e) = BT.which-block AE.block-payload bs si
+                           (FlatMachine.fetch-All {FS} {P = BT.SigNamed bs} {k = fpc fs} nm ftq si refl int)
+                           (block-env-sound (file-table AE.block-payload bs) _ hit)
   in b , bo , e
 
 ------------------------------------------------------------------------
@@ -711,7 +721,7 @@ arith-sigop-run : ∀ {hv : HeapView} (env : EE.RT.ArithEnv) prog fs s {A B} (si
 arith-sigop-run {hv} env prog fs s si r t int cc ftq room h pl hit
   with arith-sigop-block env prog fs si t int ftq pl hit
 ... | b , bo , refl =
-  sigop-arith-step prog fs s (uncurry (dispatch-arith val-riscv64) (AE.block-payload b) s) si r int cc ftq h room
+  sigop-arith-step prog fs s (uncurry (dispatch-arith val-riscv64) (AE.block-payload b) s) si r int (block-not-in-memory bo) cc ftq h room
     (arith-dispatch-run {hv} prog fs s si r int cc ftq room h b bo) refl
     (trans (cong suc (pc-off cc))
            (sym (trans (blk-off-suc prog (fpc fs) (instr-sigop si) ftq) (+-comm (blk-off prog (fpc fs)) 1))))

@@ -456,7 +456,8 @@ data InstrNoHeapWrite : AbstractInstr → Set where
   nhw-worklist-pop       : ∀ {slot} → InstrNoHeapWrite (worklist-pop slot)
   nhw-worklist-check     : ∀ {slot} → InstrNoHeapWrite (worklist-check slot)
   -- Plan 0.10 Phase B
-  nhw-instr-sigop        : ∀ {A B} {si : SigOpInfo A B} → InstrNoHeapWrite (instr-sigop si)
+  -- D449: a sigop whose answer is not in memory (`in-memory?`)
+  nhw-instr-sigop        : ∀ {A B} {si : SigOpInfo A B} → in-memory? B ≡ false → InstrNoHeapWrite (instr-sigop si)
   -- Plan 0.11: const literal load only writes Output register
   nhw-instr-load-const   : ∀ {A} {p : FitsInReg A} {v} →
                            InstrNoHeapWrite (instr-load-const p v)
@@ -570,7 +571,7 @@ instr-effect load-indirect           = eff-heap-indirect
 instr-effect load-indirect-suc       = eff-heap-indirect
 instr-effect store-indirect          = eff-heap-indirect
 instr-effect store-indirect-suc      = eff-heap-indirect
-instr-effect (load-at _)             = eff-heap-indirect
+instr-effect (load-at _)             = eff-heap-checked    -- D452: checked against the live frames
 instr-effect (store-at _)            = eff-heap-checked
 instr-effect (addr-at _)             = eff-heap-checked    -- D385: checked against the block sizes
 instr-effect (instr-alloc-stack _)   = eff-stack-frontier
@@ -579,7 +580,7 @@ instr-effect (instr-reclaim-to _)    = eff-stack-frontier
 instr-effect (instr-push-frame _)    = eff-frame-op
 instr-effect instr-pop-frame         = eff-frame-op
 instr-effect instr-call-closure      = eff-control
-instr-effect (instr-sigop _)         = eff-control
+instr-effect (instr-sigop _)         = eff-heap-checked   -- D452 (d): its pointer words checked against the live frames
 instr-effect (instr-load-const _ _)  = eff-reg-only
 instr-effect (instr-load-tag-lit _)  = eff-reg-only
 instr-effect (instr-load-code-addr _) = eff-reg-only
@@ -934,6 +935,39 @@ module InstrPrimitives {FS : FrameSemantics} where
 
 
   -- (E) HEAP PRESERVATION
+  -- an offset load or address, at any resolved location (D452: behind the frame gate)
+  load-val-heap : ∀ (mv : Maybe (StoredValue FS)) (s : LocState FS) → heapMem (ExecFinal.exec-load-with-value Output mv s) ≡ heapMem s
+  load-val-heap (just _) s = refl
+  load-val-heap nothing  s = refl
+
+  load-at-heap : ∀ (k : ℕ) (ml : Maybe (ValueLocation FS)) (s : LocState FS) → heapMem (ExecFinal.exec-load-at-resolved k Output ml s) ≡ heapMem s
+  load-at-heap k (just loc) s = load-val-heap (readLoc s (offsetLoc loc k)) s
+  load-at-heap k nothing    s = refl
+
+  addr-blk-heap : ∀ (b : Data.Bool.Bool) (loc : ValueLocation FS) (s : LocState FS) → heapMem (ExecFinal.exec-addr-in-block b loc s) ≡ heapMem s
+  addr-blk-heap true  loc s = refl
+  addr-blk-heap false loc s = refl
+
+  addr-at-heap : ∀ (bs : ℕ → ℕ) (k : ℕ) (ml : Maybe (ValueLocation FS)) (s : LocState FS) → heapMem (ExecFinal.exec-addr-at-resolved bs k ml s) ≡ heapMem s
+  addr-at-heap bs k (just loc) s = addr-blk-heap (ExecFinal.in-block? bs (offsetLoc loc k)) (offsetLoc loc k) s
+  addr-at-heap bs k nothing    s = refl
+
+  load-val-stack : ∀ (mv : Maybe (StoredValue FS)) (s : LocState FS) → stackMem (ExecFinal.exec-load-with-value Output mv s) ≡ stackMem s
+  load-val-stack (just _) s = refl
+  load-val-stack nothing  s = refl
+
+  load-at-stack : ∀ (k : ℕ) (ml : Maybe (ValueLocation FS)) (s : LocState FS) → stackMem (ExecFinal.exec-load-at-resolved k Output ml s) ≡ stackMem s
+  load-at-stack k (just loc) s = load-val-stack (readLoc s (offsetLoc loc k)) s
+  load-at-stack k nothing    s = refl
+
+  addr-blk-stack : ∀ (b : Data.Bool.Bool) (loc : ValueLocation FS) (s : LocState FS) → stackMem (ExecFinal.exec-addr-in-block b loc s) ≡ stackMem s
+  addr-blk-stack true  loc s = refl
+  addr-blk-stack false loc s = refl
+
+  addr-at-stack : ∀ (bs : ℕ → ℕ) (k : ℕ) (ml : Maybe (ValueLocation FS)) (s : LocState FS) → stackMem (ExecFinal.exec-addr-at-resolved bs k ml s) ≡ stackMem s
+  addr-at-stack bs k (just loc) s = addr-blk-stack (ExecFinal.in-block? bs (offsetLoc loc k)) (offsetLoc loc k) s
+  addr-at-stack bs k nothing    s = refl
+
   -- Instructions that don't write to heap preserve heapMem
   exec-abstract-preserves-heapMem : ∀ (i : AbstractInstr) (s : LocState FS)
     (alloc : AllocState {FS}) →
@@ -943,18 +977,10 @@ module InstrPrimitives {FS : FrameSemantics} where
   exec-abstract-preserves-heapMem (instr-reg-op _) s alloc nhw-instr-reg-op = refl
   exec-abstract-preserves-heapMem (instr-free-heap _) s alloc nhw-instr-free-heap = refl
   exec-abstract-preserves-heapMem (instr-room _) s alloc nhw-instr-room = refl
-  exec-abstract-preserves-heapMem (load-at k) s alloc nhw-load-at
-    with sv-as-loc (readReg (regs s) Input1)
-  ... | just loc with readLoc s (offsetLoc loc k)
-  ...   | just _  = refl
-  ...   | nothing = refl
-  exec-abstract-preserves-heapMem (load-at k) s alloc nhw-load-at | nothing = refl
-  exec-abstract-preserves-heapMem (addr-at k) s alloc nhw-addr-at
-    with sv-as-loc (readReg (regs s) Input1)
-  ... | just loc with in-block? (block-size alloc) (offsetLoc loc k)
-  ...   | true  = refl
-  ...   | false = refl
-  exec-abstract-preserves-heapMem (addr-at k) s alloc nhw-addr-at | nothing = refl
+  exec-abstract-preserves-heapMem (load-at k) s alloc nhw-load-at =
+    load-at-heap k (ExecFinal.frame-gate alloc k (sv-as-loc (readReg (regs s) Input1))) s
+  exec-abstract-preserves-heapMem (addr-at k) s alloc nhw-addr-at =
+    addr-at-heap (block-size alloc) k (ExecFinal.heap-gate (sv-as-loc (readReg (regs s) Input1))) s
   exec-abstract-preserves-heapMem (instr-ctrl _) s alloc nhw-instr-ctrl = refl
   exec-abstract-preserves-heapMem mov-to-input s alloc nhw-mov-to-input = refl
   exec-abstract-preserves-heapMem load-indirect s alloc nhw-load-indirect
@@ -995,7 +1021,7 @@ module InstrPrimitives {FS : FrameSemantics} where
   ... | just _  = refl
   ... | nothing = refl
   exec-abstract-preserves-heapMem (worklist-check slot) s alloc nhw-worklist-check = refl
-  exec-abstract-preserves-heapMem (instr-sigop _)       s alloc nhw-instr-sigop    = refl
+  exec-abstract-preserves-heapMem (instr-sigop si)      s alloc (nhw-instr-sigop e) = cong heapMem (sigop-store-id si s e)
   exec-abstract-preserves-heapMem (instr-load-const _ _) s alloc nhw-instr-load-const = refl
   exec-abstract-preserves-heapMem (instr-load-tag-lit _) s alloc nhw-instr-load-tag-lit = refl
   exec-abstract-preserves-heapMem (instr-load-code-addr _) s alloc nhw-instr-load-code-addr = refl
@@ -1022,18 +1048,10 @@ module InstrPrimitives {FS : FrameSemantics} where
   exec-abstract-preserves-stack-slot (instr-reg-op _) s alloc f slot _ _ = refl
   exec-abstract-preserves-stack-slot (instr-free-heap _) s alloc f slot _ _ = refl
   exec-abstract-preserves-stack-slot (instr-room _) s alloc f slot _ _ = refl
-  exec-abstract-preserves-stack-slot (load-at k) s alloc f slot _ _
-    with sv-as-loc (readReg (regs s) Input1)
-  ... | just loc with readLoc s (offsetLoc loc k)
-  ...   | just _  = refl
-  ...   | nothing = refl
-  exec-abstract-preserves-stack-slot (load-at k) s alloc f slot _ _ | nothing = refl
-  exec-abstract-preserves-stack-slot (addr-at k) s alloc f slot _ _
-    with sv-as-loc (readReg (regs s) Input1)
-  ... | just loc with in-block? (block-size alloc) (offsetLoc loc k)
-  ...   | true  = refl
-  ...   | false = refl
-  exec-abstract-preserves-stack-slot (addr-at k) s alloc f slot _ _ | nothing = refl
+  exec-abstract-preserves-stack-slot (load-at k) s alloc f slot _ _ =
+    cong (λ st → st f slot) (load-at-stack k (ExecFinal.frame-gate alloc k (sv-as-loc (readReg (regs s) Input1))) s)
+  exec-abstract-preserves-stack-slot (addr-at k) s alloc f slot _ _ =
+    cong (λ st → st f slot) (addr-at-stack (block-size alloc) k (ExecFinal.heap-gate (sv-as-loc (readReg (regs s) Input1))) s)
   exec-abstract-preserves-stack-slot (instr-ctrl _) s alloc f slot _ _ = refl
   exec-abstract-preserves-stack-slot mov-to-input s alloc f slot _ _ = refl
   -- Plan 0.13.2: load-indirect/-suc case-split on sv-as-loc; both
@@ -1078,7 +1096,7 @@ module InstrPrimitives {FS : FrameSemantics} where
   ... | just _  = refl
   ... | nothing = refl
   exec-abstract-preserves-stack-slot (worklist-check _) s alloc f slot _ _ = refl
-  exec-abstract-preserves-stack-slot (instr-sigop _)    s alloc f slot _ _ = refl
+  exec-abstract-preserves-stack-slot (instr-sigop si)   s alloc f slot (nhw-instr-sigop e) _ = cong (λ x → stackMem x f slot) (sigop-store-id si s e)
   exec-abstract-preserves-stack-slot (instr-load-const _ _) s alloc f slot _ _ = refl
   exec-abstract-preserves-stack-slot (instr-load-tag-lit _) s alloc f slot _ _ = refl
   exec-abstract-preserves-stack-slot (instr-load-code-addr _) s alloc f slot _ _ = refl
@@ -1128,7 +1146,7 @@ module InstrPrimitives {FS : FrameSemantics} where
   exec-abstract-same-frame (instr-reg-op _) s alloc₁ alloc₂ _ _ = refl
   exec-abstract-same-frame (instr-free-heap _) s alloc₁ alloc₂ _ _ = refl
   exec-abstract-same-frame (instr-room _) s alloc₁ alloc₂ _ _ = refl
-  exec-abstract-same-frame (load-at _) s alloc₁ alloc₂ _ _ = refl
+  exec-abstract-same-frame (load-at _) s alloc₁ alloc₂ () _
   exec-abstract-same-frame (store-at _) s alloc₁ alloc₂ () _
   exec-abstract-same-frame (addr-at _) s alloc₁ alloc₂ () _
   exec-abstract-same-frame (instr-ctrl _) s alloc₁ alloc₂ _ _ = refl
@@ -1194,7 +1212,7 @@ module InstrPrimitives {FS : FrameSemantics} where
   ... | just _ | nothing | ()
   ... | nothing | just _ | ()
   exec-abstract-same-frame (worklist-check slot) s alloc₁ alloc₂ _ _ = refl
-  exec-abstract-same-frame (instr-sigop _)       s alloc₁ alloc₂ _ _ = refl
+  exec-abstract-same-frame (instr-sigop _)       s alloc₁ alloc₂ () _
   exec-abstract-same-frame (instr-load-const _ _) s alloc₁ alloc₂ _ _ = refl
   exec-abstract-same-frame (instr-load-tag-lit _) s alloc₁ alloc₂ _ _ = refl
   exec-abstract-same-frame (instr-load-code-addr _) s alloc₁ alloc₂ _ _ = refl
@@ -1386,7 +1404,7 @@ TraceNoHeapWrites (worklist-init _ ∷ t)           = TraceNoHeapWrites t
 TraceNoHeapWrites (worklist-push _ ∷ t)           = TraceNoHeapWrites t
 TraceNoHeapWrites (worklist-pop _ ∷ t)            = TraceNoHeapWrites t
 TraceNoHeapWrites (worklist-check _ ∷ t)          = TraceNoHeapWrites t
-TraceNoHeapWrites (instr-sigop _ ∷ t)             = TraceNoHeapWrites t
+TraceNoHeapWrites (instr-sigop {B = B} _ ∷ t)     = (in-memory? B ≡ false) × TraceNoHeapWrites t
 TraceNoHeapWrites (instr-load-const _ _ ∷ t)      = TraceNoHeapWrites t
 TraceNoHeapWrites (instr-load-tag-lit _ ∷ t)      = TraceNoHeapWrites t
 TraceNoHeapWrites (instr-load-code-addr _ ∷ t)    = TraceNoHeapWrites t
@@ -1444,7 +1462,7 @@ trace-no-heap-writes-append (worklist-init _ ∷ t1) t2 tn1 tn2 = trace-no-heap-
 trace-no-heap-writes-append (worklist-push _ ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
 trace-no-heap-writes-append (worklist-pop _ ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
 trace-no-heap-writes-append (worklist-check _ ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
-trace-no-heap-writes-append (instr-sigop _ ∷ t1)    t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
+trace-no-heap-writes-append (instr-sigop _ ∷ t1)    t2 (e , tn1) tn2 = e , trace-no-heap-writes-append t1 t2 tn1 tn2
 trace-no-heap-writes-append (instr-load-const _ _ ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
 trace-no-heap-writes-append (instr-load-tag-lit _ ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
 trace-no-heap-writes-append (instr-load-code-addr _ ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
@@ -1659,7 +1677,7 @@ module TracePrimitives {FS : FrameSemantics} where
     tnhw-head (worklist-push _) _ _ = nhw-worklist-push
     tnhw-head (worklist-pop _) _ _ = nhw-worklist-pop
     tnhw-head (worklist-check _) _ _ = nhw-worklist-check
-    tnhw-head (instr-sigop _)    _ _ = nhw-instr-sigop
+    tnhw-head (instr-sigop _)    _ (e , _) = nhw-instr-sigop e
     tnhw-head (instr-load-const _ _) _ _ = nhw-instr-load-const
     tnhw-head (instr-load-tag-lit _) _ _ = nhw-instr-load-tag-lit
     tnhw-head (instr-load-code-addr _) _ _ = nhw-instr-load-code-addr
@@ -1694,7 +1712,7 @@ module TracePrimitives {FS : FrameSemantics} where
     tnhw-tail (worklist-push _) rest tnhw = tnhw
     tnhw-tail (worklist-pop _) rest tnhw = tnhw
     tnhw-tail (worklist-check _) rest tnhw = tnhw
-    tnhw-tail (instr-sigop _)    rest tnhw = tnhw
+    tnhw-tail (instr-sigop _)    rest (_ , tnhw) = tnhw
     tnhw-tail (instr-load-const _ _) rest tnhw = tnhw
     tnhw-tail (instr-load-tag-lit _) rest tnhw = tnhw
     tnhw-tail (instr-load-code-addr _) rest tnhw = tnhw
@@ -1800,7 +1818,7 @@ module TracePrimitives {FS : FrameSemantics} where
     exec-trace-preserves-slot-below (worklist-check k ∷ rest) s alloc n slot twa tnhw slot<n =
       exec-trace-preserves-slot-below-nonwrite (worklist-check k) rest s alloc n slot twa tnhw slot<n nhw-worklist-check refl
     exec-trace-preserves-slot-below (instr-sigop nm ∷ rest)   s alloc n slot twa tnhw slot<n =
-      exec-trace-preserves-slot-below-nonwrite (instr-sigop nm) rest s alloc n slot twa tnhw slot<n nhw-instr-sigop    refl
+      exec-trace-preserves-slot-below-nonwrite (instr-sigop nm) rest s alloc n slot twa tnhw slot<n (nhw-instr-sigop (proj₁ tnhw)) refl
     exec-trace-preserves-slot-below (instr-load-const p v ∷ rest) s alloc n slot twa tnhw slot<n =
       exec-trace-preserves-slot-below-nonwrite (instr-load-const p v) rest s alloc n slot twa tnhw slot<n nhw-instr-load-const refl
     exec-trace-preserves-slot-below (instr-load-tag-lit k ∷ rest) s alloc n slot twa tnhw slot<n =
@@ -1938,7 +1956,7 @@ module TracePrimitives {FS : FrameSemantics} where
     exec-trace-preserves-slot-above (worklist-check k ∷ rest) s alloc m slot twb tnhw m≤slot =
       exec-trace-preserves-slot-above-nonwrite (worklist-check k) rest s alloc m slot twb tnhw m≤slot nhw-worklist-check refl
     exec-trace-preserves-slot-above (instr-sigop nm ∷ rest)   s alloc m slot twb tnhw m≤slot =
-      exec-trace-preserves-slot-above-nonwrite (instr-sigop nm) rest s alloc m slot twb tnhw m≤slot nhw-instr-sigop    refl
+      exec-trace-preserves-slot-above-nonwrite (instr-sigop nm) rest s alloc m slot twb tnhw m≤slot (nhw-instr-sigop (proj₁ tnhw)) refl
     exec-trace-preserves-slot-above (instr-load-const p v ∷ rest) s alloc m slot twb tnhw m≤slot =
       exec-trace-preserves-slot-above-nonwrite (instr-load-const p v) rest s alloc m slot twb tnhw m≤slot nhw-instr-load-const refl
     exec-trace-preserves-slot-above (instr-load-tag-lit k ∷ rest) s alloc m slot twb tnhw m≤slot =
@@ -2065,7 +2083,7 @@ module TracePrimitives {FS : FrameSemantics} where
     exec-trace-preserves-ancestor (worklist-check k ∷ rest) s alloc f slot cf≺f tnhw =
       exec-trace-preserves-ancestor-nonwrite (worklist-check k) rest s alloc f slot cf≺f tnhw nhw-worklist-check refl
     exec-trace-preserves-ancestor (instr-sigop nm ∷ rest)   s alloc f slot cf≺f tnhw =
-      exec-trace-preserves-ancestor-nonwrite (instr-sigop nm) rest s alloc f slot cf≺f tnhw nhw-instr-sigop    refl
+      exec-trace-preserves-ancestor-nonwrite (instr-sigop nm) rest s alloc f slot cf≺f tnhw (nhw-instr-sigop (proj₁ tnhw)) refl
     exec-trace-preserves-ancestor (instr-load-const p v ∷ rest) s alloc f slot cf≺f tnhw =
       exec-trace-preserves-ancestor-nonwrite (instr-load-const p v) rest s alloc f slot cf≺f tnhw nhw-instr-load-const refl
     exec-trace-preserves-ancestor (instr-load-tag-lit k ∷ rest) s alloc f slot cf≺f tnhw =
@@ -2299,19 +2317,19 @@ module TracePrimitives {FS : FrameSemantics} where
     ∃-syntax (λ (v : StoredValue FS) →
       readLoc s (AtStack (current-frame alloc) slot) ≡ just v)
   -- Plan 0.123 B.4 R1: the offset forms, as their `-indirect` models.
-  InstrWF s _     (load-at k)              =
+  InstrWF s alloc (load-at k)              =
     ∃-syntax (λ (loc : ValueLocation FS) →
-      (sv-as-loc (readReg (regs s) Input1) ≡ just loc) ×
+      (ExecFinal.frame-gate alloc k (sv-as-loc (readReg (regs s) Input1)) ≡ just loc) ×
       ∃-syntax (λ (v : StoredValue FS) → readLoc s (offsetLoc loc k) ≡ just v))
   -- D385: and the written cell is one of its block's
   InstrWF s alloc (store-at k)             =
     ∃-syntax (λ (loc : ValueLocation FS) →
-      (sv-as-loc (readReg (regs s) Input1) ≡ just loc) ×
+      (ExecFinal.frame-gate alloc k (sv-as-loc (readReg (regs s) Input1)) ≡ just loc) ×
       (in-block? (block-size alloc) (offsetLoc loc k) ≡ true))
   -- D385: and the addressed cell is one of its block's
   InstrWF s alloc (addr-at k)              =
     ∃-syntax (λ (loc : ValueLocation FS) →
-      (sv-as-loc (readReg (regs s) Input1) ≡ just loc) ×
+      (ExecFinal.heap-gate (sv-as-loc (readReg (regs s) Input1)) ≡ just loc) ×
       (in-block? (block-size alloc) (offsetLoc loc k) ≡ true))
   -- D270: a SigOp MAY halt (its `EffectShape`), a case runs a sub-trace and
   -- a loop can run out of fuel — so for these three the witness IS the
@@ -2375,17 +2393,17 @@ module TracePrimitives {FS : FrameSemantics} where
   exec-abstract-preserves-halted-WF (instr-free-heap _)     s alloc h-eq _ = h-eq
   exec-abstract-preserves-halted-WF (instr-room _)     s alloc h-eq _ = h-eq
   exec-abstract-preserves-halted-WF (load-at k)             s alloc h-eq (loc , rdi-eq , v , read-eq)
-    with sv-as-loc (readReg (regs s) Input1) | rdi-eq
+    with ExecFinal.frame-gate alloc k (sv-as-loc (readReg (regs s) Input1)) | rdi-eq
   ... | .(just loc) | refl
     with readLoc s (offsetLoc loc k) | read-eq
   ... | .(just v) | refl = h-eq
   exec-abstract-preserves-halted-WF (store-at k)            s alloc h-eq (loc , rdi-eq , ib)
-    with sv-as-loc (readReg (regs s) Input1) | rdi-eq
+    with ExecFinal.frame-gate alloc k (sv-as-loc (readReg (regs s) Input1)) | rdi-eq
   ... | .(just loc) | refl
     with in-block? (block-size alloc) (offsetLoc loc k) | ib
   ... | .true | refl = trans (writeLoc-halted s (offsetLoc loc k) (readReg (regs s) Output)) h-eq
   exec-abstract-preserves-halted-WF (addr-at k)             s alloc h-eq (loc , rdi-eq , ib)
-    with sv-as-loc (readReg (regs s) Input1) | rdi-eq
+    with ExecFinal.heap-gate (sv-as-loc (readReg (regs s) Input1)) | rdi-eq
   ... | .(just loc) | refl
     with in-block? (block-size alloc) (offsetLoc loc k) | ib
   ... | .true | refl = h-eq
@@ -2511,7 +2529,7 @@ module TracePrimitives {FS : FrameSemantics} where
   exec-abstract-state-frame-eq (instr-reg-op _)        s _ _ _ _ = refl
   exec-abstract-state-frame-eq (instr-free-heap _)     s _ _ _ _ = refl
   exec-abstract-state-frame-eq (instr-room _)     s _ _ _ _ = refl
-  exec-abstract-state-frame-eq (load-at _)             s _ _ _ _ = refl
+  exec-abstract-state-frame-eq (load-at _)             s _ _ () _
   exec-abstract-state-frame-eq (store-at _)            s _ _ () _
   exec-abstract-state-frame-eq (addr-at _)             s _ _ () _
   exec-abstract-state-frame-eq (instr-ctrl _)        s _ _ _ _ = refl
@@ -2568,7 +2586,7 @@ module TracePrimitives {FS : FrameSemantics} where
   ... | nothing = refl
   exec-abstract-state-frame-eq (worklist-check _)      s _ _ _ _ = refl
   exec-abstract-state-frame-eq instr-save-closure-reg  s _ _ _ _ = refl
-  exec-abstract-state-frame-eq (instr-sigop _)         s _ _ _ _ = refl
+  exec-abstract-state-frame-eq (instr-sigop _)         s _ _ () _
   exec-abstract-state-frame-eq (instr-load-const _ _)  s _ _ _ _ = refl
   exec-abstract-state-frame-eq (instr-load-tag-lit _)  s _ _ _ _ = refl
   exec-abstract-state-frame-eq (instr-load-code-addr _) s _ _ _ _ = refl

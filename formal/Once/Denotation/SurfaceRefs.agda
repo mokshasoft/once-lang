@@ -31,6 +31,7 @@ open import Once.TypeCheck.Scope using (NamedCtx; Imports; PolyCtx; lookupImport
 open import Once.Spec.Context using (Ctx; Usage)
 open import Once.Surface.Syntax
 open import Once.Denotation.Program using (Linked)
+open import Once.TypeCheck.Table using (mapIR)
 
 -- `Refs Ps Pc Pp e`: every `closure x : A` in `e` satisfies `Pc x A`, every
 -- `poly x A` satisfies `Pp x A`, and every embedded IR morphism is call-free.
@@ -58,8 +59,8 @@ Refs Ps Pc Pp (sigOp {A = A} name _) = Ps name A
 Refs Ps Pc Pp {A = A} (closure x) = Pc x A
 Refs Ps Pc Pp (poly x T)          = Pp x T
 Refs Ps Pc Pp (closed e)          = Refs Ps Pc Pp e
-Refs Ps Pc Pp (lift-morphism m)   = Linked [] [] m
-Refs Ps Pc Pp (morph-app m a)     = Linked [] [] m × Refs Ps Pc Pp a
+Refs Ps Pc Pp (lift-morphism m)   = Linked [] [] (mapIR m)
+Refs Ps Pc Pp (morph-app m a)     = Linked [] [] (mapIR m) × Refs Ps Pc Pp a
 Refs Ps Pc Pp (comp' f g)         = Refs Ps Pc Pp f × Refs Ps Pc Pp g
 Refs Ps Pc Pp (copair' f g)       = Refs Ps Pc Pp f × Refs Ps Pc Pp g
 Refs Ps Pc Pp (fork' f g)         = Refs Ps Pc Pp f × Refs Ps Pc Pp g

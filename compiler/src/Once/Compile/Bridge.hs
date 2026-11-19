@@ -152,8 +152,9 @@ resolveImports modMap (Module userMod) =
 
 -- | The assembly text of a resolved module, built for `arch` with or without
 -- the optimizer, or the compiler's error: the print of the file the verified
--- compiler emits (`Once.Compile.assemblyFromModule`), in allocation mode `Heap`,
--- the mode the apex covers (D352).
+-- compiler emits (`Once.LinCore.Emit.assemblyCore`, plan 0.146 D464: a
+-- program's linear core image), the file the apex covers (D352, D353).
 assemblyFromModule :: Bool -> Arch -> Resolved -> Either Text Text
 assemblyFromModule doOpt arch (Resolved mod_) =
   eitherText (MR.d_assembly_48 runs doOpt (toMArch arch) (unsafeCoerce mod_))
+

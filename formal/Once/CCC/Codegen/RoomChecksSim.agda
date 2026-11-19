@@ -22,14 +22,14 @@ module Once.CCC.Codegen.RoomChecksSim where
 open import Data.Bool using (Bool; true; false)
 open import Data.List using (List; []; _∷_; map)
 open import Data.Maybe using (Maybe; just; nothing) renaming (map to mmap)
-open import Data.Nat using (ℕ; zero; suc)
+open import Data.Nat using (ℕ; zero; suc; _≡ᵇ_)
 open import Data.Product using (Σ; _×_; _,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
-open import Once.CCC.Machine.SMCore using (AbstractInstr; AbstractTrace; instr-room)
-open import Once.CCC.Codegen.RoomChecks using (boundary?; stretch; room-checks; max-entry)
+open import Once.CCC.Machine.SMCore using (AbstractInstr; AbstractTrace; instr-room; module AllocState)
+open import Once.CCC.Codegen.RoomChecks using (boundary?; stretch; checks; room-checks; max-entry)
 open import Once.CCC.Codegen.RoomChecksFacts using (ψ; φ; bump; module RoomFacts)
 
 module RoomSim {FS : FrameSemantics} (t : AbstractTrace) where
@@ -131,11 +131,17 @@ module RoomSim {FS : FrameSemantics} (t : AbstractTrace) where
     call-to fs nothing  = φ t (fpc fs) , refl , inj₁ refl
 
     -- a return to what the stack holds
-    ret-to : ∀ (fs : FlatState) (rs : List ℕ)
-           → Σ ℕ (λ p → (do-ret (map ret-map rs) (lift fs (φ t (fpc fs))) ≡ lift (do-ret rs fs) p)
-                      × PcRel (fpc (do-ret rs fs)) p)
-    ret-to fs []       = φ t (fpc fs) , refl , inj₁ refl
-    ret-to fs (r ∷ rs) = ret-map r , refl , pcRel-ret r
+    -- (B1.7b: …or a fault, the gate deciding the same on both sides: the lift keeps the frame)
+    ret-to : ∀ (b : ℕ) (fs : FlatState) (rs : List ℕ)
+           → Σ ℕ (λ p → (do-ret b (map ret-map rs) (lift fs (φ t (fpc fs))) ≡ lift (do-ret b rs fs) p)
+                      × PcRel (fpc (do-ret b rs fs)) p)
+    ret-to b fs []       = φ t (fpc fs) , refl , inj₁ refl
+    ret-to b fs (r ∷ rs) = land (b ≡ᵇ AllocState.frame-slots (falloc fs))
+      where
+        land : ∀ tb → Σ ℕ (λ p → (ret-land tb (ret-map r) (map ret-map rs) (lift fs (φ t (fpc fs))) ≡ lift (ret-land tb r rs fs) p)
+                                × PcRel (fpc (ret-land tb r rs fs)) p)
+        land true  = ret-map r , refl , pcRel-ret r
+        land false = φ t (fpc fs) , refl , inj₁ refl
 
   private
     -- the tag branch, by what its test found
@@ -214,10 +220,10 @@ module RoomSim {FS : FrameSemantics} (t : AbstractTrace) where
   step-lift fs i@(instr-ctrl (c-entry _ _)) = on fs i refl refl
   step-lift fs i@(instr-ctrl (c-start _)) = on fs i refl refl
   step-lift fs i@(instr-ctrl c-leave) = stay fs i refl refl
-  step-lift fs (instr-ctrl (c-ret _))           = ret-to fs (fret fs)
+  step-lift fs (instr-ctrl (c-ret b))           = ret-to b fs (fret fs)
   step-lift fs (instr-ctrl (c-jmp n)) with jump-to fs (find-label t n)
   ... | p , e , r = p , trans (cong (λ z → do-jump z (lift fs (φ t (fpc fs)))) (find-label-room t n)) e , r
-  step-lift fs (instr-ctrl (c-branch-tag-zero n)) = branch-at fs n (tag-test (flat-read-tag (floc fs)))
+  step-lift fs (instr-ctrl (c-branch-tag-zero n)) = branch-at fs n (tag-test (flat-read-tag (falloc fs) (floc fs)))
   step-lift fs (instr-ctrl (c-call-fn f)) with call-to fs (find-entry t (e-fn f))
   ... | p , e , r = p , trans (cong (λ z → do-call-at z (lift fs (φ t (fpc fs)))) (find-entry-room t (e-fn f))) e , r
 

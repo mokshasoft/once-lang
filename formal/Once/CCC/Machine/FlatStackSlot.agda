@@ -130,10 +130,10 @@ flat-same-frames (instr-ctrl (c-thunk m b))             prog fs ()
 flat-same-frames (instr-ctrl (c-ret b))                 prog fs ()
 flat-same-frames (instr-ctrl (c-jmp m))                 prog fs ff = sf-jump (find-label prog m) fs
 flat-same-frames (instr-ctrl (c-branch-tag-zero m))     prog fs ff =
-  sf-test (tag-test (flat-read-tag (floc fs))) m prog fs
+  sf-test (tag-test (flat-read-tag (falloc fs) (floc fs))) m prog fs
 flat-same-frames (instr-alloc-stack n)   prog fs ()
 flat-same-frames (instr-dealloc-stack n) prog fs ()
-flat-same-frames (instr-free-heap n) prog fs ()
+flat-same-frames (instr-free-heap n) prog fs ff = mkSameFrames refl refl refl
 flat-same-frames (load-at n) prog fs ff = mkSameFrames refl refl refl
 flat-same-frames (store-at n) prog fs ff = mkSameFrames refl refl refl
 flat-same-frames (addr-at n) prog fs ff = mkSameFrames refl refl refl

@@ -16,8 +16,10 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 
 module Once.CCC.Machine.FlatLeaf (FS : FrameSemantics) where
 
-open import Data.Nat using (_+_)
-open import Data.Nat.Properties using (+-assoc)
+open import Data.Nat using (ℕ; zero; suc; _+_)
+open import Data.Nat.Properties using (+-assoc; +-identityʳ)
+import Data.Nat
+import Data.Nat.Properties
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Maybe.Properties using (just-injective)
 open import Data.Product using (_×_; _,_)
@@ -54,6 +56,13 @@ tsize-shape shape-unit       = refl
 tsize-shape shape-int        = refl
 tsize-shape shape-float      = refl
 tsize-shape (shape-pair l r) = cong₂ _+_ (tsize-shape l) (tsize-shape r)
+
+-- a leaf lies inside its shape's words
+off-lt : ∀ {sh n} (p : Path sh n) → flat-off p Data.Nat.< shape-size sh
+off-lt here-int = Data.Nat.s≤s Data.Nat.z≤n
+off-lt here-flt = Data.Nat.s≤s Data.Nat.z≤n
+off-lt {shape-pair l r} (go-fst p) = Data.Nat.Properties.≤-trans (off-lt p) (Data.Nat.Properties.m≤m+n (shape-size l) (shape-size r))
+off-lt {shape-pair l r} (go-snd p) = Data.Nat.Properties.+-monoʳ-< (shape-size l) (off-lt p)
 
 offset-0 : ∀ (loc : ValueLocation FS) → offsetLoc loc 0 ≡ loc
 offset-0 (AtStack f k)              = refl

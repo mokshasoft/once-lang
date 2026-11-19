@@ -21,7 +21,6 @@ import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Data.Fin.Base
 import qualified MAlonzo.Code.Once.Context
-import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.Spec.Context
 import qualified MAlonzo.Code.Once.Spec.Float.Decimal
 import qualified MAlonzo.Code.Once.Spec.Grade
@@ -29,6 +28,7 @@ import qualified MAlonzo.Code.Once.Spec.Name
 import qualified MAlonzo.Code.Once.Spec.Sub
 import qualified MAlonzo.Code.Once.Spec.Theory
 import qualified MAlonzo.Code.Once.Spec.Type
+import qualified MAlonzo.Code.Once.Surface.Map
 import qualified MAlonzo.Code.Once.Type.Concrete
 
 -- Once.Surface.Syntax.Expr
@@ -77,10 +77,10 @@ data T_Expr_10
     C_closure_246 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
     C_poly_256 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
     C_closed_264 T_Expr_10 |
-    C_lift'45'morphism_276 MAlonzo.Code.Once.IR.T_IR_16 |
+    C_lift'45'morphism_276 MAlonzo.Code.Once.Surface.Map.T_Map_8 |
     C_morph'45'app_288 MAlonzo.Code.Once.Spec.Context.T_Usage_34
-                       MAlonzo.Code.Once.Spec.Type.T_Ty_8 MAlonzo.Code.Once.IR.T_IR_16
-                       T_Expr_10 |
+                       MAlonzo.Code.Once.Spec.Type.T_Ty_8
+                       MAlonzo.Code.Once.Surface.Map.T_Map_8 T_Expr_10 |
     C_comp''_306 MAlonzo.Code.Once.Spec.Context.T_Usage_34
                  MAlonzo.Code.Once.Spec.Context.T_Usage_34
                  MAlonzo.Code.Once.Spec.Type.T_Ty_8 T_Expr_10 T_Expr_10 |

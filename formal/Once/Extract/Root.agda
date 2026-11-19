@@ -37,6 +37,7 @@ import Once.Extract.Names as Names
 import Once.Format as Format
 import Once.Inspect as Inspect
 import Once.Measure as Measure
+import Once.LinCore.Emit as Emit
 
 -- The datatypes the Haskell side builds or reads directly (the arith IR the
 -- test evaluator walks, the IR and type modules' constructors).
@@ -74,6 +75,7 @@ record Runs : Set₁ where
     dump-ir         : Bool → Resolved → String ⊎ String
     stats           : Bool → Resolved → String ⊎ String
     format          : String → String ⊎ String
+    -- plan 0.146 B1.7 (D461): the linear core's image, beside master's until its apex is the top
 
 runs : Runs
 runs = record
@@ -84,7 +86,7 @@ runs = record
   ; main-ir         = Compile.moduleToIR
   ; resolve-imports = Resolve.resolveImports
   ; warnings        = Warnings.warningsFor
-  ; assembly        = Compile.assemblyFromModule
+  ; assembly        = Emit.assemblyCore
   ; signatures      = Inspect.signatures
   ; check           = Inspect.check
   ; dump-ir         = Inspect.dumpIR

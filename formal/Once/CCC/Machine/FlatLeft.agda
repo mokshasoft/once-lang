@@ -21,10 +21,12 @@ open import Data.Unit using (⊤)
 open import Data.Empty using (⊥)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_)
-open import Data.Bool using (Bool; true; false; _∨_)
+open import Data.Bool using (Bool; true; false; _∨_; not)
 open import Once.SigOp.Info using (SigOpInfo; effect; EffectShape; Pure; Halts; Emits; Answers)
 open import Once.Type using (fits-int; fits-float)
 open import Data.Product using (proj₁; proj₂)
+open import Data.Nat using (ℕ; zero; suc)
+import Data.Nat
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
@@ -149,9 +151,9 @@ module LeftPres {FS : FrameSemantics} where
   abs-left (instr-reg-op op) s alloc = refl
   abs-left (instr-free-heap n) s alloc = refl
   abs-left (instr-room n) s alloc = refl
-  abs-left (load-at k) s alloc = load-at-left k Output (sv-as-loc (readReg (regs s) Input1)) s
-  abs-left (store-at k) s alloc = store-at-left (AllocState.block-size alloc) k (sv-as-loc (readReg (regs s) Input1)) (readReg (regs s) Output) s
-  abs-left (addr-at k) s alloc = addr-at-left (AllocState.block-size alloc) k (sv-as-loc (readReg (regs s) Input1)) s
+  abs-left (load-at k) s alloc = load-at-left k Output (frame-gate alloc k (sv-as-loc (readReg (regs s) Input1))) s
+  abs-left (store-at k) s alloc = store-at-left (AllocState.block-size alloc) k (frame-gate alloc k (sv-as-loc (readReg (regs s) Input1))) (readReg (regs s) Output) s
+  abs-left (addr-at k) s alloc = addr-at-left (AllocState.block-size alloc) k (heap-gate (sv-as-loc (readReg (regs s) Input1))) s
   abs-left (instr-ctrl c) s alloc = refl
 
   exec-abstract-left : ∀ (i : AbstractInstr) → LeftFree i → ∀ s alloc → lft (proj₁ (exec-abstract i s alloc)) ≡ lft s
@@ -182,9 +184,8 @@ module LeftPres {FS : FrameSemantics} where
   do-nz-left (SV-Ptr _)            fs = refl
   do-nz-left (SV-Code _)           fs = refl
 
-  do-ret-left : ∀ (rl : List _) fs → flft (do-ret rl fs) ≡ flft fs
-  do-ret-left []         fs = refl
-  do-ret-left (pc' ∷ rs) fs = refl
+  do-ret-left : ∀ (b : ℕ) (rl : List _) fs → flft (do-ret b rl fs) ≡ flft fs
+  do-ret-left b rl fs = do-ret-keeps (λ s → flft s ≡ flft fs) b rl fs refl (λ _ _ _ _ → refl)
 
   do-call-at-left : ∀ (mj : Maybe _) fs → flft (do-call-at mj fs) ≡ flft fs
   do-call-at-left (just j) fs = refl
@@ -212,10 +213,10 @@ module LeftPres {FS : FrameSemantics} where
   flat-exec-instr-left (instr-ctrl (c-start b))             _ prog fs = refl
   flat-exec-instr-left (instr-ctrl c-leave)                   () prog fs
   flat-exec-instr-left (instr-ctrl (c-call-fn f))             _ prog fs = do-call-at-left (find-fn prog f) fs
-  flat-exec-instr-left (instr-ctrl (c-ret b))                 _ prog fs = do-ret-left (fret fs) fs
+  flat-exec-instr-left (instr-ctrl (c-ret b))                 _ prog fs = do-ret-left b (fret fs) fs
   flat-exec-instr-left (instr-ctrl (c-jmp n))                 _ prog fs = do-jump-left (find-label prog n) fs
   flat-exec-instr-left (instr-ctrl (c-branch-tag-zero n))     _ prog fs =
-    do-test-left (tag-test (flat-read-tag (floc fs))) n prog fs
+    do-test-left (tag-test (flat-read-tag (falloc fs) (floc fs))) n prog fs
   flat-exec-instr-left instr-call-closure                     _ prog fs = do-call-sv-left prog (fclosure fs) fs
   flat-exec-instr-left instr-save-closure-reg                 _ prog fs = refl
   flat-exec-instr-left (instr-alloc-stack n)   lf prog fs = exec-abstract-left (instr-alloc-stack n) lf (floc fs) (falloc fs)
@@ -339,16 +340,22 @@ module FaultPres {FS : FrameSemantics} where
   restore-fault nothing  s alloc ()
 
   -- D392: a Pure SigOp faults exactly when it halts, so one that does not halt
-  -- does not fault either
-  sigop-fault : ∀ {A B} (si : SigOpInfo A B) (s : LocState FS) → exec-sigop-halts si s ≡ false
-              → (exec-sigop-faults si s ∨ flt s) ≡ flt s
-  sigop-fault {B = B} si s h = go (effect si) h
+  -- does not fault either; D452 (d): nor does its window check (`g`), which
+  -- halts it when it fails
+  or-fault : ∀ (u g f : Bool) → (u ∨ not g) ≡ false → (u ∨ (not g ∨ f)) ≡ f
+  or-fault false true  f _ = refl
+  or-fault false false f ()
+  or-fault true  g     f ()
+
+  sigop-fault : ∀ {A B} (si : SigOpInfo A B) (s : LocState FS) (g : Bool) → (exec-sigop-halts si s ∨ not g) ≡ false
+              → (exec-sigop-faults si s ∨ (not g ∨ flt s)) ≡ flt s
+  sigop-fault {B = B} si s g h = go (effect si) h
     where
-      go : (e : EffectShape B) → exec-sigop-halts-of e si s ≡ false → (exec-sigop-faults-of e si s ∨ flt s) ≡ flt s
-      go Pure      h′ rewrite h′ = refl
+      go : (e : EffectShape B) → (exec-sigop-halts-of e si s ∨ not g) ≡ false → (exec-sigop-faults-of e si s ∨ (not g ∨ flt s)) ≡ flt s
+      go Pure      h′ = or-fault _ g (flt s) h′
       go (Halts _) ()
-      go (Emits _) _  = refl
-      go Answers   _  = refl
+      go (Emits _) h′ = or-fault false g (flt s) h′
+      go Answers   h′ = or-fault false g (flt s) h′
 
   abs-fault : ∀ (i : AbstractInstr) (s : LocState FS) alloc → hlt (proj₁ (exec-abstract i s alloc)) ≡ false
             → flt (proj₁ (exec-abstract i s alloc)) ≡ flt s
@@ -372,7 +379,7 @@ module FaultPres {FS : FrameSemantics} where
   abs-fault (worklist-push slot) s alloc _ = writeLoc-fault s (AtStack (current-frame alloc) slot) (readReg (regs s) Output)
   abs-fault (worklist-pop slot) s alloc h = load-slot-fault (readLoc s (AtStack (current-frame alloc) slot)) s alloc h
   abs-fault (worklist-check slot) s alloc _ = refl
-  abs-fault (instr-sigop si) s alloc h = sigop-fault si s h
+  abs-fault (instr-sigop si) s alloc h = sigop-fault si s (sigop-gate alloc si s) h
   abs-fault (instr-load-const p v) s alloc _ = refl
   abs-fault (instr-load-code-addr n) s alloc _ = refl
   abs-fault instr-save-closure-reg s alloc _ = refl
@@ -380,9 +387,9 @@ module FaultPres {FS : FrameSemantics} where
   abs-fault (instr-alloc-heap n) s alloc _ = refl
   abs-fault (instr-free-heap n) s alloc _ = refl
   abs-fault (instr-room n) s alloc _ = refl
-  abs-fault (load-at k) s alloc h = load-at-fault k Output (sv-as-loc (readReg (regs s) Input1)) s h
-  abs-fault (store-at k) s alloc h = store-at-fault (AllocState.block-size alloc) k (sv-as-loc (readReg (regs s) Input1)) (readReg (regs s) Output) s h
-  abs-fault (addr-at k) s alloc h = addr-at-fault (AllocState.block-size alloc) k (sv-as-loc (readReg (regs s) Input1)) s h
+  abs-fault (load-at k) s alloc h = load-at-fault k Output (frame-gate alloc k (sv-as-loc (readReg (regs s) Input1))) s h
+  abs-fault (store-at k) s alloc h = store-at-fault (AllocState.block-size alloc) k (frame-gate alloc k (sv-as-loc (readReg (regs s) Input1))) (readReg (regs s) Output) s h
+  abs-fault (addr-at k) s alloc h = addr-at-fault (AllocState.block-size alloc) k (heap-gate (sv-as-loc (readReg (regs s) Input1))) s h
   abs-fault (instr-reg-op op) s alloc _ = refl
   abs-fault (instr-ctrl c) s alloc _ = refl
 
@@ -412,27 +419,27 @@ module FaultPres {FS : FrameSemantics} where
   do-nz-fault (SV-Ptr _)            fs ()
   do-nz-fault (SV-Code _)           fs ()
 
-  do-ret-fault : ∀ (rl : List _) fs → fflt (do-ret rl fs) ≡ fflt fs
-  do-ret-fault []         fs = refl
-  do-ret-fault (pc' ∷ rs) fs = refl
+  -- (B1.7b: a call or a return that fails FAULTS, and halts; one that does not halt keeps the flag)
+  do-ret-fault : ∀ (b : ℕ) (rl : List _) fs → fhlt (do-ret b rl fs) ≡ false → fflt (do-ret b rl fs) ≡ fflt fs
+  do-ret-fault b rl fs = do-ret-keeps (λ s → fhlt s ≡ false → fflt s ≡ fflt fs) b rl fs (λ ()) (λ _ _ _ _ _ → refl)
 
-  do-call-at-fault : ∀ (mj : Maybe _) fs → fflt (do-call-at mj fs) ≡ fflt fs
-  do-call-at-fault (just j) fs = refl
-  do-call-at-fault nothing  fs = refl
+  do-call-at-fault : ∀ (mj : Maybe _) fs → fhlt (do-call-at mj fs) ≡ false → fflt (do-call-at mj fs) ≡ fflt fs
+  do-call-at-fault (just j) fs _ = refl
+  do-call-at-fault nothing  fs ()
 
-  do-call-code-fault : ∀ prog (mv : Maybe (StoredValue FS)) fs → fflt (do-call-code prog mv fs) ≡ fflt fs
-  do-call-code-fault prog (just (SV-Code ℓ))  fs = do-call-at-fault (find-thunk prog ℓ) fs
-  do-call-code-fault prog (just (SV-Tag _))   fs = refl
-  do-call-code-fault prog (just (SV-Lit _ _)) fs = refl
-  do-call-code-fault prog (just (SV-Ptr _))   fs = refl
-  do-call-code-fault prog nothing             fs = refl
+  do-call-code-fault : ∀ prog (mv : Maybe (StoredValue FS)) fs → fhlt (do-call-code prog mv fs) ≡ false → fflt (do-call-code prog mv fs) ≡ fflt fs
+  do-call-code-fault prog (just (SV-Code ℓ))  fs h = do-call-at-fault (find-thunk prog ℓ) fs h
+  do-call-code-fault prog (just (SV-Tag _))   fs ()
+  do-call-code-fault prog (just (SV-Lit _ _)) fs ()
+  do-call-code-fault prog (just (SV-Ptr _))   fs ()
+  do-call-code-fault prog nothing             fs ()
 
-  do-call-sv-fault : ∀ prog (v : StoredValue FS) fs → fflt (do-call-sv prog v fs) ≡ fflt fs
-  do-call-sv-fault prog (SV-Ptr (AtDynamic hl)) fs = do-call-code-fault prog (heapMem (floc fs) (sucHL hl)) fs
-  do-call-sv-fault prog (SV-Ptr (AtStack _ _))  fs = refl
-  do-call-sv-fault prog (SV-Tag _)              fs = refl
-  do-call-sv-fault prog (SV-Lit _ _)            fs = refl
-  do-call-sv-fault prog (SV-Code _)             fs = refl
+  do-call-sv-fault : ∀ prog (v : StoredValue FS) fs → fhlt (do-call-sv prog v fs) ≡ false → fflt (do-call-sv prog v fs) ≡ fflt fs
+  do-call-sv-fault prog (SV-Ptr (AtDynamic hl)) fs h = do-call-code-fault prog (heapMem (floc fs) (sucHL hl)) fs h
+  do-call-sv-fault prog (SV-Ptr (AtStack _ _))  fs ()
+  do-call-sv-fault prog (SV-Tag _)              fs ()
+  do-call-sv-fault prog (SV-Lit _ _)            fs ()
+  do-call-sv-fault prog (SV-Code _)             fs ()
 
   flat-exec-instr-fault : ∀ (i : AbstractInstr) prog fs → fhlt (flat-exec-instr i prog fs) ≡ false
                         → fflt (flat-exec-instr i prog fs) ≡ fflt fs
@@ -440,12 +447,12 @@ module FaultPres {FS : FrameSemantics} where
   flat-exec-instr-fault (instr-ctrl (c-entry _ b))         prog fs _ = refl
   flat-exec-instr-fault (instr-ctrl (c-start b))           prog fs _ = refl
   flat-exec-instr-fault (instr-ctrl c-leave)               prog fs _ = refl
-  flat-exec-instr-fault (instr-ctrl (c-call-fn f))         prog fs _ = do-call-at-fault (find-fn prog f) fs
-  flat-exec-instr-fault (instr-ctrl (c-ret b))             prog fs _ = do-ret-fault (fret fs) fs
+  flat-exec-instr-fault (instr-ctrl (c-call-fn f))         prog fs h = do-call-at-fault (find-fn prog f) fs h
+  flat-exec-instr-fault (instr-ctrl (c-ret b))             prog fs h = do-ret-fault b (fret fs) fs h
   flat-exec-instr-fault (instr-ctrl (c-jmp n))             prog fs _ = do-jump-fault (find-label prog n) fs
   flat-exec-instr-fault (instr-ctrl (c-branch-tag-zero n)) prog fs h =
-    do-test-fault (tag-test (flat-read-tag (floc fs))) n prog fs h
-  flat-exec-instr-fault instr-call-closure                 prog fs _ = do-call-sv-fault prog (fclosure fs) fs
+    do-test-fault (tag-test (flat-read-tag (falloc fs) (floc fs))) n prog fs h
+  flat-exec-instr-fault instr-call-closure                 prog fs h = do-call-sv-fault prog (fclosure fs) fs h
   flat-exec-instr-fault instr-save-closure-reg             prog fs _ = refl
   flat-exec-instr-fault (instr-alloc-stack n)   prog fs h = abs-fault (instr-alloc-stack n) (floc fs) (falloc fs) h
   flat-exec-instr-fault (instr-dealloc-stack n) prog fs h = abs-fault (instr-dealloc-stack n) (floc fs) (falloc fs) h

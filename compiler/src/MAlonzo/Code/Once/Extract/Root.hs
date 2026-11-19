@@ -25,6 +25,7 @@ import qualified MAlonzo.Code.Once.Extract.Names
 import qualified MAlonzo.Code.Once.Format
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.Inspect
+import qualified MAlonzo.Code.Once.LinCore.Emit
 import qualified MAlonzo.Code.Once.Measure
 import qualified MAlonzo.Code.Once.Parser
 import qualified MAlonzo.Code.Once.Parser.Module.Core
@@ -38,7 +39,7 @@ d_Runs_6 = ()
 data T_Runs_6
   = C_constructor_60 (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
                       MAlonzo.Code.Data.Sum.Base.T__'8846'__30)
-                     (MAlonzo.Code.Once.Spec.Surface.Syntax.T_Module_64 ->
+                     (MAlonzo.Code.Once.Spec.Surface.Syntax.T_Module_110 ->
                       [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14])
                      (MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
                       [MAlonzo.Code.Agda.Builtin.String.T_String_6])
@@ -47,7 +48,7 @@ data T_Runs_6
                      (MAlonzo.Code.Once.Parser.Module.Core.T_Resolved_8 ->
                       Maybe MAlonzo.Code.Once.IR.T_IR_16)
                      ([MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
-                      MAlonzo.Code.Once.Spec.Surface.Syntax.T_Module_64 ->
+                      MAlonzo.Code.Once.Spec.Surface.Syntax.T_Module_110 ->
                       MAlonzo.Code.Data.Sum.Base.T__'8846'__30)
                      (MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
                       MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
@@ -82,7 +83,7 @@ d_parse'45'source_34 v0
 -- Once.Extract.Root.Runs.module-imports
 d_module'45'imports_36 ::
   T_Runs_6 ->
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Module_64 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Module_110 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]
 d_module'45'imports_36 v0
   = case coe v0 of
@@ -123,7 +124,7 @@ d_main'45'ir_42 v0
 d_resolve'45'imports_44 ::
   T_Runs_6 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Module_64 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Module_110 ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30
 d_resolve'45'imports_44 v0
   = case coe v0 of
@@ -217,9 +218,9 @@ d_runs_62
       (coe MAlonzo.Code.Once.Compile.d_moduleToIR_1298)
       (coe MAlonzo.Code.Once.Parser.Module.Resolve.d_resolveImports_884)
       (coe MAlonzo.Code.Once.Warnings.d_warningsFor_380)
-      (coe MAlonzo.Code.Once.Compile.d_assemblyFromModule_1462)
+      (coe MAlonzo.Code.Once.LinCore.Emit.d_assemblyCore_98)
       (coe MAlonzo.Code.Once.Inspect.d_signatures_40)
       (coe MAlonzo.Code.Once.Inspect.d_check_48)
       (coe MAlonzo.Code.Once.Inspect.d_dumpIR_68)
-      (coe MAlonzo.Code.Once.Measure.d_statsOf_4)
+      (\ v0 v1 -> coe MAlonzo.Code.Once.Measure.du_statsOf_22 v1)
       (coe MAlonzo.Code.Once.Format.d_formatSource_14)

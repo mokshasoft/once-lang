@@ -71,88 +71,52 @@ o = Emit.entry-owner
 
 open import Once.Target.Arch using (Arch; x86-64; x86-32; riscv64)
 open import Once.Adequacy.Compile using (ArchCorrect)
-open import Data.List using (List)
-open import Relation.Binary.PropositionalEquality using (refl)
-open import Once.Denotation.Program using (IRFun; irProgram; LinkedProgram)
-open Once.Denotation.Program.IRProgram using (table)
-open import Once.Adequacy.SourceTrace using (rewrite-program-linked)
-open import Once.Compile.Emit using (rewrite-program)
-open import Once.Adequacy.OptimizedLinked using (build-linked)
-open import Data.Bool using (Bool)
-open import Once.IR using (IR)
-open import Once.IRTy using (⌊_⌋)
-open import Once.Spec.Type using (Unit)
-open import Data.Maybe using (just)
-open import Relation.Binary.PropositionalEquality using (_≡_; subst)
-open import Once.Module using (moduleSig)
-import Once.Parser.Module.Core as P
+import Once.Adequacy.ArchCorrectness.Core as Core
 
-import Once.Adequacy.FileWF as FileWF
-import Once.Adequacy.ArchCorrectness.X86-64 as A64
-import Once.Adequacy.ArchCorrectness.X86-32 as A32
-import Once.Adequacy.ArchCorrectness.RiscV64 as ARV
-
--- D244/D245: each instance is AT A TABLE — the program image it simulates is
--- `main` together with that table's functions. The record below is per
--- PROGRAM, so it instantiates the arch module at the program's own table.
-module X64 (ι : Interp) (tbl : List IRFun) = A64 o tbl ι
-       (x86-64-reg-range ι) (x86-64-addr-no-wrap ι) (x86-64-lit-fits ι)
-module X32 (ι : Interp) (tbl : List IRFun) = A32 o tbl ι
-       (x86-32-reg-range ι) (x86-32-addr-no-wrap ι) (x86-32-lit-fits ι)
-module RV (ι : Interp) (tbl : List IRFun) = ARV o tbl ι
-       (riscv64-reg-range ι) (riscv64-slot-addr-no-wrap ι)
-       (riscv64-addr-no-wrap ι) (riscv64-lit-fits ι)
-
--- The emitted (arith-rewritten) program's table, and its linkedness.
--- (At either build, plan 0.39: the build's own table.)
-BT : Bool → P.Resolved → List IRFun
-BT doOpt m = Co.tableOfResult (Co.compileResolvedModule Once.IR.Heap doOpt m)
-
-TP : Bool → P.Resolved → IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋ → List IRFun
-TP doOpt m ir = table (rewrite-program (irProgram (BT doOpt m) ir))
-
-LK : ∀ (doOpt : Bool) (m : P.Resolved) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋)
-   → Co.moduleToIR-aux (Co.compileResolvedModule Once.IR.Heap doOpt m) ≡ just ir
-   → LinkedProgram (moduleSig m) (rewrite-program (irProgram (BT doOpt m) ir))
-LK doOpt m ir mi = rewrite-program-linked (irProgram (BT doOpt m) ir) (build-linked doOpt m ir mi)
-
--- plan 0.135 S5: there are no block-table hypotheses any more (D188's, emptied
--- by D360): `FlatFromObs.block-runs` proves the table from the program being linked.
+-- plan 0.146 (D464): the compiler's file is the linear core's image of the module's sources
+-- (`LinCore.Emit.coreFileOf`); on each arch it is what the assembler demands (proved, per arch)
+-- and running it has the trace of the program it was emitted from (D320), up to running out
+-- (D374): `ArchCorrectness.Core`, over each arch's `ArchSim` (`ArchCorrectness.<Arch>.Sim`).
 
 x86-64-correct : ∀ (ι : Interp) → ArchCorrect x86-64 ι
 x86-64-correct ι = record
-  -- plan 0.107: the emitted FILE is well-formed (proved, per arch) …
-  { file-wf            = λ doOpt m F eq → FileWF.file-wf x86-64 doOpt m F eq
-  -- … and running it has the trace of the program it was emitted from (D320),
-  -- so it follows it up to running out (D374).
-  ; file-tr = λ doOpt m F eq ir mi ls →
-      X64.file-tr-x86-64 ι (TP doOpt m ir) doOpt m F eq ir mi refl refl
-        (subst (λ σ → LinkedProgram σ (rewrite-program (irProgram (BT doOpt m) ir))) ls (LK doOpt m ir mi))
+  { file-wf = Core.X86-64.core-wf ι (x86-64-reg-range ι) (x86-64-addr-no-wrap ι) (x86-64-lit-fits ι)
+  ; file-tr = Core.X86-64.core-tr ι (x86-64-reg-range ι) (x86-64-addr-no-wrap ι) (x86-64-lit-fits ι)
   }
 
 x86-32-correct : ∀ (ι : Interp) → ArchCorrect x86-32 ι
 x86-32-correct ι = record
-  -- plan 0.107: the emitted FILE is well-formed (proved, per arch) …
-  { file-wf            = λ doOpt m F eq → FileWF.file-wf x86-32 doOpt m F eq
-  -- … and running it has the trace of the program it was emitted from (D320),
-  -- so it follows it up to running out (D374).
-  ; file-tr = λ doOpt m F eq ir mi ls →
-      X32.file-tr-x86-32 ι (TP doOpt m ir) doOpt m F eq ir mi refl refl
-        (subst (λ σ → LinkedProgram σ (rewrite-program (irProgram (BT doOpt m) ir))) ls (LK doOpt m ir mi))
+  { file-wf = Core.X86-32.core-wf ι (x86-32-reg-range ι) (x86-32-addr-no-wrap ι) (x86-32-lit-fits ι)
+  ; file-tr = Core.X86-32.core-tr ι (x86-32-reg-range ι) (x86-32-addr-no-wrap ι) (x86-32-lit-fits ι)
   }
 
 riscv64-correct : ∀ (ι : Interp) → ArchCorrect riscv64 ι
 riscv64-correct ι = record
-  -- plan 0.107: the emitted FILE is well-formed (proved, per arch) …
-  { file-wf            = λ doOpt m F eq → FileWF.file-wf riscv64 doOpt m F eq
-  -- … and running it has the trace of the program it was emitted from (D320),
-  -- so it follows it up to running out (D374).
-  ; file-tr = λ doOpt m F eq ir mi ls →
-      RV.file-tr-riscv64 ι (TP doOpt m ir) doOpt m F eq ir mi refl refl
-        (subst (λ σ → LinkedProgram σ (rewrite-program (irProgram (BT doOpt m) ir))) ls (LK doOpt m ir mi))
+  { file-wf = Core.RiscV64.core-wf ι (riscv64-reg-range ι) (riscv64-slot-addr-no-wrap ι) (riscv64-addr-no-wrap ι) (riscv64-lit-fits ι)
+  ; file-tr = Core.RiscV64.core-tr ι (riscv64-reg-range ι) (riscv64-slot-addr-no-wrap ι) (riscv64-addr-no-wrap ι) (riscv64-lit-fits ι)
   }
 
 arch-correctness : ∀ (ι : Interp) (arch : Arch) → ArchCorrect arch ι
 arch-correctness ι x86-64  = x86-64-correct ι
 arch-correctness ι x86-32  = x86-32-correct ι
 arch-correctness ι riscv64 = riscv64-correct ι
+
+-- ★ a module with a compilable `main` Builds: master's gates pass it (`main⇒built`), and the
+-- compiler's file of it is its new image's (`LinCore.CoreFile.Prog.core-built`)
+open import Data.Bool using (Bool)
+open import Data.Maybe using (just)
+open import Data.Product using (Σ)
+open import Data.Sum using (inj₂)
+open import Relation.Binary.PropositionalEquality using (_≡_)
+open import Once.IR using (IR)
+open import Once.IRTy using (⌊_⌋)
+open import Once.Spec.Type using (Unit)
+open import Once.Parser.Module.Core using (Resolved; module Resolved)
+open import Once.Denotation.Admissible using (AdmissibleM)
+import Once.LinCore.Emit
+import Once.LinCore.CoreFile
+
+core-built : ∀ (arch : Arch) (doOpt : Bool) (m : Resolved) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) →
+             AdmissibleM arch (Resolved.rmodule m) → Co.moduleToIR m ≡ just ir →
+             Σ (Emit.FileOf arch) (λ F → Once.LinCore.Emit.coreFileOf arch doOpt m ≡ inj₂ F)
+core-built arch doOpt m ir adm mi = Once.LinCore.CoreFile.Prog.core-built arch m ir mi doOpt adm

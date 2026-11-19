@@ -83,7 +83,7 @@ open import Once.Compiler
        riscv64-addr-no-wrap riscv64-lit-fits
        x86-32-reg-range x86-32-addr-no-wrap x86-32-lit-fits
        using (module ArchCorrectness)
-open ArchCorrectness using (arch-correctness)
+open ArchCorrectness using (arch-correctness; core-built)
 import Once.Adequacy.SpecApex as SpecApex
 open import Once.TypeCheck.Verified using (VerifiedTypeChecker; verifiedTypeChecker)
 -- Plan 0.102 phase B (D276, D304): the language's own metatheory, stated in the
@@ -102,7 +102,7 @@ open import Once.Implementation using (NoLeak)
 once-compiler : CorrectCompiler
 once-compiler = SA.spec-compiler SA.bridges
   where
-    module SA = SpecApex arch-correctness
+    module SA = SpecApex arch-correctness core-built
 
 record CertifiedBuild : Set₁ where
   field

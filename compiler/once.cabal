@@ -55,6 +55,32 @@ library
       MAlonzo.RTE
   other-modules:
       MAlonzo.Code.Once.ResolvedRefs
+      MAlonzo.Code.Once.Adequacy.ElaborateLinked
+      MAlonzo.Code.Once.CompileSrc
+      MAlonzo.Code.Once.ContractLaws
+      MAlonzo.Code.Once.Denotation.SurfaceRefs
+      MAlonzo.Code.Once.LinCore.Code
+      MAlonzo.Code.Once.LinCore.Core
+      MAlonzo.Code.Once.LinCore.Emit
+      MAlonzo.Code.Once.CCC.Codegen.ImageExterns
+      MAlonzo.Code.Once.CCC.Codegen.ImageSymbols
+      MAlonzo.Code.Once.Target.SymbolValid
+      MAlonzo.Code.Once.LinCore.ExprBuild
+      MAlonzo.Code.Once.LinCore.ExprImage
+      MAlonzo.Code.Once.LinCore.Flat
+      MAlonzo.Code.Once.LinCore.Free
+      MAlonzo.Code.Once.LinCore.FromExpr
+      MAlonzo.Code.Once.LinCore.FromIR
+      MAlonzo.Code.Once.LinCore.Image
+      MAlonzo.Code.Once.LinCore.ImageBlocks
+      MAlonzo.Code.Once.LinCore.Keys
+      MAlonzo.Code.Once.LinCore.Layout
+      MAlonzo.Code.Once.LinCore.Loader
+      MAlonzo.Code.Once.LinCore.Lower
+      MAlonzo.Code.Once.LinCore.MoveCode
+      MAlonzo.Code.Once.LinCore.PassTr
+      MAlonzo.Code.Once.LinCore.Values
+      MAlonzo.Code.Once.Surface.Map
       MAlonzo.Code.Once.Adequacy.SpecTokNames
       MAlonzo.Code.Once.Float.Word
       MAlonzo.Code.Once.Spec.Float.Encoding
@@ -82,21 +108,16 @@ library
       MAlonzo.Code.Once.Arith.Machine.Rewrite
       MAlonzo.Code.Once.Arith.Machine.Shape
       MAlonzo.Code.Once.Arith.Prim
+      MAlonzo.Code.Once.Arith.SigOp.AsBlock
       MAlonzo.Code.Once.Arith.SigOp.Block
       MAlonzo.Code.Once.Arith.SigOp.BlockSem
       MAlonzo.Code.Once.Arith.SigOp.Builders
       MAlonzo.Code.Once.Arith.SigOp.Compare
       MAlonzo.Code.Once.Arith.Type
-      MAlonzo.Code.Once.CCC.Codegen.FlatLayout
-      MAlonzo.Code.Once.CCC.Codegen.IRToTrace
-      MAlonzo.Code.Once.CCC.Codegen.NodesOK
-      MAlonzo.Code.Once.CCC.Codegen.ProgramImage
       MAlonzo.Code.Once.CCC.Codegen.RoomChecks
-      MAlonzo.Code.Once.CCC.Codegen.Size
       MAlonzo.Code.Once.CCC.FrameSemantics
       MAlonzo.Code.Once.CCC.Label
       MAlonzo.Code.Once.CCC.Machine.Locations
-      MAlonzo.Code.Once.CCC.Machine.MuRep
       MAlonzo.Code.Once.CCC.Machine.SMCore
       MAlonzo.Code.Once.CCC.Target.RiscV64.AbstractToRiscV
       MAlonzo.Code.Once.CCC.Target.RiscV64.Emit
@@ -116,12 +137,9 @@ library
       MAlonzo.Code.Once.Compile.Emit
       MAlonzo.Code.Once.Inspect
       MAlonzo.Code.Once.Principal
-      MAlonzo.Code.Once.Spec.ABI
       MAlonzo.Code.Once.Spec.Context
       MAlonzo.Code.Once.Spec.Core.Derived
       MAlonzo.Code.Once.Spec.Core.Syntax
-      MAlonzo.Code.Once.Spec.Domain
-      MAlonzo.Code.Once.Spec.Effect
       MAlonzo.Code.Once.Spec.Grade
       MAlonzo.Code.Once.Spec.Signature
       MAlonzo.Code.Once.Spec.Sub
@@ -220,11 +238,16 @@ library
       MAlonzo.Code.Once.Surface.Syntax
       MAlonzo.Code.Once.Target.Arch
       MAlonzo.Code.Once.Target.AsmSymbol
+      MAlonzo.Code.Once.Target.Backend
+      MAlonzo.Code.Once.Target.Backends
       MAlonzo.Code.Once.Target.RegConvention
+      MAlonzo.Code.Once.Target.RiscV64.Backend
       MAlonzo.Code.Once.Target.RiscV64.PhysReg
       MAlonzo.Code.Once.Target.Symbol
       MAlonzo.Code.Once.Target.SymbolInjective
+      MAlonzo.Code.Once.Target.X86Z45Z32.Backend
       MAlonzo.Code.Once.Target.X86Z45Z32.PhysReg
+      MAlonzo.Code.Once.Target.X86Z45Z64.Backend
       MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg
       MAlonzo.Code.Once.Type
       MAlonzo.Code.Once.Type.Determined
