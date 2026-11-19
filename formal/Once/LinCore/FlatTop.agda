@@ -135,7 +135,8 @@ module Top {Γ} (ds : Defs Γ) (f₀ : LTm Γ One One)
            (w-int   : ∀ (n : ⟦ int ⟧b)   → wordOf {int} n ≡ SV-Lit fits-int n)
            (w-float : ∀ (n : ⟦ float ⟧b) → wordOf {float} n ≡ SV-Lit fits-float n)
            (entry-frame : FrameSemantics.Frame Mach) (entry-regs : Registers Mach) where
-  open FlatMachine {Mach} using (FlatState; floc; fpc)
+  open FlatMachine {Mach} using (FlatState; module FlatState)
+  open FlatState using (floc; fpc)
   open FlatStepsAPI {Mach} using (FlatSteps)
   open FlatEventTrace {Mach} using (flat-events)
 

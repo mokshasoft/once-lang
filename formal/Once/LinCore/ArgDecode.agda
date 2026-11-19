@@ -64,7 +64,8 @@ module Dec {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
            (w-float : ∀ (n : ⟦ float ⟧b) → wordOf {float} n ≡ SV-Lit fits-float n) where
   open Rel {FS} U wordOf using (W; VW; vone; vpair; vinl; vinr; vbase; SlotsAt; vw-len)
   open AbstractExec {FS} using (readTyped; readTyped-int; readTyped-float; readTyped-sum; combine-typed; decode-at; tsize)
-  open FlatMachine {FS} using (FlatState; floc; falloc)
+  open FlatMachine {FS} using (FlatState; module FlatState)
+  open FlatState using (floc; falloc)
   open Agree {FS} U wordOf using (arg; at-arg; argV)
 
   -- words after words

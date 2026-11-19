@@ -74,7 +74,8 @@ module Loops {FS : FrameSemantics} (U : Univ)
   open Rel {FS} U wordOf
   open SimD {FS} U wordOf using (case₁-sim; case₂-sim)
   open Fetch {FS} using (in-seg)
-  open FlatMachine {FS} using (FlatState; floc; falloc; fpc; find-label; do-jump)
+  open FlatMachine {FS} using (FlatState; find-label; do-jump; module FlatState)
+  open FlatState using (floc; falloc; fpc)
   open FlatStepsAPI {FS} using (FlatSteps; step-at; FlatSteps-++; flat-label; flat-jmp)
   open import Once.LinCore.Moves {FS} using (Seg; Seg-++ˡ; slot; Keep; k-halt; k-slots; keep-pc; keep-trans; Old)
 

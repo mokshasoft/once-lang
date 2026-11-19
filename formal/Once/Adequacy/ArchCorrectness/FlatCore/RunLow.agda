@@ -34,7 +34,7 @@ open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Bool using (true; false)
 open import Data.Maybe using (just; nothing)
 open import Data.Maybe.Properties using (just-injective)
-open import Data.Product using (Σ; _×_; _,_)
+open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 open import Data.Sum using (inj₁; inj₂)
 open import Once.CCC.Machine.SMCore
 open import Once.CCC.Label using (LabelId; EntryId; e-fn; e-thunk)
@@ -48,7 +48,7 @@ open import Once.CCC.Codegen.RoomChecksSim using (module RoomSim)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open FlatStepsAPI {FS} using (Sound)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunContext o FS slot-size word-eq
-open RunAt using (run-tbl; run-ir; run-emit; run-linked; run-reach)
+open RunAt using (run-em; run-reach)
 
 -- THE RUN OF THE LOWERED IMAGE: `prog` is `t` with its checks, and `fs` is the
 -- lift of a state `t`'s run reaches, at a pc that stands for that state's.

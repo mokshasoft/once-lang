@@ -34,7 +34,7 @@ open import Once.CCC.Codegen.RoomChecksFacts using (ψ; φ; bump; module RoomFac
 
 module RoomSim {FS : FrameSemantics} (t : AbstractTrace) where
   open FlatMachine {FS}
-  open FlatState using (fret; flink; fpc; floc; fclosure)
+  open FlatState using (fret; flink; fpc; floc; fclosure; falloc)
   open RoomFacts {FS}
 
   P′ : AbstractTrace

@@ -132,7 +132,8 @@ module Prims {FS : FrameSemantics} (U : Univ)
   open In U
   open Lowering U ncty ldConst
   open At U ncty ldConst φ j using (lcin)
-  open FlatMachine {FS} using (FlatState; floc; falloc; fpc)
+  open FlatMachine {FS} using (FlatState; module FlatState)
+  open FlatState using (floc; falloc; fpc)
   open import Once.LinCore.Moves {FS} using (Ran; slot)
 
   private

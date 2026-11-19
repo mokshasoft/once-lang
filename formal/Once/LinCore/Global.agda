@@ -75,7 +75,8 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open Lowering U ncty ldConst
   open Calls {FS} ds f ldConst ld-nl wordOf using (blockR; module K; module From; call-core)
   open Rel {FS} U wordOf using (EnvW; StkW)
-  open FlatMachine {FS} using (FlatState; floc; falloc; fret)
+  open FlatMachine {FS} using (FlatState; module FlatState)
+  open FlatState using (floc; falloc; fret)
   open FrameSemantics FS using (_≺_)
 
   -- the start's code, and a block's, with their loops
@@ -108,7 +109,8 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open TrImg {FS} ds f ldConst ld-nl using (image-tr)
   open Tr U ncty ldConst using (trAt)
   open Rel {FS} U wordOf using (CfgW; VW; vpair; vfn; SlotsAt; cellPtr; cellLoc; vw-frame)
-  open FlatMachine {FS} using (fpc)
+  open FlatMachine {FS} using (module FlatState)
+  open FlatState using (fpc)
   open import Once.LinCore.Moves {FS} using (slot; InBlk)
 
   -- a frame-0 trampoline's (D438) region `M`, and the caller's area's size `Mc`

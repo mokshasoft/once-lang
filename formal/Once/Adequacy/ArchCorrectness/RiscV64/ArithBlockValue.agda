@@ -47,7 +47,7 @@ open LocState using (regs; heapMem)
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic)
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
-open FlatState using (floc; fpc)
+open FlatState using (floc; fpc; falloc)
 import Once.CCC.Target.RiscV64.Semantics as X
 
 open import Once.Spec.Type using (Int; Float; Base; ∅ₖ; b-Int; b-Float; b-*)

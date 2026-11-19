@@ -26,6 +26,7 @@ open import Once.CCC.Machine.Flat using (module FlatMachine)
 module Once.LinCore.LowerSimE {FS : FrameSemantics} where
 
 open FlatMachine {FS}
+open FlatState
 
 -- ★ a direct call: the return pc and the caller's frame pushed, the entry's pc
 call-step : ∀ prog (fs : FlatState) (f : CanonicalName) {q} → find-fn prog f ≡ just q

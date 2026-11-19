@@ -63,7 +63,8 @@ import Once.LinCore.ImageSyms
 open import Once.CCC.Codegen.ImageExterns using (image-externs)
 
 open ArchSim A
-open FlatMachine {FS} using (fetch; find-thunk; fpc; floc; fclosure; fret; falloc)
+open FlatMachine {FS} using (fetch; find-thunk; module FlatState)
+open FlatState using (fpc; floc; fclosure; fret; falloc)
 open Once.Adequacy.ArchCorrectness.FlatCore.RunContext o FS slot-size word-eq using (Emitted; Reachable)
 
 

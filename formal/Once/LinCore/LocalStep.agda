@@ -68,7 +68,8 @@ module Steps {FS : FrameSemantics} (U : Univ)
   open Loc {FS} U ncty ldConst wordOf prog root j L₀ R
   open Prims {FS} U ncty ldConst wordOf prog root j L₀ R
   open At U ncty ldConst φ j using (lcin; lfin)
-  open FlatMachine {FS} using (FlatState; floc; falloc; fpc)
+  open FlatMachine {FS} using (FlatState; module FlatState)
+  open FlatState using (floc; falloc; fpc)
   open FlatStepsAPI {FS} using (FlatSteps)
   open import Once.LinCore.Moves {FS} using (Keep; Old; slot)
 

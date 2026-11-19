@@ -71,7 +71,8 @@ import Once.LinCore.Moves
 ------------------------------------------------------------------------
 
 module Frames {FS : FrameSemantics} where
-  open FlatMachine {FS} using (FlatState; floc; falloc; fpc; fret)
+  open FlatMachine {FS} using (FlatState; module FlatState)
+  open FlatState using (floc; falloc; fpc; fret)
   open import Once.LinCore.LowerSimE {FS} using (callee-frame)
   open import Once.LinCore.Moves {FS} using (slot; Old; InBlk; inb-pt)
 
@@ -110,7 +111,8 @@ module Calls {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open SimF {FS} U wordOf using (enter-n; enter-j; leave)
   open Fetch {FS} using (in-seg)
   open Frames {FS}
-  open FlatMachine {FS} using (FlatState; floc; falloc; fpc; fret)
+  open FlatMachine {FS} using (FlatState; module FlatState)
+  open FlatState using (floc; falloc; fpc; fret)
   open FlatStepsAPI {FS} using (FlatSteps; FlatSteps-++)
   open import Once.LinCore.LowerSimE {FS}
     using (CallIn; call-in; call-in-v; callee-frame; callee-≢; ci-frame; ci-saved; ci-slots; ci-ret; ci-pc; ci-in; ci-s₁; ci-s₂; ci-other; ci-heap; ci-next; ci-size; ci-halt; ci-log; CallOut; co-pc; co-halt; co-slots; caller-win)

@@ -53,7 +53,8 @@ module SimH {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
   open Rel {FS} U wordOf
   open Sim {FS} U wordOf using (slots-def; slots-join; slots-frame; len-mvPS)
   open SimF {FS} U wordOf using (slots-movedP; cell-slots-at; at-def-o)
-  open FlatMachine {FS} using (FlatState; floc; falloc; fpc)
+  open FlatMachine {FS} using (FlatState; module FlatState)
+  open FlatState using (floc; falloc; fpc)
   open FlatStepsAPI {FS} using (FlatSteps; step-at; FlatSteps-++)
   open import Once.LinCore.Moves {FS}
     using (Seg; Seg-++ˡ; Seg-++ʳ; slot; mvPS-run; MovedP; p-moved; p-rest; p-heap; p-halt; p-pc; p-alloc; p-frame

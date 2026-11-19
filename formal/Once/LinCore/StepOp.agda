@@ -68,7 +68,8 @@ hdOr []      p = p
 
 module Agree {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue FS) where
   open Rel {FS} U wordOf using (W; VW; SlotsAt)
-  open FlatMachine {FS} using (FlatState; floc; falloc)
+  open FlatMachine {FS} using (FlatState; module FlatState)
+  open FlatState using (floc; falloc)
   open AbstractExec {FS} using (exec-sigop-output; exec-sigop-halts; sigop-events; exec-sigop-faults)
   open import Once.LinCore.Moves {FS} using (slot)
 

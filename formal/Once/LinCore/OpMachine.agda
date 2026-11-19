@@ -73,7 +73,8 @@ module OM (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue Mach)
   open Once.LinCore.BudgetSound.W fmt ans bw ι using (Wι; answered)
   open Once.LinCore.ArgDecode.Dec fmt ans bw {Mach} U wordOf w-int w-float using (arg-dec)
   open AbstractExec {Mach} using (exec-sigop-halts; sigop-events; exec-sigop-output; decode-at; events-at-arg)
-  open FlatMachine {Mach} using (FlatState; floc)
+  open FlatMachine {Mach} using (FlatState; module FlatState)
+  open FlatState using (floc)
   open import Once.LinCore.Moves {Mach} using (slot)
 
   -- ★ an emitting op: a call answered `tt`, no value, the machine goes on
