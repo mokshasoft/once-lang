@@ -22349,3 +22349,34 @@ iteration, or `ana` into `Eff`. Outside the Spec the word changes where code is 
 
 ### What programs see
 Nothing: names in the Spec only.
+
+## D417 — EVERY AGDA RUN FITS 3.3 GB: TWO SESSIONS SHARE THE MACHINE (2026-11-19)
+
+**Relates** plan 0.152 (§5). **Decided** by the user 2026-11-18 (the goal: two sessions type-check at
+the same time on this 7.6 GB machine) and 2026-11-19 (two targets: a fast `make certified`, a
+low-memory `make certified-per-module`).
+
+### Decision
+agda-safe's default cap is 3300M (was 5500M); GHC's heap is limited to 600M below the cap and the old
+generation is compacted in place (`-c`). A whole cone is checked one module per process, leaves first
+(`scripts/check-cone.py`), and the root's own run then only loads fresh interfaces:
+`make certified-per-module`, `run-ast-dumps.sh`, and the backstop (already per module). `make
+certified` stays one process — the fast build — and gets a 5.5 GB cap: run cold, it is not for a
+second session.
+
+### Measurements (2026-11-19, branch 0.152-whole-program-memory, under a 3300M cgroup cap)
+| run | peak RSS | live | time |
+|---|---|---|---|
+| `make certified-per-module`, cold `_build` (829 modules) | 2.88 GB | — | 163 min |
+| the same, warm (every interface fresh) | — | — | 66 s |
+| `Once.Certified` on fresh interfaces | 2.79 GB | 2.39 GB | 53 s |
+| the AST dump of `once-certified` on fresh interfaces (heap 2700m) | 2.90 GB | 2.54 GB | 59 s |
+| `Resusp.SumR` alone (the heaviest module; 3.4 GB live on 2026-11-08) | 1.71 GB | 0.86 GB | 26 s |
+
+One process over a cold cone does not fit: it holds everything it has checked (heap exhausted at
+3.2 GB at `Once.Certified`, 131 modules in one process). What brought the single modules down is
+the import structure (plan 0.152 A–D): no `public` re-exports in the apex cone, named instances
+that copy only what is used, and a back end that no longer reaches the front end (246 → 6 of 363).
+
+### What programs see
+Nothing: the build only.

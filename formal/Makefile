@@ -75,9 +75,20 @@ typecheck:
 .PHONY: certified
 certified:
 	@echo "Type-checking the certified artefact (correctness AND well-behavedness)..."
-	@# -c: one process loads every interface (~2.2 GB live); the default copying
-	@# collector needs about twice that and exceeds agda-safe's cap (plan 0.123).
-	@AGDA_RTS_EXTRA=-c sh -c '$(AGDA_CMD) Once/Certified.agda'
+	@# One process over the whole cone: the fast build. From a cold _build it holds
+	@# more than agda-safe's default cap, so it gets 5.5 GB (no second session while
+	@# it runs cold); `certified-per-module` fits the default (plan 0.152 E).
+	@AGDA_SAFE_MEM_MAX=$${AGDA_SAFE_MEM_MAX:-5500M} sh -c '$(AGDA_CMD) Once/Certified.agda'
+
+# The same artefact in agda-safe's default cap (3300M: two sessions fit): the cone
+# one module per process, leaves first, then the apex, which only loads fresh
+# interfaces (2.4 GB live). A module whose interface is fresh is skipped, so a
+# warm run is quick; a cold one takes about 2.5 h (plan 0.152 E).
+.PHONY: certified-per-module
+certified-per-module:
+	@echo "Type-checking the certified artefact, one module per process..."
+	@python3 scripts/check-cone.py Once/Certified.agda -- sh -c '$(AGDA_CMD) "$$1"' _
+	@sh -c '$(AGDA_CMD) Once/Certified.agda'
 
 .PHONY: lint-imports
 lint-imports:

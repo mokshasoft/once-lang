@@ -29,7 +29,7 @@ Usage (from the repo root or formal/):
   --top N        how many to list (default 25)
 
 Environment:
-  PROFILE_MEM_MAX  cgroup memory cap per module (default 5500M, as agda-safe.sh)
+  PROFILE_MEM_MAX  cgroup memory cap per module (default 3300M, as agda-safe.sh)
   PROFILE_SWAP_MAX cgroup swap cap (default 2G)
 
 Results: <work>/profile.tsv, one row per module, appended as it goes (follow it
@@ -168,13 +168,13 @@ def parse_stats(path):
 
 
 def run_one(froot, lib, m, logdir, rung):
-    mem = os.environ.get('PROFILE_MEM_MAX', '5500M')
+    mem = os.environ.get('PROFILE_MEM_MAX', '3300M')
     swap = os.environ.get('PROFILE_SWAP_MAX', '2G')
-    cap = int(mem[:-1]) * (1024 if mem[-1] in 'Gg' else 1) if mem[-1] in 'GgMm' else 5500
+    cap = int(mem[:-1]) * (1024 if mem[-1] in 'Gg' else 1) if mem[-1] in 'GgMm' else 3300
     stats = os.path.join(logdir, m + '.stats')
     timef = os.path.join(logdir, m + '.time')
     log = os.path.join(logdir, m + '.log')
-    rts = f'-M{cap - 700}m -s{stats}' + (' -c' if rung == 'c' else '')
+    rts = f'-M{cap - 600}m -s{stats}' + (' -c' if rung == 'c' else '')
     env = dict(os.environ, GHCRTS=rts)
     env.pop('AGDA_DIR', None)
     # The module itself is always checked from scratch: an interface left by a manual check in

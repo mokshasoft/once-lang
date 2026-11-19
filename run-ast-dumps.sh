@@ -15,7 +15,7 @@
 #
 #   ./run-ast-dumps.sh              # master and the current branch
 #   ./run-ast-dumps.sh master       # one ref
-#   HEAP=8G ./run-ast-dumps.sh      # more heap if a module still does not fit
+#   AGDA_SAFE_MEM_MAX=4G HEAP=3400m ./run-ast-dumps.sh  # more room if a module does not fit
 #   PROGRESS=30 ./run-ast-dumps.sh  # a progress line every 30 s (default 60; 0 = off)
 #
 # Used by MERGE.md §6 (reachability) and plan 0.92/D277 (apex-live scope).
@@ -35,6 +35,7 @@
 set -uo pipefail
 
 REPO="${REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
+SAFE="$REPO/formal/scripts/agda-safe.sh"
 OUT_DIR="${OUT_DIR:-$REPO}"
 WORK="${WORK:-$HOME/.cache/once-ast-runs}"
 # Pick the most recently built agda under dist-newstyle rather than naming one
@@ -63,18 +64,20 @@ RUNS_ENTRY="${RUNS_ENTRY-Once.Extract.Root.runs}"
 RUNS_MODULE="${RUNS_MODULE:-Once/Extract/Root.agda}"
 RUNS_SLUG="${RUNS_SLUG:-runs}"
 
-# Cap Agda's heap so a runaway module raises a clean heap-overflow instead of
-# inviting the kernel OOM killer to take the whole session down -- that is what
-# happened on the first attempt at this run.
+# Every Agda run goes through formal/scripts/agda-safe.sh (a cgroup memory cap,
+# 3300M by default) with a heap limit below it, so a runaway module raises a
+# clean heap-overflow instead of inviting the kernel OOM killer.
+#
+# The entry's cone is checked one module per process first (check-cone.py);
+# the dump's own run then only loads fresh interfaces. Plan 0.152 E measured
+# that run at 2.54 GB live, 2.90 GB RSS, with HEAP=2700m and -c. One process
+# over a cold cone holds everything it checked and does not fit.
 #
 # COMPACT picks the old generation's collector. The default copying collector
 # needs room for a second copy of the live data during a major collection; `-c`
-# compacts in place instead. Plan 0.152 (2026-11-17) measured the dump's live
-# data at ~3 GB whatever the number of modules checked in the process, and
-# Once.Metatheory.Laws.Combinators stale: 6G/-c20 runs out of heap with 3.9 GB
-# in use, 6G/-c passes in the same time (275 s). Hence 6G with -c.
+# compacts in place instead.
 #
-HEAP="${HEAP:-6G}"
+HEAP="${HEAP:-2700m}"
 COMPACT="${COMPACT:--c}"
 ALLOC="${ALLOC:-16m}"
 RTS_OPTS=(-M"$HEAP" "$COMPACT" -A"$ALLOC" -s)
@@ -223,6 +226,13 @@ run_ref() {
     closure_of "$dir" "$entry_module" > "$list" 2>/dev/null || : > "$list"
   fi
 
+  say "  the cone of $entry_module, one module per process"
+  python3 "$REPO/formal/scripts/check-cone.py" --dir "$dir" "$entry_module" -- \
+    env -u AGDA_DIR LC_ALL="$LOCALE" "$SAFE" --exec \
+    "$AGDA" +RTS "${RTS_OPTS[@]}" -RTS --library-file="$libs" --transliterate -vwarning:1 \
+    | sed 's/^/  /'
+  [ "${PIPESTATUS[0]}" -eq 0 ] || return 1
+
   while :; do
     attempt=$((attempt + 1))
     before=$(find "$dir" -name '*.agdai' | wc -l)
@@ -238,7 +248,7 @@ run_ref() {
     fi
 
     ( cd "$dir" && unset AGDA_DIR && LC_ALL="$LOCALE" \
-      "$AGDA" +RTS "${RTS_OPTS[@]}" -RTS \
+      "$SAFE" --exec "$AGDA" +RTS "${RTS_OPTS[@]}" -RTS \
         --library-file="$libs" --transliterate -vwarning:1 \
         --write-ast="$entry" --ast-file="$raw" \
         "$entry_module" ) >> "$log" 2>&1
@@ -267,7 +277,7 @@ run_ref() {
         if [ -n "$culprit" ]; then
           say "  giving up: $culprit does not fit in $HEAP with $COMPACT."
           say "  retry that ref alone with more headroom, e.g.:"
-          say "    HEAP=8G $0 $REF_LABEL"
+          say "    AGDA_SAFE_MEM_MAX=4G HEAP=3400m $0 $REF_LABEL"
         else
           say "  giving up; last lines of $log:"
           tail -20 "$log" | sed 's/^/    /'
