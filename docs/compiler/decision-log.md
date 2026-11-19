@@ -24237,7 +24237,7 @@ image of the new path now (a design for exported entry points with no consumer).
 **Proposed** (the user's discussion, 2026-11-19; for review). **Applies**: plan 0.146 §4 (the layer above the
 core), the plan that follows it; GOAL.md ("Programming is mathematics"); the Spec's core (D231); plan-ref's
 OCP-0009 (`bootstrap/poc/OCP0009/ARCHITECTURE.md` K0/K1, `PATHS.md`). **Amends**: D455 ("the IR optimizer's
-passes move to the linear core"). **Would supersede**, once carried out: D035 (two stages: surface, then a
+passes move to the linear core"); D456 (the bridge's source is `Expr`: it becomes the Spec term's derivation). **Would supersede**, once carried out: D035 (two stages: surface, then a
 point-free core IR), D046 (the grade-erased IR).
 
 ### The problem
@@ -24283,21 +24283,38 @@ calls for, argued from GOAL.md, the Spec and plan-ref, not from what the code do
 ### Decision (proposed)
 The pipeline:
 ```
-parse → resolve → check + elaborate         the Spec's graded calculus (proved against the Spec)
-  → [L1] reduction passes, same calculus     β (pure), case-of-known-constructor, ×/+/Unit η, δ (inline a
+parse → resolve → check + elaborate         (t : Tm, d : its core derivation, graded): the Spec's calculus
+                                             (proved against the Spec)
+  → [L1] t ⟶* t′, one reduction relation     β (pure), case-of-known-constructor, ×/+/Unit η, δ (inline a
                                              reference), fold fusion, dead code (pure, affine); each rule
-                                             sound for Spec.Core.Meaning, typing kept by subject reduction
-  → Lq into the linear core                  usage → split/dup/drop; the one bridge, against the Spec's meaning
+                                             sound for Spec.Core.Meaning; d′ for t′ by subject reduction,
+                                             proved ONCE for the relation (sr, sr*), not per pass
+  → Lq over the derivation d′                usage → split/dup/drop (the POC's Lq⟦_⟧ : Γ ⊢[ρ] A → LTm);
+                                             the one bridge, against the Spec's meaning
   → [L2] resource passes, linear core        SMC/comonoid laws (Lq's moves), free at last use, reuse in place
                                              (D425), borrowing (D417 pt 3), layers in place (B1.8), direct
                                              calls (D409 labels), arith blocks (D459); core meaning + NoLeak
   → image → room checks → arch backend
 ```
 * **D455 amended**: the β/η family goes to L1; only resource optimizations go to the linear core.
-* **L1's terms** are the compiler's `Expr Γ Ψ A` (intrinsically typed and graded: a pass keeps typing by
-  construction; its meaning reaches the Spec by the existing realization), not the Spec's extrinsic `Tm`.
-  The rules are stated once, as a reduction relation, so the dependent kernel's conversion can later be built
-  on the same relation. To confirm with the user.
+* **L1's terms are the Spec's `Tm`**, raw de Bruijn with the extrinsic graded judgment (amended, the user,
+  2026-11-19). D231: the Spec's core "is the non-dependent fragment of the POC's kernel. The dependent kernel
+  extends this judgment. It is never a second one." So rules written on `Tm` grow into the kernel, and the
+  dependent kernel's conversion is later built on the same relation (its symmetric part, plan-ref's
+  `core(Hom)`). This is plan-ref's own shape: raw terms, one reduction relation, `sr` once, passes as `⟶*`,
+  stable under substitution (`NbEPDirDBPass`). Rules written on the compiler's intrinsic `Expr Γ Ψ A` would be
+  rewritten for dependent types (`Expr` is the current checker's output), and their per-rule index work (Ψ
+  vectors, context splits) is not needed once subject reduction is one theorem.
+* **The checker outputs the Spec term and its derivation as data** (D456's rejected alternative, now taken).
+  Mostly shared with the proofs already: the checker's witness `TypeCheck.Witness.W⇒ L e A t Ψ =
+  Σ[ d ∈ L ⊢ e ⇒ A ↝ t ] Use⇒ d Ψ` is the Spec's surface derivation naming `t`, and the verified checker
+  returns it beside its result (`checkElabV ctx e A ≡ (success Ψ eE dd f , w)`). Owed: (i) the witness at
+  the program's own table (`WI`/`WC` hold for every `Pack`); (ii) the shipped checker keeping it (today
+  `Verified` takes `proj₁`; extraction size and speed to measure); (iii) the core judgment's derivation of
+  `t` from the surface derivation and its usage (likely in `Adequacy/SpecCore`, to check); (iv) subject
+  reduction of the graded core judgment for L1's rules (typed substitution exists in `Spec.Metatheory`; usage
+  scaling under β is new). `Lq` moves from `Expr` to the core derivation, the POC's original form; `Expr`
+  becomes the checker's internal detail.
 * **`Once.IR` retires** in this order: (1) measure on master which optimizer rules pay (`codegen-measure`,
   `--opt` against none, per rule where possible); (2) port those to L1/L2 with proofs; (3) re-target `Lq-ok`
   and the meaning half of the front end's bridge at `Spec.Core.Meaning`, so the IR leaves the proof chain;
@@ -24314,3 +24331,6 @@ parse → resolve → check + elaborate         the Spec's graded calculus (prov
   and leave the relation the dependent kernel's conversion will use.
 * Optimizations inside the elaborator: the checker's proof and the inspector would be about a term the
   source does not state.
+* L1 over the compiler's `Expr` (this entry's first draft): typed by construction, but every pass rebuilds
+  usage indices, and the work does not carry to the dependent kernel. The draft's reason, that `Tm` needs
+  subject reduction per pass, was wrong: it is one theorem about the relation.
