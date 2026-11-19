@@ -23,7 +23,7 @@ open import Data.Sum using (_⊎_)
 open import Once.CCC.Codegen.ImageSymbols using (adefs; arefs; entry-symbol)
 open import Once.Target.AsmSymbol using (AsmSym)
 open import Once.Arith.Machine.IR using (ArithBlock)
-import Once.Compile
+import Once.Compile.Emit
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Membership.Propositional.Properties using (∈-++⁺ˡ; ∈-++⁺ʳ)
 open import Data.List.Relation.Unary.Any using (here; there)
@@ -62,7 +62,7 @@ ext-syms (i ∷ is) = ext-sym i ++ ext-syms is
 -- defines `once_main`, the image's labels and its blocks' symbols; each once; each reference
 -- among them or the externs; every extern a symbol `as` reads
 Defs : AbstractTrace → List ArithBlock → List String
-Defs t bs = entry-symbol ∷ adefs t ++ Once.Compile.block-syms bs
+Defs t bs = entry-symbol ∷ adefs t ++ Once.Compile.Emit.block-syms bs
 
 ImageWF : AbstractTrace → List ArithBlock → List String → Set
 ImageWF t bs ex = Unique (Defs t bs) × All (λ s → s ∈ Defs t bs ⊎ s ∈ ex) (arefs t) × All AsmSym ex

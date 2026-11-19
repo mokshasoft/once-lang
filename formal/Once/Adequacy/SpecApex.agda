@@ -42,6 +42,7 @@ import Once.IRTy
 import Once.Spec.Type
 import Once.Denotation.Admissible
 import Once.Compile
+import Once.Compile.Emit
 import Once.LinCore.Emit
 
 module Once.Adequacy.SpecApex
@@ -51,7 +52,7 @@ module Once.Adequacy.SpecApex
                   (ir : Once.IR.IR (Once.IRTy.⌊_⌋ (Once.Spec.Type.Unit {0})) (Once.IRTy.⌊_⌋ (Once.Spec.Type.Unit {0}))) →
                 Once.Denotation.Admissible.AdmissibleM arch (Once.Parser.Module.Core.Resolved.rmodule m) →
                 Once.Compile.moduleToIR m ≡ Data.Maybe.just ir →
-                Data.Product.Σ (Once.Compile.FileOf arch) (λ F → Once.LinCore.Emit.coreFileOf arch doOpt m ≡ Data.Sum.inj₂ F)) where
+                Data.Product.Σ (Once.Compile.Emit.FileOf arch) (λ F → Once.LinCore.Emit.coreFileOf arch doOpt m ≡ Data.Sum.inj₂ F)) where
 
 open import Data.Bool using (Bool)
 open import Data.List using (List; map)
