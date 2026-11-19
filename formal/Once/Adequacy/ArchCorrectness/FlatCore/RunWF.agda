@@ -119,7 +119,7 @@ open import Once.Type using (fits-int; fits-float)
 -- i.e. `matchCall j ≡ nothing`. (The one absurd case is `call-sym`, ruled out by
 -- the halt clash; every other instruction is `matchCall … = nothing` definitionally.)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunContext o FS slot-size word-eq
-open RunAt using (run-emit; run-ir; run-tbl; run-linked)
+open RunAt using (run-em; run-reach)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open FlatStepsAPI {FS} using ([]; _∷_)
 

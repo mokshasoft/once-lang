@@ -162,7 +162,8 @@ module AR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open RunW {FS} ds f ldConst ld-nl wordOf using (AgreesAll)
   open Relate {FS} ds f ldConst ld-nl wordOf using (Related; module Related)
   open IosG {FS} ds f ldConst ld-nl wordOf using (here-prim)
-  open FlatMachine {FS} using (FlatState; floc)
+  open FlatMachine {FS} using (FlatState; module FlatState)
+  open FlatState using (floc)
 
   -- a trace with no halt: the history after it is the history and its events
   wtr-hist : ∀ {L L₁} t → WTr Wι L t L₁ → NoHalt t → L₁ ≡ L ++ evsOf t

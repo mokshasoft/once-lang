@@ -50,7 +50,8 @@ import Once.LinCore.Moves
 module SimR {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue FS) where
   open Rel {FS} U wordOf
   open Sim {FS} U wordOf using (<ᵇ-true; size-with-same)
-  open FlatMachine {FS} using (FlatState; floc; falloc; fpc; fret; fetch)
+  open FlatMachine {FS} using (FlatState; fetch; module FlatState)
+  open FlatState using (floc; falloc; fpc; fret)
   open FlatStepsAPI {FS} using (FlatSteps; step-at; FlatSteps-++) renaming ([] to done)
   open LocState using (heapMem; stackMem) renaming (halted to fhalted)
   open import Once.CCC.Machine.SMPrimitives using (module MemoryOps)

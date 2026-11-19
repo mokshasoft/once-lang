@@ -45,7 +45,7 @@ open import Once.CCC.Machine.Flat using (module FlatMachine)
 
 module FlatStepsAPI {FS : FrameSemantics} where
   open FlatMachine {FS}
-  open FlatState using (floc; fpc)
+  open FlatState using (floc; fpc; falloc)
 
   -- A chain of `k` non-halted `exec-flat` steps from `fs` to `fs'`. Each
   -- link carries its halted+fetch evidence; the next state is forced by

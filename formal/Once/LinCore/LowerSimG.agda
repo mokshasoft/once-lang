@@ -30,6 +30,7 @@ open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 module Once.LinCore.LowerSimG {FS : FrameSemantics} where
 
 open FlatMachine {FS}
+open FlatState
 open FlatStepsAPI {FS} using (FlatSteps; step-at)
 open import Once.LinCore.Moves {FS} using (Seg; slot; lea-step; mov-out-step; store-step; store-same; store-other; store-frame; restore-step; addr-step; load-step; mov-in-step)
 open import Once.LinCore.LowerSimE {FS} using (callee-frame; clear-other)

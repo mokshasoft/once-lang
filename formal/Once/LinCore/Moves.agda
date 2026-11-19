@@ -35,6 +35,7 @@ open import Once.CCC.Machine.FlatLog using (module LogPres)
 module Once.LinCore.Moves {FS : FrameSemantics} where
 
 open FlatMachine {FS}
+open FlatState
 open FrameSemantics FS using (Frame; _≟F_)
 open MemOps {FS}
 open LocState

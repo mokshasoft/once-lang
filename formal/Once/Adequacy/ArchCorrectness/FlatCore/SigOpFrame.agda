@@ -61,7 +61,7 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Empty using (⊥)
 open import Data.List using (List; []; _∷_)
 open import Relation.Nullary using (¬_)
-open import Relation.Binary.PropositionalEquality using (refl; sym; trans; subst)
+open import Relation.Binary.PropositionalEquality using (refl; sym; trans; subst; cong)
 open import Once.SigOp.Info using (SigOpInfo)
 import Data.Bool.Properties
 open import Once.CCC.Machine.Flat using (module FlatMachine)

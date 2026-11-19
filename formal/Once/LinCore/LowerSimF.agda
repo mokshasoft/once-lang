@@ -53,7 +53,8 @@ import Once.LinCore.Moves
 module SimF {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue FS) where
   open Rel {FS} U wordOf
   open Sim {FS} U wordOf
-  open FlatMachine {FS} using (FlatState; floc; falloc; fpc; fret)
+  open FlatMachine {FS} using (FlatState; module FlatState)
+  open FlatState using (floc; falloc; fpc; fret)
   open FlatStepsAPI {FS} using (FlatSteps; step-at; FlatSteps-++)
   open import Once.LinCore.Moves {FS}
     using (Seg; Seg-++ˡ; Seg-++ʳ; slot; mvPS-run; MovedP; p-moved; p-rest; p-heap; p-halt; p-log; p-pc; p-alloc; p-ret; p-clo; p-link; p-in; p-frame; restore-step; Ran; ranP; ran-trans; ran-regs; gate-stack)

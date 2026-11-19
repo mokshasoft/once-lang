@@ -195,7 +195,8 @@ module Sim {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
   -- the words a move leaves at its destination
   open import Once.LinCore.Moves {FS} using (Seg; slot; mvSS-run; MovedS; m-moved; m-rest; m-heap; m-halt; m-pc; Keep; keep-refl; keep-trans; keepS; keepP; keepF; keepW; keep-regs; keep-store; keep-pc; keep-heap; Ran; ran-trans; ranS; ranP; ranF; ranW; ran-regs; ran-store; ran-pc; ran-heap; fresh-block; ran-hi; pred<; inb-write) renaming (ln to nsteps)
   open import Once.CCC.Machine.Flat using (module FlatMachine)
-  open FlatMachine {FS} using (FlatState; floc; falloc; fpc)
+  open FlatMachine {FS} using (FlatState; module FlatState)
+  open FlatState using (floc; falloc; fpc)
   open import Once.CCC.Machine.SMCore using (module LocState; module AllocState)
   open LocState using (heapMem) renaming (halted to fhalted)
   open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)

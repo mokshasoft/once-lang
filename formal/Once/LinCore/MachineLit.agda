@@ -30,7 +30,8 @@ private
 open import Once.LinCore.Core fmt
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Labels fmt ans bw using (module NoLabels)
-open FlatMachine {Mach} using (FlatState; floc; fpc; flat-exec-instr)
+open FlatMachine {Mach} using (FlatState; flat-exec-instr; module FlatState)
+open FlatState using (floc; fpc)
 
 -- the load: the machine's literal load at the payload
 -- (the compiler's: `Loader`)
