@@ -92,6 +92,7 @@ wkT (t-def d e ts) = t-def (suc d) e (wkT ts)
 module _ {s} {S : Defs s} where
 
   module VS = TView Σ S
+    using (Declared; ImportAt; View; declared; def)
 
   impAt : ∀ {imps} → ImpSig S imps → ∀ {x T′} → lookupImport imps x ≡ just T′ → VS.ImportAt x T′
   impAt [] ()

@@ -90,6 +90,7 @@ PolyAlg = record
 ------------------------------------------------------------------------
 
 module Gen′ = Gen PolyAlg
+  using (ParsesTypeG; typeShrink)
 module Make′′ = P.Make PolyAlg renaming (typeP to parsePolyTypeP)
 module Make′ = S.Make PolyAlg renaming (sound-type to sound-polyType)
 module Make = C.Make PolyAlg renaming (complete-type to complete-polyType)

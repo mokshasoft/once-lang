@@ -96,7 +96,9 @@ module CataConstC {FS : FrameSemantics} where
   open CataRunC {FS} using (module Run)
   open CataCallC {FS} using (callK; callA; callB)
   module GetC′ = GetC {FS}
+    using (offset-zero)
   module InjC′ = InjC {FS}
+    using (src-loc)
   open CataStepsC {FS} using (HeadOK; mov-head; box-head)
   open LocState using (regs; halted)
   open AllocState using (next-slot; next-heap-ref)
@@ -128,8 +130,10 @@ module CataConstC {FS : FrameSemantics} where
               where
 
     module T = Text wf alg n l h
+      using (CK; L; emitted-eq; l1; module At)
     module TA = T.At prog base (subst (SpanAt prog base) (T.emitted-eq st) span)
                                (subst (LabelsAt prog base) (T.emitted-eq st) la)
+      using (span-callK; span-setup)
 
     σ : FlatState
     σ = entry-flat base s alloc cl rs
@@ -137,6 +141,7 @@ module CataConstC {FS : FrameSemantics} where
     so : SetupOut E (proj₁ x) n T.l1 prog σ (SV-Ptr (AtDynamic μhl))
     so = Setup.out E n T.l1 prog σ TA.span-setup nh pl rdi lpl cE (SV-Ptr (AtDynamic μhl)) rdμ
     module SO = SetupOut so
+      using (bk; cf; cl; code; env-sv; ev; hc; hr; inμ; keep; lhc; nh; pc; ret; runS; seg; src; u)
 
     hrU : next-heap-ref alloc ≤ next-heap-ref (falloc SO.u)
     hrU = ≤-trans (n≤1+n _) (≤-reflexive (sym SO.hr))
@@ -150,6 +155,7 @@ module CataConstC {FS : FrameSemantics} where
            (FlatPut.src-tr {FS} {prog} SO.keep srcL)
            (live-from alloc (falloc SO.u) hrU) SO.bk SO.cf
     module CO = CallOut co
+      using (bk; clo; code; hp; inp; lhp; nh; pairV; pc; ret; runK; seg; w)
 
     lenK : T.CK ≡ DL.length (callA (head-instr h) E T.L n) + (1 + 2)
     lenK = length-++ (callA (head-instr h) E T.L n) {SMCore.instr-save-closure-reg ∷ callB n}

@@ -75,7 +75,9 @@ open X64.State using (regs; memory)
 import Once.Spec.Word as OnceWord
 import Once.Word as OnceWordL
 module W = OnceWord.Word64
+  using (_%ˢ_; _/ˢ_; _⊕_; _⊖_; _⊗_; fromℤ; toℤ; ⊝_)
 module WL = OnceWordL.WidthLaws 64
+  using (sdiv2ᵏ; shlᵂ)
 open import Data.Nat using (_*_)
 open import Data.Maybe using (just; nothing)
 

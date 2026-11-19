@@ -121,6 +121,7 @@ module CataBuildC {FS : FrameSemantics} where
   open FlatEventTrace {FS} using (chain-events-subst)
   open ClosureWellFormedBase {FS} using (Pad; cell-ptr; cell-inline; cell-flat)
   module SR = StraightRunAPI {FS}
+    using (after; straight-silent; straight-steps)
 
   arm-val : ∀ (r : Arm) {A B : IRTy} → ⟦ arm-ty r A B ⟧ → ⟦ A +ᵀ B ⟧
   arm-val arm-l x = inj₁ x
@@ -211,6 +212,7 @@ module CataBuildC {FS : FrameSemantics} where
            (FlatAlloc.alloc-live {FS} N a) (≤-trans (m≤m+n (size B) (size C)) S≤N)
            (FlatAlloc.alloc-in {FS} N a) (src-tr keep₃ srcB)
     module PB = PutOut PB
+      using (alloc-eq; cell-at; live; other)
     sB = proj₁ (exec-trace (put B k₁ kb 0) t₃ A₁)
 
     keepB : ∀ l → Live a l → readLoc sB l ≡ readLoc t₃ l
@@ -223,6 +225,7 @@ module CataBuildC {FS : FrameSemantics} where
            (FlatAlloc.alloc-live {FS} N a) S≤N (FlatAlloc.alloc-in {FS} N a)
            (src-tr (λ l lv → trans (keepB l lv) (keep₃ l lv)) srcC)
     module PC = PutOut PC
+      using (alloc-eq; cell-at; live; other)
     sC = proj₁ (exec-trace (put C k₂ kb (size B)) sB A₁)
 
     sfin = record sC { regs = writeReg (regs sC) Output blk }
@@ -415,6 +418,7 @@ module CataBuildC {FS : FrameSemantics} where
                           (FlatAlloc.alloc-in {FS} N alloc (suc (size P) + j) (pad< j j<)))
     sf = proj₁ (exec-trace (fill (suc (size P)) c) s₇ A₁)
     module F = FillOut F
+      using (alloc-eq; live; other; written)
 
     slot-nf : readLoc sf (AtStack cf k) ≡ just w
     slot-nf = trans (F.other (AtStack cf k) (λ j _ ())) slot-n₇
@@ -443,6 +447,7 @@ module CataBuildC {FS : FrameSemantics} where
            (src-tr keepf src)
     sp = proj₁ (exec-trace (put P k (suc k) 1) sf A₁)
     module Pt = PutOut Pt
+      using (alloc-eq; cell; live; other)
 
     sfin = record sp { regs = writeReg (regs sp) Output blk }
 

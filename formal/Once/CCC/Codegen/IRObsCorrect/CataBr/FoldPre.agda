@@ -132,6 +132,8 @@ module CataFoldPreC {FS : FrameSemantics} where
              (sn hc : HeapLocation) (e : ⟦ E ⟧) (env-sv : StoredValue FS) where
 
     module FA = FoldAt wf alg n l prog base span la
+      using (CK; KK; RL; X; Y; Z; exit-label; fetch-mti; lr; rb-labels; rbTxt; span-KK; span-hd
+            ; span-rb; module T)
     open FA using (X; Y; Z; CK; KK; RL; lr; rbTxt; span-hd; span-rb; rb-labels; fetch-mti; span-KK; exit-label)
 
     c bodyL l1 : ℕ
@@ -182,6 +184,7 @@ module CataFoldPreC {FS : FrameSemantics} where
               (h : HeadAt σ (t ∷ ns) vs) where
 
       module H = HeadAt h
+        using (cl; code; env; ev; eval; hc-lt; nh; ns0; pc; val)
 
       ------------------------------------------------------------------
       -- 1. the pop
@@ -195,6 +198,7 @@ module CataFoldPreC {FS : FrameSemantics} where
       τP : FlatState
       τP = Walk.τ wP
       module PQ = FoldHead.PopQ (Walk.post wP)
+        using (eval; node; val)
 
       pcP : fpc τP ≡ 8 + X
       pcP = trans (Walk.pc wP) (cong (8 +_) H.pc)
@@ -212,6 +216,7 @@ module CataFoldPreC {FS : FrameSemantics} where
       τR : FlatState
       τR = Walk.τ wR
       module RQ = Rebuild.RQs (Walk.post wR)
+        using (out; stack)
 
       pcR : fpc τR ≡ RL + (8 + X)
       pcR = trans (Walk.pc wR) (cong (RL +_) pcP)
@@ -275,6 +280,7 @@ module CataFoldPreC {FS : FrameSemantics} where
              (trans (proj₂ (proj₂ kpA) _ live-shc) H.code) (proj₁ kpA _ live-shc)
              (word-tr kpA H.env) (word-tr kpM RQ.out) (λ _ lv → lv) bk-id refl
       module CO = CallOut co
+        using (bk; cf; cl; clo; code; ev; hp; hr; inp; lhp; nh; pairV; pc; ref-hp; ret; runK; seg; w)
 
       w : FlatState
       w = CO.w

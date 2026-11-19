@@ -91,12 +91,19 @@ module TwoCellC {FS : FrameSemantics} where
   open TwoCellRunC {FS}
   open TwoCellBuildC {FS}
   module BC = BlockCallC {FS}
+    using (bk-enter; block-call; callee-alloc; callee-heap; callee-loc; entry-call-gen; live-callee
+          ; place-across; module Layout)
   module NF = NuForceC {FS}
+    using (SeedKept; force-layer; in-foot; in-foot-live)
   open NF using (SeedKept)
   module AF = AnaForceC {FS}
+    using (module AnaBlock)
   module CP = CurryProC {FS}
+    using (module Pro)
   module InjC′ = InjC {FS}
+    using (mk-src; src-loc)
   module CTC = CopyTwoCellC {FS}
+    using (copy-two-cell-trace; module CopyRun)
 
   -- D399 (β2): where the closure's ENVIRONMENT is, in the build's end state:
   -- the word in cell 0 is a scalar (`env-reg`), anything for a `Unit`
@@ -367,7 +374,9 @@ module TwoCellC {FS : FrameSemantics} where
               (cl : StoredValue FS) (rs : List ℕ) (n≤ : AllocState.next-slot alloc ≤ n) (nh : halted s ≡ false)
               (span : SpanAt prog base (two-cell-trace n l)) where
     module TCR = TwoCellRun n l prog base s alloc cl rs n≤ nh span
+      using (cell0v; fs10; obj-loc)
     module TCB = TwoCellBuild n l prog base s alloc cl rs n≤ nh span
+      using (before-suc; bf-advance; blocks-kept; cell0-fs10; code-fs10; mem-pres)
 
     kept : SeedKept alloc s (falloc TCR.fs10) (floc TCR.fs10)
     kept = (λ _ b → live-lift TCB.bf-advance b) , TCB.blocks-kept , (λ l′ b → TCB.mem-pres l′ (live-ns n b))

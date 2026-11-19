@@ -28,6 +28,7 @@ open import Once.Spec.Float.Dyadic using (binary64)
 open import Once.Float.Word using (round)
 import Once.Spec.Word as OnceWord
 module IntW = OnceWord.Width 64
+  using (fromℤ)
 open import Once.Semantics.Machine using (LitPayload)
 
 ------------------------------------------------------------------------

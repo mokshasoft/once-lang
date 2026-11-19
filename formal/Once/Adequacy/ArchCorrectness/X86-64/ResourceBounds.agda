@@ -38,6 +38,7 @@ import Once.CCC.Target.X86-64.Semantics as X
 import Once.Spec.Word as W64
 import Once.Word as W64L
 module W = W64.Width 64
+  using (modulus)
 module WL = W64L.WidthLaws 64
 open import Once.CCC.Machine.SMCore
   using (AbstractTrace; instr-ctrl; c-ret; instr-load-tag-lit; instr-load-const)

@@ -72,3 +72,4 @@ AgreeCCC-trans (mkAgree p0 p1 p2 p3 p4 p5 p6 p7 p8 p9 p10 p11 p12 p13 p14 p15) (
 import Once.Arith.Backend.PreserveCore
 module PreserveCore = Once.Arith.Backend.PreserveCore
   writeReg NotCCC AgreeCCC agree-refl-ccc AgreeCCC-trans write-nonccc-agrees writes confined
+  using (step-of; step-of-preserves; write-regs)

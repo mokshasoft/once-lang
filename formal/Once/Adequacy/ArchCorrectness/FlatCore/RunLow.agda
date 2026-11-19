@@ -140,6 +140,7 @@ open RoomFacts {FS} using (find-entry-room)
 
 private
   module L = RoomSim {FS}
+    using (lift; ret-map)
 
 -- a fact about one non-check instruction `I`, from the base run's, when the fact
 -- speaks of the state only through what the lift keeps (memory, frames)

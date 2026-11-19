@@ -60,7 +60,9 @@ import Once.Word as OnceWordL
 -- explicit width rather than the `Word64` alias so it reads as a claim about
 -- THIS target rather than as the default nobody chose (plan 0.74 J5).
 module W = OnceWord.Width 64
+  using (_%ˢ_; _/ˢ_; _⊕_; _⊖_; _⊗_; fromℤ; toℤ; ⊝_)
 module WL = OnceWordL.WidthLaws 64
+  using (sdiv2ᵏ; shlᵂ)
 import Once.Adequacy.ArchCorrectness.ArithSimCore as ASC
 open import Once.Target.Arch using (riscv64; arch-numerics)
 -- Plan 0.74 J5: the shared correspondence core, applied at THIS target's
@@ -460,6 +462,7 @@ module _ (N : ℕ) where
     -- rt-fcmp (peel a0, as rt-sdiv)
     (λ o d a b s → trans (readReg-wr-a0-arith (writeReg (regs s) (arith-reg d) _) d _)
                          (readReg-wr-arith-same (regs s) d _))
+    using (IOksWF; R-input; arith-block-correct; leafWord)
 
 ------------------------------------------------------------------------
 -- plan 0.123 α′ (f3c): THE BLOCK'S ENTRY STATE. The dispatch enters the

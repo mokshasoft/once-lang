@@ -42,6 +42,7 @@ module _ (Σ : Signature) where
 
   private
     module TL = Once.Spec.Core.Program Σ
+      using (Tele)
   open import Once.Core.Translate Σ using (SigSig; s-ffi; ImpSig; TeleSig; SigIn)
   open import Once.Adequacy.ModuleProgram Σ using (Names; Fresh; names-ffi; fresh-ffi; toProgram)
 

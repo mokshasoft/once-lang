@@ -105,6 +105,7 @@ module InMuC {FS : FrameSemantics} where
   open Mach {FS}
   open NuForceC {FS} using (base-rt; cf-rt)
   module SR = StraightRunAPI {FS}
+    using (after; straight-silent; straight-steps)
   open SMCore.AbstractExec {FS} using (exec-trace)
   open FlatEventTrace {FS} using (chain-events-subst)
 

@@ -140,6 +140,7 @@ module Parts {mm : SR.ModuleMap} {dsU dsR : List S.Decl}
   dsR′ = proj₁ rd
   align = Al.align-of Σₛ (proj₂ (proj₂ rd)) adj xn
   module W = Wk Σₛ ps sg h-sig h-own h-psig (key-word kw)
+    using (EntriesOK; walk; module EntriesOK)
   eok : W.EntriesOK (Once.Module.scope sg [] []) es′
   eok = record
     { distinct = guard′ ; fresh = fresh-start es′ ; nosig = nosig-rest fs es′ guard

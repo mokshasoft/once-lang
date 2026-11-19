@@ -105,9 +105,13 @@ module Step {s} {S : SC.Defs s} {imps tele} (ss : SigSig sg) (is : ImpSig S imps
     module TR  = TyRen Σ S′ nm
     module TS  = TySubst Σ S′
     module DR⇒ = DefsRen Σ S′ S nm (ρ⇒ r)
+      using (chk; core; rn; syn)
     module DR⇐ = DefsRen Σ S S′ nm (ρ⇐ r)
+      using (chk; core)
     module SU₂ = Once.Spec.Surface.Typing Σ S nm
+      using (_⊢_⇐_↝_; ∅)
     module SC₂ = Once.Spec.Core.Typing Σ S
+      using (_⊩_⊢[_]_∷_!_)
 
   -- The body checks in the compiler, at its type, which is principal there.
   step : ∀ {a} (κ : ST.KCtx a) {T sc e e′ A′}
@@ -154,7 +158,9 @@ module Step {s} {S : SC.Defs s} {imps tele} (ss : SigSig sg) (is : ImpSig S imps
 
   private
     module SU′ = Once.Spec.Surface.Typing Σ S′ nm
+      using (_⊢_⇒_↝_; ∅)
     module SC′ = Once.Spec.Core.Typing Σ S′
+      using (_⊩_⊢[_]_∷_!_)
 
   -- A definition without a signature: its body synthesizes in the compiler,
   -- at a related type, which is principal there.
@@ -218,6 +224,7 @@ private
   nothing≢just ()
 
   module TR0 = TyRen Σ SC.[] (λ ())
+    using (⟨⟩-id; ⟨⟩-pt)
 
   -- an entry's type, read by the compiler
   entry-eff : ∀ {ty sc ρ} → SchRen (monoSchema ty) sc ρ → Entry sc

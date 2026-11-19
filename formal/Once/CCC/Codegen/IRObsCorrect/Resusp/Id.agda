@@ -93,6 +93,7 @@ module ResuspIdC {FS : FrameSemantics} where
   open GetC {FS} using (GetOut; module GetOut; get-run; setOut; offset-zero; get-len)
   open ResuspBaseC {FS}
   module SR = StraightRunAPI {FS}
+    using (At; after; straight-silent; straight-steps)
 
   private
     slot-of : ValueLocation FS → ℕ
@@ -213,6 +214,7 @@ module ResuspIdC {FS : FrameSemantics} where
              (FlatAlloc.alloc-bft {FS} N a) (FlatAlloc.alloc-bk {FS} N a) freshA (FlatAlloc.alloc-live {FS} N a)
              (≤-trans (m≤m+n (size E) (size A)) S≤N) (FlatAlloc.alloc-in {FS} N a) (src-tr (keep₃ {a}) srcE)
       module PE = PutOut PE
+        using (alloc-eq; cell-at; live; other)
       sE = proj₁ (exec-trace (put E (suc n) q 0) t₃ A₁)
 
       keepE : ∀ l → Live a l → readLoc sE l ≡ readLoc t₃ l
@@ -226,6 +228,7 @@ module ResuspIdC {FS : FrameSemantics} where
              freshB (FlatAlloc.alloc-live {FS} N a) S≤N (FlatAlloc.alloc-in {FS} N a)
              (src-tr (λ l lv → trans (keepE l (bftb l lv)) (keep₃ {b} l lv)) srcA)
       module PA = PutOut PA
+        using (alloc-eq; cell-at; live; other)
       sA = proj₁ (exec-trace (put A n q (size E)) sE A₁)
 
       ------------------------------------------------------------------

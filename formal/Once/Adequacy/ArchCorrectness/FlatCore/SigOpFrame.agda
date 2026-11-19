@@ -79,8 +79,10 @@ open import Data.Bool using (false)
 open import Data.Product using (∃)
 private
   module CFC = FC FS slot-size word-eq Reg roles State rreg memory xhalted
+    using (AddrMap; HeapView; Memory; RetAddrs; StackWindows; amap; enc-sv; frames-of; readMem; slots; windows-above; windows-lower; windows-reanchor; module FlatCorr; module HeapView)
   module CCC = CC o FS slot-size word-eq Reg roles State rreg memory xhalted link-claim
                  xpc Program compile-trace find-label blk-off blk-len exec modulus
+    using (CompiledCorr; module CompiledCorr)
 open CFC using (HeapView; Memory; readMem; StackWindows; RetAddrs; frames-of; amap; enc-sv; slots
                ; windows-above; windows-reanchor; windows-lower)
 open CFC.HeapView using (hfront; haddr; lo; dom-below)
@@ -183,6 +185,7 @@ sigop-arith-corr {hv} prog fs s s′ si {W} {v} cc room lk ar val hl pc′ = rec
 ------------------------------------------------------------------------
 private
   module CRL = RL o FS slot-size word-eq
+    using (RunLow; run-link-nothing; sigop-decodes)
 
 sigop-halts-pure : ∀ {A B} (si : SigOpInfo A B) (ls : LocState FS)
                  → effect si ≡ Pure

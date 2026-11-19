@@ -157,6 +157,7 @@ module CataToFoldC {FS : FrameSemantics} where
                where
 
     module T = Text wf alg n l
+      using (emitted-eq; l1; text′; module At; module Pc)
 
     span′ : SpanAt prog base T.text′
     span′ = subst (SpanAt prog base) (T.emitted-eq st) span
@@ -164,6 +165,7 @@ module CataToFoldC {FS : FrameSemantics} where
     la′ = subst (LabelsAt prog base) (T.emitted-eq st) la
 
     module TA = T.At prog base span′ la′
+      using (H; exit-label; head-label; span-flat; span-init; span-setup; visit-labels)
 
     c : ℕ
     c = T.Pc.cslot
@@ -196,6 +198,8 @@ module CataToFoldC {FS : FrameSemantics} where
     so : SetupOut E (proj₁ x) c T.Pc.bodyL prog σ μ-sv
     so = Setup.out E c T.Pc.bodyL prog σ (subst (SpanAt prog base) (sym T.Pc.setup-eq) TA.span-setup) nh pl rdi lpl cE μ-sv rdμ
     module SO = SetupOut so
+      using (bk; cf; cl; clo; code; env-sv; ev; hc; hr; inμ; keep; lnk; nh; pc; ref-hc; ret; runS
+            ; seg; src; u)
 
     env-sv : StoredValue FS
     env-sv = SO.env-sv
@@ -251,7 +255,9 @@ module CataToFoldC {FS : FrameSemantics} where
     -- …and what crosses them: the call slots and the record's code cell
     ------------------------------------------------------------------
     module KI′ = Keep wI
+      using (keep-heap; keep-slot)
     module KF = Keep wF
+      using (keep-heap; keep-slot; keep-stack)
 
     live-shc : Live (falloc u) (AtDynamic (sucHL SO.hc))
     live-shc = live-suc (BeforeFrontier.heap-before (subst (λ z → suc z ≤ next-heap-ref (falloc u)) (sym SO.ref-hc)

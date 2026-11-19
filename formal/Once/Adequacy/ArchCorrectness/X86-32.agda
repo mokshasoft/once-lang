@@ -159,6 +159,7 @@ entry-frame-x86-32 : X86-32Frame
 entry-frame-x86-32 = stack-addr X.stack-top stack-top-in-stack , 0
 
 module FFOx = FFO o tbl x86-32 x86-32-frame-semantics refl entry-frame-x86-32 (arch-semantics x86-32)
+  using (entry-alloc; entry-s; flat-cut; flat-ends; flat-fuel; image; start-flat; start-sound)
 
 -- A THEOREM: the entry frame IS the loader's `%esp`
 -- (`entry-frame-x86-32 = stack-addr stack-top _ , 0`) and `frame-base` on x86-32 is

@@ -45,6 +45,7 @@ open import Once.Float.Word using (round)
 open import Data.Integer using (ℤ)
 import Once.Spec.Word as OnceWord
 module IntW = OnceWord.Width 32
+  using (fromℤ)
 import Data.Nat as ℕ
 
 module Once.Adequacy.ArchCorrectness.X86-32.FlatSimulation
@@ -94,6 +95,7 @@ open import Relation.Binary.PropositionalEquality using (refl)
 
 import Once.Adequacy.ArchCorrectness.X86-32.FlatCorrespondence as FC
 module C = FC FS word-eq   -- HeapView / enc-sv / FlatCorr data fields
+  using (keeps-esi4-x86; sets-2roles-x86; sets-mem-x86; sets-role-x86; module FlatCorrespondence)
 open C using ()
 open C.FlatCorrespondence using (HeapView)
 open C.FlatCorrespondence.HeapView using (HDom; haddr)
@@ -145,6 +147,7 @@ module CompiledCorrespondence = Once.Adequacy.ArchCorrectness.FlatCore.CompiledC
        x86-32-link-claim
        X.State.pc Program compile-trace X.find-label blk-off blk-len X.exec
        X.W.modulus
+  using (BlockStep; BlockStepAt; BlockSteps; CompiledCorr; module CompiledCorr)
 open CompiledCorrespondence
 open CompiledCorrespondence.CompiledCorr using (dataCorr; ret-eq; code-eq; pc-off)
 

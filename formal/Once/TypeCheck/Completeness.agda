@@ -252,6 +252,8 @@ private
 module _ {m} {ctx : NamedCtx m} (P : Pack ctx) where
   private
     module SU = SUT (Sg P) (S P) (nm P)
+      using (CheckHead; DomainForm; OwnCheck; PartialCombinator; ch-comb₁; ch-comb₂; ch-lam; ch-map
+            ; ch-poly; oc-map; oc-pair; pc-bare; pc-one; s-app; s-app-spine; s-const)
   open SU using (PartialCombinator; CheckHead; OwnCheck)
 
   -- `s-app`: a head that synthesizes is applied.

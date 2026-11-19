@@ -139,9 +139,7 @@ import Once.CCC.Target.X86-64.Semantics as X
 -- the correspondence it re-exports) into this interface.
 import Once.Adequacy.ArchCorrectness.X86-64.FlatSimulation
 module FlatSimulation = Once.Adequacy.ArchCorrectness.X86-64.FlatSimulation o FS word-eq fmt-eq
-  using ( b-cmp-reg-imm; code-eq; room-step-x86
-        ; ret-eq; x86-64-block-steps; x86-64-link-claim; xrreg
-        ; module C; module CompiledCorrespondence )
+  using (b-cmp-reg-imm; room-step-x86; x86-64-block-steps; x86-64-link-claim; xrreg; module C; module CompiledCorrespondence)
 open FlatSimulation
 open FlatSimulation.CompiledCorrespondence using (CompiledCorr; module CompiledCorr)
 open FlatSimulation.CompiledCorrespondence.CompiledCorr using (dataCorr; pc-off)

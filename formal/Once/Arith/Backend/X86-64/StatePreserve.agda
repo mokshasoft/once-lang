@@ -19,3 +19,4 @@ open MemPreserveCore using (AgreeMemFrom; AgreeMemFrom-refl; AgreeMemFrom-trans)
 import Once.Arith.Backend.StatePreserveCore
 module StatePreserveCore = Once.Arith.Backend.StatePreserveCore
   regs memory AgreeCCC agree-refl-ccc AgreeCCC-trans AgreeMemFrom AgreeMemFrom-refl AgreeMemFrom-trans
+  using (PreservesCCCState; mkPresState; preserves-state-refl; preserves-state-trans)

@@ -130,11 +130,17 @@ private
   Σ′ = (fresh ∶ operation unit Many unit) ∷ Σ
 
   module E′ = Effect Σ′
+    using (T∞; _>>=∞_; embed; performT; return∞)
   module O′ = Observation Σ′
+    using (World)
   module R′ = RunM Σ′
+    using (Run; RunB; ra-go; rb-call; rb-cut; rb-next; rb-ret; run)
   module RL′ = RunLaws Σ′
+    using (module Seq)
   module Rel′ = Relation Σ′
+    using (aWorld; bwd; fromObserved)
   module Tr′ = Trace
+    using (MaybeEnd)
 
   probeOp : Op Σ′
   probeOp = op (here refl)
@@ -219,7 +225,9 @@ discard-pure {Y} m h = found (Seq.split aWorld (λ _ → return∞ tt) m (proj�
 module _ {Σ″ : Signature} where
   private
     module E″ = Effect Σ″
+      using (BlockEq; T∞; _>>=∞_; _≈_; force; force≈; return∞; module _≈ν_)
     module B″ = Bisim Σ″
+      using (≈-bind; ≈-refl; ≈-reflB; ≈-sym; ≈-trans)
 
     byForce″ : ∀ {X} (m m′ : E″.T∞ X) → E″.force m ≡ E″.force m′ → E″._≈_ m m′
     E″._≈ν_.force≈ (byForce″ m m′ e) = subst (E″.BlockEq _ (E″.force m)) e (B″.≈-reflB (E″.force m))

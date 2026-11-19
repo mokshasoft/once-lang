@@ -77,6 +77,8 @@ module NuForceC {FS : FrameSemantics} where
   open MemOps′ using (readLoc)
   open LocState using (regs)
   module BC = BlockCallC {FS}
+    using (BodyRuns; bk-enter; block-call; block-call-gen; body-runs; callee-alloc; callee-heap
+          ; callee-loc; live-callee; true≢false; module Layout)
   open Simp {FS} using (obs-correct-id)
 
   ------------------------------------------------------------------------

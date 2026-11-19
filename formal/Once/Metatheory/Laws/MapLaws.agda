@@ -217,9 +217,13 @@ module MapId {m : ℕ} {Δ : KCtx m} (σ : TySub m 0) (r : Respects Δ ∅ₖ σ
 
 module MapComp {m : ℕ} {Δ : KCtx m} (σ : TySub m 0) (r : Respects Δ ∅ₖ σ) (A B C : Ty m) where
   module AB = MapAt Δ σ A B
+    using (CA; CB; Cov; CovF; Fn; FnF; mapS; muLayer; muMap; nuLayer)
   module BC = MapAt Δ σ B C
+    using (CA; CB; Cov; CovF; Fn; FnF; mapS; muLayer; muMap; nuLayer)
   module AC = MapAt Δ σ A C
+    using (CA; CB; Cov; CovF; Fn; FnF; mapS; muLayer; muMap; nuLayer)
   module WAC = CovWF {Δ = Δ} σ A C
+    using (wfA; wfB)
   private module Fn = Functor σ r
 
   -- `φ₃` is `φ₂` after `φ₁`.

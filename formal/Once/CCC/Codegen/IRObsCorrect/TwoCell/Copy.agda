@@ -112,6 +112,7 @@ module CopyTwoCellC {FS : FrameSemantics} where
     where
 
     module NC = NodeCopyC.Run {FS} {prog} E n s alloc nh
+      using (A₁; N; Nd; bf-mono′; cell-p; hfin; keep-bf; live-Nd; sfin; sp; whole)
     A₁ = NC.A₁
     s₁ = NC.sfin src
     s₂ = proj₁ (exec-abstract mov-to-input s₁ A₁)
@@ -145,7 +146,10 @@ module CopyTwoCellC {FS : FrameSemantics} where
     nh₂ = NC.hfin src
 
     module TCR = TwoCellRun (suc (suc n)) l prog base₂ s₂ A₁ cl rs n≤₂ nh₂ span₂
+      using (A₁; evs; nh10; obj-hl; obj-loc; sts; t₁₀; whole)
     module TCB = TwoCellBuild (suc (suc n)) l prog base₂ s₂ A₁ cl rs n≤₂ nh₂ span₂
+      using (before; before-suc; bf-advance; blocks-kept; cell0-fs10; code-fs10; heapref-≤; mem-pres
+            ; out-eq; valid-transport)
 
     T : AbstractTrace
     T = copy-two-cell-trace E n l

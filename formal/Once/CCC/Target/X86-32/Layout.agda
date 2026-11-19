@@ -75,13 +75,14 @@ x86-32-layout = record
 -- Hide Addr since we already export it from MLS above
 import Once.Memory.Regions
 module Regions = Once.Memory.Regions x86-32-layout
+  using (InHeap; InStack; stack-bounds)
 open Regions
-  hiding (Addr)
 
 -- Stack slots (slot-addr, StackPointer, etc.)
 -- Hide InStack since it's already exported from Regions
 import Once.Memory.StackSlots
 module StackSlots = Once.Memory.StackSlots x86-32-layout x86-32-stack-growth
+  using (StackPointer; _≟SP_; offset-distinct; slot-addr; stack-addr; stack-addr-inj; module StackAddr; module StackGrowth′)
 open StackSlots
   hiding (InStack; module Regions)
 open StackSlots.StackAddr using (addr)
@@ -90,6 +91,7 @@ open StackSlots.StackGrowth′ using (grow-identity)
 -- Frame operations (frameSlot, memory preservation)
 import Once.Memory.FrameOps
 module FrameOps = Once.Memory.FrameOps x86-32-layout x86-32-stack-growth
+  using (frameSlot; stackAddr-write-preserves-heap; module FrameSlotInternal)
 open FrameOps
 
 

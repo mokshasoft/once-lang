@@ -136,8 +136,10 @@ import Once.Adequacy.ArchCorrectness.FlatCore.RunLow as RL
 -- application is by alias), so the two `RunAt`s are one type.
 private
   module CFC = FC FS slot-size word-eq Reg roles State rreg memory xhalted
+    using (FlatCorr; HeapView; RetAddrs; descend-view; extend-view; frames-of; sep; slots; module FlatCorr; module HeapView)
   module CRC = RC o FS slot-size word-eq
   module CRL = RL o FS slot-size word-eq
+    using (RunLow)
 
 open CFC using (HeapView; FlatCorr; RetAddrs; frames-of; descend-view; extend-view; slots)
 open CFC.FlatCorr using (dom-fresh)

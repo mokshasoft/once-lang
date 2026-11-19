@@ -255,6 +255,8 @@ module At {m} {ctx : NamedCtx m} (P : Pack ctx) where
   module RS′ = RS (Sg P) (S P) (nm P) (OkOf P) (OkSOf P) (inline P) (kinds ctx) using (realize⇒; realize⇐; realize↦; ref)
   open RS′
   module SU = SUT (Sg P) (S P) (nm P)
+    using (CheckHead; Locals; PartialCombinator; _⊢_⇐_⇒[_]↦_↝_; _⊢_⇒_↝_; ch-comb₁; ch-comb₂; ch-lam
+          ; ch-map; ch-poly; pc-bare; pc-one; poly; s-app; s-app-spine; s-const; s-def; s-sigop)
 
   sh = shape-lo {Ok = OkOf P} {OkS = OkSOf P} {Δ = kinds ctx} (lr P)
   private
@@ -303,7 +305,9 @@ module At {m} {ctx : NamedCtx m} (P : Pack ctx) where
   -- polymorphic name, by the names' distinctness (`nm-inj`, `nm-sig`).
   private
     module B = Once.Metatheory.Surface.Basics (Sg P) (S P) (nm P)
+      using (0<0; map-comb; module Modes)
     module BM = B.Modes (kinds ctx)
+      using (noSyn-comb₁; noSyn-comb₂; noSyn-map)
     const-comb : ∀ {k n} → G.IsConstant k → G.IsCombinator n k → ⊥
     const-comb G.is-constant ()
 

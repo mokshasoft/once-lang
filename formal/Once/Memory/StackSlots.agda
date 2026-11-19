@@ -34,6 +34,7 @@ import Data.Nat.Properties as ℕP
 -- Import Regions for InStack and StackAddr
 import Once.Memory.Regions
 module Regions = Once.Memory.Regions layout
+  using (InStack)
 open Regions
   using (InStack)
 
@@ -73,6 +74,7 @@ f₁ ≟SP f₂ with addr f₁ ℕP.≟ addr f₂
 ------------------------------------------------------------------------
 
 module StackGrowth′ = StackGrowth sg
+  using (grow; grow-addr-injective; grow-identity; grow-injective)
 open StackGrowth′
   using (grow; grow-identity; grow-injective; grow-addr-injective)
 

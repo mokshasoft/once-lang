@@ -79,6 +79,7 @@ module _ (tn : TargetNum) where
     bits = int-bits tn
     module W  = SW.Width bits
     module WL = WidthLaws bits
+      using (%ˢ-in-range; /ˢ-in-range)
     b : ℕ
     b = pred bits
     eqb : bits ≡ suc b

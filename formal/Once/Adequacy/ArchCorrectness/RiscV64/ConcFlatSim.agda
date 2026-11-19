@@ -411,6 +411,7 @@ open import Once.Adequacy.ArchCorrectness.RiscV64.FlatCorrespondence FS word-eq 
 open FlatCorrespondence using (HeapView)
 -- plan 0.123 α′ (e): the arch-free frame lemma of an arith SigOp's run
 module CFr = FCr FS word-eq
+  using (module FlatCorrespondence)
 open import Once.Adequacy.ArchCorrectness.RiscV64.FlatComposition FS using (module FlatComposition)
 open FlatComposition using (blk-off; blk-len; blk-off-suc)
 open import Once.Adequacy.ArchCorrectness.FlatCore.SigOpFrame

@@ -73,6 +73,7 @@ module CataFoldBackC {FS : FrameSemantics} where
               (sn hc : HeapLocation) (e : ⟦ E ⟧) (env-sv : StoredValue FS) where
 
     module FA = FoldAt wf alg n l prog base span la
+      using (X; Z; fetch-jmp-head; head-label; headL; pushV; span-push; module T)
     open FA using (X; Z; span-push; fetch-jmp-head; head-label; headL)
 
     c bodyL : ℕ
@@ -108,12 +109,14 @@ module CataFoldBackC {FS : FrameSemantics} where
     module Go (τ : FlatState) (ns : List ⟦ μ-type F ⟧) (v : ⟦ C ⟧) (rest : List ⟦ C ⟧) (b : BackIn τ ns v rest) where
 
       module B = BackIn b
+        using (cl; code; env; ev; eval; hc-lt; nh; ns0; out; pc; val)
 
       pu : Push2Out (ValE prog C) prog n (n + 2) (n + 4) (n + 5) sn τ v rest
       pu = push2-run (ValE prog C) val-tr prog n (n + 2) (n + 4) (n + 5) sn τ v rest
              (subst (λ z → SpanAt prog z FA.pushV) (sym B.pc) span-push) B.nh
              (m≤m+n n 2) (m≤m+n n 4) (m≤m+n n 5) (off-≢ (λ ())) (off-≢ (λ ())) 4≢5 B.out B.val
       module PU = Push2Out pu
+        using (bk; cf; nh; pc; seg; slots; stack; τ)
 
       τ7 : FlatState
       τ7 = PU.τ

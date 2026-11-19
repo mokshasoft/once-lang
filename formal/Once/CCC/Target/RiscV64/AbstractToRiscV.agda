@@ -47,6 +47,7 @@ open import Once.Spec.Float.Dyadic using (binary64)
 open import Once.Float.Word using (round)
 import Once.Spec.Word as OnceWord
 module IntW = OnceWord.Width 64
+  using (fromℤ)
 open import Once.CCC.Target.RiscV64.Syntax
   using (ld; sd; sub; sltu; addi; li; lla; mv; beq; jal; jalr; j; ret; call-sym; bgeu-fwd; local-1; label; Program; slot-size; slots)
 open import Once.Target.RiscV64.PhysReg using (a0; t0; sp; s2; fp; t1; s1; ra; t2; zero)

@@ -76,7 +76,10 @@ module IterBodyC {FS : FrameSemantics} where
     open Loop body n l base
     open Anchor Z
     module I = RoundInv inv
+      using (bf0; bk0; bkF; cf; env; hr; inp; left; lnk; mem0; memF; mode; nh; ns; pc; ret; sf)
     module VR = ValueRealized
+      using (at-end; bf-mono; blocks-kept; cont-alloc; frame-pres; frames-pres; live; log; no-link
+            ; no-ret; out-mode; place; progress; run; settle; stack-pres; steps; stops)
 
     n≤n4 : n ≤ suc (suc (suc (suc n)))
     n≤n4 = ≤-trans (n≤1+n n) (≤-trans (n≤1+n (suc n)) (≤-trans (n≤1+n (suc (suc n))) (n≤1+n (suc (suc (suc n))))))

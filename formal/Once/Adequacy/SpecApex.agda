@@ -85,6 +85,7 @@ import Once.Adequacy.SpecGrammar.Written as Written
 import Once.Adequacy.SpecFront.TypedBack
 
 module VC = Compile.WithCPU arch-correct
+  using (Admissible; SigOf; compile; correctᵈ; exec; ⟦_⟧ᵈᴵ)
 
 ------------------------------------------------------------------------
 -- The compiler's reading of a Spec source

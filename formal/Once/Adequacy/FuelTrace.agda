@@ -217,7 +217,9 @@ module Fuel {S : Set} (δ : S → Step S) where
 
 module Agree {S₁ S₂ : Set} (δ₁ : S₁ → Step S₁) (δ₂ : S₂ → Step S₂) where
   module F₁ = Fuel δ₁
+    using (align; pre-run; run-pre; runN)
   module F₂ = Fuel δ₂
+    using (align; pre-run; run-pre; runN)
   open Machine δ₁ using () renaming (trace to trace₁)
   open Machine δ₂ using () renaming (trace to trace₂)
 

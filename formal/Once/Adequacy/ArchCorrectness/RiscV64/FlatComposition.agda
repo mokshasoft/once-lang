@@ -122,6 +122,7 @@ label-miss ℓ t rest xi eq rewrite eq = refl
 import Once.Adequacy.ArchCorrectness.FlatCore.HeadView
 module HeadView′ = Once.Adequacy.ArchCorrectness.FlatCore.HeadView
        FS RS.Instr compile-abstract is-label? label
+  using (HeadView; has-label; hv-clabel; hv-otherlabel; hv-plain)
 open HeadView′
 
 reg-op-no-label : ∀ (op : RegOp) → has-label (compile-abstract (instr-reg-op op)) ≡ false
@@ -196,3 +197,5 @@ module FlatComposition = Once.Adequacy.ArchCorrectness.FlatCore.FlatComposition 
        R.fetch (λ _ → refl) (λ _ _ → refl) (λ _ _ _ → refl)
        is-label? label R.find-label-go (λ _ _ → refl) skip-law
        label-hit label-miss headView
+  using (blk-len; blk-off; blk-off-suc; fetch-block-2nd; fetch-block-3rd; fetch-block-head
+        ; fetch-block-nth; find-label-corr; find-thunk-corr)

@@ -92,6 +92,7 @@ module ApplyC {FS : FrameSemantics} where
   open FlatEventTrace {FS} using (chain-events-subst)
   open GetC {FS} using (GetOut; module GetOut; get-run; setOut; out-mem)
   module SR = StraightRunAPI {FS}
+    using (At; after; straight-silent; straight-steps)
 
   -- THE CALL at ANY state: `callView`'s three levels, from the closure
   -- register, the code cell and the thunk scan.

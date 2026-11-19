@@ -116,6 +116,15 @@ private
 
 module _ {m} {ctx : NamedCtx m} (P : Pack ctx) where
   module SU = SUT (Sg P) (S P) (nm P)
+    using (CheckHead; DomainForm; Locals; OwnCheck; PartialCombinator; PolyFromDomain; PolyName
+          ; SynthForm; _⊢_⇐_↝_; _⊢_⇐_⇒[_]↦_↝_; _⊢_⇒_↝_; c-ana; c-case; c-cata; c-compose-f
+          ; c-compose-g; c-curry; c-lam; c-map-app; c-pair; c-pair-lit; c-poly; c-sub; ch-comb₁
+          ; ch-map; ch-poly; d-case; d-cata; d-compose; d-infer; d-lam; d-map; d-pair; d-poly
+          ; df-case; df-cata; df-compose; df-lam; df-map; df-pair; df-poly; df-synth; oc-map
+          ; oc-pair; pc-bare; pc-one; poly; poly-dom; s-app; s-app-spine; s-const; s-pair; sf-annot
+          ; sf-app; sf-binop; sf-const; sf-destruct; sf-float; sf-int; sf-let; sf-name; sf-neg
+          ; sf-pair; sf-unit; sf-var; module CheckHead; module DomainForm; module OwnCheck
+          ; module PartialCombinator; module SynthForm)
   open SU using (Locals; PolyName; poly; PolyFromDomain; poly-dom; SynthForm; DomainForm; OwnCheck; PartialCombinator; CheckHead)
   open SU.SynthForm
   open SU.DomainForm
@@ -125,7 +134,9 @@ module _ {m} {ctx : NamedCtx m} (P : Pack ctx) where
   open At P using (synth-noCH)
   private
     module B = Once.Metatheory.Surface.Basics (Sg P) (S P) (nm P)
+      using (module Modes)
     module BM = B.Modes (kinds ctx)
+      using (noSyn-comb₁; noSyn-comb₂)
     Syn = SU._⊢_⇒_↝_ (kinds ctx)
     Dom = SU._⊢_⇐_⇒[_]↦_↝_ (kinds ctx)
     US = UM.Use⇒ (Sg P) (S P) (nm P) (OkOf P) (OkSOf P) (kinds ctx)

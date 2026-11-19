@@ -168,6 +168,8 @@ module CataBranchC {FS : FrameSemantics} where
     tf : ToFoldOut prog n c bodyL X σ wf alg₀ C root E e env-sv
     tf = Build.out wf alg st n l prog base span la alg₀ x s alloc cl rs nh pl rdi lpl cE μhl mC rdμ lμ vμ
     module TF = ToFoldOut tf
+      using (bk; cf; cl; code; env; ev; eval; hc; hr; lnk; nh; pc; ref-hc; ret; run; seg; sn; steps
+            ; val; τ)
 
     open Inv prog F E C n c bodyL X TF.sn TF.hc e env-sv
 
@@ -197,6 +199,7 @@ module CataBranchC {FS : FrameSemantics} where
     RR = Loop.loop-run prog wf (br-unboxed wf st) alg ih n l base ss cr span′ la′ bl TF.sn TF.hc e env-sv ev₀ [] TF.τ
            (FillOk.root-ok (wf-⌈⌉ wf) alg₀ root) h₀ TF.lnk k
     module RR = RoundRun RR
+      using (bf; bk; events; live; log; mem; no-link; post; progress; run; same; steps; stops; τ)
 
     ------------------------------------------------------------------
     -- 3. what it means

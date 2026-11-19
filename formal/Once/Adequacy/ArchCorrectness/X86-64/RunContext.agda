@@ -34,3 +34,4 @@ module Once.Adequacy.ArchCorrectness.X86-64.RunContext (o : CanonicalName)
 
 import Once.Adequacy.ArchCorrectness.FlatCore.RunContext
 module RunContext = Once.Adequacy.ArchCorrectness.FlatCore.RunContext o FS slot-size word-eq
+  using (EntryLike; mkRunAt; reach-start)

@@ -95,6 +95,7 @@ module IterRoundsContC {FS : FrameSemantics} where
     open Loop body n l base
     open Anchor Z
     module VR = ValueRealized
+      using (cont-alloc; log; out-mode; progress; run; steps)
 
     module At (σ : FlatState) (a : ⟦ A ⟧) (inv : RoundInv Z σ a) (r : ℕ)
       (rec : ∀ (r″ : ℕ) → suc r″ ≤ r → ∀ (σ′ : FlatState) (a′ : ⟦ A ⟧) → RoundInv Z σ′ a′ → RoundsRun Z prog σ′ a′ r″)

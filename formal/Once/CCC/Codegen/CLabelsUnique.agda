@@ -60,9 +60,13 @@ nf-all {i ∷ is} (e ∷ es) rewrite e = nf-all es
 module SC = Seg {λ i → clab-of i ≡ nothing}
   (λ _ → refl) (λ _ → refl) (λ _ → refl) (λ _ → refl) (λ _ → refl) (λ _ → refl) (λ _ → refl)
   refl refl (λ _ → refl) (λ _ → refl) refl refl
+  using (call-P; entry-P; fill-P; get-P; getμ-P; inj-P; node-copy-P; put-P; put-k-P; setup-P; wc2-P
+        ; wrap-P)
 module SF = Seg {λ i → fdef-of i ≡ []}
   (λ _ → refl) (λ _ → refl) (λ _ → refl) (λ _ → refl) (λ _ → refl) (λ _ → refl) (λ _ → refl)
   refl refl (λ _ → refl) (λ _ → refl) refl refl
+  using (call-P; entry-P; fill-P; get-P; getμ-P; inj-P; node-copy-P; put-P; put-k-P; setup-P; wc2-P
+        ; wrap-P)
 
 ------------------------------------------------------------------------
 -- THE CASE SHAPE: a branch's labels `k` (entry of the second arm) and

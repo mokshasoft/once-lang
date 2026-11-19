@@ -219,6 +219,7 @@ module AnaForceC {FS : FrameSemantics} where
         mk-child a′ lmm c0 lpl pv cp slb = ana-p (e , a′) lmm c0 lpl pv cp slb
 
         module RS = ResuspC.Resusp {FS} wf coalg e prog l AP mk-child ap-tr′
+          using (OutAt; out-loc; out-reg; out-unit; resusp; module RRuns)
 
         arith-end : DL.length rt + (DL.length ctrace + suc (suc base)) ≡ DL.length body + base
         arith-end = trans (arith-end′ (DL.length ctrace) (DL.length rt) base)
@@ -297,6 +298,8 @@ module AnaForceC {FS : FrameSemantics} where
 
         vr = MachineRefinesObsF.value-realized mrc
         module VR = ValueRealized vr
+          using (at-end; bf-mono; blocks-kept; cont-alloc; frame-pres; frames-pres; live; log
+                ; no-link; no-ret; out-mode; place; progress; run; settle; stack-pres; steps; stops)
         S0 = VR.settle
 
         BR : Set
@@ -433,6 +436,8 @@ module AnaForceC {FS : FrameSemantics} where
           rr = RS.resusp wf cb l2 S0 y pl span-r lab-r nh0 (VR.no-link nc0) ns-S0 (frontier-mono coalg 1 (suc l))
                  slot0-S0 (liveS0 pl bfp) env-c (place→out (VR.place eq))
           module RR = RS.RRuns rr
+            using (bf-mono; bk; cf; ev; lnk; log; mem; nh; out; out-mode; pc; ret; run; settle; sf
+                  ; steps)
 
           done-inj : ∀ {X : Set} {a b : X} {r₁ r₂} → returns (done a r₁) ≡ returns (done b r₂) → a ≡ b
           done-inj refl = refl

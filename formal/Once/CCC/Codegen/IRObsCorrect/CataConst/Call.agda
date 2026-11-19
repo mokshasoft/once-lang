@@ -89,6 +89,7 @@ module CataCallC {FS : FrameSemantics} where
   open LocState using (regs; halted)
   open AllocState using (next-heap-ref; current-frame)
   module SR = StraightRunAPI {FS}
+    using (At; after; straight-silent; straight-steps)
 
   private
     slot-of : ValueLocation FS → ℕ
@@ -181,6 +182,7 @@ module CataCallC {FS : FrameSemantics} where
 
     open FlatPut {FS} {prog} using (src-tr; put-run; PutOut; dst)
     module HD = HeadOK hd
+      using (nh1; nhw; nws; out1)
 
     s  = floc σ
     a  = falloc σ
@@ -275,6 +277,7 @@ module CataCallC {FS : FrameSemantics} where
            (≤-trans (m≤m+n (size E) (size L)) S≤N) (FlatAlloc.alloc-in {FS} N a)
            (src-tr (λ l lv → keep₃ l (bft₀ l lv)) srcE)
     module PE = PutOut PE
+      using (alloc-eq; cell-at; live; other)
     sE = proj₁ (exec-trace (put E ev pr 0) x₃ A₁)
 
     PL = put-run L k pr (size E) sE A₁ a₀ lay-sv rd N PE.live
@@ -284,6 +287,7 @@ module CataCallC {FS : FrameSemantics} where
            (src-tr (λ { (AtDynamic hl) lv → trans (PE.other (AtDynamic hl) (λ j _ e′ → fresh₀ _ (subst (Live a₀) e′ lv)))
                                                   (keep₃ (AtDynamic hl) (bft₀ _ lv)) }) srcL)
     module PL = PutOut PL
+      using (alloc-eq; cell-at; live; other)
     sL = proj₁ (exec-trace (put L k pr (size E)) sE A₁)
 
     -- (3) the closure record to Input1

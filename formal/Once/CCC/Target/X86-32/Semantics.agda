@@ -32,7 +32,10 @@ open import Once.CCC.Label using (_≡ᵇᴸ_; Label; thunk)
 import Once.Spec.Word as W32
 import Once.Word as W32L
 module W = W32.Width 32
+  using (_⊕_; _⊖_; modulus; norm)
 module WL = W32L.WidthLaws 32
+  using (1<modulus; norm-id; norm-range; room-word; sbb-pos; sbb-zero; ⊕-normʳ; ⊕≡+; ⊖-normʳ; ⊖≡∸
+        ; ⊖⊕-cancel)
 
 ------------------------------------------------------------------------
 -- Machine State

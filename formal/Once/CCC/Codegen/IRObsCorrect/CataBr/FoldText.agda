@@ -134,9 +134,11 @@ module CataFoldTextC {FS : FrameSemantics} where
                 (la : LabelsAt prog base (Text.text′ wf alg n l)) where
 
     module T = Text wf alg n l
+      using (G; L; R; at; bb; call-eq; callTxt; l1; tailTxt; text′; module At; module Pc)
     open T using (G; l1; bb; at; tailTxt; R; text′; L; callTxt)
     open T.Pc using (cslot; bodyL; pre37; flatTxt; headTxt; pushTxt; reloadTxt; visitTxt; exitTxt)
     module TA = T.At prog base span la
+      using (H; span-rest)
 
     ------------------------------------------------------------------
     -- THE PIECES of `R`.

@@ -175,6 +175,7 @@ private
 
   module Nat where
     module C = CoreTyping noOps S₁
+      using (_⊩_⊢[_]_∷_!_; ⊢app; ⊢lam; ⊢let; ⊢ref; ⊢sub-use; ⊢var)
     open import Once.Metatheory.TermModel.Subst noOps S₁ renaming (wk-⊢ to wk₁)
 
     ⊢₁_∷_ : Tm S₁ 0 0 → Ty 0 → Set

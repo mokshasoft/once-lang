@@ -94,6 +94,7 @@ module CataStackC {FS : FrameSemantics} where
   open Once.CCC.Machine.SMPrimitives.MemoryOps {FS} using (readLoc-writeLoc-same)
   open FlatEventTrace {FS} using (chain-events-subst)
   module SR = StraightRunAPI {FS}
+    using (after; straight-silent; straight-steps)
 
   ------------------------------------------------------------------------
   -- ELEMENT WORDS (plan 0.123 α2): an element is a value's REGISTER FORM —

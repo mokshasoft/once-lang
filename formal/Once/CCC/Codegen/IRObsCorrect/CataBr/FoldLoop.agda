@@ -91,6 +91,7 @@ module CataFoldLoopC {FS : FrameSemantics} where
     open Inv prog F E C n c bodyL X sn hc e env-sv
 
     module FO = FillOk (wf-⌈⌉ wf) alg₀
+      using (Ok; step-ok)
 
     runP : List ⟦ μ-type F ⟧ → List ⟦ C ⟧ → T∞ (List ⟦ C ⟧)
     runP = PO.runPO (wf-⌈⌉ wf) alg₀

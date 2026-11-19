@@ -129,6 +129,7 @@ module NodeCopyC {FS : FrameSemantics} where
              (src-tr keep₄ src)
       sp = proj₁ (exec-trace (put L n (suc n) 0) s₄ A₁)
       module Pt = PutOut Pt
+        using (alloc-eq; cell; live; other)
 
       -- the last row: the node is the result
       sfin = record sp { regs = writeReg (regs sp) Output blk }

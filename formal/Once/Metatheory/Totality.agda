@@ -178,6 +178,7 @@ no-forward-reference D = module-no-forward-reference (Denotes.library D)
 module TickTyping   = CoreTyping tickΣ []
 module EchoTyping   = CoreTyping echoΣ []
 module SilentTyping = CoreTyping [] []
+  using (_⊩_⊢[_]_∷_!_; ⊢inr; ⊢iter; ⊢lam; ⊢sub-eff; ⊢unit)
 
 stream-typed : TickTyping._⊩_⊢[_]_∷_!_ ∅ₖ Once.Spec.Context.∅ Once.Spec.Context.[] ticker (Once.Spec.Type.ν Once.Spec.Type.Id Once.Spec.Grade.actᶠ) Once.Spec.Grade.pure
 stream-typed = TickTyping.⊢unfold wf-Id (TickTyping.⊢sigop (here refl)) TickTyping.⊢lit-int

@@ -47,12 +47,15 @@ ground = record
 
 -- | In a signature, a type variable is a lowercase word.
 module Sig = PT.Read (written TypeVar) (λ x → lowerWord x ≡ true) PTVar tvar
+  using (WF; WFF; type′; ⟦_⟧; ⟦_⟧F)
 
 -- | An alias has no type variables.
 module Alias = PT.Read (written NoExtra) (λ _ → ⊥) PTVar (λ ())
+  using (WF; WFF; type′; ⟦_⟧; ⟦_⟧F)
 
 -- | An annotation's type is ground.
 module Ground = PT.Read ground (λ _ → ⊥) (λ _ → Unit) (λ ())
+  using (WF; WFF; type′; ⟦_⟧; ⟦_⟧F)
 
 mutual
   -- | Written types read as themselves.

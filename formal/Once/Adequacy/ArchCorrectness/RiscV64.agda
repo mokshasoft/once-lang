@@ -144,6 +144,7 @@ entry-frame-riscv64 : FrameSemantics.Frame rv64-frame-semantics
 entry-frame-riscv64 = stack-addr RS.stack-top stack-top-in-stack , 0
 
 module FFOr = FFO o tbl riscv64 rv64-frame-semantics refl entry-frame-riscv64 (arch-semantics riscv64)
+  using (entry-alloc; entry-s; flat-cut; flat-ends; flat-fuel; image; start-flat; start-sound)
 asR = arch-semantics riscv64
 
 ------------------------------------------------------------------------

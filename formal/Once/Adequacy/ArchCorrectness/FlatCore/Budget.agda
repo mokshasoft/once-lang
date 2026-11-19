@@ -77,6 +77,7 @@ open RegRoles roles using (sp-reg)
 import Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence as FC
 private
   module CFC = FC FS slot-size word-eq Reg roles State rreg memory xhalted
+    using (FlatCorr; HeapView; sep; slots; module FlatCorr; module HeapView)
 open CFC using (HeapView; slots; FlatCorr; sep)
 open CFC.FlatCorr using (sp-eq)
 open CFC.HeapView using (hfront)

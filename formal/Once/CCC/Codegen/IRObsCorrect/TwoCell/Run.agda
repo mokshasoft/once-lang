@@ -67,6 +67,7 @@ module TwoCellRunC {FS : FrameSemantics} where
   open SMCore.MemOps {FS} using (writeLoc; writeLoc-halted; writeLoc-regs; writeLoc-preserves-other; writeLoc-read-same-stack)
   open FlatEventTrace {FS} using (chain-events-subst)
   module SR = StraightRunAPI {FS}
+    using (after; straight-silent; straight-steps)
 
   two-cell-trace : ℕ → ℕ → AbstractTrace
   two-cell-trace n l =

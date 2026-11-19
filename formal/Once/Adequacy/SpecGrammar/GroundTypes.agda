@@ -365,7 +365,9 @@ homAlias = record
 
 private
   module BA = Bridge groundS toTy toFun homTy
+    using (type←; type→)
   module BL = Bridge (writtenS NoExtra) polyOf polyOfF homAlias
+    using (type←; type→)
 
 annot→ : ∀ {toks A rest} → ParsesType toks A rest → Annot.ParsesType (F toks) (toTy A) (F rest)
 annot→ = BA.type→

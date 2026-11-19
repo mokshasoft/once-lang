@@ -91,6 +91,7 @@ module ResuspSumArmC {FS : FrameSemantics} where
   open ResuspBaseC {FS}
   open ClosureWellFormedBase {FS} using (SumTag; Pad; CellAtP)
   module SR = StraightRunAPI {FS}
+    using (At; after; straight-silent; straight-steps)
 
   private
     slot-of : ValueLocation FS → ℕ
@@ -232,6 +233,7 @@ module ResuspSumArmC {FS : FrameSemantics} where
              (place→out (GetOut.place gP))
         where la2-t = la2
       module RP = RRuns′ rP
+        using (bk; ev; lnk; nh; pc; ret; rout; run; seg; settle; steps)
       sP = RP.settle
       aP = falloc sP
 
@@ -325,6 +327,7 @@ module ResuspSumArmC {FS : FrameSemantics} where
                (λ j j< → subst (λ z → InBlk A₁ (AtDynamic (heap-loc rd z))) (sym (+-identityʳ (suc (size Pν) + j)))
                                (FlatAlloc.alloc-in {FS} N aP (suc (size Pν) + j) (pad< j j<)))
         module FO = FlatPut.FillOut FO
+          using (alloc-eq; live; other; written)
         sf = proj₁ (exec-trace (fill (suc (size Pν)) c) x₆ A₁)
 
         keepf : ∀ l → Live aP l → readLoc sf l ≡ readLoc u l
@@ -342,6 +345,7 @@ module ResuspSumArmC {FS : FrameSemantics} where
                (FlatAlloc.alloc-live {FS} N aP) N≥ (FlatAlloc.alloc-in {FS} N aP)
                (rout→src wP RP.rout keepf)
         module PP = PutOutL PP
+          using (alloc-eq; cell-at; live; other)
         sp = proj₁ (exec-trace (put Pν tmp dst 1) sf A₁)
 
         sfin = record sp { regs = writeReg (regs sp) Output blk }

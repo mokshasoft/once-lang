@@ -68,6 +68,7 @@ homPoly = record
 
 private
   module B = Bridge PolyAlg (writtenS TypeVar) toPoly toPolyF homPoly
+    using (type←; type→)
 
 sig→ : ∀ {toks A rest} → ParsesPolyType toks A rest → SigType.ParsesType (F toks) (toPoly A) (F rest)
 sig→ = B.type→

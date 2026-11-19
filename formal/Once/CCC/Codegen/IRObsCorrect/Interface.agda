@@ -30,6 +30,7 @@ module Once.CCC.Codegen.IRObsCorrect.Interface (o : CanonicalName) (tbl : DL.Lis
 
 import Once.CCC.Codegen.IRObsCorrect.Prelude
 module Prelude = Once.CCC.Codegen.IRObsCorrect.Prelude o tbl
+  using (fits-erase; module IRToTrace; module SlotBudget′)
 open Prelude.IRToTrace using (ir-to-trace')
 open import Data.List using (List; length; _∷_; [])
 open import Data.List.Relation.Unary.All using (All)
@@ -173,6 +174,7 @@ module Core {FS : FrameSemantics} where
                                      exec-abstract-preserves-heap-ref)
 
   module FlatMachine′ = FlatMachine {FS}
+    using (FlatState; StraightStep; do-call-at; do-call-code; do-call-sv; do-jump; do-nz; do-thunk; enter-call; entry-of?; exec-flat; fetch; fetch-++-left; fetch-++-right; find-fn; find-label; find-thunk; fl-at; fl-go; flat-exec-instr; flat-read-at; flat-read-tag; flat-step-straight; ft-at; ft-go; ft-go-sound; ft-match; grow-frame; label-of?; leave-frame; leave-frame-block-size; leave-frame-heap-ref; leave-frame-saved-∷; mkFlatFull; tag-test; module FlatState)
   open FlatMachine′
   open FlatMachine′.FlatState using (floc; falloc; fpc; fret; flink)
 
@@ -749,6 +751,8 @@ module Core {FS : FrameSemantics} where
   CalleeRun : AbstractTrace → FlatState → ℕ → DL.List ℕ → (B : IRTy) → T∞ ⟦ B ⟧ → ℕ → Set
   CalleeRun prog fs ret-pc rs B comp k = CalleeRunP {prog = prog} {B} (ResultPlace {prog = prog} B) fs ret-pc rs comp k
   module CalleeRun = CalleeRunP
+    using (bf-mono; blocks-kept; cont-alloc; events; frame-pres; frames-pres; live; log; mem-pres
+          ; no-link; no-ret; out-mode; place; progress; returned; run; settle; steps; stops)
 
   -- plan 0.135 S1: `CalleeRuns` (D188, the closure half of the block table)
   -- is GONE. A closure's witness now says what its block does (`CallRuns`,

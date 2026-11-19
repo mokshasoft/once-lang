@@ -694,6 +694,7 @@ module CataVisitC {FS : FrameSemantics} where
                (flat-tag-branch-not prog σ (ℓ o lb) cond) refl tt tt
 
         module U = Unpack y q0 (PtrTo.hl pt) nh (PtrTo.eq pt) (PtrTo.live pt) (payload-r (PtrTo.val pt)) st (span′ 1 _ refl) (span′ 2 _ refl)
+          using (nh2; q2; st2; walk; wd2)
 
         wR : Walk prog n (KV (s + 4)) U.q2 (length VR + fpc U.q2) (VQ b y ts)
         wR = ihb (s + 4) (ssl + lF) U.q2 y ts n≤s4 (up todo<s) (up tv<s) (up tb<s) (su-r s (fsize ⌈ G ⌉F) (fsize ⌈ H ⌉F) u su) SPR LAR U.nh2 U.wd2 U.st2
@@ -731,6 +732,7 @@ module CataVisitC {FS : FrameSemantics} where
         w1 = walk-ctrl i1 (instr-ctrl (c-label (ℓ o lb))) (suc J₁) nh (SP2 1 _ refl) refl refl tt tt
 
         module U = Unpack x i2 (PtrTo.hl pt) nh (PtrTo.eq pt) (PtrTo.live pt) (payload-l (PtrTo.val pt)) st (SP2 2 _ refl) (SP2 3 _ refl)
+          using (nh2; q2; st2; walk; wd2)
 
         wL : Walk prog n (KV (s + 4)) U.q2 (length VL + fpc U.q2) (VQ a x ts)
         wL = iha (s + 4) ssl U.q2 x ts n≤s4 (up todo<s) (up tv<s) (up tb<s) (su-l s (fsize ⌈ G ⌉F) (fsize ⌈ H ⌉F) u su) SPL LAL U.nh2 U.wd2 U.st2

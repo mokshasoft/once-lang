@@ -534,6 +534,7 @@ module CataRebuildC {FS : FrameSemantics} where
       module E = BuildPair {prog} n (suc s) (s + 2) (s + 3) Z₁ Z₂ τa {proj₁ l} {proj₂ l} wR SPE (Walk.nh wa)
                    (≤-trans n≤s (n≤1+n s)) (≤-trans n≤s (m≤m+n s 3)) s2≢s1 s3≢s1 s3≢s2
                    (RQs.out (Walk.post wa)) (word-tr (walk-kp wma) (RQs.out (Walk.post wb))) s2-a
+        using (slots; walk)
 
       we : Walk prog n (KR s) τa (length epi + fpc τa)
               (λ τ′ → WordAt prog (falloc τ′) (Z₁ I.* Z₂) (proj₁ l , proj₂ l) (readReg (regs (floc τ′)) Output) (floc τ′))
@@ -742,6 +743,7 @@ module CataRebuildC {FS : FrameSemantics} where
                   (spw : SpanAt prog (fpc τp) (wrap-sum (arm-tag r) (kind (arm-ty r Z₁ Z₂)) (size (arm-ty r Z₁ Z₂)) (size (Z₁ I.+ Z₂)) s))
                   (rq : RQ (arm-ty r Z₁ Z₂) lp rest τp) where
         module W = BuildSum {prog} n r Z₁ Z₂ s τp spw nhp n≤s (RQs.out rq)
+          using (T; slots; walk)
         ww : Walk prog n (KR s) τp (length W.T + fpc τp)
                   (λ τ′ → WordAt prog (falloc τ′) (Z₁ I.+ Z₂) (arm-val r lp) (readReg (regs (floc τ′)) Output) (floc τ′))
         ww = W.walk ks
@@ -768,6 +770,7 @@ module CataRebuildC {FS : FrameSemantics} where
                (flat-tag-branch-not prog σ (ℓ o lb) cond) refl tt tt
 
         module U = Unpack y q0 (PtrTo.hl pt) nh (PtrTo.eq pt) (PtrTo.live pt) (payload-r (PtrTo.val pt)) st (span′ 1 _ refl) (span′ 2 _ refl)
+          using (nh2; q2; st2; walk; wd2)
 
         wR : Walk prog n (KR (s + 4)) U.q2 (length VR + fpc U.q2) (RQ Z₂ l₂ rest)
         wR = ihb (s + 4) (ssl + lF) U.q2 y vs l₂ rest fy n≤s4 (up val<s) (su-r s (fsize ⌈ G ⌉F) (fsize ⌈ H ⌉F) u su) SPR LAR U.nh2 U.wd2 U.st2
@@ -775,6 +778,7 @@ module CataRebuildC {FS : FrameSemantics} where
         τR = Walk.τ wR
 
         module Wp = Wrap arm-r l₂ τR (Walk.nh wR) (subst (λ z → SpanAt prog z WR) (sym (Walk.pc wR)) SPWR) (Walk.post wR)
+          using (walk)
 
         τW = Walk.τ Wp.walk
 
@@ -815,6 +819,7 @@ module CataRebuildC {FS : FrameSemantics} where
         w1 = walk-ctrl i1 (instr-ctrl (c-label (ℓ o lb))) (suc J₁) nh (SP3 1 _ refl) refl refl tt tt
 
         module U = Unpack x i2 (PtrTo.hl pt) nh (PtrTo.eq pt) (PtrTo.live pt) (payload-l (PtrTo.val pt)) st (SP3 2 _ refl) (SP3 3 _ refl)
+          using (nh2; q2; st2; walk; wd2)
 
         wL : Walk prog n (KR (s + 4)) U.q2 (length VL + fpc U.q2) (RQ Z₁ l₁ rest)
         wL = iha (s + 4) ssl U.q2 x vs l₁ rest fx n≤s4 (up val<s) (su-l s (fsize ⌈ G ⌉F) (fsize ⌈ H ⌉F) u su) SPL LAL U.nh2 U.wd2 U.st2
@@ -822,6 +827,7 @@ module CataRebuildC {FS : FrameSemantics} where
         τL = Walk.τ wL
 
         module Wp = Wrap arm-l l₁ τL (Walk.nh wL) (subst (λ z → SpanAt prog z WL) (sym (Walk.pc wL)) SPWL) (Walk.post wL)
+          using (walk)
 
         τW = Walk.τ Wp.walk
 

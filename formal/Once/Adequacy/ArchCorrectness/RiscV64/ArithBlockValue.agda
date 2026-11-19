@@ -75,6 +75,7 @@ open CompiledCorrespondence using (CompiledCorr)
 open CompiledCorrespondence.CompiledCorr using (dataCorr)
 import Once.Adequacy.ArchCorrectness.RiscV64.FlatCorrespondence
 module C = Once.Adequacy.ArchCorrectness.RiscV64.FlatCorrespondence FS word-eq
+  using (module FlatCorrespondence)
 open C using ()
 open C.FlatCorrespondence using (HeapView; enc-sv; module FlatCorr)
 open C.FlatCorrespondence.HeapView using (hfront; haddr)

@@ -235,6 +235,7 @@ private
 module SigR    = ReadTypes (written TypeVar) _ _ sigClosed
 module AliasR  = ReadTypes (written NoExtra) _ _ aliasClosed
 module GroundR = ReadTypes ground _ _ groundClosed
+  using (typ)
 
 ------------------------------------------------------------------------
 -- Expressions

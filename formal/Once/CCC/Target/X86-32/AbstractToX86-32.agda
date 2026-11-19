@@ -45,6 +45,7 @@ open import Once.Spec.Float.Dyadic using (binary32)
 open import Once.Float.Word using (round)
 import Once.Spec.Word as OnceWord
 module IntW = OnceWord.Width 32
+  using (fromℤ; modulus)
 
 -- Import AbstractInstr from SMCore
 open import Once.CCC.Machine.SMCore

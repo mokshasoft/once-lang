@@ -98,6 +98,8 @@ module CataFoldExitC {FS : FrameSemantics} where
               (sn hc : HeapLocation) (e : ⟦ E ⟧) (env-sv : StoredValue FS) where
 
     module FA = FoldAt wf alg n l prog base span la
+      using (X; Z; end-label; endL; exit-label; exitL; fetch-end; fetch-exit; fetch-jmp-end
+            ; fetch-ld; fetch-li; fetch-mti2; span-hd; module T)
     open FA using (X; Z; span-hd; exit-label; exitL; endL; fetch-exit; fetch-ld; fetch-mti2; fetch-li; fetch-jmp-end; end-label; fetch-end)
 
     c bodyL l1 : ℕ
@@ -111,6 +113,7 @@ module CataFoldExitC {FS : FrameSemantics} where
     open Inv prog F E C n c bodyL X sn hc e env-sv
 
     module FH = FoldHead prog F C n l1 sn (11 + Z) exit-label
+      using (hd8; module Exit)
 
     -- the end of the cata's text
     END : ℕ
@@ -220,6 +223,7 @@ module CataFoldExitC {FS : FrameSemantics} where
     module Go (σ : FlatState) (v : ⟦ C ⟧) (vs : List ⟦ C ⟧) (h : HeadAt σ [] (v ∷ vs)) where
 
       module H = HeadAt h
+        using (eval; nh; pc; val)
 
       wE : Walk prog n (KH n) σ (11 + Z) (λ τ → StackAt (ValE prog C) (falloc τ) (floc τ) (n + 2) sn (v ∷ vs))
       wE = FH.Exit.out σ (v ∷ vs) (subst (λ b → SpanAt prog b FH.hd8) (sym H.pc) span-hd) H.nh H.eval H.val

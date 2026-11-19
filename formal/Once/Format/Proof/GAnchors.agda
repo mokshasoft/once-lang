@@ -237,15 +237,18 @@ sig-var (tvar {x} _) = seg-cast (+-identityʳ (wc x)) (seg-cons (TWord x) refl s
 module SigA = TypeAnchors (written TypeVar) cT cF refl refl refl refl (λ _ _ → refl) (λ _ _ → refl) (λ _ _ → refl) (λ _ _ → refl)
   (λ _ _ _ → refl) (λ _ → refl) (λ _ → refl) (λ _ → refl) (λ _ → refl) refl (λ _ _ → refl) (λ _ _ → refl)
   sig-var
+  using (ty)
 
 module AliasA = TypeAnchors (written NoExtra) cT cF refl refl refl refl (λ _ _ → refl) (λ _ _ → refl) (λ _ _ → refl) (λ _ _ → refl)
   (λ _ _ _ → refl) (λ _ → refl) (λ _ → refl) (λ _ → refl) (λ _ → refl) refl (λ _ _ → refl) (λ _ _ → refl)
   (λ ())
+  using (ty)
 
 module AnnotA = TypeAnchors ground (λ A → cT (toPoly A)) (λ F → cF (toPolyF F)) refl refl refl refl
   (λ _ _ → refl) (λ _ _ → refl) (λ _ _ → refl) (λ _ _ → refl)
   (λ _ _ _ → refl) (λ _ → refl) (λ _ → refl) (λ _ → refl) (λ _ → refl) refl (λ _ _ → refl) (λ _ _ → refl)
   (λ ())
+  using (ty)
 
 private
   -- the grammar's own type parsers are these

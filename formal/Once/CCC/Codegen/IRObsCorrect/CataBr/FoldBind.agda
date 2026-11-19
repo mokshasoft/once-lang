@@ -86,6 +86,7 @@ module CataFoldBindC {FS : FrameSemantics} where
               where
 
     module R = RoundRun R
+      using (bf; bk; events; live; log; mem; no-link; progress; run; same; steps; stops; τ)
 
     H : List SigOpEvent
     H = LocState.ev-log (floc σ)
@@ -105,6 +106,7 @@ module CataFoldBindC {FS : FrameSemantics} where
       R2 : RoundRun prog n R.τ (f v) r Q
       R2 = K eq
       module R2 = RoundRun R2
+        using (bf; bk; events; live; log; mem; no-link; post; progress; run; same; steps; stops; τ)
 
       nc₁ : NotCut ρ₁
       nc₁ = subst NotCut (sym eq) tt

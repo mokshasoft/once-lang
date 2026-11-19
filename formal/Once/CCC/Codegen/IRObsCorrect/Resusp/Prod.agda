@@ -97,6 +97,7 @@ module ResuspProdC {FS : FrameSemantics} where
   open GetC {FS} using (GetOut; module GetOut; get-run; setOut; out-mem; offset-zero; get-len)
   open Resolve {FS} using (NoLabel; found-in-window; noLabel-outside)
   module SR = StraightRunAPI {FS}
+    using (At; after; straight-silent; straight-steps)
 
   private
     slot-of : ValueLocation FS → ℕ
@@ -212,6 +213,7 @@ module ResuspProdC {FS : FrameSemantics} where
              freshF (FlatAlloc.alloc-live {FS} N a) (≤-trans (m≤m+n (size Fν) (size Gν)) S≤N) (FlatAlloc.alloc-in {FS} N a)
              (rout→src wF roF (λ l lv → trans (keep₃ {aF} l lv) (keepF l lv)))
       module PF = PutOutL PF
+        using (alloc-eq; cell-at; live; other)
       sP = proj₁ (exec-trace (put Fν t1 dS 0) x₃ A₁)
 
       keepP : ∀ l → Live a l → readLoc sP l ≡ readLoc x₃ l
@@ -224,6 +226,7 @@ module ResuspProdC {FS : FrameSemantics} where
              (FlatAlloc.alloc-live {FS} N a) S≤N (FlatAlloc.alloc-in {FS} N a)
              (rout→src wG roG (λ l lv → trans (keepP l lv) (keep₃ {a} l lv)))
       module PG = PutOutL PG
+        using (alloc-eq; cell-at; live; other)
       sQ = proj₁ (exec-trace (put Gν t2 dS (size Fν)) sP A₁)
 
       sfin = record sQ { regs = writeReg (regs sQ) Output blk }

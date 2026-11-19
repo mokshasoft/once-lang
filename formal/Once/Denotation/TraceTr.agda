@@ -147,7 +147,9 @@ open import Data.Nat.Properties using (≤-refl)
 module _ (ι : Interp) {X Y : Set} {R : X → Y → Set} where
   private
     module FX = Fuel (δ∞ ι {X})
+      using (runN; runS)
     module FY = Fuel (δ∞ ι {Y})
+      using (runN; runS)
 
   RelSB-runN : ∀ n h {b : T (X ⊎ T∞ X)} {b′ : T (Y ⊎ T∞ Y)} → RelSB R b b′ → FX.runN n (h , b) ≡ FY.runN n (h , b′)
   RelSB-ans  : ∀ n h o a {k : V.⟦ ccod o ⟧ → T (X ⊎ T∞ X)} {k′ : V.⟦ ccod o ⟧ → T (Y ⊎ T∞ Y)}

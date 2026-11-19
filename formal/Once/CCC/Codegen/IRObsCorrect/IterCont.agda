@@ -83,6 +83,7 @@ module IterContC {FS : FrameSemantics} where
   open IterInvC {FS}
   open IterExitC {FS} using (ev-step1)
   module SR = Once.CCC.Codegen.StraightRun.StraightRunAPI {FS}
+    using (At)
 
   -- `chain-ctrls` does not look at the end state either.
   ctrls-subst-end : ∀ {prog k fs fs′ fs″} (eq : fs′ ≡ fs″) (c : FlatSteps prog k fs fs′)
@@ -203,6 +204,7 @@ module IterContC {FS : FrameSemantics} where
                        (sym (trans (cong (j +_) pcG) (pc-shift3 rend base j))) (at-tail j i e)
 
     module TT = PairBuildC.Tail {FS} {prog} n E A gs at-T nhG (fv Z) (falloc fsF) bftB bkF0 srcB rsB srcC
+      using (A₁; L; bf-tail; bk-tail; cf-tail; hfin; keep; live-L; run; settle; sf-tail; silent; val)
 
     u10 u11 u12 σ′ : FlatState
     u10 = TT.settle

@@ -100,6 +100,7 @@ module PairPresC {FS : FrameSemantics} where
     where
 
     module VR = ValueRealized
+      using (bf-mono; frame-pres; frames-pres; settle)
 
     ncF : NotCut (resultAt (floc (pair-p2 prog base n s alloc cl rs)) (⟪ evalᴰ f xf ⟫ kf))
     ncF = subst NotCut (sym rfF) tt

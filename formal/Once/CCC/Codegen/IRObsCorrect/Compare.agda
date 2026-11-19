@@ -106,6 +106,7 @@ module CompareC {FS : FrameSemantics} where
   open Once.CCC.Machine.SMPrimitives.MemoryOps {FS} using (readLoc-writeLoc-same)
   open FlatEventTrace {FS} using (chain-events-subst)
   module SR = StraightRunAPI {FS}
+    using (At; after; straight-silent; straight-steps)
   open SigOpC {FS} using (argOf; resOf; E₀; evalᴰ-at; output-at; pure-input; obs-correct-sigop-nc; arg-agree)
 
   private

@@ -59,7 +59,9 @@ import Once.Word as OnceWordL
 -- arith correspondence was a statement about a 64-bit machine that x86-32 is
 -- not.
 module W = OnceWord.Width 32
+  using (_%ˢ_; _/ˢ_; _⊕_; _⊖_; _⊗_; fromℤ; toℤ; ⊝_)
 module WL = OnceWordL.WidthLaws 32
+  using (sdiv2ᵏ; shlᵂ)
 import Once.Adequacy.ArchCorrectness.ArithSimCore as ASC
 open import Once.Target.Arch using (x86-32; arch-numerics)
 -- Plan 0.74 J5: the shared correspondence core, applied at THIS target's
@@ -492,6 +494,7 @@ module _ (N : ℕ) where
       (λ d a b s  → readReg-wr-arith-same (regs s) d _)
       -- rt-fcmp (peel eax — double-write, as rt-cmp)
       (λ o d a b s → trans (readReg-wr-eax-arith (writeReg (regs s) (arith-reg d) _) d _) (readReg-wr-arith-same (regs s) d _))
+    using (IOksWF; R-input; arith-block-correct; leafWord)
 
 ------------------------------------------------------------------------
 -- plan 0.123 α′ (f3c): THE BLOCK'S ENTRY STATE. The dispatch enters the

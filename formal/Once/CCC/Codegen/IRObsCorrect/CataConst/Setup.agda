@@ -88,6 +88,7 @@ module CataSetupC {FS : FrameSemantics} where
   open LocState using (regs; halted)
   open AllocState using (next-heap-ref; current-frame; block-size)
   module SR = StraightRunAPI {FS}
+    using (At; after; straight-silent; straight-steps)
 
   private
     slot-of : ValueLocation FS → ℕ

@@ -83,6 +83,7 @@ module CataRunC {FS : FrameSemantics} where
   open NuForceC {FS} using (crun-retarget)
   open ApplyC {FS} using (call-at)
   module BC = BlockCallC {FS}
+    using (bk-enter; block-call; callee-alloc; callee-heap; callee-loc; live-callee)
   open CataStepsC {FS} using (s-++)
   open CataCallC {FS} using (callK)
   open LocState using (regs; halted)
@@ -130,12 +131,14 @@ module CataRunC {FS : FrameSemantics} where
     i = idfree-of wf (const-rc ⌈ F ⌉F h st)
 
     module T = Text wf alg n l h
+      using (LP; at; bb; emitted-eq; endL; l1; len-pre; len-text; text; module At)
 
     span′ : SpanAt prog base T.text
     span′ = subst (SpanAt prog base) (T.emitted-eq st) span
     la′ : LabelsAt prog base T.text
     la′ = subst (LabelsAt prog base) (T.emitted-eq st) la
     module TA = T.At prog base span′ la′
+      using (body-labels; body-span; end-label; fetch-cc; fetch-end; fetch-jmp; fetch-thunk)
 
     σ : FlatState
     σ = entry-flat base s alloc cl rs
@@ -245,6 +248,8 @@ module CataRunC {FS : FrameSemantics} where
     crun = crun-retarget {prog = prog} {fs = fs₁} {c = evalᴰ alg x′} {c′ = E′} {k = k} (cong (runAt (floc fs₁)) meq) crun₀
 
     module CR = CalleeRunP crun
+      using (bf-mono; blocks-kept; cont-alloc; events; frame-pres; frames-pres; live; log; mem-pres
+            ; no-link; no-ret; out-mode; place; progress; returned; run; settle; steps; stops)
 
     RE : runAt (floc fs₁) (⟪ E′ ⟫ k) ≡ runAt s (⟪ E′ ⟫ k)
     RE = runAt-≡ {st = floc fs₁} {st′ = s} {m = ⟪ E′ ⟫ k} {m′ = ⟪ E′ ⟫ k} h-eq refl

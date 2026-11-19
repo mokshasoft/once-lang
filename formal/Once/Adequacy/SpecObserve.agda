@@ -141,6 +141,7 @@ module _ (ι : LTr.Interp) (w : World) (ag : Agree ι w) {X : Set} {R : ⊤ → 
   open Agree ag
   private
     module M = Machine (δ∞ fmt ι {X})
+      using (go; tr)
 
     haltLS : TLS (listTr [] halted) (record { next = now (inj₁ halted) })
     ls (tls haltLS) = nowEnd halted≈

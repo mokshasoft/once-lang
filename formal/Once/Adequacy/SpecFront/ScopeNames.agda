@@ -44,6 +44,7 @@ import Once.TypeCheck.View as TView
 
 private
   module VS = TView Σ S
+    using (module ImportAt)
 
 -- Every recorded monomorphic entry is named its definition's name.
 ImpNamed : ∀ {imps} → ImpSig S imps → Set

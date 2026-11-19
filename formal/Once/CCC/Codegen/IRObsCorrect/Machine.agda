@@ -21,6 +21,7 @@ module Once.CCC.Codegen.IRObsCorrect.Machine (o : CanonicalName) (tbl : DL.List 
 
 import Once.CCC.Codegen.IRObsCorrect.Interface
 module Interface = Once.CCC.Codegen.IRObsCorrect.Interface o tbl
+  using (module Core; module Prelude)
 open Interface
 open import Data.Empty using (⊥-elim)
 open import Data.List using (List)
@@ -409,6 +410,7 @@ module Mach {FS : FrameSemantics} where
     where
 
     module NineSteps′ = NineSteps n i6 i8 u1
+      using (u10; u2; u3; u4; u5; u6; u7; u8; u9)
     open NineSteps′
 
     hl : HeapLocation
@@ -482,6 +484,7 @@ module Mach {FS : FrameSemantics} where
     t1  = flat-step-straight i0 t0
 
     module NSP = NineStepPres n i6 i8 t1 s alloc heapref-t1 cf-t1
+      using (cf-u3; fresh; heapref-u2; hl; mem-pres-from; module NineSteps′)
 
     t2 t3 t4 t5 t6 t7 t8 t9 t10 : FlatState
     t2  = NSP.NineSteps′.u2 ; t3 = NSP.NineSteps′.u3 ; t4 = NSP.NineSteps′.u4 ; t5 = NSP.NineSteps′.u5 ; t6 = NSP.NineSteps′.u6

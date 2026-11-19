@@ -100,6 +100,7 @@ module CataFoldRoundC {FS : FrameSemantics} where
   open CataVisitC {FS} using (place→word)
   open ApplyC {FS} using (call-at)
   module BC = BlockCallC {FS}
+    using (bk-enter; block-call; callee-alloc; callee-heap; callee-loc; live-callee)
   open CataStackC {FS}
   open CataWalkC {FS}
   open CataBrTextC {FS} using (module Text)
@@ -130,6 +131,7 @@ module CataFoldRoundC {FS : FrameSemantics} where
                (sn hc : HeapLocation) (e : ⟦ E ⟧) (env-sv : StoredValue FS) where
 
     module FA = FoldAt wf alg n l prog base span la
+      using (CK; X; Y; Z; body-labels; body-span; fetch-cc; fetch-thunk; module T)
     open FA using (X; Y; Z)
 
     c bodyL bb : ℕ
@@ -153,6 +155,8 @@ module CataFoldRoundC {FS : FrameSemantics} where
       po : PreOut prog F E C n c bodyL FA.CK Y sn hc e env-sv σ ns rest L
       po = Pre.Go.out prog wf ub alg n l base span la sn hc e env-sv σ t ns vs L rest fq h
       module P = PreOut po
+        using (bk; cl; clo; code; cs; env; ev; eval; hc-lt; hp; inp; lhp; nh; ns0; pairV; pc; ret
+              ; run; seg; steps; val)
 
       cs : FlatState
       cs = P.cs
@@ -215,6 +219,8 @@ module CataFoldRoundC {FS : FrameSemantics} where
                fs₁ (falloc cs) Heap x′ (suc (fpc cs)) k (fret cs) refl P.nh refl refl P.ns0 inp
 
       module CR = CalleeRunP crun
+        using (bf-mono; blocks-kept; events; frame-pres; frames-pres; live; log; mem-pres; no-link
+              ; no-ret; place; progress; returned; run; settle; steps; stops)
 
       RE : runAt (floc fs₁) (⟪ comp ⟫ k) ≡ runAt (floc σ) (⟪ comp ⟫ k)
       RE = runAt-≡ {st = floc fs₁} {st′ = floc σ} {m = ⟪ comp ⟫ k} {m′ = ⟪ comp ⟫ k} h-eq refl

@@ -114,6 +114,7 @@ module _ {s} {S : SC.Defs s} {imps tele} (ss : SigSig sg) (is : ImpSig S imps) (
       in T , TV.Declared.member dc (h-word mem) refl , trans (sym r) (sym (⌜declS⌝ k h)) , (lk , h-word mem) , k , h
 
     module A = Annotate Σ S nm (OkOf P) (OkSOf P) κ ok-def ok-sig
+      using (A⇐; A⇒; ann⇐; ann⇒; a⇐; a⇒)
 
     fails-success : ∀ {e X Ψ eE dd f} {wt : TEˢ.checkSoundOf ctx e X (TE.success Ψ eE dd f)}
                   → Fails (proj₁ (TEˢ.checkElabV ctx e X)) → TEˢ.checkElabV ctx e X ≡ (TE.success Ψ eE dd f , wt) → ⊥

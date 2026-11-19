@@ -43,6 +43,7 @@ open import Once.Metatheory.Laws.MapV Σ u fmt S using (module MapV)
 
 module AnaV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (σ : TySub m 0) (r : Respects Δ ∅ₖ σ) where
   module Fn = Functor σ r
+    using (fromL-same; sameν←; sameν→; toL-same)
 
   -- The Spec's unfold of a coalgebra value.
   anaᵛ : ∀ (F : Fun m) (A : Ty m) → ⟦ (A ⇒[ mk-kind Many pure ] ⟦ F ⟧F A) ⟨ σ ⟩ ⟧ᵛ → ⟦ (A ⇒[ mk-kind Many pure ] ν F pureᶠ) ⟨ σ ⟩ ⟧ᵛ
@@ -79,6 +80,7 @@ module AnaV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (�
   module _ {n} {Γ : Ctx m n} {Ψ} (γ : Env σ Γ Ψ) (sγ : SameEnv Σ fmt S σ Γ Ψ γ) where
     private
       module W = Views δ sd σ r γ sγ
+        using (Res; fl; sameEnvOf; ~trans)
       open ProdV δ sd σ r γ sγ using (pureRet)
 
     -- An effect-free term reads as one value, wherever it is derived.

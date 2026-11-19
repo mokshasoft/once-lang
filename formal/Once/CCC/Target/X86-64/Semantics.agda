@@ -30,7 +30,9 @@ open LabelId using (idx)
 import Once.Spec.Word as W64
 import Once.Word as W64L
 module W = W64.Width 64
+  using (_⊕_; _⊖_; modulus; norm)
 module WL = W64L.WidthLaws 64
+  using (1<modulus; norm-id; sbb-pos; sbb-zero; ⊕-normʳ; ⊕≡+; ⊖-normʳ; ⊖≡∸)
 
 open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _≡ᵇ_)
 open import Data.Bool using (Bool; true; false; if_then_else_; _∨_)

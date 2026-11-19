@@ -99,12 +99,15 @@ module FlatComposition = Once.Adequacy.ArchCorrectness.FlatCore.FlatComposition 
        mfetch mfetch-nil mfetch-zero mfetch-suc
        is-label? mk-label find-label-go find-label-nil skip-law
        label-hit label-miss headView
+  using (blk-len; blk-off; drop-compile; fetch-block-2nd; fetch-block-head; fetch-drop
+        ; find-thunk-corr)
 open FlatComposition
 
 import Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
 module CompiledCorrespondence = Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
        o FS slot-size word-eq Reg roles State rreg memory xhalted link-claim
        xpc (List Instr) compile-trace find-label blk-off blk-len exec modulus
+  using (BlockStep; BlockSteps; CompiledCorr; fetch-just-drop; fetch-nothing-drop; slot-heap-disj; store-guard; module BlockSteps; module CompiledCorr)
 open CompiledCorrespondence
 open CompiledCorrespondence.CompiledCorr using (pc-off; dataCorr)
 
@@ -124,6 +127,7 @@ open import Once.Adequacy.ArchCorrectness.FlatCore.RunLow o FS slot-size word-eq
 -- already binds). Same application, hence the same types.
 import Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence as FC
 module CFC = FC FS slot-size word-eq Reg roles State rreg memory xhalted
+  using (HeapView; enc-sv; slots; stack-eq-cur; module FlatCorr; module HeapView)
 open CFC using (HeapView; slots)
 
 ------------------------------------------------------------------------
@@ -134,6 +138,9 @@ open RegRoles roles using (in1-reg; sp-reg)
 import Once.Arith.Backend.RunTraceCore as Core
 module RT = Core.RunTrace State (List Instr) Instr Payload
                           xhalted xpc mfetch mexecInstr matchCall ret-call dispatchArith
+  using (ArithEnv; EvExtractor; run-events; run-events-arith; run-events-exhausted
+        ; run-events-external; run-events-fetch-none; run-events-halted; run-events-leave
+        ; run-events-noncall)
 
 -- unqualified, as `CompiledCorrespondence` imports it: `halted`/`regs`/… are
 -- `LocState` fields that `Machine.Flat` itself picks up this way.

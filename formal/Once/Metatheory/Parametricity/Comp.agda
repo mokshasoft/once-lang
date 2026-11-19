@@ -151,6 +151,7 @@ module AnaR (f : Finite) {G G′ : SFunctor} (q : SRel G G′) {A A′ : Set} (R
   private
     module U  = Unfold G
     module U′ = Unfold G′
+      using (unfold-out≈)
 
   anaRel : ∀ n {a a′} → RA a a′ → RelNu f q n (ana f G c a) (ana f G′ c′ a′)
   anaRel zero    s = tt

@@ -84,6 +84,7 @@ open import Once.CCC.Label using (once; thunk; callee; e-thunk; e-fn)
 import Once.CCC.Target.RiscV64.Semantics as R
 import Once.Adequacy.ArchCorrectness.RiscV64.FlatCorrespondence as FC
 module C = FC FS word-eq
+  using (keeps-t1-t2-riscv64; role-off-ra; role-off-t1; sets-2roles-riscv64; sets-mem-riscv64; sets-role-riscv64; module FlatCorrespondence)
 open C using ()
 open C.FlatCorrespondence using (HeapView)
 open C.FlatCorrespondence.HeapView using (HDom; haddr)
@@ -97,6 +98,7 @@ open import Once.Target.RiscV64.PhysReg using (Reg; ra; a0; t0; sp; zero; t1; t2
 import Data.Integer as ℤ
 import Once.Spec.Word as OnceWord
 module IntW = OnceWord.Width 64
+  using (fromℤ)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles
   using (role-sp; role-clos; role-heap; role-out; role-in1)
 open import Once.CCC.Target.RiscV64.AbstractToRiscV using (compile-trace; compile-abstract; slot-to-disp)
@@ -140,6 +142,7 @@ module CompiledCorrespondence = Once.Adequacy.ArchCorrectness.FlatCore.CompiledC
        riscv64-link-claim
        R.State.pc Program compile-trace R.find-label blk-off blk-len R.exec
        R.W.modulus
+  using (BlockStep; BlockStepAt; BlockSteps; CompiledCorr; module CompiledCorr)
 open CompiledCorrespondence
 open CompiledCorrespondence.CompiledCorr using (ret-eq; code-eq; dataCorr; pc-off)
 

@@ -41,7 +41,11 @@ private
 module _ (alg : TyAlg) {R′ RF′ : Set} (salg : TypeAlg R′ RF′) where
   private
     module O = TyAlg alg
+      using (Extra; R; RF; aAct; aArrow; aEff; aFloat; aInt; aMu; aNu; aNuAct; aProd; aSum; aUnit
+            ; aVoid; fId; fK; fProd; fSum)
     module S = TypeAlg salg
+      using (Extra; aAct; aArrow; aEff; aFloat; aInt; aMu; aNu; aProd; aSum; aUnit; aVoid; fId; fK
+            ; fProd; fSum)
 
   record Hom (h : O.R → R′) (hF : O.RF → RF′) : Set₁ where
     field

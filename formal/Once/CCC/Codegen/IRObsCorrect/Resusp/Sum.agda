@@ -75,7 +75,9 @@ module ResuspSumC {FS : FrameSemantics} where
 
     open RBase wf coalg e prog lbl-n R mk-child R-tr
     module AL = ResuspSumLC.RSumL {FS} wf coalg e prog lbl-n R mk-child R-tr wF wG ihF ihG
+      using (result-l)
     module AR = ResuspSumRC.RSumR {FS} wf coalg e prog lbl-n R mk-child R-tr wF wG ihF ihG
+      using (result-r)
 
     resusp-Sum : Resusp′ (wf-Sum wF wG)
     resusp-Sum n l σ (inj₁ y₁) = AL.result-l n l σ y₁

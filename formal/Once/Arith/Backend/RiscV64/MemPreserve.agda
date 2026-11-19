@@ -30,3 +30,4 @@ readMem-writeMem-other m addr val a neq with a ≡ᵇ addr in eq
 
 import Once.Arith.Backend.MemPreserveCore
 module MemPreserveCore = Once.Arith.Backend.MemPreserveCore readMem writeMem readMem-writeMem-other
+  using (AgreeMemFrom; AgreeMemFrom-refl; AgreeMemFrom-trans; writeMem-below-preserves)

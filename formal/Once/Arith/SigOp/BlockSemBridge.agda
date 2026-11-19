@@ -60,6 +60,7 @@ module _ (tn : TargetNum) where
   open Sem (int-bits tn) (float-format tn) using (eval-arith-W)
   F = float-format tn
   module W = OnceWord.Width (int-bits tn)
+    using (_%ˢ_; _/ˢ_; _⊕_; _⊖_; _⊗_; toℤ; ⊝_)
   module WL = OnceWordL.WidthLaws (int-bits tn)
 
   ------------------------------------------------------------------------

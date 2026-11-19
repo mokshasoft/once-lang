@@ -141,6 +141,7 @@ module ResuspC {FS : FrameSemantics} where
     ----------------------------------------------------------------------
     private
       module B = ResuspBaseC.RBase {FS} wf coalg e prog lbl-n R mk-child R-tr
+        using (OutAt′; RRuns′; Resusp′; out-loc; out-reg; out-unit; ro-loc; ro-reg; ro-unit; ro→rp; module RRuns′)
       open ResuspBaseC {FS} using (SegA; seg-bf; live-from)
 
       resusp-K : ∀ {C} (ib : IsBaseTypeI C) → B.Resusp′ (wf-K ib)

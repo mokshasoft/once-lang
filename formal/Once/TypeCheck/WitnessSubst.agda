@@ -32,6 +32,7 @@ open import Once.Spec.Type.Substitution using (⟨⟩-∘; respects-∘)
 open import Once.Spec.Grade using (mk-kind; Many; pure; act)
 open import Once.Spec.Signature using (DeclType; constant; value; operation; ⌜_⌝ᵈ; ⌜_⌝)
 module BT = Once.Spec.Signature.BTy
+  using (_*_; _+_; float; int; unit; void)
 open import Once.Type.Closed using (sub0)
 import Once.Spec.Core.Derived
 open import Function using (_$_)
@@ -125,6 +126,7 @@ module _ where
 -- The combinators that weaken commute with the substitution.
 private
   module DV = Once.Spec.Core.Derived
+    using (anaᶜ; caseᶜ; composeᶜ; effAppᶜ; pairᶜ)
 open import Once.Core.TySubstRen Σ S using (⟪⟫-wk)
 open import Once.Spec.Core.Syntax using (let′; lam; app; unfold; var)
 open import Data.Fin using (zero)

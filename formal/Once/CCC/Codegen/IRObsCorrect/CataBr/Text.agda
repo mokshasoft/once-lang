@@ -204,6 +204,7 @@ module PiecesAt (E : IRTy) (ck : Kind) (cs : ℕ) (G : Fun 0) (n l1 : ℕ) where
 
   -- the flatten pieces, by name (no re-export: plan 0.92 §2)
   module P = Pieces G n l1
+    using (bodyL; cslot; exitTxt; flatTxt; headTxt; initTxt; pushTxt; reloadTxt; rootTxt; visitTxt)
   cslot bodyL : ℕ
   cslot = P.cslot
   bodyL = P.bodyL
@@ -272,6 +273,8 @@ module CataBrTextC {FS : FrameSemantics} where
     G = ⌈ F ⌉F
 
     module Pc = PiecesAt E (kind C) (size C) G n l1
+      using (bodyL; cslot; exitTxt; flatTxt; foldTxt; headTxt; initTxt; pre37; pushTxt; reloadTxt
+            ; restTxt; rootTxt; setup-eq; setupTxt; visitTxt)
     open Pc
 
     -- the layer the algebra takes

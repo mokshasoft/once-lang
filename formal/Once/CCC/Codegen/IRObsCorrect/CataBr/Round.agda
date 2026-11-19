@@ -140,6 +140,7 @@ module CataRoundC {FS : FrameSemantics} where
     XL = (23 + VL) + H
 
     module V = Visit prog F n n (n + 4) (n + 5) sn c ≤-refl (m≤m+n n 4) (m≤m+n n 5) n≢4 n≢5 4≢5
+      using (InWord; KV; VQ; visit)
 
     -- the loop's slots, as the visit walk keeps them
     kv : ∀ j → K j → V.KV (n + 7) j

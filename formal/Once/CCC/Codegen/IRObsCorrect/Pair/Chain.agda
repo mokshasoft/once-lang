@@ -85,6 +85,7 @@ module PairC {FS : FrameSemantics} where
   open TracePrimitives′ using (exec-abstract-preserves-halted-WF; InstrWF)
   open Mach {FS}
   module PBC = PairBuildC {FS}
+    using (src-of-place; module Tail)
   open FlatStepsAPI {FS} using (fl-go-skip; fl-go-shift; fl-go-prefix)
   open Resolve {FS} using (found-in-window; noLabel-outside; NoLabel)
 
@@ -419,8 +420,12 @@ module PairC {FS : FrameSemantics} where
     where
 
     module PS = PairShape f g n l
+      using (backup; f-start; fst-stash; ft; gt; mid; n1; snd-stash; tail)
     module PR = PairRun f g n l prog base s alloc cl rs n≤ nh
+      using (input1-p2; p1; p2; restore-ok)
     module VR = ValueRealized
+      using (at-end; bf-mono; blocks-kept; frame-pres; heap-pres; live; no-link; no-ret; place; run
+            ; settle; stack-pres; steps)
 
     ------------------------------------------------------------------
     -- D158's hand-over, restated locally (it lives inside `CompC`, which
@@ -805,6 +810,7 @@ module PairC {FS : FrameSemantics} where
     rsB = subst (λ fr → SMCore.MemOps.readLoc (floc fsG) (AtStack fr (suc n)) ≡ just fv) (sym cf-fsG) read-fst-fsG
 
     module T = PBC.Tail {prog} n B C fsG tfetch liveG fv (falloc fsF) bftB bkB srcB rsB srcC
+      using (A₁; L; bf-tail; bk-tail; cf-tail; hfin; keep; live-L; run; settle; sf-tail; silent; val)
 
     tail-chain : FlatSteps prog (length tail-text) fsG T.settle
     tail-chain = T.run

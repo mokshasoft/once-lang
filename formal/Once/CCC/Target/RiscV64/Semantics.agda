@@ -36,7 +36,9 @@ open import Once.CCC.Label using (_≡ᵇᴸ_; Label; thunk)
 import Once.Spec.Word as W64R
 import Once.Word as W64RL
 module W = W64R.Width 64
+  using (_⊕_; _⊖_; fromℤ; modulus)
 module WL = W64RL.WidthLaws 64
+  using (norm-id; ⊕-neg; ⊕-normʳ; ⊕≡+; ⊖≡∸)
 
 ------------------------------------------------------------------------
 -- Machine State

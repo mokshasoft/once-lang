@@ -42,6 +42,7 @@ import Once.CCC.Target.X86-32.Semantics as X
 import Once.Spec.Word as W32
 import Once.Word as W32L
 module W = W32.Width 32
+  using (modulus)
 module WL = W32L.WidthLaws 32
 open import Once.CCC.Machine.SMCore
   using (AbstractTrace; instr-ctrl; c-ret; instr-load-tag-lit; instr-load-const; instr-room)

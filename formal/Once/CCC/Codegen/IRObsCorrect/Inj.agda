@@ -82,6 +82,7 @@ module InjC {FS : FrameSemantics} where
   open Once.CCC.Machine.SMPrimitives.TraceComposition {FS} using (exec-trace-append)
   open MemoryOps {FS} using (readLoc-writeLoc-same)
   module SR = StraightRunAPI {FS}
+    using (after; straight-silent; straight-steps)
   open ClosureWellFormedBase {FS} using (Pad; wrap; cell-ptr; cell-inline; cell-flat)
   open FlatEventTrace {FS} using (chain-events-subst)
 
@@ -200,6 +201,7 @@ module InjC {FS : FrameSemantics} where
     σf = exec-trace (fill (suc (size P)) c) s₇ A₁
     sf = proj₁ σf
     module F = FillOut F
+      using (alloc-eq; live; other; written)
 
     -- a cell of a block other than the fresh one, or a frame slot, is the fill's to keep
     not-pad : ∀ l → (∀ o → l ≢ AtDynamic (heap-loc rd o)) → ∀ j → j < c → l ≢ dst rd (suc (size P)) j
@@ -239,6 +241,7 @@ module InjC {FS : FrameSemantics} where
              (src-tr keepf src)
       sp = proj₁ (exec-trace (put P n (suc n) 1) sf A₁)
       module Pt = PutOut Pt
+        using (alloc-eq; cell; live; other)
 
       -- the last row: the block is the result
       sfin = record sp { regs = writeReg (regs sp) Output blk }

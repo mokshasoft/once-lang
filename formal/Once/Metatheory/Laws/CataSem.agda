@@ -41,6 +41,7 @@ open import Once.Metatheory.Laws.MapV Σ u fmt S using (module MapV)
 
 module CataV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (σ : TySub m 0) (r : Respects Δ ∅ₖ σ) where
   module Fn = Functor σ r
+    using (fromL-same; roll-same; sameμ)
 
   -- The Spec's fold of an algebra value.
   cataᵛ : ∀ (F : Fun m) (A : Ty m) → ⟦ (⟦ F ⟧F A ⇒[ mk-kind Many pure ] A) ⟨ σ ⟩ ⟧ᵛ → ⟦ (μ F ⇒[ mk-kind Many pure ] A) ⟨ σ ⟩ ⟧ᵛ

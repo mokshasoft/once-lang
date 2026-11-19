@@ -339,6 +339,7 @@ module MonoStep {s} {S : Defs s} {csc : C.CScope} {tl : Tele S} {ss : SigSig (C.
   σx-self = σW-self pre (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf
 
   module MBS = Once.Adequacy.MeaningBridgeS fmt Σ S (Names.nm N) (OkOf P) (OkSOf P) (Names.inline N) σ₀ σx σx-self ∅ₖ
+    using (Refs; bridge⇐; bridge⇒)
 
   -- The scope's references, related: the table's entries by name (the
   -- invariant's relation), the declarations of Σ as `J` reads them.

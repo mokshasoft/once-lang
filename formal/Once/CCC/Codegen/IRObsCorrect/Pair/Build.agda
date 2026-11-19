@@ -75,6 +75,7 @@ module PairBuildC {FS : FrameSemantics} where
   open Once.CCC.Machine.SMPrimitives.TraceComposition {FS} using (exec-trace-append)
   open FlatEventTrace {FS} using (chain-events-subst)
   module SR = StraightRunAPI {FS}
+    using (At; after; straight-silent; straight-steps)
   private module IC = InjC {FS}
 
   tail-text : ℕ → IRTy → IRTy → AbstractTrace
@@ -186,6 +187,7 @@ module PairBuildC {FS : FrameSemantics} where
            freshB (FlatAlloc.alloc-live {FS} N a) (≤-trans (m≤m+n (size B) (size C)) S≤N)
            (FlatAlloc.alloc-in {FS} N a) (src-tr (keep₃ {aB}) srcB)
     module PB = PutOut PB
+      using (alloc-eq; cell-at; live; other)
     sB = proj₁ (exec-trace (put B (suc n) pr 0) t₃ A₁)
 
     keepB : ∀ l → Live a l → readLoc sB l ≡ readLoc t₃ l
@@ -198,6 +200,7 @@ module PairBuildC {FS : FrameSemantics} where
            (FlatAlloc.alloc-live {FS} N a) S≤N (FlatAlloc.alloc-in {FS} N a)
            (src-tr (λ l lv → trans (keepB l lv) (keep₃ {a} l lv)) srcC)
     module PC = PutOut PC
+      using (alloc-eq; cell-at; live; other)
     sC = proj₁ (exec-trace (put C sn pr (size B)) sB A₁)
 
     -- the last row: the block is the result

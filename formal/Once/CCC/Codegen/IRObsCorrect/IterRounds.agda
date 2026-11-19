@@ -79,6 +79,7 @@ module IterRoundsC {FS : FrameSemantics} where
     open Loop body n l base
     open Anchor Z
     module VR = ValueRealized
+      using (cont-alloc; log; out-mode; place; progress; run; steps; stops)
 
     -- One round from an entry, given the rounds from every later entry at a
     -- smaller budget.

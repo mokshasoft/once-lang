@@ -132,7 +132,10 @@ module ResuspSumCommonC {FS : FrameSemantics} where
                   where
 
       module SS = SumShape F E A lbl-n wF wG n l
+        using (armF; armG; l2; midJ; n2; nF; post; module At)
       module AT = SS.At prog (fpc σ) span lab
+        using (J; P; at-jmp; at-join; at-join-l; at-lab; at-pre; end; inl-target; join-l
+              ; join-target; labF; labG; spF; spG)
 
       s  = floc σ
       a  = falloc σ
@@ -145,6 +148,7 @@ module ResuspSumCommonC {FS : FrameSemantics} where
                    (span-take prog (store-at-slot n ∷ restore-input n ∷ [])
                       {instr-ctrl (c-branch-tag-zero (ℓ o l)) ∷ (SS.armG DL.++ (SS.midJ DL.++ (SS.armF DL.++ SS.post)))} (fpc σ) span)
                    r1
+        using (fs′; other; run; seg; silent; slot)
       σ₁ = S.fs′
 
       fBr : fetch prog (fpc σ₁) ≡ just (instr-ctrl (c-branch-tag-zero (ℓ o l)))

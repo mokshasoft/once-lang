@@ -151,6 +151,7 @@ entry-frame-x86-64 : X86Frame
 entry-frame-x86-64 = stack-addr X.stack-top stack-top-in-stack , 0
 
 module FFOx = FFO o tbl x86-64 x86-64-frame-semantics refl entry-frame-x86-64 (arch-semantics x86-64)
+  using (entry-alloc; entry-s; flat-cut; flat-ends; flat-fuel; image; start-flat; start-sound)
 
 -- A THEOREM: the entry frame IS the loader's `%rsp`
 -- (`entry-frame-x86-64 = stack-addr stack-top _ , 0`) and `frame-base` on x86-64 is

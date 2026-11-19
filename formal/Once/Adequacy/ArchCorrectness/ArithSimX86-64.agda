@@ -330,6 +330,7 @@ module _ (N : ℕ) where
     (λ d a b s  → readReg-wr-arith-same (regs s) d _)
     -- rt-fcmp (peel rdx, rax)
     (λ o d a b s → trans (wr-rdx-arith _ d _) (trans (wr-rax-arith (writeReg (regs s) (arith-reg d) _) d _) (readReg-wr-arith-same (regs s) d _)))
+    using (IOksWF; R-input; arith-block-correct; leafWord)
 
 ------------------------------------------------------------------------
 -- plan 0.123 α′ (f3c): THE BLOCK'S ENTRY STATE. The dispatch enters the

@@ -169,6 +169,8 @@ module IterProofC {FS : FrameSemantics} where
     evs = cong proj₁ RES
 
     module R = RoundsRun rr
+      using (at-end; bf0; bk0; cont-alloc; events; frame; frames; live; log; mem0; no-link; no-ret
+            ; out-mode; place; progress; run; settle; steps; stops)
 
     witness : MachineRefinesObsF prog base n l (Iter body) (e , a₀) s alloc cl rs k
     witness = record

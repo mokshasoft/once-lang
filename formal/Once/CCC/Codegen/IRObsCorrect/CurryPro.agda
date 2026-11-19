@@ -87,7 +87,9 @@ module CurryProC {FS : FrameSemantics} where
   open FlatEventTrace {FS} using (chain-events-subst)
   open GetC {FS} using (GetOut; module GetOut; get-run; setOut; out-mem; get-len)
   module SR = StraightRunAPI {FS}
+    using (At; after; straight-silent; straight-steps)
   module BC = BlockCallC {FS}
+    using (BodyRuns)
   open ResuspBaseC {FS} using (span-take; span-drop; labels-drop)
   open import Once.CCC.Codegen.LabelResolve o using (module Resolve)
   open Resolve {FS} using (NoLabel)
@@ -246,6 +248,7 @@ module CurryProC {FS : FrameSemantics} where
                   srcE-gs
                   (writeLoc-read-same-stack u3 cf 1 w0)
                   (PairBuildC.src-of-place {FS} {prog} (GetOut.place gA))
+      using (A₁; L; N; bf-tail; bk-tail; hfin; keep; live-L; out; run; settle; silent; val)
 
     -- (4) the body's input
     fMov : fetch prog (fpc TB.settle) ≡ just mov-to-input
@@ -294,6 +297,8 @@ module CurryProC {FS : FrameSemantics} where
 
     vr = MachineRefinesObsF.value-realized mro
     module VR = ValueRealized vr
+      using (at-end; bf-mono; blocks-kept; cont-alloc; frame-pres; frames-pres; live; log; no-link
+            ; no-ret; out-mode; place; progress; run; settle; steps; stops)
 
     log₇ : SMCore.LocState.ev-log (floc σ₇) ≡ SMCore.LocState.ev-log s
     log₇ = trans (log-of pro-chain ev-pro) (++-identityʳ _)

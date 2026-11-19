@@ -98,8 +98,10 @@ module CataFlattenC {FS : FrameSemantics} where
                  (lv : LabelsAt prog (22 + H) (Pieces.visitTxt ⌈ F ⌉F n l1)) where
 
     module L = Loop prog wf ub n c l1 sn cb H span hd ex lv
+      using (EQ; K; NE; VL; XL; module Exit; module Round)
     open L
     module P = PO (wf-⌈⌉ wf) alg₀
+      using (FI; children; flatten-measure; flatten-step; pushAll)
 
     -- the loop's exit: todo empty, eval the invariant
     FQ : List ⟦ μ-type F ⟧ → List ⟦ μ-type F ⟧ → FlatState → Set
