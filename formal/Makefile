@@ -83,6 +83,12 @@ certified:
 lint-imports:
 	@./scripts/lint-imports.sh
 
+# The back end does not depend on the front end (plan 0.152 B): a ratchet over
+# the back-end modules whose import closure reaches a surface module.
+.PHONY: layer-gate
+layer-gate:
+	@./scripts/layer-gate.py
+
 .PHONY: backstop
 # The island backstop: every module except scripts/backstop.islands (MERGE.md §5),
 # reachable from the apex or not, so an off-apex proof cannot rot silently (as
