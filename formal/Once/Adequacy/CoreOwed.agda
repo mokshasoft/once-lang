@@ -5,15 +5,12 @@
 -- Once.Adequacy.CoreOwed — plan 0.146 B1.7 step 3 (D464):
 -- ★ WHAT THE NEW IMAGE STILL OWES, NAMED.
 --
--- The linear core's image owes the arch layer two kinds of fact
--- (`LinCore.Apex.NewImage.Owed`), and `Certified` takes them here:
+-- The linear core's image owes the arch layer one fact
+-- (`LinCore.Apex.NewImage.Owed`), and `Certified` takes it here. (Its RUN
+-- facts — a slot the run addresses is in its frame, a closure call's cell
+-- names a body, a return is owed and releases its frame — were owed here
+-- until B1.7b (D456) made them machine gates, read off a sound run.)
 --
---   * its RUN facts (`OwedRun`: a slot the run addresses is in its frame, a
---     closure call's cell names a body, a return is owed and releases its
---     frame): what master postulates of its own image (`RunWF`'s
---     `call-site-shapeᴼ`, `ret-site-owesᴼ`, `ret-budget-matchesᴼ`, and its
---     scan's `em-slots`). B1.7b (D456) makes them machine gates, proved at
---     each step; this postulate then goes;
 --   * that an external op's symbol is no arith block's (`ExtMiss`): what
 --     master's `external-sigop-contract` assumes of its own file, on each
 --     arch. Its discharge is a name discipline (an external's name is a source
@@ -46,12 +43,6 @@ import Once.Adequacy.ArchCorrectness.RiscV64.Sim as Srv
 BridgedAt : ∀ {o : CanonicalName} {B : Backend} → ArchSim o B → List IRFun → Once.IR.IR Once.IRTy.Unit Once.IRTy.Unit → Set
 BridgedAt A tbl ir =
   Once.LinCore.ExprBuild.Bridged (fs-numerics (ArchSim.FS A)) (Interp.sig (FrameSemantics.fs-interp (ArchSim.FS A))) tbl ir
-
-postulate
-  -- ★ B1.7b: the new image's run facts, on any arch
-  owed-run : ∀ (o : CanonicalName) {B : Backend} (A : ArchSim o B) (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Unit)
-             (bf : BridgedAt A tbl ir)
-           → Once.LinCore.Apex.NewImage.OwedRun o A tbl ir bf
 
 -- ★ its externals miss its blocks' table, per arch
 module X86-64 (o : CanonicalName) (tbl₀ : List IRFun) (ι : Interp)

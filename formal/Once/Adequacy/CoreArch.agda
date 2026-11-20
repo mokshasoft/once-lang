@@ -69,8 +69,7 @@ module X86-64 (ι : Interp) (r : RB64.RegRange entry-owner ι) (a : RB64.AddrNoW
       module P = Prog x86-64 m ir mi
       module T = Once.LinCore.Top.Program entry-owner (At.A (moduleTable m)) m (moduleTable m) ir mi (table-names-distinct m) refl ls
       O : T.N.Owed
-      O = record { o-run = CO.owed-run entry-owner (At.A (moduleTable m)) (moduleTable m) ir T.bf
-                 ; o-ext-miss = At.ext-miss (moduleTable m) (moduleTable m) ir T.bf }
+      O = record { o-ext-miss = At.ext-miss (moduleTable m) (moduleTable m) ir T.bf }
 
   core-wf : ∀ (doOpt : Bool) (m : Resolved) (F : FileOf x86-64) → coreFileOf x86-64 doOpt m ≡ inj₂ F
           → moduleSig m ≡ Interp.sig ι → AsmWF-of x86-64 F
@@ -105,8 +104,7 @@ module X86-32 (ι : Interp) (r : RB32.RegRange entry-owner ι) (a : RB32.AddrNoW
       module P = Prog x86-32 m ir mi
       module T = Once.LinCore.Top.Program entry-owner (At.A (moduleTable m)) m (moduleTable m) ir mi (table-names-distinct m) refl ls
       O : T.N.Owed
-      O = record { o-run = CO.owed-run entry-owner (At.A (moduleTable m)) (moduleTable m) ir T.bf
-                 ; o-ext-miss = At.ext-miss (moduleTable m) (moduleTable m) ir T.bf }
+      O = record { o-ext-miss = At.ext-miss (moduleTable m) (moduleTable m) ir T.bf }
 
   core-wf : ∀ (doOpt : Bool) (m : Resolved) (F : FileOf x86-32) → coreFileOf x86-32 doOpt m ≡ inj₂ F
           → moduleSig m ≡ Interp.sig ι → AsmWF-of x86-32 F
@@ -142,8 +140,7 @@ module RiscV64 (ι : Interp) (r : RBrv.RegRange entry-owner ι) (s : RBrv.SlotAd
       module P = Prog riscv64 m ir mi
       module T = Once.LinCore.Top.Program entry-owner (At.A (moduleTable m)) m (moduleTable m) ir mi (table-names-distinct m) refl ls
       O : T.N.Owed
-      O = record { o-run = CO.owed-run entry-owner (At.A (moduleTable m)) (moduleTable m) ir T.bf
-                 ; o-ext-miss = At.ext-miss (moduleTable m) (moduleTable m) ir T.bf }
+      O = record { o-ext-miss = At.ext-miss (moduleTable m) (moduleTable m) ir T.bf }
 
   core-wf : ∀ (doOpt : Bool) (m : Resolved) (F : FileOf riscv64) → coreFileOf riscv64 doOpt m ≡ inj₂ F
           → moduleSig m ≡ Interp.sig ι → AsmWF-of riscv64 F

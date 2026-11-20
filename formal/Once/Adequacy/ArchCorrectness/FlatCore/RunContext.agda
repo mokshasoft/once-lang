@@ -179,15 +179,9 @@ record Emitted (prog : AbstractTrace) : Set where
     em-calls  : ∀ k f → fetch prog k ≡ just (instr-ctrl (c-call-fn f)) → Σ ℕ (λ j → find-fn prog f ≡ just j)
     em-code   : ∀ p (ℓ : LabelId) → fetch prog p ≡ just (instr-load-code-addr ℓ) → Σ ℕ (λ j → find-thunk prog ℓ ≡ just j)
     em-guard  : GuardAt prog
-    -- D455: a slot an instruction of the run addresses is inside the current
-    -- frame (the run's fact; master's image proves it by its positional scan,
-    -- `OldSeg`, the new image from its simulation)
-    em-slots  : ∀ fs (i : AbstractInstr) (slot : Slot) → Reachable prog 0 fs
-              → fetch prog (fpc fs) ≡ just i → slot-of i ≡ just slot
-              → slot < frame-slots (falloc fs)
-    -- (B1.7b, D456: a closure call's cell, a return owed and its budget were run fields here;
-    -- they are the machine's gates now, read off a sound run: `RunWF.call-site-shape`,
-    -- `ret-site-owes`, `ret-budget-matches`)
+    -- (B1.7b, D456: a slot in the frame, a closure call's cell, a return owed and its budget
+    -- were run fields here; they are the machine's gates now, read off a sound run:
+    -- `RunWF.slot-read-in-frame`, `call-site-shape`, `ret-site-owes`, `ret-budget-matches`)
 open Emitted
 
 -- (`CallI`, the two calls, lives beside the instruction set: `SMCore`.)

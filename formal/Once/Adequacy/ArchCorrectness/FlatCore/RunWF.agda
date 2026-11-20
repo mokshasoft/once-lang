@@ -119,7 +119,7 @@ open import Once.Type using (fits-int; fits-float)
 -- i.e. `matchCall j ≡ nothing`. (The one absurd case is `call-sym`, ruled out by
 -- the halt clash; every other instruction is `matchCall … = nothing` definitionally.)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunContext o FS slot-size word-eq
-open Emitted using (em-budget; em-zero; em-start; em-image; em-alloc; em-calls; em-guard; em-slots)
+open Emitted using (em-budget; em-zero; em-start; em-image; em-alloc; em-calls; em-guard)
 open RunAt using (run-em; run-reach)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open FlatStepsAPI {FS} using ([]; _∷_)
@@ -310,7 +310,8 @@ fetch-zero prog em = em-zero em
 -- D455: the invariant is the RUN's, read off no scan of the code. Master's
 -- positional segments (the reservation in force at each pc, a saved frame's
 -- at its return pc) are master's proof of the slot fact, and live with its
--- image (`OldSeg`); the slot fact itself is `Emitted.em-slots`.
+-- image (`OldSeg`); the slot fact itself is the machine's slot gate
+-- (B1.7b, D456: `slot-read-in-frame`).
 --
 -- A DATATYPE (not a `with`-free function on two lists) so the cons/nil cases
 -- compose at the pushes and pops the markers produce.
@@ -805,7 +806,7 @@ thunk-entry-ret prog fs ℓ bb r ftq = proj₂ (proj₂ (fw-entry (run-frame-wf-
 -- (`run-stack-slot` — "the window is the whole trace's budget" — is GONE with
 -- the flip. It is FALSE inside a closure body, whose window is the body's own
 -- reservation. Its consumer wants the slot inside the CURRENT frame, which is
--- `Emitted.em-slots`, D455.)
+-- the machine's slot gate, B1.7b D456: `slot-read-in-frame`.)
 
 ------------------------------------------------------------------------
 -- (`run-no-ret` STOOD HERE and is now DELETED — on purpose, and it is the

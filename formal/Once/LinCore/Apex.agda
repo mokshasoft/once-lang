@@ -41,8 +41,6 @@ open import Once.CCC.Codegen.RoomChecks using (room-checks)
 open import Once.CCC.Machine.SMCore
   using (AbstractTrace; AbstractInstr; instr-ctrl; c-ret; instr-call-closure; SV-Ptr; SV-Code; module LocState; module AllocState)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
-open import Once.CCC.Machine.Locations using (Slot; AtDynamic)
-open import Once.CCC.Machine.InstrSlot using (slot-of)
 open import Once.CCC.Label using (LabelId)
 open import Once.Memory.HeapAddress using (HeapLocation; sucHL)
 open import Once.Arith.Machine.IR using (ArithBlock)
@@ -65,7 +63,7 @@ open import Once.CCC.Codegen.ImageExterns using (image-externs)
 open ArchSim A
 open FlatMachine {FS} using (fetch; find-thunk; module FlatState)
 open FlatState using (fpc; floc; fclosure; fret; falloc)
-open Once.Adequacy.ArchCorrectness.FlatCore.RunContext o FS slot-size word-eq using (Emitted; Reachable)
+open Once.Adequacy.ArchCorrectness.FlatCore.RunContext o FS slot-size word-eq using (Emitted)
 
 
 module ML = Once.LinCore.MachineLit FS bw
@@ -99,21 +97,12 @@ module NewImage (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Uni
   -- nothing falls into an entry (`ImageGuard`, D454)
   module IG = Once.LinCore.ImageGuard.G.Img (fs-numerics FS) (fs-ffi FS) bw {FS} IT.ds IT.f₀ ML.ldConst ML.ld-nl
 
-  -- ★ WHAT THE NEW IMAGE OWES THE ARCH LAYER: `RunContext.Emitted`'s field not yet proved
-  -- (the run's slot fact: the machine's slot gate, B1.7b)…
-  record OwedRun : Set where
-    field
-      -- D455: a slot the run addresses is inside the current frame
-      o-slots  : ∀ fs (i : AbstractInstr) (slot : Slot) → Reachable image 0 fs
-               → fetch image (fpc fs) ≡ just i → slot-of i ≡ just slot
-               → slot < AllocState.frame-slots (falloc fs)
-      -- (B1.7b: a closure call's cell, a return owed and its budget are the machine's gates now)
-
-  -- …and that its externals miss its table (what master's `external-sigop-contract`
-  -- assumes of its file: compiler symbols apart from the source's names)
+  -- ★ WHAT THE NEW IMAGE OWES THE ARCH LAYER: that its externals miss its table (what
+  -- master's `external-sigop-contract` assumes of its file: compiler symbols apart from the
+  -- source's names). (Its run facts — a slot in the frame, a closure call's cell, a return
+  -- owed and its budget — are the machine's gates now, B1.7b D456: nothing of the run is owed.)
   record Owed : Set where
     field
-      o-run      : OwedRun
       o-ext-miss : ExtMiss FS env P′
 
   -- ★ THE ARITH TABLE (D462): every op call of the image names one of its blocks — an op of the
@@ -126,19 +115,18 @@ module NewImage (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Uni
   o-table : Owed → ArithTable P′ env
   o-table O = table P′ bs named (Owed.o-ext-miss O)
 
-  -- ★ the image facts the arch layer reads: the proved ones and the owed ones
-  emitted : Owed → Emitted image
-  emitted O = record
+  -- ★ the image facts the arch layer reads: all proved
+  emitted : Emitted image
+  emitted = record
     { em-budget = IA.em-budget ; em-zero = IAF.em-zero ; em-start = IAF.em-start
     ; em-image = IA.em-image ; em-alloc = IA.em-alloc
     ; em-calls = IAF.em-calls ; em-code = IAF.em-code
-    ; em-slots = OwedRun.o-slots (Owed.o-run O)
     ; em-guard = IG.em-guard }
 
   -- ★★ THE NEW IMAGE ON THE ARCH: its run has the trace of the program (master's `conc-tr`)
   conc-trᴺ : Owed
            → Machine.trace (δ env (compile P′)) init ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (fs-numerics FS) (FrameSemantics.fs-interp FS)
-  conc-trᴺ O = sim (irProgram tbl ir) _ _ env (emitted O) (o-table O)
+  conc-trᴺ O = sim (irProgram tbl ir) _ _ env emitted (o-table O)
                    (IT.flat-sound (λ {b} v → ML.ld {b} v image)) (IT.flat-ir (λ {b} v → ML.ld {b} v image))
 
   -- ★★ THE FILE: what the backend writes for the image (its code, its blocks' table, the
