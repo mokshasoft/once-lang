@@ -218,7 +218,7 @@ sigop-arith-corr {hv} prog fs s s′ si nm cc room lk ar val hl pc′ =
 
 private
   module CRL = RL o FS slot-size word-eq
-    using (RunLow; run-link-nothing; sigop-decodes)
+    using (RunLow; run-link-nothing; sigop-decodes; sigop-gated)
 
 sigop-halts-pure : ∀ {A B} (si : SigOpInfo A B) (ls : LocState FS)
                  → effect si ≡ Pure

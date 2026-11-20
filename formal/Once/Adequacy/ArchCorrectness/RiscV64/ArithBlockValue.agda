@@ -176,9 +176,9 @@ module _ {hv : HeapView} (prog : AbstractTrace) (fs : FlatState) (s : X.State)
         k = flat-off P
         cell : LocState.stackMem ls f (k + j) ≡ just (SV-Lit (fitsN m) (leafM P a))
         cell = leaf-at P (AtStack f j) ls a dT
-        win = C.range-win (live-frames (falloc fs)) _ f j k
+        win = C.FlatCorrespondence.range-win (live-frames (falloc fs)) _ f j k
                 (subst (k <_) (sym (tsize-shape (shape-pair l r′))) (off-lt P)) g
-        sar = C.stack-arg-read k f j _ (dataCorr cc) in1 win cell
+        sar = C.FlatCorrespondence.stack-arg-read k f j _ (dataCorr cc) in1 win cell
         addr : rreg' s t0 + 8 * k ≡ rreg' s t0 + k * 8
         addr = cong (rreg' s t0 +_) (*-comm 8 k)
         val = trans (cong (X.readMem (X.State.memory s)) addr)
