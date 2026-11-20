@@ -46,7 +46,9 @@ open import Once.CCC.Target.X86-64.AbstractToX86 using (slot-to-disp; compile-tr
 import Once.CCC.Target.X86-64.Semantics as X
 import Once.CCC.Target.X86-64.Syntax as XS
 open import Once.CCC.Label using (LabelId; thunk)
-open import Once.CCC.Target.X86-64.Layout using (InStack; stack-addr)
+open import Once.CCC.Target.X86-64.Layout using (module Regions; module StackSlots)
+open StackSlots using (stack-addr)
+open Regions using (InStack)
 open import Once.CCC.Target.X86-64.FrameInstantiation using (X86Frame)
 import Once.CCC.Target.X86-64.FrameInstantiation
 
