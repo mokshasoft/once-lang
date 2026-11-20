@@ -112,7 +112,7 @@ x86-32-sim = record
                 agree = retarget (proj₁ (proj₂ boot)) (proj₂ (proj₂ boot)) agree₀
             in budget-fact-of (run-of env (compile-trace P′)) ([] , X.initState) ι (runIR (arch-numerics x86-32) (pureHalf ι) q) k (proj₁ agree) _
                  -- (the run's events named, so they are matched, not computed)
-                 (RTx.run-events val-x86-32 (answer-at (arch-numerics x86-32) ι call-at-x86-32) ev-x86-32 env [] (proj₁ agree) (compile-trace P′) X.initState) _
+                 (RTx.RunTrace.run-events val-x86-32 (answer-at (arch-numerics x86-32) ι call-at-x86-32) ev-x86-32 env [] (proj₁ agree) (compile-trace P′) X.initState) _
                  (RTx.Run.runN-events val-x86-32 (answer-at (arch-numerics x86-32) ι call-at-x86-32) ev-x86-32 env (compile-trace P′) (proj₁ agree) [] X.initState)
                  (cong (RTx.Run.outObs val-x86-32 (answer-at (arch-numerics x86-32) ι call-at-x86-32) ev-x86-32 env (compile-trace P′)) e)
                  c (proj₂ agree)

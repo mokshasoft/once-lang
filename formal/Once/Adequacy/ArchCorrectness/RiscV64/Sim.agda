@@ -113,7 +113,7 @@ riscv64-sim = record
                 agree = retarget (proj₁ (proj₂ boot)) (proj₂ (proj₂ boot)) agree₀
             in budget-fact-of (run-of env (compile-trace P′)) ([] , X.initState) ι (runIR (arch-numerics riscv64) (pureHalf ι) q) k (proj₁ agree) _
                  -- (the run's events named, so they are matched, not computed)
-                 (RTx.run-events val-riscv64 (answer-at (arch-numerics riscv64) ι call-at-riscv64) ev-riscv64 env [] (proj₁ agree) (compile-trace P′) X.initState) _
+                 (RTx.RunTrace.run-events val-riscv64 (answer-at (arch-numerics riscv64) ι call-at-riscv64) ev-riscv64 env [] (proj₁ agree) (compile-trace P′) X.initState) _
                  (RTx.Run.runN-events val-riscv64 (answer-at (arch-numerics riscv64) ι call-at-riscv64) ev-riscv64 env (compile-trace P′) (proj₁ agree) [] X.initState)
                  (cong (RTx.Run.outObs val-riscv64 (answer-at (arch-numerics riscv64) ι call-at-riscv64) ev-riscv64 env (compile-trace P′)) e)
                  c (proj₂ agree)
