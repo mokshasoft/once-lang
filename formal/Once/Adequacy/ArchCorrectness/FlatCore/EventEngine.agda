@@ -125,7 +125,7 @@ open import Once.Adequacy.ArchCorrectness.FlatCore.RunLow o FS slot-size word-eq
 -- already binds). Same application, hence the same types.
 import Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence as FC
 module CFC = FC FS slot-size word-eq Reg roles State rreg memory xhalted
-  using (HeapView; enc-sv; slots; stack-eq-cur; module FlatCorr; module HeapView)
+  using (HeapView; enc-sv; slots; stack-eq-cur; stack-read; module FlatCorr; module HeapView)
 open CFC using (HeapView; slots)
 
 ------------------------------------------------------------------------
