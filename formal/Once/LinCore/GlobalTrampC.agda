@@ -27,6 +27,7 @@ open import Once.IR.Semantics.Trace using (FFIAnswers)
 open import Once.LinCore.Flat using (Base)
 open import Once.CCC.FrameSemantics using (FrameSemantics; module FrameSemantics)
 open import Once.CCC.Machine.SMCore
+open import Once.CCC.Label using (e-thunk)
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 import Once.Memory.HeapAddress

@@ -41,6 +41,7 @@ open import Once.IR.Semantics.Trace using (FFIAnswers)
 open import Once.LinCore.Flat using (Base)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore
+open import Once.CCC.Label using (e-fn)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Label using (LabelId; module LabelId; ≡ᵇᴵ-refl)
 open import Once.CCC.Codegen.LabelDefs using (Dst)
