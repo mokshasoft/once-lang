@@ -35,7 +35,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; subst; cong; sym
 open import Relation.Nullary using (yes; no)
 
 open import Once.Arith.Machine.IR using (ArithBlock)
-open import Once.Compile.Emit using (dedup-go; dedup-blocks)
+open import Once.Compile.Emit using (dedup-go; dedup-blocks; block-symbol)
 open import Once.Adequacy.RewriteOwned using (Named; BlockOf)
 open import Once.Arith.SigOp.DigestInjective using (block-symbol-injective)
 open import Once.Arith.SigOp.Block using (block-name)
