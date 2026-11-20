@@ -63,9 +63,10 @@ open import Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim o
   x86-64-reg-range
   (RB.AddrNoWrap.ret-no-wrap x86-64-addr-no-wrap)
   (RB.LitFits.tag-fits x86-64-lit-fits) (RB.LitFits.lit-fits x86-64-lit-fits) (RB.float-fits o ι)
-  using (events-agree-boot; AgreeAt; reach-start; mkRunAt; x86-64-arith-table)
+  using (module Dispatch′; x86-64-arith-table)
+open Dispatch′ using (events-agree-boot; AgreeAt)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunLow o x86-64-frame-semantics slot-size refl using (RunLow; low-start)
-open import Once.Adequacy.ArchCorrectness.FlatCore.RunContext o x86-64-frame-semantics slot-size refl using (Emitted; module Emitted)
+open import Once.Adequacy.ArchCorrectness.FlatCore.RunContext o x86-64-frame-semantics slot-size refl using (Emitted; module Emitted; mkRunAt; reach-start)
 
 private
   retarget : ∀ {A : ℕ → _} {o o′ c c′} → o ≡ o′ → c ≡ c′
