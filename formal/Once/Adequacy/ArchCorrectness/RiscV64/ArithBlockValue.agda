@@ -32,7 +32,7 @@ module Once.Adequacy.ArchCorrectness.RiscV64.ArithBlockValue
 
 open import Data.Nat using (ℕ; _+_; _*_; _∸_; _<_; _≤_)
 open import Data.Nat.Properties
-  using (≤-irrelevant; <-≤-trans; *-comm; m+n≤o⇒m≤o∸n)
+  using (≤-irrelevant; <-≤-trans; *-comm; m+n≤o⇒m≤o∸n; ≤-trans)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Maybe using (just)
 open import Data.Empty using (⊥-elim)
