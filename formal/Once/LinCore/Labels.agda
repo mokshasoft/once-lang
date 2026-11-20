@@ -31,6 +31,7 @@ import Once.Spec.Type as ST
 open import Once.SigOp.Info using (module SigOpInfo)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore
+open import Once.CCC.Label using (e-thunk)
 
 module Once.LinCore.Labels
   (fmt : TargetNum) (ans : FFIAnswers)
