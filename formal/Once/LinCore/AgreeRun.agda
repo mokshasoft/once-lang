@@ -151,11 +151,11 @@ module AR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
           (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue FS) (ι : Interp)
           (o-op : ∀ {s : Sig} {x : MV ⌜ sdom s ⌝} {y₀ tp L L′}
                 → OpPath (opF s (toF (sdom s) (er x))) tp (inj₁ y₀) → WTr (BudgetSound.W.Wι ι) L tp L′
-                → ∀ fs → LocState.ev-log (FlatMachine.floc {FS} fs) ≡ L
+                → ∀ fs → LocState.ev-log (FlatMachine.FlatState.floc {FS} fs) ≡ L
                 → Agree.OpVal {FS} (Program.U ds f) wordOf s x (mvF (scod s) y₀) (evsOf tp) fs)
           (o-opend : ∀ {s : Sig} {x : MV ⌜ sdom s ⌝} {tp L L′} → s ∈ ops (Program.U ds f)
                 → OpPath (opF s (toF (sdom s) (er x))) tp (inj₂ halted) → WTr (BudgetSound.W.Wι ι) L tp L′
-                → ∀ fs → LocState.ev-log (FlatMachine.floc {FS} fs) ≡ L
+                → ∀ fs → LocState.ev-log (FlatMachine.FlatState.floc {FS} fs) ≡ L
                 → Agree.OpHalt {FS} (Program.U ds f) wordOf s x (evsOf tp) fs) where
   open BudgetSound.W ι using (Wι; answered; wtr-split; wtr-weave; op-ret-run)
   open Agree {FS} (Program.U ds f) wordOf using (Agrees; OpVal; OpHalt)

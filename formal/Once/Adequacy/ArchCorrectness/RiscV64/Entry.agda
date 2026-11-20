@@ -73,7 +73,7 @@ open import Once.IRTy using (Unit)  -- Plan 0.52 M2: IRTy Unit
 open import Once.Adequacy.CPU using (arch-semantics)
 open import Once.Target.Arch using (riscv64)
 open import Once.Arith.Backend.CallAnswer using (answer-at)
-open import Once.Adequacy.SourceTrace using (⟦_⟧IRᵗ)
+open import Once.Denotation.ProgramTrace using (⟦_⟧IRᵗ)
 import Once.IR as IR
 open import Once.Denotation.Program using (irProgram; LinkedProgram; IRProgram)
 open Once.Denotation.Program.IRProgram using (main; table)
@@ -96,8 +96,6 @@ open import Data.Empty using (⊥)
 open import Data.Unit using (tt)
 open import Data.Nat using (_+_; _*_; z≤n; s≤s)
 open import Data.Nat.Properties using (+-comm; ≤-refl; ≤-reflexive; m≤m+n)
-import Once.Compile as C
-import Once.Parser.Module.Core as P
 -- D100: the assembler's precondition (distinct emitted local labels), threaded
 -- into this arch's `loader-faithful` axiom.
 open import Once.CCC.Codegen.RoomChecks using (room-checks)

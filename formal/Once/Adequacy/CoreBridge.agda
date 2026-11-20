@@ -52,7 +52,7 @@ import Once.Core.Telescope as TL
 import Once.Core.Translate as TR
 import Once.Adequacy.ModuleProgram as MP
 import Once.Spec.Core.Program as SP
-open import Once.Adequacy.SourceTrace using (⟦_⟧IRᵗ)
+open import Once.Denotation.ProgramTrace using (⟦_⟧IRᵗ)
 open import Once.Spec.Trace using (Tr; _≈ᵗ⟨_⟩_)
 open import Once.Denotation.TraceTr using (trT∞)
 open import Once.Compile using (moduleToIR; moduleToIR-aux; tableOf-go; moduleTable; tableOfResult)

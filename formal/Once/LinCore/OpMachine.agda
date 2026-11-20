@@ -153,9 +153,9 @@ module OM (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue Mach)
   arg-in si@(mk-info' n c ST.b-Float bB) fit fs d (w ∷ []) (vbase {x = v}) sx =
     cong (λ z → pure-sigop-out-aux si (at-arg fs z) (just fit) (sv-as-loc z)) (w-float v)
   arg-in si@(mk-info' n c (ST.b-* a b) bB) fit fs d wx px sx =
-    cong (pure-sigop-out-val si fit) (read-in (ST.b-* a b) (at-arg fs _) (AllocState.current-frame (FlatMachine.falloc fs)) d px sx)
+    cong (pure-sigop-out-val si fit) (read-in (ST.b-* a b) (at-arg fs _) (AllocState.current-frame (FlatMachine.FlatState.falloc fs)) d px sx)
   arg-in si@(mk-info' n c (ST.b-+ a b) bB) fit fs d wx px sx =
-    cong (pure-sigop-out-val si fit) (read-in (ST.b-+ a b) (at-arg fs _) (AllocState.current-frame (FlatMachine.falloc fs)) d px sx)
+    cong (pure-sigop-out-val si fit) (read-in (ST.b-+ a b) (at-arg fs _) (AllocState.current-frame (FlatMachine.FlatState.falloc fs)) d px sx)
 
   -- ★ a pure op (not a compare) whose value fits a register or is none
   open import Once.SigOp.Info using (effect-of; semM-of; Pure)
@@ -172,7 +172,7 @@ module OM (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue Mach)
   -- the value both readers give, at the argument
   PureAgree : ∀ {A B} (n : _) (c : SigOpSem A B) (bA : ST.Base ST.∅ₖ A) (bB : ST.Base ST.∅ₖ B) → _ → Set
   PureAgree {B = B} n c bA bB a =
-    Σ (Once.Semantics.Machine.⟦ B ⟧) λ w →
+    Σ (Once.Semantics.Machine.Value.⟦ B ⟧) λ w →
       (semM-of ans n c fmt a ≡ returns w) × (DT.sigOpSemT fmt ans (mk-info' n c bA bB) c a ≡ TM.ret w)
 
   op-pure-int : ∀ {A} {n} {c : SigOpSem A ST.Int} {bA : ST.Base ST.∅ₖ A} {x : MV ⌜ flatB bA ⌝} {y₀ tp L L′}
@@ -263,7 +263,7 @@ module OM (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue Mach)
         trans (cong (λ e → sigop-events-of e si st) ep) (cong evsOf (sym (proj₁ rp))) ,
         wd (st-words bB (in-memory? B) im (sigop-answer si st) w ans≡ cf dst st {h = LocState.heapMem (floc fs)})
         where
-          cf = AllocState.current-frame (FlatMachine.falloc fs)
+          cf = AllocState.current-frame (FlatMachine.FlatState.falloc fs)
           st = argD (sig si) fs d dst wx
           dec = arg-decD bA fs d (argV bA fs d wx) (SV-Ptr (AtStack cf dst)) px sx
           ans≡ : sigop-answer si st ≡ just w
@@ -296,7 +296,7 @@ module OM (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue Mach)
         refl , cong (events-at-arg si) dec ,
         wd (st-words bB (in-memory? B) im (sigop-answer si st) _ ans≡ cf dst st {h = LocState.heapMem (floc fs)})
         where
-          cf = AllocState.current-frame (FlatMachine.falloc fs)
+          cf = AllocState.current-frame (FlatMachine.FlatState.falloc fs)
           st = argD (sig si) fs d dst wx
           dec = arg-decD bA fs d (argV bA fs d wx) (SV-Ptr (AtStack cf dst)) px sx
           ans≡ = trans (cong (call-ans-at si st (call-sigop-dec si)) dec)
@@ -333,7 +333,7 @@ module OM (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue Mach)
 
   private
     tag : ∀ {rd} (b : Bool)
-        → VW rd (mvF (flatB (ST.b-+ ST.b-Unit ST.b-Unit)) (fromV (ST.b-+ ST.b-Unit ST.b-Unit) (Once.Semantics.Machine.eraseᵍ {0} (Once.Arith.Prim.bool b))))
+        → VW rd (mvF (flatB (ST.b-+ ST.b-Unit ST.b-Unit)) (fromV (ST.b-+ ST.b-Unit ST.b-Unit) (Once.Semantics.Machine.Value.eraseᵍ {0} (Once.Arith.Prim.bool b))))
              (sv-nz (SV-Lit {Mach} fits-int (if b then 1 else 0)) ∷ [])
     tag false = vinl vone refl
     tag true  = vinr vone refl

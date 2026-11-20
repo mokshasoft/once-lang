@@ -33,7 +33,7 @@ import Data.List.Relation.Unary.All
 open import Data.List.Membership.Propositional using (_∈_)
 open import Once.Spec.Trace using (_⊑ᵗ⟨_⟩_)
 open import Once.Adequacy.MachineTrace using (module Machine)
-open import Once.Adequacy.SourceTrace using (⟦_⟧IRᵗ)
+open import Once.Denotation.ProgramTrace using (⟦_⟧IRᵗ)
 open import Once.Denotation.Program using (IRFun; irProgram)
 open import Once.IR.Semantics.Trace using (module Interp)
 open import Once.CCC.FrameSemantics using (fs-numerics; fs-ffi; module FrameSemantics)

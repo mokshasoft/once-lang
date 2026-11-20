@@ -94,7 +94,7 @@ open import Once.IRTy using (Unit)  -- Plan 0.52 M2: IRTy Unit
 open import Once.Adequacy.CPU using (arch-semantics)
 open import Once.Target.Arch using (x86-32)
 open import Once.Arith.Backend.CallAnswer using (answer-at)
-open import Once.Adequacy.SourceTrace using (⟦_⟧IRᵗ)
+open import Once.Denotation.ProgramTrace using (⟦_⟧IRᵗ)
 import Once.IR as IR
 open import Once.Denotation.Program using (irProgram; LinkedProgram; IRProgram)
 open Once.Denotation.Program.IRProgram using (main; table)
@@ -110,8 +110,6 @@ x86-32-frame-semantics : FrameSemantics
 x86-32-frame-semantics = x86-32-frame-semantics-at ι
 open import Once.CCC.Target.X86-32.AbstractToX86-32
   using (compile-trace; compile-trace-cnt; compile-trace-cnt-agrees)
-import Once.Compile as C
-import Once.Parser.Module.Core as P
 -- D100: the assembler's precondition (distinct emitted local labels), threaded
 -- into this arch's `loader-faithful` axiom.
 open import Once.CCC.Codegen.RoomChecks using (room-checks)

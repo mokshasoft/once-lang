@@ -390,8 +390,8 @@ module IRTop (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Unit)
 
   module _ (ld : ∀ {b} (v : Lit b) (fs : FlatMachine.FlatState {Mach})
                  → FlatMachine.flat-exec-instr {Mach} (ldConst v) TP.image fs
-                   ≡ record fs { floc = record (FlatMachine.floc fs) { regs = writeReg (LocState.regs (FlatMachine.floc fs)) Output (wordOf (lit v)) }
-                               ; fpc = suc (FlatMachine.fpc fs) }) where
+                   ≡ record fs { floc = record (FlatMachine.FlatState.floc fs) { regs = writeReg (LocState.regs (FlatMachine.FlatState.floc fs)) Output (wordOf (lit v)) }
+                               ; fpc = suc (FlatMachine.FlatState.fpc fs) }) where
     open FlatEventTrace {Mach} using (flat-events; flat-ctrls)
     open FlatMachine {Mach} using (FlatState)
 
@@ -451,8 +451,8 @@ module ExprTop (tl : List Once.CompileSrc.CompiledSrc) (gb : Once.LinCore.ExprBu
 
   module _ (ld : ∀ {b} (v : Lit b) (fs : FlatMachine.FlatState {Mach})
                  → FlatMachine.flat-exec-instr {Mach} (ldConst v) TP.image fs
-                   ≡ record fs { floc = record (FlatMachine.floc fs) { regs = writeReg (LocState.regs (FlatMachine.floc fs)) Output (wordOf (lit v)) }
-                               ; fpc = suc (FlatMachine.fpc fs) })
+                   ≡ record fs { floc = record (FlatMachine.FlatState.floc fs) { regs = writeReg (LocState.regs (FlatMachine.FlatState.floc fs)) Output (wordOf (lit v)) }
+                               ; fpc = suc (FlatMachine.FlatState.fpc fs) })
            -- ★ master's premise at the sources: every definition's FFI references are declared
            -- (`ElaborateLinked`'s `Refs (DeclIn σ)`)
            (srcs : Once.LinCore.ExprBuild.SrcsDecl fmt (TM.Interp.sig ι) tl) where
@@ -507,8 +507,8 @@ module ExprApex (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Uni
 
   module _ (ld : ∀ {b} (v : Lit b) (fs : FlatMachine.FlatState {Mach})
                  → FlatMachine.flat-exec-instr {Mach} (ldConst v) XT.TP.image fs
-                   ≡ record fs { floc = record (FlatMachine.floc fs) { regs = writeReg (LocState.regs (FlatMachine.floc fs)) Output (wordOf (lit v)) }
-                               ; fpc = suc (FlatMachine.fpc fs) }) where
+                   ≡ record fs { floc = record (FlatMachine.FlatState.floc fs) { regs = writeReg (LocState.regs (FlatMachine.FlatState.floc fs)) Output (wordOf (lit v)) }
+                               ; fpc = suc (FlatMachine.FlatState.fpc fs) }) where
     open FlatEventTrace {Mach} using (flat-events; flat-ctrls)
 
     -- ★★ THE FLAT THEOREM AT MASTER'S MEANING, for the compiled program

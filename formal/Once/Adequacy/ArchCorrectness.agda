@@ -71,12 +71,12 @@ o = Emit.entry-owner
 
 open import Once.Target.Arch using (Arch; x86-64; x86-32; riscv64)
 open import Once.Adequacy.Compile using (ArchCorrect)
-import Once.Adequacy.ArchCorrectness.Core as Core
+import Once.Adequacy.CoreArch as Core
 
 -- plan 0.146 (D464): the compiler's file is the linear core's image of the module's sources
 -- (`LinCore.Emit.coreFileOf`); on each arch it is what the assembler demands (proved, per arch)
 -- and running it has the trace of the program it was emitted from (D320), up to running out
--- (D374): `ArchCorrectness.Core`, over each arch's `ArchSim` (`ArchCorrectness.<Arch>.Sim`).
+-- (D374): `Adequacy.CoreArch`, over each arch's `ArchSim` (`ArchCorrectness.<Arch>.Sim`).
 
 x86-64-correct : ∀ (ι : Interp) → ArchCorrect x86-64 ι
 x86-64-correct ι = record

@@ -165,17 +165,17 @@ module Keep {FS : FrameSemantics} where
 
 
   -- ★ the sigop's store at a destination in a frame (`sigop-store-at`, an answer in memory)
-  st-heap : ∀ {A} (b : ST.Base ST.∅ₖ A) (mb : Bool) → mb ≡ true → ∀ (ma : Maybe (Once.Semantics.Machine.⟦ A ⟧)) (f : Frame) k (s : LocState FS)
+  st-heap : ∀ {A} (b : ST.Base ST.∅ₖ A) (mb : Bool) → mb ≡ true → ∀ (ma : Maybe (Once.Semantics.Machine.Value.⟦ A ⟧)) (f : Frame) k (s : LocState FS)
           → heapMem (sigop-store-at {B = A} mb (just (AtStack f k)) ma s) ≡ heapMem s
   st-heap b .true refl (just v) f k s = wt-heap b v f k s
   st-heap b .true refl nothing  f k s = refl
 
-  st-frame : ∀ {A} (b : ST.Base ST.∅ₖ A) (mb : Bool) → mb ≡ true → ∀ (ma : Maybe (Once.Semantics.Machine.⟦ A ⟧)) (f : Frame) k (s : LocState FS) f′ j
+  st-frame : ∀ {A} (b : ST.Base ST.∅ₖ A) (mb : Bool) → mb ≡ true → ∀ (ma : Maybe (Once.Semantics.Machine.Value.⟦ A ⟧)) (f : Frame) k (s : LocState FS) f′ j
            → ¬ f ≡ f′ → stackMem (sigop-store-at {B = A} mb (just (AtStack f k)) ma s) f′ j ≡ stackMem s f′ j
   st-frame b .true refl (just v) f k s f′ j ne = wt-frame b v f k s f′ j ne
   st-frame b .true refl nothing  f k s f′ j ne = refl
 
-  st-out : ∀ {A} (b : ST.Base ST.∅ₖ A) (mb : Bool) → mb ≡ true → ∀ (ma : Maybe (Once.Semantics.Machine.⟦ A ⟧)) (f : Frame) k (s : LocState FS) j
+  st-out : ∀ {A} (b : ST.Base ST.∅ₖ A) (mb : Bool) → mb ≡ true → ∀ (ma : Maybe (Once.Semantics.Machine.Value.⟦ A ⟧)) (f : Frame) k (s : LocState FS) j
          → (j < k ⊎ k + tsize A ≤ j)
          → stackMem (sigop-store-at {B = A} mb (just (AtStack f k)) ma s) f j ≡ stackMem s f j
   st-out b .true refl (just v) f k s j o = wt-out b v f k s j o
@@ -220,7 +220,7 @@ module Wr {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b → 
     trans (zeros-out n f (suc k) s₁ k (inj₁ (NP.n<1+n k))) (store-same s f k zero-word) , zeros-words n f (suc k) s₁
     where s₁ = writeLoc s (AtStack f k) zero-word
 
-  wt-words : ∀ {A} (b : ST.Base ST.∅ₖ A) (v : Once.Semantics.Machine.⟦ A ⟧) (f : Frame) k (s : LocState FS) {h}
+  wt-words : ∀ {A} (b : ST.Base ST.∅ₖ A) (v : Once.Semantics.Machine.Value.⟦ A ⟧) (f : Frame) k (s : LocState FS) {h}
            → Σ (List W) λ ws → VW h (mvF (flatB b) (fromV b v)) ws
                × SlotsAt (stackMem (writeTyped A v (AtStack f k) s) f) k ws
   wt-words (ST.b-var {i = ()} _) v f k s
@@ -291,7 +291,7 @@ module Wr {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b → 
 
   -- ★ the sigop's store, an answer `w` in memory: its words, where it wrote them
   st-words : ∀ {A} (b : ST.Base ST.∅ₖ A) (mb : Bool) → mb ≡ true
-           → ∀ (ma : Maybe (Once.Semantics.Machine.⟦ A ⟧)) w → ma ≡ just w → ∀ (f : Frame) k (s : LocState FS) {h}
+           → ∀ (ma : Maybe (Once.Semantics.Machine.Value.⟦ A ⟧)) w → ma ≡ just w → ∀ (f : Frame) k (s : LocState FS) {h}
            → Σ (List W) λ ws → VW h (mvF (flatB b) (fromV b w)) ws
                × SlotsAt (stackMem (AbstractExec.sigop-store-at {FS} {B = A} mb (just (AtStack f k)) ma s) f) k ws
   st-words b .true refl .(just w) w refl f k s = wt-words b w f k s

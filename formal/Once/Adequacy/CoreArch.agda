@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Adequacy.ArchCorrectness.Core — plan 0.146 B1.7 step 3 (D464): ★ THE
+-- Once.Adequacy.CoreArch — plan 0.146 B1.7 step 3 (D464): ★ THE
 -- COMPILER'S FILE ON EACH ARCH (what `Adequacy.Compile.ArchCorrect` asks).
 --
 -- The compiler's file (`LinCore.Emit.coreFileOf`) of a program is its new
@@ -13,11 +13,14 @@
 --   * running it follows the program's trace (`LinCore.Top.Program.file★`),
 --     at the meaning of the program the module compiles to, unoptimized.
 -- What the new image still owes is `CoreOwed`'s.
+-- It sits beside `ArchCorrectness`, not under it: it is about source modules
+-- (`Resolved`, `moduleToIR`), so it is the apex's join of front and back end,
+-- and `ArchCorrectness.*` is back end (D419, the layer gate). So is `CoreOwed`.
 ------------------------------------------------------------------------
 
 {-# OPTIONS --guardedness #-}
 
-module Once.Adequacy.ArchCorrectness.Core where
+module Once.Adequacy.CoreArch where
 
 open import Data.Bool using (Bool)
 open import Data.List using (List)
@@ -27,7 +30,7 @@ open import Data.Sum using (inj₂)
 open import Data.Sum.Properties using (inj₂-injective)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 open import Once.Spec.Trace using (_⊑ᵗ⟨_⟩_)
-open import Once.Adequacy.SourceTrace using (⟦_⟧IRᵗ)
+open import Once.Denotation.ProgramTrace using (⟦_⟧IRᵗ)
 open import Once.Denotation.Program using (IRFun; irProgram)
 open import Once.IR.Semantics.Trace using (Interp; module Interp)
 open import Once.Parser.Module.Core using (Resolved)
@@ -43,7 +46,7 @@ import Once.IR
 import Once.IRTy
 open import Once.Adequacy.ArchCorrectness.Interface using (module ArchSim)
 import Once.LinCore.Top
-import Once.Adequacy.ArchCorrectness.CoreOwed as CO
+import Once.Adequacy.CoreOwed as CO
 import Once.Adequacy.ArchCorrectness.X86-64.ResourceBounds as RB64
 import Once.Adequacy.ArchCorrectness.X86-32.ResourceBounds as RB32
 import Once.Adequacy.ArchCorrectness.RiscV64.ResourceBounds as RBrv

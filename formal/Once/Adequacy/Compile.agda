@@ -62,7 +62,8 @@ import Data.Unit
 
 open Once.Denotation.Behavior.Behavior using (at)
 open import Once.Core.Telescope using (Program; program)
-open import Once.Adequacy.SourceTrace using (⟦_⟧IRᵗ; srcToModule; srcToModule-just; srcToModule-inv)
+open import Once.Adequacy.SourceTrace using (srcToModule; srcToModule-just; srcToModule-inv)
+open import Once.Denotation.ProgramTrace using (⟦_⟧IRᵗ)
 open import Once.Compile using (moduleToIR; moduleToProgram; moduleTable; programAt)
 import Once.IR as IR
 import Once.Parser as Parser

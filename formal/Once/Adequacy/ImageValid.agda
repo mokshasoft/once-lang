@@ -41,8 +41,6 @@ open import Once.Target.SymbolValid using (once-symbol-path-asm; once-symbol-own
 open import Once.Arith.SigOp.Block using (block-name)
 open Once.Arith.Machine.IR.ArithBlock using (block-body)
 open import Once.Compile.Emit using (dedup-go; dedup-blocks; block-symbol; block-syms)
-open import Once.Parser.Module using ()
-open import Once.Parser.Module.Core using (Resolved)
 
 ------------------------------------------------------------------------
 -- What an image defines

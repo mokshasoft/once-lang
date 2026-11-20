@@ -84,7 +84,7 @@ module OpSim {FS : FrameSemantics} (U : Univ)
       or-frame : AllocState.current-frame (falloc fs′) ≡ AllocState.current-frame (falloc fs)
       or-slots : AllocState.frame-slots (falloc fs′) ≡ AllocState.frame-slots (falloc fs)
       or-saved : AllocState.saved-frames (falloc fs′) ≡ AllocState.saved-frames (falloc fs)
-      or-ret   : FlatMachine.fret fs′ ≡ FlatMachine.fret fs
+      or-ret   : FlatMachine.FlatState.fret fs′ ≡ FlatMachine.FlatState.fret fs
       or-other : ∀ f x → ¬ f ≡ AllocState.current-frame (falloc fs) → LocState.stackMem (floc fs′) f x ≡ LocState.stackMem (floc fs) f x
       or-halt  : fhalted (floc fs′) ≡ fhalted (floc fs)
       or-inb   : InBlk fs → InBlk fs′

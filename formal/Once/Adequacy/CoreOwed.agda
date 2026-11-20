@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Adequacy.ArchCorrectness.CoreOwed — plan 0.146 B1.7 step 3 (D464):
+-- Once.Adequacy.CoreOwed — plan 0.146 B1.7 step 3 (D464):
 -- ★ WHAT THE NEW IMAGE STILL OWES, NAMED.
 --
 -- The linear core's image owes the arch layer two kinds of fact
@@ -22,7 +22,7 @@
 
 {-# OPTIONS --guardedness #-}
 
-module Once.Adequacy.ArchCorrectness.CoreOwed where
+module Once.Adequacy.CoreOwed where
 
 open import Data.List using (List)
 open import Once.Spec.Name using (CanonicalName)

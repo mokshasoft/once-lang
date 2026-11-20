@@ -1,8 +1,3 @@
 # layer-gate baseline (plan 0.152 B): back-end modules whose import closure reaches the
 # front end. A module may only leave this list (scripts/layer-gate.py).
 Once.Adequacy.ArchCorrectness
-Once.Adequacy.ArchCorrectness.FlatFromObs
-Once.Adequacy.ArchCorrectness.FnLayout
-Once.Adequacy.ArchCorrectness.RiscV64
-Once.Adequacy.ArchCorrectness.X86-32
-Once.Adequacy.ArchCorrectness.X86-64

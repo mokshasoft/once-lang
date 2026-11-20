@@ -75,13 +75,11 @@ module LocalR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open Calls {FS} ds f ldConst ld-nl wordOf using (blockR; module K; module From; call-core)
   open Rel {FS} U wordOf using (EnvW; StkW)
   open FlatMachine {FS} using (FlatState; module FlatState)
-  open FlatState using (floc; falloc; fret)
+  open FlatState using (floc; falloc; fret; fpc)
   open FrameSemantics FS using (_≺_)
   open TrImg {FS} ds f ldConst ld-nl using (image-tr)
   open Tr U ncty ldConst using (trAt)
   open Rel {FS} U wordOf using (CfgW; VW; vpair; vfn; SlotsAt; cellPtr)
-  open FlatMachine {FS} using (module FlatState)
-  open FlatState using (fpc)
   open import Once.LinCore.Moves {FS} using (slot; InBlk)
   open import Once.LinCore.LowerSim fmt ans bw using (module Sim)
   open Sim {FS} U wordOf using (envW-heap; stkW-heap; envW-frame; slots-frame; cntE; cntS)
@@ -145,7 +143,7 @@ module LocalR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
 
   module Whole (ld : ∀ {b} (v : Lit b) (fs : FlatState)
                     → FlatMachine.flat-exec-instr {FS} (ldConst v) image fs
-                      ≡ record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Output (wordOf (lit v)) } ; fpc = suc (FlatMachine.fpc fs) }) where
+                      ≡ record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Output (wordOf (lit v)) } ; fpc = suc (FlatMachine.FlatState.fpc fs) }) where
     module AS = AtRoot ld rstart main j₀ L₀ˢ start-root refl using (glocal; module LS)
     module AK {σ} {κ : Key σ} (p : (σ , κ) ∈ allK U) = AtRoot ld (rblock p) (blockᴵ κ) (idx p) (L₀ᵇ κ p) (blockR p) refl using (glocal; module LS)
     open Related
