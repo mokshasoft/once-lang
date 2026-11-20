@@ -129,7 +129,7 @@ module TrampW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open Sim {FS} U wordOf using (len-mvPS)
   open import Once.LinCore.PointAt fmt ans bw using (module Fetch)
   open Fetch {FS} using (in-seg)
-  open import Once.LinCore.Moves {FS} using (Seg; Seg-++ˡ; Ran; inb-pt; ran-regs; mov-out-step; addr-step; module Ran)
+  open import Once.LinCore.Moves {FS} using (Seg; Seg-++ˡ; infr; sub-in; Ran; inb-pt; ran-regs; mov-out-step; addr-step; module Ran)
   open Ran using (r-keep; r-pc)
   open Keep using (k-halt)
   open import Once.LinCore.CallStepH fmt ans bw using (module FramesH; module CallsH)
@@ -228,7 +228,8 @@ module TrampW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                         (SV-Ptr (AtStack (TrW1.w1-af T) (TrW1.w1-area T)))
   tw-call {X = X} p {i} T =
     call-core-h p (TrW1.w1-af T) (TrW1.w1-area T) (cOff (wsz X)) i (TrW1.w1-wx T) (TrW1.w1-wa T)
-      (tW-seg1 p (TrW1.w1-pc T)) (TrW1.w1-run T) (TrW1.w1-s0 T) (TrW1.w1-lt T) (TrW1.w1-out T) (TrW1.w1-x T)
+      (tW-seg1 p (TrW1.w1-pc T)) (TrW1.w1-run T)
+      (subst (0 Data.Nat.<_) (sym (TrW1.w1-slots T)) (Data.Nat.s≤s Data.Nat.z≤n)) (TrW1.w1-s0 T) (TrW1.w1-lt T) (TrW1.w1-out T) (TrW1.w1-x T)
       (at-cOff (wsz X) (TrW1.w1-wx T) (vw-len (TrW1.w1-x T)) (TrW1.w1-at T)) (TrW1.w1-a T) (TrW1.w1-arg T) (TrW1.w1-win T)
 
   -- ★ its way out: a bare return (the result already in the dispatcher's area)
@@ -246,6 +247,7 @@ module TrampW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
               {wx wa : List (StoredValue FS)} {w₁ w₂ wf : StoredValue FS} {fs}
           → Seg image (fpc fs) (restore-input c ∷ lea-slot y ∷ instr-save-closure-reg ∷ instr-call-closure ∷ [])
           → LocState.halted (floc fs) ≡ false
+          → c Data.Nat.< AllocState.frame-slots (falloc fs) → y Data.Nat.< AllocState.frame-slots (falloc fs)
           → slot fs c ≡ just (cellPtr i)
           → VW (LocState.heapMem (floc fs)) x wx
           → Rel.At {FS} U wordOf (LocState.heapMem (floc fs)) i 0 (cellPtr i ∷ w₁ ∷ w₂ ∷ wf ∷ wx)
@@ -255,9 +257,9 @@ module TrampW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
           → Σ (under (ktrω ds′ b γ) ∈ allK U) λ p → Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′
               × TrW0 M (trPos (ktrω ds′ b γ) p 0) i x a fs′
               × Σ ℕ λ q → ClosInω fs fs′ (cellPtr i) y 1 0 q
-  tw-disp {ds′ = ds′} {b} {γ} c y M {i} {x} {a} {wx} {wa} {fs = fs} seg h sx px words (m , refl) pa sa win =
+  tw-disp {ds′ = ds′} {b} {γ} c y M {i} {x} {a} {wx} {wa} {fs = fs} seg h lc ly sx px words (m , refl) pa sa win =
     m , fin (closure-inω image fs c y (cellLoc i 0) (tl (idx m)) (e-thunk (tl (idx m))) q 1 0 sx (proj₁ (proj₂ words)) seg
-               (image-tramp m refl) segq h)
+               (image-tramp m refl) segq h lc ly (Data.Nat.s≤s Data.Nat.z≤n))
     where
       LB = lowBlock (idx m) (kbodyω ds′ b γ) (blocks-in m)
       q = length (proj₁ (image-at m)) + length LB
@@ -325,7 +327,11 @@ module TrampW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       with-res ((wb , pb , sb) , _) =
         fin (call-outA image fs cfc af area (budget φ′) (budget φ′ ∸ ws (B ∷ [])) (M ∸ wsz B) (wsz B) (fbudget φ′)
                (trPos (ktrω ds′ b γ) p 2) rest sv sl hret (sym (K.Here.h-slots {p = p} H)) hsv ne ep
-               (λ k k< → slots-def wb sb k (subst (k Data.Nat.<_) (sym (vw-len pb)) k<)) win seg (K.Here.h-run {p = p} H))
+               (λ k k< → slots-def wb sb k (subst (k Data.Nat.<_) (sym (vw-len pb)) k<)) win seg (K.Here.h-run {p = p} H)
+               (subst (budget φ′ Data.Nat.<_) (sym (K.Here.h-slots {p = p} H)) (sv₁<fb φ′))
+               (infr (subst (budget φ′ Data.Nat.≤_) (sym (K.Here.h-slots {p = p} H)) (Data.Nat.Properties.<⇒≤ (sv₁<fb φ′)))
+                  (sub-in (budget φ′) (wsz B) 0
+                     (Data.Nat.Properties.≤-trans (Rel.CfgW.c-sfit (K.Here.h-cfg {p = p} H)) (Data.Nat.Properties.m≤n+m (OP φ′) (EP φ′))))))
         where
           fin : Σ FlatState (λ fs′ → FlatSteps image (suc (Once.LinCore.Moves.ln {FS} (wsz B) + 1)) fs fs′
                   × CallOutA fs fs′ cfc af area (budget φ′ ∸ ws (B ∷ [])) (M ∸ wsz B) (wsz B) (trPos (ktrω ds′ b γ) p 2) rest sv sl)

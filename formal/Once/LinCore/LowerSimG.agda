@@ -12,7 +12,7 @@
 
 {-# OPTIONS --guardedness #-}
 
-open import Data.Nat using (ℕ; zero; suc)
+open import Data.Nat using (ℕ; zero; suc; _<_)
 open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe; just)
 open import Data.Product using (Σ; _×_; _,_)
@@ -32,7 +32,7 @@ module Once.LinCore.LowerSimG {FS : FrameSemantics} where
 open FlatMachine {FS}
 open FlatState
 open FlatStepsAPI {FS} using (FlatSteps; step-at)
-open import Once.LinCore.Moves {FS} using (Seg; slot; lea-step; mov-out-step; store-step; store-same; store-other; store-frame; restore-step; addr-step; load-step; mov-in-step)
+open import Once.LinCore.Moves {FS} using (Seg; slot; Fr; lea-step; mov-out-step; store-step; store-same; store-other; store-frame; restore-step; addr-step; load-step; mov-in-step)
 open import Once.LinCore.LowerSimE {FS} using (callee-frame; clear-other)
 open AllocState using (current-frame; saved-frames; frame-slots; next-heap-ref; block-size)
 open ExecFinal {FS} using (in-block?)
@@ -75,14 +75,14 @@ closure-in : ∀ prog (fs : FlatState) (x y : ℕ) (hl : HeapLocation) (ℓ : La
            → Seg prog (fpc fs) (restore-input x ∷ lea-slot y ∷ instr-save-closure-reg ∷ instr-call-closure ∷ [])
            → find-thunk prog ℓ ≡ just q
            → Seg prog q (instr-ctrl (c-entry e b) ∷ store-at-slot s₂ ∷ mov-to-output ∷ store-at-slot s₁ ∷ [])
-           → LocState.halted (floc fs) ≡ false
+           → LocState.halted (floc fs) ≡ false → x < Fr fs → y < Fr fs → s₁ < b → s₂ < b
            → Σ FlatState λ fs′ → FlatSteps prog 8 fs fs′ × ClosIn fs fs′ (SV-Ptr (AtDynamic hl)) y b s₁ s₂ q
-closure-in prog fs x y hl ℓ e q b s₁ s₂ s≢ sx code (g₁ , g₂ , g₃ , g₄ , _) ff (h₁ , h₂ , h₃ , h₄ , _) h =
+closure-in prog fs x y hl ℓ e q b s₁ s₂ s≢ sx code (g₁ , g₂ , g₃ , g₄ , _) ff (h₁ , h₂ , h₃ , h₄ , _) h lx ly l₁ l₂ =
   fs₈ ,
-  step-at fs₁ (h , g₁) (restore-step fs x sx) (step-at fs₂ (h , g₂) (lea-step fs₁ y) (step-at fs₃ (h , g₃) refl
+  step-at fs₁ (h , g₁) (restore-step fs x lx sx) (step-at fs₂ (h , g₂) (lea-step fs₁ y ly) (step-at fs₃ (h , g₃) refl
   (step-at fs₄ (h , g₄) (closure-step prog fs₃ hl ℓ refl code ff)
-  (step-at fs₅ (h , h₁) refl (step-at fs₆ (h , h₂) (store-step fs₅ s₂)
-  (step-at fs₇ (h , h₃) (mov-out-step fs₆) (step-at fs₈ (h , h₄) (store-step fs₇ s₁) FlatStepsAPI.[]))))))) ,
+  (step-at fs₅ (h , h₁) refl (step-at fs₆ (h , h₂) (store-step fs₅ s₂ l₂)
+  (step-at fs₇ (h , h₃) (mov-out-step fs₆) (step-at fs₈ (h , h₄) (store-step fs₇ s₁ l₁) FlatStepsAPI.[]))))))) ,
   record { cl-frame = refl ; cl-saved = refl ; cl-slots = refl ; cl-ret = refl ; cl-pc = refl ; cl-in = refl ; cl-clo = refl
          ; cl-s₁ = store-same (floc fs₇) cf′ s₁ cell
          ; cl-s₂ = trans (store-other (floc fs₇) cf′ s₁ cell s₂ s≢) (store-same (floc fs₅) cf′ s₂ area)
@@ -132,13 +132,13 @@ closure-inω : ∀ prog (fs : FlatState) (x y : ℕ) (hl : HeapLocation) (ℓ : 
             → Seg prog (fpc fs) (restore-input x ∷ lea-slot y ∷ instr-save-closure-reg ∷ instr-call-closure ∷ [])
             → find-thunk prog ℓ ≡ just q
             → Seg prog q (instr-ctrl (c-entry e b) ∷ store-at-slot s ∷ [])
-            → LocState.halted (floc fs) ≡ false
+            → LocState.halted (floc fs) ≡ false → x < Fr fs → y < Fr fs → s < b
             → Σ FlatState λ fs′ → FlatSteps prog 6 fs fs′ × ClosInω fs fs′ (SV-Ptr (AtDynamic hl)) y b s q
-closure-inω prog fs x y hl ℓ e q b s sx code (g₁ , g₂ , g₃ , g₄ , _) ff (h₁ , h₂ , _) h =
+closure-inω prog fs x y hl ℓ e q b s sx code (g₁ , g₂ , g₃ , g₄ , _) ff (h₁ , h₂ , _) h lx ly ls =
   fs₆ ,
-  step-at fs₁ (h , g₁) (restore-step fs x sx) (step-at fs₂ (h , g₂) (lea-step fs₁ y) (step-at fs₃ (h , g₃) refl
+  step-at fs₁ (h , g₁) (restore-step fs x lx sx) (step-at fs₂ (h , g₂) (lea-step fs₁ y ly) (step-at fs₃ (h , g₃) refl
   (step-at fs₄ (h , g₄) (closure-step prog fs₃ hl ℓ refl code ff)
-  (step-at fs₅ (h , h₁) refl (step-at fs₆ (h , h₂) (store-step fs₅ s) FlatStepsAPI.[]))))) ,
+  (step-at fs₅ (h , h₁) refl (step-at fs₆ (h , h₂) (store-step fs₅ s ls) FlatStepsAPI.[]))))) ,
   record { cw-frame = refl ; cw-saved = refl ; cw-slots = refl ; cw-ret = refl ; cw-pc = refl ; cw-in = refl
          ; cw-s = store-same (floc fs₅) cf′ s area
          ; cw-other = λ f′ x′ ne → trans (store-frame (floc fs₅) cf′ s area f′ x′ ne) (clear-other (LocState.stackMem (floc fs)) cf′ b f′ x′ ne)
@@ -187,15 +187,15 @@ free-in : ∀ prog (fs : FlatState) (c : ℕ) (hl : HeapLocation) (ℓ : LabelId
                              ∷ restore-input c ∷ mov-to-output ∷ instr-call-closure ∷ [])
         → find-thunk prog ℓ ≡ just q
         → Seg prog q (instr-ctrl (c-entry e b) ∷ store-at-slot s ∷ [])
-        → LocState.halted (floc fs) ≡ false
+        → LocState.halted (floc fs) ≡ false → c < Fr fs → s < b
         → Σ FlatState λ fs′ → FlatSteps prog 9 fs fs′ × FreeIn fs fs′ (SV-Ptr (AtDynamic hl)) b s q
-free-in prog fs c hl ℓ e q b s sx ib code (g₁ , g₂ , g₃ , g₄ , g₅ , g₆ , g₇ , _) ff (h₁ , h₂ , _) h =
+free-in prog fs c hl ℓ e q b s sx ib code (g₁ , g₂ , g₃ , g₄ , g₅ , g₆ , g₇ , _) ff (h₁ , h₂ , _) h lc ls =
   fs₉ ,
-  step-at fs₁ (h , g₁) (restore-step fs c sx) (step-at fs₂ (h , g₂) (addr-step fs₁ 2 refl refl ib)
+  step-at fs₁ (h , g₁) (restore-step fs c lc sx) (step-at fs₂ (h , g₂) (addr-step fs₁ 2 refl refl ib)
   (step-at fs₃ (h , g₃) refl (step-at fs₄ (h , g₄) refl
-  (step-at fs₅ (h , g₅) (restore-step fs₄ c sx) (step-at fs₆ (h , g₆) refl
+  (step-at fs₅ (h , g₅) (restore-step fs₄ c lc sx) (step-at fs₆ (h , g₆) refl
   (step-at fs₇ (h , g₇) (closure-step prog fs₆ (offsetHL hl 2) ℓ refl code ff)
-  (step-at fs₈ (h , h₁) refl (step-at fs₉ (h , h₂) (store-step fs₈ s) FlatStepsAPI.[])))))))) ,
+  (step-at fs₈ (h , h₁) refl (step-at fs₉ (h , h₂) (store-step fs₈ s ls) FlatStepsAPI.[])))))))) ,
   record { fr-frame = refl ; fr-saved = refl ; fr-slots = refl ; fr-ret = refl ; fr-pc = refl ; fr-in = refl
          ; fr-s = store-same (floc fs₈) cf′ s cell
          ; fr-other = λ f′ x′ ne → trans (store-frame (floc fs₈) cf′ s cell f′ x′ ne) (clear-other (LocState.stackMem (floc fs)) cf′ b f′ x′ ne)
@@ -248,17 +248,17 @@ copy-in : ∀ prog (fs : FlatState) (c d : ℕ) (hl : HeapLocation) (ℓ : Label
                              ∷ lea-slot d ∷ mov-to-input ∷ load-from-slot c ∷ instr-call-closure ∷ [])
         → find-thunk prog ℓ ≡ just q
         → Seg prog q (instr-ctrl (c-entry e b) ∷ store-at-slot s₂ ∷ mov-to-output ∷ store-at-slot s₁ ∷ [])
-        → LocState.halted (floc fs) ≡ false
+        → LocState.halted (floc fs) ≡ false → c < Fr fs → d < Fr fs → s₁ < b → s₂ < b
         → Σ FlatState λ fs′ → FlatSteps prog 12 fs fs′ × CopyIn fs fs′ (SV-Ptr (AtDynamic hl)) d b s₁ s₂ q
-copy-in prog fs c d hl ℓ e q b s₁ s₂ s≢ sx ib code (g₁ , g₂ , g₃ , g₄ , g₅ , g₆ , g₇ , g₈ , _) ff (h₁ , h₂ , h₃ , h₄ , _) h =
+copy-in prog fs c d hl ℓ e q b s₁ s₂ s≢ sx ib code (g₁ , g₂ , g₃ , g₄ , g₅ , g₆ , g₇ , g₈ , _) ff (h₁ , h₂ , h₃ , h₄ , _) h lc ld l₁ l₂ =
   fs₁₂ ,
-  step-at fs₁ (h , g₁) (restore-step fs c sx) (step-at fs₂ (h , g₂) (addr-step fs₁ 1 refl refl ib)
+  step-at fs₁ (h , g₁) (restore-step fs c lc sx) (step-at fs₂ (h , g₂) (addr-step fs₁ 1 refl refl ib)
   (step-at fs₃ (h , g₃) (mov-in-step fs₂) (step-at fs₄ (h , g₄) refl
-  (step-at fs₅ (h , g₅) (lea-step fs₄ d) (step-at fs₆ (h , g₆) (mov-in-step fs₅)
-  (step-at fs₇ (h , g₇) (load-step fs₆ c sx)
+  (step-at fs₅ (h , g₅) (lea-step fs₄ d ld) (step-at fs₆ (h , g₆) (mov-in-step fs₅)
+  (step-at fs₇ (h , g₇) (load-step fs₆ c lc sx)
   (step-at fs₈ (h , g₈) (closure-step prog fs₇ (offsetHL hl 1) ℓ refl code ff)
-  (step-at fs₉ (h , h₁) refl (step-at fs₁₀ (h , h₂) (store-step fs₉ s₂)
-  (step-at fs₁₁ (h , h₃) (mov-out-step fs₁₀) (step-at fs₁₂ (h , h₄) (store-step fs₁₁ s₁) FlatStepsAPI.[]))))))))))) ,
+  (step-at fs₉ (h , h₁) refl (step-at fs₁₀ (h , h₂) (store-step fs₉ s₂ l₂)
+  (step-at fs₁₁ (h , h₃) (mov-out-step fs₁₀) (step-at fs₁₂ (h , h₄) (store-step fs₁₁ s₁ l₁) FlatStepsAPI.[]))))))))))) ,
   record { cy-frame = refl ; cy-saved = refl ; cy-slots = refl ; cy-ret = refl ; cy-pc = refl
          ; cy-s₁ = store-same (floc fs₁₁) cf′ s₁ dst
          ; cy-s₂ = trans (store-other (floc fs₁₁) cf′ s₁ dst s₂ s≢) (store-same (floc fs₉) cf′ s₂ cell)

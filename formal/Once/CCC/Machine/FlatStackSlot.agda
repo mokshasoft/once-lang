@@ -145,28 +145,49 @@ flat-same-frames mov-to-input             prog fs ff = mkSameFrames refl refl re
 flat-same-frames load-indirect            prog fs ff = mkSameFrames refl refl refl
 flat-same-frames load-indirect-suc        prog fs ff = mkSameFrames refl refl refl
 flat-same-frames (load-from-slot k)       prog fs ff =
-  mkSameFrames (ss-mv       (stackMem (floc fs) (current-frame (falloc fs)) k) (floc fs) (falloc fs))
+  straight-keeps (λ t → SameFrames t fs) (load-from-slot k) fs
+    (mkSameFrames (ss-mv       (stackMem (floc fs) (current-frame (falloc fs)) k) (floc fs) (falloc fs))
                (ss-mv-saved (stackMem (floc fs) (current-frame (falloc fs)) k) (floc fs) (falloc fs))
-               refl
-flat-same-frames (store-at-slot k)        prog fs ff = mkSameFrames refl refl refl
+               refl)
+    (mkSameFrames refl refl refl)
+flat-same-frames (store-at-slot k)        prog fs ff =
+  straight-keeps (λ t → SameFrames t fs) (store-at-slot k) fs
+    (mkSameFrames refl refl refl)
+    (mkSameFrames refl refl refl)
 flat-same-frames store-indirect           prog fs ff = mkSameFrames refl refl refl
 flat-same-frames store-indirect-suc       prog fs ff = mkSameFrames refl refl refl
-flat-same-frames (lea-slot k)             prog fs ff = mkSameFrames refl refl refl
+flat-same-frames (lea-slot k)             prog fs ff =
+  straight-keeps (λ t → SameFrames t fs) (lea-slot k) fs
+    (mkSameFrames refl refl refl)
+    (mkSameFrames refl refl refl)
 flat-same-frames (restore-input k)        prog fs ff =
-  mkSameFrames (ss-mv-ri       (stackMem (floc fs) (current-frame (falloc fs)) k) (floc fs) (falloc fs))
+  straight-keeps (λ t → SameFrames t fs) (restore-input k) fs
+    (mkSameFrames (ss-mv-ri       (stackMem (floc fs) (current-frame (falloc fs)) k) (floc fs) (falloc fs))
                (ss-mv-ri-saved (stackMem (floc fs) (current-frame (falloc fs)) k) (floc fs) (falloc fs))
-               refl
+               refl)
+    (mkSameFrames refl refl refl)
 flat-same-frames (instr-reclaim-to k)     prog fs ff = mkSameFrames refl refl refl
 -- D092: the call MOVES the frame stack (it pushes the caller's frame and the
 -- return pc), so it left `FrameFreeI` — the route is absurd like the markers'.
 flat-same-frames instr-call-closure       prog fs ()
-flat-same-frames (worklist-init k)        prog fs ff = mkSameFrames refl refl refl
-flat-same-frames (worklist-push k)        prog fs ff = mkSameFrames refl refl refl
+flat-same-frames (worklist-init k)        prog fs ff =
+  straight-keeps (λ t → SameFrames t fs) (worklist-init k) fs
+    (mkSameFrames refl refl refl)
+    (mkSameFrames refl refl refl)
+flat-same-frames (worklist-push k)        prog fs ff =
+  straight-keeps (λ t → SameFrames t fs) (worklist-push k) fs
+    (mkSameFrames refl refl refl)
+    (mkSameFrames refl refl refl)
 flat-same-frames (worklist-pop k)         prog fs ff =
-  mkSameFrames (ss-mv       (stackMem (floc fs) (current-frame (falloc fs)) k) (floc fs) (falloc fs))
+  straight-keeps (λ t → SameFrames t fs) (worklist-pop k) fs
+    (mkSameFrames (ss-mv       (stackMem (floc fs) (current-frame (falloc fs)) k) (floc fs) (falloc fs))
                (ss-mv-saved (stackMem (floc fs) (current-frame (falloc fs)) k) (floc fs) (falloc fs))
-               refl
-flat-same-frames (worklist-check k)       prog fs ff = mkSameFrames refl refl refl
+               refl)
+    (mkSameFrames refl refl refl)
+flat-same-frames (worklist-check k)       prog fs ff =
+  straight-keeps (λ t → SameFrames t fs) (worklist-check k) fs
+    (mkSameFrames refl refl refl)
+    (mkSameFrames refl refl refl)
 flat-same-frames (instr-sigop si)         prog fs ff = mkSameFrames refl refl refl
 flat-same-frames (instr-load-const p v)   prog fs ff = mkSameFrames refl refl refl
 flat-same-frames (instr-load-code-addr k) prog fs ff = mkSameFrames refl refl refl

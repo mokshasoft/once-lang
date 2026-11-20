@@ -1050,10 +1050,11 @@ sim-load-indirect {hv} hl w fs s s' corr i-eq h-eq st =
 -- FIRST consumer of the new `stack-eq` field (via block-step-load-from-slot).
 ------------------------------------------------------------------------
 sim-load-from-slot : {hv : HeapView} (slot : Slot) (w : StoredValue FS) (fs : FlatState) (s s' : State) → FlatCorr hv fs s
+  → slot < frame-slots (falloc fs)
   → stackMem (floc fs) (current-frame (falloc fs)) slot ≡ just w
   → SetsRole s s' role-out (enc-sv hv w)
   → FlatCorr hv (flat-exec-instr (load-from-slot slot) [] fs) s'
-sim-load-from-slot {hv} slot w fs s s' corr st-eq st =
+sim-load-from-slot {hv} slot w fs s s' corr lt st-eq st =
   subst (λ z → FlatCorr hv z s') (sym reduces) corr-clean
   where
     ex-eq : exec-abstract (load-from-slot slot) (floc fs) (falloc fs)
@@ -1063,7 +1064,8 @@ sim-load-from-slot {hv} slot w fs s s' corr st-eq st =
     cleanFlat = record fs { floc = record (floc fs) { regs = writeReg (regs (floc fs)) Output w }
                           ; falloc = falloc fs ; fpc = suc (fpc fs) }
     reduces : flat-exec-instr (load-from-slot slot) [] fs ≡ cleanFlat
-    reduces = cong (λ p → record fs { floc = proj₁ p ; falloc = proj₂ p ; fpc = suc (fpc fs) }) ex-eq
+    reduces = trans (straight-pass (load-from-slot slot) fs (slot-ok-in (load-from-slot slot) (falloc fs) refl lt))
+                (cong (λ p → record fs { floc = proj₁ p ; falloc = proj₂ p ; fpc = suc (fpc fs) }) ex-eq)
     corr-clean : FlatCorr hv cleanFlat s'
     corr-clean = record
       { in1-eq = keep-in1 corr st (λ ()) ; out-eq = at-role st
@@ -1447,10 +1449,11 @@ sim-store-at {hv} k hl fs s s' corr i-eq live guard-ib guard sm =
 -- routed as a residual.
 ------------------------------------------------------------------------
 sim-restore-input : {hv : HeapView} (slot : Slot) (w : StoredValue FS) (fs : FlatState) (s s' : State) → FlatCorr hv fs s
+  → slot < frame-slots (falloc fs)
   → stackMem (floc fs) (current-frame (falloc fs)) slot ≡ just w
   → SetsRole s s' role-in1 (enc-sv hv w)
   → FlatCorr hv (flat-exec-instr (restore-input slot) [] fs) s'
-sim-restore-input {hv} slot w fs s s' corr st-eq st =
+sim-restore-input {hv} slot w fs s s' corr lt st-eq st =
   subst (λ z → FlatCorr hv z s') (sym reduces) corr-clean
   where
     ex-eq : exec-abstract (restore-input slot) (floc fs) (falloc fs)
@@ -1460,7 +1463,8 @@ sim-restore-input {hv} slot w fs s s' corr st-eq st =
     cleanFlat = record fs { floc = record (floc fs) { regs = writeReg (regs (floc fs)) Input1 w }
                           ; falloc = falloc fs ; fpc = suc (fpc fs) }
     reduces : flat-exec-instr (restore-input slot) [] fs ≡ cleanFlat
-    reduces = cong (λ p → record fs { floc = proj₁ p ; falloc = proj₂ p ; fpc = suc (fpc fs) }) ex-eq
+    reduces = trans (straight-pass (restore-input slot) fs (slot-ok-in (restore-input slot) (falloc fs) refl lt))
+                (cong (λ p → record fs { floc = proj₁ p ; falloc = proj₂ p ; fpc = suc (fpc fs) }) ex-eq)
     corr-clean : FlatCorr hv cleanFlat s'
     corr-clean = record
       { in1-eq = at-role st ; out-eq = keep-out corr st (λ ())
@@ -1580,7 +1584,8 @@ sim-store-at-slot : {hv : HeapView} (slot : Slot) (fs : FlatState) (s s' : State
   → SetsMem s s' (rreg s sp-reg + slot-to-disp slot)
                  (enc-sv hv (readReg (regs (floc fs)) Output))
   → FlatCorr hv (flat-exec-instr (store-at-slot slot) [] fs) s'
-sim-store-at-slot {hv} slot fs s s' corr slot<b disj sm = corr-clean
+sim-store-at-slot {hv} slot fs s s' corr slot<b disj sm =
+  subst (λ z → FlatCorr hv z s') (sym (straight-pass (store-at-slot slot) fs (slot-ok-in (store-at-slot slot) (falloc fs) refl slot<b))) corr-clean
   where
     base = rreg s sp-reg
     Out  = readReg (regs (floc fs)) Output
@@ -1590,7 +1595,7 @@ sim-store-at-slot {hv} slot fs s s' corr slot<b disj sm = corr-clean
     -- the PREMISE rather than on the goal — `memory s'` names no address at all.
     sm-base : SetsMem s s' (frame-base cf + slot-to-disp slot) (enc-sv hv Out)
     sm-base = subst (λ a → SetsMem s s' (a + slot-to-disp slot) (enc-sv hv Out)) (sp-eq corr) sm
-    corr-clean : FlatCorr hv (flat-exec-instr (store-at-slot slot) [] fs) s'
+    corr-clean : FlatCorr hv (straight-go (store-at-slot slot) fs) s'
     corr-clean = record
       { in1-eq = mkeep-in1 corr sm ; out-eq = mkeep-out corr sm
       ; clos-eq = mkeep-clos corr sm ; halt-eq = mkeep-halt corr sm ; sp-eq = mkeep-sp corr sm ; frontier-eq = mkeep-heap-reg corr sm ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr ; dom-sized = dom-sized corr
@@ -2299,13 +2304,15 @@ sim-alloc-heap {hv} n fs s s' corr wf1 wfcl wf-heap wf-stack fresh-abs room s2 =
 -- caller's slot k were the same abstract cell, so no address existed.
 ------------------------------------------------------------------------
 sim-lea-slot : {hv : HeapView} (slot : Slot) (fs : FlatState) (s s' : State) → FlatCorr hv fs s
+  → slot < frame-slots (falloc fs)
   → SetsRole s s' role-out (rreg s sp-reg + slot-to-disp slot)
   → FlatCorr hv (flat-exec-instr (lea-slot slot) [] fs) s'
-sim-lea-slot {hv} slot fs s s' corr st = record
+sim-lea-slot {hv} slot fs s s' corr lt st =
+  subst (λ z → FlatCorr hv z s') (sym (straight-pass (lea-slot slot) fs (slot-ok-in (lea-slot slot) (falloc fs) refl lt))) (record
   { in1-eq = keep-in1 corr st (λ ())
   ; out-eq = trans (at-role st) addr-eq
   ; clos-eq = keep-clos corr st (λ ()) ; halt-eq = keep-halt corr st ; sp-eq = keep-sp corr st (λ ()) ; frontier-eq = keep-heap-reg corr st (λ ())
-  ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr ; dom-sized = dom-sized corr ; heap-eq = keep-heap corr st ; lo-le = keep-lo-le corr st (λ ()) ; stack-eq = keep-stack corr st }
+  ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr ; dom-sized = dom-sized corr ; heap-eq = keep-heap corr st ; lo-le = keep-lo-le corr st (λ ()) ; stack-eq = keep-stack corr st })
   where
     cf = current-frame (falloc fs)
     addr-eq : rreg s sp-reg + slot-to-disp slot ≡ slot-addr cf slot

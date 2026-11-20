@@ -432,10 +432,11 @@ open import Data.Nat.Properties using (+-comm)
 riscv64-lea-slot : ∀ {hv : HeapView} prog fs s slot → CompiledCorr hv prog fs s
                  → halted (floc fs) ≡ false
                  → fetch prog (fpc fs) ≡ just (lea-slot slot)
+                 → slot < AllocState.frame-slots (falloc fs)
                  → RLr.RunLow o FS slot-size word-eq prog fs
                  → BlockStep hv prog fs s (lea-slot slot)
-riscv64-lea-slot prog fs s slot cc h ft run =
-  block-step-lea-slot prog fs s slot cc h ft
+riscv64-lea-slot prog fs s slot cc h ft lt run =
+  block-step-lea-slot prog fs s slot cc h ft lt
     (slot-addr-no-wrap prog fs s slot run cc ft)
 
 -- plan 0.123 B.4 α (D385): `addr-at k` is `addi t0, t0, 8k`; its no-wrap

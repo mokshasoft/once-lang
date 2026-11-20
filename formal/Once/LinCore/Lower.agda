@@ -24,6 +24,7 @@
 
 open import Data.Bool using (Bool; true; false)
 open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _⊔_)
+import Data.Nat.Properties
 open import Data.List using (List; []; _∷_; _++_; concat; length)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Relation.Unary.Any using (here; there)
@@ -143,6 +144,13 @@ module Lowering (U : Univ)
 
   fbudget : Frame → ℕ
   fbudget φ = suc (suc (budget φ))
+
+  -- B1.7b (D456): the save slots are inside the frame's reservation
+  sv₁<fb : ∀ (φ : Frame) → sv₁ φ Data.Nat.< fbudget φ
+  sv₁<fb φ = Data.Nat.Properties.m<n⇒m<1+n (Data.Nat.Properties.n<1+n (budget φ))
+
+  sv₂<fb : ∀ (φ : Frame) → sv₂ φ Data.Nat.< fbudget φ
+  sv₂<fb φ = Data.Nat.Properties.n<1+n (suc (budget φ))
 
   -- an operand stack's first word
   Tp : Frame → List LTy → ℕ

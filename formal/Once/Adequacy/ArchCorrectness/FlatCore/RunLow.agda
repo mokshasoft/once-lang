@@ -453,16 +453,12 @@ frame-op-absurd .(room-checks src) .(L.lift src fs₀ p) i (mkRunLow src fs₀ p
 ... | at-check k e _ = ⊥-elim (nr k e)
 ... | at-image _ fi = RW.frame-op-absurd src fs₀ i (run-emitted r) fi
 
--- a slot an instruction names is in the frame (a check names none)
+-- a slot an instruction names is in the frame: the machine's slot gate (B1.7b)
 slot-read-in-frame : ∀ prog (fs : FlatState) (slot : Slot) (i : AbstractInstr) → RunLow prog fs
+                   → LocState.halted (floc fs) ≡ false
                    → fetch prog (fpc fs) ≡ just i → slot-of i ≡ just slot
                    → slot < frame-slots (falloc fs)
-slot-read-in-frame .(room-checks src) .(L.lift src fs₀ p) slot i (mkRunLow src fs₀ p refl r refl pc) f so
-  with low-view src fs₀ p pc f
-... | at-check k refl _ = ⊥-elim (no-slot so)
-  where no-slot : slot-of (instr-room k) ≡ just slot → ⊥
-        no-slot ()
-... | at-image _ fi = RW.slot-read-in-frame src fs₀ slot i r fi so
+slot-read-in-frame prog fs slot i r h f so = slot-gate-ok i prog fs so (step-ok prog fs i r h f)
 
 -- the state invariants: the lift keeps what they speak of
 -- the store invariant (no forward pointer; every stored Int a word, D397)

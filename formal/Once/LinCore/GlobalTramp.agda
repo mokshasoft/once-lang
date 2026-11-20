@@ -126,7 +126,7 @@ module TrampR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open Sim {FS} U wordOf using (len-mvPS)
   open import Once.LinCore.PointAt fmt ans bw using (module Fetch)
   open Fetch {FS} using (in-seg)
-  open import Once.LinCore.Moves {FS} using (Seg; Seg-++ˡ; Ran; inb-pt; module Ran)
+  open import Once.LinCore.Moves {FS} using (Seg; Seg-++ˡ; infr; sub-in; Ran; inb-pt; module Ran)
   open Ran using (r-keep; r-pc)
   open Keep using (k-slots; k-halt)
 
@@ -211,7 +211,8 @@ module TrampR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   tr-open1 {X = X} {A} {B} p {i} {x} {a} {fs} T =
     case open1-sim image fs (Tr0.t-cfc T) (Tr0.t-area T) (t1M X A B) (t1Mc X A B) hdr (hdr + wsz X) i (Tr0.t-wx T) (Tr0.t-wa T)
            (Data.Nat.Properties.m≤m⊔n (wsz X + wsz A) (wsz B)) (Tr0.t-ne T) (Tr0.t-in T) (Tr0.t-M T) (Tr0.t-sM T)
-           (Tr0.t-x T) (Tr0.t-at T) (Tr0.t-a T) (Tr0.t-arg T) (Tr0.t-win T) (t1-seg0 p (Tr0.t-pc T)) (Tr0.t-run T) of λ where
+           (Tr0.t-x T) (Tr0.t-at T) (Tr0.t-a T) (Tr0.t-arg T) (Tr0.t-win T) (t1-seg0 p (Tr0.t-pc T)) (Tr0.t-run T)
+           (subst (suc (t1M X A B) Data.Nat.<_) (sym (Tr0.t-slots T)) (Data.Nat.Properties.n<1+n (suc (t1M X A B)))) of λ where
       (fs′ , run , C′ , Rn) →
         t1N X A , fs′ , run ,
         record { f-pc = trans (r-pc Rn) (trans (cong (t1N X A +_) (Tr0.t-pc T)) (sym (t1-pos₁ p)))
@@ -241,7 +242,7 @@ module TrampR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                        (sv₁ (frameOf (blockᴵ (kbody1 ds′ b γ)))) 0
   tr-call {X = X} {A} {B} p H =
     call-core p (frame 0 (t1M X A B)) 0 (t1-seg1 p (HereF.f-pc H)) (HereF.f-run H) (HereF.f-cfg H) (t1-area X A B)
-      (subst (Data.Nat._≤_ (t1M X A B)) (sym (HereF.f-slots H)) (Data.Nat.Properties.m≤n⇒m≤1+n (Data.Nat.Properties.n≤1+n (t1M X A B))))
+      (subst (Data.Nat._<_ (t1M X A B)) (sym (HereF.f-slots H)) (Data.Nat.Properties.m<n⇒m<1+n (Data.Nat.Properties.n<1+n (t1M X A B))))
 
   -- ★ the body's return into the trampoline: its result at the frame's top
   open import Once.LinCore.LowerSimF fmt ans bw using (module SimF)
@@ -288,7 +289,10 @@ module TrampR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       with-res ((wb , pb , sb) , _) =
         fin (leave image fs (frame 0 M) φ′ cfc (budget φ′) (M ∸ M) M (fbudget φ′) pc rest sv sl
                {es = []ᵉ} {os = []ˢ} {b = w} wb hret (sym (K.Here.h-slots {p = p} H)) hsv bsl ne ep′ pb sb Data.Unit.tt Data.Unit.tt refl
-               le fitM Data.Nat.z≤n fitB seg (K.Here.h-run {p = p} H))
+               le fitM Data.Nat.z≤n fitB seg (K.Here.h-run {p = p} H)
+               (subst (budget φ′ Data.Nat.<_) (sym (K.Here.h-slots {p = p} H)) (sv₁<fb φ′))
+               (infr (subst (budget φ′ ≤_) (sym (K.Here.h-slots {p = p} H)) (Data.Nat.Properties.<⇒≤ (sv₁<fb φ′)))
+                  (sub-in (budget φ′) (wsz B) 0 (Data.Nat.Properties.≤-trans (Rel.CfgW.c-sfit (K.Here.h-cfg {p = p} H)) (Data.Nat.Properties.m≤n+m (OP φ′) (EP φ′))))))
         where
           import Data.Unit
           fin : Σ FlatState (λ fs′ → FlatSteps image (suc (Once.LinCore.Moves.ln {FS} (wsz B) + 1)) fs fs′
@@ -340,13 +344,16 @@ module TrampR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
               × CfgW (LocState.heapMem (floc fs′)) (slot fs′) φ (es ∥ w ∷ˢ os)
               × CallOut fs fs′ cfc ((budget φ ∸ ws S) ∸ Mc) (M ∸ ws (B ∷ [])) (Mc ∸ wsz B) (wsz B) pc rest sv sl
               × (∀ x → budget φ ≤ x → LocState.stackMem (floc fs′) cfc x ≡ LocState.stackMem (floc fs) cfc x)
-  tr-end′ M Mc {w} {fs} φ {Es} {S} {es} {os} cfc pc rest sv sl le seg h C hret bslots hsv bsl ne ep ev st fitM fitE fitB =
+  tr-end′ {B} M Mc {w} {fs} φ {Es} {S} {es} {os} cfc pc rest sv sl le seg h C hret bslots hsv bsl ne ep ev st fitM fitE fitB =
     with-res (Rel.CfgW.c-stk C)
     where
       with-res : StkW (LocState.heapMem (floc fs)) (slot fs) (frame 0 M) (w ∷ˢ []ˢ) → _
       with-res ((wb , pb , sb) , _) =
         case leave image fs φ (frame 0 M) cfc (suc M) ((budget φ ∸ ws S) ∸ Mc) Mc (suc (suc M)) pc rest sv sl
-          {es = es} {os = os} {b = w} wb hret bslots hsv bsl ne ep pb sb ev st refl le fitM fitE fitB seg h of λ where
+          {es = es} {os = os} {b = w} wb hret bslots hsv bsl ne ep pb sb ev st refl le fitM fitE fitB seg h
+          (subst (suc M Data.Nat.<_) bslots (Data.Nat.Properties.n<1+n (suc M)))
+          (infr (subst (M ≤_) bslots (Data.Nat.Properties.m≤n⇒m≤1+n (Data.Nat.Properties.n≤1+n M)))
+             (sub-in M (wsz B) 0 (Rel.CfgW.c-sfit C))) of λ where
           (fs′ , run , C′ , CO , tk) → _ , fs′ , run , C′ , CO , tk
 
   tr-end : ∀ {Γ′ g X A B} {ds′ : Defs Γ′} {b : Tm Γ′ One (X ⊗t A) B} {γ : Gd g b}
@@ -399,7 +406,7 @@ module TrampR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
               → LocState.halted (floc fs) ≡ false
               → CfgW (LocState.heapMem (floc fs)) (slot fs) φ (es ∥ mpair (mfn i (c1 ds′ b γ) x) a ∷ˢ os)
               → (suc (wsz A) ⊔ wsz B) + ws S ≤ OP φ
-              → budget φ ≤ AllocState.frame-slots (falloc fs)
+              → budget φ Data.Nat.< AllocState.frame-slots (falloc fs)
               → Σ (under (ktr1 ds′ b γ) ∈ allK U) λ p → Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′
                   × Tr0 ((wsz X + wsz A) ⊔ wsz B) (suc (wsz A) ⊔ wsz B) (trPos (ktr1 ds′ b γ) p 0) i x a fs′
                   × Called fs fs′ (suc (suc (suc (suc (fpc fs))))) (suc (suc ((wsz X + wsz A) ⊔ wsz B)))
@@ -413,7 +420,10 @@ module TrampR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       with-top : StkW (LocState.heapMem (floc fs)) (slot fs) φ (mpair (mfn i (c1 ds′ b γ) x) a ∷ˢ os) → _
       with-top ((_ , vpair {wb = wa} (vfn {wx = wx} {wb} (m , refl) cc cfr px words) pa , (st₀ , sa)) , _) =
         m , fin (closure-in image fs (Tp φ ((Fn once g A B ⊗t A) ∷ S)) area (cellLoc i 0) (tl (idx m)) (e-thunk (tl (idx m)))
-                   q (suc (suc M)) M (suc M) (λ e → Data.Nat.Properties.<-irrefl e (Data.Nat.Properties.n<1+n M)) st₀ (proj₁ (proj₂ words)) seg (image-tramp m refl) segq h)
+                   q (suc (suc M)) M (suc M) (λ e → Data.Nat.Properties.<-irrefl e (Data.Nat.Properties.n<1+n M)) st₀ (proj₁ (proj₂ words)) seg (image-tramp m refl) segq h
+                   (Data.Nat.Properties.≤-<-trans (Data.Nat.Properties.m∸n≤m (budget φ) (ws ((Fn once g A B ⊗t A) ∷ S))) bsl)
+                   (Data.Nat.Properties.≤-<-trans (Data.Nat.Properties.≤-trans (Data.Nat.Properties.m∸n≤m (Tp φ S) Mc) (Data.Nat.Properties.m∸n≤m (budget φ) (ws S))) bsl)
+                   (Data.Nat.Properties.m<n⇒m<1+n (Data.Nat.Properties.n<1+n M)) (Data.Nat.Properties.n<1+n (suc M)))
         where
           LB = lowBlock (idx m) (kbody1 ds′ b γ) (blocks-in m)
           q = length (proj₁ (image-at m)) + length LB
@@ -453,7 +463,7 @@ module TrampR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                                           (area-bnd (budget φ) (ws S) Mc (wsz A) k k<
                                             (Data.Nat.Properties.≤-trans (Data.Nat.Properties.n≤1+n (wsz A)) (Data.Nat.Properties.m≤m⊔n (suc (wsz A)) (wsz B)))
                                             (Data.Nat.Properties.≤-trans fitM (Data.Nat.Properties.m≤n+m (OP φ) (EP φ))))
-                                          bsl) } ,
+                                          (Data.Nat.Properties.<⇒≤ bsl)) } ,
             record { cd-ret = cl-ret CL ; cd-saved = cl-saved CL ; cd-frame = cl-frame CL ; cd-others = cl-other CL
                    ; cd-area = subst (λ g′ → LocState.stackMem (floc fs′) g′ (suc M) ≡ just (SV-Ptr (AtStack cf area))) (sym (cl-frame CL)) (cl-s₂ CL)
                    ; cd-next = cl-next CL

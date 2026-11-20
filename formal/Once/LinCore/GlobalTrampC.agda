@@ -128,7 +128,7 @@ module TrampC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open Sim {FS} U wordOf using (len-mvPS)
   open import Once.LinCore.PointAt fmt ans bw using (module Fetch)
   open Fetch {FS} using (in-seg)
-  open import Once.LinCore.Moves {FS} using (Seg; Seg-++ˡ; Ran; inb-pt; ran-regs; mov-out-step; addr-step; module Ran)
+  open import Once.LinCore.Moves {FS} using (Seg; Seg-++ˡ; infr; sub-in; Ran; inb-pt; ran-regs; mov-out-step; addr-step; module Ran)
   open Ran using (r-keep; r-pc)
   open Keep using (k-halt)
   open import Once.LinCore.CallStepH fmt ans bw using (module FramesH; module CallsH)
@@ -199,6 +199,7 @@ module TrampC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
           → Seg image (fpc fs) (restore-input c ∷ addr-at 1 ∷ mov-to-input ∷ instr-save-closure-reg
                                 ∷ lea-slot d ∷ mov-to-input ∷ load-from-slot c ∷ instr-call-closure ∷ [])
           → LocState.halted (floc fs) ≡ false
+          → c Data.Nat.< AllocState.frame-slots (falloc fs) → d Data.Nat.< AllocState.frame-slots (falloc fs)
           → slot fs c ≡ just (cellPtr i)
           → VW (LocState.heapMem (floc fs)) cv (cellPtr i ∷ [])
           → Rel.At {FS} U wordOf (LocState.heapMem (floc fs)) i 0 (cellPtr i ∷ w₁ ∷ w₂ ∷ wf ∷ wx)
@@ -207,10 +208,12 @@ module TrampC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
           → Σ (under (ktrc X C) ∈ allK U) λ p → Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′
               × TrC0 (wsz X) (trPos (ktrc X C) p 0) cv fs′
               × Σ ℕ λ q → CopyIn fs fs′ (cellPtr i) d (suc (suc (suc (wsz X)))) (wsz X) (suc (wsz X)) q
-  tc-disp {X} {C} c d {i} {cv} {wx} {fs = fs} seg h sx pcv words (m , refl) I =
+  tc-disp {X} {C} c d {i} {cv} {wx} {fs = fs} seg h lc ld sx pcv words (m , refl) I =
     m , fin (copy-in image fs c d (cellLoc i 0) (tl (idx m)) (e-thunk (tl (idx m))) q (suc (suc (suc (wsz X)))) (wsz X) (suc (wsz X))
                (λ e → Data.Nat.Properties.<-irrefl e (Data.Nat.Properties.n<1+n (wsz X)))
-               sx (proj₂ (I (cellLoc i 1) (proj₁ (proj₂ words)))) (proj₁ (proj₂ (proj₂ words))) seg (image-tramp m refl) segq h)
+               sx (proj₂ (I (cellLoc i 1) (proj₁ (proj₂ words)))) (proj₁ (proj₂ (proj₂ words))) seg (image-tramp m refl) segq h
+               lc ld (Data.Nat.Properties.m<n⇒m<1+n (Data.Nat.Properties.m<n⇒m<1+n (Data.Nat.Properties.n<1+n (wsz X))))
+               (Data.Nat.Properties.m<n⇒m<1+n (Data.Nat.Properties.n<1+n (suc (wsz X)))))
     where
       LB = lowBlock (idx m) (kcopy X) (blocks-in m)
       q = length (proj₁ (image-at m)) + length LB
@@ -268,9 +271,9 @@ module TrampC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
           → Σ FlatState λ fs′ → FlatSteps image 3 fs fs′ × TrC1 (wsz X) (trPos (ktrc X C) p 1) cv x fs′ × S3W fs fs′ (suc (suc (wsz X)))
   tc-open {X} {C} p {i} {cv} {x} {wx} {fs} T s₂ pcv px ax I =
     fs₃ ,
-    step-at fs₁ (h , g₁) (restore-step fs (suc w) s₂)
+    step-at fs₁ (h , g₁) (restore-step fs (suc w) (subst (suc w Data.Nat.<_) (sym (TrC0.c0-slots T)) (Data.Nat.Properties.m<n⇒m<1+n (Data.Nat.Properties.n<1+n (suc w)))) s₂)
       (step-at fs₂ (h , g₂) (ca-step w fs₁ i wx (vw-len px) refl ax I)
-        (step-at fs₃ (h , g₃) (store-step fs₂ (suc (suc w))) FlatStepsAPI.[])) ,
+        (step-at fs₃ (h , g₃) (store-step fs₂ (suc (suc w)) (subst (suc (suc w) Data.Nat.<_) (sym (TrC0.c0-slots T)) (Data.Nat.Properties.n<1+n (suc (suc w))))) FlatStepsAPI.[])) ,
     record { c1-pc = trans (cong (λ z → suc (suc (suc z))) (TrC0.c0-pc T)) (sym (tC-pos₁ {X} {C} p))
            ; c1-run = h ; c1-slots = TrC0.c0-slots T ; c1-i = i ; c1-af = TrC0.c0-af T ; c1-d = TrC0.c0-d T ; c1-lt = TrC0.c0-lt T
            ; c1-s₁ = trans (store-other (floc fs₂) cur (suc (suc w)) _ w (λ e → Data.Nat.Properties.<-irrefl (sym e) (Data.Nat.Properties.m≤n⇒m≤1+n (Data.Nat.Properties.n<1+n w))))
@@ -304,7 +307,9 @@ module TrampC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                         (SV-Ptr (AtStack (AllocState.current-frame (falloc fs)) 0))
   tc-call {X} {C} p {cv} {x} {fs} T =
     call-core-c p (suc (suc (wsz X))) (cOff (wsz X)) (TrC1.c1-i T) (TrC1.c1-wx T) []
-      (Seg-++ˡ image (fpc fs) (tCP2 {X} {C} p) _ (tC-seg {X} {C} p 1 (TrC1.c1-pc T))) (TrC1.c1-run T) (TrC1.c1-s₃ T) (TrC1.c1-x T)
+      (Seg-++ˡ image (fpc fs) (tCP2 {X} {C} p) _ (tC-seg {X} {C} p 1 (TrC1.c1-pc T))) (TrC1.c1-run T)
+      (subst (0 Data.Nat.<_) (sym (TrC1.c1-slots T)) (Data.Nat.s≤s Data.Nat.z≤n))
+      (subst (suc (suc (wsz X)) Data.Nat.<_) (sym (TrC1.c1-slots T)) (Data.Nat.Properties.n<1+n (suc (suc (wsz X))))) (TrC1.c1-s₃ T) (TrC1.c1-x T)
       (at-cOff (wsz X) (TrC1.c1-wx T) (vw-len (TrC1.c1-x T)) (TrC1.c1-at T)) Rel.vone tt (λ k ())
 
   open import Once.LinCore.LowerSimE {FS} using (call-out)
@@ -345,7 +350,11 @@ module TrampC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                            (subst (Data.Nat._< suc (suc (suc (wsz X))))
                              (sym (trans (Data.Nat.Properties.+-identityʳ _) (trans (cong (k +_) (Data.Nat.Properties.n∸n≡0 (wsz X))) (Data.Nat.Properties.+-identityʳ k))))
                              (Data.Nat.Properties.m<n⇒m<1+n (Data.Nat.Properties.m<n⇒m<1+n (Data.Nat.Properties.m<n⇒m<1+n k<)))))
-               seg (K.Here.h-run {p = p} H))
+               seg (K.Here.h-run {p = p} H)
+               (subst (budget φ′ Data.Nat.<_) (sym (K.Here.h-slots {p = p} H)) (sv₁<fb φ′))
+               (infr (subst (budget φ′ Data.Nat.≤_) (sym (K.Here.h-slots {p = p} H)) (Data.Nat.Properties.<⇒≤ (sv₁<fb φ′)))
+                  (sub-in (budget φ′) (wsz X) 0
+                     (Data.Nat.Properties.≤-trans (Rel.CfgW.c-sfit (K.Here.h-cfg {p = p} H)) (Data.Nat.Properties.m≤n+m (OP φ′) (EP φ′))))))
         where
           fin : Σ FlatState (λ fs′ → FlatSteps image (suc (Once.LinCore.Moves.ln {FS} (wsz X) + 1)) fs fs′
                   × CallOut fs fs′ cfc 0 (budget φ′ ∸ ws (X ∷ [])) (wsz X ∸ wsz X) (wsz X) (trPos (ktrc X C) p 2) rest sv sl)
@@ -376,7 +385,13 @@ module TrampC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                                    ∷ restore-input (suc w) ∷ load-at 3 ∷ restore-input (suc (suc w)) ∷ store-at 3
                                    ∷ mov-to-output ∷ store-at 0 ∷ mvSP 0 hdr n))
                   (sym lw) (Seg-++ˡ image (fpc fs) (tCR X) _ (tC-seg {X} {C} p 3 (TrC2.c2-pc T))))
-           (TrC2.c2-run T) s₂ (λ e → Data.Nat.Properties.<-irrefl (sym e) (Data.Nat.Properties.n<1+n (suc w)))
+           (TrC2.c2-run T)
+           (subst (suc w Data.Nat.<_) (sym (TrC2.c2-slots T)) (Data.Nat.Properties.m<n⇒m<1+n (Data.Nat.Properties.n<1+n (suc w))))
+           (subst (suc (suc w) Data.Nat.<_) (sym (TrC2.c2-slots T)) (Data.Nat.Properties.n<1+n (suc (suc w))))
+           (subst (length (TrC2.c2-wx T) Data.Nat.≤_) (sym (TrC2.c2-slots T))
+              (Data.Nat.Properties.≤-trans (Data.Nat.Properties.≤-reflexive lw)
+                 (Data.Nat.Properties.m≤n⇒m≤1+n (Data.Nat.Properties.m≤n⇒m≤1+n (Data.Nat.Properties.n≤1+n w)))))
+           s₂ (λ e → Data.Nat.Properties.<-irrefl (sym e) (Data.Nat.Properties.n<1+n (suc w)))
            (λ k k< e → Data.Nat.Properties.<-irrefl (sym e) (Data.Nat.Properties.<-≤-trans k< (subst (_≤ suc (suc w)) (sym lw)
                          (Data.Nat.Properties.m≤n⇒m≤1+n (Data.Nat.Properties.n≤1+n w)))))
            e₁ e₂ e₃ ne (TrC2.c2-res T))
@@ -402,3 +417,6 @@ module TrampC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   tc-end {X} {C} p {fs = fs} pc rest sv sl T hret hsv ne dlt =
     call-out image fs (TrC4.c4-af T) (TrC4.c4-d T) (wsz X) (suc (suc (wsz X))) 0 1 (suc (suc (suc (wsz X)))) pc rest sv sl hret (sym (TrC4.c4-slots T)) hsv ne
       (TrC4.c4-s₁ T) (λ { zero _ → _ , TrC4.c4-s₃ T ; (suc k) (Data.Nat.s≤s ()) }) (λ { zero _ → dlt ; (suc k) (Data.Nat.s≤s ()) }) (tC-seg {X} {C} p 4 (TrC4.c4-pc T)) (TrC4.c4-run T)
+      (subst (wsz X Data.Nat.<_) (sym (TrC4.c4-slots T))
+         (Data.Nat.Properties.m<n⇒m<1+n (Data.Nat.Properties.m<n⇒m<1+n (Data.Nat.Properties.n<1+n (wsz X)))))
+      (infr (Data.Nat.Properties.≤-reflexive (sym (TrC4.c4-slots T))) (Data.Nat.Properties.≤-reflexive (Data.Nat.Properties.+-comm (suc (suc (wsz X))) 1)))

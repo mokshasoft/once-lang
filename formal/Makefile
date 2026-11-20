@@ -113,7 +113,7 @@ backstop:
 # then the backstop and the certified apex. (lint-imports is not part of it:
 # under -W error, the backstop and the apex already fail on a stale import.)
 .PHONY: merge-gate
-merge-gate: public-gate layer-gate pragma-gate metatheory-gate spec-gate implementation-gate backstop certified
+merge-gate: public-gate layer-gate pragma-gate with-gate metatheory-gate spec-gate implementation-gate backstop certified
 	@echo "merge-gate: OK"
 
 # Per-module cost: wall time and peak memory, one Agda process per module,
@@ -235,6 +235,11 @@ pragma-gate:
 # Plan 0.92 S0: no new `public` re-export; the baseline only shrinks.
 public-gate:
 	@scripts/public-gate.sh
+
+.PHONY: with-gate
+# No new with/rewrite (plan 0.153): a per-module ratchet on scripts/with-gate.baseline.
+with-gate:
+	@scripts/with-gate.sh
 
 .PHONY: spec-gate
 # The Spec imports only the Spec (plan 0.114): a ratchet on its full import closure;

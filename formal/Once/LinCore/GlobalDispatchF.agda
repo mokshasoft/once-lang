@@ -210,6 +210,10 @@ module DispF {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       with-top : StkW (LocState.heapMem (floc fs)) (slot fs) (dsiteφ d) (mfn i lam x ∷ˢ os) → _
       with-top ((_ , vfn {wx = wx} cb cc cfr px words , (st₀ , _)) , _) =
         case tf-disp {X} {Fn kd g A B} (Tp (dsiteφ d) S ∸ 1) seg run
+               (subst ((Tp (dsiteφ d) S ∸ 1) Data.Nat.<_) (sym fsl)
+                  (Data.Nat.Properties.≤-<-trans
+                     (Data.Nat.Properties.≤-trans (Data.Nat.Properties.m∸n≤m (Tp (dsiteφ d) S) 1) (Data.Nat.Properties.m∸n≤m (budget (dsiteφ d)) (ws S)))
+                     (sv₁<fb (dsiteφ d))))
                (subst (λ z → slot fs z ≡ just (cellPtr i)) (tp-top (dsiteφ d) S) st₀) px words cfr I of λ where
           (m , N , fs′ , run′ , T0 , q , FI) →
             N , fs′ , run′ , record { g-pt = p-tramp m (at whole) ; g-here = (tf0 {X = X} {Fn kd g A B} m , T0)
@@ -240,6 +244,10 @@ module DispF {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       with-top : StkW (LocState.heapMem (floc fs)) (slot fs) (dsiteφ d) (mnu i p ∷ˢ os) → _
       with-top ((_ , vnu {wp = wp} co cc cfr pp words , (st₀ , _)) , _) =
         case tf-disp {Coalg F S ⊗t S} {Nu F} (Tp (dsiteφ d) S′ ∸ 1) seg run
+               (subst ((Tp (dsiteφ d) S′ ∸ 1) Data.Nat.<_) (sym fsl)
+                  (Data.Nat.Properties.≤-<-trans
+                     (Data.Nat.Properties.≤-trans (Data.Nat.Properties.m∸n≤m (Tp (dsiteφ d) S′) 1) (Data.Nat.Properties.m∸n≤m (budget (dsiteφ d)) (ws S′)))
+                     (sv₁<fb (dsiteφ d))))
                (subst (λ z → slot fs z ≡ just (cellPtr i)) (tp-top (dsiteφ d) S′) st₀) pp words cfr I of λ where
           (m , N , fs′ , run′ , T0 , q , FI) →
             N , fs′ , run′ , record { g-pt = p-tramp m (at whole) ; g-here = (tf0 {X = Coalg F S ⊗t S} {Nu F} m , T0)

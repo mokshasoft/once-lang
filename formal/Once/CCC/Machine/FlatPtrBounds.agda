@@ -653,28 +653,44 @@ flat-ptr-bounds load-indirect            prog fs ff am wfS wf =
 flat-ptr-bounds load-indirect-suc        prog fs ff am wfS wf =
   pb-abstract load-indirect-suc (floc fs) (falloc fs) ff am wfS wf
 flat-ptr-bounds (load-from-slot k)       prog fs ff am wfS wf =
-  pb-abstract (load-from-slot k) (floc fs) (falloc fs) ff am wfS wf
+  straight-keeps PtrBoundsWF (load-from-slot k) fs
+    (pb-abstract (load-from-slot k) (floc fs) (falloc fs) ff am wfS wf)
+    (pb-fault (block-size (falloc fs)) (floc fs) wf)
 flat-ptr-bounds (store-at-slot k)        prog fs ff am wfS wf =
-  pb-abstract (store-at-slot k) (floc fs) (falloc fs) ff am wfS wf
+  straight-keeps PtrBoundsWF (store-at-slot k) fs
+    (pb-abstract (store-at-slot k) (floc fs) (falloc fs) ff am wfS wf)
+    (pb-fault (block-size (falloc fs)) (floc fs) wf)
 flat-ptr-bounds store-indirect           prog fs ff am wfS wf =
   pb-abstract store-indirect (floc fs) (falloc fs) ff am wfS wf
 flat-ptr-bounds store-indirect-suc       prog fs ff am wfS wf =
   pb-abstract store-indirect-suc (floc fs) (falloc fs) ff am wfS wf
 flat-ptr-bounds (lea-slot k)             prog fs ff am wfS wf =
-  pb-abstract (lea-slot k) (floc fs) (falloc fs) ff am wfS wf
+  straight-keeps PtrBoundsWF (lea-slot k) fs
+    (pb-abstract (lea-slot k) (floc fs) (falloc fs) ff am wfS wf)
+    (pb-fault (block-size (falloc fs)) (floc fs) wf)
 flat-ptr-bounds (restore-input k)        prog fs ff am wfS wf =
-  pb-abstract (restore-input k) (floc fs) (falloc fs) ff am wfS wf
+  straight-keeps PtrBoundsWF (restore-input k) fs
+    (pb-abstract (restore-input k) (floc fs) (falloc fs) ff am wfS wf)
+    (pb-fault (block-size (falloc fs)) (floc fs) wf)
 flat-ptr-bounds (instr-reclaim-to k)     prog fs ff am wfS wf =
   pb-abstract (instr-reclaim-to k) (floc fs) (falloc fs) ff am wfS wf
 flat-ptr-bounds instr-call-closure       prog fs ff am wfS wf = pb-call prog fs wf
 flat-ptr-bounds (worklist-init k)        prog fs ff am wfS wf =
-  pb-abstract (worklist-init k) (floc fs) (falloc fs) ff am wfS wf
+  straight-keeps PtrBoundsWF (worklist-init k) fs
+    (pb-abstract (worklist-init k) (floc fs) (falloc fs) ff am wfS wf)
+    (pb-fault (block-size (falloc fs)) (floc fs) wf)
 flat-ptr-bounds (worklist-push k)        prog fs ff am wfS wf =
-  pb-abstract (worklist-push k) (floc fs) (falloc fs) ff am wfS wf
+  straight-keeps PtrBoundsWF (worklist-push k) fs
+    (pb-abstract (worklist-push k) (floc fs) (falloc fs) ff am wfS wf)
+    (pb-fault (block-size (falloc fs)) (floc fs) wf)
 flat-ptr-bounds (worklist-pop k)         prog fs ff am wfS wf =
-  pb-abstract (worklist-pop k) (floc fs) (falloc fs) ff am wfS wf
+  straight-keeps PtrBoundsWF (worklist-pop k) fs
+    (pb-abstract (worklist-pop k) (floc fs) (falloc fs) ff am wfS wf)
+    (pb-fault (block-size (falloc fs)) (floc fs) wf)
 flat-ptr-bounds (worklist-check k)       prog fs ff am wfS wf =
-  pb-abstract (worklist-check k) (floc fs) (falloc fs) ff am wfS wf
+  straight-keeps PtrBoundsWF (worklist-check k) fs
+    (pb-abstract (worklist-check k) (floc fs) (falloc fs) ff am wfS wf)
+    (pb-fault (block-size (falloc fs)) (floc fs) wf)
 flat-ptr-bounds (instr-sigop si)         prog fs ff am wfS wf =
   pb-abstract (instr-sigop si) (floc fs) (falloc fs) ff am wfS wf
 flat-ptr-bounds (instr-load-const p v)   prog fs ff am wfS wf =

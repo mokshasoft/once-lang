@@ -342,6 +342,7 @@ record BlockSteps : Set₁ where
       ∀ {hv : HeapView} prog fs s slot → CompiledCorr hv prog fs s
       → halted (floc fs) ≡ false
       → fetch prog (fpc fs) ≡ just (lea-slot slot)
+      → slot < frame-slots (falloc fs)   -- B1.7b: the machine's slot gate, passed
       → CRL.RunLow prog fs
       → BlockStep hv prog fs s (lea-slot slot)
     bs-save-closure-reg :

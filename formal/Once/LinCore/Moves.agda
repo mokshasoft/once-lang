@@ -15,8 +15,8 @@
 -- what a store leaves in each slot.
 ------------------------------------------------------------------------
 
-open import Data.Nat using (ℕ; zero; suc; _+_; _≟_; _<ᵇ_; _≤?_; _<?_)
-open import Data.Nat.Properties using (+-identityʳ; +-suc)
+open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _≟_; _<ᵇ_; _≤?_; _<?_; _<_; _≤_)
+open import Data.Nat.Properties using (+-identityʳ; +-suc; +-comm; <-≤-trans; ≤-trans; ≤-reflexive; +-monoˡ-<; +-monoʳ-<; +-monoʳ-≤; ∸-+-assoc; m≤n+m; m≤m+n; m∸n+n≡m)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Bool using (false; true; T)
@@ -30,6 +30,7 @@ open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.Memory.HeapAddress using (heap-loc; mkHeapRef; HeapLocation; HeapRef)
 open import Once.CCC.Machine.SMCore
 open import Once.CCC.Machine.Flat using (module FlatMachine)
+open import Once.CCC.Machine.InstrSlot using (slot-of)
 open import Once.CCC.Machine.FlatLog using (module LogPres)
 
 module Once.LinCore.Moves {FS : FrameSemantics} where
@@ -65,23 +66,31 @@ Seg-++ʳ prog pc (x ∷ xs) ys (f , s) rewrite +-suc pc (length xs) = Seg-++ʳ p
 slot : FlatState → ℕ → Maybe (StoredValue FS)
 slot fs k = stackMem (floc fs) (current-frame (falloc fs)) k
 
+-- B1.7b (D456): each slot step proves the machine's slot gate (`Flat.slot-ok-in`):
+-- the slot is inside the current frame
+private
+  gate : ∀ i (fs : FlatState) {k} → slot-of i ≡ just k → k < AllocState.frame-slots (falloc fs)
+       → flat-step-straight i fs ≡ straight-go i fs
+  gate i fs sk lt = straight-pass i fs (slot-ok-in i (falloc fs) sk lt)
+
 -- a load of a defined slot: `Output` holds its word
-load-step : ∀ (fs : FlatState) a {v} → slot fs a ≡ just v
+load-step : ∀ (fs : FlatState) a {v} → a < AllocState.frame-slots (falloc fs) → slot fs a ≡ just v
           → flat-step-straight (load-from-slot a) fs
             ≡ record fs { floc = record (floc fs) { regs = writeReg (regs (floc fs)) Output v } ; fpc = suc (fpc fs) }
-load-step fs a e =
-  cong (λ m → record fs { floc   = Data.Product.proj₁ (exec-load-from-slot-with-value m (floc fs) (falloc fs))
-                        ; falloc = Data.Product.proj₂ (exec-load-from-slot-with-value m (floc fs) (falloc fs))
-                        ; fpc    = suc (fpc fs) }) e
+load-step fs a lt e =
+  trans (gate (load-from-slot a) fs refl lt)
+    (cong (λ m → record fs { floc   = Data.Product.proj₁ (exec-load-from-slot-with-value m (floc fs) (falloc fs))
+                           ; falloc = Data.Product.proj₂ (exec-load-from-slot-with-value m (floc fs) (falloc fs))
+                           ; fpc    = suc (fpc fs) }) e)
   where import Data.Product
         open AbstractExec {FS} using (exec-load-from-slot-with-value)
 
 -- a store: the slot holds `Output`'s word
-store-step : ∀ (fs : FlatState) b
+store-step : ∀ (fs : FlatState) b → b < AllocState.frame-slots (falloc fs)
            → flat-step-straight (store-at-slot b) fs
              ≡ record fs { floc = writeLoc (floc fs) (AtStack (current-frame (falloc fs)) b) (readReg (regs (floc fs)) Output)
                          ; fpc = suc (fpc fs) }
-store-step fs b = refl
+store-step fs b lt = gate (store-at-slot b) fs refl lt
 
 -- what a store to the current frame leaves: the slot written, the rest as before
 private
@@ -149,16 +158,62 @@ private
   ln-pc : ∀ n p → ln n + suc (suc p) ≡ ln (suc n) + p
   ln-pc n p = trans (+-suc (ln n) (suc p)) (cong suc (+-suc (ln n) p))
 
+-- B1.7b (D456): the slots a move addresses are inside the current frame
+-- (`Fr fs`, the frame's reservation): the machine's slot gate at each access
+Fr : FlatState → ℕ
+Fr fs = AllocState.frame-slots (falloc fs)
+
+-- (a record: its state index is injective, so a use infers it)
+record InFr (fs : FlatState) (a n : ℕ) : Set where
+  constructor mkInFr
+  field in-fr : ∀ k → k < n → k + a < Fr fs
+open InFr
+
+private
+  infr-hd : ∀ {fs a n} → InFr fs a (suc n) → a < Fr fs
+  infr-hd r = in-fr r 0 (s≤s z≤n)
+
+  infr-tl : ∀ {fs fs′ a n} → Fr fs′ ≡ Fr fs → InFr fs a (suc n) → InFr fs′ (suc a) n
+  infr-tl {fs} {fs′} {a} e r =
+    mkInFr (λ k lt → subst (λ z → z < Fr fs′) (sym (+-suc k a)) (subst (λ F → suc k + a < F) (sym e) (in-fr r (suc k) (s≤s lt))))
+
+-- the descending form: `a + k` for `k < n`
+record InFrD (fs : FlatState) (a n : ℕ) : Set where
+  constructor mkInFrD
+  field in-frD : ∀ k → k < n → a + k < Fr fs
+open InFrD
+
+-- …a range ending by a bound inside the frame is in it
+infr : ∀ {fs hi a n} → hi ≤ Fr fs → a + n ≤ hi → InFr fs a n
+infr {a = a} {n} B le = mkInFr (λ k lt →
+  <-≤-trans (+-monoˡ-< a lt) (≤-trans (≤-reflexive (+-comm n a)) (≤-trans le B)))
+
+infrD : ∀ {fs hi a n} → hi ≤ Fr fs → a + n ≤ hi → InFrD fs a n
+infrD {a = a} B le = mkInFrD (λ k lt → <-≤-trans (+-monoʳ-< a lt) (≤-trans le B))
+
+-- the regions' ends: `w` words below `b ∸ s`, `a` words at `b ∸ (a + s)`, `y` at `b ∸ x`
+top-in : ∀ b s w → w + s ≤ b → ((b ∸ s) ∸ w) + w ≤ b
+top-in b s w le =
+  ≤-trans (≤-reflexive (cong (_+ w) (∸-+-assoc b s w)))
+    (≤-trans (+-monoʳ-≤ (b ∸ (s + w)) (m≤n+m w s)) (≤-reflexive (m∸n+n≡m (≤-trans (≤-reflexive (+-comm s w)) le))))
+
+sub-le : ∀ b x y → y ≤ x → x ≤ b → (b ∸ x) + y ≤ b
+sub-le b x y yx xb = ≤-trans (+-monoʳ-≤ (b ∸ x) yx) (≤-reflexive (m∸n+n≡m xb))
+
+sub-in : ∀ b a s → a + s ≤ b → (b ∸ (a + s)) + a ≤ b
+sub-in b a s le = ≤-trans (+-monoʳ-≤ (b ∸ (a + s)) (m≤m+n a s)) (≤-reflexive (m∸n+n≡m le))
+
 -- ★ a move whose stores never clobber a word still to be read
 mvSS-run : ∀ prog (fs : FlatState) a b n → Seg prog (fpc fs) (mvSS a b n) → halted (floc fs) ≡ false
+         → InFr fs a n → InFr fs b n
          → (∀ k → k < n → Σ (StoredValue FS) λ v → slot fs (k + a) ≡ just v)
          → (∀ k k′ → k < k′ → k′ < n → ¬ k + b ≡ k′ + a)
          → Σ FlatState λ fs′ → FlatSteps prog (ln n) fs fs′ × MovedS fs fs′ a b n
-mvSS-run prog fs a b zero s h d nc =
+mvSS-run prog fs a b zero s h ra rb d nc =
   fs , [] , record { m-pc = refl ; m-alloc = refl ; m-ret = refl ; m-clo = refl ; m-link = refl ; m-heap = refl
                    ; m-halt = refl ; m-log = refl ; m-in = refl ; m-moved = λ k () ; m-rest = λ x _ → refl ; m-frame = λ _ _ _ → refl }
-mvSS-run prog fs a b (suc n) (f₁ , f₂ , s) h d nc with d 0 (s≤s z≤n)
-... | (v , e) with mvSS-run prog fs₂ (suc a) (suc b) n s h d₂ nc₂
+mvSS-run prog fs a b (suc n) (f₁ , f₂ , s) h ra rb d nc with d 0 (s≤s z≤n)
+... | (v , e) with mvSS-run prog fs₂ (suc a) (suc b) n s h (infr-tl refl ra) (infr-tl refl rb) d₂ nc₂
   where
     cf = current-frame (falloc fs)
     fs₁ = record fs { floc = record (floc fs) { regs = writeReg (regs (floc fs)) Output v } ; fpc = suc (fpc fs) }
@@ -170,7 +225,7 @@ mvSS-run prog fs a b (suc n) (f₁ , f₂ , s) h d nc with d 0 (s≤s z≤n)
     nc₂ : ∀ k k′ → k < k′ → k′ < n → ¬ k + suc b ≡ k′ + suc a
     nc₂ k k′ lt lt′ eq = nc (suc k) (suc k′) (s≤s lt) (s≤s lt′) (trans (sym (+-suc k b)) (trans eq (+-suc k′ a)))
 ... | (fs′ , st , M) =
-  fs′ , step-at _ (h , f₁) (load-step fs a e) (step-at _ (h , f₂) (store-step _ b) st)
+  fs′ , step-at _ (h , f₁) (load-step fs a (infr-hd ra) e) (step-at _ (h , f₂) (store-step _ b (infr-hd rb)) st)
   , record { m-pc = trans (m-pc M) (ln-pc n (fpc fs))
            ; m-alloc = m-alloc M ; m-ret = m-ret M ; m-clo = m-clo M ; m-link = m-link M
            ; m-heap = m-heap M ; m-halt = m-halt M ; m-log = m-log M ; m-in = m-in M
@@ -251,12 +306,13 @@ mvPS-run : ∀ prog (fs : FlatState) (loc : ValueLocation FS) o b n → Seg prog
          → (∀ k → k < n → Σ (StoredValue FS) λ v → readLoc (floc fs) (offsetLoc loc (k + o)) ≡ just v)
          → (∀ k → k < n → frame-gate (falloc fs) (k + o) (just loc) ≡ just loc)
          → (∀ k k′ → k < k′ → k′ < n → ¬ AtStack (current-frame (falloc fs)) (k + b) ≡ offsetLoc loc (k′ + o))
+         → InFr fs b n
          → Σ FlatState λ fs′ → FlatSteps prog (ln n) fs fs′ × MovedP fs fs′ loc o b n
-mvPS-run prog fs loc o b zero s h i d gt nc =
+mvPS-run prog fs loc o b zero s h i d gt nc rb =
   fs , [] , record { p-pc = refl ; p-alloc = refl ; p-ret = refl ; p-clo = refl ; p-link = refl ; p-heap = refl
                    ; p-halt = refl ; p-log = refl ; p-in = refl ; p-moved = λ k () ; p-rest = λ x _ → refl ; p-frame = λ _ _ _ → refl }
-mvPS-run prog fs loc o b (suc n) (f₁ , f₂ , s) h i d gt nc with d 0 (s≤s z≤n)
-... | (v , e) with mvPS-run prog fs₂ loc (suc o) (suc b) n s h i d₂ gt₂ nc₂
+mvPS-run prog fs loc o b (suc n) (f₁ , f₂ , s) h i d gt nc rb with d 0 (s≤s z≤n)
+... | (v , e) with mvPS-run prog fs₂ loc (suc o) (suc b) n s h i d₂ gt₂ nc₂ (infr-tl refl rb)
   where
     gt₂ : ∀ k → k < n → frame-gate (falloc fs) (k + suc o) (just loc) ≡ just loc
     gt₂ k k<n = trans (cong (λ z → frame-gate (falloc fs) z (just loc)) (+-suc k o)) (gt (suc k) (s≤s k<n))
@@ -273,7 +329,7 @@ mvPS-run prog fs loc o b (suc n) (f₁ , f₂ , s) h i d gt nc with d 0 (s≤s z
     nc₂ k k′ lt lt′ eq = nc (suc k) (suc k′) (s≤s lt) (s≤s lt′)
                            (trans (cong (AtStack cf) (sym (+-suc k b))) (trans eq (off-suc loc k′ o)))
 ... | (fs′ , st , M) =
-  fs′ , step-at _ (h , f₁) (loadat-step fs o i (gt 0 (s≤s z≤n)) e) (step-at _ (h , f₂) (store-step _ b) st)
+  fs′ , step-at _ (h , f₁) (loadat-step fs o i (gt 0 (s≤s z≤n)) e) (step-at _ (h , f₂) (store-step _ b (infr-hd rb)) st)
   , record { p-pc = trans (p-pc M) (ln-pc n (fpc fs))
            ; p-alloc = p-alloc M ; p-ret = p-ret M ; p-clo = p-clo M ; p-link = p-link M
            ; p-heap = p-heap M ; p-halt = p-halt M ; p-log = p-log M ; p-in = trans (p-in M) i′
@@ -398,12 +454,13 @@ mvSP-run : ∀ prog (fs : FlatState) (loc : ValueLocation FS) a o n → Seg prog
          → (∀ k → k < n → frame-gate (falloc fs) (k + o) (just loc) ≡ just loc)
          → (∀ k → k < n → in-block? (block-size (falloc fs)) (offsetLoc loc (k + o)) ≡ true)
          → (∀ k k′ → k < k′ → k′ < n → ¬ offsetLoc loc (k + o) ≡ AtStack (current-frame (falloc fs)) (k′ + a))
+         → InFr fs a n
          → Σ FlatState λ fs′ → FlatSteps prog (ln n) fs fs′ × MovedW fs fs′ loc a o n
-mvSP-run prog fs loc a o zero s h i d gt ib nc =
+mvSP-run prog fs loc a o zero s h i d gt ib nc ra =
   fs , [] , record { w-pc = refl ; w-alloc = refl ; w-ret = refl ; w-clo = refl ; w-link = refl
                    ; w-halt = refl ; w-log = refl ; w-in = refl ; w-moved = λ k () ; w-rest = λ l _ → refl }
-mvSP-run prog fs loc a o (suc n) (f₁ , f₂ , s) h i d gt ib nc with d 0 (s≤s z≤n)
-... | (v , e) with mvSP-run prog fs₂ loc (suc a) (suc o) n s h₂ i₂ d₂ gt₂ ib₂ nc₂
+mvSP-run prog fs loc a o (suc n) (f₁ , f₂ , s) h i d gt ib nc ra with d 0 (s≤s z≤n)
+... | (v , e) with mvSP-run prog fs₂ loc (suc a) (suc o) n s h₂ i₂ d₂ gt₂ ib₂ nc₂ (infr-tl refl ra)
   where
     gt₂ : ∀ k → k < n → frame-gate (falloc fs) (k + suc o) (just loc) ≡ just loc
     gt₂ k k<n = trans (cong (λ z → frame-gate (falloc fs) z (just loc)) (+-suc k o)) (gt (suc k) (s≤s k<n))
@@ -425,7 +482,7 @@ mvSP-run prog fs loc a o (suc n) (f₁ , f₂ , s) h i d gt ib nc with d 0 (s≤
     nc₂ k k′ lt lt′ eq = nc (suc k) (suc k′) (s≤s lt) (s≤s lt′)
                            (trans (cong (offsetLoc loc) (sym (+-suc k o))) (trans eq (cong (AtStack cf) (+-suc k′ a))))
 ... | (fs′ , st , M) =
-  fs′ , step-at _ (h , f₁) (load-step fs a e) (step-at _ (wh , f₂) (storeat-step fs₁ o i (gt 0 (s≤s z≤n)) (ib 0 (s≤s z≤n))) st)
+  fs′ , step-at _ (h , f₁) (load-step fs a (infr-hd ra) e) (step-at _ (wh , f₂) (storeat-step fs₁ o i (gt 0 (s≤s z≤n)) (ib 0 (s≤s z≤n))) st)
   , record { w-pc = trans (w-pc M) (ln-pc n (fpc fs))
            ; w-alloc = w-alloc M ; w-ret = w-ret M ; w-clo = w-clo M ; w-link = w-link M
            ; w-halt = trans (w-halt M) (wl-halt (floc fs₁) (offsetLoc loc o) v) ; w-log = trans (w-log M) (LogPres.writeLoc-log {FS} (floc fs₁) (offsetLoc loc o) v) ; w-in = trans (w-in M) (wl-in (floc fs₁) (offsetLoc loc o) v)
@@ -486,14 +543,15 @@ open MovedD
 
 -- ★ highest first, its stores never clobbering a word still to be read
 mvSSd-run : ∀ prog (fs : FlatState) a b n → Seg prog (fpc fs) (mvSSd a b n) → halted (floc fs) ≡ false
+          → InFrD fs a n → InFrD fs b n
           → (∀ k → k < n → Σ (StoredValue FS) λ v → slot fs (a + k) ≡ just v)
           → (∀ k k′ → k′ < k → k < n → ¬ b + k ≡ a + k′)
           → Σ FlatState λ fs′ → FlatSteps prog (ln n) fs fs′ × MovedD fs fs′ a b n
-mvSSd-run prog fs a b zero s h d nc =
+mvSSd-run prog fs a b zero s h ra rb d nc =
   fs , [] , record { d-pc = refl ; d-alloc = refl ; d-ret = refl ; d-clo = refl ; d-link = refl ; d-heap = refl
                    ; d-halt = refl ; d-log = refl ; d-in = refl ; d-moved = λ k () ; d-rest = λ x _ → refl ; d-frame = λ _ _ _ → refl }
-mvSSd-run prog fs a b (suc n) (f₁ , f₂ , s) h d nc with d n (n<1+n n)
-... | (v , e) with mvSSd-run prog fs₂ a b n s h d₂ nc₂
+mvSSd-run prog fs a b (suc n) (f₁ , f₂ , s) h ra rb d nc with d n (n<1+n n)
+... | (v , e) with mvSSd-run prog fs₂ a b n s h (mkInFrD (λ k lt → in-frD ra k (m<n⇒m<1+n lt))) (mkInFrD (λ k lt → in-frD rb k (m<n⇒m<1+n lt))) d₂ nc₂
   where
     cf = current-frame (falloc fs)
     fs₁ = record fs { floc = record (floc fs) { regs = writeReg (regs (floc fs)) Output v } ; fpc = suc (fpc fs) }
@@ -504,7 +562,7 @@ mvSSd-run prog fs a b (suc n) (f₁ , f₂ , s) h d nc with d n (n<1+n n)
     nc₂ : ∀ k k′ → k′ < k → k < n → ¬ b + k ≡ a + k′
     nc₂ k k′ lt lt′ = nc k k′ lt (m<n⇒m<1+n lt′)
 ... | (fs′ , st , M) =
-  fs′ , step-at _ (h , f₁) (load-step fs (a + n) e) (step-at _ (h , f₂) (store-step _ (b + n)) st)
+  fs′ , step-at _ (h , f₁) (load-step fs (a + n) (in-frD ra n (n<1+n n)) e) (step-at _ (h , f₂) (store-step _ (b + n) (in-frD rb n (n<1+n n))) st)
   , record { d-pc = trans (d-pc M) (ln-pc n (fpc fs))
            ; d-alloc = d-alloc M ; d-ret = d-ret M ; d-clo = d-clo M ; d-link = d-link M
            ; d-heap = d-heap M ; d-halt = d-halt M ; d-log = d-log M ; d-in = d-in M
@@ -556,16 +614,17 @@ record Filled (fs fs′ : FlatState) (b n : ℕ) : Set where
 open Filled
 
 stores-run : ∀ prog (fs : FlatState) b n → Seg prog (fpc fs) (stores b n) → halted (floc fs) ≡ false
+           → InFr fs b n
            → Σ FlatState λ fs′ → FlatSteps prog n fs fs′ × Filled fs fs′ b n
-stores-run prog fs b zero s h =
+stores-run prog fs b zero s h rb =
   fs , [] , record { f-pc = refl ; f-alloc = refl ; f-ret = refl ; f-clo = refl ; f-link = refl ; f-heap = refl
                    ; f-halt = refl ; f-log = refl ; f-regs = refl ; f-set = λ k () ; f-rest = λ x _ → refl ; f-frame = λ _ _ _ → refl }
-stores-run prog fs b (suc n) (f₁ , s) h with stores-run prog fs₁ (suc b) n s h
+stores-run prog fs b (suc n) (f₁ , s) h rb with stores-run prog fs₁ (suc b) n s h (infr-tl refl rb)
   where
     cf = current-frame (falloc fs)
     fs₁ = record fs { floc = writeLoc (floc fs) (AtStack cf b) (readReg (regs (floc fs)) Output) ; fpc = suc (fpc fs) }
 ... | (fs′ , st , F) =
-  fs′ , step-at _ (h , f₁) (store-step fs b) st
+  fs′ , step-at _ (h , f₁) (store-step fs b (infr-hd rb)) st
   , record { f-pc = trans (f-pc F) (+-suc n (fpc fs))
            ; f-alloc = f-alloc F ; f-ret = f-ret F ; f-clo = f-clo F ; f-link = f-link F
            ; f-heap = f-heap F ; f-halt = f-halt F ; f-log = f-log F ; f-regs = f-regs F
@@ -592,13 +651,14 @@ open import Once.Memory.HeapAddress using (mkHeapRef)
 open import Once.CCC.Label using (LabelId)
 
 -- `Input1` from a defined slot
-restore-step : ∀ (fs : FlatState) a {v} → slot fs a ≡ just v
+restore-step : ∀ (fs : FlatState) a {v} → a < AllocState.frame-slots (falloc fs) → slot fs a ≡ just v
              → flat-step-straight (restore-input a) fs
                ≡ record fs { floc = record (floc fs) { regs = writeReg (regs (floc fs)) Input1 v } ; fpc = suc (fpc fs) }
-restore-step fs a e =
-  cong (λ m → record fs { floc   = Data.Product.proj₁ (exec-restore-input-with-value m (floc fs) (falloc fs))
-                        ; falloc = Data.Product.proj₂ (exec-restore-input-with-value m (floc fs) (falloc fs))
-                        ; fpc    = suc (fpc fs) }) e
+restore-step fs a lt e =
+  trans (gate (restore-input a) fs refl lt)
+    (cong (λ m → record fs { floc   = Data.Product.proj₁ (exec-restore-input-with-value m (floc fs) (falloc fs))
+                           ; falloc = Data.Product.proj₂ (exec-restore-input-with-value m (floc fs) (falloc fs))
+                           ; fpc    = suc (fpc fs) }) e)
   where import Data.Product
         open AbstractExec {FS} using (exec-restore-input-with-value)
 
@@ -616,11 +676,11 @@ mov-out-step : ∀ (fs : FlatState)
 mov-out-step fs = refl
 
 -- a slot's address
-lea-step : ∀ (fs : FlatState) a
+lea-step : ∀ (fs : FlatState) a → a < AllocState.frame-slots (falloc fs)
          → flat-step-straight (lea-slot a) fs
            ≡ record fs { floc = record (floc fs) { regs = writeReg (regs (floc fs)) Output (SV-Ptr (AtStack (current-frame (falloc fs)) a)) }
                        ; fpc = suc (fpc fs) }
-lea-step fs a = refl
+lea-step fs a lt = gate (lea-slot a) fs refl lt
 
 -- a code address
 code-step : ∀ (fs : FlatState) (ℓ : LabelId)

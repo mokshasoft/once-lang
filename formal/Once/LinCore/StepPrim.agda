@@ -221,7 +221,7 @@ module Prims {FS : FrameSemantics} (U : Univ)
       (sym (trans (len-++3 (mvSS t (t ∸ wsz A) (wsz A)) (mvSS (t + wsz A) t (wsz B)) (mvSS (t ∸ wsz A) (t + wsz B) (wsz A)))
                   (cong₂ _+_ (len-mvSS t (t ∸ wsz A) (wsz A))
                     (cong₂ _+_ (len-mvSS (t + wsz A) t (wsz B)) (len-mvSS (t ∸ wsz A) (t + wsz B) (wsz A))))))
-      (λ sg h C → lswap-sim prog fs φ sg h C (proj₂ (ins-fits s)))
+      (λ sg h Bf C → lswap-sim prog fs φ sg h Bf C (proj₂ (ins-fits s)))
 
   st-inl : ∀ {Γ} {ds : Defs Γ} {Es A B S V} {k : Codeᴵ (Es ∣ (A ⊕t B) ∷ S) V}
              (s : Sub root (prim ds (linl {A = A} {B}) ⨾ k))
@@ -232,7 +232,7 @@ module Prims {FS : FrameSemantics} (U : Univ)
     straight s H _ 0
       (sym (trans (length-++ (mvSS (bot ∸ wsz A) (bot ∸ M) (wsz A)))
                   (cong₂ _+_ (len-mvSS (bot ∸ wsz A) (bot ∸ M) (wsz A)) (cong (λ z → suc (suc z)) (len-stores (bot ∸ (M ∸ wsz A)) (M ∸ wsz A))))))
-      (λ sg h C → linl-sim prog fs φ sg h C (proj₂ (shape-fits (next s))))
+      (λ sg h Bf C → linl-sim prog fs φ sg h Bf C (proj₂ (shape-fits (next s))))
 
   st-inr : ∀ {Γ} {ds : Defs Γ} {Es A B S V} {k : Codeᴵ (Es ∣ (A ⊕t B) ∷ S) V}
              (s : Sub root (prim ds (linr {A = A} {B}) ⨾ k))
@@ -243,7 +243,7 @@ module Prims {FS : FrameSemantics} (U : Univ)
     straight s H _ 0
       (sym (trans (length-++ (mvSS (bot ∸ wsz B) (bot ∸ M) (wsz B)))
                   (cong₂ _+_ (len-mvSS (bot ∸ wsz B) (bot ∸ M) (wsz B)) (cong (λ z → suc (suc z)) (len-stores (bot ∸ (M ∸ wsz B)) (M ∸ wsz B))))))
-      (λ sg h C → linr-sim prog fs φ sg h C (proj₂ (shape-fits (next s))))
+      (λ sg h Bf C → linr-sim prog fs φ sg h Bf C (proj₂ (shape-fits (next s))))
 
   st-out : ∀ {Γ} {ds : Defs Γ} {Es F S V} {k : Codeᴵ (Es ∣ LF∙ F (μt F) ∷ S) V}
              (s : Sub root (prim ds (lOutμ {F = F}) ⨾ k))
@@ -253,7 +253,7 @@ module Prims {FS : FrameSemantics} (U : Univ)
     let bot = Tp φ S ; wL = wsz (LF∙ F (μt F)) in
     straight s H _ 0
       (sym (cong suc (trans (length-++ (mvPS 0 (bot ∸ wL) wL)) (cong (_+ 1) (len-mvPS 0 (bot ∸ wL) wL)))))
-      (λ sg h C → lOutμ-sim prog fs φ sg h C (proj₂ (shape-fits (next s))))
+      (λ sg h Bf C → lOutμ-sim prog fs φ sg h Bf C (proj₂ (shape-fits (next s))))
 
   -- an allocation: the image's next id is the flat heap counter, and no
   -- value held has a cell at or past it
@@ -269,7 +269,7 @@ module Prims {FS : FrameSemantics} (U : Univ)
     let bot = Tp φ S ; wL = wsz (LF∙ F (μt F)) in
     straight s H _ 1
       (sym (cong (λ z → suc (suc z)) (trans (length-++ (mvSP (bot ∸ wL) 0 wL)) (cong (_+ 2) (len-mvSP (bot ∸ wL) 0 wL)))))
-      (λ sg h C → drop-next (lIn-sim prog fs φ refl fr sg h C (proj₂ (shape-fits (next s)))))
+      (λ sg h Bf C → drop-next (lIn-sim prog fs φ refl fr sg h Bf C (proj₂ (shape-fits (next s)))))
 
   st-const : ∀ {Γ} {ds : Defs Γ} {Es b S V} {v : Lit b} {k : Codeᴵ (Es ∣ Bt b ∷ S) V}
                (s : Sub root (prim ds (lconst v) ⨾ k))
@@ -278,7 +278,7 @@ module Prims {FS : FrameSemantics} (U : Univ)
              ≡ record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Output (wordOf (lit v)) } ; fpc = suc (fpc fs) }
            → Here s (es ∥ mone ∷ˢ os) fs → Moved (next s) fs 0 (es ∥ mbase (lit v) ∷ˢ os)
   st-const {v = v} s {fs = fs} eld H =
-    straight s H _ 0 refl (λ sg h C → lconst-sim prog fs φ (lit v) (ldConst v) eld sg h C (proj₂ (shape-fits (next s))))
+    straight s H _ 0 refl (λ sg h Bf C → lconst-sim prog fs φ (lit v) (ldConst v) eld sg h Bf C (proj₂ (shape-fits (next s))))
 
   private
     len-cell : ∀ w jb jc jf bot → length (header w jb jc jf ++ mvSP (bot ∸ w) hdr w ++ mov-to-output ∷ store-at-slot (bot ∸ 1) ∷ [])
@@ -294,7 +294,7 @@ module Prims {FS : FrameSemantics} (U : Univ)
   st-lam {X = X} {S = S} s {fs = fs} H fr =
     let ev = proj₁ (lcin (lowAt s)) in
     straight s H _ 1 (sym (len-cell (wsz X) (idx (proj₁ ev)) (idx (inC (proj₂ ev))) (idx (inF (proj₂ ev))) (Tp φ S)))
-      (λ sg h C → drop-next (llam-sim prog fs φ (proj₁ ev) (proj₂ ev) fr sg h C (proj₂ (shape-fits (next s)))))
+      (λ sg h Bf C → drop-next (llam-sim prog fs φ (proj₁ ev) (proj₂ ev) fr sg h Bf C (proj₂ (shape-fits (next s)))))
 
   st-lamω : ∀ {Γ} {ds : Defs Γ} {Es g X A B S V} {b : Tm Γ X A B} {γ : Gd g b}
               {k : Codeᴵ (Es ∣ Fn many g A B ∷ S) V} (s : Sub root (prim ds (llamω b γ) ⨾ k))
@@ -304,7 +304,7 @@ module Prims {FS : FrameSemantics} (U : Univ)
   st-lamω {X = X} {S = S} s {fs = fs} H fr =
     let ev = proj₁ (lcin (lowAt s)) in
     straight s H _ 1 (sym (len-cell (wsz X) (idx (proj₁ ev)) (idx (inC (proj₂ ev))) (idx (inF (proj₂ ev))) (Tp φ S)))
-      (λ sg h C → drop-next (llamω-sim prog fs φ (proj₁ ev) (proj₂ ev) fr sg h C (proj₂ (shape-fits (next s)))))
+      (λ sg h Bf C → drop-next (llamω-sim prog fs φ (proj₁ ev) (proj₂ ev) fr sg h Bf C (proj₂ (shape-fits (next s)))))
 
   st-unf : ∀ {Γ} {ds : Defs Γ} {Es F S₀ S V} {k : Codeᴵ (Es ∣ Nu F ∷ S) V}
              (s : Sub root (prim ds (lunf {F = F} {S₀}) ⨾ k))
@@ -315,4 +315,4 @@ module Prims {FS : FrameSemantics} (U : Univ)
     let ev = proj₁ (lcin (lowAt s)) ; n = proj₁ ev ; o = proj₂ ev in
     straight s H _ 1
       (sym (len-cell (wsz (cty (F , S₀))) (idx (inO o n)) (idx (inC (ncty n))) (idx (inF (ncty n))) (Tp φ S)))
-      (λ sg h C → drop-next (lunf-sim prog fs φ n o (ncty n) fr sg h C (proj₂ (shape-fits (next s)))))
+      (λ sg h Bf C → drop-next (lunf-sim prog fs φ n o (ncty n) fr sg h Bf C (proj₂ (shape-fits (next s)))))

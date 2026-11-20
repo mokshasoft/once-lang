@@ -29,6 +29,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Machine.SMCore using (AbstractInstr; AbstractTrace; instr-room; module AllocState)
+open import Once.CCC.Machine.InstrSlot using (slot-of)
 open import Once.CCC.Codegen.RoomChecks using (boundary?; stretch; checks; room-checks; max-entry)
 open import Once.CCC.Codegen.RoomChecksFacts using (ψ; φ; bump; module RoomFacts)
 
@@ -183,17 +184,34 @@ module RoomSim {FS : FrameSemantics} (t : AbstractTrace) where
     sv-at fs (SV-Lit _ _)            = φ t (fpc fs) , refl , inj₁ refl
     sv-at fs (SV-Code _)             = φ t (fpc fs) , refl , inj₁ refl
 
+  private
+    -- B1.7b (D456): a slot instruction, gated the same on both sides (the lift
+    -- keeps the frame): it moves on, or faults where it stands
+    gated : ∀ (fs : FlatState) (i : AbstractInstr) {k} → slot-of i ≡ just k → StepLift fs i
+    gated fs i sk = go (slot-ok i (falloc fs)) refl
+      where
+        q = φ t (fpc fs)
+        go : ∀ b → slot-ok i (falloc fs) ≡ b → StepLift fs i
+        go true e = on fs i (trans (trans (slot-straight i P′ (lift fs q) sk) (straight-pass i (lift fs q) e))
+                                   (cong (λ z → lift z (suc q)) (sym X)))
+                            (cong fpc X)
+          where X = trans (slot-straight i t fs sk) (straight-pass i fs e)
+        go false e = stay fs i (trans (trans (slot-straight i P′ (lift fs q) sk) (cong (λ b → straight-at b i (lift fs q)) e))
+                                      (cong (λ z → lift z q) (sym Y)))
+                              (cong fpc Y)
+          where Y = trans (slot-straight i t fs sk) (cong (λ b → straight-at b i fs) e)
+
   step-lift : ∀ (fs : FlatState) (i : AbstractInstr) → StepLift fs i
   step-lift fs i@mov-to-output = on fs i refl refl
   step-lift fs i@mov-to-input = on fs i refl refl
   step-lift fs i@load-indirect = on fs i refl refl
   step-lift fs i@load-indirect-suc = on fs i refl refl
-  step-lift fs i@(load-from-slot _) = on fs i refl refl
-  step-lift fs i@(store-at-slot _) = on fs i refl refl
+  step-lift fs i@(load-from-slot _) = gated fs i refl
+  step-lift fs i@(store-at-slot _) = gated fs i refl
   step-lift fs i@store-indirect = on fs i refl refl
   step-lift fs i@store-indirect-suc = on fs i refl refl
-  step-lift fs i@(lea-slot _) = on fs i refl refl
-  step-lift fs i@(restore-input _) = on fs i refl refl
+  step-lift fs i@(lea-slot _) = gated fs i refl
+  step-lift fs i@(restore-input _) = gated fs i refl
   step-lift fs i@(instr-alloc-stack _) = on fs i refl refl
   step-lift fs i@(instr-dealloc-stack _) = on fs i refl refl
   step-lift fs i@(instr-reclaim-to _) = on fs i refl refl
@@ -201,8 +219,8 @@ module RoomSim {FS : FrameSemantics} (t : AbstractTrace) where
   step-lift fs i@instr-pop-frame = on fs i refl refl
   step-lift fs instr-call-closure       = sv-at fs (fclosure fs)
   step-lift fs i@(worklist-init _) = on fs i refl refl
-  step-lift fs i@(worklist-push _) = on fs i refl refl
-  step-lift fs i@(worklist-pop _) = on fs i refl refl
+  step-lift fs i@(worklist-push _) = gated fs i refl
+  step-lift fs i@(worklist-pop _) = gated fs i refl
   step-lift fs i@(worklist-check _) = on fs i refl refl
   step-lift fs i@(instr-sigop _) = on fs i refl refl
   step-lift fs i@(instr-load-const _ _) = on fs i refl refl

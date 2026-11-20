@@ -52,7 +52,7 @@ module SimD {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
   open Rel {FS} U wordOf
   open Sim {FS} U wordOf
   open CfgW
-  open import Once.LinCore.Moves {FS} using (Seg; slot; mvSSd-run; MovedD; module MovedD; lea-step; mov-in-step
+  open import Once.LinCore.Moves {FS} using (Seg; slot; Fr; infr; infrD; top-in; mvSSd-run; MovedD; module MovedD; lea-step; mov-in-step
                                            ; Keep; keep-trans; keepD; keepS; keep-regs; keep-pc; keep-store; Ran; module Ran; ran-trans; win-here; ran-regs; ran-store; ranD; ranS)
     renaming (ln to nsteps)
   open Ran using (r-top)
@@ -94,14 +94,15 @@ module SimD {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
   -- (the result of a `case`): the rest of the stack and the environment kept
   shift-sim : ∀ prog (fs : FlatState) (φ : Frame) {Es P S} {es : Slots Es} {os : Stk S} {p : MV P} (src : ℕ) (wP : List W)
             → Seg prog (fpc fs) (mvSSd src ((budget φ ∸ ws S) ∸ wsz P) (wsz P))
-            → fhalted (floc fs) ≡ false
+            → fhalted (floc fs) ≡ false → budget φ ≤ Fr fs
             → EnvW (heapMem (floc fs)) (slot fs) es → StkW (heapMem (floc fs)) (slot fs) φ os
             → VW (heapMem (floc fs)) p wP → SlotsAt (slot fs) src wP
             → src ≤ (budget φ ∸ ws S) ∸ wsz P → EP φ ≤ src → ws Es ≤ EP φ → ws (P ∷ S) ≤ OP φ
             → Σ FlatState λ fs′ → FlatSteps prog (nsteps (wsz P)) fs fs′
                 × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ p ∷ˢ os) × fpc fs′ ≡ nsteps (wsz P) + fpc fs × Keep fs fs′ × AllocState.next-heap-ref (falloc fs′) ≡ AllocState.next-heap-ref (falloc fs) × heapMem (floc fs′) ≡ heapMem (floc fs) × (∀ x → budget φ ≤ x → slot fs′ x ≡ slot fs x)
-  shift-sim prog fs φ {Es} {P} {S} {es} {os} {p} src wP s h ev st pp sp up ep efit fit =
+  shift-sim prog fs φ {Es} {P} {S} {es} {os} {p} src wP s h Bf ev st pp sp up ep efit fit =
     fin (mvSSd-run prog fs src dst (wsz P) s h
+           (infrD Bf (≤-trans (Data.Nat.Properties.+-monoˡ-≤ (wsz P) up) bndD)) (infrD Bf bndD)
            (λ k k< → def k k<)
            (λ k k′ lt _ e → Data.Nat.Properties.<-irrefl (sym e)
                               (Data.Nat.Properties.<-≤-trans (Data.Nat.Properties.+-monoʳ-< src lt) (Data.Nat.Properties.+-monoˡ-≤ k up))))
@@ -189,7 +190,7 @@ module SimD {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
       Res = Σ FlatState λ fs′ → FlatSteps prog (4 + nsteps (wsz A)) fs fs′
               × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ a ∷ˢ os) × fpc fs′ ≡ nsteps (wsz A) + suc q × Keep fs fs′ × AllocState.next-heap-ref (falloc fs′) ≡ AllocState.next-heap-ref (falloc fs) × heapMem (floc fs′) ≡ heapMem (floc fs) × (∀ x → budget φ ≤ x → slot fs′ x ≡ slot fs x)
       fin : StkW (heapMem (floc fs)) (slot fs) φ (minl {B = B} a ∷ˢ os) → Res
-      fin ((_ , vinl {wa = wa} {pad} pa len , (e0 , s′)) , rest) = done-shift (shift-sim prog fs₄ φ {Es} {A} {S} {es} {os} {a} (suc t) wa sq h
+      fin ((_ , vinl {wa = wa} {pad} pa len , (e0 , s′)) , rest) = done-shift (shift-sim prog fs₄ φ {Es} {A} {S} {es} {os} {a} (suc t) wa sq h (Data.Nat.Properties.<⇒≤ fsl)
                                          (c-env C) rest pa (proj₁ (slots-++ {slot fs} wa pad s′))
                                          (pay-up φ A B S A (Data.Nat.Properties.m≤m⊔n (wsz A) (wsz B)) (c-sfit C))
                                          (≤-trans (env-below φ (ws ((A ⊕t B) ∷ S)) (c-sfit C)) (Data.Nat.Properties.n≤1+n t))
@@ -201,7 +202,7 @@ module SimD {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
           done-shift : Σ FlatState (λ fs′ → FlatSteps prog (nsteps (wsz A)) fs₄ fs′
                          × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ a ∷ˢ os) × fpc fs′ ≡ nsteps (wsz A) + fpc fs₄ × Keep fs₄ fs′ × AllocState.next-heap-ref (falloc fs′) ≡ AllocState.next-heap-ref (falloc fs₄) × heapMem (floc fs′) ≡ heapMem (floc fs₄) × (∀ x → budget φ ≤ x → slot fs′ x ≡ slot fs₄ x)) → Res
           done-shift (fs′ , st , C′ , pc , K , nx , hp , tp) =
-            fs′ , step-at fs₁ (h , f₁) (lea-step fs t) (step-at fs₂ (h , f₂) (mov-in-step fs₁)
+            fs′ , step-at fs₁ (h , f₁) (lea-step fs t lt) (step-at fs₂ (h , f₂) (mov-in-step fs₁)
                     (step-at fs₃ (h , f₃) branch (step-at fs₄ (h , fq) (flat-label prog fs₃ L₁) st))) ,
             C′ , pc , keep-trans k₄ K , nx , hp , tp
 
@@ -228,7 +229,7 @@ module SimD {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
       Res = Σ FlatState λ fs′ → FlatSteps prog (3 + nsteps (wsz B)) fs fs′
               × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ b ∷ˢ os) × fpc fs′ ≡ nsteps (wsz B) + (3 + fpc fs) × Keep fs fs′ × AllocState.next-heap-ref (falloc fs′) ≡ AllocState.next-heap-ref (falloc fs) × heapMem (floc fs′) ≡ heapMem (floc fs) × (∀ x → budget φ ≤ x → slot fs′ x ≡ slot fs x)
       fin : StkW (heapMem (floc fs)) (slot fs) φ (minr {A = A} b ∷ˢ os) → Res
-      fin ((_ , vinr {wb = wb} {pad} pb len , (e1 , s′)) , rest) = done-shift (shift-sim prog fs₃ φ {Es} {B} {S} {es} {os} {b} (suc t) wb sq h
+      fin ((_ , vinr {wb = wb} {pad} pb len , (e1 , s′)) , rest) = done-shift (shift-sim prog fs₃ φ {Es} {B} {S} {es} {os} {b} (suc t) wb sq h (Data.Nat.Properties.<⇒≤ fsl)
                                          (c-env C) rest pb (proj₁ (slots-++ {slot fs} wb pad s′))
                                          (pay-up φ A B S B (Data.Nat.Properties.m≤n⊔m (wsz A) (wsz B)) (c-sfit C))
                                          (≤-trans (env-below φ (ws ((A ⊕t B) ∷ S)) (c-sfit C)) (Data.Nat.Properties.n≤1+n t))
@@ -238,7 +239,7 @@ module SimD {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
           done-shift : Σ FlatState (λ fs′ → FlatSteps prog (nsteps (wsz B)) fs₃ fs′
                          × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ b ∷ˢ os) × fpc fs′ ≡ nsteps (wsz B) + fpc fs₃ × Keep fs₃ fs′ × AllocState.next-heap-ref (falloc fs′) ≡ AllocState.next-heap-ref (falloc fs₃) × heapMem (floc fs′) ≡ heapMem (floc fs₃) × (∀ x → budget φ ≤ x → slot fs′ x ≡ slot fs₃ x)) → Res
           done-shift (fs′ , st , C′ , pc , K , nx , hp , tp) =
-            fs′ , step-at fs₁ (h , f₁) (lea-step fs t) (step-at fs₂ (h , f₂) (mov-in-step fs₁)
+            fs′ , step-at fs₁ (h , f₁) (lea-step fs t lt) (step-at fs₂ (h , f₂) (mov-in-step fs₁)
                     (step-at fs₃ (h , f₃) (flat-tag-branch-not prog fs₂ L₁ (trans (tag-thru fs₂ _ refl lt) (cong tag-test e1))) st)) ,
             C′ , pc , keep-trans k₃ K , nx , hp , tp
 
@@ -292,7 +293,7 @@ module SimD {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
             done-view (view-sim prog fs₄ φ {E₁ ⊕t E₂} {E₁} {Es} {S} {es} {os} {e₁} (suc (ws Es)) wa pa
                          (proj₁ (slots-++ {slot fs} wa pad s′))
                          (pay-in (ws Es) E₁ E₁ E₂ (Data.Nat.Properties.m≤m⊔n (wsz E₁) (wsz E₂)))
-                         sq h C fit)
+                         sq h (Data.Nat.Properties.<⇒≤ fsl) C fit)
             where
               branch : FlatMachine.flat-exec-instr {FS} (instr-ctrl (c-branch-tag-zero L₁)) prog fs₂ ≡ fs₃
               branch = trans (flat-tag-branch-yes prog fs₂ L₁ (trans (tag-thru fs₂ _ refl lt) (cong tag-test e0))) (cong (λ m → do-jump m fs₂) fl)
@@ -300,7 +301,7 @@ module SimD {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
                             × CfgW (heapMem (floc fs′)) (slot fs′) φ (vw e₁ es ∥ os)
                             × MovedS fs₄ fs′ (suc (ws Es)) (ws Es + wsz (E₁ ⊕t E₂)) (wsz E₁)) → Res
               done-view (fs′ , st , C′ , M) =
-                fs′ , step-at fs₁ (h , f₁) (lea-step fs (ws Es)) (step-at fs₂ (h , f₂) (mov-in-step fs₁)
+                fs′ , step-at fs₁ (h , f₁) (lea-step fs (ws Es) lt) (step-at fs₂ (h , f₂) (mov-in-step fs₁)
                         (step-at fs₃ (h , f₃) branch (step-at fs₄ (h , fq) (flat-label prog fs₃ L₁) st))) ,
                 C′ , m-pc M , keep-trans k₄ (keepS M) , cong AllocState.next-heap-ref (m-alloc M) , m-heap M , r-top (ranS {lo = 0} M bndV)
 
@@ -341,13 +342,13 @@ module SimD {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
             done-view (view-sim prog fs₃ φ {E₁ ⊕t E₂} {E₂} {Es} {S} {es} {os} {e₂} (suc (ws Es)) wb pb
                          (proj₁ (slots-++ {slot fs} wb pad s′))
                          (pay-in (ws Es) E₂ E₁ E₂ (Data.Nat.Properties.m≤n⊔m (wsz E₁) (wsz E₂)))
-                         sq h C fit)
+                         sq h (Data.Nat.Properties.<⇒≤ fsl) C fit)
             where
               done-view : Σ FlatState (λ fs′ → FlatSteps prog (nsteps (wsz E₂)) fs₃ fs′
                             × CfgW (heapMem (floc fs′)) (slot fs′) φ (vw e₂ es ∥ os)
                             × MovedS fs₃ fs′ (suc (ws Es)) (ws Es + wsz (E₁ ⊕t E₂)) (wsz E₂)) → Res
               done-view (fs′ , st , C′ , M) =
-                fs′ , step-at fs₁ (h , f₁) (lea-step fs (ws Es)) (step-at fs₂ (h , f₂) (mov-in-step fs₁)
+                fs′ , step-at fs₁ (h , f₁) (lea-step fs (ws Es) lt) (step-at fs₂ (h , f₂) (mov-in-step fs₁)
                         (step-at fs₃ (h , f₃) (flat-tag-branch-not prog fs₂ L₁ (trans (tag-thru fs₂ _ refl lt) (cong tag-test e1))) st)) ,
                 C′ , m-pc M , keep-trans k₃ (keepS M) , cong AllocState.next-heap-ref (m-alloc M) , m-heap M , r-top (ranS {lo = 0} M bndV)
 
@@ -364,13 +365,13 @@ module SimD {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
              → FlatMachine.flat-exec-instr {FS} ld prog fs
                ≡ record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Output (wordOf v) } ; fpc = suc (fpc fs) }
              → Seg prog (fpc fs) (ld ∷ store-at-slot ((budget φ ∸ ws S) ∸ 1) ∷ [])
-             → fhalted (floc fs) ≡ false
+             → fhalted (floc fs) ≡ false → budget φ ≤ Fr fs
              → CfgW (heapMem (floc fs)) (slot fs) φ (es ∥ mone ∷ˢ os)
              → ws (Bt b ∷ S) ≤ OP φ
              → Σ FlatState λ fs′ → FlatSteps prog 2 fs fs′ × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ mbase v ∷ˢ os) × Ran 2 0 (AllocState.next-heap-ref (falloc fs)) (budget φ) fs fs′
-  lconst-sim prog fs φ {b} {Es} {S} {es} {os} v ld eld (f₁ , f₂ , _) h C fit =
+  lconst-sim prog fs φ {b} {Es} {S} {es} {os} v ld eld (f₁ , f₂ , _) h Bf C fit =
     fs₂ ,
-    step-at fs₁ (h , f₁) eld (step-at fs₂ (h , f₂) (store-step fs₁ dst) done) ,
+    step-at fs₁ (h , f₁) eld (step-at fs₂ (h , f₂) (store-step fs₁ dst (<-≤-trans (<-≤-trans b1<b (Data.Nat.Properties.m∸n≤m (budget φ) (ws S))) Bf)) done) ,
     record { c-env  = envW-frame es (λ x x< → store-other (floc fs₁) cf dst (wordOf v) x
                                      (λ e → Data.Nat.Properties.<-irrefl (sym e) (<-≤-trans x< env≤))) (c-env C)
            ; c-stk  = ( wordOf v ∷ [] , vbase

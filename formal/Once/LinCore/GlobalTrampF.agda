@@ -215,7 +215,7 @@ module TrampF {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
            (TrF0.f0-x T) (TrF0.f0-at T)
            (subst (λ z → Seg image (fpc fs) (restore-input (wsz X) ∷ mvPS hdr z (wsz X) ++ instr-free-heap (hdr + wsz X) ∷ []))
                   (sym (Data.Nat.Properties.n∸n≡0 (wsz X))) (tF-seg0 {X} {C} p (TrF0.f0-pc T)))
-           (TrF0.f0-run T) of λ where
+           (TrF0.f0-run T) (subst (wsz X Data.Nat.<_) (sym (TrF0.f0-slots T)) (Data.Nat.Properties.n<1+n (wsz X))) of λ where
       (fs′ , run , C′ , Rn) →
         tFN X , fs′ , run ,
         record { f-pc = trans (r-pc Rn) (trans (cong (tFN X +_) (TrF0.f0-pc T)) (sym (tF-pos₁ {X} {C} p)))
@@ -231,7 +231,7 @@ module TrampF {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                        (sv₁ (frameOf (blockᴵ (kfree X)))) 0
   tf-call {X} {C} p H =
     call-core p (frame 0 (wsz X)) 0 (tF-seg1 {X} {C} p (HereF.f-pc H)) (HereF.f-run H) (HereF.f-cfg H) (tF-area X)
-      (subst (Data.Nat._≤_ (wsz X)) (sym (HereF.f-slots H)) (Data.Nat.Properties.n≤1+n (wsz X)))
+      (subst (Data.Nat._<_ (wsz X)) (sym (HereF.f-slots H)) (Data.Nat.Properties.n<1+n (wsz X)))
 
   -- ★ its way out: a bare return (the result One, no words)
   tf-end : ∀ {X C} (p : under (ktrf X C) ∈ allK U) {fs} (cfc : FrameSemantics.Frame FS) (pc : ℕ) (rest : List ℕ)
@@ -247,7 +247,7 @@ module TrampF {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   tf-disp : ∀ {X C} (c : ℕ) {i} {x : MV X} {wx : List (StoredValue FS)} {w₁ w₂ wf : StoredValue FS} {fs}
           → Seg image (fpc fs) (restore-input c ∷ addr-at 2 ∷ mov-to-input ∷ instr-save-closure-reg
                                 ∷ restore-input c ∷ mov-to-output ∷ instr-call-closure ∷ [])
-          → LocState.halted (floc fs) ≡ false
+          → LocState.halted (floc fs) ≡ false → c Data.Nat.< AllocState.frame-slots (falloc fs)
           → slot fs c ≡ just (cellPtr i)
           → VW (LocState.heapMem (floc fs)) x wx
           → Rel.At {FS} U wordOf (LocState.heapMem (floc fs)) i 0 (cellPtr i ∷ w₁ ∷ w₂ ∷ wf ∷ wx)
@@ -256,10 +256,10 @@ module TrampF {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
           → Σ (under (ktrf X C) ∈ allK U) λ p → Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′
               × TrF0 (wsz X) (trPos (ktrf X C) p 0) i x fs′
               × Σ ℕ λ q → FreeIn fs fs′ (cellPtr i) (suc (wsz X)) (wsz X) q
-  tf-disp {X} {C} c {i} {x} {wx} {fs = fs} seg h sx px words (m , refl) I =
+  tf-disp {X} {C} c {i} {x} {wx} {fs = fs} seg h lc sx px words (m , refl) I =
     m , fin (free-in image fs c (cellLoc i 0) (tl (idx m)) (e-thunk (tl (idx m))) q (suc (wsz X)) (wsz X)
                sx (proj₂ (I (cellLoc i 2) (proj₁ (proj₂ (proj₂ words))))) (proj₁ (proj₂ (proj₂ (proj₂ words))))
-               seg (image-tramp m refl) segq h)
+               seg (image-tramp m refl) segq h lc (Data.Nat.Properties.n<1+n (wsz X)))
     where
       LB = lowBlock (idx m) (kfree X) (blocks-in m)
       q = length (proj₁ (image-at m)) + length LB

@@ -231,10 +231,15 @@ module Loc {FS : FrameSemantics} (U : Univ)
 
   straight : ∀ {sa sb V} {i : Insᴵ sa sb} {k : Codeᴵ sb V} (s : Sub root (i ⨾ k)) {m : Cfg sa} {m′ : Cfg sb} {fs} (H : Here s m fs)
            → (N a : ℕ) → N ≡ length (insC s)
-           → (Seg prog (fpc fs) (insC s) → LocState.halted (floc fs) ≡ false → CfgW (heapMem (floc fs)) (slot fs) φ m → Gives fs N a m′)
+           → (Seg prog (fpc fs) (insC s) → LocState.halted (floc fs) ≡ false
+              → budget φ ≤ AllocState.frame-slots (falloc fs) → CfgW (heapMem (floc fs)) (slot fs) φ m → Gives fs N a m′)
            → Moved (next s) fs a m′
-  straight s {fs = fs} H N a eN sim = finish (sim (Seg-++ˡ prog (fpc fs) (insC s) _ (seg-at s H)) (h-run H) (h-cfg H))
+  straight s {fs = fs} H N a eN sim = finish (sim (Seg-++ˡ prog (fpc fs) (insC s) _ (seg-at s H)) (h-run H) Bf (h-cfg H))
     where
+      -- B1.7b: the frame's regions are inside the reservation (its two save slots above them)
+      Bf : budget φ ≤ AllocState.frame-slots (falloc fs)
+      Bf = subst (budget φ ≤_) (sym (h-slots H))
+             (Data.Nat.Properties.≤-trans (Data.Nat.Properties.n≤1+n (budget φ)) (Data.Nat.Properties.n≤1+n (suc (budget φ))))
       finish : Gives fs N a _ → Moved (next s) fs a _
       finish (fs′ , st , C′ , Rn) =
         N , fs′ , st ,
@@ -249,7 +254,7 @@ module Loc {FS : FrameSemantics} (U : Univ)
         → insC s ≡ []
         → (CfgW (heapMem (floc fs)) (slot fs) φ m → CfgW (heapMem (floc fs)) (slot fs) φ m′)
         → Moved (next s) fs 0 m′
-  empty s {fs = fs} H e f = straight s H 0 0 (sym (cong length e)) (λ _ _ C → fs , [] , f C , ran-refl)
+  empty s {fs = fs} H e f = straight s H 0 0 (sym (cong length e)) (λ _ _ _ C → fs , [] , f C , ran-refl)
 
   ----------------------------------------------------------------------
   -- 4. ★ THE STEPS WITH NO CODE.
@@ -333,7 +338,7 @@ module Loc {FS : FrameSemantics} (U : Univ)
       (sym (trans (len-++3 (mvSS t (t ∸ wsz A) (wsz A)) (mvSS (t + wsz A) t (wsz B)) (mvSS (t ∸ wsz A) (t + wsz B) (wsz A)))
                   (cong₂ _+_ (len-mvSS t (t ∸ wsz A) (wsz A))
                     (cong₂ _+_ (len-mvSS (t + wsz A) t (wsz B)) (len-mvSS (t ∸ wsz A) (t + wsz B) (wsz A))))))
-      (λ sg h C → swap-sim prog fs φ sg h C (proj₂ (ins-fits s)))
+      (λ sg h Bf C → swap-sim prog fs φ sg h Bf C (proj₂ (ins-fits s)))
 
   st-elend : ∀ {E Es X A S V} {k : Codeᴵ ((E ⊗t X) ∷ E ∷ Es ∣ A ∷ S) V} (s : Sub root (elend ⨾ k))
                {es : Slots (E ∷ Es)} {x : MV X} {a : MV A} {os : Stk S} {fs}
@@ -343,56 +348,56 @@ module Loc {FS : FrameSemantics} (U : Univ)
     straight s H _ 0
       (sym (trans (length-++ (mvSS e (e + wE) wE) {mvSS (Tp φ ((X ⊗t A) ∷ S)) (e + wE + wE) (wsz X)})
                   (cong₂ _+_ (len-mvSS e (e + wE) wE) (len-mvSS (Tp φ ((X ⊗t A) ∷ S)) (e + wE + wE) (wsz X)))))
-      (λ sg h C → elend-sim prog fs φ sg h C (proj₁ (shape-fits (next s))))
+      (λ sg h Bf C → elend-sim prog fs φ sg h Bf C (proj₁ (shape-fits (next s))))
 
   st-eunlend : ∀ {E Es X B S V} {k : Codeᴵ (E ∷ Es ∣ (X ⊗t B) ∷ S) V} (s : Sub root (eunlend ⨾ k))
                  {e : MV E} {x : MV X} {es : Slots (E ∷ Es)} {w : MV B} {os : Stk S} {fs}
              → Here s (ln e x es ∥ w ∷ˢ os) fs → Moved (next s) fs 0 (es ∥ mpair x w ∷ˢ os)
   st-eunlend {X = X} s {fs = fs} H =
     straight s H _ 0 (sym (len-mvSS _ _ (wsz X)))
-      (λ sg h C → eunlend-sim prog fs φ sg h C (proj₂ (shape-fits (next s))))
+      (λ sg h Bf C → eunlend-sim prog fs φ sg h Bf C (proj₂ (shape-fits (next s))))
 
   st-efst : ∀ {E₁ E₂ Es S V} {k : Codeᴵ (E₁ ∷ (E₁ ⊗t E₂) ∷ Es ∣ S) V} (s : Sub root (efst ⨾ k))
               {es : Slots ((E₁ ⊗t E₂) ∷ Es)} {os : Stk S} {e₁ : MV E₁} {e₂ : MV E₂} {fs}
           → see es ≡ mpair e₁ e₂ → Here s (es ∥ os) fs → Moved (next s) fs 0 (vw e₁ es ∥ os)
   st-efst {E₁} {E₂} {Es} s {fs = fs} eq H =
     straight s H _ 0 (sym (len-mvSS _ _ (wsz E₁)))
-      (λ sg h C → viaS (env-top {wsz E₁} {wsz (E₁ ⊗t E₂)} {ws Es} (proj₁ (shape-fits (next s)))) (efst-sim prog fs φ eq sg h C (proj₁ (shape-fits (next s)))))
+      (λ sg h Bf C → viaS (env-top {wsz E₁} {wsz (E₁ ⊗t E₂)} {ws Es} (proj₁ (shape-fits (next s)))) (efst-sim prog fs φ eq sg h Bf C (proj₁ (shape-fits (next s)))))
 
   st-esnd : ∀ {E₁ E₂ Es S V} {k : Codeᴵ (E₂ ∷ (E₁ ⊗t E₂) ∷ Es ∣ S) V} (s : Sub root (esnd ⨾ k))
               {es : Slots ((E₁ ⊗t E₂) ∷ Es)} {os : Stk S} {e₁ : MV E₁} {e₂ : MV E₂} {fs}
           → see es ≡ mpair e₁ e₂ → Here s (es ∥ os) fs → Moved (next s) fs 0 (vw e₂ es ∥ os)
   st-esnd {E₁} {E₂} {Es} s {fs = fs} eq H =
     straight s H _ 0 (sym (len-mvSS _ _ (wsz E₂)))
-      (λ sg h C → viaS (env-top {wsz E₂} {wsz (E₁ ⊗t E₂)} {ws Es} (proj₁ (shape-fits (next s)))) (esnd-sim prog fs φ eq sg h C (proj₁ (shape-fits (next s)))))
+      (λ sg h Bf C → viaS (env-top {wsz E₂} {wsz (E₁ ⊗t E₂)} {ws Es} (proj₁ (shape-fits (next s)))) (esnd-sim prog fs φ eq sg h Bf C (proj₁ (shape-fits (next s)))))
 
   st-eapp : ∀ {l X Es S V} {k : Codeᴵ (X ∷ Ct l X ∷ Es ∣ S) V} (s : Sub root (eapp ⨾ k))
               {es : Slots (Ct l X ∷ Es)} {os : Stk S} {x : MV X} {fs}
           → see es ≡ mct x → Here s (es ∥ os) fs → Moved (next s) fs 0 (vw x es ∥ os)
   st-eapp {l} {X} {Es} s {fs = fs} eq H =
     straight s H _ 0 (sym (len-mvSS _ _ (wsz X)))
-      (λ sg h C → viaS (env-top {wsz X} {wsz X} {ws Es} (proj₁ (shape-fits (next s)))) (eapp-sim prog fs φ eq sg h C (proj₁ (shape-fits (next s)))))
+      (λ sg h Bf C → viaS (env-top {wsz X} {wsz X} {ws Es} (proj₁ (shape-fits (next s)))) (eapp-sim prog fs φ eq sg h Bf C (proj₁ (shape-fits (next s)))))
 
   st-eword : ∀ {b Es S V} {k : Codeᴵ (Bt b ∷ Es ∣ Bt b ∷ S) V} (s : Sub root (eword ⨾ k))
                {es : Slots (Bt b ∷ Es)} {os : Stk S} {x : ⟦ b ⟧b} {fs}
            → see es ≡ mbase x → Here s (es ∥ mone ∷ˢ os) fs → Moved (next s) fs 0 (es ∥ mbase x ∷ˢ os)
   st-eword {S = S} s {fs = fs} eq H =
     straight s H _ 0 refl
-      (λ sg h C → viaS (word-top {S} (proj₂ (shape-fits (next s)))) (eword-sim prog fs φ eq sg h C (proj₂ (shape-fits (next s)))))
+      (λ sg h Bf C → viaS (word-top {S} (proj₂ (shape-fits (next s)))) (eword-sim prog fs φ eq sg h Bf C (proj₂ (shape-fits (next s)))))
 
   st-eout : ∀ {F Es S V} {k : Codeᴵ (LF∙ F (μt F) ∷ μt F ∷ Es ∣ S) V} (s : Sub root (eout ⨾ k))
               {es : Slots (μt F ∷ Es)} {os : Stk S} {i} {v : MV (LF∙ F (μt F))} {fs}
           → see es ≡ mmu i v → Here s (es ∥ os) fs → Moved (next s) fs 0 (vw v es ∥ os)
   st-eout {F} s {fs = fs} eq H =
     straight s H _ 0 (sym (cong suc (len-mvPS _ _ (wsz (LF∙ F (μt F))))))
-      (λ sg h C → eout-sim prog fs φ eq sg h C (proj₁ (shape-fits (next s))))
+      (λ sg h Bf C → eout-sim prog fs φ eq sg h Bf C (proj₁ (shape-fits (next s))))
 
   st-eoutq : ∀ {F Es S V} {k : Codeᴵ (LF∙ F (μt F) ∷ μt F ∷ Es ∣ S) V} (s : Sub root (eoutq ⨾ k))
                {es : Slots (μt F ∷ Es)} {os : Stk S} {i} {v : MV (LF∙ F (μt F))} {fs}
            → see es ≡ mmu i v → Here s (es ∥ os) fs → Moved (next s) fs 0 (vw v es ∥ os)
   st-eoutq {F} s {fs = fs} eq H =
     straight s H _ 0 (sym (cong suc (len-mvPS _ _ (wsz (LF∙ F (μt F))))))
-      (λ sg h C → eout-sim prog fs φ eq sg h C (proj₁ (shape-fits (next s))))
+      (λ sg h Bf C → eout-sim prog fs φ eq sg h Bf C (proj₁ (shape-fits (next s))))
 
   ----------------------------------------------------------------------
   -- 6. ★ THE BRANCHES: the tag read; on 0 the jump to the left's label, on

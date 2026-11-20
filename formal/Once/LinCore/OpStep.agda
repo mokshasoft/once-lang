@@ -67,7 +67,7 @@ module OpSim {FS : FrameSemantics} (U : Univ)
              (ncty : ∀ {F S} → (F , S) ∈ nus U → cty (F , S) ∈ tys U)
              (ldConst : ∀ {b} → Lit b → AbstractInstr)
              (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue FS) where
-  open Lowering U ncty ldConst using (answer; ansDst; argIn; lowOp; fbudget)
+  open Lowering U ncty ldConst using (answer; ansDst; argIn; lowOp; fbudget; sv₁<fb)
   open Rel {FS} U wordOf
   open Sim {FS} U wordOf
   open CfgW
@@ -107,6 +107,11 @@ module OpSim {FS : FrameSemantics} (U : Univ)
   answerN _          bot = []
 
   private
+    -- B1.7b (D456): a slot of the frame's regions is inside the machine's reservation
+    below : ∀ (φ : Frame) {n : ℕ} x → x Data.Nat.≤ budget φ → fbudget φ Data.Nat.≤ n
+          → x Data.Nat.< n
+    below φ x le fb = <-≤-trans (Data.Nat.Properties.≤-<-trans le (sv₁<fb φ)) fb
+
     new-top : ∀ B a s → (B ∸ s) ∸ a ≡ B ∸ (a + s)
     new-top B a s = trans (Data.Nat.Properties.∸-+-assoc B s a) (cong (B ∸_) (+-comm s a))
 
@@ -180,31 +185,45 @@ module OpSim {FS : FrameSemantics} (U : Univ)
           → (exec-sigop-halts si st ∨ not (sigop-gate al si st)) ≡ false
     gated si al st gt hf = trans (cong (λ g → exec-sigop-halts si st ∨ not g) gt) (trans (∨-identityʳ _) hf)
 
+  -- B1.7b (D456): an address taken below `bot` passes the slot gate, so it is the plain step
+  lea-at : ∀ prog (fs : FlatState) bot w → bot Data.Nat.< AllocState.frame-slots (falloc fs)
+         → FlatMachine.flat-exec-instr {FS} (lea-slot (bot ∸ w)) prog fs ≡ FlatMachine.straight-go {FS} (lea-slot (bot ∸ w)) fs
+  lea-at prog fs bot w lt =
+    FlatMachine.slot-go {FS} (lea-slot (bot ∸ w)) prog fs refl (Data.Nat.Properties.≤-<-trans (Data.Nat.Properties.m∸n≤m bot w) lt)
+    where import Data.Nat.Properties
+
   -- ★ D445: the argument's step, by its base: a scalar loaded, any other its address
   arg-step : ∀ {A} (b : ST.Base ST.∅ₖ A) prog (fs : FlatState) bot {x : MV ⌜ flatB b ⌝} {wx : List W}
            → VW (heapMem (floc fs)) x wx → SlotsAt (slot fs) (bot ∸ wsz ⌜ flatB b ⌝) wx
+           → bot Data.Nat.< AllocState.frame-slots (falloc fs)
            → FlatMachine.flat-exec-instr {FS} (argIn b bot (wsz ⌜ flatB b ⌝)) prog fs
              ≡ record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Output (argV b fs (bot ∸ wsz ⌜ flatB b ⌝) wx) }
                          ; fpc = suc (fpc fs) }
-  arg-step (ST.b-var {i = ()} _) prog fs bot px sx
-  arg-step ST.b-Unit    prog fs bot px sx = refl
-  arg-step ST.b-Void    prog fs bot px sx = refl
-  arg-step ST.b-Int     prog fs bot px sx = one (vw-len px) sx
+  arg-step (ST.b-var {i = ()} _) prog fs bot px sx lt
+  arg-step ST.b-Unit    prog fs bot px sx lt = lea-at prog fs bot (wsz ⌜ flatB ST.b-Unit ⌝) lt
+  arg-step ST.b-Void    prog fs bot px sx lt = lea-at prog fs bot (wsz ⌜ flatB ST.b-Void ⌝) lt
+  arg-step ST.b-Int     prog fs bot px sx lt = one (vw-len px) sx
     where
+      lt₁ : bot ∸ 1 Data.Nat.< AllocState.frame-slots (falloc fs)
+      lt₁ = Data.Nat.Properties.≤-<-trans (Data.Nat.Properties.m∸n≤m bot 1) lt
+        where import Data.Nat.Properties
       one : ∀ {wx : List W} → length wx ≡ 1 → SlotsAt (slot fs) (bot ∸ 1) wx
           → FlatMachine.flat-exec-instr {FS} (load-from-slot (bot ∸ 1)) prog fs
             ≡ record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Output (hdOr wx (SV-Ptr (AtStack (AllocState.current-frame (falloc fs)) (bot ∸ 1)))) }
                         ; fpc = suc (fpc fs) }
-      one {w ∷ []} refl (e , _) = load-step fs (bot ∸ 1) e
-  arg-step ST.b-Float   prog fs bot px sx = one (vw-len px) sx
+      one {w ∷ []} refl (e , _) = load-step fs (bot ∸ 1) lt₁ e
+  arg-step ST.b-Float   prog fs bot px sx lt = one (vw-len px) sx
     where
+      lt₁ : bot ∸ 1 Data.Nat.< AllocState.frame-slots (falloc fs)
+      lt₁ = Data.Nat.Properties.≤-<-trans (Data.Nat.Properties.m∸n≤m bot 1) lt
+        where import Data.Nat.Properties
       one : ∀ {wx : List W} → length wx ≡ 1 → SlotsAt (slot fs) (bot ∸ 1) wx
           → FlatMachine.flat-exec-instr {FS} (load-from-slot (bot ∸ 1)) prog fs
             ≡ record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Output (hdOr wx (SV-Ptr (AtStack (AllocState.current-frame (falloc fs)) (bot ∸ 1)))) }
                         ; fpc = suc (fpc fs) }
-      one {w ∷ []} refl (e , _) = load-step fs (bot ∸ 1) e
-  arg-step (ST.b-* _ _) prog fs bot px sx = refl
-  arg-step (ST.b-+ _ _) prog fs bot px sx = refl
+      one {w ∷ []} refl (e , _) = load-step fs (bot ∸ 1) lt₁ e
+  arg-step (ST.b-* p q) prog fs bot px sx lt = lea-at prog fs bot (wsz ⌜ flatB (ST.b-* p q) ⌝) lt
+  arg-step (ST.b-+ p q) prog fs bot px sx lt = lea-at prog fs bot (wsz ⌜ flatB (ST.b-+ p q) ⌝) lt
 
   lop-sim₀ : ∀ prog (fs : FlatState) (φ : Frame) (s : Sig) {Es S} {es : Slots Es} {os : Stk S} {x : MV ⌜ sdom s ⌝} {y : MV ⌜ scod s ⌝} {E}
           → in-memory? (Sig.sB s) ≡ false
@@ -243,7 +262,7 @@ module OpSim {FS : FrameSemantics} (U : Univ)
           eq₃ : FlatMachine.flat-exec-instr {FS} (instr-sigop (info s)) prog fs₂ ≡ fs₃
           eq₃ = cong G (AbstractExec.sigop-store-id {FS} (info s) (floc fs₂) nm)
           out = exec-sigop-output (info s) (at-arg fs v₀)
-          a-step = arg-step (SigOpInfo.baseA (info s)) prog fs bot px sx₀
+          a-step = arg-step (SigOpInfo.baseA (info s)) prog fs bot px sx₀ (below φ bot (Data.Nat.Properties.m∸n≤m (budget φ) (ws S)) fb)
           gt : sigop-gate (falloc fs) (info s) (at-arg fs v₀) ≡ true
           gt = cong₂ _∧_
                  (arg-range (SigOpInfo.baseA (info s)) fs d₀ wx
@@ -274,7 +293,7 @@ module OpSim {FS : FrameSemantics} (U : Univ)
           go (suc zero) eC (g₁ , g₂ , g₃ , g₄ , _) (hf , ee , .(out ∷ []) , pw , inj₂ refl) =
             fs₄ ,
             step-at fs₁ (h , g₁) a-step (step-at fs₂ (h , g₂) (mov-in-step fs₁) (step-at fs₃ (h , g₃) eq₃
-              (step-at fs₄ (h₃ , g₄) (store-step fs₃ dst) done))) ,
+              (step-at fs₄ (h₃ , g₄) (store-step fs₃ dst (below φ dst (≤-trans (Data.Nat.Properties.m∸n≤m bot 1) (Data.Nat.Properties.m∸n≤m (budget φ) (ws S))) fb)) done))) ,
             record { c-env  = envW-frame es (λ z z< → store-other (floc fs₃) cf dst out z
                                              (λ e → Data.Nat.Properties.<-irrefl (sym e) (<-≤-trans z< env≤))) (c-env C)
                    ; c-stk  = ( out ∷ [] , pw
@@ -334,7 +353,7 @@ module OpSim {FS : FrameSemantics} (U : Univ)
           fs₁ = record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Output v₀ } ; fpc = suc (fpc fs) }
           fs₂ = record fs₁ { floc = record (floc fs₁) { regs = writeReg (LocState.regs (floc fs₁)) Input1 v₀ } ; fpc = suc (fpc fs₁) }
           fs₃ = FlatMachine.flat-exec-instr {FS} (instr-sigop (cmp-block-info o)) prog fs₂
-          a-step = arg-step (SigOpInfo.baseA (info s)) prog fs bot px sx₀
+          a-step = arg-step (SigOpInfo.baseA (info s)) prog fs bot px sx₀ (below φ bot (Data.Nat.Properties.m∸n≤m (budget φ) (ws S)) fb)
           gt : sigop-gate (falloc fs) (cmp-block-info o) (at-arg fs v₀) ≡ true
           gt = cong₂ _∧_
                  (cmp-range (SigOpInfo.baseA (info s)) fs d₀ wx o
@@ -350,7 +369,7 @@ module OpSim {FS : FrameSemantics} (U : Univ)
           fin (hf₀ , ee , k , ek , pw) =
             fs₅ ,
             step-at fs₁ (h , g₁) a-step (step-at fs₂ (h , g₂) (mov-in-step fs₁) (step-at fs₃ (h , g₃) refl
-              (step-at fs₄ (hf , g₄) nz-step (step-at fs₅ (hf , g₅) (store-step fs₄ dst) done)))) ,
+              (step-at fs₄ (hf , g₄) nz-step (step-at fs₅ (hf , g₅) (store-step fs₄ dst (below φ dst (≤-trans (Data.Nat.Properties.m∸n≤m bot 1) (Data.Nat.Properties.m∸n≤m (budget φ) (ws S))) fb)) done)))) ,
             record { c-env  = envW-frame es (λ z z< → store-other (floc fs₄) cf dst tw z
                                              (λ e → Data.Nat.Properties.<-irrefl (sym e) (<-≤-trans z< env≤))) (c-env C)
                    ; c-stk  = ( tw ∷ [] , pw
@@ -439,7 +458,7 @@ module OpSim {FS : FrameSemantics} (U : Univ)
           fs₃ = FlatMachine.flat-exec-instr {FS} (instr-sigop si) prog fs₂′
           st₀ = argD s fs d₀ dst wx
           ma = AbstractExec.sigop-answer {FS} si st₀
-          a-step = arg-step (SigOpInfo.baseA si) prog fs bot px sx₀
+          a-step = arg-step (SigOpInfo.baseA si) prog fs bot px sx₀ (below φ bot (Data.Nat.Properties.m∸n≤m (budget φ) (ws S)) fb)
           gt : sigop-gate (falloc fs) si st₀ ≡ true
           gt = cong₂ _∧_
                  (arg-range (SigOpInfo.baseA si) fs d₀ wx
@@ -458,7 +477,7 @@ module OpSim {FS : FrameSemantics} (U : Univ)
           fin : _ → _
           fin (hf , ee , wy , pw , sy) =
             fs₃ ,
-            step-at fs₁ (h , g₁) a-step (step-at fs₂ (h , g₂) (mov-in-step fs₁) (step-at fs₂′ (h , g₃) (lea-step fs₂ dst)
+            step-at fs₁ (h , g₁) a-step (step-at fs₂ (h , g₂) (mov-in-step fs₁) (step-at fs₂′ (h , g₃) (lea-step fs₂ dst (below φ dst (≤-trans (Data.Nat.Properties.m∸n≤m bot wB) (Data.Nat.Properties.m∸n≤m (budget φ) (ws S))) fb))
               (step-at fs₃ (h , g₄) refl done))) ,
             subst (λ hp → CfgW hp (slot fs₃) φ (es ∥ y ∷ˢ os)) (sym eqh)
               (record { c-env  = envW-frame es (λ z z< → keep z (inj₁ (<-≤-trans z< env≤))) (c-env C)
@@ -510,10 +529,12 @@ module OpSim {FS : FrameSemantics} (U : Univ)
       with-arg : StkW (heapMem (floc fs)) (slot fs) φ (x ∷ˢ os) → _
       with-arg ((wx , px , sx) , _) =
         fs₃ ,
-        step-at fs₁ (h , g₁) (arg-step (SigOpInfo.baseA (info s)) prog fs (budget φ ∸ ws S) px sx₀)
+        step-at fs₁ (h , g₁) (arg-step (SigOpInfo.baseA (info s)) prog fs (budget φ ∸ ws S) px sx₀
+                                (below φ (budget φ ∸ ws S) (Data.Nat.Properties.m∸n≤m (budget φ) (ws S)) fb))
           (step-at fs₂ (h , g₂) (mov-in-step fs₁) (step-at fs₃ (h , g₃) refl done)) ,
         fin (ag d₀ wx px sx₀)
         where
+          import Data.Nat.Properties
           sx₀ = subst (λ z → SlotsAt (slot fs) z wx) (sym (new-top (budget φ) (wsz ⌜ sdom s ⌝) (ws S))) sx
           v₀ = argV (SigOpInfo.baseA (info s)) fs d₀ wx
           fs₁ = record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Output v₀ } ; fpc = suc (fpc fs) }

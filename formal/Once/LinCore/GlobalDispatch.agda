@@ -184,7 +184,7 @@ module DispR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                → Arrives (blockᴵ (ktr1 ds′ b γ)) (frm {t = nothing} {Es = Es} k es os r) ([]ᵉ ∥ mpair (mfn i (c1 ds′ b γ) x) a ∷ˢ []ˢ) n fs
   gicall-start {g = g} {A = A} {B} {S = S} {r = r} {fs = fs} s inv H nx ok I =
     case tr-dispatch (frameOf main) seg (S.Here.h-run H) (S.Here.h-cfg H) fitM
-           (subst (budget (frameOf main) Data.Nat.≤_) (sym (S.Here.h-slots H)) (Data.Nat.Properties.m≤n⇒m≤1+n (Data.Nat.Properties.n≤1+n _))) of λ where
+           (subst (budget (frameOf main) Data.Nat.<_) (sym (S.Here.h-slots H)) (Data.Nat.Properties.m<n⇒m<1+n (Data.Nat.Properties.n<1+n _))) of λ where
       (m , N , fs′ , run , T0 , CD) →
         N , fs′ , run , record { g-pt = p-tramp m (at whole) ; g-here = (tp0 m , T0) ; g-next = trans (cd-next CD) nx
                                ; g-ret = mk-tramp m tm-1 (d-start s) (called-re pos-eq refl CD) fitM (S.Here.h-cfg H)
@@ -216,7 +216,7 @@ module DispR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                → Arrives (blockᴵ (ktr1 ds′ b γ)) (frm {t = nothing} {Es = Es} k es os r) ([]ᵉ ∥ mpair (mfn i (c1 ds′ b γ) x) a ∷ˢ []ˢ) n fs
   gicall-block {g = g} {A = A} {B} {S = S} {r = r} {fs = fs} {κ′ = κ′} p′ s inv H nx ok I =
     case tr-dispatch (frameOf (blockᴵ κ′)) seg (K.Here.h-run {p = p′} H) (K.Here.h-cfg {p = p′} H) fitM
-           (subst (budget (frameOf (blockᴵ κ′)) Data.Nat.≤_) (sym (K.Here.h-slots {p = p′} H)) (Data.Nat.Properties.m≤n⇒m≤1+n (Data.Nat.Properties.n≤1+n _))) of λ where
+           (subst (budget (frameOf (blockᴵ κ′)) Data.Nat.<_) (sym (K.Here.h-slots {p = p′} H)) (Data.Nat.Properties.m<n⇒m<1+n (Data.Nat.Properties.n<1+n _))) of λ where
       (m , N , fs′ , run , T0 , CD) →
         N , fs′ , run , record { g-pt = p-tramp m (at whole) ; g-here = (tp0 m , T0) ; g-next = trans (cd-next CD) nx
                                ; g-ret = mk-tramp m tm-1 (d-block p′ s) (called-re pos-eq refl CD) fitM (K.Here.h-cfg {p = p′} H)
@@ -317,7 +317,8 @@ module DispR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
               → InBlk fs
               → Arrives (blockᴵ (ktro ε F S)) (frm {t = nothing} {Es = Es} k es os r) ([]ᵉ ∥ mnu i x ∷ˢ []ˢ) n fs
   giobs-start {F = F} {S} {S′ = S′} {r = r} {fs = fs} s inv H nx ok I =
-    case to-dispatch (frameOf main) seg (S.Here.h-run H) (S.Here.h-cfg H) of λ where
+    case to-dispatch (frameOf main) seg (S.Here.h-run H) (S.Here.h-cfg H)
+           (subst (budget (frameOf main) Data.Nat.<_) (sym (S.Here.h-slots H)) (Data.Nat.Properties.m<n⇒m<1+n (Data.Nat.Properties.n<1+n _))) of λ where
       (m , N , fs′ , run , T0 , CD) →
         N , fs′ , run , record { g-pt = p-tramp m (at whole) ; g-here = (to0 m , T0) ; g-next = trans (cd-next CD) nx
                                ; g-ret = mk-tramp m tm-o (d-start s) (called-re pos-eq refl CD) fitM (S.Here.h-cfg H)
@@ -348,7 +349,8 @@ module DispR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
               → InBlk fs
               → Arrives (blockᴵ (ktro ε F S)) (frm {t = nothing} {Es = Es} k es os r) ([]ᵉ ∥ mnu i x ∷ˢ []ˢ) n fs
   giobs-block {F = F} {S} {S′ = S′} {r = r} {fs = fs} {κ′ = κ′} p′ s inv H nx ok I =
-    case to-dispatch (frameOf (blockᴵ κ′)) seg (K.Here.h-run {p = p′} H) (K.Here.h-cfg {p = p′} H) of λ where
+    case to-dispatch (frameOf (blockᴵ κ′)) seg (K.Here.h-run {p = p′} H) (K.Here.h-cfg {p = p′} H)
+           (subst (budget (frameOf (blockᴵ κ′)) Data.Nat.<_) (sym (K.Here.h-slots {p = p′} H)) (Data.Nat.Properties.m<n⇒m<1+n (Data.Nat.Properties.n<1+n _))) of λ where
       (m , N , fs′ , run , T0 , CD) →
         N , fs′ , run , record { g-pt = p-tramp m (at whole) ; g-here = (to0 m , T0) ; g-next = trans (cd-next CD) nx
                                ; g-ret = mk-tramp m tm-o (d-block p′ s) (called-re pos-eq refl CD) fitM (K.Here.h-cfg {p = p′} H)

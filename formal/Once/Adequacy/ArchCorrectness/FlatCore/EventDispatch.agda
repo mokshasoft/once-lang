@@ -149,7 +149,7 @@ open FlatMachine {FS} using
   -- `find-label` is RENAMED: this module's own `find-label` parameter is the
   -- CONCRETE program's scan, and the flat machine's is the abstract one. Two
   -- different functions over two different types — see `bs-c-jmp`'s comment.
-  (fetch; flat-exec-instr; find-thunk; find-fn; enter-call; do-call-sv; do-call-code; do-call-at; ret-pass; do-ret-pc-∷
+  (fetch; flat-exec-instr; find-thunk; find-fn; enter-call; do-call-sv; do-call-code; do-call-at; ret-pass; do-ret-pc-∷; straight-go; slot-go
   ; find-thunk-sound; find-entry-sound; module FlatState)
   renaming (find-label to flat-find-label)
 open FlatState using (floc; fpc; fret; falloc; fclosure)
@@ -805,10 +805,13 @@ module Dispatch (sup : Supply) where
                        (event-of (load-from-slot slot) fs ▹ flat-events n prog (flat-exec-instr (load-from-slot slot) prog fs)) (ctrl-of (load-from-slot slot) + flat-ctrls n prog (flat-exec-instr (load-from-slot slot) prog fs)) M)
           go-mem (just w) st-eq =
             ccc-step-bs {hv} n IH ev env prog fs s (load-from-slot slot)
-              (bs-load-from-slot bss prog fs s slot w cc h ftq (slot-read-in-frame prog fs slot _ (inv-run wf) ftq refl) st-eq)
+              (bs-load-from-slot bss prog fs s slot w cc h ftq (slot-read-in-frame prog fs slot _ (inv-run wf) h ftq refl) st-eq)
               (λ _ → bg-str _ bg ftq refl refl) wf ftq h refl tt tt hpost
-            where hpost : halted (floc (flat-exec-instr (load-from-slot slot) prog fs)) ≡ false
-                  hpost rewrite st-eq = h
+            where hgo : halted (floc (straight-go (load-from-slot slot) fs)) ≡ false
+                  hgo rewrite st-eq = h
+                  hpost : halted (floc (flat-exec-instr (load-from-slot slot) prog fs)) ≡ false
+                  hpost = subst (λ t → halted (floc t) ≡ false)
+                            (sym (slot-go (load-from-slot slot) prog fs refl (slot-read-in-frame prog fs slot _ (inv-run wf) h ftq refl))) hgo
           go-mem nothing st-eq =
             -- UNREACHABLE (Plan 0.54 rung D, D367): reading an unwritten slot
             -- FAULTS, and the program's run never faults (`slot-read-written`)
@@ -829,10 +832,13 @@ module Dispatch (sup : Supply) where
                        (event-of (restore-input slot) fs ▹ flat-events n prog (flat-exec-instr (restore-input slot) prog fs)) (ctrl-of (restore-input slot) + flat-ctrls n prog (flat-exec-instr (restore-input slot) prog fs)) M)
           go-mem (just w) st-eq =
             ccc-step-bs {hv} n IH ev env prog fs s (restore-input slot)
-              (bs-restore-input bss prog fs s slot w cc h ftq (slot-read-in-frame prog fs slot _ (inv-run wf) ftq refl) st-eq)
+              (bs-restore-input bss prog fs s slot w cc h ftq (slot-read-in-frame prog fs slot _ (inv-run wf) h ftq refl) st-eq)
               (λ _ → bg-str _ bg ftq refl refl) wf ftq h refl tt tt hpost
-            where hpost : halted (floc (flat-exec-instr (restore-input slot) prog fs)) ≡ false
-                  hpost rewrite st-eq = h
+            where hgo : halted (floc (straight-go (restore-input slot) fs)) ≡ false
+                  hgo rewrite st-eq = h
+                  hpost : halted (floc (flat-exec-instr (restore-input slot) prog fs)) ≡ false
+                  hpost = subst (λ t → halted (floc t) ≡ false)
+                            (sym (slot-go (restore-input slot) prog fs refl (slot-read-in-frame prog fs slot _ (inv-run wf) h ftq refl))) hgo
           go-mem nothing st-eq =
             -- UNREACHABLE (Plan 0.54 rung D, D367): reading an unwritten slot
             -- FAULTS, and the program's run never faults (`slot-read-written`)
@@ -853,10 +859,13 @@ module Dispatch (sup : Supply) where
                        (event-of (worklist-pop slot) fs ▹ flat-events n prog (flat-exec-instr (worklist-pop slot) prog fs)) (ctrl-of (worklist-pop slot) + flat-ctrls n prog (flat-exec-instr (worklist-pop slot) prog fs)) M)
           go-mem (just w) st-eq =
             ccc-step-bs {hv} n IH ev env prog fs s (worklist-pop slot)
-              (bs-worklist-pop bss prog fs s slot w cc h ftq (slot-read-in-frame prog fs slot _ (inv-run wf) ftq refl) st-eq)
+              (bs-worklist-pop bss prog fs s slot w cc h ftq (slot-read-in-frame prog fs slot _ (inv-run wf) h ftq refl) st-eq)
               (λ _ → bg-str _ bg ftq refl refl) wf ftq h refl tt tt hpost
-            where hpost : halted (floc (flat-exec-instr (worklist-pop slot) prog fs)) ≡ false
-                  hpost rewrite st-eq = h
+            where hgo : halted (floc (straight-go (worklist-pop slot) fs)) ≡ false
+                  hgo rewrite st-eq = h
+                  hpost : halted (floc (flat-exec-instr (worklist-pop slot) prog fs)) ≡ false
+                  hpost = subst (λ t → halted (floc t) ≡ false)
+                            (sym (slot-go (worklist-pop slot) prog fs refl (slot-read-in-frame prog fs slot _ (inv-run wf) h ftq refl))) hgo
           go-mem nothing st-eq =
             -- UNREACHABLE (Plan 0.54 rung D, D367): reading an unwritten slot
             -- FAULTS, and the program's run never faults (`slot-read-written`)
@@ -1158,14 +1167,18 @@ module Dispatch (sup : Supply) where
     events-running-fetch {hv} n ev env prog fs s (store-at-slot slot) cc bg wf h ftq =
       ccc-step-bs {hv} n (events-agree n) ev env prog fs s (store-at-slot slot)
         (bs-store-at-slot bss prog fs s slot cc h ftq
-           (slot-read-in-frame prog fs slot (store-at-slot slot) (inv-run wf) ftq refl)
-           (slot-heap-disj {hv} fs s (dataCorr cc) slot)) (λ _ → bg-str _ bg ftq refl refl) wf ftq h refl tt tt h
+           (slot-read-in-frame prog fs slot (store-at-slot slot) (inv-run wf) h ftq refl)
+           (slot-heap-disj {hv} fs s (dataCorr cc) slot)) (λ _ → bg-str _ bg ftq refl refl) wf ftq h refl tt tt
+        (subst (λ t → halted (floc t) ≡ false)
+               (sym (slot-go (store-at-slot slot) prog fs refl (slot-read-in-frame prog fs slot (store-at-slot slot) (inv-run wf) h ftq refl))) h)
     events-running-fetch {hv} n ev env prog fs s (restore-input slot) cc bg wf h ftq = restore-input-step n (events-agree n) ev env prog fs s slot cc bg wf h ftq
     events-running-fetch {hv} n ev env prog fs s (worklist-push slot) cc bg wf h ftq =
       ccc-step-bs {hv} n (events-agree n) ev env prog fs s (worklist-push slot)
         (bs-worklist-push bss prog fs s slot cc h ftq
-           (slot-read-in-frame prog fs slot (worklist-push slot) (inv-run wf) ftq refl)
-           (slot-heap-disj {hv} fs s (dataCorr cc) slot)) (λ _ → bg-str _ bg ftq refl refl) wf ftq h refl tt tt h
+           (slot-read-in-frame prog fs slot (worklist-push slot) (inv-run wf) h ftq refl)
+           (slot-heap-disj {hv} fs s (dataCorr cc) slot)) (λ _ → bg-str _ bg ftq refl refl) wf ftq h refl tt tt
+        (subst (λ t → halted (floc t) ≡ false)
+               (sym (slot-go (worklist-push slot) prog fs refl (slot-read-in-frame prog fs slot (worklist-push slot) (inv-run wf) h ftq refl))) h)
     events-running-fetch {hv} n ev env prog fs s (worklist-pop slot) cc bg wf h ftq = worklist-pop-step n (events-agree n) ev env prog fs s slot cc bg wf h ftq
     -- THE FOUR FRAME OPS ARE UNREACHABLE (plan 0.54 rung D, item 2): `ir-to-trace`
     -- emits none of them, and `FlatInv` carries `Emitted prog`. See `FrameFree`.
@@ -1209,7 +1222,9 @@ module Dispatch (sup : Supply) where
     -- plan 0.61: a stack POINTER now has an address, so lea-slot routes.
     events-running-fetch {hv} n ev env prog fs s (lea-slot slot) cc bg wf h ftq =
       ccc-step-bs {hv} n (events-agree n) ev env prog fs s (lea-slot slot)
-        (bs-lea-slot bss prog fs s slot cc h ftq (inv-run wf)) (λ _ → bg-str _ bg ftq refl refl) wf ftq h refl tt tt h
+        (bs-lea-slot bss prog fs s slot cc h ftq (slot-read-in-frame prog fs slot (lea-slot slot) (inv-run wf) h ftq refl) (inv-run wf)) (λ _ → bg-str _ bg ftq refl refl) wf ftq h refl tt tt
+        (subst (λ t → halted (floc t) ≡ false)
+               (sym (slot-go (lea-slot slot) prog fs refl (slot-read-in-frame prog fs slot (lea-slot slot) (inv-run wf) h ftq refl))) h)
     -- D096: the code address is RESOLVED now, so this dispatches on the scan
     -- exactly as `cjmp-step` does — and the two scans agree by `find-thunk-corr`,
     -- which has been sitting in `FlatComposition` waiting for its consumer since

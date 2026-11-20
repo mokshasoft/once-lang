@@ -217,7 +217,17 @@ module DispW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
               → VW (LocState.heapMem (floc fs)) a wa → SlotsAt (slot fs) (budget φ ∸ ws (A ∷ S)) wa
               → Arrives (blockᴵ (ktrω ds′ b γ)) (frm {t = just (Fn _ _ A B)} {Es = Es} k es os r) (vw (mfn i (cω ds′ b γ) x) []ᵉ ∥ a ∷ˢ []ˢ) n fs
       with-fn wa (vfn cb cc cfr px words) (s₀ , _) pa sa =
-        case tw-disp {ds′ = ds′} {b} {γ} (ws Es) area M seg run s₀ px words cb pa (subst (λ z → SlotsAt (slot fs) z wa) (sym ag) sa)
+        case tw-disp {ds′ = ds′} {b} {γ} (ws Es) area M seg run
+               (subst (ws Es Data.Nat.<_) (sym fsl)
+                  (Data.Nat.Properties.≤-<-trans
+                     (Data.Nat.Properties.≤-trans (Data.Nat.Properties.m≤n+m (ws Es) _)
+                        (Data.Nat.Properties.≤-trans (CfgW.c-efit C) (Data.Nat.Properties.m≤m+n (EP φ) (OP φ))))
+                     (sv₁<fb φ)))
+               (subst (area Data.Nat.<_) (sym fsl)
+                  (Data.Nat.Properties.≤-<-trans
+                     (Data.Nat.Properties.≤-trans (Data.Nat.Properties.m∸n≤m (Tp φ S) M) (Data.Nat.Properties.m∸n≤m (budget φ) (ws S)))
+                     (sv₁<fb φ)))
+               s₀ px words cb pa (subst (λ z → SlotsAt (slot fs) z wa) (sym ag) sa)
                (λ k k< → win-here (AllocState.current-frame (falloc fs)) (AllocState.frame-slots (falloc fs)) (AllocState.saved-frames (falloc fs)) _
                            (subst (λ z → (k + (M ∸ wsz A)) + area Data.Nat.< z) (sym fsl)
                              (Data.Nat.Properties.m<n⇒m<1+n (Data.Nat.Properties.m<n⇒m<1+n

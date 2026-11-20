@@ -126,7 +126,7 @@ module Calls {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open CallOutA using (co-slots; co-pc; co-halt)
   open CallIn using (ci-frame; ci-saved; ci-slots; ci-ret; ci-pc; ci-in; ci-s₁; ci-s₂; ci-other; ci-heap; ci-next; ci-size; ci-halt; ci-log)
   open import Once.LinCore.Moves {FS}
-    using (Seg; Seg-++ˡ; slot; Ran; module Ran; module Keep; r-inb; inb-pt)
+    using (Seg; Seg-++ˡ; slot; Fr; InFr; infr; sub-in; Ran; module Ran; module Keep; r-inb; inb-pt)
   open Ran using (r-keep; r-pc; r-next; r-old)
   open Keep using (k-frame; k-slots; k-saved; k-ret; k-other; k-halt; k-log)
 
@@ -140,6 +140,16 @@ module Calls {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   private
     sv-ne : ∀ n → ¬ n ≡ suc n
     sv-ne n ()
+
+    -- B1.7b (D456): a frame's regions are below its save slots, inside its reservation
+    b<fb : ∀ (φ : Frame) {n : ℕ} → n ≡ fbudget φ → budget φ < n
+    b<fb φ e = subst (budget φ <_) (sym e) (sv₁<fb φ)
+
+    b≤ent : ∀ (φ : Frame) {n : ℕ} → n ≡ fbudget φ → budget φ ≤ n
+    b≤ent φ e = Data.Nat.Properties.<⇒≤ (b<fb φ e)
+
+    sv₂<ent : ∀ (φ : Frame) {n : ℕ} → n ≡ fbudget φ → sv₂ φ < n
+    sv₂<ent φ e = subst (sv₂ φ <_) (sym e) (sv₂<fb φ)
 
     shuffle : ∀ x p → x + suc (suc (suc (suc p))) ≡ p + suc (suc (suc (suc x)))
     shuffle = solve-∀
@@ -281,24 +291,32 @@ module Calls {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
             → LocState.halted (floc fs) ≡ false
             → CfgW (LocState.heapMem (floc fs)) (slot fs) φ (es ∥ a ∷ˢ os)
             → ((wsz A ⊔ wsz B) ∸ wsz A) + area ≡ budget φ ∸ ws (A ∷ S)
-            → budget φ ≤ AllocState.frame-slots (falloc fs)
+            → budget φ < AllocState.frame-slots (falloc fs)
             → Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′
                 × K.Here p whole ([]ᵉ ∥ a ∷ˢ []ˢ) fs′
                 × Called fs fs′ (suc (suc (suc (fpc fs)))) (fbudget (frameOf (blockᴵ κ))) (sv₁ (frameOf (blockᴵ κ))) area
-  call-core {A} {B} {Es} {S} {κ} p φ area {es} {a} {os} {fs} seg h C eq bsl = with-arg (Rel.CfgW.c-stk C)
+  call-core {A} {B} {Es} {S} {κ} p φ area {es} {a} {os} {fs} seg h C eq blt = with-arg (Rel.CfgW.c-stk C)
     where
+      import Data.Nat.Properties
+      bsl : budget φ ≤ AllocState.frame-slots (falloc fs)
+      bsl = Data.Nat.Properties.<⇒≤ blt
       open Callee p
       b = fbudget φ′
       cf = AllocState.current-frame (falloc fs)
       with-arg : StkW (LocState.heapMem (floc fs)) (slot fs) φ (a ∷ˢ os) → _
       with-arg ((wa , pa , sa) , _) =
         fin (call-in image fs area (nameOf (idx p)) (e-fn (nameOf (idx p))) q b (sv₁ φ′) (sv₂ φ′)
-               (sv-ne (budget φ′)) seg (image-fn p) entry-seg h)
+               (sv-ne (budget φ′)) seg (image-fn p) entry-seg h
+               (Data.Nat.Properties.≤-<-trans
+                  (≤-trans (m≤n+m area ((wsz A ⊔ wsz B) ∸ wsz A)) (≤-trans (Data.Nat.Properties.≤-reflexive eq) (Data.Nat.Properties.m∸n≤m (budget φ) (ws (A ∷ S)))))
+                  blt)
+               (sv₁<fb φ′) (sv₂<fb φ′))
         where
           fin : Σ FlatState (λ fs₁ → FlatSteps image 7 fs fs₁
                   × CallIn fs fs₁ area b (sv₁ φ′) (sv₂ φ′) q (suc (suc (suc (fpc fs)))) (SV-Ptr (AtStack cf area))) → _
           fin (fs₁ , st₁ , CI) = fin₂ (enter-n image fs₁ φ′ cf area (M ∸ wsz A) wa ne₁ (ci-in CI) pa₁ sa₁
                                          (arg-win fs fs₁ (budget φ) (ws S) (wsz A) (M ∸ wsz A) area (ci-saved CI) bsl eq (≤-trans (Rel.CfgW.c-sfit C) (m≤n+m (OP φ) (EP φ)))) seg₂ h₁
+                                         (b≤ent φ′ (ci-slots CI))
                                          (proj₂ (K.shape-fits p whole)))
             where
               ne₁ : ¬ AllocState.current-frame (falloc fs₁) ≡ cf
@@ -376,13 +394,20 @@ module Calls {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
         with-arg : StkW (LocState.heapMem (floc fs)) (slot fs) C.φ (a ∷ˢ os) → Into s a fs
         with-arg ((wa , pa , sa) , _) =
           fin (call-in image fs area (nameOf (idx p)) (e-fn (nameOf (idx p))) q b (sv₁ φ′) (sv₂ φ′)
-                 (sv-ne (budget φ′)) seg (image-fn p) entry-seg (h-run H))
+                 (sv-ne (budget φ′)) seg (image-fn p) entry-seg (h-run H)
+                 (Data.Nat.Properties.≤-<-trans
+                    (≤-trans (m≤n+m area (M ∸ wsz A))
+                      (≤-trans (Data.Nat.Properties.≤-reflexive (area-at (budget C.φ) (wsz A) (wsz B) (ws S) fitsB fitsB′))
+                        (Data.Nat.Properties.m∸n≤m (budget C.φ) (ws (A ∷ S)))))
+                    (b<fb C.φ (h-slots H)))
+                 (sv₁<fb φ′) (sv₂<fb φ′))
           where
             fin : Σ FlatState (λ fs₁ → FlatSteps image 7 fs fs₁
                     × CallIn fs fs₁ area b (sv₁ φ′) (sv₂ φ′) q (suc (suc (suc (fpc fs)))) (SV-Ptr (AtStack cf area)))
                 → Into s a fs
             fin (fs₁ , st₁ , CI) = fin₂ (enter-n image fs₁ φ′ cf area (M ∸ wsz A) wa ne₁ (ci-in CI) pa₁ sa₁
                                          (arg-win fs fs₁ (budget C.φ) (ws S) (wsz A) (M ∸ wsz A) area (ci-saved CI) (subst (budget C.φ ≤_) (sym (h-slots H)) (Data.Nat.Properties.m≤n⇒m≤1+n (Data.Nat.Properties.n≤1+n (budget C.φ)))) (area-at (budget C.φ) (wsz A) (wsz B) (ws S) fitsB fitsB′) fitsB) seg₂ h₁
+                                         (b≤ent φ′ (ci-slots CI))
                                            (proj₂ (K.shape-fits p whole)))
               where
                 ne₁ : ¬ AllocState.current-frame (falloc fs₁) ≡ cf
@@ -461,7 +486,16 @@ module Calls {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                  → IntoV s es a fs
         with-arg ((wa , pa , sa) , _) (we , pe , se) =
           fin (call-in-v image fs area (ws Es) (nameOf (idx p)) (e-fn (nameOf (idx p))) q b (sv₁ φ′) (sv₂ φ′)
-                 (sv-ne (budget φ′)) seg (image-fn p) entry-seg (h-run H))
+                 (sv-ne (budget φ′)) seg (image-fn p) entry-seg (h-run H)
+                 (Data.Nat.Properties.≤-<-trans
+                    (≤-trans (m≤n+m area (M ∸ wsz A))
+                      (≤-trans (Data.Nat.Properties.≤-reflexive (area-at (budget C.φ) (wsz A) (wsz B) (ws S) fitsB fitsB′))
+                        (Data.Nat.Properties.m∸n≤m (budget C.φ) (ws (A ∷ S)))))
+                    (b<fb C.φ (h-slots H)))
+                 (Data.Nat.Properties.≤-<-trans
+                    (≤-trans (m≤n+m (ws Es) (wsz E)) (≤-trans (Rel.CfgW.c-efit (h-cfg H)) (Data.Nat.Properties.m≤m+n (EP C.φ) (OP C.φ))))
+                    (b<fb C.φ (h-slots H)))
+                 (sv₁<fb φ′) (sv₂<fb φ′))
           where
             fin : Σ FlatState (λ fs₁ → FlatSteps image 8 fs fs₁
                     × CallIn fs fs₁ area b (sv₁ φ′) (sv₂ φ′) q (suc (suc (suc (suc (fpc fs))))) (SV-Ptr (AtStack cf (ws Es))))
@@ -472,7 +506,7 @@ module Calls {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                       (arg-win fs fs₁ (budget C.φ) (ws S) (wsz A) (M ∸ wsz A) area (ci-saved CI) (subst (budget C.φ ≤_) (sym (h-slots H)) (Data.Nat.Properties.m≤n⇒m≤1+n (Data.Nat.Properties.n≤1+n (budget C.φ)))) (area-at (budget C.φ) (wsz A) (wsz B) (ws S) fitsB fitsB′) fitsB)
                       (λ k k< → caller-win (falloc fs₁) cf (AllocState.frame-slots (falloc fs)) (AllocState.saved-frames (falloc fs)) _ (ci-saved CI)
                                   (Data.Nat.Properties.<-≤-trans (view-lt k k<) (subst (budget C.φ ≤_) (sym (h-slots H)) (Data.Nat.Properties.m≤n⇒m≤1+n (Data.Nat.Properties.n≤1+n (budget C.φ))))))
-                      seg₂ h₁
+                      seg₂ h₁ (b≤ent φ′ (ci-slots CI)) (sv₂<ent φ′ (ci-slots CI))
                       (proj₁ (K.shape-fits p whole)) (proj₂ (K.shape-fits p whole)))
               where
                 import Data.Nat.Properties
@@ -567,6 +601,16 @@ module Calls {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
         seg : Seg image (fpc fs) (restore-input (budget φ′) ∷ mvSP (budget φ′ ∸ ws (B ∷ [])) (M ∸ wsz B) (wsz B)
                                    ++ instr-ctrl (c-ret (fbudget φ′)) ∷ [])
         seg = subst (Seg image (fpc fs)) lf (K.seg-at p e H)
+        -- B1.7b: the callee's save slot and its result are inside its reservation
+        Bφ′ : budget φ′ ≤ Fr fs
+        Bφ′ = subst (budget φ′ ≤_) (sym (K.Here.h-slots {p = callee s} H))
+                (Data.Nat.Properties.≤-trans (Data.Nat.Properties.n≤1+n (budget φ′)) (Data.Nat.Properties.n≤1+n (suc (budget φ′))))
+        ls : budget φ′ < Fr fs
+        ls = subst (budget φ′ <_) (sym (K.Here.h-slots {p = callee s} H))
+               (Data.Nat.Properties.m<n⇒m<1+n (Data.Nat.Properties.n<1+n (budget φ′)))
+        rs : InFr fs (budget φ′ ∸ ws (B ∷ [])) (wsz B)
+        rs = infr Bφ′ (sub-in (budget φ′) (wsz B) 0
+               (Data.Nat.Properties.≤-trans (Rel.CfgW.c-sfit (K.Here.h-cfg {p = callee s} H)) (m≤n+m (OP φ′) (EP φ′))))
         with-res : StkW (LocState.heapMem (floc fs)) (slot fs) φ′ (b ∷ˢ []ˢ)
                  → Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′ × C.Here (next s) (es ∥ b ∷ˢ os) fs′
                      × CallOut fs fs′ cfc (Tp C.φ S ∸ M) (budget φ′ ∸ ws (B ∷ [])) (M ∸ wsz B) (wsz B) (C.pos (next s)) rest sv sl
@@ -575,7 +619,7 @@ module Calls {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
           fin (leave image fs C.φ φ′ cfc (budget φ′) (Tp C.φ S ∸ M) M (fbudget φ′) (C.pos (next s)) rest sv sl
                  {es = es} {os = os} {b = b} wb hret (sym (K.Here.h-slots {p = callee s} H)) hsv (subst (budget C.φ ≤_) (sym esl) (Data.Nat.Properties.m≤n⇒m≤1+n (Data.Nat.Properties.n≤1+n (budget C.φ)))) ne ep pb sb ev st refl
                  (Data.Nat.Properties.m≤n⊔m (wsz A) (wsz B)) fitM (proj₁ (C.shape-fits (next s))) fitB seg
-                 (K.Here.h-run {p = callee s} H))
+                 (K.Here.h-run {p = callee s} H) ls rs)
           where
             fin : Σ FlatState (λ fs′ → FlatSteps image (suc (Once.LinCore.Moves.ln {FS} (wsz B) + 1)) fs fs′
                     × CfgW (LocState.heapMem (floc fs′)) (slot fs′) C.φ (es ∥ b ∷ˢ os)

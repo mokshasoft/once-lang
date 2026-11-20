@@ -66,7 +66,7 @@ open import Once.CCC.Machine.SMCore
 open AllocState using (current-frame)
 open import Once.CCC.Label using (LabelId; EntryId)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
-open FlatMachine {FS} using (FlatState; fetch; find-label; find-label-sound; flat-step-straight; module FlatState)
+open FlatMachine {FS} using (FlatState; fetch; find-label; find-label-sound; flat-step-straight; straight-keeps; straight-go; module FlatState)
 open FlatState using (falloc; floc; fpc; fret)
 open FrameSemantics FS using (frame-base; shift-frame; shift-base)
 open import Once.CCC.Codegen.RoomChecks using (need; spend; room?; boundary?; max-entry)
@@ -89,10 +89,14 @@ fbase : FlatState → ℕ
 fbase fs = frame-base (current-frame (falloc fs))
 
 -- a straight-line step keeps the frame
-straight-frame : ∀ (i : AbstractInstr) (fs : FlatState) → fbase (flat-step-straight i fs) ≡ fbase fs
-straight-frame i fs = cong frame-base (exec-abstract-preserves-frame i (floc fs) (falloc fs))
+-- (B1.7b: the plain step, and so a straight step — a slot out of the frame faults in place)
+go-frame : ∀ (i : AbstractInstr) (fs : FlatState) → fbase (straight-go i fs) ≡ fbase fs
+go-frame i fs = cong frame-base (exec-abstract-preserves-frame i (floc fs) (falloc fs))
   where open import Once.CCC.Machine.SMPrimitives using (module InstrPrimitives)
         open InstrPrimitives {FS} using (exec-abstract-preserves-frame)
+
+straight-frame : ∀ (i : AbstractInstr) (fs : FlatState) → fbase (flat-step-straight i fs) ≡ fbase fs
+straight-frame i fs = straight-keeps (λ t → fbase t ≡ fbase fs) i fs (go-frame i fs) refl
 
 ------------------------------------------------------------------------
 -- THE INVARIANT
@@ -292,14 +296,18 @@ bg-str : ∀ {hv : HeapView} {prog : AbstractTrace} {fs : FlatState} (i : Abstra
        → Budget hv prog fs → fetch prog (fpc fs) ≡ just i → room? i ≡ false → spend (max-entry prog) i ≡ 0
        → Budget hv prog (flat-step-straight i fs)
 bg-str {hv} {prog} {fs} i bg f nr z =
-  bg-plain {hv} {prog} {fs} {flat-step-straight i fs} {i} bg f nr z refl (straight-frame i fs)
+  straight-keeps (Budget hv prog) i fs
+    (bg-plain {hv} {prog} {fs} {straight-go i fs} {i} bg f nr z refl (go-frame i fs))
+    (mkBudget (budget-le bg))   -- a fault stays: the pc and the frame are kept
 
 -- …as a straight step
 bg-spent-str : ∀ {hv : HeapView} {prog : AbstractTrace} {fs : FlatState} (i : AbstractInstr)
              → Budget hv prog fs → fetch prog (fpc fs) ≡ just i → room? i ≡ false
              → Budget hv prog (flat-step-straight i fs)
 bg-spent-str {hv} {prog} {fs} i bg f nr =
-  bg-spent {hv} {prog} {fs} {flat-step-straight i fs} {i} bg f nr refl (straight-frame i fs)
+  straight-keeps (Budget hv prog) i fs
+    (bg-spent {hv} {prog} {fs} {straight-go i fs} {i} bg f nr refl (go-frame i fs))
+    (mkBudget (budget-le bg))
 
 -- a call's own slot: its spend is that slot and the largest entry frame
 call-room-of : ∀ {hv : HeapView} {prog : AbstractTrace} {fs : FlatState} {s : State} {c : AbstractInstr}

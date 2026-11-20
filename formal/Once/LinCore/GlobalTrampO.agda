@@ -217,7 +217,8 @@ module TrampO {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   to-open {F = F} {S} p {i} {x} {fs} T =
     case open0-sim image fs (tOM F S) hdr (hdr + wsz (cty (F , S))) i (TrO0.o-wx T)
            (Data.Nat.Properties.m≤m⊔n (wsz (cty (F , S))) (wsz (LF∙ F (Nu F)))) (TrO0.o-in T) (TrO0.o-M T)
-           (TrO0.o-x T) (TrO0.o-at T) (tO-seg0 p (TrO0.o-pc T)) (TrO0.o-run T) of λ where
+           (TrO0.o-x T) (TrO0.o-at T) (tO-seg0 p (TrO0.o-pc T)) (TrO0.o-run T)
+           (subst (tOM F S Data.Nat.<_) (sym (TrO0.o-slots T)) (Data.Nat.Properties.m<n⇒m<1+n (Data.Nat.Properties.n<1+n (tOM F S)))) of λ where
       (fs′ , run , C′ , Rn) →
         tON F S , fs′ , run ,
         record { f-pc = trans (r-pc Rn) (trans (cong (tON F S +_) (TrO0.o-pc T)) (sym (tO-pos₁ p)))
@@ -233,7 +234,7 @@ module TrampO {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                        (sv₁ (frameOf (blockᴵ (kobs ds′ F S)))) 0
   to-call {F = F} {S} p H =
     call-core p (frame 0 (tOM F S)) 0 (tO-seg1 p (HereF.f-pc H)) (HereF.f-run H) (HereF.f-cfg H) (tO-area F S)
-      (subst (Data.Nat._≤_ (tOM F S)) (sym (HereF.f-slots H)) (Data.Nat.Properties.m≤n⇒m≤1+n (Data.Nat.Properties.n≤1+n (tOM F S))))
+      (subst (Data.Nat._<_ (tOM F S)) (sym (HereF.f-slots H)) (Data.Nat.Properties.m<n⇒m<1+n (Data.Nat.Properties.n<1+n (tOM F S))))
 
   -- the observation's block's return into its trampoline (as `tr-back`, its types the key's own)
   to-back : ∀ {Γ′} {ds′ : Defs Γ′} {F S}
@@ -292,11 +293,12 @@ module TrampO {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                                     ∷ instr-save-closure-reg ∷ instr-call-closure ∷ [])
               → LocState.halted (floc fs) ≡ false
               → CfgW (LocState.heapMem (floc fs)) (slot fs) φ (es ∥ mnu i x ∷ˢ os)
+              → budget φ Data.Nat.< AllocState.frame-slots (falloc fs)
               → Σ (under (ktro ε F S) ∈ allK U) λ p → Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′
                   × TrO0 (tOM F S) (trPos (ktro ε F S) p 0) i x fs′
                   × Called fs fs′ (suc (suc (suc (suc (fpc fs))))) (suc (suc (tOM F S))) (suc (tOM F S))
                            (Tp φ S′ ∸ (1 ⊔ wsz (LF∙ F (Nu F))))
-  to-dispatch {F} {S} φ {Es} {S′} {es} {os} {i} {x} {fs} seg h C = with-top (Rel.CfgW.c-stk C)
+  to-dispatch {F} {S} φ {Es} {S′} {es} {os} {i} {x} {fs} seg h C blt = with-top (Rel.CfgW.c-stk C)
     where
       import Data.Nat.Properties
       M = tOM F S ; Mc = 1 ⊔ wsz (LF∙ F (Nu F))
@@ -310,7 +312,10 @@ module TrampO {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       with-top ((_ , vnu {wp = wp} (m , refl) cc cfr px words , (st₀ , _)) , _) =
         m , fin (closure-in image fs (Tp φ S′ ∸ 1) area (cellLoc i 0) (tl (idx m)) (e-thunk (tl (idx m)))
                    q (suc (suc M)) M (suc M) (λ e → Data.Nat.Properties.<-irrefl e (Data.Nat.Properties.n<1+n M))
-                   (subst (λ z → slot fs z ≡ just (cellPtr i)) at-ν st₀) (proj₁ (proj₂ words)) seg (image-tramp m refl) segq h)
+                   (subst (λ z → slot fs z ≡ just (cellPtr i)) at-ν st₀) (proj₁ (proj₂ words)) seg (image-tramp m refl) segq h
+                   (Data.Nat.Properties.≤-<-trans (Data.Nat.Properties.≤-trans (Data.Nat.Properties.m∸n≤m (Tp φ S′) 1) (Data.Nat.Properties.m∸n≤m (budget φ) (ws S′))) blt)
+                   (Data.Nat.Properties.≤-<-trans (Data.Nat.Properties.≤-trans (Data.Nat.Properties.m∸n≤m (Tp φ S′) Mc) (Data.Nat.Properties.m∸n≤m (budget φ) (ws S′))) blt)
+                   (Data.Nat.Properties.m<n⇒m<1+n (Data.Nat.Properties.n<1+n M)) (Data.Nat.Properties.n<1+n (suc M)))
         where
           LB = lowBlock (idx m) (kobs ε F S) (blocks-in m)
           q = length (proj₁ (image-at m)) + length LB

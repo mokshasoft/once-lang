@@ -433,8 +433,10 @@ data JumpPost (i : AbstractInstr) (m : LabelId) (prog : AbstractTrace) (fs : Fla
 -- inductions consume); `pv-thunk`/`pv-ret` are the two that MOVE THE FRAME and
 -- carry their reservation instead.
 data PcView (i : AbstractInstr) : Set where
+  -- (B1.7b: …or a slot instruction out of its frame faulted where it stands)
   pv-suc   : FrameFreeI i → NotJmpI i
-           → (∀ prog fs → fpc (flat-exec-instr i prog fs) ≡ suc (fpc fs)) → PcView i
+           → (∀ prog fs → (fpc (flat-exec-instr i prog fs) ≡ suc (fpc fs)) ⊎ (flat-exec-instr i prog fs ≡ flat-fault fs))
+           → PcView i
   pv-jump  : FrameFreeI i → ∀ (m : LabelId) → once-label-of i ≡ just m
            → (∀ prog fs → JumpPost i m prog fs) → PcView i
   -- D245: a callable ENTRY, a closure body's or a program function's.
@@ -450,8 +452,16 @@ data PcView (i : AbstractInstr) : Set where
   -- D245: …and the direct call, the same transfer to a statically named entry.
   pv-call-fn : ∀ (f : CanonicalName) → i ≡ instr-ctrl (c-call-fn f) → PcView i
 
+-- B1.7b (D456): a slot instruction's step moves on, or faults where it stands
+slot-adv : ∀ i (fs : FlatState) → (fpc (flat-step-straight i fs) ≡ suc (fpc fs)) ⊎ (flat-step-straight i fs ≡ flat-fault fs)
+slot-adv i fs = go (straightView i fs)
+  where
+    go : StraightPost i fs → (fpc (flat-step-straight i fs) ≡ suc (fpc fs)) ⊎ (flat-step-straight i fs ≡ flat-fault fs)
+    go (sp-fault e) = inj₂ e
+    go (sp-go _ e) = inj₁ (cong fpc e)
+
 pcView : ∀ (i : AbstractInstr) → ImageI i → PcView i
-pcView (instr-ctrl (c-label _))               _ = pv-suc tt tt (λ _ _ → refl)
+pcView (instr-ctrl (c-label _))               _ = pv-suc tt tt (λ _ _ → inj₁ refl)
 pcView (instr-ctrl (c-start bb))              _ = pv-start bb refl
 pcView (instr-ctrl c-leave)                   _ = pv-leave refl
 pcView (instr-ctrl (c-jmp m))                 _ = pv-jump tt m refl go
@@ -478,36 +488,36 @@ pcView (instr-ctrl (c-call-fn f))             _ = pv-call-fn f refl
 pcView (instr-ctrl (c-ret bb))                _ = pv-ret bb refl
 pcView (instr-alloc-stack _)                  ()
 pcView (instr-dealloc-stack _)                ()
-pcView (instr-free-heap _)                    _ = pv-suc tt tt (λ _ _ → refl)
-pcView (load-at _)                            _ = pv-suc tt tt (λ _ _ → refl)
-pcView (store-at _)                           _ = pv-suc tt tt (λ _ _ → refl)
-pcView (addr-at _)                            _ = pv-suc tt tt (λ _ _ → refl)
+pcView (instr-free-heap _)                    _ = pv-suc tt tt (λ _ _ → inj₁ refl)
+pcView (load-at _)                            _ = pv-suc tt tt (λ _ _ → inj₁ refl)
+pcView (store-at _)                           _ = pv-suc tt tt (λ _ _ → inj₁ refl)
+pcView (addr-at _)                            _ = pv-suc tt tt (λ _ _ → inj₁ refl)
 pcView (instr-room _)                    ()
 pcView (instr-push-frame _)                   ()
 pcView instr-pop-frame                        ()
-pcView (lea-slot _)                           _ = pv-suc tt tt (λ _ _ → refl)
-pcView mov-to-output                          _ = pv-suc tt tt (λ _ _ → refl)
-pcView mov-to-input                           _ = pv-suc tt tt (λ _ _ → refl)
+pcView (lea-slot k)                         _ = pv-suc tt tt (λ _ fs → slot-adv (lea-slot k) fs)
+pcView mov-to-output                          _ = pv-suc tt tt (λ _ _ → inj₁ refl)
+pcView mov-to-input                           _ = pv-suc tt tt (λ _ _ → inj₁ refl)
 pcView load-indirect                          ()
 pcView load-indirect-suc                      ()
-pcView (load-from-slot _)                     _ = pv-suc tt tt (λ _ _ → refl)
-pcView (store-at-slot _)                      _ = pv-suc tt tt (λ _ _ → refl)
+pcView (load-from-slot k)                   _ = pv-suc tt tt (λ _ fs → slot-adv (load-from-slot k) fs)
+pcView (store-at-slot k)                    _ = pv-suc tt tt (λ _ fs → slot-adv (store-at-slot k) fs)
 pcView store-indirect                         ()
 pcView store-indirect-suc                     ()
-pcView (restore-input _)                      _ = pv-suc tt tt (λ _ _ → refl)
-pcView (instr-reclaim-to _)                   _ = pv-suc tt tt (λ _ _ → refl)
+pcView (restore-input k)                    _ = pv-suc tt tt (λ _ fs → slot-adv (restore-input k) fs)
+pcView (instr-reclaim-to _)                   _ = pv-suc tt tt (λ _ _ → inj₁ refl)
 pcView instr-call-closure                     _ = pv-call refl
-pcView (worklist-init _)                      _ = pv-suc tt tt (λ _ _ → refl)
-pcView (worklist-push _)                      _ = pv-suc tt tt (λ _ _ → refl)
-pcView (worklist-pop _)                       _ = pv-suc tt tt (λ _ _ → refl)
-pcView (worklist-check _)                     _ = pv-suc tt tt (λ _ _ → refl)
-pcView (instr-sigop _)                        _ = pv-suc tt tt (λ _ _ → refl)
-pcView (instr-load-const _ _)                 _ = pv-suc tt tt (λ _ _ → refl)
-pcView (instr-load-code-addr _)               _ = pv-suc tt tt (λ _ _ → refl)
-pcView instr-save-closure-reg                 _ = pv-suc tt tt (λ _ _ → refl)
-pcView (instr-load-tag-lit _)                 _ = pv-suc tt tt (λ _ _ → refl)
-pcView (instr-alloc-heap _)                   _ = pv-suc tt tt (λ _ _ → refl)
-pcView (instr-reg-op out-nz)                  _ = pv-suc tt tt (λ _ fs → nz-pc (readReg (regs (floc fs)) Output) fs)
+pcView (worklist-init k)                    _ = pv-suc tt tt (λ _ fs → slot-adv (worklist-init k) fs)
+pcView (worklist-push k)                    _ = pv-suc tt tt (λ _ fs → slot-adv (worklist-push k) fs)
+pcView (worklist-pop k)                     _ = pv-suc tt tt (λ _ fs → slot-adv (worklist-pop k) fs)
+pcView (worklist-check k)                   _ = pv-suc tt tt (λ _ fs → slot-adv (worklist-check k) fs)
+pcView (instr-sigop _)                        _ = pv-suc tt tt (λ _ _ → inj₁ refl)
+pcView (instr-load-const _ _)                 _ = pv-suc tt tt (λ _ _ → inj₁ refl)
+pcView (instr-load-code-addr _)               _ = pv-suc tt tt (λ _ _ → inj₁ refl)
+pcView instr-save-closure-reg                 _ = pv-suc tt tt (λ _ _ → inj₁ refl)
+pcView (instr-load-tag-lit _)                 _ = pv-suc tt tt (λ _ _ → inj₁ refl)
+pcView (instr-alloc-heap _)                   _ = pv-suc tt tt (λ _ _ → inj₁ refl)
+pcView (instr-reg-op out-nz)                  _ = pv-suc tt tt (λ _ fs → inj₁ (nz-pc (readReg (regs (floc fs)) Output) fs))
 
 -- THE RUN INVARIANT is the run's own: an induction on `Reachable` whose steps
 -- read two facts of the code and nothing else (D455): what each instruction
@@ -591,13 +601,21 @@ run-frame-wf prog img grd = go
         step (pv-suc ff nj adv) =
           mkFrameWF
             (subst₂ (RetMatch prog) (sym (sf-saved same)) (sym (sf-ret same)) (fw-stack ih))
-            -- a FALL-THROUGH cannot land on a body entry: the emitter put a
-            -- guard there, and this instruction is not one.
-            (λ ℓ bb H → ⊥-elim (no-fallthrough (fpc fs'') ℓ bb i (nj-eq nj) (ff-not-ret ff) (adv-not-leave (adv prog fs'')) ftq
-                          (subst (λ z → fetch prog z ≡ just (instr-ctrl (c-entry ℓ bb)))
-                                 (adv prog fs'') H)))
+            (land (adv prog fs''))
           where
             same = flat-same-frames i prog fs'' ff
+            -- a FALL-THROUGH cannot land on a body entry: the emitter put a
+            -- guard there, and this instruction is not one. (B1.7b: a fault
+            -- stays on this instruction, which is not an entry either.)
+            land : (fpc (flat-exec-instr i prog fs'') ≡ suc (fpc fs'')) ⊎ (flat-exec-instr i prog fs'' ≡ flat-fault fs'')
+                 → ∀ ℓ bb → fetch prog (fpc (flat-exec-instr i prog fs'')) ≡ just (instr-ctrl (c-entry ℓ bb))
+                 → (frame-slots (falloc (flat-exec-instr i prog fs'')) ≡ 0) × Σ ℕ (λ r → flink (flat-exec-instr i prog fs'') ≡ just r)
+                   × Σ ℕ (λ rpc → Σ (List ℕ) (λ rest → fret (flat-exec-instr i prog fs'') ≡ rpc ∷ rest))
+            land (inj₁ a) ℓ bb H =
+              ⊥-elim (no-fallthrough (fpc fs'') ℓ bb i (nj-eq nj) (ff-not-ret ff) (adv-not-leave a) ftq
+                        (subst (λ z → fetch prog z ≡ just (instr-ctrl (c-entry ℓ bb))) a H))
+            land (inj₂ e) ℓ bb H =
+              ⊥-elim (subst FrameFreeI (just-injI (trans (sym ftq) (subst (λ z → fetch prog z ≡ just (instr-ctrl (c-entry ℓ bb))) (cong fpc e) H))) ff)
         -- FRAME-FREE JUMP: frames untouched.
         step (pv-jump ff m mlab jp) =
           mkFrameWF
@@ -857,7 +875,11 @@ run-step-pc-pos prog fs i r ftq = step (pcView i (frame-op-absurd prog fs i (run
     ent≢start : ∀ {e b' b} → instr-ctrl (c-entry e b') ≡ instr-ctrl (c-start b) → ⊥
     ent≢start ()
     step : PcView i → fpc (flat-exec-instr i prog fs) ≡ 0 → ⊥
-    step (pv-suc ff nj adv) z = z≢s (trans (sym (adv prog fs)) z)
+    step (pv-suc ff nj adv) z = sgo (adv prog fs)
+      where
+        sgo : (fpc (flat-exec-instr i prog fs) ≡ suc (fpc fs)) ⊎ (flat-exec-instr i prog fs ≡ flat-fault fs) → ⊥
+        sgo (inj₁ a) = z≢s (trans (sym a) z)
+        sgo (inj₂ e) = unmoved (λ b eq → subst FrameFreeI eq ff) (cong fpc e) z
     step (pv-jump ff m mlab jp) z = jgo (jp prog fs)
       where
         not-start : ∀ b → i ≡ instr-ctrl (c-start b) → ⊥
@@ -904,11 +926,12 @@ run-step-pc-pos prog fs i r ftq = step (pcView i (frame-op-absurd prog fs i (run
                      (trans (sym (cong (λ x → fpc (do-call-at x fs)) fe)) z))
 
 slot-read-in-frame : ∀ prog (fs : FlatState) (slot : Slot) (i : AbstractInstr) → RunAt prog fs
+                   → halted (floc fs) ≡ false
                    → fetch prog (fpc fs) ≡ just i → slot-of i ≡ just slot
                    → slot < frame-slots (falloc fs)
--- D455: the run's own fact, from the program's bundle (master's image proves it
--- by its positional scan, `OldSeg.scan-slots`)
-slot-read-in-frame prog fs slot i r ftq soq = em-slots (run-em r) fs i slot (run-reach r) ftq soq
+-- B1.7b (D456): the machine's slot gate, passed at a reached step (it did not
+-- fault: the run is sound). It was the image's (`Emitted.em-slots`, D455).
+slot-read-in-frame prog fs slot i r h ftq soq = slot-gate-ok i prog fs soq (step-sound prog fs r h ftq)
 
 ------------------------------------------------------------------------
 -- THE POINTER-BOUNDS INVARIANT IS A THEOREM (plan 0.54 rung D, item 5).
@@ -1068,13 +1091,13 @@ slot-read-written : ∀ prog (fs : FlatState) (slot : Slot) (i : AbstractInstr) 
                   → stackMem (floc fs) (current-frame (falloc fs)) slot ≡ nothing → ⊥
 slot-read-written prog fs slot .(load-from-slot slot) r h ftq sr-load empty =
   true≢false (at (λ mv → LocState.faulted (proj₁ (exec-load-from-slot-with-value mv (floc fs) (falloc fs)))) empty
-                 (step-ok prog fs (load-from-slot slot) r h ftq))
+                 (slot-go-ok (load-from-slot slot) prog fs refl (step-ok prog fs (load-from-slot slot) r h ftq)))
 slot-read-written prog fs slot .(restore-input slot) r h ftq sr-restore empty =
   true≢false (at (λ mv → LocState.faulted (proj₁ (exec-restore-input-with-value mv (floc fs) (falloc fs)))) empty
-                 (step-ok prog fs (restore-input slot) r h ftq))
+                 (slot-go-ok (restore-input slot) prog fs refl (step-ok prog fs (restore-input slot) r h ftq)))
 slot-read-written prog fs slot .(worklist-pop slot) r h ftq sr-pop empty =
   true≢false (at (λ mv → LocState.faulted (proj₁ (exec-load-from-slot-with-value mv (floc fs) (falloc fs)))) empty
-                 (step-ok prog fs (worklist-pop slot) r h ftq))
+                 (slot-go-ok (worklist-pop slot) prog fs refl (step-ok prog fs (worklist-pop slot) r h ftq)))
 
 -- THE LOAD/STORE TARGET DISCIPLINE: at an emitted load or store site `Input1`
 -- holds a POINTER — a resolution of anything else faults. (For a store this

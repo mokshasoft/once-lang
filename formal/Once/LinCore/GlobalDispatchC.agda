@@ -211,7 +211,17 @@ module DispC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
           → InBlk fs
           → Arrives (blockᴵ (ktrc X C)) (frm {t = just C} {Es = Es} k es os r) (vw (see es) []ᵉ ∥ mone ∷ˢ []ˢ) n fs
   gcopy-d {X = X} {C} {Es} {S = S} {r = r} {es = es} {fs = fs} d inv seg run fsl C′ s₀ pcv words cc pe nx ok I =
-    case tc-disp {X} {C} (ws Es) (Tp (dsiteφ d) S ∸ 1) seg run s₀ pcv words cc I of λ where
+    case tc-disp {X} {C} (ws Es) (Tp (dsiteφ d) S ∸ 1) seg run
+           (subst (ws Es Data.Nat.<_) (sym fsl)
+              (Data.Nat.Properties.≤-<-trans
+                 (Data.Nat.Properties.≤-trans (Data.Nat.Properties.m≤n+m (ws Es) _)
+                    (Data.Nat.Properties.≤-trans (CfgW.c-efit C′) (Data.Nat.Properties.m≤m+n (EP (dsiteφ d)) (OP (dsiteφ d)))))
+                 (sv₁<fb (dsiteφ d))))
+           (subst ((Tp (dsiteφ d) S ∸ 1) Data.Nat.<_) (sym fsl)
+              (Data.Nat.Properties.≤-<-trans
+                 (Data.Nat.Properties.≤-trans (Data.Nat.Properties.m∸n≤m (Tp (dsiteφ d) S) 1) (Data.Nat.Properties.m∸n≤m (budget (dsiteφ d)) (ws S)))
+                 (sv₁<fb (dsiteφ d))))
+           s₀ pcv words cc I of λ where
       (m , N , fs′ , run′ , T0 , q , CI) →
         N , fs′ , run′ ,
         record { g-pt = p-tramp m (at whole) ; g-here = (tc0 m , T0) ; g-next = trans (cy-next CI) nx

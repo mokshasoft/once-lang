@@ -69,7 +69,7 @@ module SimR {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
   open ExecFinal {FS} using (in-block?)
   open import Once.LinCore.Moves {FS}
     using (Seg; slot; restore-step; loadat-step; storeat-step; InBlk; alloc-step; store-step; mov-out-step; store-same; store-other; store-frame
-          ; mvSP-run; MovedW; module MovedW) renaming (ln to nsteps)
+          ; mvSP-run; mkInFr; MovedW; module MovedW) renaming (ln to nsteps)
   open MovedW using (w-pc; w-alloc; w-ret; w-in; w-moved; w-rest) renaming (w-halt to wm-halt; w-log to wm-log)
   open Sim {FS} U wordOf using (slots-def; slots-at)
 
@@ -165,15 +165,15 @@ module SimR {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
 
   word-copy : ∀ prog (a : FlatState) (s₂ s₃ k ro r : ℕ) (v : W)
             → Seg prog (fpc a) (restore-input s₂ ∷ load-at k ∷ restore-input s₃ ∷ store-at k ∷ [])
-            → fhalted (floc a) ≡ false
+            → fhalted (floc a) ≡ false → s₂ < AllocState.frame-slots (falloc a) → s₃ < AllocState.frame-slots (falloc a)
             → slot a s₂ ≡ just (SV-Ptr (AtDynamic (heap-loc (mkHeapRef ro) 0))) → heapMem (floc a) (heap-loc (mkHeapRef ro) (k + 0)) ≡ just v
             → slot a s₃ ≡ just (SV-Ptr (AtDynamic (heap-loc (mkHeapRef r) 0)))
             → in-block? (AllocState.block-size (falloc a)) (AtDynamic (heap-loc (mkHeapRef r) (k + 0))) ≡ true
             → Σ FlatState λ a′ → FlatSteps prog 4 a a′ × WC a a′ r k v
-  word-copy prog a s₂ s₃ k ro r v (g₁ , g₂ , g₃ , g₄ , _) h e₂ ev e₃ ib =
+  word-copy prog a s₂ s₃ k ro r v (g₁ , g₂ , g₃ , g₄ , _) h l₂ l₃ e₂ ev e₃ ib =
     a₄ ,
-    step-at a₁ (h , g₁) (restore-step a s₂ e₂) (step-at a₂ (h , g₂) (loadat-step a₁ k refl refl ev)
-    (step-at a₃ (h , g₃) (restore-step a₂ s₃ e₃) (step-at a₄ (h , g₄) (storeat-step a₃ k refl refl ib) done))) ,
+    step-at a₁ (h , g₁) (restore-step a s₂ l₂ e₂) (step-at a₂ (h , g₂) (loadat-step a₁ k refl refl ev)
+    (step-at a₃ (h , g₃) (restore-step a₂ s₃ l₃ e₃) (step-at a₄ (h , g₄) (storeat-step a₃ k refl refl ib) done))) ,
     record { wc-pc = refl ; wc-alloc = refl ; wc-ret = refl
            ; wc-halt = cong fhalted (wl-heap (floc a₃) _ v) ; wc-log = cong LocState.ev-log (wl-heap (floc a₃) _ v) ; wc-stack = cong stackMem (wl-heap (floc a₃) _ v)
            ; wc-in = cong (λ s′ → readReg (LocState.regs s′) Input1) (wl-heap (floc a₃) _ v)
@@ -228,6 +228,7 @@ module SimR {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
                                    ∷ restore-input s₂ ∷ load-at 3 ∷ restore-input s₃ ∷ store-at 3
                                    ∷ mov-to-output ∷ store-at 0 ∷ mvSP 0 hdr (length wx))
               → fhalted (floc fs) ≡ false
+              → s₂ < AllocState.frame-slots (falloc fs) → s₃ < AllocState.frame-slots (falloc fs) → length wx Data.Nat.≤ AllocState.frame-slots (falloc fs)
               → slot fs s₂ ≡ just (cellPtr i) → ¬ s₃ ≡ s₂ → (∀ k → k < length wx → ¬ s₃ ≡ k)
               → heapMem (floc fs) (cellLoc i 1) ≡ just w₁ → heapMem (floc fs) (cellLoc i 2) ≡ just w₂
               → heapMem (floc fs) (cellLoc i 3) ≡ just w₃
@@ -235,9 +236,9 @@ module SimR {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
               → SlotsAt (slot fs) 0 wx
               → Σ FlatState λ fs′ → FlatSteps prog (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (nsteps (length wx)))))))))))))))))) fs fs′
                   × ReCl fs fs′ s₃ sz w₁ w₂ w₃ wx
-  reclose-run prog fs s₂ s₃ sz i w₁ w₂ w₃ wx (g₁ , g₂ , c₁ , c₂ , c₃ , c₄ , d₁ , d₂ , d₃ , d₄ , e₁ , e₂ , e₃ , e₄ , m₁ , m₂ , sm) h
+  reclose-run prog fs s₂ s₃ sz i w₁ w₂ w₃ wx (g₁ , g₂ , c₁ , c₂ , c₃ , c₄ , d₁ , d₂ , d₃ , d₄ , e₁ , e₂ , e₃ , e₄ , m₁ , m₂ , sm) h ls₂ ls₃ lw
               s₂i ne₂₃ ne-k ev₁ ev₂ ev₃ ne-i sw =
-    copy₁ (word-copy prog fs₂ s₂ s₃ 1 (serial i) r w₁ (c₁ , c₂ , c₃ , c₄ , tt) h s₂₂ ev₁ s₃₂ (sw-in n r bs 1 (s≤s (s≤s z≤n))))
+    copy₁ (word-copy prog fs₂ s₂ s₃ 1 (serial i) r w₁ (c₁ , c₂ , c₃ , c₄ , tt) h ls₂ ls₃ s₂₂ ev₁ s₃₂ (sw-in n r bs 1 (s≤s (s≤s z≤n))))
     where
       import Data.Nat.Properties
       w = length wx
@@ -261,6 +262,7 @@ module SimR {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
       copy₁ : Σ FlatState (λ a → FlatSteps prog 4 fs₂ a × WC fs₂ a r 1 w₁) → _
       copy₁ (a , st₁ , W₁) =
         copy₂ (word-copy prog a s₂ s₃ 2 (serial i) r w₂ (subst (λ z → Seg prog z (restore-input s₂ ∷ load-at 2 ∷ restore-input s₃ ∷ store-at 2 ∷ [])) (sym (wc-pc W₁)) (d₁ , d₂ , d₃ , d₄ , tt)) (trans (wc-halt W₁) h)
+                 (subst (s₂ <_) (sym (cong AllocState.frame-slots (wc-alloc W₁))) ls₂) (subst (s₃ <_) (sym (cong AllocState.frame-slots (wc-alloc W₁))) ls₃)
                  (trans (slot-wc W₁ s₂) s₂₂) (trans (wc-other W₁ _ ne-old) ev₂) (trans (slot-wc W₁ s₃) s₃₂)
                  (trans (cong (λ al → in-block? (AllocState.block-size al) (AtDynamic (heap-loc (mkHeapRef r) 2))) (wc-alloc W₁))
                         (sw-in n r bs 2 (s≤s (s≤s (s≤s z≤n))))))
@@ -269,6 +271,8 @@ module SimR {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
           copy₂ (b , st₂ , W₂) =
             copy₃ (word-copy prog b s₂ s₃ 3 (serial i) r w₃
                      (subst (λ z → Seg prog z (restore-input s₂ ∷ load-at 3 ∷ restore-input s₃ ∷ store-at 3 ∷ [])) (sym (trans (wc-pc W₂) (cong (λ z → suc (suc (suc (suc z)))) (wc-pc W₁)))) (e₁ , e₂ , e₃ , e₄ , tt)) (trans (wc-halt W₂) (trans (wc-halt W₁) h))
+                     (subst (s₂ <_) (sym (cong AllocState.frame-slots (trans (wc-alloc W₂) (wc-alloc W₁)))) ls₂)
+                     (subst (s₃ <_) (sym (cong AllocState.frame-slots (trans (wc-alloc W₂) (wc-alloc W₁)))) ls₃)
                      (trans (slot-wc W₂ s₂) (trans (slot-wc W₁ s₂) s₂₂))
                      (trans (wc-other W₂ _ ne-old) (trans (wc-other W₁ _ ne-old) ev₃))
                      (trans (slot-wc W₂ s₃) (trans (slot-wc W₁ s₃) s₃₂))
@@ -276,7 +280,9 @@ module SimR {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
                             (sw-in n r bs 3 (s≤s (s≤s (s≤s (s≤s z≤n)))))))
             where
               copy₃ : Σ FlatState (λ c → FlatSteps prog 4 b c × WC b c r 3 w₃) → _
-              copy₃ (c , st₃ , W₃) = fin (mvSP-run prog fs₁₆ (AtDynamic P) 0 hdr w segM h₁₆ in₁₆ def (λ k _ → refl) ib (λ k k′ _ _ ()))
+              copy₃ (c , st₃ , W₃) = fin (mvSP-run prog fs₁₆ (AtDynamic P) 0 hdr w segM h₁₆ in₁₆ def (λ k _ → refl) ib (λ k k′ _ _ ())
+                                          (mkInFr (λ k lt → subst (λ F′ → k + 0 < F′) (sym (cong AllocState.frame-slots al-c))
+                                                     (<-≤-trans (subst (_< w) (sym (Data.Nat.Properties.+-identityʳ k)) lt) lw))))
                 where
                   pc-c : fpc c ≡ suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (fpc fs))))))))))))))
                   pc-c = trans (wc-pc W₃) (cong (λ z → suc (suc (suc (suc z)))) (trans (wc-pc W₂) (cong (λ z → suc (suc (suc (suc z)))) (wc-pc W₁))))
@@ -320,7 +326,7 @@ module SimR {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
                   fin : Σ FlatState (λ fs′ → FlatSteps prog (nsteps w) fs₁₆ fs′ × MovedW fs₁₆ fs′ (AtDynamic P) 0 hdr w) → _
                   fin (fs′ , stM , M) =
                     fs′ ,
-                    step-at fs₁ (h , g₁) (alloc-step fs n) (step-at fs₂ (h , g₂) (store-step fs₁ s₃)
+                    step-at fs₁ (h , g₁) (alloc-step fs n) (step-at fs₂ (h , g₂) (store-step fs₁ s₃ ls₃)
                       (FlatSteps-++ st₁ (FlatSteps-++ st₂ (FlatSteps-++ st₃
                         (step-at fs₁₅ (h-c , subst (λ z → fetch prog z ≡ just mov-to-output) (sym pc-c) m₁)
                            (mov-out-step c)

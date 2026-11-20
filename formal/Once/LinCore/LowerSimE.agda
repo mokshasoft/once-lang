@@ -83,7 +83,7 @@ clear-other mem f b f′ k ne with f ≟F f′
 open import Once.CCC.Machine.SMCore
   using (lea-slot; mov-to-input; mov-to-output; store-at-slot; SV-Ptr; readReg; writeReg; Input1; Output; module LocState; StoredValue)
 open import Once.CCC.Machine.Locations using (AtStack)
-open import Once.LinCore.Moves {FS} using (Seg; lea-step; mov-in-step; mov-out-step; store-step; store-same; store-other; store-frame; load-step)
+open import Once.LinCore.Moves {FS} using (Seg; Fr; lea-step; mov-in-step; mov-out-step; store-step; store-same; store-other; store-frame; load-step)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open FlatStepsAPI {FS} using (FlatSteps; step-at) renaming ([] to done)
 open import Data.Bool using (false)
@@ -117,14 +117,14 @@ call-in : ∀ prog (fs : FlatState) (a : ℕ) (f : CanonicalName) (e : EntryId) 
         → Seg prog (fpc fs) (lea-slot a ∷ mov-to-input ∷ instr-ctrl (c-call-fn f) ∷ [])
         → find-fn prog f ≡ just q
         → Seg prog q (instr-ctrl (c-entry e b) ∷ store-at-slot s₂ ∷ mov-to-output ∷ store-at-slot s₁ ∷ [])
-        → fhalted (floc fs) ≡ false
+        → fhalted (floc fs) ≡ false → a < Fr fs → s₁ < b → s₂ < b
         → Σ FlatState λ fs′ → FlatSteps prog 7 fs fs′
             × CallIn fs fs′ a b s₁ s₂ q (suc (suc (suc (fpc fs)))) (SV-Ptr (AtStack (current-frame (falloc fs)) a))
-call-in prog fs a f e q b s₁ s₂ s≢ (g₁ , g₂ , g₃ , _) ff (h₁ , h₂ , h₃ , h₄ , _) h =
+call-in prog fs a f e q b s₁ s₂ s≢ (g₁ , g₂ , g₃ , _) ff (h₁ , h₂ , h₃ , h₄ , _) h la l₁ l₂ =
   fs₇ ,
-  step-at fs₁ (h , g₁) (lea-step fs a) (step-at fs₂ (h , g₂) (mov-in-step fs₁) (step-at fs₃ (h , g₃) (call-step prog fs₂ f ff)
-  (step-at fs₄ (h , h₁) (entry-step prog fs₃ e b) (step-at fs₅ (h , h₂) (store-step fs₄ s₂)
-  (step-at fs₆ (h , h₃) (mov-out-step fs₅) (step-at fs₇ (h , h₄) (store-step fs₆ s₁) done)))))) ,
+  step-at fs₁ (h , g₁) (lea-step fs a la) (step-at fs₂ (h , g₂) (mov-in-step fs₁) (step-at fs₃ (h , g₃) (call-step prog fs₂ f ff)
+  (step-at fs₄ (h , h₁) (entry-step prog fs₃ e b) (step-at fs₅ (h , h₂) (store-step fs₄ s₂ l₂)
+  (step-at fs₆ (h , h₃) (mov-out-step fs₅) (step-at fs₇ (h , h₄) (store-step fs₆ s₁ l₁) done)))))) ,
   record { ci-frame = refl ; ci-saved = refl ; ci-slots = refl ; ci-ret = refl ; ci-pc = refl ; ci-in = refl
          ; ci-s₁ = store-same (floc fs₆) cf′ s₁ ptr
          ; ci-s₂ = trans (store-other (floc fs₆) cf′ s₁ ptr s₂ s≢) (store-same (floc fs₄) cf′ s₂ ptr)
@@ -149,15 +149,15 @@ call-in-v : ∀ prog (fs : FlatState) (a v : ℕ) (f : CanonicalName) (e : Entry
           → Seg prog (fpc fs) (lea-slot a ∷ mov-to-input ∷ lea-slot v ∷ instr-ctrl (c-call-fn f) ∷ [])
           → find-fn prog f ≡ just q
           → Seg prog q (instr-ctrl (c-entry e b) ∷ store-at-slot s₂ ∷ mov-to-output ∷ store-at-slot s₁ ∷ [])
-          → fhalted (floc fs) ≡ false
+          → fhalted (floc fs) ≡ false → a < Fr fs → v < Fr fs → s₁ < b → s₂ < b
           → Σ FlatState λ fs′ → FlatSteps prog 8 fs fs′
               × CallIn fs fs′ a b s₁ s₂ q (suc (suc (suc (suc (fpc fs))))) (SV-Ptr (AtStack (current-frame (falloc fs)) v))
-call-in-v prog fs a v f e q b s₁ s₂ s≢ (g₁ , g₂ , g₀ , g₃ , _) ff (h₁ , h₂ , h₃ , h₄ , _) h =
+call-in-v prog fs a v f e q b s₁ s₂ s≢ (g₁ , g₂ , g₀ , g₃ , _) ff (h₁ , h₂ , h₃ , h₄ , _) h la lv l₁ l₂ =
   fs₈ ,
-  step-at fs₁ (h , g₁) (lea-step fs a) (step-at fs₂ (h , g₂) (mov-in-step fs₁) (step-at fs₂′ (h , g₀) (lea-step fs₂ v)
+  step-at fs₁ (h , g₁) (lea-step fs a la) (step-at fs₂ (h , g₂) (mov-in-step fs₁) (step-at fs₂′ (h , g₀) (lea-step fs₂ v lv)
   (step-at fs₃ (h , g₃) (call-step prog fs₂′ f ff)
-  (step-at fs₄ (h , h₁) (entry-step prog fs₃ e b) (step-at fs₅ (h , h₂) (store-step fs₄ s₂)
-  (step-at fs₆ (h , h₃) (mov-out-step fs₅) (step-at fs₈ (h , h₄) (store-step fs₆ s₁) done))))))) ,
+  (step-at fs₄ (h , h₁) (entry-step prog fs₃ e b) (step-at fs₅ (h , h₂) (store-step fs₄ s₂ l₂)
+  (step-at fs₆ (h , h₃) (mov-out-step fs₅) (step-at fs₈ (h , h₄) (store-step fs₆ s₁ l₁) done))))))) ,
   record { ci-frame = refl ; ci-saved = refl ; ci-slots = refl ; ci-ret = refl ; ci-pc = refl ; ci-in = refl
          ; ci-s₁ = store-same (floc fs₆) cf′ s₁ ptr
          ; ci-s₂ = trans (store-other (floc fs₆) cf′ s₁ ptr s₂ s≢) (store-same (floc fs₄) cf′ s₂ vptr)
@@ -185,7 +185,7 @@ call-in-v prog fs a v f e q b s₁ s₂ s≢ (g₁ , g₂ , g₀ , g₃ , _) ff 
 
 open import Once.CCC.Machine.SMCore using (restore-input; offsetLoc; StoredValue; load-from-slot)
 open import Once.LinCore.MoveCode using (mvSP)
-open import Once.LinCore.Moves {FS} using (slot; restore-step; mvSP-run; MovedW; Seg-++ˡ; Seg-++ʳ; win-here; win-there; gate-stack; module MovedW)
+open import Once.LinCore.Moves {FS} using (slot; InFr; mkInFr; restore-step; mvSP-run; MovedW; Seg-++ˡ; Seg-++ʳ; win-here; win-there; gate-stack; module MovedW)
   renaming (ln to nsteps)
 open MovedW using (w-pc; w-alloc; w-in; w-moved; w-rest)
   renaming (w-halt to wm-halt; w-log to wm-log)
@@ -232,12 +232,12 @@ call-outA : ∀ prog (fs : FlatState) (cfc af : Frame) (a s₁ src o n b pc : �
           → (∀ k → k < n → Σ (StoredValue FS) λ v → slot fs (k + src) ≡ just v)
           → (∀ k → k < n → ExecFinal.in-window {FS} (ExecFinal.live-frames {FS} (falloc fs)) af ((k + o) + a) ≡ true)
           → Seg prog (fpc fs) (restore-input s₁ ∷ mvSP src o n ++ instr-ctrl (c-ret b) ∷ [])
-          → fhalted (floc fs) ≡ false
+          → fhalted (floc fs) ≡ false → s₁ < Fr fs → InFr fs src n
           → Σ FlatState λ fs′ → FlatSteps prog (suc (nsteps n + 1)) fs fs′ × CallOutA fs fs′ cfc af a src o n pc rest sv sl
-call-outA prog fs cfc af a s₁ src o n b pc rest sv sl hret bslots hsv ne ep def win (g₁ , s) h =
+call-outA prog fs cfc af a s₁ src o n b pc rest sv sl hret bslots hsv ne ep def win (g₁ , s) h ls rs =
   fin (mvSP-run prog fs₁ (AtStack af a) src o n (Seg-++ˡ prog (suc (fpc fs)) (mvSP src o n) _ s) h refl def
          (λ k k< → gate-stack (falloc fs) (k + o) af a (win k k<)) (λ k _ → refl)
-         (λ k k′ _ _ e → ne (frame-of-eq e)))
+         (λ k k′ _ _ e → ne (frame-of-eq e)) (mkInFr (InFr.in-fr rs)))
   where
     fs₁ = record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Input1 (SV-Ptr (AtStack af a)) } ; fpc = suc (fpc fs) }
     frame-of-eq : ∀ {x y f} → AtStack {FS} af x ≡ AtStack f y → af ≡ f
@@ -246,7 +246,7 @@ call-outA prog fs cfc af a s₁ src o n b pc rest sv sl hret bslots hsv ne ep de
         → Σ FlatState λ fs′ → FlatSteps prog (suc (nsteps n + 1)) fs fs′ × CallOutA fs fs′ cfc af a src o n pc rest sv sl
     fin (fs₂ , st₂ , W) =
       fs₃ ,
-      step-at fs₁ (h , g₁) (restore-step fs s₁ ep) (FlatSteps-++ st₂ (step-at fs₃ (trans (wm-halt W) h , fret′) (ret-step prog fs₂ b eqR (trans bslots (sym (cong frame-slots (w-alloc W))))) done)) ,
+      step-at fs₁ (h , g₁) (restore-step fs s₁ ls ep) (FlatSteps-++ st₂ (step-at fs₃ (trans (wm-halt W) h , fret′) (ret-step prog fs₂ b eqR (trans bslots (sym (cong frame-slots (w-alloc W))))) done)) ,
       record { co-frame = cong (λ L → current-frame (leave-frame-aux L (falloc fs₂))) eqL
              ; co-slots = cong (λ L → frame-slots (leave-frame-aux L (falloc fs₂))) eqL
              ; co-saved = cong (λ L → saved-frames (leave-frame-aux L (falloc fs₂))) eqL
@@ -292,10 +292,10 @@ call-out : ∀ prog (fs : FlatState) (cfc : Frame) (a s₁ src o n b pc : ℕ) (
          → (∀ k → k < n → Σ (StoredValue FS) λ v → slot fs (k + src) ≡ just v)
          → (∀ k → k < n → (k + o) + a < sl)
          → Seg prog (fpc fs) (restore-input s₁ ∷ mvSP src o n ++ instr-ctrl (c-ret b) ∷ [])
-         → fhalted (floc fs) ≡ false
+         → fhalted (floc fs) ≡ false → s₁ < Fr fs → InFr fs src n
          → Σ FlatState λ fs′ → FlatSteps prog (suc (nsteps n + 1)) fs fs′ × CallOut fs fs′ cfc a src o n pc rest sv sl
-call-out prog fs cfc a s₁ src o n b pc rest sv sl hret bslots hsv ne ep def bnd =
-  call-outA prog fs cfc cfc a s₁ src o n b pc rest sv sl hret bslots hsv ne ep def (λ k k< → caller-win (falloc fs) cfc sl sv ((k + o) + a) hsv (bnd k k<))
+call-out prog fs cfc a s₁ src o n b pc rest sv sl hret bslots hsv ne ep def bnd seg h ls rs =
+  call-outA prog fs cfc cfc a s₁ src o n b pc rest sv sl hret bslots hsv ne ep def (λ k k< → caller-win (falloc fs) cfc sl sv ((k + o) + a) hsv (bnd k k<)) seg h ls rs
 
 -- ★ a bare return (a free's trampoline, D434: its result One, no words to move)
 ret-out : ∀ prog (fs : FlatState) (cfc : Frame) (b pc : ℕ) (rest : List ℕ) (sv : List (Frame × ℕ)) (sl : ℕ)
@@ -347,13 +347,13 @@ call-in-h : ∀ prog (fs : FlatState) (s : ℕ) (ap vp : StoredValue FS) (f : Ca
           → Seg prog (fpc fs) (restore-input s ∷ instr-ctrl (c-call-fn f) ∷ [])
           → find-fn prog f ≡ just q
           → Seg prog q (instr-ctrl (c-entry e b) ∷ store-at-slot s₂ ∷ mov-to-output ∷ store-at-slot s₁ ∷ [])
-          → fhalted (floc fs) ≡ false
+          → fhalted (floc fs) ≡ false → s < Fr fs → s₁ < b → s₂ < b
           → Σ FlatState λ fs′ → FlatSteps prog 6 fs fs′ × CallInH fs fs′ b s₁ s₂ q (suc (suc (fpc fs))) ap vp
-call-in-h prog fs s ap vp f e q b s₁ s₂ s≢ sa ov (g₁ , g₂ , _) ff (h₁ , h₂ , h₃ , h₄ , _) h =
+call-in-h prog fs s ap vp f e q b s₁ s₂ s≢ sa ov (g₁ , g₂ , _) ff (h₁ , h₂ , h₃ , h₄ , _) h ls l₁ l₂ =
   fs₇ ,
-  step-at fs₂ (h , g₁) (restore-step fs s sa) (step-at fs₃ (h , g₂) (call-step prog fs₂ f ff)
-  (step-at fs₄ (h , h₁) (entry-step prog fs₃ e b) (step-at fs₅ (h , h₂) (store-step fs₄ s₂)
-  (step-at fs₆ (h , h₃) (mov-out-step fs₅) (step-at fs₇ (h , h₄) (store-step fs₆ s₁) done))))) ,
+  step-at fs₂ (h , g₁) (restore-step fs s ls sa) (step-at fs₃ (h , g₂) (call-step prog fs₂ f ff)
+  (step-at fs₄ (h , h₁) (entry-step prog fs₃ e b) (step-at fs₅ (h , h₂) (store-step fs₄ s₂ l₂)
+  (step-at fs₆ (h , h₃) (mov-out-step fs₅) (step-at fs₇ (h , h₄) (store-step fs₆ s₁ l₁) done))))) ,
   record { ch-frame = refl ; ch-saved = refl ; ch-slots = refl ; ch-ret = refl ; ch-pc = refl ; ch-in = refl
          ; ch-s₁ = store-same (floc fs₆) cf′ s₁ ap
          ; ch-s₂ = trans (store-other (floc fs₆) cf′ s₁ ap s₂ s≢)
@@ -378,15 +378,15 @@ call-in-c : ∀ prog (fs : FlatState) (s : ℕ) (vp : StoredValue FS) (f : Canon
           → Seg prog (fpc fs) (lea-slot 0 ∷ mov-to-input ∷ load-from-slot s ∷ instr-ctrl (c-call-fn f) ∷ [])
           → find-fn prog f ≡ just q
           → Seg prog q (instr-ctrl (c-entry e b) ∷ store-at-slot s₂ ∷ mov-to-output ∷ store-at-slot s₁ ∷ [])
-          → fhalted (floc fs) ≡ false
+          → fhalted (floc fs) ≡ false → 0 < Fr fs → s < Fr fs → s₁ < b → s₂ < b
           → Σ FlatState λ fs′ → FlatSteps prog 8 fs fs′
               × CallInH fs fs′ b s₁ s₂ q (suc (suc (suc (suc (fpc fs))))) (SV-Ptr (AtStack (current-frame (falloc fs)) 0)) vp
-call-in-c prog fs s vp f e q b s₁ s₂ s≢ sv (g₁ , g₂ , g₃ , g₄ , _) ff (h₁ , h₂ , h₃ , h₄ , _) h =
+call-in-c prog fs s vp f e q b s₁ s₂ s≢ sv (g₁ , g₂ , g₃ , g₄ , _) ff (h₁ , h₂ , h₃ , h₄ , _) h l0 ls l₁ l₂ =
   fs₈ ,
-  step-at fs₁ (h , g₁) (lea-step fs 0) (step-at fs₂ (h , g₂) (mov-in-step fs₁) (step-at fs₃ (h , g₃) (load-step fs₂ s sv)
+  step-at fs₁ (h , g₁) (lea-step fs 0 l0) (step-at fs₂ (h , g₂) (mov-in-step fs₁) (step-at fs₃ (h , g₃) (load-step fs₂ s ls sv)
   (step-at fs₄ (h , g₄) (call-step prog fs₃ f ff)
-  (step-at fs₅ (h , h₁) (entry-step prog fs₄ e b) (step-at fs₆ (h , h₂) (store-step fs₅ s₂)
-  (step-at fs₇ (h , h₃) (mov-out-step fs₆) (step-at fs₈ (h , h₄) (store-step fs₇ s₁) done))))))) ,
+  (step-at fs₅ (h , h₁) (entry-step prog fs₄ e b) (step-at fs₆ (h , h₂) (store-step fs₅ s₂ l₂)
+  (step-at fs₇ (h , h₃) (mov-out-step fs₆) (step-at fs₈ (h , h₄) (store-step fs₇ s₁ l₁) done))))))) ,
   record { ch-frame = refl ; ch-saved = refl ; ch-slots = refl ; ch-ret = refl ; ch-pc = refl ; ch-in = refl
          ; ch-s₁ = store-same (floc fs₇) cf′ s₁ ap
          ; ch-s₂ = trans (store-other (floc fs₇) cf′ s₁ ap s₂ s≢) (store-same (floc fs₅) cf′ s₂ vp)

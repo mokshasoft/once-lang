@@ -147,6 +147,8 @@ module CallsH {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     fin₂ (enter-jh image fs₁ φ′ cf area (M ∸ wsz A) (sv₂ φ′) {X} {A} {x} {a} i o₀ wx wa ne₁ (ch-in CH) sv₂-at
             (Data.Nat.Properties.n≤1+n (budget φ′)) pa₁ sa₁ px₁ ax₁
             (λ k k< → win-push (falloc fs) (falloc fs₁) cf _ (ch-saved CH) (win k k<)) seg₂ h₁
+            (subst (budget φ′ Data.Nat.≤_) (sym (ch-slots CH)) (Data.Nat.Properties.m≤n⇒m≤1+n (Data.Nat.Properties.n≤1+n (budget φ′))))
+            (subst (sv₂ φ′ Data.Nat.<_) (sym (ch-slots CH)) (Data.Nat.Properties.n<1+n (suc (budget φ′))))
             (proj₁ (K.shape-fits p whole)) (proj₂ (K.shape-fits p whole)))
     where
       import Data.Nat.Properties
@@ -200,7 +202,7 @@ module CallsH {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   call-core-h : ∀ {X A B} {κ : Key (bsig (just X) A B)} (p : (bsig (just X) A B , κ) ∈ allK U)
                   (cf : FrameSemantics.Frame FS) (area o₀ : ℕ) (i : Id) {x : MV X} {a : MV A} {fs} (wx wa : List W)
               → Seg image (fpc fs) (restore-input 0 ∷ instr-ctrl (c-call-fn (nameOf (idx p))) ∷ [])
-              → LocState.halted (floc fs) ≡ false
+              → LocState.halted (floc fs) ≡ false → 0 Data.Nat.< AllocState.frame-slots (falloc fs)
               → slot fs 0 ≡ just (SV-Ptr (AtStack cf area))
               → AllocState.current-frame (falloc fs) ≺ cf
               → readReg (LocState.regs (floc fs)) Output ≡ SV-Ptr (AtDynamic (cellLoc i o₀))
@@ -210,10 +212,11 @@ module CallsH {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
               → Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′
                   × K.Here p whole (vw x []ᵉ ∥ a ∷ˢ []ˢ) fs′
                   × CalledH fs fs′ (suc (suc (fpc fs))) (fbudget (frameOf (blockᴵ κ))) (sv₁ (frameOf (blockᴵ κ))) (SV-Ptr (AtStack cf area))
-  call-core-h {X} {A} {B} {κ} p cf area o₀ i {x} {a} {fs} wx wa seg h s0 lt out px ax pa sa win =
+  call-core-h {X} {A} {B} {κ} p cf area o₀ i {x} {a} {fs} wx wa seg h z0 s0 lt out px ax pa sa win =
     fin (call-in-h image fs 0 (SV-Ptr (AtStack cf area)) (SV-Ptr (AtDynamic (cellLoc i o₀))) (nameOf (idx p)) (e-fn (nameOf (idx p)))
            (CalleeV.q p) (fbudget (frameOf (blockᴵ κ))) (sv₁ (frameOf (blockᴵ κ))) (sv₂ (frameOf (blockᴵ κ)))
-           (sv-ne (budget (frameOf (blockᴵ κ)))) s0 out seg (image-fn p) (CalleeV.entry-seg p) h)
+           (sv-ne (budget (frameOf (blockᴵ κ)))) s0 out seg (image-fn p) (CalleeV.entry-seg p) h
+           z0 (sv₁<fb (frameOf (blockᴵ κ))) (sv₂<fb (frameOf (blockᴵ κ))))
     where
       cur = AllocState.current-frame (falloc fs)
       fin : Σ FlatState (λ fs₁ → FlatSteps image 6 fs fs₁ × CallInH fs fs₁ (fbudget (frameOf (blockᴵ κ))) (sv₁ (frameOf (blockᴵ κ)))
@@ -227,7 +230,7 @@ module CallsH {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   call-core-c : ∀ {X A B} {κ : Key (bsig (just X) A B)} (p : (bsig (just X) A B , κ) ∈ allK U)
                   (s o₀ : ℕ) (i : Id) {x : MV X} {a : MV A} {fs} (wx wa : List W)
               → Seg image (fpc fs) (lea-slot 0 ∷ mov-to-input ∷ load-from-slot s ∷ instr-ctrl (c-call-fn (nameOf (idx p))) ∷ [])
-              → LocState.halted (floc fs) ≡ false
+              → LocState.halted (floc fs) ≡ false → 0 Data.Nat.< AllocState.frame-slots (falloc fs) → s Data.Nat.< AllocState.frame-slots (falloc fs)
               → slot fs s ≡ just (SV-Ptr (AtDynamic (cellLoc i o₀)))
               → VW (LocState.heapMem (floc fs)) x wx → At (LocState.heapMem (floc fs)) i o₀ wx
               → VW (LocState.heapMem (floc fs)) a wa → SlotsAt (slot fs) (((wsz A ⊔ wsz B) ∸ wsz A) + 0) wa
@@ -236,10 +239,11 @@ module CallsH {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                   × K.Here p whole (vw x []ᵉ ∥ a ∷ˢ []ˢ) fs′
                   × CalledH fs fs′ (suc (suc (suc (suc (fpc fs))))) (fbudget (frameOf (blockᴵ κ))) (sv₁ (frameOf (blockᴵ κ)))
                             (SV-Ptr (AtStack (AllocState.current-frame (falloc fs)) 0))
-  call-core-c {X} {A} {B} {κ} p s o₀ i {x} {a} {fs} wx wa seg h sv px ax pa sa win =
+  call-core-c {X} {A} {B} {κ} p s o₀ i {x} {a} {fs} wx wa seg h z0 ls sv px ax pa sa win =
     fin (call-in-c image fs s (SV-Ptr (AtDynamic (cellLoc i o₀))) (nameOf (idx p)) (e-fn (nameOf (idx p)))
            (CalleeV.q p) (fbudget (frameOf (blockᴵ κ))) (sv₁ (frameOf (blockᴵ κ))) (sv₂ (frameOf (blockᴵ κ)))
-           (sv-ne (budget (frameOf (blockᴵ κ)))) sv seg (image-fn p) (CalleeV.entry-seg p) h)
+           (sv-ne (budget (frameOf (blockᴵ κ)))) sv seg (image-fn p) (CalleeV.entry-seg p) h
+           z0 ls (sv₁<fb (frameOf (blockᴵ κ))) (sv₂<fb (frameOf (blockᴵ κ))))
     where
       cur = AllocState.current-frame (falloc fs)
       fin : Σ FlatState (λ fs₁ → FlatSteps image 8 fs fs₁ × CallInH fs fs₁ (fbudget (frameOf (blockᴵ κ))) (sv₁ (frameOf (blockᴵ κ)))

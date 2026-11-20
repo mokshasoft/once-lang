@@ -813,6 +813,17 @@ cl-call-at : ∀ (mj : Maybe ℕ) (fs : FlatState)
 cl-call-at (just j) fs b = b
 cl-call-at nothing  fs b = b
 
+-- B1.7b (D456): a slot instruction's step is the plain one or, out of the
+-- frame, the fault; both keep the store well formed and the closure below
+wf-slot : ∀ (i : AbstractInstr) (fs : FlatState) → FlatWF fs → FlatWF (flat-step-straight i fs)
+wf-slot i fs wf = straight-keeps FlatWF i fs (proj₁ (wf-abstract i (floc fs) (falloc fs) wf)) (wf-fault wf)
+
+cl-slot : ∀ (i : AbstractInstr) (fs : FlatState) → FlatWF fs
+        → sv-below (next-heap-ref (falloc fs)) (fclosure fs)
+        → sv-below (next-heap-ref (falloc (flat-step-straight i fs))) (fclosure (flat-step-straight i fs))
+cl-slot i fs wf b = straight-keeps (λ t → sv-below (next-heap-ref (falloc t)) (fclosure t)) i fs
+                      (sv-mono (fclosure fs) (proj₂ (wf-abstract i (floc fs) (falloc fs) wf)) b) b
+
 cl-step : ∀ (i : AbstractInstr) (prog : AbstractTrace) (fs : FlatState) → FlatWF fs
         → sv-below (next-heap-ref (falloc fs)) (fclosure fs)
         → sv-below (next-heap-ref (falloc (flat-exec-instr i prog fs)))
@@ -845,17 +856,17 @@ cl-step mov-to-output            prog fs wf b = sv-mono (fclosure fs) (proj₂ (
 cl-step mov-to-input             prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract mov-to-input (floc fs) (falloc fs) wf)) b
 cl-step load-indirect            prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract load-indirect (floc fs) (falloc fs) wf)) b
 cl-step load-indirect-suc        prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract load-indirect-suc (floc fs) (falloc fs) wf)) b
-cl-step (load-from-slot k)       prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (load-from-slot k) (floc fs) (falloc fs) wf)) b
-cl-step (store-at-slot k)        prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (store-at-slot k) (floc fs) (falloc fs) wf)) b
+cl-step (load-from-slot k)       prog fs wf b = cl-slot (load-from-slot k) fs wf b
+cl-step (store-at-slot k)        prog fs wf b = cl-slot (store-at-slot k) fs wf b
 cl-step store-indirect           prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract store-indirect (floc fs) (falloc fs) wf)) b
 cl-step store-indirect-suc       prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract store-indirect-suc (floc fs) (falloc fs) wf)) b
-cl-step (lea-slot k)             prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (lea-slot k) (floc fs) (falloc fs) wf)) b
-cl-step (restore-input k)        prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (restore-input k) (floc fs) (falloc fs) wf)) b
+cl-step (lea-slot k)             prog fs wf b = cl-slot (lea-slot k) fs wf b
+cl-step (restore-input k)        prog fs wf b = cl-slot (restore-input k) fs wf b
 cl-step (instr-reclaim-to k)     prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (instr-reclaim-to k) (floc fs) (falloc fs) wf)) b
-cl-step (worklist-init k)        prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (worklist-init k) (floc fs) (falloc fs) wf)) b
-cl-step (worklist-push k)        prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (worklist-push k) (floc fs) (falloc fs) wf)) b
-cl-step (worklist-pop k)         prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (worklist-pop k) (floc fs) (falloc fs) wf)) b
-cl-step (worklist-check k)       prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (worklist-check k) (floc fs) (falloc fs) wf)) b
+cl-step (worklist-init k)        prog fs wf b = cl-slot (worklist-init k) fs wf b
+cl-step (worklist-push k)        prog fs wf b = cl-slot (worklist-push k) fs wf b
+cl-step (worklist-pop k)         prog fs wf b = cl-slot (worklist-pop k) fs wf b
+cl-step (worklist-check k)       prog fs wf b = cl-slot (worklist-check k) fs wf b
 cl-step (instr-sigop si)         prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (instr-sigop si) (floc fs) (falloc fs) wf)) b
 cl-step (instr-load-const p v)   prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (instr-load-const p v) (floc fs) (falloc fs) wf)) b
 cl-step (instr-load-code-addr k) prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (instr-load-code-addr k) (floc fs) (falloc fs) wf)) b
@@ -887,12 +898,12 @@ flat-wf-step mov-to-output            prog fs wf = proj₁ (wf-abstract mov-to-o
 flat-wf-step mov-to-input             prog fs wf = proj₁ (wf-abstract mov-to-input (floc fs) (falloc fs) wf)
 flat-wf-step load-indirect            prog fs wf = proj₁ (wf-abstract load-indirect (floc fs) (falloc fs) wf)
 flat-wf-step load-indirect-suc        prog fs wf = proj₁ (wf-abstract load-indirect-suc (floc fs) (falloc fs) wf)
-flat-wf-step (load-from-slot k)       prog fs wf = proj₁ (wf-abstract (load-from-slot k) (floc fs) (falloc fs) wf)
-flat-wf-step (store-at-slot k)        prog fs wf = proj₁ (wf-abstract (store-at-slot k) (floc fs) (falloc fs) wf)
+flat-wf-step (load-from-slot k)       prog fs wf = wf-slot (load-from-slot k) fs wf
+flat-wf-step (store-at-slot k)        prog fs wf = wf-slot (store-at-slot k) fs wf
 flat-wf-step store-indirect           prog fs wf = proj₁ (wf-abstract store-indirect (floc fs) (falloc fs) wf)
 flat-wf-step store-indirect-suc       prog fs wf = proj₁ (wf-abstract store-indirect-suc (floc fs) (falloc fs) wf)
-flat-wf-step (lea-slot k)             prog fs wf = proj₁ (wf-abstract (lea-slot k) (floc fs) (falloc fs) wf)
-flat-wf-step (restore-input k)        prog fs wf = proj₁ (wf-abstract (restore-input k) (floc fs) (falloc fs) wf)
+flat-wf-step (lea-slot k)             prog fs wf = wf-slot (lea-slot k) fs wf
+flat-wf-step (restore-input k)        prog fs wf = wf-slot (restore-input k) fs wf
 flat-wf-step (instr-alloc-stack k)    prog fs wf = proj₁ (wf-abstract (instr-alloc-stack k) (floc fs) (falloc fs) wf)
 -- Plan 0.61: the flat machine MOVES THE FRAME on dealloc-stack / pop-frame.
 -- `StoreWF` is indexed by the allocation FRONTIER and quantifies over ALL
@@ -910,10 +921,10 @@ flat-wf-step instr-pop-frame          prog fs wf =
         (sym (leave-frame-heap-ref (proj₂ (exec-abstract instr-pop-frame (floc fs) (falloc fs)))))
         (proj₁ (wf-abstract instr-pop-frame (floc fs) (falloc fs) wf))
 flat-wf-step instr-call-closure       prog fs wf = wf-call prog fs wf
-flat-wf-step (worklist-init k)        prog fs wf = proj₁ (wf-abstract (worklist-init k) (floc fs) (falloc fs) wf)
-flat-wf-step (worklist-push k)        prog fs wf = proj₁ (wf-abstract (worklist-push k) (floc fs) (falloc fs) wf)
-flat-wf-step (worklist-pop k)         prog fs wf = proj₁ (wf-abstract (worklist-pop k) (floc fs) (falloc fs) wf)
-flat-wf-step (worklist-check k)       prog fs wf = proj₁ (wf-abstract (worklist-check k) (floc fs) (falloc fs) wf)
+flat-wf-step (worklist-init k)        prog fs wf = wf-slot (worklist-init k) fs wf
+flat-wf-step (worklist-push k)        prog fs wf = wf-slot (worklist-push k) fs wf
+flat-wf-step (worklist-pop k)         prog fs wf = wf-slot (worklist-pop k) fs wf
+flat-wf-step (worklist-check k)       prog fs wf = wf-slot (worklist-check k) fs wf
 flat-wf-step (instr-sigop si)         prog fs wf = proj₁ (wf-abstract (instr-sigop si) (floc fs) (falloc fs) wf)
 flat-wf-step (instr-load-const p v)   prog fs wf = proj₁ (wf-abstract (instr-load-const p v) (floc fs) (falloc fs) wf)
 flat-wf-step (instr-load-code-addr k) prog fs wf = proj₁ (wf-abstract (instr-load-code-addr k) (floc fs) (falloc fs) wf)

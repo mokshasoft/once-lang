@@ -22,8 +22,8 @@
 
 module Once.CCC.Machine.Flat where
 
-open import Data.Nat using (ℕ; zero; suc; _≡ᵇ_; _+_)
-open import Data.Nat.Properties using (+-identityʳ; +-suc; ≡ᵇ⇒≡)
+open import Data.Nat using (ℕ; zero; suc; _≡ᵇ_; _<ᵇ_; _+_; _<_)
+open import Data.Nat.Properties using (+-identityʳ; +-suc; ≡ᵇ⇒≡; <ᵇ⇒<; <⇒<ᵇ)
 -- Plan 0.63 (D089): the scans key on the STRUCTURED identity.
 open import Once.CCC.Label using (LabelId; _≡ᵇᴵ_; ≡ᵇᴵ-true; EntryId; e-thunk; e-fn; _≡ᵇᴱ_; ≡ᵇᴱ-true)
 open import Once.Spec.Name using (CanonicalName)
@@ -39,6 +39,7 @@ open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.Memory.HeapAddress using (sucHL; HeapLocation)
 open import Once.CCC.Machine.SMCore
+open import Once.CCC.Machine.InstrSlot using (slot-of)
 open AllocState using (current-frame; frame-slots; saved-frames; next-slot; next-heap-ref; block-size)
 open LocState using (regs; stackMem; heapMem; halted)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtDynamic; AtStack)
@@ -630,11 +631,48 @@ module FlatMachine {FS : FrameSemantics} where
 
   -- straight-line: thread the LocState/AllocState through exec-abstract,
   -- advance pc. (Lambda-free read positions: applied to floc fs directly.)
-  flat-step-straight : AbstractInstr → FlatState → FlatState
-  flat-step-straight i fs =
+  --
+  -- B1.7b (D456) THE SLOT GATE: an instruction that addresses a slot
+  -- (`InstrSlot.slot-of`) faults unless the slot is inside the current frame
+  -- (`slot < frame-slots`). An instruction that addresses none is not gated:
+  -- `slot-ok` reduces to `true` on it, so its step is the plain one by `refl`.
+  in-frame : Maybe ℕ → AllocState {FS} → Bool
+  in-frame nothing  al = true
+  in-frame (just k) al = k <ᵇ frame-slots al
+
+  slot-ok : AbstractInstr → AllocState {FS} → Bool
+  slot-ok i al = in-frame (slot-of i) al
+
+  straight-go : AbstractInstr → FlatState → FlatState
+  straight-go i fs =
     record fs { floc   = proj₁ (exec-abstract i (floc fs) (falloc fs))
               ; falloc = proj₂ (exec-abstract i (floc fs) (falloc fs))
               ; fpc    = suc (fpc fs) }
+
+  straight-at : Bool → AbstractInstr → FlatState → FlatState
+  straight-at true  i fs = straight-go i fs
+  straight-at false i fs = flat-fault fs
+
+  flat-step-straight : AbstractInstr → FlatState → FlatState
+  flat-step-straight i fs = straight-at (slot-ok i (falloc fs)) i fs
+
+  -- what holds after both the plain step and the fault holds after a straight step
+  straight-keeps : ∀ (P : FlatState → Set) i fs → P (straight-go i fs) → P (flat-fault fs) → P (flat-step-straight i fs)
+  straight-keeps P i fs pg pf = go (slot-ok i (falloc fs))
+    where
+      go : ∀ b → P (straight-at b i fs)
+      go true  = pg
+      go false = pf
+
+  -- …so a straight step leaves the control registers alone
+  flink-straight : ∀ i fs → flink (flat-step-straight i fs) ≡ flink fs
+  flink-straight i fs = straight-keeps (λ t → flink t ≡ flink fs) i fs refl refl
+
+  fret-straight : ∀ i fs → fret (flat-step-straight i fs) ≡ fret fs
+  fret-straight i fs = straight-keeps (λ t → fret t ≡ fret fs) i fs refl refl
+
+  fclosure-straight : ∀ i fs → fclosure (flat-step-straight i fs) ≡ fclosure fs
+  fclosure-straight i fs = straight-keeps (λ t → fclosure t ≡ fclosure fs) i fs refl refl
 
   -- D367: `out-nz` TURNS AN `Int` WORD INTO A TAG, and only that: the
   -- compiled `cmp; sbb; add` (riscv `sltu`) reads the register's WORD, whose
@@ -1060,6 +1098,40 @@ module FlatMachine {FS : FrameSemantics} where
       go (rp-fault e) = ⊥-elim (fault≢ {fs} (subst (λ t → LocState.faulted (floc t) ≡ false) e nf))
       go (rp-ret p ps e be _) = (p , ps , e) , be
 
+  -- B1.7b (D456): THE SLOT GATE, read back. Passed, the straight step is the
+  -- plain one; a straight step that did not fault passed it; passed at an
+  -- instruction addressing `k`, `k` is inside the frame.
+  straight-pass : ∀ i fs → slot-ok i (falloc fs) ≡ true → flat-step-straight i fs ≡ straight-go i fs
+  straight-pass i fs e = cong (λ b → straight-at b i fs) e
+
+  straight-ok : ∀ i fs → LocState.faulted (floc (flat-step-straight i fs)) ≡ false → slot-ok i (falloc fs) ≡ true
+  straight-ok i fs nf = go (slot-ok i (falloc fs)) refl
+    where
+      go : ∀ b → slot-ok i (falloc fs) ≡ b → slot-ok i (falloc fs) ≡ true
+      go true  e = e
+      go false e = ⊥-elim (fault≢ {fs} (subst (λ b → LocState.faulted (floc (straight-at b i fs)) ≡ false) e nf))
+
+  slot-in : ∀ i (al : AllocState {FS}) {k} → slot-of i ≡ just k → slot-ok i al ≡ true → k < frame-slots al
+  slot-in i al {k} sk ok = <ᵇ⇒< k (frame-slots al) (subst T (sym (trans (sym (cong (λ m → in-frame m al) sk)) ok)) tt)
+
+  slot-ok-in : ∀ i (al : AllocState {FS}) {k} → slot-of i ≡ just k → k < frame-slots al → slot-ok i al ≡ true
+  slot-ok-in i al {k} sk lt = trans (cong (λ m → in-frame m al) sk) (T-true (<⇒<ᵇ lt))
+    where
+      T-true : ∀ {b} → T b → b ≡ true
+      T-true {true} _ = refl
+
+  -- a straight step either faulted at the gate or is the plain step
+  data StraightPost (i : AbstractInstr) (fs : FlatState) : Set where
+    sp-fault : flat-step-straight i fs ≡ flat-fault fs → StraightPost i fs
+    sp-go    : slot-ok i (falloc fs) ≡ true → flat-step-straight i fs ≡ straight-go i fs → StraightPost i fs
+
+  straightView : ∀ i fs → StraightPost i fs
+  straightView i fs = go (slot-ok i (falloc fs)) refl
+    where
+      go : ∀ b → slot-ok i (falloc fs) ≡ b → StraightPost i fs
+      go true  e = sp-go e (straight-pass i fs e)
+      go false e = sp-fault (cong (λ b → straight-at b i fs) e)
+
   -- …and the register it reads. `mov %r12, %rdi` at the flat level: the
   -- closure register is a FlatState field (`exec-abstract` treats the
   -- instruction as the identity precisely because of that), so until now
@@ -1160,9 +1232,17 @@ module FlatMachine {FS : FrameSemantics} where
   shifted-straight : ∀ (d : ℕ) (i : AbstractInstr) (fs fs' : FlatState)
                    → Shifted d fs fs'
                    → Shifted d (flat-step-straight i fs) (flat-step-straight i fs')
-  shifted-straight d i fs fs' (lo , al , pc , rt , lk , cl)
-    rewrite lo | al =
-      refl , refl , trans (cong suc pc) (sym (+-suc d (fpc fs'))) , rt , lk , cl
+  -- (B1.7b: the slot gate reads only `falloc`, which the relation equates, so
+  -- both sides pass it or both fault)
+  shifted-straight d i fs fs' sh =
+    subst (λ b → Shifted d (straight-at b i fs) (flat-step-straight i fs'))
+          (sym (cong (slot-ok i) (proj₁ (proj₂ sh)))) (at (slot-ok i (falloc fs')) sh)
+    where
+      at : ∀ b → Shifted d fs fs' → Shifted d (straight-at b i fs) (straight-at b i fs')
+      at true (lo , al , pc , rt , lk , cl) rewrite lo | al =
+        refl , refl , trans (cong suc pc) (sym (+-suc d (fpc fs'))) , rt , lk , cl
+      at false (lo , al , pc , rt , lk , cl) =
+        cong (λ L → record L { halted = true ; faulted = true }) lo , al , pc , rt , lk , cl
 
   -- `c-label` and `c-thunk`: both bump the pc by one and touch neither `fret`
   -- nor the program, so they preserve the relation for the same reason a
@@ -1627,18 +1707,18 @@ module FlatMachine {FS : FrameSemantics} where
   flinkView store-indirect-suc                     = fv-pres (λ _ _ → refl)
   flinkView instr-pop-frame                        = fv-pres (λ _ _ → refl)
   flinkView instr-save-closure-reg                 = fv-pres (λ _ _ → refl)
-  flinkView (load-from-slot _)                     = fv-pres (λ _ _ → refl)
-  flinkView (store-at-slot _)                      = fv-pres (λ _ _ → refl)
-  flinkView (lea-slot _)                           = fv-pres (λ _ _ → refl)
-  flinkView (restore-input _)                      = fv-pres (λ _ _ → refl)
+  flinkView (load-from-slot k)                     = fv-pres (λ _ fs → flink-straight (load-from-slot k) fs)
+  flinkView (store-at-slot k)                      = fv-pres (λ _ fs → flink-straight (store-at-slot k) fs)
+  flinkView (lea-slot k)                           = fv-pres (λ _ fs → flink-straight (lea-slot k) fs)
+  flinkView (restore-input k)                      = fv-pres (λ _ fs → flink-straight (restore-input k) fs)
   flinkView (instr-alloc-stack _)                  = fv-pres (λ _ _ → refl)
   flinkView (instr-dealloc-stack _)                = fv-pres (λ _ _ → refl)
   flinkView (instr-reclaim-to _)                   = fv-pres (λ _ _ → refl)
   flinkView (instr-push-frame _)                   = fv-pres (λ _ _ → refl)
-  flinkView (worklist-init _)                      = fv-pres (λ _ _ → refl)
-  flinkView (worklist-push _)                      = fv-pres (λ _ _ → refl)
-  flinkView (worklist-pop _)                       = fv-pres (λ _ _ → refl)
-  flinkView (worklist-check _)                     = fv-pres (λ _ _ → refl)
+  flinkView (worklist-init k)                      = fv-pres (λ _ fs → flink-straight (worklist-init k) fs)
+  flinkView (worklist-push k)                      = fv-pres (λ _ fs → flink-straight (worklist-push k) fs)
+  flinkView (worklist-pop k)                       = fv-pres (λ _ fs → flink-straight (worklist-pop k) fs)
+  flinkView (worklist-check k)                     = fv-pres (λ _ fs → flink-straight (worklist-check k) fs)
   flinkView (instr-load-code-addr _)               = fv-pres (λ _ _ → refl)
   flinkView (instr-load-tag-lit _)                 = fv-pres (λ _ _ → refl)
   flinkView (instr-alloc-heap _)                   = fv-pres (λ _ _ → refl)
@@ -1650,6 +1730,62 @@ module FlatMachine {FS : FrameSemantics} where
   flinkView (store-at _)                         = fv-pres (λ _ _ → refl)
   flinkView (addr-at _)                         = fv-pres (λ _ _ → refl)
   flinkView (instr-load-const _ _)                 = fv-pres (λ _ _ → refl)
+
+  -- B1.7b (D456): AN INSTRUCTION THAT ADDRESSES A SLOT STEPS STRAIGHT (its step is
+  -- `flat-step-straight`, gated); so a reached one that did not fault had its slot
+  -- in the frame (`slot-gate-ok`). Enumerated, as `slot-of` is.
+  slot-straight : ∀ i prog fs {k} → slot-of i ≡ just k → flat-exec-instr i prog fs ≡ flat-step-straight i fs
+  slot-straight (load-from-slot _) prog fs refl = refl
+  slot-straight (store-at-slot _) prog fs refl = refl
+  slot-straight (lea-slot _) prog fs refl = refl
+  slot-straight (restore-input _) prog fs refl = refl
+  slot-straight (worklist-init _) prog fs ()
+  slot-straight (worklist-push _) prog fs refl = refl
+  slot-straight (worklist-pop _) prog fs refl = refl
+  slot-straight (worklist-check _) prog fs ()
+  slot-straight mov-to-output prog fs ()
+  slot-straight mov-to-input prog fs ()
+  slot-straight load-indirect prog fs ()
+  slot-straight load-indirect-suc prog fs ()
+  slot-straight store-indirect prog fs ()
+  slot-straight store-indirect-suc prog fs ()
+  slot-straight (instr-alloc-stack _) prog fs ()
+  slot-straight (instr-dealloc-stack _) prog fs ()
+  slot-straight (instr-reclaim-to _) prog fs ()
+  slot-straight (instr-push-frame _) prog fs ()
+  slot-straight instr-pop-frame prog fs ()
+  slot-straight instr-call-closure prog fs ()
+  slot-straight (instr-sigop _) prog fs ()
+  slot-straight (instr-load-const _ _) prog fs ()
+  slot-straight (instr-load-code-addr _) prog fs ()
+  slot-straight instr-save-closure-reg prog fs ()
+  slot-straight (instr-load-tag-lit _) prog fs ()
+  slot-straight (instr-alloc-heap _) prog fs ()
+  slot-straight (instr-reg-op _) prog fs ()
+  slot-straight (instr-free-heap _) prog fs ()
+  slot-straight (instr-room _) prog fs ()
+  slot-straight (load-at _) prog fs ()
+  slot-straight (store-at _) prog fs ()
+  slot-straight (addr-at _) prog fs ()
+  slot-straight (instr-ctrl _) prog fs ()
+
+  slot-gate-ok : ∀ i prog fs {k} → slot-of i ≡ just k
+               → LocState.faulted (floc (flat-exec-instr i prog fs)) ≡ false → k < frame-slots (falloc fs)
+  slot-gate-ok i prog fs sk nf =
+    slot-in i (falloc fs) sk (straight-ok i fs (subst (λ t → LocState.faulted (floc t) ≡ false) (slot-straight i prog fs sk) nf))
+
+  -- …and with its slot in the frame, the step is the plain one
+  slot-go : ∀ i prog fs {k} → slot-of i ≡ just k → k < frame-slots (falloc fs) → flat-exec-instr i prog fs ≡ straight-go i fs
+  slot-go i prog fs sk lt = trans (slot-straight i prog fs sk) (straight-pass i fs (slot-ok-in i (falloc fs) sk lt))
+
+  -- …and its plain step is the step, so what did not fault there did not fault plainly
+  slot-go-ok : ∀ i prog fs {k} → slot-of i ≡ just k
+             → LocState.faulted (floc (flat-exec-instr i prog fs)) ≡ false → LocState.faulted (floc (straight-go i fs)) ≡ false
+  slot-go-ok i prog fs sk nf =
+    subst (λ t → LocState.faulted (floc t) ≡ false) (straight-pass i fs (straight-ok i fs nf′)) nf′
+    where
+      nf′ : LocState.faulted (floc (flat-step-straight i fs)) ≡ false
+      nf′ = subst (λ t → LocState.faulted (floc t) ≡ false) (slot-straight i prog fs sk) nf
 
 
   ----------------------------------------------------------------------
@@ -1810,10 +1946,7 @@ module FlatMachine {FS : FrameSemantics} where
   exec-flat-offend n prog fs h-eq f-eq rewrite h-eq | f-eq = refl
 
   ----------------------------------------------------------------------
-  -- Plan 0.32 choice (a): the exec-flat ↔ exec-trace bridge (jump-free).
-  --
-  -- `exec-flat` is THE abstract semantics; `exec-trace` survives only as a
-  -- theorem about it on straight-line (jump-free) traces. The atom below:
+  -- Plan 0.32 choice (a): straight (jump-free) traces. The atom below:
   -- a "straight" instruction is any non-`instr-ctrl`. Its `flat-exec-instr`
   -- never consults `prog` (no `find-label`), so it equals `flat-step-straight`
   -- — i.e. it threads `exec-abstract` and bumps the pc, exactly as
@@ -1876,66 +2009,6 @@ module FlatMachine {FS : FrameSemantics} where
   ...   | just i  = trans (exec-flat-invariant f P pi ph prog allp n (flat-exec-instr i prog fs))
                           (pi i prog fs (fetch-All allp feq))
 
-  -- Shift lemma: on a straight tail, exec-flat over `i ∷ rest` from pc
-  -- `suc k` agrees with exec-flat over `rest` from pc `k` on the data
-  -- (floc/falloc) — the pc differs by 1 throughout but the threaded
-  -- LocState/AllocState are identical. By induction on fuel.
-  shift-loc : ∀ (fuel : ℕ) (i : AbstractInstr) (rest : AbstractTrace)
-                (loc : LocState FS) (alloc : AllocState {FS}) (k : ℕ)
-    → Straight rest
-    → floc   (exec-flat fuel (i ∷ rest) (mkFlat loc alloc (suc k)))
-        ≡ floc   (exec-flat fuel rest (mkFlat loc alloc k))
-    × falloc (exec-flat fuel (i ∷ rest) (mkFlat loc alloc (suc k)))
-        ≡ falloc (exec-flat fuel rest (mkFlat loc alloc k))
-  shift-loc zero    i rest loc alloc k straight = refl , refl
-  shift-loc (suc n) i rest loc alloc k straight with halted loc in h-eq
-  ... | true  = refl , refl
-  ... | false with fetch rest k in f-eq
-  ...   | nothing = refl , refl
-  ...   | just j  rewrite fetch-Straight straight f-eq (i ∷ rest) (mkFlat loc alloc (suc k))
-                        | fetch-Straight straight f-eq rest        (mkFlat loc alloc k)
-                        = shift-loc n i rest
-                            (proj₁ (exec-abstract j loc alloc))
-                            (proj₂ (exec-abstract j loc alloc))
-                            (suc k) straight
-
-  -- A halted state is left at (s , alloc) by exec-trace (no instruction runs).
-  exec-trace-halted : ∀ (prog : AbstractTrace) (s : LocState FS) (alloc : AllocState {FS})
-    → halted s ≡ true
-    → exec-trace prog s alloc ≡ (s , alloc)
-  exec-trace-halted []       s alloc _  = refl
-  exec-trace-halted (x ∷ xs) s alloc ht rewrite ht = refl
-
-  -- THE BRIDGE (Plan 0.32 choice a): on a jump-free trace, the flat machine's
-  -- data output (floc/falloc, up to the terminal `halted` flag) IS exec-trace's
-  -- output. `exec-flat` always halts at end-of-program, so we compare both
-  -- floc's `forced` to halted=true — making the base + mid-halt cases refl and
-  -- isolating the inductive content in the straight-step + shift lemmas.
-  forced : LocState FS → LocState FS
-  forced x = record x { halted = true }
-
-  exec-trace-is-flat : ∀ (prog : AbstractTrace) (s : LocState FS) (alloc : AllocState {FS})
-    → Straight prog
-    → forced (floc (exec-flat (suc (length prog)) prog (mkFlat s alloc 0)))
-        ≡ forced (proj₁ (exec-trace prog s alloc))
-    × falloc (exec-flat (suc (length prog)) prog (mkFlat s alloc 0))
-        ≡ proj₂ (exec-trace prog s alloc)
-  exec-trace-is-flat prog s alloc straight with halted s in hs
-  ... | true
-        rewrite exec-trace-halted prog s alloc hs = refl , refl
-  exec-trace-is-flat [] s alloc straight | false = refl , refl
-  -- `with halted s | false` already peeled ONE exec-flat step (-> flat-exec-instr i)
-  -- and reduced exec-trace (i∷rest) -> exec-trace rest s' alloc'. Convert the
-  -- stuck `flat-exec-instr i` to `flat-step-straight i` (= mkFlat s' alloc' 1)
-  -- via the StraightStep evidence `pi`; then shift-loc + IH align directly.
-  exec-trace-is-flat (i ∷ rest) s alloc (pi ∷ prest) | false
-        rewrite pi (i ∷ rest) (mkFlat s alloc 0) =
-    let s'     = proj₁ (exec-abstract i s alloc)
-        alloc' = proj₂ (exec-abstract i s alloc)
-        sl     = shift-loc (suc (length rest)) i rest s' alloc' 0 prest
-        ih     = exec-trace-is-flat rest s' alloc' prest
-        ctr    = exec-trace-cons i rest s alloc hs
-    in trans (cong forced (proj₁ sl))
-             (trans (proj₁ ih) (cong (λ p → forced (proj₁ p)) (sym ctr)))
-     , trans (proj₂ sl)
-             (trans (proj₂ ih) (cong proj₂ (sym ctr)))
+  -- (B1.7b: the exec-flat ↔ exec-trace bridge — `shift-loc`, `exec-trace-is-flat`
+  -- — is gone: the flat machine gates its slots and `exec-trace` does not, and
+  -- nothing used it since master's lowering went, D465.)
