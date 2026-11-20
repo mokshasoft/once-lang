@@ -19,8 +19,8 @@ module Once.Metatheory.Coherence.Conversions (Σ : Signature) where
 open import Data.Nat using (ℕ)
 open import Data.Product using (_,_)
 open import Data.Sum using (inj₁; inj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
-open import Once.Spec.Grade using (Purity; fin; mk-kind; Zero; One; Many; _⊑π_; ⊑-pure; ⊑-pa; ⊑-act; ⊑-eff)
+open import Relation.Binary.PropositionalEquality using (refl)
+open import Once.Spec.Grade using (Zero; One; Many; _⊑π_; ⊑-pure; ⊑-pa; ⊑-act)
 open import Once.Spec.Type using (Ty; TySub; _⟨_⟩)
 open import Once.Spec.Sub
 open import Once.Spec.Effect Σ

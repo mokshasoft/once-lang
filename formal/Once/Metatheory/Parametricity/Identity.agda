@@ -20,7 +20,6 @@ open import Once.Spec.Signature using (Signature)
 
 module Once.Metatheory.Parametricity.Identity (Σ : Signature) where
 
-open import Data.Nat using (ℕ)
 open import Data.Product using (_,_)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (tt)

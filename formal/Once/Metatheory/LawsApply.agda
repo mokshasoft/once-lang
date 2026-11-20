@@ -16,26 +16,26 @@ open import Once.Spec.Numerics using (TargetNum)
 
 module Once.Metatheory.LawsApply (fmt : TargetNum) where
 
-open import Data.Fin using (Fin; zero; suc)
+open import Data.Fin using (zero; suc)
 open import Data.Integer using (+_)
 open import Data.List using ([])
 open import Data.Product using (_,_)
 open import Data.Unit using (⊤; tt)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Relation.Binary.PropositionalEquality using (refl)
 import Data.Nat.Properties as ℕP
 open import Once.Spec.Theory using (int; float)
 open import Once.Spec.Float.Value using (fv-zero; pos)
 
-open import Once.Spec.Grade using (Purity; pure; eff; pureᶠ; Zero; One; Many; mk-kind; 0≤q; 1≤1; 1≤ω; ω≤ω)
+open import Once.Spec.Grade using (pure; eff; pureᶠ; Zero; One; Many; mk-kind; 0≤q; 1≤1; 1≤ω; ω≤ω)
 open import Once.Spec.Type
-  using (Ty; Fun; KCtx; ∅ₖ; any; TySub; var; K; Unit; Void; Int; Float; _+_; _*_; _⇒[_]_; μ; ν; wf-K; b-Unit; WFFun)
-open import Once.Spec.Context using (Ctx; ∅; _▸_; []; _∷_; _⊑∷_)
+  using (Ty; ∅ₖ; any; var; K; Unit; Void; Int; Float; _+_; _*_; _⇒[_]_; μ; ν; wf-K; b-Unit; WFFun)
+open import Once.Spec.Context using (∅; []; _⊑∷_)
 open import Once.Spec.Core.Syntax
-  using (Defs; []; _▷_; Schema; schema; Tm; var; lam; app; let′; unit; pair; fst; snd; inl; inr; absurd; lit; lit-int; ref)
+  using (Defs; []; _▷_; Schema; schema; Tm; var; lam; unit; pair; inl; lit; lit-int; ref)
 open import Once.Spec.Core.Derived using (idᶜ; terminalᶜ; anaᶜ; mapᶜ)
 open import Once.Spec.Polynomial using (SK; inS)
 open import Once.Spec.Equivalence using (relSub)
-open import Once.Spec.Metatheory using (LawsApply; noOps; noDefs; StrictlyPositive; sp-var)
+open import Once.Spec.Metatheory using (LawsApply; noOps; noDefs; sp-var)
 open import Once.Spec.Examples using (silentServer)
 import Once.Spec.Core.Typing as CoreTyping
 import Once.Spec.Equivalence as Equivalence
@@ -175,6 +175,7 @@ private
 
   module Nat where
     module C = CoreTyping noOps S₁
+      using (_⊩_⊢[_]_∷_!_; ⊢app; ⊢lam; ⊢let; ⊢ref; ⊢sub-use; ⊢var)
     open import Once.Metatheory.TermModel.Subst noOps S₁ renaming (wk-⊢ to wk₁)
 
     ⊢₁_∷_ : Tm S₁ 0 0 → Ty 0 → Set

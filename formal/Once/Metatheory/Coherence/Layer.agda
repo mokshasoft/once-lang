@@ -12,28 +12,26 @@
 -- `Coherence.Loop`.
 ------------------------------------------------------------------------
 
-open import Once.Spec.Signature using (Signature; call)
+open import Once.Spec.Signature using (Signature)
 
 module Once.Metatheory.Coherence.Layer (Σ : Signature) where
 
-open import Data.Empty using (⊥; ⊥-elim)
-open import Data.Fin using (Fin)
+open import Data.Empty using (⊥-elim)
 open import Data.Nat using (ℕ; zero; suc)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
-open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_]′)
+open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
-open import Once.Spec.Grade using (Finite; fin; Purity; pure; act; eff; mk-kind; Zero; One; Many; _·p_; _⊑π_)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
+open import Once.Spec.Grade using (Finite; fin; Purity; pure; mk-kind; Zero; One; Many; _·p_; _⊑π_)
 open import Once.Spec.Type.Substitution using (base-⟨⟩)
 open import Once.Spec.Type
-  using (Ty; Type; Fun; KCtx; ∅ₖ; TySub; Respects; Base; b-var; b-Unit; b-Void; b-Int; b-Float; b-*; b-+;
-         WFFun; wf-K; wf-Id; wf-⊕; wf-⊗; var; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; K; Id; _⊕_; _⊗_;
+  using (Ty; Type; KCtx; ∅ₖ; TySub; Respects; Base; b-var; b-Unit; b-Void; b-Int; b-Float; b-*; b-+;
+         WFFun; wf-K; wf-Id; wf-⊕; wf-⊗; _*_; _+_; _⇒[_]_; μ; ν;
          ⟦_⟧F; _⟨_⟩; _⟨_⟩F)
 open import Once.Spec.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; μS; inS; sfmap)
 open import Once.Spec.Effect Σ
 open import Once.Spec.Domain Σ using (⟦_⟧ᵛ; code; toL; fromL; foldM; layerM)
 open import Once.Spec.Equivalence Σ hiding (Rel; RelF)
-open import Once.Metatheory.Bisim Σ using (≈-refl)
 open import Once.Metatheory.Trace using (WB-mono)
 open import Once.Metatheory.Erase Σ
 open import Once.Metatheory.Unfold Σ using (module Unfold)

@@ -15,17 +15,16 @@ open import Once.Spec.Core.Syntax using (Defs)
 
 module Once.Metatheory.Laws.CataSem (Σ : Signature) (u : OneName Σ) (fmt : TargetNum) {s : ℕ} (S : Defs s) where
 
-open import Data.Fin using () renaming (zero to fz; suc to fs)
+open import Data.Fin using () renaming (zero to fz)
 open import Data.Product using (_,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 open import Once.Spec.Grade using (Many; mk-kind; pure)
 open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun; TySub; Respects; ∅ₖ; _⟨_⟩; _⟨_⟩F; _⇒[_]_; μ; ⟦_⟧F)
 open import Once.Spec.Context using (Ctx; _▸_; _∷_)
-open import Once.Spec.Core.Syntax
 open import Once.Spec.Core.Derived using (cataᶜ; inᶜ)
 open import Once.Spec.Core.Typing Σ S
 open import Once.Spec.Core.Meaning Σ fmt S
-open import Once.Spec.Effect Σ using (T∞; _>>=∞_; return∞; toT∞)
+open import Once.Spec.Effect Σ using (_>>=∞_; return∞; toT∞)
 open import Once.Spec.Domain Σ using (⟦_⟧ᵛ; code; toL; fromL; foldM)
 open import Once.Spec.Polynomial using (inS)
 open import Once.Spec.Equivalence Σ using (Same)
@@ -42,6 +41,7 @@ open import Once.Metatheory.Laws.MapV Σ u fmt S using (module MapV)
 
 module CataV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (σ : TySub m 0) (r : Respects Δ ∅ₖ σ) where
   module Fn = Functor σ r
+    using (fromL-same; roll-same; sameμ)
 
   -- The Spec's fold of an algebra value.
   cataᵛ : ∀ (F : Fun m) (A : Ty m) → ⟦ (⟦ F ⟧F A ⇒[ mk-kind Many pure ] A) ⟨ σ ⟩ ⟧ᵛ → ⟦ (μ F ⇒[ mk-kind Many pure ] A) ⟨ σ ⟩ ⟧ᵛ

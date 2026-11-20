@@ -11,20 +11,19 @@
 module Once.Metatheory.Float.Nat where
 
 open import Data.Nat as ℕ
-  using (ℕ; zero; suc; _+_; _*_; _∸_; _^_; _<_; _≤_; _≥_; s≤s; z≤n; s≤s⁻¹; NonZero)
+  using (ℕ; zero; suc; _+_; _*_; _^_; _<_; _≤_; s≤s; z≤n; s≤s⁻¹; NonZero)
 open import Data.Nat.Properties
-  using ( ≤-refl; ≤-trans; <-≤-trans; ≤-<-trans; ≤-reflexive; <⇒≤; ≰⇒>; <⇒≢
-        ; *-comm; *-assoc; *-identityʳ; +-comm; *-cancelˡ-≤; *-cancelˡ-≡
-        ; *-monoˡ-≤; *-monoʳ-≤; *-monoˡ-<; ^-monoʳ-≤; ^-distribˡ-+-*
-        ; m^n>0; m^n≢0; ≡ᵇ⇒≡; suc-injective; <⇒≱; ≤-antisym; ≤∧≢⇒<
+  using ( ≤-refl; ≤-trans; <-≤-trans; ≤-<-trans; ≤-reflexive; ≰⇒>
+        ; *-comm; *-assoc; *-identityʳ; *-cancelˡ-≤; *-cancelˡ-≡
+        ; *-monoˡ-≤; *-monoʳ-≤; *-monoˡ-<; ^-monoʳ-≤; ^-distribˡ-+-*; m^n≢0; suc-injective; <⇒≱; ≤-antisym; ≤∧≢⇒<
         ; m≤m*n; ^-monoʳ-<; n≤1+n)
 open import Data.Nat.DivMod
   using (_/_; _%_; m≡m%n+[m/n]*n; m%n<n; m/n<m; m/n*n≤m; [m+kn]%n≡m%n; m*n%n≡0
         ; m<n*o⇒m/o<n)
-open import Data.Product using (Σ; _×_; _,_)
-open import Data.Bool using (Bool; true; false; T)
-open import Data.Empty using (⊥; ⊥-elim)
-open import Relation.Nullary using (¬_; yes; no)
+open import Data.Product using (_×_; _,_)
+open import Data.Bool using (true; false)
+open import Data.Empty using (⊥-elim)
+open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality
   using (_≡_; _≢_; refl; sym; trans; cong; subst)
 

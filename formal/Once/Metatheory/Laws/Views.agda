@@ -15,11 +15,11 @@ open import Once.Spec.Core.Syntax using (Defs)
 
 module Once.Metatheory.Laws.Views (Σ : Signature) (u : OneName Σ) (fmt : TargetNum) {s : ℕ} (S : Defs s) where
 
-open import Data.Empty using (⊥; ⊥-elim)
+open import Data.Empty using (⊥-elim)
 open import Data.Fin using (Fin; zero; suc)
 open import Data.Product using (_×_; _,_; proj₁; proj₂) renaming (Σ to Σ′)
 open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_]′)
-open import Data.Unit using (⊤; tt)
+open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 open import Once.Spec.Grade using (Quantity; Zero; One; Many; Purity; pure; _·p_; positionGrade; mk-kind; _≤q_; 0≤q; 1≤1; 1≤ω; ω≤ω)
 open import Once.Spec.Type using (Ty; Type; KCtx; ∅ₖ; TySub; Respects; _⟨_⟩; _*_; _+_; _⇒[_]_; Void)
@@ -27,20 +27,20 @@ open import Once.Spec.Context using (Ctx; ∅; []; _▸_; Usage; _∷_; _⊑ᵘ_
 open import Once.Spec.Core.Syntax
 open import Once.Spec.Core.Typing Σ S
 open import Once.Spec.Core.Meaning Σ fmt S
-open import Once.Spec.Effect Σ using (M; toT∞; T∞; _≈_; _>>=∞_; return∞; bindᵍ; fmap)
+open import Once.Spec.Effect Σ using (M; toT∞; T∞; _>>=∞_; return∞; bindᵍ; fmap)
 open import Once.Spec.Domain Σ using (⟦_⟧ᵛ)
 open import Once.Spec.Equivalence Σ using (Same)
 open import Once.Spec.Metatheory using (SameDefs; SameEnv)
 open import Once.Metatheory.Erase Σ using (toT∞-bindᵍ; toT∞-fmap; toT∞-bind)
-open import Once.Metatheory.Bisim Σ using (≈-refl; ≈-sym; ≈-trans; ≈-bind; idˡ; assoc)
-open import Once.Metatheory.Coherence.Relation Σ using (Related; Related-trans; Related-flip; Related-mono; ≈-Relatedˡ; ≈-Relatedʳ; bindRel)
-open import Once.Metatheory.Coherence.Layer Σ using (Rel; rel; runs; appMany)
+open import Once.Metatheory.Bisim Σ using (≈-refl; ≈-sym; ≈-trans; ≈-bind; idˡ)
+open import Once.Metatheory.Coherence.Relation Σ using (Related; Related-trans; Related-flip; Related-mono; ≈-Relatedʳ; bindRel)
+open import Once.Metatheory.Coherence.Layer Σ using (Rel; runs; appMany)
 open import Once.Metatheory.Coherence.PER Σ using (Same-sym; Same-trans)
 open import Once.Metatheory.Coherence.Env Σ fmt S
   using (SlotAgree; Agree; restrict-∘; restrictˡ; restrictʳ; selfAgree;
          envˡ-restrict; envʳ-restrict; env*One-restrict; env*Many-restrict)
 open import Once.Metatheory.Coherence.Fundamental Σ u fmt S using (module FL)
-open import Once.Metatheory.TermModel.Subst Σ S using (Thin; skip; keep; idθ; idθ-id; cid; cskip; ckeep; ren-⊢; θ*-id; ext-hρ; ⟦_⟧θ)
+open import Once.Metatheory.TermModel.Subst Σ S using (skip; keep; idθ; idθ-id; cid; cskip; ckeep; ren-⊢; θ*-id; ext-hρ; ⟦_⟧θ)
 open import Once.Metatheory.TermModel.Ren Σ fmt S using (ThinAgree; module RenSem)
 open import Once.Metatheory.TermModel.Usage using (⊑ᵘ-refl; ⊑ᵘ-trans; ⊑ᵘ-≡; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-*One; ⊑ᵘ-*Many)
 open import Once.Metatheory.Laws.Strengthen Σ S using (str)
@@ -626,7 +626,6 @@ slotVal∘slot σ Many x nz = refl
 
 module ArmsV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (σ : TySub m 0) (r : Respects Δ ∅ₖ σ)
              {n} {Γ : Ctx m n} {Ψ : Usage n} (γ : Env σ Γ Ψ) (sγ : SameEnv Σ fmt S σ Γ Ψ γ) where
-  open Views δ sd σ r γ sγ
 
   record Arms {Ψa T π₀ t} (d : Δ ⊩ Γ ⊢[ Ψa ] t ∷ T ! π₀) (e e₂ : Tm S m n) : Set where
     constructor arms

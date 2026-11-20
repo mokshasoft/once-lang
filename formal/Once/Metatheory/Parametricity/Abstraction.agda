@@ -28,23 +28,23 @@ module Once.Metatheory.Parametricity.Abstraction (Σ : Signature) (u : OneName �
 
 open import Data.Empty using (⊥-elim)
 open import Data.List.Membership.Propositional using (_∈_)
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Data.Product using (_,_; proj₁; proj₂)
 open import Data.Sum using (inj₁; inj₂; [_,_]′)
-open import Data.Unit using (⊤; tt)
+open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; cong; subst; subst₂)
-open import Once.Spec.Grade using (fin; Zero; One; Many; Purity; pure; act; eff; mk-kind; 0≤q; 1≤1; 1≤ω; ω≤ω; positionGrade; _·p_)
+open import Once.Spec.Grade using (fin; Zero; One; Many; pure; act; mk-kind; 0≤q; 1≤1; 1≤ω; ω≤ω; positionGrade; _·p_)
 open import Once.Spec.Type
-  using (Ty; KCtx; ∅ₖ; TySub; Respects; WFFun; _⟨_⟩; _⟨_⟩F; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; ⟦_⟧F)
+  using (Ty; KCtx; ∅ₖ; TySub; Respects; WFFun; _⟨_⟩; _*_; _+_; _⇒[_]_; μ; ν; ⟦_⟧F)
 open import Once.Spec.Context using (Ctx; _▸_; Usage; _∷_; _⊑ᵘ_; _+ᵘ_; _*ᵘ_)
 open import Once.Spec.Type.Substitution using (respects-∘; ⟨⟩-∘)
 open import Once.Spec.Core.Syntax
-open Schema using (arity; kinds; type)
+open Schema using (type)
 open import Once.Spec.Core.Typing Σ S
 open import Once.Spec.Core.Meaning Σ fmt S
-open import Once.Spec.Effect Σ using (M; toT∞; fmap; module νM)
+open import Once.Spec.Effect Σ using (M; fmap; module νM)
 open νM using (outν)
-open import Once.Spec.Domain Σ using (⟦_⟧ᵛ; code; toL; fromL; foldM)
-open import Once.Spec.Equivalence Σ using (Rel; RelF; RelSub; RelMu; inR)
+open import Once.Spec.Domain Σ using (⟦_⟧ᵛ; toL; fromL)
+open import Once.Spec.Equivalence Σ using (Rel; RelF; RelSub; inR)
 open import Once.Spec.Metatheory using (ParamDefs; RelEnv)
 open import Once.Spec.Sub using (_<:_)
 open import Once.Metatheory.Types using (<:-unique)

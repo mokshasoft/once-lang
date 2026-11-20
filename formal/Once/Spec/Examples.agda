@@ -24,7 +24,8 @@ open import Once.Spec.Grade using (Many; mk-kind; pure; act; eff)
 open import Once.Spec.Name using (CanonicalName; canonical)
 open import Once.Spec.Type using (Ty; Unit; Void; Int; Id)
 open import Once.Spec.Signature using (int; unit; operation; _∶_; Signature)
-open import Once.Spec.Surface.Syntax using (Module; mkModule; DTypeSig; DFunDef; PInt; RVar; RInt)
+open import Once.Spec.Surface.Type using (PInt)
+open import Once.Spec.Surface.Syntax using (Module; mkModule; DTypeSig; DFunDef; RVar; RInt)
 open import Once.Spec.Core.Syntax using (Defs; []; Tm; lam; app; unit; inr; lit; lit-int; unfold; sigop; iter)
 
 ------------------------------------------------------------------------

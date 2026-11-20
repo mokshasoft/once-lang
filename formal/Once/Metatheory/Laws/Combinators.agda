@@ -15,26 +15,25 @@ open import Once.Spec.Core.Syntax using (Defs)
 
 module Once.Metatheory.Laws.Combinators (Σ : Signature) (u : OneName Σ) (fmt : TargetNum) {s : ℕ} (S : Defs s) where
 
-open import Data.Fin using (Fin; zero; suc)
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
-open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_]′)
+open import Data.Fin using (zero; suc)
+open import Data.Product using (_×_; _,_)
+open import Data.Sum using (inj₁; inj₂; [_,_]′)
 open import Data.Unit using (tt)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
-open import Once.Spec.Grade using (Quantity; Zero; One; Many; mk-kind; Purity; pure)
-open import Once.Spec.Type using (Ty; KCtx; TySub; Respects; ∅ₖ; _⟨_⟩; _⇒[_]_; _*_; _+_)
-open import Once.Spec.Context using (Ctx; _▸_; _∷_; Usage; lookup; _⊑ᵘ_)
+open import Relation.Binary.PropositionalEquality using (refl; cong)
+open import Once.Spec.Grade using (One; Many; mk-kind; pure)
+open import Once.Spec.Type using (KCtx; TySub; Respects; ∅ₖ; _⟨_⟩; _⇒[_]_; _*_; _+_)
+open import Once.Spec.Context using (Ctx; _▸_; _∷_; Usage)
 open import Once.Spec.Core.Syntax
 open import Once.Spec.Core.Derived using (pairᶜ; caseᶜ; curryᶜ)
 open import Once.Spec.Core.Typing Σ S
 open import Once.Spec.Core.Meaning Σ fmt S
-open import Once.Spec.Effect Σ using (M; bind; return; T∞; _>>=∞_; return∞; _≈_; toT∞)
-open import Once.Spec.Domain Σ using (⟦_⟧ᵛ)
+open import Once.Spec.Effect Σ using (M; bind; return; _>>=∞_; return∞; _≈_; toT∞)
 open import Once.Spec.Equivalence Σ using (Same)
 open import Once.Spec.Metatheory using (SameDefs; SameEnv)
 open import Once.Metatheory.Erase Σ using (toT∞-bind; toT∞-return)
 open import Once.Metatheory.Bisim Σ using (≈-refl; ≈-sym; ≈-trans; ≈-bind; idˡ)
 open import Once.Metatheory.Coherence.Relation Σ using (Related; ≈-Relatedˡ; ≈-Relatedʳ; bindRel; returnRel; toObserved)
-open import Once.Metatheory.Coherence.Layer Σ using (rel; runs; appMany)
+open import Once.Metatheory.Coherence.Layer Σ using (runs)
 open import Once.Metatheory.Coherence.Uniqueness Σ S using (ty-unique)
 open import Once.Metatheory.TermModel.Subst Σ S using (wk-⊢)
 open import Once.Metatheory.Laws.Tools Σ u fmt S

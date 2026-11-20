@@ -19,7 +19,7 @@ open import Data.Product using (_×_; _,_; Σ-syntax)
 open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym)
 open import Once.Spec.Grade using (Quantity; mk-kind; Purity)
-open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun; wf-K; wf-Id; wf-⊕; wf-⊗; ⟦_⟧F; _⟨_⟩; _⟨_⟩F; _⇒[_]_; _*_; _+_;
+open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun; wf-K; wf-⊕; wf-⊗; ⟦_⟧F; _⟨_⟩; _⟨_⟩F; _⇒[_]_; _*_; _+_;
                                   var; Unit; Void; Int; Float; μ; ν; K; Id; _⊕_; _⊗_; at₀)
 open import Once.Spec.Context using (Ctx; _▸_; _∷_; lookup)
 open import Once.Spec.Core.Syntax

@@ -18,34 +18,25 @@ module Once.Metatheory.Surface.Basics (Σ : Signature) {s} (S : Defs s) (nm : Fi
 
 
 open import Data.Empty using (⊥; ⊥-elim)
-open import Data.List using (List; []; _∷_)
-open import Data.List.Membership.Propositional using (_∈_)
-open import Data.List.Relation.Unary.All using (All)
-import Data.List.Relation.Unary.All as All
 open import Data.List.Relation.Unary.Any using (here; there)
-open import Data.Nat using (ℕ; _<_)
-open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
-open import Data.String using (String)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst)
+open import Data.Nat using (_<_)
+open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
 open import Relation.Nullary using (¬_)
-open import Once.Spec.Grade using (Purity; pure; act; Finite; pureᶠ; actᶠ; fin; Many; mk-kind; ArrowKind; _⊑π_; ⊑-pure; EffGrade; eg-act; eg-eff)
+open import Once.Spec.Grade using (Purity; pure; mk-kind; _⊑π_; ⊑-pure; EffGrade; eg-act; eg-eff)
 open import Once.Spec.Surface.Generators
-  using (Gen; kind; IsConstant; IsMap; IsCombinator; FromDomain; FromCodomain; Constant; Morphism;
+  using (kind; IsConstant; IsMap; IsCombinator; FromDomain; FromCodomain; Constant;
          is-constant; is-map; is-combinator; fd-domain; fd-both; fc-codomain; fc-both; k-unit; k-toFloat)
 open import Once.Spec.Type
   using (Ty; KCtx; TySub; var; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; _⟨_⟩; _⟨_⟩F; Occurs; OccursF;
          o-var; o-*ˡ; o-*ʳ; o-+ˡ; o-+ʳ; o-⇒ˡ; o-⇒ʳ; o-μ; o-ν; o-K; o-⊕ˡ; o-⊕ʳ; o-⊗ˡ; o-⊗ʳ;
-         Fun; K; Id; _⊕_; _⊗_; ⟦_⟧F)
-open import Once.Spec.Signature using (_∶_; ⌜_⌝ᵈ)
+         Fun; K; Id; _⊕_; _⊗_)
 open import Once.Spec.Core.Syntax using (_!!_; module Schema)
-open Schema using (arity; kinds; type)
+open Schema using (arity; type)
 open import Once.Spec.Surface.Syntax
 open import Once.Spec.Surface.Typing Σ S nm
 
-open import Once.Metatheory.OneName using (decl-unique)
 open import Once.Spec.Theory using (NumTy; int; float; ⌜_⌝ⁿ)
-open import Once.Metatheory.Types using (join-unique)
-open import Once.Spec.Sub using (_⊔_≔_)
 
 
 ------------------------------------------------------------------------

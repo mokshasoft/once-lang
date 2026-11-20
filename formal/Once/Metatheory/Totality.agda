@@ -22,25 +22,21 @@ module Once.Metatheory.Totality where
 
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Fin using (Fin)
-open import Data.List using (List; []; _∷_; _++_; length; [_])
-open import Data.List.Properties using (++-identityʳ; ++-assoc; length-++)
-open import Data.List.Relation.Unary.Any using (here; there; any?)
+open import Data.List using (List; []; _∷_; length)
+open import Data.List.Relation.Unary.Any using (here; there)
 open import Data.List.Membership.Propositional using (_∈_)
-open import Data.String using (_≟_)
-open import Relation.Nullary.Decidable using (toWitnessFalse)
-open import Data.Nat using (ℕ; zero; suc; _+_; _≤_; _<_; z≤n; s≤s)
-open import Data.Nat.Properties using (≤-refl; +-identityʳ; +-assoc)
-open import Data.Product using (Σ-syntax; ∃-syntax; _×_; _,_; proj₁; proj₂)
-open import Data.Unit using (⊤; tt)
+open import Data.Nat using (zero; suc)
+open import Data.Product using (∃-syntax; _×_; _,_)
+open import Data.Unit using (tt)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Maybe using (nothing)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 open import Relation.Nullary using (¬_; yes; no)
-open import Once.Spec.Grade using (0≤q; ⊑-pa; ⊑-act)
+open import Once.Spec.Grade using (0≤q; ⊑-pa)
 open import Once.Spec.Name using (CanonicalName; canonical)
 open import Once.Spec.Surface.Generators using (Gen; word; GenWord)
 open import Once.Spec.Numerics using (TargetNum)
-open import Once.Spec.Type using (TySub; Respects; ∅ₖ)
+open import Once.Spec.Type using (∅ₖ)
 open import Once.Spec.Signature using (Signature; call)
 open import Once.Spec.Type using (wf-Id)
 open import Once.Spec.Surface.Syntax
@@ -182,6 +178,7 @@ no-forward-reference D = module-no-forward-reference (Denotes.library D)
 module TickTyping   = CoreTyping tickΣ []
 module EchoTyping   = CoreTyping echoΣ []
 module SilentTyping = CoreTyping [] []
+  using (_⊩_⊢[_]_∷_!_; ⊢inr; ⊢iter; ⊢lam; ⊢sub-eff; ⊢unit)
 
 stream-typed : TickTyping._⊩_⊢[_]_∷_!_ ∅ₖ Once.Spec.Context.∅ Once.Spec.Context.[] ticker (Once.Spec.Type.ν Once.Spec.Type.Id Once.Spec.Grade.actᶠ) Once.Spec.Grade.pure
 stream-typed = TickTyping.⊢unfold wf-Id (TickTyping.⊢sigop (here refl)) TickTyping.⊢lit-int
@@ -199,7 +196,6 @@ silent-typed =
   SilentTyping.⊢iter (SilentTyping.⊢lam 0≤q (SilentTyping.⊢sub-eff ⊑-pa (SilentTyping.⊢inr SilentTyping.⊢unit))) SilentTyping.⊢unit
 
 module Runs (fmt : TargetNum) (δ : Meaning.DefSem echoΣ fmt []) (w : Observation.World echoΣ) where
-  open Observation echoΣ using (History)
   open RunM echoΣ using (Run; RunB; run; rb-cut; rb-next; rb-call; ra-go)
 
   server = Meaning.⟦_⟧ echoΣ fmt [] server-typed δ (λ ()) (λ ()) tt
@@ -220,7 +216,7 @@ module Runs (fmt : TargetNum) (δ : Meaning.DefSem echoΣ fmt []) (w : Observati
           more (d , run r , eq) = _ , run (rb-call (ra-go (rb-call (ra-go (onward r))))) , cong (λ k → suc (suc k)) eq
 
 module Silent (fmt : TargetNum) (δ : Meaning.DefSem [] fmt []) (w : Observation.World []) where
-  open Observation [] using (History; blockD)
+  open Observation [] using (blockD)
 
   silent = Meaning.⟦_⟧ [] fmt [] silent-typed δ (λ ()) (λ ()) tt
 
@@ -236,7 +232,7 @@ module Silent (fmt : TargetNum) (δ : Meaning.DefSem [] fmt []) (w : Observation
 -- The observation's ends are `returned` (a block ends with a value) and
 -- `halted` (a call with no answer); nothing it builds ends `exhausted`.
 module NeverExhausted (Σ : Signature) (w : Observation.World Σ) where
-  open Observation Σ using (History; trace; blockD; after)
+  open Observation Σ using (trace; blockD; after)
   open Effect Σ using (T; T∞; roll; done; node; force)
 
   -- What the observation builds: a trace, or what follows a call.

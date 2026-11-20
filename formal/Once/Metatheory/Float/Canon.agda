@@ -12,13 +12,13 @@ module Once.Metatheory.Float.Canon where
 
 open import Data.Nat as ℕ using (ℕ; zero; suc; _+_; _*_; _^_; _<_; _≤_; s≤s; z≤n; s≤s⁻¹)
 open import Data.Nat.Properties
-  using (≤-trans; <-≤-trans; *-comm; *-identityʳ; ≡ᵇ⇒≡; m^n>0; *-monoʳ-≤; n≢0⇒n>0; <⇒≢)
+  using (<-≤-trans; *-comm; *-identityʳ; ≡ᵇ⇒≡; m^n>0; *-monoʳ-≤; n≢0⇒n>0; <⇒≢)
 open import Data.Nat.DivMod using (_/_; _%_; m≡m%n+[m/n]*n; m%n<n; m/n<m)
 import Data.Integer as ℤ
 open import Data.Integer using (ℤ; +_)
 import Data.Integer.Properties as ℤP
 open import Data.Product using (Σ; _×_; _,_)
-open import Data.Bool using (Bool; true; false; T)
+open import Data.Bool using (true; false; T)
 open import Data.Empty using (⊥-elim)
 open import Relation.Binary.PropositionalEquality
   using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst)

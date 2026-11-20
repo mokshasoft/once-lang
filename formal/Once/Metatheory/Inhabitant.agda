@@ -11,7 +11,7 @@ module Once.Metatheory.Inhabitant where
 
 open import Data.Product using (_,_)
 open import Data.Sum using (inj₁; inj₂)
-open import Once.Spec.Signature using (BTy; unit; void; int; float; _*_; _+_; ⟦_⟧ᵇ; NotEmpty)
+open import Once.Spec.Signature using (unit; void; int; float; _*_; _+_; ⟦_⟧ᵇ; NotEmpty)
 open import Once.Spec.Float.Value using (fv-zero; pos)
 
 inhabitant : ∀ b → NotEmpty b → ⟦ b ⟧ᵇ

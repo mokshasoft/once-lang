@@ -18,28 +18,26 @@ open import Once.Spec.Signature using (Signature)
 
 module Once.Metatheory.Parametricity.Values (Σ : Signature) where
 
-open import Data.Empty using (⊥-elim)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.Nat using (ℕ)
 open import Data.Product using (∃-syntax; _×_; _,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
-open import Data.Maybe using (nothing)
 open import Function using (flip)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; cong; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Relation.Nullary using (Dec)
-open import Once.Spec.Grade using (pure; act; mk-kind; Zero; One; Many)
+open import Once.Spec.Grade using (act; Zero; One; Many)
 open import Once.Spec.Type
-  using (Ty; Fun; TySub; _⟨_⟩; _⟨_⟩F; ⟦_⟧F; K; Id; _⊕_; _⊗_; Unit; _+_)
+  using (Ty; Fun; TySub; ⟦_⟧F; K; Id; _⊕_; _⊗_; Unit; _+_)
 open import Once.Spec.Signature
-  using (BTy; unit; void; int; float; ⌜_⌝; ⌜_⌝ᵈ; DeclType; constant; value; operation; _∶_; Op; op; ⟦_⟧ᵇ; NotEmpty; call)
+  using (unit; void; int; float; ⌜_⌝; ⌜_⌝ᵈ; constant; value; operation; _∶_; Op; op; ⟦_⟧ᵇ; NotEmpty; call)
 import Once.Spec.Signature as S
 open import Once.Spec.Sub
 open import Once.Spec.Core.Syntax using (Prim; primDom; primCod;
   num; p-i2f)
 open import Once.Spec.Theory using (int; float; unary; binary; compare)
 open import Once.Spec.Effect Σ
-open import Once.Spec.Domain Σ using (⟦_⟧ᵛ; code; toB; fromB; toL; fromL; conv)
+open import Once.Spec.Domain Σ using (toB; fromB; toL; fromL; conv)
 open import Once.Spec.Boundary using (readAt)
 open import Once.Spec.Equivalence Σ using (Rel; RelF; RelSub)
 open import Once.Spec.Observation Σ using (Model; module Model)

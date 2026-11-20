@@ -28,7 +28,7 @@ open import Data.List.Relation.Binary.Subset.Propositional using (_⊆_)
 open import Data.List.Properties using (length-++; ∷-injectiveˡ)
 open import Data.List.Relation.Unary.Any using (here; there)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Nat using (ℕ; zero; suc; _≤_; _+_)
+open import Data.Nat using (zero; suc; _≤_)
 open import Data.Nat.Properties using (m≤m+n; m≤n+m; ≤-trans; +-comm; n≮n)
 open import Data.Product using (Σ-syntax; ∃-syntax; _,_; _×_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -49,7 +49,7 @@ import Once.Metatheory.Run as RunM
 import Once.Metatheory.RunLaws as RunLaws
 import Once.Metatheory.Trace as Trace
 import Once.Metatheory.Coherence.Relation as Relation
-open import Once.Spec.Metatheory using (Freyd; Central; Commute; pairK; lift; liftBlock; liftOp)
+open import Once.Spec.Metatheory using (Freyd; Central; Commute; pairK; lift; liftBlock)
 
 open Effect Σ
 open Observation Σ using (World)
@@ -61,8 +61,6 @@ open RunLaws Σ using (run-det; run-det-calls; module Seq)
 open Trace using (MaybeEnd; cut≈; end≈)
 open Relation Σ
 
-open νM using (outν)
-open _≈ν_ using (force≈)
 
 ------------------------------------------------------------------------
 -- Bisimilar computations are observed the same
@@ -132,11 +130,17 @@ private
   Σ′ = (fresh ∶ operation unit Many unit) ∷ Σ
 
   module E′ = Effect Σ′
+    using (T∞; _>>=∞_; embed; performT; return∞)
   module O′ = Observation Σ′
+    using (World)
   module R′ = RunM Σ′
+    using (Run; RunB; ra-go; rb-call; rb-cut; rb-next; rb-ret; run)
   module RL′ = RunLaws Σ′
+    using (module Seq)
   module Rel′ = Relation Σ′
+    using (aWorld; bwd; fromObserved)
   module Tr′ = Trace
+    using (MaybeEnd)
 
   probeOp : Op Σ′
   probeOp = op (here refl)
@@ -221,7 +225,9 @@ discard-pure {Y} m h = found (Seq.split aWorld (λ _ → return∞ tt) m (proj�
 module _ {Σ″ : Signature} where
   private
     module E″ = Effect Σ″
+      using (BlockEq; T∞; _>>=∞_; _≈_; force; return∞; module _≈ν_)
     module B″ = Bisim Σ″
+      using (≈-bind; ≈-refl; ≈-reflB; ≈-sym; ≈-trans)
 
     byForce″ : ∀ {X} (m m′ : E″.T∞ X) → E″.force m ≡ E″.force m′ → E″._≈_ m m′
     E″._≈ν_.force≈ (byForce″ m m′ e) = subst (E″.BlockEq _ (E″.force m)) e (B″.≈-reflB (E″.force m))

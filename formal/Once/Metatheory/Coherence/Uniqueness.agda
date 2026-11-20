@@ -17,9 +17,8 @@ module Once.Metatheory.Coherence.Uniqueness (Σ : Signature) {s : ℕ} (S : Defs
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
 open import Once.Spec.Grade using (mk-kind; fin)
-open import Once.Spec.Type using (Ty; Fun; KCtx; _*_; _+_; _⇒[_]_; μ; ν; ⟦_⟧F)
+open import Once.Spec.Type using (Ty; Fun; KCtx; _*_; _+_; _⇒[_]_; ν; ⟦_⟧F)
 open import Once.Spec.Context using (Ctx; _▸_; _∷_)
-open import Once.Spec.Core.Syntax
 open import Once.Spec.Core.Typing Σ S
 
 private

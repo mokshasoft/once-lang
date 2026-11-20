@@ -15,19 +15,18 @@ module Once.Metatheory.Laws.MapLaws (Σ : Signature) where
 
 open import Data.Nat using (ℕ; zero; suc)
 open import Data.Fin using () renaming (zero to fz; suc to fs)
-open import Data.Empty using (⊥-elim)
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Data.Product using (_,_)
 open import Data.Sum using (inj₁; inj₂)
-open import Data.Unit using (⊤; tt)
+open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst; cong; cong₂)
-open import Once.Spec.Grade using (Purity; Zero; One; Many; mk-kind; fin)
-open import Once.Spec.Type using (Ty; Type; Fun; KCtx; Base; WFFun; wf-K; wf-Id; wf-⊕; wf-⊗; ∅ₖ; Respects; var; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν;
+open import Once.Spec.Grade using (Zero; One; Many; mk-kind; fin)
+open import Once.Spec.Type using (Ty; Type; KCtx; Base; WFFun; wf-K; wf-Id; wf-⊕; wf-⊗; ∅ₖ; Respects; var; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν;
                                   K; Id; _⊕_; _⊗_; TySub; _⟨_⟩; _⟨_⟩F; at₀)
 open import Once.Spec.Type.Substitution using (base-⟨⟩)
-open import Once.Spec.Polynomial using (SFunctor; ⟦_⟧SF; μS; inS)
-open import Once.Spec.Effect Σ using (M; fmap; νM; ana; LayerEq; T∞; _>>=∞_; return∞; _≈_; toT∞)
+open import Once.Spec.Polynomial using (inS)
+open import Once.Spec.Effect Σ using (M; fmap; νM; ana; LayerEq; _>>=∞_; return∞; _≈_; toT∞)
 open νM using (outν)
-open import Once.Spec.Domain Σ using (⟦_⟧ᵛ; code)
+open import Once.Spec.Domain Σ using (⟦_⟧ᵛ)
 open import Once.Spec.Equivalence Σ using (Same; SameM; SameNu; SameStream)
 open import Once.Spec.Polynomial using (sfmap)
 open import Once.Metatheory.Bisim Σ using (≈-refl; ≈-sym; ≈-trans; ≈-bind; idˡ; idʳ; assoc)
@@ -35,7 +34,7 @@ open import Once.Metatheory.Unfold Σ using (module Unfold)
 open import Once.Metatheory.Erase Σ using (toT∞-fmap)
 open import Once.Metatheory.Coherence.Relation Σ using (Related; ≈-Relatedˡ; ≈-Relatedʳ; toObserved; fromObserved; LayerEq-mono)
 open import Once.Metatheory.Coherence.Layer Σ using (sameBase; reflBase; relatedFmap; LayerEq-∀; outRel; module Ana; module Functor)
-open import Once.Metatheory.Laws.MapSem Σ using (module MapAt; Occ; OccF; p-var; p-*ˡ; p-*ʳ; p-+ˡ; p-+ʳ; p-⇒ʳ; p-μ; p-ν; p-K; p-⊕ˡ; p-⊕ʳ; p-⊗ˡ; p-⊗ʳ)
+open import Once.Metatheory.Laws.MapSem Σ using (module MapAt; p-var; p-*ˡ; p-*ʳ; p-+ˡ; p-+ʳ; p-⇒ʳ; p-μ; p-ν; p-K; p-⊕ˡ; p-⊕ʳ; p-⊗ˡ; p-⊗ʳ)
 
 -- A map's cover knows each functor constant is a base type at both ends.
 module CovWF {m : ℕ} {Δ : KCtx m} (σ : TySub m 0) (X Y : Ty m) where
@@ -218,9 +217,13 @@ module MapId {m : ℕ} {Δ : KCtx m} (σ : TySub m 0) (r : Respects Δ ∅ₖ σ
 
 module MapComp {m : ℕ} {Δ : KCtx m} (σ : TySub m 0) (r : Respects Δ ∅ₖ σ) (A B C : Ty m) where
   module AB = MapAt Δ σ A B
+    using (CA; CB; Cov; CovF; Fn; FnF; mapS; muLayer; muMap; nuLayer)
   module BC = MapAt Δ σ B C
+    using (CA; CB; Cov; CovF; Fn; FnF; mapS; muLayer; muMap; nuLayer)
   module AC = MapAt Δ σ A C
+    using (CA; CB; Cov; CovF; Fn; FnF; mapS; muLayer; muMap; nuLayer)
   module WAC = CovWF {Δ = Δ} σ A C
+    using (wfA; wfB)
   private module Fn = Functor σ r
 
   -- `φ₃` is `φ₂` after `φ₁`.

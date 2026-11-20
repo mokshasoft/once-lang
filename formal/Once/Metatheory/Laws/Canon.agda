@@ -16,10 +16,10 @@ open import Once.Spec.Core.Syntax using (Defs)
 module Once.Metatheory.Laws.Canon (Σ : Signature) {s : ℕ} (S : Defs s) where
 
 open import Data.Fin using (zero; suc)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
-open import Once.Spec.Grade using (Quantity; Zero; One; Many; mk-kind; Purity; pure; act; eff; _·p_; _⊑π_; ⊑-pure; ⊑-act; ⊑-eff; 0≤q; 1≤1; 1≤ω; ω≤ω)
+open import Relation.Binary.PropositionalEquality using (refl)
+open import Once.Spec.Grade using (Zero; One; Many; mk-kind; Purity; pure; act; eff; _·p_; _⊑π_; ⊑-pure; ⊑-act; ⊑-eff; 0≤q; 1≤1; 1≤ω; ω≤ω)
 open import Once.Spec.Type using (Ty; KCtx; Void; Unit; _*_; _+_; _⇒[_]_)
-open import Once.Spec.Context using (Ctx; _▸_; Usage; zeroUsage; _∷_; _⊑∷_)
+open import Once.Spec.Context using (Ctx; zeroUsage; _∷_; _⊑∷_)
 open import Once.Metatheory.TermModel.Usage using (⊑ᵘ-refl)
 open import Once.Spec.Core.Syntax
 open import Once.Spec.Core.Derived

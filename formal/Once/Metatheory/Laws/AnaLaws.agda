@@ -16,25 +16,24 @@ open import Once.Spec.Core.Syntax using (Defs)
 
 module Once.Metatheory.Laws.AnaLaws (Σ : Signature) (u : OneName Σ) (fmt : TargetNum) {s : ℕ} (S : Defs s) where
 
-open import Data.Product using (_×_; _,_; Σ-syntax; proj₁)
+open import Data.Product using (_,_; Σ-syntax; proj₁)
 open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; subst₂; cong; cong₂)
-open import Once.Spec.Grade using (Quantity; Many; mk-kind; Purity; pure; pureᶠ; _⊑π_; ⊑-pure)
-open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun; TySub; Respects; ∅ₖ; _⟨_⟩; _⟨_⟩F; _⇒[_]_; ν; ⟦_⟧F; at₀; K; Id; _⊕_; _⊗_)
+open import Once.Spec.Grade using (Many; mk-kind; pure; pureᶠ; _⊑π_; ⊑-pure)
+open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun; TySub; _⟨_⟩; _⟨_⟩F; _⇒[_]_; ν; ⟦_⟧F; at₀; K; Id; _⊕_; _⊗_)
 open import Once.Spec.Context using (Ctx)
-open import Once.Spec.Core.Syntax
-open import Once.Spec.Core.Derived using (composeᶜ; anaᶜ; outᶜ; layerᶜ; mapᶜ)
+open import Once.Spec.Core.Derived using (composeᶜ; anaᶜ; outᶜ; layerᶜ)
 open import Once.Spec.Core.Typing Σ S
 open import Once.Spec.Core.Meaning Σ fmt S
-open import Once.Spec.Effect Σ using (M; sub; T∞; _>>=∞_; return∞; toT∞; mapP; anaP; νM; LayerEq)
+open import Once.Spec.Effect Σ using (sub; _>>=∞_; return∞; toT∞; mapP; anaP; νM; LayerEq)
 open import Once.Spec.Equivalence Σ using (SameNu)
 open import Once.Spec.Polynomial using (SK; SId; _S⊕_; _S⊗_)
-open import Once.Spec.Domain Σ using (⟦_⟧ᵛ; code; toL; fromL; foldM)
+open import Once.Spec.Domain Σ using (⟦_⟧ᵛ; code; toL; fromL)
 open import Once.Spec.Polynomial using (sfmap)
 open import Once.Spec.Equivalence Σ using (Same)
 open import Once.Spec.Metatheory using (_≅_; Pure)
-open import Once.Metatheory.Bisim Σ using (≈-sym; ≈-trans; ≈-bind; ≈-refl; idˡ; idʳ)
-open import Once.Metatheory.Coherence.Relation Σ using (LayerEq-mono; Related; ≈-Relatedˡ; ≈-Relatedʳ; bindRel; returnRel; returnRel⁻; toObserved; fromObserved)
+open import Once.Metatheory.Bisim Σ using (≈-sym; ≈-trans; ≈-bind; ≈-refl; idˡ)
+open import Once.Metatheory.Coherence.Relation Σ using (LayerEq-mono; Related; ≈-Relatedʳ; bindRel; returnRel; returnRel⁻; toObserved; fromObserved)
 open import Once.Metatheory.Coherence.Layer Σ using (rel; runs; module Functor; LayerEq-∀)
 open import Once.Metatheory.Coherence.PER Σ using (Same-sym; Same-trans; SameNu-trans)
 open import Once.Metatheory.Coherence.Uniqueness Σ S using (ty-unique)

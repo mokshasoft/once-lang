@@ -23,7 +23,7 @@ module Once.Metatheory.TermModel.Subst (Σ : Signature) {s : ℕ} (S : Defs s) w
 open import Data.Fin using (Fin; zero; suc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 open import Once.Spec.Grade using (Quantity; Zero; One; Many; pure; _+q_; _*q_)
-open import Once.Spec.Type using (Ty; KCtx)
+open import Once.Spec.Type using (KCtx)
 open import Once.Spec.Context
   using (Ctx; ∅; _▸_; lookup; Usage; []; _∷_; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_; _⊑ᵘ_; _⊑∷_)
 open import Once.Spec.Core.Syntax

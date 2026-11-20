@@ -22,7 +22,7 @@ open import Data.Nat as ℕ using (ℕ; zero; suc; _^_)
 import Data.Nat.Properties as ℕP
 open import Data.Integer as ℤ using (ℤ; +_; _⊓_)
 import Data.Integer.Properties as ℤP
-open import Data.Bool using (Bool; true; false; T; not; _∧_; _∨_)
+open import Data.Bool using (true; false; T; not; _∧_; _∨_)
 open import Data.Unit using (tt)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Product using (_×_; _,_)
@@ -35,7 +35,7 @@ open import Once.Spec.Float.Value
   using (Sign; pos; neg; FloatVal; fv-zero; fv-num; fv-inf; fv-nan; odd; Fits)
 import Once.Spec.Float.Arith as FA
 open FA using (signedAt; alignTo; ltT; eqV)
-open import Once.Spec.Theory using (OrderOps; EqualityOps; module Laws)
+open import Once.Spec.Theory using (module Laws)
 open import Once.Metatheory.Float.Nat using (odd-pow-inj)
 
 V : FloatVal → Set

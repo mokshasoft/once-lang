@@ -16,7 +16,7 @@ module Once.Metatheory.Unfold (Σ : Signature) where
 open import Data.Product using (_,_)
 open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
-open import Once.Spec.Grade using (Finite; pureᶠ; actᶠ; fin; pure; act)
+open import Once.Spec.Grade using (Finite; pureᶠ; actᶠ; fin)
 open import Once.Spec.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; sfmap)
 open import Once.Spec.Effect Σ
 open import Once.Metatheory.Bisim Σ using (_≈B_; return≈)

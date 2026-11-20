@@ -18,18 +18,18 @@
 module Once.Metatheory.TraceSub where
 
 open import Data.List using (List; []; _∷_; _++_; length)
-open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Nat using (ℕ; zero; suc)
+open import Data.Maybe using (just; nothing)
+open import Data.Nat using (suc)
 open import Data.Product using (∃-syntax; _×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; cong; subst)
 
 open import Once.Spec.Signature using (Event)
 open import Once.Spec.Delay using (_⇓_)
 open import Once.Spec.Trace
   using (End; exhausted; Tr; module Tr; EndRel; StepRel; _⊑ᵗ⟨_⟩_; module _⊑ᵗ⟨_⟩_)
 open import Once.Metatheory.Trace
-  using (Obs; pre; ObsR; MaybeEnd; end≈; FirstIs; firstOf; seeFirst; deeper; shallower)
+  using (Obs; pre; ObsR; end≈; FirstIs; firstOf; seeFirst; deeper; shallower)
 
 open Tr using (next)
 open _⊑ᵗ⟨_⟩_ using (sound; complete)

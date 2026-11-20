@@ -11,9 +11,9 @@ open import Once.Spec.Signature using (Signature; call)
 
 module Once.Metatheory.Bisim (Σ : Signature) where
 
-open import Data.Product using (_×_; _,_)
+open import Data.Product using (_,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans)
+open import Relation.Binary.PropositionalEquality using (refl; sym; trans)
 open import Once.Spec.Grade using (Finite; pureᶠ; actᶠ)
 open import Once.Spec.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
 open import Once.Spec.Effect Σ

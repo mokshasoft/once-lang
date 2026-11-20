@@ -17,19 +17,18 @@ open import Once.Spec.Core.Syntax using (Defs)
 module Once.Metatheory.TermModel.Ren (Σ : Signature) (fmt : TargetNum) {s : ℕ} (S : Defs s) where
 
 open import Data.Fin using (Fin; zero; suc)
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
-open import Data.Sum using (inj₁; inj₂; [_,_]′)
+open import Data.Product using (_×_; _,_)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥-elim)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
 open import Once.Spec.Grade
-  using (Quantity; Zero; One; Many; Purity; pure; act; fin; mk-kind; _≤q_; 0≤q; 1≤1; 1≤ω; ω≤ω)
+  using (Zero; One; Many; pure; act; fin; mk-kind; 0≤q; 1≤1; 1≤ω; ω≤ω)
 open import Once.Spec.Type
-  using (Ty; Type; KCtx; ∅ₖ; TySub; Respects; _⟨_⟩; _⟨_⟩F; Int; Float; _⇒[_]_; _*_; _+_; μ; ν; ⟦_⟧F; Unit)
+  using (KCtx; ∅ₖ; TySub; Respects; _⟨_⟩; _⟨_⟩F; Int; Float; _⇒[_]_; _*_; ν)
 open import Once.Spec.Type.Substitution using (respects-∘; ⟨⟩-∘)
-open import Once.Spec.Context using (Ctx; ∅; _▸_; lookup; Usage; []; _∷_; singleUse; _+ᵘ_; _*ᵘ_; _⊑ᵘ_; _⊑∷_)
+open import Once.Spec.Context using (Ctx; lookup; Usage; []; _∷_; singleUse; _⊑ᵘ_; _⊑∷_)
 open import Once.Spec.Core.Syntax
-open Schema using (arity; kinds; type)
+open Schema using (type)
 open import Once.Spec.Core.Typing Σ S
 open import Once.Spec.Core.Meaning Σ fmt S
 open import Once.Spec.Effect Σ using (M; fmap; module νM)
@@ -45,7 +44,6 @@ open import Once.Metatheory.Coherence.Conv Σ using (convSame)
 open import Once.Metatheory.Coherence.Env Σ fmt S
   using (SlotAgree; envˡ-restrict; envʳ-restrict; env*One-envʳ-restrict; env*Many-envʳ-restrict; env*Many-envˡ-restrict)
 open import Once.Metatheory.Coherence.Leaves Σ fmt S using (sigopRefl; primSame; substSame; slotSame; caseRel)
-open import Once.Metatheory.TermModel.Usage
 open import Once.Metatheory.TermModel.Subst Σ S
 open import Once.Metatheory.Parametricity.Identity Σ using (rel-same)
 

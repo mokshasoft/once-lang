@@ -17,14 +17,12 @@ open import Once.Spec.Core.Syntax using (Defs)
 
 module Once.Metatheory.Laws.ComposeShape (Σ : Signature) (u : OneName Σ) (fmt : TargetNum) {s : ℕ} (S : Defs s) where
 
-open import Data.Fin using (zero; suc)
-open import Data.Empty using (⊥-elim)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.Spec.Grade
   using (Quantity; Zero; One; Many; mk-kind; Purity; pure; act; eff; _·p_; positionGrade;
-         _⊑π_; ⊑-pure; ⊑-pa; ⊑-pe; ⊑-act; ⊑-ae; ⊑-eff)
+         _⊑π_; ⊑-pure; ⊑-pe; ⊑-ae; ⊑-eff)
 open import Once.Spec.Type using (Ty; KCtx; _⇒[_]_)
-open import Once.Spec.Context using (Ctx; _▸_; Usage)
+open import Once.Spec.Context using (Ctx)
 open import Once.Spec.Core.Syntax
 open import Once.Spec.Core.Derived using (composeᶜ)
 open import Once.Spec.Core.Typing Σ S
@@ -32,7 +30,7 @@ open import Once.Metatheory.Types using (⊑π-trans)
 open import Once.Metatheory.Coherence.Uniqueness Σ S using (ty-unique)
 open import Once.Metatheory.TermModel.Subst Σ S using (wk-⊢)
 open import Once.Metatheory.Laws.Strengthen Σ S using (varTy; pure⊑)
-open import Once.Metatheory.Laws.Tools Σ u fmt S using (peel; peeled; Peeled)
+open import Once.Metatheory.Laws.Tools Σ u fmt S using (peel; peeled)
 
 -- Below a sequence: each part (`_·p_` is the join of the chain).
 ⊑·ˡ : ∀ x y {z} → (x ·p y) ⊑π z → x ⊑π z

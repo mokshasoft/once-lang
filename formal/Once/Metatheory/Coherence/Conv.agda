@@ -10,20 +10,18 @@
 -- bisimilarity, so the layers stay related.
 ------------------------------------------------------------------------
 
-open import Once.Spec.Signature using (Signature; call)
+open import Once.Spec.Signature using (Signature)
 
 module Once.Metatheory.Coherence.Conv (Σ : Signature) where
 
-open import Data.Empty using (⊥-elim)
-open import Data.Nat using (ℕ; zero; suc)
-open import Data.Product using (_,_; proj₁; proj₂)
-open import Data.Sum using (_⊎_)
+open import Data.Nat using (zero; suc)
+open import Data.Product using (_,_)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (tt)
-open import Once.Spec.Grade using (Finite; pureᶠ; actᶠ; fin; pure; act; eff; mk-kind; Zero; One; Many; _⊑π_; ⊑-pure; ⊑-pa; ⊑-act)
+open import Once.Spec.Grade using (pureᶠ; fin; pure; act; Zero; One; Many; _⊑π_; ⊑-pure; ⊑-pa; ⊑-act)
 open import Once.Spec.Type using (Ty; TySub; _⟨_⟩; _⟨_⟩F)
 open import Once.Spec.Sub
-open import Once.Spec.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
+open import Once.Spec.Polynomial using (SFunctor; ⟦_⟧SF)
 open import Once.Spec.Effect Σ
 open import Once.Spec.Domain Σ
 open import Once.Spec.Equivalence Σ hiding (Rel; RelF)

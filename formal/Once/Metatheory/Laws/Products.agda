@@ -17,9 +17,8 @@ module Once.Metatheory.Laws.Products (Σ : Signature) (u : OneName Σ) (fmt : Ta
 
 open import Data.Product using (_,_; proj₁; proj₂)
 open import Data.Unit using (tt)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
-open import Once.Spec.Grade using (pure)
-open import Once.Spec.Type using (Ty; KCtx; _⟨_⟩; _*_; Unit)
+open import Relation.Binary.PropositionalEquality using (refl)
+open import Once.Spec.Type using (KCtx; _⟨_⟩; _*_; Unit)
 open import Once.Spec.Context using (Ctx)
 open import Once.Spec.Core.Syntax
 open import Once.Spec.Core.Typing Σ S
@@ -28,7 +27,7 @@ open import Once.Spec.Effect Σ using (T∞; _>>=∞_; return∞; _≈_)
 open import Once.Spec.Equivalence Σ using (Same)
 open import Once.Spec.Metatheory using (_≅_; Pure)
 open import Once.Metatheory.Bisim Σ using (≈-refl; ≈-sym; ≈-trans; ≈-bind; idˡ; idʳ; assoc)
-open import Once.Metatheory.Coherence.Relation Σ using (Related; ≈-Relatedˡ; ≈-Relatedʳ; bindRel; returnRel)
+open import Once.Metatheory.Coherence.Relation Σ using (≈-Relatedˡ; ≈-Relatedʳ; bindRel; returnRel)
 open import Once.Metatheory.Coherence.Layer Σ using (rel; runs; relPure⁻)
 open import Once.Metatheory.Coherence.Uniqueness Σ S using (ty-unique)
 open import Once.Metatheory.Laws.Tools Σ u fmt S

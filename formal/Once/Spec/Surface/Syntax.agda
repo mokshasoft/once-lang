@@ -9,8 +9,8 @@
 -- the operations it is compiled against, type signatures and definitions.
 -- An expression names variables by string; a reference to something global
 -- is RESOLVED (`Spec.Surface.Resolution`) to the canonical name it denotes,
--- or to the generator it names. A type in a signature may mention named type
--- variables (`PTVar`); an annotation is a ground type.
+-- or to the generator it names. A type in a signature is a type as written
+-- (`Spec.Surface.Type`); an annotation is a ground type.
 ------------------------------------------------------------------------
 
 module Once.Spec.Surface.Syntax where
@@ -18,41 +18,14 @@ module Once.Spec.Surface.Syntax where
 open import Data.List using (List)
 open import Data.Maybe using (Maybe)
 open import Data.Integer using (ℤ)
-open import Data.Nat using (ℕ; _+_; _*_; _^_)
+open import Data.Nat using (ℕ)
 open import Data.String using (String)
-open import Once.Spec.Grade using (Quantity; Finite)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.Spec.Type using (Type)
-open import Once.Spec.Float.Value using (Sign; pos; neg)
-open import Once.Spec.Float.Decimal using (Decimal; ⟨_⟩_/10^_)
+open import Once.Spec.Float.Value using (Sign)
 open import Once.Spec.Surface.Operator using (BinOp)
 open import Once.Spec.Surface.Generators using (Gen)
-
-------------------------------------------------------------------------
--- Types as written
-------------------------------------------------------------------------
-
-mutual
-  data PolyFunctor : Set where
-    PK   : PolyType → PolyFunctor
-    PId  : PolyFunctor
-    _P⊕_ : PolyFunctor → PolyFunctor → PolyFunctor
-    _P⊗_ : PolyFunctor → PolyFunctor → PolyFunctor
-
-  data PolyType : Set where
-    PUnit PVoid PInt PFloat : PolyType
-    _P*_ _P+_ : PolyType → PolyType → PolyType
-    _P⇒[_]_   : PolyType → Quantity → PolyType → PolyType   -- a pure arrow
-    PAct PEff : PolyType → PolyType → PolyType               -- `Act A B`, `Eff A B`
-    Pμ        : PolyFunctor → PolyType                       -- `Mu F`
-    Pν        : PolyFunctor → Finite → PolyType              -- `Nu F`, `Nu (Act F)`
-    PTVar     : String → PolyType                            -- a type variable
-
-infixr 40 _P⊕_
-infixr 50 _P⊗_
-infixr 30 _P⇒[_]_
-infixr 40 _P+_
-infixr 50 _P*_
+open import Once.Spec.Surface.Type using (PolyType)
 
 ------------------------------------------------------------------------
 -- Expressions
@@ -74,11 +47,6 @@ data Expr : Set where
   RAnnot     : Expr → Type → Expr                  -- (e : T)
   RBinOp     : BinOp → Expr → Expr → Expr
   RNeg       : Expr → Expr                         -- -e
-
--- A float literal's value as written: its sign beside the digits (`-0.0` is
--- the negative zero).
-signedDecimal : Sign → ℕ → ℕ → ℕ → Decimal
-signedDecimal s i f l = ⟨ s ⟩ (i * 10 ^ l + f) /10^ l
 
 ------------------------------------------------------------------------
 -- Modules

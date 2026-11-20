@@ -50,6 +50,7 @@ open import Once.Spec.Sub using (_<:_; _<:ᶜ_; _⊔_≔_)
 open import Once.Spec.Signature using (_∶_; ⌜_⌝ᵈ)
 open import Once.Spec.Theory using (⌜_⌝ⁿ; Neg; Has; symCod; ‵neg)
 open import Once.Spec.Surface.Syntax
+open import Once.Spec.Float.Decimal using (signedDecimal)
 open import Once.Spec.Surface.Operator using (BinOp; BinSym; binSym)
 open BinSym
 open import Once.Spec.Surface.Generators

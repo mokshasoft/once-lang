@@ -44,10 +44,11 @@ open import Once.Spec.Surface.Lexing
          TOp; TOpD; TNewline; TEOF; Lexes; Glyph)
 open import Once.Spec.Surface.Operator using (‹_›; o+; o-; o*; Level; comparison; additive; multiplicative; level;
                                               BinOp; plain; dotted)
-open import Once.Spec.Surface.Syntax
+open import Once.Spec.Surface.Type
   using (PolyType; PolyFunctor; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PAct; PEff; Pμ; Pν; PTVar;
-         PK; PId; _P⊕_; _P⊗_;
-         Expr; RVar; RQualified; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg;
+         PK; PId; _P⊕_; _P⊗_)
+open import Once.Spec.Surface.Syntax
+  using (Expr; RVar; RQualified; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg;
          Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport; mkImport; Module)
 
 ------------------------------------------------------------------------

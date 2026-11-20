@@ -19,41 +19,36 @@
 ------------------------------------------------------------------------
 
 open import Data.Nat using (ℕ)
-open import Once.Spec.Signature using (Signature; call)
+open import Once.Spec.Signature using (Signature)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.Spec.Core.Syntax using (Defs)
 open import Once.Spec.Signature using (OneName)
 
 module Once.Metatheory.Coherence.Fundamental (Σ : Signature) (u : OneName Σ) (fmt : TargetNum) {s : ℕ} (S : Defs s) where
 
-open import Data.Empty using (⊥; ⊥-elim)
-open import Data.Fin using (Fin)
+open import Data.Empty using (⊥-elim)
 open import Data.List.Membership.Propositional using (_∈_)
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
-open import Data.Sum using (inj₁; inj₂; [_,_]′)
-open import Data.Unit using (⊤; tt)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
+open import Data.Product using (_,_)
+open import Data.Unit using (tt)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
 open import Once.Spec.Grade
-  using (fin; _·p_; positionGrade; Quantity; Zero; One; Many; Purity; pure; act; eff; mk-kind; _⊑π_;
+  using (fin; _·p_; positionGrade; Zero; One; Many; Purity; pure; act; mk-kind;
          0≤q; 1≤1; 1≤ω; ω≤ω)
 open import Once.Spec.Type
-  using (Ty; Type; KCtx; ∅ₖ; TySub; Respects; WFFun; _⟨_⟩; _⟨_⟩F; Base; b-Unit; b-Int; b-Float; b-*; b-+;
-         Unit; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; ⟦_⟧F)
+  using (Ty; KCtx; ∅ₖ; TySub; Respects; WFFun; _⟨_⟩; _⟨_⟩F; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; ⟦_⟧F)
 open import Once.Spec.Signature
-  using (_∶_; constant; DeclType; ⌜_⌝; ⌜_⌝ᵈ; op)
+  using (_∶_; ⌜_⌝ᵈ)
 open import Once.Spec.Context using (Ctx; _▸_; Usage; _∷_; _⊑ᵘ_; _+ᵘ_; _*ᵘ_)
 open import Once.Spec.Type.Substitution using (respects-∘; ⟨⟩-∘)
 open import Once.Spec.Core.Syntax
-open Schema using (arity; kinds; type)
+open Schema using (type)
 open import Once.Spec.Core.Typing Σ S
 open import Once.Spec.Core.Meaning Σ fmt S
-open import Once.Spec.Effect Σ using (M; toT∞; fmap; bind; bindᵍ; sub; module νM)
+open import Once.Spec.Effect Σ using (M; fmap; module νM)
 open νM using (outν)
-open import Once.Spec.Domain Σ using (⟦_⟧ᵛ; code; toB; fromB; toL; fromL; foldM; conv)
-open import Once.Spec.Equivalence Σ using (Same)
-open import Once.Spec.Metatheory using (SameDefs; SameEnv; Coherence)
-import Once.Spec.Word as Word
-open import Once.Metatheory.Types using (<:-unique; ⊑π-unique)
+open import Once.Spec.Domain Σ using (⟦_⟧ᵛ; code; toL; fromL; foldM)
+open import Once.Spec.Metatheory using (SameDefs; Coherence)
+open import Once.Metatheory.Types using (<:-unique)
 open import Once.Spec.Sub using (_<:_)
 open import Once.Metatheory.Erase Σ using (toT∞-fmap)
 open import Once.Metatheory.Parametricity.Identity Σ using (rel-same)
@@ -64,7 +59,7 @@ import Once.Metatheory.Coherence.Conversions Σ as Conversions
 open import Once.Metatheory.Coherence.Conv Σ using (convSame)
 open import Once.Metatheory.Coherence.Sigop Σ
 open import Once.Metatheory.Coherence.Env Σ fmt S
-open import Once.Metatheory.Coherence.Uniqueness Σ S using (ty-unique; ⇒-inj; kind-inj)
+open import Once.Metatheory.Coherence.Uniqueness Σ S using (ty-unique)
 open Names u
 open import Once.Metatheory.Coherence.Leaves Σ fmt S
 

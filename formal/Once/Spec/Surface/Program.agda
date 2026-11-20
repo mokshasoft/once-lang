@@ -47,6 +47,7 @@ open import Once.Spec.Core.Syntax using (Defs; []; _▷_; _!!_; Schema; module S
 open Schema using (arity; kinds; type)
 import Once.Spec.Core.Typing as CoreTyping
 import Once.Spec.Core.Program as CoreProgram
+open import Once.Spec.Surface.Type
 open import Once.Spec.Surface.Syntax
 open import Once.Spec.Surface.Resolution
   using (ModuleMap; FirstAt; Expands; Env; env; aliases; Unaliased; Resolves)

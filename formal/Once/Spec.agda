@@ -56,6 +56,7 @@ import Once.Spec.Core.Derived    -- the categorical combinators, as terms
 import Once.Spec.Core.Program    -- a program, and what it does
 
 -- What a programmer writes.
+import Once.Spec.Surface.Type        -- the types as written
 import Once.Spec.Surface.Syntax      -- the syntax tree
 import Once.Spec.Surface.Operator    -- the infix operators
 import Once.Spec.Surface.Lexing      -- text to tokens

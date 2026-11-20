@@ -15,7 +15,6 @@ open import Once.Spec.Signature using (Signature; call; Op; module Op; arg; NotE
 
 module Once.Metatheory.Observe (Σ : Signature) where
 
-open import Data.Empty using (⊥-elim)
 open import Data.List using (_++_; [_])
 open import Data.Product using (∃-syntax; _×_; _,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -25,11 +24,10 @@ open Op using (ans)
 open import Once.Spec.Effect Σ
 open import Once.Spec.Observation Σ
 open import Once.Spec.Trace
-open import Once.Spec.Delay using (Delay; module Delay; _⇓_; now⇓; later⇓; _≈⟨_⟩_)
+open import Once.Spec.Delay using (Delay; module Delay; _⇓_; now⇓; later⇓)
 open import Once.Metatheory.Bisim Σ using (_≈B_; return≈; next≈)
 open import Once.Spec.Signature using (⟦_⟧ᵇ; Event)
 
-open Delay using (step)
 open Tr using (next)
 open _≈ᵗ⟨_⟩_ using (same)
 open _≈ν_ using (force≈)

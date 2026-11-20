@@ -13,33 +13,23 @@ open import Once.Spec.Signature using (Signature; call)
 
 module Once.Metatheory.Coherence.Sigop (Σ : Signature) where
 
-open import Data.Empty using (⊥; ⊥-elim)
-open import Data.List using (List; []; _∷_; map)
 open import Data.List.Membership.Propositional using (_∈_)
-open import Data.List.Membership.Propositional.Properties using (∈-map⁺)
-open import Data.List.Relation.Unary.All using (All)
-import Data.List.Relation.Unary.All as All
-open import Data.List.Relation.Unary.Any using (here; there)
-open import Data.List.Relation.Unary.AllPairs using (_∷_)
 open import Data.Nat using (ℕ)
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
-open import Data.Sum using (inj₁; inj₂)
-open import Data.Unit using (⊤; tt)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; cong; subst)
-open import Once.Spec.Grade using (pure; act; eff; mk-kind; Zero; One; Many)
-open import Once.Spec.Name using (CanonicalName)
+open import Data.Sum using (inj₁)
+open import Data.Unit using (tt)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
+open import Once.Spec.Grade using (act)
 open import Once.Spec.Type
-  using (Ty; Type; TySub; Base; b-Unit; b-Void; b-Int; b-Float; b-*; b-+; ∅ₖ; Unit; Int; Float; _*_; _+_; _⟨_⟩)
+  using (TySub; Base; b-Unit; b-Void; b-Int; b-Float; b-*; b-+; ∅ₖ; _⟨_⟩)
 open import Once.Spec.Signature
-  using (BTy; unit; void; int; float; ⌜_⌝; ⌜_⌝ᵈ; DeclType; constant; value; operation; Decl; _∶_; Op; op; NotEmpty; notEmpty?)
+  using (unit; void; int; float; ⌜_⌝; operation; _∶_; op; NotEmpty)
 import Once.Spec.Signature as S
 open import Once.Spec.Effect Σ
-open import Once.Spec.Domain Σ using (⟦_⟧ᵛ; toB; fromB)
+open import Once.Spec.Domain Σ using (toB; fromB)
 open import Once.Spec.Equivalence Σ hiding (Rel; RelF)
-open import Once.Spec.Observation Σ using (World)
-open import Once.Spec.Trace using (returned; halted; EndRel; returned≈; halted≈)
+open import Once.Spec.Trace using (returned≈; halted≈)
 open import Once.Metatheory.Trace using (MaybeEnd; cut≈; end≈)
-open import Relation.Nullary using (Dec; yes; no)
+open import Relation.Nullary using (Dec)
 open import Once.Metatheory.Run Σ
 open import Once.Spec.Signature using (OneName)
 import Once.Metatheory.OneName as ON

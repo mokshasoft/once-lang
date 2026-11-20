@@ -33,7 +33,7 @@
 
 module Once.Spec.Float.Decimal where
 
-open import Data.Nat as ℕ using (ℕ; _∸_; _^_)
+open import Data.Nat as ℕ using (ℕ; _∸_; _^_; _+_; _*_)
 open import Data.Integer using (+_)
 
 open import Once.Spec.Float.Dyadic using (FloatFormat)
@@ -62,6 +62,11 @@ open Decimal
 -- | The whole number `n`.
 fromℕ : ℕ → Decimal
 fromℕ n = ⟨ pos ⟩ n /10^ 0
+
+-- | A literal as written: its sign beside the integer digits `i` and the `l`
+-- fraction digits `f` (`-0.0` is the negative zero).
+signedDecimal : Sign → ℕ → ℕ → ℕ → Decimal
+signedDecimal s i f l = ⟨ s ⟩ (i * 10 ^ l + f) /10^ l
 
 ------------------------------------------------------------------------
 -- The literal's value at a format

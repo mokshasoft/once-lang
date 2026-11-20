@@ -8,25 +8,22 @@
 -- apart arguments its type calls the same).
 ------------------------------------------------------------------------
 
-open import Once.Spec.Signature using (Signature; call)
+open import Once.Spec.Signature using (Signature)
 
 module Once.Metatheory.Coherence.PER (Σ : Signature) where
 
-open import Data.Empty using (⊥-elim)
-open import Data.Nat using (ℕ; zero; suc)
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Data.Nat using (zero; suc)
+open import Data.Product using (_×_; _,_)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans)
-open import Once.Spec.Grade using (Finite; fin; mk-kind; Zero; One; Many)
+open import Relation.Binary.PropositionalEquality using (refl; sym; trans)
+open import Once.Spec.Grade using (Finite; mk-kind; Zero; One; Many)
 open import Once.Spec.Type using (Type; Fun; K; Id; _⊕_; _⊗_; var; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν)
 open import Once.Spec.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_)
 open import Once.Spec.Effect Σ
-open import Once.Spec.Domain Σ using (⟦_⟧ᵛ; code)
 open import Once.Spec.Equivalence Σ
 open import Once.Metatheory.Trace using (WB-sym; WB-trans)
 
-open νM using (outν)
 
 ------------------------------------------------------------------------
 -- Observations
