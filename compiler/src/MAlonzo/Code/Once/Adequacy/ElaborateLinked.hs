@@ -1152,7 +1152,7 @@ du_eff'45'decl_844 v0 v1 v2 v3
                               else coe
                                      seq (coe v7)
                                      (coe
-                                        MAlonzo.Code.Once.ContractLaws.du_answer'45''8712'_150
+                                        MAlonzo.Code.Once.ContractLaws.du_answer'45''8712'_100
                                         (coe v0) (coe v3))
                        _ -> MAlonzo.RTE.mazUnreachableError)
       _ -> MAlonzo.RTE.mazUnreachableError
@@ -1193,7 +1193,7 @@ du_sigOpIR'45'linked_892 v0 v1 v2 v3
              (coe
                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                 (coe
-                   MAlonzo.Code.Once.ContractLaws.du_value'45''8712'_118 (coe v0)
+                   MAlonzo.Code.Once.ContractLaws.du_value'45''8712'_68 (coe v0)
                    (coe v3))
                 (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))
       MAlonzo.Code.Once.Type.Concrete.C_con'45'fun_18 v7 v8
@@ -1210,7 +1210,7 @@ du_sigOpIR'45'linked_892 v0 v1 v2 v3
                                        -> coe
                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                             (coe
-                                               MAlonzo.Code.Once.ContractLaws.du_value'45''8712'_118
+                                               MAlonzo.Code.Once.ContractLaws.du_value'45''8712'_68
                                                (coe v0) (coe v3))
                                             (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
                                      MAlonzo.Code.Once.Spec.Grade.C_act'7584'_38

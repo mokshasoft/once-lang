@@ -42,24 +42,24 @@ d_imageAt_10 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2322]
 d_imageAt_10 v0 v1 v2 v3
   = coe
-      MAlonzo.Code.Once.LinCore.Lower.d_image_2694 (coe v0)
+      MAlonzo.Code.Once.LinCore.Lower.d_image_2446 (coe v0)
       (coe MAlonzo.Code.Once.LinCore.Loader.d_bw_6)
       (coe
-         MAlonzo.Code.Once.LinCore.ExprBuild.d_L_1434
+         MAlonzo.Code.Once.LinCore.ExprBuild.d_L_1304
          (coe
-            MAlonzo.Code.Once.LinCore.ExprBuild.d_exprTable_1442 (coe v0)
+            MAlonzo.Code.Once.LinCore.ExprBuild.d_exprTable_1312 (coe v0)
             (coe v1)))
       (coe
-         MAlonzo.Code.Once.LinCore.ExprBuild.d_defs_1436
+         MAlonzo.Code.Once.LinCore.ExprBuild.d_defs_1306
          (coe
-            MAlonzo.Code.Once.LinCore.ExprBuild.d_exprTable_1442 (coe v0)
+            MAlonzo.Code.Once.LinCore.ExprBuild.d_exprTable_1312 (coe v0)
             (coe v1)))
       (coe
-         MAlonzo.Code.Once.LinCore.ExprBuild.du_mainCore_1656 (coe v0)
+         MAlonzo.Code.Once.LinCore.ExprBuild.du_mainCore_1526 (coe v0)
          (coe
-            MAlonzo.Code.Once.LinCore.ExprBuild.d_rs_1438
+            MAlonzo.Code.Once.LinCore.ExprBuild.d_rs_1308
             (coe
-               MAlonzo.Code.Once.LinCore.ExprBuild.d_exprTable_1442 (coe v0)
+               MAlonzo.Code.Once.LinCore.ExprBuild.d_exprTable_1312 (coe v0)
                (coe v1)))
          (coe v2) (coe v3))
       (coe MAlonzo.Code.Once.LinCore.Loader.d_ldConst_10)
@@ -72,29 +72,29 @@ d_blocksAt_18 ::
   [MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_58]
 d_blocksAt_18 v0 v1 v2 v3
   = coe
-      MAlonzo.Code.Once.LinCore.ImageBlocks.du_imageBlocks_66
+      MAlonzo.Code.Once.LinCore.ImageBlocks.du_imageBlocks_62
       (coe
-         MAlonzo.Code.Once.LinCore.Keys.d_univ_2014 (coe v0)
+         MAlonzo.Code.Once.LinCore.Keys.d_univ_1878 (coe v0)
          (coe MAlonzo.Code.Once.LinCore.Loader.d_bw_6)
          (coe
-            MAlonzo.Code.Once.LinCore.ExprBuild.d_L_1434
+            MAlonzo.Code.Once.LinCore.ExprBuild.d_L_1304
             (coe
-               MAlonzo.Code.Once.LinCore.ExprBuild.d_exprTable_1442 (coe v0)
+               MAlonzo.Code.Once.LinCore.ExprBuild.d_exprTable_1312 (coe v0)
                (coe v1)))
          (coe
-            MAlonzo.Code.Once.LinCore.ExprBuild.d_defs_1436
+            MAlonzo.Code.Once.LinCore.ExprBuild.d_defs_1306
             (coe
-               MAlonzo.Code.Once.LinCore.ExprBuild.d_exprTable_1442 (coe v0)
+               MAlonzo.Code.Once.LinCore.ExprBuild.d_exprTable_1312 (coe v0)
                (coe v1)))
-         (coe MAlonzo.Code.Once.LinCore.Core.C_One_176)
-         (coe MAlonzo.Code.Once.LinCore.Core.C_One_176)
-         (coe MAlonzo.Code.Once.LinCore.Core.C_One_176)
+         (coe MAlonzo.Code.Once.LinCore.Core.C_One_180)
+         (coe MAlonzo.Code.Once.LinCore.Core.C_One_180)
+         (coe MAlonzo.Code.Once.LinCore.Core.C_One_180)
          (coe
-            MAlonzo.Code.Once.LinCore.ExprBuild.du_mainCore_1656 (coe v0)
+            MAlonzo.Code.Once.LinCore.ExprBuild.du_mainCore_1526 (coe v0)
             (coe
-               MAlonzo.Code.Once.LinCore.ExprBuild.d_rs_1438
+               MAlonzo.Code.Once.LinCore.ExprBuild.d_rs_1308
                (coe
-                  MAlonzo.Code.Once.LinCore.ExprBuild.d_exprTable_1442 (coe v0)
+                  MAlonzo.Code.Once.LinCore.ExprBuild.d_exprTable_1312 (coe v0)
                   (coe v1)))
             (coe v2) (coe v3)))
 -- Once.LinCore.ExprImage.fileAt

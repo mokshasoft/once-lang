@@ -39,7 +39,7 @@ d_Runs_6 = ()
 data T_Runs_6
   = C_constructor_60 (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
                       MAlonzo.Code.Data.Sum.Base.T__'8846'__30)
-                     (MAlonzo.Code.Once.Spec.Surface.Syntax.T_Module_110 ->
+                     (MAlonzo.Code.Once.Spec.Surface.Syntax.T_Module_64 ->
                       [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14])
                      (MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
                       [MAlonzo.Code.Agda.Builtin.String.T_String_6])
@@ -48,7 +48,7 @@ data T_Runs_6
                      (MAlonzo.Code.Once.Parser.Module.Core.T_Resolved_8 ->
                       Maybe MAlonzo.Code.Once.IR.T_IR_16)
                      ([MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
-                      MAlonzo.Code.Once.Spec.Surface.Syntax.T_Module_110 ->
+                      MAlonzo.Code.Once.Spec.Surface.Syntax.T_Module_64 ->
                       MAlonzo.Code.Data.Sum.Base.T__'8846'__30)
                      (MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
                       MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
@@ -83,7 +83,7 @@ d_parse'45'source_34 v0
 -- Once.Extract.Root.Runs.module-imports
 d_module'45'imports_36 ::
   T_Runs_6 ->
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Module_110 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Module_64 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]
 d_module'45'imports_36 v0
   = case coe v0 of
@@ -124,7 +124,7 @@ d_main'45'ir_42 v0
 d_resolve'45'imports_44 ::
   T_Runs_6 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Module_110 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Module_64 ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30
 d_resolve'45'imports_44 v0
   = case coe v0 of

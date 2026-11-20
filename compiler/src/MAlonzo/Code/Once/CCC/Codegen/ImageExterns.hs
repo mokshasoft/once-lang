@@ -29,7 +29,7 @@ import qualified MAlonzo.Code.Data.List.Relation.Unary.Any
 import qualified MAlonzo.Code.Once.Arith.Machine.IR
 import qualified MAlonzo.Code.Once.CCC.Codegen.ImageSymbols
 import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
-import qualified MAlonzo.Code.Once.Compile
+import qualified MAlonzo.Code.Once.Compile.Emit
 import qualified MAlonzo.Code.Once.SigOp.Info
 import qualified MAlonzo.Code.Once.Spec.Type
 import qualified MAlonzo.Code.Once.Target.Symbol
@@ -113,7 +113,7 @@ d_Defs_36 v0 v1
          MAlonzo.Code.Data.List.Base.du__'43''43'__32
          (coe
             MAlonzo.Code.Once.CCC.Codegen.ImageSymbols.d_adefs_36 (coe v0))
-         (coe MAlonzo.Code.Once.Compile.d_block'45'syms_1390 (coe v1)))
+         (coe MAlonzo.Code.Once.Compile.Emit.d_block'45'syms_50 (coe v1)))
 -- Once.CCC.Codegen.ImageExterns.ImageWF
 d_ImageWF_42 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2322] ->

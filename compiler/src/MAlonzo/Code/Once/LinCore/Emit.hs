@@ -47,7 +47,7 @@ d_fileOf_12 v0 v1 v2 v3 v4
   = coe
       MAlonzo.Code.Once.LinCore.ExprImage.d_fileAt_28 (coe v1) (coe v0)
       (coe
-         MAlonzo.Code.Once.LinCore.ExprBuild.du_srcOrder_1612 (coe v2)
+         MAlonzo.Code.Once.LinCore.ExprBuild.du_srcOrder_1482 (coe v2)
          (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))
       (coe v3) (coe v4)
       (coe
@@ -55,7 +55,7 @@ d_fileOf_12 v0 v1 v2 v3 v4
          (coe
             MAlonzo.Code.Once.LinCore.ExprImage.d_imageAt_10 (coe v1)
             (coe
-               MAlonzo.Code.Once.LinCore.ExprBuild.du_srcOrder_1612 (coe v2)
+               MAlonzo.Code.Once.LinCore.ExprBuild.du_srcOrder_1482 (coe v2)
                (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))
             (coe v3) (coe v4)))
 -- Once.LinCore.Emit.toFileOf
@@ -152,7 +152,7 @@ d_coreFileOf_90 v0 v1 v2
   = coe
       d_coreAfter_76 (coe v0) (coe v2)
       (coe
-         MAlonzo.Code.Once.Compile.d_checkModule_1472
+         MAlonzo.Code.Once.Compile.d_checkModule_1414
          (coe MAlonzo.Code.Once.IR.C_Heap_8) (coe v1) (coe v0) (coe v2))
 -- Once.LinCore.Emit.assemblyCore
 d_assemblyCore_98 ::
@@ -162,5 +162,5 @@ d_assemblyCore_98 ::
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30
 d_assemblyCore_98 v0 v1 v2
   = coe
-      MAlonzo.Code.Once.Compile.d_printResult_1484 (coe v1)
+      MAlonzo.Code.Once.Compile.d_printResult_1426 (coe v1)
       (coe d_coreFileOf_90 (coe v1) (coe v0) (coe v2))

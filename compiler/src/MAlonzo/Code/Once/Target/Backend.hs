@@ -22,7 +22,7 @@ import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Data.List.Base
 import qualified MAlonzo.Code.Once.Arith.Machine.IR
 import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
-import qualified MAlonzo.Code.Once.Compile
+import qualified MAlonzo.Code.Once.Compile.Emit
 
 -- Once.Target.Backend.Backend
 d_Backend_6 = ()
@@ -96,13 +96,13 @@ du_file'45'table_40 v0 v1
               (coe MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28 (coe v2))
               (coe v0 (MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30 (coe v2)))))
       (coe
-         MAlonzo.Code.Once.Compile.d_dedup'45'blocks_1384
+         MAlonzo.Code.Once.Compile.Emit.d_dedup'45'blocks_44
          (coe
             MAlonzo.Code.Data.List.Base.du_map_22
             (coe
                (\ v2 ->
                   coe
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                    (coe MAlonzo.Code.Once.Compile.d_block'45'symbol_1386 (coe v2))
+                    (coe MAlonzo.Code.Once.Compile.Emit.d_block'45'symbol_46 (coe v2))
                     (coe v2)))
             (coe v1)))
