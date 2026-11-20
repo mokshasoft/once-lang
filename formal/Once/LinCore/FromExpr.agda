@@ -65,6 +65,8 @@ import Once.Spec.Theory as Th
 import Data.Fin
 
 open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (⟦_⟧F; int; float)
+open import Once.IR.Semantics.Trace using (T)
 open import Once.LinCore.FromIR fmt using (⟪_⟫; lf; grade; ⟪⟫-TI; ⟪⌊⌋⟫-flat; unlinked-i)
 open import Once.LinCore.PassTr fmt using (dropl; k-dropl; copyIn; k-copyIn)
 

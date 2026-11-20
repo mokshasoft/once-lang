@@ -38,11 +38,13 @@ module Once.LinCore.LowerSimH
   where
 
 open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (Base; ⟦_⟧b)
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Values fmt bw using (MV; mpair; serial; Id)
 open import Once.LinCore.Code fmt bw using (Stk; []ˢ; _∷ˢ_; Slots; []ᵉ; _∥_)
 open import Once.LinCore.Keys fmt bw using (Univ)
-open import Once.LinCore.Layout fmt bw using (Frame; frame; budget; EP; OP; wsz; ws)
+open import Once.LinCore.Layout fmt bw using (Frame; frame; budget; wsz; ws; module Frame)
+open Frame using (EP; OP)
 open import Once.LinCore.Words fmt ans bw
 open import Once.LinCore.LowerSim fmt ans bw using (module Sim)
 open import Once.LinCore.LowerSimF fmt ans bw using (module SimF)
@@ -57,8 +59,9 @@ module SimH {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
   open FlatState using (floc; falloc; fpc)
   open FlatStepsAPI {FS} using (FlatSteps; step-at; FlatSteps-++)
   open import Once.LinCore.Moves {FS}
-    using (Seg; Seg-++ˡ; Seg-++ʳ; slot; mvPS-run; MovedP; p-moved; p-rest; p-heap; p-halt; p-pc; p-alloc; p-frame
+    using (Seg; Seg-++ˡ; Seg-++ʳ; slot; mvPS-run; MovedP; module MovedP
           ; restore-step; free-step; Ran; ranP; ran-trans; ran-regs; ran-pc; gate-stack)
+  open MovedP using (p-pc; p-alloc; p-heap; p-halt; p-moved; p-rest; p-frame)
 
   private
     frame-eq : ∀ {f g x y} → AtStack {FS} f x ≡ AtStack g y → f ≡ g

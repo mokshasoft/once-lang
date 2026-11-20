@@ -37,6 +37,8 @@ module Once.LinCore.LowerSim
   where
 
 open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (Base; ⟦_⟧b)
+open Sg using (env)
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw
 open import Once.LinCore.Values fmt bw
@@ -44,6 +46,7 @@ open import Once.LinCore.Code fmt bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots
 open import Once.LinCore.Image fmt bw
 open import Once.LinCore.Keys fmt bw
 open import Once.LinCore.Layout fmt bw
+open Frame using (EP; OP)
 open import Once.LinCore.Words fmt ans bw
 
 module Sim {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue FS) where
@@ -193,7 +196,8 @@ module Sim {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
   ... | (v , ev) = v , trans (cong sm (sym (+-suc k o))) ev
 
   -- the words a move leaves at its destination
-  open import Once.LinCore.Moves {FS} using (Seg; slot; mvSS-run; MovedS; m-moved; m-rest; m-heap; m-halt; m-pc; Keep; keep-refl; keep-trans; keepS; keepP; keepF; keepW; keep-regs; keep-store; keep-pc; keep-heap; Ran; ran-trans; ranS; ranP; ranF; ranW; ran-regs; ran-store; ran-pc; ran-heap; fresh-block; ran-hi; pred<; inb-write) renaming (ln to nsteps)
+  open import Once.LinCore.Moves {FS} using (Seg; slot; mvSS-run; MovedS; Keep; keep-refl; keep-trans; keepS; keepP; keepF; keepW; keep-regs; keep-store; keep-pc; keep-heap; Ran; ran-trans; ranS; ranP; ranF; ranW; ran-regs; ran-store; ran-pc; ran-heap; fresh-block; ran-hi; pred<; inb-write; module MovedS) renaming (ln to nsteps)
+  open MovedS using (m-pc; m-heap; m-halt; m-moved; m-rest; m-alloc)
   open import Once.CCC.Machine.Flat using (module FlatMachine)
   open FlatMachine {FS} using (FlatState; module FlatState)
   open FlatState using (floc; falloc; fpc)
@@ -668,7 +672,8 @@ module Sim {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
   -- 8. ★ A SUM BUILT: the payload moved down, the tag, the padding.
   ----------------------------------------------------------------------
 
-  open import Once.LinCore.Moves {FS} using (tag-step; store-step; stores-run; Filled; f-set; f-rest; f-heap; f-halt; f-regs; f-pc)
+  open import Once.LinCore.Moves {FS} using (tag-step; store-step; stores-run; Filled; module Filled)
+  open Filled using (f-pc; f-heap; f-halt; f-regs; f-set; f-rest)
   open import Once.LinCore.MoveCode using (stores)
   open import Data.List using (replicate)
   open import Data.List.Properties using (length-replicate)
@@ -705,7 +710,7 @@ module Sim {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
     h 0 (s≤s z≤n) , slots-replicate {sm} {suc b} n v (λ k k< → trans (cong sm (+-suc k b)) (h (suc k) (s≤s k<)))
 
   open import Data.Sum using (_⊎_; inj₁; inj₂)
-  open import Once.LinCore.Moves {FS} using (m-alloc; store-same; store-other)
+  open import Once.LinCore.Moves {FS} using (store-same; store-other)
   open FlatMachine {FS} using (fetch)
 
   -- ★ a sum's words built on the stack: the payload moved down to just past
@@ -927,7 +932,8 @@ module Sim {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
   -- 9. ★ THE HEAP STEPS.
   ----------------------------------------------------------------------
 
-  open import Once.LinCore.Moves {FS} using (mvPS-run; MovedP; p-moved; p-rest; p-heap; p-pc; p-in; restore-step) renaming (p-halt to pm-halt; free-step to ffree-step)
+  open import Once.LinCore.Moves {FS} using (mvPS-run; MovedP; restore-step; module MovedP) renaming (free-step to ffree-step)
+  open MovedP using (p-pc; p-heap; p-in; p-moved; p-rest) renaming (p-halt to pm-halt)
   open import Once.LinCore.MoveCode using (mvPS)
   import Once.LinCore.MoveCode
   open import Once.CCC.Machine.Locations using (AtDynamic)
@@ -1094,7 +1100,8 @@ module Sim {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
     slots-at {rd} {sm} {i} w (suc o) (suc src)
       (λ k k< → trans (cong (λ z → rd (cellLoc i z)) (+-suc k o)) (trans (h (suc k) (s≤s k<)) (cong sm (sym (+-suc k src))))) s
 
-  open import Once.LinCore.Moves {FS} using (alloc-step; mov-in-step; mov-out-step; mvSP-run; MovedW; w-moved; w-rest; w-in; w-pc; w-alloc)
+  open import Once.LinCore.Moves {FS} using (alloc-step; mov-in-step; mov-out-step; mvSP-run; MovedW; module MovedW)
+  open MovedW using (w-pc; w-alloc; w-in; w-moved; w-rest)
     renaming (w-halt to wm-halt)
   open import Once.LinCore.MoveCode using (mvSP)
   open import Once.CCC.Machine.SMCore using (instr-alloc-heap; mov-to-input; mov-to-output)

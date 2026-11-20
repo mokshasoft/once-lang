@@ -59,10 +59,16 @@ import Once.LinCore.BridgeProof
 module Once.LinCore.Casts (fmt : TargetNum) (ans : FFIAnswers) where
 
 open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (⟦_⟧F)
+open import Once.IR.Semantics.Trace using (T; ret; call; halt)
+open import Once.IR.Semantics.Iterative using (T∞; return∞; fmap∞)
+open Nuᵐ using (outν)
 open import Once.LinCore.NbEPLinCore fmt ans
+open Sem using (cataC; travC)
 open Once.LinCore.FromIR fmt
 open import Once.LinCore.Pass fmt ans using (ev; ev-coh; inν; evB)
 open Once.LinCore.Bridge fmt ans
+open WNu using (wout)
 module BP = Once.LinCore.BridgeProof fmt ans
 open Once.LinCore.Bisim fmt ans using (_≈[_]_; module _≈[_]_; BlR; ≈retR; ≈stepR; ≈callR; ≈haltR; ret≈R; >>=-congR; fmap-congR; ≈-≈R; ≈-sym)
 

@@ -188,7 +188,7 @@ record Emitted (prog : AbstractTrace) : Set where
     -- (B1.7b, D456: a closure call's cell, a return owed and its budget were run fields here;
     -- they are the machine's gates now, read off a sound run: `RunWF.call-site-shape`,
     -- `ret-site-owes`, `ret-budget-matches`)
-open Emitted public
+open Emitted
 
 -- (`CallI`, the two calls, lives beside the instruction set: `SMCore`.)
 

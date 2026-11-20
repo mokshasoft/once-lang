@@ -30,6 +30,8 @@ module Once.LinCore.StepIos
   where
 
 open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (Base; ⟦_⟧b; Lit)
+open import Once.IR.Semantics.Trace using (T)
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw
 open import Once.LinCore.Values fmt bw
@@ -98,8 +100,8 @@ module IosG {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   -- a primitive at a point is one the lowering took
   here-prim : ∀ {Γ′} {ds′ : Defs Γ′} {A B Es S V} {g : LTm Γ′ A B} {k : Codeᴵ (Es ∣ B ∷ S) V} {m fs}
               (P : Pnt (prim ds′ g ⨾ k)) → HereP P m fs → PrimIn ds′ g
-  here-prim (p-start (at s)) H = proj₁ (S.lcin (S.L (S.sub-low L₀ˢ s)))
-  here-prim (p-block {κ = κ} p (at s)) H = proj₁ (B.lcin (B.L (B.sub-low κ p (L₀ᵇ κ p) s)))
+  here-prim (p-start (at s)) H = proj₁ (S.Low.lcin (S.SubLow.L (S.sub-low L₀ˢ s)))
+  here-prim (p-block {κ = κ} p (at s)) H = proj₁ (B.Low.lcin (B.SubLow.L (B.sub-low κ p (L₀ᵇ κ p) s)))
   here-prim (p-tramp p pt) (() , H)
 
   -- ★ a straight step's trace shows the world nothing

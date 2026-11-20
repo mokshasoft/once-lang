@@ -52,9 +52,13 @@ module Once.LinCore.Lower
   where
 
 open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (FTy; Base; Lit)
+open import Once.IR.Semantics.Trace using (call)
+open Sig using (info; sA)
 open import Once.LinCore.Code fmt bw using (Sh; _∣_)
 open import Once.LinCore.Image fmt bw
 open import Once.LinCore.Keys fmt bw
+open Univ using (tys; nus)
 open import Once.LinCore.Layout fmt bw
 
 -- ★ D445: the sigop an op's code runs: its own, or a compare's block
@@ -80,7 +84,7 @@ flatB = flat
 -- 1. MOVES, word by word through `Output`.
 ------------------------------------------------------------------------
 
-open import Once.LinCore.MoveCode public
+open import Once.LinCore.MoveCode
 
 ------------------------------------------------------------------------
 -- 2. NAMES: a block by its index, its jump labels, its trampoline.
@@ -435,7 +439,7 @@ module Lowering (U : Univ)
 
 module Program′ {Γ} (ds : Defs Γ) (f : LTm Γ One One) (ldConst : ∀ {b} → Lit b → AbstractInstr) where
   open Program ds f using (U; blocks-in; start-in; ncty)
-  open Lowering U ncty ldConst public
+  open Lowering U ncty ldConst
 
   -- ★ the program's image: its start (the main term, ending in the Host's
   -- `leave`), then its blocks. The start's jump labels are named by an

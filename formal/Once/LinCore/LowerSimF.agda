@@ -40,11 +40,13 @@ module Once.LinCore.LowerSimF
   where
 
 open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (Base; ⟦_⟧b)
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Values fmt bw using (MV; serial; Id)
 open import Once.LinCore.Code fmt bw using (Stk; []ˢ; _∷ˢ_; Slots; []ᵉ; vw; _∥_)
 open import Once.LinCore.Keys fmt bw using (Univ)
 open import Once.LinCore.Layout fmt bw
+open Frame using (EP; OP)
 open import Once.LinCore.Words fmt ans bw
 open import Once.LinCore.LowerSim fmt ans bw
 open import Once.LinCore.MoveCode using (mvPS)
@@ -57,7 +59,8 @@ module SimF {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
   open FlatState using (floc; falloc; fpc; fret)
   open FlatStepsAPI {FS} using (FlatSteps; step-at; FlatSteps-++)
   open import Once.LinCore.Moves {FS}
-    using (Seg; Seg-++ˡ; Seg-++ʳ; slot; mvPS-run; MovedP; p-moved; p-rest; p-heap; p-halt; p-log; p-pc; p-alloc; p-ret; p-clo; p-link; p-in; p-frame; restore-step; Ran; ranP; ran-trans; ran-regs; gate-stack)
+    using (Seg; Seg-++ˡ; Seg-++ʳ; slot; mvPS-run; MovedP; module MovedP; restore-step; Ran; ranP; ran-trans; ran-regs; gate-stack)
+  open MovedP using (p-pc; p-alloc; p-ret; p-clo; p-link; p-heap; p-halt; p-log; p-in; p-moved; p-rest; p-frame)
 
   private
     frame-eq : ∀ {f g x y} → AtStack {FS} f x ≡ AtStack g y → f ≡ g
@@ -174,7 +177,7 @@ module SimF {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
     with arg-in prog fs φ′ cf area o wa ne inp pa sa win (Seg-++ˡ prog (fpc fs) (mvPS o dst (wsz A)) _ seg) h
     where dst = budget φ′ ∸ ws (A ∷ [])
   ... | (fs₁ , st₁ , pa₁ , sa₁ , M₁) = fin (mvPS-run prog fs₂ (AtStack cf v) 0 0 (wsz E) seg₃ h₁ refl def₃
-             (λ k k< → gate-stack (falloc fs₂) (k + 0) cf v (subst (λ al → ExecFinal.in-window {FS} (ExecFinal.live-frames {FS} al) cf ((k + 0) + v) ≡ true) (sym (Once.LinCore.Moves.p-alloc M₁)) (winv k k<)))
+             (λ k k< → gate-stack (falloc fs₂) (k + 0) cf v (subst (λ al → ExecFinal.in-window {FS} (ExecFinal.live-frames {FS} al) cf ((k + 0) + v) ≡ true) (sym (Once.LinCore.Moves.MovedP.p-alloc M₁)) (winv k k<)))
              (λ k k′ _ _ e′ → ne₁ (frame-eq e′)))
     where
       import Data.Nat.Properties
@@ -193,10 +196,10 @@ module SimF {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
       seg₃ : Seg prog (fpc fs₂) (mvPS 0 0 (wsz E))
       seg₃ = proj₂ rest₁
       ne₁ : ¬ AllocState.current-frame (falloc fs₂) ≡ cf
-      ne₁ = λ e′ → ne (trans (sym (cong AllocState.current-frame (Once.LinCore.Moves.p-alloc M₁))) e′)
+      ne₁ = λ e′ → ne (trans (sym (cong AllocState.current-frame (Once.LinCore.Moves.MovedP.p-alloc M₁))) e′)
       -- the caller's frame, as it was
       cfr : ∀ x → LocState.stackMem (floc fs₂) cf x ≡ LocState.stackMem (floc fs) cf x
-      cfr x = Once.LinCore.Moves.p-frame M₁ cf x (λ e′ → ne (sym e′))
+      cfr x = Once.LinCore.Moves.MovedP.p-frame M₁ cf x (λ e′ → ne (sym e′))
       se₂ : SlotsAt (LocState.stackMem (floc fs₂) cf) (0 + v) we
       se₂ = slots-frame {LocState.stackMem (floc fs) cf} {LocState.stackMem (floc fs₂) cf} we (λ k _ → cfr (k + v)) se
       def₃ : ∀ k → k < wsz E → Σ W λ x → MemOps.readLoc {FS} (floc fs₂) (offsetLoc (AtStack cf v) (k + 0)) ≡ just x
@@ -230,7 +233,8 @@ module SimF {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
   -- the caller's configuration, with the result on top, in its frame.
   ----------------------------------------------------------------------
 
-  open import Once.LinCore.LowerSimE {FS} using (CallOut; call-out; co-frame; co-moved; co-rest; co-halt)
+  open import Once.LinCore.LowerSimE {FS} using (CallOut; call-out; module CallOutA)
+  open CallOutA using (co-frame; co-moved; co-rest; co-halt)
   open import Once.LinCore.MoveCode using (mvSP)
 
   -- words copied, slot by slot

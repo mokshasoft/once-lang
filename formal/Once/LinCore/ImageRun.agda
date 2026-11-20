@@ -34,11 +34,15 @@ module Once.LinCore.ImageRun
   where
 
 open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (Base)
+open import Once.IR.Semantics.Trace using (T; call)
+open Sg using (kd; dom; cod)
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw
 open import Once.LinCore.Values fmt bw
 open import Once.LinCore.Code fmt bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots; []ᵉ; vw; ln; see; Cfg; _∥_; fsz)
 open import Once.LinCore.Image fmt bw
+open BSig using (top; dom; cod)
 
 ------------------------------------------------------------------------
 -- 1. THE RETURN STACK: what runs when the current code ends.

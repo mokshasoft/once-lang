@@ -36,6 +36,9 @@ module Once.LinCore.Code
   where
 
 open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (Base)
+open import Once.IR.Semantics.Trace using (T)
+open Sg using (env)
 open import Once.LinCore.Values fmt bw
 
 ------------------------------------------------------------------------

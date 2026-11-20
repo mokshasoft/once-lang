@@ -72,6 +72,8 @@ private
   ι   = FrameSemantics.fs-interp Mach
 
 open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (funit; Base; int; float; ⟦_⟧b; Lit)
+open Sig using (info)
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw using (Run; ios; Outcome; gives; stop; OpPath; er)
 open import Once.LinCore.Values fmt bw using (MV; mone; Trace; mvF)
@@ -87,7 +89,8 @@ import Once.LinCore.OpMachine
 module AgreeRun = Once.LinCore.AgreeRun fmt ans bw
 open import Once.LinCore.Total fmt ans bw using (WTr)
 open import Once.LinCore.StepOp fmt ans bw using (module Agree)
-open import Once.LinCore.Keys fmt bw using (module Program; ops; ps; defsGot)
+open import Once.LinCore.Keys fmt bw using (module Program; ps; defsGot; module Univ)
+open Univ using (ops)
 open import Data.List.Membership.Propositional.Properties using (∈-++⁺ˡ; ∈-++⁺ʳ)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Once.Denotation.Program using (Declared-at)

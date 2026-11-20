@@ -38,6 +38,11 @@ module Once.LinCore.NbEPLinCore (fmt : TargetNum) (ans : FFIAnswers) where
 
 -- D457: the core's syntax and values (`Core`) take the numerics only
 open import Once.LinCore.Core fmt
+open import Once.IR.Semantics.Trace using (T; ret)
+open import Once.IR.Semantics.Iterative using (T∞; return∞; _>>=∞_; fmap∞; iter∞)
+open Sg using (gr; env; dom; cod)
+open Sig using (info)
+open Nuᵐ using (outν)
 
 -- ★ B1.2: a SigOp means its contract's BLOCK (`DenotTrace.sigOpT`, as
 -- `evalᴰ`'s `SigOp` clause): a pure op returns with no event, an emitting or
@@ -185,7 +190,7 @@ module Sem {Γ : Cx} (ρ : Env Γ) where
     travB F (G ⊕f H) alg (inj₂ z) = fmapT inj₂ (travB F H alg z)
     travB F (G ⊗f H) alg (y , z)  = bindT (travB F G alg y) λ u → fmapT (u ,_) (travB F H alg z)
 
-open Sem public
+open Sem
 
 ------------------------------------------------------------------------
 -- 7. ★ D422: THE TABLE'S MEANING, built in order: each body means a function

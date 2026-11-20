@@ -40,12 +40,14 @@ module Once.LinCore.PointAt
   where
 
 open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (Base; Lit)
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Code fmt bw using (Sh; _∣_)
 open import Once.LinCore.Image fmt bw
 open import Once.LinCore.Keys fmt bw
 open import Once.LinCore.Layout fmt bw
 open import Once.LinCore.Lower fmt bw
+open import Once.LinCore.MoveCode using (mvPS; mvSP)
 open import Once.LinCore.ImagePt fmt ans bw using (Sub; Pt; at; disp)
 open import Once.LinCore.LowAt fmt ans bw using (Inside; in-trans; in-l; in-r; in-∷; module At)
 open import Once.LinCore.Labels fmt ans bw using (module NoLabels)
@@ -128,18 +130,18 @@ module Ctl {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
 
   -- ★ the flat code at a point, and its way out
   ptCode : ∀ {sh U′} {c : Codeᴵ sh U′} → Pnt c → AbstractTrace
-  ptCode (p-start (at s))         = S.code (S.L (S.sub-low L₀ˢ s))
-  ptCode (p-start (disp s))       = S.dispC (S.L (S.sub-low L₀ˢ s))
-  ptCode (p-block {κ = κ} p (at s))   = B.code κ p (B.L (B.sub-low κ p (L₀ᵇ κ p) s))
-  ptCode (p-block {κ = κ} p (disp s)) = B.dispC κ p (B.L (B.sub-low κ p (L₀ᵇ κ p) s))
+  ptCode (p-start (at s))         = S.code (S.SubLow.L (S.sub-low L₀ˢ s))
+  ptCode (p-start (disp s))       = S.dispC (S.SubLow.L (S.sub-low L₀ˢ s))
+  ptCode (p-block {κ = κ} p (at s))   = B.code κ p (B.SubLow.L (B.sub-low κ p (L₀ᵇ κ p) s))
+  ptCode (p-block {κ = κ} p (disp s)) = B.dispC κ p (B.SubLow.L (B.sub-low κ p (L₀ᵇ κ p) s))
   ptCode (p-tramp {κ = κ} p pt)   = trAt (idx p) κ (ptDepth pt)
   ptCode p-halt                   = []
 
   ptFin : ∀ {sh U′} {c : Codeᴵ sh U′} → Pnt c → AbstractTrace
-  ptFin (p-start (at s))         = S.lfin (S.L (S.sub-low L₀ˢ s))
-  ptFin (p-start (disp s))       = S.lfin (S.L (S.sub-low L₀ˢ s))
-  ptFin (p-block {κ = κ} p (at s))   = B.lfin (B.L (B.sub-low κ p (L₀ᵇ κ p) s))
-  ptFin (p-block {κ = κ} p (disp s)) = B.lfin (B.L (B.sub-low κ p (L₀ᵇ κ p) s))
+  ptFin (p-start (at s))         = S.Low.lfin (S.SubLow.L (S.sub-low L₀ˢ s))
+  ptFin (p-start (disp s))       = S.Low.lfin (S.SubLow.L (S.sub-low L₀ˢ s))
+  ptFin (p-block {κ = κ} p (at s))   = B.Low.lfin (B.SubLow.L (B.sub-low κ p (L₀ᵇ κ p) s))
+  ptFin (p-block {κ = κ} p (disp s)) = B.Low.lfin (B.SubLow.L (B.sub-low κ p (L₀ᵇ κ p) s))
   ptFin (p-tramp {κ = κ} p pt)   = trFin (idx p) κ
   ptFin p-halt                   = []
 
@@ -158,14 +160,14 @@ module Ctl {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     in in-trans in-drop4 (in-trans (in-r (mvPS (M ∸ wsz A) (Tp φ (A ∷ [])) (wsz A)) _) (in-r (view-in t φ) _))
 
   ptIn : ∀ {sh U′} {c : Codeᴵ sh U′} (P : Pnt c) → Inside image (ptCode P)
-  ptIn (p-start (at s))   = in-trans start-root (S.ins (S.sub-low L₀ˢ s))
-  ptIn (p-start (disp s)) = in-trans (in-trans start-root (S.ins (S.sub-low L₀ˢ s))) (S.disp-in (S.L (S.sub-low L₀ˢ s)))
+  ptIn (p-start (at s))   = in-trans start-root (S.SubLow.ins (S.sub-low L₀ˢ s))
+  ptIn (p-start (disp s)) = in-trans (in-trans start-root (S.SubLow.ins (S.sub-low L₀ˢ s))) (S.disp-in (S.SubLow.L (S.sub-low L₀ˢ s)))
   ptIn (p-block {κ = κ} p (at s)) =
     in-trans (in-trans (in-trans (image-at p) (in-l _ _)) (block-root (idx p) κ (blocks-in p)))
-             (B.ins (B.sub-low κ p (L₀ᵇ κ p) s))
+             (B.SubLow.ins (B.sub-low κ p (L₀ᵇ κ p) s))
   ptIn (p-block {κ = κ} p (disp s)) =
     in-trans (in-trans (in-trans (in-trans (image-at p) (in-l _ _)) (block-root (idx p) κ (blocks-in p)))
-                       (B.ins (B.sub-low κ p (L₀ᵇ κ p) s)))
-             (B.disp-in κ p (B.L (B.sub-low κ p (L₀ᵇ κ p) s)))
+                       (B.SubLow.ins (B.sub-low κ p (L₀ᵇ κ p) s)))
+             (B.disp-in κ p (B.SubLow.L (B.sub-low κ p (L₀ᵇ κ p) s)))
   ptIn (p-tramp {κ = κ} p pt) = image-tr κ p (ptDepth pt)
   ptIn p-halt                 = in-[] image

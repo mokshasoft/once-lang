@@ -46,6 +46,7 @@ module Once.LinCore.AllocRun
   where
 
 open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (Base)
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw
 open import Once.LinCore.Values fmt bw
@@ -86,7 +87,7 @@ record Link (k : ℕ) (h : Heap) (L : TL) (p : A.Pool) : Set where
   field
     live⇒ : ∀ s → A.Live p s → h (k , s) ≡ 1
     ⇒live : ∀ s → h (k , s) ≡ 1 → A.Live p s
-    ntemp : length (A.temps p) ≡ L k
+    ntemp : length (A.Pool.temps p) ≡ L k
 open Link
 
 link₀ : ∀ k → Link k (λ _ → 0) none A.empty
@@ -228,7 +229,7 @@ event k (tmp (tnew k′)) {h} {L} {p} _ _ iv lk with k′ ≟ k
                                            (sym (trans (cong (L k +_) (δn-same k)) (+-comm (L k) 1))) })
 event k (tmp (tdel k′)) {h} {L} {p} _ tp iv lk with k′ ≟ k
 ... | no ne = same iv lk (tdel-none ne) (λ _ → refl) (cong (L k ∸_) (δn-other ne))
-... | yes refl with A.temps p in eq
+... | yes refl with A.Pool.temps p in eq
 ...   | [] = ⊥-elim (z≰ (subst (1 ≤_) (trans (sym (ntemp lk)) (cong length eq)) tp))
   where z≰ : 1 ≤ 0 → ⊥
         z≰ ()
@@ -278,7 +279,7 @@ gops = concatMap gopOf
 
 -- every size's pool linked to the run
 GLink : Heap → TL → R.Region → Set
-GLink h L r = ∀ k → Link k h L (R.pools r k)
+GLink h L r = ∀ k → Link k h L (R.Region.pools r k)
 
 -- an event that asks nothing of size `k` leaves its pool as it was
 after-none : ∀ {k x h L p} → opOf k x ≡ [] → After k x h L p → Link k (step x h) (tstep x L) p
@@ -300,20 +301,20 @@ gone x {h} {L} {r} k₀ o eg e₀ en ok tp iv lk =
   (R.place k₀ p₁ r , subst (λ gs → R.GSteps r gs (R.place k₀ p₁ r)) (sym eg) (R.gstep-ok {k₀} {o} {r} ep R.⟫ R.done)
   , R.rinv-place k₀ o r iv ep , lk′)
   where
-    a  = event k₀ x ok tp (R.pinv iv k₀) (lk k₀)
+    a  = event k₀ x ok tp (R.RInv.pinv iv k₀) (lk k₀)
     p₁ = After.p₁ a
     ep = after-one e₀ a
     lk′ : GLink (step x h) (tstep x L) (R.place k₀ p₁ r)
-    lk′ k rewrite R.place-pools k₀ p₁ r with R.upd-view (R.pools r) k₀ p₁ k
+    lk′ k rewrite R.place-pools k₀ p₁ r with R.upd-view (R.Region.pools r) k₀ p₁ k
     ... | inj₁ (refl , q) = subst (Link k _ _) (sym q) (After.link a)
-    ... | inj₂ (ne , q)   = subst (Link k _ _) (sym q) (after-none (en k ne) (event k x ok tp (R.pinv iv k) (lk k)))
+    ... | inj₂ (ne , q)   = subst (Link k _ _) (sym q) (after-none (en k ne) (event k x ok tp (R.RInv.pinv iv k) (lk k)))
 
 -- an event of no size: nothing steps
 gzero : ∀ x {h L r} → gopOf x ≡ [] → (∀ k → opOf k x ≡ []) → okPre x h → tpre x L → R.RInv r → GLink h L r
       → GAfter x h L r
 gzero x {r = r} eg en ok tp iv lk =
   (r , subst (λ gs → R.GSteps r gs r) (sym eg) R.done , iv
-  , λ k → after-none (en k) (event k x ok tp (R.pinv iv k) (lk k)))
+  , λ k → after-none (en k) (event k x ok tp (R.RInv.pinv iv k) (lk k)))
 
 gevent : ∀ x {h L r} → okPre x h → tpre x L → R.RInv r → GLink h L r → GAfter x h L r
 gevent (alloc (k , s))  = gone (alloc (k , s)) k (A.birth s) refl (alloc-one k s) (λ _ ne → alloc-none ne)
@@ -340,6 +341,6 @@ galong (x ∷ t) (ox , ot) (tx , tt′) iv lk with gevent x ox tx iv lk
 -- So the run runs out of a region of `M` words only if `Σ k · peakₖ > M`.
 in-one-region : ∀ ks t → OK t (λ _ → 0) → TLeg t → R.Sizes ks (gops t)
               → Σ R.Region λ r → R.GSteps R.empty (gops t) r × R.RInv r
-                               × R.wtop r ≤ R.Words ks r × (∀ k → R.Peak (gops t) k (R.tops r k))
+                               × R.Region.wtop r ≤ R.Words ks r × (∀ k → R.Peak (gops t) k (R.tops r k))
 in-one-region ks t ok tl sz with galong t ok tl R.rinv-empty (λ k → link₀ k)
 ... | (r , st , iv) = (r , st , iv , R.space ks sz z≤n st , R.peak st)

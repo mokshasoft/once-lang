@@ -32,6 +32,8 @@ module Once.LinCore.Layout
   where
 
 open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (Base)
+open import Once.IR.Semantics.Trace using (T)
 open import Once.LinCore.Code fmt bw using (Sh; _∣_)
 open import Once.LinCore.Image fmt bw
 
@@ -99,7 +101,7 @@ record Frame : Set where
   constructor frame
   field
     EP OP : ℕ
-open Frame public
+open Frame
 
 -- the frame's slots: both regions
 budget : Frame → ℕ

@@ -37,14 +37,18 @@ module Once.LinCore.KeysRun
   where
 
 open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (funit; fvoid; fw; _f*_; _f+_; Base)
+open import Once.IR.Semantics.Trace using (T)
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw
 open import Once.LinCore.Values fmt bw
 open import Once.LinCore.Code fmt bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots; []ᵉ; vw; ln; see; Cfg; _∥_)
 open import Once.LinCore.Image fmt bw
+open BSig using (top)
 open import Once.LinCore.ImageRun fmt ans bw
 open import Once.LinCore.ImageSim fmt ans bw using (StepsI; done; _⟫_; start)
 open import Once.LinCore.Keys fmt bw
+open Univ using (tys; nus)
 
 module Keep (U : Univ) where
   open In U
@@ -241,9 +245,10 @@ module Keep (U : Univ) where
 
 module ProgramRun {Γ} (ds : Defs Γ) (f : LTm Γ One One) where
   open Program ds f
-  open Keep U public
+  open In U using (CIn)
+  open Keep U
 
-  open Steps blocks-in ncty public
+  open Steps blocks-in ncty
 
   inside : ∀ {sh U′} {c′ : Codeᴵ sh U′} {r′ : Ret U′ (One ∷ [] ∣ One ∷ [])} {m′ n′ mt}
          → StepsI (compᴵ ds f end) ([]ʳ {T = One ∷ [] ∣ One ∷ []}) start 0 mt c′ r′ m′ n′

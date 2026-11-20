@@ -40,6 +40,8 @@ module Once.LinCore.AgreeRun
   where
 
 open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (Base; ⟦_⟧b; Lit)
+open import Once.IR.Semantics.Trace using (T)
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw
 open import Once.LinCore.Values fmt bw
@@ -49,7 +51,8 @@ open import Once.LinCore.ImageRun fmt ans bw
 open import Once.LinCore.ImageSim fmt ans bw using (StepsI; done; _⟫_)
 open import Once.LinCore.Total fmt ans bw using (World; WTr)
 open import Once.LinCore.StepOp fmt ans bw using (module Agree; evsOf; ioEvent)
-open import Once.LinCore.Keys fmt bw using (Univ; ops)
+open import Once.LinCore.Keys fmt bw using (Univ; module Univ)
+open Univ using (ops)
 open import Once.LinCore.StepIos fmt ans bw using (module IosG)
 open import Once.LinCore.Global fmt ans bw using (module Relate)
 import Once.LinCore.BudgetSound

@@ -75,16 +75,21 @@ import Once.IR.Semantics.Value Carrier Carrier as Val
 
 module Once.LinCore.Core (fmt : TargetNum) where
 
-open Once.LinCore.Flat public using (FTy; funit; fvoid; fw; _f*_; _f+_; ⟦_⟧F; Base; int; float; ⟦_⟧b; Lit)
+open Once.LinCore.Flat using (FTy; funit; fvoid; fw; _f*_; _f+_; ⟦_⟧F; Base; int; float; ⟦_⟧b; Lit)
 
 -- ★ D450: a literal materialized at the target's format (D113: FromIR's function, now the meaning's)
 lit : ∀ {b} → Lit b → ⟦ b ⟧b
 lit {int}   z = Once.Spec.Word.Width.fromℤ (Once.Spec.Numerics.TargetNum.int-bits fmt) z
 lit {float} d = Once.Float.Word.round (Once.Spec.Numerics.TargetNum.float-format fmt) d
 
-open import Once.IR.Semantics.Trace using (T; ret; call; halt; CallOp; HaltOp) public
-open import Once.IR.Semantics.Iterative using (T∞; return∞; _>>=∞_; bindBlock; fmap∞; iterRun; iterBlock; iter∞) public
-open T∞ public renaming (force to block)
+open import Once.IR.Semantics.Trace using (T; ret; call; halt; CallOp; HaltOp)
+open import Once.IR.Semantics.Iterative using (T∞; return∞; _>>=∞_; bindBlock; fmap∞; iterRun; iterBlock; iter∞)
+open T∞ using (force)
+
+-- a computation's first block (`T∞`'s field, observed); its importers read
+-- `block m`, and values are built by the field itself (`force`, copatterns)
+block : ∀ {X} → T∞ X → T (X ⊎ T∞ X)
+block = force
 
 -- a flat value
 ⟦_⟧f : FTy Base → Set
@@ -116,7 +121,7 @@ embB (call s a k) = call s a (λ y → embB (k y))
 embB (halt s a)   = halt s a
 
 emb : ∀ {X} → T X → T∞ X
-block (emb b) = embB b
+force (emb b) = embB b
 
 ------------------------------------------------------------------------
 -- 1. POLYNOMIAL FUNCTOR CODES.
@@ -232,7 +237,7 @@ outμ (inμ w) = w
 record Nuᵐ (F : LF) : Set where
   coinductive
   field outν : T (FS F (Nuᵐ F))
-open Nuᵐ public
+open Nuᵐ
 
 -- the unfold, as the Spec's `anaA`: each observation runs the coalgebra on the
 -- seed, and the layer's seeds become the unfolds of the same coalgebra
@@ -354,7 +359,7 @@ record Sig : Set where
   field
     {sA sB} : Type
     info    : SigOpInfo sA sB
-open Sig public
+open Sig
 
 sdom scod : Sig → FTy Base
 sdom s = flat (SigOpInfo.baseA (info s))
@@ -379,7 +384,7 @@ record Sg : Set where
   field kd : Kd
         gr : Gr
         env dom cod : LTy
-open Sg public
+open Sg
 
 -- the labels in scope, oldest first: each body is typed over the ones before
 -- it, as a lambda's body only builds the lambdas nested in it

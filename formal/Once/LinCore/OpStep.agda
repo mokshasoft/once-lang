@@ -45,11 +45,16 @@ module Once.LinCore.OpStep
   where
 
 open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (Base; ⟦_⟧b; Lit)
+open Sg using (env)
+open Sig using (info; sA)
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Values fmt bw using (MV)
 open import Once.LinCore.Code fmt bw using (Stk; _∷ˢ_; Slots; _∥_; _∣_)
-open import Once.LinCore.Keys fmt bw using (Univ; nus; tys; cty)
+open import Once.LinCore.Keys fmt bw using (Univ; cty; module Univ)
+open Univ using (tys; nus)
 open import Once.LinCore.Layout fmt bw
+open Frame using (EP; OP)
 open import Once.LinCore.Words fmt ans bw
 open import Once.LinCore.LowerSim fmt ans bw
 open import Once.LinCore.Lower fmt bw using (module Lowering; flatB; cmpOf; opSig; inMem)
@@ -93,7 +98,7 @@ module OpSim {FS : FrameSemantics} (U : Univ)
       or-next  : AllocState.next-heap-ref (falloc fs′) ≡ AllocState.next-heap-ref (falloc fs)
       or-old   : Old lo fs fs′
       or-top   : ∀ x → hi ≤ x → slot fs′ x ≡ slot fs x
-  open OpRan public
+  open OpRan
 
   -- the register answer's store, by its word count (one word, or none)
   answerN : ℕ → ℕ → AbstractTrace
@@ -560,6 +565,7 @@ module OpR {FS : FrameSemantics} (U : Univ)
            (R : Inside prog (At.code U ncty ldConst (frameOf root) j L₀)) where
   open Loc {FS} U ncty ldConst wordOf prog root j L₀ R
   open OpSim {FS} U ncty ldConst wordOf
+  open OpRan
   open Agree {FS} U wordOf using (OpVal; OpHalt)
   open import Once.CCC.Machine.Flat using (module FlatMachine)
   open FlatMachine {FS} using (FlatState; module FlatState)

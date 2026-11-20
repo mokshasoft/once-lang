@@ -41,6 +41,7 @@ module Once.LinCore.Table (fmt : TargetNum) (ans : FFIAnswers) where
 
 open import Once.LinCore.Core fmt
 open import Once.LinCore.NbEPLinCore fmt ans
+open Sem using (Lᶜ)
 open Once.LinCore.FromIR fmt
 open import Once.LinCore.Pass fmt ans using (ev-coh; ⟦_⟧P; evG; pass-ok; pass-okP)
 open Once.LinCore.Bridge fmt ans using (W)

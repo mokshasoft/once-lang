@@ -33,12 +33,15 @@ module Once.LinCore.LowAt
   where
 
 open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (Base; Lit)
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Code fmt bw using (Sh; _∣_)
 open import Once.LinCore.Image fmt bw
 open import Once.LinCore.Keys fmt bw
+open Univ using (tys; nus)
 open import Once.LinCore.Layout fmt bw
 open import Once.LinCore.Lower fmt bw
+open import Once.LinCore.MoveCode using (mvSS; mvSSd)
 open import Once.LinCore.ImagePt fmt ans bw using (Sub; whole; next; left; right; eleft; eright; body)
 
 ------------------------------------------------------------------------
@@ -90,7 +93,7 @@ module At (U : Univ)
       lm   : ℕ
       lfin : AbstractTrace
       lcin : CIn c
-  open Low public
+  open Low
 
   code : ∀ {sh V} {c : Codeᴵ sh V} → Low c → AbstractTrace
   code {c = c} (low m fin ev) = proj₁ (lowC φ j m fin c ev)
@@ -101,7 +104,7 @@ module At (U : Univ)
     field
       L   : Low c
       ins : Inside (code L₀) (code L)
-  open SubLow public
+  open SubLow
 
   module _ {sh V} {root : Codeᴵ sh V} {L₀ : Low root} where
     nextL : ∀ {s s′ W} {i : Insᴵ s s′} {k : Codeᴵ s′ W} → SubLow L₀ (i ⨾ k) → SubLow L₀ k

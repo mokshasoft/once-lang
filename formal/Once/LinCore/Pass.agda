@@ -51,7 +51,13 @@ module Once.LinCore.Pass
   where
 
 open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (funit; fvoid; fw; _f*_; _f+_)
+open import Once.IR.Semantics.Trace using (T; ret)
+open import Once.IR.Semantics.Iterative using (T∞; return∞; _>>=∞_; iter∞)
+open Sg using (gr; env; dom; cod)
+open Nuᵐ using (outν)
 open import Once.LinCore.NbEPLinCore fmt ans
+open Sem using (Lᶜ; cataC; travC; Lᴮ; cataB)
 open import Once.LinCore.Bisim fmt ans
 open import Once.LinCore.Grade fmt ans using (same; ret≈; bind≈; blk-coh; cata-coh)
 open import Once.LinCore.PassTr fmt
@@ -172,7 +178,7 @@ mutual
   LR F (Kμ G)   = _≡_
   LR F (G ⊕f H) = Pointwise (LR F G) (LR F H)
   LR F (G ⊗f H) p q = LR F G (proj₁ p) (proj₁ q) × LR F H (proj₂ p) (proj₂ q)
-open VNu public
+open VNu
 
 V : (A : LTy) → ⟦ A ⟧ → ⟦ A ⟧ → Set
 V One          _ _  = ⊤

@@ -46,6 +46,7 @@ module Once.LinCore.EntriesI
   where
 
 open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (Base; Lit)
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Image fmt bw
 open import Once.LinCore.Keys fmt bw
@@ -134,9 +135,11 @@ module ImgE {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open Program ds f using (ncty)
   open In U
   open Program′ ds f ldConst
+  open Lowering U ncty ldConst
   open NoLabels {FS}
   open Free U ncty ldConst ld-nl
   open LabsC {FS}
+  open Ok using (ne)
   open C U ncty ldConst ld-nl
   open Img {FS} ds f ldConst ld-nl using (BlockOk; blockOk)
   open FindE {FS}

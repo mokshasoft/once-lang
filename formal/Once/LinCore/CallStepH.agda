@@ -43,11 +43,13 @@ module Once.LinCore.CallStepH
   where
 
 open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (Base; ⟦_⟧b; Lit)
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw
 open import Once.LinCore.Values fmt bw
 open import Once.LinCore.Code fmt bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots; []ᵉ; vw; Cfg; _∥_)
 open import Once.LinCore.Image fmt bw
+open BSig using (top)
 open import Once.LinCore.Keys fmt bw
 open import Once.LinCore.Layout fmt bw
 open import Once.LinCore.Lower fmt bw
@@ -109,9 +111,12 @@ module CallsH {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open import Once.LinCore.LowerSim fmt ans bw using (module Sim)
   open Sim {FS} U wordOf using (slots-frame)
   open import Once.LinCore.LowerSimE {FS}
-    using (CallInH; call-in-h; call-in-c; callee-frame; callee-below; callee-≢; ch-frame; ch-saved; ch-slots; ch-ret; ch-pc; ch-in; ch-s₁; ch-s₂; ch-other; ch-heap; ch-next; ch-size; ch-halt; ch-log)
+    using (CallInH; module CallInH; call-in-h; call-in-c; callee-frame; callee-below; callee-≢)
+  open CallInH using (ch-frame; ch-saved; ch-slots; ch-ret; ch-pc; ch-in; ch-s₁; ch-s₂; ch-other; ch-heap; ch-next; ch-size; ch-halt; ch-log)
   open import Once.LinCore.Moves {FS}
-    using (Seg; slot; Ran; r-keep; r-pc; r-next; r-old; k-halt; k-slots; k-log; k-ret; k-saved; k-frame; k-other; r-inb; inb-pt; win-push)
+    using (Seg; slot; Ran; module Ran; module Keep; r-inb; inb-pt; win-push)
+  open Ran using (r-keep; r-pc; r-next; r-old)
+  open Keep using (k-frame; k-slots; k-saved; k-ret; k-other; k-halt; k-log)
 
   private
     sv-ne : ∀ n → ¬ n ≡ suc n

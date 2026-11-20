@@ -48,11 +48,15 @@ module Once.LinCore.ImageGuard
   where
 
 open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (Base; Lit)
+open import Once.IR.Semantics.Trace using (T)
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Image fmt bw
 open import Once.LinCore.Keys fmt bw
+open Univ using (tys; nus)
 open import Once.LinCore.Layout fmt bw
 open import Once.LinCore.Lower fmt bw
+open import Once.LinCore.MoveCode using (mvPS; mvSP; mvSS; mvSSd)
 open import Once.LinCore.Labels fmt ans bw using (module NoLabels)
 open import Once.LinCore.LabelsC fmt ans bw using (module LabsC)
 
@@ -230,6 +234,7 @@ module G {FS : FrameSemantics} where
     open Program ds f using (U; blocks-in; start-in)
     open Program ds f using (ncty)
     open Program′ ds f ldConst
+    open Lowering U ncty ldConst
     open L U ncty ldConst ld-nl
 
     main = compᴵ ds f {[]} {[]} end

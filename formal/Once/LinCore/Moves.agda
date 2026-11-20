@@ -143,7 +143,7 @@ record MovedS (fs fs′ : FlatState) (a b n : ℕ) : Set where
     m-moved : ∀ k → k < n → slot fs′ (k + b) ≡ slot fs (k + a)
     m-rest  : ∀ x → (∀ k → k < n → ¬ x ≡ k + b) → slot fs′ x ≡ slot fs x
     m-frame : ∀ f x → ¬ f ≡ current-frame (falloc fs) → stackMem (floc fs′) f x ≡ stackMem (floc fs) f x
-open MovedS public
+open MovedS
 
 private
   ln-pc : ∀ n p → ln n + suc (suc p) ≡ ln (suc n) + p
@@ -234,7 +234,7 @@ record MovedP (fs fs′ : FlatState) (loc : ValueLocation FS) (o b n : ℕ) : Se
     p-moved : ∀ k → k < n → slot fs′ (k + b) ≡ readLoc (floc fs) (offsetLoc loc (k + o))
     p-rest  : ∀ x → (∀ k → k < n → ¬ x ≡ k + b) → slot fs′ x ≡ slot fs x
     p-frame : ∀ f x → ¬ f ≡ current-frame (falloc fs) → stackMem (floc fs′) f x ≡ stackMem (floc fs) f x
-open MovedP public
+open MovedP
 
 private
   off-suc : ∀ (loc : ValueLocation FS) k o → offsetLoc loc (k + suc o) ≡ offsetLoc loc (suc k + o)
@@ -389,7 +389,7 @@ record MovedW (fs fs′ : FlatState) (loc : ValueLocation FS) (a o n : ℕ) : Se
     w-in    : readReg (regs (floc fs′)) Input1 ≡ readReg (regs (floc fs)) Input1
     w-moved : ∀ k → k < n → readLoc (floc fs′) (offsetLoc loc (k + o)) ≡ slot fs (k + a)
     w-rest  : ∀ l → (∀ k → k < n → ¬ l ≡ offsetLoc loc (k + o)) → readLoc (floc fs′) l ≡ readLoc (floc fs) l
-open MovedW public
+open MovedW
 
 -- ★ a move to a pointer whose stores never clobber a slot still to be read
 mvSP-run : ∀ prog (fs : FlatState) (loc : ValueLocation FS) a o n → Seg prog (fpc fs) (mvSP a o n)
@@ -482,7 +482,7 @@ record MovedD (fs fs′ : FlatState) (a b n : ℕ) : Set where
     d-moved : ∀ k → k < n → slot fs′ (b + k) ≡ slot fs (a + k)
     d-rest  : ∀ x → (∀ k → k < n → ¬ x ≡ b + k) → slot fs′ x ≡ slot fs x
     d-frame : ∀ f x → ¬ f ≡ current-frame (falloc fs) → stackMem (floc fs′) f x ≡ stackMem (floc fs) f x
-open MovedD public
+open MovedD
 
 -- ★ highest first, its stores never clobbering a word still to be read
 mvSSd-run : ∀ prog (fs : FlatState) a b n → Seg prog (fpc fs) (mvSSd a b n) → halted (floc fs) ≡ false
@@ -553,7 +553,7 @@ record Filled (fs fs′ : FlatState) (b n : ℕ) : Set where
     f-set   : ∀ k → k < n → slot fs′ (k + b) ≡ just (readReg (regs (floc fs)) Output)
     f-rest  : ∀ x → (∀ k → k < n → ¬ x ≡ k + b) → slot fs′ x ≡ slot fs x
     f-frame : ∀ f x → ¬ f ≡ current-frame (falloc fs) → stackMem (floc fs′) f x ≡ stackMem (floc fs) f x
-open Filled public
+open Filled
 
 stores-run : ∀ prog (fs : FlatState) b n → Seg prog (fpc fs) (stores b n) → halted (floc fs) ≡ false
            → Σ FlatState λ fs′ → FlatSteps prog n fs fs′ × Filled fs fs′ b n
@@ -764,7 +764,7 @@ record Keep (fs fs′ : FlatState) : Set where
     k-halt  : halted (floc fs′) ≡ halted (floc fs)
     k-log   : LocState.ev-log (floc fs′) ≡ LocState.ev-log (floc fs)
     k-inb   : InBlk fs → InBlk fs′
-open Keep public
+open Keep
 
 keep-refl : ∀ {fs} → Keep fs fs
 keep-refl = record { k-frame = refl ; k-slots = refl ; k-saved = refl ; k-ret = refl ; k-other = λ _ _ _ → refl ; k-halt = refl ; k-log = refl ; k-inb = λ I → I }
@@ -851,7 +851,7 @@ record Ran (n a lo hi : ℕ) (fs fs′ : FlatState) : Set where
     r-next : AllocState.next-heap-ref (falloc fs′) ≡ a + AllocState.next-heap-ref (falloc fs)
     r-old  : Old lo fs fs′
     r-top  : ∀ x → hi Data.Nat.≤ x → slot fs′ x ≡ slot fs x
-open Ran public
+open Ran
 
 -- a run keeps every word in its block (D441; by its `Keep`)
 r-inb : ∀ {n a lo hi fs fs′} → Ran n a lo hi fs fs′ → InBlk fs → InBlk fs′

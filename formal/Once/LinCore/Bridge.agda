@@ -42,6 +42,7 @@ import Once.LinCore.Bisim
 module Once.LinCore.Bridge (fmt : TargetNum) (ans : FFIAnswers) where
 
 open import Once.LinCore.Core fmt
+open Nuᵐ using (outν)
 open import Once.LinCore.NbEPLinCore fmt ans
 open Once.LinCore.FromIR fmt using (⟪_⟫; lf; lfK; grade)
 open Once.LinCore.Bisim fmt ans using (_≈[_]_)
@@ -97,7 +98,7 @@ mutual
   WLν F Id        x x′ = WNu F x x′
   WLν F (G ⊕ᴵ H)  x x′ = Pointwise (WLν F G) (WLν F H) x x′
   WLν F (G ⊗ᴵ H)  (x , y) (x′ , y′) = WLν F G x x′ × WLν F H y y′
-open WNu public
+open WNu
 
 ------------------------------------------------------------------------
 -- 4. ★ THE RELATION, by the type.

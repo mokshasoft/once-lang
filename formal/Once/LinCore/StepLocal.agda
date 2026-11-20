@@ -44,14 +44,19 @@ module Once.LinCore.StepLocal
   where
 
 open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (Base; ⟦_⟧b; Lit)
+open import Once.IR.Semantics.Trace using (T)
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw
 open import Once.LinCore.Values fmt bw
 open import Once.LinCore.Code fmt bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots; []ᵉ; vw; ln; see; Cfg; _∥_)
 open import Once.LinCore.Image fmt bw
 open import Once.LinCore.Keys fmt bw
+open Univ using (tys; nus)
 open import Once.LinCore.Layout fmt bw
+open Frame using (EP; OP)
 open import Once.LinCore.Lower fmt bw
+open import Once.LinCore.MoveCode using (mvSS; mvSSd)
 open import Once.LinCore.Words fmt ans bw
 open import Once.LinCore.LowerSim fmt ans bw
 open import Once.LinCore.LowerSimD fmt ans bw using (module SimD)
@@ -134,13 +139,17 @@ module Loc {FS : FrameSemantics} (U : Univ)
   φ = frameOf root
 
   open At U ncty ldConst φ j
+  open SubLow using (L; ins)
+  open Low using (lm; lfin; lcin)
   open Lowering U ncty ldConst
   open Rel {FS} U wordOf
   open Sim {FS} U wordOf
   open CfgW
   open Fetch {FS} using (in-seg)
   open SimD {FS} U wordOf using (case₁-sim; case₂-sim; ecase₁-sim; ecase₂-sim)
-  open import Once.LinCore.Moves {FS} using (Seg; Seg-++ˡ; slot; Keep; k-halt; k-slots; Ran; r-keep; r-pc; r-next; r-old; r-top; Old; ran-refl; ranS; MovedS)
+  open import Once.LinCore.Moves {FS} using (Seg; Seg-++ˡ; slot; Keep; Ran; Old; ran-refl; ranS; MovedS; module Keep; module Ran)
+  open Ran using (r-keep; r-pc; r-next; r-old; r-top)
+  open Keep using (k-slots; k-halt)
   open FlatMachine {FS} using (FlatState; find-label; module FlatState)
   open FlatState using (floc; falloc; fpc)
   open LocState using (heapMem)

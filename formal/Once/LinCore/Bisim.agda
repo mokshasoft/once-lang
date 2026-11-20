@@ -32,6 +32,8 @@ module Once.LinCore.Bisim
   where
 
 open import Once.LinCore.Core fmt
+open import Once.IR.Semantics.Trace using (T; ret; call; halt)
+open import Once.IR.Semantics.Iterative using (T∞; return∞; _>>=∞_; bindBlock; fmap∞; iterRun; iterBlock)
 open import Once.LinCore.NbEPLinCore fmt ans
 
 ------------------------------------------------------------------------
@@ -50,7 +52,7 @@ mutual
     ≈step : ∀ {m m′} → m ≈ m′ → Bl (ret (inj₂ m)) (ret (inj₂ m′))
     ≈call : ∀ {s x k k′} → (∀ y → Bl (k y) (k′ y)) → Bl (call s x k) (call s x k′)
     ≈halt : ∀ {s x} → Bl (halt s x) (halt s x)
-open _≈_ public
+open _≈_
 
 mutual
   ≈-refl : ∀ {X} {m : T∞ X} → m ≈ m
@@ -141,7 +143,7 @@ mutual
     ≈stepR : ∀ {m m′} → m ≈[ R ] m′ → BlR R (ret (inj₂ m)) (ret (inj₂ m′))
     ≈callR : ∀ {s x k k′} → (∀ y → BlR R (k y) (k′ y)) → BlR R (call s x k) (call s x k′)
     ≈haltR : ∀ {s x} → BlR R (halt s x) (halt s x)
-open _≈[_]_ public
+open _≈[_]_
 
 ret≈R : ∀ {X Y} {R : X → Y → Set} {x y} → R x y → return∞ x ≈[ R ] return∞ y
 blockR (ret≈R r) = ≈retR r

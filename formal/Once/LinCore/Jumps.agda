@@ -45,10 +45,15 @@ module Once.LinCore.Jumps
   where
 
 open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (Base; Lit)
+open import Once.IR.Semantics.Trace using (T; call)
+open Sig using (info)
 open import Once.LinCore.Image fmt bw
 open import Once.LinCore.Keys fmt bw
+open Univ using (tys; nus)
 open import Once.LinCore.Layout fmt bw
 open import Once.LinCore.Lower fmt bw
+open import Once.LinCore.MoveCode using (mvPS; mvSP; mvSS; mvSSd; stores)
 open import Once.LinCore.LabelsC fmt ans bw using (module LabsC)
 
 ------------------------------------------------------------------------
@@ -120,6 +125,7 @@ module Free (U : Univ)
             (ldConst : ∀ {b} → Lit b → AbstractInstr)
             (ld-nj : ∀ {b} (v : Lit b) → jump-of (ldConst v) ≡ nothing) where
   open In U
+  open _⊑U using (go)
   open Lowering U ncty ldConst
 
   header-nj : ∀ w jb jc jf → NoJ (header w jb jc jf)
@@ -335,6 +341,7 @@ module Closed {FS : FrameSemantics} where
            (ldConst : ∀ {b} → Lit b → AbstractInstr)
            (ld-nj : ∀ {b} (v : Lit b) → jump-of (ldConst v) ≡ nothing) where
     open In U
+    open _⊑U using (go)
     open Lowering U ncty ldConst
     open Free U ncty ldConst ld-nj
 

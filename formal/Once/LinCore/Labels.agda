@@ -39,11 +39,16 @@ module Once.LinCore.Labels
   where
 
 open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (Base; Lit)
+open import Once.IR.Semantics.Trace using (call)
+open Sig using (info)
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Image fmt bw
 open import Once.LinCore.Keys fmt bw
+open Univ using (tys; nus)
 open import Once.LinCore.Layout fmt bw
 open import Once.LinCore.Lower fmt bw
+open import Once.LinCore.MoveCode using (mvPS; mvSP; mvSS; mvSSd; stores)
 
 module NoLabels {FS : FrameSemantics} where
   open import Once.CCC.Machine.Flat using (module FlatMachine)
@@ -109,6 +114,7 @@ module NoLabels {FS : FrameSemantics} where
               (ldConst : ∀ {b} → Lit b → AbstractInstr)
               (ld-nl : ∀ {b} (v : Lit b) → mark (ldConst v) ≡ nothing) where
     open In U
+    open _⊑U using (go)
     open Lowering U ncty ldConst
 
     header-nl : ∀ w jb jc jf → NoLab (header w jb jc jf)

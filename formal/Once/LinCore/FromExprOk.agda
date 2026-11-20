@@ -61,7 +61,11 @@ open import Once.Denotation.DenotTrace using (evalᴰ; CallEnv; callEnv)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰᴵ)
 
 open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (⟦_⟧F; int; float)
+open import Once.IR.Semantics.Trace using (T; ret; call; halt)
+open import Once.IR.Semantics.Iterative using (T∞; return∞; _>>=∞_; bindBlock)
 open import Once.LinCore.NbEPLinCore fmt ans
+open Sem using (Lᶜ; cataC; travC)
 open import Once.LinCore.FromExpr fmt using (ty; Co; weak; split; carryL; mixL; apω; var-at; bindL; Rs; Lq; castΦ; opL; numL; sigL; cast; clo; callM; refL; mapT; layerEq; dist; coeL; coeR)
 open import Once.Context using (_⊔ᵘ_; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ)
 open import Once.Surface.Map using (mp-id; mp-fst; mp-snd; mp-terminal; mp-inl; mp-inr; mp-initial; mp-apply; mp-In; mp-Out; mp-toFloat)
@@ -91,7 +95,9 @@ open import Once.LinCore.Grade fmt ans using (blk-coh)
 open import Once.IRTy using (IRTy; _⇛[_]_)
 import Once.IRTy as I
 open import Once.LinCore.Bridge fmt ans using (W)
-open import Once.LinCore.Bisim fmt ans using (_≈_; block≈; Bl; Bl-refl; ≈step; ≈call; ≈halt; ≈-refl; ≈-trans; ≈-sym; >>=-cong; _≈[_]_; ret≈R; >>=-congR; ≈-≈R; ≈R-≈; pair-drop; blockR; ≈haltR; iter-congR)
+open import Once.LinCore.Bisim fmt ans using (_≈_; Bl; Bl-refl; ≈step; ≈call; ≈halt; ≈-refl; ≈-trans; ≈-sym; >>=-cong; _≈[_]_; ret≈R; >>=-congR; ≈-≈R; ≈R-≈; pair-drop; ≈haltR; iter-congR; module _≈_; module _≈[_]_)
+open _≈[_]_ using (blockR)
+open _≈_ using (block≈)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 
 ------------------------------------------------------------------------

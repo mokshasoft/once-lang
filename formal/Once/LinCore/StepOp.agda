@@ -40,6 +40,9 @@ module Once.LinCore.StepOp
   where
 
 open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (Base; ⟦_⟧b)
+open import Once.IR.Semantics.Trace using (T)
+open Sig using (info; sA)
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw using (Io; io-call; io-halt; ios)
 open import Once.LinCore.Values fmt bw using (MV; Trace)

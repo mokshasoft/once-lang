@@ -40,12 +40,16 @@ module Once.LinCore.LabelsC
   where
 
 open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (Base; Lit)
+open import Once.IR.Semantics.Trace using (T; call)
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Code fmt bw using (Sh; _∣_)
 open import Once.LinCore.Image fmt bw
 open import Once.LinCore.Keys fmt bw
+open Univ using (tys; nus)
 open import Once.LinCore.Layout fmt bw
 open import Once.LinCore.Lower fmt bw
+open import Once.LinCore.MoveCode using (mvSS; mvSSd)
 open import Once.LinCore.Labels fmt ans bw
 
 module LabsC {FS : FrameSemantics} where
@@ -116,7 +120,7 @@ module LabsC {FS : FrameSemantics} where
       win : Win a b idxs
       dst : Dst idxs
       ne  : Ents xs ≡ []
-  open Ok public
+  open Ok
 
   ok-nl : ∀ {j a b xs} → NoLab xs → Ok j a b xs
   ok-nl p = ok [] (Labs-nl p) [] [] (Ents-nl p)
@@ -153,6 +157,7 @@ module LabsC {FS : FrameSemantics} where
            (ldConst : ∀ {b} → Lit b → AbstractInstr)
            (ld-nl : ∀ {b} (v : Lit b) → mark (ldConst v) ≡ nothing) where
     open In U
+    open _⊑U using (go)
     open Lowering U ncty ldConst
     open Free U ncty ldConst ld-nl
 

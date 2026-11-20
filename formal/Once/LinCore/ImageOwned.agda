@@ -38,9 +38,11 @@ open import Once.Arith.Machine.Rewrite using (sigop-blocks)
 open import Once.Arith.SigOp.Compare using (cmp-of; cmp-block; cmp-body; int-c; flt-c)
 open import Once.Arith.SigOp.AsBlock using (CanonicalAt; Canonical)
 open import Once.Adequacy.RewriteOwned using (Named; BlockOf; is-block)
-open import Once.LinCore.Core fmt using (Sig; sig; info)
+open import Once.LinCore.Core fmt using (Sig; sig; module Sig)
+open Sig using (info)
 open import Once.LinCore.Lower fmt bw using (cmpOf; opSig)
-open import Once.LinCore.Keys fmt bw using (Univ; ops)
+open import Once.LinCore.Keys fmt bw using (Univ; module Univ)
+open Univ using (ops)
 
 open import Once.LinCore.ImageBlocks fmt bw using (own; opBlks; imageBlocks; op-blocks)
 

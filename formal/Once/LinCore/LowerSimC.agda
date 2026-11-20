@@ -34,10 +34,13 @@ module Once.LinCore.LowerSimC
   where
 
 open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (Base; ⟦_⟧b)
+open Sg using (env)
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Values fmt bw using (Id; serial)
 open import Once.LinCore.Keys fmt bw using (Univ)
 open import Once.LinCore.Layout fmt bw
+open Frame using (EP; OP)
 open import Once.LinCore.Words fmt ans bw
 open import Once.LinCore.LowerSim fmt ans bw
 open import Once.LinCore.LowerSimB fmt ans bw
@@ -48,9 +51,11 @@ module SimC {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
   open Rel {FS} U wordOf
   open Sim {FS} U wordOf
   open SimB {FS} U wordOf
-  open import Once.LinCore.Moves {FS} using (Seg; slot; Seg-++ˡ; Seg-++ʳ; mvSP-run; MovedW; w-moved; w-rest; w-in; w-pc; w-alloc; mov-out-step; store-step; store-same; store-other
+  open Header using (h-pc; h-in; h-alloc; h-halt; h-stack; h-words; h-other)
+  open import Once.LinCore.Moves {FS} using (Seg; slot; Seg-++ˡ; Seg-++ʳ; mvSP-run; MovedW; module MovedW; mov-out-step; store-step; store-same; store-other
                                            ; Ran; ran-trans; ranW; ran-regs; ran-store; fresh-block; ran-hi; pred<; inb-write)
-    renaming (ln to nsteps; w-halt to wm-halt)
+    renaming (ln to nsteps)
+  open MovedW using (w-pc; w-alloc; w-in; w-moved; w-rest) renaming (w-halt to wm-halt)
   open import Once.CCC.Machine.Flat using (module FlatMachine)
   open FlatMachine {FS} using (FlatState; fetch; module FlatState)
   open FlatState using (floc; falloc; fpc)
@@ -70,7 +75,7 @@ module SimC {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
       b-next  : AllocState.next-heap-ref (falloc fs′) ≡ suc (AllocState.next-heap-ref (falloc fs))
       b-halt  : fhalted (floc fs′) ≡ fhalted (floc fs)
       b-ran   : Ran (10 + (nsteps (length w) + 2)) 1 (AllocState.next-heap-ref (falloc fs)) bot fs fs′
-  open Built public
+  open Built
 
   -- ★ a closure's or a ν's cell: the header, the contents (from the stack's
   -- top) after it, the cell's pointer in the contents' place
@@ -234,7 +239,8 @@ module SimC {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
   -- the stack in its contents' place.
   ----------------------------------------------------------------------
 
-  open import Once.LinCore.Keys fmt bw using (module In; allK; tys; nus; obs; kc; kf; cty; DS)
+  open import Once.LinCore.Keys fmt bw using (module In; allK; kc; kf; cty; DS)
+  open Univ using (tys; nus; obs)
   open In U using (inC; inF; inO)
   open import Once.LinCore.Lower fmt bw using (tl; idx)
   open import Once.LinCore.Image fmt bw using (kbody1; kbodyω; kobs; key-of; bsig)

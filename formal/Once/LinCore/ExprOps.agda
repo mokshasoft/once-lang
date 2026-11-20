@@ -26,7 +26,11 @@ open import Data.List.Membership.Propositional.Properties using (∈-++⁻)
 open import Data.List.Relation.Unary.Any using (here)
 
 open import Once.LinCore.Core fmt
-open import Once.LinCore.Keys fmt bw using (ps; tmGot; defsGot; ops; univ)
+open import Once.LinCore.Flat using (Base)
+open import Once.IR.Semantics.Trace using (T)
+open Sig using (info)
+open import Once.LinCore.Keys fmt bw using (ps; tmGot; defsGot; univ; module Univ)
+open Univ using (ops)
 
 module _ (D : Sig → Set) where
 

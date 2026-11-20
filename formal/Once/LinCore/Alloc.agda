@@ -84,7 +84,7 @@ record Pool : Set where
     own   : ℕ → ℕ            -- each cell's block, by serial (meaningful while live)
     temps : List (ℕ × ℕ)     -- live temporaries: (name, block), newest first
     tc    : ℕ                -- the next temporary's name
-open Pool public
+open Pool
 
 empty : Pool
 empty = pool 0 (λ _ → freeW) (λ _ → 0) [] 0
@@ -197,7 +197,7 @@ record Inv (p : Pool) : Set where
     tmps  : ∀ j m → who p j ≡ tempW m → (m , j) ∈ temps p
     stack : ∀ m j → (m , j) ∈ temps p → who p j ≡ tempW m
     desc  : Desc (temps p) (tc p)
-open Inv public
+open Inv
 
 inv-empty : Inv empty
 inv-empty = record { above = λ _ _ → refl ; cells = λ _ _ () ; tmps = λ _ _ () ; stack = λ _ _ () ; desc = tt }

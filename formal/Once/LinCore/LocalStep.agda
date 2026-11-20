@@ -36,6 +36,8 @@ module Once.LinCore.LocalStep
   where
 
 open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (Base; ⟦_⟧b; Lit)
+open import Once.IR.Semantics.Trace using (T)
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw
 open import Once.LinCore.Values fmt bw
@@ -43,6 +45,7 @@ open import Once.LinCore.Code fmt bw using (Sh; _∣_; Stk; _∷ˢ_; Slots; Cfg;
 open import Once.LinCore.Image fmt bw
 open import Once.LinCore.ImageRun fmt ans bw
 open import Once.LinCore.Keys fmt bw
+open Univ using (tys; nus)
 open import Once.LinCore.Layout fmt bw using (Frame; frameOf; budget)
 open import Once.LinCore.ImagePt fmt ans bw using (Sub; next; left; right; eleft; eright)
 open import Once.LinCore.LowAt fmt ans bw using (Inside; module At)
@@ -67,7 +70,8 @@ module Steps {FS : FrameSemantics} (U : Univ)
 
   open Loc {FS} U ncty ldConst wordOf prog root j L₀ R
   open Prims {FS} U ncty ldConst wordOf prog root j L₀ R
-  open At U ncty ldConst φ j using (lcin; lfin)
+  open At U ncty ldConst φ j using (module Low)
+  open Low using (lfin; lcin)
   open FlatMachine {FS} using (FlatState; module FlatState)
   open FlatState using (floc; falloc; fpc)
   open FlatStepsAPI {FS} using (FlatSteps)

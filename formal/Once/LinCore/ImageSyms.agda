@@ -76,10 +76,14 @@ module Once.LinCore.ImageSyms
   where
 
 open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (Base; Lit)
+open Sig using (info)
 open import Once.LinCore.Image fmt bw
 open import Once.LinCore.Keys fmt bw
+open Univ using (ops)
 open import Once.LinCore.Layout fmt bw
 open import Once.LinCore.Lower fmt bw
+open import Once.LinCore.MoveCode using (mvPS; mvSP)
 open import Once.LinCore.Labels fmt ans bw using (module NoLabels)
 open import Once.LinCore.LabelsC fmt ans bw using (module LabsC)
 import Once.LinCore.LabelsC
@@ -337,7 +341,9 @@ module Img (nm : CanonicalName) {Γ} (ds : Defs Γ) (f : LTm Γ One One)
            {FS : FrameSemantics} where
   open Program ds f using (U; blocks-in; start-in; ncty)
   open In U
+  open _⊑U using (go)
   open Program′ ds f ldConst
+  open Lowering U ncty ldConst
   open FlatMachine {FS} using (fetch; find-entry-sound; find-thunk-sound)
   open LabsC {FS} using (Labs; Labs-++; Ents; Ents-++; module C; module Ok)
   open DL {FS}

@@ -23,9 +23,11 @@ open import Relation.Binary.PropositionalEquality using (refl)
 open import Once.SigOp.Info using (SigOpSem; blockV; primV; ffiV; callsV; emitsV; haltsV; module SigOpInfo)
 open import Once.Arith.Machine.IR using (ArithBlock; mk-block)
 open import Once.Arith.Machine.Rewrite using (sigop-blocks)
-open import Once.LinCore.Core fmt using (Sig; info)
+open import Once.LinCore.Core fmt using (Sig; module Sig)
+open Sig using (info)
 open import Once.LinCore.Lower fmt bw using (cmpOf)
-open import Once.LinCore.Keys fmt bw using (Univ; ops)
+open import Once.LinCore.Keys fmt bw using (Univ; module Univ)
+open Univ using (ops)
 
 -- an op's own block: a block op's body
 own : ∀ {A B} → SigOpSem A B → List ArithBlock

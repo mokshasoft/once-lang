@@ -30,6 +30,7 @@ open import Once.Context using (⟦_⟧ᶜ; _↾_)
 open import Once.IRTy using (⌊_⌋)
 import Once.IR as M
 open import Once.LinCore.Core fmt
+open import Once.IR.Semantics.Trace using (T)
 open import Once.LinCore.FromExpr fmt using (ty; Co; apω; k-apω; cast; k-cast; gdB)
 open import Once.LinCore.FromIR fmt using (grade)
 open import Relation.Binary.PropositionalEquality using (cong; subst)

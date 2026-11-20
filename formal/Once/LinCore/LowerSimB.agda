@@ -27,11 +27,13 @@ module Once.LinCore.LowerSimB
   where
 
 open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (Base; ⟦_⟧b)
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Values fmt bw using (MV; mpair)
 open import Once.LinCore.Code fmt bw using (Stk; _∷ˢ_; Slots; _∥_)
 open import Once.LinCore.Keys fmt bw using (Univ)
 open import Once.LinCore.Layout fmt bw
+open Frame using (EP; OP)
 open import Once.LinCore.Words fmt ans bw
 open import Once.LinCore.LowerSim fmt ans bw
 
@@ -39,7 +41,8 @@ module SimB {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
   open Rel {FS} U wordOf
   open Sim {FS} U wordOf
   open CfgW
-  open import Once.LinCore.Moves {FS} using (Seg; slot; Keep; k-frame; k-slots; k-saved; k-ret; k-other; k-halt; Ran; InBlk) renaming (ln to nsteps)
+  open import Once.LinCore.Moves {FS} using (Seg; slot; Keep; Ran; InBlk; module Keep) renaming (ln to nsteps)
+  open Keep using (k-frame; k-slots; k-saved; k-ret; k-other; k-halt)
   open import Once.LinCore.MoveCode using (mvSS)
   open import Once.CCC.Machine.Flat using (module FlatMachine)
   open FlatMachine {FS} using (FlatState; module FlatState)
@@ -138,7 +141,7 @@ module SimB {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
               → heapMem (floc fs′) hl ≡ heapMem (floc fs) hl
       -- D441: the words written are inside the fresh block
       h-inb   : InBlk fs → InBlk fs′
-  open Header public
+  open Header
 
   header-run : ∀ prog (fs : FlatState) w lb lc lf → Seg prog (fpc fs) (headerTr w lb lc lf) → fhalted (floc fs) ≡ false
              → Σ FlatState λ fs′ → FlatSteps prog 10 fs fs′ × Header fs fs′ w lb lc lf

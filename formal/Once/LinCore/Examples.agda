@@ -77,7 +77,10 @@ bw Fl.int   = 1
 bw Fl.float = 1
 
 open import Once.LinCore.Core fmt₀
+open import Once.LinCore.Flat using (int)
+open import Once.IR.Semantics.Trace using (CallOp; HaltOp)
 open import Once.LinCore.NbEPLinCore fmt₀ ans₀
+open Sem using (Lᶜ)
 open import Once.LinCore.Events fmt₀ ans₀ bw
 open import Once.LinCore.Values fmt₀ bw
 open import Once.LinCore.Act fmt₀ ans₀ bw
@@ -664,7 +667,7 @@ composed-machine = refl
 --     0's block (the lowest free one), and the region still holds two blocks.
 ------------------------------------------------------------------------
 
-reuse : Data.Maybe.map (λ p → Al.own p 2 , Al.top p)
+reuse : Data.Maybe.map (λ p → Al.Pool.own p 2 , Al.Pool.top p)
           (Al.born 0 Al.empty >>= Al.born 1 >>= Al.died 0 >>= Al.born 2)
       ≡ just (0 , 2)
 reuse = refl
@@ -689,7 +692,7 @@ list-ops : AR.ops 3 (trace-of-run build-run ++ trace-of list-server)
          ≡ Al.birth 0 ∷ Al.birth 1 ∷ Al.death 1 ∷ Al.death 0 ∷ Al.birth 2 ∷ Al.birth 3 ∷ []
 list-ops = refl
 
-list-blocks : Data.Maybe.map (λ p → Al.own p 2 , Al.own p 3 , Al.top p)
+list-blocks : Data.Maybe.map (λ p → Al.Pool.own p 2 , Al.Pool.own p 3 , Al.Pool.top p)
                 (Al.born 0 Al.empty >>= Al.born 1 >>= Al.died 1 >>= Al.died 0 >>= Al.born 2 >>= Al.born 3)
             ≡ just (0 , 1 , 2)
 list-blocks = refl
@@ -703,12 +706,12 @@ list-blocks = refl
 --     (never by a 2-word one), and a second 2-word block above the top.
 ------------------------------------------------------------------------
 
-list-region : Data.Maybe.map (λ r → Rg.wtop r , Rg.addr r 3 0 , Rg.addr r 3 1 , Rg.tops r 3)
+list-region : Data.Maybe.map (λ r → Rg.Region.wtop r , Rg.Region.addr r 3 0 , Rg.Region.addr r 3 1 , Rg.tops r 3)
                 (Rg.grun (AR.gops (trace-of-run build-run ++ trace-of list-server)) Rg.empty)
             ≡ just (6 , 0 , 3 , 2)
 list-region = refl
 
-two-sizes : Data.Maybe.map (λ r → Rg.wtop r , Rg.addr r 3 0 , Rg.addr r 2 0 , Rg.addr r 2 1)
+two-sizes : Data.Maybe.map (λ r → Rg.Region.wtop r , Rg.Region.addr r 3 0 , Rg.Region.addr r 2 0 , Rg.Region.addr r 2 1)
               (Rg.grun ((3 , Al.birth 0) ∷ (2 , Al.birth 1) ∷ (3 , Al.death 0) ∷ (3 , Al.birth 2) ∷ (2 , Al.birth 3) ∷ [])
                        Rg.empty)
           ≡ just (7 , 0 , 3 , 5)

@@ -44,6 +44,8 @@ import Once.LinCore.Pass
 module Once.LinCore.BridgeProof (fmt : TargetNum) (ans : FFIAnswers) where
 
 open import Once.LinCore.Core fmt
+open import Once.IR.Semantics.Trace using (T; ret)
+open import Once.IR.Semantics.Iterative using (T∞)
 open import Once.LinCore.NbEPLinCore fmt ans
 open Once.LinCore.FromIR fmt
 open import Once.LinCore.Pass fmt ans using (ev; ev-coh)

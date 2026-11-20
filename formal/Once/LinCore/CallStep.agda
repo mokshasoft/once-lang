@@ -47,14 +47,20 @@ module Once.LinCore.CallStep
   where
 
 open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (Base; ⟦_⟧b; Lit)
+open import Once.IR.Semantics.Trace using (call)
+open Sg using (cod)
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw
 open import Once.LinCore.Values fmt bw
 open import Once.LinCore.Code fmt bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots; []ᵉ; vw; see; Cfg; _∥_)
 open import Once.LinCore.Image fmt bw
+open BSig using (top; cod)
 open import Once.LinCore.Keys fmt bw
 open import Once.LinCore.Layout fmt bw
+open Frame using (EP; OP)
 open import Once.LinCore.Lower fmt bw
+open import Once.LinCore.MoveCode using (mvPS; mvSP)
 open import Once.LinCore.Words fmt ans bw
 open import Once.LinCore.LowerSim fmt ans bw
 open import Once.LinCore.LowerSimF fmt ans bw using (module SimF)
@@ -116,9 +122,13 @@ module Calls {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open FlatState using (floc; falloc; fpc; fret)
   open FlatStepsAPI {FS} using (FlatSteps; FlatSteps-++)
   open import Once.LinCore.LowerSimE {FS}
-    using (CallIn; call-in; call-in-v; callee-frame; callee-≢; ci-frame; ci-saved; ci-slots; ci-ret; ci-pc; ci-in; ci-s₁; ci-s₂; ci-other; ci-heap; ci-next; ci-size; ci-halt; ci-log; CallOut; co-pc; co-halt; co-slots; caller-win)
+    using (CallIn; module CallIn; call-in; call-in-v; callee-frame; callee-≢; CallOut; module CallOutA; caller-win)
+  open CallOutA using (co-slots; co-pc; co-halt)
+  open CallIn using (ci-frame; ci-saved; ci-slots; ci-ret; ci-pc; ci-in; ci-s₁; ci-s₂; ci-other; ci-heap; ci-next; ci-size; ci-halt; ci-log)
   open import Once.LinCore.Moves {FS}
-    using (Seg; Seg-++ˡ; slot; Ran; r-keep; r-pc; r-next; r-old; k-halt; k-slots; k-log; k-ret; k-saved; k-frame; k-other; r-inb; inb-pt)
+    using (Seg; Seg-++ˡ; slot; Ran; module Ran; module Keep; r-inb; inb-pt)
+  open Ran using (r-keep; r-pc; r-next; r-old)
+  open Keep using (k-frame; k-slots; k-saved; k-ret; k-other; k-halt; k-log)
 
   -- a block's code, inside the image
   blockR : ∀ {σ} {κ : Key σ} (p : (σ , κ) ∈ allK U) → Inside image (At.code U ncty ldConst (frameOf (blockᴵ κ)) (idx p) (L₀ᵇ κ p))
@@ -333,12 +343,12 @@ module Calls {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
               (L₀ : At.Low U ncty ldConst (frameOf root) j root)
               (R : Inside image (At.code U ncty ldConst (frameOf root) j L₀)) where
     module C = Loc {FS} U ncty ldConst wordOf image root j L₀ R using (Here; module Here; lowAt; pos; pos-next; seg-at; shape-fits; φ)
-    module CA = At U ncty ldConst (frameOf root) j using (lcin)
+    module CA = At U ncty ldConst (frameOf root) j using (module Low)
     open Loc.Here
 
     -- the membership the call was lowered with
     callee : ∀ {σ Es S V} {κ : Key σ} {k : Codeᴵ (top σ ⊳ Es ∣ cod σ ∷ S) V} → Sub root (call κ ⨾ k) → (σ , κ) ∈ allK U
-    callee s = proj₁ (CA.lcin (C.lowAt s))
+    callee s = proj₁ (CA.Low.lcin (C.lowAt s))
 
     -- what the call leaves
     Into : ∀ {A B Es S V} {κ : Key (bsig nothing A B)} {k : Codeᴵ (Es ∣ B ∷ S) V} → Sub root (call κ ⨾ k) → MV A → FlatState → Set
@@ -518,7 +528,7 @@ module Calls {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
 
     -- ★ THE RETURN: at the callee's `end` (its way out, `blockFin`), back to
     -- the caller after the call, the result on its stack
-    module KA {σ} {κ : Key σ} (p : (σ , κ) ∈ allK U) = At U ncty ldConst (frameOf (blockᴵ κ)) (idx p) using (lfin)
+    module KA {σ} {κ : Key σ} (p : (σ , κ) ∈ allK U) = At U ncty ldConst (frameOf (blockᴵ κ)) (idx p) using (module Low)
 
     -- the callee's membership as a variable `q` (with `callee s ≡ q`): a
     -- caller's `q` meets `callee s` here by substitution, not by comparing
@@ -528,7 +538,7 @@ module Calls {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
             {e′ : Slots (t ⊳ [])} {b : MV B} {es : Slots (t ⊳ Es)} {os : Stk S} {fs}
             (cfc : FrameSemantics.Frame FS) (rest : List ℕ) (sv : List (FrameSemantics.Frame FS × ℕ)) (sl : ℕ)
             (q : (bsig t A B , κ) ∈ allK U) → callee s ≡ q
-        → KA.lfin {p = q} (K.lowAt q e) ≡ blockFin κ
+        → KA.Low.lfin {p = q} (K.lowAt q e) ≡ blockFin κ
         → K.Here q e (e′ ∥ b ∷ˢ []ˢ) fs
         → fret fs ≡ C.pos (next s) ∷ rest → AllocState.saved-frames (falloc fs) ≡ (cfc , sl) ∷ sv
         → sl ≡ fbudget C.φ

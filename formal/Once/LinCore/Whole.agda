@@ -32,13 +32,15 @@ module Once.LinCore.Whole
   where
 
 open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (funit; Base)
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw
 open import Once.LinCore.Values fmt bw
 open import Once.LinCore.Total fmt ans bw
 open import Once.LinCore.Pass fmt ans
 open import Once.LinCore.PassTr fmt
-open import Once.LinCore.Bisim fmt ans using (block≈)
+open import Once.LinCore.Bisim fmt ans using (module _≈_)
+open _≈_ using (block≈)
 
 module _ (W : World) where
   -- ★ an IR program (its definitions `P`, each calling only earlier ones, and

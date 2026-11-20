@@ -42,14 +42,17 @@ module Once.LinCore.LoopStep
   where
 
 open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (Base; ⟦_⟧b; Lit)
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw
 open import Once.LinCore.Values fmt bw
 open import Once.LinCore.Code fmt bw using (Sh; _∣_; Stk; _∷ˢ_; Slots; Cfg; _∥_)
 open import Once.LinCore.Image fmt bw
 open import Once.LinCore.Keys fmt bw
+open Univ using (tys; nus)
 open import Once.LinCore.Layout fmt bw
 open import Once.LinCore.Lower fmt bw
+open import Once.LinCore.MoveCode using (mvSSd)
 open import Once.LinCore.Words fmt ans bw
 open import Once.LinCore.LowerSimD fmt ans bw using (module SimD)
 open import Once.LinCore.ImagePt fmt ans bw using (Sub; next; body)
@@ -69,7 +72,9 @@ module Loops {FS : FrameSemantics} (U : Univ)
 
   open Loc {FS} U ncty ldConst wordOf prog root j L₀ R
   open Here
-  open At U ncty ldConst φ j using (code; lm; lfin; lcin; ins; sub-low; dispC; disp-in)
+  open At U ncty ldConst φ j using (code; sub-low; dispC; disp-in; module Low; module SubLow)
+  open SubLow using (ins)
+  open Low using (lm; lfin; lcin)
   open Lowering U ncty ldConst
   open Rel {FS} U wordOf
   open SimD {FS} U wordOf using (case₁-sim; case₂-sim)
@@ -77,7 +82,8 @@ module Loops {FS : FrameSemantics} (U : Univ)
   open FlatMachine {FS} using (FlatState; find-label; do-jump; module FlatState)
   open FlatState using (floc; falloc; fpc)
   open FlatStepsAPI {FS} using (FlatSteps; step-at; FlatSteps-++; flat-label; flat-jmp)
-  open import Once.LinCore.Moves {FS} using (Seg; Seg-++ˡ; slot; Keep; k-halt; k-slots; keep-pc; keep-trans; Old)
+  open import Once.LinCore.Moves {FS} using (Seg; Seg-++ˡ; slot; Keep; keep-pc; keep-trans; Old; module Keep)
+  open Keep using (k-slots; k-halt)
 
   ----------------------------------------------------------------------
   -- 1. AT AN ADDRESS: the flat pc, running, the configuration in the frame.

@@ -38,6 +38,8 @@ module Once.LinCore.RunWord
   where
 
 open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (Base; ⟦_⟧b; Lit)
+open import Once.IR.Semantics.Trace using (T)
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw using (ios; ios-++)
 open import Once.LinCore.Values fmt bw using (MV; mone; Trace)

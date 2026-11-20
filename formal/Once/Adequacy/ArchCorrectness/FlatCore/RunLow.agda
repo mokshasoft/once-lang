@@ -48,6 +48,7 @@ open import Once.CCC.Codegen.RoomChecksSim using (module RoomSim)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open FlatStepsAPI {FS} using (Sound)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunContext o FS slot-size word-eq
+open Emitted using (em-image; em-code)
 open RunAt using (run-em; run-reach)
 
 -- THE RUN OF THE LOWERED IMAGE: `prog` is `t` with its checks, and `fs` is the

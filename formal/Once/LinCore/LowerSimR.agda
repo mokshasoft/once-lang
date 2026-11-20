@@ -38,6 +38,7 @@ module Once.LinCore.LowerSimR
   where
 
 open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (Base; ⟦_⟧b)
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Values fmt bw using (Id; serial)
 open import Once.LinCore.Keys fmt bw using (Univ)
@@ -68,7 +69,8 @@ module SimR {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
   open ExecFinal {FS} using (in-block?)
   open import Once.LinCore.Moves {FS}
     using (Seg; slot; restore-step; loadat-step; storeat-step; InBlk; alloc-step; store-step; mov-out-step; store-same; store-other; store-frame
-          ; mvSP-run; MovedW; w-moved; w-rest; w-pc; w-alloc; w-in; w-ret) renaming (ln to nsteps; w-halt to wm-halt; w-log to wm-log)
+          ; mvSP-run; MovedW; module MovedW) renaming (ln to nsteps)
+  open MovedW using (w-pc; w-alloc; w-ret; w-in; w-moved; w-rest) renaming (w-halt to wm-halt; w-log to wm-log)
   open Sim {FS} U wordOf using (slots-def; slots-at)
 
   ref-of : HeapLocation → ℕ
@@ -159,7 +161,7 @@ module SimR {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
       wc-new   : heapMem (floc a′) (heap-loc (mkHeapRef r) (k + 0)) ≡ just v
       wc-fr    : ∀ {n} → k + 0 < n → Fr (heapMem (floc a)) (heapMem (floc a′)) r n
       wc-other : ∀ hl → ¬ AtDynamic {FS} (heap-loc (mkHeapRef r) (k + 0)) ≡ AtDynamic hl → heapMem (floc a′) hl ≡ heapMem (floc a) hl
-  open WC public
+  open WC
 
   word-copy : ∀ prog (a : FlatState) (s₂ s₃ k ro r : ℕ) (v : W)
             → Seg prog (fpc a) (restore-input s₂ ∷ load-at k ∷ restore-input s₃ ∷ store-at k ∷ [])
@@ -203,7 +205,7 @@ module SimR {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
       rc-cell  : At (heapMem (floc fs′)) (sz , AllocState.next-heap-ref (falloc fs)) 0
                     (cellPtr (sz , AllocState.next-heap-ref (falloc fs)) ∷ w₁ ∷ w₂ ∷ w₃ ∷ wx)
       rc-fr    : Fr (heapMem (floc fs)) (heapMem (floc fs′)) (AllocState.next-heap-ref (falloc fs)) (hdr + length wx)
-  open ReCl public
+  open ReCl
 
   private
     -- a word copy keeps the frame's slots

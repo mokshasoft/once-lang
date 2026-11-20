@@ -23,6 +23,7 @@ open import Once.LinCore.Flat using (Base; FTy; funit; fvoid; fw; _f*_; _f+_)
 module Once.LinCore.PassTr (fmt : TargetNum) where
 
 open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (Lit)
 
 ------------------------------------------------------------------------
 -- 1. THE IR: master's constructors, over the core's types.

@@ -111,7 +111,7 @@ record CallIn (fs fs′ : FlatState) (a b s₁ s₂ q r : ℕ) (w₂ : StoredVal
     ci-size  : block-size (falloc fs′) ≡ block-size (falloc fs)
     ci-halt  : fhalted (floc fs′) ≡ fhalted (floc fs)
     ci-log   : LocState.ev-log (floc fs′) ≡ LocState.ev-log (floc fs)
-open CallIn public
+open CallIn
 
 call-in : ∀ prog (fs : FlatState) (a : ℕ) (f : CanonicalName) (e : EntryId) (q b s₁ s₂ : ℕ) → ¬ s₁ ≡ s₂
         → Seg prog (fpc fs) (lea-slot a ∷ mov-to-input ∷ instr-ctrl (c-call-fn f) ∷ [])
@@ -185,8 +185,10 @@ call-in-v prog fs a v f e q b s₁ s₂ s≢ (g₁ , g₂ , g₀ , g₃ , _) ff 
 
 open import Once.CCC.Machine.SMCore using (restore-input; offsetLoc; StoredValue; load-from-slot)
 open import Once.LinCore.MoveCode using (mvSP)
-open import Once.LinCore.Moves {FS} using (slot; restore-step; mvSP-run; MovedW; w-moved; w-rest; w-pc; w-alloc; w-in; Seg-++ˡ; Seg-++ʳ; win-here; win-there; gate-stack)
-  renaming (ln to nsteps; w-halt to wm-halt; w-log to wm-log)
+open import Once.LinCore.Moves {FS} using (slot; restore-step; mvSP-run; MovedW; Seg-++ˡ; Seg-++ʳ; win-here; win-there; gate-stack; module MovedW)
+  renaming (ln to nsteps)
+open MovedW using (w-pc; w-alloc; w-in; w-moved; w-rest)
+  renaming (w-halt to wm-halt; w-log to wm-log)
 open import Once.CCC.Machine.SMCore using (module ExecFinal)
 open MemOps {FS} using (readLoc)
 open import Once.CCC.Machine.Locations using (ValueLocation)
@@ -210,12 +212,13 @@ record CallOutA (fs fs′ : FlatState) (cfc af : Frame) (a src o n pc : ℕ) (re
     co-size  : block-size (falloc fs′) ≡ block-size (falloc fs)
     co-halt  : fhalted (floc fs′) ≡ fhalted (floc fs)
     co-log   : LocState.ev-log (floc fs′) ≡ LocState.ev-log (floc fs)
-open CallOutA public
+open CallOutA
 
 CallOut : (fs fs′ : FlatState) (cfc : Frame) (a src o n pc : ℕ) (rest : List ℕ) (sv : List (Frame × ℕ)) (sl : ℕ) → Set
 CallOut fs fs′ cfc = CallOutA fs fs′ cfc cfc
 
-open import Once.LinCore.Moves {FS} using (readLoc-regs; w-ret)
+open import Once.LinCore.Moves {FS} using (readLoc-regs)
+open MovedW using (w-ret)
 open import Data.Nat using (_<_)
 
 len-mvSP : ∀ x y m → length (mvSP x y m) ≡ nsteps m
@@ -337,7 +340,7 @@ record CallInH (fs fs′ : FlatState) (b s₁ s₂ q r : ℕ) (ap vp : StoredVal
     ch-size  : block-size (falloc fs′) ≡ block-size (falloc fs)
     ch-halt  : fhalted (floc fs′) ≡ fhalted (floc fs)
     ch-log   : LocState.ev-log (floc fs′) ≡ LocState.ev-log (floc fs)
-open CallInH public
+open CallInH
 
 call-in-h : ∀ prog (fs : FlatState) (s : ℕ) (ap vp : StoredValue FS) (f : CanonicalName) (e : EntryId) (q b s₁ s₂ : ℕ) → ¬ s₁ ≡ s₂
           → slot fs s ≡ just ap → readReg (LocState.regs (floc fs)) Output ≡ vp

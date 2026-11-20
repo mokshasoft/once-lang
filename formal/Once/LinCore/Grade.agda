@@ -36,9 +36,13 @@ module Once.LinCore.Grade
   where
 
 open import Once.LinCore.Core fmt
+open import Once.IR.Semantics.Trace using (T; ret; call; halt)
+open import Once.IR.Semantics.Iterative using (T∞; return∞; _>>=∞_; bindBlock; fmap∞; iter∞)
 open import Once.LinCore.NbEPLinCore fmt ans
+open Sem using (Lᶜ; cataC; travC; Lᴮ; cataB; travB)
 open import Once.LinCore.Bisim fmt ans
-  using (_≈_; block≈; Bl; ≈ret; ≈call; ≈halt; ≈-refl; ≈-trans; ≈-blk; Bl-refl; >>=-cong; iter-cong)
+  using (_≈_; module _≈_; Bl; ≈ret; ≈call; ≈halt; ≈-refl; ≈-trans; ≈-blk; Bl-refl; >>=-cong; iter-cong)
+open _≈_ using (block≈)
 
 ------------------------------------------------------------------------
 -- 1. The embedding `T → T∞` is a monad morphism, up to bisimilarity.
@@ -143,7 +147,7 @@ data Fin {X : Set} : T (X ⊎ T∞ X) → Set where
 record Finite {X : Set} (m : T∞ X) : Set where
   constructor fin
   field unfin : Fin (block m)
-open Finite public
+open Finite
 
 fin-embB : ∀ {X} (b : T X) → Fin (embB b)
 fin-embB (ret x)      = f-ret

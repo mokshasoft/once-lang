@@ -28,6 +28,7 @@ private
   ans = fs-ffi Mach
 
 open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (Base; int; float; ⟦_⟧b; Lit)
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Labels fmt ans bw using (module NoLabels)
 open FlatMachine {Mach} using (FlatState; flat-exec-instr; module FlatState)

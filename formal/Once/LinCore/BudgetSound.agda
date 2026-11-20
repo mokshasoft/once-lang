@@ -44,10 +44,15 @@ module Once.LinCore.BudgetSound
   where
 
 open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (Base)
+open import Once.IR.Semantics.Trace using (T; ret; call; halt; CallOp)
+open import Once.IR.Semantics.Iterative using (T∞; return∞; fmap∞; iterRun)
 open import Once.LinCore.NbEPLinCore fmt ans
+open Sem using (Lᶜ; travC; Lg)
 open import Once.LinCore.Events fmt ans bw
 open import Once.LinCore.Values fmt bw
-open import Once.LinCore.Bisim fmt ans using (_≈_; Bl; block≈; ≈ret; ≈step; ≈call; ≈halt)
+open import Once.LinCore.Bisim fmt ans using (_≈_; Bl; ≈ret; ≈step; ≈call; ≈halt; module _≈_)
+open _≈_ using (block≈)
 open import Once.LinCore.Total fmt ans bw using (World; WTr)
 open import Once.LinCore.Spends fmt ans bw using (UnCut; UnCutM)
 open import Once.LinCore.StepOp fmt ans bw using (evsOf; ioEvent)

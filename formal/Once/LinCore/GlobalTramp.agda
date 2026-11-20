@@ -39,6 +39,8 @@ module Once.LinCore.GlobalTramp
   where
 
 open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (Base; ⟦_⟧b; Lit)
+open import Once.IR.Semantics.Trace using (T)
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw
 open import Once.LinCore.Values fmt bw
@@ -46,8 +48,10 @@ open import Once.LinCore.Code fmt bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots
 open import Once.LinCore.Image fmt bw
 open import Once.LinCore.ImageRun fmt ans bw using (Ret; []ʳ; frm; _∷ⁱ_)
 open import Once.LinCore.Keys fmt bw
-open import Once.LinCore.Layout fmt bw using (Frame; frame; frameOf; budget; wsz; ws; EP; OP)
+open import Once.LinCore.Layout fmt bw using (Frame; frame; frameOf; budget; wsz; ws; module Frame)
+open Frame using (EP; OP)
 open import Once.LinCore.Lower fmt bw
+open import Once.LinCore.MoveCode using (mvPS; mvSP)
 open import Once.LinCore.Words fmt ans bw
 open import Once.LinCore.ImagePt fmt ans bw using (Sub; Pt; at; disp; next; body; whole)
 open import Once.LinCore.LowAt fmt ans bw using (module At)
@@ -95,7 +99,8 @@ module TrampR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open import Once.LinCore.LowAt fmt ans bw using (Inside)
   open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
   open FlatStepsAPI {FS} using (FlatSteps)
-  open import Once.LinCore.Moves {FS} using (Keep; k-frame; k-ret; k-saved; k-other)
+  open import Once.LinCore.Moves {FS} using (Keep; module Keep)
+  open Keep using (k-frame; k-saved; k-ret; k-other)
   open Cells {FS} U wordOf using (fresh-cfg; fresh-ret)
   open Img {FS} ds f ldConst ld-nl using (image-label)
 
@@ -105,7 +110,8 @@ module TrampR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
 
   open Frames {FS} using (Called)
   open Called
-  open import Once.LinCore.LowerSimE {FS} using (callee-frame; callee-below; callee-≢; CallOut; co-frame; co-ret; co-saved; co-rest; co-next)
+  open import Once.LinCore.LowerSimE {FS} using (callee-frame; callee-below; callee-≢; CallOut; module CallOutA)
+  open CallOutA using (co-frame; co-saved; co-ret; co-rest; co-next)
   ----------------------------------------------------------------------
   -- 9. ★ A ONE-SHOT TRAMPOLINE (D438), step by step.
   ----------------------------------------------------------------------
@@ -120,7 +126,9 @@ module TrampR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open Sim {FS} U wordOf using (len-mvPS)
   open import Once.LinCore.PointAt fmt ans bw using (module Fetch)
   open Fetch {FS} using (in-seg)
-  open import Once.LinCore.Moves {FS} using (Seg; Seg-++ˡ; Ran; r-pc; r-keep; k-halt; k-slots; inb-pt)
+  open import Once.LinCore.Moves {FS} using (Seg; Seg-++ˡ; Ran; inb-pt; module Ran)
+  open Ran using (r-keep; r-pc)
+  open Keep using (k-slots; k-halt)
 
   private
     -- a code with a tail, as the code then the tail
@@ -238,8 +246,9 @@ module TrampR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   -- ★ the body's return into the trampoline: its result at the frame's top
   open import Once.LinCore.LowerSimF fmt ans bw using (module SimF)
   open SimF {FS} U wordOf using (leave; area-gen; area-bnd)
-  open import Once.LinCore.LowerSimE {FS} using (co-pc; co-halt; co-slots; caller-win)
-  module KA′ {σ} {κ : Key σ} (p : (σ , κ) ∈ allK U) = At U ncty ldConst (frameOf (blockᴵ κ)) (idx p) using (lfin)
+  open import Once.LinCore.LowerSimE {FS} using (caller-win)
+  open CallOutA using (co-slots; co-pc; co-halt)
+  module KA′ {σ} {κ : Key σ} (p : (σ , κ) ∈ allK U) = At U ncty ldConst (frameOf (blockᴵ κ)) (idx p) using (module Low)
 
   -- ★ a body's return into a frame-0 trampoline (D438), by the body's key:
   -- its result at the frame's top
@@ -247,7 +256,7 @@ module TrampR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
              → (e : Sub (blockᴵ κb) (end {sh = [] ∣ B ∷ []}))
              → ∀ {e′ : Slots []} {w : MV B} {fs} (cfc : FrameSemantics.Frame FS) (pc : ℕ) (rest : List ℕ)
                (sv : List (FrameSemantics.Frame FS × ℕ)) (sl : ℕ)
-           → KA′.lfin {p = p} (K.lowAt p e) ≡ blockFin κb
+           → KA′.Low.lfin {p = p} (K.lowAt p e) ≡ blockFin κb
            → K.Here p e (e′ ∥ w ∷ˢ []ˢ) fs
            → fret fs ≡ pc ∷ rest → AllocState.saved-frames (falloc fs) ≡ (cfc , sl) ∷ sv
            → ¬ cfc ≡ AllocState.current-frame (falloc fs)
@@ -296,7 +305,7 @@ module TrampR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
               (p : under (ktr1 ds′ b γ) ∈ allK U) (e : Sub (blockᴵ (kbody1 ds′ b γ)) (end {sh = [] ∣ B ∷ []}))
               {e′ : Slots []} {w : MV B} {fs} (cfc : FrameSemantics.Frame FS) (pc : ℕ) (rest : List ℕ)
               (sv : List (FrameSemantics.Frame FS × ℕ)) (sl : ℕ)
-          → KA′.lfin {p = p} (K.lowAt p e) ≡ blockFin (kbody1 ds′ b γ)
+          → KA′.Low.lfin {p = p} (K.lowAt p e) ≡ blockFin (kbody1 ds′ b γ)
           → K.Here p e (e′ ∥ w ∷ˢ []ˢ) fs
           → fret fs ≡ pc ∷ rest → AllocState.saved-frames (falloc fs) ≡ (cfc , sl) ∷ sv
           → ¬ cfc ≡ AllocState.current-frame (falloc fs)

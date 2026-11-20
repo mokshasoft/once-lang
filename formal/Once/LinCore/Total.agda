@@ -51,6 +51,8 @@ module Once.LinCore.Total
   where
 
 open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (funit; fvoid; fw; _f*_; _f+_; Base; ⟦_⟧b)
+open import Once.IR.Semantics.Trace using (T; ret; call; halt; CallOp)
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw
 open import Once.LinCore.Values fmt bw
@@ -281,7 +283,7 @@ module _ (W : World) where
     GoodLO : ∀ F → Outcome (LF∙ F (Nu F)) → Set
     GoodLO F (gives w _) = GoodLayer F F w
     GoodLO F (stop _)    = ⊤
-  open GoodNu public
+  open GoodNu
 
   -- a ν's goodness holds of its copies
   goodNu~ : ∀ {F} {v v′ : MV (Nu F)} → v′ ~ v → GoodNu F v → GoodNu F v′

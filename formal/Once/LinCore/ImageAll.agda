@@ -58,11 +58,16 @@ module Once.LinCore.ImageAll
   where
 
 open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (Base; Lit)
+open import Once.IR.Semantics.Trace using (T; call)
+open Sig using (info)
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Image fmt bw
 open import Once.LinCore.Keys fmt bw
+open Univ using (tys; nus; ops)
 open import Once.LinCore.Layout fmt bw
 open import Once.LinCore.Lower fmt bw
+open import Once.LinCore.MoveCode using (mvPS; mvSP; mvSS; mvSSd; stores)
 open import Once.LinCore.Labels fmt ans bw using (module NoLabels)
 open import Once.LinCore.EntriesI fmt ans bw using (module ImgE)
 
@@ -378,6 +383,7 @@ module Img (nm : CanonicalName) {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open Program ds f using (U; blocks-in; start-in)
   open Program ds f using (ncty)
   open Program′ ds f ldConst
+  open Lowering U ncty ldConst
   open Ok nm U ncty ldConst
   open Low ld-is
 

@@ -32,9 +32,12 @@ import Once.LinCore.PassTr
 module Once.LinCore.LinkedCore (fmt : TargetNum) (ans : FFIAnswers) (bw : Base → ℕ) where
 
 open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (Base)
+open Sig using (info)
 open import Once.LinCore.NbEPLinCore fmt ans
 module P = Once.LinCore.PassTr fmt
-open import Once.LinCore.Keys fmt bw using (Got; ps; tmGot; defsGot; ops; univ)
+open import Once.LinCore.Keys fmt bw using (Got; ps; tmGot; defsGot; univ; module Univ)
+open Univ using (ops)
 
 ------------------------------------------------------------------------
 -- 1. THE PASS IR'S OPS, and the core's are among them

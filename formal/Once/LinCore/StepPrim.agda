@@ -36,14 +36,17 @@ module Once.LinCore.StepPrim
   where
 
 open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (Base; ⟦_⟧b; Lit)
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw
 open import Once.LinCore.Values fmt bw
 open import Once.LinCore.Code fmt bw using (Sh; _∣_; Stk; _∷ˢ_; Slots; Cfg; _∥_)
 open import Once.LinCore.Image fmt bw
 open import Once.LinCore.Keys fmt bw
+open Univ using (tys; nus)
 open import Once.LinCore.Layout fmt bw
 open import Once.LinCore.Lower fmt bw
+open import Once.LinCore.MoveCode using (mvPS; mvSP; mvSS; stores)
 open import Once.LinCore.Words fmt ans bw
 open import Once.LinCore.LowerSim fmt ans bw
 open import Once.LinCore.LowerSimB fmt ans bw
@@ -131,7 +134,8 @@ module Prims {FS : FrameSemantics} (U : Univ)
   open CfgW
   open In U
   open Lowering U ncty ldConst
-  open At U ncty ldConst φ j using (lcin)
+  open At U ncty ldConst φ j using (module Low)
+  open Low using (lcin)
   open FlatMachine {FS} using (FlatState; module FlatState)
   open FlatState using (floc; falloc; fpc)
   open import Once.LinCore.Moves {FS} using (Ran; slot)

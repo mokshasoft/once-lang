@@ -44,14 +44,18 @@ module Once.LinCore.Global
   where
 
 open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (Base; ⟦_⟧b; Lit)
+open import Once.IR.Semantics.Trace using (T; call)
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw
 open import Once.LinCore.Values fmt bw
 open import Once.LinCore.Code fmt bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots; []ᵉ; vw; see; Cfg; _∥_)
 open import Once.LinCore.Image fmt bw
+open BSig using (top)
 open import Once.LinCore.ImageRun fmt ans bw using (Ret; []ʳ; frm; _∷ⁱ_)
 open import Once.LinCore.Keys fmt bw
-open import Once.LinCore.Layout fmt bw using (Frame; frame; frameOf; budget; wsz; ws; EP; OP)
+open import Once.LinCore.Layout fmt bw using (Frame; frame; frameOf; budget; wsz; ws; module Frame)
+open Frame using (EP; OP)
 open import Once.LinCore.Lower fmt bw
 open import Once.LinCore.Words fmt ans bw
 open import Once.LinCore.ImagePt fmt ans bw using (Sub; Pt; at; disp; next; body; whole)
@@ -81,9 +85,9 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
 
   -- the start's code, and a block's, with their loops
   module S  = Loc {FS} U ncty ldConst wordOf image main j₀ L₀ˢ start-root using (Here; module Here; lowAt; pos; pos-next; seg-at; shape-fits)
-  module SA = At U ncty ldConst (frameOf main) j₀ using (lcin; lfin; lm)
+  module SA = At U ncty ldConst (frameOf main) j₀ using (module Low)
   module SL = Loops {FS} U ncty ldConst wordOf image main j₀ L₀ˢ start-root using (HereQ; posD; dispIn; loop-enter; end-jump; disp-exit; disp-again)
-  module KA {σ} {κ : Key σ} (p : (σ , κ) ∈ allK U) = At U ncty ldConst (frameOf (blockᴵ κ)) (idx p) using (lcin; lfin; lm)
+  module KA {σ} {κ : Key σ} (p : (σ , κ) ∈ allK U) = At U ncty ldConst (frameOf (blockᴵ κ)) (idx p) using (module Low)
   module KL {σ} {κ : Key σ} (p : (σ , κ) ∈ allK U) = Loops {FS} U ncty ldConst wordOf image (blockᴵ κ) (idx p) (L₀ᵇ κ p) (blockR p) using (HereQ; posD; dispIn; loop-enter; end-jump; disp-exit; disp-again)
   -- the calls from each root; a site's return address is theirs (`C.pos`),
   -- so a call's facts and a return's meet it without unfolding
@@ -405,9 +409,9 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   -- a body's way out is the jump to this dispatch of the same root
   LoopTo : ∀ {sh V} {k : Codeᴵ sh V} → RootId → AbstractTrace → Pnt k → Set
   LoopTo R fin (p-start (disp s′)) =
-    R ≡ rstart × fin ≡ instr-ctrl (c-jmp (jl j₀ (suc (SA.lm (S.lowAt s′))))) ∷ []
+    R ≡ rstart × fin ≡ instr-ctrl (c-jmp (jl j₀ (suc (SA.Low.lm (S.lowAt s′))))) ∷ []
   LoopTo R fin (p-block p (disp s′)) =
-    R ≡ rblock p × fin ≡ instr-ctrl (c-jmp (jl (idx p) (suc (KA.lm {p = p} (K.lowAt p s′))))) ∷ []
+    R ≡ rblock p × fin ≡ instr-ctrl (c-jmp (jl (idx p) (suc (KA.Low.lm {p = p} (K.lowAt p s′))))) ∷ []
   {-# CATCHALL #-}
   LoopTo R fin _ = ⊥
 
@@ -466,8 +470,8 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     sitePos (s-trampf {X = X} {C} p) = trPos (ktrf X C) p 2
 
     siteFin : Site κ k → AbstractTrace
-    siteFin (s-start s)    = SA.lfin (S.lowAt s)
-    siteFin (s-block p′ s) = KA.lfin {p = p′} (K.lowAt p′ s)
+    siteFin (s-start s)    = SA.Low.lfin (S.lowAt s)
+    siteFin (s-block p′ s) = KA.Low.lfin {p = p′} (K.lowAt p′ s)
     siteFin (s-tramp {ds′ = ds′} {b} {γ} p) = trAt (idx p) (ktr1 ds′ b γ) 2
     siteFin (s-trampo {ds′ = ds′} {F} {S′} p) = trAt (idx p) (ktro ds′ F S′) 2
     siteFin (s-trampf {X = X} {C} p) = trAt (idx p) (ktrf X C) 2
@@ -516,8 +520,8 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     dsitePos (d-block p′ s) = K.pos p′ (next s)
 
     dsiteFin : DSite i k → AbstractTrace
-    dsiteFin (d-start s)    = SA.lfin (S.lowAt s)
-    dsiteFin (d-block p′ s) = KA.lfin {p = p′} (K.lowAt p′ s)
+    dsiteFin (d-start s)    = SA.Low.lfin (S.lowAt s)
+    dsiteFin (d-block p′ s) = KA.Low.lfin {p = p′} (K.lowAt p′ s)
 
   -- a frame-0 trampoline with a way out through the caller's area (D438):
   -- a one-shot body's, an observation's (not a free's: its way out is bare)
@@ -854,7 +858,8 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open import Once.LinCore.LowAt fmt ans bw using (Inside)
   open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
   open FlatStepsAPI {FS} using (FlatSteps)
-  open import Once.LinCore.Moves {FS} using (Keep; k-frame; k-ret; k-saved; k-other; k-inb; k-log)
+  open import Once.LinCore.Moves {FS} using (Keep; module Keep)
+  open Keep using (k-frame; k-saved; k-ret; k-other; k-log; k-inb)
   open Cells {FS} U wordOf using (fresh-cfg; fresh-ret)
   open Img {FS} ds f ldConst ld-nl using (image-label)
 
@@ -884,18 +889,18 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                 (eφ : budget (rootφ R) ≡ budget (frameOf root)) where
     module L  = Loc {FS} U ncty ldConst wordOf image root j L₀ Rin using (Here; lowAt)
     module LS = Steps {FS} U ncty ldConst wordOf image root j L₀ Rin using (local-step; Out; succ; succ′; module Succ)
-    module RA = At U ncty ldConst (frameOf root) j using (lfin)
+    module RA = At U ncty ldConst (frameOf root) j using (module Low)
 
 
     -- ★ the local step, with the whole relation
     glocal : ∀ {T sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n t} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m′ n′ h fs}
              (st : StepI c r m n t c′ r′ m′ n′) (l : Local st) (s : Sub root c)
            → InvI m r n h → L.Here s m fs → AllocState.next-heap-ref (falloc fs) ≡ n
-           → RetOK R (RA.lfin (L.lowAt s)) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
+           → RetOK R (RA.Low.lfin (L.lowAt s)) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
            → InBlk fs
            → Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′ × L.Here (LS.succ st l s) m′ fs′
                × AllocState.next-heap-ref (falloc fs′) ≡ n′
-               × RetOK R (RA.lfin (L.lowAt (LS.succ st l s))) r′ (AllocState.current-frame (falloc fs′)) (fret fs′)
+               × RetOK R (RA.Low.lfin (L.lowAt (LS.succ st l s))) r′ (AllocState.current-frame (falloc fs′)) (fret fs′)
                        (AllocState.saved-frames (falloc fs′)) fs′
                × InBlk fs′ × LocState.ev-log (floc fs′) ≡ LocState.ev-log (floc fs)
     glocal {r = r} {fs = fs} st l s inv H nx ok I = fin (LS.local-step ld image-label st l s H nx fr)

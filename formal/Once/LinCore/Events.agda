@@ -71,8 +71,13 @@ module Once.LinCore.Events
   where
 
 open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (funit; fvoid; fw; _f*_; _f+_; Base; Lit)
+open import Once.IR.Semantics.Trace using (T; ret; call; halt; CallOp; HaltOp)
+open import Once.IR.Semantics.Iterative using (T∞; return∞; bindBlock; iterBlock)
 open import Once.LinCore.NbEPLinCore fmt ans
-open import Once.LinCore.Bisim fmt ans using (Bl; ≈ret; ≈step; ≈call; ≈halt; block≈)
+open Sem using (Lᶜ; travC; Lg)
+open import Once.LinCore.Bisim fmt ans using (Bl; ≈ret; ≈step; ≈call; ≈halt; module _≈_)
+open _≈_ using (block≈)
 open import Once.LinCore.Grade fmt ans using (blk-coh; obs-coh)
 open import Once.LinCore.Values fmt bw
 

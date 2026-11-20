@@ -37,6 +37,7 @@ module Once.LinCore.ArgDecode
   where
 
 open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (Base; int; float; ⟦_⟧b)
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw using (er)
 open import Once.LinCore.Values fmt bw using (MV; mone; mpair; minl; minr; mbase)

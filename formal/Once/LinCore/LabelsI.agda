@@ -52,11 +52,13 @@ module Once.LinCore.LabelsI
   where
 
 open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (Base; Lit)
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Image fmt bw
 open import Once.LinCore.Keys fmt bw
 open import Once.LinCore.Layout fmt bw
 open import Once.LinCore.Lower fmt bw
+open import Once.LinCore.MoveCode using (mvPS; mvSP)
 open import Once.LinCore.Labels fmt ans bw
 open import Once.LinCore.LabelsC fmt ans bw
 open import Once.LinCore.LowAt fmt ans bw using (Inside)
@@ -150,9 +152,11 @@ module Img {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open Program ds f using (ncty)
   open In U
   open Program′ ds f ldConst
+  open Lowering U ncty ldConst
   open NoLabels {FS}
   open Free U ncty ldConst ld-nl
   open LabsC {FS}
+  open Ok using (idxs; eq; dst; ne)
   open C U ncty ldConst ld-nl
   open Find {FS}
 

@@ -44,6 +44,8 @@ module Once.LinCore.Values
   where
 
 open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (funit; fvoid; fw; _f*_; _f+_; Base; ⟦_⟧b)
+open import Once.IR.Semantics.Trace using (CallOp; HaltOp)
 
 ------------------------------------------------------------------------
 -- 0. ★ A12: THE LAYOUT, decided by the type.

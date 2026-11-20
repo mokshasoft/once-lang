@@ -30,6 +30,7 @@ open import Once.LinCore.Flat using (Base)
 module Once.LinCore.RunOps (fmt : TargetNum) (ans : FFIAnswers) (bw : Base → ℕ) where
 
 open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (funit; fvoid; fw; _f*_; _f+_; Base)
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw
 open import Once.LinCore.Values fmt bw

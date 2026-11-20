@@ -52,6 +52,7 @@ import Once.LinCore.PassTr
 module Once.LinCore.FromIR (fmt : TargetNum) where
 
 open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (int; float)
 module P = Once.LinCore.PassTr fmt
 
 ------------------------------------------------------------------------

@@ -38,12 +38,15 @@ module Once.LinCore.NoCell
   where
 
 open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (Base)
+open import Once.IR.Semantics.Trace using (T)
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw
 open import Once.LinCore.Values fmt bw
 open import Once.LinCore.Code fmt bw using (Sh; _∣_)
 open import Once.LinCore.Image fmt bw
-open import Once.LinCore.Keys fmt bw using (AKey; Got; ks; tmGot; defsGot; allK; univ; kc; kf; obsK; ∈-cmap⁻; keys; tys; nus; obs)
+open import Once.LinCore.Keys fmt bw using (AKey; Got; ks; tmGot; defsGot; allK; univ; kc; kf; obsK; ∈-cmap⁻; module Univ)
+open Univ using (keys; tys; nus; obs)
 open import Once.LinCore.ImagePt fmt ans bw using (Sub; whole; next; left; right; eleft; eright; body)
 
 ------------------------------------------------------------------------

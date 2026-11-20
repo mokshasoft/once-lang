@@ -60,19 +60,19 @@ record Region : Set where
     pools : ℕ → Pool          -- each size's pool
     wtop  : ℕ                 -- the words in use: `[0, wtop)`
     addr  : ℕ → ℕ → ℕ         -- block `j` of size `k` starts at `addr k j`
-open Region public
+open Region
 
 empty : Region
 empty = region (λ _ → A.empty) 0 (λ _ _ → 0)
 
 -- how many blocks size `k` has
 tops : Region → ℕ → ℕ
-tops r k = A.top (pools r k)
+tops r k = A.Pool.top (pools r k)
 
 -- size `k`'s pool is now `p′`; if it grew, its new block takes the next `k`
 -- words at the top of the region
 place : ℕ → Pool → Region → Region
-place k p′ r with A.top p′ ≟ tops r k
+place k p′ r with A.Pool.top p′ ≟ tops r k
 ... | yes _ = region (upd (pools r) k p′) (wtop r) (addr r)
 ... | no _  = region (upd (pools r) k p′) (wtop r + k) (upd (addr r) k (upd (addr r k) (tops r k) (wtop r)))
 
@@ -97,7 +97,7 @@ gstep-inv refl | just p′ = (p′ , refl , refl)
 gstep-inv ()   | nothing
 
 place-pools : ∀ k p′ r → pools (place k p′ r) ≡ upd (pools r) k p′
-place-pools k p′ r with A.top p′ ≟ tops r k
+place-pools k p′ r with A.Pool.top p′ ≟ tops r k
 ... | yes _ = refl
 ... | no _  = refl
 
@@ -108,12 +108,12 @@ upd-view f k x k′ with k ≟ k′
 ... | no ne = inj₂ (ne , refl)
 
 -- a step never shrinks a pool
-tops-le : ∀ k o r {p′} → A.step o (pools r k) ≡ just p′ → ∀ k′ → tops r k′ ≤ A.top (upd (pools r) k p′ k′)
+tops-le : ∀ k o r {p′} → A.step o (pools r k) ≡ just p′ → ∀ k′ → tops r k′ ≤ A.Pool.top (upd (pools r) k p′ k′)
 tops-le k o r e k′ with upd-view (pools r) k _ k′
-... | inj₂ (_ , q) = subst (tops r k′ ≤_) (sym (cong A.top q)) ≤-refl
+... | inj₂ (_ , q) = subst (tops r k′ ≤_) (sym (cong A.Pool.top q)) ≤-refl
 ... | inj₁ (refl , q) with A.step-top o (pools r k) e
-...   | inj₁ s = subst (tops r k ≤_) (sym (trans (cong A.top q) s)) ≤-refl
-...   | inj₂ g = subst (tops r k ≤_) (sym (trans (cong A.top q) g)) (n≤1+n _)
+...   | inj₁ s = subst (tops r k ≤_) (sym (trans (cong A.Pool.top q) s)) ≤-refl
+...   | inj₂ g = subst (tops r k ≤_) (sym (trans (cong A.Pool.top q) g)) (n≤1+n _)
 
 ------------------------------------------------------------------------
 -- 2. ★ DISJOINT: the invariant.
@@ -125,7 +125,7 @@ record RInv (r : Region) : Set where
     inside : ∀ k j → j < tops r k → addr r k j + k ≤ wtop r
     apart  : ∀ k j k′ j′ → j < tops r k → j′ < tops r k′ → (k ≡ k′ → j ≢ j′)
            → addr r k j + k ≤ addr r k′ j′ ⊎ addr r k′ j′ + k′ ≤ addr r k j
-open RInv public
+open RInv
 
 rinv-empty : RInv empty
 rinv-empty = record { pinv = λ _ → A.inv-empty ; inside = λ _ _ () ; apart = λ _ _ _ _ () }
@@ -135,20 +135,20 @@ subst₂≤ : ∀ {x x′ y y′ c} → x ≡ x′ → y ≡ y′ → x + c ≤ 
 subst₂≤ refl refl le = le
 
 rinv-place : ∀ k o r {p′} → RInv r → A.step o (pools r k) ≡ just p′ → RInv (place k p′ r)
-rinv-place k o r {p′} iv e with A.top p′ ≟ tops r k
+rinv-place k o r {p′} iv e with A.Pool.top p′ ≟ tops r k
 ... | yes same = record { pinv = pv ; inside = ins ; apart = ap }
   where
-    tp : ∀ k′ → A.top (upd (pools r) k p′ k′) ≡ tops r k′
+    tp : ∀ k′ → A.Pool.top (upd (pools r) k p′ k′) ≡ tops r k′
     tp k′ with upd-view (pools r) k p′ k′
-    ... | inj₁ (refl , q) = trans (cong A.top q) same
-    ... | inj₂ (_ , q)    = cong A.top q
+    ... | inj₁ (refl , q) = trans (cong A.Pool.top q) same
+    ... | inj₂ (_ , q)    = cong A.Pool.top q
     pv : ∀ k′ → A.Inv (upd (pools r) k p′ k′)
     pv k′ with upd-view (pools r) k p′ k′
     ... | inj₁ (refl , q) = subst A.Inv (sym q) (A.step-inv o (pools r k) (pinv iv k) e)
     ... | inj₂ (_ , q)    = subst A.Inv (sym q) (pinv iv k′)
-    ins : ∀ k′ j → j < A.top (upd (pools r) k p′ k′) → addr r k′ j + k′ ≤ wtop r
+    ins : ∀ k′ j → j < A.Pool.top (upd (pools r) k p′ k′) → addr r k′ j + k′ ≤ wtop r
     ins k′ j lt = inside iv k′ j (subst (j <_) (tp k′) lt)
-    ap : ∀ k₁ j₁ k₂ j₂ → j₁ < A.top (upd (pools r) k p′ k₁) → j₂ < A.top (upd (pools r) k p′ k₂)
+    ap : ∀ k₁ j₁ k₂ j₂ → j₁ < A.Pool.top (upd (pools r) k p′ k₁) → j₂ < A.Pool.top (upd (pools r) k p′ k₂)
        → (k₁ ≡ k₂ → j₁ ≢ j₂) → addr r k₁ j₁ + k₁ ≤ addr r k₂ j₂ ⊎ addr r k₂ j₂ + k₂ ≤ addr r k₁ j₁
     ap k₁ j₁ k₂ j₂ l₁ l₂ ne = apart iv k₁ j₁ k₂ j₂ (subst (j₁ <_) (tp k₁) l₁) (subst (j₂ <_) (tp k₂) l₂) ne
 ... | no grew = record { pinv = pv ; inside = ins ; apart = ap }
@@ -156,7 +156,7 @@ rinv-place k o r {p′} iv e with A.top p′ ≟ tops r k
     t₀ = tops r k
     w  = wtop r
     a′ = upd (addr r) k (upd (addr r k) t₀ w)
-    up : A.top p′ ≡ suc t₀
+    up : A.Pool.top p′ ≡ suc t₀
     up with A.step-top o (pools r k) e
     ... | inj₁ s = ⊥-elim (grew s)
     ... | inj₂ g = g
@@ -171,18 +171,18 @@ rinv-place k o r {p′} iv e with A.top p′ ≟ tops r k
     ... | inj₁ (refl , q) = trans (cong (λ f → f j) q) (upd-other (addr r k) w (λ x → ne refl (sym x)))
     ... | inj₂ (_ , q)    = cong (λ f → f j) q
     -- a block below the new tops is the new one, or an old one
-    classify : ∀ k′ j → j < A.top (upd (pools r) k p′ k′)
+    classify : ∀ k′ j → j < A.Pool.top (upd (pools r) k p′ k′)
              → (k ≡ k′ × j ≡ t₀) ⊎ (j < tops r k′ × (k ≡ k′ → j ≢ t₀))
     classify k′ j lt with upd-view (pools r) k p′ k′
-    ... | inj₂ (ne , q) = inj₂ (subst (j <_) (cong A.top q) lt , λ x → ⊥-elim (ne x))
-    ... | inj₁ (refl , q) with m≤n⇒m<n∨m≡n (≤-pred (subst (j <_) (trans (cong A.top q) up) lt))
+    ... | inj₂ (ne , q) = inj₂ (subst (j <_) (cong A.Pool.top q) lt , λ x → ⊥-elim (ne x))
+    ... | inj₁ (refl , q) with m≤n⇒m<n∨m≡n (≤-pred (subst (j <_) (trans (cong A.Pool.top q) up) lt))
     ...   | inj₁ lt′  = inj₂ (lt′ , λ _ x → <-irrefl x lt′)
     ...   | inj₂ refl = inj₁ (refl , refl)
-    ins : ∀ k′ j → j < A.top (upd (pools r) k p′ k′) → a′ k′ j + k′ ≤ w + k
+    ins : ∀ k′ j → j < A.Pool.top (upd (pools r) k p′ k′) → a′ k′ j + k′ ≤ w + k
     ins k′ j lt with classify k′ j lt
     ... | inj₁ (refl , refl) = subst (λ z → z + k ≤ w + k) (sym a-new) ≤-refl
     ... | inj₂ (lt′ , ne)    = subst (λ z → z + k′ ≤ w + k) (sym (a-old k′ j ne)) (≤-trans (inside iv k′ j lt′) (m≤m+n w k))
-    ap : ∀ k₁ j₁ k₂ j₂ → j₁ < A.top (upd (pools r) k p′ k₁) → j₂ < A.top (upd (pools r) k p′ k₂)
+    ap : ∀ k₁ j₁ k₂ j₂ → j₁ < A.Pool.top (upd (pools r) k p′ k₁) → j₂ < A.Pool.top (upd (pools r) k p′ k₂)
        → (k₁ ≡ k₂ → j₁ ≢ j₂) → a′ k₁ j₁ + k₁ ≤ a′ k₂ j₂ ⊎ a′ k₂ j₂ + k₂ ≤ a′ k₁ j₁
     ap k₁ j₁ k₂ j₂ l₁ l₂ ne with classify k₁ j₁ l₁ | classify k₂ j₂ l₂
     ... | inj₁ (refl , refl) | inj₁ (refl , refl) = ⊥-elim (ne refl refl)
@@ -224,16 +224,16 @@ sum-grow {f} {g} {k₀} {k ∷ ks} (there m) le l₀ =
 
 space-place : ∀ ks k o r {p′} → k ∈ ks → A.step o (pools r k) ≡ just p′
             → wtop r ≤ Words ks r → wtop (place k p′ r) ≤ Words ks (place k p′ r)
-space-place ks k o r {p′} m e sp with A.top p′ ≟ tops r k
+space-place ks k o r {p′} m e sp with A.Pool.top p′ ≟ tops r k
 ... | yes _ = ≤-trans sp (sum-mono (λ k′ → *-monoʳ-≤ k′ (tops-le k o r e k′)) ks)
 ... | no grew = ≤-trans (+-mono-≤ sp ≤-refl)
                   (sum-grow m (λ k′ → *-monoʳ-≤ k′ (tops-le k o r e k′)) at-k)
   where
-    up : A.top (upd (pools r) k p′ k) ≡ suc (tops r k)
+    up : A.Pool.top (upd (pools r) k p′ k) ≡ suc (tops r k)
     up with A.step-top o (pools r k) e
     ... | inj₁ s = ⊥-elim (grew s)
-    ... | inj₂ g = trans (cong A.top (upd-same (pools r) k p′)) g
-    at-k : k * tops r k + k ≤ k * A.top (upd (pools r) k p′ k)
+    ... | inj₂ g = trans (cong A.Pool.top (upd-same (pools r) k p′)) g
+    at-k : k * tops r k + k ≤ k * A.Pool.top (upd (pools r) k p′ k)
     at-k = subst (k * tops r k + k ≤_) (sym (trans (cong (k *_) up) (*-suc k (tops r k))))
                  (subst (_≤ k + k * tops r k) (+-comm k (k * tops r k)) ≤-refl)
 
@@ -265,9 +265,9 @@ Peak gs k n = n ≡ 0 ⊎ Σ (List (ℕ × Op)) λ gs₁ → Σ (List (ℕ × Op
 one-step : ∀ k {g r r′} → gstep g r ≡ just r′ → tops r′ k ≡ tops r k ⊎ A.Full (pools r′ k)
 one-step k {(k₀ , o)} {r} e with gstep-inv {k₀} {o} {r} e
 ... | (p′ , ep , refl) rewrite place-pools k₀ p′ r with upd-view (pools r) k₀ p′ k
-...   | inj₂ (_ , q) = inj₁ (cong A.top q)
+...   | inj₂ (_ , q) = inj₁ (cong A.Pool.top q)
 ...   | inj₁ (refl , q) with A.step-top o (pools r k₀) ep
-...     | inj₁ s = inj₁ (trans (cong A.top q) s)
+...     | inj₁ s = inj₁ (trans (cong A.Pool.top q) s)
 ...     | inj₂ g = inj₂ (subst A.Full (sym q) (A.grow-full o (pools r k₀) ep (subst (tops r k₀ <_) (sym g) ≤-refl)))
 
 -- one more step: the peak so far still stands, or the pool grew and is the

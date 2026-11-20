@@ -44,6 +44,8 @@ module Once.LinCore.Keys
   where
 
 open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (Base)
+open import Once.IR.Semantics.Trace using (T; call)
 open import Once.LinCore.Values fmt bw
 open import Once.LinCore.Code fmt bw using (Sh; _∣_)
 open import Once.LinCore.Image fmt bw
@@ -283,7 +285,7 @@ record Univ : Set where
     nus  : List NS
     obs  : List DS
     ops  : List Sig
-open Univ public
+open Univ
 
 close : Got → Univ
 close g = univ′ (ks g) (cmap subs (ts g) ++ cmap (λ n → subs (cty n)) (ns g)) (ns g) ((_ , ε) ∷ os g) (ps g)
@@ -320,7 +322,7 @@ module In (U : Univ) where
       gn : ns G ⊆ nus U
       go : os G ⊆ obs U
       gp : ps G ⊆ ops U
-  open _⊑U public
+  open _⊑U
 
   ⊹ˡ : ∀ {G H} → (G ⊹ H) ⊑U → G ⊑U
   ⊹ˡ (sub a b c d p) = sub (λ m → a (∈-++⁺ˡ m)) (λ m → b (∈-++⁺ˡ m)) (λ m → c (∈-++⁺ˡ m)) (λ m → d (∈-++⁺ˡ m)) (λ m → p (∈-++⁺ˡ m))
@@ -591,7 +593,7 @@ module Program {Γ} (ds : Defs Γ) (f : LTm Γ One One) where
   U : Univ
   U = univ ds f
 
-  open In U public
+  open In U
 
   g₀⊑ : g₀ ⊑U
   g₀⊑ = sub (λ m → m) (λ {T} m → ∈-++⁺ˡ (∈-cmap⁺ (ts g₀) m (here refl))) (λ m → m) there (λ m → m)

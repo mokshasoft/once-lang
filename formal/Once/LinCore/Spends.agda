@@ -31,6 +31,7 @@ module Once.LinCore.Spends
   where
 
 open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (Base)
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw
 open import Once.LinCore.Values fmt bw

@@ -41,6 +41,9 @@ module Once.LinCore.Image
   where
 
 open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (Base)
+open import Once.IR.Semantics.Trace using (T; call)
+open Sg using (dom; cod)
 open import Once.LinCore.Values fmt bw
 open import Once.LinCore.Code fmt bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots; []ᵉ; vw; ln; see; Cfg; _∥_)
 
@@ -56,7 +59,7 @@ record BSig : Set where
     top : Maybe LTy
     dom : LTy
     cod : LTy
-open BSig public
+open BSig
 
 -- the environment stack a block sees: its top, over the caller's
 _⊳_ : Maybe LTy → List LTy → List LTy

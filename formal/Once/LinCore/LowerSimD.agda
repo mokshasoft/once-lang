@@ -36,11 +36,14 @@ module Once.LinCore.LowerSimD
   where
 
 open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (Base; ⟦_⟧b)
+open Sg using (env)
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Values fmt bw using (MV; minl; minr)
 open import Once.LinCore.Code fmt bw using (Stk; _∷ˢ_; Slots; _∥_)
 open import Once.LinCore.Keys fmt bw using (Univ)
 open import Once.LinCore.Layout fmt bw
+open Frame using (EP; OP)
 open import Once.LinCore.Words fmt ans bw
 open import Once.LinCore.LowerSim fmt ans bw
 open import Once.LinCore.MoveCode using (mvSSd)
@@ -49,9 +52,11 @@ module SimD {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
   open Rel {FS} U wordOf
   open Sim {FS} U wordOf
   open CfgW
-  open import Once.LinCore.Moves {FS} using (Seg; slot; mvSSd-run; MovedD; d-moved; d-rest; d-heap; d-pc; d-alloc; lea-step; mov-in-step
-                                           ; Keep; keep-trans; keepD; keepS; keep-regs; keep-pc; keep-store; Ran; ran-trans; win-here; ran-regs; ran-store; ranD; ranS; r-top)
-    renaming (ln to nsteps; d-halt to dm-halt)
+  open import Once.LinCore.Moves {FS} using (Seg; slot; mvSSd-run; MovedD; module MovedD; lea-step; mov-in-step
+                                           ; Keep; keep-trans; keepD; keepS; keep-regs; keep-pc; keep-store; Ran; module Ran; ran-trans; win-here; ran-regs; ran-store; ranD; ranS)
+    renaming (ln to nsteps)
+  open Ran using (r-top)
+  open MovedD using (d-pc; d-alloc; d-heap; d-moved; d-rest) renaming (d-halt to dm-halt)
   open import Once.CCC.Machine.Flat using (module FlatMachine)
   open FlatMachine {FS} using (FlatState; fetch; find-label; module FlatState)
   open FlatState using (floc; falloc; fpc)
@@ -238,7 +243,8 @@ module SimD {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
             C′ , pc , keep-trans k₃ K , nx , hp , tp
 
   open import Once.LinCore.Code fmt bw using (see; vw)
-  open import Once.LinCore.Moves {FS} using (MovedS; m-pc; m-alloc; m-heap)
+  open import Once.LinCore.Moves {FS} using (MovedS; module MovedS)
+  open MovedS using (m-pc; m-alloc; m-heap)
   open import Once.LinCore.MoveCode using (mvSS)
 
   private

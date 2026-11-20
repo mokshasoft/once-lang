@@ -51,6 +51,9 @@ private
   ι   = FrameSemantics.fs-interp Mach
 
 open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (funit; fw; Base; int; float; ⟦_⟧b)
+open import Once.IR.Semantics.Trace using (T)
+open Sig using (info)
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw using (er; OpPath; p-ret; p-call; p-halt)
 open import Once.LinCore.Values fmt bw using (MV; mone; mbase; mpair; mvF; Trace)
@@ -370,7 +373,7 @@ module OM (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue Mach)
 
   -- an undeclared FFI value op stops; a declared one answers
   open import Once.Denotation.Program using (Declared-at)
-  open import Once.LinCore.Keys fmt bw using (ops)
+  open Univ using (ops)
   open import Data.Empty using (⊥-elim)
   private
     Σι = TM.Interp.sig ι

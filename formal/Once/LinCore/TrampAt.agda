@@ -35,11 +35,15 @@ module Once.LinCore.TrampAt
   where
 
 open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (Base; Lit)
+open import Once.IR.Semantics.Trace using (T)
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Image fmt bw
 open import Once.LinCore.Keys fmt bw
+open Univ using (tys; nus)
 open import Once.LinCore.Layout fmt bw
 open import Once.LinCore.Lower fmt bw
+open import Once.LinCore.MoveCode using (mvPS; mvSP)
 open import Once.LinCore.ImagePt fmt ans bw using (Sub; Pt; at; disp; whole; next; left; right; eleft; eright; body)
 open import Once.LinCore.LowAt fmt ans bw using (Inside; in-trans; in-r; in-∷)
 open import Once.LinCore.Labels fmt ans bw using (module NoLabels)
