@@ -37,7 +37,7 @@ import Once.Adequacy.ArchCorrectness.RiscV64.FlatCorrespondence as FCr
 import Once.Adequacy.ArchCorrectness.FlatCore.RunLow as RLr
 import Once.CCC.Target.RiscV64.Semantics as RS
 open import Once.CCC.Machine.SMCore using
-  (AbstractTrace; lea-slot; instr-ctrl; c-ret; instr-load-tag-lit; instr-load-const; instr-room)
+  (AbstractTrace; lea-slot; instr-ctrl; c-ret; instr-load-tag-lit; instr-load-const; instr-room; instr-sigop)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Target.RiscV64.Syntax using (slots)
 open import Once.Target.RiscV64.PhysReg using (sp) renaming (Reg to Reg')
@@ -317,7 +317,7 @@ riscv64-arith-table : AbstractTrace → (String → Maybe (List XInstr × ℕ)) 
 riscv64-arith-table prog env =
   Σ (List ArithBlock) (λ bs → Data.List.Relation.Unary.All.All (BT.SigNamed bs) prog
                                 × (env ≡ block-env (file-table AE.block-payload bs))
-                                × (∀ {A B} (si : SigOpInfo A B) k → External (sem si) → FlatMachine.fetch {FS} prog k ≡ just (AbstractInstr.instr-sigop si)
+                                × (∀ {A B} (si : SigOpInfo A B) k → External (sem si) → FlatMachine.fetch {FS} prog k ≡ just (instr-sigop si)
                                      → env (once-symbol-path (SigOpInfo.name si)) ≡ nothing))
 
 riscv64-traceloop : EI.TraceLoop FS Reg riscv64-emitter riscv64-machine
