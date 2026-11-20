@@ -24,26 +24,19 @@ module Once.Adequacy.SpecFront.Denote (fmt : TargetNum) where
 
 open import Data.List using (List)
 open import Data.List.Membership.Propositional using (_∈_)
-open import Data.Product using (_,_)
-open import Once.Spec.Signature using (Signature; _∶_)
+open import Once.Spec.Signature using (Signature)
 open import Once.Core.Decl using (toISig)
 
 open import Data.Nat using (ℕ)
 open import Data.Fin using (Fin)
-open import Data.List using ([]; _∷_; _++_; _ʳ++_)
-open import Data.List.Relation.Unary.All using (All; []; _∷_)
-open import Data.List.Relation.Unary.AllPairs using (AllPairs; []; _∷_)
+open import Data.List using ([]; _++_)
+open import Data.List.Relation.Unary.All using (All; [])
+open import Data.List.Relation.Unary.AllPairs using (AllPairs; [])
 open import Data.Product using (Σ-syntax; _×_; proj₁; proj₂)
-open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.Maybe using (just; nothing)
-open import Data.Unit using (⊤; tt)
-open import Data.Empty using (⊥-elim)
-open import Data.Bool using (true; false)
-open import Data.String using (String)
-open import Relation.Nullary using (¬_)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
+open import Data.Sum using (inj₂)
+open import Data.Unit using (tt)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; trans; subst)
 
-open import Once.Spec.Name using (CanonicalName; canonical)
 open import Once.Spec.Signature using (WellFormed)
 import Once.Spec.Surface.Syntax as S
 import Once.Spec.Surface.Program as SPr
@@ -52,39 +45,22 @@ import Once.Spec.Core.Program as CoreProgram
 import Once.Spec.Core.Syntax as SC
 import Once.Core.Telescope as TL
 import Once.Parser as Parser
-open import Once.Spec.Surface.Syntax using (Decl; mkModule)
+open import Once.Spec.Surface.Syntax using (mkModule)
 import Once.Parser.Module.Core as Core
-open import Once.Parser.Module.Resolve using (ModuleMap; collectUnaliased; collectAliases; importedOf)
+open import Once.Parser.Module.Resolve using (collectUnaliased; collectAliases; importedOf)
 import Once.Parser.Relation.Resolution as LR
 open import Once.Module using (ModTele; MainIn; MainsEffUU; emptyScope; entrySig)
 open import Once.Core.Translate using ([])
-open import Once.Adequacy.ModuleProgram using (toProgram; names₀; fresh₀; Names)
-import Data.Empty
-open import Once.Postulates using (extensionality)
-import Once.Spec.Core.Syntax
-import Data.List.Relation.Unary.All
-import Once.TypeCheck.Scope
-import Once.Spec.Name
-import Once.Adequacy.SpecFront.Polys
-open import Once.Adequacy.ModuleLaws using (teleSig≡entrySig)
-import Once.Adequacy.NameClash as NC
+open import Once.Adequacy.ModuleProgram using (toProgram; names₀; fresh₀)
 import Once.Adequacy.SpecCore.Program as PG
-open import Once.Adequacy.SpecFront.Extract using (XAlign; extract-align; nonSigs-none)
-import Once.Adequacy.SpecFront.Resolve as Res
-import Once.Adequacy.SpecFront.SigOf as SigOf
-open import Once.Adequacy.SpecFront.SigFacts using (keys; rname; keys-distinct; uniq-of; one-name; h-sig-of; sig-in)
+open import Once.Adequacy.SpecFront.Extract using (XAlign)
+open import Once.Adequacy.SpecFront.SigFacts using (rname; sig-in)
 open import Data.List.Relation.Unary.Unique.Propositional using (Unique)
 open import Data.List using (map)
-open import Once.Adequacy.SpecFront.SigWF using (wf-of)
-open import Once.Adequacy.SpecFront.Prefix using (Past; past; prefix; ffi-facts; main-entry)
-open import Once.Adequacy.SpecFront.Start using (names; distinct-rest; nosig-rest; fresh-start; not-sig)
-open import Once.Adequacy.SpecFront.Polys using (Adj; adj-of; polyNames; poly-names; kinds-of; defs-of; poly-not-fun)
-import Once.Adequacy.SpecFront.Align as Al
-import Once.Adequacy.SpecFront.WalkState as WS
-import Once.Adequacy.SpecFront.Walk as Wk
+open import Once.Adequacy.SpecFront.Prefix using (Past)
+open import Once.Adequacy.SpecFront.Start using (names)
 import Once.Adequacy.SpecFront.End as En
-import Once.Adequacy.SpecFront.EndNames as EN
-open import Once.Adequacy.SpecFront.Words using (DeclW; ModsW; KeysW; signature-words; key-word)
+open import Once.Adequacy.SpecFront.Words using (DeclW; ModsW; KeysW; key-word)
 
 open import Once.Adequacy.SpecFront.DenoteModule using (module Parts; module Split)
 

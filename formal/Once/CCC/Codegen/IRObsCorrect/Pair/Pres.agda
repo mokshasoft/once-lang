@@ -11,29 +11,28 @@
 
 open import Once.Spec.Name using (CanonicalName)
 import Once.CCC.Machine.SMCore as SMCore
-import Once.CCC.FrameSemantics as FrameSemantics′
 
 import Data.List as DL
 open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.Pair.Pres (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.List using (List)
+open import Data.Nat using (ℕ; suc; _≤_)
+open import Data.Nat.Properties using (≤-trans; n≤1+n; ≤-refl; ≤-reflexive)
+open import Data.Unit using (tt)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Once.IR using (IR)
+open import Relation.Binary.PropositionalEquality using (_≡_; subst; sym; trans; refl)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtDynamic; AtStack)
-open import Once.CCC.Machine.SMCore using (AllocState; AbstractTrace; LocState; StoredValue; mov-to-output; store-at-slot; restore-input; load-from-slot; store-indirect-suc; store-indirect; mov-to-input; instr-alloc-heap; sv-as-loc; readReg; Input1; module LocState; module AllocState)
+open import Once.CCC.Machine.SMCore using (AllocState; AbstractTrace; LocState; StoredValue; mov-to-output; store-at-slot; restore-input; module LocState; module AllocState)
 open AllocState using (current-frame; saved-frames; next-heap-ref)
-open LocState using (regs)
 open import Once.IRTy using (IRTy)
 open import Once.Memory.HeapAddress using (HeapLocation)
 
-import Once.CCC.FrameSemantics
 import Once.CCC.Machine.SMPrimitives
-import Once.IRTy
-import Once.IR
-import Once.Semantics.Machine as EvV
-import Once.CCC.Machine.ReadTypedAdequate as RTA
-import Once.Denotation.DenotTrace as DT
-import Once.IR.Semantics.Trace as TM
 
 open import Once.Denotation.Approx using (NotCut; done)
 open import Once.Res using (returns)
@@ -41,6 +40,13 @@ open import Once.Res using (returns)
 module PairPresC {FS : FrameSemantics} where
 
   open Core {FS}
+  open import Once.CCC.Machine.SMPrimitives using (nhw-mov-to-output)
+  open ClosureWellFormedBase′ using (resultAt; ⟪_⟫_)
+  open FlatMachine′ using (FlatState; flat-exec-instr)
+  open FlatMachine′.FlatState using (floc; fclosure; falloc)
+  open FrontierInvariant′ using (BeforeFrontier; frontier-monotone)
+  open InstrPrimitives′ using (exec-abstract-preserves-frame; exec-abstract-preserves-saved)
+  open RecSchemeSemantics′ using (exec-abstract-preserves-heap-ref)
   open Mach {FS}
 
   -- The prologue and the mid rows as TOP-LEVEL functions, so that `PairPres`'s
@@ -86,6 +92,7 @@ module PairPresC {FS : FrameSemantics} where
     where
 
     module VR = ValueRealized
+      using (bf-mono; frame-pres; frames-pres; settle)
 
     ncF : NotCut (resultAt (floc (pair-p2 prog base n s alloc cl rs)) (⟪ evalᴰ f xf ⟫ kf))
     ncF = subst NotCut (sym rfF) tt

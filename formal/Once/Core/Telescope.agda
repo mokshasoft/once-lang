@@ -28,10 +28,10 @@ open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst)
 
 open import Once.Spec.Numerics using (TargetNum)
-open import Once.Spec.Type using (Ty; KCtx; ∅ₖ; TySub; Respects; _⟨_⟩)
-open import Once.Spec.Core.Syntax using (Defs; _!!_; Schema; module Schema; schema)
+open import Once.Spec.Type using (∅ₖ; TySub; Respects; _⟨_⟩)
+open import Once.Spec.Core.Syntax using (Defs; _!!_; Schema; module Schema)
 open Schema using (arity; kinds; type)
-open import Once.Spec.Core.Program Σ using (Tele; []; def; Entry; entry; noVars; runEntry)
+open import Once.Spec.Core.Program Σ using (Tele; []; def; Entry; noVars; runEntry)
 open import Once.Spec.Observation Σ using (Model)
 import Once.Spec.Core.Meaning as SM
 import Once.Spec.Domain Σ as SD

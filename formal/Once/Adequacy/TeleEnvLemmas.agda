@@ -20,7 +20,7 @@
 --     `refIR` reads the environment at its one name (`refIR-cong`).
 ------------------------------------------------------------------------
 
-open import Once.Spec.Type using (Ty; base)
+open import Once.Spec.Type using (Ty)
 open import Once.TypeCheck.Classify using (TopCtx)
 open import Once.Spec.Numerics using (TargetNum)
 
@@ -37,10 +37,9 @@ open import Data.Nat.Induction using (<-wellFounded)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Product using (_×_; _,_; proj₁)
+open import Data.Product using (_×_; _,_)
 open import Data.Unit using (⊤; tt)
 open import Data.String using (String)
-import Data.String.Properties as StrProp
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; cong; sym; trans; subst)
 open import Induction.WellFounded using (Acc; acc)
 
@@ -48,7 +47,7 @@ open import Once.Postulates using (extensionality)
 open import Once.Spec.Grade using (mk-kind; Zero; One; Many)
 open import Once.Spec.Type using (Type; var; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_)
 open import Once.Spec.Type using (μ; ν)
-open import Once.Spec.Surface.Syntax using (PolyType)
+open import Once.Spec.Surface.Type using (PolyType)
 open import Once.IRTy using (IRTy)
 open import Once.Spec.Name using (CanonicalName; bare)
 open import Once.IR.Ref using (refIR)

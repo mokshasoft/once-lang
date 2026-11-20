@@ -44,7 +44,6 @@ open import Once.Adequacy.CPU.Interface using (Byte; ArchSemantics)
 
 import Data.Maybe
 import Once.CCC.Target.X86-64.Semantics as X64
-import Once.CCC.Target.X86-64.Syntax    as X64S
 import Once.CCC.Target.X86-64.File as RF
 open import Data.Bool using (if_then_else_)
 open import Data.List.Relation.Unary.Any using (Any; here; there)
@@ -68,14 +67,16 @@ open import Once.Float.Word using (round)
 open import Once.Spec.Float.Dyadic using (binary64)
 open import Once.Target.X86-64.PhysReg using (Reg; rsp; rdi)
 open import Once.Arith.Backend.X86-64.Emit using (arith-reg)
-open import Once.Arith.Machine.Shape using (InputPath; Side; Fst; Snd; flat-addr)
+open import Once.Arith.Machine.Shape using (InputPath; flat-addr)
 import Once.Arith.Backend.X86-64.RunTrace as RT
 open X64 using (State; readReg; readMem)
 open X64.State using (regs; memory)
 import Once.Spec.Word as OnceWord
 import Once.Word as OnceWordL
 module W = OnceWord.Word64
+  using (_%ˢ_; _/ˢ_; _⊕_; _⊖_; _⊗_; fromℤ; toℤ; ⊝_)
 module WL = OnceWordL.WidthLaws 64
+  using (sdiv2ᵏ; shlᵂ)
 open import Data.Nat using (_*_)
 open import Data.Maybe using (just; nothing)
 

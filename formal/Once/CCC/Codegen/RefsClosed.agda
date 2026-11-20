@@ -43,7 +43,6 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Once.CCC.Label using (LabelId; once; labelSym; thunkSym; ℓ)
 open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
 open SigOpInfo using (sem)
-open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (CmpAt; cmp-of)
 open import Once.IR using (IR)
 import Once.IR as IRm
@@ -57,7 +56,7 @@ open import Once.CCC.Codegen.IRToTrace o using
   (sigop-code; ir-to-trace'; cata-dispatch; cata-strategy; CataStrategy;
    strat-const; strat-box; strat-branching; lsize; fsize; cata-body; cata-call-setup; cata-call; cata-call-box; in-trace; with-copy; two-cell; node-copy-trace; out-trace;
    cata-br-I₁; cata-br-I₂; visit-walk; rebuild-walk; wrap-sum; resuspend-layer;
-   cata-call-from; inj-trace; env-entry; getμ; push2)
+   cata-call-from; inj-trace; env-entry; getμ)
 open import Once.CCC.Codegen.FlatLayout using (Kind; word; flat; put; put-k; get; get-k; kind; lkind; lsz;
   put-All; put-k-All; get-All; get-k-All; fill; fill-All)
 open import Once.CCC.Codegen.Size using (size)

@@ -26,11 +26,11 @@ module Once.Arith.Backend.RunTraceCore where
 
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.String using (String)
-open import Data.Nat using (ℕ; zero; suc; _≤_; _<_)
+open import Data.Nat using (ℕ; zero; suc)
 open import Data.List using (List; []; _++_)
 open import Data.Bool using (Bool; true; false; if_then_else_)
-open import Data.Product using (Σ; _,_; ∃-syntax)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym; subst)
+open import Data.Product using (Σ; _,_)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 
 open import Once.IR.Semantics.Event using (SigOpEvent)
 open import Once.IR.Semantics.Out using (Out; cut; stop; ended; _▹_)
@@ -40,7 +40,7 @@ open import Data.String using (_≟_)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Relation.Nullary.Decidable using (dec-no)
 open import Data.Unit using (tt)
-open import Data.Product using (proj₁; proj₂)
+open import Data.Product using (proj₁)
 
 ------------------------------------------------------------------------
 -- The generic machine telescope. `Payload` is the arch-specific arith

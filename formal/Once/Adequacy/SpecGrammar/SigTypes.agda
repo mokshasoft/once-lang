@@ -9,18 +9,18 @@
 
 module Once.Adequacy.SpecGrammar.SigTypes where
 
-open import Data.Bool using (true)
 open import Data.List using (List; []; _∷_; map)
 open import Data.Product using (Σ-syntax; _×_; _,_)
-open import Data.String using (String; toList)
+open import Data.String using (toList)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; sym)
 
-open import Once.Spec.Surface.Lexing using (Token; TWord)
+open import Once.Spec.Surface.Lexing using (Token)
 open import Once.Spec.Surface.Grammar using (TypeAlg; module SigType; TypeVar; tvar; lowerWord)
-import Once.Spec.Surface.Syntax as SS
+import Once.Spec.Surface.Type as SSᵗ
 import Once.Parser.Token as P
 open import Once.Parser.CharClass using (isLowerWord)
-open import Once.Parser.Generic.PolyInst using (PolyAlg; TVarRel; ParsesPolyType)
+open import Once.Parser.Generic.PolyInst using (PolyAlg; TVarRel; module Gen′)
+open Gen′ using () renaming (ParsesTypeG to ParsesPolyType)
 import Once.Parser.Generic.PolyInst as PI
 open import Once.Adequacy.SpecLexing using (forget)
 open import Once.Adequacy.SpecGrammar.Tokens using (step)
@@ -40,19 +40,19 @@ lower-eq s = lower-go s (toList s) refl
 
 -- The Spec's algebra of written schemas (`Once.Spec.Surface.Grammar`'s,
 -- which is private there).
-writtenS : (List Token → SS.PolyType → List Token → Set) → TypeAlg SS.PolyType SS.PolyFunctor
+writtenS : (List Token → SSᵗ.PolyType → List Token → Set) → TypeAlg SSᵗ.PolyType SSᵗ.PolyFunctor
 writtenS X = record
-  { aUnit = SS.PUnit ; aVoid = SS.PVoid ; aInt = SS.PInt ; aFloat = SS.PFloat
-  ; aProd = SS._P*_ ; aSum = SS._P+_ ; aEff = SS.PEff ; aAct = SS.PAct
-  ; aArrow = λ q A B → A SS.P⇒[ q ] B ; aMu = SS.Pμ ; aNu = λ π F → SS.Pν F π
-  ; fK = SS.PK ; fId = SS.PId ; fSum = SS._P⊕_ ; fProd = SS._P⊗_
+  { aUnit = SSᵗ.PUnit ; aVoid = SSᵗ.PVoid ; aInt = SSᵗ.PInt ; aFloat = SSᵗ.PFloat
+  ; aProd = SSᵗ._P*_ ; aSum = SSᵗ._P+_ ; aEff = SSᵗ.PEff ; aAct = SSᵗ.PAct
+  ; aArrow = λ q A B → A SSᵗ.P⇒[ q ] B ; aMu = SSᵗ.Pμ ; aNu = λ π F → SSᵗ.Pν F π
+  ; fK = SSᵗ.PK ; fId = SSᵗ.PId ; fSum = SSᵗ._P⊕_ ; fProd = SSᵗ._P⊗_
   ; Extra = X }
 
 private
   var← : ∀ {ts a′ r′} → TypeVar ts a′ r′ → ∀ toks → F toks ≡ ts
        → Σ[ a ∈ _ ] Σ[ rest ∈ List P.Token ] (TVarRel toks a rest × toPoly a ≡ a′ × F rest ≡ r′)
   var← (tvar {x} lw) toks e =
-    step (λ y → Σ[ a ∈ _ ] Σ[ rest ∈ List P.Token ] (TVarRel y a rest × toPoly a ≡ SS.PTVar x × F rest ≡ _)) refl e
+    step (λ y → Σ[ a ∈ _ ] Σ[ rest ∈ List P.Token ] (TVarRel y a rest × toPoly a ≡ SSᵗ.PTVar x × F rest ≡ _)) refl e
       (λ {toks′} e′ → _ , toks′ , PI.tvar (trans (lower-eq x) lw) , refl , e′)
 
 homPoly : Hom PolyAlg (writtenS TypeVar) toPoly toPolyF
@@ -68,6 +68,7 @@ homPoly = record
 
 private
   module B = Bridge PolyAlg (writtenS TypeVar) toPoly toPolyF homPoly
+    using (type←; type→)
 
 sig→ : ∀ {toks A rest} → ParsesPolyType toks A rest → SigType.ParsesType (F toks) (toPoly A) (F rest)
 sig→ = B.type→

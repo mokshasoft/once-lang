@@ -38,8 +38,8 @@ module Once.CCC.Machine.FlatPtrBounds (FS : FrameSemantics) where
 
 open import Once.CCC.Label using (LabelId)
 
-open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; _≟_; s≤s; z≤n)
-open import Data.Nat.Properties using (≤-trans; n≤1+n; <⇒≢; <ᵇ⇒<)
+open import Data.Nat using (ℕ; _<_; _≤_; _≟_; s≤s; z≤n)
+open import Data.Nat.Properties using (≤-trans; <⇒≢; <ᵇ⇒<)
 open import Data.Bool using (Bool; true; false; T)
 open import Data.Bool using () renaming (_∨_ to _∨_)
 open import Data.Empty using (⊥-elim)
@@ -59,7 +59,8 @@ open HeapRef using (ref-id)
 open import Once.SigOp.Info using (SigOpInfo; effect; EffectShape; Pure; Emits; Halts; Answers; semM)
 open import Once.Res using (Res; stopped; returns)
 open import Once.Type using (FitsInReg; fits-in-reg?; fits-int; fits-float)
-open import Once.Semantics.Machine using (⟦_⟧)
+open import Once.Semantics.Machine using (module Value)
+open Value using (⟦_⟧)
 open import Once.CCC.Machine.SMCore
 open AllocState using (block-size; next-heap-ref; current-frame)
 open LocState using (regs; heapMem; stackMem; ev-log)
@@ -71,6 +72,7 @@ open AbstractExec {FS}
 open import Once.CCC.Machine.FrameFree using (EmittableI; ImageI)
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
+open FlatState using (falloc; floc; fret)
 -- the shared bricks: the register read-after-write enumeration and the
 -- `writeLoc` fold-back
 open import Once.CCC.Machine.FlatStackPtr FS using (readReg-write; writeLoc-dyn)

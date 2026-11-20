@@ -29,24 +29,21 @@ module Once.Adequacy.CoreMeaningBridge (fmt : TargetNum) (Σ : Signature) {s : �
 
 open import Data.Fin using (Fin; zero; suc)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
-open import Data.Sum using (inj₁; inj₂; [_,_]′)
+open import Data.Sum using ([_,_]′)
 open import Data.Maybe using (just)
-open import Data.Empty using (⊥-elim)
 open import Data.String using (String)
 open import Data.Unit using (tt)
 open import Function using (id)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst; trans-reflʳ)
-open import Once.Spec.Type using (Ty; Type; Fun; KCtx; ∅ₖ; WFFun; Respects; _⟨_⟩; _*_; _+_; _⇒[_]_)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
+open import Once.Spec.Type using (Ty; Type; Fun; KCtx; WFFun; Respects; _⟨_⟩; _*_; _+_; _⇒[_]_)
 open import Once.Spec.Type.Substitution using (respects-∘; ⟨⟩-∘)
-open import Once.Spec.Grade using (Quantity; Zero; One; Many; mk-kind; pure; act; eff; Finite; fin; _⊑π_; ⊑-pure; pureᶠ; actᶠ)
-open import Once.Spec.Context using (Ctx; _▸_; _∷_; _⊑∷_; Usage)
-open import Once.Spec.Signature using (⌜_⌝ᵈ)
-open import Once.Spec.Core.Syntax using (Schema; schema; _!!_; ref)
+open import Once.Spec.Grade using (Zero; One; Many; mk-kind; pure; act; eff; Finite; fin; _⊑π_)
+open import Once.Spec.Context using (Ctx; _▸_; _∷_; Usage)
+open import Once.Spec.Core.Syntax using (Schema; _!!_)
 open Schema using (arity; kinds; type)
-open import Once.Spec.Surface.Syntax using (PolyType)
+open import Once.Spec.Surface.Type using (PolyType)
 open import Once.Type.Instance using (KindedInstance)
 open import Once.Type.Schema using (schemaOf; kinded-instance)
-open import Once.Type.Rigid using (ground-kinded)
 open import Once.Type.Concrete using (IsConcrete)
 open import Once.Type.Core using (wk₀; none; noResp)
 open import Once.Spec.Type using (⟦_⟧F)
@@ -55,23 +52,23 @@ open import Once.Spec.Name using (CanonicalName)
 open import Once.Postulates using (extensionality)
 open import Once.Functor.Translate using (Base-irrelevant)
 open import Once.Type.Sub using (·p-diag)
-open import Once.Denotation.PureBind using (_>>=ᵖ_; >>=ᵖ-β; >>=ᵖ-idʳ)
-open import Once.TypeCheck.Scope using (NamedCtx; lookupImport; lookupPolyPrefix; Imports; PolyCtx)
+open import Once.Denotation.PureBind using (_>>=ᵖ_; >>=ᵖ-β)
+open import Once.TypeCheck.Scope using (lookupImport; lookupPolyPrefix; Imports; PolyCtx)
 open import Once.Denotation.DefEnv using (defAt; impAt)
 import Once.Denotation.RefMeanings Σ σ₀ as RM
-open RM using (MeaningsOf; Meanings)
+open RM using (Meanings)
 open RM.Meanings using (sigs; defs; entries)
 open import Once.Denotation.SpecDomain Σ σ₀
-  using (⟦_⟧ᵛ; ⟦wk₀⟧ᵛ; M; bindM; returnM; subM; fmapM; cata-semᵛ; ana-semᵛ; ⟦_⟧<:ᵛ; loop; restrictᵛ; bindᵛ)
+  using (⟦_⟧ᵛ; ⟦wk₀⟧ᵛ; M; bindM; returnM; subM; fmapM; cata-semᵛ; ana-semᵛ; loop; restrictᵛ)
 open import Once.Core.Decl using (declS; ⌜declS⌝)
 import Once.Spec.Domain Σ as SD
 import Once.Spec.Effect Σ as SE
 import Once.Spec.Core.Meaning Σ fmt S as SM
-open SM using (DefSem; Env; envˡ; envʳ; env*One; env*Many; restrict; slot)
+open SM using (DefSem; Env; envˡ; envʳ; env*One; env*Many; restrict)
 open import Once.Metatheory.Coherence.Env Σ fmt S
-  using (envˡ-restrict; envʳ-restrict; env*One-envʳ-restrict; env*Many-envʳ-restrict; env*Many-envˡ-restrict)
+  using (envˡ-restrict; env*One-envʳ-restrict; env*Many-envʳ-restrict; env*Many-envˡ-restrict)
 open import Once.Spec.Core.Typing Σ S
-open import Once.TypeCheck.View Σ S using (Views; View; ImportAt; Declared; declared; def)
+open import Once.TypeCheck.View Σ S using (View; ImportAt; Declared; declared; def)
 open View
 open import Once.Adequacy.SurfaceEnv Σ fmt S σ₀
 import Once.Adequacy.SpecRenameSem Σ fmt S as RS
@@ -179,11 +176,8 @@ diag-bind act  m k = refl
 -- environments, given their arms' bridges.
 ------------------------------------------------------------------------
 
-open import Once.Context using (⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*Many; ⊑ᵘ-*One; _⊔ᵘ_; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-refl)
-open import Once.Spec.Context using (_*ᵘ_; _+ᵘ_; _⊑ᵘ_; zeroUsage)
-open import Once.Spec.Sub using (sub-arr; _⊔_≔_)
-open import Once.Type.Sub using (<:-refl; ⊑π-refl; <:ᶜ⇒<:)
-open _⊔_≔_ using () renaming (left to ⊔-left; right to ⊔-right)
+open import Once.Context using (⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*Many; ⊑ᵘ-*One; _⊔ᵘ_; ⊑ᵘ-refl)
+open import Once.Spec.Context using (_*ᵘ_; _+ᵘ_; zeroUsage)
 open import Once.Core.DerivedTyping Σ S
 open import Once.Type.Grade using (≤qᵇ→≤q)
 open import Once.Surface.Properties using (+ᵘ-identityʳ)

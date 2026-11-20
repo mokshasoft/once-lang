@@ -47,7 +47,6 @@
 -- rather than on every lemma — which is what keeps the statements below
 -- UNCHANGED: the emitter is imported APPLIED, so each call site reads as before.
 
-open import Data.Nat using (ℕ)
 
 import Once.Adequacy.ArchCorrectness.X86-64.ResourceBounds as RB
 import Once.Adequacy.ArchCorrectness.RiscV64.ResourceBounds as RBr
@@ -55,7 +54,7 @@ import Once.Adequacy.ArchCorrectness.X86-32.ResourceBounds as RB32
 
 -- Plan 0.107: the entry unit's owner is the EMITTER's (`Once.Compile.entry-owner`),
 -- not a parameter — the theorem is about the program actually emitted.
-open import Once.Compile using (entry-owner)
+open import Once.Compile.Emit using (entry-owner)
 
 module Once.Certified
   (x86-64-reg-range : ∀ ι → RB.RegRange entry-owner ι)
@@ -83,7 +82,8 @@ open import Once.Compiler
        riscv64-reg-range riscv64-slot-addr-no-wrap
        riscv64-addr-no-wrap riscv64-lit-fits
        x86-32-reg-range x86-32-addr-no-wrap x86-32-lit-fits
-       using (arch-correctness)
+       using (module ArchCorrectness)
+open ArchCorrectness using (arch-correctness)
 import Once.Adequacy.SpecApex as SpecApex
 open import Once.TypeCheck.Verified using (VerifiedTypeChecker; verifiedTypeChecker)
 -- Plan 0.102 phase B (D276, D304): the language's own metatheory, stated in the

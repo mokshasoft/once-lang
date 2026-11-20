@@ -28,8 +28,15 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.CataBr.Flatten (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.Bool using (false)
+open import Data.Empty using (⊥-elim; ⊥)
+open import Data.List using (length; List; []; _∷_)
+open import Data.Maybe using (just)
+open import Data.Product using (proj₂; proj₁; _,_)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Relation.Binary.PropositionalEquality using (_≡_; trans; cong; sym; subst; refl)
 open import Once.CCC.Machine.MuRep using (Unboxed)
-open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module ResuspBaseC)
 open import Once.CCC.Codegen.IRObsCorrect.CataConst.Meaning o using (μ-layer-val)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Meaning using (module PO)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Stack o tbl using (module CataStackC)
@@ -43,19 +50,22 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (AtStack)
 open import Once.CCC.Label using (ℓ)
 open import Once.Memory.HeapAddress using (HeapLocation)
-open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; ⌈_⌉F; μ-type)
+open import Once.IRTy using (IRFunctor; WellFormedFI; ⌈_⌉F; μ-type)
 open import Once.IRTy.WF using (wf-⌈⌉)
 open import Once.Spec.Word using (Carrier)
 open import Once.IR.Semantics.Value Carrier Carrier using (⟦_⟧F)
 open import Once.IR.Semantics.Iterative using (T∞)
-open import Data.Nat using (_*_)
+open import Data.Nat using (_*_; ℕ; _+_; _≤_; suc; zero)
 open import Data.Nat.Properties using (suc-injective)
 
 module CataFlattenC {FS : FrameSemantics} where
 
   open Core {FS}
-  open Mach {FS}
-  open ResuspBaseC {FS} using (Kp)
+  open ClosureWellFormedBase′ using (Live)
+  open FlatMachine′ using (find-label; FlatState)
+  open FlatMachine′.FlatState using (falloc; floc; fpc)
+  open FlatStepsAPI′ using ([]; _∷_)
+  open MemOps′ using (readLoc)
   open CataStackC {FS}
   open CataWalkC {FS}
   open CataRoundC {FS}
@@ -88,8 +98,10 @@ module CataFlattenC {FS : FrameSemantics} where
                  (lv : LabelsAt prog (22 + H) (Pieces.visitTxt ⌈ F ⌉F n l1)) where
 
     module L = Loop prog wf ub n c l1 sn cb H span hd ex lv
+      using (EQ; K; NE; VL; XL; module Exit; module Round)
     open L
     module P = PO (wf-⌈⌉ wf) alg₀
+      using (FI; children; flatten-measure; flatten-step; pushAll)
 
     -- the loop's exit: todo empty, eval the invariant
     FQ : List ⟦ μ-type F ⟧ → List ⟦ μ-type F ⟧ → FlatState → Set

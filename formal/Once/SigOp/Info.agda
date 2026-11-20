@@ -33,12 +33,11 @@
 module Once.SigOp.Info where
 
 open import Data.Unit using (tt)
-open import Once.Spec.Type using (Base; b-*; b-+; b-Float; b-Int; b-Unit; b-Void; ∅ₖ)
+open import Once.Spec.Type using (Base; ∅ₖ)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.CanonicalName using (_≟ᶜ_)
 open import Relation.Nullary using (Dec)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
-open import Data.Product using (_,_)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 
 open import Once.Spec.Type using (Type; Unit; Void)
@@ -46,7 +45,6 @@ open import Once.Res using (Res; stopped; returns)
 open import Once.IR.Semantics.Trace using (FFIAnswers)
 open import Once.IR.Semantics.Boundary using (atTarget)
 open import Once.Res using (mapRes)
-open import Data.Bool using (Bool; true; false)
 -- Plan 0.58 (OCP-0006): a SigOp is an FFI/register-ABI boundary, so its argument
 -- and result types must be CONCRETE (`Base ∅ₖ` — no arrows, no `μ`/`ν`). This is
 -- enforced BY CONSTRUCTION here: a `SigOpInfo` cannot be built at a non-base type.

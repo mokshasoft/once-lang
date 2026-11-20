@@ -24,14 +24,13 @@ open import Data.Product using (Σ-syntax; _×_; _,_)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.Bool using (true; false)
-open import Data.Maybe using (just; nothing)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans)
 
 open import Once.Spec.Core.Syntax using (Defs)
 import Once.Spec.Core.Program
 import Once.Parser as Parser
-open Parser.FunInfo using (funName; funType; funIsPrimitive)
+open Parser.FunInfo using (funName)
 open import Once.Module using (Scope; scope; ModTele; []; ffi; mono; poly; MainIn; MainsEffUU; entrySig)
 open import Once.Adequacy.SpecFront.Extract using (FFIEntry; FFIFacts)
 
@@ -43,6 +42,7 @@ module _ (Σ : Signature) where
 
   private
     module TL = Once.Spec.Core.Program Σ
+      using (Tele)
   open import Once.Core.Translate Σ using (SigSig; s-ffi; ImpSig; TeleSig; SigIn)
   open import Once.Adequacy.ModuleProgram Σ using (Names; Fresh; names-ffi; fresh-ffi; toProgram)
 

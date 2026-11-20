@@ -18,41 +18,49 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.Resusp.SumCommon (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
-open import Once.CCC.Machine.SMCore using (ending)
+open Interface using (module Core)
+open import Data.Bool using (false)
+open import Data.List using ([]; _++_; _∷_)
+open import Data.Maybe using (just)
+open import Data.Nat.Properties using (≤-refl; <-irrefl)
+open import Data.Product using (_,_; proj₁)
+open import Once.CCC.Machine.ValueRel using (module ClosureWellFormedBase)
+open import Once.IR using (IR; Heap; Ana)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.CCC.Machine.LocMatchesMode using (LocMatchesMode)
 open import Once.CCC.Label using (ℓ)
 open import Once.CCC.Machine.SMCore
   using (AbstractTrace; AbstractInstr; LocState; AllocState; module LocState; module AllocState;
-         readReg; Output; Input1; SV-Ptr; SV-Code; StoredValue; sucLoc; offsetLoc;
-         store-at-slot; restore-input; instr-ctrl; c-branch-tag-zero; c-jmp; c-label)
+         readReg; Output; SV-Ptr; SV-Code; sucLoc;
+         store-at-slot; restore-input; instr-ctrl; c-branch-tag-zero)
 open LocState using (regs; halted)
-open AllocState using (current-frame; next-slot; next-heap-ref; saved-frames)
+open AllocState using (current-frame; next-heap-ref)
 open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; ⟦_⟧TI; ν-type; wf-Sum; _⊕_) renaming (_+_ to _+ᵀ_)
 import Once.IRTy as IRTy′
 import Once.Denotation.ValueDomain as ValueDomain
 open import Once.CCC.Codegen.Size using (size)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
-open import Once.CCC.Codegen.SlotBudget o using (resuspend-mono)
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module ResuspBaseC)
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.SumShape o tbl using (module ResuspSumShapeC)
-open import Once.CCC.Codegen.IRObsCorrect.Resusp.SumArm o tbl using (module ResuspSumArmC)
-open import Once.CCC.Codegen.IRObsCorrect.CaseShape o tbl using (module ShapeC)
 open import Data.Sum using (inj₁; inj₂)
-open import Data.List.Properties using (++-identityʳ)
-open import Data.Nat using (z≤n; s≤s; _⊔_)
-open import Data.Nat.Properties using (m≤m⊔n; m≤n⊔m)
+open import Data.Nat using (_⊔_; ℕ; suc; _∸_; _≤_)
 
 module ResuspSumCommonC {FS : FrameSemantics} where
 
   open Core {FS}
-  open Mach {FS}
-  open FlatStepsAPI {FS} using (flat-step1; flat-tag-branch-yes; flat-tag-branch-not; flat-jmp)
+  open ClosureWellFormedBase′ using (VTy; Live; BlocksKept; InBlk; cell-ptr; cell-inline; cell-flat)
+  open ClosureWellFormedDef′ using (ValidAtWF; CellAt; cellWF-heap-transport; validityWF-heap-transport)
+  open FlatEventTrace′ using (event-of; chain-events)
+  open AbstractExec′ using (exec-abstract)
+  open FlatMachine′ using (FlatState; fetch; flat-exec-instr)
+  open FlatMachine′.FlatState using (floc; fpc; falloc)
+  open FlatStepsAPI′ using ([]; _∷_)
+  open MemOps′ using (readLoc)
+  open FlatStepsAPI {FS} using (flat-step1)
   open ResuspBaseC {FS}
   open ResuspSumShapeC {FS}
-  open ResuspSumArmC {FS}
-  open ShapeC {FS} using (tag-inl; tag-inr; payload-l; payload-r)
   open ClosureWellFormedBase {FS} using (SumTag; Pad; CellAtP; inl-wf; inr-wf; inl-reg-wf; inr-reg-wf; inl-flat-wf; inr-flat-wf)
   import Once.CCC.Machine.SMCore as SMCore
 
@@ -124,7 +132,10 @@ module ResuspSumCommonC {FS : FrameSemantics} where
                   where
 
       module SS = SumShape F E A lbl-n wF wG n l
+        using (armF; armG; l2; midJ; n2; nF; post; module At)
       module AT = SS.At prog (fpc σ) span lab
+        using (J; P; at-jmp; at-join; at-join-l; at-lab; at-pre; end; inl-target; join-l
+              ; join-target; labF; labG; spF; spG)
 
       s  = floc σ
       a  = falloc σ
@@ -137,6 +148,7 @@ module ResuspSumCommonC {FS : FrameSemantics} where
                    (span-take prog (store-at-slot n ∷ restore-input n ∷ [])
                       {instr-ctrl (c-branch-tag-zero (ℓ o l)) ∷ (SS.armG DL.++ (SS.midJ DL.++ (SS.armF DL.++ SS.post)))} (fpc σ) span)
                    r1
+        using (fs′; other; run; seg; silent; slot)
       σ₁ = S.fs′
 
       fBr : fetch prog (fpc σ₁) ≡ just (instr-ctrl (c-branch-tag-zero (ℓ o l)))

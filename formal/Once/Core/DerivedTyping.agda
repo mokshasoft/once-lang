@@ -22,7 +22,6 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; sub
 open import Once.Spec.Grade using (mk-kind; Many; One; Zero; Quantity; Purity; pure; act; eff; _·p_; Finite; fin; pureᶠ; actᶠ; _⊑π_)
 open import Once.Type.Grade using (≤qᵇ→≤q)
 open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; ⟦_⟧F)
-open import Once.Spec.Type using (⟦_⟧F)
 open import Once.Spec.Context using (Ctx; _▸_; lookup; _∷_)
 open import Once.Context using (_⊔ᵘ_; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; z≤z; o≤o; m≤m)
 open import Once.Spec.Context using (Usage; _*ᵘ_; _+ᵘ_; _⊑ᵘ_; singleUse; zeroUsage)

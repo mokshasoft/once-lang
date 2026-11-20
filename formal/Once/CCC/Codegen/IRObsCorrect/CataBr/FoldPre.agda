@@ -28,6 +28,14 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.CataBr.FoldPre (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.Bool using (false)
+open import Data.List using (List; _∷_)
+open import Data.Maybe using (just)
+open import Data.Product using (_,_; proj₂; proj₁)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Once.IR using (Heap; IR)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; _≢_; trans; subst; sym; cong)
 open import Once.CCC.Machine.MuRep using (Unboxed)
 open import Once.CCC.Codegen.IRObsCorrect.CataConst.Steps o tbl using (h-mov)
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module ResuspBaseC)
@@ -49,7 +57,7 @@ open import Once.CCC.Machine.SMCore
   using (LocState; module LocState; AbstractTrace; AllocState; module AllocState; StoredValue; readReg; Output; Input1
         ; SV-Ptr; SV-Code; mov-to-input)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
+open import Once.CCC.Machine.Locations using (AtStack; AtDynamic)
 open import Once.CCC.Label using (ℓ)
 open import Once.Memory.HeapAddress using (HeapLocation; sucHL; module HeapLocation; module HeapRef)
 open HeapLocation using (heap-ref)
@@ -57,14 +65,22 @@ open HeapRef using (ref-id)
 open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; ⟦_⟧TI; ⌈_⌉F; μ-type)
 import Once.IRTy as IRTy′
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.Nat using (s≤s; z≤n; _*_)
-open import Data.Nat.Properties using (+-monoʳ-<)
-open import Data.Unit using (⊤)
+open import Data.Nat using (s≤s; z≤n; _*_; ℕ; _+_; suc; _≤_; _<_)
+open import Data.Nat.Properties using (+-monoʳ-<; m≤m+n; ≤-trans; ≤-refl; <-irrefl; +-comm; n<1+n; ≤-reflexive)
+open import Data.Unit using (⊤; tt)
 
 module CataFoldPreC {FS : FrameSemantics} where
 
   open Core {FS}
-  open Mach {FS}
+  open import Once.CCC.Machine.SMPrimitives using (nhw-mov-to-input)
+  open ClosureWellFormedBase′ using (Live; BlocksKept)
+  open ClosureWellFormedDef′ using (ValidAtWF)
+  open FlatMachine′ using (FlatState; fetch)
+  open FlatMachine′.FlatState using (falloc; floc; fpc; fret; fclosure)
+  open FlatStepsAPI′ using (_∷_)
+  open FrontierInvariant′ using (module BeforeFrontier)
+  open InstrPrimitives′ using (exec-abstract-preserves-frame)
+  open MemOps′ using (readLoc)
   open ResuspBaseC {FS} hiding (X)
   open CataStepsC {FS}
   open CataStackC {FS}
@@ -78,7 +94,7 @@ module CataFoldPreC {FS : FrameSemantics} where
   open CataFoldPopC {FS} using (module FoldHead; KH)
   open CataFoldInvC {FS} using (module Inv)
   open LocState using (regs; halted)
-  open AllocState using (next-slot; next-heap-ref; current-frame; saved-frames)
+  open AllocState using (next-slot; next-heap-ref; current-frame)
 
   -- WHAT THE ROUND HAS AT ITS CALL, as an opaque bundle.
   record PreOut (prog : AbstractTrace) (F : IRFunctor) (E C : IRTy) (n c bodyL CK Y : ℕ) (sn hc : HeapLocation)
@@ -116,7 +132,9 @@ module CataFoldPreC {FS : FrameSemantics} where
              (sn hc : HeapLocation) (e : ⟦ E ⟧) (env-sv : StoredValue FS) where
 
     module FA = FoldAt wf alg n l prog base span la
-    open FA using (X; Y; Z; CK; KK; len-KK; RL; lr; rbTxt; span-hd; span-rb; rb-labels; fetch-mti; span-call; span-KK; fetch-cc; exit-label)
+      using (CK; KK; RL; X; Y; Z; exit-label; fetch-mti; lr; rb-labels; rbTxt; span-KK; span-hd
+            ; span-rb; module T)
+    open FA using (X; Y; Z; CK; KK; RL; lr; rbTxt; span-hd; span-rb; rb-labels; fetch-mti; span-KK; exit-label)
 
     c bodyL l1 : ℕ
     c = FA.T.Pc.cslot
@@ -166,6 +184,7 @@ module CataFoldPreC {FS : FrameSemantics} where
               (h : HeadAt σ (t ∷ ns) vs) where
 
       module H = HeadAt h
+        using (cl; code; env; ev; eval; hc-lt; nh; ns0; pc; val)
 
       ------------------------------------------------------------------
       -- 1. the pop
@@ -179,6 +198,7 @@ module CataFoldPreC {FS : FrameSemantics} where
       τP : FlatState
       τP = Walk.τ wP
       module PQ = FoldHead.PopQ (Walk.post wP)
+        using (eval; node; val)
 
       pcP : fpc τP ≡ 8 + X
       pcP = trans (Walk.pc wP) (cong (8 +_) H.pc)
@@ -196,6 +216,7 @@ module CataFoldPreC {FS : FrameSemantics} where
       τR : FlatState
       τR = Walk.τ wR
       module RQ = Rebuild.RQs (Walk.post wR)
+        using (out; stack)
 
       pcR : fpc τR ≡ RL + (8 + X)
       pcR = trans (Walk.pc wR) (cong (RL +_) pcP)
@@ -259,6 +280,7 @@ module CataFoldPreC {FS : FrameSemantics} where
              (trans (proj₂ (proj₂ kpA) _ live-shc) H.code) (proj₁ kpA _ live-shc)
              (word-tr kpA H.env) (word-tr kpM RQ.out) (λ _ lv → lv) bk-id refl
       module CO = CallOut co
+        using (bk; cf; cl; clo; code; ev; hp; hr; inp; lhp; nh; pairV; pc; ref-hp; ret; runK; seg; w)
 
       w : FlatState
       w = CO.w

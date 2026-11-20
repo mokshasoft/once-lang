@@ -21,7 +21,7 @@ open import Data.Nat.Properties using (≤-refl)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
 open import Axiom.UniquenessOfIdentityProofs.WithK using (uip)
 
-open import Once.Spec.Surface.Syntax using (PolyType; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PInt; PFloat; PTVar; PolyFunctor; PK; PId; _P⊕_; _P⊗_)
+open import Once.Spec.Surface.Type using (PolyType; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PInt; PFloat; PTVar; PolyFunctor; PK; PId; _P⊕_; _P⊗_)
 open import Once.Parser.Token
 open import Once.Parser.CharClass using (isLowerWord)
 open import Once.Parser.Generic.Relation
@@ -89,9 +89,8 @@ PolyAlg = record
 -- Derived: relation, parser, sound, complete for PolyType.
 ------------------------------------------------------------------------
 
-open Gen PolyAlg public
-  renaming ( ParsesTypeG to ParsesPolyType
-           ; typeShrink to ParsesPolyType-shrink )
-open P.Make PolyAlg public renaming (typeP to parsePolyTypeP)
-open S.Make PolyAlg public renaming (sound-type to sound-polyType)
-open C.Make PolyAlg public renaming (complete-type to complete-polyType)
+module Gen′ = Gen PolyAlg
+  using (ParsesTypeG; typeShrink)
+module Make′′ = P.Make PolyAlg renaming (typeP to parsePolyTypeP)
+module Make′ = S.Make PolyAlg renaming (sound-type to sound-polyType)
+module Make = C.Make PolyAlg renaming (complete-type to complete-polyType)

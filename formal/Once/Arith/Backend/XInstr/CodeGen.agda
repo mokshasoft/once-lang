@@ -19,8 +19,8 @@ open import Relation.Binary.Definitions using (DecidableEquality)
 open import Data.Nat using (ℕ; zero; suc)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
-open import Relation.Nullary using (Dec; yes; no)
+open import Relation.Binary.PropositionalEquality using (refl)
+open import Relation.Nullary using (yes; no)
 
 open import Once.Arith.Machine.Shape using (InputPath; Fst; Snd)
 open import Once.Arith.Machine.AbsInstr

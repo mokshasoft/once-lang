@@ -13,7 +13,6 @@ module Once.TypeCheck.Raw where
 
 open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
-open import Data.Bool using (Bool; true; false)
 open import Once.Spec.Surface.Syntax
   using (Expr; RVar; RQualified; RResolved; RGen; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat;
          RAnnot; RBinOp; RNeg)

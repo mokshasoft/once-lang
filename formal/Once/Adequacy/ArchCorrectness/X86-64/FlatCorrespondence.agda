@@ -43,7 +43,7 @@ import Once.CCC.Target.X86-64.Semantics as X
 -- it), and importing both would make the name ambiguous.
 open X using (mkstate) renaming (writeReg to xwriteReg)
 open X.State using (memory) renaming (regs to xregs; halted to xhalted)
-open import Once.CCC.Target.X86-64.Syntax using (Reg; r11)
+open import Once.Target.X86-64.PhysReg using (Reg; r11)
 open import Once.Adequacy.ArchCorrectness.X86-64.RegRoles using (x86-64-roles)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles
   using (RegRoles; Role; role-sp; role-clos; role-heap; role-out; role-in1)
@@ -53,9 +53,11 @@ open RegRoles x86-64-roles using (reg-of)
 rreg : X.State → Reg → ℕ
 rreg s r = X.readReg (X.State.regs s) r
 
-open import Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence
+import Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence
+module FlatCorrespondence = Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence
        FS slot-size word-eq Reg x86-64-roles X.State rreg memory xhalted
-  public
+  using (FlatCorr; GapNext; HeapView; KeepsRoles; RetAddrs; Sets2Roles; SetsMem; SetsRole; SetsRoleMem; Word; corr-store-gap; descend-view; enc-sv; extend-view; frames-of; haddr-offset; keep-all; lit-word; read-write-hit; read-write-miss; ret-agree-above; ret-head; ret-unlink; ret-write-in-frame; sim-addr-at; sim-alloc-heap; sim-alloc-stack; sim-call-frame; sim-dealloc-stack; sim-lea-slot; sim-load-at; sim-load-code-addr; sim-load-const; sim-load-const-float; sim-load-from-slot; sim-load-indirect; sim-load-indirect-stack; sim-load-indirect-suc; sim-load-indirect-suc-stack; sim-load-tag-lit; sim-mov-to-input; sim-mov-to-output; sim-out-nz; sim-restore-input; sim-ret; sim-save-closure-reg; sim-store-at; sim-store-at-slot; sim-store-indirect; sim-store-indirect-stack; sim-store-indirect-suc; sim-store-indirect-suc-stack; sim-thunk; slots; stack-eq-cur; windows-reanchor; writeMem; module FlatCorr; module HeapView; module SetsRole)
+open FlatCorrespondence
 open SetsRole using (at-role; off-role)
 
 

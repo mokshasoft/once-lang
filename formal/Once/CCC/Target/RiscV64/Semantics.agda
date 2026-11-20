@@ -19,6 +19,7 @@
 module Once.CCC.Target.RiscV64.Semantics where
 
 open import Once.CCC.Target.RiscV64.Syntax
+open import Once.Target.RiscV64.PhysReg using (Reg; zero; ra; sp; fp; a0; a1; a2; a3; a4; a5; a6; a7; s1; s2; s3; s4; t0; t1; t2; t3; t4)
 
 open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _*_; _≡ᵇ_; _<ᵇ_; _≟_)
 open import Data.Integer using (ℤ; +_; -[1+_]; ∣_∣)
@@ -29,13 +30,15 @@ open import Function using (case_of_)
 open import Relation.Nullary using (yes; no)
 -- Plan 0.63: provenance-typed labels, shared with x86-64 (`Label` arrives
 -- re-exported from `Syntax`; the scan needs its boolean equality).
-open import Once.CCC.Label using (_≡ᵇᴸ_)
+open import Once.CCC.Label using (_≡ᵇᴸ_; Label; thunk)
 -- PLAN 0.70 PHASE C: the machine's arithmetic is MODULAR (D054 — the runtime
 -- value type IS the modular word, and wraparound is defined semantics).
 import Once.Spec.Word as W64R
 import Once.Word as W64RL
 module W = W64R.Width 64
+  using (_⊕_; _⊖_; fromℤ; modulus)
 module WL = W64RL.WidthLaws 64
+  using (norm-id; ⊕-neg; ⊕-normʳ; ⊕≡+; ⊖≡∸)
 
 ------------------------------------------------------------------------
 -- Machine State

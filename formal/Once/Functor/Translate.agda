@@ -19,25 +19,14 @@ module Once.Functor.Translate where
 
 import Once.Spec.Type
 
-open import Data.Unit using (⊤)
-open import Data.Empty using (⊥)
-open import Data.Product using (_×_)
-open import Data.Sum using (_⊎_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
 
-open import Once.Spec.Grade
-open import Once.Type.Grade
-open import Once.Type.Core
-open import Once.Spec.Type using (Ty; Fun; Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
-open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PK; PId; _P⊕_; _P⊗_; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PInt; PFloat; PTVar)
-open import Once.Type.Poly
+open import Once.Spec.Type using (Fun; K; Id; _⊕_; _⊗_)
 open import Once.Type
-open import Once.IR.Semantics.Polynomial
-open import Once.Spec.Polynomial using (SFunctor; SId; SK; _S⊕_; _S⊗_; μS; ⟦_⟧SF)
-open import Once.Semantics.Functor
+open import Once.Spec.Polynomial using (⟦_⟧SF)
 open import Once.Type.Concrete
 open import Once.Spec.Type using (Base; WFFun; b-Unit; wf-⊕; ∅ₖ)
-open import Once.Spec.Type using (KCtx; Base; WFFun; b-var; b-Unit; b-Void; b-Int; b-Float; b-*; b-+; wf-K; wf-Id; wf-⊕; wf-⊗)
+open import Once.Spec.Type using (KCtx; b-var; b-Void; b-Int; b-Float; b-*; b-+; wf-K; wf-Id; wf-⊗)
 open import Once.IR.Semantics.FunctorMeaning
 -- | Translation preserves interpretation
 translate-coherence : ∀ {m} IntRep FloatRep (F : Fun m) X → ⟦ translateF IntRep FloatRep F ⟧SF X ≡ ⟦ IntRep , FloatRep ⟧F-base F X

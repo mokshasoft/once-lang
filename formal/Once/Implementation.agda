@@ -40,7 +40,7 @@
 
 module Once.Implementation where
 
-open import Data.Bool using (Bool; true; false)
+open import Data.Bool using (true; false)
 open import Data.List using (List)
 open import Data.Maybe using (just)
 open import Data.Nat using (ℕ; _<_; _≤_)
@@ -62,7 +62,7 @@ open import Once.IR using (IR)
 open import Once.IRTy using (Unit)
 open import Once.CCC.Codegen.ProgramImage using (program-image)
 open import Once.Denotation.Program using (IRFun; irProgram)
-open import Once.Compile using (entry-owner)
+open import Once.Compile.Emit using (entry-owner)
 import Once.Adequacy.ArchCorrectness.FlatCore.RunContext as RunContext
 
 ------------------------------------------------------------------------
@@ -71,6 +71,7 @@ import Once.Adequacy.ArchCorrectness.FlatCore.RunContext as RunContext
 
 module Run (FS : FrameSemantics) (prog : AbstractTrace) where
   open FlatMachine {FS}
+  open FlatState using (floc; fpc; falloc)
 
   -- The state after k steps of the run from fs₀.
   at : FlatState → ℕ → FlatState
@@ -124,5 +125,5 @@ NoLeak =
         prog      = program-image entry-owner (irProgram tbl ir)
     in RC.LinkedImage tbl ir
   → ∀ (fs₀ : FlatMachine.FlatState {FS})
-  → RC.EntryLike fs₀ → frame-slots (FlatMachine.falloc {FS} fs₀) ≡ 0
+  → RC.EntryLike fs₀ → frame-slots (FlatMachine.FlatState.falloc {FS} fs₀) ≡ 0
   → Run.LeakFree FS prog fs₀

@@ -17,9 +17,9 @@ module Once.Weaken where
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
 open import Data.Product using (_×_)
 open import Data.Sum using (_⊎_)
-open import Once.Spec.Grade using (mk-kind; Zero; One; Many; pureᶠ; actᶠ)
+open import Once.Spec.Grade using (mk-kind; Zero; One; Many)
 open import Once.Spec.Type
-  using (Ty; Fun; Type; var; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; K; Id; _⊕_; _⊗_)
+  using (Fun; Type; var; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; K; Id; _⊕_; _⊗_)
 open import Once.Type.Core using (wk₀; wk₀F)
 open import Once.IR.Semantics.FunctorMeaning using (⟦_,_⟧-base; translateF; μ-sem; ν-sem)
 open import Once.IR.Semantics.Polynomial using (νS)
@@ -104,7 +104,7 @@ open import Data.Unit using (⊤; tt)
 -- `wk₀ A` once transported, and back.
 ------------------------------------------------------------------------
 
-open import Relation.Binary.PropositionalEquality using (subst; subst₂; sym; trans; cong-app)
+open import Relation.Binary.PropositionalEquality using (subst; subst₂; sym; trans)
 open import Function using (id)
 open import Data.Product using (_,_; proj₁; proj₂)
 open import Data.Sum using (inj₁; inj₂)

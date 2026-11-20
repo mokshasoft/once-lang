@@ -32,6 +32,17 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.CataBr.ToFold (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.Bool using (false)
+open import Data.Empty using (⊥)
+open import Data.List using ([]; _∷_; List; length; _++_)
+open import Data.List.Properties using (length-++)
+open import Data.Maybe using (just)
+open import Data.Nat.Properties using (m≤m+n; ≤-trans; ≤-refl; ≤-reflexive)
+open import Data.Product using (proj₁; proj₂)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Once.IR using (IR; Cata; AllocMode)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; sym; trans; cong)
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module ResuspBaseC)
 open import Once.CCC.Codegen.IRObsCorrect.CataConst.Setup o tbl using (module CataSetupC)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Meaning using (module PO)
@@ -49,7 +60,7 @@ import Once.CCC.Machine.FlatPut as FlatPut
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.CCC.Label using (ℓ)
-open import Once.Memory.HeapAddress using (HeapLocation; sucHL; heap-loc; mkHeapRef; module HeapLocation; module HeapRef)
+open import Once.Memory.HeapAddress using (HeapLocation; sucHL; module HeapLocation; module HeapRef)
 open HeapLocation using (heap-ref)
 open HeapRef using (ref-id)
 open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; ⟦_⟧TI; ⌈_⌉F; μ-type)
@@ -60,8 +71,8 @@ open import Once.IR.Semantics.Value Carrier Carrier using (⟦_⟧F)
 open import Once.IR.Semantics.Iterative using (T∞)
 open import Once.Spec.Type using (Fun)
 open import Data.Sum using (inj₁; inj₂)
-open import Data.Unit using (⊤)
-open import Data.Nat using (_*_)
+open import Data.Unit using (⊤; tt)
+open import Data.Nat using (_*_; ℕ; suc; _+_; _≤_)
 
 open import Data.Nat.Solver using (module +-*-Solver)
 open +-*-Solver using (solve; _:+_; con; _:=_)
@@ -73,7 +84,13 @@ private
 module CataToFoldC {FS : FrameSemantics} where
 
   open Core {FS}
-  open Mach {FS}
+  open ClosureWellFormedBase′ using (BlocksKept; Live)
+  open ClosureWellFormedDef′ using (CellAt; ValidAtWF)
+  open FlatMachine′ using (FlatState)
+  open FlatMachine′.FlatState using (floc; fpc; fret; fclosure; flink; falloc)
+  open FlatStepsAPI′ using ([]; _∷_)
+  open FrontierInvariant′ using (module BeforeFrontier)
+  open MemOps′ using (readLoc)
   open ResuspBaseC {FS} using (SRun; SegA; Seg; seg-rebase; Kp)
   open CataSetupC {FS} using (module Setup; SetupOut)
 
@@ -84,7 +101,7 @@ module CataToFoldC {FS : FrameSemantics} where
   open CataRoundC {FS} using (KL)
   open CataFlattenC {FS} using (module Flatten; module Keep)
   open LocState using (regs; halted)
-  open AllocState using (next-slot; next-heap-ref; current-frame)
+  open AllocState using (next-heap-ref; current-frame)
 
   ------------------------------------------------------------------------
   -- WHAT THE FOLD LOOP STARTS FROM, as an opaque bundle.
@@ -140,6 +157,7 @@ module CataToFoldC {FS : FrameSemantics} where
                where
 
     module T = Text wf alg n l
+      using (emitted-eq; l1; text′; module At; module Pc)
 
     span′ : SpanAt prog base T.text′
     span′ = subst (SpanAt prog base) (T.emitted-eq st) span
@@ -147,6 +165,7 @@ module CataToFoldC {FS : FrameSemantics} where
     la′ = subst (LabelsAt prog base) (T.emitted-eq st) la
 
     module TA = T.At prog base span′ la′
+      using (H; exit-label; head-label; span-flat; span-init; span-setup; visit-labels)
 
     c : ℕ
     c = T.Pc.cslot
@@ -179,6 +198,8 @@ module CataToFoldC {FS : FrameSemantics} where
     so : SetupOut E (proj₁ x) c T.Pc.bodyL prog σ μ-sv
     so = Setup.out E c T.Pc.bodyL prog σ (subst (SpanAt prog base) (sym T.Pc.setup-eq) TA.span-setup) nh pl rdi lpl cE μ-sv rdμ
     module SO = SetupOut so
+      using (bk; cf; cl; clo; code; env-sv; ev; hc; hr; inμ; keep; lnk; nh; pc; ref-hc; ret; runS
+            ; seg; src; u)
 
     env-sv : StoredValue FS
     env-sv = SO.env-sv
@@ -234,7 +255,9 @@ module CataToFoldC {FS : FrameSemantics} where
     -- …and what crosses them: the call slots and the record's code cell
     ------------------------------------------------------------------
     module KI′ = Keep wI
+      using (keep-heap; keep-slot)
     module KF = Keep wF
+      using (keep-heap; keep-slot; keep-stack)
 
     live-shc : Live (falloc u) (AtDynamic (sucHL SO.hc))
     live-shc = live-suc (BeforeFrontier.heap-before (subst (λ z → suc z ≤ next-heap-ref (falloc u)) (sym SO.ref-hc)

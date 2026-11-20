@@ -32,33 +32,35 @@ module Once.Adequacy.ArchCorrectness.RiscV64.ArithBlockValue
 
 open import Data.Nat using (ℕ; _+_; _*_; _∸_; _<_; _≤_)
 open import Data.Nat.Properties
-  using (≤-irrelevant; <-≤-trans; ≤-trans; *-comm; ∸-+-assoc; m+n≤o⇒m≤o∸n; +-monoʳ-≤)
-open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃)
+  using (≤-irrelevant; <-≤-trans; *-comm; m+n≤o⇒m≤o∸n)
+open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Maybe using (just)
 open import Data.Empty using (⊥-elim)
 open import Data.Bool using (false)
 
 open import Once.CCC.Machine.SMCore
+open import Once.Memory.HeapAddress using (offsetHL)
 open AbstractExec {FS} using (decode-at; exec-sigop-output; readTyped)
-open MemOps {FS} using (readLoc)
 open LocState using (regs; heapMem)
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic)
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
+open FlatState using (floc; fpc)
 import Once.CCC.Target.RiscV64.Semantics as X
 
 open import Once.Spec.Type using (Int; Float; Base; ∅ₖ; b-Int; b-Float; b-*)
 open import Once.Type using (fits-int; fits-float)
-open import Once.Spec.Numerics using (TargetNum; mkTargetNum)
+open import Once.Spec.Numerics using (mkTargetNum)
 open import Once.Target.Arch using (riscv64; arch-numerics)
 open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo; blockV; Internal; internal-pure)
 open SigOpInfo using (sem; baseA)
 open import Once.SigOp.Words using (Words; IM; fromM; toWord-fromM; words-below)
 open import Once.Arith.Type using (NumType; NInt; NFloat)
 open import Once.Arith.Machine.IR using (MArithIR; shape-as-type; numtype-as-type)
-open import Once.Semantics.Machine using (⟦_⟧)
+open import Once.Semantics.Machine using (module Value)
+open Value using (⟦_⟧)
 open import Once.Arith.Machine.Shape
-  using (InputShape; shape-unit; shape-int; shape-float; shape-pair; Path; here-int; here-flt; go-fst; go-snd; ⌊_⌋ᴾ; flat-off)
+  using (shape-unit; shape-int; shape-float; shape-pair; Path; here-int; here-flt; go-fst; go-snd; ⌊_⌋ᴾ; flat-off)
 open import Once.Arith.Machine.Compile using (compile-abs; normalize; required-scratch)
 open import Once.Arith.Backend.XInstr.CodeGen using (emit-program)
 open import Once.Arith.SigOp.BlockSem using (block-semM)
@@ -68,12 +70,18 @@ import Once.Adequacy.ArchCorrectness.ArithSimRiscV64 as AS
 open import Once.CCC.Machine.FlatLeaf FS using (leafM; fitsN; leaf-at)
 
 open import Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation o FS word-eq fmt-eq
-  using (CompiledCorr; dataCorr; rreg')
-import Once.Adequacy.ArchCorrectness.RiscV64.FlatCorrespondence FS word-eq as C
-open C using (HeapView; hfront; haddr; FlatCorr; enc-sv)
+  using (rreg'; module CompiledCorrespondence)
+open CompiledCorrespondence using (CompiledCorr)
+open CompiledCorrespondence.CompiledCorr using (dataCorr)
+import Once.Adequacy.ArchCorrectness.RiscV64.FlatCorrespondence
+module C = Once.Adequacy.ArchCorrectness.RiscV64.FlatCorrespondence FS word-eq
+  using (module FlatCorrespondence)
+open C using ()
+open C.FlatCorrespondence using (HeapView; enc-sv; module FlatCorr)
+open C.FlatCorrespondence.HeapView using (hfront; haddr)
 import Once.Adequacy.ArchCorrectness.FlatCore.RunLow as RL
 open RL o FS slot-size word-eq using (RunLow; sigop-decodes; run-flat-wf; run-stack-ptr)
-open import Once.CCC.Machine.FlatStackPtr FS using (StackPtrWF; StackPtrOK; module SPInv)
+open import Once.CCC.Machine.FlatStackPtr FS using (StackPtrOK; module SPInv)
 import Once.Adequacy.ArchCorrectness.FlatCore.ArithOutput FS as AO
 open import Once.CCC.Machine.FlatStoreWF FS using (IMfs)
 
@@ -135,12 +143,12 @@ module _ {hv : HeapView} (prog : AbstractTrace) (fs : FlatState) (s : X.State)
         addr : rreg' s t0 + 8 * k ≡ haddr hv (offsetHL hl k)
         addr = trans (cong (λ w → w + 8 * k) (trans t0≡ (cong (enc-sv hv) in1)))
                      (trans (cong (haddr hv hl +_) (*-comm 8 k))
-                            (sym (C.haddr-offset hv hl k)))
+                            (sym (C.FlatCorrespondence.haddr-offset hv hl k)))
         val = trans (cong (X.readMem (X.State.memory s)) addr)
                     (trans (FlatCorr.heap-eq (dataCorr cc) _ cell)
                            (cong just (enc-fitsN hv m (leafM P a))))
         bnd = subst (_< rreg' s sp ∸ 8 * n) (sym addr)
-                    (below (C.HeapView.dom-below hv (FlatCorr.dom-written (dataCorr cc) _ cell)))
+                    (below (C.FlatCorrespondence.HeapView.dom-below hv (FlatCorr.dom-written (dataCorr cc) _ cell)))
 
   entry-leaves : ∀ {sh} (bt : Base ∅ₖ (shape-as-type sh)) {a}
                → decode-at bt (readReg (regs ls) Input1) ls ≡ just a

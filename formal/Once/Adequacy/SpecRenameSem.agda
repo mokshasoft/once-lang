@@ -28,21 +28,21 @@ open import Once.Spec.Numerics using (TargetNum)
 module Once.Adequacy.SpecRenameSem (Σ : Signature) (fmt : TargetNum) {s : ℕ} (S : Defs s) where
 
 open import Data.Fin using (Fin; zero; suc)
-open import Data.Product using (_,_; proj₁; proj₂)
+open import Data.Product using (_,_; proj₁)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (tt)
 open import Once.Postulates using (extensionality)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
-open import Once.Spec.Grade using (Quantity; Zero; One; Many; eff; fin; 0≤q; 1≤1; 1≤ω; ω≤ω)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
+open import Once.Spec.Grade using (Zero; One; Many; eff; fin; 0≤q; 1≤1; 1≤ω; ω≤ω)
 open import Once.Spec.Type using (Ty; KCtx; ∅ₖ; TySub; Respects; _⟨_⟩)
-open import Once.Spec.Context using (Ctx; ∅; _▸_; Usage; []; _∷_; _⊑∷_; _⊑ᵘ_; singleUse; lookup)
-open import Once.Context using (⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many; ⊑ᵘ-unique)
-open import Once.Spec.Context using (_*ᵘ_; _+ᵘ_)
+open import Once.Spec.Context using (Ctx; ∅; _▸_; Usage; []; _∷_; _⊑∷_; _⊑ᵘ_; singleUse)
+open import Once.Context using (⊑ᵘ-trans; ⊑ᵘ-unique)
+open import Once.Spec.Context using (_*ᵘ_)
 import Once.Spec.Effect Σ as SE
 import Once.Spec.Domain Σ as SD
 open import Once.Spec.Core.Typing Σ S
 open import Once.Metatheory.TermModel.Subst Σ S
-  using (Thin; done; keep; skip; ⟦_⟧θ; _θ*_; θ*-mono; idθ; idθ-id; CThin; cdone; ckeep; cskip; cid; cthin-lookup;
+  using (Thin; keep; skip; ⟦_⟧θ; _θ*_; θ*-mono; idθ; idθ-id; CThin; cdone; ckeep; cskip; cid; cthin-lookup;
          θ*-id; retype; varAt; ren-⊢; wk-⊢)
 open import Once.Metatheory.TermModel.Usage using (⊑ᵘ-≡)
 open import Once.Spec.Core.Meaning Σ fmt S using (⟦_⟧; DefSem; Env; restrict; envˡ; envʳ; env*One; env*Many; lookupᵛ; slot)

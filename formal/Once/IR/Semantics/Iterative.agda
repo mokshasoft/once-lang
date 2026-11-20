@@ -21,20 +21,13 @@
 module Once.IR.Semantics.Iterative where
 
 open import Once.Spec.Type using (Fun)
-open import Data.List using (List; []; _∷_; _++_; [_])
-open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Nat using (ℕ; zero; suc)
 open import Data.Product using (_,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
 open import Once.Spec.Word using (Carrier)
-import Once.IR.Semantics.Value Carrier Carrier as V
-open import Once.IR.Semantics.Event using (SigOpEvent)
 open import Once.IR.Semantics.Trace
-  using (T; ret; call; halt; CallOp; HaltOp; Interp; callAnswer; callEvent; haltEvent; unlinkedOp)
-open CallOp using (cdom; ccod)
-open HaltOp using (hdom)
+  using (T; ret; call; halt)
 
 ------------------------------------------------------------------------
 -- The run
@@ -142,7 +135,6 @@ data StepEq {X Y : Set} (Rx : X → X → Set) (Ry : Y → Y → Set) : X ⊎ Y 
 record TreeEq∞ {X : Set} (Rx : X → X → Set) (m m′ : T∞ X) : Set where
   coinductive
   field force≈ : BlockEq (StepEq Rx (TreeEq∞ Rx)) (force m) (force m′)
-open TreeEq∞
 
 ------------------------------------------------------------------------
 -- The functor action, and sequencing a layer of computations (`seqF`'s twin).

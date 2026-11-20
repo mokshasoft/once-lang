@@ -46,7 +46,7 @@ d_toda'45'sig_14 v0 v1 v2
                            (coe
                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                               (coe
-                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_DTypeSig_100 (coe v0)
+                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_DTypeSig_54 (coe v0)
                                  (coe v4))
                               (coe
                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v6)

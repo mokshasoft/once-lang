@@ -39,7 +39,7 @@ open import Data.Empty using (⊥-elim)
 import Once.CCC.Target.RiscV64.Semantics as R
 open R using (mkstate) renaming (writeReg to rwriteReg)
 open R.State using (memory) renaming (regs to rregs; halted to rhalted)
-open import Once.CCC.Target.RiscV64.Syntax using (Reg; ra; t1; t2)
+open import Once.Target.RiscV64.PhysReg using (Reg; ra; t1; t2)
 open import Once.Adequacy.ArchCorrectness.RiscV64.RegRoles using (riscv64-roles)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles
   using (RegRoles; Role; role-sp; role-clos; role-heap; role-out; role-in1)
@@ -48,9 +48,11 @@ open RegRoles riscv64-roles using (reg-of)
 rreg : R.State → Reg → ℕ
 rreg s r = R.readReg (R.State.regs s) r
 
-open import Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence
+import Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence
+module FlatCorrespondence = Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence
        FS slot-size word-eq Reg riscv64-roles R.State rreg memory rhalted
-  public
+  using (FlatCorr; GapNext; HeapView; KeepsRoles; Memory; RetAddrs; Sets2Roles; SetsMem; SetsRole; SetsRoleMem; Word; corr-regs-agree; corr-store-gap; descend-view; enc-sv; extend-view; frames-of; haddr-offset; keep-all; lit-word; read-write-hit; read-write-miss; ret-agree-above; ret-agree-nothing; ret-head; ret-relk; ret-spill; ret-write-in-frame; sep; sim-addr-at; sim-alloc-heap; sim-call-frame; sim-lea-slot; sim-load-at; sim-load-code-addr; sim-load-const; sim-load-const-float; sim-load-from-slot; sim-load-indirect; sim-load-indirect-stack; sim-load-indirect-suc; sim-load-indirect-suc-stack; sim-load-tag-lit; sim-mov-to-input; sim-mov-to-output; sim-out-nz; sim-restore-input; sim-ret; sim-save-closure-reg; sim-store-at; sim-store-at-slot; sim-store-indirect; sim-store-indirect-stack; sim-store-indirect-suc; sim-store-indirect-suc-stack; sim-thunk; slots; stack-eq-cur; writeMem; module FlatCorr; module HeapView; module SetsRole)
+open FlatCorrespondence
 open SetsRole using (at-role; off-role)
 
 ------------------------------------------------------------------------

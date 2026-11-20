@@ -22,7 +22,6 @@
 module Once.Adequacy.FunBundle where
 
 
-import Once.TypeCheck.SpecWitness
 open import Once.Spec.Context using (Usage)
 open import Once.TypeCheck.Scope using (PolyCtx)
 open import Once.TypeCheck.Classify using (TopCtx; ctxWithImportsAndPolys)
@@ -41,7 +40,7 @@ open import Once.Spec.Name using (bare)
 open import Once.CanonicalName using (_≟ᶜ_)
 import Data.String.Properties
 open import Relation.Nullary using (yes; no; Dec)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
 open import Function using (case_of_)
 
 open import Once.IR using (IR)
@@ -56,7 +55,6 @@ open import Once.TypeCheck.Classify using (ctxAt)
 open import Once.Type.Concrete using (IsConcrete)
 open import Once.Functor.Decide using (isConcrete?)
 open import Once.Type.Honest using (HonestFFI; honest?)
-import Once.Surface.Syntax as Srf
 open import Once.Surface.Syntax using (Expr)
 import Once.TypeCheck.ElaborateSound as TEˢ
 open import Once.TypeCheck.Elaborate as TE
@@ -66,7 +64,6 @@ import Once.Spec.Surface.Syntax as Syn
 open import Once.Principal using (below)
 open import Once.Adequacy.PrincipalDecide using (firstChecking-sound)
 open import Once.Parser using (FunInfo)
-import Once.Parser.Module as Module
 import Once.Parser.Module.Core as Core
 import Data.String as String
 import Once.Type.DecEq
@@ -76,7 +73,6 @@ open import Once.Compile using (findMain; findMain-here; mainEntry; moduleToIR; 
 open import Once.Spec.Sub using (_<:_)
 open import Once.Type.SubDecide using (_<:?_)
 open import Once.Adequacy.MainIRForm using (bare-injective)
-import Once.Adequacy.ModuleComplete as MC
 
 EffUU : Type
 EffUU = Unit ⇒[ mk-kind Many eff ] Unit

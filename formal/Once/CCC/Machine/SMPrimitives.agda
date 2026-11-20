@@ -34,7 +34,7 @@ module Once.CCC.Machine.SMPrimitives where
 open import Data.Bool using (true; false)
 open import Data.List using ([]; _∷_; _++_)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Nat using (ℕ; zero; suc; _≤_; _<_)
+open import Data.Nat using (ℕ; suc; _≤_; _<_)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; <-≤-trans; <⇒≢)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃-syntax)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -51,7 +51,7 @@ open import Once.CCC.Machine.SMCore
 open AllocState using (current-frame; next-heap-ref; saved-frames)
 open LocState using (heapMem; regs; stackMem; halted; ev-log; left; faulted)
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic; ValueLocation)
-open import Once.Memory.HeapAddress using (HeapLocation; _≟HL_)
+open import Once.Memory.HeapAddress using (HeapLocation; _≟HL_; sucHL; offsetHL)
 
 ------------------------------------------------------------------------
 -- D175: THE `!!` HATCH IS GONE.
@@ -86,8 +86,8 @@ private
 -- Note: These bring TraceSlotReadsBelow, exec-abstract, etc. into scope
 -- with implicit {FS} parameter
 module Ops {FS : FrameSemantics} where
-  open MemOps {FS} public
-  open AbstractExec {FS} public
+  module MemOps′ = MemOps {FS}
+  module AbstractExec′ = AbstractExec {FS}
 
 ------------------------------------------------------------------------
 -- Level 1: Internal Helpers

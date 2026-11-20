@@ -19,9 +19,9 @@
 
 module Once.Adequacy.OptimizedModule where
 
-open import Data.Bool using (Bool; false; true)
+open import Data.Bool using (false; true)
 open import Data.List using (List; []; _∷_)
-open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Maybe using (just; nothing)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.String using (String; _==_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; cong; subst)
@@ -30,7 +30,6 @@ open import Relation.Nullary using (Dec; yes; no)
 
 open import Once.IR using (IR; AllocMode)
 import Once.IR as IR
-open import Once.IRTy using (⌊_⌋)
 open import Once.Spec.Type using (Unit)
 import Once.Spec.Type as Type
 open import Once.Optimize using (optimize)
@@ -47,7 +46,6 @@ import Once.Spec.Context as Srf
 import Once.TypeCheck.Classify as Classify
 import Once.TypeCheck.Scope as Classify
 open import Once.TypeCheck.Classify using (TopCtx)
-open import Once.Spec.Surface.Syntax using (Expr)
 open import Once.Functor.Decide using (isConcrete?)
 open import Once.Type.Honest using (honest?)
 open import Once.Type.Instance using (rigidOf; kindsOf)

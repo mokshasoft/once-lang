@@ -17,25 +17,24 @@
 module Once.Format.Proof.Layout where
 
 open import Data.Bool using (Bool; true; false; if_then_else_)
-open import Data.Char using (Char)
 import Data.Char as Ch
-open import Data.List using (List; []; _∷_; _++_; reverse; concatMap)
+open import Data.List using (List; []; _∷_; _++_; reverse)
 open import Data.List.Properties using (++-assoc; ++-identityʳ)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 import Data.List.Relation.Unary.All.Properties as AllP
-open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Maybe using (just; nothing)
 open import Data.Nat using (ℕ; zero; suc; _+_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃-syntax)
-open import Data.String using (String; toList)
+open import Data.String using (toList)
 open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
-open import Relation.Nullary using (does; yes; no)
+open import Relation.Nullary using (does)
 
 open import Once.Spec.Surface.Lexing using (Token; TNewline; TEOF)
 open import Once.Format.Doc
 open import Once.Format.Spell using (spell)
 open import Once.Format.Proof.Lexing using (Printable; LineComment; lc; Valid; Adj; tok-tok; tok-sp; tok-nl; sp-tok;
-  sp-sp; sp-cm; sp-nl; nl-nl; nl-ind; ind-tok; ind-cm; cm-nl; Last; last-tok; last-sp; last-nl; last-ind; WS; ws-[];
+  sp-sp; sp-cm; nl-nl; nl-ind; ind-tok; ind-cm; cm-nl; Last; WS; ws-[];
   ws-1; ws-∷; nl?; run)
 
 ------------------------------------------------------------------------
@@ -141,7 +140,6 @@ record Mid (σ σ′ : St) (ts : List Token) : Set where
     adds   : tokens σ′ ≡ tokens σ ++ ts
 
 private
-  open Mid
 
   ++[] : ∀ {A : Set} (xs : List A) → xs ≡ xs ++ []
   ++[] xs = sym (++-identityʳ xs)

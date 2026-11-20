@@ -41,8 +41,7 @@ import Once.Spec.Surface.Syntax as Syn
 open import Once.Parser.Relation.Parsing using (ParsesText)
 open import Once.Module using (ModuleTyped; HasValidMain)
 open import Once.Denotation.Behavior     using (Source)
-open import Once.Parser.Relation.Resolution         using (ResolvesModule; rm)
-open Once.Denotation.Behavior.Source using (srcText; srcImports)
+open import Once.Parser.Relation.Resolution         using (ResolvesModule)
 
 ------------------------------------------------------------------------
 -- A typed program: a module that is DECLARATIVELY well-typed (`ModuleTyped`,

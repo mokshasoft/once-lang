@@ -16,8 +16,6 @@ module Once.Adequacy.MainIRForm where
 
 open import Once.TypeCheck.Scope using (PolyCtx)
 open import Once.TypeCheck.Classify using (TopCtx)
-import Once.Parser.Module as Module
-import Once.Parser.Module.Core as Core
 import Data.String as String
 open import Data.Bool using (false)
 open import Data.Sum using (inj₁; inj₂)
@@ -37,8 +35,8 @@ open import Once.Spec.Sub using (_<:_)
 open import Once.Type.SubDecide using (_<:?_)
 import Once.IR as IR
 
-open import Once.Spec.Grade using (mk-kind; Zero; One; Many; pure; eff)
-open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_)
+open import Once.Spec.Grade using (mk-kind; Many; eff)
+open import Once.Spec.Type using (Type; Unit; _⇒[_]_)
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
 open import Once.Spec.Surface.Syntax using (Expr)

@@ -50,7 +50,7 @@ data Arch
 
 -- | Opaque Module handle — a wrapped Agda `Module` AST. Haskell
 -- doesn't introspect the internals except through `moduleImports`.
-newtype Module = Module MSS.T_Module_110
+newtype Module = Module MSS.T_Module_64
 
 -- | Opaque resolved-module handle: the resolved module, and the signatures
 -- of the modules it imports (the Agda `Resolved`).

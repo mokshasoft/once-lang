@@ -15,11 +15,10 @@ open import Once.CCC.FrameSemantics using (FrameSemantics; fs-numerics; fs-ffi)
 
 module Once.Adequacy.ArchCorrectness.FlatCore.ArithOutput (FS : FrameSemantics) where
 
-open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Maybe.Properties using (just-injective)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
+open import Data.Maybe using (just)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; cong; subst)
 
-open import Once.Spec.Type using (Type; Int; Float; Base; ∅ₖ; b-var; b-Unit; b-Void; b-Int; b-Float; b-*; b-+)
+open import Once.Spec.Type using (Int; Float; Base; ∅ₖ; b-var; b-Unit; b-Void; b-Int; b-Float; b-*; b-+)
 open import Once.Type using (FitsInReg; fits-int; fits-float)
 open import Once.CCC.Machine.SMCore
 open AbstractExec {FS}

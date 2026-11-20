@@ -20,7 +20,6 @@
 --     (`SpecWitness`), at the type the Spec's principality rules out.
 ------------------------------------------------------------------------
 
-open import Data.Nat using (ℕ)
 open import Data.List using (List; []; _∷_)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.Product using (Σ-syntax; ∃-syntax; _×_; _,_)
@@ -48,12 +47,11 @@ module Once.Adequacy.SpecFront.Def
 open import Data.Fin using (Fin)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Product using (proj₁; proj₂)
-open import Relation.Nullary using (Dec; yes; no)
+open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≢_; refl; sym; trans; cong; subst)
 open import Data.List.Membership.DecPropositional Data.String._≟_ using (_∈?_)
 
 import Once.Spec.Grade as SG
-import Once.Spec.Sub as SS
 import Once.Spec.Context as SCx
 import Once.Spec.Core.Syntax as SC
 import Once.Spec.Surface.Typing as SUT
@@ -115,6 +113,7 @@ module _ {s} {S : SC.Defs s} {imps tele} (ss : SigSig sg) (is : ImpSig S imps) (
       in T , TV.Declared.member dc (h-word mem) refl , trans (sym r) (sym (⌜declS⌝ k h)) , (lk , h-word mem) , k , h
 
     module A = Annotate Σ S nm (OkOf P) (OkSOf P) κ ok-def ok-sig
+      using (A⇐; A⇒; ann⇐; ann⇒; a⇐; a⇒)
 
     fails-success : ∀ {e X Ψ eE dd f} {wt : TEˢ.checkSoundOf ctx e X (TE.success Ψ eE dd f)}
                   → Fails (proj₁ (TEˢ.checkElabV ctx e X)) → TEˢ.checkElabV ctx e X ≡ (TE.success Ψ eE dd f , wt) → ⊥

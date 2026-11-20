@@ -16,7 +16,7 @@ module Once.Denotation.RefMeanings (Σ : Signature) (σ : TySub 0 0) where
 open import Data.Maybe using (just)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.Spec.Type using (Type; KCtx)
-open import Once.Spec.Surface.Syntax using (PolyType)
+open import Once.Spec.Surface.Type using (PolyType)
 open import Once.Name using (showCanonical; WordName)
 open import Once.Type.Concrete using (IsConcrete)
 open import Once.Type.Instance using (KindedInstance)

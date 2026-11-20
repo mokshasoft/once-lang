@@ -25,11 +25,14 @@ open import Once.CCC.Target.RiscV64.Semantics
   using (State; mkstate; RegFile; Memory; readReg; writeMem; Word)
 open import Once.Target.RiscV64.PhysReg using (Reg; sp)
 open State
-open import Once.Arith.Backend.RiscV64.Preserve using (step-of; step-of-preserves)
+open import Once.Arith.Backend.RiscV64.Preserve using (module PreserveCore)
+open PreserveCore using (step-of; step-of-preserves)
 open Once.Arith.Backend.RiscV64.Preserve.AgreeCCC using (a-sp)
-open import Once.Arith.Backend.RiscV64.MemPreserve using (AgreeMemFrom; AgreeMemFrom-refl; writeMem-below-preserves)
+open import Once.Arith.Backend.RiscV64.MemPreserve using (module MemPreserveCore)
+open MemPreserveCore using (AgreeMemFrom; AgreeMemFrom-refl; writeMem-below-preserves)
 open import Once.Arith.Backend.RiscV64.StatePreserve
-  using (PreservesCCCState; mkPresState; preserves-state-refl; preserves-state-trans)
+  using (module StatePreserveCore)
+open StatePreserveCore using (PreservesCCCState; mkPresState; preserves-state-refl; preserves-state-trans)
 
 -- The block's per-instruction in-frame witness: a spill's slot fits the reserved
 -- frame `N`; other instructions carry no obligation.
@@ -72,7 +75,8 @@ module _ (val : XInstr → State → Reg → Word) (N : ℕ) where
   valid-inv : ∀ i s fr → frontier s ≡ fr → Valid s fr → InFrame N i → Valid (exec1 i s) fr
   valid-inv i s fr _ 0<fr _ = 0<fr
 
-  open import Once.Arith.Backend.ExecArithCore
+  import Once.Arith.Backend.ExecArithCore
+  module ExecArithCore = Once.Arith.Backend.ExecArithCore
     PreservesCCCState preserves-state-refl preserves-state-trans
     frontier Valid (InFrame N) exec1 exec1-preserves frontier-inv valid-inv
-    public renaming (exec-block to exec-arith-block; exec-block-preserves to exec-arith-block-preserves)
+    renaming (exec-block to exec-arith-block; exec-block-preserves to exec-arith-block-preserves)

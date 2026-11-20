@@ -45,18 +45,16 @@ open import Data.Nat using (ℕ; zero; suc; _+_; _*_; _∸_; _≤_; _<_; _⊓_; 
 open import Data.Bool using (Bool; true; false)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_; _++_)
-open import Once.IR.Semantics.Out using (Out; cut; stop; ended; end-of-left; _▹_; ▹-assoc; RanOutOf; ▹-ran)
+open import Once.IR.Semantics.Out using (Out; stop; ended; end-of-left; _▹_; RanOutOf; ▹-ran)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.CCC.FrameSemantics using (FrameSemantics; module FrameSemantics)
 open FrameSemantics using (frame-word)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles using (RegRoles)
-import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles as RR
 open import Once.SigOp.Info using (SigOpInfo; sigop-owner; Internal; External; internal-pure; module SigOpInfo)
 open SigOpInfo using (sem)
 open import Once.Target.Symbol using (once-symbol-path)
 open import Once.Target.SymbolFresh using (host-leave-symbol; host-exhausted-symbol)
 open import Once.Spec.Name using (CanonicalName)
-import Once.Adequacy.ArchCorrectness.FlatCore.HeadView as HV
 import Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface as EI
 
 
@@ -76,6 +74,10 @@ module Once.Adequacy.ArchCorrectness.FlatCore.EventDispatch
 
 open import Once.Adequacy.ArchCorrectness.FlatCore.EventEngine
   o FS slot-size word-eq Reg roles modulus E M T
+open CompiledCorrespondence using (CompiledCorr; BlockStep; store-guard; slot-heap-disj)
+open CompiledCorrespondence.BlockSteps using (bs-c-thunk; bs-c-ret; bs-call; bs-call-fn; bs-c-jmp; bs-c-branch-tag-zero; bs-c-branch-tag-nz; bs-out-nz; bs-load-indirect; bs-load-indirect-stack; bs-load-indirect-suc; bs-load-indirect-suc-stack; bs-load-from-slot; bs-restore-input; bs-worklist-pop; bs-store-indirect; bs-store-indirect-stack; bs-store-indirect-suc; bs-store-indirect-suc-stack; bs-load-at; bs-addr-at; bs-store-at; bs-mov-to-output; bs-mov-to-input; bs-store-at-slot; bs-worklist-push; bs-alloc-heap; bs-load-const; bs-load-const-float; bs-lea-slot; bs-load-code-addr; bs-save-closure-reg; bs-worklist-init; bs-worklist-check; bs-reclaim-to; bs-load-tag-lit; bs-c-label; bs-c-start)
+open CompiledCorrespondence.CompiledCorr using (dataCorr)
+open FlatComposition using (blk-len; blk-off; find-thunk-corr)
 open FlatInv using (inv-run; inv-ev; inv-env; inv-wf; inv-closure; inv-started; inv-left)
 open StuckSteps using (st-c-jmp; st-c-branch-tag-zero)
 open EI.Emitter   {FS} {Reg} E
@@ -118,11 +120,11 @@ open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong;
 -- …and the data correspondence itself, which `CompiledCorrespondence` keeps
 -- private (an instance re-opened publicly would clash with the `C` every arch
 -- already binds). Same application, hence the same types.
-open CFC using (HeapView; slots; haddr)
+open CFC using (HeapView; slots)
 -- plan 0.123 A.4 step 5: THE BUDGET the room checks re-arm, carried beside the
 -- correspondence; it is where every spending instruction's room comes from.
 open import Once.Adequacy.ArchCorrectness.FlatCore.Budget o FS slot-size word-eq Reg roles State rreg memory xhalted
-  using (Budget; fbase-shift; straight-frame; need-room; room-of; call-room-of; bg-view; bg-land; bg-plain; bg-str; bg-spent-str; bg-alloc; bg-start
+  using (Budget; fbase-shift; straight-frame; room-of; call-room-of; bg-view; bg-plain; bg-str; bg-spent-str; bg-alloc; bg-start
         ; bg-call; bg-room; bg-boundary; bg-label; bg-ret)
 
 ------------------------------------------------------------------------
@@ -139,7 +141,7 @@ open import Once.CCC.Machine.SMCore hiding (Instr)
 open AllocState using (saved-frames; current-frame; block-size; frame-slots; next-heap-ref)
 open LocState using (halted; heapMem; regs; stackMem)
 open import Once.CCC.Machine.Locations using (AtDynamic; ValueLocation; AtStack)
-open import Once.Memory.HeapAddress using (HeapLocation; offsetHL; module HeapRef; module HeapLocation)
+open import Once.Memory.HeapAddress using (HeapLocation; module HeapRef; module HeapLocation; sucHL; offsetHL)
 open HeapLocation using (heap-offset; heap-ref)
 open HeapRef using (ref-id)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
@@ -147,9 +149,10 @@ open FlatMachine {FS} using
   -- `find-label` is RENAMED: this module's own `find-label` parameter is the
   -- CONCRETE program's scan, and the flat machine's is the abstract one. Two
   -- different functions over two different types — see `bs-c-jmp`'s comment.
-  (fpc; falloc; floc; fclosure; fetch; flat-exec-instr; find-thunk; find-fn; enter-call; do-call-sv; do-call-code; do-call-at; fret
-  ; find-thunk-sound; find-entry-sound)
+  (fetch; flat-exec-instr; find-thunk; find-fn; enter-call; do-call-sv; do-call-code; do-call-at
+  ; find-thunk-sound; find-entry-sound; module FlatState)
   renaming (find-label to flat-find-label)
+open FlatState using (floc; fpc; fret; falloc; fclosure)
 open MemOps {FS} using (readLoc; writeLoc-halted)
 open import Once.CCC.Machine.FlatStoreWF FS using
   (FlatWF; flat-wf-step; cl-step; sv-below; module StoreWF)
@@ -159,7 +162,7 @@ open import Once.CCC.Machine.FlatStackPtr FS using
 open SPInv using (sp-heap; sp-stack)
 open import Once.CCC.Machine.FlatPtrBounds FS using (PtrB; PtrB?; module PBInv)
 open PBInv using (pb-heap; pb-stack)
-open import Once.CCC.Label using (thunk)
+open import Once.CCC.Label using (thunk; EntryId; LabelId; e-fn; e-thunk)
 open import Once.CCC.FrameSemantics using (module FrameSemantics)
 open FrameSemantics using (slot-addr; slot-addr-linear)
 open FrameSemantics FS using (Frame)
@@ -174,11 +177,10 @@ open FrameSemantics FS using (Frame)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunWF o FS slot-size word-eq
   hiding (slot-read-written; load-indirect-target-wf; load-indirect-suc-target-wf; heap-load-written; heap-load-suc-written; out-nz-output-word; store-nonptr-absurd; store-suc-nonptr-absurd; branch-tag-scrutinee-wf; store-indirect-inbounds; store-indirect-suc-inbounds; entry-empty; entry-link; entry-ret; ret-site-owes; ret-budget-matches; run-link-nothing; frame-op-absurd; slot-read-in-frame; run-stack-ptr; run-ptr-bounds; stack-ptr-current; stack-ptr-current-suc; emitted-call-fn-resolves; call-site-shape; step-ok; load-at-target-ptr; heap-load-at-written; store-at-target-ptr; store-at-in-block; store-at-inbounds; addr-at-target-ptr; addr-at-in-block; addr-at-inbounds)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunLow o FS slot-size word-eq
-  using (load-at-target-ptr; heap-load-at-written; store-at-target-ptr; store-at-in-block; store-at-inbounds; addr-at-target-ptr; addr-at-in-block; addr-at-inbounds; slot-read-written; load-indirect-target-wf; load-indirect-suc-target-wf; heap-load-written; heap-load-suc-written; out-nz-output-word; store-nonptr-absurd; store-suc-nonptr-absurd; branch-tag-scrutinee-wf; store-indirect-inbounds; store-indirect-suc-inbounds; entry-empty; entry-link; entry-ret; ret-site-owes; ret-budget-matches; run-link-nothing; frame-op-absurd; slot-read-in-frame; run-stack-ptr; run-ptr-bounds; stack-ptr-current; stack-ptr-current-suc; emitted-call-fn-resolves; call-site-shape; step-ok; start-behind; ret-saved; code-addr-has-body; low-step-image; low-step)
+  using (load-at-target-ptr; heap-load-at-written; store-at-target-ptr; store-at-in-block; store-at-inbounds; addr-at-target-ptr; addr-at-in-block; addr-at-inbounds; slot-read-written; load-indirect-target-wf; load-indirect-suc-target-wf; heap-load-written; heap-load-suc-written; out-nz-output-word; store-nonptr-absurd; store-suc-nonptr-absurd; branch-tag-scrutinee-wf; store-indirect-inbounds; store-indirect-suc-inbounds; entry-empty; entry-link; entry-ret; ret-site-owes; ret-budget-matches; run-link-nothing; frame-op-absurd; slot-read-in-frame; run-stack-ptr; run-ptr-bounds; stack-ptr-current; stack-ptr-current-suc; emitted-call-fn-resolves; call-site-shape; start-behind; ret-saved; code-addr-has-body; low-step-image; low-step)
   renaming (RunLow to RunAt)
-open SegWF using (seg-stack)
 open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
-open FlatEventTrace {FS} using (flat-events; flat-events-step; flat-events-fetch; event-of; flat-ctrls; flat-ctrls-step; flat-ctrls-fetch; ctrl-of; ctrl-≤1)
+open FlatEventTrace {FS} using (flat-events; flat-events-step; flat-events-fetch; event-of; flat-ctrls; flat-ctrls-step; flat-ctrls-fetch; ctrl-of)
 
 ------------------------------------------------------------------------
 -- NO UNSPILLED RETURN AT A CALL OR A RETURN (plan 0.65 G2, 2026-08-16).
@@ -324,7 +326,7 @@ module Dispatch (sup : Supply) where
                  ≡ RT.run-events ev env (LocState.ev-log (floc (flat-exec-instr i prog fs))) (proj₁ rec) (compile-trace prog) (proj₁ bs)
           pre-eq =
             trans (block-run-exec ev env (LocState.ev-log (floc fs)) c (proj₁ rec) (compile-trace prog) s
-                     (proj₁ (proj₂ bs)) (trans (CFC.halt-eq (dataCorr (proj₂ (proj₂ bs)))) hpost))
+                     (proj₁ (proj₂ bs)) (trans (CFC.FlatCorr.halt-eq (dataCorr (proj₂ (proj₂ bs)))) hpost))
                   (cong (λ lg → RT.run-events ev env lg (proj₁ rec) (compile-trace prog) (proj₁ bs)) (sym log≡))
           bound : flat-ctrls n prog (flat-exec-instr i prog fs) ≤ suc (proj₁ rec)
                 → ctrl-of i + flat-ctrls n prog (flat-exec-instr i prog fs) ≤ suc (c + proj₁ rec)
@@ -401,20 +403,20 @@ module Dispatch (sup : Supply) where
       pend = entry-ret prog fs m b (inv-run wf) ftq
       -- the site's room: the reservation stays above the heap frontier — the
       -- budget's, since the call that landed here spent for it (plan 0.123)
-      room : CFC.hfront hv + slots b ≤ rreg s sp-reg
+      room : CFC.HeapView.hfront hv + slots b ≤ rreg s sp-reg
       room = room-of bg (dataCorr cc) ftq refl
       fits : slots b ≤ rreg s sp-reg
-      fits = ≤-trans (m≤n+m (slots b) (CFC.hfront hv)) room
-      front-rsp : CFC.hfront hv ≤ rreg s sp-reg ∸ slots b
-      front-rsp = m+n≤o⇒m≤o∸n (CFC.hfront hv) room
+      fits = ≤-trans (m≤n+m (slots b) (CFC.HeapView.hfront hv)) room
+      front-rsp : CFC.HeapView.hfront hv ≤ rreg s sp-reg ∸ slots b
+      front-rsp = m+n≤o⇒m≤o∸n (CFC.HeapView.hfront hv) room
       lo' : ℕ
-      lo' = CFC.lo hv ⊓ (rreg s sp-reg ∸ slots b)
-      lo'≤lo : lo' ≤ CFC.lo hv
-      lo'≤lo = m⊓n≤m (CFC.lo hv) (rreg s sp-reg ∸ slots b)
+      lo' = CFC.HeapView.lo hv ⊓ (rreg s sp-reg ∸ slots b)
+      lo'≤lo : lo' ≤ CFC.HeapView.lo hv
+      lo'≤lo = m⊓n≤m (CFC.HeapView.lo hv) (rreg s sp-reg ∸ slots b)
       lo'≤rsp : lo' ≤ rreg s sp-reg ∸ slots b
-      lo'≤rsp = m⊓n≤n (CFC.lo hv) (rreg s sp-reg ∸ slots b)
-      front-lo' : CFC.hfront hv ≤ lo'
-      front-lo' = ⊓-glb (CFC.front-lo hv) front-rsp
+      lo'≤rsp = m⊓n≤n (CFC.HeapView.lo hv) (rreg s sp-reg ∸ slots b)
+      front-lo' : CFC.HeapView.hfront hv ≤ lo'
+      front-lo' = ⊓-glb (CFC.HeapView.front-lo hv) front-rsp
 
   -- THE RETURN — A THEOREM (D095). `block-step-c-ret` does the machine work
   -- (the `add` lands `%rsp` on the pending return's cell, the `ret` pops it and
@@ -495,7 +497,7 @@ module Dispatch (sup : Supply) where
       go (hl , ℓ , j , ceq , heq , fteq) =
         ccc-step-bs n IH ev env prog fs s instr-call-closure
           (bs-call bss prog fs s hl ℓ j cc h ftq ceq heq
-             (CFC.dom-written (dataCorr cc) (sucHL hl) heq)
+             (CFC.FlatCorr.dom-written (dataCorr cc) (sucHL hl) heq)
              fteq lo' lo'≤lo front-lo' lo'≤rsp fits
              (reg-range prog fs s sp-reg (inv-run wf) cc)
              (run-link-nothing prog fs (inv-run wf) ftq (λ _ ())
@@ -508,20 +510,20 @@ module Dispatch (sup : Supply) where
           wf ftq h refl tt tt hpost
         where
           -- the call's own slot, from the budget (plan 0.123 A.4 step 5)
-          room : CFC.hfront hv + slot-size ≤ rreg s sp-reg
+          room : CFC.HeapView.hfront hv + slot-size ≤ rreg s sp-reg
           room = call-room-of bg (dataCorr cc) ftq refl refl
           fits : slot-size ≤ rreg s sp-reg
-          fits = ≤-trans (m≤n+m slot-size (CFC.hfront hv)) room
-          front-rsp : CFC.hfront hv ≤ rreg s sp-reg ∸ slot-size
-          front-rsp = m+n≤o⇒m≤o∸n (CFC.hfront hv) room
+          fits = ≤-trans (m≤n+m slot-size (CFC.HeapView.hfront hv)) room
+          front-rsp : CFC.HeapView.hfront hv ≤ rreg s sp-reg ∸ slot-size
+          front-rsp = m+n≤o⇒m≤o∸n (CFC.HeapView.hfront hv) room
           lo' : ℕ
-          lo' = CFC.lo hv ⊓ (rreg s sp-reg ∸ slot-size)
-          lo'≤lo : lo' ≤ CFC.lo hv
-          lo'≤lo = m⊓n≤m (CFC.lo hv) (rreg s sp-reg ∸ slot-size)
+          lo' = CFC.HeapView.lo hv ⊓ (rreg s sp-reg ∸ slot-size)
+          lo'≤lo : lo' ≤ CFC.HeapView.lo hv
+          lo'≤lo = m⊓n≤m (CFC.HeapView.lo hv) (rreg s sp-reg ∸ slot-size)
           lo'≤rsp : lo' ≤ rreg s sp-reg ∸ slot-size
-          lo'≤rsp = m⊓n≤n (CFC.lo hv) (rreg s sp-reg ∸ slot-size)
-          front-lo' : CFC.hfront hv ≤ lo'
-          front-lo' = ⊓-glb (CFC.front-lo hv) front-rsp
+          lo'≤rsp = m⊓n≤n (CFC.HeapView.lo hv) (rreg s sp-reg ∸ slot-size)
+          front-lo' : CFC.HeapView.hfront hv ≤ lo'
+          front-lo' = ⊓-glb (CFC.HeapView.front-lo hv) front-rsp
           -- the site's shape says the call ENTERS (it does not halt), so the
           -- post-state's halt flag is the pre-state's
           step-eq : flat-exec-instr instr-call-closure prog fs
@@ -567,20 +569,20 @@ module Dispatch (sup : Supply) where
           wf ftq h refl tt tt hpost
         where
           -- the call's own slot, from the budget (plan 0.123 A.4 step 5)
-          room : CFC.hfront hv + slot-size ≤ rreg s sp-reg
+          room : CFC.HeapView.hfront hv + slot-size ≤ rreg s sp-reg
           room = call-room-of bg (dataCorr cc) ftq refl refl
           fits : slot-size ≤ rreg s sp-reg
-          fits = ≤-trans (m≤n+m slot-size (CFC.hfront hv)) room
-          front-rsp : CFC.hfront hv ≤ rreg s sp-reg ∸ slot-size
-          front-rsp = m+n≤o⇒m≤o∸n (CFC.hfront hv) room
+          fits = ≤-trans (m≤n+m slot-size (CFC.HeapView.hfront hv)) room
+          front-rsp : CFC.HeapView.hfront hv ≤ rreg s sp-reg ∸ slot-size
+          front-rsp = m+n≤o⇒m≤o∸n (CFC.HeapView.hfront hv) room
           lo' : ℕ
-          lo' = CFC.lo hv ⊓ (rreg s sp-reg ∸ slot-size)
-          lo'≤lo : lo' ≤ CFC.lo hv
-          lo'≤lo = m⊓n≤m (CFC.lo hv) (rreg s sp-reg ∸ slot-size)
+          lo' = CFC.HeapView.lo hv ⊓ (rreg s sp-reg ∸ slot-size)
+          lo'≤lo : lo' ≤ CFC.HeapView.lo hv
+          lo'≤lo = m⊓n≤m (CFC.HeapView.lo hv) (rreg s sp-reg ∸ slot-size)
           lo'≤rsp : lo' ≤ rreg s sp-reg ∸ slot-size
-          lo'≤rsp = m⊓n≤n (CFC.lo hv) (rreg s sp-reg ∸ slot-size)
-          front-lo' : CFC.hfront hv ≤ lo'
-          front-lo' = ⊓-glb (CFC.front-lo hv) front-rsp
+          lo'≤rsp = m⊓n≤n (CFC.HeapView.lo hv) (rreg s sp-reg ∸ slot-size)
+          front-lo' : CFC.HeapView.hfront hv ≤ lo'
+          front-lo' = ⊓-glb (CFC.HeapView.front-lo hv) front-rsp
           hpost : halted (floc (flat-exec-instr (instr-ctrl (c-call-fn f)) prog fs)) ≡ false
           hpost rewrite fe = h
 
@@ -692,7 +694,7 @@ module Dispatch (sup : Supply) where
       go-ptr : ∀ loc hl′ → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
              → readLoc (floc fs) loc ≡ just (SV-Ptr (AtDynamic hl′))
              → PtrB (block-size (falloc fs)) (SV-Ptr (AtDynamic hl′))
-             → memory s (rreg s in1-reg + 0) ≡ just (CFC.haddr hv hl′)
+             → memory s (rreg s in1-reg + 0) ≡ just (CFC.HeapView.haddr hv hl′)
              → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
                   (event-of (instr-ctrl (c-branch-tag-zero m)) fs
                     ▹ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) (ctrl-of (instr-ctrl (c-branch-tag-zero m)) + flat-ctrls n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) M)
@@ -701,8 +703,8 @@ module Dispatch (sup : Supply) where
           (bs-c-branch-tag-nz bss prog fs s m loc (proj₁ pz) cc h ftq i-eq (cong (FlatMachine.tag-test {FS}) r-eq)
              (trans rd (cong just (proj₂ pz))))
           (λ _ → bg-plain bg ftq refl refl pc′ (cong (FrameSemantics.frame-base FS) fb′)) wf ftq h refl tt tt hpost
-        where pz = pos-suc {CFC.haddr hv hl′}
-                     (CFC.dom-pos hv (CFC.dom-sized dc hl′ pb))
+        where pz = pos-suc {CFC.HeapView.haddr hv hl′}
+                     (CFC.HeapView.dom-pos hv (CFC.FlatCorr.dom-sized dc hl′ pb))
               hpost : halted (floc (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) ≡ false
               hpost rewrite i-eq | r-eq = h
               pc′ : fpc (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs) ≡ suc (fpc fs)
@@ -735,12 +737,12 @@ module Dispatch (sup : Supply) where
           (subst (PtrB? (block-size (falloc fs))) r-eq (pb-heap pbwf hl))
           (subst StackPtrOK? r-eq (sp-heap spwf hl)) rd-heap
         where
-          addr-val : rreg s in1-reg + 0 ≡ CFC.haddr hv hl
+          addr-val : rreg s in1-reg + 0 ≡ CFC.HeapView.haddr hv hl
           addr-val = trans (+-identityʳ (rreg s in1-reg))
-                           (trans (CFC.in1-eq dc) (cong (CFC.enc-sv hv) i-eq))
+                           (trans (CFC.FlatCorr.in1-eq dc) (cong (CFC.enc-sv hv) i-eq))
           rd-heap : memory s (rreg s in1-reg + 0) ≡ just (CFC.enc-sv hv v)
           rd-heap = trans (cong (memory s) addr-val)
-                          (CFC.heap-eq dc hl r-eq)
+                          (CFC.FlatCorr.heap-eq dc hl r-eq)
       -- STACK (the probe's route): the pointer denotes `slot-addr f k'`; the
       -- live-pair theorem pins it to the current frame's live window, where
       -- `sp-eq` + `stack-eq` relate exactly that cell.
@@ -755,11 +757,11 @@ module Dispatch (sup : Supply) where
           rdi-val : rreg s in1-reg + 0
                   ≡ rreg s sp-reg + k' * slot-size
           rdi-val = trans (+-identityʳ (rreg s in1-reg))
-                    (trans (CFC.in1-eq dc)
+                    (trans (CFC.FlatCorr.in1-eq dc)
                     (trans (cong (CFC.enc-sv hv) i-eq)
                     (trans (cong (λ fr → slot-addr FS fr k') (proj₁ spc))
                     (trans (slot-addr-linear FS (current-frame (falloc fs)) k')
-                           (cong₂ (λ b w' → b + k' * w') (sym (CFC.sp-eq dc)) word-eq)))))
+                           (cong₂ (λ b w' → b + k' * w') (sym (CFC.FlatCorr.sp-eq dc)) word-eq)))))
           rd-stack : memory s (rreg s in1-reg + 0) ≡ just (CFC.enc-sv hv v)
           rd-stack = trans (cong (memory s) rdi-val)
                            (CFC.stack-eq-cur dc k' (proj₂ spc) _ st-cf)
@@ -804,7 +806,7 @@ module Dispatch (sup : Supply) where
           go-mem hl i-eq ib (just w) h-eq =
             ccc-step-bs {hv} n IH ev env prog fs s load-indirect
               (bs-load-indirect bss prog fs s hl w cc h ftq i-eq
-                 (CFC.dom-written (dataCorr cc) hl h-eq) h-eq)
+                 (CFC.FlatCorr.dom-written (dataCorr cc) hl h-eq) h-eq)
               (λ _ → bg-str _ bg ftq refl refl) wf ftq h refl tt tt hpost
             where hpost : halted (floc (flat-exec-instr load-indirect prog fs)) ≡ false
                   hpost rewrite i-eq | h-eq = h
@@ -864,7 +866,7 @@ module Dispatch (sup : Supply) where
           go-mem hl i-eq ib (just w) h-eq =
             ccc-step-bs {hv} n IH ev env prog fs s load-indirect-suc
               (bs-load-indirect-suc bss prog fs s hl w cc h ftq i-eq
-                 (CFC.dom-written (dataCorr cc) (sucHL hl) h-eq) h-eq)
+                 (CFC.FlatCorr.dom-written (dataCorr cc) (sucHL hl) h-eq) h-eq)
               (λ _ → bg-str _ bg ftq refl refl) wf ftq h refl tt tt hpost
             where hpost : halted (floc (flat-exec-instr load-indirect-suc prog fs)) ≡ false
                   hpost rewrite i-eq | h-eq = h
@@ -987,7 +989,7 @@ module Dispatch (sup : Supply) where
           go-ptr (SV-Ptr (AtDynamic hl)) i-eq =
             ccc-step-bs {hv} n IH ev env prog fs s store-indirect
               (bs-store-indirect bss prog fs s hl cc h ftq i-eq
-                 (CFC.dom-sized (dataCorr cc) hl (store-indirect-inbounds prog fs hl (inv-run wf) ftq i-eq)) (store-guard fs hl))
+                 (CFC.FlatCorr.dom-sized (dataCorr cc) hl (store-indirect-inbounds prog fs hl (inv-run wf) ftq i-eq)) (store-guard fs hl))
               (λ _ → bg-str _ bg ftq refl refl) wf ftq h refl tt tt hpost
             where hpost : halted (floc (flat-exec-instr store-indirect prog fs)) ≡ false
                   hpost rewrite i-eq = trans (writeLoc-halted (floc fs) (AtDynamic hl) (readReg (regs (floc fs)) Output)) h
@@ -1023,7 +1025,7 @@ module Dispatch (sup : Supply) where
           go-ptr (SV-Ptr (AtDynamic hl)) i-eq =
             ccc-step-bs {hv} n IH ev env prog fs s store-indirect-suc
               (bs-store-indirect-suc bss prog fs s hl cc h ftq i-eq
-                 (CFC.dom-sized (dataCorr cc) (sucHL hl) (store-indirect-suc-inbounds prog fs hl (inv-run wf) ftq i-eq)) (store-guard fs (sucHL hl)))
+                 (CFC.FlatCorr.dom-sized (dataCorr cc) (sucHL hl) (store-indirect-suc-inbounds prog fs hl (inv-run wf) ftq i-eq)) (store-guard fs (sucHL hl)))
               (λ _ → bg-str _ bg ftq refl refl) wf ftq h refl tt tt hpost
             where hpost : halted (floc (flat-exec-instr store-indirect-suc prog fs)) ≡ false
                   hpost rewrite i-eq = trans (writeLoc-halted (floc fs) (AtDynamic (sucHL hl)) (readReg (regs (floc fs)) Output)) h
@@ -1063,7 +1065,7 @@ module Dispatch (sup : Supply) where
           go-mem hl i-eq (just w) h-eq =
             ccc-step-bs {hv} n IH ev env prog fs s (load-at k)
               (bs-load-at bss prog fs s k hl w cc h ftq i-eq
-                 (CFC.dom-written (dataCorr cc) (offsetHL hl k) h-eq) h-eq)
+                 (CFC.FlatCorr.dom-written (dataCorr cc) (offsetHL hl k) h-eq) h-eq)
               (λ _ → bg-str _ bg ftq refl refl) wf ftq h refl tt tt hpost
             where hpost : halted (floc (flat-exec-instr (load-at k) prog fs)) ≡ false
                   hpost rewrite i-eq | h-eq = h
@@ -1092,7 +1094,7 @@ module Dispatch (sup : Supply) where
           go-loc (AtDynamic hl) i-eq =
             ccc-step-bs {hv} n IH ev env prog fs s (addr-at k)
               (bs-addr-at bss prog fs s k hl cc h ftq i-eq
-                 (CFC.dom-sized (dataCorr cc) (offsetHL hl k) (addr-at-inbounds prog fs k hl (inv-run wf) h ftq i-eq))
+                 (CFC.FlatCorr.dom-sized (dataCorr cc) (offsetHL hl k) (addr-at-inbounds prog fs k hl (inv-run wf) h ftq i-eq))
                  ib (inv-run wf))
               (λ _ → bg-str _ bg ftq refl refl) wf ftq h refl tt tt hpost
             where ib = addr-at-in-block prog fs k hl (inv-run wf) h ftq i-eq
@@ -1117,7 +1119,7 @@ module Dispatch (sup : Supply) where
           go-loc (AtDynamic hl) i-eq =
             ccc-step-bs {hv} n IH ev env prog fs s (store-at k)
               (bs-store-at bss prog fs s k hl cc h ftq i-eq
-                 (CFC.dom-sized (dataCorr cc) (offsetHL hl k) (store-at-inbounds prog fs k hl (inv-run wf) h ftq i-eq))
+                 (CFC.FlatCorr.dom-sized (dataCorr cc) (offsetHL hl k) (store-at-inbounds prog fs k hl (inv-run wf) h ftq i-eq))
                  ib (store-guard fs (offsetHL hl k)))
               (λ _ → bg-str _ bg ftq refl refl) wf ftq h refl tt tt hpost
             where ib = store-at-in-block prog fs k hl (inv-run wf) h ftq i-eq
@@ -1210,7 +1212,7 @@ module Dispatch (sup : Supply) where
   leave-step zero    ev env prog fs s cc h ftq = 0 , inj₁ (refl , s≤s z≤n)
   leave-step (suc n) ev env prog fs s cc h ftq =
     1 , inj₁ (RT.run-events-leave ev env (LocState.ev-log (floc fs)) 0 (compile-trace prog) s
-          (sigop-call host-leave-symbol) (trans (CFC.halt-eq (dataCorr cc)) h)
+          (sigop-call host-leave-symbol) (trans (CFC.FlatCorr.halt-eq (dataCorr cc)) h)
           (leave-concrete-fetch prog fs s cc ftq) (sigop-matchCall host-leave-symbol)
     , s≤s z≤n)
 
@@ -1251,7 +1253,7 @@ module Dispatch (sup : Supply) where
             -- both machines have stopped; the flat one has not LEFT (`inv-left`),
             -- so both show `halted`.
             go-h true  eqh = 1 , inj₁ (trans (RT.run-events-halted ev env (LocState.ev-log (floc fs)) 0 (compile-trace prog) s
-                                          (trans (CFC.halt-eq (dataCorr cc)) eqh))
+                                          (trans (CFC.FlatCorr.halt-eq (dataCorr cc)) eqh))
                                        (cong (λ b → ended (end-of-left b)) (sym (inv-left wf)))
                            , z≤n)
             go-h false eqh = events-running n ev env prog fs s cc bg wf eqh
@@ -1429,7 +1431,7 @@ module Dispatch (sup : Supply) where
     → ev ≡ ev-arch → ArithTable prog env → RunAt prog fs
     → halted (floc fs) ≡ false
     → fetch prog (fpc fs) ≡ just (instr-ctrl (c-start b))
-    → CFC.hfront hv ≡ slot-size
+    → CFC.HeapView.hfront hv ≡ slot-size
     → fret fs ≡ []
     → LocState.left (floc fs) ≡ false
     → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
@@ -1442,20 +1444,20 @@ module Dispatch (sup : Supply) where
     where
       i = instr-ctrl (c-start b)
       -- `main`'s frame, from the budget the start's check armed
-      room : CFC.hfront hv + slots b ≤ rreg s sp-reg
+      room : CFC.HeapView.hfront hv + slots b ≤ rreg s sp-reg
       room = room-of bg (dataCorr cc) ftq refl
       fits : slots b ≤ rreg s sp-reg
-      fits = ≤-trans (m≤n+m (slots b) (CFC.hfront hv)) room
-      front-rsp : CFC.hfront hv ≤ rreg s sp-reg ∸ slots b
-      front-rsp = m+n≤o⇒m≤o∸n (CFC.hfront hv) room
+      fits = ≤-trans (m≤n+m (slots b) (CFC.HeapView.hfront hv)) room
+      front-rsp : CFC.HeapView.hfront hv ≤ rreg s sp-reg ∸ slots b
+      front-rsp = m+n≤o⇒m≤o∸n (CFC.HeapView.hfront hv) room
       lo' : ℕ
-      lo' = CFC.lo hv ⊓ (rreg s sp-reg ∸ slots b)
-      lo'≤lo : lo' ≤ CFC.lo hv
-      lo'≤lo = m⊓n≤m (CFC.lo hv) (rreg s sp-reg ∸ slots b)
+      lo' = CFC.HeapView.lo hv ⊓ (rreg s sp-reg ∸ slots b)
+      lo'≤lo : lo' ≤ CFC.HeapView.lo hv
+      lo'≤lo = m⊓n≤m (CFC.HeapView.lo hv) (rreg s sp-reg ∸ slots b)
       lo'≤rsp : lo' ≤ rreg s sp-reg ∸ slots b
-      lo'≤rsp = m⊓n≤n (CFC.lo hv) (rreg s sp-reg ∸ slots b)
-      front-lo' : CFC.hfront hv ≤ lo'
-      front-lo' = ⊓-glb (CFC.front-lo hv) front-rsp
+      lo'≤rsp = m⊓n≤n (CFC.HeapView.lo hv) (rreg s sp-reg ∸ slots b)
+      front-lo' : CFC.HeapView.hfront hv ≤ lo'
+      front-lo' = ⊓-glb (CFC.HeapView.front-lo hv) front-rsp
       bs = bs-c-start bss prog fs s b cc h ftq lo' lo'≤lo front-lo' lo'≤rsp fits
                       (reg-range prog fs s sp-reg run cc) h0 nf
       -- the post-start invariant, from the flat-machine theorems; the start
@@ -1479,7 +1481,7 @@ module Dispatch (sup : Supply) where
              ≡ RT.run-events ev env (LocState.ev-log (floc (flat-exec-instr i prog fs))) (proj₁ rec) (compile-trace prog) (proj₁ bs)
       pre-eq =
         block-run-exec ev env (LocState.ev-log (floc fs)) (blk-len i) (proj₁ rec) (compile-trace prog) s
-          (proj₁ (proj₂ bs)) (trans (CFC.halt-eq (dataCorr (proj₂ (proj₂ bs)))) h)
+          (proj₁ (proj₂ bs)) (trans (CFC.FlatCorr.halt-eq (dataCorr (proj₂ (proj₂ bs)))) h)
       step-eq : flat-events (suc N) prog fs ≡ flat-events N prog (flat-exec-instr i prog fs)
       step-eq rewrite h | ftq = refl
       step-ctrls : flat-ctrls (suc N) prog fs ≡ ctrl-of i + flat-ctrls N prog (flat-exec-instr i prog fs)
@@ -1501,7 +1503,7 @@ module Dispatch (sup : Supply) where
     → halted (floc fs) ≡ false
     → fetch prog (fpc fs) ≡ just (instr-room k)
     → fetch prog (suc (fpc fs)) ≡ just (instr-ctrl (c-start b))
-    → CFC.hfront hv ≡ slot-size
+    → CFC.HeapView.hfront hv ≡ slot-size
     → fret fs ≡ []
     → LocState.left (floc fs) ≡ false
     → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
@@ -1526,7 +1528,7 @@ module Dispatch (sup : Supply) where
       pre-eq : RT.run-events ev env (LocState.ev-log (floc fs)) (c + proj₁ rec) (compile-trace prog) s
              ≡ RT.run-events ev env (LocState.ev-log (floc fs₁)) (proj₁ rec) (compile-trace prog) s′
       pre-eq = block-run-exec ev env (LocState.ev-log (floc fs)) c (proj₁ rec) (compile-trace prog) s ex
-                 (trans (CFC.halt-eq (dataCorr cc′)) h)
+                 (trans (CFC.FlatCorr.halt-eq (dataCorr cc′)) h)
       ev-room : flat-events-fetch (just i) (suc N) prog fs ≡ flat-events (suc N) prog fs₁
       ev-room = refl
       ct-room : flat-ctrls-fetch (just i) (suc N) prog fs ≡ flat-ctrls (suc N) prog fs₁

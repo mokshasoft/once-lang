@@ -18,28 +18,29 @@
 
 module Once.Format.Proof.Canon where
 
-open import Data.Bool using (Bool; true; false; not; _∧_; _∨_; if_then_else_)
-open import Data.List using (List; []; _∷_; _++_; map)
+open import Data.Bool using (true; false; not; _∧_; _∨_; if_then_else_)
+open import Data.List using ([]; _∷_; _++_)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 import Data.List.Relation.Unary.All.Properties as AllP
-open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Maybe using (just; nothing)
 open import Data.Nat using (ℕ; zero; suc; _<ᵇ_; _≡ᵇ_; _∸_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
-open import Data.String using (String; toList)
-open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Data.String using (toList)
+open import Data.Sum using (inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 
-open import Once.Spec.Grade using (Quantity; Zero; One; Many; pureᶠ; actᶠ)
+open import Once.Spec.Grade using (Zero; One; Many; pureᶠ; actᶠ)
 import Once.Spec.Surface.Generators
 open import Once.Spec.Surface.Syntax
+open import Once.Spec.Surface.Type
 open import Once.Spec.Name using (canonical)
-open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; TNewline; TEOF)
+open import Once.Spec.Surface.Lexing using (TWord; TInt; TFloat)
 open import Once.Spec.Float.Value using (pos; neg)
 import Data.Integer as ℤ
 open import Once.Parser using (parseStrict)
 open import Once.Format using (formatSource; formatParsed)
 open import Once.Format.Doc using (Doc; empty; indent; render)
-open import Once.Format.Lex using (Item; tok; comment; cont; lexItems)
+open import Once.Format.Lex using (Item; tok; cont; lexItems)
 open import Once.Format.Print
 import Once.Format.Proof.Walk
 

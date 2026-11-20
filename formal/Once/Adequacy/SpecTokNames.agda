@@ -10,7 +10,7 @@
 
 module Once.Adequacy.SpecTokNames where
 
-open import Once.Spec.Surface.Lexing using (Token; TOp; TOpD)
+open import Once.Spec.Surface.Lexing using (TOp; TOpD)
 open import Once.Spec.Surface.Operator using (‹_›; o%; o+; o-; o*; o/; o<; o<=; o>; o>=; o==; o!=)
 
 pattern TPlus    = TOp ‹ o+ ›

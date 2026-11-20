@@ -14,24 +14,24 @@
 module Once.Float.EncodingLaws.Neg where
 
 open import Data.Nat as ℕ
-  using (ℕ; zero; suc; _+_; _*_; _∸_; _^_; _<_; _≤_; s≤s; z≤n; NonZero)
+  using (ℕ; zero; suc; _+_; _*_; _∸_; _^_; _<_; _≤_; NonZero)
 open import Data.Nat.Properties as ℕP
-  using (≤-trans; <-≤-trans; ≤-reflexive; m^n≢0; ^-distribˡ-+-*; +-comm; +-assoc; +-identityʳ;
-         ≤ᵇ⇒≤; ≤⇒≤ᵇ; <⇒≱; ≮⇒≥; m∸n+n≡m; +-monoˡ-<; m≤n+m; n≤1+n)
+  using (<-≤-trans; m^n≢0; ^-distribˡ-+-*; +-identityʳ;
+         ≤ᵇ⇒≤; ≤⇒≤ᵇ; +-monoˡ-<; m≤n+m)
 open import Data.Nat.DivMod
   using (_/_; _%_; m<n⇒m%n≡m; m<n⇒m/n≡0; [m+n]%n≡m%n; [m+kn]%n≡m%n; m≤n⇒[n∸m]%m≡n%m;
-         m≡m%n+[m/n]*n; m%n<n; m∣n⇒o%n%m≡o%m; m/n≡1+[m∸n]/n; n/n≡1)
+         m≡m%n+[m/n]*n; m%n<n; m∣n⇒o%n%m≡o%m; m/n≡1+[m∸n]/n)
 open import Data.Nat.Divisibility using (_∣_; divides)
-open import Data.Bool using (Bool; true; false; T)
+open import Data.Bool using (true; false; T)
 open import Data.Empty using (⊥-elim)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality
-  using (_≡_; refl; sym; trans; cong; cong₂; subst)
+  using (_≡_; refl; sym; trans; cong; subst)
 
 import Data.Integer as ℤ
 open import Once.Spec.Float.Dyadic using (FloatFormat; modPow; bias)
 open Once.Spec.Float.Dyadic.FloatFormat using (exp-bits; sig-bits)
-open import Once.Spec.Float.Value using (Sign; pos; neg; flip; FloatVal; fv-zero; fv-num; fv-inf; fv-nan; negV;
+open import Once.Spec.Float.Value using (pos; neg; flip; negV;
   canon; canonAt)
 open import Once.Spec.Float.Encoding using (signWeight; signOf; decodeMax; decodeAt; decode)
 open import Once.Float.Word using (fneg; fnegAt)

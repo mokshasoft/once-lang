@@ -13,39 +13,50 @@
 
 open import Once.Spec.Name using (CanonicalName)
 import Once.CCC.Machine.SMCore as SMCore
-import Once.CCC.FrameSemantics as FrameSemantics′
 
 import Data.List as DL
 open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.Simple (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.Integer using (ℤ)
+open import Data.List using (_∷_; []; length)
+open import Data.Maybe using (just)
+open import Data.Nat using (zero; suc; _+_)
+open import Data.Nat.Properties using (m≤m+n)
+open import Data.Product using (_,_; proj₁; proj₂)
+open import Data.Unit using (tt)
+open import Once.IR using (id; terminal; initial; fst; snd; out-μ; const)
+open import Once.Type using () renaming (fits-int to fits-intˢ; fits-float to fits-floatˢ)
+open import Relation.Binary.PropositionalEquality using (sym; refl; _≡_; trans; subst; cong)
 open import Once.CCC.Codegen.IRObsCorrect.Get o tbl using (module GetC)
 open import Once.CCC.Codegen.Size using (size)
 open import Once.CCC.Codegen.FlatLayout using (get)
 open import Once.CCC.Machine.SMCore using (load-at)
-open import Once.CCC.Machine.SMCore using (writeReg; Output; readReg; Input1; mov-to-output; SV-Ptr; writeReg-same; load-indirect; load-indirect-suc; sucLoc; instr-load-const; SV-Lit; module LocState)
+open import Once.CCC.Machine.SMCore using (writeReg; Output; readReg; Input1; mov-to-output; SV-Ptr; writeReg-same; instr-load-const; SV-Lit; module LocState)
 open LocState using (regs; halted)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic; ValueLocation)
 open import Once.Spec.Float.Decimal using (Decimal)
 open import Once.Float.Word using (round)
 open import Once.IRTy using (WellFormedFI; ⟦_⟧TI; μ-type; ⟦_,_⟧-baseI; wf-K; wf-Id; wf-Sum; wf-Prod;
-                             base-Int; base-Float; base-Unit; base-Void; base-Prod; base-Sum; Unit)
-open import Once.CCC.Machine.MuRep using (mu-rep; mu-box; Unboxed; box-fit; fit-not-unit)
+                             base-Int; base-Float; base-Unit; base-Void; base-Prod; base-Sum; FitsInRegI; fits-int; fits-float)
+open import Once.CCC.Machine.MuRep using (mu-rep; mu-box; Unboxed; box-fit)
 
-import Once.CCC.FrameSemantics
-import Once.CCC.Machine.SMPrimitives
-import Once.IRTy
-import Once.IR
-import Once.Semantics.Machine as EvV
-import Once.CCC.Machine.ReadTypedAdequate as RTA
-import Once.Denotation.DenotTrace as DT
-import Once.IR.Semantics.Trace as TM
 
 module Simp {FS : FrameSemantics} where
 
   open Core {FS}
+  open import Once.CCC.Machine.SMPrimitives using (nhw-instr-load-const)
+  open ClosureWellFormedBase′ using (eventsAt; ⟪_⟫_; prim-sv; Live; live→bf)
+  open ClosureWellFormedDef′ using (ValidAtWF; validityWF-mem-preserved; InputAt; ResultPlace; in-loc; at-loc; in-reg; at-reg; in-unit; unit-result; CellAt; module PairValidWF; decomposePairWF; μ-box-cell)
+  open FlatEventTrace′ using (event-of; flat-events; flat-events-[])
+  open FlatMachine′ using (flat-exec-instr; fetch)
+  open FlatMachine′.FlatState using (falloc; floc; fpc)
+  open FlatStepsAPI′ using (_∷_; [])
+  open FrontierInvariant′ using (BeforeFrontier)
+  open MemOps′ using (readLoc)
   open Mach {FS}
   open GetC {FS} using (module GetOut; get-run; setOut; out-mem; get-len; offset-zero; get-word; scalar-kind)
 

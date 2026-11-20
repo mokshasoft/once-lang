@@ -144,18 +144,18 @@ d_check_48 v0
   = coe
       d_accepted_44
       (coe
-         MAlonzo.Code.Once.Compile.d_compileResolvedModule_1056
+         MAlonzo.Code.Once.Compile.d_compileResolvedModule_1050
          (coe MAlonzo.Code.Once.IR.C_Heap_8)
          (coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8) (coe v0))
 -- Once.Inspect.showCompiledFun
 d_showCompiledFun_52 ::
-  MAlonzo.Code.Once.Compile.T_CompiledFun_538 ->
+  MAlonzo.Code.Once.Compile.T_CompiledFun_532 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
 d_showCompiledFun_52 v0
   = coe
       MAlonzo.Code.Data.String.Base.d__'43''43'__20
       (MAlonzo.Code.Once.Name.d_showCanonical_4
-         (coe MAlonzo.Code.Once.Compile.d_cfName_546 (coe v0)))
+         (coe MAlonzo.Code.Once.Compile.d_cfName_540 (coe v0)))
       (coe
          MAlonzo.Code.Data.String.Base.d__'43''43'__20
          (" : " :: Data.Text.Text)
@@ -163,7 +163,7 @@ d_showCompiledFun_52 v0
             MAlonzo.Code.Data.String.Base.d__'43''43'__20
             (MAlonzo.Code.Once.Type.d_showType_36
                (coe (0 :: Integer))
-               (coe MAlonzo.Code.Once.Compile.d_cfType_548 (coe v0)))
+               (coe MAlonzo.Code.Once.Compile.d_cfType_542 (coe v0)))
             (coe
                MAlonzo.Code.Data.String.Base.d__'43''43'__20
                ("\n  = " :: Data.Text.Text)
@@ -175,12 +175,12 @@ d_showCompiledFun_52 v0
                         (coe MAlonzo.Code.Once.Spec.Type.C_Unit_18))
                      (coe
                         MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_50 (coe (0 :: Integer))
-                        (coe MAlonzo.Code.Once.Compile.d_cfType_548 (coe v0)))
-                     (coe MAlonzo.Code.Once.Compile.d_cfIR_550 (coe v0)))
+                        (coe MAlonzo.Code.Once.Compile.d_cfType_542 (coe v0)))
+                     (coe MAlonzo.Code.Once.Compile.d_cfIR_544 (coe v0)))
                   ("\n" :: Data.Text.Text)))))
 -- Once.Inspect.showCompiledFuns
 d_showCompiledFuns_56 ::
-  [MAlonzo.Code.Once.Compile.T_CompiledFun_538] ->
+  [MAlonzo.Code.Once.Compile.T_CompiledFun_532] ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
 d_showCompiledFuns_56 v0
   = case coe v0 of
@@ -211,5 +211,5 @@ d_dumpIR_68 v0 v1
   = coe
       d_showCompiled_62
       (coe
-         MAlonzo.Code.Once.Compile.d_compileResolvedModule_1056
+         MAlonzo.Code.Once.Compile.d_compileResolvedModule_1050
          (coe MAlonzo.Code.Once.IR.C_Heap_8) (coe v0) (coe v1))

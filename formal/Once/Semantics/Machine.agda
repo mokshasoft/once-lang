@@ -30,10 +30,16 @@ open import Once.Spec.Word using (Carrier)
 --
 -- `Dyadic` keeps the role ℤ has for `Int`: the literal payload and the parked
 -- exact spec, living in the frontend — NOT what a `Float` expression means.
-open import Once.IR.Semantics.Value Carrier Carrier public
+import Once.IR.Semantics.Value
+module Value = Once.IR.Semantics.Value Carrier Carrier
+  using (coerce-base-to-full; coerce-full-to-base; coerce-μ-in; coerce-μ-out; coerce-ν-in
+        ; coerce-ν-out; eraseᵍ; sem-In; sem-Out; sem-ana; sem-cata; semAnaLayer; sfmapSemAna; ⟦_⟧
+        ; ⟦_⟧F; ⟦_⟧ᵍ)
 -- Plan 0.52 M2: the IR-object value domain `⟦_⟧ᴵ` (over ungraded `IRTy`) and
 -- its coherence `coh : ⟦ ⌊ T ⌋ ⟧ᴵ ≡ ⟦ T ⟧` with the surface domain above.
-open import Once.Semantics.ValueIR Carrier Carrier public
+import Once.Semantics.ValueIR
+module ValueIR = Once.Semantics.ValueIR Carrier Carrier
+  using (base-coh; coh; tF-coh)
 
 ------------------------------------------------------------------------
 -- The LITERAL PAYLOAD (plan 0.73, D113)

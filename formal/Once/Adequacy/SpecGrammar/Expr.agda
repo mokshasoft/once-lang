@@ -15,15 +15,13 @@
 
 module Once.Adequacy.SpecGrammar.Expr where
 
-open import Data.Char using (Char)
-open import Data.Empty using (⊥-elim)
 open import Data.List using (List; []; _∷_; map)
 open import Data.Product using (Σ-syntax; _×_; _,_)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
 open import Relation.Nullary using (¬_)
 
-open import Once.Spec.Surface.Syntax as O using (RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
+open import Once.Spec.Surface.Syntax as O using (RVar; RApp; RLam; RLet; RPair; RDestruct; RInt; RFloat; RAnnot; RBinOp; RNeg)
 open import Once.Surface.OpNames
 open import Once.Spec.Surface.Operator using (BinOp; dotted; ‹_›; o%; o+; o-; o*; o/; o<; o<=; o>; o>=; o==; o!=; comparison)
 open import Once.Spec.Surface.Lexing using (TOpD; Glyph; g+; g-; g*; g/; g%; g<; g>)
@@ -32,7 +30,7 @@ open import Data.Unit using (tt)
 import Data.Integer as ℤ
 open import Once.Spec.Surface.Syntax using (Expr)
 import Once.Spec.Surface.Syntax as S
-open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; TLParen; TRParen; TLBrace; TRBrace; TColon; TEquals; TArrow; TLambda; TComma; TSemicolon; TAt; TPipe; TDot; TAmpersand)
+open import Once.Spec.Surface.Lexing using (Token; TWord; TLParen; TRParen; TLBrace; TRBrace; TArrow; TSemicolon)
 open import Once.Adequacy.SpecTokNames
 open import Once.Spec.Surface.Grammar as G
   hiding (ParsesExpr; ParsesCompTail; ParsesCmp; ParsesAdd; ParsesAddTail; ParsesMul; ParsesMulTail; ParsesUnary;
@@ -42,7 +40,7 @@ open import Once.Parser.ExprRelation as E
   hiding (ParsesExpr; ParsesCompTail; ParsesCmp; ParsesAdd; ParsesAddTail; ParsesMul; ParsesMulTail; ParsesUnary;
           ParsesApp; ParsesAppTail; ParsesAtomExpr; ParsesLamParams; ParsesParenCont)
 open import Once.Adequacy.SpecLexing using (forget)
-open import Once.Adequacy.SpecGrammar.Tokens using (back; isLit; step; peel; peels; NonLits; []; _∷_; stepInt; stepFloat)
+open import Once.Adequacy.SpecGrammar.Tokens using (back; isLit; step; peel; peels; []; _∷_; stepInt; stepFloat)
 open import Data.Bool using (false)
 import Once.Parser.TypeRelation
 open import Once.Adequacy.SpecGrammar.ExprHeads

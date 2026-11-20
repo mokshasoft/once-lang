@@ -34,16 +34,12 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong
 open import Relation.Nullary using (Dec; yes; no)
 
 open import Once.Spec.Grade as Ty using (Zero; One; Many; mk-kind)
-open import Once.Spec.Type as Ty using (Type; _⇒[_]_; _*_; _+_; Unit)
+open import Once.Spec.Type as Ty using (_⇒[_]_; _*_; _+_; Unit)
 import Once.Type.Core as Ty
 import Once.Spec.Type as Ty
-open import Once.Type.Sub
 open import Once.Spec.Sub using (sub-+)
-open import Once.Spec.Sub using (_<:_; _<:ᶜ_; _⊔_≔_; sub-*; sub-+; subᶜ-*; subᶜ-+; sub-void; sub-var; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν; subᶜ-void; subᶜ-var; subᶜ-unit; subᶜ-int; subᶜ-float; subᶜ-arr; subᶜ-μ; subᶜ-ν)
-open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
-open import Once.Type.SubDecide
-open import Once.Laws.Sub
-open import Once.IR as IR using (IR; _∘_; ⟨_,_⟩; fst; snd; curry; apply; inl; inr)
+open import Once.Spec.Sub using (_<:_; sub-*; sub-void; sub-var; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν)
+open import Once.IR as IR using (IR; _∘_; ⟨_,_⟩; fst; snd; apply; inl; inr)
 open import Once.IRTy using (IRTy; ⌊_⌋)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; cohᴰ)
 open import Once.IR.Semantics.Iterative using (T∞; return∞; _>>=∞_; fmap∞)
@@ -56,7 +52,6 @@ open import Once.Adequacy.LiftFnReduce fmt ρ
   using (liftFn-id; liftFn-fst; liftFn-snd; liftFn-inl; liftFn-inr; liftFn-∘; liftFn-pair;
          liftFn-apply; liftFn-curry; liftFn-case-inj₁; liftFn-case-inj₂;
          liftFn-apply₀; liftFn-apply₁; liftFn-curry₀; liftFn-curry₁)
-open import Once.Postulates using (extensionality)
 
 ------------------------------------------------------------------------
 -- Small facts.

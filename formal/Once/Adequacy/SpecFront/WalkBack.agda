@@ -15,7 +15,6 @@
 -- (`Def.principal←`, reading a compiler check back the other way).
 ------------------------------------------------------------------------
 
-open import Data.Nat using (ℕ)
 open import Data.List using (List; []; _∷_)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.Product using (Σ-syntax; _×_; _,_)
@@ -24,7 +23,7 @@ open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Relation.Nullary using (¬_)
 open import Once.Name using (showCanonical; WordName)
-open import Once.Spec.Name using (CanonicalName; canonical)
+open import Once.Spec.Name using (canonical)
 open import Once.Spec.Signature using (Signature; _∶_; ⌜_⌝ᵈ)
 import Once.Spec.Type as LT
 import Once.Type.Concrete as LW
@@ -55,8 +54,8 @@ import Once.Spec.Grade as SG
 import Once.Spec.Context as SCx
 import Once.Spec.Sub as SS
 open import Once.Principal using (PrincipalAt)
-open import Once.Module using (Scope; scope; ctxOf; ctxOfAt)
-open import Once.Core.Translate Σ using (SigSig; ImpSig; TeleSig; viewOf)
+open import Once.Module using (scope; ctxOf; ctxOfAt)
+open import Once.Core.Translate Σ using (SigSig; ImpSig; TeleSig)
 import Once.Spec.Surface.Typing
 import Once.Spec.Core.Typing
 open import Once.Adequacy.SpecFront.Expr using (RX)
@@ -106,9 +105,13 @@ module Step {s} {S : SC.Defs s} {imps tele} (ss : SigSig sg) (is : ImpSig S imps
     module TR  = TyRen Σ S′ nm
     module TS  = TySubst Σ S′
     module DR⇒ = DefsRen Σ S′ S nm (ρ⇒ r)
+      using (chk; core; rn; syn)
     module DR⇐ = DefsRen Σ S S′ nm (ρ⇐ r)
+      using (chk; core)
     module SU₂ = Once.Spec.Surface.Typing Σ S nm
+      using (_⊢_⇐_↝_; ∅)
     module SC₂ = Once.Spec.Core.Typing Σ S
+      using (_⊩_⊢[_]_∷_!_)
 
   -- The body checks in the compiler, at its type, which is principal there.
   step : ∀ {a} (κ : ST.KCtx a) {T sc e e′ A′}
@@ -155,7 +158,9 @@ module Step {s} {S : SC.Defs s} {imps tele} (ss : SigSig sg) (is : ImpSig S imps
 
   private
     module SU′ = Once.Spec.Surface.Typing Σ S′ nm
+      using (_⊢_⇒_↝_; ∅)
     module SC′ = Once.Spec.Core.Typing Σ S′
+      using (_⊩_⊢[_]_∷_!_)
 
   -- A definition without a signature: its body synthesizes in the compiler,
   -- at a related type, which is principal there.
@@ -181,27 +186,24 @@ module Step {s} {S : SC.Defs s} {imps tele} (ss : SigSig sg) (is : ImpSig S imps
 open import Data.List.Relation.Unary.All using (All; _∷_)
 open import Data.Sum using (inj₂)
 open import Data.Bool using (false)
-open import Once.Module using (ModTele; []; ffi; mono; poly; addImp; addPoly)
+open import Once.Module using (ModTele; []; mono; poly)
 open import Once.Core.Translate Σ using (t-def; wkI; wkT; impDefs; monoSchema)
 open import Once.Adequacy.ModuleProgram Σ using (names-monoF; names-polyF; fresh-mono; fresh-poly; monoDef; polyDef)
 import Once.Adequacy.ModuleProgram Σ as MP
-open import Once.Type.Schema using (schemaOf)
 open import Once.Type.Instance using (kindsOf)
-import Once.Type.Instance
 import Once.Parser as Parser
 import Once.Compile as C
 import Once.TypeCheck.Elaborate as TE
 open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys)
 open import Once.Adequacy.SpecFront.SchemaRen using (ren-0)
-open import Once.Adequacy.SpecFront.WalkState Σ ps using (winv-mono; winv-poly; _∷ⁿ_)
+open import Once.Adequacy.SpecFront.WalkState Σ ps using (winv-mono; winv-poly)
 open import Once.Adequacy.SpecFront.Walk Σ ps sg h-sig h-own-sig h-psig h-word using (EntriesOK; eok-mono; eok-poly)
 open import Once.Adequacy.SpecFront.Align Σ using (Align; al-nil; al-skip; al-mono; al-nosig; al-poly)
 open import Once.Adequacy.SpecFront.WalkMain Σ using (MainsW; MainW; entry-concrete)
-open import Once.Spec.Core.Program Σ using (Entry; entry; EffUU)
+open import Once.Spec.Core.Program Σ using (Entry; entry)
 open import Once.Module using (MainsEffUU; MainIn)
 import Once.Spec.Sub as LS
 import Once.Spec.Grade as LG
-open import Once.Adequacy.SpecGrammar.Conv using (toPoly)
 open import Once.Functor.Decide using (isConcrete?-complete)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Unit using (tt)
@@ -221,6 +223,7 @@ private
   nothing≢just ()
 
   module TR0 = TyRen Σ SC.[] (λ ())
+    using (⟨⟩-id; ⟨⟩-pt)
 
   -- an entry's type, read by the compiler
   entry-eff : ∀ {ty sc ρ} → SchRen (monoSchema ty) sc ρ → Entry sc

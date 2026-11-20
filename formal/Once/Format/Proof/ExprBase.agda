@@ -12,34 +12,30 @@
 
 module Once.Format.Proof.ExprBase where
 
-open import Data.Bool using (Bool; true; false; T; _∧_; _∨_; if_then_else_)
-open import Data.Char using (Char)
+open import Data.Bool using (true; false; T; if_then_else_)
 import Data.Char as Ch
 import Data.Char.Properties as ChP
 open import Data.Empty using (⊥; ⊥-elim)
-open import Data.List using (List; []; _∷_; _++_)
+open import Data.List using (List; []; _∷_)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
-open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Nat using (ℕ)
+open import Data.Maybe using (just; nothing)
 import Data.Nat.Properties as ℕP
-open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃-syntax)
+open import Data.Product using (_×_; _,_; ∃-syntax)
 open import Data.String using (String; toList; _==_)
-import Data.String.Properties as StrP
-open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Data.Sum using (_⊎_)
 open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
 open import Relation.Nullary using (¬_; does; yes; no)
-open import Relation.Nullary.Decidable using (toWitness)
 
-open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; TLParen; TRParen; TComma; TColon; TSemicolon;
-  TRBrace; TDot; TAt; TNewline; isIdentStart; TLambda; TPipe; TAmpersand; TOp; TOpD; Glyph; g+; g-; g*; g/; g%; g<; g>)
+open import Once.Spec.Surface.Lexing using (Token; TWord; TRParen; TComma; TColon; TSemicolon;
+  TRBrace; TDot; TNewline; isIdentStart; TOpD; Glyph; g+; g-; g*; g/; g%; g<; g>)
 open import Once.Adequacy.SpecTokNames
-open import Once.Spec.Surface.Operator using (‹_›; Dottable; o+; o-; o*; o/; o<; o>; comparison; additive;
+open import Once.Spec.Surface.Operator using (‹_›; o+; o-; o*; o/; o<; o>; comparison; additive;
   multiplicative)
 open import Once.Spec.Surface.Syntax using (Expr; RVar; RQualified; RResolved; RGen; RApp; RLam; RLet; RPair; RDestruct;
   RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
-open import Once.Spec.Surface.Grammar using (Starts; starts; ArgStart; as-paren; as-lambda; as-int; as-float; as-word;
-  QualSuffix; qual-suffix; Reserved; r-in; r-of; r-let; r-destruct; r-Left; r-Right; OpToken; ot-plain; ot-dotted;
+open import Once.Spec.Surface.Grammar using (Starts; starts; ArgStart; as-word;
+  QualSuffix; Reserved; r-in; r-of; OpToken; ot-plain; ot-dotted;
   OpChar; oc-op; oc-dot;
   oc-pipe; oc-amp; oc-at)
 open import Once.Format.Print using (isCompose; headOf; opToken; dotToken; isOpChar; allOp; isOperator)

@@ -21,10 +21,18 @@
 open import Once.Spec.Name using (CanonicalName)
 
 import Data.List as DL
-open import Once.Denotation.Program using (IRFun; tableEnv)
+open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.CataBr.FoldLoop (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.List using (List; []; length; _∷_)
+open import Data.Maybe using (nothing; just)
+open import Data.Nat using (ℕ; suc)
+open import Data.Unit using (tt)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Once.IR using (IR; Cata)
+open import Relation.Binary.PropositionalEquality using (_≡_; subst; sym)
 open import Once.CCC.Machine.MuRep using (Unboxed)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Meaning using (module PO)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.FillOk using (module FillOk)
@@ -34,34 +42,30 @@ open import Once.CCC.Codegen.IRObsCorrect.CataBr.FoldText o tbl using (module Ca
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.FoldRound o tbl using (module CataFoldRoundC)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.FoldBind o tbl using (module CataFoldBindC)
 open import Once.CCC.Machine.SMCore
-  using (LocState; module LocState; AbstractTrace; AllocState; module AllocState; StoredValue)
+  using (AbstractTrace; StoredValue)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.Machine.Locations using (ValueLocation)
 open import Once.Memory.HeapAddress using (HeapLocation)
 open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; ⟦_⟧TI; ⌈_⌉F; μ-type)
 import Once.IRTy as IRTy′
 open import Once.IRTy.WF using (wf-⌈⌉)
-open import Once.Res using (Res; returns; stopped; is-stopped)
-open import Once.IR.Semantics.Iterative using (T∞; return∞; _>>=∞_)
-open import Once.Denotation.Approx using (Ap; done; cut; NotCut; budgetLeft; thenAp; run-approx-bind)
-open import Data.List.Properties using (++-identityʳ)
-import Once.IR.Semantics.Trace as TM
-open import Once.IR.Semantics.Event using (SigOpEvent)
+open import Once.IR.Semantics.Iterative using (T∞)
+open import Once.Denotation.Approx using (NotCut)
 open import Once.Spec.Word using (Carrier)
 open import Once.IR.Semantics.Value Carrier Carrier using (sem-Out; ⟦_⟧F)
-open import Data.Product using (Σ)
+open import Data.Product using (Σ; _,_; _×_)
 
 module CataFoldLoopC {FS : FrameSemantics} where
 
   open Core {FS}
-  open Mach {FS}
+  open CataNextSlot′ using (AllSlotStable)
+  open FlatMachine′ using (FlatState)
+  open FlatMachine′.FlatState using (flink)
+  open FlatStepsAPI′ using ([]; _∷_)
   open CataBrTextC {FS} using (module Text)
-  open CataFoldInvC {FS} using (module Inv; RoundRun; Same)
+  open CataFoldInvC {FS} using (module Inv; RoundRun)
   open CataFoldTextC {FS} using (module FoldAt)
   open CataFoldRoundC {FS} using (module Round)
   open CataFoldBindC {FS} using (bind-rr; pure-rr)
-  open LocState using (halted)
-  open AllocState using (next-slot)
 
   ------------------------------------------------------------------------
   -- THE FOLD LOOP.
@@ -86,6 +90,7 @@ module CataFoldLoopC {FS : FrameSemantics} where
     open Inv prog F E C n c bodyL X sn hc e env-sv
 
     module FO = FillOk (wf-⌈⌉ wf) alg₀
+      using (Ok; step-ok)
 
     runP : List ⟦ μ-type F ⟧ → List ⟦ C ⟧ → T∞ (List ⟦ C ⟧)
     runP = PO.runPO (wf-⌈⌉ wf) alg₀

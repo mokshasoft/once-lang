@@ -27,7 +27,7 @@ module Once.TypeCheck.Use (Σ : Signature) {s : ℕ} (S : Defs s) (nm : Fin s �
 
 open import Data.Bool using (true)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
-open import Once.Spec.Grade using (Quantity; One; Many)
+open import Once.Spec.Grade using (One; Many)
 open import Once.Spec.Context using (Usage; _∷_; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_; Ctx; _▸_; lookup)
 import Once.Spec.Context
 open import Once.Context using (_⊔ᵘ_)
@@ -41,11 +41,9 @@ open import Once.Spec.Grade using (Purity; pure)
 open import Once.Spec.Surface.Syntax using (Expr)
 open import Once.Spec.Core.Syntax using (Tm)
 open import Once.Spec.Type using (Type)
-open import Once.Spec.Signature using (⌜_⌝ᵈ)
-open import Once.Type.Core using (wk₀)
 open import Once.Type.Concrete using (IsConcrete)
 open import Once.Type.Honest using (HonestFFI)
-open import Once.Core.Decl using (declS; ⌜declS⌝)
+open import Once.Core.Decl using (declS)
 open import Once.Spec.Signature using (_∶_)
 open import Data.List.Membership.Propositional using (_∈_)
 

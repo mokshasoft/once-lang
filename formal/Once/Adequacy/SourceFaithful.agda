@@ -28,7 +28,7 @@
 ------------------------------------------------------------------------
 
 import Once.Spec.Context
-open import Once.Spec.Type using (Ty; Fun)
+open import Once.Spec.Type using (Ty)
 open import Once.Spec.Numerics using (TargetNum)
 
 -- Plan 0.73 (D113): this module's statements mention a denotation that is
@@ -38,18 +38,17 @@ open import Once.Denotation.DenotTrace using (CallEnv)
 open import Once.Denotation.EvalRel using (RelEnv)
 module Once.Adequacy.SourceFaithful (fmt : TargetNum) (ρ : CallEnv) (ρ-self : RelEnv fmt ρ ρ) where
 
-open import Once.Denotation.Sub using (⟦_⟧<:)
 open import Once.Adequacy.CoerceFaithful fmt ρ using (coerce-lift)
 
 open import Function using (id)
-open import Data.Unit using (⊤; tt)
+open import Data.Unit using (tt)
 open import Data.Fin using (Fin; zero; suc)
-open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_]′)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Empty using (⊥-elim)
-open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
+open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; cong-app; trans; sym; subst; subst-subst-sym)
 
-open import Once.Spec.Grade using (mk-kind; pure; eff; act; Quantity; Zero; One; Many; fin)
+open import Once.Spec.Grade using (mk-kind; pure; eff; act; Quantity; Zero; One; Many)
 open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_)
 open import Once.Spec.Type using () renaming (var to tvar)
 open import Once.Type.Core using (wk₀)
@@ -65,22 +64,21 @@ import Once.Spec.Context as SCx
 open import Once.Spec.Context using (_∷_; _⊑∷_; _▸_)
 open import Once.Surface.Syntax using (Expr)
 open import Once.Context using () renaming (_,_ to _,ᶜ_)
-import Once.Context as SrfS
 open import Once.Surface.Properties using (erase-arg-usage)
 open import Once.Surface.Elaborate using (elaborate; elaborateFull; projUsed; distribute; distribIR; compIR; copairIR; forkIR; curryIR; restrictEnv; bindEnv)
-open import Once.Denotation.Phase using (lookupᴰUsed; restrictᴰ; bindᴰ; bindᴰ0; env0)
+open import Once.Denotation.Phase using (lookupᴰUsed; restrictᴰ; bindᴰ; env0)
 open import Once.IR.Semantics.Trace using (ret)
-open import Once.IR.Semantics.Iterative using (T∞; return∞; _>>=∞_; fmap∞; bindBlock)
+open import Once.IR.Semantics.Iterative using (T∞; return∞; _>>=∞_; bindBlock)
 open T∞ using (force)
 open import Once.IR using (IR; _∘_; ⟨_,_⟩; apply; fst; snd; curry; SigOp; terminal; case; initial)
 open import Once.Arith.SigOp.Builders using (arrow-info; value-info; numInfo)
 open import Once.Spec.Theory using (unary; binary; compare) renaming (int to nint; float to nfloat)
 open import Once.Adequacy.CataErased fmt ρ using (liftFn-SigOp)
 open import Once.Adequacy.LiftFnReduce fmt ρ
-  using (liftFn-id; liftFn-fst; liftFn-snd; liftFn-inl; liftFn-inr; liftFn-∘; liftFn-pair; liftFn-terminal;
+  using (liftFn-fst; liftFn-snd; liftFn-inl; liftFn-inr; liftFn-∘; liftFn-pair; liftFn-terminal;
          liftFn-apply; liftFn-apply₁; liftFn-apply₀; liftFn-curry; liftFn-curry₁; liftFn-curry₀;
          liftFn-case-inj₁; liftFn-case-inj₂;
-         Now; now-bind; now-id; now-fst; now-snd; now-terminal; now-∘; force-∘; now-pair; force-apply; force-apply₁)
+         Now; now-bind; now-id; now-fst; now-snd; now-terminal; now-∘; force-∘; now-pair; force-apply)
 open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
 open SigOpInfo using (baseA; conB)
 open import Once.Denotation.DenotTrace using (evalᴰ; liftFn)
@@ -90,7 +88,6 @@ open import Once.Denotation.ValueRel using (RelD; base-eq; base-refl; RelS-fmap�
 open import Once.Denotation.EvalRel using (liftFn-rel; RelT′-refl)
 open import Once.Adequacy.EnvRel using (restrict-rel; lookup-rel; bind-rel)
 open import Once.IRTy using (IRTy; ⌊_⌋)
-import Once.IRTy as IRT
 import Once.Denotation.SourceDenote as SD
 import Once.IR as IR
 open import Once.IR.Ref using (refIR)

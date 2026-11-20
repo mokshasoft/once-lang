@@ -17,19 +17,18 @@
 
 module Once.Format.Proof.Items where
 
-open import Data.Bool using (Bool; true; false)
+open import Data.Bool using (true; false)
 open import Data.Char using (Char; isDigit)
 open import Data.Integer using (+_)
 open import Data.List using (List; []; _∷_; length; map)
-open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Nat using (ℕ; suc; _<_; s≤s)
+open import Data.Maybe using (just; nothing)
+open import Data.Nat using (_<_; s≤s)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; n<1+n; m≤n⇒m≤1+n; <⇒≤)
 open import Data.Product using (_,_; proj₁; proj₂)
 open import Data.String using (String; fromList)
 open import Induction.WellFounded using (Acc; acc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 
-import Once.Parser.Token as P
 open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; TString; TLParen; TRParen; TLBrace; TRBrace;
   TColon; TEquals; TArrow; TCaret1; TCaret0; TCaretW; TLambda; TComma; TSemicolon; TAt; TPipe; TDot; TAmpersand; TBang;
   TNewline; TEOF; TOp)
@@ -37,9 +36,10 @@ open import Once.Spec.Surface.Operator using (o%)
 open import Once.Adequacy.SpecTokNames
 open import Once.Parser.Lexer using (collectStringB; collectDigitsB; collectFracB; collectIdentB; skipLineB; skipBlockB;
   drop1; drop1-≤; nlIndent; isEqHead; isDotHead; isDashHead; dashClass; caretClass; d-comment; d-arrow; d-minus; c-1; c-0; c-w;
-  c-gen; headK; isIdentStart; digitsToNat; hkWS; hkNL; hkCaret; hkDash; hkLBrace; hkLt; hkGt; hkEq; hkBang; hkLParen;
+  c-gen; headK; digitsToNat; hkWS; hkNL; hkCaret; hkDash; hkLBrace; hkLt; hkGt; hkEq; hkBang; hkLParen;
   hkRParen; hkRBrace; hkColon; hkLambda; hkComma; hkSemi; hkAt; hkPipe; hkPlus; hkStar; hkSlash; hkPct; hkAmp; hkDot;
   hkStr; hkGen)
+open import Once.Name.Chars using (isIdentStart)
 open import Once.Format.Lex using (Item; tok; comment; cont; consumed; items-WF)
 open import Once.Adequacy.SpecLexing using (forget)
 

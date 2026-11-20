@@ -27,7 +27,7 @@ open import Data.Unit using (⊤; tt)
 open import Data.Product using (_×_; _,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 
-open import Once.Arith.Backend.XInstr.Syntax as XI using (XInstr; XScratch; mk-scratch)
+open import Once.Arith.Backend.XInstr.Syntax as XI using (XInstr; XScratch)
 open import Once.Arith.Backend.XInstr.CodeGen using (emit; emit-program)
 open import Once.Arith.Machine.AbsInstr using (AbstractInstr; spill)
 open import Once.Arith.Machine.Compile

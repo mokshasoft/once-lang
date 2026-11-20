@@ -21,13 +21,12 @@ module Once.Adequacy.SpecFront.End (Σ : Signature) (ps : List String) where
 open import Data.Nat using (ℕ; zero; suc)
 open import Data.Fin using (Fin; zero; suc)
 open import Data.List using ([]; _∷_)
-open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.Product using (Σ-syntax; _×_; _,_)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Bool using (true; false)
 open import Data.Empty using (⊥; ⊥-elim)
-open import Relation.Nullary using (¬_; Dec; yes; no)
+open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
 import Data.String
 
@@ -36,7 +35,6 @@ import Once.Spec.Core.Program Σ as SP
 import Once.Core.Telescope Σ as TL
 import Once.Parser as Parser
 open Parser.FunInfo using (funName; funType; funBody; funIsPrimitive)
-open Parser.PolyFunInfo using (pfunName; pfunType; pfunBody)
 open import Once.Spec.Name using (CanonicalName; canonical)
 open import Once.Module using (Scope; ModTele; []; ffi; mono; poly; MainIn; EffUU; ctxOf; addImp; MonoWit)
 open import Once.TypeCheck.Classify using (topCtx)
@@ -48,8 +46,6 @@ open import Once.Adequacy.ModuleProgram Σ using (Names; names-monoF; names-poly
 import Once.Adequacy.ModuleProgram Σ as MP
 open import Once.Spec.Sub using (_<:_)
 import Once.Type.SubDecide
-import Once.Core.Translate Σ as TR
-open import Once.Adequacy.SpecFront.WalkState Σ ps using (_∷ⁿ_)
 import Once.Adequacy.SpecFront.Polys
 
 -- The entries: definitions (no FFI declaration), polymorphic exactly when one of `ps`.

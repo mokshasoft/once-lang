@@ -13,7 +13,6 @@
 
 module Once.IR.Show where
 
-open import Data.Integer using (ℤ)
 import Data.Integer.Show as ℤS
 open import Data.Nat.Show using () renaming (show to showℕ)
 open import Data.String using (String; _++_)

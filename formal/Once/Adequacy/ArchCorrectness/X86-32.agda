@@ -51,28 +51,19 @@ module Once.Adequacy.ArchCorrectness.X86-32
   -- in range BY CONSTRUCTION; this is the frontend's range, not yet threaded.
   (x86-32-lit-fits : RB.LitFits o ι) where
 
-open import Data.Nat using (ℕ; _+_; z≤n; s≤s; suc)
+open import Data.Nat using (ℕ; _+_; z≤n; s≤s)
 open import Data.Unit using (tt)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.String using (String)
-open import Data.List using ([]; take; map)
+open import Data.List using ([])
 open import Once.Spec.Trace using (_⊑ᵗ⟨_⟩_)
-open import Once.Adequacy.MachineTrace using (listTr; module Machine)
+open import Once.Adequacy.MachineTrace using (module Machine)
 import Once.Target.Arch
 open import Once.Adequacy.BudgetApex (Once.Target.Arch.arch-numerics Once.Target.Arch.x86-32) using (budget-apex-⊑; BudgetFact⊑; budget-fact-of)
 open import Once.Denotation.Program using (runIR)
 open import Once.IR.Semantics.Trace using (pureHalf)
-import Once.IR.Semantics.Trace as LT
-open import Once.Denotation.Approx using (approx)
-open import Once.Denotation.TraceTr using (obsAp)
-open import Once.Adequacy.FuelTrace using (module Fuel)
-open import Data.Product using (Σ-syntax)
-open import Data.Nat using (suc; _≤_)
-open import Once.IR.Semantics.Event using (toEvent)
-open import Once.Denotation.TraceTr using (endOf)
-open import Data.Bool using (Bool; false)
-open import Data.Product using (proj₁; proj₂; _,_; _×_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst; subst₂)
+open import Data.Bool using (Bool)
+open import Data.Product using (proj₁; proj₂; _,_)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 open import Once.Memory.HeapAddress using (HeapLocation; sucHL; heap-loc; module HeapLocation)
 open HeapLocation using (heap-offset)
 open import Once.CCC.Machine.SMCore using (module AllocState)
@@ -84,12 +75,11 @@ open import Once.CCC.Target.X86-32.Syntax using (slot-size)
 open import Once.CCC.Target.X86-32.AbstractToX86-32 using (slot-to-disp)
 open import Data.Empty using (⊥)
 open import Data.Nat using (_*_)
-open import Data.Nat.Properties using (+-comm; ≤-refl; ≤-reflexive; ≤-trans; m≤m+n)
+open import Data.Nat.Properties using (+-comm; ≤-refl; ≤-reflexive; m≤m+n)
 open import Once.Adequacy.CPU.X86-32 using (call-at-x86-32; ev-x86-32; block-env; run-trace-x86-32)
 import Once.CCC.Target.X86-32.File as RF
 import Data.Maybe
 open import Data.Sum using (inj₂)
-open import Once.IR.Semantics.Event using (SigOpEvent)
 open import Once.Adequacy.EmitFile using (file-is-emit-at)
 open import Once.CCC.Codegen.ProgramImage using (program-image)
 -- `val-x86-32` lives with the arith simulation on this arch (x86-64 re-exports
@@ -101,18 +91,19 @@ import Once.CCC.Target.X86-32.Syntax as XS
 open import Once.CCC.Label using (LabelId; thunk)
 open import Once.IR using (IR)
 open import Once.IRTy using (Unit)  -- Plan 0.52 M2: IRTy Unit
-open import Once.Denotation.Behavior using (Behavior)
-open Once.Denotation.Behavior.Behavior using (at)
 open import Once.Adequacy.CPU using (arch-semantics)
 open import Once.Target.Arch using (x86-32)
 open import Once.Arith.Backend.CallAnswer using (answer-at)
 open import Once.Adequacy.SourceTrace using (⟦_⟧IRᵗ)
-open import Once.Compile using (moduleToIR; moduleTable; rewrite-program)
+open import Once.Compile.Emit using (rewrite-program)
+import Once.Compile.Emit as Emit
 import Once.IR as IR
 open import Once.Denotation.Program using (irProgram; LinkedProgram; IRProgram)
 open Once.Denotation.Program.IRProgram using (main; table)
 open import Once.Target.Arch using (arch-numerics)
-open import Once.CCC.Target.X86-32.Layout using (InStack; stack-addr)
+open import Once.CCC.Target.X86-32.Layout using (module Regions; module StackSlots)
+open StackSlots using (stack-addr)
+open Regions using (InStack)
 open import Once.CCC.Target.X86-32.FrameInstantiation using (X86-32Frame)
 open import Once.CCC.Target.X86-32.FrameInstantiation using () renaming (x86-32-frame-semantics to x86-32-frame-semantics-at)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
@@ -138,7 +129,7 @@ open import Once.Adequacy.RoomChecksEvents using (module RoomEvents)
 -- apex could not discharge `ir-size ir < program-bound` for an `ir` that does
 -- not exist yet (that was the false `entry-size`). The premise and the whole
 -- telescope are deleted; this `open` takes no bound.
-open IRObsCorrectFlatness {x86-32-frame-semantics} using (ir-obs-correct; MachineRefinesObsF; ValueRealized; eventsAt; resultAt; evalᴰ; floc)
+open IRObsCorrectFlatness {x86-32-frame-semantics} using (ir-obs-correct)
 
 -- The FlatFromObs bundle at the x86-32 params (concrete machine now VISIBLE).
 ------------------------------------------------------------------------
@@ -167,6 +158,7 @@ entry-frame-x86-32 : X86-32Frame
 entry-frame-x86-32 = stack-addr X.stack-top stack-top-in-stack , 0
 
 module FFOx = FFO o tbl x86-32 x86-32-frame-semantics refl entry-frame-x86-32 (arch-semantics x86-32)
+  using (entry-alloc; entry-s; flat-cut; flat-ends; flat-fuel; image; start-flat; start-sound)
 
 -- A THEOREM: the entry frame IS the loader's `%esp`
 -- (`entry-frame-x86-32 = stack-addr stack-top _ , 0`) and `frame-base` on x86-32 is
@@ -189,8 +181,6 @@ as32 = arch-semantics x86-32
 -- The apex node `conc-flat-sim-just` is DEFINED via `events-agree`; every gap it
 -- rests on is a NAMED obligation on THIS path (deleting it fails the typecheck).
 open FlatMachine {x86-32-frame-semantics} using (mkFlat)
-open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
-open FlatEventTrace {x86-32-frame-semantics} using (flat-events)
 
 -- THE MEMORY BOUND, now supplied HERE rather than postulated inside the
 -- correspondence (2026-08-05): a statement that a finite resource does not
@@ -198,9 +188,6 @@ open FlatEventTrace {x86-32-frame-semantics} using (flat-events)
 -- and moving it means the correspondence carries NO resource postulate at all.
 -- The unapplied imports let the statement be written before `ConcFlatSim` is
 -- instantiated (it is one of its arguments).
-import Once.Adequacy.ArchCorrectness.X86-32.FlatCorrespondence as FCx
-import Once.Adequacy.ArchCorrectness.X86-32.FlatSimulation as FSimx
-import Once.Adequacy.ArchCorrectness.X86-32.RunContext as RCx
 
 open import Once.Adequacy.ArchCorrectness.X86-32.ConcFlatSim o
   x86-32-frame-semantics refl refl
@@ -208,7 +195,14 @@ open import Once.Adequacy.ArchCorrectness.X86-32.ConcFlatSim o
   (RB.AddrNoWrap.ret-no-wrap x86-32-addr-no-wrap)
   (RB.LitFits.tag-fits x86-32-lit-fits) (RB.LitFits.lit-fits x86-32-lit-fits) (RB.float-fits o ι)
   (RB.LitFits.room-fits x86-32-lit-fits)
-  using (events-agree-start; events-agree-boot; AgreeAt; CompiledCorr; HeapView; EntryLike; reach-start; RunAt; mkRunAt)
+  using (module RunContext′; module FlatSimulation; module Dispatch′)
+open FlatSimulation.C using ()
+open FlatSimulation.C.FlatCorrespondence using (HeapView)
+open Dispatch′ using (events-agree-boot; AgreeAt)
+open FlatSimulation using ()
+open FlatSimulation.CompiledCorrespondence using (CompiledCorr)
+open RunContext′ using ()
+open RunContext′.RunContext using (EntryLike; mkRunAt; reach-start)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunLow o x86-32-frame-semantics slot-size refl using (RunLow; low-start)
 open import Once.CCC.Machine.FlatStoreWF x86-32-frame-semantics using (FlatWF; sv-below)
 open import Once.CCC.Machine.SMCore using (AbstractReg; AbstractTrace; Input1; Output; readReg; SV-Ptr; SV-Lit; module LocState)
@@ -371,8 +365,8 @@ entry-like B = refl , refl , refl , refl , refl
 conc-tr :
   ∀ (p : IRProgram) (ir : IR Unit Unit)
     (lk : LinkedProgram (sig ι) (irProgram tbl ir))
-  → room-checks (FFOx.image ir) ≡ C.image-of p
-  → Machine.trace (RTx.Run.δ val-x86-32 (answer-at (arch-numerics x86-32) ι call-at-x86-32) ev-x86-32 (block-env (C.blocks-x86-32 p))
+  → room-checks (FFOx.image ir) ≡ Emit.image-of p
+  → Machine.trace (RTx.Run.δ val-x86-32 (answer-at (arch-numerics x86-32) ι call-at-x86-32) ev-x86-32 (block-env (Emit.blocks-x86-32 p))
                      (compile-trace (room-checks (FFOx.image ir)))) ([] , X.initState)
     ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (arch-numerics x86-32) ι
 conc-tr p ir lk img =
@@ -380,7 +374,7 @@ conc-tr p ir lk img =
   where
     -- D377: the machine runs the image WITH its room checks (see the x86-64 apex)
     P′ = room-checks (FFOx.image ir)
-    δc = RTx.Run.δ val-x86-32 (answer-at (arch-numerics x86-32) ι call-at-x86-32) ev-x86-32 (block-env (C.blocks-x86-32 p)) (compile-trace P′)
+    δc = RTx.Run.δ val-x86-32 (answer-at (arch-numerics x86-32) ι call-at-x86-32) ev-x86-32 (block-env (Emit.blocks-x86-32 p)) (compile-trace P′)
     run₀ : RunLow P′ FFOx.start-flat
     run₀ = low-start (FFOx.image ir) FFOx.start-flat
              (mkRunAt tbl ir refl lk (reach-start FFOx.start-flat (entry-like 0) refl
@@ -388,15 +382,15 @@ conc-tr p ir lk img =
              refl
     fact : BudgetFact⊑ δc ([] , X.initState) ι (runIR (arch-numerics x86-32) (pureHalf ι) (irProgram tbl ir))
     fact k = budget-fact-of δc ([] , X.initState) ι (runIR (arch-numerics x86-32) (pureHalf ι) (irProgram tbl ir)) k (proj₁ agree) _ _ _
-               (RTx.Run.runN-events val-x86-32 (answer-at (arch-numerics x86-32) ι call-at-x86-32) ev-x86-32 (block-env (C.blocks-x86-32 p)) (compile-trace P′) (proj₁ agree) [] X.initState)
-               (cong (RTx.Run.outObs val-x86-32 (answer-at (arch-numerics x86-32) ι call-at-x86-32) ev-x86-32 (block-env (C.blocks-x86-32 p)) (compile-trace P′)) (FFOx.flat-ends ir-obs-correct ir lk k))
+               (RTx.Run.runN-events val-x86-32 (answer-at (arch-numerics x86-32) ι call-at-x86-32) ev-x86-32 (block-env (Emit.blocks-x86-32 p)) (compile-trace P′) (proj₁ agree) [] X.initState)
+               (cong (RTx.Run.outObs val-x86-32 (answer-at (arch-numerics x86-32) ι call-at-x86-32) ev-x86-32 (block-env (Emit.blocks-x86-32 p)) (compile-trace P′)) (FFOx.flat-ends ir-obs-correct ir lk k))
                (FFOx.flat-cut ir-obs-correct ir lk k)
                (proj₂ agree)
       where
         open RoomEvents {x86-32-frame-semantics} (FFOx.image ir) using (ev-boot)
         boot = ev-boot (FFOx.flat-fuel ir-obs-correct ir lk k) FFOx.start-flat 0 refl _ refl
         agree₀ = events-agree-boot (proj₁ boot)
-                   ev-x86-32 (block-env (C.blocks-x86-32 p))
+                   ev-x86-32 (block-env (Emit.blocks-x86-32 p))
                    P′ FFOx.start-flat X.initState (ir-stack-budget ir) _ (entry-corr P′)
                    (entry-wf 0) tt refl (p , img , refl) run₀
                    refl refl refl refl refl refl
@@ -419,7 +413,7 @@ file-tr-x86-32 :
   ∀ (doOpt : Bool) (m : P.Resolved) (F : RF.Image)
   → C.compileFileFromModule IR.Heap doOpt x86-32 m ≡ inj₂ F
   → ∀ (ir : IR Unit Unit) (mi : C.moduleToIR-aux (C.compileResolvedModule IR.Heap doOpt m) ≡ just ir)
-  → (oq : o ≡ C.entry-owner)
+  → (oq : o ≡ Emit.entry-owner)
   → (teq : tbl ≡ table (rewrite-program (irProgram (C.tableOfResult (C.compileResolvedModule IR.Heap doOpt m)) ir)))
   → (lk : LinkedProgram (sig ι) (irProgram tbl (main (rewrite-program (irProgram (C.tableOfResult (C.compileResolvedModule IR.Heap doOpt m)) ir)))))
   → run-trace-x86-32 ι F (X.initStateAt (Data.Maybe.fromMaybe 0 (RF.Image.entry F)))
@@ -428,17 +422,17 @@ file-tr-x86-32 doOpt m F eq ir mi oq teq lk =
   subst (λ G → run-trace-x86-32 ι G (X.initStateAt (Data.Maybe.fromMaybe 0 (RF.Image.entry G)))
                ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir′) ⟧IRᵗ (arch-numerics x86-32) ι)
         (sym (file-is-emit-at doOpt x86-32 m F ir eq mi))
-        (subst (λ cd → Machine.trace (RTx.Run.δ val-x86-32 (answer-at (arch-numerics x86-32) ι call-at-x86-32) ev-x86-32 (block-env (C.blocks-x86-32 p)) cd) ([] , X.initState)
+        (subst (λ cd → Machine.trace (RTx.Run.δ val-x86-32 (answer-at (arch-numerics x86-32) ι call-at-x86-32) ev-x86-32 (block-env (Emit.blocks-x86-32 p)) cd) ([] , X.initState)
                        ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir′) ⟧IRᵗ (arch-numerics x86-32) ι)
                (sym code-eq) (conc-tr p ir′ lk img))
   where
     p   = irProgram (C.tableOfResult (C.compileResolvedModule IR.Heap doOpt m)) ir
     ir′ = main (rewrite-program p)
-    img : room-checks (FFOx.image ir′) ≡ C.image-of p
+    img : room-checks (FFOx.image ir′) ≡ Emit.image-of p
     img = img-at o oq tbl teq
-      where img-at : ∀ o′ → o′ ≡ C.entry-owner → ∀ t → t ≡ table (rewrite-program p)
-                   → room-checks (program-image o′ (irProgram t ir′)) ≡ C.image-of p
-            img-at .C.entry-owner refl .(table (rewrite-program p)) refl = refl
-    code-eq : proj₂ (compile-trace-cnt C.entry-owner 0 (C.image-of p)) ≡ compile-trace (room-checks (FFOx.image ir′))
-    code-eq = trans (cong proj₂ (compile-trace-cnt-agrees C.entry-owner 0 (C.image-of p)))
+      where img-at : ∀ o′ → o′ ≡ Emit.entry-owner → ∀ t → t ≡ table (rewrite-program p)
+                   → room-checks (program-image o′ (irProgram t ir′)) ≡ Emit.image-of p
+            img-at .Emit.entry-owner refl .(table (rewrite-program p)) refl = refl
+    code-eq : proj₂ (compile-trace-cnt Emit.entry-owner 0 (Emit.image-of p)) ≡ compile-trace (room-checks (FFOx.image ir′))
+    code-eq = trans (cong proj₂ (compile-trace-cnt-agrees Emit.entry-owner 0 (Emit.image-of p)))
                     (cong compile-trace (sym img))

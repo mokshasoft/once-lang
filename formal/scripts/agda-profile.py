@@ -27,9 +27,11 @@ Usage (from the repo root or formal/):
   --work DIR     staging + results (default ~/.cache/once-profile/<ref-label>)
   --report       print the worst offenders from an existing results file
   --top N        how many to list (default 25)
+  --no-wait      check beside another agda process instead of waiting for it
+                 (the backstop: a check, not a measurement)
 
 Environment:
-  PROFILE_MEM_MAX  cgroup memory cap per module (default 5500M, as agda-safe.sh)
+  PROFILE_MEM_MAX  cgroup memory cap per module (default 3300M, as agda-safe.sh)
   PROFILE_SWAP_MAX cgroup swap cap (default 2G)
 
 Results: <work>/profile.tsv, one row per module, appended as it goes (follow it
@@ -168,13 +170,13 @@ def parse_stats(path):
 
 
 def run_one(froot, lib, m, logdir, rung):
-    mem = os.environ.get('PROFILE_MEM_MAX', '5500M')
+    mem = os.environ.get('PROFILE_MEM_MAX', '3300M')
     swap = os.environ.get('PROFILE_SWAP_MAX', '2G')
-    cap = int(mem[:-1]) * (1024 if mem[-1] in 'Gg' else 1) if mem[-1] in 'GgMm' else 5500
+    cap = int(mem[:-1]) * (1024 if mem[-1] in 'Gg' else 1) if mem[-1] in 'GgMm' else 3300
     stats = os.path.join(logdir, m + '.stats')
     timef = os.path.join(logdir, m + '.time')
     log = os.path.join(logdir, m + '.log')
-    rts = f'-M{cap - 700}m -s{stats}' + (' -c' if rung == 'c' else '')
+    rts = f'-M{cap - 600}m -s{stats}' + (' -c' if rung == 'c' else '')
     env = dict(os.environ, GHCRTS=rts)
     env.pop('AGDA_DIR', None)
     # The module itself is always checked from scratch: an interface left by a manual check in
@@ -240,7 +242,7 @@ def report(path, top):
 
 def main():
     args = sys.argv[1:]
-    ref, roots, work, rep, top = 'HEAD', [], None, False, 25
+    ref, roots, work, rep, top, wait = 'HEAD', [], None, False, 25, True
     i = 0
     while i < len(args):
         a = args[i]
@@ -249,6 +251,7 @@ def main():
         elif a == '--work': work = args[i + 1]; i += 2
         elif a == '--report': rep = True; i += 1
         elif a == '--top': top = int(args[i + 1]); i += 2
+        elif a == '--no-wait': wait = False; i += 1
         else: sys.exit(__doc__)
     label = re.sub(r'[^\w.-]', '_', ref)
     work = work or os.path.join(HOME, '.cache', 'once-profile', label)
@@ -300,7 +303,7 @@ def main():
             out.write('\t'.join(row.get(f, '') for f in FIELDS) + '\n'); out.flush()
             print(f'{tag} blocked {m} (by {by})', flush=True); continue
         waited = 0
-        while other_agda([]):
+        while wait and other_agda([]):
             if not waited: print(f'{tag} waiting: another agda is running', flush=True)
             time.sleep(30); waited += 30
         if waited: print(f'{tag} waited {waited}s', flush=True)

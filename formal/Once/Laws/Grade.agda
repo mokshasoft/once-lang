@@ -20,10 +20,9 @@
 module Once.Laws.Grade where
 
 import Algebra.Structures as Structures
-open import Data.Bool using (Bool; true; false)
+open import Data.Bool using (true)
 open import Data.Product using (_,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Relation.Binary.Definitions using (DecidableEquality)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; isEquivalence; cong₂)
 open import Relation.Binary.Structures using (IsDecTotalOrder)
 open import Relation.Nullary using (Dec; yes; no)

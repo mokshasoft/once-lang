@@ -23,6 +23,15 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.CataBr.Walk (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.Bool using (false)
+open import Data.List using ([]; _∷_; List)
+open import Data.Maybe using (just; nothing)
+open import Data.Nat using (ℕ; _+_; suc)
+open import Data.Nat.Properties using (≤-refl)
+open import Data.Product using (_,_; _×_; proj₁; proj₂)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; subst; _≢_; sym)
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module ResuspBaseC)
 open import Once.CCC.Codegen.IRObsCorrect.CataConst.Steps o tbl using (module CataStepsC)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Stack o tbl using (module CataStackC)
@@ -32,23 +41,28 @@ open import Once.IRTy using (IRTy)
 open import Once.CCC.Machine.SMCore
   using (LocState; module LocState; AbstractTrace; AbstractInstr; AllocState; module AllocState; StoredValue; readReg; Output)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
+open import Once.CCC.Machine.Locations using (AtStack)
 open import Once.CCC.Machine.FlatLog using (LogFree)
 open import Once.Memory.HeapAddress using (HeapLocation)
-open import Data.Product using (Σ)
 open import Once.CCC.Machine.FrameFree using (FrameFreeI)
-open import Once.CCC.Machine.SMPrimitives using (EffectPreservesNextHeapRef; instr-effect)
+open import Once.CCC.Machine.SMPrimitives using (EffectPreservesNextHeapRef; instr-effect; InstrNoHeapWrite; instr-writes-slot)
 
 module CataWalkC {FS : FrameSemantics} where
 
   open Core {FS}
-  open Mach {FS}
+  open ClosureWellFormedBase′ using (BlocksKept; InBlk)
+  open FlatEventTrace′ using (event-of)
+  open FlatMachine′ using (FlatState; flat-exec-instr; fetch)
+  open FlatMachine′.FlatState using (floc; falloc; fpc; fret; fclosure; flink)
+  open FlatStepsAPI′ using ([]; _∷_)
+  open MemOps′ using (readLoc)
+  open TracePrimitives′ using (InstrWF; exec-abstract-preserves-halted-WF)
   open ResuspBaseC {FS} using (St; SegA; Seg; SRun; s-at; s-nil; segA-∘; seg-rebase; segA-pc; Kp; sl-keep; live-from)
   open CataStepsC {FS} using (s-++; seg-q)
   open CataStackC {FS}
   open GetC {FS} using (GetOut; module GetOut; setOut; out-mem)
   open LocState using (regs; halted)
-  open AllocState using (next-slot; next-heap-ref; current-frame)
+  open AllocState using (current-frame)
 
   -- the slot reads a walk keeps, at the frame of its start
   SlotsKept : (ℕ → Set) → FlatState → FlatState → Set

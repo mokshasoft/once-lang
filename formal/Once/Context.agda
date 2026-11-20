@@ -21,11 +21,11 @@ module Once.Context where
 open import Data.Fin using (Fin)
 open import Data.Nat using (ℕ)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong₂)
-open import Once.Spec.Grade using (Quantity; Zero; One; Many; _+q_; _*q_; _≤q_; 0≤q; 1≤1; 1≤ω; ω≤ω)
+open import Once.Spec.Grade using (Quantity; Zero; One; Many; _+q_; _≤q_; 0≤q; 1≤1; 1≤ω; ω≤ω)
 open import Once.Type.Grade using (_⊔q_)
 open import Once.Spec.Type using (Ty; Unit; _*_)
 import Once.Spec.Context as S
-open S using (Ctx; ∅; _▸_; lookup; Usage; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_; _⊑ᵘ_; []; _∷_; _⊑∷_)
+open S using (Ctx; ∅; _▸_; lookup; Usage; singleUse; _+ᵘ_; _*ᵘ_; _⊑ᵘ_; []; _∷_; _⊑∷_)
 
 pattern _,_ Γ A = Γ ▸ A
 

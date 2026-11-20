@@ -62,9 +62,3 @@ module ReadLocEq {FS : FrameSemantics} where
   readLoc-stack-heap-eq s₁ s₂ (AtStack f k) seq heq = cong (λ m → m f k) seq
   readLoc-stack-heap-eq s₁ s₂ (AtDynamic hl) seq heq = cong (λ m → m hl) heq
 
--- plan 0.98: `ValidityDef` is DELETED. It held `ValidAt` and the pure `eval`
--- alias, and `eval` is REFUTED once `Halts : B ≡ Void` makes `⟦ Void ⟧ = ⊥`.
--- D214 had already measured it dead: re-exported by `IRObsCorrect/Prelude` and
--- instantiated by NOTHING ("dead by the consumers-not-importers test; separate
--- cleanup"). This is that cleanup — forced, not chosen. `ReadLocEq` above is the
--- part four modules actually took from it, already hoisted out by D214.

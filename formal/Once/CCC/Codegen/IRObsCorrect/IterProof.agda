@@ -19,21 +19,28 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.IterProof (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.Bool using (false)
+open import Data.List using (List; _∷_; [])
+open import Data.Nat using (ℕ; _≤_; suc; _+_)
+open import Data.Nat.Properties using (≤-trans; n≤1+n; ≤-refl)
+open import Data.Product using (_,_; proj₂; proj₁)
+open import Data.Unit using (tt)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Once.IR using (IR; Iter; AllocMode)
+open import Relation.Binary.PropositionalEquality using (_≡_; subst; sym; refl; trans; cong; cong₂)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Label using (ℓ)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.CCC.Machine.SMCore
-  using (instr-ctrl; c-label; AllocState; AbstractTrace; LocState; StoredValue; readReg; Input1; Output; SV-Ptr;
-         sv-as-loc; load-indirect; store-at-slot; module LocState; module AllocState)
-open AllocState using (next-slot; current-frame; saved-frames; next-heap-ref)
+  using (instr-ctrl; c-label; AllocState; AbstractTrace; LocState; StoredValue; readReg; Input1; Output; SV-Ptr; store-at-slot; module LocState; module AllocState)
+open AllocState using (next-slot; current-frame)
 open LocState using (halted; regs)
-open import Data.Product using (Σ)
 open import Once.IRTy using (IRTy)
 import Once.IRTy as IRT
 open import Once.Res using (is-stopped)
 open import Once.Denotation.Approx using (NotCut; budgetLeft)
 
-open import Once.CCC.Codegen.IRObsCorrect.IterShape o tbl
 open import Once.CCC.Codegen.IRObsCorrect.IterRun o tbl
 open import Once.CCC.Codegen.IRObsCorrect.IterInv o tbl
 open import Once.CCC.Codegen.IRObsCorrect.IterRounds o tbl
@@ -42,8 +49,16 @@ open import Once.CCC.Codegen.IRObsCorrect.Get o tbl using (module GetC)
 module IterProofC {FS : FrameSemantics} where
 
   open Core {FS}
+  open ClosureWellFormedBase′ using (Live; live→bf; runAt; ⟪_⟫_)
+  open ClosureWellFormedDef′ using (ValidAtWF; CellAt; module PairValidWF; decomposePairWF; in-loc; validityWF-mem-preserved; in-reg; in-unit)
+  open FlatEventTrace′ using (chain-events; chain-events-++; chain-left; chain-ctrls; ctrls-≤ʳ)
+  open CataNextSlot′ using (AllSlotStable)
+  open FlatMachine′ using (FlatState; flat-exec-instr)
+  open FlatMachine′.FlatState using (floc; falloc)
+  open FlatStepsAPI′ using (FlatSteps; FlatSteps-++; _∷_; [])
+  open FrontierInvariant′ using (BeforeFrontier)
+  open TracePrimitives′ using (exec-abstract-preserves-halted-WF)
   open Mach {FS}
-  open IterShapeC {FS}
   open IterRunC {FS}
   open IterInvC {FS}
   open IterRoundsC {FS}
@@ -63,7 +78,6 @@ module IterProofC {FS : FrameSemantics} where
     (k : ℕ)
     where
 
-    open IterShape body n l
     open IterRun body n l prog base span
     open Loop body n l base
 
@@ -155,6 +169,8 @@ module IterProofC {FS : FrameSemantics} where
     evs = cong proj₁ RES
 
     module R = RoundsRun rr
+      using (at-end; bf0; bk0; cont-alloc; events; frame; frames; live; log; mem0; no-link; no-ret
+            ; out-mode; place; progress; run; settle; steps; stops)
 
     witness : MachineRefinesObsF prog base n l (Iter body) (e , a₀) s alloc cl rs k
     witness = record

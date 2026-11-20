@@ -28,7 +28,18 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.Resusp.Id (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
-open import Once.CCC.Machine.SMCore using (ending)
+open Interface using (module Core)
+open import Data.Bool using (false)
+open import Data.Empty using (⊥)
+open import Data.List using (_∷_; [])
+open import Data.List.Relation.Unary.All.Properties using (++⁺)
+open import Data.Maybe using (just)
+open import Data.Product using (_,_; proj₁; proj₂)
+open import Data.Unit using (tt)
+open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
+open import Once.CCC.Machine.ValueRel using (valid-pair-wf)
+open import Once.IR using (IR; Heap; Ana)
+open import Relation.Binary.PropositionalEquality using (_≢_; cong; _≡_; refl; trans; sym; subst; cong₂)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.CCC.Machine.LocMatchesMode using (LocMatchesMode)
@@ -39,13 +50,13 @@ open import Once.CCC.Machine.SMCore
          readReg; writeReg; Output; Input1; SV-Ptr; SV-Code; StoredValue; sucLoc; offsetLoc; sv-as-loc;
          store-at-slot; load-from-slot; instr-alloc-heap; restore-input; store-at; mov-to-input; instr-load-code-addr)
 open LocState using (regs; halted)
-open AllocState using (current-frame; next-slot; next-heap-ref; saved-frames; block-size)
-open import Once.Memory.HeapAddress using (heap-loc; HeapLocation)
+open AllocState using (current-frame; next-heap-ref; block-size)
+open import Once.Memory.HeapAddress using (heap-loc)
 open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; ⟦_⟧TI; ν-type; wf-Id) renaming (_*_ to _*ᵀ_)
 import Once.IRTy as IRTy′
 import Once.Denotation.ValueDomain as ValueDomain
 open import Once.CCC.Codegen.Size using (size)
-open import Once.CCC.Codegen.FlatLayout using (put; put-All; get; get-one)
+open import Once.CCC.Codegen.FlatLayout using (put; put-All; get)
 open import Once.CCC.Codegen.StraightRun using (module StraightRunAPI)
 import Once.CCC.Machine.FlatPut as FlatPut
 import Once.CCC.Machine.FlatAlloc as FlatAlloc
@@ -53,25 +64,36 @@ import Once.CCC.Machine.SMPrimitives
 open import Once.CCC.Codegen.IRObsCorrect.Get o tbl using (module GetC)
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module ResuspBaseC)
 
-open import Data.Nat using (_⊔_; z≤n; s≤s)
-open import Data.Nat.Properties using (m≤n⊔m)
-open import Data.List.Relation.Unary.All using ([]; _∷_)
-open import Data.List.Properties using (++-identityʳ)
+open import Data.Nat using (_⊔_; z≤n; s≤s; ℕ; suc; _+_; _≤_; _<_)
+open import Data.Nat.Properties using (m≤n⊔m; <-irrefl; n<1+n; ≤-trans; n≤1+n; m≤m+n; <-≤-trans; ≤-reflexive; +-identityʳ; ≤-refl)
+open import Data.List.Relation.Unary.All using ([]; _∷_; All)
+open import Data.List.Properties using (++-identityʳ; length-++)
 open import Data.Nat.Solver using (module +-*-Solver)
 open +-*-Solver using (solve; _:+_; con; _:=_)
 
 module ResuspIdC {FS : FrameSemantics} where
 
   open Core {FS}
+  open ClosureWellFormedBase′ using (VTy; Live; BlocksKept; InBlk)
+  open ClosureWellFormedDef′ using (ValidAtWF; CellAt; validityWF-heap-transport; cellWF-heap-transport)
+  open FlatEventTrace′ using (event-of; chain-events; chain-left; chain-events-++)
+  open AbstractExec′ using (exec-abstract)
+  open FlatMachine′ using (FlatState; StraightStep; fetch; fetch-++-left)
+  open FlatMachine′.FlatState using (fpc; floc; falloc)
+  open FlatStepsAPI′ using (_∷_; []; FlatSteps; FlatSteps-++)
+  open FrontierInvariant′ using (BeforeFrontier; module BeforeFrontier)
+  open MemOps′ using (readLoc)
+  open ReadLocEq′ using (readLoc-stack-heap-eq)
   open Mach {FS}
   open MemOps {FS} using (writeLoc; writeLoc-preserves-other; writeLoc-read-same-stack; writeLoc-regs; writeLoc-halted)
   open AbstractExec {FS} using (exec-trace; exec-trace-cons; exec-load-from-slot-with-value; exec-restore-input-with-value)
   open Once.CCC.Machine.SMPrimitives.TraceComposition {FS} using (exec-trace-append)
   open Once.CCC.Machine.SMPrimitives.MemoryOps {FS} using (readLoc-writeLoc-same)
   open FlatEventTrace {FS} using (chain-events-subst)
-  open GetC {FS} using (GetOut; module GetOut; get-run; setOut; out-mem; offset-zero; get-len)
+  open GetC {FS} using (GetOut; module GetOut; get-run; setOut; offset-zero; get-len)
   open ResuspBaseC {FS}
   module SR = StraightRunAPI {FS}
+    using (At; after; straight-silent; straight-steps)
 
   private
     slot-of : ValueLocation FS → ℕ
@@ -192,6 +214,7 @@ module ResuspIdC {FS : FrameSemantics} where
              (FlatAlloc.alloc-bft {FS} N a) (FlatAlloc.alloc-bk {FS} N a) freshA (FlatAlloc.alloc-live {FS} N a)
              (≤-trans (m≤m+n (size E) (size A)) S≤N) (FlatAlloc.alloc-in {FS} N a) (src-tr (keep₃ {a}) srcE)
       module PE = PutOut PE
+        using (alloc-eq; cell-at; live; other)
       sE = proj₁ (exec-trace (put E (suc n) q 0) t₃ A₁)
 
       keepE : ∀ l → Live a l → readLoc sE l ≡ readLoc t₃ l
@@ -205,6 +228,7 @@ module ResuspIdC {FS : FrameSemantics} where
              freshB (FlatAlloc.alloc-live {FS} N a) S≤N (FlatAlloc.alloc-in {FS} N a)
              (src-tr (λ l lv → trans (keepE l (bftb l lv)) (keep₃ {b} l lv)) srcA)
       module PA = PutOut PA
+        using (alloc-eq; cell-at; live; other)
       sA = proj₁ (exec-trace (put A n q (size E)) sE A₁)
 
       ------------------------------------------------------------------

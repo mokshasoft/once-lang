@@ -12,9 +12,9 @@ module Once.Type.SubDecide where
 
 open import Relation.Nullary using (Dec; yes; no)
 open import Once.Spec.Sub using (sub-*; sub-+)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.Spec.Grade using (Purity; pure; act; eff; mk-kind; fin)
-open import Once.Spec.Type using (Ty; Fun; var; Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_)
+open import Once.Spec.Type using (Ty; Fun; var; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_)
 open import Once.Spec.Type using (μ; ν)
 open import Once.Spec.Sub using (_<:_; sub-void; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν)
 open import Once.Spec.Sub using (sub-var)

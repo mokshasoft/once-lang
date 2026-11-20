@@ -26,10 +26,10 @@ module Once.Adequacy.SpecFront.DefsRen
 
 open import Data.Fin using (zero; suc)
 open import Data.Nat using (suc)
-open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst; subst₂)
+open import Data.Product using (Σ-syntax; _×_; _,_; proj₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 
-open import Once.Spec.Grade using (Purity; mk-kind; Many; pure; act; eff; pureᶠ; actᶠ)
+open import Once.Spec.Grade using (mk-kind; Many; pure; act; eff; pureᶠ; actᶠ)
 open import Once.Spec.Type using (Ty; Fun; KCtx; TySub; Respects; _⟨_⟩; _⟨_⟩F; Occurs; OccursF; _⇒[_]_; var; _*_; _+_; μ; ν; K; _⊕_; _⊗_;
   o-var; o-*ˡ; o-*ʳ; o-+ˡ; o-+ʳ; o-⇒ˡ; o-⇒ʳ; o-μ; o-ν; o-K; o-⊕ˡ; o-⊕ʳ; o-⊗ˡ; o-⊗ʳ)
 open import Data.Nat using (s≤s; z≤n)
@@ -40,7 +40,6 @@ open import Once.Spec.Core.Syntax
 open import Once.Spec.Core.Derived
 open import Once.Adequacy.SpecFront.SchemaRen using (SchRen)
 import Once.Spec.Surface.Syntax
-import Relation.Nullary
 open Schema using (arity; kinds; type)
 import Once.Spec.Core.Typing Σ S₁ as C₁
 import Once.Spec.Core.Typing Σ S₂ as C₂

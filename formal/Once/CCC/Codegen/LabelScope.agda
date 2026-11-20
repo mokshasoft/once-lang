@@ -61,10 +61,9 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
 open SigOpInfo using (sem)
-open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (CmpAt; cmp-of)
 open import Once.CCC.Codegen.IRToTrace o using
-  (sigop-code; ir-to-trace'; ir-to-unit; ir-to-trace; ir-to-trace-lab; ir-next-label; CataStrategy; strat-const; strat-box; strat-branching; cata-strategy; cata-dispatch; lsize; push2; pop2; wrap-sum; visit-walk; rebuild-walk; cata-br-I₁; cata-br-I₂; cata-body; cata-call-setup; cata-call; cata-call-box; in-trace; with-copy; two-cell; out-trace; fsize; resuspend-layer; cata-call-from; inj-trace; env-entry; env-prologue)
+  (sigop-code; ir-to-trace'; ir-to-unit; ir-to-trace; ir-to-trace-lab; ir-next-label; CataStrategy; strat-const; strat-box; strat-branching; cata-strategy; cata-dispatch; lsize; push2; pop2; wrap-sum; visit-walk; rebuild-walk; cata-br-I₁; cata-br-I₂; cata-body; cata-call-setup; cata-call; in-trace; with-copy; two-cell; out-trace; fsize; resuspend-layer; cata-call-from; inj-trace; env-entry)
 open import Once.CCC.Codegen.FlatLayout
   using (Kind; word; flat; kind; put; put-k; get; get-k; fill; put-All; put-k-All; get-All; get-k-All; fill-All; lkind; lsz)
 open import Once.CCC.Codegen.Size using (size)

@@ -68,22 +68,22 @@ d_ParseAtomExprD_62 ::
 d_ParseAtomExprD_62 = erased
 -- Once.Parser.Expr.ParseAppTailD
 d_ParseAppTailD_70 ::
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] -> ()
 d_ParseAppTailD_70 = erased
 -- Once.Parser.Expr.ParseMulTailD
 d_ParseMulTailD_80 ::
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] -> ()
 d_ParseMulTailD_80 = erased
 -- Once.Parser.Expr.ParseAddTailD
 d_ParseAddTailD_90 ::
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] -> ()
 d_ParseAddTailD_90 = erased
 -- Once.Parser.Expr.ParseCompTailD
 d_ParseCompTailD_100 ::
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] -> ()
 d_ParseCompTailD_100 = erased
 -- Once.Parser.Expr.ParseLamParamsD
@@ -96,7 +96,7 @@ d_ParseLetD_118 = erased
 -- Once.Parser.Expr.ParseLetInD
 d_ParseLetInD_126 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] -> ()
 d_ParseLetInD_126 = erased
 -- Once.Parser.Expr.ParseDestructD
@@ -105,30 +105,30 @@ d_ParseDestructD_138 ::
 d_ParseDestructD_138 = erased
 -- Once.Parser.Expr.ParseDestructOfD
 d_ParseDestructOfD_146 ::
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] -> ()
 d_ParseDestructOfD_146 = erased
 -- Once.Parser.Expr.ParseDestructBranchesD
 d_ParseDestructBranchesD_156 ::
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] -> ()
 d_ParseDestructBranchesD_156 = erased
 -- Once.Parser.Expr.ParseRightBranchD
 d_ParseRightBranchD_166 ::
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] -> ()
 d_ParseRightBranchD_166 = erased
 -- Once.Parser.Expr.ParseParenContD
 d_ParseParenContD_180 ::
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] -> ()
 d_ParseParenContD_180 = erased
 -- Once.Parser.Expr.ParseParenTripleD
 d_ParseParenTripleD_190 ::
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 ->
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_8 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] -> ()
 d_ParseParenTripleD_190 = erased
 -- Once.Parser.Expr.ParseOpExprD
@@ -165,7 +165,7 @@ d_parseOpExprWF_214 v0 v1
                            (coe
                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                               (coe
-                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46
+                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10
                                  (coe
                                     MAlonzo.Code.Agda.Builtin.String.d_primStringFromList_14
                                     (coe MAlonzo.Code.Data.List.Base.du_reverse_444 v1)))
@@ -2115,7 +2115,7 @@ du_parseCompWF_634 v0
                                                                                                                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v29 v30
                                                                                                                                    -> let v31
                                                                                                                                             = coe
-                                                                                                                                                MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                                MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                                 (coe
                                                                                                                                                    MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                                    (coe
@@ -2247,7 +2247,7 @@ du_parseCompWF_634 v0
                                                                                                                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v29 v30
                                                                                                                                    -> let v31
                                                                                                                                             = coe
-                                                                                                                                                MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                                MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                                 (coe
                                                                                                                                                    MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                                    (coe
@@ -2379,7 +2379,7 @@ du_parseCompWF_634 v0
                                                                                                                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v29 v30
                                                                                                                                    -> let v31
                                                                                                                                             = coe
-                                                                                                                                                MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                                MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                                 (coe
                                                                                                                                                    MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                                    (coe
@@ -2511,7 +2511,7 @@ du_parseCompWF_634 v0
                                                                                                                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v29 v30
                                                                                                                                    -> let v31
                                                                                                                                             = coe
-                                                                                                                                                MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                                MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                                 (coe
                                                                                                                                                    MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                                    (coe
@@ -2643,7 +2643,7 @@ du_parseCompWF_634 v0
                                                                                                                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v29 v30
                                                                                                                                    -> let v31
                                                                                                                                             = coe
-                                                                                                                                                MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                                MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                                 (coe
                                                                                                                                                    MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                                    (coe
@@ -2775,7 +2775,7 @@ du_parseCompWF_634 v0
                                                                                                                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v29 v30
                                                                                                                                    -> let v31
                                                                                                                                             = coe
-                                                                                                                                                MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                                MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                                 (coe
                                                                                                                                                    MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                                    (coe
@@ -3147,7 +3147,7 @@ du_parseCompWF_634 v0
                                                                                                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v28 v29
                                                                                                                             -> let v30
                                                                                                                                      = coe
-                                                                                                                                         MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                         MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                          (coe
                                                                                                                                             MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                                             (coe
@@ -3279,7 +3279,7 @@ du_parseCompWF_634 v0
                                                                                                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v28 v29
                                                                                                                             -> let v30
                                                                                                                                      = coe
-                                                                                                                                         MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                         MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                          (coe
                                                                                                                                             MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                                             (coe
@@ -3411,7 +3411,7 @@ du_parseCompWF_634 v0
                                                                                                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v28 v29
                                                                                                                             -> let v30
                                                                                                                                      = coe
-                                                                                                                                         MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                         MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                          (coe
                                                                                                                                             MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                                             (coe
@@ -3543,7 +3543,7 @@ du_parseCompWF_634 v0
                                                                                                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v28 v29
                                                                                                                             -> let v30
                                                                                                                                      = coe
-                                                                                                                                         MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                         MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                          (coe
                                                                                                                                             MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                                             (coe
@@ -3675,7 +3675,7 @@ du_parseCompWF_634 v0
                                                                                                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v28 v29
                                                                                                                             -> let v30
                                                                                                                                      = coe
-                                                                                                                                         MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                         MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                          (coe
                                                                                                                                             MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                                             (coe
@@ -3807,7 +3807,7 @@ du_parseCompWF_634 v0
                                                                                                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v28 v29
                                                                                                                             -> let v30
                                                                                                                                      = coe
-                                                                                                                                         MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                         MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                          (coe
                                                                                                                                             MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                                             (coe
@@ -5325,7 +5325,7 @@ du_parseCompWF_634 v0
                                                                                                                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v28 v29
                                                                                                                                        -> let v30
                                                                                                                                                 = coe
-                                                                                                                                                    MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                                    MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                                     (coe
                                                                                                                                                        MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                                        (coe
@@ -5457,7 +5457,7 @@ du_parseCompWF_634 v0
                                                                                                                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v28 v29
                                                                                                                                        -> let v30
                                                                                                                                                 = coe
-                                                                                                                                                    MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                                    MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                                     (coe
                                                                                                                                                        MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                                        (coe
@@ -5589,7 +5589,7 @@ du_parseCompWF_634 v0
                                                                                                                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v28 v29
                                                                                                                                        -> let v30
                                                                                                                                                 = coe
-                                                                                                                                                    MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                                    MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                                     (coe
                                                                                                                                                        MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                                        (coe
@@ -5721,7 +5721,7 @@ du_parseCompWF_634 v0
                                                                                                                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v28 v29
                                                                                                                                        -> let v30
                                                                                                                                                 = coe
-                                                                                                                                                    MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                                    MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                                     (coe
                                                                                                                                                        MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                                        (coe
@@ -5853,7 +5853,7 @@ du_parseCompWF_634 v0
                                                                                                                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v28 v29
                                                                                                                                        -> let v30
                                                                                                                                                 = coe
-                                                                                                                                                    MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                                    MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                                     (coe
                                                                                                                                                        MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                                        (coe
@@ -5985,7 +5985,7 @@ du_parseCompWF_634 v0
                                                                                                                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v28 v29
                                                                                                                                        -> let v30
                                                                                                                                                 = coe
-                                                                                                                                                    MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                                    MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                                     (coe
                                                                                                                                                        MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                                        (coe
@@ -6357,7 +6357,7 @@ du_parseCompWF_634 v0
                                                                                                                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v27 v28
                                                                                                                                 -> let v29
                                                                                                                                          = coe
-                                                                                                                                             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                              (coe
                                                                                                                                                 MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                                                 (coe
@@ -6489,7 +6489,7 @@ du_parseCompWF_634 v0
                                                                                                                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v27 v28
                                                                                                                                 -> let v29
                                                                                                                                          = coe
-                                                                                                                                             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                              (coe
                                                                                                                                                 MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                                                 (coe
@@ -6621,7 +6621,7 @@ du_parseCompWF_634 v0
                                                                                                                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v27 v28
                                                                                                                                 -> let v29
                                                                                                                                          = coe
-                                                                                                                                             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                              (coe
                                                                                                                                                 MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                                                 (coe
@@ -6753,7 +6753,7 @@ du_parseCompWF_634 v0
                                                                                                                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v27 v28
                                                                                                                                 -> let v29
                                                                                                                                          = coe
-                                                                                                                                             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                              (coe
                                                                                                                                                 MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                                                 (coe
@@ -6885,7 +6885,7 @@ du_parseCompWF_634 v0
                                                                                                                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v27 v28
                                                                                                                                 -> let v29
                                                                                                                                          = coe
-                                                                                                                                             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                              (coe
                                                                                                                                                 MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                                                 (coe
@@ -7017,7 +7017,7 @@ du_parseCompWF_634 v0
                                                                                                                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v27 v28
                                                                                                                                 -> let v29
                                                                                                                                          = coe
-                                                                                                                                             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                              (coe
                                                                                                                                                 MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                                                 (coe
@@ -8609,7 +8609,7 @@ du_parseCompWF_634 v0
                                                                                                                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v28 v29
                                                                                                                                        -> let v30
                                                                                                                                                 = coe
-                                                                                                                                                    MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                                    MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                                     (coe
                                                                                                                                                        MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                                        (coe
@@ -8741,7 +8741,7 @@ du_parseCompWF_634 v0
                                                                                                                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v28 v29
                                                                                                                                        -> let v30
                                                                                                                                                 = coe
-                                                                                                                                                    MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                                    MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                                     (coe
                                                                                                                                                        MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                                        (coe
@@ -8873,7 +8873,7 @@ du_parseCompWF_634 v0
                                                                                                                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v28 v29
                                                                                                                                        -> let v30
                                                                                                                                                 = coe
-                                                                                                                                                    MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                                    MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                                     (coe
                                                                                                                                                        MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                                        (coe
@@ -9005,7 +9005,7 @@ du_parseCompWF_634 v0
                                                                                                                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v28 v29
                                                                                                                                        -> let v30
                                                                                                                                                 = coe
-                                                                                                                                                    MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                                    MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                                     (coe
                                                                                                                                                        MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                                        (coe
@@ -9137,7 +9137,7 @@ du_parseCompWF_634 v0
                                                                                                                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v28 v29
                                                                                                                                        -> let v30
                                                                                                                                                 = coe
-                                                                                                                                                    MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                                    MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                                     (coe
                                                                                                                                                        MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                                        (coe
@@ -9269,7 +9269,7 @@ du_parseCompWF_634 v0
                                                                                                                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v28 v29
                                                                                                                                        -> let v30
                                                                                                                                                 = coe
-                                                                                                                                                    MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                                    MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                                     (coe
                                                                                                                                                        MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                                        (coe
@@ -9641,7 +9641,7 @@ du_parseCompWF_634 v0
                                                                                                                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v27 v28
                                                                                                                                 -> let v29
                                                                                                                                          = coe
-                                                                                                                                             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                              (coe
                                                                                                                                                 MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                                                 (coe
@@ -9773,7 +9773,7 @@ du_parseCompWF_634 v0
                                                                                                                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v27 v28
                                                                                                                                 -> let v29
                                                                                                                                          = coe
-                                                                                                                                             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                              (coe
                                                                                                                                                 MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                                                 (coe
@@ -9905,7 +9905,7 @@ du_parseCompWF_634 v0
                                                                                                                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v27 v28
                                                                                                                                 -> let v29
                                                                                                                                          = coe
-                                                                                                                                             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                              (coe
                                                                                                                                                 MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                                                 (coe
@@ -10037,7 +10037,7 @@ du_parseCompWF_634 v0
                                                                                                                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v27 v28
                                                                                                                                 -> let v29
                                                                                                                                          = coe
-                                                                                                                                             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                              (coe
                                                                                                                                                 MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                                                 (coe
@@ -10169,7 +10169,7 @@ du_parseCompWF_634 v0
                                                                                                                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v27 v28
                                                                                                                                 -> let v29
                                                                                                                                          = coe
-                                                                                                                                             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                              (coe
                                                                                                                                                 MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                                                 (coe
@@ -10301,7 +10301,7 @@ du_parseCompWF_634 v0
                                                                                                                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v27 v28
                                                                                                                                 -> let v29
                                                                                                                                          = coe
-                                                                                                                                             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                              (coe
                                                                                                                                                 MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                                                 (coe
@@ -11819,7 +11819,7 @@ du_parseCompWF_634 v0
                                                                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v27 v28
                                                                                                                                            -> let v29
                                                                                                                                                     = coe
-                                                                                                                                                        MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                                        MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                                         (coe
                                                                                                                                                            MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                                            (coe
@@ -11951,7 +11951,7 @@ du_parseCompWF_634 v0
                                                                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v27 v28
                                                                                                                                            -> let v29
                                                                                                                                                     = coe
-                                                                                                                                                        MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                                        MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                                         (coe
                                                                                                                                                            MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                                            (coe
@@ -12083,7 +12083,7 @@ du_parseCompWF_634 v0
                                                                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v27 v28
                                                                                                                                            -> let v29
                                                                                                                                                     = coe
-                                                                                                                                                        MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                                        MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                                         (coe
                                                                                                                                                            MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                                            (coe
@@ -12215,7 +12215,7 @@ du_parseCompWF_634 v0
                                                                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v27 v28
                                                                                                                                            -> let v29
                                                                                                                                                     = coe
-                                                                                                                                                        MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                                        MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                                         (coe
                                                                                                                                                            MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                                            (coe
@@ -12347,7 +12347,7 @@ du_parseCompWF_634 v0
                                                                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v27 v28
                                                                                                                                            -> let v29
                                                                                                                                                     = coe
-                                                                                                                                                        MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                                        MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                                         (coe
                                                                                                                                                            MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                                            (coe
@@ -12479,7 +12479,7 @@ du_parseCompWF_634 v0
                                                                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v27 v28
                                                                                                                                            -> let v29
                                                                                                                                                     = coe
-                                                                                                                                                        MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                                        MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                                         (coe
                                                                                                                                                            MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                                            (coe
@@ -12851,7 +12851,7 @@ du_parseCompWF_634 v0
                                                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v26 v27
                                                                                                                                     -> let v28
                                                                                                                                              = coe
-                                                                                                                                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                                  (coe
                                                                                                                                                     MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                                                     (coe
@@ -12983,7 +12983,7 @@ du_parseCompWF_634 v0
                                                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v26 v27
                                                                                                                                     -> let v28
                                                                                                                                              = coe
-                                                                                                                                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                                  (coe
                                                                                                                                                     MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                                                     (coe
@@ -13115,7 +13115,7 @@ du_parseCompWF_634 v0
                                                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v26 v27
                                                                                                                                     -> let v28
                                                                                                                                              = coe
-                                                                                                                                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                                  (coe
                                                                                                                                                     MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                                                     (coe
@@ -13247,7 +13247,7 @@ du_parseCompWF_634 v0
                                                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v26 v27
                                                                                                                                     -> let v28
                                                                                                                                              = coe
-                                                                                                                                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                                  (coe
                                                                                                                                                     MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                                                     (coe
@@ -13379,7 +13379,7 @@ du_parseCompWF_634 v0
                                                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v26 v27
                                                                                                                                     -> let v28
                                                                                                                                              = coe
-                                                                                                                                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                                  (coe
                                                                                                                                                     MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                                                     (coe
@@ -13511,7 +13511,7 @@ du_parseCompWF_634 v0
                                                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v26 v27
                                                                                                                                     -> let v28
                                                                                                                                              = coe
-                                                                                                                                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                                  (coe
                                                                                                                                                     MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                                                     (coe
@@ -15058,7 +15058,7 @@ du_parseCompWF_634 v0
                                                                                                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v21 v22
                                                                                                                    -> let v23
                                                                                                                             = coe
-                                                                                                                                MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                 (coe
                                                                                                                                    MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                    (coe
@@ -15190,7 +15190,7 @@ du_parseCompWF_634 v0
                                                                                                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v21 v22
                                                                                                                    -> let v23
                                                                                                                             = coe
-                                                                                                                                MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                 (coe
                                                                                                                                    MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                    (coe
@@ -15322,7 +15322,7 @@ du_parseCompWF_634 v0
                                                                                                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v21 v22
                                                                                                                    -> let v23
                                                                                                                             = coe
-                                                                                                                                MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                 (coe
                                                                                                                                    MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                    (coe
@@ -15454,7 +15454,7 @@ du_parseCompWF_634 v0
                                                                                                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v21 v22
                                                                                                                    -> let v23
                                                                                                                             = coe
-                                                                                                                                MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                 (coe
                                                                                                                                    MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                    (coe
@@ -15586,7 +15586,7 @@ du_parseCompWF_634 v0
                                                                                                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v21 v22
                                                                                                                    -> let v23
                                                                                                                             = coe
-                                                                                                                                MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                 (coe
                                                                                                                                    MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                    (coe
@@ -15718,7 +15718,7 @@ du_parseCompWF_634 v0
                                                                                                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v21 v22
                                                                                                                    -> let v23
                                                                                                                             = coe
-                                                                                                                                MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                 (coe
                                                                                                                                    MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                    (coe
@@ -16089,7 +16089,7 @@ du_parseCompWF_634 v0
                                                                                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v20 v21
                                                                                                             -> let v22
                                                                                                                      = coe
-                                                                                                                         MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                         MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                          (coe
                                                                                                                             MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                             (coe
@@ -16221,7 +16221,7 @@ du_parseCompWF_634 v0
                                                                                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v20 v21
                                                                                                             -> let v22
                                                                                                                      = coe
-                                                                                                                         MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                         MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                          (coe
                                                                                                                             MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                             (coe
@@ -16353,7 +16353,7 @@ du_parseCompWF_634 v0
                                                                                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v20 v21
                                                                                                             -> let v22
                                                                                                                      = coe
-                                                                                                                         MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                         MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                          (coe
                                                                                                                             MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                             (coe
@@ -16485,7 +16485,7 @@ du_parseCompWF_634 v0
                                                                                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v20 v21
                                                                                                             -> let v22
                                                                                                                      = coe
-                                                                                                                         MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                         MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                          (coe
                                                                                                                             MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                             (coe
@@ -16617,7 +16617,7 @@ du_parseCompWF_634 v0
                                                                                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v20 v21
                                                                                                             -> let v22
                                                                                                                      = coe
-                                                                                                                         MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                         MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                          (coe
                                                                                                                             MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                             (coe
@@ -16749,7 +16749,7 @@ du_parseCompWF_634 v0
                                                                                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v20 v21
                                                                                                             -> let v22
                                                                                                                      = coe
-                                                                                                                         MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                         MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                          (coe
                                                                                                                             MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                             (coe
@@ -18258,7 +18258,7 @@ du_parseCompWF_634 v0
                                                                                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v22 v23
                                                                                                                -> let v24
                                                                                                                         = coe
-                                                                                                                            MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                            MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                             (coe
                                                                                                                                MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                (coe
@@ -18390,7 +18390,7 @@ du_parseCompWF_634 v0
                                                                                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v22 v23
                                                                                                                -> let v24
                                                                                                                         = coe
-                                                                                                                            MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                            MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                             (coe
                                                                                                                                MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                (coe
@@ -18522,7 +18522,7 @@ du_parseCompWF_634 v0
                                                                                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v22 v23
                                                                                                                -> let v24
                                                                                                                         = coe
-                                                                                                                            MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                            MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                             (coe
                                                                                                                                MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                (coe
@@ -18654,7 +18654,7 @@ du_parseCompWF_634 v0
                                                                                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v22 v23
                                                                                                                -> let v24
                                                                                                                         = coe
-                                                                                                                            MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                            MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                             (coe
                                                                                                                                MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                (coe
@@ -18786,7 +18786,7 @@ du_parseCompWF_634 v0
                                                                                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v22 v23
                                                                                                                -> let v24
                                                                                                                         = coe
-                                                                                                                            MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                            MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                             (coe
                                                                                                                                MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                (coe
@@ -18918,7 +18918,7 @@ du_parseCompWF_634 v0
                                                                                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v22 v23
                                                                                                                -> let v24
                                                                                                                         = coe
-                                                                                                                            MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                            MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                             (coe
                                                                                                                                MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                (coe
@@ -19289,7 +19289,7 @@ du_parseCompWF_634 v0
                                                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v21 v22
                                                                                                         -> let v23
                                                                                                                  = coe
-                                                                                                                     MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                     MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                      (coe
                                                                                                                         MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                         (coe
@@ -19421,7 +19421,7 @@ du_parseCompWF_634 v0
                                                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v21 v22
                                                                                                         -> let v23
                                                                                                                  = coe
-                                                                                                                     MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                     MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                      (coe
                                                                                                                         MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                         (coe
@@ -19553,7 +19553,7 @@ du_parseCompWF_634 v0
                                                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v21 v22
                                                                                                         -> let v23
                                                                                                                  = coe
-                                                                                                                     MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                     MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                      (coe
                                                                                                                         MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                         (coe
@@ -19685,7 +19685,7 @@ du_parseCompWF_634 v0
                                                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v21 v22
                                                                                                         -> let v23
                                                                                                                  = coe
-                                                                                                                     MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                     MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                      (coe
                                                                                                                         MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                         (coe
@@ -19817,7 +19817,7 @@ du_parseCompWF_634 v0
                                                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v21 v22
                                                                                                         -> let v23
                                                                                                                  = coe
-                                                                                                                     MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                     MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                      (coe
                                                                                                                         MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                         (coe
@@ -19949,7 +19949,7 @@ du_parseCompWF_634 v0
                                                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v21 v22
                                                                                                         -> let v23
                                                                                                                  = coe
-                                                                                                                     MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                     MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                      (coe
                                                                                                                         MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                         (coe
@@ -21428,7 +21428,7 @@ du_parseCompWF_634 v0
                                                                                                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v21 v22
                                                                                                                    -> let v23
                                                                                                                             = coe
-                                                                                                                                MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                 (coe
                                                                                                                                    MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                    (coe
@@ -21560,7 +21560,7 @@ du_parseCompWF_634 v0
                                                                                                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v21 v22
                                                                                                                    -> let v23
                                                                                                                             = coe
-                                                                                                                                MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                 (coe
                                                                                                                                    MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                    (coe
@@ -21692,7 +21692,7 @@ du_parseCompWF_634 v0
                                                                                                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v21 v22
                                                                                                                    -> let v23
                                                                                                                             = coe
-                                                                                                                                MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                 (coe
                                                                                                                                    MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                    (coe
@@ -21824,7 +21824,7 @@ du_parseCompWF_634 v0
                                                                                                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v21 v22
                                                                                                                    -> let v23
                                                                                                                             = coe
-                                                                                                                                MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                 (coe
                                                                                                                                    MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                    (coe
@@ -21956,7 +21956,7 @@ du_parseCompWF_634 v0
                                                                                                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v21 v22
                                                                                                                    -> let v23
                                                                                                                             = coe
-                                                                                                                                MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                 (coe
                                                                                                                                    MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                    (coe
@@ -22088,7 +22088,7 @@ du_parseCompWF_634 v0
                                                                                                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v21 v22
                                                                                                                    -> let v23
                                                                                                                             = coe
-                                                                                                                                MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                 (coe
                                                                                                                                    MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                    (coe
@@ -22459,7 +22459,7 @@ du_parseCompWF_634 v0
                                                                                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v20 v21
                                                                                                             -> let v22
                                                                                                                      = coe
-                                                                                                                         MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                         MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                          (coe
                                                                                                                             MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                             (coe
@@ -22591,7 +22591,7 @@ du_parseCompWF_634 v0
                                                                                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v20 v21
                                                                                                             -> let v22
                                                                                                                      = coe
-                                                                                                                         MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                         MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                          (coe
                                                                                                                             MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                             (coe
@@ -22723,7 +22723,7 @@ du_parseCompWF_634 v0
                                                                                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v20 v21
                                                                                                             -> let v22
                                                                                                                      = coe
-                                                                                                                         MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                         MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                          (coe
                                                                                                                             MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                             (coe
@@ -22855,7 +22855,7 @@ du_parseCompWF_634 v0
                                                                                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v20 v21
                                                                                                             -> let v22
                                                                                                                      = coe
-                                                                                                                         MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                         MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                          (coe
                                                                                                                             MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                             (coe
@@ -22987,7 +22987,7 @@ du_parseCompWF_634 v0
                                                                                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v20 v21
                                                                                                             -> let v22
                                                                                                                      = coe
-                                                                                                                         MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                         MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                          (coe
                                                                                                                             MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                             (coe
@@ -23119,7 +23119,7 @@ du_parseCompWF_634 v0
                                                                                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v20 v21
                                                                                                             -> let v22
                                                                                                                      = coe
-                                                                                                                         MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                         MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                          (coe
                                                                                                                             MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                             (coe
@@ -24445,7 +24445,7 @@ du_parseCompWF_634 v0
                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v15 v16
                                                                                            -> let v17
                                                                                                     = coe
-                                                                                                        MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                        MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                         (coe
                                                                                                            MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                            (coe
@@ -24572,7 +24572,7 @@ du_parseCompWF_634 v0
                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v15 v16
                                                                                            -> let v17
                                                                                                     = coe
-                                                                                                        MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                        MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                         (coe
                                                                                                            MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                            (coe
@@ -24699,7 +24699,7 @@ du_parseCompWF_634 v0
                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v15 v16
                                                                                            -> let v17
                                                                                                     = coe
-                                                                                                        MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                        MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                         (coe
                                                                                                            MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                            (coe
@@ -24826,7 +24826,7 @@ du_parseCompWF_634 v0
                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v15 v16
                                                                                            -> let v17
                                                                                                     = coe
-                                                                                                        MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                        MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                         (coe
                                                                                                            MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                            (coe
@@ -24953,7 +24953,7 @@ du_parseCompWF_634 v0
                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v15 v16
                                                                                            -> let v17
                                                                                                     = coe
-                                                                                                        MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                        MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                         (coe
                                                                                                            MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                            (coe
@@ -25080,7 +25080,7 @@ du_parseCompWF_634 v0
                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v15 v16
                                                                                            -> let v17
                                                                                                     = coe
-                                                                                                        MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                        MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                         (coe
                                                                                                            MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                            (coe
@@ -25410,7 +25410,7 @@ du_parseCompWF_634 v0
                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v14 v15
                                                                                     -> let v16
                                                                                              = coe
-                                                                                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                  (coe
                                                                                                     MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                     (coe
@@ -25535,7 +25535,7 @@ du_parseCompWF_634 v0
                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v14 v15
                                                                                     -> let v16
                                                                                              = coe
-                                                                                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                  (coe
                                                                                                     MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                     (coe
@@ -25660,7 +25660,7 @@ du_parseCompWF_634 v0
                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v14 v15
                                                                                     -> let v16
                                                                                              = coe
-                                                                                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                  (coe
                                                                                                     MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                     (coe
@@ -25785,7 +25785,7 @@ du_parseCompWF_634 v0
                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v14 v15
                                                                                     -> let v16
                                                                                              = coe
-                                                                                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                  (coe
                                                                                                     MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                     (coe
@@ -25910,7 +25910,7 @@ du_parseCompWF_634 v0
                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v14 v15
                                                                                     -> let v16
                                                                                              = coe
-                                                                                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                  (coe
                                                                                                     MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                     (coe
@@ -26035,7 +26035,7 @@ du_parseCompWF_634 v0
                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v14 v15
                                                                                     -> let v16
                                                                                              = coe
-                                                                                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                  (coe
                                                                                                     MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                     (coe
@@ -26819,7 +26819,7 @@ du_parseCmpWF_638 v0
                                                                                                                                         (coe
                                                                                                                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                            (coe
-                                                                                                                                              MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                              MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                               (coe
                                                                                                                                                  MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                                  (coe
@@ -26864,7 +26864,7 @@ du_parseCmpWF_638 v0
                                                                                                                                         (coe
                                                                                                                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                            (coe
-                                                                                                                                              MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                              MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                               (coe
                                                                                                                                                  MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                                  (coe
@@ -26909,7 +26909,7 @@ du_parseCmpWF_638 v0
                                                                                                                                         (coe
                                                                                                                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                            (coe
-                                                                                                                                              MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                              MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                               (coe
                                                                                                                                                  MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                                  (coe
@@ -26954,7 +26954,7 @@ du_parseCmpWF_638 v0
                                                                                                                                         (coe
                                                                                                                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                            (coe
-                                                                                                                                              MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                              MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                               (coe
                                                                                                                                                  MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                                  (coe
@@ -26999,7 +26999,7 @@ du_parseCmpWF_638 v0
                                                                                                                                         (coe
                                                                                                                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                            (coe
-                                                                                                                                              MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                              MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                               (coe
                                                                                                                                                  MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                                  (coe
@@ -27044,7 +27044,7 @@ du_parseCmpWF_638 v0
                                                                                                                                         (coe
                                                                                                                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                            (coe
-                                                                                                                                              MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                              MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                               (coe
                                                                                                                                                  MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                                  (coe
@@ -27174,7 +27174,7 @@ du_parseCmpWF_638 v0
                                                                                                                                  (coe
                                                                                                                                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                     (coe
-                                                                                                                                       MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                       MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                        (coe
                                                                                                                                           MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                                           (coe
@@ -27219,7 +27219,7 @@ du_parseCmpWF_638 v0
                                                                                                                                  (coe
                                                                                                                                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                     (coe
-                                                                                                                                       MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                       MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                        (coe
                                                                                                                                           MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                                           (coe
@@ -27264,7 +27264,7 @@ du_parseCmpWF_638 v0
                                                                                                                                  (coe
                                                                                                                                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                     (coe
-                                                                                                                                       MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                       MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                        (coe
                                                                                                                                           MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                                           (coe
@@ -27309,7 +27309,7 @@ du_parseCmpWF_638 v0
                                                                                                                                  (coe
                                                                                                                                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                     (coe
-                                                                                                                                       MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                       MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                        (coe
                                                                                                                                           MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                                           (coe
@@ -27354,7 +27354,7 @@ du_parseCmpWF_638 v0
                                                                                                                                  (coe
                                                                                                                                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                     (coe
-                                                                                                                                       MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                       MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                        (coe
                                                                                                                                           MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                                           (coe
@@ -27399,7 +27399,7 @@ du_parseCmpWF_638 v0
                                                                                                                                  (coe
                                                                                                                                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                     (coe
-                                                                                                                                       MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                       MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                        (coe
                                                                                                                                           MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                                           (coe
@@ -27931,7 +27931,7 @@ du_parseCmpWF_638 v0
                                                                                                                                             (coe
                                                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                                (coe
-                                                                                                                                                  MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                                  MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                                   (coe
                                                                                                                                                      MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                                      (coe
@@ -27976,7 +27976,7 @@ du_parseCmpWF_638 v0
                                                                                                                                             (coe
                                                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                                (coe
-                                                                                                                                                  MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                                  MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                                   (coe
                                                                                                                                                      MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                                      (coe
@@ -28021,7 +28021,7 @@ du_parseCmpWF_638 v0
                                                                                                                                             (coe
                                                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                                (coe
-                                                                                                                                                  MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                                  MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                                   (coe
                                                                                                                                                      MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                                      (coe
@@ -28066,7 +28066,7 @@ du_parseCmpWF_638 v0
                                                                                                                                             (coe
                                                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                                (coe
-                                                                                                                                                  MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                                  MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                                   (coe
                                                                                                                                                      MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                                      (coe
@@ -28111,7 +28111,7 @@ du_parseCmpWF_638 v0
                                                                                                                                             (coe
                                                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                                (coe
-                                                                                                                                                  MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                                  MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                                   (coe
                                                                                                                                                      MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                                      (coe
@@ -28156,7 +28156,7 @@ du_parseCmpWF_638 v0
                                                                                                                                             (coe
                                                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                                (coe
-                                                                                                                                                  MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                                  MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                                   (coe
                                                                                                                                                      MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                                      (coe
@@ -28286,7 +28286,7 @@ du_parseCmpWF_638 v0
                                                                                                                                      (coe
                                                                                                                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                         (coe
-                                                                                                                                           MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                           MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                            (coe
                                                                                                                                               MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                                               (coe
@@ -28331,7 +28331,7 @@ du_parseCmpWF_638 v0
                                                                                                                                      (coe
                                                                                                                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                         (coe
-                                                                                                                                           MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                           MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                            (coe
                                                                                                                                               MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                                               (coe
@@ -28376,7 +28376,7 @@ du_parseCmpWF_638 v0
                                                                                                                                      (coe
                                                                                                                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                         (coe
-                                                                                                                                           MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                           MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                            (coe
                                                                                                                                               MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                                               (coe
@@ -28421,7 +28421,7 @@ du_parseCmpWF_638 v0
                                                                                                                                      (coe
                                                                                                                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                         (coe
-                                                                                                                                           MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                           MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                            (coe
                                                                                                                                               MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                                               (coe
@@ -28466,7 +28466,7 @@ du_parseCmpWF_638 v0
                                                                                                                                      (coe
                                                                                                                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                         (coe
-                                                                                                                                           MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                           MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                            (coe
                                                                                                                                               MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                                               (coe
@@ -28511,7 +28511,7 @@ du_parseCmpWF_638 v0
                                                                                                                                      (coe
                                                                                                                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                         (coe
-                                                                                                                                           MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                           MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                            (coe
                                                                                                                                               MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                                               (coe
@@ -29067,7 +29067,7 @@ du_parseCmpWF_638 v0
                                                                                                                                             (coe
                                                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                                (coe
-                                                                                                                                                  MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                                  MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                                   (coe
                                                                                                                                                      MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                                      (coe
@@ -29112,7 +29112,7 @@ du_parseCmpWF_638 v0
                                                                                                                                             (coe
                                                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                                (coe
-                                                                                                                                                  MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                                  MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                                   (coe
                                                                                                                                                      MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                                      (coe
@@ -29157,7 +29157,7 @@ du_parseCmpWF_638 v0
                                                                                                                                             (coe
                                                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                                (coe
-                                                                                                                                                  MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                                  MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                                   (coe
                                                                                                                                                      MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                                      (coe
@@ -29202,7 +29202,7 @@ du_parseCmpWF_638 v0
                                                                                                                                             (coe
                                                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                                (coe
-                                                                                                                                                  MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                                  MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                                   (coe
                                                                                                                                                      MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                                      (coe
@@ -29247,7 +29247,7 @@ du_parseCmpWF_638 v0
                                                                                                                                             (coe
                                                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                                (coe
-                                                                                                                                                  MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                                  MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                                   (coe
                                                                                                                                                      MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                                      (coe
@@ -29292,7 +29292,7 @@ du_parseCmpWF_638 v0
                                                                                                                                             (coe
                                                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                                (coe
-                                                                                                                                                  MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                                  MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                                   (coe
                                                                                                                                                      MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                                      (coe
@@ -29422,7 +29422,7 @@ du_parseCmpWF_638 v0
                                                                                                                                      (coe
                                                                                                                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                         (coe
-                                                                                                                                           MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                           MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                            (coe
                                                                                                                                               MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                                               (coe
@@ -29467,7 +29467,7 @@ du_parseCmpWF_638 v0
                                                                                                                                      (coe
                                                                                                                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                         (coe
-                                                                                                                                           MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                           MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                            (coe
                                                                                                                                               MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                                               (coe
@@ -29512,7 +29512,7 @@ du_parseCmpWF_638 v0
                                                                                                                                      (coe
                                                                                                                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                         (coe
-                                                                                                                                           MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                           MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                            (coe
                                                                                                                                               MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                                               (coe
@@ -29557,7 +29557,7 @@ du_parseCmpWF_638 v0
                                                                                                                                      (coe
                                                                                                                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                         (coe
-                                                                                                                                           MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                           MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                            (coe
                                                                                                                                               MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                                               (coe
@@ -29602,7 +29602,7 @@ du_parseCmpWF_638 v0
                                                                                                                                      (coe
                                                                                                                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                         (coe
-                                                                                                                                           MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                           MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                            (coe
                                                                                                                                               MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                                               (coe
@@ -29647,7 +29647,7 @@ du_parseCmpWF_638 v0
                                                                                                                                      (coe
                                                                                                                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                         (coe
-                                                                                                                                           MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                           MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                            (coe
                                                                                                                                               MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                                               (coe
@@ -30179,7 +30179,7 @@ du_parseCmpWF_638 v0
                                                                                                                                                 (coe
                                                                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                                    (coe
-                                                                                                                                                      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                                      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                                       (coe
                                                                                                                                                          MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                                          (coe
@@ -30224,7 +30224,7 @@ du_parseCmpWF_638 v0
                                                                                                                                                 (coe
                                                                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                                    (coe
-                                                                                                                                                      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                                      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                                       (coe
                                                                                                                                                          MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                                          (coe
@@ -30269,7 +30269,7 @@ du_parseCmpWF_638 v0
                                                                                                                                                 (coe
                                                                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                                    (coe
-                                                                                                                                                      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                                      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                                       (coe
                                                                                                                                                          MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                                          (coe
@@ -30314,7 +30314,7 @@ du_parseCmpWF_638 v0
                                                                                                                                                 (coe
                                                                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                                    (coe
-                                                                                                                                                      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                                      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                                       (coe
                                                                                                                                                          MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                                          (coe
@@ -30359,7 +30359,7 @@ du_parseCmpWF_638 v0
                                                                                                                                                 (coe
                                                                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                                    (coe
-                                                                                                                                                      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                                      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                                       (coe
                                                                                                                                                          MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                                          (coe
@@ -30404,7 +30404,7 @@ du_parseCmpWF_638 v0
                                                                                                                                                 (coe
                                                                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                                    (coe
-                                                                                                                                                      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                                      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                                       (coe
                                                                                                                                                          MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                                          (coe
@@ -30534,7 +30534,7 @@ du_parseCmpWF_638 v0
                                                                                                                                          (coe
                                                                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                             (coe
-                                                                                                                                               MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                               MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                                (coe
                                                                                                                                                   MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                                                   (coe
@@ -30579,7 +30579,7 @@ du_parseCmpWF_638 v0
                                                                                                                                          (coe
                                                                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                             (coe
-                                                                                                                                               MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                               MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                                (coe
                                                                                                                                                   MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                                                   (coe
@@ -30624,7 +30624,7 @@ du_parseCmpWF_638 v0
                                                                                                                                          (coe
                                                                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                             (coe
-                                                                                                                                               MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                               MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                                (coe
                                                                                                                                                   MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                                                   (coe
@@ -30669,7 +30669,7 @@ du_parseCmpWF_638 v0
                                                                                                                                          (coe
                                                                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                             (coe
-                                                                                                                                               MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                               MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                                (coe
                                                                                                                                                   MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                                                   (coe
@@ -30714,7 +30714,7 @@ du_parseCmpWF_638 v0
                                                                                                                                          (coe
                                                                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                             (coe
-                                                                                                                                               MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                               MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                                (coe
                                                                                                                                                   MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                                                   (coe
@@ -30759,7 +30759,7 @@ du_parseCmpWF_638 v0
                                                                                                                                          (coe
                                                                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                             (coe
-                                                                                                                                               MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                                               MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                                                (coe
                                                                                                                                                   MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                                                   (coe
@@ -31252,7 +31252,7 @@ du_parseCmpWF_638 v0
                                                                                                                         (coe
                                                                                                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                            (coe
-                                                                                                                              MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                              MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                               (coe
                                                                                                                                  MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                  (coe
@@ -31297,7 +31297,7 @@ du_parseCmpWF_638 v0
                                                                                                                         (coe
                                                                                                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                            (coe
-                                                                                                                              MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                              MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                               (coe
                                                                                                                                  MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                  (coe
@@ -31342,7 +31342,7 @@ du_parseCmpWF_638 v0
                                                                                                                         (coe
                                                                                                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                            (coe
-                                                                                                                              MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                              MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                               (coe
                                                                                                                                  MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                  (coe
@@ -31387,7 +31387,7 @@ du_parseCmpWF_638 v0
                                                                                                                         (coe
                                                                                                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                            (coe
-                                                                                                                              MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                              MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                               (coe
                                                                                                                                  MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                  (coe
@@ -31432,7 +31432,7 @@ du_parseCmpWF_638 v0
                                                                                                                         (coe
                                                                                                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                            (coe
-                                                                                                                              MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                              MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                               (coe
                                                                                                                                  MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                  (coe
@@ -31477,7 +31477,7 @@ du_parseCmpWF_638 v0
                                                                                                                         (coe
                                                                                                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                            (coe
-                                                                                                                              MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                              MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                               (coe
                                                                                                                                  MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                  (coe
@@ -31601,7 +31601,7 @@ du_parseCmpWF_638 v0
                                                                                                                  (coe
                                                                                                                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                     (coe
-                                                                                                                       MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                       MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                        (coe
                                                                                                                           MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                           (coe
@@ -31646,7 +31646,7 @@ du_parseCmpWF_638 v0
                                                                                                                  (coe
                                                                                                                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                     (coe
-                                                                                                                       MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                       MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                        (coe
                                                                                                                           MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                           (coe
@@ -31691,7 +31691,7 @@ du_parseCmpWF_638 v0
                                                                                                                  (coe
                                                                                                                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                     (coe
-                                                                                                                       MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                       MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                        (coe
                                                                                                                           MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                           (coe
@@ -31736,7 +31736,7 @@ du_parseCmpWF_638 v0
                                                                                                                  (coe
                                                                                                                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                     (coe
-                                                                                                                       MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                       MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                        (coe
                                                                                                                           MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                           (coe
@@ -31781,7 +31781,7 @@ du_parseCmpWF_638 v0
                                                                                                                  (coe
                                                                                                                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                     (coe
-                                                                                                                       MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                       MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                        (coe
                                                                                                                           MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                           (coe
@@ -31826,7 +31826,7 @@ du_parseCmpWF_638 v0
                                                                                                                  (coe
                                                                                                                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                     (coe
-                                                                                                                       MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                       MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                        (coe
                                                                                                                           MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                           (coe
@@ -32324,7 +32324,7 @@ du_parseCmpWF_638 v0
                                                                                                                     (coe
                                                                                                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                        (coe
-                                                                                                                          MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                          MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                           (coe
                                                                                                                              MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                              (coe
@@ -32369,7 +32369,7 @@ du_parseCmpWF_638 v0
                                                                                                                     (coe
                                                                                                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                        (coe
-                                                                                                                          MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                          MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                           (coe
                                                                                                                              MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                              (coe
@@ -32414,7 +32414,7 @@ du_parseCmpWF_638 v0
                                                                                                                     (coe
                                                                                                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                        (coe
-                                                                                                                          MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                          MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                           (coe
                                                                                                                              MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                              (coe
@@ -32459,7 +32459,7 @@ du_parseCmpWF_638 v0
                                                                                                                     (coe
                                                                                                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                        (coe
-                                                                                                                          MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                          MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                           (coe
                                                                                                                              MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                              (coe
@@ -32504,7 +32504,7 @@ du_parseCmpWF_638 v0
                                                                                                                     (coe
                                                                                                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                        (coe
-                                                                                                                          MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                          MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                           (coe
                                                                                                                              MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                              (coe
@@ -32549,7 +32549,7 @@ du_parseCmpWF_638 v0
                                                                                                                     (coe
                                                                                                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                        (coe
-                                                                                                                          MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                          MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                           (coe
                                                                                                                              MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                              (coe
@@ -32668,7 +32668,7 @@ du_parseCmpWF_638 v0
                                                                                                              (coe
                                                                                                                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                 (coe
-                                                                                                                   MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                   MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                    (coe
                                                                                                                       MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                       (coe
@@ -32712,7 +32712,7 @@ du_parseCmpWF_638 v0
                                                                                                              (coe
                                                                                                                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                 (coe
-                                                                                                                   MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                   MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                    (coe
                                                                                                                       MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                       (coe
@@ -32756,7 +32756,7 @@ du_parseCmpWF_638 v0
                                                                                                              (coe
                                                                                                                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                 (coe
-                                                                                                                   MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                   MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                    (coe
                                                                                                                       MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                       (coe
@@ -32800,7 +32800,7 @@ du_parseCmpWF_638 v0
                                                                                                              (coe
                                                                                                                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                 (coe
-                                                                                                                   MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                   MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                    (coe
                                                                                                                       MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                       (coe
@@ -32844,7 +32844,7 @@ du_parseCmpWF_638 v0
                                                                                                              (coe
                                                                                                                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                 (coe
-                                                                                                                   MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                   MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                    (coe
                                                                                                                       MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                       (coe
@@ -32888,7 +32888,7 @@ du_parseCmpWF_638 v0
                                                                                                              (coe
                                                                                                                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                 (coe
-                                                                                                                   MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                   MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                    (coe
                                                                                                                       MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                       (coe
@@ -33366,7 +33366,7 @@ du_parseCmpWF_638 v0
                                                                                                                         (coe
                                                                                                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                            (coe
-                                                                                                                              MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                              MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                               (coe
                                                                                                                                  MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                  (coe
@@ -33411,7 +33411,7 @@ du_parseCmpWF_638 v0
                                                                                                                         (coe
                                                                                                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                            (coe
-                                                                                                                              MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                              MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                               (coe
                                                                                                                                  MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                  (coe
@@ -33456,7 +33456,7 @@ du_parseCmpWF_638 v0
                                                                                                                         (coe
                                                                                                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                            (coe
-                                                                                                                              MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                              MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                               (coe
                                                                                                                                  MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                  (coe
@@ -33501,7 +33501,7 @@ du_parseCmpWF_638 v0
                                                                                                                         (coe
                                                                                                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                            (coe
-                                                                                                                              MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                              MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                               (coe
                                                                                                                                  MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                  (coe
@@ -33546,7 +33546,7 @@ du_parseCmpWF_638 v0
                                                                                                                         (coe
                                                                                                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                            (coe
-                                                                                                                              MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                              MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                               (coe
                                                                                                                                  MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                  (coe
@@ -33591,7 +33591,7 @@ du_parseCmpWF_638 v0
                                                                                                                         (coe
                                                                                                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                            (coe
-                                                                                                                              MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                              MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                               (coe
                                                                                                                                  MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                                                  (coe
@@ -33715,7 +33715,7 @@ du_parseCmpWF_638 v0
                                                                                                                  (coe
                                                                                                                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                     (coe
-                                                                                                                       MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                       MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                        (coe
                                                                                                                           MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                           (coe
@@ -33760,7 +33760,7 @@ du_parseCmpWF_638 v0
                                                                                                                  (coe
                                                                                                                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                     (coe
-                                                                                                                       MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                       MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                        (coe
                                                                                                                           MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                           (coe
@@ -33805,7 +33805,7 @@ du_parseCmpWF_638 v0
                                                                                                                  (coe
                                                                                                                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                     (coe
-                                                                                                                       MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                       MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                        (coe
                                                                                                                           MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                           (coe
@@ -33850,7 +33850,7 @@ du_parseCmpWF_638 v0
                                                                                                                  (coe
                                                                                                                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                     (coe
-                                                                                                                       MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                       MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                        (coe
                                                                                                                           MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                           (coe
@@ -33895,7 +33895,7 @@ du_parseCmpWF_638 v0
                                                                                                                  (coe
                                                                                                                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                     (coe
-                                                                                                                       MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                       MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                        (coe
                                                                                                                           MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                           (coe
@@ -33940,7 +33940,7 @@ du_parseCmpWF_638 v0
                                                                                                                  (coe
                                                                                                                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                     (coe
-                                                                                                                       MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                                       MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                                        (coe
                                                                                                                           MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                                           (coe
@@ -34413,7 +34413,7 @@ du_parseCmpWF_638 v0
                                                                                                 (coe
                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                    (coe
-                                                                                                      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                       (coe
                                                                                                          MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                          (coe
@@ -34454,7 +34454,7 @@ du_parseCmpWF_638 v0
                                                                                                 (coe
                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                    (coe
-                                                                                                      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                       (coe
                                                                                                          MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                          (coe
@@ -34495,7 +34495,7 @@ du_parseCmpWF_638 v0
                                                                                                 (coe
                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                    (coe
-                                                                                                      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                       (coe
                                                                                                          MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                          (coe
@@ -34536,7 +34536,7 @@ du_parseCmpWF_638 v0
                                                                                                 (coe
                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                    (coe
-                                                                                                      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                       (coe
                                                                                                          MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                          (coe
@@ -34577,7 +34577,7 @@ du_parseCmpWF_638 v0
                                                                                                 (coe
                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                    (coe
-                                                                                                      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                       (coe
                                                                                                          MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                          (coe
@@ -34618,7 +34618,7 @@ du_parseCmpWF_638 v0
                                                                                                 (coe
                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                    (coe
-                                                                                                      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                                      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                       (coe
                                                                                                          MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                                                          (coe
@@ -34732,7 +34732,7 @@ du_parseCmpWF_638 v0
                                                                                          (coe
                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                             (coe
-                                                                                               MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                               MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                (coe
                                                                                                   MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                   (coe
@@ -34772,7 +34772,7 @@ du_parseCmpWF_638 v0
                                                                                          (coe
                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                             (coe
-                                                                                               MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                               MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                (coe
                                                                                                   MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                   (coe
@@ -34812,7 +34812,7 @@ du_parseCmpWF_638 v0
                                                                                          (coe
                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                             (coe
-                                                                                               MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                               MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                (coe
                                                                                                   MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                   (coe
@@ -34852,7 +34852,7 @@ du_parseCmpWF_638 v0
                                                                                          (coe
                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                             (coe
-                                                                                               MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                               MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                (coe
                                                                                                   MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                   (coe
@@ -34892,7 +34892,7 @@ du_parseCmpWF_638 v0
                                                                                          (coe
                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                             (coe
-                                                                                               MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                               MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                (coe
                                                                                                   MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                   (coe
@@ -34932,7 +34932,7 @@ du_parseCmpWF_638 v0
                                                                                          (coe
                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                             (coe
-                                                                                               MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                                               MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                                                (coe
                                                                                                   MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                                                   (coe
@@ -36086,7 +36086,7 @@ du_parseMinusWF_654 v0 v1
                                = coe
                                    du_parseAppTailWF_724
                                    (coe
-                                      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RInt_66
+                                      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RInt_30
                                       (coe MAlonzo.Code.Data.Integer.Base.d_'45'__260 (coe v7)))
                                    (coe v6) in
                          coe
@@ -36122,7 +36122,7 @@ du_parseMinusWF_654 v0 v1
                                = coe
                                    du_parseAppTailWF_724
                                    (coe
-                                      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RFloat_68
+                                      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RFloat_32
                                       (coe MAlonzo.Code.Once.Spec.Float.Value.C_neg_12) (coe v9)
                                       (coe v10) (coe v11))
                                    (coe v8) in
@@ -36164,7 +36164,7 @@ du_parseMinusWF_654 v0 v1
                                      (coe
                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                         (coe
-                                           MAlonzo.Code.Once.Spec.Surface.Syntax.C_RNeg_74 (coe v6))
+                                           MAlonzo.Code.Once.Spec.Surface.Syntax.C_RNeg_38 (coe v6))
                                         (coe
                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v8)
                                            (coe
@@ -36241,7 +36241,7 @@ du_parseAtomExprWF_662 v0
                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                       (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RInt_66 (coe v3))
+                       (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RInt_30 (coe v3))
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v2)
                           (coe MAlonzo.Code.Once.Parser.ExprRelation.C_pae'45'int_928)))
@@ -36251,7 +36251,7 @@ du_parseAtomExprWF_662 v0
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                        (coe
-                          MAlonzo.Code.Once.Spec.Surface.Syntax.C_RFloat_68
+                          MAlonzo.Code.Once.Spec.Surface.Syntax.C_RFloat_32
                           (coe MAlonzo.Code.Once.Spec.Float.Value.C_pos_10) (coe v3) (coe v4)
                           (coe v5))
                        (coe
@@ -36333,7 +36333,7 @@ du_parseLamParamsWF_666 v0
                                             (coe
                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                (coe
-                                                  MAlonzo.Code.Once.Spec.Surface.Syntax.C_RLam_56
+                                                  MAlonzo.Code.Once.Spec.Surface.Syntax.C_RLam_20
                                                   (coe v3) (coe v6))
                                                (coe
                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
@@ -36534,14 +36534,14 @@ du_parseDestructWF_674 v0
 -- Once.Parser.Expr.parseLetContWF
 d_parseLetContWF_682 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Induction.WellFounded.T_Acc_42 ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_parseLetContWF_682 v0 v1 v2 ~v3 = du_parseLetContWF_682 v0 v1 v2
 du_parseLetContWF_682 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_parseLetContWF_682 v0 v1 v2
@@ -36590,7 +36590,7 @@ du_parseLetContWF_682 v0 v1 v2
                                                                        (coe
                                                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                           (coe
-                                                                             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RLet_58
+                                                                             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RLet_22
                                                                              (coe v0) (coe v1)
                                                                              (coe v13))
                                                                           (coe
@@ -36628,7 +36628,7 @@ du_parseLetContWF_682 v0 v1 v2
                                                                         (coe
                                                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                            (coe
-                                                                              MAlonzo.Code.Once.Spec.Surface.Syntax.C_RLet_58
+                                                                              MAlonzo.Code.Once.Spec.Surface.Syntax.C_RLet_22
                                                                               (coe v0) (coe v1)
                                                                               (coe v13))
                                                                            (coe
@@ -36700,14 +36700,14 @@ du_parseLetContWF_682 v0 v1 v2
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Parser.Expr.parseDestructBranchesWF
 d_parseDestructBranchesWF_688 ::
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Induction.WellFounded.T_Acc_42 ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_parseDestructBranchesWF_688 v0 v1 ~v2
   = du_parseDestructBranchesWF_688 v0 v1
 du_parseDestructBranchesWF_688 ::
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_parseDestructBranchesWF_688 v0 v1
@@ -36904,13 +36904,13 @@ du_parseDestructBranchesWF_688 v0 v1
          _ -> MAlonzo.RTE.mazUnreachableError)
 -- Once.Parser.Expr.parseDestructOfWF
 d_parseDestructOfWF_694 ::
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Induction.WellFounded.T_Acc_42 ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_parseDestructOfWF_694 v0 v1 ~v2 = du_parseDestructOfWF_694 v0 v1
 du_parseDestructOfWF_694 ::
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_parseDestructOfWF_694 v0 v1
@@ -37036,18 +37036,18 @@ du_parseDestructOfWF_694 v0 v1
          _ -> MAlonzo.RTE.mazUnreachableError)
 -- Once.Parser.Expr.parseRightBranchWF
 d_parseRightBranchWF_704 ::
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Induction.WellFounded.T_Acc_42 ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_parseRightBranchWF_704 v0 v1 v2 v3 ~v4
   = du_parseRightBranchWF_704 v0 v1 v2 v3
 du_parseRightBranchWF_704 ::
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_parseRightBranchWF_704 v0 v1 v2 v3
@@ -37149,7 +37149,7 @@ du_parseRightBranchWF_704 v0 v1 v2 v3
                                                                                                                            (coe
                                                                                                                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                               (coe
-                                                                                                                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_RDestruct_62
+                                                                                                                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_RDestruct_26
                                                                                                                                  (coe
                                                                                                                                     v0)
                                                                                                                                  (coe
@@ -37290,7 +37290,7 @@ du_parseRightBranchWF_704 v0 v1 v2 v3
                                                                                                                             (coe
                                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                (coe
-                                                                                                                                  MAlonzo.Code.Once.Spec.Surface.Syntax.C_RDestruct_62
+                                                                                                                                  MAlonzo.Code.Once.Spec.Surface.Syntax.C_RDestruct_26
                                                                                                                                   (coe
                                                                                                                                      v0)
                                                                                                                                   (coe
@@ -37386,8 +37386,8 @@ du_parseRightBranchWF_704 v0 v1 v2 v3
          _ -> MAlonzo.RTE.mazUnreachableError)
 -- Once.Parser.Expr.parseParenTripleWF
 d_parseParenTripleWF_712 ::
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 ->
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_8 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Induction.WellFounded.T_Acc_42 ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
@@ -37461,13 +37461,13 @@ du_parseParenTripleWF_712 v0
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Parser.Expr.parseParenContWF
 d_parseParenContWF_718 ::
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Induction.WellFounded.T_Acc_42 ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_parseParenContWF_718 v0 v1 ~v2 = du_parseParenContWF_718 v0 v1
 du_parseParenContWF_718 ::
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_parseParenContWF_718 v0 v1
@@ -37599,7 +37599,7 @@ du_parseParenContWF_718 v0 v1
                                                                                                                                            (coe
                                                                                                                                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                               (coe
-                                                                                                                                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_RAnnot_70
+                                                                                                                                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_RAnnot_34
                                                                                                                                                  (coe
                                                                                                                                                     v0)
                                                                                                                                                  (coe
@@ -37714,7 +37714,7 @@ du_parseParenContWF_718 v0 v1
                                                                                                                                                (coe
                                                                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                                   (coe
-                                                                                                                                                     MAlonzo.Code.Once.Spec.Surface.Syntax.C_RAnnot_70
+                                                                                                                                                     MAlonzo.Code.Once.Spec.Surface.Syntax.C_RAnnot_34
                                                                                                                                                      (coe
                                                                                                                                                         v0)
                                                                                                                                                      (coe
@@ -37860,7 +37860,7 @@ du_parseParenContWF_718 v0 v1
                                                                                                                                                (coe
                                                                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                                   (coe
-                                                                                                                                                     MAlonzo.Code.Once.Spec.Surface.Syntax.C_RAnnot_70
+                                                                                                                                                     MAlonzo.Code.Once.Spec.Surface.Syntax.C_RAnnot_34
                                                                                                                                                      (coe
                                                                                                                                                         v0)
                                                                                                                                                      (coe
@@ -37975,7 +37975,7 @@ du_parseParenContWF_718 v0 v1
                                                                                                                                                    (coe
                                                                                                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                                       (coe
-                                                                                                                                                         MAlonzo.Code.Once.Spec.Surface.Syntax.C_RAnnot_70
+                                                                                                                                                         MAlonzo.Code.Once.Spec.Surface.Syntax.C_RAnnot_34
                                                                                                                                                          (coe
                                                                                                                                                             v0)
                                                                                                                                                          (coe
@@ -38097,7 +38097,7 @@ du_parseParenContWF_718 v0 v1
                                                                                                                            (coe
                                                                                                                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                               (coe
-                                                                                                                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_RAnnot_70
+                                                                                                                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_RAnnot_34
                                                                                                                                  (coe
                                                                                                                                     v0)
                                                                                                                                  (coe
@@ -38262,7 +38262,7 @@ du_parseParenContWF_718 v0 v1
                                                                                                                                                (coe
                                                                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                                   (coe
-                                                                                                                                                     MAlonzo.Code.Once.Spec.Surface.Syntax.C_RAnnot_70
+                                                                                                                                                     MAlonzo.Code.Once.Spec.Surface.Syntax.C_RAnnot_34
                                                                                                                                                      (coe
                                                                                                                                                         v0)
                                                                                                                                                      (coe
@@ -38377,7 +38377,7 @@ du_parseParenContWF_718 v0 v1
                                                                                                                                                    (coe
                                                                                                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                                       (coe
-                                                                                                                                                         MAlonzo.Code.Once.Spec.Surface.Syntax.C_RAnnot_70
+                                                                                                                                                         MAlonzo.Code.Once.Spec.Surface.Syntax.C_RAnnot_34
                                                                                                                                                          (coe
                                                                                                                                                             v0)
                                                                                                                                                          (coe
@@ -38523,7 +38523,7 @@ du_parseParenContWF_718 v0 v1
                                                                                                                                                    (coe
                                                                                                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                                       (coe
-                                                                                                                                                         MAlonzo.Code.Once.Spec.Surface.Syntax.C_RAnnot_70
+                                                                                                                                                         MAlonzo.Code.Once.Spec.Surface.Syntax.C_RAnnot_34
                                                                                                                                                          (coe
                                                                                                                                                             v0)
                                                                                                                                                          (coe
@@ -38638,7 +38638,7 @@ du_parseParenContWF_718 v0 v1
                                                                                                                                                        (coe
                                                                                                                                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                                           (coe
-                                                                                                                                                             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RAnnot_70
+                                                                                                                                                             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RAnnot_34
                                                                                                                                                              (coe
                                                                                                                                                                 v0)
                                                                                                                                                              (coe
@@ -38760,7 +38760,7 @@ du_parseParenContWF_718 v0 v1
                                                                                                                                (coe
                                                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                   (coe
-                                                                                                                                     MAlonzo.Code.Once.Spec.Surface.Syntax.C_RAnnot_70
+                                                                                                                                     MAlonzo.Code.Once.Spec.Surface.Syntax.C_RAnnot_34
                                                                                                                                      (coe
                                                                                                                                         v0)
                                                                                                                                      (coe
@@ -38903,7 +38903,7 @@ du_parseParenContWF_718 v0 v1
                                                                                                                            (coe
                                                                                                                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                               (coe
-                                                                                                                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_RAnnot_70
+                                                                                                                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_RAnnot_34
                                                                                                                                  (coe
                                                                                                                                     v0)
                                                                                                                                  (coe
@@ -39018,7 +39018,7 @@ du_parseParenContWF_718 v0 v1
                                                                                                                                (coe
                                                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                   (coe
-                                                                                                                                     MAlonzo.Code.Once.Spec.Surface.Syntax.C_RAnnot_70
+                                                                                                                                     MAlonzo.Code.Once.Spec.Surface.Syntax.C_RAnnot_34
                                                                                                                                      (coe
                                                                                                                                         v0)
                                                                                                                                      (coe
@@ -39137,7 +39137,7 @@ du_parseParenContWF_718 v0 v1
                                                                                                        (coe
                                                                                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                           (coe
-                                                                                                             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RAnnot_70
+                                                                                                             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RAnnot_34
                                                                                                              (coe
                                                                                                                 v0)
                                                                                                              (coe
@@ -39295,7 +39295,7 @@ du_parseParenContWF_718 v0 v1
                                                                                                                        (coe
                                                                                                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                           (coe
-                                                                                                                             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RAnnot_70
+                                                                                                                             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RAnnot_34
                                                                                                                              (coe
                                                                                                                                 v0)
                                                                                                                              (coe
@@ -39410,7 +39410,7 @@ du_parseParenContWF_718 v0 v1
                                                                                                                            (coe
                                                                                                                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                               (coe
-                                                                                                                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_RAnnot_70
+                                                                                                                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_RAnnot_34
                                                                                                                                  (coe
                                                                                                                                     v0)
                                                                                                                                  (coe
@@ -39551,7 +39551,7 @@ du_parseParenContWF_718 v0 v1
                                                                                                                            (coe
                                                                                                                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                               (coe
-                                                                                                                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_RAnnot_70
+                                                                                                                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_RAnnot_34
                                                                                                                                  (coe
                                                                                                                                     v0)
                                                                                                                                  (coe
@@ -39666,7 +39666,7 @@ du_parseParenContWF_718 v0 v1
                                                                                                                                (coe
                                                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                   (coe
-                                                                                                                                     MAlonzo.Code.Once.Spec.Surface.Syntax.C_RAnnot_70
+                                                                                                                                     MAlonzo.Code.Once.Spec.Surface.Syntax.C_RAnnot_34
                                                                                                                                      (coe
                                                                                                                                         v0)
                                                                                                                                      (coe
@@ -39785,7 +39785,7 @@ du_parseParenContWF_718 v0 v1
                                                                                                        (coe
                                                                                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                           (coe
-                                                                                                             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RAnnot_70
+                                                                                                             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RAnnot_34
                                                                                                              (coe
                                                                                                                 v0)
                                                                                                              (coe
@@ -39918,7 +39918,7 @@ du_parseParenContWF_718 v0 v1
                                                                                                    (coe
                                                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                       (coe
-                                                                                                         MAlonzo.Code.Once.Spec.Surface.Syntax.C_RAnnot_70
+                                                                                                         MAlonzo.Code.Once.Spec.Surface.Syntax.C_RAnnot_34
                                                                                                          (coe
                                                                                                             v0)
                                                                                                          (coe
@@ -40030,7 +40030,7 @@ du_parseParenContWF_718 v0 v1
                                                                                                        (coe
                                                                                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                           (coe
-                                                                                                             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RAnnot_70
+                                                                                                             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RAnnot_34
                                                                                                              (coe
                                                                                                                 v0)
                                                                                                              (coe
@@ -40139,7 +40139,7 @@ du_parseParenContWF_718 v0 v1
                                                                                (coe
                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                   (coe
-                                                                                     MAlonzo.Code.Once.Spec.Surface.Syntax.C_RAnnot_70
+                                                                                     MAlonzo.Code.Once.Spec.Surface.Syntax.C_RAnnot_34
                                                                                      (coe v0)
                                                                                      (coe v6))
                                                                                   (coe
@@ -40229,7 +40229,7 @@ du_parseParenContWF_718 v0 v1
                                                              (coe
                                                                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                 (coe
-                                                                   MAlonzo.Code.Once.Spec.Surface.Syntax.C_RPair_60
+                                                                   MAlonzo.Code.Once.Spec.Surface.Syntax.C_RPair_24
                                                                    (coe v0) (coe v6))
                                                                 (coe
                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
@@ -40269,13 +40269,13 @@ du_parseParenContWF_718 v0 v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Parser.Expr.parseAppTailWF
 d_parseAppTailWF_724 ::
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Induction.WellFounded.T_Acc_42 ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_parseAppTailWF_724 v0 v1 ~v2 = du_parseAppTailWF_724 v0 v1
 du_parseAppTailWF_724 ::
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_parseAppTailWF_724 v0 v1
@@ -40400,7 +40400,7 @@ du_parseAppTailWF_724 v0 v1
                                                                                       = coe
                                                                                           du_parseAppTailWF_724
                                                                                           (coe
-                                                                                             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RApp_54
+                                                                                             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RApp_18
                                                                                              (coe
                                                                                                 v0)
                                                                                              (coe
@@ -40496,7 +40496,7 @@ du_parseAppTailWF_724 v0 v1
                                                                                                                  = coe
                                                                                                                      du_parseAppTailWF_724
                                                                                                                      (coe
-                                                                                                                        MAlonzo.Code.Once.Spec.Surface.Syntax.C_RApp_54
+                                                                                                                        MAlonzo.Code.Once.Spec.Surface.Syntax.C_RApp_18
                                                                                                                         (coe
                                                                                                                            v0)
                                                                                                                         (coe
@@ -40564,7 +40564,7 @@ du_parseAppTailWF_724 v0 v1
                                                                                                                  = coe
                                                                                                                      du_parseAppTailWF_724
                                                                                                                      (coe
-                                                                                                                        MAlonzo.Code.Once.Spec.Surface.Syntax.C_RApp_54
+                                                                                                                        MAlonzo.Code.Once.Spec.Surface.Syntax.C_RApp_18
                                                                                                                         (coe
                                                                                                                            v0)
                                                                                                                         (coe
@@ -40638,7 +40638,7 @@ du_parseAppTailWF_724 v0 v1
                                                                                                                   = coe
                                                                                                                       du_parseAppTailWF_724
                                                                                                                       (coe
-                                                                                                                         MAlonzo.Code.Once.Spec.Surface.Syntax.C_RApp_54
+                                                                                                                         MAlonzo.Code.Once.Spec.Surface.Syntax.C_RApp_18
                                                                                                                          (coe
                                                                                                                             v0)
                                                                                                                          (coe
@@ -40707,7 +40707,7 @@ du_parseAppTailWF_724 v0 v1
                                                                                                                   = coe
                                                                                                                       du_parseAppTailWF_724
                                                                                                                       (coe
-                                                                                                                         MAlonzo.Code.Once.Spec.Surface.Syntax.C_RApp_54
+                                                                                                                         MAlonzo.Code.Once.Spec.Surface.Syntax.C_RApp_18
                                                                                                                          (coe
                                                                                                                             v0)
                                                                                                                          (coe
@@ -40780,7 +40780,7 @@ du_parseAppTailWF_724 v0 v1
                                                                                        = coe
                                                                                            du_parseAppTailWF_724
                                                                                            (coe
-                                                                                              MAlonzo.Code.Once.Spec.Surface.Syntax.C_RApp_54
+                                                                                              MAlonzo.Code.Once.Spec.Surface.Syntax.C_RApp_18
                                                                                               (coe
                                                                                                  v0)
                                                                                               (coe
@@ -40876,7 +40876,7 @@ du_parseAppTailWF_724 v0 v1
                                                                                                                   = coe
                                                                                                                       du_parseAppTailWF_724
                                                                                                                       (coe
-                                                                                                                         MAlonzo.Code.Once.Spec.Surface.Syntax.C_RApp_54
+                                                                                                                         MAlonzo.Code.Once.Spec.Surface.Syntax.C_RApp_18
                                                                                                                          (coe
                                                                                                                             v0)
                                                                                                                          (coe
@@ -40945,7 +40945,7 @@ du_parseAppTailWF_724 v0 v1
                                                                                                                   = coe
                                                                                                                       du_parseAppTailWF_724
                                                                                                                       (coe
-                                                                                                                         MAlonzo.Code.Once.Spec.Surface.Syntax.C_RApp_54
+                                                                                                                         MAlonzo.Code.Once.Spec.Surface.Syntax.C_RApp_18
                                                                                                                          (coe
                                                                                                                             v0)
                                                                                                                          (coe
@@ -41020,7 +41020,7 @@ du_parseAppTailWF_724 v0 v1
                                                                                                                    = coe
                                                                                                                        du_parseAppTailWF_724
                                                                                                                        (coe
-                                                                                                                          MAlonzo.Code.Once.Spec.Surface.Syntax.C_RApp_54
+                                                                                                                          MAlonzo.Code.Once.Spec.Surface.Syntax.C_RApp_18
                                                                                                                           (coe
                                                                                                                              v0)
                                                                                                                           (coe
@@ -41089,7 +41089,7 @@ du_parseAppTailWF_724 v0 v1
                                                                                                                    = coe
                                                                                                                        du_parseAppTailWF_724
                                                                                                                        (coe
-                                                                                                                          MAlonzo.Code.Once.Spec.Surface.Syntax.C_RApp_54
+                                                                                                                          MAlonzo.Code.Once.Spec.Surface.Syntax.C_RApp_18
                                                                                                                           (coe
                                                                                                                              v0)
                                                                                                                           (coe
@@ -41142,7 +41142,7 @@ du_parseAppTailWF_724 v0 v1
                                   _ -> MAlonzo.RTE.mazUnreachableError)))
              MAlonzo.Code.Once.Parser.Token.C_TInt_10 v4 v5
                -> let v6
-                        = coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RInt_66 (coe v4) in
+                        = coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RInt_30 (coe v4) in
                   coe
                     (let v7
                            = coe MAlonzo.Code.Once.Parser.ExprRelation.C_pae'45'int_928 in
@@ -41151,7 +41151,7 @@ du_parseAppTailWF_724 v0 v1
                               = coe
                                   du_parseAppTailWF_724
                                   (coe
-                                     MAlonzo.Code.Once.Spec.Surface.Syntax.C_RApp_54 (coe v0)
+                                     MAlonzo.Code.Once.Spec.Surface.Syntax.C_RApp_18 (coe v0)
                                      (coe v6))
                                   (coe v3) in
                         coe
@@ -41182,7 +41182,7 @@ du_parseAppTailWF_724 v0 v1
              MAlonzo.Code.Once.Parser.Token.C_TFloat_12 v4 v5 v6 v7
                -> let v8
                         = coe
-                            MAlonzo.Code.Once.Spec.Surface.Syntax.C_RFloat_68
+                            MAlonzo.Code.Once.Spec.Surface.Syntax.C_RFloat_32
                             (coe MAlonzo.Code.Once.Spec.Float.Value.C_pos_10) (coe v4) (coe v5)
                             (coe v6) in
                   coe
@@ -41193,7 +41193,7 @@ du_parseAppTailWF_724 v0 v1
                               = coe
                                   du_parseAppTailWF_724
                                   (coe
-                                     MAlonzo.Code.Once.Spec.Surface.Syntax.C_RApp_54 (coe v0)
+                                     MAlonzo.Code.Once.Spec.Surface.Syntax.C_RApp_18 (coe v0)
                                      (coe v8))
                                   (coe v3) in
                         coe
@@ -41236,7 +41236,7 @@ du_parseAppTailWF_724 v0 v1
                                                 = coe
                                                     du_parseAppTailWF_724
                                                     (coe
-                                                       MAlonzo.Code.Once.Spec.Surface.Syntax.C_RApp_54
+                                                       MAlonzo.Code.Once.Spec.Surface.Syntax.C_RApp_18
                                                        (coe v0) (coe v6))
                                                     (coe v8) in
                                           coe
@@ -41377,7 +41377,7 @@ du_parseAppTailWF_724 v0 v1
                                                    = coe
                                                        du_parseAppTailWF_724
                                                        (coe
-                                                          MAlonzo.Code.Once.Spec.Surface.Syntax.C_RApp_54
+                                                          MAlonzo.Code.Once.Spec.Surface.Syntax.C_RApp_18
                                                           (coe v0) (coe v6))
                                                        (coe v8) in
                                              coe
@@ -41419,7 +41419,7 @@ du_parseAppTailWF_724 v0 v1
                                                        = coe
                                                            du_parseAppTailWF_724
                                                            (coe
-                                                              MAlonzo.Code.Once.Spec.Surface.Syntax.C_RApp_54
+                                                              MAlonzo.Code.Once.Spec.Surface.Syntax.C_RApp_18
                                                               (coe v0) (coe v6))
                                                            (coe v8) in
                                                  coe
@@ -41687,13 +41687,13 @@ du_parseAppTailWF_724 v0 v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Parser.Expr.parseMulTailWF
 d_parseMulTailWF_730 ::
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Induction.WellFounded.T_Acc_42 ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_parseMulTailWF_730 v0 v1 ~v2 = du_parseMulTailWF_730 v0 v1
 du_parseMulTailWF_730 ::
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_parseMulTailWF_730 v0 v1
@@ -41947,7 +41947,7 @@ du_parseMulTailWF_730 v0 v1
                                                               = coe
                                                                   du_parseMulTailWF_730
                                                                   (coe
-                                                                     MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                     MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                      (coe
                                                                         MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                         (coe v4))
@@ -41995,7 +41995,7 @@ du_parseMulTailWF_730 v0 v1
                                                               = coe
                                                                   du_parseMulTailWF_730
                                                                   (coe
-                                                                     MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                     MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                      (coe
                                                                         MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                         (coe v4))
@@ -42104,7 +42104,7 @@ du_parseMulTailWF_730 v0 v1
                                                        = coe
                                                            du_parseMulTailWF_730
                                                            (coe
-                                                              MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                              MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                               (coe
                                                                  MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                  (coe v4))
@@ -42173,7 +42173,7 @@ du_parseMulTailWF_730 v0 v1
                                                        = coe
                                                            du_parseMulTailWF_730
                                                            (coe
-                                                              MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                              MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                               (coe
                                                                  MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                  (coe v4))
@@ -42219,7 +42219,7 @@ du_parseMulTailWF_730 v0 v1
                                                        = coe
                                                            du_parseMulTailWF_730
                                                            (coe
-                                                              MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                              MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                               (coe
                                                                  MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                  (coe v4))
@@ -42357,13 +42357,13 @@ du_parseMulTailWF_730 v0 v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Parser.Expr.parseAddTailWF
 d_parseAddTailWF_736 ::
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Induction.WellFounded.T_Acc_42 ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_parseAddTailWF_736 v0 v1 ~v2 = du_parseAddTailWF_736 v0 v1
 du_parseAddTailWF_736 ::
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_parseAddTailWF_736 v0 v1
@@ -42597,7 +42597,7 @@ du_parseAddTailWF_736 v0 v1
                                                               = coe
                                                                   du_parseAddTailWF_736
                                                                   (coe
-                                                                     MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                     MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                      (coe
                                                                         MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                         (coe v4))
@@ -42645,7 +42645,7 @@ du_parseAddTailWF_736 v0 v1
                                                               = coe
                                                                   du_parseAddTailWF_736
                                                                   (coe
-                                                                     MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                                     MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                                      (coe
                                                                         MAlonzo.Code.Once.Spec.Surface.Operator.C_plain_38
                                                                         (coe v4))
@@ -42787,7 +42787,7 @@ du_parseAddTailWF_736 v0 v1
                                                        = coe
                                                            du_parseAddTailWF_736
                                                            (coe
-                                                              MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                              MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                               (coe
                                                                  MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                  (coe v4))
@@ -42833,7 +42833,7 @@ du_parseAddTailWF_736 v0 v1
                                                        = coe
                                                            du_parseAddTailWF_736
                                                            (coe
-                                                              MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72
+                                                              MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36
                                                               (coe
                                                                  MAlonzo.Code.Once.Spec.Surface.Operator.C_dotted_40
                                                                  (coe v4))
@@ -42991,13 +42991,13 @@ du_parseAddTailWF_736 v0 v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Parser.Expr.parseCompTailWF
 d_parseCompTailWF_742 ::
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Induction.WellFounded.T_Acc_42 ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_parseCompTailWF_742 v0 v1 ~v2 = du_parseCompTailWF_742 v0 v1
 du_parseCompTailWF_742 ::
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_parseCompTailWF_742 v0 v1
@@ -43217,11 +43217,11 @@ du_parseCompTailWF_742 v0 v1
                                                 = coe
                                                     du_parseCompTailWF_742
                                                     (coe
-                                                       MAlonzo.Code.Once.Spec.Surface.Syntax.C_RApp_54
+                                                       MAlonzo.Code.Once.Spec.Surface.Syntax.C_RApp_18
                                                        (coe
-                                                          MAlonzo.Code.Once.Spec.Surface.Syntax.C_RApp_54
+                                                          MAlonzo.Code.Once.Spec.Surface.Syntax.C_RApp_18
                                                           (coe
-                                                             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46
+                                                             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10
                                                              (coe ("compose" :: Data.Text.Text)))
                                                           (coe v0))
                                                        (coe v6))
@@ -43345,7 +43345,7 @@ du_parseAtomExprWF'45'TLParen_746 v0
                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                       (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RUnit_64)
+                       (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RUnit_28)
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v2)
                           (coe MAlonzo.Code.Once.Parser.ExprRelation.C_pae'45'unit_920)))
@@ -44663,7 +44663,7 @@ du_atomExprVarWF_2722 v0 v1
              MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
              (coe
                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 (coe v0))
+                (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 (coe v0))
                 (coe
                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
                    (coe
@@ -44677,7 +44677,7 @@ du_atomExprVarWF_2722 v0 v1
                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                       (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 (coe v0))
+                       (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 (coe v0))
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
                           (coe
@@ -44688,7 +44688,7 @@ du_atomExprVarWF_2722 v0 v1
                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                       (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 (coe v0))
+                       (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 (coe v0))
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
                           (coe
@@ -44699,7 +44699,7 @@ du_atomExprVarWF_2722 v0 v1
                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                       (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 (coe v0))
+                       (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 (coe v0))
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
                           (coe
@@ -44710,7 +44710,7 @@ du_atomExprVarWF_2722 v0 v1
                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                       (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 (coe v0))
+                       (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 (coe v0))
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
                           (coe
@@ -44721,7 +44721,7 @@ du_atomExprVarWF_2722 v0 v1
                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                       (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 (coe v0))
+                       (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 (coe v0))
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
                           (coe
@@ -44732,7 +44732,7 @@ du_atomExprVarWF_2722 v0 v1
                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                       (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 (coe v0))
+                       (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 (coe v0))
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
                           (coe
@@ -44743,7 +44743,7 @@ du_atomExprVarWF_2722 v0 v1
                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                       (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 (coe v0))
+                       (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 (coe v0))
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
                           (coe
@@ -44754,7 +44754,7 @@ du_atomExprVarWF_2722 v0 v1
                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                       (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 (coe v0))
+                       (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 (coe v0))
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
                           (coe
@@ -44765,7 +44765,7 @@ du_atomExprVarWF_2722 v0 v1
                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                       (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 (coe v0))
+                       (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 (coe v0))
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
                           (coe
@@ -44776,7 +44776,7 @@ du_atomExprVarWF_2722 v0 v1
                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                       (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 (coe v0))
+                       (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 (coe v0))
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
                           (coe
@@ -44787,7 +44787,7 @@ du_atomExprVarWF_2722 v0 v1
                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                       (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 (coe v0))
+                       (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 (coe v0))
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
                           (coe
@@ -44798,7 +44798,7 @@ du_atomExprVarWF_2722 v0 v1
                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                       (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 (coe v0))
+                       (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 (coe v0))
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
                           (coe
@@ -44809,7 +44809,7 @@ du_atomExprVarWF_2722 v0 v1
                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                       (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 (coe v0))
+                       (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 (coe v0))
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
                           (coe
@@ -44820,7 +44820,7 @@ du_atomExprVarWF_2722 v0 v1
                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                       (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 (coe v0))
+                       (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 (coe v0))
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
                           (coe
@@ -44831,7 +44831,7 @@ du_atomExprVarWF_2722 v0 v1
                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                       (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 (coe v0))
+                       (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 (coe v0))
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
                           (coe
@@ -44842,7 +44842,7 @@ du_atomExprVarWF_2722 v0 v1
                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                       (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 (coe v0))
+                       (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 (coe v0))
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
                           (coe
@@ -44853,7 +44853,7 @@ du_atomExprVarWF_2722 v0 v1
                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                       (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 (coe v0))
+                       (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 (coe v0))
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
                           (coe
@@ -44867,7 +44867,7 @@ du_atomExprVarWF_2722 v0 v1
                            MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                            (coe
                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                              (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 (coe v0))
+                              (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 (coe v0))
                               (coe
                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
                                  (coe
@@ -44882,7 +44882,7 @@ du_atomExprVarWF_2722 v0 v1
                                   (coe
                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                      (coe
-                                        MAlonzo.Code.Once.Spec.Surface.Syntax.C_RQualified_48
+                                        MAlonzo.Code.Once.Spec.Surface.Syntax.C_RQualified_12
                                         (coe v0) (coe v6))
                                      (coe
                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v5)
@@ -44893,7 +44893,7 @@ du_atomExprVarWF_2722 v0 v1
                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                   (coe
                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 (coe v0))
+                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 (coe v0))
                                      (coe
                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
                                         (coe
@@ -44907,7 +44907,7 @@ du_atomExprVarWF_2722 v0 v1
                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                   (coe
                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 (coe v0))
+                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 (coe v0))
                                      (coe
                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
                                         (coe
@@ -44921,7 +44921,7 @@ du_atomExprVarWF_2722 v0 v1
                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                   (coe
                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 (coe v0))
+                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 (coe v0))
                                      (coe
                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
                                         (coe
@@ -44935,7 +44935,7 @@ du_atomExprVarWF_2722 v0 v1
                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                   (coe
                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 (coe v0))
+                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 (coe v0))
                                      (coe
                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
                                         (coe
@@ -44949,7 +44949,7 @@ du_atomExprVarWF_2722 v0 v1
                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                   (coe
                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 (coe v0))
+                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 (coe v0))
                                      (coe
                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
                                         (coe
@@ -44963,7 +44963,7 @@ du_atomExprVarWF_2722 v0 v1
                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                   (coe
                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 (coe v0))
+                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 (coe v0))
                                      (coe
                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
                                         (coe
@@ -44977,7 +44977,7 @@ du_atomExprVarWF_2722 v0 v1
                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                   (coe
                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 (coe v0))
+                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 (coe v0))
                                      (coe
                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
                                         (coe
@@ -44991,7 +44991,7 @@ du_atomExprVarWF_2722 v0 v1
                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                   (coe
                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 (coe v0))
+                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 (coe v0))
                                      (coe
                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
                                         (coe
@@ -45005,7 +45005,7 @@ du_atomExprVarWF_2722 v0 v1
                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                   (coe
                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 (coe v0))
+                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 (coe v0))
                                      (coe
                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
                                         (coe
@@ -45019,7 +45019,7 @@ du_atomExprVarWF_2722 v0 v1
                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                   (coe
                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 (coe v0))
+                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 (coe v0))
                                      (coe
                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
                                         (coe
@@ -45033,7 +45033,7 @@ du_atomExprVarWF_2722 v0 v1
                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                   (coe
                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 (coe v0))
+                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 (coe v0))
                                      (coe
                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
                                         (coe
@@ -45047,7 +45047,7 @@ du_atomExprVarWF_2722 v0 v1
                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                   (coe
                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 (coe v0))
+                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 (coe v0))
                                      (coe
                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
                                         (coe
@@ -45061,7 +45061,7 @@ du_atomExprVarWF_2722 v0 v1
                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                   (coe
                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 (coe v0))
+                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 (coe v0))
                                      (coe
                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
                                         (coe
@@ -45075,7 +45075,7 @@ du_atomExprVarWF_2722 v0 v1
                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                   (coe
                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 (coe v0))
+                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 (coe v0))
                                      (coe
                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
                                         (coe
@@ -45089,7 +45089,7 @@ du_atomExprVarWF_2722 v0 v1
                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                   (coe
                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 (coe v0))
+                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 (coe v0))
                                      (coe
                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
                                         (coe
@@ -45103,7 +45103,7 @@ du_atomExprVarWF_2722 v0 v1
                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                   (coe
                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 (coe v0))
+                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 (coe v0))
                                      (coe
                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
                                         (coe
@@ -45117,7 +45117,7 @@ du_atomExprVarWF_2722 v0 v1
                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                   (coe
                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 (coe v0))
+                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 (coe v0))
                                      (coe
                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                         (coe
@@ -45134,7 +45134,7 @@ du_atomExprVarWF_2722 v0 v1
                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                   (coe
                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 (coe v0))
+                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 (coe v0))
                                      (coe
                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
                                         (coe
@@ -45148,7 +45148,7 @@ du_atomExprVarWF_2722 v0 v1
                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                   (coe
                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 (coe v0))
+                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 (coe v0))
                                      (coe
                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
                                         (coe
@@ -45167,7 +45167,7 @@ du_atomExprVarWF_2722 v0 v1
                                                 (coe
                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                    (coe
-                                                      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46
+                                                      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10
                                                       (coe v0))
                                                    (coe
                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
@@ -45184,7 +45184,7 @@ du_atomExprVarWF_2722 v0 v1
                                                 (coe
                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                    (coe
-                                                      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46
+                                                      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10
                                                       (coe v0))
                                                    (coe
                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
@@ -45201,7 +45201,7 @@ du_atomExprVarWF_2722 v0 v1
                                                 (coe
                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                    (coe
-                                                      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46
+                                                      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10
                                                       (coe v0))
                                                    (coe
                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
@@ -45218,7 +45218,7 @@ du_atomExprVarWF_2722 v0 v1
                                                 (coe
                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                    (coe
-                                                      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46
+                                                      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10
                                                       (coe v0))
                                                    (coe
                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
@@ -45235,7 +45235,7 @@ du_atomExprVarWF_2722 v0 v1
                                                 (coe
                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                    (coe
-                                                      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46
+                                                      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10
                                                       (coe v0))
                                                    (coe
                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
@@ -45252,7 +45252,7 @@ du_atomExprVarWF_2722 v0 v1
                                                 (coe
                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                    (coe
-                                                      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46
+                                                      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10
                                                       (coe v0))
                                                    (coe
                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
@@ -45269,7 +45269,7 @@ du_atomExprVarWF_2722 v0 v1
                                                 (coe
                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                    (coe
-                                                      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46
+                                                      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10
                                                       (coe v0))
                                                    (coe
                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
@@ -45286,7 +45286,7 @@ du_atomExprVarWF_2722 v0 v1
                                                 (coe
                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                    (coe
-                                                      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46
+                                                      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10
                                                       (coe v0))
                                                    (coe
                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
@@ -45303,7 +45303,7 @@ du_atomExprVarWF_2722 v0 v1
                                                 (coe
                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                    (coe
-                                                      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46
+                                                      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10
                                                       (coe v0))
                                                    (coe
                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
@@ -45320,7 +45320,7 @@ du_atomExprVarWF_2722 v0 v1
                                                 (coe
                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                    (coe
-                                                      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46
+                                                      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10
                                                       (coe v0))
                                                    (coe
                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
@@ -45338,7 +45338,7 @@ du_atomExprVarWF_2722 v0 v1
                                          (coe
                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                             (coe
-                                               MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46
+                                               MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10
                                                (coe v0))
                                             (coe
                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
@@ -45354,7 +45354,7 @@ du_atomExprVarWF_2722 v0 v1
                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                   (coe
                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 (coe v0))
+                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 (coe v0))
                                      (coe
                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
                                         (coe
@@ -45368,7 +45368,7 @@ du_atomExprVarWF_2722 v0 v1
                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                   (coe
                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 (coe v0))
+                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 (coe v0))
                                      (coe
                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
                                         (coe
@@ -45382,7 +45382,7 @@ du_atomExprVarWF_2722 v0 v1
                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                   (coe
                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 (coe v0))
+                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 (coe v0))
                                      (coe
                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
                                         (coe
@@ -45396,7 +45396,7 @@ du_atomExprVarWF_2722 v0 v1
                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                   (coe
                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 (coe v0))
+                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 (coe v0))
                                      (coe
                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
                                         (coe
@@ -45410,7 +45410,7 @@ du_atomExprVarWF_2722 v0 v1
                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                   (coe
                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 (coe v0))
+                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 (coe v0))
                                      (coe
                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
                                         (coe
@@ -45426,7 +45426,7 @@ du_atomExprVarWF_2722 v0 v1
                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                       (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 (coe v0))
+                       (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 (coe v0))
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
                           (coe
@@ -45437,7 +45437,7 @@ du_atomExprVarWF_2722 v0 v1
                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                       (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 (coe v0))
+                       (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 (coe v0))
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
                           (coe
@@ -45452,7 +45452,7 @@ du_atomExprVarWF_2722 v0 v1
                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                   (coe
                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 (coe v0))
+                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 (coe v0))
                                      (coe
                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
                                         (coe
@@ -45464,7 +45464,7 @@ du_atomExprVarWF_2722 v0 v1
                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                   (coe
                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 (coe v0))
+                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 (coe v0))
                                      (coe
                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
                                         (coe
@@ -45476,7 +45476,7 @@ du_atomExprVarWF_2722 v0 v1
                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                   (coe
                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 (coe v0))
+                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 (coe v0))
                                      (coe
                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
                                         (coe
@@ -45488,7 +45488,7 @@ du_atomExprVarWF_2722 v0 v1
                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                   (coe
                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 (coe v0))
+                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 (coe v0))
                                      (coe
                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
                                         (coe
@@ -45500,7 +45500,7 @@ du_atomExprVarWF_2722 v0 v1
                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                   (coe
                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 (coe v0))
+                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 (coe v0))
                                      (coe
                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
                                         (coe
@@ -45512,7 +45512,7 @@ du_atomExprVarWF_2722 v0 v1
                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                   (coe
                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 (coe v0))
+                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 (coe v0))
                                      (coe
                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
                                         (coe
@@ -45524,7 +45524,7 @@ du_atomExprVarWF_2722 v0 v1
                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                   (coe
                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 (coe v0))
+                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 (coe v0))
                                      (coe
                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
                                         (coe
@@ -45536,7 +45536,7 @@ du_atomExprVarWF_2722 v0 v1
                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                   (coe
                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 (coe v0))
+                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 (coe v0))
                                      (coe
                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
                                         (coe
@@ -45548,7 +45548,7 @@ du_atomExprVarWF_2722 v0 v1
                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                   (coe
                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 (coe v0))
+                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 (coe v0))
                                      (coe
                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
                                         (coe
@@ -45560,7 +45560,7 @@ du_atomExprVarWF_2722 v0 v1
                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                   (coe
                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 (coe v0))
+                                     (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 (coe v0))
                                      (coe
                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
                                         (coe
@@ -45573,7 +45573,7 @@ du_atomExprVarWF_2722 v0 v1
                            MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                            (coe
                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                              (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 (coe v0))
+                              (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 (coe v0))
                               (coe
                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
                                  (coe
@@ -45586,7 +45586,7 @@ du_atomExprVarWF_2722 v0 v1
                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                       (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 (coe v0))
+                       (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 (coe v0))
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
                           (coe
@@ -45597,7 +45597,7 @@ du_atomExprVarWF_2722 v0 v1
                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                       (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 (coe v0))
+                       (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 (coe v0))
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
                           (coe
@@ -45609,7 +45609,7 @@ du_atomExprVarWF_2722 v0 v1
                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                       (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 (coe v0))
+                       (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 (coe v0))
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
                           (coe
@@ -45620,7 +45620,7 @@ du_atomExprVarWF_2722 v0 v1
                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                       (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 (coe v0))
+                       (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 (coe v0))
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
                           (coe
@@ -45632,7 +45632,7 @@ du_atomExprVarWF_2722 v0 v1
                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                       (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 (coe v0))
+                       (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 (coe v0))
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
                           (coe

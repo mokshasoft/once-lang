@@ -25,6 +25,19 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.CataConst.Call (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.Bool using (false)
+open import Data.Empty using (⊥)
+open import Data.List using ([]; _∷_)
+open import Data.List.Relation.Unary.All.Properties using (++⁺)
+open import Data.Maybe using (just)
+open import Data.Product using (proj₁; _,_; proj₂)
+open import Data.Unit using (tt)
+open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
+open import Once.CCC.Machine.ValueRel using (valid-pair-wf)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Once.IR using (Heap)
+open import Relation.Binary.PropositionalEquality using (refl; _≡_; cong; sym; trans; _≢_; subst; cong₂)
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module ResuspBaseC)
 open import Once.CCC.Codegen.IRObsCorrect.CataConst.Steps o tbl using (module CataStepsC; Head; head-instr)
 import Once.CCC.Codegen.IRObsCorrect.CataConst.Steps o tbl as Steps
@@ -37,35 +50,46 @@ open import Once.CCC.Machine.SMCore
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.CCC.Label using (LabelId)
-open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; mkHeapRef; sucHL; module HeapLocation; module HeapRef)
+open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; sucHL; module HeapLocation; module HeapRef)
 open HeapLocation using (heap-ref)
 open HeapRef using (ref-id)
 open import Once.IRTy using (IRTy) renaming (_*_ to _*ᵀ_)
 open import Once.CCC.Codegen.Size using (size)
-open import Once.CCC.Codegen.FlatLayout using (Kind; kind; put; put-k; put-All)
+open import Once.CCC.Codegen.FlatLayout using (Kind; kind; put; put-All)
 open import Once.CCC.Codegen.StraightRun using (module StraightRunAPI)
 import Once.CCC.Machine.FlatPut as FlatPut
 import Once.CCC.Machine.FlatAlloc as FlatAlloc
 import Once.CCC.Machine.SMPrimitives
-open import Data.List.Properties using (++-identityʳ)
-open import Data.List.Relation.Unary.All using ([]; _∷_)
-open import Data.Nat using (z≤n; s≤s; _⊔_)
-open import Data.Nat.Properties using (m≤n⊔m; m<m+n; +-monoʳ-<)
+open import Data.List.Properties using (++-identityʳ; ++-assoc)
+open import Data.List.Relation.Unary.All using ([]; _∷_; All)
+open import Data.Nat using (z≤n; s≤s; _⊔_; ℕ; suc; _≤_; _<_)
+open import Data.Nat.Properties using (m≤n⊔m; m<m+n; +-monoʳ-<; <-irrefl; ≤-trans; m≤m+n; <-≤-trans; ≤-reflexive; +-identityʳ; n≤1+n)
 import Data.Nat as ℕ
 
 module CataCallC {FS : FrameSemantics} where
 
   open Core {FS}
+  open ClosureWellFormedBase′ using (Live; BlocksKept)
+  open ClosureWellFormedDef′ using (ValidAtWF; CellAt)
+  open FlatEventTrace′ using (event-of; chain-events; chain-events-++)
+  open AbstractExec′ using (exec-abstract)
+  open FlatMachine′ using (StraightStep; FlatState; flat-exec-instr)
+  open FlatMachine′.FlatState using (floc; fpc; fret; flink; fclosure; falloc)
+  open FlatStepsAPI′ using ([]; _∷_; FlatSteps; FlatSteps-++)
+  open FrontierInvariant′ using (BeforeFrontier; module BeforeFrontier)
+  open MemOps′ using (readLoc)
+  open ReadLocEq′ using (readLoc-stack-heap-eq)
   open Mach {FS}
-  open ResuspBaseC {FS} using (SegA; SRun; segA-∘; span-take; span-drop)
+  open ResuspBaseC {FS} using (SegA; SRun; span-take; span-drop)
   open CataStepsC {FS} using (HeadOK; module HeadOK)
   open MemOps {FS} using (writeLoc-preserves-other; writeLoc-read-same-stack)
   open AbstractExec {FS} using (exec-trace; exec-trace-cons; exec-load-from-slot-with-value)
   open Once.CCC.Machine.SMPrimitives.TraceComposition {FS} using (exec-trace-append)
   open FlatEventTrace {FS} using (chain-events-subst)
   open LocState using (regs; halted)
-  open AllocState using (next-slot; next-heap-ref; current-frame)
+  open AllocState using (next-heap-ref; current-frame)
   module SR = StraightRunAPI {FS}
+    using (At; after; straight-silent; straight-steps)
 
   private
     slot-of : ValueLocation FS → ℕ
@@ -158,6 +182,7 @@ module CataCallC {FS : FrameSemantics} where
 
     open FlatPut {FS} {prog} using (src-tr; put-run; PutOut; dst)
     module HD = HeadOK hd
+      using (nh1; nhw; nws; out1)
 
     s  = floc σ
     a  = falloc σ
@@ -252,6 +277,7 @@ module CataCallC {FS : FrameSemantics} where
            (≤-trans (m≤m+n (size E) (size L)) S≤N) (FlatAlloc.alloc-in {FS} N a)
            (src-tr (λ l lv → keep₃ l (bft₀ l lv)) srcE)
     module PE = PutOut PE
+      using (alloc-eq; cell-at; live; other)
     sE = proj₁ (exec-trace (put E ev pr 0) x₃ A₁)
 
     PL = put-run L k pr (size E) sE A₁ a₀ lay-sv rd N PE.live
@@ -261,6 +287,7 @@ module CataCallC {FS : FrameSemantics} where
            (src-tr (λ { (AtDynamic hl) lv → trans (PE.other (AtDynamic hl) (λ j _ e′ → fresh₀ _ (subst (Live a₀) e′ lv)))
                                                   (keep₃ (AtDynamic hl) (bft₀ _ lv)) }) srcL)
     module PL = PutOut PL
+      using (alloc-eq; cell-at; live; other)
     sL = proj₁ (exec-trace (put L k pr (size E)) sE A₁)
 
     -- (3) the closure record to Input1

@@ -14,12 +14,12 @@
 module Once.Laws.Order where
 
 open import Once.Spec.Type using (Ty)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; isEquivalence)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong₂; isEquivalence)
 open import Relation.Binary.Structures using (IsPartialOrder)
-open import Once.Spec.Grade using (Purity; pure; act; eff; mk-kind; pureᶠ; actᶠ)
-open import Once.Spec.Type using (Type; _*_; _+_)
+open import Once.Spec.Grade using (pureᶠ; actᶠ)
+open import Once.Spec.Type using (_*_; _+_)
 open import Once.Spec.Sub using (_<:_; sub-void; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν)
-open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
+open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-act)
 open import Once.Context using (⊑ᵘ-refl; ⊑ᵘ-trans)
 open import Once.Spec.Context using (Usage; _⊑ᵘ_)
 open import Once.Spec.Context using ([]; _∷_; _⊑∷_)

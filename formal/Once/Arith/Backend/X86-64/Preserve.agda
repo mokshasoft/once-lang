@@ -67,6 +67,7 @@ AgreeCCC-trans (mkAgree p1 p2 p3 p4 p5 p6 p7) (mkAgree q1 q2 q3 q4 q5 q6 q7) =
 -- FRAMEWORK: the arch-generic lift / lowering / step-of, instantiated here.
 ------------------------------------------------------------------------
 
-open import Once.Arith.Backend.PreserveCore
+import Once.Arith.Backend.PreserveCore
+module PreserveCore = Once.Arith.Backend.PreserveCore
   writeReg NotCCC AgreeCCC agree-refl-ccc AgreeCCC-trans write-nonccc-agrees writes confined
-  public
+  using (step-of; step-of-preserves; write-regs)

@@ -18,7 +18,7 @@ module Once.Adequacy.ModuleSig where
 open import Data.List using (map)
 open import Data.List.Membership.Propositional.Properties using (∈-map⁺)
 open import Data.Product using (_,_)
-open import Relation.Binary.PropositionalEquality using (_≡_; sym; trans; cong; subst)
+open import Relation.Binary.PropositionalEquality using (sym; trans; cong; subst)
 
 open import Once.Spec.Signature using (Signature; _∶_)
 open import Once.Contract using (ISig)

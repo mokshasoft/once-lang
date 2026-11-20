@@ -28,8 +28,6 @@ module Once.Adequacy.ProgramLinked where
 open import Once.Type.Instance using (kindsOf)
 open import Once.TypeCheck.Classify using (ctxAt; baseKinds)
 open import Once.Spec.Type using (Ty; KCtx; ∅ₖ)
-open import Once.Type.Core using (wk₀)
-open import Once.Spec.Type using (μ; ν)
 open import Once.Weaken using (wk₀-id)
 open import Once.TypeCheck.Classify using (TopCtx)
 open import Data.Nat using (ℕ; _<_)
@@ -39,7 +37,7 @@ import Data.List.Relation.Unary.All as All
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Maybe.Properties using (just-injective)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃-syntax)
-open import Data.Sum using (inj₁; inj₂)
+open import Data.Sum using (inj₂)
 open import Data.Sum.Properties using (inj₂-injective)
 open import Data.Unit using (tt)
 open import Data.Bool using (Bool; true; false)
@@ -54,18 +52,14 @@ open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
 
 open import Once.Spec.Type using (Type; Unit)
-open import Once.Spec.Surface.Syntax using (PolyType)
-open import Once.Surface.OpNames
-open import Once.Spec.Surface.Operator using (BinOp)
-open import Once.Type.Instance using (KindedInstance; rigidOf)
-open import Once.Type.Concrete using (con-fun)
-open import Once.Spec.Name using (CanonicalName; bare)
-open import Once.Name using (showCanonical)
+open import Once.Spec.Surface.Type using (PolyType)
+open import Once.Type.Instance using (KindedInstance)
+open import Once.Spec.Name using (bare)
 open import Once.Contract using (ISig)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Relation.Unary.Any using (here; there)
 open import Once.IR using (IR)
-open import Once.IRTy using (IRTy; ⌊_⌋)
+open import Once.IRTy using (⌊_⌋)
 open import Once.IR.Ref using (refIR)
 import Once.Compile as C
 import Once.IR as IR′
@@ -73,15 +67,12 @@ import Once.Parser as Parser
 open Parser.FunInfo using (funName)
 open Parser.PolyFunInfo using (pfunName; pfunType; pfunBody)
 import Once.Parser.Module.Core as P
-import Once.Surface.Context as Ctx
-open import Once.Context hiding (_,_)
 open import Once.Spec.Context using (Ctx; Usage; zeroUsage)
 open import Once.Spec.Context using ([]; _∷_)
 import Once.Spec.Context
-open import Once.Surface.Context
 open import Once.Surface.Syntax
 import Once.Spec.Surface.Syntax as Syn
-open import Once.TypeCheck.Scope using (NamedCtx; Imports; PolyCtx; lookupImport; lookupPolyPrefix)
+open import Once.TypeCheck.Scope using (Imports; PolyCtx; lookupImport; lookupPolyPrefix)
 open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys)
 open import Once.TypeCheck.Elaborate using (success; failure)
 open import Once.TypeCheck.ElaborateSound using (VerifiedCheckResult; checkElabV)
@@ -97,10 +88,6 @@ import Once.Core.Translate as TR
 import Once.Adequacy.ModuleProgram as MP
 open import Once.Adequacy.ModuleSig using (sigOf; sig-in)
 open import Data.Fin using (zero)
-open import Once.Spec.Surface.Syntax using ()
-open import Once.Type.Rigid using (ground-kinded)
-open import Once.IRTy using (⌊⟧T-commute)
-open import Once.IRTy.WF using (wf-⌊⌋)
 open import Once.Denotation.Program using (IRFun; irProgram; LinkedAt; Linked; LinkedProgram; TeleLinked; NamesDistinct)
 open Once.Denotation.Program.IRFun using (fbody)
 open import Once.Module using (ModTele; []; ffi; mono; poly; ModuleTyped-ef; EffUU; teleSig; moduleSig; moduleSig-ef)

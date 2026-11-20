@@ -24,7 +24,6 @@ module Once.Arith.SigOp.BlockSemBridge where
 open import Data.Unit using (tt)
 open import Data.Product using (_,_)
 open import Data.List using ([]; _∷_)
-open import Data.Maybe using () renaming (map to mapMaybe)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; sym)
 
 open import Once.Arith.Machine.Shape
@@ -61,6 +60,7 @@ module _ (tn : TargetNum) where
   open Sem (int-bits tn) (float-format tn) using (eval-arith-W)
   F = float-format tn
   module W = OnceWord.Width (int-bits tn)
+    using (_%ˢ_; _/ˢ_; _⊕_; _⊖_; _⊗_; toℤ; ⊝_)
   module WL = OnceWordL.WidthLaws (int-bits tn)
 
   ------------------------------------------------------------------------

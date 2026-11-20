@@ -53,11 +53,27 @@ d_fromℕ_24 v0
       C_'10216'_'10217'_'47'10'94'__22
       (coe MAlonzo.Code.Once.Spec.Float.Value.C_pos_10) (coe v0)
       (coe (0 :: Integer))
+-- Once.Spec.Float.Decimal.signedDecimal
+d_signedDecimal_28 ::
+  MAlonzo.Code.Once.Spec.Float.Value.T_Sign_8 ->
+  Integer -> Integer -> Integer -> T_Decimal_8
+d_signedDecimal_28 v0 v1 v2 v3
+  = coe
+      C_'10216'_'10217'_'47'10'94'__22 (coe v0)
+      (coe
+         addInt
+         (coe
+            mulInt (coe v1)
+            (coe
+               MAlonzo.Code.Data.Nat.Base.d__'94'__276 (coe (10 :: Integer))
+               (coe v3)))
+         (coe v2))
+      (coe v3)
 -- Once.Spec.Float.Decimal.roundDec
-d_roundDec_28 ::
+d_roundDec_38 ::
   MAlonzo.Code.Once.Spec.Float.Dyadic.T_FloatFormat_30 ->
   T_Decimal_8 -> MAlonzo.Code.Once.Spec.Float.Value.T_FloatVal_24
-d_roundDec_28 v0 v1
+d_roundDec_38 v0 v1
   = case coe v1 of
       C_'10216'_'10217'_'47'10'94'__22 v2 v3 v4
         -> coe

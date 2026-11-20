@@ -34,6 +34,18 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.CaseArmL (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.Bool using (false; true)
+open import Data.List using (List; length; _++_)
+open import Data.Maybe using (just)
+open import Data.Nat using (ℕ; suc; _+_; _≤_)
+open import Data.Nat.Properties using (≤-trans; ≤-reflexive)
+open import Data.Product using (proj₂; proj₁; _,_)
+open import Data.Unit using (tt)
+open import Function using (case_of_)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Once.IR using (IR; case; AllocMode)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; sym; trans; cong; cong₂)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
@@ -45,15 +57,6 @@ open import Data.List.Properties using () renaming (++-identityʳ to ++-idʳ)
 open import Once.IRTy using (IRTy)
 import Once.IRTy as IRT
 
-import Once.CCC.FrameSemantics
-import Once.CCC.Machine.SMPrimitives
-import Once.IRTy
-import Once.IR
-import Once.Semantics.Machine as EvV
-import Once.CCC.Machine.ReadTypedAdequate as RTA
-import Once.Denotation.DenotTrace as DT
-import Once.IR.Semantics.Trace as TM
-open import Data.Bool using (Bool)
 open import Once.Res using (Res; stopped; returns; is-stopped)
 open import Once.Denotation.Approx using (Ap; done; cut; NotCut; budgetLeft)
 
@@ -68,6 +71,15 @@ module ArmLC {FS : FrameSemantics} where
 
 
   open Core {FS}
+  open ClosureWellFormedBase′ using (Live; resultAt; ⟪_⟫_; runAt; eventsAt)
+  open ClosureWellFormedDef′ using (ValidAtWF; InputAt)
+  open FlatEventTrace′ using (chain-events; chain-events-++; chain-events-subst-start; chain-ctrls; chain-ctrls-subst-start; ctrls-≤ˡ; ctrls-≤ʳ; chain-left)
+  open CataNextSlot′ using (AllSlotStable)
+  open FlatMachine′ using (tag-test; flat-read-tag; FlatState; fetch)
+  open FlatMachine′.FlatState using (floc; fpc; falloc; fclosure)
+  open FlatStepsAPI′ using (FlatSteps; FlatSteps-++)
+  open FrontierInvariant′ using (BeforeFrontier)
+  open TracePrimitives′ using (exec-abstract-preserves-halted-WF)
   open FlatStepsAPI {FS} using (flat-step1)
   -- The first half of this same clause: the shape, the four premise splits,
   -- the two jump targets, and the residence lemmas.

@@ -60,9 +60,13 @@ nf-all {i ∷ is} (e ∷ es) rewrite e = nf-all es
 module SC = Seg {λ i → clab-of i ≡ nothing}
   (λ _ → refl) (λ _ → refl) (λ _ → refl) (λ _ → refl) (λ _ → refl) (λ _ → refl) (λ _ → refl)
   refl refl (λ _ → refl) (λ _ → refl) refl refl
+  using (call-P; entry-P; fill-P; get-P; getμ-P; inj-P; node-copy-P; put-P; put-k-P; setup-P; wc2-P
+        ; wrap-P)
 module SF = Seg {λ i → fdef-of i ≡ []}
   (λ _ → refl) (λ _ → refl) (λ _ → refl) (λ _ → refl) (λ _ → refl) (λ _ → refl) (λ _ → refl)
   refl refl (λ _ → refl) (λ _ → refl) refl refl
+  using (call-P; entry-P; fill-P; get-P; getμ-P; inj-P; node-copy-P; put-P; put-k-P; setup-P; wc2-P
+        ; wrap-P)
 
 ------------------------------------------------------------------------
 -- THE CASE SHAPE: a branch's labels `k` (entry of the second arm) and
@@ -325,10 +329,9 @@ open import Once.IR using (IR; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; t
 open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F)
 open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
 open SigOpInfo using (sem)
-open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (CmpAt; cmp-of)
 open import Once.CCC.Codegen.IRToTrace o
-  using (ir-to-trace'; sigop-code; cata-dispatch; cata-strategy; CataStrategy; strat-const; strat-box; strat-branching; in-trace; with-copy; two-cell; node-copy-trace; out-trace; cata-call-setup; cata-call; cata-call-box; cata-br-I₁; cata-br-I₂; fsize; inj-trace; env-entry; cata-body)
+  using (ir-to-trace'; sigop-code; cata-dispatch; cata-strategy; CataStrategy; strat-const; strat-box; strat-branching; in-trace; node-copy-trace; out-trace; cata-call-setup; cata-call; cata-call-box; cata-br-I₁; cata-br-I₂; fsize; inj-trace; env-entry; cata-body)
 open import Once.CCC.Machine.MuRep using (MuRep; mu-box; mu-unit; mu-ptr; mu-rep)
 open import Once.CCC.Codegen.LabelRange o using (label-of; label-mono; cata-label-of)
 open import Once.CCC.Codegen.LabelScope o using (trace-of)

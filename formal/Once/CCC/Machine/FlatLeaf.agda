@@ -16,14 +16,15 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 
 module Once.CCC.Machine.FlatLeaf (FS : FrameSemantics) where
 
-open import Data.Nat using (ℕ; zero; suc; _+_)
-open import Data.Nat.Properties using (+-assoc; +-identityʳ)
+open import Data.Nat using (_+_)
+open import Data.Nat.Properties using (+-assoc)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Maybe.Properties using (just-injective)
 open import Data.Product using (_×_; _,_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
 
-open import Once.Semantics.Machine using (⟦_⟧)
+open import Once.Semantics.Machine using (module Value)
+open Value using (⟦_⟧)
 open import Once.Type using (FitsInReg; fits-int; fits-float)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.Memory.HeapAddress using (heap-loc)
@@ -31,7 +32,7 @@ open import Once.CCC.Machine.SMCore
 open MemOps {FS} using (readLoc)
 open AbstractExec {FS} using (readTyped; tsize; combine-typed; readTyped-int; readTyped-float)
 open import Once.Arith.Machine.Shape
-  using (InputShape; shape-unit; shape-int; shape-float; shape-pair; Path; here-int; here-flt; go-fst; go-snd; flat-off; shape-size)
+  using (shape-unit; shape-int; shape-float; shape-pair; Path; here-int; here-flt; go-fst; go-snd; flat-off; shape-size)
 open import Once.Arith.Machine.IR using (shape-as-type; numtype-as-type)
 open import Once.Arith.Type using (NumType; NInt; NFloat)
 

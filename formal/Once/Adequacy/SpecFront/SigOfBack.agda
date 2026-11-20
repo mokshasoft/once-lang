@@ -15,17 +15,17 @@ module Once.Adequacy.SpecFront.SigOfBack where
 
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
-open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
+open import Data.Maybe using (just)
+open import Data.Product using (Σ-syntax; _×_; _,_)
 open import Data.String using (String)
 open import Data.Bool using (true)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 
 import Once.Parser as Parser
-open import Once.Parser using (Entry; e-fun; e-poly; mkFunInfo)
-open import Once.Spec.Surface.Syntax using (Module; mkModule; Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport)
+open import Once.Parser using (Entry; e-fun; mkFunInfo)
+open import Once.Spec.Surface.Syntax using (DImport)
 open import Once.Spec.Surface.Syntax using (mkImport)
-open import Once.Parser.Module.Resolve using (ModuleMap; sigsOf; importedAt; importedOf; expandPath)
+open import Once.Parser.Module.Resolve using (sigsOf; importedAt; importedOf; expandPath)
 open import Once.Adequacy.ResolveBridge using (lookupMod-complete)
 import Once.Parser.Relation.Resolution as LR
 open import Once.Module using (entrySig)

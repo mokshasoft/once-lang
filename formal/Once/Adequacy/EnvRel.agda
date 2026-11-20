@@ -18,12 +18,11 @@ open import Data.Fin using (Fin; zero; suc)
 open import Data.Product using (_,_; proj₁; proj₂)
 
 open import Once.Spec.Grade using (Quantity; Zero; One; Many)
-open import Once.Spec.Type using (Type)
 open import Once.Context using (⟦_⟧ᶜ; _↾_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m)
 open import Once.Spec.Context using (Ctx; Usage; []; _⊑ᵘ_; lookup; singleUse; ∅)
 open import Once.Spec.Context using (_∷_; _⊑∷_; _▸_)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
-open import Once.Denotation.Phase using (lookupᴰUsed; restrictᴰ; bindᴰ; bindᴰ0)
+open import Once.Denotation.Phase using (lookupᴰUsed; restrictᴰ; bindᴰ)
 open import Once.Denotation.ValueRel using (RelD)
 
 restrict-rel : ∀ {m} {n} {Γ : Ctx m n} {Ψ Ψ' : Usage n} (ule : Ψ' ⊑ᵘ Ψ) {d d′ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜ ⟧ᴰ}

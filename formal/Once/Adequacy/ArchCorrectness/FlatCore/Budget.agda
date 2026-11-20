@@ -33,11 +33,11 @@
 -- spending instruction the room for its own spend is there (`room-of`).
 ------------------------------------------------------------------------
 
-open import Data.Nat using (ℕ; zero; suc; _+_; _*_; _∸_; _≤_; NonZero)
+open import Data.Nat using (ℕ; suc; _+_; _*_; _∸_; _≤_; NonZero)
 open import Data.Bool using (Bool; true; false)
 open import Data.Maybe using (Maybe; just)
 open import Data.List using (List; _∷_)
-open import Data.Product using (Σ; _,_; proj₁; proj₂)
+open import Data.Product using (Σ; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst; subst₂)
 open import Once.CCC.FrameSemantics using (FrameSemantics; module FrameSemantics)
 open FrameSemantics using (frame-word)
@@ -59,14 +59,15 @@ module Once.Adequacy.ArchCorrectness.FlatCore.Budget
   where
 
 open import Data.Nat.Properties
-  using (≤-trans; ≤-reflexive; +-identityʳ; +-assoc; +-comm; *-distribʳ-+; *-monoˡ-≤; +-monoʳ-≤; +-monoˡ-≤; m≤m+n; m+n≤o⇒m≤o∸n)
+  using (≤-trans; +-identityʳ; +-assoc; +-comm; *-distribʳ-+; *-monoˡ-≤; +-monoʳ-≤; +-monoˡ-≤; m≤m+n; m+n≤o⇒m≤o∸n)
 open import Once.CCC.Machine.SMCore
   using (AbstractInstr; AbstractTrace; AllocState; module AllocState; instr-room; instr-alloc-heap
-        ; instr-ctrl; c-start; c-entry; c-label; EntryId)
+        ; instr-ctrl; c-start; c-entry)
 open AllocState using (current-frame)
-open import Once.CCC.Label using (LabelId)
+open import Once.CCC.Label using (LabelId; EntryId)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
-open FlatMachine {FS} using (FlatState; fpc; falloc; floc; fret; fetch; find-label; find-label-sound; flat-step-straight)
+open FlatMachine {FS} using (FlatState; fetch; find-label; find-label-sound; flat-step-straight; module FlatState)
+open FlatState using (falloc; floc; fpc; fret)
 open FrameSemantics FS using (frame-base; shift-frame; shift-base)
 open import Once.CCC.Codegen.RoomChecks using (need; spend; room?; boundary?; max-entry)
 open import Once.CCC.Codegen.RoomChecksFacts using (module CheckK; module NeedFacts)
@@ -76,7 +77,10 @@ open RegRoles roles using (sp-reg)
 import Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence as FC
 private
   module CFC = FC FS slot-size word-eq Reg roles State rreg memory xhalted
-open CFC using (HeapView; hfront; slots; FlatCorr; sp-eq; sep)
+    using (FlatCorr; HeapView; sep; slots; module FlatCorr; module HeapView)
+open CFC using (HeapView; slots; FlatCorr; sep)
+open CFC.FlatCorr using (sp-eq)
+open CFC.HeapView using (hfront)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunLow o FS slot-size word-eq
   using (RunLow; module RunLow; ret-lands-check; check-need)
 

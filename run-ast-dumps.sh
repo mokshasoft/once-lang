@@ -15,7 +15,7 @@
 #
 #   ./run-ast-dumps.sh              # master and the current branch
 #   ./run-ast-dumps.sh master       # one ref
-#   HEAP=16G ./run-ast-dumps.sh     # more heap if a module still does not fit
+#   AGDA_SAFE_MEM_MAX=4G HEAP=3400m ./run-ast-dumps.sh  # more room if a module does not fit
 #   PROGRESS=30 ./run-ast-dumps.sh  # a progress line every 30 s (default 60; 0 = off)
 #
 # Used by MERGE.md §6 (reachability) and plan 0.92/D277 (apex-live scope).
@@ -35,6 +35,7 @@
 set -uo pipefail
 
 REPO="${REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
+SAFE="$REPO/formal/scripts/agda-safe.sh"
 OUT_DIR="${OUT_DIR:-$REPO}"
 WORK="${WORK:-$HOME/.cache/once-ast-runs}"
 # Pick the most recently built agda under dist-newstyle rather than naming one
@@ -63,26 +64,21 @@ RUNS_ENTRY="${RUNS_ENTRY-Once.Extract.Root.runs}"
 RUNS_MODULE="${RUNS_MODULE:-Once/Extract/Root.agda}"
 RUNS_SLUG="${RUNS_SLUG:-runs}"
 
-# Cap Agda's heap so a runaway module raises a clean heap-overflow instead of
-# inviting the kernel OOM killer to take the whole session down -- that is what
-# happened on the first attempt at this run.
+# Every Agda run goes through formal/scripts/agda-safe.sh (a cgroup memory cap,
+# 3300M by default) with a heap limit below it, so a runaway module raises a
+# clean heap-overflow instead of inviting the kernel OOM killer.
 #
-# COMPACT switches the old generation to a compacting collector once live data
-# passes N% of the cap. This matters more than the cap itself: the default
-# copying collector needs roughly twice the live set during a collection, so a
-# module with 2.6G live wants ~5.3G of headroom and blows a 5G cap even though
-# it is nowhere near 5G of actual data. Compacting sooner (a lower N) trades
-# speed for a markedly lower peak.
+# The entry's cone is checked one module per process first (check-cone.py);
+# the dump's own run then only loads fresh interfaces. Plan 0.152 E measured
+# that run at 2.54 GB live, 2.90 GB RSS, with HEAP=2700m and -c. One process
+# over a cold cone holds everything it checked and does not fit.
 #
-# Known offenders: Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim (~2.64G
-# residency; exhausts 5G/-c40) and, since plan 0.151 (2026-11-17),
-# Once.Metatheory.Laws.Combinators, which exhausts 6G/-c20 on its own: the dump
-# holds every interface of the closure in one process. The default is therefore
-# 12G with -c20. On a machine with less RAM than that the cap is reached through
-# swap: slower, but the run completes instead of giving up.
+# COMPACT picks the old generation's collector. The default copying collector
+# needs room for a second copy of the live data during a major collection; `-c`
+# compacts in place instead.
 #
-HEAP="${HEAP:-12G}"
-COMPACT="${COMPACT:--c20}"
+HEAP="${HEAP:-2700m}"
+COMPACT="${COMPACT:--c}"
 ALLOC="${ALLOC:-16m}"
 RTS_OPTS=(-M"$HEAP" "$COMPACT" -A"$ALLOC" -s)
 
@@ -230,6 +226,13 @@ run_ref() {
     closure_of "$dir" "$entry_module" > "$list" 2>/dev/null || : > "$list"
   fi
 
+  say "  the cone of $entry_module, one module per process"
+  python3 "$REPO/formal/scripts/check-cone.py" --dir "$dir" "$entry_module" -- \
+    env -u AGDA_DIR LC_ALL="$LOCALE" "$SAFE" --exec \
+    "$AGDA" +RTS "${RTS_OPTS[@]}" -RTS --library-file="$libs" --transliterate -vwarning:1 \
+    | sed 's/^/  /'
+  [ "${PIPESTATUS[0]}" -eq 0 ] || return 1
+
   while :; do
     attempt=$((attempt + 1))
     before=$(find "$dir" -name '*.agdai' | wc -l)
@@ -245,7 +248,7 @@ run_ref() {
     fi
 
     ( cd "$dir" && unset AGDA_DIR && LC_ALL="$LOCALE" \
-      "$AGDA" +RTS "${RTS_OPTS[@]}" -RTS \
+      "$SAFE" --exec "$AGDA" +RTS "${RTS_OPTS[@]}" -RTS \
         --library-file="$libs" --transliterate -vwarning:1 \
         --write-ast="$entry" --ast-file="$raw" \
         "$entry_module" ) >> "$log" 2>&1
@@ -274,7 +277,7 @@ run_ref() {
         if [ -n "$culprit" ]; then
           say "  giving up: $culprit does not fit in $HEAP with $COMPACT."
           say "  retry that ref alone with more headroom, e.g.:"
-          say "    HEAP=16G COMPACT=-c10 $0 $REF_LABEL"
+          say "    AGDA_SAFE_MEM_MAX=4G HEAP=3400m $0 $REF_LABEL"
         else
           say "  giving up; last lines of $log:"
           tail -20 "$log" | sed 's/^/    /'

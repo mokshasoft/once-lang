@@ -73,16 +73,25 @@ rv64-layout = record
 
 -- Regions (InStack, InHeap, InCode, disjointness)
 -- Hide Addr since we already export it from MLS above
-open import Once.Memory.Regions rv64-layout public
-  hiding (Addr)
+import Once.Memory.Regions
+module Regions = Once.Memory.Regions rv64-layout
+  using (InHeap; InStack; stack-bounds)
+open Regions
 
 -- Stack slots (slot-addr, StackPointer, etc.)
 -- Hide InStack since it's already exported from Regions
-open import Once.Memory.StackSlots rv64-layout rv64-stack-growth public
-  hiding (InStack)
+import Once.Memory.StackSlots
+module StackSlots = Once.Memory.StackSlots rv64-layout rv64-stack-growth
+  using (StackPointer; _≟SP_; offset-distinct; slot-addr; stack-addr; stack-addr-inj; module StackAddr; module StackGrowth′)
+open StackSlots
+open StackSlots.StackAddr using (addr)
+open StackSlots.StackGrowth′ using (grow-identity)
 
 -- Frame operations (frameSlot, memory preservation)
-open import Once.Memory.FrameOps rv64-layout rv64-stack-growth public
+import Once.Memory.FrameOps
+module FrameOps = Once.Memory.FrameOps rv64-layout rv64-stack-growth
+  using (frameSlot; stackAddr-write-preserves-heap; module FrameSlotInternal)
+open FrameOps
 
 
 -- Re-export Memory operations

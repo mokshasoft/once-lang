@@ -29,7 +29,7 @@ module Once.Format.Proof where
 
 open import Data.List.Relation.Unary.All using (All)
 open import Data.Product using (_×_; ∃-syntax)
-open import Data.String using (String; toList)
+open import Data.String using (toList)
 open import Data.Sum using (inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 

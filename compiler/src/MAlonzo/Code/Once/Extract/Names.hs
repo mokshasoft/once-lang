@@ -24,39 +24,39 @@ import qualified MAlonzo.Code.Once.Spec.Surface.Syntax
 
 -- Once.Extract.Names.imports-of
 d_imports'45'of_6 ::
-  [MAlonzo.Code.Once.Spec.Surface.Syntax.T_Decl_98] ->
+  [MAlonzo.Code.Once.Spec.Surface.Syntax.T_Decl_52] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]
 d_imports'45'of_6 v0
   = case coe v0 of
       [] -> coe v0
       (:) v1 v2
         -> case coe v1 of
-             MAlonzo.Code.Once.Spec.Surface.Syntax.C_DTypeSig_100 v3 v4
+             MAlonzo.Code.Once.Spec.Surface.Syntax.C_DTypeSig_54 v3 v4
                -> coe d_imports'45'of_6 (coe v2)
-             MAlonzo.Code.Once.Spec.Surface.Syntax.C_DFunDef_102 v3 v4
+             MAlonzo.Code.Once.Spec.Surface.Syntax.C_DFunDef_56 v3 v4
                -> coe d_imports'45'of_6 (coe v2)
-             MAlonzo.Code.Once.Spec.Surface.Syntax.C_DSignature_104 v3 v4
+             MAlonzo.Code.Once.Spec.Surface.Syntax.C_DSignature_58 v3 v4
                -> coe d_imports'45'of_6 (coe v2)
-             MAlonzo.Code.Once.Spec.Surface.Syntax.C_DTypeAlias_106 v3 v4 v5
+             MAlonzo.Code.Once.Spec.Surface.Syntax.C_DTypeAlias_60 v3 v4 v5
                -> coe d_imports'45'of_6 (coe v2)
-             MAlonzo.Code.Once.Spec.Surface.Syntax.C_DImport_108 v3
+             MAlonzo.Code.Once.Spec.Surface.Syntax.C_DImport_62 v3
                -> coe
                     MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                       (coe MAlonzo.Code.Once.Spec.Surface.Syntax.d_path_92 (coe v3))
-                       (coe MAlonzo.Code.Once.Spec.Surface.Syntax.d_alias_94 (coe v3)))
+                       (coe MAlonzo.Code.Once.Spec.Surface.Syntax.d_path_46 (coe v3))
+                       (coe MAlonzo.Code.Once.Spec.Surface.Syntax.d_alias_48 (coe v3)))
                     (coe d_imports'45'of_6 (coe v2))
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Extract.Names.module-imports
 d_module'45'imports_20 ::
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Module_110 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Module_64 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]
 d_module'45'imports_20 v0
   = coe
       d_imports'45'of_6
-      (coe MAlonzo.Code.Once.Spec.Surface.Syntax.d_decls_114 (coe v0))
+      (coe MAlonzo.Code.Once.Spec.Surface.Syntax.d_decls_68 (coe v0))
 -- Once.Extract.Names.import-path
 d_import'45'path_24 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->

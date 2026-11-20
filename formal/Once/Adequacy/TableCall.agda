@@ -25,13 +25,11 @@ open import Once.IR.Semantics.Trace using (FFIAnswers)
 module Once.Adequacy.TableCall (fmt : TargetNum) (φ : FFIAnswers) where
 
 open import Data.List using (List; _∷_)
-open import Data.Product using (_,_; proj₁; proj₂)
 open import Data.Unit using (tt)
 open import Data.Empty using (⊥-elim)
 open import Relation.Nullary using (yes; no)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; cong; trans)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; cong)
 
-open import Once.Postulates using (extensionality)
 open import Once.Spec.Grade using (mk-kind; Zero; One; Many)
 open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_)
 open import Once.Spec.Type using (μ; ν)

@@ -56,11 +56,13 @@ open AllocState using (next-slot; saved-frames; block-size; frame-slots)
 open LocState using (halted; heapMem; stackMem; regs)
 open import Once.CCC.Machine.Locations using (ValueLocation)
 open import Once.Type using (FitsInReg)
-open import Once.Semantics.Machine using (⟦_⟧)
+open import Once.Semantics.Machine using (module Value)
+open Value using (⟦_⟧)
 open import Once.CCC.Machine.Flat
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open FlatStepsAPI {FS} using (Sound; sound-step)
 open FlatMachine {FS}
+open FlatState using (fpc; floc; falloc; fret; flink)
 open import Once.IR using (IR)
 open import Once.IRTy using (Unit)
 open import Once.CCC.Codegen.ProgramImage using (program-image)
@@ -178,7 +180,7 @@ record RunAt (prog : AbstractTrace) (fs : FlatState) : Set where
     -- plan 0.107: the run starts OUTSIDE every frame — `c-start` (pc 0) reserves
     -- the outermost one as an ordinary, proved step.
     run-reach : Reachable prog 0 fs
-open RunAt public
+open RunAt
 
 -- D367: a reached state's run never faults — the start's does, and a step
 -- keeps it. What the site facts in `RunWF` are read off.

@@ -14,18 +14,13 @@
 
 module Once.TypeCheck.NumTable where
 
-open import Data.Empty using (⊥; ⊥-elim)
-open import Data.Product using (∃-syntax)
-open import Data.Bool using (Bool; true; false)
-open import Data.Nat using (ℕ; zero; suc)
-open import Once.Spec.Float.Value using (Sign; pos; neg)
+open import Data.Empty using (⊥)
 open import Data.Unit using (⊤; tt)
-open import Data.Product using (_,_)
-open import Relation.Nullary using (Dec; yes; no; ¬_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; subst)
+open import Relation.Nullary using (Dec; yes; no)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.Spec.Type using (Ty; Int; Float; Unit; Void; var; _*_; _+_; _⇒[_]_; μ; ν)
 open import Once.Spec.Theory
-open import Once.Spec.Surface.Operator using (BinOp; plain; dotted; ‹_›; o%; o+; o-; o*; o/; o<; o<=; o>; o>=; o==; o!=; BinSym; binSym; _∶_∶_)
+open import Once.Spec.Surface.Operator using (plain; dotted; ‹_›; o%; o+; o-; o*; o/; o<; o<=; o>; o>=; o==; o!=; BinSym; binSym)
 open BinSym
 
 

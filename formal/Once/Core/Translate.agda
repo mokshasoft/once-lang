@@ -21,47 +21,35 @@ module Once.Core.Translate (Σ : Signature) where
 open import Data.Nat using (zero; suc)
 open import Data.Fin using (Fin; zero; suc)
 open import Data.List using (List; []; _∷_)
-open import Data.Maybe using (just; nothing)
+open import Data.Maybe using (just)
 import Data.Maybe
-import Once.TypeCheck.Scope
 open import Data.Maybe.Properties using (just-injective)
-open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
-open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.String using () renaming (_≟_ to _≟str_; _==_ to _==str_)
+open import Data.Product using (Σ-syntax; _,_; proj₁; proj₂)
 open import Data.Bool using (Bool; true; false)
 import Data.String.Properties as StrProp
-open import Relation.Nullary using (Dec; yes; no)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst; cong)
+open import Relation.Nullary using (yes; no)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-import Once.Spec.Grade as T
 open import Once.Spec.Type using (Type; ∅ₖ)
 import Once.Spec.Type
 open import Once.Spec.Signature using (_∶_)
-open import Once.Spec.Name using (CanonicalName)
 open import Once.Name using (showCanonical; WordName)
 open import Once.Type.Honest using (HonestFFI)
 open import Once.Type.Concrete using (IsConcrete)
-open import Once.Type.Instance using (rigidOf; kindsOf)
 open import Once.Type.Schema using (schemaOf)
 open import Once.Core.Decl using (declS)
 import Once.Compile as C
 import Once.Parser as Parser
-open Parser.FunInfo using (funName; funBody; funType)
-open Parser.PolyFunInfo using (pfunName; pfunType; pfunBody)
+open Parser.PolyFunInfo using (pfunName; pfunType)
 open import Once.TypeCheck.Scope using (lookupImport; lookupPolyPrefix)
-import Once.Spec.Context as Ctx
 open import Once.Spec.Context using ([])
 import Once.Spec.Context as SCx
-open import Once.Module using (Scope; emptyScope; ModTele; teleSig; []; ffi; mono; poly; MainIn; EffUU; ctxOf; ctxOfAt; addImp)
-import Once.Module as Mod
+open import Once.Module using (ModTele; teleSig; []; EffUU)
 open import Data.List.Membership.Propositional using (_∈_)
-open import Data.List.Relation.Unary.Any using (here; there)
 open import Once.Spec.Core.Syntax using (Defs; _▷_; _!!_; Schema; schema)
-import Once.Spec.Core.Syntax as SCS
-open import Once.Spec.Core.Program Σ using (Tele; def; Entry; entry)
+open import Once.Spec.Core.Program Σ using (Tele; Entry; entry)
 open import Once.Core.Telescope Σ using (Program; program)
 open import Once.Spec.Sub using (_<:_)
-open import Once.Type.SubDecide using (_<:?_)
 import Once.Spec.Core.Typing as Ty
 import Once.TypeCheck.View as TView
 
@@ -99,6 +87,7 @@ wkT (t-def d e ts) = t-def (suc d) e (wkT ts)
 module _ {s} {S : Defs s} where
 
   module VS = TView Σ S
+    using (Declared; ImportAt; View; declared; def)
 
   impAt : ∀ {imps} → ImpSig S imps → ∀ {x T′} → lookupImport imps x ≡ just T′ → VS.ImportAt x T′
   impAt [] ()

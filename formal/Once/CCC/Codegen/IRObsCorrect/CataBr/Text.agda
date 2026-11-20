@@ -42,9 +42,21 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.CataBr.Text (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open Interface.Prelude using ()
+open Interface.Prelude.IRToTrace using (ir-to-trace')
+open import Data.Bool using (true; false)
+open import Data.Empty using (⊥; ⊥-elim)
+open import Data.List using (_∷_; []; _++_; length)
+open import Data.List.Properties using (++-assoc)
+open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Product using (proj₁; proj₂)
+open import Data.Unit using (tt)
+open import Once.IR using (IR; Cata)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; trans; cong; _≢_; sym; cong₂)
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module ResuspBaseC)
 open import Once.CCC.Codegen.IRToTrace o
-  using (rec-count; cata-strategy; CataStrategy; strat-const; strat-branching; cata-dispatch; cata-trace-branching; const-strategy; box-fun
+  using (rec-count; cata-strategy; strat-branching; cata-dispatch; cata-trace-branching; const-strategy; box-fun
         ; cata-call-setup; cata-call; cata-body; cata-br-I₁; cata-br-I₂; push2; visit-walk; rebuild-walk; fsize; lsize)
 open import Once.CCC.Codegen.IRObsCorrect.CataConst.Call o tbl using (module CataCallC)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Build o tbl using (lkind-gen; lsz-gen)
@@ -64,8 +76,8 @@ open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; ⟦_⟧TI; ⌈_⌉F;
 open import Once.Spec.Type using (Fun)
 import Once.IRTy as IRTy′
 import Data.Nat as ℕ
-open import Data.Nat using (s≤s; z≤n)
-open import Data.Nat.Properties using (+-monoʳ-<; +-cancelˡ-≡)
+open import Data.Nat using (s≤s; z≤n; zero; suc; ℕ; _≤_; _<_)
+open import Data.Nat.Properties using (+-monoʳ-<; +-cancelˡ-≡; <-≤-trans; +-identityʳ; +-suc; <-irrefl; n<1+n; +-comm; m≤n+m; <-trans; +-assoc)
 open import Data.Maybe using () renaming (map to mmapT)
 open import Data.List.Relation.Unary.All using () renaming (_∷_ to _∷ᴬ_; [] to []ᴬ)
 open import Data.Nat.Solver using (module +-*-Solver)
@@ -192,6 +204,7 @@ module PiecesAt (E : IRTy) (ck : Kind) (cs : ℕ) (G : Fun 0) (n l1 : ℕ) where
 
   -- the flatten pieces, by name (no re-export: plan 0.92 §2)
   module P = Pieces G n l1
+    using (bodyL; cslot; exitTxt; flatTxt; headTxt; initTxt; pushTxt; reloadTxt; rootTxt; visitTxt)
   cslot bodyL : ℕ
   cslot = P.cslot
   bodyL = P.bodyL
@@ -239,6 +252,8 @@ module PiecesAt (E : IRTy) (ck : Kind) (cs : ℕ) (G : Fun 0) (n l1 : ℕ) where
 module CataBrTextC {FS : FrameSemantics} where
 
   open Core {FS}
+  open FlatMachine′ using (find-label; fl-go)
+  open FlatStepsAPI′ using (_∷_; [])
   open ResuspBaseC {FS} using (span-take; span-drop)
   open Resolve {FS} using (NoLabel; noLabel-outside; fl-hit; found-in-window)
   open FlatStepsAPI {FS} using (fl-go-skip; fl-go-shift; fl-go-prefix)
@@ -258,6 +273,8 @@ module CataBrTextC {FS : FrameSemantics} where
     G = ⌈ F ⌉F
 
     module Pc = PiecesAt E (kind C) (size C) G n l1
+      using (bodyL; cslot; exitTxt; flatTxt; foldTxt; headTxt; initTxt; pre37; pushTxt; reloadTxt
+            ; restTxt; rootTxt; setup-eq; setupTxt; visitTxt)
     open Pc
 
     -- the layer the algebra takes

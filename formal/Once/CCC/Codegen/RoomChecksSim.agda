@@ -29,11 +29,12 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Machine.SMCore using (AbstractInstr; AbstractTrace; instr-room)
-open import Once.CCC.Codegen.RoomChecks using (boundary?; stretch; checks; room-checks; max-entry)
+open import Once.CCC.Codegen.RoomChecks using (boundary?; stretch; room-checks; max-entry)
 open import Once.CCC.Codegen.RoomChecksFacts using (ψ; φ; bump; module RoomFacts)
 
 module RoomSim {FS : FrameSemantics} (t : AbstractTrace) where
   open FlatMachine {FS}
+  open FlatState using (fret; flink; fpc; floc; fclosure)
   open RoomFacts {FS}
 
   P′ : AbstractTrace
@@ -89,8 +90,8 @@ module RoomSim {FS : FrameSemantics} (t : AbstractTrace) where
           ; instr-reclaim-to; instr-push-frame; instr-pop-frame; instr-call-closure; worklist-init
           ; worklist-push; worklist-pop; worklist-check; instr-sigop; instr-load-const; instr-load-code-addr
           ; instr-save-closure-reg; instr-load-tag-lit; instr-alloc-heap; instr-reg-op; out-nz; instr-ctrl
-          ; instr-free-heap; load-at; store-at; addr-at; c-label; c-jmp; c-branch-tag-zero; c-entry; c-ret; c-call-fn; c-start; c-leave
-          ; e-fn; e-thunk; SV-Ptr; SV-Tag; SV-Lit; SV-Code; readReg; Output; module LocState )
+          ; instr-free-heap; load-at; store-at; addr-at; c-label; c-jmp; c-branch-tag-zero; c-entry; c-ret; c-call-fn; c-start; c-leave; SV-Ptr; SV-Tag; SV-Lit; SV-Code; readReg; Output; module LocState )
+  open import Once.CCC.Label using (e-thunk; e-fn)
   open import Once.CCC.Machine.Locations using (AtDynamic; AtStack)
   open import Once.Memory.HeapAddress using (sucHL)
   open import Once.Type using (fits-int; fits-float)
@@ -230,7 +231,6 @@ module RoomSim {FS : FrameSemantics} (t : AbstractTrace) where
   open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
   open FlatStepsAPI {FS} using (FlatSteps; []; _∷_; Sound; sound-step)
   open import Data.Maybe.Properties using (just-injective)
-  open import Data.Product using (proj₁; proj₂)
 
   sound-lift : ∀ {n : ℕ} (fs : FlatState) (p : ℕ) {g : FlatState} → PcRel (fpc fs) p → Sound t fs
              → FlatSteps P′ n (lift fs p) g → LocState.faulted (floc g) ≡ false

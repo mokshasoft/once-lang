@@ -25,12 +25,11 @@ module Once.Adequacy.UseCommute (Σ : Signature) {s : ℕ} (S : Defs s) (nm : Fi
   (Ok : Fin s → Set) (OkS : CanonicalName → Type → Set)
   {m k : ℕ} (Δ : KCtx m) (Δ′ : KCtx k) (σ : TySub m k) (rσ : Respects Δ Δ′ σ) where
 
-open import Data.Fin using (zero; suc)
-open import Data.Product using (_,_; proj₁; proj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
+open import Data.Product using (proj₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 open import Relation.Binary.HeterogeneousEquality as H using (_≅_)
-open import Once.Spec.Grade using (Quantity; Zero; One; Many; mk-kind; pure; act; pureᶠ; actᶠ; positionGrade; ⊑-pure)
-open import Once.Spec.Type using (Ty; _⇒[_]_; _⟨_⟩; _⟨_⟩F; ⟦_⟧F; μ; ν; Unit; _+_)
+open import Once.Spec.Grade using (Quantity; Zero; One; Many; mk-kind; pure; act; pureᶠ; actᶠ; positionGrade)
+open import Once.Spec.Type using (Ty; _⇒[_]_; _⟨_⟩; _⟨_⟩F; μ; _+_)
 open import Once.Spec.Type.Substitution using (⟨⟩-∘; respects-∘)
 open import Once.Spec.Sub using (_<:_)
 open import Once.Spec.Context using (Ctx; _▸_; _⟨_⟩ᶜ; Usage; _∷_; zeroUsage; _+ᵘ_; _*ᵘ_)
@@ -59,14 +58,14 @@ import Once.TypeCheck.Use Σ S nm Ok OkS Δ′ as U′
 import Once.TypeCheck.UseCore Σ S nm Ok OkS Δ as C
 import Once.TypeCheck.UseCore Σ S nm Ok OkS Δ′ as C′
 open import Once.TypeCheck.WitnessSubst Σ S nm Ok OkS Δ Δ′ σ rσ
-  using (_⟨_⟩ˡ; subW⇒; subW⇐; subW↦; ≡W⇒; ≡W⇐; ≡W↦; ∘τ; ⌜⌝ᵈ-⟨⟩; ↑-⟨⟩; ⊔-⟨⟩; compose-⟪⟫; pair-⟪⟫; case-⟪⟫; ana-⟪⟫; effApp-⟪⟫)
+  using (_⟨_⟩ˡ; subW⇒; subW⇐; subW↦; ≡W⇒; ≡W⇐; ≡W↦; ∘τ; ⌜⌝ᵈ-⟨⟩; ↑-⟨⟩; ⊔-⟨⟩; compose-⟪⟫; pair-⟪⟫; case-⟪⟫; ana-⟪⟫)
 import Once.Adequacy.SpecFront.TyRen Σ S nm as TR
 import Once.Spec.Surface.Generators as Gn
 open import Once.Type.Sub using (pure-⊑)
 import Once.TypeCheck.Witness Σ S nm Ok OkS Δ′ as W′
 open import Once.Core.Decl using (declS)
-open import Once.Type.Sub using (pure-⊑; <:-refl; ⊑π-refl; <:ᶜ⇒<:)
-open import Once.Spec.Sub using (sub-arr; _⊔_≔_)
+open import Once.Type.Sub using (⊑π-refl; <:ᶜ⇒<:)
+open import Once.Spec.Sub using (_⊔_≔_)
 open _⊔_≔_ using (left; right)
 open import Once.Spec.Grade using (fin)
 

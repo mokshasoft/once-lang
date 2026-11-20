@@ -20,8 +20,8 @@
 
 module Once.Measure.Image where
 
-open import Data.List using (List; []; _∷_)
-open import Data.Nat using (ℕ; zero; suc; _+_; _⊔_)
+open import Data.List using ([]; _∷_)
+open import Data.Nat using (ℕ; suc; _+_; _⊔_)
 open import Data.Nat.Show using () renaming (show to showℕ)
 open import Data.String using (String; _++_)
 

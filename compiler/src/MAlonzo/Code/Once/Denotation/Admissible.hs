@@ -31,86 +31,86 @@ import qualified MAlonzo.Code.Relation.Nullary.Decidable.Core
 
 -- Once.Denotation.Admissible.rawIntLits
 d_rawIntLits_6 ::
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 -> [Integer]
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_8 -> [Integer]
 d_rawIntLits_6 v0
   = case coe v0 of
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 v1
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 v1
         -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RQualified_48 v1 v2
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RQualified_12 v1 v2
         -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RResolved_50 v1
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RResolved_14 v1
         -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RGen_52 v1
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RGen_16 v1
         -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RApp_54 v1 v2
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RApp_18 v1 v2
         -> coe
              MAlonzo.Code.Data.List.Base.du__'43''43'__32
              (coe d_rawIntLits_6 (coe v1)) (coe d_rawIntLits_6 (coe v2))
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RLam_56 v1 v2
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RLam_20 v1 v2
         -> coe d_rawIntLits_6 (coe v2)
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RLet_58 v1 v2 v3
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RLet_22 v1 v2 v3
         -> coe
              MAlonzo.Code.Data.List.Base.du__'43''43'__32
              (coe d_rawIntLits_6 (coe v2)) (coe d_rawIntLits_6 (coe v3))
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RPair_60 v1 v2
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RPair_24 v1 v2
         -> coe
              MAlonzo.Code.Data.List.Base.du__'43''43'__32
              (coe d_rawIntLits_6 (coe v1)) (coe d_rawIntLits_6 (coe v2))
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RDestruct_62 v1 v2 v3 v4 v5
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RDestruct_26 v1 v2 v3 v4 v5
         -> coe
              MAlonzo.Code.Data.List.Base.du__'43''43'__32
              (coe d_rawIntLits_6 (coe v1))
              (coe
                 MAlonzo.Code.Data.List.Base.du__'43''43'__32
                 (coe d_rawIntLits_6 (coe v3)) (coe d_rawIntLits_6 (coe v5)))
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RUnit_64
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RUnit_28
         -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RInt_66 v1
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RInt_30 v1
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22 (coe v1)
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RFloat_68 v1 v2 v3 v4
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RFloat_32 v1 v2 v3 v4
         -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RAnnot_70 v1 v2
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RAnnot_34 v1 v2
         -> coe d_rawIntLits_6 (coe v1)
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72 v1 v2 v3
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36 v1 v2 v3
         -> coe
              MAlonzo.Code.Data.List.Base.du__'43''43'__32
              (coe d_rawIntLits_6 (coe v2)) (coe d_rawIntLits_6 (coe v3))
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RNeg_74 v1
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RNeg_38 v1
         -> coe d_rawIntLits_6 (coe v1)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Denotation.Admissible.declIntLits
 d_declIntLits_38 ::
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Decl_98 -> [Integer]
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Decl_52 -> [Integer]
 d_declIntLits_38 v0
   = case coe v0 of
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C_DTypeSig_100 v1 v2
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_DTypeSig_54 v1 v2
         -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C_DFunDef_102 v1 v2
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_DFunDef_56 v1 v2
         -> coe d_rawIntLits_6 (coe v2)
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C_DSignature_104 v1 v2
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_DSignature_58 v1 v2
         -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C_DTypeAlias_106 v1 v2 v3
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_DTypeAlias_60 v1 v2 v3
         -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C_DImport_108 v1
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_DImport_62 v1
         -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Denotation.Admissible.moduleIntLits
 d_moduleIntLits_42 ::
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Module_110 -> [Integer]
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Module_64 -> [Integer]
 d_moduleIntLits_42 v0
   = case coe v0 of
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C_mkModule_116 v1
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_mkModule_70 v1
         -> coe du_go_50 (coe v1)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Denotation.Admissible._.go
 d_go_50 ::
-  [MAlonzo.Code.Once.Spec.Surface.Syntax.T_Decl_98] ->
-  [MAlonzo.Code.Once.Spec.Surface.Syntax.T_Decl_98] -> [Integer]
+  [MAlonzo.Code.Once.Spec.Surface.Syntax.T_Decl_52] ->
+  [MAlonzo.Code.Once.Spec.Surface.Syntax.T_Decl_52] -> [Integer]
 d_go_50 ~v0 v1 = du_go_50 v1
 du_go_50 ::
-  [MAlonzo.Code.Once.Spec.Surface.Syntax.T_Decl_98] -> [Integer]
+  [MAlonzo.Code.Once.Spec.Surface.Syntax.T_Decl_52] -> [Integer]
 du_go_50 v0
   = case coe v0 of
       [] -> coe v0
@@ -122,12 +122,12 @@ du_go_50 v0
 -- Once.Denotation.Admissible.AdmissibleM
 d_AdmissibleM_56 ::
   MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Module_110 -> ()
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Module_64 -> ()
 d_AdmissibleM_56 = erased
 -- Once.Denotation.Admissible.admissibleM?
 d_admissibleM'63'_66 ::
   MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Module_110 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Module_64 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20
 d_admissibleM'63'_66 v0 v1
   = coe
@@ -171,7 +171,7 @@ d_outOfRange_72 v0 v1
 -- Once.Denotation.Admissible.firstBadLit
 d_firstBadLit_98 ::
   MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Module_110 -> Maybe Integer
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Module_64 -> Maybe Integer
 d_firstBadLit_98 v0 v1
   = coe
       d_outOfRange_72

@@ -64,7 +64,6 @@ record Allocated (s : State) (addr : HeapLocation) (n : ℕ) : Set where
     addr-eq     : addr ≡ heap-loc (mkHeapRef ref) 0
     ref<state   : ref < s
 
-open Allocated public
 
 ------------------------------------------------------------------------
 -- The allocation operation: bump the counter, return heap-loc.

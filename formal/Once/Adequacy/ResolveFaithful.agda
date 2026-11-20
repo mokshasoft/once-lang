@@ -20,7 +20,6 @@
 -- (`resolveExpr-sigOp-closure-faithful`; plan 0.103 1c deleted the inconsistent poly-splice one).
 ------------------------------------------------------------------------
 
-open import Once.Spec.Type using (base)
 open import Once.Spec.Type using (Ty)
 open import Once.TypeCheck.Scope using (PolyCtx; Imports)
 open import Once.TypeCheck.Classify using (TopCtx)
@@ -51,7 +50,7 @@ open import Induction.WellFounded using (Acc; acc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; sym; subst)
 
 open import Once.Spec.Grade using (Zero; One; Many)
-open import Once.Spec.Type using (Type; Int; Float; Unit; _+_)
+open import Once.Spec.Type using (Type)
 import Once.Spec.Grade as T
 import Once.Type.Core as T
 import Once.Spec.Type as T
@@ -69,13 +68,14 @@ open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; cohᴰ; coerce-functo
 open import Once.Arith.SigOp.Builders
 open import Once.Spec.Theory using (unary; binary; compare) renaming (int to nint; float to nfloat)
 open import Once.IR.Semantics.Iterative using (T∞; _>>=∞_; return∞; fmap∞; iter∞)
-open import Once.Semantics.Machine using (sem-cata)
+open import Once.Semantics.Machine using (module Value)
+open Value using (sem-cata)
 import Once.Denotation.SourceDenote as SD
 open import Once.TypeCheck.Link using (resolveExpr; resolvePolyCase; applySplice)
 open import Once.TypeCheck.Elaborate using (CheckElabResult; checkElab)
 import Once.TypeCheck.Elaborate as Elaborate
 open import Once.TypeCheck.Scope using (lookupPolyPrefix)
-open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys; ctxAt; baseKinds)
+open import Once.TypeCheck.Classify using (ctxAt; baseKinds)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.Postulates using (extensionality)
 

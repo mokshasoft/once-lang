@@ -9,16 +9,13 @@
 -- `emit-D` use only `Once.Type` / `Val` / the trace monad / `SigOp.Info` — NO
 -- `Once.IR` (IR enters only at `evalᴰ`, which STAYS in `DenotTrace`). This is
 -- the semantic-domain vocabulary the IR-free reference meaning `⟦_⟧ᵈ` lands in.
---
--- `DenotTrace` re-exports this (`open … public`), so consumers are unchanged.
 ------------------------------------------------------------------------
 
 module Once.Denotation.ValueDomain where
 
 import Once.Spec.Type as SpT
-open import Once.Spec.Type using (Base; WFFun; b-*; b-+; b-Float; b-Int; b-Unit; b-Void; wf-⊕; wf-⊗; ∅ₖ)
-open import Once.Spec.Type using (Base)
-open import Once.Spec.Type using (var; Ty; Fun; KCtx; WFFun)
+open import Once.Spec.Type using (Base; WFFun; b-*; b-+; b-Float; b-Int; b-Unit; b-Void; wf-⊕; wf-⊗)
+open import Once.Spec.Type using (var; Ty; Fun; KCtx)
 open import Data.Unit using (⊤)
 open import Data.Empty using (⊥)
 open import Data.Product using (_×_; _,_)
@@ -27,25 +24,20 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong₂; cong; sym; subst)
 
 open import Once.Spec.Grade
-open import Once.Type.Grade
-open import Once.Type.Core
 open import Once.Spec.Type using (μ; ν)
-open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
-open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PK; PId; _P⊕_; _P⊗_; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PInt; PFloat; PTVar)
-open import Once.Type.Poly
-open import Once.Type
+open import Once.Spec.Type using (Unit; Void; _*_; _+_; _⇒[_]_; Int; Float)
 open import Once.IRTy using (IRTy; ⌈_⌉; ⌊_⌋)
 import Once.Semantics.Machine as Val
-open import Once.IR.Semantics.Trace using (T; ret; call; halt; returnT; fmapT; _>>=T_)
-open import Once.Semantics.Machine using (⟦_⟧F; coh; tF-coh)
+open import Once.IR.Semantics.Trace using (T)
+open import Once.Semantics.Machine using (module ValueIR; module Value)
+open Value using (⟦_⟧F)
+open ValueIR using (coh; tF-coh)
 open import Once.Spec.Word using (Carrier)
-open import Once.Spec.Polynomial using (SFunctor; SId; SK; _S⊕_; _S⊗_; ⟦_⟧SF)
+open import Once.Spec.Polynomial using (SFunctor; ⟦_⟧SF)
 open import Once.Spec.Type using (wf-K; wf-Id)
 open import Once.IR.Semantics.FunctorMeaning using (translateF)
-open import Once.Semantics.Machine using (coerce-ν-in)
 
-open import Once.IR.Semantics.Stream using (νᵈ; module νᵈ; in-νᵈ; seqF; anaᵈ; anaTree; mapAnaᵈ; anaFᵈ)
-open νᵈ
+open import Once.IR.Semantics.Stream using (νᵈ; module νᵈ; anaᵈ)
 open import Once.IR.Semantics.Iterative using (T∞)
 open import Once.IR.Semantics.StreamInf using (νᴵ)
 
@@ -98,7 +90,7 @@ subst-νᵈ-cong refl v = refl
 ⟦ A ⇒[ mk-kind Zero π ] B ⟧ᴰ = ⊤ → T∞ ⟦ B ⟧ᴰ   -- erased: no argument
 ⟦ A ⇒[ mk-kind One  π ] B ⟧ᴰ = ⟦ A ⟧ᴰ → T∞ ⟦ B ⟧ᴰ
 ⟦ A ⇒[ mk-kind Many π ] B ⟧ᴰ = ⟦ A ⟧ᴰ → T∞ ⟦ B ⟧ᴰ
-⟦ μ F ⟧ᴰ   = Val.⟦ μ F ⟧            -- first-order data: reuse pure
+⟦ μ F ⟧ᴰ   = Val.Value.⟦ μ F ⟧            -- first-order data: reuse pure
 -- ν is the OTHER type that suspends computation, so like the arrow it is
 -- Kleisli: forcing a layer IS a `T`-computation. A ν built by an EFFECTFUL
 -- coalgebra cannot be a pure value — while it was one, `Ana` had to read its
@@ -107,8 +99,8 @@ subst-νᵈ-cong refl v = refl
 -- the anamorphism does not order. Here the order is the order the program
 -- FORCES layers, which is the order the machine runs them in.
 ⟦ ν F _ ⟧ᴰ = νᴵ (translateF Carrier Carrier F)
-⟦ Int ⟧ᴰ        = Val.⟦ Int {0} ⟧
-⟦ Float ⟧ᴰ      = Val.⟦ Float {0} ⟧
+⟦ Int ⟧ᴰ        = Val.Value.⟦ Int {0} ⟧
+⟦ Float ⟧ᴰ      = Val.Value.⟦ Float {0} ⟧
 ⟦ var _ ⟧ᴰ  = ⊥
 
 ------------------------------------------------------------------------
@@ -150,7 +142,7 @@ cohᴰ (var _)  = refl
 -- answer its calls: there is no meaning-free erasure, so none is defined.
 ------------------------------------------------------------------------
 
-forgetᵇ : ∀ {m} {Δₖ : KCtx m} {A : Ty m} → Base Δₖ A → ⟦ A ⟧ᴰ → Val.⟦ A ⟧
+forgetᵇ : ∀ {m} {Δₖ : KCtx m} {A : Ty m} → Base Δₖ A → ⟦ A ⟧ᴰ → Val.Value.⟦ A ⟧
 forgetᵇ b-Unit   x = x
 forgetᵇ b-Void   ()
 forgetᵇ b-Int    x = x
@@ -159,7 +151,7 @@ forgetᵇ (b-* a b) (x , y) = forgetᵇ a x , forgetᵇ b y
 forgetᵇ (b-+ a b) (inj₁ x) = inj₁ (forgetᵇ a x)
 forgetᵇ (b-+ a b) (inj₂ y) = inj₂ (forgetᵇ b y)
 
-injectᵇ : ∀ {m} {Δₖ : KCtx m} {A : Ty m} → Base Δₖ A → Val.⟦ A ⟧ → ⟦ A ⟧ᴰ
+injectᵇ : ∀ {m} {Δₖ : KCtx m} {A : Ty m} → Base Δₖ A → Val.Value.⟦ A ⟧ → ⟦ A ⟧ᴰ
 injectᵇ b-Unit   x = x
 injectᵇ b-Void   ()
 injectᵇ b-Int    x = x

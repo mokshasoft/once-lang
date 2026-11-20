@@ -32,7 +32,7 @@ open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 
 open import Once.IR using (IR; Cata)
-open import Once.IRTy using (IRTy; IRFunctor; K; Id; _⊕_; _⊗_; WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod; IsBaseTypeI; ⟦_⟧TI; ⌈_⌉; ⌈_⌉F; ⌈⟧TI-commute; μ-type)
+open import Once.IRTy using (IRTy; IRFunctor; _⊕_; _⊗_; WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod; IsBaseTypeI; ⟦_⟧TI; ⌈_⌉; ⌈_⌉F; ⌈⟧TI-commute; μ-type)
 import Once.IRTy as I
 import Once.Spec.Type as T
 open import Once.IRTy.WF using (wf-⌈⌉)
@@ -41,9 +41,9 @@ open import Once.IR.Semantics.Iterative using (T∞; module T∞; seqF∞; bindB
 open T∞ using (force)
 open import Once.IR.Semantics.Trace using (T; ret)
 open import Once.Spec.Word using (Carrier)
-open import Once.IR.Semantics.Value Carrier Carrier using (⟦_⟧F; ⟦μ⟧; sem-cata; sem-fmap; sem-Out; sem-In)
+open import Once.IR.Semantics.Value Carrier Carrier using (⟦_⟧F; sem-cata; sem-fmap; sem-Out)
 open import Once.Semantics.Value Carrier Carrier using (sem-In-Out; sem-cata-compute)
-open import Once.Denotation.Approx using (Ap; approx; approxBlock)
+open import Once.Denotation.Approx using (approx; approxBlock)
 open import Once.Spec.Numerics using (TargetNum)
 import Once.Denotation.DenotTrace as DT
 open import Once.CCC.Codegen.IRToTrace o using (rec-count)

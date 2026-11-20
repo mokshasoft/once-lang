@@ -15,9 +15,9 @@
 ------------------------------------------------------------------------
 
 import Once.Spec.Type as SpT
-open import Once.Spec.Type using (WFFun; ∅ₖ)
+open import Once.Spec.Type using (WFFun)
 
-open import Once.Spec.Type using (Fun; KCtx; WFFun)
+open import Once.Spec.Type using (Fun; KCtx)
 open import Once.Spec.Numerics using (TargetNum)
 
 -- Plan 0.73 (D113): this module's statements mention a denotation that is
@@ -39,8 +39,9 @@ open import Once.IR.Semantics.FunctorMeaning using (translateF)
 open import Once.IRTy using (eraseF; ⌈_⌉F; ⌊_⌋; ⌊⟧T-commute)
 open import Once.IRTy.WF using (wf-⌊⌋)
 open import Once.Spec.Polynomial using (SFunctor; inS; μS; ⟦_⟧SF)
-import Once.IR.Semantics.Polynomial
-open import Once.Semantics.Machine using (tF-coh; ⟦_⟧F; coerce-μ-in)
+open import Once.Semantics.Machine using (module Value; module ValueIR)
+open Value using (⟦_⟧F; coerce-μ-in)
+open ValueIR using (tF-coh)
 open import Once.IR.Semantics.Iterative using (T∞; return∞)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; cohᴰ; coerce-functor-D)
 open import Once.Denotation.DenotTrace using (evalᴰ; liftFn)

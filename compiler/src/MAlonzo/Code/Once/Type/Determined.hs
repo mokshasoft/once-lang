@@ -25,7 +25,7 @@ import qualified MAlonzo.Code.Data.List.Relation.Binary.Subset.DecSetoid
 import qualified MAlonzo.Code.Data.List.Relation.Unary.Any
 import qualified MAlonzo.Code.Data.String.Properties
 import qualified MAlonzo.Code.Once.Spec.Grade
-import qualified MAlonzo.Code.Once.Spec.Surface.Syntax
+import qualified MAlonzo.Code.Once.Spec.Surface.Type
 import qualified MAlonzo.Code.Once.Spec.Type
 import qualified MAlonzo.Code.Once.Type.Poly
 import qualified MAlonzo.Code.Relation.Binary.PropositionalEquality.Properties
@@ -38,7 +38,7 @@ d_agree'45'on_16 ::
    MAlonzo.Code.Once.Spec.Type.T_Ty_8) ->
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
    MAlonzo.Code.Once.Spec.Type.T_Ty_8) ->
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_PolyType_10 ->
+  MAlonzo.Code.Once.Spec.Surface.Type.T_PolyType_10 ->
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
    MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
@@ -51,7 +51,7 @@ d_agreeF'45'on_28 ::
    MAlonzo.Code.Once.Spec.Type.T_Ty_8) ->
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
    MAlonzo.Code.Once.Spec.Type.T_Ty_8) ->
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_PolyFunctor_8 ->
+  MAlonzo.Code.Once.Spec.Surface.Type.T_PolyFunctor_8 ->
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
    MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
@@ -158,7 +158,7 @@ d_agree'45'from_310 ::
    MAlonzo.Code.Once.Spec.Type.T_Ty_8) ->
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
    MAlonzo.Code.Once.Spec.Type.T_Ty_8) ->
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_PolyType_10 ->
+  MAlonzo.Code.Once.Spec.Surface.Type.T_PolyType_10 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
@@ -171,8 +171,8 @@ d_pair'45'from_324 ::
    MAlonzo.Code.Once.Spec.Type.T_Ty_8) ->
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
    MAlonzo.Code.Once.Spec.Type.T_Ty_8) ->
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_PolyType_10 ->
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_PolyType_10 ->
+  MAlonzo.Code.Once.Spec.Surface.Type.T_PolyType_10 ->
+  MAlonzo.Code.Once.Spec.Surface.Type.T_PolyType_10 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
@@ -185,7 +185,7 @@ d_agreeF'45'from_336 ::
    MAlonzo.Code.Once.Spec.Type.T_Ty_8) ->
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
    MAlonzo.Code.Once.Spec.Type.T_Ty_8) ->
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_PolyFunctor_8 ->
+  MAlonzo.Code.Once.Spec.Surface.Type.T_PolyFunctor_8 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
@@ -198,8 +198,8 @@ d_pairF'45'from_350 ::
    MAlonzo.Code.Once.Spec.Type.T_Ty_8) ->
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
    MAlonzo.Code.Once.Spec.Type.T_Ty_8) ->
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_PolyFunctor_8 ->
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_PolyFunctor_8 ->
+  MAlonzo.Code.Once.Spec.Surface.Type.T_PolyFunctor_8 ->
+  MAlonzo.Code.Once.Spec.Surface.Type.T_PolyFunctor_8 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
@@ -208,8 +208,8 @@ d_pairF'45'from_350 = erased
 -- Once.Type.Determined.cod-determined
 d_cod'45'determined_588 ::
   Integer ->
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_PolyType_10 ->
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_PolyType_10 ->
+  MAlonzo.Code.Once.Spec.Surface.Type.T_PolyType_10 ->
+  MAlonzo.Code.Once.Spec.Surface.Type.T_PolyType_10 ->
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
    MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
    MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34) ->
@@ -222,8 +222,8 @@ d_cod'45'determined_588 ::
 d_cod'45'determined_588 = erased
 -- Once.Type.Determined.codVarsInDom?
 d_codVarsInDom'63'_608 ::
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_PolyType_10 ->
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_PolyType_10 ->
+  MAlonzo.Code.Once.Spec.Surface.Type.T_PolyType_10 ->
+  MAlonzo.Code.Once.Spec.Surface.Type.T_PolyType_10 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20
 d_codVarsInDom'63'_608 v0 v1
   = coe
@@ -235,27 +235,27 @@ d_codVarsInDom'63'_608 v0 v1
       (coe MAlonzo.Code.Once.Type.Poly.d_ftv_274 (coe v0))
 -- Once.Type.Determined.ArrowView
 d_ArrowView_614 ::
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_PolyType_10 -> ()
+  MAlonzo.Code.Once.Spec.Surface.Type.T_PolyType_10 -> ()
 d_ArrowView_614 = erased
 -- Once.Type.Determined.arrowSchema?
 d_arrowSchema'63'_626 ::
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_PolyType_10 ->
+  MAlonzo.Code.Once.Spec.Surface.Type.T_PolyType_10 ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_arrowSchema'63'_626 v0
   = case coe v0 of
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C_PUnit_20
+      MAlonzo.Code.Once.Spec.Surface.Type.C_PUnit_20
         -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C_PVoid_22
+      MAlonzo.Code.Once.Spec.Surface.Type.C_PVoid_22
         -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C_PInt_24
+      MAlonzo.Code.Once.Spec.Surface.Type.C_PInt_24
         -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C_PFloat_26
+      MAlonzo.Code.Once.Spec.Surface.Type.C_PFloat_26
         -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C__P'42'__28 v1 v2
+      MAlonzo.Code.Once.Spec.Surface.Type.C__P'42'__28 v1 v2
         -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C__P'43'__30 v1 v2
+      MAlonzo.Code.Once.Spec.Surface.Type.C__P'43'__30 v1 v2
         -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C__P'8658''91'_'93'__32 v1 v2 v3
+      MAlonzo.Code.Once.Spec.Surface.Type.C__P'8658''91'_'93'__32 v1 v2 v3
         -> case coe v2 of
              MAlonzo.Code.Once.Spec.Grade.C_Zero_8
                -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
@@ -275,7 +275,7 @@ d_arrowSchema'63'_626 v0
                                 (coe MAlonzo.Code.Once.Spec.Grade.C_pure'7584'_36))
                              (coe MAlonzo.Code.Once.Type.Poly.C_as'45'pure_320))))
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C_PAct_34 v1 v2
+      MAlonzo.Code.Once.Spec.Surface.Type.C_PAct_34 v1 v2
         -> coe
              MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
              (coe
@@ -288,7 +288,7 @@ d_arrowSchema'63'_626 v0
                          MAlonzo.Code.Once.Spec.Grade.C_fin_42
                          (coe MAlonzo.Code.Once.Spec.Grade.C_act'7584'_38))
                       (coe MAlonzo.Code.Once.Type.Poly.C_as'45'act_332))))
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C_PEff_36 v1 v2
+      MAlonzo.Code.Once.Spec.Surface.Type.C_PEff_36 v1 v2
         -> coe
              MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
              (coe
@@ -299,10 +299,10 @@ d_arrowSchema'63'_626 v0
                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                       (coe MAlonzo.Code.Once.Spec.Grade.C_eff_44)
                       (coe MAlonzo.Code.Once.Type.Poly.C_as'45'eff_326))))
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C_Pμ_38 v1
+      MAlonzo.Code.Once.Spec.Surface.Type.C_Pμ_38 v1
         -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C_Pν_40 v1 v2
+      MAlonzo.Code.Once.Spec.Surface.Type.C_Pν_40 v1 v2
         -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C_PTVar_42 v1
+      MAlonzo.Code.Once.Spec.Surface.Type.C_PTVar_42 v1
         -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
       _ -> MAlonzo.RTE.mazUnreachableError

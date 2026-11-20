@@ -113,6 +113,7 @@ library
       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax
       MAlonzo.Code.Once.CanonicalName
       MAlonzo.Code.Once.Compile
+      MAlonzo.Code.Once.Compile.Emit
       MAlonzo.Code.Once.Inspect
       MAlonzo.Code.Once.Principal
       MAlonzo.Code.Once.Spec.ABI
@@ -124,6 +125,7 @@ library
       MAlonzo.Code.Once.Spec.Grade
       MAlonzo.Code.Once.Spec.Signature
       MAlonzo.Code.Once.Spec.Sub
+      MAlonzo.Code.Once.Spec.Surface.Type
       MAlonzo.Code.Once.Spec.Surface.Syntax
       MAlonzo.Code.Once.Spec.Type
       MAlonzo.Code.Once.Target.SymbolFresh
@@ -179,11 +181,11 @@ library
       MAlonzo.Code.Once.Parser.Generic.PolyInst
       MAlonzo.Code.Once.Parser.Generic.Relation
       MAlonzo.Code.Once.Parser.Generic.Sound
+      MAlonzo.Code.Once.Name.Chars
       MAlonzo.Code.Once.Parser.Lexer
       MAlonzo.Code.Once.Parser.Module
       MAlonzo.Code.Once.Parser.Module.Core
       MAlonzo.Code.Once.Parser.Module.DeclTail
-      MAlonzo.Code.Once.Parser.Module.FunDef
       MAlonzo.Code.Once.Parser.Module.FunDef.Body
       MAlonzo.Code.Once.Parser.Module.FunDef.Def
       MAlonzo.Code.Once.Parser.Module.FunDef.OpDecl
@@ -196,7 +198,6 @@ library
       MAlonzo.Code.Once.Parser.Type
       MAlonzo.Code.Once.Parser.TypeRelation
       MAlonzo.Code.Once.Postulates
-      MAlonzo.Code.Once.Semantics.Functor
       MAlonzo.Code.Once.Semantics.Machine
       MAlonzo.Code.Once.Semantics.ValueIR
       MAlonzo.Code.Once.SigOp.Info

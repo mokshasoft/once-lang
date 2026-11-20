@@ -42,13 +42,24 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.CataBr.Visit (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.Bool using (false; true)
+open import Data.List using (_∷_; []; List; length; _++_)
+open import Data.List.Properties using (length-++)
+open import Data.List.Relation.Unary.All.Properties using (++⁺)
+open import Data.Maybe using (just; Maybe; nothing)
+open import Data.Nat.Properties using (≤-trans; m≤m+n; <-≤-trans; <-irrefl; +-comm; m≤n+m; ≤-refl; n≤1+n)
+open import Data.Product using (proj₂; _,_; _×_; proj₁)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Once.IR using (AllocMode)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; sym; cong; trans; _≢_; cong₂)
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module ResuspBaseC)
 open import Once.CCC.Codegen.IRObsCorrect.CataConst.Steps o tbl using (module CataStepsC)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Stack o tbl using (module CataStackC)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Walk o tbl using (module CataWalkC)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Layer o using (kidsI; pushAllV; pushAllV-++)
 open import Once.CCC.Codegen.IRToTrace o using (visit-walk; lsize; push2; fsize; getμ)
-open import Once.CCC.Codegen.FlatLayout using (get; get-k; get-i; get-one; lsz; lkind; kind)
+open import Once.CCC.Codegen.FlatLayout using (get; get-k; get-i; get-one; lsz)
 open import Once.CCC.Codegen.IRObsCorrect.CataConst.Layout o tbl using (lkind-eq; lsz-eq)
 open import Once.CCC.Codegen.IRObsCorrect.Get o tbl using (module GetC)
 open import Once.CCC.Codegen.IRObsCorrect.Pair.Build o tbl using (module PairBuildC)
@@ -61,25 +72,24 @@ open import Once.CCC.Codegen.LabelSeg using (LabelsIn; LabelIn; li-lab; li-none;
 open import Once.CCC.Codegen.LabelResolve o using (module Resolve)
 open import Once.CCC.Machine.SMCore
   using (LocState; module LocState; AbstractTrace; AbstractInstr; AllocState; module AllocState; StoredValue; readReg; Output; Input1
-        ; SV-Ptr; SV-Tag; sv-as-loc; sucLoc; store-at-slot; restore-input; load-from-slot; load-indirect; load-indirect-suc; mov-to-input; mov-to-output
+        ; SV-Ptr; store-at-slot; restore-input; load-from-slot; mov-to-input; mov-to-output
         ; instr-ctrl; c-branch-tag-zero; c-jmp; c-label; writeReg-preserves; offsetLoc)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
-open import Once.CCC.Machine.SMPrimitives using (nhw-store-at-slot; nhw-restore-input)
+open import Once.CCC.Machine.Locations using (AtStack; AtDynamic)
+open import Once.CCC.Machine.SMPrimitives using (nhw-restore-input; nhw-mov-to-output; nhw-mov-to-input)
 open import Once.CCC.Label using (ℓ; LabelId; module LabelId)
 open LabelId using (idx)
-open import Once.Memory.HeapAddress using (HeapLocation; sucHL; heap-loc)
+open import Once.Memory.HeapAddress using (HeapLocation; heap-loc)
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.SumShape o tbl using (module ResuspSumShapeC)
 import Data.List.Relation.Unary.All as AllM
 open import Relation.Nullary using (¬_)
 open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod; ⟦_⟧TI; ⌈_⌉F; μ-type)
 import Once.IRTy as I
-open import Data.Product using (Σ)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.Unit using (⊤)
+open import Data.Unit using (⊤; tt)
 open import Data.List.Relation.Unary.All using () renaming ([] to []ᴬ; _∷_ to _∷ᴬ_)
-open import Data.Nat using (s≤s; _*_)
+open import Data.Nat using (s≤s; _*_; ℕ; suc; _+_; _≤_; _<_)
 
 open import Data.Nat.Solver using (module +-*-Solver)
 open +-*-Solver using (solve; _:+_; _:*_; con; _:=_)
@@ -115,17 +125,24 @@ su-lt s k u p = <-≤-trans (subst (λ z → s < z) (sym (su-eqₛ s k)) (s≤s 
 module CataVisitC {FS : FrameSemantics} where
 
   open Core {FS}
-  open Mach {FS}
+  open ClosureWellFormedBase′ using (Live; BlocksKept; InBlk)
+  open ClosureWellFormedDef′ using (ValidAtWF; ResultPlace; CellAt; cellWF-heap-transport; decomposePairWF; module PairValidWF)
+  open AbstractExec′ using (exec-abstract)
+  open FlatMachine′ using (FlatState; fetch; label-of?; find-label; fetch-++-left; tag-test; flat-read-tag; do-jump)
+  open FlatMachine′.FlatState using (falloc; floc; fpc)
+  open FlatStepsAPI′ using (_∷_; [])
+  open InstrPrimitives′ using (exec-abstract-preserves-frame)
+  open MemOps′ using (readLoc)
+  open TracePrimitives′ using (exec-abstract-preserves-halted-WF)
   open ResuspBaseC {FS}
   open CataStepsC {FS}
   open CataStackC {FS}
   open CataWalkC {FS}
-  open Resolve {FS} using (NoLabel; fl-hit; noLabel-outside; found-in-window)
+  open Resolve {FS} using (fl-hit; noLabel-outside; found-in-window)
   open FlatStepsAPI {FS} using (flat-tag-branch-yes; flat-tag-branch-not)
   open LocState using (regs; halted)
-  open AllocState using (next-slot; next-heap-ref; current-frame)
-  open ClosureWellFormedBase {FS} using (SumTag)
-  open GetC {FS} using (GetOut; module GetOut; get-run; setOut; out-mem; offset-zero; get-len)
+  open AllocState using (current-frame)
+  open GetC {FS} using (GetOut; module GetOut; get-run; setOut; out-mem; offset-zero)
   open ShapeC {FS} using (tag-inl; tag-inr; payload-l; payload-r)
   open GetC {FS} using (live-any)
   open ResuspSumShapeC {FS} using (nolab-get; li-get)
@@ -677,6 +694,7 @@ module CataVisitC {FS : FrameSemantics} where
                (flat-tag-branch-not prog σ (ℓ o lb) cond) refl tt tt
 
         module U = Unpack y q0 (PtrTo.hl pt) nh (PtrTo.eq pt) (PtrTo.live pt) (payload-r (PtrTo.val pt)) st (span′ 1 _ refl) (span′ 2 _ refl)
+          using (nh2; q2; st2; walk; wd2)
 
         wR : Walk prog n (KV (s + 4)) U.q2 (length VR + fpc U.q2) (VQ b y ts)
         wR = ihb (s + 4) (ssl + lF) U.q2 y ts n≤s4 (up todo<s) (up tv<s) (up tb<s) (su-r s (fsize ⌈ G ⌉F) (fsize ⌈ H ⌉F) u su) SPR LAR U.nh2 U.wd2 U.st2
@@ -714,6 +732,7 @@ module CataVisitC {FS : FrameSemantics} where
         w1 = walk-ctrl i1 (instr-ctrl (c-label (ℓ o lb))) (suc J₁) nh (SP2 1 _ refl) refl refl tt tt
 
         module U = Unpack x i2 (PtrTo.hl pt) nh (PtrTo.eq pt) (PtrTo.live pt) (payload-l (PtrTo.val pt)) st (SP2 2 _ refl) (SP2 3 _ refl)
+          using (nh2; q2; st2; walk; wd2)
 
         wL : Walk prog n (KV (s + 4)) U.q2 (length VL + fpc U.q2) (VQ a x ts)
         wL = iha (s + 4) ssl U.q2 x ts n≤s4 (up todo<s) (up tv<s) (up tb<s) (su-l s (fsize ⌈ G ⌉F) (fsize ⌈ H ⌉F) u su) SPL LAL U.nh2 U.wd2 U.st2

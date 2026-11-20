@@ -17,20 +17,17 @@
 module Once.ResolvedRefs where
 
 open import Data.List using (List; []; _∷_)
-open import Data.Product using (_×_; _,_)
+open import Data.Product using (_×_)
 open import Data.String using (String; _≟_)
-import Data.String
 open import Data.Unit using (⊤; tt)
 import Data.Empty
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; cong)
-open import Relation.Nullary using (¬_; Dec; yes; no)
+open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Nullary.Decidable using (_×-dec_)
 open import Once.Spec.Name using (CanonicalName; canonical)
 open import Once.Spec.Surface.Syntax using (RVar; RQualified; RResolved; RGen; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
 open import Once.Spec.Surface.Syntax using (Expr)
 
-open import Data.Maybe using (just; nothing)
-import Relation.Binary.PropositionalEquality
 
 -- A canonical name that is not `main`.
 GoodName : CanonicalName → Set

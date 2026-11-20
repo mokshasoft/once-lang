@@ -25,6 +25,7 @@ import qualified MAlonzo.Code.Induction.WellFounded
 import qualified MAlonzo.Code.Once.Spec.Context
 import qualified MAlonzo.Code.Once.Spec.Grade
 import qualified MAlonzo.Code.Once.Spec.Surface.Syntax
+import qualified MAlonzo.Code.Once.Spec.Surface.Type
 import qualified MAlonzo.Code.Once.Spec.Theory
 import qualified MAlonzo.Code.Once.Spec.Type
 import qualified MAlonzo.Code.Once.Surface.Syntax
@@ -467,8 +468,8 @@ d_applySplice_56 ::
   Integer ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_PolyType_10 ->
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 ->
+  MAlonzo.Code.Once.Spec.Surface.Type.T_PolyType_10 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_8 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.TypeCheck.Elaborate.T_CheckElabResult_110 ->

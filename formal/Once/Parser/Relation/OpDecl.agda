@@ -22,7 +22,8 @@ open import Once.Parser.Token
 open import Once.Spec.Surface.Syntax using (Decl; DTypeSig)
 open import Once.Parser.Module.OpName using (otClose; otChar; otDotted; opTokClass)
 open import Once.Parser.Module.DeclTail using (colonHead; colDrop1)
-open import Once.Parser.Generic.PolyInst using (ParsesPolyType)
+open import Once.Parser.Generic.PolyInst using (module Gen′)
+open Gen′ using () renaming (ParsesTypeG to ParsesPolyType)
 open import Once.Parser.Relation.FunDef using (ParsesFunDef)
 
 ------------------------------------------------------------------------

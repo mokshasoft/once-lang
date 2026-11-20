@@ -34,23 +34,20 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 
 -- Plan 0.105: the machine runs against an interpretation, so these facts about
 -- its states are stated at one.
-open import Data.Sum using (_⊎_)
-open import Data.Product using (Σ)
 module Once.Adequacy.ArchCorrectness.RiscV64.ResourceBounds (o : CanonicalName) (ι : Interp) where
 
-open import Data.Nat using (ℕ; suc; _+_; _≤_)
+open import Data.Nat using (ℕ; suc; _+_)
 open import Data.Maybe using (just)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 import Once.Adequacy.ArchCorrectness.RiscV64.FlatCorrespondence as FCr
 import Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation as FSimr
-import Once.Adequacy.ArchCorrectness.FlatCore.RunContext as RCr
 import Once.Adequacy.ArchCorrectness.FlatCore.RunLow as RLr
 import Once.CCC.Target.RiscV64.Semantics as R
 open import Once.CCC.Machine.SMCore
-  using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-entry; c-start; c-ret; lea-slot; instr-load-tag-lit; instr-load-const; instr-room; AbstractInstr; CallI)
-open import Once.CCC.Label using (EntryId)
-open import Once.CCC.Target.RiscV64.Syntax using (slots; slot-size; sp; Reg)
+  using (AbstractTrace; instr-ctrl; c-ret; lea-slot; instr-load-tag-lit; instr-load-const; instr-room)
+open import Once.CCC.Target.RiscV64.Syntax using (slots; slot-size)
+open import Once.Target.RiscV64.PhysReg using (sp; Reg)
 open import Once.CCC.Target.RiscV64.AbstractToRiscV using (slot-to-disp)
 open import Data.Nat using (_<_)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
@@ -71,7 +68,6 @@ open import Data.Integer using (ℤ)
 -- (imported, not applied: the import alone is what makes it typechecked, and
 -- it now takes a resource parameter the apex will thread — `SlotAddrNoWrap`
 -- below.)
-import Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim as CFSr
 
 ------------------------------------------------------------------------
 -- (HEAP EXHAUSTION, STACK EXHAUSTION and CALL DEPTH — `HeapRoom`, `StackRoom`,
@@ -105,13 +101,13 @@ import Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim as CFSr
 ------------------------------------------------------------------------
 SlotAddrNoWrap : Set₁
 SlotAddrNoWrap =
-  ∀ {hv : FCr.HeapView rv64-frame-semantics refl}
+  ∀ {hv : FCr.FlatCorrespondence.HeapView rv64-frame-semantics refl}
     (prog : AbstractTrace) (fs : FlatMachine.FlatState {rv64-frame-semantics})
     (s : R.State) (slot : ℕ)
   → RLr.RunLow o rv64-frame-semantics slot-size refl prog fs
-  → FSimr.CompiledCorr o rv64-frame-semantics refl refl hv prog fs s
+  → FSimr.CompiledCorrespondence.CompiledCorr o rv64-frame-semantics refl refl hv prog fs s
   → FlatMachine.fetch {rv64-frame-semantics} prog
-      (FlatMachine.fpc {rv64-frame-semantics} fs) ≡ just (lea-slot slot)
+      (FlatMachine.FlatState.fpc {rv64-frame-semantics} fs) ≡ just (lea-slot slot)
   → R.readReg (R.State.regs s) sp + slot-to-disp slot < R.W.modulus
 
 ------------------------------------------------------------------------
@@ -125,11 +121,11 @@ SlotAddrNoWrap =
 -- (1) EVERY REGISTER HOLDS A MACHINE WORD. The machine is finite; this says so.
 RegRange : Set₁
 RegRange =
-  ∀ {hv : FCr.HeapView rv64-frame-semantics refl}
+  ∀ {hv : FCr.FlatCorrespondence.HeapView rv64-frame-semantics refl}
     (prog : AbstractTrace) (fs : FlatMachine.FlatState {rv64-frame-semantics})
     (s : R.State) (r : Reg)
   → RLr.RunLow o rv64-frame-semantics slot-size refl prog fs
-  → FSimr.CompiledCorr o rv64-frame-semantics refl refl hv prog fs s
+  → FSimr.CompiledCorrespondence.CompiledCorr o rv64-frame-semantics refl refl hv prog fs s
   → R.readReg (R.State.regs s) r < R.W.modulus
 
 ------------------------------------------------------------------------
@@ -146,13 +142,13 @@ RegRange =
 record AddrNoWrap : Set₁ where
   field
     ret-no-wrap :
-      ∀ {hv : FCr.HeapView rv64-frame-semantics refl}
+      ∀ {hv : FCr.FlatCorrespondence.HeapView rv64-frame-semantics refl}
         (prog : AbstractTrace) (fs : FlatMachine.FlatState {rv64-frame-semantics})
         (s : R.State) (b : ℕ)
       → RLr.RunLow o rv64-frame-semantics slot-size refl prog fs
-      → FSimr.CompiledCorr o rv64-frame-semantics refl refl hv prog fs s
+      → FSimr.CompiledCorrespondence.CompiledCorr o rv64-frame-semantics refl refl hv prog fs s
       → FlatMachine.fetch {rv64-frame-semantics} prog
-          (FlatMachine.fpc {rv64-frame-semantics} fs) ≡ just (instr-ctrl (c-ret b))
+          (FlatMachine.FlatState.fpc {rv64-frame-semantics} fs) ≡ just (instr-ctrl (c-ret b))
       → R.readReg (R.State.regs s) sp + slots (suc b) < R.W.modulus
 
     -- (`lo-fits`, "the stack's high-water mark is representable", STOOD HERE: it
@@ -171,34 +167,34 @@ record AddrNoWrap : Set₁ where
 record LitFits : Set₁ where
   field
     tag-fits :
-      ∀ {hv : FCr.HeapView rv64-frame-semantics refl}
+      ∀ {hv : FCr.FlatCorrespondence.HeapView rv64-frame-semantics refl}
         (prog : AbstractTrace) (fs : FlatMachine.FlatState {rv64-frame-semantics})
         (s : R.State) (n : ℕ)
       → RLr.RunLow o rv64-frame-semantics slot-size refl prog fs
-      → FSimr.CompiledCorr o rv64-frame-semantics refl refl hv prog fs s
+      → FSimr.CompiledCorrespondence.CompiledCorr o rv64-frame-semantics refl refl hv prog fs s
       → FlatMachine.fetch {rv64-frame-semantics} prog
-          (FlatMachine.fpc {rv64-frame-semantics} fs) ≡ just (instr-load-tag-lit n)
+          (FlatMachine.FlatState.fpc {rv64-frame-semantics} fs) ≡ just (instr-load-tag-lit n)
       → n < R.W.modulus
 
     lit-fits :
-      ∀ {hv : FCr.HeapView rv64-frame-semantics refl}
+      ∀ {hv : FCr.FlatCorrespondence.HeapView rv64-frame-semantics refl}
         (prog : AbstractTrace) (fs : FlatMachine.FlatState {rv64-frame-semantics})
         (s : R.State) (v : ℤ)
       → RLr.RunLow o rv64-frame-semantics slot-size refl prog fs
-      → FSimr.CompiledCorr o rv64-frame-semantics refl refl hv prog fs s
+      → FSimr.CompiledCorrespondence.CompiledCorr o rv64-frame-semantics refl refl hv prog fs s
       → FlatMachine.fetch {rv64-frame-semantics} prog
-          (FlatMachine.fpc {rv64-frame-semantics} fs) ≡ just (instr-load-const fits-int v)
+          (FlatMachine.FlatState.fpc {rv64-frame-semantics} fs) ≡ just (instr-load-const fits-int v)
       → Once.CCC.Machine.SMCore.AbstractExec.lit-value {rv64-frame-semantics} fits-int v < R.W.modulus
 
     -- D378: a room check's need `8k` is the `li t2, 8k` immediate.
     room-fits :
-      ∀ {hv : FCr.HeapView rv64-frame-semantics refl}
+      ∀ {hv : FCr.FlatCorrespondence.HeapView rv64-frame-semantics refl}
         (prog : AbstractTrace) (fs : FlatMachine.FlatState {rv64-frame-semantics})
         (s : R.State) (k : ℕ)
       → RLr.RunLow o rv64-frame-semantics slot-size refl prog fs
-      → FSimr.CompiledCorr o rv64-frame-semantics refl refl hv prog fs s
+      → FSimr.CompiledCorrespondence.CompiledCorr o rv64-frame-semantics refl refl hv prog fs s
       → FlatMachine.fetch {rv64-frame-semantics} prog
-          (FlatMachine.fpc {rv64-frame-semantics} fs) ≡ just (instr-room k)
+          (FlatMachine.FlatState.fpc {rv64-frame-semantics} fs) ≡ just (instr-room k)
       → slots k < R.W.modulus
 
 
@@ -216,13 +212,13 @@ record LitFits : Set₁ where
 -- relocated one.
 ------------------------------------------------------------------------
 float-fits :
-  ∀ {hv : FCr.HeapView rv64-frame-semantics refl}
+  ∀ {hv : FCr.FlatCorrespondence.HeapView rv64-frame-semantics refl}
     (prog : AbstractTrace) (fs : FlatMachine.FlatState {rv64-frame-semantics})
     (s : R.State) (v : Decimal)
   → RLr.RunLow o rv64-frame-semantics slot-size refl prog fs
-  → FSimr.CompiledCorr o rv64-frame-semantics refl refl hv prog fs s
+  → FSimr.CompiledCorrespondence.CompiledCorr o rv64-frame-semantics refl refl hv prog fs s
   → FlatMachine.fetch {rv64-frame-semantics} prog
-      (FlatMachine.fpc {rv64-frame-semantics} fs) ≡ just (instr-load-const fits-float v)
+      (FlatMachine.FlatState.fpc {rv64-frame-semantics} fs) ≡ just (instr-load-const fits-float v)
   → (round binary64) v < R.W.modulus
 float-fits _ _ _ v _ _ _ = round-fits binary64 v
 

@@ -15,14 +15,15 @@ module Once.Parser.Module.Core where
 open import Data.List using (List; _∷_; length)
 open import Data.Bool using (Bool)
 open import Data.Maybe using (Maybe; just; nothing; is-just)
-open import Data.Product using (_×_; _,_; Σ; proj₁; proj₂; Σ-syntax)
-open import Data.String using (String; _≟_)
+open import Data.Product using (_×_; _,_; Σ-syntax)
+open import Data.String using (String)
 open import Data.Nat using (_≤_; _<_; s≤s)
 open import Data.Nat.Properties using (≤-refl)
 open import Data.Nat.Induction using (<-wellFounded)
 
 open import Once.Spec.Type using (Type)
-open import Once.Spec.Surface.Syntax using (PolyType; Module)
+open import Once.Spec.Surface.Type using (PolyType)
+open import Once.Spec.Surface.Syntax using (Module)
 open import Once.Spec.Surface.Syntax using (Expr)
 open import Once.Parser.Token
 open import Once.Parser.Type using (parseTypeWF)

@@ -21,20 +21,21 @@
 module Once.Format.Proof.Skeleton where
 
 open import Data.Bool using (Bool; true; false; not; _∧_; _∨_; if_then_else_; T)
-open import Data.List using (List; []; _∷_; _++_; map)
+open import Data.List using ([]; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Nat using (ℕ; zero; suc; _+_; _<ᵇ_; _≡ᵇ_; _∸_)
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
-open import Data.String using (String; toList)
+open import Data.Nat using (ℕ; suc; _+_; _<ᵇ_; _≡ᵇ_)
+open import Data.Product using (proj₁; proj₂)
+open import Data.String using (toList)
 open import Data.Unit using (tt)
 import Data.Char as Ch
 open import Relation.Nullary using (does)
 import Once.Spec.Surface.Lexing as S
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 
-open import Once.Spec.Grade using (Quantity; Zero; One; Many; pureᶠ; actᶠ)
+open import Once.Spec.Grade using (Zero; One; Many; pureᶠ; actᶠ)
 import Once.Spec.Surface.Generators
 open import Once.Spec.Surface.Syntax
+open import Once.Spec.Surface.Type
 open import Once.Spec.Name using (canonical)
 open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; TNewline; TEOF)
 open import Once.Adequacy.SpecTokNames
@@ -43,7 +44,7 @@ open import Once.Spec.Float.Value using (pos; neg)
 import Data.Integer as ℤ
 open import Once.Format.Doc using (Doc; empty; tk; sp; cmt; para; line; newline; blank; eol; _<>_; nest; group;
   indent; flatWidth)
-open import Once.Format.Comment using (commentRun; commentLinesDoc; commentLines; classify; prose; verbatim; lineDoc)
+open import Once.Format.Comment using (commentLinesDoc; commentLines; classify; prose; verbatim; lineDoc)
 open import Once.Format.Print
 
 ------------------------------------------------------------------------

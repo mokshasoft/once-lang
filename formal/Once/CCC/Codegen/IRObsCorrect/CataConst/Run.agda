@@ -17,13 +17,25 @@
 ------------------------------------------------------------------------
 
 open import Once.Spec.Name using (CanonicalName)
-import Once.CCC.Machine.SMCore as SMCore
 
 import Data.List as DL
 open import Once.Denotation.Program using (IRFun; tableEnv)
 module Once.CCC.Codegen.IRObsCorrect.CataConst.Run (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open Interface.Prelude using ()
+open Interface.Prelude.IRToTrace using (ir-to-trace')
+open import Data.Bool using (false; true)
+open import Data.Empty using (⊥; ⊥-elim)
+open import Data.List using (List; length; _∷_; []; _++_)
+open import Data.Maybe using (just)
+open import Data.Nat using (ℕ; _+_; suc; _≤_)
+open import Data.Nat.Properties using (≤-refl; ≤-trans)
+open import Data.Product using (proj₁; proj₂; _,_; _×_)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Once.IR using (IR; Cata; Heap)
+open import Relation.Binary.PropositionalEquality using (_≡_; subst; refl; sym; trans; cong₂; cong)
 open import Once.CCC.Machine.SMCore using (ending)
 open import Once.CCC.Codegen.IRObsCorrect.BlockCall o tbl using (module BlockCallC)
 open import Once.CCC.Codegen.IRObsCorrect.NuForce o tbl using (module NuForceC)
@@ -36,7 +48,7 @@ open import Once.CCC.Codegen.IRObsCorrect.CataConst.Layout o tbl using (module C
 open import Once.CCC.Codegen.IRObsCorrect.CataConst.Call o tbl using (module CataCallC)
 open import Data.Nat.Solver using (module +-*-Solver)
 open +-*-Solver using (solve; _:+_; con; _:=_)
-open import Once.CCC.Codegen.IRToTrace o using (cata-strategy; strat-const)
+open import Once.CCC.Codegen.IRToTrace o using (cata-strategy)
 open import Once.CCC.Machine.SMCore
   using (LocState; module LocState; AbstractTrace; AllocState; module AllocState; StoredValue; readReg; Input1; SV-Ptr; SV-Code; instr-call-closure; instr-ctrl; c-jmp; c-label)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
@@ -44,7 +56,6 @@ open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.CCC.Label using (ℓ)
 open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; ⟦_⟧TI; ⌈_⌉F; μ-type)
 import Once.IRTy as IRTy′
-import Once.Denotation.ValueDomain as ValueDomain
 open import Once.Memory.HeapAddress using (HeapLocation; sucHL)
 open import Once.Res using (Res; returns; stopped; is-stopped)
 open import Once.IR.Semantics.Iterative using (T∞)
@@ -56,16 +67,25 @@ import Once.IR.Semantics.Trace as TM
 module CataRunC {FS : FrameSemantics} where
 
   open Core {FS}
-  open Mach {FS}
-  open ResuspBaseC {FS} using (SRun; SegA; segA-∘; bf-step; live-from; loc-ref; at-cf)
+  open ClosureWellFormedBase′ using (Live; BlocksKept; ResultPlaceP; ⟪_⟫_; runAt; resultAt; stopsAt; eventsAt)
+  open ClosureWellFormedDef′ using (ValidAtWF; CellAt; validityWF-heap-transport; InputAt; in-loc; CalleeRunP; VAt; module CalleeRunP; rp→place)
+  open FlatEventTrace′ using (chain-events; chain-events-subst-start; chain-events-++; chain-left; chain-ctrls; ctrls-≤ʳ; ctrls-≤ˡ)
+  open CataNextSlot′ using (AllSlotStable)
+  open FlatMachine′ using (FlatState; find-thunk; enter-call; flat-exec-instr; fetch; do-jump)
+  open FlatMachine′.FlatState using (floc; fpc; fret; fclosure; falloc)
+  open FlatStepsAPI′ using (_∷_; FlatSteps; step-at; []; FlatSteps-++)
+  open FrontierInvariant′ using (BeforeFrontier)
+  open MemOps′ using (readLoc)
+  open ResuspBaseC {FS} using (SRun; SegA; segA-∘; bf-step; live-from)
   open CataLayoutC {FS} using (module Text)
   open NuForceC {FS} using (crun-retarget)
   open ApplyC {FS} using (call-at)
   module BC = BlockCallC {FS}
+    using (bk-enter; block-call; callee-alloc; callee-heap; callee-loc; live-callee)
   open CataStepsC {FS} using (s-++)
   open CataCallC {FS} using (callK)
   open LocState using (regs; halted)
-  open AllocState using (next-slot; next-heap-ref; current-frame; saved-frames)
+  open AllocState using (next-slot; next-heap-ref)
 
 
   -- a validity moved along a type equation
@@ -109,12 +129,14 @@ module CataRunC {FS : FrameSemantics} where
     i = idfree-of wf (const-rc ⌈ F ⌉F h st)
 
     module T = Text wf alg n l h
+      using (LP; at; bb; emitted-eq; endL; l1; len-pre; len-text; text; module At)
 
     span′ : SpanAt prog base T.text
     span′ = subst (SpanAt prog base) (T.emitted-eq st) span
     la′ : LabelsAt prog base T.text
     la′ = subst (LabelsAt prog base) (T.emitted-eq st) la
     module TA = T.At prog base span′ la′
+      using (body-labels; body-span; end-label; fetch-cc; fetch-end; fetch-jmp; fetch-thunk)
 
     σ : FlatState
     σ = entry-flat base s alloc cl rs
@@ -224,6 +246,8 @@ module CataRunC {FS : FrameSemantics} where
     crun = crun-retarget {prog = prog} {fs = fs₁} {c = evalᴰ alg x′} {c′ = E′} {k = k} (cong (runAt (floc fs₁)) meq) crun₀
 
     module CR = CalleeRunP crun
+      using (bf-mono; blocks-kept; cont-alloc; events; frame-pres; frames-pres; live; log; mem-pres
+            ; no-link; no-ret; out-mode; place; progress; returned; run; settle; steps; stops)
 
     RE : runAt (floc fs₁) (⟪ E′ ⟫ k) ≡ runAt s (⟪ E′ ⟫ k)
     RE = runAt-≡ {st = floc fs₁} {st′ = s} {m = ⟪ E′ ⟫ k} {m′ = ⟪ E′ ⟫ k} h-eq refl

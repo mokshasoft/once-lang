@@ -28,33 +28,31 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 
 -- Plan 0.105: the machine runs against an interpretation, so these facts about
 -- its states are stated at one.
-open import Data.Sum using (_⊎_)
-open import Data.Product using (Σ)
 module Once.Adequacy.ArchCorrectness.X86-32.ResourceBounds (o : CanonicalName) (ι : Interp) where
 
-open import Data.Nat using (ℕ; suc; _+_; _≤_; _<_)
+open import Data.Nat using (ℕ; suc; _+_; _<_)
 open import Data.Maybe using (just)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 import Once.Adequacy.ArchCorrectness.X86-32.FlatCorrespondence as FCx
 import Once.Adequacy.ArchCorrectness.X86-32.FlatSimulation as FSimx
-import Once.Adequacy.ArchCorrectness.X86-32.RunContext as RCx
 import Once.Adequacy.ArchCorrectness.FlatCore.RunLow as RLx
 import Once.CCC.Target.X86-32.Semantics as X
 import Once.Spec.Word as W32
 import Once.Word as W32L
 module W = W32.Width 32
+  using (modulus)
 module WL = W32L.WidthLaws 32
 open import Once.CCC.Machine.SMCore
-  using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-entry; c-start; c-ret; instr-load-tag-lit; instr-load-const; instr-room; AbstractInstr; CallI)
-open import Once.CCC.Label using (EntryId)
+  using (AbstractTrace; instr-ctrl; c-ret; instr-load-tag-lit; instr-load-const; instr-room)
 open import Once.Type using (fits-int; fits-float)
 open import Once.Spec.Float.Dyadic using (binary32)
 open import Once.Spec.Float.Decimal using (Decimal)
 open import Once.Float.Word using (round)
 open import Once.Float.EncodingLaws using (round-fits)
 open import Data.Integer using (ℤ)
-open import Once.CCC.Target.X86-32.Syntax using (slots; slot-size; esp; Reg)
+open import Once.CCC.Target.X86-32.Syntax using (slots; slot-size)
+open import Once.Target.X86-32.PhysReg using (Reg; esp)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Target.X86-32.FrameInstantiation using () renaming (x86-32-frame-semantics to x86-32-frame-semantics-at)
 
@@ -82,11 +80,11 @@ x86-32-frame-semantics = x86-32-frame-semantics-at ι
 -- will land.
 RegRange : Set₁
 RegRange =
-  ∀ {hv : FCx.HeapView x86-32-frame-semantics refl}
+  ∀ {hv : FCx.FlatCorrespondence.HeapView x86-32-frame-semantics refl}
     (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-32-frame-semantics})
     (s : X.State) (r : Reg)
   → RLx.RunLow o x86-32-frame-semantics slot-size refl prog fs
-  → FSimx.CompiledCorr o x86-32-frame-semantics refl refl hv prog fs s
+  → FSimx.CompiledCorrespondence.CompiledCorr o x86-32-frame-semantics refl refl hv prog fs s
   → X.readReg (X.State.regs s) r < W.modulus
 
 ------------------------------------------------------------------------
@@ -123,13 +121,13 @@ record AddrNoWrap : Set₁ where
     -- (The released address is the caller's frame base less one slot — see
     -- `block-step-c-ret`'s `addr-eq`/`gap` — so this is a layout fact.)
     ret-no-wrap :
-      ∀ {hv : FCx.HeapView x86-32-frame-semantics refl}
+      ∀ {hv : FCx.FlatCorrespondence.HeapView x86-32-frame-semantics refl}
         (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-32-frame-semantics})
         (s : X.State) (b : ℕ)
       → RLx.RunLow o x86-32-frame-semantics slot-size refl prog fs
-      → FSimx.CompiledCorr o x86-32-frame-semantics refl refl hv prog fs s
+      → FSimx.CompiledCorrespondence.CompiledCorr o x86-32-frame-semantics refl refl hv prog fs s
       → FlatMachine.fetch {x86-32-frame-semantics} prog
-          (FlatMachine.fpc {x86-32-frame-semantics} fs) ≡ just (instr-ctrl (c-ret b))
+          (FlatMachine.FlatState.fpc {x86-32-frame-semantics} fs) ≡ just (instr-ctrl (c-ret b))
       → X.readReg (X.State.regs s) esp + slots (suc b) < W.modulus
 
     -- (`lo-fits`, "the stack's high-water mark is representable", STOOD HERE: it
@@ -158,35 +156,35 @@ record LitFits : Set₁ where
   field
     -- `instr-load-tag-lit n` → `mov eax, imm n`: sum/loop tags.
     tag-fits :
-      ∀ {hv : FCx.HeapView x86-32-frame-semantics refl}
+      ∀ {hv : FCx.FlatCorrespondence.HeapView x86-32-frame-semantics refl}
         (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-32-frame-semantics})
         (s : X.State) (n : ℕ)
       → RLx.RunLow o x86-32-frame-semantics slot-size refl prog fs
-      → FSimx.CompiledCorr o x86-32-frame-semantics refl refl hv prog fs s
+      → FSimx.CompiledCorrespondence.CompiledCorr o x86-32-frame-semantics refl refl hv prog fs s
       → FlatMachine.fetch {x86-32-frame-semantics} prog
-          (FlatMachine.fpc {x86-32-frame-semantics} fs) ≡ just (instr-load-tag-lit n)
+          (FlatMachine.FlatState.fpc {x86-32-frame-semantics} fs) ≡ just (instr-load-tag-lit n)
       → n < W.modulus
 
     -- `instr-load-const fits-int v` → `mov eax, imm v`: THE user literal.
     lit-fits :
-      ∀ {hv : FCx.HeapView x86-32-frame-semantics refl}
+      ∀ {hv : FCx.FlatCorrespondence.HeapView x86-32-frame-semantics refl}
         (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-32-frame-semantics})
         (s : X.State) (v : ℤ)
       → RLx.RunLow o x86-32-frame-semantics slot-size refl prog fs
-      → FSimx.CompiledCorr o x86-32-frame-semantics refl refl hv prog fs s
+      → FSimx.CompiledCorrespondence.CompiledCorr o x86-32-frame-semantics refl refl hv prog fs s
       → FlatMachine.fetch {x86-32-frame-semantics} prog
-          (FlatMachine.fpc {x86-32-frame-semantics} fs) ≡ just (instr-load-const fits-int v)
+          (FlatMachine.FlatState.fpc {x86-32-frame-semantics} fs) ≡ just (instr-load-const fits-int v)
       → Once.CCC.Machine.SMCore.AbstractExec.lit-value {x86-32-frame-semantics} fits-int v < W.modulus
 
     -- D378: a room check's need `4k`, in the compare's immediate `2³² − 4k − 1`.
     room-fits :
-      ∀ {hv : FCx.HeapView x86-32-frame-semantics refl}
+      ∀ {hv : FCx.FlatCorrespondence.HeapView x86-32-frame-semantics refl}
         (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-32-frame-semantics})
         (s : X.State) (k : ℕ)
       → RLx.RunLow o x86-32-frame-semantics slot-size refl prog fs
-      → FSimx.CompiledCorr o x86-32-frame-semantics refl refl hv prog fs s
+      → FSimx.CompiledCorrespondence.CompiledCorr o x86-32-frame-semantics refl refl hv prog fs s
       → FlatMachine.fetch {x86-32-frame-semantics} prog
-          (FlatMachine.fpc {x86-32-frame-semantics} fs) ≡ just (instr-room k)
+          (FlatMachine.FlatState.fpc {x86-32-frame-semantics} fs) ≡ just (instr-room k)
       → slots k < W.modulus
 
 
@@ -204,13 +202,13 @@ record LitFits : Set₁ where
 -- relocated one.
 ------------------------------------------------------------------------
 float-fits :
-  ∀ {hv : FCx.HeapView x86-32-frame-semantics refl}
+  ∀ {hv : FCx.FlatCorrespondence.HeapView x86-32-frame-semantics refl}
     (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-32-frame-semantics})
     (s : X.State) (v : Decimal)
   → RLx.RunLow o x86-32-frame-semantics slot-size refl prog fs
-  → FSimx.CompiledCorr o x86-32-frame-semantics refl refl hv prog fs s
+  → FSimx.CompiledCorrespondence.CompiledCorr o x86-32-frame-semantics refl refl hv prog fs s
   → FlatMachine.fetch {x86-32-frame-semantics} prog
-      (FlatMachine.fpc {x86-32-frame-semantics} fs) ≡ just (instr-load-const fits-float v)
+      (FlatMachine.FlatState.fpc {x86-32-frame-semantics} fs) ≡ just (instr-load-const fits-float v)
   → (round binary32) v < W.modulus
 float-fits _ _ _ v _ _ _ = round-fits binary32 v
 

@@ -15,31 +15,27 @@
 
 module Once.Format.Proof.WF where
 
-open import Data.Bool using (Bool; true; false)
+open import Data.Bool using (true; false)
 open import Data.Char using (Char)
 open import Data.Empty using (⊥; ⊥-elim)
-open import Data.List using (List; []; _∷_; _++_; reverse; reverseAcc; [_])
+open import Data.List using (List; []; _∷_; reverse; reverseAcc; [_])
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
-open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Nat using (ℕ)
-open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃-syntax)
-open import Data.String using (String; toList; fromList)
-open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.Unit using (⊤; tt)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
+open import Data.Product using (_×_; _,_; ∃-syntax)
+open import Data.String using (toList)
+open import Data.Sum using (inj₁; inj₂)
+open import Data.Unit using (tt)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst)
 open import Relation.Nullary using (¬_)
 
 open import Once.Postulates using (toList∘fromList)
-open import Once.Spec.Grade using (Many; pureᶠ; actᶠ; fin; eff; mk-kind)
-open import Once.Spec.Type using (Type; Fun)
-open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; TLParen; TRParen; TAt; TNewline; TEOF; TDot; TOp)
+open import Once.Spec.Surface.Lexing using (Token; TWord; TFloat; TDot; TOp)
 open import Once.Spec.Surface.Syntax
 open import Once.Spec.Float.Value using (pos; neg)
 open import Once.Spec.Surface.Grammar
 open import Once.Format.Print using (isOperator)
-open import Once.Format.Proof.Lexing using (Printable; p-word; p-int; p-float; p-sym)
-open import Once.Format.Proof.LexOK using (LexOK; Other; o-nl; o-eof; o-str; lexed-ok)
-open import Once.Format.Proof.ExprBase using (WF; NameOK; OpName; op-isOperator)
+open import Once.Format.Proof.Lexing using (p-word; p-float; p-sym)
+open import Once.Format.Proof.LexOK using (LexOK; lexed-ok)
+open import Once.Format.Proof.ExprBase using (WF; OpName; op-isOperator)
 open import Once.Format.Proof.TypeAlgs using (GroundOK; GroundOKF; written; ground)
 import Once.Format.Proof.TypeAlgs as TA
 open import Once.Format.Proof.Printable using (PE; PT; PF; PD; Pw; kw)
@@ -132,7 +128,6 @@ record Closed {R RF : Set} (alg : TypeAlg R RF) (Q : R → Set) (QF : RF → Set
     qExtra : ∀ {ts A r} → Extra ts A r → AL ts → Q A × AL r
 
 module ReadTypes {R RF : Set} (alg : TypeAlg R RF) (Q : R → Set) (QF : RF → Set) (cl : Closed alg Q QF) where
-  open TypeAlg alg
   open Types alg
   open Closed cl
 
@@ -240,6 +235,7 @@ private
 module SigR    = ReadTypes (written TypeVar) _ _ sigClosed
 module AliasR  = ReadTypes (written NoExtra) _ _ aliasClosed
 module GroundR = ReadTypes ground _ _ groundClosed
+  using (typ)
 
 ------------------------------------------------------------------------
 -- Expressions

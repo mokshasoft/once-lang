@@ -48,7 +48,7 @@ open import Data.List.Membership.Propositional using (_∈_)
 -- Plan 0.63 (D089): the structured label identity. Re-exported, so every
 -- importer of the abstract instruction set sees `LabelId` without a second
 -- import — the same courtesy `Locations`/`HeapAddress` already get below.
-open import Once.CCC.Label public using (LabelId; mkLabelId; EntryId; e-thunk; e-fn)
+open import Once.CCC.Label using (LabelId; EntryId; e-thunk)
 open import Once.Spec.Name using (CanonicalName)
 
 -- Import SigOpInfo so `instr-sigop` carries its full self-describing
@@ -60,7 +60,8 @@ open import Once.Type using (FitsInReg; fits-int; fits-float; fits-in-reg?)
 import Once.Type as Ty
 import Once.Type.Core as Ty
 import Once.Spec.Type as Ty
-open import Once.Semantics.Machine using (⟦_⟧; LitPayload)
+open import Once.Semantics.Machine using (LitPayload; module Value)
+open Value using (⟦_⟧)
 open import Once.IR.Semantics.Boundary using (atTarget)
 open import Once.SigOp.Info using (SigOpInfo; semM; effect; EffectShape; Pure; Emits; Halts; Answers; module SigOpInfo)
 open SigOpInfo using (name; baseA)
@@ -249,7 +250,7 @@ data StoredValue (FS : FrameSemantics) : Set where
 
 -- sucHL / offsetHL are now in Once.Memory.HeapAddress (re-exported
 -- above via the public open).
-open Once.Memory.HeapAddress public using (sucHL; offsetHL)
+open Once.Memory.HeapAddress using (sucHL; offsetHL)
 
 -- | Successor location (for accessing pair.snd, closure.code-ptr, etc.)
 sucLoc : ∀ {FS} → ValueLocation FS → ValueLocation FS

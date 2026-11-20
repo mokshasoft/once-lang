@@ -13,48 +13,47 @@
 
 module Once.TypeCheck.Completeness.Refs where
 
-open import Data.Bool using (Bool; true; false; T)
+open import Data.Bool using (Bool; true)
 import Data.Bool
-open import Data.Empty using (⊥; ⊥-elim)
-open import Data.Integer using (ℤ)
-open import Data.List using (List; length)
+open import Data.Empty using (⊥-elim)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Nat using (ℕ)
 import Data.Nat
-open import Data.Product using (∃; ∃-syntax; Σ-syntax; _×_; _,_; proj₁; proj₂)
+open import Data.Product using (∃; ∃-syntax; _×_; _,_; proj₁; proj₂)
 open import Data.String using (String)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans; sym; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans; sym)
 open import Relation.Nullary using (yes; no; Dec; ¬_)
 
 import Once.Spec.Type as T
 import Once.Type.Core as T
 import Once.Type as T
 import Once.Spec.Surface.Syntax as T
+import Once.Spec.Surface.Type as Tᵗ
 import Once.Type.Poly as T
 import Once.Spec.Grade as T
-open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun; Base; ∅ₖ; Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; ⟦_⟧F)
-open import Once.Spec.Grade using (Quantity; Zero; One; Many; _⊑π_; ⊑-pure; ⊑-pe; ⊑-pa)
+open import Once.Spec.Type using (Ty; Base; ∅ₖ; Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_)
+open import Once.Spec.Grade using (Quantity; Zero; One; Many; _⊑π_)
 open import Once.Type.Grade using (_≤qᵇ_)
 import Once.Type.Grade
 open import Once.Type.Core using (wk₀)
-open import Once.Spec.Surface.Syntax as Raw using (RVar; RResolved; RInt; RUnit; RAnnot; RPair)
+open import Once.Spec.Surface.Syntax as Raw using (RVar; RResolved; RAnnot; RPair)
 import Once.Spec.Surface.Syntax as Syn
-open import Once.Spec.Surface.Syntax using (PolyType)
-open import Once.Spec.Name using (CanonicalName; canonical; own)
+open import Once.Spec.Surface.Type using (PolyType)
+open import Once.Spec.Name using (CanonicalName; own)
 open import Once.Name using (showCanonical; WordName; wordNameB)
 open import Once.Spec.Surface.Operator using (BinOp; binSym; BinSym)
 open BinSym using (theory; shape)
 open import Once.Spec.Theory using (NumTy; int; float; ⌜_⌝ⁿ; Has; Neg; symCod; int-neg; float-neg)
-open import Once.TypeCheck.NumTable using (has?; has?-yes)
+open import Once.TypeCheck.NumTable using (has?-yes)
 open import Once.Surface.Numeric using (numBin)
 open import Once.Spec.Sub using (_<:_; _⊔_≔_)
 open import Once.Type.SubDecide using (_<:?_; _⊑π?_)
 open import Once.Type.Join using (join?-complete)
 open import Once.Type.Concrete using (IsConcrete; con-base; con-fun)
 open import Once.Functor.Decide using (isConcrete?; isBaseType?; isConcrete?-complete; isBaseType?-complete)
-open import Once.TypeCheck.DeciderComplete using (isGround-complete-at; ¬Ground-isGround-inj₂; wfFun?-complete-at)
+open import Once.TypeCheck.DeciderComplete using (¬Ground-isGround-inj₂)
 open import Once.Type.Poly
 open import Once.Type using (isGround)
 open import Once.Type.Instance using (KindedInstance)
@@ -66,7 +65,6 @@ open import Once.Spec.Context using (_*ᵘ_; _+ᵘ_; zeroUsage)
 import Once.Context as Surface
 open import Once.Surface.Syntax as Surface using () renaming (Expr to SExpr)
 open import Once.TypeCheck.Scope using (NamedCtx; lookupImport; lookupLocal; lookupPolyPrefix; PolyCtx)
-open NamedCtx
 import Once.TypeCheck.Scope as Classify
 open import Once.TypeCheck.Classify using (lookupPolyPrefix⇒lookupPoly; lookupPoly)
 open import Once.TypeCheck.Error using (TypeError; UnboundVariable)
@@ -241,7 +239,7 @@ module DPoly where
   ⇒-parts : ∀ {m} {a b c d : Ty m} {k k′} → (a T.⇒[ k ] b) ≡ (c T.⇒[ k′ ] d) → (a ≡ c) × (b ≡ d)
   ⇒-parts refl = refl , refl
 
-  arrow-parts : ∀ {m} {s sd sc : T.PolyType} {π′} {A B : Ty m} (θ : String → Ty m)
+  arrow-parts : ∀ {m} {s sd sc : Tᵗ.PolyType} {π′} {A B : Ty m} (θ : String → Ty m)
     → T.ArrowSchema s sd sc π′ → T.substPoly θ s ≡ (A T.⇒[ T.mk-kind T.Many π′ ] B)
     → (T.substPoly θ sd ≡ A) × (T.substPoly θ sc ≡ B)
   arrow-parts θ T.as-pure e = ⇒-parts e
@@ -269,7 +267,7 @@ module DPoly where
 
   -- The codomain the elaborator computes IS the derivation's.
   at-π : ∀ {m} (ctx : NamedCtx m) (x : String) (A : Ty m) (π : T.Purity) err
-    {B : Ty m} {π′ : T.Purity} {schema sd sc : T.PolyType} {body prefix} eL eI
+    {B : Ty m} {π′ : T.Purity} {schema sd sc : Tᵗ.PolyType} {body prefix} eL eI
     (eP : lookupPolyPrefix (Classify.NamedCtx.polys ctx) x ≡ just (schema , body , prefix)) ¬g
     (as : T.ArrowSchema schema sd sc π′) (inc : T.CodVarsInDom sd sc) (θ₀ : String → Ty m) (e₀ : T.substPoly θ₀ sd ≡ A)
     → T.substPoly θ₀ sc ≡ B → π′ ⊑π π → KindedInstance (NamedCtx.kinds ctx) schema (A T.⇒[ T.mk-kind T.Many π′ ] B)
@@ -282,7 +280,7 @@ module DPoly where
   ...   | no ¬k = ⊥-elim (¬k ki)
 
   at-m : ∀ {m} (ctx : NamedCtx m) (x : String) (A : Ty m) (π : T.Purity) err
-    {B : Ty m} {π′ : T.Purity} {schema sd sc : T.PolyType} {body prefix} eL eI
+    {B : Ty m} {π′ : T.Purity} {schema sd sc : Tᵗ.PolyType} {body prefix} eL eI
     (eP : lookupPolyPrefix (Classify.NamedCtx.polys ctx) x ≡ just (schema , body , prefix)) ¬g
     (as : T.ArrowSchema schema sd sc π′) (inc : T.CodVarsInDom sd sc)
     (θ : String → Ty m) (eθ : T.substPoly θ schema ≡ (A T.⇒[ T.mk-kind T.Many π′ ] B)) (g : π′ ⊑π π) (ki : KindedInstance (NamedCtx.kinds ctx) schema (A T.⇒[ T.mk-kind T.Many π′ ] B))
@@ -298,7 +296,7 @@ module DPoly where
     in eE , d , f , trans ((gm-eq ctx x A π err eL eI eP ¬g as inc (just σ) eS)) r
 
   from-arrow : ∀ {m} (ctx : NamedCtx m) (x : String) (A : Ty m) (π : T.Purity) err
-    {B : Ty m} {π′ : T.Purity} {schema sd sc : T.PolyType} {body prefix} eL eI
+    {B : Ty m} {π′ : T.Purity} {schema sd sc : Tᵗ.PolyType} {body prefix} eL eI
     (eP : lookupPolyPrefix (Classify.NamedCtx.polys ctx) x ≡ just (schema , body , prefix)) ¬g
     (as : T.ArrowSchema schema sd sc π′) (inc : T.CodVarsInDom sd sc)
     (θ : String → Ty m) (eθ : T.substPoly θ schema ≡ (A T.⇒[ T.mk-kind T.Many π′ ] B)) (g : π′ ⊑π π) (ki : KindedInstance (NamedCtx.kinds ctx) schema (A T.⇒[ T.mk-kind T.Many π′ ] B))
@@ -316,7 +314,7 @@ module DPoly where
 
   -- The whole chain, from the lookups (the head's inference has failed).
   from-lookups : ∀ {m} (ctx : NamedCtx m) (x : String) (A : Ty m) (π : T.Purity) err
-    {B : Ty m} {π′ : T.Purity} {schema sd sc : T.PolyType} {body prefix}
+    {B : Ty m} {π′ : T.Purity} {schema sd sc : Tᵗ.PolyType} {body prefix}
     (eL : lookupImport (Classify.NamedCtx.sig ctx) x ≡ nothing) (eI : lookupImport (Classify.NamedCtx.imports ctx) x ≡ nothing)
     (eP : lookupPolyPrefix (Classify.NamedCtx.polys ctx) x ≡ just (schema , body , prefix)) (¬g : ¬ T.Ground schema)
     (as : T.ArrowSchema schema sd sc π′) (inc : T.CodVarsInDom sd sc)

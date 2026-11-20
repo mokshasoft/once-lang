@@ -24,28 +24,22 @@ module Once.Adequacy.SpecFront.Align (Σ : Signature) where
 
 open import Once.Adequacy.SpecFront.Polys using (Adj; adj-nil; adj-sig; adj-other)
 
-open import Data.List using ([]; _∷_; _++_)
-open import Data.List.Relation.Unary.All using (All; []; _∷_)
-open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Product using (Σ-syntax; _×_; _,_)
+open import Data.List using ([]; _∷_)
+open import Data.List.Relation.Unary.All using ([]; _∷_)
+open import Data.Maybe using (just; nothing)
+open import Data.Product using (_,_)
 open import Data.Sum using (inj₁; inj₂)
-open import Data.Unit using (⊤; tt)
-open import Data.Bool using (false; true)
+open import Data.Unit using (tt)
+open import Data.Bool using (false)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Fin using (Fin)
-open import Relation.Nullary using (Dec; yes; no)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; subst; sym; trans)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; sym; trans)
 
-import Once.Type.Core as LT
-import Once.Spec.Type as LT
 
-import Once.Spec.Type as LT
-import Once.Type.Concrete as LW
-import Once.Spec.Type as LW
 open import Once.TypeCheck.DeciderComplete using (isGround-complete-at; Ground-irrelevant)
 open import Once.Functor.Decide using (isConcrete?)
 import Data.Sum
-open import Once.Spec.Surface.Syntax using (PolyType; PTVar; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PolyFunctor; PK; PId; _P⊕_; _P⊗_)
+open import Once.Spec.Surface.Type using (PolyType; PTVar; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PolyFunctor; PK; PId; _P⊕_; _P⊗_)
 open import Once.Type.Poly using (Ground; GroundF; extractGround; extractGroundF)
 import Once.Spec.Surface.Syntax as SX
 open import Once.Spec.Surface.Program
@@ -58,7 +52,7 @@ open import Once.Core.Translate Σ using (monoSchema)
 open import Once.Adequacy.SpecGrammar.Conv using (toPoly; toPolyF)
 open import Once.Adequacy.SpecFront.Expr using (RX)
 open import Once.Adequacy.SpecFront.SchemaOf using (schemaOf-S)
-open import Once.Adequacy.SpecFront.Extract using (XAlign; xa-nil; xa-pass; xa-mono; xa-poly; xa-nosig; xa-sig;
+open import Once.Adequacy.SpecFront.Extract using (XAlign; xa-nil; xa-pass; xa-mono; xa-poly; xa-nosig;
   pa-alias; pa-import; SigReading; sr-mono; sr-open; sr-nonc)
 
 ------------------------------------------------------------------------

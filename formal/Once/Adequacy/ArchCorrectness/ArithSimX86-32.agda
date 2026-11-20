@@ -39,7 +39,7 @@ open import Once.Arith.CmpOp using (cmp-bit; fcmp-bit)
 open import Once.Float.Word using (round)
 open import Once.Spec.Float.Dyadic using (binary32)
 open XI using (XR0; XR1)
-open import Once.Arith.Machine.Shape using (InputPath; Side; Fst; Snd; ⌊_⌋ᴾ; flat-off; flat-addr; InputShape; Path)
+open import Once.Arith.Machine.Shape using (InputPath; ⌊_⌋ᴾ; flat-off; flat-addr; InputShape; Path)
 open import Once.Target.X86-32.PhysReg using (Reg; eax; ecx; esp)
 open import Once.Arith.Backend.X86-32.Emit using (arith-reg)
 import Once.CCC.Target.X86-32.Semantics as X32
@@ -59,7 +59,9 @@ import Once.Word as OnceWordL
 -- arith correspondence was a statement about a 64-bit machine that x86-32 is
 -- not.
 module W = OnceWord.Width 32
+  using (_%ˢ_; _/ˢ_; _⊕_; _⊖_; _⊗_; fromℤ; toℤ; ⊝_)
 module WL = OnceWordL.WidthLaws 32
+  using (sdiv2ᵏ; shlᵂ)
 import Once.Adequacy.ArchCorrectness.ArithSimCore as ASC
 open import Once.Target.Arch using (x86-32; arch-numerics)
 -- Plan 0.74 J5: the shared correspondence core, applied at THIS target's
@@ -349,10 +351,12 @@ pl-inv-ns i s p k meq =
         (plg-mem-cong (EA.exec1 val-x86-32 i s) s (readReg (regs s) ecx) p k meq)
 
 -- The GLOBAL region model (RuntimeContract linker guarantee) at the x86-32 layout.
-open import Once.CCC.Target.X86-32.Layout using (InStack; InHeap; stackAddr-write-preserves-heap)
+open import Once.CCC.Target.X86-32.Layout using (module FrameOps; module Regions)
+open FrameOps using (stackAddr-write-preserves-heap)
+open Regions using (InStack; InHeap)
 open import Once.Adequacy.ArchCorrectness.ArithSimPathLoadRegion
   InStack InHeap stackAddr-write-preserves-heap def word-bytes
-  using (plg; HeapChase; plg-stack-write-invisible; heapchase-agree)
+  using (plg)
 open import Data.Product using (_×_; _,_)
 
 
@@ -431,7 +435,7 @@ module _ (N : ℕ) where
 -- The instance.
 ------------------------------------------------------------------------
 
-  -- the instance, by name (no `public` re-export, plan 0.92)
+  -- `Core` at this ISA: its state, registers, memory and arith result register
   module Sim = Core
     State Reg
     rr mem
@@ -490,6 +494,7 @@ module _ (N : ℕ) where
       (λ d a b s  → readReg-wr-arith-same (regs s) d _)
       -- rt-fcmp (peel eax — double-write, as rt-cmp)
       (λ o d a b s → trans (readReg-wr-eax-arith (writeReg (regs s) (arith-reg d) _) d _) (readReg-wr-arith-same (regs s) d _))
+    using (IOksWF; R-input; arith-block-correct; leafWord)
 
 ------------------------------------------------------------------------
 -- plan 0.123 α′ (f3c): THE BLOCK'S ENTRY STATE. The dispatch enters the
@@ -559,7 +564,6 @@ import Once.Arith.Machine.CompileCorrect as CC
 open import Once.Spec.Numerics using (module TargetNum)
 open import Once.SigOp.Words using (IM)
 open import Data.Nat.Properties using (*-monoʳ-<)
-open import Once.Target.Arch using (x86-32)
 
 private
   tn = arch-numerics x86-32

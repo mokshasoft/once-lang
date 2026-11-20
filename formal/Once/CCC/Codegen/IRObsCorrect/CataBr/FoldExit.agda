@@ -24,6 +24,16 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.CataBr.FoldExit (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.Bool using (false)
+open import Data.Empty using (⊥)
+open import Data.List using (length; List; _∷_; [])
+open import Data.Maybe using (just)
+open import Data.Nat using (ℕ; _+_; suc)
+open import Data.Nat.Properties using (≤-refl)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Once.IR using (AllocMode; Heap; IR)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; sym; cong; trans)
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module ResuspBaseC)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Stack o tbl using (module CataStackC)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Walk o tbl using (module CataWalkC)
@@ -33,24 +43,30 @@ open import Once.CCC.Codegen.IRObsCorrect.CataBr.FoldPop o tbl using (module Cat
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.FoldInv o tbl using (module CataFoldInvC)
 open import Once.CCC.Machine.SMCore
   using (LocState; module LocState; AbstractTrace; AllocState; module AllocState; StoredValue; readReg; Output; Input1
-        ; SV-Ptr; sv-as-loc; load-from-slot; load-at; mov-to-input; instr-ctrl; c-jmp; c-label; writeReg-same; offsetLoc)
+        ; SV-Ptr; load-from-slot; load-at; mov-to-input; instr-ctrl; c-jmp; c-label; writeReg-same; offsetLoc)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Visit o tbl using (module CataVisitC)
 open import Once.CCC.Codegen.IRObsCorrect.Get o tbl using (module GetC)
 import Once.CCC.Machine.FlatPut as FlatPut
 open import Data.List.Properties using (++-identityʳ)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
-open import Once.CCC.Label using (ℓ)
-open import Once.Memory.HeapAddress using (HeapLocation; sucHL)
-open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; ⟦_⟧TI; μ-type)
+open import Once.CCC.Machine.Locations using (AtStack; AtDynamic)
+open import Once.Memory.HeapAddress using (HeapLocation)
+open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; ⟦_⟧TI)
 import Once.IRTy as IRTy′
-open import Data.Product using (Σ)
-open import Data.Unit using (⊤)
+open import Data.Product using (Σ; _,_)
+open import Data.Unit using (⊤; tt)
 
 module CataFoldExitC {FS : FrameSemantics} where
 
   open Core {FS}
-  open Mach {FS}
+  open import Once.CCC.Machine.SMPrimitives using (nhw-mov-to-input; nhw-load-from-slot)
+  open ClosureWellFormedDef′ using (ResultPlace; at-loc; at-reg; unit-result)
+  open FlatEventTrace′ using (chain-events; chain-events-subst-start)
+  open FlatMachine′ using (FlatState; fetch; flat-exec-instr; do-jump)
+  open FlatMachine′.FlatState using (falloc; floc; fpc)
+  open FlatStepsAPI′ using (_∷_; FlatSteps; step-at; [])
+  open MemOps′ using (readLoc)
+  open TracePrimitives′ using (InstrWF; exec-abstract-preserves-halted-WF)
   open ResuspBaseC {FS} hiding (X)
   open CataStackC {FS}
   open CataWalkC {FS}
@@ -61,7 +77,7 @@ module CataFoldExitC {FS : FrameSemantics} where
   open CataVisitC {FS} using (bk-id; load-bk; kp-set)
   open GetC {FS} using (setOut; out-mem; offset-zero; load-at-step)
   open LocState using (regs; halted)
-  open AllocState using (next-slot; next-heap-ref; current-frame)
+  open AllocState using (current-frame)
 
   -- a valid word in `Output` is a result place, at the word's own mode
   word→place′ : ∀ {prog a B v s w} → FlatPut.Src {FS} {prog} a s B v w → readReg (regs s) Output ≡ w
@@ -82,7 +98,9 @@ module CataFoldExitC {FS : FrameSemantics} where
               (sn hc : HeapLocation) (e : ⟦ E ⟧) (env-sv : StoredValue FS) where
 
     module FA = FoldAt wf alg n l prog base span la
-    open FA using (X; Y; Z; span-hd; exit-label; exitL; endL; fetch-exit; fetch-ld; fetch-mti2; fetch-li; fetch-jmp-end; end-label; fetch-end)
+      using (X; Z; end-label; endL; exit-label; exitL; fetch-end; fetch-exit; fetch-jmp-end
+            ; fetch-ld; fetch-li; fetch-mti2; span-hd; module T)
+    open FA using (X; Z; span-hd; exit-label; exitL; endL; fetch-exit; fetch-ld; fetch-mti2; fetch-li; fetch-jmp-end; end-label; fetch-end)
 
     c bodyL l1 : ℕ
     c = FA.T.Pc.cslot
@@ -95,6 +113,7 @@ module CataFoldExitC {FS : FrameSemantics} where
     open Inv prog F E C n c bodyL X sn hc e env-sv
 
     module FH = FoldHead prog F C n l1 sn (11 + Z) exit-label
+      using (hd8; module Exit)
 
     -- the end of the cata's text
     END : ℕ
@@ -204,6 +223,7 @@ module CataFoldExitC {FS : FrameSemantics} where
     module Go (σ : FlatState) (v : ⟦ C ⟧) (vs : List ⟦ C ⟧) (h : HeadAt σ [] (v ∷ vs)) where
 
       module H = HeadAt h
+        using (eval; nh; pc; val)
 
       wE : Walk prog n (KH n) σ (11 + Z) (λ τ → StackAt (ValE prog C) (falloc τ) (floc τ) (n + 2) sn (v ∷ vs))
       wE = FH.Exit.out σ (v ∷ vs) (subst (λ b → SpanAt prog b FH.hd8) (sym H.pc) span-hd) H.nh H.eval H.val

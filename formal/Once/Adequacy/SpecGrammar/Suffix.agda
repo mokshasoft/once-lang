@@ -12,10 +12,10 @@
 
 module Once.Adequacy.SpecGrammar.Suffix where
 
-open import Data.List using (List; []; _∷_)
-open import Data.List.Relation.Unary.All using (All; []; _∷_)
+open import Data.List using (List; _∷_)
+open import Data.List.Relation.Unary.All using (All; _∷_)
 
-open import Once.Spec.Surface.Lexing using (Token; TWord; TColon; TEquals; TLParen; TRParen; TArrow; TDot; TAt)
+open import Once.Spec.Surface.Lexing using (Token)
 open import Once.Spec.Surface.Grammar as G
 
 ------------------------------------------------------------------------

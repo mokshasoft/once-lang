@@ -22,13 +22,13 @@
 
 module Once.Adequacy.OptimizePreserves where
 
-open import Data.Bool using (Bool; true; false; _∨_; not)
+open import Data.Bool using (true; false; _∨_; not)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; Σ)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (tt)
 open import Data.List using (List; []; _∷_)
 open import Data.Nat using (zero; suc)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Nullary.Decidable using (isYes)
 
@@ -43,26 +43,22 @@ open import Once.IR.Semantics.Trace using (T; ret; call; halt; Interp; pureHalf;
 open import Once.IR.Semantics.Iterative using (T∞; return∞; _>>=∞_; bindBlock; fmap∞; module T∞;
   TreeEq∞; module TreeEq∞; BlockEq; ret≈; call≈; halt≈; StepEq; done≈; next≈)
 open import Once.Denotation.DenotTrace using (evalᴰ; CallEnv; cata-ev-algᴰ; module CallEnv)
-open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; coerce-functor-D; coerce-functor⁻¹-D)
+open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ)
 open import Once.Denotation.TraceMonadInfLaws using (RelS; RelSB; module RelS; s-ret; s-next; s-call; s-halt;
   RelS-embed; RelS-bind; relS-ret; RelS-iter∞; RelS-≈ˡ; RelS-≈ʳ; ≈∞-idˡ; ≈∞-idʳ; ≈∞-sym; ≈∞-reflB; ≈∞-refl;
   ≈∞-bind; ≈∞-assoc; ≈∞-trans)
 open import Once.Denotation.ValueRel
 open import Once.Denotation.EvalRel using (fo-eq; RelS-now; RelEnv; sigop-rel; eval-rel)
 open import Once.Denotation.ValueRelPER using (RelD-sym; RelD-trans; RelS-sym; RelS-trans)
-open import Once.Denotation.Program using (IRFun; irFun; tableEnv; tableCalls; tableEnv-at; runIR; IRProgram; irProgram)
-open Once.Denotation.Program.IRProgram using (main; table)
-open Once.Denotation.Program.IRFun using (fbody; fcod; fdom; fname)
+open import Once.Denotation.Program using (IRFun; irFun; tableEnv; tableCalls; tableEnv-at; runIR; irProgram)
 open import Once.CanonicalName using (_≟ᶜ_)
 open import Once.Spec.Trace using (_≈ᵗ⟨_⟩_)
 open import Once.Denotation.TraceTr using (trT∞; RelS-tr)
-open import Once.IR.Semantics.StreamInf using (anaFᴵ; in-νᴵ; module νᴵ)
 open import Once.IR.Semantics.FunctorMeaning using (translateF)
 import Once.Type.Concrete as LW
 import Once.Spec.Type as LW
 open import Once.Spec.Word using (Carrier)
 open import Once.IR.Semantics.Value Carrier Carrier using () renaming (⟦_⟧F to ⟦_⟧F′)
-open import Once.Semantics.Machine using (coerce-ν-out; coerce-ν-in)
 open import Once.Optimize
 open import Once.Adequacy.OptimizeQuiet using (Now; now; quiet-now)
 open Once.Adequacy.OptimizeQuiet.Now using (value; is)
@@ -70,7 +66,6 @@ open Once.Adequacy.OptimizeQuiet.Now using (value; is)
 open T∞ using (force)
 open TreeEq∞ using (force≈)
 open RelS using (forceS)
-open νᴵ using (forceᴵ)
 
 ------------------------------------------------------------------------
 -- Runs that return at once

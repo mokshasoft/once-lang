@@ -32,7 +32,7 @@ open import Data.Unit using (tt)
 open import Data.Product using (_,_; proj₁; proj₂)
 open import Data.Sum using (inj₁; inj₂)
 
-open import Once.Spec.Type using (Type; Unit; _*_)
+open import Once.Spec.Type using (Unit; _*_)
 
 open import Once.Spec.Name using (CanonicalName)
 open import Once.IR
@@ -63,10 +63,11 @@ open SigOpInfo using (name; baseA; sem; conB)
 open import Once.Arith.Prim using (primSem)
 open import Relation.Binary.PropositionalEquality using (refl)
 open import Once.Semantics.Machine
-  using (sem-cata; sem-In; sem-Out; ⟦_⟧F; coerce-ν-out; coerce-ν-in)
+  using (module Value)
+open Value using (⟦_⟧F; sem-cata; coerce-ν-out; coerce-ν-in; sem-In; sem-Out)
 open import Once.IRTy.WF using (wf-⌈⌉)
 open import Relation.Binary.PropositionalEquality using (subst; sym)
-open import Once.IR.Semantics.Trace using (T; ret; call; halt; callOp; haltOp; returnT; _>>=T_; fmapT; resT)
+open import Once.IR.Semantics.Trace using (T; ret; call; halt; callOp; haltOp; fmapT; resT)
 open import Once.IR.Semantics.Boundary using (atTarget)
 open import Once.Res using (mapRes)
 
@@ -74,9 +75,7 @@ open import Once.Res using (mapRes)
 -- `emit-D` moved to `Once.Denotation.ValueDomain` and re-exported here
 -- (consumers unchanged), so the reference meaning `⟦_⟧ᵈ` can land in `⟦_⟧ᴰ`
 -- without `Once.IR` (IR enters only at `evalᴰ` below).
-open import Once.IR.Semantics.Stream
 open import Once.Denotation.ValueDomain
-open νᵈ using (forceᵈ)
 open import Once.IR.Semantics.Iterative using (T∞; return∞; _>>=∞_; fmap∞; embed; seqF∞; iter∞)
 open import Once.IR.Semantics.StreamInf using (νᴵ; module νᴵ; in-νᴵ; anaFᴵ)
 open νᴵ using (forceᴵ)
@@ -107,9 +106,6 @@ open νᴵ using (forceᴵ)
 --     transforms these schemes carry — are not separately threaded). This
 --     retires the `rec-trace-rest` postulate with no IR change.
 ------------------------------------------------------------------------
-
--- (P5: `coerce-functor⁻¹-D` moved to `Once.Denotation.ValueDomain` — it is
--- pure value-domain vocabulary; re-exported here via the public import.)
 
 ------------------------------------------------------------------------
 -- `evalᴰ` — the monadic IR interpretation (the source observable). The
@@ -152,16 +148,16 @@ open CallEnv
 -- A SigOp's meaning, read off its contract. An internal or pure FFI operation
 -- returns a value; an emitting one is a call answered by `⊤`; an answering one
 -- is a call the interpretation answers; a halting one ends the program.
-sigOpSemT : (fmt : TargetNum) → FFIAnswers → ∀ {A B} → SigOpInfo A B → SigOpSem A B → Val.⟦ A ⟧ → T Val.⟦ B ⟧
-sigOpSemT fmt ans si (blockV e refl refl) x = ret (Val.eraseᵍ (block-semP e fmt x))
-sigOpSemT fmt ans si (primV p)     x = ret (Val.eraseᵍ (primSem p fmt x))
+sigOpSemT : (fmt : TargetNum) → FFIAnswers → ∀ {A B} → SigOpInfo A B → SigOpSem A B → Val.Value.⟦ A ⟧ → T Val.Value.⟦ B ⟧
+sigOpSemT fmt ans si (blockV e refl refl) x = ret (Val.Value.eraseᵍ (block-semP e fmt x))
+sigOpSemT fmt ans si (primV p)     x = ret (Val.Value.eraseᵍ (primSem p fmt x))
 sigOpSemT fmt ans {A} si (emitsV refl) x = call (callOp (name si) A (baseA si) Unit) x (λ _ → ret tt)
 sigOpSemT fmt ans {A} si (haltsV refl) x = halt (haltOp (name si) A (baseA si)) x
 -- D397: what the world gives is read at the target
 sigOpSemT fmt ans {A} {B} si ffiV  x = resT (mapRes (atTarget fmt B) (ans (name si) A B x))
 sigOpSemT fmt ans {A} {B} si callsV x = call (callOp (name si) A (baseA si) B) x (λ b → ret (atTarget fmt B b))
 
-sigOpT : (fmt : TargetNum) → FFIAnswers → ∀ {A B} → SigOpInfo A B → Val.⟦ A ⟧ → T Val.⟦ B ⟧
+sigOpT : (fmt : TargetNum) → FFIAnswers → ∀ {A B} → SigOpInfo A B → Val.Value.⟦ A ⟧ → T Val.Value.⟦ B ⟧
 sigOpT fmt ans si = sigOpSemT fmt ans si (sem si)
 
 evalᴰ        : (fmt : TargetNum) → CallEnv → ∀ {A B} → IR A B → ⟦ A ⟧ᴰᴵ → T∞ ⟦ B ⟧ᴰᴵ

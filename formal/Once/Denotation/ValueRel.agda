@@ -17,17 +17,16 @@
 module Once.Denotation.ValueRel where
 
 import Once.Spec.Type as SpT
-open import Once.Spec.Type using (Base; WFFun; b-*; b-+; b-Float; b-Int; b-Unit; b-Void; wf-⊕; wf-⊗; ∅ₖ)
-open import Once.Spec.Type using (Base)
-open import Once.Spec.Type using (var; b-var; Ty; Fun; KCtx; WFFun)
+open import Once.Spec.Type using (Base; WFFun; b-*; b-+; b-Float; b-Int; b-Unit; b-Void; wf-⊕; wf-⊗)
+open import Once.Spec.Type using (var; b-var; Ty; Fun; KCtx)
 open import Data.Empty using (⊥)
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
-open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Data.Product using (_×_; _,_)
+open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; sym; cong)
 
 open import Once.Spec.Grade using (mk-kind; Zero; One; Many)
-open import Once.Spec.Type using (Type; K; Id; _⊕_; _⊗_; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float)
+open import Once.Spec.Type using (K; Id; _⊕_; _⊗_; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float)
 open import Once.Spec.Type using (μ; ν)
 open import Once.Spec.Polynomial using (SFunctor; SId; SK; _S⊕_; _S⊗_; ⟦_⟧SF)
 open import Once.IR.Semantics.FunctorMeaning using (translateF)
@@ -140,10 +139,10 @@ base-refl (b-var _)      ()
 -- Runs: the monad's operations preserve relatedness.
 ------------------------------------------------------------------------
 
-open import Once.IR.Semantics.Iterative using (T∞; return∞; _>>=∞_; fmap∞; seqF∞; bindBlock)
+open import Once.IR.Semantics.Iterative using (return∞; _>>=∞_; fmap∞; seqF∞; bindBlock)
 open T∞ using (force)
 open import Once.IR.Semantics.Trace using (ret; call; halt)
-open import Once.Denotation.TraceMonadInfLaws using (RelS-bind; relS-ret; RelSB; module RelS; s-ret; s-next; s-call; s-halt)
+open import Once.Denotation.TraceMonadInfLaws using (RelS-bind; relS-ret; RelSB; s-ret; s-next; s-call; s-halt)
 open RelS using (forceS)
 
 -- A larger relation relates more runs.
@@ -292,7 +291,7 @@ cfD⁻¹-rel (wf-⊗ wf wg) C (fr-pair r s) = cfD⁻¹-rel wf C r , cfD⁻¹-rel
 -- The source-functor ↔ semantic-functor coercions preserve relatedness.
 ------------------------------------------------------------------------
 
-open import Once.IR.Semantics.Value Carrier Carrier using (coerce-μ-in; coerce-μ-out; coerce-full-to-base; coerce-base-to-full)
+open import Once.IR.Semantics.Value Carrier Carrier using (coerce-μ-in; coerce-μ-out; coerce-base-to-full)
 
 cμin-rel : ∀ {m} (F : Fun m) {X : Set} {R : X → X → Set} {x y : ⟦ F ⟧F X}
          → FRel R F x y → SRel R (translateF Carrier Carrier F) (coerce-μ-in F X x) (coerce-μ-in F X y)
@@ -335,7 +334,6 @@ module _ {G : SFunctor} {A B : Set} {R : A → B → Set} {alg₁ : ⟦ G ⟧SF 
 ------------------------------------------------------------------------
 
 open import Once.IR.Semantics.StreamInf using (anaᴵ; anaRun; anaBlock; mapAnaᴵ)
-open import Once.IR.Semantics.Trace using (T)
 open StreamRel
 
 module _ {H : SFunctor} {A B : Set} {RA : A → B → Set} {c₁ : A → T∞ (⟦ H ⟧SF A)} {c₂ : B → T∞ (⟦ H ⟧SF B)}

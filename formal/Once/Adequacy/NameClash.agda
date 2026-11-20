@@ -37,7 +37,6 @@ import Data.String.Properties
 open import Relation.Nullary.Reflects using (Reflects; invert)
 open import Relation.Nullary.Decidable using (¬?)
 open import Data.List.Relation.Unary.AllPairs using (allPairs?)
-open import Data.Empty using (⊥-elim)
 open import Function using (case_of_)
 open import Data.List.Relation.Unary.AllPairs using (AllPairs; []; _∷_)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
@@ -51,8 +50,8 @@ open import Once.Parser using
   ; emittedNames; emittedNames-cons
   ; allIdentContinue; guardDistinct; distinctOrErr; entryNameOf )
 open import Once.Parser.Module.Core using (Resolved; resolved)
-open import Once.Spec.Surface.Syntax using (Module; mkModule)
-open import Once.Parser.Lexer using (isIdentContinue; isOpNameChar)
+open import Once.Spec.Surface.Syntax using (mkModule)
+open import Once.Name.Chars using (isIdentContinue; isOpNameChar)
 open import Once.Target.Symbol using (once-symbol-own)
 open import Once.Target.SymbolInjective using (ValidName; ValidIdentChars; OpNameChars; NameChars; once-symbol-own-≢)
 open import Once.Spec.Name using (bare)

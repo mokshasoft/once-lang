@@ -28,11 +28,11 @@ open import Once.CCC.Machine.SMCore
   using (AbstractInstr; restore-input; load-from-slot; store-at-slot; load-at; store-at; addr-at;
          instr-alloc-heap; mov-to-input; mov-to-output; instr-load-tag-lit; instr-load-code-addr;
          instr-save-closure-reg; instr-call-closure)
-open import Once.CCC.Codegen.FlatLayout using (Kind; word; flat; put; put-k; get; get-k; lkind; lsz;
+open import Once.CCC.Codegen.FlatLayout using (word; flat; put; put-k; get; get-k; lkind; lsz;
   put-All; put-k-All; get-All; get-k-All; fill; fill-All)
 open import Once.CCC.Codegen.Size using (size)
 open import Once.CCC.Codegen.IRToTrace o using (wrap-sum; inj-trace; cata-call-from; cata-call-setup; env-entry; getμ; in-trace; node-copy-trace; with-copy; two-cell)
-open import Once.CCC.Machine.MuRep using (MuRep; mu-box; mu-unit; mu-ptr)
+open import Once.CCC.Machine.MuRep using (mu-box; mu-unit; mu-ptr)
 
 module Seg {P : AbstractInstr → Set}
   (p-ri    : ∀ k → P (restore-input k))

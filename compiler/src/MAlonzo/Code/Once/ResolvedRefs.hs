@@ -33,7 +33,7 @@ d_GoodName_4 :: MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 -> ()
 d_GoodName_4 = erased
 -- Once.ResolvedRefs.GoodRefs
 d_GoodRefs_10 ::
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 -> ()
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_8 -> ()
 d_GoodRefs_10 = erased
 -- Once.ResolvedRefs.parts≢
 d_parts'8802'_48 ::
@@ -121,48 +121,48 @@ du_'8869''45'elim'8242'_98 :: AgdaAny
 du_'8869''45'elim'8242'_98 = MAlonzo.RTE.mazUnreachableError
 -- Once.ResolvedRefs.goodRefs?
 d_goodRefs'63'_104 ::
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20
 d_goodRefs'63'_104 v0
   = case coe v0 of
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 v1
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_10 v1
         -> coe
              MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32
              (coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10)
              (coe
                 MAlonzo.Code.Relation.Nullary.Reflects.C_of'696'_22
                 (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RQualified_48 v1 v2
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RQualified_12 v1 v2
         -> coe
              MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32
              (coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10)
              (coe
                 MAlonzo.Code.Relation.Nullary.Reflects.C_of'696'_22
                 (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RResolved_50 v1
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RResolved_14 v1
         -> coe d_goodName'63'_72 (coe v1)
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RGen_52 v1
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RGen_16 v1
         -> coe
              MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32
              (coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10)
              (coe
                 MAlonzo.Code.Relation.Nullary.Reflects.C_of'696'_22
                 (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RApp_54 v1 v2
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RApp_18 v1 v2
         -> coe
              MAlonzo.Code.Relation.Nullary.Decidable.Core.du__'215''45'dec__84
              (coe d_goodRefs'63'_104 (coe v1)) (coe d_goodRefs'63'_104 (coe v2))
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RLam_56 v1 v2
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RLam_20 v1 v2
         -> coe d_goodRefs'63'_104 (coe v2)
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RLet_58 v1 v2 v3
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RLet_22 v1 v2 v3
         -> coe
              MAlonzo.Code.Relation.Nullary.Decidable.Core.du__'215''45'dec__84
              (coe d_goodRefs'63'_104 (coe v2)) (coe d_goodRefs'63'_104 (coe v3))
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RPair_60 v1 v2
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RPair_24 v1 v2
         -> coe
              MAlonzo.Code.Relation.Nullary.Decidable.Core.du__'215''45'dec__84
              (coe d_goodRefs'63'_104 (coe v1)) (coe d_goodRefs'63'_104 (coe v2))
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RDestruct_62 v1 v2 v3 v4 v5
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RDestruct_26 v1 v2 v3 v4 v5
         -> coe
              MAlonzo.Code.Relation.Nullary.Decidable.Core.du__'215''45'dec__84
              (coe d_goodRefs'63'_104 (coe v1))
@@ -170,33 +170,33 @@ d_goodRefs'63'_104 v0
                 MAlonzo.Code.Relation.Nullary.Decidable.Core.du__'215''45'dec__84
                 (coe d_goodRefs'63'_104 (coe v3))
                 (coe d_goodRefs'63'_104 (coe v5)))
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RUnit_64
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RUnit_28
         -> coe
              MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32
              (coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10)
              (coe
                 MAlonzo.Code.Relation.Nullary.Reflects.C_of'696'_22
                 (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RInt_66 v1
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RInt_30 v1
         -> coe
              MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32
              (coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10)
              (coe
                 MAlonzo.Code.Relation.Nullary.Reflects.C_of'696'_22
                 (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RFloat_68 v1 v2 v3 v4
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RFloat_32 v1 v2 v3 v4
         -> coe
              MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32
              (coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10)
              (coe
                 MAlonzo.Code.Relation.Nullary.Reflects.C_of'696'_22
                 (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RAnnot_70 v1 v2
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RAnnot_34 v1 v2
         -> coe d_goodRefs'63'_104 (coe v1)
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_72 v1 v2 v3
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_36 v1 v2 v3
         -> coe
              MAlonzo.Code.Relation.Nullary.Decidable.Core.du__'215''45'dec__84
              (coe d_goodRefs'63'_104 (coe v2)) (coe d_goodRefs'63'_104 (coe v3))
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RNeg_74 v1
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RNeg_38 v1
         -> coe d_goodRefs'63'_104 (coe v1)
       _ -> MAlonzo.RTE.mazUnreachableError

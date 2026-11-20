@@ -15,8 +15,7 @@
 module Once.Contract where
 
 open import Data.List using (List; []; _∷_)
-open import Once.Spec.Type using (Base; b-*; b-+; b-Float; b-Int; b-Unit; b-Void; ∅ₖ)
-open import Data.Product using (Σ; _×_; _,_)
+open import Data.Product using (_×_; _,_)
 open import Data.String using (String) renaming (_≟_ to _≟ˢ_)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.Definitions using (DecidableEquality)
@@ -42,7 +41,7 @@ record Key : Set where
     kname : String
     kdom  : Type
     kcod  : Type
-open Key public
+open Key
 
 
 _≟K_ : DecidableEquality Key
@@ -57,7 +56,6 @@ key n A B ≟K key n′ A′ B′ = go (n ≟ˢ n′) (A ≟T A′) (B ≟T B′
     go (yes _) (yes _) (no ¬p) = no λ { refl → ¬p refl }
 
 open import Data.List.Membership.Propositional using (_∈_)
-open import Data.List.Relation.Unary.Any using (here; there)
 
 _∈K?_ : (k : Key) (ks : List Key) → Dec (k ∈ ks)
 _∈K?_ = DecMem._∈?_ _≟K_
@@ -136,7 +134,7 @@ record Impl (Σ : ISig) : Set where
   field
     answerI : List SigOpEvent → (k : Key) → k ∈ answerKeys Σ → M.⟦ kdom k ⟧ → M.⟦ kcod k ⟧
     pureI   : (k : Key) → k ∈ valueKeys Σ → M.⟦ kdom k ⟧ → M.⟦ kcod k ⟧
-open Impl public
+open Impl
 
 -- THE reading of a declared value contract: through the membership DECISION,
 -- so every reader (the Spec's meaning, the IR, the machines) takes the same

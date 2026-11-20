@@ -14,7 +14,7 @@
 -- law (`CoherenceLaws`).
 ------------------------------------------------------------------------
 
-open import Once.Spec.Type using (Ty; Type; Fun; KCtx; WFFun)
+open import Once.Spec.Type using (Ty; Fun; KCtx)
 open import Once.Spec.Numerics using (TargetNum)
 
 open import Once.Type.Grade using (_≤qᵇ_)
@@ -25,18 +25,17 @@ open import Data.Bool using (true)
 open import Data.Empty using (⊥-elim)
 open import Data.List using (List)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
-open import Data.Maybe using (just)
 open import Data.Nat using (ℕ)
-open import Data.Product using (_,_)
 open import Relation.Nullary using (¬_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
 
 open import Once.Postulates using (extensionality)
-open import Once.Spec.Grade as T using (mk-kind; Many; Purity; Quantity; _≤q_)
+open import Once.Spec.Grade as T using (mk-kind; Many; Purity; Quantity)
 import Once.Spec.Surface.Syntax as T
+import Once.Spec.Surface.Type as Tᵗ
 import Once.Type.Poly as T
-open import Once.Spec.Type as T using (Type; Int; Float; Void; _*_; _+_; _⇒[_]_)
-open import Once.Spec.Type using (μ; ν; ⟦_⟧F)
+open import Once.Spec.Type as T using (_*_; _+_; _⇒[_]_)
+open import Once.Spec.Type using (⟦_⟧F)
 open import Once.Spec.Sub using (_<:_; sub-arr)
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure)
 open import Once.Spec.Sub using (_⊔_≔_)
@@ -46,20 +45,12 @@ open _⊔_≔_ using () renaming (left to ⊔-left; right to ⊔-right)
 open import Once.Type.Join using (join-unique)
 import Once.Spec.Surface.Syntax as Raw
 
-open import Once.Name using (showCanonical; WordName)
-open import Once.TypeCheck.Scope using (NamedCtx; lookupImport; lookupLocal; lookupPolyPrefix; PolyCtx)
-import Data.String
-open import Once.Type.Concrete using (IsConcrete)
-open import Once.Spec.Type using (WFFun; ∅ₖ)
-open import Once.Functor.Translate using (IsConcrete-irrelevant; WFFun-irrelevant)
-import Once.Context as Surface
+open import Once.Spec.Type using (WFFun)
+open import Once.Functor.Translate using (WFFun-irrelevant)
 open import Once.Spec.Context using (Ctx; Usage)
 open import Once.Spec.Context using (_∷_; _▸_)
 open import Once.Spec.Theory using (Has; Sym; symDom)
-open import Once.Surface.Syntax using (Expr; pair; num; let'; case'; app; effApp; comp'; copair'; fork'; curry'; cata; ana; loop; lam; coerce; poly)
-import Once.IR as IR
-import Once.Denotation.SourceDenote as SD
-open SD using (⟦_⟧ˢ)
+open import Once.Surface.Syntax using (Expr; pair; num; let'; case'; app; effApp; comp'; copair'; fork'; curry'; cata; ana; loop; lam; coerce)
 open import Once.Adequacy.CoherenceLaws fmt
 open import Once.Adequacy.CoherenceLawsWrap fmt
 
@@ -71,7 +62,7 @@ private
   all¬-irr [] [] = refl
   all¬-irr (f ∷ a) (g ∷ b) = cong₂ _∷_ (extensionality λ z → ⊥-elim (f z)) (all¬-irr a b)
 
-  as-grade : ∀ {s sd sc sd′ sc′ : T.PolyType} {π π′ : Purity}
+  as-grade : ∀ {s sd sc sd′ sc′ : Tᵗ.PolyType} {π π′ : Purity}
            → T.ArrowSchema s sd sc π → T.ArrowSchema s sd′ sc′ π′ → π ≡ π′
   as-grade T.as-pure T.as-pure = refl
   as-grade T.as-eff  T.as-eff  = refl

@@ -20,9 +20,9 @@
 ------------------------------------------------------------------------
 
 import Once.Spec.Type as SpT
-open import Once.Spec.Type using (Base; WFFun; b-*; b-+; b-Float; b-Int; b-Unit; wf-⊕; wf-⊗; ∅ₖ)
+open import Once.Spec.Type using (Base; WFFun; b-*; b-+; b-Float; b-Int; b-Unit; wf-⊕; wf-⊗)
 
-open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun; Base)
+open import Once.Spec.Type using (Ty; Fun; KCtx)
 open import Once.Spec.Numerics using (TargetNum)
 
 open import Once.Denotation.DenotTrace using (CallEnv)
@@ -35,8 +35,7 @@ open import Relation.Binary.PropositionalEquality
   using (_≡_; refl; cong; cong₂; trans; sym; subst; subst-subst-sym)
 
 open import Once.Spec.Word using (Carrier)
-open import Once.Spec.Grade using (Purity; Finite)
-open import Once.Spec.Type using (Type)
+open import Once.Spec.Grade using (Finite)
 open import Once.Spec.Type using (ν)
 open import Once.Spec.Type using (wf-K; wf-Id)
 open import Once.IR.Semantics.FunctorMeaning using (translateF)
@@ -44,7 +43,9 @@ open import Once.IRTy using (IRTy; eraseF; ⌈_⌉F; ⌈_⌉; ⌊_⌋; ⌊⟧T-c
 import Once.IRTy as IT
 open import Once.IRTy.WF using (wf-⌊⌋; wf-⌈⌉)
 open import Once.Spec.Polynomial using (SFunctor; SK; _S⊕_; _S⊗_; ⟦_⟧SF)
-open import Once.Semantics.Machine using (tF-coh; base-coh; coerce-ν-out)
+open import Once.Semantics.Machine using (module Value; module ValueIR)
+open Value using (coerce-ν-out)
+open ValueIR using (base-coh; tF-coh)
 open import Data.Product using (Σ-syntax; _×_)
 open import Once.IR.Semantics.Iterative using (T∞; fmap∞)
 open import Once.IR.Semantics.StreamInf using (νᴵ; module νᴵ)

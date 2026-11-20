@@ -37,6 +37,7 @@ import qualified MAlonzo.Code.Once.Parser.PolyType
 import qualified MAlonzo.Code.Once.Parser.Token
 import qualified MAlonzo.Code.Once.Spec.Surface.Operator
 import qualified MAlonzo.Code.Once.Spec.Surface.Syntax
+import qualified MAlonzo.Code.Once.Spec.Surface.Type
 import qualified MAlonzo.Code.Relation.Nullary.Decidable.Core
 
 -- Once.Parser.Module.pdb-sub
@@ -84,7 +85,7 @@ du_pdb'45'sub_10 v0 v1
 d_pdb'45'fb'45'sig'45'go_36 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_PolyType_10 ->
+  MAlonzo.Code.Once.Spec.Surface.Type.T_PolyType_10 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   Bool -> Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
@@ -96,7 +97,7 @@ d_pdb'45'fb'45'sig'45'go_36 v0 v1 v2 v3 v4 v5
              (coe
                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                 (coe
-                   MAlonzo.Code.Once.Spec.Surface.Syntax.C_DTypeSig_100 (coe v0)
+                   MAlonzo.Code.Once.Spec.Surface.Syntax.C_DTypeSig_54 (coe v0)
                    (coe v2))
                 (coe
                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v3)
@@ -579,7 +580,7 @@ d_parseModule'45'pd_374 v0 v1
                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                       (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_mkModule_116 (coe v3))
+                       (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_mkModule_70 (coe v3))
                        (coe v4))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
@@ -588,7 +589,7 @@ d_parseModule'45'pd_374 v0 v1
              (coe
                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                 (coe
-                   MAlonzo.Code.Once.Spec.Surface.Syntax.C_mkModule_116
+                   MAlonzo.Code.Once.Spec.Surface.Syntax.C_mkModule_70
                    (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))
                 (coe v1))
       _ -> MAlonzo.RTE.mazUnreachableError

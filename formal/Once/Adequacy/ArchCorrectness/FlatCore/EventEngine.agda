@@ -35,12 +35,11 @@ open import Data.Nat using (ℕ; zero; suc; _+_; _≤_; _<_; NonZero)
 open import Data.Bool using (Bool; true; false)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _++_; drop)
-open import Once.IR.Semantics.Out using (Out; cut; stop; _▹_)
+open import Once.IR.Semantics.Out using (stop; _▹_)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.CCC.FrameSemantics using (FrameSemantics; module FrameSemantics)
 open FrameSemantics using (frame-word)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles using (RegRoles)
-import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles as RR
 open import Data.Sum using (_⊎_)
 open import Once.SigOp.Info using (SigOpInfo; effect; Pure; Internal; External; module SigOpInfo)
 open SigOpInfo using (sem)
@@ -49,7 +48,6 @@ open import Once.Target.SymbolFresh using (host-leave-symbol; host-exhausted-sym
 open import Once.CCC.Machine.FlatLeft using (LeftFree; module LeftPres)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.IR.Semantics.Event using (SigOpEvent)
-import Once.Adequacy.ArchCorrectness.FlatCore.HeadView as HV
 import Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface as EI
 
 open import Once.Spec.Float.Decimal using (Decimal)
@@ -93,27 +91,33 @@ open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong)
 -- Module application is by alias, so every one of these IS the arch's own
 -- instance whenever the arch applies this engine to the same arguments.
 ------------------------------------------------------------------------
-open import Once.Adequacy.ArchCorrectness.FlatCore.FlatComposition FS Instr
+import Once.Adequacy.ArchCorrectness.FlatCore.FlatComposition
+module FlatComposition = Once.Adequacy.ArchCorrectness.FlatCore.FlatComposition FS Instr
        compile-abstract compile-trace ct-nil ct-cons
        mfetch mfetch-nil mfetch-zero mfetch-suc
        is-label? mk-label find-label-go find-label-nil skip-law
        label-hit label-miss headView
-  public
+  using (blk-len; blk-off; drop-compile; fetch-block-2nd; fetch-block-head; fetch-drop
+        ; find-thunk-corr)
+open FlatComposition
 
-open import Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
+import Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
+module CompiledCorrespondence = Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
        o FS slot-size word-eq Reg roles State rreg memory xhalted link-claim
        xpc (List Instr) compile-trace find-label blk-off blk-len exec modulus
-  public
+  using (BlockStep; BlockSteps; CompiledCorr; fetch-just-drop; fetch-nothing-drop; slot-heap-disj; store-guard; module BlockSteps; module CompiledCorr)
+open CompiledCorrespondence
+open CompiledCorrespondence.CompiledCorr using (pc-off; dataCorr)
 
 -- D377: the machine runs the LOWERED image (`room-checks` of the program
 -- image), so the run context the engine carries is `RunLow` — a lift of the
 -- image's own run (`RunContext.RunAt`, which `RunWF` speaks of). Exported under
 -- the engine's name for it, `RunAt`: "the run of the program the machine runs".
-open import Once.Adequacy.ArchCorrectness.FlatCore.RunContext o FS slot-size word-eq
-  hiding (RunAt; module RunAt; mkRunAt; run-tbl; run-ir; run-emit; run-linked; run-reach; run-sound; run-emitted)
-  public
+import Once.Adequacy.ArchCorrectness.FlatCore.RunContext
+module RunContext′ = Once.Adequacy.ArchCorrectness.FlatCore.RunContext o FS slot-size word-eq
+  hiding (RunAt; module RunAt; mkRunAt; run-sound; run-emitted)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunLow o FS slot-size word-eq
-  using (module RunLow; mkRunLow; low-step-past; low-start; low-sound)
+  using (module RunLow; low-step-past)
   renaming (RunLow to RunAt)
 
 -- …and the data correspondence itself, which `CompiledCorrespondence` keeps
@@ -121,7 +125,8 @@ open import Once.Adequacy.ArchCorrectness.FlatCore.RunLow o FS slot-size word-eq
 -- already binds). Same application, hence the same types.
 import Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence as FC
 module CFC = FC FS slot-size word-eq Reg roles State rreg memory xhalted
-open CFC using (HeapView; HDom; slots)
+  using (HeapView; enc-sv; slots; stack-eq-cur; module FlatCorr; module HeapView)
+open CFC using (HeapView; slots)
 
 ------------------------------------------------------------------------
 -- THE TRACE LOOP. `RT.run-events` here IS the arch's `run-events`: both are
@@ -131,6 +136,9 @@ open RegRoles roles using (in1-reg; sp-reg)
 import Once.Arith.Backend.RunTraceCore as Core
 module RT = Core.RunTrace State (List Instr) Instr Payload
                           xhalted xpc mfetch mexecInstr matchCall ret-call dispatchArith
+  using (ArithEnv; EvExtractor; run-events; run-events-arith; run-events-exhausted
+        ; run-events-external; run-events-fetch-none; run-events-halted; run-events-leave
+        ; run-events-noncall)
 
 -- unqualified, as `CompiledCorrespondence` imports it: `halted`/`regs`/… are
 -- `LocState` fields that `Machine.Flat` itself picks up this way.
@@ -138,10 +146,10 @@ module RT = Core.RunTrace State (List Instr) Instr Payload
 -- module's `Instr` is the CONCRETE one.)
 open import Once.CCC.Machine.SMCore hiding (Instr)
 open AllocState using (next-heap-ref)
-open LocState using (halted; regs; heapMem)
-open import Once.CCC.Machine.Locations using (AtDynamic)
+open LocState using (halted; regs)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
-open FlatMachine {FS} using (FlatState; fpc; falloc; floc; fclosure; fetch; flat-exec-instr)
+open FlatMachine {FS} using (FlatState; fetch; flat-exec-instr; module FlatState)
+open FlatState using (falloc; fclosure; fpc; floc)
 open MemOps {FS} using (readLoc)
 open import Once.CCC.Machine.FlatStoreWF FS using (FlatWF; flat-wf-step; cl-step; sv-below)
 
@@ -269,7 +277,7 @@ block-run-exec ev env h (suc L) rest cprog s {s'} eq hs' = go-h (xhalted s) refl
 -- THE PROGRAM-END BOUNDARY, and the two SIGOP REDUCTIONS.
 ------------------------------------------------------------------------
 open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
-open FlatEventTrace {FS} using (flat-events; event-of; flat-events-halted; flat-ctrls; flat-ctrls-step; flat-ctrls-fetch; ctrl-of; ctrl-≤1)
+open FlatEventTrace {FS} using (flat-events; event-of; flat-ctrls; ctrl-of; ctrl-≤1)
 open import Data.Nat.Properties using (≤-trans; ≤-reflexive; +-identityʳ)
 open import Once.CCC.Codegen.RoomChecks using (spend; max-entry)
 open import Data.Nat using (s≤s; z≤n)
@@ -340,7 +348,7 @@ sigop-run-arith ev env lg n prog fs s si pl cc h ftq env-eq =
   RT.run-events-arith ev env lg n (compile-trace prog) s
     (sigop-call (once-symbol-path (SigOpInfo.name si)))
     (once-symbol-path (SigOpInfo.name si)) pl
-    (trans (CFC.halt-eq (dataCorr cc)) h)
+    (trans (CFC.FlatCorr.halt-eq (dataCorr cc)) h)
     (sigop-concrete-fetch prog fs s si cc ftq)
     (sigop-matchCall (once-symbol-path (SigOpInfo.name si)))
     (λ q → leave≢osp (SigOpInfo.name si) (sym q))
@@ -362,7 +370,7 @@ sigop-run-external ev env lg n prog fs s si cc h ftq env-eq =
   RT.run-events-external ev env lg n (compile-trace prog) s
     (sigop-call (once-symbol-path (SigOpInfo.name si)))
     (once-symbol-path (SigOpInfo.name si))
-    (trans (CFC.halt-eq (dataCorr cc)) h)
+    (trans (CFC.FlatCorr.halt-eq (dataCorr cc)) h)
     (sigop-concrete-fetch prog fs s si cc ftq)
     (sigop-matchCall (once-symbol-path (SigOpInfo.name si)))
     (λ q → leave≢osp (SigOpInfo.name si) (sym q))
@@ -478,7 +486,7 @@ RoomStep : HeapView → AbstractTrace → FlatState → State → ℕ → Set
 RoomStep hv prog fs s k =
     Σ ℕ (λ c → Σ State (λ s' → (exec c (compile-trace prog) s ≡ just s')
                 × CompiledCorr hv prog (flat-exec-instr (instr-room k) prog fs) s'
-                × (CFC.hfront hv + slots k ≤ rreg s sp-reg)))
+                × (CFC.HeapView.hfront hv + slots k ≤ rreg s sp-reg)))
   ⊎ Σ ℕ (λ c → Σ State (λ s' → (exec c (compile-trace prog) s ≡ just s')
                 × xhalted s' ≡ false
                 × mfetch (compile-trace prog) (xpc s') ≡ just (sigop-call host-exhausted-symbol)))
@@ -536,7 +544,7 @@ record Supply : Set₁ where
                         → fetch prog (fpc fs) ≡ just (instr-sigop si)
                         -- D393: the room the check before it left for the
                         -- block's frame, and the run has not stopped
-                        → CFC.hfront hv + slots (spend (max-entry prog) (instr-sigop si)) ≤ rreg s sp-reg
+                        → CFC.HeapView.hfront hv + slots (spend (max-entry prog) (instr-sigop si)) ≤ rreg s sp-reg
                         → LocState.halted (floc fs) ≡ false
                         → Σ Payload (λ pl → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl
                             × CompiledCorr hv prog (flat-exec-instr (instr-sigop si) prog fs)
@@ -559,6 +567,4 @@ record Supply : Set₁ where
                              -- binary's log equals (`events-agree` runs from it).
                              × CompiledCorr hv prog (flat-exec-instr (instr-sigop si) prog fs)
                                  (ret-call (LocState.ev-log (floc fs)) (once-symbol-path (SigOpInfo.name si)) s)
--- NOT opened here: the dispatch opens it at its own `sup`, and a top-level
--- `open Supply public` would put the PROJECTIONS in scope under the same
--- names, making every use ambiguous.
+-- The dispatch opens `Supply` at its own `sup`.

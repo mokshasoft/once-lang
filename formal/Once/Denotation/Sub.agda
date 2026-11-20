@@ -25,20 +25,17 @@ module Once.Denotation.Sub where
 open import Once.Spec.Type using (Ty)
 open import Data.Product using (_,_)
 open import Data.Sum using (inj₁; inj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
+open import Relation.Binary.PropositionalEquality using (refl)
 
 open import Once.Spec.Grade using (Zero; One; Many; mk-kind)
-open import Once.Spec.Type using (Type; _⇒[_]_; Void)
+open import Once.Spec.Type using (_⇒[_]_)
 import Once.Spec.Type as ST
 open import Once.Type.Sub
 open import Once.Spec.Sub using (sub-*; sub-+)
-open import Once.Spec.Sub using (_<:_; _<:ᶜ_; _⊔_≔_; sub-*; sub-+; subᶜ-*; subᶜ-+; sub-void; sub-var; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν; subᶜ-void; subᶜ-var; subᶜ-unit; subᶜ-int; subᶜ-float; subᶜ-arr; subᶜ-μ; subᶜ-ν)
-open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
-open import Once.Type.SubDecide
-open import Once.Laws.Sub
+open import Once.Spec.Sub using (_<:_; sub-void; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
 -- `fmap∞` is a functor and congruent: the tree's laws (plan 0.105).
-open import Once.IR.Semantics.Iterative using (T∞; fmap∞)
+open import Once.IR.Semantics.Iterative using (fmap∞)
 
 ------------------------------------------------------------------------
 -- The conversion a derivation denotes.
@@ -65,7 +62,7 @@ open import Once.IR.Semantics.Iterative using (T∞; fmap∞)
 -- plan 0.119 D5: the coercions' laws hold up to the IR's value relation
 -- (`ValueRel.RelD`): an arrow's coercion maps a run, and runs are compared
 -- step for step, never by `≡`.
-open import Once.Denotation.ValueRel using (RelD; RelS-fmap; RelS-fmapˡ)
+open import Once.Denotation.ValueRel using (RelD; RelS-fmapˡ)
 open import Data.Unit using (tt)
 
 <:-refl-rel : ∀ {m} (A : Ty m) {x y : ⟦ A ⟧ᴰ} → RelD A x y → RelD A (⟦ <:-refl A ⟧<: x) y

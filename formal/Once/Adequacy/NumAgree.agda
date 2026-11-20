@@ -35,7 +35,6 @@ open import Data.Sum using (_⊎_)
 open import Data.Unit using (⊤)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
 
-open import Once.Spec.Type using (Int)
 open import Once.Spec.Numerics using (TargetNum; module TargetNum)
 import Once.Spec.Word as Word
 open import Once.Spec.Bool using (truth)
@@ -50,7 +49,8 @@ open import Once.Spec.Theory
          ‵+ᵈ; ‵-ᵈ; ‵*ᵈ; ‵/ᵈ; ‵==ᵈ; ‵!=ᵈ; ‵<ᵈ; ‵<=ᵈ; ‵>ᵈ; ‵>=ᵈ)
 open import Once.Arith.Prim using (primSem; p-i2f)
 open import Once.Arith.SigOp.Builders using (numPrim)
-open import Once.Float.EncodingLaws using (decode-encode; decode-fneg)
+open import Once.Float.EncodingLaws using (decode-encode)
+open import Once.Float.EncodingLaws.Neg using (decode-fneg)
 open import Once.Metatheory.Float.Range using (round-inRange)
 open import Once.Spec.Word using (Carrier)
 import Once.IR.Semantics.Value Carrier Carrier as M

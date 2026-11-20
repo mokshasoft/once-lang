@@ -38,7 +38,6 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 import Data.Maybe
 import Once.CCC.Target.RiscV64.File as RF
 open import Data.String using (String)
-open import Data.Nat using (ℕ)
 open import Data.Product using (_×_)
 
 open import Data.Unit using (⊤)
@@ -51,7 +50,6 @@ open import Once.Arith.Backend.CallAnswer using (CallResolver; answer-at)
 open import Once.Adequacy.CPU.Interface using (Byte; ArchSemantics)
 
 import Once.CCC.Target.RiscV64.Semantics as RV
-import Once.CCC.Target.RiscV64.Syntax    as RVS
 
 -- Plan 0.54 Phase B / Option 2: the emit-and-continue trace over the REAL
 -- riscv64 machine (arith blocks dispatched, Pure ⇒ no event), instanced from

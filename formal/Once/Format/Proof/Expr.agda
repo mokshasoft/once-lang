@@ -20,17 +20,16 @@
 
 module Once.Format.Proof.Expr where
 
-open import Data.Bool using (Bool; true; false; if_then_else_; not; _∧_; _∨_)
-open import Data.Char using (Char)
+open import Data.Bool using (true; false; if_then_else_; not; _∧_; _∨_)
 import Data.Char as Ch
 open import Relation.Nullary using (does)
 open import Data.List using (List; []; _∷_; reverse; reverseAcc)
 open import Data.List.Properties using (reverse-involutive)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.Maybe using (just; nothing)
-open import Data.Nat using (ℕ; zero; suc)
+open import Data.Nat using (ℕ; suc)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃-syntax)
-open import Data.String using (String; toList; fromList)
+open import Data.String using (toList; fromList)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
@@ -38,8 +37,8 @@ open import Relation.Nullary using (¬_)
 open import Agda.Builtin.String.Properties using (primStringToListInjective)
 
 open import Once.Postulates using (toList∘fromList)
-open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; TLParen; TRParen; TComma; TColon; TSemicolon;
-  TLBrace; TRBrace; TDot; TAt; TLambda; TArrow; TEquals; TOpD)
+open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; TLParen; TRParen; TSemicolon;
+  TLBrace; TDot; TAt; TLambda; TArrow; TEquals; TOpD)
 open import Once.Adequacy.SpecTokNames
 open import Once.Spec.Surface.Syntax using (Expr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct;
   RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
@@ -53,7 +52,7 @@ open import Once.Format.Doc using (toks)
 open import Once.Format.Print
 open import Once.Format.Proof.Tokens using (word-toks; anchor-toks)
 open import Once.Format.Proof.ExprBase
-open import Once.Format.Proof.TypeAlgs using (GroundOK; ground-id; ground-wf)
+open import Once.Format.Proof.TypeAlgs using (ground-id; ground-wf)
 import Once.Format.Proof.TypeAlgs as TA
 
 private

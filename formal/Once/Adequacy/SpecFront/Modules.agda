@@ -16,17 +16,13 @@ module Once.Adequacy.SpecFront.Modules where
 
 open import Data.List using (List; []; _∷_)
 open import Data.List.Relation.Binary.Pointwise using ([]; _∷_)
-open import Data.Maybe using (Maybe; just; nothing; _>>=_)
-open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
+open import Data.Maybe using (Maybe; just; _>>=_)
+open import Data.Product using (Σ-syntax; _×_; _,_)
 open import Data.String using (String)
-open import Data.Sum using (inj₁; inj₂)
+open import Data.Sum using (inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Parser using (parseStrict)
-open import Once.Spec.Surface.Syntax using (Module)
-open import Once.Parser.Module.Resolve using (ModuleMap)
-import Once.Spec.Surface.Syntax as S
-import Once.Spec.Surface.Resolution as SR
 open import Once.Spec.Source using (ParsesModules)
 open import Once.Adequacy.SpecSource using (parseModules)
 open import Once.Adequacy.FrontEndBridge using (parseStrict-sound; parseStrict-complete)

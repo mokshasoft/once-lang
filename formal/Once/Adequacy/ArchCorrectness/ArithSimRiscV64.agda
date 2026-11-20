@@ -43,14 +43,15 @@ open import Once.Arith.CmpOp using (cmp-bit; fcmp-bit)
 open import Once.Float.Word using (round)
 open import Once.Spec.Float.Dyadic using (binary64)
 open XI using (XR0; XR1)
-open import Once.Arith.Machine.Shape using (InputPath; Side; Fst; Snd; ⌊_⌋ᴾ; flat-off; flat-addr; InputShape; Path)
+open import Once.Arith.Machine.Shape using (InputPath; ⌊_⌋ᴾ; flat-off; flat-addr; InputShape; Path)
 open import Once.Target.RiscV64.PhysReg using (Reg; a0; sp; t0)
 open import Once.Arith.Backend.RiscV64.Emit using (arith-reg)
 import Once.CCC.Target.RiscV64.Semantics as RV
 open RV using (State; readReg; writeReg; readMem; writeMem; RegFile; Word)
 open RV.State using (regs; memory)
 import Once.Arith.Backend.RiscV64.ExecArith as EA
-open import Once.Arith.Backend.RiscV64.Preserve using (step-of-preserves)
+open import Once.Arith.Backend.RiscV64.Preserve using (module PreserveCore)
+open PreserveCore using (step-of-preserves)
 open Once.Arith.Backend.RiscV64.Preserve.AgreeCCC using (a-sp)
 open import Once.Arith.Backend.RiscV64.MemPreserve using (readMem-writeMem-other)
 import Once.Spec.Word as OnceWord
@@ -59,7 +60,9 @@ import Once.Word as OnceWordL
 -- explicit width rather than the `Word64` alias so it reads as a claim about
 -- THIS target rather than as the default nobody chose (plan 0.74 J5).
 module W = OnceWord.Width 64
+  using (_%ˢ_; _/ˢ_; _⊕_; _⊖_; _⊗_; fromℤ; toℤ; ⊝_)
 module WL = OnceWordL.WidthLaws 64
+  using (sdiv2ᵏ; shlᵂ)
 import Once.Adequacy.ArchCorrectness.ArithSimCore as ASC
 open import Once.Target.Arch using (riscv64; arch-numerics)
 -- Plan 0.74 J5: the shared correspondence core, applied at THIS target's
@@ -88,10 +91,12 @@ open import Once.Adequacy.ArchCorrectness.ArithSimPathLoad State memory def word
   using (path-load-go; plg-mem-cong)
 
 -- The GLOBAL region model (RuntimeContract linker guarantee) at the riscv layout.
-open import Once.CCC.Target.RiscV64.Layout using (InStack; InHeap; stackAddr-write-preserves-heap)
+open import Once.CCC.Target.RiscV64.Layout using (module FrameOps; module Regions)
+open FrameOps using (stackAddr-write-preserves-heap)
+open Regions using (InStack; InHeap)
 open import Once.Adequacy.ArchCorrectness.ArithSimPathLoadRegion
   InStack InHeap stackAddr-write-preserves-heap def word-bytes
-  using (plg; HeapChase; plg-stack-write-invisible; heapchase-agree)
+  using (plg)
 
 open import Data.Product using (_×_; _,_)
 
@@ -397,14 +402,14 @@ module _ (N : ℕ) where
       ne eq = [ (λ lo → <-irrefl eq (<-≤-trans lo (m≤m+n sp′ (8 * XScratch.slot sc′))))
               , (λ hi → <-irrefl (sym eq) (<-≤-trans (+-monoʳ-< sp′ inf) hi)) ]′ wf
 
-  -- the instance, by name (no `public` re-export, plan 0.92)
+  -- `Core` at this ISA: its state, registers, memory and arith result register
   module Sim = Core
     State Reg
     rr mem
     arith-reg a0
     def (λ _ → refl)
     scratch-addr path-load
-    (EA.exec1 val-riscv64 N) (EA.exec-arith-block val-riscv64 N)
+    (EA.exec1 val-riscv64 N) (EA.ExecArithCore.exec-arith-block val-riscv64 N)
     (λ _ → refl) (λ _ _ _ → refl)
     sa-inv sa-inj mem-keep mem-spill-hit mem-spill-miss
     WF wf-e1
@@ -457,6 +462,7 @@ module _ (N : ℕ) where
     -- rt-fcmp (peel a0, as rt-sdiv)
     (λ o d a b s → trans (readReg-wr-a0-arith (writeReg (regs s) (arith-reg d) _) d _)
                          (readReg-wr-arith-same (regs s) d _))
+    using (IOksWF; R-input; arith-block-correct; leafWord)
 
 ------------------------------------------------------------------------
 -- plan 0.123 α′ (f3c): THE BLOCK'S ENTRY STATE. The dispatch enters the

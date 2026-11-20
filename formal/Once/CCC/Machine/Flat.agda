@@ -90,7 +90,7 @@ module FlatMachine {FS : FrameSemantics} where
       -- It was a plain `ℕ` with a filler value when the field was introduced,
       -- because nothing READ it. The reader is the window.
       flink    : Maybe ℕ
-  open FlatState public
+  open FlatState
 
   -- The 3-field constructor every existing site uses: no pending returns,
   -- filler closure register (D074's tag filler). Keeping it means the two

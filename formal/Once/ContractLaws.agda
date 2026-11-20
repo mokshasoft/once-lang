@@ -8,28 +8,17 @@
 
 module Once.ContractLaws where
 
-open import Data.List using (List; []; _∷_)
+open import Data.List using (_∷_)
 open import Once.Spec.Type using (Base; b-*; b-+; b-Float; b-Int; b-Unit; b-Void; ∅ₖ)
-open import Data.Product using (Σ; _×_; _,_)
-open import Data.String using (String) renaming (_≟_ to _≟ˢ_)
+open import Data.Product using (Σ; _,_)
+open import Data.String using (String)
 open import Relation.Nullary using (Dec; yes; no)
-open import Relation.Binary.Definitions using (DecidableEquality)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
-import Data.List.Membership.DecPropositional as DecMem
-open import Once.Spec.Grade using (mk-kind; Zero; One; Many)
-open import Once.Spec.Type using (Type; _⇒[_]_; Void) renaming (Unit to UnitT)
-open import Once.Type.Core using (isVoid?; isUnit?)
-import Once.Type as Ty
-open import Once.Type.DecEq using (_≟T_)
+open import Once.Spec.Type using () renaming (Unit to UnitT)
 open import Data.Empty using (⊥-elim)
-open import Once.Spec.Word using (Carrier)
-import Once.IR.Semantics.Value Carrier Carrier as M
-open import Once.IR.Semantics.Event using (SigOpEvent)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Relation.Unary.Any using (here; there)
 open import Once.Contract
-open Key
-open Impl
 
 -- A decision on a membership that holds is `yes` (of the decided proof).
 yes-of : ∀ {k ks} → k ∈ ks → Σ (k ∈ ks) (λ p₀ → (k ∈K? ks) ≡ yes p₀)

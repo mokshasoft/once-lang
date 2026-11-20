@@ -21,7 +21,7 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Nat using (ℕ; zero; suc; _+_)
 open import Data.Product using (Σ; _×_; _,_)
 open import Data.Sum using (inj₁; inj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; cong)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Machine.SMCore using (AbstractInstr; AbstractTrace; instr-room; module LocState)
@@ -32,6 +32,7 @@ open import Once.IR.Semantics.Out using (_▹_)
 
 module RoomEvents {FS : FrameSemantics} (t : AbstractTrace) where
   open FlatMachine {FS}
+  open FlatState using (fpc; floc)
   open RoomFacts {FS} using (fetch-room)
   open RoomSim {FS} t using (P′; lift; PcRel; step-lift)
   open FlatEventTrace {FS}

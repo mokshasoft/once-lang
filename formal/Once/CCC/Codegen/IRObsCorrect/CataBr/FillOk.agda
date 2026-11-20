@@ -22,7 +22,7 @@ module Once.CCC.Codegen.IRObsCorrect.CataBr.FillOk where
 
 open import Data.List using (List; []; _∷_; _++_; [_]; length)
 open import Data.List.Properties using (++-assoc)
-open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Maybe using (just)
 open import Data.Nat using (ℕ; suc; _+_)
 open import Data.Nat.Properties using (+-assoc; +-comm; suc-injective)
 open import Data.Product using (Σ; _×_; _,_)

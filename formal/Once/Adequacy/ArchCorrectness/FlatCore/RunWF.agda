@@ -67,23 +67,23 @@ open import Once.CCC.Machine.SMCore
 open AllocState using (frame-slots; saved-frames; block-size; next-heap-ref; current-frame)
 open LocState using (heapMem; regs; stackMem; halted)
 open import Once.CCC.Machine.Locations using (AtDynamic; Slot; AtStack; ValueLocation)
-open import Once.Memory.HeapAddress using (HeapLocation; module HeapRef; module HeapLocation)
+open import Once.Memory.HeapAddress using (HeapLocation; module HeapRef; module HeapLocation; sucHL; offsetHL)
 open HeapLocation using (heap-offset; heap-ref)
 open HeapRef using (ref-id)
 open MemOps {FS} using (readLoc)
 open ExecFinal {FS} using (exec-load-with-value; exec-load-via-resolved; exec-load-suc-via-resolved; exec-store-via-resolved; exec-store-suc-via-resolved; exec-load-at-resolved; exec-store-at-resolved; exec-store-in-block; in-block?; exec-addr-at-resolved; exec-addr-in-block)
-open import Once.Memory.HeapAddress using (offsetHL)
 open import Data.Bool using (T)
 open import Data.Nat.Properties using (<ᵇ⇒<)
 open AbstractExec {FS} using (exec-load-from-slot-with-value; exec-restore-input-with-value; unread?; exec-sigop-faults-of; decode-at)
 open FrameSemantics FS using (Frame)
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
+open FlatState using (fpc; fclosure; floc; fret; falloc; flink)
 open import Once.CCC.Machine.FlatStoreWF FS
 open import Data.Product using (Σ; ∃; _,_; _×_; proj₁; proj₂)
 open import Once.CCC.Codegen.IRToTrace o using (ir-stack-budget; ir-to-unit)
 open import Once.CCC.Machine.FrameFree
-open import Data.List.Relation.Unary.All using () renaming (All to AllL; [] to allL-[]; _∷_ to _allL∷_)
+open import Data.List.Relation.Unary.All using () renaming (All to AllL)
 open import Once.CCC.Machine.InstrSlot
 open import Once.CCC.Machine.FlatStackSlot FS
 open SameFrames using (sf-slots; sf-saved; sf-ret)
@@ -95,9 +95,6 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Once.CCC.Codegen.SlotSeg
 open SegState using (cur; saved)
 open SlotBelow using (below)
-import Once.CCC.Codegen.SlotBudget as SB
-import Once.CCC.Codegen.FrameFreeTrace as FFT
-import Once.CCC.Codegen.AllocMin as AM
 open import Once.CCC.Codegen.ProgramImage using (program-image; image-body; fns-image; fn-image; fn-next)
 import Once.CCC.Codegen.ImageInstrs as IIn
 open import Data.List.Relation.Unary.All using () renaming (map to All-mapL)
@@ -107,13 +104,12 @@ open SigOpInfo using (baseA)
 open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Data.List.Relation.Unary.Any using (Any; here; there)
 open import Data.List.Relation.Unary.Any.Properties using () renaming (++⁺ˡ to Any++⁺ˡ; ++⁺ʳ to Any++⁺ʳ)
-open import Once.CCC.Label using (_≡ᵇᴱ_; _≟ᴱ_; ≡ᵇᴱ-refl)
+open import Once.CCC.Label using (_≡ᵇᴱ_; ≡ᵇᴱ-refl; e-fn; EntryId; LabelId; e-thunk)
 open import Once.CanonicalName using (_≟ᶜ_)
 open import Once.IRTy using (_≟IRTy_; Unit)
 open import Once.Denotation.Program using (IRFun; irProgram; Linked; LinkedAt; LinkedAt-at; LinkedProgram; Leaves; leaves-map)
 open Once.Denotation.Program.IRFun using (fbody; fcod; fdom; fname)
 open import Once.Contract using (ISig)
-open import Data.List.Relation.Unary.All.Properties using (++⁺)
 open import Once.CCC.Codegen.ProgramImageFacts o using (image-frame-free; body-frame-free; image-alloc-min; image-slots; image-jump-in-segment)
 open import Once.IR using (IR)
 open import Data.Empty using (⊥; ⊥-elim)
@@ -125,11 +121,10 @@ open import Once.Type using (fits-int; fits-float)
 -- leaves the machine running (`halted s₁ ≡ false`) cannot have been a `call-sym`,
 -- i.e. `matchCall j ≡ nothing`. (The one absurd case is `call-sym`, ruled out by
 -- the halt clash; every other instruction is `matchCall … = nothing` definitionally.)
--- NOT `public`: `ConcFlatSim` already re-exports `RunContext` through its own
--- arch wrapper, and two public routes to one definition is a clash.
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunContext o FS slot-size word-eq
+open RunAt using (run-emit; run-ir; run-tbl; run-linked)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
-open FlatStepsAPI {FS} using (FlatSteps; []; _∷_)
+open FlatStepsAPI {FS} using ([]; _∷_)
 
 ------------------------------------------------------------------------
 -- THE ARCH-GENERIC RESIDUALS (Plan 0.65 G1d step 2, 2026-08-12).

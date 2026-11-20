@@ -98,9 +98,11 @@ module Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
   where
 
 open import Once.CCC.Machine.Flat using (module FlatMachine)
-open FlatMachine {FS} using (FlatState; fpc; fret; falloc; fclosure; flink)
+open FlatMachine {FS} using (FlatState; module FlatState)
+open FlatState using (fpc; flink; falloc; fret; fclosure)
 open MemOps {FS} using (writeLoc; writeLocToHeap; readLoc)
-open FlatMachine {FS} using (floc; fetch)
+open FlatMachine {FS} using (fetch)
+open FlatState using (floc)
 open import Once.Memory.HeapAddress using (HeapLocation; sucHL; offsetHL; module HeapRef; module HeapLocation)
 open ExecFinal {FS} using (in-block?)
 open AllocState using (block-size)
@@ -134,11 +136,14 @@ import Once.Adequacy.ArchCorrectness.FlatCore.RunLow as RL
 -- application is by alias), so the two `RunAt`s are one type.
 private
   module CFC = FC FS slot-size word-eq Reg roles State rreg memory xhalted
+    using (FlatCorr; HeapView; RetAddrs; descend-view; extend-view; frames-of; sep; slots; module FlatCorr; module HeapView)
   module CRC = RC o FS slot-size word-eq
   module CRL = RL o FS slot-size word-eq
+    using (RunLow)
 
-open CFC using (HeapView; FlatCorr; RetAddrs; frames-of; caddr; HDom; haddr
-               ; lo; hfront; descend-view; extend-view; slots; dom-fresh)
+open CFC using (HeapView; FlatCorr; RetAddrs; frames-of; descend-view; extend-view; slots)
+open CFC.FlatCorr using (dom-fresh)
+open CFC.HeapView using (caddr; HDom; haddr; lo; hfront)
 open RegRoles roles using (sp-reg; in1-reg; out-reg)
 
 ------------------------------------------------------------------------
@@ -154,7 +159,7 @@ record CompiledCorr (hv : HeapView) (prog : AbstractTrace)
     code-eq  : ∀ (ℓ : LabelId) (j : ℕ)
              → find-label (compile-trace prog) (thunk ℓ) ≡ just j
              → caddr hv ℓ ≡ j
-open CompiledCorr public
+open CompiledCorr
 
 ------------------------------------------------------------------------
 -- THE ARCH-FREE HELPERS from `ConcFlatSim` (plan 0.65 G2 item 4, slice 1).
@@ -183,17 +188,17 @@ fetch-just-drop (x ∷ xs) (suc k) i eq = fetch-just-drop xs k i eq
 
 -- An address at or above the heap frontier aliases no LIVE heap cell — every
 -- mapped cell is strictly below it (`dom-below`).
-above-frontier-disj : ∀ {hv : CFC.HeapView} (a : ℕ) → CFC.hfront hv ≤ a
-                    → ∀ hl → CFC.HDom hv hl → a ≡ CFC.haddr hv hl → ⊥
+above-frontier-disj : ∀ {hv : CFC.HeapView} (a : ℕ) → CFC.HeapView.hfront hv ≤ a
+                    → ∀ hl → CFC.HeapView.HDom hv hl → a ≡ CFC.HeapView.haddr hv hl → ⊥
 above-frontier-disj {hv} a le hl live eq =
-  <-irrefl (sym eq) (<-≤-trans (CFC.dom-below hv live) le)
+  <-irrefl (sym eq) (<-≤-trans (CFC.HeapView.dom-below hv live) le)
 
 -- …and the instance every stack store needs: a current-frame slot address is at
 -- or above the stack pointer, hence above every live heap cell. Stated through
 -- `rreg`/`sp-reg`, which is why it is generic despite naming a register.
 slot-heap-disj : ∀ {hv : CFC.HeapView} (fs : FlatState) (s : State) → CFC.FlatCorr hv fs s
-               → (k : ℕ) → ∀ hl → CFC.HDom hv hl
-               → (rreg s (sp-reg) + k * slot-size ≡ CFC.haddr hv hl) → ⊥
+               → (k : ℕ) → ∀ hl → CFC.HeapView.HDom hv hl
+               → (rreg s (sp-reg) + k * slot-size ≡ CFC.HeapView.haddr hv hl) → ⊥
 slot-heap-disj {hv} fs s corr k =
   above-frontier-disj {hv} (rreg s sp-reg + k * slot-size)
     (≤-trans (CFC.sep corr) (m≤m+n (rreg s sp-reg) (k * slot-size)))
@@ -758,4 +763,3 @@ record BlockSteps : Set₁ where
       → BlockStep (extend-view hv (next-heap-ref (falloc fs)) n
                                (dom-fresh (dataCorr cc)) room)
                   prog fs s (instr-alloc-heap n)
-open BlockSteps public

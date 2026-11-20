@@ -16,6 +16,22 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.Comp (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open Interface.Prelude using ()
+open Interface.Prelude.IRToTrace using (ir-to-trace')
+open Interface.Prelude.SlotBudget′ using (frontier-mono)
+open import Data.Bool using (false; true)
+open import Data.List using (List; _∷_; length; _++_; [])
+open import Data.List.Properties using (++-assoc; length-++)
+open import Data.List.Relation.Unary.All.Properties using (++⁻)
+open import Data.Maybe using (nothing; just) renaming (map to mmap)
+open import Data.Nat using (ℕ; _+_; suc; _≤_)
+open import Data.Product using (proj₁; proj₂; _,_)
+open import Data.Unit using (tt)
+open import Function using (case_of_)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Once.IR using (IR; _∘_)
+open import Relation.Binary.PropositionalEquality using (_≡_; trans; refl; cong; sym; subst; cong₂)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic; ValueLocation)
@@ -27,15 +43,9 @@ open import Once.CCC.Codegen.LabelResolve o using (module Resolve)
 open import Once.CCC.Codegen.LabelScope o using (labels-in)
 open import Once.CCC.Label using (module LabelId)
 open LabelId using (idx)
-open import Data.Nat.Properties using (1+n≰n)
+open import Data.Nat.Properties using (1+n≰n; +-suc; +-assoc; +-comm; ≤-trans; +-identityʳ; ≤-reflexive; m≤n+m; ≤-refl; m≤m+n)
 
-import Once.CCC.FrameSemantics
-import Once.CCC.Machine.SMPrimitives
-import Once.IRTy
 import Once.IR
-import Once.Semantics.Machine as EvV
-import Once.CCC.Machine.ReadTypedAdequate as RTA
-import Once.Denotation.DenotTrace as DT
 import Once.Denotation.ValueDomain as ValueDomain
 import Once.IR.Semantics.Trace as TM
 open import Once.Denotation.Approx using (Ap; done; cut; NotCut; budgetLeft; thenAp; run-approx-bind)
@@ -45,6 +55,15 @@ open import Once.Res using (Res; stopped; returns; is-stopped)
 module CompC {FS : FrameSemantics} where
 
   open Core {FS}
+  open ClosureWellFormedBase′ using (live→bf; resultAt; ⟪_⟫_; eventsAt; runAt; stopsAt)
+  open ClosureWellFormedDef′ using (ResultPlace; InputAt; at-loc; in-loc; validityWF-mem-preserved; at-reg; in-reg; unit-result; in-unit)
+  open FlatEventTrace′ using (chain-events; chain-left; chain-ctrls; chain-ctrls-++; chain-ctrls-subst-start; chain-events-++; chain-events-subst-start)
+  open CataNextSlot′ using (AllSlotStable)
+  open FlatMachine′ using (FlatState; mkFlatFull; fetch-++-left; find-label; fl-go; fetch; fetch-++-right; flat-exec-instr; exec-flat)
+  open FlatMachine′.FlatState using (fpc; fret; flink; floc; falloc; fclosure)
+  open FlatStepsAPI′ using (_∷_; FlatSteps-++; exec-flat-steps; FlatSteps; [])
+  open FrontierInvariant′ using (BeforeFrontier; frontier-monotone)
+  open MemOps′ using (readLoc)
   open Resolve {FS} using (found-in-window; noLabel-outside; NoLabel)
   open FlatStepsAPI {FS} using (fl-go-skip; fl-go-shift; fl-go-prefix)
 

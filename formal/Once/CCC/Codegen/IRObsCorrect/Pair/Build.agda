@@ -22,38 +22,60 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.Pair.Build (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.Bool using (false)
+open import Data.Empty using (⊥)
+open import Data.List using (_∷_; _++_; []; length)
+open import Data.List.Relation.Unary.All.Properties using (++⁺)
+open import Data.Maybe using (just)
+open import Data.Product using (proj₁; _,_; proj₂)
+open import Data.Unit using (tt)
+open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
+open import Once.CCC.Machine.ValueRel using (valid-pair-wf)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Once.IR using (Heap)
+open import Relation.Binary.PropositionalEquality using (subst; sym; _≡_; trans; cong; refl)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic; ValueLocation)
 open import Once.CCC.Machine.SMCore
   using (AbstractTrace; LocState; AllocState; module LocState; module AllocState; module MemOps; module AbstractExec;
-         readReg; writeReg; Output; SV-Ptr; StoredValue; sucLoc; offsetLoc;
-         store-at-slot; load-from-slot; instr-alloc-heap; restore-input; load-at; store-at)
+         readReg; writeReg; Output; SV-Ptr; StoredValue; offsetLoc;
+         store-at-slot; load-from-slot; instr-alloc-heap)
 open LocState using (regs; halted)
-open AllocState using (current-frame; next-slot; next-heap-ref; saved-frames)
+open AllocState using (current-frame; saved-frames)
 open import Once.Memory.HeapAddress using (heap-loc)
 open import Once.IRTy using (IRTy) renaming (_*_ to _*ᵀ_)
 open import Once.CCC.Codegen.Size using (size)
 open import Once.CCC.Codegen.FlatLayout using (put; put-All)
 open import Once.CCC.Codegen.StraightRun using (module StraightRunAPI)
-open import Once.CCC.Machine.Allocation using (module FrontierInvariant)
 import Once.CCC.Machine.FlatPut as FlatPut
 import Once.CCC.Machine.FlatAlloc as FlatAlloc
 import Once.CCC.Machine.SMPrimitives
 open import Once.CCC.Codegen.IRObsCorrect.Inj o tbl using (module InjC)
 
-open import Data.Nat using (_⊔_; z≤n; s≤s)
-open import Data.Nat.Properties using (m≤n⊔m)
-open import Data.List.Relation.Unary.All using ([]; _∷_)
+open import Data.Nat using (_⊔_; ℕ; suc; _+_; _≤_; _<_)
+open import Data.Nat.Properties using (m≤n⊔m; <-irrefl; ≤-trans; n<1+n; n≤1+n; m≤m+n; <-≤-trans; ≤-reflexive; +-identityʳ; ≤-refl)
+open import Data.List.Relation.Unary.All using ([]; _∷_; All)
 
 module PairBuildC {FS : FrameSemantics} where
 
   open Core {FS}
+  open ClosureWellFormedBase′ using (Live; BlocksKept)
+  open ClosureWellFormedDef′ using (ResultPlace; at-loc; at-reg; unit-result; CellAt; ValidAtWF)
+  open FlatEventTrace′ using (event-of; chain-events)
+  open AbstractExec′ using (exec-abstract)
+  open FlatMachine′ using (FlatState; StraightStep)
+  open FlatMachine′.FlatState using (fpc; floc; falloc)
+  open FlatStepsAPI′ using (_∷_; []; FlatSteps)
+  open FrontierInvariant′ using (BeforeFrontier; module BeforeFrontier; frontier-monotone)
+  open MemOps′ using (readLoc)
   open Mach {FS}
-  open MemOps {FS} using (writeLoc; writeLoc-preserves-other; writeLoc-read-same-stack)
+  open MemOps {FS} using (writeLoc-preserves-other; writeLoc-read-same-stack)
   open AbstractExec {FS} using (exec-trace; exec-trace-cons; exec-load-from-slot-with-value)
   open Once.CCC.Machine.SMPrimitives.TraceComposition {FS} using (exec-trace-append)
   open FlatEventTrace {FS} using (chain-events-subst)
   module SR = StraightRunAPI {FS}
+    using (At; after; straight-silent; straight-steps)
   private module IC = InjC {FS}
 
   tail-text : ℕ → IRTy → IRTy → AbstractTrace
@@ -94,7 +116,7 @@ module PairBuildC {FS : FrameSemantics} where
               (rsB : readLoc (floc gs) (AtStack (current-frame (falloc gs)) (suc n)) ≡ just wB)
               (srcC : FlatPut.Src {FS} {prog} (falloc gs) (floc gs) C vC (readReg (regs (floc gs)) Output))
     where
-    open FlatPut {FS} {prog} using (Src; src-tr; put-run; PutOut; dst)
+    open FlatPut {FS} {prog} using (src-tr; put-run; PutOut; dst)
 
     s  = floc gs
     a  = falloc gs
@@ -165,6 +187,7 @@ module PairBuildC {FS : FrameSemantics} where
            freshB (FlatAlloc.alloc-live {FS} N a) (≤-trans (m≤m+n (size B) (size C)) S≤N)
            (FlatAlloc.alloc-in {FS} N a) (src-tr (keep₃ {aB}) srcB)
     module PB = PutOut PB
+      using (alloc-eq; cell-at; live; other)
     sB = proj₁ (exec-trace (put B (suc n) pr 0) t₃ A₁)
 
     keepB : ∀ l → Live a l → readLoc sB l ≡ readLoc t₃ l
@@ -177,6 +200,7 @@ module PairBuildC {FS : FrameSemantics} where
            (FlatAlloc.alloc-live {FS} N a) S≤N (FlatAlloc.alloc-in {FS} N a)
            (src-tr (λ l lv → trans (keepB l lv) (keep₃ {a} l lv)) srcC)
     module PC = PutOut PC
+      using (alloc-eq; cell-at; live; other)
     sC = proj₁ (exec-trace (put C sn pr (size B)) sB A₁)
 
     -- the last row: the block is the result

@@ -18,11 +18,11 @@
 
 module Once.TypeCheck.Completeness where
 
-open import Data.Bool using (Bool; true; false)
+open import Data.Bool using (true; false)
 open import Data.Empty using (⊥; ⊥-elim)
-open import Data.Fin using (Fin; zero; suc)
+open import Data.Fin using (Fin)
 open import Data.List using ([]; _∷_)
-open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Maybe using (just; nothing)
 open import Data.Nat using (ℕ; _<_)
 open import Data.Product using (∃-syntax; Σ-syntax; _×_; _,_; proj₁; proj₂)
 open import Data.String using (String; _≟_)
@@ -30,17 +30,18 @@ open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
 open import Relation.Nullary using (yes; no; ¬_; Dec)
-open import Once.Spec.Name using (CanonicalName; canonical; own)
+open import Once.Spec.Name using (canonical; own)
 import Once.Spec.Grade as LG
 import Once.Spec.Type as ST
 import Once.Spec.Context as SCx
 import Once.Spec.Surface.Syntax as Raw
+import Once.Spec.Surface.Type as Rawᵗ
 import Once.Spec.Surface.Typing as SUT
 import Once.Spec.Surface.Generators as G
-open import Once.Spec.Sub using (_<:_; sub-*)
+open import Once.Spec.Sub using (_<:_)
 open import Once.Spec.Core.Syntax using (Tm; Schema; schema; _!!_)
 open Schema using (arity; kinds; type)
-open import Once.TypeCheck.Scope using (NamedCtx; Binding; lookupLocal; lookupLocal-go; lookupImport; lookupPolyPrefix;
+open import Once.TypeCheck.Scope using (NamedCtx; Binding; lookupLocal-go; lookupImport; lookupPolyPrefix;
                                         GenKindView; gk-map; gk-const; gk-comb₁; gk-comb₂; genKindView)
 open Binding using (name)
 open NamedCtx
@@ -56,12 +57,10 @@ open import Once.TypeCheck.ElaborateSound using (checkElabV; inferElabV; checkEl
 open import Once.TypeCheck.Completeness.Refs
 open import Once.TypeCheck.TableSound using (mapFrom?-complete; mapTo?-complete; mapAt?-complete)
 import Once.TypeCheck.FormSound as FS
-import Once.Metatheory.Surface.Basics
 open import Once.Generators using (fromCodomain?; fromDomain?)
 open import Once.Type.SubDecide using (_<:?_; _⊑π?_)
 open import Once.Spec.Sub using (_<:ᶜ_)
 open import Once.Spec.Core.Derived using (𝕋)
-open import Once.Type.Grade using (≤q-Many)
 open import Once.Type.Join using (join?-complete)
 open import Once.TypeCheck.DeciderComplete using (wfFun?-complete-at; isGround-complete-at; ¬Ground-isGround-inj₂)
 open import Once.Core.Decl using (⌜declS⌝)
@@ -85,7 +84,7 @@ import Once.Name
 
 module _ {Σ} {s : ℕ} {S} {nm : Fin s → _} {m : ℕ} where
   open Sc.Locals Σ S nm {m}
-  open SUT Σ S nm using (Locals; _∋_⦂_at_; here; there)
+  open SUT Σ S nm using (_∋_⦂_at_; here; there)
 
   finds : ∀ {n x A i} {Γn} {Γd : SCx.Ctx m n} {L} → LocalsOf Γn Γd L → L ∋ x ⦂ A at i
         → lookupLocal-go x Γn Γd ≡ just (SCx.lookup Γd i , SCx.singleUse i LG.One , svar i)
@@ -100,7 +99,6 @@ module _ {Σ} {s : ℕ} {S} {nm : Fin s → _} {m : ℕ} where
 -- The judgments at a Pack
 ------------------------------------------------------------------------
 
-open import Once.Spec.Core.Syntax using (Tm)
 open UMod hiding (_⊢_⇒_↝_; _⊢_⇐_↝_; _⊢_⇐_⇒[_]↦_↝_)
 
 module _ {m} {ctx : NamedCtx m} (P : Pack ctx) where
@@ -126,23 +124,9 @@ module _ {m} {ctx : NamedCtx m} (P : Pack ctx) where
 -- References: the entry a name's lookups found, at the checker's type
 ------------------------------------------------------------------------
 
-open import Once.Type.Closed using (sub0; sub0≡)
-open import Once.Type.Core using (wk₀; none)
-open import Once.Type.Instance using (KindedInstance; rigidOf)
-open import Once.Type.Schema using (schemaOf; kinded-instance)
 import Once.Type.Poly as TP
 import Once.Type
-open import Once.Spec.Core.Syntax using (Schema; schema; _!!_)
-open Schema using (arity; kinds; type)
-open import Once.TypeCheck.Scope using (lookupImport; lookupPolyPrefix)
-open import Once.TypeCheck.Classify using (lookupPolyPrefix⇒lookupPoly)
-open import Once.TypeCheck.DeciderComplete using (isGround-complete-at; ¬Ground-isGround-inj₂)
-open import Once.TypeCheck.Elaborate using (isGround-inj₂→¬Ground)
-open import Once.Type.Rigid using (ground-kinded)
-open import Once.Adequacy.SpecFront.SchemaOf using (ground-arity; open-arity; ki-of)
-open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (tt)
-open import Data.Nat using (_<_)
 
 -- the answer, at an equal type
 at-type : ∀ {m} (ctx : NamedCtx m) (e : Raw.Expr) {A A′ : ST.Ty m} {Ψ}
@@ -168,20 +152,20 @@ private
   mono-arity refl = refl
 
   -- no type variables: a ground schema
-  ground-of : ∀ (sc : Raw.PolyType) → arity (schemaOf sc) ≡ 0 → TP.Ground sc
+  ground-of : ∀ (sc : Rawᵗ.PolyType) → arity (schemaOf sc) ≡ 0 → TP.Ground sc
   ground-of sc a with Once.Type.isGround sc in eq
   ... | inj₁ g  = g
   ... | inj₂ tt = ⊥-elim (lt0 (subst (0 <_) a (open-arity sc (isGround-inj₂→¬Ground sc eq))))
 
   -- a ground entry's type, at any instance
-  ground-ty : ∀ {m} {Δ : ST.KCtx m} {sc′} (sc : Raw.PolyType) (e : sc′ ≡ schemaOf sc) (g : TP.Ground sc) (τ : ST.TySub (arity sc′) m)
+  ground-ty : ∀ {m} {Δ : ST.KCtx m} {sc′} (sc : Rawᵗ.PolyType) (e : sc′ ≡ schemaOf sc) (g : TP.Ground sc) (τ : ST.TySub (arity sc′) m)
             → type sc′ ST.⟨ τ ⟩ ≡ TP.extractGround sc g
   ground-ty {Δ = Δ} sc refl g τ =
     let K = kinded-instance sc (ground-kinded {Δ = Δ} sc g)
     in trans (sub0≡ (ground-arity sc g) (type (schemaOf sc)) τ _) (proj₂ (proj₂ K))
 
   -- a kinded instance of the entry's schema
-  poly-inst : ∀ {m} {Δ : ST.KCtx m} {sc′} (sc : Raw.PolyType) (e : sc′ ≡ schemaOf sc) (τ : ST.TySub (arity sc′) m)
+  poly-inst : ∀ {m} {Δ : ST.KCtx m} {sc′} (sc : Rawᵗ.PolyType) (e : sc′ ≡ schemaOf sc) (τ : ST.TySub (arity sc′) m)
             → ST.Respects (kinds sc′) Δ τ → KindedInstance Δ sc (type sc′ ST.⟨ τ ⟩)
   poly-inst {Δ = Δ} sc refl τ r = ki-of {Δ = Δ} sc τ r
 
@@ -201,7 +185,6 @@ at-nameC ctx refl r = r
 ↑≡wk₀ T = sub0 T _ _
 
 -- the Spec's operator classes are the checker's
-open import Once.Spec.Surface.Operator using (BinOp)
 
 -- an answer at an equal usage
 at-usage : ∀ {m n} {Γ : SCx.Ctx m n} {A : ST.Ty m} {r : E.CheckElabResult Γ A} {Ψ Ψ′}
@@ -219,13 +202,13 @@ head-fails refl e = e
 
 private
   -- a polymorphic entry is not ground
-  open-of : ∀ {sch} (sc : Raw.PolyType) → sch ≡ schemaOf sc → 0 < arity sch → ¬ TP.Ground sc
+  open-of : ∀ {sch} (sc : Rawᵗ.PolyType) → sch ≡ schemaOf sc → 0 < arity sch → ¬ TP.Ground sc
   open-of sc refl pos g = lt0 (subst (0 <_) (ground-arity sc g) pos)
 
   -- its arrow, read in the compiler's schema
-  arrow-of : ∀ {m} {Δ : ST.KCtx m} {sch} (sc : Raw.PolyType) → sch ≡ schemaOf sc
+  arrow-of : ∀ {m} {Δ : ST.KCtx m} {sch} (sc : Rawᵗ.PolyType) → sch ≡ schemaOf sc
            → ∀ {sd sco π′} → type sch ≡ sd ST.⇒[ LG.mk-kind LG.Many π′ ] sco → (∀ i → ST.Occurs i sco → ST.Occurs i sd)
-           → Σ[ sd₀ ∈ Raw.PolyType ] Σ[ sc₀ ∈ Raw.PolyType ] TP.ArrowSchema sc sd₀ sc₀ π′ × TP.CodVarsInDom sd₀ sc₀
+           → Σ[ sd₀ ∈ Rawᵗ.PolyType ] Σ[ sc₀ ∈ Rawᵗ.PolyType ] TP.ArrowSchema sc sd₀ sc₀ π′ × TP.CodVarsInDom sd₀ sc₀
   arrow-of {Δ = Δ} sc refl {π′ = π′} ty oc = In.arrow-at sc (schemaOf sc) refl ty oc π′ refl
 
   arr-inst : ∀ {m} {sch : Schema} (τ : ST.TySub (arity sch) m) {sd sco : ST.Ty (arity sch)} {A B : ST.Ty m} {π′}
@@ -234,7 +217,7 @@ private
   arr-inst τ ty ea eb = trans (cong (ST._⟨ τ ⟩) ty) (Relation.Binary.PropositionalEquality.cong₂ (λ X Y → X ST.⇒[ _ ] Y) ea eb)
 
 -- A polymorphic definition, given its domain.
-given-poly-at : ∀ {m} {ctx : NamedCtx m} (P : Pack ctx) (x : String) (sc : Raw.PolyType) {b p}
+given-poly-at : ∀ {m} {ctx : NamedCtx m} (P : Pack ctx) (x : String) (sc : Rawᵗ.PolyType) {b p}
                 → lookupImport (sig ctx) x ≡ nothing → lookupImport (imports ctx) x ≡ nothing
                 → (lp : lookupPolyPrefix (polys ctx) x ≡ just (sc , b , p))
                 → 0 < arity (S P !! TView.View.entry (V P) lp)
@@ -269,6 +252,8 @@ private
 module _ {m} {ctx : NamedCtx m} (P : Pack ctx) where
   private
     module SU = SUT (Sg P) (S P) (nm P)
+      using (CheckHead; DomainForm; OwnCheck; PartialCombinator; ch-comb₁; ch-comb₂; ch-lam; ch-map
+            ; ch-poly; oc-map; oc-pair; pc-bare; pc-one; s-app; s-app-spine; s-const)
   open SU using (PartialCombinator; CheckHead; OwnCheck)
 
   -- `s-app`: a head that synthesizes is applied.

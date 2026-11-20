@@ -34,7 +34,6 @@ open NotAtomStart
 open AppArgOk
 open NotTWord
 open NotQualPrefix
-open import Once.Adequacy.SpecTokNames
 open import Once.Adequacy.SpecLexing using (forget)
 
 private

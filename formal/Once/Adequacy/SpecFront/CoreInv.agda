@@ -24,17 +24,17 @@ module Once.Adequacy.SpecFront.CoreInv (Σ : Signature) {s : ℕ} (S : SC.Defs s
 open import Data.Fin using (Fin; zero; suc)
 open import Data.Nat using (suc)
 open import Data.Product using (Σ-syntax; _×_; _,_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 
 open import Once.Spec.Grade using (Quantity; Zero; One; Many; Purity; mk-kind; _≤q_; 0≤q; 1≤1; 1≤ω; ω≤ω; _+q_; _*q_)
-open import Once.Spec.Type using (Ty; Unit; Void; _*_; _+_; _⇒[_]_; μ; ν; ⟦_⟧F)
+open import Once.Spec.Type using (Ty; Unit; _*_; _+_; _⇒[_]_; μ; ν; ⟦_⟧F)
 open import Once.Spec.Context
-  using (Ctx; ∅; _▸_; lookup; Usage; []; _∷_; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_; _⊑ᵘ_; _⊑∷_)
+  using (Ctx; _▸_; lookup; Usage; []; _∷_; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_; _⊑ᵘ_; _⊑∷_)
 open import Once.Spec.Core.Syntax using (Tm; var; lam; app; let′; unit; pair; fst; snd; inl; inr; case; absurd; roll; fold;
   unfold; out; iter; coerce; lit; prim; sigop; ref; ren; ext; wk)
 open import Once.Spec.Core.Typing Σ S
-open import Once.Metatheory.TermModel.Usage using (⊑ᵘ-refl; ⊑ᵘ-+; ⊑ᵘ-*ʳ)
-open import Once.Metatheory.TermModel.Subst Σ S using (Thin; done; keep; skip; ⟦_⟧θ; idθ; idθ-id; CThin; cdone; ckeep; cskip; cid; cthin-lookup)
+open import Once.Metatheory.TermModel.Usage using (⊑ᵘ-refl)
+open import Once.Metatheory.TermModel.Subst Σ S using (Thin; done; keep; skip; ⟦_⟧θ; idθ; idθ-id; CThin; ckeep; cskip; cid; cthin-lookup)
 
 ------------------------------------------------------------------------
 -- Usage, ordered

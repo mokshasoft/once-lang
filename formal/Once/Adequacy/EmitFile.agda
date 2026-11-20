@@ -26,9 +26,9 @@ open import Once.Denotation.Admissible using (AdmissibleM; admissibleM?)
 open import Once.Denotation.Program using (irProgram)
 open import Once.Target.Arch using (Arch)
 open import Once.Compile
-  using (CompiledFun; compileFileFromModule; compileResolvedModule; cfm-file-ef; cfm-file-gated; emitFromCompiled; emitProgram; emitLibrary; FileOf; compileEntries; emptyCScope; compileResolvedModule-aux; moduleToIR; moduleToIR-aux; moduleTable; tableOfResult)
+  using (CompiledFun; compileFileFromModule; compileResolvedModule; cfm-file-ef; cfm-file-gated; emitFromCompiled; compileEntries; emptyCScope; compileResolvedModule-aux; moduleToIR; moduleToIR-aux; moduleTable; tableOfResult)
+open import Once.Compile.Emit using (FileOf; emitProgram; emitLibrary)
 open import Once.Parser using (Entry; extractFunctions)
-open import Once.Parser.Module using ()
 open import Once.Parser.Module.Core using (Resolved)
 
 private

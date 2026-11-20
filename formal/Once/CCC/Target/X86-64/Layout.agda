@@ -73,16 +73,25 @@ x86-layout = record
 
 -- Regions (InStack, InHeap, InCode, disjointness)
 -- Hide Addr since we already export it from MLS above
-open import Once.Memory.Regions x86-layout public
-  hiding (Addr)
+import Once.Memory.Regions
+module Regions = Once.Memory.Regions x86-layout
+  using (InStack; stack-bounds)
+open Regions
 
 -- Stack slots (slot-addr, StackPointer, etc.)
 -- Hide InStack since it's already exported from Regions
-open import Once.Memory.StackSlots x86-layout x86-stack-growth public
-  hiding (InStack)
+import Once.Memory.StackSlots
+module StackSlots = Once.Memory.StackSlots x86-layout x86-stack-growth
+  using (StackPointer; _≟SP_; offset-distinct; slot-addr; stack-addr; stack-addr-inj; module StackAddr; module StackGrowth′)
+open StackSlots
+open StackSlots.StackAddr using (addr)
+open StackSlots.StackGrowth′ using (grow-identity)
 
 -- Frame operations (frameSlot, memory preservation)
-open import Once.Memory.FrameOps x86-layout x86-stack-growth public
+import Once.Memory.FrameOps
+module FrameOps = Once.Memory.FrameOps x86-layout x86-stack-growth
+  using (frameSlot; module FrameSlotInternal)
+open FrameOps
 
 
 -- Re-export Memory operations

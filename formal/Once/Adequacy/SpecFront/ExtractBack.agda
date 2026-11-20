@@ -16,19 +16,17 @@
 module Once.Adequacy.SpecFront.ExtractBack where
 
 import Once.Type.Poly
-open import Data.List using (List; []; _∷_; _++_)
+open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Product using (Σ-syntax; _×_; _,_)
-open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.String using (String; _≟_)
+open import Data.Product using (Σ-syntax; _,_)
+open import Data.Sum using (inj₁; inj₂)
+open import Data.String using (_≟_)
 open import Data.Unit using (tt)
 open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.Spec.Surface.Syntax using (RVar)
-open import Once.Spec.Surface.Syntax using (Decl; DTypeAlias; DTypeSig; DFunDef; DSignature; DImport)
 open import Once.Parser
-  using (Entry; e-fun; e-poly; mkFunInfo; mkPolyFunInfo; extractFunctions-go; sigsAdjacent; sigsAdjacent-def)
+  using (Entry; extractFunctions-go; sigsAdjacent)
 open import Once.Adequacy.SpecFront.Extract
   using (XAlign; xa-nil; xa-pass; xa-mono; xa-poly; xa-nosig; xa-sig; pa-alias; pa-import;
          SigReading; sr-mono; sr-open; sr-nonc)
@@ -83,7 +81,7 @@ import Once.Type.Core as LT
 import Once.Spec.Type as LT
 open import Once.Type using (isGround)
 open import Once.Functor.Decide using (isConcrete?)
-open import Once.Spec.Surface.Syntax using (PolyType)
+open import Once.Spec.Surface.Type using (PolyType)
 open import Once.Spec.Signature using (Signature)
 import Once.Spec.Surface.Syntax as S
 import Once.Spec.Surface.Program as SPr

@@ -58,7 +58,7 @@ open import Once.Core.Decl using (declS)
 open import Once.Adequacy.SpecCore.DeclType using (declS-declTy)
 open import Once.Adequacy.SpecGrammar.Suffix using (All-⊒)
 import Once.Adequacy.SpecGrammar.Suffix as Suf
-import Once.Parser.Lexer
+import Once.Name.Chars
 open import Once.Adequacy.SpecFront.Render using (render-inj)
 
 ------------------------------------------------------------------------
@@ -215,7 +215,7 @@ private
   fundef-words n (G.fundef _ _) = n
 
   -- an operator's characters
-  glyph-op : ∀ {c o} → L.Glyph (c ∷ []) o [] → T (Once.Parser.Lexer.isOpNameChar c)
+  glyph-op : ∀ {c o} → L.Glyph (c ∷ []) o [] → T (Once.Name.Chars.isOpNameChar c)
   glyph-op L.g+      = tt
   glyph-op (L.g- _ _) = tt
   glyph-op L.g*      = tt
@@ -224,7 +224,7 @@ private
   glyph-op (L.g< _)  = tt
   glyph-op (L.g> _)  = tt
 
-  oc-op : ∀ {t ch} → G.OpChar t ch → T (Once.Parser.Lexer.isOpNameChar ch)
+  oc-op : ∀ {t ch} → G.OpChar t ch → T (Once.Name.Chars.isOpNameChar ch)
   oc-op (G.oc-op g) = glyph-op g
   oc-op G.oc-dot    = tt
   oc-op G.oc-pipe   = tt

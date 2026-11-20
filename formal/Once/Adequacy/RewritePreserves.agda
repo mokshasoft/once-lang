@@ -19,51 +19,44 @@
 
 module Once.Adequacy.RewritePreserves where
 
-open import Data.Empty using (⊥-elim)
 open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (tt)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
 open import Relation.Nullary using (yes; no)
 
 import Once.Adequacy.LiftSound as LS
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.IR
-open import Once.IRTy using (IRTy; ⌊_⌋; ⌈_⌉; ⌈_⌉F; ⌈⟧TI-commute; ⟦_⟧TI; _≟IRTy_; IsBaseTypeI; WellFormedFI)
+open import Once.IRTy using (IRTy; ⌊_⌋; ⌈_⌉; ⌈_⌉F; ⌈⟧TI-commute; _≟IRTy_)
 import Once.IRTy as II
-open import Once.IRTy.WF using (wf-⌈⌉; base-⌊⌋)
+open import Once.IRTy.WF using (wf-⌈⌉)
 open import Once.CanonicalName using (_≟ᶜ_)
 open import Once.Arith.Machine.IR using (ArithBlock)
 open import Once.Arith.Machine.Rewrite using (rewrite-ir; rw-at; walk; walk-both; prefix-at; try-lift; bare-at; bare-sigop)
-open import Once.IR.Semantics.Trace using (T; ret; call; halt; Interp; pureHalf; FFIAnswers; fmapT; RelT′; rel-ret; rel-call; rel-halt)
-open import Once.IR.Semantics.Iterative using (T∞; return∞; _>>=∞_; embed; fmap∞)
-open T∞ using (force)
+open import Once.IR.Semantics.Trace using (Interp; pureHalf; FFIAnswers; rel-halt)
+open import Once.IR.Semantics.Iterative using (T∞)
 open import Once.SigOp.Info using (SigOpInfo; SigOpSem; mk-info'; blockV; primV; ffiV; callsV; emitsV; haltsV; module SigOpInfo)
 open SigOpInfo using (name; sem; baseA; conB)
 open import Once.Functor.Translate using (Base-irrelevant)
 open import Once.Arith.SigOp.Block using (block-info; shape-as-type-base; numtype-as-type-base)
-open import Once.Denotation.DenotTrace using (evalᴰ; CallEnv; callEnv; cata-ev-algᴰ; sigOpT; module CallEnv)
-open CallEnv using (callsE; ffiE)
-open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; cohᴰ; forgetᵇ; injectᵇ; coerce-functor-D; coerce-functor⁻¹-D)
+open import Once.Denotation.DenotTrace using (evalᴰ; CallEnv; cata-ev-algᴰ; module CallEnv)
+open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ)
 open import Once.Denotation.Program using (IRFun; tableEnv; tableCalls; tableEnv-at; runIR; IRProgram)
 open Once.Denotation.Program.IRProgram using (main; table)
 open Once.Denotation.Program.IRFun using (fbody; fcod; fdom; fname)
-open import Once.Denotation.TraceMonadInfLaws using (RelS; RelSB; module RelS; s-ret; s-next; s-call; s-halt; RelS-bind; relS-ret; RelS-embed; RelS-iter∞;
+open import Once.Denotation.TraceMonadInfLaws using (RelS; module RelS; RelS-bind; relS-ret; RelS-embed; RelS-iter∞;
   RelS-≈ʳ; ≈∞-assoc)
-open RelS using (forceS)
 open import Once.Denotation.ValueRel
 open import Once.Denotation.EvalRel using (base-eqI; base-reflI; fo-eq; RelS-now; RelEnv; sigop-rel)
-open import Once.IR.Semantics.StreamInf using (anaFᴵ; in-νᴵ; module νᴵ)
-open νᴵ using (forceᴵ)
 open import Once.IR.Semantics.FunctorMeaning using (translateF)
 import Once.Type.Concrete as LW
 import Once.Spec.Type as LW
 open import Once.Spec.Word using (Carrier)
 open import Once.IR.Semantics.Value Carrier Carrier using () renaming (⟦_⟧F to ⟦_⟧F′)
-open import Once.Semantics.Machine using (sem-cata; sem-In; sem-Out; coerce-ν-out; coerce-ν-in)
-open import Once.Compile using (rewrite-program; rewrite-table; rewrite-fun)
+open import Once.Compile.Emit using (rewrite-table; rewrite-fun; rewrite-program)
 open import Once.Spec.Trace using (_≈ᵗ⟨_⟩_)
 open import Once.Denotation.TraceTr using (trT∞; RelS-tr)
 

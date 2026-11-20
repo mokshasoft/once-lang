@@ -8,29 +8,12 @@
 
 module Once.Adequacy.ModuleLaws where
 
-open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.Product using (_×_; _,_)
-open import Data.List using (List; []; _∷_)
-open import Data.Maybe using (Maybe; just; nothing)
-open import Data.String using (String)
-open import Data.Bool using (Bool; true; false)
-open import Data.Empty using (⊥)
-open import Data.Unit using (⊤)
+open import Data.Product using (_,_)
+open import Data.List using ([]; _∷_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
-open import Once.Contract using (ISig)
-open import Once.Spec.Grade using (mk-kind; Many; eff)
-open import Once.Spec.Type using (Type; Unit; _⇒[_]_)
-open import Once.Type.Instance using (rigidOf)
-open import Once.Type.Concrete using (IsConcrete)
-open import Once.Type.Honest using (HonestFFI)
-import Once.Compile as C
 import Once.Parser as Parser
-import Once.Parser.Module.Core as P
-open import Once.TypeCheck.Scope using (NamedCtx)
-open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys; topCtx)
 open import Once.Module
-open Parser.FunInfo using (funName; funBody; funType; funIsPrimitive)
-open Parser.PolyFunInfo using (pfunType; pfunBody)
+open Parser.FunInfo using (funName)
 
 teleSig≡entrySig : ∀ {sc es} (mt : ModTele sc es) → teleSig mt ≡ entrySig es
 

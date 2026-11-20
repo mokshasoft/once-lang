@@ -51,12 +51,12 @@ import Once.CCC.Codegen.SlotBudget as SB
 open import Once.CCC.Codegen.ProgramImage using (fns-image; fn-image; fn-next; program-image)
 open import Once.CCC.Codegen.RoomChecksFacts using (fold-room; All-fold-room)
 import Once.Compile as C
+import Once.Compile.Emit as Emit
 import Once.IR as IR
 import Once.Parser as Parser
 open import Once.Compile using (moduleToIR; moduleTable)
-open import Once.Parser.Module using ()
 import Once.Parser.Module.Core as Core
-open import Once.Compile using (externs-of; prog-externs)
+open import Once.Compile.Emit using (prog-externs; externs-of)
 open import Once.Adequacy.ImageWF using (prog-defs; Resolved; ProgG; ProgP; prog-sigops)
 open import Once.Denotation.Program using (IRProgram; LinkedProgram)
 open import Once.Adequacy.ProgramLinked using (moduleToProgram-linked)
@@ -112,11 +112,11 @@ module Fns (G : String → Set) (D : List String) (σ : ISig) (tbl : List IRFun)
             → (∀ {i} → i ∈ fns-image l es → ∀ {s} → s ∈ instr-defs i → s ∈ D)
             → All (λ e → Linked σ tbl (fbody e)) es
             → All (λ e → SigLeaves P (fbody e)) es
-            → RC.Closes C.entry-owner G D (fns-image l es)
+            → RC.Closes Emit.entry-owner G D (fns-image l es)
   closes-FI l []       sub _          _          = []
   closes-FI l (e ∷ es) sub (lke ∷ lks) (sle ∷ sls) =
-    RC.closes-++ C.entry-owner G (fn-image l e) (fns-image (fn-next l e) es)
-      (RC.closes-++ C.entry-owner G Te (instr-ctrl (Once.CCC.Machine.SMCore.c-ret _) ∷ Le)
+    RC.closes-++ Emit.entry-owner G (fn-image l e) (fns-image (fn-next l e) es)
+      (RC.closes-++ Emit.entry-owner G Te (instr-ctrl (Once.CCC.Machine.SMCore.c-ret _) ∷ Le)
                     (proj₁ cl) (proj₂ cl))
       (closes-FI (fn-next l e) es (λ x → sub (∈-++⁺ʳ (fn-image l e) x)) lks sls)
     where
@@ -124,7 +124,7 @@ module Fns (G : String → Set) (D : List String) (σ : ISig) (tbl : List IRFun)
       Te = LS.trace-of (fname e) Y
       Le = blocks-layout (SB.bodies-of (fname e) Y)
       unit⊆ : ∀ {i} → i ∈ Te ++ Le → i ∈ fn-image l e
-      unit⊆ = RC.++-⊆ C.entry-owner Te Le (λ y → there (∈-++⁺ˡ y)) (λ y → there (∈-++⁺ʳ Te (there y)))
+      unit⊆ = RC.++-⊆ Emit.entry-owner Te Le (λ y → there (∈-++⁺ˡ y)) (λ y → there (∈-++⁺ʳ Te (there y)))
       cl = RC.close (fname e) G (fbody e) 0 l
              (λ x → sub (∈-++⁺ˡ (unit⊆ x)))
              (nodes-from G call-G (fbody e) lke sle)
@@ -136,11 +136,11 @@ module Fns (G : String → Set) (D : List String) (σ : ISig) (tbl : List IRFun)
 -- Over any linked program (plan 0.39: the optimized build's too).
 module Prog (σ : ISig) (p : IRProgram) (lk₀ : LinkedProgram σ p) where
 
-  rp  = C.rewrite-program p
-  eo  = C.entry-owner
+  rp  = Emit.rewrite-program p
+  eo  = Emit.entry-owner
   D   = prog-defs p
   ext = prog-externs p
-  img = C.image-of p
+  img = Emit.image-of p
   -- D377: the image is the program image with its room checks; the closure
   -- below is the program image's, and crosses the pass at the end (a check
   -- defines nothing and references only the Host's `once_exhausted`)
@@ -218,13 +218,13 @@ module Prog (σ : ISig) (p : IRProgram) (lk₀ : LinkedProgram σ p) where
         flat (inj₂ (inj₂ y)) = inj₂ y
 
 prog-resolved-at : ∀ (σ : ISig) (p : IRProgram) → LinkedProgram σ p
-                 → Resolved (prog-defs p) (prog-externs p) (arefs (C.image-of p))
+                 → Resolved (prog-defs p) (prog-externs p) (arefs (Emit.image-of p))
 prog-resolved-at σ p lk = Prog.resolved σ p lk (proj₁ (prog-sigops p)) (proj₂ (prog-sigops p))
 
 -- THE THEOREM (was `ImageWF.prog-resolved`, a postulate).
 prog-resolved : ∀ (m : Core.Resolved) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) (mi : moduleToIR m ≡ just ir)
               → Resolved (prog-defs (irProgram (moduleTable m) ir)) (prog-externs (irProgram (moduleTable m) ir))
-                         (arefs (C.image-of (irProgram (moduleTable m) ir)))
+                         (arefs (Emit.image-of (irProgram (moduleTable m) ir)))
 prog-resolved m ir mi = prog-resolved-at (moduleSig m) (irProgram (moduleTable m) ir) (moduleToProgram-linked m ir mi (table-names-distinct m))
 
 ------------------------------------------------------------------------
@@ -286,15 +286,15 @@ module LibLinked (m : Core.Resolved) where
 -- Over any linked table (plan 0.39: the optimized build's too).
 module Lib (σ : ISig) (tbl : List IRFun) (table-linked : All (λ e → Linked σ tbl (fbody e)) tbl) where
 
-  lp  = C.lib-program tbl
-  rt  = C.rewrite-table tbl
+  lp  = Emit.lib-program tbl
+  rt  = Emit.rewrite-table tbl
   D   = lib-defs tbl
   ext = externs-of lp
 
   G : String → Set
   G s = s ∈ D ⊎ s ∈ ext
 
-  inD : ∀ {s} → s ∈ adefs (C.lib-image tbl) → s ∈ D
+  inD : ∀ {s} → s ∈ adefs (Emit.lib-image tbl) → s ∈ D
   inD x = ∈-++⁺ˡ x
 
 
@@ -304,19 +304,19 @@ module Lib (σ : ISig) (tbl : List IRFun) (table-linked : All (λ e → Linked �
   -- a call names a table entry, whose marker the image carries
   -- (plan 0.144: over the entry as a variable; matched by `with`, 6.6 s)
   call-of : ∀ {f} → Σ[ e ∈ IRFun ] (e ∈ rt × fname e ≡ f) → G (labelSym (callee (e-fn f)))
-  call-of (e , em , refl) = inj₁ (inD (defd-self (C.lib-image tbl) (proj₂ (entry∈fns 0 rt em)) (here refl)))
+  call-of (e , em , refl) = inj₁ (inD (defd-self (Emit.lib-image tbl) (proj₂ (entry∈fns 0 rt em)) (here refl)))
 
   call-G : ∀ (f : CanonicalName) (A B : IRTy) → LinkedAt rt f A B → G (labelSym (callee (e-fn f)))
   call-G f A B lk = call-of (linked-entry rt f A B lk)
 
   -- every SigOp leaf names a block or an extern (`externs-of`'s construction)
   private
-    calls-ok : All G (C.calls-of (C.rewrite-program lp))
-    calls-ok = Data.List.Relation.Unary.All.tabulate (λ {s} s∈ → split s s∈ (s StrMem.∈? C.block-syms (C.program-blocks lp)))
+    calls-ok : All G (Emit.calls-of (Emit.rewrite-program lp))
+    calls-ok = Data.List.Relation.Unary.All.tabulate (λ {s} s∈ → split s s∈ (s StrMem.∈? Emit.block-syms (Emit.program-blocks lp)))
       where
-        split : ∀ s → s ∈ C.calls-of (C.rewrite-program lp) → _ → G s
-        split s s∈ (yes b) = inj₁ (∈-++⁺ʳ (adefs (C.lib-image tbl)) b)
-        split s s∈ (no nb) = inj₂ (∈-filter⁺ (C.is-extern? lp) s∈ nb)
+        split : ∀ s → s ∈ Emit.calls-of (Emit.rewrite-program lp) → _ → G s
+        split s s∈ (yes b) = inj₁ (∈-++⁺ʳ (adefs (Emit.lib-image tbl)) b)
+        split s s∈ (no nb) = inj₂ (∈-filter⁺ (Emit.is-extern? lp) s∈ nb)
 
     tbl-leaves : ∀ (es : List IRFun) → All G (Data.List.concatMap (λ e → leaf-syms (fbody e)) es)
                → All (λ e → SigLeaves (Fns.P G D σ rt call-G) (fbody e)) es
@@ -325,10 +325,10 @@ module Lib (σ : ISig) (tbl : List IRFun) (table-linked : All (λ e → Linked �
                           ∷ tbl-leaves es (proj₂ (++⁻ (leaf-syms (fbody e)) a))
 
   sl-tbl : All (λ e → SigLeaves (Fns.P G D σ rt call-G) (fbody e)) rt
-  sl-tbl = tbl-leaves rt (proj₂ (++⁻ (leaf-syms (main (C.rewrite-program lp))) calls-ok))
+  sl-tbl = tbl-leaves rt (proj₂ (++⁻ (leaf-syms (main (Emit.rewrite-program lp))) calls-ok))
 
-  resolved : Resolved D ext (arefs (C.lib-image tbl))
-  resolved = All-map flat (Fns.closes-FI G D σ rt call-G 0 rt (λ x ms → inD (defd-self (C.lib-image tbl) x ms)) rt-linked sl-tbl)
+  resolved : Resolved D ext (arefs (Emit.lib-image tbl))
+  resolved = All-map flat (Fns.closes-FI G D σ rt call-G 0 rt (λ x ms → inD (defd-self (Emit.lib-image tbl) x ms)) rt-linked sl-tbl)
     where
       flat : ∀ {s} → s ∈ D ⊎ G s → s ∈ D ⊎ s ∈ ext
       flat (inj₁ x)        = inj₁ x
@@ -337,9 +337,9 @@ module Lib (σ : ISig) (tbl : List IRFun) (table-linked : All (λ e → Linked �
 
 -- THE THEOREM (was `ImageWF.lib-resolved`, a postulate): for every module.
 lib-resolved-at : ∀ (σ : ISig) (T : List IRFun) → All (λ e → Linked σ T (fbody e)) T
-                → Resolved (lib-defs T) (externs-of (C.lib-program T)) (arefs (C.lib-image T))
+                → Resolved (lib-defs T) (externs-of (Emit.lib-program T)) (arefs (Emit.lib-image T))
 lib-resolved-at = Lib.resolved
 
 lib-resolved : ∀ (m : Core.Resolved)
-             → Resolved (lib-defs (moduleTable m)) (externs-of (C.lib-program (moduleTable m))) (arefs (C.lib-image (moduleTable m)))
+             → Resolved (lib-defs (moduleTable m)) (externs-of (Emit.lib-program (moduleTable m))) (arefs (Emit.lib-image (moduleTable m)))
 lib-resolved m = lib-resolved-at (moduleSig m) (moduleTable m) (LibLinked.lib-table-linked m)

@@ -18,26 +18,23 @@ module Once.Adequacy.SpecFront.Resolve where
 
 import Once.Spec.Surface.Syntax as O
 
-open import Data.List using (List; []; _∷_; _++_)
+open import Data.List using (List; []; _∷_)
 open import Data.String using (String)
 
-open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
+open import Data.Product using (Σ-syntax; _×_; _,_)
 open import Data.Unit using (tt)
-open import Data.Empty using (⊥-elim)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; cong)
 
-open import Once.Spec.Name using (CanonicalName; canonical)
-open import Once.Spec.Surface.Syntax using (Expr)
+open import Once.Spec.Name using (canonical)
 import Once.Spec.Surface.Syntax as S
 open import Once.Parser.Relation.Resolution as LR
-  using (UnaliasedMap; AliasMap; ResolvesVar; rv-binder; rv-gen; rv-import; rv-own;
+  using (rv-binder; rv-gen; rv-import; rv-own;
          ResolvesExpr; re-var; re-gen; re-this; re-qual; re-qual-path; re-res; re-app; re-lam; re-let; re-pair; re-destruct; re-annot;
          re-binop; re-unop; re-unit; re-int; re-float)
 open import Once.Spec.Surface.Resolution as SR
-  using (Env; env; Resolves; ResolvesName; rn-gen; rn-import; rn-own;
+  using (env; Resolves; rn-gen; rn-import; rn-own;
          r-local; r-name; r-gen; r-this; r-qual; r-qual-path; r-res; r-app; r-lam; r-let; r-pair; r-destruct; r-unit; r-int; r-float;
-         r-annot; r-binop; r-neg; Expands; fa-here; fa-there)
-import Once.Spec.Surface.Resolution
+         r-annot; r-binop; r-neg)
 open import Once.ResolvedRefs using (GoodName; GoodRefs)
 open import Once.Adequacy.SpecFront.Expr
   using (RX; x-local; x-res; x-gen; x-app; x-lam; x-let; x-pair; x-destruct; x-unit; x-int; x-float; x-annot; x-binop; x-neg)
@@ -91,11 +88,11 @@ res-expr re-float g = _ , r-float , x-float
 -- The declarations
 ------------------------------------------------------------------------
 
-open import Data.List.Relation.Unary.All using (All; []; _∷_)
+open import Data.List.Relation.Unary.All using ([]; _∷_)
 open import Data.Maybe using (just; nothing)
 open import Once.Spec.Signature using (Signature)
-open import Once.Spec.Surface.Syntax using (Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport)
-open import Once.Spec.Surface.Syntax using (mkImport; Import)
+open import Once.Spec.Surface.Syntax using (DTypeSig; DFunDef; DSignature; DTypeAlias; DImport)
+open import Once.Spec.Surface.Syntax using (mkImport)
 import Once.Spec.Surface.Program as SPr
 
 -- The resolved declarations: the Spec's, related to the compiler's.
@@ -122,12 +119,11 @@ module Decls (Σ : Signature) where
 -- The tables
 ------------------------------------------------------------------------
 
-open import Once.Spec.Surface.Syntax using (Module; mkModule)
+open import Once.Spec.Surface.Syntax using (mkModule)
 import Data.List
-import Data.Maybe
-open import Once.Parser.Module.Resolve using (ModuleMap; collectAliases; collectUnaliased; sigNames; lookupModule)
+open import Once.Parser.Module.Resolve using (collectAliases; collectUnaliased; sigNames)
 open import Once.Adequacy.ResolveBridge using (lookupMod-complete)
-open import Relation.Binary.PropositionalEquality using (trans; cong₂; subst)
+open import Relation.Binary.PropositionalEquality using (trans; subst)
 
 -- its exported names
 names-eq : ∀ ds → sigNames ds ≡ SR.exports ds

@@ -25,7 +25,16 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.CurryPro (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
-open import Once.CCC.Machine.SMCore using (ending)
+open Interface using (module Core)
+open import Data.Bool using (false)
+open import Data.List using (List; _∷_; [])
+open import Data.List.Relation.Unary.All.Properties using (++⁺)
+open import Data.Maybe using (nothing; just)
+open import Data.Nat.Properties using (≤-refl; n≤1+n)
+open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Once.IR using (IR; Heap)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym; trans; subst; cong₂)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.CCC.Codegen.IRToTrace o using (env-prologue)
@@ -35,7 +44,7 @@ open import Once.CCC.Machine.SMCore
          readReg; writeReg; Output; Input1; SV-Ptr; StoredValue; sucLoc; offsetLoc; sv-as-loc;
          store-at-slot; load-from-slot; restore-input; mov-to-input; mov-to-output; load-at)
 open LocState using (regs; halted)
-open AllocState using (current-frame; next-slot; next-heap-ref; saved-frames)
+open AllocState using (current-frame; next-slot)
 open import Once.Memory.HeapAddress using (heap-loc)
 open import Once.IRTy using (IRTy) renaming (_*_ to _*ᵀ_)
 open import Once.CCC.Codegen.Size using (size)
@@ -48,10 +57,10 @@ open import Once.CCC.Codegen.IRObsCorrect.Pair.Build o tbl using (module PairBui
 open import Once.CCC.Codegen.IRObsCorrect.BlockCall o tbl using (module BlockCallC)
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module ResuspBaseC)
 open import Once.CCC.Codegen.FlatLayout using (get-All; put-All)
-open import Data.List.Properties using (++-identityʳ)
-open import Data.List.Relation.Unary.All using ([]; _∷_)
-open import Data.Nat using (z≤n; s≤s)
-open import Data.Product using (Σ)
+open import Data.List.Properties using (++-identityʳ; ++-assoc; length-++)
+open import Data.List.Relation.Unary.All using ([]; _∷_; All)
+open import Data.Nat using (z≤n; ℕ; suc; _+_; _≤_)
+open import Data.Product using (Σ; _,_; proj₁; proj₂)
 open import Once.Denotation.Approx using (NotCut; budgetLeft)
 open import Once.Res using (is-stopped)
 open import Once.Memory.HeapAddress using (HeapLocation)
@@ -61,13 +70,26 @@ open +-*-Solver using (solve; _:+_; con; _:=_)
 module CurryProC {FS : FrameSemantics} where
 
   open Core {FS}
+  open ClosureWellFormedBase′ using (Live; runAt; ⟪_⟫_; resultAt)
+  open ClosureWellFormedDef′ using (CellAt; cellWF-heap-transport; ValidAtWF; validityWF-heap-transport; in-loc; ResultPlace)
+  open FlatEventTrace′ using (event-of; chain-events; chain-events-++; chain-left; chain-ctrls-subst-start; chain-ctrls; ctrls-≤ʳ; chain-events-subst-start)
+  open AbstractExec′ using (exec-abstract)
+  open CataNextSlot′ using (AllSlotStable)
+  open FlatMachine′ using (FlatState; mkFlatFull; label-of?; StraightStep; fetch-++-left; fetch; flat-exec-instr)
+  open FlatMachine′.FlatState using (fpc; fret; flink; floc; falloc; fclosure)
+  open FlatStepsAPI′ using (_∷_; []; FlatSteps; FlatSteps-++)
+  open FrontierInvariant′ using (module BeforeFrontier; BeforeFrontier; frontier-monotone)
+  open MemOps′ using (readLoc)
+  open ReadLocEq′ using (readLoc-stack-heap-eq)
   open Mach {FS}
   open MemOps {FS} using (writeLoc-read-same-stack; writeLoc-preserves-other; writeLoc-regs)
   open AbstractExec {FS} using (exec-trace; exec-trace-cons; exec-restore-input-with-value)
   open FlatEventTrace {FS} using (chain-events-subst)
   open GetC {FS} using (GetOut; module GetOut; get-run; setOut; out-mem; get-len)
   module SR = StraightRunAPI {FS}
+    using (At; after; straight-silent; straight-steps)
   module BC = BlockCallC {FS}
+    using (BodyRuns)
   open ResuspBaseC {FS} using (span-take; span-drop; labels-drop)
   open import Once.CCC.Codegen.LabelResolve o using (module Resolve)
   open Resolve {FS} using (NoLabel)
@@ -226,6 +248,7 @@ module CurryProC {FS : FrameSemantics} where
                   srcE-gs
                   (writeLoc-read-same-stack u3 cf 1 w0)
                   (PairBuildC.src-of-place {FS} {prog} (GetOut.place gA))
+      using (A₁; L; N; bf-tail; bk-tail; hfin; keep; live-L; out; run; settle; silent; val)
 
     -- (4) the body's input
     fMov : fetch prog (fpc TB.settle) ≡ just mov-to-input
@@ -274,6 +297,8 @@ module CurryProC {FS : FrameSemantics} where
 
     vr = MachineRefinesObsF.value-realized mro
     module VR = ValueRealized vr
+      using (at-end; bf-mono; blocks-kept; cont-alloc; frame-pres; frames-pres; live; log; no-link
+            ; no-ret; out-mode; place; progress; run; settle; steps; stops)
 
     log₇ : SMCore.LocState.ev-log (floc σ₇) ≡ SMCore.LocState.ev-log s
     log₇ = trans (log-of pro-chain ev-pro) (++-identityʳ _)

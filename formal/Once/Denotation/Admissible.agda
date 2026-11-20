@@ -45,7 +45,7 @@ module Once.Denotation.Admissible where
 
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.List.Relation.Unary.All using (All; all?)
-open import Data.Integer using (ℤ; -_)
+open import Data.Integer using (ℤ)
 open import Data.Nat using (ℕ)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Nullary using (Dec; yes; no)

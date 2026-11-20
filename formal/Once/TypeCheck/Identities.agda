@@ -24,21 +24,17 @@ import Once.Surface.Properties as P
 import Relation.Binary.PropositionalEquality as Eq
 
 open import Data.Bool using (true; false)
-open import Data.Empty using (⊥)
 open import Data.Maybe using (just; nothing)
 open import Data.Product using (∃-syntax; _,_)
 open import Data.String using (String)
 open import Data.Product using (_×_)
-open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Spec.Grade using (Quantity; Zero; One; Many)
 open import Once.Spec.Type using (Type)
-open import Once.Spec.Surface.Syntax using (RResolved)
 open import Once.Spec.Surface.Operator using (BinOp; binSym; BinSym)
 open BinSym using (shape)
 open import Once.TypeCheck.NumTable using (Binary; binary?)
-open import Once.Spec.Surface.Syntax using (Expr)
 open import Once.TypeCheck.Elaborate
   using (decideLeq)
 open import Once.TypeCheck.Scope using (NamedCtx; extendNamedCtx)

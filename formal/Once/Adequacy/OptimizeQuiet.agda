@@ -16,7 +16,7 @@
 
 module Once.Adequacy.OptimizeQuiet where
 
-open import Data.Bool using (Bool; true; false; _∨_)
+open import Data.Bool using (true; false; _∨_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; cong)

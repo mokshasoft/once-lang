@@ -18,23 +18,21 @@
 module Once.IR.Semantics.Value (IntRep : Set) (FloatRep : Set) where
 
 open import Once.Spec.Type using (Base)
-open import Once.Spec.Type using (Base; WFFun; b-*; b-+; b-Float; b-Int; b-Unit; b-Void; wf-⊕; wf-⊗; ∅ₖ)
-open import Once.Spec.Type using (var; b-var; Ty; Fun; KCtx; WFFun)
+open import Once.Spec.Type using (WFFun; b-*; b-+; b-Float; b-Int; b-Unit; b-Void; wf-⊕; wf-⊗)
+open import Once.Spec.Type using (var; b-var; Ty; Fun; KCtx)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
 open import Once.Spec.Grade
-open import Once.Type.Grade
-open import Once.Type.Core
 open import Once.Spec.Type using (μ; ν)
 import Once.Spec.Type as ST
-open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
+open import Once.Spec.Type using (Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
 open import Once.Res using (Res; stopped; returns; mapRes)
 open import Once.IR.Semantics.FunctorMeaning using (μ-sem; ν-sem; translateF; ⟦_,_⟧-base)
 open import Once.Spec.Type using (wf-K; wf-Id)
 open import Once.IR.Semantics.Polynomial
-open import Once.Spec.Polynomial using (SFunctor; SId; SK; _S⊕_; _S⊗_; inS; sfmap; ⟦_⟧SF)
+open import Once.Spec.Polynomial using (SFunctor; SId; SK; _S⊕_; _S⊗_; inS; ⟦_⟧SF)
 open Once.IR.Semantics.Polynomial.νS using (unfoldS)
 
 -- | Semantic interpretation of μ-type (initial algebra)

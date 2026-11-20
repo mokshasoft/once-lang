@@ -33,15 +33,15 @@ open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (tt)
 open import Data.Empty using (⊥-elim)
 open import Relation.Nullary using (¬_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong₂; subst)
 
-open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PUnit; PVoid; PInt; PFloat; PTVar; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PK; PId; _P⊕_; _P⊗_)
+open import Once.Spec.Surface.Type using (PolyType; PolyFunctor; PUnit; PVoid; PInt; PFloat; PTVar; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PK; PId; _P⊕_; _P⊗_)
 open import Once.Type.Poly using (Ground; GroundF)
 open import Once.Type using (isGround; isGroundF)
 open import Once.Spec.Type using (wf-K; wf-Id)
 open import Once.Functor.Translate using (WFFun-irrelevant)
 open import Once.Functor.Decide using (wellFormedF?; isBaseType?-complete; wfFun?; base?-complete)
-open import Once.Spec.Type using (KCtx; Base; WFFun; b-var; b-Unit; b-Void; b-Int; b-Float; b-*; b-+; wf-K; wf-Id; wf-⊕; wf-⊗)
+open import Once.Spec.Type using (KCtx)
 
 ------------------------------------------------------------------------
 -- `wellFormedF?` is complete for `WFFun ∅ₖ` (the `isBaseType?-complete`

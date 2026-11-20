@@ -26,17 +26,16 @@
 -- indexed by the function its block computes (`CallRuns` pins it), and the
 -- μ/ν layers go through `out-μ`/`Out`, whose meaning ignores the environment.
 -- The datatypes live in this UNPARAMETERISED module (a parameterised one makes
--- a distinct type per instantiation); `IRObsCorrect.Prelude` re-exports it.
+-- a distinct type per instantiation).
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.List.Relation.Unary.Any using (Any; here; there)
 open import Data.List.Relation.Unary.Any.Properties using (++⁺ˡ; ++⁺ʳ; ++⁻)
-open import Once.Denotation.Program using (IRFun; tableEnv)
+open import Once.Denotation.Program using (tableEnv)
 module Once.CCC.Machine.ValueRel where
 
 
 open import Data.Nat using (ℕ; _<_; _≤_; _≥_; suc)
 import Data.Nat as ℕ
-open import Data.Nat.Properties using (≤-antisym; ≤-trans; +-identityʳ; m≤n+m; +-monoʳ-≤; +-comm)
 open import Data.Bool using (Bool; true; false)
 open import Data.Maybe using (just; nothing)
 open import Data.Product using (_,_; _×_; proj₁; proj₂; ∃-syntax)
@@ -50,10 +49,10 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
+open import Once.CCC.Label using (LabelId)
 open AllocState using (next-slot; next-heap-ref; current-frame; saved-frames)
-open LocState using (regs; ev-log; halted; stackMem; heapMem)
+open LocState using (regs; halted; stackMem; heapMem)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
-import Once.CCC.Machine.SMPrimitives as SMP
 -- Plan 0.52 M2: machine values are IRTy values (⟦_⟧ᴵ), renamed to ⟦_⟧ locally.
 -- D179: `⟦_⟧` in this module is now the MONADIC domain. `ValidAtWF` and
 -- `ResultPlace` index on it, so an arrow means a Kleisli arrow and a ν means a
@@ -71,15 +70,9 @@ open import Once.Type using () renaming (fits-int to fits-intˢ; fits-float to f
 open import Once.IR
 open import Once.IRTy using (IRTy; IRFunctor; FitsInRegI; fits-int; fits-float; Unit; _*_; _⇛_; WellFormedFI; ⟦_⟧TI; ν-type; _+_; μ-type; Int; Float)
 open import Once.CCC.Machine.LocMatchesMode using (LocMatchesMode)
-import Once.Semantics.Machine as EvV
-open import Once.IR.Size
-open import Once.CCC.IR.Stack
 open import Once.CCC.Machine.Allocation
-open import Once.CCC.Machine.SMPrimitives using (module TracePrimitives; TraceWritesAbove; TraceSlotReadsAbove; TraceWritesBelow; TraceSlotReadsBelow; TraceNoHeapWrites)
+open import Once.CCC.Machine.SMPrimitives using (module TracePrimitives; TraceWritesAbove; TraceNoHeapWrites)
 
-
--- Plan 0.52 M2: μ-type/ν-type/WellFormedFI/⟦_⟧TI now come from Once.IR (IRTy tier)
--- via its public re-export of Once.IRTy — no surface Once.Type import needed.
 
 
 ------------------------------------------------------------------------
@@ -97,7 +90,7 @@ open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
 open import Once.Denotation.Approx using (Ap; approx; NotCut; budgetLeft; done)
 open import Once.Res using (Res; returns; is-stopped)
 open import Once.IR.Semantics.Event using (SigOpEvent)
-open import Once.IRTy using (Void; IRFunctor; K; Id; _⊕_; _⊗_; IsBaseTypeI; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; wf-K; wf-Id; wf-Sum; wf-Prod; WellFormedFI-irrelevant)
+open import Once.IRTy using (Void; K; Id; _⊕_; _⊗_; IsBaseTypeI; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; wf-K; wf-Id; wf-Sum; wf-Prod; WellFormedFI-irrelevant)
 
 module ClosureWellFormedBase {FS : FrameSemantics} where
   -- D179: the MONADIC evaluator, named the same way and for the same reason.
@@ -113,23 +106,14 @@ module ClosureWellFormedBase {FS : FrameSemantics} where
   ιᶠ : TM.Interp
   ιᶠ = Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS
 
-  open import Once.CCC.Machine.Validity
-  open ReadLocEq {FS}
-    using (readLoc-stack-heap-eq)
   open FrontierInvariant {FS}
   open MemOps {FS}
-  open WriteOps {FS}
-  open AbstractExec {FS}
-  open TracePrimitives {FS}
-  open FrameSemantics FS
 
   -- Plan 0.52 M2: μValid/νValid (surface MuValidity) are unused here — the
   -- the valid-μ-wf constructor carries the layer's own ValidAtWF
   -- (Option 3), so the MuValidity dependency is severed.
 
   -- Import write operations for validity preservation proofs
-  open import Once.CCC.Machine.WriteOps using (module WriteWithDisjoint)
-  open WriteWithDisjoint {FS}
 
   -- NOTE: Old static capacity reasoning (CapacityInvariant, SlotInWorking) has been removed.
   -- Dynamic capacity is now per-closure via BodyCorrect.body-capacity.
@@ -603,7 +587,8 @@ module ClosureWellFormedBase {FS : FrameSemantics} where
 -- PROGRAM, because the arrow case says the closure's label resolves in it.
 module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
   open ClosureWellFormedBase {FS}
-  open FlatMachine {FS} using (FlatState; fpc; floc; fret; falloc; flink; find-thunk; enter-call)
+  open FlatMachine {FS} using (FlatState; find-thunk; enter-call; module FlatState)
+  open FlatState using (floc; fpc; fret; flink; falloc)
   open FlatStepsAPI {FS} using (FlatSteps)
   open FlatEventTrace {FS} using (chain-events; chain-ctrls)
   open import Once.CCC.Machine.Validity

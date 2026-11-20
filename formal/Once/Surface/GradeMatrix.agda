@@ -27,7 +27,7 @@ open import Once.Spec.Grade using (Quantity; Zero; One; Many; _+q_; _*q_)
 open import Once.Context using (_⊔ᵘ_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m)
 open import Once.Spec.Context using (Usage; []; _*ᵘ_; _+ᵘ_; _⊑ᵘ_; singleUse; zeroUsage)
 open import Once.Spec.Grade using (_≤q_)
-open import Once.Spec.Context using ([]; _∷_; _⊑∷_)
+open import Once.Spec.Context using (_∷_; _⊑∷_)
 open import Once.Surface.Properties using (+ᵘ-comm; +ᵘ-assoc; +ᵘ-identityˡ; +ᵘ-identityʳ; *ᵘ-zeroˡ; *ᵘ-zeroʳ; *ᵘ-identityˡ; +q-identityʳ)
 
 ------------------------------------------------------------------------

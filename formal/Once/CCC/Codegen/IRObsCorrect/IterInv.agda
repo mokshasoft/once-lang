@@ -29,6 +29,15 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.IterInv (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.Bool using (false; true)
+open import Data.List using (List; length)
+open import Data.Maybe using (nothing; just)
+open import Data.Nat using (ℕ; _≤_; _+_; suc)
+open import Data.Product using (_,_; _×_)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Once.IR using (IR; AllocMode; Iter)
+open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.CCC.Machine.SMCore using (ending)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack)
@@ -39,13 +48,19 @@ open LocState using (halted; regs)
 open import Once.IRTy using (IRTy)
 import Once.IRTy as IRT
 open import Once.IR.Semantics.Iterative using (T∞; iterRun)
-open import Once.Res using (Res; stopped; returns)
-open import Once.Denotation.Approx using (Ap; done; cut; NotCut; budgetLeft)
+open import Once.Res using (returns)
+open import Once.Denotation.Approx using (done; NotCut; budgetLeft)
 
 module IterInvC {FS : FrameSemantics} where
 
   open Core {FS}
-  open Mach {FS}
+  open ClosureWellFormedBase′ using (BlocksKept; stopsAt; ⟪_⟫_; resultAt; eventsAt)
+  open ClosureWellFormedDef′ using (ResultPlace; InputAt)
+  open FlatEventTrace′ using (chain-events; chain-ctrls)
+  open FlatMachine′ using (FlatState)
+  open FlatMachine′.FlatState using (falloc; floc; fpc; fret; flink)
+  open FlatStepsAPI′ using (FlatSteps)
+  open FrontierInvariant′ using (BeforeFrontier)
 
   module Loop {E A B : IRTy} (body : IR (E IRT.* A) (B IRT.+ A)) (n l : ℕ) (base : ℕ) where
 

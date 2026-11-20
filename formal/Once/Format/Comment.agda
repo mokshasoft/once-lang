@@ -18,8 +18,8 @@ module Once.Format.Comment where
 open import Data.Bool using (Bool; true; false; _∨_; _∧_; if_then_else_)
 open import Data.Char using (Char; isDigit)
 import Data.Char as Ch
-open import Data.List using (List; []; _∷_; _++_; reverse; concatMap; map)
-open import Data.String using (String; fromList; toList) renaming (_++_ to _++ˢ_)
+open import Data.List using (List; []; _∷_; reverse; concatMap; map)
+open import Data.String using (String; fromList; toList)
 open import Relation.Nullary using (does)
 
 open import Once.Format.Doc using (Doc; empty; cmt; para; newline; _<>_)

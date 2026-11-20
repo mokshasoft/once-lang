@@ -30,10 +30,18 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.CataBr.FoldText (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.List using (_∷_; []; length; _++_)
+open import Data.List.Properties using (length-++; ++-assoc)
+open import Data.List.Relation.Unary.All.Properties using (++⁺)
+open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Product using (proj₁; proj₂; _,_)
+open import Once.IR using (IR)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; _≢_; cong; sym; trans; subst; cong₂)
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module ResuspBaseC)
-open import Once.CCC.Codegen.IRObsCorrect.CataBr.Text o tbl using (module CataBrTextC; init-rows)
+open import Once.CCC.Codegen.IRObsCorrect.CataBr.Text o tbl using (module CataBrTextC)
 open import Once.CCC.Codegen.IRToTrace o
-  using (cata-call-setup; cata-call; cata-body; cata-br-I₂; push2; visit-walk; rebuild-walk; fsize; lsize)
+  using (push2; rebuild-walk; lsize)
 open import Once.CCC.Codegen.LabelResolve o using (module Resolve)
 open import Once.CCC.Codegen.LabelScope o using (visit-ls; rebuild-ls; push2-ls; cata-call-from-ls; labels-in)
 open import Once.CCC.Codegen.IRObsCorrect.CataConst.Call o tbl using (module CataCallC)
@@ -42,20 +50,19 @@ open import Once.CCC.Codegen.LabelSeg using (LabelsIn; li-none; li-lab)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore
-  using (AbstractTrace; AbstractInstr; instr-ctrl; c-jmp; c-label; c-branch-tag-zero; c-thunk; c-ret; load-from-slot; store-at-slot
+  using (AbstractTrace; instr-ctrl; c-jmp; c-label; c-branch-tag-zero; c-thunk; c-ret; load-from-slot; store-at-slot
         ; mov-to-input; mov-to-output; load-at; instr-call-closure; instr-save-closure-reg; block-layout)
 open import Once.CCC.Codegen.FlatLayout using (kind; lkind; lsz)
 open import Once.CCC.Codegen.Size using (size)
 open import Once.CCC.Label using (ℓ; LabelId; module LabelId)
 open LabelId using (idx)
-open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; ⟦_⟧TI; ⌈_⌉F)
+open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; ⟦_⟧TI)
 import Once.IRTy as IRTy′
-open import Once.Spec.Type using (Fun)
-open import Data.Nat using (s≤s; z≤n)
-open import Data.Nat.Properties using (+-monoʳ-<; +-monoʳ-≤)
+open import Data.Nat using (s≤s; z≤n; ℕ; _+_; suc; _<_; _≤_)
+open import Data.Nat.Properties using (+-monoʳ-<; +-monoʳ-≤; <-irrefl; <-≤-trans; +-comm; +-suc; m≤m+n; ≤-refl; n≤1+n; ≤-trans; +-identityʳ; +-assoc)
 open import Relation.Nullary using (¬_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.List.Relation.Unary.All using (All) renaming (_∷_ to _∷ᴬ_; [] to []ᴬ)
+open import Data.List.Relation.Unary.All using () renaming (_∷_ to _∷ᴬ_; [] to []ᴬ)
 open import Data.Nat.Solver using (module +-*-Solver)
 open +-*-Solver using (solve; _:+_; con; _:=_)
 
@@ -98,6 +105,8 @@ fold-hd n l1 =
 module CataFoldTextC {FS : FrameSemantics} where
 
   open Core {FS}
+  open FlatMachine′ using (label-of?; fetch; fetch-++-right; find-label)
+  open FlatStepsAPI′ using (_∷_; [])
   open ResuspBaseC {FS} using (span-take; span-drop)
   open Resolve {FS} using (NoLabel; noLabel-outside; label-resolves; found-in-window)
   open FlatStepsAPI {FS} using (find-label-distrib)
@@ -125,10 +134,11 @@ module CataFoldTextC {FS : FrameSemantics} where
                 (la : LabelsAt prog base (Text.text′ wf alg n l)) where
 
     module T = Text wf alg n l
+      using (G; L; R; at; bb; call-eq; callTxt; l1; tailTxt; text′; module At; module Pc)
     open T using (G; l1; bb; at; tailTxt; R; text′; L; callTxt)
-    open T.Pc using (cslot; bodyL; pre37; flatTxt; headTxt; pushTxt; reloadTxt; visitTxt; exitTxt; foldTxt
-                    ; setupTxt; initTxt; rootTxt)
+    open T.Pc using (cslot; bodyL; pre37; flatTxt; headTxt; pushTxt; reloadTxt; visitTxt; exitTxt)
     module TA = T.At prog base span la
+      using (H; span-rest)
 
     ------------------------------------------------------------------
     -- THE PIECES of `R`.

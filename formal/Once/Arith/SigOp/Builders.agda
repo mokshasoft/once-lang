@@ -12,7 +12,6 @@
 
 module Once.Arith.SigOp.Builders where
 
-import Data.Integer as ℤ
 open import Once.Spec.Type using (Base; b-*; b-+; b-Float; b-Int; b-Unit; ∅ₖ)
 import Data.Nat as ℕ
 

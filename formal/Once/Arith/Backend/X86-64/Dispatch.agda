@@ -22,9 +22,8 @@ module Once.Arith.Backend.X86-64.Dispatch where
 
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.String using (String)
-open import Data.Nat using (ℕ; suc; _+_; _*_; _∸_)
+open import Data.Nat using (ℕ; suc; _*_; _∸_)
 open import Data.List using (List)
-open import Data.List.Relation.Unary.All using (All)
 open import Data.Product using (_×_; _,_)
 open import Data.Bool using (true)
 open import Relation.Binary.PropositionalEquality using (refl)
@@ -35,7 +34,8 @@ open import Once.CCC.Target.X86-64.Syntax using (Program; Instr; call-sym)
 open import Once.CCC.Target.X86-64.Semantics
   using (State; readReg; writeReg; writeMem; fetch; execInstr; Word)
 open State
-open import Once.Arith.Backend.X86-64.ExecArith using (exec-arith-block)
+open import Once.Arith.Backend.X86-64.ExecArith using (module ExecArithCore′)
+open ExecArithCore′ using (exec-arith-block)
 
 module _ (val : XInstr → State → Reg → Word) where
 

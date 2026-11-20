@@ -19,12 +19,11 @@ module Once.TypeCheck.SpecWitness where
 
 open import Data.Bool using (Bool; true; false)
 open import Data.Fin using (Fin)
-open import Data.List using (List; []; _∷_; map)
+open import Data.List using ([]; _∷_)
 open import Data.Maybe using (just; nothing)
 import Data.Maybe
 import Data.Maybe.Properties
 import Data.Empty
-import Data.List.Relation.Unary.All
 open import Data.Nat using (ℕ; _<_)
 open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
 open import Data.String using (String)
@@ -33,8 +32,6 @@ import Relation.Binary.PropositionalEquality as PE
 open import Relation.Nullary using (¬_)
 open import Once.Spec.Name using (CanonicalName; canonical)
 open import Once.Spec.Signature using (Signature)
-import Once.Spec.Signature
-import Data.List.Membership.Propositional
 import Once.Spec.Grade as LG
 import Once.Spec.Type as ST
 import Once.Spec.Core.Syntax as SC
@@ -42,7 +39,7 @@ import Once.Spec.Context as SCx
 import Once.Spec.Surface.Syntax as SX
 import Once.TypeCheck.View as TView
 import Once.Type.Poly as TP
-open import Once.TypeCheck.Scope using (NamedCtx; Binding; Imports; PolyCtx; lookupImport; lookupPolyPrefix; extendNamedCtx)
+open import Once.TypeCheck.Scope using (NamedCtx; lookupImport; lookupPolyPrefix; extendNamedCtx)
 open NamedCtx
 import Once.Spec.Surface.Typing as SUT
 import Once.TypeCheck.Scoped as Sc
@@ -211,9 +208,6 @@ WD ctx e A π B Ψ eE = InScope ctx eE × ((P : Pack ctx)
 ------------------------------------------------------------------------
 
 open import Data.Empty using (⊥; ⊥-elim)
-open import Data.List.Membership.Propositional using (_∈_)
-open import Data.List.Relation.Unary.Any using (here; there)
-open import Data.Maybe using (nothing)
 open import Data.Integer using (ℤ)
 open import Relation.Binary.PropositionalEquality using (trans; cong; cong₂; _≢_)
 open import Once.Spec.Name using (own)
@@ -221,7 +215,7 @@ open import Once.Spec.Sub using (_<:_; _⊔_≔_; sub-arr)
 open _⊔_≔_ using (left; right)
 open import Once.Type.Sub using (<:-refl; ⊑π-refl; <:ᶜ⇒<:)
 open import Once.IR as IR using (IR)
-open import Once.IRTy using (IRTy; ⌊_⌋; ⌊⟧T-commute)
+open import Once.IRTy using (IRTy; ⌊⟧T-commute)
 open import Once.IRTy.WF using (wf-⌊⌋)
 open import Once.Type.Grade using (≤q-Many)
 open import Once.Name using (showCanonical; WordName)
@@ -234,13 +228,13 @@ open import Once.TypeCheck.Scope using (lookupLocal)
 open import Once.Core.Decl using (⌜declS⌝)
 open import Once.Type.Grade using (_≤qᵇ_)
 open import Once.Type.Rigid using (ground-kinded)
-open import Once.Spec.Surface.Syntax using (signedDecimal)
-open import Once.Spec.Surface.Operator using (BinOp; binSym; BinSym)
-open BinSym using (theory; shape; symbol)
+open import Once.Spec.Float.Decimal using (signedDecimal)
+open import Once.Spec.Surface.Operator using (binSym; BinSym)
+open BinSym using (theory; shape)
 open import Once.Spec.Theory using (NumTy; ⌜_⌝ⁿ; Has; Neg; symCod; ‵neg)
 open import Once.TypeCheck.NumTable using (binDom)
 open import Once.Surface.Numeric using (numBin; toFloatIR)
-open import Data.Unit using (⊤; tt)
+open import Data.Unit using (tt)
 
 -- The compiler's weakening is the Spec's `↑`.
 open import Once.Type.Closed using (sub0)
@@ -254,9 +248,12 @@ module WMP {m} {ctx : NamedCtx m} (P : Pack ctx) = WM (Sg P) (S P) (nm P) (OkOf 
 -- …and the compiler's View there.
 module At {m} {ctx : NamedCtx m} (P : Pack ctx) where
   open WMP P
-  open Sc.Locals (Sg P) (S P) (nm P) public using (found)
-  open RS (Sg P) (S P) (nm P) (OkOf P) (OkSOf P) (inline P) (kinds ctx) public using (realize⇒; realize⇐; realize↦; ref)
+  module Locals = Sc.Locals (Sg P) (S P) (nm P) using (found)
+  module RS′ = RS (Sg P) (S P) (nm P) (OkOf P) (OkSOf P) (inline P) (kinds ctx) using (realize⇒; realize⇐; realize↦; ref)
+  open RS′
   module SU = SUT (Sg P) (S P) (nm P)
+    using (CheckHead; Locals; PartialCombinator; _⊢_⇐_⇒[_]↦_↝_; _⊢_⇒_↝_; ch-comb₁; ch-comb₂; ch-lam
+          ; ch-map; ch-poly; pc-bare; pc-one; poly; s-app; s-app-spine; s-const; s-def; s-sigop)
 
   sh = shape-lo {Ok = OkOf P} {OkS = OkSOf P} {Δ = kinds ctx} (lr P)
   private
@@ -305,7 +302,9 @@ module At {m} {ctx : NamedCtx m} (P : Pack ctx) where
   -- polymorphic name, by the names' distinctness (`nm-inj`, `nm-sig`).
   private
     module B = Once.Metatheory.Surface.Basics (Sg P) (S P) (nm P)
+      using (0<0; map-comb; module Modes)
     module BM = B.Modes (kinds ctx)
+      using (noSyn-comb₁; noSyn-comb₂; noSyn-map)
     const-comb : ∀ {k n} → G.IsConstant k → G.IsCombinator n k → ⊥
     const-comb G.is-constant ()
 
@@ -466,7 +465,7 @@ module _ {m} {ctx : NamedCtx m} where
 
   wt-var-local : ∀ {x A Ψ} {eV : Once.Context.SVar (debruijn ctx) Ψ A}
                → lookupLocal ctx x ≡ just (A , Ψ , eV) → WI ctx (SX.RVar x) A Ψ (SS.svar→expr eV)
-  wt-var-local {eV = svar i} lk = tt , λ P → let open At P using (found; subst-K) ; open WMP P using (w-var) in _ , w-var (found (lr P) i lk) , subst-K _ _
+  wt-var-local {eV = svar i} lk = tt , λ P → let open At P using (subst-K; module Locals) ; open Locals using (found) ; open WMP P using (w-var) in _ , w-var (found (lr P) i lk) , subst-K _ _
 
   wt-var-resolved : ∀ {cn T A} → WordName cn
                   → lookupImport (sig ctx) (showCanonical cn) ≡ just T → (k : IsConcrete T) → (eq : A ≡ wk₀ T)

@@ -21,7 +21,7 @@ import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Data.String.Base
 import qualified MAlonzo.Code.Once.Spec.Grade
 import qualified MAlonzo.Code.Once.Spec.Surface.Operator
-import qualified MAlonzo.Code.Once.Spec.Surface.Syntax
+import qualified MAlonzo.Code.Once.Spec.Surface.Type
 import qualified MAlonzo.Code.Once.Spec.Theory
 import qualified MAlonzo.Code.Once.Spec.Type
 import qualified MAlonzo.Code.Once.Type
@@ -193,7 +193,7 @@ data T_TypeError_18
                         MAlonzo.Code.Once.Spec.Grade.T_Quantity_6 |
     C_BuiltinTypeMismatch_84 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
     C_NoInstance_94 Integer MAlonzo.Code.Agda.Builtin.String.T_String_6
-                    MAlonzo.Code.Once.Spec.Surface.Syntax.T_PolyType_10
+                    MAlonzo.Code.Once.Spec.Surface.Type.T_PolyType_10
                     MAlonzo.Code.Once.Spec.Type.T_Ty_8 |
     C_ComposeMiddleUndetermined_96 |
     C_OperatorUndefined_102 MAlonzo.Code.Agda.Builtin.String.T_String_6

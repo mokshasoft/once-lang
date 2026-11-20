@@ -38,7 +38,7 @@ open import Data.Bool using (Bool; true; false)
 
 open import Once.Spec.Surface.Syntax using (RVar; RApp; RBinOp; RNeg; RInt; RFloat)
 open import Once.Surface.OpNames
-open import Once.Spec.Surface.Operator using (BinOp; dotted; o+; o-; o*; o/; o<; o<=; o>; o>=; o==; o!=)
+open import Once.Spec.Surface.Operator using (dotted; o+; o-; o*; o/; o<; o<=; o>; o>=; o==; o!=)
 open import Once.Spec.Float.Value using (neg)
 import Data.Integer as ℤ
 open import Once.Parser.Token

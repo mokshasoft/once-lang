@@ -17,12 +17,18 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.IterRun (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.List using (length; _++_; _∷_; []; List)
+open import Data.List.Properties using (length-++)
+open import Data.Maybe using (just; nothing)
+open import Data.Nat using (ℕ; _+_; suc)
+open import Data.Nat.Properties using (+-assoc; +-comm; +-identityʳ; +-suc)
+open import Once.IR using (IR; Iter)
+open import Relation.Binary.PropositionalEquality using (_≡_; trans; cong; sym; refl; subst)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Label using (ℓ)
 open import Once.CCC.Machine.SMCore
-  using (instr-ctrl; c-branch-tag-zero; c-jmp; c-label; AbstractTrace; AbstractInstr;
-         load-indirect; load-indirect-suc; store-at-slot; instr-alloc-heap; mov-to-input;
-         load-from-slot; store-indirect; store-indirect-suc)
+  using (instr-ctrl; c-branch-tag-zero; c-jmp; c-label; AbstractTrace; AbstractInstr; store-at-slot; mov-to-input)
 open import Once.IRTy using (IRTy)
 import Once.IRTy as IRT
 
@@ -32,7 +38,9 @@ open import Once.CCC.Codegen.FlatLayout using (get; get-one)
 module IterRunC {FS : FrameSemantics} where
 
   open Core {FS}
-  open Mach {FS}
+  open FlatMachine′ using (fetch; fetch-++-right; fetch-++-left; FlatState; mkFlatFull)
+  open FlatMachine′.FlatState using (fpc; fret; flink; floc; falloc; fclosure)
+  open FlatStepsAPI′ using (_∷_; [])
   open IterShapeC {FS}
 
   module IterRun {E A B : IRTy} (body : IR (E IRT.* A) (B IRT.+ A))

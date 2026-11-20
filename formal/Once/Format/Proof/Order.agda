@@ -17,35 +17,34 @@
 
 module Once.Format.Proof.Order where
 
-open import Data.Bool using (Bool; true; false; if_then_else_)
+open import Data.Bool using (true; false; if_then_else_)
 open import Data.Char using (Char)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.List using (List; []; _∷_; _++_; concatMap; map; foldr)
 open import Data.List.Properties using (++-assoc; ++-identityʳ; ∷-injective)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 import Data.List.Relation.Unary.All.Properties as AllP
-open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _<_; _≤_; z≤n; s≤s)
-open import Data.Nat.Properties using (+-assoc; +-identityʳ; +-suc; +-comm; m+n∸m≡n; ≤-refl; <-irrefl; ≤-trans; m≤m+n;
-  n<1+n; <-≤-trans; ≤-<-trans)
+open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _<_; _≤_; s≤s)
+open import Data.Nat.Properties using (+-assoc; +-identityʳ; +-suc; +-comm; m+n∸m≡n; ≤-refl; <-irrefl; ≤-trans; m≤m+n; <-≤-trans)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃-syntax)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.Unit using (⊤; tt)
+open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst)
 open import Relation.Nullary using (yes; no)
 
-open import Once.Spec.Surface.Lexing using (Token; TWord; TNewline; TEOF)
-open import Once.Spec.Surface.Syntax using (Decl; Module; mkModule)
+open import Once.Spec.Surface.Lexing using (Token; TNewline)
+open import Once.Spec.Surface.Syntax using (Decl; mkModule)
 open import Once.Spec.Surface.Grammar using (Trailing; trail-nl; trail-eof)
 open import Once.Format.Doc using (toks)
 open import Once.Format.Print using (pdecl)
 open import Once.Format.Proof.Skeleton using (anchorTok; lineEndTok)
 open import Once.Format.Proof.Counts using (Ind; ind-pdecl; anchors)
 open import Once.Format.Proof.GAnchors using (Good; cD; Seg; NoNl; anchors-++; Nls; DeclSegs; decl-seg; decls-segs)
-open import Once.Format.Proof.Lexing using (Printable; p-word; p-int; p-float; p-sym; Sym; s-lparen; s-rparen;
+open import Once.Format.Proof.Lexing using (Printable; p-word; p-int; p-float; p-sym; s-lparen; s-rparen;
   s-lbrace; s-rbrace; s-colon; s-equals; s-arrow; s-caret1; s-caret0; s-caretw; s-lambda; s-comma; s-semicolon; s-at;
   s-pipe; s-dot; s-plus; s-minus; s-star; s-slash; s-percent; s-ampersand; s-lt; s-le; s-gt; s-ge; s-eqeq; s-neq; s-bang;
   s-plusd; s-minusd; s-stard; s-slashd; s-ltd; s-led; s-gtd; s-ged; s-eqeqd; s-neqd)
-open import Once.Format.Proof.LexOK using (LexOK; Other; o-nl; o-eof; o-str)
+open import Once.Format.Proof.LexOK using (LexOK; o-nl; o-eof; o-str)
 open import Once.Format.Proof.ExprBase using (word-notOperator)
 
 open import Once.Format.Proof.Printable using (PD; run; pr-gn; pr-body)
@@ -221,10 +220,10 @@ anchors-segs (d ∷ ds) ts r (nls , mid , e , n , rest′ , (seg , em , an , nn)
 -- The printer's order is the walker's
 ------------------------------------------------------------------------
 
-open import Once.Format.Print using (Notes; lookupNotes; Trivia; hoist; topList; tops; note-comment)
+open import Once.Format.Print using (Notes; lookupNotes; Trivia; hoist; tops; note-comment)
 open import Once.Format.Proof.Counts using (AnchC)
 open import Once.Format.Proof.Printed using (MNote; MNotes; DC)
-open import Once.Format.Proof.WalkWords using (slotW; ITs; slotW-hoist; slotW-up; MNotes-map-nc)
+open import Once.Format.Proof.WalkWords using (slotW; ITs; slotW-hoist; MNotes-map-nc)
 open import Once.Format.Proof.Walk using (up; hoist-at; hoist-other; hoist-after)
 open import Once.Format.Proof.Words using (Mn; cm-++)
 
@@ -360,7 +359,7 @@ pt-it (d ∷ ds) tv k ht ha =
 -- The output's comments are the input's, in order
 ------------------------------------------------------------------------
 
-open import Data.String using (String; toList)
+open import Data.String using (toList)
 open import Once.Parser using (parseStrict)
 import Once.Adequacy.SpecGrammar.Decl
 import Once.Adequacy.FrontEndBridge
@@ -375,7 +374,6 @@ open import Once.Format.Proof.Written using (cwords; render-words)
 open import Once.Format.Proof.Printed using (pmodule-DocC)
 open import Once.Format.Proof.WalkWords using (trivia-words; trivia-end; trivia-tops; kEnd; kEnd-anchors; anchorsP)
 open import Once.Format.Proof.Walk using (anchor-forget; end-forget)
-import Once.Parser.Token as PT
 open import Data.List.Properties using (map-++)
 
 private

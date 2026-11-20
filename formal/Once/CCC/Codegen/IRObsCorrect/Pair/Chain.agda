@@ -26,20 +26,31 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.Pair.Chain (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open Interface.Prelude using ()
+open Interface.Prelude.IRToTrace using (ir-to-trace')
+open Interface.Prelude.SlotBudget′ using (frontier-mono)
+open import Data.Bool using (false)
+open import Data.List using (List; _∷_; []; _++_; length)
+open import Data.Maybe using (just; nothing) renaming (map to mmap)
+open import Data.Product using (proj₁; proj₂; _,_)
+open import Data.Unit using (tt)
+open import Once.IR using (IR; ⟨_,_⟩)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; cong; subst; sym; subst₂)
+open import Data.List.Properties using (length-++)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
-open import Once.CCC.Machine.SMCore using (AllocState; LocState; AbstractTrace; StoredValue; mov-to-output; store-at-slot; readReg; Input1; writeReg-preserves; Output; restore-input; instr-alloc-heap; mov-to-input; load-from-slot; store-indirect; store-indirect-suc; sv-as-loc; AbstractInstr; module LocState; module AllocState)
-open AllocState using (current-frame; saved-frames; next-slot; next-heap-ref)
+open import Once.CCC.Machine.SMCore using (AllocState; LocState; AbstractTrace; StoredValue; mov-to-output; store-at-slot; readReg; Input1; writeReg-preserves; Output; restore-input; instr-alloc-heap; load-from-slot; AbstractInstr; module LocState; module AllocState)
+open AllocState using (current-frame; next-slot)
 open LocState using (halted; regs)
 open import Once.IRTy using (IRTy)
-open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; mkHeapRef)
 open import Once.CCC.Codegen.LabelResolve o using (module Resolve)
 open import Once.CCC.Codegen.LabelScope o using (labels-in)
 open import Once.CCC.Label using (module LabelId)
 open LabelId using (idx)
-open import Data.Nat.Properties using (1+n≰n)
-open import Data.Nat using (s≤s)
+open import Data.Nat.Properties using (1+n≰n; ≤-trans; n≤1+n; +-comm; +-assoc; +-suc; +-identityʳ; n<1+n; ≤-refl; <-≤-trans)
+open import Data.Nat using (s≤s; ℕ; suc; _<_; _≤_; _+_)
 open import Once.CCC.Codegen.IRObsCorrect.Pair.Build o tbl using (module PairBuildC)
 open import Once.CCC.Codegen.Size using (size)
 open import Once.CCC.Codegen.FlatLayout using (put)
@@ -49,23 +60,25 @@ open import Once.IRTy using () renaming (_*_ to _*ᵀ_)
 open import Data.Nat.Solver using (module +-*-Solver)
 open +-*-Solver using (solve; _:+_; con)
 
-import Once.CCC.FrameSemantics
 import Once.CCC.Machine.SMPrimitives
-import Once.IRTy
-import Once.IR
-import Once.Semantics.Machine as EvV
-import Once.CCC.Machine.ReadTypedAdequate as RTA
-import Once.Denotation.DenotTrace as DT
 import Once.Denotation.ValueDomain as ValueDomain
-import Once.IR.Semantics.Trace as TM
 open import Once.Denotation.Approx using (done; NotCut)
 open import Once.Res using (returns; is-stopped)
 
 module PairC {FS : FrameSemantics} where
 
   open Core {FS}
+  open ClosureWellFormedBase′ using (resultAt; ⟪_⟫_; Live; BlocksKept)
+  open FlatEventTrace′ using (chain-events; chain-events-++; chain-ctrls; chain-ctrls-subst-start)
+  open FlatMachine′ using (FlatState; flat-exec-instr; fetch; fetch-++-left; find-label; fetch-++-right; mkFlatFull)
+  open FlatMachine′.FlatState using (falloc; floc; fpc; fret; flink; fclosure)
+  open FlatStepsAPI′ using (_∷_; []; FlatSteps; FlatSteps-++)
+  open FrontierInvariant′ using (BeforeFrontier; module BeforeFrontier)
+  open InstrPrimitives′ using (exec-abstract-preserves-frame; exec-abstract-preserves-stack-slot)
+  open TracePrimitives′ using (exec-abstract-preserves-halted-WF; InstrWF)
   open Mach {FS}
   module PBC = PairBuildC {FS}
+    using (src-of-place; module Tail)
   open FlatStepsAPI {FS} using (fl-go-skip; fl-go-shift; fl-go-prefix)
   open Resolve {FS} using (found-in-window; noLabel-outside; NoLabel)
 
@@ -400,8 +413,12 @@ module PairC {FS : FrameSemantics} where
     where
 
     module PS = PairShape f g n l
+      using (backup; f-start; fst-stash; ft; gt; mid; n1; snd-stash; tail)
     module PR = PairRun f g n l prog base s alloc cl rs n≤ nh
+      using (input1-p2; p1; p2; restore-ok)
     module VR = ValueRealized
+      using (at-end; bf-mono; blocks-kept; frame-pres; heap-pres; live; no-link; no-ret; place; run
+            ; settle; stack-pres; steps)
 
     ------------------------------------------------------------------
     -- D158's hand-over, restated locally (it lives inside `CompC`, which
@@ -786,6 +803,7 @@ module PairC {FS : FrameSemantics} where
     rsB = subst (λ fr → SMCore.MemOps.readLoc (floc fsG) (AtStack fr (suc n)) ≡ just fv) (sym cf-fsG) read-fst-fsG
 
     module T = PBC.Tail {prog} n B C fsG tfetch liveG fv (falloc fsF) bftB bkB srcB rsB srcC
+      using (A₁; L; bf-tail; bk-tail; cf-tail; hfin; keep; live-L; run; settle; sf-tail; silent; val)
 
     tail-chain : FlatSteps prog (length tail-text) fsG T.settle
     tail-chain = T.run

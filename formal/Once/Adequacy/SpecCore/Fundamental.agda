@@ -28,21 +28,19 @@ open import Once.Spec.Numerics using (TargetNum)
 import Once.Spec.Grade
 module Once.Adequacy.SpecCore.Fundamental (Σ : Signature) {s : ℕ} (S : Defs s) (fmt : TargetNum) where
 
-open import Data.Unit using (⊤; tt)
+open import Data.Unit using (tt)
 import Data.Empty
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Data.Product using (_,_; proj₁; proj₂)
 open import Data.Sum using (inj₁; inj₂) renaming ([_,_]′ to [_,_]′′)
-open import Data.Fin using (Fin; zero; suc)
 open import Data.List.Membership.Propositional using (_∈_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst)
 
-open import Once.Spec.Grade using (Quantity; Zero; One; Many; Purity; pure; Finite; fin; mk-kind; _⊑π_; 0≤q; 1≤1; 1≤ω; ω≤ω)
-open import Once.Spec.Type using (Ty; Type; Fun; KCtx; ∅ₖ; TySub; Respects; WFFun; _⟨_⟩; _⇒[_]_; _+_; μ; ν; ⟦_⟧F)
-open import Once.Spec.Context using (Ctx; Usage; lookup; _⟨_⟩ᶜ; _*ᵘ_)
+open import Once.Spec.Grade using (Zero; One; Many; Finite; fin; mk-kind; 0≤q; 1≤1; 1≤ω; ω≤ω)
+open import Once.Spec.Type using (KCtx; ∅ₖ; TySub; Respects; WFFun; _⟨_⟩; _⇒[_]_; _+_; μ; ν; ⟦_⟧F)
+open import Once.Spec.Context using (Ctx; _*ᵘ_)
 open import Once.Spec.Sub using (_<:_)
 open import Once.Spec.Signature using (DeclType)
-open import Once.Spec.Core.Syntax using (Prim; primDom; primCod; Schema; _!!_)
-open Schema using (arity; kinds; type)
+open import Once.Spec.Core.Syntax using (Prim; primDom)
 open import Once.Spec.Core.Typing Σ S
 open import Once.Spec.Core.Program Σ using (noVars)
 open import Once.Type.Core using (noResp)

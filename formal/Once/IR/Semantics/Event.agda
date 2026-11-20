@@ -12,7 +12,7 @@
 module Once.IR.Semantics.Event where
 
 open import Once.Spec.Type using (Type)
-open import Once.Spec.Type using (Base; b-*; b-+; b-Float; b-Int; b-Unit; b-Void; ∅ₖ)
+open import Once.Spec.Type using (Base; b-*; b-+; ∅ₖ)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.Spec.Word using (Carrier)
 open import Data.Product using (_,_)

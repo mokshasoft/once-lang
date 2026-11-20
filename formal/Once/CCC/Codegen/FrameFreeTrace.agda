@@ -46,7 +46,7 @@ module Once.CCC.Codegen.FrameFreeTrace (o : CanonicalName) where
 open import Data.Nat using (ℕ; suc; _+_; _*_; _∸_)
 open import Data.Unit using (tt)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
-open import Once.CCC.Label using (ℓ)
+open import Once.CCC.Label using (ℓ; LabelId)
 open import Once.CCC.Machine.MuRep using (MuRep; mu-box; mu-unit; mu-ptr; mu-rep)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
@@ -59,20 +59,19 @@ open import Once.IRTy using (IRTy; IRFunctor; ⟦_⟧TI; ν-type; fits-int; fits
 open import Once.Spec.Type using (Fun; K; Id; _⊕_; _⊗_)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore using (blocks-layout; link-top)
-open import Once.CCC.Machine.SMCore using (LabelId; AbstractTrace)
+open import Once.CCC.Machine.SMCore using (AbstractTrace)
 open import Once.CCC.Machine.FrameFree using
   (EmittableI)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Codegen.HeapModed using (HeapModed)
 open import Once.CCC.Codegen.FlatLayout
-  using (Kind; word; flat; kind; put; put-k; get; get-k; fill; put-All; put-k-All; get-All; get-k-All; fill-All; lkind; lsz)
+  using (word; flat; kind; put; put-k; get; get-k; fill; put-All; put-k-All; get-All; get-k-All; fill-All; lkind; lsz)
 open import Once.CCC.Codegen.Size using (size)
 open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
 open SigOpInfo using (sem)
-open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (CmpAt; cmp-of)
 open import Once.CCC.Codegen.IRToTrace o using
-  (sigop-code; ir-to-trace'; ir-to-trace; ir-to-trace-at-frontier; ir-to-trace-lab; ir-to-unit; strat-const; strat-box; strat-branching; cata-strategy; cata-dispatch; cata-trace-branching; cata-trace-box; cata-call-box; in-trace; with-copy; two-cell; out-trace; push2; pop2; wrap-sum; visit-walk; rebuild-walk; lsize; cata-body; cata-call-setup; cata-call; cata-call-from; cata-trace-const; fsize; resuspend-layer; env-entry; env-prologue; inj-trace)
+  (sigop-code; ir-to-trace'; ir-to-trace; ir-to-trace-at-frontier; ir-to-trace-lab; ir-to-unit; strat-const; strat-box; strat-branching; cata-strategy; cata-dispatch; cata-trace-branching; cata-trace-box; in-trace; with-copy; two-cell; out-trace; push2; pop2; wrap-sum; visit-walk; rebuild-walk; lsize; cata-body; cata-call-setup; cata-call-from; cata-trace-const; fsize; resuspend-layer; env-entry; inj-trace)
 
 -- third projection of `ir-to-trace'`'s 4-tuple / of `cata-dispatch`'s 3-tuple
 -- (record patterns, so they reduce under eta — unlike IRToTrace's own

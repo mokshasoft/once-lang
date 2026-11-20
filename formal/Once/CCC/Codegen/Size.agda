@@ -20,7 +20,7 @@ module Once.CCC.Codegen.Size where
 open import Data.Nat using (ℕ; suc; _⊔_) renaming (_+_ to _+ℕ_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
 open import Once.IRTy using (IRTy; Unit; Void; _*_; _+_; _⇛_; μ-type; ν-type; Int; Float; ⌈_⌉)
-open import Once.Spec.Type using (Base; b-var; b-Unit; b-Void; b-Int; b-Float; b-*; b-+; ∅ₖ)
+open import Once.Spec.Type using (Base; b-Unit; b-Void; b-Int; b-Float; b-*; b-+; ∅ₖ)
 open import Once.Spec.Signature using (Signature)
 import Once.Spec.ABI
 

@@ -39,11 +39,11 @@ d_'10214'_'10215'F_12 = erased
 -- Once.IR.Semantics.StreamInf.νᴵ
 d_ν'7477'_16 a0 = ()
 data T_ν'7477'_16
-  = C_constructor_24 MAlonzo.Code.Once.IR.Semantics.Iterative.T_T'8734'_60
+  = C_constructor_24 MAlonzo.Code.Once.IR.Semantics.Iterative.T_T'8734'_10
 -- Once.IR.Semantics.StreamInf.νᴵ.forceᴵ
 d_force'7477'_22 ::
   T_ν'7477'_16 ->
-  MAlonzo.Code.Once.IR.Semantics.Iterative.T_T'8734'_60
+  MAlonzo.Code.Once.IR.Semantics.Iterative.T_T'8734'_10
 d_force'7477'_22 v0
   = case coe v0 of
       C_constructor_24 v1 -> coe v1
@@ -58,7 +58,7 @@ du_in'45'ν'7477'_28 v0
   = coe
       C_constructor_24
       (coe
-         MAlonzo.Code.Once.IR.Semantics.Iterative.C_constructor_68
+         MAlonzo.Code.Once.IR.Semantics.Iterative.C_constructor_18
          (coe
             MAlonzo.Code.Once.IR.Semantics.Trace.C_ret_116
             (coe MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 (coe v0))))
@@ -67,13 +67,13 @@ d_ana'7477'_36 ::
   MAlonzo.Code.Once.Spec.Polynomial.T_SFunctor_6 ->
   () ->
   (AgdaAny ->
-   MAlonzo.Code.Once.IR.Semantics.Iterative.T_T'8734'_60) ->
+   MAlonzo.Code.Once.IR.Semantics.Iterative.T_T'8734'_10) ->
   AgdaAny -> T_ν'7477'_16
 d_ana'7477'_36 v0 ~v1 v2 v3 = du_ana'7477'_36 v0 v2 v3
 du_ana'7477'_36 ::
   MAlonzo.Code.Once.Spec.Polynomial.T_SFunctor_6 ->
   (AgdaAny ->
-   MAlonzo.Code.Once.IR.Semantics.Iterative.T_T'8734'_60) ->
+   MAlonzo.Code.Once.IR.Semantics.Iterative.T_T'8734'_10) ->
   AgdaAny -> T_ν'7477'_16
 du_ana'7477'_36 v0 v1 v2
   = coe
@@ -83,35 +83,35 @@ d_anaRun_42 ::
   MAlonzo.Code.Once.Spec.Polynomial.T_SFunctor_6 ->
   () ->
   (AgdaAny ->
-   MAlonzo.Code.Once.IR.Semantics.Iterative.T_T'8734'_60) ->
-  MAlonzo.Code.Once.IR.Semantics.Iterative.T_T'8734'_60 ->
-  MAlonzo.Code.Once.IR.Semantics.Iterative.T_T'8734'_60
+   MAlonzo.Code.Once.IR.Semantics.Iterative.T_T'8734'_10) ->
+  MAlonzo.Code.Once.IR.Semantics.Iterative.T_T'8734'_10 ->
+  MAlonzo.Code.Once.IR.Semantics.Iterative.T_T'8734'_10
 d_anaRun_42 v0 ~v1 v2 v3 = du_anaRun_42 v0 v2 v3
 du_anaRun_42 ::
   MAlonzo.Code.Once.Spec.Polynomial.T_SFunctor_6 ->
   (AgdaAny ->
-   MAlonzo.Code.Once.IR.Semantics.Iterative.T_T'8734'_60) ->
-  MAlonzo.Code.Once.IR.Semantics.Iterative.T_T'8734'_60 ->
-  MAlonzo.Code.Once.IR.Semantics.Iterative.T_T'8734'_60
+   MAlonzo.Code.Once.IR.Semantics.Iterative.T_T'8734'_10) ->
+  MAlonzo.Code.Once.IR.Semantics.Iterative.T_T'8734'_10 ->
+  MAlonzo.Code.Once.IR.Semantics.Iterative.T_T'8734'_10
 du_anaRun_42 v0 v1 v2
   = coe
-      MAlonzo.Code.Once.IR.Semantics.Iterative.C_constructor_68
+      MAlonzo.Code.Once.IR.Semantics.Iterative.C_constructor_18
       (coe
          du_anaBlock_48 (coe v0) (coe v1)
-         (coe MAlonzo.Code.Once.IR.Semantics.Iterative.d_force_66 (coe v2)))
+         (coe MAlonzo.Code.Once.IR.Semantics.Iterative.d_force_16 (coe v2)))
 -- Once.IR.Semantics.StreamInf.anaBlock
 d_anaBlock_48 ::
   MAlonzo.Code.Once.Spec.Polynomial.T_SFunctor_6 ->
   () ->
   (AgdaAny ->
-   MAlonzo.Code.Once.IR.Semantics.Iterative.T_T'8734'_60) ->
+   MAlonzo.Code.Once.IR.Semantics.Iterative.T_T'8734'_10) ->
   MAlonzo.Code.Once.IR.Semantics.Trace.T_T_112 ->
   MAlonzo.Code.Once.IR.Semantics.Trace.T_T_112
 d_anaBlock_48 v0 ~v1 v2 v3 = du_anaBlock_48 v0 v2 v3
 du_anaBlock_48 ::
   MAlonzo.Code.Once.Spec.Polynomial.T_SFunctor_6 ->
   (AgdaAny ->
-   MAlonzo.Code.Once.IR.Semantics.Iterative.T_T'8734'_60) ->
+   MAlonzo.Code.Once.IR.Semantics.Iterative.T_T'8734'_10) ->
   MAlonzo.Code.Once.IR.Semantics.Trace.T_T_112 ->
   MAlonzo.Code.Once.IR.Semantics.Trace.T_T_112
 du_anaBlock_48 v0 v1 v2
@@ -143,14 +143,14 @@ d_mapAna'7477'_56 ::
   MAlonzo.Code.Once.Spec.Polynomial.T_SFunctor_6 ->
   () ->
   (AgdaAny ->
-   MAlonzo.Code.Once.IR.Semantics.Iterative.T_T'8734'_60) ->
+   MAlonzo.Code.Once.IR.Semantics.Iterative.T_T'8734'_10) ->
   AgdaAny -> AgdaAny
 d_mapAna'7477'_56 v0 v1 ~v2 v3 v4 = du_mapAna'7477'_56 v0 v1 v3 v4
 du_mapAna'7477'_56 ::
   MAlonzo.Code.Once.Spec.Polynomial.T_SFunctor_6 ->
   MAlonzo.Code.Once.Spec.Polynomial.T_SFunctor_6 ->
   (AgdaAny ->
-   MAlonzo.Code.Once.IR.Semantics.Iterative.T_T'8734'_60) ->
+   MAlonzo.Code.Once.IR.Semantics.Iterative.T_T'8734'_10) ->
   AgdaAny -> AgdaAny
 du_mapAna'7477'_56 v0 v1 v2 v3
   = case coe v1 of
@@ -183,13 +183,13 @@ d_anaF'7477'_154 ::
   MAlonzo.Code.Once.Spec.Type.T_Fun_12 ->
   () ->
   (AgdaAny ->
-   MAlonzo.Code.Once.IR.Semantics.Iterative.T_T'8734'_60) ->
+   MAlonzo.Code.Once.IR.Semantics.Iterative.T_T'8734'_10) ->
   AgdaAny -> T_ν'7477'_16
 d_anaF'7477'_154 ~v0 v1 ~v2 v3 = du_anaF'7477'_154 v1 v3
 du_anaF'7477'_154 ::
   MAlonzo.Code.Once.Spec.Type.T_Fun_12 ->
   (AgdaAny ->
-   MAlonzo.Code.Once.IR.Semantics.Iterative.T_T'8734'_60) ->
+   MAlonzo.Code.Once.IR.Semantics.Iterative.T_T'8734'_10) ->
   AgdaAny -> T_ν'7477'_16
 du_anaF'7477'_154 v0 v1
   = coe
@@ -200,7 +200,7 @@ du_anaF'7477'_154 v0 v1
       (coe
          (\ v2 ->
             coe
-              MAlonzo.Code.Once.IR.Semantics.Iterative.du_fmap'8734'_360
+              MAlonzo.Code.Once.IR.Semantics.Iterative.du_fmap'8734'_310
               (coe
                  MAlonzo.Code.Once.IR.Semantics.Value.du_coerce'45'ν'45'in_618 v0
                  erased)

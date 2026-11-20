@@ -20,7 +20,7 @@ module Once.Core.TySubstRen (Σ : Signature) {s : ℕ} (S : Defs s) where
 open import Data.Nat using (suc)
 open import Data.Fin using (Fin; zero; suc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
-open import Once.Spec.Type using (Ty; TySub; _⟨_⟩)
+open import Once.Spec.Type using (TySub; _⟨_⟩)
 open import Once.Spec.Core.Syntax
 
 ------------------------------------------------------------------------
@@ -100,13 +100,13 @@ module _ {m k : ℕ} (σ : TySub m k) where
 ------------------------------------------------------------------------
 
 open import Relation.Binary.HeterogeneousEquality as H using (_≅_)
-open import Once.Spec.Grade using (Quantity; Zero; Many; Purity; Finite; fin; mk-kind; positionGrade; act; eff; _·p_)
-open import Once.Spec.Type using (KCtx; Respects; Fun; Void; _*_; _+_; _⇒[_]_; μ; ν; ⟦_⟧F; WFFun; _⟨_⟩F)
+open import Once.Spec.Grade using (Many; fin; mk-kind; positionGrade; act)
+open import Once.Spec.Type using (KCtx; Respects; Void; _*_; _+_; _⇒[_]_; μ; ν; ⟦_⟧F; WFFun)
 open import Once.Spec.Sub using (_<:_)
-open import Once.Spec.Context using (Ctx; ∅; _▸_; lookup; _⟨_⟩ᶜ; Usage; _⊑ᵘ_; _∷_)
+open import Once.Spec.Context using (Ctx; ∅; _▸_; _⟨_⟩ᶜ; _⊑ᵘ_; _∷_)
 open import Once.Spec.Core.Typing Σ S
 import Once.Metatheory.TermModel.Subst Σ S as TM
-open TM using (Thin; done; keep; skip; ⟦_⟧θ; CThin; cdone; ckeep; cskip; cid; idθ; idθ-id; ext-hρ)
+open TM using (Thin; keep; skip; ⟦_⟧θ; CThin; cdone; ckeep; cskip; cid; idθ; idθ-id; ext-hρ)
 import Once.Metatheory.TermModel.TySubst Σ S as TS
 
 module Deriv {m k : ℕ} (σ : TySub m k) {Δ : KCtx m} {Δ′ : KCtx k} (rσ : Respects Δ Δ′ σ) where

@@ -36,6 +36,18 @@ open import Once.Denotation.Program using (IRFun; tableEnv)
 module Once.CCC.Codegen.IRObsCorrect.CataBr.FoldRound (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.Bool using (false; true)
+open import Data.Empty using (⊥; ⊥-elim)
+open import Data.List using (List; _∷_; []; _++_)
+open import Data.Maybe using (just)
+open import Data.Nat using (ℕ; suc; _≤_; _+_)
+open import Data.Nat.Properties using (≤-refl; n<1+n; ≤-trans)
+open import Data.Product using (_,_; proj₁; proj₂; _×_)
+open import Data.Unit using (tt)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Once.IR using (IR; Cata; Heap)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; sym; trans; cong₂; cong)
 open import Once.CCC.Machine.SMCore using (ending)
 open import Once.CCC.Machine.MuRep using (Unboxed)
 open import Once.CCC.Codegen.IRObsCorrect.BlockCall o tbl using (module BlockCallC)
@@ -52,10 +64,8 @@ open import Once.CCC.Codegen.IRObsCorrect.CataBr.FoldInv o tbl using (module Cat
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.FoldPre o tbl using (module CataFoldPreC)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.FoldBack o tbl using (module CataFoldBackC)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Visit o tbl using (module CataVisitC)
-open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open import Once.CCC.Machine.SMCore
-  using (LocState; module LocState; AbstractTrace; AllocState; module AllocState; StoredValue; readReg; Output; Input1
-        ; SV-Ptr; instr-call-closure)
+  using (LocState; module LocState; AbstractTrace; AllocState; module AllocState; StoredValue; instr-call-closure)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.CCC.Label using (ℓ)
@@ -77,20 +87,29 @@ import Once.IR.Semantics.Trace as TM
 module CataFoldRoundC {FS : FrameSemantics} where
 
   open Core {FS}
-  open Mach {FS}
-  open ResuspBaseC {FS} using (SRun; SegA; Kp; bf-step; seg-bf; live-from)
+  open ClosureWellFormedBase′ using (Live; ResultPlaceP; runAt; ⟪_⟫_; resultAt; stopsAt; BlocksKept; eventsAt; live-ns)
+  open ClosureWellFormedDef′ using (ValidAtWF; validityWF-heap-transport; InputAt; in-loc; CalleeRunP; VAt; module CalleeRunP; rp→place)
+  open FlatEventTrace′ using (chain-events; chain-events-++; chain-events-subst-start; chain-left; chain-ctrls; ctrls-≤ʳ; ctrls-≤ˡ)
+  open CataNextSlot′ using (AllSlotStable; exec-flat-keeps-next-slot)
+  open FlatMachine′ using (find-thunk; FlatState; enter-call; flat-exec-instr; fetch)
+  open FlatMachine′.FlatState using (falloc; fpc; fret; floc)
+  open FlatStepsAPI′ using (_∷_; FlatSteps; step-at; []; FlatSteps-++; exec-flat-steps)
+  open FrontierInvariant′ using (BeforeFrontier; module BeforeFrontier)
+  open MemOps′ using (readLoc)
+  open ResuspBaseC {FS} using (SegA; Kp; bf-step; seg-bf; live-from)
   open CataVisitC {FS} using (place→word)
   open ApplyC {FS} using (call-at)
   module BC = BlockCallC {FS}
+    using (bk-enter; block-call; callee-alloc; callee-heap; callee-loc; live-callee)
   open CataStackC {FS}
   open CataWalkC {FS}
   open CataBrTextC {FS} using (module Text)
   open CataFoldTextC {FS} using (module FoldAt)
-  open CataFoldInvC {FS} using (module Inv; RoundRun; Same)
+  open CataFoldInvC {FS} using (module Inv; RoundRun)
   open CataFoldPreC {FS} using (module Pre; PreOut)
   open CataFoldBackC {FS} using (module Back)
-  open LocState using (regs; halted)
-  open AllocState using (next-slot; next-heap-ref; current-frame; saved-frames)
+  open LocState using (halted)
+  open AllocState using (next-slot; next-heap-ref; current-frame)
 
 
   -- a heap cell below one frontier, read at a stack bound
@@ -112,6 +131,7 @@ module CataFoldRoundC {FS : FrameSemantics} where
                (sn hc : HeapLocation) (e : ⟦ E ⟧) (env-sv : StoredValue FS) where
 
     module FA = FoldAt wf alg n l prog base span la
+      using (CK; X; Y; Z; body-labels; body-span; fetch-cc; fetch-thunk; module T)
     open FA using (X; Y; Z)
 
     c bodyL bb : ℕ
@@ -135,6 +155,8 @@ module CataFoldRoundC {FS : FrameSemantics} where
       po : PreOut prog F E C n c bodyL FA.CK Y sn hc e env-sv σ ns rest L
       po = Pre.Go.out prog wf ub alg n l base span la sn hc e env-sv σ t ns vs L rest fq h
       module P = PreOut po
+        using (bk; cl; clo; code; cs; env; ev; eval; hc-lt; hp; inp; lhp; nh; ns0; pairV; pc; ret
+              ; run; seg; steps; val)
 
       cs : FlatState
       cs = P.cs
@@ -197,6 +219,8 @@ module CataFoldRoundC {FS : FrameSemantics} where
                fs₁ (falloc cs) Heap x′ (suc (fpc cs)) k (fret cs) refl P.nh refl refl P.ns0 inp
 
       module CR = CalleeRunP crun
+        using (bf-mono; blocks-kept; events; frame-pres; frames-pres; live; log; mem-pres; no-link
+              ; no-ret; place; progress; returned; run; settle; steps; stops)
 
       RE : runAt (floc fs₁) (⟪ comp ⟫ k) ≡ runAt (floc σ) (⟪ comp ⟫ k)
       RE = runAt-≡ {st = floc fs₁} {st′ = floc σ} {m = ⟪ comp ⟫ k} {m′ = ⟪ comp ⟫ k} h-eq refl

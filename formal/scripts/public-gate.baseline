@@ -1,55 +1,6 @@
-# public-gate baseline (plan 0.92 S0): `public` re-export lines per module that predate
-# the gate. Counts may only go DOWN; each is a re-export to remove or to justify (§2, S4).
-Once/Adequacy/ArchCorrectness/FlatCore/CompiledCorrespondence.agda 2
-Once/Adequacy/ArchCorrectness/FlatCore/EventEngine.agda 3
-Once/Adequacy/ArchCorrectness/FlatCore/FlatCorrespondence.agda 2
-Once/Adequacy/ArchCorrectness/FlatCore/RunContext.agda 1
-Once/Adequacy/ArchCorrectness/RiscV64/ConcFlatSim.agda 4
-Once/Adequacy/ArchCorrectness/RiscV64/FlatComposition.agda 2
-Once/Adequacy/ArchCorrectness/RiscV64/FlatCorrespondence.agda 1
-Once/Adequacy/ArchCorrectness/RiscV64/FlatSimulation.agda 1
-Once/Adequacy/ArchCorrectness/RiscV64/RegRoles.agda 1
-Once/Adequacy/ArchCorrectness/X86-32/ConcFlatSim.agda 5
-Once/Adequacy/ArchCorrectness/X86-32/FlatComposition.agda 2
-Once/Adequacy/ArchCorrectness/X86-32/FlatCorrespondence.agda 1
-Once/Adequacy/ArchCorrectness/X86-32/FlatSimulation.agda 1
-Once/Adequacy/ArchCorrectness/X86-32/RegRoles.agda 1
-Once/Adequacy/ArchCorrectness/X86-32/RunContext.agda 1
-Once/Adequacy/ArchCorrectness/X86-64/ConcFlatSim.agda 5
-Once/Adequacy/ArchCorrectness/X86-64/FlatComposition.agda 2
-Once/Adequacy/ArchCorrectness/X86-64/FlatCorrespondence.agda 1
-Once/Adequacy/ArchCorrectness/X86-64/FlatSimulation.agda 1
-Once/Adequacy/ArchCorrectness/X86-64/RegRoles.agda 1
-Once/Adequacy/ArchCorrectness/X86-64/RunContext.agda 1
-Once/Allocator/AbstractInstance.agda 1
-Once/Allocator/Malloc.agda 1
+# public-gate baseline: `public` re-export lines per module. Counts may only go DOWN.
+# Plan 0.152 A(2b) removed every re-export in the apex cone; what is left is in islands
+# (modules no root reaches), whose fate is decided per module under MERGE.md.
 Once/Allocator/Mempool.agda 2
 Once/Allocator/Slab.agda 2
-Once/Arith/Backend/RiscV64/MemPreserve.agda 1
-Once/Arith/Backend/RiscV64/Preserve.agda 1
-Once/Arith/Backend/RiscV64/RunTrace.agda 1
-Once/Arith/Backend/RiscV64/StatePreserve.agda 1
-Once/Arith/Backend/X86-32/RunTrace.agda 1
-Once/Arith/Backend/X86-64/MemPreserve.agda 1
-Once/Arith/Backend/X86-64/Preserve.agda 1
-Once/Arith/Backend/X86-64/RunTrace.agda 1
-Once/Arith/Backend/X86-64/StatePreserve.agda 1
-Once/CCC/Codegen/IRObsCorrect/Interface.agda 17
-Once/CCC/Codegen/IRObsCorrect/Machine.agda 2
-Once/CCC/Codegen/IRObsCorrect/Prelude.agda 27
-Once/CCC/Codegen/IRObsCorrectFlat.agda 12
-Once/CCC/Codegen/ThunkScope.agda 1
-Once/CCC/Machine/Allocation.agda 1
-Once/CCC/Machine/Flat.agda 1
-Once/CCC/Machine/SMPrimitives.agda 2
-Once/CCC/Target/RiscV64/Layout.agda 3
-Once/CCC/Target/X86-32/Layout.agda 3
-Once/CCC/Target/X86-64/Layout.agda 3
-Once/Compiler.agda 1
-Once/Contract.agda 2
-Once/Memory/Memory.agda 1
-Once/Memory/StackSlots.agda 3
-Once/Optimizer/Normal.agda 2
-Once/Parser/Generic/PolyInst.agda 1
-Once/Semantics/Machine.agda 2
 Once/Semantics/Machine/Laws.agda 1

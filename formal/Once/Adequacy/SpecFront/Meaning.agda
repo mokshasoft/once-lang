@@ -19,7 +19,6 @@ open import Once.Spec.Numerics using (TargetNum)
 
 module Once.Adequacy.SpecFront.Meaning (fmt : TargetNum) where
 
-open import Data.List using ([])
 open import Relation.Binary.PropositionalEquality using (_≡_; sym; subst)
 
 import Once.Spec.Core.Program as CoreProgram

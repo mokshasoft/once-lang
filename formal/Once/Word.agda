@@ -13,25 +13,23 @@ open import Once.Spec.Word using (module Width)
 
 import Data.Nat as ℕ
 open ℕ using (ℕ; zero; suc; _∸_; _^_; _≤_; _<_; s≤s; z≤n)
-open import Data.Nat.DivMod using (_%_; _/_; n%1≡0; n/1≡n; n%n≡0; m<n⇒m%n≡m; m%n<n;
+open import Data.Nat.DivMod using (_%_; n%1≡0; n/1≡n; n%n≡0; m<n⇒m%n≡m; m%n<n;
    %-distribˡ-*; %-distribˡ-+; m%n%n≡m%n; [m+n]%n≡m%n)
 import Data.Nat.Properties
 open import Data.Nat.Properties using
-  (m^n≢0; m^n>0; +-identityʳ; +-comm;
+  (m^n>0; +-identityʳ; +-comm;
    +-mono-≤; +-monoʳ-≤; +-monoʳ-<; ^-monoʳ-≤; ∸-monoˡ-≤; m+n∸n≡m; m∸n+n≡m; m∸[m∸n]≡n;
    ≤-refl; ≡ᵇ⇒≡; <ᵇ⇒<; <⇒<ᵇ; ≤⇒≯; ≤-trans; <⇒≤; ≤-<-trans; m∸n≤m; +-∸-assoc; +-∸-comm;
    ∸-monoʳ-≤; ∸-monoʳ-<; +-suc; [m+n]∸[m+o]≡n∸o)
 open import Data.Integer using (ℤ; +_; -[1+_]; ∣_∣; sign; _◃_; _-_; -_)
 import Data.Integer as ℤ
-open import Data.Product using (_×_; _,_)
-open import Relation.Nullary.Decidable using (Dec; _×-dec_)
-open import Data.Integer.Properties using (_<?_; m-n≡m⊖n; ⊖-<; +◃n≡+n; -◃n≡-n; neg-involutive;
+open import Data.Product using (_,_)
+open import Data.Integer.Properties using (m-n≡m⊖n; ⊖-<; +◃n≡+n; -◃n≡-n; neg-involutive;
    neg-cancel-≤)
 import Data.Sign as Sign
-open import Data.Bool using (Bool; true; false; if_then_else_; _∧_; T)
+open import Data.Bool using (true; false; _∧_; T)
 open import Data.Empty using (⊥-elim)
 open import Data.Unit using (tt)
-open import Relation.Nullary using (does)
 open import Once.Memory.Memory using (≡ᵇ-refl)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym; trans; subst)
 

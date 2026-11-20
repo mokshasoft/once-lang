@@ -48,7 +48,7 @@ module Once.CCC.Codegen.IRObsCorrect.CataBr.Meaning where
 open import Data.List using (List; []; _∷_; _++_; [_]; length)
 open import Data.List.Properties using (++-assoc; ++-identityʳ; length-++)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Nat using (ℕ; suc; _+_)
+open import Data.Nat using (ℕ; suc)
 open import Data.Nat.Properties using (+-comm)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (inj₁; inj₂)
@@ -58,7 +58,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 open import Once.Spec.Type using (Fun; K; Id; _⊕_; _⊗_)
 open import Once.Spec.Type using (WFFun; ∅ₖ; wf-K; wf-Id) renaming (wf-⊕ to wf-Sum; wf-⊗ to wf-Prod)
-open import Once.Spec.Polynomial using (SFunctor; μS; ⟦_⟧SF) renaming (inS to ⟨_⟩)
+open import Once.Spec.Polynomial using (SFunctor; ⟦_⟧SF) renaming (inS to ⟨_⟩)
 open import Once.IR.Semantics.Polynomial using (sfmapCata)
 open import Once.IR.Semantics.FunctorMeaning using (translateF)
 open import Once.Spec.Word using (Carrier)

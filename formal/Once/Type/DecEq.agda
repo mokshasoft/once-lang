@@ -14,7 +14,7 @@ open import Relation.Binary.Definitions using (DecidableEquality)
 
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
-open import Once.Spec.Type using (Ty; Fun; var; Type; K; Id; _⊕_; _⊗_; Unit; Void; Int; Float; _⇒[_]_)
+open import Once.Spec.Type using (Ty; Fun; var; K; Id; _⊕_; _⊗_; Unit; Void; Int; Float; _⇒[_]_)
 open import Once.Spec.Type using (Kind; any; base; μ; ν)
 open import Once.Spec.Grade using (Quantity; Zero; One; Many; Purity; Finite; pureᶠ; actᶠ; pure; act; eff; ArrowKind; mk-kind)
 import Data.Fin as Fin

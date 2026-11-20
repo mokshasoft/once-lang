@@ -26,7 +26,6 @@ open import Once.Spec.Name using (CanonicalName)
 
 open import Data.List using (List)
 open import Once.Denotation.Program using (IRFun)
-open import Once.CCC.Machine.SMCore using (AbstractTrace)
 module Once.CCC.Machine.ReadTypedAdequate (o : CanonicalName) (tbl : List IRFun)
   {FS : FrameSemantics} where
 
@@ -39,7 +38,6 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong
 open import Function using (id)
 
 open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_)
-import Once.Type
 open import Once.IRTy using (⌊_⌋; fits-int; fits-float)
 open import Once.Denotation.ValueDomain using (forgetᵇ; cohᴰ) renaming (⟦_⟧ᴰᴵ to ⟦_⟧ᴵ)
 open import Once.CCC.Machine.SMCore
@@ -49,7 +47,7 @@ open import Once.CCC.Machine.ValueRel
 open ClosureWellFormedDef {FS}
   using (ValidAtWF; CellAt)
 open ClosureWellFormedBase {FS}
-  using (SumTag; cell-ptr; cell-inline; cell-flat; InlineRep; rep-prim; inline-sv; IsNode; wrap)
+  using (SumTag; cell-ptr; cell-inline; cell-flat; rep-prim; IsNode; wrap)
 open import Once.CCC.Codegen.Size using (size)
 open import Data.Empty using (⊥; ⊥-elim)
 import Data.Nat

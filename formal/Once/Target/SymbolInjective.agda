@@ -54,7 +54,7 @@ open import Data.String using (String; toList)
 open import Data.String.Properties using (toList-injective)
 open import Once.Postulates using (toList-++; toList∘fromList)
 
-open import Once.Parser.Lexer using (isIdentStart; isIdentContinue; toNat; opNameChars; isOpNameChar)
+open import Once.Name.Chars using (isIdentStart; isIdentContinue; toNat; opNameChars; isOpNameChar)
 import Data.Bool.ListAction
 open import Once.Target.Symbol
   using (z-encode-char; z-encode-char-aux; z-encode; showNat; symbol-char?;

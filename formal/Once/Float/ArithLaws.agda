@@ -10,20 +10,20 @@
 module Once.Float.ArithLaws where
 
 
-open import Data.Nat as ℕ using (ℕ; zero; suc; _+_; _*_; _∸_; _^_)
+open import Data.Nat as ℕ using (ℕ; _*_; _^_)
 open import Data.Nat.Properties using (<ᵇ⇒<; <-asym; +-comm; *-comm)
 open import Data.Integer using (ℤ; +_)
 import Data.Integer as ℤ
 import Data.Integer.Properties as ℤ
 open import Data.Bool using (Bool; true; false; T)
-open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Maybe using (just; nothing)
 open import Data.Empty using (⊥-elim)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; cong; cong₂; subst)
 
-open import Once.Spec.Float.Dyadic using (FloatFormat; binary32; binary64)
+open import Once.Spec.Float.Dyadic using (binary32; binary64)
 open import Once.Spec.Float.Value
 open import Once.Spec.Float.Decimal using (roundDec; ⟨_⟩_/10^_)
-open import Once.Spec.Surface.Syntax using (signedDecimal)
+open import Once.Spec.Float.Decimal using (signedDecimal)
 open import Once.Spec.Float.Encoding using (encode; decode)
 open import Once.Spec.Float.Arith
   using (Operand; inf; fin; exact; onNumbers; addE; mulE; addAt; cancel; infAdd; infMul; addV; mulV; divV; i2fV;

@@ -26,37 +26,55 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.Inj (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.Bool using (false)
+open import Data.Empty using (⊥)
+open import Data.List using (_++_; _∷_; []; length)
+open import Data.List.Relation.Unary.All.Properties using (++⁺)
+open import Data.Maybe using (just)
+open import Data.Product using (proj₁; _,_; proj₂)
+open import Data.Unit using (tt)
+open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
+open import Once.CCC.Machine.ValueRel using (module ClosureWellFormedBase; valid-inl-wf; valid-inl-reg-wf; valid-inl-flat-wf; valid-inr-wf; valid-inr-reg-wf; valid-inr-flat-wf)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Once.IR using (inl; Heap; inr)
+open import Relation.Binary.PropositionalEquality using (subst; _≡_; cong; trans; sym; _≢_; refl)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic; ValueLocation)
 open import Once.CCC.Machine.SMCore
-  using (AbstractTrace; AbstractInstr; LocState; AllocState; module LocState; module AllocState; module MemOps; module AbstractExec;
-         readReg; writeReg; writeReg-same; Input1; Output; SV-Ptr; SV-Tag; StoredValue; sucLoc; offsetLoc;
-         mov-to-output; mov-to-input; store-at-slot; load-from-slot; instr-alloc-heap; instr-load-tag-lit; store-at;
-         restore-input; load-at)
+  using (AbstractTrace; LocState; AllocState; module LocState; module AllocState; module MemOps; module AbstractExec;
+         readReg; writeReg; Input1; Output; SV-Ptr; SV-Tag; StoredValue; sucLoc;
+         mov-to-output; mov-to-input; store-at-slot; load-from-slot; instr-alloc-heap; instr-load-tag-lit; store-at)
 open LocState using (regs; halted)
-open AllocState using (current-frame; next-slot; next-heap-ref)
-open import Once.Memory.HeapAddress using (HeapRef; HeapLocation; heap-loc; offsetHL; mkHeapRef)
-open import Once.IRTy using (IRTy; Unit; Void; _*_; _⇛_; μ-type; ν-type; Int; Float; FitsInRegI)
+open AllocState using (current-frame)
+open import Once.Memory.HeapAddress using (heap-loc)
+open import Once.IRTy using (IRTy; Unit; Void; _*_; _⇛_; μ-type; ν-type; Int; Float)
   renaming (_+_ to _+ᵀ_)
 open import Once.CCC.Codegen.Size using (size)
 open import Once.CCC.Codegen.FlatLayout using (fill; put; put-All; fill-All)
 open import Once.CCC.Codegen.IRToTrace o using (inj-trace)
 open import Once.CCC.Codegen.StraightRun using (module StraightRunAPI)
-open import Once.CCC.Machine.Allocation using (module FrontierInvariant)
 import Once.CCC.Machine.FlatPut as FlatPut
 import Once.CCC.Machine.FlatAlloc as FlatAlloc
 open import Once.CCC.Machine.SMPrimitives using (module MemoryOps)
 import Once.CCC.Machine.SMPrimitives
 
-open import Data.Nat using (_⊔_; z≤n; s≤s)
-open import Data.Nat.Properties using (m≤n⊔m; m≤m⊔n; +-monoʳ-<; m+[n∸m]≡n; +-cancelˡ-≡)
-open import Data.List.Relation.Unary.All using ([]; _∷_)
-open import Data.Product using (Σ)
+open import Data.Nat using (_⊔_; z≤n; s≤s; _≤_; suc; _<_; _∸_; _+_; ℕ)
+open import Data.Nat.Properties using (m≤n⊔m; m≤m⊔n; +-monoʳ-<; m+[n∸m]≡n; ≤-trans; <-irrefl; n<1+n; +-identityʳ; <-≤-trans; m≤m+n; ≤-reflexive; n≤1+n; ≤-refl; <-trans)
+open import Data.List.Relation.Unary.All using ([]; _∷_; All)
 open import Data.Sum using (inj₁; inj₂)
 
 module InjC {FS : FrameSemantics} where
 
   open Core {FS}
+  open ClosureWellFormedBase′ using (InBlk; Live; eventsAt; ⟪_⟫_; cell-ptr; cell-inline; cell-flat)
+  open ClosureWellFormedDef′ using (CellAt; ValidAtWF; InputAt; in-loc; in-reg; in-unit; at-loc; validityWF-mem-only)
+  open FlatEventTrace′ using (event-of; chain-events)
+  open AbstractExec′ using (exec-abstract)
+  open FlatMachine′ using (StraightStep)
+  open FlatStepsAPI′ using (_∷_; []; FlatSteps)
+  open FrontierInvariant′ using (BeforeFrontier; module BeforeFrontier)
+  open MemOps′ using (readLoc)
   open Mach {FS}
   open MemOps {FS} using (writeLoc; writeLoc-halted; writeLoc-regs; writeLoc-preserves-other; writeLoc-read-same-stack)
   open AbstractExec {FS} using (exec-trace; exec-trace-cons)
@@ -64,6 +82,7 @@ module InjC {FS : FrameSemantics} where
   open Once.CCC.Machine.SMPrimitives.TraceComposition {FS} using (exec-trace-append)
   open MemoryOps {FS} using (readLoc-writeLoc-same)
   module SR = StraightRunAPI {FS}
+    using (after; straight-silent; straight-steps)
   open ClosureWellFormedBase {FS} using (Pad; wrap; cell-ptr; cell-inline; cell-flat)
   open FlatEventTrace {FS} using (chain-events-subst)
 
@@ -182,6 +201,7 @@ module InjC {FS : FrameSemantics} where
     σf = exec-trace (fill (suc (size P)) c) s₇ A₁
     sf = proj₁ σf
     module F = FillOut F
+      using (alloc-eq; live; other; written)
 
     -- a cell of a block other than the fresh one, or a frame slot, is the fill's to keep
     not-pad : ∀ l → (∀ o → l ≢ AtDynamic (heap-loc rd o)) → ∀ j → j < c → l ≢ dst rd (suc (size P)) j
@@ -221,6 +241,7 @@ module InjC {FS : FrameSemantics} where
              (src-tr keepf src)
       sp = proj₁ (exec-trace (put P n (suc n) 1) sf A₁)
       module Pt = PutOut Pt
+        using (alloc-eq; cell; live; other)
 
       -- the last row: the block is the result
       sfin = record sp { regs = writeReg (regs sp) Output blk }

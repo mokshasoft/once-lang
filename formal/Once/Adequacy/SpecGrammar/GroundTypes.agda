@@ -13,7 +13,7 @@
 module Once.Adequacy.SpecGrammar.GroundTypes where
 
 open import Data.Empty using (⊥-elim)
-open import Data.List using (List; []; _∷_; map)
+open import Data.List using (List; _∷_; map)
 open import Data.Product using (Σ-syntax; _×_; _,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 open import Relation.Nullary using (¬_)
@@ -25,10 +25,8 @@ open import Once.Spec.Type using (Fun; μ; ν)
 open import Once.Spec.Surface.Lexing using (Token; TRParen)
 open import Once.Spec.Surface.Grammar using (TypeAlg; module Types; NoExtra; module Annot; module AliasType; GradeToken; g0; g1; gw)
 import Once.Spec.Type as ST
-import Once.Spec.Surface.Syntax as SS
 import Once.Parser.Token as P
 open import Once.Parser.TypeRelation
-open import Once.Adequacy.SpecTokNames
 open import Once.Adequacy.SpecLexing using (forget)
 open import Once.Adequacy.SpecGrammar.Tokens using (step; peel)
 open import Once.Adequacy.SpecGrammar.TypeHeads
@@ -366,7 +364,9 @@ homAlias = record
 
 private
   module BA = Bridge groundS toTy toFun homTy
+    using (type←; type→)
   module BL = Bridge (writtenS NoExtra) polyOf polyOfF homAlias
+    using (type←; type→)
 
 annot→ : ∀ {toks A rest} → ParsesType toks A rest → Annot.ParsesType (F toks) (toTy A) (F rest)
 annot→ = BA.type→

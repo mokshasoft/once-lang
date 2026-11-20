@@ -16,23 +16,21 @@
 
 module Once.Format.Proof.Groups where
 
-open import Data.Bool using (Bool; true; false; not; if_then_else_; T)
-open import Data.Char using (Char)
-open import Data.List using (List; []; _∷_; _++_; map; concatMap; reverse)
+open import Data.Bool using (Bool; true; false; if_then_else_)
+open import Data.List using (List; []; _∷_; _++_; map; concatMap)
 open import Data.List.Properties using (++-assoc; ++-identityʳ)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Nat using (ℕ; zero; suc)
+open import Data.Nat using (ℕ)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃-syntax)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 
-open import Once.Format.Doc using (Doc; empty; blank; _<>_; Lexeme; lt; lsp; lnl; lind; lcm; St; st; brk; layout;
-  blankLine)
+open import Once.Format.Doc using (empty; blank; _<>_; Lexeme; lnl; lind; lcm; St; st; layout)
 open import Once.Format.Comment using (commentRun; commentLines)
 open import Once.Format.Print using (Note; note-comment; note-blank; runs)
 open import Once.Format.Proof.Rerender using (rendered; rendered-ne; readBack; rendered-fix; rendered-RL; Src)
-open import Once.Format.Proof.Lockstep using (linesOut; colOf; zero-col; lines-layout)
+open import Once.Format.Proof.Lockstep using (linesOut; colOf; lines-layout)
 
 ------------------------------------------------------------------------
 -- Runs of comments
@@ -121,9 +119,9 @@ layoutG-out f (R ∷ R′ ∷ Rs) o c (ne ∷ nes) with rendered-ne 0 (proj₁ n
 -- The walk over them
 ------------------------------------------------------------------------
 
-open import Once.Format.Print using (W; walker; Line; line-text; line-empty; line-code; Held; held-comment; held-blank;
-  Trivia; stepComment; lineEnd; stepTok; settleAt; blankBefore; pending)
-open import Once.Format.Proof.Walk using (WL; stepL; nlW; hoistAt-id)
+open import Once.Format.Print using (walker; line-text; Held; held-comment; held-blank;
+  Trivia; settleAt)
+open import Once.Format.Proof.Walk using (WL; stepL; hoistAt-id)
 open import Once.Format.Print using (Notes; lookupNotes)
 open import Once.Format.Proof.Lockstep using (Φ; Φ-cons)
 
@@ -195,7 +193,6 @@ runs-walk (R ∷ R′ ∷ Rs) o k H₀ T ni (ne ∷ nes) en refl
 -- What the walk settles before a declaration
 ------------------------------------------------------------------------
 
-open import Data.Empty using (⊥)
 open import Data.Unit using (⊤; tt)
 open import Once.Spec.Surface.Syntax using (Decl)
 open import Once.Format.Print using (notes; addTo; addTop)
@@ -245,8 +242,7 @@ settle-tops-inner j k (held-blank ∷ hs)     T =
 ------------------------------------------------------------------------
 
 open import Once.Format.Print using (hasComment; topDoc; lead; ending; gapEnd; blankLast; blankIf)
-open import Data.Unit using (⊤; tt)
-open import Once.Spec.Surface.Syntax using (Decl)
+open import Data.Unit using (tt)
 open import Once.Format.Proof.Sources using (NoteSrc)
 
 -- | A run as the second pass reads it: the lines the first pass wrote.

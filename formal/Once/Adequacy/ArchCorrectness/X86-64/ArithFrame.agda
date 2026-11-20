@@ -14,29 +14,27 @@
 
 module Once.Adequacy.ArchCorrectness.X86-64.ArithFrame where
 
-open import Data.Bool using (Bool)
-open import Data.Empty using (⊥; ⊥-elim)
+open import Data.Empty using (⊥-elim)
 open import Data.List using (List; []; _∷_; map)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.List.Relation.Unary.All.Properties using (map⁺)
-open import Data.Maybe using (Maybe)
 open import Data.Nat using (ℕ; suc; _+_; _*_; _∸_; _≤_; _<_)
 open import Data.Nat.Properties
-  using (≤-trans; <-≤-trans; ≤-<-trans; <⇒≢; <-irrefl; m≤m+n; +-monoʳ-<; *-monoʳ-<; ∸-monoʳ-≤; ∸-+-assoc
-        ; m∸n+n≡m; m∸n≤m; n≤1+n; ≤-reflexive; +-comm; m+n∸n≡m)
-open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
+  using (≤-trans; <-≤-trans; <-irrefl; m≤m+n; +-monoʳ-<; *-monoʳ-<; ∸-monoʳ-≤; ∸-+-assoc
+        ; m∸n+n≡m; m∸n≤m; +-comm)
+open import Data.Product using (_×_; _,_; proj₁)
 import Data.Nat.Properties
 open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_]′)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
-open import Relation.Nullary using (¬_)
 
-open import Once.Arith.Backend.XInstr.Syntax as XI using (XInstr; XReg; XR0; XR1; XScratch; mk-scratch)
+open import Once.Arith.Backend.XInstr.Syntax as XI using (XInstr; XR0; XR1; XScratch)
 open import Once.Target.X86-64.PhysReg using (Reg; rax; rbx; rcx; rdx; rsi; rdi; rbp; rsp; r8; r9; r10; r11; r12; r13; r14; r15)
-open import Once.CCC.Target.X86-64.Semantics using (State; mkstate; RegFile; readReg; writeReg; readMem; writeMem; Word)
+open import Once.CCC.Target.X86-64.Semantics using (State; readReg; writeReg; readMem; Word)
 open State
 open import Once.Arith.Backend.X86-64.Emit using (arith-reg)
 open import Once.Arith.Backend.X86-64.Confine using (writes)
-open import Once.Arith.Backend.X86-64.Preserve using (step-of; write-regs; step-of-preserves; AgreeCCC; AgreeCCC-trans)
+open import Once.Arith.Backend.X86-64.Preserve using (AgreeCCC; AgreeCCC-trans; module PreserveCore)
+open PreserveCore using (write-regs; step-of; step-of-preserves)
 open Once.Arith.Backend.X86-64.Preserve.AgreeCCC
 open import Once.Arith.Backend.X86-64.MemPreserve using (readMem-writeMem-other)
 import Once.Arith.Backend.X86-64.ExecArith as EA
@@ -150,22 +148,22 @@ spill? (XI.Xmov-out _)           = sv-other (λ _ _ _ → refl)
 
 module _ (val : XInstr → State → Reg → Word) (N : ℕ) where
 
-  block-ccc : ∀ blk s → AgreeCCC (regs s) (regs (EA.exec-arith-block val N blk s))
+  block-ccc : ∀ blk s → AgreeCCC (regs s) (regs (EA.ExecArithCore′.exec-arith-block val N blk s))
   block-ccc []       s = Once.Arith.Backend.X86-64.Preserve.agree-refl-ccc (regs s)
   block-ccc (i ∷ is) s = AgreeCCC-trans (step-of-preserves i (val i s) (regs s)) (block-ccc is (EA.exec1 val N i s))
 
-  block-rdi : ∀ blk s → readReg (regs (EA.exec-arith-block val N blk s)) rdi ≡ readReg (regs s) rdi
+  block-rdi : ∀ blk s → readReg (regs (EA.ExecArithCore′.exec-arith-block val N blk s)) rdi ≡ readReg (regs s) rdi
   block-rdi []       s = refl
   block-rdi (i ∷ is) s = trans (block-rdi is (EA.exec1 val N i s)) (step-rdi i (val i s) (regs s))
 
-  block-halt : ∀ blk s → halted (EA.exec-arith-block val N blk s) ≡ halted s
+  block-halt : ∀ blk s → halted (EA.ExecArithCore′.exec-arith-block val N blk s) ≡ halted s
   block-halt []       s = refl
   block-halt (i ∷ is) s = block-halt is (EA.exec1 val N i s)
 
   -- the frame is `[rsp, rsp + 8n)`; everything else stays
   block-mem : ∀ (n : ℕ) blk s → SpillsWF n blk → ∀ a
             → (a < readReg (regs s) rsp) ⊎ (readReg (regs s) rsp + 8 * n ≤ a)
-            → readMem (memory (EA.exec-arith-block val N blk s)) a ≡ readMem (memory s) a
+            → readMem (memory (EA.ExecArithCore′.exec-arith-block val N blk s)) a ≡ readMem (memory s) a
   block-mem n []       s _          a out = refl
   block-mem n (i ∷ is) s (ok , oks) a out =
     trans (block-mem n is (EA.exec1 val N i s) oks a

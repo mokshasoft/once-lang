@@ -25,10 +25,10 @@ import Once.Spec.Core.Syntax as LP
 module Once.Adequacy.SpecFront.ScopeNames
   (Σ : Signature) {s : ℕ} (S : Defs s) (nm : Fin s → CanonicalName) where
 
-open import Data.List using (List; []; _∷_)
+open import Data.List using ([]; _∷_)
 open import Data.Maybe using (just)
 open import Data.Maybe.Properties using (just-injective)
-open import Data.Product using (Σ-syntax; _×_; _,_; proj₁)
+open import Data.Product using (_×_; _,_; proj₁)
 open import Data.Unit using (⊤; tt)
 open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
@@ -39,11 +39,12 @@ import Once.Parser as Parser
 open Parser.PolyFunInfo using (pfunName)
 open import Once.Spec.Name using (canonical)
 open import Once.TypeCheck.Scope using (lookupImport; lookupPolyPrefix)
-open import Once.Core.Translate Σ using (ImpSig; TeleSig; []; i-def; t-def; impAt; telFind; monoSchema)
+open import Once.Core.Translate Σ using (ImpSig; TeleSig; []; i-def; t-def; impAt; telFind)
 import Once.TypeCheck.View as TView
 
 private
   module VS = TView Σ S
+    using (module ImportAt)
 
 -- Every recorded monomorphic entry is named its definition's name.
 ImpNamed : ∀ {imps} → ImpSig S imps → Set

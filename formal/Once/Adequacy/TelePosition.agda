@@ -19,13 +19,12 @@ open import Data.List using (List; []; _∷_; _++_; map)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.List.Relation.Unary.AllPairs using (AllPairs; []; _∷_)
 open import Data.Maybe using (just)
-open import Data.Maybe.Properties using (just-injective)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.String using (String)
 import Data.String as Str
 open import Data.Empty using (⊥-elim)
 open import Relation.Nullary using (Dec; yes; no)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans)
 
 open import Once.Spec.Type using (Type)
 import Once.Compile as C
@@ -33,14 +32,12 @@ import Once.IR as IR
 import Once.Parser as Parser
 open Parser.FunInfo using (funName)
 open Parser.PolyFunInfo using (pfunName)
-open import Once.TypeCheck.Scope using (Imports)
 open import Once.Type.DecEq using (_≟T_)
 import Once.TypeCheck.Elaborate
 import Once.TypeCheck.SpecWitness
 import Once.TypeCheck.Scope
 import Once.TypeCheck.Classify
 import Once.Parser
-import Once.Parser.Module as Module
 import Once.Parser.Module.Core as P
 import Once.Spec.Surface.Syntax as Syn
 import Data.Maybe as Maybe
@@ -53,10 +50,8 @@ open import Data.Sum using (inj₁; inj₂)
 open import Data.Sum.Properties using (inj₂-injective)
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
-import Once.Type.Core
 import Once.Spec.Type
 import Once.Type
-import Once.Context as Ctx
 open import Once.TypeCheck.Scope using (PolyCtx; lookupPolyPrefix)
 open import Once.TypeCheck.Classify using (TopCtx)
 open import Once.Compile using (irFunOf; tableOf-go)

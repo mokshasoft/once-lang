@@ -5,14 +5,16 @@
 # importer's cone; the cost lands on modules the author never looked at (plan
 # 0.92 §1). This gate freezes the surface: a module may only LOWER its count of
 # `public` lines below the baseline (then lower or delete its line there), and
-# a module not listed must carry none. Re-exporting is kept only where it
-# avoids re-instantiating a parameterised module, with a measurement (§2, S4).
+# a module not listed must carry none. Importers name what they use where it is
+# defined; a parameterised module is instantiated once, as a named instance
+# (`module N = X args`), and importers open that (plan 0.152 A(2b)).
 #
 # Usage (from formal/):  scripts/public-gate.sh
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-P='(^|[[:space:]])public[[:space:]]*(--.*)?$'  # a trailing comment does not hide a re-export
+# `public` anywhere in a code line (`open X public using (…)` too); a comment never counts
+publines() { perl -ne 'next if /^\s*--/; my $l = $_; $l =~ s/(^|\s)--(\s.*)?$//; print "$.:$_" if $l =~ /(^|\s)public(\s|$)/' "$1"; }
 baseline=scripts/public-gate.baseline
 declare -A allowed=()
 while read -r path count; do
@@ -22,11 +24,11 @@ done < "$baseline"
 
 bad=0; total=0
 while IFS= read -r f; do
-  n=$(grep -cE "$P" "$f" || true)
+  n=$(publines "$f" | wc -l)
   total=$((total + n))
   a=${allowed[$f]:-0}
   if ((n > a)); then
-    grep -nE "$P" "$f" | sed "s|^|$f:|"
+    publines "$f" | sed "s|^|$f:|"
     echo "public-gate: $f has $n, baseline allows $a"
     bad=1
   elif ((n < a)); then

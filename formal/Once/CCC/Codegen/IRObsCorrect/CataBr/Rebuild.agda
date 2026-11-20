@@ -35,9 +35,17 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.CataBr.Rebuild (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.Bool using (false; true)
+open import Data.List using (_∷_; []; List; length; _++_)
+open import Data.List.Properties using (length-++)
+open import Data.List.Relation.Unary.All.Properties using (++⁺)
+open import Data.Maybe using (just; Maybe; nothing)
+open import Data.Product using (_×_; _,_; proj₂; proj₁)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; _≢_; sym; subst; trans; cong₂; subst₂; cong)
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module ResuspBaseC)
 open import Once.CCC.Codegen.IRObsCorrect.CataConst.Steps o tbl using (module CataStepsC)
-open import Once.CCC.Codegen.IRObsCorrect.CataConst.Layout o tbl using (lsz-eq)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Stack o tbl using (module CataStackC)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Walk o tbl using (module CataWalkC)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Visit o tbl using (module CataVisitC; su-l; su-r)
@@ -46,32 +54,30 @@ open import Once.CCC.Codegen.IRObsCorrect.CataBr.Layer o
   using (fillI; fill-K; fill-Id; fill-inl; fill-inr; fill-pair; module FillPair)
 open import Once.CCC.Codegen.IRObsCorrect.Get o tbl using (module GetC)
 open import Once.CCC.Codegen.IRObsCorrect.CaseShape o tbl using (module ShapeC)
-open import Once.CCC.Codegen.IRToTrace o using (rebuild-walk; lsize; pop2; wrap-sum; fsize; getμ)
-open import Once.CCC.Codegen.FlatLayout using (Kind; kind; lkind; lsz; get; get-k; get-i; get-one; put-k; kind-skind; size-ssize)
+open import Once.CCC.Codegen.IRToTrace o using (rebuild-walk; lsize; wrap-sum; fsize; getμ)
+open import Once.CCC.Codegen.FlatLayout using (Kind; kind; lsz; get-k; get-i; get-one; put-k)
 open import Once.CCC.Codegen.Size using (size)
 open import Once.CCC.Codegen.LabelScope o using (rebuild-ls; wrap-sum-ls; put-k-ls)
 open import Once.CCC.Codegen.LabelSeg using (LabelsIn; li-lab; li-none; ls-weaken)
 open import Once.CCC.Codegen.LabelResolve o using (module Resolve)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open import Once.CCC.Machine.SMCore
-  using (LocState; module LocState; AbstractTrace; AbstractInstr; AllocState; module AllocState; StoredValue; readReg; Output; Input1
-        ; SV-Ptr; SV-Tag; sv-as-loc; sucLoc; offsetLoc; store-at-slot; restore-input; load-from-slot; mov-to-input; mov-to-output
+  using (LocState; module LocState; AbstractTrace; AbstractInstr; AllocState; module AllocState; readReg; Output; Input1
+        ; SV-Ptr; offsetLoc; store-at-slot; restore-input; load-from-slot; mov-to-input; mov-to-output
         ; instr-alloc-heap; instr-ctrl; c-branch-tag-zero; c-jmp; c-label; writeReg-preserves)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
-open import Once.CCC.Machine.SMPrimitives using (nhw-store-at-slot; nhw-restore-input)
+open import Once.CCC.Machine.Locations using (AtStack; AtDynamic)
+open import Once.CCC.Machine.SMPrimitives using (nhw-restore-input; nhw-mov-to-output; nhw-mov-to-input)
 open import Once.CCC.Label using (ℓ; LabelId; module LabelId)
 open LabelId using (idx)
 open import Once.Memory.HeapAddress using (HeapLocation)
 open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod; ⟦_⟧TI; ⌈_⌉F; μ-type)
 import Once.IRTy as I
-open import Data.Product using (Σ)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.Unit using (⊤)
+open import Data.Unit using (⊤; tt)
 open import Data.List.Relation.Unary.All using () renaming ([] to []ᴬ; _∷_ to _∷ᴬ_)
-open import Data.Nat using (s≤s; z≤n; _*_; _⊔_)
-open import Data.Nat.Properties using (+-cancelˡ-≡; +-monoʳ-<)
-open import Relation.Nullary using (¬_)
+open import Data.Nat using (s≤s; z≤n; _*_; _⊔_; ℕ; _+_; suc; _<_; _≤_)
+open import Data.Nat.Properties using (+-cancelˡ-≡; +-monoʳ-<; +-comm; <-irrefl; <-≤-trans; m≤m+n; ≤-trans; n≤1+n; +-identityʳ; m≤n+m; ≤-refl)
 open import Data.Nat.Solver using (module +-*-Solver)
 open +-*-Solver using (solve; _:+_; _:*_; con; _:=_)
 
@@ -87,7 +93,14 @@ sum-end-r = solve 5 (λ wl vl wr vr b → con 1 :+ (wl :+ (vl :+ (con 4 :+ (wr :
 module CataRebuildC {FS : FrameSemantics} where
 
   open Core {FS}
-  open Mach {FS}
+  open ClosureWellFormedBase′ using (Live)
+  open ClosureWellFormedDef′ using (decomposePairWF; CellAt; module PairValidWF)
+  open FlatMachine′ using (FlatState; find-label; fetch; fetch-++-left; tag-test; flat-read-tag; do-jump)
+  open FlatMachine′.FlatState using (falloc; floc; fpc)
+  open FlatStepsAPI′ using (_∷_; [])
+  open InstrPrimitives′ using (exec-abstract-preserves-frame)
+  open MemOps′ using (readLoc)
+  open TracePrimitives′ using (exec-abstract-preserves-halted-WF)
   open ResuspBaseC {FS}
   open CataStepsC {FS}
   open CataStackC {FS}
@@ -97,10 +110,10 @@ module CataRebuildC {FS : FrameSemantics} where
                              ; get-fetch; ngi; lgi)
   open GetC {FS} using (GetOut; module GetOut; get-run; setOut; out-mem; offset-zero)
   open ShapeC {FS} using (tag-inl; tag-inr; payload-l; payload-r)
-  open Resolve {FS} using (NoLabel; fl-hit; noLabel-outside; found-in-window)
+  open Resolve {FS} using (fl-hit; noLabel-outside; found-in-window)
   open FlatStepsAPI {FS} using (flat-tag-branch-yes; flat-tag-branch-not)
   open LocState using (regs; halted)
-  open AllocState using (next-slot; next-heap-ref; current-frame)
+  open AllocState using (current-frame)
 
   ------------------------------------------------------------------------
   -- THE WALK.
@@ -521,6 +534,7 @@ module CataRebuildC {FS : FrameSemantics} where
       module E = BuildPair {prog} n (suc s) (s + 2) (s + 3) Z₁ Z₂ τa {proj₁ l} {proj₂ l} wR SPE (Walk.nh wa)
                    (≤-trans n≤s (n≤1+n s)) (≤-trans n≤s (m≤m+n s 3)) s2≢s1 s3≢s1 s3≢s2
                    (RQs.out (Walk.post wa)) (word-tr (walk-kp wma) (RQs.out (Walk.post wb))) s2-a
+        using (slots; walk)
 
       we : Walk prog n (KR s) τa (length epi + fpc τa)
               (λ τ′ → WordAt prog (falloc τ′) (Z₁ I.* Z₂) (proj₁ l , proj₂ l) (readReg (regs (floc τ′)) Output) (floc τ′))
@@ -729,6 +743,7 @@ module CataRebuildC {FS : FrameSemantics} where
                   (spw : SpanAt prog (fpc τp) (wrap-sum (arm-tag r) (kind (arm-ty r Z₁ Z₂)) (size (arm-ty r Z₁ Z₂)) (size (Z₁ I.+ Z₂)) s))
                   (rq : RQ (arm-ty r Z₁ Z₂) lp rest τp) where
         module W = BuildSum {prog} n r Z₁ Z₂ s τp spw nhp n≤s (RQs.out rq)
+          using (T; slots; walk)
         ww : Walk prog n (KR s) τp (length W.T + fpc τp)
                   (λ τ′ → WordAt prog (falloc τ′) (Z₁ I.+ Z₂) (arm-val r lp) (readReg (regs (floc τ′)) Output) (floc τ′))
         ww = W.walk ks
@@ -755,6 +770,7 @@ module CataRebuildC {FS : FrameSemantics} where
                (flat-tag-branch-not prog σ (ℓ o lb) cond) refl tt tt
 
         module U = Unpack y q0 (PtrTo.hl pt) nh (PtrTo.eq pt) (PtrTo.live pt) (payload-r (PtrTo.val pt)) st (span′ 1 _ refl) (span′ 2 _ refl)
+          using (nh2; q2; st2; walk; wd2)
 
         wR : Walk prog n (KR (s + 4)) U.q2 (length VR + fpc U.q2) (RQ Z₂ l₂ rest)
         wR = ihb (s + 4) (ssl + lF) U.q2 y vs l₂ rest fy n≤s4 (up val<s) (su-r s (fsize ⌈ G ⌉F) (fsize ⌈ H ⌉F) u su) SPR LAR U.nh2 U.wd2 U.st2
@@ -762,6 +778,7 @@ module CataRebuildC {FS : FrameSemantics} where
         τR = Walk.τ wR
 
         module Wp = Wrap arm-r l₂ τR (Walk.nh wR) (subst (λ z → SpanAt prog z WR) (sym (Walk.pc wR)) SPWR) (Walk.post wR)
+          using (walk)
 
         τW = Walk.τ Wp.walk
 
@@ -802,6 +819,7 @@ module CataRebuildC {FS : FrameSemantics} where
         w1 = walk-ctrl i1 (instr-ctrl (c-label (ℓ o lb))) (suc J₁) nh (SP3 1 _ refl) refl refl tt tt
 
         module U = Unpack x i2 (PtrTo.hl pt) nh (PtrTo.eq pt) (PtrTo.live pt) (payload-l (PtrTo.val pt)) st (SP3 2 _ refl) (SP3 3 _ refl)
+          using (nh2; q2; st2; walk; wd2)
 
         wL : Walk prog n (KR (s + 4)) U.q2 (length VL + fpc U.q2) (RQ Z₁ l₁ rest)
         wL = iha (s + 4) ssl U.q2 x vs l₁ rest fx n≤s4 (up val<s) (su-l s (fsize ⌈ G ⌉F) (fsize ⌈ H ⌉F) u su) SPL LAL U.nh2 U.wd2 U.st2
@@ -809,6 +827,7 @@ module CataRebuildC {FS : FrameSemantics} where
         τL = Walk.τ wL
 
         module Wp = Wrap arm-l l₁ τL (Walk.nh wL) (subst (λ z → SpanAt prog z WL) (sym (Walk.pc wL)) SPWL) (Walk.post wL)
+          using (walk)
 
         τW = Walk.τ Wp.walk
 

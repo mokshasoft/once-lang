@@ -46,6 +46,18 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.Pair.Proof (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open Interface.Prelude using ()
+open Interface.Prelude.SlotBudget′ using (frontier-mono)
+open import Data.Bool using (false)
+open import Data.List using (List; _++_)
+open import Data.List.Relation.Unary.All.Properties using (++⁻)
+open import Data.Nat.Properties using (≤-reflexive; ≤-refl; +-identityʳ; ≤-trans; n≤1+n)
+open import Data.Product using (proj₁; proj₂; _,_)
+open import Data.Unit using (tt)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Once.IR using (IR; ⟨_,_⟩; AllocMode)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; cong; cong₂)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.FrameFree using (exec-abstract-preserves-next-slot)
 open import Once.CCC.Machine.Locations using (AtDynamic; ValueLocation)
@@ -58,25 +70,31 @@ open HeapLocation using (heap-ref)
 open HeapRef using (ref-id)
 open import Once.CCC.Codegen.IRObsCorrect.Pair.Chain    o tbl
 open import Once.CCC.Codegen.IRObsCorrect.Pair.Pres o tbl
-open import Data.Nat using (z≤n)
+open import Data.Nat using (z≤n; _<_; ℕ; suc; _≤_; zero)
 
-import Once.CCC.FrameSemantics
 import Once.CCC.Machine.SMPrimitives
-import Once.IRTy
 import Once.IRTy as IRTy′
 import Once.IR
-import Once.Semantics.Machine as EvV
-import Once.CCC.Machine.ReadTypedAdequate as RTA
-import Once.Denotation.DenotTrace as DT
 import Once.Denotation.ValueDomain as ValueDomain
 import Once.IR.Semantics.Trace as TM
 open import Once.Denotation.Approx using (Ap; done; NotCut; thenAp; run-approx-bind)
 open import Once.IR.Semantics.Iterative using (T∞; _>>=∞_; return∞)
-open import Once.Res using (Res; returns; is-stopped)
+open import Once.Res using (Res; returns)
 
 module PairProofC {FS : FrameSemantics} where
 
   open Core  {FS}
+  open import Once.CCC.Machine.SMPrimitives using (nhw-mov-to-output)
+  open ClosureWellFormedBase′ using (resultAt; ⟪_⟫_; live→bf; eventsAt; runAt; BlocksKept; live-lift)
+  open ClosureWellFormedDef′ using (InputAt; in-loc; validityWF-mem-preserved; in-reg; in-unit; validityWF-frontier-advance)
+  open FlatEventTrace′ using (chain-events; chain-events-subst-start)
+  open CataNextSlot′ using (AllSlotStable)
+  open FlatMachine′ using (exec-flat)
+  open FlatMachine′.FlatState using (falloc; floc; fclosure)
+  open FlatStepsAPI′ using (FlatSteps; exec-flat-steps)
+  open FrontierInvariant′ using (BeforeFrontier; module BeforeFrontier; frontier-monotone)
+  open InstrPrimitives′ using (exec-abstract-preserves-frame)
+  open RecSchemeSemantics′ using (exec-abstract-preserves-heap-ref)
   open Mach  {FS}
   open PairC {FS}
   open PairPresC {FS}

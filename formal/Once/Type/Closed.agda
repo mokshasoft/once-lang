@@ -15,7 +15,6 @@
 
 module Once.Type.Closed where
 
-open import Data.Nat using (ℕ)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
 
 open import Once.Spec.Type using (Ty; Fun; TySub; _⟨_⟩; _⟨_⟩F; var; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; K; Id; _⊕_; _⊗_)

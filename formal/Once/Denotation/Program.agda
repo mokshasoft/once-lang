@@ -35,7 +35,7 @@ open import Once.IR using (IR)
 open Once.IR.IR
 open import Once.IRTy using (_≟IRTy_; IRTy; Unit)
 open import Once.Spec.Numerics using (TargetNum)
-open import Once.IR.Semantics.Trace using (T; unlinkedT)
+open import Once.IR.Semantics.Trace using (unlinkedT)
 open import Once.IR.Semantics.Iterative using (T∞; embed)
 open import Once.SigOp.Info using (SigOpInfo; SigOpSem; blockV; primV; ffiV; callsV; emitsV; haltsV; module SigOpInfo)
 open import Once.IR.Semantics.Trace using (FFIAnswers)

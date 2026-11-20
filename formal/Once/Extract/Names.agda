@@ -52,7 +52,6 @@ open import Data.Product using (_×_; _,_)
 open import Data.String using (String)
 
 open import Once.Spec.Surface.Syntax using (Module; Decl; DImport; DTypeSig; DFunDef; DSignature; DTypeAlias)
-open import Once.Spec.Surface.Syntax using (Import)
 open Once.Spec.Surface.Syntax.Module using (decls)
 open Once.Spec.Surface.Syntax.Import using (path; alias)
 

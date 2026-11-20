@@ -27,6 +27,16 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.Resusp.Base (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.Bool using (false)
+open import Data.List using ([]; _++_; length; _∷_)
+open import Data.Maybe using (just; nothing) renaming (map to mmap)
+open import Data.Nat using (ℕ; suc; _≤_; _+_; _<_)
+open import Data.Nat.Properties using (<-≤-trans; ≤-trans; ≤-refl; +-comm; +-assoc)
+open import Data.Unit using (tt)
+open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
+open import Once.IR using (IR; Heap; Ana; AllocMode)
+open import Relation.Binary.PropositionalEquality using (_≡_; cong; refl; _≢_; sym; trans; subst)
 open import Once.CCC.Machine.SMCore using (ending)
 open import Once.CCC.Codegen.IRObsCorrect.NuForce o tbl
 open import Once.CCC.Codegen.IRToTrace o using (resuspend-layer)
@@ -42,23 +52,23 @@ open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.CCC.Machine.LocMatchesMode using (LocMatchesMode)
 open import Once.CCC.Label using (ℓ)
 open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; ⟦_⟧TI; ν-type; wf-K; wf-Id; wf-Sum; wf-Prod
-                            ; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum)
+                            ; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; FitsInRegI)
 import Once.IRTy as IRTy′
 import Once.Denotation.ValueDomain as ValueDomain
 import Once.CCC.Machine.ValueRel as CWF
 open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; mkHeapRef; module HeapLocation; module HeapRef)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.Product using (Σ)
+open import Data.Product using (Σ; proj₁; _×_; _,_; proj₂)
 open import Data.List.Properties using (++-identityʳ)
 open import Once.CCC.Machine.FlatLog using (LogFree)
-open import Once.CCC.Machine.SMPrimitives using (module RecSchemeSemantics; nhw-store-at-slot; nhw-restore-input)
+open import Once.CCC.Machine.SMPrimitives using (module RecSchemeSemantics; InstrNoHeapWrite; instr-writes-slot)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open import Once.CCC.Codegen.LabelResolve o using (module Resolve)
 import Once.CCC.Machine.FlatPut as FlatPut
 import Once.CCC.Machine.FlatPutLay as FlatPutLay
 open import Once.CCC.Codegen.IRObsCorrect.Inj o tbl using (module InjC)
 open import Once.CCC.Codegen.StraightRun using (module StraightRunAPI)
-open import Data.List.Relation.Unary.All using ([]; _∷_)
+open import Data.List.Relation.Unary.All using ([]; _∷_; All)
 
 module ResuspBaseC {FS : FrameSemantics} where
 
@@ -66,12 +76,24 @@ module ResuspBaseC {FS : FrameSemantics} where
   open Resolve {FS} using (NoLabel)
 
   open Core {FS}
+  open ClosureWellFormedBase′ using (Live; BlocksKept; live-ns; VTy; prim-sv; LayerV; ResultPlaceP; rp-unit; rp-reg; rp-loc)
+  open ClosureWellFormedDef′ using (ValidAtWF; CellAt; ResultPlace; at-loc; at-reg; unit-result)
+  open FlatEventTrace′ using (chain-events; chain-events-nil; event-of; chain-events-subst-start)
+  open AbstractExec′ using (exec-abstract)
+  open FlatMachine′ using (FlatState; flat-step-straight; fetch; flat-exec-instr; fetch-++-left; fetch-++-right; find-label; StraightStep)
+  open FlatMachine′.FlatState using (floc; fpc; falloc; fret; flink)
+  open FlatStepsAPI′ using (FlatSteps; []; step-at; _∷_)
+  open FrontierInvariant′ using (module BeforeFrontier; BeforeFrontier; frontier-monotone)
+  open InstrPrimitives′ using (exec-abstract-preserves-stack-slot)
+  open MemOps′ using (readLoc)
+  open ReadLocEq′ using (readLoc-stack-heap-eq)
+  open RecSchemeSemantics′ using (exec-abstract-load-indirect-output; exec-abstract-load-indirect-suc-output)
   open Mach {FS}
   open LocState using (regs; halted)
   open AllocState using (next-slot; next-heap-ref; current-frame; saved-frames)
   open NuForceC {FS} using (module AnaDen)
   open RecSchemeSemantics {FS} using (exec-abstract-restore-input-sets-input)
-  open CWF.ClosureWellFormedBase {FS} using (CellAtP; fo-base; fo-unit; unit-wf)
+  open CWF.ClosureWellFormedBase {FS} using (fo-unit; unit-wf)
   private module IC = InjC {FS}
 
   ------------------------------------------------------------------------
@@ -442,7 +464,8 @@ module ResuspBaseC {FS : FrameSemantics} where
     place→out (at-reg fit rax) = out-reg fit rax
     place→out unit-result = out-unit refl
 
-    open FlatPutLay.PutLay {FS} {prog} R R-tr public using (LSrc; ls-node; ls-scalar; ls-flat; ls-unit; PutOutL; module PutOutL; put-lay-run)
+    module PutLay = FlatPutLay.PutLay {FS} {prog} R R-tr using (LSrc; ls-node; ls-scalar; ls-flat; ls-unit; PutOutL; module PutOutL; put-lay-run)
+    open PutLay
 
     -- a `Unit` layer is valid anywhere
     unit-lay : ∀ {G} (wG : WellFormedFI G) {v} → ⟦ G ⟧TI Xν ≡ IRTy′.Unit → ∀ {m a l s} → LV G m a v l s

@@ -387,31 +387,31 @@ d_Head_262 = ()
 data T_Head_262
   = C_hv'45'gen_264 MAlonzo.Code.Once.Spec.Surface.Generators.T_Gen_8 |
     C_hv'45'gen'8321'_266 MAlonzo.Code.Once.Spec.Surface.Generators.T_Gen_8
-                          MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 |
+                          MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_8 |
     C_hv'45'gen'8322'_268 MAlonzo.Code.Once.Spec.Surface.Generators.T_Gen_8
-                          MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44
-                          MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 |
+                          MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_8
+                          MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_8 |
     C_hv'45'lam_270 | C_hv'45'other_272
 -- Once.TypeCheck.Scope.headView
 d_headView_274 ::
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 -> T_Head_262
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_8 -> T_Head_262
 d_headView_274 v0
   = let v1 = coe C_hv'45'other_272 in
     coe
       (case coe v0 of
-         MAlonzo.Code.Once.Spec.Surface.Syntax.C_RGen_52 v2
+         MAlonzo.Code.Once.Spec.Surface.Syntax.C_RGen_16 v2
            -> coe C_hv'45'gen_264 (coe v2)
-         MAlonzo.Code.Once.Spec.Surface.Syntax.C_RApp_54 v2 v3
+         MAlonzo.Code.Once.Spec.Surface.Syntax.C_RApp_18 v2 v3
            -> case coe v2 of
-                MAlonzo.Code.Once.Spec.Surface.Syntax.C_RGen_52 v4
+                MAlonzo.Code.Once.Spec.Surface.Syntax.C_RGen_16 v4
                   -> coe C_hv'45'gen'8321'_266 (coe v4) (coe v3)
-                MAlonzo.Code.Once.Spec.Surface.Syntax.C_RApp_54 v4 v5
+                MAlonzo.Code.Once.Spec.Surface.Syntax.C_RApp_18 v4 v5
                   -> case coe v4 of
-                       MAlonzo.Code.Once.Spec.Surface.Syntax.C_RGen_52 v6
+                       MAlonzo.Code.Once.Spec.Surface.Syntax.C_RGen_16 v6
                          -> coe C_hv'45'gen'8322'_268 (coe v6) (coe v5) (coe v3)
                        _ -> coe v1
                 _ -> coe v1
-         MAlonzo.Code.Once.Spec.Surface.Syntax.C_RLam_56 v2 v3
+         MAlonzo.Code.Once.Spec.Surface.Syntax.C_RLam_20 v2 v3
            -> coe C_hv'45'lam_270
          _ -> coe v1)
 -- Once.TypeCheck.Scope.GenKindView

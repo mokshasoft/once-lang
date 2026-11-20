@@ -24,7 +24,7 @@
 
 open import Data.Nat using (ℕ)
 open import Data.Fin using (Fin)
-open import Data.List using (List; []; _∷_)
+open import Data.List using ([]; _∷_)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.Product using (Σ-syntax; _×_; _,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_)
@@ -48,19 +48,18 @@ module Once.Adequacy.SpecFront.Annotate
           → Σ[ T ∈ Type ] ((c ∶ declS T) ∈ Σ) × (⌜ t ⌝ᵈ ≡ ⌜ declS T ⌝ᵈ) × OkS c T × IsConcrete T × HonestFFI T)
   where
 
-open import Data.Nat using (suc)
 open import Data.Product using (proj₁; proj₂)
 open import Data.Bool using (true)
 open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong; cong₂; subst)
 
-open import Once.Spec.Grade using (Quantity; Zero; One; Many; Purity; pure; act; eff; mk-kind; fin;
-  _≤q_; 0≤q; 1≤1; 1≤ω; ω≤ω)
-open import Once.Spec.Type using (Ty; Int; Float; Unit; Void; _*_; _+_; _⇒[_]_; μ; ν; ⟦_⟧F)
-open import Once.Spec.Context using (Usage; []; _∷_; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_; _⊑ᵘ_; _⊑∷_)
+open import Once.Spec.Grade using (Zero; One; Many; Purity; pure; act; eff; mk-kind; fin;
+  _≤q_; 0≤q; 1≤1; ω≤ω)
+open import Once.Spec.Type using (Ty; _*_; _+_; _⇒[_]_; ν)
+open import Once.Spec.Context using (Usage; []; _∷_; zeroUsage; _+ᵘ_; _*ᵘ_; _⊑ᵘ_; _⊑∷_)
 import Once.Spec.Context as SCx
 open import Once.Context using (_⊔ᵘ_)
 import Once.Type.Grade
-open import Once.Spec.Core.Syntax using (Tm; primCod)
+open import Once.Spec.Core.Syntax using (Tm)
 open import Once.Spec.Surface.Syntax using (Expr)
 open import Once.Spec.Core.Typing Σ S using (_⊩_⊢[_]_∷_!_)
 import Once.Spec.Surface.Typing Σ S nm as SU
@@ -69,7 +68,7 @@ open import Once.Adequacy.SpecFront.Expr using (RX; x-local; x-res; x-gen; x-lam
   x-annot; x-pair; x-neg; x-binop; x-app)
 open import Once.Adequacy.SpecFront.CoreInv Σ S {Δ = Δ}
 open import Once.Adequacy.SpecFront.GenInv Σ S {Δ = Δ}
-open import Once.Metatheory.TermModel.Usage using (⊑ᵘ-refl; ⊑ᵘ-+; ⊑ᵘ-*ʳ; ⊑ᵘ-*ˡ; One*ᵘ)
+open import Once.Metatheory.TermModel.Usage using (⊑ᵘ-+; ⊑ᵘ-*ʳ; ⊑ᵘ-*ˡ; One*ᵘ)
 
 private
   _⇒⟨_⟩_ : Ty m → Purity → Ty m → Ty m

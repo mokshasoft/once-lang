@@ -33,17 +33,12 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.Case (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Once.IR using (IR; case)
+open import Relation.Binary.PropositionalEquality using (subst)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Data.Sum using (inj₁; inj₂)
 
-import Once.CCC.FrameSemantics
-import Once.CCC.Machine.SMPrimitives
-import Once.IRTy
-import Once.IR
-import Once.Semantics.Machine as EvV
-import Once.CCC.Machine.ReadTypedAdequate as RTA
-import Once.Denotation.DenotTrace as DT
-import Once.IR.Semantics.Trace as TM
 
 open import Once.CCC.Codegen.IRObsCorrect.CaseArmR o tbl
 open import Once.CCC.Codegen.IRObsCorrect.CaseArmL o tbl
@@ -53,6 +48,7 @@ module CaseC {FS : FrameSemantics} where
 
 
   open Core {FS}
+  open ClosureWellFormedDef′ using (in-loc; in-reg; in-unit)
   -- The first half of this same clause: the shape, the four premise splits,
   -- the two jump targets, and the residence lemmas.
   ----------------------------------------------------------------------

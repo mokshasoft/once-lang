@@ -36,7 +36,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 
 open import Once.Parser.Token
 open import Once.Parser.Lexer
-  using (adv; tokenize-WF; tok-str; tok-gen; tok-nl; tok-dot; tok-cmp; tok-eqop; tok-lbrace; tok-minus; tok-caret; tokenizeString; isIdentStart; collectStringB; collectDigitsB; collectFracB; collectIdentB; skipLineB; skipBlockB; drop1; drop1-≤; nlIndent; isEqHead; isDotHead; isDashHead; dashClass; caretClass; Dash3; d-comment; d-arrow; d-minus; Caret4; c-1; c-0; c-w; c-gen; hkWS; hkNL; hkCaret; hkDash; hkLBrace; hkLt; hkGt; hkEq; hkBang; hkLParen; hkRParen; hkRBrace; hkColon; hkLambda; hkComma; hkSemi; hkAt; hkPipe; hkPlus; hkStar; hkSlash; hkPct; hkAmp; hkDot; hkStr; hkGen; headK)
+  using (adv; tokenize-WF; tok-str; tok-gen; tok-nl; tok-dot; tok-cmp; tok-eqop; tok-lbrace; tok-minus; tok-caret; tokenizeString; collectStringB; collectDigitsB; collectFracB; collectIdentB; skipLineB; skipBlockB; drop1; drop1-≤; nlIndent; isEqHead; isDotHead; isDashHead; dashClass; caretClass; Dash3; d-comment; d-arrow; d-minus; Caret4; c-1; c-0; c-w; c-gen; hkWS; hkNL; hkCaret; hkDash; hkLBrace; hkLt; hkGt; hkEq; hkBang; hkLParen; hkRParen; hkRBrace; hkColon; hkLambda; hkComma; hkSemi; hkAt; hkPipe; hkPlus; hkStar; hkSlash; hkPct; hkAmp; hkDot; hkStr; hkGen; headK)
+open import Once.Name.Chars using (isIdentStart)
 
 ------------------------------------------------------------------------
 -- The relation lives in `Once.Parser.Relation.Lexing` (Plan 0.84): it is part of what

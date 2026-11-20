@@ -45,10 +45,10 @@ open import Relation.Nullary using (¬_)
 open import Data.Bool using (Bool; true; false)
 
 open import Once.CCC.Machine.SMCore
-  using (block-layout; blocks-layout; AbstractTrace; AbstractInstr; LabelId)
+  using (block-layout; blocks-layout; AbstractTrace; AbstractInstr)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
-open import Once.CCC.Label using (EntryId; e-thunk; _≡ᵇᴱ_; ≡ᵇᴱ-refl; ≡ᵇᴱ-true)
+open import Once.CCC.Label using (EntryId; e-thunk; _≡ᵇᴱ_; ≡ᵇᴱ-refl; ≡ᵇᴱ-true; LabelId)
 open import Once.CCC.Machine.SMCore using (instr-ctrl; c-thunk)
 
 ------------------------------------------------------------------------

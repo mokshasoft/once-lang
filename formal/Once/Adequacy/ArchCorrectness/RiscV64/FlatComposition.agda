@@ -46,7 +46,8 @@ open import Once.Type using (FitsInReg; fits-int; fits-float)
 import Once.CCC.Target.RiscV64.Semantics as R
 import Once.CCC.Target.RiscV64.Syntax as RS
 open import Once.CCC.Target.RiscV64.Syntax
-  using (Program; ld; sd; add; sub; sltu; addi; li; auipc; lla; lla-sym; mv; beq; bne; jal; jalr; j; ret; call; call-sym; nop; unimp; bgeu-fwd; local-1; label; sp; ra; slots)
+  using (Program; ld; sd; add; sub; sltu; addi; li; auipc; lla; lla-sym; mv; beq; bne; jal; jalr; j; ret; call; call-sym; nop; unimp; bgeu-fwd; local-1; label; slots)
+open import Once.Target.RiscV64.PhysReg using (sp; ra)
 open import Once.CCC.Target.RiscV64.AbstractToRiscV using (compile-abstract; compile-trace)
 
 ------------------------------------------------------------------------
@@ -118,9 +119,11 @@ label-miss : ∀ (ℓ t : Label) (rest : Program) (xi : ℕ)
            → R.find-label-go t (label ℓ ∷ rest) xi ≡ R.find-label-go t rest (suc xi)
 label-miss ℓ t rest xi eq rewrite eq = refl
 
-open import Once.Adequacy.ArchCorrectness.FlatCore.HeadView
+import Once.Adequacy.ArchCorrectness.FlatCore.HeadView
+module HeadView′ = Once.Adequacy.ArchCorrectness.FlatCore.HeadView
        FS RS.Instr compile-abstract is-label? label
-  public
+  using (HeadView; has-label; hv-clabel; hv-otherlabel; hv-plain)
+open HeadView′
 
 reg-op-no-label : ∀ (op : RegOp) → has-label (compile-abstract (instr-reg-op op)) ≡ false
 reg-op-no-label out-nz = refl
@@ -188,9 +191,11 @@ headView (instr-ctrl (c-branch-tag-zero m)) = hv-plain refl (λ _ _ _ → refl) 
 -- x86-64 — which is the evidence the parameterisation is over facts the two
 -- arches genuinely share.
 ------------------------------------------------------------------------
-open import Once.Adequacy.ArchCorrectness.FlatCore.FlatComposition FS RS.Instr
+import Once.Adequacy.ArchCorrectness.FlatCore.FlatComposition
+module FlatComposition = Once.Adequacy.ArchCorrectness.FlatCore.FlatComposition FS RS.Instr
        compile-abstract compile-trace refl (λ _ _ → refl)
        R.fetch (λ _ → refl) (λ _ _ → refl) (λ _ _ _ → refl)
        is-label? label R.find-label-go (λ _ _ → refl) skip-law
        label-hit label-miss headView
-  public
+  using (blk-len; blk-off; blk-off-suc; fetch-block-2nd; fetch-block-3rd; fetch-block-head
+        ; fetch-block-nth; find-label-corr; find-thunk-corr)

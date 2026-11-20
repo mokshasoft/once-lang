@@ -16,13 +16,13 @@ module Once.CCC.Machine.FlatAlloc {FS : FrameSemantics} where
 
 open import Data.Nat using (ℕ; suc; _<_; _≟_)
 open import Data.Nat.Properties using (n<1+n; m<n⇒m<1+n; <-irrefl; <⇒<ᵇ)
-open import Data.Product using (_,_; proj₁; proj₂)
+open import Data.Product using (_,_)
 open import Data.Empty using (⊥; ⊥-elim)
 import Data.Bool
 open import Relation.Nullary using (yes; no)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.Memory.HeapAddress using (HeapRef; mkHeapRef; heap-loc)
-open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
+open import Once.CCC.Machine.Locations using (AtDynamic)
 open import Once.CCC.Machine.SMCore
 open AllocState using (next-heap-ref; block-size)
 open import Once.CCC.Machine.Allocation using (module FrontierInvariant)

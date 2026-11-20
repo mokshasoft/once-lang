@@ -17,26 +17,24 @@
 
 module Once.Adequacy.SpecFront.TypedBack where
 
-open import Data.Fin using (Fin; zero; suc)
+open import Data.Fin using (Fin)
 open import Data.List using (List; []; _∷_; _++_; _ʳ++_; map; tabulate)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Membership.Propositional.Properties using (∈-tabulate⁺; ∈-map⁻)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 import Data.List.Relation.Unary.All as All
-import Data.List.Relation.Unary.All.Properties as AllP
 open import Data.List.Relation.Unary.AllPairs using (AllPairs)
 import Data.List.Relation.Unary.AllPairs
 open import Data.List.Properties using (map-++)
 open import Data.List.Relation.Unary.Any using (here; there)
-open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
+open import Data.Maybe using (just; nothing)
+open import Data.Product using (Σ-syntax; _,_; proj₁; proj₂)
 open import Data.String using (String)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Relation.Nullary using (¬_)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst; subst₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; subst; subst₂)
 
 open import Once.Spec.Name using (CanonicalName; canonical)
-open import Once.Spec.Signature using (Signature; WellFormed; _∶_)
+open import Once.Spec.Signature using (Signature; _∶_)
 open import Once.Inspect.Proof using (CheckedEF; Checked)
 import Once.Spec.Core.Syntax as SC
 import Once.Spec.Surface.Syntax as S
@@ -73,7 +71,6 @@ import Once.Adequacy.SpecFront.WalkMain as WM
 import Once.Adequacy.SpecFront.WalkState as WS
 import Once.Adequacy.SpecFront.Walk
 import Once.Compile
-import Once.Spec.Name
 import Once.Core.Translate
 
 ------------------------------------------------------------------------

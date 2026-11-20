@@ -20,7 +20,7 @@
 
 open import Once.CCC.FrameSemantics using (FrameSemantics; module FrameSemantics)
 open FrameSemantics using (frame-word)
-open import Data.Nat using (ℕ; zero; suc)
+open import Data.Nat using (ℕ; suc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 open import Once.Spec.Name using (CanonicalName)
 
@@ -31,14 +31,16 @@ module Once.Adequacy.ArchCorrectness.FlatCore.RunLow (o : CanonicalName)
   where
 
 open import Data.Empty using (⊥; ⊥-elim)
-open import Data.Bool using (Bool; true; false)
-open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Bool using (true; false)
+open import Data.Maybe using (just; nothing)
 open import Data.Maybe.Properties using (just-injective)
-open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
-open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Data.Product using (Σ; _×_; _,_)
+open import Data.Sum using (inj₁; inj₂)
 open import Once.CCC.Machine.SMCore
+open import Once.CCC.Label using (LabelId; EntryId; e-fn; e-thunk)
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
+open FlatState using (fpc; floc; falloc; flink; fret; fclosure)
 open import Once.CCC.Codegen.RoomChecks using (room-checks; need)
 open import Once.CCC.Codegen.RoomChecksFacts using (φ; module RoomFacts)
 open RoomFacts {FS} using (fetch-room)
@@ -46,6 +48,7 @@ open import Once.CCC.Codegen.RoomChecksSim using (module RoomSim)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open FlatStepsAPI {FS} using (Sound)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunContext o FS slot-size word-eq
+open RunAt using (run-tbl; run-ir; run-emit; run-linked; run-reach)
 
 -- THE RUN OF THE LOWERED IMAGE: `prog` is `t` with its checks, and `fs` is the
 -- lift of a state `t`'s run reaches, at a pc that stands for that state's.
@@ -77,7 +80,6 @@ low-view src fs₀ p (inj₁ refl)          f = at-image refl (trans (sym (fetch
 room≢ : ∀ {k : ℕ} {i : AbstractInstr} → i ≡ instr-room k → (∀ {k′} → i ≡ instr-room k′ → ⊥) → ⊥
 room≢ e ne = ne e
 
-open import Once.CCC.Codegen.RoomChecksFacts using (ψ)
 open RoomFacts {FS} using (ψ-zero)
 
 ------------------------------------------------------------------------
@@ -116,16 +118,14 @@ import Once.Adequacy.ArchCorrectness.FlatCore.RunWF o FS slot-size word-eq as RW
 open import Data.List using (List; []; _∷_; map)
 open import Data.Maybe using () renaming (map to mmap)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtDynamic; AtStack; Slot)
-open import Once.Memory.HeapAddress using (HeapLocation; sucHL; offsetHL; module HeapLocation; module HeapRef)
+open import Once.Memory.HeapAddress using (HeapLocation; module HeapLocation; module HeapRef; sucHL; offsetHL)
 open HeapLocation using (heap-offset; heap-ref)
 open import Once.SigOp.Info using (SigOpInfo; effect; Pure)
 open SigOpInfo using (baseA)
 open import Data.Product using (∃)
 open AbstractExec {FS} using (decode-at)
 open HeapRef using (ref-id)
-open import Once.CCC.Label using (LabelId; EntryId)
 open import Once.Spec.Name using () renaming (CanonicalName to CN)
-open import Data.Product using (∃)
 open import Data.Nat using (_<_)
 open import Once.Type using (fits-int)
 open import Once.CCC.Machine.FlatStoreWF FS using (FlatWF)
@@ -140,6 +140,7 @@ open RoomFacts {FS} using (find-entry-room)
 
 private
   module L = RoomSim {FS}
+    using (lift; ret-map)
 
 -- a fact about one non-check instruction `I`, from the base run's, when the fact
 -- speaks of the state only through what the lift keeps (memory, frames)
@@ -569,7 +570,7 @@ check-need .(room-checks src) .(L.lift src fs₀ p) (mkRunLow src fs₀ p refl r
     import Data.List
     open import Data.List.Relation.Unary.All using (All)
     open import Once.CCC.Machine.FrameFree using (ImageI)
-    open import Once.CCC.Codegen.RoomChecks using (till-check; max-entry)
+    open import Once.CCC.Codegen.RoomChecks using (till-check)
     open import Once.CCC.Codegen.RoomChecksFacts using (module CheckK; image-noroom; max-entry-room; NoRoom)
     open CheckK {FS} using (check-k)
     open import Once.CCC.Codegen.ProgramImageFacts o using (image-frame-free)

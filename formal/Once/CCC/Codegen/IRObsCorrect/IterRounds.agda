@@ -25,41 +25,43 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.IterRounds (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.Bool using (false)
+open import Data.Nat using (ℕ; suc; _≤_; _+_; zero)
+open import Data.Product using (_,_; proj₁; proj₂)
+open import Data.Unit using (tt)
+open import Function using (case_of_)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Once.IR using (IR; Iter)
+open import Relation.Binary.PropositionalEquality using (refl; _≡_; trans; sym; cong; subst; cong₂)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.Machine.Locations using (ValueLocation)
 open import Once.CCC.Machine.SMCore
-  using (AllocState; AbstractTrace; LocState; StoredValue; module LocState; module AllocState)
-open AllocState using (next-slot; current-frame; saved-frames; next-heap-ref)
-open LocState using (halted; regs)
+  using (AbstractTrace)
 open import Data.Sum using (inj₁; inj₂)
-open import Data.Nat using (s≤s; z≤n)
-open import Data.Nat.Properties using (+-monoˡ-≤; +-monoʳ-≤; ≤-pred)
-open import Data.Nat.Solver using (module +-*-Solver)
-open +-*-Solver using (solve; _:+_; con; _:=_)
+open import Data.Nat.Properties using (≤-pred; m≤m+n; ≤-trans)
 open import Once.IRTy using (IRTy)
 import Once.IRTy as IRT
 open import Once.Res using (Res; stopped; returns; is-stopped)
-open import Once.Denotation.Approx using (Ap; done; cut; NotCut; budgetLeft; thenIter; run-approx-iter; done-≤; done-value)
-import Once.IR.Semantics.Trace as TM
+open import Once.Denotation.Approx using (Ap; done; cut; NotCut; budgetLeft; thenIter; run-approx-iter; done-value)
 import Data.List.Properties as DLP
 
-open import Once.CCC.Codegen.IRObsCorrect.IterShape o tbl
-open import Once.CCC.Codegen.IRObsCorrect.IterRun o tbl
 open import Once.CCC.Codegen.IRObsCorrect.IterInv o tbl
 open import Once.CCC.Codegen.IRObsCorrect.IterExit o tbl
-open import Once.CCC.Codegen.IRObsCorrect.IterCont o tbl
 open import Once.CCC.Codegen.IRObsCorrect.IterBody o tbl
 open import Once.CCC.Codegen.IRObsCorrect.IterRoundsCont o tbl
 
 module IterRoundsC {FS : FrameSemantics} where
 
   open Core {FS}
-  open Mach {FS}
-  open IterShapeC {FS}
-  open IterRunC {FS}
+  open ClosureWellFormedBase′ using (eventsAt; ⟪_⟫_; runAt; stopsAt)
+  open ClosureWellFormedDef′ using (ResultPlace; at-loc)
+  open FlatEventTrace′ using (chain-ctrls; chain-events-++; ctrls-≤ˡ)
+  open CataNextSlot′ using (AllSlotStable)
+  open FlatMachine′ using (FlatState)
+  open FlatMachine′.FlatState using (floc; falloc)
+  open FlatStepsAPI′ using (FlatSteps-++)
   open IterInvC {FS}
   open IterExitC {FS}
-  open IterContC {FS}
   open IterBodyC {FS}
   open IterRoundsContC {FS} using (module ContRun)
 
@@ -73,11 +75,10 @@ module IterRoundsC {FS : FrameSemantics} where
     (Z : Loop.Anchor body n l base prog)
     where
 
-    open IterShape body n l
-    open IterRun body n l prog base span
     open Loop body n l base
     open Anchor Z
     module VR = ValueRealized
+      using (cont-alloc; log; out-mode; place; progress; run; steps; stops)
 
     -- One round from an entry, given the rounds from every later entry at a
     -- smaller budget.

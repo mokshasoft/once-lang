@@ -35,11 +35,10 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Relation.Nullary using (¬_)
 open import Once.Spec.Grade using (Purity; pure; act; eff; Finite; mk-kind; fin)
 import Once.Spec.Grade as G
-open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float)
+open import Once.Spec.Type using (Unit; Void; _*_; _+_; _⇒[_]_; Int; Float)
 open import Once.Spec.Type using (μ; ν)
 open import Once.Spec.Sub using (_<:ᶜ_; subᶜ-void; subᶜ-unit; subᶜ-int; subᶜ-float; subᶜ-arr; subᶜ-μ; subᶜ-ν)
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
-open import Data.Product using (proj₁)
 open import Once.Spec.Surface.Syntax using (Expr)
 open import Once.TypeCheck.Scope using (NamedCtx)
 import Once.TypeCheck.Elaborate as TE

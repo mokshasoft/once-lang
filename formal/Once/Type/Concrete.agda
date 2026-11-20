@@ -8,9 +8,8 @@
 
 module Once.Type.Concrete where
 
-open import Once.Spec.Type using (Base; WFFun; ∅ₖ; b-Unit; b-Void; b-Int; b-Float; b-*; b-+; wf-K; wf-Id; wf-⊕; wf-⊗; Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; K; Id; _⊕_; _⊗_)
+open import Once.Spec.Type using (Base; ∅ₖ; Type; _⇒[_]_)
 
-open import Once.Spec.Type using (Fun; μ; ν)
 
 -- A concrete type: a base type (the Spec's `Base ∅ₖ`), or an arrow between two.
 data IsConcrete : Type → Set where

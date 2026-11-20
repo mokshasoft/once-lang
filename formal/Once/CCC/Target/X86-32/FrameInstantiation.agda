@@ -23,12 +23,12 @@
 module Once.CCC.Target.X86-32.FrameInstantiation where
 
 open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; _≥_; _+_; _*_; s≤s; z≤n; _∸_)
-open import Data.Nat.Properties using (<⇒≢; <-trans; <-≤-trans; *-monoˡ-<; +-monoʳ-<; _≟_; ≤-irrelevant; <-irrefl; <-cmp; m≤n+m)
+open import Data.Nat.Properties using (<⇒≢; <-trans; <-≤-trans; *-monoˡ-<; +-monoʳ-<; _≟_; <-irrefl; <-cmp; m≤n+m)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Empty using (⊥)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂)
-open import Relation.Nullary using (Dec; yes; no)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong)
+open import Relation.Nullary using (yes; no)
 open import Relation.Binary.Definitions using (DecidableEquality)
 open import Relation.Binary.Definitions using (tri<; tri≈; tri>)
 
@@ -39,9 +39,13 @@ open import Once.Spec.Float.Dyadic using (binary32)
 open import Once.Memory.MemoryLayoutSemantics using (Addr)
 
 -- Import x86-32 Layout for StackPointer and slot operations
-open import Once.CCC.Target.X86-32.Layout using (StackPointer; slot-addr; offset-distinct; slot-addr-≥-base; InStack; in-stack; _≟SP_; stack-addr-inj)
+open import Once.CCC.Target.X86-32.Layout using (slot-addr-≥-base; module StackSlots)
+open StackSlots using (StackPointer; _≟SP_; slot-addr; offset-distinct; stack-addr-inj)
+open StackSlots.StackAddr using (in-stack)
 open import Once.CCC.Target.X86-32.StackGrowth using (word-size)
-open import Once.CCC.Target.X86-32.Layout using (stack-addr; stack-sub-preserves') renaming (addr to sp-addr)
+open import Once.CCC.Target.X86-32.Layout using (stack-sub-preserves')
+open StackSlots using (stack-addr)
+open StackSlots.StackAddr using () renaming (addr to sp-addr)
 
 ------------------------------------------------------------------------
 -- x86-32-32 Frame Type (plan 0.134 S1)

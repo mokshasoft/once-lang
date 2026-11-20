@@ -14,7 +14,6 @@
 
 module Once.Adequacy.SpecCore.Index where
 
-open import Data.Nat using (ℕ; suc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
 
 open import Once.Spec.Grade

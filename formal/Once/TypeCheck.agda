@@ -4,30 +4,18 @@
 ------------------------------------------------------------------------
 -- Once.TypeCheck
 --
--- Main entry point for the verified type checker.
--- This module re-exports the type checking API for MAlonzo extraction.
+-- The verified type checker's entry point: `typeCheck`, inference with
+-- elaboration in the empty context.
 --
 -- Part of OCP-0003: Verified Type Checker
 ------------------------------------------------------------------------
 
 module Once.TypeCheck where
 
-------------------------------------------------------------------------
--- Re-exports
-------------------------------------------------------------------------
-
--- Types
-
 -- Raw syntax (parser output)
 open import Once.Spec.Surface.Syntax using (RVar; RApp; RLam; RUnit; RInt; RBinOp)
 open import Once.Surface.OpNames
-open import Once.Spec.Surface.Operator using (BinOp)
 open import Once.Spec.Surface.Syntax using (Expr)
-
--- Typing contexts
-import Once.TypeCheck.Context
-
--- Quantities (from Once.Type)
 
 -- Combined inference + elaboration (intrinsically typed)
 -- Soundness is trivial by construction: if inferElab returns success,
@@ -37,10 +25,7 @@ open import Once.TypeCheck.Elaborate as Elaborate
   using (inferElab)
 open import Once.TypeCheck.Classify using (emptyCtx)
 
--- Thinning operations (weaken, exchange)
-
 -- Surface syntax (for empty context S∅)
-open import Once.Context using ()
 open import Once.Spec.Context using () renaming (∅ to S∅)
 
 -- Proof-bundled public API.

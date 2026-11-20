@@ -18,21 +18,20 @@
 module Once.Adequacy.OptimizedTable where
 
 open import Data.Bool using (true; false)
-open import Data.List using (List; []; _∷_)
+open import Data.List using ([]; _∷_)
 open import Data.Product using (_,_; proj₁; proj₂)
-open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.String using (String)
+open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (tt)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst)
 import Relation.Binary.PropositionalEquality
 
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.Spec.Grade using (mk-kind; Zero; One; Many)
-open import Once.Spec.Type using (Ty; var; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; μ; ν)
+open import Once.Spec.Type using (var; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; μ; ν)
 open import Once.IR
 import Once.IRTy as II
 open import Once.IR.Semantics.Trace using (Interp; pureHalf)
-open import Once.Denotation.Program using (IRFun; irFun; IRProgram; irProgram; runIR)
+open import Once.Denotation.Program using (irProgram; runIR)
 open import Once.Denotation.TraceMonadInfLaws using (RelS-bind; relS-ret)
 open import Once.Denotation.TraceTr using (trT∞)
 open import Once.Denotation.EvalRel using (RelEnv)

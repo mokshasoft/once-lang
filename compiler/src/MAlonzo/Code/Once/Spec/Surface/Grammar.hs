@@ -26,6 +26,7 @@ import qualified MAlonzo.Code.Once.Spec.Grade
 import qualified MAlonzo.Code.Once.Spec.Surface.Lexing
 import qualified MAlonzo.Code.Once.Spec.Surface.Operator
 import qualified MAlonzo.Code.Once.Spec.Surface.Syntax
+import qualified MAlonzo.Code.Once.Spec.Surface.Type
 import qualified MAlonzo.Code.Once.Spec.Type
 
 -- Once.Spec.Surface.Grammar.Starts
@@ -322,7 +323,7 @@ data T_TypeVar_462 = C_tvar_468
 -- Once.Spec.Surface.Grammar.written
 d_written_472 ::
   ([MAlonzo.Code.Once.Spec.Surface.Lexing.T_Token_8] ->
-   MAlonzo.Code.Once.Spec.Surface.Syntax.T_PolyType_10 ->
+   MAlonzo.Code.Once.Spec.Surface.Type.T_PolyType_10 ->
    [MAlonzo.Code.Once.Spec.Surface.Lexing.T_Token_8] -> ()) ->
   T_TypeAlg_36
 d_written_472 ~v0 = du_written_472
@@ -330,26 +331,25 @@ du_written_472 :: T_TypeAlg_36
 du_written_472
   = coe
       C_constructor_106
-      (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_PUnit_20)
-      (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_PVoid_22)
-      (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_PInt_24)
-      (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_PFloat_26)
-      (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C__P'42'__28)
-      (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C__P'43'__30)
-      (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_PEff_36)
-      (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_PAct_34)
+      (coe MAlonzo.Code.Once.Spec.Surface.Type.C_PUnit_20)
+      (coe MAlonzo.Code.Once.Spec.Surface.Type.C_PVoid_22)
+      (coe MAlonzo.Code.Once.Spec.Surface.Type.C_PInt_24)
+      (coe MAlonzo.Code.Once.Spec.Surface.Type.C_PFloat_26)
+      (coe MAlonzo.Code.Once.Spec.Surface.Type.C__P'42'__28)
+      (coe MAlonzo.Code.Once.Spec.Surface.Type.C__P'43'__30)
+      (coe MAlonzo.Code.Once.Spec.Surface.Type.C_PEff_36)
+      (coe MAlonzo.Code.Once.Spec.Surface.Type.C_PAct_34)
       (\ v0 v1 ->
          coe
-           MAlonzo.Code.Once.Spec.Surface.Syntax.C__P'8658''91'_'93'__32
+           MAlonzo.Code.Once.Spec.Surface.Type.C__P'8658''91'_'93'__32
            (coe v1) (coe v0))
-      (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_Pμ_38)
+      (coe MAlonzo.Code.Once.Spec.Surface.Type.C_Pμ_38)
       (\ v0 v1 ->
-         coe
-           MAlonzo.Code.Once.Spec.Surface.Syntax.C_Pν_40 (coe v1) (coe v0))
-      (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_PK_12)
-      (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_PId_14)
-      (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C__P'8853'__16)
-      (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C__P'8855'__18)
+         coe MAlonzo.Code.Once.Spec.Surface.Type.C_Pν_40 (coe v1) (coe v0))
+      (coe MAlonzo.Code.Once.Spec.Surface.Type.C_PK_12)
+      (coe MAlonzo.Code.Once.Spec.Surface.Type.C_PId_14)
+      (coe MAlonzo.Code.Once.Spec.Surface.Type.C__P'8853'__16)
+      (coe MAlonzo.Code.Once.Spec.Surface.Type.C__P'8855'__18)
 -- Once.Spec.Surface.Grammar.ground
 d_ground_486 :: T_TypeAlg_36
 d_ground_486
@@ -504,14 +504,14 @@ data T_OpToken_1162 = C_ot'45'plain_1168 | C_ot'45'dotted_1172
 d_ParsesExpr_1174 a0 a1 a2 = ()
 data T_ParsesExpr_1174
   = C_expr_1210 [MAlonzo.Code.Once.Spec.Surface.Lexing.T_Token_8]
-                MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 T_ParsesCmp_1178
+                MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_8 T_ParsesCmp_1178
                 T_ParsesCompTail_1176
 -- Once.Spec.Surface.Grammar.ParsesCompTail
 d_ParsesCompTail_1176 a0 a1 a2 a3 = ()
 data T_ParsesCompTail_1176
   = C_comp'45'done_1216 |
     C_comp'45'dot_1230 [MAlonzo.Code.Once.Spec.Surface.Lexing.T_Token_8]
-                       MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 T_ParsesCmp_1178
+                       MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_8 T_ParsesCmp_1178
                        T_ParsesCompTail_1176
 -- Once.Spec.Surface.Grammar.ParsesCmp
 d_ParsesCmp_1178 a0 a1 a2 = ()
@@ -524,7 +524,7 @@ data T_ParsesCmp_1178
 d_ParsesAdd_1180 a0 a1 a2 = ()
 data T_ParsesAdd_1180
   = C_add_1270 [MAlonzo.Code.Once.Spec.Surface.Lexing.T_Token_8]
-               MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 T_ParsesMul_1184
+               MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_8 T_ParsesMul_1184
                T_ParsesAddTail_1182
 -- Once.Spec.Surface.Grammar.ParsesAddTail
 d_ParsesAddTail_1182 a0 a1 a2 a3 = ()
@@ -532,13 +532,13 @@ data T_ParsesAddTail_1182
   = C_add'45'done_1280 |
     C_add'45'op_1298 MAlonzo.Code.Once.Spec.Surface.Operator.T_BinOp_36
                      [MAlonzo.Code.Once.Spec.Surface.Lexing.T_Token_8]
-                     MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 T_OpToken_1162
+                     MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_8 T_OpToken_1162
                      T_ParsesMul_1184 T_ParsesAddTail_1182
 -- Once.Spec.Surface.Grammar.ParsesMul
 d_ParsesMul_1184 a0 a1 a2 = ()
 data T_ParsesMul_1184
   = C_mul_1310 [MAlonzo.Code.Once.Spec.Surface.Lexing.T_Token_8]
-               MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 T_ParsesUnary_1188
+               MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_8 T_ParsesUnary_1188
                T_ParsesMulTail_1186
 -- Once.Spec.Surface.Grammar.ParsesMulTail
 d_ParsesMulTail_1186 a0 a1 a2 a3 = ()
@@ -546,28 +546,28 @@ data T_ParsesMulTail_1186
   = C_mul'45'done_1320 |
     C_mul'45'op_1338 MAlonzo.Code.Once.Spec.Surface.Operator.T_BinOp_36
                      [MAlonzo.Code.Once.Spec.Surface.Lexing.T_Token_8]
-                     MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 T_OpToken_1162
+                     MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_8 T_OpToken_1162
                      T_ParsesUnary_1188 T_ParsesMulTail_1186
 -- Once.Spec.Surface.Grammar.ParsesUnary
 d_ParsesUnary_1188 a0 a1 a2 = ()
 data T_ParsesUnary_1188
   = C_neg_1346 T_ParsesUnary_1188 |
     C_neg'45'lit_1358 [MAlonzo.Code.Once.Spec.Surface.Lexing.T_Token_8]
-                      MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 T_NegNumeral_1080
+                      MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_8 T_NegNumeral_1080
                       T_ParsesAppTail_1192 |
     C_unary_1366 T_ParsesApp_1190
 -- Once.Spec.Surface.Grammar.ParsesApp
 d_ParsesApp_1190 a0 a1 a2 = ()
 data T_ParsesApp_1190
   = C_app_1378 [MAlonzo.Code.Once.Spec.Surface.Lexing.T_Token_8]
-               MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44
+               MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_8
                T_ParsesAtomExpr_1194 T_ParsesAppTail_1192
 -- Once.Spec.Surface.Grammar.ParsesAppTail
 d_ParsesAppTail_1192 a0 a1 a2 a3 = ()
 data T_ParsesAppTail_1192
   = C_app'45'done_1384 |
     C_app'45'arg_1398 [MAlonzo.Code.Once.Spec.Surface.Lexing.T_Token_8]
-                      MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 T_ArgStart_1030
+                      MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_8 T_ArgStart_1030
                       T_ParsesAtomExpr_1194 T_ParsesAppTail_1192
 -- Once.Spec.Surface.Grammar.ParsesAtomExpr
 d_ParsesAtomExpr_1194 a0 a1 a2 = ()
@@ -575,7 +575,7 @@ data T_ParsesAtomExpr_1194
   = C_atom'45'unit_1402 | C_atom'45'int_1408 | C_atom'45'float_1418 |
     C_atom'45'var_1424 | C_atom'45'qual_1432 |
     C_atom'45'paren_1444 [MAlonzo.Code.Once.Spec.Surface.Lexing.T_Token_8]
-                         MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 T_ParsesExpr_1174
+                         MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_8 T_ParsesExpr_1174
                          T_ParsesParenCont_1198 |
     C_atom'45'op_1452 T_ParsesOpChars_1122 |
     C_atom'45'lambda_1460 T_ParsesLamParams_1196 |
@@ -597,14 +597,14 @@ data T_ParsesParenCont_1198
 -- Once.Spec.Surface.Grammar.wrapLams
 d_wrapLams_1540 ::
   [MAlonzo.Code.Agda.Builtin.String.T_String_6] ->
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 ->
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_8 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_8
 d_wrapLams_1540 v0 v1
   = case coe v0 of
       [] -> coe v1
       (:) v2 v3
         -> coe
-             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RLam_56 (coe v2)
+             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RLam_20 (coe v2)
              (coe d_wrapLams_1540 (coe v3) (coe v1))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Spec.Surface.Grammar.ParsesParams
@@ -618,7 +618,7 @@ d_ParsesFunDef_1580 a0 a1 a2 a3 = ()
 data T_ParsesFunDef_1580
   = C_fundef_1594 [MAlonzo.Code.Agda.Builtin.String.T_String_6]
                   [MAlonzo.Code.Once.Spec.Surface.Lexing.T_Token_8]
-                  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 T_ParsesParams_1550
+                  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_8 T_ParsesParams_1550
                   T_ParsesExpr_1174
 -- Once.Spec.Surface.Grammar.ParsesModulePath
 d_ParsesModulePath_1596 a0 a1 a2 = ()
@@ -672,5 +672,5 @@ data T_Trailing_1796
 -- Once.Spec.Surface.Grammar.Parses
 d_Parses_1804 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Module_110 -> ()
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Module_64 -> ()
 d_Parses_1804 = erased

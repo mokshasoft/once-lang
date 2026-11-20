@@ -27,6 +27,13 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.Resusp.SumShape (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.List using (_∷_; []; length)
+open import Data.List.Properties using (length-++)
+open import Data.List.Relation.Unary.All.Properties using (++⁺)
+open import Data.Maybe using (just)
+open import Data.Product using (proj₁; proj₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans; subst; sym)
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl
 open import Once.CCC.Codegen.IRToTrace o using (resuspend-layer)
 open import Once.CCC.Codegen.LabelScope o using (resuspend-labels-in)
@@ -35,7 +42,7 @@ open import Once.CCC.Codegen.LabelResolve o using (module Resolve)
 open import Once.CCC.Codegen.LabelSeg using (LabelsIn; LabelIn; li-none; li-lab)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open import Once.CCC.Machine.SMCore
-  using (AbstractTrace; AbstractInstr; instr-ctrl; c-branch-tag-zero; c-jmp; c-label; store-at-slot; restore-input;
+  using (AbstractTrace; instr-ctrl; c-branch-tag-zero; c-jmp; c-label; store-at-slot; restore-input;
          instr-alloc-heap; mov-to-input; instr-load-tag-lit; store-at; load-from-slot)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Label using (ℓ; LabelId; module LabelId)
@@ -44,8 +51,8 @@ open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; wf-Sum; ⟦_⟧TI; �
 open import Once.CCC.Codegen.Size using (size)
 open import Once.CCC.Codegen.FlatLayout using (get; get-All; put; put-All; fill; fill-All)
 open import Relation.Nullary using (¬_)
-open import Data.Nat using (_⊔_; z≤n; s≤s)
-open import Data.Nat.Properties using (1+n≰n)
+open import Data.Nat using (_⊔_; ℕ; suc; _∸_; _+_; _≤_; _<_)
+open import Data.Nat.Properties using (1+n≰n; ≤-trans; n≤1+n; ≤-refl)
 open import Data.List.Relation.Unary.All using ([]; _∷_)
 open import Data.Nat.Solver using (module +-*-Solver)
 open +-*-Solver using (solve; _:+_; con; _:=_)
@@ -53,6 +60,8 @@ open +-*-Solver using (solve; _:+_; con; _:=_)
 module ResuspSumShapeC {FS : FrameSemantics} where
 
   open Core {FS}
+  open FlatMachine′ using (label-of?; find-label; fetch)
+  open FlatStepsAPI′ using (_∷_; [])
   open ResuspBaseC {FS}
   open FlatStepsAPI {FS} using (fl-go-skip)
   open Resolve {FS} using (NoLabel; found-in-window; noLabel-outside; fl-hit)

@@ -28,27 +28,39 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.CataBr.Build (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
-open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module ResuspBaseC)
+open Interface using (module Core)
+open import Data.Bool using (false)
+open import Data.Empty using (⊥)
+open import Data.List using (_∷_; _++_; []; length)
+open import Data.List.Relation.Unary.All.Properties using (++⁺)
+open import Data.Maybe using (just)
+open import Data.Product using (proj₁; _,_; proj₂; _×_)
+open import Data.Unit using (tt)
+open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
+open import Once.CCC.Machine.ValueRel using (module ClosureWellFormedBase; valid-pair-wf; valid-inl-wf; valid-inl-reg-wf; valid-inl-flat-wf; valid-inr-wf; valid-inr-reg-wf; valid-inr-flat-wf)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Once.IR using (Heap)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; _≢_; trans; sym; subst)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Stack o tbl using (module CataStackC)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Walk o tbl using (module CataWalkC)
 open import Once.CCC.Codegen.IRToTrace o using (wrap-sum)
 import Once.CCC.Machine.SMCore as SMCore
 open import Once.CCC.Machine.SMCore
-  using (LocState; module LocState; AbstractTrace; AbstractInstr; AllocState; module AllocState; module MemOps; module AbstractExec
-        ; StoredValue; readReg; writeReg; Output; Input1; SV-Ptr; SV-Tag; sv-as-loc; sucLoc; offsetLoc
+  using (LocState; module LocState; AbstractTrace; AllocState; module AllocState; module MemOps; module AbstractExec
+        ; StoredValue; readReg; writeReg; Output; Input1; SV-Ptr; SV-Tag; sucLoc; offsetLoc
         ; store-at-slot; load-from-slot; mov-to-input; instr-alloc-heap; instr-load-tag-lit; store-at)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
-open import Once.Memory.HeapAddress using (HeapLocation; heap-loc)
+open import Once.Memory.HeapAddress using (heap-loc)
 open import Once.IRTy using (IRTy; IRFunctor; ⟦_⟧TI; ⌈_⌉F) renaming (_*_ to _*ᵀ_; _+_ to _+ᵀ_)
 import Once.IRTy as I
 open import Once.CCC.Codegen.Size using (size)
 open import Once.CCC.Codegen.FlatLayout using (kind; lkind; lsz; kind-skind; size-ssize; put; fill; put-All; fill-All)
 open import Data.List.Properties using (++-identityʳ)
-open import Data.Nat using (_⊔_; z≤n; s≤s)
+open import Data.Nat using (_⊔_; z≤n; s≤s; suc; _+_; ℕ; _≤_; _<_; _∸_)
 open import Data.Sum using (inj₁; inj₂)
-open import Data.List.Relation.Unary.All using ([]; _∷_)
-open import Data.Nat.Properties using (m≤n⊔m; m≤m⊔n; +-monoʳ-<; m+[n∸m]≡n)
+open import Data.List.Relation.Unary.All using ([]; _∷_; All)
+open import Data.Nat.Properties using (m≤n⊔m; m≤m⊔n; +-monoʳ-<; m+[n∸m]≡n; ≤-trans; m≤m+n; <-irrefl; <-≤-trans; ≤-reflexive; +-identityʳ; n≤1+n; n<1+n)
 open import Once.CCC.Codegen.StraightRun using (module StraightRunAPI)
 import Once.CCC.Machine.FlatPut as FlatPut
 import Once.CCC.Machine.FlatAlloc as FlatAlloc
@@ -88,12 +100,20 @@ arm-ty arm-r A B = B
 module CataBuildC {FS : FrameSemantics} where
 
   open Core {FS}
+  open ClosureWellFormedBase′ using (Live; InBlk; cell-ptr; cell-inline; cell-flat)
+  open ClosureWellFormedDef′ using (CellAt; ValidAtWF; validityWF-mem-only)
+  open FlatEventTrace′ using (event-of; chain-events)
+  open AbstractExec′ using (exec-abstract)
+  open FlatMachine′ using (FlatState; StraightStep)
+  open FlatMachine′.FlatState using (fpc; floc; falloc)
+  open FlatStepsAPI′ using (_∷_; []; FlatSteps)
+  open FrontierInvariant′ using (BeforeFrontier; module BeforeFrontier)
+  open MemOps′ using (readLoc)
   open Mach {FS}
-  open ResuspBaseC {FS}
   open CataStackC {FS} using (WordAt)
-  open CataWalkC {FS} using (Walk; SlotsKept)
+  open CataWalkC {FS} using (Walk)
   open LocState using (regs; halted)
-  open AllocState using (next-slot; next-heap-ref; current-frame)
+  open AllocState using (current-frame)
   open MemOps {FS} using (writeLoc; writeLoc-preserves-other; writeLoc-read-same-stack; writeLoc-regs; writeLoc-halted)
   open AbstractExec {FS} using (exec-trace; exec-trace-cons; exec-load-from-slot-with-value)
   open Once.CCC.Machine.SMPrimitives.TraceComposition {FS} using (exec-trace-append)
@@ -101,6 +121,7 @@ module CataBuildC {FS : FrameSemantics} where
   open FlatEventTrace {FS} using (chain-events-subst)
   open ClosureWellFormedBase {FS} using (Pad; cell-ptr; cell-inline; cell-flat)
   module SR = StraightRunAPI {FS}
+    using (after; straight-silent; straight-steps)
 
   arm-val : ∀ (r : Arm) {A B : IRTy} → ⟦ arm-ty r A B ⟧ → ⟦ A +ᵀ B ⟧
   arm-val arm-l x = inj₁ x
@@ -136,7 +157,7 @@ module CataBuildC {FS : FrameSemantics} where
                    (srcC : FlatPut.Src {FS} {prog} (falloc σ) (floc σ) C vC wC)
                    (rsC : readLoc (floc σ) (AtStack (current-frame (falloc σ)) k₂) ≡ just wC)
     where
-    open FlatPut {FS} {prog} using (Src; src-tr; src-flat; put-run; PutOut; dst)
+    open FlatPut {FS} {prog} using (src-tr; src-flat; put-run; PutOut; dst)
 
     s  = floc σ
     a  = falloc σ
@@ -191,6 +212,7 @@ module CataBuildC {FS : FrameSemantics} where
            (FlatAlloc.alloc-live {FS} N a) (≤-trans (m≤m+n (size B) (size C)) S≤N)
            (FlatAlloc.alloc-in {FS} N a) (src-tr keep₃ srcB)
     module PB = PutOut PB
+      using (alloc-eq; cell-at; live; other)
     sB = proj₁ (exec-trace (put B k₁ kb 0) t₃ A₁)
 
     keepB : ∀ l → Live a l → readLoc sB l ≡ readLoc t₃ l
@@ -203,6 +225,7 @@ module CataBuildC {FS : FrameSemantics} where
            (FlatAlloc.alloc-live {FS} N a) S≤N (FlatAlloc.alloc-in {FS} N a)
            (src-tr (λ l lv → trans (keepB l lv) (keep₃ l lv)) srcC)
     module PC = PutOut PC
+      using (alloc-eq; cell-at; live; other)
     sC = proj₁ (exec-trace (put C k₂ kb (size B)) sB A₁)
 
     sfin = record sC { regs = writeReg (regs sC) Output blk }
@@ -314,7 +337,7 @@ module CataBuildC {FS : FrameSemantics} where
                   {x : ⟦ arm-ty r A B ⟧}
                   (src : FlatPut.Src {FS} {prog} (falloc σ) (floc σ) (arm-ty r A B) x (readReg (regs (floc σ)) Output))
     where
-    open FlatPut {FS} {prog} using (Src; src-tr; src-flat; put-run; PutOut; fill-exec; FillOut; dst)
+    open FlatPut {FS} {prog} using (src-tr; src-flat; put-run; PutOut; fill-exec; FillOut; dst)
 
     P = arm-ty r A B
     S = A +ᵀ B
@@ -395,6 +418,7 @@ module CataBuildC {FS : FrameSemantics} where
                           (FlatAlloc.alloc-in {FS} N alloc (suc (size P) + j) (pad< j j<)))
     sf = proj₁ (exec-trace (fill (suc (size P)) c) s₇ A₁)
     module F = FillOut F
+      using (alloc-eq; live; other; written)
 
     slot-nf : readLoc sf (AtStack cf k) ≡ just w
     slot-nf = trans (F.other (AtStack cf k) (λ j _ ())) slot-n₇
@@ -423,6 +447,7 @@ module CataBuildC {FS : FrameSemantics} where
            (src-tr keepf src)
     sp = proj₁ (exec-trace (put P k (suc k) 1) sf A₁)
     module Pt = PutOut Pt
+      using (alloc-eq; cell; live; other)
 
     sfin = record sp { regs = writeReg (regs sp) Output blk }
 

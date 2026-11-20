@@ -43,5 +43,7 @@ if [[ $ref == HEAD ]] && ! git diff --quiet HEAD -- . ; then
   echo "backstop: WARNING: formal/ has uncommitted changes; checking the committed HEAD"
 fi
 # The profiler's work directory (staged tree, interfaces, results) is shared with
-# `make profile`, so a module either one passed is not checked again.
-exec python3 scripts/agda-profile.py --ref "$ref" --work "${BACKSTOP_WORK:-$HOME/.cache/once-profile/master}"
+# `make profile`, so a module either one passed is not checked again. The backstop
+# is a check, not a measurement: it runs beside another agda (each under
+# agda-safe's cap) rather than waiting for it.
+exec python3 scripts/agda-profile.py --no-wait --ref "$ref" --work "${BACKSTOP_WORK:-$HOME/.cache/once-profile/master}"

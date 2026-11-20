@@ -21,7 +21,6 @@
 
 open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun)
 open import Once.Spec.Context using (Ctx)
-open import Once.Spec.Type using (WFFun; ∅ₖ)
 open import Once.Spec.Numerics using (TargetNum)
 
 open import Once.Type.Grade using (_≤qᵇ_)
@@ -32,8 +31,8 @@ open import Data.Bool using (true)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.Spec.Grade using (mk-kind; Many; Quantity)
-open import Once.Spec.Type using (Void; Int; Float; _*_; _+_; _⇒[_]_)
-open import Once.Spec.Type using (μ; ⟦_⟧F)
+open import Once.Spec.Type using (Void; _*_; _+_; _⇒[_]_)
+open import Once.Spec.Type using (⟦_⟧F)
 open import Once.Spec.Sub using (_<:_; sub-arr; sub-void)
 open import Once.Spec.Grade using (_⊑π_)
 open import Once.Laws.Sub using (<:-trans)

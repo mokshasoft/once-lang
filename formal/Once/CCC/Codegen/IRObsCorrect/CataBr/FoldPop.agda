@@ -25,6 +25,15 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.CataBr.FoldPop (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.Bool using (false)
+open import Data.List using (List; []; _∷_)
+open import Data.Maybe using (just; Maybe)
+open import Data.Nat using (ℕ; suc; _+_)
+open import Data.Nat.Properties using (<-irrefl; +-comm; n<1+n; n≤1+n; ≤-refl)
+open import Data.Product using (_,_; proj₂; proj₁)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Relation.Binary.PropositionalEquality using (_≢_; _≡_; trans; refl; cong; sym; subst)
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module ResuspBaseC)
 open import Once.CCC.Codegen.IRObsCorrect.CataConst.Steps o tbl using (module CataStepsC)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Stack o tbl using (module CataStackC)
@@ -34,21 +43,27 @@ open import Once.CCC.Codegen.IRObsCorrect.CataBr.Visit o tbl using (module CataV
 open import Once.CCC.Codegen.IRObsCorrect.Get o tbl using (module GetC)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open import Once.CCC.Machine.SMCore
-  using (LocState; module LocState; AbstractTrace; AbstractInstr; AllocState; module AllocState; StoredValue; readReg; Output; Input1
-        ; SV-Ptr; sv-as-loc; store-at-slot; load-from-slot; mov-to-input; writeReg-same; offsetLoc
+  using (LocState; module LocState; AbstractTrace; AllocState; module AllocState; StoredValue; readReg; Output; Input1
+        ; SV-Ptr; store-at-slot; load-from-slot; mov-to-input; writeReg-same; offsetLoc
         ; instr-ctrl; c-branch-tag-zero; c-label; writeReg-preserves)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
-open import Once.CCC.Machine.SMPrimitives using (nhw-store-at-slot)
+open import Once.CCC.Machine.Locations using (AtStack; AtDynamic)
+open import Once.CCC.Machine.SMPrimitives using (nhw-store-at-slot; nhw-load-from-slot; nhw-mov-to-input)
 open import Once.CCC.Label using (ℓ)
 open import Once.Memory.HeapAddress using (HeapLocation; sucHL)
 open import Once.IRTy using (IRTy; IRFunctor; μ-type)
-open import Data.Unit using (⊤)
+open import Data.Unit using (⊤; tt)
 
 module CataFoldPopC {FS : FrameSemantics} where
 
   open Core {FS}
-  open Mach {FS}
+  open ClosureWellFormedBase′ using (BlocksKept)
+  open FlatMachine′ using (find-label; FlatState; tag-test; flat-read-tag; do-jump)
+  open FlatMachine′.FlatState using (fpc; floc; falloc)
+  open FlatStepsAPI′ using ([]; _∷_)
+  open InstrPrimitives′ using (exec-abstract-preserves-frame)
+  open MemOps′ using (readLoc)
+  open TracePrimitives′ using (InstrWF; exec-abstract-preserves-halted-WF)
   open ResuspBaseC {FS}
   open CataStepsC {FS}
   open CataStackC {FS}
@@ -58,7 +73,7 @@ module CataFoldPopC {FS : FrameSemantics} where
   open GetC {FS} using (setOut; out-mem; offset-zero; load-at-step)
   open import Once.CCC.Machine.FlatWords {FS} using (offset-1)
   open LocState using (regs; halted)
-  open AllocState using (next-slot; next-heap-ref; current-frame)
+  open AllocState using (current-frame)
 
   -- the slots the head keeps: all but eval's
   KH : ℕ → ℕ → Set

@@ -30,9 +30,8 @@
 module Once.Parser.Relation.Resolution where
 
 open import Data.List using (List; []; _∷_; _++_)
-open import Data.List.Relation.Unary.All using (All)
 open import Data.List.Membership.Propositional using (_∈_)
-open import Data.Product using (_×_; _,_; proj₁)
+open import Data.Product using (_×_)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_)
 open import Relation.Nullary using (¬_)
@@ -66,14 +65,14 @@ UnaliasedMap = List (String × List String)
 -- (the Spec's `FirstAt`): `(x , p) ∈ um` would also hold for a LATER
 -- duplicate, and then the resolver (which takes the first) would not implement
 -- the relation.
-open import Once.Spec.Surface.Resolution using (FirstAt; fa-here; fa-there; Absent)
+open import Once.Spec.Surface.Resolution using (FirstAt; Absent)
 
 ------------------------------------------------------------------------
 -- The `I` path abbreviation: a leading `I` abbreviates `Interpretations`.
 -- Two rules rather than a call to `expandPath`: the Spec's `Expands`.
 ------------------------------------------------------------------------
 
-open import Once.Spec.Surface.Resolution using (Expands; ex-nil; ex-I; ex-other)
+open import Once.Spec.Surface.Resolution using (Expands)
 
 ------------------------------------------------------------------------
 -- A bare reference. THE four-way decision, and the whole of D136.
@@ -221,7 +220,7 @@ data ResolvesDecl (um : UnaliasedMap) (am : AliasMap)
 -- A declaration that is not an import. `resolveDecls` keeps an import as it
 -- is and maps `canonDecl` over everything else, so the two cases are kept
 -- apart.
-open import Once.Spec.Surface.Program using (NotImport; ni-sig; ni-tsig; ni-def; ni-alias)
+open import Once.Spec.Surface.Program using (NotImport)
 
 data ResolvesDecls (mm : ModuleMap)
                    (um : UnaliasedMap) (am : AliasMap)

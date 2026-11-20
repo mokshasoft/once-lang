@@ -38,15 +38,26 @@ open import Once.Spec.Name using (CanonicalName)
 import Once.CCC.Machine.SMCore as SMCore
 
 import Data.List as DL
-open import Once.Denotation.Program using (IRFun; tableEnv)
+open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.CataConst (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.Bool using (false)
+open import Data.Empty using (⊥; ⊥-elim)
+open import Data.List using (List; _∷_)
+open import Data.List.Properties using (length-++)
+open import Data.Maybe using (just)
+open import Data.Nat using (ℕ; _≤_; _+_)
+open import Data.Nat.Properties using (≤-trans; n≤1+n; ≤-reflexive)
+open import Data.Product using (proj₁; proj₂)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Once.IR using (IR; Cata)
+open import Relation.Binary.PropositionalEquality using (_≡_; subst; sym; trans; cong)
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module ResuspBaseC)
-open import Once.CCC.Codegen.IRObsCorrect.CataConst.Layout o tbl using (module CataLayoutC; head-box; strat-box-fun; unboxed-of; boxed-of)
+open import Once.CCC.Codegen.IRObsCorrect.CataConst.Layout o tbl using (module CataLayoutC; strat-box-fun; unboxed-of; boxed-of)
 open import Once.CCC.Codegen.IRObsCorrect.CataConst.Steps o tbl using (module CataStepsC; Head; h-mov; h-box; head-strat; head-instr)
 open import Once.CCC.Codegen.IRObsCorrect.CataConst.Meaning o using (μ-layer-val)
-open import Once.CCC.Codegen.IRToTrace o using (box-fun)
 open import Once.CCC.Codegen.IRObsCorrect.CataConst.Setup o tbl using (module CataSetupC)
 open import Once.CCC.Codegen.IRObsCorrect.CataConst.Call o tbl using (module CataCallC)
 open import Once.CCC.Codegen.IRObsCorrect.CataConst.Run o tbl using (module CataRunC)
@@ -55,40 +66,39 @@ open import Once.CCC.Codegen.IRObsCorrect.Inj o tbl using (module InjC)
 import Once.CCC.Machine.FlatPut as FlatPut
 open import Once.CCC.Codegen.Size using (size)
 open import Once.CCC.Machine.MuRep using (box-fit)
-open import Once.CCC.Codegen.IRToTrace o using (cata-strategy; strat-const)
+open import Once.CCC.Codegen.IRToTrace o using (cata-strategy)
 open import Once.CCC.Machine.SMCore
-  using (LocState; module LocState; AbstractTrace; AllocState; module AllocState; StoredValue; readReg; Input1; SV-Ptr; instr-call-closure; instr-ctrl; c-jmp; c-label)
+  using (LocState; module LocState; AbstractTrace; AllocState; module AllocState; StoredValue; readReg; Input1; SV-Ptr)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.CCC.Label using (ℓ)
-open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; ⟦_⟧TI; ⌈_⌉F; μ-type)
+open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; ⟦_⟧TI; ⌈_⌉F; μ-type; FitsInRegI; fits-int; fits-float)
 import Once.IRTy as IRTy′
-import Once.Denotation.ValueDomain as ValueDomain
-open import Once.Memory.HeapAddress using (HeapLocation; sucHL; heap-loc; mkHeapRef; module HeapLocation; module HeapRef)
-open HeapLocation using (heap-ref)
-open HeapRef using (ref-id)
-open import Once.Res using (Res; returns; stopped; is-stopped)
-open import Once.IR.Semantics.Iterative using (T∞)
-open import Once.Denotation.Approx using (Ap; done; cut; NotCut; budgetLeft)
-open import Data.List.Properties using (++-identityʳ)
-import Once.CCC.FrameSemantics
-import Once.IR.Semantics.Trace as TM
+open import Once.Memory.HeapAddress using (HeapLocation; module HeapLocation)
 
 module CataConstC {FS : FrameSemantics} where
 
   open Core {FS}
-  open Mach {FS}
-  open ResuspBaseC {FS} using (loc-ref; at-cf; module SegA; live-from; SRun)
+  open ClosureWellFormedBase′ using (Live; IsNode; IsFlat; cell-inline; rep-prim; cell-flat; cell-ptr; prim-sv)
+  open ClosureWellFormedDef′ using (CellAt; in-reg; in-unit; in-loc; module PairValidWF; decomposePairWF; μ-layer; μ-box-cell)
+  open CataNextSlot′ using (AllSlotStable)
+  open FlatMachine′ using (FlatState)
+  open FlatMachine′.FlatState using (floc; falloc; fpc)
+  open FlatStepsAPI′ using (_∷_)
+  open MemOps′ using (readLoc)
+  open ResuspBaseC {FS} using (live-from; SRun)
   open CataLayoutC {FS} using (module Text)
   open CataSetupC {FS} using (module Setup; SetupOut)
   open CataCallC {FS} using (module Call; CallOut)
   open CataRunC {FS} using (module Run)
   open CataCallC {FS} using (callK; callA; callB)
   module GetC′ = GetC {FS}
+    using (offset-zero)
   module InjC′ = InjC {FS}
+    using (src-loc)
   open CataStepsC {FS} using (HeadOK; mov-head; box-head)
   open LocState using (regs; halted)
-  open AllocState using (next-slot; next-heap-ref; current-frame)
+  open AllocState using (next-slot; next-heap-ref)
 
   ------------------------------------------------------------------------
   -- THE ROWS BEFORE THE CALL, for one input (the flat pair at `pl`, its
@@ -117,8 +127,10 @@ module CataConstC {FS : FrameSemantics} where
               where
 
     module T = Text wf alg n l h
+      using (CK; L; emitted-eq; l1; module At)
     module TA = T.At prog base (subst (SpanAt prog base) (T.emitted-eq st) span)
                                (subst (LabelsAt prog base) (T.emitted-eq st) la)
+      using (span-callK; span-setup)
 
     σ : FlatState
     σ = entry-flat base s alloc cl rs
@@ -126,6 +138,7 @@ module CataConstC {FS : FrameSemantics} where
     so : SetupOut E (proj₁ x) n T.l1 prog σ (SV-Ptr (AtDynamic μhl))
     so = Setup.out E n T.l1 prog σ TA.span-setup nh pl rdi lpl cE (SV-Ptr (AtDynamic μhl)) rdμ
     module SO = SetupOut so
+      using (bk; cf; cl; code; env-sv; ev; hc; hr; inμ; keep; lhc; nh; pc; ret; runS; seg; src; u)
 
     hrU : next-heap-ref alloc ≤ next-heap-ref (falloc SO.u)
     hrU = ≤-trans (n≤1+n _) (≤-reflexive (sym SO.hr))
@@ -139,6 +152,7 @@ module CataConstC {FS : FrameSemantics} where
            (FlatPut.src-tr {FS} {prog} SO.keep srcL)
            (live-from alloc (falloc SO.u) hrU) SO.bk SO.cf
     module CO = CallOut co
+      using (bk; clo; code; hp; inp; lhp; nh; pairV; pc; ret; runK; seg; w)
 
     lenK : T.CK ≡ DL.length (callA (head-instr h) E T.L n) + (1 + 2)
     lenK = length-++ (callA (head-instr h) E T.L n) {SMCore.instr-save-closure-reg ∷ callB n}

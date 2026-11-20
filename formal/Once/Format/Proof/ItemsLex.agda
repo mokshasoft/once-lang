@@ -23,10 +23,10 @@ open import Data.Integer using (+_)
 open import Data.List using (List; []; _∷_; _++_; replicate; concatMap; length; take)
 open import Data.List.Properties using (++-assoc; length-++)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
-open import Data.Nat using (ℕ; zero; suc; _∸_)
+open import Data.Nat using (zero; suc)
 open import Data.Nat.Properties using (m+n∸n≡m)
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
-open import Data.String using (String; toList; fromList)
+open import Data.Product using (_,_; proj₁; proj₂)
+open import Data.String using (toList; fromList)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst)
 import Once.Format.Lex
 import Once.Parser.Lexer
@@ -34,22 +34,21 @@ open import Relation.Nullary using (¬_)
 open import Agda.Builtin.String.Properties using (primStringToListInjective)
 
 open import Once.Postulates using (toList∘fromList)
-open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; TString; TLParen; TRParen; TLBrace; TRBrace;
+open import Once.Spec.Surface.Lexing using (TWord; TInt; TFloat; TString; TLParen; TRParen; TLBrace; TRBrace;
   TColon; TEquals; TArrow; TCaret1; TCaret0; TCaretW; TLambda; TComma; TSemicolon; TAt; TPipe; TDot; TAmpersand;
   TBang; TNewline; TEOF; Next; next;
   isIdentContinue; IdentRest; id-end; id-stop; id-more; Digits; dg-end; dg-stop; dg-more; Fraction; fraction;
   LineRest; lr-nl; lr-char; digitsToNat)
 open import Once.Adequacy.SpecTokNames
-open import Once.Format.Spell using (spell; decimal; fixed)
+open import Once.Format.Spell using (decimal; fixed)
 open import Once.Format.Doc using (Lexeme; lt; lsp; lnl; lind; lcm; chars)
 open import Once.Format.Proof.Digits using (decimal-val; decimal-digits; decimal-head; fixed-val; fixed-length;
   fixed-digits; fixed-nonempty)
 open import Once.Format.Proof.Lexing using (Printable; p-word; p-int; p-float; p-sym; s-lparen; s-rparen; s-lbrace;
   s-rbrace; s-colon; s-equals; s-arrow; s-caret1; s-caret0; s-caretw; s-lambda; s-comma; s-semicolon; s-at; s-pipe;
   s-dot; s-plus; s-minus; s-star; s-slash; s-percent; s-ampersand; s-lt; s-le; s-gt; s-ge; s-eqeq; s-neq; s-bang;
-  s-plusd; s-minusd; s-stard; s-slashd; s-ltd; s-led; s-gtd; s-ged; s-eqeqd; s-neqd;
-  LineComment; lc; Follows; Stop; stop-end; stop; follows-tok; follows-sp; follows-nl; follows-end; tok-blank;
-  Valid; Adj; tok-tok; tok-sp; tok-nl; sp-tok; sp-sp; sp-cm; sp-nl; nl-nl; nl-ind; ind-tok; ind-cm; cm-nl;
+  s-plusd; s-minusd; s-stard; s-slashd; s-ltd; s-led; s-gtd; s-ged; s-eqeqd; s-neqd; lc; Follows; Stop; stop-end; stop; follows-tok; follows-sp; follows-nl; follows-end; tok-blank;
+  Valid; Adj; tok-tok; tok-sp; tok-nl; nl-nl; nl-ind; ind-tok; ind-cm; cm-nl;
   WS; ws-[]; ws-1; ws-∷)
 open import Once.Format.Proof.Items using (EItem; etok; ecomment; econt; ItemsChars)
 open import Once.Format.Proof.Items

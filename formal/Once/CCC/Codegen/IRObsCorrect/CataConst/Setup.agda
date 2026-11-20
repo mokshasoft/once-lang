@@ -28,6 +28,14 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.CataConst.Setup (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.Bool using (false)
+open import Data.Empty using (⊥)
+open import Data.List using (_∷_; [])
+open import Data.Maybe using (just)
+open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Relation.Binary.PropositionalEquality using (_≡_; subst; refl; trans; cong; cong₂; sym)
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module ResuspBaseC)
 open import Once.CCC.Codegen.IRToTrace o using (cata-call-setup)
 import Once.CCC.Machine.SMCore as SMCore
@@ -39,7 +47,7 @@ open import Once.CCC.Machine.SMCore
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.CCC.Label using (ℓ)
-open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; mkHeapRef; sucHL; module HeapLocation; module HeapRef)
+open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; sucHL; module HeapLocation; module HeapRef)
 open HeapLocation using (heap-ref)
 open HeapRef using (ref-id)
 open import Once.IRTy using (IRTy)
@@ -52,15 +60,24 @@ import Once.CCC.Machine.SMPrimitives
 open import Once.CCC.Codegen.IRObsCorrect.Get o tbl using (module GetC)
 open import Once.CCC.Codegen.IRObsCorrect.Pair.Build o tbl using (module PairBuildC)
 open import Data.List.Properties using (++-identityʳ)
-open import Data.List.Relation.Unary.All using ([]; _∷_)
-open import Data.Nat using (z≤n; s≤s)
-open import Data.Product using (Σ)
-open import Data.Nat.Properties using (m<m+n; +-monoʳ-<)
+open import Data.List.Relation.Unary.All using ([]; _∷_; All)
+open import Data.Nat using (z≤n; s≤s; ℕ; _+_; suc)
+open import Data.Product using (Σ; proj₁; _,_; proj₂)
+open import Data.Nat.Properties using (m<m+n; +-monoʳ-<; <-irrefl; ≤-refl; m≤m+n; n≤1+n)
 import Data.Nat as ℕ
 
 module CataSetupC {FS : FrameSemantics} where
 
   open Core {FS}
+  open ClosureWellFormedBase′ using (Live; BlocksKept; InBlk)
+  open ClosureWellFormedDef′ using (CellAt)
+  open FlatEventTrace′ using (event-of; chain-events; chain-events-++)
+  open AbstractExec′ using (exec-abstract)
+  open FlatMachine′ using (FlatState; fetch-++-left; StraightStep)
+  open FlatMachine′.FlatState using (falloc; floc; fpc; fret; fclosure; flink)
+  open FlatStepsAPI′ using (_∷_; []; FlatSteps; FlatSteps-++)
+  open FrontierInvariant′ using (BeforeFrontier; module BeforeFrontier)
+  open MemOps′ using (readLoc)
   open Mach {FS}
   open ResuspBaseC {FS} using (SegA; SRun; span-drop)
   open MemOps {FS} using (writeLoc; writeLoc-preserves-other; writeLoc-read-same-stack; writeLoc-regs; writeLoc-halted)
@@ -69,8 +86,9 @@ module CataSetupC {FS : FrameSemantics} where
   open FlatEventTrace {FS} using (chain-events-subst)
   open GetC {FS} using (GetOut; module GetOut; get-run; setOut; out-mem; get-len)
   open LocState using (regs; halted)
-  open AllocState using (next-slot; next-heap-ref; current-frame; block-size)
+  open AllocState using (next-heap-ref; current-frame; block-size)
   module SR = StraightRunAPI {FS}
+    using (At; after; straight-silent; straight-steps)
 
   private
     slot-of : ValueLocation FS → ℕ

@@ -19,21 +19,22 @@
 
 module Once.Format.Proof.Counts where
 
-open import Data.Bool using (Bool; true; false; not; _∧_; _∨_; if_then_else_; T)
+open import Data.Bool using (true; false; not; _∧_; _∨_; if_then_else_; T)
 open import Data.Char using (Char)
-open import Data.List using (List; []; _∷_; _++_; map; concatMap)
+open import Data.List using (List; []; _∷_; _++_; concatMap)
 open import Data.List.Properties using (++-assoc; ++-identityʳ)
-open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Nat using (ℕ; zero; suc; _+_; _<ᵇ_; _≡ᵇ_; _∸_)
+open import Data.Maybe using (just; nothing)
+open import Data.Nat using (ℕ; zero; suc; _+_; _<ᵇ_; _≡ᵇ_)
 open import Data.Nat.Properties using (+-assoc; +-identityʳ; +-comm; +-suc)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
-open import Data.String using (String; toList)
+open import Data.String using (toList)
 open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 
-open import Once.Spec.Grade using (Quantity; Zero; One; Many; pureᶠ; actᶠ)
+open import Once.Spec.Grade using (Zero; One; Many; pureᶠ; actᶠ)
 import Once.Spec.Surface.Generators
 open import Once.Spec.Surface.Syntax
+open import Once.Spec.Surface.Type
 open import Once.Spec.Name using (canonical)
 open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat)
 open import Once.Spec.Float.Value using (pos; neg)

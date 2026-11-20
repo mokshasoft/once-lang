@@ -286,8 +286,11 @@ decision-log entry updates the rule it changes here, in the same commit.
 - **When deleting a realm, find which premises it silently discharged.** (D133)
 - **The Haskell bridge mirrors no Agda shapes**; predicates it needs are total
   Agda; `make check-extraction-sync` reports drift. (D162)
-- **Re-exports**: only to share a parameterized module's instantiation; the
-  public surface only shrinks; the Spec re-exports nothing. (D306 ← D277)
+- **No `public`**: a shared instance is a named module application that copies
+  only the names used through it (`module N = X args using (…)`); importers
+  open it by name; the Spec re-exports nothing. (D418 ← D306, D277)
+- **The back end does not depend on the front end**; the types as written
+  (`Spec.Surface.Type`) are shared; `make layer-gate` ratchets it. (D419)
 - **Checking cost is engineered**: what Agda must unify or normalise is kept
   small — pinned implicits, `opaque` states, lemmas over variables instead of
   `with` over big contexts, `using` on module applications; the measured
@@ -299,6 +302,11 @@ decision-log entry updates the rule it changes here, in the same commit.
   alone with its imports built (the apex modules exempt from time), measured
   one module per process by `scripts/agda-profile.py`; the backstop checks
   one module per process, leaves first. Open: `CoherenceS`, `UseAgree`. (D373)
+- **Every Agda run fits 3.3 GB** (agda-safe's default cap; the heap 600M
+  below it, `-c`), so two sessions share the machine: a whole cone is checked
+  one module per process, leaves first (`scripts/check-cone.py`), then its
+  root on fresh interfaces — `make certified-per-module`, `run-ast-dumps.sh`,
+  the backstop. `make certified` is the one-process fast build (5.5 GB). (D417)
 
 - **Merge gate checks reachability from the apex**: the trust base must not
   grow without a decision. (D279)

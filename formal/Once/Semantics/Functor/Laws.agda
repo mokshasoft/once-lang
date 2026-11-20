@@ -21,7 +21,6 @@ open import Once.Res using (Res; stopped; returns; Res-rel; rel-stopped; rel-ret
 
 open import Once.IR.Semantics.Polynomial
 open import Once.Spec.Polynomial using (SFunctor; SId; SK; _S⊕_; _S⊗_; sfmap; ⟦_⟧SF)
-open import Once.Semantics.Functor
 open Once.IR.Semantics.Polynomial.νS using (unfoldS)
 
 -- | Relational interpretation of semantic functors

@@ -16,18 +16,18 @@
 
 module Once.Adequacy.SpecFront.SigTypes where
 
-open import Data.Product using (Σ-syntax; _×_; _,_)
+open import Data.Product using (Σ-syntax; _,_)
 open import Data.Unit using (tt)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong₂)
 
 import Once.Type.Core as LT
 
 import Once.Spec.Type as LT
 import Once.Spec.Grade as LG
-open import Once.Spec.Surface.Syntax using (PolyType; PTVar; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν)
+open import Once.Spec.Surface.Type using (PolyType; PTVar; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν)
 open import Once.Type.Poly using (Ground; extractGround)
 open import Once.Type.Concrete using (IsConcrete; con-base; con-fun)
-open import Once.Spec.Type using (Base; b-*; b-+; b-Float; b-Int; b-Unit; b-Void; ∅ₖ)
+open import Once.Spec.Type using (Base; b-*; b-+; ∅ₖ)
 open import Once.Type.Honest using (HonestFFI)
 import Once.Spec.Grade as SG
 open import Once.Spec.Signature using (BTy; unit; void; int; float; DeclType; constant; value; operation)

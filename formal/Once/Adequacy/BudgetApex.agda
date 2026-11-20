@@ -27,7 +27,6 @@ open import Data.Nat using (ℕ; suc; _≤_; s≤s)
 open import Data.Nat.Properties using (≤-pred; ≤-trans)
 open import Data.Product using (Σ-syntax; ∃-syntax; _×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.Unit using (⊤)
 open import Relation.Binary.PropositionalEquality using (_≡_; trans; sym; cong)
 
 open import Once.IR.Semantics.Trace using (Interp; run)

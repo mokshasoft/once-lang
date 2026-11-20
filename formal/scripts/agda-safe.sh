@@ -22,7 +22,8 @@
 # Strategy:
 #   1. systemd-run --user --scope        — transient cgroup, cleaned
 #      up automatically when make exits.
-#   2. -p MemoryMax=<cap>                — hard RAM cap (default 5.5G).
+#   2. -p MemoryMax=<cap>                — hard RAM cap (default 3300M: two
+#      sessions fit on this 7.6 GB machine, plan 0.152).
 #   3. -p MemorySwapMax=<cap>            — bounded swap (default 2G);
 #      prevents agda from joining the global swap-thrash that triggers
 #      kernel OOM in the first place.
@@ -36,7 +37,7 @@
 #   formal/scripts/agda-safe.sh --exec agda Foo.agda   (any command, cwd kept)
 #
 # Environment overrides:
-#   AGDA_SAFE_MEM_MAX=4G       (default 5500M)
+#   AGDA_SAFE_MEM_MAX=4G       (default 3300M)
 #   AGDA_SAFE_SWAP_MAX=1G      (default 2G)
 #   AGDA_SAFE_NO_CGROUP=1      force ulimit fallback
 #
@@ -45,7 +46,7 @@
 
 set -u
 
-MEM_MAX="${AGDA_SAFE_MEM_MAX:-5500M}"
+MEM_MAX="${AGDA_SAFE_MEM_MAX:-3300M}"
 SWAP_MAX="${AGDA_SAFE_SWAP_MAX:-2G}"
 
 # `--exec CMD…` runs CMD itself in the scope instead of `make …`, keeping
@@ -70,14 +71,13 @@ cgroup_available() {
     && systemctl --user show-environment >/dev/null 2>&1
 }
 
-# Give GHC's heap a limit below the cgroup cap. Without one, the copying
-# collector reserves about twice the live data and the cgroup kills agda
-# even though the live data fits: `Resusp/SumR` holds 3.3 GB live but
-# reaches 5.3 GB RSS. With `-M` the collector compacts in place near the
-# limit instead (SumR: 4.7 GB RSS, same time). Headroom 700M covers the
-# non-heap RSS. Skipped when the caller already set GHCRTS. AGDA_RTS_EXTRA is
-# appended (`make certified` passes `-c`: compact the old generation from the
-# start, as agda-profile.py's rung c).
+# GHC's heap gets a limit 600M below the cgroup cap (the non-heap RSS), and the
+# old generation is compacted in place (`-c`) rather than copied: the copying
+# collector reserves about twice the live data, so the cgroup would kill agda
+# while its live data still fits. Measured under 3300M (plan 0.152 E): the apex
+# on fresh interfaces holds 2.39 GB live at 2.79 GB RSS; the AST dump 2.54 GB
+# live at 2.90 GB RSS. Skipped when the caller already set GHCRTS.
+# AGDA_RTS_EXTRA is appended.
 mem_mb() {
   case "$1" in
     *G|*g) echo $(( ${1%?} * 1024 )) ;;
@@ -88,7 +88,7 @@ mem_mb() {
 if [ -z "${GHCRTS:-}" ]; then
   cap_mb=$(mem_mb "$MEM_MAX")
   if [ -n "$cap_mb" ] && [ "$cap_mb" -gt 1400 ]; then
-    export GHCRTS="-M$(( cap_mb - 700 ))m${AGDA_RTS_EXTRA:+ $AGDA_RTS_EXTRA}"
+    export GHCRTS="-M$(( cap_mb - 600 ))m -c${AGDA_RTS_EXTRA:+ $AGDA_RTS_EXTRA}"
   fi
 fi
 

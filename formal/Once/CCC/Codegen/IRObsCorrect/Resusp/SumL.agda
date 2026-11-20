@@ -15,45 +15,51 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.Resusp.SumL (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
-open import Once.CCC.Machine.SMCore using (ending)
+open Interface using (module Core)
+open import Data.Bool using (false)
+open import Data.List using ([])
+open import Data.Maybe using (just; nothing)
+open import Data.Product using (_,_)
+open import Data.Unit using (tt)
+open import Once.IR using (IR; Heap; Ana)
+open import Relation.Binary.PropositionalEquality using (_≡_; trans; cong; refl; cong₂)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
+open import Once.CCC.Machine.Locations using (ValueLocation; AtStack)
 open import Once.CCC.Machine.LocMatchesMode using (LocMatchesMode)
 open import Once.CCC.Label using (ℓ)
 open import Once.CCC.Machine.SMCore
-  using (AbstractTrace; AbstractInstr; LocState; AllocState; module LocState; module AllocState;
-         readReg; Output; Input1; SV-Ptr; SV-Code; StoredValue; sucLoc; offsetLoc;
-         store-at-slot; restore-input; instr-ctrl; c-branch-tag-zero; c-jmp; c-label)
-open LocState using (regs; halted)
-open AllocState using (current-frame; next-slot; next-heap-ref; saved-frames)
-open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; ⟦_⟧TI; ν-type; wf-Sum; _⊕_) renaming (_+_ to _+ᵀ_)
+  using (AbstractTrace; LocState; AllocState; module LocState; module AllocState; SV-Ptr; SV-Code; sucLoc; instr-ctrl; c-branch-tag-zero; c-label)
+open LocState using (halted)
+open AllocState using (current-frame; next-slot; next-heap-ref)
+open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; ⟦_⟧TI; ν-type; wf-Sum; _⊕_)
 import Once.IRTy as IRTy′
 import Once.Denotation.ValueDomain as ValueDomain
 open import Once.CCC.Codegen.Size using (size)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
-open import Once.CCC.Codegen.SlotBudget o using (resuspend-mono)
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module ResuspBaseC)
-open import Once.CCC.Codegen.IRObsCorrect.Resusp.SumShape o tbl using (module ResuspSumShapeC)
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.SumArm o tbl using (module ResuspSumArmC)
 open import Once.CCC.Codegen.IRObsCorrect.CaseShape o tbl using (module ShapeC)
-open import Data.Sum using (inj₁; inj₂)
+open import Data.Sum using (inj₁)
 open import Data.List.Properties using (++-identityʳ)
-open import Data.Nat using (z≤n; s≤s; _⊔_)
-open import Data.Nat.Properties using (m≤m⊔n; m≤n⊔m)
+open import Data.Nat using (s≤s; ℕ; _≤_; _+_; suc)
+open import Data.Nat.Properties using (m≤m⊔n; ≤-refl)
 
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.SumCommon o tbl using (module ResuspSumCommonC)
 
 module ResuspSumLC {FS : FrameSemantics} where
 
   open Core {FS}
-  open Mach {FS}
-  open FlatStepsAPI {FS} using (flat-step1; flat-tag-branch-yes; flat-tag-branch-not; flat-jmp)
+  open ClosureWellFormedBase′ using (VTy; Live; BlocksKept)
+  open ClosureWellFormedDef′ using (ValidAtWF; CellAt)
+  open FlatEventTrace′ using (chain-left; chain-events; chain-events-++)
+  open FlatMachine′ using (FlatState; flat-exec-instr; do-jump; fetch)
+  open FlatMachine′.FlatState using (falloc; fpc; floc; flink)
+  open FlatStepsAPI′ using (FlatSteps; FlatSteps-++; [])
+  open MemOps′ using (readLoc)
+  open FlatStepsAPI {FS} using (flat-step1; flat-tag-branch-yes)
   open ResuspBaseC {FS}
-  open ResuspSumShapeC {FS}
   open ResuspSumArmC {FS}
-  open ShapeC {FS} using (tag-inl; tag-inr; payload-l; payload-r)
-  open ClosureWellFormedBase {FS} using (SumTag; Pad; CellAtP; inl-wf; inr-wf; inl-reg-wf; inr-reg-wf; inl-flat-wf; inr-flat-wf)
-  import Once.CCC.Machine.SMCore as SMCore
+  open ShapeC {FS} using (tag-inl; payload-l)
   open ResuspSumCommonC {FS}
 
   module RSumL {F : IRFunctor} (wf : WellFormedFI F) {E A : IRTy}

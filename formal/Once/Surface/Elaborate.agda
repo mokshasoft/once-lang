@@ -12,12 +12,8 @@ module Once.Surface.Elaborate where
 
 open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun)
 open import Once.Spec.Grade
-open import Once.Type.Grade
-open import Once.Type.Core
 open import Once.Spec.Type using (μ; ν; ⟦_⟧F)
-open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
-open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PK; PId; _P⊕_; _P⊗_; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PInt; PFloat; PTVar)
-open import Once.Type.Poly
+open import Once.Spec.Type using (Type; Unit; _*_; _+_; _⇒[_]_; Int; Float)
 open import Once.Type
 open import Once.Spec.Float.Decimal using (Decimal)
 open import Once.IR
@@ -25,8 +21,7 @@ open import Once.IRTy using (Int; fits-int; Float; fits-float; _*_; Unit; _+_; �
 open import Once.IR.Ref using (refIR)
 open import Once.Context
 open import Once.Spec.Context using (Ctx; Usage; []; _*ᵘ_; _+ᵘ_; _⊑ᵘ_; lookup; singleUse; zeroUsage; ∅)
-open import Once.Spec.Context using ([]; _∷_; _⊑∷_; _▸_)
-open import Once.Surface.Context
+open import Once.Spec.Context using (_∷_; _⊑∷_; _▸_)
 open import Once.Surface.Syntax
 open import Once.Surface.CoerceIR using (runCoe)
 open import Once.IRTy.WF using (wf-⌊⌋)
@@ -53,7 +48,7 @@ open import Once.Spec.Theory using (Has; Sym; unary; binary; compare; symDom; sy
   renaming (int to nint; float to nfloat)
 open import Once.Spec.Name using (bare)
 open import Once.Type.Concrete using (con-base; con-fun; IsConcrete)
-open import Once.Spec.Type using (WFFun; b-Unit; ∅ₖ)
+open import Once.Spec.Type using (b-Unit)
 
 -- Literals: constant morphisms that ignore input environment.
 --

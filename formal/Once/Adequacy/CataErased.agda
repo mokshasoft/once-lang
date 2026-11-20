@@ -19,12 +19,10 @@
 ------------------------------------------------------------------------
 
 import Once.Spec.Type as SpT
-open import Once.Spec.Type using (Base; WFFun; b-*; b-+; b-Float; b-Int; b-Unit; b-Void; wf-⊕; wf-⊗; ∅ₖ)
+open import Once.Spec.Type using (Base; WFFun; b-*; b-+; b-Float; b-Int; b-Unit; b-Void; wf-⊕; wf-⊗)
 
 open import Data.Nat using (ℕ)
-open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun; Base)
-open import Once.Spec.Type using (wf-⊕; wf-⊗)
-open import Once.Spec.Type using (b-*; b-+)
+open import Once.Spec.Type using (Ty; Fun; KCtx)
 open import Once.Spec.Numerics using (TargetNum)
 
 -- Plan 0.73 (D113): this module's statements mention a denotation that is
@@ -44,16 +42,18 @@ open import Relation.Binary.PropositionalEquality
 open import Once.IR.Semantics.Polynomial using (cataS)
 open import Once.Spec.Polynomial using (SFunctor; SK; _S⊕_; _S⊗_; μS; ⟦_⟧SF)
 open import Once.IR.Semantics.Trace using (fmapT)
-open import Once.IR.Semantics.Iterative using (T∞; return∞; _>>=∞_; fmap∞; embed; seqF∞)
+open import Once.IR.Semantics.Iterative using (T∞; embed; seqF∞)
 open import Once.Denotation.TraceMonadInfLaws using (RelS; RelS-bind; relS-ret)
-open import Once.Denotation.ValueRel using (RelD; SRel; RelS-mono; RelS-fmap; RelS-substˡ; cataS-rel)
+open import Once.Denotation.ValueRel using (RelD; SRel; RelS-fmap; RelS-substˡ; cataS-rel)
 open import Once.Denotation.ValueRel using () renaming (base-refl to base-reflᴰ)
-open import Once.IRTy using (IRTy; IRFunctor; ⌊_⌋; ⌈_⌉; ⌈_⌉F; ⟦_⟧TI; ⌈⟧TI-commute)
+open import Once.IRTy using (IRTy; ⌊_⌋; ⌈_⌉; ⌈_⌉F; ⟦_⟧TI; ⌈⟧TI-commute)
 open import Once.Denotation.DenotTrace
   using (evalᴰ; cata-ev-algᴰ)
 open import Once.Denotation.MeaningD using (cata-ev-algᴰ-D; cata-sem)
 open import Once.Semantics.Machine
-  using (⟦_⟧F; coerce-μ-out; tF-coh)
+  using (module ValueIR; module Value)
+open Value using (⟦_⟧F; coerce-μ-out)
+open ValueIR using (tF-coh)
 open import Once.Spec.Word using (Carrier)
 open import Once.Spec.Type using (Type)
 open import Once.Spec.Type using (μ)

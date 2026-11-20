@@ -39,7 +39,6 @@ open import Once.Spec.Grade using (Purity; pure; act; eff; mk-kind; Zero; One; M
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-pe; ⊑-pa)
 open import Once.Spec.Type using (_⟨_⟩; _⟨_⟩F; Type; Fun; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; K; Id; _⊕_; _⊗_)
 open import Once.Spec.Word using (Carrier)
-import Once.IR.Semantics.Polynomial as LPoly
 import Once.Spec.Polynomial as SPoly
 open import Once.IR.Semantics.FunctorMeaning using (translateF; ⟦_,_⟧-base)
 import Once.IR.Semantics.Trace as LTr
@@ -60,7 +59,7 @@ open import Once.Type.Core using (wk₀)
 open import Once.Weaken using (wk₀-id; ⟦wk₀⟧ᴰ)
 open import Once.Denotation.SpecDomain Σ σ using (⟦wk₀⟧ᵛ)
 open import Once.Adequacy.SpecRun Σ fmt
-  using (RunR; BlockR; ret; call; halt; SumR; left; right; return∞-R; bind∞-R; embed-R; embed-bind-R; bindT-R; mapT-R; BlockR-mono; RunR-mono; CallR; cr)
+  using (RunR; BlockR; ret; call; halt; SumR; left; right; return∞-R; bind∞-R; embed-bind-R; RunR-mono; cr)
 open RunR using (forceR)
 import Once.Adequacy.SpecInterp as SI
 

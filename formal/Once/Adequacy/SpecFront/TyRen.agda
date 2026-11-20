@@ -22,18 +22,17 @@ open import Once.Spec.Core.Syntax using (Defs)
 
 module Once.Adequacy.SpecFront.TyRen (Σ : Signature) {s : ℕ} (S : Defs s) (nm : Fin s → CanonicalName) where
 
-open import Data.Fin using (zero; suc)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst; subst₂)
+open import Data.Fin using (zero)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 
-open import Once.Spec.Grade using (Purity; mk-kind; Many; pure; act; eff; pureᶠ; actᶠ)
+open import Once.Spec.Grade using (mk-kind; Many; pure; act; eff; pureᶠ; actᶠ)
 open import Once.Metatheory.Types using (⊑π-refl)
 open import Once.Spec.Type
 open import Once.Spec.Type.Substitution using (respects-∘; ⟨⟩-∘)
 open import Once.Spec.Sub using (_<:_; _<:ᶜ_; _⊔_≔_; subᶜ-void; subᶜ-var; subᶜ-unit; subᶜ-int; subᶜ-float; subᶜ-arr; subᶜ-*; subᶜ-+; subᶜ-μ; subᶜ-ν)
 open import Once.Spec.Core.Syntax
 open import Once.Spec.Core.Derived
-open Schema using (arity; kinds; type)
-import Once.Spec.Surface.Syntax as SX
+open Schema using (type)
 import Once.Spec.Surface.Typing Σ S nm as U
 open import Once.Metatheory.TermModel.TySubst Σ S using (⟦⟧F-⟨⟩; <:-⟨⟩; wf-⟨⟩; ⌜⌝ᵈ-⟨⟩; symCod-⟨⟩)
 open import Once.Spec.Theory using (int; float)

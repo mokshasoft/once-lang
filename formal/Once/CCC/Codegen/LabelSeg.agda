@@ -23,6 +23,7 @@ open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; subst₂; cong)
 open import Once.CCC.Machine.SMCore
+open import Once.CCC.Label using (LabelId)
 open Label.LabelId using (idx)
 open import Once.CCC.Codegen.SlotSeg
 

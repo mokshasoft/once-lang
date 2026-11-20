@@ -23,7 +23,7 @@ open import Data.String using (String)
 -- Plan 0.63: label PROVENANCE, shared with x86-64 (D082). `Once.CCC.Label` is
 -- arch-agnostic; naming code addresses the same way on every target is what
 -- lets the correspondence proofs (today x86-64-only) be generalised over it.
-open import Once.CCC.Label public using (LabelId; Label; once; sigop; thunk; callee; e-fn)
+open import Once.CCC.Label using (LabelId; Label)
 
 ------------------------------------------------------------------------
 -- Registers
@@ -48,8 +48,8 @@ open import Once.CCC.Label public using (LabelId; Label; once; sigop; thunk; cal
 -- The physical register file is now the single shared declaration
 -- `Once.Target.RiscV64.PhysReg` (Plan 0.55), re-exported here so every CCC
 -- importer of this module keeps seeing `Reg` unchanged.
-open import Once.Target.RiscV64.PhysReg public using
-  (Reg; zero; ra; sp; fp; a0; a1; a2; a3; a4; a5; a6; a7; s1; s2; s3; s4; t0; t1; t2; t3; t4)
+open import Once.Target.RiscV64.PhysReg using
+  (Reg)
 
 ------------------------------------------------------------------------
 -- Instructions

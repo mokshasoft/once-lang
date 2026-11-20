@@ -21,7 +21,7 @@
 module Once.Adequacy.SpecCheck where
 
 open import Data.List using (List)
-open import Data.Maybe using (Maybe; just; nothing; _>>=_)
+open import Data.Maybe using (Maybe; just; _>>=_)
 open import Data.Product using (Σ-syntax; _×_; _,_)
 open import Data.String using (String)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -43,7 +43,7 @@ open import Once.Adequacy.SourceTrace using (srcToModule; srcToModule-just; srcT
 import Once.Adequacy.FrontEndBridge as FB
 import Once.Adequacy.ResolveBridge as RBR
 open import Once.Inspect using (check)
-open import Once.Inspect.Proof using (CheckedEF; Checked; check-decides)
+open import Once.Inspect.Proof using (CheckedEF; check-decides)
 import Once.Adequacy.SpecGrammar.Decl as GD
 import Once.Adequacy.SpecGrammar.Written as Written
 import Once.Adequacy.SpecFront.Modules as Modules

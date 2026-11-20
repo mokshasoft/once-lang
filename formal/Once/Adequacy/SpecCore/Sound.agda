@@ -22,7 +22,6 @@ import Once.Spec.Observation as Obs
 module Once.Adequacy.SpecCore.Sound (Σ : Signature) (wf : WellFormed Σ) (fmt : TargetNum) where
 
 open import Data.List using ([])
-open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 

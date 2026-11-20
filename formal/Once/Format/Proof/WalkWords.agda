@@ -17,20 +17,20 @@
 
 module Once.Format.Proof.WalkWords where
 
-open import Data.Bool using (Bool; true; false; _∨_; if_then_else_)
+open import Data.Bool using (true; false; _∨_; if_then_else_)
 open import Data.Char using (Char)
 open import Data.Empty using (⊥-elim)
 open import Data.List using (List; []; _∷_; _++_; concatMap; map)
 open import Data.List.Properties using (++-assoc; ++-identityʳ)
-open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; _<ᵇ_)
+open import Data.Nat using (ℕ; zero; suc; _<_; _<ᵇ_)
 open import Data.Nat.Properties using (<-irrefl; n<1+n; m<n⇒m<1+n; <-trans)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃-syntax)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst)
 open import Relation.Nullary using (yes; no)
 
-open import Once.Format.Print using (W; walker; Line; line-empty; line-code; line-text; Note; note-comment; note-blank;
-  Notes; notes; noNotes; Trivia; lookupNotes; addTo; addTop; addInner; addAfter; Held; held-comment; held-blank;
-  settleAt; settle; blankBefore; lineEnd; pending; hoistW; hoistAt; hoist; stepTok; stepComment; afterCode; step;
+open import Once.Format.Print using (W; walker; Line; line-empty; line-code; line-text; note-comment; note-blank;
+  Notes; notes; Trivia; lookupNotes; addTo; addTop; addInner; addAfter; Held; held-comment; held-blank;
+  settleAt; blankBefore; lineEnd; pending; hoistW; hoistAt; hoist; stepTok; stepComment; afterCode; step;
   walkItems; finish; trivia; trimEnd)
 open import Once.Format.Lex using (Item; tok; comment; cont)
 open import Once.Format.Proof.Words using (Mn; cm-++; ifcase)
@@ -431,7 +431,7 @@ trivia-end is =
 
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Nat using (_+_)
-open import Data.Nat.Properties using (+-comm; +-identityʳ; +-assoc)
+open import Data.Nat.Properties using (+-identityʳ; +-assoc)
 open import Once.Format.Lex using (tokensOf)
 import Once.Parser.Token as P
 open import Once.Format.Print using (isAnchor; isLineEnd)

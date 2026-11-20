@@ -17,9 +17,9 @@
 
 module Once.CCC.Codegen.StraightRun where
 
-open import Data.Nat using (ℕ; zero; suc; _+_)
+open import Data.Nat using (ℕ; suc; _+_)
 open import Data.Nat.Properties using (+-suc)
-open import Data.List using (List; []; _∷_; _++_; length)
+open import Data.List using ([]; _∷_; _++_; length)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.Maybe using (just)
 open import Data.Bool using (true; false)
@@ -37,8 +37,9 @@ open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
 
 module StraightRunAPI {FS : FrameSemantics} where
   open FlatMachine {FS}
+  open FlatState using (floc; falloc; fpc)
   open FlatStepsAPI {FS}
-  open AbstractExec {FS} using (exec-abstract; exec-trace; exec-trace-cons)
+  open AbstractExec {FS} using (exec-trace; exec-trace-cons)
   open FlatEventTrace {FS} using (chain-events; event-of; chain-events-subst-start; chain-events-subst)
 
   -- the state a straight segment leaves: `exec-trace`'s data, the pc past it

@@ -100,7 +100,7 @@ slot-size>0 = nz⇒pos slot-size
 open import Data.Nat using (zero; suc; _+_; _∸_; _*_; _≡ᵇ_; _≟_; _<_; _≤_; z≤n)
 open import Once.Memory.Memory using (≡ᵇ-refl; ≢⇒≡ᵇfalse)
 open import Data.Nat.Properties using (+-comm; +-assoc; +-cancelˡ-≡; *-cancelʳ-≡; m≤m+n; <-irrefl; ≤-<-trans; <-≤-trans; +-monoʳ-<; *-monoˡ-<; ≤-refl; ≤-trans; m<n⇒m<1+n; <⇒≢; m∸n+n≡m; ≤-reflexive; m<m+n; +-identityʳ; m∸n≤m; *-identityˡ; <⇒≤)
-open import Data.Bool using (true; false; if_then_else_)
+open import Data.Bool using (true; if_then_else_)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Unit using (⊤; tt)
 open import Relation.Nullary using (yes; no; Dec; ¬_)
@@ -110,7 +110,7 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong; cong₂; subst)
 
 open import Once.Memory.HeapAddress
-  using (HeapRef; sucHL; heap-loc; mkHeapRef; _≟HL_; HeapLocation; module HeapRef; module HeapLocation)
+  using (HeapRef; sucHL; heap-loc; mkHeapRef; _≟HL_; HeapLocation; module HeapRef; module HeapLocation; offsetHL)
 open HeapLocation using (heap-ref; heap-offset)
 open HeapRef using (ref-id)
 
@@ -138,6 +138,7 @@ readMem m a = m a
 writeMem : Memory → ℕ → Word → Memory
 writeMem m addr val = λ a → if a ≡ᵇ addr then just val else m a
 open import Once.CCC.Machine.SMCore
+open import Once.CCC.Label using (LabelId)
 open AllocState using (current-frame; frame-slots; saved-frames; next-heap-ref; block-size)
 open LocState using (regs; halted; heapMem; stackMem)
 open import Once.CCC.Machine.Locations using (AtDynamic; AtStack; Slot)
@@ -148,6 +149,7 @@ open ExecFinal {FS} using (exec-load-via-resolved; exec-load-suc-via-resolved; e
                           ; exec-load-at-resolved; exec-store-at-resolved; exec-store-in-block; in-block?; exec-addr-at-resolved; exec-addr-in-block)
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
+open FlatState using (floc; fclosure; falloc; fpc; fret)
 open FrameSemantics FS using (shift-frame)
 
 open import Once.CCC.Machine.FlatStoreWF FS using (sv-below; svm-below)
@@ -219,7 +221,7 @@ record HeapView : Set₁ where
     -- pointer must not read as the tag 0 (`tag-branch-step`'s pointer route).
     front-pos : 0 < hfront
     dom-pos   : ∀ {hl : HeapLocation} → HDom hl → 0 < haddr hl
-open HeapView public
+open HeapView
 
 ------------------------------------------------------------------------
 -- Value encoding: typed StoredValue → untyped x86 Word.
@@ -614,7 +616,7 @@ record FlatCorr (hv : HeapView) (fs : FlatState) (s : State) : Set where
     -- which the loader owns, are the abstract `nothing`).
     stack-eq : StackWindows (amap hv) (memory s) (stackMem (floc fs))
                             (lo hv) (frames-of (falloc fs))
-open FlatCorr public
+open FlatCorr
 
 ------------------------------------------------------------------------
 -- THE POST-STATE, NOT THE UPDATE (Plan 0.65 G1c step 2).
@@ -798,7 +800,6 @@ record SetsRoleMem (s s' : State) (ρ : Role) (v : Word) (a : ℕ) (mv : Word) :
     rm-off-addr : ∀ a' → ¬ (a' ≡ a)
                 → readMem (memory s') a' ≡ readMem (memory s) a'
     rm-halt     : xhalted s' ≡ xhalted s
-open SetsRoleMem
 
 record Sets2Roles (s s' : State) (ρ₁ ρ₂ : Role) (v₁ v₂ : Word) : Set where
   field

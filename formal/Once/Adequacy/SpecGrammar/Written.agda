@@ -13,7 +13,7 @@
 module Once.Adequacy.SpecGrammar.Written where
 
 open import Data.Empty using (⊥)
-open import Data.List using (List; []; _∷_)
+open import Data.List using ([]; _∷_)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.Product using (_×_; _,_)
 open import Data.Unit using (⊤; tt)

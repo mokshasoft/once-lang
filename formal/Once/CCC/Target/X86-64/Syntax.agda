@@ -36,7 +36,7 @@ open import Once.CCC.Label using (LabelId; Label)
 -- The physical register file is now the single shared declaration
 -- `Once.Target.X86-64.PhysReg` (Plan 0.55), re-exported here so every CCC
 -- importer of this module keeps seeing `Reg` unchanged.
-open import Once.Target.X86-64.PhysReg public using
+open import Once.Target.X86-64.PhysReg using
   (Reg; rax; rbx; rcx; rdx; rsi; rdi; rbp; rsp; r8; r9; r10; r11; r12; r13; r14; r15)
 
 ------------------------------------------------------------------------

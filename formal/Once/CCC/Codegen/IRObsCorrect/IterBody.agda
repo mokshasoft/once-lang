@@ -18,19 +18,27 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.IterBody (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.Bool using (false)
+open import Data.List using (length)
+open import Data.Maybe using (just; nothing)
+open import Data.Nat.Properties using (≤-trans; n≤1+n; +-identityʳ; ≤-reflexive)
+open import Data.Product using (_,_)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Once.IR using (IR; Iter)
+open import Relation.Binary.PropositionalEquality using (_≡_; trans; subst; sym; cong)
 open import Once.CCC.Machine.SMCore using (ending)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.CCC.Machine.SMCore
-  using (AllocState; AbstractTrace; LocState; StoredValue; module LocState; module AllocState)
+  using (AllocState; AbstractTrace; LocState; module LocState; module AllocState)
 open AllocState using (next-slot; current-frame; saved-frames; next-heap-ref)
-open LocState using (halted; regs)
-open import Data.Sum using (inj₁; inj₂)
-open import Data.Nat using (s≤s)
+open LocState using (halted)
+open import Data.Nat using (s≤s; ℕ; _≤_; suc; _+_)
 open import Once.IRTy using (IRTy)
 import Once.IRTy as IRT
-open import Once.Res using (Res; stopped; returns; is-stopped)
-open import Once.Denotation.Approx using (Ap; done; cut; NotCut; budgetLeft)
+open import Once.Res using (Res; returns)
+open import Once.Denotation.Approx using (Ap; done; NotCut)
 
 open import Once.CCC.Codegen.IRObsCorrect.IterShape o tbl
 open import Once.CCC.Codegen.IRObsCorrect.IterRun o tbl
@@ -40,7 +48,13 @@ open import Once.CCC.Codegen.IRObsCorrect.Pair.Proof o tbl using (module PairPro
 module IterBodyC {FS : FrameSemantics} where
 
   open Core {FS}
-  open Mach {FS}
+  open ClosureWellFormedBase′ using (eventsAt; ⟪_⟫_; resultAt; Live; BlocksKept; stopsAt)
+  open FlatEventTrace′ using (chain-events; chain-events-subst-start; chain-ctrls; chain-ctrls-subst-start; chain-left)
+  open CataNextSlot′ using (AllSlotStable)
+  open FlatMachine′ using (FlatState; exec-flat)
+  open FlatMachine′.FlatState using (falloc; floc; fclosure; fpc; fret; flink)
+  open FlatStepsAPI′ using (FlatSteps; exec-flat-steps)
+  open FrontierInvariant′ using (BeforeFrontier; frontier-monotone; module BeforeFrontier)
   open IterShapeC {FS}
   open IterRunC {FS}
   open IterInvC {FS}
@@ -62,7 +76,10 @@ module IterBodyC {FS : FrameSemantics} where
     open Loop body n l base
     open Anchor Z
     module I = RoundInv inv
+      using (bf0; bk0; bkF; cf; env; hr; inp; left; lnk; mem0; memF; mode; nh; ns; pc; ret; sf)
     module VR = ValueRealized
+      using (at-end; bf-mono; blocks-kept; cont-alloc; frame-pres; frames-pres; live; log; no-link
+            ; no-ret; out-mode; place; progress; run; settle; stack-pres; steps; stops)
 
     n≤n4 : n ≤ suc (suc (suc (suc n)))
     n≤n4 = ≤-trans (n≤1+n n) (≤-trans (n≤1+n (suc n)) (≤-trans (n≤1+n (suc (suc n))) (n≤1+n (suc (suc (suc n))))))

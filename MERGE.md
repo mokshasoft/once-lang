@@ -235,6 +235,7 @@ It runs the following, cheapest first:
 | Gate | Script | Fails when |
 |---|---|---|
 | `public-gate` | `scripts/public-gate.sh` | a module gains `public` re-exports beyond `public-gate.baseline` |
+| `layer-gate` | `scripts/layer-gate.py` | a back-end module newly reaches a front-end module (beyond `layer-gate.baseline`) |
 | `pragma-gate` | `scripts/pragma-gate.sh` | the apex/compiler closure gains a check-disabling pragma beyond `pragma-gate.baseline` |
 | `metatheory-gate` | `scripts/metatheory-gate.sh` | a proof under `Once/Metatheory` imports outside the Spec side |
 | `spec-gate` | `scripts/spec-import-closure.py --gate` | the Spec's full import closure gains a non-Spec module, an implementation re-export or a re-export without `using`, beyond `spec-gate.baseline` |
@@ -249,15 +250,17 @@ Rules that go with the gates:
   `CATCHALL` only when it is an intended fallback. Read an unreachable clause before deleting
   it, because it may be a constructor captured as a pattern variable. A per-module option needs
   a comment giving its reason.
-- Re-export only to share a parameterised module's instance, and in the Spec door. Remove
-  re-exports and prune dead imports with `scripts/reexport-remove.py`, which checks name
-  resolution before and after. Never edit them by eye.
+- No `public` re-exports: a shared instance is a named module application that copies only
+  the names used through it, and importers open it by name. The back end imports no front-end
+  module (`make layer-gate`). Remove re-exports and prune dead imports with the Agda fork's
+  `--repair-reexports` and `--remove-dead-imports`, which check name resolution; never edit them by
+  eye.
 
 ## 6. Reachability (the trust base and the unproved run code must not grow silently)
 
 ```
 ./run-ast-dumps.sh                              # master and the branch
-HEAP=16G COMPACT=-c10 ./run-ast-dumps.sh <ref>  # if a module runs out of memory
+AGDA_SAFE_MEM_MAX=4G HEAP=3400m ./run-ast-dumps.sh <ref>   # if a module runs out of memory
 ```
 
 This needs the Agda fork with `--write-ast` (see the script header). It takes tens of minutes

@@ -40,7 +40,6 @@ open import Data.Nat.Properties using (*-mono-≤)
 open import Data.Empty using (⊥)
 open import Data.Sum using (_⊎_)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_)
-open import Relation.Nullary using (Dec)
 
 -- Import Addr from MemoryLayoutSemantics
 open import Once.Memory.MemoryLayoutSemantics using (Addr)

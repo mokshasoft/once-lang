@@ -29,8 +29,7 @@ open import Data.Empty using (⊥)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_; Σ-syntax)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.String using (String; _≟_) renaming (_++_ to _++ˢ_)
-open import Data.Unit using (⊤)
+open import Data.String using (String; _≟_)
 open import Data.Bool using (true; false)
 open import Relation.Nullary using (yes; no; ¬_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
@@ -39,20 +38,17 @@ open import Function using (_∋_)
 import Once.Type.Core as LT
 
 import Once.Spec.Type as LT
-open import Once.Spec.Surface.Syntax using (PolyType)
+open import Once.Spec.Surface.Type using (PolyType)
 open import Once.Type.Poly using (Ground; extractGround)
 open import Once.Type.Concrete using (IsConcrete)
 open import Once.Type.Honest using (HonestFFI)
 open import Once.Type using (isGround)
 open import Once.Functor.Decide using (isConcrete?)
 open import Once.Spec.Surface.Syntax using (RVar)
-open import Once.Spec.Surface.Syntax using (Expr)
-open import Once.Spec.Name using (canonical)
-open import Once.Name using (showCanonical)
 open import Once.Spec.Surface.Syntax using (Decl; DTypeAlias; DTypeSig; DFunDef; DSignature; DImport)
 open import Once.Parser
   using (Entry; e-fun; e-poly; mkFunInfo; mkPolyFunInfo; extractFunctions-go; extractFunctions-consFun; extractFunctions-consPoly;
-         projectSig; honestSig)
+         projectSig)
 
 -- A declaration the extractor passes over.
 data Passed : Decl → Set where

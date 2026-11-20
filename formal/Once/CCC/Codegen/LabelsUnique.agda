@@ -57,7 +57,6 @@ open import Once.IRTy using (⌈_⌉F)
 open import Once.IRTy using (fits-int; fits-float)
 open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
 open SigOpInfo using (sem)
-open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (CmpAt; cmp-of)
 open import Once.CCC.Codegen.IRToTrace o
   using (sigop-code; ir-to-trace'; cata-dispatch; cata-strategy; CataStrategy; strat-const; strat-box; strat-branching; lsize; cata-body; cata-call-setup; cata-call; cata-call-box; cata-br-I₁; cata-br-I₂; fsize; in-trace; with-copy; two-cell; node-copy-trace; out-trace; inj-trace; env-entry)
@@ -72,7 +71,7 @@ open import Once.CCC.Codegen.LabelScope o using (trace-of; cata-trace-of)
 open import Once.CCC.Codegen.SlotBudget o using (bodies-of)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore
-  using (AbstractTrace; instr-ctrl; c-ret; c-label; c-start; block-layout; mov-to-input; mov-to-output; store-at-slot; restore-input; instr-alloc-heap; load-from-slot; store-indirect; store-indirect-suc; c-jmp; c-branch-tag-zero; load-indirect-suc; c-leave; load-at)
+  using (AbstractTrace; instr-ctrl; c-ret; c-label; c-start; block-layout; mov-to-input; mov-to-output; store-at-slot; restore-input; instr-alloc-heap; load-from-slot; c-jmp; c-branch-tag-zero; c-leave; load-at)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Codegen.ThunkScope o using (module Scope)
 open import Once.CCC.Codegen.BlockLayout using (module Layout)
@@ -83,6 +82,7 @@ Blocks = List (LabelId × ℕ × AbstractTrace)
 module Unique {FS : FrameSemantics} where
   open FlatMachine {FS} using (thunk-of?)
   open Scope {FS}
+  open ThunkIn using (in-range)
   open Layout {FS} using (NoThunk; NoThunks)
 
   ------------------------------------------------------------------------

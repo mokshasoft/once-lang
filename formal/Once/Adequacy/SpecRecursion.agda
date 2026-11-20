@@ -25,7 +25,7 @@ open import Once.Spec.Float.Encoding using (decode)
 
 module Once.Adequacy.SpecRecursion (Σ : Signature) (σ : TySub 0 0) (fmt : TargetNum) where
 
-open import Data.Product using (_×_; _,_; Σ-syntax)
+open import Data.Product using (_×_; _,_)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
@@ -38,13 +38,13 @@ open import Once.Spec.Type
   using (Type; Fun; KCtx; WFFun; Base; _⟨_⟩; _⟨_⟩F; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; K; Id; _⊕_; _⊗_;
          wf-K; wf-Id; b-var)
 import Once.Spec.Type as SpT
-open import Once.IR.Semantics.FunctorMeaning using (translateF; ⟦_,_⟧-base)
+open import Once.IR.Semantics.FunctorMeaning using (translateF)
 import Once.IR.Semantics.Polynomial as LPoly
-open import Once.Semantics.Machine using (coerce-μ-in; coerce-μ-out; coerce-full-to-base; coerce-base-to-full)
+open import Once.Semantics.Machine using (module Value)
+open Value using (coerce-full-to-base; coerce-base-to-full; coerce-μ-in; coerce-μ-out)
 import Once.Semantics.Machine as Val
-open import Once.IR.Semantics.Iterative using (T∞; return∞; _>>=∞_; fmap∞; seqF∞)
-import Once.IR.Semantics.Iterative as LI
-open import Once.IR.Semantics.StreamInf using (νᴵ; anaᴵ; anaRun; anaBlock; mapAnaᴵ; anaFᴵ)
+open import Once.IR.Semantics.Iterative using (T∞; fmap∞; seqF∞)
+open import Once.IR.Semantics.StreamInf using (anaᴵ; anaRun; anaBlock; mapAnaᴵ; anaFᴵ)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; forgetᵇ; injectᵇ; coerce-functor-D; coerce-functor⁻¹-D)
 open import Once.Denotation.MeaningD using (cata-sem; cata-ev-algᴰ-D)
 import Once.Spec.Effect Σ as SE
@@ -56,7 +56,7 @@ open import Once.Adequacy.GradedRelation Σ σ fmt
          _∼ᵖᵈ_; _∼ᵈ_)
 open _∼ᵖᵈ_ using (force-∼ᵖᵈ)
 open _∼ᵈ_ using (force-∼)
-open import Once.Adequacy.SpecRun Σ fmt using (fmapʳ-R; RunR; BlockR; ret; call; halt; SumR; left; right)
+open import Once.Adequacy.SpecRun Σ fmt using (fmapʳ-R; RunR; BlockR; ret; call; halt; SumR; left)
 open RunR using (forceR)
 
 ------------------------------------------------------------------------
@@ -64,7 +64,7 @@ open RunR using (forceR)
 ------------------------------------------------------------------------
 
 -- A machine base value and the Spec's.
-BV : (A : Type) → SD.⟦ A ⟨ σ ⟩ ⟧ᵛ → Val.⟦ A ⟧ → Set
+BV : (A : Type) → SD.⟦ A ⟨ σ ⟩ ⟧ᵛ → Val.Value.⟦ A ⟧ → Set
 BV Unit    _ _ = ⊤
 BV Void    () _
 BV Int     x y = x ≡ y
@@ -119,7 +119,7 @@ module _ {Δ : KCtx 0} where
 ------------------------------------------------------------------------
 
 -- A Spec layer against a machine layer (the polynomial's coercion out).
-VLayerR : ∀ (H : Fun 0) {X Y : Set} → (X → Y → Set) → SPoly.⟦ SD.code (H ⟨ σ ⟩F) ⟧SF X → Val.⟦ H ⟧F Y → Set
+VLayerR : ∀ (H : Fun 0) {X Y : Set} → (X → Y → Set) → SPoly.⟦ SD.code (H ⟨ σ ⟩F) ⟧SF X → Val.Value.⟦ H ⟧F Y → Set
 VLayerR (K A)   R x y = BV A x y
 VLayerR Id      R x y = R x y
 VLayerR (F ⊕ G) R (inj₁ x) (inj₁ y) = VLayerR F R x y
@@ -276,7 +276,7 @@ module _ (F : Fun 0) {X Y : Set} {R : X → Y → Set} where
 
 -- A layer value run on both sides, crossed into the layer.
 private
-  Cross : ∀ (F : Fun 0) (A : Type) → ⟦ SpT.⟦ F ⟧F A ⟧ᵛ → Val.⟦ F ⟧F ⟦ A ⟧ᴰ → Set
+  Cross : ∀ (F : Fun 0) (A : Type) → ⟦ SpT.⟦ F ⟧F A ⟧ᵛ → Val.Value.⟦ F ⟧F ⟦ A ⟧ᴰ → Set
   Cross F A z w = LayerR F (RelGV A) (SD.toL σ F A z) (coerce-μ-in F ⟦ A ⟧ᴰ w)
 
 ana-bridgeᵍ : ∀ (φ : Finite) {Δ : KCtx 0} {A : Type} {F : Fun 0} (wfF : WFFun Δ F)

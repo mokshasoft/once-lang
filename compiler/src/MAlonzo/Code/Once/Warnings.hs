@@ -36,7 +36,6 @@ import qualified MAlonzo.Code.Once.Parser.Token
 import qualified MAlonzo.Code.Once.Spec.Float.Decimal
 import qualified MAlonzo.Code.Once.Spec.Float.Dyadic
 import qualified MAlonzo.Code.Once.Spec.Float.Value
-import qualified MAlonzo.Code.Once.Spec.Surface.Syntax
 import qualified MAlonzo.Code.Once.Target.Arch
 
 -- Once.Warnings.ExactQ
@@ -176,7 +175,7 @@ d_warn'45'exact_116 v0 v1 v2 v3 v4 v5 v6
                         (coe
                            MAlonzo.Code.Once.Float.Word.d_round_58 (coe v4)
                            (coe
-                              MAlonzo.Code.Once.Spec.Surface.Syntax.d_signedDecimal_76
+                              MAlonzo.Code.Once.Spec.Float.Decimal.d_signedDecimal_28
                               (coe MAlonzo.Code.Once.Spec.Float.Value.C_pos_10) (coe v0) (coe v1)
                               (coe v2)))
                         (coe v5) (coe v6)) in
@@ -282,9 +281,9 @@ d_floatWarning_214 v0 v1 v2 v3 v4
   = coe
       d_warn'45'val_162 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
       (coe
-         MAlonzo.Code.Once.Spec.Float.Decimal.d_roundDec_28 (coe v0)
+         MAlonzo.Code.Once.Spec.Float.Decimal.d_roundDec_38 (coe v0)
          (coe
-            MAlonzo.Code.Once.Spec.Surface.Syntax.d_signedDecimal_76
+            MAlonzo.Code.Once.Spec.Float.Decimal.d_signedDecimal_28
             (coe MAlonzo.Code.Once.Spec.Float.Value.C_pos_10) (coe v1) (coe v2)
             (coe v3)))
 -- Once.Warnings.tokenFloatLits
@@ -535,7 +534,7 @@ d_loopWarnings_352 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Resolved_8 -> [T_Warning_16]
 d_loopWarnings_352 v0
   = coe
-      du_go_360 (coe MAlonzo.Code.Once.Compile.d_silentRoundDefs_1238 v0)
+      du_go_360 (coe MAlonzo.Code.Once.Compile.d_silentRoundDefs_1232 v0)
 -- Once.Warnings._.go
 d_go_360 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Resolved_8 ->
@@ -557,7 +556,7 @@ d_eqWarnings_366 ::
 d_eqWarnings_366 v0
   = coe
       du_go_374
-      (coe MAlonzo.Code.Once.Compile.d_floatIdentityEqDefs_1240 v0)
+      (coe MAlonzo.Code.Once.Compile.d_floatIdentityEqDefs_1234 v0)
 -- Once.Warnings._.go
 d_go_374 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Resolved_8 ->
@@ -587,7 +586,7 @@ d_warningsFor_380 v0 v1 v2
          (coe
             d_roundingWarnings_240 (coe v0)
             (coe
-               MAlonzo.Code.Once.Parser.Lexer.d_tokenize_1084
+               MAlonzo.Code.Once.Parser.Lexer.d_tokenize_1066
                (coe MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12 v1)))
          (coe
             MAlonzo.Code.Data.List.Base.du__'43''43'__32

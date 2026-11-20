@@ -19,19 +19,16 @@ open import Once.CCC.Machine.SMCore using (AbstractTrace)
 
 module Once.CCC.Machine.ValueRelocate {FS : FrameSemantics} {prog : AbstractTrace} where
 
-open import Data.Nat using (ℕ; zero; suc; _+_; _<_; _≤_; _⊔_; _∸_; z≤n; s≤s)
-open import Data.Nat.Properties using (+-assoc; +-suc; m≤m+n; m≤n⊔m; m≤m⊔n; ≤-trans; +-monoˡ-≤; +-monoʳ-≤; +-comm; +-monoʳ-<; m+[n∸m]≡n)
-open import Data.Maybe using (just)
+open import Data.Nat using (ℕ; suc; _+_; _<_; _≤_; _⊔_; _∸_; z≤n; s≤s)
+open import Data.Nat.Properties using (+-assoc; +-suc; m≤m+n; m≤n⊔m; m≤m⊔n; ≤-trans; +-monoʳ-≤; +-comm; +-monoʳ-<; m+[n∸m]≡n)
 open import Data.Product using (_,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 open import Once.Memory.HeapAddress using (HeapRef; heap-loc)
-import Once.Memory.HeapAddress
-open import Once.CCC.Machine.LocMatchesMode using (LocMatchesMode)
-open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
+open import Once.CCC.Machine.Locations using (ValueLocation; AtDynamic)
 open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap; AbstractTrace)
 open MemOps {FS}
-open import Once.IR using (AllocMode; Stack; Heap)
-open import Once.IRTy using (IRTy; Unit; Void; _*_; _⇛_; μ-type; ν-type; Int; Float; FitsInRegI; fits-int; fits-float) renaming (_+_ to _+ᵀ_)
+open import Once.IR using (Stack; Heap)
+open import Once.IRTy using (IRTy; Unit; _*_; _⇛_; μ-type; ν-type; FitsInRegI; fits-int; fits-float) renaming (_+_ to _+ᵀ_)
 open import Once.CCC.Codegen.Size using (size)
 open import Once.CCC.Machine.ValueRel
 open ClosureWellFormedBase {FS}

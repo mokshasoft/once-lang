@@ -28,20 +28,17 @@ open import Once.Spec.Theory
   using (float-rounded; float-order; float-equality; ‵==ᵈ; ‵!=ᵈ; ‵<ᵈ; ‵<=ᵈ; ‵>ᵈ; ‵>=ᵈ; ‵<; ‵<=; ‵>; ‵>=; ‵==; ‵!=)
 open import Once.Spec.Type using (Base; b-*; b-Float; b-Int; b-Unit; ∅ₖ)
 open import Data.Integer using (ℤ; +_; -[1+_]) renaming ()
-import Data.Integer as ℤ
 open import Data.Nat using (suc)
 -- the decimal the symbol layer proves injective (`SymbolInjective.toList-showNat`)
 open import Once.Target.Symbol using () renaming (showNat to showℕ)
 open import Data.List using ([]; _∷_)
 open import Data.String using (String; _++_)
-open import Data.Product using (_,_)
-open import Data.Maybe using (Maybe; just; nothing)
 
 open import Once.SigOp.Info using (SigOpInfo; mk-info'; blockV)
 open import Relation.Binary.PropositionalEquality using (refl)
 open import Once.Spec.Name using (bare)
 
-open import Once.Arith.Machine.Shape using (InputShape; shape-unit; shape-int; shape-float; shape-pair; InputPath; Side; Fst; Snd; Path; here-int; here-flt; go-fst; go-snd; ⌊_⌋ᴾ)
+open import Once.Arith.Machine.Shape using (InputShape; shape-unit; shape-int; shape-float; shape-pair; InputPath; Side; Fst; Snd; ⌊_⌋ᴾ)
 open import Once.Arith.Machine.IR
   using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f; acmp; afcmp; numtype-as-type; shape-as-type)
 

@@ -14,7 +14,7 @@
 
 module Once.Extract.Names.Proof where
 
-open import Data.List using (List; []; _∷_)
+open import Data.List using (List; _∷_)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Relation.Unary.Any using (here; there)
 open import Data.Maybe using (Maybe)
@@ -24,7 +24,7 @@ open import Function using (_⇔_; mk⇔)
 open import Relation.Binary.PropositionalEquality using (refl)
 
 open import Once.Spec.Surface.Syntax
-  using (Module; Decl; DImport; DTypeSig; DFunDef; DSignature; DTypeAlias; mkImport)
+  using (Module; DImport; DTypeSig; DFunDef; DSignature; DTypeAlias; mkImport)
 open import Once.Extract.Names using (imports-of; module-imports; import-path; import-alias)
 
 private

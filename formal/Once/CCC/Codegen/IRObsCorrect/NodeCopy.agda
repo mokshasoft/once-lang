@@ -22,15 +22,24 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.NodeCopy (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.Bool using (false)
+open import Data.Empty using (⊥)
+open import Data.List using (_++_; _∷_; [])
+open import Data.List.Relation.Unary.All.Properties using (++⁺)
+open import Data.Maybe using (just)
+open import Data.Product using (proj₁; _,_)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Relation.Binary.PropositionalEquality using (_≡_; trans; sym; cong; _≢_; subst; refl)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic; ValueLocation)
 open import Once.CCC.Machine.SMCore
-  using (AbstractTrace; AbstractInstr; LocState; AllocState; module LocState; module AllocState; module MemOps; module AbstractExec;
+  using (AbstractTrace; LocState; AllocState; module LocState; module AllocState; module MemOps; module AbstractExec;
          readReg; writeReg; Input1; Output; SV-Ptr; StoredValue;
-         mov-to-output; store-at-slot; load-from-slot; instr-alloc-heap; restore-input; load-at; store-at)
+         mov-to-output; store-at-slot; load-from-slot; instr-alloc-heap)
 open LocState using (regs; halted)
-open AllocState using (current-frame; next-slot; next-heap-ref)
-open import Once.Memory.HeapAddress using (HeapRef; HeapLocation; heap-loc)
+open AllocState using (current-frame)
+open import Once.Memory.HeapAddress using (heap-loc)
 open import Once.IRTy using (IRTy)
 open import Once.CCC.Codegen.Size using (size)
 open import Once.CCC.Codegen.FlatLayout using (put; put-All)
@@ -38,15 +47,23 @@ open import Once.CCC.Codegen.IRToTrace o using (node-copy-trace)
 import Once.CCC.Machine.FlatPut as FlatPut
 import Once.CCC.Machine.FlatAlloc as FlatAlloc
 
-open import Data.Nat using (_⊔_; z≤n; s≤s)
-open import Data.Nat.Properties using (m≤n⊔m; m≤m⊔n)
-open import Data.List.Relation.Unary.All using ([]; _∷_)
+open import Data.Nat using (_⊔_; ℕ; suc)
+open import Data.Nat.Properties using (m≤n⊔m; <-irrefl; n<1+n; n≤1+n; ≤-refl; <-trans)
+open import Data.List.Relation.Unary.All using ([]; _∷_; All)
 
 module NodeCopyC {FS : FrameSemantics} where
 
   open Core {FS}
+  open ClosureWellFormedBase′ using (Live)
+  open ClosureWellFormedDef′ using (CellAt)
+  open FlatEventTrace′ using (event-of)
+  open AbstractExec′ using (exec-abstract)
+  open FlatMachine′ using (StraightStep)
+  open FlatStepsAPI′ using (_∷_; [])
+  open FrontierInvariant′ using (BeforeFrontier; module BeforeFrontier)
+  open MemOps′ using (readLoc)
   open Mach {FS}
-  open MemOps {FS} using (writeLoc; writeLoc-read-same-stack; writeLoc-preserves-other)
+  open MemOps {FS} using (writeLoc-read-same-stack; writeLoc-preserves-other)
   open AbstractExec {FS} using (exec-trace; exec-trace-cons)
   open import Once.CCC.Machine.SMPrimitives using (module TraceComposition)
   open TraceComposition {FS} using (exec-trace-append)
@@ -55,7 +72,7 @@ module NodeCopyC {FS : FrameSemantics} where
              (s : LocState FS) (alloc : AllocState {FS})
              (h : halted s ≡ false) where
 
-    open FlatPut {FS} {prog} using (Src; src-tr; put-run; PutOut; dst)
+    open FlatPut {FS} {prog} using (Src; src-tr; put-run; PutOut)
 
     N  = 2 ⊔ size L
     rd = FlatAlloc.fresh-ref {FS} alloc
@@ -112,6 +129,7 @@ module NodeCopyC {FS : FrameSemantics} where
              (src-tr keep₄ src)
       sp = proj₁ (exec-trace (put L n (suc n) 0) s₄ A₁)
       module Pt = PutOut Pt
+        using (alloc-eq; cell; live; other)
 
       -- the last row: the node is the result
       sfin = record sp { regs = writeReg (regs sp) Output blk }

@@ -24,7 +24,7 @@ open import Data.String using (String)
 -- is the point: the correspondence proofs that today exist only for x86-64 are
 -- meant to be generalised over the target, and a bare-ℕ label space here would
 -- be the one place they could not be.
-open import Once.CCC.Label public using (LabelId; Label; once; sigop; thunk; callee; e-fn)
+open import Once.CCC.Label using (LabelId; Label)
 
 ------------------------------------------------------------------------
 -- Registers
@@ -41,8 +41,8 @@ open import Once.CCC.Label public using (LabelId; Label; once; sigop; thunk; cal
 -- The physical register file is now the single shared declaration
 -- `Once.Target.X86-32.PhysReg` (Plan 0.55), re-exported here so every CCC
 -- importer of this module keeps seeing `Reg` unchanged.
-open import Once.Target.X86-32.PhysReg public using
-  (Reg; eax; ebx; ecx; edx; esi; edi; ebp; esp)
+open import Once.Target.X86-32.PhysReg using
+  (Reg)
 
 ------------------------------------------------------------------------
 -- Memory Operands

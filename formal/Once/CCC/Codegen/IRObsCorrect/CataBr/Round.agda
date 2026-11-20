@@ -30,6 +30,13 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.CataBr.Round (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.Bool using (false)
+open import Data.List using (length; _++_; List; []; _∷_)
+open import Data.Maybe using (just; Maybe)
+open import Data.Product using (_,_; _×_; proj₂; proj₁)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; _≢_; trans; subst; cong)
 open import Once.CCC.Machine.MuRep using (Unboxed)
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module ResuspBaseC)
 open import Once.CCC.Codegen.IRObsCorrect.CataConst.Steps o tbl using (module CataStepsC)
@@ -42,22 +49,22 @@ open import Once.CCC.Codegen.IRObsCorrect.Inj o tbl using (module InjC)
 import Once.CCC.Machine.FlatPut as FlatPut
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Layer o using (kidsI; pushAllV)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Text o tbl using (module Pieces; module SlotArith; module OffArith)
-open import Once.CCC.Codegen.IRToTrace o using (push2; visit-walk; fsize)
+open import Once.CCC.Codegen.IRToTrace o using (fsize)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open import Once.CCC.Machine.SMCore
   using (LocState; module LocState; AbstractTrace; AbstractInstr; AllocState; module AllocState; StoredValue; readReg; Output; Input1
-        ; SV-Ptr; SV-Tag; sv-as-loc; store-at-slot; load-from-slot; load-at; mov-to-input; writeReg-same; offsetLoc
+        ; SV-Ptr; store-at-slot; load-from-slot; mov-to-input; writeReg-same; offsetLoc
         ; instr-ctrl; c-branch-tag-zero; c-jmp; c-label; writeReg-preserves)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
-open import Once.CCC.Machine.SMPrimitives using (nhw-store-at-slot)
+open import Once.CCC.Machine.Locations using (AtStack; AtDynamic)
+open import Once.CCC.Machine.SMPrimitives using (nhw-store-at-slot; nhw-load-from-slot; nhw-mov-to-input; InstrNoHeapWrite)
 open import Once.CCC.Label using (ℓ)
 open import Once.Memory.HeapAddress using (HeapLocation; sucHL)
-open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; ⟦_⟧TI; ⌈_⌉F; μ-type)
+open import Once.IRTy using (IRFunctor; WellFormedFI; ⟦_⟧TI; ⌈_⌉F; μ-type)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.Unit using (⊤)
-open import Data.Nat using (s≤s; z≤n; _*_)
-open import Data.Nat.Properties using (+-monoʳ-<; m<m+n)
+open import Data.Unit using (⊤; tt)
+open import Data.Nat using (s≤s; z≤n; _*_; ℕ; _+_; _≤_; suc; _<_)
+open import Data.Nat.Properties using (+-monoʳ-<; m<m+n; ≤-refl; ≤-trans; m≤m+n; +-comm; +-identityʳ; n≤1+n)
 
 open import Data.Nat.Solver using (module +-*-Solver)
 open +-*-Solver using (solve; _:+_; con; _:=_)
@@ -69,7 +76,14 @@ private
 module CataRoundC {FS : FrameSemantics} where
 
   open Core {FS}
-  open Mach {FS}
+  open ClosureWellFormedBase′ using (BlocksKept)
+  open ClosureWellFormedDef′ using (μ-layer)
+  open FlatMachine′ using (FlatState; find-label; fetch; fetch-++-right; tag-test; flat-read-tag; do-jump)
+  open FlatMachine′.FlatState using (falloc; floc; fpc)
+  open FlatStepsAPI′ using ([]; _∷_)
+  open InstrPrimitives′ using (exec-abstract-preserves-frame)
+  open MemOps′ using (readLoc)
+  open TracePrimitives′ using (InstrWF; exec-abstract-preserves-halted-WF)
   open ResuspBaseC {FS}
   open CataStepsC {FS}
   open CataStackC {FS}
@@ -79,7 +93,7 @@ module CataRoundC {FS : FrameSemantics} where
   open import Once.CCC.Machine.FlatWords {FS} using (offset-1)
   open FlatStepsAPI {FS} using (flat-tag-branch-yes; flat-tag-branch-not)
   open LocState using (regs; halted)
-  open AllocState using (next-slot; next-heap-ref; current-frame)
+  open AllocState using (current-frame)
 
   -- the slots the loop keeps: the value stack's, and the call slots on
   KL : ℕ → ℕ → ℕ → Set
@@ -126,6 +140,7 @@ module CataRoundC {FS : FrameSemantics} where
     XL = (23 + VL) + H
 
     module V = Visit prog F n n (n + 4) (n + 5) sn c ≤-refl (m≤m+n n 4) (m≤m+n n 5) n≢4 n≢5 4≢5
+      using (InWord; KV; VQ; visit)
 
     -- the loop's slots, as the visit walk keeps them
     kv : ∀ j → K j → V.KV (n + 7) j

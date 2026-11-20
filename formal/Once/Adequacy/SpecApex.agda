@@ -30,27 +30,26 @@
 open import Once.IR.Semantics.Trace using (Interp)
 open import Once.Target.Arch using (Arch)
 import Once.Adequacy.Compile as Compile
+import Once.Program as Program
 
 module Once.Adequacy.SpecApex
   (arch-correct : ∀ (ι : Interp) (arch : Arch) → Compile.ArchCorrect arch ι) where
 
 open import Data.Bool using (Bool)
-open import Data.List using (List; []; _∷_; map)
+open import Data.List using (List; map)
 open import Data.List.Relation.Unary.Unique.Propositional using (Unique)
 open import Once.Adequacy.SpecFront.SigFacts using (rname)
-open import Data.Maybe using (Maybe; just; nothing; _>>=_)
+open import Data.Maybe using (Maybe; just; _>>=_)
 open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
 open import Data.String using (String)
-open import Data.Sum using (inj₁; inj₂)
+open import Data.Sum using (inj₂)
 open import Data.Unit using (⊤)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst)
 open import Relation.Nullary using (yes; no)
 
 open import Once.Adequacy.CPU.Interface using (Byte)
 open import Once.Target.Arch using (arch-numerics)
 import Once.Denotation.Behavior as B
-open import Once.IR.Semantics.Trace using (interp)
-open import Once.Contract using (Impl)
 open import Once.Spec.Trace using (Tr; _≈ᵗ⟨_⟩_; _⊑ᵗ⟨_⟩_)
 open import Once.Metatheory.Trace using (⊑≈-trans)
 open import Once.Adequacy.MachineTrace using (silentTr)
@@ -61,14 +60,11 @@ import Once.Spec.Core.Program as CoreProgram
 import Once.Spec.Source as SP
 open SP using (Source; Typed; _⊢_; behaviour; Admissible)
 open SP.Typed using (signature; program)
-open import Once.Adequacy.SpecInterp using (toInterp; toImpl; wellFormed?)
+open import Once.Adequacy.SpecInterp using (toInterp; wellFormed?)
 open import Once.Core.Decl using (toISig)
 open import Once.Adequacy.ModuleLaws using (teleSig≡entrySig)
 open import Once.Adequacy.SpecSource using (parseModules; toSource)
 open import Data.Sum using (_⊎_)
-open import Once.Denotation.TraceTr using (trT∞)
-open import Once.Contract using (ISig)
-import Once.Core.Telescope as TL
 import Once.Parser as Parser
 import Once.Parser.Module.Core as PM
 open import Once.Parser.Module.Resolve using (collectUnaliased; collectAliases; importedOf)
@@ -88,6 +84,7 @@ import Once.Adequacy.SpecGrammar.Written as Written
 import Once.Adequacy.SpecFront.TypedBack
 
 module VC = Compile.WithCPU arch-correct
+  using (Admissible; SigOf; compile; correctᵈ; exec; ⟦_⟧ᵈᴵ)
 
 ------------------------------------------------------------------------
 -- The compiler's reading of a Spec source
@@ -122,8 +119,8 @@ record Bridges : Set₁ where
     -- Spec program, and the compiler's meaning of it is the Spec's behaviour.
     -- (plan 0.122: over the program's own signature, which declares the
     -- compiler's FFI words, in every Interpretation `J` of it)
-    sound : ∀ (arch : Arch) (src : Source) (srcC : B.Source) (tp : VC.Typed)
-          → toSource src ≡ just srcC → srcC VC.⊢R tp → VC.Admissible arch tp
+    sound : ∀ (arch : Arch) (src : Source) (srcC : B.Source) (tp : Program.Typed)
+          → toSource src ≡ just srcC → srcC Program.⊢R tp → VC.Admissible arch tp
           → Σ[ tp′ ∈ Typed ]
               (src ⊢ tp′) × Admissible (arch-numerics arch) tp′
               × Σ[ u ∈ VC.SigOf tp (signature tp′) ]
@@ -133,7 +130,7 @@ record Bridges : Set₁ where
     complete : ∀ (arch : Arch) (src : Source) (tp′ : Typed)
              → src ⊢ tp′ → Admissible (arch-numerics arch) tp′
              → Σ[ srcC ∈ B.Source ] (toSource src ≡ just srcC)
-               × Σ[ tp ∈ VC.Typed ] (srcC VC.⊢R tp) × VC.Admissible arch tp
+               × Σ[ tp ∈ Program.Typed ] (srcC Program.⊢R tp) × VC.Admissible arch tp
 
 ------------------------------------------------------------------------
 -- The Spec's claim, from the compiler's and the bridges
@@ -255,8 +252,8 @@ private
       tp′ : Typed
       tp′ = record { module′ = SS.mkModule dsU ; signature = Dn.Denoted.Σₛ D ; program = Mn.progS D }
 
-sound-of : ∀ (arch : Arch) (src : Source) (srcC : B.Source) (tp : VC.Typed)
-         → toSource src ≡ just srcC → srcC VC.⊢R tp → VC.Admissible arch tp
+sound-of : ∀ (arch : Arch) (src : Source) (srcC : B.Source) (tp : Program.Typed)
+         → toSource src ≡ just srcC → srcC Program.⊢R tp → VC.Admissible arch tp
          → Σ[ tp′ ∈ Typed ]
              (src ⊢ tp′) × Admissible (arch-numerics arch) tp′
              × Σ[ u ∈ VC.SigOf tp (signature tp′) ]
@@ -285,7 +282,7 @@ sound-of arch src srcC (mR , mt , hvm) ts (mU , pt , rmod) adm =
 complete-of : ∀ (arch : Arch) (src : Source) (tp′ : Typed)
             → src ⊢ tp′ → Admissible (arch-numerics arch) tp′
             → Σ[ srcC ∈ B.Source ] (toSource src ≡ just srcC)
-              × Σ[ tp ∈ VC.Typed ] (srcC VC.⊢R tp) × VC.Admissible arch tp
+              × Σ[ tp ∈ Program.Typed ] (srcC Program.⊢R tp) × VC.Admissible arch tp
 complete-of arch src tp′ (mm , pt′ , pms , den) adm =
   B.mkSource mm (SP.Source.text src) , Modules.source-of← src pms
   , (PM.resolved (SS.mkModule (TC.dsR T)) _ , TC.mt T , TC.hvm T)

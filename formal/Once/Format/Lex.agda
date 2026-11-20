@@ -26,7 +26,7 @@ open import Data.Nat using (ℕ; suc; _<_; _∸_; s≤s)
 open import Data.Nat.Induction using (<-wellFounded)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; n<1+n; m≤n⇒m≤1+n; <⇒≤)
 open import Data.Product using (_,_; proj₁; proj₂; Σ-syntax)
-open import Data.String using (String; fromList; toList)
+open import Data.String using (String; fromList)
 open import Data.Integer using (+_)
 open import Induction.WellFounded using (Acc; acc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
@@ -39,8 +39,9 @@ open import Once.Parser.Lexer using (HeadK; hkWS; hkNL; hkCaret; hkDash; hkLBrac
   hkLParen; hkRParen; hkRBrace; hkColon; hkLambda; hkComma; hkSemi; hkAt; hkPipe; hkPlus; hkStar; hkSlash;
   hkPct; hkAmp; hkDot; hkStr; hkGen; headK; Dash3; d-comment; d-arrow; d-minus; Caret4; c-1; c-0; c-w; c-gen;
   nlIndent; isEqHead; isDashHead; dashClass; caretClass; isDotHead; drop1; drop1-≤; adv; collectStringB; collectIdentB;
-  collectDigitsB; collectFracB; skipLineB; skipBlockB; digitsToNat; isIdentStart; tokenize-WF; tokenize;
+  collectDigitsB; collectFracB; skipLineB; skipBlockB; digitsToNat; tokenize-WF; tokenize;
   tok-head; tok-str; tok-gen; tok-num; tok-nl; tok-dot; tok-cmp; tok-eqop; tok-lbrace; tok-minus; tok-caret)
+open import Once.Name.Chars using (isIdentStart)
 
 ------------------------------------------------------------------------
 -- What the lexer reads: tokens, and what it skips

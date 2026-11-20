@@ -24,7 +24,7 @@
 
 module Once.Adequacy.ArchCorrectness.RiscV64.RegRoles where
 
-open import Once.CCC.Target.RiscV64.Syntax using (Reg; sp; a0; t0; s1; s2)
+open import Once.Target.RiscV64.PhysReg using (Reg; sp; s1; s2; a0; t0)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles
   using (RegRoles; Role; role-sp; role-clos; role-heap; role-out; role-in1)
 
@@ -38,4 +38,4 @@ riscv64-reg-of role-in1     = t0
 riscv64-roles : RegRoles Reg
 riscv64-roles = record { reg-of = riscv64-reg-of }
 
-open RegRoles riscv64-roles public
+module RegRoles′ = RegRoles riscv64-roles

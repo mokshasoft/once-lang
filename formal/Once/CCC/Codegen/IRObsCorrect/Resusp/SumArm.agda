@@ -27,7 +27,18 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.Resusp.SumArm (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
-open import Once.CCC.Machine.SMCore using (ending)
+open Interface using (module Core)
+open import Data.Bool using (false)
+open import Data.Empty using (⊥)
+open import Data.List using (_∷_; [])
+open import Data.List.Properties using (length-++)
+open import Data.List.Relation.Unary.All.Properties using (++⁺)
+open import Data.Maybe using (just; nothing)
+open import Data.Product using (_,_; proj₁; proj₂)
+open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
+open import Once.CCC.Machine.ValueRel using (module ClosureWellFormedBase)
+open import Once.IR using (IR; Heap; Ana)
+open import Relation.Binary.PropositionalEquality using (_≡_; trans; cong; refl; subst; sym; _≢_; cong₂)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.CCC.Machine.LocMatchesMode using (LocMatchesMode)
@@ -38,7 +49,7 @@ open import Once.CCC.Machine.SMCore
          readReg; writeReg; Output; Input1; SV-Ptr; SV-Code; SV-Tag; StoredValue; sucLoc; offsetLoc;
          store-at-slot; load-from-slot; instr-alloc-heap; restore-input; mov-to-input; instr-load-tag-lit; store-at)
 open LocState using (regs; halted)
-open AllocState using (current-frame; next-slot; next-heap-ref; saved-frames)
+open AllocState using (current-frame; next-slot; next-heap-ref)
 open import Once.Memory.HeapAddress using (heap-loc)
 open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; ⟦_⟧TI; ν-type)
 import Once.IRTy as IRTy′
@@ -51,16 +62,25 @@ import Once.CCC.Machine.FlatPut as FlatPut
 import Once.CCC.Machine.SMPrimitives
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module ResuspBaseC)
 open import Once.CCC.Codegen.IRObsCorrect.Get o tbl using (module GetC)
-open import Data.List.Properties using (++-identityʳ)
-open import Data.Nat using (_⊔_; z≤n; s≤s)
-open import Data.Nat.Properties using (m≤n⊔m; m≤m⊔n)
-open import Data.List.Relation.Unary.All using ([]; _∷_)
+open import Data.Nat using (_⊔_; z≤n; s≤s; ℕ; suc; _∸_; _≤_; _+_; _<_)
+open import Data.Nat.Properties using (m≤n⊔m; m≤m⊔n; ≤-refl; ≤-trans; <-irrefl; n<1+n; ≤-reflexive; +-suc; +-identityʳ; <-≤-trans; m≤m+n; n≤1+n)
+open import Data.List.Relation.Unary.All using ([]; _∷_; All)
 open import Data.Nat.Solver using (module +-*-Solver)
 open +-*-Solver using (solve; _:+_; con; _:=_)
 
 module ResuspSumArmC {FS : FrameSemantics} where
 
   open Core {FS}
+  open ClosureWellFormedBase′ using (VTy; Live; BlocksKept; InBlk)
+  open ClosureWellFormedDef′ using (ValidAtWF; CellAt; cellWF-heap-transport)
+  open FlatEventTrace′ using (event-of; chain-events; chain-events-++)
+  open AbstractExec′ using (exec-abstract)
+  open FlatMachine′ using (FlatState; StraightStep; fetch-++-left; label-of?)
+  open FlatMachine′.FlatState using (fpc; floc; flink; falloc; fret)
+  open FlatStepsAPI′ using (_∷_; []; FlatSteps; FlatSteps-++)
+  open FrontierInvariant′ using (module BeforeFrontier; BeforeFrontier)
+  open MemOps′ using (readLoc)
+  open ReadLocEq′ using (readLoc-stack-heap-eq)
   open Mach {FS}
   open MemOps {FS} using (writeLoc; writeLoc-preserves-other; writeLoc-read-same-stack; writeLoc-regs; writeLoc-halted)
   open AbstractExec {FS} using (exec-trace; exec-trace-cons; exec-load-from-slot-with-value; exec-restore-input-with-value)
@@ -71,6 +91,7 @@ module ResuspSumArmC {FS : FrameSemantics} where
   open ResuspBaseC {FS}
   open ClosureWellFormedBase {FS} using (SumTag; Pad; CellAtP)
   module SR = StraightRunAPI {FS}
+    using (At; after; straight-silent; straight-steps)
 
   private
     slot-of : ValueLocation FS → ℕ
@@ -101,6 +122,7 @@ module ResuspSumArmC {FS : FrameSemantics} where
               where
 
     open RBase wf coalg e prog lbl-n R mk-child R-tr
+    open PutLay using (put-lay-run; module PutOutL)
 
     Pa Pν : IRTy
     Pa = ⟦ P ⟧TI A
@@ -211,6 +233,7 @@ module ResuspSumArmC {FS : FrameSemantics} where
              (place→out (GetOut.place gP))
         where la2-t = la2
       module RP = RRuns′ rP
+        using (bk; ev; lnk; nh; pc; ret; rout; run; seg; settle; steps)
       sP = RP.settle
       aP = falloc sP
 
@@ -304,6 +327,7 @@ module ResuspSumArmC {FS : FrameSemantics} where
                (λ j j< → subst (λ z → InBlk A₁ (AtDynamic (heap-loc rd z))) (sym (+-identityʳ (suc (size Pν) + j)))
                                (FlatAlloc.alloc-in {FS} N aP (suc (size Pν) + j) (pad< j j<)))
         module FO = FlatPut.FillOut FO
+          using (alloc-eq; live; other; written)
         sf = proj₁ (exec-trace (fill (suc (size Pν)) c) x₆ A₁)
 
         keepf : ∀ l → Live aP l → readLoc sf l ≡ readLoc u l
@@ -321,6 +345,7 @@ module ResuspSumArmC {FS : FrameSemantics} where
                (FlatAlloc.alloc-live {FS} N aP) N≥ (FlatAlloc.alloc-in {FS} N aP)
                (rout→src wP RP.rout keepf)
         module PP = PutOutL PP
+          using (alloc-eq; cell-at; live; other)
         sp = proj₁ (exec-trace (put Pν tmp dst 1) sf A₁)
 
         sfin = record sp { regs = writeReg (regs sp) Output blk }

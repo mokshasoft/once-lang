@@ -28,48 +28,52 @@ import Data.List as DL
 open import Once.Denotation.Program using (IRFun; tableEnv; tableCalls; LinkedAt)
 module Once.CCC.Codegen.IRObsCorrect.Interface (o : CanonicalName) (tbl : DL.List IRFun) where
 
-open import Once.CCC.Codegen.IRObsCorrect.Prelude o tbl public
-open import Once.CCC.Machine.LocMatchesMode using (LocMatchesMode)
+import Once.CCC.Codegen.IRObsCorrect.Prelude
+module Prelude = Once.CCC.Codegen.IRObsCorrect.Prelude o tbl
+  using (fits-erase; module IRToTrace; module SlotBudget′)
+open Prelude.IRToTrace using (ir-to-trace')
+open import Data.List using (List; length; _∷_; [])
+open import Data.List.Relation.Unary.All using (All)
+open import Data.Maybe using (nothing; just)
+open import Data.Product using (proj₁; proj₂; _×_; _,_; ∃-syntax)
+open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
+open import Once.CCC.Machine.ValueRel using (module ClosureWellFormedBase; module ClosureWellFormedDef)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Once.IR using (IR; out-μ; AllocMode)
+open import Relation.Binary.PropositionalEquality using (_≡_; cong₂; sym; trans; cong; refl; subst)
 open import Once.CCC.Machine.Allocation using (module FrontierInvariant)
 import Once.CCC.Machine.SMCore as SMCore
+import Once.CCC.Label as Label
 open import Once.CCC.Codegen.CataNextSlot using (module CataNextSlot)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Label using (LabelId)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
-open import Once.CCC.Machine.SMCore using (AllocState; LocState; AbstractInstr; module AbstractExec; module MemOps; AbstractTrace; StoredValue; block-layout; readReg; Input1; SV-Ptr; sucLoc; SV-Code; module LocState; module AllocState)
+open import Once.CCC.Machine.SMCore using (AllocState; LocState; AbstractInstr; module AbstractExec; module MemOps; AbstractTrace; StoredValue; block-layout; module LocState; module AllocState)
 open import Once.CCC.Machine.SMCore using (ending)
 open AllocState using (next-slot; current-frame; saved-frames)
-open LocState using (halted; regs)
+open LocState using (halted)
 open import Once.CCC.Machine.SMPrimitives using (module TracePrimitives; module InstrPrimitives; module RecSchemeSemantics)
 open import Once.CCC.Machine.Validity using (module ReadLocEq)
-open import Once.IR.Semantics.Event using (SigOpEvent)
-open import Once.IRTy using (WellFormedFI-irrelevant; WellFormedFI; μ-type; ⟦_⟧TI; IRTy; Unit; ν-type; _*_)
+open import Once.IRTy using (WellFormedFI; μ-type; ⟦_⟧TI; IRTy)
 open import Once.Memory.HeapAddress using (HeapLocation)
 open import Once.CCC.Machine.MuRep using (Unboxed)
-import Once.CCC.FrameSemantics as FrameSemantics′
 
--- Qualified aliases cannot be re-exported, so each part repeats these. The
--- bare `import` of FrameSemantics is for the FULLY QUALIFIED
--- `Once.CCC.FrameSemantics.fs-numerics`, which a `using`-re-export does not
--- carry (a `public` re-export carries NAMES, not the module itself).
+-- The bare `import` of FrameSemantics is for the fully qualified uses
+-- (`Once.CCC.FrameSemantics.fs-numerics`).
 import Once.CCC.FrameSemantics
-import Once.CCC.Machine.SMPrimitives
-import Once.IRTy
-import Once.IRTy as IRTy′
 import Once.IR
-import Once.Semantics.Machine as EvV
 import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
 import Once.Denotation.ValueDomain as ValueDomain
 import Once.IR.Semantics.Trace as TM
-open import Once.Res using (Res; returns; stopped; is-stopped)
+open import Once.Res using (Res; returns; stopped)
 open import Once.IR.Semantics.Iterative using (T∞; Now; valueNow)
-open import Once.Denotation.Approx using (Ap; done; cut; approx; NotCut; budgetLeft)
-open import Data.Nat.Properties using (+-monoʳ-≤; +-monoˡ-≤)
-open import Data.Nat using (z≤n)
-open import Data.Bool using (Bool)
+open import Once.Denotation.Approx using (Ap; done; cut; NotCut; budgetLeft)
+open import Data.Nat.Properties using (+-monoʳ-≤; +-monoˡ-≤; ≤-trans; ≤-reflexive; +-assoc; +-comm; m≤m+n; m≤n+m)
+open import Data.Nat using (z≤n; ℕ; _≤_; _+_; suc; zero)
+open import Data.Bool using (Bool; false; true)
 import Data.Maybe
 import Data.List.Properties
 open import Once.CCC.Machine.FlatLog using (LogFree)
@@ -97,13 +101,14 @@ module Core {FS : FrameSemantics} where
 
   -- plan 0.135 S1: the observation vocabulary lives in `ClosureWellFormedBase`
   -- now (the arrow case states a callee run in it).
-  open ClosureWellFormedBase {FS}
+  module ClosureWellFormedBase′ = ClosureWellFormedBase {FS}
     using (runAt; eventsAt; resultAt; stopsAt; ⟪_⟫_
           ; prim-sv; cell-ptr; cell-inline; cell-flat; IsNode; IsFlat; InlineRep; rep-prim; inline-sv
           ; ValidFO; ResultPlaceP; rp-unit; rp-loc; rp-reg; VTy; LayerV
           ; Live; live→bf; live-heap; live-lift; live-ns; InBlk; Here; BlocksKept
           -- D400: footprints
-          ; Foot; _∈ᶠ_; SameBlk; blk-refl; blk-live; blk-live0) public
+          ; Foot; _∈ᶠ_; SameBlk; blk-refl; blk-live; blk-live0)
+  open ClosureWellFormedBase′
 
   -- A run depends on the state only through its log.
   runAt-≡ : ∀ {X} {st st′ : LocState FS} {m m′ : TM.T X}
@@ -157,23 +162,27 @@ module Core {FS : FrameSemantics} where
   -- `flat-step-straight` threads `exec-abstract` definitionally, so the
   -- structured machine's halt lemmas apply to a flat chain unchanged — the
   -- conditional form is the one `inl`'s indirect stores and slot loads need.
-  open TracePrimitives {FS} using (InstrWF; exec-abstract-preserves-halted-WF; load-indirect-twf; load-indirect-suc-twf) public
-  open InstrPrimitives {FS} using (exec-abstract-preserves-stack-slot; store-at-slot-preserves-below; exec-abstract-preserves-frame; exec-abstract-preserves-saved; exec-abstract-preserves-heapMem; store-at-slot-preserves-ancestor) public
-  open RecSchemeSemantics {FS} using (exec-abstract-load-indirect-output; exec-abstract-load-indirect-preserves-mem;
-                                     exec-abstract-load-indirect-suc-output; exec-abstract-load-indirect-suc-preserves-mem) public
-  open Once.CCC.Machine.SMPrimitives using (nhw-load-at; nhw-addr-at; nhw-load-indirect; nhw-load-indirect-suc; nhw-instr-save-closure-reg; nhw-instr-load-tag-lit; nhw-mov-to-input; nhw-instr-alloc-heap; nhw-instr-load-code-addr; nhw-load-from-slot; InstrNoHeapWrite; instr-writes-slot; nhw-mov-to-output; nhw-instr-load-const; nhw-instr-sigop) public
-  open RecSchemeSemantics {FS} using (exec-abstract-preserves-heap-ref) public
+  module TracePrimitives′ = TracePrimitives {FS} using (InstrWF; exec-abstract-preserves-halted-WF; load-indirect-twf; load-indirect-suc-twf)
+  module InstrPrimitives′ = InstrPrimitives {FS} using (exec-abstract-preserves-stack-slot; store-at-slot-preserves-below; exec-abstract-preserves-frame; exec-abstract-preserves-saved; exec-abstract-preserves-heapMem; store-at-slot-preserves-ancestor)
+  module RecSchemeSemantics′ = RecSchemeSemantics {FS} using (exec-abstract-load-indirect-output; exec-abstract-load-indirect-preserves-mem;
+                                     exec-abstract-load-indirect-suc-output; exec-abstract-load-indirect-suc-preserves-mem;
+                                     exec-abstract-preserves-heap-ref)
 
-  open FlatMachine {FS} public
+  module FlatMachine′ = FlatMachine {FS}
+    using (FlatState; StraightStep; do-call-at; do-call-code; do-call-sv; do-jump; do-nz; do-thunk; enter-call; entry-of?; exec-flat; fetch; fetch-++-left; fetch-++-right; find-fn; find-label; find-thunk; fl-at; fl-go; flat-exec-instr; flat-read-at; flat-read-tag; flat-step-straight; ft-at; ft-go; ft-go-sound; ft-match; grow-frame; label-of?; leave-frame; leave-frame-block-size; leave-frame-heap-ref; leave-frame-saved-∷; mkFlatFull; tag-test; module FlatState)
+  open FlatMachine′
+  open FlatMachine′.FlatState using (floc; falloc; fpc; fret; flink)
 
   -- …and one call-free flat step is such a fragment (`FlatLog`).
   log-step : ∀ (i : AbstractInstr) → LogFree i → ∀ prog (fs : FlatState)
            → SMCore.LocState.ev-log (floc (flat-exec-instr i prog fs)) ≡ SMCore.LocState.ev-log (floc fs) DL.++ DL.[]
   log-step i lf prog fs = trans (LP.flat-exec-instr-log i lf prog fs) (log-pure {floc fs})
-  open FlatStepsAPI {FS} using (FlatSteps; []; _∷_; step-at; exec-flat-steps; FlatSteps-++; FlatSteps-prefix; FlatSteps-reloc) public
-  open AbstractExec {FS} using (exec-abstract; exec-sigop-halts; exec-sigop-halts-of; exec-sigop-faults; exec-sigop-faults-of; unread?; exec-sigop-output-of; pure-sigop-output; pure-sigop-out-aux; pure-sigop-out-val; readTyped; readReg-typed) public
-  open FrontierInvariant {FS} using (BeforeFrontier; frontier-monotone) public
-  open ClosureWellFormedDef {FS}
+  module FlatStepsAPI′ = FlatStepsAPI {FS} using (FlatSteps; []; _∷_; step-at; exec-flat-steps; FlatSteps-++; FlatSteps-prefix; FlatSteps-reloc)
+  open FlatStepsAPI′
+  module AbstractExec′ = AbstractExec {FS} using (exec-abstract; exec-sigop-halts; exec-sigop-halts-of; exec-sigop-faults; exec-sigop-faults-of; unread?; exec-sigop-output-of; pure-sigop-output; pure-sigop-out-aux; pure-sigop-out-val; readTyped; readReg-typed)
+  module FrontierInvariant′ = FrontierInvariant {FS} using (BeforeFrontier; frontier-monotone)
+  open FrontierInvariant′
+  module ClosureWellFormedDef′ = ClosureWellFormedDef {FS}
     using (ValidAtWF; ResultPlace; at-loc; at-reg; unit-result
           ; CalleeRunP; module CalleeRunP; callee-run; crun-map; CallRuns; VAt; rp→place
           ; NuV; module NuV; ForceRuns; NuStep; module NuStep; module NuCoind
@@ -203,10 +212,14 @@ module Core {FS : FrameSemantics} where
           -- environment, the label and the residence off.
           ; module ClosureValidWF; decomposeClosureWF
           ; EnvAt; env-at-loc; env-in-cell
-          ; validityWF-frontier-advance) public
-  open MemOps {FS} using (readLoc) public
-  open ReadLocEq {FS} using (readLoc-stack-heap-eq) public
-  open FlatEventTrace {FS} using (flat-events; event-of; flat-events-[]; chain-events; chain-events-nil; chain-events-++; chain-events-subst-start; chain-left; chain-ctrls; chain-ctrls-++; chain-ctrls-subst-start; ctrls-≤ʳ; ctrls-≤ˡ) public
+          ; validityWF-frontier-advance)
+  open ClosureWellFormedDef′
+  module MemOps′ = MemOps {FS} using (readLoc)
+  open MemOps′
+  module ReadLocEq′ = ReadLocEq {FS} using (readLoc-stack-heap-eq)
+  open ReadLocEq′
+  module FlatEventTrace′ = FlatEventTrace {FS} using (flat-events; event-of; flat-events-[]; chain-events; chain-events-nil; chain-events-++; chain-events-subst-start; chain-left; chain-ctrls; chain-ctrls-++; chain-ctrls-subst-start; ctrls-≤ʳ; ctrls-≤ˡ)
+  open FlatEventTrace′
   open FlatEventTrace {FS} using (chain-log)
 
   -- The control steps of two parts, inside a chain that runs them with
@@ -246,8 +259,9 @@ module Core {FS : FrameSemantics} where
              → chain-events r ≡ DL.[]
              → SMCore.LocState.ev-log (floc fs′) ≡ SMCore.LocState.ev-log (floc fs)
   log-silent {fs = fs} r eq = trans (log-of r eq) (Data.List.Properties.++-identityʳ (SMCore.LocState.ev-log (floc fs)))
-  open RTA o tbl {FS} using (Readable; r-unit; r-int; r-pair; r-float; r-sum; r-void; readable?; readable-base; readTyped-adequate) public
-  open CataNextSlot {FS} using (exec-flat-keeps-next-slot; AllSlotStable) public
+  module RTA′ = RTA o tbl {FS} using (Readable; r-unit; r-int; r-pair; r-float; r-sum; r-void; readable?; readable-base; readTyped-adequate)
+  module CataNextSlot′ = CataNextSlot {FS} using (exec-flat-keeps-next-slot; AllSlotStable)
+  open CataNextSlot′
 
   -- μ↔layer iso (the strat-const crux), general in F. A μ-value's
   -- validity at `loc` IS its destructured layer's validity at the SAME
@@ -732,6 +746,8 @@ module Core {FS : FrameSemantics} where
   CalleeRun : AbstractTrace → FlatState → ℕ → DL.List ℕ → (B : IRTy) → T∞ ⟦ B ⟧ → ℕ → Set
   CalleeRun prog fs ret-pc rs B comp k = CalleeRunP {prog = prog} {B} (ResultPlace {prog = prog} B) fs ret-pc rs comp k
   module CalleeRun = CalleeRunP
+    using (bf-mono; blocks-kept; cont-alloc; events; frame-pres; frames-pres; live; log; mem-pres
+          ; no-link; no-ret; out-mode; place; progress; returned; run; settle; steps; stops)
 
   -- plan 0.135 S1: `CalleeRuns` (D188, the closure half of the block table)
   -- is GONE. A closure's witness now says what its block does (`CallRuns`,
@@ -786,14 +802,14 @@ module Core {FS : FrameSemantics} where
     → p ≡ q
 
   -- the entry scan finds SOME entry wherever there is one…
-  ft-complete : ∀ (t : AbstractTrace) (e : SMCore.EntryId) (i p b : ℕ)
+  ft-complete : ∀ (t : AbstractTrace) (e : Label.EntryId) (i p b : ℕ)
               → fetch t p ≡ just (SMCore.instr-ctrl (SMCore.c-entry e b))
               → ∃[ j ] (ft-go t e i ≡ just j)
   ft-complete []       e i p       b ()
   ft-complete (x ∷ xs) e i zero    b refl rewrite Once.CCC.Label.≡ᵇᴱ-refl e = i , refl
   ft-complete (x ∷ xs) e i (suc p) b eq = go (entry-of? x)
     where
-      go : ∀ (mo : Data.Maybe.Maybe SMCore.EntryId) → ∃[ j ] (ft-at mo xs e i ≡ just j)
+      go : ∀ (mo : Data.Maybe.Maybe Label.EntryId) → ∃[ j ] (ft-at mo xs e i ≡ just j)
       go nothing  = ft-complete xs e (suc i) p b eq
       go (just m) = gm (m Once.CCC.Label.≡ᵇᴱ e)
         where
@@ -806,8 +822,8 @@ module Core {FS : FrameSemantics} where
               → ∀ (p : ℕ) (lbl : LabelId) (b : ℕ)
               → fetch prog p ≡ just (SMCore.instr-ctrl (SMCore.c-thunk lbl b))
               → find-thunk prog lbl ≡ just p
-  thunk-found {prog} tu p lbl b eq with ft-complete prog (SMCore.e-thunk lbl) 0 p b eq
-  ... | j , fj with ft-go-sound prog (SMCore.e-thunk lbl) 0 j fj
+  thunk-found {prog} tu p lbl b eq with ft-complete prog (Label.e-thunk lbl) 0 p b eq
+  ... | j , fj with ft-go-sound prog (Label.e-thunk lbl) 0 j fj
   ...   | d , j≡d , b″ , fd = trans fj (cong just (trans j≡d (tu d p lbl b″ b fd eq)))
 
   record BlockRuns (prog : AbstractTrace) : Set where

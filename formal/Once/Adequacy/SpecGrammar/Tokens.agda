@@ -14,9 +14,6 @@
 module Once.Adequacy.SpecGrammar.Tokens where
 
 open import Data.List using (List; []; _∷_; map; _++_)
-open import Data.Nat using (ℕ)
-open import Data.Integer using (ℤ)
-open import Data.String using (String)
 open import Data.Bool using (Bool; true; false)
 open import Data.Product using (Σ-syntax; _×_; _,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)

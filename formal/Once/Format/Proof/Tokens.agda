@@ -11,16 +11,15 @@
 module Once.Format.Proof.Tokens where
 
 open import Data.Bool using (true; false)
-open import Data.List using (List; []; _∷_; concatMap)
-open import Data.Nat using (ℕ)
+open import Data.List using ([]; _∷_; concatMap)
 open import Data.Product using (proj₁)
-open import Data.String using (String; _==_)
+open import Data.String using (_==_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans)
 
-open import Once.Spec.Surface.Lexing using (Token; TWord)
+open import Once.Spec.Surface.Lexing using (TWord)
 open import Once.Format.Doc using (toks)
-open import Once.Format.Comment using (commentLines; commentRun; commentLinesDoc; classify; prose; verbatim)
-open import Once.Format.Print using (Trivia; Notes; lookupNotes; inners; eols; anchor; word)
+open import Once.Format.Comment using (commentLines; commentLinesDoc; classify; prose; verbatim)
+open import Once.Format.Print using (Notes; lookupNotes; inners; eols; anchor; word)
 
 lines-toks : ∀ cs r → toks (commentLinesDoc cs) r ≡ r
 lines-toks []       r = refl

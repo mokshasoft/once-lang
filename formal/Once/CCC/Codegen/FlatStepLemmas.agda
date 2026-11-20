@@ -24,7 +24,7 @@ module Once.CCC.Codegen.FlatStepLemmas where
 
 open import Once.CCC.Label using (LabelId; ≢⇒≡ᵇᴵfalse; _≡ᵇᴵ_)
 
-open import Data.Nat using (ℕ; zero; suc; _+_; _*_; _≡ᵇ_)
+open import Data.Nat using (ℕ; zero; suc; _+_; _*_)
 open import Data.Nat.Properties using (+-suc; +-identityʳ)
 open import Data.Bool using (Bool; false; true)
 open import Data.Maybe using (just; nothing; map)
@@ -33,7 +33,6 @@ open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.Product using (Σ; _×_; _,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.Empty using (⊥-elim)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 open import Relation.Nullary using (¬_)
 
@@ -46,6 +45,7 @@ open import Once.CCC.Machine.Flat using (module FlatMachine)
 
 module FlatStepsAPI {FS : FrameSemantics} where
   open FlatMachine {FS}
+  open FlatState using (floc; fpc)
 
   -- A chain of `k` non-halted `exec-flat` steps from `fs` to `fs'`. Each
   -- link carries its halted+fetch evidence; the next state is forced by

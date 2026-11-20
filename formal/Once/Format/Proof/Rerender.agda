@@ -17,29 +17,28 @@
 
 module Once.Format.Proof.Rerender where
 
-open import Data.Bool using (Bool; true; false; not; _∧_; _∨_; if_then_else_; T)
+open import Data.Bool using (true; false; _∨_; if_then_else_; T)
 open import Data.Char using (Char)
 import Data.Char as Ch
-open import Data.Empty using (⊥; ⊥-elim)
-open import Data.List using (List; []; _∷_; _++_; map; concatMap; reverse; foldl; [_])
+open import Data.List using (List; []; _∷_; _++_; map; concatMap; reverse)
 open import Data.List.Properties using (++-assoc; ++-identityʳ; reverse-involutive; reverse-++; unfold-reverse;
   concatMap-++)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 import Data.List.Relation.Unary.All.Properties as AllP
-open import Data.Nat using (ℕ; zero; suc; _+_; _≤ᵇ_)
+open import Data.Nat using (ℕ; _+_; _≤ᵇ_)
 open import Data.Nat.Properties using (+-assoc)
-open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃-syntax; ∃₂)
-open import Data.String using (String; toList; fromList) renaming (_++_ to _++ˢ_)
+open import Data.Product using (_×_; _,_; proj₂; ∃-syntax; ∃₂)
+open import Data.String using (String; toList; fromList)
 import Data.String as Str
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst)
-open import Relation.Nullary using (does; yes; no)
+open import Relation.Nullary using (does)
 open import Relation.Nullary.Decidable using (dec-false; dec-true)
 open import Agda.Builtin.String.Properties using (primStringToListInjective)
 
 open import Once.Postulates using (toList∘fromList)
-open import Once.Format.Doc using (lineComment; oneLine; body; joined; dashed; fill; width)
+open import Once.Format.Doc using (lineComment; oneLine; joined; dashed; fill; width)
 open import Once.Format.Comment using (is; allDash; listItem; blankish; emitW; wordsGo; words; CLine; prose;
   verbatim; classify; classifyChars; afterDashes; afterBlank; commentLines)
 open import Once.Format.Print using (trimEnd; dropLead)
@@ -326,7 +325,7 @@ fill-words {P} i c (x ∷ cur) (w ∷ ws) pc (pw ∷ pws) = branch ((c + 1 + Str
 -- What the layout writes for a comment, and what is read back
 ------------------------------------------------------------------------
 
-open import Once.Format.Comment using (isBlock; asLine; strip; dropBlanks; linesGo; linesOf; dropEmpty; trimLines;
+open import Once.Format.Comment using (isBlock; asLine; strip; dropBlanks; linesGo; dropEmpty; trimLines;
   inside; atLeastOne; eolText; eolChars)
 
 -- | The lines the layout writes for a comment line, at indentation `i`

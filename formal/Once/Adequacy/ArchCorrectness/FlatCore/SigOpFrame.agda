@@ -23,7 +23,7 @@ open import Data.Maybe using (Maybe)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.CCC.FrameSemantics using (FrameSemantics; module FrameSemantics)
 open FrameSemantics using (frame-word)
-open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles using (RegRoles; Role; role-sp; role-clos; role-heap; role-out; role-in1)
+open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles using (RegRoles; role-sp; role-clos; role-heap; role-out; role-in1)
 open import Once.CCC.Machine.SMCore
 open import Once.CCC.Label using (Label)
 open import Once.Spec.Name using (CanonicalName)
@@ -56,34 +56,38 @@ open import Data.Nat.Properties using (≤-trans; <-≤-trans; m≤m+n; m+n≤o�
 open import Data.Maybe using (just; nothing)
 open import Data.Product using (_×_; _,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.Empty using (⊥; ⊥-elim)
+open import Data.Empty using (⊥)
 open import Data.List using (List; []; _∷_)
 open import Relation.Nullary using (¬_)
-open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong; subst)
+open import Relation.Binary.PropositionalEquality using (refl; sym; trans; subst)
 open import Once.SigOp.Info using (SigOpInfo)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
-open FlatMachine {FS} using (FlatState; fpc; fret; falloc; fclosure; flink; floc; flat-exec-instr; fetch)
+open FlatMachine {FS} using (FlatState; flat-exec-instr; fetch; module FlatState)
+open FlatState using (flink; floc; fpc; falloc; fret)
 open AbstractExec {FS} using (exec-sigop-output; exec-sigop-halts; decode-at)
 open AllocState using (current-frame; frame-slots; saved-frames)
 open LocState using (regs; halted; heapMem; stackMem)
 open FrameSemantics FS using (Frame; frame-base)
-open RegRoles roles using (reg-of; sp-reg; clos-reg; heap-reg; out-reg; in1-reg)
+open RegRoles roles using (reg-of; sp-reg; out-reg)
 
 import Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence as FC
 import Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence as CC
 import Once.Adequacy.ArchCorrectness.FlatCore.RunLow as RL
-open import Once.SigOp.Info using (effect; Pure; Internal; internal-pure; module SigOpInfo)
+open import Once.SigOp.Info using (effect; Pure; Internal; internal-pure)
 open SigOpInfo using (baseA; sem)
 open import Data.Bool using (false)
 open import Data.Product using (∃)
 private
   module CFC = FC FS slot-size word-eq Reg roles State rreg memory xhalted
+    using (AddrMap; HeapView; Memory; RetAddrs; StackWindows; amap; enc-sv; frames-of; readMem; slots; windows-above; windows-lower; windows-reanchor; module FlatCorr; module HeapView)
   module CCC = CC o FS slot-size word-eq Reg roles State rreg memory xhalted link-claim
                  xpc Program compile-trace find-label blk-off blk-len exec modulus
-open CFC using (HeapView; FlatCorr; Memory; readMem; StackWindows; RetAddrs; GapNext; frames-of
-               ; hfront; lo; amap; haddr; dom-below; front-lo; enc-sv; slots
+    using (CompiledCorr; module CompiledCorr)
+open CFC using (HeapView; Memory; readMem; StackWindows; RetAddrs; frames-of; amap; enc-sv; slots
                ; windows-above; windows-reanchor; windows-lower)
-open CCC using (CompiledCorr; dataCorr; pc-off; ret-eq; code-eq)
+open CFC.HeapView using (hfront; haddr; lo; dom-below)
+open CCC using (CompiledCorr)
+open CCC.CompiledCorr using (ret-eq; code-eq; dataCorr)
 
 ------------------------------------------------------------------------
 -- The concrete run, as seen from the correspondence. `W` is the frame's size
@@ -134,17 +138,17 @@ sigop-arith-corr : ∀ {hv : HeapView} (prog : AbstractTrace) (fs : FlatState) (
                  → CompiledCorr hv prog (flat-exec-instr (instr-sigop si) prog fs) s′
 sigop-arith-corr {hv} prog fs s s′ si {W} {v} cc room lk ar val hl pc′ = record
   { dataCorr = record
-      { in1-eq      = trans (ar-role ar role-in1 (λ ())) (CFC.in1-eq corr)
+      { in1-eq      = trans (ar-role ar role-in1 (λ ())) (CFC.FlatCorr.in1-eq corr)
       ; out-eq      = trans (ar-out ar) val
-      ; clos-eq     = trans (ar-role ar role-clos (λ ())) (CFC.clos-eq corr)
-      ; halt-eq     = trans (ar-halt ar) (trans (CFC.halt-eq corr) (sym hl))
-      ; sp-eq       = trans (ar-role ar role-sp (λ ())) (CFC.sp-eq corr)
-      ; frontier-eq = trans (ar-role ar role-heap (λ ())) (CFC.frontier-eq corr)
-      ; dom-fresh   = CFC.dom-fresh corr
-      ; dom-written = CFC.dom-written corr
-      ; dom-sized   = CFC.dom-sized corr
-      ; heap-eq     = λ hl′ d → trans (ar-mem ar (haddr hv hl′) (inj₁ (below hl′ d))) (CFC.heap-eq corr hl′ d)
-      ; lo-le       = subst (lo hv ≤_) (sym (ar-role ar role-sp (λ ()))) (CFC.lo-le corr)
+      ; clos-eq     = trans (ar-role ar role-clos (λ ())) (CFC.FlatCorr.clos-eq corr)
+      ; halt-eq     = trans (ar-halt ar) (trans (CFC.FlatCorr.halt-eq corr) (sym hl))
+      ; sp-eq       = trans (ar-role ar role-sp (λ ())) (CFC.FlatCorr.sp-eq corr)
+      ; frontier-eq = trans (ar-role ar role-heap (λ ())) (CFC.FlatCorr.frontier-eq corr)
+      ; dom-fresh   = CFC.FlatCorr.dom-fresh corr
+      ; dom-written = CFC.FlatCorr.dom-written corr
+      ; dom-sized   = CFC.FlatCorr.dom-sized corr
+      ; heap-eq     = λ hl′ d → trans (ar-mem ar (haddr hv hl′) (inj₁ (below hl′ d))) (CFC.FlatCorr.heap-eq corr hl′ d)
+      ; lo-le       = subst (lo hv ≤_) (sym (ar-role ar role-sp (λ ()))) (CFC.FlatCorr.lo-le corr)
       ; stack-eq    = stack′
       }
   ; pc-off  = pc′
@@ -161,16 +165,16 @@ sigop-arith-corr {hv} prog fs s s′ si {W} {v} cc room lk ar val hl pc′ = rec
     sp   = rreg s sp-reg
     -- every live heap cell is below the block's frame
     below : ∀ hl′ {w} → heapMem (floc fs) hl′ ≡ just w → haddr hv hl′ < sp ∸ W
-    below hl′ d = <-≤-trans (dom-below hv (CFC.dom-written corr hl′ d))
+    below hl′ d = <-≤-trans (dom-below hv (CFC.FlatCorr.dom-written corr hl′ d))
                             (m+n≤o⇒m≤o∸n (hfront hv) room)
     above : ∀ a → sp ≤ a → readMem (memory s′) a ≡ readMem (memory s) a
     above a le = ar-mem ar a (inj₂ le)
     -- the windows, re-anchored at the stack pointer (the current frame's base)
     sw-sp : StackWindows (amap hv) (memory s) (stackMem (floc fs)) sp (frames-of (falloc fs))
     sw-sp = windows-reanchor (lo hv) sp (current-frame (falloc fs)) (frame-slots (falloc fs))
-              (saved-frames (falloc fs)) (≤-reflexive (CFC.sp-eq corr)) (CFC.stack-eq corr)
+              (saved-frames (falloc fs)) (≤-reflexive (CFC.FlatCorr.sp-eq corr)) (CFC.FlatCorr.stack-eq corr)
     stack′ : StackWindows (amap hv) (memory s′) (stackMem (floc fs)) (lo hv) (frames-of (falloc fs))
-    stack′ = windows-lower sp (lo hv) (frames-of (falloc fs)) (CFC.lo-le corr)
+    stack′ = windows-lower sp (lo hv) (frames-of (falloc fs)) (CFC.FlatCorr.lo-le corr)
                (windows-above (memory s) (memory s′) (stackMem (floc fs)) (stackMem (floc fs)) sp
                   (frames-of (falloc fs)) above (λ _ _ _ → refl) sw-sp)
 
@@ -181,6 +185,7 @@ sigop-arith-corr {hv} prog fs s s′ si {W} {v} cc room lk ar val hl pc′ = rec
 ------------------------------------------------------------------------
 private
   module CRL = RL o FS slot-size word-eq
+    using (RunLow; run-link-nothing; sigop-decodes)
 
 sigop-halts-pure : ∀ {A B} (si : SigOpInfo A B) (ls : LocState FS)
                  → effect si ≡ Pure

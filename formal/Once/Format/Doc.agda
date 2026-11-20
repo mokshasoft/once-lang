@@ -27,16 +27,15 @@
 module Once.Format.Doc where
 
 open import Data.Bool using (Bool; true; false; _∨_; _∧_; if_then_else_)
-open import Data.List using (List; []; _∷_; _++_; replicate; reverse; concatMap; length)
+open import Data.List using (List; []; _∷_; _++_; replicate; reverse; concatMap)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Nat using (ℕ; zero; suc; _+_; _≤ᵇ_)
-open import Data.Product using (_×_; _,_)
 open import Data.String using (String; fromList; toList)
 import Data.String as Str
 open import Data.Char using (Char)
 import Data.Char as Ch
 open import Relation.Nullary using (does)
-open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; TArrow; TEquals; TBang; TLBrace; TDot; TOpD)
+open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; TArrow; TEquals; TBang; TLBrace; TDot)
 open import Once.Adequacy.SpecTokNames
 open import Once.Format.Spell using (spell)
 

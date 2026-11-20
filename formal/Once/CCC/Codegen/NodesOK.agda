@@ -28,7 +28,6 @@ open import Once.CCC.Label using (callee; e-fn; labelSym)
 open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
 open SigOpInfo using (name; sem)
 open import Once.Target.Symbol using (once-symbol-path)
-open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (CmpAt; cmp-of; cmp-block-info)
 open import Once.IR using (IR)
 import Once.IR as IRm

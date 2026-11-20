@@ -17,6 +17,17 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.CataBr.FoldBack (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.Bool using (false)
+open import Data.Empty using (⊥)
+open import Data.List using (List; _∷_)
+open import Data.Maybe using (just)
+open import Data.Nat.Properties using (≤-trans; m≤m+n; <-irrefl; +-comm; n<1+n; ≤-refl)
+open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Data.Unit using (tt)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Once.IR using (IR)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; trans; subst; sym; cong; refl)
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module ResuspBaseC)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Stack o tbl using (module CataStackC)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Walk o tbl using (module CataWalkC)
@@ -28,19 +39,24 @@ open import Once.CCC.Machine.SMCore
   using (LocState; module LocState; AbstractTrace; AllocState; module AllocState; StoredValue; readReg; Output
         ; SV-Ptr; SV-Code; instr-ctrl; c-jmp)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
+open import Once.CCC.Machine.Locations using (AtStack; AtDynamic)
 open import Once.CCC.Label using (ℓ)
 open import Once.Memory.HeapAddress using (HeapLocation; sucHL; module HeapLocation; module HeapRef)
 open HeapLocation using (heap-ref)
 open HeapRef using (ref-id)
 open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; ⟦_⟧TI; ⌈_⌉F; μ-type)
 import Once.IRTy as IRTy′
-open import Data.Nat using (_*_)
+open import Data.Nat using (_*_; ℕ; _+_; _≤_; suc)
 
 module CataFoldBackC {FS : FrameSemantics} where
 
   open Core {FS}
-  open Mach {FS}
+  open ClosureWellFormedBase′ using (Live)
+  open FlatMachine′ using (FlatState; fetch; do-jump)
+  open FlatMachine′.FlatState using (floc; fpc; falloc)
+  open FlatStepsAPI′ using (_∷_)
+  open FrontierInvariant′ using (module BeforeFrontier)
+  open MemOps′ using (readLoc)
   open ResuspBaseC {FS} hiding (X)
   open CataStackC {FS}
   open CataWalkC {FS}
@@ -57,7 +73,8 @@ module CataFoldBackC {FS : FrameSemantics} where
               (sn hc : HeapLocation) (e : ⟦ E ⟧) (env-sv : StoredValue FS) where
 
     module FA = FoldAt wf alg n l prog base span la
-    open FA using (X; Y; Z; span-push; fetch-jmp-head; head-label; headL)
+      using (X; Z; fetch-jmp-head; head-label; headL; pushV; span-push; module T)
+    open FA using (X; Z; span-push; fetch-jmp-head; head-label; headL)
 
     c bodyL : ℕ
     c = FA.T.Pc.cslot
@@ -92,12 +109,14 @@ module CataFoldBackC {FS : FrameSemantics} where
     module Go (τ : FlatState) (ns : List ⟦ μ-type F ⟧) (v : ⟦ C ⟧) (rest : List ⟦ C ⟧) (b : BackIn τ ns v rest) where
 
       module B = BackIn b
+        using (cl; code; env; ev; eval; hc-lt; nh; ns0; out; pc; val)
 
       pu : Push2Out (ValE prog C) prog n (n + 2) (n + 4) (n + 5) sn τ v rest
       pu = push2-run (ValE prog C) val-tr prog n (n + 2) (n + 4) (n + 5) sn τ v rest
              (subst (λ z → SpanAt prog z FA.pushV) (sym B.pc) span-push) B.nh
              (m≤m+n n 2) (m≤m+n n 4) (m≤m+n n 5) (off-≢ (λ ())) (off-≢ (λ ())) 4≢5 B.out B.val
       module PU = Push2Out pu
+        using (bk; cf; nh; pc; seg; slots; stack; τ)
 
       τ7 : FlatState
       τ7 = PU.τ

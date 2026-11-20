@@ -18,13 +18,12 @@
 
 module Once.Adequacy.FuelTrace where
 
-open import Data.Bool using (Bool; true; false)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Nat using (ℕ; zero; suc; _≤_; z≤n; s≤s)
+open import Data.Nat using (ℕ; zero; suc; _≤_; s≤s)
 open import Data.Nat.Properties using (≤-total)
-open import Data.Product using (Σ; Σ-syntax; ∃-syntax; _×_; _,_; proj₁; proj₂)
+open import Data.Product using (Σ-syntax; ∃-syntax; _×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
@@ -114,7 +113,7 @@ private
 ------------------------------------------------------------------------
 
 module Fuel {S : Set} (δ : S → Step S) where
-  open Machine δ using (tr; go; trace)
+  open Machine δ using (tr; go)
 
   runN : ℕ → S → Obs
   runS : ℕ → Step S → Obs
@@ -218,7 +217,9 @@ module Fuel {S : Set} (δ : S → Step S) where
 
 module Agree {S₁ S₂ : Set} (δ₁ : S₁ → Step S₁) (δ₂ : S₂ → Step S₂) where
   module F₁ = Fuel δ₁
+    using (align; pre-run; run-pre; runN)
   module F₂ = Fuel δ₂
+    using (align; pre-run; run-pre; runN)
   open Machine δ₁ using () renaming (trace to trace₁)
   open Machine δ₂ using () renaming (trace to trace₂)
 

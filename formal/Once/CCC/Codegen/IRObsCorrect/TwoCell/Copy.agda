@@ -24,25 +24,37 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.TwoCell.Copy (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.Bool using (false)
+open import Data.Empty using (⊥; ⊥-elim)
+open import Data.List using (_∷_; List; length; [])
+open import Data.List.Relation.Unary.All.Properties using (++⁺)
+open import Data.Maybe using (just)
+open import Data.Nat using (ℕ; suc; _≤_; _+_)
+open import Data.Nat.Properties using (+-assoc; +-suc; +-comm; ≤-trans; n≤1+n; ≤-refl; ≤-reflexive)
+open import Data.Product using (proj₁; _,_; proj₂)
+open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Once.IR using (AllocMode)
+open import Relation.Binary.PropositionalEquality using (_≡_; subst; trans; cong; sym; refl)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.Machine.Locations using (AtDynamic; AtStack; ValueLocation)
+open import Once.CCC.Machine.Locations using (ValueLocation)
 open import Once.CCC.Machine.SMCore
-  using (AllocState; AbstractTrace; LocState; StoredValue; sucLoc; readReg; writeReg; writeReg-same; Input1; Output;
+  using (AllocState; AbstractTrace; LocState; StoredValue; readReg; writeReg-same; Input1; Output;
          SV-Ptr; mov-to-input; module LocState; module AllocState)
 open AllocState using (next-slot; next-heap-ref; current-frame; saved-frames)
 open LocState using (halted; regs)
 import Once.IRTy as IT
 open import Once.IRTy using (IRTy)
 
-open import Once.CCC.Codegen.FlatLayout using (Kind; word; flat; kind)
+open import Once.CCC.Codegen.FlatLayout using (flat; kind)
 open import Once.CCC.Codegen.IRToTrace o using (node-copy-trace)
 open import Once.CCC.Codegen.IRObsCorrect.NodeCopy o tbl using (module NodeCopyC)
 open import Once.CCC.Codegen.IRObsCorrect.TwoCell.Run o tbl
 open import Once.CCC.Codegen.IRObsCorrect.TwoCell.Build o tbl
-open import Once.CCC.Codegen.StraightRun using (module StraightRunAPI)
 import Once.CCC.Machine.FlatPut as FlatPut
 import Once.CCC.Machine.FlatAlloc as FlatAlloc
-open import Data.List.Relation.Unary.All using ([]; _∷_)
+open import Data.List.Relation.Unary.All using ([]; _∷_; All)
 
 import Once.Denotation.ValueDomain as ValueDomain
 import Data.Product as DP
@@ -50,6 +62,7 @@ import Data.Product as DP
 -- a flat kind is neither a node nor a scalar
 module KindFacts {FS : FrameSemantics} where
   open Core {FS}
+  open ClosureWellFormedBase′ using (IsNode)
 
   flat-not-node : ∀ (T : IRTy) → kind T ≡ flat → IsNode T → ⊥
   flat-not-node (_ IT.⇛ _)    () _
@@ -69,7 +82,15 @@ module KindFacts {FS : FrameSemantics} where
 module CopyTwoCellC {FS : FrameSemantics} where
 
   open Core {FS}
-  open Mach {FS}
+  open ClosureWellFormedBase′ using (BlocksKept; cell-ptr; cell-inline; rep-prim; cell-flat; Live; live-lift; live→bf)
+  open ClosureWellFormedDef′ using (ValidAtWF; validityWF-frontier-advance; validityWF-mem-preserved; CellAt; validityWF-mem-only; InputAt; in-loc)
+  open FlatEventTrace′ using (event-of; chain-events)
+  open AbstractExec′ using (exec-abstract)
+  open FlatMachine′ using (fetch; fetch-++-right; FlatState; StraightStep)
+  open FlatMachine′.FlatState using (floc)
+  open FlatStepsAPI′ using (_∷_; []; FlatSteps)
+  open FrontierInvariant′ using (BeforeFrontier; frontier-monotone)
+  open ReadLocEq′ using (readLoc-stack-heap-eq)
   open TwoCellRunC {FS}
   open TwoCellBuildC {FS}
   open KindFacts {FS}
@@ -91,6 +112,7 @@ module CopyTwoCellC {FS : FrameSemantics} where
     where
 
     module NC = NodeCopyC.Run {FS} {prog} E n s alloc nh
+      using (A₁; N; Nd; bf-mono′; cell-p; hfin; keep-bf; live-Nd; sfin; sp; whole)
     A₁ = NC.A₁
     s₁ = NC.sfin src
     s₂ = proj₁ (exec-abstract mov-to-input s₁ A₁)
@@ -124,7 +146,10 @@ module CopyTwoCellC {FS : FrameSemantics} where
     nh₂ = NC.hfin src
 
     module TCR = TwoCellRun (suc (suc n)) l prog base₂ s₂ A₁ cl rs n≤₂ nh₂ span₂
+      using (A₁; evs; nh10; obj-hl; obj-loc; sts; t₁₀; whole)
     module TCB = TwoCellBuild (suc (suc n)) l prog base₂ s₂ A₁ cl rs n≤₂ nh₂ span₂
+      using (before; before-suc; bf-advance; blocks-kept; cell0-fs10; code-fs10; heapref-≤; mem-pres
+            ; out-eq; valid-transport)
 
     T : AbstractTrace
     T = copy-two-cell-trace E n l

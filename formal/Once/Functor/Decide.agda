@@ -23,10 +23,9 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Spec.Type using (Ty; Fun; WFFun; wf-⊕; wf-⊗; KCtx; Kind; base; any; Base; b-var; b-Unit; b-Void; b-Int; b-Float; b-*; b-+; var; μ; ν; Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; K; Id; _⊕_; _⊗_)
 
-open import Once.Spec.Type using (Fun; μ; ν)
 open import Once.Spec.Type using (wf-K; wf-Id)
 open import Once.Type.Concrete using (IsConcrete; con-base; con-fun)
-open import Once.Spec.Type using (Base; WFFun; b-*; b-+; b-Float; b-Int; b-Unit; b-Void; wf-⊕; wf-⊗; ∅ₖ)
+open import Once.Spec.Type using (∅ₖ)
 
 -- | Decide whether a type is a base type (no functions / μ / ν).
 isBaseType? : (A : Type) → Maybe (Base ∅ₖ A)

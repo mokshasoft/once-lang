@@ -16,12 +16,11 @@
 
 module Once.Adequacy.ModuleComplete where
 
-import Once.TypeCheck.SpecWitness
 open import Once.Spec.Context using (Usage)
 open import Once.Type.Instance using (kindsOf)
 open import Once.TypeCheck.Classify using (ctxAt)
 open import Once.Spec.Type using (Ty)
-open import Once.TypeCheck.Scope using (PolyCtx; NamedCtx)
+open import Once.TypeCheck.Scope using (PolyCtx)
 open import Once.TypeCheck.Classify using (TopCtx; ctxWithImportsAndPolys)
 open import Data.Bool using (false)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -33,7 +32,7 @@ open import Data.List using (List; []; _∷_)
 open import Data.String using (String)
 import Data.String as Str
 open import Once.Spec.Name using (bare)
-open import Relation.Nullary using (yes; no; Dec; ¬_)
+open import Relation.Nullary using (yes; no; Dec)
 open import Relation.Binary.PropositionalEquality using (_≢_; _≡_; refl; sym; trans; cong; cong₂; subst)
 
 open import Function using (case_of_)
@@ -43,7 +42,7 @@ open import Once.Type.SubDecide using (_<:?_)
 open import Data.Empty using (⊥-elim)
 import Once.IR as IR
 import Once.Parser as Parser
-open import Once.Adequacy.MainIRForm using (findMain-skip; compileFun-main-sub; compileFunM-main-sub; bare-injective)
+open import Once.Adequacy.MainIRForm using (findMain-skip; compileFunM-main-sub; bare-injective)
 
 open import Once.Spec.Type using (Type; Unit)
 open import Once.IR using (IR)
@@ -69,7 +68,6 @@ open import Once.Adequacy.PrincipalDecide using (firstChecking-complete)
 import Once.Compile as C
 import Once.Adequacy.AcceptSound as AS
 open import Once.Parser using (FunInfo)
-import Once.Parser.Module as Module
 import Once.Parser.Module.Core as Core
 import Data.String as String
 open FunInfo

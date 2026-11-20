@@ -34,7 +34,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Relation.Nullary using (¬_)
 
 open import Once.Arith.Machine.AbsState using (ArithAbsState; init; output-of; _[_↦_]; _[_]; store-write-same; store-write-other)
-open import Once.Arith.Machine.Shape using (⟦_⟧S; project; projectF; Path; readLeaf; ⌊_⌋ᴾ; project-path; projectF-path; IntsBelow; readLeaf-below)
+open import Once.Arith.Machine.Shape using (⟦_⟧S; project; projectF; Path; ⌊_⌋ᴾ; project-path; projectF-path; IntsBelow; readLeaf-below)
 open import Once.Arith.Machine.AbsInstr
   using (fadd-rrr; fsub-rrr; fmul-rrr; fdiv-rrr; fneg-rr; i2f-rr; AbstractInstr; add-rrr; sub-rrr; mul-rrr; div-rrr; rem-rrr; cmp-rrr; fcmp-rrr; div-safe-rrr; neg-rr; spill; reload; move-to-out; maybe-zero; maybe-zero-f; bin-op; un-op; module Exec)
 open Exec bits F using (step; run-abstract)

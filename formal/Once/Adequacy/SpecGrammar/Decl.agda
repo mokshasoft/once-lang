@@ -25,17 +25,16 @@ open import Data.Bool.Properties using (∨-zeroʳ)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.List using (List; []; _∷_; map; reverse)
 open import Data.Maybe using (just; nothing)
-open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
-open import Data.String using (String; toList)
+open import Data.Product using (Σ-syntax; _×_; _,_; proj₂)
+open import Data.String using (toList)
 open import Data.String.Properties using (_≟_)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
 open import Relation.Nullary using (¬_; yes; no)
 
-open import Once.Spec.Surface.Syntax using (Expr)
 import Once.Spec.Surface.Syntax as S
-open import Once.Spec.Surface.Lexing using (Token; TString; TWord; TLParen; TRParen; TColon; TEquals; TDot; TNewline; TEOF; Lexes)
+open import Once.Spec.Surface.Lexing using (Token; TString; TWord; TColon; TEquals; TDot; TNewline)
 open import Once.Spec.Surface.Grammar as G
-  using (Starts; starts; StartsWord; starts-word; NotKeyword; not-keyword; OpChar;
+  using (Starts; starts; StartsWord; starts-word; NotKeyword; not-keyword;
          oc-dot; oc-op; op-dotted; oc-pipe; oc-amp; oc-at;
          op-close; op-char; op-sig; op-def; fundef; params-eq; params-cons; params-stop; params-none;
          path-cons; path-dotstop; path-end; import-as; import-plain; alias-eq; alias-param;
@@ -44,11 +43,11 @@ open import Once.Spec.Surface.Grammar as G
 import Once.Parser.Token as P
 open import Once.Parser.Core using (skipNewlines)
 open import Once.Parser.Module.Core using (wordHead)
-open import Once.Spec.Surface.Syntax using (Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport)
+open import Once.Spec.Surface.Syntax using (Decl; DImport)
 open import Once.Spec.Surface.Syntax using (mkImport)
 open import Once.Parser.Module.DeclTail using (colonHead)
 open import Once.Parser.Module.OpName using (opTokClass)
-open import Once.Parser.Module.FunDef.Body using (eqHead)
+import Once.Parser.Module.FunDef.Body
 import Once.Parser.Module.FunDef.Params as LPar
 import Once.Parser.Relation.Decl as LD
 import Once.Parser.Relation.Import as LI
@@ -59,7 +58,6 @@ import Once.Parser.Relation.OpDecl as LO
 import Once.Parser.Relation.Parsing as LP
 import Once.Parser.Relation.Lexing as LL
 import Once.Parser
-import Once.Parser.Module.Core
 import Once.Parser.Module.Import
 import Once.Parser.Module.DeclTail
 import Once.Parser.Module.FunDef.Body
@@ -67,7 +65,6 @@ import Once.Parser.Module.OpName
 import Once.Parser.TypeRelation
 import Once.Parser.ExprRelation
 import Once.Parser.Generic.PolyInst
-open import Once.Adequacy.SpecTokNames
 open import Once.Spec.Surface.Lexing using (g+; g-; g*; g/; g%; g<; g>)
 open import Once.Spec.Surface.Operator using (o+; o-; o*; o/; o<; o>)
 open import Once.Adequacy.SpecLexing using (toNew; toOld; forget; isEOF; ended)
@@ -254,7 +251,7 @@ opafter→ : ∀ {name toks d rest} → LO.ParsesOpAfter name toks d rest → G.
 
 private
   osig : ∀ {name toks ty rest} {b} → ColonView toks b → b ≡ true
-       → Once.Parser.Generic.PolyInst.ParsesPolyType (Once.Parser.Module.DeclTail.colDrop1 toks) ty rest
+       → Once.Parser.Generic.PolyInst.Gen′.ParsesTypeG (Once.Parser.Module.DeclTail.colDrop1 toks) ty rest
        → G.ParsesOpAfter name (F toks) (S.DTypeSig name (toPoly ty)) (F rest)
   osig colon-yes _ dT = op-sig (sig→ dT)
   osig (colon-no _) () dT
@@ -271,13 +268,13 @@ decl→ : ∀ {toks d rest} → LD.ParsesDecl toks d rest → G.ParsesDecl (F to
 
 private
   dsig : ∀ {name residual ty rest} {b} → ColonView residual b → b ≡ true
-       → Once.Parser.Generic.PolyInst.ParsesPolyType (Once.Parser.Module.DeclTail.colDrop1 residual) ty rest
+       → Once.Parser.Generic.PolyInst.Gen′.ParsesTypeG (Once.Parser.Module.DeclTail.colDrop1 residual) ty rest
        → G.ParsesDecl (TWord "signature" ∷ TWord name ∷ F residual) (S.DSignature name (toPoly ty)) (F rest)
   dsig colon-yes _ dT = decl-signature (sig→ dT)
   dsig (colon-no _) () dT
 
   dtsig : ∀ {w rest ty rest′} {b c} → NotKeyword w → ColonView rest b → b ≡ true
-        → Once.Parser.Generic.PolyInst.ParsesPolyType (Once.Parser.Module.DeclTail.colDrop1 rest) ty rest′
+        → Once.Parser.Generic.PolyInst.Gen′.ParsesTypeG (Once.Parser.Module.DeclTail.colDrop1 rest) ty rest′
         → EqView rest′ c → c ≡ false
         → G.ParsesDecl (TWord w ∷ F rest) (S.DTypeSig w (toPoly ty)) (F rest′)
   dtsig nk colon-yes _ dT eq-yes ()
@@ -495,7 +492,7 @@ opafter← : ∀ {x ts d′ r} → G.ParsesOpAfter x ts d′ r → ∀ toks → 
 opafter← (op-sig dT) toks e n =
   step (λ z → BackD (LO.ParsesOpAfter _) z _ _) refl e (λ {toks′} e′ → os₁ (sig← dT toks′ e′))
   where
-    os₁ : ∀ {x toks′ A′ r} → Σ[ A ∈ _ ] Σ[ rest ∈ List P.Token ] (Once.Parser.Generic.PolyInst.ParsesPolyType toks′ A rest × toPoly A ≡ A′ × F rest ≡ r)
+    os₁ : ∀ {x toks′ A′ r} → Σ[ A ∈ _ ] Σ[ rest ∈ List P.Token ] (Once.Parser.Generic.PolyInst.Gen′.ParsesTypeG toks′ A rest × toPoly A ≡ A′ × F rest ≡ r)
         → BackD (LO.ParsesOpAfter x) (P.TColon ∷ toks′) (S.DTypeSig x A′) r
     os₁ (A , rest , dA , refl , er) = rest , LO.poa-sig refl dA , er
 opafter← (op-def nc dF) toks e n = of₁ (fundef← dF toks e n)
@@ -522,7 +519,7 @@ decl← (decl-signature dT) toks e n =
   step (λ z → BackD LD.ParsesDecl (P.TWord "signature" ∷ P.TWord _ ∷ z) _ _) refl e₂ (λ {toks′} e₃ →
   ds₁ (sig← dT toks′ e₃))))
   where
-    ds₁ : ∀ {x toks′ A′ r} → Σ[ A ∈ _ ] Σ[ rest ∈ List P.Token ] (Once.Parser.Generic.PolyInst.ParsesPolyType toks′ A rest × toPoly A ≡ A′ × F rest ≡ r)
+    ds₁ : ∀ {x toks′ A′ r} → Σ[ A ∈ _ ] Σ[ rest ∈ List P.Token ] (Once.Parser.Generic.PolyInst.Gen′.ParsesTypeG toks′ A rest × toPoly A ≡ A′ × F rest ≡ r)
         → BackD LD.ParsesDecl (P.TWord "signature" ∷ P.TWord x ∷ P.TColon ∷ toks′) (S.DSignature x A′) r
     ds₁ (A , rest , dA , refl , er) = rest , LD.pd-signature (LS.psig-mk refl dA) , er
 decl← (decl-typesig (not-keyword a b c) dT ne) toks e n =
@@ -531,7 +528,7 @@ decl← (decl-typesig (not-keyword a b c) dT ne) toks e n =
   dt₁ ne (sig← dT toks′ e₂)))
   where
     dt₁ : ∀ {toks′ A′ r} → ¬ Starts r TEquals
-        → Σ[ A ∈ _ ] Σ[ rest ∈ List P.Token ] (Once.Parser.Generic.PolyInst.ParsesPolyType toks′ A rest × toPoly A ≡ A′ × F rest ≡ r)
+        → Σ[ A ∈ _ ] Σ[ rest ∈ List P.Token ] (Once.Parser.Generic.PolyInst.Gen′.ParsesTypeG toks′ A rest × toPoly A ≡ A′ × F rest ≡ r)
         → BackD LD.ParsesDecl (P.TWord _ ∷ P.TColon ∷ toks′) (S.DTypeSig _ A′) r
     dt₁ ne (A , rest , dA , refl , er) =
       rest , LD.pd-typesig a b c refl dA (eq-false (eq-view rest) (transport (λ z → ¬ Starts z TEquals) er ne)) , er

@@ -17,7 +17,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.Spec.Float.Dyadic using (binary32; binary64)
 open import Once.Spec.Float.Value using (negV; pos; neg)
 open import Once.Spec.Float.Decimal using (⟨_⟩_/10^_; roundDec)
-open import Once.Spec.Surface.Syntax using (signedDecimal)
+open import Once.Spec.Float.Decimal using (signedDecimal)
 open import Once.Spec.Float.Encoding using (encode)
 open import Once.Float.Word using (round)
 

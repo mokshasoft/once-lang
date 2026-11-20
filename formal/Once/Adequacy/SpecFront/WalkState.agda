@@ -25,36 +25,31 @@ open import Once.Spec.Signature using (Signature)
 
 module Once.Adequacy.SpecFront.WalkState (Σ : Signature) (ps : List String) where
 
-open import Data.Nat using (ℕ; zero; suc; _<_)
+open import Data.Nat using (zero; suc; _<_)
 open import Data.Fin using (Fin; zero; suc)
 open import Data.List using ([]; _∷_; _++_; map)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Membership.Propositional.Properties using (∈-++⁺ˡ; ∈-++⁺ʳ)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
-import Data.List.Relation.Unary.All as All
 open import Data.List.Relation.Unary.Any using (here; there)
-open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Maybe.Properties using (just-injective)
+open import Data.Maybe using (just; nothing)
 open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
-open import Data.Bool using (Bool; true; false)
 open import Data.Empty using (⊥; ⊥-elim)
-open import Data.Unit using (⊤; tt)
+open import Data.Unit using (tt)
 open import Relation.Nullary using (¬_; Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
 import Data.String.Properties as StrProp
 open import Data.List.Membership.DecPropositional StrProp._≟_ using (_∈?_)
 
-import Once.Spec.Type as LT
-import Once.Type.Concrete as LW
 import Once.Spec.Type as ST
 import Once.Spec.Core.Syntax as SC
 import Once.Compile as C
 import Once.Parser as Parser
-open Parser.PolyFunInfo using (pfunName; pfunType; pfunBody)
+open Parser.PolyFunInfo using (pfunName; pfunType)
 open import Once.Spec.Name using (CanonicalName; canonical)
 import Once.Spec.Surface.Program
-open import Once.TypeCheck.Scope using (Imports; PolyCtx; lookupImport; lookupPolyPrefix)
-open import Once.Module using (Scope; scope; emptyScope; addImp; addPoly)
+open import Once.TypeCheck.Scope using (Imports; lookupImport; lookupPolyPrefix)
+open import Once.Module using (Scope; scope; addImp; addPoly)
 open import Once.Type.Schema using (schemaOf)
 open import Once.Core.Translate Σ using (ImpSig; TeleSig; []; i-def; t-def; wkI; wkT; impDefs; monoSchema)
 import Once.Adequacy.SpecFront.ScopeNames as SN

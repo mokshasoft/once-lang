@@ -22,13 +22,19 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.NuForce (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.List using (_∷_; [])
+open import Data.Nat using (_≤_; _+_; ℕ; suc; zero)
+open import Data.Product using (proj₂; proj₁; _,_; _×_)
+open import Once.CCC.Machine.ValueRel using (valid-ν-wf)
+open import Once.IR using (AllocMode; Out; in-ν; id; IR; Ana)
+open import Relation.Binary.PropositionalEquality using (_≡_; trans; cong; sym; subst; refl; cong₂)
 open import Data.List.Relation.Unary.Any using (here; there)
 open import Once.CCC.Codegen.IRObsCorrect.BlockCall o tbl
 open import Once.CCC.Codegen.IRObsCorrect.Simple o tbl using (module Simp)
 open import Once.CCC.Machine.SMCore
-  using (LocState; module LocState; AbstractTrace; AllocState; StoredValue; readReg; Input1; mov-to-output; block-layout)
+  using (LocState; module LocState; AbstractTrace; AllocState; readReg; Input1; mov-to-output; block-layout)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.Machine.Locations using (ValueLocation)
 open import Once.CCC.Label using (ℓ)
 open import Once.IRTy using (WellFormedFI; ⟦_⟧TI; ν-type; ⌈_⌉; ⌈_⌉F; ⌈⟧TI-commute; WellFormedFI-irrelevant)
 open import Once.IRTy.WF using (wf-⌈⌉)
@@ -49,8 +55,8 @@ open import Data.Maybe using (just; nothing)
 open import Data.List.Properties using (++-identityʳ)
 open import Once.Res using (Res; stopped; returns; mapRes; is-stopped)
 open import Once.Denotation.Approx using (Ap; cut; approx; approxBlock; thenAp; run-approx-bind)
-open import Once.IR.Semantics.Iterative using (return∞; fmap∞; module T∞)
-open import Once.IR.Semantics.StreamInf using (anaᴵ; anaRun; anaBlock; mapAnaᴵ)
+open import Once.IR.Semantics.Iterative using (return∞; fmap∞)
+open import Once.IR.Semantics.StreamInf using (anaRun; anaBlock; mapAnaᴵ)
 open import Once.Spec.Polynomial using (SFunctor; ⟦_⟧SF)
 open import Once.IR.Semantics.FunctorMeaning using (translateF)
 open import Once.Spec.Word using (Carrier)
@@ -61,8 +67,18 @@ import Once.IR.Semantics.Trace as TM
 module NuForceC {FS : FrameSemantics} where
 
   open Core {FS}
+  open ClosureWellFormedBase′ using (runAt; ⟪_⟫_; Live; BlocksKept; Foot; _∈ᶠ_; blk-live0; InBlk; blk-refl)
+  open ClosureWellFormedDef′ using (CalleeRunP; callee-run; InputAt; in-loc; foot; in-reg; in-unit; foot-live; ForceRuns; NuV; crun-map; rp-map; valid→layer; ValidAtWF; module FootTransport)
+  open FlatEventTrace′ using (chain-ctrls)
+  open CataNextSlot′ using (AllSlotStable)
+  open FlatMachine′ using ()
+  open FlatMachine′.FlatState using (floc)
+  open FlatStepsAPI′ using (_∷_; [])
+  open MemOps′ using (readLoc)
   open LocState using (regs)
   module BC = BlockCallC {FS}
+    using (BodyRuns; bk-enter; block-call; block-call-gen; body-runs; callee-alloc; callee-heap
+          ; callee-loc; live-callee; true≢false; module Layout)
   open Simp {FS} using (obs-correct-id)
 
   ------------------------------------------------------------------------
@@ -98,8 +114,8 @@ module NuForceC {FS : FrameSemantics} where
   -- formed, so the value is a base value and each coercion is the identity
   -- up to its structure).
   ------------------------------------------------------------------------
-  base-rt : ∀ {A} (b : Base ∅ₖ A) (x : Val.⟦ A ⟧)
-          → Val.coerce-base-to-full b (Val.coerce-full-to-base A x) ≡ x
+  base-rt : ∀ {A} (b : Base ∅ₖ A) (x : Val.Value.⟦ A ⟧)
+          → Val.Value.coerce-base-to-full b (Val.Value.coerce-full-to-base A x) ≡ x
   base-rt b-Unit       x        = refl
   base-rt b-Void       ()
   base-rt b-Int        x        = refl
@@ -108,8 +124,8 @@ module NuForceC {FS : FrameSemantics} where
   base-rt (b-+ a b)  (inj₁ x) = cong inj₁ (base-rt a x)
   base-rt (b-+ a b)  (inj₂ y) = cong inj₂ (base-rt b y)
 
-  ν-rt : ∀ {F} (wf : WFFun ∅ₖ F) (X : Set) (x : Val.⟦ F ⟧F X)
-       → Val.coerce-ν-out wf X (Val.coerce-ν-in F X x) ≡ x
+  ν-rt : ∀ {F} (wf : WFFun ∅ₖ F) (X : Set) (x : Val.Value.⟦ F ⟧F X)
+       → Val.Value.coerce-ν-out wf X (Val.Value.coerce-ν-in F X x) ≡ x
   ν-rt (TW.wf-K b)       X x        = base-rt b x
   ν-rt TW.wf-Id          X x        = refl
   ν-rt (TW.wf-⊕ f g)   X (inj₁ x) = cong inj₁ (ν-rt f X x)
@@ -293,7 +309,7 @@ module NuForceC {FS : FrameSemantics} where
 
     -- the coalgebra `Ana`'s denotation unfolds (DenotTrace), at this env
     c′ : ⟦ ⌈ A ⌉ ⟧ᴰ → T∞ (⟦ H ⟧SF ⟦ ⌈ A ⌉ ⟧ᴰ)
-    c′ a′ = fmap∞ (Val.coerce-ν-in ⌈ F ⌉F ⟦ ⌈ A ⌉ ⟧ᴰ)
+    c′ a′ = fmap∞ (Val.Value.coerce-ν-in ⌈ F ⌉F ⟦ ⌈ A ⌉ ⟧ᴰ)
               (fmap∞ (λ x → coerce-functor-D (wf-⌈⌉ wf) ⌈ A ⌉ (subst P (⌈⟧TI-commute F A) x))
                      (evalᴰ coalg (e , a′)))
 
@@ -312,9 +328,9 @@ module NuForceC {FS : FrameSemantics} where
       → ⟦ Once.Spec.Type.⟦ ⌈ G ⌉F ⟧F ⌈ A ⌉ ⟧ᴰ → ⟦ Once.Spec.Type.⟦ ⌈ G ⌉F ⟧F ⌈ ν-type F ⌉ ⟧ᴰ
     Ψ {G} wG z =
       coerce-functor⁻¹-D (wf-⌈⌉ wG) ⌈ ν-type F ⌉
-        (Val.coerce-ν-out (wf-⌈⌉ wG) _
+        (Val.Value.coerce-ν-out (wf-⌈⌉ wG) _
           (mapAnaᴵ H (translateF Carrier Carrier ⌈ G ⌉F) c′
-            (Val.coerce-ν-in ⌈ G ⌉F ⟦ ⌈ A ⌉ ⟧ᴰ (coerce-functor-D (wf-⌈⌉ wG) ⌈ A ⌉ z))))
+            (Val.Value.coerce-ν-in ⌈ G ⌉F ⟦ ⌈ A ⌉ ⟧ᴰ (coerce-functor-D (wf-⌈⌉ wG) ⌈ A ⌉ z))))
 
     coh : ∀ {G : IRFunctor} (wG : WellFormedFI G) (y : ValueDomain.⟦ ⟦ G ⟧TI A ⟧ᴰᴵ)
         → subst P (sym (⌈⟧TI-commute G (ν-type F))) (Ψ wG (subst P (⌈⟧TI-commute G A) y)) ≡ rsd wG y
@@ -353,6 +369,6 @@ module NuForceC {FS : FrameSemantics} where
         M = evalᴰ coalg (e , a)
         h = LocState.ev-log s
         gOut = λ layer → subst P (sym (⌈⟧TI-commute F (ν-type F)))
-                           (coerce-functor⁻¹-D (wf-⌈⌉ wf) ⌈ ν-type F ⌉ (Val.coerce-ν-out (wf-⌈⌉ wf) _ layer))
-        cin = Val.coerce-ν-in ⌈ F ⌉F ⟦ ⌈ A ⌉ ⟧ᴰ
+                           (coerce-functor⁻¹-D (wf-⌈⌉ wf) ⌈ ν-type F ⌉ (Val.Value.coerce-ν-out (wf-⌈⌉ wf) _ layer))
+        cin = Val.Value.coerce-ν-in ⌈ F ⌉F ⟦ ⌈ A ⌉ ⟧ᴰ
         cf  = λ x → coerce-functor-D (wf-⌈⌉ wf) ⌈ A ⌉ (subst P (⌈⟧TI-commute F A) x)

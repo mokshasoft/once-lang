@@ -8,7 +8,7 @@
 module Once.Semantics.Functor where
 
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
-open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Data.Sum using (inj₁; inj₂)
 open import Function using (_∘_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans)
 open import Once.Res using (Res; stopped; returns; mapRes)

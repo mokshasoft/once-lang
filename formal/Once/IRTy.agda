@@ -35,11 +35,10 @@ open import Data.Empty using (⊥)
 open import Data.Product using (_×_)
 open import Data.Sum using (_⊎_)
 
-open import Once.Spec.Grade as T using (Quantity; Zero; One; Many; Purity; actᶠ)
+open import Once.Spec.Grade as T using (Quantity; Zero; One; Many; Purity)
 open import Once.Spec.Type as T using (Ty; Fun; Type)
 import Once.Spec.Type as ST
-open import Once.Type.Core as T using (wk₀; wk₀F)
-open import Once.Spec.Type using (Fun)
+open import Once.Type.Core as T using ()
 import Once.Spec.Type as T
 
 ------------------------------------------------------------------------

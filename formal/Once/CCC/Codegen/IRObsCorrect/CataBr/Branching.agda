@@ -27,13 +27,23 @@
 ------------------------------------------------------------------------
 
 open import Once.Spec.Name using (CanonicalName)
-import Once.CCC.Machine.SMCore as SMCore
 
 import Data.List as DL
 open import Once.Denotation.Program using (IRFun; tableEnv)
 module Once.CCC.Codegen.IRObsCorrect.CataBr.Branching (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open Interface using (module Core)
+open import Data.Bool using (false; true)
+open import Data.Empty using (⊥; ⊥-elim)
+open import Data.List using (List; _∷_; []; _++_; length)
+open import Data.Maybe using (just)
+open import Data.Nat using (ℕ; suc; _≤_; _+_)
+open import Data.Nat.Properties using (≤-trans)
+open import Data.Unit using (tt)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
+open import Once.IR using (IR; Cata; AllocMode; Heap)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; trans; sym; cong; cong₂)
 open import Once.CCC.Machine.SMCore using (ending)
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module ResuspBaseC)
 open import Once.CCC.Codegen.IRObsCorrect.Get o tbl using (module GetC)
@@ -49,13 +59,11 @@ open import Once.CCC.Codegen.IRObsCorrect.CataBr.FoldLoop o tbl using (module Ca
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.FoldExit o tbl using (module CataFoldExitC)
 open import Once.CCC.Codegen.IRToTrace o using (cata-strategy; strat-branching)
 open import Once.CCC.Machine.SMCore
-  using (LocState; module LocState; AbstractTrace; AllocState; module AllocState; StoredValue; readReg; Input1; Output; SV-Ptr; offsetLoc)
+  using (LocState; module LocState; AbstractTrace; AllocState; module AllocState; StoredValue; readReg; Input1; SV-Ptr; offsetLoc)
 open import Once.CCC.Codegen.Size using (size)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
-open import Once.Memory.HeapAddress using (HeapLocation; sucHL; module HeapLocation; module HeapRef)
-open HeapLocation using (heap-ref)
-open HeapRef using (ref-id)
+open import Once.Memory.HeapAddress using (HeapLocation; module HeapLocation)
 open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; ⟦_⟧TI; ⌈_⌉F; μ-type)
 import Once.IRTy as IRTy′
 open import Once.IRTy.WF using (wf-⌈⌉)
@@ -66,7 +74,7 @@ open import Once.Res using (Res; returns; stopped; is-stopped; mapRes)
 open import Once.IR.Semantics.Iterative using (T∞)
 open import Once.Denotation.Approx using (Ap; done; cut; NotCut; budgetLeft)
 open import Data.List.Properties using (++-identityʳ)
-open import Data.Product using (Σ)
+open import Data.Product using (Σ; proj₁; proj₂; _,_)
 import Once.CCC.FrameSemantics
 open import Once.Spec.Numerics using (TargetNum)
 import Once.IR.Semantics.Trace as TM
@@ -74,7 +82,15 @@ import Once.IR.Semantics.Trace as TM
 module CataBranchC {FS : FrameSemantics} where
 
   open Core {FS}
-  open Mach {FS}
+  open ClosureWellFormedBase′ using (Live; runAt; ⟪_⟫_; resultAt; eventsAt; stopsAt; BlocksKept; cell-inline; rep-prim; cell-flat; cell-ptr)
+  open ClosureWellFormedDef′ using (CellAt; ValidAtWF; ResultPlace; in-reg; in-unit; in-loc; module PairValidWF; decomposePairWF)
+  open FlatEventTrace′ using (chain-ctrls; chain-left; ctrls-≤ʳ; chain-events-++; ctrls-≤ˡ; chain-events)
+  open CataNextSlot′ using (AllSlotStable)
+  open FlatMachine′ using (FlatState)
+  open FlatMachine′.FlatState using (falloc; floc; fpc)
+  open FlatStepsAPI′ using (_∷_; []; FlatSteps; FlatSteps-++)
+  open FrontierInvariant′ using (BeforeFrontier; module BeforeFrontier)
+  open MemOps′ using (readLoc)
   open ResuspBaseC {FS} using (SegA; seg-bf; live-from)
   open GetC {FS} using (offset-zero)
 
@@ -87,7 +103,7 @@ module CataBranchC {FS : FrameSemantics} where
   open CataFoldLoopC {FS} using (module Loop)
   open CataFoldExitC {FS} using (module Exit; word→place)
   open LocState using (regs; halted)
-  open AllocState using (next-slot; next-heap-ref; current-frame; saved-frames)
+  open AllocState using (next-slot; next-heap-ref)
 
   private
     done-inj : ∀ {V : Set} {v v′ : V} {r r′ : ℕ} → _≡_ {A = Res (Ap V)} (returns (done v r)) (returns (done v′ r′)) → v ≡ v′
@@ -151,6 +167,8 @@ module CataBranchC {FS : FrameSemantics} where
     tf : ToFoldOut prog n c bodyL X σ wf alg₀ C root E e env-sv
     tf = Build.out wf alg st n l prog base span la alg₀ x s alloc cl rs nh pl rdi lpl cE μhl mC rdμ lμ vμ
     module TF = ToFoldOut tf
+      using (bk; cf; cl; code; env; ev; eval; hc; hr; lnk; nh; pc; ref-hc; ret; run; seg; sn; steps
+            ; val; τ)
 
     open Inv prog F E C n c bodyL X TF.sn TF.hc e env-sv
 
@@ -180,6 +198,7 @@ module CataBranchC {FS : FrameSemantics} where
     RR = Loop.loop-run prog wf (br-unboxed wf st) alg ih n l base ss cr span′ la′ bl TF.sn TF.hc e env-sv ev₀ [] TF.τ
            (FillOk.root-ok (wf-⌈⌉ wf) alg₀ root) h₀ TF.lnk k
     module RR = RoundRun RR
+      using (bf; bk; events; live; log; mem; no-link; post; progress; run; same; steps; stops; τ)
 
     ------------------------------------------------------------------
     -- 3. what it means

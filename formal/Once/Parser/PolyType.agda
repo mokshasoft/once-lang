@@ -40,15 +40,8 @@ open import Data.List using (List; length)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_)
 open import Data.String.Properties as StrProp using ()
-import Data.String as StrLib
 
-open import Once.Spec.Grade
-open import Once.Type.Grade
-open import Once.Type.Core
-open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
-open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PK; PId; _P⊕_; _P⊗_; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PInt; PFloat; PTVar)
-open import Once.Type.Poly
-open import Once.Type
+open import Once.Spec.Surface.Type using (PolyType)
 open import Once.Parser.Token
 
 ------------------------------------------------------------------------
@@ -59,8 +52,6 @@ open import Once.Parser.Token
 -- | True iff `s` starts with a lowercase letter (a-z).
 -- (Definition relocated to Once.Parser.CharClass; re-exported here so existing
 -- importers `Once.Parser.PolyType using (isLowerWord)` keep working.)
-open import Once.Parser.CharClass public using (isLowerWord)
-
 ------------------------------------------------------------------------
 -- D196: THE HAND-WRITTEN POLY PARSER IS GONE.
 --
@@ -108,7 +99,10 @@ open import Data.Nat.Induction using (<-wellFounded)
 open import Data.Product using (Σ-syntax)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.Parser.Generic.PolyInst
-  using (parsePolyTypeP; sound-polyType; ParsesPolyType-shrink)
+  using (module Gen′; module Make′; module Make′′)
+open Make′ using (sound-polyType)
+open Make′′ using (parsePolyTypeP)
+open Gen′ using () renaming (typeShrink to ParsesPolyType-shrink)
 
 ParsePolyAtB : List Token → Set
 ParsePolyAtB toks =

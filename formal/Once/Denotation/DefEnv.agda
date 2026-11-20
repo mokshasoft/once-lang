@@ -19,7 +19,6 @@
 
 module Once.Denotation.DefEnv where
 
-open import Once.Spec.Type using (Ty)
 open import Data.List using ([]; _∷_)
 open import Data.Maybe using (just)
 open import Data.Product using (_×_; _,_)
@@ -30,7 +29,7 @@ open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Spec.Type using (Type)
-open import Once.Spec.Surface.Syntax using (PolyType)
+open import Once.Spec.Surface.Type using (PolyType)
 open import Once.TypeCheck.Scope using (PolyCtx; lookupPolyPrefix; Imports; lookupImport)
 open import Once.Spec.Surface.Syntax using (Expr)
 

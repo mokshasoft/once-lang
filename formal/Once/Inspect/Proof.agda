@@ -24,15 +24,16 @@ open import Relation.Nullary using (Dec; yes; no)
 open import Once.IR using (Heap)
 open import Once.Target.Arch using (Arch)
 open import Once.Compile
-  using ( CompiledFun; FileOf; emit-at; findMain; emitFromCompiled; compileEntries; emptyCScope
+  using ( CompiledFun; emit-at; findMain; emitFromCompiled; compileEntries; emptyCScope
         ; cfm-file-gated; cfm-file-ef; compileFileFromModule
         ; compileResolvedModule; compileResolvedModule-aux )
+open import Once.Compile.Emit using (FileOf)
 open import Once.Denotation.Admissible using (AdmissibleM; admissibleM?)
 open import Once.Parser using (Entry; extractFunctions)
 open import Once.Parser.Module.Core using (Resolved)
 open import Once.Inspect using (dumpIR; showCompiled; showCompiledFuns; check; accepted)
 open import Data.Empty using (⊥)
-open import Data.Unit using (⊤; tt)
+open import Data.Unit using (tt)
 open import Function using (_⇔_; mk⇔)
 open import Once.Module using (ModTele; MainsEffUU)
 open import Once.Adequacy.AcceptSound using (ce-sound; scopeOf)
