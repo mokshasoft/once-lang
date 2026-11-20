@@ -22439,3 +22439,65 @@ expression syntax rebuilt the back end, and every back-end check carried the sur
 
 ### What programs see
 Nothing.
+
+## D420 — NO CHECK-DISABLING PRAGMA: THE PARSER AND THE RECOGNISER TERMINATE BY `Acc` (2026-11-20)
+
+**Relates** D242 (the pragma gate), OCP-0003 (structured recursion only), D163 (arith recognition up
+to re-association and distribution), plan 0.7-2 (the bound-free generic parser), D421, plan 0.153.
+**Decided** by the user 2026-11-20: the plan's goal; the parser's design after the spike (no fuel);
+the recogniser on `sz`; the gate at zero tolerance.
+
+### Context
+D242's baseline was down to three modules, 17 pragmas: the generic type parser
+(`Parser/Generic/Parser` 1, `Sound` 14) and the arithmetic recogniser (`Arith/Machine/Recognise` 2).
+Each was an unchecked "this terminates" and, in the AST dump, a trust-base entry: `arrowTailP`,
+`sound-arrowTail`, `binop-at`, `binop-at-float`. Every call of the parser is on a strictly shorter
+suffix, but through `with` and helpers the checker could not see; the recogniser's re-association
+keeps the term's size and its distribution (`⟨ a , b ⟩ ∘ h` → `a ∘ h`, `b ∘ h`) is not on subterms.
+
+### Decision
+1. **The parser recurses on `Acc _<_ (length toks)`.** Its results carry their shrink (`length rest <
+   length toks`, `≤` for the tails); the public parsers are the bound-forgetting maps of
+   `… (<-wellFounded _)`, so their types and every importer are unchanged. Soundness recurses on the
+   parser's own `Acc`; completeness is stated for every `Acc` (the induction hypothesis meets
+   whatever `Acc` the definition passes: no irrelevance lemma, no `extensionality`). Dispatch is by
+   views (`HeadV`, `CloseV`, `KwV`, `FKwV`), never `with` (D421). Fuel was rejected.
+2. **The recogniser recurses on `Acc _<_ (sz ir)`**, `sz` counting the left factor of `∘` twice
+   (moved from `Adequacy/LiftSound` to `Arith/Machine/Size`): re-association and distribution
+   both decrease it. `recognise-body`, `-binop`, `-prim` and the float twins keep their names and
+   types (`… (<-wellFounded _)`), so `Rewrite`, `RewriteLinked`, `RewriteOwned`, `RewritePreserves`
+   are unchanged; `LiftSound`'s lemmas hold for every `Acc`. MAlonzo erases `Acc`: no run-time cost.
+3. **`pragma-gate` is zero-tolerance.** `pragma-gate.baseline` is deleted; the gate fails on any
+   termination, positivity, coverage or universe pragma in the closure of `Once/Certified.agda` and
+   `Once/Extract/Root.agda`, in a comment too (so `lint-pragmas.sh` and its target are deleted).
+   Agda cannot do this itself short of `--safe`, which also forbids the trust base's postulates.
+
+### Consequences (measured 2026-11-20, master `11698887b` against the branch)
+- Trust base 48 → 44: exactly the four pragmas; nothing added; RUNS ∖ PROVED gaps 0 → 0. The
+  compiler's run-time closure now assumes only `Char` and `String`.
+- The emitted code is byte-identical to master's (110 corpus programs × x86_64, x86_32, riscv64).
+- The extracted compiler gains `Once.Arith.Machine.Size` (proof-only; erased at run time).
+
+### What programs see
+Nothing.
+
+## D421 — NO `with`, NO `rewrite` (2026-11-20)
+
+**Relates** D110 (model step functions reduce), D373 (checking cost), plan 0.7-2 (its completeness
+wall), D420. **Decided** by the user 2026-11-20 (restating 2026-10-02 and 2026-11-13).
+
+### Decision
+New Agda code and proofs use no `with` and no `rewrite`. A classifier's result is dispatched by a
+top-level helper that takes the RESULT as a parameter (`f x = f-aux x (g x) (lemma x)`; a
+consequence is passed as a function of the result, never as a self-referential `refl`); proofs are
+lemmas about the helper for a variable result, matched `refl`, then instantiated. A value is
+destructured by a local function of explicit type or `case_of_`; a shape is a view (a data type).
+
+### Why
+`with` abstracts the goal: it costs per with-function, seconds on big goals and out-of-memory over
+big terms, and its abstraction fails when the goal mentions the scrutinee in a form it cannot
+abstract (plan 0.7-2 dropped the parser's bound because a `rewrite` could not abstract `isStar toks`).
+Plan 0.153 rebuilt the parser and recogniser without either (D420).
+
+### What programs see
+Nothing.

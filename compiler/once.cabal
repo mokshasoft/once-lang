@@ -81,6 +81,7 @@ library
       MAlonzo.Code.Once.Arith.Machine.Recognise
       MAlonzo.Code.Once.Arith.Machine.Rewrite
       MAlonzo.Code.Once.Arith.Machine.Shape
+      MAlonzo.Code.Once.Arith.Machine.Size
       MAlonzo.Code.Once.Arith.Prim
       MAlonzo.Code.Once.Arith.SigOp.Block
       MAlonzo.Code.Once.Arith.SigOp.BlockSem

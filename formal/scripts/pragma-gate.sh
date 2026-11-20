@@ -7,7 +7,14 @@
 # This gate fails if any module in the import closure of the apex
 # (Once/Certified.agda) or of the extracted compiler (Once/Extract/Root.agda)
 # carries a pragma that disables termination, positivity, coverage or universe
-# checking.
+# checking. Zero tolerance: there is no baseline (plan 0.153 removed the last
+# residuals). Agda itself cannot do this short of --safe: such a pragma turns the
+# check off silently (no warning for `-W error` to promote), and --safe also
+# forbids every postulate, which the trust base still has.
+#
+# The pattern matches pragma text inside a comment too, so write the bare word
+# in prose ("TERMINATING", "the termination pragma"); that keeps counts honest
+# (the rule lint-pragmas.sh used to enforce).
 #
 # Usage (from formal/):  scripts/pragma-gate.sh
 set -euo pipefail
@@ -30,31 +37,15 @@ while ((${#queue[@]})); do
              | grep -oE 'Once(\.[^[:space:]()]+)+')
 done
 
-# The baseline: residuals that predate the gate. Each line is `path count`.
-# A module may only DROP below its count (then lower or delete its line);
-# anything not listed must carry none.
-baseline=scripts/pragma-gate.baseline
-declare -A allowed=()
-while read -r path count; do
-  [[ -z $path || $path == \#* ]] && continue
-  allowed[$path]=$count
-done < "$baseline"
-
 bad=0
 for f in "${!seen[@]}"; do
-  n=$(grep -cE "$P" "$f" || true)
-  a=${allowed[$f]:-0}
-  if ((n > a)); then
-    grep -nE "$P" "$f" | sed "s|^|$f:|"
-    echo "pragma-gate: $f has $n, baseline allows $a"
+  if grep -nE "$P" "$f" | sed "s|^|$f:|"; then
     bad=1
-  elif ((n < a)); then
-    echo "pragma-gate: $f is down to $n (baseline $a) — lower its line in $baseline"
   fi
 done
 echo "pragma-gate: ${#seen[@]} modules in the closure of ${roots[*]}"
 if ((bad)); then
-  echo "pragma-gate: FAIL — a new check-disabling pragma in the certified/compiler closure (D242)"
+  echo "pragma-gate: FAIL — a check-disabling pragma in the certified/compiler closure (D242)"
   exit 1
 fi
-echo "pragma-gate: OK (baseline residuals: ${#allowed[@]} modules)"
+echo "pragma-gate: OK (no check-disabling pragma)"

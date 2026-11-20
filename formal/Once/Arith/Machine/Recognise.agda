@@ -32,6 +32,9 @@ open import Data.Bool using (Bool; true; false; _∧_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using ([]; _∷_)
 open import Data.Product using (_×_; _,_)
+open import Data.Nat using (_<_)
+open import Data.Nat.Induction using (<-wellFounded)
+open import Induction.WellFounded using (Acc; acc)
 
 open import Once.IR
 open import Once.IRTy using (⌊_⌋; fits-int; fits-float)
@@ -47,6 +50,7 @@ open import Once.Arith.Machine.Shape using (InputShape; InputPath; Fst; Snd; typ
 -- no lowering here yet; saying so in the type means the gate sees the gap
 -- instead of a float tree silently taking the integer path.
 open import Once.Arith.Type using (NumType; NInt; NFloat)
+open import Once.Arith.Machine.Size using (sz; reassoc-<; sz-sigop; sz-pairˡ; sz-pairʳ; sz-distˡ; sz-distʳ)
 open import Once.Arith.Machine.IR
   using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f; ArithBlock; mk-block)
 
@@ -230,46 +234,52 @@ path-at : ∀ (sh : InputShape) (n : NumType) → Maybe InputPath → Maybe (MAr
 path-at sh n (just p) = unop ainput (typePath? sh n p)
 path-at sh n nothing  = nothing
 
-{-# TERMINATING #-}
-recognise-body : (sh : InputShape) → ∀ {A B} → IR A B → Maybe (MArithIR sh NInt)
+-- D3 (plan 0.153): the recursion is WELL-FOUNDED on `sz` (`Once.Arith.Machine.Size`):
+-- each `…A` function takes `Acc _<_ (sz ir)`, and every recursive call is on a
+-- term of smaller `sz` (re-association: `reassoc-<`; distribution: `sz-dist…`;
+-- a SigOp's operand: `sz-sigop`; a pair's components: `sz-pair…`), passing the
+-- smaller `Acc`. The public functions below keep their names and types.
+recognise-bodyA : (sh : InputShape) → ∀ {A B} (ir : IR A B) → Acc _<_ (sz ir) → Maybe (MArithIR sh NInt)
 -- `recognise-binop` recognises the two operands of a binary op. Its codomain
 -- `Y` is a FREE variable, so matching `⟨_,_⟩` instantiates `Y := B * C` freely —
 -- unlike matching the pair directly under `SigOp _ ∘ _`, where the middle object
 -- is the SigOp's ERASED domain `⌊Dom⌋` and `⌊Dom⌋ ≟ B * C` is unification-stuck
 -- (`⌊_⌋` non-invertible). Plan 0.52 M2.
-recognise-binop : (sh : InputShape) → ∀ {X Y} → IR X Y → Maybe (MArithIR sh NInt × MArithIR sh NInt)
+recognise-binopA : (sh : InputShape) → ∀ {X Y} (e : IR X Y) → Acc _<_ (sz e) → Maybe (MArithIR sh NInt × MArithIR sh NInt)
 -- D255: `SigOp si ∘ e` is an arithmetic op when its semantics IS one — the
 -- compiler's primitive (`primV`), whose meaning is fixed by it — not when its
 -- name looks like one.
-recognise-prim : (sh : InputShape) → ∀ {X Y A} → SigOpSem X Y → IR A ⌊ X ⌋ → Maybe (MArithIR sh NInt)
-rb-at          : (sh : InputShape) → ∀ {A B} (ir : IR A B) → RBView ir → Maybe (MArithIR sh NInt)
-binop-at       : (sh : InputShape) → ∀ {X Y Z W} → Bool → IR Z X → IR Z Y → IR W Z
-               → Maybe (MArithIR sh NInt × MArithIR sh NInt)
-rbin-at        : (sh : InputShape) → ∀ {X Y} (e : IR X Y) → BView e → Maybe (MArithIR sh NInt × MArithIR sh NInt)
-recognise-binop sh e = rbin-at sh e (b-view e)
+recognise-primA : (sh : InputShape) → ∀ {X Y A} → SigOpSem X Y → (e : IR A ⌊ X ⌋) → Acc _<_ (sz e) → Maybe (MArithIR sh NInt)
+rb-at          : (sh : InputShape) → ∀ {A B} (ir : IR A B) → RBView ir → Acc _<_ (sz ir) → Maybe (MArithIR sh NInt)
+binop-at       : (sh : InputShape) → ∀ {X Y Z W} → Bool → (a : IR Z X) (b : IR Z Y) (h : IR W Z)
+               → Acc _<_ (sz (⟨ a , b ⟩ ∘ h)) → Maybe (MArithIR sh NInt × MArithIR sh NInt)
+rbin-at        : (sh : InputShape) → ∀ {X Y} (e : IR X Y) → BView e → Acc _<_ (sz e) → Maybe (MArithIR sh NInt × MArithIR sh NInt)
+recognise-binopA sh e ac = rbin-at sh e (b-view e) ac
 
-rbin-at sh .(⟨ a , b ⟩)     (bv-pair a b)   = pair-of (recognise-body sh a) (recognise-body sh b)
-rbin-at sh .(⟨ a , b ⟩ ∘ h) (bv-dist a b h) = binop-at sh (plumbing? h) a b h
-rbin-at sh .id              bv-id           = pair-of (path-at sh NInt (just (Fst ∷ []))) (path-at sh NInt (just (Snd ∷ [])))
-rbin-at sh .((f ∘ g) ∘ h)   (bv-reassoc f g h) = recognise-binop sh (f ∘ (g ∘ h))
-rbin-at sh e                (bv-other e)    = nothing
+rbin-at sh .(⟨ a , b ⟩)     (bv-pair a b)   (acc rec) =
+  pair-of (recognise-bodyA sh a (rec (sz-pairˡ a b))) (recognise-bodyA sh b (rec (sz-pairʳ a b)))
+rbin-at sh .(⟨ a , b ⟩ ∘ h) (bv-dist a b h) ac = binop-at sh (plumbing? h) a b h ac
+rbin-at sh .id              bv-id           ac = pair-of (path-at sh NInt (just (Fst ∷ []))) (path-at sh NInt (just (Snd ∷ [])))
+rbin-at sh .((f ∘ g) ∘ h)   (bv-reassoc f g h) (acc rec) = recognise-binopA sh (f ∘ (g ∘ h)) (rec (reassoc-< f g h))
+rbin-at sh e                (bv-other e)    ac = nothing
 -- D163: `⟨a,b⟩ ∘ h ≡ ⟨ a ∘ h , b ∘ h ⟩` — composition distributes over pairing.
 -- QTT hands the operand pair an environment restriction `h`, and pushing it
 -- into the components is what lets each one be recognised on its own.
 -- …and only when `h` is plumbing: distributing runs `h` twice, which means
 -- the same only when `h`'s meaning is a value and no event.
 
-binop-at sh true a b h  = pair-of (recognise-body sh (a ∘ h)) (recognise-body sh (b ∘ h))
-binop-at sh false a b h = nothing
+binop-at sh true a b h (acc rec) =
+  pair-of (recognise-bodyA sh (a ∘ h) (rec (sz-distˡ a b h))) (recognise-bodyA sh (b ∘ h) (rec (sz-distʳ a b h)))
+binop-at sh false a b h ac = nothing
 
-recognise-prim sh (primV p-add) e = binop aadd (recognise-binop sh e)
-recognise-prim sh (primV p-sub) e = binop asub (recognise-binop sh e)
-recognise-prim sh (primV p-mul) e = binop amul (recognise-binop sh e)
-recognise-prim sh (primV p-div) e = binop adiv (recognise-binop sh e)
-recognise-prim sh (primV p-mod) e = binop amod (recognise-binop sh e)
-recognise-prim sh (primV p-neg) e = unop aneg (recognise-body sh e)
+recognise-primA sh (primV p-add) e ac = binop aadd (recognise-binopA sh e ac)
+recognise-primA sh (primV p-sub) e ac = binop asub (recognise-binopA sh e ac)
+recognise-primA sh (primV p-mul) e ac = binop amul (recognise-binopA sh e ac)
+recognise-primA sh (primV p-div) e ac = binop adiv (recognise-binopA sh e ac)
+recognise-primA sh (primV p-mod) e ac = binop amod (recognise-binopA sh e ac)
+recognise-primA sh (primV p-neg) e ac = unop aneg (recognise-bodyA sh e ac)
 {-# CATCHALL #-}
-recognise-prim sh _             e = nothing
+recognise-primA sh _             e ac = nothing
 
 -- Binary/unary-op `SigOp si ∘ e` — dispatch on `name si`; `e` stays GENERIC so
 -- the pair operand is recognised by `recognise-binop` (no stuck product index).
@@ -279,14 +289,23 @@ recognise-prim sh _             e = nothing
 -- composes a usage restriction onto each operand, and `effApp` composes
 -- another on top, so operands arrive left-nested to arbitrary depth —
 -- `((SigOp fdiv ∘ ⟨…⟩) ∘ envˡ) ∘ envʳ`. One clause, applied repeatedly,
--- normalises all of it; it strictly reduces left-nesting, so it terminates.
-recognise-body sh ir = rb-at sh ir (rb-view ir)
+-- normalises all of it; it strictly decreases `sz`, so it terminates.
+recognise-bodyA sh ir ac = rb-at sh ir (rb-view ir) ac
 
-rb-at sh .((f ∘ g) ∘ h)            (v-reassoc f g h) = recognise-body sh (f ∘ (g ∘ h))
-rb-at sh .(SigOp si ∘ e)            (v-sigop si e)    = recognise-prim sh (sem si) e
-rb-at sh .(const fits-int v ∘ rhs)  (v-cint v rhs)    = lit-at (is-terminal? rhs) v
-rb-at sh .(const fits-float d ∘ rhs) (v-cflt d rhs)   = nothing
-rb-at sh ir                         (v-other ir)      = path-at sh NInt (recognise-path ir)
+rb-at sh .((f ∘ g) ∘ h)            (v-reassoc f g h) (acc rec) = recognise-bodyA sh (f ∘ (g ∘ h)) (rec (reassoc-< f g h))
+rb-at sh .(SigOp si ∘ e)            (v-sigop si e)    (acc rec) = recognise-primA sh (sem si) e (rec (sz-sigop si e))
+rb-at sh .(const fits-int v ∘ rhs)  (v-cint v rhs)    ac = lit-at (is-terminal? rhs) v
+rb-at sh .(const fits-float d ∘ rhs) (v-cflt d rhs)   ac = nothing
+rb-at sh ir                         (v-other ir)      ac = path-at sh NInt (recognise-path ir)
+
+recognise-body : (sh : InputShape) → ∀ {A B} → IR A B → Maybe (MArithIR sh NInt)
+recognise-body sh ir = recognise-bodyA sh ir (<-wellFounded _)
+
+recognise-binop : (sh : InputShape) → ∀ {X Y} → IR X Y → Maybe (MArithIR sh NInt × MArithIR sh NInt)
+recognise-binop sh e = recognise-binopA sh e (<-wellFounded _)
+
+recognise-prim : (sh : InputShape) → ∀ {X Y A} → SigOpSem X Y → IR A ⌊ X ⌋ → Maybe (MArithIR sh NInt)
+recognise-prim sh s e = recognise-primA sh s e (<-wellFounded _)
 
 
 ------------------------------------------------------------------------
@@ -303,45 +322,56 @@ rb-at sh ir                         (v-other ir)      = path-at sh NInt (recogni
 -- name is exactly the right discrimination and no type index is needed.
 ------------------------------------------------------------------------
 
-{-# TERMINATING #-}
-recognise-body-float : (sh : InputShape) → ∀ {A B} → IR A B → Maybe (MArithIR sh NFloat)
-
-recognise-binop-float : (sh : InputShape) → ∀ {X Y} → IR X Y
-                      → Maybe (MArithIR sh NFloat × MArithIR sh NFloat)
-recognise-prim-float : (sh : InputShape) → ∀ {X Y A} → SigOpSem X Y → IR A ⌊ X ⌋ → Maybe (MArithIR sh NFloat)
-rbf-at               : (sh : InputShape) → ∀ {A B} (ir : IR A B) → RBView ir → Maybe (MArithIR sh NFloat)
-binop-at-float       : (sh : InputShape) → ∀ {X Y Z W} → Bool → IR Z X → IR Z Y → IR W Z
+recognise-body-floatA : (sh : InputShape) → ∀ {A B} (ir : IR A B) → Acc _<_ (sz ir) → Maybe (MArithIR sh NFloat)
+recognise-binop-floatA : (sh : InputShape) → ∀ {X Y} (e : IR X Y) → Acc _<_ (sz e)
+                       → Maybe (MArithIR sh NFloat × MArithIR sh NFloat)
+recognise-prim-floatA : (sh : InputShape) → ∀ {X Y A} → SigOpSem X Y → (e : IR A ⌊ X ⌋) → Acc _<_ (sz e)
+                      → Maybe (MArithIR sh NFloat)
+rbf-at               : (sh : InputShape) → ∀ {A B} (ir : IR A B) → RBView ir → Acc _<_ (sz ir) → Maybe (MArithIR sh NFloat)
+binop-at-float       : (sh : InputShape) → ∀ {X Y Z W} → Bool → (a : IR Z X) (b : IR Z Y) (h : IR W Z)
+                     → Acc _<_ (sz (⟨ a , b ⟩ ∘ h)) → Maybe (MArithIR sh NFloat × MArithIR sh NFloat)
+rbinf-at             : (sh : InputShape) → ∀ {X Y} (e : IR X Y) → BView e → Acc _<_ (sz e)
                      → Maybe (MArithIR sh NFloat × MArithIR sh NFloat)
-rbinf-at             : (sh : InputShape) → ∀ {X Y} (e : IR X Y) → BView e → Maybe (MArithIR sh NFloat × MArithIR sh NFloat)
-recognise-binop-float sh e = rbinf-at sh e (b-view e)
+recognise-binop-floatA sh e ac = rbinf-at sh e (b-view e) ac
 
 -- D163: distribution, the float twin. See the int version.
-rbinf-at sh .(⟨ a , b ⟩)     (bv-pair a b)   = pair-of (recognise-body-float sh a) (recognise-body-float sh b)
-rbinf-at sh .(⟨ a , b ⟩ ∘ h) (bv-dist a b h) = binop-at-float sh (plumbing? h) a b h
-rbinf-at sh .id              bv-id           = pair-of (path-at sh NFloat (just (Fst ∷ []))) (path-at sh NFloat (just (Snd ∷ [])))
-rbinf-at sh .((f ∘ g) ∘ h)   (bv-reassoc f g h) = recognise-binop-float sh (f ∘ (g ∘ h))
-rbinf-at sh e                (bv-other e)    = nothing
+rbinf-at sh .(⟨ a , b ⟩)     (bv-pair a b)   (acc rec) =
+  pair-of (recognise-body-floatA sh a (rec (sz-pairˡ a b))) (recognise-body-floatA sh b (rec (sz-pairʳ a b)))
+rbinf-at sh .(⟨ a , b ⟩ ∘ h) (bv-dist a b h) ac = binop-at-float sh (plumbing? h) a b h ac
+rbinf-at sh .id              bv-id           ac = pair-of (path-at sh NFloat (just (Fst ∷ []))) (path-at sh NFloat (just (Snd ∷ [])))
+rbinf-at sh .((f ∘ g) ∘ h)   (bv-reassoc f g h) (acc rec) = recognise-binop-floatA sh (f ∘ (g ∘ h)) (rec (reassoc-< f g h))
+rbinf-at sh e                (bv-other e)    ac = nothing
 
-binop-at-float sh true a b h = pair-of (recognise-body-float sh (a ∘ h)) (recognise-body-float sh (b ∘ h))
-binop-at-float sh false a b h = nothing
+binop-at-float sh true a b h (acc rec) =
+  pair-of (recognise-body-floatA sh (a ∘ h) (rec (sz-distˡ a b h))) (recognise-body-floatA sh (b ∘ h) (rec (sz-distʳ a b h)))
+binop-at-float sh false a b h ac = nothing
 
-recognise-prim-float sh (primV p-fadd) e = binop aadd (recognise-binop-float sh e)
-recognise-prim-float sh (primV p-fsub) e = binop asub (recognise-binop-float sh e)
-recognise-prim-float sh (primV p-fmul) e = binop amul (recognise-binop-float sh e)
-recognise-prim-float sh (primV p-fdiv) e = binop adiv (recognise-binop-float sh e)
-recognise-prim-float sh (primV p-i2f)  e = unop ai2f (recognise-body sh e)
-recognise-prim-float sh (primV p-fneg) e = unop aneg (recognise-body-float sh e)
+recognise-prim-floatA sh (primV p-fadd) e ac = binop aadd (recognise-binop-floatA sh e ac)
+recognise-prim-floatA sh (primV p-fsub) e ac = binop asub (recognise-binop-floatA sh e ac)
+recognise-prim-floatA sh (primV p-fmul) e ac = binop amul (recognise-binop-floatA sh e ac)
+recognise-prim-floatA sh (primV p-fdiv) e ac = binop adiv (recognise-binop-floatA sh e ac)
+recognise-prim-floatA sh (primV p-i2f)  e ac = unop ai2f (recognise-bodyA sh e ac)
+recognise-prim-floatA sh (primV p-fneg) e ac = unop aneg (recognise-body-floatA sh e ac)
 {-# CATCHALL #-}
-recognise-prim-float sh _              e = nothing
+recognise-prim-floatA sh _              e ac = nothing
 
 -- D163: re-associate first — the float twin. See the int version.
-recognise-body-float sh ir = rbf-at sh ir (rb-view ir)
+recognise-body-floatA sh ir ac = rbf-at sh ir (rb-view ir) ac
 
-rbf-at sh .((f ∘ g) ∘ h)            (v-reassoc f g h) = recognise-body-float sh (f ∘ (g ∘ h))
-rbf-at sh .(SigOp si ∘ e)            (v-sigop si e)    = recognise-prim-float sh (sem si) e
-rbf-at sh .(const fits-int v ∘ rhs)  (v-cint v rhs)    = nothing
-rbf-at sh .(const fits-float d ∘ rhs) (v-cflt d rhs)   = flit-at (is-terminal? rhs) d
-rbf-at sh ir                         (v-other ir)      = path-at sh NFloat (recognise-path ir)
+rbf-at sh .((f ∘ g) ∘ h)            (v-reassoc f g h) (acc rec) = recognise-body-floatA sh (f ∘ (g ∘ h)) (rec (reassoc-< f g h))
+rbf-at sh .(SigOp si ∘ e)            (v-sigop si e)    (acc rec) = recognise-prim-floatA sh (sem si) e (rec (sz-sigop si e))
+rbf-at sh .(const fits-int v ∘ rhs)  (v-cint v rhs)    ac = nothing
+rbf-at sh .(const fits-float d ∘ rhs) (v-cflt d rhs)   ac = flit-at (is-terminal? rhs) d
+rbf-at sh ir                         (v-other ir)      ac = path-at sh NFloat (recognise-path ir)
+
+recognise-body-float : (sh : InputShape) → ∀ {A B} → IR A B → Maybe (MArithIR sh NFloat)
+recognise-body-float sh ir = recognise-body-floatA sh ir (<-wellFounded _)
+
+recognise-binop-float : (sh : InputShape) → ∀ {X Y} → IR X Y → Maybe (MArithIR sh NFloat × MArithIR sh NFloat)
+recognise-binop-float sh e = recognise-binop-floatA sh e (<-wellFounded _)
+
+recognise-prim-float : (sh : InputShape) → ∀ {X Y A} → SigOpSem X Y → IR A ⌊ X ⌋ → Maybe (MArithIR sh NFloat)
+recognise-prim-float sh s e = recognise-prim-floatA sh s e (<-wellFounded _)
 
 ------------------------------------------------------------------------
 -- Block-level entry

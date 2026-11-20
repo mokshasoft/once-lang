@@ -10,8 +10,10 @@
 # Each ref is type-checked in its own staging tree under $WORK, extracted with
 # `git archive` from the *committed* ref, so a dirty working tree never leaks
 # into a dump, and so this run cannot invalidate formal/_build for your own
-# Agda. Staging trees keep their _build across runs: a run that dies partway
-# (OOM, Ctrl-C, reboot) resumes from the interfaces already written.
+# Agda. Staging trees keep their _build across runs and across new commits of
+# their ref, and a new ref's tree starts from master's _build ($SEED_FROM): a
+# dump re-checks only what changed, and a run that dies partway (OOM, Ctrl-C,
+# reboot) resumes from the interfaces already written.
 #
 #   ./run-ast-dumps.sh              # master and the current branch
 #   ./run-ast-dumps.sh master       # one ref
@@ -38,6 +40,9 @@ REPO="${REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
 SAFE="$REPO/formal/scripts/agda-safe.sh"
 OUT_DIR="${OUT_DIR:-$REPO}"
 WORK="${WORK:-$HOME/.cache/once-ast-runs}"
+# A ref with no staging tree yet starts from this ref's interfaces (see
+# stage_ref). SEED_FROM= starts it cold.
+SEED_FROM="${SEED_FROM-master}"
 # Pick the most recently built agda under dist-newstyle rather than naming one
 # path. The tree holds several (ghc versions, noopt vs optimised), and a stale
 # one silently produces a dump in the old format -- which is hard to notice,
@@ -134,11 +139,15 @@ say "rts:     ${RTS_OPTS[*]}"
 
 # ------------------------------------------------------------------ staging --
 
-# Extract $ref's formal/ into $dir, but only if $dir does not already hold
-# exactly that content -- reusing a matching tree keeps its cached interfaces,
-# which is the difference between minutes and hours.
+# Extract $ref's formal/ into $dir, keeping $dir/_build. A tree that already
+# holds exactly that content is reused as is; a stale one has its sources
+# replaced in place; a new one starts from a copy of $SEED_FROM's _build. Agda
+# checks every interface against its source hash and its imports' hashes, so a
+# kept or copied interface is used only if it is still valid: the dump re-checks
+# what the ref changed and what depends on it, not the whole cone (plan 0.153: a
+# branch seeded from master took 39 min, cold ~2.5 h).
 stage_ref() {
-  local ref="$1" dir="$2" tmp
+  local ref="$1" dir="$2" tmp seed
   tmp="$(mktemp -d)"
 
   git -C "$REPO" ls-tree -r "$ref" formal/ \
@@ -153,11 +162,17 @@ stage_ref() {
       say "  staging reused ($(find "$dir" -name '*.agdai' | wc -l) interfaces cached)"
       rm -rf "$tmp"; return 0
     fi
-    say "  staging is stale -- re-extracting (cached interfaces discarded)"
-    rm -rf "$dir"
+    say "  staging is stale -- replacing the sources, keeping _build"
+    find "$dir" -mindepth 1 -maxdepth 1 ! -name _build ! -name .git -exec rm -rf {} +
+  else
+    seed="$WORK/$SEED_FROM"
+    mkdir -p "$dir"
+    if [ -n "$SEED_FROM" ] && [ "$seed" != "$dir" ] && [ -d "$seed/_build" ]; then
+      cp -a "$seed/_build" "$dir/_build"
+      say "  seeded _build from $seed ($(find "$dir/_build" -name '*.agdai' | wc -l) interfaces)"
+    fi
   fi
 
-  mkdir -p "$dir"
   git -C "$REPO" archive "$ref" formal | tar -x --strip-components=1 -C "$dir" \
     || die "git archive $ref failed"
   # An empty repo here bounds Agda's upward search for a project root.

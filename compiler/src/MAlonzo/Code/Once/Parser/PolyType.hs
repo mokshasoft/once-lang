@@ -57,7 +57,7 @@ du_ppB'45'go_18 v0 v1
                              (coe MAlonzo.Code.Once.Parser.Generic.PolyInst.d_PolyAlg_118)
                              (coe v0) (coe v4)
                              (coe
-                                MAlonzo.Code.Once.Parser.Generic.Sound.du_sound'45'type_392
+                                MAlonzo.Code.Once.Parser.Generic.Sound.du_sound'45'type_916
                                 (coe MAlonzo.Code.Once.Parser.Generic.PolyInst.d_PolyAlg_118)
                                 (coe v0)))))
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -71,6 +71,6 @@ d_parsePolyTypeB_34 v0
   = coe
       du_ppB'45'go_18 (coe v0)
       (coe
-         MAlonzo.Code.Once.Parser.Generic.Parser.d_typeP_104
+         MAlonzo.Code.Once.Parser.Generic.Parser.d_typeP_1102
          (coe MAlonzo.Code.Once.Parser.Generic.PolyInst.d_PolyAlg_118)
          (coe v0))

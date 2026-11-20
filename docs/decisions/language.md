@@ -248,8 +248,9 @@ entry updates the rule it changes here, in the same commit.
   where one block ends is not observed, so unrolling a loop is sound. Effectful
   laws hold up to one of them, never `≡`. (D318 ← D317, D201)
 - **Recursion is correct by construction**, and `make pragma-gate` keeps it
-  so: no termination/positivity/coverage pragma may be added to the apex or
-  compiler closure. (D242)
+  so: the apex and compiler closure has no termination/positivity/coverage/
+  universe pragma at all; recursion that is not structural goes through
+  `Acc`. (D420 ← D242)
 - **Recursive types are fixed points of polynomial functors** (strictly
   positive, constants base types); `μ` is the initial algebra, `ν` the final
   coalgebra. (D037)

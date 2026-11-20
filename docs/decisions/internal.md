@@ -277,6 +277,9 @@ decision-log entry updates the rule it changes here, in the same commit.
   carries `CATCHALL`. (D278 ← D049)
 - **Model step functions reduce**: no `with` in `exec`; definitions that
   proofs rewrite through expose their scrutinees. (D110)
+- **No `with`, no `rewrite`**: a classifier's result is dispatched by a
+  top-level helper taking the result as a parameter, proved about for a
+  variable result; shapes are views. (D421 ← D110, D373)
 - **A non-injective index belongs in a record.** (D145)
 - **Every assumption is a named postulate** (no anonymous hatch), so the
   ledger counts it — and, by `language.md` §12, a debt. (D175)

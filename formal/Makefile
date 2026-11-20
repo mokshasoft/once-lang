@@ -21,7 +21,6 @@
 #   make compiler      - Verify the whole compiler (= certified; apex + bundle)
 #   make certified     - Correctness (CorrectCompiler) AND VerifiedTypeChecker
 #   make check-all     - Type-check EVERY module (island-rot backstop)
-#   make lint-pragmas  - Fail if pragma text appears inside a comment
 #
 # Dead code analysis (requires patched Agda):
 #   make dead-code-ccc-x86-64 - Dead code analysis for X86-64 CCC
@@ -125,10 +124,6 @@ profile:
 profile-report:
 	@scripts/agda-profile.py --report --work $(HOME)/.cache/once-profile/master
 
-.PHONY: lint-pragmas
-lint-pragmas:
-	@$(CURDIR)/scripts/lint-pragmas.sh
-
 .PHONY: check-all
 check-all:
 	@echo "module Everything where" > Everything.agda
@@ -227,7 +222,7 @@ check-extraction-sync:
 	@$(CURDIR)/scripts/check-extraction-sync.sh
 
 .PHONY: pragma-gate
-# D242: no new check-disabling pragma in the certified/compiler closure.
+# D242: no check-disabling pragma in the certified/compiler closure (zero tolerance, plan 0.153).
 pragma-gate:
 	@scripts/pragma-gate.sh
 
