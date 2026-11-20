@@ -57,7 +57,7 @@ import Once.Target.Arch
 open import Once.Adequacy.BudgetApex (Once.Target.Arch.arch-numerics Once.Target.Arch.riscv64) using (budget-apex-⊑; BudgetFact⊑; budget-fact-of)
 open import Once.Denotation.Program using (runIR)
 open import Once.IR.Semantics.Trace using (pureHalf)
-open import Data.Bool using (Bool)
+open import Data.Bool using (Bool; false)
 open import Data.Product using (proj₁; proj₂; _,_)
 open import Once.Adequacy.CPU.RiscV64 using (call-at-riscv64; ev-riscv64; block-env; run-trace-riscv64)
 import Once.CCC.Target.RiscV64.File as RF
