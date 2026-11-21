@@ -55,19 +55,24 @@ open import Once.LinCore.Values fmt bw
 -- 1. A size class's operations, from the run's events.
 ------------------------------------------------------------------------
 
+-- an operation, if the event's size is this one
+opd : A.Op → ∀ {P : Set} → Dec P → List A.Op
+opd o (yes _) = o ∷ []
+opd o (no _)  = []
+
+opd-yes : ∀ o {P : Set} → P → (d : Dec P) → opd o d ≡ o ∷ []
+opd-yes o p (yes _) = refl
+opd-yes o p (no ¬p) = ⊥-elim (¬p p)
+
+opd-no : ∀ o {P : Set} → ¬ P → (d : Dec P) → opd o d ≡ []
+opd-no o ne (yes p) = ⊥-elim (ne p)
+opd-no o ne (no _)  = refl
+
 opOf : ℕ → Ev → List A.Op
-opOf k (alloc (k′ , s)) with k′ ≟ k
-... | yes _ = A.birth s ∷ []
-... | no _  = []
-opOf k (free (k′ , s)) with k′ ≟ k
-... | yes _ = A.death s ∷ []
-... | no _  = []
-opOf k (tmp (tnew k′)) with k′ ≟ k
-... | yes _ = A.tbirth ∷ []
-... | no _  = []
-opOf k (tmp (tdel k′)) with k′ ≟ k
-... | yes _ = A.tdeath ∷ []
-... | no _  = []
+opOf k (alloc (k′ , s)) = opd (A.birth s) (k′ ≟ k)
+opOf k (free (k′ , s))  = opd (A.death s) (k′ ≟ k)
+opOf k (tmp (tnew k′))  = opd A.tbirth (k′ ≟ k)
+opOf k (tmp (tdel k′))  = opd A.tdeath (k′ ≟ k)
 opOf k (peek _)     = []
 opOf k (io _ _ _)   = []
 opOf k (stp _ _)    = []
@@ -102,14 +107,10 @@ private
   δ-k ne = δ-≢ (λ e → ne (cong fst e))
 
   δn-same : ∀ k → δn k k ≡ 1
-  δn-same k with k ≟ k
-  ... | yes _ = refl
-  ... | no ne = ⊥-elim (ne refl)
+  δn-same k = δd-yes refl (k ≟ k)
 
   δn-other : ∀ {k k′} → k′ ≢ k → δn k′ k ≡ 0
-  δn-other {k} {k′} ne with k′ ≟ k
-  ... | yes e = ⊥-elim (ne e)
-  ... | no _  = refl
+  δn-other {k} {k′} ne = δd-no ne (k′ ≟ k)
 
   1≢0 : 1 ≡ 0 → ⊥
   1≢0 ()
@@ -119,45 +120,29 @@ private
 
 -- an event of another size class asks nothing of this one
 alloc-none : ∀ {k k′ s} → k′ ≢ k → opOf k (alloc (k′ , s)) ≡ []
-alloc-none {k} {k′} ne with k′ ≟ k
-... | yes e = ⊥-elim (ne e)
-... | no _  = refl
+alloc-none {k} {k′} ne = opd-no _ ne (k′ ≟ k)
 
 free-none : ∀ {k k′ s} → k′ ≢ k → opOf k (free (k′ , s)) ≡ []
-free-none {k} {k′} ne with k′ ≟ k
-... | yes e = ⊥-elim (ne e)
-... | no _  = refl
+free-none {k} {k′} ne = opd-no _ ne (k′ ≟ k)
 
 tnew-none : ∀ {k k′} → k′ ≢ k → opOf k (tmp (tnew k′)) ≡ []
-tnew-none {k} {k′} ne with k′ ≟ k
-... | yes e = ⊥-elim (ne e)
-... | no _  = refl
+tnew-none {k} {k′} ne = opd-no _ ne (k′ ≟ k)
 
 tdel-none : ∀ {k k′} → k′ ≢ k → opOf k (tmp (tdel k′)) ≡ []
-tdel-none {k} {k′} ne with k′ ≟ k
-... | yes e = ⊥-elim (ne e)
-... | no _  = refl
+tdel-none {k} {k′} ne = opd-no _ ne (k′ ≟ k)
 
 -- an event of this size class: its one operation
 alloc-one : ∀ k s → opOf k (alloc (k , s)) ≡ A.birth s ∷ []
-alloc-one k s with k ≟ k
-... | yes _ = refl
-... | no ne = ⊥-elim (ne refl)
+alloc-one k s = opd-yes _ refl (k ≟ k)
 
 free-one : ∀ k s → opOf k (free (k , s)) ≡ A.death s ∷ []
-free-one k s with k ≟ k
-... | yes _ = refl
-... | no ne = ⊥-elim (ne refl)
+free-one k s = opd-yes _ refl (k ≟ k)
 
 tnew-one : ∀ k → opOf k (tmp (tnew k)) ≡ A.tbirth ∷ []
-tnew-one k with k ≟ k
-... | yes _ = refl
-... | no ne = ⊥-elim (ne refl)
+tnew-one k = opd-yes _ refl (k ≟ k)
 
 tdel-one : ∀ k → opOf k (tmp (tdel k)) ≡ A.tdeath ∷ []
-tdel-one k with k ≟ k
-... | yes _ = refl
-... | no ne = ⊥-elim (ne refl)
+tdel-one k = opd-yes _ refl (k ≟ k)
 
 -- one step, as the steps of that one operation
 one : ∀ {p p′ os o} → os ≡ o ∷ [] → A.step o p ≡ just p′ → A.Steps p os p′
@@ -180,10 +165,11 @@ same {k} {x} {h} {L} {p} iv lk e hs ls =
             ; ⇒live = λ s q → ⇒live lk s (trans (sym (hs s)) q)
             ; ntemp = trans (ntemp lk) (sym ls) })
 
-event : ∀ k x {h L p} → okPre x h → tpre x L → A.Inv p → Link k h L p → After k x h L p
-event k (alloc (k′ , s)) {h} {L} {p} ok _ iv lk with k′ ≟ k
-... | no ne = same iv lk (alloc-none ne) (λ s′ → trans (cong (h (k , s′) +_) (δ-k {s = s} {s′ = s′} ne)) (+-identityʳ _)) refl
-... | yes refl = after (A.bornP s p) (one (alloc-one k s) (A.born-ok s p nl)) (A.born-inv s p iv (A.born-ok s p nl))
+event-alloc : ∀ k k′ s {h L p} → okPre (alloc (k′ , s)) h → A.Inv p → Link k h L p → Dec (k′ ≡ k)
+            → After k (alloc (k′ , s)) h L p
+event-alloc k k′ s {h} {L} {p} ok iv lk (no ne) =
+  same iv lk (alloc-none ne) (λ s′ → trans (cong (h (k , s′) +_) (δ-k {s = s} {s′ = s′} ne)) (+-identityʳ _)) refl
+event-alloc k .k s {h} {L} {p} ok iv lk (yes refl) = after (A.bornP s p) (one (alloc-one k s) (A.born-ok s p nl)) (A.born-inv s p iv (A.born-ok s p nl))
                    (record { live⇒ = lv ; ⇒live = vl ; ntemp = ntemp lk })
   where
     nl : ¬ A.Live p s
@@ -198,9 +184,12 @@ event k (alloc (k′ , s)) {h} {L} {p} ok _ iv lk with k′ ≟ k
     vl′ s′ (no ne)    q = A.born-from s p iv (sym≢ ne) (⇒live lk s′ (trans (sym (trans (cong (h (k , s′) +_) (δ-s ne)) (+-identityʳ _))) q))
     vl : ∀ s′ → h (k , s′) + δ (k , s) (k , s′) ≡ 1 → A.Live (A.bornP s p) s′
     vl s′ = vl′ s′ (s ≟ s′)
-event k (free (k′ , s)) {h} {L} {p} ok _ iv lk with k′ ≟ k
-... | no ne = same iv lk (free-none ne) (λ s′ → cong (h (k , s′) ∸_) (δ-k {s = s} {s′ = s′} ne)) refl
-... | yes refl = after (A.diedP s p) (one (free-one k s) (A.died-ok s p ls)) (A.died-inv s p iv (A.died-ok s p ls))
+
+event-free : ∀ k k′ s {h L p} → okPre (free (k′ , s)) h → A.Inv p → Link k h L p → Dec (k′ ≡ k)
+           → After k (free (k′ , s)) h L p
+event-free k k′ s {h} {L} {p} ok iv lk (no ne) =
+  same iv lk (free-none ne) (λ s′ → cong (h (k , s′) ∸_) (δ-k {s = s} {s′ = s′} ne)) refl
+event-free k .k s {h} {L} {p} ok iv lk (yes refl) = after (A.diedP s p) (one (free-one k s) (A.died-ok s p ls)) (A.died-inv s p iv (A.died-ok s p ls))
                    (record { live⇒ = lv ; ⇒live = vl ; ntemp = ntemp lk })
   where
     ls : A.Live p s
@@ -217,28 +206,38 @@ event k (free (k′ , s)) {h} {L} {p} ok _ iv lk with k′ ≟ k
     vl′ s′ (no ne)    q = A.died-from s p ls (sym≢ ne) (⇒live lk s′ (trans (sym (cong (h (k , s′) ∸_) (δ-s ne))) q))
     vl : ∀ s′ → h (k , s′) ∸ δ (k , s) (k , s′) ≡ 1 → A.Live (A.diedP s p) s′
     vl s′ = vl′ s′ (s ≟ s′)
-event k (peek _)   ok _ iv lk = same iv lk refl (λ _ → refl) refl
-event k (io _ _ _) ok _ iv lk = same iv lk refl (λ _ → refl) refl
-event k (stp _ _)  ok _ iv lk = same iv lk refl (λ _ → refl) refl
-event k (tmp (tnew k′)) {h} {L} {p} _ _ iv lk with k′ ≟ k
-... | no ne = same iv lk (tnew-none ne) (λ _ → refl) (trans (cong (L k +_) (δn-other ne)) (+-identityʳ _))
-... | yes refl = after (A.tborn p) (one (tnew-one k) refl) (A.tborn-inv p iv)
+
+event-tnew : ∀ k k′ {h L p} → A.Inv p → Link k h L p → Dec (k′ ≡ k) → After k (tmp (tnew k′)) h L p
+event-tnew k k′ {h} {L} {p} iv lk (no ne) =
+  same iv lk (tnew-none ne) (λ _ → refl) (trans (cong (L k +_) (δn-other ne)) (+-identityʳ _))
+event-tnew k .k {h} {L} {p} iv lk (yes refl) = after (A.tborn p) (one (tnew-one k) refl) (A.tborn-inv p iv)
                    (record { live⇒ = λ s l → live⇒ lk s (A.tborn-to p l)
                            ; ⇒live = λ s q → A.tborn-from p iv (⇒live lk s q)
                            ; ntemp = trans (cong suc (ntemp lk))
                                            (sym (trans (cong (L k +_) (δn-same k)) (+-comm (L k) 1))) })
-event k (tmp (tdel k′)) {h} {L} {p} _ tp iv lk with k′ ≟ k
-... | no ne = same iv lk (tdel-none ne) (λ _ → refl) (cong (L k ∸_) (δn-other ne))
-... | yes refl with A.Pool.temps p in eq
-...   | [] = ⊥-elim (z≰ (subst (1 ≤_) (trans (sym (ntemp lk)) (cong length eq)) tp))
-  where z≰ : 1 ≤ 0 → ⊥
-        z≰ ()
-...   | (m , j) ∷ ts =
-  after _ (one (tdel-one k) (A.tdied-ok p eq)) (A.tdied-inv p iv (A.tdied-ok p eq))
-        (record { live⇒ = λ s l → live⇒ lk s (A.tdied-to p {j = j} {ts = ts} l)
-                ; ⇒live = λ s q → A.tdied-from p iv eq (⇒live lk s q)
-                ; ntemp = trans (cong (_∸ 1) (trans (sym (cong length eq)) (ntemp lk)))
-                                (sym (cong (L k ∸_) (δn-same k))) })
+event-tdel : ∀ k k′ {h L p} → tpre (tmp (tdel k′)) L → A.Inv p → Link k h L p → Dec (k′ ≡ k) → After k (tmp (tdel k′)) h L p
+event-tdel k k′ {h} {L} {p} tp iv lk (no ne) = same iv lk (tdel-none ne) (λ _ → refl) (cong (L k ∸_) (δn-other ne))
+event-tdel k .k {h} {L} {p} tp iv lk (yes refl) = go (A.Pool.temps p) refl
+  where
+    z≰ : 1 ≤ 0 → ⊥
+    z≰ ()
+    go : ∀ ts₀ → A.Pool.temps p ≡ ts₀ → After k (tmp (tdel k)) h L p
+    go []             eq = ⊥-elim (z≰ (subst (1 ≤_) (trans (sym (ntemp lk)) (cong length eq)) tp))
+    go ((m , j) ∷ ts) eq =
+      after _ (one (tdel-one k) (A.tdied-ok p eq)) (A.tdied-inv p iv (A.tdied-ok p eq))
+            (record { live⇒ = λ s l → live⇒ lk s (A.tdied-to p {j = j} {ts = ts} l)
+                    ; ⇒live = λ s q → A.tdied-from p iv eq (⇒live lk s q)
+                    ; ntemp = trans (cong (_∸ 1) (trans (sym (cong length eq)) (ntemp lk)))
+                                    (sym (cong (L k ∸_) (δn-same k))) })
+
+event : ∀ k x {h L p} → okPre x h → tpre x L → A.Inv p → Link k h L p → After k x h L p
+event k (alloc (k′ , s)) ok _  iv lk = event-alloc k k′ s ok iv lk (k′ ≟ k)
+event k (free (k′ , s))  ok _  iv lk = event-free k k′ s ok iv lk (k′ ≟ k)
+event k (peek _)   ok _ iv lk = same iv lk refl (λ _ → refl) refl
+event k (io _ _ _) ok _ iv lk = same iv lk refl (λ _ → refl) refl
+event k (stp _ _)  ok _ iv lk = same iv lk refl (λ _ → refl) refl
+event k (tmp (tnew k′)) _ _  iv lk = event-tnew k k′ iv lk (k′ ≟ k)
+event k (tmp (tdel k′)) _ tp iv lk = event-tdel k k′ tp iv lk (k′ ≟ k)
 
 ------------------------------------------------------------------------
 -- 3. ★ THE THEOREM.
@@ -249,9 +248,10 @@ event k (tmp (tdel k′)) {h} {L} {p} _ tp iv lk with k′ ≟ k
 along : ∀ k t {h L p} → OK t h → TOK t L → A.Inv p → Link k h L p
       → Σ A.Pool λ p′ → A.Steps p (ops k t) p′ × A.Inv p′
 along k []      _          _          iv lk = (_ , A.done , iv)
-along k (x ∷ t) (ox , ot) (tx , tt′) iv lk with event k x ox tx iv lk
-... | after p₁ st₁ iv₁ lk₁ with along k t ot tt′ iv₁ lk₁
-...   | (p′ , st , iv′) = (p′ , steps-++ st₁ st , iv′)
+along k (x ∷ t) (ox , ot) (tx , tt′) iv lk =
+  let after p₁ st₁ iv₁ lk₁ = event k x ox tx iv lk
+      (p′ , st , iv′) = along k t ot tt′ iv₁ lk₁
+  in (p′ , steps-++ st₁ st , iv′)
 
 -- ★ a legal run, from nothing: every size class's allocator makes every
 -- step, from an empty region, its invariant holding — so the region grows
@@ -282,14 +282,19 @@ GLink : Heap → TL → R.Region → Set
 GLink h L r = ∀ k → Link k h L (R.Region.pools r k)
 
 -- an event that asks nothing of size `k` leaves its pool as it was
+steps-nil : ∀ {p p₁} → A.Steps p [] p₁ → p₁ ≡ p
+steps-nil A.done = refl
+
+steps-one : ∀ {p p₁ o} → A.Steps p (o ∷ []) p₁ → A.step o p ≡ just p₁
+steps-one (e A.⟫ A.done) = e
+
 after-none : ∀ {k x h L p} → opOf k x ≡ [] → After k x h L p → Link k (step x h) (tstep x L) p
-after-none e (after p₁ st _ lk) with subst (λ os → A.Steps _ os p₁) e st
-... | A.done = lk
+after-none {k} {x} {h} {L} e (after p₁ st _ lk) =
+  subst (Link k (step x h) (tstep x L)) (steps-nil (subst (λ os → A.Steps _ os p₁) e st)) lk
 
 -- an event of size `k`: its one operation is the pool's step
 after-one : ∀ {k x h L p o} → opOf k x ≡ o ∷ [] → (a : After k x h L p) → A.step o p ≡ just (After.p₁ a)
-after-one e (after p₁ st _ _) with subst (λ os → A.Steps _ os p₁) e st
-... | e′ A.⟫ A.done = e′
+after-one e (after p₁ st _ _) = steps-one (subst (λ os → A.Steps _ os p₁) e st)
 
 GAfter : Ev → Heap → TL → R.Region → Set
 GAfter x h L r = Σ R.Region λ r′ → R.GSteps r (gopOf x) r′ × R.RInv r′ × GLink (step x h) (tstep x L) r′
@@ -305,9 +310,11 @@ gone x {h} {L} {r} k₀ o eg e₀ en ok tp iv lk =
     p₁ = After.p₁ a
     ep = after-one e₀ a
     lk′ : GLink (step x h) (tstep x L) (R.place k₀ p₁ r)
-    lk′ k rewrite R.place-pools k₀ p₁ r with R.upd-view (R.Region.pools r) k₀ p₁ k
-    ... | inj₁ (refl , q) = subst (Link k _ _) (sym q) (After.link a)
-    ... | inj₂ (ne , q)   = subst (Link k _ _) (sym q) (after-none (en k ne) (event k x ok tp (R.RInv.pinv iv k) (lk k)))
+    lk′ k =
+      subst (λ ps → Link k (step x h) (tstep x L) (ps k)) (sym (R.place-pools k₀ p₁ r))
+        (A.upd-elim (Link k (step x h) (tstep x L)) (R.Region.pools r) k₀ p₁ k
+           (λ eq → subst (λ z → Link z (step x h) (tstep x L) p₁) eq (After.link a))
+           (λ ne → after-none (en k ne) (event k x ok tp (R.RInv.pinv iv k) (lk k))))
 
 -- an event of no size: nothing steps
 gzero : ∀ x {h L r} → gopOf x ≡ [] → (∀ k → opOf k x ≡ []) → okPre x h → tpre x L → R.RInv r → GLink h L r
@@ -328,9 +335,10 @@ gevent (stp s x)        = gzero (stp s x) refl (λ _ → refl)
 galong : ∀ t {h L r} → OK t h → TOK t L → R.RInv r → GLink h L r
        → Σ R.Region λ r′ → R.GSteps r (gops t) r′ × R.RInv r′
 galong []      _          _          iv lk = (_ , R.done , iv)
-galong (x ∷ t) (ox , ot) (tx , tt′) iv lk with gevent x ox tx iv lk
-... | (r₁ , st₁ , iv₁ , lk₁) with galong t ot tt′ iv₁ lk₁
-...   | (r′ , st , iv′) = (r′ , R.gsteps-++ st₁ st , iv′)
+galong (x ∷ t) (ox , ot) (tx , tt′) iv lk =
+  let (r₁ , st₁ , iv₁ , lk₁) = gevent x ox tx iv lk
+      (r′ , st , iv′) = galong t ot tt′ iv₁ lk₁
+  in (r′ , R.gsteps-++ st₁ st , iv′)
 
 -- ★ A LEGAL RUN IN ONE REGION, over the program's sizes `ks`:
 --   * the region makes every step, from empty;
@@ -342,5 +350,6 @@ galong (x ∷ t) (ox , ot) (tx , tt′) iv lk with gevent x ox tx iv lk
 in-one-region : ∀ ks t → OK t (λ _ → 0) → TLeg t → R.Sizes ks (gops t)
               → Σ R.Region λ r → R.GSteps R.empty (gops t) r × R.RInv r
                                × R.Region.wtop r ≤ R.Words ks r × (∀ k → R.Peak (gops t) k (R.tops r k))
-in-one-region ks t ok tl sz with galong t ok tl R.rinv-empty (λ k → link₀ k)
-... | (r , st , iv) = (r , st , iv , R.space ks sz z≤n st , R.peak st)
+in-one-region ks t ok tl sz =
+  let (r , st , iv) = galong t ok tl R.rinv-empty (λ k → link₀ k)
+  in (r , st , iv , R.space ks sz z≤n st , R.peak st)

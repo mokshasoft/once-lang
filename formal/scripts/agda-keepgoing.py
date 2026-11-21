@@ -11,15 +11,20 @@ modules stay in memory), loads the cone bottom-up, records each module's error,
 and skips the modules that import a failed one.
 
 Usage (from formal/):
-    scripts/agda-keepgoing.py [ROOT.agda] [--max N] [--only PREFIX]
+    scripts/agda-keepgoing.py [ROOT.agda] [--max N] [--only PREFIX] [--slow S] [--kill K]
 Prints a progress line per module (`[n/total] ok|FAIL|skip M (secs)`, flushed,
 so a run redirected to a file can be followed with `tail -f`), one block per
 failing module and a summary. Runs Agda under the same memory cap as
 agda-safe.sh (systemd-run scope). If Agda dies (the cap: the one process holds
 every module checked so far) it is restarted and the module retried once in the
 fresh process; a second death is reported as out of memory.
+
+Time per module (its own check: its imports are already loaded): over --slow
+seconds (default 60, the module cap) it is tagged `SLOW` and listed in the
+summary; over --kill seconds (default 60) Agda is killed and the module fails as
+timed out (a runaway reduction is not waited out), then the run goes on.
 """
-import json, os, re, subprocess, sys, glob, time
+import json, os, re, subprocess, sys, glob, time, threading
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 os.chdir(ROOT_DIR)
@@ -60,7 +65,18 @@ class Agda:
         self.p = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                   text=True, encoding='utf-8', bufsize=1)
     def alive(self): return self.p.poll() is None
-    def load(self, f):
+    def load(self, f, kill=None):
+        self.timedout = False
+        def expire():
+            self.timedout = True
+            try: self.p.kill()
+            except Exception: pass
+        w = threading.Timer(kill, expire) if kill else None
+        if w: w.daemon = True; w.start()
+        try: return self.load_(f)
+        finally:
+            if w: w.cancel()
+    def load_(self, f):
         a = os.path.abspath(f)
         q = json.dumps(a)
         self.p.stdin.write(f'IOTCM {q} None Indirect (Cmd_load {q} [])\n')
@@ -90,17 +106,19 @@ class Agda:
 
 def main():
     args = sys.argv[1:]
-    root = 'Once/Certified.agda'; maxerr = 1000; only = None
+    root = 'Once/Certified.agda'; maxerr = 1000; only = None; slow = 60.0; kill = 60.0
     i = 0
     while i < len(args):
         if args[i] == '--max': maxerr = int(args[i+1]); i += 2
         elif args[i] == '--only': only = args[i+1]; i += 2
+        elif args[i] == '--slow': slow = float(args[i+1]); i += 2
+        elif args[i] == '--kill': kill = float(args[i+1]); i += 2
         else: root = args[i]; i += 1
     rootm = root[:-5].replace('/', '.') if root.endswith('.agda') else root
     order = cone(rootm)
     lib = stdlib()
     agda = Agda(lib)
-    failed, skipped, ok = {}, set(), 0
+    failed, skipped, ok, slows = {}, set(), 0, []
     deps = {m: imports(m) for m in order}
     total = len(order)
     def progress(n, tag, m, t=None):
@@ -110,14 +128,23 @@ def main():
         if any(d in failed or d in skipped for d in deps[m]):
             skipped.add(m); progress(n, 'skip', m); continue
         t0 = time.monotonic()
-        res = agda.load(modpath(m))
+        res = agda.load(modpath(m), kill)
+        if res is None and agda.timedout:
+            progress(n, 'FAIL', m, time.monotonic() - t0)
+            failed[m] = [f'(timed out: over {kill:.0f}s on its own — a runaway check)']
+            print(f'=== FAIL {m}\n' + failed[m][0] + '\n', flush=True)
+            agda.close(); agda = Agda(lib)
+            if len(failed) >= maxerr: break
+            continue
         if res is None:
             # Agda died, almost always the memory cap: the one long-lived process holds every
             # module checked so far. Retry once in a fresh process, which starts nearly empty.
             print(f'[{n+1}/{total}] agda died on {m} — retrying in a fresh process', flush=True)
             agda.close(); agda = Agda(lib)
-            res = agda.load(modpath(m))
-        progress(n, 'ok' if res == [] else 'FAIL', m, time.monotonic() - t0)
+            res = agda.load(modpath(m), kill)
+        dt = time.monotonic() - t0
+        if res == [] and dt > slow: slows.append((dt, m))
+        progress(n, ('SLOW' if dt > slow else 'ok') if res == [] else 'FAIL', m, dt)
         if res is None:
             failed[m] = ['(agda died twice — out of memory; check it alone with agda-safe.sh)']
             print(f'=== FAIL {m}\n' + failed[m][0] + '\n', flush=True)
@@ -130,7 +157,8 @@ def main():
         else:
             ok += 1
     agda.close()
-    print(f'=== SUMMARY: {len(order)} modules in cone, {ok} ok, {len(failed)} failed, {len(skipped)} skipped (import a failure)', flush=True)
+    for dt, m in sorted(slows, reverse=True): print(f'=== SLOW {m} ({dt:.0f}s > {slow:.0f}s)', flush=True)
+    print(f'=== SUMMARY: {len(order)} modules in cone, {ok} ok, {len(failed)} failed, {len(skipped)} skipped (import a failure), {len(slows)} slow', flush=True)
     sys.exit(1 if failed else 0)
 
 if __name__ == '__main__':

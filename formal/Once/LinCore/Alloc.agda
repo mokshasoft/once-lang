@@ -33,7 +33,7 @@
 {-# OPTIONS --guardedness #-}
 
 open import Agda.Builtin.Equality using (_≡_; refl)
-open import Relation.Binary.PropositionalEquality using (sym; trans; cong; subst; _≢_)
+open import Relation.Binary.PropositionalEquality using (sym; trans; cong; cong₂; subst; _≢_)
 open import Agda.Builtin.Sigma using (Σ; _,_; fst; snd)
 open import Data.Product using (_×_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -61,20 +61,37 @@ data Who : Set where
 cellW-inj : ∀ {a b} → cellW a ≡ cellW b → a ≡ b
 cellW-inj refl = refl
 
+private
+  tempW-inj : ∀ {a b} → tempW a ≡ tempW b → a ≡ b
+  tempW-inj refl = refl
+
+  freeW≢cellW : ∀ {s} → freeW ≢ cellW s
+  freeW≢cellW ()
+
+  freeW≢tempW : ∀ {m} → freeW ≢ tempW m
+  freeW≢tempW ()
+
+  cellW≢tempW : ∀ {s m} → cellW s ≢ tempW m
+  cellW≢tempW ()
+
+  ≟c : ∀ {a b} → Dec (a ≡ b) → Dec (cellW a ≡ cellW b)
+  ≟c (yes refl) = yes refl
+  ≟c (no ne)    = no λ e → ne (cellW-inj e)
+
+  ≟t : ∀ {a b} → Dec (a ≡ b) → Dec (tempW a ≡ tempW b)
+  ≟t (yes refl) = yes refl
+  ≟t (no ne)    = no λ e → ne (tempW-inj e)
+
 _≟w_ : (a b : Who) → Dec (a ≡ b)
 freeW   ≟w freeW   = yes refl
 freeW   ≟w cellW _ = no λ ()
 freeW   ≟w tempW _ = no λ ()
 cellW _ ≟w freeW   = no λ ()
-cellW a ≟w cellW b with a ≟ b
-... | yes refl = yes refl
-... | no ne    = no λ e → ne (cellW-inj e)
+cellW a ≟w cellW b = ≟c (a ≟ b)
 cellW _ ≟w tempW _ = no λ ()
 tempW _ ≟w freeW   = no λ ()
 tempW _ ≟w cellW _ = no λ ()
-tempW a ≟w tempW b with a ≟ b
-... | yes refl = yes refl
-... | no ne    = no λ { refl → ne refl }
+tempW a ≟w tempW b = ≟t (a ≟ b)
 
 record Pool : Set where
   constructor pool
@@ -94,56 +111,74 @@ Live : Pool → ℕ → Set
 Live p s = who p (own p s) ≡ cellW s
 
 -- a point update
+upd-pick : ∀ {P X : Set} → Dec P → X → X → X
+upd-pick (yes _) x y = x
+upd-pick (no _)  x y = y
+
 upd : ∀ {X : Set} → (ℕ → X) → ℕ → X → ℕ → X
-upd f j x j′ with j ≟ j′
-... | yes _ = x
-... | no _  = f j′
+upd f j x j′ = upd-pick (j ≟ j′) x (f j′)
+
+-- ★ the one case split on a point update: at the point, or elsewhere
+upd-elim : ∀ {X : Set} (P : X → Set) (f : ℕ → X) j x j′ → (j ≡ j′ → P x) → (j ≢ j′ → P (f j′)) → P (upd f j x j′)
+upd-elim P f j x j′ at else = by (j ≟ j′)
+  where
+    by : (d : Dec (j ≡ j′)) → P (upd-pick d x (f j′))
+    by (yes e) = at e
+    by (no ne) = else ne
 
 upd-same : ∀ {X : Set} (f : ℕ → X) j x → upd f j x j ≡ x
-upd-same f j x with j ≟ j
-... | yes _ = refl
-... | no ne = ⊥-elim (ne refl)
+upd-same f j x = upd-elim (_≡ x) f j x j (λ _ → refl) (λ ne → ⊥-elim (ne refl))
 
 upd-other : ∀ {X : Set} (f : ℕ → X) {j j′} x → j ≢ j′ → upd f j x j′ ≡ f j′
-upd-other f {j} {j′} x ne with j ≟ j′
-... | yes e = ⊥-elim (ne e)
-... | no _  = refl
+upd-other f {j} {j′} x ne = upd-elim (_≡ f j′) f j x j′ (λ e → ⊥-elim (ne e)) (λ _ → refl)
 
 ------------------------------------------------------------------------
 -- 2. TAKING A BLOCK: the lowest free one below the top, else the top.
 ------------------------------------------------------------------------
 
+ff-here : ∀ {P : Set} → ℕ → Dec P → Maybe ℕ
+ff-here n (yes _) = just n
+ff-here n (no _)  = nothing
+
+ff-step : (ℕ → Who) → ℕ → Maybe ℕ → Maybe ℕ
+ff-step w n (just j) = just j
+ff-step w n nothing  = ff-here n (w n ≟w freeW)
+
 firstFree : (ℕ → Who) → ℕ → Maybe ℕ
 firstFree w zero    = nothing
-firstFree w (suc n) with firstFree w n
-... | just j  = just j
-... | nothing with w n ≟w freeW
-...   | yes _ = just n
-...   | no _  = nothing
+firstFree w (suc n) = ff-step w n (firstFree w n)
 
 ff-just : ∀ w n {j} → firstFree w n ≡ just j → j < n × w j ≡ freeW
-ff-just w (suc n) e with firstFree w n in eq
-... | just j′ with e
-...   | refl = (≤-trans (fst (ff-just w n eq)) (n≤1+n n) , snd (ff-just w n eq))
-ff-just w (suc n) e | nothing with w n ≟w freeW
-...   | yes f with e
-...     | refl = (≤-refl , f)
-ff-just w (suc n) () | nothing | no _
+ff-just w (suc n) {j} e = go (firstFree w n) refl e
+  where
+    at-n : ∀ {i} → (d : Dec (w n ≡ freeW)) → ff-here n d ≡ just i → i < suc n × w i ≡ freeW
+    at-n (yes f) refl = (≤-refl , f)
+    at-n (no _)  ()
+    go : ∀ m → firstFree w n ≡ m → ff-step w n m ≡ just j → j < suc n × w j ≡ freeW
+    go (just j′) eq refl = (≤-trans (fst (ff-just w n eq)) (n≤1+n n) , snd (ff-just w n eq))
+    go nothing   eq e′   = at-n (w n ≟w freeW) e′
 
 ff-nothing : ∀ w n → firstFree w n ≡ nothing → ∀ j → j < n → w j ≢ freeW
-ff-nothing w (suc n) e j lt with firstFree w n in eq
-ff-nothing w (suc n) () j lt | just _
-... | nothing with w n ≟w freeW
-ff-nothing w (suc n) () j lt | nothing | yes _
-...   | no nf with m≤n⇒m<n∨m≡n (≤-pred lt)
-...     | inj₁ lt′ = ff-nothing w n eq j lt′
-...     | inj₂ refl = nf
+ff-nothing w (suc n) e j lt = go (firstFree w n) refl e
+  where
+    go : ∀ m → firstFree w n ≡ m → ff-step w n m ≡ nothing → w j ≢ freeW
+    go (just _) eq ()
+    go nothing  eq e′ = at-n (w n ≟w freeW) e′
+      where
+        by : j < n ⊎ j ≡ n → w n ≢ freeW → w j ≢ freeW
+        by (inj₁ lt′) nf = ff-nothing w n eq j lt′
+        by (inj₂ q)   nf = subst (λ z → w z ≢ freeW) (sym q) nf
+        at-n : (d : Dec (w n ≡ freeW)) → ff-here n d ≡ nothing → w j ≢ freeW
+        at-n (yes _) ()
+        at-n (no nf) _ = by (m≤n⇒m<n∨m≡n (≤-pred lt)) nf
 
 -- the block taken, and the new top
+take-at : Pool → Maybe ℕ → ℕ × ℕ
+take-at p (just j) = (j , top p)
+take-at p nothing  = (top p , suc (top p))
+
 take : Pool → ℕ × ℕ
-take p with firstFree (who p) (top p)
-... | just j  = (j , top p)
-... | nothing = (top p , suc (top p))
+take p = take-at p (firstFree (who p) (top p))
 
 ------------------------------------------------------------------------
 -- 3. THE STEPS: a cell born or freed, a temporary born or freed. A step the
@@ -151,25 +186,36 @@ take p with firstFree (who p) (top p)
 -- temporary to free) is `nothing`: a legal run never asks for one.
 ------------------------------------------------------------------------
 
+bornP : ℕ → Pool → Pool
+bornP s p = pool (snd (take p)) (upd (who p) (fst (take p)) (cellW s)) (upd (own p) s (fst (take p))) (temps p) (tc p)
+
+diedP : ℕ → Pool → Pool
+diedP s p = pool (top p) (upd (who p) (own p s) freeW) (own p) (temps p) (tc p)
+
+born-at : ∀ s p → Dec (Live p s) → Maybe Pool
+born-at s p (yes _) = nothing
+born-at s p (no _)  = just (bornP s p)
+
 born : ℕ → Pool → Maybe Pool
-born s p with who p (own p s) ≟w cellW s
-... | yes _ = nothing
-... | no _  = just (pool (snd (take p)) (upd (who p) (fst (take p)) (cellW s))
-                         (upd (own p) s (fst (take p))) (temps p) (tc p))
+born s p = born-at s p (who p (own p s) ≟w cellW s)
+
+died-at : ∀ s p → Dec (Live p s) → Maybe Pool
+died-at s p (yes _) = just (diedP s p)
+died-at s p (no _)  = nothing
 
 died : ℕ → Pool → Maybe Pool
-died s p with who p (own p s) ≟w cellW s
-... | yes _ = just (pool (top p) (upd (who p) (own p s) freeW) (own p) (temps p) (tc p))
-... | no _  = nothing
+died s p = died-at s p (who p (own p s) ≟w cellW s)
 
 tborn : Pool → Pool
 tborn p = pool (snd (take p)) (upd (who p) (fst (take p)) (tempW (tc p))) (own p)
                ((tc p , fst (take p)) ∷ temps p) (suc (tc p))
 
+tdied-at : Pool → List (ℕ × ℕ) → Maybe Pool
+tdied-at p []             = nothing
+tdied-at p ((m , j) ∷ ts) = just (pool (top p) (upd (who p) j freeW) (own p) ts (tc p))
+
 tdied : Pool → Maybe Pool
-tdied p with temps p
-... | []            = nothing
-... | (m , j) ∷ ts  = just (pool (top p) (upd (who p) j freeW) (own p) ts (tc p))
+tdied p = tdied-at p (temps p)
 
 ------------------------------------------------------------------------
 -- 4. THE INVARIANT: above the top all is free; a cell's block is where its
@@ -204,73 +250,87 @@ inv-empty = record { above = λ _ _ → refl ; cells = λ _ _ () ; tmps = λ _ _
 
 -- the block taken was free, and below the new top
 take-free : ∀ p → Inv p → who p (fst (take p)) ≡ freeW × fst (take p) < snd (take p)
-take-free p iv with firstFree (who p) (top p) in eq
-... | just j  = (snd (ff-just (who p) (top p) eq) , fst (ff-just (who p) (top p) eq))
-... | nothing = (above iv (top p) ≤-refl , ≤-refl)
+take-free p iv = go (firstFree (who p) (top p)) refl
+  where
+    go : ∀ m → firstFree (who p) (top p) ≡ m → who p (fst (take-at p m)) ≡ freeW × fst (take-at p m) < snd (take-at p m)
+    go (just j) eq = (snd (ff-just (who p) (top p) eq) , fst (ff-just (who p) (top p) eq))
+    go nothing  eq = (above iv (top p) ≤-refl , ≤-refl)
 
 take-top : ∀ p → top p ≤ snd (take p)
-take-top p with firstFree (who p) (top p)
-... | just _  = ≤-refl
-... | nothing = n≤1+n _
+take-top p = go (firstFree (who p) (top p))
+  where
+    go : ∀ m → top p ≤ snd (take-at p m)
+    go (just _) = ≤-refl
+    go nothing  = n≤1+n _
 
 private
   -- a free block is no cell's and no temporary's
   free-cell : ∀ {p j s} → who p j ≡ freeW → who p j ≡ cellW s → ⊥
-  free-cell f c with trans (sym f) c
-  ... | ()
+  free-cell f c = freeW≢cellW (trans (sym f) c)
   free-temp : ∀ {p j m} → who p j ≡ freeW → who p j ≡ tempW m → ⊥
-  free-temp f t with trans (sym f) t
-  ... | ()
+  free-temp f t = freeW≢tempW (trans (sym f) t)
 
-born-inv : ∀ s p {p′} → Inv p → born s p ≡ just p′ → Inv p′
-born-inv s p iv e with who p (own p s) ≟w cellW s
-born-inv s p iv () | yes _
-born-inv s p iv refl | no notlive = record { above = ab ; cells = ce ; tmps = tm ; stack = st ; desc = desc iv }
+  -- a temporary below the head is not on the head's block
+  drop-head : ∀ {m′ j′ m j : ℕ} {ts : List (ℕ × ℕ)} → j ≢ j′ → (m′ , j′) ∈ ((m , j) ∷ ts) → (m′ , j′) ∈ ts
+  drop-head ne (here refl) = ⊥-elim (ne refl)
+  drop-head ne (there mem) = mem
+
+bornP-inv : ∀ s p → Inv p → ¬ Live p s → Inv (bornP s p)
+bornP-inv s p iv notlive = record { above = ab ; cells = ce ; tmps = tm ; stack = st ; desc = desc iv }
   where
     j  = fst (take p)
     tf = take-free p iv
     ab : ∀ j′ → snd (take p) ≤ j′ → upd (who p) j (cellW s) j′ ≡ freeW
-    ab j′ le with j ≟ j′
-    ... | yes refl = ⊥-elim (<-irrefl refl (≤-trans (snd tf) le))
-    ... | no _     = above iv j′ (≤-trans (take-top p) le)
+    ab j′ le = upd-elim (_≡ freeW) (who p) j (cellW s) j′
+                 (λ e → ⊥-elim (<-irrefl e (≤-trans (snd tf) le)))
+                 (λ _ → above iv j′ (≤-trans (take-top p) le))
+    ce-own : ∀ j′ s′ → who p j′ ≡ cellW s′ → upd (own p) s j s′ ≡ j′
+    ce-own j′ s′ c = upd-elim (_≡ j′) (own p) s j s′
+                       (λ es → let c₀ = subst (λ z → who p j′ ≡ cellW z) (sym es) c in
+                               ⊥-elim (notlive (subst (λ z → who p z ≡ cellW s) (sym (cells iv j′ s c₀)) c₀)))
+                       (λ _ → cells iv j′ s′ c)
     ce : ∀ j′ s′ → upd (who p) j (cellW s) j′ ≡ cellW s′ → upd (own p) s j s′ ≡ j′
-    ce j′ s′ c with j ≟ j′
-    ce j′ s′ refl | yes refl = upd-same (own p) s j
-    ... | no ne with s ≟ s′
-    ...   | yes refl = ⊥-elim (notlive (subst (λ z → who p z ≡ cellW s) (sym (cells iv j′ s c)) c))
-    ...   | no ns    = cells iv j′ s′ c
+    ce j′ s′ = upd-elim (λ w → w ≡ cellW s′ → upd (own p) s j s′ ≡ j′) (who p) j (cellW s) j′
+                 (λ e c → trans (subst (λ z → upd (own p) s j z ≡ j) (cellW-inj c) (upd-same (own p) s j)) e)
+                 (λ _ c → ce-own j′ s′ c)
     tm : ∀ j′ m → upd (who p) j (cellW s) j′ ≡ tempW m → (m , j′) ∈ temps p
-    tm j′ m t with j ≟ j′
-    tm j′ m () | yes refl
-    ... | no _ = tmps iv j′ m t
+    tm j′ m = upd-elim (λ w → w ≡ tempW m → (m , j′) ∈ temps p) (who p) j (cellW s) j′
+                (λ _ ()) (λ _ t → tmps iv j′ m t)
     st : ∀ m j′ → (m , j′) ∈ temps p → upd (who p) j (cellW s) j′ ≡ tempW m
-    st m j′ mem with j ≟ j′
-    ... | yes refl = ⊥-elim (free-temp {p} (fst tf) (stack iv m j mem))
-    ... | no _     = stack iv m j′ mem
+    st m j′ mem = upd-elim (_≡ tempW m) (who p) j (cellW s) j′
+                    (λ e → ⊥-elim (free-temp {p} (fst tf) (stack iv m j (subst (λ z → (m , z) ∈ temps p) (sym e) mem))))
+                    (λ _ → stack iv m j′ mem)
 
-died-inv : ∀ s p {p′} → Inv p → died s p ≡ just p′ → Inv p′
-died-inv s p iv e with who p (own p s) ≟w cellW s
-died-inv s p iv () | no _
-died-inv s p iv refl | yes live = record { above = ab ; cells = ce ; tmps = tm ; stack = st ; desc = desc iv }
+born-inv : ∀ s p {p′} → Inv p → born s p ≡ just p′ → Inv p′
+born-inv s p iv e = go (who p (own p s) ≟w cellW s) e
+  where
+    go : ∀ {p′} (d : Dec (Live p s)) → born-at s p d ≡ just p′ → Inv p′
+    go (yes _) ()
+    go (no nl) refl = bornP-inv s p iv nl
+
+diedP-inv : ∀ s p → Inv p → Live p s → Inv (diedP s p)
+diedP-inv s p iv live = record { above = ab ; cells = ce ; tmps = tm ; stack = st ; desc = desc iv }
   where
     j = own p s
     ab : ∀ j′ → top p ≤ j′ → upd (who p) j freeW j′ ≡ freeW
-    ab j′ le with j ≟ j′
-    ... | yes _ = refl
-    ... | no _  = above iv j′ le
+    ab j′ le = upd-elim (_≡ freeW) (who p) j freeW j′ (λ _ → refl) (λ _ → above iv j′ le)
     ce : ∀ j′ s′ → upd (who p) j freeW j′ ≡ cellW s′ → own p s′ ≡ j′
-    ce j′ s′ c with j ≟ j′
-    ce j′ s′ () | yes _
-    ... | no _ = cells iv j′ s′ c
+    ce j′ s′ = upd-elim (λ w → w ≡ cellW s′ → own p s′ ≡ j′) (who p) j freeW j′
+                 (λ _ ()) (λ _ c → cells iv j′ s′ c)
     tm : ∀ j′ m → upd (who p) j freeW j′ ≡ tempW m → (m , j′) ∈ temps p
-    tm j′ m t with j ≟ j′
-    tm j′ m () | yes _
-    ... | no _ = tmps iv j′ m t
+    tm j′ m = upd-elim (λ w → w ≡ tempW m → (m , j′) ∈ temps p) (who p) j freeW j′
+                (λ _ ()) (λ _ t → tmps iv j′ m t)
     st : ∀ m j′ → (m , j′) ∈ temps p → upd (who p) j freeW j′ ≡ tempW m
-    st m j′ mem with j ≟ j′
-    ... | yes refl with trans (sym live) (stack iv m j mem)
-    ...   | ()
-    st m j′ mem | no _ = stack iv m j′ mem
+    st m j′ mem = upd-elim (_≡ tempW m) (who p) j freeW j′
+                    (λ e → ⊥-elim (cellW≢tempW (trans (sym live) (stack iv m j (subst (λ z → (m , z) ∈ temps p) (sym e) mem)))))
+                    (λ _ → stack iv m j′ mem)
+
+died-inv : ∀ s p {p′} → Inv p → died s p ≡ just p′ → Inv p′
+died-inv s p iv e = go (who p (own p s) ≟w cellW s) e
+  where
+    go : ∀ {p′} (d : Dec (Live p s)) → died-at s p d ≡ just p′ → Inv p′
+    go (yes l) refl = diedP-inv s p iv l
+    go (no _)  ()
 
 tborn-inv : ∀ p → Inv p → Inv (tborn p)
 tborn-inv p iv = record { above = ab ; cells = ce ; tmps = tm ; stack = st ; desc = (≤-refl , desc iv) }
@@ -278,31 +338,24 @@ tborn-inv p iv = record { above = ab ; cells = ce ; tmps = tm ; stack = st ; des
     j  = fst (take p)
     tf = take-free p iv
     ab : ∀ j′ → snd (take p) ≤ j′ → upd (who p) j (tempW (tc p)) j′ ≡ freeW
-    ab j′ le with j ≟ j′
-    ... | yes refl = ⊥-elim (<-irrefl refl (≤-trans (snd tf) le))
-    ... | no _     = above iv j′ (≤-trans (take-top p) le)
+    ab j′ le = upd-elim (_≡ freeW) (who p) j (tempW (tc p)) j′
+                 (λ e → ⊥-elim (<-irrefl e (≤-trans (snd tf) le)))
+                 (λ _ → above iv j′ (≤-trans (take-top p) le))
     ce : ∀ j′ s′ → upd (who p) j (tempW (tc p)) j′ ≡ cellW s′ → own p s′ ≡ j′
-    ce j′ s′ c with j ≟ j′
-    ce j′ s′ () | yes _
-    ... | no _ = cells iv j′ s′ c
+    ce j′ s′ = upd-elim (λ w → w ≡ cellW s′ → own p s′ ≡ j′) (who p) j (tempW (tc p)) j′
+                 (λ _ ()) (λ _ c → cells iv j′ s′ c)
     tm : ∀ j′ m → upd (who p) j (tempW (tc p)) j′ ≡ tempW m → (m , j′) ∈ ((tc p , j) ∷ temps p)
-    tm j′ m t with j ≟ j′
-    tm j′ m refl | yes refl = here refl
-    ... | no _ = there (tmps iv j′ m t)
+    tm j′ m = upd-elim (λ w → w ≡ tempW m → (m , j′) ∈ ((tc p , j) ∷ temps p)) (who p) j (tempW (tc p)) j′
+                (λ e t → here (cong₂ _,_ (sym (tempW-inj t)) (sym e)))
+                (λ _ t → there (tmps iv j′ m t))
     st : ∀ m j′ → (m , j′) ∈ ((tc p , j) ∷ temps p) → upd (who p) j (tempW (tc p)) j′ ≡ tempW m
     st m j′ (here refl) = upd-same (who p) j (tempW (tc p))
-    st m j′ (there mem) with j ≟ j′
-    ... | yes refl = ⊥-elim (free-temp {p} (fst tf) (stack iv m j mem))
-    ... | no _     = stack iv m j′ mem
+    st m j′ (there mem) = upd-elim (_≡ tempW m) (who p) j (tempW (tc p)) j′
+                            (λ e → ⊥-elim (free-temp {p} (fst tf) (stack iv m j (subst (λ z → (m , z) ∈ temps p) (sym e) mem))))
+                            (λ _ → stack iv m j′ mem)
 
-private
-  tempW-inj : ∀ {a b} → tempW a ≡ tempW b → a ≡ b
-  tempW-inj refl = refl
-
-tdied-inv : ∀ p {p′} → Inv p → tdied p ≡ just p′ → Inv p′
-tdied-inv p iv e with temps p in eq
-tdied-inv p iv () | []
-tdied-inv p iv refl | (m , j) ∷ ts = record { above = ab ; cells = ce ; tmps = tm ; stack = st ; desc = de }
+tdiedP-inv : ∀ p {m j ts} → Inv p → temps p ≡ (m , j) ∷ ts → Inv (pool (top p) (upd (who p) j freeW) (own p) ts (tc p))
+tdiedP-inv p {m} {j} {ts} iv eq = record { above = ab ; cells = ce ; tmps = tm ; stack = st ; desc = de }
   where
     tps : ∀ {x} → x ∈ temps p → x ∈ ((m , j) ∷ ts)
     tps mem = subst (_ ∈_) eq mem
@@ -311,26 +364,28 @@ tdied-inv p iv refl | (m , j) ∷ ts = record { above = ab ; cells = ce ; tmps =
     dsc : Desc ((m , j) ∷ ts) (tc p)
     dsc = subst (λ z → Desc z (tc p)) eq (desc iv)
     ab : ∀ j′ → top p ≤ j′ → upd (who p) j freeW j′ ≡ freeW
-    ab j′ le with j ≟ j′
-    ... | yes _ = refl
-    ... | no _  = above iv j′ le
+    ab j′ le = upd-elim (_≡ freeW) (who p) j freeW j′ (λ _ → refl) (λ _ → above iv j′ le)
     ce : ∀ j′ s′ → upd (who p) j freeW j′ ≡ cellW s′ → own p s′ ≡ j′
-    ce j′ s′ c with j ≟ j′
-    ce j′ s′ () | yes _
-    ... | no _ = cells iv j′ s′ c
+    ce j′ s′ = upd-elim (λ w → w ≡ cellW s′ → own p s′ ≡ j′) (who p) j freeW j′
+                 (λ _ ()) (λ _ c → cells iv j′ s′ c)
     tm : ∀ j′ m′ → upd (who p) j freeW j′ ≡ tempW m′ → (m′ , j′) ∈ ts
-    tm j′ m′ t with j ≟ j′
-    tm j′ m′ () | yes _
-    ... | no ne with tps (tmps iv j′ m′ t)
-    ...   | here refl = ⊥-elim (ne refl)
-    ...   | there mem = mem
+    tm j′ m′ = upd-elim (λ w → w ≡ tempW m′ → (m′ , j′) ∈ ts) (who p) j freeW j′
+                 (λ _ ()) (λ ne t → drop-head ne (tps (tmps iv j′ m′ t)))
     st : ∀ m′ j′ → (m′ , j′) ∈ ts → upd (who p) j freeW j′ ≡ tempW m′
-    st m′ j′ mem with j ≟ j′
-    ... | yes refl with tempW-inj (trans (sym (stack iv m j (pst (here refl)))) (stack iv m′ j (pst (there mem))))
-    ...   | refl = ⊥-elim (<-irrefl refl (desc-below mem (snd dsc)))
-    st m′ j′ mem | no _ = stack iv m′ j′ (pst (there mem))
+    st m′ j′ mem = upd-elim (_≡ tempW m′) (who p) j freeW j′
+                     (λ e → let mem₀ = subst (λ z → (m′ , z) ∈ ts) (sym e) mem in
+                            ⊥-elim (<-irrefl (sym (tempW-inj (trans (sym (stack iv m j (pst (here refl)))) (stack iv m′ j (pst (there mem₀))))))
+                                             (desc-below mem₀ (snd dsc))))
+                     (λ _ → stack iv m′ j′ (pst (there mem)))
     de : Desc ts (tc p)
     de = desc-weaken (≤-trans (n≤1+n m) (fst dsc)) (snd dsc)
+
+tdied-inv : ∀ p {p′} → Inv p → tdied p ≡ just p′ → Inv p′
+tdied-inv p iv e = go (temps p) refl e
+  where
+    go : ∀ {p′} ts₀ → temps p ≡ ts₀ → tdied-at p ts₀ ≡ just p′ → Inv p′
+    go []             eq ()
+    go ((m , j) ∷ ts) eq refl = tdiedP-inv p iv eq
 
 -- one size class's operations, from the run's events of that size
 data Op : Set where
@@ -369,19 +424,23 @@ live-injective p {s} {s′} l l′ e = cellW-inj (trans (sym l) (subst (λ z →
 
 -- a live cell's block and a live temporary's are different blocks
 cell-not-temp : ∀ p {s m j} → Inv p → Live p s → (m , j) ∈ temps p → own p s ≢ j
-cell-not-temp p iv l mem refl with trans (sym l) (stack iv _ _ mem)
-... | ()
+cell-not-temp p iv l mem refl = cellW≢tempW (trans (sym l) (stack iv _ _ mem))
 
 -- ★ THE SPACE CLAIM: when the region grows, every block below the old top
 -- holds a live cell or a live temporary, each its own (`who` is a function)
 grows-only-when-full : ∀ p → Inv p → top p < snd (take p)
                      → ∀ j → j < top p → (Σ ℕ λ s → Live p s × own p s ≡ j) ⊎ (Σ ℕ λ m → (m , j) ∈ temps p)
-grows-only-when-full p iv grows j lt with firstFree (who p) (top p) in eq
-grows-only-when-full p iv grows j lt | just _ = ⊥-elim (<-irrefl refl grows)
-... | nothing with who p j in wj
-...   | freeW   = ⊥-elim (ff-nothing (who p) (top p) eq j lt wj)
-...   | cellW s = inj₁ (s , subst (λ z → who p z ≡ cellW s) (sym (cells iv j s wj)) wj , cells iv j s wj)
-...   | tempW m = inj₂ (m , tmps iv j m wj)
+grows-only-when-full p iv grows j lt = go (firstFree (who p) (top p)) refl grows
+  where
+    Owned : Set
+    Owned = (Σ ℕ λ s → Live p s × own p s ≡ j) ⊎ (Σ ℕ λ m → (m , j) ∈ temps p)
+    by : firstFree (who p) (top p) ≡ nothing → ∀ w → who p j ≡ w → Owned
+    by eq freeW     wj = ⊥-elim (ff-nothing (who p) (top p) eq j lt wj)
+    by eq (cellW s) wj = inj₁ (s , subst (λ z → who p z ≡ cellW s) (sym (cells iv j s wj)) wj , cells iv j s wj)
+    by eq (tempW m) wj = inj₂ (m , tmps iv j m wj)
+    go : ∀ mj → firstFree (who p) (top p) ≡ mj → top p < snd (take-at p mj) → Owned
+    go (just _) eq g = ⊥-elim (<-irrefl refl g)
+    go nothing  eq g = by eq (who p j) refl
 
 -- every block below the top has an owner
 Full : Pool → Set
@@ -390,137 +449,142 @@ Full p = ∀ j → j < top p → who p j ≢ freeW
 -- the top grows by one, at the old top, only when nothing was free
 take-grow : ∀ p → top p < snd (take p)
           → fst (take p) ≡ top p × snd (take p) ≡ suc (top p) × (∀ j → j < top p → who p j ≢ freeW)
-take-grow p lt with firstFree (who p) (top p) in eq
-... | just _  = ⊥-elim (<-irrefl refl lt)
-... | nothing = (refl , refl , ff-nothing (who p) (top p) eq)
+take-grow p lt = go (firstFree (who p) (top p)) refl lt
+  where
+    go : ∀ mj → firstFree (who p) (top p) ≡ mj → top p < snd (take-at p mj)
+       → fst (take-at p mj) ≡ top p × snd (take-at p mj) ≡ suc (top p) × (∀ j → j < top p → who p j ≢ freeW)
+    go (just _) eq g = ⊥-elim (<-irrefl refl g)
+    go nothing  eq g = (refl , refl , ff-nothing (who p) (top p) eq)
 
 take-same : ∀ p → snd (take p) ≡ top p ⊎ snd (take p) ≡ suc (top p)
-take-same p with firstFree (who p) (top p)
-... | just _  = inj₁ refl
-... | nothing = inj₂ refl
+take-same p = go (firstFree (who p) (top p))
+  where
+    go : ∀ mj → snd (take-at p mj) ≡ top p ⊎ snd (take-at p mj) ≡ suc (top p)
+    go (just _) = inj₁ refl
+    go nothing  = inj₂ refl
 
 upd-full : ∀ p {x} → x ≢ freeW → top p < snd (take p)
          → ∀ j → j < snd (take p) → upd (who p) (fst (take p)) x j ≢ freeW
-upd-full p {x} nx lt j jl with take-grow p lt
-... | (e₁ , e₂ , nf) with fst (take p) ≟ j
-...   | yes _ = nx
-...   | no ne with m≤n⇒m<n∨m≡n (≤-pred (subst (j <_) e₂ jl))
-...     | inj₁ lt′  = nf j lt′
-...     | inj₂ refl = ⊥-elim (ne e₁)
+upd-full p {x} nx lt j jl =
+  upd-elim (_≢ freeW) (who p) (fst (take p)) x j (λ _ → nx)
+    (λ ne → by ne (m≤n⇒m<n∨m≡n (≤-pred (subst (j <_) (fst (snd tg)) jl))))
+  where
+    tg = take-grow p lt
+    by : fst (take p) ≢ j → j < top p ⊎ j ≡ top p → who p j ≢ freeW
+    by ne (inj₁ lt′) = snd (snd tg) j lt′
+    by ne (inj₂ q)   = ⊥-elim (ne (trans (fst tg) (sym q)))
 
 -- ★ a step that grows the region leaves it FULL: every block below the new
 -- top has an owner (so as many things of this size are live at once)
 grow-full : ∀ o p {p′} → step o p ≡ just p′ → top p < top p′ → Full p′
-grow-full (birth s) p e lt with who p (own p s) ≟w cellW s
-grow-full (birth s) p () lt | yes _
-grow-full (birth s) p refl lt | no _ = upd-full p (λ ()) lt
-grow-full (death s) p e lt with who p (own p s) ≟w cellW s
-grow-full (death s) p refl lt | yes _ = ⊥-elim (<-irrefl refl lt)
-grow-full (death s) p () lt | no _
+grow-full (birth s) p e lt = go (who p (own p s) ≟w cellW s) e lt
+  where
+    go : ∀ {p′} (d : Dec (Live p s)) → born-at s p d ≡ just p′ → top p < top p′ → Full p′
+    go (yes _) () lt
+    go (no _)  refl lt = upd-full p (λ ()) lt
+grow-full (death s) p e lt = go (who p (own p s) ≟w cellW s) e lt
+  where
+    go : ∀ {p′} (d : Dec (Live p s)) → died-at s p d ≡ just p′ → top p < top p′ → Full p′
+    go (yes _) refl lt = ⊥-elim (<-irrefl refl lt)
+    go (no _)  () lt
 grow-full tbirth p refl lt = upd-full p (λ ()) lt
-grow-full tdeath p e lt with temps p
-grow-full tdeath p () lt | []
-grow-full tdeath p refl lt | _ ∷ _ = ⊥-elim (<-irrefl refl lt)
+grow-full tdeath p e lt = go (temps p) e lt
+  where
+    go : ∀ {p′} ts₀ → tdied-at p ts₀ ≡ just p′ → top p < top p′ → Full p′
+    go []            () lt
+    go ((_ , _) ∷ _) refl lt = ⊥-elim (<-irrefl refl lt)
 
 -- a step keeps the top, or grows it by one
 step-top : ∀ o p {p′} → step o p ≡ just p′ → top p′ ≡ top p ⊎ top p′ ≡ suc (top p)
-step-top (birth s) p e with who p (own p s) ≟w cellW s
-step-top (birth s) p () | yes _
-step-top (birth s) p refl | no _ = take-same p
-step-top (death s) p e with who p (own p s) ≟w cellW s
-step-top (death s) p refl | yes _ = inj₁ refl
-step-top (death s) p () | no _
+step-top (birth s) p e = go (who p (own p s) ≟w cellW s) e
+  where
+    go : ∀ {p′} (d : Dec (Live p s)) → born-at s p d ≡ just p′ → top p′ ≡ top p ⊎ top p′ ≡ suc (top p)
+    go (yes _) ()
+    go (no _)  refl = take-same p
+step-top (death s) p e = go (who p (own p s) ≟w cellW s) e
+  where
+    go : ∀ {p′} (d : Dec (Live p s)) → died-at s p d ≡ just p′ → top p′ ≡ top p ⊎ top p′ ≡ suc (top p)
+    go (yes _) refl = inj₁ refl
+    go (no _)  ()
 step-top tbirth p refl = take-same p
-step-top tdeath p e with temps p
-step-top tdeath p () | []
-step-top tdeath p refl | _ ∷ _ = inj₁ refl
+step-top tdeath p e = go (temps p) e
+  where
+    go : ∀ {p′} ts₀ → tdied-at p ts₀ ≡ just p′ → top p′ ≡ top p ⊎ top p′ ≡ suc (top p)
+    go []            ()
+    go ((_ , _) ∷ _) refl = inj₁ refl
 
 ------------------------------------------------------------------------
 -- 6. WHAT EACH STEP DOES TO WHO IS LIVE (for the link with the run).
 ------------------------------------------------------------------------
 
-bornP : ℕ → Pool → Pool
-bornP s p = pool (snd (take p)) (upd (who p) (fst (take p)) (cellW s)) (upd (own p) s (fst (take p))) (temps p) (tc p)
-
-diedP : ℕ → Pool → Pool
-diedP s p = pool (top p) (upd (who p) (own p s) freeW) (own p) (temps p) (tc p)
-
 born-ok : ∀ s p → ¬ Live p s → born s p ≡ just (bornP s p)
-born-ok s p nl with who p (own p s) ≟w cellW s
-... | yes l = ⊥-elim (nl l)
-... | no _  = refl
+born-ok s p nl = go (who p (own p s) ≟w cellW s)
+  where
+    go : (d : Dec (Live p s)) → born-at s p d ≡ just (bornP s p)
+    go (yes l) = ⊥-elim (nl l)
+    go (no _)  = refl
 
 died-ok : ∀ s p → Live p s → died s p ≡ just (diedP s p)
-died-ok s p l with who p (own p s) ≟w cellW s
-... | yes _ = refl
-... | no nl = ⊥-elim (nl l)
+died-ok s p l = go (who p (own p s) ≟w cellW s)
+  where
+    go : (d : Dec (Live p s)) → died-at s p d ≡ just (diedP s p)
+    go (yes _)  = refl
+    go (no nl)  = ⊥-elim (nl l)
 
 tdied-ok : ∀ p {m j ts} → temps p ≡ (m , j) ∷ ts → tdied p ≡ just (pool (top p) (upd (who p) j freeW) (own p) ts (tc p))
-tdied-ok p eq with temps p
-tdied-ok p refl | _ = refl
+tdied-ok p eq = cong (tdied-at p) eq
 
 private
   cellW≢ : ∀ {s s′} → s ≢ s′ → cellW s ≢ cellW s′
   cellW≢ ne e = ne (cellW-inj e)
 
 born-live : ∀ s p → Live (bornP s p) s
-born-live s p rewrite upd-same (own p) s (fst (take p)) = upd-same (who p) (fst (take p)) (cellW s)
+born-live s p =
+  subst (λ z → upd (who p) (fst (take p)) (cellW s) z ≡ cellW s) (sym (upd-same (own p) s (fst (take p))))
+        (upd-same (who p) (fst (take p)) (cellW s))
 
 born-to : ∀ s p {s′} → s′ ≢ s → Live (bornP s p) s′ → Live p s′
-born-to s p {s′} ne l with s ≟ s′
-... | yes e = ⊥-elim (ne (sym e))
-... | no _ with fst (take p) ≟ own p s′
-...   | yes _ = ⊥-elim (cellW≢ (λ e → ne (sym e)) l)
-...   | no _  = l
+born-to s p {s′} ne l =
+  upd-elim (λ w → w ≡ cellW s′ → who p (own p s′) ≡ cellW s′) (who p) (fst (take p)) (cellW s) (own p s′)
+    (λ _ c → ⊥-elim (cellW≢ (λ e → ne (sym e)) c)) (λ _ c → c)
+    (subst (λ z → upd (who p) (fst (take p)) (cellW s) z ≡ cellW s′) (upd-other (own p) {s} {s′} (fst (take p)) (λ e → ne (sym e))) l)
 
 born-from : ∀ s p {s′} → Inv p → s′ ≢ s → Live p s′ → Live (bornP s p) s′
-born-from s p {s′} iv ne l with s ≟ s′
-... | yes e = ⊥-elim (ne (sym e))
-... | no _ with fst (take p) ≟ own p s′
-...   | yes e = ⊥-elim (free-cell′ (fst (take-free p iv)) (subst (λ z → who p z ≡ cellW s′) (sym e) l))
-  where free-cell′ : ∀ {w} → w ≡ freeW → w ≡ cellW s′ → ⊥
-        free-cell′ refl ()
-...   | no _  = l
+born-from s p {s′} iv ne l =
+  subst (λ z → upd (who p) (fst (take p)) (cellW s) z ≡ cellW s′) (sym (upd-other (own p) {s} {s′} (fst (take p)) (λ e → ne (sym e))))
+    (upd-elim (_≡ cellW s′) (who p) (fst (take p)) (cellW s) (own p s′)
+       (λ e → ⊥-elim (free-cell {p} (fst (take-free p iv)) (subst (λ z → who p z ≡ cellW s′) (sym e) l)))
+       (λ _ → l))
 
 died-dead : ∀ s p → Live (diedP s p) s → ⊥
-died-dead s p l with own p s ≟ own p s
-... | yes _ with l
-...   | ()
-died-dead s p l | no ne = ne refl
+died-dead s p l = freeW≢cellW (trans (sym (upd-same (who p) (own p s) freeW)) l)
 
 died-to : ∀ s p {s′} → Live (diedP s p) s′ → Live p s′
-died-to s p {s′} l with own p s ≟ own p s′
-... | yes _ with l
-...   | ()
-died-to s p {s′} l | no _ = l
+died-to s p {s′} l =
+  upd-elim (λ w → w ≡ cellW s′ → who p (own p s′) ≡ cellW s′) (who p) (own p s) freeW (own p s′) (λ _ ()) (λ _ c → c) l
 
 died-from : ∀ s p {s′} → Live p s → s′ ≢ s → Live p s′ → Live (diedP s p) s′
-died-from s p {s′} ls ne l with own p s ≟ own p s′
-... | yes e = ⊥-elim (ne (live-injective p l ls (sym e)))
-... | no _  = l
+died-from s p {s′} ls ne l =
+  upd-elim (_≡ cellW s′) (who p) (own p s) freeW (own p s′) (λ e → ⊥-elim (ne (live-injective p l ls (sym e)))) (λ _ → l)
 
 tborn-to : ∀ p {s} → Live (tborn p) s → Live p s
-tborn-to p {s} l with fst (take p) ≟ own p s
-... | yes _ with l
-...   | ()
-tborn-to p {s} l | no _ = l
+tborn-to p {s} l =
+  upd-elim (λ w → w ≡ cellW s → who p (own p s) ≡ cellW s) (who p) (fst (take p)) (tempW (tc p)) (own p s) (λ _ ()) (λ _ c → c) l
 
 tborn-from : ∀ p {s} → Inv p → Live p s → Live (tborn p) s
-tborn-from p {s} iv l with fst (take p) ≟ own p s
-... | yes e = ⊥-elim (free-cell″ (fst (take-free p iv)) (subst (λ z → who p z ≡ cellW s) (sym e) l))
-  where free-cell″ : ∀ {w} → w ≡ freeW → w ≡ cellW s → ⊥
-        free-cell″ refl ()
-... | no _  = l
+tborn-from p {s} iv l =
+  upd-elim (_≡ cellW s) (who p) (fst (take p)) (tempW (tc p)) (own p s)
+    (λ e → ⊥-elim (free-cell {p} (fst (take-free p iv)) (subst (λ z → who p z ≡ cellW s) (sym e) l)))
+    (λ _ → l)
 
 tdied-to : ∀ p {j ts s} → Live (pool (top p) (upd (who p) j freeW) (own p) ts (tc p)) s → Live p s
-tdied-to p {j} {s = s} l with j ≟ own p s
-... | yes _ with l
-...   | ()
-tdied-to p {j} {s = s} l | no _ = l
+tdied-to p {j} {s = s} l =
+  upd-elim (λ w → w ≡ cellW s → who p (own p s) ≡ cellW s) (who p) j freeW (own p s) (λ _ ()) (λ _ c → c) l
 
 tdied-from : ∀ p {m j ts s} → Inv p → temps p ≡ (m , j) ∷ ts → Live p s
            → Live (pool (top p) (upd (who p) j freeW) (own p) ts (tc p)) s
-tdied-from p {m} {j} {s = s} iv eq l with j ≟ own p s
-... | yes e with trans (sym (stack iv m j (subst ((m , j) ∈_) (sym eq) (here refl)))) (subst (λ z → who p z ≡ cellW s) (sym e) l)
-...   | ()
-tdied-from p iv eq l | no _ = l
+tdied-from p {m} {j} {s = s} iv eq l =
+  upd-elim (_≡ cellW s) (who p) j freeW (own p s)
+    (λ e → ⊥-elim (cellW≢tempW (trans (sym (subst (λ z → who p z ≡ cellW s) (sym e) l))
+                                      (stack iv m j (subst ((m , j) ∈_) (sym eq) (here refl))))))
+    (λ _ → l)

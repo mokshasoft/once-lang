@@ -27,14 +27,14 @@ open import Data.Nat using (ℕ)
 open import Data.List using (List; []; _∷_; _++_; map)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Membership.Propositional.Properties using (∈-++⁺ˡ; ∈-++⁺ʳ; ∈-++⁻; ∈-map⁺; ∈-map⁻)
-open import Data.List.Relation.Unary.Any using (here; there)
+open import Data.List.Relation.Unary.Any using (here; there; toSum)
 open import Data.List.Relation.Binary.Subset.Propositional using (_⊆_)
 open import Data.Maybe using (just; nothing)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂; ∃)
-open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_]′)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; sym)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.LinCore.Flat using (Base)
 
@@ -63,10 +63,10 @@ cmap f (x ∷ xs) = f x ++ cmap f xs
 ∈-cmap⁺ {f = f} (x ∷ xs) (there p) m = ∈-++⁺ʳ (f x) (∈-cmap⁺ xs p m)
 
 ∈-cmap⁻ : ∀ {A B : Set} {f : A → List B} {y} xs → y ∈ cmap f xs → ∃ λ x → x ∈ xs × y ∈ f x
-∈-cmap⁻ {f = f} (x ∷ xs) m with ∈-++⁻ (f x) m
-... | inj₁ p = x , here refl , p
-... | inj₂ p with ∈-cmap⁻ xs p
-...   | (z , q , r) = z , there q , r
+∈-cmap⁻ {f = f} (x ∷ xs) m =
+  [ (λ p → x , here refl , p)
+  , (λ p → let (z , q , r) = ∈-cmap⁻ xs p in z , there q , r)
+  ]′ (∈-++⁻ (f x) m)
 
 one : ∀ {A : Set} {x : A} {ys} → x ∈ ys → (x ∷ []) ⊆ ys
 one m (here refl) = m
@@ -129,12 +129,14 @@ closedF Kone     F h₁ h₂ (there ())
 closedF Kzero    F h₁ h₂ (there ())
 closedF (Kb b)   F h₁ h₂ (there ())
 closedF (Kμ H)   F h₁ h₂ (there m) c = closedF H H (λ p → h₁ (there p)) h₁ m c
-closedF (G ⊕f H) F h₁ h₂ (there m) c with ∈-++⁻ (subsF G F) m
-... | inj₁ p = closedF G F (λ q → h₁ (there (∈-++⁺ˡ q))) h₂ p c
-... | inj₂ p = closedF H F (λ q → h₁ (there (∈-++⁺ʳ (subsF G F) q))) h₂ p c
-closedF (G ⊗f H) F h₁ h₂ (there m) c with ∈-++⁻ (subsF G F) m
-... | inj₁ p = closedF G F (λ q → h₁ (there (∈-++⁺ˡ q))) h₂ p c
-... | inj₂ p = closedF H F (λ q → h₁ (there (∈-++⁺ʳ (subsF G F) q))) h₂ p c
+closedF (G ⊕f H) F h₁ h₂ (there m) c =
+  [ (λ p → closedF G F (λ q → h₁ (there (∈-++⁺ˡ q))) h₂ p c)
+  , (λ p → closedF H F (λ q → h₁ (there (∈-++⁺ʳ (subsF G F) q))) h₂ p c)
+  ]′ (∈-++⁻ (subsF G F) m)
+closedF (G ⊗f H) F h₁ h₂ (there m) c =
+  [ (λ p → closedF G F (λ q → h₁ (there (∈-++⁺ˡ q))) h₂ p c)
+  , (λ p → closedF H F (λ q → h₁ (there (∈-++⁺ʳ (subsF G F) q))) h₂ p c)
+  ]′ (∈-++⁻ (subsF G F) m)
 
 -- ★ `subs T` is closed under the parts a copy or a free calls
 closed : ∀ T {T′ C} → T′ ∈ subs T → C ∈ comps T′ → C ∈ subs T
@@ -153,12 +155,10 @@ closed Zero         (here refl) ()
 closed (Fn k g A B) (here refl) ()
 closed (Nu F)       (here refl) ()
 closed (Bt b)       (here refl) ()
-closed (A ⊗t B) (there m) c with ∈-++⁻ (subs A) m
-... | inj₁ p = there (∈-++⁺ˡ (closed A p c))
-... | inj₂ p = there (∈-++⁺ʳ (subs A) (closed B p c))
-closed (A ⊕t B) (there m) c with ∈-++⁻ (subs A) m
-... | inj₁ p = there (∈-++⁺ˡ (closed A p c))
-... | inj₂ p = there (∈-++⁺ʳ (subs A) (closed B p c))
+closed (A ⊗t B) (there m) c =
+  [ (λ p → there (∈-++⁺ˡ (closed A p c))) , (λ p → there (∈-++⁺ʳ (subs A) (closed B p c))) ]′ (∈-++⁻ (subs A) m)
+closed (A ⊕t B) (there m) c =
+  [ (λ p → there (∈-++⁺ˡ (closed A p c))) , (λ p → there (∈-++⁺ʳ (subs A) (closed B p c))) ]′ (∈-++⁻ (subs A) m)
 closed (Ct l X) (there m) c = there (closed X m c)
 closed (μt F)   (there m) c = closedF F F there (λ p → p) m c
 closed One          (there ())
@@ -518,18 +518,14 @@ module In (U : Univ) where
   -- ★ every key a term names has its block inside
   tm-good : ∀ {Γ} {ds : Defs Γ} {E A B} (t : Tm Γ E A B) → defsGot ds ⊑U → tmGot ds t ⊑U
           → ∀ {κ} → κ ∈ ks (tmGot ds t) → BIn κ
-  tm-good {ds = ds} (f ∘l h) d g m with ∈-++⁻ (ks (tmGot ds f)) m
-  ... | inj₁ p = tm-good f d (⊹ˡ g) p
-  ... | inj₂ p = tm-good h d (⊹ʳ g) p
-  tm-good {ds = ds} (f ⊗l h) d g m with ∈-++⁻ (ks (tmGot ds f)) m
-  ... | inj₁ p = tm-good f d (⊹ˡ g) p
-  ... | inj₂ p = tm-good h d (⊹ʳ g) p
-  tm-good {ds = ds} (lcase f h) d g m with ∈-++⁻ (ks (tmGot ds f)) m
-  ... | inj₁ p = tm-good f d (⊹ˡ g) p
-  ... | inj₂ p = tm-good h d (⊹ʳ g) p
-  tm-good {ds = ds} (bcaseE f h) d g m with ∈-++⁻ (ks (tmGot ds f)) m
-  ... | inj₁ p = tm-good f d (⊹ˡ g) p
-  ... | inj₂ p = tm-good h d (⊹ʳ g) p
+  tm-good {ds = ds} (f ∘l h) d g m =
+    [ (λ p → tm-good f d (⊹ˡ g) p) , (λ p → tm-good h d (⊹ʳ g) p) ]′ (∈-++⁻ (ks (tmGot ds f)) m)
+  tm-good {ds = ds} (f ⊗l h) d g m =
+    [ (λ p → tm-good f d (⊹ˡ g) p) , (λ p → tm-good h d (⊹ʳ g) p) ]′ (∈-++⁻ (ks (tmGot ds f)) m)
+  tm-good {ds = ds} (lcase f h) d g m =
+    [ (λ p → tm-good f d (⊹ˡ g) p) , (λ p → tm-good h d (⊹ʳ g) p) ]′ (∈-++⁻ (ks (tmGot ds f)) m)
+  tm-good {ds = ds} (bcaseE f h) d g m =
+    [ (λ p → tm-good f d (⊹ˡ g) p) , (λ p → tm-good h d (⊹ʳ g) p) ]′ (∈-++⁻ (ks (tmGot ds f)) m)
   tm-good (lcata F alg) d g (here refl) = tt , travI-in F (inK (gk g (here refl))) (comp-in _ alg (⊹ʳ g) tt)
   tm-good (lcata F alg) d g (there m)   = tm-good alg d (⊹ʳ g) m
   tm-good (liter f φ) d g m = tm-good f d g m
@@ -572,14 +568,16 @@ module In (U : Univ) where
 
   defs-good : ∀ {Γ} {ds : Defs Γ} → defsGot ds ⊑U → ∀ {κ} → κ ∈ ks (defsGot ds) → BIn κ
   defs-good {ds = ε} g ()
-  defs-good {ds = ds ▸ b1 b γ} g m with ∈-++⁻ (ks (defsGot ds)) m
-  ... | inj₁ p           = defs-good (⊹ˡ g) p
-  ... | inj₂ (here refl) = body1-in {ds = ds} {b = b} {γ = γ} (⊹ʳ (⊹ʳ g))
-  ... | inj₂ (there p)   = tm-good b (⊹ˡ g) (⊹ʳ (⊹ʳ g)) p
-  defs-good {ds = ds ▸ bω b γ} g m with ∈-++⁻ (ks (defsGot ds)) m
-  ... | inj₁ p           = defs-good (⊹ˡ g) p
-  ... | inj₂ (here refl) = bodyω-in {ds = ds} {b = b} {γ = γ} (⊹ʳ (⊹ʳ g))
-  ... | inj₂ (there p)   = tm-good b (⊹ˡ g) (⊹ʳ (⊹ʳ g)) p
+  defs-good {ds = ds ▸ b1 b γ} g m =
+    [ (λ p → defs-good (⊹ˡ g) p)
+    , (λ q → [ (λ e → subst BIn (sym e) (body1-in {ds = ds} {b = b} {γ = γ} (⊹ʳ (⊹ʳ g))))
+             , (λ p → tm-good b (⊹ˡ g) (⊹ʳ (⊹ʳ g)) p) ]′ (toSum q))
+    ]′ (∈-++⁻ (ks (defsGot ds)) m)
+  defs-good {ds = ds ▸ bω b γ} g m =
+    [ (λ p → defs-good (⊹ˡ g) p)
+    , (λ q → [ (λ e → subst BIn (sym e) (bodyω-in {ds = ds} {b = b} {γ = γ} (⊹ʳ (⊹ʳ g))))
+             , (λ p → tm-good b (⊹ˡ g) (⊹ʳ (⊹ʳ g)) p) ]′ (toSum q))
+    ]′ (∈-++⁻ (ks (defsGot ds)) m)
 
 ------------------------------------------------------------------------
 -- 6. ★ A PROGRAM'S UNIVERSE IS CLOSED: its blocks and its start are inside.
@@ -600,11 +598,10 @@ module Program {Γ} (ds : Defs Γ) (f : LTm Γ One One) where
 
   -- the types are closed under a copy's or a free's parts
   ts-closed : ∀ {T} → T ∈ tys U → comps T ⊆ tys U
-  ts-closed {T} m c with ∈-++⁻ (cmap subs (ts g₀)) m
-  ... | inj₁ p with ∈-cmap⁻ (ts g₀) p
-  ...   | (R , r , q) = ∈-++⁺ˡ (∈-cmap⁺ (ts g₀) r (closed R q c))
-  ts-closed {T} m c | inj₂ p with ∈-cmap⁻ (ns g₀) p
-  ...   | (n , r , q) = ∈-++⁺ʳ (cmap subs (ts g₀)) (∈-cmap⁺ (ns g₀) r (closed (cty n) q c))
+  ts-closed {T} m c =
+    [ (λ p → let (R , r , q) = ∈-cmap⁻ (ts g₀) p in ∈-++⁺ˡ (∈-cmap⁺ (ts g₀) r (closed R q c)))
+    , (λ p → let (n , r , q) = ∈-cmap⁻ (ns g₀) p in ∈-++⁺ʳ (cmap subs (ts g₀)) (∈-cmap⁺ (ns g₀) r (closed (cty n) q c)))
+    ]′ (∈-++⁻ (cmap subs (ts g₀)) m)
 
   -- a ν's coalgebra type is among them
   ns-coalg : ∀ {F S} → (F , S) ∈ nus U → Coalg F S ∈ tys U
@@ -615,20 +612,19 @@ module Program {Γ} (ds : Defs Γ) (f : LTm Γ One One) where
   ncty n = ∈-++⁺ʳ (cmap subs (ts g₀)) (∈-cmap⁺ (ns g₀) n (here refl))
 
   -- ★ EVERY BLOCK OF THE UNIVERSE IS INSIDE IT
-  blocks-in : ∀ {κ} → κ ∈ allK U → BIn κ
-  blocks-in m with ∈-++⁻ (keys U) m
-  ... | inj₁ p with ∈-++⁻ (ks (defsGot ds)) p
-  ...   | inj₁ q = defs-good (⊹ˡ g₀⊑) q
-  ...   | inj₂ q = tm-good f (⊹ˡ g₀⊑) (⊹ʳ g₀⊑) q
-  blocks-in m | inj₂ p with ∈-++⁻ (map kc (tys U)) p
-  ... | inj₁ q with ∈-map⁻ kc q
-  ...   | (T , t , refl) = copy-in T (ts-closed t)
-  blocks-in m | inj₂ p | inj₂ q with ∈-++⁻ (map kf (tys U)) q
-  ... | inj₁ r with ∈-map⁻ kf r
-  ...   | (T , t , refl) = free-in T (ts-closed t)
-  blocks-in m | inj₂ p | inj₂ q | inj₂ r with ∈-cmap⁻ (obs U) r
-  ... | ((Δ , d) , o , s) with ∈-map⁻ (λ n → _ , kobs d (proj₁ n) (proj₂ n)) s
-  ...   | ((F , S) , n , refl) = obs-in d F S n (ns-coalg n) (here refl)
+  -- (opaque: a proof; sealed, two spellings of a block's evidence compare as one stuck term)
+  opaque
+    blocks-in : ∀ {κ} → κ ∈ allK U → BIn κ
+    blocks-in m =
+      [ (λ p → [ (λ q → defs-good (⊹ˡ g₀⊑) q) , (λ q → tm-good f (⊹ˡ g₀⊑) (⊹ʳ g₀⊑) q) ]′ (∈-++⁻ (ks (defsGot ds)) p))
+      , (λ p → [ (λ q → let (T , t , e) = ∈-map⁻ kc q in subst BIn (sym e) (copy-in T (ts-closed t)))
+               , (λ q → [ (λ r → let (T , t , e) = ∈-map⁻ kf r in subst BIn (sym e) (free-in T (ts-closed t)))
+                        , (λ r → let ((Δ , d) , o , s) = ∈-cmap⁻ (obs U) r
+                                     ((F , S) , n , e) = ∈-map⁻ (λ n → _ , kobs d (proj₁ n) (proj₂ n)) s
+                                 in subst BIn (sym e) (obs-in d F S n (ns-coalg n) (here refl)))
+                        ]′ (∈-++⁻ (map kf (tys U)) q))
+               ]′ (∈-++⁻ (map kc (tys U)) p))
+      ]′ (∈-++⁻ (keys U) m)
 
   -- ★ and so is the program's start
   start-in : ∀ {Es S T} {k : Codeᴵ (One ∷ Es ∣ One ∷ S) T} → CIn k → CIn (compᴵ ds f k)

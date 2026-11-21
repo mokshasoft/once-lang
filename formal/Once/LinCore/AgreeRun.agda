@@ -57,87 +57,7 @@ open import Once.LinCore.StepIos fmt ans bw using (module IosG)
 open import Once.LinCore.Global fmt ans bw using (module Relate)
 import Once.LinCore.BudgetSound
 module BudgetSound = Once.LinCore.BudgetSound fmt ans bw
-
-------------------------------------------------------------------------
--- 1. A run that gives a value holds no halt
-------------------------------------------------------------------------
-
-IsCall : Io → Set
-IsCall (io-call _ _ _) = ⊤
-IsCall (io-halt _ _)   = ⊥
-
-NoHalt : Trace → Set
-NoHalt t = All IsCall (ios t)
-
-private
-  nh-++ : ∀ t₁ t₂ → NoHalt t₁ → NoHalt t₂ → NoHalt (t₁ ++ t₂)
-  nh-++ t₁ t₂ a b = subst (All IsCall) (sym (ios-++ t₁ t₂)) (++⁺ a b)
-
-  nh-[] : ∀ t → ios t ≡ [] → NoHalt t
-  nh-[] t q = subst (All IsCall) (sym q) []
-
-  path-nh : ∀ {X : Set} {b : T X} {t x} → OpPath b t (inj₁ x) → NoHalt t
-  path-nh p-ret      = []
-  path-nh (p-call p) = tt ∷ path-nh p
-
-mutual
-  gives-nh : ∀ {Γ} {ds : Defs Γ} {E A B} {f : Tm Γ E A B} {e v n w n′ t} → Run ds f e v n (gives w n′) t → NoHalt t
-  gives-nh r-id = []
-  gives-nh (r-∘ {t₁ = t₁} {t₂} rg (go-on rf)) = nh-++ t₁ t₂ (gives-nh′ rg) (gives-nh rf)
-  gives-nh (r-⊗ {t₁ = t₁} {t₂} rf (go-on (fm-gives rg))) = nh-++ t₁ t₂ (gives-nh′ rf) (gives-nh rg)
-  gives-nh r-ρ = []
-  gives-nh r-ρ⁻ = []
-  gives-nh r-λ = []
-  gives-nh r-λ⁻ = []
-  gives-nh r-α = []
-  gives-nh r-α⁻ = []
-  gives-nh r-swap = []
-  gives-nh (r-dup {v = v} {n}) = nh-[] (proj₂ (proj₂ (copy v n))) (ios-copy v n)
-  gives-nh (r-drop {v = v}) = nh-[] (freeAll v) (ios-freeAll v)
-  gives-nh r-inl = []
-  gives-nh r-inr = []
-  gives-nh (r-case₁ r) = gives-nh r
-  gives-nh (r-case₂ r) = gives-nh r
-  gives-nh r-In = []
-  gives-nh r-Outμ = []
-  gives-nh r-clo = []
-  gives-nh (r-app q r) = gives-nh r
-  gives-nh (r-cata {t₁ = t₁} {t₂} rm (go-on ra)) = nh-++ t₁ t₂ (gives-nhM′ rm) (gives-nh ra)
-  gives-nh (r-cata-reuse {t₁ = t₁} {t₂} rm (go-on (fm-gives rg))) = nh-++ t₁ t₂ (gives-nhM′ rm) (gives-nh rg)
-  gives-nh (r-lend (fm-gives r)) = gives-nh r
-  gives-nh (r-lift r) = gives-nh r
-  gives-nh (r-fst r) = gives-nh r
-  gives-nh (r-snd r) = gives-nh r
-  gives-nh (r-caseE₁ r) = gives-nh r
-  gives-nh (r-caseE₂ r) = gives-nh r
-  gives-nh (r-out r) = gives-nh r
-  gives-nh (r-copy {e = e} {n}) = nh-[] (proj₂ (proj₂ (copy e n))) (ios-copy e n)
-  gives-nh (r-bapp q r) = gives-nh r
-  gives-nh r-lam = []
-  gives-nh r-lamω = []
-  gives-nh (r-ev r) = gives-nh r
-  gives-nh (r-bev r) = gives-nh r
-  gives-nh r-unf = []
-  gives-nh (r-nout r) = gives-nh r
-  gives-nh r-const = []
-  gives-nh (r-op p) = path-nh p
-  gives-nh (r-iter {t₁ = t₁} r (go-on done)) = nh-++ t₁ [] (gives-nh r) []
-  gives-nh (r-iter {t₁ = t₁} {t₂} r (go-on (again rn))) = nh-++ t₁ t₂ (gives-nh r) (gives-nh rn)
-  gives-nh (r-tmp r wv p) = subst (All IsCall) (sym (ios-weave wv)) (gives-nh r)
-
-  -- a sub-run that gave (any outcome type)
-  gives-nh′ : ∀ {Γ} {ds : Defs Γ} {E A B} {f : Tm Γ E A B} {e v n w n′ t} → Run ds f e v n (gives w n′) t → NoHalt t
-  gives-nh′ = gives-nh
-
-  gives-nhM′ : ∀ {Γ} {ds : Defs Γ} {E A F} {alg : Tm Γ E (LF∙ F A) A} {e : MV E} {G x n w n′ t}
-             → RunMap ds F alg e G x n (gives w n′) t → NoHalt t
-  gives-nhM′ (m-id r) = gives-nh r
-  gives-nhM′ m-one = []
-  gives-nhM′ m-b = []
-  gives-nhM′ m-μ = []
-  gives-nhM′ (m-inl (fm-gives r)) = gives-nhM′ r
-  gives-nhM′ (m-inr (fm-gives r)) = gives-nhM′ r
-  gives-nhM′ (m-pair {t₁ = t₁} {t₂} r (go-on (fm-gives r′))) = nh-++ t₁ t₂ (gives-nhM′ r) (gives-nhM′ r′)
+open import Once.LinCore.NoHalt fmt ans bw using (IsCall; NoHalt; gives-nh; op-elim)
 
 ------------------------------------------------------------------------
 -- 2. ★ The machine agrees along an image run the world answered
@@ -212,11 +132,17 @@ module AR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   prim-op : ∀ {Γ′} {ds′ : Defs Γ′} {s : Sig} {x : MV ⌜ sdom s ⌝} {y n n′ t L L₁}
           → Run ds′ (lop s) mone x n (gives y n′) t → WTr Wι L t L₁
           → (∀ fs → LocState.ev-log (floc fs) ≡ L → OpVal s x y (evsOf t) fs) × (L₁ ≡ L ++ evsOf t)
-  prim-op {s = s} {x = x} (r-op p) w = (λ fs lg → o-op {s = s} {x = x} p w fs lg) , proj₂ (op-ret-run p w)
-  prim-op {s = s} {x = x} {y = y} {L = L} (r-tmp r wv _) w =
-    let (A , H) = prim-op r (wtr-weave wv w)
-        e = cong (map ioEvent) (sym (ios-weave wv))
-    in (λ fs lg → subst (λ E → OpVal s x y E fs) e (A fs lg)) , trans H (cong (L ++_) e)
+  prim-op {s = s} {x = x} run w = op-elim Goal
+      (λ p w → (λ fs lg → o-op {s = s} {x = x} p w fs lg) , proj₂ (op-ret-run p w))
+      (λ {y} {t = t} {t′ = t′} r ih wv _ {L} w →
+         let (A , H) = ih (wtr-weave wv w)
+             e = cong (map ioEvent) (sym (ios-weave wv))
+         in (λ fs lg → subst (λ E → OpVal s x y E fs) e (A fs lg)) , trans H (cong (L ++_) e))
+      run w
+    where
+      -- (an op's run split once, in `NoHalt`)
+      Goal : MV ⌜ scod s ⌝ → ℕ → ℕ → Trace → Set
+      Goal y n n′ t = ∀ {L L₁} → WTr Wι L t L₁ → (∀ fs → LocState.ev-log (floc fs) ≡ L → OpVal s x y (evsOf t) fs) × (L₁ ≡ L ++ evsOf t)
 
   private
     quiet : ∀ {L L₁ : List SigOpEvent} → L₁ ≡ L → L₁ ≡ L ++ []

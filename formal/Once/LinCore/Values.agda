@@ -96,12 +96,16 @@ serial : Id → ℕ
 serial = snd
 
 -- serials first: two different serials are different blocks, whatever the sizes
+≟ᵢ-k : ∀ {k k′ n} → Dec (k ≡ k′) → Dec (_≡_ {A = Id} (k , n) (k′ , n))
+≟ᵢ-k (yes refl) = yes refl
+≟ᵢ-k (no ne)    = no (λ e → ne (cong fst e))
+
+≟ᵢ-n : ∀ k k′ {n n′} → Dec (n ≡ n′) → Dec (_≡_ {A = Id} (k , n) (k′ , n′))
+≟ᵢ-n k k′ (no ne)    = no (λ e → ne (cong snd e))
+≟ᵢ-n k k′ (yes refl) = ≟ᵢ-k (k ≟ k′)
+
 _≟ᵢ_ : (i j : Id) → Dec (i ≡ j)
-(k , n) ≟ᵢ (k′ , n′) with n ≟ n′
-... | no ne = no (λ e → ne (cong snd e))
-... | yes refl with k ≟ k′
-...   | yes refl = yes refl
-...   | no ne    = no (λ e → ne (cong fst e))
+(k , n) ≟ᵢ (k′ , n′) = ≟ᵢ-n k k′ (n ≟ n′)
 
 -- ★ D426 part 3: a closure's CODE: its lambda's body, over the table it was
 -- built at, at its arrow's grade (one-shot: it owns its environment;
@@ -162,25 +166,23 @@ Trace = List Ev
 -- `dup`: copy every cell, fresh ids from the counter
 copy : ∀ {A} → MV A → ℕ → MV A × ℕ × Trace
 copy mone          n = (mone , n , [])
-copy (mpair a b)   n with copy a n
-... | (a' , n₁ , t₁) with copy b n₁
-...   | (b' , n₂ , t₂) = (mpair a' b' , n₂ , t₁ ++ t₂)
-copy (minl a)      n with copy a n
-... | (a' , n₁ , t₁) = (minl a' , n₁ , t₁)
-copy (minr b)      n with copy b n
-... | (b' , n₁ , t₁) = (minr b' , n₁ , t₁)
+copy (mpair a b)   n =
+  let (a' , n₁ , t₁) = copy a n
+      (b' , n₂ , t₂) = copy b n₁
+  in (mpair a' b' , n₂ , t₁ ++ t₂)
+copy (minl a)      n = let (a' , n₁ , t₁) = copy a n in (minl a' , n₁ , t₁)
+copy (minr b)      n = let (b' , n₁ , t₁) = copy b n in (minr b' , n₁ , t₁)
 copy (mbase x)     n = (mbase x , n , [])
 -- ★ B1.4 (post-order): a cell's contents are copied first, then its own
 -- cell is allocated, as `lIn` (and a closure's, a ν's construction) allocates;
 -- so a copy routine is "copy what it holds, then build the cell"
-copy (mmu {F} i v)     n with copy v n
-... | (v' , n₁ , t₁) = (mmu (szμ F , n₁) v' , suc n₁ , t₁ ++ alloc (szμ F , n₁) ∷ [])
-copy (mct x)       n with copy x n
-... | (x' , n₁ , t₁) = (mct x' , n₁ , t₁)
-copy (mfn {X = X} i c x) n with copy x n
-... | (x' , n₁ , t₁) = (mfn (szc X , n₁) c x' , suc n₁ , t₁ ++ alloc (szc X , n₁) ∷ [])
-copy (mnu {F} {S} i p) n with copy p n
-... | (p' , n₁ , t₁) = (mnu (szν F S , n₁) p' , suc n₁ , t₁ ++ alloc (szν F S , n₁) ∷ [])
+copy (mmu {F} i v)     n =
+  let (v' , n₁ , t₁) = copy v n in (mmu (szμ F , n₁) v' , suc n₁ , t₁ ++ alloc (szμ F , n₁) ∷ [])
+copy (mct x)       n = let (x' , n₁ , t₁) = copy x n in (mct x' , n₁ , t₁)
+copy (mfn {X = X} i c x) n =
+  let (x' , n₁ , t₁) = copy x n in (mfn (szc X , n₁) c x' , suc n₁ , t₁ ++ alloc (szc X , n₁) ∷ [])
+copy (mnu {F} {S} i p) n =
+  let (p' , n₁ , t₁) = copy p n in (mnu (szν F S , n₁) p' , suc n₁ , t₁ ++ alloc (szν F S , n₁) ∷ [])
 
 -- `drop`: free every cell
 freeAll : ∀ {A} → MV A → Trace
@@ -222,10 +224,12 @@ TL = ℕ → ℕ
 none : TL
 none _ = 0
 
+δd : ∀ {P : Set} → Dec P → ℕ
+δd (yes _) = 1
+δd (no _)  = 0
+
 δn : ℕ → ℕ → ℕ
-δn k j with k ≟ j
-... | yes _ = 1
-... | no _  = 0
+δn k j = δd (k ≟ j)
 
 tstep : Ev → TL → TL
 tstep (alloc _)        L   = L

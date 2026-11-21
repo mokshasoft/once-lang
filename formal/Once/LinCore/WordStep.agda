@@ -66,6 +66,8 @@ open import Once.LinCore.TrampAt fmt ans bw using (under; module TrImg; module T
 
 open import Once.LinCore.Global fmt ans bw using (module Relate)
 open import Once.LinCore.GlobalLocal fmt ans bw using (module LocalR)
+open import Once.LinCore.GlobalLocalC fmt ans bw using (module CaseR)
+open import Once.LinCore.GlobalLocalR fmt ans bw using (module EndR)
 open import Once.LinCore.GlobalCall fmt ans bw using (module CallR)
 open import Once.LinCore.GlobalRet fmt ans bw using (module RetR)
 open import Once.LinCore.GlobalDispatch fmt ans bw using (module DispR)
@@ -84,7 +86,9 @@ module StepR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
            (ld-nl : ∀ {b} (v : Lit b) → NoLabels.mark {FS} (ldConst v) ≡ nothing)
            (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue FS) where
   open Relate {FS} ds f ldConst ld-nl wordOf
-  open LocalR {FS} ds f ldConst ld-nl wordOf using (module Whole)
+  module WL = LocalR {FS} ds f ldConst ld-nl wordOf
+  module WC = CaseR {FS} ds f ldConst ld-nl wordOf
+  module WE = EndR {FS} ds f ldConst ld-nl wordOf
   open CallR {FS} ds f ldConst ld-nl wordOf using (module GCall)
   open RetR {FS} ds f ldConst ld-nl wordOf using (module GRet)
   open DispR {FS} ds f ldConst ld-nl wordOf using (gicall; gopen1; gnopen; giobs)
@@ -170,7 +174,9 @@ module StepR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   module Theorem (ld : ∀ {b} (v : Lit b) (fs : FlatState)
                        → FlatMachine.flat-exec-instr {FS} (ldConst v) image fs
                          ≡ record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Output (wordOf (lit v)) } ; fpc = suc (FlatMachine.FlatState.fpc fs) }) where
-    open Whole ld using (gstep-local; gcase₁; gcase₂; gloop; gloop-ctrl; greti)
+    open WL.Whole ld using (gstep-local)
+    open WC.Whole ld using (gcase₁; gcase₂; gloop; gloop-ctrl)
+    open WE.Whole ld using (greti)
     open GCall using (gcall; ArrivesAt)
     open GRet using (gret)
     open Related
