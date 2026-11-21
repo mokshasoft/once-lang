@@ -24485,9 +24485,34 @@ Nothing decided where the free lists' heads live, and every place costs somethin
   - free of size `k`: the block's first word := head `k`; head `k` := the block.
   - room check: compares the frontier WORD (one load) with the stack pointer, as today.
 
+### Decided (the user, 2026-11-22): the allocator is `Allocator.Slab` over `Allocator.Mempool`
+"Lets start with the Slab and the Mempool": the concrete cell allocator is the proved `Slab` (one `Mempool`,
+a fixed-size free list, per size class), wired in — not a new one. Its size classes become the program's node
+sizes (D384), and the arch correspondence relates memory's allocator record (below) to a `SlabState`, so
+`Slab`/`Mempool`'s proofs (in-region, disjointness, a freed block reallocatable) are reused. One allocator,
+no `--alloc` (D352/D142). D428 stands: the abstract machine's ids stay fresh; only addresses are reused
+(`Allocator.ReuseFreshness`'s lockstep-reuse POC is not the design).
+
 ### Decision (proposed): C
 No Host change, no new register, no data section; one record in memory every arch addresses relative to a
 register it already has. Cost against today: the bump path gains a load and a store, a room check a load;
 the reuse path is two loads and a store. The arch models gain only base+offset accesses they already have.
 The abstract (flat) machine is unchanged: ids stay fresh (D428), the correspondence (`HeapView`) maps LIVE
 ids to addresses, and a freed block leaves the view and joins its size's list (its first word the link).
+
+### Revised (the user's question, 2026-11-23): the allocator is ABSTRACT CODE, its free lists in abstract memory
+"Should the allocators be implemented in the same abstract traces that implement the IR? Then we do not need to
+implement each allocator for each arch." Yes:
+* An expansion pass (arch-neutral, once) lowers `alloc k` / `free k` to abstract instructions over `Slab`-shaped
+  free lists in the abstract heap: alloc pops class `k`'s head (the block's first cell is the link) or falls back
+  to the bump primitive; free pushes. The backends compile those loads, stores and branches as they already do,
+  and their simulations already cover them: no per-arch allocator code or proof.
+* Its correctness is ONE simulation at the flat level: the expanded run against the primitive one, up to a
+  renaming of the live refs (the expanded run reuses refs). It needs a freed block dead — never read or written
+  again — which the free gate and the clearing free give (a sound run reads no cleared cell).
+* `Slab`/`Mempool` are the model of the free lists in abstract memory (reworked: the program's exact node sizes,
+  the shared frontier, the invariants relative to the live set).
+* What stays per arch is small: the bump primitive (`instr-alloc-heap`: the abstract machine has no address
+  arithmetic on pointers) and the room check read the frontier word from the allocator record, which the heap
+  register points at (option C above); an abstract register holds the record's pointer for the heads' accesses.
+* A second allocator is a second expansion with one generic proof, so `--alloc` becomes cheap if wanted later.
