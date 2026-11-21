@@ -24516,3 +24516,12 @@ implement each allocator for each arch." Yes:
   arithmetic on pointers) and the room check read the frontier word from the allocator record, which the heap
   register points at (option C above); an abstract register holds the record's pointer for the heads' accesses.
 * A second allocator is a second expansion with one generic proof, so `--alloc` becomes cheap if wanted later.
+
+### Amended (the user, 2026-11-23): TWO allocators, chosen by `--alloc`
+"I want two allocators so we have to use the --alloc flag. When one is done, the second one should only be
+some hours at max." This revises "one allocator, no `--alloc`" above (and D352/D142's single allocation mode):
+the compiler takes `--alloc`, each allocator is its own arch-neutral expansion of `alloc`/`free` with its own
+one simulation, so a second one is small once the first is done. First: `Slab` over `Mempool`. The second is
+the user's to name (bump — today's primitive, no reuse — or another shape). The apex covers each allocator the
+flag offers; a program's gate tests run under the reusing one.
+
