@@ -23852,6 +23852,8 @@ different cell on the hardware than in the machine. The machine does not check s
 
 ## D453 — μ/ν NODES STAY CELLS; LAYERS ARE BUILT AND READ IN PLACE; FRAME-LOCAL NODES GO TO FRAMES (2026-11-16)
 
+*(Amended by D467, 2026-11-22: layers in place move from plan 0.146 B1.8 to plan 0.154.)*
+
 **Decided** (the user, 2026-11-16, in a discussion of D451's cost). **Applies**: D420 (cells and frames:
 μ/ν nodes and closures are cells), D451 (the heap never points at the stack), plan 0.146 §3 ("Local
 temporaries are allowed", "Stack or cell"), A9 (stack regions), `loop-exchange` (a server's memory is its
@@ -24428,3 +24430,29 @@ parse → resolve → check + elaborate         (t : Tm, d : its core derivation
 * L1 over the compiler's `Expr` (this entry's first draft): typed by construction, but every pass rebuilds
   usage indices, and the work does not carry to the dependent kernel. The draft's reason, that `Tm` needs
   subject reduction per pass, was wrong: it is one theorem about the relation.
+
+## D467 — LAYERS IN PLACE MOVE TO THE RESOURCE PASSES' PLAN (2026-11-22)
+
+**Decided** (the user, 2026-11-22: "move B1.8 to a follow-up plan"). **Amends**: D453 (its "Layers in
+place (plan 0.146, B1.8)"). **Applies**: D466 (resource passes in the linear core, L2), plan 0.146 §5
+items 4 and 6, plan 0.154.
+
+### The question
+D453 put layers in place (`lIn` writing the layer into its cell, `lOutμ` reading from it) into plan 0.146 as
+B1.8. Does the linear core need it, or is it an optimization for a later plan?
+
+### Decision
+* **It is an optimization, in plan 0.154.** D453 says it changes only the moves: the values' meaning and
+  the events (one alloc, one free per node) are unchanged, so `NoLeak` and the space claim do not depend
+  on it. Done in plan 0.146 it would change the lowering's shape (a destination per result) and every
+  simulation lemma just before the `NoLeak` proof rests on them; done after, it is one of D466's L2
+  resource passes, proved to preserve the core's meaning and `NoLeak`, beside free at last use, reuse and
+  borrowing, each kept only when measured to pay.
+* Plan 0.146 keeps what the passes need: the emitted code carries no ownership information and nothing in
+  it stops a later in-place update (§5 item 4), and the cost is re-measured (§5 item 6). Should that
+  measurement show a regression the merge cannot carry, a narrow fix (fusing `lIn` with the moves just
+  before it) is a candidate for plan 0.146; general destination passing is not.
+
+### Alternatives
+* Keep B1.8 in plan 0.146: the lowering and its proofs change twice (now, and again for the other passes),
+  and the branch grows when slow merges are what slows development (the user, 2026-11-20).
