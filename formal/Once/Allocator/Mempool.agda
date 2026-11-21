@@ -4,275 +4,158 @@
 ------------------------------------------------------------------------
 -- Once.Allocator.Mempool
 --
--- A mempool (pool/slab) allocator with correctness properties.
+-- A mempool: blocks of ONE size, kept on a free list (D384: one fixed-size
+-- free list per node size, alloc and free inline pop/push, no search).
 --
--- Unlike BumpAllocator which handles variable-size blocks without free,
--- Mempool handles fixed-size blocks WITH free support:
+-- Generic in what a block is (an abstract heap ref, an address): the pool
+-- is the free list alone, and what it promises is stated against the
+-- blocks in use (`live`), which the caller keeps:
 --
---   - All blocks are the same size (configured at pool creation)
---   - alloc: O(1) - pop from free list
---   - free: O(1) - push to free list
---   - No fragmentation (all blocks same size)
+--   * `PoolInv p live`: the free blocks are distinct, the live ones are
+--     distinct, and no block is both free and live;
+--   * `pop` (alloc) hands out a block that is no live one, and the
+--     invariant holds with it live;
+--   * `push` (free) of a live block takes it back, and the invariant holds
+--     with it free — a freed block is returned for another user
+--     (`push-pop`: the next pop is that block).
 --
--- This is ideal for Once's linear types where:
---   - Linear values are freed exactly once (guaranteed by type system)
---   - Many allocations are same-size (pairs, closures = 2 slots)
---
--- Key properties:
---   - alloc-in-heap: allocated blocks are in heap region
---   - alloc-disjoint: different allocations don't overlap
---   - free-returns: freed block can be reallocated
+-- Plan 0.146 B1.6 item 3 (D468, the user, 2026-11-23: "a block should be
+-- able to be freed and returned for another user"). The size classes and
+-- the shared frontier are `Slab`'s.
 ------------------------------------------------------------------------
 
-open import Once.Memory.MemoryLayoutSemantics
-  using (MemoryLayout; Addr; RegionBounds; lower; upper)
+module Once.Allocator.Mempool {Block : Set} where
 
-module Once.Allocator.Mempool (layout : MemoryLayout) where
-
-open import Data.Nat using (ℕ; zero; suc; _+_; _*_; _<_; _≤_; _≤?_; _∸_)
-open import Data.Nat.Properties
-  using (≤-refl; ≤-trans; m≤n⇒m≤1+n; m≤m+n; +-comm; +-assoc;
-         +-monoʳ-≤; *-monoˡ-≤; ≤-reflexive)
-open import Data.List using (List; []; _∷_; length)
-open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
+open import Data.List using (List; []; _∷_; _++_)
+open import Data.List.Membership.Propositional using (_∈_; _∉_)
+open import Data.List.Membership.Propositional.Properties using (∈-++⁺ˡ; ∈-++⁺ʳ; ∈-++⁻)
+open import Data.List.Relation.Unary.Any using (here; there)
+open import Data.List.Relation.Unary.All using (All; []; _∷_)
+open import Data.List.Relation.Unary.AllPairs using (AllPairs; []; _∷_)
+open import Data.List.Relation.Unary.Unique.Propositional using (Unique)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Bool using (Bool; true; false)
-open import Relation.Binary.PropositionalEquality
-  using (_≡_; _≢_; refl; sym; trans; cong; subst)
-open import Relation.Nullary using (Dec; yes; no; ¬_)
-
--- Import heap region definition
-open import Once.Memory.Regions layout using (InHeap)
-open import Once.Memory.Regions layout as Regions using (heap-bounds)
+open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_]′)
+open import Data.Empty using (⊥-elim)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym)
 
 ------------------------------------------------------------------------
--- Configuration
+-- The pool and its invariant
 ------------------------------------------------------------------------
 
--- Slot size (same as BumpAllocator for compatibility)
-slot-size : ℕ
-slot-size = 8
-
-------------------------------------------------------------------------
--- List Membership
-------------------------------------------------------------------------
-
-open import Data.Empty using (⊥)
-open import Data.Sum using (_⊎_; inj₁; inj₂)
-
--- Address is in a list
-_∈-list_ : Addr → List Addr → Set
-a ∈-list [] = ⊥
-a ∈-list (x ∷ xs) = (a ≡ x) ⊎ (a ∈-list xs)
-
-------------------------------------------------------------------------
--- Pool State
---
--- A mempool is a contiguous region divided into fixed-size blocks.
--- Free blocks are tracked in a free list.
-------------------------------------------------------------------------
-
-record PoolState : Set where
-  constructor mkPoolState
+record Pool : Set where
+  constructor pool
   field
-    -- Block configuration
-    block-slots : ℕ              -- Slots per block (e.g., 2 for pairs)
+    free-list : List Block
+open Pool public
 
-    -- Pool region
-    pool-start : Addr            -- Start of pool
-    pool-end : Addr              -- End of pool (exclusive)
-
-    -- Free list (addresses of available blocks)
-    free-list : List Addr
-
-    -- Invariants: pool region is within heap bounds
-    pool-in-heap : lower Regions.heap-bounds ≤ pool-start
-                 × pool-end ≤ upper Regions.heap-bounds
-
-    -- All free-list addresses are valid pool blocks
-    free-list-valid : ∀ {addr} → addr ∈-list free-list →
-                      pool-start ≤ addr × addr + block-slots * slot-size ≤ pool-end
-
-open PoolState public
-
-------------------------------------------------------------------------
--- Pool Initialization
---
--- Create a pool with n blocks of given size.
-------------------------------------------------------------------------
-
--- Compute block addresses for initialization
-block-addrs : (start : Addr) (block-size : ℕ) (count : ℕ) → List Addr
-block-addrs start block-size zero = []
-block-addrs start block-size (suc n) =
-  start ∷ block-addrs (start + block-size) block-size n
-
-------------------------------------------------------------------------
--- Allocation
---
--- Pop a block from the free list.
--- Returns nothing if pool is exhausted.
-------------------------------------------------------------------------
-
-record AllocResult (s : PoolState) : Set where
-  constructor mkAllocResult
+record PoolInv (p : Pool) (live : List Block) : Set where
   field
-    addr : Addr
-    new-state : PoolState
-    -- The allocated address was in the free list
-    addr-was-free : addr ∈-list free-list s
-    -- block-slots is preserved
-    block-slots-preserved : block-slots new-state ≡ block-slots s
-
-open AllocResult public
-
--- Helper: tail of free list has valid elements
-tail-valid : (s : PoolState) (addr : Addr) (rest : List Addr) →
-             free-list s ≡ addr ∷ rest →
-             ∀ {a} → a ∈-list rest →
-             pool-start s ≤ a × a + block-slots s * slot-size ≤ pool-end s
-tail-valid s addr rest eq a∈rest =
-  free-list-valid s (subst (λ l → _ ∈-list l) (sym eq) (inj₂ a∈rest))
-
--- Allocate a block (if available)
-alloc : (s : PoolState) → Maybe (AllocResult s)
-alloc s with free-list s in eq
-... | [] = nothing
-... | addr ∷ rest = just (mkAllocResult addr s' addr-in-list refl)
-  where
-    rest-valid : ∀ {a} → a ∈-list rest →
-                 pool-start s ≤ a × a + block-slots s * slot-size ≤ pool-end s
-    rest-valid = tail-valid s addr rest eq
-
-    s' : PoolState
-    s' = record s { free-list = rest ; free-list-valid = rest-valid }
-
-    -- addr is in (addr ∷ rest) which equals free-list s
-    addr-in-list : addr ∈-list free-list s
-    addr-in-list = subst (addr ∈-list_) (sym eq) (inj₁ refl)
+    free-unique : Unique (free-list p)
+    live-unique : Unique live
+    apart       : ∀ {b} → b ∈ free-list p → b ∉ live
+open PoolInv public
 
 ------------------------------------------------------------------------
--- Deallocation (Free)
---
--- Push a block back to the free list.
--- Linear types guarantee this is called exactly once per allocation.
+-- Alloc and free
 ------------------------------------------------------------------------
 
--- Free a block (return to pool)
-free : (addr : Addr) → (s : PoolState) →
-       pool-start s ≤ addr →
-       addr + block-slots s * slot-size ≤ pool-end s →
-       PoolState
-free addr s start≤addr end-ok = record s
-  { free-list = addr ∷ free-list s
-  ; free-list-valid = new-valid
+-- pop: the first free block, and the pool without it (nothing when empty)
+pop : Pool → Maybe (Block × Pool)
+pop (pool [])       = nothing
+pop (pool (b ∷ bs)) = just (b , pool bs)
+
+-- push: a block back on the free list
+push : Block → Pool → Pool
+push b p = pool (b ∷ free-list p)
+
+-- a freed block is returned for another user: the next pop is it
+push-pop : ∀ b p → pop (push b p) ≡ just (b , p)
+push-pop b (pool bs) = refl
+
+------------------------------------------------------------------------
+-- Distinct lists (small lemmas over `Unique`)
+------------------------------------------------------------------------
+
+module _ where
+  -- the head of a distinct list is not in its tail
+  head∉ : ∀ {b : Block} {bs : List Block} → Unique (b ∷ bs) → b ∉ bs
+  head∉ ((b≢ ∷ _) ∷ _) (here refl) = b≢ refl
+  head∉ ((_ ∷ ne) ∷ u) (there m) = head∉ (ne ∷ tail-pairs u) m
+    where
+      tail-pairs : ∀ {x : Block} {xs : List Block} → Unique (x ∷ xs) → Unique xs
+      tail-pairs (_ ∷ u′) = u′
+
+  tail-u : ∀ {b : Block} {bs : List Block} → Unique (b ∷ bs) → Unique bs
+  tail-u (_ ∷ u) = u
+
+  -- a block not in a list is apart from each of its elements
+  ∉→All : ∀ {b : Block} (xs : List Block) → b ∉ xs → All (b ≢_) xs
+  ∉→All []       _  = []
+  ∉→All (x ∷ xs) nm = (λ e → nm (here e)) ∷ ∉→All xs (λ m → nm (there m))
+
+  All→∉ : ∀ {b : Block} {xs : List Block} → All (b ≢_) xs → b ∉ xs
+  All→∉ (ne ∷ _)  (here e) = ne e
+  All→∉ (_ ∷ as) (there m) = All→∉ as m
+
+  -- consing a block not in a distinct list keeps it distinct
+  cons-u : ∀ {b : Block} {xs : List Block} → b ∉ xs → Unique xs → Unique (b ∷ xs)
+  cons-u {xs = xs} nm u = ∉→All xs nm ∷ u
+
+  -- a distinct list with one block taken out: still distinct, and the block is in neither part
+  wider : ∀ (l₁ : List Block) {b : Block} {l₂ : List Block} {z : Block} → z ∈ l₁ ++ l₂ → z ∈ l₁ ++ b ∷ l₂
+  wider l₁ m = [ ∈-++⁺ˡ , (λ m₂ → ∈-++⁺ʳ l₁ (there m₂)) ]′ (∈-++⁻ l₁ m)
+
+  drop-all : ∀ (l₁ : List Block) {b : Block} {l₂ : List Block} {y : Block} → All (y ≢_) (l₁ ++ b ∷ l₂) → All (y ≢_) (l₁ ++ l₂)
+  drop-all l₁ {b} {l₂} a = ∉→All (l₁ ++ l₂) (λ m → All→∉ a (wider l₁ {b} m))
+
+  split-u : ∀ (l₁ : List Block) {b : Block} {l₂ : List Block} → Unique (l₁ ++ b ∷ l₂) → Unique (l₁ ++ l₂) × b ∉ (l₁ ++ l₂)
+  split-u []       u = tail-u u , head∉ u
+  split-u (x ∷ l₁) {b} {l₂} (ax ∷ u) =
+    (drop-all l₁ ax ∷ proj₁ (split-u l₁ u)) , nm
+    where
+      nm : b ∉ x ∷ (l₁ ++ l₂)
+      nm (here e)  = All→∉ ax (∈-++⁺ʳ l₁ (here (sym e)))
+      nm (there m) = proj₂ (split-u l₁ u) m
+
+  -- a block in a part is in the whole
+  in-split : ∀ (l₁ : List Block) {b : Block} {l₂ : List Block} {z : Block} → z ∈ l₁ ++ l₂ → z ∈ l₁ ++ b ∷ l₂
+  in-split = wider
+
+------------------------------------------------------------------------
+-- ★ The theorems
+------------------------------------------------------------------------
+
+-- alloc: the popped block is no live one…
+pop-fresh : ∀ {p live b p′} → PoolInv p live → pop p ≡ just (b , p′) → b ∉ live
+pop-fresh {pool (b ∷ bs)} I refl = apart I (here refl)
+
+-- …and the pool's invariant holds with it live
+pop-inv : ∀ {p live b p′} → PoolInv p live → pop p ≡ just (b , p′) → PoolInv p′ (b ∷ live)
+pop-inv {pool (b ∷ bs)} {live} I refl = record
+  { free-unique = tail-u (free-unique I)
+  ; live-unique = cons-u (apart I (here refl)) (live-unique I)
+  ; apart       = ap
   }
   where
-    -- Decide membership: either a ≡ addr or a is in the old list
-    ∈-list-case : ∀ {a} → a ∈-list (addr ∷ free-list s) →
-                  (a ≡ addr) ⊎ (a ∈-list free-list s)
-    ∈-list-case = λ x → x  -- The definition of ∈-list already gives us this!
+    ap : ∀ {x} → x ∈ bs → x ∉ b ∷ live
+    ap m (here e) = head∉ (free-unique I) (subst-∈ e m)
+      where subst-∈ : ∀ {x y} → x ≡ y → x ∈ bs → y ∈ bs
+            subst-∈ refl m′ = m′
+    ap m (there n) = apart I (there m) n
 
-    new-valid : ∀ {a} → a ∈-list (addr ∷ free-list s) →
-                pool-start s ≤ a × a + block-slots s * slot-size ≤ pool-end s
-    new-valid {a} a∈new with ∈-list-case a∈new
-    ... | inj₁ a≡addr = subst (λ x → pool-start s ≤ x × x + block-slots s * slot-size ≤ pool-end s)
-                              (sym a≡addr) (start≤addr , end-ok)
-    ... | inj₂ a∈old = free-list-valid s a∈old
-
-------------------------------------------------------------------------
--- Allocated blocks are in heap
-------------------------------------------------------------------------
-
--- Any address from the free list is in the pool region
-free-list-in-pool : (s : PoolState) (addr : Addr) →
-                    addr ∈-list free-list s →
-                    pool-start s ≤ addr × addr + block-slots s * slot-size ≤ pool-end s
-free-list-in-pool s addr addr∈free = free-list-valid s addr∈free
-
--- Pool region is in heap, so allocated blocks are in heap
-alloc-in-heap : (s : PoolState) (result : AllocResult s) →
-                InHeap (addr result)
-alloc-in-heap s result = pool-addr-in-heap
+-- free: a live block pushed back — the invariant holds with it free
+push-inv : ∀ {p} (l₁ : List Block) {b l₂} → PoolInv p (l₁ ++ b ∷ l₂) → PoolInv (push b p) (l₁ ++ l₂)
+push-inv {p} l₁ {b} {l₂} I = record
+  { free-unique = cons-u (λ m → apart I m (∈-++⁺ʳ l₁ (here refl))) (free-unique I)
+  ; live-unique = proj₁ (split-u l₁ (live-unique I))
+  ; apart       = ap
+  }
   where
-    a = addr result
+    ap : ∀ {x} → x ∈ b ∷ free-list p → x ∉ l₁ ++ l₂
+    ap (here refl) n = proj₂ (split-u l₁ (live-unique I)) n
+    ap (there m)   n = apart I m (in-split l₁ {b} n)
 
-    -- Address is in pool
-    in-pool : pool-start s ≤ a × a + block-slots s * slot-size ≤ pool-end s
-    in-pool = free-list-in-pool s a (addr-was-free result)
-
-    -- Pool is in heap
-    pool-heap : lower Regions.heap-bounds ≤ pool-start s
-              × pool-end s ≤ upper Regions.heap-bounds
-    pool-heap = pool-in-heap s
-
-    -- Therefore address is in heap
-    pool-addr-in-heap : InHeap a
-    pool-addr-in-heap = lower≤a , a≤upper
-      where
-        lower≤a : lower Regions.heap-bounds ≤ a
-        lower≤a = ≤-trans (proj₁ pool-heap) (proj₁ in-pool)
-
-        a≤upper : a ≤ upper Regions.heap-bounds
-        a≤upper = ≤-trans (m≤m+n a (block-slots s * slot-size))
-                          (≤-trans (proj₂ in-pool) (proj₂ pool-heap))
-
-------------------------------------------------------------------------
--- Block slots are in heap
-------------------------------------------------------------------------
-
--- All slots within an allocated block are in heap
-block-slot-in-heap : (s : PoolState) (result : AllocResult s)
-                     (i : ℕ) → i < block-slots s →
-                     InHeap (addr result + i * slot-size)
-block-slot-in-heap s result i i<block-slots = slot-in-heap
-  where
-    a = addr result
-    bs = block-slots s
-
-    -- Address is in pool bounds
-    in-pool : pool-start s ≤ a × a + bs * slot-size ≤ pool-end s
-    in-pool = free-list-in-pool s a (addr-was-free result)
-
-    -- Pool is in heap
-    pool-heap = pool-in-heap s
-
-    -- Slot offset is less than block size
-    i*slot≤bs*slot : i * slot-size ≤ bs * slot-size
-    i*slot≤bs*slot = *-monoˡ-≤ slot-size (Data.Nat.Properties.<⇒≤ i<block-slots)
-
-    -- Slot address bounds
-    slot-in-heap : InHeap (a + i * slot-size)
-    slot-in-heap = lower≤slot , slot≤upper
-      where
-        lower≤slot : lower Regions.heap-bounds ≤ a + i * slot-size
-        lower≤slot = ≤-trans (≤-trans (proj₁ pool-heap) (proj₁ in-pool))
-                             (m≤m+n a (i * slot-size))
-
-        slot≤upper : a + i * slot-size ≤ upper Regions.heap-bounds
-        slot≤upper = ≤-trans (+-monoʳ-≤ a i*slot≤bs*slot)
-                             (≤-trans (proj₂ in-pool) (proj₂ pool-heap))
-
-------------------------------------------------------------------------
--- Summary
---
--- Mempool provides:
---
---   PoolState     : pool region + free list
---   alloc         : pop from free list, O(1)
---   free          : push to free list, O(1)
---
--- Properties:
---   alloc-in-heap      : allocated address is in heap
---   block-slot-in-heap : all slots of block are in heap
---
--- Compared to BumpAllocator:
---   + Supports free (memory reuse)
---   + No fragmentation (fixed block size)
---   - Only fixed-size blocks
---   - Requires pool pre-allocation
---
--- Ideal for Once's linear types:
---   - Linear values freed exactly once
---   - Many same-size allocations (pairs, closures)
-------------------------------------------------------------------------
+-- the empty pool, nothing live
+empty-inv : PoolInv (pool []) []
+empty-inv = record { free-unique = [] ; live-unique = [] ; apart = λ () }
