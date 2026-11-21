@@ -24456,3 +24456,38 @@ B1.8. Does the linear core need it, or is it an optimization for a later plan?
 ### Alternatives
 * Keep B1.8 in plan 0.146: the lowering and its proofs change twice (now, and again for the other passes),
   and the branch grows when slow merges are what slows development (the user, 2026-11-20).
+
+## D468 — THE CELL ALLOCATOR'S STATE IS A RECORD AT THE REGION'S BOTTOM; THE FRONTIER REGISTER POINTS AT IT (2026-11-22)
+
+**Proposed** (unattended, keep-going mode, for the user's review; plan 0.146 B1.6 item 3, the open half:
+reuse). **Applies**: D376 (the Host supplies the region, the compiler divides it), D384 (one fixed-size free
+list per node size, alloc and free inline pop/push, no search), D402 (two heaps), D428 (the allocator per size;
+addresses reused, ids not), D377/D378 (the room check).
+
+### The problem
+Today a free is a no-op on all three arches and the cell heap is a bump pointer (the frontier register:
+`%r15` on x86-64), so a server that rebuilds heap state each round fills the region and ends `exhausted`
+(the three D317 gate servers). D384 decided the allocator: a free list per node size, inline pop and push.
+Nothing decided where the free lists' heads live, and every place costs something at run time.
+
+### Options
+* **(A) A register holding the heads' table.** x86-64 and riscv64 have free registers; **x86-32 has none**
+  (all eight are `io` or `ccc`), so it needs a per-arch exception: rejected (one arch interface, D463).
+* **(B) Data symbols** (`.bss`, one head per size) in the program's file, addressed absolutely or
+  pc-relatively. No register; the file gains a data section and the three arch models gain data addresses
+  disjoint from the region (a new memory area in every correspondence).
+* **(C) A record at the region's bottom.** The compiler divides the region (D376): its first words are the
+  allocator's state — the bump frontier and one free-list head per node size of the program — and the
+  frontier register points at this record (it is set by the Host to the region's bottom, as today). The
+  program's start writes the record (frontier past the record, every head empty).
+  - alloc of size `k`: load head `k`; if a block is there, pop it (its first word is the next block); else
+    bump the frontier word (the room check already guaranteed the room).
+  - free of size `k`: the block's first word := head `k`; head `k` := the block.
+  - room check: compares the frontier WORD (one load) with the stack pointer, as today.
+
+### Decision (proposed): C
+No Host change, no new register, no data section; one record in memory every arch addresses relative to a
+register it already has. Cost against today: the bump path gains a load and a store, a room check a load;
+the reuse path is two loads and a store. The arch models gain only base+offset accesses they already have.
+The abstract (flat) machine is unchanged: ids stay fresh (D428), the correspondence (`HeapView`) maps LIVE
+ids to addresses, and a freed block leaves the view and joins its size's list (its first word the link).
