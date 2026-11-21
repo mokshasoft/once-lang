@@ -43,21 +43,20 @@ module Once.LinCore.Global
   (bw : Base → ℕ)
   where
 
-open import Once.LinCore.Core fmt
+open import Once.LinCore.Core fmt using (_⊗t_; Defs; FS; Fn; Gd; LF∙; LTm; Nu; One; Tm; lit; many; module Defs; module Tm)
 open import Once.LinCore.Flat using (Base; ⟦_⟧b; Lit)
 open import Once.IR.Semantics.Trace using (T; call)
-open import Once.LinCore.NbEPLinCore fmt ans
-open import Once.LinCore.Events fmt ans bw
-open import Once.LinCore.Values fmt bw
+open import Once.LinCore.Events fmt ans bw using (cnt; ds; halted; p-halt; st; Γ)
+open import Once.LinCore.Values fmt bw using (Id; MV; Trace; mfn; mnu; mpair; serial; module MV)
 open import Once.LinCore.Code fmt bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots; []ᵉ; vw; see; Cfg; _∥_)
-open import Once.LinCore.Image fmt bw
+open import Once.LinCore.Image fmt bw using (_⊳_; _⨾_; BSig; Codeᴵ; Insᴵ; Key; blockᴵ; bsig; call; end; epop; halted; ktr1; ktrc; ktrf; ktro; ktrω; reclose; module BSig; module Codeᴵ; module Insᴵ; module Key)
 open BSig using (top)
 open import Once.LinCore.ImageRun fmt ans bw using (Ret; []ʳ; frm; _∷ⁱ_)
-open import Once.LinCore.Keys fmt bw
+open import Once.LinCore.Keys fmt bw using (allK; cty; os; module Program)
 open import Once.LinCore.Layout fmt bw using (Frame; frame; frameOf; budget; wsz; ws; module Frame)
 open Frame using (EP; OP)
-open import Once.LinCore.Lower fmt bw
-open import Once.LinCore.Words fmt ans bw
+open import Once.LinCore.Lower fmt bw using (hdr; idx; jl; module Lowering; module Program′)
+open import Once.LinCore.Words fmt ans bw using (module Rel)
 open import Once.LinCore.ImagePt fmt ans bw using (Sub; Pt; at; disp; next; body; whole)
 open import Once.LinCore.LowAt fmt ans bw using (module At)
 open import Once.LinCore.Labels fmt ans bw using (module NoLabels)
@@ -76,7 +75,7 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open Program ds f using (U)
   open Program ds f using (ncty)
   open Program′ ds f ldConst using (image; j₀)
-  open Lowering U ncty ldConst
+  open Lowering U ncty ldConst using (Tp; fbudget; sv₁)
   open Calls {FS} ds f ldConst ld-nl wordOf using (blockR; module K; module From; call-core)
   open Rel {FS} U wordOf using (EnvW; StkW)
   open FlatMachine {FS} using (FlatState; module FlatState)

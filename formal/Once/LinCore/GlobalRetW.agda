@@ -3,8 +3,8 @@
 
 ------------------------------------------------------------------------
 -- Once.LinCore.GlobalRetW — plan 0.146 B1.4b (D434, D442): A MANY-USE BODY'S TRAMPOLINE'S RETURNS: the body's
--- (its result into the dispatcher's area, two frames up; back into the trampoline) and the trampoline's
--- bare way out (beside `GlobalRetT`, for its build time).
+-- (its result into the dispatcher's area, two frames up; back into the trampoline); the trampoline's
+-- bare way out is `GlobalRetWT` (beside `GlobalRetT`, for their build time).
 ------------------------------------------------------------------------
 
 {-# OPTIONS --guardedness #-}
@@ -38,20 +38,19 @@ module Once.LinCore.GlobalRetW
   (bw : Base → ℕ)
   where
 
-open import Once.LinCore.Core fmt
+open import Once.LinCore.Core fmt using (Defs; FS; Fn; Gd; LTm; One; Tm; many; module Defs; module Tm)
 open import Once.LinCore.Flat using (Base; ⟦_⟧b; Lit)
 open import Once.IR.Semantics.Trace using (T)
-open import Once.LinCore.NbEPLinCore fmt ans
-open import Once.LinCore.Events fmt ans bw
-open import Once.LinCore.Values fmt bw
+open import Once.LinCore.Events fmt ans bw using (ds; p-halt; Γ)
+open import Once.LinCore.Values fmt bw using (MV; Trace; module MV)
 open import Once.LinCore.Code fmt bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots; []ᵉ; vw; see; Cfg; _∥_)
-open import Once.LinCore.Image fmt bw
+open import Once.LinCore.Image fmt bw using (_⨾_; Codeᴵ; Insᴵ; Key; blockᴵ; case; end; epop; kbodyω; ktrω; module Codeᴵ; module Insᴵ; module Key)
 open import Once.LinCore.ImageRun fmt ans bw using (Ret; []ʳ; frm; _∷ⁱ_)
-open import Once.LinCore.Keys fmt bw
+open import Once.LinCore.Keys fmt bw using (allK; os; module Program)
 open import Once.LinCore.Layout fmt bw using (Frame; frame; frameOf; budget; wsz; ws; envW; opW; module Frame)
 open Frame using (EP; OP)
-open import Once.LinCore.Lower fmt bw
-open import Once.LinCore.Words fmt ans bw
+open import Once.LinCore.Lower fmt bw using (idx; module Lowering; module Program′)
+open import Once.LinCore.Words fmt ans bw using (module Rel)
 open import Once.LinCore.ImagePt fmt ans bw using (Sub; Pt; at; disp; next; body; whole)
 open import Once.LinCore.LowAt fmt ans bw using (module At)
 open import Once.LinCore.Labels fmt ans bw using (module NoLabels)
@@ -63,8 +62,6 @@ open import Once.LinCore.KeysRun fmt ans bw using (module ProgramRun)
 open import Once.LinCore.TrampAt fmt ans bw using (under; module TrImg; module Tr)
 
 open import Once.LinCore.Global fmt ans bw using (module Relate)
-open import Once.LinCore.GlobalTramp fmt ans bw using (module TrampR)
-open import Once.LinCore.GlobalTrampO fmt ans bw using (module TrampO)
 open import Once.LinCore.GlobalTrampW fmt ans bw using (module TrampW)
 open import Once.LinCore.GlobalCall fmt ans bw using (module CallR)
 open import Once.LinCore.GlobalRetB fmt ans bw using (module RetB)
@@ -73,9 +70,7 @@ module RetW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
            (ldConst : ∀ {b} → Lit b → AbstractInstr)
            (ld-nl : ∀ {b} (v : Lit b) → NoLabels.mark {FS} (ldConst v) ≡ nothing)
            (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue FS) where
-  open Relate {FS} ds f ldConst ld-nl wordOf
-  open TrampR {FS} ds f ldConst ld-nl wordOf
-  open TrampO {FS} ds f ldConst ld-nl wordOf
+  open Relate {FS} ds f ldConst ld-nl wordOf using (DSite; HereP; LoopTo; Related; RetOK; TrM; TrW2; ctx-to; d-block; d-start; dsiteFin; dsitePos; dsiteRoot; dsiteφ; ok-call; ok-callω; ok-loop; ok-top; ok-tramp; ok-trampf; ok-trampω; rblock; ret-top; rootOf; rootφ; rtramp; stk-all; trB; trPos; tw2; tw3; ≺-≢; module DSite; module Related; module RetOK; module S; module TrM; module TrW2)
   open TrampW {FS} ds f ldConst ld-nl wordOf using (tw-back; tw-end)
   open CallR {FS} ds f ldConst ld-nl wordOf using (module GCall)
   open RetB {FS} ds f ldConst ld-nl wordOf using (module GRetB)
@@ -83,7 +78,7 @@ module RetW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open Program ds f using (U)
   open Program ds f using (ncty)
   open Program′ ds f ldConst using (image; j₀)
-  open Lowering U ncty ldConst
+  open Lowering U ncty ldConst using (Tp; fbudget; sv₁; sv₂)
   open Calls {FS} ds f ldConst ld-nl wordOf using (blockR; module K; module From; call-core)
   open Rel {FS} U wordOf using (EnvW; StkW)
   open FlatMachine {FS} using (FlatState; module FlatState)
@@ -184,11 +179,6 @@ module RetW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
           go : (x Data.Nat.< e) ⊎ (budget φ ∸ s ≤ x) → ⊥
           go (inj₁ x<) = <-irrefl eq (<-≤-trans x< (≤-trans area≥ (m≤n+m _ (k + (M ∸ wB)))))
           go (inj₂ ge) = <-irrefl (sym eq) (<-≤-trans moved< ge)
-
-      res-at : ∀ {sm : FrameSemantics.Frame FS → ℕ → Maybe W} {o cfc ar af ar′} {wb : List W}
-             → just (SV-Ptr (AtStack {FS} cfc ar)) ≡ just (SV-Ptr (AtStack af ar′))
-             → SlotsAt (sm af) (o + ar′) wb → SlotsAt (sm cfc) (o + ar) wb
-      res-at refl s = s
 
     -- the trampoline's level under the body's, as a view (its tail's shape a variable: a split of
     -- `RetOK` at the body's tail's shape gets stuck on `_⊳_`)
@@ -299,71 +289,3 @@ module RetW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     gret-cω (p-block p (at e)) _ cfc sl sv′ rets′ refl eF H eRets eSv eSl abv ap fr rest nx I =
       gret-cω′ p e cfc sl sv′ rets′ eF H eRets eSv eSl abv ap fr (tail-ω rest) nx I
 
-    -- ★ the trampoline's way out (D442): a bare return; the result's words already in the
-    -- dispatcher's area, so its configuration back in its frame with the result on top
-    private
-      res-cfg : ∀ {fs fs′ cfc pc rets′ sv′ sl} {φ : Frame} {Es B S} {es : Slots Es} {os : Stk S} {w : MV B} (M : ℕ) (wb : List W)
-              → CallOut fs fs′ cfc 0 0 0 0 pc rets′ sv′ sl
-              → VW (LocState.heapMem (floc fs)) w wb → SlotsAt (LocState.stackMem (floc fs) cfc) ((M ∸ wsz B) + ((budget φ ∸ ws S) ∸ M)) wb
-              → wsz B ≤ M → M + ws S ≤ OP φ
-              → EnvW (LocState.heapMem (floc fs)) (LocState.stackMem (floc fs) cfc) es
-              → StkW (LocState.heapMem (floc fs)) (LocState.stackMem (floc fs) cfc) φ os
-              → envW (Es ∣ B ∷ S) ≤ EP φ → opW (Es ∣ B ∷ S) ≤ OP φ
-              → CfgW (LocState.heapMem (floc fs′)) (slot fs′) φ (es ∥ w ∷ˢ os)
-      res-cfg {fs} {fs′} {cfc} {φ = φ} {B = B} {S} {es} {os} {w} M wb CO pw sw le fit ev sk fe fb =
-        subst (λ g → CfgW (LocState.heapMem (floc fs′)) (LocState.stackMem (floc fs′) g) φ (es ∥ w ∷ˢ os)) (sym (co-frame CO))
-          (record { c-env = envW-heap es (λ i k _ → hp (cellLoc i k)) (envW-frame es (λ x _ → sp x) ev)
-                  ; c-stk = ( wb , vw-frame pw (λ i k _ → hp (cellLoc i k))
-                            , slots-frame wb (λ k _ → sp _)
-                                (subst (λ z → SlotsAt (LocState.stackMem (floc fs) cfc) z wb)
-                                  (area-gen (budget φ) (wsz B) M (ws S) le
-                                    (Data.Nat.Properties.≤-trans fit (Data.Nat.Properties.m≤n+m (OP φ) (EP φ)))) sw) )
-                          , stkW-heap os (λ i k _ → hp (cellLoc i k)) (stk-all os (λ x → sp x) sk)
-                  ; c-efit = fe ; c-sfit = fb })
-        where
-          hp : ∀ hl → LocState.heapMem (floc fs′) hl ≡ LocState.heapMem (floc fs) hl
-          hp hl = co-rest CO (AtDynamic hl) (λ k ())
-          sp : ∀ x → LocState.stackMem (floc fs′) cfc x ≡ LocState.stackMem (floc fs) cfc x
-          sp x = co-rest CO (AtStack cfc x) (λ k ())
-
-    gret-tω : ∀ {T Γ′ g X A B} {ds′ : Defs Γ′} {b : Tm Γ′ X A B} {γ : Gd g b} {Es S V}
-                {i : Insᴵ (Fn many g A B ∷ Es ∣ A ∷ S) (Fn many g A B ∷ Es ∣ B ∷ S)} {k : Codeᴵ (Fn many g A B ∷ Es ∣ B ∷ S) V}
-                {es : Slots (Fn many g A B ∷ Es)} {os : Stk S} {r : Ret V T} {e′ : Slots (Fn many g A B ∷ [])} {w : MV B} {n fs}
-                (P : Pnt (end {sh = Fn many g A B ∷ [] ∣ B ∷ []})) (p : under (ktrω ds′ b γ) ∈ allK U) (d : DSite i k)
-                (cfc : FrameSemantics.Frame FS) (sl : ℕ) (sv′ : List (FrameSemantics.Frame FS × ℕ)) (rets′ : List ℕ)
-            → rootOf P ≡ rtramp {κ = ktrω ds′ b γ} p → HereP P (e′ ∥ w ∷ˢ []ˢ) fs
-            → fret fs ≡ dsitePos d ∷ rets′ → AllocState.saved-frames (falloc fs) ≡ (cfc , sl) ∷ sv′
-            → sl ≡ fbudget (dsiteφ d)
-            → LocState.stackMem (floc fs) (AllocState.current-frame (falloc fs)) 0 ≡ just (SV-Ptr (AtStack cfc (Tp (dsiteφ d) S ∸ (wsz A ⊔ wsz B))))
-            → (wsz A ⊔ wsz B) + ws S ≤ OP (dsiteφ d)
-            → EnvW (LocState.heapMem (floc fs)) (LocState.stackMem (floc fs) cfc) es
-            → StkW (LocState.heapMem (floc fs)) (LocState.stackMem (floc fs) cfc) (dsiteφ d) os
-            → FreshR r (AllocState.next-heap-ref (falloc fs))
-            → RetOK (dsiteRoot d) (dsiteFin d) r cfc rets′ sv′ fs
-            → AllocState.next-heap-ref (falloc fs) ≡ n
-            → InBlk fs
-            → ArrivesAt k r (es ∥ w ∷ˢ os) n fs
-    gret-tω (p-start (at _)) _ d cfc sl sv′ rets′ () H eRets eSv eSl area fit ev sk fr rest nx I
-    gret-tω (p-block _ (at _)) _ d cfc sl sv′ rets′ () H eRets eSv eSl area fit ev sk fr rest nx I
-    gret-tω {A = A} {B} {S = S} {fs = fs} (p-tramp _ _) _ (d-start s) cfc sl sv′ rets′ refl (tw3 p , T) eRets eSv eSl area fit ev sk fr rest nx I =
-      case tw-end p cfc (S.pos (next s)) rets′ sv′ sl (TrW2.w2-pc T) (TrW2.w2-run T) eRets (TrW2.w2-slots T) eSv of λ where
-        (fs′ , run , CO) →
-          1 , fs′ , run , record { g-pt = p-start (at (next s))
-                                 ; g-here = record { h-pc = co-pc CO ; h-run = trans (co-halt CO) (TrW2.w2-run T)
-                                                   ; h-cfg = res-cfg (wsz A ⊔ wsz B) (TrW2.w2-wb T) CO (TrW2.w2-b T)
-                                                               (res-at {sm = LocState.stackMem (floc fs)} (trans (sym area) (TrW2.w2-s0 T)) (TrW2.w2-res T))
-                                                               (Data.Nat.Properties.m≤n⊔m (wsz A) (wsz B)) fit ev sk
-                                                               (proj₁ (S.shape-fits (next s))) (proj₂ (S.shape-fits (next s))) ; h-slots = trans (co-slots CO) eSl }
-                                 ; g-next = trans (co-next CO) nx
-                                 ; g-ret = back CO (λ x _ → co-rest CO (AtStack cfc x) (λ k ())) fr rest ; g-blk = co-inb CO I } , co-log CO
-    gret-tω {A = A} {B} {S = S} {fs = fs} (p-tramp _ _) _ (d-block p′ s) cfc sl sv′ rets′ refl (tw3 p , T) eRets eSv eSl area fit ev sk fr rest nx I =
-      case tw-end p cfc (K.pos p′ (next s)) rets′ sv′ sl (TrW2.w2-pc T) (TrW2.w2-run T) eRets (TrW2.w2-slots T) eSv of λ where
-        (fs′ , run , CO) →
-          1 , fs′ , run , record { g-pt = p-block p′ (at (next s))
-                                 ; g-here = record { h-pc = co-pc CO ; h-run = trans (co-halt CO) (TrW2.w2-run T)
-                                                   ; h-cfg = res-cfg (wsz A ⊔ wsz B) (TrW2.w2-wb T) CO (TrW2.w2-b T)
-                                                               (res-at {sm = LocState.stackMem (floc fs)} (trans (sym area) (TrW2.w2-s0 T)) (TrW2.w2-res T))
-                                                               (Data.Nat.Properties.m≤n⊔m (wsz A) (wsz B)) fit ev sk
-                                                               (proj₁ (K.shape-fits p′ (next s))) (proj₂ (K.shape-fits p′ (next s))) ; h-slots = trans (co-slots CO) eSl }
-                                 ; g-next = trans (co-next CO) nx
-                                 ; g-ret = back CO (λ x _ → co-rest CO (AtStack cfc x) (λ k ())) fr rest ; g-blk = co-inb CO I } , co-log CO

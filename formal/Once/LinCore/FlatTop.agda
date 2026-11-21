@@ -71,10 +71,10 @@ private
   ans = fs-ffi Mach
   ι   = FrameSemantics.fs-interp Mach
 
-open import Once.LinCore.Core fmt
+open import Once.LinCore.Core fmt using (Defs; LTm; One; Sig; lit; sig; module Defs; module Sig)
 open import Once.LinCore.Flat using (funit; Base; int; float; ⟦_⟧b; Lit)
 open Sig using (info)
-open import Once.LinCore.NbEPLinCore fmt ans
+open import Once.LinCore.NbEPLinCore fmt ans using (⟦_⟧D; module Sem)
 open import Once.LinCore.Events fmt ans bw using (Run; ios; Outcome; gives; stop; OpPath; er)
 open import Once.LinCore.Values fmt bw using (MV; mone; Trace; mvF)
 import Once.LinCore.Events
@@ -148,7 +148,7 @@ module Top {Γ} (ds : Defs Γ) (f₀ : LTm Γ One One)
   open Ctl {Mach} ds f₀ ldConst ld-nl using (main)
   start-fs = StartR.start-fs {Mach} ds f₀ ldConst ld-nl wordOf entry-frame entry-regs
   open RunW {Mach} ds f₀ ldConst ld-nl wordOf using (AgreesAll)
-  module OM = Once.LinCore.OpMachine.OM Mach bw (Program.U ds f₀) wordOf w-int w-float
+  module OM = Once.LinCore.OpMachine.OM Mach bw (Program.U ds f₀) wordOf w-int w-float using (module Dispatch; module Linked)
 
   -- the meaning, and what it shows at a budget from the empty log
   obs : ℕ → TM.Run (Once.Denotation.Approx.Ap Data.Unit.⊤)
@@ -214,6 +214,12 @@ module Top {Γ} (ds : Defs Γ) (f₀ : LTm Γ One One)
         eq : obs k ≡ (evsOf (Ran.trace (R k)) , BudgetSound.W.outAp ι (Ran.out (R k)) (Ran.left (R k)))
         eq = proj₁ (BudgetSound.S.soundₖ ι (Ran.run (R k)) (Ran.spends (R k)) (o-uncut k) (Ran.world (R k)))
 
+    -- the machine agrees along an image run the world answered (`AgreeRun`), the ops' contracts dispatched
+    module ARo = AgreeRun.AR {Mach} ds f₀ ldConst ld-nl wordOf ι
+                      (λ {s} {x} {y₀} {tp} {L} {L′} → OM.Dispatch.o-op decl {s} {x} {y₀} {tp} {L} {L′})
+                      (λ {s} {x} {tp} {L} {L′} → OM.Dispatch.o-opend decl {s} {x} {tp} {L} {L′})
+                      using (agrees-all; wtr-ios)
+
     -- ★★ THE FLAT THEOREM, relative to what is owed: at some fuel the flat run shows the meaning's
     -- events and end at the budget, and, where the budget cut it, a control step per unit
     -- (master's `flat-ends` and `flat-cut`, at one fuel)
@@ -234,13 +240,10 @@ module Top {Γ} (ds : Defs Γ) (f₀ : LTm Γ One One)
               (m≤m+n (chain-ctrls fl) 0)
 
     flat-top : ∀ k → Σ ℕ (Shows k)
-    flat-top k = by (Ran.run (R K)) refl (spends-plain (Ran.run (R K)) (Ran.spends (R K)) (o-uncut K)) (λ {mt} st e → AR.agrees-all st (AR.wtr-ios (Ran.trace (R K)) mt (sym e) (Ran.world (R K)))) eE eO
+    flat-top k = by (Ran.run (R K)) refl (spends-plain (Ran.run (R K)) (Ran.spends (R K)) (o-uncut K)) (λ {mt} st e → ARo.agrees-all st (ARo.wtr-ios (Ran.trace (R K)) mt (sym e) (Ran.world (R K)))) eE eO
                       (λ ex → subst (K ≤_) (trans (cong (rounds (Ran.run (R K)) +_) (cut-zero (Ran.run (R K)) (Ran.spends (R K)) (o-uncut K) ex)) (+-identityʳ _))
                                     (spent-rounds (Ran.run (R K)) (Ran.spends (R K))))
       where
-        module AR = AgreeRun.AR {Mach} ds f₀ ldConst ld-nl wordOf ι
-                      (λ {s} {x} {y₀} {tp} {L} {L′} → OM.Dispatch.o-op decl {s} {x} {y₀} {tp} {L} {L′})
-                      (λ {s} {x} {tp} {L} {L′} → OM.Dispatch.o-opend decl {s} {x} {tp} {L} {L′})
         K  = k
         eE = proj₁ (run-shows k)
         eO = proj₂ (run-shows k)
@@ -249,35 +252,32 @@ module Top {Γ} (ds : Defs Γ) (f₀ : LTm Γ One One)
                 (st : StepsI main []ʳ start 1 mt c′ r′ m′ n′) → ios mt ≡ ios t → AgreesAll [] st)
            → evsOf t ≡ proj₁ (obs k) → endO o ≡ endAp (proj₂ (obs k)) → (Exh o → k ≤ rounds run)
            → Σ ℕ (Shows k)
-        by {gives mone n′} {t} run _ pl ag ee eo _ = case image-noleak run pl of λ where
-          (mt , st , _ , _ , _ , eio) → case ends ld entry-frame entry-regs st (ag st eio) f-end of λ where
-            (N , fs′ , fst , hlt , lg , lft) →
-              N , trans (o-flat fst hlt)
-                            (cong₂ _,_ (trans lg (trans (cong (map ioEvent) eio) ee))
-                                       (trans (cong (λ b → just (end-of-left b)) (cong proj₁ (proj₂ (proj₂ (proj₂ (proj₂ lft)))))) eo)) ,
-              λ e → ⊥-elim (just≢nothing (trans eo e))
-        by {stop Once.LinCore.Events.halted} {t} run _ pl ag ee eo _ = case image-halts run pl of λ where
-          (mt , sh , U′ , r′ , m′ , n′ , st , eio) → case ends ld entry-frame entry-regs st (ag st eio) f-halt of λ where
-            (N , fs′ , fst , hlt , lg , (fs₀ , M , st₀ , r₀ , l₀)) →
-              N , trans (o-flat fst hlt)
-                            (cong₂ _,_ (trans lg (trans (cong (map ioEvent) eio) ee))
-                                       (trans (cong (λ b → just (end-of-left b)) (trans (cong proj₁ l₀) (o-running st₀ r₀))) eo)) ,
-              λ e → ⊥-elim (just≢nothing (trans eo e))
+        -- (each `let` a record pattern: projections, no pattern-λ to infer — `case … of λ where` here cost ~8 s a clause)
+        by {gives mone n′} {t} run _ pl ag ee eo _ =
+          let (mt , st , _ , _ , _ , eio)       = image-noleak run pl
+              (N , fs′ , fst , hlt , lg , lft) = ends ld entry-frame entry-regs st (ag st eio) f-end
+          in N , trans (o-flat fst hlt)
+                       (cong₂ _,_ (trans lg (trans (cong (map ioEvent) eio) ee))
+                                  (trans (cong (λ b → just (end-of-left b)) (cong proj₁ (proj₂ (proj₂ (proj₂ (proj₂ lft)))))) eo)) ,
+             λ e → ⊥-elim (just≢nothing (trans eo e))
+        by {stop Once.LinCore.Events.halted} {t} run _ pl ag ee eo _ =
+          let (mt , sh , U′ , r′ , m′ , n′ , st , eio)              = image-halts run pl
+              (N , fs′ , fst , hlt , lg , (fs₀ , M , st₀ , r₀ , l₀)) = ends ld entry-frame entry-regs st (ag st eio) f-halt
+          in N , trans (o-flat fst hlt)
+                       (cong₂ _,_ (trans lg (trans (cong (map ioEvent) eio) ee))
+                                  (trans (cong (λ b → just (end-of-left b)) (trans (cong proj₁ l₀) (o-running st₀ r₀))) eo)) ,
+             λ e → ⊥-elim (just≢nothing (trans eo e))
         -- ★ the budget's cut (D447): the image pauses with exactly the run's events, a loop entry for each
         -- round the run started, at least one per unit of the budget (`image-cut`, `spent-rounds`)
-        by {stop Once.LinCore.Events.exhausted} {t} run eq pl ag ee eo kr = case image-cut run pl of λ where
-          (mt , sh , U′ , c′ , r′ , m′ , n′ , st , eio , rl) →
-            case from-startC ld entry-frame entry-regs st (ag st eio) of λ where
-              (N , fs′ , fl , lg , cc) →
-                N , trans (cut-events fl) (cong₂ _,_ (trans lg (trans (cong (map ioEvent) eio) ee)) eo) ,
-                λ _ → ≤-trans (kr tt) (≤-trans rl (≤-trans cc (cut-ctrls fl)))
+        by {stop Once.LinCore.Events.exhausted} {t} run eq pl ag ee eo kr =
+          let (mt , sh , U′ , c′ , r′ , m′ , n′ , st , eio , rl) = image-cut run pl
+              (N , fs′ , fl , lg , cc)                         = from-startC ld entry-frame entry-regs st (ag st eio)
+          in N , trans (cut-events fl) (cong₂ _,_ (trans lg (trans (cong (map ioEvent) eio) ee)) eo) ,
+             λ _ → ≤-trans (kr tt) (≤-trans rl (≤-trans cc (cut-ctrls fl)))
 
     -- ★★ THE MACHINE NEVER FAULTS (master's `start-sound`): a running state the start reaches has not
     -- (`chain-left`); a halted one is where the world's run at a budget past it ends, unfaulted — were that
     -- run cut, the machine would have taken more control steps than it had steps to that state
-    module ARo = AgreeRun.AR {Mach} ds f₀ ldConst ld-nl wordOf ι
-                      (λ {s} {x} {y₀} {tp} {L} {L′} → OM.Dispatch.o-op decl {s} {x} {y₀} {tp} {L} {L′})
-                      (λ {s} {x} {tp} {L} {L′} → OM.Dispatch.o-opend decl {s} {x} {tp} {L} {L′})
 
     private
       true≢false : Data.Bool.true ≡ Data.Bool.false → ⊥
