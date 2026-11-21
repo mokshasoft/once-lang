@@ -203,7 +203,6 @@ Once/LinCore/FromIR.agda 15
 Once/LinCore/Held.agda 3
 Once/LinCore/HeldI.agda 3
 Once/LinCore/ImagePt.agda 1
-Once/LinCore/ImageSim.agda 15
 Once/LinCore/KeysRun.agda 1
 Once/LinCore/LabelsI.agda 1
 Once/LinCore/LowerSimC.agda 3
