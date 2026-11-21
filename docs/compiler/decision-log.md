@@ -24525,3 +24525,11 @@ one simulation, so a second one is small once the first is done. First: `Slab` o
 the user's to name (bump — today's primitive, no reuse — or another shape). The apex covers each allocator the
 flag offers; a program's gate tests run under the reusing one.
 
+
+### Amended (the user, 2026-11-23): the second allocator is a uniform POOL
+Both allocators free (the user: "all allocators have to free otherwise our server tests will not pass"). The
+two answer D428 part 2's open trade-off: `--alloc=slab` (one exact free list per node size; the space claim per
+size class) and `--alloc=pool` (one `Mempool` of blocks of the program's largest node size; padding, but any freed
+block serves any request, so the strong claim: a run is cut only when the live blocks, at the largest size, do
+not fit — D428 part 2 option 2). Bump stays the primitive under both, not a choice. Rejected: the spike's
+lowest-free (a search per alloc), a coalescing first-fit (search and merge; a much larger proof).
