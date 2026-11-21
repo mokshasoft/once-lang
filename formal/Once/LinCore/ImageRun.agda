@@ -23,7 +23,8 @@ open import Data.List using (List; []; _∷_; _++_)
 open import Data.Maybe using (just; nothing)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Product using (_,_; proj₁; proj₂)
-open import Agda.Builtin.Equality using (_≡_)
+open import Agda.Builtin.Equality using (_≡_; refl)
+open import Data.Empty using (⊥)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.IR.Semantics.Trace using (FFIAnswers)
 open import Once.LinCore.Flat using (Base)
@@ -199,3 +200,9 @@ data StepI {T : Sh} : ∀ {sh U sh′ U′} → Codeᴵ sh U → Ret U T → Cfg
            → StepI (fopen ⨾ k) r (es ∥ mfn i lam x ∷ˢ os) n (free i ∷ []) k r (es ∥ x ∷ˢ os) n
   i-fopenν : ∀ {Es F S S′ U} {k : Codeᴵ (Es ∣ (Coalg F S ⊗t S) ∷ S′) U} {r : Ret U T} {es i} {p : MV (Coalg F S ⊗t S)} {os n}
            → StepI (fopen ⨾ k) r (es ∥ mnu i p ∷ˢ os) n (free i ∷ []) k r (es ∥ p ∷ˢ os) n
+
+-- a halted image takes no step (the one absurd split on a step at `halted`, here
+-- in a small context: a split of `StepI` costs ~10 s in a large module)
+halted-stuck : ∀ {T sh U sh′ U′} {c : Codeᴵ sh U} {r : Ret U T} {m n t} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T} {m′ n′}
+             → c ≡ halted → StepI c r m n t c′ r′ m′ n′ → ⊥
+halted-stuck refl ()

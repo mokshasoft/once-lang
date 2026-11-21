@@ -24,7 +24,7 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
-open import Data.Empty using (⊥)
+open import Data.Empty using (⊥; ⊥-elim)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.IR.Semantics.Event using (SigOpEvent)
@@ -47,7 +47,7 @@ open import Once.LinCore.Events fmt ans bw using (er; OpPath; Run; gives; ios; i
 open import Once.LinCore.Values fmt bw using (MV; mvF; mone; Trace; alloc; free; peek; tmp; io; stp)
 open import Once.LinCore.Code fmt bw using (Sh; Cfg)
 open import Once.LinCore.Image fmt bw using (Codeᴵ; halted)
-open import Once.LinCore.ImageRun fmt ans bw using (Ret; StepI; i-unpair; i-pair; i-swap; i-unit; i-prim; i-opend; i-untag; i-untag₁; i-tag₁; i-case₁; i-case₂; i-elend; i-eunlend; i-elift; i-efst; i-esnd; i-eout; i-eoutq; i-ecase₁; i-ecase₂; i-eapp; i-epop; i-eword; i-call; i-ret; i-reti; i-loop; i-icall; i-icallω; i-iobs; i-ccopy; i-ncopy; i-cfree; i-nfree; i-open1; i-openω; i-nopen; i-copen; i-copenν; i-reclose; i-recloseν; i-fopen; i-fopenν)
+open import Once.LinCore.ImageRun fmt ans bw using (halted-stuck; Ret; StepI)
 open import Once.LinCore.ImageSim fmt ans bw using (StepsI; done; _⟫_)
 open import Once.LinCore.Total fmt ans bw using (World; WTr)
 open import Once.LinCore.StepOp fmt ans bw using (module Agree; evsOf; ioEvent)
@@ -209,8 +209,8 @@ module AR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     private
       no-more : ∀ {sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n t} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m′ n′} {L}
            → c ≡ halted → (rest : StepsI c r m n t c′ r′ m′ n′) → AgreesAll L rest
-      no-more refl done       = tt
-      no-more refl (() ⟫ _)
+      no-more _ done       = tt
+      no-more e (st ⟫ _) = ⊥-elim (halted-stuck e st)
 
     -- ★★ the whole run
     agrees-all : ∀ {sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n t} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m′ n′}

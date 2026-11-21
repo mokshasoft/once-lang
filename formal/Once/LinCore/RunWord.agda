@@ -37,20 +37,20 @@ module Once.LinCore.RunWord
   (bw : Base → ℕ)
   where
 
-open import Once.LinCore.Core fmt
+open import Once.LinCore.Core fmt using (Defs; LTm; One; lit)
 open import Once.LinCore.Flat using (Base; ⟦_⟧b; Lit)
 open import Once.IR.Semantics.Trace using (T)
-open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw using (ios; ios-++)
 open import Once.LinCore.Values fmt bw using (MV; mone; Trace)
 open import Once.LinCore.Code fmt bw using (Sh; Cfg; vw; []ᵉ; _∷ˢ_; []ˢ; _∥_)
 open import Once.LinCore.Image fmt bw using (Codeᴵ; halted)
-open import Once.LinCore.ImageRun fmt ans bw using (Ret; []ʳ; StepI)
+open import Once.LinCore.ImageRun fmt ans bw using (Ret; []ʳ; StepI; halted-stuck)
+open import Data.Empty using (⊥-elim)
 open import Once.LinCore.ImageSim fmt ans bw using (StepsI; done; _⟫_; start; loops; isLoop)
 open import Once.LinCore.HeldI fmt ans bw using (InvI; inv-stepI; start-invI)
 open import Once.LinCore.Labels fmt ans bw using (module NoLabels)
-open import Once.LinCore.Keys fmt bw
-open import Once.LinCore.Lower fmt bw
+open import Once.LinCore.Keys fmt bw using (module Program)
+open import Once.LinCore.Lower fmt bw using (module Program′)
 open import Once.LinCore.PointAt fmt ans bw using (module Ctl)
 open import Once.LinCore.Global fmt ans bw using (module Relate)
 open import Once.LinCore.WordStep fmt ans bw using (module StepR)
@@ -98,13 +98,13 @@ module RunW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   rest-halt : ∀ {T sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n t} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m′ n′}
             → StepsI c r m n t c′ r′ m′ n′ → c ≡ halted → (c′ ≡ halted) × (t ≡ [])
   rest-halt done e = e , refl
-  rest-halt (() ⟫ _) refl
+  rest-halt (st ⟫ _) e = ⊥-elim (halted-stuck e st)
 
   -- …and enters no loop
   halt-loops : ∀ {T sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n t} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m′ n′}
              → (rest : StepsI c r m n t c′ r′ m′ n′) → c ≡ halted → loops rest ≡ 0
   halt-loops done e = refl
-  halt-loops (() ⟫ _) refl
+  halt-loops (st ⟫ _) e = ⊥-elim (halted-stuck e st)
 
   module _ (ld : ∀ {b} (v : Lit b) (fs : FlatState)
                  → FlatMachine.flat-exec-instr {FS} (ldConst v) image fs
@@ -123,9 +123,10 @@ module RunW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
           → LocState.ev-log (floc fs) ≡ L
           → Lands (evsOf t) c′ r′ m′ n′ fs
     whole {fs = fs} done inv ag G _ = 0 , _ , FlatStepsAPI.[] , inj₁ G , sym (++-identityʳ (LocState.ev-log (floc fs)))
-    whole (_⟫_ {t₁ = t₁} {t₂ = t₂} st rest) inv (a₁ , ag) G lL = go (word-step st (step-covered st) inv G (a₁ _ G lL))
+    whole {c′ = c″} {r′ = r″} {m′ = m″} {n′ = n″} {fs = fs} (_⟫_ {c′ = c₁} {r′ = r₁} {m′ = m₁} {n′ = n₁} {t₁ = t₁} {t₂ = t₂} st rest) inv (a₁ , ag) G lL =
+      go (word-step st (step-covered st) inv G (a₁ fs G lL))
       where
-        go : _ → _
+        go : Lands (evsOf t₁) c₁ r₁ m₁ n₁ fs → Lands (evsOf (t₁ ++ t₂)) c″ r″ m″ n″ fs
         go (N₁ , fs₁ , st₁ , inj₁ G₁ , lg₁) = case whole rest (proj₂ (inv-stepI st inv)) ag G₁ (trans lg₁ (cong (_++ evsOf t₁) lL)) of λ where
           (N₂ , fs₂ , st₂ , L , lg₂) → N₁ + N₂ , fs₂ , FlatSteps-++ st₁ st₂ , shift st₁ L , log-join t₁ t₂ lg₁ lg₂
         go (N₁ , fs₁ , st₁ , inj₂ (e , hlt , pre) , lg₁) =
@@ -137,9 +138,11 @@ module RunW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
            → LocState.ev-log (floc fs) ≡ L
            → Σ (Lands (evsOf t) c′ r′ m′ n′ fs) λ La → loops run ≤ chain-ctrls (proj₁ (proj₂ (proj₂ La)))
     wholeC {fs = fs} done inv ag G _ = (0 , _ , FlatStepsAPI.[] , inj₁ G , sym (++-identityʳ (LocState.ev-log (floc fs)))) , z≤n
-    wholeC (_⟫_ {t₁ = t₁} {t₂ = t₂} st rest) inv (a₁ , ag) G lL = go (word-stepC st (step-covered st) inv G (a₁ _ G lL))
+    wholeC {c′ = c″} {r′ = r″} {m′ = m″} {n′ = n″} {fs = fs} (_⟫_ {c′ = c₁} {r′ = r₁} {m′ = m₁} {n′ = n₁} {t₁ = t₁} {t₂ = t₂} st rest) inv (a₁ , ag) G lL =
+      go (word-stepC st (step-covered st) inv G (a₁ fs G lL))
       where
-        go : _ → _
+        go : Σ (Lands (evsOf t₁) c₁ r₁ m₁ n₁ fs) (λ L → isLoop st ≤ chain-ctrls (proj₁ (proj₂ (proj₂ L))))
+           → Σ (Lands (evsOf (t₁ ++ t₂)) c″ r″ m″ n″ fs) (λ La → loops (st ⟫ rest) ≤ chain-ctrls (proj₁ (proj₂ (proj₂ La))))
         go ((N₁ , fs₁ , st₁ , inj₁ G₁ , lg₁) , c₁) = case wholeC rest (proj₂ (inv-stepI st inv)) ag G₁ (trans lg₁ (cong (_++ evsOf t₁) lL)) of λ where
           ((N₂ , fs₂ , st₂ , L , lg₂) , c₂) →
             (N₁ + N₂ , fs₂ , FlatSteps-++ st₁ st₂ , shift st₁ L , log-join t₁ t₂ lg₁ lg₂) ,
