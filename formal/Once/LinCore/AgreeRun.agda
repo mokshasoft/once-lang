@@ -39,15 +39,15 @@ module Once.LinCore.AgreeRun
   (bw : Base → ℕ)
   where
 
-open import Once.LinCore.Core fmt
+open import Once.LinCore.Core fmt using (Sig; sdom; scod; ⌜_⌝; toF; LTm; One; Defs; lid; _∘l_; _⊗l_; ρl; ρl⁻; lul; lul⁻; lassoc; lassoc⁻; lswap; dup; drop; linl; linr; lcase; lzero; lIn; lOutμ; lcata; lclo; lapp; lend; blift; bfst; bsnd; bcaseE; bout; bcopy; bapp; llam; llamω; lev; bev; lunf; lout; lconst; lop; liter)
 open import Once.LinCore.Flat using (Base; ⟦_⟧b; Lit)
 open import Once.IR.Semantics.Trace using (T)
-open import Once.LinCore.NbEPLinCore fmt ans
-open import Once.LinCore.Events fmt ans bw
-open import Once.LinCore.Values fmt bw
+open import Once.LinCore.NbEPLinCore fmt ans using (opF)
+open import Once.LinCore.Events fmt ans bw using (er; OpPath; Run; gives; ios; ios-weave; Io; io-call; io-halt; halted)
+open import Once.LinCore.Values fmt bw using (MV; mvF; mone; Trace; alloc; free; peek; tmp; io; stp)
 open import Once.LinCore.Code fmt bw using (Sh; Cfg)
 open import Once.LinCore.Image fmt bw using (Codeᴵ; halted)
-open import Once.LinCore.ImageRun fmt ans bw
+open import Once.LinCore.ImageRun fmt ans bw using (Ret; StepI; i-unpair; i-pair; i-swap; i-unit; i-prim; i-opend; i-untag; i-untag₁; i-tag₁; i-case₁; i-case₂; i-elend; i-eunlend; i-elift; i-efst; i-esnd; i-eout; i-eoutq; i-ecase₁; i-ecase₂; i-eapp; i-epop; i-eword; i-call; i-ret; i-reti; i-loop; i-icall; i-icallω; i-iobs; i-ccopy; i-ncopy; i-cfree; i-nfree; i-open1; i-openω; i-nopen; i-copen; i-copenν; i-reclose; i-recloseν; i-fopen; i-fopenν)
 open import Once.LinCore.ImageSim fmt ans bw using (StepsI; done; _⟫_)
 open import Once.LinCore.Total fmt ans bw using (World; WTr)
 open import Once.LinCore.StepOp fmt ans bw using (module Agree; evsOf; ioEvent)
@@ -81,7 +81,7 @@ module AR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                 → ∀ fs → LocState.ev-log (FlatMachine.FlatState.floc {FS} fs) ≡ L
                 → Agree.OpHalt {FS} (Program.U ds f) wordOf s x (evsOf tp) fs) where
   open BudgetSound.W ι using (Wι; answered; wtr-split; wtr-weave; op-ret-run)
-  open Agree {FS} (Program.U ds f) wordOf using (Agrees; OpVal; OpHalt)
+  open Agree {FS} (Program.U ds f) wordOf using (PrimOk; Agrees; OpVal; OpHalt; StepCase; sc-prim; sc-opend; sc-quiet; step-case)
   open RunW {FS} ds f ldConst ld-nl wordOf using (AgreesAll)
   open Relate {FS} ds f ldConst ld-nl wordOf using (Related; module Related)
   open IosG {FS} ds f ldConst ld-nl wordOf using (here-prim)
@@ -149,85 +149,62 @@ module AR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     quiet {L} w = trans w (sym (++-identityʳ L))
 
   module _ {T : Sh} where
+    private
+      -- a prim's agreement (`PrimOk`): an op's is its contract (`prim-op`), every other prim owes nothing
+      prim-ok : ∀ {Γ′} {ds′ : Defs Γ′} {A B} {g : LTm Γ′ A B} {v w n n′ t}
+                (run : Run ds′ g mone v n (gives w n′) t) {L L₁} → WTr Wι L t L₁
+              → ∀ fs → LocState.ev-log (floc fs) ≡ L → PrimOk g v w t fs
+      prim-ok {g = lop s} run w fs lg = proj₁ (prim-op run w) fs lg
+      prim-ok {g = lid} _ _ _ _ = tt
+      prim-ok {g = _ ∘l _} _ _ _ _ = tt
+      prim-ok {g = _ ⊗l _} _ _ _ _ = tt
+      prim-ok {g = ρl} _ _ _ _ = tt
+      prim-ok {g = ρl⁻} _ _ _ _ = tt
+      prim-ok {g = lul} _ _ _ _ = tt
+      prim-ok {g = lul⁻} _ _ _ _ = tt
+      prim-ok {g = lassoc} _ _ _ _ = tt
+      prim-ok {g = lassoc⁻} _ _ _ _ = tt
+      prim-ok {g = lswap} _ _ _ _ = tt
+      prim-ok {g = dup} _ _ _ _ = tt
+      prim-ok {g = drop} _ _ _ _ = tt
+      prim-ok {g = linl} _ _ _ _ = tt
+      prim-ok {g = linr} _ _ _ _ = tt
+      prim-ok {g = lcase _ _} _ _ _ _ = tt
+      prim-ok {g = lzero} _ _ _ _ = tt
+      prim-ok {g = lIn} _ _ _ _ = tt
+      prim-ok {g = lOutμ} _ _ _ _ = tt
+      prim-ok {g = lcata _ _} _ _ _ _ = tt
+      prim-ok {g = lclo _ _} _ _ _ _ = tt
+      prim-ok {g = lapp _} _ _ _ _ = tt
+      prim-ok {g = lend _} _ _ _ _ = tt
+      prim-ok {g = blift _} _ _ _ _ = tt
+      prim-ok {g = bcopy} _ _ _ _ = tt
+      prim-ok {g = llam _ _} _ _ _ _ = tt
+      prim-ok {g = llamω _ _} _ _ _ _ = tt
+      prim-ok {g = lev} _ _ _ _ = tt
+      prim-ok {g = lunf} _ _ _ _ = tt
+      prim-ok {g = lout} _ _ _ _ = tt
+      prim-ok {g = lconst _} _ _ _ _ = tt
+      prim-ok {g = liter _ _} _ _ _ _ = tt
+
+      -- a step with no i/o: the history stays
+      quiet-io : ∀ {L L₁} t → ios t ≡ [] → WTr Wι L t L₁ → L₁ ≡ L ++ evsOf t
+      quiet-io {L} t q w = trans (quiet (subst (λ p → WTrIo L p _) q (to-io t w))) (cong (λ p → L ++ map ioEvent p) (sym q))
+
+      -- by the step's case (`step-case`: the one split on a step, in `StepOp`)
+      by-case : ∀ {sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n t} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m′ n′}
+                {st : StepI c r m n t c′ r′ m′ n′} → StepCase st → ∀ {L L₁} → WTr Wι L t L₁
+              → (∀ fs → Related c r m n fs → LocState.ev-log (floc fs) ≡ L → Agrees st fs) × ((c′ ≡ halted) ⊎ (L₁ ≡ L ++ evsOf t))
+      by-case (sc-prim {t = t} {run = run}) w = (λ fs _ lg → prim-ok run w fs lg) , inj₂ (wtr-hist t w (gives-nh run))
+      by-case (sc-opend {s = s} {x = x} {p = p}) w =
+        (λ fs G lg → o-opend {s = s} {x = x} (here-prim (Related.g-pt G) (Related.g-here G)) p w fs lg) , inj₁ refl
+      by-case (sc-quiet {t = t} q a) w = (λ fs _ _ → a fs) , inj₂ (quiet-io t q w)
+
     -- ★ one step: the machine agrees, and the history goes on (or the run halted)
     agree-step : ∀ {sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n t} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m′ n′}
                  (st : StepI c r m n t c′ r′ m′ n′) {L L₁} → WTr Wι L t L₁
                → (∀ fs → Related c r m n fs → LocState.ev-log (floc fs) ≡ L → Agrees st fs) × ((c′ ≡ halted) ⊎ (L₁ ≡ L ++ evsOf t))
-    agree-step (i-prim {g = lop s} run) w = let (A , H) = prim-op run w in (λ fs _ lg → A fs lg) , inj₂ H
-    agree-step (i-prim {g = lid} {t = t} run) w = (λ _ _ _ → tt) , inj₂ (wtr-hist t w (gives-nh run))
-    agree-step (i-prim {g = _ ∘l _} {t = t} run) w = (λ _ _ _ → tt) , inj₂ (wtr-hist t w (gives-nh run))
-    agree-step (i-prim {g = _ ⊗l _} {t = t} run) w = (λ _ _ _ → tt) , inj₂ (wtr-hist t w (gives-nh run))
-    agree-step (i-prim {g = ρl} {t = t} run) w = (λ _ _ _ → tt) , inj₂ (wtr-hist t w (gives-nh run))
-    agree-step (i-prim {g = ρl⁻} {t = t} run) w = (λ _ _ _ → tt) , inj₂ (wtr-hist t w (gives-nh run))
-    agree-step (i-prim {g = lul} {t = t} run) w = (λ _ _ _ → tt) , inj₂ (wtr-hist t w (gives-nh run))
-    agree-step (i-prim {g = lul⁻} {t = t} run) w = (λ _ _ _ → tt) , inj₂ (wtr-hist t w (gives-nh run))
-    agree-step (i-prim {g = lassoc} {t = t} run) w = (λ _ _ _ → tt) , inj₂ (wtr-hist t w (gives-nh run))
-    agree-step (i-prim {g = lassoc⁻} {t = t} run) w = (λ _ _ _ → tt) , inj₂ (wtr-hist t w (gives-nh run))
-    agree-step (i-prim {g = lswap} {t = t} run) w = (λ _ _ _ → tt) , inj₂ (wtr-hist t w (gives-nh run))
-    agree-step (i-prim {g = dup} {t = t} run) w = (λ _ _ _ → tt) , inj₂ (wtr-hist t w (gives-nh run))
-    agree-step (i-prim {g = drop} {t = t} run) w = (λ _ _ _ → tt) , inj₂ (wtr-hist t w (gives-nh run))
-    agree-step (i-prim {g = linl} {t = t} run) w = (λ _ _ _ → tt) , inj₂ (wtr-hist t w (gives-nh run))
-    agree-step (i-prim {g = linr} {t = t} run) w = (λ _ _ _ → tt) , inj₂ (wtr-hist t w (gives-nh run))
-    agree-step (i-prim {g = lcase _ _} {t = t} run) w = (λ _ _ _ → tt) , inj₂ (wtr-hist t w (gives-nh run))
-    agree-step (i-prim {g = lzero} {t = t} run) w = (λ _ _ _ → tt) , inj₂ (wtr-hist t w (gives-nh run))
-    agree-step (i-prim {g = lIn} {t = t} run) w = (λ _ _ _ → tt) , inj₂ (wtr-hist t w (gives-nh run))
-    agree-step (i-prim {g = lOutμ} {t = t} run) w = (λ _ _ _ → tt) , inj₂ (wtr-hist t w (gives-nh run))
-    agree-step (i-prim {g = lcata _ _} {t = t} run) w = (λ _ _ _ → tt) , inj₂ (wtr-hist t w (gives-nh run))
-    agree-step (i-prim {g = lclo _ _} {t = t} run) w = (λ _ _ _ → tt) , inj₂ (wtr-hist t w (gives-nh run))
-    agree-step (i-prim {g = lapp _} {t = t} run) w = (λ _ _ _ → tt) , inj₂ (wtr-hist t w (gives-nh run))
-    agree-step (i-prim {g = lend _} {t = t} run) w = (λ _ _ _ → tt) , inj₂ (wtr-hist t w (gives-nh run))
-    agree-step (i-prim {g = blift _} {t = t} run) w = (λ _ _ _ → tt) , inj₂ (wtr-hist t w (gives-nh run))
-    agree-step (i-prim {g = bcopy} {t = t} run) w = (λ _ _ _ → tt) , inj₂ (wtr-hist t w (gives-nh run))
-    agree-step (i-prim {g = llam _ _} {t = t} run) w = (λ _ _ _ → tt) , inj₂ (wtr-hist t w (gives-nh run))
-    agree-step (i-prim {g = llamω _ _} {t = t} run) w = (λ _ _ _ → tt) , inj₂ (wtr-hist t w (gives-nh run))
-    agree-step (i-prim {g = lev} {t = t} run) w = (λ _ _ _ → tt) , inj₂ (wtr-hist t w (gives-nh run))
-    agree-step (i-prim {g = lunf} {t = t} run) w = (λ _ _ _ → tt) , inj₂ (wtr-hist t w (gives-nh run))
-    agree-step (i-prim {g = lout} {t = t} run) w = (λ _ _ _ → tt) , inj₂ (wtr-hist t w (gives-nh run))
-    agree-step (i-prim {g = lconst _} {t = t} run) w = (λ _ _ _ → tt) , inj₂ (wtr-hist t w (gives-nh run))
-    agree-step (i-prim {g = liter _ _} {t = t} run) w = (λ _ _ _ → tt) , inj₂ (wtr-hist t w (gives-nh run))
-    agree-step (i-opend {s = s} {x = x} p) w =
-      (λ fs G lg → o-opend {s = s} {x = x} (here-prim (Related.g-pt G) (Related.g-here G)) p w fs lg) , inj₁ refl
-    agree-step i-unpair w = (λ _ _ _ → tt) , inj₂ (quiet w)
-    agree-step i-pair w = (λ _ _ _ → tt) , inj₂ (quiet w)
-    agree-step i-swap w = (λ _ _ _ → tt) , inj₂ (quiet w)
-    agree-step i-unit w = (λ _ _ _ → tt) , inj₂ (quiet w)
-    agree-step i-untag w = (λ _ _ _ → tt) , inj₂ (quiet w)
-    agree-step i-untag₁ w = (λ _ _ _ → tt) , inj₂ (quiet w)
-    agree-step i-tag₁ w = (λ _ _ _ → tt) , inj₂ (quiet w)
-    agree-step i-case₁ w = (λ _ _ _ → tt) , inj₂ (quiet w)
-    agree-step i-case₂ w = (λ _ _ _ → tt) , inj₂ (quiet w)
-    agree-step i-elend w = (λ _ _ _ → tt) , inj₂ (quiet w)
-    agree-step i-eunlend w = (λ _ _ _ → tt) , inj₂ (quiet w)
-    agree-step i-elift w = (λ _ _ _ → tt) , inj₂ (quiet w)
-    agree-step i-epop w = (λ _ _ _ → tt) , inj₂ (quiet w)
-    agree-step i-call w = (λ _ _ _ → tt) , inj₂ (quiet w)
-    agree-step i-ret w = (λ _ _ _ → tt) , inj₂ (quiet w)
-    agree-step i-reti w = (λ _ _ _ → tt) , inj₂ (quiet w)
-    agree-step i-loop w = (λ _ _ _ → tt) , inj₂ (quiet w)
-    agree-step i-icall w = (λ _ _ _ → tt) , inj₂ (quiet w)
-    agree-step i-iobs w = (λ _ _ _ → tt) , inj₂ (quiet w)
-    agree-step i-cfree w = (λ _ _ _ → tt) , inj₂ (quiet w)
-    agree-step i-nfree w = (λ _ _ _ → tt) , inj₂ (quiet w)
-    agree-step i-open1 w = (λ _ _ _ → tt) , inj₂ (quiet w)
-    agree-step i-nopen w = (λ _ _ _ → tt) , inj₂ (quiet w)
-    agree-step i-fopen w = (λ _ _ _ → tt) , inj₂ (quiet w)
-    agree-step i-fopenν w = (λ _ _ _ → tt) , inj₂ (quiet w)
-    agree-step (i-efst _) w = (λ _ _ _ → tt) , inj₂ (quiet w)
-    agree-step (i-esnd _) w = (λ _ _ _ → tt) , inj₂ (quiet w)
-    agree-step (i-eout _) w = (λ _ _ _ → tt) , inj₂ (quiet w)
-    agree-step (i-eoutq _) w = (λ _ _ _ → tt) , inj₂ (quiet w)
-    agree-step (i-ecase₁ _) w = (λ _ _ _ → tt) , inj₂ (quiet w)
-    agree-step (i-ecase₂ _) w = (λ _ _ _ → tt) , inj₂ (quiet w)
-    agree-step (i-eapp _) w = (λ _ _ _ → tt) , inj₂ (quiet w)
-    agree-step (i-eword _) w = (λ _ _ _ → tt) , inj₂ (quiet w)
-    agree-step (i-icallω _) w = (λ _ _ _ → tt) , inj₂ (quiet w)
-    agree-step (i-ccopy _) w = (λ _ _ _ → tt) , inj₂ (quiet w)
-    agree-step (i-ncopy _) w = (λ _ _ _ → tt) , inj₂ (quiet w)
-    agree-step (i-openω _) w = (λ _ _ _ → tt) , inj₂ (quiet w)
-    agree-step (i-copen _) w = (λ _ _ _ → tt) , inj₂ (quiet w)
-    agree-step (i-copenν _) w = (λ _ _ _ → tt) , inj₂ (quiet w)
-    agree-step (i-reclose _) w = (λ _ _ _ → tt) , inj₂ (quiet w)
-    agree-step (i-recloseν _) w = (λ _ _ _ → tt) , inj₂ (quiet w)
+    agree-step st = by-case (step-case st)
 
     private
       no-more : ∀ {sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n t} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m′ n′} {L}

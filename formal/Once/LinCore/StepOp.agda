@@ -16,11 +16,11 @@
 
 open import Data.Nat using (ℕ)
 open import Data.List using (List; []; _∷_; map)
-open import Data.Unit using (⊤)
+open import Data.Unit using (⊤; tt)
 open import Data.Sum using (_⊎_)
 open import Data.Product using (_×_; Σ)
 open import Data.Bool using (Bool; false; true)
-open import Relation.Binary.PropositionalEquality using (_≡_)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.IR.Semantics.Trace using (FFIAnswers)
 open import Once.LinCore.Flat using (Base)
@@ -50,7 +50,7 @@ open import Once.IR.Semantics.Event using (SigOpEvent)
 open import Once.IR.Semantics.Trace using (callEvent; haltEvent)
 open import Once.LinCore.Code fmt bw using (Sh)
 open import Once.LinCore.Image fmt bw using (Codeᴵ)
-open import Once.LinCore.ImageRun fmt ans bw using (Ret; StepI; i-prim; i-opend)
+open import Once.LinCore.ImageRun fmt ans bw using (Ret; StepI; i-unpair; i-pair; i-swap; i-unit; i-prim; i-opend; i-untag; i-untag₁; i-tag₁; i-case₁; i-case₂; i-elend; i-eunlend; i-elift; i-efst; i-esnd; i-eout; i-eoutq; i-ecase₁; i-ecase₂; i-eapp; i-epop; i-eword; i-call; i-ret; i-reti; i-loop; i-icall; i-icallω; i-iobs; i-ccopy; i-ncopy; i-cfree; i-nfree; i-open1; i-openω; i-nopen; i-copen; i-copenν; i-reclose; i-recloseν; i-fopen; i-fopenν)
 open import Once.LinCore.Keys fmt bw using (Univ)
 open import Once.LinCore.Lower fmt bw using (cmpOf; opSig; inMem)
 open import Once.LinCore.Words fmt ans bw using (module Rel)
@@ -135,10 +135,79 @@ module Agree {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
                   -- (a halt, not a fault)
                   × (exec-sigop-faults (info (opSig s (cmpOf s))) (arg s fs d wx) ≡ false)
 
+  -- a prim step's agreement, by its term alone: an op's contract, nothing for the rest
+  -- (a function of the term, so a proof splits the term, not the step, to reduce it)
+  PrimOk : ∀ {Γ A B} → LTm Γ A B → MV A → MV B → Trace → FlatState → Set
+  PrimOk (lop s) x y t fs = OpVal s x y (evsOf t) fs
+  {-# CATCHALL #-}
+  PrimOk _ _ _ _ _ = ⊤
+
   module _ {T : Sh} where
     Agrees : ∀ {sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n t} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m′ n′}
            → StepI c r m n t c′ r′ m′ n′ → FlatState → Set
-    Agrees (i-prim {g = lop s} {v = x} {w = y} {t = t} _) fs = OpVal s x y (evsOf t) fs
+    Agrees (i-prim {g = g} {v = x} {w = y} {t = t} _) fs = PrimOk g x y t fs
     Agrees (i-opend {s = s} {x = x} {t = t} _) fs = OpHalt s x (evsOf t) fs
     {-# CATCHALL #-}
     Agrees _ fs = ⊤
+
+    -- ★ a step by what it owes: a prim (its `PrimOk`), an op that halts (`OpHalt`), or a
+    -- quiet step (no i/o, nothing owed). The one split on a step for `Agrees`, here in a
+    -- small context: a split of `StepI` unifies its indices with the whole clause context
+    -- (in `AgreeRun`'s module it cost 30 s, here a few).
+    data StepCase : ∀ {sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n t} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m′ n′}
+                  → StepI c r m n t c′ r′ m′ n′ → Set where
+      sc-prim  : ∀ {Γ ds Es A B S U g k r es v w os n n′ t run}
+               → StepCase (i-prim {Γ = Γ} {ds = ds} {Es = Es} {A = A} {B = B} {S = S} {U = U} {g = g} {k = k} {r = r}
+                                   {es = es} {v = v} {w = w} {os = os} {n = n} {n′ = n′} {t = t} run)
+      sc-opend : ∀ {Γ ds Es s S U k r es x os n t p}
+               → StepCase (i-opend {Γ = Γ} {ds = ds} {Es = Es} {s = s} {S = S} {U = U} {k = k} {r = r}
+                                    {es = es} {x = x} {os = os} {n = n} {t = t} p)
+      sc-quiet : ∀ {sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n t} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m′ n′}
+                   {st : StepI c r m n t c′ r′ m′ n′}
+               → ios t ≡ [] → (∀ fs → Agrees st fs) → StepCase st
+
+    step-case : ∀ {sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n t} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m′ n′}
+              → (st : StepI c r m n t c′ r′ m′ n′) → StepCase st
+    step-case (i-prim run) = sc-prim
+    step-case (i-opend p) = sc-opend
+    step-case i-unpair = sc-quiet refl (λ _ → tt)
+    step-case i-pair = sc-quiet refl (λ _ → tt)
+    step-case i-swap = sc-quiet refl (λ _ → tt)
+    step-case i-unit = sc-quiet refl (λ _ → tt)
+    step-case i-untag = sc-quiet refl (λ _ → tt)
+    step-case i-untag₁ = sc-quiet refl (λ _ → tt)
+    step-case i-tag₁ = sc-quiet refl (λ _ → tt)
+    step-case i-case₁ = sc-quiet refl (λ _ → tt)
+    step-case i-case₂ = sc-quiet refl (λ _ → tt)
+    step-case i-elend = sc-quiet refl (λ _ → tt)
+    step-case i-eunlend = sc-quiet refl (λ _ → tt)
+    step-case i-elift = sc-quiet refl (λ _ → tt)
+    step-case i-epop = sc-quiet refl (λ _ → tt)
+    step-case i-call = sc-quiet refl (λ _ → tt)
+    step-case i-ret = sc-quiet refl (λ _ → tt)
+    step-case i-reti = sc-quiet refl (λ _ → tt)
+    step-case i-loop = sc-quiet refl (λ _ → tt)
+    step-case i-icall = sc-quiet refl (λ _ → tt)
+    step-case i-iobs = sc-quiet refl (λ _ → tt)
+    step-case i-cfree = sc-quiet refl (λ _ → tt)
+    step-case i-nfree = sc-quiet refl (λ _ → tt)
+    step-case i-open1 = sc-quiet refl (λ _ → tt)
+    step-case i-nopen = sc-quiet refl (λ _ → tt)
+    step-case i-fopen = sc-quiet refl (λ _ → tt)
+    step-case i-fopenν = sc-quiet refl (λ _ → tt)
+    step-case (i-efst _) = sc-quiet refl (λ _ → tt)
+    step-case (i-esnd _) = sc-quiet refl (λ _ → tt)
+    step-case (i-eout _) = sc-quiet refl (λ _ → tt)
+    step-case (i-eoutq _) = sc-quiet refl (λ _ → tt)
+    step-case (i-ecase₁ _) = sc-quiet refl (λ _ → tt)
+    step-case (i-ecase₂ _) = sc-quiet refl (λ _ → tt)
+    step-case (i-eapp _) = sc-quiet refl (λ _ → tt)
+    step-case (i-eword _) = sc-quiet refl (λ _ → tt)
+    step-case (i-icallω _) = sc-quiet refl (λ _ → tt)
+    step-case (i-ccopy _) = sc-quiet refl (λ _ → tt)
+    step-case (i-ncopy _) = sc-quiet refl (λ _ → tt)
+    step-case (i-openω _) = sc-quiet refl (λ _ → tt)
+    step-case (i-copen _) = sc-quiet refl (λ _ → tt)
+    step-case (i-copenν _) = sc-quiet refl (λ _ → tt)
+    step-case (i-reclose _) = sc-quiet refl (λ _ → tt)
+    step-case (i-recloseν _) = sc-quiet refl (λ _ → tt)
