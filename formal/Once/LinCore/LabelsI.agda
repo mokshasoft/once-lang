@@ -93,7 +93,7 @@ module Find {FS : FrameSemantics} where
   open FlatMachine {FS} using (label-of?; find-label; fl-go; fl-label-match)
   open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
   open FlatStepsAPI {FS} using (find-label-distrib)
-  open LabsC {FS} using (Labs; Labs-++)
+  open LabsC {FS} using (Labs; Labs-++; lab)
 
   LDst : AbstractTrace → Set
   LDst xs = AllPairs _≢_ (Labs xs)
@@ -106,12 +106,14 @@ module Find {FS : FrameSemantics} where
   -- no label of `xs` is `l`, read instruction by instruction
   skip : ∀ {l} xs → All (_≢ l) (Labs xs) → All (λ x → ¬ (label-of? x ≡ just l)) xs
   skip [] _ = []
-  skip (x ∷ xs) p with label-of? x in eq
-  ... | just m  = (λ e → All-head p (just-injective (trans (sym eq) e))) ∷ skip xs (Data.List.Relation.Unary.All.tail p)
-    where import Data.List.Relation.Unary.All
-  ... | nothing = (λ e → nj (trans (sym eq) e)) ∷ skip xs p
-    where nj : ∀ {l′ : LabelId} → nothing ≢ just l′
-          nj ()
+  skip {l} (x ∷ xs) p = by (label-of? x) refl p
+    where
+      import Data.List.Relation.Unary.All
+      nj : ∀ {l′ : LabelId} → nothing ≢ just l′
+      nj ()
+      by : ∀ r → label-of? x ≡ r → All (_≢ l) (lab r (Labs xs)) → All (λ y → ¬ (label-of? y ≡ just l)) (x ∷ xs)
+      by (just m) eq q = (λ e → All-head q (just-injective (trans (sym eq) e))) ∷ skip xs (Data.List.Relation.Unary.All.tail q)
+      by nothing  eq q = (λ e → nj (trans (sym eq) e)) ∷ skip xs q
 
   found : ∀ pre l post → LDst (pre ++ instr-ctrl (c-label l) ∷ post)
         → find-label (pre ++ instr-ctrl (c-label l) ∷ post) l ≡ just (length pre)

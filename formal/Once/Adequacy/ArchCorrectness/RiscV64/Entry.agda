@@ -187,11 +187,13 @@ open LocState using (regs)
 -- only has to be slot-linear. The code map IS the compiled program's own scan,
 -- which is what makes `entry-corr`'s `code-eq` `refl` on the found case.
 ------------------------------------------------------------------------
+-- a label's code index: where the scan found it (0 if nowhere)
+code-pick : Maybe ℕ → ℕ
+code-pick (just j) = j
+code-pick nothing  = 0
+
 code-map : RVProgram → LabelId → ℕ
-code-map prog ℓ = pick (RS.find-label prog (thunk ℓ))
-  where pick : Maybe ℕ → ℕ
-        pick (just j) = j
-        pick nothing  = 0
+code-map prog ℓ = code-pick (RS.find-label prog (thunk ℓ))
 
 entry-view : RVProgram → FCr.FlatCorrespondence.HeapView rv64-frame-semantics refl
 entry-view cprog = record
@@ -258,7 +260,7 @@ entry-corr prog = record
   }
   where cong-pick : ∀ {ℓ j} → RS.find-label (compile-trace prog) (thunk ℓ) ≡ just j
                   → code-map (compile-trace prog) ℓ ≡ j
-        cong-pick e rewrite e = refl
+        cong-pick e = cong code-pick e
 
 -- The ENTRY store-WF: the heap and stack are empty and every
 -- register holds the tag filler `SV-Tag 0` (D074).

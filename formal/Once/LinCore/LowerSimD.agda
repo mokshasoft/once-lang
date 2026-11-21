@@ -112,8 +112,8 @@ module SimD {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
       bndD = ≤-trans (≤-reflexive (Data.Nat.Properties.m∸n+n≡m (Data.Nat.Properties.m+n≤o⇒m≤o∸n (wsz P) (≤-trans fit (m≤n+m (OP φ) (EP φ))))))
                (Data.Nat.Properties.m∸n≤m (budget φ) (ws S))
       def : ∀ k → k < wsz P → Σ W λ v → slot fs (src + k) ≡ just v
-      def k k< with slots-def {slot fs} {src} wP sp k (subst (k <_) (sym (vw-len pp)) k<)
-      ... | (v , e) = v , trans (cong (slot fs) (+-comm src k)) e
+      def k k< = let (v , e) = slots-def {slot fs} {src} wP sp k (subst (k <_) (sym (vw-len pp)) k<)
+                 in v , trans (cong (slot fs) (+-comm src k)) e
       fitB : wsz P + ws S ≤ budget φ
       fitB = ≤-trans fit (m≤n+m (OP φ) (EP φ))
       fitS : ws S ≤ budget φ

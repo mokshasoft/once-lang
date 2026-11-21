@@ -14,7 +14,7 @@ open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.Maybe using (Maybe; just)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 open import Data.Unit using (tt)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; cong)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; cong; cong₂)
 open import Relation.Nullary using (¬_)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.IR.Semantics.Trace using (FFIAnswers)
@@ -109,8 +109,7 @@ module SimC {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
           slot₁ x = trans (cong (λ m → m (AllocState.current-frame (falloc fs₁)) x) (h-stack H))
                           (cong (λ f → LocState.stackMem (floc fs) f x) cfEq)
           def : ∀ k → k < wc → Σ W λ v → slot fs₁ (k + src) ≡ just v
-          def k k< with slots-def {slot fs} {src} w sw k (subst (k <_) (sym lw) k<)
-          ... | (v , e) = v , trans (slot₁ (k + src)) e
+          def k k< = let (v , e) = slots-def {slot fs} {src} w sw k (subst (k <_) (sym lw) k<) in v , trans (slot₁ (k + src)) e
           ib : ∀ k → k < wc → ExecFinal.in-block? {FS} (AllocState.block-size (falloc fs₁)) (offsetLoc P (k + hdr)) ≡ true
           ib k k< = trans (cong (λ bs → ((k + hdr) + 0) Data.Nat.<ᵇ AllocState.block-size bs r) (h-alloc H))
                       (trans (cong (((k + hdr) + 0) Data.Nat.<ᵇ_) (size-with-same (hdr + wc) r (AllocState.block-size (falloc fs))))
@@ -223,12 +222,12 @@ module SimC {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
       r = AllocState.next-heap-ref (falloc fs)
       bot = budget φ ∸ ws S
       ne-of : ∀ j → 1 ≤ cntE es j + cntS (v ∷ˢ os) j → ¬ mkHeapRef (serial j) ≡ mkHeapRef r
-      ne-of j c e with fresh j (≤-reflexive (sym (cong ref-id e)))
+      ne-of j c e =
+        let (z₁ , z₂) = fresh j (≤-reflexive (sym (cong HeapRef.ref-id e)))
+        in Data.Nat.Properties.<-irrefl refl (subst (λ q → 0 < q) (zero₂ z₁ z₂) c)
         where open import Once.Memory.HeapAddress using (module HeapRef)
-              ref-id = HeapRef.ref-id
-      ... | (z₁ , z₂) = Data.Nat.Properties.<-irrefl refl (subst (λ q → 0 < q) (zero₂ z₁ z₂) c)
-        where zero₂ : cntE es j ≡ 0 → cntS (v ∷ˢ os) j ≡ 0 → cntE es j + cntS (v ∷ˢ os) j ≡ 0
-              zero₂ a b rewrite a | b = refl
+              zero₂ : cntE es j ≡ 0 → cntS (v ∷ˢ os) j ≡ 0 → cntE es j + cntS (v ∷ˢ os) j ≡ 0
+              zero₂ a b = cong₂ _+_ a b
       fitB : 1 + ws S ≤ budget φ
       fitB = ≤-trans fit (m≤n+m (OP φ) (EP φ))
       fitS : ws S ≤ budget φ

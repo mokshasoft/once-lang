@@ -98,6 +98,11 @@ private
   arr-b : ∀ {m} {A A′ B B′ : Ty m} {q π π′} {a : A′ <: A} {b : B <: B′} {g : π ⊑π π′}
         → VoidFree (sub-arr {q = q} a b g) → VoidFree b
   arr-b (vf-arr _ vb) = vb
+  -- an arrow's coercion: void-free when it keeps the purity and its sides are
+  arr? : ∀ {m} {A A′ B B′ : Ty m} {q π π′} {a : A′ <: A} {b : B <: B′} (g : π ⊑π π′)
+       → Dec (π ≡ π′) → Dec (VoidFree a) → Dec (VoidFree b) → Dec (VoidFree (sub-arr {q = q} a b g))
+  arr? g (yes refl) da db = two vf-arr arr-a arr-b da db
+  arr? g (no ne)    _  _  = no λ { (vf-arr _ _) → ne refl }
   prod-a : ∀ {m} {A A′ B B′ : Ty m} {a : A <: A′} {b : B <: B′} → VoidFree (sub-* a b) → VoidFree a
   prod-a (vf-prod va _) = va
   prod-b : ∀ {m} {A A′ B B′ : Ty m} {a : A <: A′} {b : B <: B′} → VoidFree (sub-* a b) → VoidFree b
@@ -120,9 +125,7 @@ voidFree? (sub-void {B = T.ν _ _})     = no λ ()
 voidFree? sub-unit   = yes vf-unit
 voidFree? sub-int    = yes vf-int
 voidFree? sub-float  = yes vf-float
-voidFree? (sub-arr {π = π} {π′ = π′} a b g) with π ≟p π′
-... | yes refl = two vf-arr arr-a arr-b (voidFree? a) (voidFree? b)
-... | no ne    = no λ { (vf-arr _ _) → ne refl }
+voidFree? (sub-arr {π = π} {π′ = π′} a b g) = arr? g (π ≟p π′) (voidFree? a) (voidFree? b)
 voidFree? (sub-* a b)  = two vf-prod prod-a prod-b (voidFree? a) (voidFree? b)
 voidFree? (sub-+ a b)   = two vf-sum sum-a sum-b (voidFree? a) (voidFree? b)
 voidFree? sub-μ = yes vf-μ

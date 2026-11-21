@@ -275,9 +275,10 @@ inv-step {m = es ∥ os} {h = h} (s-eapply {i = j} {x} eq) inv =
 inv-steps : ∀ {T sh sh′} {c : Code sh T} {c′ : Code sh′ T} {m m′ n n′ t h}
           → Steps c m n t c′ m′ n′ → Inv m n h → OK t h × Inv m′ n′ (play t h)
 inv-steps done inv = (tt , inv)
-inv-steps {m′ = m′} {n′ = n′} {h = h} (_⟫_ {t₁ = t₁} {t₂} x st) inv with inv-step x inv
-... | (ok₁ , inv₁) with inv-steps st inv₁
-...   | (ok₂ , inv₂) = (OK-++ t₁ t₂ h ok₁ ok₂ , subst (Inv m′ n′) (sym (play-++ t₁ t₂ h)) inv₂)
+inv-steps {m′ = m′} {n′ = n′} {h = h} (_⟫_ {t₁ = t₁} {t₂} x st) inv =
+  let (ok₁ , inv₁) = inv-step x inv
+      (ok₂ , inv₂) = inv-steps st inv₁
+  in (OK-++ t₁ t₂ h ok₁ ok₂ , subst (Inv m′ n′) (sym (play-++ t₁ t₂ h)) inv₂)
 
 ------------------------------------------------------------------------
 -- 3. ★ THE CLAIM.
@@ -293,5 +294,4 @@ start-inv = record { i-le1 = λ _ → z≤n ; i-above = λ _ _ → refl ; i-exac
 held-always : ∀ {T sh} {c : Code (One ∷ [] ∣ One ∷ []) T} {c′ : Code sh T} {m′ n′ mt}
             → Steps c start 0 mt c′ m′ n′
             → OK mt (λ _ → 0) × (∀ i → play mt (λ _ → 0) i ≡ Owned m′ i)
-held-always st with inv-steps st start-inv
-... | (ok , inv) = (ok , i-exact inv)
+held-always st = let (ok , inv) = inv-steps st start-inv in (ok , i-exact inv)

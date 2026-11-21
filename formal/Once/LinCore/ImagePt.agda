@@ -206,8 +206,7 @@ module Places {sh₀ U₀} (c₀ : Codeᴵ sh₀ U₀) where
   places : ∀ {T sh U sh′ U′} {c : Codeᴵ sh U} {r : Ret U T} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T} {m m′ n n′ t}
          → StepsI c r m n t c′ r′ m′ n′ → Placed c → RPl r → Placed c′ × RPl r′
   places done P R = P , R
-  places (s ⟫ st) P R with place s P R
-  ... | (P′ , R′) = places st P′ R′
+  places (s ⟫ st) P R = let (P′ , R′) = place s P R in places st P′ R′
 
   -- ★ from the start: every configuration the image reaches is at points
   placed-always : ∀ {sh U} {c′ : Codeᴵ sh U} {r′ : Ret U U₀} {m₀ m′ n′ mt}

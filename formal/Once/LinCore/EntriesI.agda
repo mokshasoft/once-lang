@@ -70,8 +70,8 @@ in-≡ (pre , post , e) refl = (pre , post , e) , refl
 ------------------------------------------------------------------------
 
 module FindE {FS : FrameSemantics} where
-  open FlatMachine {FS} using (entry-of?; ft-go; ft-match; find-entry; ft-go-++-miss)
-  open LabsC {FS} using (Ents; Ents-++)
+  open FlatMachine {FS} using (entry-of?; ft-go; ft-at; ft-match; find-entry; ft-go-++-miss)
+  open LabsC {FS} using (Ents; Ents-++; ent)
 
   EDst : AbstractTrace → Set
   EDst xs = AllPairs _≢_ (Ents xs)
@@ -83,13 +83,15 @@ module FindE {FS : FrameSemantics} where
   -- no entry of `xs` is `e`: the scan misses
   miss : ∀ {e} xs i → All (_≢ e) (Ents xs) → ft-go xs e i ≡ nothing
   miss [] i _ = refl
-  miss {e} (x ∷ xs) i p with entry-of? x
-  ... | just m  = fm (m ≡ᵇᴱ e) (≡ᵇᴱ-true m e)
+  miss {e} (x ∷ xs) i p = by (entry-of? x) p
     where
-      fm : ∀ b → (b ≡ true → m ≡ e) → ft-match b xs e i ≡ nothing
-      fm true  h = ⊥-elim (All-head p (h refl))
-      fm false _ = miss xs (suc i) (All-tail p)
-  ... | nothing = miss xs (suc i) p
+      by : ∀ r → All (_≢ e) (ent r (Ents xs)) → ft-at r xs e i ≡ nothing
+      by (just m) q = fm (m ≡ᵇᴱ e) (≡ᵇᴱ-true m e)
+        where
+          fm : ∀ b → (b ≡ true → m ≡ e) → ft-match b xs e i ≡ nothing
+          fm true  h = ⊥-elim (All-head q (h refl))
+          fm false _ = miss xs (suc i) (All-tail q)
+      by nothing q = miss xs (suc i) q
 
   found-e : ∀ pre e b post → EDst (pre ++ instr-ctrl (c-entry e b) ∷ post)
           → find-entry (pre ++ instr-ctrl (c-entry e b) ∷ post) e ≡ just (length pre)

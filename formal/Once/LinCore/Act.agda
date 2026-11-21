@@ -73,9 +73,10 @@ loop-exchange : ∀ {E A B} {round : Tm Γ E A (B ⊕t A)} {e s n k s′ n′ t}
               → ∀ {h r} → Pre h n s r → Lent e r
               → OK t h × (∀ i → play t h i + cnt s i ≡ h i + cnt s′ i)
 loop-exchange l-zero pre lent = (tt , λ i → refl)
-loop-exchange (l-suc {s = s} {s′} {s″} {n₂ = n₂} {t₁ = t₁} {t₂} r rs) {h} pre lent with exchange r pre lent
-... | (ok₁ , eq₁) with loop-exchange rs (post-gen {v = s} {w = s′} {t = t₁} (mono r) (below r) pre ok₁ eq₁) lent
-...   | (ok₂ , eq₂) = (OK-++ t₁ t₂ h ok₁ ok₂ , seqP (gives s″ n₂) t₁ t₂ h (cnt s) (cnt s′) eq₁ eq₂)
+loop-exchange (l-suc {s = s} {s′} {s″} {n₂ = n₂} {t₁ = t₁} {t₂} r rs) {h} pre lent =
+  let (ok₁ , eq₁) = exchange r pre lent
+      (ok₂ , eq₂) = loop-exchange rs (post-gen {v = s} {w = s′} {t = t₁} (mono r) (below r) pre ok₁ eq₁) lent
+  in (OK-++ t₁ t₂ h ok₁ ok₂ , seqP (gives s″ n₂) t₁ t₂ h (cnt s) (cnt s′) eq₁ eq₂)
 
 -- ★ The gate's server (`loop-forever-emit`: its state is an `Int`, a word):
 -- after every round the heap is exactly what it was. Nothing accumulates, so
@@ -84,7 +85,7 @@ loop-exchange (l-suc {s = s} {s′} {s″} {n₂ = n₂} {t₁ = t₁} {t₂} r 
 word-server : ∀ {E B b} {round : Tm Γ E (Bt b) (B ⊕t Bt b)} {e : MV E} {x y : ⟦ b ⟧b} {n k n′ t}
             → Loop ds round e (mbase x) n k (mbase y) n′ t → ∀ {h r} → Pre h n (mbase x) r → Lent e r
             → OK t h × (∀ i → play t h i ≡ h i)
-word-server rs pre lent with loop-exchange rs pre lent
-... | (ok , eq) = (ok , λ i → trans (sym (+0 _)) (trans (eq i) (+0 _)))
+word-server rs pre lent =
+  let (ok , eq) = loop-exchange rs pre lent in (ok , λ i → trans (sym (+0 _)) (trans (eq i) (+0 _)))
   where +0 : ∀ x → x + 0 ≡ x
         +0 = solve-∀

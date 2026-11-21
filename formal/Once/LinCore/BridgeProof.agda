@@ -112,7 +112,8 @@ module _ {Γ : Cx} (δ : Env Γ) (cs : CanonicalName → (A B : IRTy) → ⟦ A 
     -- the unlinked call: the core's op halts as master's `unlinkedT`
     miss≈ : ∀ {A B f} → rs f A B ≡ nothing → ∀ {a a′} →
             ev δ (unlinked {Γ} {A} {B}) a ≈[ W B ] evalᴰ fmt ρ (M.Call {A} {B} f) a′
-    _≈[_]_.blockR (miss≈ {A} {B} {f} e {a′ = a′}) rewrite miss≡ e a′ = ≈haltR
+    miss≈ {A} {B} {f} e {a} {a′} =
+      subst (λ m → ev δ (unlinked {Γ} {A} {B}) a ≈[ W B ] m) (sym (miss≡ e a′)) (record { blockR = ≈haltR })
 
     bridge : ∀ {A B} {ir : M.IR A B} {c} → Tr rs ir c → ∀ {a a′} → W A a a′ → ev δ c a ≈[ W B ] evalᴰ fmt ρ ir a′
     bridge t-id         w = ret≈R w

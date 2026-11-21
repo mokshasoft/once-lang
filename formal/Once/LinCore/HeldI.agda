@@ -341,9 +341,10 @@ inv-stepI (i-fopenν {es = es} {i = j} {p} {os}) inv =
 inv-stepsI : ∀ {T sh U sh′ U′} {c : Codeᴵ sh U} {r : Ret U T} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T} {m m′ n n′ t h}
            → StepsI c r m n t c′ r′ m′ n′ → InvI m r n h → OK t h × InvI m′ r′ n′ (play t h)
 inv-stepsI done inv = (tt , inv)
-inv-stepsI {r′ = r′} {m′ = m′} {n′ = n′} {h = h} (_⟫_ {t₁ = t₁} {t₂} x st) inv with inv-stepI x inv
-... | (ok₁ , inv₁) with inv-stepsI st inv₁
-...   | (ok₂ , inv₂) = (OK-++ t₁ t₂ h ok₁ ok₂ , subst (InvI m′ r′ n′) (sym (play-++ t₁ t₂ h)) inv₂)
+inv-stepsI {r′ = r′} {m′ = m′} {n′ = n′} {h = h} (_⟫_ {t₁ = t₁} {t₂} x st) inv =
+  let (ok₁ , inv₁) = inv-stepI x inv
+      (ok₂ , inv₂) = inv-stepsI st inv₁
+  in (OK-++ t₁ t₂ h ok₁ ok₂ , subst (InvI m′ r′ n′) (sym (play-++ t₁ t₂ h)) inv₂)
 
 start-invI : ∀ {T n} → InvI start ([]ʳ {T = T}) n (λ _ → 0)
 start-invI = record { i-le1 = λ _ → z≤n ; i-above = λ _ _ → refl ; i-exact = λ _ → refl
@@ -355,5 +356,4 @@ start-invI = record { i-le1 = λ _ → z≤n ; i-above = λ _ _ → refl ; i-exa
 held-alwaysI : ∀ {T sh U} {c : Codeᴵ (One ∷ [] ∣ One ∷ []) T} {c′ : Codeᴵ sh U} {r′ : Ret U T} {m′ n′ mt}
              → StepsI c []ʳ start 0 mt c′ r′ m′ n′
              → OK mt (λ _ → 0) × (∀ i → play mt (λ _ → 0) i ≡ Owned m′ i + OwnR r′ i)
-held-alwaysI st with inv-stepsI st start-invI
-... | (ok , inv) = (ok , i-exact inv)
+held-alwaysI st = let (ok , inv) = inv-stepsI st start-invI in (ok , i-exact inv)

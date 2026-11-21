@@ -53,9 +53,9 @@ ret-step prog fs b {pc} {rest} e be = ret-pass b fs pc rest e be
 open import Once.CCC.FrameSemantics using (module FrameSemantics)
 open FrameSemantics FS using (Frame; shift-frame; _≺_; ≺-irrefl; shift-≺; shift-below; _≟F_)
 open import Once.CCC.Machine.SMCore using (StackMem; module MemOps; module AllocState; AllocState)
-open MemOps {FS} using (clear-frame)
+open MemOps {FS} using (clear-frame; clear-frame-aux)
 open import Data.Nat using (_<_; s≤s; z≤n)
-open import Relation.Nullary using (¬_; yes; no)
+open import Relation.Nullary using (¬_; Dec; yes; no)
 open import Data.Empty using (⊥-elim)
 
 -- a call's callee frame: one slot down, then its budget
@@ -71,9 +71,11 @@ callee-≢ cf b e = ≺-irrefl (subst′ e (callee-below cf b))
         subst′ refl p = p
 
 clear-other : ∀ (mem : StackMem FS) f b f′ k → ¬ f ≡ f′ → clear-frame mem f b f′ k ≡ mem f′ k
-clear-other mem f b f′ k ne with f ≟F f′
-... | yes e = ⊥-elim (ne e)
-... | no  _ = refl
+clear-other mem f b f′ k ne = at (f ≟F f′) _
+  where
+    at : (d : Dec (f ≡ f′)) (d′ : Dec (k < b)) → clear-frame-aux d d′ (mem f′ k) ≡ mem f′ k
+    at (yes e) _ = ⊥-elim (ne e)
+    at (no _)  _ = refl
 
 ------------------------------------------------------------------------
 -- ★ A CALL'S WAY IN (a block that reads no view): the caller's argument

@@ -50,8 +50,9 @@ module Cells {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
   private
     zero-of : ∀ {a} → (1 ≤ a → 1 ≤ 0) → a ≡ 0
     zero-of {zero}  f = refl
-    zero-of {suc a} f with f (s≤s z≤n)
-    ... | ()
+    zero-of {suc a} f = no (f (s≤s z≤n))
+      where no : 1 ≤ 0 → suc a ≡ 0
+            no ()
 
   -- an operand stack's cells are the cells it holds
   cntS-held : ∀ {S} (os : Stk S) i → cntS os i ≡ held os i

@@ -45,7 +45,7 @@ open import Relation.Binary.Bundles using (Setoid)
 open import Relation.Binary.PropositionalEquality using (_→-setoid_)
 open import Level using (0ℓ; _⊔_)
 import Function.Endo.Setoid
-open import Relation.Nullary using (yes; no)
+open import Relation.Nullary using (Dec; yes; no)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.IR.Semantics.Trace using (FFIAnswers)
 open import Once.LinCore.Flat using (Base; FTy)
@@ -397,9 +397,11 @@ TPost-peek (stop _)    i t ok      = (tt , ok)
 
 private
   δn-≤ : ∀ {L : TL} k → 1 ≤ L k → ∀ j → δn k j ≤ L j
-  δn-≤ k p j with k ≟ j
-  ... | yes refl = p
-  ... | no _     = z≤n
+  δn-≤ {L} k p j = at (k ≟ j)
+    where
+      at : (d : Dec (k ≡ j)) → δd d ≤ L j
+      at (yes refl) = p
+      at (no _)     = z≤n
 
   swap+ : ∀ a b d → (a + b) + d ≡ (a + d) + b
   swap+ = solve-∀
@@ -420,18 +422,19 @@ weave-ok (w-run {x = io _ _ _} w) L₁ L₂ L e (_ , ok₁) ok₂ = skip (weave-
 weave-ok (w-run {x = stp _ _} w)  L₁ L₂ L e (_ , ok₁) ok₂ = skip (weave-ok w L₁ L₂ L e ok₁ ok₂)
 weave-ok (w-run {x = tmp (tnew k)} w) L₁ L₂ L e (_ , ok₁) ok₂ =
   skip (weave-ok w _ L₂ _ (λ j → trans (cong (_+ δn k j) (e j)) (swap+ (L₁ j) (L₂ j) (δn k j))) ok₁ ok₂)
-weave-ok (w-run {x = tmp (tdel k)} w) L₁ L₂ L e (p , ok₁) ok₂
-  with weave-ok w _ L₂ _ (λ j → trans (cong (_∸ δn k j) (e j)) (+-∸-comm (L₂ j) (δn-≤ k p j))) ok₁ ok₂
-... | (ok , eq) = ((subst (1 ≤_) (sym (e k)) (≤-trans p (m≤m+n (L₁ k) (L₂ k))) , ok) , eq)
+weave-ok (w-run {x = tmp (tdel k)} w) L₁ L₂ L e (p , ok₁) ok₂ =
+  let (ok , eq) = weave-ok w _ L₂ _ (λ j → trans (cong (_∸ δn k j) (e j)) (+-∸-comm (L₂ j) (δn-≤ k p j))) ok₁ ok₂
+  in ((subst (1 ≤_) (sym (e k)) (≤-trans p (m≤m+n (L₁ k) (L₂ k))) , ok) , eq)
 weave-ok (w-tmp {y = tnew k} w) L₁ L₂ L e ok₁ (_ , ok₂) =
   skip (weave-ok w L₁ _ _ (λ j → trans (cong (_+ δn k j) (e j)) (+-assoc (L₁ j) (L₂ j) (δn k j))) ok₁ ok₂)
-weave-ok (w-tmp {y = tdel k} w) L₁ L₂ L e ok₁ (p , ok₂)
-  with weave-ok w L₁ _ _ (λ j → trans (cong (_∸ δn k j) (e j)) (+-∸-assoc (L₁ j) (δn-≤ k p j))) ok₁ ok₂
-... | (ok , eq) = ((subst (1 ≤_) (sym (e k)) (≤-trans p (m≤n+m (L₂ k) (L₁ k))) , ok) , eq)
+weave-ok (w-tmp {y = tdel k} w) L₁ L₂ L e ok₁ (p , ok₂) =
+  let (ok , eq) = weave-ok w L₁ _ _ (λ j → trans (cong (_∸ δn k j) (e j)) (+-∸-assoc (L₁ j) (δn-≤ k p j))) ok₁ ok₂
+  in ((subst (1 ≤_) (sym (e k)) (≤-trans p (m≤n+m (L₂ k) (L₁ k))) , ok) , eq)
 
 weave-post : ∀ {B} (o : Outcome B) {t ts t′} → Weave tmp t ts t′ → TPost o t → TPost o (tmps ts) → TPost o t′
-weave-post (gives _ _) w (ok₁ , z₁) (ok₂ , z₂) with weave-ok w none none none (λ _ → refl) ok₁ ok₂
-... | (ok , eq) = (ok , λ k → trans (eq k) (cong₂ _+_ (z₁ k) (z₂ k)))
+weave-post (gives _ _) w (ok₁ , z₁) (ok₂ , z₂) =
+  let (ok , eq) = weave-ok w none none none (λ _ → refl) ok₁ ok₂
+  in (ok , λ k → trans (eq k) (cong₂ _+_ (z₁ k) (z₂ k)))
 weave-post (stop _) w ok₁ ok₂ = fst (weave-ok w none none none (λ _ → refl) ok₁ ok₂)
 
 ------------------------------------------------------------------------

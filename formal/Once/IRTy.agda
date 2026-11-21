@@ -184,6 +184,13 @@ irtyTag (ν-type _) = 6
 irtyTag Int        = 7
 irtyTag Float      = 8
 
+-- an arrow's equality, by its parts (its purity too, D430)
+arr-diag : ∀ {A B C D π π′} → Dec (A ≡ C) → Dec (π ≡ π′) → Dec (B ≡ D) → Dec (A ⇛[ π ] B ≡ C ⇛[ π′ ] D)
+arr-diag (no ne)    _          _          = no (λ { refl → ne refl })
+arr-diag (yes refl) (no ne)    _          = no (λ { refl → ne refl })
+arr-diag (yes refl) (yes refl) (no ne)    = no (λ { refl → ne refl })
+arr-diag (yes refl) (yes refl) (yes refl) = yes refl
+
 mutual
   _≟IRTy_ : DecidableEquality IRTy
   A ≟IRTy B = ≟IRTy-aux A B (irtyTag A ℕP.≟ irtyTag B)
@@ -205,13 +212,7 @@ mutual
   ... | no ne    | _        = no (λ { refl → ne refl })
   {-# CATCHALL #-}
   ... | _        | no ne    = no (λ { refl → ne refl })
-  ≟IRTy-diag (A ⇛[ π ] B) (C ⇛[ π′ ] D) _ with A ≟IRTy C | π ≟p π′ | B ≟IRTy D
-  ... | yes refl | yes refl | yes refl = yes refl
-  ... | no ne    | _        | _        = no (λ { refl → ne refl })
-  {-# CATCHALL #-}
-  ... | _        | no ne    | _        = no (λ { refl → ne refl })
-  {-# CATCHALL #-}
-  ... | _        | _        | no ne    = no (λ { refl → ne refl })
+  ≟IRTy-diag (A ⇛[ π ] B) (C ⇛[ π′ ] D) _ = arr-diag (A ≟IRTy C) (π ≟p π′) (B ≟IRTy D)
   ≟IRTy-diag (μ-type F) (μ-type G) _ with F ≟IRFun G
   ... | yes refl = yes refl
   ... | no ne    = no (λ { refl → ne refl })

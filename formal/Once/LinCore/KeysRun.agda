@@ -235,8 +235,7 @@ module Keep (U : Univ) where
     keeps : ∀ {T sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m m′ n n′ t}
           → StepsI c r m n t c′ r′ m′ n′ → CIn c → RIn r → MIn m → CIn c′ × RIn r′ × MIn m′
     keeps done C R M = C , R , M
-    keeps (s ⟫ st) C R M with keep s C R M
-    ... | (C′ , R′ , M′) = keeps st C′ R′ M′
+    keeps (s ⟫ st) C R M = let (C′ , R′ , M′) = keep s C R M in keeps st C′ R′ M′
 
 ------------------------------------------------------------------------
 -- 3. ★ A PROGRAM'S IMAGE STAYS INSIDE ITS UNIVERSE, at every configuration

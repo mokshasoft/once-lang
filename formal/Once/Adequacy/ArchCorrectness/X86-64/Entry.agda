@@ -119,11 +119,13 @@ open LocState using (regs)
 -- literally the scan the concrete `lea`/`call` perform, which is what makes
 -- `entry-corr`'s `code-eq` `refl` on the found case. `0` for an unresolvable
 -- label is a filler that no emitted program reaches (`emitted-code-addr-has-body`).
+-- a label's code index: where the scan found it (0 if nowhere)
+code-pick : Maybe ℕ → ℕ
+code-pick (just j) = j
+code-pick nothing  = 0
+
 code-map : XS.Program → LabelId → ℕ
-code-map prog ℓ = pick (X.find-label prog (thunk ℓ))
-  where pick : Maybe ℕ → ℕ
-        pick (just j) = j
-        pick nothing  = 0
+code-map prog ℓ = code-pick (X.find-label prog (thunk ℓ))
 
 entry-view : XS.Program → HeapView
 entry-view cprog = record
@@ -208,7 +210,7 @@ entry-corr prog = record
   }
   where cong-pick : ∀ {ℓ j} → X.find-label (compile-trace prog) (thunk ℓ) ≡ just j
                   → code-map (compile-trace prog) ℓ ≡ j
-        cong-pick e rewrite e = refl
+        cong-pick e = cong code-pick e
 
 -- The ENTRY store-WF: at the entry state the heap and stack are empty and every
 -- register holds the tag filler `SV-Tag 0` (D074) — `sv-below` puts no

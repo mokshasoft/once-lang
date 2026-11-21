@@ -30,6 +30,7 @@ open import Once.IRTy
 open import Once.IRTy using (⌊_⌋)
 import Once.Spec.Type as ST
 open import Data.Maybe using (Maybe; just; nothing; _>>=_)
+open import Data.Maybe.Properties using (just-injective)
 open import Data.Product using (Σ; _,_; _×_)
 import Data.Maybe
 open import Data.Unit using (⊤; tt)
@@ -186,6 +187,11 @@ unlinked-i = mk-info' (canonical ("Generators" ∷ "unlinked" ∷ [])) (haltsV r
 unlinked : ∀ {Γ A B} → P.IR Γ ⟪ A ⟫ ⟪ B ⟫
 unlinked = P.initial P.∘ (P.SigOp (sig unlinked-i) P.∘ P.terminal)
 
+-- a call, by what the resolver found: the label, or the unlinked op
+callAt : ∀ {Γ A B} → Maybe (Hit Γ ⟪ A ⟫ ⟪ B ⟫) → Maybe (P.IR Γ ⟪ A ⟫ ⟪ B ⟫)
+callAt (just (hit g p)) = just (P.Call p)
+callAt nothing          = just unlinked
+
 ------------------------------------------------------------------------
 -- 5. THE TERMS: clause for clause, over `⟪_⟫`. It fails only where a grade
 -- judgment does (`blk?`).
@@ -226,9 +232,7 @@ module _ {Γ : Cx} (rs : Resolver Γ) where
   trI (M.SigOp {A} {B} si)   =
     just (subst₂ (P.IR Γ) (sym (⟪⌊⌋⟫-flat (SigOpInfo.baseA si))) (sym (⟪⌊⌋⟫-flat (SigOpInfo.conB si)))
                  (P.SigOp (sig si)))
-  trI (M.Call {A} {B} f) with rs f A B
-  ... | just (hit g p) = just (P.Call p)
-  ... | nothing        = just unlinked
+  trI (M.Call {A} {B} f) = callAt (rs f A B)
 
 ------------------------------------------------------------------------
 -- 6. THE TABLE: from its earliest definition (the list's last), each body
@@ -321,42 +325,50 @@ module _ {Γ : Cx} (rs : Resolver Γ) where
 
   trI-Tr : ∀ {A B} (ir : M.IR A B) {c} → trI rs ir ≡ just c → Tr ir c
   trI-Tr M.id refl = t-id
-  trI-Tr (g M.∘ f) e with bind-just {m = trI rs g} e
-  ... | g′ , eg , e₁ with bind-just {m = trI rs f} e₁
-  ...   | f′ , ef , refl = t-∘ (trI-Tr g eg) (trI-Tr f ef)
-  trI-Tr M.⟨ f , g ⟩ e with bind-just {m = trI rs f} e
-  ... | f′ , ef , e₁ with bind-just {m = trI rs g} e₁
-  ...   | g′ , eg , refl = t-pair (trI-Tr f ef) (trI-Tr g eg)
+  trI-Tr (g M.∘ f) e =
+    let (g′ , eg , e₁) = bind-just {m = trI rs g} e
+        (f′ , ef , e₂) = bind-just {m = trI rs f} e₁
+    in subst (Tr (g M.∘ f)) (just-injective e₂) (t-∘ (trI-Tr g eg) (trI-Tr f ef))
+  trI-Tr M.⟨ f , g ⟩ e =
+    let (f′ , ef , e₁) = bind-just {m = trI rs f} e
+        (g′ , eg , e₂) = bind-just {m = trI rs g} e₁
+    in subst (Tr M.⟨ f , g ⟩) (just-injective e₂) (t-pair (trI-Tr f ef) (trI-Tr g eg))
   trI-Tr M.fst refl = t-fst
   trI-Tr M.snd refl = t-snd
   trI-Tr M.inl refl = t-inl
   trI-Tr M.inr refl = t-inr
-  trI-Tr (M.case f g) e with bind-just {m = trI rs f} e
-  ... | f′ , ef , e₁ with bind-just {m = trI rs g} e₁
-  ...   | g′ , eg , refl = t-case (trI-Tr f ef) (trI-Tr g eg)
+  trI-Tr (M.case f g) e =
+    let (f′ , ef , e₁) = bind-just {m = trI rs f} e
+        (g′ , eg , e₂) = bind-just {m = trI rs g} e₁
+    in subst (Tr (M.case f g)) (just-injective e₂) (t-case (trI-Tr f ef) (trI-Tr g eg))
   trI-Tr M.terminal refl = t-term
   trI-Tr M.initial refl = t-init
-  trI-Tr (M.curry {π = π} f) e with bind-just {m = trI rs f} e
-  ... | f′ , ef , e₁ with bind-just {m = gd? (grade π) f′} e₁
-  ...   | γ , _ , refl = t-curry (trI-Tr f ef)
+  trI-Tr (M.curry {π = π} f) e =
+    let (f′ , ef , e₁) = bind-just {m = trI rs f} e
+        (γ , _ , e₂)   = bind-just {m = gd? (grade π) f′} e₁
+    in subst (Tr (M.curry f)) (just-injective e₂) (t-curry {γ = γ} (trI-Tr f ef))
   trI-Tr M.apply refl = t-apply
   trI-Tr (M.In wf) refl = t-In wf
   trI-Tr (M.out-μ wf) refl = t-out wf
-  trI-Tr (M.Cata wf alg) e with bind-just {m = trI rs alg} e
-  ... | a′ , ea , refl = t-cata wf (trI-Tr alg ea)
+  trI-Tr (M.Cata wf alg) e =
+    let (a′ , ea , e₁) = bind-just {m = trI rs alg} e
+    in subst (Tr (M.Cata wf alg)) (just-injective e₁) (t-cata wf (trI-Tr alg ea))
   trI-Tr (M.Out wf) refl = t-Out wf
   trI-Tr (M.in-ν wf) refl = t-inν wf
-  trI-Tr (M.Ana {F} wf {E} {A} c) e with bind-just {m = trI rs c} e
-  ... | c′ , ec , e₁
-      with bind-just {m = blk? (subst (λ X → P.IR Γ (⟪ E ⟫ ⊗t ⟪ A ⟫) X) (⟪⟫-TI wf A) c′)}
-                     {k = λ φ → just (P.Ana (lf F) (subst (λ X → P.IR Γ (⟪ E ⟫ ⊗t ⟪ A ⟫) X) (⟪⟫-TI wf A) c′) φ)} e₁
-  ...   | φ , _ , refl = t-ana wf (trI-Tr c ec) φ
-  trI-Tr (M.Iter b) e with bind-just {m = trI rs b} e
-  ... | b′ , eb , e₁ with bind-just {m = blk? b′} e₁
-  ...   | φ , _ , refl = t-iter (trI-Tr b eb) φ
+  trI-Tr (M.Ana {F} wf {E} {A} c) e =
+    let (c′ , ec , e₁) = bind-just {m = trI rs c} e
+        (φ , _ , e₂)   = bind-just {m = blk? (subst (λ X → P.IR Γ (⟪ E ⟫ ⊗t ⟪ A ⟫) X) (⟪⟫-TI wf A) c′)}
+                           {k = λ φ → just (P.Ana (lf F) (subst (λ X → P.IR Γ (⟪ E ⟫ ⊗t ⟪ A ⟫) X) (⟪⟫-TI wf A) c′) φ)} e₁
+    in subst (Tr (M.Ana wf c)) (just-injective e₂) (t-ana wf (trI-Tr c ec) φ)
+  trI-Tr (M.Iter b) e =
+    let (b′ , eb , e₁) = bind-just {m = trI rs b} e
+        (φ , _ , e₂)   = bind-just {m = blk? b′} e₁
+    in subst (Tr (M.Iter b)) (just-injective e₂) (t-iter (trI-Tr b eb) φ)
   trI-Tr (M.const fits-int v) refl = t-int
   trI-Tr (M.const fits-float v) refl = t-float
   trI-Tr (M.SigOp si) refl = t-op si
-  trI-Tr (M.Call {A} {B} f) e with rs f A B in eq
-  trI-Tr (M.Call f) refl | just (hit g p) = t-hit eq
-  trI-Tr (M.Call f) refl | nothing        = t-miss eq
+  trI-Tr (M.Call {A} {B} f) e = call-tr (rs f A B) refl e
+    where
+      call-tr : ∀ r {c} → rs f A B ≡ r → callAt r ≡ just c → Tr (M.Call f) c
+      call-tr (just (hit g p)) eq refl = t-hit eq
+      call-tr nothing          eq refl = t-miss eq

@@ -177,7 +177,5 @@ weave-pre : ∀ {inj : Y → X} {t₀ ts mt t} → Weave inj t₀ ts mt → t �
           → Σ (List Y) λ ts′ → Σ (List X) λ mt′ → Weave inj t ts′ mt′ × mt′ ≼ mt
 weave-pre w-[]       []≼     = ([] , [] , w-[] , []≼)
 weave-pre (w-run w)  []≼     = ([] , [] , w-[] , []≼)
-weave-pre (w-run w)  (∷≼ q)  with weave-pre w q
-... | (ts′ , mt′ , w′ , p) = (ts′ , _ ∷ mt′ , w-run w′ , ∷≼ p)
-weave-pre (w-tmp w)  q       with weave-pre w q
-... | (ts′ , mt′ , w′ , p) = (_ ∷ ts′ , _ ∷ mt′ , w-tmp w′ , ∷≼ p)
+weave-pre (w-run w)  (∷≼ q)  = let (ts′ , mt′ , w′ , p) = weave-pre w q in (ts′ , _ ∷ mt′ , w-run w′ , ∷≼ p)
+weave-pre (w-tmp w)  q       = let (ts′ , mt′ , w′ , p) = weave-pre w q in (_ ∷ ts′ , _ ∷ mt′ , w-tmp w′ , ∷≼ p)

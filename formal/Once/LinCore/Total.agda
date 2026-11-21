@@ -99,22 +99,14 @@ data _~_ : ∀ {A} → MV A → MV A → Set where
 -- a copy is its original, its cells renamed
 copy-~ : ∀ {A} (v : MV A) n → fst (copy v n) ~ v
 copy-~ mone n = ~one
-copy-~ (mpair a b) n with copy a n | copy-~ a n
-... | (a′ , n₁ , t₁) | pa with copy b n₁ | copy-~ b n₁
-...   | (b′ , n₂ , t₂) | pb = ~pair pa pb
-copy-~ (minl a) n with copy a n | copy-~ a n
-... | (a′ , n₁ , t₁) | pa = ~inl pa
-copy-~ (minr b) n with copy b n | copy-~ b n
-... | (b′ , n₁ , t₁) | pb = ~inr pb
+copy-~ (mpair a b) n = ~pair (copy-~ a n) (copy-~ b (fst (snd (copy a n))))
+copy-~ (minl a) n = ~inl (copy-~ a n)
+copy-~ (minr b) n = ~inr (copy-~ b n)
 copy-~ (mbase x) n = ~base
-copy-~ (mmu i v) n with copy v n | copy-~ v n
-... | (v′ , n₁ , t₁) | pv = ~mu pv
-copy-~ (mct x) n with copy x n | copy-~ x n
-... | (x′ , n₁ , t₁) | px = ~ct px
-copy-~ (mfn i c x) n with copy x n | copy-~ x n
-... | (x′ , n₁ , t₁) | px = ~fn px
-copy-~ (mnu i p) n with copy p n | copy-~ p n
-... | (p′ , n₁ , t₁) | pp = ~nu pp
+copy-~ (mmu i v) n = ~mu (copy-~ v n)
+copy-~ (mct x) n = ~ct (copy-~ x n)
+copy-~ (mfn i c x) n = ~fn (copy-~ x n)
+copy-~ (mnu i p) n = ~nu (copy-~ p n)
 
 -- ★ a WORLD: any machine that answers SigOps (its state may be the whole
 -- history, so this is every strategy). It may give NO answer — it must, for
@@ -538,8 +530,7 @@ module _ (W : World) where
 
   find : ∀ {Γ l σ} {ds : Defs Γ} → REnv ds → (p : Γ ∋[ l ] σ) → Found ds p
   find (ρ ▸ r) here      = found lk-here r
-  find (ρ ▸ r) (there p) with find ρ p
-  ... | found q r′ = found (lk-there q) r′
+  find (ρ ▸ r) (there p) = let found q r′ = find ρ p in found (lk-there q) r′
 
   ------------------------------------------------------------------------
   -- 3. THE EVALUATOR, over a table and its runners, from good inputs to a

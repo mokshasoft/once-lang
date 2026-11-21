@@ -192,18 +192,23 @@ SimR : ∀ {T sh E Es B S} → Outcome B → Code sh T → Cfg sh → ℕ → Tr
 SimR (gives w n′) c m n t k es os = Out c m n t k (es ∥ w ∷ˢ os) n′
 SimR (stop y)     c m n t k es os = Paused c m n t
 
+-- a simulation of a code is one of an equal code
+sim-code : ∀ {T sh E Es B S} {o : Outcome B} {c c′ : Code sh T} {m : Cfg sh} {n : ℕ} {t : Trace}
+             {k : Code (E ∷ Es ∣ B ∷ S) T} {es : Slots (E ∷ Es)} {os : Stk S}
+         → c ≡ c′ → SimR o c m n t k es os → SimR o c′ m n t k es os
+sim-code refl x = x
+
 private
   δn-same : ∀ k → δn k k ≡ 1
-  δn-same k with k ≟ k
-  ... | yes _ = refl
-  ... | no ne = ⊥-elim (ne refl)
+  δn-same k = δd-yes refl (k ≟ k)
 
   bal∅ : TBal (tmps [])
   bal∅ = (tt , λ k → refl)
 
   -- a frame around balanced temporaries: balanced
   bracket : ∀ k ts → TBal (tmps ts) → TBal (tmps (tnew k ∷ (ts ++ tdel k ∷ [])))
-  bracket k ts (okX , zX) rewrite map-++ tmp ts (tdel k ∷ []) =
+  bracket k ts (okX , zX) =
+    subst (λ z → TBal (tmp (tnew k) ∷ z)) (sym (map-++ tmp ts (tdel k ∷ [])))
     ( (tt , Along-++ X (tmp (tdel k) ∷ []) L₁ okX′ (subst (1 ≤_) (sym (eqX k)) one≤ , tt))
     , λ j → trans (cong (λ M → M j) (tplay-++ X (tmp (tdel k) ∷ []) L₁))
                   (trans (cong (_∸ δn k j) (eqX j)) (n∸n≡0 (δn k j))) )
@@ -439,9 +444,9 @@ sim (r-case₂ {o = o} r) p es eq os k = preR o s-case₂ (sim r p es eq os k)
 sim r-In    fr es eq os k = leaf (s-prim r-In) (k-alloc ∷ [])
 sim r-Outμ  fr es eq os k = leaf (s-prim r-Outμ) (k-free ∷ [])
 sim r-clo   fr es eq os k = leaf (s-prim r-clo) []
-sim (r-app {o = o} q r) p es eq os k
-  rewrite look-body q {Es = _ ∷ _} (epop ⨾ leave ⨾ k) =
-  preR o s-untag (framedR o (around o s-elift (sim r p (vw mone es) refl os _)))
+sim (r-app {o = o} q r) p es eq os k =
+  sim-code (cong (λ c → untag ⨾ enter ⨾ elift ⨾ c) (sym (look-body q {Es = _ ∷ _} (epop ⨾ leave ⨾ k))))
+    (preR o s-untag (framedR o (around o s-elift (sim r p (vw mone es) refl os _))))
 sim (r-cata rm (go-on {o = o} ra)) (pm , pa) es eq os k =
   thenR o (leaf s-fold (k-free ∷ [])) (framedR o (thenR o (simM rm pm es eq os _) (sim ra pa es eq os (leave ⨾ k))))
 sim (r-cata rm stopped) pm es eq os k =
@@ -461,9 +466,9 @@ sim (r-out {B = B} {i = i} {v} {a} {o = o} {n} r) fr es eq os k = outR o (sim r 
     outR (gives _ _) r′ = then (leaf (s-eout eq) (k-peek ∷ [])) (after r′ s-epop)
     outR (stop _)    r′ = thenP (leaf (s-eout eq) (k-peek ∷ [])) r′
 sim (r-copy {n = n}) fr es refl os k = leaf s-ecopy (NoT-copy (see es) n)
-sim (r-bapp {x = x} {o = o} q r) fr es eq os k
-  rewrite look-bodyω q {Es = _ ∷ _} (leave ⨾ epop ⨾ k) =
-  around o (s-eapp eq) (framedR o (sim r fr (vw x es) refl os _))
+sim (r-bapp {x = x} {o = o} q r) fr es eq os k =
+  sim-code (cong (λ c → eapp ⨾ enter ⨾ c) (sym (look-bodyω q {Es = _ ∷ _} (leave ⨾ epop ⨾ k))))
+    (around o (s-eapp eq) (framedR o (sim r fr (vw x es) refl os _)))
 -- ★ D426 part 3: building a closure is one step; applying one is the
 -- indirect call into its body, in a frame, as a label's
 sim r-lam   fr es eq os k = leaf (s-prim r-lam) (k-alloc ∷ [])
@@ -524,12 +529,17 @@ machine-noleak : ∀ {Γ} {ds : Defs Γ} {f : LTm Γ One One} {n′ t}
                → (run : Run ds f mone mone 0 (gives mone n′) t) → Plain run
                → Σ Trace λ mt → Steps (comp ds f end) start 0 mt end start n′
                  × OK mt (λ _ → 0) × (∀ i → play mt (λ _ → 0) i ≡ 0) × TBal mt
-machine-noleak {t = t} run fr with sim run fr (vw mone []ᵉ) refl []ˢ end | noleak (plain run)
-... | out ts mt st w b | (ok , clean) =
-  ( mt , st
-  , OK-weave w (λ _ → 0) ok
-  , (λ i → trans (cong (λ h → h i) (play-weave w (λ _ → 0))) (clean i))
-  , weave-post (gives mone 0) w (NoT-Bal (erase t) (erase-clean t)) b )
+machine-noleak {ds = ds} {f = f} {n′ = n′} {t = t} run fr = at (sim run fr (vw mone []ᵉ) refl []ˢ end)
+  where
+    Goal : Set
+    Goal = Σ Trace λ mt → Steps (comp ds f end) start 0 mt end start n′
+             × OK mt (λ _ → 0) × (∀ i → play mt (λ _ → 0) i ≡ 0) × TBal mt
+    at : SimR (gives mone n′) (comp ds f end) start 0 t end (vw mone []ᵉ) []ˢ → Goal
+    at (out ts mt st w b) =
+      ( mt , st
+      , OK-weave w (λ _ → 0) (fst (noleak (plain run)))
+      , (λ i → trans (cong (λ h → h i) (play-weave w (λ _ → 0))) (snd (noleak (plain run)) i))
+      , weave-post (gives mone 0) w (NoT-Bal (erase t) (erase-clean t)) b )
 
 -- ★ ANY stopped run of a closed program from nothing (a server cut after its
 -- last round, a halt): the machine on its compiled code runs at least as far,
@@ -541,10 +551,17 @@ machine-legal : ∀ {Γ} {ds : Defs Γ} {f : LTm Γ One One} {y t}
                  × OK mt′ (λ _ → 0) × TLeg mt′
                  × Σ Trace λ mt → mt′ ≼ mt × Σ Sh λ sh → Σ (Code sh (_ ∣ _)) λ c′ → Σ (Cfg sh) λ m′ → Σ ℕ λ n′
                    → Steps (comp ds f end) start 0 mt c′ m′ n′
-machine-legal {t = t} run fr with sim run fr (vw mone []ᵉ) refl []ˢ end
-... | paused {sh′} c′ m′ n′ ts mt t₀ st w p cl l with weave-pre w p
-...   | (ts′ , mt′ , w′ , q) =
-  ( mt′ , ts′ , w′
-  , OK-weave w′ (λ _ → 0) (fst (exchange (plain run) pre₀ lent₀))
-  , TOK-≼ q (weave-post (stop {One} exhausted) w (fst (NoT-Bal t₀ cl)) l)
-  , mt , q , sh′ , c′ , m′ , n′ , st )
+machine-legal {ds = ds} {f = f} {y = y} {t = t} run fr = at (sim run fr (vw mone []ᵉ) refl []ˢ end)
+  where
+    Goal : Set
+    Goal = Σ Trace λ mt′ → Σ (List TEv) λ ts′ → Weave tmp (erase t) ts′ mt′
+             × OK mt′ (λ _ → 0) × TLeg mt′
+             × Σ Trace λ mt → mt′ ≼ mt × Σ Sh λ sh → Σ (Code sh (_ ∣ _)) λ c′ → Σ (Cfg sh) λ m′ → Σ ℕ λ n′
+               → Steps (comp ds f end) start 0 mt c′ m′ n′
+    at : SimR (stop y) (comp ds f end) start 0 t end (vw mone []ᵉ) []ˢ → Goal
+    at (paused {sh′} c′ m′ n′ ts mt t₀ st w p cl l) =
+      let (ts′ , mt′ , w′ , q) = weave-pre w p
+      in ( mt′ , ts′ , w′
+         , OK-weave w′ (λ _ → 0) (fst (exchange (plain run) pre₀ lent₀))
+         , TOK-≼ q (weave-post (stop {One} exhausted) w (fst (NoT-Bal t₀ cl)) l)
+         , mt , q , sh′ , c′ , m′ , n′ , st )

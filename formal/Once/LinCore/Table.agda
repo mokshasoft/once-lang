@@ -20,6 +20,8 @@ open import Data.Product using (Σ; _,_; _×_)
 open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing; _>>=_)
 import Data.Maybe
+open import Data.Maybe.Properties using (just-injective)
+open import Relation.Binary.PropositionalEquality using (subst)
 open import Relation.Nullary using (Dec; yes; no)
 open import Once.Denotation.Program using (tableEnv-at)
 open import Once.IR.Semantics.Trace using (unlinkedT)
@@ -82,8 +84,13 @@ module _ {Γ} (P : P.Prog Γ) (rs : Resolver Γ) (es : List IRFun)
     weak-hit : ∀ {f A B g′ l} {p′ : (Γ ▸ sg once g One ⟪ fdom e ⟫ ⟪ fcod e ⟫) ∋[ l ] sg once g′ One ⟪ A ⟫ ⟪ B ⟫}
              → Data.Maybe.map weaken (rs f A B) ≡ just (hit g′ p′) → ∀ {a a′} → W A a a′
              → up g′ (lookup δ′ p′ tt a) ≈[ W B ] tableCalls fmt ans es f A B a′
-    weak-hit {f} {A} {B} eq w with rs f A B in eq₀
-    weak-hit refl w | just (hit g₀ p₀) = BP.EnvOK.hit≈ ok eq₀ w
+    weak-hit {f} {A} {B} eq w = go (rs f A B) refl eq w
+      where
+        go : ∀ m {g′ l} {p′ : (Γ ▸ sg once g One ⟪ fdom e ⟫ ⟪ fcod e ⟫) ∋[ l ] sg once g′ One ⟪ A ⟫ ⟪ B ⟫}
+           → rs f A B ≡ m → Data.Maybe.map weaken m ≡ just (hit g′ p′) → ∀ {a a′} → W A a a′
+           → up g′ (lookup δ′ p′ tt a) ≈[ W B ] tableCalls fmt ans es f A B a′
+        go (just (hit g₀ p₀)) eq₀ refl w = BP.EnvOK.hit≈ ok eq₀ w
+        go nothing            _   ()   w
 
     hit-yes : ∀ {f A B g′ l} {p′ : (Γ ▸ sg once g One ⟪ fdom e ⟫ ⟪ fcod e ⟫) ∋[ l ] sg once g′ One ⟪ A ⟫ ⟪ B ⟫}
               (n : fname e ≡ f) (p : fdom e ≡ A) (q : fcod e ≡ B)
@@ -121,17 +128,20 @@ module _ {Γ} (P : P.Prog Γ) (rs : Resolver Γ) (es : List IRFun)
 EnvOKT : TrProg → List IRFun → Set
 EnvOKT t tbl = BP.EnvOK ⟦ prog t ⟧P (tableCalls fmt ans tbl) (rs t)
 
+private
+  -- an entry's labels, by its grade judgment
+  env-at : ∀ (t : TrProg) (es : List IRFun) → EnvOKT t es → (e : IRFun) {b : P.IR _ ⟪ fdom e ⟫ ⟪ fcod e ⟫}
+         → Tr (rs t) (fbody e) b → (m : Maybe (P.BlkIR _ b)) → EnvOKT (entry-at (prog t) (rs t) e b m) (e ∷ es)
+  env-at t es ok e tr (just φ) = entry-ok (prog t) (rs t) es ok e tr act φ
+  env-at t es ok e tr nothing  = entry-ok (prog t) (rs t) es ok e tr eff tt
+
 env-ok : ∀ (tbl : List IRFun) {t} → trTable tbl ≡ just t → EnvOKT t tbl
 env-ok [] refl = record { hit≈ = λ () ; miss≡ = λ _ _ → refl }
-env-ok (e ∷ es) eq with bind-just {m = trTable es} eq
-... | t , et , e₁ with bind-just {m = trI (rs t) (fbody e)} e₁
-... | b , eb , refl = at (blk? b)
-  where
-  ok = env-ok es et
-  tr = trI-Tr (rs t) (fbody e) eb
-  at : (m : Maybe (P.BlkIR _ b)) → EnvOKT (entry-at (prog t) (rs t) e b m) (e ∷ es)
-  at (just φ) = entry-ok (prog t) (rs t) es ok e tr act φ
-  at nothing  = entry-ok (prog t) (rs t) es ok e tr eff tt
+env-ok (e ∷ es) eq =
+  let (t , et , e₁) = bind-just {m = trTable es} eq
+      (b , eb , e₂) = bind-just {m = trI (rs t) (fbody e)} e₁
+  in subst (λ t′ → EnvOKT t′ (e ∷ es)) (just-injective e₂)
+       (env-at t es (env-ok es et) e (trI-Tr (rs t) (fbody e) eb) (blk? b))
 
 -- ★ B1.3: master's program, compiled into the core (`Pass.tr` of its
 -- translation, over the translated table's labels), means what master's
