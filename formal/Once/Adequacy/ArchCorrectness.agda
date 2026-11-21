@@ -80,20 +80,20 @@ import Once.Adequacy.CoreArch as Core
 
 x86-64-correct : ∀ (ι : Interp) → ArchCorrect x86-64 ι
 x86-64-correct ι = record
-  { file-wf = Core.X86-64.core-wf ι (x86-64-reg-range ι) (x86-64-addr-no-wrap ι) (x86-64-lit-fits ι)
-  ; file-tr = Core.X86-64.core-tr ι (x86-64-reg-range ι) (x86-64-addr-no-wrap ι) (x86-64-lit-fits ι)
+  { file-wf = Core.core-wf (Core.x86-64-glue ι (x86-64-reg-range ι) (x86-64-addr-no-wrap ι) (x86-64-lit-fits ι))
+  ; file-tr = Core.core-tr (Core.x86-64-glue ι (x86-64-reg-range ι) (x86-64-addr-no-wrap ι) (x86-64-lit-fits ι))
   }
 
 x86-32-correct : ∀ (ι : Interp) → ArchCorrect x86-32 ι
 x86-32-correct ι = record
-  { file-wf = Core.X86-32.core-wf ι (x86-32-reg-range ι) (x86-32-addr-no-wrap ι) (x86-32-lit-fits ι)
-  ; file-tr = Core.X86-32.core-tr ι (x86-32-reg-range ι) (x86-32-addr-no-wrap ι) (x86-32-lit-fits ι)
+  { file-wf = Core.core-wf (Core.x86-32-glue ι (x86-32-reg-range ι) (x86-32-addr-no-wrap ι) (x86-32-lit-fits ι))
+  ; file-tr = Core.core-tr (Core.x86-32-glue ι (x86-32-reg-range ι) (x86-32-addr-no-wrap ι) (x86-32-lit-fits ι))
   }
 
 riscv64-correct : ∀ (ι : Interp) → ArchCorrect riscv64 ι
 riscv64-correct ι = record
-  { file-wf = Core.RiscV64.core-wf ι (riscv64-reg-range ι) (riscv64-slot-addr-no-wrap ι) (riscv64-addr-no-wrap ι) (riscv64-lit-fits ι)
-  ; file-tr = Core.RiscV64.core-tr ι (riscv64-reg-range ι) (riscv64-slot-addr-no-wrap ι) (riscv64-addr-no-wrap ι) (riscv64-lit-fits ι)
+  { file-wf = Core.core-wf (Core.riscv64-glue ι (riscv64-reg-range ι) (riscv64-slot-addr-no-wrap ι) (riscv64-addr-no-wrap ι) (riscv64-lit-fits ι))
+  ; file-tr = Core.core-tr (Core.riscv64-glue ι (riscv64-reg-range ι) (riscv64-slot-addr-no-wrap ι) (riscv64-addr-no-wrap ι) (riscv64-lit-fits ι))
   }
 
 arch-correctness : ∀ (ι : Interp) (arch : Arch) → ArchCorrect arch ι

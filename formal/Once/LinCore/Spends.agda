@@ -30,11 +30,11 @@ module Once.LinCore.Spends
   (bw : Base → ℕ)
   where
 
-open import Once.LinCore.Core fmt
+open import Once.LinCore.Core fmt using (_⊕t_; Blk; Defs; LF∙; Sig; Tm; liter; sdom; toF; ⌜_⌝; module Blk; module Defs; module Sig; module Tm)
 open import Once.LinCore.Flat using (Base)
-open import Once.LinCore.NbEPLinCore fmt ans
-open import Once.LinCore.Events fmt ans bw
-open import Once.LinCore.Values fmt bw
+open import Once.LinCore.NbEPLinCore fmt ans using (opF)
+open import Once.LinCore.Events fmt ans bw using (OpPath; Outcome; Run; RunMap; Why; again; done; ds; er; exhausted; fm-gives; fm-stop; gives; go-on; halted; m-b; m-id; m-inl; m-inr; m-one; m-pair; m-μ; r-In; r-Outμ; r-app; r-bapp; r-bev; r-caseE₁; r-caseE₂; r-case₁; r-case₂; r-cata; r-cata-reuse; r-clo; r-const; r-copy; r-cut; r-drop; r-dup; r-ev; r-exh; r-fst; r-id; r-inl; r-inr; r-iter; r-lam; r-lamω; r-lend; r-lift; r-nout; r-op; r-opend; r-out; r-snd; r-swap; r-tmp; r-unf; r-α; r-α⁻; r-λ; r-λ⁻; r-ρ; r-ρ⁻; r-∘; r-⊗; stop; stopped; Γ; module OpPath; module Outcome; module Run; module RunMap; module Why)
+open import Once.LinCore.Values fmt bw using (MV; Trace; module MV)
 open import Data.Unit using (tt)
 open import Data.Product using (_,_; proj₁; proj₂)
 open import Once.LinCore.Machine fmt ans bw using (Plain; PlainM)

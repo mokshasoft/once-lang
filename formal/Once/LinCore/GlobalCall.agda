@@ -37,20 +37,19 @@ module Once.LinCore.GlobalCall
   (bw : Base → ℕ)
   where
 
-open import Once.LinCore.Core fmt
+open import Once.LinCore.Core fmt using (Defs; FS; LTm; One; module Defs)
 open import Once.LinCore.Flat using (Base; ⟦_⟧b; Lit)
 open import Once.IR.Semantics.Trace using (T; call)
-open import Once.LinCore.NbEPLinCore fmt ans
-open import Once.LinCore.Events fmt ans bw
-open import Once.LinCore.Values fmt bw
+open import Once.LinCore.Events fmt ans bw using (ds; p-halt; st; Γ)
+open import Once.LinCore.Values fmt bw using (MV; Trace; serial; module MV)
 open import Once.LinCore.Code fmt bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots; []ᵉ; vw; see; Cfg; _∥_)
-open import Once.LinCore.Image fmt bw
+open import Once.LinCore.Image fmt bw using (_⊳_; _⨾_; Codeᴵ; Key; blockᴵ; bsig; call; case; topv; module Codeᴵ; module Key)
 open import Once.LinCore.ImageRun fmt ans bw using (Ret; []ʳ; frm; _∷ⁱ_)
-open import Once.LinCore.Keys fmt bw
+open import Once.LinCore.Keys fmt bw using (allK; os; module Program)
 open import Once.LinCore.Layout fmt bw using (Frame; frame; frameOf; budget; wsz; ws; module Frame)
 open Frame using (EP; OP)
-open import Once.LinCore.Lower fmt bw
-open import Once.LinCore.Words fmt ans bw
+open import Once.LinCore.Lower fmt bw using (module Lowering; module Program′)
+open import Once.LinCore.Words fmt ans bw using (module Rel)
 open import Once.LinCore.ImagePt fmt ans bw using (Sub; Pt; at; disp; next; body; whole)
 open import Once.LinCore.LowAt fmt ans bw using (module At)
 open import Once.LinCore.Labels fmt ans bw using (module NoLabels)
@@ -72,9 +71,9 @@ module CallR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
            (ldConst : ∀ {b} → Lit b → AbstractInstr)
            (ld-nl : ∀ {b} (v : Lit b) → NoLabels.mark {FS} (ldConst v) ≡ nothing)
            (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue FS) where
-  open Relate {FS} ds f ldConst ld-nl wordOf
-  open TrampR {FS} ds f ldConst ld-nl wordOf
-  open TrampO {FS} ds f ldConst ld-nl wordOf
+  open Relate {FS} ds f ldConst ld-nl wordOf using (HereF; HereP; Related; RetOK; Site; env-stand; ok-call; rblock; ret-deep; rootOf; rstart; s-block; s-start; s-tramp; s-trampf; s-trampo; siteB; siteCallee; siteFin; sitePos; siteRoot; siteφ; stk-all; stk-stand; tc1; tf1; to1; tp1; tw1; module FrK; module FrS; module HereF; module Related; module RetOK; module S; module Site)
+  open TrampR {FS} ds f ldConst ld-nl wordOf using (called-re; t1M; tr-call; tr-pos₂)
+  open TrampO {FS} ds f ldConst ld-nl wordOf using (tO-pos₂; tOM; to-call)
   open TrampF {FS} ds f ldConst ld-nl wordOf using (tf-call; tF-pos₂)
   open CallW {FS} ds f ldConst ld-nl wordOf using (gcallω)
   open CallC {FS} ds f ldConst ld-nl wordOf using (gcallc)
@@ -82,7 +81,7 @@ module CallR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open Program ds f using (U)
   open Program ds f using (ncty)
   open Program′ ds f ldConst using (image; j₀)
-  open Lowering U ncty ldConst
+  open Lowering U ncty ldConst using (Tp; fbudget; sv₁)
   open Calls {FS} ds f ldConst ld-nl wordOf using (blockR; module K; module From; call-core)
   open Rel {FS} U wordOf using (EnvW; StkW)
   open FlatMachine {FS} using (FlatState; module FlatState)

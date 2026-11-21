@@ -29,15 +29,14 @@ module Once.LinCore.StepIos
   (bw : Base → ℕ)
   where
 
-open import Once.LinCore.Core fmt
+open import Once.LinCore.Core fmt using (Defs; FS; LTm; One; module Defs)
 open import Once.LinCore.Flat using (Base; ⟦_⟧b; Lit)
 open import Once.IR.Semantics.Trace using (T)
-open import Once.LinCore.NbEPLinCore fmt ans
-open import Once.LinCore.Events fmt ans bw
-open import Once.LinCore.Values fmt bw
+open import Once.LinCore.Events fmt ans bw using (Run; ds; gives; ios; ios-freeAll; ios-weave; r-In; r-Outμ; r-app; r-case₁; r-case₂; r-cata; r-cata-reuse; r-clo; r-const; r-copy; r-drop; r-dup; r-ev; r-id; r-inl; r-inr; r-iter; r-lam; r-lamω; r-lend; r-lift; r-nout; r-op; r-swap; r-tmp; r-unf; r-α; r-α⁻; r-λ; r-λ⁻; r-ρ; r-ρ⁻; r-∘; r-⊗; st; Γ; module Run)
+open import Once.LinCore.Values fmt bw using (MV; Trace; mone; module MV)
 open import Once.LinCore.Code fmt bw using (Cfg; _∣_)
 open import Once.LinCore.Image fmt bw using (Codeᴵ; _⨾_; prim)
-open import Once.LinCore.ImageRun fmt ans bw
+open import Once.LinCore.ImageRun fmt ans bw using (Ret; StepI; i-call; i-case₁; i-case₂; i-ccopy; i-cfree; i-copen; i-copenν; i-eapp; i-ecase₁; i-ecase₂; i-efst; i-elend; i-elift; i-eout; i-eoutq; i-epop; i-esnd; i-eunlend; i-eword; i-fopen; i-fopenν; i-icall; i-icallω; i-iobs; i-loop; i-ncopy; i-nfree; i-nopen; i-open1; i-opend; i-openω; i-pair; i-prim; i-reclose; i-recloseν; i-ret; i-reti; i-swap; i-tag₁; i-unit; i-unpair; i-untag; i-untag₁; module Ret; module StepI)
 open import Once.LinCore.Keys fmt bw using (Univ; module In; module Program)
 open import Once.LinCore.Labels fmt ans bw using (module NoLabels)
 open import Once.LinCore.PointAt fmt ans bw using (module Ctl)
