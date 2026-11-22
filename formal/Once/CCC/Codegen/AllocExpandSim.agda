@@ -37,7 +37,7 @@ open import Once.CCC.Codegen.AllocExpandRel {FS} using (Rel; module Rel; Live; C
 open import Once.CCC.Codegen.AllocExpandStep {FS} using (module L)
 open import Once.CCC.Codegen.AllocExpandPc {FS} using (off)
 
-module _ (C : Classes) (P : AbstractTrace) where
+module _ (C : Classes) (P : AbstractTrace) (Sz : ℕ → Set) where
   open Rel
 
   -- a chain read through a heap that agrees on its cells
@@ -49,11 +49,11 @@ module _ (C : Classes) (P : AbstractTrace) where
     e , w , trans (same b (here refl)) hw , chain-frame h h′ σ bs w (λ b′ m → same b′ (there m)) c
 
   -- ★ a step that keeps the allocator and moves on
-  core-straight : ∀ {fs gs} (R : Rel C P fs gs) (A B : LocState FS)
+  core-straight : ∀ {fs gs} (R : Rel C P Sz fs gs) (A B : LocState FS)
                 → L.LRel (ρ R) (Live (falloc fs)) (r-inj R) A B
                 → (∀ q → (∀ r → Live (falloc fs) r → ¬ ρ R r ≡ ref-of q) → LocState.heapMem B q ≡ LocState.heapMem (floc gs) q)
                 → off C 0 P (suc (fpc fs)) ≡ suc (fpc gs)
-                → Rel C P (record fs { floc = A ; fpc = suc (fpc fs) }) (record gs { floc = B ; fpc = suc (fpc gs) })
+                → Rel C P Sz (record fs { floc = A ; fpc = suc (fpc fs) }) (record gs { floc = B ; fpc = suc (fpc gs) })
   core-straight {fs} {gs} R A B LR frame pc = record
     { ρ = ρ R ; σ = σ R ; lists = lists R
     ; r-pc = sym pc
@@ -67,7 +67,8 @@ module _ (C : Classes) (P : AbstractTrace) where
     ; r-heads = heads′
     ; r-sent = trans (frame (heap-loc (mkHeapRef (σ R)) 0) (λ r lv e → r-not-σ R r lv e)) (r-sent R)
     ; r-nofree = r-nofree R
-    ; r-unsized = r-unsized R }
+    ; r-unsized = r-unsized R
+    ; r-rec0 = r-rec0 R ; r-csize = r-csize R ; r-lsize = r-lsize R }
     where
       -- the record's words: no live block is renamed to ref 0
       rec-free : ∀ k → LocState.heapMem B (rec-loc k) ≡ LocState.heapMem (floc gs) (rec-loc k)
@@ -96,21 +97,21 @@ module _ (C : Classes) (P : AbstractTrace) where
   E = expand C P
 
   -- the next pc, for an instruction the expansion keeps
-  next-pc : ∀ {fs gs} (R : Rel C P fs gs) i → fetch P (fpc fs) ≡ just i → expand-at C (fpc fs + 0) i ≡ i ∷ []
+  next-pc : ∀ {fs gs} (R : Rel C P Sz fs gs) i → fetch P (fpc fs) ≡ just i → expand-at C (fpc fs + 0) i ≡ i ∷ []
           → off C 0 P (suc (fpc fs)) ≡ suc (fpc gs)
   next-pc {fs} {gs} R i f ex =
     trans (off-suc C 0 P (fpc fs) i f)
       (trans (cong (λ xs → off C 0 P (fpc fs) + length xs) ex)
         (trans (Data.Nat.Properties.+-comm (off C 0 P (fpc fs)) 1) (cong suc (sym (r-pc R)))))
 
-  step-mov-out : ∀ {fs gs} (R : Rel C P fs gs) → fetch P (fpc fs) ≡ just mov-to-output
-               → Rel C P (flat-exec-instr mov-to-output P fs) (flat-exec-instr mov-to-output E gs)
+  step-mov-out : ∀ {fs gs} (R : Rel C P Sz fs gs) → fetch P (fpc fs) ≡ just mov-to-output
+               → Rel C P Sz (flat-exec-instr mov-to-output P fs) (flat-exec-instr mov-to-output E gs)
   step-mov-out {fs} {gs} R f =
     core-straight R _ _ (L.Slots.mov-out (ρ R) (Live (falloc fs)) (r-inj R) {al = falloc fs} {al′ = falloc gs} (r-frame R) (r-loc R))
       (λ q _ → refl) (next-pc R mov-to-output f refl)
 
-  step-mov-in : ∀ {fs gs} (R : Rel C P fs gs) → fetch P (fpc fs) ≡ just mov-to-input
-              → Rel C P (flat-exec-instr mov-to-input P fs) (flat-exec-instr mov-to-input E gs)
+  step-mov-in : ∀ {fs gs} (R : Rel C P Sz fs gs) → fetch P (fpc fs) ≡ just mov-to-input
+              → Rel C P Sz (flat-exec-instr mov-to-input P fs) (flat-exec-instr mov-to-input E gs)
   step-mov-in {fs} {gs} R f =
     core-straight R _ _ (L.Slots.mov-in (ρ R) (Live (falloc fs)) (r-inj R) {al = falloc fs} {al′ = falloc gs} (r-frame R) (r-loc R))
       (λ q _ → refl) (next-pc R mov-to-input f refl)
@@ -119,7 +120,7 @@ module _ (C : Classes) (P : AbstractTrace) where
 
   -- ★ a gated straight step: the gate is the same on both sides, and when it
   -- fails the primitive faults (which a sound run does not)
-  gated-step : ∀ {fs gs} (R : Rel C P fs gs) i (bP bE : Bool) (A B : LocState FS)
+  gated-step : ∀ {fs gs} (R : Rel C P Sz fs gs) i (bP bE : Bool) (A B : LocState FS)
              → flat-exec-instr i P fs ≡ straight-at bP i fs → flat-exec-instr i E gs ≡ straight-at bE i gs → bE ≡ bP
              → straight-go i fs ≡ record fs { floc = A ; fpc = suc (fpc fs) }
              → straight-go i gs ≡ record gs { floc = B ; fpc = suc (fpc gs) }
@@ -127,19 +128,19 @@ module _ (C : Classes) (P : AbstractTrace) where
              → (∀ q → (∀ r → Live (falloc fs) r → ¬ ρ R r ≡ ref-of q) → LocState.heapMem B q ≡ LocState.heapMem (floc gs) q)
              → off C 0 P (suc (fpc fs)) ≡ suc (fpc gs)
              → LocState.faulted (floc (flat-exec-instr i P fs)) ≡ false
-             → Rel C P (flat-exec-instr i P fs) (flat-exec-instr i E gs)
+             → Rel C P Sz (flat-exec-instr i P fs) (flat-exec-instr i E gs)
   gated-step {fs} {gs} R i true  .true A B eP eE refl gP gE LR frame pc nf =
-    subst (λ x → Rel C P x (flat-exec-instr i E gs)) (sym (trans eP gP))
-      (subst (λ y → Rel C P (record fs { floc = A ; fpc = suc (fpc fs) }) y) (sym (trans eE gE))
+    subst (λ x → Rel C P Sz x (flat-exec-instr i E gs)) (sym (trans eP gP))
+      (subst (λ y → Rel C P Sz (record fs { floc = A ; fpc = suc (fpc fs) }) y) (sym (trans eE gE))
          (core-straight R A B LR frame pc))
   gated-step {fs} {gs} R i false .false A B eP eE refl gP gE LR frame pc nf = absurd (trans (sym (cong (λ x → LocState.faulted (floc x)) eP)) nf)
     where
-      absurd : true ≡ false → Rel C P (flat-exec-instr i P fs) (flat-exec-instr i E gs)
+      absurd : true ≡ false → Rel C P Sz (flat-exec-instr i P fs) (flat-exec-instr i E gs)
       absurd ()
 
-  step-from-slot : ∀ {fs gs} (R : Rel C P fs gs) k → fetch P (fpc fs) ≡ just (load-from-slot k)
+  step-from-slot : ∀ {fs gs} (R : Rel C P Sz fs gs) k → fetch P (fpc fs) ≡ just (load-from-slot k)
                  → LocState.faulted (floc (flat-exec-instr (load-from-slot k) P fs)) ≡ false
-                 → Rel C P (flat-exec-instr (load-from-slot k) P fs) (flat-exec-instr (load-from-slot k) E gs)
+                 → Rel C P Sz (flat-exec-instr (load-from-slot k) P fs) (flat-exec-instr (load-from-slot k) E gs)
   step-from-slot {fs} {gs} R k f nf =
     gated-step R (load-from-slot k) _ _ _ _ refl refl (cong (k Data.Nat.<ᵇ_) (r-slots R)) (go-al fs) (go-al gs)
       (L.Slots.from-slot (ρ R) (Live (falloc fs)) (r-inj R) {al = falloc fs} {al′ = falloc gs} (r-frame R) k (r-loc R))
@@ -158,44 +159,44 @@ module _ (C : Classes) (P : AbstractTrace) where
                      (slot-al (LocState.stackMem (floc x) (AllocState.current-frame (falloc x)) k) (floc x) (falloc x))
 
   -- the slot instructions with a definite allocator, and the constants
-  step-to-slot : ∀ {fs gs} (R : Rel C P fs gs) k → fetch P (fpc fs) ≡ just (store-at-slot k)
+  step-to-slot : ∀ {fs gs} (R : Rel C P Sz fs gs) k → fetch P (fpc fs) ≡ just (store-at-slot k)
                → LocState.faulted (floc (flat-exec-instr (store-at-slot k) P fs)) ≡ false
-               → Rel C P (flat-exec-instr (store-at-slot k) P fs) (flat-exec-instr (store-at-slot k) E gs)
+               → Rel C P Sz (flat-exec-instr (store-at-slot k) P fs) (flat-exec-instr (store-at-slot k) E gs)
   step-to-slot {fs} {gs} R k f nf =
     gated-step R (store-at-slot k) _ _ _ _ refl refl (cong (k Data.Nat.<ᵇ_) (r-slots R)) refl refl
       (L.Slots.to-slot (ρ R) (Live (falloc fs)) (r-inj R) {al = falloc fs} {al′ = falloc gs} (r-frame R) k (r-loc R))
       (λ q _ → refl) (next-pc R (store-at-slot k) f refl) nf
 
-  step-lea : ∀ {fs gs} (R : Rel C P fs gs) k → fetch P (fpc fs) ≡ just (lea-slot k)
+  step-lea : ∀ {fs gs} (R : Rel C P Sz fs gs) k → fetch P (fpc fs) ≡ just (lea-slot k)
            → LocState.faulted (floc (flat-exec-instr (lea-slot k) P fs)) ≡ false
-           → Rel C P (flat-exec-instr (lea-slot k) P fs) (flat-exec-instr (lea-slot k) E gs)
+           → Rel C P Sz (flat-exec-instr (lea-slot k) P fs) (flat-exec-instr (lea-slot k) E gs)
   step-lea {fs} {gs} R k f nf =
     gated-step R (lea-slot k) _ _ _ _ refl refl (cong (k Data.Nat.<ᵇ_) (r-slots R)) refl refl
       (L.Slots.lea (ρ R) (Live (falloc fs)) (r-inj R) {al = falloc fs} {al′ = falloc gs} (r-frame R) k (r-loc R))
       (λ q _ → refl) (next-pc R (lea-slot k) f refl) nf
 
-  step-wl-push : ∀ {fs gs} (R : Rel C P fs gs) k → fetch P (fpc fs) ≡ just (worklist-push k)
+  step-wl-push : ∀ {fs gs} (R : Rel C P Sz fs gs) k → fetch P (fpc fs) ≡ just (worklist-push k)
                → LocState.faulted (floc (flat-exec-instr (worklist-push k) P fs)) ≡ false
-               → Rel C P (flat-exec-instr (worklist-push k) P fs) (flat-exec-instr (worklist-push k) E gs)
+               → Rel C P Sz (flat-exec-instr (worklist-push k) P fs) (flat-exec-instr (worklist-push k) E gs)
   step-wl-push {fs} {gs} R k f nf =
     gated-step R (worklist-push k) _ _ _ _ refl refl (cong (k Data.Nat.<ᵇ_) (r-slots R)) refl refl
       (L.Rest.wl-push (ρ R) (Live (falloc fs)) (r-inj R) {al = falloc fs} {al′ = falloc gs} (r-frame R) k (r-loc R))
       (λ q _ → refl) (next-pc R (worklist-push k) f refl) nf
 
-  step-tag : ∀ {fs gs} (R : Rel C P fs gs) n → fetch P (fpc fs) ≡ just (instr-load-tag-lit n)
-           → Rel C P (flat-exec-instr (instr-load-tag-lit n) P fs) (flat-exec-instr (instr-load-tag-lit n) E gs)
+  step-tag : ∀ {fs gs} (R : Rel C P Sz fs gs) n → fetch P (fpc fs) ≡ just (instr-load-tag-lit n)
+           → Rel C P Sz (flat-exec-instr (instr-load-tag-lit n) P fs) (flat-exec-instr (instr-load-tag-lit n) E gs)
   step-tag {fs} {gs} R n f =
     core-straight R _ _ (L.Rest.tag-lit (ρ R) (Live (falloc fs)) (r-inj R) {al = falloc fs} {al′ = falloc gs} (r-frame R) n (r-loc R))
       (λ q _ → refl) (next-pc R (instr-load-tag-lit n) f refl)
 
-  step-code : ∀ {fs gs} (R : Rel C P fs gs) l → fetch P (fpc fs) ≡ just (instr-load-code-addr l)
-            → Rel C P (flat-exec-instr (instr-load-code-addr l) P fs) (flat-exec-instr (instr-load-code-addr l) E gs)
+  step-code : ∀ {fs gs} (R : Rel C P Sz fs gs) l → fetch P (fpc fs) ≡ just (instr-load-code-addr l)
+            → Rel C P Sz (flat-exec-instr (instr-load-code-addr l) P fs) (flat-exec-instr (instr-load-code-addr l) E gs)
   step-code {fs} {gs} R l f =
     core-straight R _ _ (L.Rest.code-addr (ρ R) (Live (falloc fs)) (r-inj R) {al = falloc fs} {al′ = falloc gs} (r-frame R) l (r-loc R))
       (λ q _ → refl) (next-pc R (instr-load-code-addr l) f refl)
 
-  step-const : ∀ {fs gs} (R : Rel C P fs gs) {A} (p : Once.Type.FitsInReg A) v → fetch P (fpc fs) ≡ just (instr-load-const p v)
-             → Rel C P (flat-exec-instr (instr-load-const p v) P fs) (flat-exec-instr (instr-load-const p v) E gs)
+  step-const : ∀ {fs gs} (R : Rel C P Sz fs gs) {A} (p : Once.Type.FitsInReg A) v → fetch P (fpc fs) ≡ just (instr-load-const p v)
+             → Rel C P Sz (flat-exec-instr (instr-load-const p v) P fs) (flat-exec-instr (instr-load-const p v) E gs)
   step-const {fs} {gs} R p v f =
     core-straight R _ _ (L.Rest.load-const (ρ R) (Live (falloc fs)) (r-inj R) {al = falloc fs} {al′ = falloc gs} (r-frame R) p v (r-loc R))
       (λ q _ → refl) (next-pc R (instr-load-const p v) f refl)
@@ -210,11 +211,11 @@ module _ (C : Classes) (P : AbstractTrace) where
   open import Relation.Binary.PropositionalEquality using (cong₂; subst₂)
 
   -- the live frames are the same on both sides
-  frames-eq : ∀ {fs gs} → Rel C P fs gs → live-frames (falloc gs) ≡ live-frames (falloc fs)
+  frames-eq : ∀ {fs gs} → Rel C P Sz fs gs → live-frames (falloc gs) ≡ live-frames (falloc fs)
   frames-eq R = cong₂ _∷_ (cong₂ _,_ (r-frame R) (r-slots R)) (r-saved R)
 
   -- the expanded side's gate, by the primitive's
-  gate-is : ∀ {fs gs} (R : Rel C P fs gs) k
+  gate-is : ∀ {fs gs} (R : Rel C P Sz fs gs) k
           → frame-gate (falloc gs) k (sv-as-loc (readReg (LocState.regs (floc gs)) Input1))
             ≡ Data.Maybe.map (rloc (ρ R)) (frame-gate (falloc fs) k (sv-as-loc (readReg (LocState.regs (floc fs)) Input1)))
   gate-is {fs} {gs} R k =
@@ -233,9 +234,9 @@ module _ (C : Classes) (P : AbstractTrace) where
       lv-heap nothing  = refl
   la-heap k nothing s q = refl
 
-  step-load-at : ∀ {fs gs} (R : Rel C P fs gs) k → fetch P (fpc fs) ≡ just (load-at k)
+  step-load-at : ∀ {fs gs} (R : Rel C P Sz fs gs) k → fetch P (fpc fs) ≡ just (load-at k)
                → LocState.faulted (floc (flat-exec-instr (load-at k) P fs)) ≡ false
-               → Rel C P (flat-exec-instr (load-at k) P fs) (flat-exec-instr (load-at k) E gs)
+               → Rel C P Sz (flat-exec-instr (load-at k) P fs) (flat-exec-instr (load-at k) E gs)
   step-load-at {fs} {gs} R k f nf =
     core-straight R _ _
       (subst (λ m → L.LRel (ρ R) (Live (falloc fs)) (r-inj R) (exec-load-at-resolved k Output ml (floc fs)) (exec-load-at-resolved k Output m (floc gs)))
@@ -264,8 +265,8 @@ module _ (C : Classes) (P : AbstractTrace) where
     live-kept : ∀ (al : AllocState {FS}) r → AllocState.freed al r ≡ false → live-size al r ≡ AllocState.block-size al r
     live-kept al r e = cong (λ b → Data.Bool.if b then 0 else AllocState.block-size al r) e
 
-  ib-live : ∀ {fs gs} (R : Rel C P fs gs) hl → in-block? (live-size (falloc fs)) (AtDynamic hl) ≡ true → Live (falloc fs) (ref-of hl)
-  ib-live {fs} R hl ib = below , unfreed (AllocState.freed (falloc fs) (ref-of hl)) refl
+  ib-live : ∀ {fs gs} (R : Rel C P Sz fs gs) hl → in-block? (live-size (falloc fs)) (AtDynamic hl) ≡ true → Live (falloc fs) (ref-of hl)
+  ib-live {fs} R hl ib = pos , below , unfreed (AllocState.freed (falloc fs) (ref-of hl)) refl
     where
       lt : HeapLocation.heap-offset hl < live-size (falloc fs) (ref-of hl)
       lt = <ᵇ⇒< _ _ (T-of ib)
@@ -275,24 +276,32 @@ module _ (C : Classes) (P : AbstractTrace) where
       below : ref-of hl < AllocState.next-heap-ref (falloc fs)
       below = Data.Nat.Properties.≰⇒> λ ge → n≮0 (subst (HeapLocation.heap-offset hl <_)
                 (trans (live-kept (falloc fs) (ref-of hl) (unfreed (AllocState.freed (falloc fs) (ref-of hl)) refl)) (r-unsized R (ref-of hl) ge)) lt)
+      pos : 0 < ref-of hl
+      pos = nonzero (ref-of hl) refl
+        where
+          nonzero : ∀ r → ref-of hl ≡ r → 0 < ref-of hl
+          nonzero (suc r) e = subst (0 <_) (sym e) (s≤s z≤n)
+          nonzero zero    e = ⊥-elim (n≮0 (subst (HeapLocation.heap-offset hl <_)
+                                (trans (live-kept (falloc fs) (ref-of hl) (unfreed (AllocState.freed (falloc fs) (ref-of hl)) refl))
+                                       (trans (cong (AllocState.block-size (falloc fs)) e) (r-rec0 R))) lt))
 
-  ib-mono : ∀ {fs gs} (R : Rel C P fs gs) hl → in-block? (live-size (falloc fs)) (AtDynamic hl) ≡ true
+  ib-mono : ∀ {fs gs} (R : Rel C P Sz fs gs) hl → in-block? (live-size (falloc fs)) (AtDynamic hl) ≡ true
           → in-block? (live-size (falloc gs)) (AtDynamic (rhl (ρ R) hl)) ≡ true
   ib-mono {fs} {gs} R hl ib = of-T (<⇒<ᵇ (<-≤-trans lt sz))
     where
       lv = ib-live R hl ib
       lt : HeapLocation.heap-offset hl < AllocState.block-size (falloc fs) (ref-of hl)
-      lt = subst (HeapLocation.heap-offset hl <_) (live-kept (falloc fs) (ref-of hl) (proj₂ lv)) (<ᵇ⇒< _ _ (T-of ib))
+      lt = subst (HeapLocation.heap-offset hl <_) (live-kept (falloc fs) (ref-of hl) (proj₂ (proj₂ lv))) (<ᵇ⇒< _ _ (T-of ib))
       sz : AllocState.block-size (falloc fs) (ref-of hl) ≤ live-size (falloc gs) (ρ R (ref-of hl))
       sz = subst (AllocState.block-size (falloc fs) (ref-of hl) ≤_) (sym (live-kept (falloc gs) (ρ R (ref-of hl)) (r-nofree R _)))
-                 (r-size R (ref-of hl) (proj₁ lv))
+                 (r-size R (ref-of hl) (proj₁ (proj₂ lv)))
 
   open import Once.CCC.Codegen.AllocExpandStep {FS} using (rhl-off; ref-off)
   open MemOps {FS} using (writeHeapMem; writeHeapMem-aux; writeLoc)
   open import Once.Memory.HeapAddress using (offsetHL; _≟HL_)
 
   -- the store's frame: the expanded write is at a live block's renamed cell
-  store-frame : ∀ {fs gs} (R : Rel C P fs gs) k ml v w
+  store-frame : ∀ {fs gs} (R : Rel C P Sz fs gs) k ml v w
               → LocState.faulted (exec-store-at-resolved (live-size (falloc fs)) k ml v (floc fs)) ≡ false
               → ∀ q → (∀ r → Live (falloc fs) r → ¬ ρ R r ≡ ref-of q)
               → LocState.heapMem (exec-store-at-resolved (live-size (falloc gs)) k (Data.Maybe.map (rloc (ρ R)) ml) w (floc gs)) q
@@ -320,9 +329,9 @@ module _ (C : Classes) (P : AbstractTrace) where
                                                      (trans (sym (ref-off (rhl (ρ R) hl) k)) (cong ref-of eq)))
           other (Relation.Nullary.no _)   = refl
 
-  step-store-at : ∀ {fs gs} (R : Rel C P fs gs) k → fetch P (fpc fs) ≡ just (store-at k)
+  step-store-at : ∀ {fs gs} (R : Rel C P Sz fs gs) k → fetch P (fpc fs) ≡ just (store-at k)
                 → LocState.faulted (floc (flat-exec-instr (store-at k) P fs)) ≡ false
-                → Rel C P (flat-exec-instr (store-at k) P fs) (flat-exec-instr (store-at k) E gs)
+                → Rel C P Sz (flat-exec-instr (store-at k) P fs) (flat-exec-instr (store-at k) E gs)
   step-store-at {fs} {gs} R k f nf =
     core-straight R _ _
       (subst₂ (λ m w → L.LRel (ρ R) (Live (falloc fs)) (r-inj R) (exec-store-at-resolved (live-size (falloc fs)) k ml v (floc fs))
@@ -338,7 +347,7 @@ module _ (C : Classes) (P : AbstractTrace) where
       v = readReg (LocState.regs (floc fs)) Output
 
   -- the address gate passed: a block handed out, inside its renamed block too
-  ib-size : ∀ {fs gs} (R : Rel C P fs gs) hl → in-block? (AllocState.block-size (falloc fs)) (AtDynamic hl) ≡ true
+  ib-size : ∀ {fs gs} (R : Rel C P Sz fs gs) hl → in-block? (AllocState.block-size (falloc fs)) (AtDynamic hl) ≡ true
           → in-block? (AllocState.block-size (falloc gs)) (AtDynamic (rhl (ρ R) hl)) ≡ true
   ib-size {fs} {gs} R hl ib = of-T (<⇒<ᵇ (<-≤-trans lt (r-size R (ref-of hl) below)))
     where
@@ -356,7 +365,7 @@ module _ (C : Classes) (P : AbstractTrace) where
   aa-heap bs k nothing s q = refl
 
   -- the expanded side's address gate, by the primitive's
-  hgate-is : ∀ {fs gs} (R : Rel C P fs gs)
+  hgate-is : ∀ {fs gs} (R : Rel C P Sz fs gs)
            → heap-gate (sv-as-loc (readReg (LocState.regs (floc gs)) Input1))
              ≡ Data.Maybe.map (rloc (ρ R)) (heap-gate (sv-as-loc (readReg (LocState.regs (floc fs)) Input1)))
   hgate-is {fs} {gs} R =
@@ -364,9 +373,9 @@ module _ (C : Classes) (P : AbstractTrace) where
       (trans (cong heap-gate (L.as-loc-rv (ρ R) (Live (falloc fs)) (r-inj R) (readReg (LocState.regs (floc fs)) Input1)))
              (L.heap-gate-rv (ρ R) (Live (falloc fs)) (r-inj R) (sv-as-loc (readReg (LocState.regs (floc fs)) Input1))))
 
-  step-addr-at : ∀ {fs gs} (R : Rel C P fs gs) k → fetch P (fpc fs) ≡ just (addr-at k)
+  step-addr-at : ∀ {fs gs} (R : Rel C P Sz fs gs) k → fetch P (fpc fs) ≡ just (addr-at k)
                → LocState.faulted (floc (flat-exec-instr (addr-at k) P fs)) ≡ false
-               → Rel C P (flat-exec-instr (addr-at k) P fs) (flat-exec-instr (addr-at k) E gs)
+               → Rel C P Sz (flat-exec-instr (addr-at k) P fs) (flat-exec-instr (addr-at k) E gs)
   step-addr-at {fs} {gs} R k f nf =
     core-straight R _ _
       (subst (λ m → L.LRel (ρ R) (Live (falloc fs)) (r-inj R) (exec-addr-at-resolved (AllocState.block-size (falloc fs)) k ml (floc fs))
@@ -395,9 +404,9 @@ module _ (C : Classes) (P : AbstractTrace) where
     slot-heap′ (just _) s al q = refl
     slot-heap′ nothing  s al q = refl
 
-  step-restore : ∀ {fs gs} (R : Rel C P fs gs) k → fetch P (fpc fs) ≡ just (restore-input k)
+  step-restore : ∀ {fs gs} (R : Rel C P Sz fs gs) k → fetch P (fpc fs) ≡ just (restore-input k)
                → LocState.faulted (floc (flat-exec-instr (restore-input k) P fs)) ≡ false
-               → Rel C P (flat-exec-instr (restore-input k) P fs) (flat-exec-instr (restore-input k) E gs)
+               → Rel C P Sz (flat-exec-instr (restore-input k) P fs) (flat-exec-instr (restore-input k) E gs)
   step-restore {fs} {gs} R k f nf =
     gated-step R (restore-input k) _ _ _ _ refl refl (cong (k Data.Nat.<ᵇ_) (r-slots R)) (go-al fs) (go-al gs)
       (L.Slots.restore (ρ R) (Live (falloc fs)) (r-inj R) {al = falloc fs} {al′ = falloc gs} (r-frame R) k (r-loc R))
@@ -408,9 +417,9 @@ module _ (C : Classes) (P : AbstractTrace) where
       go-al x = cong (λ a → record x { floc = floc (straight-go (restore-input k) x) ; falloc = a ; fpc = suc (fpc x) })
                      (restore-al (LocState.stackMem (floc x) (AllocState.current-frame (falloc x)) k) (floc x) (falloc x))
 
-  step-wl-pop : ∀ {fs gs} (R : Rel C P fs gs) k → fetch P (fpc fs) ≡ just (worklist-pop k)
+  step-wl-pop : ∀ {fs gs} (R : Rel C P Sz fs gs) k → fetch P (fpc fs) ≡ just (worklist-pop k)
               → LocState.faulted (floc (flat-exec-instr (worklist-pop k) P fs)) ≡ false
-              → Rel C P (flat-exec-instr (worklist-pop k) P fs) (flat-exec-instr (worklist-pop k) E gs)
+              → Rel C P Sz (flat-exec-instr (worklist-pop k) P fs) (flat-exec-instr (worklist-pop k) E gs)
   step-wl-pop {fs} {gs} R k f nf =
     gated-step R (worklist-pop k) _ _ _ _ refl refl (cong (k Data.Nat.<ᵇ_) (r-slots R)) (go-al fs) (go-al gs)
       (L.Rest.wl-pop (ρ R) (Live (falloc fs)) (r-inj R) {al = falloc fs} {al′ = falloc gs} (r-frame R) k (r-loc R))
@@ -422,22 +431,22 @@ module _ (C : Classes) (P : AbstractTrace) where
                      (slot-al′ (LocState.stackMem (floc x) (AllocState.current-frame (falloc x)) k) (floc x) (falloc x))
 
   -- the instructions that change nothing but the pc
-  step-id : ∀ {fs gs} (R : Rel C P fs gs) i → fetch P (fpc fs) ≡ just i → expand-at C (fpc fs + 0) i ≡ i ∷ []
+  step-id : ∀ {fs gs} (R : Rel C P Sz fs gs) i → fetch P (fpc fs) ≡ just i → expand-at C (fpc fs + 0) i ≡ i ∷ []
           → flat-exec-instr i P fs ≡ record fs { fpc = suc (fpc fs) } → flat-exec-instr i E gs ≡ record gs { fpc = suc (fpc gs) }
-          → Rel C P (flat-exec-instr i P fs) (flat-exec-instr i E gs)
+          → Rel C P Sz (flat-exec-instr i P fs) (flat-exec-instr i E gs)
   step-id {fs} {gs} R i f ex eP eE =
-    subst₂ (Rel C P) (sym eP) (sym eE) (core-straight R (floc fs) (floc gs) (r-loc R) (λ q _ → refl) (next-pc R i f ex))
+    subst₂ (Rel C P Sz) (sym eP) (sym eE) (core-straight R (floc fs) (floc gs) (r-loc R) (λ q _ → refl) (next-pc R i f ex))
 
-  step-reclaim : ∀ {fs gs} (R : Rel C P fs gs) n → fetch P (fpc fs) ≡ just (instr-reclaim-to n)
-               → Rel C P (flat-exec-instr (instr-reclaim-to n) P fs) (flat-exec-instr (instr-reclaim-to n) E gs)
+  step-reclaim : ∀ {fs gs} (R : Rel C P Sz fs gs) n → fetch P (fpc fs) ≡ just (instr-reclaim-to n)
+               → Rel C P Sz (flat-exec-instr (instr-reclaim-to n) P fs) (flat-exec-instr (instr-reclaim-to n) E gs)
   step-reclaim R n f = step-id R (instr-reclaim-to n) f refl refl refl
 
-  step-wl-init : ∀ {fs gs} (R : Rel C P fs gs) k → fetch P (fpc fs) ≡ just (worklist-init k)
-               → Rel C P (flat-exec-instr (worklist-init k) P fs) (flat-exec-instr (worklist-init k) E gs)
+  step-wl-init : ∀ {fs gs} (R : Rel C P Sz fs gs) k → fetch P (fpc fs) ≡ just (worklist-init k)
+               → Rel C P Sz (flat-exec-instr (worklist-init k) P fs) (flat-exec-instr (worklist-init k) E gs)
   step-wl-init R k f = step-id R (worklist-init k) f refl refl refl
 
-  step-wl-check : ∀ {fs gs} (R : Rel C P fs gs) k → fetch P (fpc fs) ≡ just (worklist-check k)
-                → Rel C P (flat-exec-instr (worklist-check k) P fs) (flat-exec-instr (worklist-check k) E gs)
+  step-wl-check : ∀ {fs gs} (R : Rel C P Sz fs gs) k → fetch P (fpc fs) ≡ just (worklist-check k)
+                → Rel C P Sz (flat-exec-instr (worklist-check k) P fs) (flat-exec-instr (worklist-check k) E gs)
   step-wl-check R k f = step-id R (worklist-check k) f refl refl refl
 
   ------------------------------------------------------------------------
@@ -465,11 +474,11 @@ module _ (C : Classes) (P : AbstractTrace) where
       m-sizeE : ∀ r → AllocState.block-size (falloc gs′) r ≡ AllocState.block-size (falloc gs) r
   open Moves
 
-  core-gen : ∀ {fs gs fs′ gs′} (R : Rel C P fs gs) → Moves fs gs fs′ gs′
+  core-gen : ∀ {fs gs fs′ gs′} (R : Rel C P Sz fs gs) → Moves fs gs fs′ gs′
            → L.LRel (ρ R) (Live (falloc fs)) (r-inj R) (floc fs′) (floc gs′)
            → fclosure gs′ ≡ rv (ρ R) (fclosure fs′)
            → (∀ q → (∀ r → Live (falloc fs) r → ¬ ρ R r ≡ ref-of q) → LocState.heapMem (floc gs′) q ≡ LocState.heapMem (floc gs) q)
-           → Rel C P fs′ gs′
+           → Rel C P Sz fs′ gs′
   core-gen {fs} {gs} {fs′} {gs′} R M LR clo frame = record
     { ρ = ρ R ; σ = σ R ; lists = lists R
     ; r-pc = m-pc M ; r-ret = m-ret M ; r-link = m-link M
@@ -484,12 +493,15 @@ module _ (C : Classes) (P : AbstractTrace) where
     ; r-heads = heads′
     ; r-sent = trans (frame (heap-loc (mkHeapRef (σ R)) 0) (λ r lv e → r-not-σ R r lv e)) (r-sent R)
     ; r-nofree = λ r → trans (m-freeE M r) (r-nofree R r)
-    ; r-unsized = λ r le → trans (m-sizeP M r) (r-unsized R r (subst (_≤ r) (m-nextP M) le)) }
+    ; r-unsized = λ r le → trans (m-sizeP M r) (r-unsized R r (subst (_≤ r) (m-nextP M) le))
+    ; r-rec0 = trans (m-sizeP M 0) (r-rec0 R)
+    ; r-csize = λ r l → subst₂ (λ a b → bsz C a ≤ b) (sym (m-sizeP M r)) (sym (m-sizeE M (ρ R r))) (r-csize R r (to r l))
+    ; r-lsize = λ c b m k z e → subst (bsz C k ≤_) (sym (m-sizeE M b)) (r-lsize R c b m k z e) }
     where
       to : ∀ r → Live (falloc fs′) r → Live (falloc fs) r
-      to r (lt , fr) = subst (r <_) (m-nextP M) lt , trans (sym (m-freeP M r)) fr
+      to r (pos , lt , fr) = pos , subst (r <_) (m-nextP M) lt , trans (sym (m-freeP M r)) fr
       fro : ∀ r → Live (falloc fs) r → Live (falloc fs′) r
-      fro r (lt , fr) = subst (r <_) (sym (m-nextP M)) lt , trans (m-freeP M r) fr
+      fro r (pos , lt , fr) = pos , subst (r <_) (sym (m-nextP M)) lt , trans (m-freeP M r) fr
       rec-free : ∀ k → LocState.heapMem (floc gs′) (rec-loc k) ≡ LocState.heapMem (floc gs) (rec-loc k)
       rec-free k = frame (rec-loc k) (λ r lv e → Data.Nat.Properties.<-irrefl (sym e) (proj₁ (r-below R r lv)))
       heads′ : ∀ c → c < count C → Σ (StoredValue FS) λ v → LocState.heapMem (floc gs′) (rec-loc (head-word c)) ≡ just v
@@ -505,7 +517,7 @@ module _ (C : Classes) (P : AbstractTrace) where
                               (λ b m → frame (heap-loc (mkHeapRef b) 0) (λ r lv e′ → r-not-free R r c b lv m e′)) ch
 
   -- the moves of a step that only advances the pc
-  moves-next : ∀ {fs gs} (R : Rel C P fs gs) (fs′ gs′ : FlatState) → off C 0 P (suc (fpc fs)) ≡ suc (fpc gs)
+  moves-next : ∀ {fs gs} (R : Rel C P Sz fs gs) (fs′ gs′ : FlatState) → off C 0 P (suc (fpc fs)) ≡ suc (fpc gs)
              → fpc fs′ ≡ suc (fpc fs) → fpc gs′ ≡ suc (fpc gs)
              → fret fs′ ≡ fret fs → fret gs′ ≡ fret gs → flink fs′ ≡ flink fs → flink gs′ ≡ flink gs
              → falloc fs′ ≡ falloc fs → falloc gs′ ≡ falloc gs
@@ -523,25 +535,25 @@ module _ (C : Classes) (P : AbstractTrace) where
     ; m-nextE = cong AllocState.next-heap-ref ag ; m-freeE = λ r → cong (λ a → AllocState.freed a r) ag
     ; m-sizeE = λ r → cong (λ a → AllocState.block-size a r) ag }
 
-  step-save-clo : ∀ {fs gs} (R : Rel C P fs gs) → fetch P (fpc fs) ≡ just instr-save-closure-reg
-                → Rel C P (flat-exec-instr instr-save-closure-reg P fs) (flat-exec-instr instr-save-closure-reg E gs)
+  step-save-clo : ∀ {fs gs} (R : Rel C P Sz fs gs) → fetch P (fpc fs) ≡ just instr-save-closure-reg
+                → Rel C P Sz (flat-exec-instr instr-save-closure-reg P fs) (flat-exec-instr instr-save-closure-reg E gs)
   step-save-clo {fs} {gs} R f =
     core-gen R (moves-next R _ _ (next-pc R instr-save-closure-reg f refl) refl refl refl refl refl refl refl refl)
       (r-loc R) (L.LRel.l-regs (r-loc R) Input1) (λ q _ → refl)
 
-  step-label : ∀ {fs gs} (R : Rel C P fs gs) l → fetch P (fpc fs) ≡ just (instr-ctrl (c-label l))
-             → Rel C P (flat-exec-instr (instr-ctrl (c-label l)) P fs) (flat-exec-instr (instr-ctrl (c-label l)) E gs)
+  step-label : ∀ {fs gs} (R : Rel C P Sz fs gs) l → fetch P (fpc fs) ≡ just (instr-ctrl (c-label l))
+             → Rel C P Sz (flat-exec-instr (instr-ctrl (c-label l)) P fs) (flat-exec-instr (instr-ctrl (c-label l)) E gs)
   step-label R l f = step-id R (instr-ctrl (c-label l)) f refl refl refl
 
   -- a halt (and a leave) on both sides
-  halt-loc : ∀ {fs gs} (R : Rel C P fs gs) (lf : Bool)
+  halt-loc : ∀ {fs gs} (R : Rel C P Sz fs gs) (lf : Bool)
            → L.LRel (ρ R) (Live (falloc fs)) (r-inj R) (record (floc fs) { halted = true ; left = lf }) (record (floc gs) { halted = true ; left = lf })
   halt-loc R lf = record
     { l-regs = L.LRel.l-regs (r-loc R) ; l-stack = L.LRel.l-stack (r-loc R) ; l-heap = L.LRel.l-heap (r-loc R) ; l-live = L.LRel.l-live (r-loc R)
     ; l-halt = refl ; l-fault = L.LRel.l-fault (r-loc R) ; l-left = refl ; l-log = L.LRel.l-log (r-loc R) }
 
-  step-leave : ∀ {fs gs} (R : Rel C P fs gs) → fetch P (fpc fs) ≡ just (instr-ctrl c-leave)
-             → Rel C P (flat-exec-instr (instr-ctrl c-leave) P fs) (flat-exec-instr (instr-ctrl c-leave) E gs)
+  step-leave : ∀ {fs gs} (R : Rel C P Sz fs gs) → fetch P (fpc fs) ≡ just (instr-ctrl c-leave)
+             → Rel C P Sz (flat-exec-instr (instr-ctrl c-leave) P fs) (flat-exec-instr (instr-ctrl c-leave) E gs)
   step-leave {fs} {gs} R f =
     core-gen R (record { m-pc = r-pc R ; m-ret = r-ret R ; m-link = r-link R ; m-frame = r-frame R ; m-saved = r-saved R
                        ; m-slots = r-slots R ; m-nslot = r-next-slot R
@@ -553,35 +565,35 @@ module _ (C : Classes) (P : AbstractTrace) where
   open import Once.CCC.Label using (LabelId; module LabelId)
   open import Once.CCC.Codegen.AllocExpandPc {FS} using (fl-exp)
 
-  halt-only : ∀ {fs gs} (R : Rel C P fs gs)
+  halt-only : ∀ {fs gs} (R : Rel C P Sz fs gs)
             → L.LRel (ρ R) (Live (falloc fs)) (r-inj R) (record (floc fs) { halted = true }) (record (floc gs) { halted = true })
   halt-only R = record
     { l-regs = L.LRel.l-regs (r-loc R) ; l-stack = L.LRel.l-stack (r-loc R) ; l-heap = L.LRel.l-heap (r-loc R) ; l-live = L.LRel.l-live (r-loc R)
     ; l-halt = refl ; l-fault = L.LRel.l-fault (r-loc R) ; l-left = L.LRel.l-left (r-loc R) ; l-log = L.LRel.l-log (r-loc R) }
 
   -- the moves of a jump to a mapped pc (or of nothing but a halt)
-  moves-at : ∀ {fs gs} (R : Rel C P fs gs) pc′ → Moves fs gs (record fs { fpc = pc′ }) (record gs { fpc = off C 0 P pc′ })
+  moves-at : ∀ {fs gs} (R : Rel C P Sz fs gs) pc′ → Moves fs gs (record fs { fpc = pc′ }) (record gs { fpc = off C 0 P pc′ })
   moves-at R pc′ = record { m-pc = refl ; m-ret = r-ret R ; m-link = r-link R ; m-frame = r-frame R ; m-saved = r-saved R
                           ; m-slots = r-slots R ; m-nslot = r-next-slot R
                           ; m-nextP = refl ; m-freeP = λ _ → refl ; m-sizeP = λ _ → refl
                           ; m-nextE = refl ; m-freeE = λ _ → refl ; m-sizeE = λ _ → refl }
 
-  moves-stay : ∀ {fs gs} (R : Rel C P fs gs) (A B : LocState FS) → Moves fs gs (record fs { floc = A }) (record gs { floc = B })
+  moves-stay : ∀ {fs gs} (R : Rel C P Sz fs gs) (A B : LocState FS) → Moves fs gs (record fs { floc = A }) (record gs { floc = B })
   moves-stay R A B = record { m-pc = r-pc R ; m-ret = r-ret R ; m-link = r-link R ; m-frame = r-frame R ; m-saved = r-saved R
                             ; m-slots = r-slots R ; m-nslot = r-next-slot R
                             ; m-nextP = refl ; m-freeP = λ _ → refl ; m-sizeP = λ _ → refl
                             ; m-nextE = refl ; m-freeE = λ _ → refl ; m-sizeE = λ _ → refl }
 
   -- a jump, by the expanded program's scan
-  jump-rel : ∀ {fs gs} (R : Rel C P fs gs) (mj : Maybe ℕ)
-           → Rel C P (do-jump mj fs) (do-jump (Data.Maybe.map (λ p → 0 + off C 0 P p) mj) gs)
+  jump-rel : ∀ {fs gs} (R : Rel C P Sz fs gs) (mj : Maybe ℕ)
+           → Rel C P Sz (do-jump mj fs) (do-jump (Data.Maybe.map (λ p → 0 + off C 0 P p) mj) gs)
   jump-rel R (just pc′) = core-gen R (moves-at R pc′) (r-loc R) (r-clo R) (λ q _ → refl)
   jump-rel R nothing    = core-gen R (moves-stay R _ _) (halt-only R) (r-clo R) (λ q _ → refl)
 
-  step-jmp : ∀ {fs gs} (R : Rel C P fs gs) l → LabelId.path l ≡ [] → fetch P (fpc fs) ≡ just (instr-ctrl (c-jmp l))
-           → Rel C P (flat-exec-instr (instr-ctrl (c-jmp l)) P fs) (flat-exec-instr (instr-ctrl (c-jmp l)) E gs)
+  step-jmp : ∀ {fs gs} (R : Rel C P Sz fs gs) l → LabelId.path l ≡ [] → fetch P (fpc fs) ≡ just (instr-ctrl (c-jmp l))
+           → Rel C P Sz (flat-exec-instr (instr-ctrl (c-jmp l)) P fs) (flat-exec-instr (instr-ctrl (c-jmp l)) E gs)
   step-jmp {fs} {gs} R l pe f =
-    subst (λ m → Rel C P (do-jump (find-label P l) fs) (do-jump m gs)) (sym (fl-exp C 0 P l 0 pe)) (jump-rel R (find-label P l))
+    subst (λ m → Rel C P Sz (do-jump (find-label P l) fs) (do-jump m gs)) (sym (fl-exp C 0 P l 0 pe)) (jump-rel R (find-label P l))
 
   open FlatMachine {FS} using (tag-test; flat-read-tag; flat-read-at; do-branch-test; do-branch; do-branch-at; flat-fault)
 
@@ -596,7 +608,7 @@ module _ (C : Classes) (P : AbstractTrace) where
   tag-rv ρ′ nothing                        = refl
 
   -- the expanded side's tag test, by the primitive's (which did not fault)
-  read-tag-rel : ∀ {fs gs} (R : Rel C P fs gs) → ¬ tag-test (flat-read-tag (falloc fs) (floc fs)) ≡ nothing
+  read-tag-rel : ∀ {fs gs} (R : Rel C P Sz fs gs) → ¬ tag-test (flat-read-tag (falloc fs) (floc fs)) ≡ nothing
                → tag-test (flat-read-tag (falloc gs) (floc gs)) ≡ tag-test (flat-read-tag (falloc fs) (floc fs))
   read-tag-rel {fs} {gs} R nn =
     trans (cong (λ m → tag-test (flat-read-at (floc gs) m)) (gate-is R 0)) (go ml refl nn)
@@ -616,26 +628,26 @@ module _ (C : Classes) (P : AbstractTrace) where
             trans (cong tag-test (L.LRel.l-heap (r-loc R) hl v (L.LRel.l-live (r-loc R) hl v e) e))
                   (trans (tag-rv (ρ R) (just v)) (cong tag-test (sym e)))
 
-  step-branch : ∀ {fs gs} (R : Rel C P fs gs) l → LabelId.path l ≡ [] → fetch P (fpc fs) ≡ just (instr-ctrl (c-branch-tag-zero l))
+  step-branch : ∀ {fs gs} (R : Rel C P Sz fs gs) l → LabelId.path l ≡ [] → fetch P (fpc fs) ≡ just (instr-ctrl (c-branch-tag-zero l))
               → LocState.faulted (floc (flat-exec-instr (instr-ctrl (c-branch-tag-zero l)) P fs)) ≡ false
-              → Rel C P (flat-exec-instr (instr-ctrl (c-branch-tag-zero l)) P fs) (flat-exec-instr (instr-ctrl (c-branch-tag-zero l)) E gs)
+              → Rel C P Sz (flat-exec-instr (instr-ctrl (c-branch-tag-zero l)) P fs) (flat-exec-instr (instr-ctrl (c-branch-tag-zero l)) E gs)
   step-branch {fs} {gs} R l pe f nf =
     go (tag-test (flat-read-tag (falloc fs) (floc fs))) refl nf
     where
       go : ∀ mb → tag-test (flat-read-tag (falloc fs) (floc fs)) ≡ mb
          → LocState.faulted (floc (do-branch-test mb l P fs)) ≡ false
-         → Rel C P (do-branch-test (tag-test (flat-read-tag (falloc fs) (floc fs))) l P fs)
+         → Rel C P Sz (do-branch-test (tag-test (flat-read-tag (falloc fs) (floc fs))) l P fs)
                    (do-branch-test (tag-test (flat-read-tag (falloc gs) (floc gs))) l E gs)
       go nothing  _ ()
       go (just b) e _ =
-        subst (λ m → Rel C P (do-branch-test (tag-test (flat-read-tag (falloc fs) (floc fs))) l P fs) (do-branch-test m l E gs))
+        subst (λ m → Rel C P Sz (do-branch-test (tag-test (flat-read-tag (falloc fs) (floc fs))) l P fs) (do-branch-test m l E gs))
               (sym (trans (read-tag-rel R (λ z → nothing≢ (trans (sym e) z))) e))
-              (subst (λ m → Rel C P (do-branch-test m l P fs) (do-branch-test (just b) l E gs)) (sym e) (br b))
+              (subst (λ m → Rel C P Sz (do-branch-test m l P fs) (do-branch-test (just b) l E gs)) (sym e) (br b))
         where
           nothing≢ : ¬ (just b ≡ nothing)
           nothing≢ ()
-          br : ∀ b′ → Rel C P (do-branch b′ l P fs) (do-branch b′ l E gs)
-          br true  = subst (λ m → Rel C P (do-jump (find-label P l) fs) (do-jump m gs)) (sym (fl-exp C 0 P l 0 pe)) (jump-rel R (find-label P l))
+          br : ∀ b′ → Rel C P Sz (do-branch b′ l P fs) (do-branch b′ l E gs)
+          br true  = subst (λ m → Rel C P Sz (do-jump (find-label P l) fs) (do-jump m gs)) (sym (fl-exp C 0 P l 0 pe)) (jump-rel R (find-label P l))
           br false = core-gen R (moves-next R _ _ (next-pc R (instr-ctrl (c-branch-tag-zero l)) f refl) refl refl refl refl refl refl refl refl)
                        (r-loc R) (r-clo R) (λ q _ → refl)
 
@@ -649,7 +661,7 @@ module _ (C : Classes) (P : AbstractTrace) where
   open import Once.CCC.Codegen.AllocExpandPc {FS} using (ft-exp)
 
   -- a frame cleared on both sides
-  clear-rel : ∀ {fs gs} (R : Rel C P fs gs) f b
+  clear-rel : ∀ {fs gs} (R : Rel C P Sz fs gs) f b
             → ∀ f′ k → clear-frame (LocState.stackMem (floc gs)) f b f′ k ≡ Data.Maybe.map (rv (ρ R)) (clear-frame (LocState.stackMem (floc fs)) f b f′ k)
   clear-rel {fs} {gs} R f b f′ k = aux (FrameSemantics._≟F_ FS f f′) (Data.Nat.Properties._<?_ k b)
     where
@@ -660,14 +672,14 @@ module _ (C : Classes) (P : AbstractTrace) where
       aux (Relation.Nullary.yes _) (Relation.Nullary.no _)  = L.LRel.l-stack (r-loc R) f′ k
 
   -- the stack replaced by a related one
-  stack-loc : ∀ {fs gs} (R : Rel C P fs gs) (m m′ : StackMem FS) → (∀ f k → m′ f k ≡ Data.Maybe.map (rv (ρ R)) (m f k))
+  stack-loc : ∀ {fs gs} (R : Rel C P Sz fs gs) (m m′ : StackMem FS) → (∀ f k → m′ f k ≡ Data.Maybe.map (rv (ρ R)) (m f k))
             → L.LRel (ρ R) (Live (falloc fs)) (r-inj R) (record (floc fs) { stackMem = m }) (record (floc gs) { stackMem = m′ })
   stack-loc R m m′ e = record
     { l-regs = L.LRel.l-regs (r-loc R) ; l-stack = e ; l-heap = L.LRel.l-heap (r-loc R) ; l-live = L.LRel.l-live (r-loc R)
     ; l-halt = L.LRel.l-halt (r-loc R) ; l-fault = L.LRel.l-fault (r-loc R) ; l-left = L.LRel.l-left (r-loc R) ; l-log = L.LRel.l-log (r-loc R) }
 
-  step-entry : ∀ {fs gs} (R : Rel C P fs gs) e b → fetch P (fpc fs) ≡ just (instr-ctrl (c-entry e b))
-             → Rel C P (flat-exec-instr (instr-ctrl (c-entry e b)) P fs) (flat-exec-instr (instr-ctrl (c-entry e b)) E gs)
+  step-entry : ∀ {fs gs} (R : Rel C P Sz fs gs) e b → fetch P (fpc fs) ≡ just (instr-ctrl (c-entry e b))
+             → Rel C P Sz (flat-exec-instr (instr-ctrl (c-entry e b)) P fs) (flat-exec-instr (instr-ctrl (c-entry e b)) E gs)
   step-entry {fs} {gs} R e b f =
     core-gen R
       (record { m-pc = trans (sym (next-pc R (instr-ctrl (c-entry e b)) f refl)) refl ; m-ret = r-ret R ; m-link = refl
@@ -682,15 +694,15 @@ module _ (C : Classes) (P : AbstractTrace) where
       (r-clo R) (λ q _ → refl)
 
   -- a fault on both sides
-  fault-rel : ∀ {fs gs} (R : Rel C P fs gs) → Rel C P (flat-fault fs) (flat-fault gs)
+  fault-rel : ∀ {fs gs} (R : Rel C P Sz fs gs) → Rel C P Sz (flat-fault fs) (flat-fault gs)
   fault-rel {fs} {gs} R = core-gen R (moves-stay R _ _)
     (record { l-regs = L.LRel.l-regs (r-loc R) ; l-stack = L.LRel.l-stack (r-loc R) ; l-heap = L.LRel.l-heap (r-loc R) ; l-live = L.LRel.l-live (r-loc R)
             ; l-halt = refl ; l-fault = refl ; l-left = L.LRel.l-left (r-loc R) ; l-log = L.LRel.l-log (r-loc R) })
     (r-clo R) (λ q _ → refl)
 
   -- a call to a mapped entry (the return address one past the call, on both sides)
-  call-rel : ∀ {fs gs} (R : Rel C P fs gs) → off C 0 P (suc (fpc fs)) ≡ suc (fpc gs) → ∀ (mj : Maybe ℕ)
-           → Rel C P (do-call-at mj fs) (do-call-at (Data.Maybe.map (λ p → 0 + off C 0 P p) mj) gs)
+  call-rel : ∀ {fs gs} (R : Rel C P Sz fs gs) → off C 0 P (suc (fpc fs)) ≡ suc (fpc gs) → ∀ (mj : Maybe ℕ)
+           → Rel C P Sz (do-call-at mj fs) (do-call-at (Data.Maybe.map (λ p → 0 + off C 0 P p) mj) gs)
   call-rel {fs} {gs} R pc (just j) =
     core-gen R
       (record { m-pc = refl ; m-ret = cong₂ _∷_ (sym pc) (r-ret R) ; m-link = cong just (sym pc)
@@ -701,10 +713,10 @@ module _ (C : Classes) (P : AbstractTrace) where
       (r-loc R) (r-clo R) (λ q _ → refl)
   call-rel R pc nothing = fault-rel R
 
-  step-call-fn : ∀ {fs gs} (R : Rel C P fs gs) fn → fetch P (fpc fs) ≡ just (instr-ctrl (c-call-fn fn))
-               → Rel C P (flat-exec-instr (instr-ctrl (c-call-fn fn)) P fs) (flat-exec-instr (instr-ctrl (c-call-fn fn)) E gs)
+  step-call-fn : ∀ {fs gs} (R : Rel C P Sz fs gs) fn → fetch P (fpc fs) ≡ just (instr-ctrl (c-call-fn fn))
+               → Rel C P Sz (flat-exec-instr (instr-ctrl (c-call-fn fn)) P fs) (flat-exec-instr (instr-ctrl (c-call-fn fn)) E gs)
   step-call-fn {fs} {gs} R fn f =
-    subst (λ m → Rel C P (do-call-at (find-fn P fn) fs) (do-call-at m gs)) (sym (ft-exp C 0 P (Once.CCC.Label.e-fn fn) 0))
+    subst (λ m → Rel C P Sz (do-call-at (find-fn P fn) fs) (do-call-at m gs)) (sym (ft-exp C 0 P (Once.CCC.Label.e-fn fn) 0))
       (call-rel R (next-pc R (instr-ctrl (c-call-fn fn)) f refl) (find-fn P fn))
 
   open import Once.Memory.HeapAddress using (sucHL)
@@ -713,10 +725,10 @@ module _ (C : Classes) (P : AbstractTrace) where
   rhl-suc ρ′ (heap-loc r o) = refl
 
   -- a closure's code word, called on both sides
-  code-rel : ∀ {fs gs} (R : Rel C P fs gs) → off C 0 P (suc (fpc fs)) ≡ suc (fpc gs) → ∀ mv
-           → Rel C P (do-call-code P mv fs) (do-call-code E (Data.Maybe.map (rv (ρ R)) mv) gs)
+  code-rel : ∀ {fs gs} (R : Rel C P Sz fs gs) → off C 0 P (suc (fpc fs)) ≡ suc (fpc gs) → ∀ mv
+           → Rel C P Sz (do-call-code P mv fs) (do-call-code E (Data.Maybe.map (rv (ρ R)) mv) gs)
   code-rel {fs} {gs} R pc (just (SV-Code ℓ)) =
-    subst (λ m → Rel C P (do-call-at (find-thunk P ℓ) fs) (do-call-at m gs)) (sym (ft-exp C 0 P (Once.CCC.Label.e-thunk ℓ) 0))
+    subst (λ m → Rel C P Sz (do-call-at (find-thunk P ℓ) fs) (do-call-at m gs)) (sym (ft-exp C 0 P (Once.CCC.Label.e-thunk ℓ) 0))
       (call-rel R pc (find-thunk P ℓ))
   code-rel R pc (just (SV-Tag _))   = fault-rel R
   code-rel R pc (just (SV-Lit _ _)) = fault-rel R
@@ -724,22 +736,22 @@ module _ (C : Classes) (P : AbstractTrace) where
   code-rel R pc (just (SV-Ptr (AtDynamic _)))  = fault-rel R
   code-rel R pc nothing = fault-rel R
 
-  step-call-clo : ∀ {fs gs} (R : Rel C P fs gs) → fetch P (fpc fs) ≡ just instr-call-closure
+  step-call-clo : ∀ {fs gs} (R : Rel C P Sz fs gs) → fetch P (fpc fs) ≡ just instr-call-closure
                 → LocState.faulted (floc (flat-exec-instr instr-call-closure P fs)) ≡ false
-                → Rel C P (flat-exec-instr instr-call-closure P fs) (flat-exec-instr instr-call-closure E gs)
+                → Rel C P Sz (flat-exec-instr instr-call-closure P fs) (flat-exec-instr instr-call-closure E gs)
   step-call-clo {fs} {gs} R f nf =
-    subst (λ c → Rel C P (do-call-sv P (fclosure fs) fs) (do-call-sv E c gs)) (sym (r-clo R)) (go (fclosure fs) nf)
+    subst (λ c → Rel C P Sz (do-call-sv P (fclosure fs) fs) (do-call-sv E c gs)) (sym (r-clo R)) (go (fclosure fs) nf)
     where
       pc = next-pc R instr-call-closure f refl
-      go : ∀ c → LocState.faulted (floc (do-call-sv P c fs)) ≡ false → Rel C P (do-call-sv P c fs) (do-call-sv E (rv (ρ R) c) gs)
+      go : ∀ c → LocState.faulted (floc (do-call-sv P c fs)) ≡ false → Rel C P Sz (do-call-sv P c fs) (do-call-sv E (rv (ρ R) c) gs)
       go (SV-Ptr (AtDynamic hl)) nf′ = cell (LocState.heapMem (floc fs) (sucHL hl)) refl nf′
         where
           cell : ∀ mv → LocState.heapMem (floc fs) (sucHL hl) ≡ mv → LocState.faulted (floc (do-call-code P mv fs)) ≡ false
-               → Rel C P (do-call-code P (LocState.heapMem (floc fs) (sucHL hl)) fs)
+               → Rel C P Sz (do-call-code P (LocState.heapMem (floc fs) (sucHL hl)) fs)
                          (do-call-code E (LocState.heapMem (floc gs) (sucHL (rhl (ρ R) hl))) gs)
           cell nothing  e ()
           cell (just v) e _ =
-            subst₂ (λ m m′ → Rel C P (do-call-code P m fs) (do-call-code E m′ gs)) (sym e)
+            subst₂ (λ m m′ → Rel C P Sz (do-call-code P m fs) (do-call-code E m′ gs)) (sym e)
                    (sym (trans (cong (LocState.heapMem (floc gs)) (sym (rhl-suc (ρ R) hl)))
                                (L.LRel.l-heap (r-loc R) (sucHL hl) v (L.LRel.l-live (r-loc R) (sucHL hl) v e) e)))
                    (code-rel R pc (just v))
@@ -766,20 +778,20 @@ module _ (C : Classes) (P : AbstractTrace) where
       go []             = ec , es , esl
       go ((f , b) ∷ fs′) = refl , refl , refl
 
-  step-ret : ∀ {fs gs} (R : Rel C P fs gs) b → fetch P (fpc fs) ≡ just (instr-ctrl (c-ret b))
-           → Rel C P (flat-exec-instr (instr-ctrl (c-ret b)) P fs) (flat-exec-instr (instr-ctrl (c-ret b)) E gs)
+  step-ret : ∀ {fs gs} (R : Rel C P Sz fs gs) b → fetch P (fpc fs) ≡ just (instr-ctrl (c-ret b))
+           → Rel C P Sz (flat-exec-instr (instr-ctrl (c-ret b)) P fs) (flat-exec-instr (instr-ctrl (c-ret b)) E gs)
   step-ret {fs} {gs} R b f =
-    subst (λ rs → Rel C P (do-ret b (fret fs) fs) (do-ret b rs gs)) (sym (r-ret R)) (go (fret fs) refl)
+    subst (λ rs → Rel C P Sz (do-ret b (fret fs) fs) (do-ret b rs gs)) (sym (r-ret R)) (go (fret fs) refl)
     where
-      go : ∀ rs → fret fs ≡ rs → Rel C P (do-ret b rs fs) (do-ret b (map (off C 0 P) rs) gs)
+      go : ∀ rs → fret fs ≡ rs → Rel C P Sz (do-ret b rs fs) (do-ret b (map (off C 0 P) rs) gs)
       go []           _ = fault-rel R
       go (pc′ ∷ rest) _ =
-        subst (λ bb → Rel C P (ret-land (b Data.Nat.≡ᵇ AllocState.frame-slots (falloc fs)) pc′ rest fs)
+        subst (λ bb → Rel C P Sz (ret-land (b Data.Nat.≡ᵇ AllocState.frame-slots (falloc fs)) pc′ rest fs)
                               (ret-land bb (off C 0 P pc′) (map (off C 0 P) rest) gs))
               (sym (cong (b Data.Nat.≡ᵇ_) (r-slots R))) (land (b Data.Nat.≡ᵇ AllocState.frame-slots (falloc fs)))
         where
           lf = leave-fr (falloc fs) (falloc gs) (r-saved R) (r-frame R) (r-slots R)
-          land : ∀ bb → Rel C P (ret-land bb pc′ rest fs) (ret-land bb (off C 0 P pc′) (map (off C 0 P) rest) gs)
+          land : ∀ bb → Rel C P Sz (ret-land bb pc′ rest fs) (ret-land bb (off C 0 P pc′) (map (off C 0 P) rest) gs)
           land true  = core-gen R
             (record { m-pc = refl ; m-ret = refl ; m-link = r-link R
                     ; m-frame = proj₁ lf ; m-saved = proj₁ (proj₂ lf) ; m-slots = proj₂ (proj₂ lf) ; m-nslot = nslot
@@ -815,19 +827,19 @@ module _ (C : Classes) (P : AbstractTrace) where
 
   open FlatMachine {FS} using (do-nz)
 
-  step-nz : ∀ {fs gs} (R : Rel C P fs gs) → fetch P (fpc fs) ≡ just (instr-reg-op out-nz)
-          → Rel C P (flat-exec-instr (instr-reg-op out-nz) P fs) (flat-exec-instr (instr-reg-op out-nz) E gs)
+  step-nz : ∀ {fs gs} (R : Rel C P Sz fs gs) → fetch P (fpc fs) ≡ just (instr-reg-op out-nz)
+          → Rel C P Sz (flat-exec-instr (instr-reg-op out-nz) P fs) (flat-exec-instr (instr-reg-op out-nz) E gs)
   step-nz {fs} {gs} R f =
-    subst (λ v → Rel C P (do-nz (readReg (LocState.regs (floc fs)) Output) fs) (do-nz v gs))
+    subst (λ v → Rel C P Sz (do-nz (readReg (LocState.regs (floc fs)) Output) fs) (do-nz v gs))
           (sym (L.LRel.l-regs (r-loc R) Output)) (go (readReg (LocState.regs (floc fs)) Output) refl)
     where
       pc = next-pc R (instr-reg-op out-nz) f refl
-      flt : Rel C P (flat-fault (record fs { fpc = suc (fpc fs) })) (flat-fault (record gs { fpc = suc (fpc gs) }))
+      flt : Rel C P Sz (flat-fault (record fs { fpc = suc (fpc fs) })) (flat-fault (record gs { fpc = suc (fpc gs) }))
       flt = core-gen R (moves-next R _ _ pc refl refl refl refl refl refl refl refl)
               (record { l-regs = L.LRel.l-regs (r-loc R) ; l-stack = L.LRel.l-stack (r-loc R) ; l-heap = L.LRel.l-heap (r-loc R) ; l-live = L.LRel.l-live (r-loc R)
                       ; l-halt = refl ; l-fault = refl ; l-left = L.LRel.l-left (r-loc R) ; l-log = L.LRel.l-log (r-loc R) })
               (r-clo R) (λ q _ → refl)
-      go : ∀ v → readReg (LocState.regs (floc fs)) Output ≡ v → Rel C P (do-nz v fs) (do-nz (rv (ρ R) v) gs)
+      go : ∀ v → readReg (LocState.regs (floc fs)) Output ≡ v → Rel C P Sz (do-nz v fs) (do-nz (rv (ρ R) v) gs)
       go (SV-Lit Once.Type.fits-int w) e =
         core-straight R _ _
           (subst (λ u → L.LRel (ρ R) (Live (falloc fs)) (r-inj R) (exec-reg-op out-nz (floc fs))

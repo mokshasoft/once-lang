@@ -49,11 +49,11 @@ open import Once.CCC.Codegen.AllocExpandRen {FS} using (ref-of; rhl; rloc; rv; b
 open import Once.CCC.Codegen.AllocExpandStep {FS} using (module L)
 
 ------------------------------------------------------------------------
--- The primitive's live blocks
+-- The primitive's live blocks (ref 0 is the record: never a block of the primitive's)
 ------------------------------------------------------------------------
 
 Live : AllocState {FS} → ℕ → Set
-Live al r = r < AllocState.next-heap-ref al × AllocState.freed al r ≡ false
+Live al r = 0 < r × r < AllocState.next-heap-ref al × AllocState.freed al r ≡ false
 
 ------------------------------------------------------------------------
 -- A free list: the chain from a head word, through the blocks' word 0, to the sentinel
@@ -67,7 +67,8 @@ Chain h σ (b ∷ bs) v = v ≡ blk b × Σ (StoredValue FS) λ w → h (heap-lo
 -- ★ The relation
 ------------------------------------------------------------------------
 
-module _ (C : Classes) (P : AbstractTrace) where
+-- `Sz`: the program's block sizes (its allocations' and frees')
+module _ (C : Classes) (P : AbstractTrace) (Sz : ℕ → Set) where
 
   record Rel (fs gs : FlatState) : Set where
     field
@@ -106,5 +107,10 @@ module _ (C : Classes) (P : AbstractTrace) where
 
       -- the two runs' own invariants
       r-nofree  : ∀ r → AllocState.freed (falloc gs) r ≡ false
+      -- the record is no block of the primitive's
+      r-rec0    : AllocState.block-size (falloc fs) 0 ≡ 0
+      -- a live block's renamed block holds its class's size; a free block, every size of its class
+      r-csize   : ∀ r → Live (falloc fs) r → bsz C (AllocState.block-size (falloc fs) r) ≤ AllocState.block-size (falloc gs) (ρ r)
+      r-lsize   : ∀ c b → b ∈ lists c → ∀ k → Sz k → cls C k ≡ c → bsz C k ≤ AllocState.block-size (falloc gs) b
       -- a block not handed out has size 0 (so a gate passed only inside a handed-out block)
       r-unsized : ∀ r → AllocState.next-heap-ref (falloc fs) ≤ r → AllocState.block-size (falloc fs) r ≡ 0
