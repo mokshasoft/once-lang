@@ -112,6 +112,8 @@ open import Data.Bool using (Bool)
 open import Data.List using (List)
 open import Once.IR.Semantics.Event using (SigOpEvent)
 
+open import Once.Type using (FitsInReg)
+
 module L (ρ : ℕ → ℕ) (Lv : ℕ → Set) (inj : ∀ r r′ → Lv r → Lv r′ → ρ r ≡ ρ r′ → r ≡ r′) where
 
   record LRel (s t : LocState FS) : Set where
@@ -378,3 +380,27 @@ module L (ρ : ℕ → ℕ) (Lv : ℕ → Set) (inj : ∀ r r′ → Lv r → Lv
                          (record t { regs = writeReg (LocState.regs t) Output (SV-Ptr (AtDynamic q)) }))
              (rhl-off ρ hl k)
              (lrel-reg Output (SV-Ptr (AtDynamic (offsetHL hl k))) R))
+
+  ------------------------------------------------------------------------
+  -- The constants and the worklist (slots of the current frame)
+  ------------------------------------------------------------------------
+
+  module Rest {al al′ : AllocState {FS}} (cf : AllocState.current-frame al′ ≡ AllocState.current-frame al) where
+    private
+      cf′ = AllocState.current-frame al
+
+    tag-lit : ∀ {s t} n → LRel s t → LRel (proj₁ (exec-abstract (instr-load-tag-lit n) s al)) (proj₁ (exec-abstract (instr-load-tag-lit n) t al′))
+    tag-lit n R = const-rel (SV-Tag n) refl R
+
+    code-addr : ∀ {s t} l → LRel s t → LRel (proj₁ (exec-abstract (instr-load-code-addr l) s al)) (proj₁ (exec-abstract (instr-load-code-addr l) t al′))
+    code-addr l R = const-rel (SV-Code l) refl R
+
+    load-const : ∀ {s t} {A} (p : FitsInReg A) v → LRel s t
+               → LRel (proj₁ (exec-abstract (instr-load-const p v) s al)) (proj₁ (exec-abstract (instr-load-const p v) t al′))
+    load-const p v R = const-rel (SV-Lit p (AbstractExec.lit-value {FS} p v)) refl R
+
+    wl-push : ∀ {s t} k → LRel s t → LRel (proj₁ (exec-abstract (worklist-push k) s al)) (proj₁ (exec-abstract (worklist-push k) t al′))
+    wl-push {s} {t} k R = Slots.to-slot {al = al} {al′ = al′} cf k R
+
+    wl-pop : ∀ {s t} k → LRel s t → LRel (proj₁ (exec-abstract (worklist-pop k) s al)) (proj₁ (exec-abstract (worklist-pop k) t al′))
+    wl-pop {s} {t} k R = Slots.from-slot {al = al} {al′ = al′} cf k R
