@@ -384,27 +384,26 @@ module _ (C : Classes) where
   open FlatMachine {FS} using (label-of?-sound)
 
   -- a site's labels are none of another site's (their indices: `b + 2·site`, `b ≤ 1`)
-  private
-    dbl-odd : ∀ a b → ¬ (a + a ≡ suc (b + b))
-    dbl-odd zero    b       ()
-    dbl-odd (suc a) zero    e = dbl-zero (trans (sym (Data.Nat.Properties.+-suc a a)) (Data.Nat.Properties.suc-injective e))
-      where dbl-zero : ¬ (suc (a + a) ≡ 0)
-            dbl-zero ()
-    dbl-odd (suc a) (suc b) e = dbl-odd a b (Data.Nat.Properties.suc-injective
-                                  (trans (sym (Data.Nat.Properties.+-suc a a)) (trans (Data.Nat.Properties.suc-injective e) (cong suc (Data.Nat.Properties.+-suc b b)))))
-    dbl-inj : ∀ a b → a + a ≡ b + b → a ≡ b
-    dbl-inj zero    zero    _ = refl
-    dbl-inj zero    (suc b) ()
-    dbl-inj (suc a) zero    ()
-    dbl-inj (suc a) (suc b) e = cong suc (dbl-inj a b (Data.Nat.Properties.suc-injective
-                                  (trans (sym (Data.Nat.Properties.+-suc a a)) (trans (Data.Nat.Properties.suc-injective e) (Data.Nat.Properties.+-suc b b)))))
-    site-of : ∀ s s′ n n′ → n ≤ 1 → n′ ≤ 1 → n + (s + s) ≡ n′ + (s′ + s′) → s ≡ s′
-    site-of s s′ zero    zero    _ _ e = dbl-inj s s′ e
-    site-of s s′ zero    (suc zero) _ _ e = ⊥-elim (dbl-odd s s′ e)
-    site-of s s′ (suc zero) zero    _ _ e = ⊥-elim (dbl-odd s′ s (sym e))
-    site-of s s′ (suc zero) (suc zero) _ _ e = dbl-inj s s′ (Data.Nat.Properties.suc-injective e)
-    site-of s s′ (suc (suc _)) _ (s≤s ()) _ _
-    site-of s s′ _ (suc (suc _)) _ (s≤s ()) _
+  dbl-odd : ∀ a b → ¬ (a + a ≡ suc (b + b))
+  dbl-odd zero    b       ()
+  dbl-odd (suc a) zero    e = dbl-zero (trans (sym (Data.Nat.Properties.+-suc a a)) (Data.Nat.Properties.suc-injective e))
+    where dbl-zero : ¬ (suc (a + a) ≡ 0)
+          dbl-zero ()
+  dbl-odd (suc a) (suc b) e = dbl-odd a b (Data.Nat.Properties.suc-injective
+                                (trans (sym (Data.Nat.Properties.+-suc a a)) (trans (Data.Nat.Properties.suc-injective e) (cong suc (Data.Nat.Properties.+-suc b b)))))
+  dbl-inj : ∀ a b → a + a ≡ b + b → a ≡ b
+  dbl-inj zero    zero    _ = refl
+  dbl-inj zero    (suc b) ()
+  dbl-inj (suc a) zero    ()
+  dbl-inj (suc a) (suc b) e = cong suc (dbl-inj a b (Data.Nat.Properties.suc-injective
+                                (trans (sym (Data.Nat.Properties.+-suc a a)) (trans (Data.Nat.Properties.suc-injective e) (Data.Nat.Properties.+-suc b b)))))
+  site-of : ∀ s s′ n n′ → n ≤ 1 → n′ ≤ 1 → n + (s + s) ≡ n′ + (s′ + s′) → s ≡ s′
+  site-of s s′ zero    zero    _ _ e = dbl-inj s s′ e
+  site-of s s′ zero    (suc zero) _ _ e = ⊥-elim (dbl-odd s s′ e)
+  site-of s s′ (suc zero) zero    _ _ e = ⊥-elim (dbl-odd s′ s (sym e))
+  site-of s s′ (suc zero) (suc zero) _ _ e = dbl-inj s s′ (Data.Nat.Properties.suc-injective e)
+  site-of s s′ (suc (suc _)) _ (s≤s ()) _ _
+  site-of s s′ _ (suc (suc _)) _ (s≤s ()) _
 
   other-site : ∀ s s′ n (L : LabelId) → n ≤ 1 → SiteL L s′ → ¬ s ≡ s′
              → (alloc-label s n ≡ᵇᴵ L) ≡ false
