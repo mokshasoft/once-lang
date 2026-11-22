@@ -174,3 +174,62 @@ module X {FS : FrameSemantics} (C : Classes) where
       by (in-alloc n k f q) = inj₂ (n + s , Data.Nat.Properties.m≤n+m s n , alloc-labs (n + s) k q)
       by (in-free k q) = ⊥-elim (no-lab-free k q)
       by (in-setup q) = ⊥-elim (no-lab-setup q)
+
+  ------------------------------------------------------------------------
+  -- ★ …each once, and its entries the image's
+  ------------------------------------------------------------------------
+
+  private
+    labs-empty : ∀ t → (∀ {m} → instr-ctrl (c-label m) ∈ t → ⊥) → Labs t ≡ []
+    labs-empty t f = go (Labs t) refl
+      where go : ∀ l → Labs t ≡ l → l ≡ []
+            go []      _ = refl
+            go (m ∷ _) e = ⊥-elim (f (lab-mem t (subst (m ∈_) (sym e) (here refl))))
+
+    owner≢ : ∀ {m} s b → ImgL m → m ≢ alloc-label s b
+    owner≢ s b img e = img (cong LabelId.owner e)
+
+    bump≢done : ∀ s → lb-bump s ≢ lb-done s
+    bump≢done s e = Data.Nat.Properties.<-irrefl (cong LabelId.idx e) (Data.Nat.Properties.n<1+n (s + s))
+
+  labs-dst : ∀ s P → AllPairs _≢_ (Labs P) → (∀ {m} → m ∈ Labs P → ImgL m) → AllPairs _≢_ (Labs (expand-from C s P))
+  labs-dst s []      _  _   = []
+  labs-dst s (x ∷ P) ap img =
+    subst (AllPairs _≢_) (sym (Labs-++ (expand-at C s x) rest)) (by (exp-view C s x) (label-of? x) refl ap img)
+    where
+      rest = expand-from C (suc s) P
+      -- a site's label is none of a later one's, nor an image label
+      later-fork : ∀ b → b ≤ 1 → (∀ {m} → m ∈ Labs P → ImgL m) → ∀ m′
+                 → (m′ ∈ Labs P) ⊎ (Σ ℕ λ s′ → (suc s ≤ s′) × SiteL m′ s′) → alloc-label s b ≡ m′ → ⊥
+      later-fork b bb imgP m′ (inj₁ q) e = imgP q (cong LabelId.owner (sym e))
+      later-fork b bb imgP .(alloc-label s′ b′) (inj₂ (s′ , le , (b′ , bb′ , refl))) e =
+        Data.Nat.Properties.<-irrefl (site-of C s s′ b b′ bb bb′ (cong LabelId.idx e)) le
+      later : ∀ b → b ≤ 1 → (∀ {m} → m ∈ Labs P → ImgL m) → All (alloc-label s b ≢_) (Labs rest)
+      later b bb imgP = Data.List.Relation.Unary.All.tabulate λ {m′} p e → later-fork b bb imgP m′ (labs-in (suc s) P p) e
+      by : ExpView C s x → ∀ mo → label-of? x ≡ mo → AllPairs _≢_ (LabsC.lab {FS} mo (Labs P))
+         → (∀ {m} → m ∈ LabsC.lab {FS} mo (Labs P) → ImgL m)
+         → AllPairs _≢_ (Labs (expand-at C s x) ++ Labs rest)
+      by v (just l) e (hd ∷ apP) imgM = by′ v
+        where
+          imgP : ∀ {m} → m ∈ Labs P → ImgL m
+          imgP q = imgM (there q)
+          IH = labs-dst (suc s) P apP imgP
+          by′ : ExpView C s x → AllPairs _≢_ (Labs (expand-at C s x) ++ Labs rest)
+          by′ (ev-alloc k) = ⊥-elim (lbl≢ (label-of?-sound x l e)) where lbl≢ : x ≡ instr-ctrl (c-label l) → ⊥ ; lbl≢ ()
+          by′ (ev-free k)  = ⊥-elim (lbl≢ (label-of?-sound x l e)) where lbl≢ : x ≡ instr-ctrl (c-label l) → ⊥ ; lbl≢ ()
+          by′ (ev-start b) = ⊥-elim (lbl≢ (label-of?-sound x l e)) where lbl≢ : x ≡ instr-ctrl (c-label l) → ⊥ ; lbl≢ ()
+          by′ (ev-same eq) = subst (λ z → AllPairs _≢_ (Labs z ++ Labs rest)) (sym eq) (subst (λ mo → AllPairs _≢_ (LabsC.lab {FS} mo [] ++ Labs rest)) (sym e) (cross ∷ IH))
+            where
+              kept-fork : ∀ m′ → (m′ ∈ Labs P) ⊎ (Σ ℕ λ s′ → (suc s ≤ s′) × SiteL m′ s′) → l ≡ m′ → ⊥
+              kept-fork m′ (inj₁ q) e″ = Data.List.Relation.Unary.All.lookup hd q e″
+              kept-fork .(alloc-label s′ b′) (inj₂ (s′ , _ , (b′ , _ , refl))) e″ = owner≢ s′ b′ (imgM (here refl)) e″
+              cross : All (l ≢_) (Labs rest)
+              cross = Data.List.Relation.Unary.All.tabulate λ {m′} p e′ → kept-fork m′ (labs-in (suc s) P p) e′
+      by v nothing e apP imgM = by′ v
+        where
+          IH = labs-dst (suc s) P apP imgM
+          by′ : ExpView C s x → AllPairs _≢_ (Labs (expand-at C s x) ++ Labs rest)
+          by′ (ev-alloc k) = (bump≢done s ∷ later 0 z≤n imgM) ∷ (later 1 (s≤s z≤n) imgM ∷ IH)
+          by′ (ev-free k)  = IH
+          by′ (ev-start b) = subst (λ z → AllPairs _≢_ (z ++ Labs rest)) (sym (labs-empty (setup C) no-lab-setup)) IH
+          by′ (ev-same eq) = subst (λ z → AllPairs _≢_ (Labs z ++ Labs rest)) (sym eq) (subst (λ mo → AllPairs _≢_ (LabsC.lab {FS} mo [] ++ Labs rest)) (sym e) IH)
