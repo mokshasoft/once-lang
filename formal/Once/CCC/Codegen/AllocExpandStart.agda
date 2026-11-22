@@ -147,5 +147,112 @@ module SetupRun (C : Classes) (prog : AbstractTrace) (x : FlatState)
             (FlatSteps-++ (run-mov-in prog z₄ hz (fe-rest 4 mov-to-input refl))
                           (run-load-rec prog z₅ w-s1 1 O nz hz (fe-rest 5 (load-rec w-s1) refl) s1)))))
 
+  -- the sentinel's word
+  sent : LocState.heapMem (floc z₆) (heap-loc (mkHeapRef 1) 0) ≡ just (SV-Tag 0)
+  sent = hw-same (LocState.heapMem (floc z)) (heap-loc (mkHeapRef 1) 0) (SV-Tag 0)
+
   run : FlatSteps prog (4 + (count C + 6)) x z₆
   run = FlatSteps-++ run₄ (FlatSteps-++ stH run-rest)
+
+------------------------------------------------------------------------
+-- ★ The first relation
+------------------------------------------------------------------------
+
+open import Once.CCC.Codegen.AllocExpandRen {FS} using (rv; rhl)
+open import Once.CCC.Codegen.AllocExpandRel {FS} using (Rel; Live; Chain)
+open import Once.CCC.Codegen.AllocExpandStep {FS} using (module L)
+open import Once.CCC.Codegen.AllocExpandPc {FS} using (off; off-suc)
+open import Data.List.Relation.Unary.AllPairs using ([])
+import Data.Maybe
+
+rv-id : ∀ v → rv (λ r → r) v ≡ v
+rv-id (SV-Ptr (AtStack _ _)) = refl
+rv-id (SV-Ptr (AtDynamic (heap-loc (mkHeapRef r) o))) = refl
+rv-id (SV-Tag _) = refl
+rv-id (SV-Lit _ _) = refl
+rv-id (SV-Code _) = refl
+
+mrv-id : ∀ mv → Data.Maybe.map (rv (λ r → r)) mv ≡ mv
+mrv-id (just v) = cong just (rv-id v)
+mrv-id nothing  = refl
+
+-- the primitive's start: nothing allocated past the record, nothing held
+record Start (s : FlatState) : Set where
+  field
+    s-heap  : ∀ hl → LocState.heapMem (floc s) hl ≡ nothing
+    s-next  : AllocState.next-heap-ref (falloc s) ≡ 1
+    s-free  : ∀ r → AllocState.freed (falloc s) r ≡ false
+    s-size  : ∀ r → AllocState.block-size (falloc s) r ≡ 0
+    s-ret   : fret s ≡ []
+    s-halt  : LocState.halted (floc s) ≡ false
+
+module First (C : Classes) (P : AbstractTrace) (Sz : ℕ → Set) (x : FlatState) (S : Start x)
+             (fe : ∀ j i → fetch (setup C) j ≡ just i → fetch (expand C P) (j + fpc x) ≡ just i)
+             (pc1 : fpc x ≡ 1) (link : flink x ≡ nothing)
+             (b : ℕ) (st : fetch P 0 ≡ just (instr-ctrl (c-start b))) where
+  open Start S
+  module SR = SetupRun C (expand C P) x fe s-halt s-next (s-free 1)
+  open SR using (z; z₆; H; O; I)
+  open HeadsOut
+
+  -- the setup's length: the expanded pc after it
+  setup-len : length (setup C) ≡ 4 + (count C + 6)
+  setup-len = cong (4 +_) (trans (Data.List.Properties.length-++ (heads C (count C))) (cong (_+ 6) (SR.heads-len (count C))))
+    where import Data.List.Properties
+
+  R₀ : Rel C P Sz x z₆
+  R₀ = record
+    { ρ = λ r → r ; σ = 1 ; lists = λ _ → []
+    ; r-pc = trans (cong (λ t → 6 + t) (h-pc H))
+               (trans (cong (λ t → 6 + (count C + (4 + t))) pc1)
+                 (trans (arith (count C))
+                   (sym (trans (cong (off C 0 P) pc1) (trans (off-suc C 0 P 0 (instr-ctrl (c-start b)) st)
+                               (trans (cong (_+ length (expand-at C 0 (instr-ctrl (c-start b)))) (off-zero P))
+                                      (cong suc setup-len)))))))
+    ; r-ret = trans (proj₁ (h-rest H)) (trans s-ret (cong (Data.List.map (off C 0 P)) (sym s-ret)))
+    ; r-link = trans (proj₂ (proj₂ (h-rest H))) (trans link (cong (Data.Maybe.map (off C 0 P)) (sym link)))
+    ; r-frame = cong AllocState.current-frame (h-alloc H) ; r-saved = cong AllocState.saved-frames (h-alloc H)
+    ; r-slots = cong AllocState.frame-slots (h-alloc H) ; r-next-slot = cong AllocState.next-slot (h-alloc H)
+    ; r-inj = λ r r′ l → ⊥-elim (none r l)
+    ; r-loc = record
+        { l-regs = λ { Input1 → sym (rv-id I) ; Output → sym (rv-id O) }
+        ; l-stack = λ f k → trans (cong (λ m → m f k) (h-stack H)) (sym (mrv-id (LocState.stackMem (floc x) f k)))
+        ; l-heap = λ hl v l e → ⊥-elim (nothing≢ (trans (sym (s-heap hl)) e))
+        ; l-live = λ hl v e → ⊥-elim (nothing≢ (trans (sym (s-heap hl)) e))
+        ; l-halt = proj₁ (h-flags H) ; l-fault = proj₁ (proj₂ (h-flags H))
+        ; l-left = proj₁ (proj₂ (proj₂ (h-flags H))) ; l-log = proj₂ (proj₂ (proj₂ (h-flags H))) }
+    ; r-clo = trans (proj₁ (proj₂ (h-rest H))) (sym (rv-id (fclosure x)))
+    ; r-size = λ r _ → subst (_≤ AllocState.block-size (falloc z₆) r) (sym (s-size r)) z≤n
+    ; r-below = λ r l → ⊥-elim (none r l)
+    ; r-not-σ = λ r l → ⊥-elim (none r l)
+    ; r-not-free = λ r c b l → ⊥-elim (none r l)
+    ; r-heads = λ c c< → blk 1 , head c c< , refl
+    ; r-sent = SR.sent
+    ; r-lpos = λ c b ()
+    ; r-σpos = s≤s z≤n
+    ; r-lbelow = λ c b ()
+    ; r-lσ = λ c b ()
+    ; r-luniq = λ c → []
+    ; r-lone = λ c c′ b ()
+    ; r-σbelow = subst (1 <_) (sym SR.nz) (s≤s (s≤s z≤n))
+    ; r-pnext = subst (0 <_) (sym s-next) (s≤s z≤n)
+    ; r-pfresh = λ r _ → s-free r
+    ; r-ρbelow = λ r lt → subst (r <_) (sym (cong AllocState.next-heap-ref (h-alloc H))) (Data.Nat.Properties.m<n⇒m<1+n lt)
+    ; r-nofree = λ r → trans (cong (λ al → AllocState.freed al r) (h-alloc H)) (s-free r)
+    ; r-unsized = λ r _ → s-size r
+    ; r-rec0 = s-size 0
+    ; r-csize = λ r l → ⊥-elim (none r l)
+    ; r-lsize = λ c b () }
+    where
+      arith : ∀ c → 6 + (c + (4 + 1)) ≡ 0 + suc (4 + (c + 6))
+      arith = solve-∀
+      off-zero : ∀ Q → off C 0 Q 0 ≡ 0
+      off-zero []      = refl
+      off-zero (_ ∷ _) = refl
+      nothing≢ : ∀ {v : StoredValue FS} → ¬ (nothing ≡ just v)
+      nothing≢ ()
+      none : ∀ r → ¬ Live (falloc x) r
+      none r (pos , lt , _) = Data.Nat.Properties.<-irrefl refl (Data.Nat.Properties.<-≤-trans pos (Data.Nat.Properties.≤-pred (subst (r <_) s-next lt)))
+      head : ∀ c → c < count C → LocState.heapMem (floc z₆) (rec-loc (head-word c)) ≡ just (blk 1)
+      head c c< = trans (hw-other (LocState.heapMem (floc z)) (heap-loc (mkHeapRef 1) 0) (rec-loc (head-word c)) (SV-Tag 0) (λ ()))
+                        (trans (h-head H c c<) (cong (λ t → just (blk t)) s-next))
