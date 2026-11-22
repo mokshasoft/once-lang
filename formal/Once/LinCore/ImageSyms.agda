@@ -528,6 +528,33 @@ module Img (nm : CanonicalName) {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   jumps-in = Data.List.Relation.Unary.All.map (λ { (inj₁ p) → p ; (inj₂ ()) })
                (cov-++ code₀ bl (JC.lowC-cov φ₀ j₀ 0 (instr-ctrl c-leave ∷ []) main₀ (start-in {[]} {[]} tt)) (blocks-cov (allK U) blocks-in 0))
 
+  ----------------------------------------------------------------------
+  -- D468: THE IMAGE'S LABELS HAVE AN EMPTY PATH (its own: `jl`, `tl`), apart
+  -- from the allocator expansion's (`AllocExpand.lb-bump`/`lb-done`)
+  ----------------------------------------------------------------------
+
+  private
+    lab-in : ∀ xs {m} → instr-ctrl (c-label m) ∈ xs → m ∈ Labs xs
+    lab-in (x ∷ xs) (here refl) = here refl
+    lab-in (x ∷ xs) {m} (there p) = lab-up (FlatMachine.label-of? {FS} x) (lab-in xs p)
+      where lab-up : ∀ mo → m ∈ Labs xs → m ∈ LabsC.lab {FS} mo (Labs xs)
+            lab-up (just _) q = there q
+            lab-up nothing  q = q
+
+    path-of : ∀ {m} → m ∈ Labs image → LabelId.path m ≡ []
+    path-of p = path-jl (Data.List.Relation.Unary.All.lookup labs-shape p)
+      where path-jl : ∀ {m} → (Σ ℕ λ j → Σ ℕ λ k → m ≡ jl j k) → LabelId.path m ≡ []
+            path-jl (_ , _ , refl) = refl
+
+  img-path : ∀ n m → fetch image n ≡ just (instr-ctrl (c-label m)) → LabelId.path m ≡ []
+  img-path n m f = path-of (lab-in image (fetch-∈ {FS} image n f))
+
+  jmp-path : ∀ n m → fetch image n ≡ just (instr-ctrl (c-jmp m)) → LabelId.path m ≡ []
+  jmp-path n m f = path-of (Data.List.Relation.Unary.All.lookup (jmp-pt image jumps-in) (fetch-∈ {FS} image n f) m refl)
+
+  br-path : ∀ n m → fetch image n ≡ just (instr-ctrl (c-branch-tag-zero m)) → LabelId.path m ≡ []
+  br-path n m f = path-of (Data.List.Relation.Unary.All.lookup (jmp-pt image jumps-in) (fetch-∈ {FS} image n f) m refl)
+
   private
     refs-ok : ∀ (i : AbstractInstr) → IOk.Ref i → (∀ l → jump-of i ≡ just l → l ∈ Labs image) → i ∈ image → All G (instr-refs i)
     refs-ok (instr-ctrl (c-label _)) r jin m = []

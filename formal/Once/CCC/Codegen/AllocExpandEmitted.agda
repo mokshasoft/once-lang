@@ -311,3 +311,68 @@ module Code (C : Classes) (small : 3 + count C ≤ rec-size) (in-range : ∀ k �
                   from-img (q , refl , inj₁ (m , f)) = off C 0 P q , step q _ f refl refl refl , inj₁ (m , kept-at q _ f refl)
                   from-img (q , refl , inj₂ (inj₁ (b , f))) = off C 0 P q , step q _ f refl refl refl , inj₂ (inj₁ (b , kept-at q _ f refl))
                   from-img (q , refl , inj₂ (inj₂ f)) = off C 0 P q , step q _ f refl refl refl , inj₂ (inj₂ (kept-at q _ f refl))
+
+  ------------------------------------------------------------------------
+  -- ★ The expansion calls the ops the program calls (its own code calls none)
+  ------------------------------------------------------------------------
+
+  open import Data.List.Membership.Propositional using (_∈_)
+  open import Data.List.Membership.Propositional.Properties using (∈-++⁻)
+  open import Data.List.Relation.Unary.Any using (here; there)
+  open import Once.SigOp.Info using (SigOpInfo)
+
+  private
+    no-gen-sig : ∀ {A B} {si : SigOpInfo A B} → Gen (instr-sigop si) → Data.Empty.⊥
+    no-gen-sig ()
+
+  exp-sig : ∀ s P → All AllocMinI P → ∀ {A B} (si : SigOpInfo A B) → instr-sigop si ∈ expand-from C s P → instr-sigop si ∈ P
+  exp-sig s []      []        si ()
+  exp-sig s (x ∷ P) (ax ∷ as) si m = by (∈-++⁻ (expand-at C s x) m)
+    where
+      at : ExpView C s x → AllocMinI x → instr-sigop si ∈ expand-at C s x → instr-sigop si ∈ (x ∷ P)
+      at (ev-alloc k) one m′ = Data.Empty.⊥-elim (no-gen-sig (All′.lookup (alloc-gen s k one) m′))
+      at (ev-free k)  _ m′ = Data.Empty.⊥-elim (no-gen-sig (All′.lookup (free-gen k) m′))
+      at (ev-start b) _ (here ())
+      at (ev-start b) _ (there m′) = Data.Empty.⊥-elim (no-gen-sig (All′.lookup setup-gen m′))
+      at (ev-same eq) _ m′ = in-one (subst (instr-sigop si ∈_) eq m′)
+        where in-one : instr-sigop si ∈ (x ∷ []) → instr-sigop si ∈ (x ∷ P)
+              in-one (here e) = here e
+              in-one (there ())
+      by : (instr-sigop si ∈ expand-at C s x) ⊎ (instr-sigop si ∈ expand-from C (suc s) P) → instr-sigop si ∈ (x ∷ P)
+      by (inj₁ m′) = at (exp-view C s x) ax m′
+      by (inj₂ m′) = there (exp-sig (suc s) P as si m′)
+
+------------------------------------------------------------------------
+-- The room checks add checks only
+------------------------------------------------------------------------
+
+open import Once.CCC.Codegen.RoomChecks using (room-checks; checks; boundary?; stretch; max-entry)
+open import Data.List.Membership.Propositional using (_∈_)
+open import Data.List.Relation.Unary.Any using (here; there)
+open import Data.Bool using (Bool; true; false; if_then_else_)
+open import Once.SigOp.Info using (SigOpInfo)
+
+checks-sig : ∀ E t {A B} (si : SigOpInfo A B) → instr-sigop si ∈ checks E t → instr-sigop si ∈ t
+checks-sig E []      si ()
+checks-sig E (i ∷ t) si (here e) = here e
+checks-sig E (i ∷ t) si (there m) = there (by (boundary? i) m)
+  where
+    by : ∀ b → instr-sigop si ∈ (if b then instr-room (stretch E t) ∷ checks E t else checks E t) → instr-sigop si ∈ t
+    by true  (here ())
+    by true  (there m′) = checks-sig E t si m′
+    by false m′ = checks-sig E t si m′
+
+room-sig : ∀ t {A B} (si : SigOpInfo A B) → instr-sigop si ∈ room-checks t → instr-sigop si ∈ t
+room-sig t si (here ())
+room-sig t si (there m) = checks-sig (max-entry t) t si m
+
+∈-checks : ∀ E t {i} → i ∈ t → i ∈ checks E t
+∈-checks E (x ∷ t) (here e) = here e
+∈-checks E (x ∷ t) {i} (there m) = there (by (boundary? x))
+  where
+    by : ∀ b → i ∈ (if b then instr-room (stretch E t) ∷ checks E t else checks E t)
+    by true  = there (∈-checks E t m)
+    by false = ∈-checks E t m
+
+∈-room : ∀ t {i} → i ∈ t → i ∈ room-checks t
+∈-room t m = there (∈-checks (max-entry t) t m)

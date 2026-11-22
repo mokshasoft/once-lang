@@ -32,7 +32,7 @@ open import Data.List.Relation.Unary.Any using (here; there)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 open import Data.Unit using (⊤; tt)
-open import Data.Empty using (⊥-elim)
+open import Data.Empty using (⊥; ⊥-elim)
 import Data.List.Relation.Unary.All
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; cong)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
@@ -97,6 +97,9 @@ module Ok (nm : CanonicalName) (U : Univ)
   -- (D462) an op's call is what an op of the universe lowers to (itself, or a
   -- comparison's block: `opSig`), so its block is the image's (`ImageOwned`)
   Ref (instr-sigop si)            = Σ Sig λ s → s ∈ ops U × sig si ≡ opSig s (cmpOf s)
+  -- D468: the image holds no allocator record word (the expansion adds them)
+  Ref (load-rec _)                = ⊥
+  Ref (store-rec _)               = ⊥
   {-# CATCHALL #-}
   Ref _                           = ⊤
 
@@ -442,6 +445,15 @@ module Img (nm : CanonicalName) {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     em-start : ∀ k b → fetch image k ≡ just (instr-ctrl (c-start b)) → k ≡ 0
     em-start zero    b e = refl
     em-start (suc k) b e = ⊥-elim (proj₁ (fetch-All {P = OK} {prog = tail} {k = k} tail-ok e))
+
+    -- D468: the image holds no allocator record word (the expansion adds them)
+    no-lrec : ∀ k w → fetch image k ≡ just (load-rec w) → ⊥
+    no-lrec zero    w ()
+    no-lrec (suc k) w e = proj₂ (proj₂ (fetch-All {P = OK} {prog = tail} {k = k} tail-ok e))
+
+    no-srec : ∀ k w → fetch image k ≡ just (store-rec w) → ⊥
+    no-srec zero    w ()
+    no-srec (suc k) w e = proj₂ (proj₂ (fetch-All {P = OK} {prog = tail} {k = k} tail-ok e))
 
     -- ★ a call names a block of the universe, and lands on it
     em-calls : ∀ k g → fetch image k ≡ just (instr-ctrl (c-call-fn g)) → Σ ℕ (λ j → find-fn image g ≡ just j)
