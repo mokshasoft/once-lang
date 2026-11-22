@@ -439,3 +439,67 @@ module _ (C : Classes) (P : AbstractTrace) where
   step-wl-check : ∀ {fs gs} (R : Rel C P fs gs) k → fetch P (fpc fs) ≡ just (worklist-check k)
                 → Rel C P (flat-exec-instr (worklist-check k) P fs) (flat-exec-instr (worklist-check k) E gs)
   step-wl-check R k f = step-id R (worklist-check k) f refl refl refl
+
+  ------------------------------------------------------------------------
+  -- ★ The general step: new states whose control is mapped, frames equal,
+  -- heap counters and sizes unchanged
+  ------------------------------------------------------------------------
+
+  open import Once.CCC.Codegen.AllocExpandStep {FS} using (lrel-conv)
+
+  record Moves (fs gs fs′ gs′ : FlatState) : Set where
+    field
+      m-pc    : fpc gs′ ≡ off C 0 P (fpc fs′)
+      m-ret   : fret gs′ ≡ map (off C 0 P) (fret fs′)
+      m-link  : flink gs′ ≡ Data.Maybe.map (off C 0 P) (flink fs′)
+      m-frame : AllocState.current-frame (falloc gs′) ≡ AllocState.current-frame (falloc fs′)
+      m-saved : AllocState.saved-frames (falloc gs′) ≡ AllocState.saved-frames (falloc fs′)
+      m-slots : AllocState.frame-slots (falloc gs′) ≡ AllocState.frame-slots (falloc fs′)
+      m-nslot : AllocState.next-slot (falloc gs′) ≡ AllocState.next-slot (falloc fs′)
+      -- the heaps' counters, sizes and frees as they were
+      m-nextP : AllocState.next-heap-ref (falloc fs′) ≡ AllocState.next-heap-ref (falloc fs)
+      m-freeP : ∀ r → AllocState.freed (falloc fs′) r ≡ AllocState.freed (falloc fs) r
+      m-sizeP : ∀ r → AllocState.block-size (falloc fs′) r ≡ AllocState.block-size (falloc fs) r
+      m-nextE : AllocState.next-heap-ref (falloc gs′) ≡ AllocState.next-heap-ref (falloc gs)
+      m-freeE : ∀ r → AllocState.freed (falloc gs′) r ≡ AllocState.freed (falloc gs) r
+      m-sizeE : ∀ r → AllocState.block-size (falloc gs′) r ≡ AllocState.block-size (falloc gs) r
+  open Moves
+
+  core-gen : ∀ {fs gs fs′ gs′} (R : Rel C P fs gs) → Moves fs gs fs′ gs′
+           → L.LRel (ρ R) (Live (falloc fs)) (r-inj R) (floc fs′) (floc gs′)
+           → fclosure gs′ ≡ rv (ρ R) (fclosure fs′)
+           → (∀ q → (∀ r → Live (falloc fs) r → ¬ ρ R r ≡ ref-of q) → LocState.heapMem (floc gs′) q ≡ LocState.heapMem (floc gs) q)
+           → Rel C P fs′ gs′
+  core-gen {fs} {gs} {fs′} {gs′} R M LR clo frame = record
+    { ρ = ρ R ; σ = σ R ; lists = lists R
+    ; r-pc = m-pc M ; r-ret = m-ret M ; r-link = m-link M
+    ; r-frame = m-frame M ; r-saved = m-saved M ; r-slots = m-slots M ; r-next-slot = m-nslot M
+    ; r-inj = λ r r′ l l′ → r-inj R r r′ (to r l) (to r′ l′)
+    ; r-loc = lrel-conv to fro LR
+    ; r-clo = clo
+    ; r-size = λ r lt → subst₂ _≤_ (sym (m-sizeP M r)) (sym (m-sizeE M (ρ R r))) (r-size R r (subst (r <_) (m-nextP M) lt))
+    ; r-below = λ r l → let b = r-below R r (to r l) in proj₁ b , subst (ρ R r <_) (sym (m-nextE M)) (proj₂ b)
+    ; r-not-σ = λ r l → r-not-σ R r (to r l)
+    ; r-not-free = λ r c b l → r-not-free R r c b (to r l)
+    ; r-heads = heads′
+    ; r-sent = trans (frame (heap-loc (mkHeapRef (σ R)) 0) (λ r lv e → r-not-σ R r lv e)) (r-sent R)
+    ; r-nofree = λ r → trans (m-freeE M r) (r-nofree R r)
+    ; r-unsized = λ r le → trans (m-sizeP M r) (r-unsized R r (subst (_≤ r) (m-nextP M) le)) }
+    where
+      to : ∀ r → Live (falloc fs′) r → Live (falloc fs) r
+      to r (lt , fr) = subst (r <_) (m-nextP M) lt , trans (sym (m-freeP M r)) fr
+      fro : ∀ r → Live (falloc fs) r → Live (falloc fs′) r
+      fro r (lt , fr) = subst (r <_) (sym (m-nextP M)) lt , trans (m-freeP M r) fr
+      rec-free : ∀ k → LocState.heapMem (floc gs′) (rec-loc k) ≡ LocState.heapMem (floc gs) (rec-loc k)
+      rec-free k = frame (rec-loc k) (λ r lv e → Data.Nat.Properties.<-irrefl (sym e) (proj₁ (r-below R r lv)))
+      heads′ : ∀ c → c < count C → Σ (StoredValue FS) λ v → LocState.heapMem (floc gs′) (rec-loc (head-word c)) ≡ just v
+                                                         × Chain (LocState.heapMem (floc gs′)) (σ R) (lists R c) v
+      heads′ c c< = hd (r-heads R c c<)
+        where
+          hd : (Σ (StoredValue FS) λ v → LocState.heapMem (floc gs) (rec-loc (head-word c)) ≡ just v
+                                     × Chain (LocState.heapMem (floc gs)) (σ R) (lists R c) v)
+             → Σ (StoredValue FS) λ v → LocState.heapMem (floc gs′) (rec-loc (head-word c)) ≡ just v
+                                     × Chain (LocState.heapMem (floc gs′)) (σ R) (lists R c) v
+          hd (v , e , ch) = v , trans (rec-free (head-word c)) e
+                          , chain-frame (LocState.heapMem (floc gs)) (LocState.heapMem (floc gs′)) (σ R) (lists R c) v
+                              (λ b m → frame (heap-loc (mkHeapRef b) 0) (λ r lv e′ → r-not-free R r c b lv m e′)) ch

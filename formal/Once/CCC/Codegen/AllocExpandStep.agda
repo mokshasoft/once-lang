@@ -404,3 +404,16 @@ module L (ρ : ℕ → ℕ) (Lv : ℕ → Set) (inj : ∀ r r′ → Lv r → Lv
 
     wl-pop : ∀ {s t} k → LRel s t → LRel (proj₁ (exec-abstract (worklist-pop k) s al)) (proj₁ (exec-abstract (worklist-pop k) t al′))
     wl-pop {s} {t} k R = Slots.from-slot {al = al} {al′ = al′} cf k R
+
+------------------------------------------------------------------------
+-- The relation over two equivalent liveness predicates
+------------------------------------------------------------------------
+
+lrel-conv : ∀ {ρ} {Lv Lv′ : ℕ → Set} {inj inj′} {s t}
+          → (∀ r → Lv′ r → Lv r) → (∀ r → Lv r → Lv′ r)
+          → L.LRel ρ Lv inj s t → L.LRel ρ Lv′ inj′ s t
+lrel-conv {ρ} to fro R = record
+  { l-regs = L.LRel.l-regs R ; l-stack = L.LRel.l-stack R
+  ; l-heap = λ hl v lv e → L.LRel.l-heap R hl v (to _ lv) e
+  ; l-live = λ hl v e → fro _ (L.LRel.l-live R hl v e)
+  ; l-halt = L.LRel.l-halt R ; l-fault = L.LRel.l-fault R ; l-left = L.LRel.l-left R ; l-log = L.LRel.l-log R }
