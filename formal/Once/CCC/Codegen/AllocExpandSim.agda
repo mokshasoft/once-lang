@@ -24,7 +24,8 @@ import Data.Nat.Properties
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 open import Relation.Nullary using (¬_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
-open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; mkHeapRef)
+open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; mkHeapRef; module HeapLocation)
+open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.CCC.Machine.SMCore
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open FlatMachine {FS} using (FlatState; module FlatState)
@@ -206,7 +207,7 @@ module _ (C : Classes) (P : AbstractTrace) where
   open ExecFinal {FS} using (frame-gate; heap-gate; live-frames; exec-load-at-resolved; exec-load-with-value
                             ; exec-store-at-resolved; exec-store-in-block; exec-addr-at-resolved; exec-addr-in-block; in-block?; live-size)
   open import Once.CCC.Codegen.AllocExpandRen {FS} using (rloc)
-  open import Relation.Binary.PropositionalEquality using (cong₂)
+  open import Relation.Binary.PropositionalEquality using (cong₂; subst₂)
 
   -- the live frames are the same on both sides
   frames-eq : ∀ {fs gs} → Rel C P fs gs → live-frames (falloc gs) ≡ live-frames (falloc fs)
@@ -243,3 +244,95 @@ module _ (C : Classes) (P : AbstractTrace) where
       (λ q _ → la-heap k (frame-gate (falloc gs) k (sv-as-loc (readReg (LocState.regs (floc gs)) Input1))) (floc gs) q) (next-pc R (load-at k) f refl)
     where
       ml = frame-gate (falloc fs) k (sv-as-loc (readReg (LocState.regs (floc fs)) Input1))
+
+  -- the store gate passed: a live block, inside its renamed block too
+  open import Data.Nat using (_<ᵇ_; _≤_; z≤n; s≤s)
+  open import Data.Nat.Properties using (<ᵇ⇒<; <⇒<ᵇ; <-≤-trans; ≤-trans; n≮0)
+  open import Data.Empty using (⊥-elim)
+  open import Data.Bool using (T)
+
+  private
+    T-of : ∀ {b : Bool} → b ≡ true → T b
+    T-of refl = Data.Unit.tt
+      where import Data.Unit
+    of-T : ∀ {b : Bool} → T b → b ≡ true
+    of-T {true} _ = refl
+
+    -- the store gate's size of a freed block is 0
+    live-free : ∀ (al : AllocState {FS}) r → AllocState.freed al r ≡ true → live-size al r ≡ 0
+    live-free al r e = cong (λ b → Data.Bool.if b then 0 else AllocState.block-size al r) e
+    live-kept : ∀ (al : AllocState {FS}) r → AllocState.freed al r ≡ false → live-size al r ≡ AllocState.block-size al r
+    live-kept al r e = cong (λ b → Data.Bool.if b then 0 else AllocState.block-size al r) e
+
+  ib-live : ∀ {fs gs} (R : Rel C P fs gs) hl → in-block? (live-size (falloc fs)) (AtDynamic hl) ≡ true → Live (falloc fs) (ref-of hl)
+  ib-live {fs} R hl ib = below , unfreed (AllocState.freed (falloc fs) (ref-of hl)) refl
+    where
+      lt : HeapLocation.heap-offset hl < live-size (falloc fs) (ref-of hl)
+      lt = <ᵇ⇒< _ _ (T-of ib)
+      unfreed : ∀ b → AllocState.freed (falloc fs) (ref-of hl) ≡ b → AllocState.freed (falloc fs) (ref-of hl) ≡ false
+      unfreed false e = e
+      unfreed true  e = ⊥-elim (n≮0 (subst (HeapLocation.heap-offset hl <_) (live-free (falloc fs) (ref-of hl) e) lt))
+      below : ref-of hl < AllocState.next-heap-ref (falloc fs)
+      below = Data.Nat.Properties.≰⇒> λ ge → n≮0 (subst (HeapLocation.heap-offset hl <_)
+                (trans (live-kept (falloc fs) (ref-of hl) (unfreed (AllocState.freed (falloc fs) (ref-of hl)) refl)) (r-unsized R (ref-of hl) ge)) lt)
+
+  ib-mono : ∀ {fs gs} (R : Rel C P fs gs) hl → in-block? (live-size (falloc fs)) (AtDynamic hl) ≡ true
+          → in-block? (live-size (falloc gs)) (AtDynamic (rhl (ρ R) hl)) ≡ true
+  ib-mono {fs} {gs} R hl ib = of-T (<⇒<ᵇ (<-≤-trans lt sz))
+    where
+      lv = ib-live R hl ib
+      lt : HeapLocation.heap-offset hl < AllocState.block-size (falloc fs) (ref-of hl)
+      lt = subst (HeapLocation.heap-offset hl <_) (live-kept (falloc fs) (ref-of hl) (proj₂ lv)) (<ᵇ⇒< _ _ (T-of ib))
+      sz : AllocState.block-size (falloc fs) (ref-of hl) ≤ live-size (falloc gs) (ρ R (ref-of hl))
+      sz = subst (AllocState.block-size (falloc fs) (ref-of hl) ≤_) (sym (live-kept (falloc gs) (ρ R (ref-of hl)) (r-nofree R _)))
+                 (r-size R (ref-of hl) (proj₁ lv))
+
+  open import Once.CCC.Codegen.AllocExpandStep {FS} using (rhl-off; ref-off)
+  open MemOps {FS} using (writeHeapMem; writeHeapMem-aux; writeLoc)
+  open import Once.Memory.HeapAddress using (offsetHL; _≟HL_)
+
+  -- the store's frame: the expanded write is at a live block's renamed cell
+  store-frame : ∀ {fs gs} (R : Rel C P fs gs) k ml v w
+              → LocState.faulted (exec-store-at-resolved (live-size (falloc fs)) k ml v (floc fs)) ≡ false
+              → ∀ q → (∀ r → Live (falloc fs) r → ¬ ρ R r ≡ ref-of q)
+              → LocState.heapMem (exec-store-at-resolved (live-size (falloc gs)) k (Data.Maybe.map (rloc (ρ R)) ml) w (floc gs)) q
+                ≡ LocState.heapMem (floc gs) q
+  store-frame R k nothing v w () q miss
+  store-frame R k (just (AtStack f j)) v w nf q miss = refl
+  store-frame {fs} {gs} R k (just (AtDynamic hl)) v w nf q miss =
+    go (in-block? (live-size (falloc fs)) (AtDynamic (offsetHL hl k))) refl nf
+       (in-block? (live-size (falloc gs)) (AtDynamic (offsetHL (rhl (ρ R) hl) k)))
+    where
+      go : ∀ b → in-block? (live-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ b
+         → LocState.faulted (exec-store-in-block b (AtDynamic (offsetHL hl k)) v (floc fs)) ≡ false
+         → ∀ b′ → LocState.heapMem (exec-store-in-block b′ (AtDynamic (offsetHL (rhl (ρ R) hl) k)) w (floc gs)) q ≡ LocState.heapMem (floc gs) q
+      go false _ () b′
+      go true  e _ false = refl
+      go true  e _ true  =
+        trans (cong (λ s′ → LocState.heapMem s′ q) (L.dyn-write (ρ R) (Live (falloc fs)) (r-inj R) (floc gs) (offsetHL (rhl (ρ R) hl) k) w))
+              (other (offsetHL (rhl (ρ R) hl) k ≟HL q))
+        where
+          lv : Live (falloc fs) (ref-of (offsetHL hl k))
+          lv = ib-live R (offsetHL hl k) e
+          other : ∀ (d : Relation.Nullary.Dec (offsetHL (rhl (ρ R) hl) k ≡ q))
+                → writeHeapMem-aux {hl = offsetHL (rhl (ρ R) hl) k} {hl' = q} d (LocState.heapMem (floc gs) q) w ≡ LocState.heapMem (floc gs) q
+          other (Relation.Nullary.yes eq) = ⊥-elim (miss (ref-of hl) (subst (Live (falloc fs)) (ref-off hl k) lv)
+                                                     (trans (sym (ref-off (rhl (ρ R) hl) k)) (cong ref-of eq)))
+          other (Relation.Nullary.no _)   = refl
+
+  step-store-at : ∀ {fs gs} (R : Rel C P fs gs) k → fetch P (fpc fs) ≡ just (store-at k)
+                → LocState.faulted (floc (flat-exec-instr (store-at k) P fs)) ≡ false
+                → Rel C P (flat-exec-instr (store-at k) P fs) (flat-exec-instr (store-at k) E gs)
+  step-store-at {fs} {gs} R k f nf =
+    core-straight R _ _
+      (subst₂ (λ m w → L.LRel (ρ R) (Live (falloc fs)) (r-inj R) (exec-store-at-resolved (live-size (falloc fs)) k ml v (floc fs))
+                                (exec-store-at-resolved (live-size (falloc gs)) k m w (floc gs)))
+              (sym (gate-is R k)) (sym (L.LRel.l-regs (r-loc R) Output))
+              (L.store-at-rel (ρ R) (Live (falloc fs)) (r-inj R) (live-size (falloc fs)) (live-size (falloc gs)) k ml v (r-loc R)
+                 (ib-live R) (ib-mono R) nf))
+      (λ q miss → trans (cong (λ m → LocState.heapMem (exec-store-at-resolved (live-size (falloc gs)) k m (readReg (LocState.regs (floc gs)) Output) (floc gs)) q) (gate-is R k))
+                        (store-frame R k ml v (readReg (LocState.regs (floc gs)) Output) nf q miss))
+      (next-pc R (store-at k) f refl)
+    where
+      ml = frame-gate (falloc fs) k (sv-as-loc (readReg (LocState.regs (floc fs)) Input1))
+      v = readReg (LocState.regs (floc fs)) Output
