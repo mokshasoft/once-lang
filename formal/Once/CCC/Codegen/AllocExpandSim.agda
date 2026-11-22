@@ -747,3 +747,68 @@ module _ (C : Classes) (P : AbstractTrace) where
       go (SV-Tag _)   _ = fault-rel R
       go (SV-Lit _ _) _ = fault-rel R
       go (SV-Code _)  _ = fault-rel R
+
+  -- the frames after leaving one, by the saved frames
+  leave-fr : ∀ (al al′ : AllocState {FS}) → AllocState.saved-frames al′ ≡ AllocState.saved-frames al
+           → AllocState.current-frame al′ ≡ AllocState.current-frame al → AllocState.frame-slots al′ ≡ AllocState.frame-slots al
+           → (AllocState.current-frame (leave-frame al′) ≡ AllocState.current-frame (leave-frame al))
+           × (AllocState.saved-frames (leave-frame al′) ≡ AllocState.saved-frames (leave-frame al))
+           × (AllocState.frame-slots (leave-frame al′) ≡ AllocState.frame-slots (leave-frame al))
+  leave-fr al al′ es ec esl =
+    subst (λ sv → (AllocState.current-frame (leave-frame-aux sv al′) ≡ AllocState.current-frame (leave-frame al))
+                × (AllocState.saved-frames (leave-frame-aux sv al′) ≡ AllocState.saved-frames (leave-frame al))
+                × (AllocState.frame-slots (leave-frame-aux sv al′) ≡ AllocState.frame-slots (leave-frame al)))
+          (sym es) (go (AllocState.saved-frames al))
+    where
+      go : ∀ sv → (AllocState.current-frame (leave-frame-aux sv al′) ≡ AllocState.current-frame (leave-frame-aux sv al))
+                × (AllocState.saved-frames (leave-frame-aux sv al′) ≡ AllocState.saved-frames (leave-frame-aux sv al))
+                × (AllocState.frame-slots (leave-frame-aux sv al′) ≡ AllocState.frame-slots (leave-frame-aux sv al))
+      go []             = ec , es , esl
+      go ((f , b) ∷ fs′) = refl , refl , refl
+
+  step-ret : ∀ {fs gs} (R : Rel C P fs gs) b → fetch P (fpc fs) ≡ just (instr-ctrl (c-ret b))
+           → Rel C P (flat-exec-instr (instr-ctrl (c-ret b)) P fs) (flat-exec-instr (instr-ctrl (c-ret b)) E gs)
+  step-ret {fs} {gs} R b f =
+    subst (λ rs → Rel C P (do-ret b (fret fs) fs) (do-ret b rs gs)) (sym (r-ret R)) (go (fret fs) refl)
+    where
+      go : ∀ rs → fret fs ≡ rs → Rel C P (do-ret b rs fs) (do-ret b (map (off C 0 P) rs) gs)
+      go []           _ = fault-rel R
+      go (pc′ ∷ rest) _ =
+        subst (λ bb → Rel C P (ret-land (b Data.Nat.≡ᵇ AllocState.frame-slots (falloc fs)) pc′ rest fs)
+                              (ret-land bb (off C 0 P pc′) (map (off C 0 P) rest) gs))
+              (sym (cong (b Data.Nat.≡ᵇ_) (r-slots R))) (land (b Data.Nat.≡ᵇ AllocState.frame-slots (falloc fs)))
+        where
+          lf = leave-fr (falloc fs) (falloc gs) (r-saved R) (r-frame R) (r-slots R)
+          land : ∀ bb → Rel C P (ret-land bb pc′ rest fs) (ret-land bb (off C 0 P pc′) (map (off C 0 P) rest) gs)
+          land true  = core-gen R
+            (record { m-pc = refl ; m-ret = refl ; m-link = r-link R
+                    ; m-frame = proj₁ lf ; m-saved = proj₁ (proj₂ lf) ; m-slots = proj₂ (proj₂ lf) ; m-nslot = nslot
+                    ; m-nextP = next-leave (falloc fs) ; m-freeP = free-leave (falloc fs) ; m-sizeP = size-leave (falloc fs)
+                    ; m-nextE = next-leave (falloc gs) ; m-freeE = free-leave (falloc gs) ; m-sizeE = size-leave (falloc gs) })
+            (r-loc R) (r-clo R) (λ q _ → refl)
+            where
+              nslot : AllocState.next-slot (leave-frame (falloc gs)) ≡ AllocState.next-slot (leave-frame (falloc fs))
+              nslot = trans (ns (AllocState.saved-frames (falloc gs)) (falloc gs)) (trans (r-next-slot R) (sym (ns (AllocState.saved-frames (falloc fs)) (falloc fs))))
+                where
+                  ns : ∀ sv al → AllocState.next-slot (leave-frame-aux sv al) ≡ AllocState.next-slot al
+                  ns []      al = refl
+                  ns (_ ∷ _) al = refl
+              next-leave : ∀ al → AllocState.next-heap-ref (leave-frame al) ≡ AllocState.next-heap-ref al
+              next-leave al = nl (AllocState.saved-frames al)
+                where
+                  nl : ∀ sv → AllocState.next-heap-ref (leave-frame-aux sv al) ≡ AllocState.next-heap-ref al
+                  nl []      = refl
+                  nl (_ ∷ _) = refl
+              free-leave : ∀ al r → AllocState.freed (leave-frame al) r ≡ AllocState.freed al r
+              free-leave al r = fl (AllocState.saved-frames al)
+                where
+                  fl : ∀ sv → AllocState.freed (leave-frame-aux sv al) r ≡ AllocState.freed al r
+                  fl []      = refl
+                  fl (_ ∷ _) = refl
+              size-leave : ∀ al r → AllocState.block-size (leave-frame al) r ≡ AllocState.block-size al r
+              size-leave al r = sl (AllocState.saved-frames al)
+                where
+                  sl : ∀ sv → AllocState.block-size (leave-frame-aux sv al) r ≡ AllocState.block-size al r
+                  sl []      = refl
+                  sl (_ ∷ _) = refl
+          land false = fault-rel R
