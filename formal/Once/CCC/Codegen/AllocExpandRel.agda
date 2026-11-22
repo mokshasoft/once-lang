@@ -45,33 +45,8 @@ open FlatState
 open import Once.CCC.Codegen.AllocExpand
 open Classes
 open import Once.CCC.Codegen.AllocExpandPc {FS} using (off)
-
-------------------------------------------------------------------------
--- The renaming of refs, on locations and values
-------------------------------------------------------------------------
-
-ref-of : HeapLocation → ℕ
-ref-of hl = HeapRef.ref-id (HeapLocation.heap-ref hl)
-
-rhl : (ℕ → ℕ) → HeapLocation → HeapLocation
-rhl ρ hl = heap-loc (mkHeapRef (ρ (ref-of hl))) (HeapLocation.heap-offset hl)
-
-rloc : (ℕ → ℕ) → ValueLocation FS → ValueLocation FS
-rloc ρ (AtStack f k)  = AtStack f k
-rloc ρ (AtDynamic hl) = AtDynamic (rhl ρ hl)
-
-rv : (ℕ → ℕ) → StoredValue FS → StoredValue FS
-rv ρ (SV-Ptr loc)  = SV-Ptr (rloc ρ loc)
-rv ρ (SV-Tag n)    = SV-Tag n
-rv ρ (SV-Lit p v)  = SV-Lit p v
-rv ρ (SV-Code l)   = SV-Code l
-
--- a block's base pointer, and a record word's location
-blk : ℕ → StoredValue FS
-blk b = SV-Ptr (AtDynamic (heap-loc (mkHeapRef b) 0))
-
-rec-loc : ℕ → HeapLocation
-rec-loc k = heap-loc (mkHeapRef 0) k
+open import Once.CCC.Codegen.AllocExpandRen {FS} using (ref-of; rhl; rloc; rv; blk; rec-loc)
+open import Once.CCC.Codegen.AllocExpandStep {FS} using (module L)
 
 ------------------------------------------------------------------------
 -- The primitive's live blocks
@@ -109,22 +84,17 @@ module _ (C : Classes) (P : AbstractTrace) where
       r-saved : AllocState.saved-frames (falloc gs) ≡ AllocState.saved-frames (falloc fs)
       r-slots : AllocState.frame-slots (falloc gs) ≡ AllocState.frame-slots (falloc fs)
       r-next-slot : AllocState.next-slot (falloc gs) ≡ AllocState.next-slot (falloc fs)
-      r-halt  : LocState.halted (floc gs) ≡ LocState.halted (floc fs)
-      r-fault : LocState.faulted (floc gs) ≡ LocState.faulted (floc fs)
-      r-left  : LocState.left (floc gs) ≡ LocState.left (floc fs)
-      r-log   : LocState.ev-log (floc gs) ≡ LocState.ev-log (floc fs)
-
-      -- data, by the renaming
-      r-regs  : ∀ r → readReg (LocState.regs (floc gs)) r ≡ rv ρ (readReg (LocState.regs (floc fs)) r)
-      r-clo   : fclosure gs ≡ rv ρ (fclosure fs)
-      r-stack : ∀ f k → LocState.stackMem (floc gs) f k ≡ Data.Maybe.map (rv ρ) (LocState.stackMem (floc fs) f k)
-      r-heap  : ∀ hl v → Live (falloc fs) (ref-of hl) → LocState.heapMem (floc fs) hl ≡ just v
-              → LocState.heapMem (floc gs) (rhl ρ hl) ≡ just (rv ρ v)
-      r-size  : ∀ r → Live (falloc fs) r → AllocState.block-size (falloc fs) r ≤ AllocState.block-size (falloc gs) (ρ r)
 
       -- the renaming's image: injective on the live blocks, apart from the
       -- record, the sentinel and the free lists, below the expanded counter
       r-inj   : ∀ r r′ → Live (falloc fs) r → Live (falloc fs) r′ → ρ r ≡ ρ r′ → r ≡ r′
+
+      -- data, by the renaming (`LRel`: registers, stack, the live heap, a held
+      -- cell's block live, the flags and the log)
+      r-loc   : L.LRel ρ (Live (falloc fs)) r-inj (floc fs) (floc gs)
+      r-clo   : fclosure gs ≡ rv ρ (fclosure fs)
+      -- every block handed out, at least its size (a reused block is its class's size)
+      r-size  : ∀ r → r < AllocState.next-heap-ref (falloc fs) → AllocState.block-size (falloc fs) r ≤ AllocState.block-size (falloc gs) (ρ r)
       r-below : ∀ r → Live (falloc fs) r → 0 < ρ r × ρ r < AllocState.next-heap-ref (falloc gs)
       r-not-σ : ∀ r → Live (falloc fs) r → ¬ ρ r ≡ σ
       r-not-free : ∀ r c b → Live (falloc fs) r → b ∈ lists c → ¬ ρ r ≡ b
@@ -135,5 +105,6 @@ module _ (C : Classes) (P : AbstractTrace) where
       r-sent  : LocState.heapMem (floc gs) (heap-loc (mkHeapRef σ) 0) ≡ just (SV-Tag 0)
 
       -- the two runs' own invariants
-      r-cleared : ∀ hl → AllocState.freed (falloc fs) (ref-of hl) ≡ true → LocState.heapMem (floc fs) hl ≡ nothing
       r-nofree  : ∀ r → AllocState.freed (falloc gs) r ≡ false
+      -- a block not handed out has size 0 (so a gate passed only inside a handed-out block)
+      r-unsized : ∀ r → AllocState.next-heap-ref (falloc fs) ≤ r → AllocState.block-size (falloc fs) r ≡ 0

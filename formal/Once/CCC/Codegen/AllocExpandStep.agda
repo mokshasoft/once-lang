@@ -25,7 +25,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; mkHeapRef; module HeapLocation; module HeapRef; offsetHL; _≟HL_)
 open import Once.CCC.Machine.SMCore
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
-open import Once.CCC.Codegen.AllocExpandRel {FS} using (ref-of; rhl; rloc; rv; blk)
+open import Once.CCC.Codegen.AllocExpandRen {FS} using (ref-of; rhl; rloc; rv; blk)
 open MemOps {FS} using (writeHeapMem; writeHeapMem-aux)
 
 ------------------------------------------------------------------------
