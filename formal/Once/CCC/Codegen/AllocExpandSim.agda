@@ -706,3 +706,44 @@ module _ (C : Classes) (P : AbstractTrace) where
   step-call-fn {fs} {gs} R fn f =
     subst (λ m → Rel C P (do-call-at (find-fn P fn) fs) (do-call-at m gs)) (sym (ft-exp C 0 P (Once.CCC.Label.e-fn fn) 0))
       (call-rel R (next-pc R (instr-ctrl (c-call-fn fn)) f refl) (find-fn P fn))
+
+  open import Once.Memory.HeapAddress using (sucHL)
+
+  rhl-suc : ∀ (ρ′ : ℕ → ℕ) hl → rhl ρ′ (sucHL hl) ≡ sucHL (rhl ρ′ hl)
+  rhl-suc ρ′ (heap-loc r o) = refl
+
+  -- a closure's code word, called on both sides
+  code-rel : ∀ {fs gs} (R : Rel C P fs gs) → off C 0 P (suc (fpc fs)) ≡ suc (fpc gs) → ∀ mv
+           → Rel C P (do-call-code P mv fs) (do-call-code E (Data.Maybe.map (rv (ρ R)) mv) gs)
+  code-rel {fs} {gs} R pc (just (SV-Code ℓ)) =
+    subst (λ m → Rel C P (do-call-at (find-thunk P ℓ) fs) (do-call-at m gs)) (sym (ft-exp C 0 P (Once.CCC.Label.e-thunk ℓ) 0))
+      (call-rel R pc (find-thunk P ℓ))
+  code-rel R pc (just (SV-Tag _))   = fault-rel R
+  code-rel R pc (just (SV-Lit _ _)) = fault-rel R
+  code-rel R pc (just (SV-Ptr (AtStack _ _)))  = fault-rel R
+  code-rel R pc (just (SV-Ptr (AtDynamic _)))  = fault-rel R
+  code-rel R pc nothing = fault-rel R
+
+  step-call-clo : ∀ {fs gs} (R : Rel C P fs gs) → fetch P (fpc fs) ≡ just instr-call-closure
+                → LocState.faulted (floc (flat-exec-instr instr-call-closure P fs)) ≡ false
+                → Rel C P (flat-exec-instr instr-call-closure P fs) (flat-exec-instr instr-call-closure E gs)
+  step-call-clo {fs} {gs} R f nf =
+    subst (λ c → Rel C P (do-call-sv P (fclosure fs) fs) (do-call-sv E c gs)) (sym (r-clo R)) (go (fclosure fs) nf)
+    where
+      pc = next-pc R instr-call-closure f refl
+      go : ∀ c → LocState.faulted (floc (do-call-sv P c fs)) ≡ false → Rel C P (do-call-sv P c fs) (do-call-sv E (rv (ρ R) c) gs)
+      go (SV-Ptr (AtDynamic hl)) nf′ = cell (LocState.heapMem (floc fs) (sucHL hl)) refl nf′
+        where
+          cell : ∀ mv → LocState.heapMem (floc fs) (sucHL hl) ≡ mv → LocState.faulted (floc (do-call-code P mv fs)) ≡ false
+               → Rel C P (do-call-code P (LocState.heapMem (floc fs) (sucHL hl)) fs)
+                         (do-call-code E (LocState.heapMem (floc gs) (sucHL (rhl (ρ R) hl))) gs)
+          cell nothing  e ()
+          cell (just v) e _ =
+            subst₂ (λ m m′ → Rel C P (do-call-code P m fs) (do-call-code E m′ gs)) (sym e)
+                   (sym (trans (cong (LocState.heapMem (floc gs)) (sym (rhl-suc (ρ R) hl)))
+                               (L.LRel.l-heap (r-loc R) (sucHL hl) v (L.LRel.l-live (r-loc R) (sucHL hl) v e) e)))
+                   (code-rel R pc (just v))
+      go (SV-Ptr (AtStack _ _)) _ = fault-rel R
+      go (SV-Tag _)   _ = fault-rel R
+      go (SV-Lit _ _) _ = fault-rel R
+      go (SV-Code _)  _ = fault-rel R
