@@ -146,6 +146,8 @@ module LogPres {FS : FrameSemantics} where
   exec-abstract-log (load-at k)              _ s alloc = load-at-log k Output (ExecFinal.frame-gate {FS} alloc k (sv-as-loc (readReg (regs s) Input1))) s
   exec-abstract-log (store-at k)             _ s alloc = store-at-log (AllocState.block-size alloc) k (ExecFinal.frame-gate {FS} alloc k (sv-as-loc (readReg (regs s) Input1))) (readReg (regs s) Output) s
   exec-abstract-log (addr-at k)              _ s alloc = addr-at-log (AllocState.block-size alloc) k (ExecFinal.heap-gate {FS} (sv-as-loc (readReg (regs s) Input1))) s
+  exec-abstract-log (load-rec k)             _ s alloc = load-via-log Output (ExecFinal.rec-gate {FS} alloc k) s
+  exec-abstract-log (store-rec k)            _ s alloc = store-via-log (ExecFinal.rec-gate {FS} alloc k) (readReg (regs s) Output) s
   exec-abstract-log (instr-ctrl c)           _ s alloc = refl
 
   -- The control helpers of the flat machine, by their own cases.
@@ -265,3 +267,5 @@ module LogPres {FS : FrameSemantics} where
   flat-exec-instr-log (load-at n)           lf prog fs = exec-abstract-log (load-at n) lf (floc fs) (falloc fs)
   flat-exec-instr-log (store-at n)           lf prog fs = exec-abstract-log (store-at n) lf (floc fs) (falloc fs)
   flat-exec-instr-log (addr-at n)           lf prog fs = exec-abstract-log (addr-at n) lf (floc fs) (falloc fs)
+  flat-exec-instr-log (load-rec n)          lf prog fs = exec-abstract-log (load-rec n) lf (floc fs) (falloc fs)
+  flat-exec-instr-log (store-rec n)         lf prog fs = exec-abstract-log (store-rec n) lf (floc fs) (falloc fs)

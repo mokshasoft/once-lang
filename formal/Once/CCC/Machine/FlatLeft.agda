@@ -154,6 +154,8 @@ module LeftPres {FS : FrameSemantics} where
   abs-left (load-at k) s alloc = load-at-left k Output (frame-gate alloc k (sv-as-loc (readReg (regs s) Input1))) s
   abs-left (store-at k) s alloc = store-at-left (AllocState.block-size alloc) k (frame-gate alloc k (sv-as-loc (readReg (regs s) Input1))) (readReg (regs s) Output) s
   abs-left (addr-at k) s alloc = addr-at-left (AllocState.block-size alloc) k (heap-gate (sv-as-loc (readReg (regs s) Input1))) s
+  abs-left (load-rec k) s alloc = load-via-left Output (rec-gate alloc k) s
+  abs-left (store-rec k) s alloc = store-via-left (rec-gate alloc k) (readReg (regs s) Output) s
   abs-left (instr-ctrl c) s alloc = refl
 
   exec-abstract-left : ∀ (i : AbstractInstr) → LeftFree i → ∀ s alloc → lft (proj₁ (exec-abstract i s alloc)) ≡ lft s
@@ -276,6 +278,8 @@ module LeftPres {FS : FrameSemantics} where
   flat-exec-instr-left (load-at n)           lf prog fs = exec-abstract-left (load-at n) lf (floc fs) (falloc fs)
   flat-exec-instr-left (store-at n)           lf prog fs = exec-abstract-left (store-at n) lf (floc fs) (falloc fs)
   flat-exec-instr-left (addr-at n)           lf prog fs = exec-abstract-left (addr-at n) lf (floc fs) (falloc fs)
+  flat-exec-instr-left (load-rec n)          lf prog fs = exec-abstract-left (load-rec n) lf (floc fs) (falloc fs)
+  flat-exec-instr-left (store-rec n)         lf prog fs = exec-abstract-left (store-rec n) lf (floc fs) (falloc fs)
 
 ------------------------------------------------------------------------
 -- D367: …AND A STEP THAT DOES NOT HALT DOES NOT FAULT. A fault sets `halted`
@@ -417,6 +421,8 @@ module FaultPres {FS : FrameSemantics} where
   abs-fault (load-at k) s alloc h = load-at-fault k Output (frame-gate alloc k (sv-as-loc (readReg (regs s) Input1))) s h
   abs-fault (store-at k) s alloc h = store-at-fault (AllocState.block-size alloc) k (frame-gate alloc k (sv-as-loc (readReg (regs s) Input1))) (readReg (regs s) Output) s h
   abs-fault (addr-at k) s alloc h = addr-at-fault (AllocState.block-size alloc) k (heap-gate (sv-as-loc (readReg (regs s) Input1))) s h
+  abs-fault (load-rec k) s alloc h = load-via-fault Output (rec-gate alloc k) s h
+  abs-fault (store-rec k) s alloc h = store-via-fault (rec-gate alloc k) (readReg (regs s) Output) s h
   abs-fault (instr-reg-op op) s alloc _ = refl
   abs-fault (instr-ctrl c) s alloc _ = refl
 
@@ -511,3 +517,5 @@ module FaultPres {FS : FrameSemantics} where
   flat-exec-instr-fault (load-at n)           prog fs h = abs-fault (load-at n) (floc fs) (falloc fs) h
   flat-exec-instr-fault (store-at n)           prog fs h = abs-fault (store-at n) (floc fs) (falloc fs) h
   flat-exec-instr-fault (addr-at n)           prog fs h = abs-fault (addr-at n) (floc fs) (falloc fs) h
+  flat-exec-instr-fault (load-rec n)          prog fs h = abs-fault (load-rec n) (floc fs) (falloc fs) h
+  flat-exec-instr-fault (store-rec n)         prog fs h = abs-fault (store-rec n) (floc fs) (falloc fs) h

@@ -59,4 +59,6 @@ slot-of (instr-room _)    = nothing
 slot-of (load-at _)    = nothing
 slot-of (store-at _)    = nothing
 slot-of (addr-at _)    = nothing
+slot-of (load-rec _)    = nothing
+slot-of (store-rec _)    = nothing
 slot-of (instr-ctrl _)         = nothing

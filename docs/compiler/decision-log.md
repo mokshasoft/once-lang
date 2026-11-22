@@ -24534,6 +24534,24 @@ block serves any request, so the strong claim: a run is cut only when the live b
 not fit — D428 part 2 option 2). Bump stays the primitive under both, not a choice. Rejected: the spike's
 lowest-free (a search per alloc), a coalescing first-fit (search and merge; a much larger proof).
 
+### The expansion's shape (unattended, keep-going mode, 2026-11-23; within the decision above)
+The record's words are reached by TWO abstract instructions, `load-rec k` (Output := record word `k`) and
+`store-rec k` (record word `k` := Output), each one base+offset access off the heap register per arch; the
+abstract machine's record is the reserved ref 0 (the start state's counter already starts past it). Word 0 is
+the frontier (per arch only: the flat machine's bump is `next-heap-ref`); the heads follow. An empty list is a
+pointer to a one-cell SENTINEL block whose word is `SV-Tag 0` (a link is never a tag), so emptiness is the
+existing `c-branch-tag-zero` on `*Input1`; no new control. With head `h` of the size's class:
+* `alloc k` = `load-rec h; mov-to-input; c-branch-tag-zero Lb; load-at 0; store-rec h; mov-to-output;
+  c-jmp Ld; c-label Lb; instr-alloc-heap k; c-label Ld` (pop: two loads, a store; else the bump).
+* `free k` (block in Input1) = `load-rec h; store-at 0; mov-to-output; store-rec h` (push; every block has a
+  first word: `szμ`/`szc`/`szν` are at least 1).
+* the start, after `c-start`: `instr-alloc-heap 1` (the sentinel), `store-rec h` per head, `mov-to-input;
+  instr-load-tag-lit 0; store-at 0`. (The fixed-offset `-indirect` forms are retired, not emittable: the
+  block-checked `load-at`/`store-at` serve.)
+Why not a register for the record (the text above): no new abstract register (x86-32 has none to give), and
+two straight-line instructions cost one clause each in the instruction cascades. A free clobbers Output (the
+primitive's did not): the image never holds a live value in Output across a free (checked at the expansion).
+
 ## D469 — AN ABSTRACT CELL'S SIZE IS ITS BLOCK'S; ONE LIVE CELL PER SERIAL (2026-11-23, proposed — for the user's review)
 
 **Context.** The gated free (D468) passes only when the freed block is live at the size the image frees, and

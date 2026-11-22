@@ -122,6 +122,8 @@ private
   ext-sym-asm (load-at _) = []
   ext-sym-asm (store-at _) = []
   ext-sym-asm (addr-at _) = []
+  ext-sym-asm (load-rec _) = []
+  ext-sym-asm (store-rec _) = []
   ext-sym-asm (instr-room _) = []
   ext-sym-asm (instr-push-frame _) = []
   ext-sym-asm instr-pop-frame = []

@@ -58,7 +58,7 @@ open import Once.Type using (fits-int; fits-float)
 
 -- Import AbstractInstr from SMCore
 open import Once.CCC.Machine.SMCore
-  using (AbstractInstr; AbstractTrace; mov-to-output; mov-to-input; load-indirect; load-indirect-suc; load-from-slot; store-at-slot; store-indirect; store-indirect-suc; lea-slot; restore-input; instr-alloc-stack; instr-alloc-heap; instr-dealloc-stack; instr-push-frame; instr-pop-frame; instr-call-closure; worklist-init; worklist-push; worklist-pop; worklist-check; instr-reclaim-to; instr-sigop; instr-load-const; instr-load-code-addr; instr-save-closure-reg; instr-load-tag-lit; instr-reg-op; instr-free-heap; instr-room; load-at; store-at; addr-at; instr-ctrl; out-nz; c-label; c-jmp; c-branch-tag-zero; c-ret; c-entry; c-call-fn; c-start; c-leave)
+  using (AbstractInstr; AbstractTrace; mov-to-output; mov-to-input; load-indirect; load-indirect-suc; load-from-slot; store-at-slot; store-indirect; store-indirect-suc; lea-slot; restore-input; instr-alloc-stack; instr-alloc-heap; instr-dealloc-stack; instr-push-frame; instr-pop-frame; instr-call-closure; worklist-init; worklist-push; worklist-pop; worklist-check; instr-reclaim-to; instr-sigop; instr-load-const; instr-load-code-addr; instr-save-closure-reg; instr-load-tag-lit; instr-reg-op; instr-free-heap; instr-room; load-at; store-at; addr-at; load-rec; store-rec; instr-ctrl; out-nz; c-label; c-jmp; c-branch-tag-zero; c-ret; c-entry; c-call-fn; c-start; c-leave)
 open import Once.CCC.Machine.Locations using (Slot)
 
 ------------------------------------------------------------------------
@@ -249,6 +249,9 @@ compile-abstract (instr-reclaim-to n) = []
 -- instr-free-heap: no code yet (plan 0.123 M2: the bump allocator never
 -- reuses a block; the free-list and pop code come with M3)
 compile-abstract (instr-free-heap n) = []
+-- D468: not emittable until the arch layer has the allocator record (B1.6 3d)
+compile-abstract (load-rec _) = []
+compile-abstract (store-rec _) = []
 -- plan 0.123 B.4 α: a flat value's word k, by its offset from Input1.
 -- riscv64: ld a0, 8k(t0) ; sd a0, 8k(t0) ; addi a0, t0, 8k (the offset is
 -- unbounded in the model, as a slot's is; beyond the 12-bit immediate the

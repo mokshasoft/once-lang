@@ -185,6 +185,9 @@ compile-abstract (instr-reclaim-to n) = []
 -- instr-free-heap: no code yet (plan 0.123 M2: the bump allocator never
 -- reuses a block; the free-list and pop code come with M3)
 compile-abstract (instr-free-heap n) = []
+-- D468: not emittable until the arch layer has the allocator record (B1.6 3d)
+compile-abstract (load-rec _) = []
+compile-abstract (store-rec _) = []
 -- plan 0.123 B.4 α: a flat value's word k, by its offset from Input1.
 -- load-at k:  Output := *(Input1 + k)      x86: mov rax, [rdi + 8k]
 -- store-at k: *(Input1 + k) := Output      x86: mov [rdi + 8k], rax

@@ -236,6 +236,8 @@ module Dispatch (sup : Supply) where
   ctrl-le (load-at _) = z≤n
   ctrl-le (store-at _) = z≤n
   ctrl-le (addr-at _) = z≤n
+  ctrl-le (load-rec _) = z≤n
+  ctrl-le (store-rec _) = z≤n
   ctrl-le (instr-room _) = z≤n
   ctrl-le (instr-reclaim-to _) = z≤n
   ctrl-le (instr-push-frame _) = z≤n
@@ -1184,6 +1186,11 @@ module Dispatch (sup : Supply) where
     -- emits none of them, and `FlatInv` carries `Emitted prog`. See `FrameFree`.
     events-running-fetch {hv} n ev env prog fs s (instr-alloc-stack k) cc bg wf h ftq =
       ⊥-elim (frame-op-absurd prog fs (instr-alloc-stack k) (inv-run wf) ftq (λ _ ()))
+    -- D468: the allocator record's words are not in an image yet (B1.6 3d)
+    events-running-fetch {hv} n ev env prog fs s (load-rec k) cc bg wf h ftq =
+      ⊥-elim (frame-op-absurd prog fs (load-rec k) (inv-run wf) ftq (λ _ ()))
+    events-running-fetch {hv} n ev env prog fs s (store-rec k) cc bg wf h ftq =
+      ⊥-elim (frame-op-absurd prog fs (store-rec k) (inv-run wf) ftq (λ _ ()))
     events-running-fetch {hv} n ev env prog fs s (instr-alloc-heap k) cc bg wf h ftq =
       ccc-step-bs n (events-agree n) ev env prog fs s (instr-alloc-heap k)
         (bs-alloc-heap bss prog fs s k cc h ftq

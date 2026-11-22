@@ -84,7 +84,7 @@ private
 ------------------------------------------------------------------------
 
 open import Once.Memory.HeapAddress
-  using (HeapRef;
+  using (HeapRef; mkHeapRef;
          HeapLocation; heap-loc; _≟HL_; module HeapLocation; module HeapRef)
 open HeapLocation using (heap-ref; heap-offset)
 open HeapRef using (ref-id)
@@ -891,6 +891,15 @@ module ExecFinal {FS : FrameSemantics} where
   stack-gate true  loc = just loc
   stack-gate false _   = nothing
 
+  -- D468: the allocator record's word `k` (the reserved ref 0), once the record
+  -- is handed out (the counter past it; the start's state has it at 1)
+  rec-at : ℕ → ℕ → Maybe (ValueLocation FS)
+  rec-at zero    _ = nothing
+  rec-at (suc _) k = just (AtDynamic (heap-loc (mkHeapRef 0) k))
+
+  rec-gate : AllocState {FS} → ℕ → Maybe (ValueLocation FS)
+  rec-gate al k = rec-at (next-heap-ref al) k
+
   frame-gate : AllocState {FS} → ℕ → Maybe (ValueLocation FS) → Maybe (ValueLocation FS)
   frame-gate al k (just (AtStack f j))  = stack-gate (in-window (live-frames al) f (k + j)) (AtStack f j)
   frame-gate al k (just (AtDynamic hl)) = just (AtDynamic hl)
@@ -1324,6 +1333,13 @@ data AbstractInstr : Set where
   -- `-indirect-suc` pairs (offsets 0 and 1). Not emittable yet (`EmittableI`):
   -- the joint rewrite emits them. Added LAST for MAlonzo ctor-index stability.
   load-at store-at addr-at : ℕ → AbstractInstr
+
+  -- D468 (the expansion's shape): the cell allocator's record, at the reserved
+  -- ref 0 (the heap register's block per arch): `load-rec k`: Output := word `k`
+  -- of the record; `store-rec k`: word `k` := Output. The expansion of `alloc`/
+  -- `free` (the free lists' heads) is their only user. Added LAST for MAlonzo
+  -- ctor-index stability.
+  load-rec store-rec : ℕ → AbstractInstr
 
 -- | A trace is a sequence of abstract instructions
 -- D245: the two CALLS, a closure call and a direct call of a program function.
@@ -2314,6 +2330,8 @@ module AbstractExec {FS : FrameSemantics} where
   exec-abstract (load-at k) s alloc  = exec-load-at-resolved k Output (frame-gate alloc k (sv-as-loc (readReg (regs s) Input1))) s , alloc
   exec-abstract (store-at k) s alloc = exec-store-at-resolved (block-size alloc) k (frame-gate alloc k (sv-as-loc (readReg (regs s) Input1))) (readReg (regs s) Output) s , alloc
   exec-abstract (addr-at k) s alloc  = exec-addr-at-resolved (block-size alloc) k (heap-gate (sv-as-loc (readReg (regs s) Input1))) s , alloc
+  exec-abstract (load-rec k) s alloc  = exec-load-via-resolved Output (rec-gate alloc k) s , alloc
+  exec-abstract (store-rec k) s alloc = exec-store-via-resolved (rec-gate alloc k) (readReg (regs s) Output) s , alloc
 
   -- instr-reclaim-to: a NO-OP on alloc too (D150), for the same reason as
   -- `instr-alloc-stack`, and with an even blunter piece of evidence: ALL THREE

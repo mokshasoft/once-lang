@@ -101,6 +101,11 @@ mloc-below : ℕ → Maybe (ValueLocation FS) → Set
 mloc-below n (just loc) = loc-below n loc
 mloc-below n nothing    = ⊤
 
+-- D468: the record's word is below any frontier past it
+rec-below : ∀ n k → mloc-below n (rec-at n k)
+rec-below zero    k = tt
+rec-below (suc _) k = Data.Nat.s≤s Data.Nat.z≤n
+
 -- Monotone in the frontier (which only grows).
 loc-mono : ∀ {m n} (loc : ValueLocation FS) → m ≤ n → loc-below m loc → loc-below n loc
 loc-mono (AtDynamic hl) m≤n lt = ≤-trans lt m≤n
@@ -635,6 +640,10 @@ mutual
   wf-abstract (addr-at k) ls alloc wf =
     wf-addr-at-resolved (AllocState.block-size alloc) k (heap-gate (sv-as-loc (readReg (regs ls) Input1))) wf
       (heap-gate-below (next-heap-ref alloc) (sv-as-loc (readReg (regs ls) Input1)) (sv-as-loc-below (next-heap-ref alloc) (readReg (regs ls) Input1) (wf-regs wf Input1))) , ≤-refl
+  wf-abstract (load-rec k) ls alloc wf =
+    wf-load-resolved Output (rec-gate alloc k) wf (rec-below (next-heap-ref alloc) k) , ≤-refl
+  wf-abstract (store-rec k) ls alloc wf =
+    wf-store-resolved (rec-gate alloc k) (readReg (regs ls) Output) wf (rec-below (next-heap-ref alloc) k) (wf-regs wf Output) , ≤-refl
   wf-abstract (instr-reclaim-to n) ls alloc wf = wf , ≤-refl
   wf-abstract (instr-push-frame cap) ls alloc wf = wf , ≤-refl
   wf-abstract instr-pop-frame ls alloc wf = wf , ≤-refl
@@ -865,6 +874,8 @@ cl-step (load-from-slot k)       prog fs wf b = cl-slot (load-from-slot k) fs wf
 cl-step (store-at-slot k)        prog fs wf b = cl-slot (store-at-slot k) fs wf b
 cl-step store-indirect           prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract store-indirect (floc fs) (falloc fs) wf)) b
 cl-step store-indirect-suc       prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract store-indirect-suc (floc fs) (falloc fs) wf)) b
+cl-step (load-rec k)             prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (load-rec k) (floc fs) (falloc fs) wf)) b
+cl-step (store-rec k)            prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (store-rec k) (floc fs) (falloc fs) wf)) b
 cl-step (lea-slot k)             prog fs wf b = cl-slot (lea-slot k) fs wf b
 cl-step (restore-input k)        prog fs wf b = cl-slot (restore-input k) fs wf b
 cl-step (instr-reclaim-to k)     prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (instr-reclaim-to k) (floc fs) (falloc fs) wf)) b
@@ -907,6 +918,8 @@ flat-wf-step (load-from-slot k)       prog fs wf = wf-slot (load-from-slot k) fs
 flat-wf-step (store-at-slot k)        prog fs wf = wf-slot (store-at-slot k) fs wf
 flat-wf-step store-indirect           prog fs wf = proj₁ (wf-abstract store-indirect (floc fs) (falloc fs) wf)
 flat-wf-step store-indirect-suc       prog fs wf = proj₁ (wf-abstract store-indirect-suc (floc fs) (falloc fs) wf)
+flat-wf-step (load-rec k)             prog fs wf = proj₁ (wf-abstract (load-rec k) (floc fs) (falloc fs) wf)
+flat-wf-step (store-rec k)            prog fs wf = proj₁ (wf-abstract (store-rec k) (floc fs) (falloc fs) wf)
 flat-wf-step (lea-slot k)             prog fs wf = wf-slot (lea-slot k) fs wf
 flat-wf-step (restore-input k)        prog fs wf = wf-slot (restore-input k) fs wf
 flat-wf-step (instr-alloc-stack k)    prog fs wf = proj₁ (wf-abstract (instr-alloc-stack k) (floc fs) (falloc fs) wf)

@@ -256,6 +256,8 @@ module FlatEventTrace {FS : FrameSemantics} where
   ctrl-of (load-at _) = 0
   ctrl-of (store-at _) = 0
   ctrl-of (addr-at _) = 0
+  ctrl-of (AbstractInstr.load-rec _) = 0
+  ctrl-of (AbstractInstr.store-rec _) = 0
   ctrl-of (instr-room _) = 0
   ctrl-of (instr-ctrl _) = 1
 
@@ -291,6 +293,8 @@ module FlatEventTrace {FS : FrameSemantics} where
   ctrl-≤1 (load-at _) = z≤n
   ctrl-≤1 (store-at _) = z≤n
   ctrl-≤1 (addr-at _) = z≤n
+  ctrl-≤1 (AbstractInstr.load-rec _) = z≤n
+  ctrl-≤1 (AbstractInstr.store-rec _) = z≤n
   ctrl-≤1 (instr-room _) = z≤n
   ctrl-≤1 (instr-ctrl _) = s≤s z≤n
 
@@ -394,6 +398,8 @@ module FlatEventTrace {FS : FrameSemantics} where
   step-log (SMC.load-at n) prog fs = silent (SMC.load-at n) tt prog fs refl
   step-log (SMC.store-at n) prog fs = silent (SMC.store-at n) tt prog fs refl
   step-log (SMC.addr-at n) prog fs = silent (SMC.addr-at n) tt prog fs refl
+  step-log (SMC.load-rec n) prog fs = silent (SMC.load-rec n) tt prog fs refl
+  step-log (SMC.store-rec n) prog fs = silent (SMC.store-rec n) tt prog fs refl
   step-log (SMC.instr-room n) prog fs = silent (SMC.instr-room n) tt prog fs refl
   step-log (SMC.instr-ctrl c) prog fs = silent (SMC.instr-ctrl c) tt prog fs refl
 
@@ -451,6 +457,8 @@ module FlatEventTrace {FS : FrameSemantics} where
     leave-or-free (SMC.load-at _) = inj₂ tt
     leave-or-free (SMC.store-at _) = inj₂ tt
     leave-or-free (SMC.addr-at _) = inj₂ tt
+    leave-or-free (SMC.load-rec _) = inj₂ tt
+    leave-or-free (SMC.store-rec _) = inj₂ tt
     leave-or-free (SMC.instr-room _) = inj₂ tt
 
     leave-halts : ∀ {prog k fs fs'} → halted (floc fs) ≡ true → FlatSteps prog k fs fs' → halted (floc fs') ≡ false → ⊥

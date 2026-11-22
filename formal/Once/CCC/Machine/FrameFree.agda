@@ -69,6 +69,8 @@ FrameFreeI instr-pop-frame           = ⊥
 FrameFreeI (instr-ctrl (c-entry _ _)) = ⊥
 FrameFreeI (instr-ctrl (c-start _)) = ⊥  -- plan 0.107: it reserves the outermost frame
 FrameFreeI (instr-room _)           = ⊥  -- D377: the room-check pass adds checks AFTER the image
+FrameFreeI (load-rec _)             = ⊥  -- D468: the allocator expansion adds them after the image
+FrameFreeI (store-rec _)            = ⊥
 -- plan 0.123 B.4 α: the four fixed-offset forms are retired — the flat layout
 -- reads and writes at `load-at`/`store-at`/`addr-at` offsets, so no emitter
 -- produces them
@@ -120,6 +122,9 @@ EmittableI (instr-ctrl (c-start _))  = ⊥
 -- D377: the image holds no check of its own; the room-check pass
 -- (`RoomChecks.room-checks`) adds them after it, to the lowered image.
 EmittableI (instr-room _)            = ⊥
+-- D468: the allocator record's words, emittable once the arch layer has the record (B1.6 3d)
+EmittableI (load-rec _)              = ⊥
+EmittableI (store-rec _)             = ⊥
 -- plan 0.123 B.4 α: the four fixed-offset forms are retired (no emitter
 -- produces them; the flat layout uses the offset forms)
 EmittableI load-indirect             = ⊥
@@ -179,6 +184,8 @@ emittable-image (instr-room _) e = e
 emittable-image (load-at _) e = e
 emittable-image (store-at _) e = e
 emittable-image (addr-at _) e = e
+emittable-image (load-rec _) ()
+emittable-image (store-rec _) ()
 
 -- …and the fence is WEAKER, so every consumer that only needs "no fossil"
 -- can still be fed a frame-free witness. ENUMERATED on the ⊥ set (the
@@ -196,6 +203,8 @@ frame-free-emittable (instr-room _)        ()
 frame-free-emittable (load-at _)           _ = tt
 frame-free-emittable (store-at _)          _ = tt
 frame-free-emittable (addr-at _)           _ = tt
+frame-free-emittable (load-rec _)          ()
+frame-free-emittable (store-rec _)         ()
 frame-free-emittable (instr-ctrl (c-call-fn _)) ()
 frame-free-emittable (instr-ctrl (c-ret _))     ()
 frame-free-emittable (instr-ctrl c-leave)                _ = tt
@@ -305,6 +314,8 @@ module _ {FS : FrameSemantics} where
   exec-abstract-preserves-next-slot (load-at _)         s alloc _ = refl
   exec-abstract-preserves-next-slot (store-at _)        s alloc _ = refl
   exec-abstract-preserves-next-slot (addr-at _)         s alloc _ = refl
+  exec-abstract-preserves-next-slot (load-rec _)        s alloc _ = refl
+  exec-abstract-preserves-next-slot (store-rec _)       s alloc _ = refl
   exec-abstract-preserves-next-slot (instr-reclaim-to _)     s alloc _ = refl
   exec-abstract-preserves-next-slot (instr-push-frame _)     s alloc ()
   exec-abstract-preserves-next-slot instr-pop-frame          s alloc ()
@@ -403,6 +414,8 @@ module _ {FS : FrameSemantics} where
   exec-abstract-state-nsi (store-at x)        s alloc k _ =
     Relation.Binary.PropositionalEquality.cong (λ g → ExecFinal.exec-store-at-resolved {FS} (AllocState.block-size alloc) x g (readReg (LocState.regs s) Output) s) (gate-nsi alloc k x (sv-as-loc (readReg (LocState.regs s) Input1)))
   exec-abstract-state-nsi (addr-at x)         s alloc k _ = refl
+  exec-abstract-state-nsi (load-rec _)        s alloc k _ = refl
+  exec-abstract-state-nsi (store-rec _)       s alloc k _ = refl
   exec-abstract-state-nsi (instr-reclaim-to _)     s alloc k _ = refl
   exec-abstract-state-nsi (instr-push-frame _)     s alloc k ()
   exec-abstract-state-nsi instr-pop-frame          s alloc k ()
@@ -448,6 +461,8 @@ module _ {FS : FrameSemantics} where
   exec-abstract-alloc-nsi (load-at _)         s alloc k _ = refl
   exec-abstract-alloc-nsi (store-at _)        s alloc k _ = refl
   exec-abstract-alloc-nsi (addr-at _)         s alloc k _ = refl
+  exec-abstract-alloc-nsi (load-rec _)        s alloc k _ = refl
+  exec-abstract-alloc-nsi (store-rec _)       s alloc k _ = refl
   exec-abstract-alloc-nsi (instr-reclaim-to _)     s alloc k _ = refl
   exec-abstract-alloc-nsi (instr-push-frame _)     s alloc k ()
   exec-abstract-alloc-nsi instr-pop-frame          s alloc k ()

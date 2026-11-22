@@ -238,6 +238,8 @@ module RoomSim {FS : FrameSemantics} (t : AbstractTrace) where
   step-lift fs i@(load-at _) = on fs i refl refl
   step-lift fs i@(store-at _) = on fs i refl refl
   step-lift fs i@(addr-at _) = on fs i refl refl
+  step-lift fs i@(AbstractInstr.load-rec _) = on fs i refl refl
+  step-lift fs i@(AbstractInstr.store-rec _) = on fs i refl refl
   step-lift fs i@(instr-room _) = on fs i refl refl
   step-lift fs i@(instr-ctrl (c-label _)) = on fs i refl refl
   step-lift fs i@(instr-ctrl (c-entry _ _)) = on fs i refl refl

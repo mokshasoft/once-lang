@@ -393,6 +393,8 @@ module FlatMachine {FS : FrameSemantics} where
   thunk-of?-sound (load-at _)                    _ ()
   thunk-of?-sound (store-at _)                    _ ()
   thunk-of?-sound (addr-at _)                    _ ()
+  thunk-of?-sound (load-rec _)                   _ ()
+  thunk-of?-sound (store-rec _)                  _ ()
   thunk-of?-sound (instr-ctrl (c-call-fn _))            _ ()
 
   entry-of?-sound : ∀ (x : AbstractInstr) (m : EntryId) → entry-of? x ≡ just m
@@ -434,6 +436,8 @@ module FlatMachine {FS : FrameSemantics} where
   entry-of?-sound (load-at _)                    _ ()
   entry-of?-sound (store-at _)                    _ ()
   entry-of?-sound (addr-at _)                    _ ()
+  entry-of?-sound (load-rec _)                   _ ()
+  entry-of?-sound (store-rec _)                  _ ()
   entry-of?-sound (instr-ctrl (c-call-fn _))            _ ()
 
   ft-go-sound : ∀ (prog : AbstractTrace) (target : EntryId) (acc j : ℕ)
@@ -529,6 +533,8 @@ module FlatMachine {FS : FrameSemantics} where
   label-of?-sound (load-at _)                    _ ()
   label-of?-sound (store-at _)                    _ ()
   label-of?-sound (addr-at _)                    _ ()
+  label-of?-sound (load-rec _)                   _ ()
+  label-of?-sound (store-rec _)                  _ ()
 
   fl-go-sound : ∀ (prog : AbstractTrace) (target : LabelId) (acc j : ℕ)
               → fl-go prog target acc ≡ just j
@@ -1480,6 +1486,8 @@ module FlatMachine {FS : FrameSemantics} where
   shifted-instr d (load-at k)                         t₁ t₂ fs fs' _  _  sh = shifted-straight d (load-at k) fs fs' sh
   shifted-instr d (store-at k)                         t₁ t₂ fs fs' _  _  sh = shifted-straight d (store-at k) fs fs' sh
   shifted-instr d (addr-at k)                         t₁ t₂ fs fs' _  _  sh = shifted-straight d (addr-at k) fs fs' sh
+  shifted-instr d (load-rec k)                        t₁ t₂ fs fs' _  _  sh = shifted-straight d (load-rec k) fs fs' sh
+  shifted-instr d (store-rec k)                       t₁ t₂ fs fs' _  _  sh = shifted-straight d (store-rec k) fs fs' sh
   shifted-instr d (instr-ctrl (c-label _))               t₁ t₂ fs fs' _  _  sh = shifted-label d fs fs' sh
   shifted-instr d (instr-ctrl (c-entry _ b))             t₁ t₂ fs fs' _  _  sh = shifted-thunk d b fs fs' sh
   shifted-instr d (instr-ctrl (c-start b))               t₁ t₂ fs fs' _  _  sh = shifted-thunk d b fs fs' sh
@@ -1534,6 +1542,8 @@ module FlatMachine {FS : FrameSemantics} where
   flat-exec-instr-prog-irrelevant (load-at _)                         t t' fs _  = refl
   flat-exec-instr-prog-irrelevant (store-at _)                         t t' fs _  = refl
   flat-exec-instr-prog-irrelevant (addr-at _)                         t t' fs _  = refl
+  flat-exec-instr-prog-irrelevant (load-rec _)                        t t' fs _  = refl
+  flat-exec-instr-prog-irrelevant (store-rec _)                       t t' fs _  = refl
   flat-exec-instr-prog-irrelevant (instr-ctrl (c-label _))               t t' fs _  = refl
   flat-exec-instr-prog-irrelevant (instr-ctrl (c-entry _ _))             t t' fs _  = refl
   flat-exec-instr-prog-irrelevant (instr-ctrl (c-start _))               t t' fs _  = refl
@@ -1624,6 +1634,8 @@ module FlatMachine {FS : FrameSemantics} where
   flat-exec-instr-prefix (load-at _)             t₁ t₂ fs _  _  = refl
   flat-exec-instr-prefix (store-at _)             t₁ t₂ fs _  _  = refl
   flat-exec-instr-prefix (addr-at _)             t₁ t₂ fs _  _  = refl
+  flat-exec-instr-prefix (load-rec _)            t₁ t₂ fs _  _  = refl
+  flat-exec-instr-prefix (store-rec _)           t₁ t₂ fs _  _  = refl
   flat-exec-instr-prefix (instr-ctrl (c-label _))   t₁ t₂ fs _  _  = refl
   flat-exec-instr-prefix (instr-ctrl (c-entry _ _)) t₁ t₂ fs _  _  = refl
   flat-exec-instr-prefix (instr-ctrl (c-start _))   t₁ t₂ fs _  _  = refl
@@ -1753,6 +1765,8 @@ module FlatMachine {FS : FrameSemantics} where
   flinkView (load-at _)                         = fv-pres (λ _ _ → refl)
   flinkView (store-at _)                         = fv-pres (λ _ _ → refl)
   flinkView (addr-at _)                         = fv-pres (λ _ _ → refl)
+  flinkView (load-rec _)                        = fv-pres (λ _ _ → refl)
+  flinkView (store-rec _)                       = fv-pres (λ _ _ → refl)
   flinkView (instr-load-const _ _)                 = fv-pres (λ _ _ → refl)
 
   -- B1.7b (D456): AN INSTRUCTION THAT ADDRESSES A SLOT STEPS STRAIGHT (its step is
@@ -1791,6 +1805,8 @@ module FlatMachine {FS : FrameSemantics} where
   slot-straight (load-at _) prog fs ()
   slot-straight (store-at _) prog fs ()
   slot-straight (addr-at _) prog fs ()
+  slot-straight (load-rec _) prog fs ()
+  slot-straight (store-rec _) prog fs ()
   slot-straight (instr-ctrl _) prog fs ()
 
   slot-gate-ok : ∀ i prog fs {k} → slot-of i ≡ just k

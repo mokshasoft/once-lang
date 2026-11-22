@@ -209,6 +209,8 @@ module DL {FS : FrameSemantics} where
   ilab-sv (load-at _) = refl
   ilab-sv (store-at _) = refl
   ilab-sv (addr-at _) = refl
+  ilab-sv (load-rec _) = refl
+  ilab-sv (store-rec _) = refl
   ilab-sv (instr-room _) = refl
   ilab-sv (instr-push-frame _) = refl
   ilab-sv instr-pop-frame = refl
@@ -540,6 +542,8 @@ module Img (nm : CanonicalName) {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     refs-ok (load-at _) r jin m = []
     refs-ok (store-at _) r jin m = []
     refs-ok (addr-at _) r jin m = []
+    refs-ok (load-rec _) r jin m = []
+    refs-ok (store-rec _) r jin m = []
     refs-ok (instr-room _) r jin m = inj₂ (there (here refl)) ∷ []
     refs-ok (instr-push-frame _) r jin m = []
     refs-ok instr-pop-frame r jin m = []
