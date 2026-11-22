@@ -269,13 +269,13 @@ module Prims {FS : FrameSemantics} (U : Univ)
   st-in : ∀ {Γ} {ds : Defs Γ} {Es F S V} {k : Codeᴵ (Es ∣ μt F ∷ S) V}
             (s : Sub root (prim ds (lIn {F = F}) ⨾ k))
             {es : Slots Es} {v : MV (LF∙ F (μt F))} {os : Stk S} {fs}
-        → Here s (es ∥ v ∷ˢ os) fs → Fresh (es ∥ v ∷ˢ os) fs
+        → Here s (es ∥ v ∷ˢ os) fs → Fresh (es ∥ v ∷ˢ os) fs → AllocState.freed (falloc fs) (AllocState.next-heap-ref (falloc fs)) ≡ false
         → Moved (next s) fs (szμ F ∷ []) [] (es ∥ mmu (szμ F , AllocState.next-heap-ref (falloc fs)) v ∷ˢ os)
-  st-in {F = F} {S} s {fs = fs} H fr =
+  st-in {F = F} {S} s {fs = fs} H fr fz =
     let bot = Tp φ S ; wL = wsz (LF∙ F (μt F)) in
     straight s H _ _
       (sym (cong (λ z → suc (suc z)) (trans (length-++ (mvSP (bot ∸ wL) 0 wL)) (cong (_+ 2) (len-mvSP (bot ∸ wL) 0 wL)))))
-      (λ sg h Bf C → drop-next (lIn-sim prog fs φ refl fr sg h Bf C (proj₂ (shape-fits (next s)))))
+      (λ sg h Bf C → drop-next (lIn-sim prog fs φ refl fz fr sg h Bf C (proj₂ (shape-fits (next s)))))
 
   st-const : ∀ {Γ} {ds : Defs Γ} {Es b S V} {v : Lit b} {k : Codeᴵ (Es ∣ Bt b ∷ S) V}
                (s : Sub root (prim ds (lconst v) ⨾ k))
@@ -295,30 +295,30 @@ module Prims {FS : FrameSemantics} (U : Univ)
   st-lam : ∀ {Γ} {ds : Defs Γ} {Es g X A B S V} {b : Tm Γ One (X ⊗t A) B} {γ : Gd g b}
              {k : Codeᴵ (Es ∣ Fn once g A B ∷ S) V} (s : Sub root (prim ds (llam b γ) ⨾ k))
              {es : Slots Es} {x : MV X} {os : Stk S} {fs}
-         → Here s (es ∥ x ∷ˢ os) fs → Fresh (es ∥ x ∷ˢ os) fs
+         → Here s (es ∥ x ∷ˢ os) fs → Fresh (es ∥ x ∷ˢ os) fs → AllocState.freed (falloc fs) (AllocState.next-heap-ref (falloc fs)) ≡ false
          → Moved (next s) fs (szc X ∷ []) [] (es ∥ mfn (szc X , AllocState.next-heap-ref (falloc fs)) (c1 ds b γ) x ∷ˢ os)
-  st-lam {X = X} {S = S} s {fs = fs} H fr =
+  st-lam {X = X} {S = S} s {fs = fs} H fr fz =
     let ev = proj₁ (lcin (lowAt s)) in
     straight s H _ _ (sym (len-cell (wsz X) (idx (proj₁ ev)) (idx (inC (proj₂ ev))) (idx (inF (proj₂ ev))) (Tp φ S)))
-      (λ sg h Bf C → drop-next (llam-sim prog fs φ (proj₁ ev) (proj₂ ev) fr sg h Bf C (proj₂ (shape-fits (next s)))))
+      (λ sg h Bf C → drop-next (llam-sim prog fs φ (proj₁ ev) (proj₂ ev) fr fz sg h Bf C (proj₂ (shape-fits (next s)))))
 
   st-lamω : ∀ {Γ} {ds : Defs Γ} {Es g X A B S V} {b : Tm Γ X A B} {γ : Gd g b}
               {k : Codeᴵ (Es ∣ Fn many g A B ∷ S) V} (s : Sub root (prim ds (llamω b γ) ⨾ k))
               {es : Slots Es} {x : MV X} {os : Stk S} {fs}
-          → Here s (es ∥ x ∷ˢ os) fs → Fresh (es ∥ x ∷ˢ os) fs
+          → Here s (es ∥ x ∷ˢ os) fs → Fresh (es ∥ x ∷ˢ os) fs → AllocState.freed (falloc fs) (AllocState.next-heap-ref (falloc fs)) ≡ false
           → Moved (next s) fs (szc X ∷ []) [] (es ∥ mfn (szc X , AllocState.next-heap-ref (falloc fs)) (cω ds b γ) x ∷ˢ os)
-  st-lamω {X = X} {S = S} s {fs = fs} H fr =
+  st-lamω {X = X} {S = S} s {fs = fs} H fr fz =
     let ev = proj₁ (lcin (lowAt s)) in
     straight s H _ _ (sym (len-cell (wsz X) (idx (proj₁ ev)) (idx (inC (proj₂ ev))) (idx (inF (proj₂ ev))) (Tp φ S)))
-      (λ sg h Bf C → drop-next (llamω-sim prog fs φ (proj₁ ev) (proj₂ ev) fr sg h Bf C (proj₂ (shape-fits (next s)))))
+      (λ sg h Bf C → drop-next (llamω-sim prog fs φ (proj₁ ev) (proj₂ ev) fr fz sg h Bf C (proj₂ (shape-fits (next s)))))
 
   st-unf : ∀ {Γ} {ds : Defs Γ} {Es F S₀ S V} {k : Codeᴵ (Es ∣ Nu F ∷ S) V}
              (s : Sub root (prim ds (lunf {F = F} {S₀}) ⨾ k))
              {es : Slots Es} {p : MV (Coalg F S₀ ⊗t S₀)} {os : Stk S} {fs}
-         → Here s (es ∥ p ∷ˢ os) fs → Fresh (es ∥ p ∷ˢ os) fs
+         → Here s (es ∥ p ∷ˢ os) fs → Fresh (es ∥ p ∷ˢ os) fs → AllocState.freed (falloc fs) (AllocState.next-heap-ref (falloc fs)) ≡ false
          → Moved (next s) fs (szν F S₀ ∷ []) [] (es ∥ mnu (szν F S₀ , AllocState.next-heap-ref (falloc fs)) p ∷ˢ os)
-  st-unf {F = F} {S₀} {S} s {fs = fs} H fr =
+  st-unf {F = F} {S₀} {S} s {fs = fs} H fr fz =
     let ev = proj₁ (lcin (lowAt s)) ; n = proj₁ ev ; o = proj₂ ev in
     straight s H _ _
       (sym (len-cell (wsz (cty (F , S₀))) (idx (inO o n)) (idx (inC (ncty n))) (idx (inF (ncty n))) (Tp φ S)))
-      (λ sg h Bf C → drop-next (lunf-sim prog fs φ n o (ncty n) fr sg h Bf C (proj₂ (shape-fits (next s)))))
+      (λ sg h Bf C → drop-next (lunf-sim prog fs φ n o (ncty n) fr fz sg h Bf C (proj₂ (shape-fits (next s)))))

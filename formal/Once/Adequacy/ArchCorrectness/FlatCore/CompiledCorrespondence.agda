@@ -104,7 +104,7 @@ open MemOps {FS} using (writeLoc; writeLocToHeap; readLoc)
 open FlatMachine {FS} using (fetch)
 open FlatState using (floc)
 open import Once.Memory.HeapAddress using (HeapLocation; sucHL; offsetHL; module HeapRef; module HeapLocation)
-open ExecFinal {FS} using (in-block?)
+open ExecFinal {FS} using (in-block?; live-size)
 open AllocState using (block-size)
 open import Data.Bool using (true)
 open HeapLocation using (heap-ref)
@@ -521,7 +521,7 @@ record BlockSteps : Set₁ where
       → fetch prog (fpc fs) ≡ just (store-at k)
       → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
       → HDom hv (offsetHL hl k)
-      → in-block? (block-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ true
+      → in-block? (live-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ true
       → writeLoc (floc fs) (AtDynamic (offsetHL hl k)) (readReg (regs (floc fs)) Output)
         ≡ writeLocToHeap (floc fs) (offsetHL hl k) (readReg (regs (floc fs)) Output)
       → BlockStep hv prog fs s (store-at k)

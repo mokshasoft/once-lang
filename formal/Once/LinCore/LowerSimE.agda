@@ -12,6 +12,7 @@
 
 {-# OPTIONS --guardedness #-}
 
+open import Data.Unit using (tt)
 open import Data.Bool using (true)
 open import Data.Nat using (ℕ; zero; suc)
 open import Data.List using (List; []; _∷_)
@@ -240,7 +241,7 @@ call-outA : ∀ prog (fs : FlatState) (cfc af : Frame) (a s₁ src o n b pc : �
           → Σ FlatState λ fs′ → FlatSteps prog (suc (nsteps n + 1)) fs fs′ × CallOutA fs fs′ cfc af a src o n pc rest sv sl
 call-outA prog fs cfc af a s₁ src o n b pc rest sv sl hret bslots hsv ne ep def win (g₁ , s) h ls rs =
   fin (mvSP-run prog fs₁ (AtStack af a) src o n (Seg-++ˡ prog (suc (fpc fs)) (mvSP src o n) _ s) h refl def
-         (λ k k< → gate-stack (falloc fs) (k + o) af a (win k k<)) (λ k _ → refl)
+         (λ k k< → gate-stack (falloc fs) (k + o) af a (win k k<)) (λ k _ → refl) tt
          (λ k k′ _ _ e → ne (frame-of-eq e)) (mkInFr (InFr.in-fr rs)))
   where
     fs₁ = record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Input1 (SV-Ptr (AtStack af a)) } ; fpc = suc (fpc fs) }

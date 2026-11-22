@@ -893,6 +893,12 @@ module ExecFinal {FS : FrameSemantics} where
 
   -- D468: the allocator record's word `k` (the reserved ref 0), once the record
   -- is handed out (the counter past it; the start's state has it at 1)
+  -- D468 (3c3): a store's block must be live — a freed block's size is 0 to the
+  -- store gate (its own size stays, for the other gates), so a run that does not
+  -- fault writes no freed block
+  live-size : AllocState {FS} → ℕ → ℕ
+  live-size al r = if freed al r then 0 else block-size al r
+
   rec-at : ℕ → ℕ → Maybe (ValueLocation FS)
   rec-at zero    _ = nothing
   rec-at (suc _) k = just (AtDynamic (heap-loc (mkHeapRef 0) k))
@@ -2328,7 +2334,7 @@ module AbstractExec {FS : FrameSemantics} where
 
   -- load-at / store-at / addr-at: the offset forms (plan 0.123 B.4 R1).
   exec-abstract (load-at k) s alloc  = exec-load-at-resolved k Output (frame-gate alloc k (sv-as-loc (readReg (regs s) Input1))) s , alloc
-  exec-abstract (store-at k) s alloc = exec-store-at-resolved (block-size alloc) k (frame-gate alloc k (sv-as-loc (readReg (regs s) Input1))) (readReg (regs s) Output) s , alloc
+  exec-abstract (store-at k) s alloc = exec-store-at-resolved (live-size alloc) k (frame-gate alloc k (sv-as-loc (readReg (regs s) Input1))) (readReg (regs s) Output) s , alloc
   exec-abstract (addr-at k) s alloc  = exec-addr-at-resolved (block-size alloc) k (heap-gate (sv-as-loc (readReg (regs s) Input1))) s , alloc
   exec-abstract (load-rec k) s alloc  = exec-load-via-resolved Output (rec-gate alloc k) s , alloc
   exec-abstract (store-rec k) s alloc = exec-store-via-resolved (rec-gate alloc k) (readReg (regs s) Output) s , alloc

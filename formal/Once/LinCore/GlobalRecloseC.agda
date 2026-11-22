@@ -224,7 +224,7 @@ module RecloseC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       w = wsz X
       fin : (cellPtr (TrC2.c2-i T2) ∷ [] ≡ cellPtr i ∷ []) × FnP (LocState.heapMem (floc fs)) i lam x → _
       fin (e , P) =
-        case tc-reclose {X} {C} p (szc X) {i = i} T2 (trans (TrC2.c2-s₂ T2) (cong just (hd-eq e))) e₁ e₂ e₃ (cell-below {fs = fs} {i = i} {k = 1} I e₁) of λ where
+        case tc-reclose {X} {C} p (szc X) {i = i} T2 (trans (TrC2.c2-s₂ T2) (cong just (hd-eq e))) e₁ e₂ e₃ (cell-below {fs = fs} {i = i} {k = 1} I e₁) (Fa _ Data.Nat.Properties.≤-refl) of λ where
           (fs′ , st , RC , pc4) →
             _ , fs′ , st ,
             record { g-pt = p-tramp p (at (next (next (next (next whole)))))
@@ -280,7 +280,7 @@ module RecloseC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       w = wsz (Coalg F S′ ⊗t S′)
       fin : (cellPtr (TrC2.c2-i T2) ∷ [] ≡ cellPtr i ∷ []) × NuP (LocState.heapMem (floc fs)) i q → _
       fin (e , P) =
-        case tc-reclose {Coalg F S′ ⊗t S′} {Nu F} p (szν F S′) {i = i} T2 (trans (TrC2.c2-s₂ T2) (cong just (hd-eq e))) e₁ e₂ e₃ (cell-below {fs = fs} {i = i} {k = 1} I e₁) of λ where
+        case tc-reclose {Coalg F S′ ⊗t S′} {Nu F} p (szν F S′) {i = i} T2 (trans (TrC2.c2-s₂ T2) (cong just (hd-eq e))) e₁ e₂ e₃ (cell-below {fs = fs} {i = i} {k = 1} I e₁) (Fa _ Data.Nat.Properties.≤-refl) of λ where
           (fs′ , st , RC , pc4) →
             _ , fs′ , st ,
             record { g-pt = p-tramp p (at (next (next (next (next whole)))))

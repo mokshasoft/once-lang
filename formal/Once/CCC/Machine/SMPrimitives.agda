@@ -2381,7 +2381,7 @@ module TracePrimitives {FS : FrameSemantics} where
   InstrWF s alloc (store-at k)             =
     ∃-syntax (λ (loc : ValueLocation FS) →
       (ExecFinal.frame-gate alloc k (sv-as-loc (readReg (regs s) Input1)) ≡ just loc) ×
-      (in-block? (block-size alloc) (offsetLoc loc k) ≡ true))
+      (in-block? (ExecFinal.live-size alloc) (offsetLoc loc k) ≡ true))
   -- D385: and the addressed cell is one of its block's
   InstrWF s alloc (addr-at k)              =
     ∃-syntax (λ (loc : ValueLocation FS) →
@@ -2484,7 +2484,7 @@ module TracePrimitives {FS : FrameSemantics} where
   exec-abstract-preserves-halted-WF (store-at k)            s alloc h-eq (loc , rdi-eq , ib)
     with ExecFinal.frame-gate alloc k (sv-as-loc (readReg (regs s) Input1)) | rdi-eq
   ... | .(just loc) | refl
-    with in-block? (block-size alloc) (offsetLoc loc k) | ib
+    with in-block? (ExecFinal.live-size alloc) (offsetLoc loc k) | ib
   ... | .true | refl = trans (writeLoc-halted s (offsetLoc loc k) (readReg (regs s) Output)) h-eq
   exec-abstract-preserves-halted-WF (addr-at k)             s alloc h-eq (loc , rdi-eq , ib)
     with ExecFinal.heap-gate (sv-as-loc (readReg (regs s) Input1)) | rdi-eq

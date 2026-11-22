@@ -362,10 +362,10 @@ addr-at-inbounds prog fs k hl =
 store-at-in-block : ∀ prog (fs : FlatState) (k : ℕ) (hl : HeapLocation) → RunLow prog fs
                   → LocState.halted (floc fs) ≡ false → fetch prog (fpc fs) ≡ just (store-at k)
                   → readReg (LocState.regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
-                  → ExecFinal.in-block? {FS} (block-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ true
+                  → ExecFinal.in-block? {FS} (ExecFinal.live-size {FS} (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ true
 store-at-in-block prog fs k hl =
   lift-site (store-at k) (λ _ ()) (λ g → readReg (LocState.regs (floc g)) Input1 ≡ SV-Ptr (AtDynamic hl)
-                                        → ExecFinal.in-block? {FS} (block-size (falloc g)) (AtDynamic (offsetHL hl k)) ≡ true)
+                                        → ExecFinal.in-block? {FS} (ExecFinal.live-size {FS} (falloc g)) (AtDynamic (offsetHL hl k)) ≡ true)
     (λ src fs₀ r h f → RW.store-at-in-block src fs₀ k hl r h f) (λ _ _ _ c → c) prog fs
 
 store-at-inbounds : ∀ prog (fs : FlatState) (k : ℕ) (hl : HeapLocation) → RunLow prog fs

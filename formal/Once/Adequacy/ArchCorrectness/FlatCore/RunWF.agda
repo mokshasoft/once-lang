@@ -59,7 +59,7 @@ module Once.Adequacy.ArchCorrectness.FlatCore.RunWF
 
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Maybe.Properties using (just-injective)
-open import Data.Bool using (Bool; true; false; _∨_; not)
+open import Data.Bool using (Bool; true; false; _∨_; not; if_then_else_)
 open import Data.Nat using (zero; suc)
 open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong; subst; subst₂)
 
@@ -71,7 +71,7 @@ open import Once.Memory.HeapAddress using (HeapLocation; module HeapRef; module 
 open HeapLocation using (heap-offset; heap-ref)
 open HeapRef using (ref-id)
 open MemOps {FS} using (readLoc)
-open ExecFinal {FS} using (exec-load-with-value; exec-load-via-resolved; exec-load-suc-via-resolved; exec-store-via-resolved; exec-store-suc-via-resolved; exec-load-at-resolved; exec-store-at-resolved; frame-gate; heap-gate; gate-or; exec-store-in-block; in-block?; exec-addr-at-resolved; exec-addr-in-block)
+open ExecFinal {FS} using (exec-load-with-value; exec-load-via-resolved; exec-load-suc-via-resolved; exec-store-via-resolved; exec-store-suc-via-resolved; exec-load-at-resolved; exec-store-at-resolved; frame-gate; heap-gate; gate-or; exec-store-in-block; in-block?; exec-addr-at-resolved; exec-addr-in-block; live-size)
 open import Once.Memory.HeapAddress using (offsetHL)
 open import Data.Bool using (T)
 open import Data.Nat.Properties using (<ᵇ⇒<)
@@ -1239,23 +1239,23 @@ store-at-target-ptr : ∀ prog (fs : FlatState) (k : ℕ) → RunAt prog fs → 
                     → fetch prog (fpc fs) ≡ just (store-at k)
                     → Σ (ValueLocation FS) (λ loc → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc)
 store-at-target-ptr prog fs k r h ftq =
-  in1-ptr fs (λ ml → LocState.faulted (exec-store-at-resolved (block-size (falloc fs)) k (frame-gate (falloc fs) k ml)
+  in1-ptr fs (λ ml → LocState.faulted (exec-store-at-resolved (live-size (falloc fs)) k (frame-gate (falloc fs) k ml)
                                          (readReg (regs (floc fs)) Output) (floc fs))) refl
           (step-ok prog fs (store-at k) r h ftq)
 
 store-at-in-block : ∀ prog (fs : FlatState) (k : ℕ) (hl : HeapLocation) → RunAt prog fs
                   → halted (floc fs) ≡ false → fetch prog (fpc fs) ≡ just (store-at k)
                   → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
-                  → in-block? (block-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ true
+                  → in-block? (live-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ true
 store-at-in-block prog fs k hl r h ftq i-eq = ib _ refl
   where
-    ok : LocState.faulted (exec-store-at-resolved (block-size (falloc fs)) k (just (AtDynamic hl))
+    ok : LocState.faulted (exec-store-at-resolved (live-size (falloc fs)) k (just (AtDynamic hl))
                              (readReg (regs (floc fs)) Output) (floc fs)) ≡ false
-    ok = at (λ v → LocState.faulted (exec-store-at-resolved (block-size (falloc fs)) k (frame-gate (falloc fs) k (sv-as-loc v))
+    ok = at (λ v → LocState.faulted (exec-store-at-resolved (live-size (falloc fs)) k (frame-gate (falloc fs) k (sv-as-loc v))
                                        (readReg (regs (floc fs)) Output) (floc fs))) i-eq
             (step-ok prog fs (store-at k) r h ftq)
-    ib : ∀ b → in-block? (block-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ b
-       → in-block? (block-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ true
+    ib : ∀ b → in-block? (live-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ b
+       → in-block? (live-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ true
     ib true  e = e
     ib false e = ⊥-elim (true≢false
       (at (λ b → LocState.faulted (exec-store-in-block b (AtDynamic (offsetHL hl k))
@@ -1281,13 +1281,13 @@ store-at-gate-wf : ∀ prog (fs : FlatState) (k : ℕ) (loc : ValueLocation FS) 
               → frame-gate (falloc fs) k (just loc) ≡ just loc
 store-at-gate-wf prog fs k loc r h ftq i-eq = go (gate-or (falloc fs) k loc)
   where
-    ok = at (λ v → LocState.faulted (exec-store-at-resolved (block-size (falloc fs)) k (frame-gate (falloc fs) k (sv-as-loc v))
+    ok = at (λ v → LocState.faulted (exec-store-at-resolved (live-size (falloc fs)) k (frame-gate (falloc fs) k (sv-as-loc v))
                                        (readReg (regs (floc fs)) Output) (floc fs))) i-eq
             (step-ok prog fs (store-at k) r h ftq)
     go : (frame-gate (falloc fs) k (just loc) ≡ just loc) ⊎ (frame-gate (falloc fs) k (just loc) ≡ nothing)
        → frame-gate (falloc fs) k (just loc) ≡ just loc
     go (inj₁ g) = g
-    go (inj₂ g) = ⊥-elim (true≢false (at (λ m → LocState.faulted (exec-store-at-resolved (block-size (falloc fs)) k m
+    go (inj₂ g) = ⊥-elim (true≢false (at (λ m → LocState.faulted (exec-store-at-resolved (live-size (falloc fs)) k m
                                                                     (readReg (regs (floc fs)) Output) (floc fs))) g ok))
 
 stack-load-at-written-wf : ∀ prog (fs : FlatState) (k : ℕ) (f : Frame) (j : ℕ) → RunAt prog fs
@@ -1348,11 +1348,17 @@ store-at-inbounds : ∀ prog (fs : FlatState) (k : ℕ) (hl : HeapLocation) → 
                   → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
                   → heap-offset (offsetHL hl k) < block-size (falloc fs) (ref-id (heap-ref (offsetHL hl k)))
 store-at-inbounds prog fs k hl r h ftq i-eq =
-  <ᵇ⇒< (heap-offset (offsetHL hl k)) (block-size (falloc fs) (ref-id (heap-ref (offsetHL hl k))))
-       (T-of (store-at-in-block prog fs k hl r h ftq i-eq))
+  Data.Nat.Properties.<-≤-trans
+    (<ᵇ⇒< (heap-offset (offsetHL hl k)) (live-size (falloc fs) (ref-id (heap-ref (offsetHL hl k))))
+          (T-of (store-at-in-block prog fs k hl r h ftq i-eq)))
+    (if-le (AllocState.freed (falloc fs) (ref-id (heap-ref (offsetHL hl k)))) (block-size (falloc fs) (ref-id (heap-ref (offsetHL hl k)))))
   where
     T-of : ∀ {b : Bool} → b ≡ true → T b
     T-of refl = tt
+    -- the store gate's size is at most the block's
+    if-le : ∀ (b : Bool) n → (if b then 0 else n) Data.Nat.≤ n
+    if-le true  n = Data.Nat.z≤n
+    if-le false n = Data.Nat.Properties.≤-refl
 
 -- plan 0.108 / D367: AT AN EMITTED `out-nz`, OUTPUT HOLDS AN `Int` WORD — the
 -- comparison's arith block just wrote it; anything else faults (`do-nz`).

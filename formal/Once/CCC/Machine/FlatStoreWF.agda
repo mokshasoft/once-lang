@@ -635,7 +635,7 @@ mutual
     wf-load-at-resolved k Output (frame-gate alloc k (sv-as-loc (readReg (regs ls) Input1))) wf
       (gate-below (next-heap-ref alloc) alloc k (sv-as-loc (readReg (regs ls) Input1)) (sv-as-loc-below (next-heap-ref alloc) (readReg (regs ls) Input1) (wf-regs wf Input1))) , ≤-refl
   wf-abstract (store-at k) ls alloc wf =
-    wf-store-at-resolved (AllocState.block-size alloc) k (frame-gate alloc k (sv-as-loc (readReg (regs ls) Input1))) (readReg (regs ls) Output) wf
+    wf-store-at-resolved (live-size alloc) k (frame-gate alloc k (sv-as-loc (readReg (regs ls) Input1))) (readReg (regs ls) Output) wf
       (gate-below (next-heap-ref alloc) alloc k (sv-as-loc (readReg (regs ls) Input1)) (sv-as-loc-below (next-heap-ref alloc) (readReg (regs ls) Input1) (wf-regs wf Input1))) (wf-regs wf Output) , ≤-refl
   wf-abstract (addr-at k) ls alloc wf =
     wf-addr-at-resolved (AllocState.block-size alloc) k (heap-gate (sv-as-loc (readReg (regs ls) Input1))) wf

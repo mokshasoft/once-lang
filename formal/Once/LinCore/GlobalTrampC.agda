@@ -375,9 +375,10 @@ module TrampC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
              → LocState.heapMem (floc fs) (cellLoc i 1) ≡ just w₁ → LocState.heapMem (floc fs) (cellLoc i 2) ≡ just w₂
              → LocState.heapMem (floc fs) (cellLoc i 3) ≡ just w₃
              → ¬ serial i ≡ AllocState.next-heap-ref (falloc fs)
+             → AllocState.freed (falloc fs) (AllocState.next-heap-ref (falloc fs)) ≡ false
              → Σ FlatState λ fs′ → FlatSteps image _ fs fs′ × ReCl fs fs′ (suc (suc (wsz X))) sz w₁ w₂ w₃ (TrC2.c2-wx T)
                  × fpc fs′ ≡ trPos (ktrc X C) p 4
-  tc-reclose {X} {C} p sz {i} {fs = fs} T s₂ e₁ e₂ e₃ ne =
+  tc-reclose {X} {C} p sz {i} {fs = fs} T s₂ e₁ e₂ e₃ ne fz =
     fin (reclose-run image fs (suc w) (suc (suc w)) sz i _ _ _ (TrC2.c2-wx T)
            (subst (λ n → Seg image (fpc fs) (instr-alloc-heap (hdr + n) ∷ store-at-slot (suc (suc w))
                                    ∷ restore-input (suc w) ∷ load-at 1 ∷ restore-input (suc (suc w)) ∷ store-at 1
@@ -394,7 +395,7 @@ module TrampC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
            s₂ (λ e → Data.Nat.Properties.<-irrefl (sym e) (Data.Nat.Properties.n<1+n (suc w)))
            (λ k k< e → Data.Nat.Properties.<-irrefl (sym e) (Data.Nat.Properties.<-≤-trans k< (subst (_≤ suc (suc w)) (sym lw)
                          (Data.Nat.Properties.m≤n⇒m≤1+n (Data.Nat.Properties.n≤1+n w)))))
-           e₁ e₂ e₃ ne (TrC2.c2-res T))
+           e₁ e₂ e₃ ne fz (TrC2.c2-res T))
     where
       w = wsz X
       lw : length (TrC2.c2-wx T) ≡ w

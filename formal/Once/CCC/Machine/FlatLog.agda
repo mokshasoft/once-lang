@@ -144,7 +144,7 @@ module LogPres {FS : FrameSemantics} where
   exec-abstract-log (instr-free-heap n)      _ s alloc = refl
   exec-abstract-log (instr-room n)      _ s alloc = refl
   exec-abstract-log (load-at k)              _ s alloc = load-at-log k Output (ExecFinal.frame-gate {FS} alloc k (sv-as-loc (readReg (regs s) Input1))) s
-  exec-abstract-log (store-at k)             _ s alloc = store-at-log (AllocState.block-size alloc) k (ExecFinal.frame-gate {FS} alloc k (sv-as-loc (readReg (regs s) Input1))) (readReg (regs s) Output) s
+  exec-abstract-log (store-at k)             _ s alloc = store-at-log (ExecFinal.live-size {FS} alloc) k (ExecFinal.frame-gate {FS} alloc k (sv-as-loc (readReg (regs s) Input1))) (readReg (regs s) Output) s
   exec-abstract-log (addr-at k)              _ s alloc = addr-at-log (AllocState.block-size alloc) k (ExecFinal.heap-gate {FS} (sv-as-loc (readReg (regs s) Input1))) s
   exec-abstract-log (load-rec k)             _ s alloc = load-via-log Output (ExecFinal.rec-gate {FS} alloc k) s
   exec-abstract-log (store-rec k)            _ s alloc = store-via-log (ExecFinal.rec-gate {FS} alloc k) (readReg (regs s) Output) s

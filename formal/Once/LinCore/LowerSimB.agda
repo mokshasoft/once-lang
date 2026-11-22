@@ -146,15 +146,16 @@ module SimB {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
   open Header
 
   header-run : ∀ prog (fs : FlatState) w lb lc lf → Seg prog (fpc fs) (headerTr w lb lc lf) → fhalted (floc fs) ≡ false
+             → AllocState.freed (falloc fs) (AllocState.next-heap-ref (falloc fs)) ≡ false
              → Σ FlatState λ fs′ → FlatSteps prog 10 fs fs′ × Header fs fs′ w lb lc lf
-  header-run prog fs w lb lc lf (f₁ , f₂ , f₃ , f₄ , f₅ , f₆ , f₇ , f₈ , f₉ , f₁₀ , _) h =
+  header-run prog fs w lb lc lf (f₁ , f₂ , f₃ , f₄ , f₅ , f₆ , f₇ , f₈ , f₉ , f₁₀ , _) h fz =
     fs₁₀ ,
     step-at fs₁ (h , f₁) (alloc-step fs (hdr + w)) (step-at fs₂ (h , f₂) (mov-in-step fs₁)
     (step-at fs₃ (h , f₃) (mov-out-step fs₂)
-    (step-at fs₄ (h , f₄) (storeat-step fs₃ 0 refl refl (ib 0 (s≤s z≤n)))
-    (step-at fs₅ (h , f₅) (code-step fs₄ lb) (step-at fs₆ (h , f₆) (storeat-step fs₅ 1 refl refl (ib 1 (s≤s (s≤s z≤n))))
-    (step-at fs₇ (h , f₇) (code-step fs₆ lc) (step-at fs₈ (h , f₈) (storeat-step fs₇ 2 refl refl (ib 2 (s≤s (s≤s (s≤s z≤n)))))
-    (step-at fs₉ (h , f₉) (code-step fs₈ lf) (step-at fs₁₀ (h , f₁₀) (storeat-step fs₉ 3 refl refl (ib 3 (s≤s (s≤s (s≤s (s≤s z≤n)))))) done))))))))) ,
+    (step-at fs₄ (h , f₄) (storeat-step fs₃ 0 refl refl fz (ib 0 (s≤s z≤n)))
+    (step-at fs₅ (h , f₅) (code-step fs₄ lb) (step-at fs₆ (h , f₆) (storeat-step fs₅ 1 refl refl fz (ib 1 (s≤s (s≤s z≤n))))
+    (step-at fs₇ (h , f₇) (code-step fs₆ lc) (step-at fs₈ (h , f₈) (storeat-step fs₇ 2 refl refl fz (ib 2 (s≤s (s≤s (s≤s z≤n)))))
+    (step-at fs₉ (h , f₉) (code-step fs₈ lf) (step-at fs₁₀ (h , f₁₀) (storeat-step fs₉ 3 refl refl fz (ib 3 (s≤s (s≤s (s≤s (s≤s z≤n)))))) done))))))))) ,
     record { h-pc = refl ; h-in = refl ; h-alloc = refl ; h-ret = refl ; h-clo = refl ; h-link = refl ; h-halt = refl ; h-log = refl
            ; h-stack = refl
            ; h-words = w0 , w1 , w2 , w3

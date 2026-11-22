@@ -1187,6 +1187,7 @@ module Sim {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
   -- its pointer on the stack; the counter moves on
   lIn-sim : ∀ prog (fs : FlatState) (φ : Frame) {Es F S} {es : Slots Es} {os : Stk S} {v : MV (LF∙ F (μt F))} {n}
           → AllocState.next-heap-ref (falloc fs) ≡ n
+          → AllocState.freed (falloc fs) n ≡ false
           → (∀ j → n ≤ serial j → cntE es j ≡ 0 × cntS (v ∷ˢ os) j ≡ 0)
           → Seg prog (fpc fs) (instr-alloc-heap (1 ⊔ wsz (LF∙ F (μt F))) ∷ mov-to-input
                                 ∷ mvSP ((budget φ ∸ ws S) ∸ wsz (LF∙ F (μt F))) 0 (wsz (LF∙ F (μt F)))
@@ -1197,7 +1198,7 @@ module Sim {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
           → Σ FlatState λ fs′ → FlatSteps prog (suc (suc (nsteps (wsz (LF∙ F (μt F))) + 2))) fs fs′
               × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ mmu (szμ F , n) v ∷ˢ os)
               × AllocState.next-heap-ref (falloc fs′) ≡ suc n × Ran (suc (suc (nsteps (wsz (LF∙ F (μt F))) + 2))) ((1 ⊔ wsz (LF∙ F (μt F))) ∷ []) [] (AllocState.next-heap-ref (falloc fs)) (budget φ) fs fs′
-  lIn-sim prog fs φ {Es} {F} {S} {es} {os} {v} refl fresh (f₀ , f₁ , s) h Bf C fit = case c-stk C of λ where
+  lIn-sim prog fs φ {Es} {F} {S} {es} {os} {v} refl fz fresh (f₀ , f₁ , s) h Bf C fit = case c-stk C of λ where
       ((wv , pv , sv) , rest) → lin-move wv pv sv rest
     where
       import Data.Nat.Properties
@@ -1249,7 +1250,7 @@ module Sim {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
                    (rest : StkW (heapMem (floc fs)) (slot fs) φ os)
                → Goal
       lin-move wv pv sv rest =
-        fin (mvSP-run prog fs₂ loc src 0 wL (Seg-++ˡ prog (suc (suc (fpc fs))) (mvSP src 0 wL) _ s) h refl def (λ k _ → refl) ib (λ k k′ _ _ ())
+        fin (mvSP-run prog fs₂ loc src 0 wL (Seg-++ˡ prog (suc (suc (fpc fs))) (mvSP src 0 wL) _ s) h refl def (λ k _ → refl) ib fz (λ k k′ _ _ ())
                (infr Bf (top-in (budget φ) (ws S) wL (≤-trans (c-sfit C) (m≤n+m (OP φ) (EP φ))))))
         where
           def : ∀ k → k < wL → Σ W λ x → slot fs₂ (k + src) ≡ just x

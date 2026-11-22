@@ -168,11 +168,12 @@ module SimR {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
             → slot a s₂ ≡ just (SV-Ptr (AtDynamic (heap-loc (mkHeapRef ro) 0))) → heapMem (floc a) (heap-loc (mkHeapRef ro) (k + 0)) ≡ just v
             → slot a s₃ ≡ just (SV-Ptr (AtDynamic (heap-loc (mkHeapRef r) 0)))
             → in-block? (AllocState.block-size (falloc a)) (AtDynamic (heap-loc (mkHeapRef r) (k + 0))) ≡ true
+            → AllocState.freed (falloc a) r ≡ false
             → Σ FlatState λ a′ → FlatSteps prog 4 a a′ × WC a a′ r k v
-  word-copy prog a s₂ s₃ k ro r v (g₁ , g₂ , g₃ , g₄ , _) h l₂ l₃ e₂ ev e₃ ib =
+  word-copy prog a s₂ s₃ k ro r v (g₁ , g₂ , g₃ , g₄ , _) h l₂ l₃ e₂ ev e₃ ib nfr =
     a₄ ,
     step-at a₁ (h , g₁) (restore-step a s₂ l₂ e₂) (step-at a₂ (h , g₂) (loadat-step a₁ k refl refl ev)
-    (step-at a₃ (h , g₃) (restore-step a₂ s₃ l₃ e₃) (step-at a₄ (h , g₄) (storeat-step a₃ k refl refl ib) done))) ,
+    (step-at a₃ (h , g₃) (restore-step a₂ s₃ l₃ e₃) (step-at a₄ (h , g₄) (storeat-step a₃ k refl refl nfr ib) done))) ,
     record { wc-pc = refl ; wc-alloc = refl ; wc-ret = refl
            ; wc-halt = cong fhalted (wl-heap (floc a₃) _ v) ; wc-log = cong LocState.ev-log (wl-heap (floc a₃) _ v) ; wc-stack = cong stackMem (wl-heap (floc a₃) _ v)
            ; wc-in = cong (λ s′ → readReg (LocState.regs s′) Input1) (wl-heap (floc a₃) _ v)
@@ -232,12 +233,13 @@ module SimR {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
               → heapMem (floc fs) (cellLoc i 1) ≡ just w₁ → heapMem (floc fs) (cellLoc i 2) ≡ just w₂
               → heapMem (floc fs) (cellLoc i 3) ≡ just w₃
               → ¬ serial i ≡ AllocState.next-heap-ref (falloc fs)
+              → AllocState.freed (falloc fs) (AllocState.next-heap-ref (falloc fs)) ≡ false
               → SlotsAt (slot fs) 0 wx
               → Σ FlatState λ fs′ → FlatSteps prog (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (nsteps (length wx)))))))))))))))))) fs fs′
                   × ReCl fs fs′ s₃ sz w₁ w₂ w₃ wx
   reclose-run prog fs s₂ s₃ sz i w₁ w₂ w₃ wx (g₁ , g₂ , c₁ , c₂ , c₃ , c₄ , d₁ , d₂ , d₃ , d₄ , e₁ , e₂ , e₃ , e₄ , m₁ , m₂ , sm) h ls₂ ls₃ lw
-              s₂i ne₂₃ ne-k ev₁ ev₂ ev₃ ne-i sw =
-    copy₁ (word-copy prog fs₂ s₂ s₃ 1 (serial i) r w₁ (c₁ , c₂ , c₃ , c₄ , tt) h ls₂ ls₃ s₂₂ ev₁ s₃₂ (sw-in n r bs 1 (s≤s (s≤s z≤n))))
+              s₂i ne₂₃ ne-k ev₁ ev₂ ev₃ ne-i fz sw =
+    copy₁ (word-copy prog fs₂ s₂ s₃ 1 (serial i) r w₁ (c₁ , c₂ , c₃ , c₄ , tt) h ls₂ ls₃ s₂₂ ev₁ s₃₂ (sw-in n r bs 1 (s≤s (s≤s z≤n))) fz)
     where
       import Data.Nat.Properties
       w = length wx
@@ -264,7 +266,8 @@ module SimR {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
                  (subst (s₂ <_) (sym (cong AllocState.frame-slots (wc-alloc W₁))) ls₂) (subst (s₃ <_) (sym (cong AllocState.frame-slots (wc-alloc W₁))) ls₃)
                  (trans (slot-wc W₁ s₂) s₂₂) (trans (wc-other W₁ _ ne-old) ev₂) (trans (slot-wc W₁ s₃) s₃₂)
                  (trans (cong (λ al → in-block? (AllocState.block-size al) (AtDynamic (heap-loc (mkHeapRef r) 2))) (wc-alloc W₁))
-                        (sw-in n r bs 2 (s≤s (s≤s (s≤s z≤n))))))
+                        (sw-in n r bs 2 (s≤s (s≤s (s≤s z≤n)))))
+                 (trans (cong (λ al → AllocState.freed al r) (wc-alloc W₁)) fz))
         where
           copy₂ : Σ FlatState (λ b → FlatSteps prog 4 a b × WC a b r 2 w₂) → _
           copy₂ (b , st₂ , W₂) =
@@ -276,10 +279,11 @@ module SimR {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
                      (trans (wc-other W₂ _ ne-old) (trans (wc-other W₁ _ ne-old) ev₃))
                      (trans (slot-wc W₂ s₃) (trans (slot-wc W₁ s₃) s₃₂))
                      (trans (cong (λ al → in-block? (AllocState.block-size al) (AtDynamic (heap-loc (mkHeapRef r) 3))) (trans (wc-alloc W₂) (wc-alloc W₁)))
-                            (sw-in n r bs 3 (s≤s (s≤s (s≤s (s≤s z≤n)))))))
+                            (sw-in n r bs 3 (s≤s (s≤s (s≤s (s≤s z≤n))))))
+                     (trans (cong (λ al → AllocState.freed al r) (trans (wc-alloc W₂) (wc-alloc W₁))) fz))
             where
               copy₃ : Σ FlatState (λ c → FlatSteps prog 4 b c × WC b c r 3 w₃) → _
-              copy₃ (c , st₃ , W₃) = fin (mvSP-run prog fs₁₆ (AtDynamic P) 0 hdr w segM h₁₆ in₁₆ def (λ k _ → refl) ib (λ k k′ _ _ ())
+              copy₃ (c , st₃ , W₃) = fin (mvSP-run prog fs₁₆ (AtDynamic P) 0 hdr w segM h₁₆ in₁₆ def (λ k _ → refl) ib nf-c (λ k k′ _ _ ())
                                           (mkInFr (λ k lt → subst (λ F′ → k + 0 < F′) (sym (cong AllocState.frame-slots al-c))
                                                      (<-≤-trans (subst (_< w) (sym (Data.Nat.Properties.+-identityʳ k)) lt) lw))))
                 where
@@ -289,6 +293,8 @@ module SimR {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
                   h-c = trans (wc-halt W₃) (trans (wc-halt W₂) (trans (wc-halt W₁) h))
                   al-c : falloc c ≡ falloc fs₂
                   al-c = trans (wc-alloc W₃) (trans (wc-alloc W₂) (wc-alloc W₁))
+                  nf-c : AllocState.freed (falloc c) r ≡ false
+                  nf-c = trans (cong (λ al → AllocState.freed al r) al-c) fz
                   in-c : readReg (LocState.regs (floc c)) Input1 ≡ SV-Ptr (AtDynamic P)
                   in-c = wc-in W₃
                   fs₁₅ = record c { floc = record (floc c) { regs = writeReg (LocState.regs (floc c)) Output (readReg (LocState.regs (floc c)) Input1) }
@@ -330,7 +336,7 @@ module SimR {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
                         (step-at fs₁₅ (h-c , subst (λ z → fetch prog z ≡ just mov-to-output) (sym pc-c) m₁)
                            (mov-out-step c)
                         (step-at fs₁₆ (h-c , subst (λ z → fetch prog (suc z) ≡ just (store-at 0)) (sym pc-c) m₂)
-                           (storeat-step fs₁₅ 0 in-c refl ib0) stM)))))) ,
+                           (storeat-step fs₁₅ 0 in-c refl nf-c ib0) stM)))))) ,
                     record { rc-pc = trans (w-pc M) (cong (λ z → nsteps w + suc (suc z)) pc-c)
                            ; rc-alloc = trans (w-alloc M) al-c
                            ; rc-ret = trans (w-ret M) (trans (wc-ret W₃) (trans (wc-ret W₂) (wc-ret W₁)))

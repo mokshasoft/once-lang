@@ -213,7 +213,7 @@ module Steps {FS : FrameSemantics} (U : Univ)
   prim-step s ld (r-drop {v = v}) _ H nx fr = out0 (st-drop s H) (λ ()) (λ ()) (drop-na v) nx
   prim-step s ld r-inl    _ H nx fr = out00 (st-inl s H) nx
   prim-step s ld r-inr    _ H nx fr = out00 (st-inr s H) nx
-  prim-step s ld r-In     _ H refl fr = out1 (st-in s H (lp-fresh fr)) (lp-fal fr) refl
+  prim-step s ld r-In     _ H refl fr = out1 (st-in s H (lp-fresh fr) (lp-fal fr _ Data.Nat.Properties.≤-refl)) (lp-fal fr) refl
   prim-step s {es = es} {os = os} ld (r-Outμ {i = i}) _ H nx fr =
     out0 (st-out s H (live-top (lp-live fr i (top1 (cntE es i) i (cntS os i))) (proj₁ (proj₁ (proj₂ (lp-ws fr)))))
                      (apart-top (lp-inv fr)))
@@ -223,9 +223,9 @@ module Steps {FS : FrameSemantics} (U : Univ)
       live-top : ∀ {a b c} → a ≡ b × c ≡ false → b ≡ _ → a ≡ _ × c ≡ false
       live-top (e , f) eb = trans e eb , f
   prim-step s ld r-clo    _ H nx fr = out00 (st-clo s H) nx
-  prim-step s ld r-lam    _ H refl fr = out1 (st-lam s H (lp-fresh fr)) (lp-fal fr) refl
-  prim-step s ld r-lamω   _ H refl fr = out1 (st-lamω s H (lp-fresh fr)) (lp-fal fr) refl
-  prim-step s ld r-unf    _ H refl fr = out1 (st-unf s H (lp-fresh fr)) (lp-fal fr) refl
+  prim-step s ld r-lam    _ H refl fr = out1 (st-lam s H (lp-fresh fr) (lp-fal fr _ Data.Nat.Properties.≤-refl)) (lp-fal fr) refl
+  prim-step s ld r-lamω   _ H refl fr = out1 (st-lamω s H (lp-fresh fr) (lp-fal fr _ Data.Nat.Properties.≤-refl)) (lp-fal fr) refl
+  prim-step s ld r-unf    _ H refl fr = out1 (st-unf s H (lp-fresh fr) (lp-fal fr _ Data.Nat.Properties.≤-refl)) (lp-fal fr) refl
   prim-step s {fs = fs} ld (r-const {v = v}) _ H nx fr = out00 (st-const s (ld v fs) H) nx
   prim-step s ld (r-op _) () H nx fr
   prim-step s ld (r-tmp r w _) no H nx fr = out-weave w (prim-step s ld r no H nx fr)

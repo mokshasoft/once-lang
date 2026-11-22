@@ -20,7 +20,7 @@ open import Data.Nat.Properties using (+-identityʳ; +-suc; +-comm; <-≤-trans;
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Properties using (length-++)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Bool using (false; true; T; _∨_)
+open import Data.Bool using (false; true; T; _∨_; if_then_else_)
 open import Data.Nat using (_≡ᵇ_)
 open import Data.Nat.Properties using (≡ᵇ⇒≡)
 open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_]′)
@@ -397,7 +397,7 @@ opaque
 -- holds the pointer and keeps it; each word stored inside its block.
 ------------------------------------------------------------------------
 
-open ExecFinal {FS} using (exec-store-at-resolved; exec-store-in-block; in-block?)
+open ExecFinal {FS} using (exec-store-at-resolved; exec-store-in-block; in-block?; live-size)
 open import Once.CCC.Machine.SMPrimitives using (module MemoryOps)
 open MemoryOps {FS} using (readLoc-writeLoc-same)
 open import Once.LinCore.MoveCode using (mvSP)
@@ -405,18 +405,33 @@ open import Data.Bool using (true)
 open AllocState using (block-size)
 
 -- a store at an offset from `Input1`'s pointer, inside its block
+-- D468 (3c3): a store's block is not freed (the store gate's `live-size`)
+nf : AllocState {FS} → ValueLocation FS → Set
+nf al (AtStack _ _)  = ⊤
+nf al (AtDynamic hl) = AllocState.freed al (HeapRef.ref-id (HeapLocation.heap-ref hl)) ≡ false
+
+nf-off : ∀ al loc o → nf al loc → nf al (offsetLoc loc o)
+nf-off al (AtStack _ _)  o _ = tt
+nf-off al (AtDynamic hl) o e = e
+
+live-in : ∀ al loc → nf al loc → in-block? (block-size al) loc ≡ true → in-block? (live-size al) loc ≡ true
+live-in al (AtStack _ _)  _ ib = ib
+live-in al (AtDynamic hl) e ib =
+  trans (cong (λ b → HeapLocation.heap-offset hl Data.Nat.<ᵇ (if b then 0 else block-size al (HeapRef.ref-id (HeapLocation.heap-ref hl)))) e) ib
+
 storeat-step : ∀ (fs : FlatState) o {loc} → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
              → frame-gate (falloc fs) o (just loc) ≡ just loc
+             → nf (falloc fs) loc
              → in-block? (block-size (falloc fs)) (offsetLoc loc o) ≡ true
              → flat-step-straight (store-at o) fs
                ≡ record fs { floc = writeLoc (floc fs) (offsetLoc loc o) (readReg (regs (floc fs)) Output) ; fpc = suc (fpc fs) }
-storeat-step fs o {loc} e₁ g e₂ =
-  trans (cong (λ r → record fs { floc = exec-store-at-resolved (block-size (falloc fs)) o (frame-gate (falloc fs) o (sv-as-loc r))
+storeat-step fs o {loc} e₁ g nl e₂ =
+  trans (cong (λ r → record fs { floc = exec-store-at-resolved (live-size (falloc fs)) o (frame-gate (falloc fs) o (sv-as-loc r))
                                           (readReg (regs (floc fs)) Output) (floc fs) ; fpc = suc (fpc fs) }) e₁)
-    (trans (cong (λ m → record fs { floc = exec-store-at-resolved (block-size (falloc fs)) o m
+    (trans (cong (λ m → record fs { floc = exec-store-at-resolved (live-size (falloc fs)) o m
                                           (readReg (regs (floc fs)) Output) (floc fs) ; fpc = suc (fpc fs) }) g)
         (cong (λ q → record fs { floc = exec-store-in-block q (offsetLoc loc o) (readReg (regs (floc fs)) Output) (floc fs)
-                               ; fpc = suc (fpc fs) }) e₂))
+                               ; fpc = suc (fpc fs) }) (live-in (falloc fs) (offsetLoc loc o) (nf-off (falloc fs) loc o nl) e₂)))
 
 -- distinct offsets are distinct words
 offset-inj : ∀ (loc : ValueLocation FS) {m n} → offsetLoc loc m ≡ offsetLoc loc n → m ≡ n
@@ -486,14 +501,15 @@ mvSP-run′ : ∀ prog (fs : FlatState) (loc : ValueLocation FS) a o n → Seg p
          → (∀ k → k < n → Σ (StoredValue FS) λ v → slot fs (k + a) ≡ just v)
          → (∀ k → k < n → frame-gate (falloc fs) (k + o) (just loc) ≡ just loc)
          → (∀ k → k < n → in-block? (block-size (falloc fs)) (offsetLoc loc (k + o)) ≡ true)
+         → nf (falloc fs) loc
          → (∀ k k′ → k < k′ → k′ < n → ¬ offsetLoc loc (k + o) ≡ AtStack (current-frame (falloc fs)) (k′ + a))
          → InFr fs a n
          → Σ FlatState λ fs′ → FlatSteps prog (ln n) fs fs′ × MovedW fs fs′ loc a o n
-mvSP-run′ prog fs loc a o zero s h i d gt ib nc ra =
+mvSP-run′ prog fs loc a o zero s h i d gt ib nl nc ra =
   fs , [] , record { w-pc = refl ; w-alloc = refl ; w-ret = refl ; w-clo = refl ; w-link = refl
                    ; w-halt = refl ; w-log = refl ; w-in = refl ; w-moved = λ k () ; w-rest = λ l _ → refl }
-mvSP-run′ prog fs loc a o (suc n) (f₁ , f₂ , s) h i d gt ib nc ra =
-  fs′ , step-at _ (h , f₁) (load-step fs a (infr-hd ra) e) (step-at _ (wh , f₂) (storeat-step fs₁ o i (gt 0 (s≤s z≤n)) (ib 0 (s≤s z≤n))) st)
+mvSP-run′ prog fs loc a o (suc n) (f₁ , f₂ , s) h i d gt ib nl nc ra =
+  fs′ , step-at _ (h , f₁) (load-step fs a (infr-hd ra) e) (step-at _ (wh , f₂) (storeat-step fs₁ o i (gt 0 (s≤s z≤n)) nl (ib 0 (s≤s z≤n))) st)
   , record { w-pc = trans (w-pc M) (ln-pc n (fpc fs))
            ; w-alloc = w-alloc M ; w-ret = w-ret M ; w-clo = w-clo M ; w-link = w-link M
            ; w-halt = trans (w-halt M) (wl-halt (floc fs₁) (offsetLoc loc o) v) ; w-log = trans (w-log M) (LogPres.writeLoc-log {FS} (floc fs₁) (offsetLoc loc o) v) ; w-in = trans (w-in M) (wl-in (floc fs₁) (offsetLoc loc o) v)
@@ -520,7 +536,7 @@ mvSP-run′ prog fs loc a o (suc n) (f₁ , f₂ , s) h i d gt ib nc ra =
     nc₂ : ∀ k k′ → k < k′ → k′ < n → ¬ offsetLoc loc (k + suc o) ≡ AtStack cf (k′ + suc a)
     nc₂ k k′ lt lt′ eq = nc (suc k) (suc k′) (s≤s lt) (s≤s lt′)
                            (trans (cong (offsetLoc loc) (sym (+-suc k o))) (trans eq (cong (AtStack cf) (+-suc k′ a))))
-    nxt = mvSP-run′ prog fs₂ loc (suc a) (suc o) n s h₂ i₂ d₂ gt₂ ib₂ nc₂ (infr-tl refl ra)
+    nxt = mvSP-run′ prog fs₂ loc (suc a) (suc o) n s h₂ i₂ d₂ gt₂ ib₂ nl nc₂ (infr-tl refl ra)
     fs′ = proj₁ nxt
     st = proj₁ (proj₂ nxt)
     M = proj₂ (proj₂ nxt)
@@ -556,6 +572,7 @@ opaque
            → (∀ k → k < n → Σ (StoredValue FS) λ v → slot fs (k + a) ≡ just v)
            → (∀ k → k < n → frame-gate (falloc fs) (k + o) (just loc) ≡ just loc)
            → (∀ k → k < n → in-block? (block-size (falloc fs)) (offsetLoc loc (k + o)) ≡ true)
+           → nf (falloc fs) loc
            → (∀ k k′ → k < k′ → k′ < n → ¬ offsetLoc loc (k + o) ≡ AtStack (current-frame (falloc fs)) (k′ + a))
            → InFr fs a n
            → Σ FlatState λ fs′ → FlatSteps prog (ln n) fs fs′ × MovedW fs fs′ loc a o n

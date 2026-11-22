@@ -68,7 +68,7 @@ open AllocState using (frame-slots; current-frame; saved-frames; next-heap-ref)
 open LocState using (stackMem; halted; regs; heapMem)
 open import Once.CCC.Machine.Locations using (Slot; AtDynamic; AtStack)
 open import Once.Memory.HeapAddress using (module HeapLocation; module HeapRef; sucHL; offsetHL)
-open ExecFinal {FS} using (in-block?)
+open ExecFinal {FS} using (in-block?; live-size)
 open AllocState using (block-size)
 open HeapLocation using (heap-ref)
 open HeapRef using (ref-id)
@@ -1857,7 +1857,7 @@ block-step-store-at : ∀ {hv : HeapView} prog fs s k hl → CompiledCorr hv pro
   → fetch prog (fpc fs) ≡ just (store-at k)
   → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
   → HDom hv (offsetHL hl k)
-  → in-block? (block-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ true
+  → in-block? (live-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ true
   → writeLoc (floc fs) (AtDynamic (offsetHL hl k)) (readReg (regs (floc fs)) Output)
     ≡ writeLocToHeap (floc fs) (offsetHL hl k) (readReg (regs (floc fs)) Output)
   → BlockStep hv prog fs s (store-at k)

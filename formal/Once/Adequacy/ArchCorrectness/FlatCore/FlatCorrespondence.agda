@@ -146,7 +146,7 @@ open MemOps {FS} using (writeLoc; writeLocToHeap; writeLocToStack; writeHeapMem
                        ; readLoc; writeLoc-read-same-stack; writeLoc-preserves-other)
 open ExecFinal {FS} using (exec-load-via-resolved; exec-load-suc-via-resolved; exec-load-with-value
                           ; exec-store-via-resolved; exec-store-suc-via-resolved
-                          ; exec-load-at-resolved; exec-store-at-resolved; exec-store-in-block; in-block?; exec-addr-at-resolved; exec-addr-in-block; frame-gate; heap-gate)
+                          ; exec-load-at-resolved; exec-store-at-resolved; exec-store-in-block; in-block?; exec-addr-at-resolved; exec-addr-in-block; frame-gate; heap-gate; live-size)
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
 open FlatState using (floc; fclosure; falloc; fpc; fret)
@@ -1414,7 +1414,7 @@ sim-addr-at {hv} k hl fs s s' corr i-eq ib st =
 sim-store-at : {hv : HeapView} (k : ℕ) (hl : HeapLocation) (fs : FlatState) (s s' : State) → FlatCorr hv fs s
   → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
   → HDom hv (offsetHL hl k)
-  → in-block? (block-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ true
+  → in-block? (live-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ true
   → writeLoc (floc fs) (AtDynamic (offsetHL hl k)) (readReg (regs (floc fs)) Output)
     ≡ writeLocToHeap (floc fs) (offsetHL hl k) (readReg (regs (floc fs)) Output)
   → SetsMem s s' (haddr hv (offsetHL hl k)) (enc-sv hv (readReg (regs (floc fs)) Output))
@@ -1423,7 +1423,7 @@ sim-store-at {hv} k hl fs s s' corr i-eq live guard-ib guard sm =
   subst (λ z → FlatCorr hv z s') (sym reduces) corr-clean
   where
     v = readReg (regs (floc fs)) Output
-    bs = block-size (falloc fs)
+    bs = live-size (falloc fs)
     cleanFlat : FlatState
     cleanFlat = record fs { floc = writeLocToHeap (floc fs) (offsetHL hl k) v ; falloc = falloc fs ; fpc = suc (fpc fs) }
     floc-eq : exec-store-at-resolved bs k (frame-gate (falloc fs) k (sv-as-loc (readReg (regs (floc fs)) Input1))) v (floc fs)
@@ -2837,7 +2837,7 @@ sim-store-at-stack {hv} k f j fs s s' corr i-eq g sm =
   subst (λ z → FlatCorr hv z s') (sym reduces) corr-clean
   where
     v = readReg (regs (floc fs)) Output
-    bs = block-size (falloc fs)
+    bs = live-size (falloc fs)
     win = gate-win (falloc fs) k f j g
     cleanFlat : FlatState
     cleanFlat = record fs { floc = writeLoc (floc fs) (AtStack f (k + j)) v ; falloc = falloc fs ; fpc = suc (fpc fs) }
