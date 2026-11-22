@@ -45,10 +45,10 @@ blocksAt tl pm =
       (Once.LinCore.ExprBuild.mainCore fmt (Once.LinCore.ExprBuild.ETProg.rs (Once.LinCore.ExprBuild.exprTable fmt tl)) pm))
 
 -- ★ its file, by a backend: the room-checked image, its blocks' table, the externs
--- D468: the image with its cells through the allocator's free lists (the pool:
--- `AllocExpandClasses.pool`), what the compiler emits
+-- D468: the image with its cells through the allocator's free lists (the slab:
+-- `AllocExpandClasses.slab`, a list per size), what the compiler emits
 imageAtˣ : List CompiledSrc → ∀ {T : Type} → T <: EffUU → AbstractTrace
-imageAtˣ tl pm = Once.CCC.Codegen.AllocExpand.expand (Once.CCC.Codegen.AllocExpandClasses.pool (imageAt tl pm)) (imageAt tl pm)
+imageAtˣ tl pm = Once.CCC.Codegen.AllocExpand.expand (Once.CCC.Codegen.AllocExpandClasses.slab (imageAt tl pm)) (imageAt tl pm)
 
 fileAt : (B : Backend) → List CompiledSrc → ∀ {T : Type} → T <: EffUU → List String → Backend.File B
 fileAt B tl pm ex = Backend.file B (room-checks (imageAtˣ tl pm)) (file-table (Backend.payload B) (blocksAt tl pm)) ex

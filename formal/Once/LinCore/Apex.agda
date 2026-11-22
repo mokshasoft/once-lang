@@ -162,12 +162,12 @@ module NewImage (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Uni
   -- …the file the compiler writes (`ExprImage.fileAt`, its externs the image's)
 
   ------------------------------------------------------------------------
-  -- ★★ THE ALLOCATOR'S EXPANSION OF THE IMAGE ON THE ARCH (D468, the pool:
-  -- `AllocExpandClasses.pool`): cells reused through free lists, the same trace
+  -- ★★ THE ALLOCATOR'S EXPANSION OF THE IMAGE ON THE ARCH (D468, the slab:
+  -- `AllocExpandClasses.slab`): cells reused through free lists, the same trace
   ------------------------------------------------------------------------
 
   module XS = Once.Adequacy.ArchCorrectness.ExpandSim o A
-  module PL = Once.CCC.Codegen.AllocExpandClasses.Pool image
+  module PL = Once.CCC.Codegen.AllocExpandClasses.Slab image
   module CL = Once.CCC.Codegen.AllocExpandClasses
   module CLF = Once.CCC.Codegen.AllocExpandClasses.Fetch {FS}
   module CD = Once.CCC.Codegen.AllocExpandEmitted.Code {FS} PL.C PL.small PL.in-range PL.fits

@@ -109,7 +109,7 @@ d_imageAt'739'_26 ::
 d_imageAt'739'_26 v0 v1 v2 v3
   = coe
       MAlonzo.Code.Once.CCC.Codegen.AllocExpand.d_expand_126
-      (MAlonzo.Code.Once.CCC.Codegen.AllocExpandClasses.d_pool_126
+      (MAlonzo.Code.Once.CCC.Codegen.AllocExpandClasses.d_slab_282
          (coe d_imageAt_10 (coe v0) (coe v1) (coe v2) (coe v3)))
       (d_imageAt_10 (coe v0) (coe v1) (coe v2) (coe v3))
 -- Once.LinCore.ExprImage.fileAt
