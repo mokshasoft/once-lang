@@ -68,7 +68,7 @@ module _ (C : Classes) (P : AbstractTrace) (Sz : ℕ → Set) where
     ; r-sent = trans (frame (heap-loc (mkHeapRef (σ R)) 0) (λ r lv e → r-not-σ R r lv e)) (r-sent R)
     ; r-nofree = r-nofree R
     ; r-unsized = r-unsized R
-    ; r-rec0 = r-rec0 R ; r-csize = r-csize R ; r-lsize = r-lsize R }
+    ; r-rec0 = r-rec0 R ; r-csize = r-csize R ; r-lsize = r-lsize R ; r-lpos = r-lpos R ; r-σpos = r-σpos R }
     where
       -- the record's words: no live block is renamed to ref 0
       rec-free : ∀ k → LocState.heapMem B (rec-loc k) ≡ LocState.heapMem (floc gs) (rec-loc k)
@@ -496,7 +496,8 @@ module _ (C : Classes) (P : AbstractTrace) (Sz : ℕ → Set) where
     ; r-unsized = λ r le → trans (m-sizeP M r) (r-unsized R r (subst (_≤ r) (m-nextP M) le))
     ; r-rec0 = trans (m-sizeP M 0) (r-rec0 R)
     ; r-csize = λ r l → subst₂ (λ a b → bsz C a ≤ b) (sym (m-sizeP M r)) (sym (m-sizeE M (ρ R r))) (r-csize R r (to r l))
-    ; r-lsize = λ c b m k z e → subst (bsz C k ≤_) (sym (m-sizeE M b)) (r-lsize R c b m k z e) }
+    ; r-lsize = λ c b m k z e → subst (bsz C k ≤_) (sym (m-sizeE M b)) (r-lsize R c b m k z e)
+    ; r-lpos = r-lpos R ; r-σpos = r-σpos R }
     where
       to : ∀ r → Live (falloc fs′) r → Live (falloc fs) r
       to r (pos , lt , fr) = pos , subst (r <_) (m-nextP M) lt , trans (sym (m-freeP M r)) fr

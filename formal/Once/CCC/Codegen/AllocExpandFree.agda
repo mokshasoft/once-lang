@@ -17,6 +17,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 module Once.CCC.Codegen.AllocExpandFree {FS : FrameSemantics} where
 
 open import Data.Bool using (Bool; true; false; _∧_; not)
+open import Data.Empty using (⊥; ⊥-elim)
 open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Nat using (ℕ; zero; suc; _+_; _≡ᵇ_; _<ᵇ_)
@@ -174,3 +175,48 @@ module Run (prog : AbstractTrace) (x : FlatState) (h b n : ℕ) (v₀ : StoredVa
     trans (hw-other (LocState.heapMem (floc x₄)) (rec-loc h) q _ (λ e → n₁ (sym e)))
       (trans (hw-other (LocState.heapMem (floc x₂)) (heap-loc (mkHeapRef b) 0) q v₀ (λ e → n₂ (sym e)))
              (hw-other (LocState.heapMem (floc x)) (rec-loc w-s1) q O (λ e → n₃ (sym e))))
+
+------------------------------------------------------------------------
+-- 3. The primitive side of a free: the block leaves the live part
+------------------------------------------------------------------------
+
+open import Data.Nat using (_<_; _≤_; z≤n; s≤s)
+open import Data.Bool using (_∨_)
+open import Once.CCC.Codegen.AllocExpandRel {FS} using (Live)
+module AE = Once.CCC.Machine.SMCore.AbstractExec {FS}
+
+-- the marks after freeing block r
+mark-at : ∀ (fr : ℕ → Bool) r r′ → AE.freeMark (blk r) fr r′ ≡ ((r′ ≡ᵇ r) ∨ fr r′)
+mark-at fr r r′ = refl
+
+private
+  ≡ᵇ-refl : ∀ r → (r ≡ᵇ r) ≡ true
+  ≡ᵇ-refl zero    = refl
+  ≡ᵇ-refl (suc r) = ≡ᵇ-refl r
+
+  ≡ᵇ-miss : ∀ a b → ¬ a ≡ b → (a ≡ᵇ b) ≡ false
+  ≡ᵇ-miss zero    zero    ne = ⊥-elim (ne refl)
+  ≡ᵇ-miss zero    (suc b) ne = refl
+  ≡ᵇ-miss (suc a) zero    ne = refl
+  ≡ᵇ-miss (suc a) (suc b) ne = ≡ᵇ-miss a b (λ e → ne (cong suc e))
+
+  split∨ : ∀ (a b : Bool) → (a ∨ b) ≡ false → (a ≡ false) × (b ≡ false)
+  split∨ false false _ = refl , refl
+
+-- a block live after the free was live before, and is not the freed one
+live-after : ∀ (al : AllocState {FS}) r r′
+           → Live (record al { freed = AE.freeMark (blk r) (AllocState.freed al) }) r′
+           → Live al r′ × ¬ r′ ≡ r
+live-after al r r′ (pos , lt , fr) = (pos , lt , proj₂ sp) , ne
+  where
+    sp = split∨ (r′ ≡ᵇ r) (AllocState.freed al r′) fr
+    ne : ¬ r′ ≡ r
+    ne e = absurd (trans (sym (≡ᵇ-refl r)) (trans (cong (λ z → z ≡ᵇ r) (sym e)) (proj₁ sp)))
+      where
+        absurd : true ≡ false → ⊥
+        absurd ()
+
+-- …and back: a live block other than the freed one stays live
+live-before : ∀ (al : AllocState {FS}) r r′ → Live al r′ → ¬ r′ ≡ r
+            → Live (record al { freed = AE.freeMark (blk r) (AllocState.freed al) }) r′
+live-before al r r′ (pos , lt , fr) ne = pos , lt , trans (cong (_∨ AllocState.freed al r′) (≡ᵇ-miss r′ r ne)) fr

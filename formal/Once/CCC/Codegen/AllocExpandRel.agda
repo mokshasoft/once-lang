@@ -104,6 +104,9 @@ module _ (C : Classes) (P : AbstractTrace) (Sz : ℕ → Set) where
       r-heads : ∀ c → c < count C → Σ (StoredValue FS) λ v → LocState.heapMem (floc gs) (rec-loc (head-word c)) ≡ just v
                                                        × Chain (LocState.heapMem (floc gs)) σ (lists c) v
       r-sent  : LocState.heapMem (floc gs) (heap-loc (mkHeapRef σ) 0) ≡ just (SV-Tag 0)
+      -- the free blocks and the sentinel are past the record
+      r-lpos  : ∀ c b → b ∈ lists c → 0 < b
+      r-σpos  : 0 < σ
 
       -- the two runs' own invariants
       r-nofree  : ∀ r → AllocState.freed (falloc gs) r ≡ false
