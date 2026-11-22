@@ -548,3 +548,37 @@ module _ (C : Classes) (P : AbstractTrace) where
                        ; m-nextP = refl ; m-freeP = λ _ → refl ; m-sizeP = λ _ → refl
                        ; m-nextE = refl ; m-freeE = λ _ → refl ; m-sizeE = λ _ → refl })
       (halt-loc R true) (r-clo R) (λ q _ → refl)
+
+  open FlatMachine {FS} using (find-label; do-jump; fl-go)
+  open import Once.CCC.Label using (LabelId; module LabelId)
+  open import Once.CCC.Codegen.AllocExpandPc {FS} using (fl-exp)
+
+  halt-only : ∀ {fs gs} (R : Rel C P fs gs)
+            → L.LRel (ρ R) (Live (falloc fs)) (r-inj R) (record (floc fs) { halted = true }) (record (floc gs) { halted = true })
+  halt-only R = record
+    { l-regs = L.LRel.l-regs (r-loc R) ; l-stack = L.LRel.l-stack (r-loc R) ; l-heap = L.LRel.l-heap (r-loc R) ; l-live = L.LRel.l-live (r-loc R)
+    ; l-halt = refl ; l-fault = L.LRel.l-fault (r-loc R) ; l-left = L.LRel.l-left (r-loc R) ; l-log = L.LRel.l-log (r-loc R) }
+
+  -- the moves of a jump to a mapped pc (or of nothing but a halt)
+  moves-at : ∀ {fs gs} (R : Rel C P fs gs) pc′ → Moves fs gs (record fs { fpc = pc′ }) (record gs { fpc = off C 0 P pc′ })
+  moves-at R pc′ = record { m-pc = refl ; m-ret = r-ret R ; m-link = r-link R ; m-frame = r-frame R ; m-saved = r-saved R
+                          ; m-slots = r-slots R ; m-nslot = r-next-slot R
+                          ; m-nextP = refl ; m-freeP = λ _ → refl ; m-sizeP = λ _ → refl
+                          ; m-nextE = refl ; m-freeE = λ _ → refl ; m-sizeE = λ _ → refl }
+
+  moves-stay : ∀ {fs gs} (R : Rel C P fs gs) (A B : LocState FS) → Moves fs gs (record fs { floc = A }) (record gs { floc = B })
+  moves-stay R A B = record { m-pc = r-pc R ; m-ret = r-ret R ; m-link = r-link R ; m-frame = r-frame R ; m-saved = r-saved R
+                            ; m-slots = r-slots R ; m-nslot = r-next-slot R
+                            ; m-nextP = refl ; m-freeP = λ _ → refl ; m-sizeP = λ _ → refl
+                            ; m-nextE = refl ; m-freeE = λ _ → refl ; m-sizeE = λ _ → refl }
+
+  -- a jump, by the expanded program's scan
+  jump-rel : ∀ {fs gs} (R : Rel C P fs gs) (mj : Maybe ℕ)
+           → Rel C P (do-jump mj fs) (do-jump (Data.Maybe.map (λ p → 0 + off C 0 P p) mj) gs)
+  jump-rel R (just pc′) = core-gen R (moves-at R pc′) (r-loc R) (r-clo R) (λ q _ → refl)
+  jump-rel R nothing    = core-gen R (moves-stay R _ _) (halt-only R) (r-clo R) (λ q _ → refl)
+
+  step-jmp : ∀ {fs gs} (R : Rel C P fs gs) l → LabelId.path l ≡ [] → fetch P (fpc fs) ≡ just (instr-ctrl (c-jmp l))
+           → Rel C P (flat-exec-instr (instr-ctrl (c-jmp l)) P fs) (flat-exec-instr (instr-ctrl (c-jmp l)) E gs)
+  step-jmp {fs} {gs} R l pe f =
+    subst (λ m → Rel C P (do-jump (find-label P l) fs) (do-jump m gs)) (sym (fl-exp C 0 P l 0 pe)) (jump-rel R (find-label P l))
