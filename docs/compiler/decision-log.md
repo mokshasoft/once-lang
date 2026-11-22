@@ -24568,6 +24568,10 @@ one), and an argument that reads an empty cell would otherwise log nothing in th
 run, reading the reused block's stale words, decodes and logs. A run that does not fault then decoded every SigOp
 argument from held cells, which the renaming relates. The image's SigOps always decode (their events are the
 program's), so the change costs it nothing.
+**And a SigOp's answer (3c3b):** an in-memory answer is written at Output's location without the store gate, so
+its range gate now fails on a heap pointer (`ans-ok`; arguments keep `range-ok`, their heap reads covered by the
+decode): a run that does not fault writes no answer into a freed block. The image's answers are a caller's stack
+buffer (D449).
 
 ## D469 — AN ABSTRACT CELL'S SIZE IS ITS BLOCK'S; ONE LIVE CELL PER SERIAL (2026-11-23, proposed — for the user's review)
 

@@ -82,7 +82,7 @@ module OpSim {FS : FrameSemantics} (U : Univ)
   open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
   open FlatStepsAPI {FS} using (FlatSteps; step-at) renaming ([] to done)
   open AbstractExec {FS} using (exec-sigop-output; exec-sigop-halts; sigop-gate; arg-words; tsize)
-  open ExecFinal {FS} using (range-ok; live-frames)
+  open ExecFinal {FS} using (range-ok; ans-ok; live-frames)
 
   -- what an op's flat run leaves: as `Ran`, but the log grows by the sigop's events
   record OpRan (n lo hi : ℕ) (fs fs′ : FlatState) (evs : List SigOpEvent) : Set where
@@ -164,8 +164,13 @@ module OpSim {FS : FrameSemantics} (U : Univ)
     inmem-false (ST.b-* _ _) ()
     inmem-false (ST.b-+ _ _) ()
 
-    no-buffer : ∀ (B : ST.Type) fr v → in-memory? B ≡ false → range-ok fr (AbstractExec.ans-words {FS} B) v ≡ true
-    no-buffer B fr v nm = cong (λ b → range-ok fr (if b then tsize B else 0) v) nm
+    no-buffer : ∀ (B : ST.Type) fr v → in-memory? B ≡ false → ans-ok fr (AbstractExec.ans-words {FS} B) v ≡ true
+    no-buffer B fr v nm = cong (λ b → ans-ok fr (if b then tsize B else 0) v) nm
+
+    -- a stack buffer passes the answer's gate as the argument's
+    ans-stack : ∀ fr n f d → ans-ok fr n (SV-Ptr (AtStack f d)) ≡ range-ok fr n (SV-Ptr (AtStack f d))
+    ans-stack fr zero    f d = refl
+    ans-stack fr (suc n) f d = refl
 
     -- the argument's words lie below the operand stack's top, in the reservation
     arg-bnd : ∀ (φ : Frame) S wA fsl → wA + ws S ≤ budget φ → fbudget φ ≤ fsl
@@ -466,11 +471,11 @@ module OpSim {FS : FrameSemantics} (U : Univ)
                  (arg-range (SigOpInfo.baseA si) fs d₀ wx
                     (subst (λ t → d₀ + t ≤ AllocState.frame-slots (falloc fs)) (sym (tsize-wsz {FS} (SigOpInfo.baseA si)))
                        (arg-bnd φ S (wsz ⌜ sdom s ⌝) _ (≤-trans (c-sfit C) (m≤n+m (OP φ) (EP φ))) fb)))
-                 (trans (cong (λ b → range-ok (live-frames (falloc fs)) (if b then tsize B else 0) (SV-Ptr (AtStack cf dst))) im)
+                 (trans (ans-stack (live-frames (falloc fs)) (if in-memory? B then tsize B else 0) cf dst) (trans (cong (λ b → range-ok (live-frames (falloc fs)) (if b then tsize B else 0) (SV-Ptr (AtStack cf dst))) im)
                         (frame-range (falloc fs) dst (tsize B)
                            (subst (_≤ AllocState.frame-slots (falloc fs)) (sym dst+)
                               (≤-trans (Data.Nat.Properties.m∸n≤m (budget φ) (ws S))
-                                 (≤-trans (Data.Nat.Properties.n≤1+n _) (≤-trans (Data.Nat.Properties.n≤1+n _) fb))))))
+                                 (≤-trans (Data.Nat.Properties.n≤1+n _) (≤-trans (Data.Nat.Properties.n≤1+n _) fb)))))))
           eqh : heapMem (floc fs₃) ≡ heapMem (floc fs)
           eqh = st-heap (SigOpInfo.conB si) (in-memory? B) im ma cf dst st₀
           -- the frame outside the answer's words is as it was

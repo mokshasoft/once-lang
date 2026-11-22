@@ -947,6 +947,16 @@ module ExecFinal {FS : FrameSemantics} where
   range-ok fr (suc n) (SV-Tag _)                 = true
   range-ok fr (suc n) (SV-Code _)                = true
 
+  -- D468 (3c3b): an in-memory ANSWER is written without the store gate, so its
+  -- words must lie in a live frame (D449: a caller's buffer); a heap pointer fails
+  ans-ok : List (FrameSemantics.Frame FS × ℕ) → ℕ → StoredValue FS → Bool
+  ans-ok fr zero    _                          = true
+  ans-ok fr (suc n) (SV-Ptr (AtStack f j))     = in-window fr f (n + j)
+  ans-ok fr (suc n) (SV-Ptr (AtDynamic _))     = false
+  ans-ok fr (suc n) (SV-Lit _ _)               = true
+  ans-ok fr (suc n) (SV-Tag _)                 = true
+  ans-ok fr (suc n) (SV-Code _)                = true
+
   exec : Instr FS → LocState FS → LocState FS
 
   exec (load dst src) s =
@@ -2111,7 +2121,7 @@ module AbstractExec {FS : FrameSemantics} where
 
   sigop-gate : ∀ {A B} → AllocState {FS} → SigOpInfo A B → LocState FS → Bool
   sigop-gate {A} {B} al si s =
-    range-ok (live-frames al) (arg-words (baseA si)) (readReg (regs s) Input1) ∧ range-ok (live-frames al) (ans-words B) (readReg (regs s) Output)
+    range-ok (live-frames al) (arg-words (baseA si)) (readReg (regs s) Input1) ∧ ans-ok (live-frames al) (ans-words B) (readReg (regs s) Output)
 
   sigop-store : ∀ {A B} → SigOpInfo A B → LocState FS → LocState FS
   sigop-store {B = B} si s =
