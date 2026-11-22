@@ -294,3 +294,87 @@ module L (ρ : ℕ → ℕ) (Lv : ℕ → Set) (inj : ∀ r r′ → Lv r → Lv
     load-val-rel (readLoc s (AtDynamic (offsetHL hl k))) (readLoc t (AtDynamic (offsetHL (rhl ρ hl) k)))
       (λ v e → trans (cong (LocState.heapMem t) (sym (rhl-off ρ hl k)))
                      (l-heap R (offsetHL hl k) v (l-live R (offsetHL hl k) v e) e)) h R
+
+  ------------------------------------------------------------------------
+  -- ★ A store at an offset: into a live block's cell, and its renamed cell
+  ------------------------------------------------------------------------
+
+  open ExecFinal {FS} using (exec-store-at-resolved; exec-store-in-block; in-block?; exec-addr-at-resolved; exec-addr-in-block)
+  open MemOps {FS} using (writeLocToHeap)
+
+  -- a heap write is a write of the heap
+  dyn-write : ∀ (s : LocState FS) hl v → writeLoc s (AtDynamic hl) v ≡ writeLocToHeap s hl v
+  dyn-write s hl (SV-Ptr (AtStack _ _)) = refl
+  dyn-write s hl (SV-Ptr (AtDynamic _)) = refl
+  dyn-write s hl (SV-Tag _)             = refl
+  dyn-write s hl (SV-Lit _ _)           = refl
+  dyn-write s hl (SV-Code _)            = refl
+
+  lrel-heap-write : ∀ {s t} hl v → Lv (ref-of hl) → LRel s t
+                  → LRel (writeLocToHeap s hl v) (writeLocToHeap t (rhl ρ hl) (rv ρ v))
+  lrel-heap-write {s} {t} hl v lv R = record
+    { l-regs = l-regs R ; l-stack = l-stack R
+    ; l-heap = heap-write ρ Lv inj {h = LocState.heapMem s} {g = LocState.heapMem t} hl v lv (l-heap R)
+    ; l-live = live′
+    ; l-halt = l-halt R ; l-fault = l-fault R ; l-left = l-left R ; l-log = l-log R }
+    where
+      live′ : ∀ hl′ v′ → MemOps.writeHeapMem {FS} (LocState.heapMem s) hl v hl′ ≡ just v′ → Lv (ref-of hl′)
+      live′ hl′ v′ e = aux (hl ≟HL hl′) e
+        where
+          aux : ∀ (d : Relation.Nullary.Dec (hl ≡ hl′)) → MemOps.writeHeapMem-aux {FS} {hl = hl} {hl' = hl′} d (LocState.heapMem s hl′) v ≡ just v′ → Lv (ref-of hl′)
+          aux (yes refl) _ = lv
+          aux (no _)     e′ = l-live R hl′ v′ e′
+
+  store-at-rel : ∀ {s t} (bs bs′ : ℕ → ℕ) k ml v → LRel s t
+               → (∀ hl → in-block? bs (AtDynamic hl) ≡ Data.Bool.true → Lv (ref-of hl))
+               → (∀ hl → in-block? bs (AtDynamic hl) ≡ Data.Bool.true → in-block? bs′ (AtDynamic (rhl ρ hl)) ≡ Data.Bool.true)
+               → LocState.faulted (exec-store-at-resolved bs k ml v s) ≡ Data.Bool.false
+               → LRel (exec-store-at-resolved bs k ml v s) (exec-store-at-resolved bs′ k (Data.Maybe.map (rloc ρ) ml) (rv ρ v) t)
+  store-at-rel bs bs′ k nothing v R lv mono ()
+    where import Data.Bool
+  store-at-rel {s} {t} bs bs′ k (just (AtStack f j)) v R lv mono h = lrel-stack-write f (k + j) v R
+  store-at-rel {s} {t} bs bs′ k (just (AtDynamic hl)) v R lv mono h = go (in-block? bs (AtDynamic (offsetHL hl k))) refl h
+    where
+      import Data.Bool
+      go : ∀ b → in-block? bs (AtDynamic (offsetHL hl k)) ≡ b
+         → LocState.faulted (exec-store-in-block b (AtDynamic (offsetHL hl k)) v s) ≡ Data.Bool.false
+         → LRel (exec-store-in-block b (AtDynamic (offsetHL hl k)) v s)
+                (exec-store-in-block (in-block? bs′ (AtDynamic (offsetHL (rhl ρ hl) k))) (AtDynamic (offsetHL (rhl ρ hl) k)) (rv ρ v) t)
+      go Data.Bool.false _ ()
+      go Data.Bool.true  e _ =
+        Relation.Binary.PropositionalEquality.subst
+          (λ b′ → LRel (writeLoc s (AtDynamic (offsetHL hl k)) v) (exec-store-in-block b′ (AtDynamic (offsetHL (rhl ρ hl) k)) (rv ρ v) t))
+          (sym (trans (cong (λ q → in-block? bs′ (AtDynamic q)) (sym (rhl-off ρ hl k))) (mono (offsetHL hl k) e)))
+          (Relation.Binary.PropositionalEquality.subst₂ LRel (sym (dyn-write s (offsetHL hl k) v))
+             (sym (trans (dyn-write t (offsetHL (rhl ρ hl) k) (rv ρ v)) (cong (λ q → writeLocToHeap t q (rv ρ v)) (sym (rhl-off ρ hl k)))))
+             (lrel-heap-write (offsetHL hl k) v (lv (offsetHL hl k) e) R))
+
+  ------------------------------------------------------------------------
+  -- An address at an offset: inside the block on both sides
+  ------------------------------------------------------------------------
+
+  addr-at-rel : ∀ {s t} (bs bs′ : ℕ → ℕ) k ml → LRel s t
+              → (∀ hl → in-block? bs (AtDynamic hl) ≡ Data.Bool.true → in-block? bs′ (AtDynamic (rhl ρ hl)) ≡ Data.Bool.true)
+              → LocState.faulted (exec-addr-at-resolved bs k ml s) ≡ Data.Bool.false
+              → LRel (exec-addr-at-resolved bs k ml s) (exec-addr-at-resolved bs′ k (Data.Maybe.map (rloc ρ) ml) t)
+  addr-at-rel bs bs′ k nothing R mono ()
+    where import Data.Bool
+  addr-at-rel {s} {t} bs bs′ k (just (AtStack f j)) R mono h = lrel-reg Output (SV-Ptr (AtStack f (k + j))) R
+  addr-at-rel {s} {t} bs bs′ k (just (AtDynamic hl)) R mono h = go (in-block? bs (AtDynamic (offsetHL hl k))) refl h
+    where
+      import Data.Bool
+      go : ∀ b → in-block? bs (AtDynamic (offsetHL hl k)) ≡ b
+         → LocState.faulted (exec-addr-in-block b (AtDynamic (offsetHL hl k)) s) ≡ Data.Bool.false
+         → LRel (exec-addr-in-block b (AtDynamic (offsetHL hl k)) s)
+                (exec-addr-in-block (in-block? bs′ (AtDynamic (offsetHL (rhl ρ hl) k))) (AtDynamic (offsetHL (rhl ρ hl) k)) t)
+      go Data.Bool.false _ ()
+      go Data.Bool.true  e _ =
+        Relation.Binary.PropositionalEquality.subst
+          (λ b′ → LRel (record s { regs = writeReg (LocState.regs s) Output (SV-Ptr (AtDynamic (offsetHL hl k))) })
+                       (exec-addr-in-block b′ (AtDynamic (offsetHL (rhl ρ hl) k)) t))
+          (sym (trans (cong (λ q → in-block? bs′ (AtDynamic q)) (sym (rhl-off ρ hl k))) (mono (offsetHL hl k) e)))
+          (Relation.Binary.PropositionalEquality.subst
+             (λ q → LRel (record s { regs = writeReg (LocState.regs s) Output (SV-Ptr (AtDynamic (offsetHL hl k))) })
+                         (record t { regs = writeReg (LocState.regs t) Output (SV-Ptr (AtDynamic q)) }))
+             (rhl-off ρ hl k)
+             (lrel-reg Output (SV-Ptr (AtDynamic (offsetHL hl k))) R))
