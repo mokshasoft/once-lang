@@ -28,6 +28,8 @@ open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Membership.Propositional.Properties using (∈-++⁺ˡ; ∈-++⁺ʳ; ∈-++⁻)
 open import Data.List.Relation.Unary.Any using (here; there)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
+import Data.List.Relation.Unary.All
+import Data.List.Relation.Unary.All.Properties
 open import Data.List.Relation.Unary.AllPairs using (AllPairs; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
@@ -106,3 +108,69 @@ module X {FS : FrameSemantics} (C : Classes) where
       head-in (ev-start b) = here refl
       head-in (ev-same eq) = subst (x ∈_) (sym eq) (here refl)
   kept-in s (x ∷ P) (there m) na nf = ∈-++⁺ʳ (expand-at C s x) (kept-in (suc s) P m na nf)
+
+  ------------------------------------------------------------------------
+  -- ★ Its labels: the image's, and a later site's two
+  ------------------------------------------------------------------------
+
+  open FlatMachine {FS} using (label-of?-sound)
+  open import Once.CCC.Codegen.AllocExpandPc {FS} using (site-of)
+
+  private
+    lab-mem : ∀ t {m} → m ∈ Labs t → instr-ctrl (c-label m) ∈ t
+    lab-mem (x ∷ t) {m} p = go (label-of? x) refl p
+      where
+        go : ∀ mo → label-of? x ≡ mo → m ∈ LabsC.lab {FS} mo (Labs t) → instr-ctrl (c-label m) ∈ (x ∷ t)
+        go (just l) e (here refl) = here (sym (label-of?-sound x m e))
+        go (just l) e (there q)   = there (lab-mem t q)
+        go nothing  e q           = there (lab-mem t q)
+
+    mem-lab : ∀ t {m} → instr-ctrl (c-label m) ∈ t → m ∈ Labs t
+    mem-lab (x ∷ t) (here refl) = here refl
+    mem-lab (x ∷ t) {m} (there p) = go (label-of? x) (mem-lab t p)
+      where go : ∀ mo → m ∈ Labs t → m ∈ LabsC.lab {FS} mo (Labs t)
+            go (just _) q = there q
+            go nothing  q = q
+
+    -- a code's labels, by a property of each of its instructions
+    LabQ : (LabelId → Set) → AbstractInstr → Set
+    LabQ Q i = ∀ m → i ≡ instr-ctrl (c-label m) → Q m
+
+    no : ∀ {Q} {i} → (∀ m → i ≡ instr-ctrl (c-label m) → ⊥) → LabQ Q i
+    no f m e = ⊥-elim (f m e)
+
+    heads-q : ∀ {Q} c → All (LabQ Q) (heads C c)
+    heads-q zero    = []
+    heads-q (suc c) = no (λ _ ()) ∷ heads-q c
+
+    setup-q : ∀ {Q} → All (LabQ Q) (setup C)
+    setup-q = no (λ _ ()) ∷ no (λ _ ()) ∷ no (λ _ ()) ∷ no (λ _ ())
+            ∷ Data.List.Relation.Unary.All.Properties.++⁺ (heads-q (count C))
+                (no (λ _ ()) ∷ no (λ _ ()) ∷ no (λ _ ()) ∷ no (λ _ ()) ∷ no (λ _ ()) ∷ no (λ _ ()) ∷ [])
+
+    free-q : ∀ {Q} k → All (LabQ Q) (free-code C k)
+    free-q k = no (λ _ ()) ∷ no (λ _ ()) ∷ no (λ _ ()) ∷ no (λ _ ()) ∷ no (λ _ ()) ∷ no (λ _ ()) ∷ []
+
+    alloc-q : ∀ site k → All (LabQ (λ m → SiteL m site)) (alloc-code C site k)
+    alloc-q site k =
+      no (λ _ ()) ∷ no (λ _ ()) ∷ no (λ _ ()) ∷ no (λ _ ()) ∷ no (λ _ ()) ∷ no (λ _ ()) ∷ no (λ _ ()) ∷ no (λ _ ()) ∷ no (λ _ ()) ∷ no (λ _ ()) ∷ no (λ _ ()) ∷ no (λ _ ()) ∷ no (λ _ ()) ∷ (λ { .(lb-bump site) refl → 0 , z≤n , refl })
+      ∷ no (λ _ ()) ∷ no (λ _ ()) ∷ no (λ _ ()) ∷ (λ { .(lb-done site) refl → 1 , s≤s z≤n , refl }) ∷ []
+
+    no-lab-setup : ∀ {m} → instr-ctrl (c-label m) ∈ setup C → ⊥
+    no-lab-setup {m} p = Data.List.Relation.Unary.All.lookup (setup-q {λ _ → ⊥}) p m refl
+
+    no-lab-free : ∀ k {m} → instr-ctrl (c-label m) ∈ free-code C k → ⊥
+    no-lab-free k {m} p = Data.List.Relation.Unary.All.lookup (free-q {λ _ → ⊥} k) p m refl
+
+    -- an alloc's code defines its site's two labels
+    alloc-labs : ∀ site k {m} → instr-ctrl (c-label m) ∈ alloc-code C site k → SiteL m site
+    alloc-labs site k {m} p = Data.List.Relation.Unary.All.lookup (alloc-q site k) p m refl
+
+  labs-in : ∀ s P {m} → m ∈ Labs (expand-from C s P) → (m ∈ Labs P) ⊎ (Σ ℕ λ s′ → (s ≤ s′) × SiteL m s′)
+  labs-in s P {m} p = by (in-exp s P (lab-mem (expand-from C s P) p))
+    where
+      by : InExp s P (instr-ctrl (c-label m)) → (m ∈ Labs P) ⊎ (Σ ℕ λ s′ → (s ≤ s′) × SiteL m s′)
+      by (in-kept q _ _) = inj₁ (mem-lab P q)
+      by (in-alloc n k f q) = inj₂ (n + s , Data.Nat.Properties.m≤n+m s n , alloc-labs (n + s) k q)
+      by (in-free k q) = ⊥-elim (no-lab-free k q)
+      by (in-setup q) = ⊥-elim (no-lab-setup q)
