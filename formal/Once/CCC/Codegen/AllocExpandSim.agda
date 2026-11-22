@@ -198,3 +198,48 @@ module _ (C : Classes) (P : AbstractTrace) where
   step-const {fs} {gs} R p v f =
     core-straight R _ _ (L.Rest.load-const (ρ R) (Live (falloc fs)) (r-inj R) {al = falloc fs} {al′ = falloc gs} (r-frame R) p v (r-loc R))
       (λ q _ → refl) (next-pc R (instr-load-const p v) f refl)
+
+  ------------------------------------------------------------------------
+  -- The heap instructions
+  ------------------------------------------------------------------------
+
+  open ExecFinal {FS} using (frame-gate; heap-gate; live-frames; exec-load-at-resolved; exec-load-with-value
+                            ; exec-store-at-resolved; exec-store-in-block; exec-addr-at-resolved; exec-addr-in-block; in-block?; live-size)
+  open import Once.CCC.Codegen.AllocExpandRen {FS} using (rloc)
+  open import Relation.Binary.PropositionalEquality using (cong₂)
+
+  -- the live frames are the same on both sides
+  frames-eq : ∀ {fs gs} → Rel C P fs gs → live-frames (falloc gs) ≡ live-frames (falloc fs)
+  frames-eq R = cong₂ _∷_ (cong₂ _,_ (r-frame R) (r-slots R)) (r-saved R)
+
+  -- the expanded side's gate, by the primitive's
+  gate-is : ∀ {fs gs} (R : Rel C P fs gs) k
+          → frame-gate (falloc gs) k (sv-as-loc (readReg (LocState.regs (floc gs)) Input1))
+            ≡ Data.Maybe.map (rloc (ρ R)) (frame-gate (falloc fs) k (sv-as-loc (readReg (LocState.regs (floc fs)) Input1)))
+  gate-is {fs} {gs} R k =
+    trans (cong (λ v → frame-gate (falloc gs) k (sv-as-loc v)) (L.LRel.l-regs (r-loc R) Input1))
+      (trans (cong (frame-gate (falloc gs) k) (L.as-loc-rv (ρ R) (Live (falloc fs)) (r-inj R) (readReg (LocState.regs (floc fs)) Input1)))
+             (L.frame-gate-rv (ρ R) (Live (falloc fs)) (r-inj R) (falloc fs) (falloc gs) k (frames-eq R)
+                (sv-as-loc (readReg (LocState.regs (floc fs)) Input1))))
+
+  -- a load leaves the heap
+  la-heap : ∀ k ml (s : LocState FS) q → LocState.heapMem (exec-load-at-resolved k Output ml s) q ≡ LocState.heapMem s q
+  la-heap k (just loc) s q = lv-heap (readLoc s (offsetLoc loc k))
+    where
+      open MemOps {FS} using (readLoc)
+      lv-heap : ∀ mv → LocState.heapMem (exec-load-with-value Output mv s) q ≡ LocState.heapMem s q
+      lv-heap (just _) = refl
+      lv-heap nothing  = refl
+  la-heap k nothing s q = refl
+
+  step-load-at : ∀ {fs gs} (R : Rel C P fs gs) k → fetch P (fpc fs) ≡ just (load-at k)
+               → LocState.faulted (floc (flat-exec-instr (load-at k) P fs)) ≡ false
+               → Rel C P (flat-exec-instr (load-at k) P fs) (flat-exec-instr (load-at k) E gs)
+  step-load-at {fs} {gs} R k f nf =
+    core-straight R _ _
+      (subst (λ m → L.LRel (ρ R) (Live (falloc fs)) (r-inj R) (exec-load-at-resolved k Output ml (floc fs)) (exec-load-at-resolved k Output m (floc gs)))
+             (sym (gate-is R k))
+             (L.load-at-rel (ρ R) (Live (falloc fs)) (r-inj R) k ml (r-loc R) nf))
+      (λ q _ → la-heap k (frame-gate (falloc gs) k (sv-as-loc (readReg (LocState.regs (floc gs)) Input1))) (floc gs) q) (next-pc R (load-at k) f refl)
+    where
+      ml = frame-gate (falloc fs) k (sv-as-loc (readReg (LocState.regs (floc fs)) Input1))
