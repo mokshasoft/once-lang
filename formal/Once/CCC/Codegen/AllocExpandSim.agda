@@ -582,3 +582,59 @@ module _ (C : Classes) (P : AbstractTrace) where
            → Rel C P (flat-exec-instr (instr-ctrl (c-jmp l)) P fs) (flat-exec-instr (instr-ctrl (c-jmp l)) E gs)
   step-jmp {fs} {gs} R l pe f =
     subst (λ m → Rel C P (do-jump (find-label P l) fs) (do-jump m gs)) (sym (fl-exp C 0 P l 0 pe)) (jump-rel R (find-label P l))
+
+  open FlatMachine {FS} using (tag-test; flat-read-tag; flat-read-at; do-branch-test; do-branch; do-branch-at; flat-fault)
+
+  -- the renaming keeps a value's tag test
+  tag-rv : ∀ (ρ′ : ℕ → ℕ) mv → tag-test (Data.Maybe.map (rv ρ′) mv) ≡ tag-test mv
+  tag-rv ρ′ (just (SV-Ptr (AtStack _ _)))  = refl
+  tag-rv ρ′ (just (SV-Ptr (AtDynamic _)))  = refl
+  tag-rv ρ′ (just (SV-Tag zero))           = refl
+  tag-rv ρ′ (just (SV-Tag (suc _)))        = refl
+  tag-rv ρ′ (just (SV-Lit _ _))            = refl
+  tag-rv ρ′ (just (SV-Code _))             = refl
+  tag-rv ρ′ nothing                        = refl
+
+  -- the expanded side's tag test, by the primitive's (which did not fault)
+  read-tag-rel : ∀ {fs gs} (R : Rel C P fs gs) → ¬ tag-test (flat-read-tag (falloc fs) (floc fs)) ≡ nothing
+               → tag-test (flat-read-tag (falloc gs) (floc gs)) ≡ tag-test (flat-read-tag (falloc fs) (floc fs))
+  read-tag-rel {fs} {gs} R nn =
+    trans (cong (λ m → tag-test (flat-read-at (floc gs) m)) (gate-is R 0)) (go ml refl nn)
+    where
+      open MemOps {FS} using (readLoc)
+      ml = frame-gate (falloc fs) 0 (sv-as-loc (readReg (LocState.regs (floc fs)) Input1))
+      go : ∀ m → m ≡ ml → ¬ tag-test (flat-read-at (floc fs) m) ≡ nothing
+         → tag-test (flat-read-at (floc gs) (Data.Maybe.map (rloc (ρ R)) m)) ≡ tag-test (flat-read-at (floc fs) m)
+      go nothing _ nn′ = refl
+      go (just (AtStack f j)) _ nn′ = trans (cong tag-test (L.LRel.l-stack (r-loc R) f j)) (tag-rv (ρ R) (LocState.stackMem (floc fs) f j))
+      go (just (AtDynamic hl)) _ nn′ = cell (LocState.heapMem (floc fs) hl) refl nn′
+        where
+          cell : ∀ mv → LocState.heapMem (floc fs) hl ≡ mv → ¬ tag-test mv ≡ nothing
+               → tag-test (LocState.heapMem (floc gs) (rhl (ρ R) hl)) ≡ tag-test (LocState.heapMem (floc fs) hl)
+          cell nothing  e nn″ = ⊥-elim (nn″ refl)
+          cell (just v) e nn″ =
+            trans (cong tag-test (L.LRel.l-heap (r-loc R) hl v (L.LRel.l-live (r-loc R) hl v e) e))
+                  (trans (tag-rv (ρ R) (just v)) (cong tag-test (sym e)))
+
+  step-branch : ∀ {fs gs} (R : Rel C P fs gs) l → LabelId.path l ≡ [] → fetch P (fpc fs) ≡ just (instr-ctrl (c-branch-tag-zero l))
+              → LocState.faulted (floc (flat-exec-instr (instr-ctrl (c-branch-tag-zero l)) P fs)) ≡ false
+              → Rel C P (flat-exec-instr (instr-ctrl (c-branch-tag-zero l)) P fs) (flat-exec-instr (instr-ctrl (c-branch-tag-zero l)) E gs)
+  step-branch {fs} {gs} R l pe f nf =
+    go (tag-test (flat-read-tag (falloc fs) (floc fs))) refl nf
+    where
+      go : ∀ mb → tag-test (flat-read-tag (falloc fs) (floc fs)) ≡ mb
+         → LocState.faulted (floc (do-branch-test mb l P fs)) ≡ false
+         → Rel C P (do-branch-test (tag-test (flat-read-tag (falloc fs) (floc fs))) l P fs)
+                   (do-branch-test (tag-test (flat-read-tag (falloc gs) (floc gs))) l E gs)
+      go nothing  _ ()
+      go (just b) e _ =
+        subst (λ m → Rel C P (do-branch-test (tag-test (flat-read-tag (falloc fs) (floc fs))) l P fs) (do-branch-test m l E gs))
+              (sym (trans (read-tag-rel R (λ z → nothing≢ (trans (sym e) z))) e))
+              (subst (λ m → Rel C P (do-branch-test m l P fs) (do-branch-test (just b) l E gs)) (sym e) (br b))
+        where
+          nothing≢ : ¬ (just b ≡ nothing)
+          nothing≢ ()
+          br : ∀ b′ → Rel C P (do-branch b′ l P fs) (do-branch b′ l E gs)
+          br true  = subst (λ m → Rel C P (do-jump (find-label P l) fs) (do-jump m gs)) (sym (fl-exp C 0 P l 0 pe)) (jump-rel R (find-label P l))
+          br false = core-gen R (moves-next R _ _ (next-pc R (instr-ctrl (c-branch-tag-zero l)) f refl) refl refl refl refl refl refl refl refl)
+                       (r-loc R) (r-clo R) (λ q _ → refl)
