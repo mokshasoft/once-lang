@@ -503,3 +503,48 @@ module _ (C : Classes) (P : AbstractTrace) where
           hd (v , e , ch) = v , trans (rec-free (head-word c)) e
                           , chain-frame (LocState.heapMem (floc gs)) (LocState.heapMem (floc gs′)) (σ R) (lists R c) v
                               (λ b m → frame (heap-loc (mkHeapRef b) 0) (λ r lv e′ → r-not-free R r c b lv m e′)) ch
+
+  -- the moves of a step that only advances the pc
+  moves-next : ∀ {fs gs} (R : Rel C P fs gs) (fs′ gs′ : FlatState) → off C 0 P (suc (fpc fs)) ≡ suc (fpc gs)
+             → fpc fs′ ≡ suc (fpc fs) → fpc gs′ ≡ suc (fpc gs)
+             → fret fs′ ≡ fret fs → fret gs′ ≡ fret gs → flink fs′ ≡ flink fs → flink gs′ ≡ flink gs
+             → falloc fs′ ≡ falloc fs → falloc gs′ ≡ falloc gs
+             → Moves fs gs fs′ gs′
+  moves-next {fs} {gs} R fs′ gs′ pc pf pg rf rg lf lg af ag = record
+    { m-pc = trans pg (trans (sym pc) (cong (off C 0 P) (sym pf)))
+    ; m-ret = trans rg (trans (r-ret R) (cong (map (off C 0 P)) (sym rf)))
+    ; m-link = trans lg (trans (r-link R) (cong (Data.Maybe.map (off C 0 P)) (sym lf)))
+    ; m-frame = trans (cong AllocState.current-frame ag) (trans (r-frame R) (cong AllocState.current-frame (sym af)))
+    ; m-saved = trans (cong AllocState.saved-frames ag) (trans (r-saved R) (cong AllocState.saved-frames (sym af)))
+    ; m-slots = trans (cong AllocState.frame-slots ag) (trans (r-slots R) (cong AllocState.frame-slots (sym af)))
+    ; m-nslot = trans (cong AllocState.next-slot ag) (trans (r-next-slot R) (cong AllocState.next-slot (sym af)))
+    ; m-nextP = cong AllocState.next-heap-ref af ; m-freeP = λ r → cong (λ a → AllocState.freed a r) af
+    ; m-sizeP = λ r → cong (λ a → AllocState.block-size a r) af
+    ; m-nextE = cong AllocState.next-heap-ref ag ; m-freeE = λ r → cong (λ a → AllocState.freed a r) ag
+    ; m-sizeE = λ r → cong (λ a → AllocState.block-size a r) ag }
+
+  step-save-clo : ∀ {fs gs} (R : Rel C P fs gs) → fetch P (fpc fs) ≡ just instr-save-closure-reg
+                → Rel C P (flat-exec-instr instr-save-closure-reg P fs) (flat-exec-instr instr-save-closure-reg E gs)
+  step-save-clo {fs} {gs} R f =
+    core-gen R (moves-next R _ _ (next-pc R instr-save-closure-reg f refl) refl refl refl refl refl refl refl refl)
+      (r-loc R) (L.LRel.l-regs (r-loc R) Input1) (λ q _ → refl)
+
+  step-label : ∀ {fs gs} (R : Rel C P fs gs) l → fetch P (fpc fs) ≡ just (instr-ctrl (c-label l))
+             → Rel C P (flat-exec-instr (instr-ctrl (c-label l)) P fs) (flat-exec-instr (instr-ctrl (c-label l)) E gs)
+  step-label R l f = step-id R (instr-ctrl (c-label l)) f refl refl refl
+
+  -- a halt (and a leave) on both sides
+  halt-loc : ∀ {fs gs} (R : Rel C P fs gs) (lf : Bool)
+           → L.LRel (ρ R) (Live (falloc fs)) (r-inj R) (record (floc fs) { halted = true ; left = lf }) (record (floc gs) { halted = true ; left = lf })
+  halt-loc R lf = record
+    { l-regs = L.LRel.l-regs (r-loc R) ; l-stack = L.LRel.l-stack (r-loc R) ; l-heap = L.LRel.l-heap (r-loc R) ; l-live = L.LRel.l-live (r-loc R)
+    ; l-halt = refl ; l-fault = L.LRel.l-fault (r-loc R) ; l-left = refl ; l-log = L.LRel.l-log (r-loc R) }
+
+  step-leave : ∀ {fs gs} (R : Rel C P fs gs) → fetch P (fpc fs) ≡ just (instr-ctrl c-leave)
+             → Rel C P (flat-exec-instr (instr-ctrl c-leave) P fs) (flat-exec-instr (instr-ctrl c-leave) E gs)
+  step-leave {fs} {gs} R f =
+    core-gen R (record { m-pc = r-pc R ; m-ret = r-ret R ; m-link = r-link R ; m-frame = r-frame R ; m-saved = r-saved R
+                       ; m-slots = r-slots R ; m-nslot = r-next-slot R
+                       ; m-nextP = refl ; m-freeP = λ _ → refl ; m-sizeP = λ _ → refl
+                       ; m-nextE = refl ; m-freeE = λ _ → refl ; m-sizeE = λ _ → refl })
+      (halt-loc R true) (r-clo R) (λ q _ → refl)
