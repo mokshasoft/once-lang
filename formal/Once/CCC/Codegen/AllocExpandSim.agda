@@ -90,6 +90,7 @@ module _ (C : Classes) (P : AbstractTrace) where
   open FlatMachine {FS} using (flat-exec-instr; fetch)
   open import Once.CCC.Codegen.AllocExpandPc {FS} using (off-suc)
   open import Data.Bool using (Bool; true; false)
+  import Once.Type
 
   E = expand C P
 
@@ -154,3 +155,46 @@ module _ (C : Classes) (P : AbstractTrace) where
       go-al : ∀ x → straight-go (load-from-slot k) x ≡ record x { floc = floc (straight-go (load-from-slot k) x) ; fpc = suc (fpc x) }
       go-al x = cong (λ a → record x { floc = floc (straight-go (load-from-slot k) x) ; falloc = a ; fpc = suc (fpc x) })
                      (slot-al (LocState.stackMem (floc x) (AllocState.current-frame (falloc x)) k) (floc x) (falloc x))
+
+  -- the slot instructions with a definite allocator, and the constants
+  step-to-slot : ∀ {fs gs} (R : Rel C P fs gs) k → fetch P (fpc fs) ≡ just (store-at-slot k)
+               → LocState.faulted (floc (flat-exec-instr (store-at-slot k) P fs)) ≡ false
+               → Rel C P (flat-exec-instr (store-at-slot k) P fs) (flat-exec-instr (store-at-slot k) E gs)
+  step-to-slot {fs} {gs} R k f nf =
+    gated-step R (store-at-slot k) _ _ _ _ refl refl (cong (k Data.Nat.<ᵇ_) (r-slots R)) refl refl
+      (L.Slots.to-slot (ρ R) (Live (falloc fs)) (r-inj R) {al = falloc fs} {al′ = falloc gs} (r-frame R) k (r-loc R))
+      (λ q _ → refl) (next-pc R (store-at-slot k) f refl) nf
+
+  step-lea : ∀ {fs gs} (R : Rel C P fs gs) k → fetch P (fpc fs) ≡ just (lea-slot k)
+           → LocState.faulted (floc (flat-exec-instr (lea-slot k) P fs)) ≡ false
+           → Rel C P (flat-exec-instr (lea-slot k) P fs) (flat-exec-instr (lea-slot k) E gs)
+  step-lea {fs} {gs} R k f nf =
+    gated-step R (lea-slot k) _ _ _ _ refl refl (cong (k Data.Nat.<ᵇ_) (r-slots R)) refl refl
+      (L.Slots.lea (ρ R) (Live (falloc fs)) (r-inj R) {al = falloc fs} {al′ = falloc gs} (r-frame R) k (r-loc R))
+      (λ q _ → refl) (next-pc R (lea-slot k) f refl) nf
+
+  step-wl-push : ∀ {fs gs} (R : Rel C P fs gs) k → fetch P (fpc fs) ≡ just (worklist-push k)
+               → LocState.faulted (floc (flat-exec-instr (worklist-push k) P fs)) ≡ false
+               → Rel C P (flat-exec-instr (worklist-push k) P fs) (flat-exec-instr (worklist-push k) E gs)
+  step-wl-push {fs} {gs} R k f nf =
+    gated-step R (worklist-push k) _ _ _ _ refl refl (cong (k Data.Nat.<ᵇ_) (r-slots R)) refl refl
+      (L.Rest.wl-push (ρ R) (Live (falloc fs)) (r-inj R) {al = falloc fs} {al′ = falloc gs} (r-frame R) k (r-loc R))
+      (λ q _ → refl) (next-pc R (worklist-push k) f refl) nf
+
+  step-tag : ∀ {fs gs} (R : Rel C P fs gs) n → fetch P (fpc fs) ≡ just (instr-load-tag-lit n)
+           → Rel C P (flat-exec-instr (instr-load-tag-lit n) P fs) (flat-exec-instr (instr-load-tag-lit n) E gs)
+  step-tag {fs} {gs} R n f =
+    core-straight R _ _ (L.Rest.tag-lit (ρ R) (Live (falloc fs)) (r-inj R) {al = falloc fs} {al′ = falloc gs} (r-frame R) n (r-loc R))
+      (λ q _ → refl) (next-pc R (instr-load-tag-lit n) f refl)
+
+  step-code : ∀ {fs gs} (R : Rel C P fs gs) l → fetch P (fpc fs) ≡ just (instr-load-code-addr l)
+            → Rel C P (flat-exec-instr (instr-load-code-addr l) P fs) (flat-exec-instr (instr-load-code-addr l) E gs)
+  step-code {fs} {gs} R l f =
+    core-straight R _ _ (L.Rest.code-addr (ρ R) (Live (falloc fs)) (r-inj R) {al = falloc fs} {al′ = falloc gs} (r-frame R) l (r-loc R))
+      (λ q _ → refl) (next-pc R (instr-load-code-addr l) f refl)
+
+  step-const : ∀ {fs gs} (R : Rel C P fs gs) {A} (p : Once.Type.FitsInReg A) v → fetch P (fpc fs) ≡ just (instr-load-const p v)
+             → Rel C P (flat-exec-instr (instr-load-const p v) P fs) (flat-exec-instr (instr-load-const p v) E gs)
+  step-const {fs} {gs} R p v f =
+    core-straight R _ _ (L.Rest.load-const (ρ R) (Live (falloc fs)) (r-inj R) {al = falloc fs} {al′ = falloc gs} (r-frame R) p v (r-loc R))
+      (λ q _ → refl) (next-pc R (instr-load-const p v) f refl)
