@@ -8,7 +8,9 @@
 # none, so it sends and receives words 0 and 1 (2 and 3 answer 0).
 #
 # SigOp ABI: the argument in %ecx (a tuple is one flat block of words,
-# D381), the answer in %eax; every other register is preserved, %esi
+# D381), the answer in %eax (a tuple answer: written in place into the
+# buffer at the address the program put in %eax, D449); every other
+# register is preserved, %esi
 # (Once's heap pointer, and seL4's message-info register) too.
 #
 # ======================================================================
@@ -88,14 +90,13 @@
     movl    %edx, (RES + 4 * (\r + 3))(%esp)
 .endm
 
-# Answer the n results in RES as a tuple at the caller's heap pointer
+# Answer the n results in RES as a tuple, in the answer's buffer: the
+# address the program put in %eax (Output) before the SigOp (D449)
 .macro LEAVE_TUPLE n
-    movl    SAVED_ESI(%esp), %esi
+    movl    SAVED_EAX(%esp), %eax
     leal    RES(%esp), %edx
     movl    $\n, %ecx
     call    once_sel4_answer
-    movl    %esi, SAVED_ESI(%esp)
-    movl    %eax, SAVED_EAX(%esp)
     addl    $FRAME, %esp
     popal
     ret

@@ -152,14 +152,12 @@ once_sel4_copy_arg:
     ret
 .size once_sel4_copy_arg, .-once_sel4_copy_arg
 
-# The n words at a1 (n >= 1, in a2) as a flat block allocated at the heap
-# pointer s2 (advanced); the block in a0. Clobbers a2, t1, t2.
+# The n words at a1 (n >= 1, in a2) into the answer's buffer at a0, the
+# address the program put in Output before the SigOp (D449: a structured
+# answer is written in place); a0 is kept. Clobbers a2, t1, t2.
 .global once_sel4_answer
 .type once_sel4_answer, @function
 once_sel4_answer:
-    mv      a0, s2
-    slli    t1, a2, 3
-    add     s2, s2, t1
 1:  addi    a2, a2, -1
     slli    t1, a2, 3
     add     t2, a1, t1

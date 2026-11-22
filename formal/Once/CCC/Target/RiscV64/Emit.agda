@@ -24,7 +24,7 @@ open import Once.CCC.Target.RiscV64.Syntax
 ------------------------------------------------------------------------
 
 -- Register rendering is shared with the arith backend (Plan 0.55).
-open import Once.Target.RiscV64.PhysReg using (showReg)
+open import Once.Target.RiscV64.PhysReg using (showReg; ra; Reg)
 
 ------------------------------------------------------------------------
 -- Labels (Plan 0.63) — BYTE-IDENTICAL to the x86-64 / x86-32 `showLabel`.
@@ -37,6 +37,11 @@ open import Once.Target.RiscV64.PhysReg using (showReg)
 ------------------------------------------------------------------------
 -- Instructions
 ------------------------------------------------------------------------
+
+showJal : Reg → _ → String
+showJal ra o = "    call "  ++ labelSym o
+{-# CATCHALL #-}
+showJal rd o = "    jal "   ++ showReg rd ++ ", " ++ labelSym o
 
 showInstr : Instr → String
 showInstr (ld   rd rs o)      = "    ld "    ++ showReg rd ++ ", " ++ showNat o ++ "(" ++ showReg rs ++ ")"
@@ -54,7 +59,10 @@ showInstr (beq  rs1 rs2 o)    = "    beq "   ++ showReg rs1 ++ ", " ++ showReg r
 showInstr (bne  rs1 rs2 o)    = "    bne "   ++ showReg rs1 ++ ", " ++ showReg rs2 ++ ", " ++ labelSym o
 showInstr (bgeu-fwd rs1 rs2)  = "    bgeu "  ++ showReg rs1 ++ ", " ++ showReg rs2 ++ ", 1f"
 showInstr local-1             = "1:"
-showInstr (jal  rd o)       = "    jal "   ++ showReg rd ++ ", " ++ labelSym o
+-- (a call through `ra` is printed `call`: `auipc ra` + `jalr ra`, which reaches any
+-- label (`jal`'s 20-bit offset reaches ±1 MiB, and an image's code can be larger, D477);
+-- linked `--no-relax`, it stays those two instructions)
+showInstr (jal  rd o)       = showJal rd o
 showInstr (jalr rd rs o)      = "    jalr "  ++ showReg rd ++ ", " ++ showReg rs ++ ", " ++ showNat o
 showInstr (j    o)            = "    j "   ++ labelSym o
 showInstr ret                 = "    ret"

@@ -24729,3 +24729,36 @@ Master shares (pointers are copied, nothing is freed), so it is linear but leaks
   (2026-11-23), and a quadratic loop is not parity.
 
 ### Decision (proposed): (a), as §5 item 8 step h, before d–f (it is the largest cost: asymptotic)
+
+## D476 — THE seL4 BINDINGS ANSWER A TUPLE IN PLACE, AT THE ADDRESS IN OUTPUT (D449's Host side) (2026-11-23, bug fix)
+
+**Found** (the seL4 caps test, `examples/seL4/Caps`: passes on master, fails on this branch on all three arches,
+before and after today's bridge changes). `seL4_Untyped_Retype` answered 1 (invalid argument): `findRAM` had
+picked a wrong untyped, because `usable` read `bootinfo_getUntyped`'s answer from stale slots.
+**Cause**: D449 made a structured SigOp answer the program's own words, written by the SigOp in place at the
+address the program puts in `Output` before the call (x86-64 `rax`, i386 `eax`, riscv64 `a0`; the argument's
+address in `Input1`: `rdi`, `ecx`, `t0`). The seL4 Interpretations kept master's convention (D381): a tuple
+answer allocated as a flat block at the heap pointer (`r15`, `esi`, `s2`), its address returned. The
+compiler's code reads the answer's slots, so it read whatever was there. The Linux Interpretations have no
+tuple answers the tests exercise. Nothing caught it in the proofs: the Interpretations are the trusted
+boundary (the `Interp` postulates' realization), and the qemu suite does not run seL4.
+**Fix**: `bootinfo_getUntyped` (three arches) writes its three words at `Output`; the Hosts' `once_sel4_answer`
+copies the answer words into the buffer at `Output` instead of allocating; the IPC routines that answer a
+tuple (`seL4_Recv`, `seL4_NBRecv`, `seL4_Call`, `seL4_ReplyRecv`) save `Output` on entry and hand it to
+`once_sel4_answer`. The heap pointer is no longer advanced by any Interpretation.
+**Owed**: the boundary has no check that an Interpretation honours D449. A per-binding conformance test
+(each structured-answer SigOp called from a Once program that checks every answer word) would catch the class.
+
+## D477 — riscv64 PRINTS A CALL THROUGH `ra` AS `call` (auipc + jalr), NOT `jal` (2026-11-23, bug fix)
+
+**Found** (the seL4 caps image on riscv64: `relocation truncated to fit: R_RISCV_JAL`). The printer wrote a
+block call `jal ra, L`, whose 20-bit offset reaches ±1 MiB; this branch's images are larger than that (D474's
+cost), so a call to a distant block cannot be encoded. The assembler refuses it loudly, so nothing was
+miscompiled, but the trust point `as-faithful-riscv64` (decode (assemble (print F)) ≡ just F) was false of
+such images.
+**Fix**: `jal ra, L` is printed `call L` (`Emit.showJal`): `auipc ra` + `jalr ra`, which reaches ±2 GiB, sets
+`ra` to the instruction after it as `jal ra` does, and stays two instructions under `--no-relax` (D470).
+Other `jal`s (none are emitted) keep their form. Local jumps (`j`, `beq`) stay within a block.
+**Owed** (the same class as the `ld` relaxation): a build-time check that the linked code is the program's
+own (the encoder-and-compare check floated 2026-11-23) would catch any such gap; until then the trust point
+covers it.

@@ -11,8 +11,9 @@
 # Messages are the four register words only: no IPC buffer is needed.
 #
 # SigOp ABI: the argument in rdi (a tuple is one flat block of words,
-# D381), the answer in rax (Unit is 0; a tuple answer is a flat block
-# allocated at the heap pointer r15, which is advanced); every other register is
+# D381), the answer in rax (Unit is 0); a tuple answer is written in place
+# into the buffer whose address the program put in rax (Output) before the
+# SigOp (D449), so rax is saved on entry. Every other register is
 # preserved. r15 is both Once's heap pointer and seL4's fourth message
 # word, so it is saved around each syscall.
 #
@@ -34,7 +35,9 @@
 .equ ARGS,   0
 .equ RES,    64
 .equ FRAME,  112
-.equ SAVED_R15, FRAME + 13 * 8      # pushed first by SAVE_ALL
+.equ R15_SLOT, 14 * 8               # pushed first by SAVE_ALL
+.equ SAVED_R15, FRAME + R15_SLOT
+.equ SAVED_RAX, FRAME                # pushed last by SAVE_ALL: the answer's buffer
 
 .macro SAVE_ALL
     pushq %r15
@@ -51,10 +54,12 @@
     pushq %rdx
     pushq %rcx
     pushq %rbx
+    pushq %rax
 .endm
 
-# Restore all but r15, which keeps its (advanced) value
+# Restore all but r15, which keeps its (advanced) value, and rax (the answer)
 .macro RESTORE_ALL_BUT_R15
+    addq $8, %rsp
     popq %rbx
     popq %rcx
     popq %rdx
@@ -101,9 +106,11 @@
     movq    %r15, (RES + 8 * (\r + 3))(%rsp)
 .endm
 
-# Answer the n results in RES as a tuple; restore the heap pointer first
+# Answer the n results in RES as a tuple, in the answer's buffer (D449);
+# restore the heap pointer first
 .macro ANSWER_TUPLE n
     movq    SAVED_R15(%rsp), %r15
+    movq    SAVED_RAX(%rsp), %rax
     leaq    RES(%rsp), %rsi
     movq    $\n, %rcx
     call    once_sel4_answer
@@ -113,7 +120,7 @@
 .align 16
 
 # (The tuple argument is read by the seL4 Host's `once_sel4_copy_arg`, a
-# tuple answer built by its `once_sel4_answer`.)
+# tuple answer written by its `once_sel4_answer`.)
 
 # ----------------------------------------------------------------------
 # seL4_Yield : Unit -> Unit
@@ -123,7 +130,7 @@
 seL4_Yield:
     SAVE_ALL
     SYSCALL_SEL4 SysYield
-    movq    (13 * 8)(%rsp), %r15
+    movq    R15_SLOT(%rsp), %r15
     RESTORE_ALL_BUT_R15
     xorq    %rax, %rax
     ret

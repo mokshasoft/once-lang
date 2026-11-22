@@ -6,7 +6,9 @@
 # words only: no IPC buffer is needed.
 #
 # SigOp ABI: the argument in t0 (Input1; a tuple is one flat block of
-# words, D381), the answer in a0; every other register is preserved.
+# words, D381), the answer in a0 (a tuple answer: written in place into
+# the buffer at the address the program put in a0, D449); every other
+# register is preserved.
 #
 # ======================================================================
 
@@ -44,6 +46,7 @@
     sd      t4, 96(sp)
     sd      t5, 104(sp)
     sd      t6, 112(sp)
+    sd      a0, 120(sp)                 # Output: a tuple answer's buffer (D449)
 .endm
 
 .macro RESTORE_ALL
@@ -105,8 +108,10 @@
     sd      a5, (RES + 8 * (\r + 3))(sp)
 .endm
 
-# Answer the n results in RES as a tuple at the heap pointer s2
+# Answer the n results in RES as a tuple, in the answer's buffer: the
+# address the program put in a0 (Output) before the SigOp (D449)
 .macro LEAVE_TUPLE n
+    ld      a0, (FRAME + 120)(sp)
     addi    a1, sp, RES
     li      a2, \n
     call    once_sel4_answer

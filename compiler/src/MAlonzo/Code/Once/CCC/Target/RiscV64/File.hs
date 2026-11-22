@@ -106,7 +106,7 @@ d_code'45'text_54 v0 v1 v2
              (d_start'45'mark_34 (coe v0) (coe v1))
              (coe
                 MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                (MAlonzo.Code.Once.CCC.Target.RiscV64.Emit.d_instrToLine_102
+                (MAlonzo.Code.Once.CCC.Target.RiscV64.Emit.d_instrToLine_110
                    (coe v3))
                 (d_code'45'text_54
                    (coe v0) (coe addInt (coe (1 :: Integer)) (coe v1)) (coe v4)))
