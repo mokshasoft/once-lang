@@ -233,3 +233,33 @@ module X {FS : FrameSemantics} (C : Classes) where
           by′ (ev-free k)  = IH
           by′ (ev-start b) = subst (λ z → AllPairs _≢_ (z ++ Labs rest)) (sym (labs-empty (setup C) no-lab-setup)) IH
           by′ (ev-same eq) = subst (λ z → AllPairs _≢_ (Labs z ++ Labs rest)) (sym eq) (subst (λ mo → AllPairs _≢_ (LabsC.lab {FS} mo [] ++ Labs rest)) (sym e) IH)
+
+  -- an instruction list with no entry has none
+  private
+    ents-none : ∀ (t : AbstractTrace) → All (λ i → entry-of? i ≡ nothing) t → Ents t ≡ []
+    ents-none []      []       = refl
+    ents-none (x ∷ t) (e ∷ es) = trans (cong (λ mo → LabsC.ent {FS} mo (Ents t)) e) (ents-none t es)
+
+    heads-ne : ∀ c → All (λ i → entry-of? i ≡ nothing) (heads C c)
+    heads-ne zero    = []
+    heads-ne (suc c) = refl ∷ heads-ne c
+
+    setup-ne : All (λ i → entry-of? i ≡ nothing) (setup C)
+    setup-ne = refl ∷ refl ∷ refl ∷ refl
+             ∷ Data.List.Relation.Unary.All.Properties.++⁺ (heads-ne (count C)) (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
+
+  -- ★ its entries are the image's
+  ents-exp : ∀ s P → Ents (expand-from C s P) ≡ Ents P
+  ents-exp s []      = refl
+  ents-exp s (x ∷ P) = trans (Ents-++ (expand-at C s x) (expand-from C (suc s) P)) (by (exp-view C s x))
+    where
+      IH = ents-exp (suc s) P
+      by : ExpView C s x → Ents (expand-at C s x) ++ Ents (expand-from C (suc s) P) ≡ Ents (x ∷ P)
+      by (ev-alloc k) = trans (cong (_++ Ents (expand-from C (suc s) P))
+                                (ents-none (alloc-code C s k) (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []))) IH
+      by (ev-free k)  = trans (cong (_++ Ents (expand-from C (suc s) P)) (ents-none (free-code C k) (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []))) IH
+      by (ev-start b) = trans (cong (_++ Ents (expand-from C (suc s) P)) (ents-none (instr-ctrl (c-start b) ∷ setup C) (refl ∷ setup-ne))) IH
+      by (ev-same eq) = trans (cong (λ z → Ents z ++ Ents (expand-from C (suc s) P)) eq) (go (entry-of? x))
+        where go : ∀ mo → LabsC.ent {FS} mo [] ++ Ents (expand-from C (suc s) P) ≡ LabsC.ent {FS} mo (Ents P)
+              go (just e) = cong (e ∷_) IH
+              go nothing  = IH
