@@ -128,3 +128,13 @@ module _ (prog : AbstractTrace) where
                                                                         ; block-size = size-with n (AllocState.next-heap-ref (falloc x)) (AllocState.block-size (falloc x)) }
                                            ; fpc = suc (fpc x) })
   run-alloc x n h f = one h f refl
+
+  -- Output := a block's first word (Input1 the block, its word a value)
+  run-load-at0 : ∀ x b w → readReg (LocState.regs (floc x)) Input1 ≡ blk b
+               → LocState.heapMem (floc x) (heap-loc (mkHeapRef b) 0) ≡ just w
+               → LocState.halted (floc x) ≡ false → fetch prog (fpc x) ≡ just (load-at 0)
+               → FlatSteps prog 1 x (record x { floc = record (floc x) { regs = writeReg (LocState.regs (floc x)) Output w } ; fpc = suc (fpc x) })
+  run-load-at0 x b w i e h f =
+    one h f (trans (cong (λ v → record x { floc = ExecFinal.exec-load-at-resolved {FS} 0 Output (ExecFinal.frame-gate {FS} (falloc x) 0 (sv-as-loc v)) (floc x)
+                                         ; fpc = suc (fpc x) }) i)
+                   (cong (λ mv → record x { floc = ExecFinal.exec-load-with-value {FS} Output mv (floc x) ; fpc = suc (fpc x) }) e))
