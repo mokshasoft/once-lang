@@ -35,7 +35,7 @@ open import Once.Semantics.Machine using (module Value)
 open Value using (⟦_⟧)
 open import Once.CCC.Codegen.AllocExpandRen {FS} using (ref-of; rhl; rloc; rv)
 open import Once.CCC.Codegen.AllocExpandStep {FS} using (module L; rhl-off)
-open MemOps {FS} using (readLoc)
+open MemOps {FS} using (readLoc; writeLoc)
 open AbstractExec {FS} using (readTyped; readTyped-int; readTyped-float; readTyped-sum; combine-typed; tsize; decode-at)
 
 rloc-off : ∀ ρ (loc : ValueLocation FS) k → rloc ρ (offsetLoc loc k) ≡ offsetLoc (rloc ρ loc) k
@@ -453,3 +453,54 @@ module Sig (ρ : ℕ → ℕ) (Lv : ℕ → Set) (inj : ∀ r r′ → Lv r → 
       ; l-fault = c3 (faults-eq (effect si)) gate-eq (L.LRel.l-fault R)
       ; l-left = L.LRel.l-left R
       ; l-log = Relation.Binary.PropositionalEquality.cong₂ Data.List._++_ (L.LRel.l-log R) (events-eq (effect si)) }
+
+-- an answer stored in a frame, or of no words, leaves the heap
+module Heap where
+  open AbstractExec {FS} using (sigop-store; sigop-store-at; sigop-answer; ans-words)
+  import Data.Nat as ℕ
+
+  zeros-heap : ∀ n f k (x : LocState FS) → LocState.heapMem (writeZeros n (AtStack f k) x) ≡ LocState.heapMem x
+  zeros-heap zero    f k x = refl
+  zeros-heap (suc n) f k x = zeros-heap n f (suc k) (writeLoc x (AtStack f k) zero-word)
+
+  write-heap : ∀ (B : Ty 0) v f k (x : LocState FS) → LocState.heapMem (writeTyped B v (AtStack f k) x) ≡ LocState.heapMem x
+  write-heap Unit    v f k x = refl
+  write-heap Int     v f k x = refl
+  write-heap Float   v f k x = refl
+  write-heap (A * B) (a , b) f k x = trans (write-heap B b f (tsize A ℕ.+ k) (writeTyped A a (AtStack f k) x)) (write-heap A a f k x)
+  write-heap (A + B) (inj₁ a) f k x =
+    trans (zeros-heap ((tsize A ℕ.⊔ tsize B) ℕ.∸ tsize A) f (suc (tsize A) ℕ.+ k) (writeTyped A a (AtStack f (suc k)) (writeLoc x (AtStack f k) (SV-Tag 0))))
+          (write-heap A a f (suc k) (writeLoc x (AtStack f k) (SV-Tag 0)))
+  write-heap (A + B) (inj₂ b) f k x =
+    trans (zeros-heap ((tsize A ℕ.⊔ tsize B) ℕ.∸ tsize B) f (suc (tsize B) ℕ.+ k) (writeTyped B b (AtStack f (suc k)) (writeLoc x (AtStack f k) (SV-Tag 1))))
+          (write-heap B b f (suc k) (writeLoc x (AtStack f k) (SV-Tag 1)))
+  write-heap Void v f k x = refl
+  write-heap (_ ⇒[ _ ] _) v f k x = refl
+  write-heap (μ _) v f k x = refl
+  write-heap (ν _ _) v f k x = refl
+
+  store-heap : ∀ {A B} (si : SigOpInfo A B) (x : LocState FS) fr → ans-ok fr (ans-words B) (readReg (LocState.regs x) Output) ≡ true
+             → LocState.heapMem (sigop-store si x) ≡ LocState.heapMem x
+  store-heap {B = B} si x fr ok = by (in-memory? B) refl (sv-as-loc (readReg (LocState.regs x) Output)) refl (sigop-answer si x)
+    where
+      o = readReg (LocState.regs x) Output
+      by : ∀ im → in-memory? B ≡ im → ∀ ml → sv-as-loc o ≡ ml → ∀ ma
+         → LocState.heapMem (sigop-store-at {B = B} im ml ma x) ≡ LocState.heapMem x
+      by false _ ml _ ma = refl
+      by true _ nothing _ ma = refl
+      by true _ (just (AtStack f j)) _ (just v) = write-heap B v f j x
+      by true _ (just (AtStack f j)) _ nothing = refl
+      by true im (just (AtDynamic hl)) e (just v) = cong LocState.heapMem (Words.write-none (λ r → r) (λ _ → ⊥) (λ _ _ ()) B v (AtDynamic hl) x zero-words)
+        where
+          ptr : o ≡ SV-Ptr (AtDynamic hl)
+          ptr = ptr-of o e
+            where
+              ptr-of : ∀ v′ → sv-as-loc v′ ≡ just (AtDynamic hl) → v′ ≡ SV-Ptr (AtDynamic hl)
+              ptr-of (SV-Ptr _) refl = refl
+              ptr-of (SV-Tag _) ()
+              ptr-of (SV-Lit _ _) ()
+              ptr-of (SV-Code _) ()
+          zero-words : tsize B ≡ 0
+          zero-words = trans (sym (cong (λ b′ → Data.Bool.if b′ then tsize B else 0) im))
+                             (ans-heap fr (ans-words B) hl (subst (λ v′ → ans-ok fr (ans-words B) v′ ≡ true) ptr ok))
+      by true _ (just (AtDynamic hl)) _ nothing = refl
