@@ -24593,33 +24593,41 @@ trace (`OK-ser`), and `apart-top` gives the free's framing premise.
 AllocRun's per-class pools); counting its cells at the machine's sizes makes those claims about the real blocks.
 Nothing in the source semantics (Spec) sees an id's size.
 
-## D470 — THE ALLOCATOR RECORD IS 64 WORDS; THE HOST'S ENTER WRITES ITS FRONTIER WORD (2026-11-23, proposed — for the user's review)
+## D470 — THE ALLOCATOR RECORD IS THE REGION'S FIRST 64 WORDS, REACHED THROUGH THE REGION'S SYMBOL; THE FRONTIER STARTS PAST IT (2026-11-23, proposed — for the user's review)
 
-**Proposed** (unattended, keep-going mode; plan 0.146 B1.6 item 3d). **Amends** D468 (proposed): its "no Host
-change". **Applies**: D320 (the Host's `enter`), D376 (the Host supplies the region), D377 (the room check).
+**Proposed** (unattended, keep-going mode; plan 0.146 B1.6 item 3d). **Amends** D468 (proposed): where the
+frontier lives and how the record is reached. **Applies**: D320 (the Host's `enter`), D376 (the Host supplies
+the region), D377 (the room check).
 
 ### The gap
 D468 puts the frontier in the record's word 0, at the region's bottom, which the heap register points at, and
-says the program's start writes the record. But the first room check comes BEFORE the start (`room-checks`
-puts a check at pc 0, ahead of `c-start`: the start's frame reservation needs it), and under D468 every check
-loads the frontier word, so the first check would read a word nothing has written. And the record's size
-(three words and one head per class) differs per program, so neither the start's code nor a per-instruction
-arch lemma could know where the blocks begin.
+says the program's start writes the record. Two things it does not settle:
+* the first room check comes BEFORE the start (`room-checks` puts a check at pc 0, ahead of `c-start`: the
+  start's frame reservation needs it), and under D468 every check loads the frontier word, so the first check
+  would read a word nothing has written;
+* x86-32 has no scratch register (D468's own reason against a register), and D468's alloc (load the frontier
+  word, bump, store it back) and check (load, add, compare) each need one, or memory-operand arithmetic the
+  x86-32 model does not have.
+And the record's size (three words, one head per class) differs per program, so no per-instruction arch lemma
+knows where the blocks begin.
 
 ### Options
-* **(a) A fixed record; the Host's `enter` writes its frontier word.** The record is `rec-size = 64` words
-  (frontier, two scratch words, up to 61 heads). `enter` points the heap register at the region's bottom (as
-  today) and stores `bottom + 64 words` in its first word: two instructions per Host. The arch models' entry
-  memory holds that one word; the record's cells are mapped at `bottom + k words`, the blocks from 64 up; every
-  correspondence holds from the entry on. A record access is bounded statically (`ImageI`: `load-rec k` with
-  `k < 64`, `store-rec k` with `1 ≤ k < 64`; word 0 is never stored by the abstract code).
+* (a) D468 as written, with the Host's `enter` writing the frontier word: every arch's alloc and check change
+  (x86-32 without a scratch register), and every memory write must keep the frontier word.
 * (b) The first check after `c-start`: unsound — the start's frame reservation is what the check guards.
-* (c) A start-only check instruction reading the register (the frontier IS the bottom before the start): a new
-  instruction through every cascade, two forms of the check on three arches, the boot simulation special.
-* (d) The record's size per program (in `c-start` or a new instruction): `c-start`'s arity on 190 sites, or a
-  new instruction; and the check before the start still reads an unwritten word.
+* (c) A start-only check instruction (the frontier register IS the bottom before the start): a new instruction
+  through every cascade, two forms of the check on three arches.
+* **(d) The record at the region's bottom, reached through the region's symbol; the frontier register stays the
+  frontier and starts past the record.** The record is `rec-size = 64` words (word 0 unused, two scratch words,
+  up to 61 heads). The Host's `enter` points the frontier register 64 words above the region's bottom and
+  exports the region's symbol (`once_region`); `load-rec k`/`store-rec k` are one access at `once_region + 8k`
+  (x86-64: `lea` into the scratch `r11`, then base+disp; x86-32: an absolute symbol+offset operand; riscv64:
+  `lla` into a scratch, then base+offset). The arch models' entry view maps the record's cells (ref 0, word
+  `k < 64`) at `heap-base + 8k`, below the frontier: alloc, the room check and the start are unchanged on every
+  arch, and every correspondence holds from the entry.
 
-### Decision (proposed): (a)
-An allocator has at most 61 classes (`count C ≤ 61`, a premise on `Classes`): the slab allocator gives a class
-per node size up to that, then shares classes (granularity only). The Host learns one ABI fact (the region's
-first word is the frontier, initially 64 words up), stated beside D376's region in the Host interface.
+### Decision (proposed): (d)
+A record access is bounded statically (`EmittableI`: `load-rec k` and `store-rec k` with `k < 64`). An allocator
+has at most 61 classes (`count C ≤ 61`, a premise on `Classes`): the slab allocator gives a class per node size
+up to that, then shares classes (granularity only). The Host learns one ABI fact beside D376's region: the
+region's first 64 words are the program's (the frontier starts past them), and the region's symbol is global.
