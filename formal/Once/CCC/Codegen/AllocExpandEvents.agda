@@ -237,3 +237,80 @@ module _ (C : Classes) (P : AbstractTrace) (Sz : ℕ → Set)
 
     sound : ∀ {fs gs} → Good fs → LocState.faulted (floc fs) ≡ false → Rel C P Sz fs gs → Sound EX gs
     sound G nf0 R d = sound-at _ Data.Nat.Properties.≤-refl G nf0 R d
+
+------------------------------------------------------------------------
+-- ★ From the start: the start's step alike (it reads no program), then the
+-- expansion's set-up (no event) to the first relation
+------------------------------------------------------------------------
+
+open import Once.CCC.Codegen.AllocExpandStart {FS} using (Start; module First)
+open import Once.CCC.Codegen.AllocExpandPc {FS} using (fetch-exp)
+
+module _ (C : Classes) (P : AbstractTrace) (Sz : ℕ → Set)
+         (uniform  : ∀ k k′ → Sz k → Sz k′ → cls C k ≡ cls C k′ → bsz C k ≡ bsz C k′)
+         (fits     : ∀ k → k ≤ bsz C k)
+         (in-range : ∀ k → cls C k < count C)
+         (sz-alloc : ∀ n k → fetch P n ≡ just (instr-alloc-heap k) → Sz k)
+         (sz-free  : ∀ n k → fetch P n ≡ just (instr-free-heap k) → Sz k)
+         (img      : ∀ n m → fetch P n ≡ just (instr-ctrl (c-label m)) → LabelId.path m ≡ [])
+         (jmp-lbl  : ∀ n m → fetch P n ≡ just (instr-ctrl (c-jmp m)) → LabelId.path m ≡ [])
+         (br-lbl   : ∀ n m → fetch P n ≡ just (instr-ctrl (c-branch-tag-zero m)) → LabelId.path m ≡ [])
+         {Good : FlatState → Set} (Kp : Keeps C P Sz uniform fits in-range sz-alloc sz-free img jmp-lbl br-lbl Good)
+         (s₀ : FlatState) (b : ℕ) (st : fetch P 0 ≡ just (instr-ctrl (c-start b)))
+         (pc0 : fpc s₀ ≡ 0) (h0 : LocState.halted (floc s₀) ≡ false)
+         (S : Start (flat-exec-instr (instr-ctrl (c-start b)) P s₀))
+         (pc1 : fpc (flat-exec-instr (instr-ctrl (c-start b)) P s₀) ≡ 1)
+         (link : flink (flat-exec-instr (instr-ctrl (c-start b)) P s₀) ≡ nothing)
+         (G₁ : Good (flat-exec-instr (instr-ctrl (c-start b)) P s₀)) where
+  private
+    EB = expand C P
+    x = flat-exec-instr (instr-ctrl (c-start b)) P s₀
+
+    off0 : ∀ Q → off C 0 Q 0 ≡ 0
+    off0 []      = refl
+    off0 (_ ∷ _) = refl
+
+    fe : ∀ j i → fetch (setup C) j ≡ just i → fetch EB (j + fpc x) ≡ just i
+    fe j i e = subst (λ q → fetch EB q ≡ just i)
+                 (trans (cong (_+ suc j) (off0 P)) (trans (sym (Data.Nat.Properties.+-comm j 1)) (cong (j +_) (sym pc1))))
+                 (fetch-exp C 0 P 0 (instr-ctrl (c-start b)) st (suc j) i e)
+
+    fe0 : fetch EB (fpc s₀) ≡ just (instr-ctrl (c-start b))
+    fe0 = subst (λ q → fetch EB q ≡ just (instr-ctrl (c-start b))) (trans (cong (_+ 0) (off0 P)) (sym pc0))
+                (fetch-exp C 0 P 0 (instr-ctrl (c-start b)) st 0 _ refl)
+
+    st₀ : fetch P (fpc s₀) ≡ just (instr-ctrl (c-start b))
+    st₀ = subst (λ q → fetch P q ≡ just (instr-ctrl (c-start b))) (sym pc0) st
+
+    module F = First C P Sz x S fe pc1 link b st
+    module SR = F.SR
+
+    -- the start's step and the set-up, one chain
+    c₀ : FlatSteps EB (suc (4 + (count C + 6))) s₀ SR.z₆
+    c₀ = (h0 , fe0) ∷ SR.run
+
+    -- the set-up logs nothing (its end's log is the start's: `R₀`)
+    quiet : chain-events SR.run ≡ []
+    quiet = Data.List.Properties.++-cancelˡ (LocState.ev-log (floc x)) (chain-events SR.run) []
+              (trans (sym (chain-log SR.run)) (trans (L.LRel.l-log (Rel.r-loc F.R₀)) (sym (Data.List.Properties.++-identityʳ _))))
+
+  ev-start : ∀ n → Σ ℕ λ m → Same C P Sz uniform fits in-range sz-alloc sz-free img jmp-lbl br-lbl m s₀ (suc n) s₀
+  ev-start n = go (Run.ev C P Sz uniform fits in-range sz-alloc sz-free img jmp-lbl br-lbl Kp n G₁ F.R₀)
+    where
+      go : Σ ℕ (λ m → Same C P Sz uniform fits in-range sz-alloc sz-free img jmp-lbl br-lbl m SR.z₆ n x)
+         → Σ ℕ λ m → Same C P Sz uniform fits in-range sz-alloc sz-free img jmp-lbl br-lbl m s₀ (suc n) s₀
+      go (m , ee , ec) =
+        suc (4 + (count C + 6)) + m
+        , trans (flat-events-steps c₀ m) (trans (cong₂ _▹_ quiet ee) (sym (ev-unfold n P s₀ h0 st₀)))
+        , subst (_≤ flat-ctrls (suc (4 + (count C + 6)) + m) EB s₀) (sym (ct-unfold n P s₀ h0 st₀))
+            (subst (ctrl-of (instr-ctrl (c-start b)) + flat-ctrls n P x ≤_) (sym (flat-ctrls-steps c₀ m))
+              (Data.Nat.Properties.+-mono-≤ (Data.Nat.Properties.m≤m+n (ctrl-of (instr-ctrl (c-start b))) (chain-ctrls SR.run)) ec))
+
+  -- …and the expanded run from the start never faults
+  sound-start : LocState.faulted (floc s₀) ≡ false → LocState.faulted (floc x) ≡ false → Sound EB s₀
+  sound-start nf0 nf1 {k} {y} d = split (meet c₀ d)
+    where
+      split : ((Σ ℕ λ j → FlatSteps EB j SR.z₆ y × k ≡ suc (4 + (count C + 6)) + j) ⊎ (Σ ℕ λ j → FlatSteps EB (suc j) y SR.z₆))
+            → LocState.faulted (floc y) ≡ false
+      split (inj₁ (j , r , _)) = NoFault.sound C P Sz uniform fits in-range sz-alloc sz-free img jmp-lbl br-lbl Kp G₁ nf1 F.R₀ r
+      split (inj₂ (j , (hy , _) ∷ _)) = trans (chain-fault d hy) nf0
