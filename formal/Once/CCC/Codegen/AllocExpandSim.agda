@@ -638,3 +638,45 @@ module _ (C : Classes) (P : AbstractTrace) where
           br true  = subst (λ m → Rel C P (do-jump (find-label P l) fs) (do-jump m gs)) (sym (fl-exp C 0 P l 0 pe)) (jump-rel R (find-label P l))
           br false = core-gen R (moves-next R _ _ (next-pc R (instr-ctrl (c-branch-tag-zero l)) f refl) refl refl refl refl refl refl refl refl)
                        (r-loc R) (r-clo R) (λ q _ → refl)
+
+  ------------------------------------------------------------------------
+  -- Entries, calls and returns
+  ------------------------------------------------------------------------
+
+  open FlatMachine {FS} using (do-thunk; grow-frame; enter-call; leave-frame; leave-frame-aux; do-call-at; do-ret; ret-land
+                              ; do-call; do-call-sv; do-call-code; find-thunk; find-fn; find-entry; ft-go)
+  open MemOps {FS} using (clear-frame; clear-frame-aux)
+  open import Once.CCC.Codegen.AllocExpandPc {FS} using (ft-exp)
+
+  -- a frame cleared on both sides
+  clear-rel : ∀ {fs gs} (R : Rel C P fs gs) f b
+            → ∀ f′ k → clear-frame (LocState.stackMem (floc gs)) f b f′ k ≡ Data.Maybe.map (rv (ρ R)) (clear-frame (LocState.stackMem (floc fs)) f b f′ k)
+  clear-rel {fs} {gs} R f b f′ k = aux (FrameSemantics._≟F_ FS f f′) (Data.Nat.Properties._<?_ k b)
+    where
+      aux : ∀ (df : Relation.Nullary.Dec (f ≡ f′)) (dk : Relation.Nullary.Dec (k < b))
+          → clear-frame-aux df dk (LocState.stackMem (floc gs) f′ k) ≡ Data.Maybe.map (rv (ρ R)) (clear-frame-aux df dk (LocState.stackMem (floc fs) f′ k))
+      aux (Relation.Nullary.no _)  _                        = L.LRel.l-stack (r-loc R) f′ k
+      aux (Relation.Nullary.yes _) (Relation.Nullary.yes _) = refl
+      aux (Relation.Nullary.yes _) (Relation.Nullary.no _)  = L.LRel.l-stack (r-loc R) f′ k
+
+  -- the stack replaced by a related one
+  stack-loc : ∀ {fs gs} (R : Rel C P fs gs) (m m′ : StackMem FS) → (∀ f k → m′ f k ≡ Data.Maybe.map (rv (ρ R)) (m f k))
+            → L.LRel (ρ R) (Live (falloc fs)) (r-inj R) (record (floc fs) { stackMem = m }) (record (floc gs) { stackMem = m′ })
+  stack-loc R m m′ e = record
+    { l-regs = L.LRel.l-regs (r-loc R) ; l-stack = e ; l-heap = L.LRel.l-heap (r-loc R) ; l-live = L.LRel.l-live (r-loc R)
+    ; l-halt = L.LRel.l-halt (r-loc R) ; l-fault = L.LRel.l-fault (r-loc R) ; l-left = L.LRel.l-left (r-loc R) ; l-log = L.LRel.l-log (r-loc R) }
+
+  step-entry : ∀ {fs gs} (R : Rel C P fs gs) e b → fetch P (fpc fs) ≡ just (instr-ctrl (c-entry e b))
+             → Rel C P (flat-exec-instr (instr-ctrl (c-entry e b)) P fs) (flat-exec-instr (instr-ctrl (c-entry e b)) E gs)
+  step-entry {fs} {gs} R e b f =
+    core-gen R
+      (record { m-pc = trans (sym (next-pc R (instr-ctrl (c-entry e b)) f refl)) refl ; m-ret = r-ret R ; m-link = refl
+              ; m-frame = cong (λ c → FrameSemantics.shift-frame FS c b) (r-frame R) ; m-saved = r-saved R ; m-slots = refl ; m-nslot = r-next-slot R
+              ; m-nextP = refl ; m-freeP = λ _ → refl ; m-sizeP = λ _ → refl
+              ; m-nextE = refl ; m-freeE = λ _ → refl ; m-sizeE = λ _ → refl })
+      (subst (λ c → L.LRel (ρ R) (Live (falloc fs)) (r-inj R)
+                      (record (floc fs) { stackMem = clear-frame (LocState.stackMem (floc fs)) (FrameSemantics.shift-frame FS (AllocState.current-frame (falloc fs)) b) b })
+                      (record (floc gs) { stackMem = clear-frame (LocState.stackMem (floc gs)) (FrameSemantics.shift-frame FS c b) b }))
+             (sym (r-frame R))
+             (stack-loc R _ _ (clear-rel R (FrameSemantics.shift-frame FS (AllocState.current-frame (falloc fs)) b) b)))
+      (r-clo R) (λ q _ → refl)
