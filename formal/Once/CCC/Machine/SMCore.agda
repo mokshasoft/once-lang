@@ -1191,6 +1191,13 @@ data FlatCtrl : Set where
 -- A closure-body entry, the marker's original form (Plan 0.63, D082).
 pattern c-thunk ℓ b = c-entry (e-thunk ℓ) b
 
+
+-- D470: the cell allocator's record (ref 0, at the region's bottom) is a fixed
+-- 64 words — word 0 the frontier (per arch: the Host's `enter` writes it), words
+-- 1 and 2 scratch, a head per class from word 3 — so the blocks begin 64 words up
+rec-size : ℕ
+rec-size = 64
+
 data AbstractInstr : Set where
   -- Register operations
   mov-to-output      : AbstractInstr              -- Output := Input1

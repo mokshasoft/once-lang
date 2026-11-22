@@ -22,6 +22,7 @@ open import Data.Nat using (ℕ; zero; suc; _+_; _<_; _≤_; z≤n)
 import Data.Nat.Properties
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 open import Data.Empty using (⊥; ⊥-elim)
+import Data.Unit
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 open import Once.CCC.Machine.SMCore
 open import Once.CCC.Machine.Flat using (module FlatMachine)
@@ -64,6 +65,13 @@ module _ (C : Classes) (P : AbstractTrace) (Sz : ℕ → Set)
   Step i fs gs = Σ ℕ λ N → Σ FlatState λ gs′ → Σ (FlatSteps E (suc N) gs gs′) λ c
                → (ctrl-of i ≤ chain-ctrls c) × Rel C P Sz (flat-exec-instr i P fs) gs′
 
+  -- the primitive program has no record word (the expansion adds them)
+  NoRecI : AbstractInstr → Set
+  NoRecI (load-rec _)  = ⊥
+  NoRecI (store-rec _) = ⊥
+  {-# CATCHALL #-}
+  NoRecI _             = Data.Unit.⊤
+
   -- an instruction the expansion keeps: one step
   kept : ∀ {fs gs} (R : Rel C P Sz fs gs) i → fetch P (fpc fs) ≡ just i → expand-at C (fpc fs + 0) i ≡ i ∷ []
        → LocState.halted (floc fs) ≡ false
@@ -87,54 +95,54 @@ module _ (C : Classes) (P : AbstractTrace) (Sz : ℕ → Set)
       by []       e = 9 , AL.BumpStep.G R k f h wf cw e , AL.BumpStep.BB.run R k f h wf cw e , z≤n , AL.BumpStep.R′ R k f h wf cw e
 
   -- ★ one primitive step, by its instruction
-  dispatch : ∀ {fs gs} (R : Rel C P Sz fs gs) i → fetch P (fpc fs) ≡ just i → EmittableI i
+  dispatch : ∀ {fs gs} (R : Rel C P Sz fs gs) i → fetch P (fpc fs) ≡ just i → EmittableI i → NoRecI i
            → LocState.halted (floc fs) ≡ false → LocState.faulted (floc (flat-exec-instr i P fs)) ≡ false
            → WF.StoreWF (AllocState.next-heap-ref (falloc fs)) (floc fs) → WF.sv-below (AllocState.next-heap-ref (falloc fs)) (fclosure fs)
            → Step i fs gs
-  dispatch R mov-to-output f em h nf wf cw = kept R _ f refl h (S.step-mov-out C P Sz R f)
-  dispatch R mov-to-input f em h nf wf cw = kept R _ f refl h (S.step-mov-in C P Sz R f)
-  dispatch R (load-from-slot k) f em h nf wf cw = kept R _ f refl h (S.step-from-slot C P Sz R k f nf)
-  dispatch R (store-at-slot k) f em h nf wf cw = kept R _ f refl h (S.step-to-slot C P Sz R k f nf)
-  dispatch R (lea-slot k) f em h nf wf cw = kept R _ f refl h (S.step-lea C P Sz R k f nf)
-  dispatch R (restore-input k) f em h nf wf cw = kept R _ f refl h (S.step-restore C P Sz R k f nf)
-  dispatch R (instr-reclaim-to n) f em h nf wf cw = kept R _ f refl h (S.step-reclaim C P Sz R n f)
-  dispatch R instr-call-closure f em h nf wf cw = kept R _ f refl h (S.step-call-clo C P Sz R f nf)
-  dispatch R (worklist-init k) f em h nf wf cw = kept R _ f refl h (S.step-wl-init C P Sz R k f)
-  dispatch R (worklist-push k) f em h nf wf cw = kept R _ f refl h (S.step-wl-push C P Sz R k f nf)
-  dispatch R (worklist-pop k) f em h nf wf cw = kept R _ f refl h (S.step-wl-pop C P Sz R k f nf)
-  dispatch R (worklist-check k) f em h nf wf cw = kept R _ f refl h (S.step-wl-check C P Sz R k f)
-  dispatch R (instr-sigop si) f em h nf wf cw = kept R _ f refl h (S.step-sigop C P Sz R si f nf)
-  dispatch R (instr-load-const p v) f em h nf wf cw = kept R _ f refl h (S.step-const C P Sz R p v f)
-  dispatch R (instr-load-code-addr l) f em h nf wf cw = kept R _ f refl h (S.step-code C P Sz R l f)
-  dispatch R instr-save-closure-reg f em h nf wf cw = kept R _ f refl h (S.step-save-clo C P Sz R f)
-  dispatch R (instr-load-tag-lit n) f em h nf wf cw = kept R _ f refl h (S.step-tag C P Sz R n f)
-  dispatch R (instr-alloc-heap k) f em h nf wf cw = alloc-step R k f h wf cw
-  dispatch R (instr-reg-op out-nz) f em h nf wf cw = kept R _ f refl h (S.step-nz C P Sz R f)
-  dispatch R (instr-free-heap k) f em h nf wf cw = 5 , free-run (FR.step-free R k f h nf)
+  dispatch R mov-to-output f em nr h nf wf cw = kept R _ f refl h (S.step-mov-out C P Sz R f)
+  dispatch R mov-to-input f em nr h nf wf cw = kept R _ f refl h (S.step-mov-in C P Sz R f)
+  dispatch R (load-from-slot k) f em nr h nf wf cw = kept R _ f refl h (S.step-from-slot C P Sz R k f nf)
+  dispatch R (store-at-slot k) f em nr h nf wf cw = kept R _ f refl h (S.step-to-slot C P Sz R k f nf)
+  dispatch R (lea-slot k) f em nr h nf wf cw = kept R _ f refl h (S.step-lea C P Sz R k f nf)
+  dispatch R (restore-input k) f em nr h nf wf cw = kept R _ f refl h (S.step-restore C P Sz R k f nf)
+  dispatch R (instr-reclaim-to n) f em nr h nf wf cw = kept R _ f refl h (S.step-reclaim C P Sz R n f)
+  dispatch R instr-call-closure f em nr h nf wf cw = kept R _ f refl h (S.step-call-clo C P Sz R f nf)
+  dispatch R (worklist-init k) f em nr h nf wf cw = kept R _ f refl h (S.step-wl-init C P Sz R k f)
+  dispatch R (worklist-push k) f em nr h nf wf cw = kept R _ f refl h (S.step-wl-push C P Sz R k f nf)
+  dispatch R (worklist-pop k) f em nr h nf wf cw = kept R _ f refl h (S.step-wl-pop C P Sz R k f nf)
+  dispatch R (worklist-check k) f em nr h nf wf cw = kept R _ f refl h (S.step-wl-check C P Sz R k f)
+  dispatch R (instr-sigop si) f em nr h nf wf cw = kept R _ f refl h (S.step-sigop C P Sz R si f nf)
+  dispatch R (instr-load-const p v) f em nr h nf wf cw = kept R _ f refl h (S.step-const C P Sz R p v f)
+  dispatch R (instr-load-code-addr l) f em nr h nf wf cw = kept R _ f refl h (S.step-code C P Sz R l f)
+  dispatch R instr-save-closure-reg f em nr h nf wf cw = kept R _ f refl h (S.step-save-clo C P Sz R f)
+  dispatch R (instr-load-tag-lit n) f em nr h nf wf cw = kept R _ f refl h (S.step-tag C P Sz R n f)
+  dispatch R (instr-alloc-heap k) f em nr h nf wf cw = alloc-step R k f h wf cw
+  dispatch R (instr-reg-op out-nz) f em nr h nf wf cw = kept R _ f refl h (S.step-nz C P Sz R f)
+  dispatch R (instr-free-heap k) f em nr h nf wf cw = 5 , free-run (FR.step-free R k f h nf)
     where
       free-run : ∀ {fs gs} → Σ FlatState (λ gs′ → FlatSteps E 6 gs gs′ × Rel C P Sz fs gs′)
                → Σ FlatState λ gs′ → Σ (FlatSteps E 6 gs gs′) λ c → (0 ≤ chain-ctrls c) × Rel C P Sz fs gs′
       free-run (gs′ , c , R′) = gs′ , c , z≤n , R′
-  dispatch R (load-at k) f em h nf wf cw = kept R _ f refl h (S.step-load-at C P Sz R k f nf)
-  dispatch R (store-at k) f em h nf wf cw = kept R _ f refl h (S.step-store-at C P Sz R k f nf)
-  dispatch R (addr-at k) f em h nf wf cw = kept R _ f refl h (S.step-addr-at C P Sz R k f nf)
-  dispatch {fs} R (instr-ctrl (c-label l)) f em h nf wf cw = kept R _ f refl h (S.step-label C P Sz R l f)
-  dispatch {fs} R (instr-ctrl (c-jmp l)) f em h nf wf cw = kept R _ f refl h (S.step-jmp C P Sz R l (jmp-lbl (fpc fs) l f) f)
-  dispatch {fs} R (instr-ctrl (c-branch-tag-zero l)) f em h nf wf cw = kept R _ f refl h (S.step-branch C P Sz R l (br-lbl (fpc fs) l f) f nf)
-  dispatch R (instr-ctrl (c-entry e b)) f em h nf wf cw = kept R _ f refl h (S.step-entry C P Sz R e b f)
-  dispatch R (instr-ctrl (c-call-fn fn)) f em h nf wf cw = kept R _ f refl h (S.step-call-fn C P Sz R fn f)
-  dispatch R (instr-ctrl (c-ret b)) f em h nf wf cw = kept R _ f refl h (S.step-ret C P Sz R b f)
-  dispatch R (instr-ctrl c-leave) f em h nf wf cw = kept R _ f refl h (S.step-leave C P Sz R f)
+  dispatch R (load-at k) f em nr h nf wf cw = kept R _ f refl h (S.step-load-at C P Sz R k f nf)
+  dispatch R (store-at k) f em nr h nf wf cw = kept R _ f refl h (S.step-store-at C P Sz R k f nf)
+  dispatch R (addr-at k) f em nr h nf wf cw = kept R _ f refl h (S.step-addr-at C P Sz R k f nf)
+  dispatch {fs} R (instr-ctrl (c-label l)) f em nr h nf wf cw = kept R _ f refl h (S.step-label C P Sz R l f)
+  dispatch {fs} R (instr-ctrl (c-jmp l)) f em nr h nf wf cw = kept R _ f refl h (S.step-jmp C P Sz R l (jmp-lbl (fpc fs) l f) f)
+  dispatch {fs} R (instr-ctrl (c-branch-tag-zero l)) f em nr h nf wf cw = kept R _ f refl h (S.step-branch C P Sz R l (br-lbl (fpc fs) l f) f nf)
+  dispatch R (instr-ctrl (c-entry e b)) f em nr h nf wf cw = kept R _ f refl h (S.step-entry C P Sz R e b f)
+  dispatch R (instr-ctrl (c-call-fn fn)) f em nr h nf wf cw = kept R _ f refl h (S.step-call-fn C P Sz R fn f)
+  dispatch R (instr-ctrl (c-ret b)) f em nr h nf wf cw = kept R _ f refl h (S.step-ret C P Sz R b f)
+  dispatch R (instr-ctrl c-leave) f em nr h nf wf cw = kept R _ f refl h (S.step-leave C P Sz R f)
   -- the instructions an image holds none of
-  dispatch R load-indirect f () h nf wf cw
-  dispatch R load-indirect-suc f () h nf wf cw
-  dispatch R store-indirect f () h nf wf cw
-  dispatch R store-indirect-suc f () h nf wf cw
-  dispatch R (instr-alloc-stack _) f () h nf wf cw
-  dispatch R (instr-dealloc-stack _) f () h nf wf cw
-  dispatch R (instr-push-frame _) f () h nf wf cw
-  dispatch R instr-pop-frame f () h nf wf cw
-  dispatch R (instr-room _) f () h nf wf cw
-  dispatch R (load-rec _) f () h nf wf cw
-  dispatch R (store-rec _) f () h nf wf cw
-  dispatch R (instr-ctrl (c-start _)) f () h nf wf cw
+  dispatch R load-indirect f () nr h nf wf cw
+  dispatch R load-indirect-suc f () nr h nf wf cw
+  dispatch R store-indirect f () nr h nf wf cw
+  dispatch R store-indirect-suc f () nr h nf wf cw
+  dispatch R (instr-alloc-stack _) f () nr h nf wf cw
+  dispatch R (instr-dealloc-stack _) f () nr h nf wf cw
+  dispatch R (instr-push-frame _) f () nr h nf wf cw
+  dispatch R instr-pop-frame f () nr h nf wf cw
+  dispatch R (instr-room _) f () nr h nf wf cw
+  dispatch R (load-rec _) f em () h nf wf cw
+  dispatch R (store-rec _) f em () h nf wf cw
+  dispatch R (instr-ctrl (c-start _)) f () nr h nf wf cw

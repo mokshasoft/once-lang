@@ -295,7 +295,7 @@ riscv64-machine : EI.Machine FS Reg riscv64-emitter
 riscv64-machine = record
   { State = R.State ; rreg = λ s r → R.readReg (R.State.regs s) r
   ; memory = R.State.memory
-  ; xhalted = R.State.halted ; xpc = R.State.pc
+  ; xhalted = R.State.halted ; heap-base = R.heap-base ; xpc = R.State.pc
   -- `jalr` writes the LINK REGISTER and nothing else: until the callee's
   -- `sd ra` there is no cell to point at, so the claim ignores the address.
   ; link-claim = FSimr.riscv64-link-claim o FS word-eq fmt-eq
@@ -397,7 +397,7 @@ module FlatSimulation = Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation o F
   ; block-step-store-at-slot; block-step-worklist-push
   ; block-step-store-indirect; block-step-store-indirect-stack
   ; block-step-store-indirect-suc; block-step-store-indirect-suc-stack
-  ; block-step-load-at; block-step-store-at; block-step-addr-at; addr-at-no-wrap; block-step-load-at-stack; block-step-store-at-stack
+  ; block-step-load-at; block-step-store-at; block-step-load-rec; block-step-store-rec; block-step-addr-at; addr-at-no-wrap; block-step-load-at-stack; block-step-store-at-stack
   ; block-step-c-jmp
   ; block-step-c-branch-tag-zero; block-step-c-branch-tag-nz
   ; block-step-c-thunk; block-step-c-start; block-step-out-nz; block-step-c-ret
@@ -422,7 +422,7 @@ module CFr = FCr FS word-eq
 open import Once.Adequacy.ArchCorrectness.RiscV64.FlatComposition FS using (module FlatComposition)
 open FlatComposition using (blk-off; blk-len; blk-off-suc)
 open import Once.Adequacy.ArchCorrectness.FlatCore.SigOpFrame
-       o FS slot-size word-eq Reg riscv64-roles R.State (FSimr.rreg' o FS word-eq fmt-eq) R.State.memory R.State.halted
+       o FS slot-size word-eq Reg riscv64-roles R.State (FSimr.rreg' o FS word-eq fmt-eq) R.State.memory R.State.halted R.heap-base
        (FSimr.riscv64-link-claim o FS word-eq fmt-eq) R.State.pc Once.CCC.Target.RiscV64.Syntax.Program compile-trace
        R.find-label blk-off blk-len R.exec R.W.modulus
   using (ArithRun; sigop-arith-step)
@@ -565,6 +565,8 @@ riscv64-block-steps = record
   ; bs-store-indirect-suc       = block-step-store-indirect-suc
   ; bs-load-at                  = block-step-load-at
   ; bs-store-at                 = block-step-store-at
+  ; bs-load-rec                 = block-step-load-rec
+  ; bs-store-rec                = block-step-store-rec
   ; bs-addr-at                  = riscv64-addr-at
   ; bs-store-indirect-suc-stack = block-step-store-indirect-suc-stack
   ; bs-c-jmp                    = block-step-c-jmp

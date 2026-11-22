@@ -38,7 +38,7 @@ open import Data.Product using (_,_)
 open import Data.Unit using (tt)
 open import Once.Target.SymbolValid using (once-symbol-path-asm)
 open import Once.Target.Symbol using (once-symbol-path)
-open import Once.Target.SymbolFresh using (host-leave-symbol; host-exhausted-symbol)
+open import Once.Target.SymbolFresh using (host-leave-symbol; host-exhausted-symbol; alloc-record-symbol)
 
 -- an op's symbol, if the op is external
 ext-at : ∀ {A B} → SigOpSem A B → String → List String
@@ -62,7 +62,8 @@ ext-syms (i ∷ is) = ext-sym i ++ ext-syms is
 -- defines `once_main`, the image's labels and its blocks' symbols; each once; each reference
 -- among them or the externs; every extern a symbol `as` reads
 Defs : AbstractTrace → List ArithBlock → List String
-Defs t bs = entry-symbol ∷ adefs t ++ Once.Compile.Emit.block-syms bs
+-- (D470: and its allocator record, in its own `.bss`)
+Defs t bs = entry-symbol ∷ alloc-record-symbol ∷ adefs t ++ Once.Compile.Emit.block-syms bs
 
 ImageWF : AbstractTrace → List ArithBlock → List String → Set
 ImageWF t bs ex = Unique (Defs t bs) × All (λ s → s ∈ Defs t bs ⊎ s ∈ ex) (arefs t) × All AsmSym ex

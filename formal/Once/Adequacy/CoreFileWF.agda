@@ -50,7 +50,11 @@ private
 
 -- the defined symbols are `as`'s
 defs-asm : ∀ (t : AbstractTrace) (bs : List ArithBlock) → All AsmSym (Defs t bs)
-defs-asm t bs = entry-asm ∷ ++⁺ (adefs-asm t) (block-syms-asm bs)
+defs-asm t bs = entry-asm ∷ record-asm ∷ ++⁺ (adefs-asm t) (block-syms-asm bs)
+  where
+    -- D470: `once_alloc_record`, the program's allocator record
+    record-asm : AsmSym "once_alloc_record"
+    record-asm = (tt , tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
 
 module X8664 where
   import Once.CCC.Target.X86-64.File as F
@@ -79,7 +83,7 @@ module X8664 where
       code≡ : F.Image.code G ≡ L.compile-trace t
       code≡ = cong proj₂ (L.compile-trace-cnt-agrees C.entry-owner 0 t)
       defs≡ : F.defs G ≡ Defs t bs
-      defs≡ = cong ("once_main" ∷_) (cong₂ _++_ (trans (cong F.label-defs code≡) (defs-lower t)) (map-fst _ _))
+      defs≡ = cong (λ z → "once_main" ∷ "once_alloc_record" ∷ z) (cong₂ _++_ (trans (cong F.label-defs code≡) (defs-lower t)) (map-fst _ _))
       refs≡ : F.refs (F.Image.code G) ≡ arefs t
       refs≡ = trans (cong F.refs code≡) (refs-lower t)
       subst₂′ : All (λ s → s ∈ Defs t bs ⊎ s ∈ ex) (arefs t) → All (λ s → s ∈ F.defs G ⊎ s ∈ ex) (F.refs (F.Image.code G))
@@ -112,7 +116,7 @@ module X8632 where
       code≡ : F.Image.code G ≡ L.compile-trace t
       code≡ = cong proj₂ (L.compile-trace-cnt-agrees C.entry-owner 0 t)
       defs≡ : F.defs G ≡ Defs t bs
-      defs≡ = cong ("once_main" ∷_) (cong₂ _++_ (trans (cong F.label-defs code≡) (defs-lower t)) (map-fst _ _))
+      defs≡ = cong (λ z → "once_main" ∷ "once_alloc_record" ∷ z) (cong₂ _++_ (trans (cong F.label-defs code≡) (defs-lower t)) (map-fst _ _))
       refs≡ : F.refs (F.Image.code G) ≡ arefs t
       refs≡ = trans (cong F.refs code≡) (refs-lower t)
       subst₂′ : All (λ s → s ∈ Defs t bs ⊎ s ∈ ex) (arefs t) → All (λ s → s ∈ F.defs G ⊎ s ∈ ex) (F.refs (F.Image.code G))
@@ -145,7 +149,7 @@ module RiscV64 where
       code≡ : F.Image.code G ≡ L.compile-trace t
       code≡ = cong proj₂ (L.compile-trace-cnt-agrees C.entry-owner 0 t)
       defs≡ : F.defs G ≡ Defs t bs
-      defs≡ = cong ("once_main" ∷_) (cong₂ _++_ (trans (cong F.label-defs code≡) (defs-lower t)) (map-fst _ _))
+      defs≡ = cong (λ z → "once_main" ∷ "once_alloc_record" ∷ z) (cong₂ _++_ (trans (cong F.label-defs code≡) (defs-lower t)) (map-fst _ _))
       refs≡ : F.refs (F.Image.code G) ≡ arefs t
       refs≡ = trans (cong F.refs code≡) (refs-lower t)
       subst₂′ : All (λ s → s ∈ Defs t bs ⊎ s ∈ ex) (arefs t) → All (λ s → s ∈ F.defs G ⊎ s ∈ ex) (F.refs (F.Image.code G))

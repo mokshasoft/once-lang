@@ -69,6 +69,7 @@ module Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
   (rreg : State → Reg → ℕ)
   (memory : State → (ℕ → Maybe ℕ))
   (xhalted : State → Bool)
+  (heap-base : ℕ)            -- D470: the allocator record's address
   -- WHERE AN UNSPILLED RETURN ADDRESS LIVES (plan 0.65 G2, 2026-08-16). In the
   -- one-instruction window between a call and the callee's body marker the head
   -- pending return has not reached its stack cell yet, and where it IS is an ABI
@@ -103,7 +104,7 @@ open FlatState using (fpc; flink; falloc; fret; fclosure)
 open MemOps {FS} using (writeLoc; writeLocToHeap; readLoc)
 open FlatMachine {FS} using (fetch)
 open FlatState using (floc)
-open import Once.Memory.HeapAddress using (HeapLocation; sucHL; offsetHL; module HeapRef; module HeapLocation)
+open import Once.Memory.HeapAddress using (HeapLocation; sucHL; offsetHL; heap-loc; mkHeapRef; module HeapRef; module HeapLocation)
 open ExecFinal {FS} using (in-block?; live-size)
 open AllocState using (block-size)
 open import Data.Bool using (true)
@@ -135,7 +136,7 @@ import Once.Adequacy.ArchCorrectness.FlatCore.RunLow as RL
 -- ambiguous at every engine consumer. Same instance either way (module
 -- application is by alias), so the two `RunAt`s are one type.
 private
-  module CFC = FC FS slot-size word-eq Reg roles State rreg memory xhalted
+  module CFC = FC FS slot-size word-eq Reg roles State rreg memory xhalted heap-base
     using (FlatCorr; HeapView; RetAddrs; descend-view; extend-view; frames-of; sep; slots; module FlatCorr; module HeapView)
   module CRC = RC o FS slot-size word-eq
   module CRL = RL o FS slot-size word-eq
@@ -525,6 +526,20 @@ record BlockSteps : Set₁ where
       → writeLoc (floc fs) (AtDynamic (offsetHL hl k)) (readReg (regs (floc fs)) Output)
         ≡ writeLocToHeap (floc fs) (offsetHL hl k) (readReg (regs (floc fs)) Output)
       → BlockStep hv prog fs s (store-at k)
+    -- D468/D470: the allocator record's words — a load reads a written record
+    -- cell, a store writes one of the record's `rec-size` (mapped: `rec-dom`)
+    bs-load-rec :
+      ∀ {hv : HeapView} prog fs s k w → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just (load-rec k)
+      → heapMem (floc fs) (heap-loc (mkHeapRef 0) k) ≡ just w
+      → BlockStep hv prog fs s (load-rec k)
+    bs-store-rec :
+      ∀ {hv : HeapView} prog fs s k → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just (store-rec k)
+      → k < rec-size
+      → BlockStep hv prog fs s (store-rec k)
     -- plan 0.123 B.4 α: an address at an offset, a cell of its block (D385),
     -- so a mapped one; the run is handed over for an arch whose address is a
     -- real add (riscv64's `addi`: its no-wrap is the frontier's register range).
@@ -656,7 +671,7 @@ record BlockSteps : Set₁ where
       → lo' ≤ rreg s sp-reg ∸ b * slot-size
       → b * slot-size ≤ rreg s sp-reg
       → rreg s sp-reg < modulus
-      → hfront hv ≡ slot-size      -- D367: the heap starts one word up
+      → hfront hv ≡ heap-base + rec-size * slot-size   -- D470: the frontier starts past the record
       → fret fs ≡ []
       → BlockStepAt hv (descend-view hv lo' lo'≤lo front-lo') prog fs s
                     (instr-ctrl (c-start b))

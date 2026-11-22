@@ -57,7 +57,7 @@ module Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation
 open import Data.Nat using (ℕ; suc; _+_; zero; _∸_; _<_; s≤s; z≤n; _≤_; _<ᵇ_; _*_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Product using (Σ)
-open import Once.Target.SymbolFresh using (host-exhausted-symbol)
+open import Once.Target.SymbolFresh using (host-exhausted-symbol; alloc-record-symbol)
 open import Data.Nat.Properties using (+-identityʳ; +-assoc; +-comm)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
@@ -69,7 +69,7 @@ open import Once.CCC.Machine.SMCore
 open AllocState using (frame-slots; current-frame; saved-frames; next-heap-ref)
 open LocState using (halted; stackMem; regs; heapMem)
 open import Once.CCC.Machine.Locations using (Slot; AtDynamic; AtStack)
-open import Once.Memory.HeapAddress using (module HeapLocation; module HeapRef; sucHL; offsetHL)
+open import Once.Memory.HeapAddress using (module HeapLocation; module HeapRef; sucHL; offsetHL; heap-loc; mkHeapRef)
 open ExecFinal {FS} using (in-block?; live-size)
 open AllocState using (block-size)
 open HeapLocation using (heap-ref)
@@ -84,7 +84,7 @@ open import Once.CCC.Label using (once; thunk; callee; e-thunk; e-fn)
 import Once.CCC.Target.RiscV64.Semantics as R
 import Once.Adequacy.ArchCorrectness.RiscV64.FlatCorrespondence as FC
 module C = FC FS word-eq
-  using (keeps-t1-t2-riscv64; role-off-ra; role-off-t1; sets-2roles-riscv64; sets-mem-riscv64; sets-role-riscv64; module FlatCorrespondence)
+  using (keeps-t1-t2-riscv64; role-off-ra; role-off-t1; sets-2roles-riscv64; sets-mem-riscv64; sets-role-riscv64; sets-out-t1-riscv64; sets-mem-t1-riscv64; module FlatCorrespondence)
 open C using ()
 open C.FlatCorrespondence using (HeapView)
 open C.FlatCorrespondence.HeapView using (HDom; haddr)
@@ -92,8 +92,8 @@ open import Once.Adequacy.ArchCorrectness.RiscV64.FlatComposition FS
   using (module FlatComposition)
 open FlatComposition using (blk-off; blk-len; fetch-block-head; blk-off-suc; fetch-block-nth; find-label-corr; fetch-block-2nd; fetch-block-3rd; find-thunk-corr)
 open import Once.Adequacy.ArchCorrectness.RiscV64.StepLemmas
-  using (exec-1; step-mv; step-li; step-label; step-ld; step-sd; step-addi; step-sltu; step-lla; step-j-found; step-beq-taken; step-beq-not; step-ret; step-jalr; step-jal-found; step-sub; step-bgeu-taken; step-bgeu-not; step-local-1; find-local-1-past-call)
-open import Once.CCC.Target.RiscV64.Syntax using (mv; li; label; ld; sd; addi; sltu; lla; beq; j; ret; jalr; jal; slots; sub; call-sym; bgeu-fwd; local-1)
+  using (exec-1; step-mv; step-li; step-label; step-ld; step-sd; step-addi; step-sltu; step-lla; step-lla-sym; step-j-found; step-beq-taken; step-beq-not; step-ret; step-jalr; step-jal-found; step-sub; step-bgeu-taken; step-bgeu-not; step-local-1; find-local-1-past-call)
+open import Once.CCC.Target.RiscV64.Syntax using (mv; li; label; ld; sd; addi; sltu; lla; lla-sym; beq; j; ret; jalr; jal; slots; sub; call-sym; bgeu-fwd; local-1)
 open import Once.Target.RiscV64.PhysReg using (Reg; ra; a0; t0; sp; zero; t1; t2; s2; s1)
 import Data.Integer as ℤ
 import Once.Spec.Word as OnceWord
@@ -138,11 +138,11 @@ riscv64-link-claim s _ v = rreg' s ra ≡ v
 
 import Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
 module CompiledCorrespondence = Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
-       o FS rv-slot-size word-eq Reg riscv64-roles R.State rreg' R.State.memory rhalted
+       o FS rv-slot-size word-eq Reg riscv64-roles R.State rreg' R.State.memory rhalted R.heap-base
        riscv64-link-claim
        R.State.pc Program compile-trace R.find-label blk-off blk-len R.exec
        R.W.modulus
-  using (BlockStep; BlockStepAt; BlockSteps; CompiledCorr; module CompiledCorr)
+  using (BlockStep; BlockStepAt; BlockSteps; CompiledCorr; store-guard; module CompiledCorr)
 open CompiledCorrespondence
 open CompiledCorrespondence.CompiledCorr using (ret-eq; code-eq; dataCorr; pc-off)
 
@@ -1164,6 +1164,96 @@ block-step-store-at {hv} prog fs s k hl cc h ft i-eq live ib guard =
     pco' : R.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (store-at k) prog fs))
     pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) (store-at k) ft))
 
+-- D468/D470: the allocator record's word k ↔ `lla t1, once_alloc_record ; ld a0, 8k(t1)`
+-- / `… ; sd a0, 8k(t1)`: the record's symbol is `heap-base` in the model, where the record
+-- is (`rec-cell-addr`); `t1` is no role's.
+block-step-load-rec : ∀ {hv : HeapView} prog fs s k w → CompiledCorr hv prog fs s
+  → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just (load-rec k)
+  → heapMem (floc fs) (heap-loc (mkHeapRef 0) k) ≡ just w
+  → BlockStep hv prog fs s (load-rec k)
+block-step-load-rec {hv} prog fs s k w cc h ft h-eq =
+  post , exec-eq , record { dataCorr = C.FlatCorrespondence.sim-load-rec k w fs s _ dc h-eq (C.sets-out-t1-riscv64 s R.heap-base _ _)
+                          ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    cp = compile-trace prog
+    halt-s : R.State.halted s ≡ false
+    halt-s = trans (C.FlatCorrespondence.FlatCorr.halt-eq dc) h
+    f1 : R.fetch cp (R.State.pc s) ≡ just (lla-sym t1 alloc-record-symbol)
+    f1 = trans (cong (R.fetch cp) po) (fetch-block-head prog (fpc fs) (load-rec k) ft)
+    q1 : R.State
+    q1 = record s { regs = R.writeReg (R.State.regs s) t1 R.heap-base ; pc = R.State.pc s + 1 }
+    f2 : R.fetch cp (R.State.pc q1) ≡ just (ld a0 t1 (slot-to-disp k))
+    f2 = trans (cong (λ p → R.fetch cp (p + 1)) po) (fetch-block-2nd prog (fpc fs) (load-rec k) ft)
+    rd : R.readMem (R.State.memory q1) (R.effectiveAddr (R.State.regs q1) t1 (slot-to-disp k))
+       ≡ just (C.FlatCorrespondence.enc-sv hv w)
+    rd = trans (cong (R.readMem (R.State.memory s)) (sym (C.FlatCorrespondence.rec-cell-addr hv k)))
+               (C.FlatCorrespondence.FlatCorr.heap-eq dc (C.FlatCorrespondence.rec-cell k) h-eq)
+    post : R.State
+    post = record q1 { regs = R.writeReg (R.State.regs q1) a0 (C.FlatCorrespondence.enc-sv hv w) ; pc = R.State.pc q1 + 1 }
+    st1 : R.step-not-halted cp s ≡ just q1
+    st1 = step-lla-sym {cp} {s} {t1} {alloc-record-symbol} f1
+    st2 : R.step-not-halted cp q1 ≡ just post
+    st2 = step-ld {cp} {q1} {a0} {t1} {slot-to-disp k} {C.FlatCorrespondence.enc-sv hv w} f2 rd
+    exec-eq : R.exec 2 cp s ≡ just post
+    exec-eq = trans (exec-1 {cp} {1} {s} {q1} halt-s st1 halt-s) (exec-1 {cp} {0} {q1} {post} halt-s st2 halt-s)
+    pco' : R.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (load-rec k) prog fs))
+    pco' = trans (trans (cong (λ p → (p + 1) + 1) po) (+-assoc (blk-off prog (fpc fs)) 1 1))
+                 (sym (blk-off-suc prog (fpc fs) (load-rec k) ft))
+
+block-step-store-rec : ∀ {hv : HeapView} prog fs s k → CompiledCorr hv prog fs s
+  → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just (store-rec k)
+  → k < rec-size
+  → BlockStep hv prog fs s (store-rec k)
+block-step-store-rec {hv} prog fs s k cc h ft lt =
+  post , exec-eq , record { dataCorr = dataPost ; pc-off = pco'
+                          ; ret-eq = subst (λ m → C.FlatCorrespondence.RetAddrs (blk-off prog) m
+                                                    (riscv64-link-claim s) (flink fs)
+                                                    (C.FlatCorrespondence.frames-of (falloc fs)) (fret fs))
+                                           (cong₂ (R.writeMem (R.State.memory s)) (sym addr-eq) refl)
+                                           (ret-heap-store prog fs s (haddr hv cell) _ cc
+                                              (≤-trans (C.FlatCorrespondence.HeapView.dom-below hv live) (C.FlatCorrespondence.HeapView.front-lo hv)))
+                          ; code-eq = code-eq cc }
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    cp = compile-trace prog
+    cell = C.FlatCorrespondence.rec-cell k
+    live = C.FlatCorrespondence.HeapView.rec-dom hv k lt
+    halt-s : R.State.halted s ≡ false
+    halt-s = trans (C.FlatCorrespondence.FlatCorr.halt-eq dc) h
+    f1 : R.fetch cp (R.State.pc s) ≡ just (lla-sym t1 alloc-record-symbol)
+    f1 = trans (cong (R.fetch cp) po) (fetch-block-head prog (fpc fs) (store-rec k) ft)
+    q1 : R.State
+    q1 = record s { regs = R.writeReg (R.State.regs s) t1 R.heap-base ; pc = R.State.pc s + 1 }
+    f2 : R.fetch cp (R.State.pc q1) ≡ just (sd a0 t1 (slot-to-disp k))
+    f2 = trans (cong (λ p → R.fetch cp (p + 1)) po) (fetch-block-2nd prog (fpc fs) (store-rec k) ft)
+    addr-eq : R.effectiveAddr (R.State.regs q1) t1 (slot-to-disp k) ≡ haddr hv cell
+    addr-eq = sym (C.FlatCorrespondence.rec-cell-addr hv k)
+    post : R.State
+    post = record q1 { memory = R.writeMem (R.State.memory q1) (R.effectiveAddr (R.State.regs q1) t1 (slot-to-disp k))
+                                  (R.readReg (R.State.regs q1) a0)
+                     ; pc = R.State.pc q1 + 1 }
+    st1 : R.step-not-halted cp s ≡ just q1
+    st1 = step-lla-sym {cp} {s} {t1} {alloc-record-symbol} f1
+    st2 : R.step-not-halted cp q1 ≡ just post
+    st2 = step-sd {cp} {q1} {a0} {t1} {slot-to-disp k} f2
+    exec-eq : R.exec 2 cp s ≡ just post
+    exec-eq = trans (exec-1 {cp} {1} {s} {q1} halt-s st1 halt-s) (exec-1 {cp} {0} {q1} {post} halt-s st2 halt-s)
+    post-eq : post ≡ R.mkstate (R.writeReg (R.State.regs s) t1 R.heap-base)
+                        (R.writeMem (R.State.memory s) (haddr hv cell)
+                           (C.FlatCorrespondence.enc-sv hv (readReg (regs (floc fs)) Output)))
+                        ((R.State.pc s + 1) + 1) (R.State.halted s)
+    post-eq = cong (λ m → R.mkstate (R.writeReg (R.State.regs s) t1 R.heap-base) m ((R.State.pc s + 1) + 1) (R.State.halted s))
+                   (cong₂ (R.writeMem (R.State.memory s)) addr-eq (C.FlatCorrespondence.FlatCorr.out-eq dc))
+    dataPost : C.FlatCorrespondence.FlatCorr hv (flat-exec-instr (store-rec k) prog fs) post
+    dataPost = subst (C.FlatCorrespondence.FlatCorr hv (flat-exec-instr (store-rec k) prog fs)) (sym post-eq)
+                     (C.FlatCorrespondence.sim-store-rec k fs s _ dc lt (store-guard fs cell) (C.sets-mem-t1-riscv64 s R.heap-base _ _ _))
+    pco' : R.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (store-rec k) prog fs))
+    pco' = trans (trans (cong (λ p → (p + 1) + 1) po) (+-assoc (blk-off prog (fpc fs)) 1 1))
+                 (sym (blk-off-suc prog (fpc fs) (store-rec k) ft))
+
 -- D452: a load and a store through a STACK pointer — the same instruction,
 -- the slot of a live frame's window (the gate's outcome) in place of a cell
 block-step-load-at-stack : ∀ {hv : HeapView} prog fs s k f q w → CompiledCorr hv prog fs s
@@ -2004,7 +2094,7 @@ block-step-c-start : ∀ {hv : HeapView} prog fs s b → CompiledCorr hv prog fs
   → lo' ≤ R.readReg (R.State.regs s) sp ∸ slots b
   → slots b ≤ R.readReg (R.State.regs s) sp
   → R.readReg (R.State.regs s) sp < R.W.modulus
-  → C.FlatCorrespondence.HeapView.hfront hv ≡ R.heap-base
+  → C.FlatCorrespondence.HeapView.hfront hv ≡ R.heap-front
   → fret fs ≡ []
   → BlockStepAt hv (C.FlatCorrespondence.descend-view hv lo' lo'≤lo front-lo') prog fs s (instr-ctrl (c-start b))
 block-step-c-start {hv} prog fs s b cc h ft lo' lo'≤lo front-lo' lo'≤sp fits sp<mod _ nf =

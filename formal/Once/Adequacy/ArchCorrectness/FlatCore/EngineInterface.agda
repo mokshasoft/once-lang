@@ -115,6 +115,8 @@ record Machine (E : Emitter) : Set₁ where
     rreg : State → Reg → ℕ
     memory : State → (ℕ → Maybe ℕ)
     xhalted : State → Bool
+    -- D470: where the allocator record is (a data symbol's address)
+    heap-base : ℕ
     xpc : State → ℕ
     -- WHERE AN UNSPILLED RETURN ADDRESS LIVES (plan 0.65 G2, 2026-08-16), and a
     -- MACHINE field because it is exactly an ABI fact: between a call and the

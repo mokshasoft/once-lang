@@ -39,7 +39,7 @@ open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 open import Data.Integer using (+_)
 open import Data.List using ([]; _∷_; _++_)
-open import Once.Target.SymbolFresh using (host-leave-symbol; host-exhausted-symbol)
+open import Once.Target.SymbolFresh using (host-leave-symbol; host-exhausted-symbol; alloc-record-symbol)
 open import Once.Target.Symbol using (once-symbol-path)
 
 -- Import RISC-V syntax
@@ -49,7 +49,7 @@ import Once.Spec.Word as OnceWord
 module IntW = OnceWord.Width 64
   using (fromℤ)
 open import Once.CCC.Target.RiscV64.Syntax
-  using (ld; sd; sub; sltu; addi; li; lla; mv; beq; jal; jalr; j; ret; call-sym; bgeu-fwd; local-1; label; Program; slot-size; slots)
+  using (ld; sd; sub; sltu; addi; li; lla; lla-sym; mv; beq; jal; jalr; j; ret; call-sym; bgeu-fwd; local-1; label; Program; slot-size; slots)
 open import Once.Target.RiscV64.PhysReg using (a0; t0; sp; s2; fp; t1; s1; ra; t2; zero)
 open import Once.CCC.Label using (once; callee; e-fn)
 open import Once.Spec.Name using (CanonicalName)
@@ -249,9 +249,13 @@ compile-abstract (instr-reclaim-to n) = []
 -- instr-free-heap: no code yet (plan 0.123 M2: the bump allocator never
 -- reuses a block; the free-list and pop code come with M3)
 compile-abstract (instr-free-heap n) = []
--- D468: not emittable until the arch layer has the allocator record (B1.6 3d)
-compile-abstract (load-rec _) = []
-compile-abstract (store-rec _) = []
+-- D468/D470: the allocator record's word k, at the program's record symbol plus
+-- 8k; t1 (no role's) holds the symbol's address (8k < 512 fits the immediate)
+-- riscv64: lla t1, once_alloc_record ; ld a0, 8k(t1)   /   … ; sd a0, 8k(t1)
+compile-abstract (load-rec n) =
+  lla-sym t1 alloc-record-symbol ∷ ld a0 t1 (slot-to-disp n) ∷ []
+compile-abstract (store-rec n) =
+  lla-sym t1 alloc-record-symbol ∷ sd a0 t1 (slot-to-disp n) ∷ []
 -- plan 0.123 B.4 α: a flat value's word k, by its offset from Input1.
 -- riscv64: ld a0, 8k(t0) ; sd a0, 8k(t0) ; addi a0, t0, 8k (the offset is
 -- unbounded in the model, as a slot's is; beyond the 12-bit immediate the

@@ -42,6 +42,7 @@ module Once.Adequacy.ArchCorrectness.FlatCore.SigOpFrame
   (rreg : State → Reg → ℕ)
   (memory : State → (ℕ → Maybe ℕ))
   (xhalted : State → Bool)
+  (heap-base : ℕ)            -- D470: the allocator record's address
   (link-claim : State → ℕ → ℕ → Set)
   (xpc : State → ℕ)
   (Program : Set)
@@ -81,9 +82,9 @@ open SigOpInfo using (baseA; sem)
 open import Data.Bool using (false)
 open import Data.Product using (∃)
 private
-  module CFC = FC FS slot-size word-eq Reg roles State rreg memory xhalted
+  module CFC = FC FS slot-size word-eq Reg roles State rreg memory xhalted heap-base
     using (AddrMap; HeapView; Memory; RetAddrs; StackWindows; amap; enc-sv; frames-of; readMem; slots; windows-above; windows-lower; windows-reanchor; module FlatCorr; module HeapView)
-  module CCC = CC o FS slot-size word-eq Reg roles State rreg memory xhalted link-claim
+  module CCC = CC o FS slot-size word-eq Reg roles State rreg memory xhalted heap-base link-claim
                  xpc Program compile-trace find-label blk-off blk-len exec modulus
     using (CompiledCorr; module CompiledCorr)
 open CFC using (HeapView; Memory; readMem; StackWindows; RetAddrs; frames-of; amap; enc-sv; slots

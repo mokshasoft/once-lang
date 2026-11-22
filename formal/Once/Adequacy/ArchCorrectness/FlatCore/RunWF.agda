@@ -493,6 +493,8 @@ pcView (instr-free-heap n)                    _ = pv-suc tt tt (λ _ fs → slot
 pcView (load-at _)                            _ = pv-suc tt tt (λ _ _ → inj₁ refl)
 pcView (store-at _)                           _ = pv-suc tt tt (λ _ _ → inj₁ refl)
 pcView (addr-at _)                            _ = pv-suc tt tt (λ _ _ → inj₁ refl)
+pcView (load-rec k)                           e = pv-suc e tt (λ _ _ → inj₁ refl)
+pcView (store-rec k)                          e = pv-suc e tt (λ _ _ → inj₁ refl)
 pcView (instr-room _)                    ()
 pcView (instr-push-frame _)                   ()
 pcView instr-pop-frame                        ()
@@ -973,6 +975,8 @@ ptr-bounds-step (instr-free-heap n)     prog fs r ftq ff wfS wf = flat-ptr-bound
 ptr-bounds-step (load-at n)     prog fs r ftq ff wfS wf = flat-ptr-bounds (load-at n) prog fs ff (λ { _ () }) wfS wf
 ptr-bounds-step (store-at n)     prog fs r ftq ff wfS wf = flat-ptr-bounds (store-at n) prog fs ff (λ { _ () }) wfS wf
 ptr-bounds-step (addr-at n)     prog fs r ftq ff wfS wf = flat-ptr-bounds (addr-at n) prog fs ff (λ { _ () }) wfS wf
+ptr-bounds-step (load-rec n)    prog fs r ftq ff wfS wf = flat-ptr-bounds (load-rec n) prog fs ff (λ { _ () }) wfS wf
+ptr-bounds-step (store-rec n)   prog fs r ftq ff wfS wf = flat-ptr-bounds (store-rec n) prog fs ff (λ { _ () }) wfS wf
 ptr-bounds-step (instr-room n)     prog fs r ftq ff wfS wf = flat-ptr-bounds (instr-room n) prog fs ff (λ { _ () }) wfS wf
 ptr-bounds-step (instr-push-frame cap)  prog fs r ftq () wfS wf
 ptr-bounds-step instr-pop-frame         prog fs r ftq () wfS wf

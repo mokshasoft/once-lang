@@ -75,7 +75,7 @@ module Once.Adequacy.ArchCorrectness.FlatCore.EventDispatch
 open import Once.Adequacy.ArchCorrectness.FlatCore.EventEngine
   o FS slot-size word-eq Reg roles modulus E M T
 open CompiledCorrespondence using (CompiledCorr; BlockStep; store-guard; slot-heap-disj)
-open CompiledCorrespondence.BlockSteps using (bs-c-thunk; bs-c-ret; bs-call; bs-call-fn; bs-c-jmp; bs-c-branch-tag-zero; bs-c-branch-tag-nz; bs-out-nz; bs-load-indirect; bs-load-indirect-stack; bs-load-indirect-suc; bs-load-indirect-suc-stack; bs-load-from-slot; bs-restore-input; bs-worklist-pop; bs-store-indirect; bs-store-indirect-stack; bs-store-indirect-suc; bs-store-indirect-suc-stack; bs-load-at; bs-addr-at; bs-store-at; bs-mov-to-output; bs-mov-to-input; bs-store-at-slot; bs-worklist-push; bs-alloc-heap; bs-load-const; bs-load-const-float; bs-lea-slot; bs-load-code-addr; bs-save-closure-reg; bs-worklist-init; bs-worklist-check; bs-reclaim-to; bs-load-tag-lit; bs-c-label; bs-c-start; bs-load-at-stack; bs-store-at-stack; bs-free-heap)
+open CompiledCorrespondence.BlockSteps using (bs-c-thunk; bs-c-ret; bs-call; bs-call-fn; bs-c-jmp; bs-c-branch-tag-zero; bs-c-branch-tag-nz; bs-out-nz; bs-load-indirect; bs-load-indirect-stack; bs-load-indirect-suc; bs-load-indirect-suc-stack; bs-load-from-slot; bs-restore-input; bs-worklist-pop; bs-store-indirect; bs-store-indirect-stack; bs-store-indirect-suc; bs-store-indirect-suc-stack; bs-load-at; bs-addr-at; bs-store-at; bs-mov-to-output; bs-mov-to-input; bs-store-at-slot; bs-worklist-push; bs-alloc-heap; bs-load-const; bs-load-const-float; bs-lea-slot; bs-load-code-addr; bs-save-closure-reg; bs-worklist-init; bs-worklist-check; bs-reclaim-to; bs-load-tag-lit; bs-c-label; bs-c-start; bs-load-at-stack; bs-store-at-stack; bs-free-heap; bs-load-rec; bs-store-rec)
 open CompiledCorrespondence.CompiledCorr using (dataCorr)
 open FlatComposition using (blk-len; blk-off; find-thunk-corr)
 open FlatInv using (inv-run; inv-ev; inv-env; inv-wf; inv-closure; inv-started; inv-left)
@@ -123,7 +123,7 @@ open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong;
 open CFC using (HeapView; slots)
 -- plan 0.123 A.4 step 5: THE BUDGET the room checks re-arm, carried beside the
 -- correspondence; it is where every spending instruction's room comes from.
-open import Once.Adequacy.ArchCorrectness.FlatCore.Budget o FS slot-size word-eq Reg roles State rreg memory xhalted
+open import Once.Adequacy.ArchCorrectness.FlatCore.Budget o FS slot-size word-eq Reg roles State rreg memory xhalted heap-base
   using (Budget; fbase-shift; straight-frame; room-of; call-room-of; bg-view; bg-plain; bg-str; bg-spent-str; bg-alloc; bg-start
         ; bg-call; bg-room; bg-boundary; bg-label; bg-ret)
 
@@ -141,7 +141,7 @@ open import Once.CCC.Machine.SMCore hiding (Instr)
 open AllocState using (saved-frames; current-frame; block-size; frame-slots; next-heap-ref)
 open LocState using (halted; heapMem; regs; stackMem)
 open import Once.CCC.Machine.Locations using (AtDynamic; ValueLocation; AtStack)
-open import Once.Memory.HeapAddress using (HeapLocation; module HeapRef; module HeapLocation; sucHL; offsetHL)
+open import Once.Memory.HeapAddress using (HeapLocation; module HeapRef; module HeapLocation; sucHL; offsetHL; heap-loc; mkHeapRef)
 open HeapLocation using (heap-offset; heap-ref)
 open HeapRef using (ref-id)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
@@ -1186,11 +1186,35 @@ module Dispatch (sup : Supply) where
     -- emits none of them, and `FlatInv` carries `Emitted prog`. See `FrameFree`.
     events-running-fetch {hv} n ev env prog fs s (instr-alloc-stack k) cc bg wf h ftq =
       ⊥-elim (frame-op-absurd prog fs (instr-alloc-stack k) (inv-run wf) ftq (λ _ ()))
-    -- D468: the allocator record's words are not in an image yet (B1.6 3d)
+    -- D468/D470: the allocator record's words. The record's gate is open (the
+    -- record is mapped, so the counter is past it); a load reads a written cell
+    -- (else it faults, and the run does not), a store one of the record's.
     events-running-fetch {hv} n ev env prog fs s (load-rec k) cc bg wf h ftq =
-      ⊥-elim (frame-op-absurd prog fs (load-rec k) (inv-run wf) ftq (λ _ ()))
+      go (heapMem (floc fs) (heap-loc (mkHeapRef 0) k)) refl
+      where
+        gate = CFC.rec-gate-open hv (dataCorr cc) k
+        go : ∀ mw → heapMem (floc fs) (heap-loc (mkHeapRef 0) k) ≡ mw
+           → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
+                 (event-of (load-rec k) fs ▹ flat-events n prog (flat-exec-instr (load-rec k) prog fs)) (ctrl-of (load-rec k) + flat-ctrls n prog (flat-exec-instr (load-rec k) prog fs)) M)
+        go (just w) h-eq =
+          ccc-step-bs {hv} n (events-agree n) ev env prog fs s (load-rec k)
+            (bs-load-rec bss prog fs s k w cc h ftq h-eq)
+            (λ _ → bg-str _ bg ftq refl refl) wf ftq h refl tt tt
+            (trans (cong (λ m → halted (ExecFinal.exec-load-via-resolved {FS} Output m (floc fs))) gate)
+                   (trans (cong (λ mv → halted (ExecFinal.exec-load-with-value {FS} Output mv (floc fs))) h-eq) h))
+        go nothing h-eq =
+          ⊥-elim (true≢false (trans (sym (trans (cong (λ m → LocState.faulted (ExecFinal.exec-load-via-resolved {FS} Output m (floc fs))) gate)
+                                                (cong (λ mv → LocState.faulted (ExecFinal.exec-load-with-value {FS} Output mv (floc fs))) h-eq)))
+                                    (step-ok prog fs (load-rec k) (inv-run wf) h ftq)))
+          where
+            true≢false : true ≡ false → ⊥
+            true≢false ()
     events-running-fetch {hv} n ev env prog fs s (store-rec k) cc bg wf h ftq =
-      ⊥-elim (frame-op-absurd prog fs (store-rec k) (inv-run wf) ftq (λ _ ()))
+      ccc-step-bs {hv} n (events-agree n) ev env prog fs s (store-rec k)
+        (bs-store-rec bss prog fs s k cc h ftq (frame-op-absurd prog fs (store-rec k) (inv-run wf) ftq (λ _ ())))
+        (λ _ → bg-str _ bg ftq refl refl) wf ftq h refl tt tt
+        (trans (cong (λ m → halted (ExecFinal.exec-store-via-resolved {FS} m (readReg (regs (floc fs)) Output) (floc fs))) (CFC.rec-gate-open hv (dataCorr cc) k))
+               (trans (writeLoc-halted (floc fs) (AtDynamic (heap-loc (mkHeapRef 0) k)) (readReg (regs (floc fs)) Output)) h))
     events-running-fetch {hv} n ev env prog fs s (instr-alloc-heap k) cc bg wf h ftq =
       ccc-step-bs n (events-agree n) ev env prog fs s (instr-alloc-heap k)
         (bs-alloc-heap bss prog fs s k cc h ftq
@@ -1319,7 +1343,7 @@ module Dispatch (sup : Supply) where
     → ev ≡ ev-arch → ArithTable prog env → RunAt prog fs
     → halted (floc fs) ≡ false
     → fetch prog (fpc fs) ≡ just (instr-ctrl (c-start b))
-    → CFC.HeapView.hfront hv ≡ slot-size
+    → CFC.HeapView.hfront hv ≡ heap-base + rec-size * slot-size
     → fret fs ≡ []
     → LocState.left (floc fs) ≡ false
     → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
@@ -1391,7 +1415,7 @@ module Dispatch (sup : Supply) where
     → halted (floc fs) ≡ false
     → fetch prog (fpc fs) ≡ just (instr-room k)
     → fetch prog (suc (fpc fs)) ≡ just (instr-ctrl (c-start b))
-    → CFC.HeapView.hfront hv ≡ slot-size
+    → CFC.HeapView.hfront hv ≡ heap-base + rec-size * slot-size
     → fret fs ≡ []
     → LocState.left (floc fs) ≡ false
     → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)

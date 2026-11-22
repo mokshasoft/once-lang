@@ -24593,41 +24593,48 @@ trace (`OK-ser`), and `apart-top` gives the free's framing premise.
 AllocRun's per-class pools); counting its cells at the machine's sizes makes those claims about the real blocks.
 Nothing in the source semantics (Spec) sees an id's size.
 
-## D470 — THE ALLOCATOR RECORD IS THE REGION'S FIRST 64 WORDS, REACHED THROUGH THE REGION'S SYMBOL; THE FRONTIER STARTS PAST IT (2026-11-23, proposed — for the user's review)
+## D470 — THE ALLOCATOR RECORD IS 64 WORDS IN THE PROGRAM FILE'S OWN `.bss`, AT A LOCAL SYMBOL; THE FRONTIER REGISTER STAYS THE FRONTIER (2026-11-23, proposed — for the user's review)
 
 **Proposed** (unattended, keep-going mode; plan 0.146 B1.6 item 3d). **Amends** D468 (proposed): where the
-frontier lives and how the record is reached. **Applies**: D320 (the Host's `enter`), D376 (the Host supplies
-the region), D377 (the room check).
+frontier lives and how the record is reached (D468's option B, a data symbol, with the objection answered).
+**Applies**: D320 (the Host), D376 (the Host supplies the region), D377 (the room check), plan 0.127 (seL4
+images of several programs).
 
 ### The gap
 D468 puts the frontier in the record's word 0, at the region's bottom, which the heap register points at, and
-says the program's start writes the record. Two things it does not settle:
-* the first room check comes BEFORE the start (`room-checks` puts a check at pc 0, ahead of `c-start`: the
-  start's frame reservation needs it), and under D468 every check loads the frontier word, so the first check
-  would read a word nothing has written;
+says the program's start writes the record. It leaves three things open:
+* the first room check comes BEFORE the start (`room-checks` puts a check at pc 0, ahead of `c-start`, which
+  the start's frame reservation needs), and under D468 every check loads the frontier word, so the first
+  check would read a word nothing has written;
 * x86-32 has no scratch register (D468's own reason against a register), and D468's alloc (load the frontier
   word, bump, store it back) and check (load, add, compare) each need one, or memory-operand arithmetic the
-  x86-32 model does not have.
-And the record's size (three words, one head per class) differs per program, so no per-instruction arch lemma
-knows where the blocks begin.
+  x86-32 model does not have;
+* the record's size (three words, one head per class) differs per program, so no per-instruction arch lemma
+  knows where the blocks begin.
 
 ### Options
 * (a) D468 as written, with the Host's `enter` writing the frontier word: every arch's alloc and check change
   (x86-32 without a scratch register), and every memory write must keep the frontier word.
-* (b) The first check after `c-start`: unsound — the start's frame reservation is what the check guards.
+* (b) The first check after `c-start`: unsound, because the start's frame reservation is what the check guards.
 * (c) A start-only check instruction (the frontier register IS the bottom before the start): a new instruction
-  through every cascade, two forms of the check on three arches.
-* **(d) The record at the region's bottom, reached through the region's symbol; the frontier register stays the
-  frontier and starts past the record.** The record is `rec-size = 64` words (word 0 unused, two scratch words,
-  up to 61 heads). The Host's `enter` points the frontier register 64 words above the region's bottom and
-  exports the region's symbol (`once_region`); `load-rec k`/`store-rec k` are one access at `once_region + 8k`
-  (x86-64: `lea` into the scratch `r11`, then base+disp; x86-32: an absolute symbol+offset operand; riscv64:
-  `lla` into a scratch, then base+offset). The arch models' entry view maps the record's cells (ref 0, word
-  `k < 64`) at `heap-base + 8k`, below the frontier: alloc, the room check and the start are unchanged on every
-  arch, and every correspondence holds from the entry.
+  through every cascade, and two forms of the check on three arches.
+* (d) The record at the Host's region symbol (`once_region`, made global): wrong for seL4, whose image holds
+  several programs (plan 0.127), each with its own region. One global record would put every program's blocks
+  on one set of free lists.
+* **(h) The record in the program file's own `.bss`, at a local symbol (`once_alloc_record`); the frontier
+  register stays the frontier.** The record is `rec-size = 64` words (word 0 unused, two scratch words, up to
+  61 heads). Every program file defines its own record (a local symbol: per program by construction, and
+  seL4's renaming of `once_main` leaves it alone); `load-rec k` / `store-rec k` is one access at the symbol plus
+  `k` words (x86-64: `sym+8k(%rip)`; x86-32: `sym+4k`; riscv64: `lla t1, sym` then `ld`/`sd` at `8k(t1)`). The
+  arch models place every data symbol at `heap-base` and the region (the frontier's start) at `heap-front`, 64
+  words up: the record and the region are two areas, disjoint, and every address the code computes stays inside
+  one of them (offsets off the symbol, the frontier or the stack pointer), which is the same w.l.o.g. ordering
+  argument the models already make for the heap's base (D367). Alloc, the room check and the start are
+  unchanged on every arch; the Host is unchanged.
 
-### Decision (proposed): (d)
+### Decision (proposed): (h)
 A record access is bounded statically (`EmittableI`: `load-rec k` and `store-rec k` with `k < 64`). An allocator
-has at most 61 classes (`count C ≤ 61`, a premise on `Classes`): the slab allocator gives a class per node size
-up to that, then shares classes (granularity only). The Host learns one ABI fact beside D376's region: the
-region's first 64 words are the program's (the frontier starts past them), and the region's symbol is global.
+has at most 61 classes (`count C ≤ 61`, a premise on `Classes`); the slab allocator gives a class per node size
+up to that, then shares classes, which affects granularity only. A library's file (empty, D465) defines no
+record; a program's file defines one. The arch models' entry view maps the record's cells (ref 0, word `k < 64`)
+at `heap-base + k` words, below the frontier.

@@ -454,6 +454,8 @@ imageI-noroom (instr-free-heap _)      _ = refl
 imageI-noroom (load-at _)      _ = refl
 imageI-noroom (store-at _)      _ = refl
 imageI-noroom (addr-at _)      _ = refl
+imageI-noroom (AbstractInstr.load-rec _)  _ = refl
+imageI-noroom (AbstractInstr.store-rec _) _ = refl
 imageI-noroom (instr-room _)           ()
 
 image-noroom : ∀ (t : AbstractTrace) → All ImageI t → NoRoom t

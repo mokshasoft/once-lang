@@ -136,10 +136,10 @@ step-lea ft rewrite ft = refl
 -- needs before it can jump to one.
 -- plan 0.107: a DATA symbol's address — the runtime's `.bss` heap, at
 -- `heap-base` (D367; `effectiveAddr`'s `rip+sym` clause).
-step-lea-sym : ∀ {prog s r x}
-             → fetch prog (pc s) ≡ just (lea r (rip+sym x))
+step-lea-sym : ∀ {prog s r x d}
+             → fetch prog (pc s) ≡ just (lea r (rip+sym x d))
              → step-not-halted prog s
-               ≡ just (record s { regs = writeReg (regs s) r heap-base ; pc = pc s + 1 })
+               ≡ just (record s { regs = writeReg (regs s) r (heap-base + d) ; pc = pc s + 1 })
 step-lea-sym ft rewrite ft = refl
 
 step-lea-label : ∀ {prog s r ℓ j}

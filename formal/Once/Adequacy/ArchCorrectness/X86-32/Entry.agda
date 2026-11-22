@@ -52,7 +52,7 @@ module Once.Adequacy.ArchCorrectness.X86-32.Entry
   (x86-32-lit-fits : RB.LitFits o ι) where
 
 import Once.CCC.Machine.SMCore
-open import Data.Nat using (ℕ; _+_; z≤n; s≤s; suc)
+open import Data.Nat using (ℕ; _+_; _<_; z≤n; s≤s; suc)
 open import Data.Unit using (tt)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using ([])
@@ -63,11 +63,11 @@ open import Once.Adequacy.BudgetApex (Once.Target.Arch.arch-numerics Once.Target
 open import Once.Denotation.Program using (runIR)
 open import Once.IR.Semantics.Trace using (pureHalf)
 open import Data.Bool using (Bool; false)
-open import Data.Product using (proj₁; proj₂; _,_)
+open import Data.Product using (proj₁; proj₂; _,_; _×_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
-open import Once.Memory.HeapAddress using (HeapLocation; sucHL; heap-loc; module HeapLocation)
+open import Once.Memory.HeapAddress using (HeapLocation; sucHL; heap-loc; mkHeapRef; module HeapLocation; module HeapRef)
 open HeapLocation using (heap-offset)
-open import Once.CCC.Machine.SMCore using (module AllocState)
+open import Once.CCC.Machine.SMCore using (module AllocState; rec-size)
 open AllocState using (current-frame)
 open import Once.CCC.FrameSemantics using (module FrameSemantics)
 open FrameSemantics using (frame-base)
@@ -76,7 +76,7 @@ open import Once.CCC.Target.X86-32.Syntax using (slot-size)
 open import Once.CCC.Target.X86-32.AbstractToX86-32 using (slot-to-disp)
 open import Data.Empty using (⊥)
 open import Data.Nat using (_*_)
-open import Data.Nat.Properties using (+-comm; ≤-refl; ≤-reflexive; m≤m+n)
+open import Data.Nat.Properties using (+-comm; +-assoc; ≤-refl; ≤-reflexive; m≤m+n; *-cancelʳ-≡; +-cancelˡ-≡; +-monoʳ-<; *-monoˡ-<)
 open import Once.Adequacy.CPU.X86-32 using (call-at-x86-32; ev-x86-32; block-env; run-trace-x86-32)
 import Once.CCC.Target.X86-32.File as RF
 import Data.Maybe
@@ -231,29 +231,44 @@ code-pick nothing  = 0
 code-map : XS.Program → LabelId → ℕ
 code-map prog ℓ = code-pick (X.find-label prog (thunk ℓ))
 
+-- D470: the record's cells — ref 0, below `rec-size`
+RecDom : HeapLocation → Set
+RecDom hl = (HeapRef.ref-id (HeapLocation.heap-ref hl) ≡ 0) × (heap-offset hl < rec-size)
+
 entry-view : XS.Program → HeapView
 entry-view cprog = record
-  { haddr     = λ hl → slot-to-disp (heap-offset hl)
+  -- D470: the region starts at `heap-base`; its first `rec-size` words are the
+  -- allocator record (ref 0), mapped from the start, and the frontier is past them
+  { haddr     = λ hl → X.heap-base + slot-to-disp (heap-offset hl)
   ; caddr     = code-map cprog
-  ; HDom      = λ _ → ⊥
-  ; hfront    = X.heap-base
+  ; HDom      = RecDom
+  ; hfront    = X.heap-front
   ; haddr-suc = suc-law
-  ; haddr-inj = λ ()
-  ; dom-below = λ ()
+  ; haddr-inj = rec-inj
+  ; dom-below = rec-below
   -- THE ENTRY HIGH-WATER MARK (plan 0.54 rung D step 3): nothing has run yet, so
   -- the lowest %esp ever reached IS the loader's `stack-top`, and the whole gap
   -- `[0, stack-top)` is virgin — which `entry-corr.untouched` discharges from
   -- `emptyMemory`. `front-lo`: the stack top is above the heap base (D367).
   ; lo        = X.stack-top
-  ; front-lo  = m≤m+n X.heap-base X.stack-span
+  ; front-lo  = m≤m+n X.heap-front X.stack-span
   -- D367: the heap starts one word up, so no mapped address is 0
   ; front-pos = s≤s z≤n
-  ; dom-pos   = λ ()
+  ; dom-pos   = λ _ → s≤s z≤n
+  ; rec-dom   = λ k lt → refl , lt
+  ; rec-addr  = refl
   }
   where
-    suc-law : ∀ (hl : HeapLocation) → slot-to-disp (heap-offset (sucHL hl))
-                                    ≡ slot-to-disp (heap-offset hl) + slot-size
-    suc-law (heap-loc r o) = +-comm slot-size (o * slot-size)
+    suc-law : ∀ (hl : HeapLocation) → X.heap-base + slot-to-disp (heap-offset (sucHL hl))
+                                    ≡ (X.heap-base + slot-to-disp (heap-offset hl)) + slot-size
+    suc-law (heap-loc r o) = trans (cong (X.heap-base +_) (+-comm slot-size (o * slot-size)))
+                                   (sym (+-assoc X.heap-base (o * slot-size) slot-size))
+    rec-inj : ∀ {a b : HeapLocation} → RecDom a → RecDom b
+            → X.heap-base + slot-to-disp (heap-offset a) ≡ X.heap-base + slot-to-disp (heap-offset b) → a ≡ b
+    rec-inj {heap-loc (mkHeapRef .0) oa} {heap-loc (mkHeapRef .0) ob} (refl , _) (refl , _) e =
+      cong (heap-loc (mkHeapRef 0)) (*-cancelʳ-≡ oa ob slot-size (+-cancelˡ-≡ X.heap-base _ _ e))
+    rec-below : ∀ {hl : HeapLocation} → RecDom hl → X.heap-base + slot-to-disp (heap-offset hl) < X.heap-front
+    rec-below {heap-loc _ o} (_ , lt) = +-monoʳ-< X.heap-base (*-monoˡ-< slot-size lt)
 
 -- (`main-heap-moded` WAS A POSTULATE here: every IR is heap-moded now,
 -- `ShapeTable.heap-moded`, and the run context no longer carries it.)
@@ -276,7 +291,8 @@ entry-corr prog = record
       ; halt-eq = refl
       ; sp-eq  = sym entry-frame-base   -- initState's %esp IS the entry frame's base
       ; frontier-eq  = refl          -- initState's %esi IS the heap base, the entry frontier (D367)
-      ; dom-fresh = λ ()        -- nothing is mapped yet
+      -- D470: the record's cells are ref 0's, below the counter (1)
+      ; dom-fresh = λ d → subst (_< 1) (sym (proj₁ d)) (s≤s z≤n)
       -- …and nothing needs to be: the entry heap is empty (`dom-written`'s
       -- hypothesis is `nothing ≡ just w`) and no block has a size yet
       -- (`dom-sized`'s is `offset < 0`). Both absurd, both `λ _ ()`.

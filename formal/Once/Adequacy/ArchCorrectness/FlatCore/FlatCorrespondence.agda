@@ -76,6 +76,9 @@ module Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence
   (rreg : State → Reg → ℕ)
   (memory : State → (ℕ → Maybe ℕ))
   (xhalted : State → Bool)
+  -- D470: where the allocator record is (ref 0, `rec-size` words) — the address
+  -- a data symbol names in the model; the region begins past it
+  (heap-base : ℕ)
   where
 
 open RegRoles roles using (reg-of; sp-reg; clos-reg; heap-reg; out-reg; in1-reg)
@@ -144,7 +147,7 @@ open LocState using (regs; halted; heapMem; stackMem)
 open import Once.CCC.Machine.Locations using (AtDynamic; AtStack; Slot)
 open MemOps {FS} using (writeLoc; writeLocToHeap; writeLocToStack; writeHeapMem
                        ; readLoc; writeLoc-read-same-stack; writeLoc-preserves-other)
-open ExecFinal {FS} using (exec-load-via-resolved; exec-load-suc-via-resolved; exec-load-with-value
+open ExecFinal {FS} using (rec-gate; rec-at; exec-load-via-resolved; exec-load-suc-via-resolved; exec-load-with-value
                           ; exec-store-via-resolved; exec-store-suc-via-resolved
                           ; exec-load-at-resolved; exec-store-at-resolved; exec-store-in-block; in-block?; exec-addr-at-resolved; exec-addr-in-block; frame-gate; heap-gate; live-size)
 open import Once.CCC.Machine.Flat
@@ -221,6 +224,11 @@ record HeapView : Set₁ where
     -- pointer must not read as the tag 0 (`tag-branch-step`'s pointer route).
     front-pos : 0 < hfront
     dom-pos   : ∀ {hl : HeapLocation} → HDom hl → 0 < haddr hl
+    -- D470: THE ALLOCATOR RECORD, `rec-size` words (ref 0) below the region:
+    -- every word mapped, and the record at its symbol, so a record
+    -- access (one at `heap-base + 8k`) is the cell's
+    rec-dom   : ∀ k → k < rec-size → HDom (heap-loc (mkHeapRef 0) k)
+    rec-addr  : haddr (heap-loc (mkHeapRef 0) 0) ≡ heap-base
 open HeapView
 
 ------------------------------------------------------------------------
@@ -879,6 +887,8 @@ descend-view hv lo' _ front-lo' = record
   ; front-lo  = front-lo'
   ; front-pos = front-pos hv
   ; dom-pos   = dom-pos hv
+  ; rec-dom   = rec-dom hv
+  ; rec-addr  = rec-addr hv
   }
 
 -- (No encoding-transport lemma is needed across a descent: `descend-view` copies
@@ -1441,6 +1451,76 @@ sim-store-at {hv} k hl fs s s' corr i-eq live guard-ib guard sm =
       ; heap-eq = store-heap-eq hv (offsetHL hl k) v s s' (floc fs) sm live (dom-written corr) (heap-eq corr)
       ; lo-le = mkeep-lo-le corr sm
       ; stack-eq = windows-heap-store (offsetHL hl k) (enc-sv hv v) live corr sm }
+
+------------------------------------------------------------------------
+-- D468/D470: THE ALLOCATOR RECORD'S WORDS. The record is mapped (`rec-dom`), so
+-- the abstract counter is past it (`dom-fresh`) and the record's gate passes;
+-- a load reads a written cell, a store writes a mapped one, at the cell's
+-- address (`rec-addr`: the record's symbol, plus the word's offset).
+------------------------------------------------------------------------
+
+rec-cell : ℕ → HeapLocation
+rec-cell k = heap-loc (mkHeapRef 0) k
+
+rec-gate-open : ∀ (hv : HeapView) {fs : FlatState} {s : State} → FlatCorr hv fs s
+              → ∀ k → rec-gate (falloc fs) k ≡ just (AtDynamic (rec-cell k))
+rec-gate-open hv {fs} corr k = go (next-heap-ref (falloc fs)) (dom-fresh corr (rec-dom hv 0 (s≤s z≤n)))
+  where
+    go : ∀ n → 0 < n → rec-at n k ≡ just (AtDynamic (rec-cell k))
+    go (suc _) _ = refl
+
+rec-cell-addr : ∀ (hv : HeapView) k → haddr hv (rec-cell k) ≡ heap-base + k * slot-size
+rec-cell-addr hv k =
+  trans (cong (haddr hv) (cong (heap-loc (mkHeapRef 0)) (sym (+-identityʳ k))))
+        (trans (haddr-offset hv (heap-loc (mkHeapRef 0) 0) k) (cong (_+ k * slot-size) (rec-addr hv)))
+
+sim-load-rec : {hv : HeapView} (k : ℕ) (w : StoredValue FS) (fs : FlatState) (s s' : State) → FlatCorr hv fs s
+  → heapMem (floc fs) (rec-cell k) ≡ just w
+  → SetsRole s s' role-out (enc-sv hv w)
+  → FlatCorr hv (flat-exec-instr (load-rec k) [] fs) s'
+sim-load-rec {hv} k w fs s s' corr h-eq st =
+  subst (λ z → FlatCorr hv z s') (sym reduces) corr-clean
+  where
+    cleanFlat : FlatState
+    cleanFlat = record fs { floc = record (floc fs) { regs = writeReg (regs (floc fs)) Output w }
+                          ; falloc = falloc fs ; fpc = suc (fpc fs) }
+    floc-eq : exec-load-via-resolved Output (rec-gate (falloc fs) k) (floc fs)
+              ≡ record (floc fs) { regs = writeReg (regs (floc fs)) Output w }
+    floc-eq = trans (cong (λ m → exec-load-via-resolved Output m (floc fs)) (rec-gate-open hv corr k))
+                    (cong (λ mv → exec-load-with-value Output mv (floc fs)) h-eq)
+    reduces : flat-exec-instr (load-rec k) [] fs ≡ cleanFlat
+    reduces = cong (λ fl → record fs { floc = fl ; falloc = falloc fs ; fpc = suc (fpc fs) }) floc-eq
+    corr-clean : FlatCorr hv cleanFlat s'
+    corr-clean = record
+      { in1-eq = keep-in1 corr st (λ ()) ; out-eq = at-role st
+      ; clos-eq = keep-clos corr st (λ ()) ; halt-eq = keep-halt corr st ; sp-eq = keep-sp corr st (λ ()) ; frontier-eq = keep-heap-reg corr st (λ ()) ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr ; dom-sized = dom-sized corr ; heap-eq = keep-heap corr st ; lo-le = keep-lo-le corr st (λ ()) ; stack-eq = keep-stack corr st }
+
+sim-store-rec : {hv : HeapView} (k : ℕ) (fs : FlatState) (s s' : State) → FlatCorr hv fs s
+  → k < rec-size
+  → writeLoc (floc fs) (AtDynamic (rec-cell k)) (readReg (regs (floc fs)) Output)
+    ≡ writeLocToHeap (floc fs) (rec-cell k) (readReg (regs (floc fs)) Output)
+  → SetsMem s s' (haddr hv (rec-cell k)) (enc-sv hv (readReg (regs (floc fs)) Output))
+  → FlatCorr hv (flat-exec-instr (store-rec k) [] fs) s'
+sim-store-rec {hv} k fs s s' corr lt guard sm =
+  subst (λ z → FlatCorr hv z s') (sym reduces) corr-clean
+  where
+    v = readReg (regs (floc fs)) Output
+    live = rec-dom hv k lt
+    cleanFlat : FlatState
+    cleanFlat = record fs { floc = writeLocToHeap (floc fs) (rec-cell k) v ; falloc = falloc fs ; fpc = suc (fpc fs) }
+    floc-eq : exec-store-via-resolved (rec-gate (falloc fs) k) v (floc fs) ≡ writeLocToHeap (floc fs) (rec-cell k) v
+    floc-eq = trans (cong (λ m → exec-store-via-resolved m v (floc fs)) (rec-gate-open hv corr k)) guard
+    reduces : flat-exec-instr (store-rec k) [] fs ≡ cleanFlat
+    reduces = cong (λ fl → record fs { floc = fl ; falloc = falloc fs ; fpc = suc (fpc fs) }) floc-eq
+    corr-clean : FlatCorr hv cleanFlat s'
+    corr-clean = record
+      { in1-eq = mkeep-in1 corr sm ; out-eq = mkeep-out corr sm
+      ; clos-eq = mkeep-clos corr sm ; halt-eq = mkeep-halt corr sm ; sp-eq = mkeep-sp corr sm ; frontier-eq = mkeep-heap-reg corr sm ; dom-fresh = dom-fresh corr
+      ; dom-written = store-dom-written hv (rec-cell k) v (floc fs) live (dom-written corr)
+      ; dom-sized = dom-sized corr
+      ; heap-eq = store-heap-eq hv (rec-cell k) v s s' (floc fs) sm live (dom-written corr) (heap-eq corr)
+      ; lo-le = mkeep-lo-le corr sm
+      ; stack-eq = windows-heap-store (rec-cell k) (enc-sv hv v) live corr sm }
 
 ------------------------------------------------------------------------
 -- STACK RESTORE: `restore-input slot` (Input1 := stack[current-frame, slot]) ↔
@@ -2110,6 +2190,9 @@ extend-view hv st n fresh {lo'} room = record
   ; front-lo  = room
   ; front-pos = <-≤-trans (front-pos hv) (m≤m+n (hfront hv) (slots n))
   ; dom-pos   = pos
+  -- D470: the record is an old block (ref 0, below the fresh ref)
+  ; rec-dom   = λ k lt → ext-old (rec-dom hv k lt)
+  ; rec-addr  = trans (ext-addr-old hv st (heap-loc (mkHeapRef 0) 0) (fresh (rec-dom hv 0 (s≤s z≤n)))) (rec-addr hv)
   }
   where
     pos : ∀ {hl : HeapLocation} → ExtDom hv st n hl → 0 < ext-addr hv st hl

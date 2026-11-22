@@ -492,6 +492,11 @@ pb-abstract (load-at n)     ls alloc ff am wfS wf =
 pb-abstract (store-at n)     ls alloc ff am wfS wf =
   pb-store-at-resolved _ _ ls n (frame-gate alloc n (sv-as-loc (readReg (regs ls) Input1)))
                        (readReg (regs ls) Output) (pb-regs wf Output) wf
+-- D468: the record's words, a load and a store through its gate
+pb-abstract (load-rec n)    ls alloc ff am wfS wf =
+  pb-load-resolved _ ls Output (rec-gate alloc n) wf
+pb-abstract (store-rec n)   ls alloc ff am wfS wf =
+  pb-store-resolved _ ls (rec-gate alloc n) (readReg (regs ls) Output) (pb-regs wf Output) wf
 pb-abstract (addr-at n)     ls alloc ff am wfS wf =
   pb-addr-at-resolved _ ls n (heap-gate (sv-as-loc (readReg (regs ls) Input1))) wf
 pb-abstract (instr-room n)     ls alloc ff am wfS wf = wf
@@ -648,6 +653,10 @@ flat-ptr-bounds (store-at n)     prog fs ff am wfS wf =
   pb-abstract (store-at n) (floc fs) (falloc fs) ff am wfS wf
 flat-ptr-bounds (addr-at n)     prog fs ff am wfS wf =
   pb-abstract (addr-at n) (floc fs) (falloc fs) ff am wfS wf
+flat-ptr-bounds (load-rec n)    prog fs ff am wfS wf =
+  pb-abstract (load-rec n) (floc fs) (falloc fs) ff am wfS wf
+flat-ptr-bounds (store-rec n)   prog fs ff am wfS wf =
+  pb-abstract (store-rec n) (floc fs) (falloc fs) ff am wfS wf
 flat-ptr-bounds (instr-room n)     prog fs ff am wfS wf = pb-abstract (instr-room n) (floc fs) (falloc fs) ff am wfS wf
 flat-ptr-bounds (instr-push-frame cap)  prog fs () am wfS wf
 flat-ptr-bounds instr-pop-frame         prog fs () am wfS wf

@@ -83,8 +83,15 @@ externs-text : List String → String
 externs-text []       = ""
 externs-text (s ∷ ss) = ".extern " ++ˢ s ++ˢ "\n" ++ˢ externs-text ss
 
+-- D470: a program's file holds its allocator record, `rec-size` words of `.bss`
+-- at a local symbol (each program its own); a library's file (no entry) none
+record-text : Maybe ℕ → String
+record-text nothing  = ""
+record-text (just _) = "\n.section .bss\n.balign 4\nonce_alloc_record:\n    .skip 256\n"
+
 print : Image → String
 print F = preamble ++ˢ externs-text (externs F) ++ˢ code-text (entry F) 0 (code F) ++ˢ blocks-text (blocks F)
+          ++ˢ record-text (entry F)
 
 ------------------------------------------------------------------------
 -- WHAT `as` (WITH `ld`) DEMANDS OF A FILE. Every symbol the text defines is
@@ -105,7 +112,9 @@ ref-syms (jne l)             = labelSym l ∷ []
 ref-syms (call-l l)          = labelSym l ∷ []
 ref-syms (call-sym s)        = s ∷ []
 ref-syms (mov-code _ n)      = thunkSym n ∷ []
-ref-syms (lea _ (abs-sym s)) = s ∷ []
+ref-syms (lea _ (abs-sym s _)) = s ∷ []
+ref-syms (mov (reg _) (mem (abs-sym s _))) = s ∷ []
+ref-syms (mov (mem (abs-sym s _)) _)       = s ∷ []
 {-# CATCHALL #-}
 ref-syms _                   = []
 
@@ -115,7 +124,7 @@ refs (i ∷ is) = ref-syms i ++ refs is
 
 start-defs : Maybe ℕ → List String
 start-defs nothing  = []
-start-defs (just _) = "once_main" ∷ []
+start-defs (just _) = "once_main" ∷ "once_alloc_record" ∷ []
 
 defs : Image → List String
 defs F = start-defs (entry F) ++ label-defs (code F) ++ map proj₁ (blocks F)

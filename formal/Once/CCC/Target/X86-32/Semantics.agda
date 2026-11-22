@@ -18,7 +18,7 @@ module Once.CCC.Target.X86-32.Semantics where
 open import Once.CCC.Target.X86-32.Syntax
 open import Once.Target.X86-32.PhysReg using (Reg; eax; ebx; ecx; edx; esi; edi; ebp; esp)
 
-open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _≡ᵇ_)
+open import Data.Nat using (ℕ; zero; suc; _+_; _*_; _∸_; _≡ᵇ_)
 open import Data.Bool using (Bool; true; false; if_then_else_; _∨_)
 open import Data.List using ([]; _∷_; drop)
 open import Data.Maybe using (Maybe; just; nothing)
@@ -155,12 +155,21 @@ heap-base = 4
 postulate
   stack-span : Word         -- how far above the heap base the loader's %esp sits
 
+-- D470: the region's first 64 words are the allocator record (`SMCore.rec-size`
+-- words of 4 bytes).
+-- The model places every data symbol at `heap-base` and the region (`%esi`'s
+-- start) here, past it: the record (the program's `.bss`) and the Host's region
+-- are two disjoint areas, each addressed only by offsets inside it — the same
+-- w.l.o.g. ordering the heap's base already is (D367)
+heap-front : Word
+heap-front = heap-base + 64 * 4
+
 stack-top : Word            -- the %esp the loader hands `main`
-stack-top = heap-base + stack-span
+stack-top = heap-front + stack-span
 
 -- Plan 0.107: the environment hands the program over AT ITS ENTRY POINT.
 initStateAt : ℕ → State
-initStateAt e = mkstate (writeReg (writeReg emptyRegFile esp stack-top) esi heap-base) emptyMemory initFlags e false
+initStateAt e = mkstate (writeReg (writeReg emptyRegFile esp stack-top) esi heap-front) emptyMemory initFlags e false
 
 initState : State
 initState = initStateAt 0
@@ -174,7 +183,7 @@ effectiveAddr s (base r)         = readReg (regs s) r
 effectiveAddr s (base+disp r d)  = readReg (regs s) r + d
 effectiveAddr s (label-rel n)    = n
 -- Plan 0.107: the `.bss` heap symbol, placed at 0 without loss of generality.
-effectiveAddr s (abs-sym _)      = heap-base
+effectiveAddr s (abs-sym _ d)    = heap-base + d
 
 readOperand : State → Operand → Maybe Word
 readOperand s (reg r) = just (readReg (regs s) r)

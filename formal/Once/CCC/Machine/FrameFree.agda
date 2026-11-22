@@ -35,7 +35,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Bool using (true; false)
-open import Data.Nat using (ℕ)
+open import Data.Nat using (ℕ; _<_)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 
 -- Shallow: no instruction carries a nested trace (plan 0.135).
@@ -69,8 +69,9 @@ FrameFreeI instr-pop-frame           = ⊥
 FrameFreeI (instr-ctrl (c-entry _ _)) = ⊥
 FrameFreeI (instr-ctrl (c-start _)) = ⊥  -- plan 0.107: it reserves the outermost frame
 FrameFreeI (instr-room _)           = ⊥  -- D377: the room-check pass adds checks AFTER the image
-FrameFreeI (load-rec _)             = ⊥  -- D468: the allocator expansion adds them after the image
-FrameFreeI (store-rec _)            = ⊥
+-- D468/D470: the record's words move no frame; inside the record, as `EmittableI` has them
+FrameFreeI (load-rec k)             = k < rec-size
+FrameFreeI (store-rec k)            = k < rec-size
 -- plan 0.123 B.4 α: the four fixed-offset forms are retired — the flat layout
 -- reads and writes at `load-at`/`store-at`/`addr-at` offsets, so no emitter
 -- produces them
@@ -122,9 +123,10 @@ EmittableI (instr-ctrl (c-start _))  = ⊥
 -- D377: the image holds no check of its own; the room-check pass
 -- (`RoomChecks.room-checks`) adds them after it, to the lowered image.
 EmittableI (instr-room _)            = ⊥
--- D468: the allocator record's words, emittable once the arch layer has the record (B1.6 3d)
-EmittableI (load-rec _)              = ⊥
-EmittableI (store-rec _)             = ⊥
+-- D468/D470: the allocator record's words, inside the record (the region's
+-- first `rec-size` words, below the frontier)
+EmittableI (load-rec k)              = k < rec-size
+EmittableI (store-rec k)             = k < rec-size
 -- plan 0.123 B.4 α: the four fixed-offset forms are retired (no emitter
 -- produces them; the flat layout uses the offset forms)
 EmittableI load-indirect             = ⊥
@@ -184,8 +186,8 @@ emittable-image (instr-room _) e = e
 emittable-image (load-at _) e = e
 emittable-image (store-at _) e = e
 emittable-image (addr-at _) e = e
-emittable-image (load-rec _) ()
-emittable-image (store-rec _) ()
+emittable-image (load-rec _) e = e
+emittable-image (store-rec _) e = e
 
 -- …and the fence is WEAKER, so every consumer that only needs "no fossil"
 -- can still be fed a frame-free witness. ENUMERATED on the ⊥ set (the
@@ -203,8 +205,8 @@ frame-free-emittable (instr-room _)        ()
 frame-free-emittable (load-at _)           _ = tt
 frame-free-emittable (store-at _)          _ = tt
 frame-free-emittable (addr-at _)           _ = tt
-frame-free-emittable (load-rec _)          ()
-frame-free-emittable (store-rec _)         ()
+frame-free-emittable (load-rec _)          e = e
+frame-free-emittable (store-rec _)         e = e
 frame-free-emittable (instr-ctrl (c-call-fn _)) ()
 frame-free-emittable (instr-ctrl (c-ret _))     ()
 frame-free-emittable (instr-ctrl c-leave)                _ = tt

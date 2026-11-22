@@ -103,7 +103,7 @@ open FlatComposition
 
 import Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
 module CompiledCorrespondence = Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
-       o FS slot-size word-eq Reg roles State rreg memory xhalted link-claim
+       o FS slot-size word-eq Reg roles State rreg memory xhalted heap-base link-claim
        xpc (List Instr) compile-trace find-label blk-off blk-len exec modulus
   using (BlockStep; BlockSteps; CompiledCorr; fetch-just-drop; fetch-nothing-drop; slot-heap-disj; store-guard; module BlockSteps; module CompiledCorr)
 open CompiledCorrespondence
@@ -124,8 +124,8 @@ open import Once.Adequacy.ArchCorrectness.FlatCore.RunLow o FS slot-size word-eq
 -- private (an instance re-opened publicly would clash with the `C` every arch
 -- already binds). Same application, hence the same types.
 import Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence as FC
-module CFC = FC FS slot-size word-eq Reg roles State rreg memory xhalted
-  using (HeapView; enc-sv; slots; stack-eq-cur; stack-read; module FlatCorr; module HeapView)
+module CFC = FC FS slot-size word-eq Reg roles State rreg memory xhalted heap-base
+  using (HeapView; enc-sv; slots; stack-eq-cur; stack-read; rec-gate-open; module FlatCorr; module HeapView)
 open CFC using (HeapView; slots)
 
 ------------------------------------------------------------------------

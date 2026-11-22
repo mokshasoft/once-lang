@@ -211,7 +211,7 @@ open import Once.Arith.Backend.X86-32.Dispatch using (dispatch-arith)
 -- plan 0.123 α′ (e): the arch-free frame lemma of an arith SigOp's run
 open import Once.Adequacy.ArchCorrectness.X86-32.RegRoles using (x86-32-roles)
 open import Once.Adequacy.ArchCorrectness.FlatCore.SigOpFrame
-       o FS slot-size word-eq Reg x86-32-roles X.State xrreg X.State.memory X.State.halted
+       o FS slot-size word-eq Reg x86-32-roles X.State xrreg X.State.memory X.State.halted X.heap-base
        x86-32-link-claim X.State.pc Once.CCC.Target.X86-32.Syntax.Program compile-trace X.find-label blk-off blk-len X.exec
        X.W.modulus
   using (ArithRun; sigop-arith-step)
@@ -387,7 +387,7 @@ x86-32-emitter = record
 x86-32-machine : EI.Machine FS Reg x86-32-emitter
 x86-32-machine = record
   { State = X.State ; rreg = xrreg ; memory = X.State.memory
-  ; xhalted = X.State.halted ; xpc = X.State.pc
+  ; xhalted = X.State.halted ; heap-base = X.heap-base ; xpc = X.State.pc
   -- x86-32's `call` PUSHES the return address, so an unspilled return is
   -- already in its stack cell: the link claim IS the memory claim.
   ; link-claim = x86-32-link-claim

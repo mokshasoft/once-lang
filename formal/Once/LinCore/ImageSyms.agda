@@ -59,7 +59,7 @@ open import Once.CCC.Codegen.RoomChecksFacts using (fold-room; All-fold-room)
 open import Once.CCC.Codegen.ImageSymbols using (instr-defs; instr-refs; adefs; arefs; entry-symbol)
 open import Once.CCC.Codegen.ImageExterns using (image-externs; ext-in; ImageWF; image-externs-valid)
 open import Once.Target.Symbol using (once-symbol-path)
-open import Once.Target.SymbolFresh using (host-leave-symbol; host-exhausted-symbol)
+open import Once.Target.SymbolFresh using (host-leave-symbol; host-exhausted-symbol; alloc-record-symbol; record≢osp)
 open import Once.Target.SymbolInjective using (Peel; PeelS; once-symbol-path-injective-peel)
 open import Once.Arith.Machine.IR using (ArithBlock; module ArithBlock)
 open import Once.Arith.SigOp.Block using (block-name)
@@ -165,6 +165,18 @@ entry≢shape (s-tl j)   e = head≢ (thunk-head (tl j)) refl (sym e)
 
 entry≢block : ∀ {t} → BlockSym t → entry-symbol ≢ t
 entry≢block (d , refl) = entry≢osp (bare ("arith.block." ++ˢ d))
+
+-- D470: the allocator record's symbol is no label's, no block's, not the entry's
+record≢shape : ∀ {y} → ShapeL y → alloc-record-symbol ≢ labelSym y
+record≢shape (s-jl j k) e = head≢ (once-head (jl j k)) refl (sym e)
+record≢shape (s-fn j)   e = record≢osp (nameOf j) e
+record≢shape (s-tl j)   e = head≢ (thunk-head (tl j)) refl (sym e)
+
+record≢block : ∀ {t} → BlockSym t → alloc-record-symbol ≢ t
+record≢block (d , refl) = record≢osp (bare ("arith.block." ++ˢ d))
+
+entry≢record : entry-symbol ≢ alloc-record-symbol
+entry≢record ()
 
 ------------------------------------------------------------------------
 -- 2. A TRACE'S DEFINED LABELS: its jump labels and its entries.
@@ -374,7 +386,7 @@ module Img (nm : CanonicalName) {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   bs = Once.LinCore.ImageBlocks.imageBlocks fmt bw U
 
   D : List String
-  D = entry-symbol ∷ adefs P′ ++ block-syms bs
+  D = entry-symbol ∷ alloc-record-symbol ∷ adefs P′ ++ block-syms bs
 
   ex : List String
   ex = image-externs image
@@ -431,9 +443,11 @@ module Img (nm : CanonicalName) {Γ} (ds : Defs Γ) (f : LTm Γ One One)
 
   defined-once : Unique D
   defined-once =
-    subst (λ A → Unique (entry-symbol ∷ A ++ block-syms bs)) (sym adefs-eq)
-      ( ++⁺ (Data.List.Relation.Unary.All.map (λ { {s} (y , sh , refl) → entry≢shape sh }) adefs-shape)
-            (Data.List.Relation.Unary.All.map entry≢block (blocks-sym bs))
+    subst (λ A → Unique (entry-symbol ∷ alloc-record-symbol ∷ A ++ block-syms bs)) (sym adefs-eq)
+      ( (entry≢record ∷ ++⁺ (Data.List.Relation.Unary.All.map (λ { {s} (y , sh , refl) → entry≢shape sh }) adefs-shape)
+            (Data.List.Relation.Unary.All.map entry≢block (blocks-sym bs)))
+      ∷ ++⁺ (Data.List.Relation.Unary.All.map (λ { {s} (y , sh , refl) → record≢shape sh }) adefs-shape)
+            (Data.List.Relation.Unary.All.map record≢block (blocks-sym bs))
       ∷ AP-++⁺ adefs-dst (blocks-unique bs)
           (Data.List.Relation.Unary.All.map (λ { {s} (y , sh , refl) → Data.List.Relation.Unary.All.map (shape≢block sh) (blocks-sym bs) }) adefs-shape))
 
@@ -446,10 +460,10 @@ module Img (nm : CanonicalName) {Γ} (ds : Defs Γ) (f : LTm Γ One One)
 
   private
     inD : ∀ {s} → s ∈ adefs image → G s
-    inD {s} m = inj₁ (there (∈-++⁺ˡ (subst (s ∈_) (sym adefs-eq) m)))
+    inD {s} m = inj₁ (there (there (∈-++⁺ˡ (subst (s ∈_) (sym adefs-eq) m))))
 
     inB : ∀ {s} → s ∈ block-syms bs → G s
-    inB m = inj₁ (there (∈-++⁺ʳ (adefs P′) m))
+    inB m = inj₁ (there (there (∈-++⁺ʳ (adefs P′) m)))
 
     dl-G : ∀ {y} → y ∈ dlabs image → G (labelSym y)
     dl-G m = inD (subst (_ ∈_) (sym (adefs-labs image)) (∈-map⁺ labelSym m))
@@ -542,8 +556,8 @@ module Img (nm : CanonicalName) {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     refs-ok (load-at _) r jin m = []
     refs-ok (store-at _) r jin m = []
     refs-ok (addr-at _) r jin m = []
-    refs-ok (load-rec _) r jin m = []
-    refs-ok (store-rec _) r jin m = []
+    refs-ok (load-rec _) r jin m = inj₁ (there (here refl)) ∷ []
+    refs-ok (store-rec _) r jin m = inj₁ (there (here refl)) ∷ []
     refs-ok (instr-room _) r jin m = inj₂ (there (here refl)) ∷ []
     refs-ok (instr-push-frame _) r jin m = []
     refs-ok instr-pop-frame r jin m = []

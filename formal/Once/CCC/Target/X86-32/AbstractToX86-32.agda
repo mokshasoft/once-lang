@@ -30,12 +30,12 @@ import Data.Nat as ℕ
 open import Data.List using ([]; _∷_; _++_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
-open import Once.Target.SymbolFresh using (host-leave-symbol; host-exhausted-symbol)
+open import Once.Target.SymbolFresh using (host-leave-symbol; host-exhausted-symbol; alloc-record-symbol)
 open import Once.Target.Symbol using (once-symbol-path)
 
 -- Import x86-32 syntax
 open import Once.CCC.Target.X86-32.Syntax
-  using (base; base+disp; reg; mem; imm; mov; lea; add; sub; sbb; cmp; push; pop; call; call-sym; ret; je; jbe-fwd; local-1; label; call-l; mov-code; jmp-l; Program; slot-size; slots)
+  using (base; base+disp; abs-sym; reg; mem; imm; mov; lea; add; sub; sbb; cmp; push; pop; call; call-sym; ret; je; jbe-fwd; local-1; label; call-l; mov-code; jmp-l; Program; slot-size; slots)
 open import Once.CCC.Label using (once; callee; e-fn)
 open import Once.Target.X86-32.PhysReg using (eax; ecx; esp; esi; ebp; ebx)
 open import Once.Spec.Name using (CanonicalName)
@@ -196,9 +196,12 @@ compile-abstract (instr-reclaim-to n) = []
 -- instr-free-heap: no code yet (plan 0.123 M2: the bump allocator never
 -- reuses a block; the free-list and pop code come with M3)
 compile-abstract (instr-free-heap n) = []
--- D468: not emittable until the arch layer has the allocator record (B1.6 3d)
-compile-abstract (load-rec _) = []
-compile-abstract (store-rec _) = []
+-- D468/D470: the allocator record's word k, at the program's record symbol plus 4k
+-- x86-32: mov eax, [once_alloc_record + 4k] ; mov [once_alloc_record + 4k], eax
+compile-abstract (load-rec n) =
+  mov (reg eax) (mem (abs-sym alloc-record-symbol (slot-to-disp n))) ∷ []
+compile-abstract (store-rec n) =
+  mov (mem (abs-sym alloc-record-symbol (slot-to-disp n))) (reg eax) ∷ []
 -- plan 0.123 B.4 α: a flat value's word k, by its offset from Input1.
 -- x86-32: mov eax, [ecx + 4k] ; mov [ecx + 4k], eax ; lea eax, [ecx + 4k]
 compile-abstract (load-at n) =

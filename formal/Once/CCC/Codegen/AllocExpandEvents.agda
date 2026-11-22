@@ -101,6 +101,7 @@ module _ (C : Classes) (P : AbstractTrace) (Sz : ℕ → Set)
     field
       g-step : ∀ {fs i} → Good fs → LocState.halted (floc fs) ≡ false → fetch P (fpc fs) ≡ just i → Good (flat-exec-instr i P fs)
       g-em   : ∀ {fs i} → Good fs → fetch P (fpc fs) ≡ just i → EmittableI i
+      g-nr   : ∀ {fs i} → Good fs → fetch P (fpc fs) ≡ just i → D.NoRecI C P Sz uniform fits in-range sz-alloc sz-free img jmp-lbl br-lbl i
       g-nf   : ∀ {fs i} → Good fs → LocState.halted (floc fs) ≡ false → fetch P (fpc fs) ≡ just i
              → LocState.faulted (floc (flat-exec-instr i P fs)) ≡ false
       g-wf   : ∀ {fs} → Good fs → WF.StoreWF (AllocState.next-heap-ref (falloc fs)) (floc fs)
@@ -132,7 +133,7 @@ module _ (C : Classes) (P : AbstractTrace) (Sz : ℕ → Set)
         by-f nothing ef h =
           1 , trans (ev-none 0 E gs (hg h) (trans (cong (fetch E) (r-pc R)) (fetch-none C 0 P (fpc fs) ef))) (sym (ev-none n P fs h ef))
             , subst (_≤ flat-ctrls 1 E gs) (sym (ct-none n P fs h ef)) z≤n
-        by-f (just i) ef h = go (D.dispatch C P Sz uniform fits in-range sz-alloc sz-free img jmp-lbl br-lbl R i ef (g-em G ef) h (g-nf G h ef) (g-wf G) (g-cw G))
+        by-f (just i) ef h = go (D.dispatch C P Sz uniform fits in-range sz-alloc sz-free img jmp-lbl br-lbl R i ef (g-em G ef) (g-nr G ef) h (g-nf G h ef) (g-wf G) (g-cw G))
           where
             go : D.Step C P Sz uniform fits in-range sz-alloc sz-free img jmp-lbl br-lbl i fs gs → Σ ℕ λ m → Same m gs (suc n) fs
             go (N , gs′ , c , cb , R′) = go′ (ev n (g-step G h ef) R′)
@@ -221,7 +222,7 @@ module _ (C : Classes) (P : AbstractTrace) (Sz : ℕ → Set)
           where
             no : ∀ {X : Set} {v : X} → just v ≡ nothing → ⊥
             no ()
-        by-f (just i) ef = go (DX.dispatch C P Sz uniform fits in-range sz-alloc sz-free img jmp-lbl br-lbl R i ef (g-em G ef) h (g-nf G h ef) (g-wf G) (g-cw G))
+        by-f (just i) ef = go (DX.dispatch C P Sz uniform fits in-range sz-alloc sz-free img jmp-lbl br-lbl R i ef (g-em G ef) (g-nr G ef) h (g-nf G h ef) (g-wf G) (g-cw G))
           where
             go : DX.Step C P Sz uniform fits in-range sz-alloc sz-free img jmp-lbl br-lbl i fs gs → LocState.faulted (floc x) ≡ false
             go (N , gs′ , c , _ , R′) = split (meet c d) b kb

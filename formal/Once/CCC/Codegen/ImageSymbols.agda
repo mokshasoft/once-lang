@@ -27,8 +27,8 @@ open import Once.SigOp.Info using (module SigOpInfo)
 open SigOpInfo using (name)
 open import Once.Target.Symbol using (once-symbol-path)
 open import Once.CCC.Machine.SMCore
-  using (AbstractInstr; AbstractTrace; FlatCtrl; instr-ctrl; instr-sigop; instr-load-code-addr; instr-room; c-label; c-jmp; c-branch-tag-zero; c-entry; c-ret; c-call-fn; c-start; c-leave)
-open import Once.Target.SymbolFresh using (host-leave-symbol; host-exhausted-symbol)
+  using (AbstractInstr; AbstractTrace; FlatCtrl; instr-ctrl; instr-sigop; instr-load-code-addr; instr-room; load-rec; store-rec; c-label; c-jmp; c-branch-tag-zero; c-entry; c-ret; c-call-fn; c-start; c-leave)
+open import Once.Target.SymbolFresh using (host-leave-symbol; host-exhausted-symbol; alloc-record-symbol)
 
 -- The program's portable entry (plan 0.123 C.5): the Host's `enter` (Linux:
 -- `_start`) sets up the region and jumps here. The compiler emits no data and
@@ -68,6 +68,9 @@ instr-refs (instr-sigop si)         = once-symbol-path (name si) ∷ []
 instr-refs (instr-load-code-addr n) = thunkSym n ∷ []
 -- plan 0.123 A.4: the room check calls the Host's `once_exhausted` when it fails.
 instr-refs (instr-room _)           = host-exhausted-symbol ∷ []
+-- D470: the allocator record is at its own symbol (the file defines it)
+instr-refs (load-rec _)             = alloc-record-symbol ∷ []
+instr-refs (store-rec _)            = alloc-record-symbol ∷ []
 {-# CATCHALL #-}
 instr-refs _                        = []
 

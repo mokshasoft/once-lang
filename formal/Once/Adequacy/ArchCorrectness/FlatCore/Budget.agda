@@ -56,6 +56,7 @@ module Once.Adequacy.ArchCorrectness.FlatCore.Budget
   (rreg : State → Reg → ℕ)
   (memory : State → (ℕ → Maybe ℕ))
   (xhalted : State → Bool)
+  (heap-base : ℕ)            -- D470: the allocator record's address
   where
 
 open import Data.Nat.Properties
@@ -76,7 +77,7 @@ open NeedFacts {FS} using (boundary-next; entry-le)
 open RegRoles roles using (sp-reg)
 import Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence as FC
 private
-  module CFC = FC FS slot-size word-eq Reg roles State rreg memory xhalted
+  module CFC = FC FS slot-size word-eq Reg roles State rreg memory xhalted heap-base
     using (FlatCorr; HeapView; sep; slots; module FlatCorr; module HeapView)
 open CFC using (HeapView; slots; FlatCorr; sep)
 open CFC.FlatCorr using (sp-eq)

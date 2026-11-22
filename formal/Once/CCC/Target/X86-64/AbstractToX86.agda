@@ -27,7 +27,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 
 -- Import X86 syntax
 open import Once.CCC.Target.X86-64.Syntax
-  using (base; base+disp; rip+label; reg; mem; imm; mov; lea; add; sub; sbb; cmp; push; pop; call; call-l; call-sym; ret; jmp; je; label; jbe-fwd; local-1; Program; slot-size; slots)
+  using (base; base+disp; rip+label; rip+sym; reg; mem; imm; mov; lea; add; sub; sbb; cmp; push; pop; call; call-l; call-sym; ret; jmp; je; label; jbe-fwd; local-1; Program; slot-size; slots)
 open import Once.Target.X86-64.PhysReg using (rax; rdi; rsp; r15; rbp; r12; r11)
 
 -- Import AbstractInstr from SMCore
@@ -36,7 +36,7 @@ open import Once.CCC.Machine.Locations using (Slot)
 open import Data.List.Relation.Unary.All using ([]; _∷_)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.SigOp.Info using (SigOpInfo)
-open import Once.Target.SymbolFresh using (host-leave-symbol; host-exhausted-symbol)
+open import Once.Target.SymbolFresh using (host-leave-symbol; host-exhausted-symbol; alloc-record-symbol)
 open import Once.CCC.Label using (once; callee; e-fn)
 
 ------------------------------------------------------------------------
@@ -185,9 +185,13 @@ compile-abstract (instr-reclaim-to n) = []
 -- instr-free-heap: no code yet (plan 0.123 M2: the bump allocator never
 -- reuses a block; the free-list and pop code come with M3)
 compile-abstract (instr-free-heap n) = []
--- D468: not emittable until the arch layer has the allocator record (B1.6 3d)
-compile-abstract (load-rec _) = []
-compile-abstract (store-rec _) = []
+-- D468/D470: the allocator record's word k, at the program's record symbol plus 8k
+-- load-rec k:  Output := record[k]      x86: mov rax, [once_alloc_record + 8k]
+-- store-rec k: record[k] := Output      x86: mov [once_alloc_record + 8k], rax
+compile-abstract (load-rec n) =
+  mov (reg rax) (mem (rip+sym alloc-record-symbol (slot-to-disp n))) ∷ []
+compile-abstract (store-rec n) =
+  mov (mem (rip+sym alloc-record-symbol (slot-to-disp n))) (reg rax) ∷ []
 -- plan 0.123 B.4 α: a flat value's word k, by its offset from Input1.
 -- load-at k:  Output := *(Input1 + k)      x86: mov rax, [rdi + 8k]
 -- store-at k: *(Input1 + k) := Output      x86: mov [rdi + 8k], rax
