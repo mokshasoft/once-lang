@@ -82,3 +82,75 @@ module _ (C : Classes) (P : AbstractTrace) where
           hd (v , e , ch) = v , trans (rec-free (head-word c)) e
                           , chain-frame (LocState.heapMem (floc gs)) (LocState.heapMem B) (σ R) (lists R c) v
                               (λ b m → frame (heap-loc (mkHeapRef b) 0) (λ r lv e′ → r-not-free R r c b lv m e′)) ch
+
+  ------------------------------------------------------------------------
+  -- ★ The register and slot instructions, one by one
+  ------------------------------------------------------------------------
+
+  open FlatMachine {FS} using (flat-exec-instr; fetch)
+  open import Once.CCC.Codegen.AllocExpandPc {FS} using (off-suc)
+  open import Data.Bool using (Bool; true; false)
+
+  E = expand C P
+
+  -- the next pc, for an instruction the expansion keeps
+  next-pc : ∀ {fs gs} (R : Rel C P fs gs) i → fetch P (fpc fs) ≡ just i → expand-at C (fpc fs + 0) i ≡ i ∷ []
+          → off C 0 P (suc (fpc fs)) ≡ suc (fpc gs)
+  next-pc {fs} {gs} R i f ex =
+    trans (off-suc C 0 P (fpc fs) i f)
+      (trans (cong (λ xs → off C 0 P (fpc fs) + length xs) ex)
+        (trans (Data.Nat.Properties.+-comm (off C 0 P (fpc fs)) 1) (cong suc (sym (r-pc R)))))
+
+  step-mov-out : ∀ {fs gs} (R : Rel C P fs gs) → fetch P (fpc fs) ≡ just mov-to-output
+               → Rel C P (flat-exec-instr mov-to-output P fs) (flat-exec-instr mov-to-output E gs)
+  step-mov-out {fs} {gs} R f =
+    core-straight R _ _ (L.Slots.mov-out (ρ R) (Live (falloc fs)) (r-inj R) {al = falloc fs} {al′ = falloc gs} (r-frame R) (r-loc R))
+      (λ q _ → refl) (next-pc R mov-to-output f refl)
+
+  step-mov-in : ∀ {fs gs} (R : Rel C P fs gs) → fetch P (fpc fs) ≡ just mov-to-input
+              → Rel C P (flat-exec-instr mov-to-input P fs) (flat-exec-instr mov-to-input E gs)
+  step-mov-in {fs} {gs} R f =
+    core-straight R _ _ (L.Slots.mov-in (ρ R) (Live (falloc fs)) (r-inj R) {al = falloc fs} {al′ = falloc gs} (r-frame R) (r-loc R))
+      (λ q _ → refl) (next-pc R mov-to-input f refl)
+
+  open FlatMachine {FS} using (straight-at; straight-go)
+
+  -- ★ a gated straight step: the gate is the same on both sides, and when it
+  -- fails the primitive faults (which a sound run does not)
+  gated-step : ∀ {fs gs} (R : Rel C P fs gs) i (bP bE : Bool) (A B : LocState FS)
+             → flat-exec-instr i P fs ≡ straight-at bP i fs → flat-exec-instr i E gs ≡ straight-at bE i gs → bE ≡ bP
+             → straight-go i fs ≡ record fs { floc = A ; fpc = suc (fpc fs) }
+             → straight-go i gs ≡ record gs { floc = B ; fpc = suc (fpc gs) }
+             → L.LRel (ρ R) (Live (falloc fs)) (r-inj R) A B
+             → (∀ q → (∀ r → Live (falloc fs) r → ¬ ρ R r ≡ ref-of q) → LocState.heapMem B q ≡ LocState.heapMem (floc gs) q)
+             → off C 0 P (suc (fpc fs)) ≡ suc (fpc gs)
+             → LocState.faulted (floc (flat-exec-instr i P fs)) ≡ false
+             → Rel C P (flat-exec-instr i P fs) (flat-exec-instr i E gs)
+  gated-step {fs} {gs} R i true  .true A B eP eE refl gP gE LR frame pc nf =
+    subst (λ x → Rel C P x (flat-exec-instr i E gs)) (sym (trans eP gP))
+      (subst (λ y → Rel C P (record fs { floc = A ; fpc = suc (fpc fs) }) y) (sym (trans eE gE))
+         (core-straight R A B LR frame pc))
+  gated-step {fs} {gs} R i false .false A B eP eE refl gP gE LR frame pc nf = absurd (trans (sym (cong (λ x → LocState.faulted (floc x)) eP)) nf)
+    where
+      absurd : true ≡ false → Rel C P (flat-exec-instr i P fs) (flat-exec-instr i E gs)
+      absurd ()
+
+  step-from-slot : ∀ {fs gs} (R : Rel C P fs gs) k → fetch P (fpc fs) ≡ just (load-from-slot k)
+                 → LocState.faulted (floc (flat-exec-instr (load-from-slot k) P fs)) ≡ false
+                 → Rel C P (flat-exec-instr (load-from-slot k) P fs) (flat-exec-instr (load-from-slot k) E gs)
+  step-from-slot {fs} {gs} R k f nf =
+    gated-step R (load-from-slot k) _ _ _ _ refl refl (cong (k Data.Nat.<ᵇ_) (r-slots R)) (go-al fs) (go-al gs)
+      (L.Slots.from-slot (ρ R) (Live (falloc fs)) (r-inj R) {al = falloc fs} {al′ = falloc gs} (r-frame R) k (r-loc R))
+      (λ q _ → load-slot-heap (LocState.stackMem (floc gs) (AllocState.current-frame (falloc gs)) k) (floc gs) (falloc gs) q)
+      (next-pc R (load-from-slot k) f refl) nf
+    where
+      open import Once.CCC.Machine.SMCore using (module AbstractExec)
+      load-slot-heap : ∀ mv (s : LocState FS) al q → LocState.heapMem (proj₁ (AbstractExec.exec-load-from-slot-with-value {FS} mv s al)) q ≡ LocState.heapMem s q
+      load-slot-heap (just _) s al q = refl
+      load-slot-heap nothing  s al q = refl
+      slot-al : ∀ mv (s : LocState FS) al → proj₂ (AbstractExec.exec-load-from-slot-with-value {FS} mv s al) ≡ al
+      slot-al (just _) s al = refl
+      slot-al nothing  s al = refl
+      go-al : ∀ x → straight-go (load-from-slot k) x ≡ record x { floc = floc (straight-go (load-from-slot k) x) ; fpc = suc (fpc x) }
+      go-al x = cong (λ a → record x { floc = floc (straight-go (load-from-slot k) x) ; falloc = a ; fpc = suc (fpc x) })
+                     (slot-al (LocState.stackMem (floc x) (AllocState.current-frame (falloc x)) k) (floc x) (falloc x))
