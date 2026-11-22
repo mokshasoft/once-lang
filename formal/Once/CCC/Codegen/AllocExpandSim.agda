@@ -680,3 +680,29 @@ module _ (C : Classes) (P : AbstractTrace) where
              (sym (r-frame R))
              (stack-loc R _ _ (clear-rel R (FrameSemantics.shift-frame FS (AllocState.current-frame (falloc fs)) b) b)))
       (r-clo R) (λ q _ → refl)
+
+  -- a fault on both sides
+  fault-rel : ∀ {fs gs} (R : Rel C P fs gs) → Rel C P (flat-fault fs) (flat-fault gs)
+  fault-rel {fs} {gs} R = core-gen R (moves-stay R _ _)
+    (record { l-regs = L.LRel.l-regs (r-loc R) ; l-stack = L.LRel.l-stack (r-loc R) ; l-heap = L.LRel.l-heap (r-loc R) ; l-live = L.LRel.l-live (r-loc R)
+            ; l-halt = refl ; l-fault = refl ; l-left = L.LRel.l-left (r-loc R) ; l-log = L.LRel.l-log (r-loc R) })
+    (r-clo R) (λ q _ → refl)
+
+  -- a call to a mapped entry (the return address one past the call, on both sides)
+  call-rel : ∀ {fs gs} (R : Rel C P fs gs) → off C 0 P (suc (fpc fs)) ≡ suc (fpc gs) → ∀ (mj : Maybe ℕ)
+           → Rel C P (do-call-at mj fs) (do-call-at (Data.Maybe.map (λ p → 0 + off C 0 P p) mj) gs)
+  call-rel {fs} {gs} R pc (just j) =
+    core-gen R
+      (record { m-pc = refl ; m-ret = cong₂ _∷_ (sym pc) (r-ret R) ; m-link = cong just (sym pc)
+              ; m-frame = cong (λ c → FrameSemantics.shift-frame FS c 1) (r-frame R) ; m-saved = cong₂ _∷_ (cong₂ _,_ (r-frame R) (r-slots R)) (r-saved R)
+              ; m-slots = refl ; m-nslot = r-next-slot R
+              ; m-nextP = refl ; m-freeP = λ _ → refl ; m-sizeP = λ _ → refl
+              ; m-nextE = refl ; m-freeE = λ _ → refl ; m-sizeE = λ _ → refl })
+      (r-loc R) (r-clo R) (λ q _ → refl)
+  call-rel R pc nothing = fault-rel R
+
+  step-call-fn : ∀ {fs gs} (R : Rel C P fs gs) fn → fetch P (fpc fs) ≡ just (instr-ctrl (c-call-fn fn))
+               → Rel C P (flat-exec-instr (instr-ctrl (c-call-fn fn)) P fs) (flat-exec-instr (instr-ctrl (c-call-fn fn)) E gs)
+  step-call-fn {fs} {gs} R fn f =
+    subst (λ m → Rel C P (do-call-at (find-fn P fn) fs) (do-call-at m gs)) (sym (ft-exp C 0 P (Once.CCC.Label.e-fn fn) 0))
+      (call-rel R (next-pc R (instr-ctrl (c-call-fn fn)) f refl) (find-fn P fn))
