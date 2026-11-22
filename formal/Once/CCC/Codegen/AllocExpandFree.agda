@@ -109,3 +109,68 @@ dyn-regs s hl (SV-Ptr (AtDynamic _)) = refl
 dyn-regs s hl (SV-Tag _) = refl
 dyn-regs s hl (SV-Lit _ _) = refl
 dyn-regs s hl (SV-Code _) = refl
+
+module Run (prog : AbstractTrace) (x : FlatState) (h b n : ℕ) (v₀ : StoredValue FS)
+           (f₀ : fetch prog (fpc x) ≡ just (store-rec w-s1))
+           (f₁ : fetch prog (suc (fpc x)) ≡ just (load-rec h))
+           (f₂ : fetch prog (suc (suc (fpc x))) ≡ just (store-at 0))
+           (f₃ : fetch prog (suc (suc (suc (fpc x)))) ≡ just mov-to-output)
+           (f₄ : fetch prog (suc (suc (suc (suc (fpc x))))) ≡ just (store-rec h))
+           (f₅ : fetch prog (suc (suc (suc (suc (suc (fpc x)))))) ≡ just (load-rec w-s1))
+           (hx : LocState.halted (floc x) ≡ false) (nx : AllocState.next-heap-ref (falloc x) ≡ suc n)
+           (hd : LocState.heapMem (floc x) (rec-loc h) ≡ just v₀)
+           (inx : readReg (LocState.regs (floc x)) Input1 ≡ blk b)
+           (ib : ExecFinal.in-block? {FS} (ExecFinal.live-size {FS} (falloc x)) (AtDynamic (heap-loc (mkHeapRef b) 0)) ≡ true)
+           (h≢1 : ¬ h ≡ w-s1) (b≢0 : ¬ b ≡ 0) where
+
+  O = readReg (LocState.regs (floc x)) Output
+
+  x₁ = record x  { floc = writeLocToHeap (floc x) (rec-loc w-s1) O ; fpc = suc (fpc x) }
+  x₂ = record x₁ { floc = record (floc x₁) { regs = writeReg (LocState.regs (floc x₁)) Output v₀ } ; fpc = suc (fpc x₁) }
+  x₃ = record x₂ { floc = writeLocToHeap (floc x₂) (heap-loc (mkHeapRef b) 0) v₀ ; fpc = suc (fpc x₂) }
+  x₄ = record x₃ { floc = record (floc x₃) { regs = writeReg (LocState.regs (floc x₃)) Output (readReg (LocState.regs (floc x₃)) Input1) } ; fpc = suc (fpc x₃) }
+  x₅ = record x₄ { floc = writeLocToHeap (floc x₄) (rec-loc h) (readReg (LocState.regs (floc x₄)) Output) ; fpc = suc (fpc x₄) }
+  x₆ = record x₅ { floc = record (floc x₅) { regs = writeReg (LocState.regs (floc x₅)) Output O } ; fpc = suc (fpc x₅) }
+
+  private
+    rec≢ : ∀ {i j} → ¬ i ≡ j → ¬ rec-loc i ≡ rec-loc j
+    rec≢ ne e = ne (cong HeapLocation.heap-offset e)
+    blk≢rec : ∀ k → ¬ heap-loc (mkHeapRef b) 0 ≡ rec-loc k
+    blk≢rec k e = b≢0 (cong (λ q → HeapRef.ref-id (HeapLocation.heap-ref q)) e)
+
+  -- the head word, read past the scratch write
+  hd₁ : LocState.heapMem (floc x₁) (rec-loc h) ≡ just v₀
+  hd₁ = trans (hw-other (LocState.heapMem (floc x)) (rec-loc w-s1) (rec-loc h) O (rec≢ (λ e → h≢1 (sym e)))) hd
+
+  -- the scratch word, read back past the two writes after it
+  sc₅ : LocState.heapMem (floc x₅) (rec-loc w-s1) ≡ just O
+  sc₅ = trans (hw-other (LocState.heapMem (floc x₄)) (rec-loc h) (rec-loc w-s1) _ (rec≢ h≢1))
+          (trans (hw-other (LocState.heapMem (floc x₂)) (heap-loc (mkHeapRef b) 0) (rec-loc w-s1) v₀ (blk≢rec w-s1))
+                 (hw-same (LocState.heapMem (floc x)) (rec-loc w-s1) O))
+
+  -- ★ the six steps
+  run : FlatSteps prog 6 x x₆
+  run = FlatSteps-++ (run-store-rec prog x w-s1 n nx hx f₀)
+       (FlatSteps-++ (run-load-rec prog x₁ h n v₀ nx hx f₁ hd₁)
+       (FlatSteps-++ (run-store-at0 prog x₂ b inx ib hx f₂)
+       (FlatSteps-++ (run-mov-out prog x₃ hx f₃)
+       (FlatSteps-++ (run-store-rec prog x₄ h n nx hx f₄)
+                     (run-load-rec prog x₅ w-s1 n O nx hx f₅ sc₅)))))
+
+  -- what it leaves: the registers, the head, the block's link, the rest
+  out-in : readReg (LocState.regs (floc x₆)) Input1 ≡ readReg (LocState.regs (floc x)) Input1
+  out-in = refl
+
+  out-head : LocState.heapMem (floc x₆) (rec-loc h) ≡ just (blk b)
+  out-head = trans (hw-same (LocState.heapMem (floc x₄)) (rec-loc h) _) (cong just inx)
+
+  out-link : LocState.heapMem (floc x₆) (heap-loc (mkHeapRef b) 0) ≡ just v₀
+  out-link = trans (hw-other (LocState.heapMem (floc x₄)) (rec-loc h) (heap-loc (mkHeapRef b) 0) _ (λ e → blk≢rec h (sym e)))
+                   (hw-same (LocState.heapMem (floc x₂)) (heap-loc (mkHeapRef b) 0) v₀)
+
+  out-other : ∀ q → ¬ q ≡ rec-loc h → ¬ q ≡ heap-loc (mkHeapRef b) 0 → ¬ q ≡ rec-loc w-s1
+            → LocState.heapMem (floc x₆) q ≡ LocState.heapMem (floc x) q
+  out-other q n₁ n₂ n₃ =
+    trans (hw-other (LocState.heapMem (floc x₄)) (rec-loc h) q _ (λ e → n₁ (sym e)))
+      (trans (hw-other (LocState.heapMem (floc x₂)) (heap-loc (mkHeapRef b) 0) q v₀ (λ e → n₂ (sym e)))
+             (hw-other (LocState.heapMem (floc x)) (rec-loc w-s1) q O (λ e → n₃ (sym e))))

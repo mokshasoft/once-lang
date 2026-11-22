@@ -32,6 +32,14 @@ open FlatStepsAPI {FS} using (FlatSteps; _∷_; [])
 open import Once.CCC.Codegen.AllocExpandRen {FS} using (rec-loc; blk)
 open MemOps {FS} using (writeLoc; writeLocToHeap; readLoc)
 
+-- a heap write is a write of the heap
+dyn-write : ∀ (s : LocState FS) hl v → writeLoc s (AtDynamic hl) v ≡ writeLocToHeap s hl v
+dyn-write s hl (SV-Ptr (AtStack _ _)) = refl
+dyn-write s hl (SV-Ptr (AtDynamic _)) = refl
+dyn-write s hl (SV-Tag _)             = refl
+dyn-write s hl (SV-Lit _ _)           = refl
+dyn-write s hl (SV-Code _)            = refl
+
 module _ (prog : AbstractTrace) where
 
   -- one step, by its end state
@@ -42,11 +50,12 @@ module _ (prog : AbstractTrace) where
   -- the record's word k, written from Output (the record handed out)
   run-store-rec : ∀ x k n → AllocState.next-heap-ref (falloc x) ≡ suc n → LocState.halted (floc x) ≡ false
                 → fetch prog (fpc x) ≡ just (store-rec k)
-                → FlatSteps prog 1 x (record x { floc = writeLoc (floc x) (AtDynamic (rec-loc k)) (readReg (LocState.regs (floc x)) Output)
+                → FlatSteps prog 1 x (record x { floc = writeLocToHeap (floc x) (rec-loc k) (readReg (LocState.regs (floc x)) Output)
                                                ; fpc = suc (fpc x) })
   run-store-rec x k n nx h f =
-    one h f (cong (λ m → record x { floc = ExecFinal.exec-store-via-resolved {FS} (ExecFinal.rec-at {FS} m k) (readReg (LocState.regs (floc x)) Output) (floc x)
-                                  ; fpc = suc (fpc x) }) nx)
+    one h f (trans (cong (λ m → record x { floc = ExecFinal.exec-store-via-resolved {FS} (ExecFinal.rec-at {FS} m k) (readReg (LocState.regs (floc x)) Output) (floc x)
+                                         ; fpc = suc (fpc x) }) nx)
+                   (cong (λ l → record x { floc = l ; fpc = suc (fpc x) }) (dyn-write (floc x) (rec-loc k) (readReg (LocState.regs (floc x)) Output))))
 
   -- Output := the record's word k (which holds a value)
   run-load-rec : ∀ x k n v → AllocState.next-heap-ref (falloc x) ≡ suc n → LocState.halted (floc x) ≡ false
@@ -75,14 +84,15 @@ module _ (prog : AbstractTrace) where
   run-store-at0 : ∀ x b → readReg (LocState.regs (floc x)) Input1 ≡ blk b
                 → ExecFinal.in-block? {FS} (ExecFinal.live-size {FS} (falloc x)) (AtDynamic (heap-loc (mkHeapRef b) 0)) ≡ true
                 → LocState.halted (floc x) ≡ false → fetch prog (fpc x) ≡ just (store-at 0)
-                → FlatSteps prog 1 x (record x { floc = writeLoc (floc x) (AtDynamic (heap-loc (mkHeapRef b) 0)) (readReg (LocState.regs (floc x)) Output)
+                → FlatSteps prog 1 x (record x { floc = writeLocToHeap (floc x) (heap-loc (mkHeapRef b) 0) (readReg (LocState.regs (floc x)) Output)
                                                ; fpc = suc (fpc x) })
   run-store-at0 x b i ib h f =
     one h f (trans (cong (λ v → record x { floc = ExecFinal.exec-store-at-resolved {FS} (ExecFinal.live-size {FS} (falloc x)) 0
                                                     (ExecFinal.frame-gate {FS} (falloc x) 0 (sv-as-loc v)) (readReg (LocState.regs (floc x)) Output) (floc x)
                                          ; fpc = suc (fpc x) }) i)
-                   (cong (λ g → record x { floc = ExecFinal.exec-store-in-block {FS} g (AtDynamic (heap-loc (mkHeapRef b) 0)) (readReg (LocState.regs (floc x)) Output) (floc x)
-                                         ; fpc = suc (fpc x) }) ib))
+            (trans (cong (λ g → record x { floc = ExecFinal.exec-store-in-block {FS} g (AtDynamic (heap-loc (mkHeapRef b) 0)) (readReg (LocState.regs (floc x)) Output) (floc x)
+                                         ; fpc = suc (fpc x) }) ib)
+                   (cong (λ l → record x { floc = l ; fpc = suc (fpc x) }) (dyn-write (floc x) (heap-loc (mkHeapRef b) 0) (readReg (LocState.regs (floc x)) Output)))))
 
   -- the emptiness test: at the sentinel (tag 0) the branch is taken, at a link (a heap pointer) not
   run-branch-taken : ∀ x b l j → readReg (LocState.regs (floc x)) Input1 ≡ blk b
