@@ -812,3 +812,40 @@ module _ (C : Classes) (P : AbstractTrace) where
                   sl []      = refl
                   sl (_ ∷ _) = refl
           land false = fault-rel R
+
+  open FlatMachine {FS} using (do-nz)
+
+  step-nz : ∀ {fs gs} (R : Rel C P fs gs) → fetch P (fpc fs) ≡ just (instr-reg-op out-nz)
+          → Rel C P (flat-exec-instr (instr-reg-op out-nz) P fs) (flat-exec-instr (instr-reg-op out-nz) E gs)
+  step-nz {fs} {gs} R f =
+    subst (λ v → Rel C P (do-nz (readReg (LocState.regs (floc fs)) Output) fs) (do-nz v gs))
+          (sym (L.LRel.l-regs (r-loc R) Output)) (go (readReg (LocState.regs (floc fs)) Output) refl)
+    where
+      pc = next-pc R (instr-reg-op out-nz) f refl
+      flt : Rel C P (flat-fault (record fs { fpc = suc (fpc fs) })) (flat-fault (record gs { fpc = suc (fpc gs) }))
+      flt = core-gen R (moves-next R _ _ pc refl refl refl refl refl refl refl refl)
+              (record { l-regs = L.LRel.l-regs (r-loc R) ; l-stack = L.LRel.l-stack (r-loc R) ; l-heap = L.LRel.l-heap (r-loc R) ; l-live = L.LRel.l-live (r-loc R)
+                      ; l-halt = refl ; l-fault = refl ; l-left = L.LRel.l-left (r-loc R) ; l-log = L.LRel.l-log (r-loc R) })
+              (r-clo R) (λ q _ → refl)
+      go : ∀ v → readReg (LocState.regs (floc fs)) Output ≡ v → Rel C P (do-nz v fs) (do-nz (rv (ρ R) v) gs)
+      go (SV-Lit Once.Type.fits-int w) e =
+        core-straight R _ _
+          (subst (λ u → L.LRel (ρ R) (Live (falloc fs)) (r-inj R) (exec-reg-op out-nz (floc fs))
+                          (record (floc gs) { regs = writeReg (LocState.regs (floc gs)) Output (sv-nz u) }))
+                 (sym (trans (L.LRel.l-regs (r-loc R) Output) (cong (rv (ρ R)) e)))
+                 (subst (λ u → L.LRel (ρ R) (Live (falloc fs)) (r-inj R) (exec-reg-op out-nz (floc fs))
+                                 (record (floc gs) { regs = writeReg (LocState.regs (floc gs)) Output (sv-nz u) }))
+                        e (L.const-rel (ρ R) (Live (falloc fs)) (r-inj R) (sv-nz (readReg (LocState.regs (floc fs)) Output)) (nz-fix (readReg (LocState.regs (floc fs)) Output)) (r-loc R))))
+          (λ q _ → refl) pc
+        where
+          nz-fix : ∀ u → rv (ρ R) (sv-nz u) ≡ sv-nz u
+          nz-fix (SV-Lit Once.Type.fits-int _)   = refl
+          nz-fix (SV-Lit Once.Type.fits-float _) = refl
+          nz-fix (SV-Tag _)  = refl
+          nz-fix (SV-Ptr _)  = refl
+          nz-fix (SV-Code _) = refl
+      go (SV-Lit Once.Type.fits-float _) _ = flt
+      go (SV-Tag _)  _ = flt
+      go (SV-Ptr (AtStack _ _))  _ = flt
+      go (SV-Ptr (AtDynamic _))  _ = flt
+      go (SV-Code _) _ = flt
