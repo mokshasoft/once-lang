@@ -86,7 +86,7 @@ module OM (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue Mach)
            → WTr Wι L tp L′ → ∀ fs → LocState.ev-log (floc fs) ≡ L
            → OpVal (sig (mk-info' n (emitsV refl) bA ST.b-Unit)) x (mvF funit y₀) (evsOf tp) fs
   op-emits {bA = bA} {x = x} (p-call p-ret) w fs lg d wx px sx =
-    refl , cong (events-at-arg (mk-info' _ (emitsV refl) bA ST.b-Unit)) (arg-dec bA fs d _ px sx) , [] , vone , inj₁ refl
+    cong (AbstractExec.unread? {Mach}) (arg-dec bA fs d _ px sx) , cong (events-at-arg (mk-info' _ (emitsV refl) bA ST.b-Unit)) (arg-dec bA fs d _ px sx) , [] , vone , inj₁ refl
 
   -- ★ a halting op: a halt, the machine halts with the halt's event
   op-halts : ∀ {A} {n} {bA : ST.Base ST.∅ₖ A} {x : MV ⌜ flatB bA ⌝} {tp L L′}
@@ -94,7 +94,7 @@ module OM (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue Mach)
            → WTr Wι L tp L′ → ∀ fs → LocState.ev-log (floc fs) ≡ L
            → OpHalt (sig (mk-info' n (haltsV refl) bA ST.b-Void)) x (evsOf tp) fs
   op-halts {bA = bA} p-halt w fs lg =
-    refl , λ d wx px sx → refl , cong (events-at-arg (mk-info' _ (haltsV refl) bA ST.b-Void)) (arg-dec bA fs d _ px sx) , refl
+    refl , λ d wx px sx → refl , cong (events-at-arg (mk-info' _ (haltsV refl) bA ST.b-Void)) (arg-dec bA fs d _ px sx) , cong (AbstractExec.unread? {Mach}) (arg-dec bA fs d _ px sx)
 
   -- ★ an answering op whose answer is a register word: the interpretation's answer at the history
   private
@@ -114,7 +114,7 @@ module OM (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue Mach)
                → WTr Wι L tp L′ → ∀ fs → LocState.ev-log (floc fs) ≡ L
                → OpVal (sig (mk-info' n callsV bA ST.b-Int)) x (mvF (fw int) y₀) (evsOf tp) fs
   op-calls-int {A} {n = n} {bA = bA} {x = x} {L = L} (p-call p-ret) (h₁ , e , w) fs lg d wx px sx =
-    refl , cong (events-at-arg (mk-info' n callsV bA ST.b-Int)) (arg-dec bA fs d _ px sx) ,
+    cong (AbstractExec.unread? {Mach}) (arg-dec bA fs d _ px sx) , cong (events-at-arg (mk-info' n callsV bA ST.b-Int)) (arg-dec bA fs d _ px sx) ,
     _ , vbase , inj₂ (cong (_∷ []) (trans (w-int _)
                        (sym (ans-word (mk-info' n callsV bA ST.b-Int) fits-int _ (λ ()) lg (arg-dec bA fs d _ px sx)
                              (TM.callKey (TM.callOp n A bA ST.Int) Once.Contract.∈K? TM.calls ι)
@@ -125,7 +125,7 @@ module OM (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue Mach)
                  → WTr Wι L tp L′ → ∀ fs → LocState.ev-log (floc fs) ≡ L
                  → OpVal (sig (mk-info' n callsV bA ST.b-Float)) x (mvF (fw float) y₀) (evsOf tp) fs
   op-calls-float {A} {n = n} {bA = bA} {x = x} {L = L} (p-call p-ret) (h₁ , e , w) fs lg d wx px sx =
-    refl , cong (events-at-arg (mk-info' n callsV bA ST.b-Float)) (arg-dec bA fs d _ px sx) ,
+    cong (AbstractExec.unread? {Mach}) (arg-dec bA fs d _ px sx) , cong (events-at-arg (mk-info' n callsV bA ST.b-Float)) (arg-dec bA fs d _ px sx) ,
     _ , vbase , inj₂ (cong (_∷ []) (trans (w-float _)
                        (sym (ans-word (mk-info' n callsV bA ST.b-Float) fits-float _ (λ ()) lg (arg-dec bA fs d _ px sx)
                              (TM.callKey (TM.callOp n A bA ST.Float) Once.Contract.∈K? TM.calls ι)
@@ -136,7 +136,7 @@ module OM (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue Mach)
                 → WTr Wι L tp L′ → ∀ fs → LocState.ev-log (floc fs) ≡ L
                 → OpVal (sig (mk-info' n callsV bA ST.b-Unit)) x (mvF funit y₀) (evsOf tp) fs
   op-calls-unit {n = n} {bA = bA} (p-call p-ret) w fs lg d wx px sx =
-    refl , cong (events-at-arg (mk-info' n callsV bA ST.b-Unit)) (arg-dec bA fs d _ px sx) , [] , vone , inj₁ refl
+    cong (AbstractExec.unread? {Mach}) (arg-dec bA fs d _ px sx) , cong (events-at-arg (mk-info' n callsV bA ST.b-Unit)) (arg-dec bA fs d _ px sx) , [] , vone , inj₁ refl
 
   -- ★ a pure op reads its argument as the sigop decodes it: a scalar from the register, any
   -- other base value in place
@@ -296,7 +296,7 @@ module OM (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue Mach)
       si = mk-info' n callsV bA bB
       body : OpValN true (sig si) x (mvF (flatB bB) y₀) (evsOf tp) fs
       body d dst wx px sx =
-        refl , cong (events-at-arg si) dec ,
+        cong (AbstractExec.unread? {Mach}) dec , cong (events-at-arg si) dec ,
         wd (st-words bB (in-memory? B) im (sigop-answer si st) _ ans≡ cf dst st {h = LocState.heapMem (floc fs)})
         where
           cf = AllocState.current-frame (FlatMachine.FlatState.falloc fs)

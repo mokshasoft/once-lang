@@ -385,8 +385,8 @@ module FaultPres {FS : FrameSemantics} where
       go : (e : EffectShape B) → (exec-sigop-halts-of e si s ∨ not g) ≡ false → (exec-sigop-faults-of e si s ∨ (not g ∨ flt s)) ≡ flt s
       go Pure      h′ = or-fault _ g (flt s) h′
       go (Halts _) ()
-      go (Emits _) h′ = or-fault false g (flt s) h′
-      go Answers   h′ = or-fault false g (flt s) h′
+      go (Emits _) h′ = or-fault _ g (flt s) h′
+      go Answers   h′ = or-fault _ g (flt s) h′
 
   abs-fault : ∀ (i : AbstractInstr) (s : LocState FS) alloc → hlt (proj₁ (exec-abstract i s alloc)) ≡ false
             → flt (proj₁ (exec-abstract i s alloc)) ≡ flt s

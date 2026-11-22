@@ -2036,10 +2036,11 @@ module AbstractExec {FS : FrameSemantics} where
 
   exec-sigop-faults-of : ∀ {A B} → EffectShape B → SigOpInfo A B →
                          LocState FS → Bool
+  -- D468 (3c3b): every effect faults on an argument that does not decode (as D392's pure one)
   exec-sigop-faults-of Pure      si s = unread? (decode-at (baseA si) (readReg (regs s) Input1) s)
-  exec-sigop-faults-of (Halts _) _  _ = false
-  exec-sigop-faults-of (Emits _) _  _ = false
-  exec-sigop-faults-of Answers   _  _ = false
+  exec-sigop-faults-of (Halts _) si s = unread? (decode-at (baseA si) (readReg (regs s) Input1) s)
+  exec-sigop-faults-of (Emits _) si s = unread? (decode-at (baseA si) (readReg (regs s) Input1) s)
+  exec-sigop-faults-of Answers   si s = unread? (decode-at (baseA si) (readReg (regs s) Input1) s)
 
   exec-sigop-faults : ∀ {A B} → SigOpInfo A B → LocState FS → Bool
   exec-sigop-faults si s = exec-sigop-faults-of (effect si) si s
@@ -2048,8 +2049,8 @@ module AbstractExec {FS : FrameSemantics} where
                         LocState FS → Bool
   exec-sigop-halts-of (Halts _) _  _ = true
   exec-sigop-halts-of Pure      si s = exec-sigop-faults-of Pure si s
-  exec-sigop-halts-of (Emits _) _  _ = false
-  exec-sigop-halts-of Answers   _  _ = false
+  exec-sigop-halts-of (Emits e) si s = exec-sigop-faults-of (Emits e) si s
+  exec-sigop-halts-of Answers   si s = exec-sigop-faults-of Answers si s
 
   -- | Dispatch-derived halt-flag (wrapper).
   exec-sigop-halts : ∀ {A B} → SigOpInfo A B → LocState FS → Bool

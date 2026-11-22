@@ -24562,6 +24562,12 @@ block, and the image's stores are into fresh blocks (`FreshAl`) or held cells (`
 by the expansion's offset map (calls are not expanded, so return addresses map alike), registers and memory equal
 up to an injective renaming of the primitive's live refs, the free lists a `Slab` model over the expanded refs
 outside the renaming's image (the sentinel and the record apart), block sizes at least the primitive's.
+**And a SigOp's argument (3c3b, 2026-11-23):** a SigOp of any effect whose argument does not decode faults (and
+halts), as a pure one already did (D392): its argument may be read through a heap pointer (the range gate passes
+one), and an argument that reads an empty cell would otherwise log nothing in the primitive run while the expanded
+run, reading the reused block's stale words, decodes and logs. A run that does not fault then decoded every SigOp
+argument from held cells, which the renaming relates. The image's SigOps always decode (their events are the
+program's), so the change costs it nothing.
 
 ## D469 — AN ABSTRACT CELL'S SIZE IS ITS BLOCK'S; ONE LIVE CELL PER SERIAL (2026-11-23, proposed — for the user's review)
 
