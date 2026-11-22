@@ -24,6 +24,8 @@ open import Data.Nat using (ℕ; zero; suc; _+_)
 import Data.Nat.Properties
 open import Data.Product using (Σ; _×_; _,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
+import Data.Empty
+import Data.Maybe
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 open import Once.CCC.Machine.SMCore
 open import Once.CCC.Machine.Flat using (module FlatMachine)
@@ -168,3 +170,144 @@ module Code (C : Classes) (small : 3 + count C ≤ rec-size) (in-range : ∀ k �
           sm : ∀ r′ → fetch (i ∷ []) r′ ≡ just j → ((r′ ≡ 0) × (j ≡ i) × Kept s i) ⊎ Gen j
           sm zero    f′ = inj₁ (refl , sym (just-injective f′) , inj₁ eq)
           sm (suc r′) ()
+
+  ------------------------------------------------------------------------
+  -- ★ A property of every expanded instruction: the kept ones' and the code's
+  ------------------------------------------------------------------------
+
+  open import Once.CCC.Machine.FrameFree using (ImageI)
+  open import Once.CCC.Machine.AllocMin using (AllocMinI)
+  import Data.List.Relation.Unary.All as All′
+
+  gen-image : ∀ {j} → Gen j → ImageI j
+  gen-image g-out = _
+  gen-image g-in = _
+  gen-image (g-srec w lt) = lt
+  gen-image (g-lrec w lt) = lt
+  gen-image g-lat0 = _
+  gen-image g-sat0 = _
+  gen-image g-tag0 = _
+  gen-image (g-alloc n _) = _
+  gen-image (g-ctrl _ (gc-br s)) = _
+  gen-image (g-ctrl _ (gc-jmp s)) = _
+  gen-image (g-ctrl _ (gc-lbl l)) = _
+
+  gen-alloc : ∀ {j} → Gen j → AllocMinI j
+  gen-alloc g-out = _
+  gen-alloc g-in = _
+  gen-alloc (g-srec w lt) = _
+  gen-alloc (g-lrec w lt) = _
+  gen-alloc g-lat0 = _
+  gen-alloc g-sat0 = _
+  gen-alloc g-tag0 = _
+  gen-alloc (g-alloc n one) = one
+  gen-alloc (g-ctrl _ (gc-br s)) = _
+  gen-alloc (g-ctrl _ (gc-jmp s)) = _
+  gen-alloc (g-ctrl _ (gc-lbl l)) = _
+
+  exp-all : ∀ {Q : AbstractInstr → Set} → (∀ {j} → Gen j → Q j) → (∀ i → ImageI i → AllocMinI i → Q i)
+          → ∀ s P → All ImageI P → All AllocMinI P → All Q (expand-from C s P)
+  exp-all gq kq s []      []         []         = []
+  exp-all {Q} gq kq s (x ∷ P) (ix ∷ is) (ax ∷ as) = ++⁺ (one (exp-view C s x) ix ax) (exp-all gq kq (suc s) P is as)
+    where
+      one : ExpView C s x → ImageI x → AllocMinI x → All Q (expand-at C s x)
+      one (ev-alloc k) _ a = All′.map gq (alloc-gen s k a)
+      one (ev-free k)  _ _ = All′.map gq (free-gen k)
+      one (ev-start b) i a = kq _ i a ∷ All′.map gq setup-gen
+      one (ev-same eq) i a = subst (All Q) (sym eq) (kq x i a ∷ [])
+
+  ------------------------------------------------------------------------
+  -- ★ The expansion of an emitted program is emitted
+  ------------------------------------------------------------------------
+
+  open import Once.Spec.Name using (CanonicalName)
+  open import Once.CCC.FrameSemantics using (module FrameSemantics)
+  open import Once.CCC.Codegen.AllocExpandPc {FS} using (fetch-exp; off-suc; ft-exp)
+  open FlatMachine {FS} using (find-fn; find-thunk; find-entry)
+  open import Once.CCC.Label using (EntryId; e-fn; e-thunk)
+
+  module Em (o : CanonicalName) (slot-size : ℕ) (word-eq : FrameSemantics.frame-word FS ≡ slot-size) where
+    open import Once.Adequacy.ArchCorrectness.FlatCore.RunContext o FS slot-size word-eq using (Emitted; module Emitted; GuardAt)
+
+    off0 : ∀ P → off C 0 P 0 ≡ 0
+    off0 []      = refl
+    off0 (_ ∷ _) = refl
+
+    module _ (P : AbstractTrace) (em : Emitted P) where
+      open Emitted em
+      E = expand C P
+
+      -- a kept instruction is fetched at its mapped pc
+      kept-at : ∀ n x → fetch P n ≡ just x → fetch (expand-at C (n + 0) x) 0 ≡ just x → fetch E (off C 0 P n) ≡ just x
+      kept-at n x f k = subst (λ q → fetch E q ≡ just x) (Data.Nat.Properties.+-identityʳ _) (fetch-exp C 0 P n x f 0 x k)
+
+      -- what the expansion fetches, classified
+      Cls : ℕ → AbstractInstr → Set
+      Cls k j = Σ ℕ λ n → (fetch P n ≡ just j) × (k ≡ off C 0 P n) × Kept (n + 0) j
+
+      classify : ∀ k {j} → fetch E k ≡ just j → Cls k j ⊎ Gen j
+      classify k {j} e = go (fetch-inv C 0 P k e)
+        where
+          go : From C 0 P k j → Cls k j ⊎ Gen j
+          go (from n i r fP fk fe) = pick (gen-of (n + 0) i r (λ m eq → subst AllocMinI eq (all-fetch P n em-alloc fP)) fe)
+            where
+              pick : ((r ≡ 0) × (j ≡ i) × Kept (n + 0) i) ⊎ Gen j → Cls k j ⊎ Gen j
+              pick (inj₁ (refl , refl , kp)) = inj₁ (n , fP , trans fk (Data.Nat.Properties.+-identityʳ _) , kp)
+              pick (inj₂ g) = inj₂ g
+
+      found : ∀ (e : EntryId) j → find-entry P e ≡ just j → find-entry E e ≡ just (0 + off C 0 P j)
+      found e j f = trans (ft-exp C 0 P e 0) (cong (Data.Maybe.map (λ p → 0 + off C 0 P p)) f)
+
+      emitted : Emitted E
+      emitted = record
+        { em-budget = em-budget
+        ; em-zero = subst (λ q → fetch E q ≡ just (instr-ctrl (c-start em-budget))) (off0 P) (kept-at 0 _ em-zero refl)
+        ; em-start = start
+        ; em-image = exp-all gen-image (λ i ii _ → ii) 0 P em-image em-alloc
+        ; em-alloc = exp-all gen-alloc (λ i _ ai → ai) 0 P em-image em-alloc
+        ; em-calls = calls
+        ; em-code = code
+        ; em-guard = guard
+        }
+        where
+          no-gen-start : ∀ {b} → Gen (instr-ctrl (c-start b)) → Data.Empty.⊥
+          no-gen-start (g-ctrl _ ())
+          start : ∀ k b → fetch E k ≡ just (instr-ctrl (c-start b)) → k ≡ 0
+          start k b e = by (classify k e)
+            where
+              by : Cls k (instr-ctrl (c-start b)) ⊎ Gen (instr-ctrl (c-start b)) → k ≡ 0
+              by (inj₁ (n , fP , refl , _)) = trans (cong (off C 0 P) (em-start n b fP)) (off0 P)
+              by (inj₂ g) = Data.Empty.⊥-elim (no-gen-start g)
+          calls : ∀ k f → fetch E k ≡ just (instr-ctrl (c-call-fn f)) → Σ ℕ (λ j → find-fn E f ≡ just j)
+          calls k f e = by (classify k e)
+            where
+              by : Cls k (instr-ctrl (c-call-fn f)) ⊎ Gen (instr-ctrl (c-call-fn f)) → Σ ℕ (λ j → find-fn E f ≡ just j)
+              by (inj₁ (n , fP , _ , _)) = let (j , fj) = em-calls n f fP in _ , found (e-fn f) j fj
+              by (inj₂ (g-ctrl _ ()))
+          code : ∀ p (ℓ : LabelId) → fetch E p ≡ just (instr-load-code-addr ℓ) → Σ ℕ (λ j → find-thunk E ℓ ≡ just j)
+          code p ℓ e = by (classify p e)
+            where
+              by : Cls p (instr-load-code-addr ℓ) ⊎ Gen (instr-load-code-addr ℓ) → Σ ℕ (λ j → find-thunk E ℓ ≡ just j)
+              by (inj₁ (n , fP , _ , _)) = let (j , fj) = em-code n ℓ fP in _ , found (e-thunk ℓ) j fj
+              by (inj₂ ())
+          guard : GuardAt E
+          guard p ℓ bb e = by (classify p e)
+            where
+              Res = Σ ℕ (λ q → (p ≡ suc q)
+                      × ((Σ LabelId (λ m → fetch E q ≡ just (instr-ctrl (c-jmp m))))
+                         ⊎ (Σ ℕ (λ b → fetch E q ≡ just (instr-ctrl (c-ret b))))
+                         ⊎ (fetch E q ≡ just (instr-ctrl c-leave))))
+              step : ∀ q x → fetch P q ≡ just x → fetch (expand-at C (q + 0) x) 0 ≡ just x
+                   → length (expand-at C (q + 0) x) ≡ 1 → p ≡ off C 0 P (suc q) → p ≡ suc (off C 0 P q)
+              step q x f k l pe = trans pe (trans (off-suc C 0 P q x f) (trans (cong (off C 0 P q +_) l) (Data.Nat.Properties.+-comm _ 1)))
+              by : Cls p (instr-ctrl (c-entry ℓ bb)) ⊎ Gen (instr-ctrl (c-entry ℓ bb)) → Res
+              by (inj₂ (g-ctrl _ ()))
+              by (inj₁ (n , fP , refl , _)) = from-img (em-guard n ℓ bb fP)
+                where
+                  from-img : Σ ℕ (λ q → (n ≡ suc q)
+                               × ((Σ LabelId (λ m → fetch P q ≡ just (instr-ctrl (c-jmp m))))
+                                  ⊎ (Σ ℕ (λ b → fetch P q ≡ just (instr-ctrl (c-ret b))))
+                                  ⊎ (fetch P q ≡ just (instr-ctrl c-leave)))) → Res
+                  from-img (q , refl , inj₁ (m , f)) = off C 0 P q , step q _ f refl refl refl , inj₁ (m , kept-at q _ f refl)
+                  from-img (q , refl , inj₂ (inj₁ (b , f))) = off C 0 P q , step q _ f refl refl refl , inj₂ (inj₁ (b , kept-at q _ f refl))
+                  from-img (q , refl , inj₂ (inj₂ f)) = off C 0 P q , step q _ f refl refl refl , inj₂ (inj₂ (kept-at q _ f refl))
