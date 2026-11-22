@@ -11,7 +11,8 @@
 -- which the renaming fixes.
 ------------------------------------------------------------------------
 
-open import Once.CCC.FrameSemantics using (FrameSemantics)
+open import Once.CCC.FrameSemantics using (FrameSemantics; fs-numerics; fs-ffi)
+open FrameSemantics using (fs-interp)
 
 module Once.CCC.Codegen.AllocExpandSigop {FS : FrameSemantics} where
 
@@ -34,7 +35,7 @@ open Value using (⟦_⟧)
 open import Once.CCC.Codegen.AllocExpandRen {FS} using (ref-of; rhl; rloc; rv)
 open import Once.CCC.Codegen.AllocExpandStep {FS} using (module L; rhl-off)
 open MemOps {FS} using (readLoc)
-open AbstractExec {FS} using (readTyped; readTyped-int; readTyped-float; readTyped-sum; combine-typed; tsize)
+open AbstractExec {FS} using (readTyped; readTyped-int; readTyped-float; readTyped-sum; combine-typed; tsize; decode-at)
 
 rloc-off : ∀ ρ (loc : ValueLocation FS) k → rloc ρ (offsetLoc loc k) ≡ offsetLoc (rloc ρ loc) k
 rloc-off ρ (AtStack f j)  k = refl
@@ -125,7 +126,7 @@ module _ (ρ : ℕ → ℕ) (Lv : ℕ → Set) (inj : ∀ r r′ → Lv r → Lv
   read-rel (μ _) loc ()
   read-rel (ν _ _) loc ()
 
-  open AbstractExec {FS} using (decode-at)
+
   open import Once.Spec.Type using (Base; b-var; b-Unit; b-Void; b-Int; b-Float; b-*; b-+; ∅ₖ)
 
   -- ★ the argument the primitive decodes, decoded alike from the renamed register
@@ -235,3 +236,118 @@ as-loc-rv ρ (SV-Code _) = refl
 ans-heap : ∀ fr n hl → ans-ok fr n (SV-Ptr (AtDynamic hl)) ≡ true → n ≡ 0
 ans-heap fr zero    hl _ = refl
 ans-heap fr (suc n) hl ()
+
+------------------------------------------------------------------------
+-- ★ A SigOp's effects, alike on both sides once its argument decoded
+------------------------------------------------------------------------
+
+open import Once.SigOp.Info using (SigOpInfo; effect; EffectShape; Pure; Emits; Halts; Answers; module SigOpInfo)
+open import Once.Res using (Res; stopped; returns)
+open import Once.IR.Semantics.Trace using (callOp; answer)
+open import Once.IR.Semantics.Boundary using (atTarget)
+open import Once.Type using (FitsInReg; fits-in-reg?)
+open AbstractExec {FS} using (exec-sigop-faults-of; exec-sigop-halts-of; sigop-events-of; sigop-answer-of; exec-sigop-output-of
+                             ; unread?; pure-sigop-out-aux; pure-sigop-out-val; res-sv; structured-pure-sigop-output; readReg-typed
+                             ; call-sigop-val; call-sigop-ans; call-sigop-ans-at; call-sigop-dec; call-ans-at; pure-ans-at; unit-storedvalue)
+
+module Sig (ρ : ℕ → ℕ) (Lv : ℕ → Set) (inj : ∀ r r′ → Lv r → Lv r′ → ρ r ≡ ρ r′ → r ≡ r′)
+           {s t : LocState FS} (R : L.LRel ρ Lv inj s t) {A B} (si : SigOpInfo A B) where
+  b = SigOpInfo.baseA si
+  v₁ = readReg (LocState.regs s) Input1
+  in-t : readReg (LocState.regs t) Input1 ≡ rv ρ v₁
+  in-t = L.LRel.l-regs R Input1
+
+  module D {a} (dec : decode-at b v₁ s ≡ just a) where
+    dec-t : decode-at b (readReg (LocState.regs t) Input1) t ≡ decode-at b v₁ s
+    dec-t = trans (cong (λ v → decode-at b v t) in-t) (trans (decode-rel ρ Lv inj R b v₁ dec) (sym dec))
+
+    faults-eq : ∀ e → exec-sigop-faults-of e si t ≡ exec-sigop-faults-of e si s
+    faults-eq Pure      = cong unread? dec-t
+    faults-eq (Halts _) = cong unread? dec-t
+    faults-eq (Emits _) = cong unread? dec-t
+    faults-eq Answers   = cong unread? dec-t
+
+    halts-eq : ∀ e → exec-sigop-halts-of e si t ≡ exec-sigop-halts-of e si s
+    halts-eq Pure      = cong unread? dec-t
+    halts-eq (Halts _) = refl
+    halts-eq (Emits _) = cong unread? dec-t
+    halts-eq Answers   = cong unread? dec-t
+
+    events-eq : ∀ e → sigop-events-of e si t ≡ sigop-events-of e si s
+    events-eq Pure      = refl
+    events-eq (Halts _) = cong (AbstractExec.events-at-arg {FS} si) dec-t
+    events-eq (Emits _) = cong (AbstractExec.events-at-arg {FS} si) dec-t
+    events-eq Answers   = cong (AbstractExec.events-at-arg {FS} si) dec-t
+
+    -- the interpretation's answer reads the log, the same on both sides
+    ans-at-eq : ∀ D m → call-ans-at si t D m ≡ call-ans-at si s D m
+    ans-at-eq (Relation.Nullary.yes p) (just a′) = cong (λ L′ → just (atTarget (fs-numerics FS) B
+                                                                (answer (fs-interp FS) L′ (callOp (SigOpInfo.name si) A b B) p a′)))
+                                                        (L.LRel.l-log R)
+    ans-at-eq (Relation.Nullary.yes p) nothing = refl
+    ans-at-eq (Relation.Nullary.no _)  m       = refl
+
+    answer-eq : ∀ e → sigop-answer-of e si t ≡ sigop-answer-of e si s
+    answer-eq Pure      = cong (pure-ans-at si) dec-t
+    answer-eq Answers   = trans (cong (call-ans-at si t (call-sigop-dec si)) dec-t) (ans-at-eq (call-sigop-dec si) _)
+    answer-eq (Emits _) = refl
+    answer-eq (Halts _) = refl
+
+    -- a pointer argument decoded: its words read alike at the renamed location
+    ptr-read : ∀ loc → v₁ ≡ SV-Ptr loc → AbstractExec.readTyped {FS} A (rloc ρ loc) t ≡ AbstractExec.readTyped {FS} A loc s
+    ptr-read loc e = by b (subst (λ v → decode-at b v s ≡ just a) e dec)
+      where
+        by : (b′ : Once.Spec.Type.Base Once.Spec.Type.∅ₖ A) → decode-at b′ (SV-Ptr loc) s ≡ just a
+           → AbstractExec.readTyped {FS} A (rloc ρ loc) t ≡ AbstractExec.readTyped {FS} A loc s
+        by Once.Spec.Type.b-Unit _ = refl
+        by (Once.Spec.Type.b-* _ _) e′ = trans (read-rel ρ Lv inj R A loc e′) (sym e′)
+        by (Once.Spec.Type.b-+ _ _) e′ = trans (read-rel ρ Lv inj R A loc e′) (sym e′)
+        by Once.Spec.Type.b-Int ()
+        by Once.Spec.Type.b-Float ()
+        by Once.Spec.Type.b-Void ()
+
+    -- an output word the op computes is a literal (or the register Output)
+    out-val-fix : ∀ fitB m → rv ρ (pure-sigop-out-val si fitB m) ≡ pure-sigop-out-val si fitB m
+    out-val-fix fitB (just a′) = res-fix (Once.SigOp.Info.semM (fs-ffi FS) si (fs-numerics FS) a′)
+      where
+        res-fix : ∀ r → rv ρ (res-sv fitB r) ≡ res-sv fitB r
+        res-fix (returns _) = refl
+        res-fix stopped     = refl
+    out-val-fix fitB nothing = refl
+
+    output-eq : ∀ e → exec-sigop-output-of e si t ≡ rv ρ (exec-sigop-output-of e si s)
+    output-eq Pure      = pure (fits-in-reg? B)
+      where
+        pure : ∀ mf → pure-sigop-out-aux si t mf (sv-as-loc (readReg (LocState.regs t) Input1)) ≡ rv ρ (pure-sigop-out-aux si s mf (sv-as-loc v₁))
+        pure nothing = trans refl (L.LRel.l-regs R Output)
+        pure (just fitB) = trans (cong (pure-sigop-out-aux si t (just fitB)) (trans (cong sv-as-loc in-t) (as-loc-rv ρ v₁)))
+                                 (at-kind (sv-as-loc v₁) refl)
+          where
+            at-kind : ∀ ml → sv-as-loc v₁ ≡ ml → pure-sigop-out-aux si t (just fitB) (Data.Maybe.map (rloc ρ) ml) ≡ rv ρ (pure-sigop-out-aux si s (just fitB) ml)
+            at-kind (just loc) e′ = trans (cong (pure-sigop-out-val si fitB) (ptr-read loc (ptr-of v₁ e′)))
+                                          (sym (out-val-fix fitB (AbstractExec.readTyped {FS} A loc s)))
+              where
+                ptr-of : ∀ v → sv-as-loc v ≡ just loc → v ≡ SV-Ptr loc
+                ptr-of (SV-Ptr l) refl = refl
+                ptr-of (SV-Tag _) ()
+                ptr-of (SV-Lit _ _) ()
+                ptr-of (SV-Code _) ()
+            at-kind nothing e′ = trans (cong (λ v → pure-sigop-out-val si fitB (readReg-typed A v)) (trans in-t (rv-nonptr ρ v₁ e′)))
+                                       (sym (out-val-fix fitB (readReg-typed A v₁)))
+    output-eq (Emits _) = refl
+    output-eq (Halts _) = refl
+    output-eq Answers   = call (fits-in-reg? B)
+      where
+        call : ∀ mf → call-sigop-val si t mf ≡ rv ρ (call-sigop-val si s mf)
+        call nothing = L.LRel.l-regs R Output
+        call (just fitB) = ans (call-sigop-dec si)
+          where
+            ans : ∀ D → call-sigop-ans si t fitB D ≡ rv ρ (call-sigop-ans si s fitB D)
+            ans (Relation.Nullary.no _) = refl
+            ans (Relation.Nullary.yes p) = trans (cong (call-sigop-ans-at si t fitB p) dec-t) (at (decode-at b v₁ s))
+              where
+                at : ∀ m → call-sigop-ans-at si t fitB p m ≡ rv ρ (call-sigop-ans-at si s fitB p m)
+                at (just a′) = cong (λ L′ → SV-Lit fitB (atTarget (fs-numerics FS) B
+                                                (answer (fs-interp FS) L′ (callOp (SigOpInfo.name si) A b B) p a′)))
+                                    (L.LRel.l-log R)
+                at nothing = refl
