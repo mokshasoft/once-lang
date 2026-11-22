@@ -351,3 +351,48 @@ module Sig (ρ : ℕ → ℕ) (Lv : ℕ → Set) (inj : ∀ r r′ → Lv r → 
                                                 (answer (fs-interp FS) L′ (callOp (SigOpInfo.name si) A b B) p a′)))
                                     (L.LRel.l-log R)
                 at nothing = refl
+
+    ------------------------------------------------------------------------
+    -- The answer stored: in a frame word by word, or (a heap pointer) nothing
+    ------------------------------------------------------------------------
+
+    open AbstractExec {FS} using (sigop-store; sigop-store-at; sigop-answer; ans-words)
+
+    module W = Words ρ Lv inj
+
+    out-t : readReg (LocState.regs t) Output ≡ rv ρ (readReg (LocState.regs s) Output)
+    out-t = L.LRel.l-regs R Output
+
+    store-rel : ∀ fr → ans-ok fr (ans-words B) (readReg (LocState.regs s) Output) ≡ true
+              → L.LRel ρ Lv inj (sigop-store si s) (sigop-store si t)
+    store-rel fr ok =
+      subst₂′ (trans (cong sv-as-loc out-t) (as-loc-rv ρ (readReg (LocState.regs s) Output))) (answer-eq (effect si))
+        (by (in-memory? B) refl (sv-as-loc (readReg (LocState.regs s) Output)) refl (sigop-answer si s))
+      where
+        o = readReg (LocState.regs s) Output
+        subst₂′ : ∀ {ml′ ma′} → ml′ ≡ Data.Maybe.map (rloc ρ) (sv-as-loc o) → ma′ ≡ sigop-answer si s
+                → L.LRel ρ Lv inj (sigop-store si s) (sigop-store-at {B = B} (in-memory? B) (Data.Maybe.map (rloc ρ) (sv-as-loc o)) (sigop-answer si s) t)
+                → L.LRel ρ Lv inj (sigop-store si s) (sigop-store-at {B = B} (in-memory? B) ml′ ma′ t)
+        subst₂′ refl refl X = X
+        by : ∀ im → in-memory? B ≡ im → ∀ ml → sv-as-loc o ≡ ml → ∀ ma
+           → L.LRel ρ Lv inj (sigop-store-at {B = B} im ml ma s) (sigop-store-at {B = B} im (Data.Maybe.map (rloc ρ) ml) ma t)
+        by false _ ml _ ma = R
+        by true  _ nothing _ ma = R
+        by true  _ (just (AtStack f j)) _ (just v) = W.write-rel B v f j R
+        by true  _ (just (AtStack f j)) _ nothing  = R
+        by true  im (just (AtDynamic hl)) e (just v) =
+          Relation.Binary.PropositionalEquality.subst₂ (L.LRel ρ Lv inj)
+            (sym (W.write-none B v (AtDynamic hl) s zero-words)) (sym (W.write-none B v (AtDynamic (rhl ρ hl)) t zero-words)) R
+          where
+            ptr : o ≡ SV-Ptr (AtDynamic hl)
+            ptr = ptr-of o e
+              where
+                ptr-of : ∀ v′ → sv-as-loc v′ ≡ just (AtDynamic hl) → v′ ≡ SV-Ptr (AtDynamic hl)
+                ptr-of (SV-Ptr _) refl = refl
+                ptr-of (SV-Tag _) ()
+                ptr-of (SV-Lit _ _) ()
+                ptr-of (SV-Code _) ()
+            zero-words : tsize B ≡ 0
+            zero-words = trans (sym (cong (λ b′ → Data.Bool.if b′ then tsize B else 0) im))
+                               (ans-heap fr (ans-words B) hl (subst (λ v′ → ans-ok fr (ans-words B) v′ ≡ true) ptr ok))
+        by true  _ (just (AtDynamic hl)) _ nothing = R
