@@ -191,3 +191,69 @@ module Bump (prog : AbstractTrace) (x : FlatState) (h σ n j₁ m : ℕ) (Lb Ld 
 
   out-other : ∀ q → ¬ q ≡ rec-loc w-s1 → LocState.heapMem (floc x₁₀) q ≡ LocState.heapMem (floc x) q
   out-other q ne = hw-other (LocState.heapMem (floc x)) (rec-loc w-s1) q I (λ e → ne (sym e))
+
+------------------------------------------------------------------------
+-- The renaming extended at the new block
+------------------------------------------------------------------------
+
+open import Data.Nat using (_<_; _≤_; _≡ᵇ_; z≤n; s≤s)
+import Data.Nat.Properties
+open import Once.CCC.Codegen.AllocExpandRen {FS} using (rv; rhl; rloc)
+open import Once.CCC.Codegen.AllocExpandStep {FS} using (module L)
+open import Once.CCC.Codegen.AllocExpandRel {FS} using (Live)
+import Once.CCC.Machine.FlatStoreWF
+module WF = Once.CCC.Machine.FlatStoreWF FS
+
+ext : (ℕ → ℕ) → ℕ → ℕ → ℕ → ℕ
+ext ρ p b r = Data.Bool.if r ≡ᵇ p then b else ρ r
+
+private
+  ≡ᵇ-refl : ∀ r → (r ≡ᵇ r) ≡ true
+  ≡ᵇ-refl zero    = refl
+  ≡ᵇ-refl (suc r) = ≡ᵇ-refl r
+
+  ≡ᵇ-miss : ∀ a b → ¬ a ≡ b → (a ≡ᵇ b) ≡ false
+  ≡ᵇ-miss zero    zero    ne = ⊥-elim (ne refl)
+  ≡ᵇ-miss zero    (suc b) ne = refl
+  ≡ᵇ-miss (suc a) zero    ne = refl
+  ≡ᵇ-miss (suc a) (suc b) ne = ≡ᵇ-miss a b (λ e → ne (cong suc e))
+
+ext-at : ∀ ρ p b → ext ρ p b p ≡ b
+ext-at ρ p b = cong (λ t → Data.Bool.if t then b else ρ p) (≡ᵇ-refl p)
+
+ext-off : ∀ ρ p b r → ¬ r ≡ p → ext ρ p b r ≡ ρ r
+ext-off ρ p b r ne = cong (λ t → Data.Bool.if t then b else ρ r) (≡ᵇ-miss r p ne)
+
+-- below the new block, the extended renaming is the old one
+ext-below : ∀ ρ p b r → r < p → ext ρ p b r ≡ ρ r
+ext-below ρ p b r lt = ext-off ρ p b r (λ e → Data.Nat.Properties.<-irrefl e lt)
+
+-- a value below the counter is renamed alike
+rv-agree : ∀ (ρ ρ′ : ℕ → ℕ) n v → (∀ r → r < n → ρ′ r ≡ ρ r) → WF.sv-below n v → rv ρ′ v ≡ rv ρ v
+rv-agree ρ ρ′ n (SV-Ptr (AtDynamic (heap-loc (mkHeapRef r) o))) ag b =
+  cong (λ z → SV-Ptr (AtDynamic (heap-loc (mkHeapRef z) o))) (ag r b)
+rv-agree ρ ρ′ n (SV-Ptr (AtStack _ _)) ag b = refl
+rv-agree ρ ρ′ n (SV-Tag _) ag b = refl
+rv-agree ρ ρ′ n (SV-Lit _ _) ag b = refl
+rv-agree ρ ρ′ n (SV-Code _) ag b = refl
+
+mrv-agree : ∀ (ρ ρ′ : ℕ → ℕ) n mv → (∀ r → r < n → ρ′ r ≡ ρ r) → WF.svm-below n mv
+          → Data.Maybe.map (rv ρ′) mv ≡ Data.Maybe.map (rv ρ) mv
+mrv-agree ρ ρ′ n (just v) ag b = cong just (rv-agree ρ ρ′ n v ag b)
+mrv-agree ρ ρ′ n nothing  ag b = refl
+
+-- the LocState relation, by a renaming that agrees below the counter
+lrel-ρ : ∀ {ρ ρ′ : ℕ → ℕ} {Lv : ℕ → Set} {inj inj′} {s t} n
+       → (∀ r → r < n → ρ′ r ≡ ρ r) → WF.StoreWF n s → (∀ r → Lv r → r < n)
+       → L.LRel ρ Lv inj s t → L.LRel ρ′ Lv inj′ s t
+lrel-ρ {ρ} {ρ′} {Lv} {s = s} {t} n ag wf lb R = record
+  { l-regs = λ r → trans (L.LRel.l-regs R r) (sym (rv-agree ρ ρ′ n (readReg (LocState.regs s) r) ag (WF.StoreWF.wf-regs wf r)))
+  ; l-stack = λ f k → trans (L.LRel.l-stack R f k) (sym (mrv-agree ρ ρ′ n (LocState.stackMem s f k) ag (WF.StoreWF.wf-stack wf f k)))
+  ; l-heap = λ hl v l e → trans (cong (LocState.heapMem t) (hl-agree hl l))
+                           (trans (L.LRel.l-heap R hl v l e)
+                                  (cong just (sym (rv-agree ρ ρ′ n v ag (subst (WF.svm-below n) e (WF.StoreWF.wf-heap wf hl))))))
+  ; l-live = L.LRel.l-live R
+  ; l-halt = L.LRel.l-halt R ; l-fault = L.LRel.l-fault R ; l-left = L.LRel.l-left R ; l-log = L.LRel.l-log R }
+  where
+    hl-agree : ∀ hl → Lv (ref-of hl) → rhl ρ′ hl ≡ rhl ρ hl
+    hl-agree hl l = cong (λ z → heap-loc (mkHeapRef z) (HeapLocation.heap-offset hl)) (ag (ref-of hl) (lb (ref-of hl) l))
