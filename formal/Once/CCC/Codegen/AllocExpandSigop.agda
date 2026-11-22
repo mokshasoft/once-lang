@@ -440,6 +440,10 @@ module Sig (ρ : ℕ → ℕ) (Lv : ℕ → Set) (inj : ∀ r r′ → Lv r → 
 
     st-rel = store-rel (live-frames al) (∧-r _ _ gate-s)
 
+    -- the expanded side passes the answer's gate too
+    ans-t : ans-ok (live-frames al′) (ans-words B) (readReg (LocState.regs t) Output) ≡ true
+    ans-t = ∧-r _ _ (trans gate-eq gate-s)
+
     c3 : ∀ {a a′ g g′ f f′ : Bool} → a ≡ a′ → g ≡ g′ → f ≡ f′ → (a ∨ (not g ∨ f)) ≡ (a′ ∨ (not g′ ∨ f′))
     c3 refl refl refl = refl
 

@@ -867,3 +867,20 @@ module _ (C : Classes) (P : AbstractTrace) (Sz : ℕ → Set) where
       go (SV-Ptr (AtStack _ _))  _ = flt
       go (SV-Ptr (AtDynamic _))  _ = flt
       go (SV-Code _) _ = flt
+
+  ------------------------------------------------------------------------
+  -- ★ A SigOp: its effects alike, its answer in a frame
+  ------------------------------------------------------------------------
+
+  open import Once.CCC.Codegen.AllocExpandSigop {FS} using (module Sig; module Heap)
+  open import Once.SigOp.Info using (SigOpInfo)
+
+  step-sigop : ∀ {fs gs} (R : Rel C P Sz fs gs) {A B} (si : SigOpInfo A B) → fetch P (fpc fs) ≡ just (instr-sigop si)
+             → LocState.faulted (floc (flat-exec-instr (instr-sigop si) P fs)) ≡ false
+             → Rel C P Sz (flat-exec-instr (instr-sigop si) P fs) (flat-exec-instr (instr-sigop si) E gs)
+  step-sigop {fs} {gs} R si f nf =
+    core-straight R _ _ (SE.step-rel)
+      (λ q _ → cong (λ h → h q) (Heap.store-heap si (floc gs) (live-frames (falloc gs)) SE.ans-t))
+      (next-pc R (instr-sigop si) f refl)
+    where
+      module SE = Sig.E (ρ R) (Live (falloc fs)) (r-inj R) (r-loc R) si (falloc fs) (falloc gs) (frames-eq R) nf
