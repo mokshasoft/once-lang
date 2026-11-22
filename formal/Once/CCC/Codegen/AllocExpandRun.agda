@@ -20,6 +20,7 @@ open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Nat using (ℕ; zero; suc)
 open import Data.Product using (_,_)
+import Data.Sum
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; mkHeapRef)
 open import Once.CCC.Machine.SMCore
@@ -28,7 +29,7 @@ open import Once.CCC.Machine.Flat using (module FlatMachine)
 open FlatMachine {FS} using (FlatState; module FlatState; fetch; flat-exec-instr)
 open FlatState
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
-open FlatStepsAPI {FS} using (FlatSteps; _∷_; [])
+open FlatStepsAPI {FS} using (FlatSteps; _∷_; []; FlatSteps-++)
 open import Once.CCC.Codegen.AllocExpandRen {FS} using (rec-loc; blk)
 open MemOps {FS} using (writeLoc; writeLocToHeap; readLoc)
 
@@ -138,3 +139,77 @@ module _ (prog : AbstractTrace) where
     one h f (trans (cong (λ v → record x { floc = ExecFinal.exec-load-at-resolved {FS} 0 Output (ExecFinal.frame-gate {FS} (falloc x) 0 (sv-as-loc v)) (floc x)
                                          ; fpc = suc (fpc x) }) i)
                    (cong (λ mv → record x { floc = ExecFinal.exec-load-with-value {FS} Output mv (floc x) ; fpc = suc (fpc x) }) e))
+
+  -- Output := a tag
+  run-tag : ∀ x n → LocState.halted (floc x) ≡ false → fetch prog (fpc x) ≡ just (instr-load-tag-lit n)
+          → FlatSteps prog 1 x (record x { floc = record (floc x) { regs = writeReg (LocState.regs (floc x)) Output (SV-Tag n) } ; fpc = suc (fpc x) })
+  run-tag x n h f = one h f refl
+
+-- ★ the start's heads: every head word written from Output
+open import Data.Nat using (_+_; _<_)
+open import Data.Product using (Σ; _×_)
+open import Relation.Nullary using (¬_)
+open MemOps {FS} using (writeHeapMem; writeHeapMem-aux)
+open import Once.Memory.HeapAddress using (_≟HL_; module HeapLocation)
+open import Once.CCC.Codegen.AllocExpand using (Classes; heads; head-word)
+
+private
+  hw-same′ : ∀ (h : HeapMem FS) hl v → writeHeapMem h hl v hl ≡ just v
+  hw-same′ h hl v = go (hl ≟HL hl)
+    where
+      go : ∀ (d : Relation.Nullary.Dec (hl ≡ hl)) → writeHeapMem-aux {hl = hl} {hl' = hl} d (h hl) v ≡ just v
+      go (Relation.Nullary.yes _) = refl
+      go (Relation.Nullary.no ne) = Data.Empty.⊥-elim (ne refl)
+        where import Data.Empty
+
+  hw-other′ : ∀ (h : HeapMem FS) hl q v → ¬ hl ≡ q → writeHeapMem h hl v q ≡ h q
+  hw-other′ h hl q v ne = go (hl ≟HL q)
+    where
+      go : ∀ (d : Relation.Nullary.Dec (hl ≡ q)) → writeHeapMem-aux {hl = hl} {hl' = q} d (h q) v ≡ h q
+      go (Relation.Nullary.yes e) = Data.Empty.⊥-elim (ne e)
+        where import Data.Empty
+      go (Relation.Nullary.no _)  = refl
+
+record HeadsOut (x y : FlatState) (c : ℕ) : Set where
+  field
+    h-pc    : fpc y ≡ c + fpc x
+    h-regs  : LocState.regs (floc y) ≡ LocState.regs (floc x)
+    h-stack : LocState.stackMem (floc y) ≡ LocState.stackMem (floc x)
+    h-flags : (LocState.halted (floc y) ≡ LocState.halted (floc x)) × (LocState.faulted (floc y) ≡ LocState.faulted (floc x))
+            × (LocState.left (floc y) ≡ LocState.left (floc x)) × (LocState.ev-log (floc y) ≡ LocState.ev-log (floc x))
+    h-alloc : falloc y ≡ falloc x
+    h-rest  : (fret y ≡ fret x) × (fclosure y ≡ fclosure x) × (flink y ≡ flink x)
+    h-head  : ∀ c′ → c′ < c → LocState.heapMem (floc y) (rec-loc (head-word c′)) ≡ just (readReg (LocState.regs (floc x)) Output)
+    h-other : ∀ q → (∀ c′ → c′ < c → ¬ q ≡ rec-loc (head-word c′)) → LocState.heapMem (floc y) q ≡ LocState.heapMem (floc x) q
+
+heads-run : ∀ (C : Classes) prog (x : FlatState) c n → AllocState.next-heap-ref (falloc x) ≡ suc n → LocState.halted (floc x) ≡ false
+          → (∀ j i → fetch (heads C c) j ≡ just i → fetch prog (j + fpc x) ≡ just i)
+          → Σ FlatState λ y → FlatSteps prog c x y × HeadsOut x y c
+heads-run C prog x zero n nx hx fe = x , [] , record
+  { h-pc = refl ; h-regs = refl ; h-stack = refl ; h-flags = refl , refl , refl , refl ; h-alloc = refl ; h-rest = refl , refl , refl
+  ; h-head = λ c′ () ; h-other = λ q _ → refl }
+heads-run C prog x (suc c) n nx hx fe = go (heads-run C prog x₁ c n nx hx (λ j i e → trans (cong (fetch prog) (Data.Nat.Properties.+-suc j (fpc x))) (fe (suc j) i e)))
+  where
+    import Data.Nat.Properties
+    v = readReg (LocState.regs (floc x)) Output
+    x₁ = record x { floc = writeLocToHeap (floc x) (rec-loc (head-word c)) v ; fpc = suc (fpc x) }
+    st₁ = run-store-rec prog x (head-word c) n nx hx (fe 0 (store-rec (head-word c)) refl)
+    go : (Σ FlatState λ y → FlatSteps prog c x₁ y × HeadsOut x₁ y c) → Σ FlatState λ y → FlatSteps prog (suc c) x y × HeadsOut x y (suc c)
+    go (y , st , H) = y , FlatSteps-++ st₁ st , record
+      { h-pc = trans (HeadsOut.h-pc H) (Data.Nat.Properties.+-suc c (fpc x))
+      ; h-regs = HeadsOut.h-regs H ; h-stack = HeadsOut.h-stack H
+      ; h-flags = HeadsOut.h-flags H ; h-alloc = HeadsOut.h-alloc H ; h-rest = HeadsOut.h-rest H
+      ; h-head = hd
+      ; h-other = λ q ne → trans (HeadsOut.h-other H q (λ c′ lt → ne c′ (Data.Nat.Properties.m<n⇒m<1+n lt)))
+                                 (hw-other′ (LocState.heapMem (floc x)) (rec-loc (head-word c)) q v (λ e → ne c (Data.Nat.Properties.n<1+n c) (sym e))) }
+      where
+        hd : ∀ c′ → c′ < suc c → LocState.heapMem (floc y) (rec-loc (head-word c′)) ≡ just v
+        hd c′ lt = by (Data.Nat.Properties.m≤n⇒m<n∨m≡n (Data.Nat.Properties.≤-pred lt))
+          where
+            by : c′ < c Data.Sum.⊎ c′ ≡ c → LocState.heapMem (floc y) (rec-loc (head-word c′)) ≡ just v
+            by (Data.Sum.inj₁ lt′) = HeadsOut.h-head H c′ lt′
+            by (Data.Sum.inj₂ refl) = trans (HeadsOut.h-other H (rec-loc (head-word c)) (λ c′ lt′ e → Data.Nat.Properties.<-irrefl (sym (suc-inj (suc-inj (suc-inj (cong HeapLocation.heap-offset e))))) lt′))
+                                            (hw-same′ (LocState.heapMem (floc x)) (rec-loc (head-word c)) v)
+              where
+                suc-inj : ∀ {a b} → suc a ≡ suc b → a ≡ b
+                suc-inj refl = refl
