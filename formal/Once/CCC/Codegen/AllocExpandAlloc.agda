@@ -130,3 +130,64 @@ module Pop (prog : AbstractTrace) (x : FlatState) (h b n j₀ : ℕ) (Ld : Label
     trans (hw-other (LocState.heapMem (floc x₇)) (rec-loc w-s2) q (blk b) (λ e → n₃ (sym e)))
       (trans (hw-other (LocState.heapMem (floc x₂)) (rec-loc h) q w (λ e → n₁ (sym e)))
              (hw-other (LocState.heapMem (floc x)) (rec-loc w-s1) q I (λ e → n₂ (sym e))))
+
+------------------------------------------------------------------------
+-- The bump: the list empty (its head the sentinel), the counter's block
+------------------------------------------------------------------------
+
+module Bump (prog : AbstractTrace) (x : FlatState) (h σ n j₁ m : ℕ) (Lb Ld : LabelId)
+            (f₀ : fetch prog (fpc x) ≡ just mov-to-output)
+            (f₁ : fetch prog (1 + fpc x) ≡ just (store-rec w-s1))
+            (f₂ : fetch prog (2 + fpc x) ≡ just (load-rec h))
+            (f₃ : fetch prog (3 + fpc x) ≡ just mov-to-input)
+            (f₄ : fetch prog (4 + fpc x) ≡ just (instr-ctrl (c-branch-tag-zero Lb)))
+            (fl : find-label prog Lb ≡ just j₁)
+            (f₅ : fetch prog j₁ ≡ just (instr-ctrl (c-label Lb)))
+            (f₆ : fetch prog (1 + j₁) ≡ just (load-rec w-s1))
+            (f₇ : fetch prog (2 + j₁) ≡ just mov-to-input)
+            (f₈ : fetch prog (3 + j₁) ≡ just (instr-alloc-heap m))
+            (f₉ : fetch prog (4 + j₁) ≡ just (instr-ctrl (c-label Ld)))
+            (hx : LocState.halted (floc x) ≡ false) (nx : AllocState.next-heap-ref (falloc x) ≡ suc n)
+            (hd : LocState.heapMem (floc x) (rec-loc h) ≡ just (blk σ))
+            (sent : LocState.heapMem (floc x) (heap-loc (mkHeapRef σ) 0) ≡ just (SV-Tag 0))
+            (h≢1 : ¬ h ≡ w-s1) (σ≢0 : ¬ σ ≡ 0) where
+
+  I = readReg (LocState.regs (floc x)) Input1
+
+  x₁  = record x   { floc = record (floc x) { regs = writeReg (LocState.regs (floc x)) Output I } ; fpc = suc (fpc x) }
+  x₂  = record x₁  { floc = writeLocToHeap (floc x₁) (rec-loc w-s1) I ; fpc = suc (fpc x₁) }
+  x₃  = record x₂  { floc = record (floc x₂) { regs = writeReg (LocState.regs (floc x₂)) Output (blk σ) } ; fpc = suc (fpc x₂) }
+  x₄  = record x₃  { floc = record (floc x₃) { regs = writeReg (LocState.regs (floc x₃)) Input1 (blk σ) } ; fpc = suc (fpc x₃) }
+  x₅  = record x₄  { fpc = j₁ }
+  x₆  = record x₅  { fpc = suc j₁ }
+  x₇  = record x₆  { floc = record (floc x₆) { regs = writeReg (LocState.regs (floc x₆)) Output I } ; fpc = suc (fpc x₆) }
+  x₈  = record x₇  { floc = record (floc x₇) { regs = writeReg (LocState.regs (floc x₇)) Input1 I } ; fpc = suc (fpc x₇) }
+  x₉  = record x₈  { floc = record (floc x₈) { regs = writeReg (LocState.regs (floc x₈)) Output (blk (AllocState.next-heap-ref (falloc x₈))) }
+                   ; falloc = record (falloc x₈) { next-heap-ref = suc (AllocState.next-heap-ref (falloc x₈))
+                                                 ; block-size = size-with m (AllocState.next-heap-ref (falloc x₈)) (AllocState.block-size (falloc x₈)) }
+                   ; fpc = suc (fpc x₈) }
+  x₁₀ = record x₉  { fpc = suc (fpc x₉) }
+
+  hd₂ : LocState.heapMem (floc x₂) (rec-loc h) ≡ just (blk σ)
+  hd₂ = trans (hw-other (LocState.heapMem (floc x)) (rec-loc w-s1) (rec-loc h) I (rec≢ (λ e → h≢1 (sym e)))) hd
+
+  sent₂ : LocState.heapMem (floc x₂) (heap-loc (mkHeapRef σ) 0) ≡ just (SV-Tag 0)
+  sent₂ = trans (hw-other (LocState.heapMem (floc x)) (rec-loc w-s1) (heap-loc (mkHeapRef σ) 0) I (λ e → blk≢rec σ w-s1 σ≢0 (sym e))) sent
+
+  sc₆ : LocState.heapMem (floc x₆) (rec-loc w-s1) ≡ just I
+  sc₆ = hw-same (LocState.heapMem (floc x)) (rec-loc w-s1) I
+
+  run : FlatSteps prog 10 x x₁₀
+  run = FlatSteps-++ (run-mov-out prog x hx f₀)
+       (FlatSteps-++ (run-store-rec prog x₁ w-s1 n nx hx f₁)
+       (FlatSteps-++ (run-load-rec prog x₂ h n (blk σ) nx hx f₂ hd₂)
+       (FlatSteps-++ (run-mov-in prog x₃ hx f₃)
+       (FlatSteps-++ (run-branch-taken prog x₄ σ Lb j₁ refl sent₂ fl hx f₄)
+       (FlatSteps-++ (run-label prog x₅ Lb hx f₅)
+       (FlatSteps-++ (run-load-rec prog x₆ w-s1 n I nx hx f₆ sc₆)
+       (FlatSteps-++ (run-mov-in prog x₇ hx f₇)
+       (FlatSteps-++ (run-alloc prog x₈ m hx f₈)
+                     (run-label prog x₉ Ld hx f₉)))))))))
+
+  out-other : ∀ q → ¬ q ≡ rec-loc w-s1 → LocState.heapMem (floc x₁₀) q ≡ LocState.heapMem (floc x) q
+  out-other q ne = hw-other (LocState.heapMem (floc x)) (rec-loc w-s1) q I (λ e → ne (sym e))
