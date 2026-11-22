@@ -67,10 +67,7 @@ module _ (C : Classes) (P : AbstractTrace) (Sz : ℕ → Set)
 
   -- the primitive program has no record word (the expansion adds them)
   NoRecI : AbstractInstr → Set
-  NoRecI (load-rec _)  = ⊥
-  NoRecI (store-rec _) = ⊥
-  {-# CATCHALL #-}
-  NoRecI _             = Data.Unit.⊤
+  NoRecI i = (∀ k → i ≡ load-rec k → ⊥) × (∀ k → i ≡ store-rec k → ⊥)
 
   -- an instruction the expansion keeps: one step
   kept : ∀ {fs gs} (R : Rel C P Sz fs gs) i → fetch P (fpc fs) ≡ just i → expand-at C (fpc fs + 0) i ≡ i ∷ []
@@ -143,6 +140,6 @@ module _ (C : Classes) (P : AbstractTrace) (Sz : ℕ → Set)
   dispatch R (instr-push-frame _) f () ns nr h nf wf cw
   dispatch R instr-pop-frame f () ns nr h nf wf cw
   dispatch R (instr-room _) f () ns nr h nf wf cw
-  dispatch R (load-rec _) f em ns () h nf wf cw
-  dispatch R (store-rec _) f em ns () h nf wf cw
+  dispatch R (load-rec k) f em ns nr h nf wf cw = ⊥-elim (proj₁ nr k refl)
+  dispatch R (store-rec k) f em ns nr h nf wf cw = ⊥-elim (proj₂ nr k refl)
   dispatch R (instr-ctrl (c-start b)) f em ns nr h nf wf cw = ⊥-elim (ns b refl)

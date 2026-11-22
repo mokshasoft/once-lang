@@ -92,6 +92,7 @@ x86-32-sim = record
                                  (cong proj₂ (compile-trace-cnt-agrees entry-owner 0 t))
   ; file-wf = Once.Adequacy.CoreFileWF.X8632.core-wf
   ; empty-wf = Once.Adequacy.CoreFileWF.X8632.empty-wf
+  ; entry-like = entry-like 0 ; entry-wf = entry-wf 0 ; entry-cl = tt
   ; sim = sim
   }
   where

@@ -249,7 +249,7 @@ module _ (C : Classes) (P : AbstractTrace) (Sz : ℕ → Set)
 open import Once.CCC.Codegen.AllocExpandStart {FS} using (Start; module First)
 open import Once.CCC.Codegen.AllocExpandPc {FS} using (fetch-exp)
 
-module _ (C : Classes) (P : AbstractTrace) (Sz : ℕ → Set)
+module Start′ (C : Classes) (P : AbstractTrace) (Sz : ℕ → Set)
          (uniform  : ∀ k k′ → Sz k → Sz k′ → cls C k ≡ cls C k′ → bsz C k ≡ bsz C k′)
          (fits     : ∀ k → k ≤ bsz C k)
          (in-range : ∀ k → cls C k < count C)
@@ -297,13 +297,13 @@ module _ (C : Classes) (P : AbstractTrace) (Sz : ℕ → Set)
     quiet = Data.List.Properties.++-cancelˡ (LocState.ev-log (floc x)) (chain-events SR.run) []
               (trans (sym (chain-log SR.run)) (trans (L.LRel.l-log (Rel.r-loc F.R₀)) (sym (Data.List.Properties.++-identityʳ _))))
 
-  ev-start : ∀ n → Σ ℕ λ m → Same C P Sz uniform fits in-range sz-alloc sz-free img jmp-lbl br-lbl m s₀ (suc n) s₀
+  ev-start : ∀ n → Σ ℕ λ m → Same C P Sz uniform fits in-range sz-alloc sz-free img jmp-lbl br-lbl (suc m) s₀ (suc n) s₀
   ev-start n = go (Run.ev C P Sz uniform fits in-range sz-alloc sz-free img jmp-lbl br-lbl Kp n G₁ F.R₀)
     where
       go : Σ ℕ (λ m → Same C P Sz uniform fits in-range sz-alloc sz-free img jmp-lbl br-lbl m SR.z₆ n x)
-         → Σ ℕ λ m → Same C P Sz uniform fits in-range sz-alloc sz-free img jmp-lbl br-lbl m s₀ (suc n) s₀
+         → Σ ℕ λ m → Same C P Sz uniform fits in-range sz-alloc sz-free img jmp-lbl br-lbl (suc m) s₀ (suc n) s₀
       go (m , ee , ec) =
-        suc (4 + (count C + 6)) + m
+        (4 + (count C + 6)) + m
         , trans (flat-events-steps c₀ m) (trans (cong₂ _▹_ quiet ee) (sym (ev-unfold n P s₀ h0 st₀)))
         , subst (_≤ flat-ctrls (suc (4 + (count C + 6)) + m) EB s₀) (sym (ct-unfold n P s₀ h0 st₀))
             (subst (ctrl-of (instr-ctrl (c-start b)) + flat-ctrls n P x ≤_) (sym (flat-ctrls-steps c₀ m))

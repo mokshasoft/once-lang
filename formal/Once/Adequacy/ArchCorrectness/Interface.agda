@@ -61,6 +61,7 @@ open import Once.Denotation.Approx using (Ap; approx; endAp)
 open import Data.Unit using (⊤)
 import Once.IR.Semantics.Trace as TM
 import Once.Adequacy.ArchCorrectness.FlatCore.RunContext
+import Once.CCC.Machine.FlatStoreWF
 
 -- where a run starts: outside every frame, nothing in its heap or log (the
 -- state `LinCore.Start.start-fs` and master's `FlatFromObs.start-flat` are)
@@ -128,9 +129,14 @@ record ArchSim (o : CanonicalName) (B : Backend) : Set₁ where
   start : FlatMachine.FlatState {FS}
   start = start-at FS entry-frame entry-regs
 
-  open Once.Adequacy.ArchCorrectness.FlatCore.RunContext o FS slot-size word-eq using (Emitted)
+  open Once.Adequacy.ArchCorrectness.FlatCore.RunContext o FS slot-size word-eq using (Emitted; EntryLike)
 
   field
+    -- the start is a run's start (no frame owed, nothing held: `RunContext.EntryLike`),
+    -- its store well formed (D468 3c4: what the allocator expansion's simulation reads)
+    entry-like : EntryLike start
+    entry-wf   : Once.CCC.Machine.FlatStoreWF.FlatWF FS start
+    entry-cl   : Once.CCC.Machine.FlatStoreWF.sv-below FS (AllocState.next-heap-ref (FlatMachine.FlatState.falloc start)) (FlatMachine.FlatState.fclosure start)
     -- ★ THE ARCH'S THEOREM: the flat theorem of a well-shaped image (its start
     -- first, at main's budget `b`) becomes the machine's
     sim : ∀ (q : IRProgram) (b : ℕ) (tail : AbstractTrace) (env : String → Maybe (Backend.Payload B))
