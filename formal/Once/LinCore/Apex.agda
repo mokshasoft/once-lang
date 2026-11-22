@@ -39,7 +39,7 @@ open import Once.IR.Semantics.Trace using (module Interp)
 open import Once.CCC.FrameSemantics using (fs-numerics; fs-ffi; module FrameSemantics)
 open import Once.CCC.Codegen.RoomChecks using (room-checks)
 open import Once.CCC.Machine.SMCore
-  using (AbstractTrace; AbstractInstr; instr-ctrl; c-ret; instr-call-closure; SV-Ptr; SV-Code; module LocState; module AllocState)
+  using (AbstractTrace; AbstractInstr; instr-ctrl; c-ret; instr-call-closure; instr-sigop; SV-Ptr; SV-Code; module LocState; module AllocState)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Label using (LabelId)
 open import Once.Memory.HeapAddress using (HeapLocation; sucHL)
@@ -58,6 +58,13 @@ import Once.LinCore.ImageBlocks
 import Once.LinCore.Keys
 import Once.LinCore.ExprImage
 import Once.LinCore.ImageSyms
+import Once.Adequacy.ArchCorrectness.ExpandSim
+import Once.CCC.Codegen.AllocExpandClasses
+import Once.CCC.Codegen.AllocExpandEmitted
+import Once.CCC.Codegen.AllocExpand
+import Once.SigOp.Info
+import Data.Nat
+import Data.List.Relation.Unary.Any
 open import Once.CCC.Codegen.ImageExterns using (image-externs)
 
 open ArchSim A
@@ -161,3 +168,50 @@ module NewImage (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Uni
                                   (image-externs (Once.LinCore.ExprImage.imageAt (fs-numerics FS) IT.BF.tl IT.BF.mpm)))
   file-wf-at = subst₂ (λ P bs′ → Backend.AsmWF B (Backend.file B (room-checks P) (file-table (Backend.payload B) bs′) (image-externs P)))
                       image-eq blocks-eq file-wfᴺ
+
+  ------------------------------------------------------------------------
+  -- ★★ THE ALLOCATOR'S EXPANSION OF THE IMAGE ON THE ARCH (D468, the pool:
+  -- `AllocExpandClasses.pool`): cells reused through free lists, the same trace
+  ------------------------------------------------------------------------
+
+  module XS = Once.Adequacy.ArchCorrectness.ExpandSim o A
+  module PL = Once.CCC.Codegen.AllocExpandClasses.Pool {FS} image
+  module CL = Once.CCC.Codegen.AllocExpandClasses {FS}
+  module CD = Once.CCC.Codegen.AllocExpandEmitted.Code {FS} PL.C PL.small PL.in-range PL.fits
+  module EM = Once.CCC.Codegen.AllocExpandEmitted {FS}
+
+  imageˣ : AbstractTrace
+  imageˣ = Once.CCC.Codegen.AllocExpand.expand PL.C image
+
+  P″ : AbstractTrace
+  P″ = room-checks imageˣ
+
+  private
+    -- an op the room-checked expansion calls is one the room-checked image calls
+    sig-back : ∀ {A B} (si : Once.SigOp.Info.SigOpInfo A B) → instr-sigop si ∈ P″ → instr-sigop si ∈ P′
+    sig-back si m = EM.∈-room image (CD.exp-sig 0 image IA.em-alloc si (EM.room-sig imageˣ si m))
+
+    fetch-∈ : ∀ (xs : AbstractTrace) k {i} → fetch xs k ≡ just i → i ∈ xs
+    fetch-∈ (x ∷ xs) Data.Nat.zero    refl = Data.List.Relation.Unary.Any.here refl
+    fetch-∈ (x ∷ xs) (Data.Nat.suc k) e    = Data.List.Relation.Unary.Any.there (fetch-∈ xs k e)
+
+    ∈-fetch : ∀ (xs : AbstractTrace) {i} → i ∈ xs → Σ ℕ λ k → fetch xs k ≡ just i
+    ∈-fetch (x ∷ xs) (Data.List.Relation.Unary.Any.here refl) = 0 , refl
+    ∈-fetch (x ∷ xs) (Data.List.Relation.Unary.Any.there m) = let (k , f) = ∈-fetch xs m in Data.Nat.suc k , f
+
+  namedˣ : Data.List.Relation.Unary.All.All (BT.SigNamed bs) P″
+  namedˣ = Data.List.Relation.Unary.All.tabulate λ {i} m {A} {B} si e →
+    Once.LinCore.ImageOwned.named-call (fs-numerics FS) bw U IT.canon si (IA.sigops si (sig-back si (subst (λ j → j ∈ P″) e m)))
+
+  -- the image's owed fact, at the expansion (its ops are the image's)
+  ext-missˣ : Owed → ExtMiss FS env P″
+  ext-missˣ O si k ex f =
+    let (k′ , f′) = ∈-fetch P′ (sig-back si (fetch-∈ P″ k f)) in Owed.o-ext-miss O si k′ ex f′
+
+  conc-trˣ : Owed
+           → Machine.trace (δ env (compile P″)) init ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (fs-numerics FS) (FrameSemantics.fs-interp FS)
+  conc-trˣ O = XS.sim-exp PL.C PL.small PL.in-range PL.fits (irProgram tbl ir) IA.em-budget IA.tail env
+                 (CL.Sz image) PL.uniform (CL.sz-alloc image) (CL.sz-free image)
+                 IS.img-path IS.jmp-path IS.br-path IAF.no-lrec IAF.no-srec emitted
+                 (IT.flat-sound (λ {b} v → ML.ld {b} v image))
+                 (table P″ bs namedˣ (ext-missˣ O)) (IT.flat-ir (λ {b} v → ML.ld {b} v image))
