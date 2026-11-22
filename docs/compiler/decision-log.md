@@ -24674,3 +24674,24 @@ back). So "the allocated blocks are EXACTLY the footprints of what the state hol
 
 ### Decision (proposed): (a)
 `LeakFree.freed` is replaced by `reachable`: `∀ k r → Live fs₀ k r → Reach (at fs₀ k) r`.
+
+## D473 — `drop` FREES ITS VALUE'S CELLS (2026-11-23, decided by the user)
+
+**Decided** (the user, 2026-11-23: option (A)). The core's `drop` frees `freeAll v`; its lowering
+(`StepPrim.st-drop`) emitted no code, so a dropped heap value's blocks stayed allocated and unreachable and
+`NoLeak` (D472) was false. The lowered `drop` frees every cell of the value: a value of a non-recursive type
+by a fixed sequence of loads and frees (its type's shape is known), a recursive one (a μ) by a freeing loop over
+its nodes, as the fold frees the nodes it consumes. Option (B), deferring to plan 0.154's free-at-last-use, was
+rejected: GOAL.md and §5 item 2 ask for no leaks at the merge.
+
+## D474 — THE EMITTED CODE IS MEASURED AND CUT BEFORE THE MERGE; COMPILE CHOICES ARE A CONFIGURATION (2026-11-23, decided by the user)
+
+**Decided** (the user, 2026-11-23). Plan 0.146 §5 item 8: a performance suite comparing master and the branch
+(run-time instructions retired, `.text`, peak heap, instruction categories) gates the merge, and the code is cut
+in order — the allocator as a call (default), single-call blocks joined into their caller, room checks by static
+need, copy forwarding — each measured. "We should get as far as we can without any inlining": the defaults
+favour size (embedded and bare-metal targets).
+**The configuration**: compile choices (`--alloc`, `--inline-alloc` on/off) are flags for now. Later the
+configuration is written in Once itself ("then we do not need another parser"), as an ADT once Once has them,
+possibly per function (tight loops compiled for speed), never as language syntax. Every value of the
+configuration is covered by the top theorems (D471's generalization, owed).
