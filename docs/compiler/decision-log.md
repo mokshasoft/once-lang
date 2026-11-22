@@ -24790,6 +24790,13 @@ the cell's multiplicity (`Fn k`: `ktr1`, `open1`, `icall` at any `k`; a many-use
 the one-shot simulation (`GlobalTramp`) carries over instead of being duplicated. Whether word 1 of a many-use
 cell becomes the owned entry (a) or a fourth word holds it (b) is decided by which keeps the lent call's
 proofs (`GlobalTrampW`) unchanged: (b) does, at the cost of `hdr` 4 → 5.
+### Finding (2026-11-23): the owned body must be kept, not recovered
+`ownB` cannot inspect a body for the `copyIn b₀` shape: splitting a `Tm` at an index like `One ⊗t C` gets stuck
+against constructors whose index is `LF∙ F …` (Agda's coverage check), however the match is staged. And not
+every many-use closure is `copyIn` (`PassTr`'s `inco F`, the examples). So the closure records its owned body
+when it is built: a new form `llamωᶜ b₀` (the bridge's `clo`), a value `cωᶜ ds b₀ γ`, whose lent call means
+`copyIn b₀` (as today) and whose owned call (`levω`) runs `b₀` on the environment moved in; `levω` on a plain
+`cω` cell runs the lent body and frees the environment after. Additive: `llamω`/`cω` and their proofs stay.
 ### Scope (a)
 Core (`levω`, `Blk`), semantics (`Lᶜ levω` = `apω`'s), Keys (the owned body's key per many-use closure), Image
 (`compᴵ`, the body trampoline for `kbodyω`), Lower (`tramp`), and the trampoline simulations (`GlobalTramp*`,
