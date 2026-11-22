@@ -24551,6 +24551,17 @@ existing `c-branch-tag-zero` on `*Input1`; no new control. With head `h` of the 
 Why not a register for the record (the text above): no new abstract register (x86-32 has none to give), and
 two straight-line instructions cost one clause each in the instruction cascades. A free clobbers Output (the
 primitive's did not): the image never holds a live value in Output across a free (checked at the expansion).
+**Amended (3c2, 2026-11-23):** the expansion keeps the registers exactly instead (Output and Input1 saved in two
+scratch words of the record, words 1 and 2; the heads from word 3), so the simulation relates registers by the
+renaming alone, with no liveness of registers; the cost is a few record loads and stores per alloc and free. The
+pass runs BEFORE the room checks, which then count the bump at its class's size (the pool's largest).
+**The simulation's deadness (3c3):** the expanded run reuses a freed block, so the primitive run must never touch
+one again. A read of a freed cell already faults (the free clears it); a STORE into a freed block faults too
+(the store gate checks `freed`, beside the block size): then a primitive run that does not fault touches no freed
+block, and the image's stores are into fresh blocks (`FreshAl`) or held cells (`g-live`). The relation: the pcs
+by the expansion's offset map (calls are not expanded, so return addresses map alike), registers and memory equal
+up to an injective renaming of the primitive's live refs, the free lists a `Slab` model over the expanded refs
+outside the renaming's image (the sentinel and the record apart), block sizes at least the primitive's.
 
 ## D469 — AN ABSTRACT CELL'S SIZE IS ITS BLOCK'S; ONE LIVE CELL PER SERIAL (2026-11-23, proposed — for the user's review)
 
