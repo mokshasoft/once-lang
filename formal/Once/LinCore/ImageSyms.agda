@@ -96,6 +96,7 @@ import Once.LinCore.ImageBlocks
 open import Once.LinCore.Jumps fmt ans bw using (jump-of; jmp; Jmps; Jmps-nj; mvPS-nj; mvSP-nj; module Closed; module Free)
 
 import Once.CCC.Codegen.AllocExpand
+import Once.LinCore.ImageSymsX
 module LI = Once.LinCore.LabelsI fmt ans bw
 module EI = Once.LinCore.EntriesI fmt ans bw
 module IAll = Once.LinCore.ImageAll fmt ans bw
@@ -618,3 +619,88 @@ module Img (nm : CanonicalName) {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   -- ★★ THE IMAGE'S FILE IS WELL-FORMED, as symbols (`ImageExterns.ImageWF`)
   image-wf : ImageWF P′ bs ex
   image-wf = defined-once , resolved , image-externs-valid image
+
+  ----------------------------------------------------------------------
+  -- ★★ THE ALLOCATOR'S EXPANSION OF THE IMAGE (D468/D470): its file's
+  -- symbols are well-formed too — its labels the image's and each alloc
+  -- site's two (once each: `ImageSymsX.labs-dst`), its entries the image's,
+  -- every reference defined or an extern (a site's jumps its own labels, the
+  -- record's words the file's record)
+  ----------------------------------------------------------------------
+
+  module Xp (C : Once.CCC.Codegen.AllocExpand.Classes) where
+    open import Data.List.Membership.Propositional.Properties using (∈-++⁻; ∈-map⁻)
+    module XX = Once.LinCore.ImageSymsX.X fmt ans bw {FS} C
+    module DLX = DL {FS}
+
+    imageˣ : AbstractTrace
+    imageˣ = Once.CCC.Codegen.AllocExpand.expand C image
+
+    P″ : AbstractTrace
+    P″ = room-checks imageˣ
+
+    Dˣ : List String
+    Dˣ = entry-symbol ∷ alloc-record-symbol ∷ adefs P″ ++ block-syms bs
+
+    adefs-eqˣ : adefs P″ ≡ adefs imageˣ
+    adefs-eqˣ = fold-room adefs (λ i xs → instr-defs i ++ xs) (λ _ _ → refl) (λ _ _ → refl) imageˣ
+
+    -- what the expansion defines: the image's labels and entries, and the sites' labels
+    data ShapeX : Label → Set where
+      sx : ∀ {y} → ShapeL y → ShapeX y
+      sa : ∀ s b → ShapeX (once (Once.CCC.Codegen.AllocExpand.alloc-label s b))
+
+    private
+      img-L : ∀ {m} → m ∈ Labs image → Once.CCC.Codegen.AllocExpand.ImgL m
+      img-L = path-of
+
+      shape-x : ∀ {y} → y ∈ dlabs imageˣ → ShapeX y
+      shape-x m = by (dl-in imageˣ m)
+        where
+          by : ∀ {y} → (Σ LabelId λ l → y ≡ once l × l ∈ Labs imageˣ) ⊎ (Σ EntryId λ e → y ≡ callee e × e ∈ Ents imageˣ) → ShapeX y
+          by (inj₁ (l , refl , ml)) = lab (XX.labs-in 0 image ml)
+            where
+              lab : (l ∈ Labs image) ⊎ (Σ ℕ λ s′ → (0 Data.Nat.≤ s′) × Once.CCC.Codegen.AllocExpand.SiteL l s′) → ShapeX (once l)
+              lab (inj₁ q) = sx (shape-lab refl (Data.List.Relation.Unary.All.lookup labs-shape q))
+              lab (inj₂ (s′ , _ , (b , _ , refl))) = sa s′ b
+          by (inj₂ (e , refl , me)) = sx (shape-ent refl (Data.List.Relation.Unary.All.lookup ents-shape (subst (e ∈_) (XX.ents-exp 0 image) me)))
+
+      good-x : ∀ {y} → ShapeX y → GoodL y
+      good-x (sx sh) = shape-good sh
+      good-x (sa s b) = refl , ((_ , _ , refl , refl) ∷ [])
+
+      shapes-x : All ShapeX (dlabs imageˣ)
+      shapes-x = Data.List.Relation.Unary.All.tabulate shape-x
+
+      adefs-shape-x : All (λ s → Σ Label λ y → ShapeX y × s ≡ labelSym y) (adefs imageˣ)
+      adefs-shape-x = subst (All (λ s → Σ Label λ y → ShapeX y × s ≡ labelSym y)) (sym (adefs-labs imageˣ))
+                        (Data.List.Relation.Unary.All.Properties.map⁺ (Data.List.Relation.Unary.All.map (λ {y} sh → y , sh , refl) shapes-x))
+        where import Data.List.Relation.Unary.All.Properties
+
+      adefs-dst-x : AllPairs _≢_ (adefs imageˣ)
+      adefs-dst-x = subst (AllPairs _≢_) (sym (adefs-labs imageˣ))
+                      (syms-dst (dlabs-def imageˣ) (Data.List.Relation.Unary.All.map good-x shapes-x)
+                                (dl-dst imageˣ (XX.labs-dst 0 image LIm.image-dst img-L)
+                                               (subst (AllPairs _≢_) (sym (XX.ents-exp 0 image)) EIm.image-edst)))
+
+      entry≢x : ∀ {y} → ShapeX y → entry-symbol ≢ labelSym y
+      entry≢x (sx sh) = entry≢shape sh
+      entry≢x (sa s b) e = head≢ (once-head (Once.CCC.Codegen.AllocExpand.alloc-label s b)) refl (sym e)
+
+      record≢x : ∀ {y} → ShapeX y → alloc-record-symbol ≢ labelSym y
+      record≢x (sx sh) = record≢shape sh
+      record≢x (sa s b) e = head≢ (once-head (Once.CCC.Codegen.AllocExpand.alloc-label s b)) refl (sym e)
+
+      x≢block : ∀ {y t} → ShapeX y → BlockSym t → labelSym y ≢ t
+      x≢block (sx sh) b = shape≢block sh b
+      x≢block (sa s b′) (d , refl) = head≢ (once-head (Once.CCC.Codegen.AllocExpand.alloc-label s b′)) (fn-head (bare ("arith.block." ++ˢ d)))
+
+    defined-onceˣ : Unique Dˣ
+    defined-onceˣ =
+      subst (λ A → Unique (entry-symbol ∷ alloc-record-symbol ∷ A ++ block-syms bs)) (sym adefs-eqˣ)
+        ( (entry≢record ∷ ++⁺ (Data.List.Relation.Unary.All.map (λ { {s} (y , sh , refl) → entry≢x sh }) adefs-shape-x)
+                              (Data.List.Relation.Unary.All.map entry≢block (blocks-sym bs)))
+        ∷ ++⁺ (Data.List.Relation.Unary.All.map (λ { {s} (y , sh , refl) → record≢x sh }) adefs-shape-x)
+              (Data.List.Relation.Unary.All.map record≢block (blocks-sym bs))
+        ∷ AP-++⁺ adefs-dst-x (blocks-unique bs)
+            (Data.List.Relation.Unary.All.map (λ { {s} (y , sh , refl) → Data.List.Relation.Unary.All.map (x≢block sh) (blocks-sym bs) }) adefs-shape-x))

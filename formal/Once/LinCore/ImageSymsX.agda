@@ -116,22 +116,22 @@ module X {FS : FrameSemantics} (C : Classes) where
   open FlatMachine {FS} using (label-of?-sound)
   open import Once.CCC.Codegen.AllocExpandPc {FS} using (site-of)
 
+  lab-mem : ∀ t {m} → m ∈ Labs t → instr-ctrl (c-label m) ∈ t
+  lab-mem (x ∷ t) {m} p = go (label-of? x) refl p
+    where
+      go : ∀ mo → label-of? x ≡ mo → m ∈ LabsC.lab {FS} mo (Labs t) → instr-ctrl (c-label m) ∈ (x ∷ t)
+      go (just l) e (here refl) = here (sym (label-of?-sound x m e))
+      go (just l) e (there q)   = there (lab-mem t q)
+      go nothing  e q           = there (lab-mem t q)
+
+  mem-lab : ∀ t {m} → instr-ctrl (c-label m) ∈ t → m ∈ Labs t
+  mem-lab (x ∷ t) (here refl) = here refl
+  mem-lab (x ∷ t) {m} (there p) = go (label-of? x) (mem-lab t p)
+    where go : ∀ mo → m ∈ Labs t → m ∈ LabsC.lab {FS} mo (Labs t)
+          go (just _) q = there q
+          go nothing  q = q
+
   private
-    lab-mem : ∀ t {m} → m ∈ Labs t → instr-ctrl (c-label m) ∈ t
-    lab-mem (x ∷ t) {m} p = go (label-of? x) refl p
-      where
-        go : ∀ mo → label-of? x ≡ mo → m ∈ LabsC.lab {FS} mo (Labs t) → instr-ctrl (c-label m) ∈ (x ∷ t)
-        go (just l) e (here refl) = here (sym (label-of?-sound x m e))
-        go (just l) e (there q)   = there (lab-mem t q)
-        go nothing  e q           = there (lab-mem t q)
-
-    mem-lab : ∀ t {m} → instr-ctrl (c-label m) ∈ t → m ∈ Labs t
-    mem-lab (x ∷ t) (here refl) = here refl
-    mem-lab (x ∷ t) {m} (there p) = go (label-of? x) (mem-lab t p)
-      where go : ∀ mo → m ∈ Labs t → m ∈ LabsC.lab {FS} mo (Labs t)
-            go (just _) q = there q
-            go nothing  q = q
-
     -- a code's labels, by a property of each of its instructions
     LabQ : (LabelId → Set) → AbstractInstr → Set
     LabQ Q i = ∀ m → i ≡ instr-ctrl (c-label m) → Q m
