@@ -300,3 +300,13 @@ step-size i prog fs r = by (af-view i)
                         (instr-alloc-heap n) fs (sw n (r Data.Nat.Properties.≟ next-heap-ref (falloc fs))) (inj₁ refl)
     by (af-free n) = inj₁ (straight-keeps (λ t → block-size (falloc t) r ≡ block-size (falloc fs) r) (instr-free-heap n) fs refl refl)
     by (af-other na nf) = inj₁ (Relation.Binary.PropositionalEquality.cong (λ f → f r) (Data.Product.proj₂ (Data.Product.proj₂ (step-hk i prog fs na nf))))
+
+-- a freed mark stays through any step
+step-freed-mono : ∀ i prog fs r → freed (falloc fs) r ≡ true → freed (falloc (flat-exec-instr i prog fs)) r ≡ true
+step-freed-mono i prog fs r e = by (af-view i)
+  where
+    by : AFView i → freed (falloc (flat-exec-instr i prog fs)) r ≡ true
+    by (af-alloc n) = trans (straight-keeps (λ t → freed (falloc t) r ≡ freed (falloc fs) r) (instr-alloc-heap n) fs refl refl) e
+    by (af-free n) = straight-keeps (λ t → freed (falloc t) r ≡ true) (instr-free-heap n) fs
+                       (AbstractExec.freeMark-mono {FS} (readReg (LocState.regs (floc fs)) Input1) (freed (falloc fs)) r e) e
+    by (af-other na nf) = trans (Relation.Binary.PropositionalEquality.cong (λ f → f r) (Data.Product.proj₁ (Data.Product.proj₂ (step-hk i prog fs na nf)))) e
