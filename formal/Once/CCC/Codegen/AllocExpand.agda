@@ -50,7 +50,7 @@ record Classes : Set where
     count : ℕ          -- the number of free lists
     cls   : ℕ → ℕ      -- a block size's list (below `count` for the program's sizes)
     bsz   : ℕ → ℕ      -- the size a block of that size is allocated at (at least it)
-open Classes public
+open Classes
 
 -- the record's words
 w-s1 w-s2 : ℕ

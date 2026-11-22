@@ -18,7 +18,8 @@ module Once.CCC.Codegen.AllocExpandPc {FS : FrameSemantics} where
 
 open import Data.Bool using (Bool; true; false)
 open import Data.List using (List; []; _∷_; _++_; length)
-open import Data.Maybe using (Maybe; just; nothing) renaming (map to mmap)
+open import Data.Maybe using (Maybe; just; nothing)
+import Data.Maybe
 open import Data.Nat using (ℕ; zero; suc; _+_)
 open import Data.Nat.Properties using (+-suc; +-assoc; +-comm; +-identityʳ)
 open import Data.Empty using (⊥)
@@ -31,6 +32,7 @@ open import Once.CCC.Machine.Flat using (module FlatMachine)
 open FlatMachine {FS} using (fetch; fl-go; fl-at; fl-label-match; label-of?; ft-go; ft-at; ft-match; entry-of?
                             ; fetch-++-left; fetch-++-right; fl-go-++-miss; ft-go-++-miss)
 open import Once.CCC.Codegen.AllocExpand
+open Classes
 
 module _ (C : Classes) where
 
@@ -126,18 +128,18 @@ module _ (C : Classes) where
   ------------------------------------------------------------------------
 
   private
-    mm-cong : ∀ {f g : ℕ → ℕ} (m : Maybe ℕ) → (∀ p → f p ≡ g p) → mmap f m ≡ mmap g m
+    mm-cong : ∀ {f g : ℕ → ℕ} (m : Maybe ℕ) → (∀ p → f p ≡ g p) → Data.Maybe.map f m ≡ Data.Maybe.map g m
     mm-cong (just p) h = cong just (h p)
     mm-cong nothing  h = refl
 
-    mm-∘ : ∀ (f g : ℕ → ℕ) (m : Maybe ℕ) → mmap f (mmap g m) ≡ mmap (λ p → f (g p)) m
+    mm-∘ : ∀ (f g : ℕ → ℕ) (m : Maybe ℕ) → Data.Maybe.map f (Data.Maybe.map g m) ≡ Data.Maybe.map (λ p → f (g p)) m
     mm-∘ f g (just p) = refl
     mm-∘ f g nothing  = refl
 
   -- a scan from one further on finds one further on
-  fl-shift  : ∀ P L d → fl-go P L (suc d) ≡ mmap suc (fl-go P L d)
-  fl-shiftᵃ : ∀ mo P L d → fl-at mo P L (suc d) ≡ mmap suc (fl-at mo P L d)
-  fl-shiftᵐ : ∀ b P L d → fl-label-match b P L (suc d) ≡ mmap suc (fl-label-match b P L d)
+  fl-shift  : ∀ P L d → fl-go P L (suc d) ≡ Data.Maybe.map suc (fl-go P L d)
+  fl-shiftᵃ : ∀ mo P L d → fl-at mo P L (suc d) ≡ Data.Maybe.map suc (fl-at mo P L d)
+  fl-shiftᵐ : ∀ b P L d → fl-label-match b P L (suc d) ≡ Data.Maybe.map suc (fl-label-match b P L d)
   fl-shift []      L d = refl
   fl-shift (x ∷ P) L d = fl-shiftᵃ (label-of? x) P L d
   fl-shiftᵃ (just m) P L d = fl-shiftᵐ (m ≡ᵇᴵ L) P L d
@@ -204,47 +206,47 @@ module _ (C : Classes) where
                    (plain refl ∷ᴺ plain refl ∷ᴺ plain refl ∷ᴺ plain refl ∷ᴺ plain refl ∷ᴺ plain refl ∷ᴺ []ᴺ)
 
   -- ★ the scan of the expanded program, by the primitive one's
-  fl-exp : ∀ s P L i → LabelId.path L ≡ [] → fl-go (expand-from C s P) L i ≡ mmap (λ p → i + off s P p) (fl-go P L 0)
+  fl-exp : ∀ s P L i → LabelId.path L ≡ [] → fl-go (expand-from C s P) L i ≡ Data.Maybe.map (λ p → i + off s P p) (fl-go P L 0)
   fl-exp s []      L i pe = refl
   fl-exp s (x ∷ P) L i pe = fl-cons (exp-view s x)
     where
       E′ = expand-from C (suc s) P
-      IH : ∀ i′ → fl-go E′ L i′ ≡ mmap (λ p → i′ + off (suc s) P p) (fl-go P L 0)
+      IH : ∀ i′ → fl-go E′ L i′ ≡ Data.Maybe.map (λ p → i′ + off (suc s) P p) (fl-go P L 0)
       IH i′ = fl-exp (suc s) P L i′ pe
       -- past an expansion with no label `L`, by its length
       past : ∀ xs → AllNoL L xs → length (expand-at C s x) ≡ length xs → label-of? x ≡ nothing
-           → fl-go (xs ++ E′) L i ≡ mmap (λ p → i + off s (x ∷ P) p) (fl-go (x ∷ P) L 0)
+           → fl-go (xs ++ E′) L i ≡ Data.Maybe.map (λ p → i + off s (x ∷ P) p) (fl-go (x ∷ P) L 0)
       past xs nl le lx =
         trans (fl-go-++-miss xs E′ L i (nol-go xs i nl))
           (trans (IH (length xs + i))
             (trans (mm-cong (fl-go P L 0) (λ p → trans (cong (_+ off (suc s) P p) (trans (+-comm (length xs) i) (cong (i +_) (sym le))))
                                                    (+-assoc i (length (expand-at C s x)) _)))
               (trans (sym (mm-∘ (λ p → i + off s (x ∷ P) p) suc (fl-go P L 0)))
-                (trans (cong (mmap (λ p → i + off s (x ∷ P) p)) (sym (fl-shift P L 0)))
-                       (cong (λ mo → mmap (λ p → i + off s (x ∷ P) p) (fl-at mo P L 0)) (sym lx))))))
+                (trans (cong (Data.Maybe.map (λ p → i + off s (x ∷ P) p)) (sym (fl-shift P L 0)))
+                       (cong (λ mo → Data.Maybe.map (λ p → i + off s (x ∷ P) p) (fl-at mo P L 0)) (sym lx))))))
       -- one instruction kept
       kept-at : ∀ mo → label-of? x ≡ mo → expand-at C s x ≡ x ∷ []
-              → fl-at mo E′ L i ≡ mmap (λ p → i + off s (x ∷ P) p) (fl-at mo P L 0)
+              → fl-at mo E′ L i ≡ Data.Maybe.map (λ p → i + off s (x ∷ P) p) (fl-at mo P L 0)
       kept-mt : ∀ b → expand-at C s x ≡ x ∷ []
-              → fl-label-match b E′ L i ≡ mmap (λ p → i + off s (x ∷ P) p) (fl-label-match b P L 0)
+              → fl-label-match b E′ L i ≡ Data.Maybe.map (λ p → i + off s (x ∷ P) p) (fl-label-match b P L 0)
       kept-at (just m) _ ex = kept-mt (m ≡ᵇᴵ L) ex
       kept-at nothing  _ ex = after ex
         where
-          after : expand-at C s x ≡ x ∷ [] → fl-go E′ L (suc i) ≡ mmap (λ p → i + off s (x ∷ P) p) (fl-go P L 1)
+          after : expand-at C s x ≡ x ∷ [] → fl-go E′ L (suc i) ≡ Data.Maybe.map (λ p → i + off s (x ∷ P) p) (fl-go P L 1)
           after ex′ =
             trans (IH (suc i))
               (trans (mm-cong (fl-go P L 0) (λ p → trans (cong (_+ off (suc s) P p) (+-comm 1 i))
                                                      (trans (+-assoc i 1 _) (cong (λ z → i + (z + off (suc s) P p)) (sym (cong length ex′))))))
                 (trans (sym (mm-∘ (λ p → i + off s (x ∷ P) p) suc (fl-go P L 0)))
-                       (cong (mmap (λ p → i + off s (x ∷ P) p)) (sym (fl-shift P L 0)))))
+                       (cong (Data.Maybe.map (λ p → i + off s (x ∷ P) p)) (sym (fl-shift P L 0)))))
       kept-mt true  ex = cong just (sym (+-identityʳ i))
       kept-mt false ex =
         trans (IH (suc i))
           (trans (mm-cong (fl-go P L 0) (λ p → trans (cong (_+ off (suc s) P p) (+-comm 1 i))
                                                  (trans (+-assoc i 1 _) (cong (λ z → i + (z + off (suc s) P p)) (sym (cong length ex))))))
             (trans (sym (mm-∘ (λ p → i + off s (x ∷ P) p) suc (fl-go P L 0)))
-                   (cong (mmap (λ p → i + off s (x ∷ P) p)) (sym (fl-shift P L 0)))))
-      fl-cons : ExpView s x → fl-go (expand-at C s x ++ E′) L i ≡ mmap (λ p → i + off s (x ∷ P) p) (fl-go (x ∷ P) L 0)
+                   (cong (Data.Maybe.map (λ p → i + off s (x ∷ P) p)) (sym (fl-shift P L 0)))))
+      fl-cons : ExpView s x → fl-go (expand-at C s x ++ E′) L i ≡ Data.Maybe.map (λ p → i + off s (x ∷ P) p) (fl-go (x ∷ P) L 0)
       fl-cons (ev-alloc k) = past (alloc-code C s k) (alloc-nol s k L pe) refl refl
       fl-cons (ev-free k)  = past (free-code C k) (free-nol k L) refl refl
       fl-cons (ev-start b) = past (instr-ctrl (c-start b) ∷ setup C) (plain refl ∷ᴺ start-nol L) refl refl
@@ -256,9 +258,9 @@ module _ (C : Classes) where
   -- its mapped pc
   ------------------------------------------------------------------------
 
-  ft-shift  : ∀ P E d → ft-go P E (suc d) ≡ mmap suc (ft-go P E d)
-  ft-shiftᵃ : ∀ mo P E d → ft-at mo P E (suc d) ≡ mmap suc (ft-at mo P E d)
-  ft-shiftᵐ : ∀ b P E d → ft-match b P E (suc d) ≡ mmap suc (ft-match b P E d)
+  ft-shift  : ∀ P E d → ft-go P E (suc d) ≡ Data.Maybe.map suc (ft-go P E d)
+  ft-shiftᵃ : ∀ mo P E d → ft-at mo P E (suc d) ≡ Data.Maybe.map suc (ft-at mo P E d)
+  ft-shiftᵐ : ∀ b P E d → ft-match b P E (suc d) ≡ Data.Maybe.map suc (ft-match b P E d)
   ft-shift []      E d = refl
   ft-shift (x ∷ P) E d = ft-shiftᵃ (entry-of? x) P E d
   ft-shiftᵃ (just m) P E d = ft-shiftᵐ (m ≡ᵇᴱ E) P E d
@@ -309,36 +311,36 @@ module _ (C : Classes) where
                  (noe refl ∷ᴱ noe refl ∷ᴱ noe refl ∷ᴱ noe refl ∷ᴱ noe refl ∷ᴱ noe refl ∷ᴱ []ᴱ)
 
   -- ★ the entry scan of the expanded program, by the primitive one's
-  ft-exp : ∀ s P E i → ft-go (expand-from C s P) E i ≡ mmap (λ p → i + off s P p) (ft-go P E 0)
+  ft-exp : ∀ s P E i → ft-go (expand-from C s P) E i ≡ Data.Maybe.map (λ p → i + off s P p) (ft-go P E 0)
   ft-exp s []      E i = refl
   ft-exp s (x ∷ P) E i = ft-cons (exp-view s x)
     where
       E′ = expand-from C (suc s) P
-      IH : ∀ i′ → ft-go E′ E i′ ≡ mmap (λ p → i′ + off (suc s) P p) (ft-go P E 0)
+      IH : ∀ i′ → ft-go E′ E i′ ≡ Data.Maybe.map (λ p → i′ + off (suc s) P p) (ft-go P E 0)
       IH i′ = ft-exp (suc s) P E i′
       shifted : ∀ n → length (expand-at C s x) ≡ n
-              → ft-go E′ E (n + i) ≡ mmap (λ p → i + off s (x ∷ P) p) (ft-go P E 1)
+              → ft-go E′ E (n + i) ≡ Data.Maybe.map (λ p → i + off s (x ∷ P) p) (ft-go P E 1)
       shifted n le =
         trans (IH (n + i))
           (trans (mm-cong (ft-go P E 0) (λ p → trans (cong (_+ off (suc s) P p) (trans (+-comm n i) (cong (i +_) (sym le))))
                                                  (+-assoc i (length (expand-at C s x)) _)))
             (trans (sym (mm-∘ (λ p → i + off s (x ∷ P) p) suc (ft-go P E 0)))
-                   (cong (mmap (λ p → i + off s (x ∷ P) p)) (sym (ft-shift P E 0)))))
+                   (cong (Data.Maybe.map (λ p → i + off s (x ∷ P) p)) (sym (ft-shift P E 0)))))
       past : ∀ xs → AllNoE xs → length (expand-at C s x) ≡ length xs → entry-of? x ≡ nothing
-           → ft-go (xs ++ E′) E i ≡ mmap (λ p → i + off s (x ∷ P) p) (ft-go (x ∷ P) E 0)
+           → ft-go (xs ++ E′) E i ≡ Data.Maybe.map (λ p → i + off s (x ∷ P) p) (ft-go (x ∷ P) E 0)
       past xs ne le ex =
         trans (ft-go-++-miss xs E′ E i (noe-go xs i ne))
           (trans (shifted (length xs) le)
-                 (cong (λ mo → mmap (λ p → i + off s (x ∷ P) p) (ft-at mo P E 0)) (sym ex)))
+                 (cong (λ mo → Data.Maybe.map (λ p → i + off s (x ∷ P) p) (ft-at mo P E 0)) (sym ex)))
       kept-at : ∀ mo → expand-at C s x ≡ x ∷ []
-              → ft-at mo E′ E i ≡ mmap (λ p → i + off s (x ∷ P) p) (ft-at mo P E 0)
+              → ft-at mo E′ E i ≡ Data.Maybe.map (λ p → i + off s (x ∷ P) p) (ft-at mo P E 0)
       kept-mt : ∀ b → expand-at C s x ≡ x ∷ []
-              → ft-match b E′ E i ≡ mmap (λ p → i + off s (x ∷ P) p) (ft-match b P E 0)
+              → ft-match b E′ E i ≡ Data.Maybe.map (λ p → i + off s (x ∷ P) p) (ft-match b P E 0)
       kept-at (just m) ex = kept-mt (m ≡ᵇᴱ E) ex
       kept-at nothing  ex = shifted 1 (cong length ex)
       kept-mt true  ex = cong just (sym (+-identityʳ i))
       kept-mt false ex = shifted 1 (cong length ex)
-      ft-cons : ExpView s x → ft-go (expand-at C s x ++ E′) E i ≡ mmap (λ p → i + off s (x ∷ P) p) (ft-go (x ∷ P) E 0)
+      ft-cons : ExpView s x → ft-go (expand-at C s x ++ E′) E i ≡ Data.Maybe.map (λ p → i + off s (x ∷ P) p) (ft-go (x ∷ P) E 0)
       ft-cons (ev-alloc k) = past (alloc-code C s k) (alloc-noe s k) refl refl
       ft-cons (ev-free k)  = past (free-code C k) (free-noe k) refl refl
       ft-cons (ev-start b) = past (instr-ctrl (c-start b) ∷ setup C) (noe refl ∷ᴱ start-noe) refl refl
