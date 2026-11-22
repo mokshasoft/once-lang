@@ -150,3 +150,90 @@ module _ (C : Classes) (P : AbstractTrace) (Sz : ℕ → Set)
           1 , trans (ev-halt 0 E gs (hg e)) (trans (cong (λ l → ended (end-of-left l)) (L.LRel.l-left (r-loc R))) (sym (ev-halt n P fs e)))
             , subst (_≤ flat-ctrls 1 E gs) (sym (ct-halt n P fs e)) z≤n
         by-h false e = by-f (fetch P (fpc fs)) refl e
+
+------------------------------------------------------------------------
+-- Two chains from one state: the longer passes where the shorter ends (with
+-- its length), or the shorter ends before the longer one's end
+------------------------------------------------------------------------
+
+open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Data.Maybe.Properties using (just-injective)
+open import Data.Empty using (⊥; ⊥-elim)
+open FlatStepsAPI {FS} using ([]; _∷_; Sound)
+import Once.CCC.Machine.FlatLeft
+
+meet : ∀ {prog n m a b c} → FlatSteps prog n a b → FlatSteps prog m a c
+     → (Σ ℕ λ j → FlatSteps prog j b c × m ≡ n + j) ⊎ (Σ ℕ λ j → FlatSteps prog (suc j) c b)
+meet []      q  = inj₁ (_ , q , refl)
+meet (s ∷ p) [] = inj₂ (_ , s ∷ p)
+meet {prog} (_∷_ {i = i} (_ , f) p) (_∷_ {i = i′} (_ , f′) q) = tail (just-injective (trans (sym f) f′)) p q
+  where
+    up : ∀ {n m b c} → (Σ ℕ λ j → FlatSteps prog j b c × m ≡ n + j) ⊎ (Σ ℕ λ j → FlatSteps prog (suc j) c b)
+       → (Σ ℕ λ j → FlatSteps prog j b c × suc m ≡ suc n + j) ⊎ (Σ ℕ λ j → FlatSteps prog (suc j) c b)
+    up (inj₁ (j , r , e)) = inj₁ (j , r , cong suc e)
+    up (inj₂ x)           = inj₂ x
+    tail : ∀ {a b c n m} → i ≡ i′ → FlatSteps prog n (flat-exec-instr i prog a) b → FlatSteps prog m (flat-exec-instr i′ prog a) c
+         → (Σ ℕ λ j → FlatSteps prog j b c × suc m ≡ suc n + j) ⊎ (Σ ℕ λ j → FlatSteps prog (suc j) c b)
+    tail refl p q = up (meet p q)
+
+-- a chain to a running state keeps the fault flag
+chain-fault : ∀ {prog k a b} → FlatSteps prog k a b → LocState.halted (floc b) ≡ false → LocState.faulted (floc b) ≡ LocState.faulted (floc a)
+chain-fault [] _ = refl
+chain-fault {prog} (_∷_ {fs = a} {i = i} _ rest) hb = trans (chain-fault rest hb) (Once.CCC.Machine.FlatLeft.FaultPres.flat-exec-instr-fault {FS} i prog a (head-run rest hb))
+  where
+    head-run : ∀ {k x b} → FlatSteps prog k x b → LocState.halted (floc b) ≡ false → LocState.halted (floc x) ≡ false
+    head-run []            hb′ = hb′
+    head-run ((h , _) ∷ _) _   = h
+
+------------------------------------------------------------------------
+-- ★ The expanded run never faults
+------------------------------------------------------------------------
+
+module _ (C : Classes) (P : AbstractTrace) (Sz : ℕ → Set)
+         (uniform  : ∀ k k′ → Sz k → Sz k′ → cls C k ≡ cls C k′ → bsz C k ≡ bsz C k′)
+         (fits     : ∀ k → k ≤ bsz C k)
+         (in-range : ∀ k → cls C k < count C)
+         (sz-alloc : ∀ n k → fetch P n ≡ just (instr-alloc-heap k) → Sz k)
+         (sz-free  : ∀ n k → fetch P n ≡ just (instr-free-heap k) → Sz k)
+         (img      : ∀ n m → fetch P n ≡ just (instr-ctrl (c-label m)) → LabelId.path m ≡ [])
+         (jmp-lbl  : ∀ n m → fetch P n ≡ just (instr-ctrl (c-jmp m)) → LabelId.path m ≡ [])
+         (br-lbl   : ∀ n m → fetch P n ≡ just (instr-ctrl (c-branch-tag-zero m)) → LabelId.path m ≡ [])
+         {Good : FlatState → Set} where
+  open Rel
+  private
+    module DX = Once.CCC.Codegen.AllocExpandDispatch {FS}
+    EX = expand C P
+    K = Keeps C P Sz uniform fits in-range sz-alloc sz-free img jmp-lbl br-lbl Good
+
+  module NoFault (Kp : K) where
+    open Keeps Kp
+
+    sound-at : ∀ b {fs gs k x} → k ≤ b → Good fs → LocState.faulted (floc fs) ≡ false → Rel C P Sz fs gs
+             → FlatSteps EX k gs x → LocState.faulted (floc x) ≡ false
+    sound-at b kb G nf0 R [] = trans (L.LRel.l-fault (r-loc R)) nf0
+    sound-at b {fs} {gs} {k} {x} kb G nf0 R d@((hg , fg) ∷ _) = by-f (fetch P (fpc fs)) refl
+      where
+        h : LocState.halted (floc fs) ≡ false
+        h = trans (sym (L.LRel.l-halt (r-loc R))) hg
+
+        by-f : ∀ mi → fetch P (fpc fs) ≡ mi → LocState.faulted (floc x) ≡ false
+        by-f nothing ef = ⊥-elim (no (trans (sym fg) (trans (cong (fetch EX) (r-pc R)) (fetch-none C 0 P (fpc fs) ef))))
+          where
+            no : ∀ {X : Set} {v : X} → just v ≡ nothing → ⊥
+            no ()
+        by-f (just i) ef = go (DX.dispatch C P Sz uniform fits in-range sz-alloc sz-free img jmp-lbl br-lbl R i ef (g-em G ef) h (g-nf G h ef) (g-wf G) (g-cw G))
+          where
+            go : DX.Step C P Sz uniform fits in-range sz-alloc sz-free img jmp-lbl br-lbl i fs gs → LocState.faulted (floc x) ≡ false
+            go (N , gs′ , c , _ , R′) = split (meet c d) b kb
+              where
+                split : ((Σ ℕ λ j → FlatSteps EX j gs′ x × k ≡ suc N + j) ⊎ (Σ ℕ λ j → FlatSteps EX (suc j) x gs′))
+                      → ∀ b′ → k ≤ b′ → LocState.faulted (floc x) ≡ false
+                split (inj₁ (j , r , e)) zero    kb′ = ⊥-elim (Data.Nat.Properties.<⇒≱ (subst (0 <_) (sym e) (Data.Nat.s≤s z≤n)) kb′)
+                split (inj₁ (j , r , e)) (suc b′) kb′ =
+                  sound-at b′
+                    (Data.Nat.Properties.≤-pred (Data.Nat.Properties.≤-trans (Data.Nat.Properties.≤-trans (Data.Nat.s≤s (Data.Nat.Properties.m≤n+m j N)) (Data.Nat.Properties.≤-reflexive (sym e))) kb′))
+                    (g-step G h ef) (g-nf G h ef) R′ r
+                split (inj₂ (j , (hx , _) ∷ _)) _ _ = trans (chain-fault d hx) (trans (L.LRel.l-fault (r-loc R)) nf0)
+
+    sound : ∀ {fs gs} → Good fs → LocState.faulted (floc fs) ≡ false → Rel C P Sz fs gs → Sound EX gs
+    sound G nf0 R d = sound-at _ Data.Nat.Properties.≤-refl G nf0 R d
