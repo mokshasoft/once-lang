@@ -442,3 +442,10 @@ module _ (C : Classes) where
       here-nol (ev-free k′)  = free-nol k′ L
       here-nol (ev-start b)  = plain refl ∷ᴺ start-nol L
       here-nol (ev-same ex)  = subst (AllNoL L) (sym ex) (kept-nol x L (suc n + t) pe (λ m e → img 0 m (cong just e)) ∷ᴺ []ᴺ)
+
+  -- a pc off the primitive program maps off the expanded one
+  fetch-none : ∀ s P n → fetch P n ≡ nothing → fetch (expand-from C s P) (off s P n) ≡ nothing
+  fetch-none s []      n       _ = refl
+  fetch-none s (x ∷ P) zero    ()
+  fetch-none s (x ∷ P) (suc n) e =
+    trans (fetch-++-right (expand-at C s x) (expand-from C (suc s) P) (off (suc s) P n)) (fetch-none (suc s) P n e)

@@ -18,7 +18,7 @@ module Once.CCC.Codegen.AllocExpandDispatch {FS : FrameSemantics} where
 open import Data.Bool using (Bool; true; false)
 open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Nat using (ℕ; zero; suc; _+_; _<_; _≤_)
+open import Data.Nat using (ℕ; zero; suc; _+_; _<_; _≤_; z≤n)
 import Data.Nat.Properties
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 open import Data.Empty using (⊥; ⊥-elim)
@@ -29,6 +29,8 @@ open FlatMachine {FS} using (FlatState; module FlatState; fetch; flat-exec-instr
 open FlatState
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open FlatStepsAPI {FS} using (FlatSteps; _∷_; [])
+open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
+open FlatEventTrace {FS} using (ctrl-of; chain-ctrls)
 open import Once.CCC.Machine.FrameFree using (EmittableI)
 open import Once.CCC.Label using (LabelId; module LabelId)
 open import Once.CCC.Codegen.AllocExpand
@@ -57,16 +59,18 @@ module _ (C : Classes) (P : AbstractTrace) (Sz : ℕ → Set)
   module AL = Once.CCC.Codegen.AllocExpandAlloc.AStep {FS} C P Sz uniform fits in-range sz-alloc img
   module WF = Once.CCC.Machine.FlatStoreWF FS
 
-  Step : FlatState → FlatState → Set
-  Step fs gs = Σ ℕ λ N → Σ FlatState λ gs′ → FlatSteps E N gs gs′ × Rel C P Sz fs gs′
+  -- at least one expanded step, counting at least the primitive's control steps
+  Step : AbstractInstr → FlatState → FlatState → Set
+  Step i fs gs = Σ ℕ λ N → Σ FlatState λ gs′ → Σ (FlatSteps E (suc N) gs gs′) λ c
+               → (ctrl-of i ≤ chain-ctrls c) × Rel C P Sz (flat-exec-instr i P fs) gs′
 
   -- an instruction the expansion keeps: one step
   kept : ∀ {fs gs} (R : Rel C P Sz fs gs) i → fetch P (fpc fs) ≡ just i → expand-at C (fpc fs + 0) i ≡ i ∷ []
        → LocState.halted (floc fs) ≡ false
        → Rel C P Sz (flat-exec-instr i P fs) (flat-exec-instr i E gs)
-       → Step (flat-exec-instr i P fs) gs
+       → Step i fs gs
   kept {fs} {gs} R i f ex h R′ =
-    1 , _ , (trans (L.LRel.l-halt (r-loc R)) h , fe) ∷ [] , R′
+    0 , _ , (trans (L.LRel.l-halt (r-loc R)) h , fe) ∷ [] , Data.Nat.Properties.≤-reflexive (sym (Data.Nat.Properties.+-identityʳ (ctrl-of i))) , R′
     where
       fe : fetch E (fpc gs) ≡ just i
       fe = subst (λ z → fetch E z ≡ just i) (trans (Data.Nat.Properties.+-identityʳ _) (sym (r-pc R)))
@@ -75,18 +79,18 @@ module _ (C : Classes) (P : AbstractTrace) (Sz : ℕ → Set)
   -- the alloc: the pop if the class's list holds a block, else the bump
   alloc-step : ∀ {fs gs} (R : Rel C P Sz fs gs) k → fetch P (fpc fs) ≡ just (instr-alloc-heap k) → LocState.halted (floc fs) ≡ false
              → WF.StoreWF (AllocState.next-heap-ref (falloc fs)) (floc fs) → WF.sv-below (AllocState.next-heap-ref (falloc fs)) (fclosure fs)
-             → Step (flat-exec-instr (instr-alloc-heap k) P fs) gs
-  alloc-step R k f h wf cw = by (lists R (cls C k)) refl
+             → Step (instr-alloc-heap k) fs gs
+  alloc-step {fs} {gs} R k f h wf cw = by (lists R (cls C k)) refl
     where
-      by : ∀ l → lists R (cls C k) ≡ l → Step _ _
-      by (b ∷ bs) e = 14 , AL.PopStep.G R k f h wf cw b bs e , AL.PopStep.PP.run R k f h wf cw b bs e , AL.PopStep.R′ R k f h wf cw b bs e
-      by []       e = 10 , AL.BumpStep.G R k f h wf cw e , AL.BumpStep.BB.run R k f h wf cw e , AL.BumpStep.R′ R k f h wf cw e
+      by : ∀ l → lists R (cls C k) ≡ l → Step (instr-alloc-heap k) fs gs
+      by (b ∷ bs) e = 13 , AL.PopStep.G R k f h wf cw b bs e , AL.PopStep.PP.run R k f h wf cw b bs e , z≤n , AL.PopStep.R′ R k f h wf cw b bs e
+      by []       e = 9 , AL.BumpStep.G R k f h wf cw e , AL.BumpStep.BB.run R k f h wf cw e , z≤n , AL.BumpStep.R′ R k f h wf cw e
 
   -- ★ one primitive step, by its instruction
   dispatch : ∀ {fs gs} (R : Rel C P Sz fs gs) i → fetch P (fpc fs) ≡ just i → EmittableI i
            → LocState.halted (floc fs) ≡ false → LocState.faulted (floc (flat-exec-instr i P fs)) ≡ false
            → WF.StoreWF (AllocState.next-heap-ref (falloc fs)) (floc fs) → WF.sv-below (AllocState.next-heap-ref (falloc fs)) (fclosure fs)
-           → Step (flat-exec-instr i P fs) gs
+           → Step i fs gs
   dispatch R mov-to-output f em h nf wf cw = kept R _ f refl h (S.step-mov-out C P Sz R f)
   dispatch R mov-to-input f em h nf wf cw = kept R _ f refl h (S.step-mov-in C P Sz R f)
   dispatch R (load-from-slot k) f em h nf wf cw = kept R _ f refl h (S.step-from-slot C P Sz R k f nf)
@@ -106,7 +110,11 @@ module _ (C : Classes) (P : AbstractTrace) (Sz : ℕ → Set)
   dispatch R (instr-load-tag-lit n) f em h nf wf cw = kept R _ f refl h (S.step-tag C P Sz R n f)
   dispatch R (instr-alloc-heap k) f em h nf wf cw = alloc-step R k f h wf cw
   dispatch R (instr-reg-op out-nz) f em h nf wf cw = kept R _ f refl h (S.step-nz C P Sz R f)
-  dispatch R (instr-free-heap k) f em h nf wf cw = 6 , FR.step-free R k f h nf
+  dispatch R (instr-free-heap k) f em h nf wf cw = 5 , free-run (FR.step-free R k f h nf)
+    where
+      free-run : ∀ {fs gs} → Σ FlatState (λ gs′ → FlatSteps E 6 gs gs′ × Rel C P Sz fs gs′)
+               → Σ FlatState λ gs′ → Σ (FlatSteps E 6 gs gs′) λ c → (0 ≤ chain-ctrls c) × Rel C P Sz fs gs′
+      free-run (gs′ , c , R′) = gs′ , c , z≤n , R′
   dispatch R (load-at k) f em h nf wf cw = kept R _ f refl h (S.step-load-at C P Sz R k f nf)
   dispatch R (store-at k) f em h nf wf cw = kept R _ f refl h (S.step-store-at C P Sz R k f nf)
   dispatch R (addr-at k) f em h nf wf cw = kept R _ f refl h (S.step-addr-at C P Sz R k f nf)
