@@ -378,3 +378,64 @@ module _ (C : Classes) (P : AbstractTrace) where
       (next-pc R (addr-at k) f refl)
     where
       ml = heap-gate (sv-as-loc (readReg (LocState.regs (floc fs)) Input1))
+
+  -- the slot reads into Input1 / Output (their allocator is the state's own)
+  private
+    module AE = Once.CCC.Machine.SMCore.AbstractExec {FS}
+    restore-al : ∀ mv (s : LocState FS) al → proj₂ (AE.exec-restore-input-with-value mv s al) ≡ al
+    restore-al (just _) s al = refl
+    restore-al nothing  s al = refl
+    restore-heap : ∀ mv (s : LocState FS) al q → LocState.heapMem (proj₁ (AE.exec-restore-input-with-value mv s al)) q ≡ LocState.heapMem s q
+    restore-heap (just _) s al q = refl
+    restore-heap nothing  s al q = refl
+    slot-al′ : ∀ mv (s : LocState FS) al → proj₂ (AE.exec-load-from-slot-with-value mv s al) ≡ al
+    slot-al′ (just _) s al = refl
+    slot-al′ nothing  s al = refl
+    slot-heap′ : ∀ mv (s : LocState FS) al q → LocState.heapMem (proj₁ (AE.exec-load-from-slot-with-value mv s al)) q ≡ LocState.heapMem s q
+    slot-heap′ (just _) s al q = refl
+    slot-heap′ nothing  s al q = refl
+
+  step-restore : ∀ {fs gs} (R : Rel C P fs gs) k → fetch P (fpc fs) ≡ just (restore-input k)
+               → LocState.faulted (floc (flat-exec-instr (restore-input k) P fs)) ≡ false
+               → Rel C P (flat-exec-instr (restore-input k) P fs) (flat-exec-instr (restore-input k) E gs)
+  step-restore {fs} {gs} R k f nf =
+    gated-step R (restore-input k) _ _ _ _ refl refl (cong (k Data.Nat.<ᵇ_) (r-slots R)) (go-al fs) (go-al gs)
+      (L.Slots.restore (ρ R) (Live (falloc fs)) (r-inj R) {al = falloc fs} {al′ = falloc gs} (r-frame R) k (r-loc R))
+      (λ q _ → restore-heap (LocState.stackMem (floc gs) (AllocState.current-frame (falloc gs)) k) (floc gs) (falloc gs) q)
+      (next-pc R (restore-input k) f refl) nf
+    where
+      go-al : ∀ x → straight-go (restore-input k) x ≡ record x { floc = floc (straight-go (restore-input k) x) ; fpc = suc (fpc x) }
+      go-al x = cong (λ a → record x { floc = floc (straight-go (restore-input k) x) ; falloc = a ; fpc = suc (fpc x) })
+                     (restore-al (LocState.stackMem (floc x) (AllocState.current-frame (falloc x)) k) (floc x) (falloc x))
+
+  step-wl-pop : ∀ {fs gs} (R : Rel C P fs gs) k → fetch P (fpc fs) ≡ just (worklist-pop k)
+              → LocState.faulted (floc (flat-exec-instr (worklist-pop k) P fs)) ≡ false
+              → Rel C P (flat-exec-instr (worklist-pop k) P fs) (flat-exec-instr (worklist-pop k) E gs)
+  step-wl-pop {fs} {gs} R k f nf =
+    gated-step R (worklist-pop k) _ _ _ _ refl refl (cong (k Data.Nat.<ᵇ_) (r-slots R)) (go-al fs) (go-al gs)
+      (L.Rest.wl-pop (ρ R) (Live (falloc fs)) (r-inj R) {al = falloc fs} {al′ = falloc gs} (r-frame R) k (r-loc R))
+      (λ q _ → slot-heap′ (LocState.stackMem (floc gs) (AllocState.current-frame (falloc gs)) k) (floc gs) (falloc gs) q)
+      (next-pc R (worklist-pop k) f refl) nf
+    where
+      go-al : ∀ x → straight-go (worklist-pop k) x ≡ record x { floc = floc (straight-go (worklist-pop k) x) ; fpc = suc (fpc x) }
+      go-al x = cong (λ a → record x { floc = floc (straight-go (worklist-pop k) x) ; falloc = a ; fpc = suc (fpc x) })
+                     (slot-al′ (LocState.stackMem (floc x) (AllocState.current-frame (falloc x)) k) (floc x) (falloc x))
+
+  -- the instructions that change nothing but the pc
+  step-id : ∀ {fs gs} (R : Rel C P fs gs) i → fetch P (fpc fs) ≡ just i → expand-at C (fpc fs + 0) i ≡ i ∷ []
+          → flat-exec-instr i P fs ≡ record fs { fpc = suc (fpc fs) } → flat-exec-instr i E gs ≡ record gs { fpc = suc (fpc gs) }
+          → Rel C P (flat-exec-instr i P fs) (flat-exec-instr i E gs)
+  step-id {fs} {gs} R i f ex eP eE =
+    subst₂ (Rel C P) (sym eP) (sym eE) (core-straight R (floc fs) (floc gs) (r-loc R) (λ q _ → refl) (next-pc R i f ex))
+
+  step-reclaim : ∀ {fs gs} (R : Rel C P fs gs) n → fetch P (fpc fs) ≡ just (instr-reclaim-to n)
+               → Rel C P (flat-exec-instr (instr-reclaim-to n) P fs) (flat-exec-instr (instr-reclaim-to n) E gs)
+  step-reclaim R n f = step-id R (instr-reclaim-to n) f refl refl refl
+
+  step-wl-init : ∀ {fs gs} (R : Rel C P fs gs) k → fetch P (fpc fs) ≡ just (worklist-init k)
+               → Rel C P (flat-exec-instr (worklist-init k) P fs) (flat-exec-instr (worklist-init k) E gs)
+  step-wl-init R k f = step-id R (worklist-init k) f refl refl refl
+
+  step-wl-check : ∀ {fs gs} (R : Rel C P fs gs) k → fetch P (fpc fs) ≡ just (worklist-check k)
+                → Rel C P (flat-exec-instr (worklist-check k) P fs) (flat-exec-instr (worklist-check k) E gs)
+  step-wl-check R k f = step-id R (worklist-check k) f refl refl refl
