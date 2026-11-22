@@ -195,3 +195,43 @@ module Words (ρ : ℕ → ℕ) (Lv : ℕ → Set) (inj : ∀ r r′ → Lv r �
   write-none (_ ⇒[ _ ] _) v loc s ()
   write-none (μ _) v loc s ()
   write-none (ν _ _) v loc s ()
+
+------------------------------------------------------------------------
+-- The gates and the register's kind under the renaming
+------------------------------------------------------------------------
+
+open ExecFinal {FS} using (range-ok; ans-ok)
+
+range-rv : ∀ ρ fr n v → range-ok fr n (rv ρ v) ≡ range-ok fr n v
+range-rv ρ fr zero    v = refl
+range-rv ρ fr (suc n) (SV-Ptr (AtStack _ _)) = refl
+range-rv ρ fr (suc n) (SV-Ptr (AtDynamic _)) = refl
+range-rv ρ fr (suc n) (SV-Lit _ _) = refl
+range-rv ρ fr (suc n) (SV-Tag _) = refl
+range-rv ρ fr (suc n) (SV-Code _) = refl
+
+ans-rv : ∀ ρ fr n v → ans-ok fr n (rv ρ v) ≡ ans-ok fr n v
+ans-rv ρ fr zero    v = refl
+ans-rv ρ fr (suc n) (SV-Ptr (AtStack _ _)) = refl
+ans-rv ρ fr (suc n) (SV-Ptr (AtDynamic _)) = refl
+ans-rv ρ fr (suc n) (SV-Lit _ _) = refl
+ans-rv ρ fr (suc n) (SV-Tag _) = refl
+ans-rv ρ fr (suc n) (SV-Code _) = refl
+
+-- a value that is no pointer is its own renaming
+rv-nonptr : ∀ ρ v → sv-as-loc v ≡ nothing → rv ρ v ≡ v
+rv-nonptr ρ (SV-Ptr _) ()
+rv-nonptr ρ (SV-Tag _) _ = refl
+rv-nonptr ρ (SV-Lit _ _) _ = refl
+rv-nonptr ρ (SV-Code _) _ = refl
+
+as-loc-rv : ∀ ρ v → sv-as-loc (rv ρ v) ≡ Data.Maybe.map (rloc ρ) (sv-as-loc v)
+as-loc-rv ρ (SV-Ptr _) = refl
+as-loc-rv ρ (SV-Tag _) = refl
+as-loc-rv ρ (SV-Lit _ _) = refl
+as-loc-rv ρ (SV-Code _) = refl
+
+-- a heap pointer passes the answer's gate only for no words
+ans-heap : ∀ fr n hl → ans-ok fr n (SV-Ptr (AtDynamic hl)) ≡ true → n ≡ 0
+ans-heap fr zero    hl _ = refl
+ans-heap fr (suc n) hl ()
