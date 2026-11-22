@@ -1,7 +1,7 @@
 cabal-version: 2.2
 
 name:           once
-version:        0.1.0.0
+version:        0.1.1.0
 synopsis:       Compiler for Once, a verified pure functional language of categorical morphisms
 description:    Please see the README on GitHub at <https://github.com/mokshasoft/once-lang#readme>
 homepage:       https://github.com/mokshasoft/once-lang#readme

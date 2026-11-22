@@ -8,4 +8,9 @@ and this project adheres to the
 
 ## Unreleased
 
-## 0.1.0.0 - YYYY-MM-DD
+## 0.1.1.0 - 2026-11-22
+
+The first tagged release (`v0.1.1.0`), master at the close of plan 0.154 (imports and layers) with
+plan 0.155 written. It is the baseline that later performance work (the linear core, its resource
+passes, buffers) is measured against with `tests/codegen-measure.sh compare`. Version 0.1.0.0 was
+never tagged.
