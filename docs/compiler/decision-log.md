@@ -24675,14 +24675,16 @@ back). So "the allocated blocks are EXACTLY the footprints of what the state hol
 ### Decision (proposed): (a)
 `LeakFree.freed` is replaced by `reachable`: `∀ k r → Live fs₀ k r → Reach (at fs₀ k) r`.
 
-## D473 — `drop` FREES ITS VALUE'S CELLS (2026-11-23, decided by the user)
+## D473 — `drop` ALREADY FREES ITS VALUE'S CELLS; NO LOWERING CHANGE (2026-11-23, corrected)
 
-**Decided** (the user, 2026-11-23: option (A)). The core's `drop` frees `freeAll v`; its lowering
-(`StepPrim.st-drop`) emitted no code, so a dropped heap value's blocks stayed allocated and unreachable and
-`NoLeak` (D472) was false. The lowered `drop` frees every cell of the value: a value of a non-recursive type
-by a fixed sequence of loads and frees (its type's shape is known), a recursive one (a μ) by a freeing loop over
-its nodes, as the fold frees the nodes it consumes. Option (B), deferring to plan 0.154's free-at-last-use, was
-rejected: GOAL.md and §5 item 2 ask for no leaks at the merge.
+**Withdrawn finding.** On 2026-11-23 the claim "the lowered `drop` frees nothing" was floated (from
+`StepPrim.st-drop`, whose code is empty) and the user chose to fix it (option A). The claim was wrong: in the
+image, `drop` at type A is `call (kfree A)` (`Image.compᴵ`), and `kfree A`'s block (`Image.freeᴵ`) frees every
+cell of the value by its type — a pair's components, a sum's branch, each μ node (`lOutμ` then the layer's free),
+a closure's cell (`cfree`), a ν's (`nfree`). `st-drop` is reached only at base types (`freeᴵ (Bt b)`), whose
+values have no cells (`freeAll` is empty). So no lowering change is needed; §5 item 2 (`NoLeak`) is a proof
+obligation (`LeakFree.reachable`), not a compiler bug. Note: the per-type free is a recursive call per μ node
+(a call per node, its frame and checks), which §5 item 8's steps d–e also cut.
 
 ## D474 — THE EMITTED CODE IS MEASURED AND CUT BEFORE THE MERGE; COMPILE CHOICES ARE A CONFIGURATION (2026-11-23, decided by the user)
 
