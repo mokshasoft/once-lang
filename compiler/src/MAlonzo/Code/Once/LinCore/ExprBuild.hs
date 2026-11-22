@@ -837,7 +837,7 @@ d_val_1100 v0 v1 v2 v3 v4
              (coe
                 MAlonzo.Code.Once.LinCore.FromExpr.du_Co_644 (coe v0)
                 (coe (0 :: Integer)) (coe v6) (coe v7))
-             (MAlonzo.Code.Once.LinCore.FromExpr.d_Lq_1954
+             (MAlonzo.Code.Once.LinCore.FromExpr.d_Lq_2618
                 (coe v0) (coe v1) (coe v3) (coe (0 :: Integer)) (coe v5) (coe v6)
                 (coe v7) (coe v2) (coe v11))
              (coe du_eraseL_662 (coe v0) (coe (0 :: Integer)) (coe v6) (coe v7))
@@ -854,25 +854,16 @@ d_k'45'val_1124 ::
    Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
   MAlonzo.Code.Once.CompileSrc.T_Src_6 ->
   MAlonzo.Code.Once.LinCore.Core.T_Blk_768
-d_k'45'val_1124 ~v0 ~v1 v2 v3 v4 = du_k'45'val_1124 v2 v3 v4
-du_k'45'val_1124 ::
-  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
-   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
-   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
-   MAlonzo.Code.Once.LinCore.Core.T_Gr_156 ->
-   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
-  MAlonzo.Code.Once.CompileSrc.T_Src_6 ->
-  MAlonzo.Code.Once.LinCore.Core.T_Blk_768
-du_k'45'val_1124 v0 v1 v2
-  = case coe v2 of
-      MAlonzo.Code.Once.CompileSrc.C_src_38 v3 v4 v5 v7 v8 v9
+d_k'45'val_1124 v0 v1 v2 v3 v4
+  = case coe v4 of
+      MAlonzo.Code.Once.CompileSrc.C_src_38 v5 v6 v7 v9 v10 v11
         -> coe
              MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1132
              (coe
-                MAlonzo.Code.Once.LinCore.FromExpr.du_Lq'45'blk_1968 (coe v1)
-                (coe (0 :: Integer)) (coe v3) (coe v4) (coe v0) (coe v9))
-             (coe du_k'45'eraseL_690 (coe v4) (coe v5))
+                MAlonzo.Code.Once.LinCore.FromExpr.du_Lq'45'blk_2632 (coe v0)
+                (coe v1) (coe v3) (coe (0 :: Integer)) (coe v5) (coe v6) (coe v2)
+                (coe v11))
+             (coe du_k'45'eraseL_690 (coe v6) (coe v7))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.LinCore.ExprBuild.sgOf
 d_sgOf_1140 ::
@@ -932,7 +923,7 @@ d_bodyOf_1150 v0 v1 v2 v3
          du_dcGd_900
          (coe MAlonzo.Code.Once.CompileSrc.d_csType_1022 (coe v3))
          (coe
-            du_k'45'val_1124
+            d_k'45'val_1124 (coe v0) (coe v1)
             (coe MAlonzo.Code.Once.CompileSrc.d_csType_1022 (coe v3)) (coe v2)
             (coe MAlonzo.Code.Once.CompileSrc.d_csSrc_1024 (coe v3))))
 -- Once.LinCore.ExprBuild._≟Gr_

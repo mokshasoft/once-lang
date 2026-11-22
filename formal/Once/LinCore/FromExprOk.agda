@@ -26,6 +26,7 @@ module Once.LinCore.FromExprOk (fmt : TargetNum) (ans : FFIAnswers) where
 
 open import Agda.Builtin.Equality using (_≡_; refl)
 open import Relation.Binary.PropositionalEquality using (cong; subst; sym)
+import Relation.Binary.PropositionalEquality
 open import Agda.Builtin.Sigma using (Σ; _,_; fst; snd)
 open import Data.Product using (_×_; proj₁; proj₂)
 open import Data.Unit using (⊤; tt)
@@ -67,6 +68,7 @@ open import Once.IR.Semantics.Iterative using (T∞; return∞; _>>=∞_; bindBl
 open import Once.LinCore.NbEPLinCore fmt ans
 open Sem using (Lᶜ; cataC; travC)
 open import Once.LinCore.FromExpr fmt using (ty; Co; weak; split; carryL; mixL; apω; var-at; bindL; Rs; Lq; castΦ; opL; numL; sigL; cast; clo; callM; refL; mapT; layerEq; dist; coeL; coeR)
+open import Once.LinCore.FromExpr fmt using (Pth; p-var; p-fst; p-snd; p-mfst; p-msnd; mq; Rd; rd-path; rd-int; rd-float; rd-num; rd-pair; rd-coe; coeRd; rd?; lv; Rp; Rt; lentS; scrutL; pairL)
 open import Once.Context using (_⊔ᵘ_; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ)
 open import Once.Surface.Map using (mp-id; mp-fst; mp-snd; mp-terminal; mp-inl; mp-inr; mp-initial; mp-apply; mp-In; mp-Out; mp-toFloat)
 open import Once.TypeCheck.Table using (mapIR)
@@ -263,6 +265,77 @@ sv (Γ SC.▸ A) (G.One  ∷ Ψ₁) (G.One  ∷ Ψ₂) (x , a) = (fst (sv Γ Ψ�
 sv (Γ SC.▸ A) (G.One  ∷ Ψ₁) (G.Many ∷ Ψ₂) (x , a) = (fst (sv Γ Ψ₁ Ψ₂ x) , a) , (snd (sv Γ Ψ₁ Ψ₂ x) , a)
 sv (Γ SC.▸ A) (G.Many ∷ Ψ₁) (G.One  ∷ Ψ₂) (x , a) = (fst (sv Γ Ψ₁ Ψ₂ x) , a) , (snd (sv Γ Ψ₁ Ψ₂ x) , a)
 sv (Γ SC.▸ A) (G.Many ∷ Ψ₁) (G.Many ∷ Ψ₂) (x , a) = (fst (sv Γ Ψ₁ Ψ₂ x) , a) , (snd (sv Γ Ψ₁ Ψ₂ x) , a)
+
+-- ★ D475: restrictions compose (a restriction's value is fixed by the usages)
+wv-comp : ∀ {m n} {Γ : Ctx m n} {Ψ Ψ′ Φ : Usage n} (p : Ψ ⊑ᵘ Ψ′) (q : Ψ′ ⊑ᵘ Φ) (r : Ψ ⊑ᵘ Φ) (e : ⟦ Co Γ Φ ⟧)
+        → wv {Γ = Γ} p (wv {Γ = Γ} q e) ≡ wv {Γ = Γ} r e
+wv-comp {Γ = SC.∅}       []         []         []         e       = refl
+wv-comp {Γ = Γ SC.▸ A} (z≤z ⊑∷ p) (z≤z ⊑∷ q) (z≤z ⊑∷ r) e       = wv-comp {Γ = Γ} p q r e
+wv-comp {Γ = Γ SC.▸ A} (z≤z ⊑∷ p) (z≤o ⊑∷ q) (z≤o ⊑∷ r) (e , a) = wv-comp {Γ = Γ} p q r e
+wv-comp {Γ = Γ SC.▸ A} (z≤z ⊑∷ p) (z≤m ⊑∷ q) (z≤m ⊑∷ r) (e , a) = wv-comp {Γ = Γ} p q r e
+wv-comp {Γ = Γ SC.▸ A} (z≤o ⊑∷ p) (o≤o ⊑∷ q) (z≤o ⊑∷ r) (e , a) = wv-comp {Γ = Γ} p q r e
+wv-comp {Γ = Γ SC.▸ A} (z≤o ⊑∷ p) (o≤m ⊑∷ q) (z≤m ⊑∷ r) (e , a) = wv-comp {Γ = Γ} p q r e
+wv-comp {Γ = Γ SC.▸ A} (z≤m ⊑∷ p) (m≤m ⊑∷ q) (z≤m ⊑∷ r) (e , a) = wv-comp {Γ = Γ} p q r e
+wv-comp {Γ = Γ SC.▸ A} (o≤o ⊑∷ p) (o≤o ⊑∷ q) (o≤o ⊑∷ r) (e , a) = cong (_, a) (wv-comp {Γ = Γ} p q r e)
+wv-comp {Γ = Γ SC.▸ A} (o≤o ⊑∷ p) (o≤m ⊑∷ q) (o≤m ⊑∷ r) (e , a) = cong (_, a) (wv-comp {Γ = Γ} p q r e)
+wv-comp {Γ = Γ SC.▸ A} (o≤m ⊑∷ p) (m≤m ⊑∷ q) (o≤m ⊑∷ r) (e , a) = cong (_, a) (wv-comp {Γ = Γ} p q r e)
+wv-comp {Γ = Γ SC.▸ A} (m≤m ⊑∷ p) (m≤m ⊑∷ q) (m≤m ⊑∷ r) (e , a) = cong (_, a) (wv-comp {Γ = Γ} p q r e)
+
+-- the split's halves are the two restrictions
+sv-l : ∀ {m n} (Γ : Ctx m n) (Ψ₁ Ψ₂ : Usage n) (x : ⟦ Co Γ (Ψ₁ +ᵘ Ψ₂) ⟧) → fst (sv Γ Ψ₁ Ψ₂ x) ≡ wv {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) x
+sv-l SC.∅          []          []          x       = refl
+sv-l (Γ SC.▸ A) (G.Zero ∷ Ψ₁) (G.Zero ∷ Ψ₂) x       = sv-l Γ Ψ₁ Ψ₂ x
+sv-l (Γ SC.▸ A) (G.Zero ∷ Ψ₁) (G.One  ∷ Ψ₂) (x , a) = sv-l Γ Ψ₁ Ψ₂ x
+sv-l (Γ SC.▸ A) (G.Zero ∷ Ψ₁) (G.Many ∷ Ψ₂) (x , a) = sv-l Γ Ψ₁ Ψ₂ x
+sv-l (Γ SC.▸ A) (G.One  ∷ Ψ₁) (G.Zero ∷ Ψ₂) (x , a) = cong (_, a) (sv-l Γ Ψ₁ Ψ₂ x)
+sv-l (Γ SC.▸ A) (G.Many ∷ Ψ₁) (G.Zero ∷ Ψ₂) (x , a) = cong (_, a) (sv-l Γ Ψ₁ Ψ₂ x)
+sv-l (Γ SC.▸ A) (G.One  ∷ Ψ₁) (G.One  ∷ Ψ₂) (x , a) = cong (_, a) (sv-l Γ Ψ₁ Ψ₂ x)
+sv-l (Γ SC.▸ A) (G.One  ∷ Ψ₁) (G.Many ∷ Ψ₂) (x , a) = cong (_, a) (sv-l Γ Ψ₁ Ψ₂ x)
+sv-l (Γ SC.▸ A) (G.Many ∷ Ψ₁) (G.One  ∷ Ψ₂) (x , a) = cong (_, a) (sv-l Γ Ψ₁ Ψ₂ x)
+sv-l (Γ SC.▸ A) (G.Many ∷ Ψ₁) (G.Many ∷ Ψ₂) (x , a) = cong (_, a) (sv-l Γ Ψ₁ Ψ₂ x)
+
+sv-r : ∀ {m n} (Γ : Ctx m n) (Ψ₁ Ψ₂ : Usage n) (x : ⟦ Co Γ (Ψ₁ +ᵘ Ψ₂) ⟧) → snd (sv Γ Ψ₁ Ψ₂ x) ≡ wv {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) x
+sv-r SC.∅          []          []          x       = refl
+sv-r (Γ SC.▸ A) (G.Zero ∷ Ψ₁) (G.Zero ∷ Ψ₂) x       = sv-r Γ Ψ₁ Ψ₂ x
+sv-r (Γ SC.▸ A) (G.Zero ∷ Ψ₁) (G.One  ∷ Ψ₂) (x , a) = cong (_, a) (sv-r Γ Ψ₁ Ψ₂ x)
+sv-r (Γ SC.▸ A) (G.Zero ∷ Ψ₁) (G.Many ∷ Ψ₂) (x , a) = cong (_, a) (sv-r Γ Ψ₁ Ψ₂ x)
+sv-r (Γ SC.▸ A) (G.One  ∷ Ψ₁) (G.Zero ∷ Ψ₂) (x , a) = sv-r Γ Ψ₁ Ψ₂ x
+sv-r (Γ SC.▸ A) (G.Many ∷ Ψ₁) (G.Zero ∷ Ψ₂) (x , a) = sv-r Γ Ψ₁ Ψ₂ x
+sv-r (Γ SC.▸ A) (G.One  ∷ Ψ₁) (G.One  ∷ Ψ₂) (x , a) = cong (_, a) (sv-r Γ Ψ₁ Ψ₂ x)
+sv-r (Γ SC.▸ A) (G.One  ∷ Ψ₁) (G.Many ∷ Ψ₂) (x , a) = cong (_, a) (sv-r Γ Ψ₁ Ψ₂ x)
+sv-r (Γ SC.▸ A) (G.Many ∷ Ψ₁) (G.One  ∷ Ψ₂) (x , a) = cong (_, a) (sv-r Γ Ψ₁ Ψ₂ x)
+sv-r (Γ SC.▸ A) (G.Many ∷ Ψ₁) (G.Many ∷ Ψ₂) (x , a) = cong (_, a) (sv-r Γ Ψ₁ Ψ₂ x)
+
+-- ★ D475: a read's derivation is unique (it follows the expression)
+pth-irr : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} {e : Expr Γ Ψ A} (d d′ : Pth e) → d ≡ d′
+pth-irr (p-var i)  (p-var .i)  = refl
+pth-irr (p-fst d)  (p-fst d′)  = cong p-fst (pth-irr d d′)
+pth-irr (p-snd d)  (p-snd d′)  = cong p-snd (pth-irr d d′)
+pth-irr (p-mfst d) (p-mfst d′) = cong p-mfst (pth-irr d d′)
+pth-irr (p-msnd d) (p-msnd d′) = cong p-msnd (pth-irr d d′)
+
+rd-irr : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} {e : Expr Γ Ψ A} (d d′ : Rd e) → d ≡ d′
+rd-irr (rd-path d)     (rd-path d′)      = cong rd-path (pth-irr d d′)
+rd-irr (rd-path ())    (rd-int z)
+rd-irr (rd-path ())    (rd-float x)
+rd-irr (rd-path ())    (rd-num h o d′)
+rd-irr (rd-path ())    (rd-pair a′ b′)
+rd-irr (rd-int z)      (rd-path ())
+rd-irr (rd-int z)      (rd-int .z)       = refl
+rd-irr (rd-float x)    (rd-path ())
+rd-irr (rd-float x)    (rd-float .x)     = refl
+rd-irr (rd-num h o d)  (rd-path ())
+rd-irr (rd-num h o d)  (rd-num .h .o d′) = cong (rd-num h o) (rd-irr d d′)
+rd-irr (rd-pair a b)   (rd-path ())
+rd-irr (rd-path ())    (rd-coe c d′)
+rd-irr (rd-coe c d)    (rd-path ())
+rd-irr (rd-coe c d)    (rd-coe .c d′)    = cong (rd-coe c) (rd-irr d d′)
+rd-irr (rd-pair a b)   (rd-pair a′ b′)   = Relation.Binary.PropositionalEquality.cong₂ rd-pair (rd-irr a a′) (rd-irr b b′)
+
+-- a variable's value in its own context
+vval : ∀ {m n} {Γ : Ctx m n} (i : Data.Fin.Fin n) → ⟦ Co Γ (singleUse i G.One) ⟧ → ⟦ ty (SC.lookup Γ i) ⟧
+vval {Γ = Γ SC.▸ A} Data.Fin.zero    (y , a) = a
+vval {Γ = Γ SC.▸ A} (Data.Fin.suc i) y       = vval {Γ = Γ} i y
 
 module _ {L : Cx} (δ : Env L) {E : LTy} where
 
@@ -861,6 +934,150 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRT
       (≈R-≈ (ret≈R (weak-W {Γ = Γ} p w , wa))
             (≈-sym (≈-trans (bind-pure (≈-trans ret-bind (restrict-pure ρ am {Γ = Γ} p x′))) ret-bind))) }
 
+  -- ★ D475: A SCRUTINEE READ IN PLACE means what the split one means: the lent
+  -- read is the consuming translation on the restricted context
+  private
+    -- a conversion's cast keeps a run's meaning
+    cast-≈ : ∀ {E₁ E₂ A₁ A₂ B B′} (e : B ≡ B′) (t₁ : Tm L E₁ A₁ B) (t₂ : Tm L E₂ A₂ B) {e₁ a₁ e₂ a₂}
+           → Lᶜ δ t₁ e₁ a₁ ≈ Lᶜ δ t₂ e₂ a₂ → Lᶜ δ (cast {E = E₁} refl e t₁) e₁ a₁ ≈ Lᶜ δ (cast {E = E₂} refl e t₂) e₂ a₂
+    cast-≈ refl t₁ t₂ h = h
+
+    lv-eq : ∀ {m n} {Γ : Ctx m n} {Φ : Usage n} {C : LTy} (i : Data.Fin.Fin n) (q : singleUse i G.One ⊑ᵘ Φ)
+            (t : Tm L (ty (SC.lookup Γ i)) One C) (e : ⟦ Co Γ Φ ⟧) (a : ⊤)
+          → Lᶜ δ (lv {Γ = Γ} i q t) e a ≡ Lᶜ δ t (vval {Γ = Γ} i (wv {Γ = Γ} q e)) a
+    lv-eq {Γ = Γ SC.▸ A} Data.Fin.zero    (o≤o ⊑∷ q) t (e , x) a = refl
+    lv-eq {Γ = Γ SC.▸ A} Data.Fin.zero    (o≤m ⊑∷ q) t (e , x) a = refl
+    lv-eq {Γ = Γ SC.▸ A} (Data.Fin.suc i) (z≤z ⊑∷ q) t e       a = lv-eq {Γ = Γ} i q t e a
+    lv-eq {Γ = Γ SC.▸ A} (Data.Fin.suc i) (z≤o ⊑∷ q) t (e , x) a = lv-eq {Γ = Γ} i q t e a
+    lv-eq {Γ = Γ SC.▸ A} (Data.Fin.suc i) (z≤m ⊑∷ q) t (e , x) a = lv-eq {Γ = Γ} i q t e a
+
+    var-pure : ∀ {m n} {Γ : Ctx m n} (i : Data.Fin.Fin n) → Pure δ (var-at {L} {One} {Γ = Γ} i) (vval {Γ = Γ} i)
+    var-pure {Γ = Γ SC.▸ A} Data.Fin.zero    e x = bind-pure (≈-trans ret-bind ret-bind)
+    var-pure {Γ = Γ SC.▸ A} (Data.Fin.suc i) = var-pure {Γ = Γ} i
+
+    pv : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} {e : Expr Γ Ψ A} → Pth e → ⟦ Co Γ Ψ ⟧ → ⟦ ty A ⟧
+    pv {Γ = Γ} (p-var i) y = vval {Γ = Γ} i y
+    pv (p-fst d) y = fst (pv d y)
+    pv (p-snd d) y = snd (pv d y)
+    pv {Γ = Γ} (p-mfst {Ψ = Ψ} d) y = fst (pv d (wv {Γ = Γ} (mq Ψ) y))
+    pv {Γ = Γ} (p-msnd {Ψ = Ψ} d) y = snd (pv d (wv {Γ = Γ} (mq Ψ) y))
+
+    path-pure : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} {e : Expr Γ Ψ A} (d : Pth e) → Pure δ (Lq rs e) (pv d)
+    path-pure {Γ = Γ} (p-var i) = var-pure {Γ = Γ} i
+    path-pure (p-fst d) e x = ≈-trans (bind-pure (path-pure d e x)) (bind-pure (≈-trans ret-bind ret-bind))
+    path-pure (p-snd d) e x = ≈-trans (bind-pure (path-pure d e x)) (bind-pure (≈-trans ret-bind ret-bind))
+    path-pure {Γ = Γ} (p-mfst {Ψ = Ψ} d) e x =
+      ≈-trans (bind-pure (≈-trans (bind-pure (weak-pure δ {E = One} {Γ = Γ} (mq Ψ) e x)) (path-pure d e (wv {Γ = Γ} (mq Ψ) x))))
+              (bind-pure (≈-trans ret-bind ret-bind))
+    path-pure {Γ = Γ} (p-msnd {Ψ = Ψ} d) e x =
+      ≈-trans (bind-pure (≈-trans (bind-pure (weak-pure δ {E = One} {Γ = Γ} (mq Ψ) e x)) (path-pure d e (wv {Γ = Γ} (mq Ψ) x))))
+              (bind-pure (≈-trans ret-bind ret-bind))
+
+    Rp-eq : ∀ {m n} {Γ : Ctx m n} {Ψ Φ : Usage n} {A : Ty m} {C : LTy} {e : Expr Γ Ψ A} (d : Pth e) (q : Ψ ⊑ᵘ Φ)
+            (t : Tm L (ty A) One C) (x : ⟦ Co Γ Φ ⟧) (a : ⊤) → Lᶜ δ (Rp d q t) x a ≡ Lᶜ δ t (pv d (wv {Γ = Γ} q x)) a
+    Rp-eq {Γ = Γ} (p-var i) q t x a = lv-eq {Γ = Γ} i q t x a
+    Rp-eq (p-fst d) q t x a = Rp-eq d q (bfst t) x a
+    Rp-eq (p-snd d) q t x a = Rp-eq d q (bsnd t) x a
+    Rp-eq {Γ = Γ} (p-mfst {Ψ = Ψ} d) q t x a =
+      trans (Rp-eq d (⊑ᵘ-trans (mq Ψ) q) (bfst t) x a)
+            (cong (λ z → Lᶜ δ t (fst (pv d z)) a) (sym (wv-comp {Γ = Γ} (mq Ψ) q (⊑ᵘ-trans (mq Ψ) q) x)))
+    Rp-eq {Γ = Γ} (p-msnd {Ψ = Ψ} d) q t x a =
+      trans (Rp-eq d (⊑ᵘ-trans (mq Ψ) q) (bsnd t) x a)
+            (cong (λ z → Lᶜ δ t (snd (pv d z)) a) (sym (wv-comp {Γ = Γ} (mq Ψ) q (⊑ᵘ-trans (mq Ψ) q) x)))
+
+    -- the lent read's run: the read, the kept share beside it
+    lentS-≈ : ∀ {m n} {Γ : Ctx m n} {Ψs Φ : Usage n} {S : Ty m} {s : Expr Γ Ψs S} (d : Rd s) (x : ⟦ Co Γ (Ψs +ᵘ Φ) ⟧)
+            → Lᶜ δ (lentS {Γ = Γ} {Ψs} {Φ} d) tt x ≈ (Lᶜ δ (Rt d (⊑ᵘ-+ˡ Ψs Φ)) x tt >>=∞ λ v → return∞ (wv {Γ = Γ} (⊑ᵘ-+ʳ Ψs Φ) x , v))
+    lentS-≈ {Γ = Γ} {Ψs} {Φ} d x =
+      ≈-trans (>>=-cong ret-bind (λ _ → ≈-refl))
+        (≈-trans (bind-assoc (Lᶜ δ (Rt d (⊑ᵘ-+ˡ Ψs Φ)) x tt) _ _)
+          (>>=-cong ≈-refl (λ v → ≈-trans ret-bind (≈-trans (bind-pure (weak-pure δ {E = One} {Γ = Γ} (⊑ᵘ-+ʳ Ψs Φ) tt x)) ret-bind))))
+
+
+    pairL-≈ : ∀ {m n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B : Ty m} (a : Expr Γ Ψ₁ A) (b : Expr Γ Ψ₂ B) (d : Rd a)
+              (y : ⟦ Co Γ (Ψ₁ +ᵘ Ψ₂) ⟧)
+            → Lᶜ δ (pairL rs {Γ = Γ} a b (just d)) tt y
+              ≈ (Lᶜ δ (Rt d (⊑ᵘ-+ˡ Ψ₁ Ψ₂)) y tt >>=∞ λ v → Lᶜ δ (Lq rs b) tt (wv {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) y) >>=∞ λ u → return∞ (v , u))
+    pairL-≈ {Γ = Γ} {Ψ₁} {Ψ₂} a b d y =
+      ≈-trans (>>=-cong (>>=-cong (lentS-≈ {Γ = Γ} {Ψ₁} {Ψ₂} d y) (λ _ → ≈-refl)) (λ _ → ≈-refl))
+        (≈-trans (bind-assoc _ _ _)
+          (≈-trans (bind-assoc (Lᶜ δ (Rt d (⊑ᵘ-+ˡ Ψ₁ Ψ₂)) y tt) _ _)
+            (>>=-cong ≈-refl (λ v → ≈-trans ret-bind (≈-trans ret-bind ret-bind)))))
+
+    rt-eq : ∀ {m n} {Γ : Ctx m n} {Ψ Φ : Usage n} {A : Ty m} {e : Expr Γ Ψ A} (d : Rd e) (q : Ψ ⊑ᵘ Φ) (x : ⟦ Co Γ Φ ⟧)
+          → Lᶜ δ (Rt {Γ = Γ} d q) x tt ≈ Lᶜ δ (Lq rs e) tt (wv {Γ = Γ} q x)
+    rt-eq {Γ = Γ} {e = e} (rd-path d) q x =
+      subst (λ z → z ≈ Lᶜ δ (Lq rs e) tt (wv {Γ = Γ} q x)) (sym (Rp-eq d q bcopy x tt)) (≈-sym (path-pure d tt (wv {Γ = Γ} q x)))
+    rt-eq (rd-int z) q x = ≈-sym ret-bind
+    rt-eq (rd-float d) q x = ≈-sym ret-bind
+    rt-eq (rd-num h o d) q x = >>=-cong (rt-eq d q x) (λ _ → ≈-refl)
+    rt-eq {Γ = Γ} {e = coerce c f} (rd-coe c d) q x = by (voidFree? c)
+      where
+        by : ∀ dc → Lᶜ δ (coeRd c dc (Rt d q)) x tt ≈ Lᶜ δ (coeR c dc (Lq rs f)) tt (wv {Γ = Γ} q x)
+        by (yes vf) = cast-≈ (cong ⟪_⟫ (erase-eq c vf)) (Rt d q) (Lq rs f) (rt-eq d q x)
+        by (no _)   = >>=-cong (rt-eq d q x) (λ _ → ≈-refl)
+    rt-eq {Γ = Γ} (rd-pair {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {a = a} {b = b} da db) q x = by (rd? a)
+      where
+        qa = ⊑ᵘ-trans (⊑ᵘ-+ˡ Ψ₁ Ψ₂) q
+        qb = ⊑ᵘ-trans (⊑ᵘ-+ʳ Ψ₁ Ψ₂) q
+        y = wv {Γ = Γ} q x
+        ea : wv {Γ = Γ} qa x ≡ fst (sv Γ Ψ₁ Ψ₂ y)
+        ea = sym (trans (sv-l Γ Ψ₁ Ψ₂ y) (wv-comp {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) q qa x))
+        eb : wv {Γ = Γ} qb x ≡ snd (sv Γ Ψ₁ Ψ₂ y)
+        eb = sym (trans (sv-r Γ Ψ₁ Ψ₂ y) (wv-comp {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) q qb x))
+        ea′ : wv {Γ = Γ} qa x ≡ wv {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) y
+        ea′ = sym (wv-comp {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) q qa x)
+        eb′ : wv {Γ = Γ} qb x ≡ wv {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) y
+        eb′ = sym (wv-comp {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) q qb x)
+        -- the right read, at the right share of the restricted context
+        rb≈ : ∀ z → wv {Γ = Γ} qb x ≡ z → Lᶜ δ (Rt db qb) x tt ≈ Lᶜ δ (Lq rs b) tt z
+        rb≈ z e = subst (λ w′ → Lᶜ δ (Rt db qb) x tt ≈ Lᶜ δ (Lq rs b) tt w′) e (rt-eq db qb x)
+        by : ∀ md → Lᶜ δ (Rt (rd-pair da db) q) x tt ≈ Lᶜ δ (pairL rs {Γ = Γ} a b md) tt y
+        by nothing =
+          ≈-trans ret-bind
+            (≈-trans (>>=-cong (subst (λ w′ → Lᶜ δ (Rt da qa) x tt ≈ Lᶜ δ (Lq rs a) tt w′) ea (rt-eq da qa x))
+                               (λ u → >>=-cong (rb≈ _ eb) (λ _ → ≈-refl)))
+                     (≈-sym (bind-pure (split-pure δ Γ Ψ₁ Ψ₂ tt y))))
+        by (just d′) = subst (λ d″ → Lᶜ δ (Rt (rd-pair da db) q) x tt ≈ Lᶜ δ (pairL rs {Γ = Γ} a b (just d″)) tt y) (rd-irr da d′)
+          (≈-trans ret-bind
+            (≈-trans (>>=-cong (≈-trans (rt-eq da qa x)
+                                  (subst (λ w′ → Lᶜ δ (Lq rs a) tt w′ ≈ Lᶜ δ (Rt da (⊑ᵘ-+ˡ Ψ₁ Ψ₂)) y tt) (sym ea′)
+                                         (≈-sym (rt-eq da (⊑ᵘ-+ˡ Ψ₁ Ψ₂) y))))
+                               (λ u → >>=-cong (rb≈ _ eb′) (λ _ → ≈-refl)))
+                     (≈-sym (pairL-≈ {Γ = Γ} a b da y))))
+
+  -- ★ a pair whose first component reads in place, against the IR's pairing
+  rel-pairL : ∀ {m n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B : Ty m} (a : Expr Γ Ψ₁ A) (b : Expr Γ Ψ₂ B) (md : Maybe (Rd a))
+            → Goal a → Goal b
+            → Rel (pairL rs {Γ = Γ} a b md)
+                  M.⟨ elaborate am a M.∘ restrictEnv {Γ = Γ} am (⊑ᵘ-+ˡ Ψ₁ Ψ₂) , elaborate am b M.∘ restrictEnv {Γ = Γ} am (⊑ᵘ-+ʳ Ψ₁ Ψ₂) ⟩
+  rel-pairL {Γ = Γ} {Ψ₁} {Ψ₂} a b nothing  ra rb = rel-pair am Γ Ψ₁ Ψ₂ ra rb
+  rel-pairL {Γ = Γ} {Ψ₁} {Ψ₂} a b (just d) ra rb = mkRel λ {x} {x′} w →
+    ≈-≈R (pairL-≈ {Γ = Γ} a b d x)
+      (≈R-≈ (>>=-congR (≈-≈R (rt-eq d q₁ x) (relOf ra (weak-W {Γ = Γ} q₁ w)))
+                       (λ r → >>=-congR (relOf rb (weak-W {Γ = Γ} q₂ w)) (λ r′ → ret≈R (r , r′))))
+            (≈-sym (>>=-cong (bind-pure (restrict-pure ρ am {Γ = Γ} q₁ x′))
+                             (λ _ → >>=-cong (bind-pure (restrict-pure ρ am {Γ = Γ} q₂ x′)) (λ _ → ≈-refl)))))
+    where
+      q₁ = ⊑ᵘ-+ˡ Ψ₁ Ψ₂
+      q₂ = ⊑ᵘ-+ʳ Ψ₁ Ψ₂
+
+  -- the scrutinee and the arms' share, read in place or split off: the same values
+  rel-scrut : ∀ {m n} {Γ : Ctx m n} {Ψs Φ : Usage n} {S : Ty m} (s : Expr Γ Ψs S) (md : Maybe (Rd s)) → Goal s
+            → Rel (scrutL rs {Γ = Γ} {Φ = Φ} s md)
+                  M.⟨ restrictEnv {Γ = Γ} am (⊑ᵘ-+ʳ Ψs Φ) , elaborate am s M.∘ restrictEnv {Γ = Γ} am (⊑ᵘ-+ˡ Ψs Φ) ⟩
+  rel-scrut {Γ = Γ} {Ψs} {Φ} s nothing  rs′ = rel-swapPair Γ Ψs Φ rs′
+  rel-scrut {Γ = Γ} {Ψs} {Φ} s (just d) rs′ = mkRel λ {x} {x′} w →
+    ≈-≈R (≈-trans (>>=-cong ret-bind (λ _ → ≈-refl))
+           (≈-trans (bind-assoc (Lᶜ δ (Rt d q₁) x tt) _ _)
+             (>>=-cong ≈-refl (λ v → ≈-trans ret-bind (≈-trans (bind-pure (weak-pure δ {E = One} {Γ = Γ} q₂ tt x)) ret-bind)))))
+      (≈R-≈ (>>=-congR (≈-≈R (rt-eq d q₁ x) (relOf rs′ (weak-W {Γ = Γ} q₁ w))) (λ r → ret≈R (weak-W {Γ = Γ} q₂ w , r)))
+            (≈-sym (≈-trans (bind-pure (restrict-pure ρ am {Γ = Γ} q₂ x′))
+                            (>>=-cong (bind-pure (restrict-pure ρ am {Γ = Γ} q₁ x′)) (λ _ → ≈-refl)))))
+    where
+      q₁ = ⊑ᵘ-+ˡ Ψs Φ
+      q₂ = ⊑ᵘ-+ʳ Ψs Φ
+
   -- ★ A CASE: the scrutinee's share split off, the arms' share distributed,
   -- each arm on its share and the bound value
   ok-case : ∀ {m n} {Γ : Ctx m n} {Ψs Ψₗ Ψᵣ : Usage n} {qℓ qr : G.Quantity} {A B C : Ty m}
@@ -869,7 +1086,7 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRT
   ok-case {Γ = Γ} {Ψs} {Ψₗ} {Ψᵣ} {qℓ} {qr} {A} {B} s l r rs′ rl rr =
     rel-∘ (rel-lcase (rel-∘ rl (rel-∘ (rel-bind {Γ = Γ} {A = A} qℓ) (rel-arm {Γ = Γ} (⊑ᵘ-⊔ˡ Ψₗ Ψᵣ))))
                      (rel-∘ rr (rel-∘ (rel-bind {Γ = Γ} {A = B} qr) (rel-arm {Γ = Γ} (⊑ᵘ-⊔ʳ Ψₗ Ψᵣ)))))
-          (rel-∘ rel-dist (rel-swapPair Γ Ψs (Ψₗ ⊔ᵘ Ψᵣ) rs′))
+          (rel-∘ rel-dist (rel-scrut {Γ = Γ} {Φ = Ψₗ ⊔ᵘ Ψᵣ} s (rd? s) rs′))
 
   -- the combinators' distribution (`distribIR`), the same values
   distribIR-pure : ∀ {X A B : IRTy} → PureI ρ (distribIR {X} {A} {B} am) (dv′ {X} {A} {B})
@@ -1091,7 +1308,7 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRT
   Lq-ok {Γ = Γ} (app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = G.Many} f x) (rf , rx) =
     rel-app Γ Ψ₁ Ψ₂ (G.Many *ᵘ Ψ₂) (⊑ᵘ-*Many Ψ₂) (Lq-ok f rf) (Lq-ok x rx)
   Lq-ok (effApp f x) (rf , rx) = ok-effApp f x (Lq-ok f rf) (Lq-ok x rx)
-  Lq-ok {Γ = Γ} (pair {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) (ra , rb) = rel-pair am Γ Ψ₁ Ψ₂ (Lq-ok a ra) (Lq-ok b rb)
+  Lq-ok {Γ = Γ} (pair a b) (ra , rb) = rel-pairL {Γ = Γ} a b (rd? a) (Lq-ok a ra) (Lq-ok b rb)
   Lq-ok (fst' p) r = rel-∘ rel-fst (Lq-ok p r)
   Lq-ok (snd' p) r = rel-∘ rel-snd (Lq-ok p r)
   Lq-ok (inl' a) r = rel-∘ rel-inl (Lq-ok a r)

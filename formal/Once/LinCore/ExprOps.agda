@@ -134,10 +134,12 @@ open import Once.IRTy using (IRTy)
 import Once.Spec.Context as SC
 open import Once.Spec.Context using (Ctx; Usage; []; _∷_; _⊑ᵘ_; _⊑∷_)
 open import Once.Context using (z≤z; z≤o; z≤m; o≤o; o≤m; m≤m)
+import Once.Context
 import Once.Spec.Grade as G
 import Data.Fin
 open import Once.LinCore.FromExpr fmt
-  using (weak; split; carryL; mixL; var-at; bindL; apω; dist; cast)
+  using (weak; split; carryL; mixL; var-at; bindL; apω; dist; cast;
+         Pth; p-var; p-fst; p-snd; p-mfst; p-msnd; Rd; rd-path; rd-int; rd-float; rd-num; rd-pair; rd-coe; coeRd; rd?; lv; Rp; Rt; lentS; scrutL; pairL)
 open import Once.LinCore.PassTr fmt using (copyIn)
 
 module Ops (Σι : ISig) where
@@ -339,6 +341,49 @@ module Ops (Σι : ISig) where
     DRefs : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} → S.Expr Γ Ψ A → Set
     DRefs = Refs (DeclIn Σι) (λ _ _ → ⊤) (λ _ _ → ⊤)
 
+    -- ★ D475: a scrutinee read in place runs only `numL`'s ops
+    ok-lv : ∀ {m n} {Γ : Ctx m n} {Φ : Usage n} {C} (i : Data.Fin.Fin n) (q : SC.singleUse i G.One ⊑ᵘ Φ) {t : Tm L _ One C}
+          → OK Dc t → OK Dc (lv {L} {Γ = Γ} i q t)
+    ok-lv {Γ = Γ SC.▸ A} Data.Fin.zero    (o≤o ⊑∷ q) o = o
+    ok-lv {Γ = Γ SC.▸ A} Data.Fin.zero    (o≤m ⊑∷ q) o = o
+    ok-lv {Γ = Γ SC.▸ A} (Data.Fin.suc i) (z≤z ⊑∷ q) o = ok-lv {Γ = Γ} i q o
+    ok-lv {Γ = Γ SC.▸ A} (Data.Fin.suc i) (z≤o ⊑∷ q) o = ok-lv {Γ = Γ} i q o
+    ok-lv {Γ = Γ SC.▸ A} (Data.Fin.suc i) (z≤m ⊑∷ q) o = ok-lv {Γ = Γ} i q o
+
+    ok-Rp : ∀ {m n} {Γ : Ctx m n} {Ψ Φ : Usage n} {A : Ty m} {C} {e : S.Expr Γ Ψ A} (d : Pth e) (q : Ψ ⊑ᵘ Φ) {t : Tm L _ One C}
+          → OK Dc t → OK Dc (Rp {L} d q t)
+    ok-Rp {Γ = Γ} (p-var i) q o = ok-lv {Γ = Γ} i q o
+    ok-Rp (p-fst d) q o = ok-Rp d q o
+    ok-Rp (p-snd d) q o = ok-Rp d q o
+    ok-Rp (p-mfst d) q o = ok-Rp d _ o
+    ok-Rp (p-msnd d) q o = ok-Rp d _ o
+
+    ok-Rt : ∀ {m n} {Γ : Ctx m n} {Ψ Φ : Usage n} {A : Ty m} {e : S.Expr Γ Ψ A} (d : Rd e) (q : Ψ ⊑ᵘ Φ) → OK Dc (Rt {L} {Γ = Γ} d q)
+    ok-Rt (rd-path d) q = ok-Rp d q tt
+    ok-Rt (rd-int z) q = tt
+    ok-Rt (rd-float d) q = tt
+    ok-Rt (rd-num h o d) q = ok-numL′ h o , ok-Rt d q
+    ok-Rt (rd-coe c d) q = ok-coeRd c (voidFree? c) (ok-Rt d q)
+      where
+        ok-coeRd : ∀ {m X} {A B : Ty m} (c : A <: B) (dc : Dec (VoidFree c)) {t : Tm L X One _}
+                 → OK Dc t → OK Dc (coeRd {L} c dc t)
+        ok-coeRd c (yes vf) o = ok-cast refl (cong ⟪_⟫ (erase-eq c vf)) o
+        ok-coeRd c (no _)   o = ok-coeL c , o
+    ok-Rt (rd-pair {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} da db) q =
+      (ok-Rt da (⊑ᵘ-trans (Once.Context.⊑ᵘ-+ˡ Ψ₁ Ψ₂) q) , ok-Rt db (⊑ᵘ-trans (⊑ᵘ-+ʳ Ψ₁ Ψ₂) q)) , tt
+
+    ok-scrutL : ∀ {m n} {Γ : Ctx m n} {Ψs Φ : Usage n} {S : Ty m} (s : S.Expr Γ Ψs S) (d : Maybe (Rd s))
+              → OK Dc (Lq rs s) → OK Dc (scrutL rs {Γ = Γ} {Φ = Φ} s d)
+    ok-scrutL {Γ = Γ} {Ψs} {Φ} s nothing  o = (tt , o) , (tt , ok-split Γ Ψs Φ)
+    ok-scrutL {Γ = Γ} {Ψs} {Φ} s (just d) o =
+      (ok-weak {Γ = Γ} (⊑ᵘ-+ʳ Ψs Φ) , tt) , (ok-Rt d (Once.Context.⊑ᵘ-+ˡ Ψs Φ) , tt)
+
+    ok-pairL : ∀ {m n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B : Ty m} (a : S.Expr Γ Ψ₁ A) (b : S.Expr Γ Ψ₂ B) (d : Maybe (Rd a))
+             → OK Dc (Lq rs a) → OK Dc (Lq rs b) → OK Dc (pairL rs {Γ = Γ} a b d)
+    ok-pairL {Γ = Γ} {Ψ₁} {Ψ₂} a b nothing  oa ob = (oa , ob) , ok-split Γ Ψ₁ Ψ₂
+    ok-pairL {Γ = Γ} {Ψ₁} {Ψ₂} a b (just d) oa ob =
+      (tt , ob) , (tt , ((ok-weak {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) , tt) , (ok-Rt d (Once.Context.⊑ᵘ-+ˡ Ψ₁ Ψ₂) , tt)))
+
     ok-Lq : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} (e : S.Expr Γ Ψ A) → DRefs e → OK Dc (Lq rs e)
     ok-Lq {Γ = Γ} (S.var i) r = ok-var {Γ = Γ} i
     ok-Lq (S.lam {q' = G.Zero} G.Zero _ e) r = ok-copyIn (ok-Lq e r , _)
@@ -359,7 +404,7 @@ module Ops (Σι : ISig) where
       ok-copyIn ((_ , ((ok-Lq f rf , (ok-Lq x rx , ok-weak {Γ = Γ} (⊑ᵘ-*One Ψ₂))) , ok-split Γ Ψ₁ (G.One *ᵘ Ψ₂))) , tt)
     ok-Lq {Γ = Γ} (S.effApp {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = G.Many} f x) (rf , rx) =
       ok-copyIn ((_ , ((ok-Lq f rf , (ok-Lq x rx , ok-weak {Γ = Γ} (⊑ᵘ-*Many Ψ₂))) , ok-split Γ Ψ₁ (G.Many *ᵘ Ψ₂))) , tt)
-    ok-Lq {Γ = Γ} (S.pair {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) (ra , rb) = (ok-Lq a ra , ok-Lq b rb) , ok-split Γ Ψ₁ Ψ₂
+    ok-Lq {Γ = Γ} (S.pair a b) (ra , rb) = ok-pairL {Γ = Γ} a b (rd? a) (ok-Lq a ra) (ok-Lq b rb)
     ok-Lq (S.fst' p) r = _ , ok-Lq p r
     ok-Lq (S.snd' p) r = _ , ok-Lq p r
     ok-Lq (S.inl' a) r = tt , ok-Lq a r
@@ -367,7 +412,7 @@ module Ops (Σι : ISig) where
     ok-Lq {Γ = Γ} (S.case' {Ψs = Ψs} {Ψₗ = Ψₗ} {Ψᵣ = Ψᵣ} {qℓ = qℓ} {qr = qr} {A = A} {B = B} s l r′) (rs′ , rl , rr) =
       ((ok-Lq l rl , (ok-bind {Γ = Γ} {A = A} qℓ , (ok-weak {Γ = Γ} (⊑ᵘ-⊔ˡ Ψₗ Ψᵣ) , tt))) ,
        (ok-Lq r′ rr , (ok-bind {Γ = Γ} {A = B} qr , (ok-weak {Γ = Γ} (⊑ᵘ-⊔ʳ Ψₗ Ψᵣ) , tt)))) ,
-      (_ , ((tt , ok-Lq s rs′) , (tt , ok-split Γ Ψs (Ψₗ ⊔ᵘ Ψᵣ))))
+      (_ , ok-scrutL {Γ = Γ} {Φ = Ψₗ ⊔ᵘ Ψᵣ} s (rd? s) (ok-Lq s rs′))
     ok-Lq S.unit r = tt
     ok-Lq (S.absurd v) r = tt , ok-Lq v r
     ok-Lq {Γ = Γ} (S.let' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = G.Zero} e1 e2) (r1 , r2) =
