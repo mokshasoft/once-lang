@@ -20,7 +20,7 @@ open import Data.Maybe using (Maybe; just)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 open import Data.Unit using (tt)
 open import Data.Bool using (false)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst; subst₂)
 open import Relation.Nullary using (¬_)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.IR.Semantics.Trace using (FFIAnswers)
@@ -40,10 +40,11 @@ module Once.LinCore.LowerSimH
 open import Once.LinCore.Core fmt
 open import Once.LinCore.Flat using (Base; ⟦_⟧b)
 open import Once.LinCore.NbEPLinCore fmt ans
-open import Once.LinCore.Values fmt bw using (MV; mpair; serial; Id)
+open import Once.LinCore.Values fmt bw using (MV; mpair; serial; Id; wsz)
+open import Once.LinCore.Events fmt ans bw using (cnt)
 open import Once.LinCore.Code fmt bw using (Stk; []ˢ; _∷ˢ_; Slots; []ᵉ; _∥_)
 open import Once.LinCore.Keys fmt bw using (Univ)
-open import Once.LinCore.Layout fmt bw using (Frame; frame; budget; wsz; ws; module Frame)
+open import Once.LinCore.Layout fmt bw using (Frame; frame; budget; ws; module Frame)
 open Frame using (EP; OP)
 open import Once.LinCore.Words fmt ans bw
 open import Once.LinCore.LowerSim fmt ans bw using (module Sim)
@@ -60,8 +61,11 @@ module SimH {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
   open FlatStepsAPI {FS} using (FlatSteps; step-at; FlatSteps-++)
   open import Once.LinCore.Moves {FS}
     using (Seg; Seg-++ˡ; Seg-++ʳ; slot; Fr; infr; mvPS-run; MovedP; module MovedP
-          ; restore-step; free-step; Ran; ranP; ran-trans; ran-regs; ran-pc; gate-stack)
-  open MovedP using (p-pc; p-alloc; p-heap; p-halt; p-moved; p-rest; p-frame)
+          ; restore-step; free-step; freed-st; ran-free; ran-free-at; Ran; ranP; ran-trans; ran-regs; ran-pc; gate-stack)
+  open MovedP using (p-pc; p-alloc; p-heap; p-halt; p-in; p-moved; p-rest; p-frame)
+  open import Once.LinCore.Live fmt bw using (LiveB; live-gate)
+  open Once.CCC.Machine.SMCore.AbstractExec {FS} using (freeMem-miss)
+  open FlatMachine {FS} using (block-base?)
 
   private
     frame-eq : ∀ {f g x y} → AtStack {FS} f x ≡ AtStack g y → f ≡ g
@@ -91,12 +95,14 @@ module SimH {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
                                  ++ restore-input (suc M) ∷ mvPS (Mc ∸ wsz A) ((M ∸ (wsz X + wsz A)) + wsz X) (wsz A)
                                  ++ restore-input M ∷ instr-free-heap fr ∷ [])
             → LocState.halted (floc fs) ≡ false → suc M < Fr fs
+            -- D468: the cell's block is live at the free's size, and neither value held shares it
+            → LiveB (falloc fs) fr i → 0 < fr → (∀ j → 1 ≤ cnt x j + cnt a j → ¬ serial j ≡ serial i)
             → Σ FlatState λ fs′
                 → FlatSteps prog (Once.LinCore.Moves.ln {FS} (wsz X) + (1 + (Once.LinCore.Moves.ln {FS} (wsz A) + (1 + 1)))) fs fs′
                 × CfgW (LocState.heapMem (floc fs′)) (slot fs′) (frame 0 M) ([]ᵉ ∥ mpair x a ∷ˢ []ˢ)
-                × Ran (Once.LinCore.Moves.ln {FS} (wsz X) + (1 + (Once.LinCore.Moves.ln {FS} (wsz A) + (1 + 1)))) 0
+                × Ran (Once.LinCore.Moves.ln {FS} (wsz X) + (1 + (Once.LinCore.Moves.ln {FS} (wsz A) + (1 + 1)))) [] (serial i ∷ [])
                       (AllocState.next-heap-ref (falloc fs)) M fs fs′
-  open1-sim prog fs cfc area M Mc o fr {X} {A} {x} {a} i wx wa le ne inp eM eM′ px ax pa sa win seg h lM =
+  open1-sim prog fs cfc area M Mc o fr {X} {A} {x} {a} i wx wa le ne inp eM eM′ px ax pa sa win seg h lM lv pos nd =
     after₁ (mvPS-run prog fs (AtDynamic (cellLoc i 0)) o a′ (wsz X) seg₁ h inp def₁ (λ k _ → refl) (λ k k′ _ _ ()) (infr MleF b₁))
     where
       MleF : M ≤ Fr fs
@@ -155,13 +161,14 @@ module SimH {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
             fs₅ ,
             FlatSteps-++ st₁ (step-at fs₂ (h₁ , proj₁ rest₁) (restore-step fs₁ (suc M) (subst (suc M <_) (sym (cong AllocState.frame-slots (p-alloc M₁))) lM) eM′₁)
               (FlatSteps-++ st₃ (step-at fs₄ (h₃ , proj₁ rest₃) (restore-step fs₃ M (subst (M <_) (sym (cong AllocState.frame-slots (trans (p-alloc M₃) (p-alloc M₁)))) (Data.Nat.Properties.<-trans (Data.Nat.Properties.n<1+n M) lM)) eM₃)
-                (step-at fs₅ (h₃ , proj₁ (proj₂ rest₃)) (free-step fs₄ fr) FlatStepsAPI.[])))) ,
+                (step-at fs₅ (h₃ , proj₁ (proj₂ rest₃)) (free-step fs₄ fr gate₄) FlatStepsAPI.[])))) ,
             record { c-env = tt
-                   ; c-stk = ((wx ++ wa , vpair (subst (λ r → VW r x wx) (sym hp) px) (subst (λ r → VW r a wa) (sym hp) pa)
+                   ; c-stk = ((wx ++ wa , vpair (vw-frame (subst (λ r → VW r x wx) (sym hp) px) (λ j k c → miss j k (nd j (≤-trans c (m≤m+n (cnt x j) (cnt a j))))))
+                                                (vw-frame (subst (λ r → VW r a wa) (sym hp) pa) (λ j k c → miss j k (nd j (≤-trans c (m≤n+m (cnt a j) (cnt x j))))))
                              , subst (λ z → SlotsAt (slot fs₃) z (wx ++ wa)) (cong (M ∸_) (sym (Data.Nat.Properties.+-identityʳ (wX + wA)))) both) , tt)
                    ; c-efit = z≤n
                    ; c-sfit = ≤-trans (≤-reflexive (Data.Nat.Properties.+-identityʳ (wX + wA))) le } ,
-            ran-trans (ranP M₁ b₁) (ran-trans (ran-regs _) (ran-trans (ranP M₃ b₃) (ran-trans (ran-regs _) ran-pc)))
+            ran-trans (ranP M₁ b₁) (ran-trans (ran-regs _) (ran-trans (ranP M₃ b₃) (ran-trans (ran-regs _) (ran-free fs₄))))
             where
               h₃ : LocState.halted (floc fs₃) ≡ false
               h₃ = trans (p-halt M₃) h₁
@@ -173,7 +180,14 @@ module SimH {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
               eM₃ = trans (p-rest M₃ M (λ k k< → neq< (in-run k< b₃)))
                           (trans (p-rest M₁ M (λ k k< → neq< (in-run k< b₁))) eM)
               fs₄ = record fs₃ { floc = record (floc fs₃) { regs = writeReg (LocState.regs (floc fs₃)) Input1 (cellPtr i) } ; fpc = suc (fpc fs₃) }
-              fs₅ = record fs₄ { fpc = suc (fpc fs₄) }
+              fs₅ = freed-st fs₄
+              -- the gate: `Input1` the cell's pointer, the allocator as it was
+              gate₄ : block-base? fr (readReg (LocState.regs (floc fs₄)) Input1) (falloc fs₄) ≡ true
+              gate₄ = subst (λ al → block-base? fr (cellPtr i) al ≡ true) (sym (trans (p-alloc M₃) (p-alloc M₁)))
+                        (live-gate (falloc fs) i pos lv)
+              -- the cleared block is neither value's
+              miss : ∀ j k → ¬ serial j ≡ serial i → LocState.heapMem (floc fs₅) (cellLoc j k) ≡ LocState.heapMem (floc fs₃) (cellLoc j k)
+              miss j k ne = freeMem-miss (LocState.heapMem (floc fs₃)) (cellLoc i 0) (serial i) (cellLoc j k) ne refl
               hp : LocState.heapMem (floc fs₃) ≡ LocState.heapMem (floc fs)
               hp = trans (p-heap M₃) (p-heap M₁)
               sx : SlotsAt (slot fs₃) a′ wx
@@ -196,11 +210,13 @@ module SimH {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
             → VW (LocState.heapMem (floc fs)) x wx → At (LocState.heapMem (floc fs)) i o wx
             → Seg prog (fpc fs) (mvPS o (M ∸ wsz X) (wsz X) ++ restore-input M ∷ instr-free-heap fr ∷ [])
             → LocState.halted (floc fs) ≡ false → M < Fr fs
+            -- D468: the cell's block is live at the free's size, and the value held does not share it
+            → LiveB (falloc fs) fr i → 0 < fr → (∀ j → 1 ≤ cnt x j → ¬ serial j ≡ serial i)
             → Σ FlatState λ fs′
                 → FlatSteps prog (Once.LinCore.Moves.ln {FS} (wsz X) + (1 + 1)) fs fs′
                 × CfgW (LocState.heapMem (floc fs′)) (slot fs′) (frame 0 M) ([]ᵉ ∥ x ∷ˢ []ˢ)
-                × Ran (Once.LinCore.Moves.ln {FS} (wsz X) + (1 + 1)) 0 (AllocState.next-heap-ref (falloc fs)) M fs fs′
-  open0-sim prog fs M o fr {X} {x} i wx le inp eM px ax seg h lM =
+                × Ran (Once.LinCore.Moves.ln {FS} (wsz X) + (1 + 1)) [] (serial i ∷ []) (AllocState.next-heap-ref (falloc fs)) M fs fs′
+  open0-sim prog fs M o fr {X} {x} i wx le inp eM px ax seg h lM lv pos nd =
     after₁ (mvPS-run prog fs (AtDynamic (cellLoc i 0)) o a′ (wsz X) seg₁ h inp def₁ (λ k _ → refl) (λ k k′ _ _ ()) (infr (Data.Nat.Properties.<⇒≤ lM) b₁))
     where
       wX = wsz X
@@ -220,13 +236,13 @@ module SimH {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
       after₁ (fs₁ , st₁ , M₁) =
         fs₃ ,
         FlatSteps-++ st₁ (step-at fs₂ (h₁ , proj₁ rest₁) (restore-step fs₁ M (subst (M <_) (sym (cong AllocState.frame-slots (p-alloc M₁))) lM) eM₁)
-          (step-at fs₃ (h₁ , proj₁ (proj₂ rest₁)) (free-step fs₂ fr) FlatStepsAPI.[])) ,
+          (step-at fs₃ (h₁ , proj₁ (proj₂ rest₁)) (free-step fs₂ fr gate₂) FlatStepsAPI.[])) ,
         record { c-env = tt
-               ; c-stk = ((wx , subst (λ r → VW r x wx) (sym hp) px
+               ; c-stk = ((wx , vw-frame (subst (λ r → VW r x wx) (sym hp) px) (λ j k c → miss j k (nd j c))
                           , subst (λ z → SlotsAt (slot fs₁) z wx) (cong (M ∸_) (sym (Data.Nat.Properties.+-identityʳ wX))) sx) , tt)
                ; c-efit = z≤n
                ; c-sfit = ≤-trans (≤-reflexive (Data.Nat.Properties.+-identityʳ wX)) le } ,
-        ran-trans (ranP M₁ b₁) (ran-trans (ran-regs _) ran-pc)
+        ran-trans (ranP M₁ b₁) (ran-trans (ran-regs _) (ran-free fs₂))
         where
           h₁ : LocState.halted (floc fs₁) ≡ false
           h₁ = trans (p-halt M₁) h
@@ -237,7 +253,11 @@ module SimH {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
           eM₁ : slot fs₁ M ≡ just (cellPtr i)
           eM₁ = trans (p-rest M₁ M (λ k k< → neq< (in-run k< b₁))) eM
           fs₂ = record fs₁ { floc = record (floc fs₁) { regs = writeReg (LocState.regs (floc fs₁)) Input1 (cellPtr i) } ; fpc = suc (fpc fs₁) }
-          fs₃ = record fs₂ { fpc = suc (fpc fs₂) }
+          fs₃ = freed-st fs₂
+          gate₂ : block-base? fr (readReg (LocState.regs (floc fs₂)) Input1) (falloc fs₂) ≡ true
+          gate₂ = subst (λ al → block-base? fr (cellPtr i) al ≡ true) (sym (p-alloc M₁)) (live-gate (falloc fs) i pos lv)
+          miss : ∀ j k → ¬ serial j ≡ serial i → LocState.heapMem (floc fs₃) (cellLoc j k) ≡ LocState.heapMem (floc fs₁) (cellLoc j k)
+          miss j k ne = freeMem-miss (LocState.heapMem (floc fs₁)) (cellLoc i 0) (serial i) (cellLoc j k) ne refl
           hp : LocState.heapMem (floc fs₁) ≡ LocState.heapMem (floc fs)
           hp = p-heap M₁
           sx : SlotsAt (slot fs₁) a′ wx
@@ -251,11 +271,13 @@ module SimH {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
             → VW (LocState.heapMem (floc fs)) x wx → At (LocState.heapMem (floc fs)) i o wx
             → Seg prog (fpc fs) (restore-input M ∷ mvPS o (M ∸ wsz X) (wsz X) ++ instr-free-heap fr ∷ [])
             → LocState.halted (floc fs) ≡ false → M < Fr fs
+            -- D468: the cell's block is live at the free's size, and the value held does not share it
+            → LiveB (falloc fs) fr i → 0 < fr → (∀ j → 1 ≤ cnt x j → ¬ serial j ≡ serial i)
             → Σ FlatState λ fs′
                 → FlatSteps prog (1 + (Once.LinCore.Moves.ln {FS} (wsz X) + 1)) fs fs′
                 × CfgW (LocState.heapMem (floc fs′)) (slot fs′) (frame 0 M) ([]ᵉ ∥ x ∷ˢ []ˢ)
-                × Ran (1 + (Once.LinCore.Moves.ln {FS} (wsz X) + 1)) 0 (AllocState.next-heap-ref (falloc fs)) M fs fs′
-  fopen-sim prog fs M o fr {X} {x} i wx le eM px ax seg h lM =
+                × Ran (1 + (Once.LinCore.Moves.ln {FS} (wsz X) + 1)) [] (serial i ∷ []) (AllocState.next-heap-ref (falloc fs)) M fs fs′
+  fopen-sim prog fs M o fr {X} {x} i wx le eM px ax seg h lM lv pos nd =
     after₁ (mvPS-run prog fs₁ (AtDynamic (cellLoc i 0)) o a′ (wsz X) seg₁ h refl def₁ (λ k _ → refl) (λ k k′ _ _ ()) (infr (Data.Nat.Properties.<⇒≤ lM) b₁))
     where
       wX = wsz X
@@ -276,13 +298,13 @@ module SimH {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
       after₁ (fs₂ , st₁ , M₁) =
         fs₃ ,
         step-at fs₁ (h , proj₁ seg) (restore-step fs M lM eM)
-          (FlatSteps-++ st₁ (step-at fs₃ (h₂ , proj₁ rest₁) (free-step fs₂ fr) FlatStepsAPI.[])) ,
+          (FlatSteps-++ st₁ (step-at fs₃ (h₂ , proj₁ rest₁) (free-step fs₂ fr gate₂) FlatStepsAPI.[])) ,
         record { c-env = tt
-               ; c-stk = ((wx , subst (λ r → VW r x wx) (sym hp) px
+               ; c-stk = ((wx , vw-frame (subst (λ r → VW r x wx) (sym hp) px) (λ j k c → miss j k (nd j c))
                           , subst (λ z → SlotsAt (slot fs₂) z wx) (cong (M ∸_) (sym (Data.Nat.Properties.+-identityʳ wX))) sx) , tt)
                ; c-efit = z≤n
                ; c-sfit = ≤-trans (≤-reflexive (Data.Nat.Properties.+-identityʳ wX)) le } ,
-        ran-trans (ran-regs _) (ran-trans (ranP M₁ b₁) ran-pc)
+        ran-trans (ran-regs _) (ran-trans (ranP M₁ b₁) (ran-free-at fs₂ (p-in M₁)))
         where
           h₂ : LocState.halted (floc fs₂) ≡ false
           h₂ = trans (p-halt M₁) h
@@ -290,7 +312,12 @@ module SimH {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
           rest₁ = subst (λ z → Seg prog z (instr-free-heap fr ∷ []))
                     (trans (cong (fpc fs₁ +_) (len-mvPS o a′ wX)) (trans (+-comm (fpc fs₁) _) (sym (p-pc M₁))))
                     (Seg-++ʳ prog (fpc fs₁) MV₁ _ (proj₂ seg))
-          fs₃ = record fs₂ { fpc = suc (fpc fs₂) }
+          fs₃ = freed-st fs₂
+          gate₂ : block-base? fr (readReg (LocState.regs (floc fs₂)) Input1) (falloc fs₂) ≡ true
+          gate₂ = subst₂ (λ w al → block-base? fr w al ≡ true) (sym (p-in M₁)) (sym (p-alloc M₁)) (live-gate (falloc fs) i pos lv)
+          miss : ∀ j k → ¬ serial j ≡ serial i → LocState.heapMem (floc fs₃) (cellLoc j k) ≡ LocState.heapMem (floc fs₂) (cellLoc j k)
+          miss j k ne = trans (cong (λ w → Once.CCC.Machine.SMCore.AbstractExec.freeMem {FS} w (LocState.heapMem (floc fs₂)) (cellLoc j k)) (p-in M₁))
+                              (freeMem-miss (LocState.heapMem (floc fs₂)) (cellLoc i 0) (serial i) (cellLoc j k) ne refl)
           hp : LocState.heapMem (floc fs₂) ≡ LocState.heapMem (floc fs)
           hp = p-heap M₁
           sx : SlotsAt (slot fs₂) a′ wx

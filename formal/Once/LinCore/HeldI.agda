@@ -48,6 +48,7 @@ open import Once.IR.Semantics.Trace using (T)
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw
 open import Once.LinCore.Values fmt bw
+open import Once.LinCore.SizedI fmt ans bw using (WSC; WSR; ws-stepI; ws-start)
 open import Once.LinCore.Machine fmt ans bw using (op-NoT)
 open import Once.LinCore.Code fmt bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots; []ᵉ; vw; ln; see; Cfg; _∥_; fsz)
 open import Once.LinCore.Held fmt ans bw using (own; held; Owned; Within)
@@ -122,14 +123,15 @@ topv-sees (just E) es s = see-own′ es s , tt
 -- 2. ★ THE INVARIANT, across the frames.
 ------------------------------------------------------------------------
 
-record InvI {sh U T} (m : Cfg sh) (r : Ret U T) (n : ℕ) (h : Heap) : Set where
+record InvH {sh U T} (m : Cfg sh) (r : Ret U T) (n : ℕ) (h : Heap) : Set where
   field
     i-le1   : ∀ i → h i ≤ 1
     i-above : ∀ i → n ≤ serial i → h i ≡ 0
+    i-ser   : SerU h                -- ★ D468: one live cell per serial
     i-exact : ∀ i → h i ≡ Owned m i + OwnR r i
     i-sees  : Sees′ (EnvR r) (Cfg.envs m)
     i-seesR : SeesR r
-open InvI
+open InvH public
 
 private
   cancelˡ : ∀ c {a b} → c + a ≡ c + b → a ≡ b
@@ -140,20 +142,21 @@ private
   cancelʳ c {a} {b} e = cancelˡ c (trans (+-comm c a) (trans e (+-comm b c)))
 
   -- the same cells, held otherwise in the current frame
-  same : ∀ {sh sh′ U T} {m : Cfg sh} {m′ : Cfg sh′} {r : Ret U T} {n h} → InvI m r n h
-       → (∀ i → Owned m i ≡ Owned m′ i) → Sees′ (EnvR r) (Cfg.envs m′) → InvI m′ r n h
-  same {r = r} inv e s = record { i-le1 = i-le1 inv ; i-above = i-above inv
+  same : ∀ {sh sh′ U T} {m : Cfg sh} {m′ : Cfg sh′} {r : Ret U T} {n h} → InvH m r n h
+       → (∀ i → Owned m i ≡ Owned m′ i) → Sees′ (EnvR r) (Cfg.envs m′) → InvH m′ r n h
+  same {r = r} inv e s = record { i-le1 = i-le1 inv ; i-above = i-above inv ; i-ser = i-ser inv
                                 ; i-exact = λ i → trans (i-exact inv i) (cong (_+ OwnR r i) (e i))
                                 ; i-sees = s ; i-seesR = i-seesR inv }
 
   -- ★ a cell `j` freed, all else held: the invariant at what is held after
-  freed : ∀ {sh sh′ U T} {m : Cfg sh} {m′ : Cfg sh′} {r : Ret U T} {n h} j → InvI m r n h
+  freed : ∀ {sh sh′ U T} {m : Cfg sh} {m′ : Cfg sh′} {r : Ret U T} {n h} j → InvH m r n h
         → (∀ i → Owned m i ≡ δ j i + Owned m′ i) → Sees′ (EnvR r) (Cfg.envs m′)
-        → OK (free j ∷ []) h × InvI m′ r n (play (free j ∷ []) h)
+        → OK (free j ∷ []) h × InvH m′ r n (play (free j ∷ []) h)
   freed {m = m} {m′ = m′} {r = r} {h = h} j inv e s =
     ( (fst fr , tt)
     , record { i-le1   = fst (snd fr)
              ; i-above = λ i le → trans (cong (_∸ δ j i) (i-above inv i le)) (0∸n≡0 (δ j i))
+             ; i-ser   = OK-ser (free j ∷ []) h (fst fr , tt) (i-ser inv)
              ; i-exact = λ i → cancelʳ (δ j i) (trans (snd (snd (snd fr)) i) (trans (hx i) (rr (δ j i) (Owned m′ i) (OwnR r i))))
              ; i-sees  = s ; i-seesR = i-seesR inv } )
     where
@@ -180,7 +183,7 @@ private
   inside es v eq sub s i p = see-own′ es s i (subst (λ z → 1 ≤ cnt z i) (sym eq) (sub i p))
 
   -- what the top view sees is live
-  alive : ∀ {E Es S U T} (es : Slots (E ∷ Es)) (os : Stk S) (r : Ret U T) {n h} → InvI (es ∥ os) r n h
+  alive : ∀ {E Es S U T} (es : Slots (E ∷ Es)) (os : Stk S) (r : Ret U T) {n h} → InvH (es ∥ os) r n h
         → ∀ j → 1 ≤ cnt (see es) j → 1 ≤ h j
   alive es os r inv j seen =
     subst (1 ≤_) (sym (i-exact inv j))
@@ -193,10 +196,10 @@ private
 -- a `prim`: the run's exchange (a fresh cell is the counter's)
 prim-inv : ∀ {T Γ} {ds : Defs Γ} {Es A B S U} {g : LTm Γ A B} {r : Ret U T} {es : Slots Es} {v : MV A} {w : MV B}
              {os : Stk S} {n n′ t h}
-         → Run ds g mone v n (gives w n′) t → InvI (es ∥ v ∷ˢ os) r n h → OK t h × InvI (es ∥ w ∷ˢ os) r n′ (play t h)
-prim-inv {r = r} {es = es} {v = v} {w = w} {os = os} {n = n} {h = h} run inv =
+         → Run ds g mone v n (gives w n′) t → InvH (es ∥ v ∷ˢ os) r n h → OK t h × InvH (es ∥ w ∷ˢ os) r n′ (play t h)
+prim-inv {r = r} {es = es} {v = v} {w = w} {os = os} {n = n} {t = t} {h = h} run inv =
   ( fst x
-  , record { i-le1 = Pre.le1 pr′ ; i-above = Pre.above pr′
+  , record { i-le1 = Pre.le1 pr′ ; i-above = Pre.above pr′ ; i-ser = OK-ser t h (fst x) (i-ser inv)
            ; i-exact = λ i → xch _ (cnt v i) (own es i) (held os i) (OwnR r i) (cnt w i)
                                (trans (snd x i) (cong (_+ cnt w i) (i-exact inv i)))
            ; i-sees = i-sees inv ; i-seesR = i-seesR inv } )
@@ -211,11 +214,11 @@ prim-inv {r = r} {es = es} {v = v} {w = w} {os = os} {n = n} {h = h} run inv =
 -- configuration saved below its top view and the operand
 enter-inv : ∀ {T} t {Es A B S U} {k : Codeᴵ (t ⊳ Es ∣ B ∷ S) U} {r : Ret U T} (es : Slots (t ⊳ Es)) (a : MV A)
               (os : Stk S) {n h}
-          → InvI (es ∥ a ∷ˢ os) r n h
-          → OK (tmp (tnew fsz) ∷ []) h × InvI (topv t es ∥ a ∷ˢ []ˢ) (frm {t = t} k es os r) n (play (tmp (tnew fsz) ∷ []) h)
+          → InvH (es ∥ a ∷ˢ os) r n h
+          → OK (tmp (tnew fsz) ∷ []) h × InvH (topv t es ∥ a ∷ˢ []ˢ) (frm {t = t} k es os r) n (play (tmp (tnew fsz) ∷ []) h)
 enter-inv t {r = r} es a os inv =
   ( (tt , tt)
-  , record { i-le1 = i-le1 inv ; i-above = i-above inv
+  , record { i-le1 = i-le1 inv ; i-above = i-above inv ; i-ser = i-ser inv
            ; i-exact = λ i → trans (i-exact inv i) (e i)
            ; i-sees = topv-sees t es (i-sees inv) ; i-seesR = i-sees inv , i-seesR inv } )
   where
@@ -225,66 +228,66 @@ enter-inv t {r = r} es a os inv =
             q = solve-∀
     e = λ i → rr (own (topv t es) i) (own es i) (cnt a i) (held os i) (OwnR r i) (own-topv t es i)
 
-inv-stepI : ∀ {T sh U sh′ U′} {c : Codeᴵ sh U} {r : Ret U T} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T} {m m′ n n′ t h}
-          → StepI c r m n t c′ r′ m′ n′ → InvI m r n h → OK t h × InvI m′ r′ n′ (play t h)
-inv-stepI (i-unpair {es = es} {a = a} {b = b} {os = os}) inv =
+inv-stepH : ∀ {T sh U sh′ U′} {c : Codeᴵ sh U} {r : Ret U T} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T} {m m′ n n′ t h}
+          → StepI c r m n t c′ r′ m′ n′ → InvH m r n h → OK t h × InvH m′ r′ n′ (play t h)
+inv-stepH (i-unpair {es = es} {a = a} {b = b} {os = os}) inv =
   (tt , same inv (λ i → cong (own es i +_) (r (cnt a i) (cnt b i) (held os i))) (i-sees inv))
   where r : ∀ A B H → (A + B) + H ≡ A + (B + H)
         r = solve-∀
-inv-stepI (i-pair {es = es} {a = a} {b = b} {os = os}) inv =
+inv-stepH (i-pair {es = es} {a = a} {b = b} {os = os}) inv =
   (tt , same inv (λ i → cong (own es i +_) (r (cnt a i) (cnt b i) (held os i))) (i-sees inv))
   where r : ∀ A B H → A + (B + H) ≡ (A + B) + H
         r = solve-∀
-inv-stepI (i-swap {es = es} {a = a} {b = b} {os = os}) inv =
+inv-stepH (i-swap {es = es} {a = a} {b = b} {os = os}) inv =
   (tt , same inv (λ i → cong (own es i +_) (r (cnt a i) (cnt b i) (held os i))) (i-sees inv))
   where r : ∀ A B H → A + (B + H) ≡ B + (A + H)
         r = solve-∀
-inv-stepI i-unit inv = (tt , same inv (λ i → refl) (i-sees inv))
-inv-stepI (i-prim run) inv = prim-inv run inv
-inv-stepI {r = r} {h = h} (i-opend {s = s} {es = es} {x = x} {os = os} p) inv =
+inv-stepH i-unit inv = (tt , same inv (λ i → refl) (i-sees inv))
+inv-stepH (i-prim run) inv = prim-inv run inv
+inv-stepH {r = r} {h = h} (i-opend {s = s} {es = es} {x = x} {os = os} p) inv =
   ( op-OK p h
-  , subst (InvI _ r _) (sym (op-play p h))
+  , subst (InvH _ r _) (sym (op-play p h))
       (same inv (λ i → cong (λ z → own es i + (z + held os i)) (cnt-flat (sdom s) x i)) (i-sees inv)) )
-inv-stepI i-untag inv = (tt , same inv (λ i → refl) (i-sees inv))
-inv-stepI i-untag₁ inv = (tt , same inv (λ i → refl) (i-sees inv))
-inv-stepI i-tag₁ inv = (tt , same inv (λ i → refl) (i-sees inv))
-inv-stepI i-case₁ inv = (tt , same inv (λ i → refl) (i-sees inv))
-inv-stepI i-case₂ inv = (tt , same inv (λ i → refl) (i-sees inv))
-inv-stepI (i-elend {es = es} {x = x} {a = a} {os = os}) inv =
+inv-stepH i-untag inv = (tt , same inv (λ i → refl) (i-sees inv))
+inv-stepH i-untag₁ inv = (tt , same inv (λ i → refl) (i-sees inv))
+inv-stepH i-tag₁ inv = (tt , same inv (λ i → refl) (i-sees inv))
+inv-stepH i-case₁ inv = (tt , same inv (λ i → refl) (i-sees inv))
+inv-stepH i-case₂ inv = (tt , same inv (λ i → refl) (i-sees inv))
+inv-stepH (i-elend {es = es} {x = x} {a = a} {os = os}) inv =
   (tt , same inv (λ i → r (own es i) (cnt x i) (cnt a i) (held os i)) (see-own′ es (i-sees inv) , i-sees inv))
   where r : ∀ O X A H → O + ((X + A) + H) ≡ (X + O) + (A + H)
         r = solve-∀
-inv-stepI (i-eunlend {es = es} {x = x} {w = w} {os = os}) inv =
+inv-stepH (i-eunlend {es = es} {x = x} {w = w} {os = os}) inv =
   (tt , same inv (λ i → r (own es i) (cnt x i) (cnt w i) (held os i)) (snd (i-sees inv)))
   where r : ∀ O X W H → (X + O) + (W + H) ≡ O + ((X + W) + H)
         r = solve-∀
-inv-stepI i-elift inv = (tt , same inv (λ i → refl) ((λ i ()) , i-sees inv))
-inv-stepI (i-efst {e₁ = e₁} {e₂} {es} {os} eq) inv =
+inv-stepH i-elift inv = (tt , same inv (λ i → refl) ((λ i ()) , i-sees inv))
+inv-stepH (i-efst {e₁ = e₁} {e₂} {es} {os} eq) inv =
   (tt , same inv (λ i → refl) (inside es {x = e₁} _ eq (λ i p → ≤-trans p (m≤m+n (cnt e₁ i) (cnt e₂ i))) (i-sees inv) , i-sees inv))
-inv-stepI (i-esnd {e₁ = e₁} {e₂} {es} {os} eq) inv =
+inv-stepH (i-esnd {e₁ = e₁} {e₂} {es} {os} eq) inv =
   (tt , same inv (λ i → refl) (inside es {x = e₂} _ eq (λ i p → ≤-trans p (m≤n+m (cnt e₂ i) (cnt e₁ i))) (i-sees inv) , i-sees inv))
-inv-stepI {r = r} (i-eout {i = j} {v} {es} {os} eq) inv =
+inv-stepH {r = r} (i-eout {i = j} {v} {es} {os} eq) inv =
   ( (≤-antisym (i-le1 inv j) (alive es os r inv j seen) , tt)
   , same inv (λ i → refl) (inside es {x = v} _ eq (λ i p → ≤-trans p (m≤n+m (cnt v i) (δ j i))) (i-sees inv) , i-sees inv) )
   where
     seen : 1 ≤ cnt (see es) j
     seen = subst (λ z → 1 ≤ cnt z j) (sym eq) (subst (λ d → 1 ≤ d + cnt v j) (sym (δ-same j)) (s≤s z≤n))
-inv-stepI (i-eoutq {i = j} {v} {es} {os} eq) inv =
+inv-stepH (i-eoutq {i = j} {v} {es} {os} eq) inv =
   (tt , same inv (λ i → refl) (inside es {x = v} _ eq (λ i p → ≤-trans p (m≤n+m (cnt v i) (δ j i))) (i-sees inv) , i-sees inv))
-inv-stepI (i-ecase₁ {e = e} {es} {os} eq) inv =
+inv-stepH (i-ecase₁ {e = e} {es} {os} eq) inv =
   (tt , same inv (λ i → refl) (inside es {x = e} _ eq (λ i p → p) (i-sees inv) , i-sees inv))
-inv-stepI (i-ecase₂ {e = e} {es} {os} eq) inv =
+inv-stepH (i-ecase₂ {e = e} {es} {os} eq) inv =
   (tt , same inv (λ i → refl) (inside es {x = e} _ eq (λ i p → p) (i-sees inv) , i-sees inv))
-inv-stepI (i-eapp {x = x} {es} {os} eq) inv =
+inv-stepH (i-eapp {x = x} {es} {os} eq) inv =
   (tt , same inv (λ i → refl) (inside es {x = x} _ eq (λ i p → p) (i-sees inv) , i-sees inv))
-inv-stepI i-epop inv = (tt , same inv (λ i → refl) (snd (i-sees inv)))
-inv-stepI (i-eword _) inv = (tt , same inv (λ i → refl) (i-sees inv))
+inv-stepH i-epop inv = (tt , same inv (λ i → refl) (snd (i-sees inv)))
+inv-stepH (i-eword _) inv = (tt , same inv (λ i → refl) (i-sees inv))
 -- ★ a call: the caller's configuration saved below its top view and the argument
-inv-stepI (i-call {σ = σ} {es = es} {a = a} {os = os}) inv = enter-inv (top σ) es a os inv
+inv-stepH (i-call {σ = σ} {es = es} {a = a} {os = os}) inv = enter-inv (top σ) es a os inv
 -- ★ a return: the result put back on the caller's configuration
-inv-stepI (i-ret {t = t} {r = r} {es = es} {os = os} {e′ = e′} {b = b}) inv =
+inv-stepH (i-ret {t = t} {r = r} {es = es} {os = os} {e′ = e′} {b = b}) inv =
   ( (tt , tt)
-  , record { i-le1 = i-le1 inv ; i-above = i-above inv
+  , record { i-le1 = i-le1 inv ; i-above = i-above inv ; i-ser = i-ser inv
            ; i-exact = λ i → trans (i-exact inv i) (rr (own e′ i) (own es i) (cnt b i) (held os i) (OwnR r i) (own-top0 t e′ i))
            ; i-sees = fst (i-seesR inv) ; i-seesR = snd (i-seesR inv) } )
   where
@@ -293,51 +296,79 @@ inv-stepI (i-ret {t = t} {r = r} {es = es} {os = os} {e′ = e′} {b = b}) inv 
       where q : ∀ O B H R → (0 + (B + 0)) + ((O + H) + R) ≡ (O + (B + H)) + R
             q = solve-∀
 -- a loop's turn: nothing moves
-inv-stepI i-reti inv =
-  (tt , record { i-le1 = i-le1 inv ; i-above = i-above inv ; i-exact = i-exact inv ; i-sees = i-sees inv ; i-seesR = i-seesR inv })
-inv-stepI i-loop inv =
-  (tt , record { i-le1 = i-le1 inv ; i-above = i-above inv ; i-exact = i-exact inv ; i-sees = i-sees inv ; i-seesR = i-seesR inv })
+inv-stepH i-reti inv =
+  (tt , record { i-le1 = i-le1 inv ; i-above = i-above inv ; i-ser = i-ser inv ; i-exact = i-exact inv ; i-sees = i-sees inv ; i-seesR = i-seesR inv })
+inv-stepH i-loop inv =
+  (tt , record { i-le1 = i-le1 inv ; i-above = i-above inv ; i-ser = i-ser inv ; i-exact = i-exact inv ; i-sees = i-sees inv ; i-seesR = i-seesR inv })
 -- ★ through a cell's code word: a frame opened on its trampoline (D434)
-inv-stepI (i-icall {es = es} {i = j} {x = x} {a} {os}) inv = enter-inv nothing es _ os inv
-inv-stepI (i-icallω {es = es} {a = a} {os} eq) inv = enter-inv (just _) es a os inv
-inv-stepI (i-iobs {es = es} {os = os}) inv = enter-inv nothing es _ os inv
-inv-stepI (i-ccopy {es = es} {os = os} eq) inv = enter-inv (just _) es mone os inv
-inv-stepI (i-ncopy {es = es} {os = os} eq) inv = enter-inv (just _) es mone os inv
-inv-stepI (i-cfree {es = es} {os = os}) inv = enter-inv nothing es _ os inv
-inv-stepI (i-nfree {es = es} {os = os}) inv = enter-inv nothing es _ os inv
+inv-stepH (i-icall {es = es} {i = j} {x = x} {a} {os}) inv = enter-inv nothing es _ os inv
+inv-stepH (i-icallω {es = es} {a = a} {os} eq) inv = enter-inv (just _) es a os inv
+inv-stepH (i-iobs {es = es} {os = os}) inv = enter-inv nothing es _ os inv
+inv-stepH (i-ccopy {es = es} {os = os} eq) inv = enter-inv (just _) es mone os inv
+inv-stepH (i-ncopy {es = es} {os = os} eq) inv = enter-inv (just _) es mone os inv
+inv-stepH (i-cfree {es = es} {os = os}) inv = enter-inv nothing es _ os inv
+inv-stepH (i-nfree {es = es} {os = os}) inv = enter-inv nothing es _ os inv
 -- ★ a trampoline's cell part
-inv-stepI (i-open1 {es = es} {i = j} {x = x} {a} {os}) inv =
+inv-stepH (i-open1 {es = es} {i = j} {x = x} {a} {os}) inv =
   freed j inv (λ i → r (own es i) (δ j i) (cnt x i) (cnt a i) (held os i)) (i-sees inv)
   where r : ∀ O D X A H → O + (((D + X) + A) + H) ≡ D + (O + ((X + A) + H))
         r = solve-∀
-inv-stepI {r = r} (i-openω {i = j} {x} {es} {os} eq) inv =
+inv-stepH {r = r} (i-openω {i = j} {x} {es} {os} eq) inv =
   ( (≤-antisym (i-le1 inv j) (alive es os r inv j seen) , tt)
   , same inv (λ i → refl) (inside es {x = x} _ eq (λ i p → ≤-trans p (m≤n+m (cnt x i) (δ j i))) (i-sees inv) , i-sees inv) )
   where
     seen : 1 ≤ cnt (see es) j
     seen = subst (λ z → 1 ≤ cnt z j) (sym eq) (subst (λ d → 1 ≤ d + cnt x j) (sym (δ-same j)) (s≤s z≤n))
-inv-stepI (i-nopen {es = es} {i = j} {p} {os}) inv =
+inv-stepH (i-nopen {es = es} {i = j} {p} {os}) inv =
   freed j inv (λ i → r (own es i) (δ j i) (cnt p i) (held os i)) (i-sees inv)
   where r : ∀ O D P H → O + ((D + P) + H) ≡ D + (O + (P + H))
         r = solve-∀
-inv-stepI (i-copen {i = j} {x} {es} eq) inv =
+inv-stepH (i-copen {i = j} {x} {es} eq) inv =
   (tt , same inv (λ i → refl) (inside es {x = x} _ eq (λ i p → ≤-trans p (m≤n+m (cnt x i) (δ j i))) (i-sees inv) , i-sees inv))
-inv-stepI (i-copenν {i = j} {p} {es} eq) inv =
+inv-stepH (i-copenν {i = j} {p} {es} eq) inv =
   (tt , same inv (λ i → refl) (inside es {x = p} _ eq (λ i q → ≤-trans q (m≤n+m (cnt p i) (δ j i))) (i-sees inv) , i-sees inv))
 -- a fresh cell with the viewed cell's code words: the closure's or ν's build
-inv-stepI (i-reclose {lam = c1 ds b γ} eq) inv = prim-inv (r-lam {ds = ds}) inv
-inv-stepI (i-reclose {lam = cω ds b γ} eq) inv = prim-inv (r-lamω {ds = ds}) inv
-inv-stepI (i-recloseν eq) inv = prim-inv (r-unf {ds = ε}) inv
-inv-stepI (i-fopen {es = es} {i = j} {x = x} {os}) inv =
+inv-stepH (i-reclose {lam = c1 ds b γ} eq) inv = prim-inv (r-lam {ds = ds}) inv
+inv-stepH (i-reclose {lam = cω ds b γ} eq) inv = prim-inv (r-lamω {ds = ds}) inv
+inv-stepH (i-recloseν eq) inv = prim-inv (r-unf {ds = ε}) inv
+inv-stepH (i-fopen {es = es} {i = j} {x = x} {os}) inv =
   freed j inv (λ i → r (own es i) (δ j i) (cnt x i) (held os i)) (i-sees inv)
   where r : ∀ O D X H → O + ((D + X) + H) ≡ D + (O + (X + H))
         r = solve-∀
-inv-stepI (i-fopenν {es = es} {i = j} {p} {os}) inv =
+inv-stepH (i-fopenν {es = es} {i = j} {p} {os}) inv =
   freed j inv (λ i → r (own es i) (δ j i) (cnt p i) (held os i)) (i-sees inv)
   where r : ∀ O D P H → O + ((D + P) + H) ≡ D + (O + (P + H))
         r = solve-∀
 
 -- along a stretch of steps
+inv-stepsH : ∀ {T sh U sh′ U′} {c : Codeᴵ sh U} {r : Ret U T} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T} {m m′ n n′ t h}
+           → StepsI c r m n t c′ r′ m′ n′ → InvH m r n h → OK t h × InvH m′ r′ n′ (play t h)
+inv-stepsH done inv = (tt , inv)
+inv-stepsH {r′ = r′} {m′ = m′} {n′ = n′} {h = h} (_⟫_ {t₁ = t₁} {t₂} x st) inv =
+  let (ok₁ , inv₁) = inv-stepH x inv
+      (ok₂ , inv₂) = inv-stepsH st inv₁
+  in (OK-++ t₁ t₂ h ok₁ ok₂ , subst (InvH m′ r′ n′) (sym (play-++ t₁ t₂ h)) inv₂)
+
+start-invH : ∀ {T n} → InvH start ([]ʳ {T = T}) n (λ _ → 0)
+start-invH = record { i-le1 = λ _ → z≤n ; i-above = λ _ _ → refl ; i-ser = λ _ _ () ; i-exact = λ _ → refl
+                    ; i-sees = ((λ i ()) , tt) ; i-seesR = tt }
+
+
+------------------------------------------------------------------------
+-- 4. ★ THE INVARIANT WITH THE CELLS' SIZES (D469): every held id well-sized
+------------------------------------------------------------------------
+
+record InvI {sh U T} (m : Cfg sh) (r : Ret U T) (n : ℕ) (h : Heap) : Set where
+  constructor _&ws_
+  field
+    i-h  : InvH m r n h
+    i-ws : WSC m × WSR r
+open InvI public
+
+inv-stepI : ∀ {T sh U sh′ U′} {c : Codeᴵ sh U} {r : Ret U T} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T} {m m′ n n′ t h}
+          → StepI c r m n t c′ r′ m′ n′ → InvI m r n h → OK t h × InvI m′ r′ n′ (play t h)
+inv-stepI st (inv &ws w) = fst (inv-stepH st inv) , (snd (inv-stepH st inv) &ws ws-stepI st (fst w) (snd w))
+
 inv-stepsI : ∀ {T sh U sh′ U′} {c : Codeᴵ sh U} {r : Ret U T} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T} {m m′ n n′ t h}
            → StepsI c r m n t c′ r′ m′ n′ → InvI m r n h → OK t h × InvI m′ r′ n′ (play t h)
 inv-stepsI done inv = (tt , inv)
@@ -347,8 +378,7 @@ inv-stepsI {r′ = r′} {m′ = m′} {n′ = n′} {h = h} (_⟫_ {t₁ = t₁
   in (OK-++ t₁ t₂ h ok₁ ok₂ , subst (InvI m′ r′ n′) (sym (play-++ t₁ t₂ h)) inv₂)
 
 start-invI : ∀ {T n} → InvI start ([]ʳ {T = T}) n (λ _ → 0)
-start-invI = record { i-le1 = λ _ → z≤n ; i-above = λ _ _ → refl ; i-exact = λ _ → refl
-                    ; i-sees = ((λ i ()) , tt) ; i-seesR = tt }
+start-invI = start-invH &ws (ws-start , tt)
 
 -- ★ D427 amended, on the image: at every configuration a closed program's
 -- image reaches, whatever its code, every event so far was legal and the
@@ -356,4 +386,4 @@ start-invI = record { i-le1 = λ _ → z≤n ; i-above = λ _ _ → refl ; i-exa
 held-alwaysI : ∀ {T sh U} {c : Codeᴵ (One ∷ [] ∣ One ∷ []) T} {c′ : Codeᴵ sh U} {r′ : Ret U T} {m′ n′ mt}
              → StepsI c []ʳ start 0 mt c′ r′ m′ n′
              → OK mt (λ _ → 0) × (∀ i → play mt (λ _ → 0) i ≡ Owned m′ i + OwnR r′ i)
-held-alwaysI st = let (ok , inv) = inv-stepsI st start-invI in (ok , i-exact inv)
+held-alwaysI st = let (ok , inv) = inv-stepsI st start-invI in (ok , i-exact (i-h inv))

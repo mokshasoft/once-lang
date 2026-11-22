@@ -48,7 +48,7 @@ open import Once.LinCore.Code fmt bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots
 open import Once.LinCore.Image fmt bw
 open import Once.LinCore.ImageRun fmt ans bw using (Ret; []ʳ; frm; _∷ⁱ_)
 open import Once.LinCore.Keys fmt bw
-open import Once.LinCore.Layout fmt bw using (Frame; frame; frameOf; budget; wsz; ws; module Frame)
+open import Once.LinCore.Layout fmt bw using (Frame; frame; frameOf; budget; ws; module Frame)
 open Frame using (EP; OP)
 open import Once.LinCore.Lower fmt bw
 open import Once.LinCore.Words fmt ans bw
@@ -113,7 +113,7 @@ module StartR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   -- state the arch layer's entry facts are about (plan 0.146 B1.6)
   start-fs : FlatState
   start-fs = FlatMachine.mkFlat {FS} (mkLocState entry-regs (λ _ _ → nothing) (λ _ → nothing) false [] false false)
-                                (mkAllocState entry-frame [] 0 0 1 (λ _ → 0)) 0
+                                (mkAllocState entry-frame [] 0 0 1 (λ _ → 0) (λ _ → false)) 0
 
   -- ★ one step (`c-start`) to main's first point, related
   start-related : Σ FlatState λ fs₁ → FlatSteps image 1 start-fs fs₁ × Related main []ʳ (vw mone []ᵉ ∥ mone ∷ˢ []ˢ) 1 fs₁
@@ -123,7 +123,8 @@ module StartR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     record { g-pt = p-start (at whole)
            ; g-here = record { h-pc = sym (trans (S′.pos-def whole) refl) ; h-run = refl
                              ; h-cfg = record { c-env = (([] , Rel.vone , tt) , tt) ; c-stk = (([] , Rel.vone , tt) , tt) ; c-efit = Data.Nat.z≤n ; c-sfit = Data.Nat.z≤n } ; h-slots = refl }
-           ; g-next = refl ; g-ret = ok-top refl refl ; g-blk = λ hl () } ,
+           ; g-next = refl ; g-ret = ok-top refl refl ; g-blk = λ hl ()
+           ; g-live = λ i () ; g-fal = λ _ _ → refl } ,
     refl
     where
       fs₁ = FlatMachine.flat-exec-instr {FS} (instr-ctrl (c-start (fbudget (frameOf main)))) image start-fs

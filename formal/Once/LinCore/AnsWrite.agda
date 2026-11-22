@@ -43,9 +43,8 @@ module Once.LinCore.AnsWrite
 open import Once.LinCore.Core fmt
 open import Once.LinCore.Flat using (Base; int; float; ⟦_⟧b)
 open import Once.LinCore.NbEPLinCore fmt ans
-open import Once.LinCore.Values fmt bw using (MV; mvF)
+open import Once.LinCore.Values fmt bw using (MV; mvF; wsz)
 open import Once.LinCore.Keys fmt bw using (Univ)
-open import Once.LinCore.Layout fmt bw using (wsz)
 open import Once.LinCore.Words fmt ans bw using (module Rel)
 open import Once.LinCore.Lower fmt bw using (flatB)
 open import Once.LinCore.ArgDecode fmt ans bw using (tsize-wsz)

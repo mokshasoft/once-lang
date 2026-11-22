@@ -25,18 +25,18 @@ module Once.CCC.Machine.SMCore where
 open import Relation.Binary.Definitions using (DecidableEquality)
 open import Once.Spec.Type using (Base; b-Float; b-Int; b-Unit; b-*; b-+; ∅ₖ)
 
-open import Data.Nat using (ℕ; zero; suc; _+_; _<_; _>_; _≥_; _<ᵇ_)
+open import Data.Nat using (ℕ; zero; suc; _+_; _<_; _>_; _≥_; _<ᵇ_; _≡ᵇ_)
 open import Data.Nat.Properties using (_≟_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Bool using (Bool; true; false; if_then_else_; _∨_; _∧_; not)
 open import Data.Unit using (⊤; tt)
-open import Data.Empty using (⊥)
+open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.List using (List; []; _∷_; _++_)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; cong; sym; trans)
 open import Data.List.Properties using (++-assoc)
-open import Relation.Nullary using (Dec; yes; no)
+open import Relation.Nullary using (Dec; yes; no; ¬_)
 
 -- Import FrameSemantics for Frame type
 open import Once.CCC.FrameSemantics using (FrameSemantics; fs-numerics; fs-ffi; module FrameSemantics)
@@ -502,6 +502,11 @@ record AllocState {FS : FrameSemantics} : Set where
     -- Set by `instr-alloc-heap`; read only by proofs (the extracted pipeline never
     -- inspects `AllocState`).
     block-size : ℕ → ℕ
+    -- D468: THE FREED BLOCKS. A free marks its block dead (and clears its cells);
+    -- its size stays, so a stale pointer to it is still in bounds (`PtrB`) and its
+    -- address still encodes. Read by the free gate (no double free, `Flat.free-ok`)
+    -- and by the correspondence (an address is reused only by a live block).
+    freed : ℕ → Bool
   -- Note: frame-capacity removed in Phase 3 of core invariants refactoring.
   -- Capacity bounds are now enforced per-closure via scratch-bounded invariant.
 
@@ -608,6 +613,15 @@ module MemOps {FS : FrameSemantics} where
 
   writeHeapMem : HeapMem FS → HeapLocation → StoredValue FS → HeapMem FS
   writeHeapMem mem hl v hl' = writeHeapMem-aux (hl ≟HL hl') (mem hl') v
+
+  -- | A freed block (D468): none of its cells holds anything any more, so its
+  -- address can serve a later block while the run's ids stay fresh (D428).
+  clearBlock-aux : ∀ {r r′ : ℕ} → Dec (r′ ≡ r) → Maybe (StoredValue FS) → Maybe (StoredValue FS)
+  clearBlock-aux (yes _) _   = nothing
+  clearBlock-aux (no _)  old = old
+
+  clearBlock : HeapMem FS → ℕ → HeapMem FS
+  clearBlock mem r hl = clearBlock-aux (HeapRef.ref-id (HeapLocation.heap-ref hl) ≟ r) (mem hl)
 
   -- | Write a value (StoredValue) to stack memory at a slot.
   -- Plan 0.13.2.
@@ -2127,6 +2141,87 @@ module AbstractExec {FS : FrameSemantics} where
   -- `refl`-shaped and needs no rounding theorem.
   lit-value fits-float d = round (FrameSemantics.float-format FS) d
 
+  -- | A free (D468): the block a heap pointer points at, its cells cleared and the
+  -- block marked freed; anything else is left alone (the flat machine's gate faults it).
+  -- (the case is inside the two fields it changes, so every other field of the
+  -- state is the old one by `refl`)
+  -- the block a value points at, if it is a heap pointer
+  heapRefOf : StoredValue FS → Maybe ℕ
+  heapRefOf (SV-Ptr (AtDynamic hl)) = just (HeapRef.ref-id (HeapLocation.heap-ref hl))
+  {-# CATCHALL #-}
+  heapRefOf _ = nothing
+
+  freeAtMem : Maybe ℕ → HeapMem FS → HeapMem FS
+  freeAtMem (just r) mem = clearBlock mem r
+  freeAtMem nothing  mem = mem
+
+  freeAtMark : Maybe ℕ → (ℕ → Bool) → ℕ → Bool
+  freeAtMark (just r) fr r′ = (r′ ≡ᵇ r) ∨ fr r′
+  freeAtMark nothing  fr r′ = fr r′
+
+  freeMem : StoredValue FS → HeapMem FS → HeapMem FS
+  freeMem v mem = freeAtMem (heapRefOf v) mem
+
+  freeMark : StoredValue FS → (ℕ → Bool) → ℕ → Bool
+  freeMark v fr = freeAtMark (heapRefOf v) fr
+
+  -- what holds of an empty cell and of the old one holds of a cell after a free
+  freeMem-keeps : ∀ (P : Maybe (StoredValue FS) → Set) v mem hl → P nothing → P (mem hl) → P (freeMem v mem hl)
+  freeMem-keeps P v mem hl pn pm = at (heapRefOf v)
+    where
+      clear : ∀ {r r′ : ℕ} (d : Dec (r′ ≡ r)) → P (clearBlock-aux d (mem hl))
+      clear (yes _) = pn
+      clear (no _)  = pm
+      at : ∀ m → P (freeAtMem m mem hl)
+      at (just r) = clear (HeapRef.ref-id (HeapLocation.heap-ref hl) ≟ r)
+      at nothing  = pm
+
+  -- …so a cell that holds a word after a free held it before
+  freeMem-just : ∀ v mem hl {w} → freeMem v mem hl ≡ just w → mem hl ≡ just w
+  freeMem-just v mem hl {w} = freeMem-keeps (λ m → m ≡ just w → mem hl ≡ just w) v mem hl (λ ()) (λ e → e)
+
+  private
+    clear-no : ∀ {r r′ : ℕ} (d : Dec (r′ ≡ r)) (old : Maybe (StoredValue FS)) → ¬ (r′ ≡ r) → clearBlock-aux d old ≡ old
+    clear-no (yes e) _ ne = ⊥-elim (ne e)
+    clear-no (no _)  _ _  = refl
+
+    ≡ᵇ-false : ∀ (a b : ℕ) → (a ≡ᵇ b) ≡ false → ¬ (a ≡ b)
+    ≡ᵇ-false zero    zero    () _
+    ≡ᵇ-false (suc a) (suc b) e  refl = ≡ᵇ-false a b e refl
+
+    ∨-false : ∀ (a b : Bool) → (a ∨ b) ≡ false → a ≡ false
+    ∨-false false _ _ = refl
+
+  -- a free of block `r` leaves the cells of every other block alone
+  freeMem-miss : ∀ mem (hl : HeapLocation) r hl′ → ¬ (HeapRef.ref-id (HeapLocation.heap-ref hl′) ≡ r)
+               → HeapRef.ref-id (HeapLocation.heap-ref hl) ≡ r
+               → freeMem (SV-Ptr (AtDynamic hl)) mem hl′ ≡ mem hl′
+  freeMem-miss mem hl r hl′ ne refl = clear-no (HeapRef.ref-id (HeapLocation.heap-ref hl′) ≟ r) (mem hl′) ne
+
+  -- …and a cell whose block the free did not mark is as it was
+  freeMem-unmarked : ∀ v mem (fr : ℕ → Bool) (hl : HeapLocation)
+                   → freeMark v fr (HeapRef.ref-id (HeapLocation.heap-ref hl)) ≡ false → freeMem v mem hl ≡ mem hl
+  freeMem-unmarked v mem fr hl f = at (heapRefOf v) f
+    where
+      at : ∀ m → freeAtMark m fr (HeapRef.ref-id (HeapLocation.heap-ref hl)) ≡ false → freeAtMem m mem hl ≡ mem hl
+      at (just r) e = clear-no (HeapRef.ref-id (HeapLocation.heap-ref hl) ≟ r) (mem hl)
+                        (≡ᵇ-false (HeapRef.ref-id (HeapLocation.heap-ref hl)) r (∨-false _ _ e))
+      at nothing  _ = refl
+
+  -- a free marks only more blocks freed
+  freeMark-mono : ∀ v (fr : ℕ → Bool) r → fr r ≡ true → freeMark v fr r ≡ true
+  freeMark-mono v fr r e = at (heapRefOf v)
+    where
+      ∨-true : ∀ (a b : Bool) → b ≡ true → (a ∨ b) ≡ true
+      ∨-true true  _ _ = refl
+      ∨-true false _ e = e
+      at : ∀ m → freeAtMark m fr r ≡ true
+      at (just r′) = ∨-true (r ≡ᵇ r′) (fr r) e
+      at nothing   = e
+
+  freeBlock : StoredValue FS → LocState FS → AllocState {FS} → LocState FS × AllocState {FS}
+  freeBlock v s alloc = record s { heapMem = freeMem v (heapMem s) } , record alloc { freed = freeMark v (freed alloc) }
+
   -- | Execute one abstract instruction, and a trace. (Plan 0.13.1 made
   -- them mutually recursive for the nested case-on-tag/loop; plan 0.135
   -- retired both, so `exec-abstract` no longer calls `exec-trace`.)
@@ -2205,10 +2300,12 @@ module AbstractExec {FS : FrameSemantics} where
   -- do now that the runtime mirror is gone.
   exec-abstract (instr-dealloc-stack n) s alloc = s , alloc
 
-  -- instr-free-heap: memory-non-destructive (plan 0.123 M2). The bump
-  -- allocator never reuses a block, so a free changes no state; what it
-  -- frees is read off the run by the no-leak claim (`Once.Implementation.NoLeak`).
-  exec-abstract (instr-free-heap n) s alloc = s , alloc
+  -- instr-free-heap (D468): the block `Input1` points at is freed — its cells
+  -- hold nothing and it is marked freed, so its address can serve a later block (the
+  -- run's ids stay fresh, D428). What it frees is read off the run by the no-leak
+  -- claim (`Once.Implementation.NoLeak`). (The flat machine's gate faults a free
+  -- of anything but a live block's base: `Flat.free-ok`.)
+  exec-abstract (instr-free-heap n) s alloc = freeBlock (readReg (regs s) Input1) s alloc
 
   -- instr-room: a no-op on the unbounded abstract memory (plan 0.123 A.4).
   exec-abstract (instr-room k) s alloc = s , alloc

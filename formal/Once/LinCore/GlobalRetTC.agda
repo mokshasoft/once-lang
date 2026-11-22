@@ -40,12 +40,12 @@ open import Once.LinCore.Core fmt using (_⊗t_; Defs; FS; Gd; LF∙; LTm; Nu; O
 open import Once.LinCore.Flat using (Base; ⟦_⟧b; Lit)
 open import Once.IR.Semantics.Trace using (T)
 open import Once.LinCore.Events fmt ans bw using (ds; p-halt; Γ)
-open import Once.LinCore.Values fmt bw using (MV; Trace; module MV)
+open import Once.LinCore.Values fmt bw using (MV; Trace; module MV; wsz)
 open import Once.LinCore.Code fmt bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots; []ᵉ; vw; see; Cfg; _∥_)
 open import Once.LinCore.Image fmt bw using (Codeᴵ; Insᴵ; Key; blockᴵ; case; end; ktr1; ktrf; ktro; module Codeᴵ; module Insᴵ; module Key)
 open import Once.LinCore.ImageRun fmt ans bw using (Ret; []ʳ; frm; _∷ⁱ_)
 open import Once.LinCore.Keys fmt bw using (allK; os; module Program)
-open import Once.LinCore.Layout fmt bw using (Frame; frame; frameOf; budget; wsz; ws; envW; opW; module Frame)
+open import Once.LinCore.Layout fmt bw using (Frame; frame; frameOf; budget; ws; envW; opW; module Frame)
 open Frame using (EP; OP)
 open import Once.LinCore.Lower fmt bw using (idx; module Lowering; module Program′)
 open import Once.LinCore.Words fmt ans bw using (module Rel)
@@ -143,27 +143,29 @@ module RetTC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     module _ where
       rc-tramp : ∀ {Γ′ g X A B} {ds′ : Defs Γ′} {b : Tm Γ′ One (X ⊗t A) B} {γ : Gd g b}
                 (p₂ : under (ktr1 ds′ b γ) ∈ allK U) → GretC (s-tramp p₂)
-      rc-tramp p₂ {es = []ᵉ} {os = []ˢ} {fs = fs} (p-block p (at e)) _ cfc sl sv′ rets′ refl eF eC H eRets eSv eSl abv area ev sk fr rest nx I =
+      rc-tramp p₂ {r = r} {es = []ᵉ} {os = []ˢ} {b = b} {fs = fs} (p-block p (at e)) _ cfc sl sv′ rets′ refl eF eC H eRets eSv eSl abv area ev sk fr rest nx I lv Fa =
         case tr-back′ p e cfc (sitePos (s-tramp p₂)) rets′ sv′ sl eF H eRets eSv (λ e″ → ≺-≢ abv (sym e″)) (area0 fs area (Data.Nat.Properties.n∸n≡0 (Tp (siteφ (s-tramp p₂)) [])))
                (subst (λ z → _ ≤ z) (sym eSl) (Data.Nat.Properties.m≤n⇒m≤1+n (Data.Nat.Properties.n≤1+n _))) of λ where
           (N , fs′ , run , H′ , CO , tk) →
             N , fs′ , run , record { g-pt = p-tramp p₂ (at (next (next whole))) ; g-here = (tp2 p₂ , subst (λ z → HereF (frame 0 _) z _ _ fs′) eSl H′)
-                                   ; g-next = trans (co-next CO) nx ; g-ret = back CO tk fr rest ; g-blk = co-inb CO I } , co-log CO
-      rc-tramp p₂ (p-start (at e)) _ cfc sl sv′ rets′ () eF eC H eRets eSv eSl abv area ev sk fr rest nx I
-      rc-tramp p₂ (p-tramp _ _) _ cfc sl sv′ rets′ () eF eC H eRets eSv eSl abv area ev sk fr rest nx I
+                                   ; g-next = trans (co-next CO) nx ; g-ret = back CO tk fr rest ; g-blk = co-inb CO I
+                                   ; g-live = proj₁ (live-out r ([]ᵉ ∥ b ∷ˢ []ˢ) CO lv Fa) ; g-fal = proj₂ (live-out r ([]ᵉ ∥ b ∷ˢ []ˢ) CO lv Fa) } , co-log CO
+      rc-tramp p₂ (p-start (at e)) _ cfc sl sv′ rets′ () eF eC H eRets eSv eSl abv area ev sk fr rest nx I lv Fa
+      rc-tramp p₂ (p-tramp _ _) _ cfc sl sv′ rets′ () eF eC H eRets eSv eSl abv area ev sk fr rest nx I lv Fa
 
       rc-trampo : ∀ {Γ′} {ds′ : Defs Γ′} {F S′} (p₂ : under (ktro ds′ F S′) ∈ allK U) → GretC (s-trampo p₂)
-      rc-trampo p₂ {es = []ᵉ} {os = []ˢ} {fs = fs} (p-block p (at e)) _ cfc sl sv′ rets′ refl eF eC H eRets eSv eSl abv area ev sk fr rest nx I =
+      rc-trampo p₂ {r = r} {es = []ᵉ} {os = []ˢ} {b = b} {fs = fs} (p-block p (at e)) _ cfc sl sv′ rets′ refl eF eC H eRets eSv eSl abv area ev sk fr rest nx I lv Fa =
         case tr-back′ p e cfc (sitePos (s-trampo p₂)) rets′ sv′ sl eF H eRets eSv (λ e″ → ≺-≢ abv (sym e″)) (area0 fs area (Data.Nat.Properties.n∸n≡0 (Tp (siteφ (s-trampo p₂)) [])))
                (subst (λ z → _ ≤ z) (sym eSl) (Data.Nat.Properties.m≤n⇒m≤1+n (Data.Nat.Properties.n≤1+n _))) of λ where
           (N , fs′ , run , H′ , CO , tk) →
             N , fs′ , run , record { g-pt = p-tramp p₂ (at (next (next whole))) ; g-here = (to2 p₂ , subst (λ z → HereF (frame 0 _) z _ _ fs′) eSl H′)
-                                   ; g-next = trans (co-next CO) nx ; g-ret = back CO tk fr rest ; g-blk = co-inb CO I } , co-log CO
-      rc-trampo p₂ (p-start (at e)) _ cfc sl sv′ rets′ () eF eC H eRets eSv eSl abv area ev sk fr rest nx I
-      rc-trampo p₂ (p-tramp _ _) _ cfc sl sv′ rets′ () eF eC H eRets eSv eSl abv area ev sk fr rest nx I
+                                   ; g-next = trans (co-next CO) nx ; g-ret = back CO tk fr rest ; g-blk = co-inb CO I
+                                   ; g-live = proj₁ (live-out r ([]ᵉ ∥ b ∷ˢ []ˢ) CO lv Fa) ; g-fal = proj₂ (live-out r ([]ᵉ ∥ b ∷ˢ []ˢ) CO lv Fa) } , co-log CO
+      rc-trampo p₂ (p-start (at e)) _ cfc sl sv′ rets′ () eF eC H eRets eSv eSl abv area ev sk fr rest nx I lv Fa
+      rc-trampo p₂ (p-tramp _ _) _ cfc sl sv′ rets′ () eF eC H eRets eSv eSl abv area ev sk fr rest nx I lv Fa
 
       rc-trampf : ∀ {X C} (p₂ : under (ktrf X C) ∈ allK U) → GretC (s-trampf {X = X} {C} p₂)
-      rc-trampf {X} {C} p₂ {es = []ᵉ} {os = []ˢ} {b = b} {fs = fs} (p-block p (at e)) _ cfc sl sv′ rets′ refl eF eC H eRets eSv eSl abv area ev sk fr rest nx I =
+      rc-trampf {X} {C} p₂ {r = r} {es = []ᵉ} {os = []ˢ} {b = b} {fs = fs} (p-block p (at e)) _ cfc sl sv′ rets′ refl eF eC H eRets eSv eSl abv area ev sk fr rest nx I lv Fa =
         case tr-back′ p e cfc (sitePos (s-trampf {X = X} {C} p₂)) rets′ sv′ sl eF H eRets eSv (λ e″ → ≺-≢ abv (sym e″))
                (area0 fs area (trans (cong (wsz X ∸_) (Data.Nat.Properties.⊔-identityʳ (wsz X))) (Data.Nat.Properties.n∸n≡0 (wsz X))))
                (subst (λ z → _ ≤ z) (sym eSl) (Data.Nat.Properties.≤-trans (Data.Nat.Properties.≤-reflexive (Data.Nat.Properties.⊔-identityʳ (wsz X))) (Data.Nat.Properties.n≤1+n (wsz X)))) of λ where
@@ -173,6 +175,7 @@ module RetTC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                                               , subst (λ M → HereF (frame 0 M) (suc (wsz X)) (sitePos (s-trampf {X = X} {C} p₂)) ([]ᵉ ∥ b ∷ˢ []ˢ) fs′)
                                                       (Data.Nat.Properties.⊔-identityʳ (wsz X))
                                                       (subst (λ z → HereF (frame 0 (wsz X ⊔ 0)) z (sitePos (s-trampf {X = X} {C} p₂)) ([]ᵉ ∥ b ∷ˢ []ˢ) fs′) eSl H′))
-                                   ; g-next = trans (co-next CO) nx ; g-ret = back CO (λ x le → tk x (subst (_≤ x) (sym (Data.Nat.Properties.⊔-identityʳ (wsz X))) le)) fr rest ; g-blk = co-inb CO I } , co-log CO
-      rc-trampf p₂ (p-start (at e)) _ cfc sl sv′ rets′ () eF eC H eRets eSv eSl abv area ev sk fr rest nx I
-      rc-trampf p₂ (p-tramp _ _) _ cfc sl sv′ rets′ () eF eC H eRets eSv eSl abv area ev sk fr rest nx I
+                                   ; g-next = trans (co-next CO) nx ; g-ret = back CO (λ x le → tk x (subst (_≤ x) (sym (Data.Nat.Properties.⊔-identityʳ (wsz X))) le)) fr rest ; g-blk = co-inb CO I
+                                   ; g-live = proj₁ (live-out r ([]ᵉ ∥ b ∷ˢ []ˢ) CO lv Fa) ; g-fal = proj₂ (live-out r ([]ᵉ ∥ b ∷ˢ []ˢ) CO lv Fa) } , co-log CO
+      rc-trampf p₂ (p-start (at e)) _ cfc sl sv′ rets′ () eF eC H eRets eSv eSl abv area ev sk fr rest nx I lv Fa
+      rc-trampf p₂ (p-tramp _ _) _ cfc sl sv′ rets′ () eF eC H eRets eSv eSl abv area ev sk fr rest nx I lv Fa

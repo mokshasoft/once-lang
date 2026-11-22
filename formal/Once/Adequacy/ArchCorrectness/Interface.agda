@@ -67,7 +67,7 @@ import Once.Adequacy.ArchCorrectness.FlatCore.RunContext
 start-at : ∀ (FS : FrameSemantics) → FrameSemantics.Frame FS → Registers FS → FlatMachine.FlatState {FS}
 start-at FS entry-frame entry-regs =
   FlatMachine.mkFlat {FS} (mkLocState entry-regs (λ _ _ → nothing) (λ _ → nothing) false [] false false)
-                          (mkAllocState entry-frame [] 0 0 1 (λ _ → 0)) 0
+                          (mkAllocState entry-frame [] 0 0 1 (λ _ → 0) (λ _ → false)) 0
 
 -- a program's meaning at a budget, from the empty log
 obs-at : ∀ (FS : FrameSemantics) → IRProgram → ℕ → TM.Run (Ap ⊤)

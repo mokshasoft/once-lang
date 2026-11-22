@@ -47,7 +47,7 @@ open import Once.LinCore.Code fmt bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots
 open import Once.LinCore.Image fmt bw
 open import Once.LinCore.ImageRun fmt ans bw using (Ret; []ʳ; frm; _∷ⁱ_)
 open import Once.LinCore.Keys fmt bw
-open import Once.LinCore.Layout fmt bw using (Frame; frame; frameOf; budget; wsz; ws; module Frame)
+open import Once.LinCore.Layout fmt bw using (Frame; frame; frameOf; budget; ws; module Frame)
 open Frame using (EP; OP)
 open import Once.LinCore.Lower fmt bw
 open import Once.LinCore.Words fmt ans bw
@@ -62,6 +62,7 @@ open import Once.LinCore.KeysRun fmt ans bw using (module ProgramRun)
 open import Once.LinCore.TrampAt fmt ans bw using (under; module TrImg; module Tr)
 
 open import Once.LinCore.Global fmt ans bw using (module Relate)
+open import Once.LinCore.LiveRun fmt ans bw using (LiveG; FreshAl)
 open import Once.LinCore.GlobalTramp fmt ans bw using (module TrampR)
 open import Once.LinCore.GlobalTrampO fmt ans bw using (module TrampO)
 open import Once.LinCore.GlobalTrampW fmt ans bw using (module TrampW)
@@ -105,7 +106,7 @@ module CallW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open FlatStepsAPI {FS} using (FlatSteps)
   open import Once.LinCore.Moves {FS} using (Keep; module Keep)
   open Keep using (k-frame; k-saved; k-ret; k-other)
-  open Cells {FS} U wordOf using (fresh-cfg; fresh-ret)
+  open Cells {FS} U wordOf using (fresh-cfg; fresh-ret; away-[])
   open Img {FS} ds f ldConst ld-nl using (image-label)
   open Frames {FS} using (Called)
   open Called
@@ -155,9 +156,9 @@ module CallW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
          → AllocState.next-heap-ref (falloc fs) ≡ n
          → RetOK (rtramp {κ = ktrω ds′ b γ} p) (trFin (idx p) (ktrω ds′ b γ)) r
                  (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
-         → InBlk fs
+         → InBlk fs → LiveG r (es ∥ a ∷ˢ os) fs → FreshAl (falloc fs)
          → Arrives (blockᴵ (kbodyω ds′ b γ)) (frm {t = just X} {Es = Fn many g A B ∷ []} (epop ⨾ end) es os r) (topv (just X) es ∥ a ∷ˢ []ˢ) n fs
-  gcallω {ds′ = ds′} {b} {γ} {r = r} {es = vw x (vw (mfn i lam _) []ᵉ)} {os = []ˢ} {fs = fs} p inv T1 nx ok I =
+  gcallω {ds′ = ds′} {b} {γ} {r = r} {es = es@(vw x (vw (mfn i lam _) []ᵉ))} {a = a} {os = []ˢ} {n = n} {fs = fs} p inv T1 nx ok I lv F =
     case tw-call p T1 of λ where
       (N , fs′ , run , H′ , CD) →
         N , fs′ , run ,
@@ -169,9 +170,12 @@ module CallW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                            (trans (dh-area CD) (sym (trans (dh-others CD cur 0 (callee-≢ cur bb)) (TrW1.w1-s0 T1))))
                            (ret-deep (AllocState.current-frame (falloc fs′)) (under-cur CD)
                               (λ f′ y ne → dh-others CD f′ y (λ e → ne (trans (sym e) (sym (dh-frame CD))))) (dh-old CD)
-                              (subst (FreshR r) (sym nx) (fresh-ret inv)) ok)
-               ; g-blk = dh-inb CD I } , dh-log CD
+                              (subst (FreshR r) (sym nx) (fresh-ret inv)) (away-[] r) ok)
+               ; g-blk = dh-inb CD I
+               ; g-live = proj₁ (live-moved {fs = fs} {fs′ = fs′} st₁ (λ _ → no-alloc-tmp) inv nx lv F (dh-freed CD) (dh-bsize CD) (dh-next CD))
+               ; g-fal = proj₂ (live-moved {fs = fs} {fs′ = fs′} st₁ (λ _ → no-alloc-tmp) inv nx lv F (dh-freed CD) (dh-bsize CD) (dh-next CD)) } , dh-log CD
     where
+      st₁ = StepI.i-call {κ = kbodyω ds′ b γ} {k = epop ⨾ end} {r = r} {es = es} {a = a} {os = []ˢ} {n = n}
       cur = AllocState.current-frame (falloc fs)
       bb = fbudget (frameOf (blockᴵ (kbodyω ds′ b γ)))
       under-cur : ∀ {fs′ r′ sv ap} → CalledH fs fs′ r′ bb sv ap → AllocState.current-frame (falloc fs′) ≺ cur

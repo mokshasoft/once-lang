@@ -619,7 +619,12 @@ mutual
   -- `stackSlot` mirror is gone), so these are the identity on the store.
   wf-abstract (instr-alloc-stack n) ls alloc wf = wf , ≤-refl
   wf-abstract (instr-dealloc-stack n) ls alloc wf = wf , ≤-refl
-  wf-abstract (instr-free-heap n) ls alloc wf = wf , ≤-refl
+  -- D468: a free clears its block's cells — an empty cell points nowhere and is fresh
+  wf-abstract (instr-free-heap n) ls alloc wf =
+    record { wf-regs  = wf-regs wf
+           ; wf-heap  = λ hl → freeMem-keeps (svm-below (next-heap-ref alloc)) (readReg (regs ls) Input1) (heapMem ls) hl tt (wf-heap wf hl)
+           ; wf-stack = wf-stack wf
+           ; wf-fresh = λ hl le → freeMem-keeps (λ m → m ≡ nothing) (readReg (regs ls) Input1) (heapMem ls) hl refl (wf-fresh wf hl le) } , ≤-refl
   wf-abstract (instr-room n) ls alloc wf = wf , ≤-refl
   wf-abstract (load-at k) ls alloc wf =
     wf-load-at-resolved k Output (frame-gate alloc k (sv-as-loc (readReg (regs ls) Input1))) wf
@@ -873,7 +878,7 @@ cl-step (instr-load-code-addr k) prog fs wf b = sv-mono (fclosure fs) (proj₂ (
 cl-step (instr-load-tag-lit k)   prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (instr-load-tag-lit k) (floc fs) (falloc fs) wf)) b
 cl-step (instr-alloc-heap k)     prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (instr-alloc-heap k) (floc fs) (falloc fs) wf)) b
 cl-step (instr-reg-op out-nz)    prog fs wf b = cl-nz (readReg (regs (floc fs)) Output) fs wf b
-cl-step (instr-free-heap n)      prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (instr-free-heap n) (floc fs) (falloc fs) wf)) b
+cl-step (instr-free-heap n)      prog fs wf b = cl-slot (instr-free-heap n) fs wf b
 cl-step (instr-room n)           prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (instr-room n) (floc fs) (falloc fs) wf)) b
 cl-step (load-at n)           prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (load-at n) (floc fs) (falloc fs) wf)) b
 cl-step (store-at n)           prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (store-at n) (floc fs) (falloc fs) wf)) b
@@ -932,7 +937,7 @@ flat-wf-step instr-save-closure-reg   prog fs wf = proj₁ (wf-abstract instr-sa
 flat-wf-step (instr-load-tag-lit k)   prog fs wf = proj₁ (wf-abstract (instr-load-tag-lit k) (floc fs) (falloc fs) wf)
 flat-wf-step (instr-alloc-heap k)     prog fs wf = proj₁ (wf-abstract (instr-alloc-heap k) (floc fs) (falloc fs) wf)
 flat-wf-step (instr-reg-op out-nz)    prog fs wf = wf-nz (readReg (regs (floc fs)) Output) fs wf
-flat-wf-step (instr-free-heap n)      prog fs wf = proj₁ (wf-abstract (instr-free-heap n) (floc fs) (falloc fs) wf)
+flat-wf-step (instr-free-heap n)      prog fs wf = wf-slot (instr-free-heap n) fs wf
 flat-wf-step (instr-room n)           prog fs wf = proj₁ (wf-abstract (instr-room n) (floc fs) (falloc fs) wf)
 flat-wf-step (load-at n)           prog fs wf = proj₁ (wf-abstract (load-at n) (floc fs) (falloc fs) wf)
 flat-wf-step (store-at n)           prog fs wf = proj₁ (wf-abstract (store-at n) (floc fs) (falloc fs) wf)

@@ -40,13 +40,15 @@ module Once.LinCore.GlobalDispatch
 open import Once.LinCore.Core fmt using (_⊗t_; Coalg; Defs; FS; Fn; Gd; LF∙; LTm; Nu; One; Tm; once; ε; module Defs; module Tm)
 open import Once.LinCore.Flat using (Base; ⟦_⟧b; Lit)
 open import Once.IR.Semantics.Trace using (T)
-open import Once.LinCore.Events fmt ans bw using (ds; p-halt; Γ)
-open import Once.LinCore.Values fmt bw using (Lam; MV; Trace; c1; mfn; mnu; mpair; serial; module Lam; module MV)
+open import Once.LinCore.Events fmt ans bw using (ds; p-halt; Γ; cnt; δ; δ-same)
+open import Once.LinCore.Values fmt bw using (Lam; MV; Trace; c1; mfn; mnu; mpair; serial; module Lam; module MV; wsz; Id; hdr; free; alloc)
+open import Data.Nat.Tactic.RingSolver using (solve-∀)
+open import Data.List.Relation.Unary.Any using (here; there)
 open import Once.LinCore.Code fmt bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots; []ᵉ; vw; see; Cfg; _∥_)
 open import Once.LinCore.Image fmt bw using (_⨾_; Codeᴵ; Insᴵ; Key; blockᴵ; case; icall; iobs; ktr1; ktro; nopen; open1; tr1; module Codeᴵ; module Insᴵ; module Key)
 open import Once.LinCore.ImageRun fmt ans bw using (Ret; []ʳ; frm; _∷ⁱ_)
 open import Once.LinCore.Keys fmt bw using (allK; os; module Program)
-open import Once.LinCore.Layout fmt bw using (Frame; frame; frameOf; budget; wsz; ws; module Frame)
+open import Once.LinCore.Layout fmt bw using (Frame; frame; frameOf; budget; ws; module Frame)
 open Frame using (EP; OP)
 open import Once.LinCore.Lower fmt bw using (idx; module Lowering; module Program′)
 open import Once.LinCore.Words fmt ans bw using (module Rel)
@@ -69,7 +71,7 @@ module DispR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
            (ldConst : ∀ {b} → Lit b → AbstractInstr)
            (ld-nl : ∀ {b} (v : Lit b) → NoLabels.mark {FS} (ldConst v) ≡ nothing)
            (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue FS) where
-  open Relate {FS} ds f ldConst ld-nl wordOf using (DSite; HereP; HereTr; Related; RetOK; TrM; TrPt; d-block; d-start; dsiteFin; dsitePos; dsiteRoot; dsiteφ; env-stand; ok-tramp; rblock; ret-deep; ret-step; rootOf; rstart; rtramp; stk-all; stk-stand; tm-1; tm-o; to0; to1; tp0; tp1; trM; trMc; module DSite; module FrK; module Related; module RetOK; module S; module TrM; module TrPt)
+  open Relate {FS} ds f ldConst ld-nl wordOf using (zero-one; live-moved; no-alloc-tmp; DSite; HereP; HereTr; Related; RetOK; TrM; TrPt; d-block; d-start; dsiteFin; dsitePos; dsiteRoot; dsiteφ; env-stand; ok-tramp; rblock; ret-deep; ret-step; rootOf; rstart; rtramp; stk-all; stk-stand; tm-1; tm-o; to0; to1; tp0; tp1; trM; trMc; module DSite; module FrK; module Related; module RetOK; module S; module TrM; module TrPt)
   open TrampR {FS} ds f ldConst ld-nl wordOf using (called-re; tr-dispatch; tr-open1)
   open TrampO {FS} ds f ldConst ld-nl wordOf using (to-dispatch; to-open)
   open TrV {FS} ds f ldConst ld-nl wordOf using (Is-tp0; it-tp0; Is-to0; it-to0; open1-v; nopen-v)
@@ -91,20 +93,22 @@ module DispR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open Sim {FS} U wordOf using (envW-heap; stkW-heap; envW-frame; slots-frame; cntE; cntS)
   open Rel {FS} U wordOf using (cellLoc)
   open import Once.LinCore.FreshI fmt ans bw using (module Cells)
-  open Cells {FS} U wordOf using (FreshR)
+  open Cells {FS} U wordOf using (FreshR; AwayR)
   open import Once.LinCore.Moves {FS} using (Old)
   open FrameSemantics FS using (≺-trans; ≺-irrefl)
   open import Once.LinCore.ImageRun fmt ans bw using (StepI)
   open import Once.LinCore.LocalStep fmt ans bw using (module Steps)
   open import Once.LinCore.StepKinds fmt ans bw using (Local; LocalC; StraightC; straight-local; CoveredC; covered-elim)
-  open import Once.LinCore.HeldI fmt ans bw using (InvI)
+  open import Once.LinCore.HeldI fmt ans bw using (InvI; InvH; module InvH; i-h; i-ws; OwnR)
+  open import Once.LinCore.LiveRun fmt ans bw using (LiveG; FreshAl; AlFx; ax; live-after; fresh-after)
+  open import Once.LinCore.Live fmt bw using (LiveB)
   open import Once.LinCore.LabelsI fmt ans bw using (module Img)
   open import Once.LinCore.LowAt fmt ans bw using (Inside)
   open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
   open FlatStepsAPI {FS} using (FlatSteps)
   open import Once.LinCore.Moves {FS} using (Keep; module Keep)
   open Keep using (k-frame; k-saved; k-ret; k-other; k-log)
-  open Cells {FS} U wordOf using (fresh-cfg; fresh-ret)
+  open Cells {FS} U wordOf using (fresh-cfg; fresh-ret; away-[]; away-of; apart-core)
   open Img {FS} ds f ldConst ld-nl using (image-label)
   open Frames {FS} using (Called)
   open Called
@@ -156,13 +160,13 @@ module DispR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
            → AllocState.frame-slots (falloc fs) ≡ fbudget (dsiteφ d)
            → RetOK (rtramp {κ = κ} p) (trFin (idx p) κ) (frm {t = nothing} {Es = Es} k es os r)
                    (AllocState.current-frame (falloc fs′)) (fret fs′) (AllocState.saved-frames (falloc fs′)) fs′
-  mk-tramp {κ = κ} {es = es} {os = os} {fs = fs} {fs′} p o d CD fit C fr frR ok esl =
+  mk-tramp {κ = κ} {es = es} {os = os} {r = r} {fs = fs} {fs′} p o d CD fit C fr frR ok esl =
     ok-tramp p o d cfc (AllocState.frame-slots (falloc fs)) (AllocState.saved-frames (falloc fs)) (fret fs)
       refl refl (cd-ret CD) (cd-saved CD) esl under-cfc (cd-area CD) fit
-      (env-stand (λ j le → proj₁ (fr j le)) (cd-old CD) (envW-frame es (λ y _ → kept y) (CfgW.c-env C)))
-      (stk-stand (λ j le → nat-r0 (proj₂ (fr j le))) (cd-old CD) (stk-all os kept (proj₂ (CfgW.c-stk C))))
+      (env-stand (λ j le → proj₁ (fr j le)) (λ _ ()) (cd-old CD) (envW-frame es (λ y _ → kept y) (CfgW.c-env C)))
+      (stk-stand (λ j le → nat-r0 (proj₂ (fr j le))) (λ _ ()) (cd-old CD) (stk-all os kept (proj₂ (CfgW.c-stk C))))
       (ret-deep (AllocState.current-frame (falloc fs′)) under-cfc
-         (λ f′ y ne → cd-others CD f′ y (λ e → ne (trans (sym e) (sym (cd-frame CD))))) (cd-old CD) frR ok)
+         (λ f′ y ne → cd-others CD f′ y (λ e → ne (trans (sym e) (sym (cd-frame CD))))) (cd-old CD) frR (away-[] r) ok)
     where
       cfc = AllocState.current-frame (falloc fs)
       bb = suc (suc (trM κ))
@@ -179,17 +183,20 @@ module DispR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                → InvI (es ∥ mpair (mfn i (c1 ds′ b γ) x) a ∷ˢ os) r n h → S.Here s (es ∥ mpair (mfn i (c1 ds′ b γ) x) a ∷ˢ os) fs
                → AllocState.next-heap-ref (falloc fs) ≡ n
                → RetOK rstart (ptFin (p-start (at s))) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
-               → InBlk fs
+               → InBlk fs → LiveG r (es ∥ mpair (mfn i (c1 ds′ b γ) x) a ∷ˢ os) fs → FreshAl (falloc fs)
                → Arrives (blockᴵ (ktr1 ds′ b γ)) (frm {t = nothing} {Es = Es} k es os r) ([]ᵉ ∥ mpair (mfn i (c1 ds′ b γ) x) a ∷ˢ []ˢ) n fs
-  gicall-start {g = g} {A = A} {B} {S = S} {r = r} {fs = fs} s inv H nx ok I =
+  gicall-start {g = g} {A = A} {B} {ds′ = ds′} {b = b} {γ = γ} {S = S} {k = k} {r = r} {es = es} {i = i} {x = x} {a = a} {os = os} {n = n} {fs = fs} s inv H nx ok I lv F =
     case tr-dispatch (frameOf main) seg (S.Here.h-run H) (S.Here.h-cfg H) fitM
            (subst (budget (frameOf main) Data.Nat.<_) (sym (S.Here.h-slots H)) (Data.Nat.Properties.m<n⇒m<1+n (Data.Nat.Properties.n<1+n _))) of λ where
       (m , N , fs′ , run , T0 , CD) →
         N , fs′ , run , record { g-pt = p-tramp m (at whole) ; g-here = (tp0 m , T0) ; g-next = trans (cd-next CD) nx
                                ; g-ret = mk-tramp m tm-1 (d-start s) (called-re pos-eq refl CD) fitM (S.Here.h-cfg H)
                                            (λ j le → fresh-cfg inv j (subst (_≤ serial j) nx le))
-                                           (subst (FreshR r) (sym nx) (fresh-ret inv)) ok (S.Here.h-slots H) ; g-blk = cd-inb CD I } , cd-log CD
+                                           (subst (FreshR r) (sym nx) (fresh-ret inv)) ok (S.Here.h-slots H) ; g-blk = cd-inb CD I
+                               ; g-live = proj₁ (live-moved {fs = fs} {fs′ = fs′} st₁ (λ _ → no-alloc-tmp) inv nx lv F (cd-freed CD) (cd-bsize CD) (cd-next CD))
+                               ; g-fal = proj₂ (live-moved {fs = fs} {fs′ = fs′} st₁ (λ _ → no-alloc-tmp) inv nx lv F (cd-freed CD) (cd-bsize CD) (cd-next CD)) } , cd-log CD
     where
+      st₁ = StepI.i-icall {k = k} {r = r} {es = es} {i = i} {lam = c1 ds′ b γ} {x = x} {a = a} {os = os} {n = n}
       import Data.Nat.Properties
       φ = frameOf main
       seg : Seg image (fpc fs) (restore-input (Tp φ ((Fn once g A B ⊗t A) ∷ S)) ∷ lea-slot (Tp φ S ∸ (suc (wsz A) ⊔ wsz B))
@@ -211,17 +218,20 @@ module DispR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                → InvI (es ∥ mpair (mfn i (c1 ds′ b γ) x) a ∷ˢ os) r n h → K.Here p′ s (es ∥ mpair (mfn i (c1 ds′ b γ) x) a ∷ˢ os) fs
                → AllocState.next-heap-ref (falloc fs) ≡ n
                → RetOK (rblock p′) (ptFin (p-block p′ (at s))) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
-               → InBlk fs
+               → InBlk fs → LiveG r (es ∥ mpair (mfn i (c1 ds′ b γ) x) a ∷ˢ os) fs → FreshAl (falloc fs)
                → Arrives (blockᴵ (ktr1 ds′ b γ)) (frm {t = nothing} {Es = Es} k es os r) ([]ᵉ ∥ mpair (mfn i (c1 ds′ b γ) x) a ∷ˢ []ˢ) n fs
-  gicall-block {g = g} {A = A} {B} {S = S} {r = r} {fs = fs} {κ′ = κ′} p′ s inv H nx ok I =
+  gicall-block {g = g} {A = A} {B} {ds′ = ds′} {b = b} {γ = γ} {S = S} {k = k} {r = r} {es = es} {i = i} {x = x} {a = a} {os = os} {n = n} {fs = fs} {κ′ = κ′} p′ s inv H nx ok I lv F =
     case tr-dispatch (frameOf (blockᴵ κ′)) seg (K.Here.h-run {p = p′} H) (K.Here.h-cfg {p = p′} H) fitM
            (subst (budget (frameOf (blockᴵ κ′)) Data.Nat.<_) (sym (K.Here.h-slots {p = p′} H)) (Data.Nat.Properties.m<n⇒m<1+n (Data.Nat.Properties.n<1+n _))) of λ where
       (m , N , fs′ , run , T0 , CD) →
         N , fs′ , run , record { g-pt = p-tramp m (at whole) ; g-here = (tp0 m , T0) ; g-next = trans (cd-next CD) nx
                                ; g-ret = mk-tramp m tm-1 (d-block p′ s) (called-re pos-eq refl CD) fitM (K.Here.h-cfg {p = p′} H)
                                            (λ j le → fresh-cfg inv j (subst (_≤ serial j) nx le))
-                                           (subst (FreshR r) (sym nx) (fresh-ret inv)) ok (K.Here.h-slots {p = p′} H) ; g-blk = cd-inb CD I } , cd-log CD
+                                           (subst (FreshR r) (sym nx) (fresh-ret inv)) ok (K.Here.h-slots {p = p′} H) ; g-blk = cd-inb CD I
+                               ; g-live = proj₁ (live-moved {fs = fs} {fs′ = fs′} st₁ (λ _ → no-alloc-tmp) inv nx lv F (cd-freed CD) (cd-bsize CD) (cd-next CD))
+                               ; g-fal = proj₂ (live-moved {fs = fs} {fs′ = fs′} st₁ (λ _ → no-alloc-tmp) inv nx lv F (cd-freed CD) (cd-bsize CD) (cd-next CD)) } , cd-log CD
     where
+      st₁ = StepI.i-icall {k = k} {r = r} {es = es} {i = i} {lam = c1 ds′ b γ} {x = x} {a = a} {os = os} {n = n}
       import Data.Nat.Properties
       φ = frameOf (blockᴵ κ′)
       seg : Seg image (fpc fs) (restore-input (Tp φ ((Fn once g A B ⊗t A) ∷ S)) ∷ lea-slot (Tp φ S ∸ (suc (wsz A) ⊔ wsz B))
@@ -243,11 +253,11 @@ module DispR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
          → InvI (es ∥ mpair (mfn i lam x) a ∷ˢ os) r n h → HereP P (es ∥ mpair (mfn i lam x) a ∷ˢ os) fs
          → AllocState.next-heap-ref (falloc fs) ≡ n
          → RetOK (rootOf P) (ptFin P) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
-         → InBlk fs
+         → InBlk fs → LiveG r (es ∥ mpair (mfn i lam x) a ∷ˢ os) fs → FreshAl (falloc fs)
          → Arrives (blockᴵ (tr1 lam)) (frm {t = nothing} {Es = Es} k es os r) ([]ᵉ ∥ mpair (mfn i lam x) a ∷ˢ []ˢ) n fs
-  gicall {lam = c1 ds′ b γ} (p-start (at s)) inv H nx ok I = gicall-start s inv H nx ok I
-  gicall {lam = c1 ds′ b γ} (p-block p′ (at s)) inv H nx ok I = gicall-block p′ s inv H nx ok I
-  gicall (p-tramp p pt) inv (() , H) nx ok I
+  gicall {lam = c1 ds′ b γ} (p-start (at s)) inv H nx ok I lv F = gicall-start s inv H nx ok I lv F
+  gicall {lam = c1 ds′ b γ} (p-block p′ (at s)) inv H nx ok I lv F = gicall-block p′ s inv H nx ok I lv F
+  gicall (p-tramp p pt) inv (() , H) nx ok I lv F
 
   -- the cell parts at a trampoline's depth 0 (its point by `GlobalTrView`'s view: no split on
   -- the point here)
@@ -257,13 +267,39 @@ module DispR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
            → Is-tp0 tp → ∀ {es : Slots Es} {os : Stk S} → InvI (es ∥ mpair (mfn i lam x) a ∷ˢ os) r n h → HereTr tp (es ∥ mpair (mfn i lam x) a ∷ˢ os) fs
            → AllocState.next-heap-ref (falloc fs) ≡ n
            → RetOK (rtramp p) (trFin (idx p) κ) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
-           → InBlk fs
+           → InBlk fs → LiveG r (es ∥ mpair (mfn i lam x) a ∷ˢ os) fs → FreshAl (falloc fs)
            → Arrives k r (es ∥ mpair x a ∷ˢ os) n fs
-  gopen1-t {r = r} (it-tp0 {ds′ = ds′} {b} {γ} p) {es = []ᵉ} {os = []ˢ} inv T0 nx ok I =
-    case tr-open1 p T0 of λ where
+  gopen1-t {X = X} {k = k} {r = r} {i = i} {lam = lam} {x = x} {a = a} {n = n} {h = h} {fs = fs} (it-tp0 {ds′ = ds′} {b} {γ} p) {es = []ᵉ} {os = []ˢ} inv T0 nx ok I lv F =
+    case tr-open1 p T0 lb nd of λ where
       (N , fs′ , run , H′ , Rn) →
         N , fs′ , run , record { g-pt = p-tramp {κ = ktr1 ds′ b γ} p (at (next whole)) ; g-here = (tp1 p , H′) ; g-next = trans (r-next Rn) nx
-                               ; g-ret = ret-step (r-keep Rn) (r-old Rn) (r-top Rn) (subst (FreshR r) (sym nx) (fresh-ret inv)) ok ; g-blk = r-inb Rn I } , k-log (r-keep Rn)
+                               ; g-ret = ret-step (r-keep Rn) (r-old Rn) (r-top Rn) (subst (FreshR r) (sym nx) (fresh-ret inv)) af ok ; g-blk = r-inb Rn I
+                               ; g-live = live-after {fs = fs} st₁ inv nx lv (fx Rn) ; g-fal = fresh-after F (fx Rn) } , k-log (r-keep Rn)
+    where
+      st₁ : StepI (open1 ⨾ k) r ([]ᵉ ∥ mpair (mfn i lam x) a ∷ˢ []ˢ) n (free i ∷ []) k r ([]ᵉ ∥ mpair x a ∷ˢ []ˢ) n
+      st₁ = StepI.i-open1
+      -- the cell, held once beside the rest
+      O : Id → ℕ
+      O q = (cnt x q + cnt a q) + OwnR r q
+      rr : ∀ D X A R → (0 + (((D + X) + A) + 0)) + R ≡ D + ((X + A) + R)
+      rr = solve-∀
+      ex : ∀ q → h q ≡ δ i q + O q
+      ex q = trans (InvH.i-exact (i-h inv) q) (rr (δ i q) (cnt x q) (cnt a q) (OwnR r q))
+      nd : ∀ j → 1 ≤ cnt x j + cnt a j → ¬ serial j ≡ serial i
+      nd j q = apart-core inv i O ex j (Data.Nat.Properties.≤-trans q (Data.Nat.Properties.m≤m+n _ _))
+      hi : 1 ≤ h i
+      hi = subst (1 ≤_) (sym (trans (ex i) (cong (_+ O i) (δ-same i)))) (Data.Nat.s≤s Data.Nat.z≤n)
+      lb : LiveB (falloc fs) (hdr + wsz X) i
+      lb = trans (proj₁ (lv i (subst (1 ≤_) (InvH.i-exact (i-h inv) i) hi))) (proj₁ (proj₁ (proj₁ (proj₂ (proj₁ (i-ws inv))))))
+         , proj₂ (lv i (subst (1 ≤_) (InvH.i-exact (i-h inv) i) hi))
+      below : serial i Data.Nat.< AllocState.next-heap-ref (falloc fs)
+      below = Data.Nat.Properties.≰⇒> (λ le → zero-one (InvH.i-above (i-h inv) i (subst (_≤ serial i) nx le)) hi)
+      af : AwayR r (serial i ∷ [])
+      af = away-of r (InvH.i-seesR (i-h inv))
+             (λ { j q (here e) → apart-core inv i O ex j (Data.Nat.Properties.≤-trans q (Data.Nat.Properties.m≤n+m _ _)) e ; j q (there ()) })
+      fx : ∀ {N lo hi fs′} → Ran N [] (serial i ∷ []) lo hi fs fs′ → AlFx (free i ∷ []) fs fs′
+      fx Rn = ax (serial i ∷ []) (Keep.k-unfr (r-keep Rn)) (Keep.k-size (r-keep Rn)) (Keep.k-next (r-keep Rn)) (λ m → m)
+                 (λ { (here refl) → below ; (there ()) }) (λ _ → λ { (here ()) ; (there ()) })
 
   gnopen-t : ∀ {T Es F S S′ V} {k : Codeᴵ (Es ∣ (Coalg F S ⊗t S) ∷ S′) V} {r : Ret V T} {i}
                {x : MV (Coalg F S ⊗t S)} {n h fs} {σ} {κ : Key σ} {p : under κ ∈ allK U}
@@ -271,13 +307,38 @@ module DispR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
            → Is-to0 tp → ∀ {es : Slots Es} {os : Stk S′} → InvI (es ∥ mnu i x ∷ˢ os) r n h → HereTr tp (es ∥ mnu i x ∷ˢ os) fs
            → AllocState.next-heap-ref (falloc fs) ≡ n
            → RetOK (rtramp p) (trFin (idx p) κ) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
-           → InBlk fs
+           → InBlk fs → LiveG r (es ∥ mnu i x ∷ˢ os) fs → FreshAl (falloc fs)
            → Arrives k r (es ∥ x ∷ˢ os) n fs
-  gnopen-t {r = r} (it-to0 p) {es = []ᵉ} {os = []ˢ} inv T0 nx ok I =
-    case to-open p T0 of λ where
+  gnopen-t {F = Fν} {S = Sν} {k = k} {r = r} {i = i} {x = x} {n = n} {h = h} {fs = fs} (it-to0 p) {es = []ᵉ} {os = []ˢ} inv T0 nx ok I lv F =
+    case to-open p T0 lb nd of λ where
       (N , fs′ , run , H′ , Rn) →
         N , fs′ , run , record { g-pt = p-tramp p (at (next whole)) ; g-here = (to1 p , H′) ; g-next = trans (r-next Rn) nx
-                               ; g-ret = ret-step (r-keep Rn) (r-old Rn) (r-top Rn) (subst (FreshR r) (sym nx) (fresh-ret inv)) ok ; g-blk = r-inb Rn I } , k-log (r-keep Rn)
+                               ; g-ret = ret-step (r-keep Rn) (r-old Rn) (r-top Rn) (subst (FreshR r) (sym nx) (fresh-ret inv)) af ok ; g-blk = r-inb Rn I
+                               ; g-live = live-after {fs = fs} st₁ inv nx lv (fx Rn) ; g-fal = fresh-after F (fx Rn) } , k-log (r-keep Rn)
+    where
+      st₁ : StepI (nopen ⨾ k) r ([]ᵉ ∥ mnu i x ∷ˢ []ˢ) n (free i ∷ []) k r ([]ᵉ ∥ x ∷ˢ []ˢ) n
+      st₁ = StepI.i-nopen
+      O : Id → ℕ
+      O q = cnt x q + OwnR r q
+      rr : ∀ D X R → (0 + ((D + X) + 0)) + R ≡ D + (X + R)
+      rr = solve-∀
+      ex : ∀ q → h q ≡ δ i q + O q
+      ex q = trans (InvH.i-exact (i-h inv) q) (rr (δ i q) (cnt x q) (OwnR r q))
+      nd : ∀ j → 1 ≤ cnt x j → ¬ serial j ≡ serial i
+      nd j q = apart-core inv i O ex j (Data.Nat.Properties.≤-trans q (Data.Nat.Properties.m≤m+n _ _))
+      hi : 1 ≤ h i
+      hi = subst (1 ≤_) (sym (trans (ex i) (cong (_+ O i) (δ-same i)))) (Data.Nat.s≤s Data.Nat.z≤n)
+      lb : LiveB (falloc fs) (hdr + wsz (Coalg Fν Sν ⊗t Sν)) i
+      lb = trans (proj₁ (lv i (subst (1 ≤_) (InvH.i-exact (i-h inv) i) hi))) (proj₁ (proj₁ (proj₂ (proj₁ (i-ws inv)))))
+         , proj₂ (lv i (subst (1 ≤_) (InvH.i-exact (i-h inv) i) hi))
+      below : serial i Data.Nat.< AllocState.next-heap-ref (falloc fs)
+      below = Data.Nat.Properties.≰⇒> (λ le → zero-one (InvH.i-above (i-h inv) i (subst (_≤ serial i) nx le)) hi)
+      af : AwayR r (serial i ∷ [])
+      af = away-of r (InvH.i-seesR (i-h inv))
+             (λ { j q (here e) → apart-core inv i O ex j (Data.Nat.Properties.≤-trans q (Data.Nat.Properties.m≤n+m _ _)) e ; j q (there ()) })
+      fx : ∀ {N lo hi fs′} → Ran N [] (serial i ∷ []) lo hi fs fs′ → AlFx (free i ∷ []) fs fs′
+      fx Rn = ax (serial i ∷ []) (Keep.k-unfr (r-keep Rn)) (Keep.k-size (r-keep Rn)) (Keep.k-next (r-keep Rn)) (λ m → m)
+                 (λ { (here refl) → below ; (there ()) }) (λ _ → λ { (here ()) ; (there ()) })
 
   -- ★ A ONE-SHOT TRAMPOLINE'S CELL PART (i-open1): at its depth 0; at a root's
   -- path it is absurd (D439: a root's code has no cell part)
@@ -286,11 +347,11 @@ module DispR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
          → InvI (es ∥ mpair (mfn i lam x) a ∷ˢ os) r n h → HereP P (es ∥ mpair (mfn i lam x) a ∷ˢ os) fs
          → AllocState.next-heap-ref (falloc fs) ≡ n
          → RetOK (rootOf P) (ptFin P) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
-         → InBlk fs
+         → InBlk fs → LiveG r (es ∥ mpair (mfn i lam x) a ∷ˢ os) fs → FreshAl (falloc fs)
          → Arrives k r (es ∥ mpair x a ∷ˢ os) n fs
-  gopen1 (p-start (at s)) inv H nx ok I = ⊥-elim (proj₁ (sub-nc s (comp-nc ds f tt)))
-  gopen1 (p-block p (at s)) inv H nx ok I = ⊥-elim (proj₁ (sub-nc s (block-nc _ (allK-nt ds f p))))
-  gopen1 (p-tramp p pt) inv (tp , T0) nx ok I = gopen1-t (open1-v tp) inv T0 nx ok I
+  gopen1 (p-start (at s)) inv H nx ok I lv F = ⊥-elim (proj₁ (sub-nc s (comp-nc ds f tt)))
+  gopen1 (p-block p (at s)) inv H nx ok I lv F = ⊥-elim (proj₁ (sub-nc s (block-nc _ (allK-nt ds f p))))
+  gopen1 (p-tramp p pt) inv (tp , T0) nx ok I lv F = gopen1-t (open1-v tp) inv T0 nx ok I lv F
 
   -- ★ AN OBSERVATION'S TRAMPOLINE'S CELL PART (i-nopen): at its depth 0; at a
   -- root's path it is absurd (D439)
@@ -299,11 +360,11 @@ module DispR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
          → InvI (es ∥ mnu i x ∷ˢ os) r n h → HereP P (es ∥ mnu i x ∷ˢ os) fs
          → AllocState.next-heap-ref (falloc fs) ≡ n
          → RetOK (rootOf P) (ptFin P) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
-         → InBlk fs
+         → InBlk fs → LiveG r (es ∥ mnu i x ∷ˢ os) fs → FreshAl (falloc fs)
          → Arrives k r (es ∥ x ∷ˢ os) n fs
-  gnopen (p-start (at s)) inv H nx ok I = ⊥-elim (proj₁ (sub-nc s (comp-nc ds f tt)))
-  gnopen (p-block p (at s)) inv H nx ok I = ⊥-elim (proj₁ (sub-nc s (block-nc _ (allK-nt ds f p))))
-  gnopen (p-tramp p pt) inv (tp , T0) nx ok I = gnopen-t (nopen-v tp) inv T0 nx ok I
+  gnopen (p-start (at s)) inv H nx ok I lv F = ⊥-elim (proj₁ (sub-nc s (comp-nc ds f tt)))
+  gnopen (p-block p (at s)) inv H nx ok I lv F = ⊥-elim (proj₁ (sub-nc s (block-nc _ (allK-nt ds f p))))
+  gnopen (p-tramp p pt) inv (tp , T0) nx ok I lv F = gnopen-t (nopen-v tp) inv T0 nx ok I lv F
 
   -- ★ an observation's dispatch from the start's code: into the trampoline
   -- of the ν's observation block (`ktro ε`, D440), at its depth 0 (TrO0)
@@ -313,17 +374,20 @@ module DispR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
               → InvI (es ∥ mnu i x ∷ˢ os) r n h → S.Here s (es ∥ mnu i x ∷ˢ os) fs
               → AllocState.next-heap-ref (falloc fs) ≡ n
               → RetOK rstart (ptFin (p-start (at s))) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
-              → InBlk fs
+              → InBlk fs → LiveG r (es ∥ mnu i x ∷ˢ os) fs → FreshAl (falloc fs)
               → Arrives (blockᴵ (ktro ε F S)) (frm {t = nothing} {Es = Es} k es os r) ([]ᵉ ∥ mnu i x ∷ˢ []ˢ) n fs
-  giobs-start {F = F} {S} {S′ = S′} {r = r} {fs = fs} s inv H nx ok I =
+  giobs-start {ds = ds₀} {F = F} {S} {S′ = S′} {k = k} {r = r} {es = es} {i = i} {x = x} {os = os} {n = n} {fs = fs} s inv H nx ok I lv Fa =
     case to-dispatch (frameOf main) seg (S.Here.h-run H) (S.Here.h-cfg H)
            (subst (budget (frameOf main) Data.Nat.<_) (sym (S.Here.h-slots H)) (Data.Nat.Properties.m<n⇒m<1+n (Data.Nat.Properties.n<1+n _))) of λ where
       (m , N , fs′ , run , T0 , CD) →
         N , fs′ , run , record { g-pt = p-tramp m (at whole) ; g-here = (to0 m , T0) ; g-next = trans (cd-next CD) nx
                                ; g-ret = mk-tramp m tm-o (d-start s) (called-re pos-eq refl CD) fitM (S.Here.h-cfg H)
                                            (λ j le → fresh-cfg inv j (subst (_≤ serial j) nx le))
-                                           (subst (FreshR r) (sym nx) (fresh-ret inv)) ok (S.Here.h-slots H) ; g-blk = cd-inb CD I } , cd-log CD
+                                           (subst (FreshR r) (sym nx) (fresh-ret inv)) ok (S.Here.h-slots H) ; g-blk = cd-inb CD I
+                               ; g-live = proj₁ (live-moved {fs = fs} {fs′ = fs′} st₁ (λ _ → no-alloc-tmp) inv nx lv Fa (cd-freed CD) (cd-bsize CD) (cd-next CD))
+                               ; g-fal = proj₂ (live-moved {fs = fs} {fs′ = fs′} st₁ (λ _ → no-alloc-tmp) inv nx lv Fa (cd-freed CD) (cd-bsize CD) (cd-next CD)) } , cd-log CD
     where
+      st₁ = StepI.i-iobs {ds = ds₀} {k = k} {r = r} {es = es} {i = i} {p = x} {os = os} {n = n}
       import Data.Nat.Properties
       φ = frameOf main
       wL = wsz (LF∙ F (Nu F))
@@ -345,17 +409,20 @@ module DispR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
               → InvI (es ∥ mnu i x ∷ˢ os) r n h → K.Here p′ s (es ∥ mnu i x ∷ˢ os) fs
               → AllocState.next-heap-ref (falloc fs) ≡ n
               → RetOK (rblock p′) (ptFin (p-block p′ (at s))) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
-              → InBlk fs
+              → InBlk fs → LiveG r (es ∥ mnu i x ∷ˢ os) fs → FreshAl (falloc fs)
               → Arrives (blockᴵ (ktro ε F S)) (frm {t = nothing} {Es = Es} k es os r) ([]ᵉ ∥ mnu i x ∷ˢ []ˢ) n fs
-  giobs-block {F = F} {S} {S′ = S′} {r = r} {fs = fs} {κ′ = κ′} p′ s inv H nx ok I =
+  giobs-block {ds = ds₀} {F = F} {S} {S′ = S′} {k = k} {r = r} {es = es} {i = i} {x = x} {os = os} {n = n} {fs = fs} {κ′ = κ′} p′ s inv H nx ok I lv Fa =
     case to-dispatch (frameOf (blockᴵ κ′)) seg (K.Here.h-run {p = p′} H) (K.Here.h-cfg {p = p′} H)
            (subst (budget (frameOf (blockᴵ κ′)) Data.Nat.<_) (sym (K.Here.h-slots {p = p′} H)) (Data.Nat.Properties.m<n⇒m<1+n (Data.Nat.Properties.n<1+n _))) of λ where
       (m , N , fs′ , run , T0 , CD) →
         N , fs′ , run , record { g-pt = p-tramp m (at whole) ; g-here = (to0 m , T0) ; g-next = trans (cd-next CD) nx
                                ; g-ret = mk-tramp m tm-o (d-block p′ s) (called-re pos-eq refl CD) fitM (K.Here.h-cfg {p = p′} H)
                                            (λ j le → fresh-cfg inv j (subst (_≤ serial j) nx le))
-                                           (subst (FreshR r) (sym nx) (fresh-ret inv)) ok (K.Here.h-slots {p = p′} H) ; g-blk = cd-inb CD I } , cd-log CD
+                                           (subst (FreshR r) (sym nx) (fresh-ret inv)) ok (K.Here.h-slots {p = p′} H) ; g-blk = cd-inb CD I
+                               ; g-live = proj₁ (live-moved {fs = fs} {fs′ = fs′} st₁ (λ _ → no-alloc-tmp) inv nx lv Fa (cd-freed CD) (cd-bsize CD) (cd-next CD))
+                               ; g-fal = proj₂ (live-moved {fs = fs} {fs′ = fs′} st₁ (λ _ → no-alloc-tmp) inv nx lv Fa (cd-freed CD) (cd-bsize CD) (cd-next CD)) } , cd-log CD
     where
+      st₁ = StepI.i-iobs {ds = ds₀} {k = k} {r = r} {es = es} {i = i} {p = x} {os = os} {n = n}
       import Data.Nat.Properties
       φ = frameOf (blockᴵ κ′)
       wL = wsz (LF∙ F (Nu F))
@@ -378,8 +445,8 @@ module DispR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
         → InvI (es ∥ mnu i x ∷ˢ os) r n h → HereP P (es ∥ mnu i x ∷ˢ os) fs
         → AllocState.next-heap-ref (falloc fs) ≡ n
         → RetOK (rootOf P) (ptFin P) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
-        → InBlk fs
+        → InBlk fs → LiveG r (es ∥ mnu i x ∷ˢ os) fs → FreshAl (falloc fs)
         → Arrives (blockᴵ (ktro ε F S)) (frm {t = nothing} {Es = Es} k es os r) ([]ᵉ ∥ mnu i x ∷ˢ []ˢ) n fs
-  giobs (p-start (at s)) inv H nx ok I = giobs-start s inv H nx ok I
-  giobs (p-block p′ (at s)) inv H nx ok I = giobs-block p′ s inv H nx ok I
-  giobs (p-tramp p pt) inv (() , H) nx ok I
+  giobs (p-start (at s)) inv H nx ok I lv Fa = giobs-start s inv H nx ok I lv Fa
+  giobs (p-block p′ (at s)) inv H nx ok I lv Fa = giobs-block p′ s inv H nx ok I lv Fa
+  giobs (p-tramp p pt) inv (() , H) nx ok I lv Fa

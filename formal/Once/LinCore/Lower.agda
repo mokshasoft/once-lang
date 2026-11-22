@@ -58,6 +58,7 @@ open import Once.IR.Semantics.Trace using (call)
 open Sig using (info; sA)
 open import Once.LinCore.Code fmt bw using (Sh; _∣_)
 open import Once.LinCore.Image fmt bw
+open import Once.LinCore.Values fmt bw using (wsz; hdr)
 open import Once.LinCore.Keys fmt bw
 open Univ using (tys; nus)
 open import Once.LinCore.Layout fmt bw
@@ -112,10 +113,7 @@ idx : ∀ {A : Set} {x : A} {xs} → x ∈ xs → ℕ
 idx (here _)  = 0
 idx (there p) = suc (idx p)
 
--- a cell's header: word 0 its own address (no code reads it: a trampoline reads the
--- contents at `hdr` from the cell's pointer), then code, copy, free
-hdr : ℕ
-hdr = 4
+-- a cell's header: `Values.hdr` (D469)
 
 -- the address of a cell's contents (`Input1` the cell), as a view: past the
 -- header, or, for no words (an address there would be outside the block),

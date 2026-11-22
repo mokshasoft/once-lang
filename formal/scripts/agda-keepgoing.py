@@ -100,6 +100,10 @@ class Agda:
                     errs.append(e.get('message') or json.dumps(e)[:2000])
                 if k == 'AllGoalsWarnings' and (info.get('errors') or []):
                     for e in info['errors']: errs.append(e.get('message', str(e)) if isinstance(e, dict) else str(e))
+                # unsolved metas come as goals in interaction mode (batch mode fails on them)
+                if k == 'AllGoalsWarnings' and (info.get('visibleGoals') or info.get('invisibleGoals')):
+                    gs = (info.get('visibleGoals') or []) + (info.get('invisibleGoals') or [])
+                    errs.append(f'unsolved metas/goals: {len(gs)}: ' + json.dumps(gs)[:1500])
     def close(self):
         try: self.p.stdin.close(); self.p.wait(10)
         except Exception: self.p.kill()

@@ -49,7 +49,7 @@ open import Once.LinCore.Code fmt bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots
 open import Once.LinCore.Image fmt bw
 open import Once.LinCore.ImageRun fmt ans bw using (Ret; []ʳ; frm; _∷ⁱ_)
 open import Once.LinCore.Keys fmt bw
-open import Once.LinCore.Layout fmt bw using (Frame; frame; frameOf; budget; wsz; ws; module Frame)
+open import Once.LinCore.Layout fmt bw using (Frame; frame; frameOf; budget; ws; module Frame)
 open Frame using (EP; OP)
 open import Once.LinCore.Lower fmt bw
 open import Once.LinCore.Words fmt ans bw
@@ -64,6 +64,7 @@ open import Once.LinCore.KeysRun fmt ans bw using (module ProgramRun)
 open import Once.LinCore.TrampAt fmt ans bw using (under; module TrImg; module Tr)
 
 open import Once.LinCore.Global fmt ans bw using (module Relate)
+open import Once.LinCore.LiveRun fmt ans bw using (LiveG; FreshAl)
 open import Once.LinCore.GlobalLocal fmt ans bw using (module LocalR)
 
 module EndR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
@@ -103,7 +104,7 @@ module EndR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open FlatStepsAPI {FS} using (FlatSteps)
   open import Once.LinCore.Moves {FS} using (Keep; module Keep)
   open Keep using (k-frame; k-saved; k-ret; k-other; k-log; k-inb)
-  open Cells {FS} U wordOf using (fresh-cfg; fresh-ret)
+  open Cells {FS} U wordOf using (fresh-cfg; fresh-ret; away-[])
   open Img {FS} ds f ldConst ld-nl using (image-label)
 
   ----------------------------------------------------------------------
@@ -134,26 +135,26 @@ module EndR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     greti : ∀ {T sh U′} {k : Codeᴵ sh U′} {r : Ret U′ T} {m n h fs} (P : Pnt (end {sh}))
           → InvI m (k ∷ⁱ r) n h → HereP P m fs → AllocState.next-heap-ref (falloc fs) ≡ n
           → RetOK (rootOf P) (ptFin P) (k ∷ⁱ r) (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
-          → InBlk fs
+          → InBlk fs → LiveG (k ∷ⁱ r) m fs → FreshAl (falloc fs)
           → Onward k r m n fs
-    greti {k = k} {r = r} {fs = fs} (p-start (at e)) inv H nx (ok-loop (p-start (disp s′)) (refl , efin) rest) I =
+    greti {k = k} {r = r} {fs = fs} (p-start (at e)) inv H nx (ok-loop (p-start (disp s′)) (refl , efin) rest) I lv F =
       case SL.end-jump e image-label efin (SL.dispIn s′) H of λ where
         (fs′ , run , Hq , K , nx′ , old , tp) →
           1 , fs′ , run , record { g-pt = p-start (disp s′) ; g-here = Hq ; g-next = trans nx′ nx
-                                 ; g-ret = ret-step K old tp (fresh-at {r = k ∷ⁱ r} {fs = fs} inv nx) rest ; g-blk = k-inb K I } , k-log K
-    greti {k = k} {r = r} {fs = fs} (p-block p (at e)) inv H nx (ok-loop (p-block p′ (disp s′)) (refl , efin) rest) I =
+                                 ; g-ret = ret-step K old tp (fresh-at {r = k ∷ⁱ r} {fs = fs} inv nx) (away-[] r) rest ; g-blk = k-inb K I ; g-live = proj₁ (live-quiet StepI.i-reti inv nx lv F K) ; g-fal = proj₂ (live-quiet StepI.i-reti inv nx lv F K) } , k-log K
+    greti {k = k} {r = r} {fs = fs} (p-block p (at e)) inv H nx (ok-loop (p-block p′ (disp s′)) (refl , efin) rest) I lv F =
       case KL.end-jump p e image-label efin (KL.dispIn p s′) H of λ where
         (fs′ , run , Hq , K , nx′ , old , tp) →
           1 , fs′ , run , record { g-pt = p-block p (disp s′) ; g-here = Hq ; g-next = trans nx′ nx
-                                 ; g-ret = ret-step K old tp (fresh-at {r = k ∷ⁱ r} {fs = fs} inv nx) rest ; g-blk = k-inb K I } , k-log K
-    greti (p-start (at e)) inv H nx (ok-loop (p-block _ (disp _)) (() , _) rest) I
-    greti (p-start (at e)) inv H nx (ok-loop (p-start (at _)) () rest) I
-    greti (p-start (at e)) inv H nx (ok-loop (p-block _ (at _)) () rest) I
-    greti (p-start (at e)) inv H nx (ok-loop (p-tramp _ _) () rest) I
-    greti (p-start (at e)) inv H nx (ok-loop p-halt () rest) I
-    greti (p-block p (at e)) inv H nx (ok-loop (p-start (disp _)) (() , _) rest) I
-    greti (p-block p (at e)) inv H nx (ok-loop (p-start (at _)) () rest) I
-    greti (p-block p (at e)) inv H nx (ok-loop (p-block _ (at _)) () rest) I
-    greti (p-block p (at e)) inv H nx (ok-loop (p-tramp _ _) () rest) I
-    greti (p-block p (at e)) inv H nx (ok-loop p-halt () rest) I
-    greti (p-tramp _ _) inv H nx (ok-loop K lt rest) I = ⊥-elim (loop-not-tramp K lt)
+                                 ; g-ret = ret-step K old tp (fresh-at {r = k ∷ⁱ r} {fs = fs} inv nx) (away-[] r) rest ; g-blk = k-inb K I ; g-live = proj₁ (live-quiet StepI.i-reti inv nx lv F K) ; g-fal = proj₂ (live-quiet StepI.i-reti inv nx lv F K) } , k-log K
+    greti (p-start (at e)) inv H nx (ok-loop (p-block _ (disp _)) (() , _) rest) I lv F
+    greti (p-start (at e)) inv H nx (ok-loop (p-start (at _)) () rest) I lv F
+    greti (p-start (at e)) inv H nx (ok-loop (p-block _ (at _)) () rest) I lv F
+    greti (p-start (at e)) inv H nx (ok-loop (p-tramp _ _) () rest) I lv F
+    greti (p-start (at e)) inv H nx (ok-loop p-halt () rest) I lv F
+    greti (p-block p (at e)) inv H nx (ok-loop (p-start (disp _)) (() , _) rest) I lv F
+    greti (p-block p (at e)) inv H nx (ok-loop (p-start (at _)) () rest) I lv F
+    greti (p-block p (at e)) inv H nx (ok-loop (p-block _ (at _)) () rest) I lv F
+    greti (p-block p (at e)) inv H nx (ok-loop (p-tramp _ _) () rest) I lv F
+    greti (p-block p (at e)) inv H nx (ok-loop p-halt () rest) I lv F
+    greti (p-tramp _ _) inv H nx (ok-loop K lt rest) I lv F = ⊥-elim (loop-not-tramp K lt)

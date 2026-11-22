@@ -460,6 +460,12 @@ slot-read-in-frame : ∀ prog (fs : FlatState) (slot : Slot) (i : AbstractInstr)
                    → slot < frame-slots (falloc fs)
 slot-read-in-frame prog fs slot i r h f so = slot-gate-ok i prog fs so (step-ok prog fs i r h f)
 
+-- D468: the machine's free gate, passed at a reached free (it did not fault)
+free-gate : ∀ prog (fs : FlatState) n → RunLow prog fs → LocState.halted (floc fs) ≡ false
+          → fetch prog (fpc fs) ≡ just (instr-free-heap n)
+          → block-base? n (readReg (LocState.regs (floc fs)) Input1) (falloc fs) ≡ true
+free-gate prog fs n r h f = straight-ok (instr-free-heap n) fs (step-ok prog fs (instr-free-heap n) r h f)
+
 -- the state invariants: the lift keeps what they speak of
 -- the store invariant (no forward pointer; every stored Int a word, D397)
 run-flat-wf : ∀ prog (fs : FlatState) → RunLow prog fs → FlatWF fs

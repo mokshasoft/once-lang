@@ -19,12 +19,14 @@ open import Data.Bool using (true)
 open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _⊔_; _≤_)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Membership.Propositional using (_∈_)
+open import Data.List.Relation.Unary.Any using (here; there)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Unit using (tt)
 open import Data.Bool using (false)
 open import Function using (case_of_)
 open import Relation.Nullary using (¬_)
+open import Data.Sum using (inj₁)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 open import Once.Spec.Numerics using (TargetNum)
@@ -46,16 +48,16 @@ module Once.LinCore.Global
 open import Once.LinCore.Core fmt using (_⊗t_; Defs; FS; Fn; Gd; LF∙; LTm; Nu; One; Tm; lit; many; module Defs; module Tm)
 open import Once.LinCore.Flat using (Base; ⟦_⟧b; Lit)
 open import Once.IR.Semantics.Trace using (T; call)
-open import Once.LinCore.Events fmt ans bw using (cnt; ds; halted; p-halt; st; Γ)
-open import Once.LinCore.Values fmt bw using (Id; MV; Trace; mfn; mnu; mpair; serial; module MV)
+open import Once.LinCore.Events fmt ans bw using (cnt; ds; halted; p-halt; st; Γ; freesOf)
+open import Once.LinCore.Values fmt bw using (Id; MV; Trace; mfn; mnu; mpair; serial; module MV; hdr; wsz; alloc; tmp)
 open import Once.LinCore.Code fmt bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots; []ᵉ; vw; see; Cfg; _∥_)
 open import Once.LinCore.Image fmt bw using (_⊳_; _⨾_; BSig; Codeᴵ; Insᴵ; Key; blockᴵ; bsig; call; end; epop; halted; ktr1; ktrc; ktrf; ktro; ktrω; reclose; module BSig; module Codeᴵ; module Insᴵ; module Key)
 open BSig using (top)
 open import Once.LinCore.ImageRun fmt ans bw using (Ret; []ʳ; frm; _∷ⁱ_)
 open import Once.LinCore.Keys fmt bw using (allK; cty; os; module Program)
-open import Once.LinCore.Layout fmt bw using (Frame; frame; frameOf; budget; wsz; ws; module Frame)
+open import Once.LinCore.Layout fmt bw using (Frame; frame; frameOf; budget; ws; module Frame)
 open Frame using (EP; OP)
-open import Once.LinCore.Lower fmt bw using (hdr; idx; jl; module Lowering; module Program′)
+open import Once.LinCore.Lower fmt bw using (idx; jl; module Lowering; module Program′)
 open import Once.LinCore.Words fmt ans bw using (module Rel)
 open import Once.LinCore.ImagePt fmt ans bw using (Sub; Pt; at; disp; next; body; whole)
 open import Once.LinCore.LowAt fmt ans bw using (module At)
@@ -636,6 +638,8 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   -- 3. ★ THE RELATION.
   ----------------------------------------------------------------------
 
+  open import Once.LinCore.LiveRun fmt ans bw using (LiveG; FreshAl; StepFx; kt; keepT; kshape; AlFx; al-of; al-quiet; live-after; fresh-after; away-local; local-ownR)
+
   record Related {T sh U′} (c : Codeᴵ sh U′) (r : Ret U′ T) (m : Cfg sh) (n : ℕ) (fs : FlatState) : Set where
     field
       g-pt   : Pnt c
@@ -645,6 +649,9 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                      (AllocState.saved-frames (falloc fs)) fs
       -- D441: every written heap word in its block (for an address formed inside a cell)
       g-blk  : InBlk fs
+      -- D469: every held cell's block live at its id's size; nothing at or past the counter freed
+      g-live : LiveG r m fs
+      g-fal  : FreshAl (falloc fs)
 
   ----------------------------------------------------------------------
   -- 4. ★ THE RETURN STACK STANDS while a run changes only the current
@@ -654,7 +661,7 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open import Once.LinCore.LowerSim fmt ans bw using (module Sim)
   open Sim {FS} U wordOf using (envW-heap; stkW-heap; envW-frame; slots-frame; cntE; cntS)
   open import Once.LinCore.FreshI fmt ans bw using (module Cells)
-  open Cells {FS} U wordOf using (FreshR)
+  open Cells {FS} U wordOf using (FreshR; AwayR)
   open import Once.LinCore.Moves {FS} using (Old)
   open FrameSemantics FS using (≺-trans; ≺-irrefl)
 
@@ -675,25 +682,28 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   held-below {n} {c} h = Data.Nat.Properties.≰⇒> (λ le → h le refl)
     where import Data.Nat.Properties
 
-  env-stand : ∀ {Es} {es : Slots Es} {rd rd′ sm n}
-            → (∀ i → n ≤ serial i → cntE es i ≡ 0)
-            → (∀ hl → Once.Memory.HeapAddress.HeapRef.ref-id (Once.Memory.HeapAddress.HeapLocation.heap-ref hl) Data.Nat.< n → rd′ hl ≡ rd hl)
+  env-stand : ∀ {Es} {es : Slots Es} {rd rd′ sm n fl}
+            → (∀ i → n ≤ serial i → cntE es i ≡ 0) → (∀ i → serial i ∈ fl → cntE es i ≡ 0)
+            → (∀ hl → Once.Memory.HeapAddress.HeapRef.ref-id (Once.Memory.HeapAddress.HeapLocation.heap-ref hl) Data.Nat.< n
+               → ¬ (Once.Memory.HeapAddress.HeapRef.ref-id (Once.Memory.HeapAddress.HeapLocation.heap-ref hl) ∈ fl) → rd′ hl ≡ rd hl)
             → EnvW rd sm es → EnvW rd′ sm es
-  env-stand {es = es} fr old = envW-heap es (λ i k c → old (cellLoc i k) (held-below (λ le _ → zero-one (fr i le) c)))
+  env-stand {es = es} fr af old = envW-heap es (λ i k c → old (cellLoc i k) (held-below (λ le _ → zero-one (fr i le) c)) (λ m → zero-one (af i m) c))
 
-  stk-stand : ∀ {S} {os : Stk S} {rd rd′ sm φ n}
-            → (∀ i → n ≤ serial i → cntS os i ≡ 0)
-            → (∀ hl → Once.Memory.HeapAddress.HeapRef.ref-id (Once.Memory.HeapAddress.HeapLocation.heap-ref hl) Data.Nat.< n → rd′ hl ≡ rd hl)
+  stk-stand : ∀ {S} {os : Stk S} {rd rd′ sm φ n fl}
+            → (∀ i → n ≤ serial i → cntS os i ≡ 0) → (∀ i → serial i ∈ fl → cntS os i ≡ 0)
+            → (∀ hl → Once.Memory.HeapAddress.HeapRef.ref-id (Once.Memory.HeapAddress.HeapLocation.heap-ref hl) Data.Nat.< n
+               → ¬ (Once.Memory.HeapAddress.HeapRef.ref-id (Once.Memory.HeapAddress.HeapLocation.heap-ref hl) ∈ fl) → rd′ hl ≡ rd hl)
             → StkW rd sm φ os → StkW rd′ sm φ os
-  stk-stand {os = os} fr old = stkW-heap os (λ i k c → old (cellLoc i k) (held-below (λ le _ → zero-one (fr i le) c)))
+  stk-stand {os = os} fr af old = stkW-heap os (λ i k c → old (cellLoc i k) (held-below (λ le _ → zero-one (fr i le) c)) (λ m → zero-one (af i m) c))
 
 
   -- a value whose cells are all below the counter stands while only newer cells change
-  vw-stand : ∀ {A} {v : MV A} {w rd rd′ n}
-           → (∀ i → n ≤ serial i → cnt v i ≡ 0)
-           → (∀ hl → Once.Memory.HeapAddress.HeapRef.ref-id (Once.Memory.HeapAddress.HeapLocation.heap-ref hl) Data.Nat.< n → rd′ hl ≡ rd hl)
+  vw-stand : ∀ {A} {v : MV A} {w rd rd′ n fl}
+           → (∀ i → n ≤ serial i → cnt v i ≡ 0) → (∀ i → serial i ∈ fl → cnt v i ≡ 0)
+           → (∀ hl → Once.Memory.HeapAddress.HeapRef.ref-id (Once.Memory.HeapAddress.HeapLocation.heap-ref hl) Data.Nat.< n
+               → ¬ (Once.Memory.HeapAddress.HeapRef.ref-id (Once.Memory.HeapAddress.HeapLocation.heap-ref hl) ∈ fl) → rd′ hl ≡ rd hl)
            → VW rd v w → VW rd′ v w
-  vw-stand fr old p = vw-frame p (λ i k c → old (cellLoc i k) (held-below (λ le _ → zero-one (fr i le) c)))
+  vw-stand fr af old p = vw-frame p (λ i k c → old (cellLoc i k) (held-below (λ le _ → zero-one (fr i le) c)) (λ m → zero-one (af i m) c))
 
   -- the second view's count, from the environment's
   cnt-snd : ∀ {X C} (x : MV X) (cv : MV C) i → cntE (vw x (vw cv []ᵉ)) i ≡ 0 → cnt cv i ≡ 0
@@ -705,141 +715,141 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   stk-all (v ∷ˢ os) h ((w , p , s) , st) = (w , p , slots-frame w (λ k _ → h _) s) , stk-all os h st
 
   -- the levels whose frames are all above the one that changed
-  ret-deep : ∀ {T U′ R fin} {r : Ret U′ T} {cur rets sv fs fs′} (cur₀ : FrameSemantics.Frame FS) → cur₀ ≺ cur
+  ret-deep : ∀ {T U′ R fin} {r : Ret U′ T} {cur rets sv fs fs′ fl} (cur₀ : FrameSemantics.Frame FS) → cur₀ ≺ cur
            → (∀ f x → ¬ f ≡ cur₀ → LocState.stackMem (floc fs′) f x ≡ LocState.stackMem (floc fs) f x)
-           → Old (AllocState.next-heap-ref (falloc fs)) fs fs′ → FreshR r (AllocState.next-heap-ref (falloc fs))
+           → Old (AllocState.next-heap-ref (falloc fs)) fl fs fs′ → FreshR r (AllocState.next-heap-ref (falloc fs)) → AwayR r fl
            → RetOK R fin r cur rets sv fs → RetOK R fin r cur rets sv fs′
-  ret-deep cur₀ lt oth old fr (ok-top e₁ e₂) = ok-top e₁ e₂
-  ret-deep cur₀ lt oth old fr (ok-loop K lk rest) = ok-loop K lk (ret-deep cur₀ lt oth old fr rest)
-  ret-deep {cur = cur} cur₀ lt oth old (fes , fr) (ok-call {es = es} {os = os} p st cfc sl sv′ rets′ eR eF eC eRets eSv eSl abv area ev sk rest) =
+  ret-deep cur₀ lt oth old fr af (ok-top e₁ e₂) = ok-top e₁ e₂
+  ret-deep cur₀ lt oth old fr af (ok-loop K lk rest) = ok-loop K lk (ret-deep cur₀ lt oth old fr af rest)
+  ret-deep {cur = cur} cur₀ lt oth old (fes , fr) (aes , af) (ok-call {es = es} {os = os} p st cfc sl sv′ rets′ eR eF eC eRets eSv eSl abv area ev sk rest) =
     ok-call p st cfc sl sv′ rets′ eR eF eC eRets eSv eSl abv
       (trans (oth cur _ (λ e → ≺-≢ lt (sym e))) area)
-      (env-stand (λ i le → proj₁ (fes i le)) old (envW-frame es (λ x _ → oth cfc x ne) ev))
-      (stk-stand (λ i le → proj₂ (fes i le)) old (stk-all os (λ x → oth cfc x ne) sk))
-      (ret-deep cur₀ (≺-trans lt abv) oth old fr rest)
+      (env-stand (λ i le → proj₁ (fes i le)) (λ i m → proj₁ (aes i m)) old (envW-frame es (λ x _ → oth cfc x ne) ev))
+      (stk-stand (λ i le → proj₂ (fes i le)) (λ i m → proj₂ (aes i m)) old (stk-all os (λ x → oth cfc x ne) sk))
+      (ret-deep cur₀ (≺-trans lt abv) oth old fr af rest)
     where
       ne : ¬ cfc ≡ cur₀
       ne e = ≺-≢ (≺-trans lt abv) (sym e)
-  ret-deep {cur = cur} cur₀ lt oth old (fes , fr) (ok-tramp {es = es} {os = os} p o d cfc sl sv′ rets′ eR eF eRets eSv eSl abv area fit ev sk rest) =
+  ret-deep {cur = cur} cur₀ lt oth old (fes , fr) (aes , af) (ok-tramp {es = es} {os = os} p o d cfc sl sv′ rets′ eR eF eRets eSv eSl abv area fit ev sk rest) =
     ok-tramp p o d cfc sl sv′ rets′ eR eF eRets eSv eSl abv
       (trans (oth cur _ (λ e → ≺-≢ lt (sym e))) area) fit
-      (env-stand (λ i le → proj₁ (fes i le)) old (envW-frame es (λ x _ → oth cfc x ne) ev))
-      (stk-stand (λ i le → proj₂ (fes i le)) old (stk-all os (λ x → oth cfc x ne) sk))
-      (ret-deep cur₀ (≺-trans lt abv) oth old fr rest)
+      (env-stand (λ i le → proj₁ (fes i le)) (λ i m → proj₁ (aes i m)) old (envW-frame es (λ x _ → oth cfc x ne) ev))
+      (stk-stand (λ i le → proj₂ (fes i le)) (λ i m → proj₂ (aes i m)) old (stk-all os (λ x → oth cfc x ne) sk))
+      (ret-deep cur₀ (≺-trans lt abv) oth old fr af rest)
     where
       ne : ¬ cfc ≡ cur₀
       ne e = ≺-≢ (≺-trans lt abv) (sym e)
-  ret-deep {cur = cur} cur₀ lt oth old (fes , fr) (ok-trampf {es = es} {os = os} p d cfc sl sv′ rets′ eR eF eRets eSv eSl abv ev sk rest) =
+  ret-deep {cur = cur} cur₀ lt oth old (fes , fr) (aes , af) (ok-trampf {es = es} {os = os} p d cfc sl sv′ rets′ eR eF eRets eSv eSl abv ev sk rest) =
     ok-trampf p d cfc sl sv′ rets′ eR eF eRets eSv eSl abv
-      (env-stand (λ i le → proj₁ (fes i le)) old (envW-frame es (λ x _ → oth cfc x ne) ev))
-      (stk-stand (λ i le → proj₂ (fes i le)) old (stk-all os (λ x → oth cfc x ne) sk))
-      (ret-deep cur₀ (≺-trans lt abv) oth old fr rest)
+      (env-stand (λ i le → proj₁ (fes i le)) (λ i m → proj₁ (aes i m)) old (envW-frame es (λ x _ → oth cfc x ne) ev))
+      (stk-stand (λ i le → proj₂ (fes i le)) (λ i m → proj₂ (aes i m)) old (stk-all os (λ x → oth cfc x ne) sk))
+      (ret-deep cur₀ (≺-trans lt abv) oth old fr af rest)
     where
       ne : ¬ cfc ≡ cur₀
       ne e = ≺-≢ (≺-trans lt abv) (sym e)
-  ret-deep {cur = cur} cur₀ lt oth old (fes , fr) (ok-trampω {es = es} {os = os} p d cfc sl sv′ rets′ eR eF eRets eSv eSl abv area fit efit ev sk rest) =
+  ret-deep {cur = cur} cur₀ lt oth old (fes , fr) (aes , af) (ok-trampω {es = es} {os = os} p d cfc sl sv′ rets′ eR eF eRets eSv eSl abv area fit efit ev sk rest) =
     ok-trampω p d cfc sl sv′ rets′ eR eF eRets eSv eSl abv
       (trans (oth cur _ (λ e → ≺-≢ lt (sym e))) area) fit efit
-      (env-stand (λ i le → proj₁ (fes i le)) old (envW-frame es (λ x _ → oth cfc x ne) ev))
-      (stk-stand (λ i le → proj₂ (fes i le)) old (stk-all os (λ x → oth cfc x ne) sk))
-      (ret-deep cur₀ (≺-trans lt abv) oth old fr rest)
+      (env-stand (λ i le → proj₁ (fes i le)) (λ i m → proj₁ (aes i m)) old (envW-frame es (λ x _ → oth cfc x ne) ev))
+      (stk-stand (λ i le → proj₂ (fes i le)) (λ i m → proj₂ (aes i m)) old (stk-all os (λ x → oth cfc x ne) sk))
+      (ret-deep cur₀ (≺-trans lt abv) oth old fr af rest)
     where
       ne : ¬ cfc ≡ cur₀
       ne e = ≺-≢ (≺-trans lt abv) (sym e)
-  ret-deep {cur = cur} cur₀ lt oth old (fes , fr) (ok-trampc {es = es} {os = os} p d cfc sl sv′ rets′ eR eF eRets eSv eSl abv area ev sk rest) =
+  ret-deep {cur = cur} cur₀ lt oth old (fes , fr) (aes , af) (ok-trampc {es = es} {os = os} p d cfc sl sv′ rets′ eR eF eRets eSv eSl abv area ev sk rest) =
     ok-trampc p d cfc sl sv′ rets′ eR eF eRets eSv eSl abv
       (trans (oth cur _ (λ e → ≺-≢ lt (sym e))) area)
-      (env-stand (λ i le → proj₁ (fes i le)) old (envW-frame es (λ x _ → oth cfc x ne) ev))
-      (stk-stand (λ i le → proj₂ (fes i le)) old (stk-all os (λ x → oth cfc x ne) sk))
-      (ret-deep cur₀ (≺-trans lt abv) oth old fr rest)
+      (env-stand (λ i le → proj₁ (fes i le)) (λ i m → proj₁ (aes i m)) old (envW-frame es (λ x _ → oth cfc x ne) ev))
+      (stk-stand (λ i le → proj₂ (fes i le)) (λ i m → proj₂ (aes i m)) old (stk-all os (λ x → oth cfc x ne) sk))
+      (ret-deep cur₀ (≺-trans lt abv) oth old fr af rest)
     where
       ne : ¬ cfc ≡ cur₀
       ne e = ≺-≢ (≺-trans lt abv) (sym e)
-  ret-deep {cur = cur} cur₀ lt oth old fr′ (ok-callc {x = x} {cv} p cfc sl sv′ rets′ ci eR eF eRets eSv eSl abv ap s₂ pc rest) =
+  ret-deep {cur = cur} cur₀ lt oth old fr′ af′ (ok-callc {x = x} {cv} p cfc sl sv′ rets′ ci eR eF eRets eSv eSl abv ap s₂ pc rest) =
     ok-callc p cfc sl sv′ rets′ ci eR eF eRets eSv eSl abv
       (trans (oth cur _ (λ e → ≺-≢ lt (sym e))) ap) (trans (oth cfc _ ne) s₂)
-      (vw-stand {v = cv} (λ i le → cnt-snd x cv i (proj₁ (proj₁ fr′ i le))) old pc)
-      (ret-deep cur₀ (≺-trans lt abv) oth old (proj₂ fr′) rest)
+      (vw-stand {v = cv} (λ i le → cnt-snd x cv i (proj₁ (proj₁ fr′ i le))) (λ i m → cnt-snd x cv i (proj₁ (proj₁ af′ i m))) old pc)
+      (ret-deep cur₀ (≺-trans lt abv) oth old (proj₂ fr′) (proj₂ af′) rest)
     where
       ne : ¬ cfc ≡ cur₀
       ne e = ≺-≢ (≺-trans lt abv) (sym e)
-  ret-deep {cur = cur} cur₀ lt oth old (fes , fr) (ok-callω p cfc sl sv′ rets′ eR eF eRets eSv eSl abv ap rest) =
+  ret-deep {cur = cur} cur₀ lt oth old (fes , fr) (aes , af) (ok-callω p cfc sl sv′ rets′ eR eF eRets eSv eSl abv ap rest) =
     ok-callω p cfc sl sv′ rets′ eR eF eRets eSv eSl abv
       (trans (oth cur _ (λ e → ≺-≢ lt (sym e))) (trans ap (sym (oth cfc 0 ne))))
-      (ret-deep cur₀ (≺-trans lt abv) oth old fr rest)
+      (ret-deep cur₀ (≺-trans lt abv) oth old fr af rest)
     where
       ne : ¬ cfc ≡ cur₀
       ne e = ≺-≢ (≺-trans lt abv) (sym e)
 
   -- ★ the whole return stack, over a run that changed the current frame
   -- below its budget only
-  ret-top : ∀ {T U′ R fin} {r : Ret U′ T} {cur rets sv fs fs′}
+  ret-top : ∀ {T U′ R fin} {r : Ret U′ T} {cur rets sv fs fs′ fl}
           → (∀ f x → ¬ f ≡ cur → LocState.stackMem (floc fs′) f x ≡ LocState.stackMem (floc fs) f x)
           → (∀ x → budget (rootφ R) ≤ x → LocState.stackMem (floc fs′) cur x ≡ LocState.stackMem (floc fs) cur x)
-          → Old (AllocState.next-heap-ref (falloc fs)) fs fs′ → FreshR r (AllocState.next-heap-ref (falloc fs))
+          → Old (AllocState.next-heap-ref (falloc fs)) fl fs fs′ → FreshR r (AllocState.next-heap-ref (falloc fs)) → AwayR r fl
           → RetOK R fin r cur rets sv fs → RetOK R fin r cur rets sv fs′
-  ret-top oth top old fr (ok-top e₁ e₂) = ok-top e₁ e₂
-  ret-top oth top old fr (ok-loop K lk rest) = ok-loop K lk (ret-top oth top old fr rest)
-  ret-top {cur = cur} oth top old (fes , fr) (ok-call {es = es} {os = os} p st cfc sl sv′ rets′ refl eF eC eRets eSv eSl abv area ev sk rest) =
+  ret-top oth top old fr af (ok-top e₁ e₂) = ok-top e₁ e₂
+  ret-top oth top old fr af (ok-loop K lk rest) = ok-loop K lk (ret-top oth top old fr af rest)
+  ret-top {cur = cur} oth top old (fes , fr) (aes , af) (ok-call {es = es} {os = os} p st cfc sl sv′ rets′ refl eF eC eRets eSv eSl abv area ev sk rest) =
     ok-call p st cfc sl sv′ rets′ refl eF eC eRets eSv eSl abv
       (trans (top _ Data.Nat.Properties.≤-refl) area)
-      (env-stand (λ i le → proj₁ (fes i le)) old (envW-frame es (λ x _ → oth cfc x ne) ev))
-      (stk-stand (λ i le → proj₂ (fes i le)) old (stk-all os (λ x → oth cfc x ne) sk))
-      (ret-deep cur abv oth old fr rest)
+      (env-stand (λ i le → proj₁ (fes i le)) (λ i m → proj₁ (aes i m)) old (envW-frame es (λ x _ → oth cfc x ne) ev))
+      (stk-stand (λ i le → proj₂ (fes i le)) (λ i m → proj₂ (aes i m)) old (stk-all os (λ x → oth cfc x ne) sk))
+      (ret-deep cur abv oth old fr af rest)
     where
       import Data.Nat.Properties
       ne : ¬ cfc ≡ cur
       ne e = ≺-≢ abv (sym e)
-  ret-top {cur = cur} oth top old (fes , fr) (ok-tramp {es = es} {os = os} p o d cfc sl sv′ rets′ refl eF eRets eSv eSl abv area fit ev sk rest) =
+  ret-top {cur = cur} oth top old (fes , fr) (aes , af) (ok-tramp {es = es} {os = os} p o d cfc sl sv′ rets′ refl eF eRets eSv eSl abv area fit ev sk rest) =
     ok-tramp p o d cfc sl sv′ rets′ refl eF eRets eSv eSl abv
       (trans (top _ (Data.Nat.Properties.n≤1+n _)) area) fit
-      (env-stand (λ i le → proj₁ (fes i le)) old (envW-frame es (λ x _ → oth cfc x ne) ev))
-      (stk-stand (λ i le → proj₂ (fes i le)) old (stk-all os (λ x → oth cfc x ne) sk))
-      (ret-deep cur abv oth old fr rest)
+      (env-stand (λ i le → proj₁ (fes i le)) (λ i m → proj₁ (aes i m)) old (envW-frame es (λ x _ → oth cfc x ne) ev))
+      (stk-stand (λ i le → proj₂ (fes i le)) (λ i m → proj₂ (aes i m)) old (stk-all os (λ x → oth cfc x ne) sk))
+      (ret-deep cur abv oth old fr af rest)
     where
       import Data.Nat.Properties
       ne : ¬ cfc ≡ cur
       ne e = ≺-≢ abv (sym e)
-  ret-top {cur = cur} oth top old (fes , fr) (ok-trampf {es = es} {os = os} p d cfc sl sv′ rets′ refl eF eRets eSv eSl abv ev sk rest) =
+  ret-top {cur = cur} oth top old (fes , fr) (aes , af) (ok-trampf {es = es} {os = os} p d cfc sl sv′ rets′ refl eF eRets eSv eSl abv ev sk rest) =
     ok-trampf p d cfc sl sv′ rets′ refl eF eRets eSv eSl abv
-      (env-stand (λ i le → proj₁ (fes i le)) old (envW-frame es (λ x _ → oth cfc x ne) ev))
-      (stk-stand (λ i le → proj₂ (fes i le)) old (stk-all os (λ x → oth cfc x ne) sk))
-      (ret-deep cur abv oth old fr rest)
+      (env-stand (λ i le → proj₁ (fes i le)) (λ i m → proj₁ (aes i m)) old (envW-frame es (λ x _ → oth cfc x ne) ev))
+      (stk-stand (λ i le → proj₂ (fes i le)) (λ i m → proj₂ (aes i m)) old (stk-all os (λ x → oth cfc x ne) sk))
+      (ret-deep cur abv oth old fr af rest)
     where
       ne : ¬ cfc ≡ cur
       ne e = ≺-≢ abv (sym e)
-  ret-top {cur = cur} oth top old (fes , fr) (ok-trampω {es = es} {os = os} p d cfc sl sv′ rets′ refl eF eRets eSv eSl abv area fit efit ev sk rest) =
+  ret-top {cur = cur} oth top old (fes , fr) (aes , af) (ok-trampω {es = es} {os = os} p d cfc sl sv′ rets′ refl eF eRets eSv eSl abv area fit efit ev sk rest) =
     ok-trampω p d cfc sl sv′ rets′ refl eF eRets eSv eSl abv
       (trans (top 0 Data.Nat.z≤n) area) fit efit
-      (env-stand (λ i le → proj₁ (fes i le)) old (envW-frame es (λ x _ → oth cfc x ne) ev))
-      (stk-stand (λ i le → proj₂ (fes i le)) old (stk-all os (λ x → oth cfc x ne) sk))
-      (ret-deep cur abv oth old fr rest)
+      (env-stand (λ i le → proj₁ (fes i le)) (λ i m → proj₁ (aes i m)) old (envW-frame es (λ x _ → oth cfc x ne) ev))
+      (stk-stand (λ i le → proj₂ (fes i le)) (λ i m → proj₂ (aes i m)) old (stk-all os (λ x → oth cfc x ne) sk))
+      (ret-deep cur abv oth old fr af rest)
     where
       ne : ¬ cfc ≡ cur
       ne e = ≺-≢ abv (sym e)
-  ret-top {cur = cur} oth top old (fes , fr) (ok-trampc {X = X} {es = es} {os = os} p d cfc sl sv′ rets′ refl eF eRets eSv eSl abv area ev sk rest) =
+  ret-top {cur = cur} oth top old (fes , fr) (aes , af) (ok-trampc {X = X} {es = es} {os = os} p d cfc sl sv′ rets′ refl eF eRets eSv eSl abv area ev sk rest) =
     ok-trampc p d cfc sl sv′ rets′ refl eF eRets eSv eSl abv
       (trans (top (wsz X) Data.Nat.Properties.≤-refl) area)
-      (env-stand (λ i le → proj₁ (fes i le)) old (envW-frame es (λ x _ → oth cfc x ne) ev))
-      (stk-stand (λ i le → proj₂ (fes i le)) old (stk-all os (λ x → oth cfc x ne) sk))
-      (ret-deep cur abv oth old fr rest)
+      (env-stand (λ i le → proj₁ (fes i le)) (λ i m → proj₁ (aes i m)) old (envW-frame es (λ x _ → oth cfc x ne) ev))
+      (stk-stand (λ i le → proj₂ (fes i le)) (λ i m → proj₂ (aes i m)) old (stk-all os (λ x → oth cfc x ne) sk))
+      (ret-deep cur abv oth old fr af rest)
     where
       import Data.Nat.Properties
       ne : ¬ cfc ≡ cur
       ne e = ≺-≢ abv (sym e)
-  ret-top {cur = cur} oth top old fr′ (ok-callc {x = x} {cv} p cfc sl sv′ rets′ ci refl eF eRets eSv eSl abv ap s₂ pc rest) =
+  ret-top {cur = cur} oth top old fr′ af′ (ok-callc {x = x} {cv} p cfc sl sv′ rets′ ci refl eF eRets eSv eSl abv ap s₂ pc rest) =
     ok-callc p cfc sl sv′ rets′ ci refl eF eRets eSv eSl abv
       (trans (top _ Data.Nat.Properties.≤-refl) ap) (trans (oth cfc _ ne) s₂)
-      (vw-stand {v = cv} (λ i le → cnt-snd x cv i (proj₁ (proj₁ fr′ i le))) old pc)
-      (ret-deep cur abv oth old (proj₂ fr′) rest)
+      (vw-stand {v = cv} (λ i le → cnt-snd x cv i (proj₁ (proj₁ fr′ i le))) (λ i m → cnt-snd x cv i (proj₁ (proj₁ af′ i m))) old pc)
+      (ret-deep cur abv oth old (proj₂ fr′) (proj₂ af′) rest)
     where
       import Data.Nat.Properties
       ne : ¬ cfc ≡ cur
       ne e = ≺-≢ abv (sym e)
-  ret-top {cur = cur} oth top old (fes , fr) (ok-callω p cfc sl sv′ rets′ refl eF eRets eSv eSl abv ap rest) =
+  ret-top {cur = cur} oth top old (fes , fr) (aes , af) (ok-callω p cfc sl sv′ rets′ refl eF eRets eSv eSl abv ap rest) =
     ok-callω p cfc sl sv′ rets′ refl eF eRets eSv eSl abv
       (trans (top _ Data.Nat.Properties.≤-refl) (trans ap (sym (oth cfc 0 ne))))
-      (ret-deep cur abv oth old fr rest)
+      (ret-deep cur abv oth old fr af rest)
     where
       import Data.Nat.Properties
       ne : ¬ cfc ≡ cur
@@ -852,14 +862,15 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open import Once.LinCore.ImageRun fmt ans bw using (StepI)
   open import Once.LinCore.LocalStep fmt ans bw using (module Steps)
   open import Once.LinCore.StepKinds fmt ans bw using (Local; LocalC; StraightC; straight-local; CoveredC; covered-elim)
-  open import Once.LinCore.HeldI fmt ans bw using (InvI)
+  open import Once.LinCore.HeldI fmt ans bw using (InvI; InvH; module InvH; i-h; i-ws; inv-stepI; OwnR)
+  open import Once.LinCore.Held fmt ans bw using (Owned)
   open import Once.LinCore.LabelsI fmt ans bw using (module Img)
   open import Once.LinCore.LowAt fmt ans bw using (Inside)
   open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
   open FlatStepsAPI {FS} using (FlatSteps)
   open import Once.LinCore.Moves {FS} using (Keep; module Keep)
   open Keep using (k-frame; k-saved; k-ret; k-other; k-log; k-inb)
-  open Cells {FS} U wordOf using (fresh-cfg; fresh-ret)
+  open Cells {FS} U wordOf using (fresh-cfg; fresh-ret; seen-owned; away-of)
   open Img {FS} ds f ldConst ld-nl using (image-label)
 
   -- the frame context, by equations
@@ -868,13 +879,13 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   ctx-to refl refl refl ok = ok
 
   -- the frame context, kept
-  ctx-keep : ∀ {T U′ R fin} {r : Ret U′ T} {fs fs′ X} → Keep fs fs′
+  ctx-keep : ∀ {T U′ R fin} {r : Ret U′ T} {fl fs fs′ X} → Keep fl fs fs′
            → RetOK R fin r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) X
            → RetOK R fin r (AllocState.current-frame (falloc fs′)) (fret fs′) (AllocState.saved-frames (falloc fs′)) X
   ctx-keep {R = R} {fin} {r} {X = X} K ok = ctx-to (sym (k-frame K)) (sym (k-ret K)) (sym (k-saved K)) ok
 
   -- the current frame's slots from a bound up, by the frame's name
-  top-at : ∀ {fs fs′ B} → Keep fs fs′ → (∀ x → B ≤ x → slot fs′ x ≡ slot fs x)
+  top-at : ∀ {fl fs fs′ B} → Keep fl fs fs′ → (∀ x → B ≤ x → slot fs′ x ≡ slot fs x)
          → ∀ x → B ≤ x → LocState.stackMem (floc fs′) (AllocState.current-frame (falloc fs)) x
                          ≡ LocState.stackMem (floc fs) (AllocState.current-frame (falloc fs)) x
   top-at {fs′ = fs′} K tp x le = trans (cong (λ g → LocState.stackMem (floc fs′) g x) (sym (k-frame K))) (tp x le)
@@ -887,7 +898,7 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                 (Rin : Inside image (At.code U ncty ldConst (frameOf root) j L₀))
                 (eφ : budget (rootφ R) ≡ budget (frameOf root)) where
     module L  = Loc {FS} U ncty ldConst wordOf image root j L₀ Rin using (Here; lowAt)
-    module LS = Steps {FS} U ncty ldConst wordOf image root j L₀ Rin using (local-step; Out; succ; succ′; module Succ)
+    module LS = Steps {FS} U ncty ldConst wordOf image root j L₀ Rin using (local-step; Out; succ; succ′; module Succ; LocPre)
     module RA = At U ncty ldConst (frameOf root) j using (module Low)
 
 
@@ -896,31 +907,69 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
              (st : StepI c r m n t c′ r′ m′ n′) (l : Local st) (s : Sub root c)
            → InvI m r n h → L.Here s m fs → AllocState.next-heap-ref (falloc fs) ≡ n
            → RetOK R (RA.Low.lfin (L.lowAt s)) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
-           → InBlk fs
+           → InBlk fs → LiveG r m fs → FreshAl (falloc fs)
            → Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′ × L.Here (LS.succ st l s) m′ fs′
                × AllocState.next-heap-ref (falloc fs′) ≡ n′
                × RetOK R (RA.Low.lfin (L.lowAt (LS.succ st l s))) r′ (AllocState.current-frame (falloc fs′)) (fret fs′)
                        (AllocState.saved-frames (falloc fs′)) fs′
                × InBlk fs′ × LocState.ev-log (floc fs′) ≡ LocState.ev-log (floc fs)
-    glocal {r = r} {fs = fs} st l s inv H nx ok I = fin (LS.local-step ld image-label st l s H nx fr)
+               × LiveG r′ m′ fs′ × FreshAl (falloc fs′)
+    glocal {r = r} {m = m} {t = t} {r′ = r′} {m′ = m′} {h = h} {fs = fs} st l s inv H nx ok I lv F = fin (LS.local-step ld image-label st l s H nx pre)
       where
         fr : ∀ i → AllocState.next-heap-ref (falloc fs) ≤ serial i → _
         fr i le = fresh-cfg inv i (subst (_≤ serial i) nx le)
         frR : FreshR r (AllocState.next-heap-ref (falloc fs))
         frR = subst (FreshR r) (sym nx) (fresh-ret inv)
-        fin : LS.Out (LS.succ st l s) fs _ _ → _
-        fin (N , fs′ , run , H′ , K , nx′ , old , tp) =
+        pre : LS.LocPre m r _ fs
+        pre = record { lp-fresh = fr ; lp-heap = h ; lp-inv = inv
+                     ; lp-live = λ i p → lv i (seen-owned (Cfg.envs m) (Cfg.opds m) r (InvH.i-sees (i-h inv)) i p)
+                     ; lp-ws = proj₁ (i-ws inv) ; lp-fal = F }
+        fin : LS.Out (LS.succ st l s) fs _ _ _ → _
+        fin (N , fs′ , run , H′ , fx , nx′ , old , tp) =
           N , fs′ , run , H′ , nx′ ,
           ctx-keep K (LS.Succ.carry (LS.succ′ st l s) (λ fin r₀ → RetOK R fin r₀ _ _ _ fs′)
-            (ret-top (k-other K) (λ x le → top-at K tp x (subst (_≤ x) eφ le)) old frR ok)) ,
-          k-inb K I , k-log K
+            (ret-top (k-other K) (λ x le → top-at K tp x (subst (_≤ x) eφ le)) old frR af ok)) ,
+          k-inb K I , k-log K , live-after st inv nx lv (al-of fx) , fresh-after F (al-of fx)
+          where
+            K = keepT fx
+            inv′ = proj₂ (inv-stepI st inv)
+            -- the saved frames' cells are held after (a local step keeps them), so none is a block it freed
+            af : AwayR r (freesOf t)
+            af = away-of r {fl = freesOf t} (InvH.i-seesR (i-h inv))
+                   (λ j q → away-local {FS} {t = t} {h = h} {j = j} (proj₁ (inv-stepI st inv)) (InvH.i-ser (i-h inv)) (kshape fx)
+                              (subst (1 ≤_) (sym (InvH.i-exact (i-h inv′) j))
+                                 (Data.Nat.Properties.≤-trans (subst (1 ≤_) (sym (local-ownR {FS} st l j)) q)
+                                    (Data.Nat.Properties.m≤n+m (OwnR r′ j) (Owned m′ j)))))
+
+  -- ★ a step with no events, its run freeing nothing and allocating nothing: liveness kept
+  live-quiet : ∀ {T sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m′ n′ h fs fs′}
+             → StepI c r m n [] c′ r′ m′ n′ → InvI m r n h → AllocState.next-heap-ref (falloc fs) ≡ n
+             → LiveG r m fs → FreshAl (falloc fs) → Keep [] fs fs′ → LiveG r′ m′ fs′ × FreshAl (falloc fs′)
+  live-quiet st inv nx lv F K = live-after st inv nx lv (al-of fx) , fresh-after F (al-of fx)
+    where fx = kt [] K (λ ()) (λ ()) (inj₁ refl) (λ _ ())
+
+  -- ★ a step whose run moved frames but no block (a call, a return, a dispatch): liveness kept
+  live-moved : ∀ {T sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n t} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m′ n′ h fs fs′}
+             → StepI c r m n t c′ r′ m′ n′ → (∀ i → ¬ (alloc i ∈ t)) → InvI m r n h → AllocState.next-heap-ref (falloc fs) ≡ n
+             → LiveG r m fs → FreshAl (falloc fs)
+             → (∀ q → AllocState.freed (falloc fs′) q ≡ AllocState.freed (falloc fs) q)
+             → (∀ q → q Data.Nat.< AllocState.next-heap-ref (falloc fs) → AllocState.block-size (falloc fs′) q ≡ AllocState.block-size (falloc fs) q)
+             → AllocState.next-heap-ref (falloc fs′) ≡ AllocState.next-heap-ref (falloc fs)
+             → LiveG r′ m′ fs′ × FreshAl (falloc fs′)
+  live-moved {t = t} {fs = fs} {fs′} st na inv nx lv F fe se ne = live-after st inv nx lv a , fresh-after F a
+    where a = al-quiet {t = t} {fs = fs} {fs′} fe se ne na
+
+  -- the trace of a frame's opening or closing: a temporary, no cell
+  no-alloc-tmp : ∀ {e i} → ¬ (alloc i ∈ tmp e ∷ [])
+  no-alloc-tmp (here ())
+  no-alloc-tmp (there ())
 
   -- the return stack over a run that kept what `Keep` says, the old heap and the frame's top
-  ret-step : ∀ {T U′ R fin} {r : Ret U′ T} {fs fs′}
-           → Keep fs fs′ → Old (AllocState.next-heap-ref (falloc fs)) fs fs′
+  ret-step : ∀ {T U′ R fin} {r : Ret U′ T} {fl fl′ fs fs′}
+           → Keep fl fs fs′ → Old (AllocState.next-heap-ref (falloc fs)) fl′ fs fs′
            → (∀ x → budget (rootφ R) ≤ x → slot fs′ x ≡ slot fs x)
-           → FreshR r (AllocState.next-heap-ref (falloc fs))
+           → FreshR r (AllocState.next-heap-ref (falloc fs)) → AwayR r fl′
            → RetOK R fin r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
            → RetOK R fin r (AllocState.current-frame (falloc fs′)) (fret fs′) (AllocState.saved-frames (falloc fs′)) fs′
-  ret-step K old tp fr ok = ctx-keep K (ret-top (k-other K) (top-at K tp) old fr ok)
+  ret-step K old tp fr af ok = ctx-keep K (ret-top (k-other K) (top-at K tp) old fr af ok)
 

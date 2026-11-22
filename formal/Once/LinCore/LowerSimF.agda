@@ -43,7 +43,7 @@ module Once.LinCore.LowerSimF
 open import Once.LinCore.Core fmt
 open import Once.LinCore.Flat using (Base; ⟦_⟧b)
 open import Once.LinCore.NbEPLinCore fmt ans
-open import Once.LinCore.Values fmt bw using (MV; serial; Id)
+open import Once.LinCore.Values fmt bw using (MV; serial; Id; wsz; hdr)
 open import Once.LinCore.Code fmt bw using (Stk; []ˢ; _∷ˢ_; Slots; []ᵉ; vw; _∥_)
 open import Once.LinCore.Keys fmt bw using (Univ)
 open import Once.LinCore.Layout fmt bw
@@ -148,7 +148,7 @@ module SimF {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
           → ws (A ∷ []) ≤ OP φ′
           → Σ FlatState λ fs′ → FlatSteps prog (Once.LinCore.Moves.ln {FS} (wsz A)) fs fs′
               × CfgW (LocState.heapMem (floc fs′)) (slot fs′) φ′ ([]ᵉ ∥ a ∷ˢ []ˢ)
-              × Ran (Once.LinCore.Moves.ln {FS} (wsz A)) 0 (AllocState.next-heap-ref (falloc fs)) (budget φ′) fs fs′
+              × Ran (Once.LinCore.Moves.ln {FS} (wsz A)) [] [] (AllocState.next-heap-ref (falloc fs)) (budget φ′) fs fs′
               × (∀ x → budget φ′ ≤ x → slot fs′ x ≡ slot fs x)
   enter-n prog fs φ′ cf area o {A} {a} wa ne inp pa sa win seg h B′ fit =
     case arg-in prog fs φ′ cf area o wa ne inp pa sa win seg h (infr {fs = fs} B′ (bnd-arg φ′ A fit)) of λ where
@@ -172,7 +172,7 @@ module SimF {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
           → ws (E ∷ []) ≤ EP φ′ → ws (A ∷ []) ≤ OP φ′
           → Σ FlatState λ fs′ → FlatSteps prog (Once.LinCore.Moves.ln {FS} (wsz A) + suc (Once.LinCore.Moves.ln {FS} (wsz E))) fs fs′
               × CfgW (LocState.heapMem (floc fs′)) (slot fs′) φ′ (vw e []ᵉ ∥ a ∷ˢ []ˢ)
-              × Ran (Once.LinCore.Moves.ln {FS} (wsz A) + suc (Once.LinCore.Moves.ln {FS} (wsz E))) 0 (AllocState.next-heap-ref (falloc fs)) (budget φ′) fs fs′
+              × Ran (Once.LinCore.Moves.ln {FS} (wsz A) + suc (Once.LinCore.Moves.ln {FS} (wsz E))) [] [] (AllocState.next-heap-ref (falloc fs)) (budget φ′) fs fs′
               × (∀ x → budget φ′ ≤ x → slot fs′ x ≡ slot fs x)
   enter-j prog fs φ′ cf area o v sv {E} {A} {e} {a} we wa ne inp ev sv≥ pa sa pe se win winv seg h B′ lsv fitE fitA =
     case arg-in prog fs φ′ cf area o wa ne inp pa sa win (Seg-++ˡ prog (fpc fs) (mvPS o dst (wsz A)) _ seg) h (infr {fs = fs} B′ (bnd-arg φ′ A fitA)) of λ where
@@ -187,7 +187,7 @@ module SimF {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
       Goal : Set
       Goal = Σ FlatState λ fs′ → FlatSteps prog (Once.LinCore.Moves.ln {FS} (wsz A) + suc (Once.LinCore.Moves.ln {FS} (wsz E))) fs fs′
                × CfgW (LocState.heapMem (floc fs′)) (slot fs′) φ′ (vw e []ᵉ ∥ a ∷ˢ []ˢ)
-               × Ran (Once.LinCore.Moves.ln {FS} (wsz A) + suc (Once.LinCore.Moves.ln {FS} (wsz E))) 0 (AllocState.next-heap-ref (falloc fs)) (budget φ′) fs fs′
+               × Ran (Once.LinCore.Moves.ln {FS} (wsz A) + suc (Once.LinCore.Moves.ln {FS} (wsz E))) [] [] (AllocState.next-heap-ref (falloc fs)) (budget φ′) fs fs′
                × (∀ x → budget φ′ ≤ x → slot fs′ x ≡ slot fs x)
       -- the caller's view, after the argument
       run₂ : ∀ fs₁ (st₁ : FlatSteps prog (Once.LinCore.Moves.ln {FS} (wsz A)) fs fs₁)
@@ -423,7 +423,7 @@ module SimF {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
            → ws (E ∷ []) ≤ EP φ′ → ws (A ∷ []) ≤ OP φ′
            → Σ FlatState λ fs′ → FlatSteps prog (Once.LinCore.Moves.ln {FS} (wsz A) + suc (Once.LinCore.Moves.ln {FS} (wsz E))) fs fs′
                × CfgW (LocState.heapMem (floc fs′)) (slot fs′) φ′ (vw e []ᵉ ∥ a ∷ˢ []ˢ)
-               × Ran (Once.LinCore.Moves.ln {FS} (wsz A) + suc (Once.LinCore.Moves.ln {FS} (wsz E))) 0 (AllocState.next-heap-ref (falloc fs)) (budget φ′) fs fs′
+               × Ran (Once.LinCore.Moves.ln {FS} (wsz A) + suc (Once.LinCore.Moves.ln {FS} (wsz E))) [] [] (AllocState.next-heap-ref (falloc fs)) (budget φ′) fs fs′
                × (∀ x → budget φ′ ≤ x → slot fs′ x ≡ slot fs x)
   enter-jh prog fs φ′ cf area o sv {E} {A} {e} {a} i o₀ we wa ne inp ev sv≥ pa sa pe ae win seg h B′ lsv fitE fitA =
     after₁ (arg-in prog fs φ′ cf area o wa ne inp pa sa win (Seg-++ˡ prog (fpc fs) (mvPS o dst (wsz A)) _ seg) h (infr B′ (bnd-arg φ′ A fitA)))

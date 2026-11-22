@@ -42,12 +42,12 @@ open import Once.LinCore.Core fmt using (Defs; FS; Fn; Gd; LTm; One; Tm; many; m
 open import Once.LinCore.Flat using (Base; ⟦_⟧b; Lit)
 open import Once.IR.Semantics.Trace using (T)
 open import Once.LinCore.Events fmt ans bw using (ds; p-halt; Γ)
-open import Once.LinCore.Values fmt bw using (MV; Trace; module MV)
+open import Once.LinCore.Values fmt bw using (MV; Trace; module MV; wsz)
 open import Once.LinCore.Code fmt bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots; []ᵉ; vw; see; Cfg; _∥_)
 open import Once.LinCore.Image fmt bw using (_⨾_; Codeᴵ; Insᴵ; Key; blockᴵ; case; end; epop; kbodyω; ktrω; module Codeᴵ; module Insᴵ; module Key)
 open import Once.LinCore.ImageRun fmt ans bw using (Ret; []ʳ; frm; _∷ⁱ_)
 open import Once.LinCore.Keys fmt bw using (allK; os; module Program)
-open import Once.LinCore.Layout fmt bw using (Frame; frame; frameOf; budget; wsz; ws; envW; opW; module Frame)
+open import Once.LinCore.Layout fmt bw using (Frame; frame; frameOf; budget; ws; envW; opW; module Frame)
 open Frame using (EP; OP)
 open import Once.LinCore.Lower fmt bw using (idx; module Lowering; module Program′)
 open import Once.LinCore.Words fmt ans bw using (module Rel)
@@ -92,7 +92,7 @@ module RetW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open Sim {FS} U wordOf using (envW-heap; stkW-heap; envW-frame; slots-frame; cntE; cntS)
   open Rel {FS} U wordOf using (cellLoc)
   open import Once.LinCore.FreshI fmt ans bw using (module Cells)
-  open Cells {FS} U wordOf using (FreshR)
+  open Cells {FS} U wordOf using (FreshR; away-[])
   open import Once.LinCore.Moves {FS} using (Old)
   open FrameSemantics FS using (≺-trans; ≺-irrefl)
   open import Once.LinCore.ImageRun fmt ans bw using (StepI)
@@ -127,7 +127,8 @@ module RetW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open import Once.LinCore.LowerSimF fmt ans bw using (module SimF)
   open SimF {FS} U wordOf using (leave; area-gen; area-bnd)
   open import Once.LinCore.LowerSimE {FS} using (anc-win)
-  open CallOutA using (co-slots; co-pc; co-size; co-halt)
+  open CallOutA using (co-slots; co-pc; co-size; co-halt; co-freed)
+  open import Once.LinCore.LiveRun fmt ans bw using (LiveG; FreshAl; live-eq; fresh-eq)
   open import Once.LinCore.LowerSimG {FS} using (ClosIn; closure-in)
   open ClosIn
   open ImgE {FS} ds f ldConst ld-nl using (image-tramp)
@@ -221,10 +222,10 @@ module RetW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
              → FreshR r₁ (AllocState.next-heap-ref (falloc fs))
              → TailW p r₁ cfc rets′ sv′ fs
              → AllocState.next-heap-ref (falloc fs) ≡ n
-             → InBlk fs
+             → InBlk fs → LiveG r₁ (es₁ ∥ w ∷ˢ []ˢ) fs → FreshAl (falloc fs)
              → ArrivesAt (epop ⨾ end) r₁ (es₁ ∥ w ∷ˢ []ˢ) n fs
     gret-cω′ {g = g} {A = A} {B} {ds′} {b} {γ} {es₁} {w = w} {fs = fs} p e cfc sl sv′ rets′ eF H eRets eSv eSl abv ap fr
-            (tw-info {Es = Es} {S = S} {k = k} {es = es} {os = os} {r = r} d af sl₂ sv₂ rets₂ eRets₂ eSv₂ eSl₂ abv₂ area₂ fit efit ev sk rest₂) nx I =
+            (tw-info {Es = Es} {S = S} {k = k} {es = es} {os = os} {r = r} d af sl₂ sv₂ rets₂ eRets₂ eSv₂ eSl₂ abv₂ area₂ fit efit ev sk rest₂) nx I lv Fa =
       case tw-back p e cfc af area rets′ sv′ sl eF H eRets eSv ne-af cne (trans ap area₂) area₂ eSl
              (λ k k< → anc-win (falloc fs) cfc af sl sl₂ sv₂ _ (trans eSv (cong ((cfc , sl) ∷_) eSv₂))
                          (subst (λ z → (k + (M ∸ wsz B)) + area Data.Nat.< z) (sym eSl₂)
@@ -232,12 +233,15 @@ module RetW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                              (area-bnd (budget φ) (ws S) M (wsz B) k k< (m≤n⊔m (wsz A) (wsz B)) (≤-trans fit (m≤n+m (OP φ) (EP φ)))))))) of λ where
         (N , fs′ , run , T2 , CO) →
           N , fs′ , run , record { g-pt = p-tramp p (at (next (next whole))) ; g-here = (tw2 p , T2) ; g-next = trans (co-next CO) nx
-                                 ; g-ret = ret′ CO ; g-blk = co-inb CO I } , co-log CO
+                                 ; g-ret = ret′ CO ; g-blk = co-inb CO I
+                                 ; g-live = live-eq {r = R₁} {r′ = R₁} {m = es₁ ∥ w ∷ˢ []ˢ} {m′ = es₁ ∥ w ∷ˢ []ˢ} {fs = fs} {fs′ = fs′} (λ _ q → q) (λ q → cong (λ fr → fr q) (co-freed CO)) (λ q → cong (λ bs → bs q) (co-size CO)) lv
+                                 ; g-fal = fresh-eq {fs = fs} {fs′ = fs′} (λ q → cong (λ fr → fr q) (co-freed CO)) (co-next CO) Fa } , co-log CO
       where
         open Data.Nat.Properties using (≤-trans; m≤n+m; m∸n≤m; m≤n⊔m)
         φ = dsiteφ d
         M = wsz A ⊔ wsz B
         area = Tp φ S ∸ M
+        R₁ = frm {t = just (Fn many g A B)} {Es = Es} k es os r
         cur = AllocState.current-frame (falloc fs)
         ne-af : ¬ af ≡ cur
         ne-af e″ = ≺-≢ (≺-trans abv abv₂) (sym e″)
@@ -256,7 +260,7 @@ module RetW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
              (stkW-heap os (λ i k′ _ → hp (cellLoc i k′)) (stkW-frame os fitS (λ x lo _ → kept x (inj₂ lo)) sk))
              (ret-top (λ f′ x ne → co-rest CO (AtStack f′ x) (λ k′ k< e″ → ne (frame-eq e″)))
                 (λ x le′ → kept x (inj₂ (≤-trans (m∸n≤m (budget φ) (ws S)) (subst (_≤ x) (dsite-φ d) le′))))
-                (λ hl _ → hp hl) (proj₂ fr) rest₂))
+                (λ hl _ _ → hp hl) (proj₂ fr) (away-[] r) rest₂))
           where
             hp : ∀ hl → LocState.heapMem (floc fs′) hl ≡ LocState.heapMem (floc fs) hl
             hp hl = co-rest CO (AtDynamic hl) (λ k′ k< ())
@@ -282,10 +286,10 @@ module RetW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
             → FreshR r₁ (AllocState.next-heap-ref (falloc fs))
             → RetOK (rtramp {κ = ktrω ds′ b γ} p) (trFin (idx p) (ktrω ds′ b γ)) r₁ cfc rets′ sv′ fs
             → AllocState.next-heap-ref (falloc fs) ≡ n
-            → InBlk fs
+            → InBlk fs → LiveG r₁ (es₁ ∥ w ∷ˢ []ˢ) fs → FreshAl (falloc fs)
             → ArrivesAt (epop ⨾ end) r₁ (es₁ ∥ w ∷ˢ []ˢ) n fs
-    gret-cω (p-start (at e)) _ cfc sl sv′ rets′ () eF H eRets eSv eSl abv ap fr rest nx I
-    gret-cω (p-tramp _ _) _ cfc sl sv′ rets′ () eF H eRets eSv eSl abv ap fr rest nx I
-    gret-cω (p-block p (at e)) _ cfc sl sv′ rets′ refl eF H eRets eSv eSl abv ap fr rest nx I =
-      gret-cω′ p e cfc sl sv′ rets′ eF H eRets eSv eSl abv ap fr (tail-ω rest) nx I
+    gret-cω (p-start (at e)) _ cfc sl sv′ rets′ () eF H eRets eSv eSl abv ap fr rest nx I lv Fa
+    gret-cω (p-tramp _ _) _ cfc sl sv′ rets′ () eF H eRets eSv eSl abv ap fr rest nx I lv Fa
+    gret-cω (p-block p (at e)) _ cfc sl sv′ rets′ refl eF H eRets eSv eSl abv ap fr rest nx I lv Fa =
+      gret-cω′ p e cfc sl sv′ rets′ eF H eRets eSv eSl abv ap fr (tail-ω rest) nx I lv Fa
 

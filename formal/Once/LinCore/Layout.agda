@@ -36,22 +36,13 @@ open import Once.LinCore.Flat using (Base)
 open import Once.IR.Semantics.Trace using (T)
 open import Once.LinCore.Code fmt bw using (Sh; _∣_)
 open import Once.LinCore.Image fmt bw
+open import Once.LinCore.Values fmt bw using (wsz)
 
 ------------------------------------------------------------------------
 -- 1. WORDS.
 ------------------------------------------------------------------------
 
--- a value's words (D433; `Spec.ABI.words` on the flat types)
-wsz : LTy → ℕ
-wsz One          = 0
-wsz Zero         = 0
-wsz (A ⊗t B)     = wsz A + wsz B
-wsz (A ⊕t B)     = suc (wsz A ⊔ wsz B)
-wsz (Bt b)       = 1
-wsz (μt F)       = 1
-wsz (Fn k g A B) = 1
-wsz (Nu F)       = 1
-wsz (Ct l X)     = wsz X
+-- a value's words (D433; `Spec.ABI.words` on the flat types): `Values.wsz` (D469)
 
 -- a stack's words
 ws : List LTy → ℕ

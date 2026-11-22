@@ -489,7 +489,7 @@ pcView (instr-ctrl (c-call-fn f))             _ = pv-call-fn f refl
 pcView (instr-ctrl (c-ret bb))                _ = pv-ret bb refl
 pcView (instr-alloc-stack _)                  ()
 pcView (instr-dealloc-stack _)                ()
-pcView (instr-free-heap _)                    _ = pv-suc tt tt (λ _ _ → inj₁ refl)
+pcView (instr-free-heap n)                    _ = pv-suc tt tt (λ _ fs → slot-adv (instr-free-heap n) fs)
 pcView (load-at _)                            _ = pv-suc tt tt (λ _ _ → inj₁ refl)
 pcView (store-at _)                           _ = pv-suc tt tt (λ _ _ → inj₁ refl)
 pcView (addr-at _)                            _ = pv-suc tt tt (λ _ _ → inj₁ refl)
@@ -933,6 +933,12 @@ slot-read-in-frame : ∀ prog (fs : FlatState) (slot : Slot) (i : AbstractInstr)
 -- B1.7b (D456): the machine's slot gate, passed at a reached step (it did not
 -- fault: the run is sound). It was the image's (`Emitted.em-slots`, D455).
 slot-read-in-frame prog fs slot i r h ftq soq = slot-gate-ok i prog fs soq (step-sound prog fs r h ftq)
+
+-- D468: the machine's free gate, passed at a reached free (it did not fault: the run is sound)
+free-gate : ∀ prog (fs : FlatState) n → RunAt prog fs → halted (floc fs) ≡ false
+          → fetch prog (fpc fs) ≡ just (instr-free-heap n)
+          → block-base? n (readReg (regs (floc fs)) Input1) (falloc fs) ≡ true
+free-gate prog fs n r h ftq = straight-ok (instr-free-heap n) fs (step-sound prog fs r h ftq)
 
 ------------------------------------------------------------------------
 -- THE POINTER-BOUNDS INVARIANT IS A THEOREM (plan 0.54 rung D, item 5).

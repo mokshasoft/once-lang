@@ -44,11 +44,12 @@ open import Once.IR.Semantics.Trace using (T)
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw
 open import Once.LinCore.Values fmt bw
+open import Once.LinCore.Live fmt bw using (LiveB)
 open import Once.LinCore.Code fmt bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots; []ᵉ; vw; see; Cfg; _∥_)
 open import Once.LinCore.Image fmt bw
 open import Once.LinCore.ImageRun fmt ans bw using (Ret; []ʳ; frm; _∷ⁱ_)
 open import Once.LinCore.Keys fmt bw
-open import Once.LinCore.Layout fmt bw using (Frame; frame; frameOf; budget; wsz; ws; module Frame)
+open import Once.LinCore.Layout fmt bw using (Frame; frame; frameOf; budget; ws; module Frame)
 open Frame using (EP; OP)
 open import Once.LinCore.Lower fmt bw
 open import Once.LinCore.MoveCode using (mvPS)
@@ -207,15 +208,18 @@ module TrampF {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   -- ★ a free's cell part (`fopen`): the contents into the frame, the cell freed
   tf-open : ∀ {X C} (p : under (ktrf X C) ∈ allK U) {i} {x : MV X} {fs}
           → TrF0 (wsz X) (trPos (ktrf X C) p 0) i x fs
+          -- D468: the cell's block live at its size, the value held not sharing it
+          → LiveB (falloc fs) (hdr + wsz X) i → (∀ j → 1 ≤ cnt x j → ¬ serial j ≡ serial i)
           → Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′
               × HereF (frame 0 (wsz X)) (suc (wsz X)) (trPos (ktrf X C) p 1) ([]ᵉ ∥ x ∷ˢ []ˢ) fs′
-              × Ran N 0 (AllocState.next-heap-ref (falloc fs)) (wsz X) fs fs′
-  tf-open {X} {C} p {i} {x} {fs} T =
+              × Ran N [] (serial i ∷ []) (AllocState.next-heap-ref (falloc fs)) (wsz X) fs fs′
+  tf-open {X} {C} p {i} {x} {fs} T lv nd =
     case fopen-sim image fs (wsz X) hdr (hdr + wsz X) i (TrF0.f0-wx T) Data.Nat.Properties.≤-refl (TrF0.f0-M T)
            (TrF0.f0-x T) (TrF0.f0-at T)
            (subst (λ z → Seg image (fpc fs) (restore-input (wsz X) ∷ mvPS hdr z (wsz X) ++ instr-free-heap (hdr + wsz X) ∷ []))
                   (sym (Data.Nat.Properties.n∸n≡0 (wsz X))) (tF-seg0 {X} {C} p (TrF0.f0-pc T)))
-           (TrF0.f0-run T) (subst (wsz X Data.Nat.<_) (sym (TrF0.f0-slots T)) (Data.Nat.Properties.n<1+n (wsz X))) of λ where
+           (TrF0.f0-run T) (subst (wsz X Data.Nat.<_) (sym (TrF0.f0-slots T)) (Data.Nat.Properties.n<1+n (wsz X)))
+           lv (Data.Nat.s≤s Data.Nat.z≤n) nd of λ where
       (fs′ , run , C′ , Rn) →
         tFN X , fs′ , run ,
         record { f-pc = trans (r-pc Rn) (trans (cong (tFN X +_) (TrF0.f0-pc T)) (sym (tF-pos₁ {X} {C} p)))

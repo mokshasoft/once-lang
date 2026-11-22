@@ -49,7 +49,7 @@ open import Once.LinCore.Code fmt bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots
 open import Once.LinCore.Image fmt bw
 open import Once.LinCore.ImageRun fmt ans bw using (Ret; []ʳ; frm; _∷ⁱ_)
 open import Once.LinCore.Keys fmt bw
-open import Once.LinCore.Layout fmt bw using (Frame; frame; frameOf; budget; wsz; ws; module Frame)
+open import Once.LinCore.Layout fmt bw using (Frame; frame; frameOf; budget; ws; module Frame)
 open Frame using (EP; OP)
 open import Once.LinCore.Lower fmt bw
 open import Once.LinCore.Words fmt ans bw
@@ -64,6 +64,7 @@ open import Once.LinCore.KeysRun fmt ans bw using (module ProgramRun)
 open import Once.LinCore.TrampAt fmt ans bw using (under; module TrImg; module Tr)
 
 open import Once.LinCore.Global fmt ans bw using (module Relate)
+open import Once.LinCore.LiveRun fmt ans bw using (LiveG; FreshAl)
 
 module LocalR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
            (ldConst : ∀ {b} → Lit b → AbstractInstr)
@@ -129,19 +130,19 @@ module LocalR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                 (s : Sub main c) (st : StepI c r m n t c′ r′ m′ n′) (l : Local st)
               → InvI m r n h → S.Here s m fs → AllocState.next-heap-ref (falloc fs) ≡ n
               → RetOK rstart (ptFin (p-start (at s))) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
-              → InBlk fs
+              → InBlk fs → LiveG r m fs → FreshAl (falloc fs)
               → Onward c′ r′ m′ n′ fs
-    gat-start s st l inv H nx ok I = case AS.glocal st l s inv H nx ok I of λ where
-      (N , fs′ , run , H′ , nx′ , ok′ , I′ , lg) → N , fs′ , run , record { g-pt = p-start (at (AS.LS.succ st l s)) ; g-here = H′ ; g-next = nx′ ; g-ret = ok′ ; g-blk = I′ } , lg
+    gat-start s st l inv H nx ok I lv F = case AS.glocal st l s inv H nx ok I lv F of λ where
+      (N , fs′ , run , H′ , nx′ , ok′ , I′ , lg , lv′ , F′) → N , fs′ , run , record { g-pt = p-start (at (AS.LS.succ st l s)) ; g-here = H′ ; g-next = nx′ ; g-ret = ok′ ; g-blk = I′ ; g-live = lv′ ; g-fal = F′ } , lg
 
     gat-block : ∀ {T sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n t} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m′ n′ h fs}
                   {σ} {κ : Key σ} (p : (σ , κ) ∈ allK U) (s : Sub (blockᴵ κ) c) (st : StepI c r m n t c′ r′ m′ n′) (l : Local st)
               → InvI m r n h → K.Here p s m fs → AllocState.next-heap-ref (falloc fs) ≡ n
               → RetOK (rblock p) (ptFin (p-block p (at s))) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
-              → InBlk fs
+              → InBlk fs → LiveG r m fs → FreshAl (falloc fs)
               → Onward c′ r′ m′ n′ fs
-    gat-block p s st l inv H nx ok I = case AK.glocal p st l s inv H nx ok I of λ where
-      (N , fs′ , run , H′ , nx′ , ok′ , I′ , lg) → N , fs′ , run , record { g-pt = p-block p (at (AK.LS.succ p st l s)) ; g-here = H′ ; g-next = nx′ ; g-ret = ok′ ; g-blk = I′ } , lg
+    gat-block p s st l inv H nx ok I lv F = case AK.glocal p st l s inv H nx ok I lv F of λ where
+      (N , fs′ , run , H′ , nx′ , ok′ , I′ , lg , lv′ , F′) → N , fs′ , run , record { g-pt = p-block p (at (AK.LS.succ p st l s)) ; g-here = H′ ; g-next = nx′ ; g-ret = ok′ ; g-blk = I′ ; g-live = lv′ ; g-fal = F′ } , lg
 
     -- ★ the one step that stays at a trampoline's point: a many-use body's
     -- `epop` (D442), no flat step (its code is the way out's: one address)
@@ -150,37 +151,37 @@ module LocalR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                 (tp : TrPt p pt) (st : StepI c r m n t c′ r′ m′ n′) → LocalC c
               → HereTr tp m fs → AllocState.next-heap-ref (falloc fs) ≡ n
               → RetOK (rtramp p) (ptFin (p-tramp p pt)) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
-              → InBlk fs
+              → InBlk fs → LiveG r m fs → FreshAl (falloc fs)
               → Onward c′ r′ m′ n′ fs
-    gtr-local (tp0 _) st () H nx ok I
-    gtr-local (tp1 _) st () H nx ok I
-    gtr-local (tp2 _) st () H nx ok I
-    gtr-local (to0 _) st () H nx ok I
-    gtr-local (to1 _) st () H nx ok I
-    gtr-local (to2 _) st () H nx ok I
-    gtr-local (tf0 _) st () H nx ok I
-    gtr-local (tf1 _) st () H nx ok I
-    gtr-local (tf2 _) st () H nx ok I
-    gtr-local (tw0 _) st () H nx ok I
-    gtr-local (tw1 _) st () H nx ok I
-    gtr-local (tw3 _) st () H nx ok I
-    gtr-local (tc0 _) st () H nx ok I
-    gtr-local (tc1 _) st () H nx ok I
-    gtr-local (tc3 _) st () H nx ok I
-    gtr-local (tc4 _) st () H nx ok I
-    gtr-local {r = r} {n = n} {fs = fs} (tw2 p) st _ H nx ok I =
-      epop-inv (λ m₀ c′ r′ m′ n′ → HereTr (tw2 p) m₀ fs → AllocState.next-heap-ref (falloc fs) ≡ n → Onward c′ r′ m′ n′ fs)
-        (λ { {os = v ∷ˢ os′} H′ nx′ →
+    gtr-local (tp0 _) st () H nx ok I lv F
+    gtr-local (tp1 _) st () H nx ok I lv F
+    gtr-local (tp2 _) st () H nx ok I lv F
+    gtr-local (to0 _) st () H nx ok I lv F
+    gtr-local (to1 _) st () H nx ok I lv F
+    gtr-local (to2 _) st () H nx ok I lv F
+    gtr-local (tf0 _) st () H nx ok I lv F
+    gtr-local (tf1 _) st () H nx ok I lv F
+    gtr-local (tf2 _) st () H nx ok I lv F
+    gtr-local (tw0 _) st () H nx ok I lv F
+    gtr-local (tw1 _) st () H nx ok I lv F
+    gtr-local (tw3 _) st () H nx ok I lv F
+    gtr-local (tc0 _) st () H nx ok I lv F
+    gtr-local (tc1 _) st () H nx ok I lv F
+    gtr-local (tc3 _) st () H nx ok I lv F
+    gtr-local (tc4 _) st () H nx ok I lv F
+    gtr-local {r = r} {n = n} {fs = fs} (tw2 p) st _ H nx ok I lv F =
+      epop-inv (λ m₀ c′ r′ m′ n′ → HereTr (tw2 p) m₀ fs → AllocState.next-heap-ref (falloc fs) ≡ n → LiveG r m₀ fs → Onward c′ r′ m′ n′ fs)
+        (λ { {os = v ∷ˢ os′} H′ nx′ lv′ →
                0 , fs , FlatStepsAPI.[] ,
-               record { g-pt = p-tramp p (at (next (next (next whole)))) ; g-here = tw3 p , H′ ; g-next = nx′ ; g-ret = ok ; g-blk = I } , refl })
-        st H nx
+               record { g-pt = p-tramp p (at (next (next (next whole)))) ; g-here = tw3 p , H′ ; g-next = nx′ ; g-ret = ok ; g-blk = I ; g-live = lv′ ; g-fal = F } , refl })
+        st H nx lv
     -- a copy's `epop` (its contents' view dropped)
-    gtr-local {r = r} {n = n} {fs = fs} (tc2 p) st _ H nx ok I =
-      epop-inv (λ m₀ c′ r′ m′ n′ → HereTr (tc2 p) m₀ fs → AllocState.next-heap-ref (falloc fs) ≡ n → Onward c′ r′ m′ n′ fs)
-        (λ { {es = vw cv es′} {os = v ∷ˢ os′} H′ nx′ →
+    gtr-local {r = r} {n = n} {fs = fs} (tc2 p) st _ H nx ok I lv F =
+      epop-inv (λ m₀ c′ r′ m′ n′ → HereTr (tc2 p) m₀ fs → AllocState.next-heap-ref (falloc fs) ≡ n → LiveG r m₀ fs → Onward c′ r′ m′ n′ fs)
+        (λ { {es = vw cv es′} {os = v ∷ˢ os′} H′ nx′ lv′ →
                0 , fs , FlatStepsAPI.[] ,
-               record { g-pt = p-tramp p (at (next (next (next whole)))) ; g-here = tc3 p , H′ ; g-next = nx′ ; g-ret = ok ; g-blk = I } , refl })
-        st H nx
+               record { g-pt = p-tramp p (at (next (next (next whole)))) ; g-here = tc3 p , H′ ; g-next = nx′ ; g-ret = ok ; g-blk = I ; g-live = lv′ ; g-fal = F } , refl })
+        st H nx lv
 
     -- ★ a straight step (local, not a `case`): only at a path; no case
     -- split on the step (StepKinds)
@@ -188,16 +189,16 @@ module LocalR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                (P : Pnt c) (st : StepI c r m n t c′ r′ m′ n′) (l : StraightC c)
              → InvI m r n h → HereP P m fs → AllocState.next-heap-ref (falloc fs) ≡ n
              → RetOK (rootOf P) (ptFin P) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
-             → InBlk fs
+             → InBlk fs → LiveG r m fs → FreshAl (falloc fs)
              → Onward c′ r′ m′ n′ fs
-    gstep-at {c = c} (p-start (at s)) st l inv H nx ok I = gat-start s st (straight-local c l) inv H nx ok I
-    gstep-at {c = c} (p-block p (at s)) st l inv H nx ok I = gat-block p s st (straight-local c l) inv H nx ok I
-    gstep-at (p-start (disp s)) st () inv H nx ok I
-    gstep-at (p-block p (disp s)) st () inv H nx ok I
-    gstep-at {c = c} (p-tramp p pt) st l inv (tp , H) nx ok I = gtr-local tp st (straight-local c l) H nx ok I
+    gstep-at {c = c} (p-start (at s)) st l inv H nx ok I lv F = gat-start s st (straight-local c l) inv H nx ok I lv F
+    gstep-at {c = c} (p-block p (at s)) st l inv H nx ok I lv F = gat-block p s st (straight-local c l) inv H nx ok I lv F
+    gstep-at (p-start (disp s)) st () inv H nx ok I lv F
+    gstep-at (p-block p (disp s)) st () inv H nx ok I lv F
+    gstep-at {c = c} (p-tramp p pt) st l inv (tp , H) nx ok I lv F = gtr-local tp st (straight-local c l) H nx ok I lv F
     -- explicit: else coverage splits the step at `halted` (a costly split)
-    gstep-at p-halt st () inv H nx ok I
+    gstep-at p-halt st () inv H nx ok I lv F
 
     gstep-local : ∀ {T sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n t} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m′ n′ h fs}
                   (st : StepI c r m n t c′ r′ m′ n′) → StraightC c → InvI m r n h → Related c r m n fs → Onward c′ r′ m′ n′ fs
-    gstep-local st l inv G = gstep-at (g-pt G) st l inv (g-here G) (g-next G) (g-ret G) (g-blk G)
+    gstep-local st l inv G = gstep-at (g-pt G) st l inv (g-here G) (g-next G) (g-ret G) (g-blk G) (g-live G) (g-fal G)

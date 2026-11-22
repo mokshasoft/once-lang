@@ -52,6 +52,7 @@ open import Once.LinCore.Image fmt bw
 open import Once.LinCore.Keys fmt bw
 open Univ using (tys; nus)
 open import Once.LinCore.Layout fmt bw
+open import Once.LinCore.Values fmt bw using (wsz; hdr)
 open import Once.LinCore.Lower fmt bw
 open import Once.LinCore.MoveCode using (mvPS; mvSP; mvSS; mvSSd; stores)
 open import Once.LinCore.LabelsC fmt ans bw using (module LabsC)

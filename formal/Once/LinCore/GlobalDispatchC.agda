@@ -48,7 +48,7 @@ open import Once.LinCore.Code fmt bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots
 open import Once.LinCore.Image fmt bw
 open import Once.LinCore.ImageRun fmt ans bw using (Ret; []ʳ; frm; _∷ⁱ_)
 open import Once.LinCore.Keys fmt bw
-open import Once.LinCore.Layout fmt bw using (Frame; frame; frameOf; budget; wsz; ws; module Frame)
+open import Once.LinCore.Layout fmt bw using (Frame; frame; frameOf; budget; ws; module Frame)
 open Frame using (EP; OP)
 open import Once.LinCore.Lower fmt bw
 open import Once.LinCore.Words fmt ans bw
@@ -93,7 +93,7 @@ module DispC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open Sim {FS} U wordOf using (envW-heap; stkW-heap; envW-frame; slots-frame; cntE; cntS)
   open Rel {FS} U wordOf using (cellLoc)
   open import Once.LinCore.FreshI fmt ans bw using (module Cells)
-  open Cells {FS} U wordOf using (FreshR)
+  open Cells {FS} U wordOf using (FreshR; away-[])
   open import Once.LinCore.Moves {FS} using (Old)
   open FrameSemantics FS using (≺-trans; ≺-irrefl)
   open import Once.LinCore.ImageRun fmt ans bw using (StepI)
@@ -129,6 +129,7 @@ module DispC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open SimF {FS} U wordOf using (leave; area-gen)
   open CallOutA using (co-pc; co-halt)
   open import Once.LinCore.LowerSimG {FS} using (CopyIn)
+  open import Once.LinCore.LiveRun fmt ans bw using (LiveG; FreshAl; live-eq; fresh-eq)
   open CopyIn
   open import Once.LinCore.CallStepH fmt ans bw using (module FramesH)
   open FramesH {FS} using (CalledH)
@@ -172,14 +173,14 @@ module DispC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
             → AllocState.frame-slots (falloc fs) ≡ fbudget (dsiteφ d)
             → RetOK (rtramp {κ = ktrc X C} p) (trFin (idx p) (ktrc X C)) (frm {t = just C} {Es = Es} k es os r)
                     (AllocState.current-frame (falloc fs′)) (fret fs′) (AllocState.saved-frames (falloc fs′)) fs′
-  mk-trampc {X = X} {S = S} {es = es} {os = os} {fs = fs} {fs′} p d CI eR C fr frR ok esl =
+  mk-trampc {X = X} {S = S} {es = es} {os = os} {r = r} {fs = fs} {fs′} p d CI eR C fr frR ok esl =
     ok-trampc p d cfc (AllocState.frame-slots (falloc fs)) (AllocState.saved-frames (falloc fs)) (fret fs)
       refl refl eR (cy-saved CI) esl under-cfc
       (subst (λ g′ → LocState.stackMem (floc fs′) g′ (wsz X) ≡ just (SV-Ptr (AtStack cfc (Tp (dsiteφ d) S ∸ 1)))) (sym (cy-frame CI)) (cy-s₁ CI))
-      (env-stand (λ j le → proj₁ (fr j le)) old (envW-frame es (λ y _ → kept y) (CfgW.c-env C)))
-      (stk-stand (λ j le → proj₂ (fr j le)) old (stk-all os kept (proj₂ (CfgW.c-stk C))))
+      (env-stand (λ j le → proj₁ (fr j le)) (λ _ ()) old (envW-frame es (λ y _ → kept y) (CfgW.c-env C)))
+      (stk-stand (λ j le → proj₂ (fr j le)) (λ _ ()) old (stk-all os kept (proj₂ (CfgW.c-stk C))))
       (ret-deep (AllocState.current-frame (falloc fs′)) under-cfc
-         (λ f′ y ne → cy-other CI f′ y (λ e → ne (trans (sym e) (sym (cy-frame CI))))) old frR ok)
+         (λ f′ y ne → cy-other CI f′ y (λ e → ne (trans (sym e) (sym (cy-frame CI))))) old frR (away-[] r) ok)
     where
       cfc = AllocState.current-frame (falloc fs)
       b = suc (suc (suc (wsz X)))
@@ -187,8 +188,8 @@ module DispC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       under-cfc = subst (_≺ cfc) (sym (cy-frame CI)) (callee-below cfc b)
       kept : ∀ y → LocState.stackMem (floc fs′) cfc y ≡ LocState.stackMem (floc fs) cfc y
       kept y = cy-other CI cfc y (callee-≢ cfc b)
-      old : Old (AllocState.next-heap-ref (falloc fs)) fs fs′
-      old hl _ = cong (λ h′ → h′ hl) (cy-heap CI)
+      old : Old (AllocState.next-heap-ref (falloc fs)) [] fs fs′
+      old hl _ _ = cong (λ h′ → h′ hl) (cy-heap CI)
 
   -- ★ a copy's dispatch at a dispatch site, given the cell's words (a closure's or a ν's): into the
   -- trampoline its word 2 names, at depth 0 (TrC0)
@@ -208,9 +209,9 @@ module DispC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
           → suc (suc (suc (suc (suc (suc (suc (suc (fpc fs)))))))) ≡ dsitePos d
           → AllocState.next-heap-ref (falloc fs) ≡ n
           → RetOK (dsiteRoot d) (dsiteFin d) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
-          → InBlk fs
+          → InBlk fs → LiveG r (es ∥ mone ∷ˢ os) fs → FreshAl (falloc fs)
           → Arrives (blockᴵ (ktrc X C)) (frm {t = just C} {Es = Es} k es os r) (vw (see es) []ᵉ ∥ mone ∷ˢ []ˢ) n fs
-  gcopy-d {X = X} {C} {Es} {S = S} {r = r} {es = es} {fs = fs} d inv seg run fsl C′ s₀ pcv words cc pe nx ok I =
+  gcopy-d {X = X} {C} {Es} {S = S} {k = k} {r = r} {es = es} {os = os} {fs = fs} d inv seg run fsl C′ s₀ pcv words cc pe nx ok I lv F =
     case tc-disp {X} {C} (ws Es) (Tp (dsiteφ d) S ∸ 1) seg run
            (subst (ws Es Data.Nat.<_) (sym fsl)
               (Data.Nat.Properties.≤-<-trans
@@ -228,7 +229,10 @@ module DispC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                ; g-ret = mk-trampc m d CI (trans (cy-ret CI) (cong (_∷ fret fs) pe)) C′
                            (λ j le → fresh-cfg inv j (subst (_≤ serial j) nx le))
                            (subst (FreshR r) (sym nx) (fresh-ret inv)) ok fsl
-               ; g-blk = inb-pt {fs} {fs′} (λ hl → cong (λ h′ → h′ hl) (cy-heap CI)) (cy-next CI) (cy-size CI) I } , cy-log CI
+               ; g-blk = inb-pt {fs} {fs′} (λ hl → cong (λ h′ → h′ hl) (cy-heap CI)) (cy-next CI) (cy-size CI) I
+               ; g-live = live-eq {r = r} {r′ = frm {t = just C} {Es = Es} k es os r} {m = es ∥ mone ∷ˢ os} {m′ = vw (see es) []ᵉ ∥ mone ∷ˢ []ˢ} {fs = fs} {fs′ = fs′}
+                            (λ _ q → q) (λ q → cong (λ fr → fr q) (cy-freed CI)) (λ q → cong (λ bs → bs q) (cy-size CI)) lv
+               ; g-fal = fresh-eq {fs = fs} {fs′ = fs′} (λ q → cong (λ fr → fr q) (cy-freed CI)) (cy-next CI) F } , cy-log CI
 
   -- the dispatch's code at a root's path, its address after
   private
@@ -242,19 +246,19 @@ module DispC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
          → InvI (es ∥ mone ∷ˢ os) r n h → HereP P (es ∥ mone ∷ˢ os) fs
          → AllocState.next-heap-ref (falloc fs) ≡ n
          → RetOK (rootOf P) (ptFin P) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
-         → InBlk fs
+         → InBlk fs → LiveG r (es ∥ mone ∷ˢ os) fs → FreshAl (falloc fs)
          → Arrives (blockᴵ (ktrc X (Fn kd g A B))) (frm {t = just _} {Es = Es} k es os r) (vw (see es) []ᵉ ∥ mone ∷ˢ []ˢ) n fs
-  gccopy {Es = Es} {X = X} {lam = lam} {i} {x} {es = es} {fs = fs} (p-start (at s)) eq inv H nx ok I =
+  gccopy {Es = Es} {X = X} {lam = lam} {i} {x} {es = es} {fs = fs} (p-start (at s)) eq inv H nx ok I lv F =
     with-top (topW es (CfgW.c-env (S.Here.h-cfg H)))
     where
       with-fn : ∀ {we} → VW (LocState.heapMem (floc fs)) (see es) we → VW (LocState.heapMem (floc fs)) (mfn i lam x) we → SlotsAt (slot fs) (ws Es) we → _
       with-fn pe (vfn cb cc cfr px words) (s₀ , _) =
         gcopy-d {X = X} (d-start s) inv (Seg-++ˡ image (fpc fs) _ _ (S.seg-at s H)) (S.Here.h-run H) (S.Here.h-slots H) (S.Here.h-cfg H) s₀ pe words cc
           (trans (cong (λ z → suc (suc (suc (suc (suc (suc (suc (suc z)))))))) (S.Here.h-pc H)) (trans (sym (eight (S.pos s))) (sym (S.pos-next s))))
-          nx ok I
+          nx ok I lv F
       with-top : Σ (List W) (λ w → VW (LocState.heapMem (floc fs)) (see es) w × SlotsAt (slot fs) (ws Es) w) → _
       with-top (we , pe , se) = with-fn pe (subst (λ v → VW (LocState.heapMem (floc fs)) v we) eq pe) se
-  gccopy {Es = Es} {X = X} {lam = lam} {i} {x} {es = es} {fs = fs} (p-block p′ (at s)) eq inv H nx ok I =
+  gccopy {Es = Es} {X = X} {lam = lam} {i} {x} {es = es} {fs = fs} (p-block p′ (at s)) eq inv H nx ok I lv F =
     with-top (topW es (CfgW.c-env (K.Here.h-cfg {p = p′} H)))
     where
       with-fn : ∀ {we} → VW (LocState.heapMem (floc fs)) (see es) we → VW (LocState.heapMem (floc fs)) (mfn i lam x) we → SlotsAt (slot fs) (ws Es) we → _
@@ -262,10 +266,10 @@ module DispC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
         gcopy-d {X = X} (d-block p′ s) inv (Seg-++ˡ image (fpc fs) _ _ (K.seg-at p′ s H)) (K.Here.h-run {p = p′} H) (K.Here.h-slots {p = p′} H) (K.Here.h-cfg {p = p′} H) s₀ pe words cc
           (trans (cong (λ z → suc (suc (suc (suc (suc (suc (suc (suc z)))))))) (K.Here.h-pc {p = p′} H))
                  (trans (sym (eight (K.pos p′ s))) (sym (FrK.C.pos-next p′ s))))
-          nx ok I
+          nx ok I lv F
       with-top : Σ (List W) (λ w → VW (LocState.heapMem (floc fs)) (see es) w × SlotsAt (slot fs) (ws Es) w) → _
       with-top (we , pe , se) = with-fn pe (subst (λ v → VW (LocState.heapMem (floc fs)) v we) eq pe) se
-  gccopy (p-tramp p pt) eq inv (() , H) nx ok I
+  gccopy (p-tramp p pt) eq inv (() , H) nx ok I lv F
 
   -- ★ A ν'S COPY (i-ncopy)
   gncopy : ∀ {T Es F S′ S V} {k : Codeᴵ (Nu F ∷ Es ∣ Nu F ∷ S) V} {r : Ret V T}
@@ -274,19 +278,19 @@ module DispC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
          → InvI (es ∥ mone ∷ˢ os) r n h → HereP P (es ∥ mone ∷ˢ os) fs
          → AllocState.next-heap-ref (falloc fs) ≡ n
          → RetOK (rootOf P) (ptFin P) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
-         → InBlk fs
+         → InBlk fs → LiveG r (es ∥ mone ∷ˢ os) fs → FreshAl (falloc fs)
          → Arrives (blockᴵ (ktrc (Coalg F S′ ⊗t S′) (Nu F))) (frm {t = just _} {Es = Es} k es os r) (vw (see es) []ᵉ ∥ mone ∷ˢ []ˢ) n fs
-  gncopy {Es = Es} {F = F} {S′} {i = i} {q} {es = es} {fs = fs} (p-start (at s)) eq inv H nx ok I =
+  gncopy {Es = Es} {F = F} {S′} {i = i} {q} {es = es} {fs = fs} (p-start (at s)) eq inv H nx ok I lv Fa =
     with-top (topW es (CfgW.c-env (S.Here.h-cfg H)))
     where
       with-nu : ∀ {we} → VW (LocState.heapMem (floc fs)) (see es) we → VW (LocState.heapMem (floc fs)) (mnu i q) we → SlotsAt (slot fs) (ws Es) we → _
       with-nu pe (vnu co cc cfr pp words) (s₀ , _) =
         gcopy-d {X = Coalg F S′ ⊗t S′} (d-start s) inv (Seg-++ˡ image (fpc fs) _ _ (S.seg-at s H)) (S.Here.h-run H) (S.Here.h-slots H) (S.Here.h-cfg H) s₀ pe words cc
           (trans (cong (λ z → suc (suc (suc (suc (suc (suc (suc (suc z)))))))) (S.Here.h-pc H)) (trans (sym (eight (S.pos s))) (sym (S.pos-next s))))
-          nx ok I
+          nx ok I lv Fa
       with-top : Σ (List W) (λ w → VW (LocState.heapMem (floc fs)) (see es) w × SlotsAt (slot fs) (ws Es) w) → _
       with-top (we , pe , se) = with-nu pe (subst (λ v → VW (LocState.heapMem (floc fs)) v we) eq pe) se
-  gncopy {Es = Es} {F = F} {S′} {i = i} {q} {es = es} {fs = fs} (p-block p′ (at s)) eq inv H nx ok I =
+  gncopy {Es = Es} {F = F} {S′} {i = i} {q} {es = es} {fs = fs} (p-block p′ (at s)) eq inv H nx ok I lv Fa =
     with-top (topW es (CfgW.c-env (K.Here.h-cfg {p = p′} H)))
     where
       with-nu : ∀ {we} → VW (LocState.heapMem (floc fs)) (see es) we → VW (LocState.heapMem (floc fs)) (mnu i q) we → SlotsAt (slot fs) (ws Es) we → _
@@ -294,7 +298,7 @@ module DispC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
         gcopy-d {X = Coalg F S′ ⊗t S′} (d-block p′ s) inv (Seg-++ˡ image (fpc fs) _ _ (K.seg-at p′ s H)) (K.Here.h-run {p = p′} H) (K.Here.h-slots {p = p′} H) (K.Here.h-cfg {p = p′} H) s₀ pe words cc
           (trans (cong (λ z → suc (suc (suc (suc (suc (suc (suc (suc z)))))))) (K.Here.h-pc {p = p′} H))
                  (trans (sym (eight (K.pos p′ s))) (sym (FrK.C.pos-next p′ s))))
-          nx ok I
+          nx ok I lv Fa
       with-top : Σ (List W) (λ w → VW (LocState.heapMem (floc fs)) (see es) w × SlotsAt (slot fs) (ws Es) w) → _
       with-top (we , pe , se) = with-nu pe (subst (λ v → VW (LocState.heapMem (floc fs)) v we) eq pe) se
-  gncopy (p-tramp p pt) eq inv (() , H) nx ok I
+  gncopy (p-tramp p pt) eq inv (() , H) nx ok I lv Fa

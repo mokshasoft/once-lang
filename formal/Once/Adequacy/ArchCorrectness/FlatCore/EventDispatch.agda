@@ -172,9 +172,9 @@ open FrameSemantics FS using (Frame)
 -- D377: the site facts the engine uses are the LOWERED run's (`RunLow`), each
 -- `RunWF`'s at the image state the lift is of.
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunWF o FS slot-size word-eq
-  hiding (slot-read-written; load-indirect-target-wf; load-indirect-suc-target-wf; heap-load-written; heap-load-suc-written; out-nz-output-word; store-nonptr-absurd; store-suc-nonptr-absurd; branch-tag-scrutinee-wf; store-indirect-inbounds; store-indirect-suc-inbounds; entry-empty; entry-link; entry-ret; ret-site-owes; ret-budget-matches; run-link-nothing; frame-op-absurd; slot-read-in-frame; run-ptr-bounds; emitted-call-fn-resolves; call-site-shape; step-ok; load-at-target-ptr; heap-load-at-written; store-at-target-ptr; store-at-in-block; store-at-inbounds; addr-at-target-ptr; addr-at-in-block; addr-at-inbounds)
+  hiding (slot-read-written; load-indirect-target-wf; load-indirect-suc-target-wf; heap-load-written; heap-load-suc-written; out-nz-output-word; store-nonptr-absurd; store-suc-nonptr-absurd; branch-tag-scrutinee-wf; store-indirect-inbounds; store-indirect-suc-inbounds; entry-empty; entry-link; entry-ret; ret-site-owes; ret-budget-matches; run-link-nothing; frame-op-absurd; slot-read-in-frame; free-gate; run-ptr-bounds; emitted-call-fn-resolves; call-site-shape; step-ok; load-at-target-ptr; heap-load-at-written; store-at-target-ptr; store-at-in-block; store-at-inbounds; addr-at-target-ptr; addr-at-in-block; addr-at-inbounds)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunLow o FS slot-size word-eq
-  using (load-at-target-ptr; heap-load-at-written; load-at-gate; store-at-gate; stack-load-at-written; addr-at-not-stack; store-at-target-ptr; store-at-in-block; store-at-inbounds; addr-at-target-ptr; addr-at-in-block; addr-at-inbounds; slot-read-written; load-indirect-target-wf; load-indirect-suc-target-wf; heap-load-written; heap-load-suc-written; out-nz-output-word; store-nonptr-absurd; store-suc-nonptr-absurd; branch-tag-scrutinee-wf; store-indirect-inbounds; store-indirect-suc-inbounds; entry-empty; entry-link; entry-ret; ret-site-owes; ret-budget-matches; run-link-nothing; frame-op-absurd; slot-read-in-frame; run-ptr-bounds; emitted-call-fn-resolves; call-site-shape; step-ok; start-behind; ret-saved; code-addr-has-body; low-step-image; low-step)
+  using (load-at-target-ptr; heap-load-at-written; load-at-gate; store-at-gate; stack-load-at-written; addr-at-not-stack; store-at-target-ptr; store-at-in-block; store-at-inbounds; addr-at-target-ptr; addr-at-in-block; addr-at-inbounds; slot-read-written; load-indirect-target-wf; load-indirect-suc-target-wf; heap-load-written; heap-load-suc-written; out-nz-output-word; store-nonptr-absurd; store-suc-nonptr-absurd; branch-tag-scrutinee-wf; store-indirect-inbounds; store-indirect-suc-inbounds; entry-empty; entry-link; entry-ret; ret-site-owes; ret-budget-matches; run-link-nothing; frame-op-absurd; slot-read-in-frame; free-gate; run-ptr-bounds; emitted-call-fn-resolves; call-site-shape; step-ok; start-behind; ret-saved; code-addr-has-body; low-step-image; low-step)
   renaming (RunLow to RunAt)
 open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
 open FlatEventTrace {FS} using (flat-events; flat-events-step; flat-events-fetch; event-of; flat-ctrls; flat-ctrls-step; flat-ctrls-fetch; ctrl-of)
@@ -1197,8 +1197,13 @@ module Dispatch (sup : Supply) where
         (λ _ → bg-alloc bg ftq refl refl (straight-frame (instr-alloc-heap k) fs)) wf ftq h refl tt tt h
     events-running-fetch {hv} n ev env prog fs s (instr-dealloc-stack k) cc bg wf h ftq =
       ⊥-elim (frame-op-absurd prog fs (instr-dealloc-stack k) (inv-run wf) ftq (λ _ ()))
-    -- a free (plan 0.146: the new image emits one): no code, a no-op step
-    events-running-fetch {hv} n ev env prog fs s (instr-free-heap k) cc bg wf h ftq = ccc-step-bs n (events-agree n) ev env prog fs s (instr-free-heap k) (bs-free-heap bss prog fs s k cc h ftq) (λ _ → bg-str _ bg ftq refl refl) wf ftq h refl tt tt h
+    -- a free (plan 0.146: the new image emits one), past its gate (D468, the run is sound): no code
+    events-running-fetch {hv} n ev env prog fs s (instr-free-heap k) cc bg wf h ftq =
+      ccc-step-bs n (events-agree n) ev env prog fs s (instr-free-heap k) (bs-free-heap bss prog fs s k cc h ftq gk)
+        (λ _ → bg-str _ bg ftq refl refl) wf ftq h refl tt tt hpost
+      where gk = free-gate prog fs k (inv-run wf) h ftq
+            hpost : halted (floc (flat-exec-instr (instr-free-heap k) prog fs)) ≡ false
+            hpost = subst (λ t → halted (floc t) ≡ false) (sym (FlatMachine.straight-pass (instr-free-heap k) fs gk)) h
     events-running-fetch {hv} n ev env prog fs s (load-at k) cc bg wf h ftq =
       load-at-step n (events-agree n) ev env prog fs s k cc bg wf h ftq
     events-running-fetch {hv} n ev env prog fs s (store-at k) cc bg wf h ftq =

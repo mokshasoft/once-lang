@@ -40,12 +40,12 @@ open import Once.LinCore.Core fmt using (Defs; FS; Fn; Gd; LTm; One; Tm; many; m
 open import Once.LinCore.Flat using (Base; ⟦_⟧b; Lit)
 open import Once.IR.Semantics.Trace using (T)
 open import Once.LinCore.Events fmt ans bw using (ds; p-halt; Γ)
-open import Once.LinCore.Values fmt bw using (MV; Trace; module MV)
+open import Once.LinCore.Values fmt bw using (MV; Trace; module MV; wsz)
 open import Once.LinCore.Code fmt bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots; []ᵉ; vw; see; Cfg; _∥_)
 open import Once.LinCore.Image fmt bw using (_⨾_; Codeᴵ; Insᴵ; Key; blockᴵ; case; end; epop; kbodyω; ktrω; module Codeᴵ; module Insᴵ; module Key)
 open import Once.LinCore.ImageRun fmt ans bw using (Ret; []ʳ; frm; _∷ⁱ_)
 open import Once.LinCore.Keys fmt bw using (allK; os; module Program)
-open import Once.LinCore.Layout fmt bw using (Frame; frame; frameOf; budget; wsz; ws; envW; opW; module Frame)
+open import Once.LinCore.Layout fmt bw using (Frame; frame; frameOf; budget; ws; envW; opW; module Frame)
 open Frame using (EP; OP)
 open import Once.LinCore.Lower fmt bw using (idx; module Lowering; module Program′)
 open import Once.LinCore.Words fmt ans bw using (module Rel)
@@ -126,6 +126,7 @@ module RetWT {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open SimF {FS} U wordOf using (leave; area-gen; area-bnd)
   open import Once.LinCore.LowerSimE {FS} using (anc-win)
   open CallOutA using (co-slots; co-pc; co-size; co-halt)
+  open import Once.LinCore.LiveRun fmt ans bw using (LiveG; FreshAl)
   open import Once.LinCore.LowerSimG {FS} using (ClosIn; closure-in)
   open ClosIn
   open ImgE {FS} ds f ldConst ld-nl using (image-tramp)
@@ -186,11 +187,11 @@ module RetWT {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
             → FreshR r (AllocState.next-heap-ref (falloc fs))
             → RetOK (dsiteRoot d) (dsiteFin d) r cfc rets′ sv′ fs
             → AllocState.next-heap-ref (falloc fs) ≡ n
-            → InBlk fs
+            → InBlk fs → LiveG r (es ∥ w ∷ˢ os) fs → FreshAl (falloc fs)
             → ArrivesAt k r (es ∥ w ∷ˢ os) n fs
-    gret-tω (p-start (at _)) _ d cfc sl sv′ rets′ () H eRets eSv eSl area fit ev sk fr rest nx I
-    gret-tω (p-block _ (at _)) _ d cfc sl sv′ rets′ () H eRets eSv eSl area fit ev sk fr rest nx I
-    gret-tω {A = A} {B} {S = S} {fs = fs} (p-tramp _ _) _ (d-start s) cfc sl sv′ rets′ refl (tw3 p , T) eRets eSv eSl area fit ev sk fr rest nx I =
+    gret-tω (p-start (at _)) _ d cfc sl sv′ rets′ () H eRets eSv eSl area fit ev sk fr rest nx I lv Fa
+    gret-tω (p-block _ (at _)) _ d cfc sl sv′ rets′ () H eRets eSv eSl area fit ev sk fr rest nx I lv Fa
+    gret-tω {A = A} {B} {S = S} {es = es} {os = os} {r = r} {w = w} {fs = fs} (p-tramp _ _) _ (d-start s) cfc sl sv′ rets′ refl (tw3 p , T) eRets eSv eSl area fit ev sk fr rest nx I lv Fa =
       case tw-end p cfc (S.pos (next s)) rets′ sv′ sl (TrW2.w2-pc T) (TrW2.w2-run T) eRets (TrW2.w2-slots T) eSv of λ where
         (fs′ , run , CO) →
           1 , fs′ , run , record { g-pt = p-start (at (next s))
@@ -200,8 +201,9 @@ module RetWT {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                                                                (Data.Nat.Properties.m≤n⊔m (wsz A) (wsz B)) fit ev sk
                                                                (proj₁ (S.shape-fits (next s))) (proj₂ (S.shape-fits (next s))) ; h-slots = trans (co-slots CO) eSl }
                                  ; g-next = trans (co-next CO) nx
-                                 ; g-ret = back CO (λ x _ → co-rest CO (AtStack cfc x) (λ k ())) fr rest ; g-blk = co-inb CO I } , co-log CO
-    gret-tω {A = A} {B} {S = S} {fs = fs} (p-tramp _ _) _ (d-block p′ s) cfc sl sv′ rets′ refl (tw3 p , T) eRets eSv eSl area fit ev sk fr rest nx I =
+                                 ; g-ret = back CO (λ x _ → co-rest CO (AtStack cfc x) (λ k ())) fr rest ; g-blk = co-inb CO I
+                                 ; g-live = proj₁ (live-out r (es ∥ w ∷ˢ os) CO lv Fa) ; g-fal = proj₂ (live-out r (es ∥ w ∷ˢ os) CO lv Fa) } , co-log CO
+    gret-tω {A = A} {B} {S = S} {es = es} {os = os} {r = r} {w = w} {fs = fs} (p-tramp _ _) _ (d-block p′ s) cfc sl sv′ rets′ refl (tw3 p , T) eRets eSv eSl area fit ev sk fr rest nx I lv Fa =
       case tw-end p cfc (K.pos p′ (next s)) rets′ sv′ sl (TrW2.w2-pc T) (TrW2.w2-run T) eRets (TrW2.w2-slots T) eSv of λ where
         (fs′ , run , CO) →
           1 , fs′ , run , record { g-pt = p-block p′ (at (next s))
@@ -211,4 +213,5 @@ module RetWT {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                                                                (Data.Nat.Properties.m≤n⊔m (wsz A) (wsz B)) fit ev sk
                                                                (proj₁ (K.shape-fits p′ (next s))) (proj₂ (K.shape-fits p′ (next s))) ; h-slots = trans (co-slots CO) eSl }
                                  ; g-next = trans (co-next CO) nx
-                                 ; g-ret = back CO (λ x _ → co-rest CO (AtStack cfc x) (λ k ())) fr rest ; g-blk = co-inb CO I } , co-log CO
+                                 ; g-ret = back CO (λ x _ → co-rest CO (AtStack cfc x) (λ k ())) fr rest ; g-blk = co-inb CO I
+                                 ; g-live = proj₁ (live-out r (es ∥ w ∷ˢ os) CO lv Fa) ; g-fal = proj₂ (live-out r (es ∥ w ∷ˢ os) CO lv Fa) } , co-log CO

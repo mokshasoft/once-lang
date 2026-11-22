@@ -49,7 +49,7 @@ open import Once.LinCore.Code fmt bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots
 open import Once.LinCore.Image fmt bw
 open import Once.LinCore.ImageRun fmt ans bw using (Ret; []ʳ; frm; _∷ⁱ_)
 open import Once.LinCore.Keys fmt bw
-open import Once.LinCore.Layout fmt bw using (Frame; frame; frameOf; budget; wsz; ws; module Frame)
+open import Once.LinCore.Layout fmt bw using (Frame; frame; frameOf; budget; ws; module Frame)
 open Frame using (EP; OP)
 open import Once.LinCore.Lower fmt bw
 open import Once.LinCore.Words fmt ans bw
@@ -64,6 +64,8 @@ open import Once.LinCore.KeysRun fmt ans bw using (module ProgramRun)
 open import Once.LinCore.TrampAt fmt ans bw using (under; module TrImg; module Tr)
 
 open import Once.LinCore.Global fmt ans bw using (module Relate)
+open import Once.LinCore.LiveRun fmt ans bw using (LiveG; FreshAl)
+
 open import Once.LinCore.GlobalLocal fmt ans bw using (module LocalR)
 
 module CaseR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
@@ -103,7 +105,7 @@ module CaseR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open FlatStepsAPI {FS} using (FlatSteps)
   open import Once.LinCore.Moves {FS} using (Keep; module Keep)
   open Keep using (k-frame; k-saved; k-ret; k-other; k-log; k-inb)
-  open Cells {FS} U wordOf using (fresh-cfg; fresh-ret)
+  open Cells {FS} U wordOf using (fresh-cfg; fresh-ret; away-[])
   open Img {FS} ds f ldConst ld-nl using (image-label)
 
   ----------------------------------------------------------------------
@@ -153,59 +155,59 @@ module CaseR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                {es : Slots Es} {a : MV A} {os : Stk S} {n h fs} (P : Pnt (case c₁ c₂))
            → InvI (es ∥ minl {B = B} a ∷ˢ os) r n h → HereP P (es ∥ minl {B = B} a ∷ˢ os) fs → AllocState.next-heap-ref (falloc fs) ≡ n
            → RetOK (rootOf P) (ptFin P) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
-           → InBlk fs
+           → InBlk fs → LiveG r (es ∥ minl {B = B} a ∷ˢ os) fs → FreshAl (falloc fs)
            → Onward c₁ r (es ∥ a ∷ˢ os) n fs
-    gcase₁ (p-start (at s)) inv H nx ok I = gat-start s StepI.i-case₁ tt inv H nx ok I
-    gcase₁ (p-block p (at s)) inv H nx ok I = gat-block p s StepI.i-case₁ tt inv H nx ok I
-    gcase₁ {r = r} {fs = fs} (p-start (disp s)) inv H nx ok I = case SL.disp-exit image-label s H of λ where
-      (N , fs′ , run , H′ , K , nx′ , old , tp) →
-        N , fs′ , run , record { g-pt = p-start (at (next s)) ; g-here = H′ ; g-next = trans nx′ nx ; g-ret = ret-step K old tp (fresh-at {r = r} {fs = fs} inv nx) ok ; g-blk = k-inb K I } , k-log K
-    gcase₁ {r = r} {fs = fs} (p-block p (disp s)) inv H nx ok I = case KL.disp-exit p image-label s H of λ where
-      (N , fs′ , run , H′ , K , nx′ , old , tp) →
-        N , fs′ , run , record { g-pt = p-block p (at (next s)) ; g-here = H′ ; g-next = trans nx′ nx ; g-ret = ret-step K old tp (fresh-at {r = r} {fs = fs} inv nx) ok ; g-blk = k-inb K I } , k-log K
-    gcase₁ (p-tramp p pt) inv (tp , H) nx ok I = ⊥-elim (tr-notcase tp)
+    gcase₁ (p-start (at s)) inv H nx ok I lv F = gat-start s StepI.i-case₁ tt inv H nx ok I lv F
+    gcase₁ (p-block p (at s)) inv H nx ok I lv F = gat-block p s StepI.i-case₁ tt inv H nx ok I lv F
+    gcase₁ {c₁ = c₁} {c₂ = c₂} {r = r} {es = es} {a = a} {os = os} {n = n} {fs = fs} (p-start (disp s)) inv H nx ok I lv F = case SL.disp-exit image-label s H of λ where
+      (N , fs′ , run , H′ , K , nx′ , _ , old , tp) →
+        N , fs′ , run , record { g-pt = p-start (at (next s)) ; g-here = H′ ; g-next = trans nx′ nx ; g-ret = ret-step K old tp (fresh-at {r = r} {fs = fs} inv nx) (away-[] r) ok ; g-blk = k-inb K I ; g-live = proj₁ (live-quiet {fs = fs} {fs′ = fs′} (StepI.i-case₁ {c₁ = c₁} {c₂ = c₂} {r = r} {es = es} {a = a} {os = os} {n = n}) inv nx lv F K) ; g-fal = proj₂ (live-quiet {fs = fs} {fs′ = fs′} (StepI.i-case₁ {c₁ = c₁} {c₂ = c₂} {r = r} {es = es} {a = a} {os = os} {n = n}) inv nx lv F K) } , k-log K
+    gcase₁ {c₁ = c₁} {c₂ = c₂} {r = r} {es = es} {a = a} {os = os} {n = n} {fs = fs} (p-block p (disp s)) inv H nx ok I lv F = case KL.disp-exit p image-label s H of λ where
+      (N , fs′ , run , H′ , K , nx′ , _ , old , tp) →
+        N , fs′ , run , record { g-pt = p-block p (at (next s)) ; g-here = H′ ; g-next = trans nx′ nx ; g-ret = ret-step K old tp (fresh-at {r = r} {fs = fs} inv nx) (away-[] r) ok ; g-blk = k-inb K I ; g-live = proj₁ (live-quiet {fs = fs} {fs′ = fs′} (StepI.i-case₁ {c₁ = c₁} {c₂ = c₂} {r = r} {es = es} {a = a} {os = os} {n = n}) inv nx lv F K) ; g-fal = proj₂ (live-quiet {fs = fs} {fs′ = fs′} (StepI.i-case₁ {c₁ = c₁} {c₂ = c₂} {r = r} {es = es} {a = a} {os = os} {n = n}) inv nx lv F K) } , k-log K
+    gcase₁ (p-tramp p pt) inv (tp , H) nx ok I lv F = ⊥-elim (tr-notcase tp)
 
     -- ★ a `case`'s right: a local step at a path, or a loop's dispatch again
     gcase₂ : ∀ {T Es A B S U′} {c₁ : Codeᴵ (Es ∣ A ∷ S) U′} {c₂ : Codeᴵ (Es ∣ B ∷ S) U′} {r : Ret U′ T}
                {es : Slots Es} {b : MV B} {os : Stk S} {n h fs} (P : Pnt (case c₁ c₂))
            → InvI (es ∥ minr {A = A} b ∷ˢ os) r n h → HereP P (es ∥ minr {A = A} b ∷ˢ os) fs → AllocState.next-heap-ref (falloc fs) ≡ n
            → RetOK (rootOf P) (ptFin P) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
-           → InBlk fs
+           → InBlk fs → LiveG r (es ∥ minr {A = A} b ∷ˢ os) fs → FreshAl (falloc fs)
            → Onward c₂ r (es ∥ b ∷ˢ os) n fs
-    gcase₂ (p-start (at s)) inv H nx ok I = gat-start s StepI.i-case₂ tt inv H nx ok I
-    gcase₂ (p-block p (at s)) inv H nx ok I = gat-block p s StepI.i-case₂ tt inv H nx ok I
-    gcase₂ {r = r} {fs = fs} (p-start (disp s)) inv H nx ok I = case SL.disp-again image-label s H of λ where
-      (N , fs′ , run , H′ , K , nx′ , old , tp) →
-        N , fs′ , run , record { g-pt = p-start (at s) ; g-here = H′ ; g-next = trans nx′ nx ; g-ret = ret-step K old tp (fresh-at {r = r} {fs = fs} inv nx) ok ; g-blk = k-inb K I } , k-log K
-    gcase₂ {r = r} {fs = fs} (p-block p (disp s)) inv H nx ok I = case KL.disp-again p image-label s H of λ where
-      (N , fs′ , run , H′ , K , nx′ , old , tp) →
-        N , fs′ , run , record { g-pt = p-block p (at s) ; g-here = H′ ; g-next = trans nx′ nx ; g-ret = ret-step K old tp (fresh-at {r = r} {fs = fs} inv nx) ok ; g-blk = k-inb K I } , k-log K
-    gcase₂ (p-tramp p pt) inv (tp , H) nx ok I = ⊥-elim (tr-notcase tp)
+    gcase₂ (p-start (at s)) inv H nx ok I lv F = gat-start s StepI.i-case₂ tt inv H nx ok I lv F
+    gcase₂ (p-block p (at s)) inv H nx ok I lv F = gat-block p s StepI.i-case₂ tt inv H nx ok I lv F
+    gcase₂ {c₁ = c₁} {c₂ = c₂} {r = r} {es = es} {b = b} {os = os} {n = n} {fs = fs} (p-start (disp s)) inv H nx ok I lv F = case SL.disp-again image-label s H of λ where
+      (N , fs′ , run , H′ , K , nx′ , _ , old , tp) →
+        N , fs′ , run , record { g-pt = p-start (at s) ; g-here = H′ ; g-next = trans nx′ nx ; g-ret = ret-step K old tp (fresh-at {r = r} {fs = fs} inv nx) (away-[] r) ok ; g-blk = k-inb K I ; g-live = proj₁ (live-quiet {fs = fs} {fs′ = fs′} (StepI.i-case₂ {c₁ = c₁} {c₂ = c₂} {r = r} {es = es} {b = b} {os = os} {n = n}) inv nx lv F K) ; g-fal = proj₂ (live-quiet {fs = fs} {fs′ = fs′} (StepI.i-case₂ {c₁ = c₁} {c₂ = c₂} {r = r} {es = es} {b = b} {os = os} {n = n}) inv nx lv F K) } , k-log K
+    gcase₂ {c₁ = c₁} {c₂ = c₂} {r = r} {es = es} {b = b} {os = os} {n = n} {fs = fs} (p-block p (disp s)) inv H nx ok I lv F = case KL.disp-again p image-label s H of λ where
+      (N , fs′ , run , H′ , K , nx′ , _ , old , tp) →
+        N , fs′ , run , record { g-pt = p-block p (at s) ; g-here = H′ ; g-next = trans nx′ nx ; g-ret = ret-step K old tp (fresh-at {r = r} {fs = fs} inv nx) (away-[] r) ok ; g-blk = k-inb K I ; g-live = proj₁ (live-quiet {fs = fs} {fs′ = fs′} (StepI.i-case₂ {c₁ = c₁} {c₂ = c₂} {r = r} {es = es} {b = b} {os = os} {n = n}) inv nx lv F K) ; g-fal = proj₂ (live-quiet {fs = fs} {fs′ = fs′} (StepI.i-case₂ {c₁ = c₁} {c₂ = c₂} {r = r} {es = es} {b = b} {os = os} {n = n}) inv nx lv F K) } , k-log K
+    gcase₂ (p-tramp p pt) inv (tp , H) nx ok I lv F = ⊥-elim (tr-notcase tp)
 
     -- ★ the loop's turn: the body, its dispatch pushed
     gloop : ∀ {T E Es A B S V} {b : Codeᴵ (E ∷ Es ∣ A ∷ S) (E ∷ Es ∣ (B ⊕t A) ∷ S)} {k : Codeᴵ (E ∷ Es ∣ B ∷ S) V}
               {r : Ret V T} {m n h fs} (P : Pnt (loop b ⨾ k))
           → InvI m r n h → HereP P m fs → AllocState.next-heap-ref (falloc fs) ≡ n
           → RetOK (rootOf P) (ptFin P) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
-          → InBlk fs
+          → InBlk fs → LiveG r m fs → FreshAl (falloc fs)
           → Onward b (case k (loop b ⨾ k) ∷ⁱ r) m n fs
-    gloop {r = r} {fs = fs} (p-start (at s)) inv H nx ok I = case SL.loop-enter s H of λ where
-      (N , fs′ , run , H′ , K , nx′ , old , tp) →
+    gloop {b = b} {k = k} {r = r} {m = m} {n = n} {fs = fs} (p-start (at s)) inv H nx ok I lv F = case SL.loop-enter s H of λ where
+      (N , fs′ , run , H′ , K , nx′ , _ , old , tp) →
         N , fs′ , run , record { g-pt = p-start (at (body s)) ; g-here = H′ ; g-next = trans nx′ nx
-                               ; g-ret = ok-loop (p-start (disp s)) (refl , refl) (ret-step K old tp (fresh-at {r = r} {fs = fs} inv nx) ok) ; g-blk = k-inb K I } , k-log K
-    gloop {r = r} {fs = fs} (p-block p (at s)) inv H nx ok I = case KL.loop-enter p s H of λ where
-      (N , fs′ , run , H′ , K , nx′ , old , tp) →
+                               ; g-ret = ok-loop (p-start (disp s)) (refl , refl) (ret-step K old tp (fresh-at {r = r} {fs = fs} inv nx) (away-[] r) ok) ; g-blk = k-inb K I ; g-live = proj₁ (live-quiet {fs = fs} {fs′ = fs′} (StepI.i-loop {body = b} {k = k} {r = r} {m = m} {n = n}) inv nx lv F K) ; g-fal = proj₂ (live-quiet {fs = fs} {fs′ = fs′} (StepI.i-loop {body = b} {k = k} {r = r} {m = m} {n = n}) inv nx lv F K) } , k-log K
+    gloop {b = b} {k = k} {r = r} {m = m} {n = n} {fs = fs} (p-block p (at s)) inv H nx ok I lv F = case KL.loop-enter p s H of λ where
+      (N , fs′ , run , H′ , K , nx′ , _ , old , tp) →
         N , fs′ , run , record { g-pt = p-block p (at (body s)) ; g-here = H′ ; g-next = trans nx′ nx
-                               ; g-ret = ok-loop (p-block p (disp s)) (refl , refl) (ret-step K old tp (fresh-at {r = r} {fs = fs} inv nx) ok) ; g-blk = k-inb K I } , k-log K
-    gloop (p-tramp _ _) inv () nx ok I
+                               ; g-ret = ok-loop (p-block p (disp s)) (refl , refl) (ret-step K old tp (fresh-at {r = r} {fs = fs} inv nx) (away-[] r) ok) ; g-blk = k-inb K I ; g-live = proj₁ (live-quiet {fs = fs} {fs′ = fs′} (StepI.i-loop {body = b} {k = k} {r = r} {m = m} {n = n}) inv nx lv F K) ; g-fal = proj₂ (live-quiet {fs = fs} {fs′ = fs′} (StepI.i-loop {body = b} {k = k} {r = r} {m = m} {n = n}) inv nx lv F K) } , k-log K
+    gloop (p-tramp _ _) inv () nx ok I lv F
 
     -- ★ a loop's entry takes a control step (its label: master's budget is read in control steps, D447)
     gloop-ctrl : ∀ {T E Es A B S V} {b : Codeᴵ (E ∷ Es ∣ A ∷ S) (E ∷ Es ∣ (B ⊕t A) ∷ S)} {k : Codeᴵ (E ∷ Es ∣ B ∷ S) V}
                    {r : Ret V T} {m n h fs} (P : Pnt (loop b ⨾ k))
                → (inv : InvI m r n h) (H : HereP P m fs) (nx : AllocState.next-heap-ref (falloc fs) ≡ n)
                → (ok : RetOK (rootOf P) (ptFin P) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs)
-               → (I : InBlk fs)
-               → 1 ≤ FlatEventTrace.chain-ctrls {FS} (proj₁ (proj₂ (proj₂ (gloop P inv H nx ok I))))
-    gloop-ctrl (p-start (at s)) inv H nx ok I = Data.Nat.s≤s Data.Nat.z≤n
-    gloop-ctrl (p-block p (at s)) inv H nx ok I = Data.Nat.s≤s Data.Nat.z≤n
-    gloop-ctrl (p-tramp _ _) inv () nx ok I
+               → (I : InBlk fs) (lv : LiveG r m fs) (F : FreshAl (falloc fs))
+               → 1 ≤ FlatEventTrace.chain-ctrls {FS} (proj₁ (proj₂ (proj₂ (gloop P inv H nx ok I lv F))))
+    gloop-ctrl (p-start (at s)) inv H nx ok I lv F = Data.Nat.s≤s Data.Nat.z≤n
+    gloop-ctrl (p-block p (at s)) inv H nx ok I lv F = Data.Nat.s≤s Data.Nat.z≤n
+    gloop-ctrl (p-tramp _ _) inv () nx ok I lv F

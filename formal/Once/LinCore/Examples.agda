@@ -302,10 +302,10 @@ p4 = here
 -- ★ what nothing at run time records: a closure over an Int is that Int, one
 -- over `One` or over two such closures is nothing; where two lambdas meet, the
 -- sum's tag is the only word added
-clo-words : (words (Ct 0 (Bt int)) ≡ 1) × (words (Ct 1 One) ≡ 0) × (words (Ct 4 (Ct 2 One ⊗t Ct 3 One)) ≡ 0)
+clo-words : (wsz (Ct 0 (Bt int)) ≡ 1) × (wsz (Ct 1 One) ≡ 0) × (wsz (Ct 4 (Ct 2 One ⊗t Ct 3 One)) ≡ 0)
 clo-words = refl , refl , refl
 
-meet-words : words (Ct 0 (Bt int) ⊕t Ct 1 One) ≡ 2
+meet-words : wsz (Ct 0 (Bt int) ⊕t Ct 1 One) ≡ 2
 meet-words = refl
 
 ------------------------------------------------------------------------
@@ -523,7 +523,7 @@ pν : Γν ∋[ 0 ] σ-nats
 pν = here
 
 -- a stream of Ints is its seed: one word
-stream-words : words (Ct 0 (Bt int)) ≡ 1
+stream-words : wsz (Ct 0 (Bt int)) ≡ 1
 stream-words = refl
 
 -- build the stream at a seed, observe it, observe its tail

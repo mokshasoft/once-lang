@@ -37,14 +37,13 @@ open import Once.LinCore.Core fmt
 open import Once.LinCore.Flat using (Base; ⟦_⟧b)
 open Sg using (env)
 open import Once.LinCore.NbEPLinCore fmt ans
-open import Once.LinCore.Values fmt bw using (Id; serial)
+open import Once.LinCore.Values fmt bw using (Id; serial; hdr; wsz)
 open import Once.LinCore.Keys fmt bw using (Univ)
 open import Once.LinCore.Layout fmt bw
 open Frame using (EP; OP)
 open import Once.LinCore.Words fmt ans bw
 open import Once.LinCore.LowerSim fmt ans bw
 open import Once.LinCore.LowerSimB fmt ans bw
-open import Once.LinCore.Lower fmt bw using (hdr)
 open import Once.LinCore.MoveCode using (mvSP)
 
 module SimC {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue FS) where
@@ -74,7 +73,7 @@ module SimC {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
               → heapMem (floc fs′) hl ≡ heapMem (floc fs) hl
       b-next  : AllocState.next-heap-ref (falloc fs′) ≡ suc (AllocState.next-heap-ref (falloc fs))
       b-halt  : fhalted (floc fs′) ≡ fhalted (floc fs)
-      b-ran   : Ran (10 + (nsteps (length w) + 2)) 1 (AllocState.next-heap-ref (falloc fs)) bot fs fs′
+      b-ran   : Ran (10 + (nsteps (length w) + 2)) ((hdr + length w) ∷ []) [] (AllocState.next-heap-ref (falloc fs)) bot fs fs′
   open Built
 
   -- ★ a closure's or a ν's cell: the header, the contents (from the stack's
@@ -129,7 +128,7 @@ module SimC {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
             FlatSteps-++ st₁ (FlatSteps-++ st₂ (step-at fs₃ (h₂ , f₃) (mov-out-step fs₂) (step-at fs₄ (h₂ , f₄)
                    (store-step fs₃ (bot ∸ 1) (<-≤-trans (pred< one≤) (subst (bot ≤_) (sym (cong AllocState.frame-slots (w-alloc M))) B₁))) done))) ,
             record { b-cell = cell ; b-top = top ; b-slots = slots ; b-heap = heap ; b-next = next ; b-halt = trans (wm-halt M) (h-halt H)
-                   ; b-ran = subst (λ z → Ran (10 + (nsteps z + 2)) 1 (AllocState.next-heap-ref (falloc fs)) bot fs fs₄) (sym lw)
+                   ; b-ran = subst (λ z → Ran (10 + (nsteps z + 2)) ((hdr + z) ∷ []) [] (AllocState.next-heap-ref (falloc fs)) bot fs fs₄) (sym lw)
                                (ran-trans (ranH H) (ran-trans (ranW M (λ f x ne k k< ()) (λ x k k< ()) (λ hl lt k k< → fresh-block (AllocState.next-heap-ref (falloc fs)) hl (k + hdr) lt) (inb-write r M lt₁ bnd₁)) (ran-trans (ran-regs _) (ran-store fs₃ (bot ∸ 1) _ (pred< one≤))))) }
             where
               fs₃ = record fs₂ { floc = record (floc fs₂) { regs = writeReg (LocState.regs (floc fs₂)) Output (readReg (LocState.regs (floc fs₂)) Input1) }
@@ -262,7 +261,7 @@ module SimC {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
            → ws (Fn once g A B ∷ S) ≤ OP φ
            → Σ FlatState λ fs′ → FlatSteps prog (10 + (nsteps (wsz X) + 2)) fs fs′
                × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ mfn (szc X , AllocState.next-heap-ref (falloc fs)) (c1 ds b γ) x ∷ˢ os)
-               × AllocState.next-heap-ref (falloc fs′) ≡ suc (AllocState.next-heap-ref (falloc fs)) × Ran (10 + (nsteps (wsz X) + 2)) 1 (AllocState.next-heap-ref (falloc fs)) (budget φ) fs fs′
+               × AllocState.next-heap-ref (falloc fs′) ≡ suc (AllocState.next-heap-ref (falloc fs)) × Ran (10 + (nsteps (wsz X) + 2)) ((hdr + wsz X) ∷ []) [] (AllocState.next-heap-ref (falloc fs)) (budget φ) fs fs′
   llam-sim prog fs φ {ds = ds} {g} {X} {A} {B} {Es} {S} {b} {γ} {es} {os} {x} kb xt fresh s h Bf C fit = fin (c-stk C)
     where
       import Data.Nat.Properties
@@ -270,7 +269,7 @@ module SimC {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
       lb = tl (idx kb) ; lc = tl (idx (inC xt)) ; lf = tl (idx (inF xt))
       Res = Σ FlatState λ fs′ → FlatSteps prog (10 + (nsteps (wsz X) + 2)) fs fs′
               × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ mfn (szc X , AllocState.next-heap-ref (falloc fs)) (c1 ds b γ) x ∷ˢ os)
-              × AllocState.next-heap-ref (falloc fs′) ≡ suc (AllocState.next-heap-ref (falloc fs)) × Ran (10 + (nsteps (wsz X) + 2)) 1 (AllocState.next-heap-ref (falloc fs)) (budget φ) fs fs′
+              × AllocState.next-heap-ref (falloc fs′) ≡ suc (AllocState.next-heap-ref (falloc fs)) × Ran (10 + (nsteps (wsz X) + 2)) ((hdr + wsz X) ∷ []) [] (AllocState.next-heap-ref (falloc fs)) (budget φ) fs fs′
       one≤ : 1 ≤ bot
       one≤ = ≤∸ 1 (ws S) (budget φ) (≤-trans fit (m≤n+m (OP φ) (EP φ)))
       fin : StkW (heapMem (floc fs)) (slot fs) φ (x ∷ˢ os) → Res
@@ -295,7 +294,7 @@ module SimC {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
                                   , (top , tt) )
                                 , st′
                        ; c-efit = c-efit C ; c-sfit = fit } ,
-                b-next Bd , ran-hi (Data.Nat.Properties.m∸n≤m (budget φ) (ws S)) (subst (λ z → Ran (10 + (nsteps z + 2)) 1 (AllocState.next-heap-ref (falloc fs)) bot fs fs′) (vw-len px) (b-ran Bd))
+                b-next Bd , ran-hi (Data.Nat.Properties.m∸n≤m (budget φ) (ws S)) (subst (λ z → Ran (10 + (nsteps z + 2)) ((hdr + z) ∷ []) [] (AllocState.next-heap-ref (falloc fs)) bot fs fs′) (vw-len px) (b-ran Bd))
 
   -- ★ `llamω`
   llamω-sim : ∀ prog (fs : FlatState) (φ : Frame) {Γ} {ds : Defs Γ} {g X A B Es S} {b : Tm Γ X A B} {γ : Gd g b}
@@ -310,7 +309,7 @@ module SimC {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
            → ws (Fn many g A B ∷ S) ≤ OP φ
            → Σ FlatState λ fs′ → FlatSteps prog (10 + (nsteps (wsz X) + 2)) fs fs′
                × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ mfn (szc X , AllocState.next-heap-ref (falloc fs)) (cω ds b γ) x ∷ˢ os)
-               × AllocState.next-heap-ref (falloc fs′) ≡ suc (AllocState.next-heap-ref (falloc fs)) × Ran (10 + (nsteps (wsz X) + 2)) 1 (AllocState.next-heap-ref (falloc fs)) (budget φ) fs fs′
+               × AllocState.next-heap-ref (falloc fs′) ≡ suc (AllocState.next-heap-ref (falloc fs)) × Ran (10 + (nsteps (wsz X) + 2)) ((hdr + wsz X) ∷ []) [] (AllocState.next-heap-ref (falloc fs)) (budget φ) fs fs′
   llamω-sim prog fs φ {ds = ds} {g} {X} {A} {B} {Es} {S} {b} {γ} {es} {os} {x} kb xt fresh s h Bf C fit = fin (c-stk C)
     where
       import Data.Nat.Properties
@@ -318,7 +317,7 @@ module SimC {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
       lb = tl (idx kb) ; lc = tl (idx (inC xt)) ; lf = tl (idx (inF xt))
       Res = Σ FlatState λ fs′ → FlatSteps prog (10 + (nsteps (wsz X) + 2)) fs fs′
               × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ mfn (szc X , AllocState.next-heap-ref (falloc fs)) (cω ds b γ) x ∷ˢ os)
-              × AllocState.next-heap-ref (falloc fs′) ≡ suc (AllocState.next-heap-ref (falloc fs)) × Ran (10 + (nsteps (wsz X) + 2)) 1 (AllocState.next-heap-ref (falloc fs)) (budget φ) fs fs′
+              × AllocState.next-heap-ref (falloc fs′) ≡ suc (AllocState.next-heap-ref (falloc fs)) × Ran (10 + (nsteps (wsz X) + 2)) ((hdr + wsz X) ∷ []) [] (AllocState.next-heap-ref (falloc fs)) (budget φ) fs fs′
       one≤ : 1 ≤ bot
       one≤ = ≤∸ 1 (ws S) (budget φ) (≤-trans fit (m≤n+m (OP φ) (EP φ)))
       fin : StkW (heapMem (floc fs)) (slot fs) φ (x ∷ˢ os) → Res
@@ -343,7 +342,7 @@ module SimC {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
                                   , (top , tt) )
                                 , st′
                        ; c-efit = c-efit C ; c-sfit = fit } ,
-                b-next Bd , ran-hi (Data.Nat.Properties.m∸n≤m (budget φ) (ws S)) (subst (λ z → Ran (10 + (nsteps z + 2)) 1 (AllocState.next-heap-ref (falloc fs)) bot fs fs′) (vw-len px) (b-ran Bd))
+                b-next Bd , ran-hi (Data.Nat.Properties.m∸n≤m (budget φ) (ws S)) (subst (λ z → Ran (10 + (nsteps z + 2)) ((hdr + z) ∷ []) [] (AllocState.next-heap-ref (falloc fs)) bot fs fs′) (vw-len px) (b-ran Bd))
 
   -- ★ `lunf`: a ν's cell, its code word its observation block at the empty
   -- table (D440), its copy and free its cell type's
@@ -359,7 +358,7 @@ module SimC {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
            → ws (Nu F ∷ S) ≤ OP φ
            → Σ FlatState λ fs′ → FlatSteps prog (10 + (nsteps (wsz (cty (F , S₀))) + 2)) fs fs′
                × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ mnu (szν F S₀ , AllocState.next-heap-ref (falloc fs)) p ∷ˢ os)
-               × AllocState.next-heap-ref (falloc fs′) ≡ suc (AllocState.next-heap-ref (falloc fs)) × Ran (10 + (nsteps (wsz (cty (F , S₀))) + 2)) 1 (AllocState.next-heap-ref (falloc fs)) (budget φ) fs fs′
+               × AllocState.next-heap-ref (falloc fs′) ≡ suc (AllocState.next-heap-ref (falloc fs)) × Ran (10 + (nsteps (wsz (cty (F , S₀))) + 2)) ((hdr + wsz (cty (F , S₀))) ∷ []) [] (AllocState.next-heap-ref (falloc fs)) (budget φ) fs fs′
   lunf-sim prog fs φ {F} {S₀} {Es} {S} {es} {os} {p} n o ct fresh s h Bf C fit = fin (c-stk C)
     where
       import Data.Nat.Properties
@@ -368,7 +367,7 @@ module SimC {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
       lb = tl (idx (inO o n)) ; lc = tl (idx (inC ct)) ; lf = tl (idx (inF ct))
       Res = Σ FlatState λ fs′ → FlatSteps prog (10 + (nsteps wP + 2)) fs fs′
               × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ mnu (szν F S₀ , AllocState.next-heap-ref (falloc fs)) p ∷ˢ os)
-              × AllocState.next-heap-ref (falloc fs′) ≡ suc (AllocState.next-heap-ref (falloc fs)) × Ran (10 + (nsteps wP + 2)) 1 (AllocState.next-heap-ref (falloc fs)) (budget φ) fs fs′
+              × AllocState.next-heap-ref (falloc fs′) ≡ suc (AllocState.next-heap-ref (falloc fs)) × Ran (10 + (nsteps wP + 2)) ((hdr + wP) ∷ []) [] (AllocState.next-heap-ref (falloc fs)) (budget φ) fs fs′
       one≤ : 1 ≤ bot
       one≤ = ≤∸ 1 (ws S) (budget φ) (≤-trans fit (m≤n+m (OP φ) (EP φ)))
       fin : StkW (heapMem (floc fs)) (slot fs) φ (p ∷ˢ os) → Res
@@ -393,4 +392,4 @@ module SimC {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
                                   , (top , tt) )
                                 , st′
                        ; c-efit = c-efit C ; c-sfit = fit } ,
-                b-next Bd , ran-hi (Data.Nat.Properties.m∸n≤m (budget φ) (ws S)) (subst (λ z → Ran (10 + (nsteps z + 2)) 1 (AllocState.next-heap-ref (falloc fs)) bot fs fs′) (vw-len pp) (b-ran Bd))
+                b-next Bd , ran-hi (Data.Nat.Properties.m∸n≤m (budget φ) (ws S)) (subst (λ z → Ran (10 + (nsteps z + 2)) ((hdr + z) ∷ []) [] (AllocState.next-heap-ref (falloc fs)) bot fs fs′) (vw-len pp) (b-ran Bd))

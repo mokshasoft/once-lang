@@ -47,7 +47,7 @@ open import Once.LinCore.Code fmt bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots
 open import Once.LinCore.Image fmt bw
 open import Once.LinCore.ImageRun fmt ans bw using (Ret; []ʳ; frm; _∷ⁱ_)
 open import Once.LinCore.Keys fmt bw
-open import Once.LinCore.Layout fmt bw using (Frame; frame; frameOf; budget; wsz; ws; envW; opW; module Frame)
+open import Once.LinCore.Layout fmt bw using (Frame; frame; frameOf; budget; ws; envW; opW; module Frame)
 open Frame using (EP; OP)
 open import Once.LinCore.Lower fmt bw
 open import Once.LinCore.Words fmt ans bw
@@ -94,7 +94,7 @@ module RetB {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open Sim {FS} U wordOf using (envW-heap; stkW-heap; envW-frame; slots-frame; cntE; cntS)
   open Rel {FS} U wordOf using (cellLoc)
   open import Once.LinCore.FreshI fmt ans bw using (module Cells)
-  open Cells {FS} U wordOf using (FreshR)
+  open Cells {FS} U wordOf using (FreshR; away-[])
   open import Once.LinCore.Moves {FS} using (Old)
   open FrameSemantics FS using (≺-trans; ≺-irrefl)
   open import Once.LinCore.ImageRun fmt ans bw using (StepI)
@@ -128,7 +128,8 @@ module RetB {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open Keep using (k-halt)
   open import Once.LinCore.LowerSimF fmt ans bw using (module SimF)
   open SimF {FS} U wordOf using (leave; area-gen)
-  open CallOutA using (co-pc; co-size; co-halt)
+  open CallOutA using (co-pc; co-size; co-halt; co-freed)
+  open import Once.LinCore.LiveRun fmt ans bw using (LiveG; FreshAl; live-eq; fresh-eq)
   open import Once.LinCore.LowerSimG {FS} using (ClosIn; closure-in)
   open ClosIn
   open ImgE {FS} ds f ldConst ld-nl using (image-tramp)
@@ -154,10 +155,20 @@ module RetB {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       co-inb : ∀ {fs fs′ cfc af a src o nb pc rets′ sv′ sl} → CallOutA fs fs′ cfc af a src o nb pc rets′ sv′ sl → InBlk fs → InBlk fs′
       co-inb {fs} {fs′} CO = inb-pt {fs} {fs′} (λ hl → co-rest CO (AtDynamic hl) (λ k k< ())) (co-next CO) (co-size CO)
 
-      back {cfc = cfc} CO tk fr ok =
+      back {r = r} {cfc = cfc} CO tk fr ok =
         ctx-to (sym (co-frame CO)) (sym (co-ret CO)) (sym (co-saved CO))
           (ret-top (λ f x ne → co-rest CO (AtStack f x) (λ k k< e → ne (frame-eq e))) tk
-                   (λ hl _ → co-rest CO (AtDynamic hl) (λ k k< ())) fr ok)
+                   (λ hl _ _ → co-rest CO (AtDynamic hl) (λ k k< ())) fr (away-[] r) ok)
+
+    -- ★ D469: a return moves frames, no block: the held cells stay live, nothing past the counter freed
+    live-out : ∀ {sh U T} (r : Ret U T) (m : Cfg sh) {fs fs′ cfc af a src o n pc rest sv sl}
+             → CallOutA fs fs′ cfc af a src o n pc rest sv sl → LiveG r m fs → FreshAl (falloc fs)
+             → LiveG r m fs′ × FreshAl (falloc fs′)
+    live-out r m {fs} {fs′} CO lv Fa =
+        live-eq {r = r} {r′ = r} {m = m} {m′ = m} {fs = fs} {fs′ = fs′} (λ _ q → q) fe (λ q → cong (λ bs → bs q) (co-size CO)) lv
+      , fresh-eq {fs = fs} {fs′ = fs′} fe (co-next CO) Fa
+      where
+        fe = λ q → cong (λ fr → fr q) (co-freed CO)
 
     -- a block's return, by the point and the call site
     module _ where
@@ -179,7 +190,7 @@ module RetB {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
         → FreshR r (AllocState.next-heap-ref (falloc fs))
         → RetOK (siteRoot st) (siteFin st) r cfc rets′ sv′ fs
         → AllocState.next-heap-ref (falloc fs) ≡ n
-        → InBlk fs
+        → InBlk fs → LiveG r (es ∥ b ∷ˢ os) fs → FreshAl (falloc fs)
         → ArrivesAt k r (es ∥ b ∷ˢ os) n fs
 
     module _ where

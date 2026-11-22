@@ -44,11 +44,12 @@ open import Once.IR.Semantics.Trace using (T)
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw
 open import Once.LinCore.Values fmt bw
+open import Once.LinCore.Live fmt bw using (LiveB)
 open import Once.LinCore.Code fmt bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots; []ᵉ; vw; see; Cfg; _∥_)
 open import Once.LinCore.Image fmt bw
 open import Once.LinCore.ImageRun fmt ans bw using (Ret; []ʳ; frm; _∷ⁱ_)
 open import Once.LinCore.Keys fmt bw
-open import Once.LinCore.Layout fmt bw using (Frame; frame; frameOf; budget; wsz; ws; module Frame)
+open import Once.LinCore.Layout fmt bw using (Frame; frame; frameOf; budget; ws; module Frame)
 open Frame using (EP; OP)
 open import Once.LinCore.Lower fmt bw
 open import Once.LinCore.MoveCode using (mvPS; mvSP)
@@ -211,14 +212,17 @@ module TrampO {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   -- ★ an observation's cell part (`nopen`): the coalgebra and seed into the frame, the cell freed
   to-open : ∀ {Γ′} {ds′ : Defs Γ′} {F S} (p : under (ktro ds′ F S) ∈ allK U) {i} {x : MV (cty (F , S))} {fs}
           → TrO0 (tOM F S) (trPos (ktro ds′ F S) p 0) i x fs
+          -- D468: the cell's block live at its size, the value held not sharing it
+          → LiveB (falloc fs) (hdr + wsz (cty (F , S))) i → (∀ j → 1 ≤ cnt x j → ¬ serial j ≡ serial i)
           → Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′
               × HereF (frame 0 (tOM F S)) (suc (suc (tOM F S))) (trPos (ktro ds′ F S) p 1) ([]ᵉ ∥ x ∷ˢ []ˢ) fs′
-              × Ran N 0 (AllocState.next-heap-ref (falloc fs)) (tOM F S) fs fs′
-  to-open {F = F} {S} p {i} {x} {fs} T =
+              × Ran N [] (serial i ∷ []) (AllocState.next-heap-ref (falloc fs)) (tOM F S) fs fs′
+  to-open {F = F} {S} p {i} {x} {fs} T lv nd =
     case open0-sim image fs (tOM F S) hdr (hdr + wsz (cty (F , S))) i (TrO0.o-wx T)
            (Data.Nat.Properties.m≤m⊔n (wsz (cty (F , S))) (wsz (LF∙ F (Nu F)))) (TrO0.o-in T) (TrO0.o-M T)
            (TrO0.o-x T) (TrO0.o-at T) (tO-seg0 p (TrO0.o-pc T)) (TrO0.o-run T)
-           (subst (tOM F S Data.Nat.<_) (sym (TrO0.o-slots T)) (Data.Nat.Properties.m<n⇒m<1+n (Data.Nat.Properties.n<1+n (tOM F S)))) of λ where
+           (subst (tOM F S Data.Nat.<_) (sym (TrO0.o-slots T)) (Data.Nat.Properties.m<n⇒m<1+n (Data.Nat.Properties.n<1+n (tOM F S))))
+           lv (Data.Nat.s≤s Data.Nat.z≤n) nd of λ where
       (fs′ , run , C′ , Rn) →
         tON F S , fs′ , run ,
         record { f-pc = trans (r-pc Rn) (trans (cong (tON F S +_) (TrO0.o-pc T)) (sym (tO-pos₁ p)))
@@ -341,6 +345,7 @@ module TrampO {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
             record { cd-ret = cl-ret CL ; cd-saved = cl-saved CL ; cd-frame = cl-frame CL ; cd-others = cl-other CL
                    ; cd-area = subst (λ g′ → LocState.stackMem (floc fs′) g′ (suc M) ≡ just (SV-Ptr (AtStack cf area))) (sym (cl-frame CL)) (cl-s₂ CL)
                    ; cd-next = cl-next CL
-                   ; cd-old = λ hl _ → cong (λ h′ → h′ hl) (cl-heap CL)
+                   ; cd-freed = λ q → cong (λ fr → fr q) (cl-freed CL) ; cd-bsize = λ q _ → cong (λ bs → bs q) (cl-size CL)
+                   ; cd-old = λ hl _ _ → cong (λ h′ → h′ hl) (cl-heap CL)
                    ; cd-inb = inb-pt {fs} {fs′} (λ hl → cong (λ h′ → h′ hl) (cl-heap CL)) (cl-next CL) (cl-size CL)
                    ; cd-log = cl-log CL }

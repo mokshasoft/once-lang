@@ -46,6 +46,7 @@ open import Once.LinCore.Code fmt bw using (Sh; _∣_)
 open import Once.LinCore.Image fmt bw
 open import Once.LinCore.Keys fmt bw
 open import Once.LinCore.Layout fmt bw
+open import Once.LinCore.Values fmt bw using (wsz)
 open import Once.LinCore.Lower fmt bw
 open import Once.LinCore.MoveCode using (mvPS; mvSP)
 open import Once.LinCore.ImagePt fmt ans bw using (Sub; Pt; at; disp)

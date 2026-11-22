@@ -70,7 +70,7 @@ module FramesH {FS : FrameSemantics} where
   open FlatMachine {FS} using (FlatState; module FlatState)
   open FlatState using (floc; falloc; fpc; fret)
   open import Once.LinCore.LowerSimE {FS} using (callee-frame)
-  open import Once.LinCore.Moves {FS} using (slot; Old; InBlk; win-push)
+  open import Once.LinCore.Moves {FS} using (slot; Old; InBlk; win-push; keep-freed-eq)
 
   -- the return pc `r`, the callee's budget `b`, its first save slot `sv`, the area's pointer `ap`
   record CalledH (fs fs′ : FlatState) (r b sv : ℕ) (ap : StoredValue FS) : Set where
@@ -83,7 +83,10 @@ module FramesH {FS : FrameSemantics} where
                 → LocState.stackMem (floc fs′) f′ x ≡ LocState.stackMem (floc fs) f′ x
       dh-area   : slot fs′ sv ≡ just ap
       dh-next   : AllocState.next-heap-ref (falloc fs′) ≡ AllocState.next-heap-ref (falloc fs)
-      dh-old    : Old (AllocState.next-heap-ref (falloc fs)) fs fs′
+      -- D469: the allocator's blocks untouched
+      dh-freed  : ∀ q → AllocState.freed (falloc fs′) q ≡ AllocState.freed (falloc fs) q
+      dh-bsize  : ∀ q → q < AllocState.next-heap-ref (falloc fs) → AllocState.block-size (falloc fs′) q ≡ AllocState.block-size (falloc fs) q
+      dh-old    : Old (AllocState.next-heap-ref (falloc fs)) [] fs fs′
       dh-inb    : InBlk fs → InBlk fs′
       dh-log    : LocState.ev-log (floc fs′) ≡ LocState.ev-log (floc fs)
 
@@ -112,11 +115,11 @@ module CallsH {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open Sim {FS} U wordOf using (slots-frame)
   open import Once.LinCore.LowerSimE {FS}
     using (CallInH; module CallInH; call-in-h; call-in-c; callee-frame; callee-below; callee-≢)
-  open CallInH using (ch-frame; ch-saved; ch-slots; ch-ret; ch-pc; ch-in; ch-s₁; ch-s₂; ch-other; ch-heap; ch-next; ch-size; ch-halt; ch-log)
+  open CallInH using (ch-frame; ch-saved; ch-slots; ch-ret; ch-pc; ch-in; ch-s₁; ch-s₂; ch-other; ch-heap; ch-next; ch-size; ch-freed; ch-halt; ch-log)
   open import Once.LinCore.Moves {FS}
-    using (Seg; slot; Ran; module Ran; module Keep; r-inb; inb-pt; win-push)
+    using (Seg; slot; Ran; module Ran; module Keep; r-inb; inb-pt; win-push; keep-freed-eq)
   open Ran using (r-keep; r-pc; r-next; r-old)
-  open Keep using (k-frame; k-slots; k-saved; k-ret; k-other; k-halt; k-log)
+  open Keep using (k-frame; k-slots; k-saved; k-ret; k-other; k-halt; k-log; k-size)
 
   private
     sv-ne : ∀ n → ¬ n ≡ suc n
@@ -176,7 +179,7 @@ module CallsH {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       nE = Once.LinCore.Moves.ln {FS} (wsz A) + suc (Once.LinCore.Moves.ln {FS} (wsz X))
       fin₂ : Σ FlatState (λ fs₂ → FlatSteps image nE fs₁ fs₂
                × CfgW (LocState.heapMem (floc fs₂)) (slot fs₂) φ′ (vw x []ᵉ ∥ a ∷ˢ []ˢ)
-               × Ran nE 0 (AllocState.next-heap-ref (falloc fs₁)) (budget φ′) fs₁ fs₂
+               × Ran nE [] [] (AllocState.next-heap-ref (falloc fs₁)) (budget φ′) fs₁ fs₂
                × (∀ y → budget φ′ ≤ y → slot fs₂ y ≡ slot fs₁ y))
            → _
       fin₂ (fs₂ , st₂ , C₂ , Rn , top) =
@@ -193,7 +196,11 @@ module CallsH {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                ; dh-area   = trans (top (sv₁ φ′) ≤-refl)
                                (subst (λ g → LocState.stackMem (floc fs₁) g (sv₁ φ′) ≡ just ap) (sym (ch-frame CH)) (ch-s₁ CH))
                ; dh-next   = trans (r-next Rn) (ch-next CH)
-               ; dh-old    = λ hl lt′ → trans (r-old Rn hl (subst (_ <_) (sym (ch-next CH)) lt′)) (cong (λ h′ → h′ hl) (ch-heap CH))
+
+               ; dh-freed  = λ q → trans (keep-freed-eq (r-keep Rn) q) (cong (λ fr → fr q) (ch-freed CH))
+
+               ; dh-bsize  = λ q lt → trans (k-size (r-keep Rn) q (subst (q <_) (sym (ch-next CH)) lt)) (cong (λ bs → bs q) (ch-size CH))
+               ; dh-old    = λ hl lt′ f → trans (r-old Rn hl (subst (_ <_) (sym (ch-next CH)) lt′) f) (cong (λ h′ → h′ hl) (ch-heap CH))
                ; dh-inb    = λ I → r-inb Rn (inb-pt {fs} {fs₁} (λ hl → cong (λ h′ → h′ hl) (ch-heap CH)) (ch-next CH) (ch-size CH) I)
                ; dh-log    = trans (k-log (r-keep Rn)) (ch-log CH) }
 

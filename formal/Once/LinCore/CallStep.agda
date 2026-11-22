@@ -81,7 +81,7 @@ module Frames {FS : FrameSemantics} where
   open FlatMachine {FS} using (FlatState; module FlatState)
   open FlatState using (floc; falloc; fpc; fret)
   open import Once.LinCore.LowerSimE {FS} using (callee-frame)
-  open import Once.LinCore.Moves {FS} using (slot; Old; InBlk; inb-pt)
+  open import Once.LinCore.Moves {FS} using (slot; Old; InBlk; inb-pt; keep-freed-eq)
 
   -- the return pc `r`, the callee's budget `b`, its first save slot `sv`, the caller's area `area`
   record Called (fs fs′ : FlatState) (r b sv area : ℕ) : Set where
@@ -94,7 +94,10 @@ module Frames {FS : FrameSemantics} where
                 → LocState.stackMem (floc fs′) f′ x ≡ LocState.stackMem (floc fs) f′ x
       cd-area   : slot fs′ sv ≡ just (SV-Ptr (AtStack (AllocState.current-frame (falloc fs)) area))
       cd-next   : AllocState.next-heap-ref (falloc fs′) ≡ AllocState.next-heap-ref (falloc fs)
-      cd-old    : Old (AllocState.next-heap-ref (falloc fs)) fs fs′
+      -- D469: the allocator's blocks untouched
+      cd-freed  : ∀ q → AllocState.freed (falloc fs′) q ≡ AllocState.freed (falloc fs) q
+      cd-bsize  : ∀ q → q < AllocState.next-heap-ref (falloc fs) → AllocState.block-size (falloc fs′) q ≡ AllocState.block-size (falloc fs) q
+      cd-old    : Old (AllocState.next-heap-ref (falloc fs)) [] fs fs′
       cd-inb    : InBlk fs → InBlk fs′
       cd-log    : LocState.ev-log (floc fs′) ≡ LocState.ev-log (floc fs)
 
@@ -124,11 +127,11 @@ module Calls {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open import Once.LinCore.LowerSimE {FS}
     using (CallIn; module CallIn; call-in; call-in-v; callee-frame; callee-≢; CallOut; module CallOutA; caller-win)
   open CallOutA using (co-slots; co-pc; co-halt)
-  open CallIn using (ci-frame; ci-saved; ci-slots; ci-ret; ci-pc; ci-in; ci-s₁; ci-s₂; ci-other; ci-heap; ci-next; ci-size; ci-halt; ci-log)
+  open CallIn using (ci-frame; ci-saved; ci-slots; ci-ret; ci-pc; ci-in; ci-s₁; ci-s₂; ci-other; ci-heap; ci-next; ci-size; ci-freed; ci-halt; ci-log)
   open import Once.LinCore.Moves {FS}
-    using (Seg; Seg-++ˡ; slot; Fr; InFr; infr; sub-in; Ran; module Ran; module Keep; r-inb; inb-pt)
+    using (Seg; Seg-++ˡ; slot; Fr; InFr; infr; sub-in; Ran; module Ran; module Keep; r-inb; inb-pt; keep-freed-eq)
   open Ran using (r-keep; r-pc; r-next; r-old)
-  open Keep using (k-frame; k-slots; k-saved; k-ret; k-other; k-halt; k-log)
+  open Keep using (k-frame; k-slots; k-saved; k-ret; k-other; k-halt; k-log; k-size)
 
   -- a block's code, inside the image
   -- (opaque: its prefix is the image up to the block, which a conversion check would otherwise
@@ -344,7 +347,7 @@ module Calls {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
               seg₂ = subst (λ z → Seg image z argMv) (sym (ci-pc CI)) arg-seg
               fin₂ : Σ FlatState (λ fs₂ → FlatSteps image (Once.LinCore.Moves.ln {FS} (wsz A)) fs₁ fs₂
                        × CfgW (LocState.heapMem (floc fs₂)) (slot fs₂) φ′ ([]ᵉ ∥ a ∷ˢ []ˢ)
-                       × Ran (Once.LinCore.Moves.ln {FS} (wsz A)) 0 (AllocState.next-heap-ref (falloc fs₁)) (budget φ′) fs₁ fs₂
+                       × Ran (Once.LinCore.Moves.ln {FS} (wsz A)) [] [] (AllocState.next-heap-ref (falloc fs₁)) (budget φ′) fs₁ fs₂
                        × (∀ x → budget φ′ ≤ x → slot fs₂ x ≡ slot fs₁ x))
                    → Goal
               fin₂ (fs₂ , st₂ , C₂ , Rn , top) =
@@ -363,7 +366,11 @@ module Calls {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                                        (subst (λ g → LocState.stackMem (floc fs₁) g (sv₁ φ′) ≡ just (SV-Ptr (AtStack cf area)))
                                               (sym (ci-frame CI)) (ci-s₁ CI))
                        ; cd-next   = trans (r-next Rn) (ci-next CI)
-                       ; cd-old    = λ hl lt → trans (r-old Rn hl (subst (_ <_) (sym (ci-next CI)) lt)) (cong (λ h′ → h′ hl) (ci-heap CI))
+
+                       ; cd-freed  = λ q → trans (keep-freed-eq (r-keep Rn) q) (cong (λ fr → fr q) (ci-freed CI))
+
+                       ; cd-bsize  = λ q lt → trans (k-size (r-keep Rn) q (subst (q <_) (sym (ci-next CI)) lt)) (cong (λ bs → bs q) (ci-size CI))
+                       ; cd-old    = λ hl lt f → trans (r-old Rn hl (subst (_ <_) (sym (ci-next CI)) lt) f) (cong (λ h′ → h′ hl) (ci-heap CI))
                        ; cd-inb    = λ I → r-inb Rn (inb-pt {fs} {fs₁} (λ hl → cong (λ h′ → h′ hl) (ci-heap CI)) (ci-next CI) (ci-size CI) I)
                        ; cd-log    = trans (k-log (r-keep Rn)) (ci-log CI) }
 
@@ -502,7 +509,7 @@ module Calls {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                 nE = Once.LinCore.Moves.ln {FS} (wsz A) + suc (Once.LinCore.Moves.ln {FS} (wsz E))
                 fin₂ : Σ FlatState (λ fs₂ → FlatSteps image nE fs₁ fs₂
                          × CfgW (LocState.heapMem (floc fs₂)) (slot fs₂) φ′ (vw (see es) []ᵉ ∥ a ∷ˢ []ˢ)
-                         × Ran nE 0 (AllocState.next-heap-ref (falloc fs₁)) (budget φ′) fs₁ fs₂
+                         × Ran nE [] [] (AllocState.next-heap-ref (falloc fs₁)) (budget φ′) fs₁ fs₂
                          × (∀ x → budget φ′ ≤ x → slot fs₂ x ≡ slot fs₁ x))
                      → IntoV s es a fs
                 fin₂ (fs₂ , st₂ , C₂ , Rn , top) =
@@ -523,7 +530,11 @@ module Calls {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                                          (subst (λ g → LocState.stackMem (floc fs₁) g (sv₁ φ′) ≡ just (SV-Ptr (AtStack cf area)))
                                                 (sym (ci-frame CI)) (ci-s₁ CI))
                          ; cd-next   = trans (r-next Rn) (ci-next CI)
-                         ; cd-old    = λ hl lt → trans (r-old Rn hl (subst (_ <_) (sym (ci-next CI)) lt)) (cong (λ h → h hl) (ci-heap CI))
+
+                         ; cd-freed  = λ q → trans (keep-freed-eq (r-keep Rn) q) (cong (λ fr → fr q) (ci-freed CI))
+
+                         ; cd-bsize  = λ q lt → trans (k-size (r-keep Rn) q (subst (q <_) (sym (ci-next CI)) lt)) (cong (λ bs → bs q) (ci-size CI))
+                         ; cd-old    = λ hl lt f → trans (r-old Rn hl (subst (_ <_) (sym (ci-next CI)) lt) f) (cong (λ h → h hl) (ci-heap CI))
                          ; cd-inb    = λ I → r-inb Rn (inb-pt {fs} {fs₁} (λ hl → cong (λ h → h hl) (ci-heap CI)) (ci-next CI) (ci-size CI) I)
                        ; cd-log    = trans (k-log (r-keep Rn)) (ci-log CI) }
 

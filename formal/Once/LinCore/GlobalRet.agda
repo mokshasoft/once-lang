@@ -47,7 +47,7 @@ open import Once.LinCore.Code fmt bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots
 open import Once.LinCore.Image fmt bw
 open import Once.LinCore.ImageRun fmt ans bw using (Ret; []ʳ; frm; _∷ⁱ_)
 open import Once.LinCore.Keys fmt bw
-open import Once.LinCore.Layout fmt bw using (Frame; frame; frameOf; budget; wsz; ws; envW; opW; module Frame)
+open import Once.LinCore.Layout fmt bw using (Frame; frame; frameOf; budget; ws; envW; opW; module Frame)
 open Frame using (EP; OP)
 open import Once.LinCore.Lower fmt bw
 open import Once.LinCore.Words fmt ans bw
@@ -141,6 +141,7 @@ module RetR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open import Once.LinCore.LowerSimF fmt ans bw using (module SimF)
   open SimF {FS} U wordOf using (leave; area-gen)
   open CallOutA using (co-pc; co-size; co-halt)
+  open import Once.LinCore.LiveRun fmt ans bw using (LiveG; FreshAl; live-ret)
   open import Once.LinCore.LowerSimG {FS} using (ClosIn; closure-in)
   open ClosIn
   open ImgE {FS} ds f ldConst ld-nl using (image-tramp)
@@ -176,13 +177,14 @@ module RetR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
               → FreshR r (AllocState.next-heap-ref (falloc fs))
               → RetOK rstart (SA.Low.lfin (S.lowAt s)) r cfc rets′ sv′ fs
               → AllocState.next-heap-ref (falloc fs) ≡ n
-              → InBlk fs
+              → InBlk fs → LiveG r (es ∥ b ∷ˢ os) fs → FreshAl (falloc fs)
               → ArrivesAt k r (es ∥ b ∷ˢ os) n fs
-      gret-ss s e p eC cfc sl sv′ rets′ eF H eRets eSv eSl abv area ev sk fr rest nx I =
+      gret-ss {r = r} {es = es} {os = os} {b = b} {fs = fs} s e p eC cfc sl sv′ rets′ eF H eRets eSv eSl abv area ev sk fr rest nx I lv Fa =
         case FrS.return s e cfc rets′ sv′ sl p eC eF H eRets eSv eSl (λ e″ → ≺-≢ abv (sym e″)) area ev sk of λ where
           (N , fs′ , run , H′ , CO , tk) →
             N , fs′ , run , record { g-pt = p-start (at (next s)) ; g-here = H′ ; g-next = trans (co-next CO) nx
-                                   ; g-ret = back CO tk fr rest ; g-blk = co-inb CO I } , co-log CO
+                                   ; g-ret = back CO tk fr rest ; g-blk = co-inb CO I
+                                   ; g-live = proj₁ (live-out r (es ∥ b ∷ˢ os) CO lv Fa) ; g-fal = proj₂ (live-out r (es ∥ b ∷ˢ os) CO lv Fa) } , co-log CO
 
       gret-sb : ∀ {T t A B Es S V} {κ : Key (bsig t A B)} {k : Codeᴵ (t ⊳ Es ∣ B ∷ S) V} {r : Ret V T}
                   {es : Slots (t ⊳ Es)} {os : Stk S} {e′ : Slots (t ⊳ [])} {b : MV B} {n fs}
@@ -202,27 +204,28 @@ module RetR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
               → FreshR r (AllocState.next-heap-ref (falloc fs))
               → RetOK (rblock p′) (KA.Low.lfin {p = p′} (K.lowAt p′ s)) r cfc rets′ sv′ fs
               → AllocState.next-heap-ref (falloc fs) ≡ n
-              → InBlk fs
+              → InBlk fs → LiveG r (es ∥ b ∷ˢ os) fs → FreshAl (falloc fs)
               → ArrivesAt k r (es ∥ b ∷ˢ os) n fs
-      gret-sb p′ s e p eC cfc sl sv′ rets′ eF H eRets eSv eSl abv area ev sk fr rest nx I =
+      gret-sb {r = r} {es = es} {os = os} {b = b} {fs = fs} p′ s e p eC cfc sl sv′ rets′ eF H eRets eSv eSl abv area ev sk fr rest nx I lv Fa =
         case FrK.return p′ s e cfc rets′ sv′ sl p eC eF H eRets eSv eSl (λ e″ → ≺-≢ abv (sym e″)) area ev sk of λ where
           (N , fs′ , run , H′ , CO , tk) →
             N , fs′ , run , record { g-pt = p-block p′ (at (next s)) ; g-here = H′ ; g-next = trans (co-next CO) nx
-                                   ; g-ret = back CO tk fr rest ; g-blk = co-inb CO I } , co-log CO
+                                   ; g-ret = back CO tk fr rest ; g-blk = co-inb CO I
+                                   ; g-live = proj₁ (live-out r (es ∥ b ∷ˢ os) CO lv Fa) ; g-fal = proj₂ (live-out r (es ∥ b ∷ˢ os) CO lv Fa) } , co-log CO
 
     private
       rc-start : ∀ {t A B Es S V} {κ : Key (bsig t A B)} {k : Codeᴵ (t ⊳ Es ∣ B ∷ S) V} (s : Sub main (call κ ⨾ k)) → GretC (s-start s)
-      rc-start s (p-block p (at e)) _ cfc sl sv′ rets′ refl eF eC H eRets eSv eSl abv area ev sk fr rest nx I =
-        gret-ss s e p eC cfc sl sv′ rets′ eF H eRets eSv eSl abv area ev sk fr rest nx I
-      rc-start s (p-start (at e)) _ cfc sl sv′ rets′ () eF eC H eRets eSv eSl abv area ev sk fr rest nx I
-      rc-start s (p-tramp _ _) _ cfc sl sv′ rets′ () eF eC H eRets eSv eSl abv area ev sk fr rest nx I
+      rc-start s (p-block p (at e)) _ cfc sl sv′ rets′ refl eF eC H eRets eSv eSl abv area ev sk fr rest nx I lv Fa =
+        gret-ss s e p eC cfc sl sv′ rets′ eF H eRets eSv eSl abv area ev sk fr rest nx I lv Fa
+      rc-start s (p-start (at e)) _ cfc sl sv′ rets′ () eF eC H eRets eSv eSl abv area ev sk fr rest nx I lv Fa
+      rc-start s (p-tramp _ _) _ cfc sl sv′ rets′ () eF eC H eRets eSv eSl abv area ev sk fr rest nx I lv Fa
 
       rc-block : ∀ {t A B Es S V} {κ : Key (bsig t A B)} {k : Codeᴵ (t ⊳ Es ∣ B ∷ S) V} {σ′} {κ′ : Key σ′}
                 (p′ : (σ′ , κ′) ∈ allK U) (s : Sub (blockᴵ κ′) (call κ ⨾ k)) → GretC (s-block p′ s)
-      rc-block p′ s (p-block p (at e)) _ cfc sl sv′ rets′ refl eF eC H eRets eSv eSl abv area ev sk fr rest nx I =
-        gret-sb p′ s e p eC cfc sl sv′ rets′ eF H eRets eSv eSl abv area ev sk fr rest nx I
-      rc-block p′ s (p-start (at e)) _ cfc sl sv′ rets′ () eF eC H eRets eSv eSl abv area ev sk fr rest nx I
-      rc-block p′ s (p-tramp _ _) _ cfc sl sv′ rets′ () eF eC H eRets eSv eSl abv area ev sk fr rest nx I
+      rc-block p′ s (p-block p (at e)) _ cfc sl sv′ rets′ refl eF eC H eRets eSv eSl abv area ev sk fr rest nx I lv Fa =
+        gret-sb p′ s e p eC cfc sl sv′ rets′ eF H eRets eSv eSl abv area ev sk fr rest nx I lv Fa
+      rc-block p′ s (p-start (at e)) _ cfc sl sv′ rets′ () eF eC H eRets eSv eSl abv area ev sk fr rest nx I lv Fa
+      rc-block p′ s (p-tramp _ _) _ cfc sl sv′ rets′ () eF eC H eRets eSv eSl abv area ev sk fr rest nx I lv Fa
 
     private
       gret-cases : SiteCases
@@ -234,35 +237,35 @@ module RetR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
          → AllocState.next-heap-ref (falloc fs) ≡ n
          → RetOK (rootOf P) (ptFin P) (frm {t = t} {Es = Es} k es os r)
                  (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
-         → InBlk fs
+         → InBlk fs → LiveG (frm {t = t} {Es = Es} k es os r) (e′ ∥ b ∷ˢ []ˢ) fs → FreshAl (falloc fs)
          → ArrivesAt k r (es ∥ b ∷ˢ os) n fs
     -- by the return stack's top first (one split of `RetOK`), then the point
-    gret {t = t} {Es = Es} {k = k} {r = r} {es = es} {os = os} {fs = fs} P inv H nx
-         (ok-call p st cfc sl sv′ rets′ eR eF eC eRets eSv eSl abv area ev sk rest) I =
+    gret {t = t} {Es = Es} {k = k} {r = r} {es = es} {os = os} {e′ = e′} {b = b} {fs = fs} P inv H nx
+         (ok-call p st cfc sl sv′ rets′ eR eF eC eRets eSv eSl abv area ev sk rest) I lv Fa =
       site-elim gret-cases st P p cfc sl sv′ rets′ eR eF eC H eRets eSv eSl abv area ev sk
-        (proj₂ (subst (FreshR (frm {t = t} {Es = Es} k es os r)) (sym nx) (fresh-ret inv))) rest nx I
-    gret {t = t} {Es = Es} {k = k} {r = r} {es = es} {os = os} {fs = fs} P inv H nx
-         (ok-tramp p o d cfc sl sv′ rets′ eR eF eRets eSv eSl abv area fit ev sk rest) I =
+        (proj₂ (subst (FreshR (frm {t = t} {Es = Es} k es os r)) (sym nx) (fresh-ret inv))) rest nx I (live-ret {t = t} {Es = Es} {k = k} {es = es} {os = os} {r = r} {e′ = e′} {b = b} {fs = fs} lv) Fa
+    gret {t = t} {Es = Es} {k = k} {r = r} {es = es} {os = os} {e′ = e′} {b = b} {fs = fs} P inv H nx
+         (ok-tramp p o d cfc sl sv′ rets′ eR eF eRets eSv eSl abv area fit ev sk rest) I lv Fa =
       gret-t P d p cfc sl sv′ rets′ eR eF H o eRets eSv eSl abv area fit ev sk
-        (proj₂ (subst (FreshR (frm {t = t} {Es = Es} k es os r)) (sym nx) (fresh-ret inv))) rest nx I
+        (proj₂ (subst (FreshR (frm {t = t} {Es = Es} k es os r)) (sym nx) (fresh-ret inv))) rest nx I (live-ret {t = t} {Es = Es} {k = k} {es = es} {os = os} {r = r} {e′ = e′} {b = b} {fs = fs} lv) Fa
 
-    gret {t = t} {Es = Es} {k = k} {r = r} {es = es} {os = os} {fs = fs} P inv H nx
-         (ok-trampf p d cfc sl sv′ rets′ eR eF eRets eSv eSl abv ev sk rest) I =
+    gret {t = t} {Es = Es} {k = k} {r = r} {es = es} {os = os} {e′ = e′} {b = b} {fs = fs} P inv H nx
+         (ok-trampf p d cfc sl sv′ rets′ eR eF eRets eSv eSl abv ev sk rest) I lv Fa =
       gret-tf P d p cfc sl sv′ rets′ eR eF H eRets eSv eSl abv ev sk
-        (proj₂ (subst (FreshR (frm {t = t} {Es = Es} k es os r)) (sym nx) (fresh-ret inv))) rest nx I
-    gret {t = t} {Es = Es} {k = k} {r = r} {es = es} {os = os} {fs = fs} P inv H nx
-         (ok-trampω p d cfc sl sv′ rets′ eR eF eRets eSv eSl abv area fit efit ev sk rest) I =
+        (proj₂ (subst (FreshR (frm {t = t} {Es = Es} k es os r)) (sym nx) (fresh-ret inv))) rest nx I (live-ret {t = t} {Es = Es} {k = k} {es = es} {os = os} {r = r} {e′ = e′} {b = b} {fs = fs} lv) Fa
+    gret {t = t} {Es = Es} {k = k} {r = r} {es = es} {os = os} {e′ = e′} {b = b} {fs = fs} P inv H nx
+         (ok-trampω p d cfc sl sv′ rets′ eR eF eRets eSv eSl abv area fit efit ev sk rest) I lv Fa =
       gret-tω P p d cfc sl sv′ rets′ eR H eRets eSv eSl area fit ev sk
-        (proj₂ (subst (FreshR (frm {t = t} {Es = Es} k es os r)) (sym nx) (fresh-ret inv))) rest nx I
-    gret {t = t} {Es = Es} {k = k} {r = r} {es = es} {os = os} {fs = fs} P inv H nx
-         (ok-callω p cfc sl sv′ rets′ eR eF eRets eSv eSl abv ap rest) I =
+        (proj₂ (subst (FreshR (frm {t = t} {Es = Es} k es os r)) (sym nx) (fresh-ret inv))) rest nx I (live-ret {t = t} {Es = Es} {k = k} {es = es} {os = os} {r = r} {e′ = e′} {b = b} {fs = fs} lv) Fa
+    gret {t = t} {Es = Es} {k = k} {r = r} {es = es} {os = os} {e′ = e′} {b = b} {fs = fs} P inv H nx
+         (ok-callω p cfc sl sv′ rets′ eR eF eRets eSv eSl abv ap rest) I lv Fa =
       gret-cω P p cfc sl sv′ rets′ eR eF H eRets eSv eSl abv ap
-        (proj₂ (subst (FreshR (frm {t = t} {Es = Es} k es os r)) (sym nx) (fresh-ret inv))) rest nx I
-    gret {t = t} {Es = Es} {k = k} {r = r} {es = es} {os = os} {fs = fs} P inv H nx
-         (ok-trampc p d cfc sl sv′ rets′ eR eF eRets eSv eSl abv area ev sk rest) I =
+        (proj₂ (subst (FreshR (frm {t = t} {Es = Es} k es os r)) (sym nx) (fresh-ret inv))) rest nx I (live-ret {t = t} {Es = Es} {k = k} {es = es} {os = os} {r = r} {e′ = e′} {b = b} {fs = fs} lv) Fa
+    gret {t = t} {Es = Es} {k = k} {r = r} {es = es} {os = os} {e′ = e′} {b = b} {fs = fs} P inv H nx
+         (ok-trampc p d cfc sl sv′ rets′ eR eF eRets eSv eSl abv area ev sk rest) I lv Fa =
       gret-tc P p d cfc sl sv′ rets′ eR H eRets eSv eSl abv area ev sk
-        (proj₂ (subst (FreshR (frm {t = t} {Es = Es} k es os r)) (sym nx) (fresh-ret inv))) rest nx I
-    gret {t = t} {Es = Es} {k = k} {r = r} {es = es} {os = os} {fs = fs} P inv H nx
-         (ok-callc p cfc sl sv′ rets′ ci eR eF eRets eSv eSl abv ap s₂ pcv rest) I =
+        (proj₂ (subst (FreshR (frm {t = t} {Es = Es} k es os r)) (sym nx) (fresh-ret inv))) rest nx I (live-ret {t = t} {Es = Es} {k = k} {es = es} {os = os} {r = r} {e′ = e′} {b = b} {fs = fs} lv) Fa
+    gret {t = t} {Es = Es} {k = k} {r = r} {es = es} {os = os} {e′ = e′} {b = b} {fs = fs} P inv H nx
+         (ok-callc p cfc sl sv′ rets′ ci eR eF eRets eSv eSl abv ap s₂ pcv rest) I lv Fa =
       gret-cc P p cfc sl sv′ rets′ ci eR eF H eRets eSv eSl abv ap s₂ pcv
-        (proj₂ (subst (FreshR (frm {t = t} {Es = Es} k es os r)) (sym nx) (fresh-ret inv))) rest nx I
+        (proj₂ (subst (FreshR (frm {t = t} {Es = Es} k es os r)) (sym nx) (fresh-ret inv))) rest nx I (live-ret {t = t} {Es = Es} {k = k} {es = es} {os = os} {r = r} {e′ = e′} {b = b} {fs = fs} lv) Fa

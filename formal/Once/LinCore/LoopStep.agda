@@ -24,6 +24,7 @@ open import Data.Nat.Tactic.RingSolver using (solve-∀)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Properties using (length-++; ++-assoc)
 open import Data.List.Membership.Propositional using (_∈_)
+open import Data.Unit using (tt)
 open import Data.Maybe using (just)
 open import Data.Bool using (false)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
@@ -112,12 +113,12 @@ module Loops {FS : FrameSemantics} (U : Univ)
 
   loop-enter : ∀ {E Es A B S V} {b : Codeᴵ (E ∷ Es ∣ A ∷ S) (E ∷ Es ∣ (B ⊕t A) ∷ S)} {k : Codeᴵ (E ∷ Es ∣ B ∷ S) V}
                  (s : Sub root (loop b ⨾ k)) {m : Cfg (E ∷ Es ∣ A ∷ S)} {fs}
-             → Here s m fs → Moved (body s) fs 0 m
+             → Here s m fs → Moved (body s) fs [] [] m
   loop-enter s {fs = fs} H =
     1 , record fs { fpc = suc (fpc fs) } ,
     step-at _ (h-run H , proj₁ (seg-at s H)) (flat-label prog fs (jl j (lm (lowAt s)))) FlatStepsAPI.[] ,
     record { h-pc = trans (cong suc (h-pc H)) (sym pos-body) ; h-run = h-run H ; h-cfg = h-cfg H ; h-slots = h-slots H } ,
-    keep-pc _ , refl , (λ _ _ → refl) , (λ _ _ → refl)
+    keep-pc _ , refl , tt , (λ _ _ _ → refl) , (λ _ _ → refl)
     where
       pR = proj₁ R ; pS = proj₁ (ins (sub-low L₀ s))
       pos-body : pos (body s) ≡ suc (pos s)
@@ -131,15 +132,15 @@ module Loops {FS : FrameSemantics} (U : Univ)
   end-jump : ∀ {sh} (s : Sub root (end {sh})) {L rest} {m : Cfg sh} {fs}
            → Labelled → lfin (lowAt s) ≡ instr-ctrl (c-jmp L) ∷ [] → (ins′ : Inside prog (instr-ctrl (c-label L) ∷ rest))
            → Here s m fs
-           → Σ FlatState λ fs′ → FlatSteps prog 1 fs fs′ × HereQ (length (proj₁ ins′)) m fs′ × Keep fs fs′
+           → Σ FlatState λ fs′ → FlatSteps prog 1 fs fs′ × HereQ (length (proj₁ ins′)) m fs′ × Keep [] fs fs′
                × AllocState.next-heap-ref (falloc fs′) ≡ AllocState.next-heap-ref (falloc fs)
-               × Old (AllocState.next-heap-ref (falloc fs)) fs fs′ × (∀ x → budget φ ≤ x → slot fs′ x ≡ slot fs x)
+               × Old (AllocState.next-heap-ref (falloc fs)) [] fs fs′ × (∀ x → budget φ ≤ x → slot fs′ x ≡ slot fs x)
   end-jump s {L} {fs = fs} lab e ins′ H =
     record fs { fpc = length (proj₁ ins′) } ,
     step-at _ (h-run H , proj₁ (subst (Seg prog (fpc fs)) e (seg-at s H)))
       (trans (flat-jmp prog fs L) (cong (λ x → do-jump x fs) (lab ins′))) FlatStepsAPI.[] ,
     record { q-pc = refl ; q-run = h-run H ; q-cfg = h-cfg H ; q-slots = h-slots H } ,
-    keep-pc _ , refl , (λ _ _ → refl) , (λ _ _ → refl)
+    keep-pc _ , refl , (λ _ _ _ → refl) , (λ _ _ → refl)
 
   ----------------------------------------------------------------------
   -- 4. ★ THE DISPATCH: its label, the tag read; on 0 the jump to `Li` and
@@ -160,7 +161,7 @@ module Loops {FS : FrameSemantics} (U : Univ)
 
   disp-exit : ∀ {E Es A B S V} {b : Codeᴵ (E ∷ Es ∣ A ∷ S) (E ∷ Es ∣ (B ⊕t A) ∷ S)} {k : Codeᴵ (E ∷ Es ∣ B ∷ S) V}
                 → Labelled → ∀ (s : Sub root (loop b ⨾ k)) {es : Slots (E ∷ Es)} {os : Stk S} {v : MV B} {fs}
-            → HereQ (posD s) (es ∥ minl {B = A} v ∷ˢ os) fs → Moved (next s) fs 0 (es ∥ v ∷ˢ os)
+            → HereQ (posD s) (es ∥ minl {B = A} v ∷ˢ os) fs → Moved (next s) fs [] [] (es ∥ v ∷ˢ os)
   disp-exit {E} {Es} {A} {B} {S} {b = b} {k} lab s {es} {os} {v} {fs} H =
     fin (case₁-sim prog fs₁ φ {E ∷ Es} {B} {A} {S} {es} {os} {v} Li q seg (lab labLi)
            (Seg-++ˡ prog q (instr-ctrl (c-label Li) ∷ MB) kcode (in-seg labLi)) (q-run H) (q-cfg H) (slots< {fs₁} (q-slots H)))
@@ -193,15 +194,15 @@ module Loops {FS : FrameSemantics} (U : Univ)
       pos-exit : pos (next s) ≡ Once.LinCore.Moves.ln {FS} (wsz B) + suc q
       pos-exit = trans (pos-def (next s)) (trans (cong length (sym lists))
                    (trans (length-++ (dP ++ Y)) (trans (cong (λ z → q + suc z) (len-mvSSd (suc t) (bot ∸ wsz B) (wsz B))) (past q _))))
-      fin : _ → Moved (next s) fs 0 (es ∥ v ∷ˢ os)
+      fin : _ → Moved (next s) fs [] [] (es ∥ v ∷ˢ os)
       fin (fs′ , st , C′ , pc , K , nx , hp , tp) =
         _ , fs′ , step-at fs₁ (q-run H , proj₁ sD) (flat-label prog fs Ld) st ,
         record { h-pc = trans pc (sym pos-exit) ; h-run = trans (k-halt K) (q-run H) ; h-cfg = C′ ; h-slots = trans (k-slots K) (q-slots H) } ,
-        keep-trans (keep-pc _) K , nx , (λ hl _ → cong (λ h → h hl) hp) , tp
+        keep-trans (keep-pc _) K , nx , tt , (λ hl _ _ → cong (λ h → h hl) hp) , tp
 
   disp-again : ∀ {E Es A B S V} {b : Codeᴵ (E ∷ Es ∣ A ∷ S) (E ∷ Es ∣ (B ⊕t A) ∷ S)} {k : Codeᴵ (E ∷ Es ∣ B ∷ S) V}
                  → Labelled → ∀ (s : Sub root (loop b ⨾ k)) {es : Slots (E ∷ Es)} {os : Stk S} {a : MV A} {fs}
-             → HereQ (posD s) (es ∥ minr {A = B} a ∷ˢ os) fs → Moved s fs 0 (es ∥ a ∷ˢ os)
+             → HereQ (posD s) (es ∥ minr {A = B} a ∷ˢ os) fs → Moved s fs [] [] (es ∥ a ∷ˢ os)
   disp-again {E} {Es} {A} {B} {S} {b = b} {k} lab s {es} {os} {a} {fs} H =
     fin (case₂-sim prog fs₁ φ {E ∷ Es} {B} {A} {S} {es} {os} {a} Li seg (q-run H) (q-cfg H) (slots< {fs₁} (q-slots H)))
     where
@@ -226,7 +227,7 @@ module Loops {FS : FrameSemantics} (U : Univ)
                  (trans (four (posD s) _)
                    (sym (trans (length-++ dP {instr-ctrl (c-label Ld) ∷ lea-slot t ∷ mov-to-input ∷ instr-ctrl (c-branch-tag-zero Li) ∷ MA})
                           (cong (λ z → posD s + suc (suc (suc (suc z)))) (len-mvSSd (suc t) (bot ∸ wsz A) (wsz A))))))
-      fin : _ → Moved s fs 0 (es ∥ a ∷ˢ os)
+      fin : _ → Moved s fs [] [] (es ∥ a ∷ˢ os)
       fin (fs₂ , st , C′ , pc , K , nx , hp , tp) =
         _ , record fs₂ { fpc = pos s } ,
         step-at fs₁ (q-run H , proj₁ sD) (flat-label prog fs Ld)
@@ -234,7 +235,7 @@ module Loops {FS : FrameSemantics} (U : Univ)
                               (trans (flat-jmp prog fs₂ Lh) (trans (cong (λ x → do-jump x fs₂) (lab (here-in s)))
                                                                    (cong (λ z → record fs₂ { fpc = z }) (sym (pos-def s))))) FlatStepsAPI.[])) ,
         record { h-pc = refl ; h-run = h₂ ; h-cfg = C′ ; h-slots = trans (k-slots K) (q-slots H) } ,
-        keep-trans (keep-pc _) (keep-trans K (keep-pc _)) , nx , (λ hl _ → cong (λ h → h hl) hp) , tp
+        keep-trans (keep-pc _) (keep-trans K (keep-pc _)) , nx , tt , (λ hl _ _ → cong (λ h → h hl) hp) , tp
         where
           h₂ : LocState.halted (floc fs₂) ≡ false
           h₂ = trans (k-halt K) (q-run H)

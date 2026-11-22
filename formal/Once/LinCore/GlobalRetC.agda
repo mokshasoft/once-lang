@@ -49,7 +49,7 @@ open import Once.LinCore.Code fmt bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots
 open import Once.LinCore.Image fmt bw
 open import Once.LinCore.ImageRun fmt ans bw using (Ret; []ʳ; frm; _∷ⁱ_)
 open import Once.LinCore.Keys fmt bw
-open import Once.LinCore.Layout fmt bw using (Frame; frame; frameOf; budget; wsz; ws; envW; opW; module Frame)
+open import Once.LinCore.Layout fmt bw using (Frame; frame; frameOf; budget; ws; envW; opW; module Frame)
 open Frame using (EP; OP)
 open import Once.LinCore.Lower fmt bw
 open import Once.LinCore.Words fmt ans bw
@@ -134,7 +134,8 @@ module RetC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open Keep using (k-halt)
   open import Once.LinCore.LowerSimF fmt ans bw using (module SimF)
   open SimF {FS} U wordOf using (leave; area-gen)
-  open CallOutA using (co-slots; co-pc; co-size; co-halt)
+  open CallOutA using (co-slots; co-pc; co-size; co-halt; co-freed)
+  open import Once.LinCore.LiveRun fmt ans bw using (LiveG; FreshAl; live-eq; fresh-eq)
   open import Once.LinCore.LowerSimG {FS} using (ClosIn; closure-in)
   open ClosIn
   open ImgE {FS} ds f ldConst ld-nl using (image-tramp)
@@ -179,10 +180,10 @@ module RetC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
              → FreshR r₁ (AllocState.next-heap-ref (falloc fs))
              → TailC {X = X} {C} p r₁ cfc rets′ sv′ fs
              → AllocState.next-heap-ref (falloc fs) ≡ n
-             → InBlk fs
+             → InBlk fs → LiveG r₁ (vw x (vw cv []ᵉ) ∥ w ∷ˢ []ˢ) fs → FreshAl (falloc fs)
              → ArrivesAt (epop ⨾ reclose ⨾ end) r₁ (vw x (vw cv []ᵉ) ∥ w ∷ˢ []ˢ) n fs
     gret-cc′ {X = X} {C} {x} {cv} {w = w} {fs = fs} p e cfc sl sv′ rets′ ci eF H eRets eSv eSl abv ap s₂ pcv fr
-             tail@(tc-info {S = S} d af sl₂ sv₂ rets₂ eRets₂ eSv₂ eSl₂ abv₂ area₂ ev sk rest₂) nx I =
+             tail@(tc-info {Es = Es} {S = S} {k = k} {es = es} {os = os} {r = r} d af sl₂ sv₂ rets₂ eRets₂ eSv₂ eSl₂ abv₂ area₂ ev sk rest₂) nx I lv Fa =
       case tc-back {X} {C} p e cfc rets′ sv′ sl eF H eRets eSv (λ e″ → ≺-≢ abv (sym e″)) ap eSl of λ where
         (N , fs′ , run , (wv , pv , s0) , CO) →
           N , fs′ , run ,
@@ -200,9 +201,12 @@ module RetC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                  ; g-ret = ctx-to (sym (co-frame CO)) (sym (co-ret CO)) (sym (co-saved CO))
                              (trampc-keep tail (λ f y ne → co-rest CO (AtStack f y) (λ k k< e″ → ne (frame-eq e″)))
                                 (keep CO (wsz X) Data.Nat.Properties.≤-refl)
-                                (λ hl _ → co-rest CO (AtDynamic hl) (λ k k< ())) fr)
-                 ; g-blk = co-inb CO I } , co-log CO
+                                (λ hl _ _ → co-rest CO (AtDynamic hl) (λ k k< ())) fr)
+                 ; g-blk = co-inb CO I
+                 ; g-live = live-eq {r = R₁} {r′ = R₁} {m = (vw x (vw cv []ᵉ) ∥ w ∷ˢ []ˢ)} {m′ = (vw x (vw cv []ᵉ) ∥ w ∷ˢ []ˢ)} {fs = fs} {fs′ = fs′} (λ _ q → q) (λ q → cong (λ fr → fr q) (co-freed CO)) (λ q → cong (λ bs → bs q) (co-size CO)) lv
+                 ; g-fal = fresh-eq {fs = fs} {fs′ = fs′} (λ q → cong (λ fr → fr q) (co-freed CO)) (co-next CO) Fa } , co-log CO
       where
+        R₁ = frm {t = just C} {Es = Es} k es os r
         keep : ∀ {fs′ src pc rest sv sl′} → CallOut fs fs′ cfc 0 src (wsz X ∸ wsz X) (wsz X) pc rest sv sl′
              → ∀ y → wsz X ≤ y → LocState.stackMem (floc fs′) cfc y ≡ LocState.stackMem (floc fs) cfc y
         keep CO y le = co-rest CO (AtStack cfc y) (λ k k< e″ → moved-below (wsz X) k y k< le (slot-eq e″))
@@ -224,12 +228,12 @@ module RetC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
             → FreshR r₁ (AllocState.next-heap-ref (falloc fs))
             → RetOK (rtramp {κ = ktrc X C} p) (trFin (idx p) (ktrc X C)) r₁ cfc rets′ sv′ fs
             → AllocState.next-heap-ref (falloc fs) ≡ n
-            → InBlk fs
+            → InBlk fs → LiveG r₁ (vw x (vw cv []ᵉ) ∥ w ∷ˢ []ˢ) fs → FreshAl (falloc fs)
             → ArrivesAt (epop ⨾ reclose ⨾ end) r₁ (vw x (vw cv []ᵉ) ∥ w ∷ˢ []ˢ) n fs
-    gret-cc (p-start (at e)) _ cfc sl sv′ rets′ ci () eF H eRets eSv eSl abv ap s₂ pcv fr rest nx I
-    gret-cc (p-tramp _ _) _ cfc sl sv′ rets′ ci () eF H eRets eSv eSl abv ap s₂ pcv fr rest nx I
-    gret-cc {X = X} {C} (p-block p (at e)) _ cfc sl sv′ rets′ ci refl eF H eRets eSv eSl abv ap s₂ pcv fr rest nx I =
-      gret-cc′ p e cfc sl sv′ rets′ ci eF H eRets eSv eSl abv ap s₂ pcv fr (tail-c {X = X} {C} rest) nx I
+    gret-cc (p-start (at e)) _ cfc sl sv′ rets′ ci () eF H eRets eSv eSl abv ap s₂ pcv fr rest nx I lv Fa
+    gret-cc (p-tramp _ _) _ cfc sl sv′ rets′ ci () eF H eRets eSv eSl abv ap s₂ pcv fr rest nx I lv Fa
+    gret-cc {X = X} {C} (p-block p (at e)) _ cfc sl sv′ rets′ ci refl eF H eRets eSv eSl abv ap s₂ pcv fr rest nx I lv Fa =
+      gret-cc′ p e cfc sl sv′ rets′ ci eF H eRets eSv eSl abv ap s₂ pcv fr (tail-c {X = X} {C} rest) nx I lv Fa
 
     -- ★ the copy trampoline's way out (D434): the new cell's word into the caller's destination (its
     -- top operand's slot); the caller's configuration back in its frame
@@ -297,11 +301,11 @@ module RetC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
             → FreshR r (AllocState.next-heap-ref (falloc fs))
             → RetOK (dsiteRoot d) (dsiteFin d) r cfc rets′ sv′ fs
             → AllocState.next-heap-ref (falloc fs) ≡ n
-            → InBlk fs
+            → InBlk fs → LiveG r (es ∥ w ∷ˢ os) fs → FreshAl (falloc fs)
             → ArrivesAt k r (es ∥ w ∷ˢ os) n fs
-    gret-tc (p-start (at _)) _ d cfc sl sv′ rets′ () H eRets eSv eSl abv area ev sk fr rest nx I
-    gret-tc (p-block _ (at _)) _ d cfc sl sv′ rets′ () H eRets eSv eSl abv area ev sk fr rest nx I
-    gret-tc {X = X} {C} {S = S} {e′ = vw cv []ᵉ} {w = w} {fs = fs} (p-tramp _ _) _ (d-start s) cfc sl sv′ rets′ refl (tc4 p , T) eRets eSv eSl abv area ev sk fr rest nx I =
+    gret-tc (p-start (at _)) _ d cfc sl sv′ rets′ () H eRets eSv eSl abv area ev sk fr rest nx I lv Fa
+    gret-tc (p-block _ (at _)) _ d cfc sl sv′ rets′ () H eRets eSv eSl abv area ev sk fr rest nx I lv Fa
+    gret-tc {X = X} {C} {S = S} {es = es} {os = os} {r = R} {e′ = vw cv []ᵉ} {w = w} {fs = fs} (p-tramp _ _) _ (d-start s) cfc sl sv′ rets′ refl (tc4 p , T) eRets eSv eSl abv area ev sk fr rest nx I lv Fa =
       case tc-end {X} {C} p (S.pos (next s)) rets′ sv′ sl T eRets (trans eSv (cong (λ g → (g , sl) ∷ sv′) (sym ea))) (λ e″ → ≺-≢ abv (trans (sym e″) ea))
              (subst₂ Data.Nat._<_ (sym ed) (sym eSl) (Data.Nat.Properties.≤-<-trans (Data.Nat.Properties.≤-trans (Data.Nat.Properties.m∸n≤m _ 1) (Data.Nat.Properties.m∸n≤m (budget (frameOf main)) (ws S))) (Data.Nat.Properties.m<n⇒m<1+n (Data.Nat.Properties.n<1+n (budget (frameOf main)))))) of λ where
         (fs′ , run , CO₀) →
@@ -311,12 +315,14 @@ module RetC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
              record { g-pt = p-start (at (next s))
                     ; g-here = record { h-pc = co-pc CO ; h-run = trans (co-halt CO) (TrC4.c4-run T) ; h-cfg = proj₁ CK ; h-slots = trans (co-slots CO) eSl }
                     ; g-next = trans (co-next CO) nx
-                    ; g-ret = back CO (proj₂ CK) fr rest ; g-blk = co-inb CO I } , co-log CO
+                    ; g-ret = back CO (proj₂ CK) fr rest ; g-blk = co-inb CO I
+                 ; g-live = live-eq {r = R} {r′ = R} {m = (es ∥ w ∷ˢ os)} {m′ = (es ∥ w ∷ˢ os)} {fs = fs} {fs′ = fs′} (λ _ q → q) (λ q → cong (λ fr → fr q) (co-freed CO)) (λ q → cong (λ bs → bs q) (co-size CO)) lv
+                 ; g-fal = fresh-eq {fs = fs} {fs′ = fs′} (λ q → cong (λ fr → fr q) (co-freed CO)) (co-next CO) Fa } , co-log CO
       where
         pe = ptr-eq (trans (sym (TrC4.c4-s₁ T)) area)
         ea = proj₁ pe
         ed = proj₂ pe
-    gret-tc {X = X} {C} {S = S} {e′ = vw cv []ᵉ} {w = w} {fs = fs} (p-tramp _ _) _ (d-block {κ′ = κ′} p′ s) cfc sl sv′ rets′ refl (tc4 p , T) eRets eSv eSl abv area ev sk fr rest nx I =
+    gret-tc {X = X} {C} {S = S} {es = es} {os = os} {r = R} {e′ = vw cv []ᵉ} {w = w} {fs = fs} (p-tramp _ _) _ (d-block {κ′ = κ′} p′ s) cfc sl sv′ rets′ refl (tc4 p , T) eRets eSv eSl abv area ev sk fr rest nx I lv Fa =
       case tc-end {X} {C} p (K.pos p′ (next s)) rets′ sv′ sl T eRets (trans eSv (cong (λ g → (g , sl) ∷ sv′) (sym ea))) (λ e″ → ≺-≢ abv (trans (sym e″) ea))
              (subst₂ Data.Nat._<_ (sym ed) (sym eSl) (Data.Nat.Properties.≤-<-trans (Data.Nat.Properties.≤-trans (Data.Nat.Properties.m∸n≤m _ 1) (Data.Nat.Properties.m∸n≤m (budget (frameOf (blockᴵ κ′))) (ws S))) (Data.Nat.Properties.m<n⇒m<1+n (Data.Nat.Properties.n<1+n (budget (frameOf (blockᴵ κ′))))))) of λ where
         (fs′ , run , CO₀) →
@@ -326,7 +332,9 @@ module RetC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
              record { g-pt = p-block p′ (at (next s))
                     ; g-here = record { h-pc = co-pc CO ; h-run = trans (co-halt CO) (TrC4.c4-run T) ; h-cfg = proj₁ CK ; h-slots = trans (co-slots CO) eSl }
                     ; g-next = trans (co-next CO) nx
-                    ; g-ret = back CO (proj₂ CK) fr rest ; g-blk = co-inb CO I } , co-log CO
+                    ; g-ret = back CO (proj₂ CK) fr rest ; g-blk = co-inb CO I
+                 ; g-live = live-eq {r = R} {r′ = R} {m = (es ∥ w ∷ˢ os)} {m′ = (es ∥ w ∷ˢ os)} {fs = fs} {fs′ = fs′} (λ _ q → q) (λ q → cong (λ fr → fr q) (co-freed CO)) (λ q → cong (λ bs → bs q) (co-size CO)) lv
+                 ; g-fal = fresh-eq {fs = fs} {fs′ = fs′} (λ q → cong (λ fr → fr q) (co-freed CO)) (co-next CO) Fa } , co-log CO
       where
         pe = ptr-eq (trans (sym (TrC4.c4-s₁ T)) area)
         ea = proj₁ pe

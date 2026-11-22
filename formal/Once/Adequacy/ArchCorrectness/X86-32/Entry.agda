@@ -155,7 +155,7 @@ entry-regs : Once.CCC.Machine.SMCore.Registers x86-32-frame-semantics
 entry-regs = Once.CCC.Machine.SMCore.mkRegs (Once.CCC.Machine.SMCore.SV-Tag 0) (Once.CCC.Machine.SMCore.SV-Tag 0)
 
 entry-alloc : ℕ → Once.CCC.Machine.SMCore.AllocState {x86-32-frame-semantics}
-entry-alloc slots = Once.CCC.Machine.SMCore.mkAllocState entry-frame-x86-32 [] slots 0 1 (λ _ → 0)
+entry-alloc slots = Once.CCC.Machine.SMCore.mkAllocState entry-frame-x86-32 [] slots 0 1 (λ _ → 0) (λ _ → false)
 
 entry-s : Once.CCC.Machine.SMCore.LocState x86-32-frame-semantics
 entry-s = Once.CCC.Machine.SMCore.mkLocState entry-regs (λ _ _ → nothing) (λ _ → nothing) false [] false false

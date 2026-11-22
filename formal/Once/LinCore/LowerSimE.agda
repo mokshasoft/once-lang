@@ -91,7 +91,7 @@ open FlatStepsAPI {FS} using (FlatSteps; step-at) renaming ([] to done)
 open import Data.Bool using (false)
 open import Data.Product using (Σ; _×_; _,_)
 open LocState using (stackMem; heapMem) renaming (halted to fhalted)
-open AllocState using (current-frame; saved-frames; frame-slots; next-heap-ref; block-size)
+open AllocState using (current-frame; saved-frames; frame-slots; next-heap-ref; block-size; freed)
 open import Data.Nat using (_+_)
 open import Relation.Binary.PropositionalEquality using (sym)
 
@@ -111,6 +111,7 @@ record CallIn (fs fs′ : FlatState) (a b s₁ s₂ q r : ℕ) (w₂ : StoredVal
     ci-heap  : heapMem (floc fs′) ≡ heapMem (floc fs)
     ci-next  : next-heap-ref (falloc fs′) ≡ next-heap-ref (falloc fs)
     ci-size  : block-size (falloc fs′) ≡ block-size (falloc fs)
+    ci-freed : freed (falloc fs′) ≡ freed (falloc fs)
     ci-halt  : fhalted (floc fs′) ≡ fhalted (floc fs)
     ci-log   : LocState.ev-log (floc fs′) ≡ LocState.ev-log (floc fs)
 open CallIn
@@ -132,7 +133,7 @@ call-in prog fs a f e q b s₁ s₂ s≢ (g₁ , g₂ , g₃ , _) ff (h₁ , h�
          ; ci-s₂ = trans (store-other (floc fs₆) cf′ s₁ ptr s₂ s≢) (store-same (floc fs₄) cf′ s₂ ptr)
          ; ci-other = λ f′ x ne → trans (store-frame (floc fs₆) cf′ s₁ ptr f′ x ne)
                                     (trans (store-frame (floc fs₄) cf′ s₂ ptr f′ x ne) (clear-other (stackMem (floc fs)) cf′ b f′ x ne))
-         ; ci-heap = refl ; ci-next = refl ; ci-size = refl ; ci-halt = refl ; ci-log = refl }
+         ; ci-heap = refl ; ci-next = refl ; ci-size = refl ; ci-freed = refl ; ci-halt = refl ; ci-log = refl }
   where
     cf = current-frame (falloc fs)
     cf′ = callee-frame cf b
@@ -165,7 +166,7 @@ call-in-v prog fs a v f e q b s₁ s₂ s≢ (g₁ , g₂ , g₀ , g₃ , _) ff 
          ; ci-s₂ = trans (store-other (floc fs₆) cf′ s₁ ptr s₂ s≢) (store-same (floc fs₄) cf′ s₂ vptr)
          ; ci-other = λ f′ x ne → trans (store-frame (floc fs₆) cf′ s₁ ptr f′ x ne)
                                     (trans (store-frame (floc fs₄) cf′ s₂ vptr f′ x ne) (clear-other (stackMem (floc fs)) cf′ b f′ x ne))
-         ; ci-heap = refl ; ci-next = refl ; ci-size = refl ; ci-halt = refl ; ci-log = refl }
+         ; ci-heap = refl ; ci-next = refl ; ci-size = refl ; ci-freed = refl ; ci-halt = refl ; ci-log = refl }
   where
     cf = current-frame (falloc fs)
     cf′ = callee-frame cf b
@@ -212,6 +213,7 @@ record CallOutA (fs fs′ : FlatState) (cfc af : Frame) (a src o n pc : ℕ) (re
     co-rest  : ∀ (l : ValueLocation FS) → (∀ k → k < n → ¬ l ≡ AtStack af ((k + o) + a)) → readLoc (floc fs′) l ≡ readLoc (floc fs) l
     co-next  : next-heap-ref (falloc fs′) ≡ next-heap-ref (falloc fs)
     co-size  : block-size (falloc fs′) ≡ block-size (falloc fs)
+    co-freed : freed (falloc fs′) ≡ freed (falloc fs)
     co-halt  : fhalted (floc fs′) ≡ fhalted (floc fs)
     co-log   : LocState.ev-log (floc fs′) ≡ LocState.ev-log (floc fs)
 open CallOutA
@@ -257,6 +259,7 @@ call-outA prog fs cfc af a s₁ src o n b pc rest sv sl hret bslots hsv ne ep de
              ; co-rest = λ l nl → trans (w-rest W l nl) (readLoc-regs (floc fs) _ l)
              ; co-next = trans (cong (λ L → next-heap-ref (leave-frame-aux L (falloc fs₂))) eqL) (cong next-heap-ref (w-alloc W))
              ; co-size = trans (cong (λ L → block-size (leave-frame-aux L (falloc fs₂))) eqL) (cong block-size (w-alloc W))
+             ; co-freed = trans (cong (λ L → freed (leave-frame-aux L (falloc fs₂))) eqL) (cong freed (w-alloc W))
              ; co-halt = wm-halt W ; co-log = wm-log W }
       where
         eqL : saved-frames (falloc fs₂) ≡ (cfc , sl) ∷ sv
@@ -316,6 +319,7 @@ ret-out prog fs cfc b pc rest sv sl hret bslots hsv (g , _) h =
          ; co-rest = λ l _ → refl
          ; co-next = cong (λ L → next-heap-ref (leave-frame-aux L (falloc fs))) hsv
          ; co-size = cong (λ L → block-size (leave-frame-aux L (falloc fs))) hsv
+         ; co-freed = cong (λ L → freed (leave-frame-aux L (falloc fs))) hsv
          ; co-halt = refl ; co-log = refl }
   where
     fs₁ = record fs { falloc = leave-frame (falloc fs) ; fpc = pc ; fret = rest }
@@ -340,6 +344,7 @@ record CallInH (fs fs′ : FlatState) (b s₁ s₂ q r : ℕ) (ap vp : StoredVal
     ch-heap  : heapMem (floc fs′) ≡ heapMem (floc fs)
     ch-next  : next-heap-ref (falloc fs′) ≡ next-heap-ref (falloc fs)
     ch-size  : block-size (falloc fs′) ≡ block-size (falloc fs)
+    ch-freed : freed (falloc fs′) ≡ freed (falloc fs)
     ch-halt  : fhalted (floc fs′) ≡ fhalted (floc fs)
     ch-log   : LocState.ev-log (floc fs′) ≡ LocState.ev-log (floc fs)
 open CallInH
@@ -362,7 +367,7 @@ call-in-h prog fs s ap vp f e q b s₁ s₂ s≢ sa ov (g₁ , g₂ , _) ff (h�
                      (trans (store-same (floc fs₄) cf′ s₂ (readReg (LocState.regs (floc fs₄)) Output)) (cong just ov))
          ; ch-other = λ f′ x ne → trans (store-frame (floc fs₆) cf′ s₁ ap f′ x ne)
                                     (trans (store-frame (floc fs₄) cf′ s₂ _ f′ x ne) (clear-other (stackMem (floc fs)) cf′ b f′ x ne))
-         ; ch-heap = refl ; ch-next = refl ; ch-size = refl ; ch-halt = refl ; ch-log = refl }
+         ; ch-heap = refl ; ch-next = refl ; ch-size = refl ; ch-freed = refl ; ch-halt = refl ; ch-log = refl }
   where
     cf = current-frame (falloc fs)
     cf′ = callee-frame cf b
@@ -394,7 +399,7 @@ call-in-c prog fs s vp f e q b s₁ s₂ s≢ sv (g₁ , g₂ , g₃ , g₄ , _)
          ; ch-s₂ = trans (store-other (floc fs₇) cf′ s₁ ap s₂ s≢) (store-same (floc fs₅) cf′ s₂ vp)
          ; ch-other = λ f′ x ne → trans (store-frame (floc fs₇) cf′ s₁ ap f′ x ne)
                                     (trans (store-frame (floc fs₅) cf′ s₂ vp f′ x ne) (clear-other (stackMem (floc fs)) cf′ b f′ x ne))
-         ; ch-heap = refl ; ch-next = refl ; ch-size = refl ; ch-halt = refl ; ch-log = refl }
+         ; ch-heap = refl ; ch-next = refl ; ch-size = refl ; ch-freed = refl ; ch-halt = refl ; ch-log = refl }
   where
     cf = current-frame (falloc fs)
     cf′ = callee-frame cf b

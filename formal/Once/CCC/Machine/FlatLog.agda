@@ -257,7 +257,10 @@ module LogPres {FS : FrameSemantics} where
   flat-exec-instr-log (instr-load-tag-lit n)   lf prog fs = exec-abstract-log (instr-load-tag-lit n) lf (floc fs) (falloc fs)
   flat-exec-instr-log (instr-alloc-heap n)     lf prog fs = exec-abstract-log (instr-alloc-heap n) lf (floc fs) (falloc fs)
   flat-exec-instr-log (instr-reg-op out-nz)    lf prog fs = do-nz-log (readReg (regs (floc fs)) Output) fs
-  flat-exec-instr-log (instr-free-heap n)      lf prog fs = exec-abstract-log (instr-free-heap n) lf (floc fs) (falloc fs)
+  flat-exec-instr-log (instr-free-heap n)      lf prog fs =
+    straight-keeps (λ t → flog t ≡ flog fs) (instr-free-heap n) fs
+      (exec-abstract-log (instr-free-heap n) lf (floc fs) (falloc fs))
+      refl
   flat-exec-instr-log (instr-room n)           lf prog fs = exec-abstract-log (instr-room n) lf (floc fs) (falloc fs)
   flat-exec-instr-log (load-at n)           lf prog fs = exec-abstract-log (load-at n) lf (floc fs) (falloc fs)
   flat-exec-instr-log (store-at n)           lf prog fs = exec-abstract-log (store-at n) lf (floc fs) (falloc fs)

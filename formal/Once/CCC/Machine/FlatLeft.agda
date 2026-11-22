@@ -268,7 +268,10 @@ module LeftPres {FS : FrameSemantics} where
   flat-exec-instr-left (instr-load-tag-lit n)   lf prog fs = exec-abstract-left (instr-load-tag-lit n) lf (floc fs) (falloc fs)
   flat-exec-instr-left (instr-alloc-heap n)     lf prog fs = exec-abstract-left (instr-alloc-heap n) lf (floc fs) (falloc fs)
   flat-exec-instr-left (instr-reg-op out-nz)    lf prog fs = do-nz-left (readReg (regs (floc fs)) Output) fs
-  flat-exec-instr-left (instr-free-heap n)      lf prog fs = exec-abstract-left (instr-free-heap n) lf (floc fs) (falloc fs)
+  flat-exec-instr-left (instr-free-heap n)      lf prog fs =
+    straight-keeps (λ t → flft t ≡ flft fs) (instr-free-heap n) fs
+      (exec-abstract-left (instr-free-heap n) lf (floc fs) (falloc fs))
+      refl
   flat-exec-instr-left (instr-room n)           lf prog fs = exec-abstract-left (instr-room n) lf (floc fs) (falloc fs)
   flat-exec-instr-left (load-at n)           lf prog fs = exec-abstract-left (load-at n) lf (floc fs) (falloc fs)
   flat-exec-instr-left (store-at n)           lf prog fs = exec-abstract-left (store-at n) lf (floc fs) (falloc fs)
@@ -503,7 +506,7 @@ module FaultPres {FS : FrameSemantics} where
   flat-exec-instr-fault (instr-load-tag-lit n)   prog fs h = abs-fault (instr-load-tag-lit n) (floc fs) (falloc fs) h
   flat-exec-instr-fault (instr-alloc-heap n)     prog fs h = abs-fault (instr-alloc-heap n) (floc fs) (falloc fs) h
   flat-exec-instr-fault (instr-reg-op out-nz)    prog fs h = do-nz-fault (readReg (regs (floc fs)) Output) fs h
-  flat-exec-instr-fault (instr-free-heap n)      prog fs h = abs-fault (instr-free-heap n) (floc fs) (falloc fs) h
+  flat-exec-instr-fault (instr-free-heap n)      prog fs h = straight-keeps (λ t → fhlt t ≡ false → fflt t ≡ fflt fs) (instr-free-heap n) fs (abs-fault (instr-free-heap n) (floc fs) (falloc fs)) (λ ()) h
   flat-exec-instr-fault (instr-room n)           prog fs h = abs-fault (instr-room n) (floc fs) (falloc fs) h
   flat-exec-instr-fault (load-at n)           prog fs h = abs-fault (load-at n) (floc fs) (falloc fs) h
   flat-exec-instr-fault (store-at n)           prog fs h = abs-fault (store-at n) (floc fs) (falloc fs) h

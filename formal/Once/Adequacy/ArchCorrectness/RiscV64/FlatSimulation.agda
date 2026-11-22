@@ -1324,17 +1324,19 @@ block-step-reclaim-to {hv} prog fs s n cc h ft = s , refl , record
 block-step-free-heap : ∀ {hv : HeapView} prog fs s n → CompiledCorr hv prog fs s
   → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-free-heap n)
+  → FlatMachine.block-base? {FS} n (readReg (regs (floc fs)) Input1) (falloc fs) ≡ true
   → BlockStep hv prog fs s (instr-free-heap n)
-block-step-free-heap {hv} prog fs s n cc h ft = s , refl , record
+block-step-free-heap {hv} prog fs s n cc h ft g =
+  s , refl , subst (λ z → CompiledCorr hv prog z s) (sym (FlatMachine.straight-pass {FS} (instr-free-heap n) fs g)) (record
   { dataCorr = record { in1-eq = C.FlatCorrespondence.FlatCorr.in1-eq dc ; out-eq = C.FlatCorrespondence.FlatCorr.out-eq dc
                       ; clos-eq = C.FlatCorrespondence.FlatCorr.clos-eq dc
                       ; halt-eq = C.FlatCorrespondence.FlatCorr.halt-eq dc ; sp-eq = C.FlatCorrespondence.FlatCorr.sp-eq dc ; frontier-eq = C.FlatCorrespondence.FlatCorr.frontier-eq dc
-                      ; dom-fresh = C.FlatCorrespondence.FlatCorr.dom-fresh dc ; dom-written = C.FlatCorrespondence.FlatCorr.dom-written dc ; dom-sized = C.FlatCorrespondence.FlatCorr.dom-sized dc
-                      ; heap-eq = C.FlatCorrespondence.FlatCorr.heap-eq dc
+                      ; dom-fresh = C.FlatCorrespondence.FlatCorr.dom-fresh dc ; dom-written = λ hl e → C.FlatCorrespondence.FlatCorr.dom-written dc hl (AbstractExec.freeMem-just {FS} (readReg (regs (floc fs)) Input1) (heapMem (floc fs)) hl e) ; dom-sized = C.FlatCorrespondence.FlatCorr.dom-sized dc
+                      ; heap-eq = λ hl e → C.FlatCorrespondence.FlatCorr.heap-eq dc hl (AbstractExec.freeMem-just {FS} (readReg (regs (floc fs)) Input1) (heapMem (floc fs)) hl e)
                       ; lo-le = C.FlatCorrespondence.FlatCorr.lo-le dc ; stack-eq = C.FlatCorrespondence.FlatCorr.stack-eq dc }
   ; pc-off = trans (pc-off cc)
              (sym (trans (blk-off-suc prog (fpc fs) (instr-free-heap n) ft) (+-identityʳ _)))
-  ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
+  ; ret-eq = ret-eq cc ; code-eq = code-eq cc })
   where dc = dataCorr cc
 
 ------------------------------------------------------------------------

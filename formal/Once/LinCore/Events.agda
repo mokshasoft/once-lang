@@ -41,11 +41,13 @@ open import Agda.Builtin.Equality using (_≡_; refl)
 open import Relation.Binary.PropositionalEquality using (sym; trans; cong; cong₂)
 open import Agda.Builtin.Sigma using (Σ; _,_; fst; snd)
 open import Data.Product using (_×_)
-open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_]′)
+open import Data.List.Membership.Propositional using (_∈_)
+open import Data.List.Relation.Unary.Any using (here; there)
 open import Data.Unit using (⊤; tt)
 open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _⊔_; _≤_; _<_; z≤n; s≤s; _≟_)
 open import Relation.Nullary using (Dec)
-open import Data.Nat.Properties using (≤-refl; ≤-trans; n≤1+n; m∸n≤m; m∸n+n≡m; n≤0⇒n≡0; ≤-antisym; m≤m+n; m≤n+m; <⇒≢)
+open import Data.Nat.Properties using (≤-refl; ≤-reflexive; ≤-trans; n≤1+n; m∸n≤m; m∸n+n≡m; n≤0⇒n≡0; ≤-antisym; m≤m+n; m≤n+m; <⇒≢)
 open import Data.Nat.Tactic.RingSolver using (solve-∀)
 open import Data.List using (List; []; _∷_; _++_; map; concatMap; foldl)
 open import Data.List.Properties using (foldl-++; ++-identityʳ)
@@ -836,7 +838,7 @@ play t h = foldl (λ g x → step x g) h t
 -- what an event needs of the heap: a cell allocated is free, one freed or
 -- read is live
 okPre : Ev → Heap → Set
-okPre (alloc i)  h = h i ≡ 0
+okPre (alloc i)  h = ∀ j → serial j ≡ serial i → h j ≡ 0   -- ★ D468: no live cell at its serial (one block per serial)
 okPre (free i)   h = h i ≡ 1
 okPre (peek i)   h = h i ≡ 1
 okPre (io _ _ _) h = ⊤
@@ -885,7 +887,7 @@ OK-le1 (alloc i ∷ t) h (p , ok) le = OK-le1 t _ ok le′
     +0 : ∀ x → x + 0 ≡ x
     +0 = solve-∀
     at : ∀ j → (d : Dec (i ≡ j)) → h j + δd d ≤ 1
-    at j (yes e) = subst (λ y → h y + 1 ≤ 1) e (subst (λ x → x + 1 ≤ 1) (sym p) (s≤s z≤n))
+    at j (yes e) = subst (λ y → h y + 1 ≤ 1) e (subst (λ x → x + 1 ≤ 1) (sym (p i refl)) (s≤s z≤n))
     at j (no _)  = subst (_≤ 1) (sym (+0 (h j))) (le j)
     le′ : ∀ j → h j + δ i j ≤ 1
     le′ j = at j (i ≟ᵢ j)
@@ -894,6 +896,87 @@ OK-le1 (peek i ∷ t)  h (p , ok) le = OK-le1 t _ ok le
 OK-le1 (io _ _ _ ∷ t) h (_ , ok) le = OK-le1 t _ ok le
 OK-le1 (stp _ _ ∷ t)  h (_ , ok) le = OK-le1 t _ ok le
 OK-le1 (tmp _ ∷ t)    h (_ , ok) le = OK-le1 t _ ok le
+
+-- ★ D469: the serials a trace frees (its blocks the image may free)
+evFree : Ev → List ℕ
+evFree (alloc _)  = []
+evFree (free i)   = serial i ∷ []
+evFree (peek _)   = []
+evFree (io _ _ _) = []
+evFree (stp _ _)  = []
+evFree (tmp _)    = []
+
+freesOf : Trace → List ℕ
+freesOf = concatMap evFree
+
+-- ★ D468: one live cell per serial — the image's blocks are by serial, so a
+-- free's framing needs that no other held cell shares the freed one's
+SerU : Heap → Set
+SerU h = ∀ i j → 1 ≤ h i → 1 ≤ h j → serial i ≡ serial j → i ≡ j
+
+private
+  -- a cell live after an alloc of `a`: `a`, or live before
+  born-or : ∀ (a : Id) (h : Heap) j → 1 ≤ h j + δ a j → (a ≡ j) ⊎ (1 ≤ h j)
+  born-or a h j p = by (a ≟ᵢ j) p
+    where
+      by : (d : Dec (a ≡ j)) → 1 ≤ h j + δd d → (a ≡ j) ⊎ (1 ≤ h j)
+      by (yes e) _ = inj₁ e
+      by (no _)  q = inj₂ (subst (1 ≤_) (+0′ (h j)) q)
+        where +0′ : ∀ x → x + 0 ≡ x
+              +0′ = solve-∀
+
+  ser-alloc : ∀ (a : Id) (h : Heap) → okPre (alloc a) h → SerU h → SerU (step (alloc a) h)
+  ser-alloc a h ok u i j pi pj e = by (born-or a h i pi) (born-or a h j pj)
+    where
+      dead : ∀ {x} → 1 ≤ h x → serial x ≡ serial a → ⊥
+      dead {x} l ex = 1≰0 (subst (1 ≤_) (ok x ex) l)
+        where 1≰0 : ¬ (1 ≤ 0)
+              1≰0 ()
+      by : (a ≡ i) ⊎ (1 ≤ h i) → (a ≡ j) ⊎ (1 ≤ h j) → i ≡ j
+      by (inj₁ ai) (inj₁ aj) = trans (sym ai) aj
+      by (inj₁ refl) (inj₂ lj) = ⊥-elim (dead lj (sym e))
+      by (inj₂ li) (inj₁ refl) = ⊥-elim (dead li e)
+      by (inj₂ li) (inj₂ lj) = u i j li lj e
+
+-- ★ legal events keep one live cell per serial
+OK-ser : ∀ t h → OK t h → SerU h → SerU (play t h)
+OK-ser []             h ok        u = u
+OK-ser (alloc a ∷ t)  h (p , ok) u = OK-ser t _ ok (ser-alloc a h p u)
+OK-ser (free a ∷ t)   h (p , ok) u = OK-ser t _ ok (λ i j pi pj → u i j (≤-trans pi (m∸n≤m (h i) (δ a i))) (≤-trans pj (m∸n≤m (h j) (δ a j))))
+OK-ser (peek _ ∷ t)   h (_ , ok) u = OK-ser t _ ok u
+OK-ser (io _ _ _ ∷ t) h (_ , ok) u = OK-ser t _ ok u
+OK-ser (stp _ _ ∷ t)  h (_ , ok) u = OK-ser t _ ok u
+OK-ser (tmp _ ∷ t)    h (_ , ok) u = OK-ser t _ ok u
+
+-- ★ D469: a cell live after a legal trace was allocated in it, or was live
+-- before and its block is none the trace frees (one live cell per serial)
+held-after : ∀ t h i → OK t h → SerU h → 1 ≤ play t h i
+           → (alloc i ∈ t) ⊎ (1 ≤ h i × ¬ (serial i ∈ freesOf t))
+held-after []             h i ok        u p = inj₂ (p , λ ())
+held-after (alloc a ∷ t)  h i (q , ok) u p =
+  [ (λ m → inj₁ (there m)) , old ]′ (held-after t _ i ok (ser-alloc a h q u) p)
+  where
+    old : 1 ≤ step (alloc a) h i × ¬ (serial i ∈ freesOf t) → (alloc i ∈ alloc a ∷ t) ⊎ (1 ≤ h i × ¬ (serial i ∈ freesOf t))
+    old (l , nf) = [ (λ e → inj₁ (here (cong alloc (sym e)))) , (λ l′ → inj₂ (l′ , nf)) ]′ (born-or a h i l)
+held-after (free a ∷ t)   h i (q , ok) u p =
+  [ (λ m → inj₁ (there m)) , old ]′ (held-after t _ i ok (λ x y px py → u x y (≤-trans px (m∸n≤m (h x) (δ a x))) (≤-trans py (m∸n≤m (h y) (δ a y)))) p)
+  where
+    old : 1 ≤ step (free a) h i × ¬ (serial i ∈ freesOf t) → (alloc i ∈ free a ∷ t) ⊎ (1 ≤ h i × ¬ (serial i ∈ serial a ∷ freesOf t))
+    old (l , nf) = inj₂ (hi , nf′)
+      where
+        hi : 1 ≤ h i
+        hi = ≤-trans l (m∸n≤m (h i) (δ a i))
+        gone : i ≡ a → ⊥
+        gone refl = no1 (subst (λ z → 1 ≤ z ∸ 1) q (subst (λ d → 1 ≤ h i ∸ d) (δ-same i) l))
+          where no1 : 1 ≤ 1 ∸ 1 → ⊥
+                no1 ()
+        nf′ : ¬ (serial i ∈ serial a ∷ freesOf t)
+        nf′ (here e) = gone (u i a hi (subst (1 ≤_) (sym q) (s≤s z≤n)) e)
+        nf′ (there m) = nf m
+held-after (peek _ ∷ t)   h i (_ , ok) u p = [ (λ m → inj₁ (there m)) , inj₂ ]′ (held-after t h i ok u p)
+held-after (io _ _ _ ∷ t) h i (_ , ok) u p = [ (λ m → inj₁ (there m)) , inj₂ ]′ (held-after t h i ok u p)
+held-after (stp _ _ ∷ t)  h i (_ , ok) u p = [ (λ m → inj₁ (there m)) , inj₂ ]′ (held-after t h i ok u p)
+held-after (tmp _ ∷ t)    h i (_ , ok) u p = [ (λ m → inj₁ (there m)) , inj₂ ]′ (held-after t h i ok u p)
 
 record Pre (h : Heap) (n : ℕ) {A} (v : MV A) (r : Heap) : Set where
   field
@@ -984,10 +1067,11 @@ private
   rearr : ∀ a b c → (a + b) + c ≡ a + (c + b)
   rearr = solve-∀
 
-  cell-ok : ∀ j (t : Trace) (h V : Heap) → OK t h → (∀ i → play t h i ≡ h i + V i) → h j ≡ 0 → V j ≡ 0
+  cell-ok : ∀ j (t : Trace) (h V : Heap) → OK t h → (∀ i → play t h i ≡ h i + V i)
+          → (∀ x → serial x ≡ serial j → h x ≡ 0) → (∀ x → serial x ≡ serial j → V x ≡ 0)
           → OK (t ++ alloc j ∷ []) h × (∀ i → play (t ++ alloc j ∷ []) h i ≡ h i + (δ j i + V i))
   cell-ok j t h V ok eq hj Vj =
-    ( OK-++ t (alloc j ∷ []) h ok (trans (eq j) (cong₂ _+_ hj Vj) , tt)
+    ( OK-++ t (alloc j ∷ []) h ok ((λ x e → trans (eq x) (cong₂ _+_ (hj x e) (Vj x e))) , tt)
     , λ i → trans (cong (λ x → x i) (play-++ t (alloc j ∷ []) h))
                   (trans (cong (_+ δ j i) (eq i)) (rearr (h i) (V i) (δ j i))) )
 
@@ -1010,16 +1094,16 @@ copy-ok (mbase x) n h ab = (tt , λ i → sym (+0 (h i)))
 copy-ok (mmu {F} j v) n h ab =
   let (v' , n₁ , t₁) = copy v n
       (ok , eq) = copy-ok v n h ab
-  in cell-ok (szμ F , n₁) t₁ h (cnt v') ok eq (ab (szμ F , n₁) (copy-mono v n)) (copy-below v n (szμ F , n₁) ≤-refl)
+  in cell-ok (szμ F , n₁) t₁ h (cnt v') ok eq (λ y e → ab y (≤-trans (copy-mono v n) (≤-reflexive (sym e)))) (λ y e → copy-below v n y (≤-reflexive (sym e)))
 copy-ok (mct x) n h ab = copy-ok x n h ab
 copy-ok (mfn {X = X} j c x) n h ab =
   let (x' , n₁ , t₁) = copy x n
       (ok , eq) = copy-ok x n h ab
-  in cell-ok (szc X , n₁) t₁ h (cnt x') ok eq (ab (szc X , n₁) (copy-mono x n)) (copy-below x n (szc X , n₁) ≤-refl)
+  in cell-ok (szc X , n₁) t₁ h (cnt x') ok eq (λ y e → ab y (≤-trans (copy-mono x n) (≤-reflexive (sym e)))) (λ y e → copy-below x n y (≤-reflexive (sym e)))
 copy-ok (mnu {F} {S} j p) n h ab =
   let (p' , n₁ , t₁) = copy p n
       (ok , eq) = copy-ok p n h ab
-  in cell-ok (szν F S , n₁) t₁ h (cnt p') ok eq (ab (szν F S , n₁) (copy-mono p n)) (copy-below p n (szν F S , n₁) ≤-refl)
+  in cell-ok (szν F S , n₁) t₁ h (cnt p') ok eq (λ y e → ab y (≤-trans (copy-mono p n) (≤-reflexive (sym e)))) (λ y e → copy-below p n y (≤-reflexive (sym e)))
 
 -- freeing one live cell `j` whose contents count `V`
 free-step : ∀ j (V : Heap) (h r : Heap) → (∀ i → h i ≤ 1) → (∀ i → (δ j i + V i) + r i ≤ h i)
@@ -1301,7 +1385,7 @@ private
   -- one cell allocated at the counter, holding `V`
   alloc1 : ∀ {h n A} {v : MV A} {r} k (V : Heap) → Pre h n v r
          → OK (alloc (k , n) ∷ []) h × (∀ i → play (alloc (k , n) ∷ []) h i + V i ≡ h i + (δ (k , n) i + V i))
-  alloc1 {h} {n} k V pre = ((above pre (k , n) ≤-refl , tt) , λ i → assoc (h i) (δ (k , n) i) (V i))
+  alloc1 {h} {n} k V pre = (((λ j e → above pre j (≤-reflexive (sym e))) , tt) , λ i → assoc (h i) (δ (k , n) i) (V i))
 
   -- the precondition after the first event freed cell `j`
   pre-free : ∀ {h n A B} {v : MV A} {v′ : MV B} {r} j → Pre h n v r → (∀ i → step (free j) h i ≤ 1)
@@ -1579,8 +1663,9 @@ st (suc _) = live
 -- legal counts are lifetimes, on every trace
 life : ∀ t h i → OK t h → h i ≤ 1 → Life (st (h i)) (on i t) (st (play t h i))
 life []            h i _        _  = done
-life (alloc j ∷ t) h i (p , ok) le = at (j ≟ᵢ i)
+life (alloc j ∷ t) h i (p′ , ok) le = at (j ≟ᵢ i)
   where
+    p = p′ j refl
     h′ = step (alloc j) h
     at : (d : Dec (j ≡ i)) → Life (st (h i)) (kd born d ++ on i t) (st (play t h′ i))
     at (yes q) =

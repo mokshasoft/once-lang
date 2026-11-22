@@ -67,7 +67,7 @@ entry-regs : Registers x86-64-frame-semantics
 entry-regs = mkRegs (SV-Tag 0) (SV-Tag 0)
 
 entry-alloc : ℕ → AllocState {x86-64-frame-semantics}
-entry-alloc slots = mkAllocState entry-frame-x86-64 [] slots 0 1 (λ _ → 0)
+entry-alloc slots = mkAllocState entry-frame-x86-64 [] slots 0 1 (λ _ → 0) (λ _ → false)
 
 entry-s : LocState x86-64-frame-semantics
 entry-s = mkLocState entry-regs (λ _ _ → nothing) (λ _ → nothing) false [] false false

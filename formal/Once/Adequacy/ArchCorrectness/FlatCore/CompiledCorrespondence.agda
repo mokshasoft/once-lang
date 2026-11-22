@@ -298,12 +298,14 @@ record BlockSteps : Set₁ where
       → halted (floc fs) ≡ false
       → fetch prog (fpc fs) ≡ just (instr-reclaim-to n)
       → BlockStep hv prog fs s (instr-reclaim-to n)
-    -- a free: no code on any arch, and a no-op in the machine (the bump
-    -- allocator does not reuse the block; D428's reuse is plan 0.146 B1.6)
+    -- a free past its gate (D468: `Input1` the base of a live block of `n` words):
+    -- in the machine its cells are cleared and it is marked freed; no code yet on
+    -- any arch (the free lists of D468 are plan 0.146 B1.6 item 3's next step)
     bs-free-heap :
       ∀ {hv : HeapView} prog fs s n → CompiledCorr hv prog fs s
       → halted (floc fs) ≡ false
       → fetch prog (fpc fs) ≡ just (instr-free-heap n)
+      → FlatMachine.block-base? {FS} n (readReg (regs (floc fs)) Input1) (falloc fs) ≡ true
       → BlockStep hv prog fs s (instr-free-heap n)
     bs-worklist-init :
       ∀ {hv : HeapView} prog fs s n → CompiledCorr hv prog fs s

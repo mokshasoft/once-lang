@@ -24533,3 +24533,23 @@ size class) and `--alloc=pool` (one `Mempool` of blocks of the program's largest
 block serves any request, so the strong claim: a run is cut only when the live blocks, at the largest size, do
 not fit — D428 part 2 option 2). Bump stays the primitive under both, not a choice. Rejected: the spike's
 lowest-free (a search per alloc), a coalescing first-fit (search and merge; a much larger proof).
+
+## D469 — AN ABSTRACT CELL'S SIZE IS ITS BLOCK'S; ONE LIVE CELL PER SERIAL (2026-11-23, proposed — for the user's review)
+
+**Context.** The gated free (D468) passes only when the freed block is live at the size the image frees, and
+its framing needs that no other held cell shares the block. An abstract id is `(size , serial)`; its size was
+`words` of the node (`szμ F = words …`, base words at `bw b`), while the image allocates `1 ⊔ wsz …` (μ) or
+`hdr + wsz …` (closure, ν). So "this cell's block is live" could be said only per value, by its type — a
+type-directed invariant threaded through every `CfgW` (~200 sites).
+
+**Decision.** (1) The id's size is the block's: `szμ F = 1 ⊔ wsz (LF∙ F (μt F))`, `szc X = hdr + wsz X`,
+`szν F S = hdr + wsz (Coalg F S ⊗t S)`; `wsz` and `hdr` move down to `Values` (the machine's cell sizes), Layout
+and Lower use them from there. The size classes of D384/D428 are then the machine's exact node sizes, which is
+what the slab allocator keeps (D468). (2) Liveness is type-free: a held id's block has size `proj₁ i` and is not
+freed — one heap-level invariant beside `InvI`, not a field of `CfgW`. (3) `okPre (alloc i)` asks that no live
+cell share `i`'s serial (was: `i` itself not live); `InvI.i-ser` (one live cell per serial) follows from any legal
+trace (`OK-ser`), and `apart-top` gives the free's framing premise.
+
+**Why principled.** The abstract heap already models the machine's memory for the space claims (BudgetSound,
+AllocRun's per-class pools); counting its cells at the machine's sizes makes those claims about the real blocks.
+Nothing in the source semantics (Spec) sees an id's size.

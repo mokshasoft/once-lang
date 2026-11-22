@@ -45,7 +45,7 @@ open import Once.LinCore.Image fmt bw
 open import Once.LinCore.Keys fmt bw
 open import Once.LinCore.Layout fmt bw
 open Frame using (EP; OP)
-open import Once.LinCore.Lower fmt bw using (tl; idx; hdr)
+open import Once.LinCore.Lower fmt bw using (tl; idx)
 
 module Rel {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue FS) where
 

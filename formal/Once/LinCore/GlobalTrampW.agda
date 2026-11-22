@@ -51,7 +51,7 @@ open import Once.LinCore.Code fmt bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots
 open import Once.LinCore.Image fmt bw
 open import Once.LinCore.ImageRun fmt ans bw using (Ret; []ʳ; frm; _∷ⁱ_)
 open import Once.LinCore.Keys fmt bw
-open import Once.LinCore.Layout fmt bw using (Frame; frame; frameOf; budget; wsz; ws; module Frame)
+open import Once.LinCore.Layout fmt bw using (Frame; frame; frameOf; budget; ws; module Frame)
 open Frame using (EP; OP)
 open import Once.LinCore.Lower fmt bw
 open import Once.LinCore.MoveCode using (mvSP)
@@ -204,7 +204,7 @@ module TrampW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   tw-open : ∀ {Γ′ g X A B} {ds′ : Defs Γ′} {b : Tm Γ′ X A B} {γ : Gd g b} (p : under (ktrω ds′ b γ) ∈ allK U) {M i} {x : MV X} {a : MV A} {fs}
           → TrW0 M (trPos (ktrω ds′ b γ) p 0) i x a fs → InBlk fs
           → Σ FlatState λ fs′ → FlatSteps image 1 fs fs′ × TrW1 M (trPos (ktrω ds′ b γ) p 1) i x a fs′
-              × Ran 1 0 (AllocState.next-heap-ref (falloc fs)) 0 fs fs′
+              × Ran 1 [] [] (AllocState.next-heap-ref (falloc fs)) 0 fs fs′
   tw-open {X = X} {ds′ = ds′} {b} {γ} p {M} {i} {x} {a} {fs} T I =
     fs′ ,
     step-at fs′ (TrW0.w0-run T , proj₁ (tW-seg0 p (TrW0.w0-pc T))) (ca-step (wsz X) fs i (TrW0.w0-wx T) (vw-len (TrW0.w0-x T)) (TrW0.w0-in T) (TrW0.w0-at T) I)

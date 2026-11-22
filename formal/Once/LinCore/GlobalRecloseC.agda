@@ -48,7 +48,7 @@ open import Once.LinCore.Code fmt bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots
 open import Once.LinCore.Image fmt bw
 open import Once.LinCore.ImageRun fmt ans bw using (Ret; []ʳ; frm; _∷ⁱ_)
 open import Once.LinCore.Keys fmt bw
-open import Once.LinCore.Layout fmt bw using (Frame; frame; frameOf; budget; wsz; ws; module Frame)
+open import Once.LinCore.Layout fmt bw using (Frame; frame; frameOf; budget; ws; module Frame)
 open Frame using (EP; OP)
 open import Once.LinCore.Lower fmt bw
 open import Once.LinCore.Words fmt ans bw
@@ -63,6 +63,9 @@ open import Once.LinCore.KeysRun fmt ans bw using (module ProgramRun)
 open import Once.LinCore.TrampAt fmt ans bw using (under; module TrImg; module Tr)
 
 open import Once.LinCore.Global fmt ans bw using (module Relate)
+open import Once.LinCore.LiveRun fmt ans bw using (LiveG; FreshAl; AlFx; ax; live-after; fresh-after)
+open import Data.List.Relation.Unary.Any using (here; there)
+open import Data.Sum using (inj₁)
 open import Once.LinCore.GlobalTramp fmt ans bw using (module TrampR)
 open import Once.LinCore.GlobalTrampO fmt ans bw using (module TrampO)
 open import Once.LinCore.GlobalTrampC fmt ans bw using (module TrampC)
@@ -89,8 +92,8 @@ module RecloseC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open FrameSemantics FS using (_≺_)
   open TrImg {FS} ds f ldConst ld-nl using (image-tr)
   open Tr U ncty ldConst using (trAt)
-  open Rel {FS} U wordOf using (CfgW; VW; vpair; vfn; vnu; SlotsAt; cellPtr)
-  open import Once.LinCore.Moves {FS} using (slot; InBlk; r-inb; inb-pt)
+  open Rel {FS} U wordOf using (CfgW; VW; vpair; vfn; vnu; SlotsAt; cellPtr; vw-len)
+  open import Once.LinCore.Moves {FS} using (slot; InBlk; r-inb; inb-pt; sw-old; sw-new)
   open import Once.LinCore.LowerSim fmt ans bw using (module Sim)
   open Sim {FS} U wordOf using (envW-heap; stkW-heap; envW-frame; slots-frame; cntE; cntS)
   open Rel {FS} U wordOf using (cellLoc)
@@ -189,6 +192,23 @@ module RecloseC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
 
   -- ★ A COPY'S `reclose` (i-reclose, i-recloseν): at its trampoline's depth 3 (its point by
   -- `GlobalTrView`'s view); the fresh cell's id the counter; at a root's path it is absurd (D439)
+  -- ★ D469: a reclose's run allocates one block at the counter, freeing none: its fresh block live
+  al-reclose : ∀ {fs fs′ : FlatState} {wx : List (StoredValue FS)} {sz}
+             → falloc fs′ ≡ record (falloc fs) { next-heap-ref = suc (AllocState.next-heap-ref (falloc fs))
+                                               ; block-size = size-with (hdr + length wx) (AllocState.next-heap-ref (falloc fs)) (AllocState.block-size (falloc fs)) }
+             → FreshAl (falloc fs) → hdr + length wx ≡ sz
+             → AlFx (alloc (sz , AllocState.next-heap-ref (falloc fs)) ∷ []) fs fs′
+  al-reclose {fs} {fs′} {wx} E F esz = ax []
+    (λ q e → inj₁ (trans (cong (λ al → AllocState.freed al q) (sym E)) e))
+    (λ q lt → trans (cong (λ al → AllocState.block-size al q) E)
+                    (sw-old (hdr + length wx) (AllocState.next-heap-ref (falloc fs)) (AllocState.block-size (falloc fs)) q (λ eq → Data.Nat.Properties.<-irrefl eq lt)))
+    (subst (AllocState.next-heap-ref (falloc fs) Data.Nat.≤_) (sym (cong AllocState.next-heap-ref E)) (Data.Nat.Properties.n≤1+n _))
+    (λ ()) (λ ())
+    (λ { _ (here refl) → trans (cong (λ al → AllocState.block-size al (AllocState.next-heap-ref (falloc fs))) E)
+                               (trans (sw-new (hdr + length wx) (AllocState.next-heap-ref (falloc fs)) (AllocState.block-size (falloc fs))) esz)
+                       , trans (cong (λ al → AllocState.freed al (AllocState.next-heap-ref (falloc fs))) E) (F _ Data.Nat.Properties.≤-refl)
+       ; _ (there ()) })
+
   greclose-t : ∀ {T Es kd g X A B S V} {k : Codeᴵ (Fn kd g A B ∷ Es ∣ Fn kd g A B ∷ S) V} {r : Ret V T}
                  {lam : Lam kd g X A B} {i x} {x′ : MV X} {n h fs} {σ} {κ : Key σ} {p : under κ ∈ allK U}
                  {pt : Pt (blockᴵ κ) (reclose {X = X} {C = Fn kd g A B} ⨾ k)} {tp : TrPt p pt}
@@ -196,9 +216,9 @@ module RecloseC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
              → InvI (es ∥ x′ ∷ˢ os) r n h → HereTr tp (es ∥ x′ ∷ˢ os) fs
              → AllocState.next-heap-ref (falloc fs) ≡ n
              → RetOK (rtramp p) (trFin (idx p) κ) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
-             → InBlk fs
+             → InBlk fs → LiveG r (es ∥ x′ ∷ˢ os) fs → FreshAl (falloc fs)
              → Arrives k r (es ∥ mfn (szc X , n) lam x′ ∷ˢ os) (suc n) fs
-  greclose-t {X = X} {r = r} {lam = lam} {i} {x} {x′} {fs = fs} (it-tc3 {C = C} p) {es = vw cv []ᵉ} {os} refl inv T2 refl ok I =
+  greclose-t {X = X} {k = k} {r = r} {lam = lam} {i} {x} {x′} {fs = fs} (it-tc3 {C = C} p) {es = vw cv []ᵉ} {os} refl inv T2 refl ok I lv Fa =
     fin (fn-inv (TrC2.c2-cv T2))
     where
       w = wsz X
@@ -221,9 +241,12 @@ module RecloseC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                                (trampc-keep (tail-c ok) (λ f y ne → rc-other RC f y (λ e′ → ne (sym e′)))
                                   (trans (cong (λ g → LocState.stackMem (floc fs′) g w) (sym (cong AllocState.current-frame (rc-alloc RC))))
                                          (rc-slot RC w (s₃≢w w)))
-                                  (old-of (rc-fr RC)) (fresh-ret inv))
+                                  (λ hl lt _ → old-of (rc-fr RC) hl lt) (fresh-ret inv))
                    ; g-blk = inb-fresh {fs} {fs′} (AllocState.next-heap-ref (falloc fs)) (hdr + length (TrC2.c2-wx T2)) refl (cong AllocState.next-heap-ref (rc-alloc RC))
-                               (cong AllocState.block-size (rc-alloc RC)) (rc-fr RC) I } , rc-log RC
+                               (cong AllocState.block-size (rc-alloc RC)) (rc-fr RC) I
+                   ; g-live = live-after {fs = fs} {fs′ = fs′} (StepI.i-reclose {k = k} {r = r} {lam = lam} {i = i} {x = x} {es = vw cv []ᵉ} {x′ = x′} {os = os} {n = AllocState.next-heap-ref (falloc fs)} refl) inv refl lv
+                                (al-reclose {fs} {fs′} {TrC2.c2-wx T2} (rc-alloc RC) Fa (cong (hdr +_) (vw-len (TrC2.c2-x T2))))
+                   ; g-fal = fresh-after Fa (al-reclose {fs} {fs′} {TrC2.c2-wx T2} (rc-alloc RC) Fa (cong (hdr +_) (vw-len (TrC2.c2-x T2)))) } , rc-log RC
         where
           at₀ = FnP.fp-at P
           e₁ = proj₁ (proj₂ at₀)
@@ -236,11 +259,11 @@ module RecloseC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
            → InvI (es ∥ x′ ∷ˢ os) r n h → HereP P (es ∥ x′ ∷ˢ os) fs
            → AllocState.next-heap-ref (falloc fs) ≡ n
            → RetOK (rootOf P) (ptFin P) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
-           → InBlk fs
+           → InBlk fs → LiveG r (es ∥ x′ ∷ˢ os) fs → FreshAl (falloc fs)
            → Arrives k r (es ∥ mfn (szc X , n) lam x′ ∷ˢ os) (suc n) fs
-  greclose (p-start (at s)) eq inv H nx ok I = ⊥-elim (proj₁ (sub-nc s (comp-nc ds f tt)))
-  greclose (p-block p (at s)) eq inv H nx ok I = ⊥-elim (proj₁ (sub-nc s (block-nc _ (allK-nt ds f p))))
-  greclose (p-tramp p pt) eq inv (tp , T2) nx ok I = greclose-t (reclose-v tp) eq inv T2 nx ok I
+  greclose (p-start (at s)) eq inv H nx ok I lv Fa = ⊥-elim (proj₁ (sub-nc s (comp-nc ds f tt)))
+  greclose (p-block p (at s)) eq inv H nx ok I lv Fa = ⊥-elim (proj₁ (sub-nc s (block-nc _ (allK-nt ds f p))))
+  greclose (p-tramp p pt) eq inv (tp , T2) nx ok I lv Fa = greclose-t (reclose-v tp) eq inv T2 nx ok I lv Fa
 
   grecloseν-t : ∀ {T Es F S′ S V} {k : Codeᴵ (Nu F ∷ Es ∣ Nu F ∷ S) V} {r : Ret V T}
                   {i} {q q′ : MV (Coalg F S′ ⊗t S′)} {n h fs} {σ} {κ : Key σ} {p : under κ ∈ allK U}
@@ -249,9 +272,9 @@ module RecloseC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
               → InvI (es ∥ q′ ∷ˢ os) r n h → HereTr tp (es ∥ q′ ∷ˢ os) fs
               → AllocState.next-heap-ref (falloc fs) ≡ n
               → RetOK (rtramp p) (trFin (idx p) κ) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
-              → InBlk fs
+              → InBlk fs → LiveG r (es ∥ q′ ∷ˢ os) fs → FreshAl (falloc fs)
               → Arrives k r (es ∥ mnu (szν F S′ , n) q′ ∷ˢ os) (suc n) fs
-  grecloseν-t {F = F} {S′} {r = r} {i} {q} {q′} {fs = fs} (it-tc3 p) {es = vw cv []ᵉ} {os} refl inv T2 refl ok I =
+  grecloseν-t {F = F} {S′} {k = k} {r = r} {i} {q} {q′} {fs = fs} (it-tc3 p) {es = vw cv []ᵉ} {os} refl inv T2 refl ok I lv Fa =
     fin (nu-inv (TrC2.c2-cv T2))
     where
       w = wsz (Coalg F S′ ⊗t S′)
@@ -274,9 +297,12 @@ module RecloseC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                                (trampc-keep (tail-c ok) (λ f y ne → rc-other RC f y (λ e′ → ne (sym e′)))
                                   (trans (cong (λ g → LocState.stackMem (floc fs′) g w) (sym (cong AllocState.current-frame (rc-alloc RC))))
                                          (rc-slot RC w (s₃≢w w)))
-                                  (old-of (rc-fr RC)) (fresh-ret inv))
+                                  (λ hl lt _ → old-of (rc-fr RC) hl lt) (fresh-ret inv))
                    ; g-blk = inb-fresh {fs} {fs′} (AllocState.next-heap-ref (falloc fs)) (hdr + length (TrC2.c2-wx T2)) refl (cong AllocState.next-heap-ref (rc-alloc RC))
-                               (cong AllocState.block-size (rc-alloc RC)) (rc-fr RC) I } , rc-log RC
+                               (cong AllocState.block-size (rc-alloc RC)) (rc-fr RC) I
+                   ; g-live = live-after {fs = fs} {fs′ = fs′} (StepI.i-recloseν {k = k} {r = r} {i = i} {p = q} {es = vw cv []ᵉ} {p′ = q′} {os = os} {n = AllocState.next-heap-ref (falloc fs)} refl) inv refl lv
+                                (al-reclose {fs} {fs′} {TrC2.c2-wx T2} (rc-alloc RC) Fa (cong (hdr +_) (vw-len (TrC2.c2-x T2))))
+                   ; g-fal = fresh-after Fa (al-reclose {fs} {fs′} {TrC2.c2-wx T2} (rc-alloc RC) Fa (cong (hdr +_) (vw-len (TrC2.c2-x T2)))) } , rc-log RC
         where
           at₀ = NuP.np-at P
           e₁ = proj₁ (proj₂ at₀)
@@ -289,8 +315,8 @@ module RecloseC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
             → InvI (es ∥ q′ ∷ˢ os) r n h → HereP P (es ∥ q′ ∷ˢ os) fs
             → AllocState.next-heap-ref (falloc fs) ≡ n
             → RetOK (rootOf P) (ptFin P) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
-            → InBlk fs
+            → InBlk fs → LiveG r (es ∥ q′ ∷ˢ os) fs → FreshAl (falloc fs)
             → Arrives k r (es ∥ mnu (szν F S′ , n) q′ ∷ˢ os) (suc n) fs
-  grecloseν (p-start (at s)) eq inv H nx ok I = ⊥-elim (proj₁ (sub-nc s (comp-nc ds f tt)))
-  grecloseν (p-block p (at s)) eq inv H nx ok I = ⊥-elim (proj₁ (sub-nc s (block-nc _ (allK-nt ds f p))))
-  grecloseν (p-tramp p pt) eq inv (tp , T2) nx ok I = grecloseν-t (reclose-v tp) eq inv T2 nx ok I
+  grecloseν (p-start (at s)) eq inv H nx ok I lv Fa = ⊥-elim (proj₁ (sub-nc s (comp-nc ds f tt)))
+  grecloseν (p-block p (at s)) eq inv H nx ok I lv Fa = ⊥-elim (proj₁ (sub-nc s (block-nc _ (allK-nt ds f p))))
+  grecloseν (p-tramp p pt) eq inv (tp , T2) nx ok I lv Fa = grecloseν-t (reclose-v tp) eq inv T2 nx ok I lv Fa

@@ -1064,7 +1064,7 @@ sim-load-from-slot {hv} slot w fs s s' corr lt st-eq st =
     cleanFlat = record fs { floc = record (floc fs) { regs = writeReg (regs (floc fs)) Output w }
                           ; falloc = falloc fs ; fpc = suc (fpc fs) }
     reduces : flat-exec-instr (load-from-slot slot) [] fs ≡ cleanFlat
-    reduces = trans (straight-pass (load-from-slot slot) fs (slot-ok-in (load-from-slot slot) (falloc fs) refl lt))
+    reduces = trans (straight-pass (load-from-slot slot) fs (slot-ok-in (load-from-slot slot) (floc fs) (falloc fs) refl lt))
                 (cong (λ p → record fs { floc = proj₁ p ; falloc = proj₂ p ; fpc = suc (fpc fs) }) ex-eq)
     corr-clean : FlatCorr hv cleanFlat s'
     corr-clean = record
@@ -1463,7 +1463,7 @@ sim-restore-input {hv} slot w fs s s' corr lt st-eq st =
     cleanFlat = record fs { floc = record (floc fs) { regs = writeReg (regs (floc fs)) Input1 w }
                           ; falloc = falloc fs ; fpc = suc (fpc fs) }
     reduces : flat-exec-instr (restore-input slot) [] fs ≡ cleanFlat
-    reduces = trans (straight-pass (restore-input slot) fs (slot-ok-in (restore-input slot) (falloc fs) refl lt))
+    reduces = trans (straight-pass (restore-input slot) fs (slot-ok-in (restore-input slot) (floc fs) (falloc fs) refl lt))
                 (cong (λ p → record fs { floc = proj₁ p ; falloc = proj₂ p ; fpc = suc (fpc fs) }) ex-eq)
     corr-clean : FlatCorr hv cleanFlat s'
     corr-clean = record
@@ -1585,7 +1585,7 @@ sim-store-at-slot : {hv : HeapView} (slot : Slot) (fs : FlatState) (s s' : State
                  (enc-sv hv (readReg (regs (floc fs)) Output))
   → FlatCorr hv (flat-exec-instr (store-at-slot slot) [] fs) s'
 sim-store-at-slot {hv} slot fs s s' corr slot<b disj sm =
-  subst (λ z → FlatCorr hv z s') (sym (straight-pass (store-at-slot slot) fs (slot-ok-in (store-at-slot slot) (falloc fs) refl slot<b))) corr-clean
+  subst (λ z → FlatCorr hv z s') (sym (straight-pass (store-at-slot slot) fs (slot-ok-in (store-at-slot slot) (floc fs) (falloc fs) refl slot<b))) corr-clean
   where
     base = rreg s sp-reg
     Out  = readReg (regs (floc fs)) Output
@@ -2308,7 +2308,7 @@ sim-lea-slot : {hv : HeapView} (slot : Slot) (fs : FlatState) (s s' : State) →
   → SetsRole s s' role-out (rreg s sp-reg + slot-to-disp slot)
   → FlatCorr hv (flat-exec-instr (lea-slot slot) [] fs) s'
 sim-lea-slot {hv} slot fs s s' corr lt st =
-  subst (λ z → FlatCorr hv z s') (sym (straight-pass (lea-slot slot) fs (slot-ok-in (lea-slot slot) (falloc fs) refl lt))) (record
+  subst (λ z → FlatCorr hv z s') (sym (straight-pass (lea-slot slot) fs (slot-ok-in (lea-slot slot) (floc fs) (falloc fs) refl lt))) (record
   { in1-eq = keep-in1 corr st (λ ())
   ; out-eq = trans (at-role st) addr-eq
   ; clos-eq = keep-clos corr st (λ ()) ; halt-eq = keep-halt corr st ; sp-eq = keep-sp corr st (λ ()) ; frontier-eq = keep-heap-reg corr st (λ ())

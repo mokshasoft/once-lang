@@ -48,7 +48,7 @@ open import Once.LinCore.Code fmt bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots
 open import Once.LinCore.Image fmt bw
 open import Once.LinCore.ImageRun fmt ans bw using (Ret; []ʳ; frm; _∷ⁱ_)
 open import Once.LinCore.Keys fmt bw
-open import Once.LinCore.Layout fmt bw using (Frame; frame; frameOf; budget; wsz; ws; module Frame)
+open import Once.LinCore.Layout fmt bw using (Frame; frame; frameOf; budget; ws; module Frame)
 open Frame using (EP; OP)
 open import Once.LinCore.Lower fmt bw
 open import Once.LinCore.Words fmt ans bw
@@ -101,14 +101,16 @@ module OpG {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open import Once.LinCore.ImageRun fmt ans bw using (StepI)
   open import Once.LinCore.LocalStep fmt ans bw using (module Steps)
   open import Once.LinCore.StepKinds fmt ans bw using (Local; LocalC; StraightC; straight-local; CoveredC; covered-elim)
-  open import Once.LinCore.HeldI fmt ans bw using (InvI)
+  open import Once.LinCore.HeldI fmt ans bw using (InvI; OwnR)
+  open import Once.LinCore.Held fmt ans bw using (own; held)
+  open import Once.LinCore.LiveRun fmt ans bw using (LiveG; FreshAl; LiveId)
   open import Once.LinCore.LabelsI fmt ans bw using (module Img)
   open import Once.LinCore.LowAt fmt ans bw using (Inside)
   open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
   open FlatStepsAPI {FS} using (FlatSteps)
   open import Once.LinCore.Moves {FS} using (Keep; module Keep)
   open Keep using (k-frame; k-saved; k-ret; k-other)
-  open Cells {FS} U wordOf using (fresh-cfg; fresh-ret)
+  open Cells {FS} U wordOf using (fresh-cfg; fresh-ret; away-[])
   open Img {FS} ds f ldConst ld-nl using (image-label)
   open Frames {FS} using (Called)
   open Called
@@ -150,9 +152,16 @@ module OpG {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open Agree {FS} U wordOf using (OpVal; OpHalt)
   open Keep using (k-inb)
   open OpSim {FS} U ncty ldConst wordOf using (module OpRan)
-  open OpRan using (or-frame; or-saved; or-ret; or-other; or-inb; or-log; or-next; or-old; or-top)
+  open OpRan using (or-frame; or-saved; or-ret; or-other; or-inb; or-log; or-next; or-old; or-top; or-al)
   module OS = OpR {FS} U ncty ldConst wordOf image main j₀ L₀ˢ start-root
   module OK {σ} {κ : Key σ} (p : (σ , κ) ∈ allK U) = OpR {FS} U ncty ldConst wordOf image (blockᴵ κ) (idx p) (L₀ᵇ κ p) (blockR p)
+
+  -- an op's answer holds no cells (`cnt-flat`): the cells held after are held before
+  op-sub : ∀ {Es} {s : Sig} {S U T} {es : Slots Es} {x : MV ⌜ sdom s ⌝} {y : MV ⌜ scod s ⌝} {os : Stk S} {r : Ret U T} i
+         → 1 ≤ (own es i + (cnt y i + held os i)) + OwnR r i → 1 ≤ (own es i + (cnt x i + held os i)) + OwnR r i
+  op-sub {s = s} {es = es} {x} {y} {os} {r} i q =
+    Data.Nat.Properties.≤-trans q (Data.Nat.Properties.+-monoˡ-≤ (OwnR r i) (Data.Nat.Properties.+-monoʳ-≤ (own es i)
+      (Data.Nat.Properties.+-monoˡ-≤ (held os i) (subst (_≤ cnt x i) (sym (cnt-flat (scod s) y i)) Data.Nat.z≤n))))
 
   -- ★ AN ANSWERED OP (i-prim at `lop`): to the next path, its answer on the stack
   gop : ∀ {T Γ} {ds′ : Defs Γ} {Es} {s : Sig} {S V} {k : Codeᴵ (Es ∣ ⌜ scod s ⌝ ∷ S) V} {r : Ret V T} {es : Slots Es}
@@ -161,25 +170,29 @@ module OpG {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       → InvI (es ∥ x ∷ˢ os) r n h → HereP P (es ∥ x ∷ˢ os) fs
       → AllocState.next-heap-ref (falloc fs) ≡ n
       → RetOK (rootOf P) (ptFin P) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
-      → InBlk fs → OpVal s x y E fs
+      → InBlk fs → OpVal s x y E fs → LiveG r (es ∥ x ∷ˢ os) fs → FreshAl (falloc fs)
       → Arrives E k r (es ∥ y ∷ˢ os) n′ fs
-  gop {r = r} {fs = fs} (p-start (at sb)) run inv H nx ok I ag = case OS.st-op sb H ag of λ where
+  gop {s = s} {r = r} {es = es} {x = x} {y = y} {os = os} {fs = fs} (p-start (at sb)) run inv H nx ok I ag lv F = case OS.st-op sb H ag of λ where
     (N , fs′ , st , H′ , OR) →
       N , fs′ , st , record { g-pt = p-start (at (next sb)) ; g-here = H′ ; g-next = trans (or-next OR) (trans nx (sym (op-n run)))
                             ; g-ret = ctx-to (sym (or-frame OR)) (sym (or-ret OR)) (sym (or-saved OR))
                                         (ret-top (or-other OR)
                                            (λ y le → trans (cong (λ g → LocState.stackMem (floc fs′) g y) (sym (or-frame OR))) (or-top OR y le))
-                                           (or-old OR) (subst (FreshR r) (sym nx) (fresh-ret inv)) ok)
-                            ; g-blk = or-inb OR I } , or-log OR
-  gop {r = r} {fs = fs} (p-block p (at sb)) run inv H nx ok I ag = case OK.st-op p sb H ag of λ where
+                                           (or-old OR) (subst (FreshR r) (sym nx) (fresh-ret inv)) (away-[] r) ok)
+                            ; g-blk = or-inb OR I
+                            ; g-live = λ i q → subst (λ a → LiveId a i) (sym (or-al OR)) (lv i (op-sub {s = s} {es = es} {x = x} {y = y} {os = os} {r = r} i q))
+                            ; g-fal = subst FreshAl (sym (or-al OR)) F } , or-log OR
+  gop {s = s} {r = r} {es = es} {x = x} {y = y} {os = os} {fs = fs} (p-block p (at sb)) run inv H nx ok I ag lv F = case OK.st-op p sb H ag of λ where
     (N , fs′ , st , H′ , OR) →
       N , fs′ , st , record { g-pt = p-block p (at (next sb)) ; g-here = H′ ; g-next = trans (or-next OR) (trans nx (sym (op-n run)))
                             ; g-ret = ctx-to (sym (or-frame OR)) (sym (or-ret OR)) (sym (or-saved OR))
                                         (ret-top (or-other OR)
                                            (λ y le → trans (cong (λ g → LocState.stackMem (floc fs′) g y) (sym (or-frame OR))) (or-top OR y le))
-                                           (or-old OR) (subst (FreshR r) (sym nx) (fresh-ret inv)) ok)
-                            ; g-blk = or-inb OR I } , or-log OR
-  gop (p-tramp p pt) run inv (() , H) nx ok I ag
+                                           (or-old OR) (subst (FreshR r) (sym nx) (fresh-ret inv)) (away-[] r) ok)
+                            ; g-blk = or-inb OR I
+                            ; g-live = λ i q → subst (λ a → LiveId a i) (sym (or-al OR)) (lv i (op-sub {s = s} {es = es} {x = x} {y = y} {os = os} {r = r} i q))
+                            ; g-fal = subst FreshAl (sym (or-al OR)) F } , or-log OR
+  gop (p-tramp p pt) run inv (() , H) nx ok I ag lv F
 
   -- ★ A HALTING OP (i-opend): to a halted machine
   gopend : ∀ {Γ} {ds′ : Defs Γ} {Es} {s : Sig} {S V} {k : Codeᴵ (Es ∣ ⌜ scod s ⌝ ∷ S) V} {es : Slots Es}

@@ -57,30 +57,37 @@ open import Once.IR.Semantics.Trace using (CallOp; HaltOp)
 -- A μ is a pointer to its cell: one word. A μ node's size is its layer's.
 ------------------------------------------------------------------------
 
-words : LTy → ℕ
-words One       = 0
-words Zero      = 0
-words (A ⊗t B)  = words A + words B
-words (A ⊕t B)  = suc (words A ⊔ words B)
-words (Ct l X)  = words X
-words (Fn k g A B) = 1      -- ★ a pointer to the closure's cell
-words (Nu F)    = 1         -- ★ a pointer to the ν's cell
-words (μt F)    = 1
-words (Bt b)    = bw b
+-- ★ D469: a type's words as the machine lays it out (a base value one word)
+wsz : LTy → ℕ
+wsz One          = 0
+wsz Zero         = 0
+wsz (A ⊗t B)     = wsz A + wsz B
+wsz (A ⊕t B)     = suc (wsz A ⊔ wsz B)
+wsz (Bt b)       = 1
+wsz (μt F)       = 1
+wsz (Fn k g A B) = 1        -- ★ a pointer to the closure's cell
+wsz (Nu F)       = 1        -- ★ a pointer to the ν's cell
+wsz (Ct l X)     = wsz X
 
-szμ : LF → ℕ                -- a μ node of `F`
-szμ F = words (LF∙ F (μt F))
+-- a cell's header: word 0 its own address (no code reads it: a trampoline reads the
+-- contents at `hdr` from the cell's pointer), then code, copy, free
+hdr : ℕ
+hdr = 4
 
--- ★ D426 part 3: a closure of an arrow type, its environment `X`: a code word
+-- ★ D469: a cell's size is its block's, as the image allocates it
+szμ : LF → ℕ                -- a μ node of `F`: its layer, at least a word
+szμ F = 1 ⊔ wsz (LF∙ F (μt F))
+
+-- ★ D426 part 3: a closure of an arrow type, its environment `X`: the header
 -- and the environment. The arrow's type does not fix which lambda (data
 -- decides it, GOAL.md's case for a tag), nor so the environment's size.
 szc : LTy → ℕ
-szc X = suc (words X)
+szc X = hdr + wsz X
 
 -- ★ a ν: its coalgebra (a pointer to a closure) and its seed. The seed's type
 -- is not the ν's, so neither is its size: a cell
 szν : LF → LTy → ℕ
-szν F S = words (Coalg F S ⊗t S)
+szν F S = hdr + wsz (Coalg F S ⊗t S)
 
 ------------------------------------------------------------------------
 -- 1. MACHINE VALUES: a value as it sits in memory.

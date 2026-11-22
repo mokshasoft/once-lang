@@ -54,6 +54,7 @@ open import Once.LinCore.Code fmt bw using (Stk; _∷ˢ_; Slots; _∥_; _∣_)
 open import Once.LinCore.Keys fmt bw using (Univ; cty; module Univ)
 open Univ using (tys; nus)
 open import Once.LinCore.Layout fmt bw
+open import Once.LinCore.Values fmt bw using (wsz)
 open Frame using (EP; OP)
 open import Once.LinCore.Words fmt ans bw
 open import Once.LinCore.LowerSim fmt ans bw
@@ -96,7 +97,8 @@ module OpSim {FS : FrameSemantics} (U : Univ)
       or-log   : LocState.ev-log (floc fs′) ≡ LocState.ev-log (floc fs) ++ evs
       or-pc    : fpc fs′ ≡ n + fpc fs
       or-next  : AllocState.next-heap-ref (falloc fs′) ≡ AllocState.next-heap-ref (falloc fs)
-      or-old   : Old lo fs fs′
+      or-al    : falloc fs′ ≡ falloc fs
+      or-old   : Old lo [] fs fs′
       or-top   : ∀ x → hi ≤ x → slot fs′ x ≡ slot fs x
   open OpRan
 
@@ -273,8 +275,8 @@ module OpSim {FS : FrameSemantics} (U : Univ)
           ran₃ : exec-sigop-halts (info s) (at-arg fs v₀) ≡ false → AbstractExec.sigop-events {FS} (info s) (at-arg fs v₀) ≡ E
                → OpRan 3 (AllocState.next-heap-ref (falloc fs)) (budget φ) fs fs₃ E
           ran₃ hf ee = record { or-frame = refl ; or-slots = refl ; or-saved = refl ; or-ret = refl ; or-other = λ _ _ _ → refl
-                           ; or-halt = trans (hgate hf) (sym h) ; or-inb = λ I → I ; or-log = cong (LocState.ev-log (floc fs) ++_) ee ; or-pc = refl ; or-next = refl
-                           ; or-old = λ _ _ → refl ; or-top = λ _ _ → refl }
+                           ; or-halt = trans (hgate hf) (sym h) ; or-inb = λ I → I ; or-log = cong (LocState.ev-log (floc fs) ++_) ee ; or-pc = refl ; or-next = refl ; or-al = refl
+                           ; or-old = λ _ _ _ → refl ; or-top = λ _ _ → refl }
           go : ∀ n → wsz ⌜ scod s ⌝ ≡ n
              → Seg prog (fpc fs) (argIn (SigOpInfo.baseA (info s)) bot (wsz ⌜ sdom s ⌝) ∷ mov-to-input ∷ instr-sigop (info s) ∷ answerN n bot)
              → (exec-sigop-halts (info s) (at-arg fs v₀) ≡ false)
@@ -303,8 +305,8 @@ module OpSim {FS : FrameSemantics} (U : Univ)
                    ; c-efit = c-efit C ; c-sfit = fit } ,
             record { or-frame = refl ; or-slots = refl ; or-saved = refl ; or-ret = refl
                    ; or-other = λ f z ne → store-frame (floc fs₃) cf dst out f z (λ e → ne (sym e))
-                   ; or-halt = trans (hgate hf) (sym h) ; or-inb = λ I → I ; or-log = cong (LocState.ev-log (floc fs) ++_) ee ; or-pc = refl ; or-next = refl
-                   ; or-old = λ _ _ → refl
+                   ; or-halt = trans (hgate hf) (sym h) ; or-inb = λ I → I ; or-log = cong (LocState.ev-log (floc fs) ++_) ee ; or-pc = refl ; or-next = refl ; or-al = refl
+                   ; or-old = λ _ _ _ → refl
                    ; or-top = λ z le → store-other (floc fs₃) cf dst out z
                                          (λ e → Data.Nat.Properties.<-irrefl e (<-≤-trans b1<b (≤-trans (Data.Nat.Properties.m∸n≤m (budget φ) (ws S)) le))) }
             where
@@ -379,8 +381,8 @@ module OpSim {FS : FrameSemantics} (U : Univ)
                    ; c-efit = c-efit C ; c-sfit = fit } ,
             record { or-frame = refl ; or-slots = refl ; or-saved = refl ; or-ret = refl
                    ; or-other = λ f z ne → store-frame (floc fs₄) cf dst tw f z (λ e → ne (sym e))
-                   ; or-halt = trans hf (sym h) ; or-inb = λ I → I ; or-log = cong (LocState.ev-log (floc fs) ++_) ee ; or-pc = refl ; or-next = refl
-                   ; or-old = λ _ _ → refl
+                   ; or-halt = trans hf (sym h) ; or-inb = λ I → I ; or-log = cong (LocState.ev-log (floc fs) ++_) ee ; or-pc = refl ; or-next = refl ; or-al = refl
+                   ; or-old = λ _ _ _ → refl
                    ; or-top = λ z le → store-other (floc fs₄) cf dst tw z
                                          (λ e → Data.Nat.Properties.<-irrefl e (<-≤-trans b1<b (≤-trans (Data.Nat.Properties.m∸n≤m (budget φ) (ws S)) le))) }
             where
@@ -487,8 +489,8 @@ module OpSim {FS : FrameSemantics} (U : Univ)
             record { or-frame = refl ; or-slots = refl ; or-saved = refl ; or-ret = refl
                    ; or-other = λ f z ne → st-frame (SigOpInfo.conB si) (in-memory? B) im ma cf dst st₀ f z (λ e → ne (sym e))
                    ; or-halt = trans (gated si (falloc fs) st₀ gt hf) (sym h) ; or-inb = inb-same {fs} {fs₃} eqh refl
-                   ; or-log = cong (LocState.ev-log (floc fs) ++_) ee ; or-pc = refl ; or-next = refl
-                   ; or-old = λ hl _ → cong (λ m → m hl) eqh
+                   ; or-log = cong (LocState.ev-log (floc fs) ++_) ee ; or-pc = refl ; or-next = refl ; or-al = refl
+                   ; or-old = λ hl _ _ → cong (λ m → m hl) eqh
                    ; or-top = λ z le → keep z (inj₂ (subst (_≤ z) (sym dst+)
                                          (≤-trans (Data.Nat.Properties.m∸n≤m (budget φ) (ws S)) le))) }
 

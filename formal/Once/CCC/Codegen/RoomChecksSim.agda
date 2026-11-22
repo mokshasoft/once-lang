@@ -187,19 +187,24 @@ module RoomSim {FS : FrameSemantics} (t : AbstractTrace) where
   private
     -- B1.7b (D456): a slot instruction, gated the same on both sides (the lift
     -- keeps the frame): it moves on, or faults where it stands
-    gated : ∀ (fs : FlatState) (i : AbstractInstr) {k} → slot-of i ≡ just k → StepLift fs i
-    gated fs i sk = go (slot-ok i (falloc fs)) refl
+    -- (D468: a free is gated the same way, by `free-ok`)
+    gated′ : ∀ (fs : FlatState) (i : AbstractInstr) → (∀ prog fs′ → flat-exec-instr i prog fs′ ≡ flat-step-straight i fs′)
+           → StepLift fs i
+    gated′ fs i st = go (gate-ok i (floc fs) (falloc fs)) refl
       where
         q = φ t (fpc fs)
-        go : ∀ b → slot-ok i (falloc fs) ≡ b → StepLift fs i
-        go true e = on fs i (trans (trans (slot-straight i P′ (lift fs q) sk) (straight-pass i (lift fs q) e))
+        go : ∀ b → gate-ok i (floc fs) (falloc fs) ≡ b → StepLift fs i
+        go true e = on fs i (trans (trans (st P′ (lift fs q)) (straight-pass i (lift fs q) e))
                                    (cong (λ z → lift z (suc q)) (sym X)))
                             (cong fpc X)
-          where X = trans (slot-straight i t fs sk) (straight-pass i fs e)
-        go false e = stay fs i (trans (trans (slot-straight i P′ (lift fs q) sk) (cong (λ b → straight-at b i (lift fs q)) e))
+          where X = trans (st t fs) (straight-pass i fs e)
+        go false e = stay fs i (trans (trans (st P′ (lift fs q)) (cong (λ b → straight-at b i (lift fs q)) e))
                                       (cong (λ z → lift z q) (sym Y)))
                               (cong fpc Y)
-          where Y = trans (slot-straight i t fs sk) (cong (λ b → straight-at b i fs) e)
+          where Y = trans (st t fs) (cong (λ b → straight-at b i fs) e)
+
+    gated : ∀ (fs : FlatState) (i : AbstractInstr) {k} → slot-of i ≡ just k → StepLift fs i
+    gated fs i sk = gated′ fs i (λ prog fs′ → slot-straight i prog fs′ sk)
 
   step-lift : ∀ (fs : FlatState) (i : AbstractInstr) → StepLift fs i
   step-lift fs i@mov-to-output = on fs i refl refl
@@ -229,7 +234,7 @@ module RoomSim {FS : FrameSemantics} (t : AbstractTrace) where
   step-lift fs i@(instr-load-tag-lit _) = on fs i refl refl
   step-lift fs i@(instr-alloc-heap _) = on fs i refl refl
   step-lift fs (instr-reg-op out-nz)    = nz-at fs (readReg (LocState.regs (floc fs)) Output)
-  step-lift fs i@(instr-free-heap _) = on fs i refl refl
+  step-lift fs i@(instr-free-heap _) = gated′ fs i (λ _ _ → refl)
   step-lift fs i@(load-at _) = on fs i refl refl
   step-lift fs i@(store-at _) = on fs i refl refl
   step-lift fs i@(addr-at _) = on fs i refl refl

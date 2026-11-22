@@ -82,6 +82,7 @@ open import Once.LinCore.Image fmt bw
 open import Once.LinCore.Keys fmt bw
 open Univ using (ops)
 open import Once.LinCore.Layout fmt bw
+open import Once.LinCore.Values fmt bw using (wsz)
 open import Once.LinCore.Lower fmt bw
 open import Once.LinCore.MoveCode using (mvPS; mvSP)
 open import Once.LinCore.Labels fmt ans bw using (module NoLabels)

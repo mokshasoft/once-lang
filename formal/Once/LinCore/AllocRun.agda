@@ -173,9 +173,9 @@ event-alloc k .k s {h} {L} {p} ok iv lk (yes refl) = after (A.bornP s p) (one (a
                    (record { live⇒ = lv ; ⇒live = vl ; ntemp = ntemp lk })
   where
     nl : ¬ A.Live p s
-    nl l = 1≢0 (trans (sym (live⇒ lk s l)) ok)
+    nl l = 1≢0 (trans (sym (live⇒ lk s l)) (ok (k , s) refl))
     lv′ : ∀ s′ → Dec (s ≡ s′) → A.Live (A.bornP s p) s′ → h (k , s′) + δ (k , s) (k , s′) ≡ 1
-    lv′ s′ (yes refl) l = trans (cong (_+ δ (k , s) (k , s)) ok) (δ-same (k , s))
+    lv′ s′ (yes refl) l = trans (cong (_+ δ (k , s) (k , s)) (ok (k , s) refl)) (δ-same (k , s))
     lv′ s′ (no ne)    l = trans (cong (h (k , s′) +_) (δ-s ne)) (trans (+-identityʳ _) (live⇒ lk s′ (A.born-to s p (sym≢ ne) l)))
     lv : ∀ s′ → A.Live (A.bornP s p) s′ → h (k , s′) + δ (k , s) (k , s′) ≡ 1
     lv s′ = lv′ s′ (s ≟ s′)
