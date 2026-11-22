@@ -201,6 +201,7 @@ import Data.Product
 import Data.Nat.Properties
 import Relation.Binary.PropositionalEquality
 import Data.Bool
+import Relation.Nullary
 open import Data.Nat using (suc)
 open import Data.Bool using (_∨_)
 open MemOps {FS} using ()
@@ -282,3 +283,20 @@ step-freed i prog fs r e = by (af-view i) e
     by (af-free n) e′ = straight-keeps (λ t → freed (falloc t) r ≡ true → R) (instr-free-heap n) fs
                           (mark n (heapRefOf (readReg (LocState.regs (floc fs)) Input1)) refl) inj₁ e′
     by (af-other na nf) e′ = inj₁ (trans (Relation.Binary.PropositionalEquality.sym (Relation.Binary.PropositionalEquality.cong (λ f → f r) (Data.Product.proj₁ (Data.Product.proj₂ (step-hk i prog fs na nf))))) e′)
+
+-- a block's size is changed by the step only if it allocates that block (the counter's)
+step-size : ∀ i prog fs r → (block-size (falloc (flat-exec-instr i prog fs)) r ≡ block-size (falloc fs) r)
+                          ⊎ (Σ ℕ λ n → (i ≡ instr-alloc-heap n) × (next-heap-ref (falloc fs) ≡ r))
+step-size i prog fs r = by (af-view i)
+  where
+    R = (block-size (falloc (flat-exec-instr i prog fs)) r ≡ block-size (falloc fs) r) ⊎ (Σ ℕ λ n → (i ≡ instr-alloc-heap n) × (next-heap-ref (falloc fs) ≡ r))
+    sw : ∀ n (d : Relation.Nullary.Dec (r ≡ next-heap-ref (falloc fs)))
+       → (size-with-aux n {r} {next-heap-ref (falloc fs)} (block-size (falloc fs)) d ≡ block-size (falloc fs) r)
+         ⊎ (Σ ℕ λ m → (instr-alloc-heap n ≡ instr-alloc-heap m) × (next-heap-ref (falloc fs) ≡ r))
+    sw n (Relation.Nullary.yes e) = inj₂ (n , refl , Relation.Binary.PropositionalEquality.sym e)
+    sw n (Relation.Nullary.no _)  = inj₁ refl
+    by : AFView i → R
+    by (af-alloc n) = straight-keeps (λ t → (block-size (falloc t) r ≡ block-size (falloc fs) r) ⊎ (Σ ℕ λ m → (instr-alloc-heap n ≡ instr-alloc-heap m) × (next-heap-ref (falloc fs) ≡ r)))
+                        (instr-alloc-heap n) fs (sw n (r Data.Nat.Properties.≟ next-heap-ref (falloc fs))) (inj₁ refl)
+    by (af-free n) = inj₁ (straight-keeps (λ t → block-size (falloc t) r ≡ block-size (falloc fs) r) (instr-free-heap n) fs refl refl)
+    by (af-other na nf) = inj₁ (Relation.Binary.PropositionalEquality.cong (λ f → f r) (Data.Product.proj₂ (Data.Product.proj₂ (step-hk i prog fs na nf))))
