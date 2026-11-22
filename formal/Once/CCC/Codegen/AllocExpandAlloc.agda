@@ -257,3 +257,51 @@ lrel-ρ {ρ} {ρ′} {Lv} {s = s} {t} n ag wf lb R = record
   where
     hl-agree : ∀ hl → Lv (ref-of hl) → rhl ρ′ hl ≡ rhl ρ hl
     hl-agree hl l = cong (λ z → heap-loc (mkHeapRef z) (HeapLocation.heap-offset hl)) (ag (ref-of hl) (lb (ref-of hl) l))
+
+------------------------------------------------------------------------
+-- ★ The alloc's step
+------------------------------------------------------------------------
+
+open import Once.CCC.Codegen.AllocExpandRel {FS} using (Rel; module Rel; Chain)
+open import Once.CCC.Codegen.AllocExpandPc {FS} using (off; off-suc; fetch-exp; own-label; scan-bump; scan-done)
+open import Data.List.Membership.Propositional using (_∈_)
+open import Data.List.Relation.Unary.Any using (here; there)
+open import Data.List.Relation.Unary.All using (All)
+import Data.List.Relation.Unary.All
+open import Data.List.Relation.Unary.Unique.Propositional using (Unique)
+open import Data.List.Relation.Unary.AllPairs using (_∷_)
+open import Once.CCC.Label using (module LabelId)
+import Data.Sum
+open FlatMachine {FS} using (fl-go)
+
+-- liveness after an alloc: before, and the new block
+module Fresh (al : AllocState {FS}) (k : ℕ) where
+  p = AllocState.next-heap-ref al
+  al′ = record al { next-heap-ref = suc p ; block-size = size-with k p (AllocState.block-size al) }
+
+  live-new : ∀ r → Live al′ r → Live al r Data.Sum.⊎ r ≡ p
+  live-new r (pos , lt , fr) = by (Data.Nat.Properties.m≤n⇒m<n∨m≡n (Data.Nat.Properties.≤-pred lt))
+    where
+      by : r < p Data.Sum.⊎ r ≡ p → Live al r Data.Sum.⊎ r ≡ p
+      by (Data.Sum.inj₁ lt′) = Data.Sum.inj₁ (pos , lt′ , fr)
+      by (Data.Sum.inj₂ e)   = Data.Sum.inj₂ e
+
+  live-old : ∀ r → Live al r → Live al′ r
+  live-old r (pos , lt , fr) = pos , Data.Nat.Properties.m<n⇒m<1+n lt , fr
+
+  live-p : 0 < p → AllocState.freed al p ≡ false → Live al′ p
+  live-p pos fr = pos , Data.Nat.Properties.n<1+n p , fr
+
+  size-p : AllocState.block-size al′ p ≡ k
+  size-p = go (p Data.Nat.≟ p)
+    where
+      go : ∀ (d : Relation.Nullary.Dec (p ≡ p)) → size-with-aux k {p} {p} (AllocState.block-size al) d ≡ k
+      go (yes _) = refl
+      go (no ne) = ⊥-elim (ne refl)
+
+  size-old : ∀ r → ¬ r ≡ p → AllocState.block-size al′ r ≡ AllocState.block-size al r
+  size-old r ne = go (r Data.Nat.≟ p)
+    where
+      go : ∀ (d : Relation.Nullary.Dec (r ≡ p)) → size-with-aux k {r} {p} (AllocState.block-size al) d ≡ AllocState.block-size al r
+      go (yes e) = ⊥-elim (ne e)
+      go (no _)  = refl
