@@ -24650,3 +24650,27 @@ the second allocator is the user's to name (plan §4 item 5).
 `CoreFile.Prog`) are over any choice. The whole compiler's theorems (`Adequacy.Compile`, `CoreArch`,
 `ArchCorrectness`, `SpecApex`) are stated at the default (`alloc-slab`). Generalizing them over the choice is
 owed: it threads the choice through `Compile`'s pipeline functions (`compile-mir`, …) and the top statement.
+
+## D472 — NOLEAK ON THE FLAT MACHINE: EVERY LIVE BLOCK IS REACHABLE FROM THE ROOTS, AT EVERY STEP (2026-11-23, proposed — for the user's review)
+
+**Proposed** (unattended, keep-going mode; plan 0.146 §4 item 3, §5 item 2). **Applies**: D427 amended (the
+user's: "at every step the allocated blocks are exactly the footprints of the values the program still holds").
+
+### The gap
+`Once.Implementation` states NoLeak on the flat machine's runs of the emitted image, the last level where an
+allocation and a free are instructions. There, "the values the program holds" cannot be read off the state:
+a register or a dead frame slot keeps a stale pointer (`Input1` still points at the block a free just gave
+back). So "the allocated blocks are EXACTLY the footprints of what the state holds" is false of correct code.
+
+### Options
+* **(a) The leak half, physically**: every free hits a live block, and at every step every live block is
+  reachable from the roots (the registers, the live frames' slots, the closure register) through heap cells.
+  Stale pointers only add reachability, so correct code meets it; a block nothing reaches is garbage, the
+  leak D427 rules out. The other half of "exactly" (no held value points at a dead block) is memory safety,
+  which the machine's gates give: a read through a dead block faults, and the run is `Sound`.
+* (b) "Exactly", against the related core configuration's held values (`LinCore.Held`): the statement would
+  name the core's internals in the implementation Spec.
+* (c) Master's liveness form (every live block freed later): rejected by D427 amended (a server's state).
+
+### Decision (proposed): (a)
+`LeakFree.freed` is replaced by `reachable`: `∀ k r → Live fs₀ k r → Reach (at fs₀ k) r`.
