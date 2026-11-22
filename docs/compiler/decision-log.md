@@ -24762,3 +24762,35 @@ Other `jal`s (none are emitted) keep their form. Local jumps (`j`, `beq`) stay w
 **Owed** (the same class as the `ld` relaxation): a build-time check that the linked code is the program's
 own (the encoder-and-compare check floated 2026-11-23) would catch any such gap; until then the trust point
 covers it.
+
+## D478 — AN OWNED CALL OF A MANY-USE CLOSURE MOVES ITS ENVIRONMENT; A LENT CALL COPIES THE CELL FIRST (2026-11-23, proposed — for the user's review)
+
+**Proposed** (unattended, keep-going mode; plan 0.146 §5 item 8 h, D475 (a)(3) refined: no type change).
+**The cost**: every bridge arrow is a many-use closure (`llamω (copyIn b₀)`), applied by `apω = dropl ∘l lend
+(bsnd bev)`: the closure is lent to its body, which copies the whole environment (`copyIn`) and consumes the
+copy; then the caller frees the closure, environment included. A closure over a list (`next p` in a loop's
+arm) copies the list at every call: `bench/list-build-sum` (the `case` combinator, curried arms) stays
+quadratic after D475 h (7.9e8 instructions at N = 1000; the uncurried form is 2.5e6). Measured profile:
+the list's copy and free blocks are ~90% of the run.
+**Observation**: `apω` always consumes the closure. Its owned meaning is the body on the environment moved in.
+### Options
+* **(a) A cell's body word enters an OWNED trampoline; a lent call copies the cell first (recommended).** A
+  many-use cell's code word 1 names a trampoline that moves the environment out, frees the cell and calls the
+  owned body (`ownB b`: `b₀` when `b = copyIn b₀`, else `dropl ∘l lend (bsnd b)`), as a one-shot cell's
+  does. `apω` becomes the owned call (`icall`, through word 1); `bev` (a lent call: folds' algebras) becomes
+  the copy trampoline (word 2) then the owned call: for the bridge's `copyIn` bodies the same copy as today.
+  No header change; the core gains `levω` (owned application of `Fn many`), the image `icall` at `Fn many`.
+* (b) A fourth header word for the owned entry, word 1 kept lent: no change to lent calls, a header word per
+  closure cell and every layout lemma (`hdr = 4 → 5`).
+* (c) Uncurried entries for saturated calls of top-level definitions: covers only `f x y` of a curried
+  definition, not closures built by combinators.
+### Refinement (2026-11-23): one owned trampoline for both multiplicities
+The one-shot trampoline (`ktr1`: `open1`, the body `kbody1`, `end`) is already the owned call. Generalized over
+the cell's multiplicity (`Fn k`: `ktr1`, `open1`, `icall` at any `k`; a many-use cell's owned body `ownB b`),
+the one-shot simulation (`GlobalTramp`) carries over instead of being duplicated. Whether word 1 of a many-use
+cell becomes the owned entry (a) or a fourth word holds it (b) is decided by which keeps the lent call's
+proofs (`GlobalTrampW`) unchanged: (b) does, at the cost of `hdr` 4 → 5.
+### Scope (a)
+Core (`levω`, `Blk`), semantics (`Lᶜ levω` = `apω`'s), Keys (the owned body's key per many-use closure), Image
+(`compᴵ`, the body trampoline for `kbodyω`), Lower (`tramp`), and the trampoline simulations (`GlobalTramp*`,
+`LowerSim*`), ~40 modules; the bridge's `apω` switches to `levω`.
