@@ -336,3 +336,45 @@ module _ (C : Classes) (P : AbstractTrace) where
     where
       ml = frame-gate (falloc fs) k (sv-as-loc (readReg (LocState.regs (floc fs)) Input1))
       v = readReg (LocState.regs (floc fs)) Output
+
+  -- the address gate passed: a block handed out, inside its renamed block too
+  ib-size : ∀ {fs gs} (R : Rel C P fs gs) hl → in-block? (AllocState.block-size (falloc fs)) (AtDynamic hl) ≡ true
+          → in-block? (AllocState.block-size (falloc gs)) (AtDynamic (rhl (ρ R) hl)) ≡ true
+  ib-size {fs} {gs} R hl ib = of-T (<⇒<ᵇ (<-≤-trans lt (r-size R (ref-of hl) below)))
+    where
+      lt : HeapLocation.heap-offset hl < AllocState.block-size (falloc fs) (ref-of hl)
+      lt = <ᵇ⇒< _ _ (T-of ib)
+      below : ref-of hl < AllocState.next-heap-ref (falloc fs)
+      below = Data.Nat.Properties.≰⇒> λ ge → n≮0 (subst (HeapLocation.heap-offset hl <_) (r-unsized R (ref-of hl) ge) lt)
+
+  aa-heap : ∀ bs k ml (s : LocState FS) q → LocState.heapMem (exec-addr-at-resolved bs k ml s) q ≡ LocState.heapMem s q
+  aa-heap bs k (just loc) s q = ai (in-block? bs (offsetLoc loc k))
+    where
+      ai : ∀ b → LocState.heapMem (exec-addr-in-block b (offsetLoc loc k) s) q ≡ LocState.heapMem s q
+      ai true  = refl
+      ai false = refl
+  aa-heap bs k nothing s q = refl
+
+  -- the expanded side's address gate, by the primitive's
+  hgate-is : ∀ {fs gs} (R : Rel C P fs gs)
+           → heap-gate (sv-as-loc (readReg (LocState.regs (floc gs)) Input1))
+             ≡ Data.Maybe.map (rloc (ρ R)) (heap-gate (sv-as-loc (readReg (LocState.regs (floc fs)) Input1)))
+  hgate-is {fs} {gs} R =
+    trans (cong (λ v → heap-gate (sv-as-loc v)) (L.LRel.l-regs (r-loc R) Input1))
+      (trans (cong heap-gate (L.as-loc-rv (ρ R) (Live (falloc fs)) (r-inj R) (readReg (LocState.regs (floc fs)) Input1)))
+             (L.heap-gate-rv (ρ R) (Live (falloc fs)) (r-inj R) (sv-as-loc (readReg (LocState.regs (floc fs)) Input1))))
+
+  step-addr-at : ∀ {fs gs} (R : Rel C P fs gs) k → fetch P (fpc fs) ≡ just (addr-at k)
+               → LocState.faulted (floc (flat-exec-instr (addr-at k) P fs)) ≡ false
+               → Rel C P (flat-exec-instr (addr-at k) P fs) (flat-exec-instr (addr-at k) E gs)
+  step-addr-at {fs} {gs} R k f nf =
+    core-straight R _ _
+      (subst (λ m → L.LRel (ρ R) (Live (falloc fs)) (r-inj R) (exec-addr-at-resolved (AllocState.block-size (falloc fs)) k ml (floc fs))
+                       (exec-addr-at-resolved (AllocState.block-size (falloc gs)) k m (floc gs)))
+             (sym (hgate-is R))
+             (L.addr-at-rel (ρ R) (Live (falloc fs)) (r-inj R) (AllocState.block-size (falloc fs)) (AllocState.block-size (falloc gs)) k ml (r-loc R)
+                (ib-size R) nf))
+      (λ q _ → aa-heap (AllocState.block-size (falloc gs)) k (heap-gate (sv-as-loc (readReg (LocState.regs (floc gs)) Input1))) (floc gs) q)
+      (next-pc R (addr-at k) f refl)
+    where
+      ml = heap-gate (sv-as-loc (readReg (LocState.regs (floc fs)) Input1))
