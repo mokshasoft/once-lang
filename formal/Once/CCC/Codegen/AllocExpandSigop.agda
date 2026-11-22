@@ -19,6 +19,7 @@ module Once.CCC.Codegen.AllocExpandSigop {FS : FrameSemantics} where
 open import Data.Bool using (Bool; true; false)
 open import Data.Maybe using (Maybe; just; nothing)
 import Data.Maybe
+import Data.List
 open import Data.Nat using (ℕ; zero; suc)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -396,3 +397,59 @@ module Sig (ρ : ℕ → ℕ) (Lv : ℕ → Set) (inj : ∀ r r′ → Lv r → 
             zero-words = trans (sym (cong (λ b′ → Data.Bool.if b′ then tsize B else 0) im))
                                (ans-heap fr (ans-words B) hl (subst (λ v′ → ans-ok fr (ans-words B) v′ ≡ true) ptr ok))
         by true  _ (just (AtDynamic hl)) _ nothing = R
+
+  ------------------------------------------------------------------------
+  -- ★ The SigOp's step under the renaming, given it did not fault
+  ------------------------------------------------------------------------
+
+  open AbstractExec {FS} using (exec-abstract; exec-sigop-faults; exec-sigop-halts; sigop-events; exec-sigop-output; arg-words; sigop-gate; ans-words)
+  open ExecFinal {FS} using (live-frames)
+  open import Data.Bool using (_∨_; _∧_; not)
+
+  private
+    split∨ : ∀ (a b : Bool) → (a ∨ b) ≡ false → (a ≡ false) × (b ≡ false)
+    split∨ false false _ = refl , refl
+    not-f : ∀ (a : Bool) → not a ≡ false → a ≡ true
+    not-f true _ = refl
+    ∧-r : ∀ (a b : Bool) → (a ∧ b) ≡ true → b ≡ true
+    ∧-r true b e = e
+    unread-f : ∀ {X : Set} (m : Maybe X) → unread? m ≡ false → Σ X λ a → m ≡ just a
+    unread-f (just a) _ = a , refl
+    unread-f nothing ()
+
+  -- a SigOp that did not fault decoded its argument
+  decoded : ∀ e → exec-sigop-faults-of e si s ≡ false → Σ ⟦ A ⟧ λ a → decode-at b v₁ s ≡ just a
+  decoded Pure      f = unread-f _ f
+  decoded (Halts _) f = unread-f _ f
+  decoded (Emits _) f = unread-f _ f
+  decoded Answers   f = unread-f _ f
+
+  module E (al al′ : AllocState {FS}) (fr : live-frames al′ ≡ live-frames al)
+           (nf : LocState.faulted (proj₁ (exec-abstract (instr-sigop si) s al)) ≡ false) where
+    sp = split∨ (exec-sigop-faults si s) _ nf
+    dec = proj₂ (decoded (effect si) (proj₁ sp))
+    gate-s : sigop-gate al si s ≡ true
+    gate-s = not-f _ (proj₁ (split∨ (not (sigop-gate al si s)) _ (proj₂ sp)))
+    open D dec
+
+    gate-eq : sigop-gate al′ si t ≡ sigop-gate al si s
+    gate-eq = Relation.Binary.PropositionalEquality.cong₂ _∧_
+      (trans (Relation.Binary.PropositionalEquality.cong₂ (λ f v → range-ok f (arg-words b) v) fr in-t) (range-rv ρ (live-frames al) (arg-words b) v₁))
+      (trans (Relation.Binary.PropositionalEquality.cong₂ (λ f v → ans-ok f (ans-words B) v) fr out-t)
+             (ans-rv ρ (live-frames al) (ans-words B) (readReg (LocState.regs s) Output)))
+
+    st-rel = store-rel (live-frames al) (∧-r _ _ gate-s)
+
+    c3 : ∀ {a a′ g g′ f f′ : Bool} → a ≡ a′ → g ≡ g′ → f ≡ f′ → (a ∨ (not g ∨ f)) ≡ (a′ ∨ (not g′ ∨ f′))
+    c3 refl refl refl = refl
+
+    step-rel : L.LRel ρ Lv inj (proj₁ (exec-abstract (instr-sigop si) s al)) (proj₁ (exec-abstract (instr-sigop si) t al′))
+    step-rel = record
+      { l-regs = λ { Input1 → L.LRel.l-regs R Input1 ; Output → output-eq (effect si) }
+      ; l-stack = L.LRel.l-stack st-rel
+      ; l-heap = L.LRel.l-heap st-rel
+      ; l-live = L.LRel.l-live st-rel
+      ; l-halt = Relation.Binary.PropositionalEquality.cong₂ (λ h g → h ∨ not g) (halts-eq (effect si)) gate-eq
+      ; l-fault = c3 (faults-eq (effect si)) gate-eq (L.LRel.l-fault R)
+      ; l-left = L.LRel.l-left R
+      ; l-log = Relation.Binary.PropositionalEquality.cong₂ Data.List._++_ (L.LRel.l-log R) (events-eq (effect si)) }
