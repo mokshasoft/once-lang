@@ -40,7 +40,8 @@ open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
 open FlatEventTrace {FS} using (flat-events; flat-events-step; flat-events-fetch; event-of; flat-events-steps; chain-events
                                ; step-log; chain-log; flat-ctrls; flat-ctrls-step; flat-ctrls-fetch; ctrl-of; chain-ctrls; flat-ctrls-steps)
 open import Once.IR.Semantics.Out using (Out; _▹_; ended; end-of-left)
-open import Once.CCC.Machine.FrameFree using (EmittableI)
+open import Once.CCC.Machine.FrameFree using (EmittableI; ImageI)
+import Data.Empty
 open import Once.CCC.Label using (LabelId; module LabelId)
 open import Once.CCC.Codegen.AllocExpand
 open Classes
@@ -100,7 +101,8 @@ module _ (C : Classes) (P : AbstractTrace) (Sz : ℕ → Set)
   record Keeps (Good : FlatState → Set) : Set where
     field
       g-step : ∀ {fs i} → Good fs → LocState.halted (floc fs) ≡ false → fetch P (fpc fs) ≡ just i → Good (flat-exec-instr i P fs)
-      g-em   : ∀ {fs i} → Good fs → fetch P (fpc fs) ≡ just i → EmittableI i
+      g-em   : ∀ {fs i} → Good fs → fetch P (fpc fs) ≡ just i → ImageI i
+      g-ns   : ∀ {fs i} → Good fs → fetch P (fpc fs) ≡ just i → ∀ b → i ≡ instr-ctrl (c-start b) → Data.Empty.⊥
       g-nr   : ∀ {fs i} → Good fs → fetch P (fpc fs) ≡ just i → D.NoRecI C P Sz uniform fits in-range sz-alloc sz-free img jmp-lbl br-lbl i
       g-nf   : ∀ {fs i} → Good fs → LocState.halted (floc fs) ≡ false → fetch P (fpc fs) ≡ just i
              → LocState.faulted (floc (flat-exec-instr i P fs)) ≡ false
@@ -133,7 +135,7 @@ module _ (C : Classes) (P : AbstractTrace) (Sz : ℕ → Set)
         by-f nothing ef h =
           1 , trans (ev-none 0 E gs (hg h) (trans (cong (fetch E) (r-pc R)) (fetch-none C 0 P (fpc fs) ef))) (sym (ev-none n P fs h ef))
             , subst (_≤ flat-ctrls 1 E gs) (sym (ct-none n P fs h ef)) z≤n
-        by-f (just i) ef h = go (D.dispatch C P Sz uniform fits in-range sz-alloc sz-free img jmp-lbl br-lbl R i ef (g-em G ef) (g-nr G ef) h (g-nf G h ef) (g-wf G) (g-cw G))
+        by-f (just i) ef h = go (D.dispatch C P Sz uniform fits in-range sz-alloc sz-free img jmp-lbl br-lbl R i ef (g-em G ef) (g-ns G ef) (g-nr G ef) h (g-nf G h ef) (g-wf G) (g-cw G))
           where
             go : D.Step C P Sz uniform fits in-range sz-alloc sz-free img jmp-lbl br-lbl i fs gs → Σ ℕ λ m → Same m gs (suc n) fs
             go (N , gs′ , c , cb , R′) = go′ (ev n (g-step G h ef) R′)
@@ -222,7 +224,7 @@ module _ (C : Classes) (P : AbstractTrace) (Sz : ℕ → Set)
           where
             no : ∀ {X : Set} {v : X} → just v ≡ nothing → ⊥
             no ()
-        by-f (just i) ef = go (DX.dispatch C P Sz uniform fits in-range sz-alloc sz-free img jmp-lbl br-lbl R i ef (g-em G ef) (g-nr G ef) h (g-nf G h ef) (g-wf G) (g-cw G))
+        by-f (just i) ef = go (DX.dispatch C P Sz uniform fits in-range sz-alloc sz-free img jmp-lbl br-lbl R i ef (g-em G ef) (g-ns G ef) (g-nr G ef) h (g-nf G h ef) (g-wf G) (g-cw G))
           where
             go : DX.Step C P Sz uniform fits in-range sz-alloc sz-free img jmp-lbl br-lbl i fs gs → LocState.faulted (floc x) ≡ false
             go (N , gs′ , c , _ , R′) = split (meet c d) b kb
