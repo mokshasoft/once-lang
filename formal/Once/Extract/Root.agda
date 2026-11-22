@@ -29,6 +29,7 @@ open import Once.Spec.Type using (Unit)
 open import Once.Spec.Surface.Syntax using (Module)
 open import Once.Parser.Module.Core using (Resolved)
 open import Once.Parser.Module.Resolve using (ModuleMap)
+import Once.CCC.Codegen.AllocExpandClasses
 import Once.Compile as Compile
 import Once.Parser as Parser
 import Once.Parser.Module.Resolve as Resolve
@@ -68,7 +69,8 @@ record Runs : Set₁ where
     resolve-imports : ModuleMap → Module → String ⊎ Resolved
     warnings        : Arch → String → Resolved → List String
     -- the compiler (`once build`)
-    assembly        : Bool → Arch → Resolved → String ⊎ String
+    -- (D468: the cell allocator, `--alloc`)
+    assembly        : Bool → Once.CCC.Codegen.AllocExpandClasses.Alloc → Arch → Resolved → String ⊎ String
     -- the tools beside it (D352)
     signatures      : Resolved → String ⊎ String
     check           : Resolved → String ⊎ ⊤

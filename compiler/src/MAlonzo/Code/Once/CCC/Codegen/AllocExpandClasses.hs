@@ -555,3 +555,71 @@ d_uniform_376 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_uniform_376 = erased
+-- Once.CCC.Codegen.AllocExpandClasses.Alloc
+d_Alloc_378 = ()
+data T_Alloc_378 = C_alloc'45'slab_380 | C_alloc'45'pool_382
+-- Once.CCC.Codegen.AllocExpandClasses.classes
+d_classes_384 ::
+  T_Alloc_378 ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2404] ->
+  MAlonzo.Code.Once.CCC.Codegen.AllocExpand.T_Classes_8
+d_classes_384 v0 v1
+  = case coe v0 of
+      C_alloc'45'slab_380 -> coe d_slab_282 (coe v1)
+      C_alloc'45'pool_382 -> coe d_pool_126 (coe v1)
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.CCC.Codegen.AllocExpandClasses.Choice.C
+d_C_396 ::
+  T_Alloc_378 ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2404] ->
+  MAlonzo.Code.Once.CCC.Codegen.AllocExpand.T_Classes_8
+d_C_396 v0 v1 = coe d_classes_384 (coe v0) (coe v1)
+-- Once.CCC.Codegen.AllocExpandClasses.Choice.asks
+d_asks_400 ::
+  T_Alloc_378 ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2404] ->
+  T_Alloc_378 -> T_Asks_302
+d_asks_400 ~v0 v1 v2 = du_asks_400 v1 v2
+du_asks_400 ::
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2404] ->
+  T_Alloc_378 -> T_Asks_302
+du_asks_400 v0 v1
+  = case coe v1 of
+      C_alloc'45'slab_380 -> coe d_A_360 (coe v0)
+      C_alloc'45'pool_382
+        -> coe
+             C_constructor_338 (coe du_small_140)
+             (\ v2 -> coe du_in'45'range_144) (d_fits_148 (coe v0))
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.CCC.Codegen.AllocExpandClasses.Choice.small
+d_small_402 ::
+  T_Alloc_378 ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2404] ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22
+d_small_402 v0 v1
+  = coe d_small_322 (coe du_asks_400 (coe v1) (coe v0))
+-- Once.CCC.Codegen.AllocExpandClasses.Choice.in-range
+d_in'45'range_406 ::
+  T_Alloc_378 ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2404] ->
+  Integer -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
+d_in'45'range_406 v0 v1
+  = coe d_in'45'range_326 (coe du_asks_400 (coe v1) (coe v0))
+-- Once.CCC.Codegen.AllocExpandClasses.Choice.fits
+d_fits_410 ::
+  T_Alloc_378 ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2404] ->
+  Integer -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
+d_fits_410 v0 v1
+  = coe d_fits_330 (coe du_asks_400 (coe v1) (coe v0))
+-- Once.CCC.Codegen.AllocExpandClasses.Choice.uniform
+d_uniform_416 ::
+  T_Alloc_378 ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2404] ->
+  Integer ->
+  Integer ->
+  MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
+  MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_uniform_416 = erased

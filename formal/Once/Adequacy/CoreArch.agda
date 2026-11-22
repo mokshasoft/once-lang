@@ -47,6 +47,7 @@ open import Once.Adequacy.ImageUnique using (table-names-distinct)
 open import Once.LinCore.Emit using (coreFileOf; coreAfter; fileOf; toFileOf)
 open import Once.LinCore.CoreFile using (core-gated; core-lib; module Prog)
 open import Once.CCC.FrameSemantics using (fs-numerics; module FrameSemantics)
+import Once.CCC.Codegen.AllocExpandClasses
 import Once.IR
 import Once.IRTy
 open import Once.Adequacy.ArchCorrectness.Interface using (ArchSim; module ArchSim; ExtMiss)
@@ -85,44 +86,44 @@ record Glue (arch : Arch) (ι : Interp) : Set₁ where
 module _ {arch : Arch} {ι : Interp} (G : Glue arch ι) where
   open Glue G
 
-  core-tr : ∀ (doOpt : Bool) (m : Resolved) (F : FileOf arch) → coreFileOf arch doOpt m ≡ inj₂ F
+  core-tr : ∀ (doOpt : Bool) (m : Resolved) (F : FileOf arch) → coreFileOf arch doOpt Once.CCC.Codegen.AllocExpandClasses.alloc-slab m ≡ inj₂ F
           → ∀ (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Unit) → moduleToIR m ≡ just ir → moduleSig m ≡ Interp.sig ι
           → run-file arch ι F ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram (moduleTable m) ir) ⟧IRᵗ (arch-numerics arch) ι
   core-tr doOpt m F e ir mi ls =
     subst (λ H → run-file arch ι H ⊑ᵗ⟨ _≡_ ⟩ Tm) (sym (P.core-is doOpt F e))
       (subst (λ R → R ⊑ᵗ⟨ _≡_ ⟩ Tm) (run tbl _)
-        (subst₂ (λ fmt ι′ → ArchSim.run-file (A tbl) (fileOf (backend arch) fmt P.EPm.srcs P.EPm.mpm)
+        (subst₂ (λ fmt ι′ → ArchSim.run-file (A tbl) (fileOf (backend arch) Once.CCC.Codegen.AllocExpandClasses.alloc-slab fmt P.EPm.srcs P.EPm.mpm)
                               ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ fmt ι′)
                 (num tbl) (int tbl)
                 (T.file★ O P.EPm.srcs P.EPm.src-eq P.EPm.mpm P.EPm.main-eq)))
     where
       tbl = moduleTable m
       Tm = ⟦ just (irProgram tbl ir) ⟧IRᵗ (arch-numerics arch) ι
-      module P = Prog arch m ir mi using (core-is; module EPm)
+      module P = Prog arch Once.CCC.Codegen.AllocExpandClasses.alloc-slab m ir mi using (core-is; module EPm)
       module T = Once.LinCore.Top.Program entry-owner (A tbl) m tbl ir mi (table-names-distinct m) refl
-                   (trans ls (cong Interp.sig (sym (int tbl))))
+                   (trans ls (cong Interp.sig (sym (int tbl)))) Once.CCC.Codegen.AllocExpandClasses.alloc-slab
                    using (file★; bf; module N)
       O : T.N.Owed
       O = record { o-ext-miss = ext-miss tbl ir T.bf }
 
-  core-wf : ∀ (doOpt : Bool) (m : Resolved) (F : FileOf arch) → coreFileOf arch doOpt m ≡ inj₂ F
+  core-wf : ∀ (doOpt : Bool) (m : Resolved) (F : FileOf arch) → coreFileOf arch doOpt Once.CCC.Codegen.AllocExpandClasses.alloc-slab m ≡ inj₂ F
           → moduleSig m ≡ Interp.sig ι → AsmWF-of arch F
   core-wf doOpt m F e ls = by (moduleToIR m) refl
     where
       tbl = moduleTable m
       by : ∀ mir → moduleToIR m ≡ mir → AsmWF-of arch F
       by nothing mi =
-        let (c , x) = core-gated arch doOpt m e
-        in subst (AsmWF-of arch) (inj₂-injective (trans (sym (trans (cong (coreAfter arch m) x) (core-lib arch m mi c))) e))
+        let (c , x) = core-gated arch doOpt Once.CCC.Codegen.AllocExpandClasses.alloc-slab m e
+        in subst (AsmWF-of arch) (inj₂-injective (trans (sym (trans (cong (coreAfter arch Once.CCC.Codegen.AllocExpandClasses.alloc-slab m) x) (core-lib arch Once.CCC.Codegen.AllocExpandClasses.alloc-slab m mi c))) e))
                  (wf _ (ArchSim.empty-wf (A tbl)))
       by (just ir) mi =
         subst (AsmWF-of arch) (sym (P.core-is doOpt F e))
-          (wf _ (subst (λ fmt → Backend.AsmWF (backend arch) (fileOf (backend arch) fmt P.EPm.srcs P.EPm.mpm)) (num tbl)
+          (wf _ (subst (λ fmt → Backend.AsmWF (backend arch) (fileOf (backend arch) Once.CCC.Codegen.AllocExpandClasses.alloc-slab fmt P.EPm.srcs P.EPm.mpm)) (num tbl)
                    (T.file-wf★ P.EPm.srcs P.EPm.src-eq P.EPm.mpm P.EPm.main-eq)))
         where
-          module P = Prog arch m ir mi using (core-is; module EPm)
+          module P = Prog arch Once.CCC.Codegen.AllocExpandClasses.alloc-slab m ir mi using (core-is; module EPm)
           module T = Once.LinCore.Top.Program entry-owner (A tbl) m tbl ir mi (table-names-distinct m) refl
-                       (trans ls (cong Interp.sig (sym (int tbl))))
+                       (trans ls (cong Interp.sig (sym (int tbl)))) Once.CCC.Codegen.AllocExpandClasses.alloc-slab
                        using (file-wf★)
 
 ------------------------------------------------------------------------

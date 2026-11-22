@@ -20,6 +20,7 @@ import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Data.Sum.Base
+import qualified MAlonzo.Code.Once.CCC.Codegen.AllocExpandClasses
 import qualified MAlonzo.Code.Once.Compile
 import qualified MAlonzo.Code.Once.Extract.Names
 import qualified MAlonzo.Code.Once.Format
@@ -55,6 +56,7 @@ data T_Runs_6
                       MAlonzo.Code.Once.Parser.Module.Core.T_Resolved_8 ->
                       [MAlonzo.Code.Agda.Builtin.String.T_String_6])
                      (Bool ->
+                      MAlonzo.Code.Once.CCC.Codegen.AllocExpandClasses.T_Alloc_378 ->
                       MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
                       MAlonzo.Code.Once.Parser.Module.Core.T_Resolved_8 ->
                       MAlonzo.Code.Data.Sum.Base.T__'8846'__30)
@@ -147,6 +149,7 @@ d_warnings_46 v0
 d_assembly_48 ::
   T_Runs_6 ->
   Bool ->
+  MAlonzo.Code.Once.CCC.Codegen.AllocExpandClasses.T_Alloc_378 ->
   MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Resolved_8 ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30
@@ -218,7 +221,7 @@ d_runs_62
       (coe MAlonzo.Code.Once.Compile.d_moduleToIR_1298)
       (coe MAlonzo.Code.Once.Parser.Module.Resolve.d_resolveImports_884)
       (coe MAlonzo.Code.Once.Warnings.d_warningsFor_380)
-      (coe MAlonzo.Code.Once.LinCore.Emit.d_assemblyCore_98)
+      (coe MAlonzo.Code.Once.LinCore.Emit.d_assemblyCore_120)
       (coe MAlonzo.Code.Once.Inspect.d_signatures_40)
       (coe MAlonzo.Code.Once.Inspect.d_check_48)
       (coe MAlonzo.Code.Once.Inspect.d_dumpIR_68)

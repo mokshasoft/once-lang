@@ -47,19 +47,20 @@ open import Function using (_⇔_; mk⇔)
 open import Once.Module using (ModTele; MainsEffUU)
 open import Once.Adequacy.AcceptSound using (ce-sound; scopeOf)
 open import Once.Adequacy.ModuleComplete using (ce-complete; ce-mains)
+import Once.CCC.Codegen.AllocExpandClasses
 import Once.Compile as C
 
 -- | The build's file of a program (plan 0.146 D465): the linear core's image of its sources, at
 -- their `main` (`LinCore.Emit.fileOf`).
 EmittedFrom : ∀ (arch : Arch) → List CompiledSrc → FileOf arch → Set
 EmittedFrom arch srcs F =
-  Σ[ T ∈ Type ] Σ[ pm ∈ T <: EffUU ] (mainOf srcs ≡ just (T , pm) × F ≡ toFileOf arch (fileOf (backend arch) (arch-numerics arch) srcs pm))
+  Σ[ T ∈ Type ] Σ[ pm ∈ T <: EffUU ] (mainOf srcs ≡ just (T , pm) × F ≡ toFileOf arch (fileOf (backend arch) Once.CCC.Codegen.AllocExpandClasses.alloc-slab (arch-numerics arch) srcs pm))
 
 -- | A built program's file is the image of its sources, and those are the functions `dumpIR`
 -- prints (`once elaborate`: the sources' IR, `CompileSrc.module-src`). The build does not run
 -- the optimizer (D459), so `once optimize` shows an IR the file is not built from.
 build-factors : ∀ (doOpt : Bool) (arch : Arch) (mod : Resolved) (F : FileOf arch)
-              → coreFileOf arch doOpt mod ≡ inj₂ F
+              → coreFileOf arch doOpt Once.CCC.Codegen.AllocExpandClasses.alloc-slab mod ≡ inj₂ F
               → ∀ ir → moduleToIR mod ≡ just ir
               → Σ[ srcs ∈ List CompiledSrc ]
                   ( srcModule Heap false mod ≡ inj₂ srcs
@@ -69,7 +70,7 @@ build-factors doOpt arch mod F e ir mi =
   P.EPm.srcs , P.EPm.src-eq
   , trans (cong showCompiled (module-src Heap false mod)) (cong (λ r → showCompiled (mapCF r)) P.EPm.src-eq)
   , P.EPm.mty , P.EPm.mpm , P.EPm.main-eq , P.core-is doOpt F e
-  where module P = Prog arch mod ir mi
+  where module P = Prog arch Once.CCC.Codegen.AllocExpandClasses.alloc-slab mod ir mi
 
 ------------------------------------------------------------------------
 -- `once check` accepts exactly the modules the compiler types: a typed
@@ -111,7 +112,7 @@ record VerifiedInspector : Set where
   field
     shows-what-builds :
       ∀ (doOpt : Bool) (arch : Arch) (mod : Resolved) (F : FileOf arch)
-      → coreFileOf arch doOpt mod ≡ inj₂ F
+      → coreFileOf arch doOpt Once.CCC.Codegen.AllocExpandClasses.alloc-slab mod ≡ inj₂ F
       → ∀ ir → moduleToIR mod ≡ just ir
       → Σ[ srcs ∈ List CompiledSrc ]
           ( srcModule Heap false mod ≡ inj₂ srcs

@@ -180,3 +180,32 @@ module Slab (P : AbstractTrace) where
   fits = Asks.fits A
   uniform : ∀ k k′ → Sz P k → Sz P k′ → cls C k ≡ cls C k′ → bsz C k ≡ bsz C k′
   uniform = Asks.uniform A
+
+------------------------------------------------------------------------
+-- ★ The compiler's choice (`--alloc`, D468 amended): the slab (the default) or
+-- the pool
+------------------------------------------------------------------------
+
+data Alloc : Set where
+  alloc-slab alloc-pool : Alloc
+
+classes : Alloc → AbstractTrace → Classes
+classes alloc-slab P = slab P
+classes alloc-pool P = pool P
+
+module Choice (a : Alloc) (P : AbstractTrace) where
+  C = classes a P
+
+  private
+    asks : ∀ a′ → Slab.Asks P (classes a′ P)
+    asks alloc-slab = Slab.A P
+    asks alloc-pool = record { small = Pool.small P ; in-range = Pool.in-range P ; fits = Pool.fits P ; uniform = Pool.uniform P }
+
+  small : 3 + count C ≤ rec-size
+  small = Slab.Asks.small (asks a)
+  in-range : ∀ k → cls C k < count C
+  in-range = Slab.Asks.in-range (asks a)
+  fits : ∀ k → k ≤ bsz C k
+  fits = Slab.Asks.fits (asks a)
+  uniform : ∀ k k′ → Sz P k → Sz P k′ → cls C k ≡ cls C k′ → bsz C k ≡ bsz C k′
+  uniform = Slab.Asks.uniform (asks a)

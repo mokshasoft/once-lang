@@ -166,70 +166,72 @@ module NewImage (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Uni
   -- `AllocExpandClasses.slab`): cells reused through free lists, the same trace
   ------------------------------------------------------------------------
 
-  module XS = Once.Adequacy.ArchCorrectness.ExpandSim o A
-  module PL = Once.CCC.Codegen.AllocExpandClasses.Slab image
-  module CL = Once.CCC.Codegen.AllocExpandClasses
-  module CLF = Once.CCC.Codegen.AllocExpandClasses.Fetch {FS}
-  module CD = Once.CCC.Codegen.AllocExpandEmitted.Code {FS} PL.C PL.small PL.in-range PL.fits
-  module EM = Once.CCC.Codegen.AllocExpandEmitted {FS}
+  -- (the compiler's choice of allocator, `--alloc`)
+  module _ (a : Once.CCC.Codegen.AllocExpandClasses.Alloc) where
+    module XS = Once.Adequacy.ArchCorrectness.ExpandSim o A
+    module PL = Once.CCC.Codegen.AllocExpandClasses.Choice a image
+    module CL = Once.CCC.Codegen.AllocExpandClasses
+    module CLF = Once.CCC.Codegen.AllocExpandClasses.Fetch {FS}
+    module CD = Once.CCC.Codegen.AllocExpandEmitted.Code {FS} PL.C PL.small PL.in-range PL.fits
+    module EM = Once.CCC.Codegen.AllocExpandEmitted {FS}
 
-  imageˣ : AbstractTrace
-  imageˣ = Once.CCC.Codegen.AllocExpand.expand PL.C image
+    imageˣ : AbstractTrace
+    imageˣ = Once.CCC.Codegen.AllocExpand.expand PL.C image
 
-  P″ : AbstractTrace
-  P″ = room-checks imageˣ
+    P″ : AbstractTrace
+    P″ = room-checks imageˣ
 
-  private
-    -- an op the room-checked expansion calls is one the room-checked image calls
-    sig-back : ∀ {A B} (si : Once.SigOp.Info.SigOpInfo A B) → instr-sigop si ∈ P″ → instr-sigop si ∈ P′
-    sig-back si m = EM.∈-room image (CD.exp-sig 0 image IA.em-alloc si (EM.room-sig imageˣ si m))
+    private
+      -- an op the room-checked expansion calls is one the room-checked image calls
+      sig-back : ∀ {A B} (si : Once.SigOp.Info.SigOpInfo A B) → instr-sigop si ∈ P″ → instr-sigop si ∈ P′
+      sig-back si m = EM.∈-room image (CD.exp-sig 0 image IA.em-alloc si (EM.room-sig imageˣ si m))
 
-    fetch-∈ : ∀ (xs : AbstractTrace) k {i} → fetch xs k ≡ just i → i ∈ xs
-    fetch-∈ (x ∷ xs) Data.Nat.zero    refl = Data.List.Relation.Unary.Any.here refl
-    fetch-∈ (x ∷ xs) (Data.Nat.suc k) e    = Data.List.Relation.Unary.Any.there (fetch-∈ xs k e)
+      fetch-∈ : ∀ (xs : AbstractTrace) k {i} → fetch xs k ≡ just i → i ∈ xs
+      fetch-∈ (x ∷ xs) Data.Nat.zero    refl = Data.List.Relation.Unary.Any.here refl
+      fetch-∈ (x ∷ xs) (Data.Nat.suc k) e    = Data.List.Relation.Unary.Any.there (fetch-∈ xs k e)
 
-    ∈-fetch : ∀ (xs : AbstractTrace) {i} → i ∈ xs → Σ ℕ λ k → fetch xs k ≡ just i
-    ∈-fetch (x ∷ xs) (Data.List.Relation.Unary.Any.here refl) = 0 , refl
-    ∈-fetch (x ∷ xs) (Data.List.Relation.Unary.Any.there m) = let (k , f) = ∈-fetch xs m in Data.Nat.suc k , f
+      ∈-fetch : ∀ (xs : AbstractTrace) {i} → i ∈ xs → Σ ℕ λ k → fetch xs k ≡ just i
+      ∈-fetch (x ∷ xs) (Data.List.Relation.Unary.Any.here refl) = 0 , refl
+      ∈-fetch (x ∷ xs) (Data.List.Relation.Unary.Any.there m) = let (k , f) = ∈-fetch xs m in Data.Nat.suc k , f
 
-  namedˣ : Data.List.Relation.Unary.All.All (BT.SigNamed bs) P″
-  namedˣ = Data.List.Relation.Unary.All.tabulate λ {i} m {A} {B} si e →
-    Once.LinCore.ImageOwned.named-call (fs-numerics FS) bw U IT.canon si (IA.sigops si (sig-back si (subst (λ j → j ∈ P″) e m)))
+    namedˣ : Data.List.Relation.Unary.All.All (BT.SigNamed bs) P″
+    namedˣ = Data.List.Relation.Unary.All.tabulate λ {i} m {A} {B} si e →
+      Once.LinCore.ImageOwned.named-call (fs-numerics FS) bw U IT.canon si (IA.sigops si (sig-back si (subst (λ j → j ∈ P″) e m)))
 
-  -- the image's owed fact, at the expansion (its ops are the image's)
-  ext-missˣ : Owed → ExtMiss FS env P″
-  ext-missˣ O si k ex f =
-    let (k′ , f′) = ∈-fetch P′ (sig-back si (fetch-∈ P″ k f)) in Owed.o-ext-miss O si k′ ex f′
+    -- the image's owed fact, at the expansion (its ops are the image's)
+    ext-missˣ : Owed → ExtMiss FS env P″
+    ext-missˣ O si k ex f =
+      let (k′ , f′) = ∈-fetch P′ (sig-back si (fetch-∈ P″ k f)) in Owed.o-ext-miss O si k′ ex f′
 
-  conc-trˣ : Owed
-           → Machine.trace (δ env (compile P″)) init ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (fs-numerics FS) (FrameSemantics.fs-interp FS)
-  conc-trˣ O = XS.sim-exp PL.C PL.small PL.in-range PL.fits (irProgram tbl ir) IA.em-budget IA.tail env
-                 (CL.Sz image) PL.uniform (CLF.sz-alloc image) (CLF.sz-free image)
-                 IS.img-path IS.jmp-path IS.br-path IAF.no-lrec IAF.no-srec emitted
-                 (IT.flat-sound (λ {b} v → ML.ld {b} v image))
-                 (table P″ bs namedˣ (ext-missˣ O)) (IT.flat-ir (λ {b} v → ML.ld {b} v image))
+    conc-trˣ : Owed
+             → Machine.trace (δ env (compile P″)) init ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (fs-numerics FS) (FrameSemantics.fs-interp FS)
+    conc-trˣ O = XS.sim-exp PL.C PL.small PL.in-range PL.fits (irProgram tbl ir) IA.em-budget IA.tail env
+                   (CL.Sz image) PL.uniform (CLF.sz-alloc image) (CLF.sz-free image)
+                   IS.img-path IS.jmp-path IS.br-path IAF.no-lrec IAF.no-srec emitted
+                   (IT.flat-sound (λ {b} v → ML.ld {b} v image))
+                   (table P″ bs namedˣ (ext-missˣ O)) (IT.flat-ir (λ {b} v → ML.ld {b} v image))
 
-  -- ★★ THE FILE OF THE EXPANSION (what the compiler writes: `ExprImage.fileAt`) runs with the
-  -- program's trace, and is what the assembler demands
-  file-trˣ : (ex : List String) → Owed
-           → run-file (Backend.file B P″ (file-table (Backend.payload B) bs) ex) ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (fs-numerics FS) (FrameSemantics.fs-interp FS)
-  file-trˣ ex O = subst (λ T → T ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (fs-numerics FS) (FrameSemantics.fs-interp FS)) (sym (file-runs P″ bs ex)) (conc-trˣ O)
+    -- ★★ THE FILE OF THE EXPANSION (what the compiler writes: `ExprImage.fileAt`) runs with the
+    -- program's trace, and is what the assembler demands
+    file-trˣ : (ex : List String) → Owed
+             → run-file (Backend.file B P″ (file-table (Backend.payload B) bs) ex) ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (fs-numerics FS) (FrameSemantics.fs-interp FS)
+    file-trˣ ex O = subst (λ T → T ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (fs-numerics FS) (FrameSemantics.fs-interp FS)) (sym (file-runs P″ bs ex)) (conc-trˣ O)
 
-  file-atˣ : (ex : List String) → Owed
-           → run-file (Once.LinCore.ExprImage.fileAt (fs-numerics FS) B IT.BF.tl IT.BF.mpm ex) ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (fs-numerics FS) (FrameSemantics.fs-interp FS)
-  file-atˣ ex O = file-trˣ ex O
+    file-atˣ : (ex : List String) → Owed
+             → run-file (Once.LinCore.ExprImage.fileAt (fs-numerics FS) B a IT.BF.tl IT.BF.mpm ex) ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (fs-numerics FS) (FrameSemantics.fs-interp FS)
+    file-atˣ ex O = file-trˣ ex O
 
-  module ISX = IS.Xp PL.C
+    module ISX = IS.Xp PL.C
 
-  file-wf-atˣ : Backend.AsmWF B (Once.LinCore.ExprImage.fileAt (fs-numerics FS) B IT.BF.tl IT.BF.mpm
-                                   (image-externs (Once.LinCore.ExprImage.imageAt (fs-numerics FS) IT.BF.tl IT.BF.mpm)))
-  file-wf-atˣ = file-wf _ _ bs (image-externs image) ISX.image-wfˣ
+    file-wf-atˣ : Backend.AsmWF B (Once.LinCore.ExprImage.fileAt (fs-numerics FS) B a IT.BF.tl IT.BF.mpm
+                                     (image-externs (Once.LinCore.ExprImage.imageAt (fs-numerics FS) IT.BF.tl IT.BF.mpm)))
+    file-wf-atˣ = file-wf _ _ bs (image-externs image) ISX.image-wfˣ
 
-  file-at : (ex : List String) → Owed
-          → run-file (Once.LinCore.ExprImage.fileAt (fs-numerics FS) B IT.BF.tl IT.BF.mpm ex) ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (fs-numerics FS) (FrameSemantics.fs-interp FS)
-  -- (D468: the compiler writes the allocator's expansion of the image: `file-trˣ` below)
-  file-at ex O = file-atˣ ex O
+    file-at : (ex : List String) → Owed
+            → run-file (Once.LinCore.ExprImage.fileAt (fs-numerics FS) B a IT.BF.tl IT.BF.mpm ex) ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (fs-numerics FS) (FrameSemantics.fs-interp FS)
+    -- (D468: the compiler writes the allocator's expansion of the image: `file-trˣ` below)
+    file-at ex O = file-atˣ ex O
 
-  file-wf-at : Backend.AsmWF B (Once.LinCore.ExprImage.fileAt (fs-numerics FS) B IT.BF.tl IT.BF.mpm
-                                  (image-externs (Once.LinCore.ExprImage.imageAt (fs-numerics FS) IT.BF.tl IT.BF.mpm)))
-  file-wf-at = file-wf-atˣ
+    file-wf-at : Backend.AsmWF B (Once.LinCore.ExprImage.fileAt (fs-numerics FS) B a IT.BF.tl IT.BF.mpm
+                                    (image-externs (Once.LinCore.ExprImage.imageAt (fs-numerics FS) IT.BF.tl IT.BF.mpm)))
+    file-wf-at = file-wf-atˣ

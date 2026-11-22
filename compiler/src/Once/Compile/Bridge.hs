@@ -24,6 +24,7 @@ module Once.Compile.Bridge
   , moduleWarnings
   , resolveImports
   , assemblyFromModule
+  , Alloc (..)
   ) where
 
 import Data.Maybe (isJust)
@@ -33,6 +34,7 @@ import Unsafe.Coerce (unsafeCoerce)
 import qualified MAlonzo.Code.Agda.Builtin.Sigma as MSigma
 import qualified MAlonzo.Code.Data.Sum.Base as MSum
 import qualified MAlonzo.Code.Once.Extract.Root as MR
+import qualified MAlonzo.Code.Once.CCC.Codegen.AllocExpandClasses as MAEC
 import qualified MAlonzo.Code.Once.Target.Arch as MTA
 import qualified MAlonzo.Code.Once.Parser.Module.Core as MMC
 import qualified MAlonzo.Code.Once.Spec.Surface.Syntax as MSS
@@ -154,7 +156,17 @@ resolveImports modMap (Module userMod) =
 -- the optimizer, or the compiler's error: the print of the file the verified
 -- compiler emits (`Once.LinCore.Emit.assemblyCore`, plan 0.146 D464: a
 -- program's linear core image), the file the apex covers (D352, D353).
-assemblyFromModule :: Bool -> Arch -> Resolved -> Either Text Text
-assemblyFromModule doOpt arch (Resolved mod_) =
-  eitherText (MR.d_assembly_48 runs doOpt (toMArch arch) (unsafeCoerce mod_))
+assemblyFromModule :: Bool -> Alloc -> Arch -> Resolved -> Either Text Text
+assemblyFromModule doOpt alloc arch (Resolved mod_) =
+  eitherText (MR.d_assembly_48 runs doOpt (toMAlloc alloc) (toMArch arch) (unsafeCoerce mod_))
+
+-- | D468: the cell allocator the compiled program uses (`--alloc`): the slab (a
+-- free list per node size, the default) or the pool (one list, every block the
+-- largest size).
+data Alloc = AllocSlab | AllocPool
+  deriving (Eq, Show)
+
+toMAlloc :: Alloc -> MAEC.T_Alloc_378
+toMAlloc AllocSlab = MAEC.C_alloc'45'slab_380
+toMAlloc AllocPool = MAEC.C_alloc'45'pool_382
 

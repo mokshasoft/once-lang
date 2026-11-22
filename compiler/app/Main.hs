@@ -1,5 +1,6 @@
 module Main (main) where
 
+import qualified Once.Compile.Bridge as Bridge
 import System.Environment (getArgs)
 import System.Exit (exitFailure)
 import qualified Data.Text.IO as TIO
@@ -71,6 +72,7 @@ data BuildConfig = BuildConfig
   , bcTarget    :: Maybe Target
   , bcSaveTemps :: Bool
   , bcOptimize  :: Bool
+  , bcAlloc     :: Bridge.Alloc
   , bcStrata    :: Maybe String
   , bcInterp    :: Maybe String
   , bcExplicit  :: [(InterpType, String)]
@@ -86,6 +88,7 @@ defaultBuildConfig = BuildConfig
   , bcTarget    = hostTarget
   , bcSaveTemps = False
   , bcOptimize  = True
+  , bcAlloc     = Bridge.AllocSlab
   , bcStrata    = Nothing
   , bcInterp    = Nothing
   , bcExplicit  = []
@@ -109,6 +112,7 @@ parseBuild args = go args defaultBuildConfig
         , buildTarget    = bcTarget cfg
         , buildSaveTemps = bcSaveTemps cfg
         , buildOptimize  = bcOptimize cfg
+        , buildAlloc     = bcAlloc cfg
         , buildStrata    = bcStrata cfg
         , buildInterp    = bcInterp cfg
         , buildExplicitInterps = bcExplicit cfg
@@ -122,6 +126,8 @@ parseBuild args = go args defaultBuildConfig
       Nothing -> Nothing  -- invalid target
     go ("--save-temps" : rest) cfg = go rest cfg { bcSaveTemps = True }
     go ("--no-optimize" : rest) cfg = go rest cfg { bcOptimize = False }
+    go ("--alloc=slab" : rest) cfg = go rest cfg { bcAlloc = Bridge.AllocSlab }
+    go ("--alloc=pool" : rest) cfg = go rest cfg { bcAlloc = Bridge.AllocPool }
     go ("--strata" : s : rest) cfg = go rest cfg { bcStrata = Just s }
     go ("--interp" : i : rest) cfg = go rest cfg { bcInterp = Just i }
     go ("--host" : h : rest) cfg = go rest cfg { bcHost = h }

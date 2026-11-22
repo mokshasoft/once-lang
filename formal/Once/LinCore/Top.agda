@@ -51,10 +51,12 @@ import Once.LinCore.ExprBuild
 import Once.LinCore.ExprLinked
 import Once.LinCore.Apex
 import Once.LinCore.ExprImage
+import Once.CCC.Codegen.AllocExpandClasses
 
 module Program (m : Resolved) (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Unit)
   (mi : moduleToIR m ≡ just ir) (nd : NamesDistinct (moduleTable m)) (te : moduleTable m ≡ tbl)
-  (ls : moduleSig m ≡ Interp.sig (FrameSemantics.fs-interp (ArchSim.FS A))) where
+  (ls : moduleSig m ≡ Interp.sig (FrameSemantics.fs-interp (ArchSim.FS A)))
+  (a : Once.CCC.Codegen.AllocExpandClasses.Alloc) where
 
   -- the bridge's facts, from the compile pipeline, in the interpretation's signatures
   -- (only the declarations' fact depends on the signatures: moved alone, so the others stay the
@@ -79,12 +81,12 @@ module Program (m : Resolved) (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit
 
   FileAt : List CompiledSrc → Σ Type (λ T → T <: EffUU) → Set
   FileAt tl (T , pm) =
-    ArchSim.run-file A (Once.LinCore.ExprImage.fileAt (fs-numerics (ArchSim.FS A)) B tl pm
+    ArchSim.run-file A (Once.LinCore.ExprImage.fileAt (fs-numerics (ArchSim.FS A)) B a tl pm
                          (image-externs (Once.LinCore.ExprImage.imageAt (fs-numerics (ArchSim.FS A)) tl pm)))
     ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (fs-numerics (ArchSim.FS A)) (FrameSemantics.fs-interp (ArchSim.FS A))
 
   FileTr : List CompiledSrc → Σ Type (λ T → T <: EffUU) → Set
-  FileTr s (T , pm) = ArchSim.run-file A (fileOf B (fs-numerics (ArchSim.FS A)) s pm)
+  FileTr s (T , pm) = ArchSim.run-file A (fileOf B a (fs-numerics (ArchSim.FS A)) s pm)
                       ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (fs-numerics (ArchSim.FS A)) (FrameSemantics.fs-interp (ArchSim.FS A))
 
   private
@@ -97,7 +99,7 @@ module Program (m : Resolved) (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit
     -- …so the file at them is the compiler's of them (its externs, the image's)
     at-front : N.Owed → FileTr EPm.srcs (EPm.mty , EPm.mpm)
     at-front O = subst₂ FileAt tl-eq main-eq
-                   (N.file-at (image-externs (Once.LinCore.ExprImage.imageAt (fs-numerics (ArchSim.FS A)) N.IT.BF.tl N.IT.BF.mpm)) O)
+                   (N.file-at a (image-externs (Once.LinCore.ExprImage.imageAt (fs-numerics (ArchSim.FS A)) N.IT.BF.tl N.IT.BF.mpm)) O)
 
     move : ∀ {s s′} → s ≡ s′ → ∀ {x y} → mainOf s ≡ just x → mainOf s′ ≡ just y → FileTr s x → FileTr s′ y
     move {s} refl e e′ t = subst (λ z → FileTr s z) (just-injective (trans (sym e) e′)) t
@@ -110,15 +112,15 @@ module Program (m : Resolved) (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit
   -- ★★ THE FILE THE COMPILER WRITES IS WHAT THE ASSEMBLER DEMANDS (D464)
   FileWfAt : List CompiledSrc → Σ Type (λ T → T <: EffUU) → Set
   FileWfAt tl (T , pm) =
-    Backend.AsmWF B (Once.LinCore.ExprImage.fileAt (fs-numerics (ArchSim.FS A)) B tl pm
+    Backend.AsmWF B (Once.LinCore.ExprImage.fileAt (fs-numerics (ArchSim.FS A)) B a tl pm
                       (image-externs (Once.LinCore.ExprImage.imageAt (fs-numerics (ArchSim.FS A)) tl pm)))
 
   FileWf : List CompiledSrc → Σ Type (λ T → T <: EffUU) → Set
-  FileWf s (T , pm) = Backend.AsmWF B (fileOf B (fs-numerics (ArchSim.FS A)) s pm)
+  FileWf s (T , pm) = Backend.AsmWF B (fileOf B a (fs-numerics (ArchSim.FS A)) s pm)
 
   private
     wf-front : FileWf EPm.srcs (EPm.mty , EPm.mpm)
-    wf-front = subst₂ FileWfAt tl-eq main-eq N.file-wf-at
+    wf-front = subst₂ FileWfAt tl-eq main-eq (N.file-wf-at a)
 
     move-wf : ∀ {s s′} → s ≡ s′ → ∀ {x y} → mainOf s ≡ just x → mainOf s′ ≡ just y → FileWf s x → FileWf s′ y
     move-wf {s} refl e e′ w = subst (λ z → FileWf s z) (just-injective (trans (sym e) e′)) w

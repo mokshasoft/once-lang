@@ -29,6 +29,7 @@
 
 open import Once.IR.Semantics.Trace using (Interp)
 open import Once.Target.Arch using (Arch)
+import Once.CCC.Codegen.AllocExpandClasses
 import Once.Adequacy.Compile as Compile
 import Once.Program as Program
 open import Data.Bool using (Bool)
@@ -52,7 +53,7 @@ module Once.Adequacy.SpecApex
                   (ir : Once.IR.IR (Once.IRTy.⌊_⌋ (Once.Spec.Type.Unit {0})) (Once.IRTy.⌊_⌋ (Once.Spec.Type.Unit {0}))) →
                 Once.Denotation.Admissible.AdmissibleM arch (Once.Parser.Module.Core.Resolved.rmodule m) →
                 Once.Compile.moduleToIR m ≡ Data.Maybe.just ir →
-                Data.Product.Σ (Once.Compile.Emit.FileOf arch) (λ F → Once.LinCore.Emit.coreFileOf arch doOpt m ≡ Data.Sum.inj₂ F)) where
+                Data.Product.Σ (Once.Compile.Emit.FileOf arch) (λ F → Once.LinCore.Emit.coreFileOf arch doOpt Once.CCC.Codegen.AllocExpandClasses.alloc-slab m ≡ Data.Sum.inj₂ F)) where
 
 open import Data.Bool using (Bool)
 open import Data.List using (List; map)

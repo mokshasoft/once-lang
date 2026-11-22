@@ -24638,3 +24638,15 @@ has at most 61 classes (`count C ≤ 61`, a premise on `Classes`); the slab allo
 up to that, then shares classes, which affects granularity only. A library's file (empty, D465) defines no
 record; a program's file defines one. The arch models' entry view maps the record's cells (ref 0, word `k < 64`)
 at `heap-base + k` words, below the frontier.
+
+## D471 — `--alloc=slab|pool`: THE SLAB BY DEFAULT; THE TOP THEOREMS AT THE DEFAULT, THE FILE THEOREMS AT BOTH (2026-11-23, proposed — for the user's review)
+
+**Proposed** (unattended, keep-going mode; plan 0.146 §4 item 5, D468 amended: "two allocators, chosen by
+`--alloc`, the second the user's to name"). **The choice**: `AllocExpandClasses.Alloc` = `alloc-slab` (a free
+list per node size, each block its exact size; the pool past 60 sizes, the record's room) or `alloc-pool` (one
+list, every block the program's largest size). `--alloc=slab` is the default. **"pool" is a placeholder name**:
+the second allocator is the user's to name (plan §4 item 5).
+**What is proved for which**: the file theorems (`LinCore.Apex.file-atˣ`/`file-wf-atˣ`, `Top.Program`,
+`CoreFile.Prog`) are over any choice. The whole compiler's theorems (`Adequacy.Compile`, `CoreArch`,
+`ArchCorrectness`, `SpecApex`) are stated at the default (`alloc-slab`). Generalizing them over the choice is
+owed: it threads the choice through `Compile`'s pipeline functions (`compile-mir`, …) and the top statement.

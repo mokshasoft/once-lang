@@ -58,12 +58,13 @@ import Once.LinCore.Lower
 import Once.LinCore.ImageBlocks
 import Once.LinCore.Keys
 open import Once.Arith.Machine.IR using (ArithBlock)
+open import Once.CCC.Codegen.AllocExpandClasses using (Alloc)
 
 -- ★ the new image's file, by a backend at its numerics (`ExprImage.fileAt`: the image the
 -- proof is about, over the sources in the table's order; its externs, the image's: D464)
-fileOf : (B : Backend) (fmt : TargetNum) → List CompiledSrc → ∀ {T : Type} → T <: EffUU → Backend.File B
-fileOf B fmt srcs pm =
-  Once.LinCore.ExprImage.fileAt fmt B (Once.LinCore.ExprBuild.srcOrder fmt srcs []) pm
+fileOf : (B : Backend) (a : Alloc) (fmt : TargetNum) → List CompiledSrc → ∀ {T : Type} → T <: EffUU → Backend.File B
+fileOf B a fmt srcs pm =
+  Once.LinCore.ExprImage.fileAt fmt B a (Once.LinCore.ExprBuild.srcOrder fmt srcs []) pm
     (image-externs (Once.LinCore.ExprImage.imageAt fmt (Once.LinCore.ExprBuild.srcOrder fmt srcs []) pm))
 
 -- the backend's file is the arch's (`Compile.FileOf`, what the CPU model decodes)
@@ -73,29 +74,29 @@ toFileOf x86-32  F = F
 toFileOf riscv64 F = F
 
 -- ★ a program's file: the new image of its sources, at their main
-mainAt : (arch : Arch) → List CompiledSrc → Maybe (Σ Type (λ T → T <: EffUU)) → String ⊎ FileOf arch
-mainAt arch srcs (just (T , pm)) = inj₂ (toFileOf arch (fileOf (backend arch) (arch-numerics arch) srcs pm))
-mainAt arch srcs nothing         = inj₁ "internal error: the sources have no main the program has"
+mainAt : (arch : Arch) → Alloc → List CompiledSrc → Maybe (Σ Type (λ T → T <: EffUU)) → String ⊎ FileOf arch
+mainAt arch a srcs (just (T , pm)) = inj₂ (toFileOf arch (fileOf (backend arch) a (arch-numerics arch) srcs pm))
+mainAt arch a srcs nothing         = inj₁ "internal error: the sources have no main the program has"
 
-srcsAt : (arch : Arch) → String ⊎ List CompiledSrc → String ⊎ FileOf arch
-srcsAt arch (inj₁ e)    = inj₁ e
-srcsAt arch (inj₂ srcs) = mainAt arch srcs (mainOf srcs)
+srcsAt : (arch : Arch) → Alloc → String ⊎ List CompiledSrc → String ⊎ FileOf arch
+srcsAt arch a (inj₁ e)    = inj₁ e
+srcsAt arch a (inj₂ srcs) = mainAt arch a srcs (mainOf srcs)
 
 -- a library (no `main`) is the empty file (D465: nothing links a Once library; its gates ran)
-coreAt : (arch : Arch) → Resolved → Maybe (IR ⌊ Once.Spec.Type.Unit {0} ⌋ ⌊ Once.Spec.Type.Unit {0} ⌋) → String ⊎ FileOf arch
-coreAt arch mod nothing  = inj₂ (toFileOf arch (Backend.empty (backend arch)))
-coreAt arch mod (just _) = srcsAt arch (srcModule Heap false mod)
+coreAt : (arch : Arch) → Alloc → Resolved → Maybe (IR ⌊ Once.Spec.Type.Unit {0} ⌋ ⌊ Once.Spec.Type.Unit {0} ⌋) → String ⊎ FileOf arch
+coreAt arch a mod nothing  = inj₂ (toFileOf arch (Backend.empty (backend arch)))
+coreAt arch a mod (just _) = srcsAt arch a (srcModule Heap false mod)
 
-coreAfter : (arch : Arch) → Resolved → String ⊎ List CompiledFun → String ⊎ FileOf arch
-coreAfter arch mod (inj₁ e) = inj₁ e
-coreAfter arch mod (inj₂ _) = coreAt arch mod (moduleToIR mod)
+coreAfter : (arch : Arch) → Alloc → Resolved → String ⊎ List CompiledFun → String ⊎ FileOf arch
+coreAfter arch a mod (inj₁ e) = inj₁ e
+coreAfter arch a mod (inj₂ _) = coreAt arch a mod (moduleToIR mod)
 
 -- ★★ THE COMPILER'S FILE (D464, D465): master's gates (type errors, literal ranges, `main`'s type:
 -- `Compile.checkModule`), then a program's new image, a library's empty file. The optimizer does
 -- not run on the new image (it takes the sources, D459): `doOpt` reaches only the gates.
-coreFileOf : (arch : Arch) → Bool → Resolved → String ⊎ FileOf arch
-coreFileOf arch doOpt mod = coreAfter arch mod (checkModule Heap doOpt arch mod)
+coreFileOf : (arch : Arch) → Bool → Alloc → Resolved → String ⊎ FileOf arch
+coreFileOf arch doOpt a mod = coreAfter arch a mod (checkModule Heap doOpt arch mod)
 
 -- the assembly text the CLI writes
-assemblyCore : Bool → Arch → Resolved → String ⊎ String
-assemblyCore doOpt arch mod = printResult arch (coreFileOf arch doOpt mod)
+assemblyCore : Bool → Alloc → Arch → Resolved → String ⊎ String
+assemblyCore doOpt a arch mod = printResult arch (coreFileOf arch doOpt a mod)
