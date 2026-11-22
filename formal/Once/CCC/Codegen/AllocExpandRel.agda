@@ -116,6 +116,8 @@ module _ (C : Classes) (P : AbstractTrace) (Sz : ℕ → Set) where
       r-σbelow : σ < AllocState.next-heap-ref (falloc gs)
       -- the primitive's counter is past the record
       r-pnext  : 0 < AllocState.next-heap-ref (falloc fs)
+      -- a block the primitive has not handed out is not freed
+      r-pfresh : ∀ r → AllocState.next-heap-ref (falloc fs) ≤ r → AllocState.freed (falloc fs) r ≡ false
 
       -- the two runs' own invariants
       r-nofree  : ∀ r → AllocState.freed (falloc gs) r ≡ false
