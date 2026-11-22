@@ -6419,7 +6419,7 @@ d_Lq_1954 v0 v1 v2 v3 v4 v5 v6 v7 v8
         -> coe
              du_coeR_1666 (coe v0) (coe v3) (coe v12) (coe v7) (coe v14)
              (coe
-                MAlonzo.Code.Once.Surface.CoerceIR.du_voidFree'63'_314 (coe v12)
+                MAlonzo.Code.Once.Surface.CoerceIR.du_voidFree'63'_350 (coe v12)
                 (coe v7) (coe v14))
              (coe
                 d_Lq_1954 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
@@ -9725,7 +9725,7 @@ du_Lq'45'blk_1968 v0 v1 v2 v3 v4 v5
         -> coe
              du_k'45'coeR_1692 (coe v9) (coe v4) (coe v11)
              (coe
-                MAlonzo.Code.Once.Surface.CoerceIR.du_voidFree'63'_314 (coe v9)
+                MAlonzo.Code.Once.Surface.CoerceIR.du_voidFree'63'_350 (coe v9)
                 (coe v4) (coe v11))
              (coe
                 du_Lq'45'blk_1968 (coe v0) (coe v1) (coe v2) (coe v3) (coe v9)

@@ -32,21 +32,21 @@ import qualified MAlonzo.Code.Once.Spec.Type
 
 -- Once.CCC.Codegen.RoomChecks.entry-frame
 d_entry'45'frame_8 ::
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2322 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2404 ->
   Integer
 d_entry'45'frame_8 v0
   = let v1 = 0 :: Integer in
     coe
       (case coe v0 of
-         MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'ctrl_2386 v2
+         MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'ctrl_2468 v2
            -> case coe v2 of
-                MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'entry_2306 v3 v4
+                MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'entry_2386 v3 v4
                   -> coe v4
                 _ -> coe v1
          _ -> coe v1)
 -- Once.CCC.Codegen.RoomChecks.max-entry
 d_max'45'entry_12 ::
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2322] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2404] ->
   Integer
 d_max'45'entry_12 v0
   = case coe v0 of
@@ -98,55 +98,55 @@ du_sigop'45'scratch_34 v0
 -- Once.CCC.Codegen.RoomChecks.spend
 d_spend_38 ::
   Integer ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2322 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2404 ->
   Integer
 d_spend_38 v0 v1
   = let v2 = 0 :: Integer in
     coe
       (case coe v1 of
-         MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'call'45'closure_2354
+         MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'call'45'closure_2436
            -> coe addInt (coe (1 :: Integer)) (coe v0)
-         MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'sigop_2368 v3 v4 v5
+         MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'sigop_2450 v3 v4 v5
            -> coe
                 addInt
                 (coe
                    du_sigop'45'scratch_34
                    (coe MAlonzo.Code.Once.SigOp.Info.d_sem_118 (coe v5)))
                 (coe d_sigop'45'call'45'words_28)
-         MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'alloc'45'heap_2382 v3
+         MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'alloc'45'heap_2464 v3
            -> coe v3
-         MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'ctrl_2386 v3
+         MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'ctrl_2468 v3
            -> case coe v3 of
-                MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'entry_2306 v4 v5
+                MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'entry_2386 v4 v5
                   -> coe v5
-                MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'call'45'fn_2310 v4
+                MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'call'45'fn_2390 v4
                   -> coe addInt (coe (1 :: Integer)) (coe v0)
-                MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'start_2312 v4 -> coe v4
+                MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'start_2392 v4 -> coe v4
                 _ -> coe v2
          _ -> coe v2)
 -- Once.CCC.Codegen.RoomChecks.boundary?
 d_boundary'63'_62 ::
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2322 -> Bool
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2404 -> Bool
 d_boundary'63'_62 v0
   = let v1 = coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8 in
     coe
       (case coe v0 of
-         MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'call'45'closure_2354
+         MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'call'45'closure_2436
            -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
-         MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'ctrl_2386 v2
+         MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'ctrl_2468 v2
            -> case coe v2 of
-                MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'label_2300 v3
+                MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'label_2380 v3
                   -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
-                MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'entry_2306 v3 v4
+                MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'entry_2386 v3 v4
                   -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
-                MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'call'45'fn_2310 v3
+                MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'call'45'fn_2390 v3
                   -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
                 _ -> coe v1
          _ -> coe v1)
 -- Once.CCC.Codegen.RoomChecks.stretch
 d_stretch_64 ::
   Integer ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2322] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2404] ->
   Integer
 d_stretch_64 v0 v1
   = case coe v1 of
@@ -163,8 +163,8 @@ d_stretch_64 v0 v1
 -- Once.CCC.Codegen.RoomChecks.checks
 d_checks_74 ::
   Integer ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2322] ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2322]
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2404] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2404]
 d_checks_74 v0 v1
   = case coe v1 of
       [] -> coe v1
@@ -177,36 +177,36 @@ d_checks_74 v0 v1
                 (coe
                    MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                    (coe
-                      MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'room_2390
+                      MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'room_2472
                       (coe d_stretch_64 (coe v0) (coe v3)))
                    (coe d_checks_74 (coe v0) (coe v3)))
                 (coe d_checks_74 (coe v0) (coe v3)))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.RoomChecks.room-checks
 d_room'45'checks_84 ::
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2322] ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2322]
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2404] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2404]
 d_room'45'checks_84 v0
   = coe
       MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
       (coe
-         MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'room_2390
+         MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'room_2472
          (coe d_stretch_64 (coe d_max'45'entry_12 (coe v0)) (coe v0)))
       (coe d_checks_74 (coe d_max'45'entry_12 (coe v0)) (coe v0))
 -- Once.CCC.Codegen.RoomChecks.room?
 d_room'63'_88 ::
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2322 -> Bool
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2404 -> Bool
 d_room'63'_88 v0
   = let v1 = coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8 in
     coe
       (case coe v0 of
-         MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'room_2390 v2
+         MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'room_2472 v2
            -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
          _ -> coe v1)
 -- Once.CCC.Codegen.RoomChecks.till-check
 d_till'45'check_90 ::
   Integer ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2322] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2404] ->
   Integer
 d_till'45'check_90 v0 v1
   = case coe v1 of
@@ -221,7 +221,7 @@ d_till'45'check_90 v0 v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.RoomChecks.need
 d_need_100 ::
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2322] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2404] ->
   Integer -> Integer
 d_need_100 v0 v1
   = coe

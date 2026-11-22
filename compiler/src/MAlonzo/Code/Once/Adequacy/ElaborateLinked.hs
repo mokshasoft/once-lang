@@ -68,11 +68,11 @@ du_linkedAt'45'cons_18 v0 v1 v2 v3 v4
          (coe MAlonzo.Code.Once.Denotation.Program.d_fname_16 (coe v0))
          (coe v1))
       (coe
-         MAlonzo.Code.Once.IRTy.d__'8799'IRTy__206
+         MAlonzo.Code.Once.IRTy.d__'8799'IRTy__232
          (coe MAlonzo.Code.Once.Denotation.Program.d_fdom_18 (coe v0))
          (coe v2))
       (coe
-         MAlonzo.Code.Once.IRTy.d__'8799'IRTy__206
+         MAlonzo.Code.Once.IRTy.d__'8799'IRTy__232
          (coe MAlonzo.Code.Once.Denotation.Program.d_fcod_20 (coe v0))
          (coe v3))
 -- Once.Adequacy.ElaborateLinked._.go
@@ -130,11 +130,11 @@ du_linkedAt'45'here_48 v0
          (coe MAlonzo.Code.Once.Denotation.Program.d_fname_16 (coe v0))
          (coe MAlonzo.Code.Once.Denotation.Program.d_fname_16 (coe v0)))
       (coe
-         MAlonzo.Code.Once.IRTy.d__'8799'IRTy__206
+         MAlonzo.Code.Once.IRTy.d__'8799'IRTy__232
          (coe MAlonzo.Code.Once.Denotation.Program.d_fdom_18 (coe v0))
          (coe MAlonzo.Code.Once.Denotation.Program.d_fdom_18 (coe v0)))
       (coe
-         MAlonzo.Code.Once.IRTy.d__'8799'IRTy__206
+         MAlonzo.Code.Once.IRTy.d__'8799'IRTy__232
          (coe MAlonzo.Code.Once.Denotation.Program.d_fcod_20 (coe v0))
          (coe MAlonzo.Code.Once.Denotation.Program.d_fcod_20 (coe v0)))
 -- Once.Adequacy.ElaborateLinked._.go
@@ -1079,7 +1079,7 @@ du_runCoe'45'linked_804 v0 v1 v2 v3 v4
   = coe
       du_go_824 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
       (coe
-         MAlonzo.Code.Once.Surface.CoerceIR.du_voidFree'63'_314 (coe v1)
+         MAlonzo.Code.Once.Surface.CoerceIR.du_voidFree'63'_350 (coe v1)
          (coe v2) (coe v3))
 -- Once.Adequacy.ElaborateLinked._.go
 d_go_824 ::

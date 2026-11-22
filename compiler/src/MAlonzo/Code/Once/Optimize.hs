@@ -1425,7 +1425,7 @@ d_unit'45'like_1526 v0 v1 v2
   = coe
       d_unit'45'like'45'aux_1516 (coe v0) (coe v1) (coe v2)
       (coe
-         MAlonzo.Code.Once.IRTy.d__'8799'IRTy__206 (coe v1)
+         MAlonzo.Code.Once.IRTy.d__'8799'IRTy__232 (coe v1)
          (coe MAlonzo.Code.Once.IRTy.C_Unit_16))
 -- Once.Optimize.void-like
 d_void'45'like_1536 ::
@@ -1438,7 +1438,7 @@ du_void'45'like_1536 v0
   = coe
       MAlonzo.Code.Relation.Nullary.Decidable.Core.du_isYes_132
       (coe
-         MAlonzo.Code.Once.IRTy.d__'8799'IRTy__206 (coe v0)
+         MAlonzo.Code.Once.IRTy.d__'8799'IRTy__232 (coe v0)
          (coe MAlonzo.Code.Once.IRTy.C_Void_18))
 -- Once.Optimize.fst-like-aux
 d_fst'45'like'45'aux_1546 ::
@@ -1575,7 +1575,7 @@ d_optimize'45'pair_1640 v0 v1 v2 v3 v4
   = coe
       du_pair'45'aux_1624 (coe v0) (coe v1) (coe v3) (coe v4)
       (coe
-         MAlonzo.Code.Once.IRTy.d__'8799'IRTy__206 (coe v2)
+         MAlonzo.Code.Once.IRTy.d__'8799'IRTy__232 (coe v2)
          (coe MAlonzo.Code.Once.IRTy.C__'42'__20 (coe v0) (coe v1)))
 -- Once.Optimize.eta-case
 d_eta'45'case_1660 ::
@@ -1641,7 +1641,7 @@ d_optimize'45'case_1696 v0 v1 v2 v3 v4
   = coe
       du_case'45'aux_1680 (coe v0) (coe v1) (coe v3) (coe v4)
       (coe
-         MAlonzo.Code.Once.IRTy.d__'8799'IRTy__206 (coe v2)
+         MAlonzo.Code.Once.IRTy.d__'8799'IRTy__232 (coe v2)
          (coe MAlonzo.Code.Once.IRTy.C__'43'__22 (coe v0) (coe v1)))
 -- Once.Optimize.optimize-once-structural
 d_optimize'45'once'45'structural_1712 ::
@@ -1762,7 +1762,7 @@ d_optimize'45'once_1718 ::
   MAlonzo.Code.Once.IR.T_IR_16 -> MAlonzo.Code.Once.IR.T_IR_16
 d_optimize'45'once_1718 v0 v1 v2
   = let v3
-          = MAlonzo.Code.Once.IRTy.d_'8799'IRTy'45'aux_212
+          = MAlonzo.Code.Once.IRTy.d_'8799'IRTy'45'aux_238
               (coe v1) (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
               (coe
                  MAlonzo.Code.Relation.Nullary.Decidable.Core.du_map'8242'_178
@@ -1803,7 +1803,7 @@ d_optimize'45'once_1718 v0 v1 v2
                 else coe
                        seq (coe v5)
                        (let v6
-                              = MAlonzo.Code.Once.IRTy.d_'8799'IRTy'45'aux_212
+                              = MAlonzo.Code.Once.IRTy.d_'8799'IRTy'45'aux_238
                                   (coe v0) (coe MAlonzo.Code.Once.IRTy.C_Void_18)
                                   (coe
                                      MAlonzo.Code.Relation.Nullary.Decidable.Core.du_map'8242'_178

@@ -114,9 +114,13 @@ library
       MAlonzo.Code.Once.Arith.SigOp.Builders
       MAlonzo.Code.Once.Arith.SigOp.Compare
       MAlonzo.Code.Once.Arith.Type
+      MAlonzo.Code.Once.CCC.Codegen.AllocExpand
+      MAlonzo.Code.Once.CCC.Codegen.AllocExpandClasses
       MAlonzo.Code.Once.CCC.Codegen.RoomChecks
       MAlonzo.Code.Once.CCC.FrameSemantics
       MAlonzo.Code.Once.CCC.Label
+      MAlonzo.Code.Once.CCC.Machine.Flat
+      MAlonzo.Code.Once.CCC.Machine.InstrSlot
       MAlonzo.Code.Once.CCC.Machine.Locations
       MAlonzo.Code.Once.CCC.Machine.SMCore
       MAlonzo.Code.Once.CCC.Target.RiscV64.AbstractToRiscV

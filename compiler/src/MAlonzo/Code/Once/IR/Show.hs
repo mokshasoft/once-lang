@@ -196,9 +196,9 @@ d_showIR_20 v0 v1 v2
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IR.C_const_138 v4 v5
         -> case coe v4 of
-             MAlonzo.Code.Once.IRTy.C_fits'45'int_554
+             MAlonzo.Code.Once.IRTy.C_fits'45'int_516
                -> coe MAlonzo.Code.Data.Integer.Show.d_show_6 (coe v5)
-             MAlonzo.Code.Once.IRTy.C_fits'45'float_556
+             MAlonzo.Code.Once.IRTy.C_fits'45'float_518
                -> coe d_showDecimal_6 (coe v5)
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IR.C_SigOp_144 v3 v4 v5

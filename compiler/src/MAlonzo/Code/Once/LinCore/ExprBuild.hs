@@ -1118,7 +1118,7 @@ du_extendR_1282 v0 v1 v2 v3 v4 v5 v6
          MAlonzo.Code.Once.CanonicalName.d__'8799''7580'__4
          (coe MAlonzo.Code.Once.CompileSrc.d_csName_1020 (coe v2)) (coe v3))
       (coe
-         MAlonzo.Code.Once.IRTy.d__'8799'IRTy__206
+         MAlonzo.Code.Once.IRTy.d__'8799'IRTy__232
          (coe
             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_56 (coe (0 :: Integer))
             (coe
@@ -1126,7 +1126,7 @@ du_extendR_1282 v0 v1 v2 v3 v4 v5 v6
                (coe MAlonzo.Code.Once.CompileSrc.d_csType_1022 (coe v2))))
          (coe v4))
       (coe
-         MAlonzo.Code.Once.IRTy.d__'8799'IRTy__206
+         MAlonzo.Code.Once.IRTy.d__'8799'IRTy__232
          (coe
             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_56 (coe (0 :: Integer))
             (coe

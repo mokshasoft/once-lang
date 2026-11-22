@@ -101,10 +101,10 @@ d_tableCalls_32 v0 v1 v2 v3 v4 v5 v6
                 MAlonzo.Code.Once.CanonicalName.d__'8799''7580'__4
                 (coe d_fname_16 (coe v7)) (coe v3))
              (coe
-                MAlonzo.Code.Once.IRTy.d__'8799'IRTy__206 (coe d_fdom_18 (coe v7))
+                MAlonzo.Code.Once.IRTy.d__'8799'IRTy__232 (coe d_fdom_18 (coe v7))
                 (coe v4))
              (coe
-                MAlonzo.Code.Once.IRTy.d__'8799'IRTy__206 (coe d_fcod_20 (coe v7))
+                MAlonzo.Code.Once.IRTy.d__'8799'IRTy__232 (coe d_fcod_20 (coe v7))
                 (coe v5))
              (coe v6)
       _ -> MAlonzo.RTE.mazUnreachableError

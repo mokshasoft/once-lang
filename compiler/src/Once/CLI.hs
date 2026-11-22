@@ -580,8 +580,12 @@ archAsFlags Bridge.X86_32 = ["--32"]
 archAsFlags _             = []
 
 archLdFlags :: Bridge.Arch -> [String]
-archLdFlags Bridge.X86_32 = ["-m", "elf_i386"]
-archLdFlags _             = []
+archLdFlags Bridge.X86_32  = ["-m", "elf_i386"]
+-- D470: no linker relaxation on riscv64. A `.bss` symbol near the global
+-- pointer (the program's allocator record) would have its `lla` relaxed to a
+-- `gp`-relative add, and no Host sets `gp`: the code addresses what it says.
+archLdFlags Bridge.RiscV64 = ["--no-relax"]
+archLdFlags _              = []
 
 -- | Assemble a .s file to .o using the system assembler
 -- Checks AS environment variable, falls back to "as"

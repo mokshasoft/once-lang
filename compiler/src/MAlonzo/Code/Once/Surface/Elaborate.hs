@@ -47,7 +47,7 @@ du_intLit_16 v0
       (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
       (coe
          MAlonzo.Code.Once.IR.C_const_138
-         (coe MAlonzo.Code.Once.IRTy.C_fits'45'int_554) v0)
+         (coe MAlonzo.Code.Once.IRTy.C_fits'45'int_516) v0)
       (coe MAlonzo.Code.Once.IR.C_terminal_72)
 -- Once.Surface.Elaborate.floatLit
 d_floatLit_22 ::
@@ -63,7 +63,7 @@ du_floatLit_22 v0
       (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
       (coe
          MAlonzo.Code.Once.IR.C_const_138
-         (coe MAlonzo.Code.Once.IRTy.C_fits'45'float_556) v0)
+         (coe MAlonzo.Code.Once.IRTy.C_fits'45'float_518) v0)
       (coe MAlonzo.Code.Once.IR.C_terminal_72)
 -- Once.Surface.Elaborate.addIR
 d_addIR_26 :: MAlonzo.Code.Once.IR.T_IR_16
@@ -2584,7 +2584,7 @@ du_elaborate_522 v0 v1 v2 v3 v4 v5
                 (coe v14))
       MAlonzo.Code.Once.Surface.Syntax.C_coerce_230 v9 v11 v12
         -> coe
-             MAlonzo.Code.Once.Surface.CoerceIR.du_runCoe_452 (coe v0) (coe v9)
+             MAlonzo.Code.Once.Surface.CoerceIR.du_runCoe_460 (coe v0) (coe v9)
              (coe v4) (coe v11)
              (coe
                 du_elaborate_522 (coe v0) (coe v1) (coe v2) (coe v3) (coe v9)

@@ -31,7 +31,7 @@ data T_Mem_10
                       Integer |
     C_rip'43'disp_16 Integer |
     C_rip'43'label_18 MAlonzo.Code.Once.CCC.Label.T_LabelId_6 |
-    C_rip'43'sym_20 MAlonzo.Code.Agda.Builtin.String.T_String_6
+    C_rip'43'sym_20 MAlonzo.Code.Agda.Builtin.String.T_String_6 Integer
 -- Once.CCC.Target.X86-64.Syntax.Operand
 d_Operand_22 = ()
 data T_Operand_22

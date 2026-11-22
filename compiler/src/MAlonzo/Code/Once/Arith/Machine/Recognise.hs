@@ -367,8 +367,8 @@ du_rb'45'view_424 v0
                   -> coe C_v'45'reassoc_380
                 MAlonzo.Code.Once.IR.C_const_138 v8 v9
                   -> case coe v8 of
-                       MAlonzo.Code.Once.IRTy.C_fits'45'int_554 -> coe C_v'45'cint_400
-                       MAlonzo.Code.Once.IRTy.C_fits'45'float_556 -> coe C_v'45'cflt_408
+                       MAlonzo.Code.Once.IRTy.C_fits'45'int_516 -> coe C_v'45'cint_400
+                       MAlonzo.Code.Once.IRTy.C_fits'45'float_518 -> coe C_v'45'cflt_408
                        _ -> MAlonzo.RTE.mazUnreachableError
                 MAlonzo.Code.Once.IR.C_SigOp_144 v7 v8 v9 -> coe C_v'45'sigop_392
                 _ -> coe v1
