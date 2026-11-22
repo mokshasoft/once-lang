@@ -24697,3 +24697,35 @@ favour size (embedded and bare-metal targets).
 configuration is written in Once itself ("then we do not need another parser"), as an ADT once Once has them,
 possibly per function (tight loops compiled for speed), never as language syntax. Every value of the
 configuration is covered by the top theorems (D471's generalization, owed).
+
+## D475 — THE BRIDGE COPIES WHAT MASTER SHARES: DATA CARRIED THROUGH A LOOP IS COPIED EVERY ROUND (2026-11-23, proposed — for the user's review)
+
+**Proposed** (unattended, keep-going mode; plan 0.146 §5 item 8). **Found by** the performance suite
+(`tests/perf-compare.sh`, `bench/list-build-sum`): a loop that conses a list of N cells costs master ~1,230
+instructions a round (linear) and this branch ~N²: 6.7e7 / 2.6e8 / 1.05e9 instructions at N = 250 / 500 / 1000.
+`bench/loop-sum` (scalar state) is linear but 7.4× master per round (4,930 vs 663).
+
+### The cause
+The loop's step `step p = case (next p) (stop p) (fst p == 0)` uses `p` three times. In the bridge
+(`LinCore.FromExpr`):
+* the context split (`split`) puts a `dup` wherever two sides use a variable, and a `dup` is a deep copy
+  (D420 point 3), so each round copies the state, list included, twice;
+* the `case` combinator (`copair'`) is a many-use closure (`llamω`) whose environment, the two arm closures each
+  holding a copy of `p`, is copied on each application (`copyIn`), and the arm not taken is freed with its copy;
+* every arrow is a many-use closure applied by lending it to `bev`, its environment copied in at each call.
+Master shares (pointers are copied, nothing is freed), so it is linear but leaks.
+
+### Options
+* **(a) Additive arms, projected scrutinee, one-shot saturated closures (recommended, in this plan).**
+  (1) A combinator applied where it is built (`app (copair' f g) s`, likewise `comp'`, `fork'`) is translated
+  as the core term it means (an `lcase` whose arms share the context, `⊔` not `+`, as `case'` already does),
+  with no closure; (2) a split whose one side only projects a variable (`fst p`) gets the projection, so
+  only the part used is copied (an Int, not the list); (3) a closure applied exactly once is one-shot (`llam`,
+  no `copyIn`). Each is a bridge clause, proved against `elaborateFull`'s IR meaning as today. `dup` stays a
+  deep copy (D420), there are just far fewer of them; the list loop becomes linear.
+* (b) Lending in the core now (D420's later refinement: a read-only use borrows, `bfst`/`bcopy`), the general fix
+  for (2); larger, and plan 0.154's (D466 L2).
+* (c) Leave it to plan 0.154. Rejected: the user's goal is parity with master from the linear core alone
+  (2026-11-23), and a quadratic loop is not parity.
+
+### Decision (proposed): (a), as §5 item 8 step h, before d–f (it is the largest cost: asymptotic)
