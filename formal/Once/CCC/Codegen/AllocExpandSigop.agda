@@ -150,3 +150,48 @@ module _ (ρ : ℕ → ℕ) (Lv : ℕ → Set) (inj : ∀ r r′ → Lv r → Lv
   decode-rel (b-+ _ _) (SV-Tag _) ()
   decode-rel (b-+ _ _) (SV-Code _) ()
   decode-rel b-Void v ()
+
+  ------------------------------------------------------------------------
+  -- The answer's words: literals and tags, written in a frame
+  ------------------------------------------------------------------------
+
+open AbstractExec {FS} using (writeTyped; writeZeros; zero-word)
+
+module Words (ρ : ℕ → ℕ) (Lv : ℕ → Set) (inj : ∀ r r′ → Lv r → Lv r′ → ρ r ≡ ρ r′ → r ≡ r′) where
+  import Data.Nat as ℕ
+
+  zeros-rel : ∀ {s t} n f k → L.LRel ρ Lv inj s t → L.LRel ρ Lv inj (writeZeros n (AtStack f k) s) (writeZeros n (AtStack f k) t)
+  zeros-rel zero    f k R = R
+  zeros-rel (suc n) f k R = zeros-rel n f (suc k) (L.lrel-stack-write ρ Lv inj f k zero-word R)
+
+  -- ★ the answer written at a frame's slots, on both sides
+  write-rel : ∀ {s t} (B : Ty 0) v f k → L.LRel ρ Lv inj s t → L.LRel ρ Lv inj (writeTyped B v (AtStack f k) s) (writeTyped B v (AtStack f k) t)
+  write-rel Unit    v f k R = R
+  write-rel Int     v f k R = L.lrel-stack-write ρ Lv inj f k (SV-Lit fits-int v) R
+  write-rel Float   v f k R = L.lrel-stack-write ρ Lv inj f k (SV-Lit fits-float v) R
+  write-rel (A * B) (a , b) f k R = write-rel B b f (tsize A ℕ.+ k) (write-rel A a f k R)
+  write-rel (A + B) (inj₁ a) f k R =
+    zeros-rel ((tsize A ℕ.⊔ tsize B) ℕ.∸ tsize A) f (suc (tsize A) ℕ.+ k)
+      (write-rel A a f (suc k) (L.lrel-stack-write ρ Lv inj f k (SV-Tag 0) R))
+  write-rel (A + B) (inj₂ b) f k R =
+    zeros-rel ((tsize A ℕ.⊔ tsize B) ℕ.∸ tsize B) f (suc (tsize B) ℕ.+ k)
+      (write-rel B b f (suc k) (L.lrel-stack-write ρ Lv inj f k (SV-Tag 1) R))
+  write-rel Void v f k R = R
+  write-rel (_ ⇒[ _ ] _) v f k R = R
+  write-rel (μ _) v f k R = R
+  write-rel (ν _ _) v f k R = R
+
+  -- an answer of no words writes nothing
+  write-none : ∀ (B : Ty 0) v loc (s : LocState FS) → tsize B ≡ 0 → writeTyped B v loc s ≡ s
+  write-none Unit    v loc s _ = refl
+  write-none Void    v loc s _ = refl
+  write-none (A * B) (a , b) loc s e =
+    trans (write-none B b (offsetLoc loc (tsize A)) (writeTyped A a loc s) (Data.Nat.Properties.m+n≡0⇒n≡0 (tsize A) e))
+          (write-none A a loc s (Data.Nat.Properties.m+n≡0⇒m≡0 (tsize A) e))
+    where import Data.Nat.Properties
+  write-none Int     v loc s ()
+  write-none Float   v loc s ()
+  write-none (A + B) v loc s ()
+  write-none (_ ⇒[ _ ] _) v loc s ()
+  write-none (μ _) v loc s ()
+  write-none (ν _ _) v loc s ()
