@@ -704,3 +704,86 @@ module Img (nm : CanonicalName) {Γ} (ds : Defs Γ) (f : LTm Γ One One)
               (Data.List.Relation.Unary.All.map record≢block (blocks-sym bs))
         ∷ AP-++⁺ adefs-dst-x (blocks-unique bs)
             (Data.List.Relation.Unary.All.map (λ { {s} (y , sh , refl) → Data.List.Relation.Unary.All.map (x≢block sh) (blocks-sym bs) }) adefs-shape-x))
+
+    ----------------------------------------------------------------------
+    -- …and every symbol it references is defined or an extern
+    ----------------------------------------------------------------------
+
+    Gˣ : String → Set
+    Gˣ s = s ∈ Dˣ ⊎ s ∈ ex
+
+    private
+      inDˣ : ∀ {y} → y ∈ dlabs imageˣ → labelSym y ∈ Dˣ
+      inDˣ {y} ym = there (there (∈-++⁺ˡ (subst (labelSym y ∈_) (sym adefs-eqˣ)
+                      (subst (labelSym y ∈_) (sym (adefs-labs imageˣ)) (∈-map⁺ labelSym ym)))))
+
+      lab-Gˣ : ∀ {l} → instr-ctrl (c-label l) ∈ imageˣ → Gˣ (labelSym (once l))
+      lab-Gˣ m = inj₁ (inDˣ (lab-dl imageˣ (XX.mem-lab imageˣ m)))
+
+      rec-G : Gˣ alloc-record-symbol
+      rec-G = inj₁ (there (here refl))
+
+      -- what the image's file resolves, the expansion's does
+      toˣ : ∀ {s} → G s → Gˣ s
+      toˣ (inj₂ q) = inj₂ q
+      toˣ (inj₁ (here e)) = inj₁ (here e)
+      toˣ (inj₁ (there (here e))) = inj₁ (there (here e))
+      toˣ {s} (inj₁ (there (there q))) = by (∈-++⁻ (adefs P′) q)
+        where
+          from-dl : ∀ {y} → y ∈ dlabs image → Gˣ (labelSym y)
+          from-dl ym = pick (dl-in image ym)
+            where
+              pick : ∀ {y} → (Σ LabelId λ l → y ≡ once l × l ∈ Labs image) ⊎ (Σ EntryId λ e → y ≡ callee e × e ∈ Ents image) → Gˣ (labelSym y)
+              pick (inj₁ (l , refl , ml)) = lab-Gˣ (XX.kept-in 0 image (XX.lab-mem image ml) (λ k ()) (λ k ()))
+              pick (inj₂ (e , refl , me)) = inj₁ (inDˣ (ent-dl imageˣ (subst (e ∈_) (sym (XX.ents-exp 0 image)) me)))
+          by : (s ∈ adefs P′) ⊎ (s ∈ block-syms bs) → Gˣ s
+          by (inj₂ b) = inj₁ (there (there (∈-++⁺ʳ (adefs P″) b)))
+          by (inj₁ a) = at-def (∈-map⁻ labelSym (subst (s ∈_) (adefs-labs image) (subst (s ∈_) adefs-eq a)))
+            where
+              at-def : (Σ Label λ y → y ∈ dlabs image × s ≡ labelSym y) → Gˣ s
+              at-def (y , ym , refl) = from-dl ym
+
+      ref-of : ∀ {i} → i ∈ image → IOk.Ref i
+      ref-of (here refl) = tt
+      ref-of (there m) = proj₂ (proj₂ (Data.List.Relation.Unary.All.lookup IA.tail-ok m))
+
+      AllR : AbstractInstr → Set
+      AllR i = All Gˣ (instr-refs i)
+
+      alloc-refs : ∀ n k → fetch image n ≡ just (instr-alloc-heap k) → All AllR (Once.CCC.Codegen.AllocExpand.alloc-code C (n + 0) k)
+      alloc-refs n k f =
+          [] ∷ (rec-G ∷ []) ∷ (rec-G ∷ []) ∷ [] ∷ (bump ∷ []) ∷ [] ∷ (rec-G ∷ []) ∷ [] ∷ (rec-G ∷ []) ∷ (rec-G ∷ []) ∷ []
+        ∷ (rec-G ∷ []) ∷ (done ∷ []) ∷ [] ∷ (rec-G ∷ []) ∷ [] ∷ [] ∷ [] ∷ []
+        where
+          bump = lab-Gˣ (XX.alloc-in 0 image n k f (there (there (there (there (there (there (there (there (there (there (there (there (there (here refl)))))))))))))))
+          done = lab-Gˣ (XX.alloc-in 0 image n k f (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (here refl)))))))))))))))))))
+
+      free-refs : ∀ k → All AllR (Once.CCC.Codegen.AllocExpand.free-code C k)
+      free-refs k = (rec-G ∷ []) ∷ (rec-G ∷ []) ∷ [] ∷ [] ∷ (rec-G ∷ []) ∷ (rec-G ∷ []) ∷ []
+
+      heads-refs : ∀ c → All AllR (Once.CCC.Codegen.AllocExpand.heads C c)
+      heads-refs zero    = []
+      heads-refs (suc c) = (rec-G ∷ []) ∷ heads-refs c
+
+      setup-refs : All AllR (Once.CCC.Codegen.AllocExpand.setup C)
+      setup-refs = (rec-G ∷ []) ∷ [] ∷ (rec-G ∷ []) ∷ []
+                 ∷ ++⁺ (heads-refs (Once.CCC.Codegen.AllocExpand.Classes.count C))
+                       ([] ∷ [] ∷ [] ∷ (rec-G ∷ []) ∷ [] ∷ (rec-G ∷ []) ∷ [])
+
+      refs-x : ∀ i → i ∈ imageˣ → AllR i
+      refs-x i m = by (XX.in-exp 0 image m)
+        where
+          by : XX.InExp 0 image i → AllR i
+          by (XX.in-kept q _ _) = Data.List.Relation.Unary.All.map toˣ (refs-ok i (ref-of q) (Data.List.Relation.Unary.All.lookup (jmp-pt image jumps-in) q) q)
+          by (XX.in-alloc n k f q) = Data.List.Relation.Unary.All.lookup (alloc-refs n k f) q
+          by (XX.in-free k q) = Data.List.Relation.Unary.All.lookup (free-refs k) q
+          by (XX.in-setup q) = Data.List.Relation.Unary.All.lookup setup-refs q
+
+    resolvedˣ : All Gˣ (arefs P″)
+    resolvedˣ =
+      All-fold-room arefs instr-refs (λ _ _ → refl) (λ _ → inj₂ (there (here refl)) ∷ []) imageˣ
+        (arefs-of imageˣ (Data.List.Relation.Unary.All.tabulate (λ {i} m → refs-x i m)))
+
+    -- ★★ THE EXPANSION'S FILE IS WELL-FORMED, as symbols
+    image-wfˣ : ImageWF P″ bs ex
+    image-wfˣ = defined-onceˣ , resolvedˣ , image-externs-valid image
