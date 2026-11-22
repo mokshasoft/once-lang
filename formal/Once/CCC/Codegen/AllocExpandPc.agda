@@ -20,9 +20,11 @@ open import Data.Bool using (Bool; true; false)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.Maybe using (Maybe; just; nothing)
 import Data.Maybe
-open import Data.Nat using (ℕ; zero; suc; _+_)
+open import Data.Nat using (ℕ; zero; suc; _+_; _≤_; z≤n; s≤s)
 open import Data.Nat.Properties using (+-suc; +-assoc; +-comm; +-identityʳ)
-open import Data.Empty using (⊥)
+open import Data.Empty using (⊥; ⊥-elim)
+import Data.Nat.Properties
+open import Data.Product using (Σ; _×_; _,_)
 open import Relation.Nullary using (¬_)
 open import Relation.Nullary.Decidable using (dec-false)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
@@ -172,11 +174,8 @@ module _ (C : Classes) where
   nol-mt xs i .false refl ps = nol-go xs (suc i) ps
 
   -- the expansion's labels are none of an image's
-  lb-false : ∀ site n L → LabelId.path L ≡ [] → (mkLabelId alloc-owner (site ∷ []) n ≡ᵇᴵ L) ≡ false
-  lb-false site n L pe = dec-false (mkLabelId alloc-owner (site ∷ []) n ≟ᴵ L) (λ eq → nil≢ (trans (sym pe) (sym (cong LabelId.path eq))))
-    where
-      nil≢ : ¬ ([] ≡ site ∷ [])
-      nil≢ ()
+  lb-false : ∀ site n L → ImgL L → (alloc-label site n ≡ᵇᴵ L) ≡ false
+  lb-false site n L pe = dec-false (alloc-label site n ≟ᴵ L) (λ eq → pe (sym (cong LabelId.owner eq)))
 
   plain : ∀ {L x} → label-of? x ≡ nothing → NoL L x
   plain {L} e = nol (λ m e′ → absurd m (trans (sym e) e′))
@@ -188,14 +187,14 @@ module _ (C : Classes) where
   heads-nol zero    = []ᴺ
   heads-nol (suc c) = plain refl ∷ᴺ heads-nol c
 
-  alloc-nol : ∀ site k L → LabelId.path L ≡ [] → AllNoL L (alloc-code C site k)
+  alloc-nol : ∀ site k L → ImgL L → AllNoL L (alloc-code C site k)
   alloc-nol site k L pe =
       plain refl ∷ᴺ plain refl ∷ᴺ plain refl ∷ᴺ plain refl ∷ᴺ plain refl ∷ᴺ plain refl ∷ᴺ plain refl
     ∷ᴺ plain refl ∷ᴺ plain refl ∷ᴺ plain refl ∷ᴺ plain refl ∷ᴺ plain refl ∷ᴺ plain refl
     ∷ᴺ lbl 0 ∷ᴺ plain refl ∷ᴺ plain refl ∷ᴺ plain refl ∷ᴺ lbl 1 ∷ᴺ []ᴺ
     where
-      lbl : ∀ n → NoL L (instr-ctrl (c-label (mkLabelId alloc-owner (site ∷ []) n)))
-      lbl n = nol (λ { .(mkLabelId alloc-owner (site ∷ []) n) refl → lb-false site n L pe })
+      lbl : ∀ n → NoL L (instr-ctrl (c-label (alloc-label site n)))
+      lbl n = nol (λ { .(alloc-label site n) refl → lb-false site n L pe })
 
   free-nol : ∀ k L → AllNoL L (free-code C k)
   free-nol k L = plain refl ∷ᴺ plain refl ∷ᴺ plain refl ∷ᴺ plain refl ∷ᴺ plain refl ∷ᴺ plain refl ∷ᴺ []ᴺ
@@ -206,7 +205,7 @@ module _ (C : Classes) where
                    (plain refl ∷ᴺ plain refl ∷ᴺ plain refl ∷ᴺ plain refl ∷ᴺ plain refl ∷ᴺ plain refl ∷ᴺ []ᴺ)
 
   -- ★ the scan of the expanded program, by the primitive one's
-  fl-exp : ∀ s P L i → LabelId.path L ≡ [] → fl-go (expand-from C s P) L i ≡ Data.Maybe.map (λ p → i + off s P p) (fl-go P L 0)
+  fl-exp : ∀ s P L i → ImgL L → fl-go (expand-from C s P) L i ≡ Data.Maybe.map (λ p → i + off s P p) (fl-go P L 0)
   fl-exp s []      L i pe = refl
   fl-exp s (x ∷ P) L i pe = fl-cons (exp-view s x)
     where
@@ -367,18 +366,8 @@ module _ (C : Classes) where
   fl-prefixᵐ false xs ys L i j e = fl-prefix xs ys L (suc i) j e
 
   -- the alloc's code scans to its labels: the bump's at 13, the end's at 17
-  path-ne : ∀ s s′ n n′ → ¬ s ≡ s′ → (mkLabelId alloc-owner (s ∷ []) n ≡ᵇᴵ mkLabelId alloc-owner (s′ ∷ []) n′) ≡ false
-  path-ne s s′ n n′ ne = dec-false (mkLabelId alloc-owner (s ∷ []) n ≟ᴵ mkLabelId alloc-owner (s′ ∷ []) n′)
-                                   (λ e → ne (head-eq (cong LabelId.path e)))
-    where
-      head-eq : ∀ {a b : ℕ} → a ∷ [] ≡ b ∷ [] → a ≡ b
-      head-eq refl = refl
-
-  idx-ne : ∀ s → (mkLabelId alloc-owner (s ∷ []) 0 ≡ᵇᴵ mkLabelId alloc-owner (s ∷ []) 1) ≡ false
-  idx-ne s = dec-false (mkLabelId alloc-owner (s ∷ []) 0 ≟ᴵ mkLabelId alloc-owner (s ∷ []) 1) (λ e → zero≢ (cong LabelId.idx e))
-    where
-      zero≢ : ¬ (0 ≡ 1)
-      zero≢ ()
+  idx-ne : ∀ s → (alloc-label s 0 ≡ᵇᴵ alloc-label s 1) ≡ false
+  idx-ne s = dec-false (alloc-label s 0 ≟ᴵ alloc-label s 1) (λ e → Data.Nat.Properties.<-irrefl (cong LabelId.idx e) (Data.Nat.Properties.n<1+n (s + s)))
 
   -- the alloc's code past its bump label
   alloc-tail : ℕ → ℕ → AbstractTrace
@@ -394,34 +383,50 @@ module _ (C : Classes) where
 
   open FlatMachine {FS} using (label-of?-sound)
 
-  -- a site's labels are none of another site's
-  other-site : ∀ s s′ n (L : LabelId) → LabelId.path L ≡ s′ ∷ [] → ¬ s ≡ s′
-             → (mkLabelId alloc-owner (s ∷ []) n ≡ᵇᴵ L) ≡ false
-  other-site s s′ n L pe ne = dec-false (mkLabelId alloc-owner (s ∷ []) n ≟ᴵ L) (λ e → ne (head-eq (trans (cong LabelId.path e) pe)))
-    where
-      head-eq : ∀ {a b : ℕ} → a ∷ [] ≡ b ∷ [] → a ≡ b
-      head-eq refl = refl
+  -- a site's labels are none of another site's (their indices: `b + 2·site`, `b ≤ 1`)
+  private
+    dbl-odd : ∀ a b → ¬ (a + a ≡ suc (b + b))
+    dbl-odd zero    b       ()
+    dbl-odd (suc a) zero    e = dbl-zero (trans (sym (Data.Nat.Properties.+-suc a a)) (Data.Nat.Properties.suc-injective e))
+      where dbl-zero : ¬ (suc (a + a) ≡ 0)
+            dbl-zero ()
+    dbl-odd (suc a) (suc b) e = dbl-odd a b (Data.Nat.Properties.suc-injective
+                                  (trans (sym (Data.Nat.Properties.+-suc a a)) (trans (Data.Nat.Properties.suc-injective e) (cong suc (Data.Nat.Properties.+-suc b b)))))
+    dbl-inj : ∀ a b → a + a ≡ b + b → a ≡ b
+    dbl-inj zero    zero    _ = refl
+    dbl-inj zero    (suc b) ()
+    dbl-inj (suc a) zero    ()
+    dbl-inj (suc a) (suc b) e = cong suc (dbl-inj a b (Data.Nat.Properties.suc-injective
+                                  (trans (sym (Data.Nat.Properties.+-suc a a)) (trans (Data.Nat.Properties.suc-injective e) (Data.Nat.Properties.+-suc b b)))))
+    site-of : ∀ s s′ n n′ → n ≤ 1 → n′ ≤ 1 → n + (s + s) ≡ n′ + (s′ + s′) → s ≡ s′
+    site-of s s′ zero    zero    _ _ e = dbl-inj s s′ e
+    site-of s s′ zero    (suc zero) _ _ e = ⊥-elim (dbl-odd s s′ e)
+    site-of s s′ (suc zero) zero    _ _ e = ⊥-elim (dbl-odd s′ s (sym e))
+    site-of s s′ (suc zero) (suc zero) _ _ e = dbl-inj s s′ (Data.Nat.Properties.suc-injective e)
+    site-of s s′ (suc (suc _)) _ (s≤s ()) _ _
+    site-of s s′ _ (suc (suc _)) _ (s≤s ()) _
 
-  alloc-nol′ : ∀ site k (L : LabelId) s′ → LabelId.path L ≡ s′ ∷ [] → ¬ site ≡ s′ → AllNoL L (alloc-code C site k)
+  other-site : ∀ s s′ n (L : LabelId) → n ≤ 1 → SiteL L s′ → ¬ s ≡ s′
+             → (alloc-label s n ≡ᵇᴵ L) ≡ false
+  other-site s s′ n L nb (b , bb , refl) ne = dec-false (alloc-label s n ≟ᴵ alloc-label s′ b) (λ e → ne (site-of s s′ n b nb bb (cong LabelId.idx e)))
+
+  alloc-nol′ : ∀ site k (L : LabelId) s′ → SiteL L s′ → ¬ site ≡ s′ → AllNoL L (alloc-code C site k)
   alloc-nol′ site k L s′ pe ne =
       plain refl ∷ᴺ plain refl ∷ᴺ plain refl ∷ᴺ plain refl ∷ᴺ plain refl ∷ᴺ plain refl ∷ᴺ plain refl
     ∷ᴺ plain refl ∷ᴺ plain refl ∷ᴺ plain refl ∷ᴺ plain refl ∷ᴺ plain refl ∷ᴺ plain refl
-    ∷ᴺ lbl 0 ∷ᴺ plain refl ∷ᴺ plain refl ∷ᴺ plain refl ∷ᴺ lbl 1 ∷ᴺ []ᴺ
+    ∷ᴺ lbl 0 z≤n ∷ᴺ plain refl ∷ᴺ plain refl ∷ᴺ plain refl ∷ᴺ lbl 1 (s≤s z≤n) ∷ᴺ []ᴺ
     where
-      lbl : ∀ n → NoL L (instr-ctrl (c-label (mkLabelId alloc-owner (site ∷ []) n)))
-      lbl n = nol (λ { .(mkLabelId alloc-owner (site ∷ []) n) refl → other-site site s′ n L pe ne })
+      lbl : ∀ n → n ≤ 1 → NoL L (instr-ctrl (c-label (alloc-label site n)))
+      lbl n nb = nol (λ { .(alloc-label site n) refl → other-site site s′ n L nb pe ne })
 
   -- an image instruction kept as it is holds no label of a site's
-  kept-nol : ∀ x (L : LabelId) s′ → LabelId.path L ≡ s′ ∷ [] → (∀ m → x ≡ instr-ctrl (c-label m) → LabelId.path m ≡ []) → NoL L x
-  kept-nol x L s′ pe img = nol λ m e → dec-false (m ≟ᴵ L) (λ eq → nil≢ (trans (sym (img m (label-of?-sound x m e))) (trans (cong LabelId.path eq) pe)))
-    where
-      nil≢ : ¬ ([] ≡ s′ ∷ [])
-      nil≢ ()
+  kept-nol : ∀ x (L : LabelId) s′ → SiteL L s′ → (∀ m → x ≡ instr-ctrl (c-label m) → ImgL m) → NoL L x
+  kept-nol x L s′ (b , _ , refl) img = nol λ m e → dec-false (m ≟ᴵ alloc-label s′ b) (λ eq → img m (label-of?-sound x m e) (cong LabelId.owner eq))
 
   -- ★ the expanded program's scan of an alloc's label: at its site's mapped pc
-  own-label : ∀ t Q n k (L : LabelId) j → fetch Q n ≡ just (instr-alloc-heap k) → LabelId.path L ≡ (n + t) ∷ []
+  own-label : ∀ t Q n k (L : LabelId) j → fetch Q n ≡ just (instr-alloc-heap k) → SiteL L (n + t)
             → (∀ i → fl-go (alloc-code C (n + t) k) L i ≡ just (j + i))
-            → (∀ n′ m → fetch Q n′ ≡ just (instr-ctrl (c-label m)) → LabelId.path m ≡ [])
+            → (∀ n′ m → fetch Q n′ ≡ just (instr-ctrl (c-label m)) → ImgL m)
             → ∀ i → fl-go (expand-from C t Q) L i ≡ just (j + (i + off t Q n))
   own-label t []      n k L j () pe sc img i
   own-label t (x ∷ Q) zero k L j refl pe sc img i =
@@ -429,11 +434,15 @@ module _ (C : Classes) where
           (cong (λ z → just (j + z)) (sym (+-identityʳ i)))
   own-label t (x ∷ Q) (suc n) k L j f pe sc img i =
     trans (fl-go-++-miss (expand-at C t x) (expand-from C (suc t) Q) L i (nol-go (expand-at C t x) i (here-nol (exp-view t x))))
-      (trans (own-label (suc t) Q n k L j f (trans pe (cong (_∷ []) (sym (+-suc n t)))) (λ i′ → trans (cong (λ z → fl-go (alloc-code C z k) L i′) (+-suc n t)) (sc i′))
+      (trans (own-label (suc t) Q n k L j f (shift pe) (λ i′ → trans (cong (λ z → fl-go (alloc-code C z k) L i′) (+-suc n t)) (sc i′))
                 (λ n′ m e → img (suc n′) m e) (length (expand-at C t x) + i))
              (cong (λ z → just (j + z)) (trans (cong (_+ off (suc t) Q n) (+-comm (length (expand-at C t x)) i))
                                                (+-assoc i (length (expand-at C t x)) (off (suc t) Q n)))))
     where
+      shift : SiteL L (suc n + t) → SiteL L (n + suc t)
+      shift (b , bb , e) = b , bb , trans e (cong (alloc-label′ b) (sym (+-suc n t)))
+        where alloc-label′ : ℕ → ℕ → LabelId
+              alloc-label′ b′ z = alloc-label z b′
       t≢ : ¬ t ≡ suc n + t
       t≢ e = Data.Nat.Properties.m≢1+n+m t e
         where import Data.Nat.Properties

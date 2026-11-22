@@ -311,7 +311,7 @@ module AStep (C : Classes) (P : AbstractTrace) (Sz : ℕ → Set)
              (fits     : ∀ k → k ≤ bsz C k)
              (in-range : ∀ k → cls C k < count C)
              (sz-alloc : ∀ n k → fetch P n ≡ just (instr-alloc-heap k) → Sz k)
-             (img      : ∀ n m → fetch P n ≡ just (instr-ctrl (c-label m)) → LabelId.path m ≡ []) where
+             (img      : ∀ n m → fetch P n ≡ just (instr-ctrl (c-label m)) → ImgL m) where
   open Rel
 
   E = expand C P
@@ -342,9 +342,9 @@ module AStep (C : Classes) (P : AbstractTrace) (Sz : ℕ → Set)
     at-gs : ∀ j → j + (0 + off C 0 P pc) ≡ j + fpc gs
     at-gs j = cong (j +_) (sym (r-pc R))
     fl-done : find-label E (lb-done site) ≡ just (17 + fpc gs)
-    fl-done = trans (own-label C 0 P pc k (lb-done site) 17 f refl (scan-done C site k) img 0) (cong just (at-gs 17))
+    fl-done = trans (own-label C 0 P pc k (lb-done site) 17 f (1 , s≤s z≤n , refl) (scan-done C site k) img 0) (cong just (at-gs 17))
     fl-bump : find-label E (lb-bump site) ≡ just (13 + fpc gs)
-    fl-bump = trans (own-label C 0 P pc k (lb-bump site) 13 f refl (scan-bump C site k) img 0) (cong just (at-gs 13))
+    fl-bump = trans (own-label C 0 P pc k (lb-bump site) 13 f (0 , z≤n , refl) (scan-bump C site k) img 0) (cong just (at-gs 13))
 
     hg : LocState.halted (floc gs) ≡ false
     hg = trans (L.LRel.l-halt (r-loc R)) hx

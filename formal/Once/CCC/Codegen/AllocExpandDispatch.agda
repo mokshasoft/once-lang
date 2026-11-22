@@ -50,9 +50,9 @@ module _ (C : Classes) (P : AbstractTrace) (Sz : ℕ → Set)
          (in-range : ∀ k → cls C k < count C)
          (sz-alloc : ∀ n k → fetch P n ≡ just (instr-alloc-heap k) → Sz k)
          (sz-free  : ∀ n k → fetch P n ≡ just (instr-free-heap k) → Sz k)
-         (img      : ∀ n m → fetch P n ≡ just (instr-ctrl (c-label m)) → LabelId.path m ≡ [])
-         (jmp-lbl  : ∀ n m → fetch P n ≡ just (instr-ctrl (c-jmp m)) → LabelId.path m ≡ [])
-         (br-lbl   : ∀ n m → fetch P n ≡ just (instr-ctrl (c-branch-tag-zero m)) → LabelId.path m ≡ []) where
+         (img      : ∀ n m → fetch P n ≡ just (instr-ctrl (c-label m)) → ImgL m)
+         (jmp-lbl  : ∀ n m → fetch P n ≡ just (instr-ctrl (c-jmp m)) → ImgL m)
+         (br-lbl   : ∀ n m → fetch P n ≡ just (instr-ctrl (c-branch-tag-zero m)) → ImgL m) where
   open Rel
   module S = Once.CCC.Codegen.AllocExpandSim {FS}
   E = expand C P

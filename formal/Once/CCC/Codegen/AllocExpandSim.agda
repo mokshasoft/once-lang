@@ -596,7 +596,7 @@ module _ (C : Classes) (P : AbstractTrace) (Sz : ℕ → Set) where
   jump-rel R (just pc′) = core-gen R (moves-at R pc′) (r-loc R) (r-clo R) (λ q _ → refl)
   jump-rel R nothing    = core-gen R (moves-stay R _ _) (halt-only R) (r-clo R) (λ q _ → refl)
 
-  step-jmp : ∀ {fs gs} (R : Rel C P Sz fs gs) l → LabelId.path l ≡ [] → fetch P (fpc fs) ≡ just (instr-ctrl (c-jmp l))
+  step-jmp : ∀ {fs gs} (R : Rel C P Sz fs gs) l → ImgL l → fetch P (fpc fs) ≡ just (instr-ctrl (c-jmp l))
            → Rel C P Sz (flat-exec-instr (instr-ctrl (c-jmp l)) P fs) (flat-exec-instr (instr-ctrl (c-jmp l)) E gs)
   step-jmp {fs} {gs} R l pe f =
     subst (λ m → Rel C P Sz (do-jump (find-label P l) fs) (do-jump m gs)) (sym (fl-exp C 0 P l 0 pe)) (jump-rel R (find-label P l))
@@ -634,7 +634,7 @@ module _ (C : Classes) (P : AbstractTrace) (Sz : ℕ → Set) where
             trans (cong tag-test (L.LRel.l-heap (r-loc R) hl v (L.LRel.l-live (r-loc R) hl v e) e))
                   (trans (tag-rv (ρ R) (just v)) (cong tag-test (sym e)))
 
-  step-branch : ∀ {fs gs} (R : Rel C P Sz fs gs) l → LabelId.path l ≡ [] → fetch P (fpc fs) ≡ just (instr-ctrl (c-branch-tag-zero l))
+  step-branch : ∀ {fs gs} (R : Rel C P Sz fs gs) l → ImgL l → fetch P (fpc fs) ≡ just (instr-ctrl (c-branch-tag-zero l))
               → LocState.faulted (floc (flat-exec-instr (instr-ctrl (c-branch-tag-zero l)) P fs)) ≡ false
               → Rel C P Sz (flat-exec-instr (instr-ctrl (c-branch-tag-zero l)) P fs) (flat-exec-instr (instr-ctrl (c-branch-tag-zero l)) E gs)
   step-branch {fs} {gs} R l pe f nf =

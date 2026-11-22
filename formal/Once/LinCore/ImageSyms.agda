@@ -95,6 +95,7 @@ import Once.LinCore.ImageOwned
 import Once.LinCore.ImageBlocks
 open import Once.LinCore.Jumps fmt ans bw using (jump-of; jmp; Jmps; Jmps-nj; mvPS-nj; mvSP-nj; module Closed; module Free)
 
+import Once.CCC.Codegen.AllocExpand
 module LI = Once.LinCore.LabelsI fmt ans bw
 module EI = Once.LinCore.EntriesI fmt ans bw
 module IAll = Once.LinCore.ImageAll fmt ans bw
@@ -541,18 +542,20 @@ module Img (nm : CanonicalName) {Γ} (ds : Defs Γ) (f : LTm Γ One One)
             lab-up (just _) q = there q
             lab-up nothing  q = q
 
-    path-of : ∀ {m} → m ∈ Labs image → LabelId.path m ≡ []
+    path-of : ∀ {m} → m ∈ Labs image → Once.CCC.Codegen.AllocExpand.ImgL m
     path-of p = path-jl (Data.List.Relation.Unary.All.lookup labs-shape p)
-      where path-jl : ∀ {m} → (Σ ℕ λ j → Σ ℕ λ k → m ≡ jl j k) → LabelId.path m ≡ []
-            path-jl (_ , _ , refl) = refl
+      where path-jl : ∀ {m} → (Σ ℕ λ j → Σ ℕ λ k → m ≡ jl j k) → Once.CCC.Codegen.AllocExpand.ImgL m
+            path-jl (j , _ , refl) e = two≢one (trans (sym (nameOf-two j)) (cong (λ c → length (CanonicalName.parts c)) e))
+              where two≢one : 2 ≡ 1 → ⊥
+                    two≢one ()
 
-  img-path : ∀ n m → fetch image n ≡ just (instr-ctrl (c-label m)) → LabelId.path m ≡ []
+  img-path : ∀ n m → fetch image n ≡ just (instr-ctrl (c-label m)) → Once.CCC.Codegen.AllocExpand.ImgL m
   img-path n m f = path-of (lab-in image (fetch-∈ {FS} image n f))
 
-  jmp-path : ∀ n m → fetch image n ≡ just (instr-ctrl (c-jmp m)) → LabelId.path m ≡ []
+  jmp-path : ∀ n m → fetch image n ≡ just (instr-ctrl (c-jmp m)) → Once.CCC.Codegen.AllocExpand.ImgL m
   jmp-path n m f = path-of (Data.List.Relation.Unary.All.lookup (jmp-pt image jumps-in) (fetch-∈ {FS} image n f) m refl)
 
-  br-path : ∀ n m → fetch image n ≡ just (instr-ctrl (c-branch-tag-zero m)) → LabelId.path m ≡ []
+  br-path : ∀ n m → fetch image n ≡ just (instr-ctrl (c-branch-tag-zero m)) → Once.CCC.Codegen.AllocExpand.ImgL m
   br-path n m f = path-of (Data.List.Relation.Unary.All.lookup (jmp-pt image jumps-in) (fetch-∈ {FS} image n f) m refl)
 
   private

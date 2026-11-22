@@ -33,12 +33,15 @@
 module Once.CCC.Codegen.AllocExpand where
 
 open import Data.List using (List; []; _∷_; _++_; map; length)
-open import Data.Nat using (ℕ; zero; suc; _+_)
+open import Data.Nat using (ℕ; zero; suc; _+_; _≤_)
 open import Once.CCC.Machine.SMCore
   using (AbstractInstr; AbstractTrace; instr-ctrl; instr-alloc-heap; instr-free-heap; instr-load-tag-lit
         ; load-rec; store-rec; load-at; store-at; mov-to-input; mov-to-output
         ; c-label; c-jmp; c-branch-tag-zero; c-start)
-open import Once.CCC.Label using (LabelId; mkLabelId)
+open import Once.CCC.Label using (LabelId; mkLabelId; module LabelId)
+open import Data.Empty using (⊥)
+open import Data.Product using (Σ; _×_)
+open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.Spec.Name using (canonical)
 
 ------------------------------------------------------------------------
@@ -65,15 +68,28 @@ rec-words : Classes → ℕ
 rec-words C = 3 + count C
 
 ------------------------------------------------------------------------
--- Labels: the expansion's own, apart from every image label (theirs have an
--- empty path, `LinCore.Lower.jl`/`tl`), one pair per allocation site
+-- Labels: the expansion's own, apart from every image label by their owner
+-- (an image's is a block's name, `LinCore.Lower.jl`/`tl`), one pair per
+-- allocation site at indices `2·site` and `2·site + 1` (an empty path, so
+-- their symbols read back as every image label's: `LabelSymInj`)
 ------------------------------------------------------------------------
 
 alloc-owner = canonical ("once-alloc" ∷ [])
 
+alloc-label : ℕ → ℕ → LabelId
+alloc-label site n = mkLabelId alloc-owner [] (n + (site + site))
+
 lb-bump lb-done : ℕ → LabelId
-lb-bump site = mkLabelId alloc-owner (site ∷ []) 0
-lb-done site = mkLabelId alloc-owner (site ∷ []) 1
+lb-bump site = alloc-label site 0
+lb-done site = alloc-label site 1
+
+-- an image's label: not the expansion's owner
+ImgL : LabelId → Set
+ImgL m = LabelId.owner m ≡ alloc-owner → ⊥
+
+-- one of a site's two labels
+SiteL : LabelId → ℕ → Set
+SiteL L s = Σ ℕ λ b → (b ≤ 1) × (L ≡ alloc-label s b)
 
 ------------------------------------------------------------------------
 -- The expansions

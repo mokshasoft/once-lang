@@ -72,9 +72,9 @@ module _ (C : Classes) (small : 3 + count C ≤ rec-size)
 
   module _ (sz-alloc : ∀ n k → fetch P n ≡ just (instr-alloc-heap k) → Sz k)
            (sz-free  : ∀ n k → fetch P n ≡ just (instr-free-heap k) → Sz k)
-           (img      : ∀ n m → fetch P n ≡ just (instr-ctrl (c-label m)) → LabelId.path m ≡ [])
-           (jmp-lbl  : ∀ n m → fetch P n ≡ just (instr-ctrl (c-jmp m)) → LabelId.path m ≡ [])
-           (br-lbl   : ∀ n m → fetch P n ≡ just (instr-ctrl (c-branch-tag-zero m)) → LabelId.path m ≡ [])
+           (img      : ∀ n m → fetch P n ≡ just (instr-ctrl (c-label m)) → ImgL m)
+           (jmp-lbl  : ∀ n m → fetch P n ≡ just (instr-ctrl (c-jmp m)) → ImgL m)
+           (br-lbl   : ∀ n m → fetch P n ≡ just (instr-ctrl (c-branch-tag-zero m)) → ImgL m)
            (no-lrec  : ∀ n k → fetch P n ≡ just (load-rec k) → ⊥)
            (no-srec  : ∀ n k → fetch P n ≡ just (store-rec k) → ⊥)
            (em : Emitted P) (snd : Sound P start) where
