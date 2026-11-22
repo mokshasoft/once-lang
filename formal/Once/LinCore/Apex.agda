@@ -151,10 +151,6 @@ module NewImage (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Uni
   blocks-eq = refl
 
   -- ★★ THE FILE THE COMPILER WRITES (`ExprImage.fileAt`) runs with the program's trace
-  file-at : (ex : List String) → Owed
-          → run-file (Once.LinCore.ExprImage.fileAt (fs-numerics FS) B IT.BF.tl IT.BF.mpm ex) ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (fs-numerics FS) (FrameSemantics.fs-interp FS)
-  file-at ex O = subst₂ (λ P bs′ → run-file (Backend.file B (room-checks P) (file-table (Backend.payload B) bs′) ex) ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (fs-numerics FS) (FrameSemantics.fs-interp FS))
-                        image-eq blocks-eq (file-trᴺ ex O)
 
   -- ★★ THE FILE IS WHAT THE ASSEMBLER DEMANDS (D464): the image's symbols are well-formed
   -- (`ImageSyms.image-wf`), so the backend's file of it is (`ArchSim.file-wf`)
@@ -164,10 +160,6 @@ module NewImage (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Uni
   file-wfᴺ = file-wf _ _ bs (image-externs image) IS.image-wf
 
   -- …the file the compiler writes (`ExprImage.fileAt`, its externs the image's)
-  file-wf-at : Backend.AsmWF B (Once.LinCore.ExprImage.fileAt (fs-numerics FS) B IT.BF.tl IT.BF.mpm
-                                  (image-externs (Once.LinCore.ExprImage.imageAt (fs-numerics FS) IT.BF.tl IT.BF.mpm)))
-  file-wf-at = subst₂ (λ P bs′ → Backend.AsmWF B (Backend.file B (room-checks P) (file-table (Backend.payload B) bs′) (image-externs P)))
-                      image-eq blocks-eq file-wfᴺ
 
   ------------------------------------------------------------------------
   -- ★★ THE ALLOCATOR'S EXPANSION OF THE IMAGE ON THE ARCH (D468, the pool:
@@ -175,8 +167,9 @@ module NewImage (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Uni
   ------------------------------------------------------------------------
 
   module XS = Once.Adequacy.ArchCorrectness.ExpandSim o A
-  module PL = Once.CCC.Codegen.AllocExpandClasses.Pool {FS} image
-  module CL = Once.CCC.Codegen.AllocExpandClasses {FS}
+  module PL = Once.CCC.Codegen.AllocExpandClasses.Pool image
+  module CL = Once.CCC.Codegen.AllocExpandClasses
+  module CLF = Once.CCC.Codegen.AllocExpandClasses.Fetch {FS}
   module CD = Once.CCC.Codegen.AllocExpandEmitted.Code {FS} PL.C PL.small PL.in-range PL.fits
   module EM = Once.CCC.Codegen.AllocExpandEmitted {FS}
 
@@ -211,7 +204,32 @@ module NewImage (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Uni
   conc-trˣ : Owed
            → Machine.trace (δ env (compile P″)) init ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (fs-numerics FS) (FrameSemantics.fs-interp FS)
   conc-trˣ O = XS.sim-exp PL.C PL.small PL.in-range PL.fits (irProgram tbl ir) IA.em-budget IA.tail env
-                 (CL.Sz image) PL.uniform (CL.sz-alloc image) (CL.sz-free image)
+                 (CL.Sz image) PL.uniform (CLF.sz-alloc image) (CLF.sz-free image)
                  IS.img-path IS.jmp-path IS.br-path IAF.no-lrec IAF.no-srec emitted
                  (IT.flat-sound (λ {b} v → ML.ld {b} v image))
                  (table P″ bs namedˣ (ext-missˣ O)) (IT.flat-ir (λ {b} v → ML.ld {b} v image))
+
+  -- ★★ THE FILE OF THE EXPANSION (what the compiler writes: `ExprImage.fileAt`) runs with the
+  -- program's trace, and is what the assembler demands
+  file-trˣ : (ex : List String) → Owed
+           → run-file (Backend.file B P″ (file-table (Backend.payload B) bs) ex) ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (fs-numerics FS) (FrameSemantics.fs-interp FS)
+  file-trˣ ex O = subst (λ T → T ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (fs-numerics FS) (FrameSemantics.fs-interp FS)) (sym (file-runs P″ bs ex)) (conc-trˣ O)
+
+  file-atˣ : (ex : List String) → Owed
+           → run-file (Once.LinCore.ExprImage.fileAt (fs-numerics FS) B IT.BF.tl IT.BF.mpm ex) ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (fs-numerics FS) (FrameSemantics.fs-interp FS)
+  file-atˣ ex O = file-trˣ ex O
+
+  module ISX = IS.Xp PL.C
+
+  file-wf-atˣ : Backend.AsmWF B (Once.LinCore.ExprImage.fileAt (fs-numerics FS) B IT.BF.tl IT.BF.mpm
+                                   (image-externs (Once.LinCore.ExprImage.imageAt (fs-numerics FS) IT.BF.tl IT.BF.mpm)))
+  file-wf-atˣ = file-wf _ _ bs (image-externs image) ISX.image-wfˣ
+
+  file-at : (ex : List String) → Owed
+          → run-file (Once.LinCore.ExprImage.fileAt (fs-numerics FS) B IT.BF.tl IT.BF.mpm ex) ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (fs-numerics FS) (FrameSemantics.fs-interp FS)
+  -- (D468: the compiler writes the allocator's expansion of the image: `file-trˣ` below)
+  file-at ex O = file-atˣ ex O
+
+  file-wf-at : Backend.AsmWF B (Once.LinCore.ExprImage.fileAt (fs-numerics FS) B IT.BF.tl IT.BF.mpm
+                                  (image-externs (Once.LinCore.ExprImage.imageAt (fs-numerics FS) IT.BF.tl IT.BF.mpm)))
+  file-wf-at = file-wf-atˣ

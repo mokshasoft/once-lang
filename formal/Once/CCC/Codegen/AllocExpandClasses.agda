@@ -15,7 +15,7 @@
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 
-module Once.CCC.Codegen.AllocExpandClasses {FS : FrameSemantics} where
+module Once.CCC.Codegen.AllocExpandClasses where
 
 open import Data.List using (List; []; _∷_; _++_; foldr)
 open import Data.List.Membership.Propositional using (_∈_)
@@ -27,7 +27,6 @@ open import Data.Nat.Properties using (m≤m⊔n; m≤n⊔m; ≤-trans; m≤n⇒
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 open import Once.CCC.Machine.SMCore
 open import Once.CCC.Machine.Flat using (module FlatMachine)
-open FlatMachine {FS} using (fetch)
 open import Once.CCC.Codegen.AllocExpand
 open Classes
 
@@ -48,16 +47,19 @@ sizes (i ∷ t) = size-of i ++ sizes t
 Sz : AbstractTrace → ℕ → Set
 Sz P k = k ∈ sizes P
 
-sz-at : ∀ P n i k → fetch P n ≡ just i → size-of i ≡ k ∷ [] → Sz P k
-sz-at []      n       i k ()
-sz-at (x ∷ P) zero    i k refl e = ∈-++⁺ˡ (subst (k ∈_) (sym e) (here refl))
-sz-at (x ∷ P) (suc n) i k f e = ∈-++⁺ʳ (size-of x) (sz-at P n i k f e)
+module Fetch {FS : FrameSemantics} where
+  open FlatMachine {FS} using (fetch)
 
-sz-alloc : ∀ P n k → fetch P n ≡ just (instr-alloc-heap k) → Sz P k
-sz-alloc P n k f = sz-at P n _ k f refl
+  sz-at : ∀ P n i k → fetch P n ≡ just i → size-of i ≡ k ∷ [] → Sz P k
+  sz-at []      n       i k ()
+  sz-at (x ∷ P) zero    i k refl e = ∈-++⁺ˡ (subst (k ∈_) (sym e) (here refl))
+  sz-at (x ∷ P) (suc n) i k f e = ∈-++⁺ʳ (size-of x) (sz-at P n i k f e)
 
-sz-free : ∀ P n k → fetch P n ≡ just (instr-free-heap k) → Sz P k
-sz-free P n k f = sz-at P n _ k f refl
+  sz-alloc : ∀ P n k → fetch P n ≡ just (instr-alloc-heap k) → Sz P k
+  sz-alloc P n k f = sz-at P n _ k f refl
+
+  sz-free : ∀ P n k → fetch P n ≡ just (instr-free-heap k) → Sz P k
+  sz-free P n k f = sz-at P n _ k f refl
 
 ------------------------------------------------------------------------
 -- ★ The pool: one list, every block the largest size

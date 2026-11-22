@@ -28,6 +28,8 @@ import Once.LinCore.ExprBuild
 import Once.LinCore.Lower
 import Once.LinCore.Keys
 import Once.LinCore.ImageBlocks
+import Once.CCC.Codegen.AllocExpand
+import Once.CCC.Codegen.AllocExpandClasses
 
 -- the image of the bridge's program over the sources `tl`, main at `pm` (before its room checks)
 imageAt : List CompiledSrc → ∀ {T : Type} → T <: EffUU → AbstractTrace
@@ -43,5 +45,10 @@ blocksAt tl pm =
       (Once.LinCore.ExprBuild.mainCore fmt (Once.LinCore.ExprBuild.ETProg.rs (Once.LinCore.ExprBuild.exprTable fmt tl)) pm))
 
 -- ★ its file, by a backend: the room-checked image, its blocks' table, the externs
+-- D468: the image with its cells through the allocator's free lists (the pool:
+-- `AllocExpandClasses.pool`), what the compiler emits
+imageAtˣ : List CompiledSrc → ∀ {T : Type} → T <: EffUU → AbstractTrace
+imageAtˣ tl pm = Once.CCC.Codegen.AllocExpand.expand (Once.CCC.Codegen.AllocExpandClasses.pool (imageAt tl pm)) (imageAt tl pm)
+
 fileAt : (B : Backend) → List CompiledSrc → ∀ {T : Type} → T <: EffUU → List String → Backend.File B
-fileAt B tl pm ex = Backend.file B (room-checks (imageAt tl pm)) (file-table (Backend.payload B) (blocksAt tl pm)) ex
+fileAt B tl pm ex = Backend.file B (room-checks (imageAtˣ tl pm)) (file-table (Backend.payload B) (blocksAt tl pm)) ex
