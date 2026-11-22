@@ -30,6 +30,7 @@ module Once.CCC.Codegen.AllocExpandRel {FS : FrameSemantics} where
 open import Data.Bool using (Bool; true; false)
 open import Data.List using (List; []; _∷_; map)
 open import Data.List.Membership.Propositional using (_∈_)
+open import Data.List.Relation.Unary.Unique.Propositional using (Unique)
 open import Data.Maybe using (Maybe; just; nothing)
 import Data.Maybe
 open import Data.Nat using (ℕ; zero; suc; _+_; _<_; _≤_)
@@ -107,6 +108,14 @@ module _ (C : Classes) (P : AbstractTrace) (Sz : ℕ → Set) where
       -- the free blocks and the sentinel are past the record
       r-lpos  : ∀ c b → b ∈ lists c → 0 < b
       r-σpos  : 0 < σ
+      -- the free blocks: handed out, not the sentinel, each on one list once
+      r-lbelow : ∀ c b → b ∈ lists c → b < AllocState.next-heap-ref (falloc gs)
+      r-lσ     : ∀ c b → b ∈ lists c → ¬ b ≡ σ
+      r-luniq  : ∀ c → Unique (lists c)
+      r-lone   : ∀ c c′ b → b ∈ lists c → b ∈ lists c′ → c ≡ c′
+      r-σbelow : σ < AllocState.next-heap-ref (falloc gs)
+      -- the primitive's counter is past the record
+      r-pnext  : 0 < AllocState.next-heap-ref (falloc fs)
 
       -- the two runs' own invariants
       r-nofree  : ∀ r → AllocState.freed (falloc gs) r ≡ false

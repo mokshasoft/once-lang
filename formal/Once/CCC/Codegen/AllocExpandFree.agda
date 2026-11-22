@@ -231,6 +231,10 @@ open import Once.CCC.Codegen.AllocExpandRen {FS} using (rhl; rv)
 open import Once.CCC.Codegen.AllocExpandPc {FS} using (off; off-suc; fetch-exp)
 open import Once.CCC.Codegen.AllocExpandStep {FS} using (module L)
 open import Data.List.Membership.Propositional using (_∈_)
+open import Data.List.Relation.Unary.All using (All)
+import Data.List.Relation.Unary.All
+open import Data.List.Relation.Unary.Unique.Propositional using (Unique)
+open import Data.List.Relation.Unary.AllPairs using (_∷_)
 open import Data.List.Relation.Unary.Any using (here; there)
 open FlatMachine {FS} using (straight-go; straight-at; flat-fault)
 import Data.Nat.Properties
@@ -428,8 +432,30 @@ module Step (C : Classes) (P : AbstractTrace) (Sz : ℕ → Set)
             ; r-unsized = r-unsized R
             ; r-rec0 = r-rec0 R
             ; r-csize = λ r′ l → r-csize R r′ (proj₁ (to′ r′ l))
-            ; r-lsize = λ c b′ m k′ z ec → lsize c b′ (push-mem (c Data.Nat.≟ c₀) (ρ R r) (lists R c) b′ m) k′ z ec }
+            ; r-lsize = λ c b′ m k′ z ec → lsize c b′ (push-mem (c Data.Nat.≟ c₀) (ρ R r) (lists R c) b′ m) k′ z ec
+            ; r-lbelow = λ c b′ m → lbelow c b′ (push-mem (c Data.Nat.≟ c₀) (ρ R r) (lists R c) b′ m)
+            ; r-lσ = λ c b′ m → lσ c b′ (push-mem (c Data.Nat.≟ c₀) (ρ R r) (lists R c) b′ m)
+            ; r-luniq = λ c → luniq c (c Data.Nat.≟ c₀)
+            ; r-lone = λ c c′ b′ m m′ → lone c c′ b′ (push-mem (c Data.Nat.≟ c₀) (ρ R r) (lists R c) b′ m) (push-mem (c′ Data.Nat.≟ c₀) (ρ R r) (lists R c′) b′ m′)
+            ; r-σbelow = r-σbelow R ; r-pnext = r-pnext R }
             where
+              lbelow : ∀ c b′ → (c ≡ c₀ × b′ ≡ ρ R r) Data.Sum.⊎ b′ ∈ lists R c → b′ < AllocState.next-heap-ref (falloc G)
+              lbelow c b′ (Data.Sum.inj₁ (_ , refl)) = proj₂ rb
+              lbelow c b′ (Data.Sum.inj₂ m) = r-lbelow R c b′ m
+              lσ : ∀ c b′ → (c ≡ c₀ × b′ ≡ ρ R r) Data.Sum.⊎ b′ ∈ lists R c → ¬ b′ ≡ σ R
+              lσ c b′ (Data.Sum.inj₁ (_ , refl)) = r-not-σ R r lv
+              lσ c b′ (Data.Sum.inj₂ m) = r-lσ R c b′ m
+              -- the pushed block was on no list
+              off-lists : ∀ c → All (λ y → ¬ ρ R r ≡ y) (lists R c)
+              off-lists c = Data.List.Relation.Unary.All.tabulate (λ {y} m e′ → r-not-free R r c y lv m e′)
+              luniq : ∀ c (d : Relation.Nullary.Dec (c ≡ c₀)) → Unique (push-at d (ρ R r) (lists R c))
+              luniq c (yes _) = off-lists c ∷ r-luniq R c
+              luniq c (no _)  = r-luniq R c
+              lone : ∀ c c′ b′ → (c ≡ c₀ × b′ ≡ ρ R r) Data.Sum.⊎ b′ ∈ lists R c → (c′ ≡ c₀ × b′ ≡ ρ R r) Data.Sum.⊎ b′ ∈ lists R c′ → c ≡ c′
+              lone c c′ b′ (Data.Sum.inj₁ (e₁ , _)) (Data.Sum.inj₁ (e₂ , _)) = trans e₁ (sym e₂)
+              lone c c′ b′ (Data.Sum.inj₁ (_ , refl)) (Data.Sum.inj₂ m′) = ⊥-elim (r-not-free R r c′ (ρ R r) lv m′ refl)
+              lone c c′ b′ (Data.Sum.inj₂ m) (Data.Sum.inj₁ (_ , refl)) = ⊥-elim (r-not-free R r c (ρ R r) lv m refl)
+              lone c c′ b′ (Data.Sum.inj₂ m) (Data.Sum.inj₂ m′) = r-lone R c c′ b′ m m′
               live′ : ∀ hl v → LocState.heapMem (floc fs′) hl ≡ just v → Live (falloc fs′) (ref-of hl)
               live′ hl v e′ = by (ref-of hl Data.Nat.≟ r)
                 where
