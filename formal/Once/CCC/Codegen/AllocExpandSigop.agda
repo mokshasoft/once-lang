@@ -124,3 +124,29 @@ module _ (ρ : ℕ → ℕ) (Lv : ℕ → Set) (inj : ∀ r r′ → Lv r → Lv
   read-rel (_ ⇒[ _ ] _) loc ()
   read-rel (μ _) loc ()
   read-rel (ν _ _) loc ()
+
+  open AbstractExec {FS} using (decode-at)
+  open import Once.Spec.Type using (Base; b-var; b-Unit; b-Void; b-Int; b-Float; b-*; b-+; ∅ₖ)
+
+  -- ★ the argument the primitive decodes, decoded alike from the renamed register
+  decode-rel : ∀ {A} (b : Base ∅ₖ A) v {a} → decode-at b v s ≡ just a → decode-at b (rv ρ v) t ≡ just a
+  decode-rel b-Unit  v e = e
+  decode-rel b-Int   (SV-Lit fits-int _)   e = e
+  decode-rel b-Int   (SV-Lit fits-float _) ()
+  decode-rel b-Int   (SV-Ptr _) ()
+  decode-rel b-Int   (SV-Tag _) ()
+  decode-rel b-Int   (SV-Code _) ()
+  decode-rel b-Float (SV-Lit fits-float _) e = e
+  decode-rel b-Float (SV-Lit fits-int _) ()
+  decode-rel b-Float (SV-Ptr _) ()
+  decode-rel b-Float (SV-Tag _) ()
+  decode-rel b-Float (SV-Code _) ()
+  decode-rel {A} (b-* _ _) (SV-Ptr loc) e = read-rel A loc e
+  decode-rel (b-* _ _) (SV-Lit _ _) ()
+  decode-rel (b-* _ _) (SV-Tag _) ()
+  decode-rel (b-* _ _) (SV-Code _) ()
+  decode-rel {A} (b-+ _ _) (SV-Ptr loc) e = read-rel A loc e
+  decode-rel (b-+ _ _) (SV-Lit _ _) ()
+  decode-rel (b-+ _ _) (SV-Tag _) ()
+  decode-rel (b-+ _ _) (SV-Code _) ()
+  decode-rel b-Void v ()
