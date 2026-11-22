@@ -188,3 +188,96 @@ step-hk (instr-alloc-stack k) prog fs na nf = abs-hk (instr-alloc-stack k) (floc
 step-hk (instr-dealloc-stack k) prog fs na nf = leave-step-hk (instr-dealloc-stack k) fs na nf
 step-hk (instr-push-frame k) prog fs na nf = abs-hk (instr-push-frame k) (floc fs) (falloc fs) na nf
 step-hk instr-pop-frame prog fs na nf = leave-step-hk instr-pop-frame fs na nf
+
+------------------------------------------------------------------------
+-- ★ Any step: the counter moves only by an allocation (by one); a block's
+-- freed mark is set only by a free of the block `Input1` points into
+------------------------------------------------------------------------
+
+open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Data.Product using (Σ)
+import Data.Product
+import Data.Nat.Properties
+import Relation.Binary.PropositionalEquality
+import Data.Bool
+open import Data.Nat using (suc)
+open import Data.Bool using (_∨_)
+open MemOps {FS} using ()
+open AbstractExec {FS} using (heapRefOf)
+
+-- an instruction is an allocation, a free, or neither
+data AFView : AbstractInstr → Set where
+  af-alloc : ∀ n → AFView (instr-alloc-heap n)
+  af-free  : ∀ n → AFView (instr-free-heap n)
+  af-other : ∀ {i} → NoAlloc i → NoFree i → AFView i
+
+af-view : ∀ i → AFView i
+af-view (instr-alloc-heap n) = af-alloc n
+af-view (instr-free-heap n)  = af-free n
+af-view mov-to-output = af-other (λ _ ()) (λ _ ())
+af-view mov-to-input = af-other (λ _ ()) (λ _ ())
+af-view load-indirect = af-other (λ _ ()) (λ _ ())
+af-view load-indirect-suc = af-other (λ _ ()) (λ _ ())
+af-view (load-from-slot _) = af-other (λ _ ()) (λ _ ())
+af-view (store-at-slot _) = af-other (λ _ ()) (λ _ ())
+af-view store-indirect = af-other (λ _ ()) (λ _ ())
+af-view store-indirect-suc = af-other (λ _ ()) (λ _ ())
+af-view (lea-slot _) = af-other (λ _ ()) (λ _ ())
+af-view (restore-input _) = af-other (λ _ ()) (λ _ ())
+af-view (instr-alloc-stack _) = af-other (λ _ ()) (λ _ ())
+af-view (instr-dealloc-stack _) = af-other (λ _ ()) (λ _ ())
+af-view (instr-reclaim-to _) = af-other (λ _ ()) (λ _ ())
+af-view (instr-push-frame _) = af-other (λ _ ()) (λ _ ())
+af-view instr-pop-frame = af-other (λ _ ()) (λ _ ())
+af-view instr-call-closure = af-other (λ _ ()) (λ _ ())
+af-view (worklist-init _) = af-other (λ _ ()) (λ _ ())
+af-view (worklist-push _) = af-other (λ _ ()) (λ _ ())
+af-view (worklist-pop _) = af-other (λ _ ()) (λ _ ())
+af-view (worklist-check _) = af-other (λ _ ()) (λ _ ())
+af-view (instr-sigop _) = af-other (λ _ ()) (λ _ ())
+af-view (instr-load-const _ _) = af-other (λ _ ()) (λ _ ())
+af-view (instr-load-code-addr _) = af-other (λ _ ()) (λ _ ())
+af-view instr-save-closure-reg = af-other (λ _ ()) (λ _ ())
+af-view (instr-load-tag-lit _) = af-other (λ _ ()) (λ _ ())
+af-view (instr-reg-op _) = af-other (λ _ ()) (λ _ ())
+af-view (instr-ctrl _) = af-other (λ _ ()) (λ _ ())
+af-view (instr-room _) = af-other (λ _ ()) (λ _ ())
+af-view (load-at _) = af-other (λ _ ()) (λ _ ())
+af-view (store-at _) = af-other (λ _ ()) (λ _ ())
+af-view (addr-at _) = af-other (λ _ ()) (λ _ ())
+af-view (load-rec _) = af-other (λ _ ()) (λ _ ())
+af-view (store-rec _) = af-other (λ _ ()) (λ _ ())
+
+step-next : ∀ i prog fs → (next-heap-ref (falloc (flat-exec-instr i prog fs)) ≡ next-heap-ref (falloc fs))
+                        ⊎ (Σ ℕ λ n → (i ≡ instr-alloc-heap n) × (next-heap-ref (falloc (flat-exec-instr i prog fs)) ≡ suc (next-heap-ref (falloc fs))))
+step-next i prog fs = by (af-view i)
+  where
+    by : AFView i → (next-heap-ref (falloc (flat-exec-instr i prog fs)) ≡ next-heap-ref (falloc fs))
+                  ⊎ (Σ ℕ λ n → (i ≡ instr-alloc-heap n) × (next-heap-ref (falloc (flat-exec-instr i prog fs)) ≡ suc (next-heap-ref (falloc fs))))
+    by (af-alloc n) = straight-keeps P (instr-alloc-heap n) fs (inj₂ (n , refl , refl)) (inj₁ refl)
+      where P = λ t → (next-heap-ref (falloc t) ≡ next-heap-ref (falloc fs)) ⊎ (Σ ℕ λ m → (instr-alloc-heap n ≡ instr-alloc-heap m) × (next-heap-ref (falloc t) ≡ suc (next-heap-ref (falloc fs))))
+    by (af-free n) = inj₁ (straight-keeps (λ t → next-heap-ref (falloc t) ≡ next-heap-ref (falloc fs)) (instr-free-heap n) fs refl refl)
+    by (af-other na nf) = inj₁ (Data.Product.proj₁ (step-hk i prog fs na nf))
+
+-- a mark set by the step: the free's block
+step-freed : ∀ i prog fs r → freed (falloc (flat-exec-instr i prog fs)) r ≡ true
+           → (freed (falloc fs) r ≡ true) ⊎ (Σ ℕ λ n → (i ≡ instr-free-heap n) × (heapRefOf (readReg (LocState.regs (floc fs)) Input1) ≡ just r))
+step-freed i prog fs r e = by (af-view i) e
+  where
+    R = (freed (falloc fs) r ≡ true) ⊎ (Σ ℕ λ n → (i ≡ instr-free-heap n) × (heapRefOf (readReg (LocState.regs (floc fs)) Input1) ≡ just r))
+    mark : ∀ n (mr : Maybe ℕ) → heapRefOf (readReg (LocState.regs (floc fs)) Input1) ≡ mr
+         → AbstractExec.freeAtMark {FS} mr (freed (falloc fs)) r ≡ true
+         → (freed (falloc fs) r ≡ true) ⊎ (Σ ℕ λ m → (instr-free-heap n ≡ instr-free-heap m) × (heapRefOf (readReg (LocState.regs (floc fs)) Input1) ≡ just r))
+    mark n nothing  _  e′ = inj₁ e′
+    mark n (just q) hq e′ = or (r Data.Nat.≡ᵇ q) refl e′
+      where
+        or : ∀ b → (r Data.Nat.≡ᵇ q) ≡ b → (b ∨ freed (falloc fs) r) ≡ true
+           → (freed (falloc fs) r ≡ true) ⊎ (Σ ℕ λ m → (instr-free-heap n ≡ instr-free-heap m) × (heapRefOf (readReg (LocState.regs (floc fs)) Input1) ≡ just r))
+        or true  eq _  = inj₂ (n , refl , trans hq (Relation.Binary.PropositionalEquality.cong just
+                            (Relation.Binary.PropositionalEquality.sym (Data.Nat.Properties.≡ᵇ⇒≡ r q (Relation.Binary.PropositionalEquality.subst Data.Bool.T (Relation.Binary.PropositionalEquality.sym eq) _)))))
+        or false _  e″ = inj₁ e″
+    by : AFView i → freed (falloc (flat-exec-instr i prog fs)) r ≡ true → R
+    by (af-alloc n) e′ = inj₁ (trans (Relation.Binary.PropositionalEquality.sym (straight-keeps (λ t → freed (falloc t) r ≡ freed (falloc fs) r) (instr-alloc-heap n) fs refl refl)) e′)
+    by (af-free n) e′ = straight-keeps (λ t → freed (falloc t) r ≡ true → R) (instr-free-heap n) fs
+                          (mark n (heapRefOf (readReg (LocState.regs (floc fs)) Input1)) refl) inj₁ e′
+    by (af-other na nf) e′ = inj₁ (trans (Relation.Binary.PropositionalEquality.sym (Relation.Binary.PropositionalEquality.cong (λ f → f r) (Data.Product.proj₂ (step-hk i prog fs na nf)))) e′)
