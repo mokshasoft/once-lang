@@ -440,7 +440,8 @@ module Step (C : Classes) (P : AbstractTrace) (Sz : ℕ → Set)
             ; r-σbelow = r-σbelow R ; r-pnext = r-pnext R
             ; r-pfresh = λ r′ le → subst (λ v → AE.freeMark v (AllocState.freed (falloc fs)) r′ ≡ false) (sym (b-ptr B))
                                      (trans (cong (_∨ AllocState.freed (falloc fs) r′) (≡ᵇ-miss r′ r (λ e′ → Data.Nat.Properties.<-irrefl (sym e′) (Data.Nat.Properties.<-≤-trans (proj₁ (proj₂ lv)) le))))
-                                            (r-pfresh R r′ le)) }
+                                            (r-pfresh R r′ le))
+            ; r-ρbelow = r-ρbelow R }
             where
               lbelow : ∀ c b′ → (c ≡ c₀ × b′ ≡ ρ R r) Data.Sum.⊎ b′ ∈ lists R c → b′ < AllocState.next-heap-ref (falloc G)
               lbelow c b′ (Data.Sum.inj₁ (_ , refl)) = proj₂ rb

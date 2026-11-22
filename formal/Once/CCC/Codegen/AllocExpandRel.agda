@@ -118,6 +118,8 @@ module _ (C : Classes) (P : AbstractTrace) (Sz : ℕ → Set) where
       r-pnext  : 0 < AllocState.next-heap-ref (falloc fs)
       -- a block the primitive has not handed out is not freed
       r-pfresh : ∀ r → AllocState.next-heap-ref (falloc fs) ≤ r → AllocState.freed (falloc fs) r ≡ false
+      -- every block handed out is renamed to one the expanded run has handed out
+      r-ρbelow : ∀ r → r < AllocState.next-heap-ref (falloc fs) → ρ r < AllocState.next-heap-ref (falloc gs)
 
       -- the two runs' own invariants
       r-nofree  : ∀ r → AllocState.freed (falloc gs) r ≡ false
