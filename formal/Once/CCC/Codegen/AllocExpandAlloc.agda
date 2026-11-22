@@ -305,3 +305,55 @@ module Fresh (al : AllocState {FS}) (k : ℕ) where
       go : ∀ (d : Relation.Nullary.Dec (r ≡ p)) → size-with-aux k {r} {p} (AllocState.block-size al) d ≡ AllocState.block-size al r
       go (yes e) = ⊥-elim (ne e)
       go (no _)  = refl
+
+module AStep (C : Classes) (P : AbstractTrace) (Sz : ℕ → Set)
+             (uniform  : ∀ k k′ → Sz k → Sz k′ → cls C k ≡ cls C k′ → bsz C k ≡ bsz C k′)
+             (fits     : ∀ k → k ≤ bsz C k)
+             (in-range : ∀ k → cls C k < count C)
+             (sz-alloc : ∀ n k → fetch P n ≡ just (instr-alloc-heap k) → Sz k)
+             (img      : ∀ n m → fetch P n ≡ just (instr-ctrl (c-label m)) → LabelId.path m ≡ []) where
+  open Rel
+
+  E = expand C P
+
+  -- a chain's head is a heap pointer (a block's, or the sentinel's)
+  chain-ptr : ∀ (hp : HeapMem FS) σ bs v → Chain hp σ bs v → Σ HeapLocation λ hl → v ≡ SV-Ptr (AtDynamic hl)
+  chain-ptr hp σ []       v e       = heap-loc (mkHeapRef σ) 0 , e
+  chain-ptr hp σ (b ∷ bs) v (e , _) = heap-loc (mkHeapRef b) 0 , e
+
+  -- a number below another: the other is a successor
+  succ-of : ∀ {a m} → a < m → Σ ℕ λ n → m ≡ suc n
+  succ-of {m = suc n} _ = n , refl
+
+  module Setup {fs gs} (R : Rel C P Sz fs gs) (k : ℕ) (f : fetch P (fpc fs) ≡ just (instr-alloc-heap k))
+               (hx : LocState.halted (floc fs) ≡ false) where
+    c₀ = cls C k
+    h = head-word c₀
+    pc = fpc fs
+    site = pc + 0
+    p = AllocState.next-heap-ref (falloc fs)
+
+    fe : ∀ j i → fetch (alloc-code C site k) j ≡ just i → fetch E (j + fpc gs) ≡ just i
+    fe j i e′ = subst (λ z → fetch E z ≡ just i)
+                      (trans (Data.Nat.Properties.+-comm (off C 0 P pc) j) (cong (j +_) (sym (r-pc R))))
+                      (fetch-exp C 0 P pc (instr-alloc-heap k) f j i e′)
+
+    -- the alloc's own labels, by its site
+    at-gs : ∀ j → j + (0 + off C 0 P pc) ≡ j + fpc gs
+    at-gs j = cong (j +_) (sym (r-pc R))
+    fl-done : find-label E (lb-done site) ≡ just (17 + fpc gs)
+    fl-done = trans (own-label C 0 P pc k (lb-done site) 17 f refl (scan-done C site k) img 0) (cong just (at-gs 17))
+    fl-bump : find-label E (lb-bump site) ≡ just (13 + fpc gs)
+    fl-bump = trans (own-label C 0 P pc k (lb-bump site) 13 f refl (scan-bump C site k) img 0) (cong just (at-gs 13))
+
+    hg : LocState.halted (floc gs) ≡ false
+    hg = trans (L.LRel.l-halt (r-loc R)) hx
+    n = proj₁ (succ-of (r-σbelow R))
+    nx = proj₂ (succ-of (r-σbelow R))
+    hds = r-heads R c₀ (in-range k)
+    v₀ = proj₁ hds
+
+    -- the pc after: past the alloc's code
+    pc-after : ∀ m → m ≡ 18 + fpc gs → m ≡ off C 0 P (suc pc)
+    pc-after m e′ = trans e′ (trans (cong (18 +_) (r-pc R))
+                      (sym (trans (off-suc C 0 P pc (instr-alloc-heap k) f) (Data.Nat.Properties.+-comm (off C 0 P pc) 18))))
