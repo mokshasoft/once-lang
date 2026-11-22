@@ -13,14 +13,13 @@
 }:
 
 let
-  version = "0.1.0.0";
+  version = "0.1.1.0";
 
   src = fetchFromGitHub {
     owner = "mokshasoft";
     repo = "once-lang";
-    # At the release: tag = "v${version}";
-    rev = "b96cddee082200bee43c42ed8208bdda211f1428";
-    hash = "sha256-L/b7+pmiFcAP6n6wJ9pS+vcA5tlMEIssuu9JSf3mfQY=";
+    tag = "v${version}";
+    hash = "sha256-8k4vs3ZwLgjEDPSlWBfORgULn8e54EiUd9lLDicqefM=";
   };
 
   once = haskellPackages.callPackage (
