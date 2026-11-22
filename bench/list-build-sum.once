@@ -1,0 +1,31 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+-- bench/list-build-sum.once: a loop that conses a list, then folds it
+-- (BENCH_N cells; allocation, a fold that frees each node; plan 0.146 §5 item 8 b).
+
+import I.Linux.Syscalls as S
+
+zeroI : Unit -> Int
+zeroI _ = 0
+
+addPair : Int * Int -> Int
+addPair p = fst p + snd p
+
+sumList : Mu (K Unit + K Int * Id) -> Int
+sumList = cata (case zeroI addPair)
+
+stop : Int * Mu (K Unit + K Int * Id) -> Unit -> Int + Void
+stop p _ = inl (sumList (snd p))
+
+next : Int * Mu (K Unit + K Int * Id) -> Unit -> Void + Int * Mu (K Unit + K Int * Id)
+next p _ = inr (fst p - 1, In (inr (fst p, snd p)))
+
+step : Int * Mu (K Unit + K Int * Id) -> Int + Int * Mu (K Unit + K Int * Id)
+step p = case (next p) (stop p) (fst p == 0)
+
+build : Eff (Int * Mu (K Unit + K Int * Id)) Int
+build = ana step
+
+main : Eff Unit Void
+main = exit@S . (build . (\_ -> (BENCH_N, In (inl unit))))
