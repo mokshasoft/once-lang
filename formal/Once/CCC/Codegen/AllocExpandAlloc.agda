@@ -357,3 +357,205 @@ module AStep (C : Classes) (P : AbstractTrace) (Sz : ℕ → Set)
     pc-after : ∀ m → m ≡ 18 + fpc gs → m ≡ off C 0 P (suc pc)
     pc-after m e′ = trans e′ (trans (cong (18 +_) (r-pc R))
                       (sym (trans (off-suc C 0 P pc (instr-alloc-heap k) f) (Data.Nat.Properties.+-comm (off C 0 P pc) 18))))
+
+  -- ★ the pop: the class's head block renamed to the new one
+  module PopStep {fs gs} (R : Rel C P Sz fs gs) (k : ℕ) (f : fetch P (fpc fs) ≡ just (instr-alloc-heap k))
+                 (hx : LocState.halted (floc fs) ≡ false)
+                 (wf : WF.StoreWF (AllocState.next-heap-ref (falloc fs)) (floc fs))
+                 (cw : WF.sv-below (AllocState.next-heap-ref (falloc fs)) (fclosure fs))
+                 (b : ℕ) (bs : List ℕ) (eL : lists R (cls C k) ≡ b ∷ bs) where
+    open Setup R k f hx
+    module FA = Fresh (falloc fs) k
+
+    ch : Chain (LocState.heapMem (floc gs)) (σ R) (b ∷ bs) v₀
+    ch = subst (λ l → Chain (LocState.heapMem (floc gs)) (σ R) l v₀) eL (proj₂ (proj₂ hds))
+    w = proj₁ (proj₂ ch)
+    lnk = proj₁ (proj₂ (proj₂ ch))
+    chw = proj₂ (proj₂ (proj₂ ch))
+    hlw = proj₁ (chain-ptr (LocState.heapMem (floc gs)) (σ R) bs w chw)
+    wp = proj₂ (chain-ptr (LocState.heapMem (floc gs)) (σ R) bs w chw)
+    hd : LocState.heapMem (floc gs) (rec-loc h) ≡ just (blk b)
+    hd = trans (proj₁ (proj₂ hds)) (cong just (proj₁ ch))
+    b∈ : b ∈ lists R c₀
+    b∈ = subst (b ∈_) (sym eL) (here refl)
+    b≢0 : ¬ b ≡ 0
+    b≢0 e′ = Data.Nat.Properties.<-irrefl (sym e′) (r-lpos R c₀ b b∈)
+
+    module PP = Pop E gs h b n (17 + fpc gs) (lb-done site) w hlw
+                  (fe 0 mov-to-output refl) (fe 1 (store-rec w-s1) refl) (fe 2 (load-rec h) refl) (fe 3 mov-to-input refl)
+                  (lb-bump site) (fe 4 (instr-ctrl (c-branch-tag-zero (lb-bump site))) refl)
+                  (fe 5 (load-at 0) refl) (fe 6 (store-rec h) refl) (fe 7 mov-to-output refl) (fe 8 (store-rec w-s2) refl)
+                  (fe 9 (load-rec w-s1) refl) (fe 10 mov-to-input refl) (fe 11 (load-rec w-s2) refl)
+                  (fe 12 (instr-ctrl (c-jmp (lb-done site))) refl) fl-done (fe 17 (instr-ctrl (c-label (lb-done site))) refl)
+                  hg nx hd lnk wp (λ ()) (λ ()) b≢0
+    G = PP.x₁₄
+
+    ρ′ = ext (ρ R) p b
+    fs′ = flat-exec-instr (instr-alloc-heap k) P fs
+
+    -- the lists after: the class's tail
+    popl : ∀ {c : ℕ} → Relation.Nullary.Dec (c ≡ c₀) → List ℕ → List ℕ
+    popl (yes _) l = bs
+    popl (no _)  l = l
+    lists′ : ℕ → List ℕ
+    lists′ c = popl (c Data.Nat.≟ c₀) (lists R c)
+
+    uniq₀ : Unique (b ∷ bs)
+    uniq₀ = subst Unique eL (r-luniq R c₀)
+    b∉bs : All (λ y → ¬ b ≡ y) bs
+    b∉bs = Data.List.Relation.Unary.AllPairs.head uniq₀
+      where import Data.List.Relation.Unary.AllPairs
+
+    popl-mem : ∀ c (d : Relation.Nullary.Dec (c ≡ c₀)) b′ → b′ ∈ popl d (lists R c) → b′ ∈ lists R c × (c ≡ c₀ → ¬ b′ ≡ b)
+    popl-mem c (yes refl) b′ m = subst (b′ ∈_) (sym eL) (there m) , λ _ e′ → Data.List.Relation.Unary.All.lookup b∉bs m (sym e′)
+    popl-mem c (no ne)    b′ m = m , λ e′ → ⊥-elim (ne e′)
+
+    -- the primitive's live blocks and their renaming
+    p-pos : 0 < p
+    p-pos = r-pnext R
+    ag : ∀ r → r < p → ρ′ r ≡ ρ R r
+    ag r lt = ext-below (ρ R) p b r lt
+    lv-below : ∀ r → Live (falloc fs) r → r < p
+    lv-below r l = proj₁ (proj₂ l)
+    -- the class's head block is no live block's
+    b-free : ∀ r → Live (falloc fs) r → ¬ ρ R r ≡ b
+    b-free r l = r-not-free R r c₀ b l b∈
+
+    ρ′-old : ∀ r → Live (falloc fs) r → ρ′ r ≡ ρ R r
+    ρ′-old r l = ag r (lv-below r l)
+
+    inj′ : ∀ r r′ → Live (falloc fs′) r → Live (falloc fs′) r′ → ρ′ r ≡ ρ′ r′ → r ≡ r′
+    inj′ r r′ l l′ e′ = by (FA.live-new r l) (FA.live-new r′ l′)
+      where
+        by : Live (falloc fs) r Data.Sum.⊎ r ≡ p → Live (falloc fs) r′ Data.Sum.⊎ r′ ≡ p → r ≡ r′
+        by (Data.Sum.inj₁ a) (Data.Sum.inj₁ a′) = r-inj R r r′ a a′ (trans (sym (ρ′-old r a)) (trans e′ (ρ′-old r′ a′)))
+        by (Data.Sum.inj₁ a) (Data.Sum.inj₂ refl) = ⊥-elim (b-free r a (trans (sym (ρ′-old r a)) (trans e′ (ext-at (ρ R) p b))))
+        by (Data.Sum.inj₂ refl) (Data.Sum.inj₁ a′) = ⊥-elim (b-free r′ a′ (trans (sym (ρ′-old r′ a′)) (trans (sym e′) (ext-at (ρ R) p b))))
+        by (Data.Sum.inj₂ refl) (Data.Sum.inj₂ refl) = refl
+
+    -- the expanded words no old live block is renamed to: past the record
+    kept : ∀ q → 0 < ref-of q → LocState.heapMem (floc G) q ≡ LocState.heapMem (floc gs) q
+    kept q pos = PP.out-other q (rq h) (rq w-s1) (rq w-s2)
+      where
+        rq : ∀ j → ¬ q ≡ rec-loc j
+        rq j e′ = Data.Nat.Properties.<-irrefl (sym (cong ref-of e′)) pos
+
+    -- a block of a list, past the record
+    lpos′ : ∀ c b′ → b′ ∈ lists R c → 0 < ref-of (heap-loc (mkHeapRef b′) 0)
+    lpos′ c b′ m = r-lpos R c b′ m
+
+    chain-G : ∀ c v l → (∀ y → y ∈ l → y ∈ lists R c)
+            → Chain (LocState.heapMem (floc gs)) (σ R) l v → Chain (LocState.heapMem (floc G)) (σ R) l v
+    chain-G c v l sub chl = chain-frame′ l v sub chl
+      where
+        chain-frame′ : ∀ l′ v′ → (∀ y → y ∈ l′ → y ∈ lists R c) → Chain (LocState.heapMem (floc gs)) (σ R) l′ v′ → Chain (LocState.heapMem (floc G)) (σ R) l′ v′
+        chain-frame′ []       v′ sub′ c′ = c′
+        chain-frame′ (y ∷ ys) v′ sub′ (e′ , u , hu , c′) =
+          e′ , u , trans (kept (heap-loc (mkHeapRef y) 0) (lpos′ c y (sub′ y (here refl)))) hu
+             , chain-frame′ ys u (λ z m → sub′ z (there m)) c′
+
+    size′ : ∀ r → r < suc p → AllocState.block-size (falloc fs′) r ≤ AllocState.block-size (falloc G) (ρ′ r)
+    size′ r lt = by (Data.Nat.Properties.m≤n⇒m<n∨m≡n (Data.Nat.Properties.≤-pred lt))
+      where
+        by : r < p Data.Sum.⊎ r ≡ p → AllocState.block-size (falloc fs′) r ≤ AllocState.block-size (falloc G) (ρ′ r)
+        by (Data.Sum.inj₁ lt′) = Relation.Binary.PropositionalEquality.subst₂ _≤_ (sym (FA.size-old r (λ e′ → Data.Nat.Properties.<-irrefl e′ lt′))) (cong (AllocState.block-size (falloc gs)) (sym (ag r lt′)))
+                                   (r-size R r lt′)
+        by (Data.Sum.inj₂ refl) = Relation.Binary.PropositionalEquality.subst₂ _≤_ (sym FA.size-p) (cong (AllocState.block-size (falloc gs)) (sym (ext-at (ρ R) p b)))
+                                    (Data.Nat.Properties.≤-trans (fits k) (r-lsize R c₀ b b∈ k (sz-alloc pc k f) refl))
+
+    R′ : Rel C P Sz fs′ G
+    R′ = record
+      { ρ = ρ′ ; σ = σ R ; lists = lists′
+      ; r-pc = pc-after (suc (17 + fpc gs)) refl
+      ; r-ret = r-ret R ; r-link = r-link R
+      ; r-frame = r-frame R ; r-saved = r-saved R ; r-slots = r-slots R ; r-next-slot = r-next-slot R
+      ; r-inj = inj′
+      ; r-loc = record
+          { l-regs = λ { Input1 → trans (L.LRel.l-regs (r-loc R) Input1) (sym (rv-agree (ρ R) ρ′ p _ ag (WF.StoreWF.wf-regs wf Input1)))
+                       ; Output → cong blk (sym (ext-at (ρ R) p b)) }
+          ; l-stack = λ f′ k′ → trans (L.LRel.l-stack (r-loc R) f′ k′) (sym (mrv-agree (ρ R) ρ′ p (LocState.stackMem (floc fs) f′ k′) ag (WF.StoreWF.wf-stack wf f′ k′)))
+          ; l-heap = heap′
+          ; l-live = λ hl v e′ → FA.live-old (ref-of hl) (L.LRel.l-live (r-loc R) hl v e′)
+          ; l-halt = L.LRel.l-halt (r-loc R) ; l-fault = L.LRel.l-fault (r-loc R)
+          ; l-left = L.LRel.l-left (r-loc R) ; l-log = L.LRel.l-log (r-loc R) }
+      ; r-clo = trans (r-clo R) (sym (rv-agree (ρ R) ρ′ p (fclosure fs) ag cw))
+      ; r-size = size′
+      ; r-below = λ r l → below′ r (FA.live-new r l)
+      ; r-not-σ = λ r l → notσ′ r (FA.live-new r l)
+      ; r-not-free = λ r c b′ l m → nfree′ r c b′ (FA.live-new r l) (popl-mem c (c Data.Nat.≟ c₀) b′ m)
+      ; r-heads = heads′
+      ; r-sent = trans (kept (heap-loc (mkHeapRef (σ R)) 0) (r-σpos R)) (r-sent R)
+      ; r-lpos = λ c b′ m → r-lpos R c b′ (proj₁ (popl-mem c (c Data.Nat.≟ c₀) b′ m))
+      ; r-σpos = r-σpos R
+      ; r-lbelow = λ c b′ m → r-lbelow R c b′ (proj₁ (popl-mem c (c Data.Nat.≟ c₀) b′ m))
+      ; r-lσ = λ c b′ m → r-lσ R c b′ (proj₁ (popl-mem c (c Data.Nat.≟ c₀) b′ m))
+      ; r-luniq = λ c → luniq′ c (c Data.Nat.≟ c₀)
+      ; r-lone = λ c c′ b′ m m′ → r-lone R c c′ b′ (proj₁ (popl-mem c (c Data.Nat.≟ c₀) b′ m)) (proj₁ (popl-mem c′ (c′ Data.Nat.≟ c₀) b′ m′))
+      ; r-σbelow = r-σbelow R
+      ; r-pnext = s≤s z≤n
+      ; r-pfresh = λ r le → r-pfresh R r (Data.Nat.Properties.≤-trans (Data.Nat.Properties.n≤1+n p) le)
+      ; r-ρbelow = λ r lt → ρbelow′ r (Data.Nat.Properties.m≤n⇒m<n∨m≡n (Data.Nat.Properties.≤-pred lt))
+      ; r-nofree = r-nofree R
+      ; r-unsized = λ r le → trans (FA.size-old r (λ e′ → Data.Nat.Properties.<-irrefl (sym e′) le)) (r-unsized R r (Data.Nat.Properties.≤-trans (Data.Nat.Properties.n≤1+n p) le))
+      ; r-rec0 = trans (FA.size-old 0 (λ e′ → Data.Nat.Properties.<-irrefl e′ p-pos)) (r-rec0 R)
+      ; r-csize = λ r l → csize′ r (FA.live-new r l)
+      ; r-lsize = λ c b′ m k′ z e′ → r-lsize R c b′ (proj₁ (popl-mem c (c Data.Nat.≟ c₀) b′ m)) k′ z e′ }
+      where
+        heap′ : ∀ hl v → Live (falloc fs′) (ref-of hl) → LocState.heapMem (floc fs′) hl ≡ just v
+              → LocState.heapMem (floc G) (rhl ρ′ hl) ≡ just (rv ρ′ v)
+        heap′ hl v l e′ = by (FA.live-new (ref-of hl) l)
+          where
+            by : Live (falloc fs) (ref-of hl) Data.Sum.⊎ ref-of hl ≡ p → LocState.heapMem (floc G) (rhl ρ′ hl) ≡ just (rv ρ′ v)
+            by (Data.Sum.inj₂ eq) = ⊥-elim (nothing≢ (trans (sym (WF.StoreWF.wf-fresh wf hl (Data.Nat.Properties.≤-reflexive (sym eq)))) e′))
+              where
+                nothing≢ : ¬ (nothing ≡ just v)
+                nothing≢ ()
+            by (Data.Sum.inj₁ a) =
+              trans (cong (LocState.heapMem (floc G)) (cong (λ z → heap-loc (mkHeapRef z) (HeapLocation.heap-offset hl)) (ρ′-old (ref-of hl) a)))
+                (trans (kept (rhl (ρ R) hl) (proj₁ (r-below R (ref-of hl) a)))
+                  (trans (L.LRel.l-heap (r-loc R) hl v a e′)
+                         (cong just (sym (rv-agree (ρ R) ρ′ p v ag (subst (WF.svm-below p) e′ (WF.StoreWF.wf-heap wf hl)))))))
+        below′ : ∀ r → Live (falloc fs) r Data.Sum.⊎ r ≡ p → 0 < ρ′ r × ρ′ r < AllocState.next-heap-ref (falloc G)
+        below′ r (Data.Sum.inj₁ a) = subst (λ z → 0 < z × z < AllocState.next-heap-ref (falloc gs)) (sym (ρ′-old r a)) (r-below R r a)
+        below′ r (Data.Sum.inj₂ refl) = subst (λ z → 0 < z × z < AllocState.next-heap-ref (falloc gs)) (sym (ext-at (ρ R) p b))
+                                          (r-lpos R c₀ b b∈ , r-lbelow R c₀ b b∈)
+        notσ′ : ∀ r → Live (falloc fs) r Data.Sum.⊎ r ≡ p → ¬ ρ′ r ≡ σ R
+        notσ′ r (Data.Sum.inj₁ a) e′ = r-not-σ R r a (trans (sym (ρ′-old r a)) e′)
+        notσ′ r (Data.Sum.inj₂ refl) e′ = r-lσ R c₀ b b∈ (trans (sym (ext-at (ρ R) p b)) e′)
+        nfree′ : ∀ r c b′ → Live (falloc fs) r Data.Sum.⊎ r ≡ p → b′ ∈ lists R c × (c ≡ c₀ → ¬ b′ ≡ b) → ¬ ρ′ r ≡ b′
+        nfree′ r c b′ (Data.Sum.inj₁ a) (m , _) e′ = r-not-free R r c b′ a m (trans (sym (ρ′-old r a)) e′)
+        nfree′ r c b′ (Data.Sum.inj₂ refl) (m , ne) e′ = ne (r-lone R c c₀ b′ m (subst (_∈ lists R c₀) bb b∈)) (sym bb)
+          where bb = trans (sym (ext-at (ρ R) p b)) e′
+        ρbelow′ : ∀ r → r < p Data.Sum.⊎ r ≡ p → ρ′ r < AllocState.next-heap-ref (falloc G)
+        ρbelow′ r (Data.Sum.inj₁ lt) = subst (_< AllocState.next-heap-ref (falloc gs)) (sym (ag r lt)) (r-ρbelow R r lt)
+        ρbelow′ r (Data.Sum.inj₂ refl) = subst (_< AllocState.next-heap-ref (falloc gs)) (sym (ext-at (ρ R) p b)) (r-lbelow R c₀ b b∈)
+        csize′ : ∀ r → Live (falloc fs) r Data.Sum.⊎ r ≡ p → bsz C (AllocState.block-size (falloc fs′) r) ≤ AllocState.block-size (falloc G) (ρ′ r)
+        csize′ r (Data.Sum.inj₁ a) = Relation.Binary.PropositionalEquality.subst₂ (λ m₁ m₂ → bsz C m₁ ≤ m₂)
+                                       (sym (FA.size-old r (λ e′ → Data.Nat.Properties.<-irrefl e′ (lv-below r a))))
+                                       (cong (AllocState.block-size (falloc gs)) (sym (ρ′-old r a))) (r-csize R r a)
+        csize′ r (Data.Sum.inj₂ refl) = Relation.Binary.PropositionalEquality.subst₂ (λ m₁ m₂ → bsz C m₁ ≤ m₂) (sym FA.size-p)
+                                          (cong (AllocState.block-size (falloc gs)) (sym (ext-at (ρ R) p b)))
+                                          (r-lsize R c₀ b b∈ k (sz-alloc pc k f) refl)
+        luniq′ : ∀ c (d : Relation.Nullary.Dec (c ≡ c₀)) → Unique (popl d (lists R c))
+        luniq′ c (yes refl) = Data.List.Relation.Unary.AllPairs.tail uniq₀
+          where import Data.List.Relation.Unary.AllPairs
+        luniq′ c (no _) = r-luniq R c
+        heads′ : ∀ c → c < count C → Σ (StoredValue FS) λ v → LocState.heapMem (floc G) (rec-loc (head-word c)) ≡ just v
+                                                           × Chain (LocState.heapMem (floc G)) (σ R) (lists′ c) v
+        heads′ c c< = hd′ (c Data.Nat.≟ c₀)
+          where
+            hd′ : ∀ (d : Relation.Nullary.Dec (c ≡ c₀)) → Σ (StoredValue FS) λ v → LocState.heapMem (floc G) (rec-loc (head-word c)) ≡ just v
+                                                                              × Chain (LocState.heapMem (floc G)) (σ R) (popl d (lists R c)) v
+            hd′ (yes refl) = w , PP.out-head
+                           , chain-G c₀ w bs (λ y m → subst (y ∈_) (sym eL) (there m)) chw
+            hd′ (no ne) = old (r-heads R c c<)
+              where
+                old : (Σ (StoredValue FS) λ v → LocState.heapMem (floc gs) (rec-loc (head-word c)) ≡ just v
+                                              × Chain (LocState.heapMem (floc gs)) (σ R) (lists R c) v)
+                    → Σ (StoredValue FS) λ v → LocState.heapMem (floc G) (rec-loc (head-word c)) ≡ just v
+                                              × Chain (LocState.heapMem (floc G)) (σ R) (lists R c) v
+                old (v , e′ , chv) = v , trans (PP.out-other (rec-loc (head-word c)) (λ e″ → ne (sinj (sinj (sinj (cong HeapLocation.heap-offset e″))))) (λ ()) (λ ())) e′
+                                   , chain-G c v (lists R c) (λ y m → m) chv
+                  where
+                    sinj : ∀ {a b′} → suc a ≡ suc b′ → a ≡ b′
+                    sinj refl = refl
