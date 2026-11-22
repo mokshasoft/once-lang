@@ -85,6 +85,10 @@ open import Data.Bool using (_∧_; not; _∨_)
 open AllocState using (next-heap-ref; freed; block-size)
 open AbstractExec {FS} using (heapRefOf; freeMark-mono)
 import Once.Adequacy.NoLeakFrees
+import Once.CCC.Machine.Locations
+import Once.Memory.HeapAddress
+import Once.Memory.Memory
+import Data.Bool
 module NF = Once.Adequacy.NoLeakFrees FS
 
 Allocates : FlatState → ℕ → ℕ → Set
@@ -134,3 +138,61 @@ module _ (fs₀ : FlatState) where
       by : (i < suc k) ⊎ (i ≡ suc k) → freed (falloc (at fs₀ (suc k))) r ≡ true
       by (inj₁ lt) = step (freed-mono i k r (Data.Nat.Properties.≤-pred lt) e)
       by (inj₂ refl) = e
+
+  -- an executed step is the instruction's
+  exec-step : ∀ k {i} → Executes fs₀ k i → at fs₀ (suc k) ≡ flat-exec-instr i prog (at fs₀ k)
+  exec-step k {i} (h , f) =
+    trans (trans (cong (λ n → exec-flat n prog fs₀) (Data.Nat.Properties.+-comm 1 k)) (exec-flat-+ k 1 fs₀))
+          (trans (cong (λ b → step-dispatch b 0 prog (at fs₀ k)) h) (cong (λ mi → fetch-dispatch mi 0 prog (at fs₀ k)) f))
+
+  private
+    ∧-l : ∀ (a b : Bool) → (a ∧ b) ≡ true → a ≡ true
+    ∧-l true b _ = refl
+    ∧-r : ∀ (a b : Bool) → (a ∧ b) ≡ true → b ≡ true
+    ∧-r true b e = e
+    not-t : ∀ {a : Bool} → not a ≡ true → a ≡ false
+    not-t {false} _ = refl
+
+    -- what the free's gate passed says of its block
+    gate-facts : ∀ n v (al : AllocState {FS}) r → block-base? n v al ≡ true → heapRefOf v ≡ just r
+               → (block-size al r ≡ 0 → ⊥) × (freed al r ≡ false)
+    gate-facts n (SV-Ptr (Once.CCC.Machine.Locations.AtDynamic (Once.Memory.HeapAddress.heap-loc (Once.Memory.HeapAddress.mkHeapRef r′) o))) al .r′ g refl =
+      let bs = block-size al r′ Data.Nat.≡ᵇ n ; ps = 0 Data.Nat.<ᵇ n ; nf′ = not (freed al r′)
+          g₁ = ∧-r (o Data.Nat.≡ᵇ 0) (bs ∧ (ps ∧ nf′)) g
+          sz = Data.Nat.Properties.≡ᵇ⇒≡ (block-size al r′) n (subst Data.Bool.T (sym (∧-l bs (ps ∧ nf′) g₁)) _)
+          g₂ = ∧-r bs (ps ∧ nf′) g₁
+          pos = Data.Nat.Properties.<ᵇ⇒< 0 n (subst Data.Bool.T (sym (∧-l ps nf′ g₂)) _)
+      in (λ z → Data.Nat.Properties.<-irrefl (sym (trans (sym sz) z)) pos) , not-t (∧-r ps nf′ g₂)
+    gate-facts n (SV-Ptr (Once.CCC.Machine.Locations.AtStack _ _)) al r () _
+    gate-facts n (SV-Tag _)   al r () _
+    gate-facts n (SV-Lit _ _) al r () _
+    gate-facts n (SV-Code _)  al r () _
+
+  module _ (z0 : ∀ r → block-size (falloc fs₀) r ≡ 0)
+           (no-fault : ∀ k i → Executes fs₀ k i → LocState.faulted (floc (flat-exec-instr i prog (at fs₀ k))) ≡ false) where
+
+    private
+      gate-of : ∀ k n → Executes fs₀ k (instr-free-heap n)
+              → block-base? n (readReg (LocState.regs (floc (at fs₀ k))) Input1) (falloc (at fs₀ k)) ≡ true
+      gate-of k n ex = straight-ok (instr-free-heap n) (at fs₀ k) (no-fault k _ ex)
+
+      -- a free that passes marks its block
+      free-sets : ∀ i r → Frees fs₀ i r → freed (falloc (at fs₀ (suc i))) r ≡ true
+      free-sets i r ((n , ex) , hr) =
+        trans (cong (λ y → freed (falloc y) r) (exec-step i ex))
+          (trans (cong (λ b → freed (falloc (straight-at b (instr-free-heap n) (at fs₀ i))) r) (gate-of i n ex))
+                 (mark (heapRefOf (readReg (LocState.regs (floc (at fs₀ i))) Input1)) hr))
+        where
+          mark : ∀ m → m ≡ just r → AbstractExec.freeAtMark {FS} m (freed (falloc (at fs₀ i))) r ≡ true
+          mark .(just r) refl = cong (_∨ freed (falloc (at fs₀ i)) r) (Once.Memory.Memory.≡ᵇ-refl r)
+
+    -- ★ every free hits a live block
+    frees-live : ∀ k r → Frees fs₀ k r → Live fs₀ k r
+    frees-live k r fr@((n , ex) , hr) =
+      let (nz , nf) = gate-facts n _ (falloc (at fs₀ k)) r (gate-of k n ex) hr
+          (j , lt , al) = size-hist z0 k r nz
+      in j , lt , al , λ i ji ik fi →
+           bool≢ (trans (sym (freed-mono (suc i) k r ik (free-sets i r fi))) nf)
+      where
+        bool≢ : true ≡ false → ⊥
+        bool≢ ()
