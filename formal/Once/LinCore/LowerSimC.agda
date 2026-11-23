@@ -293,7 +293,7 @@ module SimC {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
                 fs′ , st ,
                 record { c-env  = ev
                        ; c-stk  = ( cellPtr (szc X , AllocState.next-heap-ref (falloc fs)) ∷ []
-                                  , vfn (kb , refl) (inC xt , refl) (inF xt , refl) (kb , refl) (vw-frame px (λ j k c → cells j k c)) (b-cell Bd)
+                                  , vfn tt (inC xt , refl) (inF xt , refl) (kb , refl) (vw-frame px (λ j k c → cells j k c)) (b-cell Bd)
                                   , (top , tt) )
                                 , st′
                        ; c-efit = c-efit C ; c-sfit = fit } ,

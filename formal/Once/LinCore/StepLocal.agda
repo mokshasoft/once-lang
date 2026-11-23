@@ -285,6 +285,13 @@ module Loc {FS : FrameSemantics} (U : Univ)
            → Here s (es ∥ mpair (mct x) a ∷ˢ os) fs → Moved (next s) fs [] [] (es ∥ mpair x a ∷ˢ os)
   st-untag s H = empty s H refl (λ C → cfgK s (c-env C) (untag-W (c-stk C)))
 
+  -- ★ D478: a many-use cell retyped as a one-shot one (no code)
+  st-oncify : ∀ {Es g X A B S V} {k : Codeᴵ (Es ∣ (Fn once g A B ⊗t A) ∷ S) V} (s : Sub root (oncify ⨾ k))
+                {es : Slots Es} {i} {lam : Lam many g X A B} {x : MV X} {a : MV A} {os : Stk S} {fs}
+            → Here s (es ∥ mpair (mfn i lam x) a ∷ˢ os) fs
+            → Moved (next s) fs [] [] (es ∥ mpair (mfn i (once-of lam) x) a ∷ˢ os)
+  st-oncify s H = empty s H refl (λ C → cfgK s (c-env C) (oncify-W (c-stk C)))
+
   st-untag₁ : ∀ {Es l X S V} {k : Codeᴵ (Es ∣ X ∷ S) V} (s : Sub root (untag₁ {l = l} ⨾ k))
                 {es : Slots Es} {x : MV X} {os : Stk S} {fs}
             → Here s (es ∥ mct x ∷ˢ os) fs → Moved (next s) fs [] [] (es ∥ x ∷ˢ os)

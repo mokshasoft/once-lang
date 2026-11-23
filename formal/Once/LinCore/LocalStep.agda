@@ -285,6 +285,7 @@ module Steps {FS : FrameSemantics} (U : Univ)
     ; eapp′    = λ _ s → record { sub = next s ; carry = λ P x → x }
     ; epop′    = λ s → record { sub = next s ; carry = λ P x → x }
     ; eword′   = λ _ s → record { sub = next s ; carry = λ P x → x }
+    ; oncify′  = λ s → record { sub = next s ; carry = λ P x → x }
     }
 
   succ′ : ∀ {T sh U sh′ U′} {c : Codeᴵ sh U} {r : Ret U T} {m n t} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T} {m′ n′}
@@ -326,6 +327,7 @@ module Steps {FS : FrameSemantics} (U : Univ)
     ; eapp′    = λ eq _ s H nx fr → out00 (st-eapp s eq H) nx
     ; epop′    = λ _ s H nx fr → out00 (st-epop s H) nx
     ; eword′   = λ eq _ s H nx fr → out00 (st-eword s eq H) nx
+    ; oncify′  = λ _ s H nx fr → out00 (st-oncify s H) nx
     }
 
   -- ★ THE LOCAL STEP THEOREM

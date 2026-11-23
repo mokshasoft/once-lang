@@ -110,6 +110,12 @@ module Sim {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
           → StkW rd sm φ (mpair (mct {l = l} x) a ∷ˢ os) → StkW rd sm φ (mpair x a ∷ˢ os)
   untag-W ((w , vpair (vct px) pa , sl) , rest) = (w , vpair px pa , sl) , rest
 
+  -- ★ D478: a many-use closure retyped as the one-shot closure of its owned body: its words as they stand
+  oncify-W : ∀ {rd sm φ g X A B S i} {lam : Lam many g X A B} {x : MV X} {a : MV A} {os : Stk S}
+           → StkW rd sm φ (mpair (mfn i lam x) a ∷ˢ os) → StkW rd sm φ (mpair (mfn i (once-of lam) x) a ∷ˢ os)
+  oncify-W {lam = cω _ _ _} ((w , vpair (vfn cb cc cf co px at) pa , sl) , rest) = (w , vpair (vfn tt cc cf co px at) pa , sl) , rest
+  oncify-W {lam = cωᶜ _ _ _} ((w , vpair (vfn cb cc cf co px at) pa , sl) , rest) = (w , vpair (vfn tt cc cf co px at) pa , sl) , rest
+
   untag₁-W : ∀ {rd sm φ l X S} {x : MV X} {os : Stk S}
            → StkW rd sm φ (mct {l = l} x ∷ˢ os) → StkW rd sm φ (x ∷ˢ os)
   untag₁-W ((w , vct px , sl) , rest) = (w , px , sl) , rest
