@@ -24816,6 +24816,13 @@ the one-shot closure it now is (`cωᶜ ds b₀ γ ↦ c1 ds b₀ γ`, `cω ds b
 environment); the existing one-shot call and trampoline (`icall`, `ktr1`, `GlobalTramp`) do the rest. A
 one-shot cell's word 4 is its word 1 already, so the rewritten cell is a one-shot cell exactly. The new proof
 obligation is one local image step (`oncify`) and the fifth header word.
+### Refinement (2026-11-23 late): oncify writes nothing; a one-shot call reads word 4
+A write into the cell breaks the local-step contract (`Moves.Old`: an old block's words stand unless it is freed,
+and the core frees nothing at `oncify`). So `oncify` is a pure retyping (no flat code), every one-shot call calls
+through word 4 (`icall`: the closure register at the cell + 3, as the copy and free calls), and the value relation
+constrains word 1 only for a many-use cell (whose lent call reads it). A one-shot cell's word 4 is its body's entry
+(`okey`), a many-use cell's its owned body's, so the retyped value is related as it stands. (Work on the WIP
+branch `0.146-d478-wip`; the plan branch is unchanged until it is green.)
 ### Scope (a)
 Core (`levω`, `Blk`), semantics (`Lᶜ levω` = `apω`'s), Keys (the owned body's key per many-use closure), Image
 (`compᴵ`, the body trampoline for `kbodyω`), Lower (`tramp`), and the trampoline simulations (`GlobalTramp*`,
