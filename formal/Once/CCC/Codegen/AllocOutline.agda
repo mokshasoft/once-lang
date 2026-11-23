@@ -13,6 +13,7 @@
 --   * relocation between ANY two programs whose lookups agree, up to the shift,
 --     at the targets an instruction uses (`Agree`; Flat's `shifted-instr` is the
 --     case of a program and its suffix, where every target agrees);
+--   * the routines' names, apart by size and by kind;
 ------------------------------------------------------------------------
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
@@ -27,8 +28,17 @@ open import Data.Nat using (ℕ; zero; suc; _+_)
 open import Data.Product using (_×_; _,_)
 open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
-open import Once.CCC.Label using (LabelId; EntryId; e-thunk; e-fn)
-open import Once.Spec.Name using (CanonicalName)
+open import Once.CCC.Label using (LabelId; EntryId; e-thunk; e-fn; _≡ᵇᴵ_; ≡ᵇᴵ-true; _≡ᵇᴱ_; ≡ᵇᴱ-true)
+open import Data.Nat.Properties using (+-suc)
+open import Once.Spec.Name using (CanonicalName; canonical; module CanonicalName)
+open import Data.Char using (Char)
+open import Data.String using (String; toList) renaming (_++_ to _++ˢ_)
+open import Data.List.Properties using (++-cancelˡ; ∷-injective)
+open import Relation.Nullary using (¬_)
+open import Once.Postulates using (toList-++)
+open import Once.Target.Symbol using (showNat)
+open import Once.Adequacy.LabelSymbols using (showNat-inj)
+open import Once.CCC.Codegen.AllocExpand using (alloc-fn; free-fn; site-call; prim-routine; prim-routines; skip; skip-label; outline)
 open import Once.CCC.Machine.SMCore
 open import Once.CCC.Machine.Locations using (AtDynamic; AtStack)
 open import Once.Memory.HeapAddress using (sucHL)
@@ -141,3 +151,185 @@ shifted-instrᵍ d (instr-push-frame k)                   p p′ fs fs' _ sh = s
 shifted-instrᵍ d instr-pop-frame                        p p′ fs fs' _ sh = shifted-frame d instr-pop-frame leave-frame fs fs' sh
 shifted-instrᵍ d instr-call-closure                     p p′ fs fs' a sh =
   shifted-call-closureᵍ d p p′ fs fs' a sh
+
+------------------------------------------------------------------------
+-- The routines' names: apart by size, and an alloc's from a free's
+------------------------------------------------------------------------
+
+private
+  -- a name's second part
+  part₂ : CanonicalName → List String
+  part₂ n = CanonicalName.parts n
+
+  second : ∀ {a b c d : String} → a ∷ b ∷ [] ≡ c ∷ d ∷ [] → b ≡ d
+  second refl = refl
+
+  head-char : ∀ {a b : Char} {as bs : List Char} → a ∷ as ≡ b ∷ bs → a ≡ b
+  head-char refl = refl
+
+  tail-chars : ∀ {a b : Char} {as bs : List Char} → a ∷ as ≡ b ∷ bs → as ≡ bs
+  tail-chars refl = refl
+
+  -- a size read back from its part: the fixed lead, then its decimal
+  part-size : ∀ (c : String) (k k′ : ℕ) → c ++ˢ showNat k ≡ c ++ˢ showNat k′ → k ≡ k′
+  part-size c k k′ e =
+    showNat-inj (++-cancelˡ (toList c) _ _ (trans (sym (toList-++ c (showNat k))) (trans (cong toList e) (toList-++ c (showNat k′)))))
+
+alloc-fn-inj : ∀ {k k′} → alloc-fn k ≡ alloc-fn k′ → k ≡ k′
+alloc-fn-inj {k} {k′} e = part-size "a" k k′ (second (cong part₂ e))
+
+free-fn-inj : ∀ {k k′} → free-fn k ≡ free-fn k′ → k ≡ k′
+free-fn-inj {k} {k′} e = part-size "f" k k′ (second (cong part₂ e))
+
+alloc≢free : ∀ k k′ → ¬ alloc-fn k ≡ free-fn k′
+alloc≢free k k′ e = a≢f (head-char (trans (sym (toList-++ "a" (showNat k))) (trans (cong toList (second (cong part₂ e))) (toList-++ "f" (showNat k′)))))
+  where
+    a≢f : ¬ ('a' ≡ 'f')
+    a≢f ()
+
+------------------------------------------------------------------------
+-- A site, viewed (`site-call`'s catch-all does not reduce on a variable instruction)
+------------------------------------------------------------------------
+
+data SiteView : AbstractInstr → Set where
+  sv-alloc : ∀ k → SiteView (instr-alloc-heap k)
+  sv-free  : ∀ k → SiteView (instr-free-heap k)
+  sv-same  : ∀ {i} → site-call i ≡ i → SiteView i
+
+site-view : ∀ i → SiteView i
+site-view mov-to-output                      = sv-same refl
+site-view mov-to-input                       = sv-same refl
+site-view load-indirect                      = sv-same refl
+site-view load-indirect-suc                  = sv-same refl
+site-view (load-from-slot x)                 = sv-same refl
+site-view (store-at-slot x)                  = sv-same refl
+site-view store-indirect                     = sv-same refl
+site-view store-indirect-suc                 = sv-same refl
+site-view (lea-slot x)                       = sv-same refl
+site-view (restore-input x)                  = sv-same refl
+site-view (instr-alloc-stack x)              = sv-same refl
+site-view (instr-dealloc-stack x)            = sv-same refl
+site-view (instr-reclaim-to x)               = sv-same refl
+site-view (instr-push-frame x)               = sv-same refl
+site-view instr-pop-frame                    = sv-same refl
+site-view instr-call-closure                 = sv-same refl
+site-view (worklist-init x)                  = sv-same refl
+site-view (worklist-push x)                  = sv-same refl
+site-view (worklist-pop x)                   = sv-same refl
+site-view (worklist-check x)                 = sv-same refl
+site-view (instr-sigop si)                   = sv-same refl
+site-view (instr-load-const p v)             = sv-same refl
+site-view (instr-load-code-addr l)           = sv-same refl
+site-view instr-save-closure-reg             = sv-same refl
+site-view (instr-load-tag-lit n)             = sv-same refl
+site-view (instr-alloc-heap k)               = sv-alloc k
+site-view (instr-reg-op op)                  = sv-same refl
+site-view (instr-free-heap k)                = sv-free k
+site-view (instr-room k)                     = sv-same refl
+site-view (load-at k)                        = sv-same refl
+site-view (store-at k)                       = sv-same refl
+site-view (addr-at k)                        = sv-same refl
+site-view (load-rec k)                       = sv-same refl
+site-view (store-rec k)                      = sv-same refl
+site-view (instr-ctrl (c-label l))           = sv-same refl
+site-view (instr-ctrl (c-jmp l))             = sv-same refl
+site-view (instr-ctrl (c-branch-tag-zero l)) = sv-same refl
+site-view (instr-ctrl (c-entry e b))         = sv-same refl
+site-view (instr-ctrl (c-call-fn f))         = sv-same refl
+site-view (instr-ctrl (c-ret b))             = sv-same refl
+site-view (instr-ctrl (c-start b))           = sv-same refl
+site-view (instr-ctrl c-leave)               = sv-same refl
+
+-- a site, called, is no label and no entry
+label-site : ∀ i → label-of? (site-call i) ≡ label-of? i
+label-site i = go (site-view i)
+  where go : ∀ {i} → SiteView i → label-of? (site-call i) ≡ label-of? i
+        go (sv-alloc k) = refl
+        go (sv-free k)  = refl
+        go {i} (sv-same e) = cong label-of? e
+
+entry-site : ∀ i → entry-of? (site-call i) ≡ entry-of? i
+entry-site i = go (site-view i)
+  where go : ∀ {i} → SiteView i → entry-of? (site-call i) ≡ entry-of? i
+        go (sv-alloc k) = refl
+        go (sv-free k)  = refl
+        go {i} (sv-same e) = cong entry-of? e
+
+------------------------------------------------------------------------
+-- The scans: called sites keep them; a scan begun `d` later finds `d` later
+------------------------------------------------------------------------
+
+fl-map : ∀ xs m i → fl-go (map site-call xs) m i ≡ fl-go xs m i
+fl-map []       m i = refl
+fl-map (x ∷ xs) m i = trans (cong (λ mo → fl-at mo (map site-call xs) m i) (label-site x)) (at (label-of? x))
+  where
+    at : ∀ mo → fl-at mo (map site-call xs) m i ≡ fl-at mo xs m i
+    at nothing  = fl-map xs m (suc i)
+    at (just l) = mt (l ≡ᵇᴵ m)
+      where mt : ∀ b → fl-label-match b (map site-call xs) m i ≡ fl-label-match b xs m i
+            mt true  = refl
+            mt false = fl-map xs m (suc i)
+
+ft-map : ∀ xs e i → ft-go (map site-call xs) e i ≡ ft-go xs e i
+ft-map []       e i = refl
+ft-map (x ∷ xs) e i = trans (cong (λ mo → ft-at mo (map site-call xs) e i) (entry-site x)) (at (entry-of? x))
+  where
+    at : ∀ mo → ft-at mo (map site-call xs) e i ≡ ft-at mo xs e i
+    at nothing  = ft-map xs e (suc i)
+    at (just l) = mt (l ≡ᵇᴱ e)
+      where mt : ∀ b → ft-match b (map site-call xs) e i ≡ ft-match b xs e i
+            mt true  = refl
+            mt false = ft-map xs e (suc i)
+
+fl-shiftᵈ : ∀ xs m d i → fl-go xs m (d + i) ≡ Data.Maybe.map (d +_) (fl-go xs m i)
+fl-shiftᵈ []       m d i = refl
+fl-shiftᵈ (x ∷ xs) m d i = at (label-of? x)
+  where
+    nx : fl-go xs m (suc (d + i)) ≡ Data.Maybe.map (d +_) (fl-go xs m (suc i))
+    nx = trans (cong (fl-go xs m) (sym (+-suc d i))) (fl-shiftᵈ xs m d (suc i))
+    at : ∀ mo → fl-at mo xs m (d + i) ≡ Data.Maybe.map (d +_) (fl-at mo xs m i)
+    at nothing  = nx
+    at (just l) = mt (l ≡ᵇᴵ m)
+      where mt : ∀ b → fl-label-match b xs m (d + i) ≡ Data.Maybe.map (d +_) (fl-label-match b xs m i)
+            mt true  = refl
+            mt false = nx
+
+ft-shiftᵈ : ∀ xs e d i → ft-go xs e (d + i) ≡ Data.Maybe.map (d +_) (ft-go xs e i)
+ft-shiftᵈ []       e d i = refl
+ft-shiftᵈ (x ∷ xs) e d i = at (entry-of? x)
+  where
+    nx : ft-go xs e (suc (d + i)) ≡ Data.Maybe.map (d +_) (ft-go xs e (suc i))
+    nx = trans (cong (ft-go xs e) (sym (+-suc d i))) (ft-shiftᵈ xs e d (suc i))
+    at : ∀ mo → ft-at mo xs e (d + i) ≡ Data.Maybe.map (d +_) (ft-at mo xs e i)
+    at nothing  = nx
+    at (just l) = mt (l ≡ᵇᴱ e)
+      where mt : ∀ b → ft-match b xs e (d + i) ≡ Data.Maybe.map (d +_) (ft-match b xs e i)
+            mt true  = refl
+            mt false = nx
+
+-- past a stretch the scan misses, it goes on after it
+fl-++ : ∀ xs ys m i → fl-go xs m i ≡ nothing → fl-go (xs ++ ys) m i ≡ fl-go ys m (length xs + i)
+fl-++ []       ys m i _ = refl
+fl-++ (x ∷ xs) ys m i e = at (label-of? x) e
+  where
+    nx : fl-go xs m (suc i) ≡ nothing → fl-go (xs ++ ys) m (suc i) ≡ fl-go ys m (suc (length xs + i))
+    nx e′ = trans (fl-++ xs ys m (suc i) e′) (cong (fl-go ys m) (+-suc (length xs) i))
+    at : ∀ mo → fl-at mo xs m i ≡ nothing → fl-at mo (xs ++ ys) m i ≡ fl-go ys m (suc (length xs + i))
+    at nothing  e′ = nx e′
+    at (just l) e′ = mt (l ≡ᵇᴵ m) e′
+      where mt : ∀ b → fl-label-match b xs m i ≡ nothing → fl-label-match b (xs ++ ys) m i ≡ fl-go ys m (suc (length xs + i))
+            mt true  ()
+            mt false e″ = nx e″
+
+ft-++ : ∀ xs ys e i → ft-go xs e i ≡ nothing → ft-go (xs ++ ys) e i ≡ ft-go ys e (length xs + i)
+ft-++ []       ys e i _ = refl
+ft-++ (x ∷ xs) ys e i h = at (entry-of? x) h
+  where
+    nx : ft-go xs e (suc i) ≡ nothing → ft-go (xs ++ ys) e (suc i) ≡ ft-go ys e (suc (length xs + i))
+    nx h′ = trans (ft-++ xs ys e (suc i) h′) (cong (ft-go ys e) (+-suc (length xs) i))
+    at : ∀ mo → ft-at mo xs e i ≡ nothing → ft-at mo (xs ++ ys) e i ≡ ft-go ys e (suc (length xs + i))
+    at nothing  h′ = nx h′
+    at (just l) h′ = mt (l ≡ᵇᴱ e) h′
+      where mt : ∀ b → ft-match b xs e i ≡ nothing → ft-match b (xs ++ ys) e i ≡ ft-go ys e (suc (length xs + i))
+            mt true  ()
+            mt false h″ = nx h″
