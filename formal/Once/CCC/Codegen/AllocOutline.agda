@@ -1031,3 +1031,8 @@ module Out (ks : List ℕ) (b : ℕ) (T : AbstractTrace) where
           pos : suc (suc (n + suc t)) ≡ d + suc t
           pos = trans (cong suc (sym (+-suc n (suc t))))
                   (trans (cong suc (sym (Data.Nat.Properties.+-assoc n 1 (suc t)))) (cong (_+ suc t) (sym d≡)))
+
+  -- a routine's instruction, where the outlined program holds it
+  rou-at : ∀ j i → fetch (prim-routines ks) j ≡ just i → fetch P′ (suc (suc j)) ≡ just i
+  rou-at j i f = trans (cong (λ z → fetch z (suc (suc j))) shape′)
+                       (fetch-++-left (prim-routines ks) (instr-ctrl (c-label skip-label) ∷ map site-call T) j i f)
