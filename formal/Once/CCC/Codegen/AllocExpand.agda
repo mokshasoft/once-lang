@@ -160,12 +160,14 @@ module _ (C : Classes) where
 
 ------------------------------------------------------------------------
 -- ★ D480: THE ALLOCATOR AS A CALL, as the expansion of an OUTLINED program.
--- `outline ks P` is `P` with each allocation and free a call, in place (one
--- instruction for one: the pc map is the identity), and one primitive alloc and
--- free routine per size of `ks` at its end — an entry, the primitive, a return.
--- Its expansion (`expand C (outline ks P)`) is the call mode: each routine's
--- primitive becomes the inline code once. The routines' names lead every part
--- with a non-digit, as the symbols' read-back needs (`LabelSymInj.GoodL`).
+-- `outline ks P` is `P` with each allocation and free a call, in place, and one
+-- primitive alloc and free routine per size of `ks` right after the start,
+-- jumped over (`c-jmp skip-label … c-label skip-label`): the program's own code
+-- keeps its order and its end, shifted by the routines' length. Its expansion
+-- (`expand C (outline ks P)`) is the call mode: each routine's primitive becomes
+-- the inline code once. The routines' names lead every part with a non-digit,
+-- as the symbols' read-back needs (`LabelSymInj.GoodL`); the skip label's owner
+-- is no block's and not the expansion's (`ImgL`).
 ------------------------------------------------------------------------
 
 alloc-fn free-fn : ℕ → CanonicalName
@@ -189,8 +191,17 @@ prim-routines : List ℕ → AbstractTrace
 prim-routines []       = []
 prim-routines (k ∷ ks) = prim-routine k ++ prim-routines ks
 
+skip-label : LabelId
+skip-label = mkLabelId (canonical ("once-outline" ∷ [])) [] 0
+
+-- the routines, jumped over
+skip : List ℕ → AbstractTrace
+skip ks = instr-ctrl (c-jmp skip-label) ∷ prim-routines ks ++ instr-ctrl (c-label skip-label) ∷ []
+
+-- the start, the routines, then the program's own code with its sites called
 outline : List ℕ → AbstractTrace → AbstractTrace
-outline ks P = map site-call P ++ prim-routines ks
+outline ks []      = []
+outline ks (i ∷ T) = i ∷ skip ks ++ map site-call T
 
 -- the mode: inline (`--inline-alloc`) or by call (the default), over the program's sizes `ks`
 expandₘ : Bool → Classes → List ℕ → AbstractTrace → AbstractTrace

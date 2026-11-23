@@ -24906,3 +24906,8 @@ extensionality, already in the apex's cone); the routines add no label and no th
 finds its function inside `P` (`em-calls`); the link is empty at a site (`RunWF.run-link-at-thunk`). Plus the
 outlined program is emitted (its calls name the routines; each routine's entry follows a return or the
 program's leave).
+**Layout (2026-11-23): the routines sit right after the start, jumped over** (`c-start b ∷ c-jmp skip ∷ routines ++
+c-label skip ∷ map site-call T`), not at the end: the outlined program then ends where `P` does, so a run of `P`
+that leaves its code leaves the outlined one at the same place (shifted), and the first routine's entry is
+guarded by the jump without any fact about `P`'s last instruction. The relation after the start is a constant pc
+shift (the routines' length + 2), the form Flat's relocation lemmas (`shifted-instr`, D155) already handle.
