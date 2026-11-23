@@ -41,6 +41,7 @@ open import Once.CCC.Codegen.RoomChecks using (room-checks)
 open import Once.CCC.Machine.SMCore
   using (AbstractTrace; AbstractInstr; instr-ctrl; c-ret; instr-call-closure; instr-sigop; instr-alloc-heap; instr-free-heap; SV-Ptr; SV-Code; module LocState; module AllocState)
 open import Data.Sum using (_⊎_)
+open import Data.Bool using (Bool; true; false)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Label using (LabelId)
 open import Once.Memory.HeapAddress using (HeapLocation; sucHL)
@@ -223,23 +224,15 @@ module NewImage (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Uni
     file-trˣ ex O = subst (λ T → T ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (fs-numerics FS) (FrameSemantics.fs-interp FS)) (sym (file-runs P″ bs ex)) (conc-trˣ O)
 
     file-atˣ : (ex : List String) → Owed
-             → run-file (Once.LinCore.ExprImage.fileAt (fs-numerics FS) B a IT.BF.tl IT.BF.mpm ex) ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (fs-numerics FS) (FrameSemantics.fs-interp FS)
+             → run-file (Once.LinCore.ExprImage.fileAt (fs-numerics FS) B a true IT.BF.tl IT.BF.mpm ex) ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (fs-numerics FS) (FrameSemantics.fs-interp FS)
     file-atˣ ex O = file-trˣ ex O
 
     module ISX = IS.Xp PL.C
 
-    file-wf-atˣ : Backend.AsmWF B (Once.LinCore.ExprImage.fileAt (fs-numerics FS) B a IT.BF.tl IT.BF.mpm
+    file-wf-atˣ : Backend.AsmWF B (Once.LinCore.ExprImage.fileAt (fs-numerics FS) B a true IT.BF.tl IT.BF.mpm
                                      (image-externs (Once.LinCore.ExprImage.imageAt (fs-numerics FS) IT.BF.tl IT.BF.mpm)))
     file-wf-atˣ = file-wf _ _ bs (image-externs image) ISX.image-wfˣ
 
-    file-at : (ex : List String) → Owed
-            → run-file (Once.LinCore.ExprImage.fileAt (fs-numerics FS) B a IT.BF.tl IT.BF.mpm ex) ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (fs-numerics FS) (FrameSemantics.fs-interp FS)
-    -- (D468: the compiler writes the allocator's expansion of the image: `file-trˣ` below)
-    file-at ex O = file-atˣ ex O
-
-    file-wf-at : Backend.AsmWF B (Once.LinCore.ExprImage.fileAt (fs-numerics FS) B a IT.BF.tl IT.BF.mpm
-                                    (image-externs (Once.LinCore.ExprImage.imageAt (fs-numerics FS) IT.BF.tl IT.BF.mpm)))
-    file-wf-at = file-wf-atˣ
 
     ------------------------------------------------------------------------
     -- ★★ D480: THE ALLOCATOR AS A CALL (the default mode; `--inline-alloc` is the
@@ -299,3 +292,26 @@ module NewImage (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Uni
                    ks-pos (λ k m → OS.outline-sz ksᶜ IA.em-budget IA.tail k m) ks-in IS.skip-apart IS.calls-apart
                    IS.img-path IS.jmp-path IS.br-path IAF.no-lrec IAF.no-srec
                    (table P‴ bs namedᶜ (ext-missᶜ O)) (IT.flat-ir (λ {b} v → ML.ld {b} v image))
+
+    -- ★★ THE CALL MODE'S FILE (what the compiler writes by default) runs with the program's trace,
+    -- and is what the assembler demands
+    file-atᶜ : (ex : List String) → Owed
+             → run-file (Once.LinCore.ExprImage.fileAt (fs-numerics FS) B a false IT.BF.tl IT.BF.mpm ex) ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (fs-numerics FS) (FrameSemantics.fs-interp FS)
+    file-atᶜ ex O = subst (λ T → T ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (fs-numerics FS) (FrameSemantics.fs-interp FS)) (sym (file-runs P‴ bs ex)) (conc-trᶜ O)
+
+    module ISC = IS.Xc PLC.C
+
+    file-wf-atᶜ : Backend.AsmWF B (Once.LinCore.ExprImage.fileAt (fs-numerics FS) B a false IT.BF.tl IT.BF.mpm
+                                     (image-externs (Once.LinCore.ExprImage.imageAt (fs-numerics FS) IT.BF.tl IT.BF.mpm)))
+    file-wf-atᶜ = file-wf _ _ bs (image-externs image) ISC.image-wfᶜ
+
+    -- ★★ THE FILE THE COMPILER WRITES, in either mode (`--inline-alloc`: `true`)
+    file-at : (inl : Bool) (ex : List String) → Owed
+            → run-file (Once.LinCore.ExprImage.fileAt (fs-numerics FS) B a inl IT.BF.tl IT.BF.mpm ex) ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (fs-numerics FS) (FrameSemantics.fs-interp FS)
+    file-at true  = file-atˣ
+    file-at false = file-atᶜ
+
+    file-wf-at : (inl : Bool) → Backend.AsmWF B (Once.LinCore.ExprImage.fileAt (fs-numerics FS) B a inl IT.BF.tl IT.BF.mpm
+                                     (image-externs (Once.LinCore.ExprImage.imageAt (fs-numerics FS) IT.BF.tl IT.BF.mpm)))
+    file-wf-at true  = file-wf-atˣ
+    file-wf-at false = file-wf-atᶜ

@@ -9,6 +9,7 @@
 -- literals).
 ------------------------------------------------------------------------
 
+open import Data.Bool using (Bool; true; false)
 open import Once.Spec.Numerics using (TargetNum)
 
 module Once.LinCore.ExprImage (fmt : TargetNum) where
@@ -50,5 +51,17 @@ blocksAt tl pm =
 imageAtˣ : Once.CCC.Codegen.AllocExpandClasses.Alloc → List CompiledSrc → ∀ {T : Type} → T <: EffUU → AbstractTrace
 imageAtˣ a tl pm = Once.CCC.Codegen.AllocExpand.expand (Once.CCC.Codegen.AllocExpandClasses.classes a (imageAt tl pm)) (imageAt tl pm)
 
-fileAt : (B : Backend) → Once.CCC.Codegen.AllocExpandClasses.Alloc → List CompiledSrc → ∀ {T : Type} → T <: EffUU → List String → Backend.File B
-fileAt B a tl pm ex = Backend.file B (room-checks (imageAtˣ a tl pm)) (file-table (Backend.payload B) (blocksAt tl pm)) ex
+-- D480: the call mode — the allocator a call, one routine per size of the image's: the expansion
+-- of the OUTLINED image (`AllocExpand.outline`, its sizes `dsizes`)
+imageAtᶜ : Once.CCC.Codegen.AllocExpandClasses.Alloc → List CompiledSrc → ∀ {T : Type} → T <: EffUU → AbstractTrace
+imageAtᶜ a tl pm =
+  let o = Once.CCC.Codegen.AllocExpand.outline (Once.CCC.Codegen.AllocExpandClasses.dsizes (imageAt tl pm)) (imageAt tl pm)
+  in Once.CCC.Codegen.AllocExpand.expand (Once.CCC.Codegen.AllocExpandClasses.classes a o) o
+
+-- the mode: `true` inlines the allocator (`--inline-alloc`), `false` calls it (the default)
+imageAtₘ : Bool → Once.CCC.Codegen.AllocExpandClasses.Alloc → List CompiledSrc → ∀ {T : Type} → T <: EffUU → AbstractTrace
+imageAtₘ true  = imageAtˣ
+imageAtₘ false = imageAtᶜ
+
+fileAt : (B : Backend) → Once.CCC.Codegen.AllocExpandClasses.Alloc → Bool → List CompiledSrc → ∀ {T : Type} → T <: EffUU → List String → Backend.File B
+fileAt B a inl tl pm ex = Backend.file B (room-checks (imageAtₘ inl a tl pm)) (file-table (Backend.payload B) (blocksAt tl pm)) ex
