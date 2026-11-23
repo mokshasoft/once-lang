@@ -53,6 +53,12 @@ open import Once.Memory.HeapAddress using (sucHL)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open FlatStepsAPI {FS} using (FlatSteps; []; _∷_)
+open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
+open FlatEventTrace {FS} using (flat-events; flat-events-step; flat-events-fetch; event-of; flat-events-steps; chain-events
+                               ; flat-ctrls; flat-ctrls-step; flat-ctrls-fetch; ctrl-of; chain-ctrls; flat-ctrls-steps)
+open import Once.IR.Semantics.Out using (Out; _▹_)
+open import Data.Nat using (_≤_; z≤n)
+open import Once.CCC.Codegen.AllocExpandEvents {FS} using (ev-unfold; ct-unfold; ev-none; ct-none; ev-halt; ct-halt)
 open FlatMachine {FS}
 open FlatState
 open LocState
@@ -548,15 +554,21 @@ module Out (ks : List ℕ) (b : ℕ) (T : AbstractTrace) where
       fetch-map (x ∷ xs) zero    = refl
       fetch-map (x ∷ xs) (suc n) = fetch-map xs n
 
+  -- a chain's events and control steps, through a rewrite of its first state
+  ce-subst : ∀ {A : Set} {k z} (F : A → FlatState) {x y : A} (e : x ≡ y) (c : FlatSteps P′ k (F x) z)
+           → chain-events (subst (λ w → FlatSteps P′ k (F w) z) e c) ≡ chain-events c
+  ce-subst F refl c = refl
+
   -- ★ AN ALLOCATION, CALLED: the call, the routine's entry, the primitive, the
   -- return reach the program's own step, shifted (the entry's clear of no slot
   -- changes nothing; the return leaves the frame the call entered)
   alloc-site : ∀ (fs fs′ : FlatState) (q k : ℕ) → k ∈ ks
              → Shifted d fs′ fs → fpc fs ≡ suc q → fetch T q ≡ just (instr-alloc-heap k)
              → LocState.halted (floc fs) ≡ false → flink fs ≡ nothing
-             → Σ FlatState λ fs″ → FlatSteps P′ 4 fs′ fs″ × Shifted d fs″ (flat-exec-instr (instr-alloc-heap k) P fs)
+             → Σ FlatState λ fs″ → Σ (FlatSteps P′ 4 fs′ fs″) λ c → (chain-events c ≡ []) × Shifted d fs″ (flat-exec-instr (instr-alloc-heap k) P fs)
   alloc-site fs fs′ q k mem sh@(lo , al , pc , rt , lk , cl) pq ft h lk0 =
-    s₄ , (h₀ , f₀) ∷ subst (λ mj → FlatSteps P′ 3 (do-call-at mj fs′) s₄) (sym (find-alloc k mem)) run , shifted
+    s₄ , (h₀ , f₀) ∷ subst (λ mj → FlatSteps P′ 3 (do-call-at mj fs′) s₄) (sym (find-alloc k mem)) run
+       , ce-subst (λ mj → do-call-at mj fs′) (sym (find-alloc k mem)) run , shifted
     where
       R = routines-out k mem
       open Routines R
@@ -587,9 +599,10 @@ module Out (ks : List ℕ) (b : ℕ) (T : AbstractTrace) where
             → Shifted d fs′ fs → fpc fs ≡ suc q → fetch T q ≡ just (instr-free-heap k)
             → LocState.halted (floc fs) ≡ false → flink fs ≡ nothing
             → gate-ok (instr-free-heap k) (floc fs) (falloc fs) ≡ true
-            → Σ FlatState λ fs″ → FlatSteps P′ 4 fs′ fs″ × Shifted d fs″ (flat-exec-instr (instr-free-heap k) P fs)
+            → Σ FlatState λ fs″ → Σ (FlatSteps P′ 4 fs′ fs″) λ c → (chain-events c ≡ []) × Shifted d fs″ (flat-exec-instr (instr-free-heap k) P fs)
   free-site fs fs′ q k mem sh@(lo , al , pc , rt , lk , cl) pq ft h lk0 g =
-    s₄ , (h₀ , f₀) ∷ subst (λ mj → FlatSteps P′ 3 (do-call-at mj fs′) s₄) (sym (find-free k mem)) run , fin _ _ g₂ g
+    s₄ , (h₀ , f₀) ∷ subst (λ mj → FlatSteps P′ 3 (do-call-at mj fs′) s₄) (sym (find-free k mem)) run
+       , ce-subst (λ mj → do-call-at mj fs′) (sym (find-free k mem)) run , fin _ _ g₂ g
     where
       R = routines-out k mem
       open Routines R
@@ -728,3 +741,95 @@ module Out (ks : List ℕ) (b : ℕ) (T : AbstractTrace) where
       pcs : suc (suc (suc n)) ≡ d + suc (fpc s₀)
       pcs = trans (cong suc (trans (sym (Data.Nat.Properties.+-comm n 2)) (sym (Data.Nat.Properties.+-assoc n 1 1))))
               (trans (cong (_+ 1) (sym d≡)) (cong (d +_) (cong suc (sym p0))))
+
+
+  cc-subst : ∀ {k x y z} (e : x ≡ y) (c : FlatSteps P′ k x z)
+           → chain-ctrls (subst (λ w → FlatSteps P′ k w z) e c) ≡ chain-ctrls c
+  cc-subst refl c = refl
+
+  -- a gate a step passes without faulting
+  gate-true : ∀ (bg : Bool) (i : AbstractInstr) (fs : FlatState)
+            → LocState.faulted (floc (straight-at bg i fs)) ≡ false → bg ≡ true
+  gate-true true  i fs _  = refl
+  gate-true false i fs ()
+
+  ------------------------------------------------------------------------
+  -- ★★ THE RUNS SHOW THE SAME: from shifted states, at every fuel of the
+  -- program, a fuel of the outlined one with EQUAL events and at least the
+  -- program's control steps (what `FlatShows` reads)
+  ------------------------------------------------------------------------
+
+  Same : ℕ → FlatState → ℕ → FlatState → Set
+  Same m fs′ n fs = (flat-events m P′ fs′ ≡ flat-events n P fs) × (flat-ctrls n P fs ≤ flat-ctrls m P′ fs′)
+
+  module Run (Good : FlatState → Set)
+             (g-step : ∀ {fs i} → Good fs → LocState.halted (floc fs) ≡ false → fetch P (fpc fs) ≡ just i → Good (flat-exec-instr i P fs))
+             (g-ns   : ∀ {fs} → Good fs → ¬ fetch P (fpc fs) ≡ just (instr-ctrl (c-start b)))
+             (g-link : ∀ {fs i} → Good fs → fetch P (fpc fs) ≡ just i → (∀ e bb → ¬ i ≡ instr-ctrl (c-entry e bb)) → flink fs ≡ nothing)
+             (g-nf   : ∀ {fs i} → Good fs → LocState.halted (floc fs) ≡ false → fetch P (fpc fs) ≡ just i
+                     → LocState.faulted (floc (flat-exec-instr i P fs)) ≡ false)
+             (sz     : ∀ q k → (fetch T q ≡ just (instr-alloc-heap k)) ⊎ (fetch T q ≡ just (instr-free-heap k)) → k ∈ ks)
+             (nj     : ∀ q i m → fetch T q ≡ just i → (i ≡ instr-ctrl (c-jmp m)) ⊎ (i ≡ instr-ctrl (c-branch-tag-zero m)) → ¬ skip-label ≡ m)
+             (nc     : ∀ q i f → fetch T q ≡ just i → i ≡ instr-ctrl (c-call-fn f) → NotR (e-fn f))
+             where
+
+    private
+      ≤-+ : ∀ {a x y z} → a ≤ y → x ≤ z → a + x ≤ y + z
+      ≤-+ = Data.Nat.Properties.+-mono-≤
+
+    ev : ∀ n {fs fs′} → Good fs → Shifted d fs′ fs → Σ ℕ λ m → Same m fs′ n fs
+    ev zero    G sh = 0 , refl , z≤n
+    ev (suc n) {fs} {fs′} G sh@(lo , al , pc , rt , lk , cl) = by-h (LocState.halted (floc fs)) refl
+      where
+        hg : ∀ {bh} → LocState.halted (floc fs) ≡ bh → LocState.halted (floc fs′) ≡ bh
+        hg e = trans (cong LocState.halted lo) e
+
+        -- a step's chain, its events none or the step's, its controls at least the step's
+        go : ∀ {i N fs″} → (h : LocState.halted (floc fs) ≡ false) → (f : fetch P (fpc fs) ≡ just i)
+           → (c : FlatSteps P′ N fs′ fs″) → chain-events c ≡ event-of i fs → ctrl-of i ≤ chain-ctrls c
+           → Shifted d fs″ (flat-exec-instr i P fs) → Σ ℕ λ m → Same m fs′ (suc n) fs
+        go {i} {N} {fs″} h f c ce cc sh′ = go′ (ev n (g-step G h f) sh′)
+          where
+            go′ : Σ ℕ (λ m → Same m fs″ n (flat-exec-instr i P fs)) → Σ ℕ λ m → Same m fs′ (suc n) fs
+            go′ (m′ , ee , ec) =
+              N + m′
+              , trans (flat-events-steps c m′) (trans (cong₂ _▹_ ce ee) (sym (ev-unfold n P fs h f)))
+              , subst (_≤ flat-ctrls (N + m′) P′ fs′) (sym (ct-unfold n P fs h f))
+                  (subst (ctrl-of i + flat-ctrls n P (flat-exec-instr i P fs) ≤_) (sym (flat-ctrls-steps c m′)) (≤-+ cc ec))
+
+        not-entry-a : ∀ k → ∀ e bb → ¬ instr-alloc-heap k ≡ instr-ctrl (c-entry e bb)
+        not-entry-a k e bb ()
+        not-entry-f : ∀ k → ∀ e bb → ¬ instr-free-heap k ≡ instr-ctrl (c-entry e bb)
+        not-entry-f k e bb ()
+
+        at-q : ∀ q → fpc fs ≡ suc q → LocState.halted (floc fs) ≡ false → ∀ mi → fetch T q ≡ mi → Σ ℕ λ m → Same m fs′ (suc n) fs
+        at-q q pq h nothing ft =
+          1 , trans (ev-none 0 P′ fs′ (hg h) (trans (cong (fetch P′) (trans pc (cong (d +_) pq))) (trans (fetch-out q) (cong (Data.Maybe.map site-call) ft))))
+                    (sym (ev-none n P fs h (trans (cong (fetch P) pq) ft)))
+            , subst (_≤ flat-ctrls 1 P′ fs′) (sym (ct-none n P fs h (trans (cong (fetch P) pq) ft))) z≤n
+        at-q q pq h (just i) ft = view (site-view i) ft
+          where
+            fP : ∀ {j} → fetch T q ≡ just j → fetch P (fpc fs) ≡ just j
+            fP e = trans (cong (fetch P) pq) e
+            view : ∀ {j} → SiteView j → fetch T q ≡ just j → Σ ℕ λ m → Same m fs′ (suc n) fs
+            view (sv-alloc k) e =
+              let (fs″ , c , ce , sh′) = alloc-site fs fs′ q k (sz q k (inj₁ e)) sh pq e h (g-link G (fP e) (not-entry-a k))
+              in go h (fP e) c ce z≤n sh′
+            view (sv-free k) e =
+              let g = gate-true (gate-ok (instr-free-heap k) (floc fs) (falloc fs)) (instr-free-heap k) fs (g-nf G h (fP e))
+                  (fs″ , c , ce , sh′) = free-site fs fs′ q k (sz q k (inj₂ e)) sh pq e h (g-link G (fP e) (not-entry-f k)) g
+              in go h (fP e) c ce z≤n sh′
+            view {j} (sv-same se) e =
+              let (c , sh′) = plain-step fs fs′ q j sh pq e se h (λ m w → nj q j m e w) (λ f w → nc q j f e w)
+              in go h (fP e) c (trans (Data.List.Properties.++-identityʳ _) (cong (λ L → FlatEventTrace.ev-of-loc {FS} j L) lo))
+                    (subst (_≤ ctrl-of j + 0) refl (Data.Nat.Properties.m≤m+n (ctrl-of j) 0)) sh′
+
+        by-pc : ∀ p → fpc fs ≡ p → LocState.halted (floc fs) ≡ false → Σ ℕ λ m → Same m fs′ (suc n) fs
+        by-pc zero    e h = ⊥-elim (g-ns G (cong (fetch P) e))
+        by-pc (suc q) e h = at-q q e h (fetch T q) refl
+
+        by-h : ∀ bh → LocState.halted (floc fs) ≡ bh → Σ ℕ λ m → Same m fs′ (suc n) fs
+        by-h true  e =
+          1 , trans (ev-halt 0 P′ fs′ (hg e)) (trans (cong (λ L → flat-events-step true 0 P′ (record fs′ { floc = L })) lo) (sym (ev-halt n P fs e)))
+            , subst (_≤ flat-ctrls 1 P′ fs′) (sym (ct-halt n P fs e)) z≤n
+        by-h false e = by-pc (fpc fs) refl e
