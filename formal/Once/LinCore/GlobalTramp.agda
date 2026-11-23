@@ -84,7 +84,7 @@ module TrampR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open TrImg {FS} ds f ldConst ld-nl using (image-tr)
   open Tr U ncty ldConst using (trAt)
   open Rel {FS} U wordOf using (CfgW; VW; vpair; vfn; vnu; SlotsAt; cellPtr)
-  open import Once.LinCore.Moves {FS} using (slot)
+  open import Once.LinCore.Moves {FS} using (slot; InBlk)
   open import Once.LinCore.LowerSim fmt ans bw using (module Sim)
   open Sim {FS} U wordOf using (envW-heap; stkW-heap; envW-frame; slots-frame; cntE; cntS)
   open Rel {FS} U wordOf using (cellLoc)
@@ -389,8 +389,8 @@ module TrampR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
               (subst (λ z → Seg image z E) (sym (HereF.f-pc H)) (in-seg (image-tr (ktr1 ds′ b γ) p 2)))
 
   -- ★ the dispatch: a one-shot closure applied, through its cell's code word
-  open import Once.LinCore.LowerSimG {FS} using (ClosIn; closure-in)
-  open ClosIn
+  open import Once.LinCore.LowerSimG {FS} using (ClosIn4; closure-in4)
+  open ClosIn4
   open ImgE {FS} ds f ldConst ld-nl using (image-tramp)
   open Sim {FS} U wordOf using (≤∸)
 
@@ -405,26 +405,29 @@ module TrampR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
 
   tr-dispatch : ∀ {Γ′ g X A B} {ds′ : Defs Γ′} {b : Tm Γ′ One (X ⊗t A) B} {γ : Gd g b}
                   (φ : Frame) {Es S} {es : Slots Es} {os : Stk S} {i} {x : MV X} {a : MV A} {fs}
-              → Seg image (fpc fs) (restore-input (Tp φ ((Fn once g A B ⊗t A) ∷ S)) ∷ lea-slot (Tp φ S ∸ (suc (wsz A) ⊔ wsz B))
-                                    ∷ instr-save-closure-reg ∷ instr-call-closure ∷ [])
-              → LocState.halted (floc fs) ≡ false
+              → Seg image (fpc fs) (restore-input (Tp φ ((Fn once g A B ⊗t A) ∷ S)) ∷ addr-at 3 ∷ mov-to-input ∷ instr-save-closure-reg
+                                    ∷ restore-input (Tp φ ((Fn once g A B ⊗t A) ∷ S)) ∷ lea-slot (Tp φ S ∸ (suc (wsz A) ⊔ wsz B))
+                                    ∷ instr-call-closure ∷ [])
+              → LocState.halted (floc fs) ≡ false → InBlk fs
               → CfgW (LocState.heapMem (floc fs)) (slot fs) φ (es ∥ mpair (mfn i (c1 ds′ b γ) x) a ∷ˢ os)
               → (suc (wsz A) ⊔ wsz B) + ws S ≤ OP φ
               → budget φ Data.Nat.< AllocState.frame-slots (falloc fs)
               → Σ (under (ktr1 ds′ b γ) ∈ allK U) λ p → Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′
                   × Tr0 ((wsz X + wsz A) ⊔ wsz B) (suc (wsz A) ⊔ wsz B) (trPos (ktr1 ds′ b γ) p 0) i x a fs′
-                  × Called fs fs′ (suc (suc (suc (suc (fpc fs))))) (suc (suc ((wsz X + wsz A) ⊔ wsz B)))
+                  × Called fs fs′ (suc (suc (suc (suc (suc (suc (suc (fpc fs)))))))) (suc (suc ((wsz X + wsz A) ⊔ wsz B)))
                            (suc ((wsz X + wsz A) ⊔ wsz B)) (Tp φ S ∸ (suc (wsz A) ⊔ wsz B))
-  tr-dispatch {g = g} {X = X} {A} {B} {ds′} {b} {γ} φ {Es} {S} {es} {os} {i} {x} {a} {fs} seg h C fitM bsl = with-top (Rel.CfgW.c-stk C)
+  tr-dispatch {g = g} {X = X} {A} {B} {ds′} {b} {γ} φ {Es} {S} {es} {os} {i} {x} {a} {fs} seg h I C fitM bsl = with-top (Rel.CfgW.c-stk C)
     where
       import Data.Nat.Properties
       M = (wsz X + wsz A) ⊔ wsz B ; Mc = suc (wsz A) ⊔ wsz B
       area = Tp φ S ∸ Mc
       cf = AllocState.current-frame (falloc fs)
       with-top : StkW (LocState.heapMem (floc fs)) (slot fs) φ (mpair (mfn i (c1 ds′ b γ) x) a ∷ˢ os) → _
-      with-top ((_ , vpair {wb = wa} (vfn {wx = wx} {wb} (m , refl) cc cfr px words) pa , (st₀ , sa)) , _) =
-        m , fin (closure-in image fs (Tp φ ((Fn once g A B ⊗t A) ∷ S)) area (cellLoc i 0) (tl (idx m)) (e-thunk (tl (idx m)))
-                   q (suc (suc M)) M (suc M) (λ e → Data.Nat.Properties.<-irrefl e (Data.Nat.Properties.n<1+n M)) st₀ (proj₁ (proj₂ words)) seg (image-tramp m refl) segq h
+      with-top ((_ , vpair {wb = wa} (vfn {wx = wx} {wb} cb cc cfr (m , refl) px words) pa , (st₀ , sa)) , _) =
+        m , fin (closure-in4 image fs (Tp φ ((Fn once g A B ⊗t A) ∷ S)) area (cellLoc i 0) (tl (idx m)) (e-thunk (tl (idx m)))
+                   q (suc (suc M)) M (suc M) (λ e → Data.Nat.Properties.<-irrefl e (Data.Nat.Properties.n<1+n M)) st₀
+                   (proj₂ (I (cellLoc i 3) (proj₁ (proj₂ (proj₂ (proj₂ words))))))
+                   (proj₁ (proj₂ (proj₂ (proj₂ (proj₂ words))))) seg (image-tramp m refl) segq h
                    (Data.Nat.Properties.≤-<-trans (Data.Nat.Properties.m∸n≤m (budget φ) (ws ((Fn once g A B ⊗t A) ∷ S))) bsl)
                    (Data.Nat.Properties.≤-<-trans (Data.Nat.Properties.≤-trans (Data.Nat.Properties.m∸n≤m (Tp φ S) Mc) (Data.Nat.Properties.m∸n≤m (budget φ) (ws S))) bsl)
                    (Data.Nat.Properties.m<n⇒m<1+n (Data.Nat.Properties.n<1+n M)) (Data.Nat.Properties.n<1+n (suc M)))
@@ -446,34 +449,34 @@ module TrampR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                     (sym (area-gen (budget φ) (wsz A) Mc (ws S)
                            (Data.Nat.Properties.≤-trans (Data.Nat.Properties.n≤1+n (wsz A)) (Data.Nat.Properties.m≤m⊔n (suc (wsz A)) (wsz B)))
                            (Data.Nat.Properties.≤-trans fitM (Data.Nat.Properties.m≤n+m (OP φ) (EP φ)))))
-          fin : Σ FlatState (λ fs′ → FlatSteps image 8 fs fs′ × ClosIn fs fs′ (SV-Ptr (AtDynamic (cellLoc i 0))) area (suc (suc M)) M (suc M) q) → _
+          fin : Σ FlatState (λ fs′ → FlatSteps image 11 fs fs′ × ClosIn4 fs fs′ (SV-Ptr (AtDynamic (cellLoc i 0))) area (suc (suc M)) M (suc M) q) → _
           fin (fs′ , run , CL) =
-            8 , fs′ , run ,
-            record { t-pc = trans (cl-pc CL) (sym (trans (length-++ Q) (trans (cong (_+ 4) qQ) (four+ q))))
-                   ; t-run = trans (cl-halt CL) h ; t-slots = cl-slots CL
+            11 , fs′ , run ,
+            record { t-pc = trans (c4-pc CL) (sym (trans (length-++ Q) (trans (cong (_+ 4) qQ) (four+ q))))
+                   ; t-run = trans (c4-halt CL) h ; t-slots = c4-slots CL
                    ; t-wx = wx ; t-wa = wa ; t-cfc = cf ; t-area = area
-                   ; t-x = subst (λ r → VW r x wx) (sym (cl-heap CL)) px
-                   ; t-at = subst (λ r → Rel.At {FS} U wordOf r i hdr wx) (sym (cl-heap CL)) (proj₂ (proj₂ (proj₂ (proj₂ words))))
-                   ; t-a = subst (λ r → VW r a wa) (sym (cl-heap CL)) pa
-                   ; t-in = cl-in CL
-                   ; t-M = subst (λ g′ → LocState.stackMem (floc fs′) g′ M ≡ just (cellPtr i)) (sym (cl-frame CL)) (cl-s₁ CL)
-                   ; t-sM = subst (λ g′ → LocState.stackMem (floc fs′) g′ (suc M) ≡ just (SV-Ptr (AtStack cf area))) (sym (cl-frame CL)) (cl-s₂ CL)
-                   ; t-ne = λ e → callee-≢ cf (suc (suc M)) (sym (trans e (cl-frame CL)))
+                   ; t-x = subst (λ r → VW r x wx) (sym (c4-heap CL)) px
+                   ; t-at = subst (λ r → Rel.At {FS} U wordOf r i hdr wx) (sym (c4-heap CL)) (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ words)))))
+                   ; t-a = subst (λ r → VW r a wa) (sym (c4-heap CL)) pa
+                   ; t-in = c4-in CL
+                   ; t-M = subst (λ g′ → LocState.stackMem (floc fs′) g′ M ≡ just (cellPtr i)) (sym (c4-frame CL)) (c4-s₁ CL)
+                   ; t-sM = subst (λ g′ → LocState.stackMem (floc fs′) g′ (suc M) ≡ just (SV-Ptr (AtStack cf area))) (sym (c4-frame CL)) (c4-s₂ CL)
+                   ; t-ne = λ e → callee-≢ cf (suc (suc M)) (sym (trans e (c4-frame CL)))
                    ; t-arg = Sim.slots-frame {FS} U wordOf {LocState.stackMem (floc fs) cf} {LocState.stackMem (floc fs′) cf} wa
-                               (λ k _ → cl-other CL cf _ (callee-≢ cf (suc (suc M))))
+                               (λ k _ → c4-other CL cf _ (callee-≢ cf (suc (suc M))))
                                (subst (λ z → SlotsAt (LocState.stackMem (floc fs) cf) z wa) t-top sa)
-                   ; t-win = λ k k< → caller-win (falloc fs′) cf (AllocState.frame-slots (falloc fs)) (AllocState.saved-frames (falloc fs)) _ (cl-saved CL)
+                   ; t-win = λ k k< → caller-win (falloc fs′) cf (AllocState.frame-slots (falloc fs)) (AllocState.saved-frames (falloc fs)) _ (c4-saved CL)
                                         (Data.Nat.Properties.<-≤-trans
                                           (area-bnd (budget φ) (ws S) Mc (wsz A) k k<
                                             (Data.Nat.Properties.≤-trans (Data.Nat.Properties.n≤1+n (wsz A)) (Data.Nat.Properties.m≤m⊔n (suc (wsz A)) (wsz B)))
                                             (Data.Nat.Properties.≤-trans fitM (Data.Nat.Properties.m≤n+m (OP φ) (EP φ))))
                                           (Data.Nat.Properties.<⇒≤ bsl)) } ,
-            record { cd-ret = cl-ret CL ; cd-saved = cl-saved CL ; cd-frame = cl-frame CL ; cd-others = cl-other CL
-                   ; cd-area = subst (λ g′ → LocState.stackMem (floc fs′) g′ (suc M) ≡ just (SV-Ptr (AtStack cf area))) (sym (cl-frame CL)) (cl-s₂ CL)
-                   ; cd-next = cl-next CL
-                   ; cd-freed = λ q → cong (λ fr → fr q) (cl-freed CL) ; cd-bsize = λ q _ → cong (λ bs → bs q) (cl-size CL)
-                   ; cd-old = λ hl _ _ → cong (λ h′ → h′ hl) (cl-heap CL)
-                   ; cd-inb = inb-pt {fs} {fs′} (λ hl → cong (λ h′ → h′ hl) (cl-heap CL)) (cl-next CL) (cl-size CL)
-                   ; cd-log = cl-log CL }
+            record { cd-ret = c4-ret CL ; cd-saved = c4-saved CL ; cd-frame = c4-frame CL ; cd-others = c4-other CL
+                   ; cd-area = subst (λ g′ → LocState.stackMem (floc fs′) g′ (suc M) ≡ just (SV-Ptr (AtStack cf area))) (sym (c4-frame CL)) (c4-s₂ CL)
+                   ; cd-next = c4-next CL
+                   ; cd-freed = λ q → cong (λ fr → fr q) (c4-freed CL) ; cd-bsize = λ q _ → cong (λ bs → bs q) (c4-size CL)
+                   ; cd-old = λ hl _ _ → cong (λ h′ → h′ hl) (c4-heap CL)
+                   ; cd-inb = inb-pt {fs} {fs′} (λ hl → cong (λ h′ → h′ hl) (c4-heap CL)) (c4-next CL) (c4-size CL)
+                   ; cd-log = c4-log CL }
 
 
