@@ -45,7 +45,7 @@ open import Once.LinCore.Spends fmt ans bw using (rounds; roundsM)
 open import Once.LinCore.Image fmt bw using (Codeᴵ; compᴵ; travᴵ; _⨾_; end; halted; call; untag; eapp; epop; eout; openω; kbodyω)
 open import Once.LinCore.ImageRun fmt ans bw using (Ret; []ʳ; frm;
   i-unpair; i-pair; i-swap; i-unit; i-prim; i-opend; i-untag; i-case₁; i-case₂; i-elend; i-eunlend; i-elift; i-efst; i-esnd;
-  i-eout; i-ecase₁; i-ecase₂; i-eapp; i-epop; i-call; i-reti; i-icall; i-icallω; i-icallᵒ; i-open1ω; i-iobs; i-nopen; i-open1; i-openω)
+  i-eout; i-ecase₁; i-ecase₂; i-eapp; i-epop; i-call; i-reti; i-icall; i-icallω; i-oncify; i-iobs; i-nopen; i-open1; i-openω)
 -- a ν is observed at the empty table (D440)
 open import Once.LinCore.ObsTable fmt ans bw using (TF; tf-id; tf-∘; tf-⊗; tf-case; tf-inl; tf-inr; tf-lul; tf-lul⁻; tf-drop; tf-lend; tf-bsnd; tf-bcopy; tf-bev; tf-unf; rt; obsT-tf; rt-obsT)
 open import Once.LinCore.ImageSim fmt ans bw using (StepsI; done; loops; oneI; PausedI; paused; OutI; out; HaltIf; SimRI; sim-code;

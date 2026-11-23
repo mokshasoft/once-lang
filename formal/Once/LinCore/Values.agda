@@ -123,6 +123,11 @@ data Lam : Kd → Gr → LTy → LTy → LTy → Set where
   -- ★ D478: many-use, its owned body kept (lent: `cin b₀`; owned: `b₀`)
   cωᶜ : ∀ {Γ g X A B} → Defs Γ → (b₀ : Tm Γ One (X ⊗t A) B) → Gd g b₀ → Lam many g X A B
 
+-- ★ D478: a many-use closure as the one-shot closure of its owned body (its owned call's)
+once-of : ∀ {g X A B} → Lam many g X A B → Lam once g X A B
+once-of (cω ds b γ)   = c1 ds (ownBg b) (ownBg-gd b γ)
+once-of (cωᶜ ds b₀ γ) = c1 ds b₀ γ
+
 
 data MV : LTy → Set where
   mone  : MV One

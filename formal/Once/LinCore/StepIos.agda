@@ -36,7 +36,7 @@ open import Once.LinCore.Events fmt ans bw using (Run; ds; gives; ios; ios-freeA
 open import Once.LinCore.Values fmt bw using (MV; Trace; mone; module MV)
 open import Once.LinCore.Code fmt bw using (Cfg; _∣_)
 open import Once.LinCore.Image fmt bw using (Codeᴵ; _⨾_; prim)
-open import Once.LinCore.ImageRun fmt ans bw using (Ret; StepI; i-call; i-case₁; i-case₂; i-ccopy; i-cfree; i-copen; i-copenν; i-eapp; i-ecase₁; i-ecase₂; i-efst; i-elend; i-elift; i-eout; i-eoutq; i-epop; i-esnd; i-eunlend; i-eword; i-fopen; i-fopenν; i-icall; i-icallω; i-icallᵒ; i-open1ω; i-iobs; i-loop; i-ncopy; i-nfree; i-nopen; i-open1; i-opend; i-openω; i-pair; i-prim; i-reclose; i-recloseν; i-ret; i-reti; i-swap; i-tag₁; i-unit; i-unpair; i-untag; i-untag₁; module Ret; module StepI)
+open import Once.LinCore.ImageRun fmt ans bw using (Ret; StepI; i-call; i-case₁; i-case₂; i-ccopy; i-cfree; i-copen; i-copenν; i-eapp; i-ecase₁; i-ecase₂; i-efst; i-elend; i-elift; i-eout; i-eoutq; i-epop; i-esnd; i-eunlend; i-eword; i-fopen; i-fopenν; i-icall; i-icallω; i-oncify; i-iobs; i-loop; i-ncopy; i-nfree; i-nopen; i-open1; i-opend; i-openω; i-pair; i-prim; i-reclose; i-recloseν; i-ret; i-reti; i-swap; i-tag₁; i-unit; i-unpair; i-untag; i-untag₁; module Ret; module StepI)
 open import Once.LinCore.Keys fmt bw using (Univ; module In; module Program)
 open import Once.LinCore.Labels fmt ans bw using (module NoLabels)
 open import Once.LinCore.PointAt fmt ans bw using (module Ctl)

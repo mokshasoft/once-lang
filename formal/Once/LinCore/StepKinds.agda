@@ -72,6 +72,7 @@ LocalI eoutq        = ⊤
 LocalI eapp         = ⊤
 LocalI epop         = ⊤
 LocalI eword        = ⊤
+LocalI oncify       = ⊤
 {-# CATCHALL #-}
 LocalI _            = ⊥
 
@@ -115,8 +116,6 @@ CoveredI (call _) = ⊤
 -- a dispatch through a one-shot cell's code word, and its trampoline's cell part (D438)
 CoveredI icall    = ⊤
 CoveredI open1    = ⊤
-CoveredI icallᵒ   = ⊤
-CoveredI open1ω   = ⊤
 -- an observation's dispatch (at the empty table, D440) and its trampoline's cell part
 CoveredI (iobs _) = ⊤
 CoveredI nopen    = ⊤
@@ -188,12 +187,6 @@ module _ {ℓ : Level} {T : Sh} where
               {x : MV X} {a : MV A} {os : Stk S} {n}
           → P (i-open1 {k = k} {r = r} {es = es} {i = i} {lam = lam} {x = x} {a = a} {os = os} {n = n})
       -- ★ D478: a many-use closure applied owned, and its owned entry's cell part
-      icᵒ : ∀ {Es g X A B S U} {k : Codeᴵ (Es ∣ B ∷ S) U} {r : Ret U T} {es : Slots Es} {i} {lam : Lam many g X A B}
-              {x : MV X} {a : MV A} {os : Stk S} {n}
-          → P (i-icallᵒ {k = k} {r = r} {es = es} {i = i} {lam = lam} {x = x} {a = a} {os = os} {n = n})
-      op1ω : ∀ {Es g X A B S U} {k : Codeᴵ (Es ∣ (X ⊗t A) ∷ S) U} {r : Ret U T} {es : Slots Es} {i} {lam : Lam many g X A B}
-              {x : MV X} {a : MV A} {os : Stk S} {n}
-          → P (i-open1ω {k = k} {r = r} {es = es} {i = i} {lam = lam} {x = x} {a = a} {os = os} {n = n})
       nop : ∀ {Es F S S′ U} {k : Codeᴵ (Es ∣ (Coalg F S ⊗t S) ∷ S′) U} {r : Ret U T} {es : Slots Es} {i}
               {p : MV (Coalg F S ⊗t S)} {os : Stk S′} {n}
           → P (i-nopen {k = k} {r = r} {es = es} {i = i} {p = p} {os = os} {n = n})
@@ -282,6 +275,7 @@ module _ {ℓ : Level} {T : Sh} where
   covered-elim C st@(i-eapp _)    v = CoveredCases.loc C st v
   covered-elim C st@i-epop        v = CoveredCases.loc C st v
   covered-elim C st@(i-eword _)   v = CoveredCases.loc C st v
+  covered-elim C st@i-oncify      v = CoveredCases.loc C st v
   covered-elim C (i-opend p)      pc-op      = CoveredCases.ope C p
   covered-elim C (i-opend _)      (pc-loc ())
   covered-elim C i-icall          _ = CoveredCases.ic C
@@ -292,8 +286,6 @@ module _ {ℓ : Level} {T : Sh} where
   covered-elim C i-cfree          _ = CoveredCases.cf C
   covered-elim C i-nfree          _ = CoveredCases.nf C
   covered-elim C i-open1          _ = CoveredCases.op1 C
-  covered-elim C i-icallᵒ         _ = CoveredCases.icᵒ C
-  covered-elim C i-open1ω         _ = CoveredCases.op1ω C
   covered-elim C (i-openω {es = es} eq)  _ = CoveredCases.opω C {es = es} eq
   covered-elim C i-nopen          _ = CoveredCases.nop C
   covered-elim C (i-copen {es = es} eq)  _ = CoveredCases.co C {es = es} eq
@@ -361,6 +353,10 @@ module _ {ℓ : Level} {T : Sh} where
       eword′ : ∀ {b Es S U} {k : Codeᴵ (Bt b ∷ Es ∣ Bt b ∷ S) U} {r : Ret U T} {x} {es : Slots (Bt b ∷ Es)} {os : Stk S} {n}
                  (eq : see es ≡ mbase x)
              → P (i-eword {k = k} {r = r} {es = es} {os = os} {n = n} eq)
+      -- ★ D478: a many-use cell made one-shot (its word 4 into its word 1)
+      oncify′ : ∀ {Es g X A B S U} {k : Codeᴵ (Es ∣ (Fn once g A B ⊗t A) ∷ S) U} {r : Ret U T} {es : Slots Es} {i}
+                  {lam : Lam many g X A B} {x : MV X} {a : MV A} {os : Stk S} {n}
+              → P (i-oncify {k = k} {r = r} {es = es} {i = i} {lam = lam} {x = x} {a = a} {os = os} {n = n})
 
   local-elim : (C : LocalCases) → ∀ {sh U sh′ U′} {c : Codeᴵ sh U} {r : Ret U T} {m n t} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T} {m′ n′}
                (st : StepI c r m n t c′ r′ m′ n′) → LocalC c → LocalCases.P C st
@@ -386,6 +382,7 @@ module _ {ℓ : Level} {T : Sh} where
   local-elim C (i-eapp {es = es} eq)     _ = LocalCases.eapp′ C {es = es} eq
   local-elim C i-epop                    _ = LocalCases.epop′ C
   local-elim C (i-eword {es = es} eq)    _ = LocalCases.eword′ C {es = es} eq
+  local-elim C i-oncify                _ = LocalCases.oncify′ C
   local-elim C (i-opend _)    ()
   local-elim C i-loop         ()
   local-elim C i-call         ()

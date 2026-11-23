@@ -248,14 +248,13 @@ module NoLabels {FS : FrameSemantics} where
     lowI-nl φ j m (call {bsig (just E) A B} κ) ei _ = refl ∷ refl ∷ refl ∷ refl ∷ []
     lowI-nl φ j m icall ei _   = refl ∷ refl ∷ refl ∷ refl ∷ []
     lowI-nl φ j m icallω ei _  = refl ∷ refl ∷ refl ∷ refl ∷ []
-    lowI-nl φ j m icallᵒ ei _  = refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []
+    lowI-nl φ j m oncify ei _  = refl ∷ refl ∷ refl ∷ []
     lowI-nl φ j m (iobs ds) ei _ = refl ∷ refl ∷ refl ∷ refl ∷ []
     lowI-nl φ j m ccopy ei _   = refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []
     lowI-nl φ j m ncopy ei _   = refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []
     lowI-nl φ j m cfree ei _   = refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []
     lowI-nl φ j m nfree ei _   = refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []
     lowI-nl φ j m open1 ei _   = []
-    lowI-nl φ j m open1ω ei _  = []
     lowI-nl φ j m openω ei _   = []
     lowI-nl φ j m nopen ei _   = []
     lowI-nl φ j m copen ei _   = []
@@ -296,7 +295,6 @@ module NoLabels {FS : FrameSemantics} where
       in inj₂ (_ , _ , refl , refl ∷ refl ∷ nl (mvPS hdr 0 w) (mvPS-nl hdr 0 w) (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []))
     tramp-nl j (kfold ds F alg) = inj₁ refl
     tramp-nl j (ktr1 ds b γ) = inj₁ refl
-    tramp-nl j (ktr1ω ds b γ) = inj₁ refl
     tramp-nl j (ktrω ds b γ) = inj₁ refl
     tramp-nl j (ktro ds F S) = inj₁ refl
     tramp-nl j (ktrc X C)    = inj₁ refl

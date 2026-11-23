@@ -301,10 +301,9 @@ module Lowering (U : Univ)
     in restore-input t ∷ lea-slot (bot ∸ (suc (wsz A) ⊔ wsz B)) ∷ instr-save-closure-reg ∷ instr-call-closure ∷ [] , m
   -- ★ D478: an owned call through word 4: `fclosure` the cell + 3, the cell in `Input1`, the
   -- caller's area in `Output` (as the one-shot call's, whose entry code it enters)
-  lowI φ j m (icallᵒ {Es} {g} {A} {B} {S}) ev =
-    let bot = Tp φ S ; t = Tp φ ((Fn many g A B ⊗t A) ∷ S)
-    in restore-input t ∷ addr-at 3 ∷ mov-to-input ∷ instr-save-closure-reg
-       ∷ restore-input t ∷ lea-slot (bot ∸ (suc (wsz A) ⊔ wsz B)) ∷ instr-call-closure ∷ [] , m
+  -- ★ D478: the cell's word 4 (its owned body's entry) into its word 1: a one-shot cell
+  lowI φ j m (oncify {Es} {g} {A} {B} {S}) ev =
+    restore-input (Tp φ ((Fn many g A B ⊗t A) ∷ S)) ∷ load-at 4 ∷ store-at 1 ∷ [] , m
   lowI φ j m (icallω {Es} {g} {A} {B} {S}) ev =
     let bot = Tp φ S
     in restore-input (ws Es) ∷ lea-slot (bot ∸ (wsz A ⊔ wsz B)) ∷ instr-save-closure-reg ∷ instr-call-closure ∷ [] , m
@@ -330,7 +329,6 @@ module Lowering (U : Univ)
   -- a trampoline's cell part (D434): only in a trampoline's block, which is
   -- never lowered here — a trampoline's flat code is `tramp`, below
   lowI φ j m open1 ev   = [] , m
-  lowI φ j m open1ω ev  = [] , m
   lowI φ j m openω ev   = [] , m
   lowI φ j m nopen ev   = [] , m
   lowI φ j m copen ev   = [] , m
@@ -441,7 +439,6 @@ module Lowering (U : Univ)
   -- the image's trampoline keys (D434) are not in the universe: their
   -- blocks' flat code is the code above, at their block's key
   tramp j (ktr1 ds b γ) = []
-  tramp j (ktr1ω ds b₀ γ) = []
   tramp j (ktrω ds b γ) = []
   tramp j (ktro ds F S) = []
   tramp j (ktrc X C)    = []

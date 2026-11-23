@@ -169,7 +169,6 @@ free-nc (Nu F)       = tt , tt
 NT : ∀ {σ} → Key σ → Set
 NT (ktr1 _ _ _) = ⊥
 NT (ktrω _ _ _) = ⊥
-NT (ktr1ω _ _ _) = ⊥
 NT (ktro _ _ _) = ⊥
 NT (ktrc _ _)   = ⊥
 NT (ktrf _ _)   = ⊥
@@ -188,7 +187,6 @@ block-nc (kcopy A)        _ = copy-nc A
 block-nc (kfree A)        _ = free-nc A
 block-nc (ktr1 _ _ _)     ()
 block-nc (ktrω _ _ _)     ()
-block-nc (ktr1ω _ _ _)    ()
 block-nc (ktro _ _ _)     ()
 block-nc (ktrc _ _)       ()
 block-nc (ktrf _ _)       ()

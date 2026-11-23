@@ -219,10 +219,6 @@ module Keep (U : Univ) where
       (tt , proj₁ (proj₁ (seen eq E)) , tt , tt) , (ck , E , os , R) , (see-in es E , tt) , a , tt
     keep (i-icallω {lam = cωᶜ ds b₀ γ} {es = es} eq) (_ , ck) R (E , a , os) =
       (tt , proj₁ (proj₁ (seen eq E)) , tt , tt) , (ck , E , os , R) , (see-in es E , tt) , a , tt
-    keep (i-icallᵒ {lam = cω ds b γ}) (_ , ck) R (E , ((l , x) , a) , os) =
-      (tt , proj₂ (proj₂ l) , tt) , (ck , E , os , R) , tt , ((l , x) , a) , tt
-    keep (i-icallᵒ {lam = cωᶜ ds b₀ γ}) (_ , ck) R (E , ((l , x) , a) , os) =
-      (tt , proj₂ (proj₂ l) , tt) , (ck , E , os , R) , tt , ((l , x) , a) , tt
     keep i-iobs (o , ck) R (E , (n , p) , os) = (tt , inO o n , tt) , (ck , E , os , R) , tt , (n , p) , tt
     keep (i-ccopy {lam = lam} {es = es} eq) (_ , ck) R (E , _ , os) =
       (tt , inC (lam-X lam (proj₁ (seen eq E))) , tt , tt , tt) , (ck , E , os , R) , (see-in es E , tt) , tt , tt
@@ -232,7 +228,6 @@ module Keep (U : Univ) where
     keep i-nfree  (_ , ck) R (E , (n , p) , os) = (tt , inF (ncty n) , tt) , (ck , E , os , R) , tt , (n , p) , tt
     -- a trampoline's cell part
     keep i-open1  (_ , ck) R (E , ((l , x) , a) , os) = ck , R , E , (x , a) , os
-    keep i-open1ω (_ , ck) R (E , ((l , x) , a) , os) = ck , R , E , (x , a) , os
     keep (i-openω eq) (_ , ck) R (E , os)       = ck , R , (proj₂ (seen eq E) , E) , os
     keep i-nopen  (_ , ck) R (E , (n , p) , os) = ck , R , E , p , os
     keep (i-copen eq) (_ , ck) R (E , os)       = ck , R , (proj₂ (seen eq E) , E) , os

@@ -107,8 +107,6 @@ ws-stepI (i-ncopy {es = es} _) (we , (_ , wo)) wr = ((ws-see es we , tt) , (tt ,
 ws-stepI i-cfree (we , (wf , wo)) wr = (tt , (wf , tt)) , (we , (wo , wr))
 ws-stepI i-nfree (we , (wn , wo)) wr = (tt , (wn , tt)) , (we , (wo , wr))
 ws-stepI i-open1 (we , (((_ , wx) , wa) , wo)) wr = (we , ((wx , wa) , wo)) , wr
-ws-stepI i-icallᵒ (we , (wf , wo)) wr = (tt , (wf , tt)) , (we , (wo , wr))
-ws-stepI i-open1ω (we , (((_ , wx) , wa) , wo)) wr = (we , ((wx , wa) , wo)) , wr
 ws-stepI (i-openω {es = es} eq) (we , wo) wr = ((proj₂ (seen es eq we) , we) , wo) , wr
 ws-stepI i-nopen (we , ((_ , wp) , wo)) wr = (we , (wp , wo)) , wr
 ws-stepI (i-copen {es = es} eq) (we , wo) wr = ((proj₂ (seen es eq we) , we) , wo) , wr

@@ -430,7 +430,7 @@ module In (U : Univ) where
   comp-in ds (llamωᶜ b₀ γ) g ck  = (inK (gk g (here refl)) , gt g (∈-++⁺ʳ [] (here refl)) , inK (gk (⊹ʳ (⊹ʳ (⊹ʳ g))) (here refl))) , ck
   comp-in ds lev g ck            = tt , ck
   comp-in ds bev g ck            = tt , ck
-  comp-in ds levω g ck           = tt , ck
+  comp-in ds levω g ck           = tt , (tt , ck)
   comp-in ds lunf g ck           = (gn g (here refl) , go g (here refl)) , ck
   comp-in ds lout g ck           = go g (here refl) , ck
 
