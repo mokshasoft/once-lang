@@ -30,7 +30,7 @@ module Once.LinCore.ImageSimRun
   (bw : Base → ℕ)
   where
 
-open import Once.LinCore.Core fmt using (Defs; LF∙; LTm; LTy; One; Tm; ε)
+open import Once.LinCore.Core fmt using (Defs; LF∙; LTm; LTy; One; Tm; ε; cin; cin-gd)
 open import Once.LinCore.Events fmt ans bw using (Outcome; Run; RunMap; gives; stop; go-on; stopped; again; done; fm-gives; fm-stop;
   m-id; m-one; m-b; m-μ; m-inl; m-inr; m-pair;
   r-id; r-∘; r-⊗; r-ρ; r-ρ⁻; r-λ; r-λ⁻; r-α; r-α⁻; r-swap; r-dup; r-drop; r-inl; r-inr; r-case₁; r-case₂; r-In; r-Outμ; r-clo;
@@ -163,6 +163,7 @@ mutual
       (around o (i-eapp eq) (calledRω o (simI r fr (ctx (vw x []ᵉ) refl []ˢ end (frm {t = just _} (epop ⨾ k) (vw x es) os ρ)))))
   simI r-lam fr (ctx es eq os k ρ) = leaf (i-prim r-lam) (k-alloc ∷ [])
   simI r-lamω fr (ctx es eq os k ρ) = leaf (i-prim r-lamω) (k-alloc ∷ [])
+  simI r-lamωᶜ fr (ctx es eq os k ρ) = leaf (i-prim r-lamωᶜ) (k-alloc ∷ [])
   simI r-unf fr (ctx es eq os k ρ) = leaf (i-prim r-unf) (k-alloc ∷ [])
   -- ★ through a cell's code word: its trampoline (D434), which does the
   -- cell's part and calls the block
@@ -183,6 +184,22 @@ mutual
            → SimRI o (openω ⨾ call (kbodyω ds′ b γ) ⨾ epop ⨾ end) R′ (E′ ∥ a ∷ˢ []ˢ) n (peek i ∷ t) end R′ E′ []ˢ j
       bevR (gives _ _) r′ = then (leaf (i-openω eq) (k-peek ∷ [])) (after r′ i-epop)
       bevR (stop y)    r′ = thenH y (leaf (i-openω eq) (k-peek ∷ [])) r′
+  simI (r-bevᶜ {B = B} {ds′ = ds′} {b₀ = b₀} {γ = γ} {i = i} {x} {a} {o} {n} r) p (ctx es eq os k ρ) =
+    calledR′ o (i-icallω eq) (bevR o (calledRω o (simI r p (ctx (vw x []ᵉ) refl []ˢ end (frm {t = just _} (epop ⨾ end) (vw x E′) []ˢ R′)))))
+    where
+      E′ = vw (see es) []ᵉ
+      R′ = frm {t = just _} k es os ρ
+      bevR : (o : Outcome B) → ∀ {t j} → SimRI o (call (kbodyω ds′ (cin b₀) (cin-gd b₀ γ)) ⨾ epop ⨾ end) R′ (vw x E′ ∥ a ∷ˢ []ˢ) n t (epop ⨾ end) R′ (vw x E′) []ˢ j
+           → SimRI o (openω ⨾ call (kbodyω ds′ (cin b₀) (cin-gd b₀ γ)) ⨾ epop ⨾ end) R′ (E′ ∥ a ∷ˢ []ˢ) n (peek i ∷ t) end R′ E′ []ˢ j
+      bevR (gives _ _) r′ = then (leaf (i-openω eq) (k-peek ∷ [])) (after r′ i-epop)
+      bevR (stop y)    r′ = thenH y (leaf (i-openω eq) (k-peek ∷ [])) r′
+  -- ★ D478: an owned call of a many-use closure: the cell made one-shot, then the one-shot call
+  simI (r-evωᶜ {o = o} r) p (ctx es eq os k ρ) =
+    preR o i-oncify (calledR′ o i-icall (thenR o (leaf i-open1 (k-free ∷ []))
+      (calledR o (around o i-elift (simI r p (ctx (vw mone []ᵉ) refl []ˢ _ (frm {t = nothing} end []ᵉ []ˢ (frm {t = nothing} k es os ρ))))))))
+  simI (r-evω {o = o} r) p (ctx es eq os k ρ) =
+    preR o i-oncify (calledR′ o i-icall (thenR o (leaf i-open1 (k-free ∷ []))
+      (calledR o (around o i-elift (simI r p (ctx (vw mone []ᵉ) refl []ˢ _ (frm {t = nothing} end []ᵉ []ˢ (frm {t = nothing} k es os ρ))))))))
   simI r-const fr (ctx es eq os k ρ) = leaf (i-prim r-const) []
   simI (r-op p) fr (ctx es eq os k ρ) = leaf (i-prim (r-op p)) (op-NoT p)
   simI (r-opend {w = halted} p) fr (ctx es eq os k ρ) =
@@ -237,6 +254,15 @@ mutual
       R′ = frm {t = just _} k es os ρ
       bevR : (o : Outcome B) → ∀ {t j} → SimRI o (call (kbodyω ds′ b γ) ⨾ epop ⨾ end) R′ (vw x E′ ∥ a ∷ˢ []ˢ) n t (epop ⨾ end) R′ (vw x E′) []ˢ j
            → SimRI o (openω ⨾ call (kbodyω ds′ b γ) ⨾ epop ⨾ end) R′ (E′ ∥ a ∷ˢ []ˢ) n (peek i ∷ t) end R′ E′ []ˢ j
+      bevR (gives _ _) r′ = then (leaf (i-openω eq) (k-peek ∷ [])) (after r′ i-epop)
+      bevR (stop y)    r′ = thenH y (leaf (i-openω eq) (k-peek ∷ [])) r′
+  simTF (r-bevᶜ {B = B} {ds′ = ds′} {b₀ = b₀} {γ = γ} {i = i} {x} {a} {o} {n} r) tf-bev p (ctx es eq os k ρ) =
+    calledR′ o (i-icallω eq) (bevR o (calledRω o (simI r p (ctx (vw x []ᵉ) refl []ˢ end (frm {t = just _} (epop ⨾ end) (vw x E′) []ˢ R′)))))
+    where
+      E′ = vw (see es) []ᵉ
+      R′ = frm {t = just _} k es os ρ
+      bevR : (o : Outcome B) → ∀ {t j} → SimRI o (call (kbodyω ds′ (cin b₀) (cin-gd b₀ γ)) ⨾ epop ⨾ end) R′ (vw x E′ ∥ a ∷ˢ []ˢ) n t (epop ⨾ end) R′ (vw x E′) []ˢ j
+           → SimRI o (openω ⨾ call (kbodyω ds′ (cin b₀) (cin-gd b₀ γ)) ⨾ epop ⨾ end) R′ (E′ ∥ a ∷ˢ []ˢ) n (peek i ∷ t) end R′ E′ []ˢ j
       bevR (gives _ _) r′ = then (leaf (i-openω eq) (k-peek ∷ [])) (after r′ i-epop)
       bevR (stop y)    r′ = thenH y (leaf (i-openω eq) (k-peek ∷ [])) r′
 

@@ -113,6 +113,7 @@ module IosG {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   straight-ios i-swap _ _ = refl
   straight-ios i-unit _ _ = refl
   straight-ios i-untag _ _ = refl
+  straight-ios i-oncify _ _ = refl
   straight-ios i-untag₁ _ _ = refl
   straight-ios i-tag₁ _ _ = refl
   straight-ios i-case₁ _ _ = refl

@@ -191,6 +191,9 @@ module Keep (U : Univ) where
     keep (i-prim run) (p , ck) R (E , v , os)   = ck , R , E , prim-in run p v , os
     keep (i-opend _) (_ , ck) R (E , v , os)    = tt , R , E , os
     keep i-untag  (_ , ck) R (E , (x , a) , os) = ck , R , E , (x , a) , os
+    -- (D478: the one-shot closure of the owned body: its body's key, the owned one)
+    keep (i-oncify {lam = cω ds b γ}) (_ , ck) R (E , (((kb , xt , ko) , vx) , va) , os) = ck , R , E , (((ko , xt) , vx) , va) , os
+    keep (i-oncify {lam = cωᶜ ds b₀ γ}) (_ , ck) R (E , (((kb , xt , ko) , vx) , va) , os) = ck , R , E , (((ko , xt) , vx) , va) , os
     keep i-untag₁ (_ , ck) R (E , x , os)       = ck , R , E , x , os
     keep i-tag₁   (_ , ck) R (E , x , os)       = ck , R , E , x , os
     keep i-case₁  (c₁ , _) R (E , a , os)       = c₁ , R , E , a , os

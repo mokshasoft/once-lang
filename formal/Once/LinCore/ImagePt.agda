@@ -163,6 +163,7 @@ module Places {sh₀ U₀} (c₀ : Codeᴵ sh₀ U₀) where
   place (i-prim _)    P R = nxt P , R
   place (i-opend _)   P R = halt , R
   place i-untag       P R = nxt P , R
+  place i-oncify      P R = nxt P , R
   place i-untag₁      P R = nxt P , R
   place i-tag₁        P R = nxt P , R
   place i-case₁       P R = cs₁ P , R

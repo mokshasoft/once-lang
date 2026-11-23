@@ -79,6 +79,7 @@ ws-stepI i-unit (we , wo) wr = (we , (tt , wo)) , wr
 ws-stepI (i-prim run) (we , (wv , wo)) wr = (we , (ws-run run tt wv , wo)) , wr
 ws-stepI (i-opend _) (we , (_ , wo)) wr = (we , wo) , wr
 ws-stepI i-untag c wr = c , wr
+ws-stepI i-oncify c wr = c , wr
 ws-stepI i-untag₁ c wr = c , wr
 ws-stepI i-tag₁ c wr = c , wr
 ws-stepI i-case₁ c wr = c , wr

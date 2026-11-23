@@ -152,6 +152,7 @@ module Tr (U : Univ)
             ∷ restore-input s₂ ∷ load-at 1 ∷ restore-input s₃ ∷ store-at 1
             ∷ restore-input s₂ ∷ load-at 2 ∷ restore-input s₃ ∷ store-at 2
             ∷ restore-input s₂ ∷ load-at 3 ∷ restore-input s₃ ∷ store-at 3
+            ∷ restore-input s₂ ∷ load-at 4 ∷ restore-input s₃ ∷ store-at 4
             ∷ mov-to-output ∷ store-at 0 ∷ mvSP 0 hdr w ++ E
         K = lea-slot 0 ∷ mov-to-input ∷ load-from-slot s₃ ∷ instr-ctrl (c-call-fn (nameOf j)) ∷ R
     in pick d (restore-input s₂ ∷ contentsAddr w ∷ store-at-slot s₃ ∷ K) K R R E
@@ -190,7 +191,7 @@ module Tr (U : Univ)
         i₀ = in-drop4
         i₁ = in-trans i₀ in-drop3
         i₂ = in-trans i₁ in-drop4
-        i₄ = in-trans i₂ (in-trans in-drop4 (in-trans in-drop4 (in-trans in-drop4 (in-trans in-drop4 (in-r (mvSP 0 hdr w) _)))))
+        i₄ = in-trans i₂ (in-trans in-drop4 (in-trans in-drop4 (in-trans in-drop4 (in-trans in-drop4 (in-trans in-drop4 (in-r (mvSP 0 hdr w) _))))))
     in pick-in d i₀ i₁ i₂ i₂ i₄
   tr-in j (ktrf X C) d =
     let w = wsz X

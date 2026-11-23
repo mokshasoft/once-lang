@@ -250,6 +250,7 @@ inv-stepH {r = r} {h = h} (i-opend {s = s} {es = es} {x = x} {os = os} p) inv =
       (same inv (λ i → cong (λ z → own es i + (z + held os i)) (cnt-flat (sdom s) x i)) (i-sees inv)) )
 inv-stepH i-untag inv = (tt , same inv (λ i → refl) (i-sees inv))
 inv-stepH i-untag₁ inv = (tt , same inv (λ i → refl) (i-sees inv))
+inv-stepH i-oncify inv = (tt , same inv (λ i → refl) (i-sees inv))
 inv-stepH i-tag₁ inv = (tt , same inv (λ i → refl) (i-sees inv))
 inv-stepH i-case₁ inv = (tt , same inv (λ i → refl) (i-sees inv))
 inv-stepH i-case₂ inv = (tt , same inv (λ i → refl) (i-sees inv))
@@ -330,6 +331,7 @@ inv-stepH (i-copenν {i = j} {p} {es} eq) inv =
 -- a fresh cell with the viewed cell's code words: the closure's or ν's build
 inv-stepH (i-reclose {lam = c1 ds b γ} eq) inv = prim-inv (r-lam {ds = ds}) inv
 inv-stepH (i-reclose {lam = cω ds b γ} eq) inv = prim-inv (r-lamω {ds = ds}) inv
+inv-stepH (i-reclose {lam = cωᶜ ds b₀ γ} eq) inv = prim-inv (r-lamωᶜ {ds = ds}) inv
 inv-stepH (i-recloseν eq) inv = prim-inv (r-unf {ds = ε}) inv
 inv-stepH (i-fopen {es = es} {i = j} {x = x} {os}) inv =
   freed j inv (λ i → r (own es i) (δ j i) (cnt x i) (held os i)) (i-sees inv)
