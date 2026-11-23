@@ -25,7 +25,8 @@ open import Data.List using (List; []; _∷_; _++_; map; length)
 import Data.Maybe
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Nat using (ℕ; zero; suc; _+_)
-open import Data.Product using (_×_; _,_)
+open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Data.Empty using (⊥-elim)
 open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 open import Once.CCC.Label using (LabelId; EntryId; e-thunk; e-fn; _≡ᵇᴵ_; ≡ᵇᴵ-true; _≡ᵇᴱ_; ≡ᵇᴱ-true)
@@ -333,3 +334,69 @@ ft-++ (x ∷ xs) ys e i h = at (entry-of? x) h
       where mt : ∀ b → ft-match b xs e i ≡ nothing → ft-match b (xs ++ ys) e i ≡ ft-go ys e (suc (length xs + i))
             mt true  ()
             mt false h″ = nx h″
+
+------------------------------------------------------------------------
+-- The jumped-over stretch: no label but the skip label, no entry but the routines'
+------------------------------------------------------------------------
+
+-- two that differ compare false
+miss-L : ∀ (a b : LabelId) → ¬ a ≡ b → (a ≡ᵇᴵ b) ≡ false
+miss-L a b ne = go (a ≡ᵇᴵ b) refl
+  where go : ∀ x → (a ≡ᵇᴵ b) ≡ x → (a ≡ᵇᴵ b) ≡ false
+        go true  e = ⊥-elim (ne (≡ᵇᴵ-true a b e))
+        go false e = e
+
+miss-E : ∀ (a b : EntryId) → ¬ a ≡ b → (a ≡ᵇᴱ b) ≡ false
+miss-E a b ne = go (a ≡ᵇᴱ b) refl
+  where go : ∀ x → (a ≡ᵇᴱ b) ≡ x → (a ≡ᵇᴱ b) ≡ false
+        go true  e = ⊥-elim (ne (≡ᵇᴱ-true a b e))
+        go false e = e
+
+-- no routine's name
+NotR : EntryId → Set
+NotR e = ∀ k → (¬ e-fn (alloc-fn k) ≡ e) × (¬ e-fn (free-fn k) ≡ e)
+
+fl-routines : ∀ ks m i → fl-go (prim-routines ks) m i ≡ nothing
+fl-routines []       m i = refl
+fl-routines (k ∷ ks) m i = fl-routines ks m (suc (suc (suc (suc (suc (suc i))))))
+
+ft-routines : ∀ ks e i → NotR e → ft-go (prim-routines ks) e i ≡ nothing
+ft-routines []       e i _  = refl
+ft-routines (k ∷ ks) e i nr =
+  trans (cong (λ b → ft-match b (instr-alloc-heap k ∷ instr-ctrl (c-ret 0) ∷ instr-ctrl (c-entry (e-fn (free-fn k)) 0)
+                                 ∷ instr-free-heap k ∷ instr-ctrl (c-ret 0) ∷ prim-routines ks) e i)
+              (miss-E (e-fn (alloc-fn k)) e (proj₁ (nr k))))
+    (trans (cong (λ b → ft-match b (instr-free-heap k ∷ instr-ctrl (c-ret 0) ∷ prim-routines ks) e (suc (suc (suc i))))
+                 (miss-E (e-fn (free-fn k)) e (proj₂ (nr k))))
+           (ft-routines ks e (suc (suc (suc (suc (suc (suc i)))))) nr))
+
+fl-skip : ∀ ks m i → ¬ skip-label ≡ m → fl-go (skip ks) m i ≡ nothing
+fl-skip ks m i ne =
+  trans (fl-++ (prim-routines ks) (instr-ctrl (c-label skip-label) ∷ []) m (suc i) (fl-routines ks m (suc i)))
+        (cong (λ b → fl-label-match b [] m (length (prim-routines ks) + suc i)) (miss-L skip-label m ne))
+
+ft-skip : ∀ ks e i → NotR e → ft-go (skip ks) e i ≡ nothing
+ft-skip ks e i nr = ft-++ (prim-routines ks) (instr-ctrl (c-label skip-label) ∷ []) e (suc i) (ft-routines ks e (suc i) nr)
+
+------------------------------------------------------------------------
+-- ★ The outlined program's scans: the program's own, `d` on
+------------------------------------------------------------------------
+
+module Out (ks : List ℕ) (b : ℕ) (T : AbstractTrace) where
+
+  P P′ : AbstractTrace
+  P  = instr-ctrl (c-start b) ∷ T
+  P′ = outline ks P
+
+  d : ℕ
+  d = length (skip ks)
+
+  find-label-out : ∀ m → ¬ skip-label ≡ m → find-label P′ m ≡ Data.Maybe.map (d +_) (find-label P m)
+  find-label-out m ne =
+    trans (fl-++ (skip ks) (map site-call T) m 1 (fl-skip ks m 1 ne))
+          (trans (fl-map T m (d + 1)) (fl-shiftᵈ T m d 1))
+
+  find-entry-out : ∀ e → NotR e → find-entry P′ e ≡ Data.Maybe.map (d +_) (find-entry P e)
+  find-entry-out e nr =
+    trans (ft-++ (skip ks) (map site-call T) e 1 (ft-skip ks e 1 nr))
+          (trans (ft-map T e (d + 1)) (ft-shiftᵈ T e d 1))
