@@ -24858,3 +24858,10 @@ against the IR's meaning, under a syntactic premise on the arms.
 not syntax), and covers the idiomatic combinator style the corpus uses; (C) changes when effects happen.
 (B) is plan 0.146 §5 item 8 h's "saturated combinators translated as the core terms they mean", already
 agreed, so it goes ahead; the arms' premise (closure constructions only) is the part for review.
+**Finding (2026-11-23).** The benchmark's arms are partial applications of definitions (`next p`), and the
+bridge's references (`Rs`) give a call target only, so whether evaluating an arm is pure and total is a fact
+about the DEFINITION, not the expression. (B) then needs: a per-definition shape fact (its body is a `lam`)
+carried through `Rs` and its meaning through `RefOK`, and a proof that such a call builds a closure and
+does nothing else. Literal-`lam` arms need none of that. Proposed split: (B1) literal `lam` arms now;
+(B2) definition-shape facts through `Rs`/`RefOK` for review (the alternative to B2 is inlining, which the
+plan keeps behind a flag). Meanwhile the plan goes on with item c.
