@@ -252,7 +252,7 @@ module DispC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     with-top (topW es (CfgW.c-env (S.Here.h-cfg H)))
     where
       with-fn : ∀ {we} → VW (LocState.heapMem (floc fs)) (see es) we → VW (LocState.heapMem (floc fs)) (mfn i lam x) we → SlotsAt (slot fs) (ws Es) we → _
-      with-fn pe (vfn cb cc cfr px words) (s₀ , _) =
+      with-fn pe (vfn cb cc cfr _ px words) (s₀ , _) =
         gcopy-d {X = X} (d-start s) inv (Seg-++ˡ image (fpc fs) _ _ (S.seg-at s H)) (S.Here.h-run H) (S.Here.h-slots H) (S.Here.h-cfg H) s₀ pe words cc
           (trans (cong (λ z → suc (suc (suc (suc (suc (suc (suc (suc z)))))))) (S.Here.h-pc H)) (trans (sym (eight (S.pos s))) (sym (S.pos-next s))))
           nx ok I lv F
@@ -262,7 +262,7 @@ module DispC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     with-top (topW es (CfgW.c-env (K.Here.h-cfg {p = p′} H)))
     where
       with-fn : ∀ {we} → VW (LocState.heapMem (floc fs)) (see es) we → VW (LocState.heapMem (floc fs)) (mfn i lam x) we → SlotsAt (slot fs) (ws Es) we → _
-      with-fn pe (vfn cb cc cfr px words) (s₀ , _) =
+      with-fn pe (vfn cb cc cfr _ px words) (s₀ , _) =
         gcopy-d {X = X} (d-block p′ s) inv (Seg-++ˡ image (fpc fs) _ _ (K.seg-at p′ s H)) (K.Here.h-run {p = p′} H) (K.Here.h-slots {p = p′} H) (K.Here.h-cfg {p = p′} H) s₀ pe words cc
           (trans (cong (λ z → suc (suc (suc (suc (suc (suc (suc (suc z)))))))) (K.Here.h-pc {p = p′} H))
                  (trans (sym (eight (K.pos p′ s))) (sym (FrK.C.pos-next p′ s))))
@@ -284,7 +284,7 @@ module DispC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     with-top (topW es (CfgW.c-env (S.Here.h-cfg H)))
     where
       with-nu : ∀ {we} → VW (LocState.heapMem (floc fs)) (see es) we → VW (LocState.heapMem (floc fs)) (mnu i q) we → SlotsAt (slot fs) (ws Es) we → _
-      with-nu pe (vnu co cc cfr pp words) (s₀ , _) =
+      with-nu pe (vnu co cc cfr _ pp words) (s₀ , _) =
         gcopy-d {X = Coalg F S′ ⊗t S′} (d-start s) inv (Seg-++ˡ image (fpc fs) _ _ (S.seg-at s H)) (S.Here.h-run H) (S.Here.h-slots H) (S.Here.h-cfg H) s₀ pe words cc
           (trans (cong (λ z → suc (suc (suc (suc (suc (suc (suc (suc z)))))))) (S.Here.h-pc H)) (trans (sym (eight (S.pos s))) (sym (S.pos-next s))))
           nx ok I lv Fa
@@ -294,7 +294,7 @@ module DispC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     with-top (topW es (CfgW.c-env (K.Here.h-cfg {p = p′} H)))
     where
       with-nu : ∀ {we} → VW (LocState.heapMem (floc fs)) (see es) we → VW (LocState.heapMem (floc fs)) (mnu i q) we → SlotsAt (slot fs) (ws Es) we → _
-      with-nu pe (vnu co cc cfr pp words) (s₀ , _) =
+      with-nu pe (vnu co cc cfr _ pp words) (s₀ , _) =
         gcopy-d {X = Coalg F S′ ⊗t S′} (d-block p′ s) inv (Seg-++ˡ image (fpc fs) _ _ (K.seg-at p′ s H)) (K.Here.h-run {p = p′} H) (K.Here.h-slots {p = p′} H) (K.Here.h-cfg {p = p′} H) s₀ pe words cc
           (trans (cong (λ z → suc (suc (suc (suc (suc (suc (suc (suc z)))))))) (K.Here.h-pc {p = p′} H))
                  (trans (sym (eight (K.pos p′ s))) (sym (FrK.C.pos-next p′ s))))

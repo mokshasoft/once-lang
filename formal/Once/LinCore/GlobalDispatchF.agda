@@ -208,7 +208,7 @@ module DispF {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     where
       st₁ = StepI.i-cfree {c = c} {r = r} {es = es} {i = i} {lam = lam} {x = x} {os = os} {n = n}
       with-top : StkW (LocState.heapMem (floc fs)) (slot fs) (dsiteφ d) (mfn i lam x ∷ˢ os) → _
-      with-top ((_ , vfn {wx = wx} cb cc cfr px words , (st₀ , _)) , _) =
+      with-top ((_ , vfn {wx = wx} cb cc cfr _ px words , (st₀ , _)) , _) =
         case tf-disp {X} {Fn kd g A B} (Tp (dsiteφ d) S ∸ 1) seg run
                (subst ((Tp (dsiteφ d) S ∸ 1) Data.Nat.<_) (sym fsl)
                   (Data.Nat.Properties.≤-<-trans
@@ -245,7 +245,7 @@ module DispF {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     where
       st₁ = StepI.i-nfree {c = c} {r = r} {es = es} {i = i} {p = p} {os = os} {n = n}
       with-top : StkW (LocState.heapMem (floc fs)) (slot fs) (dsiteφ d) (mnu i p ∷ˢ os) → _
-      with-top ((_ , vnu {wp = wp} co cc cfr pp words , (st₀ , _)) , _) =
+      with-top ((_ , vnu {wp = wp} co cc cfr _ pp words , (st₀ , _)) , _) =
         case tf-disp {Coalg F S ⊗t S} {Nu F} (Tp (dsiteφ d) S′ ∸ 1) seg run
                (subst ((Tp (dsiteφ d) S′ ∸ 1) Data.Nat.<_) (sym fsl)
                   (Data.Nat.Properties.≤-<-trans
