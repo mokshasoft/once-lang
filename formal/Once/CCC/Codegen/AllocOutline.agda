@@ -500,6 +500,68 @@ clear0 : ∀ (m : StackMem FS) (f : FrameSemantics.Frame FS) → MemOps.clear-fr
 clear0 m f = extensionality (λ f′ → extensionality (λ k′ → clear-aux0 k′ (FrameSemantics._≟F_ FS f f′) (m f′ k′)))
 
 ------------------------------------------------------------------------
+-- What the routines hold, and where their entries sit
+------------------------------------------------------------------------
+
+data RouI (ks : List ℕ) : AbstractInstr → Set where
+  ri-ae : ∀ k → k ∈ ks → RouI ks (instr-ctrl (c-entry (e-fn (alloc-fn k)) 0))
+  ri-a  : ∀ k → k ∈ ks → RouI ks (instr-alloc-heap k)
+  ri-r  : RouI ks (instr-ctrl (c-ret 0))
+  ri-fe : ∀ k → k ∈ ks → RouI ks (instr-ctrl (c-entry (e-fn (free-fn k)) 0))
+  ri-f  : ∀ k → k ∈ ks → RouI ks (instr-free-heap k)
+
+private
+  rou-up : ∀ {k ks i} → RouI ks i → RouI (k ∷ ks) i
+  rou-up (ri-ae k m) = ri-ae k (there m)
+  rou-up (ri-a k m)  = ri-a k (there m)
+  rou-up ri-r        = ri-r
+  rou-up (ri-fe k m) = ri-fe k (there m)
+  rou-up (ri-f k m)  = ri-f k (there m)
+
+  just-inj : ∀ {A : Set} {x y : A} → just x ≡ just y → x ≡ y
+  just-inj refl = refl
+
+rou : ∀ ks j i → fetch (prim-routines ks) j ≡ just i → RouI ks i
+rou []       j i ()
+rou (k ∷ ks) zero i e = subst (RouI (k ∷ ks)) (just-inj e) (ri-ae k (here refl))
+rou (k ∷ ks) (suc zero) i e = subst (RouI (k ∷ ks)) (just-inj e) (ri-a k (here refl))
+rou (k ∷ ks) (suc (suc zero)) i e = subst (RouI (k ∷ ks)) (just-inj e) ri-r
+rou (k ∷ ks) (suc (suc (suc zero))) i e = subst (RouI (k ∷ ks)) (just-inj e) (ri-fe k (here refl))
+rou (k ∷ ks) (suc (suc (suc (suc zero)))) i e = subst (RouI (k ∷ ks)) (just-inj e) (ri-f k (here refl))
+rou (k ∷ ks) (suc (suc (suc (suc (suc zero))))) i e = subst (RouI (k ∷ ks)) (just-inj e) ri-r
+rou (k ∷ ks) (suc (suc (suc (suc (suc (suc j)))))) i e = rou-up (rou ks j i e)
+
+-- an entry of the routines: at their start, or right after a return
+rou-guard : ∀ ks j ℓ bb → fetch (prim-routines ks) j ≡ just (instr-ctrl (c-entry ℓ bb))
+          → (j ≡ 0) ⊎ Σ ℕ (λ q → (j ≡ suc q) × fetch (prim-routines ks) q ≡ just (instr-ctrl (c-ret 0)))
+rou-guard []       j ℓ bb ()
+rou-guard (k ∷ ks) zero ℓ bb e = inj₁ refl
+rou-guard (k ∷ ks) (suc zero) ℓ bb ()
+rou-guard (k ∷ ks) (suc (suc zero)) ℓ bb ()
+rou-guard (k ∷ ks) (suc (suc (suc zero))) ℓ bb e = inj₂ (2 , refl , refl)
+rou-guard (k ∷ ks) (suc (suc (suc (suc zero)))) ℓ bb ()
+rou-guard (k ∷ ks) (suc (suc (suc (suc (suc zero))))) ℓ bb ()
+rou-guard (k ∷ ks) (suc (suc (suc (suc (suc (suc j)))))) ℓ bb e = up (rou-guard ks j ℓ bb e)
+  where
+    up : (j ≡ 0) ⊎ Σ ℕ (λ q → (j ≡ suc q) × fetch (prim-routines ks) q ≡ just (instr-ctrl (c-ret 0)))
+       → (suc (suc (suc (suc (suc (suc j))))) ≡ 0) ⊎ Σ ℕ (λ q → (suc (suc (suc (suc (suc (suc j))))) ≡ suc q)
+                                                         × fetch (prim-routines (k ∷ ks)) q ≡ just (instr-ctrl (c-ret 0)))
+    up (inj₁ refl)           = inj₂ (5 , refl , refl)
+    up (inj₂ (q , refl , f)) = inj₂ (suc (suc (suc (suc (suc (suc q))))) , refl , f)
+
+-- a fetch from an append: from its front, or from its back past the front
+fetch-split : ∀ (xs ys : AbstractTrace) j i → fetch (xs ++ ys) j ≡ just i
+            → (fetch xs j ≡ just i) ⊎ Σ ℕ (λ q → (j ≡ length xs + q) × fetch ys q ≡ just i)
+fetch-split []       ys j       i e = inj₂ (j , refl , e)
+fetch-split (x ∷ xs) ys zero    i e = inj₁ e
+fetch-split (x ∷ xs) ys (suc j) i e = up (fetch-split xs ys j i e)
+  where
+    up : (fetch xs j ≡ just i) ⊎ Σ ℕ (λ q → (j ≡ length xs + q) × fetch ys q ≡ just i)
+       → (fetch xs j ≡ just i) ⊎ Σ ℕ (λ q → (suc j ≡ suc (length xs) + q) × fetch ys q ≡ just i)
+    up (inj₁ f)           = inj₁ f
+    up (inj₂ (q , e′ , f)) = inj₂ (q , cong suc e′ , f)
+
+------------------------------------------------------------------------
 -- ★ The outlined program's scans: the program's own, `d` on
 ------------------------------------------------------------------------
 
@@ -939,3 +1001,33 @@ module Out (ks : List ℕ) (b : ℕ) (T : AbstractTrace) where
                   → LocState.faulted (floc x) ≡ false
             split (inj₁ (j , r , _))         = sound G nf1 sh r
             split (inj₂ (j , (hx , _) ∷ _)) = trans (chain-fault dd hx) nf0
+
+  -- ★ what the outlined program holds, by where
+  data WhereP′ (p : ℕ) (i : AbstractInstr) : Set where
+    w-start : p ≡ 0 → i ≡ instr-ctrl (c-start b) → WhereP′ p i
+    w-jmp   : p ≡ 1 → i ≡ instr-ctrl (c-jmp skip-label) → WhereP′ p i
+    w-rou   : ∀ j → p ≡ suc (suc j) → fetch (prim-routines ks) j ≡ just i → WhereP′ p i
+    w-lab   : p ≡ suc (suc n) → i ≡ instr-ctrl (c-label skip-label) → WhereP′ p i
+    w-own   : ∀ q i′ → p ≡ d + suc q → fetch T q ≡ just i′ → i ≡ site-call i′ → WhereP′ p i
+
+  where-P′ : ∀ p i → fetch P′ p ≡ just i → WhereP′ p i
+  where-P′ zero          i e = w-start refl (sym (just-inj e))
+  where-P′ (suc zero)    i e = w-jmp refl (sym (just-inj e))
+  where-P′ (suc (suc j)) i e = rest (fetch-split (prim-routines ks) (instr-ctrl (c-label skip-label) ∷ map site-call T) j i
+                                       (trans (sym (cong (λ z → fetch z (suc (suc j))) shape′)) e))
+    where
+      fm : ∀ (xs : AbstractTrace) t i″ → fetch (map site-call xs) t ≡ just i″ → Σ AbstractInstr λ i′ → fetch xs t ≡ just i′ × i″ ≡ site-call i′
+      fm []       t       i″ ()
+      fm (x ∷ xs) zero    i″ e′ = x , refl , sym (just-inj e′)
+      fm (x ∷ xs) (suc t) i″ e′ = fm xs t i″ e′
+      rest : (fetch (prim-routines ks) j ≡ just i) ⊎ Σ ℕ (λ q → (j ≡ n + q) × fetch (instr-ctrl (c-label skip-label) ∷ map site-call T) q ≡ just i)
+           → WhereP′ (suc (suc j)) i
+      rest (inj₁ f) = w-rou j refl f
+      rest (inj₂ (zero , e′ , f)) = w-lab (cong (λ z → suc (suc z)) (trans e′ (Data.Nat.Properties.+-identityʳ n))) (sym (just-inj f))
+      rest (inj₂ (suc t , e′ , f)) =
+        let (i′ , ft , ei) = fm T t i f
+        in w-own t i′ (trans (cong (λ z → suc (suc z)) e′) pos) ft ei
+        where
+          pos : suc (suc (n + suc t)) ≡ d + suc t
+          pos = trans (cong suc (sym (+-suc n (suc t))))
+                  (trans (cong suc (sym (Data.Nat.Properties.+-assoc n 1 (suc t)))) (cong (_+ suc t) (sym d≡)))
