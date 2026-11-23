@@ -296,14 +296,16 @@ module Lowering (U : Univ)
     let bot = Tp φ S ; M = wsz A ⊔ wsz B
     in lea-slot (bot ∸ M) ∷ mov-to-input ∷ lea-slot (ws Es) ∷ instr-ctrl (c-call-fn (nameOf (idx κ∈))) ∷ [] , m
   -- ★ through a cell's code word: the cell in `fclosure`, the caller's area in `Output`
+  -- (D478: through word 4, the owned entry: `fclosure` the cell + 3, the cell in `Input1`)
   lowI φ j m (icall {Es} {g} {A} {B} {S}) ev =
     let bot = Tp φ S ; t = Tp φ ((Fn once g A B ⊗t A) ∷ S)
-    in restore-input t ∷ lea-slot (bot ∸ (suc (wsz A) ⊔ wsz B)) ∷ instr-save-closure-reg ∷ instr-call-closure ∷ [] , m
+    in restore-input t ∷ addr-at 3 ∷ mov-to-input ∷ instr-save-closure-reg
+       ∷ restore-input t ∷ lea-slot (bot ∸ (suc (wsz A) ⊔ wsz B)) ∷ instr-call-closure ∷ [] , m
   -- ★ D478: an owned call through word 4: `fclosure` the cell + 3, the cell in `Input1`, the
   -- caller's area in `Output` (as the one-shot call's, whose entry code it enters)
-  -- ★ D478: the cell's word 4 (its owned body's entry) into its word 1: a one-shot cell
-  lowI φ j m (oncify {Es} {g} {A} {B} {S}) ev =
-    restore-input (Tp φ ((Fn many g A B ⊗t A) ∷ S)) ∷ load-at 4 ∷ store-at 1 ∷ [] , m
+  -- ★ D478: a pure retyping (the cell's word 4 is its owned body's entry, which the one-shot
+  -- call enters)
+  lowI φ j m (oncify {Es} {g} {A} {B} {S}) ev = [] , m
   lowI φ j m (icallω {Es} {g} {A} {B} {S}) ev =
     let bot = Tp φ S
     in restore-input (ws Es) ∷ lea-slot (bot ∸ (wsz A ⊔ wsz B)) ∷ instr-save-closure-reg ∷ instr-call-closure ∷ [] , m

@@ -252,9 +252,9 @@ module Free (U : Univ)
   lowI-nj φ j m (eword {b} {Es} {S}) ei _ = mvSS-nj (ws Es) (Tp φ S ∸ 1) 1
   lowI-nj φ j m (call {bsig nothing A B} κ) ei _  = refl ∷ refl ∷ refl ∷ []
   lowI-nj φ j m (call {bsig (just E) A B} κ) ei _ = refl ∷ refl ∷ refl ∷ refl ∷ []
-  lowI-nj φ j m icall ei _   = refl ∷ refl ∷ refl ∷ refl ∷ []
+  lowI-nj φ j m icall ei _   = refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []
   lowI-nj φ j m icallω ei _  = refl ∷ refl ∷ refl ∷ refl ∷ []
-  lowI-nj φ j m oncify ei _  = refl ∷ refl ∷ refl ∷ []
+  lowI-nj φ j m oncify ei _  = []
   lowI-nj φ j m (iobs ds) ei _ = refl ∷ refl ∷ refl ∷ refl ∷ []
   lowI-nj φ j m ccopy ei _   = refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []
   lowI-nj φ j m ncopy ei _   = refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []

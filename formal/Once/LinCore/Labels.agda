@@ -246,9 +246,9 @@ module NoLabels {FS : FrameSemantics} where
     lowI-nl φ j m (eword {b} {Es} {S}) ei _ = mvSS-nl (ws Es) (Tp φ S ∸ 1) 1
     lowI-nl φ j m (call {bsig nothing A B} κ) ei _  = refl ∷ refl ∷ refl ∷ []
     lowI-nl φ j m (call {bsig (just E) A B} κ) ei _ = refl ∷ refl ∷ refl ∷ refl ∷ []
-    lowI-nl φ j m icall ei _   = refl ∷ refl ∷ refl ∷ refl ∷ []
+    lowI-nl φ j m icall ei _   = refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []
     lowI-nl φ j m icallω ei _  = refl ∷ refl ∷ refl ∷ refl ∷ []
-    lowI-nl φ j m oncify ei _  = refl ∷ refl ∷ refl ∷ []
+    lowI-nl φ j m oncify ei _  = []
     lowI-nl φ j m (iobs ds) ei _ = refl ∷ refl ∷ refl ∷ refl ∷ []
     lowI-nl φ j m ccopy ei _   = refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []
     lowI-nl φ j m ncopy ei _   = refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []

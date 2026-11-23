@@ -68,6 +68,13 @@ module Rel {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
   CodeOf : Σ BSig Key → W → Set
   CodeOf κ w = Σ (κ ∈ allK U) λ m → w ≡ SV-Code (tl (idx m))
 
+  -- ★ D478: a cell's word 1 matters only for a many-use cell (its lent call reads it; a one-shot
+  -- call enters word 4, `okey`)
+  Word1 : ∀ {k g X A B} → Lam k g X A B → W → Set
+  Word1 (c1 _ _ _)     _ = ⊤
+  Word1 lam@(cω _ _ _)  w = CodeOf (key-of lam) w
+  Word1 lam@(cωᶜ _ _ _) w = CodeOf (key-of lam) w
+
   -- ★ a value's words, its cells in the heap
   data VW (rd : HeapLocation → Maybe W) : ∀ {A} → MV A → List W → Set where
     vone  : VW rd mone []
@@ -81,7 +88,7 @@ module Rel {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
     vct   : ∀ {l X} {x : MV X} {w} → VW rd x w → VW rd (mct {l = l} x) w
     -- (D478: word 4 the owned body's entry, `okey`)
     vfn   : ∀ {k g X A B i} {lam : Lam k g X A B} {x : MV X} {wx wb wc wf wo}
-          → CodeOf (key-of lam) wb → CodeOf (kc X) wc → CodeOf (kf X) wf → CodeOf (okey lam) wo → VW rd x wx
+          → Word1 lam wb → CodeOf (kc X) wc → CodeOf (kf X) wf → CodeOf (okey lam) wo → VW rd x wx
           → At rd i 0 (cellPtr i ∷ wb ∷ wc ∷ wf ∷ wo ∷ wx)
           → VW rd (mfn i lam x) (cellPtr i ∷ [])
     vnu   : ∀ {F S i} {p : MV (Coalg F S ⊗t S)} {wp wo wc wf wo′}

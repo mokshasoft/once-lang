@@ -289,9 +289,9 @@ module Ok (nm : CanonicalName) (U : Univ)
       -- a call by name: a key's block
       lowI-ok φ j m (call {bsig nothing A B} κ) ei  = ✓ ∷ ✓ ∷ callRef ei ∷ []
       lowI-ok φ j m (call {bsig (just E) A B} κ) ei = ✓ ∷ ✓ ∷ ✓ ∷ callRef ei ∷ []
-      lowI-ok φ j m icall ei   = ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ []
+      lowI-ok φ j m icall ei   = ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ []
       lowI-ok φ j m icallω ei  = ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ []
-      lowI-ok φ j m oncify ei  = ✓ ∷ ✓ ∷ ✓ ∷ []
+      lowI-ok φ j m oncify ei  = []
       lowI-ok φ j m (iobs ds) ei = ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ []
       lowI-ok φ j m ccopy ei   = ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ []
       lowI-ok φ j m ncopy ei   = ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ []
