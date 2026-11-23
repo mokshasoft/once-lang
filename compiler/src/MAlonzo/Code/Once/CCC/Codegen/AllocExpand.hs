@@ -19,9 +19,11 @@ import qualified MAlonzo.RTE
 import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.List
 import qualified MAlonzo.Code.Data.List.Base
+import qualified MAlonzo.Code.Data.String.Base
 import qualified MAlonzo.Code.Once.CCC.Label
 import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
 import qualified MAlonzo.Code.Once.Spec.Name
+import qualified MAlonzo.Code.Once.Target.Symbol
 
 -- Once.CCC.Codegen.AllocExpand.Classes
 d_Classes_8 = ()
@@ -366,3 +368,182 @@ d_expand_126 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2404]
 d_expand_126 v0
   = coe d_expand'45'from_116 (coe v0) (coe (0 :: Integer))
+-- Once.CCC.Codegen.AllocExpand.alloc-fn
+d_alloc'45'fn_128 ::
+  Integer -> MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6
+d_alloc'45'fn_128 v0
+  = coe
+      MAlonzo.Code.Once.Spec.Name.C_canonical_12
+      (coe
+         MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+         (coe ("once-alloc" :: Data.Text.Text))
+         (coe
+            MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+            (coe
+               MAlonzo.Code.Data.String.Base.d__'43''43'__20
+               ("a" :: Data.Text.Text)
+               (coe MAlonzo.Code.Once.Target.Symbol.d_showNat_6 v0))
+            (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)))
+-- Once.CCC.Codegen.AllocExpand.free-fn
+d_free'45'fn_130 ::
+  Integer -> MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6
+d_free'45'fn_130 v0
+  = coe
+      MAlonzo.Code.Once.Spec.Name.C_canonical_12
+      (coe
+         MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+         (coe ("once-alloc" :: Data.Text.Text))
+         (coe
+            MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+            (coe
+               MAlonzo.Code.Data.String.Base.d__'43''43'__20
+               ("f" :: Data.Text.Text)
+               (coe MAlonzo.Code.Once.Target.Symbol.d_showNat_6 v0))
+            (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)))
+-- Once.CCC.Codegen.AllocExpand.site-call
+d_site'45'call_136 ::
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2404 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2404
+d_site'45'call_136 v0
+  = case coe v0 of
+      MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'alloc'45'heap_2464 v1
+        -> coe
+             MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'ctrl_2468
+             (coe
+                MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'call'45'fn_2390
+                (coe d_alloc'45'fn_128 (coe v1)))
+      MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'free'45'heap_2470 v1
+        -> coe
+             MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'ctrl_2468
+             (coe
+                MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'call'45'fn_2390
+                (coe d_free'45'fn_130 (coe v1)))
+      _ -> coe v0
+-- Once.CCC.Codegen.AllocExpand.prim-routine
+d_prim'45'routine_144 ::
+  Integer ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2404]
+d_prim'45'routine_144 v0
+  = coe
+      MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+      (coe
+         MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'ctrl_2468
+         (coe
+            MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'entry_2386
+            (coe
+               MAlonzo.Code.Once.CCC.Label.C_e'45'fn_26
+               (coe d_alloc'45'fn_128 (coe v0)))
+            (coe (0 :: Integer))))
+      (coe
+         MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+         (coe
+            MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'alloc'45'heap_2464
+            (coe v0))
+         (coe
+            MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+            (coe
+               MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'ctrl_2468
+               (coe
+                  MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'ret_2388
+                  (coe (0 :: Integer))))
+            (coe
+               MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+               (coe
+                  MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'ctrl_2468
+                  (coe
+                     MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'entry_2386
+                     (coe
+                        MAlonzo.Code.Once.CCC.Label.C_e'45'fn_26
+                        (coe d_free'45'fn_130 (coe v0)))
+                     (coe (0 :: Integer))))
+               (coe
+                  MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+                  (coe
+                     MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'free'45'heap_2470
+                     (coe v0))
+                  (coe
+                     MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+                     (coe
+                        MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'ctrl_2468
+                        (coe
+                           MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'ret_2388
+                           (coe (0 :: Integer))))
+                     (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))))))
+-- Once.CCC.Codegen.AllocExpand.prim-routines
+d_prim'45'routines_148 ::
+  [Integer] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2404]
+d_prim'45'routines_148 v0
+  = case coe v0 of
+      [] -> coe v0
+      (:) v1 v2
+        -> coe
+             MAlonzo.Code.Data.List.Base.du__'43''43'__32
+             (coe d_prim'45'routine_144 (coe v1))
+             (coe d_prim'45'routines_148 (coe v2))
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.CCC.Codegen.AllocExpand.skip-label
+d_skip'45'label_154 :: MAlonzo.Code.Once.CCC.Label.T_LabelId_6
+d_skip'45'label_154
+  = coe
+      MAlonzo.Code.Once.CCC.Label.C_mkLabelId_20
+      (coe
+         MAlonzo.Code.Once.Spec.Name.C_canonical_12
+         (coe
+            MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+            (coe ("once-outline" :: Data.Text.Text))
+            (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)))
+      (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
+      (coe (0 :: Integer))
+-- Once.CCC.Codegen.AllocExpand.skip
+d_skip_156 ::
+  [Integer] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2404]
+d_skip_156 v0
+  = coe
+      MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+      (coe
+         MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'ctrl_2468
+         (coe
+            MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'jmp_2382
+            (coe d_skip'45'label_154)))
+      (coe
+         MAlonzo.Code.Data.List.Base.du__'43''43'__32
+         (coe d_prim'45'routines_148 (coe v0))
+         (coe
+            MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+            (coe
+               MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'ctrl_2468
+               (coe
+                  MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'label_2380
+                  (coe d_skip'45'label_154)))
+            (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)))
+-- Once.CCC.Codegen.AllocExpand.outline
+d_outline_160 ::
+  [Integer] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2404] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2404]
+d_outline_160 v0 v1
+  = case coe v1 of
+      [] -> coe v1
+      (:) v2 v3
+        -> coe
+             MAlonzo.Code.Agda.Builtin.List.C__'8759'__22 (coe v2)
+             (coe
+                MAlonzo.Code.Data.List.Base.du__'43''43'__32
+                (coe d_skip_156 (coe v0))
+                (coe
+                   MAlonzo.Code.Data.List.Base.du_map_22 (coe d_site'45'call_136)
+                   (coe v3)))
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.CCC.Codegen.AllocExpand.expandₘ
+d_expand'8344'_170 ::
+  Bool ->
+  T_Classes_8 ->
+  [Integer] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2404] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2404]
+d_expand'8344'_170 v0 v1 v2 v3
+  = if coe v0
+      then coe d_expand_126 v1 v3
+      else coe d_expand_126 v1 (d_outline_160 (coe v2) (coe v3))
