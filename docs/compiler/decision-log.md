@@ -24809,6 +24809,13 @@ flat thunk to one image trampoline. Next: a many-use owned body gets its own key
 and thunk code), so each thunk has one trampoline; then the trampoline simulations are the one-shot ones,
 copied with the renames (`GlobalDispatch.gicall`/`gopen1`, `GlobalTramp`, `tr-open1`), the header's and the
 copy trampoline's lowering proofs (`LowerSimC`/`R`/`B`) extended by the fifth word. Estimated days.
+### Decision (2026-11-23, unattended): the owned call ONCIFIES the cell, then is a one-shot call
+Instead of a second trampoline (`ktr1ω`, its own proofs), `levω` compiles to `oncify ⨾ icall`: `oncify` rewrites
+the cell's word 1 with its word 4 (the owned body's thunk, `load-at 4`, `store-at 1`) and retypes the value as
+the one-shot closure it now is (`cωᶜ ds b₀ γ ↦ c1 ds b₀ γ`, `cω ds b γ ↦ c1 ds (ownBg b) …`: same cell, same
+environment); the existing one-shot call and trampoline (`icall`, `ktr1`, `GlobalTramp`) do the rest. A
+one-shot cell's word 4 is its word 1 already, so the rewritten cell is a one-shot cell exactly. The new proof
+obligation is one local image step (`oncify`) and the fifth header word.
 ### Scope (a)
 Core (`levω`, `Blk`), semantics (`Lᶜ levω` = `apω`'s), Keys (the owned body's key per many-use closure), Image
 (`compᴵ`, the body trampoline for `kbodyω`), Lower (`tramp`), and the trampoline simulations (`GlobalTramp*`,
