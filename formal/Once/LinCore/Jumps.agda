@@ -54,7 +54,7 @@ open Univ using (tys; nus)
 open import Once.LinCore.Layout fmt bw
 open import Once.LinCore.Values fmt bw using (wsz; hdr)
 open import Once.LinCore.Lower fmt bw
-open import Once.LinCore.MoveCode using (mvPS; mvSP; mvSS; mvSSd; stores)
+open import Once.LinCore.MoveCode using (mvPS; mvSP; mvSS; mvSSd; stores; swapMv)
 open import Once.LinCore.LabelsC fmt ans bw using (module LabsC)
 
 ------------------------------------------------------------------------
@@ -104,6 +104,12 @@ Jmps-nj {x ∷ xs} (e ∷ p) = go (jump-of x) e
 mvSS-nj : ∀ a b n → NoJ (mvSS a b n)
 mvSS-nj a b zero    = []
 mvSS-nj a b (suc n) = refl ∷ refl ∷ mvSS-nj (suc a) (suc b) n
+
+-- D481: a swap's moves, or none
+swapMv-nj : ∀ t wA wB → NoJ (swapMv t wA wB)
+swapMv-nj t zero    wB      = []
+swapMv-nj t (suc a) zero    = []
+swapMv-nj t (suc a) (suc b) = nj (mvSS t (t ∸ suc a) (suc a)) (mvSS-nj t (t ∸ suc a) (suc a)) (nj (mvSS (t + suc a) t (suc b)) (mvSS-nj (t + suc a) t (suc b)) (mvSS-nj (t ∸ suc a) (t + suc b) (suc a)))
 
 mvSSd-nj : ∀ a b n → NoJ (mvSSd a b n)
 mvSSd-nj a b zero    = []
@@ -180,8 +186,7 @@ module Free (U : Univ)
   lowP-nj ds lassoc φ S p       = []
   lowP-nj ds lassoc⁻ φ S p      = []
   lowP-nj ds (lswap {A = A} {B = B}) φ S p =
-    let t = Tp φ (A ∷ B ∷ S) ; wA = wsz A ; wB = wsz B ; tmp = t ∸ wA
-    in nj (mvSS t tmp wA) (mvSS-nj t tmp wA) (nj (mvSS (t + wA) t wB) (mvSS-nj (t + wA) t wB) (mvSS-nj tmp (t + wB) wA))
+    swapMv-nj (Tp φ (A ∷ B ∷ S)) (wsz A) (wsz B)
   lowP-nj ds dup φ S p          = []
   lowP-nj ds drop φ S p         = []
   lowP-nj ds (linl {A = A} {B = B}) φ S p =
@@ -236,8 +241,7 @@ module Free (U : Univ)
   lowI-nj φ j m epop ei _    = []
   lowI-nj φ j m stuck ei _   = []
   lowI-nj φ j m (swap {A = A} {B} {S}) ei _ =
-    let t = Tp φ (A ∷ B ∷ S) ; wA = wsz A ; wB = wsz B ; tmp = t ∸ wA
-    in nj (mvSS t tmp wA) (mvSS-nj t tmp wA) (nj (mvSS (t + wA) t wB) (mvSS-nj (t + wA) t wB) (mvSS-nj tmp (t + wB) wA))
+    swapMv-nj (Tp φ (A ∷ B ∷ S)) (wsz A) (wsz B)
   lowI-nj φ j m (prim ds {S = S} g) ei _ = lowP-nj ds g φ S ei
   lowI-nj φ j m (elend {E} {Es} {X} {A} {S}) ei _ =
     let e = ws Es ; wE = wsz E

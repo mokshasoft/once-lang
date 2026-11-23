@@ -1542,3 +1542,71 @@ module Sim {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
                       sbF : SlotsAt (slot fs₃) t wb
                       sbF = kept-words wb M₃ (inj₁ (≤-reflexive′ (trans (cong (_+ t) (vw-len pb)) (+-comm (wsz B) t))))
                               (slots-moved wb M₂ (kept-words wb M₁ (inj₂ (≤-trans (≤-reflexive′ scrEnd) (m≤m+n t (wsz A)))) sb′) (vw-len pb))
+
+  ----------------------------------------------------------------------
+  -- ★ D481: THE SWAP AS EMITTED (`MoveCode.swapMv`): the three moves, or
+  -- none when either element has no words (its layout is the swapped one).
+  ----------------------------------------------------------------------
+
+  open import Once.LinCore.MoveCode using (swapMv; swapMv₃)
+  open import Once.LinCore.Moves {FS} using (ran-refl)
+  open import Data.List.Properties using (length-++)
+  open Relation.Binary.PropositionalEquality using (cong₂)
+
+  private
+    len-swap₃ : ∀ t x y → length (swapMv₃ t x y) ≡ nsteps x + (nsteps y + nsteps x)
+    len-swap₃ t x y =
+      trans (length-++ (mvSS t (t ∸ x) x))
+        (cong₂ _+_ (len-mvSS t (t ∸ x) x)
+          (trans (length-++ (mvSS (t + x) t y)) (cong₂ _+_ (len-mvSS (t + x) t y) (len-mvSS (t ∸ x) (t + y) x))))
+
+    -- no words: at any offset
+    nil-slots : ∀ {sm o o′} (w : List W) → length w ≡ 0 → SlotsAt sm o w → SlotsAt sm o′ w
+    nil-slots []      _  _ = tt
+    nil-slots (_ ∷ _) () _
+
+  -- with an element of no words, the configuration is already the swapped one
+  swap-none : ∀ {rd sm} (φ : Frame) {Es A B S} {es : Slots Es} {os : Stk S} {a : MV A} {b : MV B}
+            → (wsz A ≡ 0) ⊎ (wsz B ≡ 0)
+            → CfgW rd sm φ (es ∥ a ∷ˢ b ∷ˢ os) → CfgW rd sm φ (es ∥ b ∷ˢ a ∷ˢ os)
+  swap-none {rd} {sm} φ {Es} {A} {B} {S} {es} {os} {a} {b} z C = case c-stk C of λ where
+      ((wa , pa , sa) , (wb , pb , sb) , rest) →
+        record { c-env  = c-env C
+               ; c-stk  = (wb , pb , sb′ z wb pb sb) , (wa , pa , sa′ z wa pa sa) , rest
+               ; c-efit = c-efit C
+               ; c-sfit = subst (_≤ OP φ) (swap-words (wsz A) (wsz B) (ws S)) (c-sfit C) }
+    where
+      sb′ : (wsz A ≡ 0) ⊎ (wsz B ≡ 0) → ∀ wb → VW rd b wb → SlotsAt sm (budget φ ∸ ws (B ∷ S)) wb
+          → SlotsAt sm (budget φ ∸ ws (B ∷ A ∷ S)) wb
+      sb′ (inj₁ zA) wb pb s = subst (λ z → SlotsAt sm (budget φ ∸ (wsz B + z)) wb) (cong (_+ ws S) (sym zA)) s
+      sb′ (inj₂ zB) wb pb s = nil-slots wb (trans (vw-len pb) zB) s
+      sa′ : (wsz A ≡ 0) ⊎ (wsz B ≡ 0) → ∀ wa → VW rd a wa → SlotsAt sm (budget φ ∸ ws (A ∷ B ∷ S)) wa
+          → SlotsAt sm (budget φ ∸ ws (A ∷ S)) wa
+      sa′ (inj₁ zA) wa pa s = nil-slots wa (trans (vw-len pa) zA) s
+      sa′ (inj₂ zB) wa pa s = subst (λ z → SlotsAt sm (budget φ ∸ (wsz A + z)) wa) (cong (_+ ws S) zB) s
+
+  swapMv-sim : ∀ prog (fs : FlatState) (φ : Frame) {Es A B S} {es : Slots Es} {os : Stk S} {a : MV A} {b : MV B}
+             → let t = budget φ ∸ ws (A ∷ B ∷ S) ; n = length (swapMv t (wsz A) (wsz B)) in
+               Seg prog (fpc fs) (swapMv t (wsz A) (wsz B))
+             → fhalted (floc fs) ≡ false → budget φ ≤ Fr fs
+             → CfgW (heapMem (floc fs)) (slot fs) φ (es ∥ a ∷ˢ b ∷ˢ os)
+             → wsz A + ws (A ∷ B ∷ S) ≤ OP φ
+             → Σ FlatState λ fs₃ → FlatSteps prog n fs fs₃
+                 × CfgW (heapMem (floc fs₃)) (slot fs₃) φ (es ∥ b ∷ˢ a ∷ˢ os)
+                 × Ran n [] [] (AllocState.next-heap-ref (falloc fs)) (budget φ) fs fs₃
+  swapMv-sim prog fs φ {Es} {A} {B} {S} {es} {os} {a} {b} s h Bf C fitT = go (wsz A) (wsz B) refl refl s
+    where
+      t = budget φ ∸ ws (A ∷ B ∷ S)
+      SwRes : ℕ → Set
+      SwRes n = Σ FlatState λ fs₃ → FlatSteps prog n fs fs₃
+                × CfgW (heapMem (floc fs₃)) (slot fs₃) φ (es ∥ b ∷ˢ a ∷ˢ os)
+                × Ran n [] [] (AllocState.next-heap-ref (falloc fs)) (budget φ) fs fs₃
+      sw-none : (wsz A ≡ 0) ⊎ (wsz B ≡ 0) → SwRes 0
+      sw-none z = fs , FlatStepsAPI.[] {FS} , swap-none φ z C , ran-refl
+      go : ∀ x y → wsz A ≡ x → wsz B ≡ y → Seg prog (fpc fs) (swapMv t x y) → SwRes (length (swapMv t x y))
+      go zero    y       eA eB _  = sw-none (inj₁ eA)
+      go (suc x) zero    eA eB _  = sw-none (inj₂ eB)
+      go (suc x) (suc y) eA eB s′ =
+        subst SwRes (trans (cong₂ (λ p q → nsteps p + (nsteps q + nsteps p)) eA eB) (sym (len-swap₃ t (suc x) (suc y))))
+          (swap-sim prog fs φ {Es} {A} {B} {S} {es} {os} {a} {b}
+             (subst₂ (λ p q → Seg prog (fpc fs) (swapMv₃ t p q)) (sym eA) (sym eB) s′) h Bf C fitT)

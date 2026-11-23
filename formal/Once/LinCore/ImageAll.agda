@@ -68,7 +68,7 @@ open Univ using (tys; nus; ops)
 open import Once.LinCore.Layout fmt bw
 open import Once.LinCore.Values fmt bw using (wsz; hdr)
 open import Once.LinCore.Lower fmt bw
-open import Once.LinCore.MoveCode using (mvPS; mvSP; mvSS; mvSSd; stores)
+open import Once.LinCore.MoveCode using (mvPS; mvSP; mvSS; mvSSd; stores; swapMv)
 open import Once.LinCore.Labels fmt ans bw using (module NoLabels)
 open import Once.LinCore.EntriesI fmt ans bw using (module ImgE)
 
@@ -118,6 +118,12 @@ module Ok (nm : CanonicalName) (U : Univ)
   mvSS-ok : ∀ a b n → All OK (mvSS a b n)
   mvSS-ok a b zero    = []
   mvSS-ok a b (suc n) = ✓ ∷ ✓ ∷ mvSS-ok (suc a) (suc b) n
+
+  -- D481: a swap's moves, or none
+  swapMv-ok : ∀ t wA wB → All OK (swapMv t wA wB)
+  swapMv-ok t zero    wB      = []
+  swapMv-ok t (suc a) zero    = []
+  swapMv-ok t (suc a) (suc b) = ++⁺ (mvSS-ok t (t ∸ suc a) (suc a)) (++⁺ (mvSS-ok (t + suc a) t (suc b)) (mvSS-ok (t ∸ suc a) (t + suc b) (suc a)))
 
   mvSSd-ok : ∀ a b n → All OK (mvSSd a b n)
   mvSSd-ok a b zero    = []
@@ -222,8 +228,7 @@ module Ok (nm : CanonicalName) (U : Univ)
     lowP-ok ds lassoc φ S p       = []
     lowP-ok ds lassoc⁻ φ S p      = []
     lowP-ok ds (lswap {A = A} {B = B}) φ S p =
-      let t = Tp φ (A ∷ B ∷ S) ; wA = wsz A ; wB = wsz B ; tmp = t ∸ wA
-      in ++⁺ (mvSS-ok t tmp wA) (++⁺ (mvSS-ok (t + wA) t wB) (mvSS-ok tmp (t + wB) wA))
+      swapMv-ok (Tp φ (A ∷ B ∷ S)) (wsz A) (wsz B)
     lowP-ok ds dup φ S p          = []
     lowP-ok ds drop φ S p         = []
     lowP-ok ds (linl {A = A} {B = B}) φ S p =
@@ -274,8 +279,7 @@ module Ok (nm : CanonicalName) (U : Univ)
       lowI-ok φ j m epop ei    = []
       lowI-ok φ j m stuck ei   = []
       lowI-ok φ j m (swap {A = A} {B} {S}) ei =
-        let t = Tp φ (A ∷ B ∷ S) ; wA = wsz A ; wB = wsz B ; tmp = t ∸ wA
-        in ++⁺ (mvSS-ok t tmp wA) (++⁺ (mvSS-ok (t + wA) t wB) (mvSS-ok tmp (t + wB) wA))
+        swapMv-ok (Tp φ (A ∷ B ∷ S)) (wsz A) (wsz B)
       lowI-ok φ j m (prim ds {S = S} g) ei = lowP-ok ds g φ S ei
       lowI-ok φ j m (elend {E} {Es} {X} {A} {S}) ei =
         let e = ws Es ; wE = wsz E

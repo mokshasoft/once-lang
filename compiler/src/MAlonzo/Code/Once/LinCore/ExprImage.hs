@@ -44,7 +44,7 @@ d_imageAt_10 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2404]
 d_imageAt_10 v0 v1 v2 v3
   = coe
-      MAlonzo.Code.Once.LinCore.Lower.d_image_2542 (coe v0)
+      MAlonzo.Code.Once.LinCore.Lower.d_image_2526 (coe v0)
       (coe MAlonzo.Code.Once.LinCore.Loader.d_bw_6)
       (coe
          MAlonzo.Code.Once.LinCore.ExprBuild.d_L_1330

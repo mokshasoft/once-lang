@@ -10,7 +10,7 @@
 
 open import Data.Nat using (ℕ; _+_; _∸_; _≤_)
 open import Data.Nat.Properties using (+-assoc; ≤-trans; ≤-reflexive; m≤n+m)
-open import Data.List using (List; []; _∷_; _++_)
+open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.Product using (Σ; _×_; _,_)
 open import Data.Sum using (inj₁)
 open import Data.Unit using (tt)
@@ -45,7 +45,7 @@ module SimB {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
   open CfgW
   open import Once.LinCore.Moves {FS} using (Seg; slot; Fr; Keep; Ran; InBlk; module Keep; sw-old) renaming (ln to nsteps)
   open Keep using (k-frame; k-slots; k-saved; k-ret; k-other; k-halt)
-  open import Once.LinCore.MoveCode using (mvSS)
+  open import Once.LinCore.MoveCode using (swapMv)
   open import Once.CCC.Machine.Flat using (module FlatMachine)
   open FlatMachine {FS} using (FlatState; module FlatState)
   open FlatState using (floc; falloc; fpc; fret; fclosure; flink)
@@ -57,15 +57,15 @@ module SimB {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
   -- ★ `lswap`: `swap`'s code on the pair's components, in place
   lswap-sim : ∀ prog (fs : FlatState) (φ : Frame) {Es A B S} {es : Slots Es} {os : Stk S} {a : MV A} {b : MV B}
             → let t = budget φ ∸ ws (A ∷ B ∷ S) in
-              Seg prog (fpc fs) (mvSS t (t ∸ wsz A) (wsz A) ++ mvSS (t + wsz A) t (wsz B) ++ mvSS (t ∸ wsz A) (t + wsz B) (wsz A))
+              Seg prog (fpc fs) (swapMv t (wsz A) (wsz B))
             → fhalted (floc fs) ≡ false → budget φ ≤ Fr fs
             → CfgW (heapMem (floc fs)) (slot fs) φ (es ∥ mpair a b ∷ˢ os)
             → wsz A + ws ((A ⊗t B) ∷ S) ≤ OP φ
-            → Σ FlatState λ fs₃ → FlatSteps prog (nsteps (wsz A) + (nsteps (wsz B) + nsteps (wsz A))) fs fs₃
+            → Σ FlatState λ fs₃ → FlatSteps prog (length (swapMv t (wsz A) (wsz B))) fs fs₃
                 × CfgW (heapMem (floc fs₃)) (slot fs₃) φ (es ∥ mpair b a ∷ˢ os)
-                × Ran (nsteps (wsz A) + (nsteps (wsz B) + nsteps (wsz A))) [] [] (AllocState.next-heap-ref (falloc fs)) (budget φ) fs fs₃
+                × Ran (length (swapMv t (wsz A) (wsz B))) [] [] (AllocState.next-heap-ref (falloc fs)) (budget φ) fs fs₃
   lswap-sim prog fs φ {Es} {A} {B} {S} {es} {os} {a} {b} s h Bf C fitT
-    = finish (swap-sim prog fs φ {Es} {A} {B} {S} {es} {os} {a} {b} s h Bf C′ fitT′)
+    = finish (swapMv-sim prog fs φ {Es} {A} {B} {S} {es} {os} {a} {b} s h Bf C′ fitT′)
     where
       rd = heapMem (floc fs)
       assoc : ws ((A ⊗t B) ∷ S) ≡ ws (A ∷ B ∷ S)
@@ -80,7 +80,7 @@ module SimB {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
       fitT′ : wsz A + ws (A ∷ B ∷ S) ≤ OP φ
       fitT′ = subst (λ z → wsz A + z ≤ OP φ) assoc fitT
       t = budget φ ∸ ws (A ∷ B ∷ S)
-      n = nsteps (wsz A) + (nsteps (wsz B) + nsteps (wsz A))
+      n = length (swapMv t (wsz A) (wsz B))
       finish : Σ FlatState (λ fs₃ → FlatSteps prog n fs fs₃ × CfgW (heapMem (floc fs₃)) (slot fs₃) φ (es ∥ b ∷ˢ a ∷ˢ os) × Ran n [] [] (AllocState.next-heap-ref (falloc fs)) (budget φ) fs fs₃)
              → Σ FlatState (λ fs₃ → FlatSteps prog n fs fs₃ × CfgW (heapMem (floc fs₃)) (slot fs₃) φ (es ∥ mpair b a ∷ˢ os) × Ran n [] [] (AllocState.next-heap-ref (falloc fs)) (budget φ) fs fs₃)
       finish (fs₃ , st , C₃ , K) =

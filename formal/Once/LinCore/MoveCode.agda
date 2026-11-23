@@ -8,8 +8,8 @@
 
 module Once.LinCore.MoveCode where
 
-open import Data.Nat using (ℕ; zero; suc; _+_)
-open import Data.List using ([]; _∷_)
+open import Data.Nat using (ℕ; zero; suc; _+_; _∸_)
+open import Data.List using ([]; _∷_; _++_)
 open import Once.CCC.Machine.SMCore using (AbstractTrace; load-from-slot; store-at-slot; load-at; store-at)
 
 -- `n` words from slots `a…` to slots `b…`, lowest first (safe when b ≤ a)
@@ -37,3 +37,14 @@ mvSP a o (suc n) = load-from-slot a ∷ store-at o ∷ mvSP (suc a) (suc o) n
 stores : ℕ → ℕ → AbstractTrace
 stores b zero    = []
 stores b (suc n) = store-at-slot b ∷ stores (suc b) n
+
+-- ★ D481: a swap of the top two values, `wA` words at `t` and `wB` above them: the first
+-- down below `t`, the second down to `t`, the first back above it; NOTHING when either
+-- has no words (its layout is then the swapped one already)
+swapMv₃ : ℕ → ℕ → ℕ → AbstractTrace
+swapMv₃ t wA wB = mvSS t (t ∸ wA) wA ++ mvSS (t + wA) t wB ++ mvSS (t ∸ wA) (t + wB) wA
+
+swapMv : ℕ → ℕ → ℕ → AbstractTrace
+swapMv t zero    wB      = []
+swapMv t (suc a) zero    = []
+swapMv t (suc a) (suc b) = swapMv₃ t (suc a) (suc b)

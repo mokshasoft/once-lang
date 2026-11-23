@@ -210,9 +210,8 @@ module Lowering (U : Univ)
   lowP ds (lclo F q) φ S p        = []
   lowP ds drop φ S p              = []
   -- (the pair's words are its components' in place: `swap`'s code, at their offsets)
-  lowP ds (lswap {A = A} {B = B}) φ S p =
-    let t = Tp φ (A ∷ B ∷ S) ; wA = wsz A ; wB = wsz B ; tmp = t ∸ wA
-    in mvSS t tmp wA ++ mvSS (t + wA) t wB ++ mvSS tmp (t + wB) wA
+  -- (D481: nothing when either component has no words)
+  lowP ds (lswap {A = A} {B = B}) φ S p = swapMv (Tp φ (A ∷ B ∷ S)) (wsz A) (wsz B)
   lowP ds (linl {A = A} {B = B}) φ S p =
     let bot = Tp φ S ; M = wsz A ⊔ wsz B
     in mvSS (bot ∸ wsz A) (bot ∸ M) (wsz A) ++ instr-load-tag-lit 0 ∷ store-at-slot (bot ∸ suc M)
@@ -267,9 +266,7 @@ module Lowering (U : Univ)
   lowI φ j m elift ev   = [] , m
   lowI φ j m epop ev    = [] , m
   lowI φ j m stuck ev   = [] , m
-  lowI φ j m (swap {A = A} {B} {S}) ev =
-    let t = Tp φ (A ∷ B ∷ S) ; wA = wsz A ; wB = wsz B ; tmp = t ∸ wA
-    in mvSS t tmp wA ++ mvSS (t + wA) t wB ++ mvSS tmp (t + wB) wA , m
+  lowI φ j m (swap {A = A} {B} {S}) ev = swapMv (Tp φ (A ∷ B ∷ S)) (wsz A) (wsz B) , m
   lowI φ j m (prim ds {S = S} g) ev = lowP ds g φ S ev , m
   lowI φ j m (elend {E} {Es} {X} {A} {S}) ev =
     let e = ws Es ; wE = wsz E

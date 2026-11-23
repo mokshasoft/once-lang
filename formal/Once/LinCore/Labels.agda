@@ -49,7 +49,7 @@ open Univ using (tys; nus)
 open import Once.LinCore.Layout fmt bw
 open import Once.LinCore.Values fmt bw using (wsz; hdr)
 open import Once.LinCore.Lower fmt bw
-open import Once.LinCore.MoveCode using (mvPS; mvSP; mvSS; mvSSd; stores)
+open import Once.LinCore.MoveCode using (mvPS; mvSP; mvSS; mvSSd; stores; swapMv)
 
 module NoLabels {FS : FrameSemantics} where
   open import Once.CCC.Machine.Flat using (module FlatMachine)
@@ -89,6 +89,12 @@ module NoLabels {FS : FrameSemantics} where
   mvSS-nl : ∀ a b n → NoLab (mvSS a b n)
   mvSS-nl a b zero    = []
   mvSS-nl a b (suc n) = refl ∷ refl ∷ mvSS-nl (suc a) (suc b) n
+
+  -- D481: a swap's moves, or none
+  swapMv-nl : ∀ t wA wB → NoLab (swapMv t wA wB)
+  swapMv-nl t zero    wB      = []
+  swapMv-nl t (suc a) zero    = []
+  swapMv-nl t (suc a) (suc b) = nl (mvSS t (t ∸ suc a) (suc a)) (mvSS-nl t (t ∸ suc a) (suc a)) (nl (mvSS (t + suc a) t (suc b)) (mvSS-nl (t + suc a) t (suc b)) (mvSS-nl (t ∸ suc a) (t + suc b) (suc a)))
 
   mvSSd-nl : ∀ a b n → NoLab (mvSSd a b n)
   mvSSd-nl a b zero    = []
@@ -173,8 +179,7 @@ module NoLabels {FS : FrameSemantics} where
     lowP-nl ds lassoc φ S p       = []
     lowP-nl ds lassoc⁻ φ S p      = []
     lowP-nl ds (lswap {A = A} {B = B}) φ S p =
-      let t = Tp φ (A ∷ B ∷ S) ; wA = wsz A ; wB = wsz B ; tmp = t ∸ wA
-      in nl (mvSS t tmp wA) (mvSS-nl t tmp wA) (nl (mvSS (t + wA) t wB) (mvSS-nl (t + wA) t wB) (mvSS-nl tmp (t + wB) wA))
+      swapMv-nl (Tp φ (A ∷ B ∷ S)) (wsz A) (wsz B)
     lowP-nl ds dup φ S p          = []
     lowP-nl ds drop φ S p         = []
     lowP-nl ds (linl {A = A} {B = B}) φ S p =
@@ -230,8 +235,7 @@ module NoLabels {FS : FrameSemantics} where
     lowI-nl φ j m epop ei _    = []
     lowI-nl φ j m stuck ei _   = []
     lowI-nl φ j m (swap {A = A} {B} {S}) ei _ =
-      let t = Tp φ (A ∷ B ∷ S) ; wA = wsz A ; wB = wsz B ; tmp = t ∸ wA
-      in nl (mvSS t tmp wA) (mvSS-nl t tmp wA) (nl (mvSS (t + wA) t wB) (mvSS-nl (t + wA) t wB) (mvSS-nl tmp (t + wB) wA))
+      swapMv-nl (Tp φ (A ∷ B ∷ S)) (wsz A) (wsz B)
     lowI-nl φ j m (prim ds {S = S} g) ei _ = lowP-nl ds g φ S ei
     lowI-nl φ j m (elend {E} {Es} {X} {A} {S}) ei _ =
       let e = ws Es ; wE = wsz E

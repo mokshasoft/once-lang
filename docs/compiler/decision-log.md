@@ -24920,3 +24920,22 @@ The call mode is the default; `--inline-alloc` (CLI, `Emit` … `ExprImage.fileA
 allocation routine). `make certified` green; 188 exit tests ×3 arches, seL4 ×3, `cabal test`: all pass.
 **Measured** (inline → call, 108 programs): `.text` 0.85×, emitted instructions 0.86×, run time 1.08× (median 1.14×).
 Against master: `.text` 4.7×, run time median 2.8× per program.
+
+## D481 — A SWAP WITH AN EMPTY SIDE EMITS NOTHING (2026-11-24, proposed — for the user's review)
+**Finding.** Of the emitted slot moves (31k slot-to-slot moves over the corpus, x86_64), 6.3k moved a word onto
+itself and 3.6k pairs moved a word away and back: a `swap` (or `lswap`) of a value with one of NO words (`Unit`,
+a constructor without fields). `swap`'s code moves the top element below the stack, the next one down, the first
+back above it; with an element of no words two of the three moves are empty and the third is the identity (or
+the first and third undo each other). These are layout no-ops, not copies: the linear core never copies a value
+here — the operand stack's positions are fixed by the types, so a reorder is physical moves, and a reorder
+with an empty side moves nothing logically.
+**Decision.** `MoveCode.swapMv t wA wB` is the swap's code: the three moves (`swapMv₃`), or nothing when
+`wA` or `wB` is 0. `Lower` emits it for `swap` and `lswap`. Proved: `LowerSim.swap-none` (with an element of
+no words, the configuration already is the swapped one: the words of the empty side are `[]` at any offset, the
+other's offset is unchanged), `swapMv-sim` (zero steps then, else `swap-sim`), and the code facts
+(`swapMv-nl`, `swapMv-nj`, `swapMv-ok`). `StepLocal.st-swap`/`StepPrim.st-lswap` count the code's length.
+**Measured** (D480 → D481, 108 programs): run 0.92× (median 0.94×), `.text` 0.94×, emitted instructions 0.95×,
+slot moves 0.84×; `loop-sum` 0.87×.
+**Next (the user's order, 2026-11-24): fewer moves (D482):** `f ⊗l lid` compiled without its two swaps (they cancel),
+then destination passing.
+**Landed** (2026-11-24): `make certified` green; 188 exit tests ×3 arches, seL4 ×3, `cabal test` (1025): all pass.

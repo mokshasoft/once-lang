@@ -18,6 +18,8 @@ import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
 import qualified MAlonzo.RTE
 import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.List
+import qualified MAlonzo.Code.Agda.Builtin.Nat
+import qualified MAlonzo.Code.Data.List.Base
 import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
 
 -- Once.LinCore.MoveCode.mvSS
@@ -129,3 +131,33 @@ d_stores_54 v0 v1
                    (coe v0))
                 (coe
                    d_stores_54 (coe addInt (coe (1 :: Integer)) (coe v0)) (coe v2)))
+-- Once.LinCore.MoveCode.swapMv₃
+d_swapMv'8323'_62 ::
+  Integer ->
+  Integer ->
+  Integer ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2404]
+d_swapMv'8323'_62 v0 v1 v2
+  = coe
+      MAlonzo.Code.Data.List.Base.du__'43''43'__32
+      (coe
+         d_mvSS_6 (coe v0)
+         (coe MAlonzo.Code.Agda.Builtin.Nat.d__'45'__22 v0 v1) (coe v1))
+      (coe
+         MAlonzo.Code.Data.List.Base.du__'43''43'__32
+         (coe d_mvSS_6 (coe addInt (coe v0) (coe v1)) (coe v0) (coe v2))
+         (coe
+            d_mvSS_6 (coe MAlonzo.Code.Agda.Builtin.Nat.d__'45'__22 v0 v1)
+            (coe addInt (coe v0) (coe v2)) (coe v1)))
+-- Once.LinCore.MoveCode.swapMv
+d_swapMv_70 ::
+  Integer ->
+  Integer ->
+  Integer ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2404]
+d_swapMv_70 v0 v1 v2
+  = case coe v1 of
+      0 -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
+      _ -> case coe v2 of
+             0 -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
+             _ -> coe d_swapMv'8323'_62 (coe v0) (coe v1) (coe v2)

@@ -218,11 +218,7 @@ module Prims {FS : FrameSemantics} (U : Univ)
                {es : Slots Es} {a : MV A} {b : MV B} {os : Stk S} {fs}
            → Here s (es ∥ mpair a b ∷ˢ os) fs → Moved (next s) fs [] [] (es ∥ mpair b a ∷ˢ os)
   st-lswap {A = A} {B} {S} s {fs = fs} H =
-    let t = Tp φ (A ∷ B ∷ S) in
-    straight s H _ []
-      (sym (trans (len-++3 (mvSS t (t ∸ wsz A) (wsz A)) (mvSS (t + wsz A) t (wsz B)) (mvSS (t ∸ wsz A) (t + wsz B) (wsz A)))
-                  (cong₂ _+_ (len-mvSS t (t ∸ wsz A) (wsz A))
-                    (cong₂ _+_ (len-mvSS (t + wsz A) t (wsz B)) (len-mvSS (t ∸ wsz A) (t + wsz B) (wsz A))))))
+    straight s H _ [] refl
       (λ sg h Bf C → lswap-sim prog fs φ sg h Bf C (proj₂ (ins-fits s)))
 
   st-inl : ∀ {Γ} {ds : Defs Γ} {Es A B S V} {k : Codeᴵ (Es ∣ (A ⊕t B) ∷ S) V}
