@@ -24865,3 +24865,26 @@ carried through `Rs` and its meaning through `RefOK`, and a proof that such a ca
 does nothing else. Literal-`lam` arms need none of that. Proposed split: (B1) literal `lam` arms now;
 (B2) definition-shape facts through `Rs`/`RefOK` for review (the alternative to B2 is inlining, which the
 plan keeps behind a flag). Meanwhile the plan goes on with item c.
+
+## D480 — THE ALLOCATOR AS A CALL: ONE ROUTINE PER BLOCK SIZE, A CALL AT EACH SITE; `--inline-alloc` KEEPS THE EXPANSION (2026-11-23, proposed — for the user's review)
+**Proposed** (unattended, keep-going mode; plan 0.146 §5 item 8 c; the user, 2026-11-23: "the allocator … should
+just be a call", "fight this at all frontiers"). **The design.** `AllocExpand` gains a mode. Inline (today's,
+`--inline-alloc`): each `instr-alloc-heap k` / `instr-free-heap k` becomes its code in place. Call (the
+default): each becomes `c-call-fn (alloc-fn k)` / `c-call-fn (free-fn k)`, and the image ends with one routine
+per block size the program uses, `c-entry (e-fn (alloc-fn k)) 0 ∷ alloc-code s k ++ c-ret 0 ∷ []` (the same code,
+its labels at a routine site `s` past the program's), likewise for free. A routine per SIZE, not per class, so
+neither allocator needs a law tying a class to one size.
+**Why it is sound as it stands.** The routine touches registers (kept, as the inline code keeps them), the
+record and the heap, never a frame slot; the call enters a frame one slot down and the return leaves it, so at
+the next primitive step the frames are as the primitive's (`AllocExpandRel`'s control fields); the call sets
+the link and the entry clears it, so the relation needs the link empty at an allocation (inside a body, after
+its entry: an invariant of the image's runs). The emitted-image facts gain: every call names a routine
+(`em-calls`), every routine's entry follows a return (`em-guard`; the first follows the program's leave).
+**Cost.** A site shrinks from ~16 abstract instructions (plus the bump's arch expansion and its room check) to
+one call; each alloc then runs a call, an entry and a return more. The room check for the bump moves into the
+routine (one per size, not one per site). Measured by `tests/perf-compare.sh` before and after.
+**Scope.** `AllocExpand` (mode, sites, routines), `AllocExpandPc` (the call mode's pc map; the routines'
+positions), the alloc/free simulations (the call, the entry, the existing `Pop`/`Bump`/free runs at the
+routine's pc, the return), `AllocExpandEmitted`/`Events`/`Start`/`Sim` over the mode, the image's symbols
+(`ImageSyms`: the routines' names, apart from every image name), the compiler's `--inline-alloc` flag, and the
+top theorems over the mode (D471's generalization).
