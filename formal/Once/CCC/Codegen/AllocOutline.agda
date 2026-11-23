@@ -25,7 +25,7 @@ open import Data.List using (List; []; _∷_; _++_; map; length)
 import Data.Maybe
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Nat using (ℕ; zero; suc; _+_)
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 open import Data.Empty using (⊥-elim)
 open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
@@ -50,6 +50,8 @@ open import Once.CCC.Machine.SMCore
 open import Once.CCC.Machine.Locations using (AtDynamic; AtStack)
 open import Once.Memory.HeapAddress using (sucHL)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
+open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
+open FlatStepsAPI {FS} using (FlatSteps; []; _∷_)
 open FlatMachine {FS}
 open FlatState
 open LocState
@@ -544,3 +546,35 @@ module Out (ks : List ℕ) (b : ℕ) (T : AbstractTrace) where
       fetch-map []       n       = refl
       fetch-map (x ∷ xs) zero    = refl
       fetch-map (x ∷ xs) (suc n) = fetch-map xs n
+
+  -- ★ AN ALLOCATION, CALLED: the call, the routine's entry, the primitive, the
+  -- return reach the program's own step, shifted (the entry's clear of no slot
+  -- changes nothing; the return leaves the frame the call entered)
+  alloc-site : ∀ (fs fs′ : FlatState) (q k : ℕ) → k ∈ ks
+             → Shifted d fs′ fs → fpc fs ≡ suc q → fetch T q ≡ just (instr-alloc-heap k)
+             → LocState.halted (floc fs) ≡ false → flink fs ≡ nothing
+             → Σ FlatState λ fs″ → FlatSteps P′ 4 fs′ fs″ × Shifted d fs″ (flat-exec-instr (instr-alloc-heap k) P fs)
+  alloc-site fs fs′ q k mem sh@(lo , al , pc , rt , lk , cl) pq ft h lk0 =
+    s₄ , (h₀ , f₀) ∷ subst (λ mj → FlatSteps P′ 3 (do-call-at mj fs′) s₄) (sym (find-alloc k mem)) run , shifted
+    where
+      R = routines-out k mem
+      open Routines R
+      h₀ : LocState.halted (floc fs′) ≡ false
+      h₀ = trans (cong LocState.halted lo) h
+      f₀ : fetch P′ (fpc fs′) ≡ just (instr-ctrl (c-call-fn (alloc-fn k)))
+      f₀ = trans (cong (fetch P′) (trans pc (cong (d +_) pq))) (trans (fetch-out q) (cong (Data.Maybe.map site-call) ft))
+      s₁ s₂ s₃ s₄ : FlatState
+      s₁ = do-call-at (just (rp k)) fs′
+      s₂ = flat-exec-instr (instr-ctrl (c-entry (e-fn (alloc-fn k)) 0)) P′ s₁
+      s₃ = flat-exec-instr (instr-alloc-heap k) P′ s₂
+      s₄ = flat-exec-instr (instr-ctrl (c-ret 0)) P′ s₃
+      run : FlatSteps P′ 3 s₁ s₄
+      run = (h₀ , at-ae) ∷ (h₀ , at-a) ∷ (h₀ , at-ar) ∷ []
+      lo′ : floc s₄ ≡ floc (flat-exec-instr (instr-alloc-heap k) P fs)
+      lo′ = trans (cong (λ m → proj₁ (AbstractExec.exec-abstract {FS} (instr-alloc-heap k) (record (floc fs′) { stackMem = m }) (falloc fs′)))
+                        (clear0 (LocState.stackMem (floc fs′)) _))
+                  (cong₂ (λ L A → proj₁ (AbstractExec.exec-abstract {FS} (instr-alloc-heap k) L A)) lo al)
+      al′ : falloc s₄ ≡ falloc (flat-exec-instr (instr-alloc-heap k) P fs)
+      al′ = cong₂ (λ L A → proj₂ (AbstractExec.exec-abstract {FS} (instr-alloc-heap k) L A)) lo al
+      shifted : Shifted d s₄ (flat-exec-instr (instr-alloc-heap k) P fs)
+      shifted = lo′ , al′ , trans (cong suc pc) (sym (+-suc d (fpc fs))) , rt , sym (cong (Data.Maybe.map (d +_)) lk0) , cl
