@@ -24797,6 +24797,18 @@ every many-use closure is `copyIn` (`PassTr`'s `inco F`, the examples). So the c
 when it is built: a new form `llamωᶜ b₀` (the bridge's `clo`), a value `cωᶜ ds b₀ γ`, whose lent call means
 `copyIn b₀` (as today) and whose owned call (`levω`) runs `b₀` on the environment moved in; `levω` on a plain
 `cω` cell runs the lent body and frees the environment after. Additive: `llamω`/`cω` and their proofs stay.
+### Progress (2026-11-23, WIP branch `0.146-d478-wip`, 112588e7b; not merged into the plan branch)
+Done and checking module by module: the core (`llamωᶜ`, `levω`, `cin`, `ownBg`), values (`cωᶜ`), the run rules
+and their soundness, the code machine, the totality proof (`Total`: `cinRan`, `ownRanG`), keys (the owned body's
+key), the image (`icallᵒ`, `open1ω`, `ktr1ω`, `trωo`), the lowering. The owned call needs no new flat
+instruction: `icallᵒ` points the closure register at the cell + 3 and calls, so the cell's fifth word
+(`hdr` 4 → 5) is entered, as the copy (word 2) and free (word 3) calls already do.
+**Found**: the one-shot body's thunk would serve two image trampolines (`ktr1` for a one-shot cell, `ktr1ω` for a
+many-use cell's owned entry), but the global relation (`Global`'s trampoline points, `under κ`) relates each
+flat thunk to one image trampoline. Next: a many-use owned body gets its own key (`kbody1ω`, the same block
+and thunk code), so each thunk has one trampoline; then the trampoline simulations are the one-shot ones,
+copied with the renames (`GlobalDispatch.gicall`/`gopen1`, `GlobalTramp`, `tr-open1`), the header's and the
+copy trampoline's lowering proofs (`LowerSimC`/`R`/`B`) extended by the fifth word. Estimated days.
 ### Scope (a)
 Core (`levω`, `Blk`), semantics (`Lᶜ levω` = `apω`'s), Keys (the owned body's key per many-use closure), Image
 (`compᴵ`, the body trampoline for `kbodyω`), Lower (`tramp`), and the trampoline simulations (`GlobalTramp*`,
