@@ -23,7 +23,7 @@ module Once.LinCore.Top (o : CanonicalName) {B : Backend} (A : ArchSim o B) wher
 open import Data.List using (List; [])
 open import Data.Maybe using (just)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; subst₂; sym; trans)
-open import Data.Bool using (false)
+open import Data.Bool using (Bool; false)
 open import Data.Product using (Σ; _,_)
 open import Data.Sum using (inj₂)
 open import Data.Sum.Properties using (inj₂-injective)
@@ -56,7 +56,7 @@ import Once.CCC.Codegen.AllocExpandClasses
 module Program (m : Resolved) (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Unit)
   (mi : moduleToIR m ≡ just ir) (nd : NamesDistinct (moduleTable m)) (te : moduleTable m ≡ tbl)
   (ls : moduleSig m ≡ Interp.sig (FrameSemantics.fs-interp (ArchSim.FS A)))
-  (a : Once.CCC.Codegen.AllocExpandClasses.Alloc) where
+  (a : Once.CCC.Codegen.AllocExpandClasses.Alloc) (inl : Bool) where
 
   -- the bridge's facts, from the compile pipeline, in the interpretation's signatures
   -- (only the declarations' fact depends on the signatures: moved alone, so the others stay the
@@ -81,12 +81,12 @@ module Program (m : Resolved) (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit
 
   FileAt : List CompiledSrc → Σ Type (λ T → T <: EffUU) → Set
   FileAt tl (T , pm) =
-    ArchSim.run-file A (Once.LinCore.ExprImage.fileAt (fs-numerics (ArchSim.FS A)) B a tl pm
+    ArchSim.run-file A (Once.LinCore.ExprImage.fileAt (fs-numerics (ArchSim.FS A)) B a inl tl pm
                          (image-externs (Once.LinCore.ExprImage.imageAt (fs-numerics (ArchSim.FS A)) tl pm)))
     ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (fs-numerics (ArchSim.FS A)) (FrameSemantics.fs-interp (ArchSim.FS A))
 
   FileTr : List CompiledSrc → Σ Type (λ T → T <: EffUU) → Set
-  FileTr s (T , pm) = ArchSim.run-file A (fileOf B a (fs-numerics (ArchSim.FS A)) s pm)
+  FileTr s (T , pm) = ArchSim.run-file A (fileOf B a inl (fs-numerics (ArchSim.FS A)) s pm)
                       ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (fs-numerics (ArchSim.FS A)) (FrameSemantics.fs-interp (ArchSim.FS A))
 
   private
@@ -99,7 +99,7 @@ module Program (m : Resolved) (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit
     -- …so the file at them is the compiler's of them (its externs, the image's)
     at-front : N.Owed → FileTr EPm.srcs (EPm.mty , EPm.mpm)
     at-front O = subst₂ FileAt tl-eq main-eq
-                   (N.file-at a (image-externs (Once.LinCore.ExprImage.imageAt (fs-numerics (ArchSim.FS A)) N.IT.BF.tl N.IT.BF.mpm)) O)
+                   (N.file-at a inl (image-externs (Once.LinCore.ExprImage.imageAt (fs-numerics (ArchSim.FS A)) N.IT.BF.tl N.IT.BF.mpm)) O)
 
     move : ∀ {s s′} → s ≡ s′ → ∀ {x y} → mainOf s ≡ just x → mainOf s′ ≡ just y → FileTr s x → FileTr s′ y
     move {s} refl e e′ t = subst (λ z → FileTr s z) (just-injective (trans (sym e) e′)) t
@@ -112,15 +112,15 @@ module Program (m : Resolved) (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit
   -- ★★ THE FILE THE COMPILER WRITES IS WHAT THE ASSEMBLER DEMANDS (D464)
   FileWfAt : List CompiledSrc → Σ Type (λ T → T <: EffUU) → Set
   FileWfAt tl (T , pm) =
-    Backend.AsmWF B (Once.LinCore.ExprImage.fileAt (fs-numerics (ArchSim.FS A)) B a tl pm
+    Backend.AsmWF B (Once.LinCore.ExprImage.fileAt (fs-numerics (ArchSim.FS A)) B a inl tl pm
                       (image-externs (Once.LinCore.ExprImage.imageAt (fs-numerics (ArchSim.FS A)) tl pm)))
 
   FileWf : List CompiledSrc → Σ Type (λ T → T <: EffUU) → Set
-  FileWf s (T , pm) = Backend.AsmWF B (fileOf B a (fs-numerics (ArchSim.FS A)) s pm)
+  FileWf s (T , pm) = Backend.AsmWF B (fileOf B a inl (fs-numerics (ArchSim.FS A)) s pm)
 
   private
     wf-front : FileWf EPm.srcs (EPm.mty , EPm.mpm)
-    wf-front = subst₂ FileWfAt tl-eq main-eq (N.file-wf-at a)
+    wf-front = subst₂ FileWfAt tl-eq main-eq (N.file-wf-at a inl)
 
     move-wf : ∀ {s s′} → s ≡ s′ → ∀ {x y} → mainOf s ≡ just x → mainOf s′ ≡ just y → FileWf s x → FileWf s′ y
     move-wf {s} refl e e′ w = subst (λ z → FileWf s z) (just-injective (trans (sym e) e′)) w

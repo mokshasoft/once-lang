@@ -37,12 +37,15 @@ open import Data.Nat using (ℕ; zero; suc; _+_; _≤_)
 open import Once.CCC.Machine.SMCore
   using (AbstractInstr; AbstractTrace; instr-ctrl; instr-alloc-heap; instr-free-heap; instr-load-tag-lit
         ; load-rec; store-rec; load-at; store-at; mov-to-input; mov-to-output
-        ; c-label; c-jmp; c-branch-tag-zero; c-start)
-open import Once.CCC.Label using (LabelId; mkLabelId; module LabelId)
+        ; c-label; c-jmp; c-branch-tag-zero; c-start; c-call-fn; c-entry; c-ret)
+open import Once.CCC.Label using (LabelId; mkLabelId; module LabelId; e-fn)
+open import Data.Bool using (Bool; true; false)
+open import Data.String using () renaming (_++_ to _++ˢ_)
+open import Once.Target.Symbol using (showNat)
 open import Data.Empty using (⊥)
 open import Data.Product using (Σ; _×_)
 open import Relation.Binary.PropositionalEquality using (_≡_)
-open import Once.Spec.Name using (canonical)
+open import Once.Spec.Name using (canonical; CanonicalName)
 
 ------------------------------------------------------------------------
 -- The allocator's choice: which list serves a block size, and the size it bumps
@@ -154,3 +157,53 @@ module _ (C : Classes) where
 
   expand : AbstractTrace → AbstractTrace
   expand = expand-from 0
+
+------------------------------------------------------------------------
+-- ★ D480: THE ALLOCATOR AS A CALL, as the expansion of an OUTLINED program.
+-- `outline ks P` is `P` with each allocation and free a call, in place, and one
+-- primitive alloc and free routine per size of `ks` right after the start,
+-- jumped over (`c-jmp skip-label … c-label skip-label`): the program's own code
+-- keeps its order and its end, shifted by the routines' length. Its expansion
+-- (`expand C (outline ks P)`) is the call mode: each routine's primitive becomes
+-- the inline code once. The routines' names lead every part with a non-digit,
+-- as the symbols' read-back needs (`LabelSymInj.GoodL`); the skip label's owner
+-- is no block's and not the expansion's (`ImgL`).
+------------------------------------------------------------------------
+
+alloc-fn free-fn : ℕ → CanonicalName
+alloc-fn k = canonical ("once-alloc" ∷ ("a" ++ˢ showNat k) ∷ [])
+free-fn  k = canonical ("once-alloc" ∷ ("f" ++ˢ showNat k) ∷ [])
+
+-- a site, called
+site-call : AbstractInstr → AbstractInstr
+site-call (instr-alloc-heap k) = instr-ctrl (c-call-fn (alloc-fn k))
+site-call (instr-free-heap k)  = instr-ctrl (c-call-fn (free-fn k))
+{-# CATCHALL #-}
+site-call i                    = i
+
+-- a size's two primitive routines
+prim-routine : ℕ → AbstractTrace
+prim-routine k =
+    instr-ctrl (c-entry (e-fn (alloc-fn k)) 0) ∷ instr-alloc-heap k ∷ instr-ctrl (c-ret 0)
+  ∷ instr-ctrl (c-entry (e-fn (free-fn k)) 0)  ∷ instr-free-heap k  ∷ instr-ctrl (c-ret 0) ∷ []
+
+prim-routines : List ℕ → AbstractTrace
+prim-routines []       = []
+prim-routines (k ∷ ks) = prim-routine k ++ prim-routines ks
+
+skip-label : LabelId
+skip-label = mkLabelId (canonical ("once-outline" ∷ [])) [] 0
+
+-- the routines, jumped over
+skip : List ℕ → AbstractTrace
+skip ks = instr-ctrl (c-jmp skip-label) ∷ prim-routines ks ++ instr-ctrl (c-label skip-label) ∷ []
+
+-- the start, the routines, then the program's own code with its sites called
+outline : List ℕ → AbstractTrace → AbstractTrace
+outline ks []      = []
+outline ks (i ∷ T) = i ∷ skip ks ++ map site-call T
+
+-- the mode: inline (`--inline-alloc`) or by call (the default), over the program's sizes `ks`
+expandₘ : Bool → Classes → List ℕ → AbstractTrace → AbstractTrace
+expandₘ true  C ks P = expand C P
+expandₘ false C ks P = expand C (outline ks P)

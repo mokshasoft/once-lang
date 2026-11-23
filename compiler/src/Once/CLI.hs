@@ -138,6 +138,7 @@ data BuildOptions = BuildOptions
   , buildSaveTemps :: Bool                        -- ^ Keep intermediate files (.s, .o)
   , buildOptimize  :: Bool                        -- ^ Run optimizer (default: True)
   , buildAlloc     :: Bridge.Alloc                -- ^ D468: the cell allocator (`--alloc`, default: slab)
+  , buildInlineAlloc :: Bool                      -- ^ D480: inline the allocator at each site (`--inline-alloc`; default: a call)
   -- Future options (not yet wired to Agda)
   , buildStrata    :: Maybe FilePath              -- ^ Strata directory path
   , buildInterp    :: Maybe FilePath              -- ^ Legacy interpretation path
@@ -338,7 +339,7 @@ emitWarnings arch src m = mapM_ (hPutStrLn stderr . T.unpack) (Bridge.moduleWarn
 -- | The assembly of a resolved module: the verified compiler's file (plan 0.146
 -- D464: the linear core's image of a program, `Once.LinCore.Emit.assemblyCore`).
 assemblyOf :: BuildOptions -> Bridge.Arch -> Bridge.Resolved -> IO (Either T.Text T.Text)
-assemblyOf opts arch mod_ = pure (Bridge.assemblyFromModule (buildOptimize opts) (buildAlloc opts) arch mod_)
+assemblyOf opts arch mod_ = pure (Bridge.assemblyFromModule (buildOptimize opts) (buildAlloc opts) (buildInlineAlloc opts) arch mod_)
 
 runVerifiedBuild :: BuildOptions -> FilePath -> Bridge.Arch -> T.Text -> Bridge.Resolved
                  -> FilePath -> [[T.Text]] -> IO ()

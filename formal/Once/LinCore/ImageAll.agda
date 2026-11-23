@@ -108,6 +108,8 @@ module Ok (nm : CanonicalName) (U : Univ)
 
   -- an instruction the three predicates reduce to `⊤` on
   pattern ✓ = tt , tt , tt
+  -- a free of a cell (a header and more: one word at least, D480)
+  pattern fr = tt , Data.Nat.s≤s Data.Nat.z≤n , tt
 
   ----------------------------------------------------------------------
   -- 1. MOVES, CELLS, NAMES.
@@ -238,7 +240,7 @@ module Ok (nm : CanonicalName) (U : Univ)
       in (tt , m≤m⊔n 1 wL , tt) ∷ ✓ ∷ ++⁺ (mvSP-ok (bot ∸ wL) 0 wL) (✓ ∷ ✓ ∷ [])
     lowP-ok ds (lOutμ {F = F}) φ S p =
       let bot = Tp φ S ; wL = wsz (LF∙ F (μt F))
-      in ✓ ∷ ++⁺ (mvPS-ok 0 (bot ∸ wL) wL) (✓ ∷ [])
+      in ✓ ∷ ++⁺ (mvPS-ok 0 (bot ∸ wL) wL) ((tt , m≤m⊔n 1 wL , tt) ∷ [])
     lowP-ok ds (lcata _ _) φ S p  = []
     lowP-ok ds (lclo _ _) φ S p   = []
     lowP-ok ds (lapp _) φ S p     = []
@@ -346,12 +348,12 @@ module Ok (nm : CanonicalName) (U : Univ)
       let wX = wsz X ; wA = wsz A ; wB = wsz B ; M = (wX + wA) ⊔ wB ; Mc = suc wA ⊔ wB ; a = M ∸ (wX + wA)
       in ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ++⁺ (mvPS-ok hdr a wX)
            (✓ ∷ ++⁺ (mvPS-ok (Mc ∸ wA) (a + wX) wA)
-             (✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ callAt p e ∷ ✓ ∷ ++⁺ (mvSP-ok (M ∸ wB) (Mc ∸ wB) wB) (✓ ∷ [])))
+             (✓ ∷ fr ∷ ✓ ∷ ✓ ∷ callAt p e ∷ ✓ ∷ ++⁺ (mvSP-ok (M ∸ wB) (Mc ∸ wB) wB) (✓ ∷ [])))
     tramp-ok j (kbodyω {X = X} ds b γ) p e = ✓ ∷ ✓ ∷ contentsAddr-ok (wsz X) ∷ ✓ ∷ callAt p e ∷ ✓ ∷ []
     tramp-ok j (kobs ds F S) p e =
       let wP = wsz (cty (F , S)) ; wL = wsz (LF∙ F (Nu F)) ; M = wP ⊔ wL ; Mc = 1 ⊔ wL
       in ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ++⁺ (mvPS-ok hdr (M ∸ wP) wP)
-           (✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ callAt p e ∷ ✓ ∷ ++⁺ (mvSP-ok (M ∸ wL) (Mc ∸ wL) wL) (✓ ∷ []))
+           (✓ ∷ fr ∷ ✓ ∷ ✓ ∷ callAt p e ∷ ✓ ∷ ++⁺ (mvSP-ok (M ∸ wL) (Mc ∸ wL) wL) (✓ ∷ []))
     tramp-ok j (kcopy T₀) p e =
       let w = wsz T₀
       in ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ contentsAddr-ok w ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ callAt p e ∷ cell-word w
@@ -359,7 +361,7 @@ module Ok (nm : CanonicalName) (U : Univ)
          ∷ ++⁺ (mvSP-ok 0 hdr w) (✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ [])
     tramp-ok j (kfree T₀) p e =
       let w = wsz T₀
-      in ✓ ∷ ✓ ∷ ✓ ∷ ++⁺ (mvPS-ok hdr 0 w) (✓ ∷ ✓ ∷ ✓ ∷ callAt p e ∷ ✓ ∷ [])
+      in ✓ ∷ ✓ ∷ ✓ ∷ ++⁺ (mvPS-ok hdr 0 w) (fr ∷ ✓ ∷ ✓ ∷ callAt p e ∷ ✓ ∷ [])
     tramp-ok j (kfold ds F alg) p e = []
     tramp-ok j (ktr1 ds b γ) p e = []
     tramp-ok j (ktrω ds b γ) p e = []

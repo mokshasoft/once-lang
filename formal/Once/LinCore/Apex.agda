@@ -39,7 +39,9 @@ open import Once.IR.Semantics.Trace using (module Interp)
 open import Once.CCC.FrameSemantics using (fs-numerics; fs-ffi; module FrameSemantics)
 open import Once.CCC.Codegen.RoomChecks using (room-checks)
 open import Once.CCC.Machine.SMCore
-  using (AbstractTrace; AbstractInstr; instr-ctrl; c-ret; instr-call-closure; instr-sigop; SV-Ptr; SV-Code; module LocState; module AllocState)
+  using (AbstractTrace; AbstractInstr; instr-ctrl; c-ret; instr-call-closure; instr-sigop; instr-alloc-heap; instr-free-heap; SV-Ptr; SV-Code; module LocState; module AllocState)
+open import Data.Sum using (_⊎_)
+open import Data.Bool using (Bool; true; false)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Label using (LabelId)
 open import Once.Memory.HeapAddress using (HeapLocation; sucHL)
@@ -59,6 +61,10 @@ import Once.LinCore.Keys
 import Once.LinCore.ExprImage
 import Once.LinCore.ImageSyms
 import Once.Adequacy.ArchCorrectness.ExpandSim
+import Once.Adequacy.ArchCorrectness.ExpandSimCall
+import Once.Adequacy.ArchCorrectness.OutlineEmitted
+import Once.CCC.Codegen.AllocOutline
+import Once.CCC.Codegen.AllocOutlineSizes
 import Once.CCC.Codegen.AllocExpandClasses
 import Once.CCC.Codegen.AllocExpandEmitted
 import Once.CCC.Codegen.AllocExpand
@@ -218,20 +224,94 @@ module NewImage (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Uni
     file-trˣ ex O = subst (λ T → T ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (fs-numerics FS) (FrameSemantics.fs-interp FS)) (sym (file-runs P″ bs ex)) (conc-trˣ O)
 
     file-atˣ : (ex : List String) → Owed
-             → run-file (Once.LinCore.ExprImage.fileAt (fs-numerics FS) B a IT.BF.tl IT.BF.mpm ex) ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (fs-numerics FS) (FrameSemantics.fs-interp FS)
+             → run-file (Once.LinCore.ExprImage.fileAt (fs-numerics FS) B a true IT.BF.tl IT.BF.mpm ex) ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (fs-numerics FS) (FrameSemantics.fs-interp FS)
     file-atˣ ex O = file-trˣ ex O
 
     module ISX = IS.Xp PL.C
 
-    file-wf-atˣ : Backend.AsmWF B (Once.LinCore.ExprImage.fileAt (fs-numerics FS) B a IT.BF.tl IT.BF.mpm
+    file-wf-atˣ : Backend.AsmWF B (Once.LinCore.ExprImage.fileAt (fs-numerics FS) B a true IT.BF.tl IT.BF.mpm
                                      (image-externs (Once.LinCore.ExprImage.imageAt (fs-numerics FS) IT.BF.tl IT.BF.mpm)))
     file-wf-atˣ = file-wf _ _ bs (image-externs image) ISX.image-wfˣ
 
-    file-at : (ex : List String) → Owed
-            → run-file (Once.LinCore.ExprImage.fileAt (fs-numerics FS) B a IT.BF.tl IT.BF.mpm ex) ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (fs-numerics FS) (FrameSemantics.fs-interp FS)
-    -- (D468: the compiler writes the allocator's expansion of the image: `file-trˣ` below)
-    file-at ex O = file-atˣ ex O
 
-    file-wf-at : Backend.AsmWF B (Once.LinCore.ExprImage.fileAt (fs-numerics FS) B a IT.BF.tl IT.BF.mpm
-                                    (image-externs (Once.LinCore.ExprImage.imageAt (fs-numerics FS) IT.BF.tl IT.BF.mpm)))
-    file-wf-at = file-wf-atˣ
+    ------------------------------------------------------------------------
+    -- ★★ D480: THE ALLOCATOR AS A CALL (the default mode; `--inline-alloc` is the
+    -- expansion above): the expansion of the OUTLINED image, its sites calls of one
+    -- routine per size of the image's, the same trace
+    ------------------------------------------------------------------------
+
+    module XC = Once.Adequacy.ArchCorrectness.ExpandSimCall o A
+    module OE = Once.Adequacy.ArchCorrectness.OutlineEmitted o FS slot-size word-eq
+    module OS = Once.CCC.Codegen.AllocOutlineSizes {FS}
+
+    -- the routines' sizes: the image's, each once
+    ksᶜ : List ℕ
+    ksᶜ = CL.dsizes image
+
+    imageᵒ : AbstractTrace
+    imageᵒ = Once.CCC.Codegen.AllocExpand.outline ksᶜ image
+
+    module PLC = Once.CCC.Codegen.AllocExpandClasses.Choice a imageᵒ
+    module CDC = Once.CCC.Codegen.AllocExpandEmitted.Code {FS} PLC.C PLC.small PLC.in-range PLC.fits
+
+    imageᶜ : AbstractTrace
+    imageᶜ = Once.CCC.Codegen.AllocExpand.expand PLC.C imageᵒ
+
+    P‴ : AbstractTrace
+    P‴ = room-checks imageᶜ
+
+    private
+      ks-pos : ∀ k → k ∈ ksᶜ → 1 Data.Nat.≤ k
+      ks-pos = OS.dsizes-pos image IA.em-alloc
+
+      ks-in : ∀ q k → (fetch IA.tail q ≡ just (instr-alloc-heap k)) ⊎ (fetch IA.tail q ≡ just (instr-free-heap k)) → k ∈ ksᶜ
+      ks-in q k e = OS.in-dsizes image (Data.Nat.suc q) k e
+
+      emᵒ : Emitted imageᵒ
+      emᵒ = OE.emitted ksᶜ IA.em-budget IA.tail emitted ks-pos ks-in IS.calls-apart
+
+      -- an op the room-checked call image calls is one the room-checked image calls
+      sig-backᶜ : ∀ {A B} (si : Once.SigOp.Info.SigOpInfo A B) → instr-sigop si ∈ P‴ → instr-sigop si ∈ P′
+      sig-backᶜ si m = EM.∈-room image (Once.CCC.Codegen.AllocOutline.sig-out {FS} si ksᶜ IA.em-budget IA.tail
+                         (CDC.exp-sig 0 imageᵒ (Emitted.em-alloc emᵒ) si (EM.room-sig imageᶜ si m)))
+
+    namedᶜ : Data.List.Relation.Unary.All.All (BT.SigNamed bs) P‴
+    namedᶜ = Data.List.Relation.Unary.All.tabulate λ {i} m {A} {B} si e →
+      Once.LinCore.ImageOwned.named-call (fs-numerics FS) bw U IT.canon si (IA.sigops si (sig-backᶜ si (subst (λ j → j ∈ P‴) e m)))
+
+    ext-missᶜ : Owed → ExtMiss FS env P‴
+    ext-missᶜ O si k ex f =
+      let (k′ , f′) = ∈-fetch P′ (sig-backᶜ si (fetch-∈ P‴ k f)) in Owed.o-ext-miss O si k′ ex f′
+
+    -- ★★ THE CALL MODE ON THE ARCH: its run has the trace of the program
+    conc-trᶜ : Owed
+             → Machine.trace (δ env (compile P‴)) init ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (fs-numerics FS) (FrameSemantics.fs-interp FS)
+    conc-trᶜ O = XC.sim-call PLC.C PLC.small PLC.in-range PLC.fits (irProgram tbl ir) IA.em-budget IA.tail env
+                   ksᶜ (CL.Sz imageᵒ) PLC.uniform
+                   emitted (IT.flat-sound (λ {b} v → ML.ld {b} v image))
+                   ks-pos (λ k m → OS.outline-sz ksᶜ IA.em-budget IA.tail k m) ks-in IS.skip-apart IS.calls-apart
+                   IS.img-path IS.jmp-path IS.br-path IAF.no-lrec IAF.no-srec
+                   (table P‴ bs namedᶜ (ext-missᶜ O)) (IT.flat-ir (λ {b} v → ML.ld {b} v image))
+
+    -- ★★ THE CALL MODE'S FILE (what the compiler writes by default) runs with the program's trace,
+    -- and is what the assembler demands
+    file-atᶜ : (ex : List String) → Owed
+             → run-file (Once.LinCore.ExprImage.fileAt (fs-numerics FS) B a false IT.BF.tl IT.BF.mpm ex) ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (fs-numerics FS) (FrameSemantics.fs-interp FS)
+    file-atᶜ ex O = subst (λ T → T ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (fs-numerics FS) (FrameSemantics.fs-interp FS)) (sym (file-runs P‴ bs ex)) (conc-trᶜ O)
+
+    module ISC = IS.Xc PLC.C
+
+    file-wf-atᶜ : Backend.AsmWF B (Once.LinCore.ExprImage.fileAt (fs-numerics FS) B a false IT.BF.tl IT.BF.mpm
+                                     (image-externs (Once.LinCore.ExprImage.imageAt (fs-numerics FS) IT.BF.tl IT.BF.mpm)))
+    file-wf-atᶜ = file-wf _ _ bs (image-externs image) ISC.image-wfᶜ
+
+    -- ★★ THE FILE THE COMPILER WRITES, in either mode (`--inline-alloc`: `true`)
+    file-at : (inl : Bool) (ex : List String) → Owed
+            → run-file (Once.LinCore.ExprImage.fileAt (fs-numerics FS) B a inl IT.BF.tl IT.BF.mpm ex) ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (fs-numerics FS) (FrameSemantics.fs-interp FS)
+    file-at true  = file-atˣ
+    file-at false = file-atᶜ
+
+    file-wf-at : (inl : Bool) → Backend.AsmWF B (Once.LinCore.ExprImage.fileAt (fs-numerics FS) B a inl IT.BF.tl IT.BF.mpm
+                                     (image-externs (Once.LinCore.ExprImage.imageAt (fs-numerics FS) IT.BF.tl IT.BF.mpm)))
+    file-wf-at true  = file-wf-atˣ
+    file-wf-at false = file-wf-atᶜ

@@ -156,9 +156,9 @@ resolveImports modMap (Module userMod) =
 -- the optimizer, or the compiler's error: the print of the file the verified
 -- compiler emits (`Once.LinCore.Emit.assemblyCore`, plan 0.146 D464: a
 -- program's linear core image), the file the apex covers (D352, D353).
-assemblyFromModule :: Bool -> Alloc -> Arch -> Resolved -> Either Text Text
-assemblyFromModule doOpt alloc arch (Resolved mod_) =
-  eitherText (MR.d_assembly_48 runs doOpt (toMAlloc alloc) (toMArch arch) (unsafeCoerce mod_))
+assemblyFromModule :: Bool -> Alloc -> Bool -> Arch -> Resolved -> Either Text Text
+assemblyFromModule doOpt alloc inlineAlloc arch (Resolved mod_) =
+  eitherText (MR.d_assembly_48 runs doOpt (toMAlloc alloc) inlineAlloc (toMArch arch) (unsafeCoerce mod_))
 
 -- | D468: the cell allocator the compiled program uses (`--alloc`): the slab (a
 -- free list per node size, the default) or the pool (one list, every block the

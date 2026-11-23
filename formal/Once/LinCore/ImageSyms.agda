@@ -36,6 +36,7 @@ import Data.List.Relation.Unary.Any.Properties
 open import Data.List.Relation.Unary.Unique.Propositional using (Unique)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
+open import Relation.Nullary using (¬_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (tt)
 open import Data.Empty using (⊥; ⊥-elim)
@@ -96,6 +97,7 @@ import Once.LinCore.ImageBlocks
 open import Once.LinCore.Jumps fmt ans bw using (jump-of; jmp; Jmps; Jmps-nj; mvPS-nj; mvSP-nj; module Closed; module Free)
 
 import Once.CCC.Codegen.AllocExpand
+import Once.CCC.Codegen.AllocExpandClasses
 import Once.LinCore.ImageSymsX
 module LI = Once.LinCore.LabelsI fmt ans bw
 module EI = Once.LinCore.EntriesI fmt ans bw
@@ -116,6 +118,10 @@ opaque
   nameOf-two : ∀ j → length (CanonicalName.parts (nameOf j)) ≡ 2
   nameOf-two j = refl
 
+  -- D480: a block's name leads with `once-lincore`
+  nameOf-lead : ∀ j → Data.List.take 1 (CanonicalName.parts (nameOf j)) ≡ "once-lincore" ∷ []
+  nameOf-lead j = refl
+
 -- an arith block's name reads back too
 block-good : ∀ d → All PeelS (CanonicalName.parts (bare ("arith.block." ++ˢ d)))
 block-good d = subst Peel (sym (toList-++ "arith.block." d)) (_ , _ , refl , refl) ∷ []
@@ -127,11 +133,29 @@ name≢block j d e = two≢one (trans (sym (nameOf-two j)) (cong (λ c → lengt
   where two≢one : 2 ≡ 1 → ⊥
         two≢one ()
 
--- the labels and entries of the image
+-- D480: the call mode's routines, their names read back too
+alloc-good : ∀ k → All PeelS (CanonicalName.parts (Once.CCC.Codegen.AllocExpand.alloc-fn k))
+alloc-good k = (_ , _ , refl , refl) ∷ subst Peel (sym (toList-++ "a" (Once.Target.Symbol.showNat k))) (_ , _ , refl , refl) ∷ []
+
+free-good : ∀ k → All PeelS (CanonicalName.parts (Once.CCC.Codegen.AllocExpand.free-fn k))
+free-good k = (_ , _ , refl , refl) ∷ subst Peel (sym (toList-++ "f" (Once.Target.Symbol.showNat k))) (_ , _ , refl , refl) ∷ []
+
+-- a routine's symbol is no arith block's (two parts, theirs one)
+routine≢block : ∀ (cn : CanonicalName) → All PeelS (CanonicalName.parts cn) → length (CanonicalName.parts cn) ≡ 2
+              → ∀ d → once-symbol-path cn ≢ once-symbol-path (bare ("arith.block." ++ˢ d))
+routine≢block cn g two d e = two≢one (trans (sym two) (cong (λ c → length (CanonicalName.parts c))
+                               (once-symbol-path-injective-peel cn (bare ("arith.block." ++ˢ d)) g (block-good d) e)))
+  where two≢one : 2 ≡ 1 → ⊥
+        two≢one ()
+
+-- the labels and entries of the image (D480: and of the outlined image's skip and routines)
 data ShapeL : Label → Set where
   s-jl : ∀ j k → ShapeL (once (jl j k))
   s-fn : ∀ j → ShapeL (callee (e-fn (nameOf j)))
   s-tl : ∀ j → ShapeL (callee (e-thunk (tl j)))
+  s-sk : ShapeL (once Once.CCC.Codegen.AllocExpand.skip-label)
+  s-ra : ∀ k → ShapeL (callee (e-fn (Once.CCC.Codegen.AllocExpand.alloc-fn k)))
+  s-rf : ∀ k → ShapeL (callee (e-fn (Once.CCC.Codegen.AllocExpand.free-fn k)))
 
 shape-lab : ∀ {y l} → y ≡ once l → (Σ ℕ λ j → Σ ℕ λ k → l ≡ jl j k) → ShapeL y
 shape-lab refl (j , k , refl) = s-jl j k
@@ -144,11 +168,17 @@ shape-good : ∀ {y} → ShapeL y → GoodL y
 shape-good (s-jl j k) = refl , nameOf-good j
 shape-good (s-fn j)   = nameOf-good j
 shape-good (s-tl j)   = refl , nameOf-good j
+shape-good s-sk       = refl , ((_ , _ , refl , refl) ∷ [])
+shape-good (s-ra k)   = alloc-good k
+shape-good (s-rf k)   = free-good k
 
 shape-def : ∀ {y} → ShapeL y → DefL y
 shape-def (s-jl j k) = Once.Adequacy.LabelSymbols.d-once
 shape-def (s-fn j)   = Once.Adequacy.LabelSymbols.d-callee
 shape-def (s-tl j)   = Once.Adequacy.LabelSymbols.d-callee
+shape-def s-sk       = Once.Adequacy.LabelSymbols.d-once
+shape-def (s-ra k)   = Once.Adequacy.LabelSymbols.d-callee
+shape-def (s-rf k)   = Once.Adequacy.LabelSymbols.d-callee
 
 private
   head≢ : ∀ {s t : String} → head-of (toList s) ≡ '.' → head-of (toList t) ≡ 'o' → s ≢ t
@@ -159,11 +189,17 @@ shape≢block : ∀ {y t} → ShapeL y → BlockSym t → labelSym y ≢ t
 shape≢block (s-jl j k) (d , refl) = head≢ (once-head (jl j k)) (fn-head (bare ("arith.block." ++ˢ d)))
 shape≢block (s-fn j)   (d , refl) = name≢block j d
 shape≢block (s-tl j)   (d , refl) = head≢ (thunk-head (tl j)) (fn-head (bare ("arith.block." ++ˢ d)))
+shape≢block s-sk       (d , refl) = head≢ (once-head Once.CCC.Codegen.AllocExpand.skip-label) (fn-head (bare ("arith.block." ++ˢ d)))
+shape≢block (s-ra k)   (d , refl) = routine≢block (Once.CCC.Codegen.AllocExpand.alloc-fn k) (alloc-good k) refl d
+shape≢block (s-rf k)   (d , refl) = routine≢block (Once.CCC.Codegen.AllocExpand.free-fn k) (free-good k) refl d
 
 entry≢shape : ∀ {y} → ShapeL y → entry-symbol ≢ labelSym y
 entry≢shape (s-jl j k) e = head≢ (once-head (jl j k)) refl (sym e)
 entry≢shape (s-fn j)   e = entry≢osp (nameOf j) e
 entry≢shape (s-tl j)   e = head≢ (thunk-head (tl j)) refl (sym e)
+entry≢shape s-sk       e = head≢ (once-head Once.CCC.Codegen.AllocExpand.skip-label) refl (sym e)
+entry≢shape (s-ra k)   e = entry≢osp (Once.CCC.Codegen.AllocExpand.alloc-fn k) e
+entry≢shape (s-rf k)   e = entry≢osp (Once.CCC.Codegen.AllocExpand.free-fn k) e
 
 entry≢block : ∀ {t} → BlockSym t → entry-symbol ≢ t
 entry≢block (d , refl) = entry≢osp (bare ("arith.block." ++ˢ d))
@@ -173,6 +209,9 @@ record≢shape : ∀ {y} → ShapeL y → alloc-record-symbol ≢ labelSym y
 record≢shape (s-jl j k) e = head≢ (once-head (jl j k)) refl (sym e)
 record≢shape (s-fn j)   e = record≢osp (nameOf j) e
 record≢shape (s-tl j)   e = head≢ (thunk-head (tl j)) refl (sym e)
+record≢shape s-sk       e = head≢ (once-head Once.CCC.Codegen.AllocExpand.skip-label) refl (sym e)
+record≢shape (s-ra k)   e = record≢osp (Once.CCC.Codegen.AllocExpand.alloc-fn k) e
+record≢shape (s-rf k)   e = record≢osp (Once.CCC.Codegen.AllocExpand.free-fn k) e
 
 record≢block : ∀ {t} → BlockSym t → alloc-record-symbol ≢ t
 record≢block (d , refl) = record≢osp (bare ("arith.block." ++ˢ d))
@@ -559,6 +598,139 @@ module Img (nm : CanonicalName) {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   br-path : ∀ n m → fetch image n ≡ just (instr-ctrl (c-branch-tag-zero m)) → Once.CCC.Codegen.AllocExpand.ImgL m
   br-path n m f = path-of (Data.List.Relation.Unary.All.lookup (jmp-pt image jumps-in) (fetch-∈ {FS} image n f) m refl)
 
+  ----------------------------------------------------------------------
+  -- D480: THE OUTLINED IMAGE'S NAMES — no jump of the image's targets the
+  -- skip label (its owner one part, a block's two), and no call of the image's
+  -- names a routine (a block's first part is `once-lincore`, theirs `once-alloc`)
+  ----------------------------------------------------------------------
+
+  private
+    skip-of : ∀ {m} → m ∈ Labs image → ¬ Once.CCC.Codegen.AllocExpand.skip-label ≡ m
+    skip-of p = sk (Data.List.Relation.Unary.All.lookup labs-shape p)
+      where sk : ∀ {m} → (Σ ℕ λ j → Σ ℕ λ k → m ≡ jl j k) → ¬ Once.CCC.Codegen.AllocExpand.skip-label ≡ m
+            sk (j , _ , refl) e = one≢two (trans (cong (λ l → length (CanonicalName.parts (LabelId.owner l))) e) (nameOf-two j))
+              where one≢two : 1 ≡ 2 → ⊥
+                    one≢two ()
+
+    first : CanonicalName → List String
+    first c = Data.List.take 1 (CanonicalName.parts c)
+
+  skip-apart : ∀ q i m → fetch IA.tail q ≡ just i → (i ≡ instr-ctrl (c-jmp m)) ⊎ (i ≡ instr-ctrl (c-branch-tag-zero m))
+             → ¬ Once.CCC.Codegen.AllocExpand.skip-label ≡ m
+  skip-apart q i m f (inj₁ refl) = skip-of (Data.List.Relation.Unary.All.lookup (jmp-pt image jumps-in) (fetch-∈ {FS} image (suc q) f) m refl)
+  skip-apart q i m f (inj₂ refl) = skip-of (Data.List.Relation.Unary.All.lookup (jmp-pt image jumps-in) (fetch-∈ {FS} image (suc q) f) m refl)
+
+  calls-apart : ∀ q i f → fetch IA.tail q ≡ just i → i ≡ instr-ctrl (c-call-fn f)
+              → ∀ k → (¬ e-fn (Once.CCC.Codegen.AllocExpand.alloc-fn k) ≡ e-fn f) × (¬ e-fn (Once.CCC.Codegen.AllocExpand.free-fn k) ≡ e-fn f)
+  calls-apart q i f ft refl k = ap (proj₂ (proj₂ (Data.List.Relation.Unary.All.lookup IA.tail-ok (fetch-∈ {FS} IA.tail q ft))))
+    where
+      e-fn-inj : ∀ {x y} → e-fn x ≡ e-fn y → x ≡ y
+      e-fn-inj refl = refl
+      ap : IOk.Ref (instr-ctrl (c-call-fn f))
+         → (¬ e-fn (Once.CCC.Codegen.AllocExpand.alloc-fn k) ≡ e-fn f) × (¬ e-fn (Once.CCC.Codegen.AllocExpand.free-fn k) ≡ e-fn f)
+      ap (_ , p , refl) = (λ e → a≢l (trans (cong first (e-fn-inj e)) (nameOf-lead (idx p))))
+                        , (λ e → a≢l (trans (cong first (e-fn-inj e)) (nameOf-lead (idx p))))
+        where a≢l : ¬ ("once-alloc" ∷ []) ≡ ("once-lincore" ∷ [])
+              a≢l ()
+
+  ----------------------------------------------------------------------
+  -- D480: THE OUTLINED IMAGE'S LABELS AND ENTRIES — the skip label then the
+  -- image's; the routines' (two a size) then the image's; each once
+  ----------------------------------------------------------------------
+
+  module Ol where
+    open import Once.CCC.Codegen.AllocExpand using (alloc-fn; free-fn; site-call; prim-routines; skip; skip-label; outline)
+    open import Once.CCC.Codegen.AllocOutline {FS} using (label-site; entry-site; alloc-fn-inj; free-fn-inj; alloc≢free)
+    import Data.List.Relation.Unary.Unique.DecPropositional.Properties
+    import Data.Nat.Properties
+
+    ksᵒ : List ℕ
+    ksᵒ = Once.CCC.Codegen.AllocExpandClasses.dsizes image
+
+    imageᵒ : AbstractTrace
+    imageᵒ = outline ksᵒ image
+
+    rents : List ℕ → List EntryId
+    rents []       = []
+    rents (k ∷ ks) = e-fn (alloc-fn k) ∷ e-fn (free-fn k) ∷ rents ks
+
+    private
+      labs-map : ∀ (xs : AbstractTrace) → Labs (map site-call xs) ≡ Labs xs
+      labs-map []       = refl
+      labs-map (x ∷ xs) = trans (cong (λ mo → LabsC.lab {FS} mo (Labs (map site-call xs))) (label-site x))
+                                (cong (LabsC.lab {FS} (FlatMachine.label-of? {FS} x)) (labs-map xs))
+
+      ents-map : ∀ (xs : AbstractTrace) → Ents (map site-call xs) ≡ Ents xs
+      ents-map []       = refl
+      ents-map (x ∷ xs) = trans (cong (λ mo → LabsC.ent {FS} mo (Ents (map site-call xs))) (entry-site x))
+                                (cong (LabsC.ent {FS} (FlatMachine.entry-of? {FS} x)) (ents-map xs))
+
+      labs-rou : ∀ ks → Labs (prim-routines ks) ≡ []
+      labs-rou []       = refl
+      labs-rou (k ∷ ks) = labs-rou ks
+
+      ents-rou : ∀ ks → Ents (prim-routines ks) ≡ rents ks
+      ents-rou []       = refl
+      ents-rou (k ∷ ks) = cong (λ r → e-fn (alloc-fn k) ∷ e-fn (free-fn k) ∷ r) (ents-rou ks)
+
+    labs-out : Labs imageᵒ ≡ skip-label ∷ Labs image
+    labs-out =
+      trans (Labs-++ (skip ksᵒ) (map site-call IA.tail))
+        (trans (cong (_++ Labs (map site-call IA.tail))
+                     (trans (Labs-++ (prim-routines ksᵒ) (instr-ctrl (c-label skip-label) ∷ [])) (cong (_++ (skip-label ∷ [])) (labs-rou ksᵒ))))
+               (cong (skip-label ∷_) (labs-map IA.tail)))
+
+    ents-out : Ents imageᵒ ≡ rents ksᵒ ++ Ents image
+    ents-out =
+      trans (Ents-++ (skip ksᵒ) (map site-call IA.tail))
+        (Relation.Binary.PropositionalEquality.cong₂ _++_ (trans (Ents-++ (prim-routines ksᵒ) (instr-ctrl (c-label skip-label) ∷ []))
+                           (trans (Data.List.Properties.++-identityʳ _) (ents-rou ksᵒ)))
+                    (ents-map IA.tail))
+      where import Data.List.Properties
+
+    private
+      e-fn-inj : ∀ {x y} → e-fn x ≡ e-fn y → x ≡ y
+      e-fn-inj refl = refl
+
+      skip≢img : ∀ {l} → (Σ ℕ λ j → Σ ℕ λ k → l ≡ jl j k) → skip-label ≢ l
+      skip≢img (j , _ , refl) e = one≢two (trans (cong (λ l → length (CanonicalName.parts (LabelId.owner l))) e) (nameOf-two j))
+        where one≢two : 1 ≡ 2 → ⊥
+              one≢two ()
+
+      -- a routine's name is no block's (first parts) and no thunk's
+      rou≢img : ∀ (f : CanonicalName) → first f ≡ "once-alloc" ∷ [] → ∀ {e} → (Σ ℕ λ j → e ≡ e-fn (nameOf j) ⊎ e ≡ e-thunk (tl j)) → e-fn f ≢ e
+      rou≢img f lead (j , inj₁ refl) e = a≢l (trans (sym lead) (trans (cong first (e-fn-inj e)) (nameOf-lead j)))
+        where a≢l : ¬ ("once-alloc" ∷ []) ≡ ("once-lincore" ∷ [])
+              a≢l ()
+      rou≢img f lead (j , inj₂ refl) ()
+
+      -- the routines' names: apart by size and kind
+      rents-dst : ∀ ks → AllPairs _≢_ ks → AllPairs _≢_ (rents ks)
+      rents-dst []       _          = []
+      rents-dst (k ∷ ks) (nk ∷ uks) =
+          ((λ e → alloc≢free k k (e-fn-inj e)) ∷ apart-a nk) ∷ apart-f nk ∷ rents-dst ks uks
+        where
+          apart-a : ∀ {ks′} → All (k ≢_) ks′ → All (e-fn (alloc-fn k) ≢_) (rents ks′)
+          apart-a []          = []
+          apart-a {k′ ∷ _} (n ∷ ns) = (λ e → n (alloc-fn-inj {k} {k′} (e-fn-inj e))) ∷ (λ e → alloc≢free k k′ (e-fn-inj e)) ∷ apart-a ns
+          apart-f : ∀ {ks′} → All (k ≢_) ks′ → All (e-fn (free-fn k) ≢_) (rents ks′)
+          apart-f []          = []
+          apart-f {k′ ∷ _} (n ∷ ns) = (λ e → alloc≢free k′ k (sym (e-fn-inj e))) ∷ (λ e → n (free-fn-inj {k} {k′} (e-fn-inj e))) ∷ apart-f ns
+
+      rents-lead : ∀ ks → All (λ e → Σ CanonicalName λ f → (e ≡ e-fn f) × (first f ≡ "once-alloc" ∷ [])) (rents ks)
+      rents-lead []       = []
+      rents-lead (k ∷ ks) = (alloc-fn k , refl , refl) ∷ (free-fn k , refl , refl) ∷ rents-lead ks
+
+    labs-dstᵒ : AllPairs _≢_ (Labs imageᵒ)
+    labs-dstᵒ = subst (AllPairs _≢_) (sym labs-out)
+                  (Data.List.Relation.Unary.All.map skip≢img labs-shape ∷ LIm.image-dst)
+
+    ents-dstᵒ : AllPairs _≢_ (Ents imageᵒ)
+    ents-dstᵒ = subst (AllPairs _≢_) (sym ents-out)
+                  (AP-++⁺ (rents-dst ksᵒ (Data.List.Relation.Unary.Unique.DecPropositional.Properties.deduplicate-! Data.Nat.Properties._≟_ (Once.CCC.Codegen.AllocExpandClasses.sizes image)))
+                          EIm.image-edst
+                          (Data.List.Relation.Unary.All.map (λ { (f , refl , lead) → Data.List.Relation.Unary.All.map (rou≢img f lead) ents-shape }) (rents-lead ksᵒ)))
+
   private
     refs-ok : ∀ (i : AbstractInstr) → IOk.Ref i → (∀ l → jump-of i ≡ just l → l ∈ Labs image) → i ∈ image → All G (instr-refs i)
     refs-ok (instr-ctrl (c-label _)) r jin m = []
@@ -787,3 +959,256 @@ module Img (nm : CanonicalName) {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     -- ★★ THE EXPANSION'S FILE IS WELL-FORMED, as symbols
     image-wfˣ : ImageWF P″ bs ex
     image-wfˣ = defined-onceˣ , resolvedˣ , image-externs-valid image
+
+  ----------------------------------------------------------------------
+  -- ★★ D480: THE CALL MODE'S FILE IS WELL-FORMED, as symbols: the expansion of
+  -- the outlined image (`Ol.imageᵒ`) defines the image's labels and entries, the
+  -- skip label, the routines' entries and the sites' labels, each once; every
+  -- symbol it references is defined (a site's call its routine, the jump the skip
+  -- label) or an extern
+  ----------------------------------------------------------------------
+
+  module Xc (C : Once.CCC.Codegen.AllocExpand.Classes) where
+    open import Data.List.Membership.Propositional.Properties using (∈-++⁻; ∈-map⁻)
+    open import Once.CCC.Codegen.AllocExpand using (site-call; prim-routines; skip; skip-label; alloc-fn; free-fn)
+    open import Once.CCC.Codegen.AllocOutline {FS} using (RouI; ri-ae; ri-a; ri-r; ri-fe; ri-f; rou; SiteView; sv-alloc; sv-free; sv-same; site-view)
+    import Once.CCC.Codegen.AllocOutlineSizes
+    module XX = Once.LinCore.ImageSymsX.X fmt ans bw {FS} C
+    module DLX = DL {FS}
+    open Ol
+
+    imageᶜ : AbstractTrace
+    imageᶜ = Once.CCC.Codegen.AllocExpand.expand C imageᵒ
+
+    Pᶜ : AbstractTrace
+    Pᶜ = room-checks imageᶜ
+
+    Dᶜ : List String
+    Dᶜ = entry-symbol ∷ alloc-record-symbol ∷ adefs Pᶜ ++ block-syms bs
+
+    adefs-eqᶜ : adefs Pᶜ ≡ adefs imageᶜ
+    adefs-eqᶜ = fold-room adefs (λ i xs → instr-defs i ++ xs) (λ _ _ → refl) (λ _ _ → refl) imageᶜ
+
+    data ShapeC : Label → Set where
+      cx : ∀ {y} → ShapeL y → ShapeC y
+      ca : ∀ s b → ShapeC (once (Once.CCC.Codegen.AllocExpand.alloc-label s b))
+
+    private
+      rents-shape : ∀ ks {e} → e ∈ rents ks → ShapeL (callee e)
+      rents-shape (k ∷ ks) (here refl)         = s-ra k
+      rents-shape (k ∷ ks) (there (here refl)) = s-rf k
+      rents-shape (k ∷ ks) (there (there m))   = rents-shape ks m
+
+      lab-shapeᵒ : ∀ {l} → l ∈ Labs imageᵒ → ShapeL (once l)
+      lab-shapeᵒ {l} m = by (subst (l ∈_) labs-out m)
+        where by : ∀ {l} → l ∈ skip-label ∷ Labs image → ShapeL (once l)
+              by (here refl) = s-sk
+              by (there q)   = shape-lab refl (Data.List.Relation.Unary.All.lookup labs-shape q)
+
+      ent-shapeᵒ : ∀ {e} → e ∈ Ents imageᵒ → ShapeL (callee e)
+      ent-shapeᵒ {e} m = by (∈-++⁻ (rents ksᵒ) (subst (e ∈_) ents-out m))
+        where by : ∀ {e} → (e ∈ rents ksᵒ) ⊎ (e ∈ Ents image) → ShapeL (callee e)
+              by (inj₁ r) = rents-shape ksᵒ r
+              by (inj₂ q) = shape-ent refl (Data.List.Relation.Unary.All.lookup ents-shape q)
+
+      img-Lᵒ : ∀ {m} → m ∈ Labs imageᵒ → Once.CCC.Codegen.AllocExpand.ImgL m
+      img-Lᵒ {l} m = by (subst (l ∈_) labs-out m)
+        where by : ∀ {m} → m ∈ skip-label ∷ Labs image → Once.CCC.Codegen.AllocExpand.ImgL m
+              by (here refl) ()
+              by (there q)   = path-of q
+
+      shape-c : ∀ {y} → y ∈ dlabs imageᶜ → ShapeC y
+      shape-c m = by (dl-in imageᶜ m)
+        where
+          by : ∀ {y} → (Σ LabelId λ l → y ≡ once l × l ∈ Labs imageᶜ) ⊎ (Σ EntryId λ e → y ≡ callee e × e ∈ Ents imageᶜ) → ShapeC y
+          by (inj₁ (l , refl , ml)) = lab (XX.labs-in 0 imageᵒ ml)
+            where
+              lab : (l ∈ Labs imageᵒ) ⊎ (Σ ℕ λ s′ → (0 Data.Nat.≤ s′) × Once.CCC.Codegen.AllocExpand.SiteL l s′) → ShapeC (once l)
+              lab (inj₁ q) = cx (lab-shapeᵒ q)
+              lab (inj₂ (s′ , _ , (b , _ , refl))) = ca s′ b
+          by (inj₂ (e , refl , me)) = cx (ent-shapeᵒ (subst (e ∈_) (XX.ents-exp 0 imageᵒ) me))
+
+      good-c : ∀ {y} → ShapeC y → GoodL y
+      good-c (cx sh) = shape-good sh
+      good-c (ca s b) = refl , ((_ , _ , refl , refl) ∷ [])
+
+      shapes-c : All ShapeC (dlabs imageᶜ)
+      shapes-c = Data.List.Relation.Unary.All.tabulate shape-c
+
+      adefs-shape-c : All (λ s → Σ Label λ y → ShapeC y × s ≡ labelSym y) (adefs imageᶜ)
+      adefs-shape-c = subst (All (λ s → Σ Label λ y → ShapeC y × s ≡ labelSym y)) (sym (adefs-labs imageᶜ))
+                        (Data.List.Relation.Unary.All.Properties.map⁺ (Data.List.Relation.Unary.All.map (λ {y} sh → y , sh , refl) shapes-c))
+        where import Data.List.Relation.Unary.All.Properties
+
+      adefs-dst-c : AllPairs _≢_ (adefs imageᶜ)
+      adefs-dst-c = subst (AllPairs _≢_) (sym (adefs-labs imageᶜ))
+                      (syms-dst (dlabs-def imageᶜ) (Data.List.Relation.Unary.All.map good-c shapes-c)
+                                (dl-dst imageᶜ (XX.labs-dst 0 imageᵒ labs-dstᵒ img-Lᵒ)
+                                               (subst (AllPairs _≢_) (sym (XX.ents-exp 0 imageᵒ)) ents-dstᵒ)))
+
+      entry≢c : ∀ {y} → ShapeC y → entry-symbol ≢ labelSym y
+      entry≢c (cx sh) = entry≢shape sh
+      entry≢c (ca s b) e = head≢ (once-head (Once.CCC.Codegen.AllocExpand.alloc-label s b)) refl (sym e)
+
+      record≢c : ∀ {y} → ShapeC y → alloc-record-symbol ≢ labelSym y
+      record≢c (cx sh) = record≢shape sh
+      record≢c (ca s b) e = head≢ (once-head (Once.CCC.Codegen.AllocExpand.alloc-label s b)) refl (sym e)
+
+      c≢block : ∀ {y t} → ShapeC y → BlockSym t → labelSym y ≢ t
+      c≢block (cx sh) b = shape≢block sh b
+      c≢block (ca s b′) (d , refl) = head≢ (once-head (Once.CCC.Codegen.AllocExpand.alloc-label s b′)) (fn-head (bare ("arith.block." ++ˢ d)))
+
+    defined-onceᶜ : Unique Dᶜ
+    defined-onceᶜ =
+      subst (λ A → Unique (entry-symbol ∷ alloc-record-symbol ∷ A ++ block-syms bs)) (sym adefs-eqᶜ)
+        ( (entry≢record ∷ ++⁺ (Data.List.Relation.Unary.All.map (λ { {s} (y , sh , refl) → entry≢c sh }) adefs-shape-c)
+                              (Data.List.Relation.Unary.All.map entry≢block (blocks-sym bs)))
+        ∷ ++⁺ (Data.List.Relation.Unary.All.map (λ { {s} (y , sh , refl) → record≢c sh }) adefs-shape-c)
+              (Data.List.Relation.Unary.All.map record≢block (blocks-sym bs))
+        ∷ AP-++⁺ adefs-dst-c (blocks-unique bs)
+            (Data.List.Relation.Unary.All.map (λ { {s} (y , sh , refl) → Data.List.Relation.Unary.All.map (c≢block sh) (blocks-sym bs) }) adefs-shape-c))
+
+    ----------------------------------------------------------------------
+    -- …and every symbol it references is defined or an extern
+    ----------------------------------------------------------------------
+
+    Gᶜ : String → Set
+    Gᶜ s = s ∈ Dᶜ ⊎ s ∈ ex
+
+    private
+      inDᶜ : ∀ {y} → y ∈ dlabs imageᶜ → labelSym y ∈ Dᶜ
+      inDᶜ {y} ym = there (there (∈-++⁺ˡ (subst (labelSym y ∈_) (sym adefs-eqᶜ)
+                      (subst (labelSym y ∈_) (sym (adefs-labs imageᶜ)) (∈-map⁺ labelSym ym)))))
+
+      lab-Gᶜ : ∀ {l} → instr-ctrl (c-label l) ∈ imageᶜ → Gᶜ (labelSym (once l))
+      lab-Gᶜ m = inj₁ (inDᶜ (lab-dl imageᶜ (XX.mem-lab imageᶜ m)))
+
+      -- a label of the outlined image's, kept
+      labᵒ-Gᶜ : ∀ {l} → l ∈ Labs imageᵒ → Gᶜ (labelSym (once l))
+      labᵒ-Gᶜ ml = lab-Gᶜ (XX.kept-in 0 imageᵒ (XX.lab-mem imageᵒ ml) (λ k ()) (λ k ()))
+
+      -- an entry of the outlined image's
+      entᵒ-Gᶜ : ∀ {e} → e ∈ Ents imageᵒ → Gᶜ (labelSym (callee e))
+      entᵒ-Gᶜ {e} me = inj₁ (inDᶜ (ent-dl imageᶜ (subst (e ∈_) (sym (XX.ents-exp 0 imageᵒ)) me)))
+
+      rec-G : Gᶜ alloc-record-symbol
+      rec-G = inj₁ (there (here refl))
+
+      -- what the image's file resolves, the call mode's does
+      toᶜ : ∀ {s} → G s → Gᶜ s
+      toᶜ (inj₂ q) = inj₂ q
+      toᶜ (inj₁ (here e)) = inj₁ (here e)
+      toᶜ (inj₁ (there (here e))) = inj₁ (there (here e))
+      toᶜ {s} (inj₁ (there (there q))) = by (∈-++⁻ (adefs P′) q)
+        where
+          from-dl : ∀ {y} → y ∈ dlabs image → Gᶜ (labelSym y)
+          from-dl ym = pick (dl-in image ym)
+            where
+              pick : ∀ {y} → (Σ LabelId λ l → y ≡ once l × l ∈ Labs image) ⊎ (Σ EntryId λ e → y ≡ callee e × e ∈ Ents image) → Gᶜ (labelSym y)
+              pick (inj₁ (l , refl , ml)) = labᵒ-Gᶜ (subst (l ∈_) (sym labs-out) (there ml))
+              pick (inj₂ (e , refl , me)) = entᵒ-Gᶜ (subst (e ∈_) (sym ents-out) (∈-++⁺ʳ (rents ksᵒ) me))
+          by : (s ∈ adefs P′) ⊎ (s ∈ block-syms bs) → Gᶜ s
+          by (inj₂ b) = inj₁ (there (there (∈-++⁺ʳ (adefs Pᶜ) b)))
+          by (inj₁ a) = at-def (∈-map⁻ labelSym (subst (s ∈_) (adefs-labs image) (subst (s ∈_) adefs-eq a)))
+            where
+              at-def : (Σ Label λ y → y ∈ dlabs image × s ≡ labelSym y) → Gᶜ s
+              at-def (y , ym , refl) = from-dl ym
+
+      ref-of : ∀ {i} → i ∈ image → IOk.Ref i
+      ref-of (here refl) = tt
+      ref-of (there m) = proj₂ (proj₂ (Data.List.Relation.Unary.All.lookup IA.tail-ok m))
+
+      AllR : AbstractInstr → Set
+      AllR i = All Gᶜ (instr-refs i)
+
+      alloc-refs : ∀ n k → fetch imageᵒ n ≡ just (instr-alloc-heap k) → All AllR (Once.CCC.Codegen.AllocExpand.alloc-code C (n + 0) k)
+      alloc-refs n k f =
+          [] ∷ (rec-G ∷ []) ∷ (rec-G ∷ []) ∷ [] ∷ (bump ∷ []) ∷ [] ∷ (rec-G ∷ []) ∷ [] ∷ (rec-G ∷ []) ∷ (rec-G ∷ []) ∷ []
+        ∷ (rec-G ∷ []) ∷ (done ∷ []) ∷ [] ∷ (rec-G ∷ []) ∷ [] ∷ [] ∷ [] ∷ []
+        where
+          bump = lab-Gᶜ (XX.alloc-in 0 imageᵒ n k f (there (there (there (there (there (there (there (there (there (there (there (there (there (here refl)))))))))))))))
+          done = lab-Gᶜ (XX.alloc-in 0 imageᵒ n k f (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (here refl)))))))))))))))))))
+
+      free-refs : ∀ k → All AllR (Once.CCC.Codegen.AllocExpand.free-code C k)
+      free-refs k = (rec-G ∷ []) ∷ (rec-G ∷ []) ∷ [] ∷ [] ∷ (rec-G ∷ []) ∷ (rec-G ∷ []) ∷ []
+
+      heads-refs : ∀ c → All AllR (Once.CCC.Codegen.AllocExpand.heads C c)
+      heads-refs zero    = []
+      heads-refs (suc c) = (rec-G ∷ []) ∷ heads-refs c
+
+      setup-refs : All AllR (Once.CCC.Codegen.AllocExpand.setup C)
+      setup-refs = (rec-G ∷ []) ∷ [] ∷ (rec-G ∷ []) ∷ []
+                 ∷ ++⁺ (heads-refs (Once.CCC.Codegen.AllocExpand.Classes.count C))
+                       ([] ∷ [] ∷ [] ∷ (rec-G ∷ []) ∷ [] ∷ (rec-G ∷ []) ∷ [])
+
+      -- a size of the image's has its routines
+      rents-in : ∀ k → k ∈ ksᵒ → (e-fn (alloc-fn k) ∈ Ents imageᵒ) × (e-fn (free-fn k) ∈ Ents imageᵒ)
+      rents-in k m = subst (e-fn (alloc-fn k) ∈_) (sym ents-out) (∈-++⁺ˡ (ra ksᵒ m)) , subst (e-fn (free-fn k) ∈_) (sym ents-out) (∈-++⁺ˡ (rf ksᵒ m))
+        where
+          ra : ∀ ks → k ∈ ks → e-fn (alloc-fn k) ∈ rents ks
+          ra (k′ ∷ ks) (here refl) = here refl
+          ra (k′ ∷ ks) (there q)   = there (there (ra ks q))
+          rf : ∀ ks → k ∈ ks → e-fn (free-fn k) ∈ rents ks
+          rf (k′ ∷ ks) (here refl) = there (here refl)
+          rf (k′ ∷ ks) (there q)   = there (there (rf ks q))
+
+      -- what a kept instruction of the outlined image references
+      kept-refs : ∀ i → i ∈ imageᵒ → (∀ k → i ≡ instr-alloc-heap k → ⊥) → (∀ k → i ≡ instr-free-heap k → ⊥) → AllR i
+      kept-refs i (here refl) _ _ = []
+      kept-refs i (there q) nA nF = by (∈-++⁻ (skip ksᵒ) q)
+        where
+          rou-refs : ∀ {j} → RouI ksᵒ j → (∀ k → j ≡ instr-alloc-heap k → ⊥) → (∀ k → j ≡ instr-free-heap k → ⊥) → AllR j
+          rou-refs (ri-ae k _) _ _ = []
+          rou-refs (ri-a k _) nA′ _ = ⊥-elim (nA′ k refl)
+          rou-refs ri-r _ _ = []
+          rou-refs (ri-fe k _) _ _ = []
+          rou-refs (ri-f k _) _ nF′ = ⊥-elim (nF′ k refl)
+          in-rou : ∀ ks {j} → j ∈ prim-routines ks → RouI ks j
+          in-rou ks {j} r = let (n , f) = ∈-fetch′ (prim-routines ks) r in rou ks n j f
+            where
+              ∈-fetch′ : ∀ (xs : AbstractTrace) {x} → x ∈ xs → Σ ℕ λ n → fetch xs n ≡ just x
+              ∈-fetch′ (x ∷ xs) (here refl) = 0 , refl
+              ∈-fetch′ (x ∷ xs) (there m′)  = let (n , f′) = ∈-fetch′ xs m′ in suc n , f′
+          by : (i ∈ skip ksᵒ) ⊎ (i ∈ map site-call IA.tail) → AllR i
+          by (inj₁ (here refl)) = labᵒ-Gᶜ (subst (skip-label ∈_) (sym labs-out) (here refl)) ∷ []
+          by (inj₁ (there r)) = in-skip (∈-++⁻ (prim-routines ksᵒ) r)
+            where in-skip : (i ∈ prim-routines ksᵒ) ⊎ (i ∈ instr-ctrl (c-label skip-label) ∷ []) → AllR i
+                  in-skip (inj₁ r′) = rou-refs (in-rou ksᵒ r′) nA nF
+                  in-skip (inj₂ (here refl)) = []
+                  in-skip (inj₂ (there ()))
+          by (inj₂ r) = let (x , mx , e) = ∈-map⁻ site-call r in subst AllR (sym e) (site (site-view x) mx)
+            where
+              sz-of : ∀ {x k} → x ∈ IA.tail → (x ≡ instr-alloc-heap k) ⊎ (x ≡ instr-free-heap k) → k ∈ ksᵒ
+              sz-of {x} {k} mx e = let (n , f) = ∈-fetchᵗ IA.tail mx in
+                Once.CCC.Codegen.AllocOutlineSizes.in-dsizes {FS} image (suc n) k (cases e f)
+                where
+                  ∈-fetchᵗ : ∀ (xs : AbstractTrace) {y} → y ∈ xs → Σ ℕ λ n → fetch xs n ≡ just y
+                  ∈-fetchᵗ (y ∷ xs) (here refl) = 0 , refl
+                  ∈-fetchᵗ (y ∷ xs) (there m′)  = let (n , f′) = ∈-fetchᵗ xs m′ in suc n , f′
+                  cases : ∀ {n} → (x ≡ instr-alloc-heap k) ⊎ (x ≡ instr-free-heap k) → fetch IA.tail n ≡ just x
+                        → (fetch image (suc n) ≡ just (instr-alloc-heap k)) ⊎ (fetch image (suc n) ≡ just (instr-free-heap k))
+                  cases (inj₁ refl) f′ = inj₁ f′
+                  cases (inj₂ refl) f′ = inj₂ f′
+
+              site : ∀ {x} → SiteView x → x ∈ IA.tail → AllR (site-call x)
+              site (sv-alloc k) mx = entᵒ-Gᶜ (proj₁ (rents-in k (sz-of mx (inj₁ refl)))) ∷ []
+              site (sv-free k) mx  = entᵒ-Gᶜ (proj₂ (rents-in k (sz-of mx (inj₂ refl)))) ∷ []
+              site {x} (sv-same s) mx = subst AllR (sym s)
+                (Data.List.Relation.Unary.All.map toᶜ (refs-ok x (ref-of (there mx)) (Data.List.Relation.Unary.All.lookup (jmp-pt image jumps-in) (there mx)) (there mx)))
+      refs-c : ∀ i → i ∈ imageᶜ → AllR i
+      refs-c i m = by (XX.in-exp 0 imageᵒ m)
+        where
+          by : XX.InExp 0 imageᵒ i → AllR i
+          by (XX.in-kept q nA nF) = kept-refs i q nA nF
+          by (XX.in-alloc n k f q) = Data.List.Relation.Unary.All.lookup (alloc-refs n k f) q
+          by (XX.in-free k q) = Data.List.Relation.Unary.All.lookup (free-refs k) q
+          by (XX.in-setup q) = Data.List.Relation.Unary.All.lookup setup-refs q
+
+    resolvedᶜ : All Gᶜ (arefs Pᶜ)
+    resolvedᶜ =
+      All-fold-room arefs instr-refs (λ _ _ → refl) (λ _ → inj₂ (there (here refl)) ∷ []) imageᶜ
+        (arefs-of imageᶜ (Data.List.Relation.Unary.All.tabulate (λ {i} m → refs-c i m)))
+
+    -- ★★ THE CALL MODE'S FILE IS WELL-FORMED, as symbols
+    image-wfᶜ : ImageWF Pᶜ bs ex
+    image-wfᶜ = defined-onceᶜ , resolvedᶜ , image-externs-valid image

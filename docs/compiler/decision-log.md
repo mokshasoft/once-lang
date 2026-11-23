@@ -24888,3 +24888,35 @@ positions), the alloc/free simulations (the call, the entry, the existing `Pop`/
 routine's pc, the return), `AllocExpandEmitted`/`Events`/`Start`/`Sim` over the mode, the image's symbols
 (`ImageSyms`: the routines' names, apart from every image name), the compiler's `--inline-alloc` flag, and the
 top theorems over the mode (D471's generalization).
+**Measured** (2026-11-23, an unproved trial build of the call mode, `tests/perf-compare.sh`, 108 programs,
+x86_64, inline → call): `.text` 2.88 → 2.44 MB (0.85×), emitted instructions 646,895 → 554,738 (0.86×), the
+record's traffic 51,509 → 4,044, calls 16,704 → 25,753; run-time instructions retired +8% in total (median 1.13×
+per program; `loop-sum` and `list-build-sum` +8%). Room checks did not fall (+1%): a call re-arms the caller's
+check, so the check moved into the routine without leaving the site (item e's: checks by static need).
+So the call mode is the size choice and `--inline-alloc` the speed choice, as planned; the default is the call.
+**Design, revised (2026-11-23): the call mode is the expansion of an OUTLINED program.** `outline ks P` is `P`
+with each `instr-alloc-heap k` / `instr-free-heap k` replaced IN PLACE by `c-call-fn (alloc-fn k)` /
+`c-call-fn (free-fn k)` (one instruction for one, so the pc map is the identity), followed by one primitive
+routine pair per size (`c-entry … 0 ∷ instr-alloc-heap k ∷ c-ret 0`, likewise free). The call mode is
+`expand C (outline ks P)`: the existing expansion, and its whole theorem (`ExpandSim`), applied to the outlined
+program. What is new is only that the outlined program runs as `P` does: equal states, an allocation's one step
+four (the call, the entry, the primitive, the return), ending in the state `P`'s step reaches (the return
+leaves the frame the call entered; the entry's clear of a frame of no slots changes no slot, by
+extensionality, already in the apex's cone); the routines add no label and no thunk, and every call of `P`
+finds its function inside `P` (`em-calls`); the link is empty at a site (`RunWF.run-link-at-thunk`). Plus the
+outlined program is emitted (its calls name the routines; each routine's entry follows a return or the
+program's leave).
+**Layout (2026-11-23): the routines sit right after the start, jumped over** (`c-start b ∷ c-jmp skip ∷ routines ++
+c-label skip ∷ map site-call T`), not at the end: the outlined program then ends where `P` does, so a run of `P`
+that leaves its code leaves the outlined one at the same place (shifted), and the first routine's entry is
+guarded by the jump without any fact about `P`'s last instruction. The relation after the start is a constant pc
+shift (the routines' length + 2), the form Flat's relocation lemmas (`shifted-instr`, D155) already handle.
+### Landed (2026-11-24, merged from `0.146-d480-wip`)
+The call mode is the default; `--inline-alloc` (CLI, `Emit` … `ExprImage.fileAt`'s `inl`) keeps the expansion. Proved:
+`AllocOutline` (the outlined run shows the program's events and never faults), `OutlineEmitted`, `ExpandSimCall`
+(the arch runs the call mode by `ExpandSim` over the outlined image), `ImageSyms.Xc` (its file's symbols), `Apex`
+`file-at`/`file-wf-at` over the mode, the top theorems (`CoreArch`, `Adequacy.Compile`, `ArchCorrectness`,
+`SpecApex`) at the default (`alloc-slab`, the call). `AllocMinI` now covers a free's size (each size gets an
+allocation routine). `make certified` green; 188 exit tests ×3 arches, seL4 ×3, `cabal test`: all pass.
+**Measured** (inline → call, 108 programs): `.text` 0.85×, emitted instructions 0.86×, run time 1.08× (median 1.14×).
+Against master: `.text` 4.7×, run time median 2.8× per program.

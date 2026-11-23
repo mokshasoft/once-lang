@@ -70,7 +70,7 @@ record Runs : Set₁ where
     warnings        : Arch → String → Resolved → List String
     -- the compiler (`once build`)
     -- (D468: the cell allocator, `--alloc`)
-    assembly        : Bool → Once.CCC.Codegen.AllocExpandClasses.Alloc → Arch → Resolved → String ⊎ String
+    assembly        : Bool → Once.CCC.Codegen.AllocExpandClasses.Alloc → Bool → Arch → Resolved → String ⊎ String
     -- the tools beside it (D352)
     signatures      : Resolved → String ⊎ String
     check           : Resolved → String ⊎ ⊤

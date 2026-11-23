@@ -207,7 +207,7 @@ record ArchCorrect (arch : Arch) (ι : Interp) : Set where
     -- is its linear core's image; in the world that declares the module's signatures)
     file-wf :
       ∀ (doOpt : Bool) (m : P.Resolved) (F : Emit.FileOf arch) →
-      E.coreFileOf arch doOpt Once.CCC.Codegen.AllocExpandClasses.alloc-slab m ≡ inj₂ F →
+      E.coreFileOf arch doOpt Once.CCC.Codegen.AllocExpandClasses.alloc-slab Data.Bool.false m ≡ inj₂ F →
       moduleSig m ≡ sig ι →
       AsmWF-of arch F
     -- RUNNING THE FILE FOLLOWS THE TRACE OF THE PROGRAM IT WAS EMITTED FROM, UP
@@ -221,7 +221,7 @@ record ArchCorrect (arch : Arch) (ι : Interp) : Set where
     -- image is the sources', unoptimized, at either build)
     file-tr :
       ∀ (doOpt : Bool) (m : P.Resolved) (F : Emit.FileOf arch) →
-      E.coreFileOf arch doOpt Once.CCC.Codegen.AllocExpandClasses.alloc-slab m ≡ inj₂ F →
+      E.coreFileOf arch doOpt Once.CCC.Codegen.AllocExpandClasses.alloc-slab Data.Bool.false m ≡ inj₂ F →
       ∀ (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) (mi : moduleToIR m ≡ just ir) →
       (ls : moduleSig m ≡ sig ι) →
       run-file arch ι F ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram (moduleTable m) ir) ⟧IRᵗ (arch-numerics arch) ι
@@ -276,7 +276,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
   -- compiler's file: `LinCore.CoreFile.Prog.core-built`), injected as `arch-correct` is
   (core-built : ∀ (arch : Arch) (doOpt : Bool) (m : P.Resolved) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) →
                 AdmissibleM arch (P.Resolved.rmodule m) → moduleToIR m ≡ just ir →
-                Σ-syntax (Emit.FileOf arch) (λ F → E.coreFileOf arch doOpt Once.CCC.Codegen.AllocExpandClasses.alloc-slab m ≡ inj₂ F)) where
+                Σ-syntax (Emit.FileOf arch) (λ F → E.coreFileOf arch doOpt Once.CCC.Codegen.AllocExpandClasses.alloc-slab Data.Bool.false m ≡ inj₂ F)) where
 
   -- The compile function — the VERIFIED *executable* compiler (Plan 0.48): bytes
   -- only for a runnable program (a module with a compilable `main`); a library
@@ -296,7 +296,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
 
   compile-mir : Arch → Bool → P.Resolved → Maybe (IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) → Maybe (List Byte)
   compile-mir arch doOpt m nothing   = nothing
-  compile-mir arch doOpt m (just _)  = compile-text arch (E.assemblyCore doOpt Once.CCC.Codegen.AllocExpandClasses.alloc-slab arch m)
+  compile-mir arch doOpt m (just _)  = compile-text arch (E.assemblyCore doOpt Once.CCC.Codegen.AllocExpandClasses.alloc-slab Data.Bool.false arch m)
 
   compile-gm : Arch → Bool → Maybe P.Resolved → Maybe (List Byte)
   compile-gm arch doOpt nothing   = nothing
@@ -318,7 +318,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
   -- plan 0.146 (D464, D465): the bytes of a gate's result — the compiler's file, written after
   -- master's gates (`C.checkModule`, `E.coreAfter`)
   compile-ck : (arch : Arch) → P.Resolved → String ⊎ List C.CompiledFun → Maybe (List Byte)
-  compile-ck arch m X = compile-fe arch (E.coreAfter arch Once.CCC.Codegen.AllocExpandClasses.alloc-slab m X)
+  compile-ck arch m X = compile-fe arch (E.coreAfter arch Once.CCC.Codegen.AllocExpandClasses.alloc-slab Data.Bool.false m X)
 
   refuse-gated : ∀ (arch : Arch) (doOpt : Bool) (m : P.Resolved)
                    (es : List Parser.Entry)
@@ -507,7 +507,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
     -- optimizer between them (master's `rewrite-program-trace`, `opt-trace`).
     file-correct :
       ∀ (arch : Arch) (doOpt : Bool) (m : P.Resolved) (F : Emit.FileOf arch) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) →
-      E.coreFileOf arch doOpt Once.CCC.Codegen.AllocExpandClasses.alloc-slab m ≡ inj₂ F →
+      E.coreFileOf arch doOpt Once.CCC.Codegen.AllocExpandClasses.alloc-slab Data.Bool.false m ≡ inj₂ F →
       moduleToIR m ≡ just ir →
       moduleSig m ≡ sig ι →
       exec arch (file-bytes arch F) ≋ ⟦ just (irProgram (moduleTable m) ir) ⟧IRᵗ (arch-numerics arch) ι
@@ -603,7 +603,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
     -- (the proven codegen chain for `false`; `opt-trace`, its optimized twin, for `true`).
     TraceAt : Arch → Bool → P.Resolved → IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋ → Set
     TraceAt arch doOpt m ir =
-      ∀ (F : Emit.FileOf arch) → E.coreFileOf arch doOpt Once.CCC.Codegen.AllocExpandClasses.alloc-slab m ≡ inj₂ F →
+      ∀ (F : Emit.FileOf arch) → E.coreFileOf arch doOpt Once.CCC.Codegen.AllocExpandClasses.alloc-slab Data.Bool.false m ≡ inj₂ F →
       exec arch (file-bytes arch F) ≋ ⟦ just (irProgram (moduleTable m) ir) ⟧IRᵗ (arch-numerics arch) ι
 
     -- Layer 3 — over the compile RESULT. The accept case is `PW.just` of the
@@ -611,7 +611,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
     -- `main⇒built` (a `main` always Builds), so `compile` here can only Build.
     correct-fe : ∀ (arch : Arch) (doOpt : Bool) (m : P.Resolved) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋)
                    (fe : String ⊎ Emit.FileOf arch) → AdmissibleM arch (P.Resolved.rmodule m) →
-                   E.coreFileOf arch doOpt Once.CCC.Codegen.AllocExpandClasses.alloc-slab m ≡ fe →
+                   E.coreFileOf arch doOpt Once.CCC.Codegen.AllocExpandClasses.alloc-slab Data.Bool.false m ≡ fe →
                    moduleToIR m ≡ just ir →
                    TraceAt arch doOpt m ir →
                    Pointwise _≋_ (map (exec arch) (compile-fe arch fe)) (⟦ programAt (moduleTable m) (just ir) ⟧⊥-ir arch)
@@ -629,7 +629,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
                     Pointwise _≋_ (map (exec arch) (compile-mir arch doOpt m mir)) (⟦ programAt (moduleTable m) mir ⟧⊥-ir arch)
     correct-mir arch doOpt m nothing   adm mi-eq tw = PW.nothing
     correct-mir arch doOpt m (just ir) adm mi-eq tw =
-      correct-fe arch doOpt m ir (E.coreFileOf arch doOpt Once.CCC.Codegen.AllocExpandClasses.alloc-slab m) adm refl mi-eq (tw ir refl)
+      correct-fe arch doOpt m ir (E.coreFileOf arch doOpt Once.CCC.Codegen.AllocExpandClasses.alloc-slab Data.Bool.false m) adm refl mi-eq (tw ir refl)
 
 
     -- Layer 1 — over `gmoduleToModule src`. Unparseable ⇒ both `nothing`;
