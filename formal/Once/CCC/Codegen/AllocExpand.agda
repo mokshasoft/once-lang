@@ -159,47 +159,40 @@ module _ (C : Classes) where
   expand = expand-from 0
 
 ------------------------------------------------------------------------
--- ★ D480: THE ALLOCATOR AS A CALL. Each site calls its size's routine; the
--- image ends with one alloc and one free routine per size (`ks`), each the
--- inline code between an entry and a return, its labels at a routine site past
--- the program's (`length P + j`). The routines' names lead every part with a
--- non-digit, as the symbols' read-back needs (`LabelSymInj.GoodL`).
+-- ★ D480: THE ALLOCATOR AS A CALL, as the expansion of an OUTLINED program.
+-- `outline ks P` is `P` with each allocation and free a call, in place (one
+-- instruction for one: the pc map is the identity), and one primitive alloc and
+-- free routine per size of `ks` at its end — an entry, the primitive, a return.
+-- Its expansion (`expand C (outline ks P)`) is the call mode: each routine's
+-- primitive becomes the inline code once. The routines' names lead every part
+-- with a non-digit, as the symbols' read-back needs (`LabelSymInj.GoodL`).
 ------------------------------------------------------------------------
 
 alloc-fn free-fn : ℕ → CanonicalName
 alloc-fn k = canonical ("once-alloc" ∷ ("a" ++ˢ showNat k) ∷ [])
 free-fn  k = canonical ("once-alloc" ∷ ("f" ++ˢ showNat k) ∷ [])
 
-module _ (C : Classes) where
+-- a site, called
+site-call : AbstractInstr → AbstractInstr
+site-call (instr-alloc-heap k) = instr-ctrl (c-call-fn (alloc-fn k))
+site-call (instr-free-heap k)  = instr-ctrl (c-call-fn (free-fn k))
+{-# CATCHALL #-}
+site-call i                    = i
 
-  -- one instruction, a call where it allocates or frees
-  call-at : AbstractInstr → AbstractTrace
-  call-at (instr-alloc-heap k)     = instr-ctrl (c-call-fn (alloc-fn k)) ∷ []
-  call-at (instr-free-heap k)      = instr-ctrl (c-call-fn (free-fn k)) ∷ []
-  call-at (instr-ctrl (c-start b)) = instr-ctrl (c-start b) ∷ setup C
-  {-# CATCHALL #-}
-  call-at i                        = i ∷ []
+-- a size's two primitive routines
+prim-routine : ℕ → AbstractTrace
+prim-routine k =
+    instr-ctrl (c-entry (e-fn (alloc-fn k)) 0) ∷ instr-alloc-heap k ∷ instr-ctrl (c-ret 0)
+  ∷ instr-ctrl (c-entry (e-fn (free-fn k)) 0)  ∷ instr-free-heap k  ∷ instr-ctrl (c-ret 0) ∷ []
 
-  calls : AbstractTrace → AbstractTrace
-  calls []      = []
-  calls (i ∷ t) = call-at i ++ calls t
+prim-routines : List ℕ → AbstractTrace
+prim-routines []       = []
+prim-routines (k ∷ ks) = prim-routine k ++ prim-routines ks
 
-  -- a size's two routines, its alloc's labels at routine site `s`
-  alloc-routine : ℕ → ℕ → AbstractTrace
-  alloc-routine s k = instr-ctrl (c-entry (e-fn (alloc-fn k)) 0) ∷ alloc-code C s k ++ instr-ctrl (c-ret 0) ∷ []
+outline : List ℕ → AbstractTrace → AbstractTrace
+outline ks P = map site-call P ++ prim-routines ks
 
-  free-routine : ℕ → AbstractTrace
-  free-routine k = instr-ctrl (c-entry (e-fn (free-fn k)) 0) ∷ free-code C k ++ instr-ctrl (c-ret 0) ∷ []
-
-  routines : ℕ → List ℕ → AbstractTrace
-  routines s []       = []
-  routines s (k ∷ ks) = alloc-routine s k ++ free-routine k ++ routines (suc s) ks
-
-  -- the call mode's image, over the program's sizes `ks`
-  expandᶜ : List ℕ → AbstractTrace → AbstractTrace
-  expandᶜ ks P = calls P ++ routines (length P) ks
-
--- the mode: inline (`--inline-alloc`) or by call (the default)
+-- the mode: inline (`--inline-alloc`) or by call (the default), over the program's sizes `ks`
 expandₘ : Bool → Classes → List ℕ → AbstractTrace → AbstractTrace
 expandₘ true  C ks P = expand C P
-expandₘ false C ks P = expandᶜ C ks P
+expandₘ false C ks P = expand C (outline ks P)

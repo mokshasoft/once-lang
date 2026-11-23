@@ -24894,3 +24894,15 @@ record's traffic 51,509 → 4,044, calls 16,704 → 25,753; run-time instruction
 per program; `loop-sum` and `list-build-sum` +8%). Room checks did not fall (+1%): a call re-arms the caller's
 check, so the check moved into the routine without leaving the site (item e's: checks by static need).
 So the call mode is the size choice and `--inline-alloc` the speed choice, as planned; the default is the call.
+**Design, revised (2026-11-23): the call mode is the expansion of an OUTLINED program.** `outline ks P` is `P`
+with each `instr-alloc-heap k` / `instr-free-heap k` replaced IN PLACE by `c-call-fn (alloc-fn k)` /
+`c-call-fn (free-fn k)` (one instruction for one, so the pc map is the identity), followed by one primitive
+routine pair per size (`c-entry … 0 ∷ instr-alloc-heap k ∷ c-ret 0`, likewise free). The call mode is
+`expand C (outline ks P)`: the existing expansion, and its whole theorem (`ExpandSim`), applied to the outlined
+program. What is new is only that the outlined program runs as `P` does: equal states, an allocation's one step
+four (the call, the entry, the primitive, the return), ending in the state `P`'s step reaches (the return
+leaves the frame the call entered; the entry's clear of a frame of no slots changes no slot, by
+extensionality, already in the apex's cone); the routines add no label and no thunk, and every call of `P`
+finds its function inside `P` (`em-calls`); the link is empty at a site (`RunWF.run-link-at-thunk`). Plus the
+outlined program is emitted (its calls name the routines; each routine's entry follows a return or the
+program's leave).
