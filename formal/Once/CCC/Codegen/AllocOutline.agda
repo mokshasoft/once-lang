@@ -57,8 +57,9 @@ open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
 open FlatEventTrace {FS} using (flat-events; flat-events-step; flat-events-fetch; event-of; flat-events-steps; chain-events
                                ; flat-ctrls; flat-ctrls-step; flat-ctrls-fetch; ctrl-of; chain-ctrls; flat-ctrls-steps)
 open import Once.IR.Semantics.Out using (Out; _▹_)
-open import Data.Nat using (_≤_; z≤n)
-open import Once.CCC.Codegen.AllocExpandEvents {FS} using (ev-unfold; ct-unfold; ev-none; ct-none; ev-halt; ct-halt)
+open import Data.Nat using (_≤_; z≤n; _<_)
+open import Once.CCC.Codegen.AllocExpandEvents {FS} using (ev-unfold; ct-unfold; ev-none; ct-none; ev-halt; ct-halt; meet; chain-fault)
+open FlatStepsAPI {FS} using (Sound)
 open FlatMachine {FS}
 open FlatState
 open LocState
@@ -859,3 +860,82 @@ module Out (ks : List ℕ) (b : ℕ) (T : AbstractTrace) where
               , subst (_≤ flat-ctrls (3 + m′) P′ s₀) (sym (ct-unfold N P s₀ h f0))
                   (subst (ctrl-of (instr-ctrl (c-start b)) + flat-ctrls N P (flat-exec-instr (instr-ctrl (c-start b)) P s₀) ≤_)
                          (sym (flat-ctrls-steps c m′)) (≤-+ cc ec))
+
+    -- one step of the program: a chain of the outlined one (one step, or the four of a site), shifted
+    seg : ∀ {fs fs′ i} → Good fs → Shifted d fs′ fs → LocState.halted (floc fs) ≡ false → fetch P (fpc fs) ≡ just i
+        → Σ ℕ λ N → Σ FlatState λ fs″ → FlatSteps P′ (suc N) fs′ fs″ × Shifted d fs″ (flat-exec-instr i P fs)
+    seg {fs} {fs′} {i} G sh h f = by-pc (fpc fs) refl
+      where
+        by-pc : ∀ p → fpc fs ≡ p → Σ ℕ λ N → Σ FlatState λ fs″ → FlatSteps P′ (suc N) fs′ fs″ × Shifted d fs″ (flat-exec-instr i P fs)
+        by-pc zero    e = ⊥-elim (g-ns G (cong (fetch P) e))
+        by-pc (suc q) e = view (site-view i) ft f
+          where
+            ft : fetch T q ≡ just i
+            ft = trans (sym (cong (fetch P) e)) f
+            view : ∀ {j} → SiteView j → fetch T q ≡ just j → fetch P (fpc fs) ≡ just j
+                 → Σ ℕ λ N → Σ FlatState λ fs″ → FlatSteps P′ (suc N) fs′ fs″ × Shifted d fs″ (flat-exec-instr j P fs)
+            view (sv-alloc k) t fP =
+              let (fs″ , c , _ , sh′) = alloc-site fs fs′ q k (sz q k (inj₁ t)) sh e t h (g-link G fP (λ e′ bb ()))
+              in 3 , fs″ , c , sh′
+            view (sv-free k) t fP =
+              let g = gate-true (gate-ok (instr-free-heap k) (floc fs) (falloc fs)) (instr-free-heap k) fs (g-nf G h fP)
+                  (fs″ , c , _ , sh′) = free-site fs fs′ q k (sz q k (inj₂ t)) sh e t h (g-link G fP (λ e′ bb ())) g
+              in 3 , fs″ , c , sh′
+            view {j} (sv-same se) t fP =
+              let (c , sh′) = plain-step fs fs′ q j sh e t se h (λ m w → nj q j m t w) (λ f′ w → nc q j f′ t w)
+              in 0 , _ , c , sh′
+
+    -- ★★ THE OUTLINED RUN NEVER FAULTS, from a shifted good state that has not faulted
+    sound-at : ∀ bd {fs fs′ k x} → k ≤ bd → Good fs → LocState.faulted (floc fs) ≡ false → Shifted d fs′ fs
+             → FlatSteps P′ k fs′ x → LocState.faulted (floc x) ≡ false
+    sound-at bd kb G nf0 sh@(lo , _) [] = trans (cong LocState.faulted lo) nf0
+    sound-at bd {fs} {fs′} {k} {x} kb G nf0 sh@(lo , al , pc , _) dd@((hg , fg) ∷ _) = by-f (fetch P (fpc fs)) refl
+      where
+        h : LocState.halted (floc fs) ≡ false
+        h = trans (sym (cong LocState.halted lo)) hg
+
+        just≢nothing : ∀ {X : Set} {v : X} → just v ≡ nothing → Data.Empty.⊥
+        just≢nothing ()
+
+        by-f : ∀ mi → fetch P (fpc fs) ≡ mi → LocState.faulted (floc x) ≡ false
+        by-f nothing ef = none (fpc fs) refl
+          where
+            none : ∀ p → fpc fs ≡ p → LocState.faulted (floc x) ≡ false
+            none zero    e = ⊥-elim (just≢nothing (trans (sym (cong (fetch P) e)) ef))
+            none (suc q) e = ⊥-elim (just≢nothing (trans (sym fg) (trans (cong (fetch P′) (trans pc (cong (d +_) e)))
+                                     (trans (fetch-out q) (cong (Data.Maybe.map site-call) (trans (sym (cong (fetch P) e)) ef))))))
+        by-f (just i) ef = go (seg G sh h ef)
+          where
+            go : (Σ ℕ λ N → Σ FlatState λ fs″ → FlatSteps P′ (suc N) fs′ fs″ × Shifted d fs″ (flat-exec-instr i P fs))
+               → LocState.faulted (floc x) ≡ false
+            go (N , fs″ , c , sh′) = split (meet c dd) bd kb
+              where
+                split : ((Σ ℕ λ j → FlatSteps P′ j fs″ x × k ≡ suc N + j) ⊎ (Σ ℕ λ j → FlatSteps P′ (suc j) x fs″))
+                      → ∀ b′ → k ≤ b′ → LocState.faulted (floc x) ≡ false
+                split (inj₁ (j , r , e)) zero    kb′ = ⊥-elim (Data.Nat.Properties.<⇒≱ (subst (0 <_) (sym e) (Data.Nat.s≤s z≤n)) kb′)
+                split (inj₁ (j , r , e)) (suc b′) kb′ =
+                  sound-at b′
+                    (Data.Nat.Properties.≤-pred (Data.Nat.Properties.≤-trans (Data.Nat.Properties.≤-trans (Data.Nat.s≤s (Data.Nat.Properties.m≤n+m j N)) (Data.Nat.Properties.≤-reflexive (sym e))) kb′))
+                    (g-step G h ef) (g-nf G h ef) sh′ r
+                split (inj₂ (j , (hx , _) ∷ _)) _ _ = trans (chain-fault dd hx) (trans (cong LocState.faulted lo) nf0)
+
+    sound : ∀ {fs fs′} → Good fs → LocState.faulted (floc fs) ≡ false → Shifted d fs′ fs → Sound P′ fs′
+    sound G nf0 sh dd = sound-at _ Data.Nat.Properties.≤-refl G nf0 sh dd
+
+    -- ★★ …and from the start
+    sound-start : ∀ (s₀ : FlatState) → fpc s₀ ≡ 0 → fret s₀ ≡ [] → LocState.halted (floc s₀) ≡ false
+                → LocState.faulted (floc s₀) ≡ false
+                → Good (flat-exec-instr (instr-ctrl (c-start b)) P s₀)
+                → LocState.faulted (floc (flat-exec-instr (instr-ctrl (c-start b)) P s₀)) ≡ false
+                → Sound P′ s₀
+    sound-start s₀ p0 r0 h nf0 G nf1 {fs' = x} dd = fin (start-step s₀ p0 r0 h)
+      where
+        fin : (Σ FlatState λ fs″ → Σ (FlatSteps P′ 3 s₀ fs″) λ c → (chain-events c ≡ []) × (ctrl-of (instr-ctrl (c-start b)) ≤ chain-ctrls c)
+                 × Shifted d fs″ (flat-exec-instr (instr-ctrl (c-start b)) P s₀))
+            → LocState.faulted (floc x) ≡ false
+        fin (fs″ , c , _ , _ , sh) = split (meet c dd)
+          where
+            split : ∀ {k} → ((Σ ℕ λ j → FlatSteps P′ j fs″ x × k ≡ 3 + j) ⊎ (Σ ℕ λ j → FlatSteps P′ (suc j) x fs″))
+                  → LocState.faulted (floc x) ≡ false
+            split (inj₁ (j , r , _))         = sound G nf1 sh r
+            split (inj₂ (j , (hx , _) ∷ _)) = trans (chain-fault dd hx) nf0
