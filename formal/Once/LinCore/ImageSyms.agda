@@ -97,6 +97,7 @@ import Once.LinCore.ImageBlocks
 open import Once.LinCore.Jumps fmt ans bw using (jump-of; jmp; Jmps; Jmps-nj; mvPS-nj; mvSP-nj; module Closed; module Free)
 
 import Once.CCC.Codegen.AllocExpand
+import Once.CCC.Codegen.AllocExpandClasses
 import Once.LinCore.ImageSymsX
 module LI = Once.LinCore.LabelsI fmt ans bw
 module EI = Once.LinCore.EntriesI fmt ans bw
@@ -631,6 +632,104 @@ module Img (nm : CanonicalName) {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                         , (λ e → a≢l (trans (cong first (e-fn-inj e)) (nameOf-lead (idx p))))
         where a≢l : ¬ ("once-alloc" ∷ []) ≡ ("once-lincore" ∷ [])
               a≢l ()
+
+  ----------------------------------------------------------------------
+  -- D480: THE OUTLINED IMAGE'S LABELS AND ENTRIES — the skip label then the
+  -- image's; the routines' (two a size) then the image's; each once
+  ----------------------------------------------------------------------
+
+  module Ol where
+    open import Once.CCC.Codegen.AllocExpand using (alloc-fn; free-fn; site-call; prim-routines; skip; skip-label; outline)
+    open import Once.CCC.Codegen.AllocOutline {FS} using (label-site; entry-site; alloc-fn-inj; free-fn-inj; alloc≢free)
+    import Data.List.Relation.Unary.Unique.DecPropositional.Properties
+    import Data.Nat.Properties
+
+    ksᵒ : List ℕ
+    ksᵒ = Once.CCC.Codegen.AllocExpandClasses.dsizes image
+
+    imageᵒ : AbstractTrace
+    imageᵒ = outline ksᵒ image
+
+    rents : List ℕ → List EntryId
+    rents []       = []
+    rents (k ∷ ks) = e-fn (alloc-fn k) ∷ e-fn (free-fn k) ∷ rents ks
+
+    private
+      labs-map : ∀ (xs : AbstractTrace) → Labs (map site-call xs) ≡ Labs xs
+      labs-map []       = refl
+      labs-map (x ∷ xs) = trans (cong (λ mo → LabsC.lab {FS} mo (Labs (map site-call xs))) (label-site x))
+                                (cong (LabsC.lab {FS} (FlatMachine.label-of? {FS} x)) (labs-map xs))
+
+      ents-map : ∀ (xs : AbstractTrace) → Ents (map site-call xs) ≡ Ents xs
+      ents-map []       = refl
+      ents-map (x ∷ xs) = trans (cong (λ mo → LabsC.ent {FS} mo (Ents (map site-call xs))) (entry-site x))
+                                (cong (LabsC.ent {FS} (FlatMachine.entry-of? {FS} x)) (ents-map xs))
+
+      labs-rou : ∀ ks → Labs (prim-routines ks) ≡ []
+      labs-rou []       = refl
+      labs-rou (k ∷ ks) = labs-rou ks
+
+      ents-rou : ∀ ks → Ents (prim-routines ks) ≡ rents ks
+      ents-rou []       = refl
+      ents-rou (k ∷ ks) = cong (λ r → e-fn (alloc-fn k) ∷ e-fn (free-fn k) ∷ r) (ents-rou ks)
+
+    labs-out : Labs imageᵒ ≡ skip-label ∷ Labs image
+    labs-out =
+      trans (Labs-++ (skip ksᵒ) (map site-call IA.tail))
+        (trans (cong (_++ Labs (map site-call IA.tail))
+                     (trans (Labs-++ (prim-routines ksᵒ) (instr-ctrl (c-label skip-label) ∷ [])) (cong (_++ (skip-label ∷ [])) (labs-rou ksᵒ))))
+               (cong (skip-label ∷_) (labs-map IA.tail)))
+
+    ents-out : Ents imageᵒ ≡ rents ksᵒ ++ Ents image
+    ents-out =
+      trans (Ents-++ (skip ksᵒ) (map site-call IA.tail))
+        (Relation.Binary.PropositionalEquality.cong₂ _++_ (trans (Ents-++ (prim-routines ksᵒ) (instr-ctrl (c-label skip-label) ∷ []))
+                           (trans (Data.List.Properties.++-identityʳ _) (ents-rou ksᵒ)))
+                    (ents-map IA.tail))
+      where import Data.List.Properties
+
+    private
+      e-fn-inj : ∀ {x y} → e-fn x ≡ e-fn y → x ≡ y
+      e-fn-inj refl = refl
+
+      skip≢img : ∀ {l} → (Σ ℕ λ j → Σ ℕ λ k → l ≡ jl j k) → skip-label ≢ l
+      skip≢img (j , _ , refl) e = one≢two (trans (cong (λ l → length (CanonicalName.parts (LabelId.owner l))) e) (nameOf-two j))
+        where one≢two : 1 ≡ 2 → ⊥
+              one≢two ()
+
+      -- a routine's name is no block's (first parts) and no thunk's
+      rou≢img : ∀ (f : CanonicalName) → first f ≡ "once-alloc" ∷ [] → ∀ {e} → (Σ ℕ λ j → e ≡ e-fn (nameOf j) ⊎ e ≡ e-thunk (tl j)) → e-fn f ≢ e
+      rou≢img f lead (j , inj₁ refl) e = a≢l (trans (sym lead) (trans (cong first (e-fn-inj e)) (nameOf-lead j)))
+        where a≢l : ¬ ("once-alloc" ∷ []) ≡ ("once-lincore" ∷ [])
+              a≢l ()
+      rou≢img f lead (j , inj₂ refl) ()
+
+      -- the routines' names: apart by size and kind
+      rents-dst : ∀ ks → AllPairs _≢_ ks → AllPairs _≢_ (rents ks)
+      rents-dst []       _          = []
+      rents-dst (k ∷ ks) (nk ∷ uks) =
+          ((λ e → alloc≢free k k (e-fn-inj e)) ∷ apart-a nk) ∷ apart-f nk ∷ rents-dst ks uks
+        where
+          apart-a : ∀ {ks′} → All (k ≢_) ks′ → All (e-fn (alloc-fn k) ≢_) (rents ks′)
+          apart-a []          = []
+          apart-a {k′ ∷ _} (n ∷ ns) = (λ e → n (alloc-fn-inj {k} {k′} (e-fn-inj e))) ∷ (λ e → alloc≢free k k′ (e-fn-inj e)) ∷ apart-a ns
+          apart-f : ∀ {ks′} → All (k ≢_) ks′ → All (e-fn (free-fn k) ≢_) (rents ks′)
+          apart-f []          = []
+          apart-f {k′ ∷ _} (n ∷ ns) = (λ e → alloc≢free k′ k (sym (e-fn-inj e))) ∷ (λ e → n (free-fn-inj {k} {k′} (e-fn-inj e))) ∷ apart-f ns
+
+      rents-lead : ∀ ks → All (λ e → Σ CanonicalName λ f → (e ≡ e-fn f) × (first f ≡ "once-alloc" ∷ [])) (rents ks)
+      rents-lead []       = []
+      rents-lead (k ∷ ks) = (alloc-fn k , refl , refl) ∷ (free-fn k , refl , refl) ∷ rents-lead ks
+
+    labs-dstᵒ : AllPairs _≢_ (Labs imageᵒ)
+    labs-dstᵒ = subst (AllPairs _≢_) (sym labs-out)
+                  (Data.List.Relation.Unary.All.map skip≢img labs-shape ∷ LIm.image-dst)
+
+    ents-dstᵒ : AllPairs _≢_ (Ents imageᵒ)
+    ents-dstᵒ = subst (AllPairs _≢_) (sym ents-out)
+                  (AP-++⁺ (rents-dst ksᵒ (Data.List.Relation.Unary.Unique.DecPropositional.Properties.deduplicate-! Data.Nat.Properties._≟_ (Once.CCC.Codegen.AllocExpandClasses.sizes image)))
+                          EIm.image-edst
+                          (Data.List.Relation.Unary.All.map (λ { (f , refl , lead) → Data.List.Relation.Unary.All.map (rou≢img f lead) ents-shape }) (rents-lead ksᵒ)))
 
   private
     refs-ok : ∀ (i : AbstractInstr) → IOk.Ref i → (∀ l → jump-of i ≡ just l → l ∈ Labs image) → i ∈ image → All G (instr-refs i)
