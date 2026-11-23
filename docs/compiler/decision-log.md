@@ -24797,6 +24797,12 @@ every many-use closure is `copyIn` (`PassTr`'s `inco F`, the examples). So the c
 when it is built: a new form `llamωᶜ b₀` (the bridge's `clo`), a value `cωᶜ ds b₀ γ`, whose lent call means
 `copyIn b₀` (as today) and whose owned call (`levω`) runs `b₀` on the environment moved in; `levω` on a plain
 `cω` cell runs the lent body and frees the environment after. Additive: `llamω`/`cω` and their proofs stay.
+### Refinement (2026-11-23 late): oncify writes nothing; a one-shot call reads word 4
+A write into the cell breaks the local-step contract (`Moves.Old`: an old block's words stand unless it is freed,
+and the core frees nothing at `oncify`). So `oncify` is a pure retyping (no flat code), every one-shot call calls
+through word 4 (`icall`: the closure register at the cell + 3, as the copy and free calls), and the value relation
+constrains word 1 only for a many-use cell (whose lent call reads it). A one-shot cell's word 4 is its body's entry
+(`okey`), a many-use cell's its owned body's, so the retyped value is related as it stands.
 ### Scope (a)
 Core (`levω`, `Blk`), semantics (`Lᶜ levω` = `apω`'s), Keys (the owned body's key per many-use closure), Image
 (`compᴵ`, the body trampoline for `kbodyω`), Lower (`tramp`), and the trampoline simulations (`GlobalTramp*`,
