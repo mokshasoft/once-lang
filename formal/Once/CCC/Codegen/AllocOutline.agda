@@ -30,7 +30,11 @@ open import Data.Empty using (⊥-elim)
 open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 open import Once.CCC.Label using (LabelId; EntryId; e-thunk; e-fn; _≡ᵇᴵ_; ≡ᵇᴵ-true; _≡ᵇᴱ_; ≡ᵇᴱ-true)
-open import Data.Nat.Properties using (+-suc)
+open import Data.Nat.Properties using (+-suc; ≡ᵇ⇒≡)
+open import Data.Nat using (_≡ᵇ_)
+open import Data.List.Membership.Propositional using (_∈_)
+open import Data.List.Relation.Unary.Any using (here; there)
+open import Once.CCC.Label using (≡ᵇᴱ-refl)
 open import Once.Spec.Name using (CanonicalName; canonical; module CanonicalName)
 open import Data.Char using (Char)
 open import Data.String using (String; toList) renaming (_++_ to _++ˢ_)
@@ -379,6 +383,98 @@ ft-skip : ∀ ks e i → NotR e → ft-go (skip ks) e i ≡ nothing
 ft-skip ks e i nr = ft-++ (prim-routines ks) (instr-ctrl (c-label skip-label) ∷ []) e (suc i) (ft-routines ks e (suc i) nr)
 
 ------------------------------------------------------------------------
+-- The routines: where a size's are (its first in `ks`), what they hold
+------------------------------------------------------------------------
+
+rpos : List ℕ → ℕ → ℕ
+rpos-at : Bool → List ℕ → ℕ → ℕ
+rpos []        k = 0
+rpos (k′ ∷ ks) k = rpos-at (k′ ≡ᵇ k) ks k
+rpos-at true  ks k = 0
+rpos-at false ks k = suc (suc (suc (suc (suc (suc (rpos ks k))))))
+
+private
+  six : ∀ i r → suc (suc (suc (suc (suc (suc i))))) + r ≡ i + suc (suc (suc (suc (suc (suc r)))))
+  six zero    r = refl
+  six (suc i) r = cong suc (six i r)
+
+  ne-of : ∀ {k′ k} → (k′ ≡ᵇ k) ≡ false → ¬ k′ ≡ k
+  ne-of {k′} {.k′} e refl = ne-refl k′ e
+    where ne-refl : ∀ n → (n ≡ᵇ n) ≡ false → Data.Empty.⊥
+          ne-refl zero    ()
+          ne-refl (suc n) e′ = ne-refl n e′
+
+  in-tail : ∀ {k k′ : ℕ} {ks : List ℕ} → ¬ k′ ≡ k → k ∈ k′ ∷ ks → k ∈ ks
+  in-tail ne (here e)  = ⊥-elim (ne (sym e))
+  in-tail ne (there p) = p
+
+-- a size's alloc routine: its entry where the scan from the routines' start finds it
+ft-alloc : ∀ ks k → k ∈ ks → ∀ rest i → ft-go (prim-routines ks ++ rest) (e-fn (alloc-fn k)) i ≡ just (i + rpos ks k)
+ft-alloc []        k () rest i
+ft-alloc (k′ ∷ ks) k mem rest i = by (k′ ≡ᵇ k) refl
+  where
+    by : ∀ c → (k′ ≡ᵇ k) ≡ c → ft-go (prim-routines (k′ ∷ ks) ++ rest) (e-fn (alloc-fn k)) i ≡ just (i + rpos-at c ks k)
+    by true  e = trans (cong (λ z → ft-match z (instr-alloc-heap k′ ∷ instr-ctrl (c-ret 0) ∷ instr-ctrl (c-entry (e-fn (free-fn k′)) 0)
+                                                 ∷ instr-free-heap k′ ∷ instr-ctrl (c-ret 0) ∷ prim-routines ks ++ rest) (e-fn (alloc-fn k)) i)
+                               (trans (cong (λ z → e-fn (alloc-fn z) ≡ᵇᴱ e-fn (alloc-fn k)) (≡ᵇ⇒≡ k′ k (subst Data.Bool.T (sym e) tt))) (≡ᵇᴱ-refl (e-fn (alloc-fn k)))))
+                         (cong just (sym (Data.Nat.Properties.+-identityʳ i)))
+    by false e =
+      trans (cong (λ z → ft-match z (instr-alloc-heap k′ ∷ instr-ctrl (c-ret 0) ∷ instr-ctrl (c-entry (e-fn (free-fn k′)) 0)
+                                      ∷ instr-free-heap k′ ∷ instr-ctrl (c-ret 0) ∷ prim-routines ks ++ rest) (e-fn (alloc-fn k)) i)
+                  (miss-E (e-fn (alloc-fn k′)) (e-fn (alloc-fn k)) (λ q → ne-of e (alloc-fn-inj {k′} {k} (e-fn-inj {alloc-fn k′} {alloc-fn k} q)))))
+        (trans (cong (λ z → ft-match z (instr-free-heap k′ ∷ instr-ctrl (c-ret 0) ∷ prim-routines ks ++ rest) (e-fn (alloc-fn k)) (suc (suc (suc i))))
+                     (miss-E (e-fn (free-fn k′)) (e-fn (alloc-fn k)) (λ q → alloc≢free k k′ (sym (e-fn-inj {free-fn k′} {alloc-fn k} q)))))
+               (trans (ft-alloc ks k (in-tail (ne-of e) mem) rest (suc (suc (suc (suc (suc (suc i)))))))
+                      (cong just (six i (rpos ks k)))))
+      where
+        e-fn-inj : ∀ {f g} → e-fn f ≡ e-fn g → f ≡ g
+        e-fn-inj refl = refl
+
+-- a size's free routine: three past its alloc routine
+ft-free : ∀ ks k → k ∈ ks → ∀ rest i → ft-go (prim-routines ks ++ rest) (e-fn (free-fn k)) i ≡ just (suc (suc (suc (i + rpos ks k))))
+ft-free []        k () rest i
+ft-free (k′ ∷ ks) k mem rest i = by (k′ ≡ᵇ k) refl
+  where
+    e-fn-inj : ∀ {f g} → e-fn f ≡ e-fn g → f ≡ g
+    e-fn-inj refl = refl
+    by : ∀ c → (k′ ≡ᵇ k) ≡ c → ft-go (prim-routines (k′ ∷ ks) ++ rest) (e-fn (free-fn k)) i ≡ just (suc (suc (suc (i + rpos-at c ks k))))
+    by true  e =
+      trans (cong (λ z → ft-match z (instr-alloc-heap k′ ∷ instr-ctrl (c-ret 0) ∷ instr-ctrl (c-entry (e-fn (free-fn k′)) 0)
+                                      ∷ instr-free-heap k′ ∷ instr-ctrl (c-ret 0) ∷ prim-routines ks ++ rest) (e-fn (free-fn k)) i)
+                  (miss-E (e-fn (alloc-fn k′)) (e-fn (free-fn k)) (λ q → alloc≢free k′ k (e-fn-inj {alloc-fn k′} {free-fn k} q))))
+        (trans (cong (λ z → ft-match z (instr-free-heap k′ ∷ instr-ctrl (c-ret 0) ∷ prim-routines ks ++ rest) (e-fn (free-fn k)) (suc (suc (suc i))))
+                     (trans (cong (λ z → e-fn (free-fn z) ≡ᵇᴱ e-fn (free-fn k)) (≡ᵇ⇒≡ k′ k (subst Data.Bool.T (sym e) tt))) (≡ᵇᴱ-refl (e-fn (free-fn k)))))
+               (cong (λ z → just (suc (suc (suc z)))) (sym (Data.Nat.Properties.+-identityʳ i))))
+    by false e =
+      trans (cong (λ z → ft-match z (instr-alloc-heap k′ ∷ instr-ctrl (c-ret 0) ∷ instr-ctrl (c-entry (e-fn (free-fn k′)) 0)
+                                      ∷ instr-free-heap k′ ∷ instr-ctrl (c-ret 0) ∷ prim-routines ks ++ rest) (e-fn (free-fn k)) i)
+                  (miss-E (e-fn (alloc-fn k′)) (e-fn (free-fn k)) (λ q → alloc≢free k′ k (e-fn-inj {alloc-fn k′} {free-fn k} q))))
+        (trans (cong (λ z → ft-match z (instr-free-heap k′ ∷ instr-ctrl (c-ret 0) ∷ prim-routines ks ++ rest) (e-fn (free-fn k)) (suc (suc (suc i))))
+                     (miss-E (e-fn (free-fn k′)) (e-fn (free-fn k)) (λ q → ne-of e (free-fn-inj {k′} {k} (e-fn-inj {free-fn k′} {free-fn k} q)))))
+               (trans (ft-free ks k (in-tail (ne-of e) mem) rest (suc (suc (suc (suc (suc (suc i)))))))
+                      (cong (λ z → just (suc (suc (suc z)))) (six i (rpos ks k)))))
+
+-- what a size's routines hold, where they are
+record Routines (prog : AbstractTrace) (r k : ℕ) : Set where
+  field
+    at-ae : fetch prog r ≡ just (instr-ctrl (c-entry (e-fn (alloc-fn k)) 0))
+    at-a  : fetch prog (suc r) ≡ just (instr-alloc-heap k)
+    at-ar : fetch prog (suc (suc r)) ≡ just (instr-ctrl (c-ret 0))
+    at-fe : fetch prog (suc (suc (suc r))) ≡ just (instr-ctrl (c-entry (e-fn (free-fn k)) 0))
+    at-f  : fetch prog (suc (suc (suc (suc r)))) ≡ just (instr-free-heap k)
+    at-fr : fetch prog (suc (suc (suc (suc (suc r))))) ≡ just (instr-ctrl (c-ret 0))
+
+routines-at : ∀ ks k → k ∈ ks → ∀ rest → Routines (prim-routines ks ++ rest) (rpos ks k) k
+routines-at []        k () rest
+routines-at (k′ ∷ ks) k mem rest = by (k′ ≡ᵇ k) refl
+  where
+    by : ∀ c → (k′ ≡ᵇ k) ≡ c → Routines (prim-routines (k′ ∷ ks) ++ rest) (rpos-at c ks k) k
+    by true  e = subst (λ z → Routines (prim-routines (z ∷ ks) ++ rest) 0 k) (sym (≡ᵇ⇒≡ k′ k (subst Data.Bool.T (sym e) tt)))
+                   (record { at-ae = refl ; at-a = refl ; at-ar = refl ; at-fe = refl ; at-f = refl ; at-fr = refl })
+    by false e = record { at-ae = R.at-ae ; at-a = R.at-a ; at-ar = R.at-ar ; at-fe = R.at-fe ; at-f = R.at-f ; at-fr = R.at-fr }
+      where module R = Routines (routines-at ks k (in-tail (ne-of e) mem) rest)
+
+------------------------------------------------------------------------
 -- ★ The outlined program's scans: the program's own, `d` on
 ------------------------------------------------------------------------
 
@@ -400,3 +496,25 @@ module Out (ks : List ℕ) (b : ℕ) (T : AbstractTrace) where
   find-entry-out e nr =
     trans (ft-++ (skip ks) (map site-call T) e 1 (ft-skip ks e 1 nr))
           (trans (ft-map T e (d + 1)) (ft-shiftᵈ T e d 1))
+
+  -- the routines, at the outlined program's pc `2 + rpos ks k`
+  private
+    shape : P′ ≡ instr-ctrl (c-start b) ∷ instr-ctrl (c-jmp skip-label) ∷ prim-routines ks ++ instr-ctrl (c-label skip-label) ∷ map site-call T
+    shape = cong (λ z → instr-ctrl (c-start b) ∷ instr-ctrl (c-jmp skip-label) ∷ z)
+                 (Data.List.Properties.++-assoc (prim-routines ks) (instr-ctrl (c-label skip-label) ∷ []) (map site-call T))
+
+  rp : ℕ → ℕ
+  rp k = suc (suc (rpos ks k))
+
+  find-alloc : ∀ k → k ∈ ks → find-fn P′ (alloc-fn k) ≡ just (rp k)
+  find-alloc k mem = trans (cong (λ z → find-fn z (alloc-fn k)) shape)
+                           (ft-alloc ks k mem (instr-ctrl (c-label skip-label) ∷ map site-call T) 2)
+
+  find-free : ∀ k → k ∈ ks → find-fn P′ (free-fn k) ≡ just (suc (suc (suc (rp k))))
+  find-free k mem = trans (cong (λ z → find-fn z (free-fn k)) shape)
+                          (ft-free ks k mem (instr-ctrl (c-label skip-label) ∷ map site-call T) 2)
+
+  routines-out : ∀ k → k ∈ ks → Routines P′ (rp k) k
+  routines-out k mem = subst (λ z → Routines z (rp k) k) (sym shape) (record
+    { at-ae = R.at-ae ; at-a = R.at-a ; at-ar = R.at-ar ; at-fe = R.at-fe ; at-f = R.at-f ; at-fr = R.at-fr })
+    where module R = Routines (routines-at ks k mem (instr-ctrl (c-label skip-label) ∷ map site-call T))
