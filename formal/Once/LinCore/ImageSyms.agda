@@ -132,11 +132,29 @@ name≢block j d e = two≢one (trans (sym (nameOf-two j)) (cong (λ c → lengt
   where two≢one : 2 ≡ 1 → ⊥
         two≢one ()
 
--- the labels and entries of the image
+-- D480: the call mode's routines, their names read back too
+alloc-good : ∀ k → All PeelS (CanonicalName.parts (Once.CCC.Codegen.AllocExpand.alloc-fn k))
+alloc-good k = (_ , _ , refl , refl) ∷ subst Peel (sym (toList-++ "a" (Once.Target.Symbol.showNat k))) (_ , _ , refl , refl) ∷ []
+
+free-good : ∀ k → All PeelS (CanonicalName.parts (Once.CCC.Codegen.AllocExpand.free-fn k))
+free-good k = (_ , _ , refl , refl) ∷ subst Peel (sym (toList-++ "f" (Once.Target.Symbol.showNat k))) (_ , _ , refl , refl) ∷ []
+
+-- a routine's symbol is no arith block's (two parts, theirs one)
+routine≢block : ∀ (cn : CanonicalName) → All PeelS (CanonicalName.parts cn) → length (CanonicalName.parts cn) ≡ 2
+              → ∀ d → once-symbol-path cn ≢ once-symbol-path (bare ("arith.block." ++ˢ d))
+routine≢block cn g two d e = two≢one (trans (sym two) (cong (λ c → length (CanonicalName.parts c))
+                               (once-symbol-path-injective-peel cn (bare ("arith.block." ++ˢ d)) g (block-good d) e)))
+  where two≢one : 2 ≡ 1 → ⊥
+        two≢one ()
+
+-- the labels and entries of the image (D480: and of the outlined image's skip and routines)
 data ShapeL : Label → Set where
   s-jl : ∀ j k → ShapeL (once (jl j k))
   s-fn : ∀ j → ShapeL (callee (e-fn (nameOf j)))
   s-tl : ∀ j → ShapeL (callee (e-thunk (tl j)))
+  s-sk : ShapeL (once Once.CCC.Codegen.AllocExpand.skip-label)
+  s-ra : ∀ k → ShapeL (callee (e-fn (Once.CCC.Codegen.AllocExpand.alloc-fn k)))
+  s-rf : ∀ k → ShapeL (callee (e-fn (Once.CCC.Codegen.AllocExpand.free-fn k)))
 
 shape-lab : ∀ {y l} → y ≡ once l → (Σ ℕ λ j → Σ ℕ λ k → l ≡ jl j k) → ShapeL y
 shape-lab refl (j , k , refl) = s-jl j k
@@ -149,11 +167,17 @@ shape-good : ∀ {y} → ShapeL y → GoodL y
 shape-good (s-jl j k) = refl , nameOf-good j
 shape-good (s-fn j)   = nameOf-good j
 shape-good (s-tl j)   = refl , nameOf-good j
+shape-good s-sk       = refl , ((_ , _ , refl , refl) ∷ [])
+shape-good (s-ra k)   = alloc-good k
+shape-good (s-rf k)   = free-good k
 
 shape-def : ∀ {y} → ShapeL y → DefL y
 shape-def (s-jl j k) = Once.Adequacy.LabelSymbols.d-once
 shape-def (s-fn j)   = Once.Adequacy.LabelSymbols.d-callee
 shape-def (s-tl j)   = Once.Adequacy.LabelSymbols.d-callee
+shape-def s-sk       = Once.Adequacy.LabelSymbols.d-once
+shape-def (s-ra k)   = Once.Adequacy.LabelSymbols.d-callee
+shape-def (s-rf k)   = Once.Adequacy.LabelSymbols.d-callee
 
 private
   head≢ : ∀ {s t : String} → head-of (toList s) ≡ '.' → head-of (toList t) ≡ 'o' → s ≢ t
@@ -164,11 +188,17 @@ shape≢block : ∀ {y t} → ShapeL y → BlockSym t → labelSym y ≢ t
 shape≢block (s-jl j k) (d , refl) = head≢ (once-head (jl j k)) (fn-head (bare ("arith.block." ++ˢ d)))
 shape≢block (s-fn j)   (d , refl) = name≢block j d
 shape≢block (s-tl j)   (d , refl) = head≢ (thunk-head (tl j)) (fn-head (bare ("arith.block." ++ˢ d)))
+shape≢block s-sk       (d , refl) = head≢ (once-head Once.CCC.Codegen.AllocExpand.skip-label) (fn-head (bare ("arith.block." ++ˢ d)))
+shape≢block (s-ra k)   (d , refl) = routine≢block (Once.CCC.Codegen.AllocExpand.alloc-fn k) (alloc-good k) refl d
+shape≢block (s-rf k)   (d , refl) = routine≢block (Once.CCC.Codegen.AllocExpand.free-fn k) (free-good k) refl d
 
 entry≢shape : ∀ {y} → ShapeL y → entry-symbol ≢ labelSym y
 entry≢shape (s-jl j k) e = head≢ (once-head (jl j k)) refl (sym e)
 entry≢shape (s-fn j)   e = entry≢osp (nameOf j) e
 entry≢shape (s-tl j)   e = head≢ (thunk-head (tl j)) refl (sym e)
+entry≢shape s-sk       e = head≢ (once-head Once.CCC.Codegen.AllocExpand.skip-label) refl (sym e)
+entry≢shape (s-ra k)   e = entry≢osp (Once.CCC.Codegen.AllocExpand.alloc-fn k) e
+entry≢shape (s-rf k)   e = entry≢osp (Once.CCC.Codegen.AllocExpand.free-fn k) e
 
 entry≢block : ∀ {t} → BlockSym t → entry-symbol ≢ t
 entry≢block (d , refl) = entry≢osp (bare ("arith.block." ++ˢ d))
@@ -178,6 +208,9 @@ record≢shape : ∀ {y} → ShapeL y → alloc-record-symbol ≢ labelSym y
 record≢shape (s-jl j k) e = head≢ (once-head (jl j k)) refl (sym e)
 record≢shape (s-fn j)   e = record≢osp (nameOf j) e
 record≢shape (s-tl j)   e = head≢ (thunk-head (tl j)) refl (sym e)
+record≢shape s-sk       e = head≢ (once-head Once.CCC.Codegen.AllocExpand.skip-label) refl (sym e)
+record≢shape (s-ra k)   e = record≢osp (Once.CCC.Codegen.AllocExpand.alloc-fn k) e
+record≢shape (s-rf k)   e = record≢osp (Once.CCC.Codegen.AllocExpand.free-fn k) e
 
 record≢block : ∀ {t} → BlockSym t → alloc-record-symbol ≢ t
 record≢block (d , refl) = record≢osp (bare ("arith.block." ++ˢ d))
