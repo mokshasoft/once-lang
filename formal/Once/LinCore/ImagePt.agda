@@ -194,6 +194,8 @@ module Places {sh₀ U₀} (c₀ : Codeᴵ sh₀ U₀) where
   place (i-cfree {X = X})       P R = entry (ktrf X _) , nxt P , R
   place (i-nfree {F = F} {S = S}) P R = entry (ktrf (Coalg F S ⊗t S) (Nu F)) , nxt P , R
   place i-open1       P R = nxt P , R
+  place (i-icallᵒ {lam = lam})   P R = entry (trωo lam) , nxt P , R
+  place i-open1ω       P R = nxt P , R
   place (i-openω _)   P R = nxt P , R
   place i-nopen       P R = nxt P , R
   place (i-copen _)   P R = nxt P , R

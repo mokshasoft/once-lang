@@ -106,6 +106,8 @@ data Ins : Sh → Sh → Set where
   -- cell); its code word says which body runs, decided by the data
   apply   : ∀ {Es g A B S} → Ins (Es ∣ (Fn once g A B ⊗t A) ∷ S) (Es ∣ B ∷ S)
   eapply  : ∀ {Es g A B S} → Ins (Fn many g A B ∷ Es ∣ A ∷ S) (Fn many g A B ∷ Es ∣ B ∷ S)
+  -- ★ D478: a many-use closure applied owned (its last use)
+  applyω  : ∀ {Es g A B S} → Ins (Es ∣ (Fn many g A B ⊗t A) ∷ S) (Es ∣ B ∷ S)
   -- ★ observe a ν: free its cell, run `obsT` on its coalgebra and seed
   -- (expanded when reached: the seed's type is the cell's)
   nopen   : ∀ {Γ} (ds : Defs Γ) {F Es S} → Ins (Es ∣ Nu F ∷ S) (Es ∣ LF∙ F (Nu F) ∷ S)
@@ -165,6 +167,8 @@ mutual
   comp ds (llamω b γ) k    = prim ds (llamω b γ) ⨾ k
   comp ds lev k            = apply ⨾ k
   comp ds bev k            = eapply ⨾ k
+  comp ds (llamωᶜ b₀ γ) k  = prim ds (llamωᶜ b₀ γ) ⨾ k
+  comp ds levω k           = applyω ⨾ k
   comp ds lunf k           = prim ds lunf ⨾ k
   comp ds lout k           = nopen ds ⨾ k
 

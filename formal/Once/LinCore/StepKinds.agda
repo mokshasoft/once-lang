@@ -115,6 +115,8 @@ CoveredI (call _) = ⊤
 -- a dispatch through a one-shot cell's code word, and its trampoline's cell part (D438)
 CoveredI icall    = ⊤
 CoveredI open1    = ⊤
+CoveredI icallᵒ   = ⊤
+CoveredI open1ω   = ⊤
 -- an observation's dispatch (at the empty table, D440) and its trampoline's cell part
 CoveredI (iobs _) = ⊤
 CoveredI nopen    = ⊤
@@ -185,6 +187,13 @@ module _ {ℓ : Level} {T : Sh} where
       op1 : ∀ {Es g X A B S U} {k : Codeᴵ (Es ∣ (X ⊗t A) ∷ S) U} {r : Ret U T} {es : Slots Es} {i} {lam : Lam once g X A B}
               {x : MV X} {a : MV A} {os : Stk S} {n}
           → P (i-open1 {k = k} {r = r} {es = es} {i = i} {lam = lam} {x = x} {a = a} {os = os} {n = n})
+      -- ★ D478: a many-use closure applied owned, and its owned entry's cell part
+      icᵒ : ∀ {Es g X A B S U} {k : Codeᴵ (Es ∣ B ∷ S) U} {r : Ret U T} {es : Slots Es} {i} {lam : Lam many g X A B}
+              {x : MV X} {a : MV A} {os : Stk S} {n}
+          → P (i-icallᵒ {k = k} {r = r} {es = es} {i = i} {lam = lam} {x = x} {a = a} {os = os} {n = n})
+      op1ω : ∀ {Es g X A B S U} {k : Codeᴵ (Es ∣ (X ⊗t A) ∷ S) U} {r : Ret U T} {es : Slots Es} {i} {lam : Lam many g X A B}
+              {x : MV X} {a : MV A} {os : Stk S} {n}
+          → P (i-open1ω {k = k} {r = r} {es = es} {i = i} {lam = lam} {x = x} {a = a} {os = os} {n = n})
       nop : ∀ {Es F S S′ U} {k : Codeᴵ (Es ∣ (Coalg F S ⊗t S) ∷ S′) U} {r : Ret U T} {es : Slots Es} {i}
               {p : MV (Coalg F S ⊗t S)} {os : Stk S′} {n}
           → P (i-nopen {k = k} {r = r} {es = es} {i = i} {p = p} {os = os} {n = n})
@@ -283,6 +292,8 @@ module _ {ℓ : Level} {T : Sh} where
   covered-elim C i-cfree          _ = CoveredCases.cf C
   covered-elim C i-nfree          _ = CoveredCases.nf C
   covered-elim C i-open1          _ = CoveredCases.op1 C
+  covered-elim C i-icallᵒ         _ = CoveredCases.icᵒ C
+  covered-elim C i-open1ω         _ = CoveredCases.op1ω C
   covered-elim C (i-openω {es = es} eq)  _ = CoveredCases.opω C {es = es} eq
   covered-elim C i-nopen          _ = CoveredCases.nop C
   covered-elim C (i-copen {es = es} eq)  _ = CoveredCases.co C {es = es} eq

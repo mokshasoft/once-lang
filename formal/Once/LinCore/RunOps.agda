@@ -19,7 +19,7 @@ open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Membership.Propositional.Properties using (∈-++⁻; ∈-++⁺ˡ; ∈-++⁺ʳ)
 open import Data.List.Relation.Unary.Any using (here; there)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
-open import Data.Sum using (inj₁; inj₂)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
@@ -35,6 +35,7 @@ open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw
 open import Once.LinCore.Values fmt bw
 open import Once.LinCore.Keys fmt bw using (Got; _⊹_; k!; t!; ps; tmGot; defsGot)
+open import Once.LinCore.Image fmt bw using (kbody1)
 open import Once.LinCore.Spends fmt ans bw using (CutsIn; CutsInM)
 open import Once.LinCore.Total fmt ans bw using (_~_; ~one; ~pair; ~inl; ~inr; ~base; ~mu; ~ct; ~fn; ~nu; copy-~)
 
@@ -49,6 +50,14 @@ module _ (D : Sig → Set) where
   okʳ : ∀ {G H} → Ok (G ⊹ H) → Ok H
   okʳ {G} k m = k (∈-++⁺ʳ (ps G) m)
 
+  -- (D478: a kept owned body's lent form runs its ops and no others)
+  ok-cin : ∀ {Γ} (ds : Defs Γ) {X A B} (b₀ : Tm Γ One (X ⊗t A) B) → Ok (tmGot ds b₀) → Ok (tmGot ds (cin b₀))
+  ok-cin ds b₀ k m = go (∈-++⁻ (ps (tmGot ds b₀)) m)
+    where
+      go : ∀ {s} → (s ∈ ps (tmGot ds b₀)) ⊎ (s ∈ []) → D s
+      go (inj₁ p) = k p
+      go (inj₂ ())
+
   -- a term with its table
   TmOK : ∀ {Γ} → Defs Γ → ∀ {E A B} → Tm Γ E A B → Set
   TmOK ds t = Ok (tmGot ds t) × Ok (defsGot ds)
@@ -56,6 +65,7 @@ module _ (D : Sig → Set) where
   LamOk : ∀ {k g X A B} → Lam k g X A B → Set
   LamOk (c1 ds b γ) = TmOK ds b
   LamOk (cω ds b γ) = TmOK ds b
+  LamOk (cωᶜ ds b₀ γ) = TmOK ds b₀
 
   VOk : ∀ {A} → MV A → Set
   VOk mone          = ⊤
@@ -206,9 +216,13 @@ module _ (D : Sig → Set) where
     run-ok (r-copy {e = e} {n}) _ ek vk = tt , vok-~ (copy-~ e n) ek
     run-ok (r-bapp q r) (_ , td) ek vk = let (td′ , tb) = look-ok q td in run-ok r (tb , td′) ek vk
     run-ok {ds = ds} (r-lam {X = X} {b = b}) (tf , td) ek vk = tt , ((tf , td) , vk)
-    run-ok {ds = ds} (r-lamω {X = X} {b = b}) (tf , td) ek vk = tt , ((tf , td) , vk)
+    run-ok {ds = ds} (r-lamω {X = X} {b = b} {γ = γ}) (tf , td) ek vk = tt , ((okˡ {tmGot ds b} {k! (_ , kbody1 ds (ownBg b) (ownBg-gd b γ))} tf , td) , vk)
+    run-ok {ds = ds} (r-lamωᶜ {X = X} {b₀ = b₀} {γ = γ}) (tf , td) ek vk = tt , ((okˡ {tmGot ds b₀} {k! (_ , kbody1 ds b₀ γ)} tf , td) , vk)
     run-ok (r-ev r) _ ek ((lk , vx) , va) = run-ok r lk tt (vx , va)
     run-ok (r-bev r) _ (lk , vx) va = run-ok r lk vx va
+    run-ok {ds = ds} (r-bevᶜ {ds′ = ds′} {b₀ = b₀} r) _ ((ok₀ , td) , vx) va = run-ok r (ok-cin ds′ b₀ ok₀ , td) vx va
+    run-ok (r-evωᶜ r) _ ek ((lk , vx) , va) = run-ok r lk tt (vx , va)
+    run-ok (r-evω r) _ ek ((lk , vx) , va) = run-ok r lk tt (vx , va)
     run-ok r-unf _ ek vk = tt , vk
     run-ok {ds = ds} (r-nout {F = F} {S = S} r) (_ , td) ek vk = run-ok r (obsT-ok ds F S , td) tt vk
     run-ok r-const _ ek vk = tt , tt

@@ -124,6 +124,8 @@ comp-nc ds (llam b γ)    n = tt , n
 comp-nc ds (llamω b γ)   n = tt , n
 comp-nc ds lev           n = tt , n
 comp-nc ds bev           n = tt , n
+comp-nc ds (llamωᶜ b₀ γ) n = tt , n
+comp-nc ds levω          n = tt , n
 comp-nc ds lunf          n = tt , n
 comp-nc ds lout          n = tt , n
 
@@ -167,6 +169,7 @@ free-nc (Nu F)       = tt , tt
 NT : ∀ {σ} → Key σ → Set
 NT (ktr1 _ _ _) = ⊥
 NT (ktrω _ _ _) = ⊥
+NT (ktr1ω _ _ _) = ⊥
 NT (ktro _ _ _) = ⊥
 NT (ktrc _ _)   = ⊥
 NT (ktrf _ _)   = ⊥
@@ -185,6 +188,7 @@ block-nc (kcopy A)        _ = copy-nc A
 block-nc (kfree A)        _ = free-nc A
 block-nc (ktr1 _ _ _)     ()
 block-nc (ktrω _ _ _)     ()
+block-nc (ktr1ω _ _ _)    ()
 block-nc (ktro _ _ _)     ()
 block-nc (ktrc _ _)       ()
 block-nc (ktrf _ _)       ()
@@ -216,7 +220,8 @@ tm-nt ds (bapp p)      = keyω-nt ds p All.∷ All.[]
 tm-nt ds dup           = All.[]
 tm-nt ds drop          = All.[]
 tm-nt ds (llam b γ)    = ++⁺ (tt All.∷ All.[]) (++⁺ All.[] (tm-nt ds b))
-tm-nt ds (llamω b γ)   = ++⁺ (tt All.∷ All.[]) (++⁺ All.[] (tm-nt ds b))
+tm-nt ds (llamω b γ)   = ++⁺ (tt All.∷ All.[]) (++⁺ All.[] (++⁺ (tm-nt ds b) (tt All.∷ All.[])))
+tm-nt ds (llamωᶜ b₀ γ) = ++⁺ (tt All.∷ All.[]) (++⁺ All.[] (++⁺ (tm-nt ds b₀) (tt All.∷ All.[])))
 tm-nt ds lunf          = ++⁺ All.[] All.[]
 tm-nt ds lout          = All.[]
 tm-nt ds lid           = All.[]
@@ -234,6 +239,7 @@ tm-nt ds lIn           = All.[]
 tm-nt ds lOutμ         = All.[]
 tm-nt ds (lclo F p)    = All.[]
 tm-nt ds lev           = All.[]
+tm-nt ds levω          = All.[]
 tm-nt ds bev           = All.[]
 tm-nt ds (lconst v)    = All.[]
 tm-nt ds (lop s)       = All.[]

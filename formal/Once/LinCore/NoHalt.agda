@@ -93,6 +93,10 @@ mutual
   gives-nh r-lamω = []
   gives-nh (r-ev r) = gives-nh r
   gives-nh (r-bev r) = gives-nh r
+  gives-nh (r-evω r) = gives-nh r
+  gives-nh r-lamωᶜ = []
+  gives-nh (r-evωᶜ r) = gives-nh r
+  gives-nh (r-bevᶜ r) = gives-nh r
   gives-nh r-unf = []
   gives-nh (r-nout r) = gives-nh r
   gives-nh r-const = []

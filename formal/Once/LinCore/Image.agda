@@ -87,6 +87,8 @@ data Key : BSig → Set where
   -- only types the frame)
   ktr1   : ∀ {Γ g X A B} → Defs Γ → (b : Tm Γ One (X ⊗t A) B) → Gd g b → Key (bsig nothing (Fn once g A B ⊗t A) B)
   ktrω   : ∀ {Γ g X A B} → Defs Γ → (b : Tm Γ X A B) → Gd g b → Key (bsig (just (Fn many g A B)) A B)
+  -- ★ D478: a many-use cell's OWNED entry: its environment out, the cell freed, its owned body
+  ktr1ω  : ∀ {Γ g X A B} → Defs Γ → (b₀ : Tm Γ One (X ⊗t A) B) → Gd g b₀ → Key (bsig nothing (Fn many g A B ⊗t A) B)
   ktro   : ∀ {Γ} → Defs Γ → ∀ F (S : LTy) → Key (bsig nothing (Nu F) (LF∙ F (Nu F)))
   ktrc   : ∀ (X C : LTy) → Key (bsig (just C) One C)
   ktrf   : ∀ (X C : LTy) → Key (bsig nothing C One)
@@ -95,6 +97,12 @@ data Key : BSig → Set where
 key-of : ∀ {k g X A B} → Lam k g X A B → Σ BSig Key
 key-of (c1 ds b γ) = _ , kbody1 ds b γ
 key-of (cω ds b γ) = _ , kbodyω ds b γ
+key-of (cωᶜ ds b₀ γ) = _ , kbodyω ds (cin b₀) (cin-gd b₀ γ)
+
+-- ★ D478: a many-use closure's owned body's block (its owned entry calls it)
+key1-of : ∀ {g X A B} → Lam many g X A B → Σ BSig Key
+key1-of (cω ds b γ) = _ , kbody1 ds (ownBg b) (ownBg-gd b γ)
+key1-of (cωᶜ ds b₀ γ) = _ , kbody1 ds b₀ γ
 
 -- the trampoline a closure's code word enters
 tr1 : ∀ {g X A B} → Lam once g X A B → Key (bsig nothing (Fn once g A B ⊗t A) B)
@@ -102,6 +110,12 @@ tr1 (c1 ds b γ) = ktr1 ds b γ
 
 trω : ∀ {g X A B} → Lam many g X A B → Key (bsig (just (Fn many g A B)) A B)
 trω (cω ds b γ) = ktrω ds b γ
+trω (cωᶜ ds b₀ γ) = ktrω ds (cin b₀) (cin-gd b₀ γ)
+
+-- ★ D478: the owned entry a many-use closure's fourth code word enters
+trωo : ∀ {g X A B} → Lam many g X A B → Key (bsig nothing (Fn many g A B ⊗t A) B)
+trωo (cω ds b γ) = ktr1ω ds (ownBg b) (ownBg-gd b γ)
+trωo (cωᶜ ds b₀ γ) = ktr1ω ds b₀ γ
 
 ------------------------------------------------------------------------
 -- 2. THE INSTRUCTIONS: A16's, with calls in place of expansion.
@@ -136,6 +150,8 @@ data Insᴵ : Sh → Sh → Set where
   -- a viewed closure or ν; free one
   icall   : ∀ {Es g A B S} → Insᴵ (Es ∣ (Fn once g A B ⊗t A) ∷ S) (Es ∣ B ∷ S)
   icallω  : ∀ {Es g A B S} → Insᴵ (Fn many g A B ∷ Es ∣ A ∷ S) (Fn many g A B ∷ Es ∣ B ∷ S)
+  -- ★ D478: a many-use closure applied owned, through its owned entry
+  icallᵒ  : ∀ {Es g A B S} → Insᴵ (Es ∣ (Fn many g A B ⊗t A) ∷ S) (Es ∣ B ∷ S)
   iobs    : ∀ {Γ} (ds : Defs Γ) {Es F S} → Insᴵ (Es ∣ Nu F ∷ S) (Es ∣ LF∙ F (Nu F) ∷ S)
   ccopy   : ∀ {Es k g A B S} → Insᴵ (Fn k g A B ∷ Es ∣ One ∷ S) (Fn k g A B ∷ Es ∣ Fn k g A B ∷ S)
   ncopy   : ∀ {Es F S} → Insᴵ (Nu F ∷ Es ∣ One ∷ S) (Nu F ∷ Es ∣ Nu F ∷ S)
@@ -147,6 +163,7 @@ data Insᴵ : Sh → Sh → Set where
   -- viewed cell's code words (a copy's), a cell's contents out (freed)
   open1   : ∀ {Es g X A B S} → Insᴵ (Es ∣ (Fn once g A B ⊗t A) ∷ S) (Es ∣ (X ⊗t A) ∷ S)
   openω   : ∀ {Es g X A B S} → Insᴵ (Fn many g A B ∷ Es ∣ S) (X ∷ Fn many g A B ∷ Es ∣ S)
+  open1ω  : ∀ {Es g X A B S} → Insᴵ (Es ∣ (Fn many g A B ⊗t A) ∷ S) (Es ∣ (X ⊗t A) ∷ S)
   nopen   : ∀ {Es F S S′} → Insᴵ (Es ∣ Nu F ∷ S′) (Es ∣ (Coalg F S ⊗t S) ∷ S′)
   copen   : ∀ {X C Es S} → Insᴵ (C ∷ Es ∣ S) (X ∷ C ∷ Es ∣ S)
   reclose : ∀ {X C Es S} → Insᴵ (C ∷ Es ∣ X ∷ S) (C ∷ Es ∣ C ∷ S)
@@ -224,6 +241,8 @@ compᴵ ds (llam b γ) k     = prim ds (llam b γ) ⨾ k
 compᴵ ds (llamω b γ) k    = prim ds (llamω b γ) ⨾ k
 compᴵ ds lev k            = icall ⨾ k
 compᴵ ds bev k            = icallω ⨾ k
+compᴵ ds (llamωᶜ b₀ γ) k  = prim ds (llamωᶜ b₀ γ) ⨾ k
+compᴵ ds levω k           = icallᵒ ⨾ k
 compᴵ ds lunf k           = prim ds lunf ⨾ k
 compᴵ ds lout k           = iobs ds ⨾ k
 
@@ -275,6 +294,7 @@ blockᴵ (kfree A)        = freeᴵ A
 -- ★ the trampolines (D434): the cell's part, the block, what is left
 blockᴵ (ktr1 {X = X} ds b γ) = open1 {X = X} ⨾ call (kbody1 ds b γ) ⨾ end
 blockᴵ (ktrω {X = X} ds b γ) = openω {X = X} ⨾ call (kbodyω ds b γ) ⨾ epop ⨾ end
+blockᴵ (ktr1ω {X = X} ds b₀ γ) = open1ω {X = X} ⨾ call (kbody1 ds b₀ γ) ⨾ end
 blockᴵ (ktro ds F S)         = nopen {S = S} ⨾ call (kobs ds F S) ⨾ end
 blockᴵ (ktrc X C)            = copen {X = X} ⨾ call (kcopy X) ⨾ epop ⨾ reclose ⨾ end
 blockᴵ (ktrf X C)            = fopen {X = X} ⨾ call (kfree X) ⨾ end

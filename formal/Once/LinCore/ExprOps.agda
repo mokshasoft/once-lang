@@ -49,6 +49,7 @@ module _ (D : Sig → Set) where
   OK (bout f)     = OK f
   OK (llam b γ)   = OK b
   OK (llamω b γ)  = OK b
+  OK (llamωᶜ b₀ γ) = OK b₀
   OK (lop s)      = D s
   {-# CATCHALL #-}
   OK _            = ⊤
@@ -75,7 +76,8 @@ module _ (D : Sig → Set) where
   ok-ps ds (bcaseE f g)  (of , og) m = either (ps (tmGot ds f)) m (ok-ps ds f of) (ok-ps ds g og)
   ok-ps ds (bout f)      o         m = ok-ps ds f o m
   ok-ps ds (llam b γ)    o         m = ok-ps ds b o m
-  ok-ps ds (llamω b γ)   o         m = ok-ps ds b o m
+  ok-ps ds (llamω b γ)   o         m = either (ps (tmGot ds b)) m (ok-ps ds b o) (λ ())
+  ok-ps ds (llamωᶜ b₀ γ) o         m = either (ps (tmGot ds b₀)) m (ok-ps ds b₀ o) (λ ())
   ok-ps ds (lop s)       o (here refl) = o
   ok-ps ds lid       o ()
   ok-ps ds ρl        o ()
@@ -98,6 +100,7 @@ module _ (D : Sig → Set) where
   ok-ps ds (bapp p)  o ()
   ok-ps ds lev       o ()
   ok-ps ds bev       o ()
+  ok-ps ds levω      o ()
   ok-ps ds lunf      o ()
   ok-ps ds lout      o ()
   ok-ps ds (lconst v) o ()

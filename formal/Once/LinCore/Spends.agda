@@ -33,7 +33,7 @@ module Once.LinCore.Spends
 open import Once.LinCore.Core fmt using (_⊕t_; Blk; Defs; LF∙; Sig; Tm; liter; sdom; toF; ⌜_⌝; module Blk; module Defs; module Sig; module Tm)
 open import Once.LinCore.Flat using (Base)
 open import Once.LinCore.NbEPLinCore fmt ans using (opF)
-open import Once.LinCore.Events fmt ans bw using (OpPath; Outcome; Run; RunMap; Why; again; done; ds; er; exhausted; fm-gives; fm-stop; gives; go-on; halted; m-b; m-id; m-inl; m-inr; m-one; m-pair; m-μ; r-In; r-Outμ; r-app; r-bapp; r-bev; r-caseE₁; r-caseE₂; r-case₁; r-case₂; r-cata; r-cata-reuse; r-clo; r-const; r-copy; r-cut; r-drop; r-dup; r-ev; r-exh; r-fst; r-id; r-inl; r-inr; r-iter; r-lam; r-lamω; r-lend; r-lift; r-nout; r-op; r-opend; r-out; r-snd; r-swap; r-tmp; r-unf; r-α; r-α⁻; r-λ; r-λ⁻; r-ρ; r-ρ⁻; r-∘; r-⊗; stop; stopped; Γ; module OpPath; module Outcome; module Run; module RunMap; module Why)
+open import Once.LinCore.Events fmt ans bw using (OpPath; Outcome; Run; RunMap; Why; again; done; ds; er; exhausted; fm-gives; fm-stop; gives; go-on; halted; m-b; m-id; m-inl; m-inr; m-one; m-pair; m-μ; r-In; r-Outμ; r-app; r-bapp; r-bev; r-lamωᶜ; r-bevᶜ; r-evωᶜ; r-evω; r-caseE₁; r-caseE₂; r-case₁; r-case₂; r-cata; r-cata-reuse; r-clo; r-const; r-copy; r-cut; r-drop; r-dup; r-ev; r-exh; r-fst; r-id; r-inl; r-inr; r-iter; r-lam; r-lamω; r-lend; r-lift; r-nout; r-op; r-opend; r-out; r-snd; r-swap; r-tmp; r-unf; r-α; r-α⁻; r-λ; r-λ⁻; r-ρ; r-ρ⁻; r-∘; r-⊗; stop; stopped; Γ; module OpPath; module Outcome; module Run; module RunMap; module Why)
 open import Once.LinCore.Values fmt bw using (MV; Trace; module MV)
 open import Data.Unit using (tt)
 open import Data.Product using (_,_; proj₁; proj₂)
@@ -64,6 +64,9 @@ mutual
   UnCut (r-bapp q r)                    = UnCut r
   UnCut (r-ev r)                        = UnCut r
   UnCut (r-bev r)                       = UnCut r
+  UnCut (r-bevᶜ r)                       = UnCut r
+  UnCut (r-evωᶜ r)                       = UnCut r
+  UnCut (r-evω r)                       = UnCut r
   UnCut (r-nout r)                      = UnCut r
   UnCut (r-iter r (go-on done))         = UnCut r
   UnCut (r-iter r (go-on (again rn)))   = UnCut r × UnCut rn
@@ -111,6 +114,9 @@ mutual
   rounds (r-bapp q r)                    = rounds r
   rounds (r-ev r)                        = rounds r
   rounds (r-bev r)                       = rounds r
+  rounds (r-bevᶜ r)                       = rounds r
+  rounds (r-evωᶜ r)                       = rounds r
+  rounds (r-evω r)                       = rounds r
   rounds (r-nout r)                      = rounds r
   rounds (r-iter r (go-on done))         = suc (rounds r)
   rounds (r-iter r (go-on (again rn)))   = suc (rounds r + rounds rn)
@@ -159,6 +165,9 @@ module _ (P : Sig → Set) where
     CutsIn (r-bapp q r)                    = CutsIn r
     CutsIn (r-ev r)                        = CutsIn r
     CutsIn (r-bev r)                       = CutsIn r
+    CutsIn (r-bevᶜ r)                       = CutsIn r
+    CutsIn (r-evωᶜ r)                       = CutsIn r
+    CutsIn (r-evω r)                       = CutsIn r
     CutsIn (r-nout r)                      = CutsIn r
     CutsIn (r-iter r (go-on done))         = CutsIn r
     CutsIn (r-iter r (go-on (again rn)))   = CutsIn r × CutsIn rn
@@ -208,6 +217,9 @@ module Budget (Cut : ∀ {s : Sig} {x : MV ⌜ sdom s ⌝} {t} → OpPath (opF s
     Spends (r-bapp q r)                    k l = Spends r k l
     Spends (r-ev r)                        k l = Spends r k l
     Spends (r-bev r)                       k l = Spends r k l
+    Spends (r-bevᶜ r)                      k l = Spends r k l
+    Spends (r-evωᶜ r)                      k l = Spends r k l
+    Spends (r-evω r)                       k l = Spends r k l
     Spends (r-nout r)                      k l = Spends r k l
     Spends (r-iter r (go-on done))         k l = Spends r k l
     Spends (r-iter r (go-on (again rn)))   k l = Σ ℕ λ m → Spends r k m × Again rn m l
@@ -296,6 +308,10 @@ module Budget (Cut : ∀ {s : Sig} {x : MV ⌜ sdom s ⌝} {t} → OpPath (opF s
     spends-plain r-copy s u = tt
     spends-plain r-lam s u = tt
     spends-plain r-lamω s u = tt
+    spends-plain (r-evωᶜ r) s u = spends-plain r s u
+    spends-plain (r-bevᶜ r) s u = spends-plain r s u
+    spends-plain r-lamωᶜ s u = tt
+    spends-plain (r-evω r) s u = spends-plain r s u
     spends-plain r-unf s u = tt
     spends-plain r-const s u = tt
     spends-plain (r-op p) s u = tt
@@ -342,6 +358,9 @@ module Budget (Cut : ∀ {s : Sig} {x : MV ⌜ sdom s ⌝} {t} → OpPath (opF s
         spends-uncut (r-bapp q r) s u = spends-uncut r s u
         spends-uncut (r-ev r) s u = spends-uncut r s u
         spends-uncut (r-bev r) s u = spends-uncut r s u
+        spends-uncut (r-bevᶜ r) s u = spends-uncut r s u
+        spends-uncut (r-evωᶜ r) s u = spends-uncut r s u
+        spends-uncut (r-evω r) s u = spends-uncut r s u
         spends-uncut (r-nout r) s u = spends-uncut r s u
         spends-uncut (r-iter r (go-on done)) s u = spends-uncut r s u
         spends-uncut (r-iter r (go-on (again rn))) (suc m , s₁ , s₂) (u₁ , u₂) = spends-uncut r s₁ u₁ , spends-uncut rn s₂ u₂
@@ -371,6 +390,7 @@ module Budget (Cut : ∀ {s : Sig} {x : MV ⌜ sdom s ⌝} {t} → OpPath (opF s
         spends-uncut r-copy s u = tt
         spends-uncut r-lam s u = tt
         spends-uncut r-lamω s u = tt
+        spends-uncut r-lamωᶜ s u = tt
         spends-uncut r-unf s u = tt
         spends-uncut r-const s u = tt
         spends-uncut (r-op p) s u = tt
@@ -428,6 +448,9 @@ module Budget (Cut : ∀ {s : Sig} {x : MV ⌜ sdom s ⌝} {t} → OpPath (opF s
     spent-rounds (r-bapp q r) s = spent-rounds r s
     spent-rounds (r-ev r) s = spent-rounds r s
     spent-rounds (r-bev r) s = spent-rounds r s
+    spent-rounds (r-bevᶜ r) s = spent-rounds r s
+    spent-rounds (r-evωᶜ r) s = spent-rounds r s
+    spent-rounds (r-evω r) s = spent-rounds r s
     spent-rounds (r-nout r) s = spent-rounds r s
     spent-rounds (r-iter r (go-on done)) s = up1 {a = rounds r} (spent-rounds r s)
     spent-rounds (r-iter r (go-on (again rn))) (suc m , s₁ , s₂) =
@@ -461,6 +484,7 @@ module Budget (Cut : ∀ {s : Sig} {x : MV ⌜ sdom s ⌝} {t} → OpPath (opF s
     spent-rounds r-copy s = same s
     spent-rounds r-lam s = same s
     spent-rounds r-lamω s = same s
+    spent-rounds r-lamωᶜ s = same s
     spent-rounds r-unf s = same s
     spent-rounds r-const s = same s
     spent-rounds (r-op p) s = same s
@@ -515,6 +539,9 @@ module Budget (Cut : ∀ {s : Sig} {x : MV ⌜ sdom s ⌝} {t} → OpPath (opF s
     cut-zero (r-bapp q r) s u e = cut-zero r s u e
     cut-zero (r-ev r) s u e = cut-zero r s u e
     cut-zero (r-bev r) s u e = cut-zero r s u e
+    cut-zero (r-bevᶜ r) s u e = cut-zero r s u e
+    cut-zero (r-evωᶜ r) s u e = cut-zero r s u e
+    cut-zero (r-evω r) s u e = cut-zero r s u e
     cut-zero (r-nout r) s u e = cut-zero r s u e
     cut-zero (r-iter r (go-on done)) s u ()
     cut-zero (r-iter r (go-on (again rn))) (suc m , s₁ , s₂) (u₁ , u₂) e = cut-zero rn s₂ u₂ e

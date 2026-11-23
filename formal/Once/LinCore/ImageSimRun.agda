@@ -35,7 +35,7 @@ open import Once.LinCore.Events fmt ans bw using (Outcome; Run; RunMap; gives; s
   m-id; m-one; m-b; m-μ; m-inl; m-inr; m-pair;
   r-id; r-∘; r-⊗; r-ρ; r-ρ⁻; r-λ; r-λ⁻; r-α; r-α⁻; r-swap; r-dup; r-drop; r-inl; r-inr; r-case₁; r-case₂; r-In; r-Outμ; r-clo;
   r-app; r-cata; r-cata-reuse; r-lend; r-lift; r-fst; r-snd; r-caseE₁; r-caseE₂; r-out; r-copy; r-bapp; r-lam; r-lamω; r-unf;
-  r-nout; r-ev; r-bev; r-const; r-op; r-opend; r-iter; r-exh; r-cut; r-tmp;
+  r-nout; r-ev; r-bev; r-lamωᶜ; r-bevᶜ; r-evωᶜ; r-evω; r-const; r-op; r-opend; r-iter; r-exh; r-cut; r-tmp;
   halted; exhausted; ios; ios-weave; io-call; io-halt; OK; OK-weave; Pre; exchange; noleak; play; play-weave; lent₀)
 open import Once.LinCore.Values fmt bw using (MV; Trace; TBal; TEv; TLeg; alloc; free; peek; io; stp; tmp; mone)
 open import Once.LinCore.Temps fmt ans bw using (NoT-Bal; TOK-≼; erase; erase-NoT; erase-clean; k-alloc; k-free; k-peek; plain; weave-post)
@@ -45,7 +45,7 @@ open import Once.LinCore.Spends fmt ans bw using (rounds; roundsM)
 open import Once.LinCore.Image fmt bw using (Codeᴵ; compᴵ; travᴵ; _⨾_; end; halted; call; untag; eapp; epop; eout; openω; kbodyω)
 open import Once.LinCore.ImageRun fmt ans bw using (Ret; []ʳ; frm;
   i-unpair; i-pair; i-swap; i-unit; i-prim; i-opend; i-untag; i-case₁; i-case₂; i-elend; i-eunlend; i-elift; i-efst; i-esnd;
-  i-eout; i-ecase₁; i-ecase₂; i-eapp; i-epop; i-call; i-reti; i-icall; i-icallω; i-iobs; i-nopen; i-open1; i-openω)
+  i-eout; i-ecase₁; i-ecase₂; i-eapp; i-epop; i-call; i-reti; i-icall; i-icallω; i-icallᵒ; i-open1ω; i-iobs; i-nopen; i-open1; i-openω)
 -- a ν is observed at the empty table (D440)
 open import Once.LinCore.ObsTable fmt ans bw using (TF; tf-id; tf-∘; tf-⊗; tf-case; tf-inl; tf-inr; tf-lul; tf-lul⁻; tf-drop; tf-lend; tf-bsnd; tf-bcopy; tf-bev; tf-unf; rt; obsT-tf; rt-obsT)
 open import Once.LinCore.ImageSim fmt ans bw using (StepsI; done; loops; oneI; PausedI; paused; OutI; out; HaltIf; SimRI; sim-code;

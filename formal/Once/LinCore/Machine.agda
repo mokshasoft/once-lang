@@ -135,6 +135,20 @@ data Step {T : Sh} : ∀ {sh sh′} → Code sh T → Cfg sh → ℕ → Trace �
                {i x} {es : Slots (Fn many g A B ∷ Es)} {os n}
            → see es ≡ mfn i (cω ds′ b γ) x
            → Step (eapply ⨾ k) (es ∥ os) n (peek i ∷ []) (enter ⨾ comp ds′ b (leave ⨾ epop ⨾ k)) (vw x es ∥ os) n
+  -- ★ D478: a closure that keeps its owned body: lent, its body on a copy; applied owned,
+  -- the cell freed and the owned body on the environment moved in (a plain one's: `ownBg`)
+  s-eapplyᶜ : ∀ {Es g X A B S} {k : Code (Fn many g A B ∷ Es ∣ B ∷ S) T} {Δ} {ds′ : Defs Δ} {b₀ : Tm Δ One (X ⊗t A) B} {γ : Gd g b₀}
+               {i x} {es : Slots (Fn many g A B ∷ Es)} {os n}
+           → see es ≡ mfn i (cωᶜ ds′ b₀ γ) x
+           → Step (eapply ⨾ k) (es ∥ os) n (peek i ∷ []) (enter ⨾ comp ds′ (cin b₀) (leave ⨾ epop ⨾ k)) (vw x es ∥ os) n
+  s-applyωᶜ : ∀ {Es g X A B S} {k : Code (Es ∣ B ∷ S) T} {Δ} {ds′ : Defs Δ} {b₀ : Tm Δ One (X ⊗t A) B} {γ : Gd g b₀}
+               {es i x a os n}
+           → Step (applyω ⨾ k) (es ∥ mpair (mfn i (cωᶜ ds′ b₀ γ) x) a ∷ˢ os) n (free i ∷ [])
+                  (enter ⨾ elift ⨾ comp ds′ b₀ (epop ⨾ leave ⨾ k)) (es ∥ mpair x a ∷ˢ os) n
+  s-applyω : ∀ {Es g X A B S} {k : Code (Es ∣ B ∷ S) T} {Δ} {ds′ : Defs Δ} {b : Tm Δ X A B} {γ : Gd g b}
+               {es i x a os n}
+           → Step (applyω ⨾ k) (es ∥ mpair (mfn i (cω ds′ b γ) x) a ∷ˢ os) n (free i ∷ [])
+                  (enter ⨾ elift ⨾ comp ds′ (ownBg b) (epop ⨾ leave ⨾ k)) (es ∥ mpair x a ∷ˢ os) n
   s-nopen  : ∀ {Γ} {ds : Defs Γ} {F S Es S′} {k : Code (Es ∣ LF∙ F (Nu F) ∷ S′) T} {es i} {p : MV (Coalg F S ⊗t S)} {os n}
            → Step (nopen ds ⨾ k) (es ∥ mnu i p ∷ˢ os) n (free i ∷ [])
                   (elift ⨾ comp ds (obsT F S) (epop ⨾ k)) (es ∥ p ∷ˢ os) n
@@ -365,6 +379,9 @@ mutual
   Plain (r-bapp q r)                    = Plain r
   Plain (r-ev r)                        = Plain r
   Plain (r-bev r)                       = Plain r
+  Plain (r-bevᶜ r)                      = Plain r
+  Plain (r-evωᶜ r)                      = Plain r
+  Plain (r-evω r)                       = Plain r
   Plain (r-nout r)                      = Plain r
   Plain (r-iter r (go-on done))         = Plain r
   Plain (r-iter r (go-on (again rn)))   = Plain r × Plain rn
@@ -473,6 +490,7 @@ sim (r-bapp {x = x} {o = o} q r) fr es eq os k =
 -- indirect call into its body, in a frame, as a label's
 sim r-lam   fr es eq os k = leaf (s-prim r-lam) (k-alloc ∷ [])
 sim r-lamω  fr es eq os k = leaf (s-prim r-lamω) (k-alloc ∷ [])
+sim r-lamωᶜ fr es eq os k = leaf (s-prim r-lamωᶜ) (k-alloc ∷ [])
 -- ★ a ν: building it is one step; observing it frees its cell and runs the
 -- compiled `obsT`, nothing lent
 sim r-unf   fr es eq os k = leaf (s-prim r-unf) (k-alloc ∷ [])
@@ -480,6 +498,16 @@ sim (r-nout {o = o} r) p es eq os k =
   thenR o (leaf s-nopen (k-free ∷ [])) (around o s-elift (sim r p (vw mone es) refl os _))
 sim (r-ev {o = o} r) p es eq os k =
   thenR o (leaf s-apply (k-free ∷ [])) (framedR o (around o s-elift (sim r p (vw mone es) refl os _)))
+sim (r-evωᶜ {o = o} r) p es eq os k =
+  thenR o (leaf s-applyωᶜ (k-free ∷ [])) (framedR o (around o s-elift (sim r p (vw mone es) refl os _)))
+sim (r-evω {o = o} r) p es eq os k =
+  thenR o (leaf s-applyω (k-free ∷ [])) (framedR o (around o s-elift (sim r p (vw mone es) refl os _)))
+sim (r-bevᶜ {B = B} {ds′ = ds′} {b₀ = b₀} {i = i} {x} {a} {o} {n} r) p es eq os k = bevR o (framedR o (sim r p (vw x es) refl os (leave ⨾ epop ⨾ k)))
+  where
+    bevR : (o : Outcome B) → ∀ {t} → SimR o (enter ⨾ comp ds′ (cin b₀) (leave ⨾ epop ⨾ k)) (vw x es ∥ a ∷ˢ os) n t (epop ⨾ k) (vw x es) os
+         → SimR o (eapply ⨾ k) (es ∥ a ∷ˢ os) n (peek i ∷ t) k es os
+    bevR (gives _ _) r′ = then (leaf (s-eapplyᶜ eq) (k-peek ∷ [])) (after r′ s-epop)
+    bevR (stop _)    r′ = thenP (leaf (s-eapplyᶜ eq) (k-peek ∷ [])) r′
 sim (r-bev {B = B} {ds′ = ds′} {b = b} {i = i} {x} {a} {o} {n} r) p es eq os k = bevR o (framedR o (sim r p (vw x es) refl os (leave ⨾ epop ⨾ k)))
   where
     bevR : (o : Outcome B) → ∀ {t} → SimR o (enter ⨾ comp ds′ b (leave ⨾ epop ⨾ k)) (vw x es ∥ a ∷ˢ os) n t (epop ⨾ k) (vw x es) os
