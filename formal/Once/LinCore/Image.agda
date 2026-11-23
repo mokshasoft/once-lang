@@ -204,47 +204,63 @@ keyω : ∀ {Γ l g X A B} (ds : Defs Γ) → Γ ∋[ l ] sg many g X A B → Ke
 keyω (ds ▸ _)      (there p) = keyω ds p
 keyω (ds ▸ bω b γ) here      = kbodyω ds b γ
 
-compᴵ : ∀ {Γ} (ds : Defs Γ) {E A B} → Tm Γ E A B → ∀ {Es S T} → Codeᴵ (E ∷ Es ∣ B ∷ S) T → Codeᴵ (E ∷ Es ∣ A ∷ S) T
-compᴵ ds lid k            = k
-compᴵ ds (f ∘l g) k       = compᴵ ds g (compᴵ ds f k)
-compᴵ ds (f ⊗l g) k       = unpair ⨾ compᴵ ds f (swap ⨾ compᴵ ds g (swap ⨾ pair ⨾ k))
-compᴵ ds (lcase f g) k    = case (compᴵ ds f k) (compᴵ ds g k)
-compᴵ ds (lcata F alg) k  = call (kfold ds F alg) ⨾ k
-compᴵ ds (liter f φ) k    = loop (compᴵ ds f end) ⨾ k
-compᴵ ds (lapp p) k       = untag ⨾ call (key1 ds p) ⨾ k
-compᴵ ds (lend b) k       = elend ⨾ compᴵ ds b (eunlend ⨾ k)
-compᴵ ds (blift f) k      = elift ⨾ compᴵ ds f (epop ⨾ k)
-compᴵ ds (bfst f) k       = efst ⨾ compᴵ ds f (epop ⨾ k)
-compᴵ ds (bsnd f) k       = esnd ⨾ compᴵ ds f (epop ⨾ k)
-compᴵ ds (bcaseE f g) k   = ecase (compᴵ ds f (epop ⨾ k)) (compᴵ ds g (epop ⨾ k))
-compᴵ ds (bout f) k       = eout ⨾ compᴵ ds f (epop ⨾ k)
-compᴵ ds (bcopy {E = E}) k = call (kcopy E) ⨾ k
-compᴵ ds (bapp p) k       = eapp ⨾ call (keyω ds p) ⨾ epop ⨾ k
-compᴵ ds ρl k             = prim ds ρl ⨾ k
-compᴵ ds ρl⁻ k            = prim ds ρl⁻ ⨾ k
-compᴵ ds lul k            = prim ds lul ⨾ k
-compᴵ ds lul⁻ k           = prim ds lul⁻ ⨾ k
-compᴵ ds lassoc k         = prim ds lassoc ⨾ k
-compᴵ ds lassoc⁻ k        = prim ds lassoc⁻ ⨾ k
-compᴵ ds lswap k          = prim ds lswap ⨾ k
-compᴵ ds (dup {A = A}) k  = unit ⨾ swap ⨾ pair ⨾ elend ⨾ esnd ⨾ call (kcopy A) ⨾ epop ⨾ eunlend ⨾ k
-compᴵ ds (drop {A = A}) k = call (kfree A) ⨾ k
-compᴵ ds linl k           = prim ds linl ⨾ k
-compᴵ ds linr k           = prim ds linr ⨾ k
-compᴵ ds lIn k            = prim ds lIn ⨾ k
-compᴵ ds lOutμ k          = prim ds lOutμ ⨾ k
-compᴵ ds (lclo F p) k     = prim ds (lclo F p) ⨾ k
-compᴵ ds (lconst v) k     = prim ds (lconst v) ⨾ k
-compᴵ ds (lop s) k        = prim ds (lop s) ⨾ k
-compᴵ ds lzero k          = stuck ⨾ k
-compᴵ ds (llam b γ) k     = prim ds (llam b γ) ⨾ k
-compᴵ ds (llamω b γ) k    = prim ds (llamω b γ) ⨾ k
-compᴵ ds lev k            = icall ⨾ k
-compᴵ ds bev k            = icallω ⨾ k
-compᴵ ds (llamωᶜ b₀ γ) k  = prim ds (llamωᶜ b₀ γ) ⨾ k
-compᴵ ds levω k           = oncify ⨾ icall ⨾ k
-compᴵ ds lunf k           = prim ds lunf ⨾ k
-compᴵ ds lout k           = iobs ds ⨾ k
+-- ★ D482: a term is the identity (its right factor's code then needs no swaps)
+data IsLid {Γ E A} : ∀ {B} → Tm Γ E A B → Set where
+  is-lid : IsLid lid
+
+isLid? : ∀ {Γ E A B} (g : Tm Γ E A B) → Maybe (IsLid g)
+isLid? lid = just is-lid
+{-# CATCHALL #-}
+isLid? _   = nothing
+
+mutual
+ compᴵ : ∀ {Γ} (ds : Defs Γ) {E A B} → Tm Γ E A B → ∀ {Es S T} → Codeᴵ (E ∷ Es ∣ B ∷ S) T → Codeᴵ (E ∷ Es ∣ A ∷ S) T
+ compᴵ ds lid k            = k
+ compᴵ ds (f ∘l g) k       = compᴵ ds g (compᴵ ds f k)
+ compᴵ ds (f ⊗l g) k       = unpair ⨾ compᴵ ds f (rightᴵ ds g (isLid? g) (pair ⨾ k))
+ compᴵ ds (lcase f g) k    = case (compᴵ ds f k) (compᴵ ds g k)
+ compᴵ ds (lcata F alg) k  = call (kfold ds F alg) ⨾ k
+ compᴵ ds (liter f φ) k    = loop (compᴵ ds f end) ⨾ k
+ compᴵ ds (lapp p) k       = untag ⨾ call (key1 ds p) ⨾ k
+ compᴵ ds (lend b) k       = elend ⨾ compᴵ ds b (eunlend ⨾ k)
+ compᴵ ds (blift f) k      = elift ⨾ compᴵ ds f (epop ⨾ k)
+ compᴵ ds (bfst f) k       = efst ⨾ compᴵ ds f (epop ⨾ k)
+ compᴵ ds (bsnd f) k       = esnd ⨾ compᴵ ds f (epop ⨾ k)
+ compᴵ ds (bcaseE f g) k   = ecase (compᴵ ds f (epop ⨾ k)) (compᴵ ds g (epop ⨾ k))
+ compᴵ ds (bout f) k       = eout ⨾ compᴵ ds f (epop ⨾ k)
+ compᴵ ds (bcopy {E = E}) k = call (kcopy E) ⨾ k
+ compᴵ ds (bapp p) k       = eapp ⨾ call (keyω ds p) ⨾ epop ⨾ k
+ compᴵ ds ρl k             = prim ds ρl ⨾ k
+ compᴵ ds ρl⁻ k            = prim ds ρl⁻ ⨾ k
+ compᴵ ds lul k            = prim ds lul ⨾ k
+ compᴵ ds lul⁻ k           = prim ds lul⁻ ⨾ k
+ compᴵ ds lassoc k         = prim ds lassoc ⨾ k
+ compᴵ ds lassoc⁻ k        = prim ds lassoc⁻ ⨾ k
+ compᴵ ds lswap k          = prim ds lswap ⨾ k
+ compᴵ ds (dup {A = A}) k  = unit ⨾ swap ⨾ pair ⨾ elend ⨾ esnd ⨾ call (kcopy A) ⨾ epop ⨾ eunlend ⨾ k
+ compᴵ ds (drop {A = A}) k = call (kfree A) ⨾ k
+ compᴵ ds linl k           = prim ds linl ⨾ k
+ compᴵ ds linr k           = prim ds linr ⨾ k
+ compᴵ ds lIn k            = prim ds lIn ⨾ k
+ compᴵ ds lOutμ k          = prim ds lOutμ ⨾ k
+ compᴵ ds (lclo F p) k     = prim ds (lclo F p) ⨾ k
+ compᴵ ds (lconst v) k     = prim ds (lconst v) ⨾ k
+ compᴵ ds (lop s) k        = prim ds (lop s) ⨾ k
+ compᴵ ds lzero k          = stuck ⨾ k
+ compᴵ ds (llam b γ) k     = prim ds (llam b γ) ⨾ k
+ compᴵ ds (llamω b γ) k    = prim ds (llamω b γ) ⨾ k
+ compᴵ ds lev k            = icall ⨾ k
+ compᴵ ds bev k            = icallω ⨾ k
+ compᴵ ds (llamωᶜ b₀ γ) k  = prim ds (llamωᶜ b₀ γ) ⨾ k
+ compᴵ ds levω k           = oncify ⨾ icall ⨾ k
+ compᴵ ds lunf k           = prim ds lunf ⨾ k
+ compᴵ ds lout k           = iobs ds ⨾ k
+
+ -- the right factor of a `⊗l`, on the second element: under two swaps, or (the identity) nothing
+ rightᴵ : ∀ {Γ} (ds : Defs Γ) {E B B′} (g : Tm Γ E B B′) → Maybe (IsLid g) → ∀ {Es A S T}
+        → Codeᴵ (E ∷ Es ∣ A ∷ B′ ∷ S) T → Codeᴵ (E ∷ Es ∣ A ∷ B ∷ S) T
+ rightᴵ ds g (just is-lid) k = k
+ rightᴵ ds g nothing       k = swap ⨾ compᴵ ds g (swap ⨾ k)
 
 -- a fold's node: its children folded in order (calls), the layer rebuilt
 travᴵ : ∀ {Γ} (ds : Defs Γ) F {E A} (alg : Tm Γ E (LF∙ F A) A) G → ∀ {Es S T}

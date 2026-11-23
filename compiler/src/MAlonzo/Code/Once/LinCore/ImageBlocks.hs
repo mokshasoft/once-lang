@@ -54,34 +54,34 @@ d_sB_22 v0 = coe MAlonzo.Code.Once.LinCore.Core.d_sB_690 (coe v0)
 d_Univ_30 a0 a1 = ()
 -- Once.LinCore.ImageBlocks._.Univ.keys
 d_keys_36 ::
-  MAlonzo.Code.Once.LinCore.Keys.T_Univ_1754 ->
+  MAlonzo.Code.Once.LinCore.Keys.T_Univ_1766 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]
 d_keys_36 v0
-  = coe MAlonzo.Code.Once.LinCore.Keys.d_keys_1766 (coe v0)
+  = coe MAlonzo.Code.Once.LinCore.Keys.d_keys_1778 (coe v0)
 -- Once.LinCore.ImageBlocks._.Univ.nus
 d_nus_38 ::
-  MAlonzo.Code.Once.LinCore.Keys.T_Univ_1754 ->
+  MAlonzo.Code.Once.LinCore.Keys.T_Univ_1766 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]
 d_nus_38 v0
-  = coe MAlonzo.Code.Once.LinCore.Keys.d_nus_1770 (coe v0)
+  = coe MAlonzo.Code.Once.LinCore.Keys.d_nus_1782 (coe v0)
 -- Once.LinCore.ImageBlocks._.Univ.obs
 d_obs_40 ::
-  MAlonzo.Code.Once.LinCore.Keys.T_Univ_1754 ->
+  MAlonzo.Code.Once.LinCore.Keys.T_Univ_1766 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]
 d_obs_40 v0
-  = coe MAlonzo.Code.Once.LinCore.Keys.d_obs_1772 (coe v0)
+  = coe MAlonzo.Code.Once.LinCore.Keys.d_obs_1784 (coe v0)
 -- Once.LinCore.ImageBlocks._.Univ.ops
 d_ops_42 ::
-  MAlonzo.Code.Once.LinCore.Keys.T_Univ_1754 ->
+  MAlonzo.Code.Once.LinCore.Keys.T_Univ_1766 ->
   [MAlonzo.Code.Once.LinCore.Core.T_Sig_680]
 d_ops_42 v0
-  = coe MAlonzo.Code.Once.LinCore.Keys.d_ops_1774 (coe v0)
+  = coe MAlonzo.Code.Once.LinCore.Keys.d_ops_1786 (coe v0)
 -- Once.LinCore.ImageBlocks._.Univ.tys
 d_tys_44 ::
-  MAlonzo.Code.Once.LinCore.Keys.T_Univ_1754 ->
+  MAlonzo.Code.Once.LinCore.Keys.T_Univ_1766 ->
   [MAlonzo.Code.Once.LinCore.Core.T_LTy_178]
 d_tys_44 v0
-  = coe MAlonzo.Code.Once.LinCore.Keys.d_tys_1768 (coe v0)
+  = coe MAlonzo.Code.Once.LinCore.Keys.d_tys_1780 (coe v0)
 -- Once.LinCore.ImageBlocks.own
 d_own_50 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
@@ -143,16 +143,16 @@ du_opBlks_58 v0
 d_imageBlocks_62 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   (MAlonzo.Code.Once.LinCore.Flat.T_Base_46 -> Integer) ->
-  MAlonzo.Code.Once.LinCore.Keys.T_Univ_1754 ->
+  MAlonzo.Code.Once.LinCore.Keys.T_Univ_1766 ->
   [MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_58]
 d_imageBlocks_62 ~v0 ~v1 v2 = du_imageBlocks_62 v2
 du_imageBlocks_62 ::
-  MAlonzo.Code.Once.LinCore.Keys.T_Univ_1754 ->
+  MAlonzo.Code.Once.LinCore.Keys.T_Univ_1766 ->
   [MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_58]
 du_imageBlocks_62 v0
   = coe
       MAlonzo.Code.Data.List.Base.du_concatMap_246 (coe du_opBlks_58)
-      (coe MAlonzo.Code.Once.LinCore.Keys.d_ops_1774 (coe v0))
+      (coe MAlonzo.Code.Once.LinCore.Keys.d_ops_1786 (coe v0))
 -- Once.LinCore.ImageBlocks.op-blocks
 d_op'45'blocks_72 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->

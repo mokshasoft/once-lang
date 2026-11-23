@@ -24939,3 +24939,31 @@ slot moves 0.84×; `loop-sum` 0.87×.
 **Next (the user's order, 2026-11-24): fewer moves (D482):** `f ⊗l lid` compiled without its two swaps (they cancel),
 then destination passing.
 **Landed** (2026-11-24): `make certified` green; 188 exit tests ×3 arches, seL4 ×3, `cabal test` (1025): all pass.
+
+## D482 — `f ⊗l lid` IS COMPILED WITHOUT ITS TWO SWAPS; DESTINATION PASSING, THE PLAN (2026-11-24, proposed — for the user's review)
+**Finding (the user's question: why so many copies?).** The linear core copies no data here. Its operand stack
+has positions fixed by the types, so every reorder the combinators ask for is physical word moves through
+`Output`. The front end's context routing (`FromExpr.split`, `weak`, `bindL`, `carryL`, `mixL`) re-routes a
+function's whole variable tuple at every binary construct with `split Γ … ⊗l lid` and friends, and `compᴵ`
+compiled every `f ⊗l g` as `unpair; f; swap; g; swap; pair` — for `g = lid` two swaps that cancel, each moving
+both elements (the left one is the routed rest of the context: quadratic in its size).
+**Decision.** `compᴵ ds (f ⊗l g) k = unpair ⨾ compᴵ ds f (rightᴵ ds g (isLid? g) (pair ⨾ k))`: the right factor
+under two swaps, or — the identity (`isLid? g ≡ just is-lid`) — nothing. The view `isLid?` is decided once in
+the code (its result is an argument of `rightᴵ`), so every proof splits on the `Maybe`, never on the term.
+Proved: `Keys.right-in`, `NoCell.right-nc`, `ImageSimRun.rightG/rightGS` (and the table-free `rightTF/rightTFS`,
+by `TF`'s constructors) with `lidG/lidGS`: a run of `lid` on the second element is the pair made at once
+(or a stop before any step; `r-tmp` woven as `tmpR`).
+**Measured** (D481 → D482, an unproved build of exactly this code, 108 programs): run 0.90× in total (median
+0.98×), `.text` 0.97×, slot moves 0.91×.
+**Destination passing — the remaining plan (not yet done).** What still moves, in order of cost (loop-sum's
+profile: ~25 block calls per iteration):
+1. the CALL PROTOCOL (D147): a block copies its argument into its own frame and its result back out; with
+   item d (single-call blocks joined into their caller) most of these calls, and their copies, go;
+2. a LEND copies the whole environment view into a new slot (`elend`: `mvSS e (e + wE) wE`): an environment
+   by reference (the previous view's address, not its words) removes a copy that grows with nesting depth;
+3. the remaining swaps (`lid ⊗l g`, `lswap`): a compile-time layout (a permutation of the operand stack's
+   elements, materialized only where a pair or a call needs them contiguous) makes a swap free.
+Each changes the frame layout relation (`CfgW`), the core of the lowering's simulation; they are the next
+size/speed work after the room checks (item e).
+**Landed** (2026-11-24, the `⊗l lid` part): `make certified` green; 188 exit tests ×3 arches, seL4 ×3, `cabal test`:
+all pass. Measured as the trial build: run 0.90×, `.text` 0.97×.

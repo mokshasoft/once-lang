@@ -29,7 +29,7 @@ open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Membership.Propositional.Properties using (∈-++⁺ˡ; ∈-++⁺ʳ; ∈-++⁻; ∈-map⁺; ∈-map⁻)
 open import Data.List.Relation.Unary.Any using (here; there; toSum)
 open import Data.List.Relation.Binary.Subset.Propositional using (_⊆_)
-open import Data.Maybe using (just; nothing)
+open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂; ∃)
 open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_]′)
 open import Data.Unit using (⊤; tt)
@@ -390,12 +390,16 @@ module In (U : Univ) where
   CIn (ecase c₁ c₂) = CIn c₁ × CIn c₂
   CIn halted        = ⊤
 
+  -- (D482: the right factor of a `⊗l`)
+  right-in : ∀ {Γ} (ds : Defs Γ) {E B B′} (h : Tm Γ E B B′) (m : Maybe (IsLid h)) {Es A S T}
+             {k : Codeᴵ (E ∷ Es ∣ A ∷ B′ ∷ S) T} → tmGot ds h ⊑U → CIn k → CIn (rightᴵ ds h m k)
+
   -- ★ a term's code is inside when what it names is
   comp-in : ∀ {Γ} (ds : Defs Γ) {E A B} (t : Tm Γ E A B) {Es S T} {k : Codeᴵ (E ∷ Es ∣ B ∷ S) T}
           → tmGot ds t ⊑U → CIn k → CIn (compᴵ ds t k)
   comp-in ds lid g ck            = ck
   comp-in ds (f ∘l h) g ck       = comp-in ds h (⊹ʳ g) (comp-in ds f (⊹ˡ g) ck)
-  comp-in ds (f ⊗l h) g ck       = tt , comp-in ds f (⊹ˡ g) (tt , comp-in ds h (⊹ʳ g) (tt , tt , ck))
+  comp-in ds (f ⊗l h) g ck       = tt , comp-in ds f (⊹ˡ g) (right-in ds h (isLid? h) (⊹ʳ g) (tt , ck))
   comp-in ds (lcase f h) g ck    = comp-in ds f (⊹ˡ g) ck , comp-in ds h (⊹ʳ g) ck
   comp-in ds (lcata F alg) g ck  = inK (gk g (here refl)) , ck
   comp-in ds (liter f φ) g ck    = comp-in ds f g tt , ck
@@ -433,6 +437,9 @@ module In (U : Univ) where
   comp-in ds levω g ck           = tt , (tt , ck)
   comp-in ds lunf g ck           = (gn g (here refl) , go g (here refl)) , ck
   comp-in ds lout g ck           = go g (here refl) , ck
+
+  right-in ds h (just is-lid) g ck = ck
+  right-in ds h nothing       g ck = tt , comp-in ds h g (tt , ck)
 
   ----------------------------------------------------------------------
   -- 5. ★ THE BLOCKS ARE INSIDE: each key's code, from what named it.

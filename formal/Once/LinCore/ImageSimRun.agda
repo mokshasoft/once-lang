@@ -18,7 +18,7 @@ open import Agda.Builtin.Equality using (_≡_; refl)
 open import Agda.Builtin.Sigma using (Σ; _,_; fst; snd)
 open import Data.Unit using (tt)
 open import Data.Product using (_×_)
-open import Data.Maybe using (just; nothing)
+open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Binary.PropositionalEquality using (subst; sym; cong; trans)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.IR.Semantics.Trace using (FFIAnswers)
@@ -30,19 +30,19 @@ module Once.LinCore.ImageSimRun
   (bw : Base → ℕ)
   where
 
-open import Once.LinCore.Core fmt using (Defs; LF∙; LTm; LTy; One; Tm; ε; cin; cin-gd)
+open import Once.LinCore.Core fmt using (Defs; LF∙; LTm; LTy; One; Tm; ε; cin; cin-gd; lid; _⊗t_)
 open import Once.LinCore.Events fmt ans bw using (Outcome; Run; RunMap; gives; stop; go-on; stopped; again; done; fm-gives; fm-stop;
   m-id; m-one; m-b; m-μ; m-inl; m-inr; m-pair;
   r-id; r-∘; r-⊗; r-ρ; r-ρ⁻; r-λ; r-λ⁻; r-α; r-α⁻; r-swap; r-dup; r-drop; r-inl; r-inr; r-case₁; r-case₂; r-In; r-Outμ; r-clo;
   r-app; r-cata; r-cata-reuse; r-lend; r-lift; r-fst; r-snd; r-caseE₁; r-caseE₂; r-out; r-copy; r-bapp; r-lam; r-lamω; r-unf;
   r-nout; r-ev; r-bev; r-lamωᶜ; r-bevᶜ; r-evωᶜ; r-evω; r-const; r-op; r-opend; r-iter; r-exh; r-cut; r-tmp;
   halted; exhausted; ios; ios-weave; io-call; io-halt; OK; OK-weave; Pre; exchange; noleak; play; play-weave; lent₀)
-open import Once.LinCore.Values fmt bw using (MV; Trace; TBal; TEv; TLeg; alloc; free; peek; io; stp; tmp; mone)
+open import Once.LinCore.Values fmt bw using (MV; mpair; Trace; TBal; TEv; TLeg; alloc; free; peek; io; stp; tmp; mone)
 open import Once.LinCore.Temps fmt ans bw using (NoT-Bal; TOK-≼; erase; erase-NoT; erase-clean; k-alloc; k-free; k-peek; plain; weave-post)
 open import Once.LinCore.Machine fmt ans bw using (Plain; PlainM; op-NoT)
 open import Once.LinCore.Code fmt bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots; []ᵉ; vw; ln; see; Cfg; _∥_)
 open import Once.LinCore.Spends fmt ans bw using (rounds; roundsM)
-open import Once.LinCore.Image fmt bw using (Codeᴵ; compᴵ; travᴵ; _⨾_; end; halted; call; untag; eapp; epop; eout; openω; kbodyω)
+open import Once.LinCore.Image fmt bw using (Codeᴵ; compᴵ; travᴵ; _⨾_; end; halted; call; untag; eapp; epop; eout; openω; kbodyω; pair; swap; IsLid; is-lid; isLid?; rightᴵ)
 open import Once.LinCore.ImageRun fmt ans bw using (Ret; []ʳ; frm;
   i-unpair; i-pair; i-swap; i-unit; i-prim; i-opend; i-untag; i-case₁; i-case₂; i-elend; i-eunlend; i-elift; i-efst; i-esnd;
   i-eout; i-ecase₁; i-ecase₂; i-eapp; i-epop; i-call; i-reti; i-icall; i-icallω; i-oncify; i-iobs; i-nopen; i-open1; i-openω)
@@ -77,6 +77,20 @@ SimK : ∀ {E A B} {e : MV E} → Outcome B → (∀ {Es S U} → Codeᴵ (E ∷
      → MV A → ℕ → Trace → ℕ → Ctx e B → Set
 SimK o c v n t j κ = SimRI o (c (Ctx.k κ)) (Ctx.ρ κ) (Ctx.es κ ∥ v ∷ˢ Ctx.os κ) n t (Ctx.k κ) (Ctx.ρ κ) (Ctx.es κ) (Ctx.os κ) j
 
+-- ★ D482: a run of the identity, on the second element (under a first): the pair made at once
+lidG : ∀ {Γ} {ds : Defs Γ} {E B} {e : MV E} {c c′ : MV B} {n n′ t} (rg : Run ds lid e c n (gives c′ n′) t) → Plain rg
+     → ∀ {Es S A Tr U} {es : Slots (E ∷ Es)} {a′ : MV A} {os : Stk S} {k : Codeᴵ (E ∷ Es ∣ (A ⊗t B) ∷ S) U} {ρ : Ret U Tr}
+     → OutI (pair ⨾ k) ρ (es ∥ a′ ∷ˢ c ∷ˢ os) n t k ρ (es ∥ mpair a′ c′ ∷ˢ os) n′ (rounds rg)
+lidG r-id p = leaf i-pair []
+lidG (r-tmp r w q) p {a′ = a′} = tmpR (gives (mpair a′ _) _) w (lidG r p)
+
+lidGS : ∀ {Γ} {ds : Defs Γ} {E B} {e : MV E} {c : MV B} {n t y} (rg : Run ds lid e c n (stop y) t) → Plain rg
+      → ∀ {Es S A Tr U} {es : Slots (E ∷ Es)} {a′ : MV A} {os : Stk S} {k : Codeᴵ (E ∷ Es ∣ (A ⊗t B) ∷ S) U} {ρ : Ret U Tr}
+      → Σ (PausedI (pair ⨾ k) ρ (es ∥ a′ ∷ˢ c ∷ˢ os) n t (rounds rg)) (HaltIf y)
+lidGS r-exh p {ρ = ρ} = (paused _ ρ _ _ [] [] [] done w-[] []≼ [] tt z≤n , refl)
+lidGS (r-tmp {o = stop y} r w q) p {es = es} {os = os} {k = k} {ρ = ρ} = tmpR (stop y) {k = k} {ρ = ρ} {es = es} {os = os} w (lidGS r p)
+lidGS (r-cut r q) ()
+
 mutual
   simMI : ∀ {Γ} {ds : Defs Γ} {E A F} {alg : Tm Γ E (LF∙ F A) A} {e : MV E} {G x o n t}
         → (rm : RunMap ds F alg e G x n o t) → PlainM rm
@@ -102,11 +116,10 @@ mutual
   simI r-id fr (ctx es eq os k ρ) = doneO
   simI (r-∘ rg (go-on {o = o} rf)) (pg , pf) (ctx es eq os k ρ) = thenR o (simI rg pg (ctx es eq os _ ρ)) (simI rf pf (ctx es eq os k ρ))
   simI (r-∘ rg stopped) pg (ctx es eq os k ρ) = P-[]H _ (simI rg pg (ctx es eq os _ ρ))
-  simI (r-⊗ {c = c} rf (go-on {u = a′} (fm-gives rg))) (pf , pg) (ctx es eq os k ρ) =
-    pre i-unpair (then (simI rf pf (ctx es eq (c ∷ˢ os) _ ρ))
-                       (pre i-swap (after (after (simI rg pg (ctx es eq (a′ ∷ˢ os) _ ρ)) i-swap) i-pair)))
-  simI (r-⊗ {c = c} rf (go-on {u = a′} (fm-stop rg))) (pf , pg) (ctx es eq os k ρ) =
-    preH _ i-unpair (thenH _ (simI rf pf (ctx es eq (c ∷ˢ os) _ ρ)) (preH _ i-swap (simI rg pg (ctx es eq (a′ ∷ˢ os) _ ρ))))
+  simI (r-⊗ {g = g} {c = c} rf (go-on {u = a′} (fm-gives rg))) (pf , pg) (ctx es eq os k ρ) =
+    pre i-unpair (then (simI rf pf (ctx es eq (c ∷ˢ os) _ ρ)) (rightG (isLid? g) rg pg es eq os k ρ))
+  simI (r-⊗ {g = g} {c = c} rf (go-on {u = a′} (fm-stop rg))) (pf , pg) (ctx es eq os k ρ) =
+    preH _ i-unpair (thenH _ (simI rf pf (ctx es eq (c ∷ˢ os) _ ρ)) (rightGS (isLid? g) rg pg es eq {a′} os k ρ))
   simI (r-⊗ {c = c} rf stopped) pf (ctx es eq os k ρ) = P-[]H _ (preH _ i-unpair (simI rf pf (ctx es eq (c ∷ˢ os) _ ρ)))
   simI r-ρ fr (ctx es eq os k ρ) = leaf (i-prim r-ρ) []
   simI r-ρ⁻ fr (ctx es eq os k ρ) = leaf (i-prim r-ρ⁻) []
@@ -216,6 +229,79 @@ mutual
   simI (r-cut r q) () (ctx es eq os k ρ)
   simI (r-tmp {o = o} r w p) fr (ctx es eq os k ρ) = tmpR o w (simI r fr (ctx es eq os k ρ))
 
+
+  -- ★ D482: the right factor of a `⊗l`, on the second element: under two swaps, or (the
+  -- identity) none — its run then gives its argument back (or stops before any step)
+  rightG : ∀ {Γ} {ds : Defs Γ} {E B B′} {g : Tm Γ E B B′} {e c c′ n n′ t} (m : Maybe (IsLid g))
+         → (rg : Run ds g e c n (gives c′ n′) t) → Plain rg
+         → ∀ {Es S A Tr U} (es : Slots (E ∷ Es)) → see es ≡ e → {a′ : MV A} (os : Stk S)
+           (k : Codeᴵ (E ∷ Es ∣ (A ⊗t B′) ∷ S) U) (ρ : Ret U Tr)
+         → OutI (rightᴵ ds g m (pair ⨾ k)) ρ (es ∥ a′ ∷ˢ c ∷ˢ os) n t k ρ (es ∥ mpair a′ c′ ∷ˢ os) n′ (rounds rg)
+  rightG nothing       rg pg es eq {a′} os k ρ =
+    pre i-swap (after (after (simI rg pg (ctx es eq (a′ ∷ˢ os) (swap ⨾ pair ⨾ k) ρ)) i-swap) i-pair)
+  rightG (just is-lid) rg pg es eq os k ρ = lidG rg pg
+
+  rightGS : ∀ {Γ} {ds : Defs Γ} {E B B′} {g : Tm Γ E B B′} {e c n t y} (m : Maybe (IsLid g))
+          → (rg : Run ds g e c n (stop y) t) → Plain rg
+          → ∀ {Es S A Tr U} (es : Slots (E ∷ Es)) → see es ≡ e → {a′ : MV A} (os : Stk S)
+            (k : Codeᴵ (E ∷ Es ∣ (A ⊗t B′) ∷ S) U) (ρ : Ret U Tr)
+          → Σ (PausedI (rightᴵ ds g m (pair ⨾ k)) ρ (es ∥ a′ ∷ˢ c ∷ˢ os) n t (rounds rg)) (HaltIf y)
+  rightGS nothing       rg pg es eq {a′} os k ρ = preH _ i-swap (simI rg pg (ctx es eq (a′ ∷ˢ os) (swap ⨾ pair ⨾ k) ρ))
+  rightGS (just is-lid) rg pg es eq os k ρ = lidGS rg pg
+
+  rightTF : ∀ {Γ} {ds : Defs Γ} {E B B′} {g : Tm Γ E B B′} {e c c′ n n′ t} (wg : TF g)
+          → (rg : Run ds g e c n (gives c′ n′) t) → Plain rg
+          → ∀ {Es S A Tr U} (es : Slots (E ∷ Es)) → see es ≡ e → {a′ : MV A} (os : Stk S)
+            (k : Codeᴵ (E ∷ Es ∣ (A ⊗t B′) ∷ S) U) (ρ : Ret U Tr)
+          → OutI (rightᴵ ε (rt wg) (isLid? (rt wg)) (pair ⨾ k)) ρ (es ∥ a′ ∷ˢ c ∷ˢ os) n t k ρ (es ∥ mpair a′ c′ ∷ˢ os) n′ (rounds rg)
+  rightTF tf-id rg pg es eq os k ρ = lidG rg pg
+  rightTF w@(tf-∘ x y) rg pg es eq {a′} os k ρ =
+    pre i-swap (after (after (simTF rg w pg (ctx es eq (a′ ∷ˢ os) (swap ⨾ pair ⨾ k) ρ)) i-swap) i-pair)
+  rightTF w@(tf-⊗ x y) rg pg es eq {a′} os k ρ =
+    pre i-swap (after (after (simTF rg w pg (ctx es eq (a′ ∷ˢ os) (swap ⨾ pair ⨾ k) ρ)) i-swap) i-pair)
+  rightTF w@(tf-case x y) rg pg es eq {a′} os k ρ =
+    pre i-swap (after (after (simTF rg w pg (ctx es eq (a′ ∷ˢ os) (swap ⨾ pair ⨾ k) ρ)) i-swap) i-pair)
+  rightTF w@(tf-inl) rg pg es eq {a′} os k ρ =
+    pre i-swap (after (after (simTF rg w pg (ctx es eq (a′ ∷ˢ os) (swap ⨾ pair ⨾ k) ρ)) i-swap) i-pair)
+  rightTF w@(tf-inr) rg pg es eq {a′} os k ρ =
+    pre i-swap (after (after (simTF rg w pg (ctx es eq (a′ ∷ˢ os) (swap ⨾ pair ⨾ k) ρ)) i-swap) i-pair)
+  rightTF w@(tf-lul) rg pg es eq {a′} os k ρ =
+    pre i-swap (after (after (simTF rg w pg (ctx es eq (a′ ∷ˢ os) (swap ⨾ pair ⨾ k) ρ)) i-swap) i-pair)
+  rightTF w@(tf-lul⁻) rg pg es eq {a′} os k ρ =
+    pre i-swap (after (after (simTF rg w pg (ctx es eq (a′ ∷ˢ os) (swap ⨾ pair ⨾ k) ρ)) i-swap) i-pair)
+  rightTF w@(tf-drop) rg pg es eq {a′} os k ρ =
+    pre i-swap (after (after (simTF rg w pg (ctx es eq (a′ ∷ˢ os) (swap ⨾ pair ⨾ k) ρ)) i-swap) i-pair)
+  rightTF w@(tf-lend x) rg pg es eq {a′} os k ρ =
+    pre i-swap (after (after (simTF rg w pg (ctx es eq (a′ ∷ˢ os) (swap ⨾ pair ⨾ k) ρ)) i-swap) i-pair)
+  rightTF w@(tf-bsnd x) rg pg es eq {a′} os k ρ =
+    pre i-swap (after (after (simTF rg w pg (ctx es eq (a′ ∷ˢ os) (swap ⨾ pair ⨾ k) ρ)) i-swap) i-pair)
+  rightTF w@(tf-bcopy) rg pg es eq {a′} os k ρ =
+    pre i-swap (after (after (simTF rg w pg (ctx es eq (a′ ∷ˢ os) (swap ⨾ pair ⨾ k) ρ)) i-swap) i-pair)
+  rightTF w@(tf-bev) rg pg es eq {a′} os k ρ =
+    pre i-swap (after (after (simTF rg w pg (ctx es eq (a′ ∷ˢ os) (swap ⨾ pair ⨾ k) ρ)) i-swap) i-pair)
+  rightTF w@(tf-unf) rg pg es eq {a′} os k ρ =
+    pre i-swap (after (after (simTF rg w pg (ctx es eq (a′ ∷ˢ os) (swap ⨾ pair ⨾ k) ρ)) i-swap) i-pair)
+
+  rightTFS : ∀ {Γ} {ds : Defs Γ} {E B B′} {g : Tm Γ E B B′} {e c n t y} (wg : TF g)
+           → (rg : Run ds g e c n (stop y) t) → Plain rg
+           → ∀ {Es S A Tr U} (es : Slots (E ∷ Es)) → see es ≡ e → {a′ : MV A} (os : Stk S)
+             (k : Codeᴵ (E ∷ Es ∣ (A ⊗t B′) ∷ S) U) (ρ : Ret U Tr)
+           → Σ (PausedI (rightᴵ ε (rt wg) (isLid? (rt wg)) (pair ⨾ k)) ρ (es ∥ a′ ∷ˢ c ∷ˢ os) n t (rounds rg)) (HaltIf y)
+  rightTFS tf-id rg pg es eq os k ρ = lidGS rg pg
+  rightTFS w@(tf-∘ x y) rg pg es eq {a′} os k ρ = preH _ i-swap (simTF rg w pg (ctx es eq (a′ ∷ˢ os) (swap ⨾ pair ⨾ k) ρ))
+  rightTFS w@(tf-⊗ x y) rg pg es eq {a′} os k ρ = preH _ i-swap (simTF rg w pg (ctx es eq (a′ ∷ˢ os) (swap ⨾ pair ⨾ k) ρ))
+  rightTFS w@(tf-case x y) rg pg es eq {a′} os k ρ = preH _ i-swap (simTF rg w pg (ctx es eq (a′ ∷ˢ os) (swap ⨾ pair ⨾ k) ρ))
+  rightTFS w@(tf-inl) rg pg es eq {a′} os k ρ = preH _ i-swap (simTF rg w pg (ctx es eq (a′ ∷ˢ os) (swap ⨾ pair ⨾ k) ρ))
+  rightTFS w@(tf-inr) rg pg es eq {a′} os k ρ = preH _ i-swap (simTF rg w pg (ctx es eq (a′ ∷ˢ os) (swap ⨾ pair ⨾ k) ρ))
+  rightTFS w@(tf-lul) rg pg es eq {a′} os k ρ = preH _ i-swap (simTF rg w pg (ctx es eq (a′ ∷ˢ os) (swap ⨾ pair ⨾ k) ρ))
+  rightTFS w@(tf-lul⁻) rg pg es eq {a′} os k ρ = preH _ i-swap (simTF rg w pg (ctx es eq (a′ ∷ˢ os) (swap ⨾ pair ⨾ k) ρ))
+  rightTFS w@(tf-drop) rg pg es eq {a′} os k ρ = preH _ i-swap (simTF rg w pg (ctx es eq (a′ ∷ˢ os) (swap ⨾ pair ⨾ k) ρ))
+  rightTFS w@(tf-lend x) rg pg es eq {a′} os k ρ = preH _ i-swap (simTF rg w pg (ctx es eq (a′ ∷ˢ os) (swap ⨾ pair ⨾ k) ρ))
+  rightTFS w@(tf-bsnd x) rg pg es eq {a′} os k ρ = preH _ i-swap (simTF rg w pg (ctx es eq (a′ ∷ˢ os) (swap ⨾ pair ⨾ k) ρ))
+  rightTFS w@(tf-bcopy) rg pg es eq {a′} os k ρ = preH _ i-swap (simTF rg w pg (ctx es eq (a′ ∷ˢ os) (swap ⨾ pair ⨾ k) ρ))
+  rightTFS w@(tf-bev) rg pg es eq {a′} os k ρ = preH _ i-swap (simTF rg w pg (ctx es eq (a′ ∷ˢ os) (swap ⨾ pair ⨾ k) ρ))
+  rightTFS w@(tf-unf) rg pg es eq {a′} os k ρ = preH _ i-swap (simTF rg w pg (ctx es eq (a′ ∷ˢ os) (swap ⨾ pair ⨾ k) ρ))
+
   -- ★ a TABLE-FREE term's run, on its code at the empty table (D440): as
   -- `simI`, by the run (the observation's block is `kobs ε`)
   simTF : ∀ {Γ} {ds : Defs Γ} {E A B} {f : Tm Γ E A B} {e v o n t}
@@ -229,10 +315,9 @@ mutual
     thenR o (simTF rg wg pg (ctx es eq os _ ρ)) (simTF rf wf pf (ctx es eq os k ρ))
   simTF (r-∘ rg stopped) (tf-∘ wf wg) pg (ctx es eq os k ρ) = P-[]H _ (simTF rg wg pg (ctx es eq os _ ρ))
   simTF (r-⊗ {c = c} rf (go-on {u = a′} (fm-gives rg))) (tf-⊗ wf wg) (pf , pg) (ctx es eq os k ρ) =
-    pre i-unpair (then (simTF rf wf pf (ctx es eq (c ∷ˢ os) _ ρ))
-                       (pre i-swap (after (after (simTF rg wg pg (ctx es eq (a′ ∷ˢ os) _ ρ)) i-swap) i-pair)))
+    pre i-unpair (then (simTF rf wf pf (ctx es eq (c ∷ˢ os) _ ρ)) (rightTF wg rg pg es eq os k ρ))
   simTF (r-⊗ {c = c} rf (go-on {u = a′} (fm-stop rg))) (tf-⊗ wf wg) (pf , pg) (ctx es eq os k ρ) =
-    preH _ i-unpair (thenH _ (simTF rf wf pf (ctx es eq (c ∷ˢ os) _ ρ)) (preH _ i-swap (simTF rg wg pg (ctx es eq (a′ ∷ˢ os) _ ρ))))
+    preH _ i-unpair (thenH _ (simTF rf wf pf (ctx es eq (c ∷ˢ os) _ ρ)) (rightTFS wg rg pg es eq {a′} os k ρ))
   simTF (r-⊗ {c = c} rf stopped) (tf-⊗ wf wg) pf (ctx es eq os k ρ) = P-[]H _ (preH _ i-unpair (simTF rf wf pf (ctx es eq (c ∷ˢ os) _ ρ)))
   simTF r-λ tf-lul fr (ctx es eq os k ρ) = leaf (i-prim r-λ) []
   simTF r-λ⁻ tf-lul⁻ fr (ctx es eq os k ρ) = leaf (i-prim r-λ⁻) []

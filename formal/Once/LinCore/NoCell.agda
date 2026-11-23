@@ -17,6 +17,7 @@
 {-# OPTIONS --guardedness #-}
 
 open import Data.Nat using (ℕ)
+open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_; _++_; map)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Membership.Propositional.Properties using (∈-++⁻; ∈-map⁻)
@@ -86,11 +87,15 @@ sub-nc (body s)   n = proj₁ (sub-nc s n)
 -- 2. ★ COMPILED CODE HAS NONE: a term, a fold's traversal, a copy, a free.
 ------------------------------------------------------------------------
 
+-- (D482: the right factor of a `⊗l`)
+right-nc : ∀ {Γ} (ds : Defs Γ) {E B B′} (g : Tm Γ E B B′) (m : Maybe (IsLid g)) {Es A S T}
+           {k : Codeᴵ (E ∷ Es ∣ A ∷ B′ ∷ S) T} → NoCellC k → NoCellC (rightᴵ ds g m k)
+
 comp-nc : ∀ {Γ} (ds : Defs Γ) {E A B} (t : Tm Γ E A B) {Es S T} {k : Codeᴵ (E ∷ Es ∣ B ∷ S) T}
         → NoCellC k → NoCellC (compᴵ ds t k)
 comp-nc ds lid           n = n
 comp-nc ds (f ∘l g)      n = comp-nc ds g (comp-nc ds f n)
-comp-nc ds (f ⊗l g)      n = tt , comp-nc ds f (tt , comp-nc ds g (tt , tt , n))
+comp-nc ds (f ⊗l g)      n = tt , comp-nc ds f (right-nc ds g (isLid? g) (tt , n))
 comp-nc ds (lcase f g)   n = comp-nc ds f n , comp-nc ds g n
 comp-nc ds (lcata F alg) n = tt , n
 comp-nc ds (liter f φ)   n = comp-nc ds f tt , n
@@ -128,6 +133,9 @@ comp-nc ds (llamωᶜ b₀ γ) n = tt , n
 comp-nc ds levω          n = tt , (tt , n)
 comp-nc ds lunf          n = tt , n
 comp-nc ds lout          n = tt , n
+
+right-nc ds g (just is-lid) n = n
+right-nc ds g nothing       n = tt , comp-nc ds g (tt , n)
 
 trav-nc : ∀ {Γ} (ds : Defs Γ) F {E A} (alg : Tm Γ E (LF∙ F A) A) G {Es S T} {k : Codeᴵ (E ∷ Es ∣ LF∙ G A ∷ S) T}
         → NoCellC k → NoCellC (travᴵ ds F alg G k)
