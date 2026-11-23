@@ -24856,4 +24856,5 @@ against the IR's meaning, under a syntactic premise on the arms.
 (C) Change `copair'`'s meaning to evaluate its arms lazily (a surface semantics change; usage `Ψ₁ ⊔ᵘ Ψ₂`).
 **Recommendation: (B).** It keeps the meaning, needs no new syntax (GOAL: size and speed through compilation,
 not syntax), and covers the idiomatic combinator style the corpus uses; (C) changes when effects happen.
-Until decided, nothing changes; plan 0.146 continues with §5 item 8 c (the allocator as a call).
+(B) is plan 0.146 §5 item 8 h's "saturated combinators translated as the core terms they mean", already
+agreed, so it goes ahead; the arms' premise (closure constructions only) is the part for review.
