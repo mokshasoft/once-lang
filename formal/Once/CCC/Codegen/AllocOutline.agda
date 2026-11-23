@@ -40,7 +40,9 @@ open import Data.Char using (Char)
 open import Data.String using (String; toList) renaming (_++_ to _++ˢ_)
 open import Data.List.Properties using (++-cancelˡ; ∷-injective)
 open import Relation.Nullary using (¬_)
-open import Once.Postulates using (toList-++)
+open import Once.Postulates using (toList-++; extensionality)
+open import Relation.Nullary using (Dec; yes; no)
+open import Once.CCC.FrameSemantics using (module FrameSemantics)
 open import Once.Target.Symbol using (showNat)
 open import Once.Adequacy.LabelSymbols using (showNat-inj)
 open import Once.CCC.Codegen.AllocExpand using (alloc-fn; free-fn; site-call; prim-routine; prim-routines; skip; skip-label; outline)
@@ -475,6 +477,19 @@ routines-at (k′ ∷ ks) k mem rest = by (k′ ≡ᵇ k) refl
       where module R = Routines (routines-at ks k (in-tail (ne-of e) mem) rest)
 
 ------------------------------------------------------------------------
+-- A routine's entry clears a frame of no slots: no slot changes (extensionality)
+------------------------------------------------------------------------
+
+private
+  clear-aux0 : ∀ {f f′ : FrameSemantics.Frame FS} (k′ : ℕ) (dx : Dec (f ≡ f′)) (o : Maybe (StoredValue FS))
+             → MemOps.clear-frame-aux {FS} {f} {f′} {k′} {0} dx (Data.Nat.Properties._<?_ k′ 0) o ≡ o
+  clear-aux0 k′ (yes _) o = refl
+  clear-aux0 k′ (no _)  o = refl
+
+clear0 : ∀ (m : StackMem FS) (f : FrameSemantics.Frame FS) → MemOps.clear-frame {FS} m f 0 ≡ m
+clear0 m f = extensionality (λ f′ → extensionality (λ k′ → clear-aux0 k′ (FrameSemantics._≟F_ FS f f′) (m f′ k′)))
+
+------------------------------------------------------------------------
 -- ★ The outlined program's scans: the program's own, `d` on
 ------------------------------------------------------------------------
 
@@ -518,3 +533,14 @@ module Out (ks : List ℕ) (b : ℕ) (T : AbstractTrace) where
   routines-out k mem = subst (λ z → Routines z (rp k) k) (sym shape) (record
     { at-ae = R.at-ae ; at-a = R.at-a ; at-ar = R.at-ar ; at-fe = R.at-fe ; at-f = R.at-f ; at-fr = R.at-fr })
     where module R = Routines (routines-at ks k mem (instr-ctrl (c-label skip-label) ∷ map site-call T))
+
+  -- past the start, the outlined program fetches the program's instruction, called, `d` on
+  fetch-out : ∀ q → fetch P′ (d + suc q) ≡ Data.Maybe.map site-call (fetch T q)
+  fetch-out q =
+    trans (cong (fetch P′) (+-suc d q))
+      (trans (fetch-++-right (skip ks) (map site-call T) q) (fetch-map T q))
+    where
+      fetch-map : ∀ (xs : AbstractTrace) n → fetch (map site-call xs) n ≡ Data.Maybe.map site-call (fetch xs n)
+      fetch-map []       n       = refl
+      fetch-map (x ∷ xs) zero    = refl
+      fetch-map (x ∷ xs) (suc n) = fetch-map xs n
