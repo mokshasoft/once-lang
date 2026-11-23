@@ -24837,3 +24837,23 @@ all three, `cabal test`: all pass.
 **Measured** (`tests/perf-compare.sh`, user instructions retired, before → after): `loop-sum` at N = 1000
 4.94M → 2.45M (master 0.66M); `list-build-sum` 1.05e9 → 2.64e8 (master 1.23M). The owned call removed the
 copy per call; `list-build-sum` still grows ×4 per doubling, for another cause (D479).
+
+## D479 — A CASE COMBINATOR OVER CLOSURE-BUILDING ARMS COPIES ITS SHARED CONTEXT INTO EACH ARM (2026-11-23, proposed — for the user's review)
+**Found** (after D478): `bench/list-build-sum` still grows ×4 per doubling (2.64e8 at N = 1000; master 1.23M).
+Its loop is `step p = case (next p) (stop p) (fst p == 0)`. `copair'` charges both arms (`Ψ₁ +ᵘ Ψ₂`) and the IR
+evaluates both before the case (`elaborate`'s `copairIR ∘ ⟨ f ∘ envˡ , g ∘ envʳ ⟩`: an arm that emits does so
+once, outside), so the bridge's `split` copies `p`, the whole list, into both closures each round, and drops
+one. The same loop written `step p = destruct (fst p == 0) of { Left u -> next p u ; Right u -> stop p u }`
+is linear: 0.59M / 1.18M / 2.37M at N = 250 / 500 / 1000 (1.9× master), the same exit codes. Master shares the
+list; the linear core copies a many-used value.
+**Options.**
+(A) Leave the semantics; the cost model says a value used by two arms is copied (document it; the linear
+optimizations of plan 0.154, e.g. last-use moves and borrows into closures, remove what they can).
+(B) A bridge rewrite: `app (copair' f g) x` whose arms are closure constructions (a `lam`, or a partial
+application of a definition whose body is a `lam`: pure and total, so evaluating them inside the arm changes no
+trace) compiles as a `destruct` (one arm built, the context distributed, not split). Proved in `FromExprOk`
+against the IR's meaning, under a syntactic premise on the arms.
+(C) Change `copair'`'s meaning to evaluate its arms lazily (a surface semantics change; usage `Ψ₁ ⊔ᵘ Ψ₂`).
+**Recommendation: (B).** It keeps the meaning, needs no new syntax (GOAL: size and speed through compilation,
+not syntax), and covers the idiomatic combinator style the corpus uses; (C) changes when effects happen.
+Until decided, nothing changes; plan 0.146 continues with §5 item 8 c (the allocator as a call).
