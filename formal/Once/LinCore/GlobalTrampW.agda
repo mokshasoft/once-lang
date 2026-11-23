@@ -244,13 +244,13 @@ module TrampW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   -- ★ a many-use dispatch (`icallω`): into the trampoline its cell's word 1 names, at its depth 0
   -- (TrW0): the area saved, the cell in `Input1`
   tw-disp : ∀ {Γ′ g X A B} {ds′ : Defs Γ′} {b : Tm Γ′ X A B} {γ : Gd g b} (c y M : ℕ) {i} {x : MV X} {a : MV A}
-              {wx wa : List (StoredValue FS)} {w₁ w₂ wf : StoredValue FS} {fs}
+              {wx wa : List (StoredValue FS)} {w₁ w₂ wf wo : StoredValue FS} {fs}
           → Seg image (fpc fs) (restore-input c ∷ lea-slot y ∷ instr-save-closure-reg ∷ instr-call-closure ∷ [])
           → LocState.halted (floc fs) ≡ false
           → c Data.Nat.< AllocState.frame-slots (falloc fs) → y Data.Nat.< AllocState.frame-slots (falloc fs)
           → slot fs c ≡ just (cellPtr i)
           → VW (LocState.heapMem (floc fs)) x wx
-          → Rel.At {FS} U wordOf (LocState.heapMem (floc fs)) i 0 (cellPtr i ∷ w₁ ∷ w₂ ∷ wf ∷ wx)
+          → Rel.At {FS} U wordOf (LocState.heapMem (floc fs)) i 0 (cellPtr i ∷ w₁ ∷ w₂ ∷ wf ∷ wo ∷ wx)
           → Rel.CodeOf {FS} U wordOf (_ , kbodyω ds′ b γ) w₁
           → VW (LocState.heapMem (floc fs)) a wa → SlotsAt (slot fs) ((M ∸ wsz A) + y) wa
           → (∀ k → k Data.Nat.< wsz A → ExecFinal.in-window {FS} (ExecFinal.live-frames {FS} (falloc fs)) (AllocState.current-frame (falloc fs)) ((k + (M ∸ wsz A)) + y) ≡ true)
@@ -278,7 +278,7 @@ module TrampW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                ; w0-run = trans (cw-halt CL) h ; w0-slots = cw-slots CL
                ; w0-wx = wx ; w0-wa = wa ; w0-af = cf ; w0-area = y
                ; w0-x = subst (λ r → VW r x wx) (sym (cw-heap CL)) px
-               ; w0-at = subst (λ r → Rel.At {FS} U wordOf r i hdr wx) (sym (cw-heap CL)) (proj₂ (proj₂ (proj₂ (proj₂ words))))
+               ; w0-at = subst (λ r → Rel.At {FS} U wordOf r i hdr wx) (sym (cw-heap CL)) (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ words)))))
                ; w0-a = subst (λ r → VW r a wa) (sym (cw-heap CL)) pa
                ; w0-in = cw-in CL
                ; w0-s0 = subst (λ g′ → LocState.stackMem (floc fs′) g′ 0 ≡ just (SV-Ptr (AtStack cf y))) (sym (cw-frame CL)) (cw-s CL)
