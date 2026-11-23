@@ -728,11 +728,14 @@ module Out (ks : List ℕ) (b : ℕ) (T : AbstractTrace) where
   -- ★ THE START: the program's start, then the jump over the routines and the
   -- skip label, reach the program's start step, shifted
   start-step : ∀ (s₀ : FlatState) → fpc s₀ ≡ 0 → fret s₀ ≡ [] → LocState.halted (floc s₀) ≡ false
-             → Σ FlatState λ fs″ → FlatSteps P′ 3 s₀ fs″ × Shifted d fs″ (flat-exec-instr (instr-ctrl (c-start b)) P s₀)
+             → Σ FlatState λ fs″ → Σ (FlatSteps P′ 3 s₀ fs″) λ c → (chain-events c ≡ []) × (ctrl-of (instr-ctrl (c-start b)) ≤ chain-ctrls c)
+                 × Shifted d fs″ (flat-exec-instr (instr-ctrl (c-start b)) P s₀)
   start-step s₀ p0 r0 h =
     s₃ , (h , trans (cong (fetch P′) p0) refl)
        ∷ (h , trans (cong (λ z → fetch P′ (suc z)) p0) refl)
        ∷ subst (λ mj → FlatSteps P′ 1 (do-jump mj s₁) s₃) (sym find-skip) ((h , at-skip) ∷ [])
+       , ce-subst (λ mj → do-jump mj s₁) (sym find-skip) ((h , at-skip) ∷ [])
+       , Data.Nat.Properties.m≤m+n _ _
        , refl , refl , pcs , trans r0 (cong (map (d +_)) (sym r0)) , refl , refl
     where
       s₁ s₃ : FlatState
@@ -833,3 +836,26 @@ module Out (ks : List ℕ) (b : ℕ) (T : AbstractTrace) where
           1 , trans (ev-halt 0 P′ fs′ (hg e)) (trans (cong (λ L → flat-events-step true 0 P′ (record fs′ { floc = L })) lo) (sym (ev-halt n P fs e)))
             , subst (_≤ flat-ctrls 1 P′ fs′) (sym (ct-halt n P fs e)) z≤n
         by-h false e = by-pc (fpc fs) refl e
+
+    -- ★★ FROM THE START: the program's start step, then shifted states all the way
+    start-ev : ∀ (s₀ : FlatState) → fpc s₀ ≡ 0 → fret s₀ ≡ [] → LocState.halted (floc s₀) ≡ false
+             → Good (flat-exec-instr (instr-ctrl (c-start b)) P s₀)
+             → ∀ N → Σ ℕ λ m → (flat-events (suc m) P′ s₀ ≡ flat-events (suc N) P s₀)
+                              × (flat-ctrls (suc N) P s₀ ≤ flat-ctrls (suc m) P′ s₀)
+    start-ev s₀ p0 r0 h G N = fin (start-step s₀ p0 r0 h)
+      where
+        f0 : fetch P (fpc s₀) ≡ just (instr-ctrl (c-start b))
+        f0 = cong (fetch P) p0
+        fin : (Σ FlatState λ fs″ → Σ (FlatSteps P′ 3 s₀ fs″) λ c → (chain-events c ≡ []) × (ctrl-of (instr-ctrl (c-start b)) ≤ chain-ctrls c)
+                 × Shifted d fs″ (flat-exec-instr (instr-ctrl (c-start b)) P s₀))
+            → Σ ℕ λ m → (flat-events (suc m) P′ s₀ ≡ flat-events (suc N) P s₀) × (flat-ctrls (suc N) P s₀ ≤ flat-ctrls (suc m) P′ s₀)
+        fin (fs″ , c , ce , cc , sh) = fin′ (ev N G sh)
+          where
+            fin′ : Σ ℕ (λ m → Same m fs″ N (flat-exec-instr (instr-ctrl (c-start b)) P s₀))
+                 → Σ ℕ λ m → (flat-events (suc m) P′ s₀ ≡ flat-events (suc N) P s₀) × (flat-ctrls (suc N) P s₀ ≤ flat-ctrls (suc m) P′ s₀)
+            fin′ (m′ , ee , ec) =
+              suc (suc m′)
+              , trans (flat-events-steps c m′) (trans (cong₂ _▹_ ce ee) (sym (ev-unfold N P s₀ h f0)))
+              , subst (_≤ flat-ctrls (3 + m′) P′ s₀) (sym (ct-unfold N P s₀ h f0))
+                  (subst (ctrl-of (instr-ctrl (c-start b)) + flat-ctrls N P (flat-exec-instr (instr-ctrl (c-start b)) P s₀) ≤_)
+                         (sym (flat-ctrls-steps c m′)) (≤-+ cc ec))
