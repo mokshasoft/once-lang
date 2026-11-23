@@ -119,5 +119,5 @@ import Once.LinCore.CoreFile
 
 core-built : ∀ (arch : Arch) (doOpt : Bool) (m : Resolved) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) →
              AdmissibleM arch (Resolved.rmodule m) → Co.moduleToIR m ≡ just ir →
-             Σ (Emit.FileOf arch) (λ F → Once.LinCore.Emit.coreFileOf arch doOpt Once.CCC.Codegen.AllocExpandClasses.alloc-slab m ≡ inj₂ F)
-core-built arch doOpt m ir adm mi = Once.LinCore.CoreFile.Prog.core-built arch Once.CCC.Codegen.AllocExpandClasses.alloc-slab m ir mi doOpt adm
+             Σ (Emit.FileOf arch) (λ F → Once.LinCore.Emit.coreFileOf arch doOpt Once.CCC.Codegen.AllocExpandClasses.alloc-slab Data.Bool.false m ≡ inj₂ F)
+core-built arch doOpt m ir adm mi = Once.LinCore.CoreFile.Prog.core-built arch Once.CCC.Codegen.AllocExpandClasses.alloc-slab Data.Bool.false m ir mi doOpt adm

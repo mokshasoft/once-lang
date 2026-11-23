@@ -43,45 +43,45 @@ open import Once.CCC.Codegen.AllocExpandClasses using (Alloc)
 import Once.LinCore.ExprLinked
 
 -- ★ the gates' error is the compiler's
-core-err : ∀ (arch : Arch) (a : Alloc) (mod : Resolved) {e : String} (X : String ⊎ List CompiledFun) → X ≡ inj₁ e → coreAfter arch a mod X ≡ inj₁ e
-core-err arch a mod .(inj₁ _) refl = refl
+core-err : ∀ (arch : Arch) (a : Alloc) (inl : Bool) (mod : Resolved) {e : String} (X : String ⊎ List CompiledFun) → X ≡ inj₁ e → coreAfter arch a inl mod X ≡ inj₁ e
+core-err arch a inl mod .(inj₁ _) refl = refl
 
 -- ★ a library's file is the empty one (D465)
-core-lib : ∀ (arch : Arch) (a : Alloc) (mod : Resolved) → moduleToIR mod ≡ nothing → ∀ funs
-         → coreAfter arch a mod (inj₂ funs) ≡ inj₂ (toFileOf arch (Backend.empty (backend arch)))
-core-lib arch a mod mi funs = subst (λ r → coreAt arch a mod r ≡ inj₂ (toFileOf arch (Backend.empty (backend arch)))) (sym mi) refl
+core-lib : ∀ (arch : Arch) (a : Alloc) (inl : Bool) (mod : Resolved) → moduleToIR mod ≡ nothing → ∀ funs
+         → coreAfter arch a inl mod (inj₂ funs) ≡ inj₂ (toFileOf arch (Backend.empty (backend arch)))
+core-lib arch a inl mod mi funs = subst (λ r → coreAt arch a inl mod r ≡ inj₂ (toFileOf arch (Backend.empty (backend arch)))) (sym mi) refl
 
 -- the compiler's file comes after master's gates passed
-core-gated : ∀ (arch : Arch) (doOpt : Bool) (a : Alloc) (mod : Resolved) {F}
-           → coreFileOf arch doOpt a mod ≡ inj₂ F → Σ (List CompiledFun) λ c → checkModule Heap doOpt arch mod ≡ inj₂ c
-core-gated arch doOpt a mod {F} e = go (checkModule Heap doOpt arch mod) refl
+core-gated : ∀ (arch : Arch) (doOpt : Bool) (a : Alloc) (inl : Bool) (mod : Resolved) {F}
+           → coreFileOf arch doOpt a inl mod ≡ inj₂ F → Σ (List CompiledFun) λ c → checkModule Heap doOpt arch mod ≡ inj₂ c
+core-gated arch doOpt a inl mod {F} e = go (checkModule Heap doOpt arch mod) refl
   where
     go : ∀ X → checkModule Heap doOpt arch mod ≡ X → Σ (List CompiledFun) λ c → checkModule Heap doOpt arch mod ≡ inj₂ c
-    go (inj₁ e′) x = case trans (sym e) (cong (coreAfter arch a mod) x) of λ ()
+    go (inj₁ e′) x = case trans (sym e) (cong (coreAfter arch a inl mod) x) of λ ()
     go (inj₂ c) x = c , x
 
 -- ★ A PROGRAM'S FILE: the new image of its sources at their main
-module Prog (arch : Arch) (a : Alloc) (mod : Resolved) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) (mi : moduleToIR mod ≡ just ir) where
+module Prog (arch : Arch) (a : Alloc) (inl : Bool) (mod : Resolved) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) (mi : moduleToIR mod ≡ just ir) where
   module EPm = Once.LinCore.ExprLinked.ExprProgram
                  (Once.LinCore.ExprLinked.expr-program (arch-numerics arch) mod ir mi (table-names-distinct mod))
 
   newF : FileOf arch
-  newF = toFileOf arch (fileOf (backend arch) a (arch-numerics arch) EPm.srcs EPm.mpm)
+  newF = toFileOf arch (fileOf (backend arch) a inl (arch-numerics arch) EPm.srcs EPm.mpm)
 
-  core-prog : ∀ c → coreAfter arch a mod (inj₂ c) ≡ inj₂ newF
+  core-prog : ∀ c → coreAfter arch a inl mod (inj₂ c) ≡ inj₂ newF
   core-prog c =
-    subst (λ r → coreAt arch a mod r ≡ inj₂ newF) (sym mi)
-      (subst (λ r → srcsAt arch a r ≡ inj₂ newF) (sym EPm.src-eq)
-        (subst (λ r → mainAt arch a EPm.srcs r ≡ inj₂ newF) (sym EPm.main-eq) refl))
+    subst (λ r → coreAt arch a inl mod r ≡ inj₂ newF) (sym mi)
+      (subst (λ r → srcsAt arch a inl r ≡ inj₂ newF) (sym EPm.src-eq)
+        (subst (λ r → mainAt arch a inl EPm.srcs r ≡ inj₂ newF) (sym EPm.main-eq) refl))
 
   -- ★ the compiler's file of a program is its new file
-  core-is : ∀ doOpt F → coreFileOf arch doOpt a mod ≡ inj₂ F → F ≡ newF
+  core-is : ∀ doOpt F → coreFileOf arch doOpt a inl mod ≡ inj₂ F → F ≡ newF
   core-is doOpt F e =
-    let (F₀ , x) = core-gated arch doOpt a mod e
-    in inj₂-injective (trans (sym e) (trans (cong (coreAfter arch a mod) x) (core-prog F₀)))
+    let (F₀ , x) = core-gated arch doOpt a inl mod e
+    in inj₂-injective (trans (sym e) (trans (cong (coreAfter arch a inl mod) x) (core-prog F₀)))
 
   -- ★ …and it is built (master's gates pass a program, `main⇒built`)
-  core-built : ∀ doOpt → AdmissibleM arch (Resolved.rmodule mod) → Σ (FileOf arch) λ F → coreFileOf arch doOpt a mod ≡ inj₂ F
+  core-built : ∀ doOpt → AdmissibleM arch (Resolved.rmodule mod) → Σ (FileOf arch) λ F → coreFileOf arch doOpt a inl mod ≡ inj₂ F
   core-built doOpt adm =
     let (F₀ , e) = main⇒built arch doOpt mod ir adm mi
-    in newF , trans (cong (coreAfter arch a mod) e) (core-prog F₀)
+    in newF , trans (cong (coreAfter arch a inl mod) e) (core-prog F₀)

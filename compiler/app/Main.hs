@@ -73,6 +73,7 @@ data BuildConfig = BuildConfig
   , bcSaveTemps :: Bool
   , bcOptimize  :: Bool
   , bcAlloc     :: Bridge.Alloc
+  , bcInlineAlloc :: Bool
   , bcStrata    :: Maybe String
   , bcInterp    :: Maybe String
   , bcExplicit  :: [(InterpType, String)]
@@ -89,6 +90,7 @@ defaultBuildConfig = BuildConfig
   , bcSaveTemps = False
   , bcOptimize  = True
   , bcAlloc     = Bridge.AllocSlab
+  , bcInlineAlloc = False  -- D480: the allocator is a call; `--inline-alloc` inlines it
   , bcStrata    = Nothing
   , bcInterp    = Nothing
   , bcExplicit  = []
@@ -113,6 +115,7 @@ parseBuild args = go args defaultBuildConfig
         , buildSaveTemps = bcSaveTemps cfg
         , buildOptimize  = bcOptimize cfg
         , buildAlloc     = bcAlloc cfg
+        , buildInlineAlloc = bcInlineAlloc cfg
         , buildStrata    = bcStrata cfg
         , buildInterp    = bcInterp cfg
         , buildExplicitInterps = bcExplicit cfg
@@ -128,6 +131,7 @@ parseBuild args = go args defaultBuildConfig
     go ("--no-optimize" : rest) cfg = go rest cfg { bcOptimize = False }
     go ("--alloc=slab" : rest) cfg = go rest cfg { bcAlloc = Bridge.AllocSlab }
     go ("--alloc=pool" : rest) cfg = go rest cfg { bcAlloc = Bridge.AllocPool }
+    go ("--inline-alloc" : rest) cfg = go rest cfg { bcInlineAlloc = True }
     go ("--strata" : s : rest) cfg = go rest cfg { bcStrata = Just s }
     go ("--interp" : i : rest) cfg = go rest cfg { bcInterp = Just i }
     go ("--host" : h : rest) cfg = go rest cfg { bcHost = h }
