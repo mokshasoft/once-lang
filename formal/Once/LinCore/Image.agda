@@ -97,6 +97,13 @@ key-of (c1 ds b γ) = _ , kbody1 ds b γ
 key-of (cω ds b γ) = _ , kbodyω ds b γ
 key-of (cωᶜ ds b₀ γ) = _ , kbodyω ds (cin b₀) (cin-gd b₀ γ)
 
+-- ★ D478: the owned body's block a cell's word 4 names (a one-shot closure's: its body; a many-use
+-- one's: its owned body), the block of the one-shot closure it becomes (`once-of`)
+okey : ∀ {k g X A B} → Lam k g X A B → Σ BSig Key
+okey (c1 ds b γ)   = _ , kbody1 ds b γ
+okey (cω ds b γ)   = _ , kbody1 ds (ownBg b) (ownBg-gd b γ)
+okey (cωᶜ ds b₀ γ) = _ , kbody1 ds b₀ γ
+
 -- ★ D478: a many-use closure's owned body's block (its owned entry calls it)
 key1-of : ∀ {g X A B} → Lam many g X A B → Σ BSig Key
 key1-of (cω ds b γ) = _ , kbody1 ds (ownBg b) (ownBg-gd b γ)

@@ -79,14 +79,15 @@ module Rel {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
     vbase : ∀ {b} {x : ⟦ b ⟧b} → VW rd (mbase x) (wordOf x ∷ [])
     vmu   : ∀ {F i} {v : MV (LF∙ F (μt F))} {wv} → VW rd v wv → At rd i 0 wv → VW rd (mmu i v) (cellPtr i ∷ [])
     vct   : ∀ {l X} {x : MV X} {w} → VW rd x w → VW rd (mct {l = l} x) w
-    vfn   : ∀ {k g X A B i} {lam : Lam k g X A B} {x : MV X} {wx wb wc wf}
-          → CodeOf (key-of lam) wb → CodeOf (kc X) wc → CodeOf (kf X) wf → VW rd x wx
-          → At rd i 0 (cellPtr i ∷ wb ∷ wc ∷ wf ∷ wx)
+    -- (D478: word 4 the owned body's entry, `okey`)
+    vfn   : ∀ {k g X A B i} {lam : Lam k g X A B} {x : MV X} {wx wb wc wf wo}
+          → CodeOf (key-of lam) wb → CodeOf (kc X) wc → CodeOf (kf X) wf → CodeOf (okey lam) wo → VW rd x wx
+          → At rd i 0 (cellPtr i ∷ wb ∷ wc ∷ wf ∷ wo ∷ wx)
           → VW rd (mfn i lam x) (cellPtr i ∷ [])
-    vnu   : ∀ {F S i} {p : MV (Coalg F S ⊗t S)} {wp wo wc wf}
+    vnu   : ∀ {F S i} {p : MV (Coalg F S ⊗t S)} {wp wo wc wf wo′}
           → CodeOf (_ , kobs ε F S) wo → CodeOf (kc (cty (F , S))) wc → CodeOf (kf (cty (F , S))) wf
-          → VW rd p wp
-          → At rd i 0 (cellPtr i ∷ wo ∷ wc ∷ wf ∷ wp)
+          → CodeOf (_ , kobs ε F S) wo′ → VW rd p wp
+          → At rd i 0 (cellPtr i ∷ wo ∷ wc ∷ wf ∷ wo′ ∷ wp)
           → VW rd (mnu i p) (cellPtr i ∷ [])
 
   -- a value's words are its type's
@@ -98,8 +99,8 @@ module Rel {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
   vw-len vbase           = refl
   vw-len (vmu p c)       = refl
   vw-len (vct p)         = vw-len p
-  vw-len (vfn _ _ _ p c) = refl
-  vw-len (vnu _ _ _ p c) = refl
+  vw-len (vfn _ _ _ _ p c) = refl
+  vw-len (vnu _ _ _ _ p c) = refl
 
   ----------------------------------------------------------------------
   -- ★ A VALUE'S WORDS STAND while its cells' blocks do: the heap may change
@@ -132,10 +133,10 @@ module Rel {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
   vw-frame (vmu {i = j} {v = v} p c) h =
     vmu (vw-frame p (λ i k c′ → h i k (rgt {a = δ j i} c′))) (At-frame (λ k → h j k (self j (cnt v j))) c)
   vw-frame (vct p) h = vct (vw-frame p h)
-  vw-frame (vfn {i = j} {x = x} cb cc cf p c) h =
-    vfn cb cc cf (vw-frame p (λ i k c′ → h i k (rgt {a = δ j i} c′))) (At-frame (λ k → h j k (self j (cnt x j))) c)
-  vw-frame (vnu {i = j} {p = q} co cc cf p c) h =
-    vnu co cc cf (vw-frame p (λ i k c′ → h i k (rgt {a = δ j i} c′))) (At-frame (λ k → h j k (self j (cnt q j))) c)
+  vw-frame (vfn {i = j} {x = x} cb cc cf co p c) h =
+    vfn cb cc cf co (vw-frame p (λ i k c′ → h i k (rgt {a = δ j i} c′))) (At-frame (λ k → h j k (self j (cnt x j))) c)
+  vw-frame (vnu {i = j} {p = q} co cc cf co′ p c) h =
+    vnu co cc cf co′ (vw-frame p (λ i k c′ → h i k (rgt {a = δ j i} c′))) (At-frame (λ k → h j k (self j (cnt q j))) c)
 
   ----------------------------------------------------------------------
   -- LAYER (3): A CONFIGURATION IN A FRAME. `sm` the frame's slots.
