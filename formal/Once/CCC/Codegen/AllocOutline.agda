@@ -257,6 +257,14 @@ site-view (instr-ctrl (c-ret b))             = sv-same refl
 site-view (instr-ctrl (c-start b))           = sv-same refl
 site-view (instr-ctrl c-leave)               = sv-same refl
 
+-- a called site that is no call: the instruction itself
+site-same : ∀ {i′ j} → j ≡ site-call i′ → (∀ f → j ≡ instr-ctrl (c-call-fn f) → Data.Empty.⊥) → i′ ≡ j
+site-same {i′} {j} e nc = go (site-view i′) e
+  where go : ∀ {x} → SiteView x → j ≡ site-call x → x ≡ j
+        go (sv-alloc k) e′ = ⊥-elim (nc _ e′)
+        go (sv-free k)  e′ = ⊥-elim (nc _ e′)
+        go (sv-same s)  e′ = trans (sym s) (sym e′)
+
 -- a site, called, is no label and no entry
 label-site : ∀ i → label-of? (site-call i) ≡ label-of? i
 label-site i = go (site-view i)

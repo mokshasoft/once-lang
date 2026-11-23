@@ -45,7 +45,7 @@ open import Once.CCC.Machine.Flat using (module FlatMachine)
 open FlatMachine {FS} using (fetch; find-fn; find-thunk; find-entry)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunContext o FS slot-size word-eq using (Emitted; module Emitted; GuardAt)
 open import Once.CCC.Codegen.AllocExpand using (alloc-fn; free-fn; site-call; prim-routines; skip; skip-label; outline)
-open import Once.CCC.Codegen.AllocOutline {FS} using (SiteView; sv-alloc; sv-free; sv-same; site-view; NotR; RouI; ri-ae; ri-a; ri-r; ri-fe; ri-f; rou; rou-guard; module Out)
+open import Once.CCC.Codegen.AllocOutline {FS} using (SiteView; sv-alloc; sv-free; sv-same; site-view; site-same; NotR; RouI; ri-ae; ri-a; ri-r; ri-fe; ri-f; rou; rou-guard; module Out)
 
 private
   just-inj : ∀ {A : Set} {x y : A} → just x ≡ just y → x ≡ y
@@ -63,14 +63,6 @@ private
           go (sv-alloc k) = c-alloc k
           go (sv-free k)  = c-free k
           go (sv-same e)  = c-same e
-
-  -- what a called site is when it is not a call: the instruction itself
-  same-of : ∀ {i′ j} → j ≡ site-call i′ → (∀ f → j ≡ instr-ctrl (c-call-fn f) → ⊥) → i′ ≡ j
-  same-of {i′} {j} e nc = go (called i′) e
-    where go : Called i′ → j ≡ site-call i′ → i′ ≡ j
-          go (c-alloc k) e′ = ⊥-elim (nc _ e′)
-          go (c-free k)  e′ = ⊥-elim (nc _ e′)
-          go (c-same s)  e′ = trans (sym s) (sym e′)
 
   image-site : ∀ i → ImageI i → ImageI (site-call i)
   image-site i im = go (called i) im
@@ -140,7 +132,7 @@ module _ (ks : List ℕ) (b : ℕ) (T : AbstractTrace) where
                         no-start ()
                 go (w-lab _ ())
                 go (w-own q i′ _ ft ei)  =
-                  ⊥-elim (Data.Nat.Properties.1+n≢0 (E.em-start (suc q) b′ (trans ft (cong just (same-of ei (λ f ()))))))
+                  ⊥-elim (Data.Nat.Properties.1+n≢0 (E.em-start (suc q) b′ (trans ft (cong just (site-same ei (λ f ()))))))
 
         calls : ∀ k f → fetch P′ k ≡ just (instr-ctrl (c-call-fn f)) → Σ ℕ (λ j → find-fn P′ f ≡ just j)
         calls k f fe = go (where-P′ k _ fe)
@@ -173,7 +165,7 @@ module _ (ks : List ℕ) (b : ℕ) (T : AbstractTrace) where
                     no-code ()
             go (w-lab _ ())
             go (w-own q i′ _ ft ei) =
-              let e₀ = same-of ei (λ f ())
+              let e₀ = site-same ei (λ f ())
                   (j , fj) = E.em-code (suc q) ℓ (trans ft (cong just e₀))
               in _ , trans (find-entry-out (e-thunk ℓ) (λ k → (λ ()) , (λ ()))) (cong (Data.Maybe.map (d +_)) fj)
 
@@ -193,7 +185,7 @@ module _ (ks : List ℕ) (b : ℕ) (T : AbstractTrace) where
                 rg (inj₁ refl)            = 1 , pj , inj₁ (skip-label , refl)
                 rg (inj₂ (q , refl , fr)) = suc (suc q) , pj , inj₂ (inj₁ (0 , rou-at q _ fr))
             go (w-lab _ ())
-            go (w-own q i′ pq ft ei) = own (E.em-guard (suc q) ℓ bb (trans ft (cong just (same-of ei (λ f ())))))
+            go (w-own q i′ pq ft ei) = own (E.em-guard (suc q) ℓ bb (trans ft (cong just (site-same ei (λ f ())))))
               where
                 own : Σ ℕ (λ q₀ → (suc q ≡ suc q₀) × ((Σ LabelId (λ m → fetch P q₀ ≡ just (instr-ctrl (c-jmp m))))
                                                        ⊎ (Σ ℕ (λ b′ → fetch P q₀ ≡ just (instr-ctrl (c-ret b′))))
