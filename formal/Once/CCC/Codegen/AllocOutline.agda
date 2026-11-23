@@ -27,6 +27,7 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Nat using (ℕ; zero; suc; _+_)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 open import Data.Empty using (⊥-elim)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 open import Once.CCC.Label using (LabelId; EntryId; e-thunk; e-fn; _≡ᵇᴵ_; ≡ᵇᴵ-true; _≡ᵇᴱ_; ≡ᵇᴱ-true)
@@ -34,7 +35,7 @@ open import Data.Nat.Properties using (+-suc; ≡ᵇ⇒≡)
 open import Data.Nat using (_≡ᵇ_)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Relation.Unary.Any using (here; there)
-open import Once.CCC.Label using (≡ᵇᴱ-refl)
+open import Once.CCC.Label using (≡ᵇᴱ-refl; ≡ᵇᴵ-refl)
 open import Once.Spec.Name using (CanonicalName; canonical; module CanonicalName)
 open import Data.Char using (Char)
 open import Data.String using (String; toList) renaming (_++_ to _++ˢ_)
@@ -627,3 +628,103 @@ module Out (ks : List ℕ) (b : ℕ) (T : AbstractTrace) where
                 (cong₂ (λ L A → proj₁ (AbstractExec.exec-abstract {FS} (instr-free-heap k) L A)) lo al)
         , cong₂ (λ L A → proj₂ (AbstractExec.exec-abstract {FS} (instr-free-heap k) L A)) lo al
         , trans (cong suc pc) (sym (+-suc d (fpc fs))) , rt , sym (cong (Data.Maybe.map (d +_)) lk0) , cl
+
+  -- what a plain instruction looks up agrees, up to `d`: no jump of the program's
+  -- targets the skip label, and no call of its names a routine
+  agree : ∀ i → (∀ m → (i ≡ instr-ctrl (c-jmp m)) ⊎ (i ≡ instr-ctrl (c-branch-tag-zero m)) → ¬ skip-label ≡ m)
+        → (∀ f → i ≡ instr-ctrl (c-call-fn f) → NotR (e-fn f))
+        → Agree d i P′ P
+  agree mov-to-output                         nj nc = tt
+  agree mov-to-input                          nj nc = tt
+  agree load-indirect                         nj nc = tt
+  agree load-indirect-suc                     nj nc = tt
+  agree (load-from-slot x)                    nj nc = tt
+  agree (store-at-slot x)                     nj nc = tt
+  agree store-indirect                        nj nc = tt
+  agree store-indirect-suc                    nj nc = tt
+  agree (lea-slot x)                          nj nc = tt
+  agree (restore-input x)                     nj nc = tt
+  agree (instr-alloc-stack x)                 nj nc = tt
+  agree (instr-dealloc-stack x)               nj nc = tt
+  agree (instr-reclaim-to x)                  nj nc = tt
+  agree (instr-push-frame x)                  nj nc = tt
+  agree instr-pop-frame                       nj nc = tt
+  agree instr-call-closure                 nj nc = λ tg → find-entry-out (e-thunk tg) (λ k → (λ ()) , (λ ()))
+  agree (worklist-init x)                     nj nc = tt
+  agree (worklist-push x)                     nj nc = tt
+  agree (worklist-pop x)                      nj nc = tt
+  agree (worklist-check x)                    nj nc = tt
+  agree (instr-sigop si)                      nj nc = tt
+  agree (instr-load-const p v)                nj nc = tt
+  agree (instr-load-code-addr l)              nj nc = tt
+  agree instr-save-closure-reg                nj nc = tt
+  agree (instr-load-tag-lit n)                nj nc = tt
+  agree (instr-alloc-heap k)                  nj nc = tt
+  agree (instr-reg-op op)                     nj nc = tt
+  agree (instr-free-heap k)                   nj nc = tt
+  agree (instr-room k)                        nj nc = tt
+  agree (load-at k)                           nj nc = tt
+  agree (store-at k)                          nj nc = tt
+  agree (addr-at k)                           nj nc = tt
+  agree (load-rec k)                          nj nc = tt
+  agree (store-rec k)                         nj nc = tt
+  agree (instr-ctrl (c-label l))              nj nc = tt
+  agree (instr-ctrl (c-jmp m))             nj nc = find-label-out m (nj m (inj₁ refl))
+  agree (instr-ctrl (c-branch-tag-zero m)) nj nc = find-label-out m (nj m (inj₂ refl))
+  agree (instr-ctrl (c-entry e b))            nj nc = tt
+  agree (instr-ctrl (c-call-fn f))         nj nc = find-entry-out (e-fn f) (nc f refl)
+  agree (instr-ctrl (c-ret b))                nj nc = tt
+  agree (instr-ctrl (c-start b))              nj nc = tt
+  agree (instr-ctrl c-leave)                  nj nc = tt
+
+  -- ★ A PLAIN STEP: the same instruction, one step each, shifted
+  plain-step : ∀ (fs fs′ : FlatState) (q : ℕ) (i : AbstractInstr)
+             → Shifted d fs′ fs → fpc fs ≡ suc q → fetch T q ≡ just i → site-call i ≡ i
+             → LocState.halted (floc fs) ≡ false
+             → (∀ m → (i ≡ instr-ctrl (c-jmp m)) ⊎ (i ≡ instr-ctrl (c-branch-tag-zero m)) → ¬ skip-label ≡ m)
+             → (∀ f → i ≡ instr-ctrl (c-call-fn f) → NotR (e-fn f))
+             → FlatSteps P′ 1 fs′ (flat-exec-instr i P′ fs′) × Shifted d (flat-exec-instr i P′ fs′) (flat-exec-instr i P fs)
+  plain-step fs fs′ q i sh@(lo , al , pc , rt , lk , cl) pq ft e h nj nc =
+      ((trans (cong LocState.halted lo) h
+       , trans (cong (fetch P′) (trans pc (cong (d +_) pq))) (trans (fetch-out q) (trans (cong (Data.Maybe.map site-call) ft) (cong just e)))) ∷ [])
+    , shifted-instrᵍ d i P′ P fs′ fs (agree i nj nc) sh
+
+  -- the skip label, where the scan finds it: past the jump and the routines
+  private
+    n : ℕ
+    n = length (prim-routines ks)
+
+    shape′ : P′ ≡ instr-ctrl (c-start b) ∷ instr-ctrl (c-jmp skip-label) ∷ prim-routines ks ++ instr-ctrl (c-label skip-label) ∷ map site-call T
+    shape′ = cong (λ z → instr-ctrl (c-start b) ∷ instr-ctrl (c-jmp skip-label) ∷ z)
+                  (Data.List.Properties.++-assoc (prim-routines ks) (instr-ctrl (c-label skip-label) ∷ []) (map site-call T))
+
+    find-skip : find-label P′ skip-label ≡ just (suc (suc n))
+    find-skip = trans (cong (λ z → find-label z skip-label) shape′)
+                  (trans (fl-++ (prim-routines ks) (instr-ctrl (c-label skip-label) ∷ map site-call T) skip-label 2 (fl-routines ks skip-label 2))
+                    (trans (cong (λ z → fl-label-match z (map site-call T) skip-label (n + 2)) (≡ᵇᴵ-refl skip-label))
+                           (cong just (Data.Nat.Properties.+-comm n 2))))
+
+    at-skip : fetch P′ (suc (suc n)) ≡ just (instr-ctrl (c-label skip-label))
+    at-skip = trans (cong (λ z → fetch z (suc (suc n))) shape′)
+                    (trans (cong (fetch (prim-routines ks ++ instr-ctrl (c-label skip-label) ∷ map site-call T)) (sym (Data.Nat.Properties.+-identityʳ n)))
+                           (fetch-++-right (prim-routines ks) (instr-ctrl (c-label skip-label) ∷ map site-call T) 0))
+
+    d≡ : d ≡ suc (n + 1)
+    d≡ = cong suc (Data.List.Properties.length-++ (prim-routines ks))
+
+  -- ★ THE START: the program's start, then the jump over the routines and the
+  -- skip label, reach the program's start step, shifted
+  start-step : ∀ (s₀ : FlatState) → fpc s₀ ≡ 0 → fret s₀ ≡ [] → LocState.halted (floc s₀) ≡ false
+             → Σ FlatState λ fs″ → FlatSteps P′ 3 s₀ fs″ × Shifted d fs″ (flat-exec-instr (instr-ctrl (c-start b)) P s₀)
+  start-step s₀ p0 r0 h =
+    s₃ , (h , trans (cong (fetch P′) p0) refl)
+       ∷ (h , trans (cong (λ z → fetch P′ (suc z)) p0) refl)
+       ∷ subst (λ mj → FlatSteps P′ 1 (do-jump mj s₁) s₃) (sym find-skip) ((h , at-skip) ∷ [])
+       , refl , refl , pcs , trans r0 (cong (map (d +_)) (sym r0)) , refl , refl
+    where
+      s₁ s₃ : FlatState
+      s₁ = flat-exec-instr (instr-ctrl (c-start b)) P′ s₀
+      s₃ = flat-exec-instr (instr-ctrl (c-label skip-label)) P′ (do-jump (just (suc (suc n))) s₁)
+      pcs : suc (suc (suc n)) ≡ d + suc (fpc s₀)
+      pcs = trans (cong suc (trans (sym (Data.Nat.Properties.+-comm n 2)) (sym (Data.Nat.Properties.+-assoc n 1 1))))
+              (trans (cong (_+ 1) (sym d≡)) (cong (d +_) (cong suc (sym p0))))
