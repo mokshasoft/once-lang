@@ -120,9 +120,10 @@ record ArchSim (o : CanonicalName) (B : Backend) : Set₁ where
 
     -- ★ the backend's file of a room-checked image (it starts with its check) is what the
     -- assembler demands when the image's symbols are (`ImageWF`: defined once, resolved, valid)
-    file-wf : ∀ k (t′ : AbstractTrace) (bs : List ArithBlock) (ex : List String)
-            → ImageWF (instr-room k ∷ t′) bs ex
-            → Backend.AsmWF B (Backend.file B (instr-room k ∷ t′) (file-table (Backend.payload B) bs) ex)
+    -- (D483: past the check, the start: its code makes the file's entry, whatever the check's)
+    file-wf : ∀ k b (t″ : AbstractTrace) (bs : List ArithBlock) (ex : List String)
+            → ImageWF (instr-room k ∷ instr-ctrl (c-start b) ∷ t″) bs ex
+            → Backend.AsmWF B (Backend.file B (instr-room k ∷ instr-ctrl (c-start b) ∷ t″) (file-table (Backend.payload B) bs) ex)
     -- …and so is a library's (empty) file (D465)
     empty-wf : Backend.AsmWF B (Backend.empty B)
 

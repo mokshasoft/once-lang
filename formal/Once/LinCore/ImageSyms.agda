@@ -761,7 +761,8 @@ module Img (nm : CanonicalName) {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     refs-ok (addr-at _) r jin m = []
     refs-ok (load-rec _) r jin m = inj₁ (there (here refl)) ∷ []
     refs-ok (store-rec _) r jin m = inj₁ (there (here refl)) ∷ []
-    refs-ok (instr-room _) r jin m = inj₂ (there (here refl)) ∷ []
+    refs-ok (instr-room zero) r jin m = []
+    refs-ok (instr-room (suc _)) r jin m = inj₂ (there (here refl)) ∷ []
     refs-ok (instr-push-frame _) r jin m = []
     refs-ok instr-pop-frame r jin m = []
     refs-ok instr-call-closure r jin m = []
@@ -779,7 +780,7 @@ module Img (nm : CanonicalName) {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   -- ★★ the file's references resolve
   resolved : All G (arefs P′)
   resolved =
-    All-fold-room arefs instr-refs (λ _ _ → refl) (λ _ → inj₂ (there (here refl)) ∷ []) image
+    All-fold-room arefs instr-refs (λ _ _ → refl) (λ { zero → [] ; (suc _) → inj₂ (there (here refl)) ∷ [] }) image
       (arefs-of image (refs-ok _ tt (λ l ()) (here refl)
         ∷ Data.List.Relation.Unary.All.tabulate (λ {i} m →
             refs-ok i (proj₂ (proj₂ (Data.List.Relation.Unary.All.lookup IA.tail-ok m)))
@@ -953,7 +954,7 @@ module Img (nm : CanonicalName) {Γ} (ds : Defs Γ) (f : LTm Γ One One)
 
     resolvedˣ : All Gˣ (arefs P″)
     resolvedˣ =
-      All-fold-room arefs instr-refs (λ _ _ → refl) (λ _ → inj₂ (there (here refl)) ∷ []) imageˣ
+      All-fold-room arefs instr-refs (λ _ _ → refl) (λ { zero → [] ; (suc _) → inj₂ (there (here refl)) ∷ [] }) imageˣ
         (arefs-of imageˣ (Data.List.Relation.Unary.All.tabulate (λ {i} m → refs-x i m)))
 
     -- ★★ THE EXPANSION'S FILE IS WELL-FORMED, as symbols
@@ -1206,7 +1207,7 @@ module Img (nm : CanonicalName) {Γ} (ds : Defs Γ) (f : LTm Γ One One)
 
     resolvedᶜ : All Gᶜ (arefs Pᶜ)
     resolvedᶜ =
-      All-fold-room arefs instr-refs (λ _ _ → refl) (λ _ → inj₂ (there (here refl)) ∷ []) imageᶜ
+      All-fold-room arefs instr-refs (λ _ _ → refl) (λ { zero → [] ; (suc _) → inj₂ (there (here refl)) ∷ [] }) imageᶜ
         (arefs-of imageᶜ (Data.List.Relation.Unary.All.tabulate (λ {i} m → refs-c i m)))
 
     -- ★★ THE CALL MODE'S FILE IS WELL-FORMED, as symbols

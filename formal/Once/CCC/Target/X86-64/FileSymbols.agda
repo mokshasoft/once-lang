@@ -11,6 +11,7 @@
 
 module Once.CCC.Target.X86-64.FileSymbols where
 
+import Data.Nat
 open import Data.List using ([]; _∷_; _++_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans)
 open import Once.Type using (fits-int; fits-float)
@@ -41,7 +42,8 @@ defs-step (store-at k) r = refl
 defs-step (addr-at k) r = refl
 defs-step (load-rec k) r = refl
 defs-step (store-rec k) r = refl
-defs-step (instr-room k) r = refl
+defs-step (instr-room Data.Nat.zero) r = refl
+defs-step (instr-room (Data.Nat.suc k)) r = refl
 defs-step (instr-push-frame k) r = refl
 defs-step instr-pop-frame r = refl
 defs-step instr-call-closure r = refl
@@ -87,7 +89,8 @@ refs-step (store-at k) r = refl
 refs-step (addr-at k) r = refl
 refs-step (load-rec k) r = refl
 refs-step (store-rec k) r = refl
-refs-step (instr-room k) r = refl
+refs-step (instr-room Data.Nat.zero) r = refl
+refs-step (instr-room (Data.Nat.suc k)) r = refl
 refs-step (instr-push-frame k) r = refl
 refs-step instr-pop-frame r = refl
 refs-step instr-call-closure r = refl

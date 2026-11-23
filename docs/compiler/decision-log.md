@@ -24967,3 +24967,20 @@ Each changes the frame layout relation (`CfgW`), the core of the lowering's simu
 size/speed work after the room checks (item e).
 **Landed** (2026-11-24, the `⊗l lid` part): `make certified` green; 188 exit tests ×3 arches, seL4 ×3, `cabal test`:
 all pass. Measured as the trial build: run 0.90×, `.text` 0.97×.
+
+## D483 — A ROOM CHECK OF NO WORDS EMITS NOTHING (2026-11-24, proposed — for the user's review)
+**Finding.** 1,418 room checks over the corpus asked for 0 words (`leaq 0(%r15)`): a boundary followed by no
+spend before the next one — every allocation routine's entry and its `done` label, a call right before a
+return. Four instructions each that cannot fail: the layout keeps the frontier at or below the stack pointer.
+**Decision.** Each arch's `compile-abstract (instr-room 0) = []`. The flat program keeps the check (the room
+pass, its index map and the budget invariant are unchanged); only its code is empty. Proved per arch:
+`room-step-*`'s zero case is zero steps, the correspondence carried (as a free's), and the room it reports,
+`hfront + 0 ≤ sp`, is `FlatCorrespondence.sep` (the derived layout separation). `headView` splits on the size.
+**Not done:** frames of no words (`subq $0, %rsp` at an entry, `addq $0` at a return: 1,212 instructions) —
+the entry's and return's proofs descend a frame view by the reservation; a zero reservation is a separate case
+per arch, for 0.2% of the code. Later.
+Also: a zero check references no symbol (`ImageSymbols.instr-refs`, each arch's `FileSymbols`, `ImageSyms`), and the
+file's entry is the start's code (`Interface.file-wf` and `CoreFileWF.core-wf` take the image as
+`instr-room k ∷ c-start b ∷ t″`: the leading check may now have no code).
+**Landed** (2026-11-24): `make certified` green; 188 exit tests ×3 arches, seL4 ×3, `cabal test`: all pass.
+**Measured** (D482 → D483): run 0.93× (`list-build-sum` 0.95×, `loop-sum` 0.95×), `.text` 0.99×, checks 0.97×.

@@ -13,7 +13,7 @@
 
 module Once.CCC.Target.X86-64.AbstractToX86 where
 
-open import Data.Nat using (ℕ)
+open import Data.Nat using (ℕ; zero; suc)
 import Data.Nat as ℕ
 open import Data.List using ([]; _∷_; _++_)
 
@@ -206,7 +206,10 @@ compile-abstract (addr-at n) =
 -- them is at or below the stack pointer; if not, call the Host's `once_exhausted`,
 -- which ends the run. r11 is no role's, and `jbe 1f` skips the call.
 -- x86: leaq 8k(%r15), %r11 ; cmpq %rsp, %r11 ; jbe 1f ; call once_exhausted ; 1:
-compile-abstract (instr-room k) =
+-- D483: a check of no words emits nothing (the layout keeps the frontier at or below
+-- the stack pointer: `FlatCorrespondence.sep`)
+compile-abstract (instr-room zero) = []
+compile-abstract (instr-room k@(suc _)) =
   lea r11 (base+disp r15 (slots k)) ∷
   cmp (reg r11) (reg rsp) ∷
   jbe-fwd ∷

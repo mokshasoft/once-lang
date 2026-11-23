@@ -536,7 +536,18 @@ room-step-riscv64 : ∀ {hv : HeapView} prog fs s k → CompiledCorr hv prog fs 
     ⊎ Σ ℕ (λ c → Σ R.State (λ s' → (R.exec c (compile-trace prog) s ≡ just s')
                 × rhalted s' ≡ false
                 × R.fetch (compile-trace prog) (R.State.pc s') ≡ just (call-sym host-exhausted-symbol)))
-room-step-riscv64 {hv} prog fs s k cc h ft sp<m k<m =
+-- D483: a check of no words has no code: the layout's separation is its room
+room-step-riscv64 {hv} prog fs s zero cc h ft sp<m k<m =
+  inj₁ (0 , s , refl , record
+    { dataCorr = record { in1-eq = C.FlatCorrespondence.FlatCorr.in1-eq dc ; out-eq = C.FlatCorrespondence.FlatCorr.out-eq dc
+                        ; clos-eq = C.FlatCorrespondence.FlatCorr.clos-eq dc ; halt-eq = C.FlatCorrespondence.FlatCorr.halt-eq dc ; heap-eq = C.FlatCorrespondence.FlatCorr.heap-eq dc
+                        ; sp-eq = C.FlatCorrespondence.FlatCorr.sp-eq dc ; frontier-eq = C.FlatCorrespondence.FlatCorr.frontier-eq dc ; dom-fresh = C.FlatCorrespondence.FlatCorr.dom-fresh dc ; dom-written = C.FlatCorrespondence.FlatCorr.dom-written dc ; dom-sized = C.FlatCorrespondence.FlatCorr.dom-sized dc
+                        ; lo-le = C.FlatCorrespondence.FlatCorr.lo-le dc ; stack-eq = C.FlatCorrespondence.FlatCorr.stack-eq dc }
+    ; pc-off = trans (pc-off cc) (sym (trans (blk-off-suc prog (fpc fs) (instr-room zero) ft) (+-identityʳ _)))
+    ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
+    , subst (_≤ R.readReg (R.State.regs s) sp) (sym (+-identityʳ _)) (C.FlatCorrespondence.sep dc))
+  where dc = dataCorr cc
+room-step-riscv64 {hv} prog fs s k@(suc _) cc h ft sp<m k<m =
   go (R.readReg (R.State.regs q2) t1 <ᵇ R.readReg (R.State.regs q2) t2) refl
   where
     dc = dataCorr cc ; po = pc-off cc

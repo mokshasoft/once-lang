@@ -140,11 +140,13 @@ d_instr'45'refs_28 v0
          MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'ctrl_2468 v2
            -> coe d_ctrl'45'refs_16 (coe v2)
          MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'room_2472 v2
-           -> coe
-                MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-                (coe
-                   MAlonzo.Code.Once.Target.SymbolFresh.d_host'45'exhausted'45'symbol_170)
-                (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
+           -> case coe v2 of
+                0 -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
+                _ -> coe
+                       MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+                       (coe
+                          MAlonzo.Code.Once.Target.SymbolFresh.d_host'45'exhausted'45'symbol_170)
+                       (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
          MAlonzo.Code.Once.CCC.Machine.SMCore.C_load'45'rec_2480 v2
            -> coe
                 MAlonzo.Code.Agda.Builtin.List.C__'8759'__22

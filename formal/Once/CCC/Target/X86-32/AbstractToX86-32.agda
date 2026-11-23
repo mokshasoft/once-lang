@@ -25,7 +25,7 @@
 
 module Once.CCC.Target.X86-32.AbstractToX86-32 where
 
-open import Data.Nat using (ℕ; suc; _∸_)
+open import Data.Nat using (ℕ; zero; suc; _∸_)
 import Data.Nat as ℕ
 open import Data.List using ([]; _∷_; _++_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
@@ -223,7 +223,9 @@ compile-abstract (addr-at n) =
 -- `jbe` against 2³² − 4k − 1 skips iff D ≥ 4k — at every D, none included.
 -- x86-32: subl %esp, %esi ; subl $1, %esi ; cmpl $(2³²−4k−1), %esi ; jbe 1f ;
 --         call once_exhausted ; 1: addl $1, %esi ; addl %esp, %esi
-compile-abstract (instr-room k) =
+-- D483: a check of no words emits nothing (the layout's separation is its room)
+compile-abstract (instr-room zero) = []
+compile-abstract (instr-room k@(suc _)) =
   sub (reg esi) (reg esp) ∷
   sub (reg esi) (imm 1) ∷
   cmp (reg esi) (imm (IntW.modulus ∸ suc (slots k))) ∷

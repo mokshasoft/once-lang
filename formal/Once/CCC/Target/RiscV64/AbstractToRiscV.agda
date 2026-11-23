@@ -33,7 +33,7 @@
 
 module Once.CCC.Target.RiscV64.AbstractToRiscV where
 
-open import Data.Nat using (ℕ; suc)
+open import Data.Nat using (ℕ; zero; suc)
 import Data.Nat as ℕ
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
@@ -274,7 +274,9 @@ compile-abstract (addr-at n) =
 -- must fail (D378). t1 and t2 are no role's; `li` because `addi`'s 12-bit
 -- immediate cannot hold every k.
 -- riscv64: sub t1, sp, s2 ; li t2, 8k ; bgeu t1, t2, 1f ; call once_exhausted ; 1:
-compile-abstract (instr-room k) =
+-- D483: a check of no words emits nothing (the layout's separation is its room)
+compile-abstract (instr-room zero) = []
+compile-abstract (instr-room k@(suc _)) =
   sub t1 sp s2 ∷
   li t2 (+ slots k) ∷
   bgeu-fwd t1 t2 ∷

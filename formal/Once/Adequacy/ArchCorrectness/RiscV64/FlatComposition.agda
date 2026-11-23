@@ -33,7 +33,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 
 module Once.Adequacy.ArchCorrectness.RiscV64.FlatComposition (FS : FrameSemantics) where
 
-open import Data.Nat using (ℕ; suc)
+open import Data.Nat using (ℕ; zero; suc)
 open import Data.Bool using (Bool; true; false)
 open import Data.Maybe using (just)
 open import Data.Integer using (+_) renaming (-_ to ℤ-)
@@ -161,7 +161,8 @@ headView (store-at _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (addr-at _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (load-rec _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (store-rec _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
-headView (instr-room _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
+headView (instr-room zero) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
+headView (instr-room (suc _)) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (instr-push-frame _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (worklist-init _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (worklist-push _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)

@@ -15,6 +15,7 @@
 
 module Once.Adequacy.CoreFileWF where
 
+import Data.Nat
 open import Data.List using (List; []; _∷_; _++_; map)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
@@ -67,18 +68,22 @@ module X8664 where
   empty-wf : F.AsmWF (F.mkImage [] nothing [] [])
   empty-wf = record { defined-once = [] ; resolved = [] ; entry-in = tt ; defs-valid = [] ; externs-valid = [] }
 
-  core-wf : ∀ k (t′ : AbstractTrace) (bs : List ArithBlock) (ex : List String)
-          → ImageWF (instr-room k ∷ t′) bs ex
-          → F.AsmWF (F.mkImage (proj₂ (L.compile-trace-cnt C.entry-owner 0 (instr-room k ∷ t′))) (just 0) (file-table A.block-payload bs) ex)
-  core-wf k t′ bs ex (u , r , ev) = record
+  core-wf : ∀ k b (t″ : AbstractTrace) (bs : List ArithBlock) (ex : List String)
+          → ImageWF (instr-room k ∷ instr-ctrl (c-start b) ∷ t″) bs ex
+          → F.AsmWF (F.mkImage (proj₂ (L.compile-trace-cnt C.entry-owner 0 (instr-room k ∷ instr-ctrl (c-start b) ∷ t″))) (just 0) (file-table A.block-payload bs) ex)
+  core-wf k b t″ bs ex (u , r , ev) = record
     { defined-once  = subst Unique (sym defs≡) u
     ; resolved      = subst₂′ r
-    ; entry-in      = s≤s z≤n
+    ; entry-in      = ent k
     ; defs-valid    = subst (All AsmSym) (sym defs≡) (defs-asm t bs)
     ; externs-valid = ev
     }
     where
-      t = instr-room k ∷ t′
+      t = instr-room k ∷ instr-ctrl (c-start b) ∷ t″
+      -- D483: the leading check may have no code; the start's has
+      ent : ∀ k′ → 1 Data.Nat.≤ Data.List.length (proj₂ (L.compile-trace-cnt C.entry-owner 0 (instr-room k′ ∷ instr-ctrl (c-start b) ∷ t″)))
+      ent Data.Nat.zero    = s≤s z≤n
+      ent (Data.Nat.suc _) = s≤s z≤n
       G = F.mkImage (proj₂ (L.compile-trace-cnt C.entry-owner 0 t)) (just 0) (file-table A.block-payload bs) ex
       code≡ : F.Image.code G ≡ L.compile-trace t
       code≡ = cong proj₂ (L.compile-trace-cnt-agrees C.entry-owner 0 t)
@@ -100,18 +105,22 @@ module X8632 where
   empty-wf : F.AsmWF (F.mkImage [] nothing [] [])
   empty-wf = record { defined-once = [] ; resolved = [] ; entry-in = tt ; defs-valid = [] ; externs-valid = [] }
 
-  core-wf : ∀ k (t′ : AbstractTrace) (bs : List ArithBlock) (ex : List String)
-          → ImageWF (instr-room k ∷ t′) bs ex
-          → F.AsmWF (F.mkImage (proj₂ (L.compile-trace-cnt C.entry-owner 0 (instr-room k ∷ t′))) (just 0) (file-table A.block-payload bs) ex)
-  core-wf k t′ bs ex (u , r , ev) = record
+  core-wf : ∀ k b (t″ : AbstractTrace) (bs : List ArithBlock) (ex : List String)
+          → ImageWF (instr-room k ∷ instr-ctrl (c-start b) ∷ t″) bs ex
+          → F.AsmWF (F.mkImage (proj₂ (L.compile-trace-cnt C.entry-owner 0 (instr-room k ∷ instr-ctrl (c-start b) ∷ t″))) (just 0) (file-table A.block-payload bs) ex)
+  core-wf k b t″ bs ex (u , r , ev) = record
     { defined-once  = subst Unique (sym defs≡) u
     ; resolved      = subst₂′ r
-    ; entry-in      = s≤s z≤n
+    ; entry-in      = ent k
     ; defs-valid    = subst (All AsmSym) (sym defs≡) (defs-asm t bs)
     ; externs-valid = ev
     }
     where
-      t = instr-room k ∷ t′
+      t = instr-room k ∷ instr-ctrl (c-start b) ∷ t″
+      -- D483: the leading check may have no code; the start's has
+      ent : ∀ k′ → 1 Data.Nat.≤ Data.List.length (proj₂ (L.compile-trace-cnt C.entry-owner 0 (instr-room k′ ∷ instr-ctrl (c-start b) ∷ t″)))
+      ent Data.Nat.zero    = s≤s z≤n
+      ent (Data.Nat.suc _) = s≤s z≤n
       G = F.mkImage (proj₂ (L.compile-trace-cnt C.entry-owner 0 t)) (just 0) (file-table A.block-payload bs) ex
       code≡ : F.Image.code G ≡ L.compile-trace t
       code≡ = cong proj₂ (L.compile-trace-cnt-agrees C.entry-owner 0 t)
@@ -133,18 +142,22 @@ module RiscV64 where
   empty-wf : F.AsmWF (F.mkImage [] nothing [] [])
   empty-wf = record { defined-once = [] ; resolved = [] ; entry-in = tt ; defs-valid = [] ; externs-valid = [] }
 
-  core-wf : ∀ k (t′ : AbstractTrace) (bs : List ArithBlock) (ex : List String)
-          → ImageWF (instr-room k ∷ t′) bs ex
-          → F.AsmWF (F.mkImage (proj₂ (L.compile-trace-cnt C.entry-owner 0 (instr-room k ∷ t′))) (just 0) (file-table A.block-payload bs) ex)
-  core-wf k t′ bs ex (u , r , ev) = record
+  core-wf : ∀ k b (t″ : AbstractTrace) (bs : List ArithBlock) (ex : List String)
+          → ImageWF (instr-room k ∷ instr-ctrl (c-start b) ∷ t″) bs ex
+          → F.AsmWF (F.mkImage (proj₂ (L.compile-trace-cnt C.entry-owner 0 (instr-room k ∷ instr-ctrl (c-start b) ∷ t″))) (just 0) (file-table A.block-payload bs) ex)
+  core-wf k b t″ bs ex (u , r , ev) = record
     { defined-once  = subst Unique (sym defs≡) u
     ; resolved      = subst₂′ r
-    ; entry-in      = s≤s z≤n
+    ; entry-in      = ent k
     ; defs-valid    = subst (All AsmSym) (sym defs≡) (defs-asm t bs)
     ; externs-valid = ev
     }
     where
-      t = instr-room k ∷ t′
+      t = instr-room k ∷ instr-ctrl (c-start b) ∷ t″
+      -- D483: the leading check may have no code; the start's has
+      ent : ∀ k′ → 1 Data.Nat.≤ Data.List.length (proj₂ (L.compile-trace-cnt C.entry-owner 0 (instr-room k′ ∷ instr-ctrl (c-start b) ∷ t″)))
+      ent Data.Nat.zero    = s≤s z≤n
+      ent (Data.Nat.suc _) = s≤s z≤n
       G = F.mkImage (proj₂ (L.compile-trace-cnt C.entry-owner 0 t)) (just 0) (file-table A.block-payload bs) ex
       code≡ : F.Image.code G ≡ L.compile-trace t
       code≡ = cong proj₂ (L.compile-trace-cnt-agrees C.entry-owner 0 t)

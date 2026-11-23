@@ -26,6 +26,7 @@ open import Once.CCC.Label using (once; callee; labelSym; thunkSym; e-fn)
 open import Once.SigOp.Info using (module SigOpInfo)
 open SigOpInfo using (name)
 open import Once.Target.Symbol using (once-symbol-path)
+import Data.Nat
 open import Once.CCC.Machine.SMCore
   using (AbstractInstr; AbstractTrace; FlatCtrl; instr-ctrl; instr-sigop; instr-load-code-addr; instr-room; load-rec; store-rec; c-label; c-jmp; c-branch-tag-zero; c-entry; c-ret; c-call-fn; c-start; c-leave)
 open import Once.Target.SymbolFresh using (host-leave-symbol; host-exhausted-symbol; alloc-record-symbol)
@@ -67,7 +68,8 @@ instr-refs (instr-ctrl c)           = ctrl-refs c
 instr-refs (instr-sigop si)         = once-symbol-path (name si) ∷ []
 instr-refs (instr-load-code-addr n) = thunkSym n ∷ []
 -- plan 0.123 A.4: the room check calls the Host's `once_exhausted` when it fails.
-instr-refs (instr-room _)           = host-exhausted-symbol ∷ []
+instr-refs (instr-room Data.Nat.zero)    = []   -- D483: a check of no words has no code
+instr-refs (instr-room (Data.Nat.suc _)) = host-exhausted-symbol ∷ []
 -- D470: the allocator record is at its own symbol (the file defines it)
 instr-refs (load-rec _)             = alloc-record-symbol ∷ []
 instr-refs (store-rec _)            = alloc-record-symbol ∷ []
