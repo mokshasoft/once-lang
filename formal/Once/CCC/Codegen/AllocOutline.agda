@@ -578,3 +578,52 @@ module Out (ks : List ℕ) (b : ℕ) (T : AbstractTrace) where
       al′ = cong₂ (λ L A → proj₂ (AbstractExec.exec-abstract {FS} (instr-alloc-heap k) L A)) lo al
       shifted : Shifted d s₄ (flat-exec-instr (instr-alloc-heap k) P fs)
       shifted = lo′ , al′ , trans (cong suc pc) (sym (+-suc d (fpc fs))) , rt , sym (cong (Data.Maybe.map (d +_)) lk0) , cl
+
+  -- ★ A FREE, CALLED: as an allocation, the free's gate passed at the program's state
+  -- (it reads the registers and the blocks' sizes and marks, which the call and the
+  -- entry leave as they were)
+  free-site : ∀ (fs fs′ : FlatState) (q k : ℕ) → k ∈ ks
+            → Shifted d fs′ fs → fpc fs ≡ suc q → fetch T q ≡ just (instr-free-heap k)
+            → LocState.halted (floc fs) ≡ false → flink fs ≡ nothing
+            → gate-ok (instr-free-heap k) (floc fs) (falloc fs) ≡ true
+            → Σ FlatState λ fs″ → FlatSteps P′ 4 fs′ fs″ × Shifted d fs″ (flat-exec-instr (instr-free-heap k) P fs)
+  free-site fs fs′ q k mem sh@(lo , al , pc , rt , lk , cl) pq ft h lk0 g =
+    s₄ , (h₀ , f₀) ∷ subst (λ mj → FlatSteps P′ 3 (do-call-at mj fs′) s₄) (sym (find-free k mem)) run , fin _ _ g₂ g
+    where
+      R = routines-out k mem
+      open Routines R
+      h₀ : LocState.halted (floc fs′) ≡ false
+      h₀ = trans (cong LocState.halted lo) h
+      f₀ : fetch P′ (fpc fs′) ≡ just (instr-ctrl (c-call-fn (free-fn k)))
+      f₀ = trans (cong (fetch P′) (trans pc (cong (d +_) pq))) (trans (fetch-out q) (cong (Data.Maybe.map site-call) ft))
+      s₁ s₂ s₃ s₄ : FlatState
+      s₁ = do-call-at (just (suc (suc (suc (rp k))))) fs′
+      s₂ = flat-exec-instr (instr-ctrl (c-entry (e-fn (free-fn k)) 0)) P′ s₁
+      s₃ = flat-exec-instr (instr-free-heap k) P′ s₂
+      s₄ = flat-exec-instr (instr-ctrl (c-ret 0)) P′ s₃
+      -- the gate at the routine's state is the gate at the program's
+      g₂ : gate-ok (instr-free-heap k) (floc s₂) (falloc s₂) ≡ true
+      g₂ = trans (bb (readReg (LocState.regs (floc fs′)) Input1)) (trans (cong₂ (λ L A → gate-ok (instr-free-heap k) L A) lo al) g)
+        where
+          -- the gate reads a block's size and mark, not the frame
+          bb : ∀ v → block-base? k v (falloc s₂) ≡ block-base? k v (falloc fs′)
+          bb (SV-Ptr (AtDynamic hl)) = refl
+          bb (SV-Ptr (AtStack _ _))  = refl
+          bb (SV-Tag _)              = refl
+          bb (SV-Lit _ _)            = refl
+          bb (SV-Code _)             = refl
+      h₃ : ∀ b → b ≡ true → LocState.halted (floc (straight-at b (instr-free-heap k) s₂)) ≡ false
+      h₃ .true refl = h₀
+      f₃ : ∀ b → b ≡ true → fetch P′ (fpc (straight-at b (instr-free-heap k) s₂)) ≡ just (instr-ctrl (c-ret 0))
+      f₃ .true refl = at-fr
+      run : FlatSteps P′ 3 s₁ s₄
+      run = (h₀ , at-fe) ∷ (h₀ , at-f) ∷ (h₃ _ g₂ , f₃ _ g₂) ∷ []
+      fin : ∀ b b′ → b ≡ true → b′ ≡ true
+          → Shifted d (do-ret 0 (fret (straight-at b (instr-free-heap k) s₂)) (straight-at b (instr-free-heap k) s₂))
+                      (straight-at b′ (instr-free-heap k) fs)
+      fin .true .true refl refl =
+          trans (cong (λ m → proj₁ (AbstractExec.exec-abstract {FS} (instr-free-heap k) (record (floc fs′) { stackMem = m }) (falloc fs′)))
+                      (clear0 (LocState.stackMem (floc fs′)) _))
+                (cong₂ (λ L A → proj₁ (AbstractExec.exec-abstract {FS} (instr-free-heap k) L A)) lo al)
+        , cong₂ (λ L A → proj₂ (AbstractExec.exec-abstract {FS} (instr-free-heap k) L A)) lo al
+        , trans (cong suc pc) (sym (+-suc d (fpc fs))) , rt , sym (cong (Data.Maybe.map (d +_)) lk0) , cl
