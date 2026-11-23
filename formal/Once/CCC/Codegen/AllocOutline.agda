@@ -29,11 +29,13 @@ open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 open import Data.Empty using (⊥-elim)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
+import Once.SigOp.Info
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 open import Once.CCC.Label using (LabelId; EntryId; e-thunk; e-fn; _≡ᵇᴵ_; ≡ᵇᴵ-true; _≡ᵇᴱ_; ≡ᵇᴱ-true)
 open import Data.Nat.Properties using (+-suc; ≡ᵇ⇒≡)
 open import Data.Nat using (_≡ᵇ_)
 open import Data.List.Membership.Propositional using (_∈_)
+open import Data.List.Membership.Propositional.Properties using (∈-++⁻; ∈-map⁻)
 open import Data.List.Relation.Unary.Any using (here; there)
 open import Once.CCC.Label using (≡ᵇᴱ-refl; ≡ᵇᴵ-refl)
 open import Once.Spec.Name using (CanonicalName; canonical; module CanonicalName)
@@ -1044,3 +1046,35 @@ module Out (ks : List ℕ) (b : ℕ) (T : AbstractTrace) where
   rou-at : ∀ j i → fetch (prim-routines ks) j ≡ just i → fetch P′ (suc (suc j)) ≡ just i
   rou-at j i f = trans (cong (λ z → fetch z (suc (suc j))) shape′)
                        (fetch-++-left (prim-routines ks) (instr-ctrl (c-label skip-label) ∷ map site-call T) j i f)
+
+------------------------------------------------------------------------
+-- The outlined program's SigOps are the program's own
+------------------------------------------------------------------------
+
+module _ {A B : _} (si : Once.SigOp.Info.SigOpInfo A B) where
+  private
+    no-rou : ∀ ks → instr-sigop si ∈ prim-routines ks → Data.Empty.⊥
+    no-rou []       ()
+    no-rou (k ∷ ks) (here ())
+    no-rou (k ∷ ks) (there (here ()))
+    no-rou (k ∷ ks) (there (there (here ())))
+    no-rou (k ∷ ks) (there (there (there (here ()))))
+    no-rou (k ∷ ks) (there (there (there (there (here ())))))
+    no-rou (k ∷ ks) (there (there (there (there (there (here ()))))))
+    no-rou (k ∷ ks) (there (there (there (there (there (there m)))))) = no-rou ks m
+
+    no-skip : ∀ ks → instr-sigop si ∈ skip ks → Data.Empty.⊥
+    no-skip ks (here ())
+    no-skip ks (there m) = by (∈-++⁻ (prim-routines ks) m)
+      where by : (instr-sigop si ∈ prim-routines ks) ⊎ (instr-sigop si ∈ instr-ctrl (c-label skip-label) ∷ []) → Data.Empty.⊥
+            by (inj₁ r)         = no-rou ks r
+            by (inj₂ (here ()))
+            by (inj₂ (there ()))
+
+  sig-out : ∀ ks b T → instr-sigop si ∈ outline ks (instr-ctrl (c-start b) ∷ T) → instr-sigop si ∈ instr-ctrl (c-start b) ∷ T
+  sig-out ks b T (here ())
+  sig-out ks b T (there m) = by (∈-++⁻ (skip ks) m)
+    where
+      by : (instr-sigop si ∈ skip ks) ⊎ (instr-sigop si ∈ map site-call T) → instr-sigop si ∈ instr-ctrl (c-start b) ∷ T
+      by (inj₁ r) = ⊥-elim (no-skip ks r)
+      by (inj₂ r) = let (x , mx , e) = ∈-map⁻ site-call r in there (subst (_∈ T) (site-same e (λ f ())) mx)
