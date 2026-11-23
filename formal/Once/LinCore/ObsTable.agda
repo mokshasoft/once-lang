@@ -94,6 +94,7 @@ module _ {Γ Δ} {ds : Defs Γ} {ds′ : Defs Δ} where
     run-tf (r-snd r) (tf-bsnd wf)        = r-snd (run-tf r wf)
     run-tf r-copy tf-bcopy               = r-copy
     run-tf (r-bev r) tf-bev              = r-bev r
+    run-tf (r-bevᶜ r) tf-bev              = r-bevᶜ r
     run-tf r-unf tf-unf                  = r-unf
 
     then-tf : ∀ {E B C} {f : Tm Γ E B C} {e o₁ o τ} → Then (Run ds f e) o₁ o τ → (w : TF f) → Then (Run ds′ (rt {Δ = Δ} w) e) o₁ o τ
@@ -191,6 +192,7 @@ module _ {Γ Δ} {ds : Defs Γ} {ds′ : Defs Δ} where
   plain-tf (r-snd r) (tf-bsnd wf) p                         = plain-tf r wf p
   plain-tf r-copy tf-bcopy p                                = tt
   plain-tf (r-bev r) tf-bev p                               = p
+  plain-tf (r-bevᶜ r) tf-bev p                               = p
   plain-tf r-unf tf-unf p                                   = tt
 
 plain-subst : ∀ {Δ} {ds′ : Defs Δ} {E A B} {t t′ : Tm Δ E A B} {e a n o τ} (eq : t ≡ t′) (r : Run ds′ t e a n o τ)

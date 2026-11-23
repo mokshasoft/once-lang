@@ -224,7 +224,7 @@ module RecloseC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       w = wsz X
       fin : (cellPtr (TrC2.c2-i T2) ∷ [] ≡ cellPtr i ∷ []) × FnP (LocState.heapMem (floc fs)) i lam x → _
       fin (e , P) =
-        case tc-reclose {X} {C} p (szc X) {i = i} T2 (trans (TrC2.c2-s₂ T2) (cong just (hd-eq e))) e₁ e₂ e₃ (cell-below {fs = fs} {i = i} {k = 1} I e₁) (Fa _ Data.Nat.Properties.≤-refl) of λ where
+        case tc-reclose {X} {C} p (szc X) {i = i} T2 (trans (TrC2.c2-s₂ T2) (cong just (hd-eq e))) e₁ e₂ e₃ e₄ (cell-below {fs = fs} {i = i} {k = 1} I e₁) (Fa _ Data.Nat.Properties.≤-refl) of λ where
           (fs′ , st , RC , pc4) →
             _ , fs′ , st ,
             record { g-pt = p-tramp p (at (next (next (next (next whole)))))
@@ -232,7 +232,7 @@ module RecloseC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                                               ; c4-af = TrC2.c2-af T2 ; c4-d = TrC2.c2-d T2
                                               ; c4-s₁ = trans (rc-slot RC w (s₃≢w w)) (TrC2.c2-s₁ T2)
                                               ; c4-w = cellPtr (szc X , AllocState.next-heap-ref (falloc fs))
-                                              ; c4-nv = vfn (FnP.fp-cb P) (FnP.fp-cc P) (FnP.fp-cf P)
+                                              ; c4-nv = vfn (FnP.fp-cb P) (FnP.fp-cc P) (FnP.fp-cf P) (FnP.fp-co P)
                                                           (vw-frame (TrC2.c2-x T2) (copy-old {x′ = x′} {os = os} (λ j le → proj₂ (fresh-cfg inv j le)) (rc-fr RC)))
                                                           (rc-cell RC)
                                               ; c4-s₃ = rc-s₃ RC })
@@ -252,6 +252,7 @@ module RecloseC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
           e₁ = proj₁ (proj₂ at₀)
           e₂ = proj₁ (proj₂ (proj₂ at₀))
           e₃ = proj₁ (proj₂ (proj₂ (proj₂ at₀)))
+          e₄ = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ at₀))))
 
   greclose : ∀ {T Es kd g X A B S V} {k : Codeᴵ (Fn kd g A B ∷ Es ∣ Fn kd g A B ∷ S) V} {r : Ret V T}
                {lam : Lam kd g X A B} {i x} {es : Slots (Fn kd g A B ∷ Es)} {x′ : MV X} {os : Stk S} {n h fs}
@@ -280,7 +281,7 @@ module RecloseC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       w = wsz (Coalg F S′ ⊗t S′)
       fin : (cellPtr (TrC2.c2-i T2) ∷ [] ≡ cellPtr i ∷ []) × NuP (LocState.heapMem (floc fs)) i q → _
       fin (e , P) =
-        case tc-reclose {Coalg F S′ ⊗t S′} {Nu F} p (szν F S′) {i = i} T2 (trans (TrC2.c2-s₂ T2) (cong just (hd-eq e))) e₁ e₂ e₃ (cell-below {fs = fs} {i = i} {k = 1} I e₁) (Fa _ Data.Nat.Properties.≤-refl) of λ where
+        case tc-reclose {Coalg F S′ ⊗t S′} {Nu F} p (szν F S′) {i = i} T2 (trans (TrC2.c2-s₂ T2) (cong just (hd-eq e))) e₁ e₂ e₃ e₄ (cell-below {fs = fs} {i = i} {k = 1} I e₁) (Fa _ Data.Nat.Properties.≤-refl) of λ where
           (fs′ , st , RC , pc4) →
             _ , fs′ , st ,
             record { g-pt = p-tramp p (at (next (next (next (next whole)))))
@@ -288,7 +289,7 @@ module RecloseC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                                               ; c4-af = TrC2.c2-af T2 ; c4-d = TrC2.c2-d T2
                                               ; c4-s₁ = trans (rc-slot RC w (s₃≢w w)) (TrC2.c2-s₁ T2)
                                               ; c4-w = cellPtr (szν F S′ , AllocState.next-heap-ref (falloc fs))
-                                              ; c4-nv = vnu (NuP.np-co P) (NuP.np-cc P) (NuP.np-cf P)
+                                              ; c4-nv = vnu (NuP.np-co P) (NuP.np-cc P) (NuP.np-cf P) (NuP.np-co′ P)
                                                           (vw-frame (TrC2.c2-x T2) (copy-old {x′ = q′} {os = os} (λ j le → proj₂ (fresh-cfg inv j le)) (rc-fr RC)))
                                                           (rc-cell RC)
                                               ; c4-s₃ = rc-s₃ RC })
@@ -308,6 +309,7 @@ module RecloseC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
           e₁ = proj₁ (proj₂ at₀)
           e₂ = proj₁ (proj₂ (proj₂ at₀))
           e₃ = proj₁ (proj₂ (proj₂ (proj₂ at₀)))
+          e₄ = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ at₀))))
 
   grecloseν : ∀ {T Es F S′ S V} {k : Codeᴵ (Nu F ∷ Es ∣ Nu F ∷ S) V} {r : Ret V T}
                 {i} {q q′ : MV (Coalg F S′ ⊗t S′)} {es : Slots (Nu F ∷ Es)} {os : Stk S} {n h fs}

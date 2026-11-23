@@ -70,9 +70,9 @@ wsz (Nu F)       = 1        -- ★ a pointer to the ν's cell
 wsz (Ct l X)     = wsz X
 
 -- a cell's header: word 0 its own address (no code reads it: a trampoline reads the
--- contents at `hdr` from the cell's pointer), then code, copy, free
+-- contents at `hdr` from the cell's pointer), then code, copy, free, and the owned entry (D478)
 hdr : ℕ
-hdr = 4
+hdr = 5
 
 -- ★ D469: a cell's size is its block's, as the image allocates it
 szμ : LF → ℕ                -- a μ node of `F`: its layer, at least a word
@@ -120,6 +120,13 @@ _≟ᵢ_ : (i j : Id) → Dec (i ≡ j)
 data Lam : Kd → Gr → LTy → LTy → LTy → Set where
   c1 : ∀ {Γ g X A B} → Defs Γ → (b : Tm Γ One (X ⊗t A) B) → Gd g b → Lam once g X A B
   cω : ∀ {Γ g X A B} → Defs Γ → (b : Tm Γ X A B) → Gd g b → Lam many g X A B
+  -- ★ D478: many-use, its owned body kept (lent: `cin b₀`; owned: `b₀`)
+  cωᶜ : ∀ {Γ g X A B} → Defs Γ → (b₀ : Tm Γ One (X ⊗t A) B) → Gd g b₀ → Lam many g X A B
+
+-- ★ D478: a many-use closure as the one-shot closure of its owned body (its owned call's)
+once-of : ∀ {g X A B} → Lam many g X A B → Lam once g X A B
+once-of (cω ds b γ)   = c1 ds (ownBg b) (ownBg-gd b γ)
+once-of (cωᶜ ds b₀ γ) = c1 ds b₀ γ
 
 
 data MV : LTy → Set where

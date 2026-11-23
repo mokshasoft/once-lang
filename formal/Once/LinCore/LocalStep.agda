@@ -225,6 +225,7 @@ module Steps {FS : FrameSemantics} (U : Univ)
   prim-step s ld r-clo    _ H nx fr = out00 (st-clo s H) nx
   prim-step s ld r-lam    _ H refl fr = out1 (st-lam s H (lp-fresh fr) (lp-fal fr _ Data.Nat.Properties.≤-refl)) (lp-fal fr) refl
   prim-step s ld r-lamω   _ H refl fr = out1 (st-lamω s H (lp-fresh fr) (lp-fal fr _ Data.Nat.Properties.≤-refl)) (lp-fal fr) refl
+  prim-step s ld r-lamωᶜ  _ H refl fr = out1 (st-lamωᶜ s H (lp-fresh fr) (lp-fal fr _ Data.Nat.Properties.≤-refl)) (lp-fal fr) refl
   prim-step s ld r-unf    _ H refl fr = out1 (st-unf s H (lp-fresh fr) (lp-fal fr _ Data.Nat.Properties.≤-refl)) (lp-fal fr) refl
   prim-step s {fs = fs} ld (r-const {v = v}) _ H nx fr = out00 (st-const s (ld v fs) H) nx
   prim-step s ld (r-op _) () H nx fr
@@ -243,6 +244,8 @@ module Steps {FS : FrameSemantics} (U : Univ)
   prim-step s ld (r-lift _)         _ H nx fr = ⊥-elim (proj₁ (lcin (lowAt s)))
   prim-step s ld r-copy             _ H nx fr = ⊥-elim (proj₁ (lcin (lowAt s)))
   prim-step s ld (r-ev _)           _ H nx fr = ⊥-elim (proj₁ (lcin (lowAt s)))
+  prim-step s ld (r-evωᶜ _)         _ H nx fr = ⊥-elim (proj₁ (lcin (lowAt s)))
+  prim-step s ld (r-evω _)          _ H nx fr = ⊥-elim (proj₁ (lcin (lowAt s)))
   prim-step s ld (r-nout _)         _ H nx fr = ⊥-elim (proj₁ (lcin (lowAt s)))
   prim-step s ld (r-iter _ _)       _ H nx fr = ⊥-elim (proj₁ (lcin (lowAt s)))
 
@@ -282,6 +285,7 @@ module Steps {FS : FrameSemantics} (U : Univ)
     ; eapp′    = λ _ s → record { sub = next s ; carry = λ P x → x }
     ; epop′    = λ s → record { sub = next s ; carry = λ P x → x }
     ; eword′   = λ _ s → record { sub = next s ; carry = λ P x → x }
+    ; oncify′  = λ s → record { sub = next s ; carry = λ P x → x }
     }
 
   succ′ : ∀ {T sh U sh′ U′} {c : Codeᴵ sh U} {r : Ret U T} {m n t} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T} {m′ n′}
@@ -323,6 +327,7 @@ module Steps {FS : FrameSemantics} (U : Univ)
     ; eapp′    = λ eq _ s H nx fr → out00 (st-eapp s eq H) nx
     ; epop′    = λ _ s H nx fr → out00 (st-epop s H) nx
     ; eword′   = λ eq _ s H nx fr → out00 (st-eword s eq H) nx
+    ; oncify′  = λ _ s H nx fr → out00 (st-oncify s H) nx
     }
 
   -- ★ THE LOCAL STEP THEOREM

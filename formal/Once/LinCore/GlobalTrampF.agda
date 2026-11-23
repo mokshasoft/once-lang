@@ -248,13 +248,13 @@ module TrampF {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
 
   -- ★ a free's dispatch (D434, `cfree`/`nfree`): into the free trampoline its cell's word 3 names,
   -- at its depth 0 (TrF0); the address of word 2 is in the cell's block, the word written (D441)
-  tf-disp : ∀ {X C} (c : ℕ) {i} {x : MV X} {wx : List (StoredValue FS)} {w₁ w₂ wf : StoredValue FS} {fs}
+  tf-disp : ∀ {X C} (c : ℕ) {i} {x : MV X} {wx : List (StoredValue FS)} {w₁ w₂ wf wo : StoredValue FS} {fs}
           → Seg image (fpc fs) (restore-input c ∷ addr-at 2 ∷ mov-to-input ∷ instr-save-closure-reg
                                 ∷ restore-input c ∷ mov-to-output ∷ instr-call-closure ∷ [])
           → LocState.halted (floc fs) ≡ false → c Data.Nat.< AllocState.frame-slots (falloc fs)
           → slot fs c ≡ just (cellPtr i)
           → VW (LocState.heapMem (floc fs)) x wx
-          → Rel.At {FS} U wordOf (LocState.heapMem (floc fs)) i 0 (cellPtr i ∷ w₁ ∷ w₂ ∷ wf ∷ wx)
+          → Rel.At {FS} U wordOf (LocState.heapMem (floc fs)) i 0 (cellPtr i ∷ w₁ ∷ w₂ ∷ wf ∷ wo ∷ wx)
           → Rel.CodeOf {FS} U wordOf (kf X) wf
           → InBlk fs
           → Σ (under (ktrf X C) ∈ allK U) λ p → Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′
@@ -281,6 +281,6 @@ module TrampF {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                ; f0-run = trans (fr-halt FI) h ; f0-slots = fr-slots FI
                ; f0-wx = wx
                ; f0-x = subst (λ r → VW r x wx) (sym (fr-heap FI)) px
-               ; f0-at = subst (λ r → Rel.At {FS} U wordOf r i hdr wx) (sym (fr-heap FI)) (proj₂ (proj₂ (proj₂ (proj₂ words))))
+               ; f0-at = subst (λ r → Rel.At {FS} U wordOf r i hdr wx) (sym (fr-heap FI)) (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ words)))))
                ; f0-M = subst (λ g′ → LocState.stackMem (floc fs′) g′ (wsz X) ≡ just (cellPtr i)) (sym (fr-frame FI)) (fr-s FI) } ,
         q , FI

@@ -93,7 +93,7 @@ module OpenC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open import Once.LinCore.Moves {FS} using (slot; InBlk; r-inb; inb-pt)
   open import Once.LinCore.LowerSim fmt ans bw using (module Sim)
   open Sim {FS} U wordOf using (envW-heap; stkW-heap; envW-frame; slots-frame; cntE; cntS)
-  open Rel {FS} U wordOf using (cellLoc)
+  open Rel {FS} U wordOf using (cellLoc; Word1)
   open import Once.LinCore.FreshI fmt ans bw using (module Cells)
   open Cells {FS} U wordOf using (FreshR; away-[])
   open import Once.LinCore.Moves {FS} using (Old)
@@ -160,28 +160,30 @@ module OpenC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   record FnP (rd : Once.Memory.HeapAddress.HeapLocation → Maybe W) {k g X A B} (i : Id) (lam : Lam k g X A B) (x : MV X) : Set where
     field
       fp-wx : List W
-      fp-wb fp-wc fp-wf : W
-      fp-cb : CodeOf (key-of lam) fp-wb
+      fp-wb fp-wc fp-wf fp-wo : W
+      fp-cb : Word1 lam fp-wb
       fp-cc : CodeOf (kc X) fp-wc
       fp-cf : CodeOf (kf X) fp-wf
+      fp-co : CodeOf (okey lam) fp-wo
       fp-x  : VW rd x fp-wx
-      fp-at : At rd i 0 (cellPtr i ∷ fp-wb ∷ fp-wc ∷ fp-wf ∷ fp-wx)
+      fp-at : At rd i 0 (cellPtr i ∷ fp-wb ∷ fp-wc ∷ fp-wf ∷ fp-wo ∷ fp-wx)
 
   fn-inv : ∀ {rd k g X A B i} {lam : Lam k g X A B} {x : MV X} {ws} → VW rd (mfn i lam x) ws → (ws ≡ cellPtr i ∷ []) × FnP rd i lam x
-  fn-inv (vfn cb cc cf px a) = refl , record { fp-cb = cb ; fp-cc = cc ; fp-cf = cf ; fp-x = px ; fp-at = a }
+  fn-inv (vfn cb cc cf co px a) = refl , record { fp-cb = cb ; fp-cc = cc ; fp-cf = cf ; fp-co = co ; fp-x = px ; fp-at = a }
 
   record NuP (rd : Once.Memory.HeapAddress.HeapLocation → Maybe W) {F S} (i : Id) (q : MV (Coalg F S ⊗t S)) : Set where
     field
       np-wp : List W
-      np-wo np-wc np-wf : W
+      np-wo np-wc np-wf np-wo′ : W
       np-co : CodeOf (_ , kobs ε F S) np-wo
       np-cc : CodeOf (kc (cty (F , S))) np-wc
       np-cf : CodeOf (kf (cty (F , S))) np-wf
+      np-co′ : CodeOf (_ , kobs ε F S) np-wo′
       np-p  : VW rd q np-wp
-      np-at : At rd i 0 (cellPtr i ∷ np-wo ∷ np-wc ∷ np-wf ∷ np-wp)
+      np-at : At rd i 0 (cellPtr i ∷ np-wo ∷ np-wc ∷ np-wf ∷ np-wo′ ∷ np-wp)
 
   nu-inv : ∀ {rd F S i} {q : MV (Coalg F S ⊗t S)} {ws} → VW rd (mnu i q) ws → (ws ≡ cellPtr i ∷ []) × NuP rd i q
-  nu-inv (vnu co cc cf pp a) = refl , record { np-co = co ; np-cc = cc ; np-cf = cf ; np-p = pp ; np-at = a }
+  nu-inv (vnu co cc cf co′ pp a) = refl , record { np-co = co ; np-cc = cc ; np-cf = cf ; np-co′ = co′ ; np-p = pp ; np-at = a }
 
   hd-eq : ∀ {a b : W} → a ∷ [] ≡ b ∷ [] → a ≡ b
   hd-eq refl = refl
@@ -279,7 +281,7 @@ module OpenC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       fin : (cellPtr (TrC0.c0-i T0) ∷ [] ≡ cellPtr i ∷ []) × FnP (LocState.heapMem (floc fs)) i lam x → _
       fin (e , P) =
         case tc-open {X} {C} p T0 (trans (TrC0.c0-s₂ T0) (cong just (hd-eq e))) (subst (VW (LocState.heapMem (floc fs)) cv) e (TrC0.c0-cv T0))
-               (FnP.fp-x P) (proj₂ (proj₂ (proj₂ (proj₂ (FnP.fp-at P))))) I of λ where
+               (FnP.fp-x P) (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (FnP.fp-at P)))))) I of λ where
           (fs′ , run , T1 , W3) →
             3 , fs′ , run ,
             record { g-pt = p-tramp p (at (next whole)) ; g-here = (tc1 p , T1)
@@ -320,7 +322,7 @@ module OpenC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       fin : (cellPtr (TrC0.c0-i T0) ∷ [] ≡ cellPtr i ∷ []) × NuP (LocState.heapMem (floc fs)) i q → _
       fin (e , P) =
         case tc-open {Coalg F S′ ⊗t S′} {Nu F} p T0 (trans (TrC0.c0-s₂ T0) (cong just (hd-eq e))) (subst (VW (LocState.heapMem (floc fs)) cv) e (TrC0.c0-cv T0))
-               (NuP.np-p P) (proj₂ (proj₂ (proj₂ (proj₂ (NuP.np-at P))))) I of λ where
+               (NuP.np-p P) (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (NuP.np-at P)))))) I of λ where
           (fs′ , run , T1 , W3) →
             3 , fs′ , run ,
             record { g-pt = p-tramp p (at (next whole)) ; g-here = (tc1 p , T1)

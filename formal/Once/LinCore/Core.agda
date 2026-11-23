@@ -475,6 +475,11 @@ data Tm Γ where
   llamω   : ∀ {g X A B E} (b : Tm Γ X A B) → Gd g b → Tm Γ E X (Fn many g A B)
   lev     : ∀ {g A B E} → Tm Γ E (Fn once g A B ⊗t A) B
   bev     : ∀ {g A B} → Tm Γ (Fn many g A B) A B
+  -- ★ D478: a many-use closure that keeps its OWNED body `b₀` (the bridge's every
+  -- closure): a lent call runs `b₀` on a copy of the environment (`copyIn b₀`'s
+  -- meaning), an owned call (`levω`, its last use) on the environment moved in
+  llamωᶜ  : ∀ {g X A B E} (b₀ : Tm Γ One (X ⊗t A) B) → Gd g b₀ → Tm Γ E X (Fn many g A B)
+  levω    : ∀ {g A B E} → Tm Γ E (Fn many g A B ⊗t A) B
   -- ★ THE FINAL COALGEBRA (the Spec's `⊢unfold`/`⊢out`): a ν from a many-use
   -- coalgebra of grade `act` (a value: data may decide it) and a seed; and
   -- one observation, a finite block
@@ -532,6 +537,8 @@ data Blk {Γ} where
   k-lamω   : ∀ {g X A B E} {b : Tm Γ X A B} {γ : Gd g b} → Blk (llamω {E = E} b γ)
   k-ev     : ∀ {A B E} → Blk (lev {g = act} {A} {B} {E})
   k-bev    : ∀ {A B} → Blk (bev {g = act} {A} {B})
+  k-lamωᶜ  : ∀ {g X A B E} {b₀ : Tm Γ One (X ⊗t A) B} {γ : Gd g b₀} → Blk (llamωᶜ {E = E} b₀ γ)
+  k-evω    : ∀ {A B E} → Blk (levω {g = act} {A} {B} {E})
   k-unf    : ∀ {F S E} → Blk (lunf {F = F} {S} {E})
   k-nout   : ∀ {F E} → Blk (lout {F = F} {E})
   k-const  : ∀ {b E} {v : Lit b} → Blk (lconst {E = E} v)
@@ -597,6 +604,27 @@ k-obs F = k-∘ k-clo (k-∘ k-app k-ρ⁻)
 
 Gd act t = Blk t
 Gd eff t = ⊤
+
+-- ★ D478: an owned body run on a copy of what is lent: a `llamωᶜ` closure's lent
+-- call (the term `PassTr.copyIn` builds)
+cin : ∀ {Γ X A B} → Tm Γ One (X ⊗t A) B → Tm Γ X A B
+cin b₀ = blift b₀ ∘l (bcopy ⊗l lid) ∘l lul⁻
+
+k-cin : ∀ {Γ X A B} {b₀ : Tm Γ One (X ⊗t A) B} → Blk b₀ → Blk (cin b₀)
+k-cin β = k-∘ (k-lift β) (k-∘ (k-⊗ k-copy k-id) k-lul⁻)
+
+-- ★ D478: a plain many-use body run owned: lent its environment, which is freed after
+ownBg : ∀ {Γ X A B} → Tm Γ X A B → Tm Γ One (X ⊗t A) B
+ownBg b = (lul ∘l (drop ⊗l lid)) ∘l lend (bsnd b)
+
+ownBg-gd : ∀ {Γ g X A B} (b : Tm Γ X A B) → Gd g b → Gd g (ownBg b)
+ownBg-gd {g = act} b β = k-∘ (k-∘ k-lul (k-⊗ k-drop k-id)) (k-lend (k-snd β))
+ownBg-gd {g = eff} b γ = tt
+
+-- its grade
+cin-gd : ∀ {Γ g X A B} (b₀ : Tm Γ One (X ⊗t A) B) → Gd g b₀ → Gd g (cin b₀)
+cin-gd {g = act} b₀ β = k-cin β
+cin-gd {g = eff} b₀ γ = tt
 
 -- ★ D422: a label's body, by its kind: a one-shot body owns its environment,
 -- a many-use body reads it lent; at its label's grade

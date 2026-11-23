@@ -163,9 +163,9 @@ module Ok (nm : CanonicalName) (U : Univ)
       where ld-go : (Σ _ λ A → Σ (FitsInReg A) λ p → Σ (LitPayload p) λ x → ldConst v ≡ instr-load-const p x) → OK (ldConst v)
             ld-go (_ , p , x , e) = subst OK (sym e) ✓
 
-    header-ok : ∀ w jb jc jf → OK (instr-load-code-addr (tl jb)) → OK (instr-load-code-addr (tl jc))
-              → OK (instr-load-code-addr (tl jf)) → All OK (header w jb jc jf)
-    header-ok w jb jc jf ob oc of = cell-word w ∷ ✓ ∷ ✓ ∷ ✓ ∷ ob ∷ ✓ ∷ oc ∷ ✓ ∷ of ∷ ✓ ∷ []
+    header-ok : ∀ w jb jc jf jo → OK (instr-load-code-addr (tl jb)) → OK (instr-load-code-addr (tl jc))
+              → OK (instr-load-code-addr (tl jf)) → OK (instr-load-code-addr (tl jo)) → All OK (header w jb jc jf jo)
+    header-ok w jb jc jf jo ob oc of oo = cell-word w ∷ ✓ ∷ ✓ ∷ ✓ ∷ ob ∷ ✓ ∷ oc ∷ ✓ ∷ of ∷ ✓ ∷ oo ∷ ✓ ∷ []
 
     argIn-ok : ∀ {A} (b : ST.Base ST.∅ₖ A) bot w → OK (argIn b bot w)
     argIn-ok (ST.b-var {i = ()} _) bot w
@@ -203,11 +203,11 @@ module Ok (nm : CanonicalName) (U : Univ)
       argIn-ok (SigOpInfo.baseA (info s)) bot (wsz ⌜ sdom s ⌝) ∷ ✓ ∷ (tt , tt , s , p , sym (cong (opSig s) e)) ∷ ✓ ∷ ✓ ∷ []
 
     -- a cell's build: its header (its code words the keys' trampolines), its contents, its address
-    cell-ok : ∀ w {ab ac af} (pb : ab ∈ allK U) (pc : ac ∈ allK U) (pf : af ∈ allK U)
-            → TrEntry (idx pb) (proj₂ ab) → TrEntry (idx pc) (proj₂ ac) → TrEntry (idx pf) (proj₂ af)
-            → ∀ a o d → All OK (header w (idx pb) (idx pc) (idx pf) ++ mvSP a o w ++ mov-to-output ∷ store-at-slot d ∷ [])
-    cell-ok w pb pc pf tb tc tf a o d =
-      ++⁺ (header-ok w (idx pb) (idx pc) (idx pf) (codeRef pb tb) (codeRef pc tc) (codeRef pf tf)) (++⁺ (mvSP-ok a o w) (✓ ∷ ✓ ∷ []))
+    cell-ok : ∀ w {ab ac af ao} (pb : ab ∈ allK U) (pc : ac ∈ allK U) (pf : af ∈ allK U) (po : ao ∈ allK U)
+            → TrEntry (idx pb) (proj₂ ab) → TrEntry (idx pc) (proj₂ ac) → TrEntry (idx pf) (proj₂ af) → TrEntry (idx po) (proj₂ ao)
+            → ∀ a o d → All OK (header w (idx pb) (idx pc) (idx pf) (idx po) ++ mvSP a o w ++ mov-to-output ∷ store-at-slot d ∷ [])
+    cell-ok w pb pc pf po tb tc tf to a o d =
+      ++⁺ (header-ok w (idx pb) (idx pc) (idx pf) (idx po) (codeRef pb tb) (codeRef pc tc) (codeRef pf tf) (codeRef po to)) (++⁺ (mvSP-ok a o w) (✓ ∷ ✓ ∷ []))
 
     lowP-ok : ∀ {Γ} (ds : Defs Γ) {A B} (g : LTm Γ A B) φ S (p : PrimIn ds g) → All OK (lowP ds g φ S p)
     lowP-ok ds lid φ S p          = []
@@ -246,12 +246,14 @@ module Ok (nm : CanonicalName) (U : Univ)
     lowP-ok ds (blift _) φ S p    = []
     lowP-ok ds bcopy φ S p        = []
     lowP-ok ds (llam {X = X} b γ) φ S (kb , x) =
-      cell-ok (wsz X) kb (inC x) (inF x) (_ , _ , refl) (_ , _ , refl) (_ , _ , refl) (Tp φ S ∸ wsz X) hdr (Tp φ S ∸ 1)
-    lowP-ok ds (llamω {X = X} b γ) φ S (kb , x) =
-      cell-ok (wsz X) kb (inC x) (inF x) (_ , _ , refl) (_ , _ , refl) (_ , _ , refl) (Tp φ S ∸ wsz X) hdr (Tp φ S ∸ 1)
+      cell-ok (wsz X) kb (inC x) (inF x) kb (_ , _ , refl) (_ , _ , refl) (_ , _ , refl) (_ , _ , refl) (Tp φ S ∸ wsz X) hdr (Tp φ S ∸ 1)
+    lowP-ok ds (llamω {X = X} b γ) φ S (kb , x , ko) =
+      cell-ok (wsz X) kb (inC x) (inF x) ko (_ , _ , refl) (_ , _ , refl) (_ , _ , refl) (_ , _ , refl) (Tp φ S ∸ wsz X) hdr (Tp φ S ∸ 1)
+    lowP-ok ds (llamωᶜ {X = X} b₀ γ) φ S (kb , x , ko) =
+      cell-ok (wsz X) kb (inC x) (inF x) ko (_ , _ , refl) (_ , _ , refl) (_ , _ , refl) (_ , _ , refl) (Tp φ S ∸ wsz X) hdr (Tp φ S ∸ 1)
     lowP-ok ds lev φ S p          = []
     lowP-ok ds (lunf {F = F} {S = S₀}) φ S (n , o) =
-      cell-ok (wsz (cty (F , S₀))) (inO o n) (inC (ncty n)) (inF (ncty n)) (_ , _ , refl) (_ , _ , refl) (_ , _ , refl)
+      cell-ok (wsz (cty (F , S₀))) (inO o n) (inC (ncty n)) (inF (ncty n)) (inO o n) (_ , _ , refl) (_ , _ , refl) (_ , _ , refl) (_ , _ , refl)
               (Tp φ S ∸ wsz (cty (F , S₀))) hdr (Tp φ S ∸ 1)
     lowP-ok ds lout φ S p         = []
     lowP-ok ds (lconst v) φ S p   = ld-ok v ∷ ✓ ∷ []
@@ -287,8 +289,9 @@ module Ok (nm : CanonicalName) (U : Univ)
       -- a call by name: a key's block
       lowI-ok φ j m (call {bsig nothing A B} κ) ei  = ✓ ∷ ✓ ∷ callRef ei ∷ []
       lowI-ok φ j m (call {bsig (just E) A B} κ) ei = ✓ ∷ ✓ ∷ ✓ ∷ callRef ei ∷ []
-      lowI-ok φ j m icall ei   = ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ []
+      lowI-ok φ j m icall ei   = ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ []
       lowI-ok φ j m icallω ei  = ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ []
+      lowI-ok φ j m oncify ei  = []
       lowI-ok φ j m (iobs ds) ei = ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ []
       lowI-ok φ j m ccopy ei   = ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ []
       lowI-ok φ j m ncopy ei   = ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ []
@@ -352,7 +355,7 @@ module Ok (nm : CanonicalName) (U : Univ)
     tramp-ok j (kcopy T₀) p e =
       let w = wsz T₀
       in ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ contentsAddr-ok w ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ callAt p e ∷ cell-word w
-         ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓
+         ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓
          ∷ ++⁺ (mvSP-ok 0 hdr w) (✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ [])
     tramp-ok j (kfree T₀) p e =
       let w = wsz T₀

@@ -118,8 +118,8 @@ module NoLabels {FS : FrameSemantics} where
     open _⊑U using (go)
     open Lowering U ncty ldConst
 
-    header-nl : ∀ w jb jc jf → NoLab (header w jb jc jf)
-    header-nl w jb jc jf = refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []
+    header-nl : ∀ w jb jc jf jo → NoLab (header w jb jc jf jo)
+    header-nl w jb jc jf jo = refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []
 
     -- D445: the argument's instruction, by its base
     argIn-nl : ∀ {A} (b : ST.Base ST.∅ₖ A) bot w → mark (argIn b bot w) ≡ nothing
@@ -159,8 +159,8 @@ module NoLabels {FS : FrameSemantics} where
     lowOp-nl s (just o) bot = argIn-nl (SigOpInfo.baseA (info s)) bot (wsz ⌜ sdom s ⌝) ∷ refl ∷ refl ∷ refl ∷ refl ∷ []
 
     -- a cell's build: its header, its contents, its address
-    cell-nl : ∀ w jb jc jf a o d → NoLab (header w jb jc jf ++ mvSP a o w ++ mov-to-output ∷ store-at-slot d ∷ [])
-    cell-nl w jb jc jf a o d = nl (header w jb jc jf) (header-nl w jb jc jf) (nl (mvSP a o w) (mvSP-nl a o w) (refl ∷ refl ∷ []))
+    cell-nl : ∀ w jb jc jf jo a o d → NoLab (header w jb jc jf jo ++ mvSP a o w ++ mov-to-output ∷ store-at-slot d ∷ [])
+    cell-nl w jb jc jf jo a o d = nl (header w jb jc jf jo) (header-nl w jb jc jf jo) (nl (mvSP a o w) (mvSP-nl a o w) (refl ∷ refl ∷ []))
 
     lowP-nl : ∀ {Γ} (ds : Defs Γ) {A B} (g : LTm Γ A B) φ S (p : PrimIn ds g) → NoLab (lowP ds g φ S p)
     lowP-nl ds lid φ S p          = []
@@ -200,12 +200,14 @@ module NoLabels {FS : FrameSemantics} where
     lowP-nl ds (blift _) φ S p    = []
     lowP-nl ds bcopy φ S p        = []
     lowP-nl ds (llam {X = X} b γ) φ S (kb , x) =
-      cell-nl (wsz X) (idx kb) (idx (inC x)) (idx (inF x)) (Tp φ S ∸ wsz X) hdr (Tp φ S ∸ 1)
-    lowP-nl ds (llamω {X = X} b γ) φ S (kb , x) =
-      cell-nl (wsz X) (idx kb) (idx (inC x)) (idx (inF x)) (Tp φ S ∸ wsz X) hdr (Tp φ S ∸ 1)
+      cell-nl (wsz X) (idx kb) (idx (inC x)) (idx (inF x)) (idx kb) (Tp φ S ∸ wsz X) hdr (Tp φ S ∸ 1)
+    lowP-nl ds (llamω {X = X} b γ) φ S (kb , x , ko) =
+      cell-nl (wsz X) (idx kb) (idx (inC x)) (idx (inF x)) (idx ko) (Tp φ S ∸ wsz X) hdr (Tp φ S ∸ 1)
+    lowP-nl ds (llamωᶜ {X = X} b₀ γ) φ S (kb , x , ko) =
+      cell-nl (wsz X) (idx kb) (idx (inC x)) (idx (inF x)) (idx ko) (Tp φ S ∸ wsz X) hdr (Tp φ S ∸ 1)
     lowP-nl ds lev φ S p          = []
     lowP-nl ds (lunf {F = F} {S = S₀}) φ S (n , o) =
-      cell-nl (wsz (cty (F , S₀))) (idx (inO o n)) (idx (inC (ncty n))) (idx (inF (ncty n))) (Tp φ S ∸ wsz (cty (F , S₀))) hdr (Tp φ S ∸ 1)
+      cell-nl (wsz (cty (F , S₀))) (idx (inO o n)) (idx (inC (ncty n))) (idx (inF (ncty n))) (idx (inO o n)) (Tp φ S ∸ wsz (cty (F , S₀))) hdr (Tp φ S ∸ 1)
     lowP-nl ds lout φ S p         = []
     lowP-nl ds (lconst v) φ S p   = ld-nl v ∷ refl ∷ []
     lowP-nl ds (lop s) φ S p      = lowOp-nl s (cmpOf s) (Tp φ S)
@@ -244,8 +246,9 @@ module NoLabels {FS : FrameSemantics} where
     lowI-nl φ j m (eword {b} {Es} {S}) ei _ = mvSS-nl (ws Es) (Tp φ S ∸ 1) 1
     lowI-nl φ j m (call {bsig nothing A B} κ) ei _  = refl ∷ refl ∷ refl ∷ []
     lowI-nl φ j m (call {bsig (just E) A B} κ) ei _ = refl ∷ refl ∷ refl ∷ refl ∷ []
-    lowI-nl φ j m icall ei _   = refl ∷ refl ∷ refl ∷ refl ∷ []
+    lowI-nl φ j m icall ei _   = refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []
     lowI-nl φ j m icallω ei _  = refl ∷ refl ∷ refl ∷ refl ∷ []
+    lowI-nl φ j m oncify ei _  = []
     lowI-nl φ j m (iobs ds) ei _ = refl ∷ refl ∷ refl ∷ refl ∷ []
     lowI-nl φ j m ccopy ei _   = refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []
     lowI-nl φ j m ncopy ei _   = refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []
@@ -282,6 +285,7 @@ module NoLabels {FS : FrameSemantics} where
       let w = wsz T₀
       in inj₂ (_ , _ , refl , refl ∷ refl ∷ refl ∷ refl ∷ cA w ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl
          ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl
+         ∷ refl ∷ refl ∷ refl ∷ refl
          ∷ nl (mvSP 0 hdr w) (mvSP-nl 0 hdr w) (refl ∷ refl ∷ refl ∷ refl ∷ []))
       where cA : ∀ w → mark (contentsAddr w) ≡ nothing
             cA zero    = refl

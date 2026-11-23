@@ -51,7 +51,7 @@ open import Once.LinCore.NbEPLinCore fmt ans
 open Sem using (Lᶜ; travC; Lg)
 open import Once.LinCore.Events fmt ans bw
 open import Once.LinCore.Values fmt bw
-open import Once.LinCore.Bisim fmt ans using (_≈_; Bl; ≈ret; ≈step; ≈call; ≈halt; module _≈_)
+open import Once.LinCore.Bisim fmt ans using (_≈_; Bl; ≈ret; ≈step; ≈call; ≈halt; module _≈_; pair-drop)
 open _≈_ using (block≈)
 open import Once.LinCore.Total fmt ans bw using (World; WTr)
 open import Once.LinCore.Spends fmt ans bw using (UnCut; UnCutM)
@@ -253,6 +253,12 @@ module S (ι : Interp) where
     up-run act ρ b γ e x r h = sym (run-≈ r (blk-coh ρ γ e x) h)
     up-run eff ρ b γ e x r h = refl
 
+    -- ★ D478: a kept owned body's lent run means the owned body on the lent value
+    up-run-cin : ∀ g {Δ} (ρ : Env Δ) {X A B} (b₀ : Tm Δ One (X ⊗t A) B) (γ : Gd g b₀) x a r h
+               → TM.run ι h (approx r (up g (Lg ρ g b₀ γ tt (x , a)))) ≡ TM.run ι h (approx r (Lᶜ ρ (cin b₀) x a))
+    up-run-cin act ρ b₀ γ x a r h = up-run act ρ (cin b₀) (cin-gd b₀ γ) x a r h
+    up-run-cin eff ρ b₀ γ x a r h = up-run eff ρ (cin b₀) (cin-gd b₀ γ) x a r h
+
   -- how a layer's fold is observed: the positions' values, read as the functor's
   outApM : ∀ G {A} → Outcome (LF∙ G A) → ℕ → Once.Res.Res (Ap (FS G ⟦ A ⟧))
   outApM G {A} (gives y _) l = Once.Res.returns (done (coh G A (er y)) l)
@@ -311,6 +317,16 @@ module S (ι : Interp) where
          trans (up-run g ⟦ ds′ ⟧D b γ tt (er x , er a) k h) e₁ , hist-cong _ refl hi
     soundₖ (r-bev {g = g} {ds′ = ds′} {b = b} {γ = γ} {x = x} {a = a} r) {k} sp u {h} w = let (e₁ , hi) = soundₖ r sp u w in
          trans (up-run g ⟦ ds′ ⟧D b γ (er x) (er a) k h) e₁ , hist-cong _ refl hi
+    soundₖ (r-lamωᶜ {X = X} {n = n}) sp u w = leaf (alloc (szc X , n) ∷ []) refl sp refl w
+    soundₖ (r-evωᶜ {g = g} {ds′ = ds′} {b₀ = b} {γ = γ} {x = x} {a = a} r) {k} sp u {h} w = let (e₁ , hi) = soundₖ r sp u w in
+         trans (up-run g ⟦ ds′ ⟧D b γ tt (er x , er a) k h) e₁ , hist-cong _ refl hi
+    soundₖ (r-bevᶜ {g = g} {ds′ = ds′} {b₀ = b} {γ = γ} {x = x} {a = a} r) {k} sp u {h} w = let (e₁ , hi) = soundₖ r sp u w in
+         trans (up-run-cin g ⟦ ds′ ⟧D b γ (er x) (er a) k h) e₁ , hist-cong _ refl hi
+    soundₖ (r-evω {g = g} {X = X} {B = B} {ds′ = ds′} {b = b} {γ = γ} {x = x} {a = a} r) {k} sp u {h} w = let (e₁ , hi) = soundₖ r sp u w in
+         trans (up-run g ⟦ ds′ ⟧D b γ (er x) (er a) k h)
+           (trans (sym (run-≈ k (pair-drop {m = Lᶜ ⟦ ds′ ⟧D b (er x) (er a)} (er x ,_)
+                                            (Lᶜ ⟦ ds′ ⟧D (lul {A = B} {E = One} ∘l (drop {A = X} ⊗l lid {A = B})) tt) (λ _ → refl)) h)) e₁)
+         , hist-cong _ refl hi
     soundₖ (r-unf {F = F} {S = S} {n = n}) sp u w = leaf (alloc (szν F S , n) ∷ []) refl sp refl w
     soundₖ {ds = ds} (r-nout {E = E} {F} {S} {e = e} {p = p} r) {k} sp u {h} w = let (e₁ , hi) = soundₖ r sp u w in
          trans (sym (run-≈ k (obs-coh ⟦ ds ⟧D F S (proj₁ (er p)) (proj₂ (er p)) {E} (er e)) h)) e₁ , hist-cong _ refl hi

@@ -30,12 +30,12 @@ module Once.LinCore.ImageSimRun
   (bw : Base → ℕ)
   where
 
-open import Once.LinCore.Core fmt using (Defs; LF∙; LTm; LTy; One; Tm; ε)
+open import Once.LinCore.Core fmt using (Defs; LF∙; LTm; LTy; One; Tm; ε; cin; cin-gd)
 open import Once.LinCore.Events fmt ans bw using (Outcome; Run; RunMap; gives; stop; go-on; stopped; again; done; fm-gives; fm-stop;
   m-id; m-one; m-b; m-μ; m-inl; m-inr; m-pair;
   r-id; r-∘; r-⊗; r-ρ; r-ρ⁻; r-λ; r-λ⁻; r-α; r-α⁻; r-swap; r-dup; r-drop; r-inl; r-inr; r-case₁; r-case₂; r-In; r-Outμ; r-clo;
   r-app; r-cata; r-cata-reuse; r-lend; r-lift; r-fst; r-snd; r-caseE₁; r-caseE₂; r-out; r-copy; r-bapp; r-lam; r-lamω; r-unf;
-  r-nout; r-ev; r-bev; r-const; r-op; r-opend; r-iter; r-exh; r-cut; r-tmp;
+  r-nout; r-ev; r-bev; r-lamωᶜ; r-bevᶜ; r-evωᶜ; r-evω; r-const; r-op; r-opend; r-iter; r-exh; r-cut; r-tmp;
   halted; exhausted; ios; ios-weave; io-call; io-halt; OK; OK-weave; Pre; exchange; noleak; play; play-weave; lent₀)
 open import Once.LinCore.Values fmt bw using (MV; Trace; TBal; TEv; TLeg; alloc; free; peek; io; stp; tmp; mone)
 open import Once.LinCore.Temps fmt ans bw using (NoT-Bal; TOK-≼; erase; erase-NoT; erase-clean; k-alloc; k-free; k-peek; plain; weave-post)
@@ -45,7 +45,7 @@ open import Once.LinCore.Spends fmt ans bw using (rounds; roundsM)
 open import Once.LinCore.Image fmt bw using (Codeᴵ; compᴵ; travᴵ; _⨾_; end; halted; call; untag; eapp; epop; eout; openω; kbodyω)
 open import Once.LinCore.ImageRun fmt ans bw using (Ret; []ʳ; frm;
   i-unpair; i-pair; i-swap; i-unit; i-prim; i-opend; i-untag; i-case₁; i-case₂; i-elend; i-eunlend; i-elift; i-efst; i-esnd;
-  i-eout; i-ecase₁; i-ecase₂; i-eapp; i-epop; i-call; i-reti; i-icall; i-icallω; i-iobs; i-nopen; i-open1; i-openω)
+  i-eout; i-ecase₁; i-ecase₂; i-eapp; i-epop; i-call; i-reti; i-icall; i-icallω; i-oncify; i-iobs; i-nopen; i-open1; i-openω)
 -- a ν is observed at the empty table (D440)
 open import Once.LinCore.ObsTable fmt ans bw using (TF; tf-id; tf-∘; tf-⊗; tf-case; tf-inl; tf-inr; tf-lul; tf-lul⁻; tf-drop; tf-lend; tf-bsnd; tf-bcopy; tf-bev; tf-unf; rt; obsT-tf; rt-obsT)
 open import Once.LinCore.ImageSim fmt ans bw using (StepsI; done; loops; oneI; PausedI; paused; OutI; out; HaltIf; SimRI; sim-code;
@@ -163,6 +163,7 @@ mutual
       (around o (i-eapp eq) (calledRω o (simI r fr (ctx (vw x []ᵉ) refl []ˢ end (frm {t = just _} (epop ⨾ k) (vw x es) os ρ)))))
   simI r-lam fr (ctx es eq os k ρ) = leaf (i-prim r-lam) (k-alloc ∷ [])
   simI r-lamω fr (ctx es eq os k ρ) = leaf (i-prim r-lamω) (k-alloc ∷ [])
+  simI r-lamωᶜ fr (ctx es eq os k ρ) = leaf (i-prim r-lamωᶜ) (k-alloc ∷ [])
   simI r-unf fr (ctx es eq os k ρ) = leaf (i-prim r-unf) (k-alloc ∷ [])
   -- ★ through a cell's code word: its trampoline (D434), which does the
   -- cell's part and calls the block
@@ -183,6 +184,22 @@ mutual
            → SimRI o (openω ⨾ call (kbodyω ds′ b γ) ⨾ epop ⨾ end) R′ (E′ ∥ a ∷ˢ []ˢ) n (peek i ∷ t) end R′ E′ []ˢ j
       bevR (gives _ _) r′ = then (leaf (i-openω eq) (k-peek ∷ [])) (after r′ i-epop)
       bevR (stop y)    r′ = thenH y (leaf (i-openω eq) (k-peek ∷ [])) r′
+  simI (r-bevᶜ {B = B} {ds′ = ds′} {b₀ = b₀} {γ = γ} {i = i} {x} {a} {o} {n} r) p (ctx es eq os k ρ) =
+    calledR′ o (i-icallω eq) (bevR o (calledRω o (simI r p (ctx (vw x []ᵉ) refl []ˢ end (frm {t = just _} (epop ⨾ end) (vw x E′) []ˢ R′)))))
+    where
+      E′ = vw (see es) []ᵉ
+      R′ = frm {t = just _} k es os ρ
+      bevR : (o : Outcome B) → ∀ {t j} → SimRI o (call (kbodyω ds′ (cin b₀) (cin-gd b₀ γ)) ⨾ epop ⨾ end) R′ (vw x E′ ∥ a ∷ˢ []ˢ) n t (epop ⨾ end) R′ (vw x E′) []ˢ j
+           → SimRI o (openω ⨾ call (kbodyω ds′ (cin b₀) (cin-gd b₀ γ)) ⨾ epop ⨾ end) R′ (E′ ∥ a ∷ˢ []ˢ) n (peek i ∷ t) end R′ E′ []ˢ j
+      bevR (gives _ _) r′ = then (leaf (i-openω eq) (k-peek ∷ [])) (after r′ i-epop)
+      bevR (stop y)    r′ = thenH y (leaf (i-openω eq) (k-peek ∷ [])) r′
+  -- ★ D478: an owned call of a many-use closure: the cell made one-shot, then the one-shot call
+  simI (r-evωᶜ {o = o} r) p (ctx es eq os k ρ) =
+    preR o i-oncify (calledR′ o i-icall (thenR o (leaf i-open1 (k-free ∷ []))
+      (calledR o (around o i-elift (simI r p (ctx (vw mone []ᵉ) refl []ˢ _ (frm {t = nothing} end []ᵉ []ˢ (frm {t = nothing} k es os ρ))))))))
+  simI (r-evω {o = o} r) p (ctx es eq os k ρ) =
+    preR o i-oncify (calledR′ o i-icall (thenR o (leaf i-open1 (k-free ∷ []))
+      (calledR o (around o i-elift (simI r p (ctx (vw mone []ᵉ) refl []ˢ _ (frm {t = nothing} end []ᵉ []ˢ (frm {t = nothing} k es os ρ))))))))
   simI r-const fr (ctx es eq os k ρ) = leaf (i-prim r-const) []
   simI (r-op p) fr (ctx es eq os k ρ) = leaf (i-prim (r-op p)) (op-NoT p)
   simI (r-opend {w = halted} p) fr (ctx es eq os k ρ) =
@@ -237,6 +254,15 @@ mutual
       R′ = frm {t = just _} k es os ρ
       bevR : (o : Outcome B) → ∀ {t j} → SimRI o (call (kbodyω ds′ b γ) ⨾ epop ⨾ end) R′ (vw x E′ ∥ a ∷ˢ []ˢ) n t (epop ⨾ end) R′ (vw x E′) []ˢ j
            → SimRI o (openω ⨾ call (kbodyω ds′ b γ) ⨾ epop ⨾ end) R′ (E′ ∥ a ∷ˢ []ˢ) n (peek i ∷ t) end R′ E′ []ˢ j
+      bevR (gives _ _) r′ = then (leaf (i-openω eq) (k-peek ∷ [])) (after r′ i-epop)
+      bevR (stop y)    r′ = thenH y (leaf (i-openω eq) (k-peek ∷ [])) r′
+  simTF (r-bevᶜ {B = B} {ds′ = ds′} {b₀ = b₀} {γ = γ} {i = i} {x} {a} {o} {n} r) tf-bev p (ctx es eq os k ρ) =
+    calledR′ o (i-icallω eq) (bevR o (calledRω o (simI r p (ctx (vw x []ᵉ) refl []ˢ end (frm {t = just _} (epop ⨾ end) (vw x E′) []ˢ R′)))))
+    where
+      E′ = vw (see es) []ᵉ
+      R′ = frm {t = just _} k es os ρ
+      bevR : (o : Outcome B) → ∀ {t j} → SimRI o (call (kbodyω ds′ (cin b₀) (cin-gd b₀ γ)) ⨾ epop ⨾ end) R′ (vw x E′ ∥ a ∷ˢ []ˢ) n t (epop ⨾ end) R′ (vw x E′) []ˢ j
+           → SimRI o (openω ⨾ call (kbodyω ds′ (cin b₀) (cin-gd b₀ γ)) ⨾ epop ⨾ end) R′ (E′ ∥ a ∷ˢ []ˢ) n (peek i ∷ t) end R′ E′ []ˢ j
       bevR (gives _ _) r′ = then (leaf (i-openω eq) (k-peek ∷ [])) (after r′ i-epop)
       bevR (stop y)    r′ = thenH y (leaf (i-openω eq) (k-peek ∷ [])) r′
 

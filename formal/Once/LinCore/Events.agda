@@ -78,7 +78,7 @@ open import Once.IR.Semantics.Trace using (T; ret; call; halt; CallOp; HaltOp)
 open import Once.IR.Semantics.Iterative using (T∞; return∞; bindBlock; iterBlock)
 open import Once.LinCore.NbEPLinCore fmt ans
 open Sem using (Lᶜ; travC; Lg)
-open import Once.LinCore.Bisim fmt ans using (Bl; ≈ret; ≈step; ≈call; ≈halt; module _≈_)
+open import Once.LinCore.Bisim fmt ans using (Bl; ≈ret; ≈step; ≈call; ≈halt; module _≈_; pair-drop)
 open _≈_ using (block≈)
 open import Once.LinCore.Grade fmt ans using (blk-coh; obs-coh)
 open import Once.LinCore.Values fmt bw
@@ -96,6 +96,7 @@ variable
 cmean : ∀ {k g X A B} → Lam k g X A B → ⟦ X ⟧ → ⟦ A ⟧ → Mg g ⟦ B ⟧
 cmean (c1 {g = g} ds b γ) x a = Lg ⟦ ds ⟧D g b γ tt (x , a)
 cmean (cω {g = g} ds b γ) x a = Lg ⟦ ds ⟧D g b γ x a
+cmean (cωᶜ {g = g} ds b₀ γ) x a = Lg ⟦ ds ⟧D g b₀ γ tt (x , a)
 
 -- what a machine value means
 er : ∀ {A} → MV A → ⟦ A ⟧
@@ -249,6 +250,20 @@ data Run {Γ} ds where
           → Run ds (lev {g = g}) e (mpair (mfn i (c1 ds′ b γ) x) a) n o (free i ∷ t)
   r-bev   : ∀ {g X A B Δ} {ds′ : Defs Δ} {b : Tm Δ X A B} {γ : Gd g b} {i x a o n t}
           → Run ds′ b x a n o t → Run ds (bev {g = g}) (mfn i (cω ds′ b γ) x) a n o (peek i ∷ t)
+  -- ★ D478: a closure that keeps its owned body: built as any other; lent, it
+  -- runs the body on a copy of its environment; applied owned, it frees the
+  -- cell and runs the body on the environment moved in. Applied owned, a plain
+  -- many-use closure runs lent and is freed after (what lending then dropping it does)
+  r-lamωᶜ : ∀ {E g X A B} {b₀ : Tm Γ One (X ⊗t A) B} {γ : Gd g b₀} {e : MV E} {x : MV X} {n}
+          → Run ds (llamωᶜ b₀ γ) e x n (gives (mfn (szc X , n) (cωᶜ ds b₀ γ) x) (suc n)) (alloc (szc X , n) ∷ [])
+  r-bevᶜ  : ∀ {g X A B Δ} {ds′ : Defs Δ} {b₀ : Tm Δ One (X ⊗t A) B} {γ : Gd g b₀} {i x a o n t}
+          → Run ds′ (cin b₀) x a n o t → Run ds (bev {g = g}) (mfn i (cωᶜ ds′ b₀ γ) x) a n o (peek i ∷ t)
+  r-evωᶜ  : ∀ {E g X A B Δ} {ds′ : Defs Δ} {b₀ : Tm Δ One (X ⊗t A) B} {γ : Gd g b₀} {e : MV E} {i x a o n t}
+          → Run ds′ b₀ mone (mpair x a) n o t
+          → Run ds (levω {g = g}) e (mpair (mfn i (cωᶜ ds′ b₀ γ) x) a) n o (free i ∷ t)
+  r-evω   : ∀ {E g X A B Δ} {ds′ : Defs Δ} {b : Tm Δ X A B} {γ : Gd g b} {e : MV E} {i x a o n t}
+          → Run ds′ (ownBg b) mone (mpair x a) n o t
+          → Run ds (levω {g = g}) e (mpair (mfn i (cω ds′ b γ) x) a) n o (free i ∷ t)
   -- ★ THE FINAL COALGEBRA: building a ν moves its coalgebra and seed into a
   -- fresh cell; observing one frees the cell and runs `obsT` on them (the
   -- coalgebra on the seed, a copy of it beside each new seed, each a ν again)
@@ -464,6 +479,12 @@ up-Lg act ρ b γ e x h = RB-Bl (block≈ (blk-coh ρ γ e x)) h
 up-Lg eff ρ b γ e x h = h
 
 
+-- ★ D478: the lent run of a kept owned body is the owned body on the lent value
+up-cin : ∀ g {Δ} (ρ : Env Δ) {X A B} (b₀ : Tm Δ One (X ⊗t A) B) (γ : Gd g b₀) x a {p r}
+       → RB (block (up g (Lg ρ g (cin b₀) (cin-gd b₀ γ) x a))) p r → RB (block (up g (Lg ρ g b₀ γ tt (x , a)))) p r
+up-cin act ρ b₀ γ x a h = h
+up-cin eff ρ b₀ γ x a h = h
+
 copy-er : ∀ {A} (v : MV A) n → er (fst (copy v n)) ≡ er v
 copy-er mone         n = refl
 copy-er (mpair a b)  n = cong₂ _,_ (copy-er a n) (copy-er b (fst (snd (copy a n))))
@@ -580,6 +601,13 @@ sound r-lam  = b-ret
 sound r-lamω = b-ret
 sound (r-ev {g = g} {ds′ = ds′} {b = b} {γ = γ} {x = x} {a = a} r) = up-Lg g ⟦ ds′ ⟧D b γ tt (er x , er a) (sound r)
 sound (r-bev {g = g} {ds′ = ds′} {b = b} {γ = γ} {x = x} {a = a} r) = up-Lg g ⟦ ds′ ⟧D b γ (er x) (er a) (sound r)
+sound r-lamωᶜ = b-ret
+sound (r-bevᶜ {g = g} {ds′ = ds′} {b₀ = b₀} {γ = γ} {x = x} {a = a} r) = up-cin g ⟦ ds′ ⟧D b₀ γ (er x) (er a) (up-Lg g ⟦ ds′ ⟧D (cin b₀) (cin-gd b₀ γ) (er x) (er a) (sound r))
+sound (r-evωᶜ {g = g} {ds′ = ds′} {b₀ = b₀} {γ = γ} {x = x} {a = a} r) = up-Lg g ⟦ ds′ ⟧D b₀ γ tt (er x , er a) (sound r)
+sound (r-evω {g = g} {X = X} {B = B} {ds′ = ds′} {b = b} {γ = γ} {x = x} {a = a} r) =
+  up-Lg g ⟦ ds′ ⟧D b γ (er x) (er a)
+    (RB-Bl (block≈ (pair-drop {m = Lᶜ ⟦ ds′ ⟧D b (er x) (er a)} (er x ,_)
+                              (Lᶜ ⟦ ds′ ⟧D (lul {A = B} {E = One} ∘l (drop {A = X} ⊗l lid {A = B})) tt) (λ _ → refl))) (sound r))
 sound r-unf = b-ret
 sound {ds = ds} (r-nout {E = E} {F} {S} {e = e} {p = p} r) =
   RB-Bl (block≈ (obs-coh ⟦ ds ⟧D F S (fst (er p)) (snd (er p)) {E} (er e))) (sound r)
@@ -695,6 +723,10 @@ sized r-lam se sv = (refl , sv)
 sized r-lamω se sv = (refl , sv)
 sized (r-ev r) se ((_ , sx) , sa) = sized r tt (sx , sa)
 sized (r-bev r) (_ , sx) sv = sized r sx sv
+sized (r-evω r) se ((_ , sx) , sa) = sized r tt (sx , sa)
+sized r-lamωᶜ se sv = (refl , sv)
+sized (r-bevᶜ r) (_ , sx) sv = sized r sx sv
+sized (r-evωᶜ r) se ((_ , sx) , sa) = sized r tt (sx , sa)
 sized r-unf se sp = (refl , sp)
 sized (r-nout r) se (_ , sp) = sized r tt sp
 sized r-const se sv = tt
@@ -1209,6 +1241,10 @@ mono r-lam         = n≤1+n _
 mono r-lamω        = n≤1+n _
 mono (r-ev r)      = mono r
 mono (r-bev r)     = mono r
+mono (r-evω r)      = mono r
+mono r-lamωᶜ       = n≤1+n _
+mono (r-bevᶜ r)    = mono r
+mono (r-evωᶜ r)    = mono r
 mono r-unf         = n≤1+n _
 mono (r-nout r)    = mono r
 mono r-const       = ≤-refl
@@ -1269,6 +1305,14 @@ below (r-ev {i = j} {x} {a} r) b =
   below r (λ k le → cong₂ _+_ (+≡0ʳ (δ j k) (cnt x k) (+≡0ˡ (δ j k + cnt x k) (cnt a k) (b k le)))
                               (+≡0ʳ (δ j k + cnt x k) (cnt a k) (b k le)))
 below (r-bev r) b = below r b
+below (r-evω {i = j} {x} {a} r) b =
+  below r (λ k le → cong₂ _+_ (+≡0ʳ (δ j k) (cnt x k) (+≡0ˡ (δ j k + cnt x k) (cnt a k) (b k le)))
+                              (+≡0ʳ (δ j k + cnt x k) (cnt a k) (b k le)))
+below (r-lamωᶜ {n = n}) b i le = cong₂ _+_ (δ-fresh le) (b i (≤-trans (n≤1+n n) le))
+below (r-evωᶜ {i = j} {x} {a} r) b =
+  below r (λ k le → cong₂ _+_ (+≡0ʳ (δ j k) (cnt x k) (+≡0ˡ (δ j k + cnt x k) (cnt a k) (b k le)))
+                              (+≡0ʳ (δ j k + cnt x k) (cnt a k) (b k le)))
+below (r-bevᶜ r) b = below r b
 below (r-unf {n = n}) b i le = cong₂ _+_ (δ-fresh le) (b i (≤-trans (n≤1+n n) le))
 below (r-nout {i = j} {p} r) b = below r (λ k le → +≡0ʳ (δ j k) (cnt p k) (b k le))
 below r-const b i le = refl
@@ -1557,6 +1601,25 @@ exchange (r-nout {i = j} {p} {o} {t = t} r) {h} {rf} pre lent =
 exchange (r-bev {ds′ = ds′} {b = b} {γ = γ} {i = i} {x} {a} {o} {t = t} r) {h} pre lent =
   let (ok , eq) = exchange r pre (λ j p → lent j (≤-trans p (m≤n+m (cnt x j) (δ i j))))
   in ( (peek-live {a = a} {e = mfn i (cω ds′ b γ) x} pre lent i (subst (λ z → 1 ≤ z + cnt x i) (sym (δ-same i)) (s≤s z≤n)) , ok)
+     , peekP o i t h (cnt a) eq )
+exchange (r-evω {i = j} {x} {a} {o} {t = t} r) {h} {rf} pre lent =
+  let (hj , le′ , sb′ , back) = free-step j (λ k → cnt x k + cnt a k) h rf (le1 pre)
+                                  (λ k → subst (λ z → z + rf k ≤ h k) (assoc (δ j k) (cnt x k) (cnt a k)) (sub pre k))
+      (ok , po) = exchange r (pre-free {v′ = mpair x a} j pre le′ sb′) lent₀
+  in ( (hj , ok)
+     , postV o (free j ∷ t) h (λ k → sym (assoc (δ j k) (cnt x k) (cnt a k)))
+         (freeP o j t h (λ k → cnt x k + cnt a k) back po) )
+exchange (r-lamωᶜ {X = X} {x = x}) pre lent = alloc1 (szc X) (cnt x) pre
+exchange (r-evωᶜ {i = j} {x} {a} {o} {t = t} r) {h} {rf} pre lent =
+  let (hj , le′ , sb′ , back) = free-step j (λ k → cnt x k + cnt a k) h rf (le1 pre)
+                                  (λ k → subst (λ z → z + rf k ≤ h k) (assoc (δ j k) (cnt x k) (cnt a k)) (sub pre k))
+      (ok , po) = exchange r (pre-free {v′ = mpair x a} j pre le′ sb′) lent₀
+  in ( (hj , ok)
+     , postV o (free j ∷ t) h (λ k → sym (assoc (δ j k) (cnt x k) (cnt a k)))
+         (freeP o j t h (λ k → cnt x k + cnt a k) back po) )
+exchange (r-bevᶜ {ds′ = ds′} {b₀ = b} {γ = γ} {i = i} {x} {a} {o} {t = t} r) {h} pre lent =
+  let (ok , eq) = exchange r pre (λ j p → lent j (≤-trans p (m≤n+m (cnt x j) (δ i j))))
+  in ( (peek-live {a = a} {e = mfn i (cωᶜ ds′ b γ) x} pre lent i (subst (λ z → 1 ≤ z + cnt x i) (sym (δ-same i)) (s≤s z≤n)) , ok)
      , peekP o i t h (cnt a) eq )
 exchange r-const pre lent = (tt , λ i → refl)
 exchange (r-op {s = s} {x = x} {y = y} p) {h} pre lent =

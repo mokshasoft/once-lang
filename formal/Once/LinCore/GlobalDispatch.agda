@@ -186,7 +186,7 @@ module DispR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                → InBlk fs → LiveG r (es ∥ mpair (mfn i (c1 ds′ b γ) x) a ∷ˢ os) fs → FreshAl (falloc fs)
                → Arrives (blockᴵ (ktr1 ds′ b γ)) (frm {t = nothing} {Es = Es} k es os r) ([]ᵉ ∥ mpair (mfn i (c1 ds′ b γ) x) a ∷ˢ []ˢ) n fs
   gicall-start {g = g} {A = A} {B} {ds′ = ds′} {b = b} {γ = γ} {S = S} {k = k} {r = r} {es = es} {i = i} {x = x} {a = a} {os = os} {n = n} {fs = fs} s inv H nx ok I lv F =
-    case tr-dispatch (frameOf main) seg (S.Here.h-run H) (S.Here.h-cfg H) fitM
+    case tr-dispatch (frameOf main) seg (S.Here.h-run H) I (S.Here.h-cfg H) fitM
            (subst (budget (frameOf main) Data.Nat.<_) (sym (S.Here.h-slots H)) (Data.Nat.Properties.m<n⇒m<1+n (Data.Nat.Properties.n<1+n _))) of λ where
       (m , N , fs′ , run , T0 , CD) →
         N , fs′ , run , record { g-pt = p-tramp m (at whole) ; g-here = (tp0 m , T0) ; g-next = trans (cd-next CD) nx
@@ -199,17 +199,19 @@ module DispR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       st₁ = StepI.i-icall {k = k} {r = r} {es = es} {i = i} {lam = c1 ds′ b γ} {x = x} {a = a} {os = os} {n = n}
       import Data.Nat.Properties
       φ = frameOf main
-      seg : Seg image (fpc fs) (restore-input (Tp φ ((Fn once g A B ⊗t A) ∷ S)) ∷ lea-slot (Tp φ S ∸ (suc (wsz A) ⊔ wsz B))
-                                ∷ instr-save-closure-reg ∷ instr-call-closure ∷ [])
-      seg = Seg-++ˡ image (fpc fs) (restore-input (Tp φ ((Fn once g A B ⊗t A) ∷ S)) ∷ lea-slot (Tp φ S ∸ (suc (wsz A) ⊔ wsz B))
-                                     ∷ instr-save-closure-reg ∷ instr-call-closure ∷ []) _ (S.seg-at s H)
+      seg : Seg image (fpc fs) (restore-input (Tp φ ((Fn once g A B ⊗t A) ∷ S)) ∷ addr-at 3 ∷ mov-to-input ∷ instr-save-closure-reg
+                                ∷ restore-input (Tp φ ((Fn once g A B ⊗t A) ∷ S)) ∷ lea-slot (Tp φ S ∸ (suc (wsz A) ⊔ wsz B))
+                                ∷ instr-call-closure ∷ [])
+      seg = Seg-++ˡ image (fpc fs) (restore-input (Tp φ ((Fn once g A B ⊗t A) ∷ S)) ∷ addr-at 3 ∷ mov-to-input ∷ instr-save-closure-reg
+                                     ∷ restore-input (Tp φ ((Fn once g A B ⊗t A) ∷ S)) ∷ lea-slot (Tp φ S ∸ (suc (wsz A) ⊔ wsz B))
+                                     ∷ instr-call-closure ∷ []) _ (S.seg-at s H)
       fitM : (suc (wsz A) ⊔ wsz B) + ws S ≤ OP φ
       fitM = Data.Nat.Properties.≤-trans
                (Data.Nat.Properties.≤-reflexive (Data.Nat.Properties.+-distribʳ-⊔ (ws S) (suc (wsz A)) (wsz B)))
                (Data.Nat.Properties.⊔-lub (proj₂ (S.shape-fits s)) (proj₂ (S.shape-fits (next s))))
-      pos-eq : suc (suc (suc (suc (fpc fs)))) ≡ S.pos (next s)
-      pos-eq = trans (cong (λ z → suc (suc (suc (suc z)))) (S.Here.h-pc H))
-                 (trans (Data.Nat.Properties.+-comm 4 (S.pos s)) (sym (S.pos-next s)))
+      pos-eq : suc (suc (suc (suc (suc (suc (suc (fpc fs))))))) ≡ S.pos (next s)
+      pos-eq = trans (cong (λ z → suc (suc (suc (suc (suc (suc (suc z))))))) (S.Here.h-pc H))
+                 (trans (Data.Nat.Properties.+-comm 7 (S.pos s)) (sym (S.pos-next s)))
 
   -- ★ a dispatch from a block's code
   gicall-block : ∀ {T Γ′ g X A B} {ds′ : Defs Γ′} {b : Tm Γ′ One (X ⊗t A) B} {γ : Gd g b} {Es S V} {k : Codeᴵ (Es ∣ B ∷ S) V}
@@ -221,7 +223,7 @@ module DispR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                → InBlk fs → LiveG r (es ∥ mpair (mfn i (c1 ds′ b γ) x) a ∷ˢ os) fs → FreshAl (falloc fs)
                → Arrives (blockᴵ (ktr1 ds′ b γ)) (frm {t = nothing} {Es = Es} k es os r) ([]ᵉ ∥ mpair (mfn i (c1 ds′ b γ) x) a ∷ˢ []ˢ) n fs
   gicall-block {g = g} {A = A} {B} {ds′ = ds′} {b = b} {γ = γ} {S = S} {k = k} {r = r} {es = es} {i = i} {x = x} {a = a} {os = os} {n = n} {fs = fs} {κ′ = κ′} p′ s inv H nx ok I lv F =
-    case tr-dispatch (frameOf (blockᴵ κ′)) seg (K.Here.h-run {p = p′} H) (K.Here.h-cfg {p = p′} H) fitM
+    case tr-dispatch (frameOf (blockᴵ κ′)) seg (K.Here.h-run {p = p′} H) I (K.Here.h-cfg {p = p′} H) fitM
            (subst (budget (frameOf (blockᴵ κ′)) Data.Nat.<_) (sym (K.Here.h-slots {p = p′} H)) (Data.Nat.Properties.m<n⇒m<1+n (Data.Nat.Properties.n<1+n _))) of λ where
       (m , N , fs′ , run , T0 , CD) →
         N , fs′ , run , record { g-pt = p-tramp m (at whole) ; g-here = (tp0 m , T0) ; g-next = trans (cd-next CD) nx
@@ -234,17 +236,19 @@ module DispR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       st₁ = StepI.i-icall {k = k} {r = r} {es = es} {i = i} {lam = c1 ds′ b γ} {x = x} {a = a} {os = os} {n = n}
       import Data.Nat.Properties
       φ = frameOf (blockᴵ κ′)
-      seg : Seg image (fpc fs) (restore-input (Tp φ ((Fn once g A B ⊗t A) ∷ S)) ∷ lea-slot (Tp φ S ∸ (suc (wsz A) ⊔ wsz B))
-                                ∷ instr-save-closure-reg ∷ instr-call-closure ∷ [])
-      seg = Seg-++ˡ image (fpc fs) (restore-input (Tp φ ((Fn once g A B ⊗t A) ∷ S)) ∷ lea-slot (Tp φ S ∸ (suc (wsz A) ⊔ wsz B))
-                                     ∷ instr-save-closure-reg ∷ instr-call-closure ∷ []) _ (K.seg-at p′ s H)
+      seg : Seg image (fpc fs) (restore-input (Tp φ ((Fn once g A B ⊗t A) ∷ S)) ∷ addr-at 3 ∷ mov-to-input ∷ instr-save-closure-reg
+                                ∷ restore-input (Tp φ ((Fn once g A B ⊗t A) ∷ S)) ∷ lea-slot (Tp φ S ∸ (suc (wsz A) ⊔ wsz B))
+                                ∷ instr-call-closure ∷ [])
+      seg = Seg-++ˡ image (fpc fs) (restore-input (Tp φ ((Fn once g A B ⊗t A) ∷ S)) ∷ addr-at 3 ∷ mov-to-input ∷ instr-save-closure-reg
+                                     ∷ restore-input (Tp φ ((Fn once g A B ⊗t A) ∷ S)) ∷ lea-slot (Tp φ S ∸ (suc (wsz A) ⊔ wsz B))
+                                     ∷ instr-call-closure ∷ []) _ (K.seg-at p′ s H)
       fitM : (suc (wsz A) ⊔ wsz B) + ws S ≤ OP φ
       fitM = Data.Nat.Properties.≤-trans
                (Data.Nat.Properties.≤-reflexive (Data.Nat.Properties.+-distribʳ-⊔ (ws S) (suc (wsz A)) (wsz B)))
                (Data.Nat.Properties.⊔-lub (proj₂ (K.shape-fits p′ s)) (proj₂ (K.shape-fits p′ (next s))))
-      pos-eq : suc (suc (suc (suc (fpc fs)))) ≡ K.pos p′ (next s)
-      pos-eq = trans (cong (λ z → suc (suc (suc (suc z)))) (K.Here.h-pc {p = p′} H))
-                 (trans (Data.Nat.Properties.+-comm 4 (K.pos p′ s)) (sym (FrK.C.pos-next p′ s)))
+      pos-eq : suc (suc (suc (suc (suc (suc (suc (fpc fs))))))) ≡ K.pos p′ (next s)
+      pos-eq = trans (cong (λ z → suc (suc (suc (suc (suc (suc (suc z))))))) (K.Here.h-pc {p = p′} H))
+                 (trans (Data.Nat.Properties.+-comm 7 (K.pos p′ s)) (sym (FrK.C.pos-next p′ s)))
 
   -- ★ A DISPATCH THROUGH A ONE-SHOT CELL'S CODE WORD (i-icall): from a root's
   -- path (a trampoline's code has no `icall`)

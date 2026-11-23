@@ -60,11 +60,13 @@ module Keep (U : Univ) where
 
   LamIn : ∀ {k g X A B} → Lam k g X A B → Set
   LamIn (c1 {X = X} ds b γ) = (_ , kbody1 ds b γ) ∈ allK U × X ∈ tys U
-  LamIn (cω {X = X} ds b γ) = (_ , kbodyω ds b γ) ∈ allK U × X ∈ tys U
+  LamIn (cω {X = X} ds b γ) = (_ , kbodyω ds b γ) ∈ allK U × X ∈ tys U × (_ , kbody1 ds (ownBg b) (ownBg-gd b γ)) ∈ allK U
+  LamIn (cωᶜ {X = X} ds b₀ γ) = (_ , kbodyω ds (cin b₀) (cin-gd b₀ γ)) ∈ allK U × X ∈ tys U × (_ , kbody1 ds b₀ γ) ∈ allK U
 
   lam-X : ∀ {k g X A B} (lam : Lam k g X A B) → LamIn lam → X ∈ tys U
   lam-X (c1 ds b γ) (_ , x) = x
-  lam-X (cω ds b γ) (_ , x) = x
+  lam-X (cω ds b γ) (_ , x , _) = x
+  lam-X (cωᶜ ds b₀ γ) (_ , x , _) = x
 
   VIn : ∀ {A} → MV A → Set
   VIn mone                  = ⊤
@@ -145,6 +147,7 @@ module Keep (U : Univ) where
   prim-in (r-clo {F = F} {x = x}) p v = tag-in F x v
   prim-in r-lam  p v             = p , v
   prim-in r-lamω p v             = p , v
+  prim-in r-lamωᶜ p v            = p , v
   prim-in r-unf  p v             = proj₁ p , v
   prim-in r-const p v            = tt
   prim-in (r-op {s = s} {y = y} _) p v = mvF-in (scod s) y
@@ -188,6 +191,9 @@ module Keep (U : Univ) where
     keep (i-prim run) (p , ck) R (E , v , os)   = ck , R , E , prim-in run p v , os
     keep (i-opend _) (_ , ck) R (E , v , os)    = tt , R , E , os
     keep i-untag  (_ , ck) R (E , (x , a) , os) = ck , R , E , (x , a) , os
+    -- (D478: the one-shot closure of the owned body: its body's key, the owned one)
+    keep (i-oncify {lam = cω ds b γ}) (_ , ck) R (E , (((kb , xt , ko) , vx) , va) , os) = ck , R , E , (((ko , xt) , vx) , va) , os
+    keep (i-oncify {lam = cωᶜ ds b₀ γ}) (_ , ck) R (E , (((kb , xt , ko) , vx) , va) , os) = ck , R , E , (((ko , xt) , vx) , va) , os
     keep i-untag₁ (_ , ck) R (E , x , os)       = ck , R , E , x , os
     keep i-tag₁   (_ , ck) R (E , x , os)       = ck , R , E , x , os
     keep i-case₁  (c₁ , _) R (E , a , os)       = c₁ , R , E , a , os
@@ -213,6 +219,8 @@ module Keep (U : Univ) where
     keep (i-icall {lam = c1 ds b γ}) (_ , ck) R (E , ((l , x) , a) , os) =
       (tt , proj₁ l , tt) , (ck , E , os , R) , tt , ((l , x) , a) , tt
     keep (i-icallω {lam = cω ds b γ} {es = es} eq) (_ , ck) R (E , a , os) =
+      (tt , proj₁ (proj₁ (seen eq E)) , tt , tt) , (ck , E , os , R) , (see-in es E , tt) , a , tt
+    keep (i-icallω {lam = cωᶜ ds b₀ γ} {es = es} eq) (_ , ck) R (E , a , os) =
       (tt , proj₁ (proj₁ (seen eq E)) , tt , tt) , (ck , E , os , R) , (see-in es E , tt) , a , tt
     keep i-iobs (o , ck) R (E , (n , p) , os) = (tt , inO o n , tt) , (ck , E , os , R) , tt , (n , p) , tt
     keep (i-ccopy {lam = lam} {es = es} eq) (_ , ck) R (E , _ , os) =

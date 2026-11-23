@@ -109,6 +109,9 @@ module Sem {Γ : Cx} (ρ : Env Γ) where
     Lᶜ (llamω {g = g} b γ) e    x              = return∞ (λ a → Lg g b γ x a)
     Lᶜ (lev {g = g})  e         (f , a)        = up g (f a)
     Lᶜ (bev {g = g})  f         a              = up g (f a)
+    -- (D478: a copy is its value, so a lent and an owned call mean the same)
+    Lᶜ (llamωᶜ {g = g} b₀ γ) e  x              = return∞ (λ a → Lg g b₀ γ tt (x , a))
+    Lᶜ (levω {g = g}) e         (f , a)        = up g (f a)
     -- ★ the Spec's unfold and observation
     Lᶜ (lunf {F} {S}) e         cs             = return∞ (anaN F (cohc F S (fst cs)) (snd cs))
     Lᶜ (lout {F})     e         v              = emb (fmapT (coh⁻¹ F (Nu F)) (outν v))
@@ -172,6 +175,8 @@ module Sem {Γ : Cx} (ρ : Env Γ) where
     Lᴮ (k-lamω {g} {b = b} {γ}) e x          = ret (λ a → Lg g b γ x a)
     Lᴮ k-ev          e         (f , a)       = f a
     Lᴮ k-bev         f         a             = f a
+    Lᴮ (k-lamωᶜ {g} {b₀ = b₀} {γ}) e x       = ret (λ a → Lg g b₀ γ tt (x , a))
+    Lᴮ k-evω         e         (f , a)       = f a
     Lᴮ (k-unf {F} {S}) e       cs            = ret (anaN F (cohc F S (fst cs)) (snd cs))
     Lᴮ (k-nout {F})  e         v             = fmapT (coh⁻¹ F (Nu F)) (outν v)
     Lᴮ (k-const {v = v}) e     _             = ret (lit v)

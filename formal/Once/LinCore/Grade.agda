@@ -113,6 +113,8 @@ module _ {Γ : Cx} (ρ : Env Γ) where
     blk-coh k-lamω          e x             = ret≈
     blk-coh k-ev            e (f , a)       = ≈-refl
     blk-coh k-bev           f a             = ≈-refl
+    blk-coh k-lamωᶜ         e x             = ret≈
+    blk-coh k-evω           e (f , a)       = ≈-refl
     blk-coh k-const         e x             = ret≈
     blk-coh k-unf           e x             = ret≈
     blk-coh k-nout          e v             = ≈-refl

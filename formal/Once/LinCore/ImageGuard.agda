@@ -188,7 +188,7 @@ module G {FS : FrameSemantics} where
       let wP = wsz (cty (F , S)) ; wL = wsz (LF∙ F (Nu F)) ; M = wP ⊔ wL ; Mc = 1 ⊔ wL
       in inj₂ (▸ ▸ ▸ ▸ lastG-cat (mvPS hdr (M ∸ wP) wP) (▸ ▸ ▸ ▸ ▸ ▸ lastG-cat (mvSP (M ∸ wL) (Mc ∸ wL) wL) ends-ret))
     tramp-last j (kcopy T₀) =
-      inj₂ (▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ lastG-cat (mvSP 0 hdr (wsz T₀)) (lg refl g-ret))
+      inj₂ (▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ lastG-cat (mvSP 0 hdr (wsz T₀)) (lg refl g-ret))
     tramp-last j (kfree T₀) = inj₂ (▸ ▸ ▸ lastG-cat (mvPS hdr 0 (wsz T₀)) (lg refl g-ret))
     tramp-last j (kfold ds F alg) = inj₁ refl
     tramp-last j (ktr1 ds b γ) = inj₁ refl

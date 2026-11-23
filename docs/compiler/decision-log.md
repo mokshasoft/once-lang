@@ -24827,3 +24827,13 @@ branch `0.146-d478-wip`; the plan branch is unchanged until it is green.)
 Core (`levω`, `Blk`), semantics (`Lᶜ levω` = `apω`'s), Keys (the owned body's key per many-use closure), Image
 (`compᴵ`, the body trampoline for `kbodyω`), Lower (`tramp`), and the trampoline simulations (`GlobalTramp*`,
 `LowerSim*`), ~40 modules; the bridge's `apω` switches to `levω`.
+### Landed (2026-11-23, merged from `0.146-d478-wip`)
+The bridge builds every closure over its owned body (`clo π b β = llamωᶜ b …`; the wrappers, the combinators,
+`cata`, `loop`, `refL` likewise) and applies it owned (`apω = levω`); `rel-apω` is now `wf wa` (`Lᶜ levω` is
+`up g (f a)`, as `lev`), and the closure lemmas lose their `copyIn` step. The lent call (`gicallω`) serves
+`cωᶜ` cells through the same trampoline (`trω (cωᶜ ds b₀ γ) = ktrω ds (cin b₀) …`, word 1 = `key-of`'s).
+`make certified` green; MAlonzo regenerated; 188 exit tests on x86_64, x86_32 and riscv64, the seL4 tests on
+all three, `cabal test`: all pass.
+**Measured** (`tests/perf-compare.sh`, user instructions retired, before → after): `loop-sum` at N = 1000
+4.94M → 2.45M (master 0.66M); `list-build-sum` 1.05e9 → 2.64e8 (master 1.23M). The owned call removed the
+copy per call; `list-build-sum` still grows ×4 per doubling, for another cause (D479).

@@ -166,13 +166,14 @@ module TrampC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
             ∷ restore-input s₂ ∷ load-at 1 ∷ restore-input s₃ ∷ store-at 1
             ∷ restore-input s₂ ∷ load-at 2 ∷ restore-input s₃ ∷ store-at 2
             ∷ restore-input s₂ ∷ load-at 3 ∷ restore-input s₃ ∷ store-at 3
+            ∷ restore-input s₂ ∷ load-at 4 ∷ restore-input s₃ ∷ store-at 4
             ∷ mov-to-output ∷ store-at 0 ∷ mvSP 0 hdr w
 
     tCQ : ∀ {X C} → under (ktrc X C) ∈ allK U → AbstractTrace
     tCQ {X} p = proj₁ (in-trans (image-at p) (in-r (lowBlock (idx p) (kcopy X) (blocks-in p)) (tramp (idx p) (kcopy X))))
 
-    shuf16 : ∀ a b → a + (16 + b) ≡ b + (16 + a)
-    shuf16 = solve-∀
+    shuf20 : ∀ a b → a + (20 + b) ≡ b + (20 + a)
+    shuf20 = solve-∀
 
   -- the addresses of the trampoline's points
   tC-pos₁ : ∀ {X C} (p : under (ktrc X C) ∈ allK U) → trPos (ktrc X C) p 1 ≡ suc (suc (suc (trPos (ktrc X C) p 0)))
@@ -182,11 +183,11 @@ module TrampC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   tC-pos₂ {X} {C} p = trans (pre-len (tCQ {X} {C} p) (tCP0 {X} {C} p ++ tCP1 X) (tCP2 {X} {C} p)) (Data.Nat.Properties.+-comm (trPos (ktrc X C) p 1) 4)
 
   tC-pos₄ : ∀ {X C} (p : under (ktrc X C) ∈ allK U)
-          → trPos (ktrc X C) p 4 ≡ Once.LinCore.Moves.ln {FS} (wsz X) + (16 + trPos (ktrc X C) p 2)
+          → trPos (ktrc X C) p 4 ≡ Once.LinCore.Moves.ln {FS} (wsz X) + (20 + trPos (ktrc X C) p 2)
   tC-pos₄ {X} {C} p =
     trans (pre-len (tCQ {X} {C} p) ((tCP0 {X} {C} p ++ tCP1 X) ++ tCP2 {X} {C} p) (tCR X))
-      (trans (cong (λ z → trPos (ktrc X C) p 2 + (16 + z)) (len-mvSP 0 hdr (wsz X)))
-             (shuf16 (trPos (ktrc X C) p 2) (Once.LinCore.Moves.ln {FS} (wsz X))))
+      (trans (cong (λ z → trPos (ktrc X C) p 2 + (20 + z)) (len-mvSP 0 hdr (wsz X)))
+             (shuf20 (trPos (ktrc X C) p 2) (Once.LinCore.Moves.ln {FS} (wsz X))))
     where open import Once.LinCore.LowerSimE {FS} using (len-mvSP)
 
   private
@@ -369,21 +370,22 @@ module TrampC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
             CO
 
   -- ★ `reclose`: a fresh cell, the viewed cell's code words, the copy's words
-  tc-reclose : ∀ {X C} (p : under (ktrc X C) ∈ allK U) (sz : ℕ) {i} {cv : MV C} {x′ : MV X} {w₁ w₂ w₃ : StoredValue FS} {fs}
+  tc-reclose : ∀ {X C} (p : under (ktrc X C) ∈ allK U) (sz : ℕ) {i} {cv : MV C} {x′ : MV X} {w₁ w₂ w₃ w₄ : StoredValue FS} {fs}
              → (T : TrC2 (wsz X) (trPos (ktrc X C) p 3) cv x′ fs)
              → slot fs (suc (wsz X)) ≡ just (cellPtr i)
              → LocState.heapMem (floc fs) (cellLoc i 1) ≡ just w₁ → LocState.heapMem (floc fs) (cellLoc i 2) ≡ just w₂
-             → LocState.heapMem (floc fs) (cellLoc i 3) ≡ just w₃
+             → LocState.heapMem (floc fs) (cellLoc i 3) ≡ just w₃ → LocState.heapMem (floc fs) (cellLoc i 4) ≡ just w₄
              → ¬ serial i ≡ AllocState.next-heap-ref (falloc fs)
              → AllocState.freed (falloc fs) (AllocState.next-heap-ref (falloc fs)) ≡ false
-             → Σ FlatState λ fs′ → FlatSteps image _ fs fs′ × ReCl fs fs′ (suc (suc (wsz X))) sz w₁ w₂ w₃ (TrC2.c2-wx T)
+             → Σ FlatState λ fs′ → FlatSteps image _ fs fs′ × ReCl fs fs′ (suc (suc (wsz X))) sz w₁ w₂ w₃ w₄ (TrC2.c2-wx T)
                  × fpc fs′ ≡ trPos (ktrc X C) p 4
-  tc-reclose {X} {C} p sz {i} {fs = fs} T s₂ e₁ e₂ e₃ ne fz =
-    fin (reclose-run image fs (suc w) (suc (suc w)) sz i _ _ _ (TrC2.c2-wx T)
+  tc-reclose {X} {C} p sz {i} {fs = fs} T s₂ e₁ e₂ e₃ e₄ ne fz =
+    fin (reclose-run image fs (suc w) (suc (suc w)) sz i _ _ _ _ (TrC2.c2-wx T)
            (subst (λ n → Seg image (fpc fs) (instr-alloc-heap (hdr + n) ∷ store-at-slot (suc (suc w))
                                    ∷ restore-input (suc w) ∷ load-at 1 ∷ restore-input (suc (suc w)) ∷ store-at 1
                                    ∷ restore-input (suc w) ∷ load-at 2 ∷ restore-input (suc (suc w)) ∷ store-at 2
                                    ∷ restore-input (suc w) ∷ load-at 3 ∷ restore-input (suc (suc w)) ∷ store-at 3
+                                   ∷ restore-input (suc w) ∷ load-at 4 ∷ restore-input (suc (suc w)) ∷ store-at 4
                                    ∷ mov-to-output ∷ store-at 0 ∷ mvSP 0 hdr n))
                   (sym lw) (Seg-++ˡ image (fpc fs) (tCR X) _ (tC-seg {X} {C} p 3 (TrC2.c2-pc T))))
            (TrC2.c2-run T)
@@ -395,16 +397,16 @@ module TrampC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
            s₂ (λ e → Data.Nat.Properties.<-irrefl (sym e) (Data.Nat.Properties.n<1+n (suc w)))
            (λ k k< e → Data.Nat.Properties.<-irrefl (sym e) (Data.Nat.Properties.<-≤-trans k< (subst (_≤ suc (suc w)) (sym lw)
                          (Data.Nat.Properties.m≤n⇒m≤1+n (Data.Nat.Properties.n≤1+n w)))))
-           e₁ e₂ e₃ ne fz (TrC2.c2-res T))
+           e₁ e₂ e₃ e₄ ne fz (TrC2.c2-res T))
     where
       w = wsz X
       lw : length (TrC2.c2-wx T) ≡ w
       lw = vw-len (TrC2.c2-x T)
-      fin : Σ FlatState (λ fs′ → FlatSteps image _ fs fs′ × ReCl fs fs′ (suc (suc w)) sz _ _ _ (TrC2.c2-wx T)) → _
+      fin : Σ FlatState (λ fs′ → FlatSteps image _ fs fs′ × ReCl fs fs′ (suc (suc w)) sz _ _ _ _ (TrC2.c2-wx T)) → _
       fin (fs′ , st , RC) =
         fs′ , st , RC ,
-        trans (rc-pc RC) (trans (cong (λ n → Once.LinCore.Moves.ln {FS} n + (16 + fpc fs)) lw)
-                                (trans (cong (λ z → Once.LinCore.Moves.ln {FS} w + (16 + z)) (TrC2.c2-pc T)) (sym (tC-pos₄ {X} {C} p))))
+        trans (rc-pc RC) (trans (cong (λ n → Once.LinCore.Moves.ln {FS} n + (20 + fpc fs)) lw)
+                                (trans (cong (λ z → Once.LinCore.Moves.ln {FS} w + (20 + z)) (TrC2.c2-pc T)) (sym (tC-pos₄ {X} {C} p))))
 
   -- ★ its way out: the new cell's word into the caller's destination, the return
   tc-end : ∀ {X C} (p : under (ktrc X C) ∈ allK U) {nv : MV C} {fs} (pc : ℕ) (rest : List ℕ)

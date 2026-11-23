@@ -313,7 +313,7 @@ module TrampO {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       at-ν = sym (trans (Data.Nat.Properties.∸-+-assoc (budget φ) (ws S′) 1)
                         (cong (budget φ ∸_) (Data.Nat.Properties.+-comm (ws S′) 1)))
       with-top : StkW (LocState.heapMem (floc fs)) (slot fs) φ (mnu i x ∷ˢ os) → _
-      with-top ((_ , vnu {wp = wp} (m , refl) cc cfr px words , (st₀ , _)) , _) =
+      with-top ((_ , vnu {wp = wp} (m , refl) cc cfr _ px words , (st₀ , _)) , _) =
         m , fin (closure-in image fs (Tp φ S′ ∸ 1) area (cellLoc i 0) (tl (idx m)) (e-thunk (tl (idx m)))
                    q (suc (suc M)) M (suc M) (λ e → Data.Nat.Properties.<-irrefl e (Data.Nat.Properties.n<1+n M))
                    (subst (λ z → slot fs z ≡ just (cellPtr i)) at-ν st₀) (proj₁ (proj₂ words)) seg (image-tramp m refl) segq h
@@ -337,7 +337,7 @@ module TrampO {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                    ; o-run = trans (cl-halt CL) h ; o-slots = cl-slots CL
                    ; o-wx = wp ; o-cfc = cf ; o-area = area
                    ; o-x = subst (λ r → VW r x wp) (sym (cl-heap CL)) px
-                   ; o-at = subst (λ r → Rel.At {FS} U wordOf r i hdr wp) (sym (cl-heap CL)) (proj₂ (proj₂ (proj₂ (proj₂ words))))
+                   ; o-at = subst (λ r → Rel.At {FS} U wordOf r i hdr wp) (sym (cl-heap CL)) (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ words)))))
                    ; o-in = cl-in CL
                    ; o-M = subst (λ g′ → LocState.stackMem (floc fs′) g′ M ≡ just (cellPtr i)) (sym (cl-frame CL)) (cl-s₁ CL)
                    ; o-sM = subst (λ g′ → LocState.stackMem (floc fs′) g′ (suc M) ≡ just (SV-Ptr (AtStack cf area))) (sym (cl-frame CL)) (cl-s₂ CL)

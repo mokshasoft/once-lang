@@ -105,6 +105,74 @@ closure-in prog fs x y hl ℓ e q b s₁ s₂ s≢ sx code (g₁ , g₂ , g₃ ,
     fs₈ = record fs₇ { floc = MemOps.writeLoc {FS} (floc fs₇) (AtStack cf′ s₁) cell ; fpc = suc (fpc fs₇) }
 
 ------------------------------------------------------------------------
+-- ★ D478: A ONE-SHOT DISPATCH THROUGH WORD 4: the cell's word-3 address the closure (so `do-call`
+-- reads word 4, the owned entry), the cell in `Input1`, the area in `Output` (as `free-in`'s
+-- prefix); the trampoline's entry as `closure-in`'s.
+------------------------------------------------------------------------
+
+record ClosIn4 (fs fs′ : FlatState) (cell : StoredValue FS) (y b s₁ s₂ q : ℕ) : Set where
+  field
+    c4-frame : current-frame (falloc fs′) ≡ callee-frame (current-frame (falloc fs)) b
+    c4-saved : saved-frames (falloc fs′) ≡ (current-frame (falloc fs) , frame-slots (falloc fs)) ∷ saved-frames (falloc fs)
+    c4-slots : frame-slots (falloc fs′) ≡ b
+    c4-ret   : fret fs′ ≡ suc (suc (suc (suc (suc (suc (suc (fpc fs))))))) ∷ fret fs
+    c4-pc    : fpc fs′ ≡ suc (suc (suc (suc q)))
+    c4-in    : readReg (LocState.regs (floc fs′)) Input1 ≡ cell
+    c4-s₁    : LocState.stackMem (floc fs′) (callee-frame (current-frame (falloc fs)) b) s₁ ≡ just cell
+    c4-s₂    : LocState.stackMem (floc fs′) (callee-frame (current-frame (falloc fs)) b) s₂
+               ≡ just (SV-Ptr (AtStack (current-frame (falloc fs)) y))
+    c4-other : ∀ f′ x → ¬ callee-frame (current-frame (falloc fs)) b ≡ f′
+             → LocState.stackMem (floc fs′) f′ x ≡ LocState.stackMem (floc fs) f′ x
+    c4-heap  : LocState.heapMem (floc fs′) ≡ LocState.heapMem (floc fs)
+    c4-next  : next-heap-ref (falloc fs′) ≡ next-heap-ref (falloc fs)
+    c4-size  : block-size (falloc fs′) ≡ block-size (falloc fs)
+    c4-freed : freed (falloc fs′) ≡ freed (falloc fs)
+    c4-halt  : LocState.halted (floc fs′) ≡ LocState.halted (floc fs)
+    c4-log   : LocState.ev-log (floc fs′) ≡ LocState.ev-log (floc fs)
+
+closure-in4 : ∀ prog (fs : FlatState) (x y : ℕ) (hl : HeapLocation) (ℓ : LabelId) (e : EntryId) (q b s₁ s₂ : ℕ) → ¬ s₁ ≡ s₂
+            → slot fs x ≡ just (SV-Ptr (AtDynamic hl))
+            → in-block? (block-size (falloc fs)) (offsetLoc (AtDynamic hl) 3) ≡ true
+            → LocState.heapMem (floc fs) (sucHL (offsetHL hl 3)) ≡ just (SV-Code ℓ)
+            → Seg prog (fpc fs) (restore-input x ∷ addr-at 3 ∷ mov-to-input ∷ instr-save-closure-reg
+                                 ∷ restore-input x ∷ lea-slot y ∷ instr-call-closure ∷ [])
+            → find-thunk prog ℓ ≡ just q
+            → Seg prog q (instr-ctrl (c-entry e b) ∷ store-at-slot s₂ ∷ mov-to-output ∷ store-at-slot s₁ ∷ [])
+            → LocState.halted (floc fs) ≡ false → x < Fr fs → y < Fr fs → s₁ < b → s₂ < b
+            → Σ FlatState λ fs′ → FlatSteps prog 11 fs fs′ × ClosIn4 fs fs′ (SV-Ptr (AtDynamic hl)) y b s₁ s₂ q
+closure-in4 prog fs x y hl ℓ e q b s₁ s₂ s≢ sx ib code (g₁ , g₂ , g₃ , g₄ , g₅ , g₆ , g₇ , _) ff (h₁ , h₂ , h₃ , h₄ , _) h lx ly l₁ l₂ =
+  fs₁₁ ,
+  step-at fs₁ (h , g₁) (restore-step fs x lx sx) (step-at fs₂ (h , g₂) (addr-step fs₁ 3 refl refl ib)
+  (step-at fs₃ (h , g₃) refl (step-at fs₄ (h , g₄) refl
+  (step-at fs₅ (h , g₅) (restore-step fs₄ x lx sx) (step-at fs₆ (h , g₆) (lea-step fs₅ y ly)
+  (step-at fs₇ (h , g₇) (closure-step prog fs₆ (offsetHL hl 3) ℓ refl code ff)
+  (step-at fs₈ (h , h₁) refl (step-at fs₉ (h , h₂) (store-step fs₈ s₂ l₂)
+  (step-at fs₁₀ (h , h₃) (mov-out-step fs₉) (step-at fs₁₁ (h , h₄) (store-step fs₁₀ s₁ l₁) FlatStepsAPI.[])))))))))) ,
+  record { c4-frame = refl ; c4-saved = refl ; c4-slots = refl ; c4-ret = refl ; c4-pc = refl ; c4-in = refl
+         ; c4-s₁ = store-same (floc fs₁₀) cf′ s₁ cell
+         ; c4-s₂ = trans (store-other (floc fs₁₀) cf′ s₁ cell s₂ s≢) (store-same (floc fs₈) cf′ s₂ area)
+         ; c4-other = λ f′ x′ ne → trans (store-frame (floc fs₁₀) cf′ s₁ cell f′ x′ ne)
+                                     (trans (store-frame (floc fs₈) cf′ s₂ area f′ x′ ne) (clear-other (LocState.stackMem (floc fs)) cf′ b f′ x′ ne))
+         ; c4-heap = refl ; c4-next = refl ; c4-size = refl ; c4-freed = refl ; c4-halt = refl ; c4-log = refl }
+  where
+    cf = current-frame (falloc fs)
+    cf′ = callee-frame cf b
+    cell = SV-Ptr (AtDynamic hl)
+    area = SV-Ptr (AtStack cf y)
+    w3 = SV-Ptr (AtDynamic (offsetHL hl 3))
+    fs₁ = record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Input1 cell } ; fpc = suc (fpc fs) }
+    fs₂ = record fs₁ { floc = record (floc fs₁) { regs = writeReg (LocState.regs (floc fs₁)) Output w3 } ; fpc = suc (fpc fs₁) }
+    fs₃ = record fs₂ { floc = record (floc fs₂) { regs = writeReg (LocState.regs (floc fs₂)) Input1 w3 } ; fpc = suc (fpc fs₂) }
+    fs₄ = record fs₃ { fclosure = w3 ; fpc = suc (fpc fs₃) }
+    fs₅ = record fs₄ { floc = record (floc fs₄) { regs = writeReg (LocState.regs (floc fs₄)) Input1 cell } ; fpc = suc (fpc fs₄) }
+    fs₆ = record fs₅ { floc = record (floc fs₅) { regs = writeReg (LocState.regs (floc fs₅)) Output area } ; fpc = suc (fpc fs₅) }
+    fs₇ = record fs₆ { falloc = enter-call (falloc fs₆) ; fret = suc (fpc fs₆) ∷ fret fs₆ ; flink = just (suc (fpc fs₆)) ; fpc = q }
+    fs₈ = do-thunk b fs₇
+    fs₉ = record fs₈ { floc = MemOps.writeLoc {FS} (floc fs₈) (AtStack cf′ s₂) area ; fpc = suc (fpc fs₈) }
+    fs₁₀ = record fs₉ { floc = record (floc fs₉) { regs = writeReg (LocState.regs (floc fs₉)) Output cell } ; fpc = suc (fpc fs₉) }
+    fs₁₁ = record fs₁₀ { floc = MemOps.writeLoc {FS} (floc fs₁₀) (AtStack cf′ s₁) cell ; fpc = suc (fpc fs₁₀) }
+
+------------------------------------------------------------------------
 -- ★ A MANY-USE DISPATCH (D434, D442, `icallω`): as `closure-in`, into a
 -- trampoline that saves only the caller's area (its one save slot); the
 -- cell stays in `Input1`.

@@ -114,16 +114,16 @@ module SimB {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
   open import Relation.Nullary using (¬_)
   open import Relation.Binary.PropositionalEquality using (refl; cong)
 
-  -- the trace (`Lower.header`, spelled out)
-  headerTr : ℕ → LabelId → LabelId → LabelId → List _
-  headerTr w lb lc lf =
+  -- the trace (`Lower.header`, spelled out; D478: word 4 the owned entry)
+  headerTr : ℕ → LabelId → LabelId → LabelId → LabelId → List _
+  headerTr w lb lc lf lo =
     instr-alloc-heap (hdr + w) ∷ mov-to-input ∷ mov-to-output ∷ store-at 0
     ∷ instr-load-code-addr lb ∷ store-at 1 ∷ instr-load-code-addr lc ∷ store-at 2
-    ∷ instr-load-code-addr lf ∷ store-at 3 ∷ []
+    ∷ instr-load-code-addr lf ∷ store-at 3 ∷ instr-load-code-addr lo ∷ store-at 4 ∷ []
 
-  record Header (fs fs′ : FlatState) (w : ℕ) (lb lc lf : LabelId) : Set where
+  record Header (fs fs′ : FlatState) (w : ℕ) (lb lc lf lo : LabelId) : Set where
     field
-      h-pc    : fpc fs′ ≡ 10 + fpc fs
+      h-pc    : fpc fs′ ≡ 12 + fpc fs
       h-in    : readReg (LocState.regs (floc fs′)) Input1
                 ≡ SV-Ptr (AtDynamic (heap-loc (mkHeapRef (AllocState.next-heap-ref (falloc fs))) 0))
       h-alloc : falloc fs′ ≡ record (falloc fs) { next-heap-ref = suc (AllocState.next-heap-ref (falloc fs))
@@ -139,26 +139,28 @@ module SimB {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
               × (heapMem (floc fs′) (heap-loc (mkHeapRef (AllocState.next-heap-ref (falloc fs))) 1) ≡ just (SV-Code lb))
               × (heapMem (floc fs′) (heap-loc (mkHeapRef (AllocState.next-heap-ref (falloc fs))) 2) ≡ just (SV-Code lc))
               × (heapMem (floc fs′) (heap-loc (mkHeapRef (AllocState.next-heap-ref (falloc fs))) 3) ≡ just (SV-Code lf))
+              × (heapMem (floc fs′) (heap-loc (mkHeapRef (AllocState.next-heap-ref (falloc fs))) 4) ≡ just (SV-Code lo))
       h-other : ∀ (hl : HeapLocation) → ¬ HeapLocation.heap-ref hl ≡ mkHeapRef (AllocState.next-heap-ref (falloc fs))
               → heapMem (floc fs′) hl ≡ heapMem (floc fs) hl
       -- D441: the words written are inside the fresh block
       h-inb   : InBlk fs → InBlk fs′
   open Header
 
-  header-run : ∀ prog (fs : FlatState) w lb lc lf → Seg prog (fpc fs) (headerTr w lb lc lf) → fhalted (floc fs) ≡ false
+  header-run : ∀ prog (fs : FlatState) w lb lc lf lo → Seg prog (fpc fs) (headerTr w lb lc lf lo) → fhalted (floc fs) ≡ false
              → AllocState.freed (falloc fs) (AllocState.next-heap-ref (falloc fs)) ≡ false
-             → Σ FlatState λ fs′ → FlatSteps prog 10 fs fs′ × Header fs fs′ w lb lc lf
-  header-run prog fs w lb lc lf (f₁ , f₂ , f₃ , f₄ , f₅ , f₆ , f₇ , f₈ , f₉ , f₁₀ , _) h fz =
-    fs₁₀ ,
+             → Σ FlatState λ fs′ → FlatSteps prog 12 fs fs′ × Header fs fs′ w lb lc lf lo
+  header-run prog fs w lb lc lf lo (f₁ , f₂ , f₃ , f₄ , f₅ , f₆ , f₇ , f₈ , f₉ , f₁₀ , f₁₁ , f₁₂ , _) h fz =
+    fs₁₂ ,
     step-at fs₁ (h , f₁) (alloc-step fs (hdr + w)) (step-at fs₂ (h , f₂) (mov-in-step fs₁)
     (step-at fs₃ (h , f₃) (mov-out-step fs₂)
     (step-at fs₄ (h , f₄) (storeat-step fs₃ 0 refl refl fz (ib 0 (s≤s z≤n)))
     (step-at fs₅ (h , f₅) (code-step fs₄ lb) (step-at fs₆ (h , f₆) (storeat-step fs₅ 1 refl refl fz (ib 1 (s≤s (s≤s z≤n))))
     (step-at fs₇ (h , f₇) (code-step fs₆ lc) (step-at fs₈ (h , f₈) (storeat-step fs₇ 2 refl refl fz (ib 2 (s≤s (s≤s (s≤s z≤n)))))
-    (step-at fs₉ (h , f₉) (code-step fs₈ lf) (step-at fs₁₀ (h , f₁₀) (storeat-step fs₉ 3 refl refl fz (ib 3 (s≤s (s≤s (s≤s (s≤s z≤n)))))) done))))))))) ,
+    (step-at fs₉ (h , f₉) (code-step fs₈ lf) (step-at fs₁₀ (h , f₁₀) (storeat-step fs₉ 3 refl refl fz (ib 3 (s≤s (s≤s (s≤s (s≤s z≤n))))))
+    (step-at fs₁₁ (h , f₁₁) (code-step fs₁₀ lo) (step-at fs₁₂ (h , f₁₂) (storeat-step fs₁₁ 4 refl refl fz (ib 4 (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))) done))))))))))) ,
     record { h-pc = refl ; h-in = refl ; h-alloc = refl ; h-ret = refl ; h-clo = refl ; h-link = refl ; h-halt = refl ; h-log = refl
            ; h-stack = refl
-           ; h-words = w0 , w1 , w2 , w3
+           ; h-words = w0 , w1 , w2 , w3 , w4
            ; h-other = other
            ; h-inb = inb }
     where
@@ -180,58 +182,65 @@ module SimB {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
       fs₈ = record fs₇ { floc = writeLoc (floc fs₇) (AtDynamic (p 2)) (SV-Code lc) ; fpc = suc (fpc fs₇) }
       fs₉ = record fs₈ { floc = record (floc fs₈) { regs = writeReg (LocState.regs (floc fs₈)) Output (SV-Code lf) } ; fpc = suc (fpc fs₈) }
       fs₁₀ = record fs₉ { floc = writeLoc (floc fs₉) (AtDynamic (p 3)) (SV-Code lf) ; fpc = suc (fpc fs₉) }
+      fs₁₁ = record fs₁₀ { floc = record (floc fs₁₀) { regs = writeReg (LocState.regs (floc fs₁₀)) Output (SV-Code lo) } ; fpc = suc (fpc fs₁₀) }
+      fs₁₂ = record fs₁₁ { floc = writeLoc (floc fs₁₁) (AtDynamic (p 4)) (SV-Code lo) ; fpc = suc (fpc fs₁₁) }
       -- every word stored is inside the fresh block
       ib : ∀ o → o < hdr + w → ExecFinal.in-block? {FS} (AllocState.block-size (falloc fs₁)) (offsetLoc P o) ≡ Data.Bool.true
       ib o o< = trans (cong ((o + 0) Data.Nat.<ᵇ_) (size-with-same (hdr + w) r (AllocState.block-size (falloc fs))))
                       (<ᵇ-true (subst (_< hdr + w) (sym (Data.Nat.Properties.+-identityʳ o)) o<))
         where import Data.Bool
+      -- a write at word j leaves word k (k ≠ j) as it was
+      keepW : ∀ (f : FlatState) j k → ¬ j ≡ k → ∀ v → heapMem (writeLoc (floc f) (AtDynamic (p j)) v) (p k) ≡ heapMem (floc f) (p k)
+      keepW f j k ne v = writeLoc-preserves-other (floc f) (AtDynamic (p j)) (AtDynamic (p k)) v (λ e → ne (cong HeapLocation.heap-offset (at-inj e)))
+        where
+          at-inj : ∀ {a b : HeapLocation} → AtDynamic {FS} a ≡ AtDynamic b → a ≡ b
+          at-inj refl = refl
       -- the words, read back
-      w0 = trans (writeLoc-preserves-other (floc fs₉) (AtDynamic (p 3)) (AtDynamic (p 0)) (SV-Code lf) (λ ()))
-             (trans (writeLoc-preserves-other (floc fs₇) (AtDynamic (p 2)) (AtDynamic (p 0)) (SV-Code lc) (λ ()))
-               (trans (writeLoc-preserves-other (floc fs₅) (AtDynamic (p 1)) (AtDynamic (p 0)) (SV-Code lb) (λ ()))
-                 (readLoc-writeLoc-same (floc fs₃) (AtDynamic (p 0)) (SV-Ptr P))))
-      w1 = trans (writeLoc-preserves-other (floc fs₉) (AtDynamic (p 3)) (AtDynamic (p 1)) (SV-Code lf) (λ ()))
-             (trans (writeLoc-preserves-other (floc fs₇) (AtDynamic (p 2)) (AtDynamic (p 1)) (SV-Code lc) (λ ()))
-               (readLoc-writeLoc-same (floc fs₅) (AtDynamic (p 1)) (SV-Code lb)))
-      w2 = trans (writeLoc-preserves-other (floc fs₉) (AtDynamic (p 3)) (AtDynamic (p 2)) (SV-Code lf) (λ ()))
-             (readLoc-writeLoc-same (floc fs₇) (AtDynamic (p 2)) (SV-Code lc))
-      w3 = readLoc-writeLoc-same (floc fs₉) (AtDynamic (p 3)) (SV-Code lf)
-      other : ∀ (hl : HeapLocation) → ¬ HeapLocation.heap-ref hl ≡ mkHeapRef r → heapMem (floc fs₁₀) hl ≡ heapMem (floc fs) hl
+      w0 = trans (keepW fs₁₁ 4 0 (λ ()) (SV-Code lo)) (trans (keepW fs₉ 3 0 (λ ()) (SV-Code lf)) (trans (keepW fs₇ 2 0 (λ ()) (SV-Code lc))
+             (trans (keepW fs₅ 1 0 (λ ()) (SV-Code lb)) (readLoc-writeLoc-same (floc fs₃) (AtDynamic (p 0)) (SV-Ptr P)))))
+      w1 = trans (keepW fs₁₁ 4 1 (λ ()) (SV-Code lo)) (trans (keepW fs₉ 3 1 (λ ()) (SV-Code lf)) (trans (keepW fs₇ 2 1 (λ ()) (SV-Code lc))
+             (readLoc-writeLoc-same (floc fs₅) (AtDynamic (p 1)) (SV-Code lb))))
+      w2 = trans (keepW fs₁₁ 4 2 (λ ()) (SV-Code lo)) (trans (keepW fs₉ 3 2 (λ ()) (SV-Code lf)) (readLoc-writeLoc-same (floc fs₇) (AtDynamic (p 2)) (SV-Code lc)))
+      w3 = trans (keepW fs₁₁ 4 3 (λ ()) (SV-Code lo)) (readLoc-writeLoc-same (floc fs₉) (AtDynamic (p 3)) (SV-Code lf))
+      w4 = readLoc-writeLoc-same (floc fs₁₁) (AtDynamic (p 4)) (SV-Code lo)
+      other : ∀ (hl : HeapLocation) → ¬ HeapLocation.heap-ref hl ≡ mkHeapRef r → heapMem (floc fs₁₂) hl ≡ heapMem (floc fs) hl
       other hl ne =
-        trans (writeLoc-preserves-other (floc fs₉) (AtDynamic (p 3)) (AtDynamic hl) (SV-Code lf) (ne′ 3))
+        trans (writeLoc-preserves-other (floc fs₁₁) (AtDynamic (p 4)) (AtDynamic hl) (SV-Code lo) (ne′ 4))
+        (trans (writeLoc-preserves-other (floc fs₉) (AtDynamic (p 3)) (AtDynamic hl) (SV-Code lf) (ne′ 3))
           (trans (writeLoc-preserves-other (floc fs₇) (AtDynamic (p 2)) (AtDynamic hl) (SV-Code lc) (ne′ 2))
             (trans (writeLoc-preserves-other (floc fs₅) (AtDynamic (p 1)) (AtDynamic hl) (SV-Code lb) (ne′ 1))
-              (writeLoc-preserves-other (floc fs₃) (AtDynamic (p 0)) (AtDynamic hl) (SV-Ptr P) (ne′ 0))))
+              (writeLoc-preserves-other (floc fs₃) (AtDynamic (p 0)) (AtDynamic hl) (SV-Ptr P) (ne′ 0)))))
         where
           ne′ : ∀ k → ¬ AtDynamic {FS} (p k) ≡ AtDynamic hl
           ne′ k refl = ne refl
       -- the fresh block's other words: as before (so none, below the counter)
-      rest : ∀ k → 4 ≤ k → heapMem (floc fs₁₀) (p k) ≡ heapMem (floc fs) (p k)
+      rest : ∀ k → hdr ≤ k → heapMem (floc fs₁₂) (p k) ≡ heapMem (floc fs) (p k)
       rest k le =
-        trans (writeLoc-preserves-other (floc fs₉) (AtDynamic (p 3)) (AtDynamic (p k)) (SV-Code lf) (ne-off 3 (s≤s (s≤s (s≤s (s≤s z≤n))))))
+        trans (writeLoc-preserves-other (floc fs₁₁) (AtDynamic (p 4)) (AtDynamic (p k)) (SV-Code lo) (ne-off 4 (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))
+        (trans (writeLoc-preserves-other (floc fs₉) (AtDynamic (p 3)) (AtDynamic (p k)) (SV-Code lf) (ne-off 3 (s≤s (s≤s (s≤s (s≤s z≤n))))))
           (trans (writeLoc-preserves-other (floc fs₇) (AtDynamic (p 2)) (AtDynamic (p k)) (SV-Code lc) (ne-off 2 (s≤s (s≤s (s≤s z≤n)))))
             (trans (writeLoc-preserves-other (floc fs₅) (AtDynamic (p 1)) (AtDynamic (p k)) (SV-Code lb) (ne-off 1 (s≤s (s≤s z≤n))))
-              (writeLoc-preserves-other (floc fs₃) (AtDynamic (p 0)) (AtDynamic (p k)) (SV-Ptr P) (ne-off 0 (s≤s z≤n)))))
+              (writeLoc-preserves-other (floc fs₃) (AtDynamic (p 0)) (AtDynamic (p k)) (SV-Ptr P) (ne-off 0 (s≤s z≤n))))))
         where
-          ne-off : ∀ j → j < 4 → ¬ AtDynamic {FS} (p j) ≡ AtDynamic (p k)
+          ne-off : ∀ j → j < hdr → ¬ AtDynamic {FS} (p j) ≡ AtDynamic (p k)
           ne-off j j< refl = Data.Nat.Properties.<-irrefl refl (Data.Nat.Properties.<-≤-trans j< le)
-      inb : InBlk fs → InBlk fs₁₀
+      inb : InBlk fs → InBlk fs₁₂
       inb I hl {v} e = by-ref (HeapRef.ref-id (HeapLocation.heap-ref hl) Data.Nat.≟ r)
         where
           rf = HeapRef.ref-id (HeapLocation.heap-ref hl)
           off = HeapLocation.heap-offset hl
-          by-off : rf ≡ r → Relation.Nullary.Dec (off < 4)
+          by-off : rf ≡ r → Relation.Nullary.Dec (off < hdr)
                  → rf < suc r × ExecFinal.in-block? {FS} (size-with (hdr + w) r (AllocState.block-size (falloc fs))) (AtDynamic hl) ≡ Data.Bool.true
           by-off refl (Relation.Nullary.yes o<) =
             Data.Nat.Properties.n<1+n r ,
             trans (cong (off Data.Nat.<ᵇ_) (size-with-same (hdr + w) r (AllocState.block-size (falloc fs))))
-                  (<ᵇ-true (Data.Nat.Properties.<-≤-trans o< (Data.Nat.Properties.m≤m+n 4 w)))
+                  (<ᵇ-true (Data.Nat.Properties.<-≤-trans o< (Data.Nat.Properties.m≤m+n hdr w)))
           by-off refl (Relation.Nullary.no o≮) =
             Data.Empty.⊥-elim (Data.Nat.Properties.<-irrefl refl
               (Data.Product.proj₁ (I (p off) (trans (sym (rest off (Data.Nat.Properties.≮⇒≥ o≮))) e))))
           by-ref : Relation.Nullary.Dec (rf ≡ r)
                  → rf < suc r × ExecFinal.in-block? {FS} (size-with (hdr + w) r (AllocState.block-size (falloc fs))) (AtDynamic hl) ≡ Data.Bool.true
-          by-ref (Relation.Nullary.yes er) = by-off er (off Data.Nat.<? 4)
+          by-ref (Relation.Nullary.yes er) = by-off er (off Data.Nat.<? hdr)
           by-ref (Relation.Nullary.no ne) = after (I hl (trans (sym (other hl (λ eq → ne (cong HeapRef.ref-id eq)))) e))
             where
               after : rf < r × ExecFinal.in-block? {FS} (AllocState.block-size (falloc fs)) (AtDynamic hl) ≡ Data.Bool.true
@@ -239,7 +248,7 @@ module SimB {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
               after (lt , ib′) = Data.Nat.Properties.m<n⇒m<1+n lt , trans (cong (off Data.Nat.<ᵇ_) (sw-old (hdr + w) r (AllocState.block-size (falloc fs)) rf ne)) ib′
 
   -- a header leaves the frames alone (D435)
-  keepH : ∀ {fs fs′ w lb lc lf} → Header fs fs′ w lb lc lf → Keep [] fs fs′
+  keepH : ∀ {fs fs′ w lb lc lf lo} → Header fs fs′ w lb lc lf lo → Keep [] fs fs′
   keepH {fs} {w = w} H = record { k-frame = cong AllocState.current-frame (h-alloc H) ; k-slots = cong AllocState.frame-slots (h-alloc H)
                    ; k-saved = cong AllocState.saved-frames (h-alloc H) ; k-ret = h-ret H
                    ; k-other = λ f x _ → cong (λ m → m f x) (h-stack H) ; k-halt = h-halt H ; k-log = h-log H ; k-inb = h-inb H
@@ -250,8 +259,8 @@ module SimB {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
                    ; k-unfr = λ r e → inj₁ (trans (cong (λ al → AllocState.freed al r) (sym (h-alloc H))) e) }
     where import Data.Nat.Properties
 
-  ranH : ∀ {hi fs fs′ w lb lc lf} → Header fs fs′ w lb lc lf → Ran 10 ((hdr + w) ∷ []) [] (AllocState.next-heap-ref (falloc fs)) hi fs fs′
-  ranH {fs = fs} {fs′ = fs′} {w = w} {lb} {lc} {lf} H = record { r-keep = keepH {fs} {fs′} {w} {lb} {lc} {lf} H
+  ranH : ∀ {hi fs fs′ w lb lc lf lo} → Header fs fs′ w lb lc lf lo → Ran 12 ((hdr + w) ∷ []) [] (AllocState.next-heap-ref (falloc fs)) hi fs fs′
+  ranH {fs = fs} {fs′ = fs′} {w = w} {lb} {lc} {lf} {lo} H = record { r-keep = keepH {fs} {fs′} {w} {lb} {lc} {lf} {lo} H
                   ; r-pc = h-pc H ; r-next = cong AllocState.next-heap-ref (h-alloc H)
                   ; r-born = trans (cong (λ al → AllocState.block-size al (AllocState.next-heap-ref (falloc fs))) (h-alloc H)) (size-with-same (hdr + w) (AllocState.next-heap-ref (falloc fs)) (AllocState.block-size (falloc fs))) , tt
                   ; r-old = λ hl lt _ → h-other H hl (λ e → Data.Nat.Properties.<-irrefl (cong Once.Memory.HeapAddress.HeapRef.ref-id e) lt)

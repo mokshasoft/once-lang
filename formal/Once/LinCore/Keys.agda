@@ -244,7 +244,9 @@ tmGot ds (bapp p)            = k! (_ , keyω ds p)
 tmGot ds (dup {A = A})       = t! A
 tmGot ds (drop {A = A})      = t! A
 tmGot ds (llam {X = X} b γ)  = k! (_ , kbody1 ds b γ) ⊹ t! X ⊹ tmGot ds b
-tmGot ds (llamω {X = X} b γ) = k! (_ , kbodyω ds b γ) ⊹ t! X ⊹ tmGot ds b
+tmGot ds (llamω {X = X} b γ) = k! (_ , kbodyω ds b γ) ⊹ t! X ⊹ tmGot ds b ⊹ k! (_ , kbody1 ds (ownBg b) (ownBg-gd b γ))
+-- (D478: a many-use closure also names its owned body, its owned entry's)
+tmGot ds (llamωᶜ {X = X} b₀ γ) = k! (_ , kbodyω ds (cin b₀) (cin-gd b₀ γ)) ⊹ t! X ⊹ tmGot ds b₀ ⊹ k! (_ , kbody1 ds b₀ γ)
 tmGot ds (lunf {F = F} {S})  = n! (F , S) ⊹ o! (_ , ε)
 tmGot ds (lout {F = F})      = o! (_ , ε)
 tmGot ds (lop s)             = p! s
@@ -351,7 +353,8 @@ module In (U : Univ) where
 
   PrimIn : ∀ {Γ} → Defs Γ → ∀ {E A B} → Tm Γ E A B → Set
   PrimIn ds (llam {X = X} b γ)  = (_ , kbody1 ds b γ) ∈ allK U × X ∈ tys U
-  PrimIn ds (llamω {X = X} b γ) = (_ , kbodyω ds b γ) ∈ allK U × X ∈ tys U
+  PrimIn ds (llamω {X = X} b γ) = (_ , kbodyω ds b γ) ∈ allK U × X ∈ tys U × (_ , kbody1 ds (ownBg b) (ownBg-gd b γ)) ∈ allK U
+  PrimIn ds (llamωᶜ {X = X} b₀ γ) = (_ , kbodyω ds (cin b₀) (cin-gd b₀ γ)) ∈ allK U × X ∈ tys U × (_ , kbody1 ds b₀ γ) ∈ allK U
   PrimIn ds (lunf {F = F} {S})  = (F , S) ∈ nus U × (_ , ε) ∈ obs U
   PrimIn ds ρl        = ⊤
   PrimIn ds ρl⁻       = ⊤
@@ -423,9 +426,11 @@ module In (U : Univ) where
   comp-in ds (lop s) g ck        = gp g (here refl) , ck
   comp-in ds lzero g ck          = tt , ck
   comp-in ds (llam b γ) g ck     = (inK (gk g (here refl)) , gt g (∈-++⁺ʳ [] (here refl))) , ck
-  comp-in ds (llamω b γ) g ck    = (inK (gk g (here refl)) , gt g (∈-++⁺ʳ [] (here refl))) , ck
+  comp-in ds (llamω b γ) g ck    = (inK (gk g (here refl)) , gt g (∈-++⁺ʳ [] (here refl)) , inK (gk (⊹ʳ (⊹ʳ (⊹ʳ g))) (here refl))) , ck
+  comp-in ds (llamωᶜ b₀ γ) g ck  = (inK (gk g (here refl)) , gt g (∈-++⁺ʳ [] (here refl)) , inK (gk (⊹ʳ (⊹ʳ (⊹ʳ g))) (here refl))) , ck
   comp-in ds lev g ck            = tt , ck
   comp-in ds bev g ck            = tt , ck
+  comp-in ds levω g ck           = tt , (tt , ck)
   comp-in ds lunf g ck           = (gn g (here refl) , go g (here refl)) , ck
   comp-in ds lout g ck           = go g (here refl) , ck
 
@@ -540,8 +545,20 @@ module In (U : Univ) where
   tm-good (bapp p) d g (there ())
   tm-good {ds = ds} (llam b γ) d g (here refl)  = body1-in {ds = ds} {b = b} {γ = γ} (⊹ʳ (⊹ʳ g))
   tm-good (llam b γ) d g (there m)    = tm-good b d (⊹ʳ (⊹ʳ g)) m
-  tm-good {ds = ds} (llamω b γ) d g (here refl) = bodyω-in {ds = ds} {b = b} {γ = γ} (⊹ʳ (⊹ʳ g))
-  tm-good (llamω b γ) d g (there m)   = tm-good b d (⊹ʳ (⊹ʳ g)) m
+  tm-good {ds = ds} (llamω b γ) d g (here refl) = bodyω-in {ds = ds} {b = b} {γ = γ} (⊹ˡ (⊹ʳ (⊹ʳ g)))
+  tm-good {ds = ds} (llamω {X = X} b γ) d g (there m) =
+    [ (λ p → tm-good b d (⊹ˡ (⊹ʳ (⊹ʳ g))) p) , own ]′ (∈-++⁻ (ks (tmGot ds b)) m)
+    where
+      own : ∀ {κ} → κ ∈ (_ , kbody1 ds (ownBg b) (ownBg-gd b γ)) ∷ [] → BIn κ
+      own (here refl) = body1-in {ds = ds} {b = ownBg b} {γ = ownBg-gd b γ}
+                          (⊹-join (⊹-join ∅⊑ (⊹-join (⊹ˡ (⊹ʳ g)) ∅⊑)) (⊹ˡ (⊹ʳ (⊹ʳ g))))
+  tm-good {ds = ds} (llamωᶜ {X = X} b₀ γ) d g (here refl) =
+    bodyω-in {ds = ds} {b = cin b₀} {γ = cin-gd b₀ γ} (⊹-join (⊹ˡ (⊹ʳ (⊹ʳ g))) (⊹-join (⊹-join (⊹ˡ (⊹ʳ g)) ∅⊑) ∅⊑))
+  tm-good {ds = ds} (llamωᶜ {X = X} b₀ γ) d g (there m) =
+    [ (λ p → tm-good b₀ d (⊹ˡ (⊹ʳ (⊹ʳ g))) p) , own ]′ (∈-++⁻ (ks (tmGot ds b₀)) m)
+    where
+      own : ∀ {κ} → κ ∈ (_ , kbody1 ds b₀ γ) ∷ [] → BIn κ
+      own (here refl) = body1-in {ds = ds} {b = b₀} {γ = γ} (⊹ˡ (⊹ʳ (⊹ʳ g)))
   tm-good lid d g ()
   tm-good ρl d g ()
   tm-good ρl⁻ d g ()
@@ -561,6 +578,7 @@ module In (U : Univ) where
   tm-good bcopy d g ()
   tm-good lev d g ()
   tm-good bev d g ()
+  tm-good levω d g ()
   tm-good lunf d g ()
   tm-good lout d g ()
   tm-good (lconst v) d g ()

@@ -99,15 +99,19 @@ module _ (D : Sig → Set) where
   tr-ps ds (P.case f g) (of , og) m = either (ps (tmGot ds (P.tr f))) m (tr-ps ds f of) (tr-ps ds g og)
   tr-ps ds P.terminal o ()
   tr-ps ds P.initial o ()
-  tr-ps ds (P.curry g f γ) o m = either (ps (tmGot ds (P.tr f))) m (tr-ps ds f o) (λ ())
+  tr-ps ds (P.curry g f γ) o m =
+    either (ps (tmGot ds (P.tr f)) ++ []) m (λ m′ → either (ps (tmGot ds (P.tr f))) m′ (tr-ps ds f o) (λ ())) (λ ())
   tr-ps ds P.apply o ()
   tr-ps ds (P.In F) o ()
   tr-ps ds (P.out-μ F) o ()
   tr-ps ds (P.Cata F alg) o m = either (ps (tmGot ds (P.tr alg))) m (tr-ps ds alg o) (λ ())
-  tr-ps ds (P.Ana F c φ) o m = either (ps (tmGot ds (P.tr c)) ++ []) m (λ m′ → either (ps (tmGot ds (P.tr c))) m′ (tr-ps ds c o) (λ ())) (λ ())
+  tr-ps ds (P.Ana F c φ) o m =
+    either ((ps (tmGot ds (P.tr c)) ++ []) ++ []) m
+      (λ m′ → either (ps (tmGot ds (P.tr c)) ++ []) m′ (λ m″ → either (ps (tmGot ds (P.tr c))) m″ (tr-ps ds c o) (λ ())) (λ ())) (λ ())
   tr-ps ds (P.Out F) o ()
   tr-ps ds (P.in-ν F) o m =
-    either (ps (tmGot ds (P.inco F)) ++ []) m (λ m₁ → either (ps (tmGot ds (P.inco F))) m₁ (inco-ps ds F) (λ ())) (λ ())
+    either ((ps (tmGot ds (P.inco F)) ++ []) ++ []) m
+      (λ m₁ → either (ps (tmGot ds (P.inco F)) ++ []) m₁ (λ m₂ → either (ps (tmGot ds (P.inco F))) m₂ (inco-ps ds F) (λ ())) (λ ())) (λ ())
   tr-ps ds (P.Iter body φ) o m = either (ps (tmGot ds (P.tr body))) m (tr-ps ds body o) (λ ())
   tr-ps ds (P.const v) o ()
   tr-ps ds (P.SigOp s) o (here refl) = o

@@ -95,6 +95,19 @@ data Key : BSig → Set where
 key-of : ∀ {k g X A B} → Lam k g X A B → Σ BSig Key
 key-of (c1 ds b γ) = _ , kbody1 ds b γ
 key-of (cω ds b γ) = _ , kbodyω ds b γ
+key-of (cωᶜ ds b₀ γ) = _ , kbodyω ds (cin b₀) (cin-gd b₀ γ)
+
+-- ★ D478: the owned body's block a cell's word 4 names (a one-shot closure's: its body; a many-use
+-- one's: its owned body), the block of the one-shot closure it becomes (`once-of`)
+okey : ∀ {k g X A B} → Lam k g X A B → Σ BSig Key
+okey (c1 ds b γ)   = _ , kbody1 ds b γ
+okey (cω ds b γ)   = _ , kbody1 ds (ownBg b) (ownBg-gd b γ)
+okey (cωᶜ ds b₀ γ) = _ , kbody1 ds b₀ γ
+
+-- ★ D478: a many-use closure's owned body's block (its owned entry calls it)
+key1-of : ∀ {g X A B} → Lam many g X A B → Σ BSig Key
+key1-of (cω ds b γ) = _ , kbody1 ds (ownBg b) (ownBg-gd b γ)
+key1-of (cωᶜ ds b₀ γ) = _ , kbody1 ds b₀ γ
 
 -- the trampoline a closure's code word enters
 tr1 : ∀ {g X A B} → Lam once g X A B → Key (bsig nothing (Fn once g A B ⊗t A) B)
@@ -102,6 +115,7 @@ tr1 (c1 ds b γ) = ktr1 ds b γ
 
 trω : ∀ {g X A B} → Lam many g X A B → Key (bsig (just (Fn many g A B)) A B)
 trω (cω ds b γ) = ktrω ds b γ
+trω (cωᶜ ds b₀ γ) = ktrω ds (cin b₀) (cin-gd b₀ γ)
 
 ------------------------------------------------------------------------
 -- 2. THE INSTRUCTIONS: A16's, with calls in place of expansion.
@@ -136,6 +150,9 @@ data Insᴵ : Sh → Sh → Set where
   -- a viewed closure or ν; free one
   icall   : ∀ {Es g A B S} → Insᴵ (Es ∣ (Fn once g A B ⊗t A) ∷ S) (Es ∣ B ∷ S)
   icallω  : ∀ {Es g A B S} → Insᴵ (Fn many g A B ∷ Es ∣ A ∷ S) (Fn many g A B ∷ Es ∣ B ∷ S)
+  -- ★ D478: a many-use closure made the one-shot closure of its owned body (word 4 into word 1),
+  -- for its owned call (`levω`: `oncify ⨾ icall`)
+  oncify  : ∀ {Es g A B S} → Insᴵ (Es ∣ (Fn many g A B ⊗t A) ∷ S) (Es ∣ (Fn once g A B ⊗t A) ∷ S)
   iobs    : ∀ {Γ} (ds : Defs Γ) {Es F S} → Insᴵ (Es ∣ Nu F ∷ S) (Es ∣ LF∙ F (Nu F) ∷ S)
   ccopy   : ∀ {Es k g A B S} → Insᴵ (Fn k g A B ∷ Es ∣ One ∷ S) (Fn k g A B ∷ Es ∣ Fn k g A B ∷ S)
   ncopy   : ∀ {Es F S} → Insᴵ (Nu F ∷ Es ∣ One ∷ S) (Nu F ∷ Es ∣ Nu F ∷ S)
@@ -224,6 +241,8 @@ compᴵ ds (llam b γ) k     = prim ds (llam b γ) ⨾ k
 compᴵ ds (llamω b γ) k    = prim ds (llamω b γ) ⨾ k
 compᴵ ds lev k            = icall ⨾ k
 compᴵ ds bev k            = icallω ⨾ k
+compᴵ ds (llamωᶜ b₀ γ) k  = prim ds (llamωᶜ b₀ γ) ⨾ k
+compᴵ ds levω k           = oncify ⨾ icall ⨾ k
 compᴵ ds lunf k           = prim ds lunf ⨾ k
 compᴵ ds lout k           = iobs ds ⨾ k
 

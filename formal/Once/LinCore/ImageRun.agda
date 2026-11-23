@@ -139,6 +139,11 @@ data StepI {T : Sh} : ∀ {sh U sh′ U′} → Codeᴵ sh U → Ret U T → Cfg
                {lam : Lam once g X A B} {x a} {os : Stk S} {n}
            → StepI (icall ⨾ k) r (es ∥ mpair (mfn i lam x) a ∷ˢ os) n (tmp (tnew fsz) ∷ [])
                    (blockᴵ (tr1 lam)) (frm {t = nothing} k es os r) ([]ᵉ ∥ mpair (mfn i lam x) a ∷ˢ []ˢ) n
+  -- ★ D478: a many-use closure applied owned: its owned entry, as a one-shot closure's call
+  -- ★ D478: a many-use closure made the one-shot closure of its owned body (no event)
+  i-oncify : ∀ {Es g X A B S U} {k : Codeᴵ (Es ∣ (Fn once g A B ⊗t A) ∷ S) U} {r : Ret U T} {es : Slots Es} {i}
+               {lam : Lam many g X A B} {x a} {os : Stk S} {n}
+           → StepI (oncify ⨾ k) r (es ∥ mpair (mfn i lam x) a ∷ˢ os) n [] k r (es ∥ mpair (mfn i (once-of lam) x) a ∷ˢ os) n
   i-icallω : ∀ {Es g X A B S U} {k : Codeᴵ (Fn many g A B ∷ Es ∣ B ∷ S) U} {r : Ret U T}
                {lam : Lam many g X A B} {i x} {es : Slots (Fn many g A B ∷ Es)} {a} {os : Stk S} {n}
            → see es ≡ mfn i lam x
@@ -171,6 +176,7 @@ data StepI {T : Sh} : ∀ {sh U sh′ U′} → Codeᴵ sh U → Ret U T → Cfg
   i-open1  : ∀ {Es g X A B S U} {k : Codeᴵ (Es ∣ (X ⊗t A) ∷ S) U} {r : Ret U T} {es i}
                {lam : Lam once g X A B} {x a os n}
            → StepI (open1 ⨾ k) r (es ∥ mpair (mfn i lam x) a ∷ˢ os) n (free i ∷ []) k r (es ∥ mpair x a ∷ˢ os) n
+  -- ★ D478: a many-use closure applied owned: its environment out, the cell freed
   -- a many-use closure: its environment viewed
   i-openω  : ∀ {Es g X A B S U} {k : Codeᴵ (X ∷ Fn many g A B ∷ Es ∣ S) U} {r : Ret U T}
                {lam : Lam many g X A B} {i x} {es : Slots (Fn many g A B ∷ Es)} {os n}

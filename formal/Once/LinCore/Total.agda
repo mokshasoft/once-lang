@@ -207,6 +207,32 @@ module _ (W : World) where
       spends : Spends run k left
       world  : WTr σ₀ trace after
 
+  -- ★ D478: a kept owned body's lent run is its run on a copy of the environment
+  cinRan : ∀ {Γ} {ds : Defs Γ} {X A B} {b₀ : Tm Γ One (X ⊗t A) B} {x : MV X} {a : MV A} {n k σ}
+         → Ran ds b₀ mone (mpair (fst (copy x n)) a) (fst (snd (copy x n))) k σ → Ran ds (cin b₀) x a n k σ
+  cinRan {x = x} {n = n} {k = k} (ran o t rb σ₁ c l s sp wo) =
+    ran o _ (r-∘ (r-∘ r-λ⁻ (go-on (r-⊗ r-copy (go-on (fm-gives r-id))))) (go-on (r-lift rb))) σ₁ c l s
+        (k , (k , refl , (k , refl , refl)) , sp)
+        (wtr-++ (snd (snd (copy x n)) ++ []) (wtr-quiet (snd (snd (copy x n)) ++ [])
+                  (trans (ios-++ (snd (snd (copy x n))) []) (cong (_++ []) (ios-copy x n)))) wo)
+
+  cinRanG : ∀ {Γ} {ds : Defs Γ} {X A B} {b₀ : Tm Γ One (X ⊗t A) B} {x : MV X} {a : MV A} {n k σ} {G : Outcome B → Set}
+          → Σ (Ran ds b₀ mone (mpair (fst (copy x n)) a) (fst (snd (copy x n))) k σ) (λ r → G (Ran.out r))
+          → Σ (Ran ds (cin b₀) x a n k σ) (λ r → G (Ran.out r))
+  cinRanG (ran o t rb σ₁ c l s sp wo , g) = (cinRan (ran o t rb σ₁ c l s sp wo) , g)
+
+  -- ★ D478: a plain many-use body's owned run: lent its environment, which is freed after
+  ownRanG : ∀ {Γ} {ds : Defs Γ} {X A B} {b : Tm Γ X A B} {x : MV X} {a : MV A} {n k σ} {G : Outcome B → Set}
+          → Σ (Ran ds b x a n k σ) (λ r → G (Ran.out r)) → Σ (Ran ds (ownBg b) mone (mpair x a) n k σ) (λ r → G (Ran.out r))
+  ownRanG (ran (stop y) t rb σ₁ c l s sp wo , g) =
+    (ran (stop y) _ (r-∘ (r-lend (fm-stop (r-snd rb))) stopped) σ₁ c l s sp (wtr-[] t wo) , g)
+  ownRanG {x = x} (ran (gives w n₁) t rb σ₁ c l s sp wo , g) =
+    ( ran (gives w n₁) _ (r-∘ (r-lend (fm-gives (r-snd rb))) (go-on (r-∘ (r-⊗ r-drop (go-on (fm-gives r-id))) (go-on r-λ))))
+          σ₁ c l s (l , sp , (l , (l , refl , refl) , refl))
+          (wtr-++ t wo (wtr-quiet ((freeAll x ++ []) ++ [])
+                         (trans (ios-++ (freeAll x ++ []) []) (cong (_++ []) (trans (ios-++ (freeAll x) []) (cong (_++ []) (ios-freeAll x)))))))
+    , g )
+
   -- ★ B1.2: an op's contract block, run in the world: each call answered, or
   -- the run cut where the world gave no answer
   Ends : ∀ {X : Set} → X ⊎ Why → Set
@@ -296,6 +322,10 @@ module _ (W : World) where
     Good (Fn many g A B) (mfn i (cω ds b γ) x) =
       ∀ x′ → x′ ~ x → ∀ (k : ℕ) a n (σ : WSt) → Good A a
       → Σ (Ran ds b x′ a n k σ) (λ r → GoodO B (Ran.out r))
+    -- (D478: a kept owned body: good as a one-shot closure's)
+    Good (Fn many g A B) (mfn i (cωᶜ ds b₀ γ) x) =
+      ∀ x′ → x′ ~ x → ∀ (k : ℕ) a n (σ : WSt) → Good A a
+      → Σ (Ran ds b₀ mone (mpair x′ a) n k σ) (λ r → GoodO B (Ran.out r))
     Good (μt F)      _            = ⊤
     Good (Bt b)      _            = ⊤
 
@@ -322,6 +352,7 @@ module _ (W : World) where
   good-~ (~ct p)     g        = good-~ p g
   good-~ (~fn {c = c1 ds b γ} p) g = λ x″ q → g x″ (~-trans q p)
   good-~ (~fn {c = cω ds b γ} p) g = λ x″ q → g x″ (~-trans q p)
+  good-~ (~fn {c = cωᶜ ds b₀ γ} p) g = λ x″ q → g x″ (~-trans q p)
   good-~ (~nu p)     g        = goodNu~ (~nu p) g
 
   -- a layer of μ data is good: it holds no closure
@@ -491,6 +522,27 @@ module _ (W : World) where
                         (wtr-quiet (fst (mapRun ds {F} {S} F w₂ n₂)) (map-quiet ds {F} {S} F w₂ n₂)))
           , layerGood F w₂ g₂ n₂ )
 
+    observe {F} {S} (mpair (mfn j (cωᶜ ds′ b₀ γ) x) s) (gc , gs) i ds e k n σ = case cinRanG (gc (fst (copy x n)) (copy-~ x n) k s (fst (snd (copy x n))) σ gs) of λ where
+      (ran (stop y) t rb σ₁ cz l sp sps wo , _) →
+        ( ran (stop y) _ (r-nout (r-∘ (r-∘ (r-∘ (r-∘ (r-lend (fm-stop (r-snd (r-bevᶜ rb)))) stopped) stopped) stopped) stopped))
+              σ₁ cz l sp sps
+              (wtr-[] ((((peek j ∷ t) ++ []) ++ []) ++ []) (wtr-[] (((peek j ∷ t) ++ []) ++ []) (wtr-[] ((peek j ∷ t) ++ []) (wtr-[] (peek j ∷ t) wo))))
+        , tt )
+      (ran (gives w n₁) t rb σ₁ _ l sp sps wo , gw) → case strRun ds F (mfn j (cωᶜ ds′ b₀ γ) x) gc w gw n₁ of λ where
+        (gaveP {w = w₂} {n′ = n₂} {t = t₂} r₂ g₂ fr₂ q₂) →
+          ( ran _ _ (r-nout (r-∘ (r-∘ (r-∘ (r-∘ (r-lend (fm-gives (r-snd (r-bevᶜ rb)))) (go-on (r-lend (fm-gives r₂))))
+                                             (go-on (r-⊗ r-drop (go-on (fm-gives r-id)))))
+                                      (go-on r-λ))
+                               (go-on (snd (mapRun ds {F} {S} F w₂ n₂)))))
+                σ₁ tt l sp (l , (l , (l , (l , sps , fr₂ l) , (l , refl , refl)) , refl) , map-free ds {F} {S} F w₂ n₂ l)
+                (wtr-++ ((((peek j ∷ t) ++ t₂) ++ (freeAll (mfn j (cωᶜ ds′ b₀ γ) x) ++ [])) ++ [])
+                        (wtr-++ (((peek j ∷ t) ++ t₂) ++ (freeAll (mfn j (cωᶜ ds′ b₀ γ) x) ++ []))
+                                (wtr-++ ((peek j ∷ t) ++ t₂) (wtr-++ (peek j ∷ t) wo (wtr-quiet t₂ q₂))
+                                        (wtr-quiet (freeAll (mfn j (cωᶜ ds′ b₀ γ) x) ++ []) (trans (ios-++ (freeAll (mfn j (cωᶜ ds′ b₀ γ) x)) []) (cong (_++ []) (ios-freeAll (mfn j (cωᶜ ds′ b₀ γ) x))))))
+                                refl)
+                        (wtr-quiet (fst (mapRun ds {F} {S} F w₂ n₂)) (map-quiet ds {F} {S} F w₂ n₂)))
+          , layerGood F w₂ g₂ n₂ )
+
     -- the layer's νs good again (the corecursive calls, in head position)
     layerGood : ∀ {F S} G (w : MV (LF∙ G (Coalg F S ⊗t S))) → Good (LF∙ G (Coalg F S ⊗t S)) w → ∀ n
               → GoodLayer F G (fst (mapV G w n))
@@ -611,6 +663,18 @@ module _ (W : World) where
         (ran o t rb σ₁ c l s sp wo , gw) → (ran o (free i ∷ t) (r-ev rb) σ₁ c l s sp wo , gw)
       go k bev (mfn i (cω ds′ b γ) x) a n σ gf ga = case gf x (~-refl x) k a n σ ga of λ where
         (ran o t rb σ₁ c l s sp wo , gw) → (ran o (peek i ∷ t) (r-bev rb) σ₁ c l s sp wo , gw)
+      -- ★ D478: a kept owned body: built, good as a one-shot closure; lent, its run on a copy;
+      -- applied owned, its run on the environment (a plain closure's: lent, then freed)
+      go k (llamωᶜ b₀ γ) e x n σ ge gx =
+        (ran _ _ r-lamωᶜ σ tt k ≤-refl refl refl , λ x′ p k′ a n′ σ′ ga → go k′ b₀ mone (mpair x′ a) n′ σ′ tt (good-~ p gx , ga))
+      go k bev (mfn i (cωᶜ ds′ b₀ γ) x) a n σ gf ga = case gf (fst (copy x n)) (copy-~ x n) k a (fst (snd (copy x n))) σ ga of λ where
+        (r₀ , gw) → let R = cinRan r₀ in
+          (ran (Ran.out R) (peek i ∷ Ran.trace R) (r-bevᶜ (Ran.run R)) (Ran.after R) (Ran.cause R) (Ran.left R) (Ran.spent R)
+               (Ran.spends R) (Ran.world R) , gw)
+      go k levω e (mpair (mfn i (cωᶜ ds′ b₀ γ) x) a) n σ ge (gf , ga) = case gf x (~-refl x) k a n σ ga of λ where
+        (ran o t rb σ₁ c l s sp wo , gw) → (ran o (free i ∷ t) (r-evωᶜ rb) σ₁ c l s sp wo , gw)
+      go k levω e (mpair (mfn i (cω ds′ b γ) x) a) n σ ge (gf , ga) = case ownRanG (gf x (~-refl x) k a n σ ga) of λ where
+        (ran o t rb σ₁ c l s sp wo , gw) → (ran o (free i ∷ t) (r-evω rb) σ₁ c l s sp wo , gw)
       -- ★ a ν: built, it is good (by `goodν`); observed, it runs by its
       -- goodness: no recursive call
       go k lunf e p n σ ge gp = (ran _ _ r-unf σ tt k ≤-refl refl refl , goodν p gp _)
@@ -692,6 +756,8 @@ module _ (W : World) where
     λ x′ p k a n σ ga → Eval.go ds (runners ds) k b mone (mpair x′ a) n σ tt (good-~ p (allGood x) , ga)
   allGood (mfn i (cω ds b γ) x) =
     λ x′ p k a n σ ga → Eval.go ds (runners ds) k b x′ a n σ (good-~ p (allGood x)) ga
+  allGood (mfn i (cωᶜ ds b₀ γ) x) =
+    λ x′ p k a n σ ga → Eval.go ds (runners ds) k b₀ mone (mpair x′ a) n σ tt (good-~ p (allGood x) , ga)
 
   -- ★ A14: EVERY TERM HAS A RUN, from every lent value, input, counter and
   -- world state, with any number of loop rounds

@@ -155,11 +155,12 @@ module Lowering (U : Univ)
   Tp φ S = opAt φ S
 
   -- a cell's code words, from its keys' indices
-  header : ℕ → ℕ → ℕ → ℕ → AbstractTrace
-  header w jb jc jf =
+  -- (D478: word 4 the owned entry: a many-use closure's owned body, a one-shot's body again)
+  header : ℕ → ℕ → ℕ → ℕ → ℕ → AbstractTrace
+  header w jb jc jf jo =
     instr-alloc-heap (hdr + w) ∷ mov-to-input ∷ mov-to-output ∷ store-at 0
     ∷ instr-load-code-addr (tl jb) ∷ store-at 1 ∷ instr-load-code-addr (tl jc) ∷ store-at 2
-    ∷ instr-load-code-addr (tl jf) ∷ store-at 3 ∷ []
+    ∷ instr-load-code-addr (tl jf) ∷ store-at 3 ∷ instr-load-code-addr (tl jo) ∷ store-at 4 ∷ []
 
   -- ★ D449: a SigOp's answer, by its base, as its argument (D445): a scalar is
   -- the sigop's `Output` word, stored; any other is written by the sigop in
@@ -235,15 +236,19 @@ module Lowering (U : Univ)
   lowP ds (lop s) φ S p = lowOp s (cmpOf s) (Tp φ S)
   lowP ds (llam {X = X} b γ) φ S (kb , x) =
     let bot = Tp φ S ; wX = wsz X
-    in header wX (idx kb) (idx (inC x)) (idx (inF x)) ++ mvSP (bot ∸ wX) hdr wX
+    in header wX (idx kb) (idx (inC x)) (idx (inF x)) (idx kb) ++ mvSP (bot ∸ wX) hdr wX
        ++ mov-to-output ∷ store-at-slot (bot ∸ 1) ∷ []
-  lowP ds (llamω {X = X} b γ) φ S (kb , x) =
+  lowP ds (llamω {X = X} b γ) φ S (kb , x , ko) =
     let bot = Tp φ S ; wX = wsz X
-    in header wX (idx kb) (idx (inC x)) (idx (inF x)) ++ mvSP (bot ∸ wX) hdr wX
+    in header wX (idx kb) (idx (inC x)) (idx (inF x)) (idx ko) ++ mvSP (bot ∸ wX) hdr wX
+       ++ mov-to-output ∷ store-at-slot (bot ∸ 1) ∷ []
+  lowP ds (llamωᶜ {X = X} b₀ γ) φ S (kb , x , ko) =
+    let bot = Tp φ S ; wX = wsz X
+    in header wX (idx kb) (idx (inC x)) (idx (inF x)) (idx ko) ++ mvSP (bot ∸ wX) hdr wX
        ++ mov-to-output ∷ store-at-slot (bot ∸ 1) ∷ []
   lowP ds (lunf {F = F} {S = S₀}) φ S (n , o) =
     let bot = Tp φ S ; wP = wsz (cty (F , S₀))
-    in header wP (idx (inO o n)) (idx (inC (ncty n))) (idx (inF (ncty n))) ++ mvSP (bot ∸ wP) hdr wP
+    in header wP (idx (inO o n)) (idx (inC (ncty n))) (idx (inF (ncty n))) (idx (inO o n)) ++ mvSP (bot ∸ wP) hdr wP
        ++ mov-to-output ∷ store-at-slot (bot ∸ 1) ∷ []
   {-# CATCHALL #-}
   lowP ds g φ S p = []
@@ -291,9 +296,16 @@ module Lowering (U : Univ)
     let bot = Tp φ S ; M = wsz A ⊔ wsz B
     in lea-slot (bot ∸ M) ∷ mov-to-input ∷ lea-slot (ws Es) ∷ instr-ctrl (c-call-fn (nameOf (idx κ∈))) ∷ [] , m
   -- ★ through a cell's code word: the cell in `fclosure`, the caller's area in `Output`
+  -- (D478: through word 4, the owned entry: `fclosure` the cell + 3, the cell in `Input1`)
   lowI φ j m (icall {Es} {g} {A} {B} {S}) ev =
     let bot = Tp φ S ; t = Tp φ ((Fn once g A B ⊗t A) ∷ S)
-    in restore-input t ∷ lea-slot (bot ∸ (suc (wsz A) ⊔ wsz B)) ∷ instr-save-closure-reg ∷ instr-call-closure ∷ [] , m
+    in restore-input t ∷ addr-at 3 ∷ mov-to-input ∷ instr-save-closure-reg
+       ∷ restore-input t ∷ lea-slot (bot ∸ (suc (wsz A) ⊔ wsz B)) ∷ instr-call-closure ∷ [] , m
+  -- ★ D478: an owned call through word 4: `fclosure` the cell + 3, the cell in `Input1`, the
+  -- caller's area in `Output` (as the one-shot call's, whose entry code it enters)
+  -- ★ D478: a pure retyping (the cell's word 4 is its owned body's entry, which the one-shot
+  -- call enters)
+  lowI φ j m (oncify {Es} {g} {A} {B} {S}) ev = [] , m
   lowI φ j m (icallω {Es} {g} {A} {B} {S}) ev =
     let bot = Tp φ S
     in restore-input (ws Es) ∷ lea-slot (bot ∸ (wsz A ⊔ wsz B)) ∷ instr-save-closure-reg ∷ instr-call-closure ∷ [] , m
@@ -415,6 +427,7 @@ module Lowering (U : Univ)
        ∷ restore-input s₂ ∷ load-at 1 ∷ restore-input s₃ ∷ store-at 1
        ∷ restore-input s₂ ∷ load-at 2 ∷ restore-input s₃ ∷ store-at 2
        ∷ restore-input s₂ ∷ load-at 3 ∷ restore-input s₃ ∷ store-at 3
+       ∷ restore-input s₂ ∷ load-at 4 ∷ restore-input s₃ ∷ store-at 4
        ∷ mov-to-output ∷ store-at 0 ∷ mvSP 0 hdr w
        ++ restore-input s₁ ∷ load-from-slot s₃ ∷ store-at 0 ∷ instr-ctrl (c-ret b) ∷ []
   -- a free of a cell: its contents out, the cell freed, then their free

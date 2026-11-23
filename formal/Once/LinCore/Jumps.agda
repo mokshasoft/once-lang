@@ -129,8 +129,8 @@ module Free (U : Univ)
   open _⊑U using (go)
   open Lowering U ncty ldConst
 
-  header-nj : ∀ w jb jc jf → NoJ (header w jb jc jf)
-  header-nj w jb jc jf = refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []
+  header-nj : ∀ w jb jc jf jo → NoJ (header w jb jc jf jo)
+  header-nj w jb jc jf jo = refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []
 
   argIn-nj : ∀ {A} (b : ST.Base ST.∅ₖ A) bot w → jump-of (argIn b bot w) ≡ nothing
   argIn-nj (ST.b-var {i = ()} _) bot w
@@ -166,8 +166,8 @@ module Free (U : Univ)
          (refl ∷ answer-nj (SigOpInfo.conB (info s)) bot)
   lowOp-nj s (just o) bot = argIn-nj (SigOpInfo.baseA (info s)) bot (wsz ⌜ sdom s ⌝) ∷ refl ∷ refl ∷ refl ∷ refl ∷ []
 
-  cell-nj : ∀ w jb jc jf a o d → NoJ (header w jb jc jf ++ mvSP a o w ++ mov-to-output ∷ store-at-slot d ∷ [])
-  cell-nj w jb jc jf a o d = nj (header w jb jc jf) (header-nj w jb jc jf) (nj (mvSP a o w) (mvSP-nj a o w) (refl ∷ refl ∷ []))
+  cell-nj : ∀ w jb jc jf jo a o d → NoJ (header w jb jc jf jo ++ mvSP a o w ++ mov-to-output ∷ store-at-slot d ∷ [])
+  cell-nj w jb jc jf jo a o d = nj (header w jb jc jf jo) (header-nj w jb jc jf jo) (nj (mvSP a o w) (mvSP-nj a o w) (refl ∷ refl ∷ []))
 
   lowP-nj : ∀ {Γ} (ds : Defs Γ) {A B} (g : LTm Γ A B) φ S (p : PrimIn ds g) → NoJ (lowP ds g φ S p)
   lowP-nj ds lid φ S p          = []
@@ -207,12 +207,14 @@ module Free (U : Univ)
   lowP-nj ds (blift _) φ S p    = []
   lowP-nj ds bcopy φ S p        = []
   lowP-nj ds (llam {X = X} b γ) φ S (kb , x) =
-    cell-nj (wsz X) (idx kb) (idx (inC x)) (idx (inF x)) (Tp φ S ∸ wsz X) hdr (Tp φ S ∸ 1)
-  lowP-nj ds (llamω {X = X} b γ) φ S (kb , x) =
-    cell-nj (wsz X) (idx kb) (idx (inC x)) (idx (inF x)) (Tp φ S ∸ wsz X) hdr (Tp φ S ∸ 1)
+    cell-nj (wsz X) (idx kb) (idx (inC x)) (idx (inF x)) (idx kb) (Tp φ S ∸ wsz X) hdr (Tp φ S ∸ 1)
+  lowP-nj ds (llamω {X = X} b γ) φ S (kb , x , ko) =
+    cell-nj (wsz X) (idx kb) (idx (inC x)) (idx (inF x)) (idx ko) (Tp φ S ∸ wsz X) hdr (Tp φ S ∸ 1)
+  lowP-nj ds (llamωᶜ {X = X} b₀ γ) φ S (kb , x , ko) =
+    cell-nj (wsz X) (idx kb) (idx (inC x)) (idx (inF x)) (idx ko) (Tp φ S ∸ wsz X) hdr (Tp φ S ∸ 1)
   lowP-nj ds lev φ S p          = []
   lowP-nj ds (lunf {F = F} {S = S₀}) φ S (n , o) =
-    cell-nj (wsz (cty (F , S₀))) (idx (inO o n)) (idx (inC (ncty n))) (idx (inF (ncty n))) (Tp φ S ∸ wsz (cty (F , S₀))) hdr (Tp φ S ∸ 1)
+    cell-nj (wsz (cty (F , S₀))) (idx (inO o n)) (idx (inC (ncty n))) (idx (inF (ncty n))) (idx (inO o n)) (Tp φ S ∸ wsz (cty (F , S₀))) hdr (Tp φ S ∸ 1)
   lowP-nj ds lout φ S p         = []
   lowP-nj ds (lconst v) φ S p   = ld-nj v ∷ refl ∷ []
   lowP-nj ds (lop s) φ S p      = lowOp-nj s (cmpOf s) (Tp φ S)
@@ -250,8 +252,9 @@ module Free (U : Univ)
   lowI-nj φ j m (eword {b} {Es} {S}) ei _ = mvSS-nj (ws Es) (Tp φ S ∸ 1) 1
   lowI-nj φ j m (call {bsig nothing A B} κ) ei _  = refl ∷ refl ∷ refl ∷ []
   lowI-nj φ j m (call {bsig (just E) A B} κ) ei _ = refl ∷ refl ∷ refl ∷ refl ∷ []
-  lowI-nj φ j m icall ei _   = refl ∷ refl ∷ refl ∷ refl ∷ []
+  lowI-nj φ j m icall ei _   = refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []
   lowI-nj φ j m icallω ei _  = refl ∷ refl ∷ refl ∷ refl ∷ []
+  lowI-nj φ j m oncify ei _  = []
   lowI-nj φ j m (iobs ds) ei _ = refl ∷ refl ∷ refl ∷ refl ∷ []
   lowI-nj φ j m ccopy ei _   = refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []
   lowI-nj φ j m ncopy ei _   = refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []
@@ -286,6 +289,7 @@ module Free (U : Univ)
     let w = wsz T₀
     in refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ cA w ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl
        ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl
+       ∷ refl ∷ refl ∷ refl ∷ refl
        ∷ nj (mvSP 0 hdr w) (mvSP-nj 0 hdr w) (refl ∷ refl ∷ refl ∷ refl ∷ [])
   tramp-nj j (kfree T₀) =
     let w = wsz T₀
@@ -395,6 +399,7 @@ module Closed {FS : FrameSemantics} where
       lowI-cov φ j m i@(call {bsig (just E) A B} κ) ei = plain φ j m i ei tt
       lowI-cov φ j m i@icall ei   = plain φ j m i ei tt
       lowI-cov φ j m i@icallω ei  = plain φ j m i ei tt
+      lowI-cov φ j m i@oncify ei  = plain φ j m i ei tt
       lowI-cov φ j m i@(iobs ds) ei = plain φ j m i ei tt
       lowI-cov φ j m i@ccopy ei   = plain φ j m i ei tt
       lowI-cov φ j m i@ncopy ei   = plain φ j m i ei tt

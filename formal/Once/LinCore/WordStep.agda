@@ -238,6 +238,7 @@ module StepR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       local-0 eapp l = refl
       local-0 epop l = refl
       local-0 eword l = refl
+      local-0 oncify l = refl
       local-0 (prim ds g) l = refl
       local-0 (call _) ()
       local-0 icall ()
