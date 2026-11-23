@@ -36,6 +36,7 @@ import Data.List.Relation.Unary.Any.Properties
 open import Data.List.Relation.Unary.Unique.Propositional using (Unique)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
+open import Relation.Nullary using (¬_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (tt)
 open import Data.Empty using (⊥; ⊥-elim)
@@ -115,6 +116,10 @@ opaque
 
   nameOf-two : ∀ j → length (CanonicalName.parts (nameOf j)) ≡ 2
   nameOf-two j = refl
+
+  -- D480: a block's name leads with `once-lincore`
+  nameOf-lead : ∀ j → Data.List.take 1 (CanonicalName.parts (nameOf j)) ≡ "once-lincore" ∷ []
+  nameOf-lead j = refl
 
 -- an arith block's name reads back too
 block-good : ∀ d → All PeelS (CanonicalName.parts (bare ("arith.block." ++ˢ d)))
@@ -558,6 +563,41 @@ module Img (nm : CanonicalName) {Γ} (ds : Defs Γ) (f : LTm Γ One One)
 
   br-path : ∀ n m → fetch image n ≡ just (instr-ctrl (c-branch-tag-zero m)) → Once.CCC.Codegen.AllocExpand.ImgL m
   br-path n m f = path-of (Data.List.Relation.Unary.All.lookup (jmp-pt image jumps-in) (fetch-∈ {FS} image n f) m refl)
+
+  ----------------------------------------------------------------------
+  -- D480: THE OUTLINED IMAGE'S NAMES — no jump of the image's targets the
+  -- skip label (its owner one part, a block's two), and no call of the image's
+  -- names a routine (a block's first part is `once-lincore`, theirs `once-alloc`)
+  ----------------------------------------------------------------------
+
+  private
+    skip-of : ∀ {m} → m ∈ Labs image → ¬ Once.CCC.Codegen.AllocExpand.skip-label ≡ m
+    skip-of p = sk (Data.List.Relation.Unary.All.lookup labs-shape p)
+      where sk : ∀ {m} → (Σ ℕ λ j → Σ ℕ λ k → m ≡ jl j k) → ¬ Once.CCC.Codegen.AllocExpand.skip-label ≡ m
+            sk (j , _ , refl) e = one≢two (trans (cong (λ l → length (CanonicalName.parts (LabelId.owner l))) e) (nameOf-two j))
+              where one≢two : 1 ≡ 2 → ⊥
+                    one≢two ()
+
+    first : CanonicalName → List String
+    first c = Data.List.take 1 (CanonicalName.parts c)
+
+  skip-apart : ∀ q i m → fetch IA.tail q ≡ just i → (i ≡ instr-ctrl (c-jmp m)) ⊎ (i ≡ instr-ctrl (c-branch-tag-zero m))
+             → ¬ Once.CCC.Codegen.AllocExpand.skip-label ≡ m
+  skip-apart q i m f (inj₁ refl) = skip-of (Data.List.Relation.Unary.All.lookup (jmp-pt image jumps-in) (fetch-∈ {FS} image (suc q) f) m refl)
+  skip-apart q i m f (inj₂ refl) = skip-of (Data.List.Relation.Unary.All.lookup (jmp-pt image jumps-in) (fetch-∈ {FS} image (suc q) f) m refl)
+
+  calls-apart : ∀ q i f → fetch IA.tail q ≡ just i → i ≡ instr-ctrl (c-call-fn f)
+              → ∀ k → (¬ e-fn (Once.CCC.Codegen.AllocExpand.alloc-fn k) ≡ e-fn f) × (¬ e-fn (Once.CCC.Codegen.AllocExpand.free-fn k) ≡ e-fn f)
+  calls-apart q i f ft refl k = ap (proj₂ (proj₂ (Data.List.Relation.Unary.All.lookup IA.tail-ok (fetch-∈ {FS} IA.tail q ft))))
+    where
+      e-fn-inj : ∀ {x y} → e-fn x ≡ e-fn y → x ≡ y
+      e-fn-inj refl = refl
+      ap : IOk.Ref (instr-ctrl (c-call-fn f))
+         → (¬ e-fn (Once.CCC.Codegen.AllocExpand.alloc-fn k) ≡ e-fn f) × (¬ e-fn (Once.CCC.Codegen.AllocExpand.free-fn k) ≡ e-fn f)
+      ap (_ , p , refl) = (λ e → a≢l (trans (cong first (e-fn-inj e)) (nameOf-lead (idx p))))
+                        , (λ e → a≢l (trans (cong first (e-fn-inj e)) (nameOf-lead (idx p))))
+        where a≢l : ¬ ("once-alloc" ∷ []) ≡ ("once-lincore" ∷ [])
+              a≢l ()
 
   private
     refs-ok : ∀ (i : AbstractInstr) → IOk.Ref i → (∀ l → jump-of i ≡ just l → l ∈ Labs image) → i ∈ image → All G (instr-refs i)
