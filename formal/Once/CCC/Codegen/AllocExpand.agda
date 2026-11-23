@@ -37,12 +37,15 @@ open import Data.Nat using (ℕ; zero; suc; _+_; _≤_)
 open import Once.CCC.Machine.SMCore
   using (AbstractInstr; AbstractTrace; instr-ctrl; instr-alloc-heap; instr-free-heap; instr-load-tag-lit
         ; load-rec; store-rec; load-at; store-at; mov-to-input; mov-to-output
-        ; c-label; c-jmp; c-branch-tag-zero; c-start)
-open import Once.CCC.Label using (LabelId; mkLabelId; module LabelId)
+        ; c-label; c-jmp; c-branch-tag-zero; c-start; c-call-fn; c-entry; c-ret)
+open import Once.CCC.Label using (LabelId; mkLabelId; module LabelId; e-fn)
+open import Data.Bool using (Bool; true; false)
+open import Data.String using () renaming (_++_ to _++ˢ_)
+open import Once.Target.Symbol using (showNat)
 open import Data.Empty using (⊥)
 open import Data.Product using (Σ; _×_)
 open import Relation.Binary.PropositionalEquality using (_≡_)
-open import Once.Spec.Name using (canonical)
+open import Once.Spec.Name using (canonical; CanonicalName)
 
 ------------------------------------------------------------------------
 -- The allocator's choice: which list serves a block size, and the size it bumps
@@ -154,3 +157,49 @@ module _ (C : Classes) where
 
   expand : AbstractTrace → AbstractTrace
   expand = expand-from 0
+
+------------------------------------------------------------------------
+-- ★ D480: THE ALLOCATOR AS A CALL. Each site calls its size's routine; the
+-- image ends with one alloc and one free routine per size (`ks`), each the
+-- inline code between an entry and a return, its labels at a routine site past
+-- the program's (`length P + j`). The routines' names lead every part with a
+-- non-digit, as the symbols' read-back needs (`LabelSymInj.GoodL`).
+------------------------------------------------------------------------
+
+alloc-fn free-fn : ℕ → CanonicalName
+alloc-fn k = canonical ("once-alloc" ∷ ("a" ++ˢ showNat k) ∷ [])
+free-fn  k = canonical ("once-alloc" ∷ ("f" ++ˢ showNat k) ∷ [])
+
+module _ (C : Classes) where
+
+  -- one instruction, a call where it allocates or frees
+  call-at : AbstractInstr → AbstractTrace
+  call-at (instr-alloc-heap k)     = instr-ctrl (c-call-fn (alloc-fn k)) ∷ []
+  call-at (instr-free-heap k)      = instr-ctrl (c-call-fn (free-fn k)) ∷ []
+  call-at (instr-ctrl (c-start b)) = instr-ctrl (c-start b) ∷ setup C
+  {-# CATCHALL #-}
+  call-at i                        = i ∷ []
+
+  calls : AbstractTrace → AbstractTrace
+  calls []      = []
+  calls (i ∷ t) = call-at i ++ calls t
+
+  -- a size's two routines, its alloc's labels at routine site `s`
+  alloc-routine : ℕ → ℕ → AbstractTrace
+  alloc-routine s k = instr-ctrl (c-entry (e-fn (alloc-fn k)) 0) ∷ alloc-code C s k ++ instr-ctrl (c-ret 0) ∷ []
+
+  free-routine : ℕ → AbstractTrace
+  free-routine k = instr-ctrl (c-entry (e-fn (free-fn k)) 0) ∷ free-code C k ++ instr-ctrl (c-ret 0) ∷ []
+
+  routines : ℕ → List ℕ → AbstractTrace
+  routines s []       = []
+  routines s (k ∷ ks) = alloc-routine s k ++ free-routine k ++ routines (suc s) ks
+
+  -- the call mode's image, over the program's sizes `ks`
+  expandᶜ : List ℕ → AbstractTrace → AbstractTrace
+  expandᶜ ks P = calls P ++ routines (length P) ks
+
+-- the mode: inline (`--inline-alloc`) or by call (the default)
+expandₘ : Bool → Classes → List ℕ → AbstractTrace → AbstractTrace
+expandₘ true  C ks P = expand C P
+expandₘ false C ks P = expandᶜ C ks P

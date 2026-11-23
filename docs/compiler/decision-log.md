@@ -24888,3 +24888,9 @@ positions), the alloc/free simulations (the call, the entry, the existing `Pop`/
 routine's pc, the return), `AllocExpandEmitted`/`Events`/`Start`/`Sim` over the mode, the image's symbols
 (`ImageSyms`: the routines' names, apart from every image name), the compiler's `--inline-alloc` flag, and the
 top theorems over the mode (D471's generalization).
+**Measured** (2026-11-23, an unproved trial build of the call mode, `tests/perf-compare.sh`, 108 programs,
+x86_64, inline → call): `.text` 2.88 → 2.44 MB (0.85×), emitted instructions 646,895 → 554,738 (0.86×), the
+record's traffic 51,509 → 4,044, calls 16,704 → 25,753; run-time instructions retired +8% in total (median 1.13×
+per program; `loop-sum` and `list-build-sum` +8%). Room checks did not fall (+1%): a call re-arms the caller's
+check, so the check moved into the routine without leaving the site (item e's: checks by static need).
+So the call mode is the size choice and `--inline-alloc` the speed choice, as planned; the default is the call.
