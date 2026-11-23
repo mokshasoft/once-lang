@@ -17,10 +17,13 @@ module Once.CCC.Machine.AllocMin where
 open import Data.Nat using (_≤_)
 open import Data.Unit using (⊤)
 open import Data.List.Relation.Unary.All using (All)
-open import Once.CCC.Machine.SMCore using (AbstractInstr; AbstractTrace; instr-alloc-heap)
+open import Once.CCC.Machine.SMCore using (AbstractInstr; AbstractTrace; instr-alloc-heap; instr-free-heap)
 
+-- D480: a free's size too (the call mode gives each size of the program an
+-- allocation routine, so a size only ever freed must be a cell's as well)
 AllocMinI : AbstractInstr → Set
 AllocMinI (instr-alloc-heap n) = 1 ≤ n
+AllocMinI (instr-free-heap n)  = 1 ≤ n
 {-# CATCHALL #-}
 AllocMinI _                    = ⊤
 

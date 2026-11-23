@@ -95,7 +95,7 @@ module _ (ks : List ℕ) (b : ℕ) (T : AbstractTrace) where
 
       rou-min : ∀ ks′ → (∀ k → k ∈ ks′ → 1 ≤ k) → All AllocMinI (prim-routines ks′)
       rou-min []        _ = []
-      rou-min (k ∷ ks′) p = tt ∷ p k (Data.List.Relation.Unary.Any.here refl) ∷ tt ∷ tt ∷ tt ∷ tt
+      rou-min (k ∷ ks′) p = tt ∷ p k (Data.List.Relation.Unary.Any.here refl) ∷ tt ∷ tt ∷ p k (Data.List.Relation.Unary.Any.here refl) ∷ tt
                           ∷ rou-min ks′ (λ k′ m → p k′ (Data.List.Relation.Unary.Any.there m))
 
       tail-all : ∀ {Q : AbstractInstr → Set} → All Q P → All Q T
