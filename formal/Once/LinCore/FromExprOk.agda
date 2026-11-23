@@ -413,8 +413,7 @@ module RelM {L : Cx} (δ : Env L) (ρ : CallEnv) where
 
   -- ★ the application: a closure applied owned, against `apply`
   rel-apω : ∀ {π A B} → Rel (apω {g = grade π} {⟪ A ⟫} {⟪ B ⟫}) (M.apply {A} {B} {π})
-  rel-apω {π} {A} {B} = mkRel λ { {f , a} {f′ , a′} (wf , wa) →
-    ≈-≈R (pair-drop (f ,_) (Lᶜ δ (Once.LinCore.PassTr.dropl fmt {Γ = L} {E = One} {A = Fn many (grade π) ⟪ A ⟫ ⟪ B ⟫} {B = ⟪ B ⟫}) tt) (λ _ → refl)) (wf wa) }
+  rel-apω {π} {A} {B} = mkRel λ { {f , a} {f′ , a′} (wf , wa) → wf wa }
 
   -- ★ THE SPLIT against the IR's copy into two restrictions
   rel-pair : ∀ (am : M.AllocMode) {m n} (Γ : Ctx m n) (Ψ₁ Ψ₂ : Usage n) {A B : IRTy}
@@ -560,12 +559,12 @@ module RelClo {L : Cx} (δ : Env L) (ρ : CallEnv) where
 
   -- ★ at either grade: a block's meaning is its computation's (`Grade.blk-coh`)
   rel-cloG : ∀ (π : G.Purity) {X A B : IRTy} {b : LTm L (⟪ X ⟫ ⊗t ⟪ A ⟫) ⟪ B ⟫} {b′ : M.IR (X I.* A) B}
-               (γ : Gd (grade π) (copyIn b))
-           → Rel b b′ → Rel (llamω (copyIn b) γ) (M.curry {π = π} b′)
+               (γ : Gd (grade π) b)
+           → Rel b b′ → Rel (llamωᶜ b γ) (M.curry {π = π} b′)
   rel-cloG (G.fin φ) {b = b} γ rb = mkRel λ {x} {x′} w →
-    ret≈R (λ {a} {a′} wa → ≈-≈R (≈-trans (≈-sym (blk-coh δ γ x a)) (copyIn-≈ b x a)) (relOf rb (w , wa)))
+    ret≈R (λ {a} {a′} wa → ≈-≈R (≈-sym (blk-coh δ γ tt (x , a))) (relOf rb (w , wa)))
   rel-cloG G.eff {b = b} γ rb = mkRel λ {x} {x′} w →
-    ret≈R (λ {a} {a′} wa → ≈-≈R (copyIn-≈ b x a) (relOf rb (w , wa)))
+    ret≈R (λ {a} {a′} wa → relOf rb (w , wa))
 
 ------------------------------------------------------------------------
 -- 10. ★★ THE BRIDGE'S MEANING, by induction on the expression, every clause
@@ -629,7 +628,7 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRT
 
   -- applying owned is applying
   apω-≈ : ∀ {g A B} (f : ⟦ Fn many g A B ⟧) (a : ⟦ A ⟧) → Lᶜ δ (apω {L} {One} {g = g} {A} {B}) tt (f , a) ≈ up g (f a)
-  apω-≈ {g} {A} {B} f a = pair-drop (f ,_) (Lᶜ δ (Once.LinCore.PassTr.dropl fmt {Γ = L} {E = One} {A = Fn many g A B} {B = B}) tt) (λ _ → refl)
+  apω-≈ {g} {A} {B} f a = ≈-refl
 
   -- ★ the composite's body: `g` then `f`, linearly, against `compIR`'s
   compB : ∀ {π} {A B C : IRTy}
@@ -728,13 +727,13 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRT
   -- ★ a closure built after dropping the environment, against one that
   -- ignores it (`elaborate`'s `curry (… ∘ snd)`)
   rel-cloD : ∀ (π : G.Purity) {X A B : IRTy} {bc : LTm L ⟪ A ⟫ ⟪ B ⟫} {b″ : M.IR A B}
-               (γ : Gd (grade π) (copyIn (bc ∘l Once.LinCore.PassTr.dropl fmt {E = One} {A = One})))
-           → Rel bc b″ → Rel (llamω (copyIn (bc ∘l Once.LinCore.PassTr.dropl fmt)) γ ∘l drop {A = ⟪ X ⟫}) (M.curry {X} {A} {B} {π} (b″ M.∘ M.snd))
+               (γ : Gd (grade π) (bc ∘l Once.LinCore.PassTr.dropl fmt {E = One} {A = One}))
+           → Rel bc b″ → Rel (llamωᶜ (bc ∘l Once.LinCore.PassTr.dropl fmt) γ ∘l drop {A = ⟪ X ⟫}) (M.curry {X} {A} {B} {π} (b″ M.∘ M.snd))
   rel-cloD (G.fin φ) {bc = bc} γ rb = mkRel λ {x} {x′} w → ≈-≈R ret-bind (ret≈R (λ {a} {a′} wa →
-    ≈-≈R (≈-trans (≈-sym (blk-coh δ γ tt a)) (≈-trans (copyIn-≈ (bc ∘l Once.LinCore.PassTr.dropl fmt {E = One} {A = One}) tt a) (bind-pure (bind-pure (≈-trans ret-bind ret-bind)))))
+    ≈-≈R (≈-trans (≈-sym (blk-coh δ γ tt (tt , a))) (bind-pure (bind-pure (≈-trans ret-bind ret-bind))))
          (≈R-≈ (relOf rb wa) (≈-sym ret-bind))))
   rel-cloD G.eff {bc = bc} γ rb = mkRel λ {x} {x′} w → ≈-≈R ret-bind (ret≈R (λ {a} {a′} wa →
-    ≈-≈R (≈-trans (copyIn-≈ (bc ∘l Once.LinCore.PassTr.dropl fmt {E = One} {A = One}) tt a) (bind-pure (bind-pure (≈-trans ret-bind ret-bind))))
+    ≈-≈R (bind-pure (bind-pure (≈-trans ret-bind ret-bind)))
          (≈R-≈ (relOf rb wa) (≈-sym ret-bind))))
 
   -- ★ a SigOp named in the source, against `sigOpIR`, case for case

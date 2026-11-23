@@ -247,11 +247,10 @@ module Ops (Σι : ISig) where
     ok-numL {L} {E} {A = Th.float} {k = Th.binary} h o d = ok-opL {L} {E} (numInfo h o) d
     ok-numL {L} {E} {A = Th.float} {k = Th.compare} h o d = ok-opL {L} {E} (numInfo h o) d
 
-  -- a closure runs its body's ops
-  -- (stated at `OK (copyIn b)`'s normal form, so `b` is never inferred
-  -- through `OK`, which is not injective)
-  ok-copyIn : ∀ {P : Set} → P → P × ((⊤ × ⊤) × ⊤)
-  ok-copyIn ob = ob , _
+  -- a closure runs its body's ops (`OK (llamωᶜ b₀ γ) = OK b₀`, D478; stated
+  -- over a plain `P`, so `b₀` is never inferred through `OK`, which is not injective)
+  ok-clo : ∀ {P : Set} → P → P
+  ok-clo ob = ob
 
   -- a structure map runs none but `toFloat`'s
   ok-mapT : ∀ {L m} {A B : Ty m} (mp : Map A B) → Linked [] [] (mapIR mp) → OK Dc (mapT {L} mp)
@@ -263,11 +262,11 @@ module Ops (Σι : ISig) where
   ok-mapT mp-inr                        l = tt
   ok-mapT mp-initial                    l = tt
   ok-mapT (mp-apply A B (G.fin G.pureᶠ)) l = _
-  ok-mapT (mp-apply A B (G.fin G.actᶠ))  l = ok-copyIn (_ , tt)
-  ok-mapT (mp-apply A B G.eff)          l = ok-copyIn (_ , tt)
+  ok-mapT (mp-apply A B (G.fin G.actᶠ))  l = ok-clo (_ , tt)
+  ok-mapT (mp-apply A B G.eff)          l = ok-clo (_ , tt)
   ok-mapT {L} (mp-In F w)               l = ok-cast {L} (sym (layerEq F w (ST.μ F))) refl {t = lIn} tt
   ok-mapT {L} (mp-Out F G.pureᶠ w)      l = ok-cast {L} refl (sym (layerEq F w (ST.ν F G.pureᶠ))) {t = lout} tt
-  ok-mapT {L} (mp-Out F G.actᶠ w)       l = ok-copyIn (ok-cast {L} refl (sym (layerEq F w (ST.ν F G.actᶠ))) {t = lout} tt , tt)
+  ok-mapT {L} (mp-Out F G.actᶠ w)       l = ok-clo (ok-cast {L} refl (sym (layerEq F w (ST.ν F G.actᶠ))) {t = lout} tt , tt)
   ok-mapT {L} mp-toFloat                l = ok-opL {L} {One} i2f-info tt
 
   -- a conversion runs none
@@ -276,9 +275,9 @@ module Ops (Σι : ISig) where
   ok-coeL sub-unit   = tt
   ok-coeL sub-int    = tt
   ok-coeL sub-float  = tt
-  ok-coeL (sub-arr {q = G.Zero} a b r) = ok-copyIn (ok-coeL b , _)
-  ok-coeL (sub-arr {q = G.One}  a b r) = ok-copyIn (ok-coeL b , (_ , (tt , ok-coeL a)))
-  ok-coeL (sub-arr {q = G.Many} a b r) = ok-copyIn (ok-coeL b , (_ , (tt , ok-coeL a)))
+  ok-coeL (sub-arr {q = G.Zero} a b r) = ok-clo (ok-coeL b , _)
+  ok-coeL (sub-arr {q = G.One}  a b r) = ok-clo (ok-coeL b , (_ , (tt , ok-coeL a)))
+  ok-coeL (sub-arr {q = G.Many} a b r) = ok-clo (ok-coeL b , (_ , (tt , ok-coeL a)))
   ok-coeL (sub-* a b) = ok-coeL a , ok-coeL b
   ok-coeL (sub-+ a b) = (tt , ok-coeL a) , (tt , ok-coeL b)
   ok-coeL sub-μ      = tt
@@ -291,9 +290,9 @@ module Ops (Σι : ISig) where
 
   -- a reference runs none (a miss halts by the unlinked op, which owes nothing)
   ok-refL : ∀ {L} (rs : Rs L) {m} (T : Ty m) (f : CanonicalName) → OK Dc (refL rs T f)
-  ok-refL rs (A ⇒[ G.mk-kind G.Zero π ] B) f = ok-copyIn (ok-callM (rs f I.Unit ⌊ B ⌋ (grade π)) , _)
-  ok-refL rs (A ⇒[ G.mk-kind G.One π ] B) f  = ok-copyIn (ok-callM (rs f ⌊ A ⌋ ⌊ B ⌋ (grade π)) , _)
-  ok-refL rs (A ⇒[ G.mk-kind G.Many π ] B) f = ok-copyIn (ok-callM (rs f ⌊ A ⌋ ⌊ B ⌋ (grade π)) , _)
+  ok-refL rs (A ⇒[ G.mk-kind G.Zero π ] B) f = ok-clo (ok-callM (rs f I.Unit ⌊ B ⌋ (grade π)) , _)
+  ok-refL rs (A ⇒[ G.mk-kind G.One π ] B) f  = ok-clo (ok-callM (rs f ⌊ A ⌋ ⌊ B ⌋ (grade π)) , _)
+  ok-refL rs (A ⇒[ G.mk-kind G.Many π ] B) f = ok-clo (ok-callM (rs f ⌊ A ⌋ ⌊ B ⌋ (grade π)) , _)
   ok-refL rs T@ST.Unit      f = ok-callM (rs f I.Unit ⌊ T ⌋ act) , tt
   ok-refL rs T@ST.Void      f = ok-callM (rs f I.Unit ⌊ T ⌋ act) , tt
   ok-refL rs T@(_ ST.* _)   f = ok-callM (rs f I.Unit ⌊ T ⌋ act) , tt
@@ -308,15 +307,15 @@ module Ops (Σι : ISig) where
   -- (`ElaborateLinked.sigOpIR-linked`)
   ok-sigL : ∀ {L} (A : ST.Type) (name : CanonicalName) (c : IsConcrete A) → DeclIn Σι name A → OK Dc (sigL {L} A name c)
   ok-sigL (Dom ⇒[ G.mk-kind G.Zero (G.fin G.pureᶠ) ] Cod) name c@(con-fun bDom cCod) d =
-    ok-copyIn (ok-opL (value-info name ST.b-Unit cCod) (proj₁ (sigOpIR-linked {tbl = []} {X = I.Unit} name c d)) , _)
+    ok-clo (ok-opL (value-info name ST.b-Unit cCod) (proj₁ (sigOpIR-linked {tbl = []} {X = I.Unit} name c d)) , _)
   ok-sigL (Dom ⇒[ G.mk-kind G.Zero G.eff ] Cod) name c@(con-fun bDom cCod) d =
-    ok-copyIn (ok-opL (arrow-info (G.mk-kind G.Zero G.eff) name ST.b-Unit cCod) (proj₁ (sigOpIR-linked {tbl = []} {X = I.Unit} name c d)) , _)
+    ok-clo (ok-opL (arrow-info (G.mk-kind G.Zero G.eff) name ST.b-Unit cCod) (proj₁ (sigOpIR-linked {tbl = []} {X = I.Unit} name c d)) , _)
   ok-sigL (Dom ⇒[ G.mk-kind G.Zero (G.fin G.actᶠ) ] Cod) name c@(con-fun bDom cCod) d =
-    ok-copyIn (ok-opL (arrow-info (G.mk-kind G.Zero G.act) name ST.b-Unit cCod) (proj₁ (sigOpIR-linked {tbl = []} {X = I.Unit} name c d)) , _)
+    ok-clo (ok-opL (arrow-info (G.mk-kind G.Zero G.act) name ST.b-Unit cCod) (proj₁ (sigOpIR-linked {tbl = []} {X = I.Unit} name c d)) , _)
   ok-sigL (Dom ⇒[ G.mk-kind G.One π ] Cod) name c@(con-fun bDom cCod) d =
-    ok-copyIn (ok-opL (arrow-info (G.mk-kind G.One π) name bDom cCod) (proj₁ (sigOpIR-linked {tbl = []} {X = I.Unit} name c d)) , _)
+    ok-clo (ok-opL (arrow-info (G.mk-kind G.One π) name bDom cCod) (proj₁ (sigOpIR-linked {tbl = []} {X = I.Unit} name c d)) , _)
   ok-sigL (Dom ⇒[ G.mk-kind G.Many π ] Cod) name c@(con-fun bDom cCod) d =
-    ok-copyIn (ok-opL (arrow-info (G.mk-kind G.Many π) name bDom cCod) (proj₁ (sigOpIR-linked {tbl = []} {X = I.Unit} name c d)) , _)
+    ok-clo (ok-opL (arrow-info (G.mk-kind G.Many π) name bDom cCod) (proj₁ (sigOpIR-linked {tbl = []} {X = I.Unit} name c d)) , _)
   ok-sigL _ name (con-base (ST.b-var {i = ()} _)) d
   ok-sigL {L} _ name c@(con-base ib@ST.b-Unit) d = ok-opL {L} {One} (value-info name ST.b-Unit ib) (proj₁ (sigOpIR-linked {tbl = []} {X = I.Unit} name c d)) , tt
   ok-sigL {L} _ name c@(con-base ib@ST.b-Void) d = ok-opL {L} {One} (value-info name ST.b-Unit ib) (proj₁ (sigOpIR-linked {tbl = []} {X = I.Unit} name c d)) , tt
@@ -389,12 +388,12 @@ module Ops (Σι : ISig) where
 
     ok-Lq : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} (e : S.Expr Γ Ψ A) → DRefs e → OK Dc (Lq rs e)
     ok-Lq {Γ = Γ} (S.var i) r = ok-var {Γ = Γ} i
-    ok-Lq (S.lam {q' = G.Zero} G.Zero _ e) r = ok-copyIn (ok-Lq e r , _)
-    ok-Lq (S.lam {q' = G.Zero} G.One  _ e) r = ok-copyIn (ok-Lq e r , _)
-    ok-Lq (S.lam {q' = G.Zero} G.Many _ e) r = ok-copyIn (ok-Lq e r , _)
-    ok-Lq (S.lam {q' = G.One}  G.One  _ e) r = ok-copyIn (ok-Lq e r)
-    ok-Lq (S.lam {q' = G.One}  G.Many _ e) r = ok-copyIn (ok-Lq e r)
-    ok-Lq (S.lam {q' = G.Many} G.Many _ e) r = ok-copyIn (ok-Lq e r)
+    ok-Lq (S.lam {q' = G.Zero} G.Zero _ e) r = ok-clo (ok-Lq e r , _)
+    ok-Lq (S.lam {q' = G.Zero} G.One  _ e) r = ok-clo (ok-Lq e r , _)
+    ok-Lq (S.lam {q' = G.Zero} G.Many _ e) r = ok-clo (ok-Lq e r , _)
+    ok-Lq (S.lam {q' = G.One}  G.One  _ e) r = ok-clo (ok-Lq e r)
+    ok-Lq (S.lam {q' = G.One}  G.Many _ e) r = ok-clo (ok-Lq e r)
+    ok-Lq (S.lam {q' = G.Many} G.Many _ e) r = ok-clo (ok-Lq e r)
     ok-Lq {Γ = Γ} (S.app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = G.Zero} f x) (rf , rx) =
       ok-castΦ {Γ = Γ} (sym (erase-arg-usage Ψ₁ Ψ₂)) (_ , ((ok-Lq f rf , tt) , tt))
     ok-Lq {Γ = Γ} (S.app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = G.One} f x) (rf , rx) =
@@ -402,11 +401,11 @@ module Ops (Σι : ISig) where
     ok-Lq {Γ = Γ} (S.app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = G.Many} f x) (rf , rx) =
       _ , ((ok-Lq f rf , (ok-Lq x rx , ok-weak {Γ = Γ} (⊑ᵘ-*Many Ψ₂))) , ok-split Γ Ψ₁ (G.Many *ᵘ Ψ₂))
     ok-Lq {Γ = Γ} (S.effApp {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = G.Zero} f x) (rf , rx) =
-      ok-castΦ {Γ = Γ} (sym (erase-arg-usage Ψ₁ Ψ₂)) (ok-copyIn ((_ , ((ok-Lq f rf , tt) , tt)) , tt))
+      ok-castΦ {Γ = Γ} (sym (erase-arg-usage Ψ₁ Ψ₂)) (ok-clo ((_ , ((ok-Lq f rf , tt) , tt)) , tt))
     ok-Lq {Γ = Γ} (S.effApp {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = G.One} f x) (rf , rx) =
-      ok-copyIn ((_ , ((ok-Lq f rf , (ok-Lq x rx , ok-weak {Γ = Γ} (⊑ᵘ-*One Ψ₂))) , ok-split Γ Ψ₁ (G.One *ᵘ Ψ₂))) , tt)
+      ok-clo ((_ , ((ok-Lq f rf , (ok-Lq x rx , ok-weak {Γ = Γ} (⊑ᵘ-*One Ψ₂))) , ok-split Γ Ψ₁ (G.One *ᵘ Ψ₂))) , tt)
     ok-Lq {Γ = Γ} (S.effApp {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = G.Many} f x) (rf , rx) =
-      ok-copyIn ((_ , ((ok-Lq f rf , (ok-Lq x rx , ok-weak {Γ = Γ} (⊑ᵘ-*Many Ψ₂))) , ok-split Γ Ψ₁ (G.Many *ᵘ Ψ₂))) , tt)
+      ok-clo ((_ , ((ok-Lq f rf , (ok-Lq x rx , ok-weak {Γ = Γ} (⊑ᵘ-*Many Ψ₂))) , ok-split Γ Ψ₁ (G.Many *ᵘ Ψ₂))) , tt)
     ok-Lq {Γ = Γ} (S.pair a b) (ra , rb) = ok-pairL {Γ = Γ} a b (rd? a) (ok-Lq a ra) (ok-Lq b rb)
     ok-Lq (S.fst' p) r = _ , ok-Lq p r
     ok-Lq (S.snd' p) r = _ , ok-Lq p r
@@ -432,22 +431,22 @@ module Ops (Σι : ISig) where
     ok-Lq {A = A} (S.closure name) r = ok-refL rs A (bare name) , tt
     ok-Lq {A = A} (S.poly name _) r = ok-refL rs A (bare name) , tt
     ok-Lq (S.closed e) r = ok-Lq e r , tt
-    ok-Lq (S.lift-morphism mp) r = ok-copyIn (ok-mapT mp r , _)
+    ok-Lq (S.lift-morphism mp) r = ok-clo (ok-mapT mp r , _)
     ok-Lq {Γ = Γ} (S.morph-app {Ψ = Ψ} mp x) (rm , rx) =
       ok-mapT mp rm , (ok-Lq x rx , ok-weak {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψ) (⊑ᵘ-+ʳ zeroUsage (G.Many *ᵘ Ψ))))
     ok-Lq {Γ = Γ} (S.comp' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f g) (rf , rg) =
-      ok-copyIn (_ , ((tt , _) , tt)) , ((ok-Lq f rf , (ok-Lq g rg , ok-weak {Γ = Γ} (⊑ᵘ-*Many Ψ₂))) , ok-split Γ Ψ₁ (G.Many *ᵘ Ψ₂))
+      ok-clo (_ , ((tt , _) , tt)) , ((ok-Lq f rf , (ok-Lq g rg , ok-weak {Γ = Γ} (⊑ᵘ-*Many Ψ₂))) , ok-split Γ Ψ₁ (G.Many *ᵘ Ψ₂))
     ok-Lq {Γ = Γ} (S.copair' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f g) (rf , rg) =
-      ok-copyIn (((_ , (_ , tt)) , (_ , (_ , tt))) , _) , ((ok-Lq f rf , ok-Lq g rg) , ok-split Γ Ψ₁ Ψ₂)
+      ok-clo (((_ , (_ , tt)) , (_ , (_ , tt))) , _) , ((ok-Lq f rf , ok-Lq g rg) , ok-split Γ Ψ₁ Ψ₂)
     ok-Lq {Γ = Γ} (S.fork' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f g) (rf , rg) =
-      ok-copyIn ((_ , _) , (_ , (tt , tt))) , ((ok-Lq f rf , ok-Lq g rg) , ok-split Γ Ψ₁ Ψ₂)
-    ok-Lq (S.curry' f) r = ok-copyIn (ok-copyIn (_ , tt)) , ok-Lq f r
+      ok-clo ((_ , _) , (_ , (tt , tt))) , ((ok-Lq f rf , ok-Lq g rg) , ok-split Γ Ψ₁ Ψ₂)
+    ok-Lq (S.curry' f) r = ok-clo (ok-clo (_ , tt)) , ok-Lq f r
     ok-Lq {Γ = Γ} (S.cata {Ψ = Ψ} {F = F} {A = A} wfF alg) r =
-      ok-copyIn (_ , ok-cast (layerEq F wfF A) refl {t = bev} tt) , (ok-Lq alg r , ok-weak {Γ = Γ} (⊑ᵘ-*Many Ψ))
+      ok-clo (_ , ok-cast (layerEq F wfF A) refl {t = bev} tt) , (ok-Lq alg r , ok-weak {Γ = Γ} (⊑ᵘ-*Many Ψ))
     ok-Lq {Γ = Γ} (S.ana {Ψ = Ψ} {F = F} {A = A} wfF coalg) r =
-      ok-copyIn (tt , (ok-cast refl (cong (Fn many act (ty A)) (layerEq F wfF A)) {t = lid} tt , tt)) , (ok-Lq coalg r , ok-weak {Γ = Γ} (⊑ᵘ-*Many Ψ))
+      ok-clo (tt , (ok-cast refl (cong (Fn many act (ty A)) (layerEq F wfF A)) {t = lid} tt , tt)) , (ok-Lq coalg r , ok-weak {Γ = Γ} (⊑ᵘ-*Many Ψ))
     ok-Lq {Γ = Γ} (S.loop {Ψ = Ψ} round) r =
-      ok-copyIn _ , (ok-Lq round r , ok-weak {Γ = Γ} (⊑ᵘ-*Many Ψ))
+      ok-clo _ , (ok-Lq round r , ok-weak {Γ = Γ} (⊑ᵘ-*Many Ψ))
 
 ------------------------------------------------------------------------
 -- 3. ★ THE BRIDGE'S PROGRAM (`ExprBuild`): its table and its `main` run
