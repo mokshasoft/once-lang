@@ -233,7 +233,7 @@ module _ {FS : FrameSemantics} where
     ; elend′   = λ _ → refl ; eunlend′ = λ _ → refl ; elift′ = λ _ → refl
     ; efst′    = λ _ _ → refl ; esnd′ = λ _ _ → refl ; eout′ = λ _ _ → refl ; eoutq′ = λ _ _ → refl
     ; ecase₁′  = λ _ _ → refl ; ecase₂′ = λ _ _ → refl ; eapp′ = λ _ _ → refl
-    ; epop′    = λ _ → refl ; eword′ = λ _ _ → refl
+    ; epop′    = λ _ → refl ; eword′ = λ _ _ → refl ; oncify′ = λ _ → refl
     }
 
   local-ownR : ∀ {T sh U sh′ U′} {c : Codeᴵ sh U} {r : Ret U T} {m n t} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T} {m′ n′}

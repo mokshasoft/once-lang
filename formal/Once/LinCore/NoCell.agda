@@ -125,7 +125,7 @@ comp-nc ds (llamω b γ)   n = tt , n
 comp-nc ds lev           n = tt , n
 comp-nc ds bev           n = tt , n
 comp-nc ds (llamωᶜ b₀ γ) n = tt , n
-comp-nc ds levω          n = tt , n
+comp-nc ds levω          n = tt , (tt , n)
 comp-nc ds lunf          n = tt , n
 comp-nc ds lout          n = tt , n
 
