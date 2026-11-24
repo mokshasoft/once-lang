@@ -353,7 +353,7 @@ block-step-c-label {hv} prog fs s n cc h ft = post , exec-eq , record
                       ; sp-eq = C.FlatCorrespondence.FlatCorr.sp-eq (dataCorr cc) ; frontier-eq = C.FlatCorrespondence.FlatCorr.frontier-eq (dataCorr cc)
                       ; dom-fresh = C.FlatCorrespondence.FlatCorr.dom-fresh (dataCorr cc) ; dom-written = C.FlatCorrespondence.FlatCorr.dom-written (dataCorr cc)
                       ; dom-sized = C.FlatCorrespondence.FlatCorr.dom-sized (dataCorr cc) ; lo-le = C.FlatCorrespondence.FlatCorr.lo-le (dataCorr cc)
-                      ; stack-eq = C.FlatCorrespondence.FlatCorr.stack-eq (dataCorr cc) }
+                      ; stack-eq = C.FlatCorrespondence.FlatCorr.stack-eq (dataCorr cc) ; lim-eq = C.FlatCorrespondence.FlatCorr.lim-eq (dataCorr cc) }
   ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
   where
     dc = dataCorr cc ; po = pc-off cc
@@ -542,7 +542,7 @@ room-step-riscv64 {hv} prog fs s zero cc h ft sp<m k<m =
     { dataCorr = record { in1-eq = C.FlatCorrespondence.FlatCorr.in1-eq dc ; out-eq = C.FlatCorrespondence.FlatCorr.out-eq dc
                         ; clos-eq = C.FlatCorrespondence.FlatCorr.clos-eq dc ; halt-eq = C.FlatCorrespondence.FlatCorr.halt-eq dc ; heap-eq = C.FlatCorrespondence.FlatCorr.heap-eq dc
                         ; sp-eq = C.FlatCorrespondence.FlatCorr.sp-eq dc ; frontier-eq = C.FlatCorrespondence.FlatCorr.frontier-eq dc ; dom-fresh = C.FlatCorrespondence.FlatCorr.dom-fresh dc ; dom-written = C.FlatCorrespondence.FlatCorr.dom-written dc ; dom-sized = C.FlatCorrespondence.FlatCorr.dom-sized dc
-                        ; lo-le = C.FlatCorrespondence.FlatCorr.lo-le dc ; stack-eq = C.FlatCorrespondence.FlatCorr.stack-eq dc }
+                        ; lo-le = C.FlatCorrespondence.FlatCorr.lo-le dc ; stack-eq = C.FlatCorrespondence.FlatCorr.stack-eq dc ; lim-eq = C.FlatCorrespondence.FlatCorr.lim-eq dc }
     ; pc-off = trans (pc-off cc) (sym (trans (blk-off-suc prog (fpc fs) (instr-room zero) ft) (+-identityʳ _)))
     ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
     , subst (_≤ R.readReg (R.State.regs s) sp) (sym (+-identityʳ _)) (C.FlatCorrespondence.sep dc))
@@ -599,7 +599,7 @@ room-step-riscv64 {hv} prog fs s k@(suc _) cc h ft sp<m k<m =
       { dataCorr = record { in1-eq = C.FlatCorrespondence.FlatCorr.in1-eq d ; out-eq = C.FlatCorrespondence.FlatCorr.out-eq d
                           ; clos-eq = C.FlatCorrespondence.FlatCorr.clos-eq d ; halt-eq = C.FlatCorrespondence.FlatCorr.halt-eq d ; heap-eq = C.FlatCorrespondence.FlatCorr.heap-eq d
                           ; sp-eq = C.FlatCorrespondence.FlatCorr.sp-eq d ; frontier-eq = C.FlatCorrespondence.FlatCorr.frontier-eq d ; dom-fresh = C.FlatCorrespondence.FlatCorr.dom-fresh d ; dom-written = C.FlatCorrespondence.FlatCorr.dom-written d ; dom-sized = C.FlatCorrespondence.FlatCorr.dom-sized d
-                          ; lo-le = C.FlatCorrespondence.FlatCorr.lo-le d ; stack-eq = C.FlatCorrespondence.FlatCorr.stack-eq d }
+                          ; lo-le = C.FlatCorrespondence.FlatCorr.lo-le d ; stack-eq = C.FlatCorrespondence.FlatCorr.stack-eq d ; lim-eq = C.FlatCorrespondence.FlatCorr.lim-eq d }
       ; pc-off = pco ; ret-eq = ret-eq cc ; code-eq = code-eq cc } , le)
       where
         -- the skip: the need fits in the room, so the frontier plus it is at or
@@ -1199,7 +1199,7 @@ block-step-load-rec {hv} prog fs s k w cc h ft h-eq =
     f2 = trans (cong (λ p → R.fetch cp (p + 1)) po) (fetch-block-2nd prog (fpc fs) (load-rec k) ft)
     rd : R.readMem (R.State.memory q1) (R.effectiveAddr (R.State.regs q1) t1 (slot-to-disp k))
        ≡ just (C.FlatCorrespondence.enc-sv hv w)
-    rd = trans (cong (R.readMem (R.State.memory s)) (sym (C.FlatCorrespondence.rec-cell-addr hv k)))
+    rd = trans (cong (R.readMem (R.State.memory s)) (sym (C.FlatCorrespondence.rec-cell-addr hv k (C.FlatCorrespondence.FlatCorr.dom-written dc (C.FlatCorrespondence.rec-cell k) h-eq))))
                (C.FlatCorrespondence.FlatCorr.heap-eq dc (C.FlatCorrespondence.rec-cell k) h-eq)
     post : R.State
     post = record q1 { regs = R.writeReg (R.State.regs q1) a0 (C.FlatCorrespondence.enc-sv hv w) ; pc = R.State.pc q1 + 1 }
@@ -1216,7 +1216,7 @@ block-step-load-rec {hv} prog fs s k w cc h ft h-eq =
 block-step-store-rec : ∀ {hv : HeapView} prog fs s k → CompiledCorr hv prog fs s
   → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (store-rec k)
-  → k < rec-size
+  → RecW k
   → BlockStep hv prog fs s (store-rec k)
 block-step-store-rec {hv} prog fs s k cc h ft lt =
   post , exec-eq , record { dataCorr = dataPost ; pc-off = pco'
@@ -1241,7 +1241,7 @@ block-step-store-rec {hv} prog fs s k cc h ft lt =
     f2 : R.fetch cp (R.State.pc q1) ≡ just (sd a0 t1 (slot-to-disp k))
     f2 = trans (cong (λ p → R.fetch cp (p + 1)) po) (fetch-block-2nd prog (fpc fs) (store-rec k) ft)
     addr-eq : R.effectiveAddr (R.State.regs q1) t1 (slot-to-disp k) ≡ haddr hv cell
-    addr-eq = sym (C.FlatCorrespondence.rec-cell-addr hv k)
+    addr-eq = sym (C.FlatCorrespondence.rec-cell-addr hv k live)
     post : R.State
     post = record q1 { memory = R.writeMem (R.State.memory q1) (R.effectiveAddr (R.State.regs q1) t1 (slot-to-disp k))
                                   (R.readReg (R.State.regs q1) a0)
@@ -1414,7 +1414,7 @@ block-step-reclaim-to {hv} prog fs s n cc h ft = s , refl , record
                       ; halt-eq = C.FlatCorrespondence.FlatCorr.halt-eq dc ; sp-eq = C.FlatCorrespondence.FlatCorr.sp-eq dc ; frontier-eq = C.FlatCorrespondence.FlatCorr.frontier-eq dc
                       ; dom-fresh = C.FlatCorrespondence.FlatCorr.dom-fresh dc ; dom-written = C.FlatCorrespondence.FlatCorr.dom-written dc ; dom-sized = C.FlatCorrespondence.FlatCorr.dom-sized dc
                       ; heap-eq = C.FlatCorrespondence.FlatCorr.heap-eq dc
-                      ; lo-le = C.FlatCorrespondence.FlatCorr.lo-le dc ; stack-eq = C.FlatCorrespondence.FlatCorr.stack-eq dc }
+                      ; lo-le = C.FlatCorrespondence.FlatCorr.lo-le dc ; stack-eq = C.FlatCorrespondence.FlatCorr.stack-eq dc ; lim-eq = C.FlatCorrespondence.FlatCorr.lim-eq dc }
   ; pc-off = trans (pc-off cc)
              (sym (trans (blk-off-suc prog (fpc fs) (instr-reclaim-to n) ft) (+-identityʳ _)))
   ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
@@ -1434,7 +1434,7 @@ block-step-free-heap {hv} prog fs s n cc h ft g =
                       ; halt-eq = C.FlatCorrespondence.FlatCorr.halt-eq dc ; sp-eq = C.FlatCorrespondence.FlatCorr.sp-eq dc ; frontier-eq = C.FlatCorrespondence.FlatCorr.frontier-eq dc
                       ; dom-fresh = C.FlatCorrespondence.FlatCorr.dom-fresh dc ; dom-written = λ hl e → C.FlatCorrespondence.FlatCorr.dom-written dc hl (AbstractExec.freeMem-just {FS} (readReg (regs (floc fs)) Input1) (heapMem (floc fs)) hl e) ; dom-sized = C.FlatCorrespondence.FlatCorr.dom-sized dc
                       ; heap-eq = λ hl e → C.FlatCorrespondence.FlatCorr.heap-eq dc hl (AbstractExec.freeMem-just {FS} (readReg (regs (floc fs)) Input1) (heapMem (floc fs)) hl e)
-                      ; lo-le = C.FlatCorrespondence.FlatCorr.lo-le dc ; stack-eq = C.FlatCorrespondence.FlatCorr.stack-eq dc }
+                      ; lo-le = C.FlatCorrespondence.FlatCorr.lo-le dc ; stack-eq = C.FlatCorrespondence.FlatCorr.stack-eq dc ; lim-eq = C.FlatCorrespondence.FlatCorr.lim-eq dc }
   ; pc-off = trans (pc-off cc)
              (sym (trans (blk-off-suc prog (fpc fs) (instr-free-heap n) ft) (+-identityʳ _)))
   ; ret-eq = ret-eq cc ; code-eq = code-eq cc })
@@ -1457,7 +1457,7 @@ block-step-worklist-init {hv} prog fs s n cc h ft = s , refl , record
                       ; halt-eq = C.FlatCorrespondence.FlatCorr.halt-eq dc ; sp-eq = C.FlatCorrespondence.FlatCorr.sp-eq dc ; frontier-eq = C.FlatCorrespondence.FlatCorr.frontier-eq dc
                       ; dom-fresh = C.FlatCorrespondence.FlatCorr.dom-fresh dc ; dom-written = C.FlatCorrespondence.FlatCorr.dom-written dc ; dom-sized = C.FlatCorrespondence.FlatCorr.dom-sized dc
                       ; heap-eq = C.FlatCorrespondence.FlatCorr.heap-eq dc
-                      ; lo-le = C.FlatCorrespondence.FlatCorr.lo-le dc ; stack-eq = C.FlatCorrespondence.FlatCorr.stack-eq dc }
+                      ; lo-le = C.FlatCorrespondence.FlatCorr.lo-le dc ; stack-eq = C.FlatCorrespondence.FlatCorr.stack-eq dc ; lim-eq = C.FlatCorrespondence.FlatCorr.lim-eq dc }
   ; pc-off = trans (pc-off cc)
              (sym (trans (blk-off-suc prog (fpc fs) (worklist-init n) ft) (+-identityʳ _)))
   ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
@@ -1473,7 +1473,7 @@ block-step-worklist-check {hv} prog fs s n cc h ft = s , refl , record
                       ; halt-eq = C.FlatCorrespondence.FlatCorr.halt-eq dc ; sp-eq = C.FlatCorrespondence.FlatCorr.sp-eq dc ; frontier-eq = C.FlatCorrespondence.FlatCorr.frontier-eq dc
                       ; dom-fresh = C.FlatCorrespondence.FlatCorr.dom-fresh dc ; dom-written = C.FlatCorrespondence.FlatCorr.dom-written dc ; dom-sized = C.FlatCorrespondence.FlatCorr.dom-sized dc
                       ; heap-eq = C.FlatCorrespondence.FlatCorr.heap-eq dc
-                      ; lo-le = C.FlatCorrespondence.FlatCorr.lo-le dc ; stack-eq = C.FlatCorrespondence.FlatCorr.stack-eq dc }
+                      ; lo-le = C.FlatCorrespondence.FlatCorr.lo-le dc ; stack-eq = C.FlatCorrespondence.FlatCorr.stack-eq dc ; lim-eq = C.FlatCorrespondence.FlatCorr.lim-eq dc }
   ; pc-off = trans (pc-off cc)
              (sym (trans (blk-off-suc prog (fpc fs) (worklist-check n) ft) (+-identityʳ _)))
   ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
@@ -1607,7 +1607,7 @@ block-step-c-jmp {hv} prog fs s n j₀ cc h ft fl-eq = block-step
                           ; halt-eq = C.FlatCorrespondence.FlatCorr.halt-eq dc ; sp-eq = C.FlatCorrespondence.FlatCorr.sp-eq dc ; frontier-eq = C.FlatCorrespondence.FlatCorr.frontier-eq dc
                           ; dom-fresh = C.FlatCorrespondence.FlatCorr.dom-fresh dc ; dom-written = C.FlatCorrespondence.FlatCorr.dom-written dc ; dom-sized = C.FlatCorrespondence.FlatCorr.dom-sized dc
                           ; heap-eq = C.FlatCorrespondence.FlatCorr.heap-eq dc
-                          ; lo-le = C.FlatCorrespondence.FlatCorr.lo-le dc ; stack-eq = C.FlatCorrespondence.FlatCorr.stack-eq dc }
+                          ; lo-le = C.FlatCorrespondence.FlatCorr.lo-le dc ; stack-eq = C.FlatCorrespondence.FlatCorr.stack-eq dc ; lim-eq = C.FlatCorrespondence.FlatCorr.lim-eq dc }
       ; pc-off = refl ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
 
 
@@ -1661,7 +1661,7 @@ block-step-c-branch-tag-zero {hv} prog fs s n loc zero j₀ cc h ft i-eq g r-eq 
                           ; halt-eq = C.FlatCorrespondence.FlatCorr.halt-eq dc ; sp-eq = C.FlatCorrespondence.FlatCorr.sp-eq dc ; frontier-eq = C.FlatCorrespondence.FlatCorr.frontier-eq dc
                           ; dom-fresh = C.FlatCorrespondence.FlatCorr.dom-fresh dc ; dom-written = C.FlatCorrespondence.FlatCorr.dom-written dc ; dom-sized = C.FlatCorrespondence.FlatCorr.dom-sized dc
                           ; heap-eq = C.FlatCorrespondence.FlatCorr.heap-eq dc
-                          ; lo-le = C.FlatCorrespondence.FlatCorr.lo-le dc ; stack-eq = C.FlatCorrespondence.FlatCorr.stack-eq dc }
+                          ; lo-le = C.FlatCorrespondence.FlatCorr.lo-le dc ; stack-eq = C.FlatCorrespondence.FlatCorr.stack-eq dc ; lim-eq = C.FlatCorrespondence.FlatCorr.lim-eq dc }
       ; pc-off = refl ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
 block-step-c-branch-tag-zero {hv} prog fs s n loc (suc m) j₀ cc h ft i-eq g r-eq rd fl-eq = result
   where
@@ -1694,7 +1694,7 @@ block-step-c-branch-tag-zero {hv} prog fs s n loc (suc m) j₀ cc h ft i-eq g r-
                           ; halt-eq = C.FlatCorrespondence.FlatCorr.halt-eq dc ; sp-eq = C.FlatCorrespondence.FlatCorr.sp-eq dc ; frontier-eq = C.FlatCorrespondence.FlatCorr.frontier-eq dc
                           ; dom-fresh = C.FlatCorrespondence.FlatCorr.dom-fresh dc ; dom-written = C.FlatCorrespondence.FlatCorr.dom-written dc ; dom-sized = C.FlatCorrespondence.FlatCorr.dom-sized dc
                           ; heap-eq = C.FlatCorrespondence.FlatCorr.heap-eq dc
-                          ; lo-le = C.FlatCorrespondence.FlatCorr.lo-le dc ; stack-eq = C.FlatCorrespondence.FlatCorr.stack-eq dc }
+                          ; lo-le = C.FlatCorrespondence.FlatCorr.lo-le dc ; stack-eq = C.FlatCorrespondence.FlatCorr.stack-eq dc ; lim-eq = C.FlatCorrespondence.FlatCorr.lim-eq dc }
       ; pc-off = trans (+-assoc (R.State.pc s) 1 1)
                        (trans (cong (_+ 2) po)
                               (sym (blk-off-suc prog (fpc fs) (instr-ctrl (c-branch-tag-zero n)) ft)))
@@ -2002,7 +2002,7 @@ block-step-c-branch-tag-nz {hv} prog fs s n loc m cc h ft i-eq g r-eq rd = resul
                           ; halt-eq = C.FlatCorrespondence.FlatCorr.halt-eq dc ; sp-eq = C.FlatCorrespondence.FlatCorr.sp-eq dc ; frontier-eq = C.FlatCorrespondence.FlatCorr.frontier-eq dc
                           ; dom-fresh = C.FlatCorrespondence.FlatCorr.dom-fresh dc ; dom-written = C.FlatCorrespondence.FlatCorr.dom-written dc ; dom-sized = C.FlatCorrespondence.FlatCorr.dom-sized dc
                           ; heap-eq = C.FlatCorrespondence.FlatCorr.heap-eq dc
-                          ; lo-le = C.FlatCorrespondence.FlatCorr.lo-le dc ; stack-eq = C.FlatCorrespondence.FlatCorr.stack-eq dc }
+                          ; lo-le = C.FlatCorrespondence.FlatCorr.lo-le dc ; stack-eq = C.FlatCorrespondence.FlatCorr.stack-eq dc ; lim-eq = C.FlatCorrespondence.FlatCorr.lim-eq dc }
       ; pc-off = trans (+-assoc (R.State.pc s) 1 1)
                        (trans (cong (_+ 2) po)
                               (sym (blk-off-suc prog (fpc fs) (instr-ctrl (c-branch-tag-zero n)) ft)))

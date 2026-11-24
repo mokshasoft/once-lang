@@ -70,8 +70,8 @@ FrameFreeI (instr-ctrl (c-entry _ _)) = ⊥
 FrameFreeI (instr-ctrl (c-start _)) = ⊥  -- plan 0.107: it reserves the outermost frame
 FrameFreeI (instr-room _)           = ⊥  -- D377: the room-check pass adds checks AFTER the image
 -- D468/D470: the record's words move no frame; inside the record, as `EmittableI` has them
-FrameFreeI (load-rec k)             = k < rec-size
-FrameFreeI (store-rec k)            = k < rec-size
+FrameFreeI (load-rec k)             = RecW k
+FrameFreeI (store-rec k)            = RecW k
 -- plan 0.123 B.4 α: the four fixed-offset forms are retired — the flat layout
 -- reads and writes at `load-at`/`store-at`/`addr-at` offsets, so no emitter
 -- produces them
@@ -125,8 +125,8 @@ EmittableI (instr-ctrl (c-start _))  = ⊥
 EmittableI (instr-room _)            = ⊥
 -- D468/D470: the allocator record's words, inside the record (the region's
 -- first `rec-size` words, below the frontier)
-EmittableI (load-rec k)              = k < rec-size
-EmittableI (store-rec k)             = k < rec-size
+EmittableI (load-rec k)              = RecW k
+EmittableI (store-rec k)             = RecW k
 -- plan 0.123 B.4 α: the four fixed-offset forms are retired (no emitter
 -- produces them; the flat layout uses the offset forms)
 EmittableI load-indirect             = ⊥

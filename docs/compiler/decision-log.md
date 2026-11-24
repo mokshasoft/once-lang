@@ -25086,6 +25086,30 @@ three arches, measured (`tests/perf-compare.sh`, checks, `.text`, run).
 **Why one region, not two.** Two regions would change the virgin-region argument (`descend-view`, `sep`)
 in all three arch correspondences; a limit inside one region keeps it, and the Hosts keep handing one
 region (the split is the program's, from its own bound).
+**Amendment 1 (2026-11-24, proposed; the representation, found while reading the arch layer).**
+* **Where `L` lives: the allocator record's word 0.** D470 left it unused (the frontier stays in its
+  register). It is not an abstract cell: `HeapView.rec-dom` maps words `1 … rec-size − 1`, and
+  `load-rec`/`store-rec` are emittable only above 0, so no abstract step writes it. `FlatCorr` gains
+  `lim-eq` (the word holds the view's `hlim`); a store keeps it because every mapped address and every
+  stack address is above `heap-base` (`HeapView.dom-above`).
+* **The start sets it.** The entry memory is empty (the record is the program's own `.bss`, D470; no Host
+  reaches it), so `lim-eq` holds once the view is STARTED (a ghost flag, `hstarted`, set by `c-start`'s
+  view; nothing jumps to pc 0). `c-start b` lowers to: the room check `frontier + B + b ≤ sp` (else
+  `once_exhausted`), the frame (`sp −= b`), then `L := sp − B`. The check at index 0 goes: `c-start` is
+  its own check and a boundary, so the check after it covers the allocator's set-up.
+* **One instruction, two parts: `instr-room h s`** — `frontier + h ≤ L` and `L + s ≤ sp`, a part of 0
+  emitting nothing (D483). The pass and the budget keep ONE placement and split the measure: `spend` of an
+  allocation is heap, of a frame or call stack. Since every bump path follows a label (`AllocExpand`'s
+  `lb-bump`), a heap part is non-zero only there: the heap check is the allocator's without a second
+  placement (point 1 above). The budget becomes two records, `hfront + heap-need ≤ hlim` and
+  `hlim + stack-need ≤ sp`; their sum gives the old `sep` (`front-lim`, `lim-lo` replace `front-lo`).
+* **`B` before point 2 lands**: a stated default stack, `default-stack-words` (32768 words: 256 KiB on the
+  64-bit targets, 128 KiB on x86-32), fitting seL4's 1 MiB program regions. CakeML too fixes the stack's
+  size at start. Point 2 replaces it by the program's bound; an unbounded program keeps the default (a
+  `--stack-words` flag if a program needs more).
+* **Work order**: (a1) `L` in the view, `lim-eq`, record word 0 out of the abstract record, the start
+  writing `L` (no check changed); (a2) `instr-room h s` against `L`, the budget split; (a3) the start's
+  own check, the index-0 check gone. Then point 2.
 
 ## D487 — `--unchecked`: THE SAME FILE WITHOUT ROOM CHECKS, OUTSIDE THE PROOF, SAID SO AT EVERY BUILD (2026-11-24, proposed — for the user's review; plan 0.154 S1, D3)
 **Context.** The user, 2026-11-24: "If we implement that feature that bypasses checks completely, then we can

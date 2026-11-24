@@ -25,18 +25,18 @@ module Once.Adequacy.ArchCorrectness.X86-64.Entry
   (x86-64-addr-no-wrap : RB.AddrNoWrap o ι)
   (x86-64-lit-fits : RB.LitFits o ι) where
 
-open import Data.Nat using (ℕ; _+_; _<_; z≤n; s≤s; suc; _*_)
+open import Data.Nat using (ℕ; _+_; _<_; z≤n; s≤s; suc; zero; _*_)
 open import Data.Unit using (tt)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using ([])
 open import Data.Bool using (Bool; false)
 open import Data.Product using (proj₁; proj₂; _,_; _×_)
 open import Data.Empty using (⊥)
-open import Data.Nat.Properties using (+-comm; +-assoc; ≤-refl; ≤-reflexive; ≤-trans; m≤m+n; *-cancelʳ-≡; +-cancelˡ-≡; +-monoʳ-<; *-monoˡ-<)
+open import Data.Nat.Properties using (+-comm; +-assoc; ≤-refl; ≤-reflexive; ≤-trans; m≤m+n; *-cancelʳ-≡; +-cancelˡ-≡; +-monoʳ-<; *-monoˡ-<; m<m+n)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 open import Once.Memory.HeapAddress using (HeapLocation; sucHL; heap-loc; mkHeapRef; module HeapLocation; module HeapRef)
 open HeapLocation using (heap-offset)
-open import Once.CCC.Machine.SMCore using (module AllocState; AllocState; LocState; Registers; mkRegs; mkAllocState; mkLocState; SV-Tag; rec-size)
+open import Once.CCC.Machine.SMCore using (module AllocState; AllocState; LocState; Registers; mkRegs; mkAllocState; mkLocState; SV-Tag; rec-size; RecW; recw-<)
 open AllocState using (current-frame)
 open import Once.CCC.FrameSemantics using (FrameSemantics; module FrameSemantics)
 open FrameSemantics using (frame-base)
@@ -129,7 +129,7 @@ code-map prog ℓ = code-pick (X.find-label prog (thunk ℓ))
 
 -- D470: the record's cells — ref 0, below `rec-size`
 RecDom : HeapLocation → Set
-RecDom hl = (HeapRef.ref-id (HeapLocation.heap-ref hl) ≡ 0) × (heap-offset hl < rec-size)
+RecDom hl = (HeapRef.ref-id (HeapLocation.heap-ref hl) ≡ 0) × RecW (heap-offset hl)
 
 entry-view : XS.Program → HeapView
 entry-view cprog = record
@@ -153,8 +153,16 @@ entry-view cprog = record
   ; dom-pos   = λ _ → s≤s z≤n
   ; rec-dom   = λ k lt → refl , lt
   ; rec-addr  = refl
+  -- D486: the stack limit is the start's; until it runs nothing reads it
+  ; hlim       = X.heap-front
+  ; hstarted   = false
+  ; dom-above  = rec-above
+  ; base-front = m<m+n X.heap-base (s≤s z≤n)
   }
   where
+    rec-above : ∀ {hl : HeapLocation} → RecDom hl → X.heap-base < X.heap-base + slot-to-disp (heap-offset hl)
+    rec-above {heap-loc _ zero}    (_ , ())
+    rec-above {heap-loc _ (suc o)} _ = m<m+n X.heap-base (s≤s z≤n)
     suc-law : ∀ (hl : HeapLocation) → X.heap-base + slot-to-disp (heap-offset (sucHL hl))
                                     ≡ (X.heap-base + slot-to-disp (heap-offset hl)) + slot-size
     suc-law (heap-loc r o) = trans (cong (X.heap-base +_) (+-comm slot-size (o * slot-size)))
@@ -164,7 +172,7 @@ entry-view cprog = record
     rec-inj {heap-loc (mkHeapRef .0) oa} {heap-loc (mkHeapRef .0) ob} (refl , _) (refl , _) e =
       cong (heap-loc (mkHeapRef 0)) (*-cancelʳ-≡ oa ob slot-size (+-cancelˡ-≡ X.heap-base _ _ e))
     rec-below : ∀ {hl : HeapLocation} → RecDom hl → X.heap-base + slot-to-disp (heap-offset hl) < X.heap-front
-    rec-below {heap-loc _ o} (_ , lt) = +-monoʳ-< X.heap-base (*-monoˡ-< slot-size lt)
+    rec-below {heap-loc _ o} (_ , lt) = +-monoʳ-< X.heap-base (*-monoˡ-< slot-size (recw-< o lt))
 
 -- (`main-heap-moded` WAS A POSTULATE here: every IR is heap-moded now,
 -- `ShapeTable.heap-moded`, and the run context no longer carries it.)
@@ -214,6 +222,8 @@ entry-corr prog = record
       -- floor bound is `entry-frame-base` — the loader's `%rsp` IS the entry
       -- frame's base, so the mark sits exactly at it.
       ; stack-eq = ≤-reflexive (sym entry-frame-base) , (λ _ _ _ ()) , tt
+      -- D486: the limit is not set before the start
+      ; lim-eq = λ ()
       }
   ; pc-off = refl
   -- NOTHING IS OWED AT ENTRY (D093): `mkFlat` starts the ghost return stack

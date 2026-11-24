@@ -1193,10 +1193,20 @@ pattern c-thunk ℓ b = c-entry (e-thunk ℓ) b
 
 
 -- D470: the cell allocator's record (ref 0, at the region's bottom) is a fixed
--- 64 words — word 0 the frontier (per arch: the Host's `enter` writes it), words
--- 1 and 2 scratch, a head per class from word 3 — so the blocks begin 64 words up
+-- 64 words — word 0 the arch's (D486: the stack limit, which the start writes),
+-- words 1 and 2 scratch, a head per class from word 3 — so the blocks begin 64
+-- words up
 rec-size : ℕ
 rec-size = 64
+
+-- D486: the record's words the abstract code may use — all but word 0, the arch's
+-- stack limit, which no abstract step reads or writes
+RecW : ℕ → Set
+RecW zero    = ⊥
+RecW (suc k) = suc k < rec-size
+
+recw-< : ∀ k → RecW k → k < rec-size
+recw-< (suc k) lt = lt
 
 data AbstractInstr : Set where
   -- Register operations

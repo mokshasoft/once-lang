@@ -89,7 +89,7 @@ private
     using (CompiledCorr; module CompiledCorr)
 open CFC using (HeapView; Memory; readMem; StackWindows; RetAddrs; frames-of; amap; enc-sv; slots
                ; windows-above; windows-reanchor; windows-lower)
-open CFC.HeapView using (hfront; haddr; lo; dom-below)
+open CFC.HeapView using (hfront; haddr; lo; dom-below; base-front)
 open CCC using (CompiledCorr)
 open CCC.CompiledCorr using (ret-eq; code-eq; dataCorr)
 
@@ -168,6 +168,9 @@ sigop-arith-corr₀ {hv} prog fs s s′ si {W} {v} cc room lk ar val hl pc′ = 
       ; heap-eq     = λ hl′ d → trans (ar-mem ar (haddr hv hl′) (inj₁ (below hl′ d))) (CFC.FlatCorr.heap-eq corr hl′ d)
       ; lo-le       = subst (lo hv ≤_) (sym (ar-role ar role-sp (λ ()))) (CFC.FlatCorr.lo-le corr)
       ; stack-eq    = stack′
+      -- D486: the limit's word is below the block's frame, as the heap is
+      ; lim-eq      = λ e → trans (ar-mem ar heap-base (inj₁ (<-≤-trans (base-front hv) (m+n≤o⇒m≤o∸n (hfront hv) room))))
+                                  (CFC.FlatCorr.lim-eq corr e)
       }
   ; pc-off  = pc′
   ; ret-eq  = subst (λ l → RetAddrs (blk-off prog) (memory s′) (link-claim s′) l

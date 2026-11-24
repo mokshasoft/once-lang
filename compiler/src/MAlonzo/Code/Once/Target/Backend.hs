@@ -30,7 +30,7 @@ data T_Backend_6
   = C_constructor_36 (AgdaAny ->
                       MAlonzo.Code.Agda.Builtin.String.T_String_6)
                      (MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_58 -> AgdaAny)
-                     ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2404] ->
+                     ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2416] ->
                       [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
                       [MAlonzo.Code.Agda.Builtin.String.T_String_6] -> AgdaAny)
                      AgdaAny
@@ -59,7 +59,7 @@ d_payload_28 v0
 -- Once.Target.Backend.Backend.file
 d_file_30 ::
   T_Backend_6 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2404] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2416] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.String.T_String_6] -> AgdaAny
 d_file_30 v0

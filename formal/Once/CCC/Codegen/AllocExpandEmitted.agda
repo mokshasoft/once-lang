@@ -105,8 +105,8 @@ data GenCtrl : FlatCtrl → Set where
 data Gen : AbstractInstr → Set where
   g-out   : Gen mov-to-output
   g-in    : Gen mov-to-input
-  g-srec  : ∀ w → w < rec-size → Gen (store-rec w)
-  g-lrec  : ∀ w → w < rec-size → Gen (load-rec w)
+  g-srec  : ∀ w → RecW w → Gen (store-rec w)
+  g-lrec  : ∀ w → RecW w → Gen (load-rec w)
   g-lat0  : Gen (load-at 0)
   g-sat0  : Gen (store-at 0)
   g-tag0  : Gen (instr-load-tag-lit 0)
@@ -116,12 +116,12 @@ data Gen : AbstractInstr → Set where
 module Code (C : Classes) (small : 3 + count C ≤ rec-size) (in-range : ∀ k → cls C k < count C) (fits : ∀ k → k ≤ bsz C k) where
   open import Data.Nat.Properties using (<-≤-trans; ≤-trans; +-monoʳ-<; ≤-<-trans; m≤m+n)
 
-  head< : ∀ c → c < count C → head-word c < rec-size
+  head< : ∀ c → c < count C → RecW (head-word c)
   head< c lt = <-≤-trans (+-monoʳ-< 3 lt) small
 
-  w1 : w-s1 < rec-size
+  w1 : RecW w-s1
   w1 = s≤s (s≤s z≤n)
-  w2 : w-s2 < rec-size
+  w2 : RecW w-s2
   w2 = s≤s (s≤s (s≤s z≤n))
 
   alloc-gen : ∀ site k → 1 ≤ k → All Gen (alloc-code C site k)

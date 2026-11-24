@@ -29,17 +29,17 @@ d_bw_6 v0 = coe seq (coe v0) (coe (1 :: Integer))
 d_ldConst_10 ::
   MAlonzo.Code.Once.LinCore.Flat.T_Base_46 ->
   AgdaAny ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2404
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2416
 d_ldConst_10 v0 v1
   = case coe v0 of
       MAlonzo.Code.Once.LinCore.Flat.C_int_48
         -> coe
-             MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'load'45'const_2456
+             MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'load'45'const_2468
              (coe MAlonzo.Code.Once.Spec.Type.C_Int_32)
              (coe MAlonzo.Code.Once.Type.C_fits'45'int_26) (coe v1)
       MAlonzo.Code.Once.LinCore.Flat.C_float_50
         -> coe
-             MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'load'45'const_2456
+             MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'load'45'const_2468
              (coe MAlonzo.Code.Once.Spec.Type.C_Float_34)
              (coe MAlonzo.Code.Once.Type.C_fits'45'float_28) (coe v1)
       _ -> MAlonzo.RTE.mazUnreachableError

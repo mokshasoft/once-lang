@@ -41,7 +41,7 @@ d_imageAt_10 ::
   [MAlonzo.Code.Once.CompileSrc.T_CompiledSrc_1012] ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Sub.T__'60''58'__8 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2404]
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2416]
 d_imageAt_10 v0 v1 v2 v3
   = coe
       MAlonzo.Code.Once.LinCore.Lower.du_image_2812 (coe v0)
@@ -130,7 +130,7 @@ d_imageAt'739'_26 ::
   [MAlonzo.Code.Once.CompileSrc.T_CompiledSrc_1012] ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Sub.T__'60''58'__8 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2404]
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2416]
 d_imageAt'739'_26 v0 v1 v2 v3 v4
   = coe
       MAlonzo.Code.Once.CCC.Codegen.AllocExpand.d_expand_126
@@ -144,7 +144,7 @@ d_imageAt'7580'_36 ::
   [MAlonzo.Code.Once.CompileSrc.T_CompiledSrc_1012] ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Sub.T__'60''58'__8 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2404]
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2416]
 d_imageAt'7580'_36 v0 v1 v2 v3 v4
   = coe
       MAlonzo.Code.Once.CCC.Codegen.AllocExpand.d_expand_126
@@ -169,7 +169,7 @@ d_imageAt'8344'_48 ::
   [MAlonzo.Code.Once.CompileSrc.T_CompiledSrc_1012] ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Sub.T__'60''58'__8 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2404]
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2416]
 d_imageAt'8344'_48 v0 v1
   = if coe v1
       then coe d_imageAt'739'_26 (coe v0)

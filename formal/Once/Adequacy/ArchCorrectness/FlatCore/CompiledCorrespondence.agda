@@ -538,7 +538,7 @@ record BlockSteps : Set₁ where
       ∀ {hv : HeapView} prog fs s k → CompiledCorr hv prog fs s
       → halted (floc fs) ≡ false
       → fetch prog (fpc fs) ≡ just (store-rec k)
-      → k < rec-size
+      → RecW k
       → BlockStep hv prog fs s (store-rec k)
     -- plan 0.123 B.4 α: an address at an offset, a cell of its block (D385),
     -- so a mapped one; the run is handed over for an arch whose address is a
