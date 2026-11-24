@@ -101,11 +101,12 @@ module IntW = OnceWord.Width 64
   using (fromℤ)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles
   using (role-sp; role-clos; role-heap; role-out; role-in1)
-open import Once.CCC.Target.RiscV64.AbstractToRiscV using (compile-trace; compile-abstract; slot-to-disp)
+open import Once.CCC.Target.RiscV64.AbstractToRiscV using (compile-trace; compile-abstract; slot-to-disp; fits-or-out; room-code; room-fits?; start-tail)
+import Data.Bool
 open import Relation.Binary.PropositionalEquality using (subst₂)
 open import Data.Nat.Properties using (+-monoʳ-<; *-monoˡ-<; ≤-<-trans; ≤-trans; <-trans; <-≤-trans; <⇒≢
                                       ; m∸n+n≡m; m≤o∸n⇒m+n≤o; *-distribʳ-+; m≤n+m; +-monoʳ-≤; m+n≤o⇒m≤o∸n
-                                      ; m⊓n≤m; m⊓n≤n; ⊓-glb)
+                                      ; m⊓n≤m; m⊓n≤n; ⊓-glb; <ᵇ⇒<)
 open import Data.Nat using (_⊓_)
 open import Data.Empty using (⊥)
 open import Once.CCC.FrameSemantics using (module FrameSemantics)
@@ -531,7 +532,19 @@ room-step-riscv64 : ∀ {hv : HeapView} prog fs s k → CompiledCorr hv prog fs 
   → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-room k)
   → R.readReg (R.State.regs s) sp < R.W.modulus
-  → slots k < R.W.modulus
+  → Σ ℕ (λ c → Σ R.State (λ s' → (R.exec c (compile-trace prog) s ≡ just s')
+                × CompiledCorr hv prog (flat-exec-instr (instr-room k) prog fs) s'
+                × (C.FlatCorrespondence.HeapView.hfront hv + slots k ≤ R.readReg (R.State.regs s) sp)))
+    ⊎ Σ ℕ (λ c → Σ R.State (λ s' → (R.exec c (compile-trace prog) s ≡ just s')
+                × rhalted s' ≡ false
+                × R.fetch (compile-trace prog) (R.State.pc s') ≡ just (call-sym host-exhausted-symbol)))
+
+-- the check's code, when its need is a word
+room-fits-step : ∀ {hv : HeapView} prog fs s k → CompiledCorr hv prog fs s
+  → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just (instr-room k)
+  → R.readReg (R.State.regs s) sp < R.W.modulus
+  → room-fits? k ≡ true
   → Σ ℕ (λ c → Σ R.State (λ s' → (R.exec c (compile-trace prog) s ≡ just s')
                 × CompiledCorr hv prog (flat-exec-instr (instr-room k) prog fs) s'
                 × (C.FlatCorrespondence.HeapView.hfront hv + slots k ≤ R.readReg (R.State.regs s) sp)))
@@ -539,7 +552,7 @@ room-step-riscv64 : ∀ {hv : HeapView} prog fs s k → CompiledCorr hv prog fs 
                 × rhalted s' ≡ false
                 × R.fetch (compile-trace prog) (R.State.pc s') ≡ just (call-sym host-exhausted-symbol)))
 -- D483: a check of no words has no code: the layout's separation is its room
-room-step-riscv64 {hv} prog fs s zero cc h ft sp<m k<m =
+room-step-riscv64 {hv} prog fs s zero cc h ft sp<m =
   inj₁ (0 , s , refl , record
     { dataCorr = record { in1-eq = C.FlatCorrespondence.FlatCorr.in1-eq dc ; out-eq = C.FlatCorrespondence.FlatCorr.out-eq dc
                         ; clos-eq = C.FlatCorrespondence.FlatCorr.clos-eq dc ; halt-eq = C.FlatCorrespondence.FlatCorr.halt-eq dc ; heap-eq = C.FlatCorrespondence.FlatCorr.heap-eq dc
@@ -549,22 +562,41 @@ room-step-riscv64 {hv} prog fs s zero cc h ft sp<m k<m =
     ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
     , subst (_≤ R.readReg (R.State.regs s) sp) (sym (+-identityʳ _)) (C.FlatCorrespondence.sep dc))
   where dc = dataCorr cc
-room-step-riscv64 {hv} prog fs s k@(suc _) cc h ft sp<m k<m =
+-- D486: the need is a word (`room-fits?`), or the check is the call itself
+room-step-riscv64 {hv} prog fs s k@(suc _) cc h ft sp<m = fit (room-fits? k) refl
+  where
+    fit : ∀ c → room-fits? k ≡ c
+        → Σ ℕ (λ c → Σ R.State (λ s' → (R.exec c (compile-trace prog) s ≡ just s')
+                × CompiledCorr hv prog (flat-exec-instr (instr-room k) prog fs) s'
+                × (C.FlatCorrespondence.HeapView.hfront hv + slots k ≤ R.readReg (R.State.regs s) sp)))
+          ⊎ Σ ℕ (λ c → Σ R.State (λ s' → (R.exec c (compile-trace prog) s ≡ just s')
+                × rhalted s' ≡ false
+                × R.fetch (compile-trace prog) (R.State.pc s') ≡ just (call-sym host-exhausted-symbol)))
+    fit true  e = room-fits-step {hv} prog fs s k cc h ft sp<m e
+    fit false e = inj₂ (0 , s , refl , trans (C.FlatCorrespondence.FlatCorr.halt-eq (dataCorr cc)) h
+                       , trans (trans (cong (R.fetch (compile-trace prog)) (pc-off cc)) (fetch-block-head prog (fpc fs) (instr-room k) ft))
+                               (cong (λ c → R.fetch (fits-or-out c (room-code k) ++ compile-trace (drop (suc (fpc fs)) prog)) zero) e))
+
+room-fits-step {hv} prog fs s zero cc h ft sp<m e = room-step-riscv64 prog fs s zero cc h ft sp<m
+room-fits-step {hv} prog fs s k@(suc _) cc h ft sp<m e =
   go (R.readReg (R.State.regs q2) t1 <ᵇ R.readReg (R.State.regs q2) t2) refl
   where
     dc = dataCorr cc ; po = pc-off cc
     cp = compile-trace prog
     i = instr-room k
     p = R.State.pc s
+    k<m : slots k < R.W.modulus
+    k<m = <ᵇ⇒< (slots k) R.W.modulus (subst Data.Bool.T (sym e) tt)
     halt-s : rhalted s ≡ false
     halt-s = trans (C.FlatCorrespondence.FlatCorr.halt-eq dc) h
     at : ∀ n q → q ≡ p + n
-       → R.fetch cp q ≡ R.fetch (drop n (compile-abstract i ++ compile-trace (drop (suc (fpc fs)) prog))) zero
-    at n q eq = trans (cong (R.fetch cp) (trans eq (cong (_+ n) po))) (fetch-block-nth prog (fpc fs) n i ft)
+       → R.fetch cp q ≡ R.fetch (drop n (room-code k ++ compile-trace (drop (suc (fpc fs)) prog))) zero
+    at n q eq = trans (trans (cong (R.fetch cp) (trans eq (cong (_+ n) po))) (fetch-block-nth prog (fpc fs) n i ft))
+                      (cong (λ c → R.fetch (drop n (fits-or-out c (room-code k) ++ compile-trace (drop (suc (fpc fs)) prog))) zero) e)
     sp₀ = R.readReg (R.State.regs s) sp
     fr₀ = R.readReg (R.State.regs s) s2
     f0 : R.fetch cp p ≡ just (sub t1 sp s2)
-    f0 = trans (cong (R.fetch cp) po) (fetch-block-head prog (fpc fs) i ft)
+    f0 = at 0 p (sym (+-identityʳ p))
     q1 : R.State
     q1 = record s { regs = R.writeReg (R.State.regs s) t1 (sp₀ R.W.⊖ fr₀) ; pc = p + 1 }
     f1 : R.fetch cp (R.State.pc q1) ≡ just (li t2 (ℤ.+ slots k))
@@ -628,7 +660,9 @@ room-step-riscv64 {hv} prog fs s k@(suc _) cc h ft sp<m k<m =
         kr = C.keeps-t1-t2-riscv64 s (sp₀ R.W.⊖ fr₀) (R.W.fromℤ (ℤ.+ slots k)) _
         d = C.FlatCorrespondence.keep-all dc kr
         pco : R.State.pc q4 ≡ blk-off prog (fpc (flat-exec-instr i prog fs))
-        pco = trans (room-a5 p) (trans (cong (_+ 5) po) (sym (blk-off-suc prog (fpc fs) i ft)))
+        pco = trans (room-a5 p) (trans (cong (_+ 5) po)
+                (sym (trans (blk-off-suc prog (fpc fs) i ft)
+                            (cong (λ c → blk-off prog (fpc fs) + length (fits-or-out c (room-code k))) e))))
     go true lt = inj₂ (3 , q3 , exec3 , halt-s , f3)
       where
         q3 : R.State
@@ -664,14 +698,40 @@ start-step-riscv64 : ∀ {hv : HeapView} prog fs s bf → CompiledCorr hv prog f
   → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-ctrl (c-start bf))
   → R.readReg (R.State.regs s) sp < R.W.modulus
-  → slots (start-stack-words + bf) < R.W.modulus
   → fret fs ≡ []
   → Σ ℕ (λ c → Σ R.State (λ s' → (R.exec (suc c) (compile-trace prog) s ≡ just s')
                 × Σ HeapView (λ hv′ → CompiledCorr hv′ prog (flat-exec-instr (instr-ctrl (c-start bf)) prog fs) s')))
     ⊎ Σ ℕ (λ c → Σ R.State (λ s' → (R.exec c (compile-trace prog) s ≡ just s')
                 × rhalted s' ≡ false
                 × R.fetch (compile-trace prog) (R.State.pc s') ≡ just (call-sym host-exhausted-symbol)))
-start-step-riscv64 {hv} prog fs s bf cc h ft sp<m k<m nf =
+-- the start's code, when its need is a word
+start-fits-step : ∀ {hv : HeapView} prog fs s bf → CompiledCorr hv prog fs s
+  → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just (instr-ctrl (c-start bf))
+  → R.readReg (R.State.regs s) sp < R.W.modulus
+  → fret fs ≡ []
+  → room-fits? (start-stack-words + bf) ≡ true
+  → Σ ℕ (λ c → Σ R.State (λ s' → (R.exec (suc c) (compile-trace prog) s ≡ just s')
+                × Σ HeapView (λ hv′ → CompiledCorr hv′ prog (flat-exec-instr (instr-ctrl (c-start bf)) prog fs) s')))
+    ⊎ Σ ℕ (λ c → Σ R.State (λ s' → (R.exec c (compile-trace prog) s ≡ just s')
+                × rhalted s' ≡ false
+                × R.fetch (compile-trace prog) (R.State.pc s') ≡ just (call-sym host-exhausted-symbol)))
+-- D486: the need is a word (`room-fits?`), or the start's check is the call itself
+start-step-riscv64 {hv} prog fs s bf cc h ft sp<m nf = fit (room-fits? (start-stack-words + bf)) refl
+  where
+    fit : ∀ c → room-fits? (start-stack-words + bf) ≡ c
+        → Σ ℕ (λ c → Σ R.State (λ s' → (R.exec (suc c) (compile-trace prog) s ≡ just s')
+                × Σ HeapView (λ hv′ → CompiledCorr hv′ prog (flat-exec-instr (instr-ctrl (c-start bf)) prog fs) s')))
+          ⊎ Σ ℕ (λ c → Σ R.State (λ s' → (R.exec c (compile-trace prog) s ≡ just s')
+                × rhalted s' ≡ false
+                × R.fetch (compile-trace prog) (R.State.pc s') ≡ just (call-sym host-exhausted-symbol)))
+    fit true  e = start-fits-step {hv} prog fs s bf cc h ft sp<m nf e
+    fit false e = inj₂ (0 , s , refl , trans (C.FlatCorrespondence.FlatCorr.halt-eq (dataCorr cc)) h
+                       , trans (trans (cong (R.fetch (compile-trace prog)) (pc-off cc)) (fetch-block-head prog (fpc fs) (instr-ctrl (c-start bf)) ft))
+                               (cong (λ c → R.fetch ((fits-or-out c (room-code (start-stack-words + bf)) ++ start-tail bf)
+                                                      ++ compile-trace (drop (suc (fpc fs)) prog)) zero) e))
+
+start-fits-step {hv} prog fs s bf cc h ft sp<m nf e =
   go (R.readReg (R.State.regs q2) t1 <ᵇ R.readReg (R.State.regs q2) t2) refl
   where
     dc = dataCorr cc ; po = pc-off cc
@@ -680,15 +740,18 @@ start-step-riscv64 {hv} prog fs s bf cc h ft sp<m k<m nf =
     B = start-stack-words
     k = B + bf
     p = R.State.pc s
+    k<m : slots k < R.W.modulus
+    k<m = <ᵇ⇒< (slots k) R.W.modulus (subst Data.Bool.T (sym e) tt)
     halt-s : rhalted s ≡ false
     halt-s = trans (C.FlatCorrespondence.FlatCorr.halt-eq dc) h
     at : ∀ n q → q ≡ p + n
-       → R.fetch cp q ≡ R.fetch (drop n (compile-abstract i ++ compile-trace (drop (suc (fpc fs)) prog))) zero
-    at n q eq = trans (cong (R.fetch cp) (trans eq (cong (_+ n) po))) (fetch-block-nth prog (fpc fs) n i ft)
+       → R.fetch cp q ≡ R.fetch (drop n ((room-code k ++ start-tail bf) ++ compile-trace (drop (suc (fpc fs)) prog))) zero
+    at n q eq = trans (trans (cong (R.fetch cp) (trans eq (cong (_+ n) po))) (fetch-block-nth prog (fpc fs) n i ft))
+                      (cong (λ c → R.fetch (drop n ((fits-or-out c (room-code k) ++ start-tail bf) ++ compile-trace (drop (suc (fpc fs)) prog))) zero) e)
     sp₀ = R.readReg (R.State.regs s) sp
     fr₀ = R.readReg (R.State.regs s) s2
     f0 : R.fetch cp p ≡ just (sub t1 sp s2)
-    f0 = trans (cong (R.fetch cp) po) (fetch-block-head prog (fpc fs) i ft)
+    f0 = at 0 p (sym (+-identityʳ p))
     q1 : R.State
     q1 = record s { regs = R.writeReg (R.State.regs s) t1 (sp₀ R.W.⊖ fr₀) ; pc = p + 1 }
     f1 : R.fetch cp (R.State.pc q1) ≡ just (li t2 (ℤ.+ slots k))
@@ -825,7 +888,9 @@ start-step-riscv64 {hv} prog fs s bf cc h ft sp<m k<m nf =
                    (C.sets-mem-t1-riscv64 q7 R.heap-base _ _ _)
         d9 = C.FlatCorrespondence.sim-set-lim fs₁ q7 q9 L d7 sm
         pco : R.State.pc q9 ≡ blk-off prog (fpc fs₁)
-        pco = trans e10 (trans (cong (_+ 10) po) (sym (blk-off-suc prog (fpc fs) i ft)))
+        pco = trans e10 (trans (cong (_+ 10) po)
+                (sym (trans (blk-off-suc prog (fpc fs) i ft)
+                            (cong (λ c → blk-off prog (fpc fs) + length (fits-or-out c (room-code k) ++ start-tail bf)) e))))
         retPost : C.FlatCorrespondence.RetAddrs (blk-off prog) (R.State.memory q9) (riscv64-link-claim q9)
                     (flink fs₁) (C.FlatCorrespondence.frames-of (falloc fs₁)) (fret fs₁)
         retPost = subst (C.FlatCorrespondence.RetAddrs (blk-off prog) (R.State.memory q9) (riscv64-link-claim q9)

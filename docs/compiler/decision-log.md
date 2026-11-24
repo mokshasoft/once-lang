@@ -25124,6 +25124,11 @@ region (the split is the program's, from its own bound).
   discharged, not taken as `LitFits` fields: a decidable gate in the pipeline (every emitted need fits a
   word, else the build is refused, like the other gates), whose evidence the arch proofs read. Until then
   `start-fits` stands beside `room-fits` as a marked debt.
+  **As built (unattended, simpler than a gate):** the lowering decides it. A need that is not a word can
+  be met by no region, so x86-32's and riscv64's lowering emits the check only when `slots k <ᵇ modulus`
+  and a plain `call once_exhausted` otherwise (`fits-or-out`); the proof splits on that boolean (the true
+  branch has the bound, the false branch is the theorem's `exhausted`, after no step). No assumption, no
+  refused build, no run-time cost; `LitFits.room-fits`/`start-fits` go.
 * **Decided (the user, 2026-11-24): option A** — a fixed default stack for programs without a static bound
   (`start-stack-words`, 32768 words), configurable (`--stack-words N`).
 * **Decided (the user, 2026-11-24): every program's stack is statically bounded; a fold's recursion lives

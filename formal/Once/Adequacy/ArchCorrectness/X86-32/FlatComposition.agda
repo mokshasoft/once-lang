@@ -28,10 +28,10 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 
 module Once.Adequacy.ArchCorrectness.X86-32.FlatComposition (FS : FrameSemantics) where
 
-open import Data.Nat using (ℕ; zero; suc)
+open import Data.Nat using (ℕ; zero; suc; _+_)
 open import Data.Bool using (Bool; true; false)
 open import Data.Maybe using (just)
-open import Data.List using ([]; _∷_)
+open import Data.List using ([]; _∷_; _++_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.CCC.Machine.SMCore
@@ -42,7 +42,7 @@ import Once.CCC.Target.X86-32.Syntax as XS
 open import Once.CCC.Target.X86-32.Syntax
   using (Program; mov; lea; add; sub; sbb; cmp; test; jmp; je; jne; call; call-sym; call-l; ret; push; pop; nop; ud2; jbe-fwd; local-1; label; mov-code; jmp-l; reg; imm; slots)
 open import Once.Target.X86-32.PhysReg using (esp)
-open import Once.CCC.Target.X86-32.AbstractToX86-32 using (compile-abstract; compile-trace)
+open import Once.CCC.Target.X86-32.AbstractToX86-32 using (compile-abstract; compile-trace; fits-or-out; room-code; room-fits?; start-tail)
 
 ------------------------------------------------------------------------
 -- WHICH INSTRUCTIONS ARE LABELS, and the three scan equations that follow.
@@ -133,6 +133,16 @@ const-no-label : ∀ {A} (p : FitsInReg A) (v : _) → has-label (compile-abstra
 const-no-label fits-int   v = refl
 const-no-label fits-float v = refl
 
+-- D486: a check is its code or its call, and the start that code then the frame and the limit:
+-- no label either way
+fo-no-label : ∀ (c : Bool) k → has-label (fits-or-out c (room-code k)) ≡ false
+fo-no-label true  k = refl
+fo-no-label false k = refl
+
+start-no-label : ∀ (c : Bool) k b → has-label (fits-or-out c (room-code k) ++ start-tail b) ≡ false
+start-no-label true  k b = refl
+start-no-label false k b = refl
+
 headView : ∀ (i : AbstractInstr) → HeadView i
 headView mov-to-output = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView mov-to-input = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
@@ -157,7 +167,7 @@ headView (addr-at _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (load-rec _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (store-rec _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (instr-room zero) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
-headView (instr-room (suc _)) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
+headView (instr-room (suc k)) = hv-plain (fo-no-label (room-fits? (suc k)) (suc k)) (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (instr-push-frame _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (worklist-init _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (worklist-push _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
@@ -171,7 +181,7 @@ headView (instr-load-const p v) = hv-plain (const-no-label p v) (λ _ _ _ → re
 headView (instr-reg-op op) = hv-plain (reg-op-no-label op) (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (instr-ctrl (c-label m)) = hv-clabel m refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (instr-ctrl (c-call-fn f)) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
-headView (instr-ctrl (c-start b)) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
+headView (instr-ctrl (c-start b)) = hv-plain (start-no-label (room-fits? (start-stack-words + b)) (start-stack-words + b) b) (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (instr-ctrl c-leave) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (instr-ctrl (c-entry m b)) =
   hv-otherlabel m (sub (reg esp) (imm (slots b)) ∷ []) refl refl

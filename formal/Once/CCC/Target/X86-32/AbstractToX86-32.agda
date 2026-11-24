@@ -25,7 +25,8 @@
 
 module Once.CCC.Target.X86-32.AbstractToX86-32 where
 
-open import Data.Nat using (ℕ; zero; suc; _∸_; _+_)
+open import Data.Nat using (ℕ; zero; suc; _∸_; _+_; _<ᵇ_)
+open import Data.Bool using (Bool; true; false)
 import Data.Nat as ℕ
 open import Data.List using ([]; _∷_; _++_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
@@ -74,6 +75,35 @@ slot-to-disp n = n ℕ.* slot-size
 --   Frame  → esp (slots are ESP-relative, as on x86-64 — plan 0.69)
 --   Closure → ebx (environment pointer)
 ------------------------------------------------------------------------
+
+-- D378: the room check's code for a need of `k` words (see `instr-room` below)
+room-code : ℕ → Program
+room-code k =
+  sub (reg esi) (reg esp) ∷
+  sub (reg esi) (imm 1) ∷
+  cmp (reg esi) (imm (IntW.modulus ∸ suc (slots k))) ∷
+  jbe-fwd ∷
+  call-sym host-exhausted-symbol ∷
+  local-1 ∷
+  add (reg esi) (imm 1) ∷
+  add (reg esi) (reg esp) ∷ []
+
+-- D486: the check when its need is a word, else the call it would make
+fits-or-out : Bool → Program → Program
+fits-or-out true  c = c
+fits-or-out false _ = call-sym host-exhausted-symbol ∷ []
+
+-- …whether a need of `k` words is a word
+room-fits? : ℕ → Bool
+room-fits? k = slots k <ᵇ IntW.modulus
+
+-- D486: the start past its check: the frame, then the stack limit into record word 0
+start-tail : ℕ → Program
+start-tail b =
+  sub (reg esp) (imm (slots b)) ∷
+  mov (reg edx) (reg esp) ∷
+  sub (reg edx) (imm (slots start-stack-words)) ∷
+  mov (mem (abs-sym alloc-record-symbol 0)) (reg edx) ∷ []
 
 compile-abstract : AbstractInstr → Program
 
@@ -225,15 +255,9 @@ compile-abstract (addr-at n) =
 --         call once_exhausted ; 1: addl $1, %esi ; addl %esp, %esi
 -- D483: a check of no words emits nothing (the layout's separation is its room)
 compile-abstract (instr-room zero) = []
-compile-abstract (instr-room k@(suc _)) =
-  sub (reg esi) (reg esp) ∷
-  sub (reg esi) (imm 1) ∷
-  cmp (reg esi) (imm (IntW.modulus ∸ suc (slots k))) ∷
-  jbe-fwd ∷
-  call-sym host-exhausted-symbol ∷
-  local-1 ∷
-  add (reg esi) (imm 1) ∷
-  add (reg esi) (reg esp) ∷ []
+-- D486: a need that is no word (`4k ≥ 2³²`) no region meets: the check is then the call
+-- itself (`fits-or-out`), so no assumption says needs fit
+compile-abstract (instr-room k@(suc _)) = fits-or-out (room-fits? k) (room-code k)
 
 -- Plan 0.11: name-agnostic SigOp codegen.
 -- Emit a single symbolic call; linker resolves the name at build time
@@ -292,18 +316,7 @@ compile-abstract (instr-ctrl (c-entry e b))             = label (callee e) ∷ s
 -- sets the stack limit, record word 0, to `esp − 4·start-stack-words`
 -- (`edx` is no role's)
 compile-abstract (instr-ctrl (c-start b))               =
-  sub (reg esi) (reg esp) ∷
-  sub (reg esi) (imm 1) ∷
-  cmp (reg esi) (imm (IntW.modulus ∸ suc (slots (start-stack-words + b)))) ∷
-  jbe-fwd ∷
-  call-sym host-exhausted-symbol ∷
-  local-1 ∷
-  add (reg esi) (imm 1) ∷
-  add (reg esi) (reg esp) ∷
-  sub (reg esp) (imm (slots b)) ∷
-  mov (reg edx) (reg esp) ∷
-  sub (reg edx) (imm (slots start-stack-words)) ∷
-  mov (mem (abs-sym alloc-record-symbol 0)) (reg edx) ∷ []
+  fits-or-out (room-fits? (start-stack-words + b)) (room-code (start-stack-words + b)) ++ start-tail b
 -- D320: the program leaves by the Host's `leave`, a call of its one fixed symbol.
 compile-abstract (instr-ctrl c-leave)                   = call-sym host-leave-symbol ∷ []
 -- D245: a direct call of a program function is `call once_<f>`.

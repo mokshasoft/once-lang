@@ -17,9 +17,31 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; tran
 open import Once.Type using (fits-int; fits-float)
 open import Once.CCC.Machine.SMCore
 open import Once.CCC.Codegen.ImageSymbols using (instr-defs; instr-refs; adefs; arefs)
-open import Once.CCC.Target.X86-32.AbstractToX86-32 using (compile-abstract; compile-trace)
+open import Once.CCC.Target.X86-32.AbstractToX86-32 using (compile-abstract; compile-trace; fits-or-out; room-code; room-fits?; start-tail)
+open import Data.Bool using (Bool; true; false)
+open import Once.Target.SymbolFresh using (host-exhausted-symbol)
 open import Once.CCC.Target.X86-32.File using (label-defs; refs)
 open import Once.CCC.Target.X86-32.Syntax using (Program)
+
+-- D486: a check is its code or its call; both define nothing and reference `once_exhausted`
+-- (`T`: what follows it in the instruction's block)
+private
+  fo-defs : ∀ (c : Bool) (k : Data.Nat.ℕ) (T r : Program)
+          → label-defs ((fits-or-out c (room-code k) ++ T) ++ r) ≡ label-defs (T ++ r)
+  fo-defs true  k T r = refl
+  fo-defs false k T r = refl
+  fo-refs : ∀ (c : Bool) (k : Data.Nat.ℕ) (T r : Program)
+          → refs ((fits-or-out c (room-code k) ++ T) ++ r) ≡ host-exhausted-symbol ∷ refs (T ++ r)
+  fo-refs true  k T r = refl
+  fo-refs false k T r = refl
+  fo-defs₁ : ∀ (c : Bool) (k : Data.Nat.ℕ) (r : Program)
+           → label-defs (fits-or-out c (room-code k) ++ r) ≡ label-defs r
+  fo-defs₁ true  k r = refl
+  fo-defs₁ false k r = refl
+  fo-refs₁ : ∀ (c : Bool) (k : Data.Nat.ℕ) (r : Program)
+           → refs (fits-or-out c (room-code k) ++ r) ≡ host-exhausted-symbol ∷ refs r
+  fo-refs₁ true  k r = refl
+  fo-refs₁ false k r = refl
 
 defs-step : ∀ (i : AbstractInstr) (r : Program)
           → label-defs (compile-abstract i ++ r) ≡ instr-defs i ++ label-defs r
@@ -43,7 +65,7 @@ defs-step (addr-at k) r = refl
 defs-step (load-rec k) r = refl
 defs-step (store-rec k) r = refl
 defs-step (instr-room Data.Nat.zero) r = refl
-defs-step (instr-room (Data.Nat.suc k)) r = refl
+defs-step (instr-room (Data.Nat.suc k)) r = fo-defs₁ (room-fits? (Data.Nat.suc k)) (Data.Nat.suc k) r
 defs-step (instr-push-frame k) r = refl
 defs-step instr-pop-frame r = refl
 defs-step instr-call-closure r = refl
@@ -65,7 +87,7 @@ defs-step (instr-ctrl (c-branch-tag-zero n)) r = refl
 defs-step (instr-ctrl (c-entry e b)) r = refl
 defs-step (instr-ctrl (c-ret b)) r = refl
 defs-step (instr-ctrl (c-call-fn f)) r = refl
-defs-step (instr-ctrl (c-start b)) r = refl
+defs-step (instr-ctrl (c-start b)) r = fo-defs (room-fits? (start-stack-words Data.Nat.+ b)) (start-stack-words Data.Nat.+ b) (start-tail b) r
 defs-step (instr-ctrl c-leave) r = refl
 
 refs-step : ∀ (i : AbstractInstr) (r : Program)
@@ -90,7 +112,7 @@ refs-step (addr-at k) r = refl
 refs-step (load-rec k) r = refl
 refs-step (store-rec k) r = refl
 refs-step (instr-room Data.Nat.zero) r = refl
-refs-step (instr-room (Data.Nat.suc k)) r = refl
+refs-step (instr-room (Data.Nat.suc k)) r = fo-refs₁ (room-fits? (Data.Nat.suc k)) (Data.Nat.suc k) r
 refs-step (instr-push-frame k) r = refl
 refs-step instr-pop-frame r = refl
 refs-step instr-call-closure r = refl
@@ -112,7 +134,7 @@ refs-step (instr-ctrl (c-branch-tag-zero n)) r = refl
 refs-step (instr-ctrl (c-entry e b)) r = refl
 refs-step (instr-ctrl (c-ret b)) r = refl
 refs-step (instr-ctrl (c-call-fn f)) r = refl
-refs-step (instr-ctrl (c-start b)) r = refl
+refs-step (instr-ctrl (c-start b)) r = fo-refs (room-fits? (start-stack-words Data.Nat.+ b)) (start-stack-words Data.Nat.+ b) (start-tail b) r
 refs-step (instr-ctrl c-leave) r = refl
 
 defs-lower : ∀ (t : AbstractTrace) → label-defs (compile-trace t) ≡ adefs t

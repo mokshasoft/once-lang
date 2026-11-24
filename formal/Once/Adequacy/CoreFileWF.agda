@@ -29,6 +29,7 @@ open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.String using (String)
 open import Data.Sum using (_⊎_)
 open import Data.Unit using (tt)
+open import Data.Bool using (true; false)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 open import Once.CCC.Codegen.ImageSymbols using (adefs; arefs; entry-symbol)
 open import Once.CCC.Label using (e-thunk; e-fn)
@@ -108,13 +109,17 @@ module X8632 where
   core-wf b t″ bs ex (u , r , ev) = record
     { defined-once  = subst Unique (sym defs≡) u
     ; resolved      = subst₂′ r
-    ; entry-in      = s≤s z≤n
+    ; entry-in      = ent (L.room-fits? (start-stack-words Data.Nat.+ b))
     ; defs-valid    = subst (All AsmSym) (sym defs≡) (defs-asm t bs)
     ; externs-valid = ev
     }
     where
       t = instr-ctrl (c-start b) ∷ t″
-      -- D486: the image starts with its start, whose code makes the file's entry
+      -- D486: the image starts with its start, whose code (its check or its call) makes the file's entry
+      ent : ∀ c → 1 Data.Nat.≤ Data.List.length ((L.fits-or-out c (L.room-code (start-stack-words Data.Nat.+ b)) ++ L.start-tail b)
+                                                   ++ proj₂ (L.compile-trace-cnt C.entry-owner 0 t″))
+      ent true  = s≤s z≤n
+      ent false = s≤s z≤n
       G = F.mkImage (proj₂ (L.compile-trace-cnt C.entry-owner 0 t)) (just 0) (file-table A.block-payload bs) ex
       code≡ : F.Image.code G ≡ L.compile-trace t
       code≡ = cong proj₂ (L.compile-trace-cnt-agrees C.entry-owner 0 t)
@@ -142,13 +147,17 @@ module RiscV64 where
   core-wf b t″ bs ex (u , r , ev) = record
     { defined-once  = subst Unique (sym defs≡) u
     ; resolved      = subst₂′ r
-    ; entry-in      = s≤s z≤n
+    ; entry-in      = ent (L.room-fits? (start-stack-words Data.Nat.+ b))
     ; defs-valid    = subst (All AsmSym) (sym defs≡) (defs-asm t bs)
     ; externs-valid = ev
     }
     where
       t = instr-ctrl (c-start b) ∷ t″
-      -- D486: the image starts with its start, whose code makes the file's entry
+      -- D486: the image starts with its start, whose code (its check or its call) makes the file's entry
+      ent : ∀ c → 1 Data.Nat.≤ Data.List.length ((L.fits-or-out c (L.room-code (start-stack-words Data.Nat.+ b)) ++ L.start-tail b)
+                                                   ++ proj₂ (L.compile-trace-cnt C.entry-owner 0 t″))
+      ent true  = s≤s z≤n
+      ent false = s≤s z≤n
       G = F.mkImage (proj₂ (L.compile-trace-cnt C.entry-owner 0 t)) (just 0) (file-table A.block-payload bs) ex
       code≡ : F.Image.code G ≡ L.compile-trace t
       code≡ = cong proj₂ (L.compile-trace-cnt-agrees C.entry-owner 0 t)

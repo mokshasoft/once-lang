@@ -127,22 +127,6 @@ module Once.Adequacy.ArchCorrectness.X86-32.ConcFlatSim (o : CanonicalName)
               → Once.CCC.Machine.SMCore.AbstractExec.lit-value {FS} fits-float v < X.W.modulus)
   -- D378: a room check's need `4k` is an emitted immediate (in the compare's
   -- `2³² − 4k − 1`) and fits a word — the literal seam, as `tag-fits`.
-  (room-fits : ∀ {hv : FC.FlatCorrespondence.HeapView FS word-eq}
-                 (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
-                 (s : X.State) (k : ℕ)
-             → RL.RunLow o FS slot-size word-eq prog fs
-             → FSim.CompiledCorrespondence.CompiledCorr o FS word-eq fmt-eq hv prog fs s
-             → FlatMachine.fetch {FS} prog (FlatMachine.FlatState.fpc {FS} fs)
-                 ≡ just (instr-room k)
-             → slots k < X.W.modulus)
-  (start-fits : ∀ {hv : FC.FlatCorrespondence.HeapView FS word-eq}
-                 (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
-                 (s : X.State) (b : ℕ)
-             → RL.RunLow o FS slot-size word-eq prog fs
-             → FSim.CompiledCorrespondence.CompiledCorr o FS word-eq fmt-eq hv prog fs s
-             → FlatMachine.fetch {FS} prog (FlatMachine.FlatState.fpc {FS} fs)
-                 ≡ just (instr-ctrl (c-start b))
-             → slots (start-stack-words + b) < X.W.modulus)
   where
 
 open import Data.Maybe using (Maybe; just; nothing)
@@ -375,7 +359,16 @@ ctrl-len-arch (c-branch-tag-zero _) = s≤s z≤n
 ctrl-len-arch (c-entry _ _) = s≤s z≤n
 ctrl-len-arch (c-ret _) = s≤s z≤n
 ctrl-len-arch (c-call-fn _) = s≤s z≤n
-ctrl-len-arch (c-start _) = s≤s z≤n
+ctrl-len-arch (c-start b) = st-len (AC.room-fits? (start-stack-words Data.Nat.+ b))
+  where
+    import Once.CCC.Target.X86-32.AbstractToX86-32 as AC
+    import Data.Nat
+    open import Data.Bool using (Bool; true; false)
+    open import Data.List using (_++_)
+    -- D486: the start's check is its code or its call
+    st-len : ∀ (c : Bool) → 1 ≤ length (AC.fits-or-out c (AC.room-code (start-stack-words Data.Nat.+ b)) ++ AC.start-tail b)
+    st-len true  = s≤s z≤n
+    st-len false = s≤s z≤n
 ctrl-len-arch c-leave = s≤s z≤n
 
 x86-32-emitter : EI.Emitter FS Reg
@@ -824,9 +817,9 @@ x86-32-supply : EE.Supply
 x86-32-supply = record
   { bss = x86-32-block-steps ; sts = x86-32-stuck-steps
   ; room-step = λ prog fs s k run cc h ft → room-step-x86-32 prog fs s k cc h ft (reg-range prog fs s PhysReg.esi run cc)
-      (reg-range prog fs s PhysReg.esp run cc) (room-fits prog fs s k run cc ft)
+      (reg-range prog fs s PhysReg.esp run cc)
   ; start-step = λ prog fs s b run cc h ft _ nf → start-step-x86-32 prog fs s b cc h ft
-      (reg-range prog fs s PhysReg.esi run cc) (reg-range prog fs s PhysReg.esp run cc) (start-fits prog fs s b run cc ft) nf
+      (reg-range prog fs s PhysReg.esi run cc) (reg-range prog fs s PhysReg.esp run cc) nf
   ; reg-range = reg-range ; ret-no-wrap = ret-no-wrap
   ; tag-fits = tag-fits ; lit-fits = lit-fits ; float-fits = float-fits
   ; arith-sigop-contract = arith-sigop-contract

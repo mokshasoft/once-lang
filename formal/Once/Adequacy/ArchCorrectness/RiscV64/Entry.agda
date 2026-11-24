@@ -168,7 +168,7 @@ open import Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim o
   riscv64-reg-range
   (RBr.AddrNoWrap.ret-no-wrap riscv64-addr-no-wrap)
   (RBr.LitFits.tag-fits riscv64-lit-fits) (RBr.LitFits.lit-fits riscv64-lit-fits)
-  (RBr.float-fits o ι) (RBr.LitFits.room-fits riscv64-lit-fits) (RBr.LitFits.start-fits riscv64-lit-fits)
+  (RBr.float-fits o ι)
   using (module EE; module FlatSimulation)
 open EE.RunContext′ using (EntryLike)
 open FlatSimulation using ()

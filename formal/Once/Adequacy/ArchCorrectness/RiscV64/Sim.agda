@@ -65,7 +65,6 @@ open import Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim o
   riscv64-reg-range
   (RB.AddrNoWrap.ret-no-wrap riscv64-addr-no-wrap)
   (RB.LitFits.tag-fits riscv64-lit-fits) (RB.LitFits.lit-fits riscv64-lit-fits) (RB.float-fits o ι)
-  (RB.LitFits.room-fits riscv64-lit-fits) (RB.LitFits.start-fits riscv64-lit-fits)
   using (module Dispatch′; riscv64-arith-table)
 open Dispatch′ using (events-agree-start; AgreeAt)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunLow o rv64-frame-semantics slot-size refl using (RunLow; low-start)

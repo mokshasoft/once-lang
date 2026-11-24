@@ -64,7 +64,7 @@ open import Once.Adequacy.ArchCorrectness.X86-32.ConcFlatSim o
   x86-32-reg-range
   (RB.AddrNoWrap.ret-no-wrap x86-32-addr-no-wrap)
   (RB.LitFits.tag-fits x86-32-lit-fits) (RB.LitFits.lit-fits x86-32-lit-fits) (RB.float-fits o ι)
-  (RB.LitFits.room-fits x86-32-lit-fits) (RB.LitFits.start-fits x86-32-lit-fits)
+ 
   using (module Dispatch′; x86-32-arith-table)
 open Dispatch′ using (events-agree-start; AgreeAt)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunLow o x86-32-frame-semantics slot-size refl using (RunLow; low-start)

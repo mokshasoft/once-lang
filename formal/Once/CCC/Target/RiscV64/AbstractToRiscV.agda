@@ -39,6 +39,7 @@ open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 open import Data.Integer using (+_)
 open import Data.List using ([]; _∷_; _++_)
+open import Data.Bool using (Bool; true; false)
 open import Once.Target.SymbolFresh using (host-leave-symbol; host-exhausted-symbol; alloc-record-symbol)
 open import Once.Target.Symbol using (once-symbol-path)
 
@@ -47,7 +48,7 @@ open import Once.Spec.Float.Dyadic using (binary64)
 open import Once.Float.Word using (round)
 import Once.Spec.Word as OnceWord
 module IntW = OnceWord.Width 64
-  using (fromℤ)
+  using (fromℤ; modulus)
 open import Once.CCC.Target.RiscV64.Syntax
   using (ld; sd; sub; sltu; addi; li; lla; lla-sym; mv; beq; jal; jalr; j; ret; call-sym; bgeu-fwd; local-1; label; Program; slot-size; slots)
 open import Once.Target.RiscV64.PhysReg using (a0; t0; sp; s2; fp; t1; s1; ra; t2; zero)
@@ -84,6 +85,35 @@ slot-to-disp n = n ℕ.* slot-size
 --   Closure → s1 (environment pointer, callee-saved)
 --   Temp   → t0 (when we need separate addr/value)
 ------------------------------------------------------------------------
+
+-- D378: the room check's code for a need of `k` words (see `instr-room` below)
+room-code : ℕ → Program
+room-code k =
+  sub t1 sp s2 ∷
+  li t2 (+ slots k) ∷
+  bgeu-fwd t1 t2 ∷
+  call-sym host-exhausted-symbol ∷
+  local-1 ∷ []
+
+-- D486: the check when its need is a word, else the call it would make
+fits-or-out : Bool → Program → Program
+fits-or-out true  c = c
+fits-or-out false _ = call-sym host-exhausted-symbol ∷ []
+
+-- …whether a need of `k` words is a word
+room-fits? : ℕ → Bool
+room-fits? k = slots k Data.Nat.<ᵇ IntW.modulus
+  where import Data.Nat
+
+-- D486: the start past its check: the frame, then the stack limit into record word 0
+start-tail : ℕ → Program
+start-tail b =
+  addi sp sp (Data.Integer.-_ (+ (slots b))) ∷
+  li t2 (+ slots start-stack-words) ∷
+  sub t2 sp t2 ∷
+  lla-sym t1 alloc-record-symbol ∷
+  sd t2 t1 0 ∷ []
+  where import Data.Integer
 
 compile-abstract : AbstractInstr → Program
 
@@ -276,12 +306,8 @@ compile-abstract (addr-at n) =
 -- riscv64: sub t1, sp, s2 ; li t2, 8k ; bgeu t1, t2, 1f ; call once_exhausted ; 1:
 -- D483: a check of no words emits nothing (the layout's separation is its room)
 compile-abstract (instr-room zero) = []
-compile-abstract (instr-room k@(suc _)) =
-  sub t1 sp s2 ∷
-  li t2 (+ slots k) ∷
-  bgeu-fwd t1 t2 ∷
-  call-sym host-exhausted-symbol ∷
-  local-1 ∷ []
+-- D486: a need that is no word no region meets: the check is then the call itself
+compile-abstract (instr-room k@(suc _)) = fits-or-out (room-fits? k) (room-code k)
 
 -- Plan 0.11: name-agnostic SigOp codegen.
 -- Emit a single symbolic call; linker resolves the name at build time
@@ -355,18 +381,8 @@ compile-abstract (instr-ctrl (c-entry e b))             = label (callee e) ∷ a
 -- sets the stack limit, record word 0, to `sp − 8·start-stack-words` (`t1`,
 -- `t2` are no role's)
 compile-abstract (instr-ctrl (c-start b))               =
-  sub t1 sp s2 ∷
-  li t2 (+ slots (start-stack-words Data.Nat.+ b)) ∷
-  bgeu-fwd t1 t2 ∷
-  call-sym host-exhausted-symbol ∷
-  local-1 ∷
-  addi sp sp (Data.Integer.-_ (+ (slots b))) ∷
-  li t2 (+ slots start-stack-words) ∷
-  sub t2 sp t2 ∷
-  lla-sym t1 alloc-record-symbol ∷
-  sd t2 t1 0 ∷ []
-  where import Data.Integer
-        import Data.Nat
+  fits-or-out (room-fits? (start-stack-words Data.Nat.+ b)) (room-code (start-stack-words Data.Nat.+ b)) ++ start-tail b
+  where import Data.Nat
 -- D320: the program leaves by the Host's `leave`, a call of its one fixed symbol.
 compile-abstract (instr-ctrl c-leave)                   = call-sym host-leave-symbol ∷ []
 compile-abstract (instr-ctrl (c-ret b))                 = ld ra sp (slots b) ∷ addi sp sp (+ (slots (suc b))) ∷ ret ∷ []

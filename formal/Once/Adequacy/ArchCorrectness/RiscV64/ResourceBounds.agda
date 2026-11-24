@@ -186,27 +186,8 @@ record LitFits : Set₁ where
           (FlatMachine.FlatState.fpc {rv64-frame-semantics} fs) ≡ just (instr-load-const fits-int v)
       → Once.CCC.Machine.SMCore.AbstractExec.lit-value {rv64-frame-semantics} fits-int v < R.W.modulus
 
-    -- D378: a room check's need `8k` is the `li t2, 8k` immediate.
-    room-fits :
-      ∀ {hv : FCr.FlatCorrespondence.HeapView rv64-frame-semantics refl}
-        (prog : AbstractTrace) (fs : FlatMachine.FlatState {rv64-frame-semantics})
-        (s : R.State) (k : ℕ)
-      → RLr.RunLow o rv64-frame-semantics slot-size refl prog fs
-      → FSimr.CompiledCorrespondence.CompiledCorr o rv64-frame-semantics refl refl hv prog fs s
-      → FlatMachine.fetch {rv64-frame-semantics} prog
-          (FlatMachine.FlatState.fpc {rv64-frame-semantics} fs) ≡ just (instr-room k)
-      → slots k < R.W.modulus
-
-    -- D486: the start's own check, at `main`'s frame and the stack it reserves
-    start-fits :
-      ∀ {hv : FCr.FlatCorrespondence.HeapView rv64-frame-semantics refl}
-        (prog : AbstractTrace) (fs : FlatMachine.FlatState {rv64-frame-semantics})
-        (s : R.State) (b : ℕ)
-      → RLr.RunLow o rv64-frame-semantics slot-size refl prog fs
-      → FSimr.CompiledCorrespondence.CompiledCorr o rv64-frame-semantics refl refl hv prog fs s
-      → FlatMachine.fetch {rv64-frame-semantics} prog
-          (FlatMachine.FlatState.fpc {rv64-frame-semantics} fs) ≡ just (instr-ctrl (c-start b))
-      → slots (start-stack-words + b) < R.W.modulus
+    -- (D486: `room-fits`/`start-fits` went: a need that is no word lowers to the call
+    -- itself, `AbstractToRiscV.fits-or-out`, so no need is assumed to fit.)
 
 
 ------------------------------------------------------------------------
