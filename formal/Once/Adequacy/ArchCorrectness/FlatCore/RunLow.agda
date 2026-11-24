@@ -104,12 +104,13 @@ low-step .(room-checks src) .(RoomSim.lift {FS} src fs₀ p) i (mkRunLow src fs�
 low-sound : ∀ {prog fs} → RunLow prog fs → Sound prog fs
 low-sound (mkRunLow src fs₀ p refl r refl pc) = RoomSim.sound-room {FS} src fs₀ p pc (run-sound r)
 
--- THE START: the lift of `t`'s start state at pc 0 — the start's check.
+-- THE START: the lift of `t`'s start state at pc 0 — the start itself (D486:
+-- it checks for itself; no check comes before it).
 low-start : ∀ (src : AbstractTrace) (fs₀ : FlatState) → RunAt src fs₀ → fpc fs₀ ≡ 0
           → RunLow (room-checks src) (RoomSim.lift {FS} src fs₀ 0)
 low-start src fs₀ r p0 =
   mkRunLow src fs₀ 0 refl r refl
-    (inj₂ (subst (λ c → suc 0 ≡ φ src c) (sym p0) (cong suc (sym (ψ-zero src))) , _ , refl))
+    (inj₁ (subst (λ c → 0 ≡ φ src c) (sym p0) (sym (ψ-zero src))))
 
 ------------------------------------------------------------------------
 -- THE SITE FACTS, LIFTED. Each is `RunWF`'s, at the state the lift is of; a

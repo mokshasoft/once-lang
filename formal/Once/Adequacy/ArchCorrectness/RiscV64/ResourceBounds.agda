@@ -45,7 +45,7 @@ import Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation as FSimr
 import Once.Adequacy.ArchCorrectness.FlatCore.RunLow as RLr
 import Once.CCC.Target.RiscV64.Semantics as R
 open import Once.CCC.Machine.SMCore
-  using (AbstractTrace; instr-ctrl; c-ret; lea-slot; instr-load-tag-lit; instr-load-const; instr-room)
+  using (AbstractTrace; instr-ctrl; c-ret; c-start; start-stack-words; lea-slot; instr-load-tag-lit; instr-load-const; instr-room)
 open import Once.CCC.Target.RiscV64.Syntax using (slots; slot-size)
 open import Once.Target.RiscV64.PhysReg using (sp; Reg)
 open import Once.CCC.Target.RiscV64.AbstractToRiscV using (slot-to-disp)
@@ -196,6 +196,17 @@ record LitFits : Set₁ where
       → FlatMachine.fetch {rv64-frame-semantics} prog
           (FlatMachine.FlatState.fpc {rv64-frame-semantics} fs) ≡ just (instr-room k)
       → slots k < R.W.modulus
+
+    -- D486: the start's own check, at `main`'s frame and the stack it reserves
+    start-fits :
+      ∀ {hv : FCr.FlatCorrespondence.HeapView rv64-frame-semantics refl}
+        (prog : AbstractTrace) (fs : FlatMachine.FlatState {rv64-frame-semantics})
+        (s : R.State) (b : ℕ)
+      → RLr.RunLow o rv64-frame-semantics slot-size refl prog fs
+      → FSimr.CompiledCorrespondence.CompiledCorr o rv64-frame-semantics refl refl hv prog fs s
+      → FlatMachine.fetch {rv64-frame-semantics} prog
+          (FlatMachine.FlatState.fpc {rv64-frame-semantics} fs) ≡ just (instr-ctrl (c-start b))
+      → slots (start-stack-words + b) < R.W.modulus
 
 
 ------------------------------------------------------------------------

@@ -58,7 +58,7 @@ open import Once.Type using (fits-int; fits-float)
 
 -- Import AbstractInstr from SMCore
 open import Once.CCC.Machine.SMCore
-  using (AbstractInstr; AbstractTrace; mov-to-output; mov-to-input; load-indirect; load-indirect-suc; load-from-slot; store-at-slot; store-indirect; store-indirect-suc; lea-slot; restore-input; instr-alloc-stack; instr-alloc-heap; instr-dealloc-stack; instr-push-frame; instr-pop-frame; instr-call-closure; worklist-init; worklist-push; worklist-pop; worklist-check; instr-reclaim-to; instr-sigop; instr-load-const; instr-load-code-addr; instr-save-closure-reg; instr-load-tag-lit; instr-reg-op; instr-free-heap; instr-room; load-at; store-at; addr-at; load-rec; store-rec; instr-ctrl; out-nz; c-label; c-jmp; c-branch-tag-zero; c-ret; c-entry; c-call-fn; c-start; c-leave)
+  using (start-stack-words; AbstractInstr; AbstractTrace; mov-to-output; mov-to-input; load-indirect; load-indirect-suc; load-from-slot; store-at-slot; store-indirect; store-indirect-suc; lea-slot; restore-input; instr-alloc-stack; instr-alloc-heap; instr-dealloc-stack; instr-push-frame; instr-pop-frame; instr-call-closure; worklist-init; worklist-push; worklist-pop; worklist-check; instr-reclaim-to; instr-sigop; instr-load-const; instr-load-code-addr; instr-save-closure-reg; instr-load-tag-lit; instr-reg-op; instr-free-heap; instr-room; load-at; store-at; addr-at; load-rec; store-rec; instr-ctrl; out-nz; c-label; c-jmp; c-branch-tag-zero; c-ret; c-entry; c-call-fn; c-start; c-leave)
 open import Once.CCC.Machine.Locations using (Slot)
 
 ------------------------------------------------------------------------
@@ -350,8 +350,23 @@ compile-abstract (instr-ctrl (c-entry e b))             = label (callee e) ∷ a
 -- plan 0.107: the start (`once_main`) — the outermost frame (the Host set the
 -- heap register `s2`, plan 0.123 C.5);
 -- nothing called the program, so no `ra` to spill.
-compile-abstract (instr-ctrl (c-start b))               = addi sp sp (Data.Integer.-_ (+ (slots b))) ∷ []
+-- D486: the start checks that `main`'s frame and the stack it reserves fit
+-- (the room check's code at `start-stack-words + b`), reserves the frame, and
+-- sets the stack limit, record word 0, to `sp − 8·start-stack-words` (`t1`,
+-- `t2` are no role's)
+compile-abstract (instr-ctrl (c-start b))               =
+  sub t1 sp s2 ∷
+  li t2 (+ slots (start-stack-words Data.Nat.+ b)) ∷
+  bgeu-fwd t1 t2 ∷
+  call-sym host-exhausted-symbol ∷
+  local-1 ∷
+  addi sp sp (Data.Integer.-_ (+ (slots b))) ∷
+  li t2 (+ slots start-stack-words) ∷
+  sub t2 sp t2 ∷
+  lla-sym t1 alloc-record-symbol ∷
+  sd t2 t1 0 ∷ []
   where import Data.Integer
+        import Data.Nat
 -- D320: the program leaves by the Host's `leave`, a call of its one fixed symbol.
 compile-abstract (instr-ctrl c-leave)                   = call-sym host-leave-symbol ∷ []
 compile-abstract (instr-ctrl (c-ret b))                 = ld ra sp (slots b) ∷ addi sp sp (+ (slots (suc b))) ∷ ret ∷ []

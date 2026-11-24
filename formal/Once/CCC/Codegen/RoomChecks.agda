@@ -9,7 +9,9 @@
 -- pointer`, else a call of the Host's `once_exhausted`) at every point control
 -- reaches other than by falling through within a stretch:
 --
---   * index 0, before the program's `c-start`;
+--   * right after the program's `c-start` (D486: the start checks its own
+--     frame and the stack it reserves, and sets the stack limit, so nothing
+--     comes before it);
 --   * right after every `c-label` (a jump lands on the label);
 --   * right after every `c-entry` (a call lands ON the entry, which reserves
 --     the callee's frame before anything else runs);
@@ -72,7 +74,6 @@ sigop-scratch _              = 0
 -- what one instruction spends, in words, given the largest entry frame `E`
 spend : ℕ → AbstractInstr → ℕ
 spend E (instr-alloc-heap n)        = n
-spend E (instr-ctrl (c-start b))    = b
 spend E (instr-ctrl (c-entry _ b))  = b
 spend E (instr-ctrl (c-call-fn _))  = suc E
 spend E instr-call-closure          = suc E
@@ -86,6 +87,7 @@ spend E _                           = 0
 -- a check goes right after these: control arrives there other than by falling
 -- through (a jump lands on a label, a call on an entry, a return after a call)
 boundary? : AbstractInstr → Bool
+boundary? (instr-ctrl (c-start _))    = true
 boundary? (instr-ctrl (c-label _))    = true
 boundary? (instr-ctrl (c-entry _ _))  = true
 boundary? (instr-ctrl (c-call-fn _))  = true
@@ -105,9 +107,10 @@ checks E []      = []
 checks E (i ∷ t) =
   i ∷ (if boundary? i then instr-room (stretch E t) ∷ checks E t else checks E t)
 
--- THE PASS: a check at index 0 for the first stretch, then the rest.
+-- THE PASS. (D486: no check at index 0 any more — the program's first
+-- instruction is its start, which checks for itself, and is a boundary.)
 room-checks : AbstractTrace → AbstractTrace
-room-checks t = instr-room (stretch (max-entry t) t) ∷ checks (max-entry t) t
+room-checks t = checks (max-entry t) t
 
 ------------------------------------------------------------------------
 -- THE BUDGET'S MEASURE: what the code spends from here up to the next check.

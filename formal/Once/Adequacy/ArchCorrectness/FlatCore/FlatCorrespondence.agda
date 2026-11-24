@@ -1570,6 +1570,33 @@ sim-store-rec {hv} k fs s s' corr lt guard sm =
       ; lim-eq = mkeep-lim corr sm (dom-above hv live) }
 
 ------------------------------------------------------------------------
+-- D486: THE START SETS THE STACK LIMIT. Its view is the old one with the limit
+-- set; the store of record word 0 misses every written cell and every window
+-- (all above `heap-base`), so the whole correspondence carries over.
+------------------------------------------------------------------------
+start-view : HeapView → ℕ → HeapView
+start-view hv L = record hv { hlim = L ; hstarted = true }
+
+-- the limit's word is below the high-water mark
+base-lo : ∀ (hv : HeapView) → heap-base < lo hv
+base-lo hv = <-≤-trans (base-front hv) (front-lo hv)
+
+sim-set-lim : {hv : HeapView} (fs : FlatState) (s s' : State) (L : ℕ) → FlatCorr hv fs s
+  → SetsMem s s' heap-base L → FlatCorr (start-view hv L) fs s'
+sim-set-lim {hv} fs s s' L corr sm = record
+  { in1-eq = mkeep-in1 corr sm ; out-eq = mkeep-out corr sm ; clos-eq = mkeep-clos corr sm
+  ; halt-eq = mkeep-halt corr sm ; sp-eq = mkeep-sp corr sm ; frontier-eq = mkeep-heap-reg corr sm
+  ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr ; dom-sized = dom-sized corr
+  ; heap-eq = λ hl d → trans (off-addr sm (haddr hv hl) (λ e → <-irrefl (sym e) (dom-above hv (dom-written corr hl d))))
+                             (heap-eq corr hl d)
+  ; lo-le = mkeep-lo-le corr sm
+  ; stack-eq = windows-above (memory s) (memory s') (stackMem (floc fs)) (stackMem (floc fs)) (lo hv)
+                 (frames-of (falloc fs))
+                 (λ a le → off-addr sm a (λ e → <-irrefl (sym e) (<-≤-trans (base-lo hv) le)))
+                 (λ _ _ _ → refl) (stack-eq corr)
+  ; lim-eq = λ _ → at-addr sm }
+
+------------------------------------------------------------------------
 -- STACK RESTORE: `restore-input slot` (Input1 := stack[current-frame, slot]) ↔
 -- `mov rdi, [rsp + slot-to-disp slot]`. Identical to load-from-slot but the
 -- destination is Input1/rdi (not Output/rax). Success case only; empty slot

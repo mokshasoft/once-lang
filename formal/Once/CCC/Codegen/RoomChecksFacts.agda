@@ -40,9 +40,9 @@ bump false n = n
 ψ (x ∷ t) zero    = zero
 ψ (x ∷ t) (suc i) = suc (bump (boundary? x) (ψ t i))
 
--- …and in `room-checks t`, past the leading check
+-- …and in `room-checks t` (D486: the pass is `checks`, no leading check)
 φ : AbstractTrace → ℕ → ℕ
-φ t i = suc (ψ t i)
+φ t i = ψ t i
 
 module RoomFacts {FS : FrameSemantics} where
   open FlatMachine {FS} using (fetch)
@@ -62,7 +62,7 @@ module RoomFacts {FS : FrameSemantics} where
   fetch-checks E (x ∷ t) (suc i) =
     fetch-after (boundary? x) (stretch E t) (checks E t) (ψ t i) (fetch-checks E t i)
 
-  -- …and the whole pass, past its leading check.
+  -- …and the whole pass.
   fetch-room : ∀ (t : AbstractTrace) (i : ℕ) → fetch (room-checks t) (φ t i) ≡ fetch t i
   fetch-room t i = fetch-checks (max-entry t) t i
 
@@ -133,7 +133,7 @@ module RoomFacts {FS : FrameSemantics} where
   -- JUMPS: the image with checks finds each label at `φ` of its old index.
   find-label-room : ∀ (t : AbstractTrace) (m : LabelId)
                   → find-label (room-checks t) m ≡ mmap (φ t) (find-label t m)
-  find-label-room t m = fl-checks (max-entry t) t m 1
+  find-label-room t m = fl-checks (max-entry t) t m 0
 
   -- …and the same for the entry scan (calls).
   ft-go-suc : ∀ (xs : AbstractTrace) (e : EntryId) (b : ℕ) → ft-go xs e (suc b) ≡ mmap suc (ft-go xs e b)
@@ -174,7 +174,7 @@ module RoomFacts {FS : FrameSemantics} where
   -- CALLS: the image with checks finds each entry at `φ` of its old index.
   find-entry-room : ∀ (t : AbstractTrace) (e : EntryId)
                   → find-entry (room-checks t) e ≡ mmap (φ t) (find-entry t e)
-  find-entry-room t e = ft-checks (max-entry t) t e 1
+  find-entry-room t e = ft-checks (max-entry t) t e 0
 
   ------------------------------------------------------------------------
   -- ONE INSTRUCTION FURTHER: the map advances by one, or by two when the
@@ -263,14 +263,14 @@ All-checks E (x ∷ t) pr (px ∷ a) = px ∷ all-after (boundary? x) (stretch E
 
 All-room : ∀ {P : AbstractInstr → Set} (t : AbstractTrace)
          → (∀ k → P (instr-room k)) → All P t → All P (room-checks t)
-All-room t pr a = pr _ ∷ All-checks (max-entry t) t pr a
+All-room t pr a = All-checks (max-entry t) t pr a
 
 Any-checks : ∀ {P : AbstractInstr → Set} (E : ℕ) (t : AbstractTrace) → Any P t → Any P (checks E t)
 Any-checks E (x ∷ t) (here p)  = here p
 Any-checks E (x ∷ t) (there a) = there (any-after (boundary? x) (stretch E t) (Any-checks E t a))
 
 Any-room : ∀ {P : AbstractInstr → Set} (t : AbstractTrace) → Any P t → Any P (room-checks t)
-Any-room t a = there (Any-checks (max-entry t) t a)
+Any-room t a = Any-checks (max-entry t) t a
 
 ------------------------------------------------------------------------
 -- WHAT A TRACE DEFINES: a fold to which a check contributes nothing (a check
@@ -292,8 +292,7 @@ module _ {X : Set} (F : AbstractTrace → X) (g : AbstractInstr → X → X)
                            (sym (F-∷ x t)))
 
   fold-room : ∀ (t : AbstractTrace) → F (room-checks t) ≡ F t
-  fold-room t = trans (F-∷ (instr-room _) (checks (max-entry t) t))
-                      (trans (g-room _ _) (fold-checks (max-entry t) t))
+  fold-room t = fold-checks (max-entry t) t
 
 ------------------------------------------------------------------------
 -- WHAT A TRACE REFERENCES: a check DOES reference something — the Host's
@@ -320,9 +319,7 @@ module _ {X : Set} {P : X → Set} (F : AbstractTrace → List X) (f : AbstractI
     where split = ++⁻ (f x) (subst (All P) (F-∷ x t) a)
 
   All-fold-room : ∀ (t : AbstractTrace) → All P (F t) → All P (F (room-checks t))
-  All-fold-room t a =
-    subst (All P) (sym (F-∷ (instr-room _) (checks (max-entry t) t)))
-      (++⁺ (f-room _) (All-fold-checks (max-entry t) t a))
+  All-fold-room t a = All-fold-checks (max-entry t) t a
 
 ------------------------------------------------------------------------
 -- THE BUDGET'S ARITHMETIC (plan 0.123 A.4 step 5): each check's `k` is what the
@@ -389,8 +386,7 @@ module CheckK {FS : FrameSemantics} where
   -- …and so does every check of the pass's output
   check-k : ∀ (t : AbstractTrace) → NoRoom t → ∀ (pc k : ℕ)
           → fetch (room-checks t) pc ≡ just (instr-room k) → k ≡ till-check (max-entry t) (drop (suc pc) (room-checks t))
-  check-k t a zero    k refl = sym (till-checks (max-entry t) t a)
-  check-k t a (suc pc) k f = checks-k (max-entry t) t a pc k f
+  check-k t a pc k f = checks-k (max-entry t) t a pc k f
 
   -- what an ordinary instruction's measure is: its own spend, then its successor's
   drop-fetch : ∀ (P : AbstractTrace) (pc : ℕ) {i : AbstractInstr} → fetch P pc ≡ just i
@@ -501,8 +497,7 @@ module NeedFacts {FS : FrameSemantics} where
   boundary-next : ∀ (t : AbstractTrace) (j : ℕ) {i : AbstractInstr}
                 → fetch (room-checks t) j ≡ just i → boundary? i ≡ true
                 → Σ ℕ (λ k → fetch (room-checks t) (suc j) ≡ just (instr-room k))
-  boundary-next t zero    refl ()
-  boundary-next t (suc j) f    bd = checks-next (max-entry t) t j f bd
+  boundary-next t j f bd = checks-next (max-entry t) t j f bd
 
   -- an entry reserves at most the largest frame (what a call's spend covers)
   entry-le : ∀ (P : AbstractTrace) (j : ℕ) (m : EntryId) (b : ℕ)

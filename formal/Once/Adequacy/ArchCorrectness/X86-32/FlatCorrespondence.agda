@@ -44,7 +44,7 @@ import Once.CCC.Target.X86-32.Semantics as X
 -- it), and importing both would make the name ambiguous.
 open X using (mkstate) renaming (writeReg to xwriteReg)
 open X.State using (memory) renaming (regs to xregs; halted to xhalted)
-open import Once.Target.X86-32.PhysReg using (Reg; esi)
+open import Once.Target.X86-32.PhysReg using (Reg; esi; edx)
 open import Once.Adequacy.ArchCorrectness.X86-32.RegRoles using (x86-32-roles)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles
   using (RegRoles; Role; role-sp; role-clos; role-heap; role-out; role-in1)
@@ -57,7 +57,7 @@ rreg s r = X.readReg (X.State.regs s) r
 import Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence
 module FlatCorrespondence = Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence
        FS slot-size word-eq Reg x86-32-roles X.State rreg memory xhalted X.heap-base
-  using (FlatCorr; rec-cell; rec-cell-addr; sim-load-rec; sim-store-rec; GapNext; HeapView; KeepsRoles; RetAddrs; Sets2Roles; SetsMem; SetsRole; SetsRoleMem; Word; corr-store-gap; descend-view; enc-sv; extend-view; frames-of; haddr-offset; keep-all; lit-word; read-write-hit; read-write-miss; ret-agree-above; ret-head; ret-unlink; ret-write-in-frame; sep; sim-addr-at; sim-alloc-heap; sim-alloc-stack; sim-call-frame; sim-dealloc-stack; sim-lea-slot; sim-load-at; sim-load-code-addr; sim-load-const; sim-load-const-float; sim-load-from-slot; sim-load-indirect; sim-load-indirect-stack; sim-load-indirect-suc; sim-load-indirect-suc-stack; sim-load-tag-lit; sim-mov-to-input; sim-mov-to-output; sim-out-nz; sim-restore-input; sim-ret; sim-save-closure-reg; sim-store-at; sim-store-at-slot; sim-store-indirect; sim-store-indirect-stack; sim-store-indirect-suc; sim-store-indirect-suc-stack; sim-thunk; slots; stack-eq-cur; windows-reanchor; writeMem; gate-win; ret-write-in-window; sim-load-at-stack; sim-store-at-stack; stack-addr; stack-read; range-win; stack-arg-read; Window; windows-leave; module FlatCorr; module HeapView; module SetsRole)
+  using (FlatCorr; rec-cell; rec-cell-addr; sim-load-rec; sim-store-rec;  start-view; sim-set-lim; GapNext; HeapView; KeepsRoles; RetAddrs; Sets2Roles; SetsMem; SetsRole; SetsRoleMem; Word; corr-store-gap; descend-view; enc-sv; extend-view; frames-of; haddr-offset; keep-all; lit-word; read-write-hit; read-write-miss; ret-agree-above; ret-head; ret-unlink; ret-write-in-frame; sep; sim-addr-at; sim-alloc-heap; sim-alloc-stack; sim-call-frame; sim-dealloc-stack; sim-lea-slot; sim-load-at; sim-load-code-addr; sim-load-const; sim-load-const-float; sim-load-from-slot; sim-load-indirect; sim-load-indirect-stack; sim-load-indirect-suc; sim-load-indirect-suc-stack; sim-load-tag-lit; sim-mov-to-input; sim-mov-to-output; sim-out-nz; sim-restore-input; sim-ret; sim-save-closure-reg; sim-store-at; sim-store-at-slot; sim-store-indirect; sim-store-indirect-stack; sim-store-indirect-suc; sim-store-indirect-suc-stack; sim-thunk; slots; stack-eq-cur; windows-reanchor; writeMem; gate-win; ret-write-in-window; sim-load-at-stack; sim-store-at-stack; stack-addr; stack-read; range-win; stack-arg-read; Window; windows-leave; module FlatCorr; module HeapView; module SetsRole)
 open FlatCorrespondence
 open SetsRole using (at-role; off-role)
 
@@ -73,6 +73,18 @@ keeps-esi-x86 s v w fl p weq = record { kr-role = kr ; kr-mem = refl ; kr-halt =
     kr role-sp      = refl
     kr role-clos    = refl
     kr role-heap    = weq
+    kr role-out     = refl
+    kr role-in1     = refl
+
+-- D486: the start sets the limit through `edx`, no role's register.
+keeps-edx-x86 : ∀ (s : X.State) (v : Word) (fl : X.Flags) (p : ℕ)
+  → KeepsRoles s (mkstate (xwriteReg (xregs s) edx v) (memory s) fl p (xhalted s))
+keeps-edx-x86 s v fl p = record { kr-role = kr ; kr-mem = refl ; kr-halt = refl }
+  where
+    kr : ∀ ρ → X.readReg (xwriteReg (xregs s) edx v) (reg-of ρ) ≡ rreg s (reg-of ρ)
+    kr role-sp      = refl
+    kr role-clos    = refl
+    kr role-heap    = refl
     kr role-out     = refl
     kr role-in1     = refl
 

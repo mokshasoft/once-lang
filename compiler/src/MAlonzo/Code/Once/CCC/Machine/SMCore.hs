@@ -2420,70 +2420,73 @@ d_recw'45''60'_2410 ~v0 v1 = du_recw'45''60'_2410 v1
 du_recw'45''60'_2410 ::
   AgdaAny -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 du_recw'45''60'_2410 v0 = coe v0
+-- Once.CCC.Machine.SMCore.start-stack-words
+d_start'45'stack'45'words_2416 :: Integer
+d_start'45'stack'45'words_2416 = coe (32768 :: Integer)
 -- Once.CCC.Machine.SMCore.AbstractInstr
-d_AbstractInstr_2416 = ()
-data T_AbstractInstr_2416
-  = C_mov'45'to'45'output_2418 | C_mov'45'to'45'input_2420 |
-    C_load'45'indirect_2422 | C_load'45'indirect'45'suc_2424 |
-    C_load'45'from'45'slot_2426 Integer |
-    C_store'45'at'45'slot_2428 Integer | C_store'45'indirect_2430 |
-    C_store'45'indirect'45'suc_2432 | C_lea'45'slot_2434 Integer |
-    C_restore'45'input_2436 Integer |
-    C_instr'45'alloc'45'stack_2438 Integer |
-    C_instr'45'dealloc'45'stack_2440 Integer |
-    C_instr'45'reclaim'45'to_2442 Integer |
-    C_instr'45'push'45'frame_2444 Integer |
-    C_instr'45'pop'45'frame_2446 | C_instr'45'call'45'closure_2448 |
-    C_worklist'45'init_2450 Integer | C_worklist'45'push_2452 Integer |
-    C_worklist'45'pop_2454 Integer | C_worklist'45'check_2456 Integer |
-    C_instr'45'sigop_2462 MAlonzo.Code.Once.Spec.Type.T_Ty_8
+d_AbstractInstr_2418 = ()
+data T_AbstractInstr_2418
+  = C_mov'45'to'45'output_2420 | C_mov'45'to'45'input_2422 |
+    C_load'45'indirect_2424 | C_load'45'indirect'45'suc_2426 |
+    C_load'45'from'45'slot_2428 Integer |
+    C_store'45'at'45'slot_2430 Integer | C_store'45'indirect_2432 |
+    C_store'45'indirect'45'suc_2434 | C_lea'45'slot_2436 Integer |
+    C_restore'45'input_2438 Integer |
+    C_instr'45'alloc'45'stack_2440 Integer |
+    C_instr'45'dealloc'45'stack_2442 Integer |
+    C_instr'45'reclaim'45'to_2444 Integer |
+    C_instr'45'push'45'frame_2446 Integer |
+    C_instr'45'pop'45'frame_2448 | C_instr'45'call'45'closure_2450 |
+    C_worklist'45'init_2452 Integer | C_worklist'45'push_2454 Integer |
+    C_worklist'45'pop_2456 Integer | C_worklist'45'check_2458 Integer |
+    C_instr'45'sigop_2464 MAlonzo.Code.Once.Spec.Type.T_Ty_8
                           MAlonzo.Code.Once.Spec.Type.T_Ty_8
                           MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_102 |
-    C_instr'45'load'45'const_2468 MAlonzo.Code.Once.Spec.Type.T_Ty_8
+    C_instr'45'load'45'const_2470 MAlonzo.Code.Once.Spec.Type.T_Ty_8
                                   MAlonzo.Code.Once.Type.T_FitsInReg_24 AgdaAny |
-    C_instr'45'load'45'code'45'addr_2470 MAlonzo.Code.Once.CCC.Label.T_LabelId_6 |
-    C_instr'45'save'45'closure'45'reg_2472 |
-    C_instr'45'load'45'tag'45'lit_2474 Integer |
-    C_instr'45'alloc'45'heap_2476 Integer | C_instr'45'reg'45'op_2478 |
-    C_instr'45'ctrl_2480 T_FlatCtrl_2378 |
-    C_instr'45'free'45'heap_2482 Integer |
-    C_instr'45'room_2484 Integer | C_load'45'at_2486 Integer |
-    C_store'45'at_2488 Integer | C_addr'45'at_2490 Integer |
-    C_load'45'rec_2492 Integer | C_store'45'rec_2494 Integer
+    C_instr'45'load'45'code'45'addr_2472 MAlonzo.Code.Once.CCC.Label.T_LabelId_6 |
+    C_instr'45'save'45'closure'45'reg_2474 |
+    C_instr'45'load'45'tag'45'lit_2476 Integer |
+    C_instr'45'alloc'45'heap_2478 Integer | C_instr'45'reg'45'op_2480 |
+    C_instr'45'ctrl_2482 T_FlatCtrl_2378 |
+    C_instr'45'free'45'heap_2484 Integer |
+    C_instr'45'room_2486 Integer | C_load'45'at_2488 Integer |
+    C_store'45'at_2490 Integer | C_addr'45'at_2492 Integer |
+    C_load'45'rec_2494 Integer | C_store'45'rec_2496 Integer
 -- Once.CCC.Machine.SMCore.CallI
-d_CallI_2496 :: T_AbstractInstr_2416 -> ()
-d_CallI_2496 = erased
+d_CallI_2498 :: T_AbstractInstr_2418 -> ()
+d_CallI_2498 = erased
 -- Once.CCC.Machine.SMCore.AbstractTrace
-d_AbstractTrace_2498 :: ()
-d_AbstractTrace_2498 = erased
+d_AbstractTrace_2500 :: ()
+d_AbstractTrace_2500 = erased
 -- Once.CCC.Machine.SMCore.CompUnit
-d_CompUnit_2500 = ()
-data T_CompUnit_2500
-  = C_unit_2514 Integer [T_AbstractInstr_2416]
+d_CompUnit_2502 = ()
+data T_CompUnit_2502
+  = C_unit_2516 Integer [T_AbstractInstr_2418]
                 [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]
 -- Once.CCC.Machine.SMCore.CompUnit.entry-budget
-d_entry'45'budget_2508 :: T_CompUnit_2500 -> Integer
-d_entry'45'budget_2508 v0
+d_entry'45'budget_2510 :: T_CompUnit_2502 -> Integer
+d_entry'45'budget_2510 v0
   = case coe v0 of
-      C_unit_2514 v1 v2 v3 -> coe v1
+      C_unit_2516 v1 v2 v3 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.SMCore.CompUnit.entry
-d_entry_2510 :: T_CompUnit_2500 -> [T_AbstractInstr_2416]
-d_entry_2510 v0
+d_entry_2512 :: T_CompUnit_2502 -> [T_AbstractInstr_2418]
+d_entry_2512 v0
   = case coe v0 of
-      C_unit_2514 v1 v2 v3 -> coe v2
+      C_unit_2516 v1 v2 v3 -> coe v2
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.SMCore.CompUnit.blocks
-d_blocks_2512 ::
-  T_CompUnit_2500 -> [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]
-d_blocks_2512 v0
+d_blocks_2514 ::
+  T_CompUnit_2502 -> [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]
+d_blocks_2514 v0
   = case coe v0 of
-      C_unit_2514 v1 v2 v3 -> coe v3
+      C_unit_2516 v1 v2 v3 -> coe v3
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.SMCore.block-layout
-d_block'45'layout_2516 ::
-  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 -> [T_AbstractInstr_2416]
-d_block'45'layout_2516 v0
+d_block'45'layout_2518 ::
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 -> [T_AbstractInstr_2418]
+d_block'45'layout_2518 v0
   = case coe v0 of
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v1 v2
         -> case coe v2 of
@@ -2491,7 +2494,7 @@ d_block'45'layout_2516 v0
                -> coe
                     MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                     (coe
-                       C_instr'45'ctrl_2480
+                       C_instr'45'ctrl_2482
                        (coe
                           C_c'45'entry_2386
                           (coe MAlonzo.Code.Once.CCC.Label.C_e'45'thunk_24 (coe v1))
@@ -2500,191 +2503,191 @@ d_block'45'layout_2516 v0
                        MAlonzo.Code.Data.List.Base.du__'43''43'__32 (coe v4)
                        (coe
                           MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-                          (coe C_instr'45'ctrl_2480 (coe C_c'45'ret_2388 (coe v3)))
+                          (coe C_instr'45'ctrl_2482 (coe C_c'45'ret_2388 (coe v3)))
                           (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)))
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.SMCore.blocks-layout
-d_blocks'45'layout_2524 ::
-  [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] -> [T_AbstractInstr_2416]
-d_blocks'45'layout_2524 v0
+d_blocks'45'layout_2526 ::
+  [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] -> [T_AbstractInstr_2418]
+d_blocks'45'layout_2526 v0
   = case coe v0 of
       [] -> coe v0
       (:) v1 v2
         -> coe
              MAlonzo.Code.Data.List.Base.du__'43''43'__32
-             (coe d_block'45'layout_2516 (coe v1))
-             (coe d_blocks'45'layout_2524 (coe v2))
+             (coe d_block'45'layout_2518 (coe v1))
+             (coe d_blocks'45'layout_2526 (coe v2))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.SMCore.blocks-layout-++
-d_blocks'45'layout'45''43''43'_2534 ::
+d_blocks'45'layout'45''43''43'_2536 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_blocks'45'layout'45''43''43'_2534 = erased
+d_blocks'45'layout'45''43''43'_2536 = erased
 -- Once.CCC.Machine.SMCore.link
-d_link_2546 :: T_CompUnit_2500 -> [T_AbstractInstr_2416]
-d_link_2546 v0
+d_link_2548 :: T_CompUnit_2502 -> [T_AbstractInstr_2418]
+d_link_2548 v0
   = coe
       MAlonzo.Code.Data.List.Base.du__'43''43'__32
-      (coe d_entry_2510 (coe v0))
+      (coe d_entry_2512 (coe v0))
       (coe
          MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
          (coe
-            C_instr'45'ctrl_2480
-            (coe C_c'45'ret_2388 (coe d_entry'45'budget_2508 (coe v0))))
-         (coe d_blocks'45'layout_2524 (coe d_blocks_2512 (coe v0))))
+            C_instr'45'ctrl_2482
+            (coe C_c'45'ret_2388 (coe d_entry'45'budget_2510 (coe v0))))
+         (coe d_blocks'45'layout_2526 (coe d_blocks_2514 (coe v0))))
 -- Once.CCC.Machine.SMCore.link-top
-d_link'45'top_2550 :: T_CompUnit_2500 -> [T_AbstractInstr_2416]
-d_link'45'top_2550 v0
+d_link'45'top_2552 :: T_CompUnit_2502 -> [T_AbstractInstr_2418]
+d_link'45'top_2552 v0
   = coe
       MAlonzo.Code.Data.List.Base.du__'43''43'__32
-      (coe d_entry_2510 (coe v0))
+      (coe d_entry_2512 (coe v0))
       (coe
          MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-         (coe C_instr'45'ctrl_2480 (coe C_c'45'leave_2394))
-         (coe d_blocks'45'layout_2524 (coe d_blocks_2512 (coe v0))))
+         (coe C_instr'45'ctrl_2482 (coe C_c'45'leave_2394))
+         (coe d_blocks'45'layout_2526 (coe d_blocks_2514 (coe v0))))
 -- Once.CCC.Machine.SMCore.link-pre
-d_link'45'pre_2554 ::
-  T_CompUnit_2500 ->
+d_link'45'pre_2556 ::
+  T_CompUnit_2502 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Once.CCC.Label.T_LabelId_6 ->
-  Integer -> [T_AbstractInstr_2416]
-d_link'45'pre_2554 v0 v1 v2 v3
+  Integer -> [T_AbstractInstr_2418]
+d_link'45'pre_2556 v0 v1 v2 v3
   = coe
       MAlonzo.Code.Data.List.Base.du__'43''43'__32
-      (coe d_entry_2510 (coe v0))
+      (coe d_entry_2512 (coe v0))
       (coe
          MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
          (coe
-            C_instr'45'ctrl_2480
-            (coe C_c'45'ret_2388 (coe d_entry'45'budget_2508 (coe v0))))
+            C_instr'45'ctrl_2482
+            (coe C_c'45'ret_2388 (coe d_entry'45'budget_2510 (coe v0))))
          (coe
             MAlonzo.Code.Data.List.Base.du__'43''43'__32
-            (coe d_blocks'45'layout_2524 (coe v1))
+            (coe d_blocks'45'layout_2526 (coe v1))
             (coe
                MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                (coe
-                  C_instr'45'ctrl_2480
+                  C_instr'45'ctrl_2482
                   (coe
                      C_c'45'entry_2386
                      (coe MAlonzo.Code.Once.CCC.Label.C_e'45'thunk_24 (coe v2))
                      (coe v3)))
                (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))))
 -- Once.CCC.Machine.SMCore.link-post
-d_link'45'post_2564 ::
+d_link'45'post_2566 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
-  Integer -> [T_AbstractInstr_2416]
-d_link'45'post_2564 v0 v1
+  Integer -> [T_AbstractInstr_2418]
+d_link'45'post_2566 v0 v1
   = coe
       MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-      (coe C_instr'45'ctrl_2480 (coe C_c'45'ret_2388 (coe v1)))
-      (coe d_blocks'45'layout_2524 (coe v0))
+      (coe C_instr'45'ctrl_2482 (coe C_c'45'ret_2388 (coe v1)))
+      (coe d_blocks'45'layout_2526 (coe v0))
 -- Once.CCC.Machine.SMCore.link-block-split
-d_link'45'block'45'split_2582 ::
-  T_CompUnit_2500 ->
+d_link'45'block'45'split_2584 ::
+  T_CompUnit_2502 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Once.CCC.Label.T_LabelId_6 ->
   Integer ->
-  [T_AbstractInstr_2416] ->
+  [T_AbstractInstr_2418] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_link'45'block'45'split_2582 = erased
+d_link'45'block'45'split_2584 = erased
 -- Once.CCC.Machine.SMCore._.inner
-d_inner_2602 ::
-  T_CompUnit_2500 ->
+d_inner_2604 ::
+  T_CompUnit_2502 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Once.CCC.Label.T_LabelId_6 ->
   Integer ->
-  [T_AbstractInstr_2416] ->
+  [T_AbstractInstr_2418] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_inner_2602 = erased
+d_inner_2604 = erased
 -- Once.CCC.Machine.SMCore.TreeTrace
-d_TreeTrace_2610 = ()
-data T_TreeTrace_2610
-  = C_ε_2612 | C_instr_2614 T_AbstractInstr_2416 |
-    C__'9656'__2616 T_TreeTrace_2610 T_TreeTrace_2610 |
-    C_branch_2618 Integer T_TreeTrace_2610 T_TreeTrace_2610 |
-    C_call'45'sub_2620 T_TreeTrace_2610 |
-    C_flat_2622 [T_AbstractInstr_2416]
+d_TreeTrace_2612 = ()
+data T_TreeTrace_2612
+  = C_ε_2614 | C_instr_2616 T_AbstractInstr_2418 |
+    C__'9656'__2618 T_TreeTrace_2612 T_TreeTrace_2612 |
+    C_branch_2620 Integer T_TreeTrace_2612 T_TreeTrace_2612 |
+    C_call'45'sub_2622 T_TreeTrace_2612 |
+    C_flat_2624 [T_AbstractInstr_2418]
 -- Once.CCC.Machine.SMCore.flatToTree
-d_flatToTree_2624 :: [T_AbstractInstr_2416] -> T_TreeTrace_2610
-d_flatToTree_2624 v0
+d_flatToTree_2626 :: [T_AbstractInstr_2418] -> T_TreeTrace_2612
+d_flatToTree_2626 v0
   = case coe v0 of
-      [] -> coe C_ε_2612
+      [] -> coe C_ε_2614
       (:) v1 v2
         -> coe
-             C__'9656'__2616 (coe C_instr_2614 (coe v1))
-             (coe d_flatToTree_2624 (coe v2))
+             C__'9656'__2618 (coe C_instr_2616 (coe v1))
+             (coe d_flatToTree_2626 (coe v2))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.SMCore.treeToFlat
-d_treeToFlat_2630 :: T_TreeTrace_2610 -> [T_AbstractInstr_2416]
-d_treeToFlat_2630 v0
+d_treeToFlat_2632 :: T_TreeTrace_2612 -> [T_AbstractInstr_2418]
+d_treeToFlat_2632 v0
   = case coe v0 of
-      C_ε_2612 -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
-      C_instr_2614 v1
+      C_ε_2614 -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
+      C_instr_2616 v1
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22 (coe v1)
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
-      C__'9656'__2616 v1 v2
+      C__'9656'__2618 v1 v2
         -> coe
              MAlonzo.Code.Data.List.Base.du__'43''43'__32
-             (coe d_treeToFlat_2630 (coe v1)) (coe d_treeToFlat_2630 (coe v2))
-      C_branch_2618 v1 v2 v3
+             (coe d_treeToFlat_2632 (coe v1)) (coe d_treeToFlat_2632 (coe v2))
+      C_branch_2620 v1 v2 v3
         -> coe
              MAlonzo.Code.Data.List.Base.du__'43''43'__32
-             (coe d_treeToFlat_2630 (coe v2)) (coe d_treeToFlat_2630 (coe v3))
-      C_call'45'sub_2620 v1 -> coe d_treeToFlat_2630 (coe v1)
-      C_flat_2622 v1 -> coe v1
+             (coe d_treeToFlat_2632 (coe v2)) (coe d_treeToFlat_2632 (coe v3))
+      C_call'45'sub_2622 v1 -> coe d_treeToFlat_2632 (coe v1)
+      C_flat_2624 v1 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.SMCore.treeToRunnable
-d_treeToRunnable_2646 ::
-  Integer -> T_TreeTrace_2610 -> [T_AbstractInstr_2416]
-d_treeToRunnable_2646 v0 v1
+d_treeToRunnable_2648 ::
+  Integer -> T_TreeTrace_2612 -> [T_AbstractInstr_2418]
+d_treeToRunnable_2648 v0 v1
   = case coe v1 of
-      C_ε_2612 -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
-      C_instr_2614 v2
+      C_ε_2614 -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
+      C_instr_2616 v2
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22 (coe v2)
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
-      C__'9656'__2616 v2 v3
+      C__'9656'__2618 v2 v3
         -> coe
              MAlonzo.Code.Data.List.Base.du__'43''43'__32
-             (coe d_treeToRunnable_2646 (coe v0) (coe v2))
-             (coe d_treeToRunnable_2646 (coe v0) (coe v3))
-      C_branch_2618 v2 v3 v4
+             (coe d_treeToRunnable_2648 (coe v0) (coe v2))
+             (coe d_treeToRunnable_2648 (coe v0) (coe v3))
+      C_branch_2620 v2 v3 v4
         -> coe
              MAlonzo.Code.Data.List.Base.du__'43''43'__32
-             (coe d_treeToRunnable_2646 (coe v0) (coe v3))
-             (coe d_treeToRunnable_2646 (coe v0) (coe v4))
-      C_call'45'sub_2620 v2
+             (coe d_treeToRunnable_2648 (coe v0) (coe v3))
+             (coe d_treeToRunnable_2648 (coe v0) (coe v4))
+      C_call'45'sub_2622 v2
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-             (coe C_worklist'45'push_2452 (coe v0))
+             (coe C_worklist'45'push_2454 (coe v0))
              (coe
                 MAlonzo.Code.Data.List.Base.du__'43''43'__32
-                (coe d_treeToRunnable_2646 (coe v0) (coe v2))
+                (coe d_treeToRunnable_2648 (coe v0) (coe v2))
                 (coe
                    MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-                   (coe C_worklist'45'pop_2454 (coe v0))
+                   (coe C_worklist'45'pop_2456 (coe v0))
                    (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)))
-      C_flat_2622 v2 -> coe v2
+      C_flat_2624 v2 -> coe v2
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.SMCore.treeToRunnableWithInit
-d_treeToRunnableWithInit_2676 ::
-  Integer -> T_TreeTrace_2610 -> [T_AbstractInstr_2416]
-d_treeToRunnableWithInit_2676 v0 v1
+d_treeToRunnableWithInit_2678 ::
+  Integer -> T_TreeTrace_2612 -> [T_AbstractInstr_2418]
+d_treeToRunnableWithInit_2678 v0 v1
   = coe
       MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-      (coe C_worklist'45'init_2450 (coe v0))
-      (coe d_treeToRunnable_2646 (coe v0) (coe v1))
+      (coe C_worklist'45'init_2452 (coe v0))
+      (coe d_treeToRunnable_2648 (coe v0) (coe v1))
 -- Once.CCC.Machine.SMCore.in-memory?
-d_in'45'memory'63'_2682 ::
+d_in'45'memory'63'_2684 ::
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 -> Bool
-d_in'45'memory'63'_2682 v0
+d_in'45'memory'63'_2684 v0
   = let v1 = coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8 in
     coe
       (case coe v0 of
@@ -2694,19 +2697,19 @@ d_in'45'memory'63'_2682 v0
            -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
          _ -> coe v1)
 -- Once.CCC.Machine.SMCore.in-memory-nofit
-d_in'45'memory'45'nofit_2694 ::
+d_in'45'memory'45'nofit_2696 ::
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_in'45'memory'45'nofit_2694 = erased
+d_in'45'memory'45'nofit_2696 = erased
 -- Once.CCC.Machine.SMCore.AbstractExec._.clear-frame
-d_clear'45'frame_2752 ::
+d_clear'45'frame_2754 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   (AgdaAny -> Integer -> Maybe T_StoredValue_62) ->
   AgdaAny -> Integer -> AgdaAny -> Integer -> Maybe T_StoredValue_62
-d_clear'45'frame_2752 v0 = coe d_clear'45'frame_582 (coe v0)
+d_clear'45'frame_2754 v0 = coe d_clear'45'frame_582 (coe v0)
 -- Once.CCC.Machine.SMCore.AbstractExec._.clear-frame-aux
-d_clear'45'frame'45'aux_2754 ::
+d_clear'45'frame'45'aux_2756 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   AgdaAny ->
   AgdaAny ->
@@ -2715,8 +2718,8 @@ d_clear'45'frame'45'aux_2754 ::
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
   Maybe T_StoredValue_62 -> Maybe T_StoredValue_62
-d_clear'45'frame'45'aux_2754 ~v0 = du_clear'45'frame'45'aux_2754
-du_clear'45'frame'45'aux_2754 ::
+d_clear'45'frame'45'aux_2756 ~v0 = du_clear'45'frame'45'aux_2756
+du_clear'45'frame'45'aux_2756 ::
   AgdaAny ->
   AgdaAny ->
   Integer ->
@@ -2724,10 +2727,10 @@ du_clear'45'frame'45'aux_2754 ::
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
   Maybe T_StoredValue_62 -> Maybe T_StoredValue_62
-du_clear'45'frame'45'aux_2754 v0 v1 v2 v3 v4 v5 v6
+du_clear'45'frame'45'aux_2756 v0 v1 v2 v3 v4 v5 v6
   = coe du_clear'45'frame'45'aux_576 v4 v5 v6
 -- Once.CCC.Machine.SMCore.AbstractExec._.clear-frame-just
-d_clear'45'frame'45'just_2756 ::
+d_clear'45'frame'45'just_2758 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   (AgdaAny -> Integer -> Maybe T_StoredValue_62) ->
   AgdaAny ->
@@ -2737,62 +2740,62 @@ d_clear'45'frame'45'just_2756 ::
   T_StoredValue_62 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_clear'45'frame'45'just_2756 = erased
+d_clear'45'frame'45'just_2758 = erased
 -- Once.CCC.Machine.SMCore.AbstractExec._.clearBlock
-d_clearBlock_2758 ::
+d_clearBlock_2760 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   (MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
    Maybe T_StoredValue_62) ->
   Integer ->
   MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
   Maybe T_StoredValue_62
-d_clearBlock_2758 ~v0 = du_clearBlock_2758
-du_clearBlock_2758 ::
+d_clearBlock_2760 ~v0 = du_clearBlock_2760
+du_clearBlock_2760 ::
   (MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
    Maybe T_StoredValue_62) ->
   Integer ->
   MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
   Maybe T_StoredValue_62
-du_clearBlock_2758 = coe du_clearBlock_682
+du_clearBlock_2760 = coe du_clearBlock_682
 -- Once.CCC.Machine.SMCore.AbstractExec._.clearBlock-aux
-d_clearBlock'45'aux_2760 ::
+d_clearBlock'45'aux_2762 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
   Integer ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
   Maybe T_StoredValue_62 -> Maybe T_StoredValue_62
-d_clearBlock'45'aux_2760 ~v0 = du_clearBlock'45'aux_2760
-du_clearBlock'45'aux_2760 ::
+d_clearBlock'45'aux_2762 ~v0 = du_clearBlock'45'aux_2762
+du_clearBlock'45'aux_2762 ::
   Integer ->
   Integer ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
   Maybe T_StoredValue_62 -> Maybe T_StoredValue_62
-du_clearBlock'45'aux_2760 v0 v1 v2 v3
+du_clearBlock'45'aux_2762 v0 v1 v2 v3
   = coe du_clearBlock'45'aux_678 v2 v3
 -- Once.CCC.Machine.SMCore.AbstractExec._.readHeapLoc
-d_readHeapLoc_2762 ::
+d_readHeapLoc_2764 ::
   T_LocState_254 ->
   MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
   Maybe T_StoredValue_62
-d_readHeapLoc_2762 v0 v1 = coe d_heapMem_276 v0 v1
+d_readHeapLoc_2764 v0 v1 = coe d_heapMem_276 v0 v1
 -- Once.CCC.Machine.SMCore.AbstractExec._.readLoc
-d_readLoc_2764 ::
+d_readLoc_2766 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   T_LocState_254 ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   Maybe T_StoredValue_62
-d_readLoc_2764 ~v0 = du_readLoc_2764
-du_readLoc_2764 ::
+d_readLoc_2766 ~v0 = du_readLoc_2766
+du_readLoc_2766 ::
   T_LocState_254 ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   Maybe T_StoredValue_62
-du_readLoc_2764 = coe du_readLoc_526
+du_readLoc_2766 = coe du_readLoc_526
 -- Once.CCC.Machine.SMCore.AbstractExec._.readStackLoc
-d_readStackLoc_2766 ::
+d_readStackLoc_2768 ::
   T_LocState_254 -> AgdaAny -> Integer -> Maybe T_StoredValue_62
-d_readStackLoc_2766 v0 v1 v2 = coe d_stackMem_274 v0 v1 v2
+d_readStackLoc_2768 v0 v1 v2 = coe d_stackMem_274 v0 v1 v2
 -- Once.CCC.Machine.SMCore.AbstractExec._.writeHeapMem
-d_writeHeapMem_2768 ::
+d_writeHeapMem_2770 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   (MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
    Maybe T_StoredValue_62) ->
@@ -2800,57 +2803,57 @@ d_writeHeapMem_2768 ::
   T_StoredValue_62 ->
   MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
   Maybe T_StoredValue_62
-d_writeHeapMem_2768 ~v0 = du_writeHeapMem_2768
-du_writeHeapMem_2768 ::
+d_writeHeapMem_2770 ~v0 = du_writeHeapMem_2770
+du_writeHeapMem_2770 ::
   (MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
    Maybe T_StoredValue_62) ->
   MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
   T_StoredValue_62 ->
   MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
   Maybe T_StoredValue_62
-du_writeHeapMem_2768 = coe du_writeHeapMem_664
+du_writeHeapMem_2770 = coe du_writeHeapMem_664
 -- Once.CCC.Machine.SMCore.AbstractExec._.writeHeapMem-aux
-d_writeHeapMem'45'aux_2770 ::
+d_writeHeapMem'45'aux_2772 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
   MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
   Maybe T_StoredValue_62 ->
   T_StoredValue_62 -> Maybe T_StoredValue_62
-d_writeHeapMem'45'aux_2770 ~v0 = du_writeHeapMem'45'aux_2770
-du_writeHeapMem'45'aux_2770 ::
+d_writeHeapMem'45'aux_2772 ~v0 = du_writeHeapMem'45'aux_2772
+du_writeHeapMem'45'aux_2772 ::
   MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
   MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
   Maybe T_StoredValue_62 ->
   T_StoredValue_62 -> Maybe T_StoredValue_62
-du_writeHeapMem'45'aux_2770 v0 v1 v2 v3 v4
+du_writeHeapMem'45'aux_2772 v0 v1 v2 v3 v4
   = coe du_writeHeapMem'45'aux_658 v2 v3 v4
 -- Once.CCC.Machine.SMCore.AbstractExec._.writeLoc
-d_writeLoc_2772 ::
+d_writeLoc_2774 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   T_LocState_254 ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   T_StoredValue_62 -> T_LocState_254
-d_writeLoc_2772 v0 = coe d_writeLoc_708 (coe v0)
+d_writeLoc_2774 v0 = coe d_writeLoc_708 (coe v0)
 -- Once.CCC.Machine.SMCore.AbstractExec._.writeLoc-halted
-d_writeLoc'45'halted_2774 ::
+d_writeLoc'45'halted_2776 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   T_LocState_254 ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   T_StoredValue_62 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_writeLoc'45'halted_2774 = erased
+d_writeLoc'45'halted_2776 = erased
 -- Once.CCC.Machine.SMCore.AbstractExec._.writeLoc-heapMem-stack
-d_writeLoc'45'heapMem'45'stack_2776 ::
+d_writeLoc'45'heapMem'45'stack_2778 ::
   T_LocState_254 ->
   AgdaAny ->
   Integer ->
   T_StoredValue_62 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_writeLoc'45'heapMem'45'stack_2776 = erased
+d_writeLoc'45'heapMem'45'stack_2778 = erased
 -- Once.CCC.Machine.SMCore.AbstractExec._.writeLoc-preserves-other
-d_writeLoc'45'preserves'45'other_2778 ::
+d_writeLoc'45'preserves'45'other_2780 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   T_LocState_254 ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
@@ -2859,9 +2862,9 @@ d_writeLoc'45'preserves'45'other_2778 ::
   (MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
    MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_writeLoc'45'preserves'45'other_2778 = erased
+d_writeLoc'45'preserves'45'other_2780 = erased
 -- Once.CCC.Machine.SMCore.AbstractExec._.writeLoc-preserves-other-stack-aux
-d_writeLoc'45'preserves'45'other'45'stack'45'aux_2780 ::
+d_writeLoc'45'preserves'45'other'45'stack'45'aux_2782 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   AgdaAny ->
   AgdaAny ->
@@ -2874,60 +2877,60 @@ d_writeLoc'45'preserves'45'other'45'stack'45'aux_2780 ::
   (MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
    MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_writeLoc'45'preserves'45'other'45'stack'45'aux_2780 = erased
+d_writeLoc'45'preserves'45'other'45'stack'45'aux_2782 = erased
 -- Once.CCC.Machine.SMCore.AbstractExec._.writeLoc-read-same-stack
-d_writeLoc'45'read'45'same'45'stack_2782 ::
+d_writeLoc'45'read'45'same'45'stack_2784 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   T_LocState_254 ->
   AgdaAny ->
   Integer ->
   T_StoredValue_62 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_writeLoc'45'read'45'same'45'stack_2782 = erased
+d_writeLoc'45'read'45'same'45'stack_2784 = erased
 -- Once.CCC.Machine.SMCore.AbstractExec._.writeLoc-regs
-d_writeLoc'45'regs_2784 ::
+d_writeLoc'45'regs_2786 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   T_LocState_254 ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   T_StoredValue_62 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_writeLoc'45'regs_2784 = erased
+d_writeLoc'45'regs_2786 = erased
 -- Once.CCC.Machine.SMCore.AbstractExec._.writeLoc-regs-commute
-d_writeLoc'45'regs'45'commute_2786 ::
+d_writeLoc'45'regs'45'commute_2788 ::
   T_LocState_254 ->
   AgdaAny ->
   Integer ->
   T_StoredValue_62 ->
   T_Registers_116 -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_writeLoc'45'regs'45'commute_2786 = erased
+d_writeLoc'45'regs'45'commute_2788 = erased
 -- Once.CCC.Machine.SMCore.AbstractExec._.writeLocToHeap
-d_writeLocToHeap_2788 ::
+d_writeLocToHeap_2790 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   T_LocState_254 ->
   MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
   T_StoredValue_62 -> T_LocState_254
-d_writeLocToHeap_2788 ~v0 = du_writeLocToHeap_2788
-du_writeLocToHeap_2788 ::
+d_writeLocToHeap_2790 ~v0 = du_writeLocToHeap_2790
+du_writeLocToHeap_2790 ::
   T_LocState_254 ->
   MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
   T_StoredValue_62 -> T_LocState_254
-du_writeLocToHeap_2788 = coe du_writeLocToHeap_700
+du_writeLocToHeap_2790 = coe du_writeLocToHeap_700
 -- Once.CCC.Machine.SMCore.AbstractExec._.writeLocToStack
-d_writeLocToStack_2790 ::
+d_writeLocToStack_2792 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   T_LocState_254 ->
   AgdaAny -> Integer -> T_StoredValue_62 -> T_LocState_254
-d_writeLocToStack_2790 v0 = coe d_writeLocToStack_690 (coe v0)
+d_writeLocToStack_2792 v0 = coe d_writeLocToStack_690 (coe v0)
 -- Once.CCC.Machine.SMCore.AbstractExec._.writeStackMem
-d_writeStackMem_2792 ::
+d_writeStackMem_2794 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   (AgdaAny -> Integer -> Maybe T_StoredValue_62) ->
   AgdaAny ->
   Integer ->
   T_StoredValue_62 -> AgdaAny -> Integer -> Maybe T_StoredValue_62
-d_writeStackMem_2792 v0 = coe d_writeStackMem_554 (coe v0)
+d_writeStackMem_2794 v0 = coe d_writeStackMem_554 (coe v0)
 -- Once.CCC.Machine.SMCore.AbstractExec._.writeStackMem-aux
-d_writeStackMem'45'aux_2794 ::
+d_writeStackMem'45'aux_2796 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   AgdaAny ->
   AgdaAny ->
@@ -2937,8 +2940,8 @@ d_writeStackMem'45'aux_2794 ::
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
   Maybe T_StoredValue_62 ->
   T_StoredValue_62 -> Maybe T_StoredValue_62
-d_writeStackMem'45'aux_2794 ~v0 = du_writeStackMem'45'aux_2794
-du_writeStackMem'45'aux_2794 ::
+d_writeStackMem'45'aux_2796 ~v0 = du_writeStackMem'45'aux_2796
+du_writeStackMem'45'aux_2796 ::
   AgdaAny ->
   AgdaAny ->
   Integer ->
@@ -2947,200 +2950,200 @@ du_writeStackMem'45'aux_2794 ::
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
   Maybe T_StoredValue_62 ->
   T_StoredValue_62 -> Maybe T_StoredValue_62
-du_writeStackMem'45'aux_2794 v0 v1 v2 v3 v4 v5 v6 v7
+du_writeStackMem'45'aux_2796 v0 v1 v2 v3 v4 v5 v6 v7
   = coe du_writeStackMem'45'aux_546 v4 v5 v6 v7
 -- Once.CCC.Machine.SMCore.AbstractExec._.ans-ok
-d_ans'45'ok_2798 ::
+d_ans'45'ok_2800 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer -> T_StoredValue_62 -> Bool
-d_ans'45'ok_2798 v0 = coe d_ans'45'ok_1632 (coe v0)
+d_ans'45'ok_2800 v0 = coe d_ans'45'ok_1632 (coe v0)
 -- Once.CCC.Machine.SMCore.AbstractExec._.exec
-d_exec_2800 ::
+d_exec_2802 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   T_Instr_1294 -> T_LocState_254 -> T_LocState_254
-d_exec_2800 v0 = coe d_exec_1660 (coe v0)
+d_exec_2802 v0 = coe d_exec_1660 (coe v0)
 -- Once.CCC.Machine.SMCore.AbstractExec._.exec-addr-at-resolved
-d_exec'45'addr'45'at'45'resolved_2802 ::
+d_exec'45'addr'45'at'45'resolved_2804 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   (Integer -> Integer) ->
   Integer ->
   Maybe MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   T_LocState_254 -> T_LocState_254
-d_exec'45'addr'45'at'45'resolved_2802 ~v0
-  = du_exec'45'addr'45'at'45'resolved_2802
-du_exec'45'addr'45'at'45'resolved_2802 ::
+d_exec'45'addr'45'at'45'resolved_2804 ~v0
+  = du_exec'45'addr'45'at'45'resolved_2804
+du_exec'45'addr'45'at'45'resolved_2804 ::
   (Integer -> Integer) ->
   Integer ->
   Maybe MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   T_LocState_254 -> T_LocState_254
-du_exec'45'addr'45'at'45'resolved_2802
+du_exec'45'addr'45'at'45'resolved_2804
   = coe du_exec'45'addr'45'at'45'resolved_1482
 -- Once.CCC.Machine.SMCore.AbstractExec._.exec-addr-in-block
-d_exec'45'addr'45'in'45'block_2804 ::
+d_exec'45'addr'45'in'45'block_2806 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Bool ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   T_LocState_254 -> T_LocState_254
-d_exec'45'addr'45'in'45'block_2804 ~v0
-  = du_exec'45'addr'45'in'45'block_2804
-du_exec'45'addr'45'in'45'block_2804 ::
+d_exec'45'addr'45'in'45'block_2806 ~v0
+  = du_exec'45'addr'45'in'45'block_2806
+du_exec'45'addr'45'in'45'block_2806 ::
   Bool ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   T_LocState_254 -> T_LocState_254
-du_exec'45'addr'45'in'45'block_2804
+du_exec'45'addr'45'in'45'block_2806
   = coe du_exec'45'addr'45'in'45'block_1474
 -- Once.CCC.Machine.SMCore.AbstractExec._.exec-load-at-resolved
-d_exec'45'load'45'at'45'resolved_2806 ::
+d_exec'45'load'45'at'45'resolved_2808 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
   T_AbstractReg_54 ->
   Maybe MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   T_LocState_254 -> T_LocState_254
-d_exec'45'load'45'at'45'resolved_2806 ~v0
-  = du_exec'45'load'45'at'45'resolved_2806
-du_exec'45'load'45'at'45'resolved_2806 ::
+d_exec'45'load'45'at'45'resolved_2808 ~v0
+  = du_exec'45'load'45'at'45'resolved_2808
+du_exec'45'load'45'at'45'resolved_2808 ::
   Integer ->
   T_AbstractReg_54 ->
   Maybe MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   T_LocState_254 -> T_LocState_254
-du_exec'45'load'45'at'45'resolved_2806
+du_exec'45'load'45'at'45'resolved_2808
   = coe du_exec'45'load'45'at'45'resolved_1422
 -- Once.CCC.Machine.SMCore.AbstractExec._.exec-load-just
-d_exec'45'load'45'just_2808 ::
+d_exec'45'load'45'just_2810 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   T_AbstractReg_54 ->
   T_StoredValue_62 ->
   T_LocState_254 -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_exec'45'load'45'just_2808 = erased
+d_exec'45'load'45'just_2810 = erased
 -- Once.CCC.Machine.SMCore.AbstractExec._.exec-load-nothing
-d_exec'45'load'45'nothing_2810 ::
+d_exec'45'load'45'nothing_2812 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   T_AbstractReg_54 ->
   T_LocState_254 -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_exec'45'load'45'nothing_2810 = erased
+d_exec'45'load'45'nothing_2812 = erased
 -- Once.CCC.Machine.SMCore.AbstractExec._.exec-load-suc-via-resolved
-d_exec'45'load'45'suc'45'via'45'resolved_2812 ::
+d_exec'45'load'45'suc'45'via'45'resolved_2814 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   T_AbstractReg_54 ->
   Maybe MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   T_LocState_254 -> T_LocState_254
-d_exec'45'load'45'suc'45'via'45'resolved_2812 ~v0
-  = du_exec'45'load'45'suc'45'via'45'resolved_2812
-du_exec'45'load'45'suc'45'via'45'resolved_2812 ::
+d_exec'45'load'45'suc'45'via'45'resolved_2814 ~v0
+  = du_exec'45'load'45'suc'45'via'45'resolved_2814
+du_exec'45'load'45'suc'45'via'45'resolved_2814 ::
   T_AbstractReg_54 ->
   Maybe MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   T_LocState_254 -> T_LocState_254
-du_exec'45'load'45'suc'45'via'45'resolved_2812
+du_exec'45'load'45'suc'45'via'45'resolved_2814
   = coe du_exec'45'load'45'suc'45'via'45'resolved_1400
 -- Once.CCC.Machine.SMCore.AbstractExec._.exec-load-via-resolved
-d_exec'45'load'45'via'45'resolved_2814 ::
+d_exec'45'load'45'via'45'resolved_2816 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   T_AbstractReg_54 ->
   Maybe MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   T_LocState_254 -> T_LocState_254
-d_exec'45'load'45'via'45'resolved_2814 ~v0
-  = du_exec'45'load'45'via'45'resolved_2814
-du_exec'45'load'45'via'45'resolved_2814 ::
+d_exec'45'load'45'via'45'resolved_2816 ~v0
+  = du_exec'45'load'45'via'45'resolved_2816
+du_exec'45'load'45'via'45'resolved_2816 ::
   T_AbstractReg_54 ->
   Maybe MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   T_LocState_254 -> T_LocState_254
-du_exec'45'load'45'via'45'resolved_2814
+du_exec'45'load'45'via'45'resolved_2816
   = coe du_exec'45'load'45'via'45'resolved_1378
 -- Once.CCC.Machine.SMCore.AbstractExec._.exec-load-with-value
-d_exec'45'load'45'with'45'value_2816 ::
+d_exec'45'load'45'with'45'value_2818 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   T_AbstractReg_54 ->
   Maybe T_StoredValue_62 -> T_LocState_254 -> T_LocState_254
-d_exec'45'load'45'with'45'value_2816 ~v0
-  = du_exec'45'load'45'with'45'value_2816
-du_exec'45'load'45'with'45'value_2816 ::
+d_exec'45'load'45'with'45'value_2818 ~v0
+  = du_exec'45'load'45'with'45'value_2818
+du_exec'45'load'45'with'45'value_2818 ::
   T_AbstractReg_54 ->
   Maybe T_StoredValue_62 -> T_LocState_254 -> T_LocState_254
-du_exec'45'load'45'with'45'value_2816
+du_exec'45'load'45'with'45'value_2818
   = coe du_exec'45'load'45'with'45'value_1366
 -- Once.CCC.Machine.SMCore.AbstractExec._.exec-store-at-resolved
-d_exec'45'store'45'at'45'resolved_2818 ::
+d_exec'45'store'45'at'45'resolved_2820 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   (Integer -> Integer) ->
   Integer ->
   Maybe MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   T_StoredValue_62 -> T_LocState_254 -> T_LocState_254
-d_exec'45'store'45'at'45'resolved_2818 v0
+d_exec'45'store'45'at'45'resolved_2820 v0
   = coe d_exec'45'store'45'at'45'resolved_1456 (coe v0)
 -- Once.CCC.Machine.SMCore.AbstractExec._.exec-store-in-block
-d_exec'45'store'45'in'45'block_2820 ::
+d_exec'45'store'45'in'45'block_2822 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Bool ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   T_StoredValue_62 -> T_LocState_254 -> T_LocState_254
-d_exec'45'store'45'in'45'block_2820 v0
+d_exec'45'store'45'in'45'block_2822 v0
   = coe d_exec'45'store'45'in'45'block_1446 (coe v0)
 -- Once.CCC.Machine.SMCore.AbstractExec._.exec-store-suc-via-resolved
-d_exec'45'store'45'suc'45'via'45'resolved_2822 ::
+d_exec'45'store'45'suc'45'via'45'resolved_2824 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Maybe MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   T_StoredValue_62 -> T_LocState_254 -> T_LocState_254
-d_exec'45'store'45'suc'45'via'45'resolved_2822 v0
+d_exec'45'store'45'suc'45'via'45'resolved_2824 v0
   = coe d_exec'45'store'45'suc'45'via'45'resolved_1412 (coe v0)
 -- Once.CCC.Machine.SMCore.AbstractExec._.exec-store-via-resolved
-d_exec'45'store'45'via'45'resolved_2824 ::
+d_exec'45'store'45'via'45'resolved_2826 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Maybe MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   T_StoredValue_62 -> T_LocState_254 -> T_LocState_254
-d_exec'45'store'45'via'45'resolved_2824 v0
+d_exec'45'store'45'via'45'resolved_2826 v0
   = coe d_exec'45'store'45'via'45'resolved_1390 (coe v0)
 -- Once.CCC.Machine.SMCore.AbstractExec._.execList
-d_execList_2826 ::
+d_execList_2828 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   [T_Instr_1294] -> T_LocState_254 -> T_LocState_254
-d_execList_2826 v0 = coe d_execList_1694 (coe v0)
+d_execList_2828 v0 = coe d_execList_1694 (coe v0)
 -- Once.CCC.Machine.SMCore.AbstractExec._.frame-gate
-d_frame'45'gate_2828 ::
+d_frame'45'gate_2830 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   T_AllocState_348 ->
   Integer ->
   Maybe MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   Maybe MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12
-d_frame'45'gate_2828 v0 = coe d_frame'45'gate_1538 (coe v0)
+d_frame'45'gate_2830 v0 = coe d_frame'45'gate_1538 (coe v0)
 -- Once.CCC.Machine.SMCore.AbstractExec._.gate-or
-d_gate'45'or_2830 ::
+d_gate'45'or_2832 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   T_AllocState_348 ->
   Integer ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30
-d_gate'45'or_2830 v0 = coe d_gate'45'or_1588 (coe v0)
+d_gate'45'or_2832 v0 = coe d_gate'45'or_1588 (coe v0)
 -- Once.CCC.Machine.SMCore.AbstractExec._.heap-gate
-d_heap'45'gate_2832 ::
+d_heap'45'gate_2834 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Maybe MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   Maybe MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12
-d_heap'45'gate_2832 ~v0 = du_heap'45'gate_2832
-du_heap'45'gate_2832 ::
+d_heap'45'gate_2834 ~v0 = du_heap'45'gate_2834
+du_heap'45'gate_2834 ::
   Maybe MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   Maybe MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12
-du_heap'45'gate_2832 = coe du_heap'45'gate_1558
+du_heap'45'gate_2834 = coe du_heap'45'gate_1558
 -- Once.CCC.Machine.SMCore.AbstractExec._.in-block?
-d_in'45'block'63'_2834 ::
+d_in'45'block'63'_2836 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   (Integer -> Integer) ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 -> Bool
-d_in'45'block'63'_2834 ~v0 = du_in'45'block'63'_2834
-du_in'45'block'63'_2834 ::
+d_in'45'block'63'_2836 ~v0 = du_in'45'block'63'_2836
+du_in'45'block'63'_2836 ::
   (Integer -> Integer) ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 -> Bool
-du_in'45'block'63'_2834 = coe du_in'45'block'63'_1438
+du_in'45'block'63'_2836 = coe du_in'45'block'63'_1438
 -- Once.CCC.Machine.SMCore.AbstractExec._.in-window
-d_in'45'window_2836 ::
+d_in'45'window_2838 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   AgdaAny -> Integer -> Bool
-d_in'45'window_2836 v0 = coe d_in'45'window_1502 (coe v0)
+d_in'45'window_2838 v0 = coe d_in'45'window_1502 (coe v0)
 -- Once.CCC.Machine.SMCore.AbstractExec._.live-frames
-d_live'45'frames_2838 ::
+d_live'45'frames_2840 ::
   T_AllocState_348 -> [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]
-d_live'45'frames_2838 v0
+d_live'45'frames_2840 v0
   = coe
       MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
       (coe
@@ -3149,88 +3152,88 @@ d_live'45'frames_2838 v0
          (coe d_frame'45'slots_454 (coe v0)))
       (coe d_saved'45'frames_452 (coe v0))
 -- Once.CCC.Machine.SMCore.AbstractExec._.live-size
-d_live'45'size_2840 :: T_AllocState_348 -> Integer -> Integer
-d_live'45'size_2840 v0 v1
+d_live'45'size_2842 :: T_AllocState_348 -> Integer -> Integer
+d_live'45'size_2842 v0 v1
   = coe
       MAlonzo.Code.Data.Bool.Base.du_if_then_else__44
       (coe d_freed_462 v0 v1) (coe (0 :: Integer))
       (coe d_block'45'size_460 v0 v1)
 -- Once.CCC.Machine.SMCore.AbstractExec._.range-ok
-d_range'45'ok_2842 ::
+d_range'45'ok_2844 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer -> T_StoredValue_62 -> Bool
-d_range'45'ok_2842 v0 = coe d_range'45'ok_1604 (coe v0)
+d_range'45'ok_2844 v0 = coe d_range'45'ok_1604 (coe v0)
 -- Once.CCC.Machine.SMCore.AbstractExec._.rec-at
-d_rec'45'at_2844 ::
+d_rec'45'at_2846 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
   Integer ->
   Maybe MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12
-d_rec'45'at_2844 ~v0 = du_rec'45'at_2844
-du_rec'45'at_2844 ::
+d_rec'45'at_2846 ~v0 = du_rec'45'at_2846
+du_rec'45'at_2846 ::
   Integer ->
   Integer ->
   Maybe MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12
-du_rec'45'at_2844 = coe du_rec'45'at_1528
+du_rec'45'at_2846 = coe du_rec'45'at_1528
 -- Once.CCC.Machine.SMCore.AbstractExec._.rec-gate
-d_rec'45'gate_2846 ::
+d_rec'45'gate_2848 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   T_AllocState_348 ->
   Integer ->
   Maybe MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12
-d_rec'45'gate_2846 ~v0 = du_rec'45'gate_2846
-du_rec'45'gate_2846 ::
+d_rec'45'gate_2848 ~v0 = du_rec'45'gate_2848
+du_rec'45'gate_2848 ::
   T_AllocState_348 ->
   Integer ->
   Maybe MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12
-du_rec'45'gate_2846 = coe du_rec'45'gate_1532
+du_rec'45'gate_2848 = coe du_rec'45'gate_1532
 -- Once.CCC.Machine.SMCore.AbstractExec._.stack-gate
-d_stack'45'gate_2848 ::
+d_stack'45'gate_2850 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Bool ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   Maybe MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12
-d_stack'45'gate_2848 ~v0 = du_stack'45'gate_2848
-du_stack'45'gate_2848 ::
+d_stack'45'gate_2850 ~v0 = du_stack'45'gate_2850
+du_stack'45'gate_2850 ::
   Bool ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   Maybe MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12
-du_stack'45'gate_2848 = coe du_stack'45'gate_1518
+du_stack'45'gate_2850 = coe du_stack'45'gate_1518
 -- Once.CCC.Machine.SMCore.AbstractExec._.stack-gate-or
-d_stack'45'gate'45'or_2850 ::
+d_stack'45'gate'45'or_2852 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Bool ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30
-d_stack'45'gate'45'or_2850 ~v0 = du_stack'45'gate'45'or_2850
-du_stack'45'gate'45'or_2850 ::
+d_stack'45'gate'45'or_2852 ~v0 = du_stack'45'gate'45'or_2852
+du_stack'45'gate'45'or_2852 ::
   Bool ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30
-du_stack'45'gate'45'or_2850 v0 v1
+du_stack'45'gate'45'or_2852 v0 v1
   = coe du_stack'45'gate'45'or_1566 v0
 -- Once.CCC.Machine.SMCore.AbstractExec._.stack-gate-true
-d_stack'45'gate'45'true_2852 ::
+d_stack'45'gate'45'true_2854 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Bool ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_stack'45'gate'45'true_2852 = erased
+d_stack'45'gate'45'true_2854 = erased
 -- Once.CCC.Machine.SMCore.AbstractExec.exec-load-from-slot-with-value
-d_exec'45'load'45'from'45'slot'45'with'45'value_2854 ::
+d_exec'45'load'45'from'45'slot'45'with'45'value_2856 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Maybe T_StoredValue_62 ->
   T_LocState_254 ->
   T_AllocState_348 -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_exec'45'load'45'from'45'slot'45'with'45'value_2854 ~v0 v1 v2 v3
-  = du_exec'45'load'45'from'45'slot'45'with'45'value_2854 v1 v2 v3
-du_exec'45'load'45'from'45'slot'45'with'45'value_2854 ::
+d_exec'45'load'45'from'45'slot'45'with'45'value_2856 ~v0 v1 v2 v3
+  = du_exec'45'load'45'from'45'slot'45'with'45'value_2856 v1 v2 v3
+du_exec'45'load'45'from'45'slot'45'with'45'value_2856 ::
   Maybe T_StoredValue_62 ->
   T_LocState_254 ->
   T_AllocState_348 -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_exec'45'load'45'from'45'slot'45'with'45'value_2854 v0 v1 v2
+du_exec'45'load'45'from'45'slot'45'with'45'value_2856 v0 v1 v2
   = case coe v0 of
       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v3
         -> coe
@@ -3254,18 +3257,18 @@ du_exec'45'load'45'from'45'slot'45'with'45'value_2854 v0 v1 v2
              (coe v2)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.SMCore.AbstractExec.exec-restore-input-with-value
-d_exec'45'restore'45'input'45'with'45'value_2866 ::
+d_exec'45'restore'45'input'45'with'45'value_2868 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Maybe T_StoredValue_62 ->
   T_LocState_254 ->
   T_AllocState_348 -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_exec'45'restore'45'input'45'with'45'value_2866 ~v0 v1 v2 v3
-  = du_exec'45'restore'45'input'45'with'45'value_2866 v1 v2 v3
-du_exec'45'restore'45'input'45'with'45'value_2866 ::
+d_exec'45'restore'45'input'45'with'45'value_2868 ~v0 v1 v2 v3
+  = du_exec'45'restore'45'input'45'with'45'value_2868 v1 v2 v3
+du_exec'45'restore'45'input'45'with'45'value_2868 ::
   Maybe T_StoredValue_62 ->
   T_LocState_254 ->
   T_AllocState_348 -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_exec'45'restore'45'input'45'with'45'value_2866 v0 v1 v2
+du_exec'45'restore'45'input'45'with'45'value_2868 v0 v1 v2
   = case coe v0 of
       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v3
         -> coe
@@ -3289,54 +3292,54 @@ du_exec'45'restore'45'input'45'with'45'value_2866 v0 v1 v2
              (coe v2)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.SMCore.AbstractExec.exec-load-from-slot-just
-d_exec'45'load'45'from'45'slot'45'just_2884 ::
+d_exec'45'load'45'from'45'slot'45'just_2886 ::
   T_StoredValue_62 ->
   T_LocState_254 ->
   T_AllocState_348 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_exec'45'load'45'from'45'slot'45'just_2884 = erased
+d_exec'45'load'45'from'45'slot'45'just_2886 = erased
 -- Once.CCC.Machine.SMCore.AbstractExec.exec-load-from-slot-nothing
-d_exec'45'load'45'from'45'slot'45'nothing_2890 ::
+d_exec'45'load'45'from'45'slot'45'nothing_2892 ::
   T_LocState_254 ->
   T_AllocState_348 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_exec'45'load'45'from'45'slot'45'nothing_2890 = erased
+d_exec'45'load'45'from'45'slot'45'nothing_2892 = erased
 -- Once.CCC.Machine.SMCore.AbstractExec.exec-restore-input-just
-d_exec'45'restore'45'input'45'just_2898 ::
+d_exec'45'restore'45'input'45'just_2900 ::
   T_StoredValue_62 ->
   T_LocState_254 ->
   T_AllocState_348 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_exec'45'restore'45'input'45'just_2898 = erased
+d_exec'45'restore'45'input'45'just_2900 = erased
 -- Once.CCC.Machine.SMCore.AbstractExec.exec-restore-input-nothing
-d_exec'45'restore'45'input'45'nothing_2904 ::
+d_exec'45'restore'45'input'45'nothing_2906 ::
   T_LocState_254 ->
   T_AllocState_348 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_exec'45'restore'45'input'45'nothing_2904 = erased
+d_exec'45'restore'45'input'45'nothing_2906 = erased
 -- Once.CCC.Machine.SMCore.AbstractExec.unit-storedvalue
-d_unit'45'storedvalue_2906 ::
+d_unit'45'storedvalue_2908 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   T_StoredValue_62
-d_unit'45'storedvalue_2906 ~v0 = du_unit'45'storedvalue_2906
-du_unit'45'storedvalue_2906 :: T_StoredValue_62
-du_unit'45'storedvalue_2906
+d_unit'45'storedvalue_2908 ~v0 = du_unit'45'storedvalue_2908
+du_unit'45'storedvalue_2908 :: T_StoredValue_62
+du_unit'45'storedvalue_2908
   = coe
       C_SV'45'Lit_72 (coe MAlonzo.Code.Once.Spec.Type.C_Int_32)
       (coe MAlonzo.Code.Once.Type.C_fits'45'int_26) (coe (0 :: Integer))
 -- Once.CCC.Machine.SMCore.AbstractExec.combine-typed
-d_combine'45'typed_2912 ::
+d_combine'45'typed_2914 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   Maybe AgdaAny ->
   Maybe AgdaAny -> Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_combine'45'typed_2912 ~v0 ~v1 ~v2 v3 v4
-  = du_combine'45'typed_2912 v3 v4
-du_combine'45'typed_2912 ::
+d_combine'45'typed_2914 ~v0 ~v1 ~v2 v3 v4
+  = du_combine'45'typed_2914 v3 v4
+du_combine'45'typed_2914 ::
   Maybe AgdaAny ->
   Maybe AgdaAny -> Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_combine'45'typed_2912 v0 v1
+du_combine'45'typed_2914 v0 v1
   = let v2 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
     coe
       (case coe v0 of
@@ -3349,12 +3352,12 @@ du_combine'45'typed_2912 v0 v1
                 _ -> coe v2
          _ -> coe v2)
 -- Once.CCC.Machine.SMCore.AbstractExec.readTyped-int
-d_readTyped'45'int_2918 ::
+d_readTyped'45'int_2920 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Maybe T_StoredValue_62 -> Maybe Integer
-d_readTyped'45'int_2918 ~v0 v1 = du_readTyped'45'int_2918 v1
-du_readTyped'45'int_2918 :: Maybe T_StoredValue_62 -> Maybe Integer
-du_readTyped'45'int_2918 v0
+d_readTyped'45'int_2920 ~v0 v1 = du_readTyped'45'int_2920 v1
+du_readTyped'45'int_2920 :: Maybe T_StoredValue_62 -> Maybe Integer
+du_readTyped'45'int_2920 v0
   = case coe v0 of
       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v1
         -> case coe v1 of
@@ -3375,13 +3378,13 @@ du_readTyped'45'int_2918 v0
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v0
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.SMCore.AbstractExec.readTyped-float
-d_readTyped'45'float_2922 ::
+d_readTyped'45'float_2924 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Maybe T_StoredValue_62 -> Maybe Integer
-d_readTyped'45'float_2922 ~v0 v1 = du_readTyped'45'float_2922 v1
-du_readTyped'45'float_2922 ::
+d_readTyped'45'float_2924 ~v0 v1 = du_readTyped'45'float_2924 v1
+du_readTyped'45'float_2924 ::
   Maybe T_StoredValue_62 -> Maybe Integer
-du_readTyped'45'float_2922 v0
+du_readTyped'45'float_2924 v0
   = case coe v0 of
       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v1
         -> case coe v1 of
@@ -3402,21 +3405,21 @@ du_readTyped'45'float_2922 v0
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v0
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.SMCore.AbstractExec.readTyped-cell
-d_readTyped'45'cell_2928 ::
+d_readTyped'45'cell_2930 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   (MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
    Maybe AgdaAny) ->
   (T_StoredValue_62 -> Maybe AgdaAny) ->
   Maybe T_StoredValue_62 -> Maybe AgdaAny
-d_readTyped'45'cell_2928 ~v0 ~v1 v2 v3 v4
-  = du_readTyped'45'cell_2928 v2 v3 v4
-du_readTyped'45'cell_2928 ::
+d_readTyped'45'cell_2930 ~v0 ~v1 v2 v3 v4
+  = du_readTyped'45'cell_2930 v2 v3 v4
+du_readTyped'45'cell_2930 ::
   (MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
    Maybe AgdaAny) ->
   (T_StoredValue_62 -> Maybe AgdaAny) ->
   Maybe T_StoredValue_62 -> Maybe AgdaAny
-du_readTyped'45'cell_2928 v0 v1 v2
+du_readTyped'45'cell_2930 v0 v1 v2
   = case coe v2 of
       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v3
         -> case coe v3 of
@@ -3428,7 +3431,7 @@ du_readTyped'45'cell_2928 v0 v1 v2
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v2
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.SMCore.AbstractExec.readTyped-pair
-d_readTyped'45'pair_2964 ::
+d_readTyped'45'pair_2966 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
@@ -3441,9 +3444,9 @@ d_readTyped'45'pair_2964 ::
   Maybe T_StoredValue_62 ->
   Maybe T_StoredValue_62 ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_readTyped'45'pair_2964 ~v0 ~v1 ~v2 v3 v4 v5 v6 v7 v8
-  = du_readTyped'45'pair_2964 v3 v4 v5 v6 v7 v8
-du_readTyped'45'pair_2964 ::
+d_readTyped'45'pair_2966 ~v0 ~v1 ~v2 v3 v4 v5 v6 v7 v8
+  = du_readTyped'45'pair_2966 v3 v4 v5 v6 v7 v8
+du_readTyped'45'pair_2966 ::
   (MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
    Maybe AgdaAny) ->
   (MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
@@ -3453,21 +3456,21 @@ du_readTyped'45'pair_2964 ::
   Maybe T_StoredValue_62 ->
   Maybe T_StoredValue_62 ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_readTyped'45'pair_2964 v0 v1 v2 v3 v4 v5
+du_readTyped'45'pair_2966 v0 v1 v2 v3 v4 v5
   = coe
-      du_combine'45'typed_2912
-      (coe du_readTyped'45'cell_2928 (coe v0) (coe v2) (coe v4))
-      (coe du_readTyped'45'cell_2928 (coe v1) (coe v3) (coe v5))
+      du_combine'45'typed_2914
+      (coe du_readTyped'45'cell_2930 (coe v0) (coe v2) (coe v4))
+      (coe du_readTyped'45'cell_2930 (coe v1) (coe v3) (coe v5))
 -- Once.CCC.Machine.SMCore.AbstractExec.readReg-typed
-d_readReg'45'typed_2980 ::
+d_readReg'45'typed_2982 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   T_StoredValue_62 -> Maybe AgdaAny
-d_readReg'45'typed_2980 ~v0 v1 v2 = du_readReg'45'typed_2980 v1 v2
-du_readReg'45'typed_2980 ::
+d_readReg'45'typed_2982 ~v0 v1 v2 = du_readReg'45'typed_2982 v1 v2
+du_readReg'45'typed_2982 ::
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   T_StoredValue_62 -> Maybe AgdaAny
-du_readReg'45'typed_2980 v0 v1
+du_readReg'45'typed_2982 v0 v1
   = let v2 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
     coe
       (case coe v0 of
@@ -3493,7 +3496,7 @@ du_readReg'45'typed_2980 v0 v1
                 _ -> coe v2
          _ -> coe v2)
 -- Once.CCC.Machine.SMCore.AbstractExec.readTyped-sum
-d_readTyped'45'sum_2990 ::
+d_readTyped'45'sum_2992 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
@@ -3502,15 +3505,15 @@ d_readTyped'45'sum_2990 ::
   Maybe T_StoredValue_62 ->
   Maybe T_StoredValue_62 ->
   Maybe MAlonzo.Code.Data.Sum.Base.T__'8846'__30
-d_readTyped'45'sum_2990 ~v0 ~v1 ~v2 v3 v4 v5 v6
-  = du_readTyped'45'sum_2990 v3 v4 v5 v6
-du_readTyped'45'sum_2990 ::
+d_readTyped'45'sum_2992 ~v0 ~v1 ~v2 v3 v4 v5 v6
+  = du_readTyped'45'sum_2992 v3 v4 v5 v6
+du_readTyped'45'sum_2992 ::
   (Maybe T_StoredValue_62 -> Maybe AgdaAny) ->
   (Maybe T_StoredValue_62 -> Maybe AgdaAny) ->
   Maybe T_StoredValue_62 ->
   Maybe T_StoredValue_62 ->
   Maybe MAlonzo.Code.Data.Sum.Base.T__'8846'__30
-du_readTyped'45'sum_2990 v0 v1 v2 v3
+du_readTyped'45'sum_2992 v0 v1 v2 v3
   = case coe v2 of
       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v4
         -> case coe v4 of
@@ -3533,12 +3536,12 @@ du_readTyped'45'sum_2990 v0 v1 v2 v3
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v2
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.SMCore.AbstractExec.tsize
-d_tsize_3034 ::
+d_tsize_3036 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 -> Integer
-d_tsize_3034 ~v0 v1 = du_tsize_3034 v1
-du_tsize_3034 :: MAlonzo.Code.Once.Spec.Type.T_Ty_8 -> Integer
-du_tsize_3034 v0
+d_tsize_3036 ~v0 v1 = du_tsize_3036 v1
+du_tsize_3036 :: MAlonzo.Code.Once.Spec.Type.T_Ty_8 -> Integer
+du_tsize_3036 v0
   = let v1 = 1 :: Integer in
     coe
       (case coe v0 of
@@ -3546,28 +3549,28 @@ du_tsize_3034 v0
          MAlonzo.Code.Once.Spec.Type.C_Void_20 -> coe (0 :: Integer)
          MAlonzo.Code.Once.Spec.Type.C__'42'__22 v2 v3
            -> coe
-                addInt (coe du_tsize_3034 (coe v2)) (coe du_tsize_3034 (coe v3))
+                addInt (coe du_tsize_3036 (coe v2)) (coe du_tsize_3036 (coe v3))
          MAlonzo.Code.Once.Spec.Type.C__'43'__24 v2 v3
            -> coe
                 addInt (coe (1 :: Integer))
                 (coe
                    MAlonzo.Code.Data.Nat.Base.d__'8852'__208
-                   (coe du_tsize_3034 (coe v2)) (coe du_tsize_3034 (coe v3)))
+                   (coe du_tsize_3036 (coe v2)) (coe du_tsize_3036 (coe v3)))
          MAlonzo.Code.Once.Spec.Type.C_Int_32 -> coe (1 :: Integer)
          MAlonzo.Code.Once.Spec.Type.C_Float_34 -> coe (1 :: Integer)
          _ -> coe v1)
 -- Once.CCC.Machine.SMCore.AbstractExec.readTyped
-d_readTyped_3046 ::
+d_readTyped_3048 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   T_LocState_254 -> Maybe AgdaAny
-d_readTyped_3046 ~v0 v1 v2 v3 = du_readTyped_3046 v1 v2 v3
-du_readTyped_3046 ::
+d_readTyped_3048 ~v0 v1 v2 v3 = du_readTyped_3048 v1 v2 v3
+du_readTyped_3048 ::
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   T_LocState_254 -> Maybe AgdaAny
-du_readTyped_3046 v0 v1 v2
+du_readTyped_3048 v0 v1 v2
   = let v3 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
     coe
       (case coe v0 of
@@ -3577,109 +3580,109 @@ du_readTyped_3046 v0 v1 v2
                 (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
          MAlonzo.Code.Once.Spec.Type.C__'42'__22 v4 v5
            -> coe
-                du_combine'45'typed_2912
-                (coe du_readTyped_3046 (coe v4) (coe v1) (coe v2))
+                du_combine'45'typed_2914
+                (coe du_readTyped_3048 (coe v4) (coe v1) (coe v2))
                 (coe
-                   du_readTyped_3046 (coe v5)
-                   (coe du_offsetLoc_88 (coe v1) (coe du_tsize_3034 (coe v4)))
+                   du_readTyped_3048 (coe v5)
+                   (coe du_offsetLoc_88 (coe v1) (coe du_tsize_3036 (coe v4)))
                    (coe v2))
          MAlonzo.Code.Once.Spec.Type.C__'43'__24 v4 v5
            -> coe
-                du_readTyped'45'sum_2990
+                du_readTyped'45'sum_2992
                 (coe
                    (\ v6 ->
                       coe
-                        du_readTyped_3046 (coe v4) (coe du_sucLoc_78 (coe v1)) (coe v2)))
+                        du_readTyped_3048 (coe v4) (coe du_sucLoc_78 (coe v1)) (coe v2)))
                 (coe
                    (\ v6 ->
                       coe
-                        du_readTyped_3046 (coe v5) (coe du_sucLoc_78 (coe v1)) (coe v2)))
+                        du_readTyped_3048 (coe v5) (coe du_sucLoc_78 (coe v1)) (coe v2)))
                 (coe du_readLoc_526 (coe v2) (coe v1))
                 (coe du_readLoc_526 (coe v2) (coe du_sucLoc_78 (coe v1)))
          MAlonzo.Code.Once.Spec.Type.C_Int_32
            -> coe
-                du_readTyped'45'int_2918 (coe du_readLoc_526 (coe v2) (coe v1))
+                du_readTyped'45'int_2920 (coe du_readLoc_526 (coe v2) (coe v1))
          MAlonzo.Code.Once.Spec.Type.C_Float_34
            -> coe
-                du_readTyped'45'float_2922 (coe du_readLoc_526 (coe v2) (coe v1))
+                du_readTyped'45'float_2924 (coe du_readLoc_526 (coe v2) (coe v1))
          _ -> coe v3)
 -- Once.CCC.Machine.SMCore.AbstractExec.zero-word
-d_zero'45'word_3084 ::
+d_zero'45'word_3086 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   T_StoredValue_62
-d_zero'45'word_3084 ~v0 = du_zero'45'word_3084
-du_zero'45'word_3084 :: T_StoredValue_62
-du_zero'45'word_3084
+d_zero'45'word_3086 ~v0 = du_zero'45'word_3086
+du_zero'45'word_3086 :: T_StoredValue_62
+du_zero'45'word_3086
   = coe
       C_SV'45'Lit_72 (coe MAlonzo.Code.Once.Spec.Type.C_Int_32)
       (coe MAlonzo.Code.Once.Type.C_fits'45'int_26) (coe (0 :: Integer))
 -- Once.CCC.Machine.SMCore.AbstractExec.writeZeros
-d_writeZeros_3086 ::
+d_writeZeros_3088 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   T_LocState_254 -> T_LocState_254
-d_writeZeros_3086 v0 v1 v2 v3
+d_writeZeros_3088 v0 v1 v2 v3
   = case coe v1 of
       0 -> coe v3
       _ -> let v4 = subInt (coe v1) (coe (1 :: Integer)) in
            coe
              (coe
-                d_writeZeros_3086 (coe v0) (coe v4) (coe du_sucLoc_78 (coe v2))
+                d_writeZeros_3088 (coe v0) (coe v4) (coe du_sucLoc_78 (coe v2))
                 (coe
                    d_writeLoc_708 (coe v0) (coe v3) (coe v2)
-                   (coe du_zero'45'word_3084)))
+                   (coe du_zero'45'word_3086)))
 -- Once.CCC.Machine.SMCore.AbstractExec.writeTyped
-d_writeTyped_3100 ::
+d_writeTyped_3102 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   AgdaAny ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   T_LocState_254 -> T_LocState_254
-d_writeTyped_3100 v0 v1 v2 v3 v4
+d_writeTyped_3102 v0 v1 v2 v3 v4
   = case coe v1 of
       MAlonzo.Code.Once.Spec.Type.C_Unit_18 -> coe v4
       MAlonzo.Code.Once.Spec.Type.C__'42'__22 v5 v6
         -> case coe v2 of
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v7 v8
                -> coe
-                    d_writeTyped_3100 (coe v0) (coe v6) (coe v8)
-                    (coe du_offsetLoc_88 (coe v3) (coe du_tsize_3034 (coe v5)))
+                    d_writeTyped_3102 (coe v0) (coe v6) (coe v8)
+                    (coe du_offsetLoc_88 (coe v3) (coe du_tsize_3036 (coe v5)))
                     (coe
-                       d_writeTyped_3100 (coe v0) (coe v5) (coe v7) (coe v3) (coe v4))
+                       d_writeTyped_3102 (coe v0) (coe v5) (coe v7) (coe v3) (coe v4))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Spec.Type.C__'43'__24 v5 v6
         -> case coe v2 of
              MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v7
                -> coe
-                    d_writeZeros_3086 (coe v0)
+                    d_writeZeros_3088 (coe v0)
                     (coe
                        MAlonzo.Code.Agda.Builtin.Nat.d__'45'__22
                        (MAlonzo.Code.Data.Nat.Base.d__'8852'__208
-                          (coe du_tsize_3034 (coe v5)) (coe du_tsize_3034 (coe v6)))
-                       (coe du_tsize_3034 (coe v5)))
+                          (coe du_tsize_3036 (coe v5)) (coe du_tsize_3036 (coe v6)))
+                       (coe du_tsize_3036 (coe v5)))
                     (coe
                        du_offsetLoc_88 (coe v3)
-                       (coe addInt (coe (1 :: Integer)) (coe du_tsize_3034 (coe v5))))
+                       (coe addInt (coe (1 :: Integer)) (coe du_tsize_3036 (coe v5))))
                     (coe
-                       d_writeTyped_3100 (coe v0) (coe v5) (coe v7)
+                       d_writeTyped_3102 (coe v0) (coe v5) (coe v7)
                        (coe du_sucLoc_78 (coe v3))
                        (coe
                           d_writeLoc_708 (coe v0) (coe v4) (coe v3)
                           (coe C_SV'45'Tag_68 (coe (0 :: Integer)))))
              MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v7
                -> coe
-                    d_writeZeros_3086 (coe v0)
+                    d_writeZeros_3088 (coe v0)
                     (coe
                        MAlonzo.Code.Agda.Builtin.Nat.d__'45'__22
                        (MAlonzo.Code.Data.Nat.Base.d__'8852'__208
-                          (coe du_tsize_3034 (coe v5)) (coe du_tsize_3034 (coe v6)))
-                       (coe du_tsize_3034 (coe v6)))
+                          (coe du_tsize_3036 (coe v5)) (coe du_tsize_3036 (coe v6)))
+                       (coe du_tsize_3036 (coe v6)))
                     (coe
                        du_offsetLoc_88 (coe v3)
-                       (coe addInt (coe (1 :: Integer)) (coe du_tsize_3034 (coe v6))))
+                       (coe addInt (coe (1 :: Integer)) (coe du_tsize_3036 (coe v6))))
                     (coe
-                       d_writeTyped_3100 (coe v0) (coe v6) (coe v7)
+                       d_writeTyped_3102 (coe v0) (coe v6) (coe v7)
                        (coe du_sucLoc_78 (coe v3))
                        (coe
                           d_writeLoc_708 (coe v0) (coe v4) (coe v3)
@@ -3699,35 +3702,35 @@ d_writeTyped_3100 v0 v1 v2 v3 v4
                 (coe MAlonzo.Code.Once.Type.C_fits'45'float_28) (coe v2))
       _ -> coe v4
 -- Once.CCC.Machine.SMCore.AbstractExec.PlainWord
-d_PlainWord_3154 a0 a1 = ()
-data T_PlainWord_3154 = C_pw'45'lit_3162 | C_pw'45'tag_3166
+d_PlainWord_3156 a0 a1 = ()
+data T_PlainWord_3156 = C_pw'45'lit_3164 | C_pw'45'tag_3168
 -- Once.CCC.Machine.SMCore.AbstractExec.zeros-keeps
-d_zeros'45'keeps_3182 ::
+d_zeros'45'keeps_3184 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   (T_LocState_254 -> ()) ->
   (T_LocState_254 ->
    MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
-   T_StoredValue_62 -> T_PlainWord_3154 -> AgdaAny -> AgdaAny) ->
+   T_StoredValue_62 -> T_PlainWord_3156 -> AgdaAny -> AgdaAny) ->
   Integer ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   T_LocState_254 -> AgdaAny -> AgdaAny
-d_zeros'45'keeps_3182 v0 ~v1 v2 v3 v4 v5 v6
-  = du_zeros'45'keeps_3182 v0 v2 v3 v4 v5 v6
-du_zeros'45'keeps_3182 ::
+d_zeros'45'keeps_3184 v0 ~v1 v2 v3 v4 v5 v6
+  = du_zeros'45'keeps_3184 v0 v2 v3 v4 v5 v6
+du_zeros'45'keeps_3184 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   (T_LocState_254 ->
    MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
-   T_StoredValue_62 -> T_PlainWord_3154 -> AgdaAny -> AgdaAny) ->
+   T_StoredValue_62 -> T_PlainWord_3156 -> AgdaAny -> AgdaAny) ->
   Integer ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   T_LocState_254 -> AgdaAny -> AgdaAny
-du_zeros'45'keeps_3182 v0 v1 v2 v3 v4 v5
+du_zeros'45'keeps_3184 v0 v1 v2 v3 v4 v5
   = case coe v2 of
       0 -> coe v5
       _ -> let v6 = subInt (coe v2) (coe (1 :: Integer)) in
            coe
              (coe
-                du_zeros'45'keeps_3182 (coe v0) (coe v1) (coe v6)
+                du_zeros'45'keeps_3184 (coe v0) (coe v1) (coe v6)
                 (coe du_sucLoc_78 (coe v3))
                 (coe
                    d_writeLoc_708 (coe v0) (coe v4) (coe v3)
@@ -3740,30 +3743,30 @@ du_zeros'45'keeps_3182 v0 v1 v2 v3 v4 v5
                    (coe
                       C_SV'45'Lit_72 (coe MAlonzo.Code.Once.Spec.Type.C_Int_32)
                       (coe MAlonzo.Code.Once.Type.C_fits'45'int_26) (coe (0 :: Integer)))
-                   (coe C_pw'45'lit_3162) v5))
+                   (coe C_pw'45'lit_3164) v5))
 -- Once.CCC.Machine.SMCore.AbstractExec.writeTyped-keeps
-d_writeTyped'45'keeps_3222 ::
+d_writeTyped'45'keeps_3224 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   (T_LocState_254 -> ()) ->
   (T_LocState_254 ->
    MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
-   T_StoredValue_62 -> T_PlainWord_3154 -> AgdaAny -> AgdaAny) ->
+   T_StoredValue_62 -> T_PlainWord_3156 -> AgdaAny -> AgdaAny) ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   AgdaAny ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   T_LocState_254 -> AgdaAny -> AgdaAny
-d_writeTyped'45'keeps_3222 v0 ~v1 v2 v3 v4 v5 v6 v7
-  = du_writeTyped'45'keeps_3222 v0 v2 v3 v4 v5 v6 v7
-du_writeTyped'45'keeps_3222 ::
+d_writeTyped'45'keeps_3224 v0 ~v1 v2 v3 v4 v5 v6 v7
+  = du_writeTyped'45'keeps_3224 v0 v2 v3 v4 v5 v6 v7
+du_writeTyped'45'keeps_3224 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   (T_LocState_254 ->
    MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
-   T_StoredValue_62 -> T_PlainWord_3154 -> AgdaAny -> AgdaAny) ->
+   T_StoredValue_62 -> T_PlainWord_3156 -> AgdaAny -> AgdaAny) ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   AgdaAny ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   T_LocState_254 -> AgdaAny -> AgdaAny
-du_writeTyped'45'keeps_3222 v0 v1 v2 v3 v4 v5 v6
+du_writeTyped'45'keeps_3224 v0 v1 v2 v3 v4 v5 v6
   = case coe v2 of
       MAlonzo.Code.Once.Spec.Type.C_var_16 v7 -> coe v6
       MAlonzo.Code.Once.Spec.Type.C_Unit_18 -> coe v6
@@ -3772,68 +3775,68 @@ du_writeTyped'45'keeps_3222 v0 v1 v2 v3 v4 v5 v6
         -> case coe v3 of
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v9 v10
                -> coe
-                    du_writeTyped'45'keeps_3222 (coe v0) (coe v1) (coe v8) (coe v10)
-                    (coe du_offsetLoc_88 (coe v4) (coe du_tsize_3034 (coe v7)))
+                    du_writeTyped'45'keeps_3224 (coe v0) (coe v1) (coe v8) (coe v10)
+                    (coe du_offsetLoc_88 (coe v4) (coe du_tsize_3036 (coe v7)))
                     (coe
-                       d_writeTyped_3100 (coe v0) (coe v7) (coe v9) (coe v4) (coe v5))
+                       d_writeTyped_3102 (coe v0) (coe v7) (coe v9) (coe v4) (coe v5))
                     (coe
-                       du_writeTyped'45'keeps_3222 (coe v0) (coe v1) (coe v7) (coe v9)
+                       du_writeTyped'45'keeps_3224 (coe v0) (coe v1) (coe v7) (coe v9)
                        (coe v4) (coe v5) (coe v6))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Spec.Type.C__'43'__24 v7 v8
         -> case coe v3 of
              MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v9
                -> coe
-                    du_zeros'45'keeps_3182 (coe v0) (coe v1)
+                    du_zeros'45'keeps_3184 (coe v0) (coe v1)
                     (coe
                        MAlonzo.Code.Agda.Builtin.Nat.d__'45'__22
                        (MAlonzo.Code.Data.Nat.Base.d__'8852'__208
-                          (coe du_tsize_3034 (coe v7)) (coe du_tsize_3034 (coe v8)))
-                       (coe du_tsize_3034 (coe v7)))
+                          (coe du_tsize_3036 (coe v7)) (coe du_tsize_3036 (coe v8)))
+                       (coe du_tsize_3036 (coe v7)))
                     (coe
                        du_offsetLoc_88 (coe v4)
-                       (coe addInt (coe (1 :: Integer)) (coe du_tsize_3034 (coe v7))))
+                       (coe addInt (coe (1 :: Integer)) (coe du_tsize_3036 (coe v7))))
                     (coe
-                       d_writeTyped_3100 (coe v0) (coe v7) (coe v9)
+                       d_writeTyped_3102 (coe v0) (coe v7) (coe v9)
                        (coe du_sucLoc_78 (coe v4))
                        (coe
                           d_writeLoc_708 (coe v0) (coe v5) (coe v4)
                           (coe C_SV'45'Tag_68 (coe (0 :: Integer)))))
                     (coe
-                       du_writeTyped'45'keeps_3222 (coe v0) (coe v1) (coe v7) (coe v9)
+                       du_writeTyped'45'keeps_3224 (coe v0) (coe v1) (coe v7) (coe v9)
                        (coe du_sucLoc_78 (coe v4))
                        (coe
                           d_writeLoc_708 (coe v0) (coe v5) (coe v4)
                           (coe C_SV'45'Tag_68 (coe (0 :: Integer))))
                        (coe
                           v1 v5 v4 (coe C_SV'45'Tag_68 (coe (0 :: Integer)))
-                          (coe C_pw'45'tag_3166) v6))
+                          (coe C_pw'45'tag_3168) v6))
              MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v9
                -> coe
-                    du_zeros'45'keeps_3182 (coe v0) (coe v1)
+                    du_zeros'45'keeps_3184 (coe v0) (coe v1)
                     (coe
                        MAlonzo.Code.Agda.Builtin.Nat.d__'45'__22
                        (MAlonzo.Code.Data.Nat.Base.d__'8852'__208
-                          (coe du_tsize_3034 (coe v7)) (coe du_tsize_3034 (coe v8)))
-                       (coe du_tsize_3034 (coe v8)))
+                          (coe du_tsize_3036 (coe v7)) (coe du_tsize_3036 (coe v8)))
+                       (coe du_tsize_3036 (coe v8)))
                     (coe
                        du_offsetLoc_88 (coe v4)
-                       (coe addInt (coe (1 :: Integer)) (coe du_tsize_3034 (coe v8))))
+                       (coe addInt (coe (1 :: Integer)) (coe du_tsize_3036 (coe v8))))
                     (coe
-                       d_writeTyped_3100 (coe v0) (coe v8) (coe v9)
+                       d_writeTyped_3102 (coe v0) (coe v8) (coe v9)
                        (coe du_sucLoc_78 (coe v4))
                        (coe
                           d_writeLoc_708 (coe v0) (coe v5) (coe v4)
                           (coe C_SV'45'Tag_68 (coe (1 :: Integer)))))
                     (coe
-                       du_writeTyped'45'keeps_3222 (coe v0) (coe v1) (coe v8) (coe v9)
+                       du_writeTyped'45'keeps_3224 (coe v0) (coe v1) (coe v8) (coe v9)
                        (coe du_sucLoc_78 (coe v4))
                        (coe
                           d_writeLoc_708 (coe v0) (coe v5) (coe v4)
                           (coe C_SV'45'Tag_68 (coe (1 :: Integer))))
                        (coe
                           v1 v5 v4 (coe C_SV'45'Tag_68 (coe (1 :: Integer)))
-                          (coe C_pw'45'tag_3166) v6))
+                          (coe C_pw'45'tag_3168) v6))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 v7 v8 v9
         -> coe v6
@@ -3845,41 +3848,41 @@ du_writeTyped'45'keeps_3222 v0 v1 v2 v3 v4 v5 v6
              (coe
                 C_SV'45'Lit_72 (coe v2)
                 (coe MAlonzo.Code.Once.Type.C_fits'45'int_26) (coe v3))
-             (coe C_pw'45'lit_3162) v6
+             (coe C_pw'45'lit_3164) v6
       MAlonzo.Code.Once.Spec.Type.C_Float_34
         -> coe
              v1 v5 v4
              (coe
                 C_SV'45'Lit_72 (coe v2)
                 (coe MAlonzo.Code.Once.Type.C_fits'45'float_28) (coe v3))
-             (coe C_pw'45'lit_3162) v6
+             (coe C_pw'45'lit_3164) v6
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.SMCore.AbstractExec.structured-pure-sigop-output
-d_structured'45'pure'45'sigop'45'output_3374 ::
+d_structured'45'pure'45'sigop'45'output_3376 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_102 ->
   T_LocState_254 -> T_StoredValue_62
-d_structured'45'pure'45'sigop'45'output_3374 ~v0 ~v1 ~v2 ~v3 v4
-  = du_structured'45'pure'45'sigop'45'output_3374 v4
-du_structured'45'pure'45'sigop'45'output_3374 ::
+d_structured'45'pure'45'sigop'45'output_3376 ~v0 ~v1 ~v2 ~v3 v4
+  = du_structured'45'pure'45'sigop'45'output_3376 v4
+du_structured'45'pure'45'sigop'45'output_3376 ::
   T_LocState_254 -> T_StoredValue_62
-du_structured'45'pure'45'sigop'45'output_3374 v0
+du_structured'45'pure'45'sigop'45'output_3376 v0
   = coe du_readReg_132 (coe d_regs_272 (coe v0)) (coe C_Output_58)
 -- Once.CCC.Machine.SMCore.AbstractExec.decode-at
-d_decode'45'at_3382 ::
+d_decode'45'at_3384 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Base_84 ->
   T_StoredValue_62 -> T_LocState_254 -> Maybe AgdaAny
-d_decode'45'at_3382 ~v0 v1 v2 v3 v4
-  = du_decode'45'at_3382 v1 v2 v3 v4
-du_decode'45'at_3382 ::
+d_decode'45'at_3384 ~v0 v1 v2 v3 v4
+  = du_decode'45'at_3384 v1 v2 v3 v4
+du_decode'45'at_3384 ::
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Base_84 ->
   T_StoredValue_62 -> T_LocState_254 -> Maybe AgdaAny
-du_decode'45'at_3382 v0 v1 v2 v3
+du_decode'45'at_3384 v0 v1 v2 v3
   = let v4 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
     coe
       (case coe v1 of
@@ -3908,7 +3911,7 @@ du_decode'45'at_3382 v0 v1 v2 v3
                 MAlonzo.Code.Once.Spec.Type.C__'42'__22 v9 v10
                   -> case coe v2 of
                        C_SV'45'Ptr_66 v11
-                         -> coe du_readTyped_3046 (coe v0) (coe v11) (coe v3)
+                         -> coe du_readTyped_3048 (coe v0) (coe v11) (coe v3)
                        _ -> coe v4
                 _ -> coe v4
          MAlonzo.Code.Once.Spec.Type.C_b'45''43'_112 v7 v8
@@ -3916,26 +3919,26 @@ du_decode'45'at_3382 v0 v1 v2 v3
                 MAlonzo.Code.Once.Spec.Type.C__'43'__24 v9 v10
                   -> case coe v2 of
                        C_SV'45'Ptr_66 v11
-                         -> coe du_readTyped_3046 (coe v0) (coe v11) (coe v3)
+                         -> coe du_readTyped_3048 (coe v0) (coe v11) (coe v3)
                        _ -> coe v4
                 _ -> coe v4
          _ -> coe v4)
 -- Once.CCC.Machine.SMCore.AbstractExec.events-at-arg
-d_events'45'at'45'arg_3404 ::
+d_events'45'at'45'arg_3406 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_102 ->
   Maybe AgdaAny ->
   [MAlonzo.Code.Once.IR.Semantics.Event.T_SigOpEvent_58]
-d_events'45'at'45'arg_3404 ~v0 v1 ~v2 v3 v4
-  = du_events'45'at'45'arg_3404 v1 v3 v4
-du_events'45'at'45'arg_3404 ::
+d_events'45'at'45'arg_3406 ~v0 v1 ~v2 v3 v4
+  = du_events'45'at'45'arg_3406 v1 v3 v4
+du_events'45'at'45'arg_3406 ::
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_102 ->
   Maybe AgdaAny ->
   [MAlonzo.Code.Once.IR.Semantics.Event.T_SigOpEvent_58]
-du_events'45'at'45'arg_3404 v0 v1 v2
+du_events'45'at'45'arg_3406 v0 v1 v2
   = case coe v2 of
       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v3
         -> coe
@@ -3948,30 +3951,30 @@ du_events'45'at'45'arg_3404 v0 v1 v2
         -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.SMCore.AbstractExec.machine-events
-d_machine'45'events_3418 ::
+d_machine'45'events_3420 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_102 ->
   T_LocState_254 ->
   [MAlonzo.Code.Once.IR.Semantics.Event.T_SigOpEvent_58]
-d_machine'45'events_3418 ~v0 v1 ~v2 v3 v4
-  = du_machine'45'events_3418 v1 v3 v4
-du_machine'45'events_3418 ::
+d_machine'45'events_3420 ~v0 v1 ~v2 v3 v4
+  = du_machine'45'events_3420 v1 v3 v4
+du_machine'45'events_3420 ::
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_102 ->
   T_LocState_254 ->
   [MAlonzo.Code.Once.IR.Semantics.Event.T_SigOpEvent_58]
-du_machine'45'events_3418 v0 v1 v2
+du_machine'45'events_3420 v0 v1 v2
   = coe
-      du_events'45'at'45'arg_3404 (coe v0) (coe v1)
+      du_events'45'at'45'arg_3406 (coe v0) (coe v1)
       (coe
-         du_decode'45'at_3382 (coe v0)
+         du_decode'45'at_3384 (coe v0)
          (coe MAlonzo.Code.Once.SigOp.Info.d_baseA_120 (coe v1))
          (coe du_readReg_132 (coe d_regs_272 (coe v2)) (coe C_Input1_56))
          (coe v2))
 -- Once.CCC.Machine.SMCore.AbstractExec.call-sigop-ans-at
-d_call'45'sigop'45'ans'45'at_3430 ::
+d_call'45'sigop'45'ans'45'at_3432 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
@@ -3980,7 +3983,7 @@ d_call'45'sigop'45'ans'45'at_3430 ::
   MAlonzo.Code.Once.Type.T_FitsInReg_24 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   Maybe AgdaAny -> T_StoredValue_62
-d_call'45'sigop'45'ans'45'at_3430 v0 v1 v2 v3 v4 v5 v6 v7
+d_call'45'sigop'45'ans'45'at_3432 v0 v1 v2 v3 v4 v5 v6 v7
   = case coe v7 of
       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v8
         -> coe
@@ -4000,10 +4003,10 @@ d_call'45'sigop'45'ans'45'at_3430 v0 v1 v2 v3 v4 v5 v6 v7
                       (coe MAlonzo.Code.Once.SigOp.Info.d_baseA_120 (coe v3)) (coe v2))
                    v6 v8))
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
-        -> coe du_unit'45'storedvalue_2906
+        -> coe du_unit'45'storedvalue_2908
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.SMCore.AbstractExec.call-sigop-ans
-d_call'45'sigop'45'ans_3460 ::
+d_call'45'sigop'45'ans_3462 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
@@ -4012,31 +4015,31 @@ d_call'45'sigop'45'ans_3460 ::
   MAlonzo.Code.Once.Type.T_FitsInReg_24 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
   T_StoredValue_62
-d_call'45'sigop'45'ans_3460 v0 v1 v2 v3 v4 v5 v6
+d_call'45'sigop'45'ans_3462 v0 v1 v2 v3 v4 v5 v6
   = case coe v6 of
       MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v7 v8
         -> if coe v7
              then case coe v8 of
                     MAlonzo.Code.Relation.Nullary.Reflects.C_of'696'_22 v9
                       -> coe
-                           d_call'45'sigop'45'ans'45'at_3430 (coe v0) (coe v1) (coe v2)
+                           d_call'45'sigop'45'ans'45'at_3432 (coe v0) (coe v1) (coe v2)
                            (coe v3) (coe v4) (coe v5) (coe v9)
                            (coe
-                              du_decode'45'at_3382 (coe v1)
+                              du_decode'45'at_3384 (coe v1)
                               (coe MAlonzo.Code.Once.SigOp.Info.d_baseA_120 (coe v3))
                               (coe du_readReg_132 (coe d_regs_272 (coe v4)) (coe C_Input1_56))
                               (coe v4))
                     _ -> MAlonzo.RTE.mazUnreachableError
-             else coe seq (coe v8) (coe du_unit'45'storedvalue_2906)
+             else coe seq (coe v8) (coe du_unit'45'storedvalue_2908)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.SMCore.AbstractExec.call-sigop-dec
-d_call'45'sigop'45'dec_3482 ::
+d_call'45'sigop'45'dec_3484 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_102 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20
-d_call'45'sigop'45'dec_3482 v0 v1 v2 v3
+d_call'45'sigop'45'dec_3484 v0 v1 v2 v3
   = coe
       MAlonzo.Code.Once.Contract.d__'8712'K'63'__106
       (MAlonzo.Code.Once.IR.Semantics.Trace.d_callKey_180
@@ -4048,64 +4051,64 @@ d_call'45'sigop'45'dec_3482 v0 v1 v2 v3
          (coe
             MAlonzo.Code.Once.CCC.FrameSemantics.d_fs'45'interp_134 (coe v0)))
 -- Once.CCC.Machine.SMCore.AbstractExec.call-sigop-val
-d_call'45'sigop'45'val_3494 ::
+d_call'45'sigop'45'val_3496 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_102 ->
   T_LocState_254 ->
   Maybe MAlonzo.Code.Once.Type.T_FitsInReg_24 -> T_StoredValue_62
-d_call'45'sigop'45'val_3494 v0 v1 v2 v3 v4 v5
+d_call'45'sigop'45'val_3496 v0 v1 v2 v3 v4 v5
   = case coe v5 of
       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v6
         -> coe
-             d_call'45'sigop'45'ans_3460 (coe v0) (coe v1) (coe v2) (coe v3)
+             d_call'45'sigop'45'ans_3462 (coe v0) (coe v1) (coe v2) (coe v3)
              (coe v4) (coe v6)
              (coe
-                d_call'45'sigop'45'dec_3482 (coe v0) (coe v1) (coe v2) (coe v3))
+                d_call'45'sigop'45'dec_3484 (coe v0) (coe v1) (coe v2) (coe v3))
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
         -> coe du_readReg_132 (coe d_regs_272 (coe v4)) (coe C_Output_58)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.SMCore.AbstractExec.call-sigop-output
-d_call'45'sigop'45'output_3510 ::
+d_call'45'sigop'45'output_3512 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_102 ->
   T_LocState_254 -> T_StoredValue_62
-d_call'45'sigop'45'output_3510 v0 v1 v2 v3 v4
+d_call'45'sigop'45'output_3512 v0 v1 v2 v3 v4
   = coe
-      d_call'45'sigop'45'val_3494 (coe v0) (coe v1) (coe v2) (coe v3)
+      d_call'45'sigop'45'val_3496 (coe v0) (coe v1) (coe v2) (coe v3)
       (coe v4)
       (coe MAlonzo.Code.Once.Type.d_fits'45'in'45'reg'63'_32 (coe v2))
 -- Once.CCC.Machine.SMCore.AbstractExec.pure-sigop-output
-d_pure'45'sigop'45'output_3522 ::
+d_pure'45'sigop'45'output_3524 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_102 ->
   T_LocState_254 -> T_StoredValue_62
-d_pure'45'sigop'45'output_3522 v0 v1 v2 v3 v4
+d_pure'45'sigop'45'output_3524 v0 v1 v2 v3 v4
   = coe
-      d_pure'45'sigop'45'out'45'aux_3552 (coe v0) (coe v1) (coe v2)
+      d_pure'45'sigop'45'out'45'aux_3554 (coe v0) (coe v1) (coe v2)
       (coe v3) (coe v4)
       (coe MAlonzo.Code.Once.Type.d_fits'45'in'45'reg'63'_32 (coe v2))
       (coe
          du_sv'45'as'45'loc_1258
          (coe du_readReg_132 (coe d_regs_272 (coe v4)) (coe C_Input1_56)))
 -- Once.CCC.Machine.SMCore.AbstractExec.pure-sigop-out-val
-d_pure'45'sigop'45'out'45'val_3528 ::
+d_pure'45'sigop'45'out'45'val_3530 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_102 ->
   MAlonzo.Code.Once.Type.T_FitsInReg_24 ->
   Maybe AgdaAny -> T_StoredValue_62
-d_pure'45'sigop'45'out'45'val_3528 v0 v1 v2 v3 v4 v5
+d_pure'45'sigop'45'out'45'val_3530 v0 v1 v2 v3 v4 v5
   = case coe v5 of
       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v6
         -> coe
-             du_res'45'sv_3532 (coe v2) (coe v4)
+             du_res'45'sv_3534 (coe v2) (coe v4)
              (coe
                 MAlonzo.Code.Once.SigOp.Info.d_semM_206 v1 v2
                 (MAlonzo.Code.Once.CCC.FrameSemantics.d_fs'45'ffi_182 (coe v0)) v3
@@ -4113,28 +4116,28 @@ d_pure'45'sigop'45'out'45'val_3528 v0 v1 v2 v3 v4 v5
                    (coe v0))
                 v6)
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
-        -> coe du_unit'45'storedvalue_2906
+        -> coe du_unit'45'storedvalue_2908
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.SMCore.AbstractExec.res-sv
-d_res'45'sv_3532 ::
+d_res'45'sv_3534 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Type.T_FitsInReg_24 ->
   MAlonzo.Code.Once.Res.T_Res_6 -> T_StoredValue_62
-d_res'45'sv_3532 ~v0 v1 v2 v3 = du_res'45'sv_3532 v1 v2 v3
-du_res'45'sv_3532 ::
+d_res'45'sv_3534 ~v0 v1 v2 v3 = du_res'45'sv_3534 v1 v2 v3
+du_res'45'sv_3534 ::
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Type.T_FitsInReg_24 ->
   MAlonzo.Code.Once.Res.T_Res_6 -> T_StoredValue_62
-du_res'45'sv_3532 v0 v1 v2
+du_res'45'sv_3534 v0 v1 v2
   = case coe v2 of
       MAlonzo.Code.Once.Res.C_stopped_10
-        -> coe du_unit'45'storedvalue_2906
+        -> coe du_unit'45'storedvalue_2908
       MAlonzo.Code.Once.Res.C_returns_12 v3
         -> coe C_SV'45'Lit_72 (coe v0) (coe v1) (coe v3)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.SMCore.AbstractExec.pure-sigop-out-aux
-d_pure'45'sigop'45'out'45'aux_3552 ::
+d_pure'45'sigop'45'out'45'aux_3554 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
@@ -4143,51 +4146,51 @@ d_pure'45'sigop'45'out'45'aux_3552 ::
   Maybe MAlonzo.Code.Once.Type.T_FitsInReg_24 ->
   Maybe MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   T_StoredValue_62
-d_pure'45'sigop'45'out'45'aux_3552 v0 v1 v2 v3 v4 v5 v6
+d_pure'45'sigop'45'out'45'aux_3554 v0 v1 v2 v3 v4 v5 v6
   = case coe v5 of
       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v7
         -> case coe v6 of
              MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v8
                -> coe
-                    d_pure'45'sigop'45'out'45'val_3528 (coe v0) (coe v1) (coe v2)
+                    d_pure'45'sigop'45'out'45'val_3530 (coe v0) (coe v1) (coe v2)
                     (coe v3) (coe v7)
-                    (coe du_readTyped_3046 (coe v1) (coe v8) (coe v4))
+                    (coe du_readTyped_3048 (coe v1) (coe v8) (coe v4))
              MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                -> coe
-                    d_pure'45'sigop'45'out'45'val_3528 (coe v0) (coe v1) (coe v2)
+                    d_pure'45'sigop'45'out'45'val_3530 (coe v0) (coe v1) (coe v2)
                     (coe v3) (coe v7)
                     (coe
-                       du_readReg'45'typed_2980 (coe v1)
+                       du_readReg'45'typed_2982 (coe v1)
                        (coe du_readReg_132 (coe d_regs_272 (coe v4)) (coe C_Input1_56)))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
-        -> coe du_structured'45'pure'45'sigop'45'output_3374 (coe v4)
+        -> coe du_structured'45'pure'45'sigop'45'output_3376 (coe v4)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.SMCore.AbstractExec.exec-sigop-output-of
-d_exec'45'sigop'45'output'45'of_3588 ::
+d_exec'45'sigop'45'output'45'of_3590 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_EffectShape_58 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_102 ->
   T_LocState_254 -> T_StoredValue_62
-d_exec'45'sigop'45'output'45'of_3588 v0 v1 v2 v3 v4 v5
+d_exec'45'sigop'45'output'45'of_3590 v0 v1 v2 v3 v4 v5
   = case coe v3 of
       MAlonzo.Code.Once.SigOp.Info.C_Pure_62
         -> coe
-             d_pure'45'sigop'45'output_3522 (coe v0) (coe v1) (coe v2) (coe v4)
+             d_pure'45'sigop'45'output_3524 (coe v0) (coe v1) (coe v2) (coe v4)
              (coe v5)
       MAlonzo.Code.Once.SigOp.Info.C_Emits_64
-        -> coe du_unit'45'storedvalue_2906
+        -> coe du_unit'45'storedvalue_2908
       MAlonzo.Code.Once.SigOp.Info.C_Halts_66
-        -> coe du_unit'45'storedvalue_2906
+        -> coe du_unit'45'storedvalue_2908
       MAlonzo.Code.Once.SigOp.Info.C_Answers_68
         -> coe
-             d_call'45'sigop'45'output_3510 (coe v0) (coe v1) (coe v2) (coe v4)
+             d_call'45'sigop'45'output_3512 (coe v0) (coe v1) (coe v2) (coe v4)
              (coe v5)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.SMCore.AbstractExec.sigop-events-of
-d_sigop'45'events'45'of_3602 ::
+d_sigop'45'events'45'of_3604 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
@@ -4195,64 +4198,64 @@ d_sigop'45'events'45'of_3602 ::
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_102 ->
   T_LocState_254 ->
   [MAlonzo.Code.Once.IR.Semantics.Event.T_SigOpEvent_58]
-d_sigop'45'events'45'of_3602 ~v0 v1 ~v2 v3 v4 v5
-  = du_sigop'45'events'45'of_3602 v1 v3 v4 v5
-du_sigop'45'events'45'of_3602 ::
+d_sigop'45'events'45'of_3604 ~v0 v1 ~v2 v3 v4 v5
+  = du_sigop'45'events'45'of_3604 v1 v3 v4 v5
+du_sigop'45'events'45'of_3604 ::
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_EffectShape_58 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_102 ->
   T_LocState_254 ->
   [MAlonzo.Code.Once.IR.Semantics.Event.T_SigOpEvent_58]
-du_sigop'45'events'45'of_3602 v0 v1 v2 v3
+du_sigop'45'events'45'of_3604 v0 v1 v2 v3
   = case coe v1 of
       MAlonzo.Code.Once.SigOp.Info.C_Pure_62
         -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
       MAlonzo.Code.Once.SigOp.Info.C_Emits_64
-        -> coe du_machine'45'events_3418 (coe v0) (coe v2) (coe v3)
+        -> coe du_machine'45'events_3420 (coe v0) (coe v2) (coe v3)
       MAlonzo.Code.Once.SigOp.Info.C_Halts_66
-        -> coe du_machine'45'events_3418 (coe v0) (coe v2) (coe v3)
+        -> coe du_machine'45'events_3420 (coe v0) (coe v2) (coe v3)
       MAlonzo.Code.Once.SigOp.Info.C_Answers_68
-        -> coe du_machine'45'events_3418 (coe v0) (coe v2) (coe v3)
+        -> coe du_machine'45'events_3420 (coe v0) (coe v2) (coe v3)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.SMCore.AbstractExec.sigop-events
-d_sigop'45'events_3620 ::
+d_sigop'45'events_3622 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_102 ->
   T_LocState_254 ->
   [MAlonzo.Code.Once.IR.Semantics.Event.T_SigOpEvent_58]
-d_sigop'45'events_3620 ~v0 v1 ~v2 v3 v4
-  = du_sigop'45'events_3620 v1 v3 v4
-du_sigop'45'events_3620 ::
+d_sigop'45'events_3622 ~v0 v1 ~v2 v3 v4
+  = du_sigop'45'events_3622 v1 v3 v4
+du_sigop'45'events_3622 ::
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_102 ->
   T_LocState_254 ->
   [MAlonzo.Code.Once.IR.Semantics.Event.T_SigOpEvent_58]
-du_sigop'45'events_3620 v0 v1 v2
+du_sigop'45'events_3622 v0 v1 v2
   = coe
-      du_sigop'45'events'45'of_3602 (coe v0)
+      du_sigop'45'events'45'of_3604 (coe v0)
       (coe MAlonzo.Code.Once.SigOp.Info.du_effect_216 (coe v1)) (coe v1)
       (coe v2)
 -- Once.CCC.Machine.SMCore.AbstractExec.exec-sigop-output
-d_exec'45'sigop'45'output_3630 ::
+d_exec'45'sigop'45'output_3632 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_102 ->
   T_LocState_254 -> T_StoredValue_62
-d_exec'45'sigop'45'output_3630 v0 v1 v2 v3 v4
+d_exec'45'sigop'45'output_3632 v0 v1 v2 v3 v4
   = coe
-      d_exec'45'sigop'45'output'45'of_3588 (coe v0) (coe v1) (coe v2)
+      d_exec'45'sigop'45'output'45'of_3590 (coe v0) (coe v1) (coe v2)
       (coe MAlonzo.Code.Once.SigOp.Info.du_effect_216 (coe v3)) (coe v3)
       (coe v4)
 -- Once.CCC.Machine.SMCore.AbstractExec.unread?
-d_unread'63'_3638 ::
+d_unread'63'_3640 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   () -> Maybe AgdaAny -> Bool
-d_unread'63'_3638 ~v0 ~v1 v2 = du_unread'63'_3638 v2
-du_unread'63'_3638 :: Maybe AgdaAny -> Bool
-du_unread'63'_3638 v0
+d_unread'63'_3640 ~v0 ~v1 v2 = du_unread'63'_3640 v2
+du_unread'63'_3640 :: Maybe AgdaAny -> Bool
+du_unread'63'_3640 v0
   = case coe v0 of
       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v1
         -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
@@ -4260,106 +4263,106 @@ du_unread'63'_3638 v0
         -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.SMCore.AbstractExec.exec-sigop-faults-of
-d_exec'45'sigop'45'faults'45'of_3644 ::
+d_exec'45'sigop'45'faults'45'of_3646 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_EffectShape_58 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_102 ->
   T_LocState_254 -> Bool
-d_exec'45'sigop'45'faults'45'of_3644 ~v0 v1 ~v2 v3 v4 v5
-  = du_exec'45'sigop'45'faults'45'of_3644 v1 v3 v4 v5
-du_exec'45'sigop'45'faults'45'of_3644 ::
+d_exec'45'sigop'45'faults'45'of_3646 ~v0 v1 ~v2 v3 v4 v5
+  = du_exec'45'sigop'45'faults'45'of_3646 v1 v3 v4 v5
+du_exec'45'sigop'45'faults'45'of_3646 ::
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_EffectShape_58 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_102 ->
   T_LocState_254 -> Bool
-du_exec'45'sigop'45'faults'45'of_3644 v0 v1 v2 v3
+du_exec'45'sigop'45'faults'45'of_3646 v0 v1 v2 v3
   = coe
       seq (coe v1)
       (coe
-         du_unread'63'_3638
+         du_unread'63'_3640
          (coe
-            du_decode'45'at_3382 (coe v0)
+            du_decode'45'at_3384 (coe v0)
             (coe MAlonzo.Code.Once.SigOp.Info.d_baseA_120 (coe v2))
             (coe du_readReg_132 (coe d_regs_272 (coe v3)) (coe C_Input1_56))
             (coe v3)))
 -- Once.CCC.Machine.SMCore.AbstractExec.exec-sigop-faults
-d_exec'45'sigop'45'faults_3666 ::
+d_exec'45'sigop'45'faults_3668 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_102 ->
   T_LocState_254 -> Bool
-d_exec'45'sigop'45'faults_3666 ~v0 v1 ~v2 v3 v4
-  = du_exec'45'sigop'45'faults_3666 v1 v3 v4
-du_exec'45'sigop'45'faults_3666 ::
+d_exec'45'sigop'45'faults_3668 ~v0 v1 ~v2 v3 v4
+  = du_exec'45'sigop'45'faults_3668 v1 v3 v4
+du_exec'45'sigop'45'faults_3668 ::
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_102 ->
   T_LocState_254 -> Bool
-du_exec'45'sigop'45'faults_3666 v0 v1 v2
+du_exec'45'sigop'45'faults_3668 v0 v1 v2
   = coe
-      du_exec'45'sigop'45'faults'45'of_3644 (coe v0)
+      du_exec'45'sigop'45'faults'45'of_3646 (coe v0)
       (coe MAlonzo.Code.Once.SigOp.Info.du_effect_216 (coe v1)) (coe v1)
       (coe v2)
 -- Once.CCC.Machine.SMCore.AbstractExec.exec-sigop-halts-of
-d_exec'45'sigop'45'halts'45'of_3676 ::
+d_exec'45'sigop'45'halts'45'of_3678 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_EffectShape_58 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_102 ->
   T_LocState_254 -> Bool
-d_exec'45'sigop'45'halts'45'of_3676 ~v0 v1 ~v2 v3 v4 v5
-  = du_exec'45'sigop'45'halts'45'of_3676 v1 v3 v4 v5
-du_exec'45'sigop'45'halts'45'of_3676 ::
+d_exec'45'sigop'45'halts'45'of_3678 ~v0 v1 ~v2 v3 v4 v5
+  = du_exec'45'sigop'45'halts'45'of_3678 v1 v3 v4 v5
+du_exec'45'sigop'45'halts'45'of_3678 ::
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_EffectShape_58 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_102 ->
   T_LocState_254 -> Bool
-du_exec'45'sigop'45'halts'45'of_3676 v0 v1 v2 v3
+du_exec'45'sigop'45'halts'45'of_3678 v0 v1 v2 v3
   = case coe v1 of
       MAlonzo.Code.Once.SigOp.Info.C_Pure_62
         -> coe
-             du_exec'45'sigop'45'faults'45'of_3644 (coe v0) (coe v1) (coe v2)
+             du_exec'45'sigop'45'faults'45'of_3646 (coe v0) (coe v1) (coe v2)
              (coe v3)
       MAlonzo.Code.Once.SigOp.Info.C_Emits_64
         -> coe
-             du_exec'45'sigop'45'faults'45'of_3644 (coe v0)
+             du_exec'45'sigop'45'faults'45'of_3646 (coe v0)
              (coe MAlonzo.Code.Once.SigOp.Info.C_Emits_64) (coe v2) (coe v3)
       MAlonzo.Code.Once.SigOp.Info.C_Halts_66
         -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
       MAlonzo.Code.Once.SigOp.Info.C_Answers_68
         -> coe
-             du_exec'45'sigop'45'faults'45'of_3644 (coe v0) (coe v1) (coe v2)
+             du_exec'45'sigop'45'faults'45'of_3646 (coe v0) (coe v1) (coe v2)
              (coe v3)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.SMCore.AbstractExec.exec-sigop-halts
-d_exec'45'sigop'45'halts_3696 ::
+d_exec'45'sigop'45'halts_3698 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_102 ->
   T_LocState_254 -> Bool
-d_exec'45'sigop'45'halts_3696 ~v0 v1 ~v2 v3 v4
-  = du_exec'45'sigop'45'halts_3696 v1 v3 v4
-du_exec'45'sigop'45'halts_3696 ::
+d_exec'45'sigop'45'halts_3698 ~v0 v1 ~v2 v3 v4
+  = du_exec'45'sigop'45'halts_3698 v1 v3 v4
+du_exec'45'sigop'45'halts_3698 ::
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_102 ->
   T_LocState_254 -> Bool
-du_exec'45'sigop'45'halts_3696 v0 v1 v2
+du_exec'45'sigop'45'halts_3698 v0 v1 v2
   = coe
-      du_exec'45'sigop'45'halts'45'of_3676 (coe v0)
+      du_exec'45'sigop'45'halts'45'of_3678 (coe v0)
       (coe MAlonzo.Code.Once.SigOp.Info.du_effect_216 (coe v1)) (coe v1)
       (coe v2)
 -- Once.CCC.Machine.SMCore.AbstractExec.res-just
-d_res'45'just_3704 ::
+d_res'45'just_3706 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   () -> MAlonzo.Code.Once.Res.T_Res_6 -> Maybe AgdaAny
-d_res'45'just_3704 ~v0 ~v1 v2 = du_res'45'just_3704 v2
-du_res'45'just_3704 ::
+d_res'45'just_3706 ~v0 ~v1 v2 = du_res'45'just_3706 v2
+du_res'45'just_3706 ::
   MAlonzo.Code.Once.Res.T_Res_6 -> Maybe AgdaAny
-du_res'45'just_3704 v0
+du_res'45'just_3706 v0
   = case coe v0 of
       MAlonzo.Code.Once.Res.C_stopped_10
         -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
@@ -4367,7 +4370,7 @@ du_res'45'just_3704 v0
         -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe v1)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.SMCore.AbstractExec.call-ans-at
-d_call'45'ans'45'at_3714 ::
+d_call'45'ans'45'at_3716 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
@@ -4375,7 +4378,7 @@ d_call'45'ans'45'at_3714 ::
   T_LocState_254 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
   Maybe AgdaAny -> Maybe AgdaAny
-d_call'45'ans'45'at_3714 v0 v1 v2 v3 v4 v5 v6
+d_call'45'ans'45'at_3716 v0 v1 v2 v3 v4 v5 v6
   = case coe v5 of
       MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v7 v8
         -> if coe v7
@@ -4410,17 +4413,17 @@ d_call'45'ans'45'at_3714 v0 v1 v2 v3 v4 v5 v6
                     seq (coe v8) (coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.SMCore.AbstractExec.pure-ans-at
-d_pure'45'ans'45'at_3742 ::
+d_pure'45'ans'45'at_3744 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_102 ->
   Maybe AgdaAny -> Maybe AgdaAny
-d_pure'45'ans'45'at_3742 v0 v1 v2 v3 v4
+d_pure'45'ans'45'at_3744 v0 v1 v2 v3 v4
   = case coe v4 of
       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v5
         -> coe
-             du_res'45'just_3704
+             du_res'45'just_3706
              (coe
                 MAlonzo.Code.Once.SigOp.Info.d_semM_206 v1 v2
                 (MAlonzo.Code.Once.CCC.FrameSemantics.d_fs'45'ffi_182 (coe v0)) v3
@@ -4430,20 +4433,20 @@ d_pure'45'ans'45'at_3742 v0 v1 v2 v3 v4
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v4
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.SMCore.AbstractExec.sigop-answer-of
-d_sigop'45'answer'45'of_3754 ::
+d_sigop'45'answer'45'of_3756 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_EffectShape_58 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_102 ->
   T_LocState_254 -> Maybe AgdaAny
-d_sigop'45'answer'45'of_3754 v0 v1 v2 v3 v4 v5
+d_sigop'45'answer'45'of_3756 v0 v1 v2 v3 v4 v5
   = case coe v3 of
       MAlonzo.Code.Once.SigOp.Info.C_Pure_62
         -> coe
-             d_pure'45'ans'45'at_3742 (coe v0) (coe v1) (coe v2) (coe v4)
+             d_pure'45'ans'45'at_3744 (coe v0) (coe v1) (coe v2) (coe v4)
              (coe
-                du_decode'45'at_3382 (coe v1)
+                du_decode'45'at_3384 (coe v1)
                 (coe MAlonzo.Code.Once.SigOp.Info.d_baseA_120 (coe v4))
                 (coe du_readReg_132 (coe d_regs_272 (coe v5)) (coe C_Input1_56))
                 (coe v5))
@@ -4453,93 +4456,93 @@ d_sigop'45'answer'45'of_3754 v0 v1 v2 v3 v4 v5
         -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
       MAlonzo.Code.Once.SigOp.Info.C_Answers_68
         -> coe
-             d_call'45'ans'45'at_3714 (coe v0) (coe v1) (coe v2) (coe v4)
+             d_call'45'ans'45'at_3716 (coe v0) (coe v1) (coe v2) (coe v4)
              (coe v5)
              (coe
-                d_call'45'sigop'45'dec_3482 (coe v0) (coe v1) (coe v2) (coe v4))
+                d_call'45'sigop'45'dec_3484 (coe v0) (coe v1) (coe v2) (coe v4))
              (coe
-                du_decode'45'at_3382 (coe v1)
+                du_decode'45'at_3384 (coe v1)
                 (coe MAlonzo.Code.Once.SigOp.Info.d_baseA_120 (coe v4))
                 (coe du_readReg_132 (coe d_regs_272 (coe v5)) (coe C_Input1_56))
                 (coe v5))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.SMCore.AbstractExec.sigop-answer
-d_sigop'45'answer_3768 ::
+d_sigop'45'answer_3770 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_102 ->
   T_LocState_254 -> Maybe AgdaAny
-d_sigop'45'answer_3768 v0 v1 v2 v3 v4
+d_sigop'45'answer_3770 v0 v1 v2 v3 v4
   = coe
-      d_sigop'45'answer'45'of_3754 (coe v0) (coe v1) (coe v2)
+      d_sigop'45'answer'45'of_3756 (coe v0) (coe v1) (coe v2)
       (coe MAlonzo.Code.Once.SigOp.Info.du_effect_216 (coe v3)) (coe v3)
       (coe v4)
 -- Once.CCC.Machine.SMCore.AbstractExec.sigop-store-at
-d_sigop'45'store'45'at_3776 ::
+d_sigop'45'store'45'at_3778 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   Bool ->
   Maybe MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   Maybe AgdaAny -> T_LocState_254 -> T_LocState_254
-d_sigop'45'store'45'at_3776 v0 v1 v2 v3 v4 v5
+d_sigop'45'store'45'at_3778 v0 v1 v2 v3 v4 v5
   = if coe v2
       then case coe v3 of
              MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v6
                -> case coe v4 of
                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v7
                       -> coe
-                           d_writeTyped_3100 (coe v0) (coe v1) (coe v7) (coe v6) (coe v5)
+                           d_writeTyped_3102 (coe v0) (coe v1) (coe v7) (coe v6) (coe v5)
                     MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v5
                     _ -> MAlonzo.RTE.mazUnreachableError
              MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v5
              _ -> MAlonzo.RTE.mazUnreachableError
       else coe v5
 -- Once.CCC.Machine.SMCore.AbstractExec.arg-words
-d_arg'45'words_3796 ::
+d_arg'45'words_3798 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Base_84 -> Integer
-d_arg'45'words_3796 ~v0 v1 v2 = du_arg'45'words_3796 v1 v2
-du_arg'45'words_3796 ::
+d_arg'45'words_3798 ~v0 v1 v2 = du_arg'45'words_3798 v1 v2
+du_arg'45'words_3798 ::
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Base_84 -> Integer
-du_arg'45'words_3796 v0 v1
+du_arg'45'words_3798 v0 v1
   = let v2 = 0 :: Integer in
     coe
       (case coe v1 of
          MAlonzo.Code.Once.Spec.Type.C_b'45''42'_106 v5 v6
            -> case coe v0 of
                 MAlonzo.Code.Once.Spec.Type.C__'42'__22 v7 v8
-                  -> coe du_tsize_3034 (coe v0)
+                  -> coe du_tsize_3036 (coe v0)
                 _ -> coe v2
          MAlonzo.Code.Once.Spec.Type.C_b'45''43'_112 v5 v6
            -> case coe v0 of
                 MAlonzo.Code.Once.Spec.Type.C__'43'__24 v7 v8
-                  -> coe du_tsize_3034 (coe v0)
+                  -> coe du_tsize_3036 (coe v0)
                 _ -> coe v2
          _ -> coe v2)
 -- Once.CCC.Machine.SMCore.AbstractExec.ans-words
-d_ans'45'words_3802 ::
+d_ans'45'words_3804 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 -> Integer
-d_ans'45'words_3802 ~v0 v1 = du_ans'45'words_3802 v1
-du_ans'45'words_3802 ::
+d_ans'45'words_3804 ~v0 v1 = du_ans'45'words_3804 v1
+du_ans'45'words_3804 ::
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 -> Integer
-du_ans'45'words_3802 v0
+du_ans'45'words_3804 v0
   = coe
       MAlonzo.Code.Data.Bool.Base.du_if_then_else__44
-      (coe d_in'45'memory'63'_2682 (coe v0)) (coe du_tsize_3034 (coe v0))
+      (coe d_in'45'memory'63'_2684 (coe v0)) (coe du_tsize_3036 (coe v0))
       (coe (0 :: Integer))
 -- Once.CCC.Machine.SMCore.AbstractExec.sigop-gate
-d_sigop'45'gate_3810 ::
+d_sigop'45'gate_3812 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   T_AllocState_348 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_102 ->
   T_LocState_254 -> Bool
-d_sigop'45'gate_3810 v0 v1 v2 v3 v4 v5
+d_sigop'45'gate_3812 v0 v1 v2 v3 v4 v5
   = coe
       MAlonzo.Code.Data.Bool.Base.d__'8743'__24
       (coe
@@ -4552,7 +4555,7 @@ d_sigop'45'gate_3810 v0 v1 v2 v3 v4 v5
                (coe d_frame'45'slots_454 (coe v3)))
             (coe d_saved'45'frames_452 (coe v3)))
          (coe
-            du_arg'45'words_3796 (coe v1)
+            du_arg'45'words_3798 (coe v1)
             (coe MAlonzo.Code.Once.SigOp.Info.d_baseA_120 (coe v4)))
          (coe du_readReg_132 (coe d_regs_272 (coe v5)) (coe C_Input1_56)))
       (coe
@@ -4564,65 +4567,65 @@ d_sigop'45'gate_3810 v0 v1 v2 v3 v4 v5
                (coe d_current'45'frame_450 (coe v3))
                (coe d_frame'45'slots_454 (coe v3)))
             (coe d_saved'45'frames_452 (coe v3)))
-         (coe du_ans'45'words_3802 (coe v2))
+         (coe du_ans'45'words_3804 (coe v2))
          (coe du_readReg_132 (coe d_regs_272 (coe v5)) (coe C_Output_58)))
 -- Once.CCC.Machine.SMCore.AbstractExec.sigop-store
-d_sigop'45'store_3826 ::
+d_sigop'45'store_3828 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_102 ->
   T_LocState_254 -> T_LocState_254
-d_sigop'45'store_3826 v0 v1 v2 v3 v4
+d_sigop'45'store_3828 v0 v1 v2 v3 v4
   = coe
-      d_sigop'45'store'45'at_3776 (coe v0) (coe v2)
-      (coe d_in'45'memory'63'_2682 (coe v2))
+      d_sigop'45'store'45'at_3778 (coe v0) (coe v2)
+      (coe d_in'45'memory'63'_2684 (coe v2))
       (coe
          du_sv'45'as'45'loc_1258
          (coe du_readReg_132 (coe d_regs_272 (coe v4)) (coe C_Output_58)))
       (coe
-         d_sigop'45'answer_3768 (coe v0) (coe v1) (coe v2) (coe v3)
+         d_sigop'45'answer_3770 (coe v0) (coe v1) (coe v2) (coe v3)
          (coe v4))
       (coe v4)
 -- Once.CCC.Machine.SMCore.AbstractExec.sigop-store-keeps
-d_sigop'45'store'45'keeps_3850 ::
+d_sigop'45'store'45'keeps_3852 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   (T_LocState_254 -> ()) ->
   (T_LocState_254 ->
    MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
-   T_StoredValue_62 -> T_PlainWord_3154 -> AgdaAny -> AgdaAny) ->
+   T_StoredValue_62 -> T_PlainWord_3156 -> AgdaAny -> AgdaAny) ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_102 ->
   T_LocState_254 -> AgdaAny -> AgdaAny
-d_sigop'45'store'45'keeps_3850 v0 ~v1 v2 v3 v4 v5 v6 v7
-  = du_sigop'45'store'45'keeps_3850 v0 v2 v3 v4 v5 v6 v7
-du_sigop'45'store'45'keeps_3850 ::
+d_sigop'45'store'45'keeps_3852 v0 ~v1 v2 v3 v4 v5 v6 v7
+  = du_sigop'45'store'45'keeps_3852 v0 v2 v3 v4 v5 v6 v7
+du_sigop'45'store'45'keeps_3852 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   (T_LocState_254 ->
    MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
-   T_StoredValue_62 -> T_PlainWord_3154 -> AgdaAny -> AgdaAny) ->
+   T_StoredValue_62 -> T_PlainWord_3156 -> AgdaAny -> AgdaAny) ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_102 ->
   T_LocState_254 -> AgdaAny -> AgdaAny
-du_sigop'45'store'45'keeps_3850 v0 v1 v2 v3 v4 v5 v6
+du_sigop'45'store'45'keeps_3852 v0 v1 v2 v3 v4 v5 v6
   = coe
-      du_go_3874 (coe v0) (coe v1) (coe v3) (coe v5) (coe v6)
-      (coe d_in'45'memory'63'_2682 (coe v3))
+      du_go_3876 (coe v0) (coe v1) (coe v3) (coe v5) (coe v6)
+      (coe d_in'45'memory'63'_2684 (coe v3))
       (coe
          du_sv'45'as'45'loc_1258
          (coe du_readReg_132 (coe d_regs_272 (coe v5)) (coe C_Output_58)))
       (coe
-         d_sigop'45'answer_3768 (coe v0) (coe v2) (coe v3) (coe v4)
+         d_sigop'45'answer_3770 (coe v0) (coe v2) (coe v3) (coe v4)
          (coe v5))
 -- Once.CCC.Machine.SMCore.AbstractExec._.go
-d_go_3874 ::
+d_go_3876 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   (T_LocState_254 -> ()) ->
   (T_LocState_254 ->
    MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
-   T_StoredValue_62 -> T_PlainWord_3154 -> AgdaAny -> AgdaAny) ->
+   T_StoredValue_62 -> T_PlainWord_3156 -> AgdaAny -> AgdaAny) ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_102 ->
@@ -4631,27 +4634,27 @@ d_go_3874 ::
   Bool ->
   Maybe MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   Maybe AgdaAny -> AgdaAny
-d_go_3874 v0 ~v1 v2 ~v3 v4 ~v5 v6 v7 v8 v9 v10
-  = du_go_3874 v0 v2 v4 v6 v7 v8 v9 v10
-du_go_3874 ::
+d_go_3876 v0 ~v1 v2 ~v3 v4 ~v5 v6 v7 v8 v9 v10
+  = du_go_3876 v0 v2 v4 v6 v7 v8 v9 v10
+du_go_3876 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   (T_LocState_254 ->
    MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
-   T_StoredValue_62 -> T_PlainWord_3154 -> AgdaAny -> AgdaAny) ->
+   T_StoredValue_62 -> T_PlainWord_3156 -> AgdaAny -> AgdaAny) ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   T_LocState_254 ->
   AgdaAny ->
   Bool ->
   Maybe MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   Maybe AgdaAny -> AgdaAny
-du_go_3874 v0 v1 v2 v3 v4 v5 v6 v7
+du_go_3876 v0 v1 v2 v3 v4 v5 v6 v7
   = if coe v5
       then case coe v6 of
              MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v8
                -> case coe v7 of
                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v9
                       -> coe
-                           du_writeTyped'45'keeps_3222 (coe v0) (coe v1) (coe v2) (coe v9)
+                           du_writeTyped'45'keeps_3224 (coe v0) (coe v1) (coe v2) (coe v9)
                            (coe v8) (coe v3) (coe v4)
                     MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v4
                     _ -> MAlonzo.RTE.mazUnreachableError
@@ -4659,7 +4662,7 @@ du_go_3874 v0 v1 v2 v3 v4 v5 v6 v7
              _ -> MAlonzo.RTE.mazUnreachableError
       else coe v4
 -- Once.CCC.Machine.SMCore.AbstractExec.sigop-store-id
-d_sigop'45'store'45'id_3890 ::
+d_sigop'45'store'45'id_3892 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
@@ -4667,9 +4670,9 @@ d_sigop'45'store'45'id_3890 ::
   T_LocState_254 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_sigop'45'store'45'id_3890 = erased
+d_sigop'45'store'45'id_3892 = erased
 -- Once.CCC.Machine.SMCore.AbstractExec._.go
-d_go_3906 ::
+d_go_3908 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
@@ -4679,17 +4682,17 @@ d_go_3906 ::
   Bool ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_go_3906 = erased
+d_go_3908 = erased
 -- Once.CCC.Machine.SMCore.AbstractExec.lit-value
-d_lit'45'value_3912 ::
+d_lit'45'value_3914 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Type.T_FitsInReg_24 -> AgdaAny -> AgdaAny
-d_lit'45'value_3912 v0 ~v1 v2 v3 = du_lit'45'value_3912 v0 v2 v3
-du_lit'45'value_3912 ::
+d_lit'45'value_3914 v0 ~v1 v2 v3 = du_lit'45'value_3914 v0 v2 v3
+du_lit'45'value_3914 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.Type.T_FitsInReg_24 -> AgdaAny -> AgdaAny
-du_lit'45'value_3912 v0 v1 v2
+du_lit'45'value_3914 v0 v1 v2
   = case coe v1 of
       MAlonzo.Code.Once.Type.C_fits'45'int_26
         -> coe
@@ -4708,12 +4711,12 @@ du_lit'45'value_3912 v0 v1 v2
              (coe v2)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.SMCore.AbstractExec.heapRefOf
-d_heapRefOf_3918 ::
+d_heapRefOf_3920 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   T_StoredValue_62 -> Maybe Integer
-d_heapRefOf_3918 ~v0 v1 = du_heapRefOf_3918 v1
-du_heapRefOf_3918 :: T_StoredValue_62 -> Maybe Integer
-du_heapRefOf_3918 v0
+d_heapRefOf_3920 ~v0 v1 = du_heapRefOf_3920 v1
+du_heapRefOf_3920 :: T_StoredValue_62 -> Maybe Integer
+du_heapRefOf_3920 v0
   = let v1 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
     coe
       (case coe v0 of
@@ -4729,34 +4732,34 @@ du_heapRefOf_3918 v0
                 _ -> coe v1
          _ -> coe v1)
 -- Once.CCC.Machine.SMCore.AbstractExec.freeAtMem
-d_freeAtMem_3922 ::
+d_freeAtMem_3924 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Maybe Integer ->
   (MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
    Maybe T_StoredValue_62) ->
   MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
   Maybe T_StoredValue_62
-d_freeAtMem_3922 ~v0 v1 v2 = du_freeAtMem_3922 v1 v2
-du_freeAtMem_3922 ::
+d_freeAtMem_3924 ~v0 v1 v2 = du_freeAtMem_3924 v1 v2
+du_freeAtMem_3924 ::
   Maybe Integer ->
   (MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
    Maybe T_StoredValue_62) ->
   MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
   Maybe T_StoredValue_62
-du_freeAtMem_3922 v0 v1
+du_freeAtMem_3924 v0 v1
   = case coe v0 of
       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v2
         -> coe du_clearBlock_682 (coe v1) (coe v2)
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.SMCore.AbstractExec.freeAtMark
-d_freeAtMark_3930 ::
+d_freeAtMark_3932 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Maybe Integer -> (Integer -> Bool) -> Integer -> Bool
-d_freeAtMark_3930 ~v0 v1 v2 v3 = du_freeAtMark_3930 v1 v2 v3
-du_freeAtMark_3930 ::
+d_freeAtMark_3932 ~v0 v1 v2 v3 = du_freeAtMark_3932 v1 v2 v3
+du_freeAtMark_3932 ::
   Maybe Integer -> (Integer -> Bool) -> Integer -> Bool
-du_freeAtMark_3930 v0 v1 v2
+du_freeAtMark_3932 v0 v1 v2
   = case coe v0 of
       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v3
         -> coe
@@ -4765,33 +4768,33 @@ du_freeAtMark_3930 v0 v1 v2
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v1 v2
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.SMCore.AbstractExec.freeMem
-d_freeMem_3942 ::
+d_freeMem_3944 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   T_StoredValue_62 ->
   (MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
    Maybe T_StoredValue_62) ->
   MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
   Maybe T_StoredValue_62
-d_freeMem_3942 ~v0 v1 v2 = du_freeMem_3942 v1 v2
-du_freeMem_3942 ::
+d_freeMem_3944 ~v0 v1 v2 = du_freeMem_3944 v1 v2
+du_freeMem_3944 ::
   T_StoredValue_62 ->
   (MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
    Maybe T_StoredValue_62) ->
   MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
   Maybe T_StoredValue_62
-du_freeMem_3942 v0 v1
-  = coe du_freeAtMem_3922 (coe du_heapRefOf_3918 (coe v0)) (coe v1)
+du_freeMem_3944 v0 v1
+  = coe du_freeAtMem_3924 (coe du_heapRefOf_3920 (coe v0)) (coe v1)
 -- Once.CCC.Machine.SMCore.AbstractExec.freeMark
-d_freeMark_3948 ::
+d_freeMark_3950 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   T_StoredValue_62 -> (Integer -> Bool) -> Integer -> Bool
-d_freeMark_3948 ~v0 v1 v2 = du_freeMark_3948 v1 v2
-du_freeMark_3948 ::
+d_freeMark_3950 ~v0 v1 v2 = du_freeMark_3950 v1 v2
+du_freeMark_3950 ::
   T_StoredValue_62 -> (Integer -> Bool) -> Integer -> Bool
-du_freeMark_3948 v0 v1
-  = coe du_freeAtMark_3930 (coe du_heapRefOf_3918 (coe v0)) (coe v1)
+du_freeMark_3950 v0 v1
+  = coe du_freeAtMark_3932 (coe du_heapRefOf_3920 (coe v0)) (coe v1)
 -- Once.CCC.Machine.SMCore.AbstractExec.freeMem-keeps
-d_freeMem'45'keeps_3962 ::
+d_freeMem'45'keeps_3964 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   (Maybe T_StoredValue_62 -> ()) ->
   T_StoredValue_62 ->
@@ -4799,18 +4802,18 @@ d_freeMem'45'keeps_3962 ::
    Maybe T_StoredValue_62) ->
   MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
   AgdaAny -> AgdaAny -> AgdaAny
-d_freeMem'45'keeps_3962 ~v0 ~v1 v2 ~v3 v4 v5 v6
-  = du_freeMem'45'keeps_3962 v2 v4 v5 v6
-du_freeMem'45'keeps_3962 ::
+d_freeMem'45'keeps_3964 ~v0 ~v1 v2 ~v3 v4 v5 v6
+  = du_freeMem'45'keeps_3964 v2 v4 v5 v6
+du_freeMem'45'keeps_3964 ::
   T_StoredValue_62 ->
   MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
   AgdaAny -> AgdaAny -> AgdaAny
-du_freeMem'45'keeps_3962 v0 v1 v2 v3
+du_freeMem'45'keeps_3964 v0 v1 v2 v3
   = coe
-      du_at_3990 (coe v1) (coe v2) (coe v3)
-      (coe du_heapRefOf_3918 (coe v0))
+      du_at_3992 (coe v1) (coe v2) (coe v3)
+      (coe du_heapRefOf_3920 (coe v0))
 -- Once.CCC.Machine.SMCore.AbstractExec._.clear
-d_clear_3986 ::
+d_clear_3988 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   (Maybe T_StoredValue_62 -> ()) ->
   T_StoredValue_62 ->
@@ -4822,13 +4825,13 @@ d_clear_3986 ::
   Integer ->
   Integer ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 -> AgdaAny
-d_clear_3986 ~v0 ~v1 ~v2 ~v3 ~v4 v5 v6 ~v7 ~v8 v9
-  = du_clear_3986 v5 v6 v9
-du_clear_3986 ::
+d_clear_3988 ~v0 ~v1 ~v2 ~v3 ~v4 v5 v6 ~v7 ~v8 v9
+  = du_clear_3988 v5 v6 v9
+du_clear_3988 ::
   AgdaAny ->
   AgdaAny ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 -> AgdaAny
-du_clear_3986 v0 v1 v2
+du_clear_3988 v0 v1 v2
   = case coe v2 of
       MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v3 v4
         -> if coe v3
@@ -4836,7 +4839,7 @@ du_clear_3986 v0 v1 v2
              else coe seq (coe v4) (coe v1)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.SMCore.AbstractExec._.at
-d_at_3990 ::
+d_at_3992 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   (Maybe T_StoredValue_62 -> ()) ->
   T_StoredValue_62 ->
@@ -4844,15 +4847,15 @@ d_at_3990 ::
    Maybe T_StoredValue_62) ->
   MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
   AgdaAny -> AgdaAny -> Maybe Integer -> AgdaAny
-d_at_3990 ~v0 ~v1 ~v2 ~v3 v4 v5 v6 v7 = du_at_3990 v4 v5 v6 v7
-du_at_3990 ::
+d_at_3992 ~v0 ~v1 ~v2 ~v3 v4 v5 v6 v7 = du_at_3992 v4 v5 v6 v7
+du_at_3992 ::
   MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
   AgdaAny -> AgdaAny -> Maybe Integer -> AgdaAny
-du_at_3990 v0 v1 v2 v3
+du_at_3992 v0 v1 v2 v3
   = case coe v3 of
       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v4
         -> coe
-             du_clear_3986 (coe v1) (coe v2)
+             du_clear_3988 (coe v1) (coe v2)
              (coe
                 MAlonzo.Code.Data.Nat.Properties.d__'8799'__2796
                 (coe
@@ -4863,7 +4866,7 @@ du_at_3990 v0 v1 v2 v3
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v2
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.SMCore.AbstractExec.freeMem-just
-d_freeMem'45'just_4002 ::
+d_freeMem'45'just_4004 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   T_StoredValue_62 ->
   (MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
@@ -4872,9 +4875,9 @@ d_freeMem'45'just_4002 ::
   T_StoredValue_62 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_freeMem'45'just_4002 = erased
+d_freeMem'45'just_4004 = erased
 -- Once.CCC.Machine.SMCore.AbstractExec.clear-no
-d_clear'45'no_4024 ::
+d_clear'45'no_4026 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
   Integer ->
@@ -4883,26 +4886,26 @@ d_clear'45'no_4024 ::
   (MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
    MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_clear'45'no_4024 = erased
+d_clear'45'no_4026 = erased
 -- Once.CCC.Machine.SMCore.AbstractExec.≡ᵇ-false
-d_'8801''7495''45'false_4034 ::
+d_'8801''7495''45'false_4036 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20
-d_'8801''7495''45'false_4034 = erased
+d_'8801''7495''45'false_4036 = erased
 -- Once.CCC.Machine.SMCore.AbstractExec.∨-false
-d_'8744''45'false_4046 ::
+d_'8744''45'false_4048 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Bool ->
   Bool ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8744''45'false_4046 = erased
+d_'8744''45'false_4048 = erased
 -- Once.CCC.Machine.SMCore.AbstractExec.freeMem-miss
-d_freeMem'45'miss_4056 ::
+d_freeMem'45'miss_4058 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   (MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
    Maybe T_StoredValue_62) ->
@@ -4913,9 +4916,9 @@ d_freeMem'45'miss_4056 ::
    MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_freeMem'45'miss_4056 = erased
+d_freeMem'45'miss_4058 = erased
 -- Once.CCC.Machine.SMCore.AbstractExec.freeMem-unmarked
-d_freeMem'45'unmarked_4076 ::
+d_freeMem'45'unmarked_4078 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   T_StoredValue_62 ->
   (MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
@@ -4924,9 +4927,9 @@ d_freeMem'45'unmarked_4076 ::
   MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_freeMem'45'unmarked_4076 = erased
+d_freeMem'45'unmarked_4078 = erased
 -- Once.CCC.Machine.SMCore.AbstractExec._.at
-d_at_4094 ::
+d_at_4096 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   T_StoredValue_62 ->
   (MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
@@ -4937,18 +4940,18 @@ d_at_4094 ::
   Maybe Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_at_4094 = erased
+d_at_4096 = erased
 -- Once.CCC.Machine.SMCore.AbstractExec.freeMark-mono
-d_freeMark'45'mono_4106 ::
+d_freeMark'45'mono_4108 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   T_StoredValue_62 ->
   (Integer -> Bool) ->
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_freeMark'45'mono_4106 = erased
+d_freeMark'45'mono_4108 = erased
 -- Once.CCC.Machine.SMCore.AbstractExec._.∨-true
-d_'8744''45'true_4124 ::
+d_'8744''45'true_4126 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   T_StoredValue_62 ->
   (Integer -> Bool) ->
@@ -4958,34 +4961,34 @@ d_'8744''45'true_4124 ::
   Bool ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8744''45'true_4124 = erased
+d_'8744''45'true_4126 = erased
 -- Once.CCC.Machine.SMCore.AbstractExec._.at
-d_at_4130 ::
+d_at_4132 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   T_StoredValue_62 ->
   (Integer -> Bool) ->
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   Maybe Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_at_4130 = erased
+d_at_4132 = erased
 -- Once.CCC.Machine.SMCore.AbstractExec.freeBlock
-d_freeBlock_4134 ::
+d_freeBlock_4136 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   T_StoredValue_62 ->
   T_LocState_254 ->
   T_AllocState_348 -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_freeBlock_4134 ~v0 v1 v2 v3 = du_freeBlock_4134 v1 v2 v3
-du_freeBlock_4134 ::
+d_freeBlock_4136 ~v0 v1 v2 v3 = du_freeBlock_4136 v1 v2 v3
+du_freeBlock_4136 ::
   T_StoredValue_62 ->
   T_LocState_254 ->
   T_AllocState_348 -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_freeBlock_4134 v0 v1 v2
+du_freeBlock_4136 v0 v1 v2
   = coe
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
       (coe
          C_mkLocState_286 (coe d_regs_272 (coe v1))
          (coe d_stackMem_274 (coe v1))
-         (coe du_freeMem_3942 (coe v0) (coe d_heapMem_276 (coe v1)))
+         (coe du_freeMem_3944 (coe v0) (coe d_heapMem_276 (coe v1)))
          (coe d_halted_278 (coe v1)) (coe d_ev'45'log_280 (coe v1))
          (coe d_left_282 (coe v1)) (coe d_faulted_284 (coe v1)))
       (coe
@@ -4995,16 +4998,16 @@ du_freeBlock_4134 v0 v1 v2
          (coe d_next'45'slot_456 (coe v2))
          (coe d_next'45'heap'45'ref_458 (coe v2))
          (coe d_block'45'size_460 (coe v2))
-         (coe du_freeMark_3948 (coe v0) (coe d_freed_462 (coe v2))))
+         (coe du_freeMark_3950 (coe v0) (coe d_freed_462 (coe v2))))
 -- Once.CCC.Machine.SMCore.AbstractExec.exec-abstract
-d_exec'45'abstract_4142 ::
+d_exec'45'abstract_4144 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  T_AbstractInstr_2416 ->
+  T_AbstractInstr_2418 ->
   T_LocState_254 ->
   T_AllocState_348 -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_exec'45'abstract_4142 v0 v1 v2 v3
+d_exec'45'abstract_4144 v0 v1 v2 v3
   = case coe v1 of
-      C_mov'45'to'45'output_2418
+      C_mov'45'to'45'output_2420
         -> coe
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
              (coe
@@ -5016,7 +5019,7 @@ d_exec'45'abstract_4142 v0 v1 v2 v3
                 (coe d_halted_278 (coe v2)) (coe d_ev'45'log_280 (coe v2))
                 (coe d_left_282 (coe v2)) (coe d_faulted_284 (coe v2)))
              (coe v3)
-      C_mov'45'to'45'input_2420
+      C_mov'45'to'45'input_2422
         -> coe
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
              (coe
@@ -5028,7 +5031,7 @@ d_exec'45'abstract_4142 v0 v1 v2 v3
                 (coe d_halted_278 (coe v2)) (coe d_ev'45'log_280 (coe v2))
                 (coe d_left_282 (coe v2)) (coe d_faulted_284 (coe v2)))
              (coe v3)
-      C_load'45'indirect_2422
+      C_load'45'indirect_2424
         -> coe
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
              (coe
@@ -5038,7 +5041,7 @@ d_exec'45'abstract_4142 v0 v1 v2 v3
                    (coe du_readReg_132 (coe d_regs_272 (coe v2)) (coe C_Input1_56)))
                 v2)
              (coe v3)
-      C_load'45'indirect'45'suc_2424
+      C_load'45'indirect'45'suc_2426
         -> coe
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
              (coe
@@ -5048,16 +5051,16 @@ d_exec'45'abstract_4142 v0 v1 v2 v3
                    (coe du_readReg_132 (coe d_regs_272 (coe v2)) (coe C_Input1_56)))
                 v2)
              (coe v3)
-      C_load'45'from'45'slot_2426 v4
+      C_load'45'from'45'slot_2428 v4
         -> coe
-             du_exec'45'load'45'from'45'slot'45'with'45'value_2854
+             du_exec'45'load'45'from'45'slot'45'with'45'value_2856
              (coe
                 du_readLoc_526 (coe v2)
                 (coe
                    MAlonzo.Code.Once.CCC.Machine.Locations.C_AtStack_16
                    (coe d_current'45'frame_450 (coe v3)) (coe v4)))
              (coe v2) (coe v3)
-      C_store'45'at'45'slot_2428 v4
+      C_store'45'at'45'slot_2430 v4
         -> coe
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
              (coe
@@ -5067,7 +5070,7 @@ d_exec'45'abstract_4142 v0 v1 v2 v3
                    (coe d_current'45'frame_450 (coe v3)) (coe v4))
                 (coe du_readReg_132 (coe d_regs_272 (coe v2)) (coe C_Output_58)))
              (coe v3)
-      C_store'45'indirect_2430
+      C_store'45'indirect_2432
         -> coe
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
              (coe
@@ -5078,7 +5081,7 @@ d_exec'45'abstract_4142 v0 v1 v2 v3
                 (coe du_readReg_132 (coe d_regs_272 (coe v2)) (coe C_Output_58))
                 v2)
              (coe v3)
-      C_store'45'indirect'45'suc_2432
+      C_store'45'indirect'45'suc_2434
         -> coe
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
              (coe
@@ -5089,7 +5092,7 @@ d_exec'45'abstract_4142 v0 v1 v2 v3
                 (coe du_readReg_132 (coe d_regs_272 (coe v2)) (coe C_Output_58))
                 v2)
              (coe v3)
-      C_lea'45'slot_2434 v4
+      C_lea'45'slot_2436 v4
         -> coe
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
              (coe
@@ -5105,37 +5108,37 @@ d_exec'45'abstract_4142 v0 v1 v2 v3
                 (coe d_halted_278 (coe v2)) (coe d_ev'45'log_280 (coe v2))
                 (coe d_left_282 (coe v2)) (coe d_faulted_284 (coe v2)))
              (coe v3)
-      C_restore'45'input_2436 v4
+      C_restore'45'input_2438 v4
         -> coe
-             du_exec'45'restore'45'input'45'with'45'value_2866
+             du_exec'45'restore'45'input'45'with'45'value_2868
              (coe
                 du_readLoc_526 (coe v2)
                 (coe
                    MAlonzo.Code.Once.CCC.Machine.Locations.C_AtStack_16
                    (coe d_current'45'frame_450 (coe v3)) (coe v4)))
              (coe v2) (coe v3)
-      C_instr'45'alloc'45'stack_2438 v4
+      C_instr'45'alloc'45'stack_2440 v4
         -> coe
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v2) (coe v3)
-      C_instr'45'dealloc'45'stack_2440 v4
+      C_instr'45'dealloc'45'stack_2442 v4
         -> coe
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v2) (coe v3)
-      C_instr'45'reclaim'45'to_2442 v4
+      C_instr'45'reclaim'45'to_2444 v4
         -> coe
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v2) (coe v3)
-      C_instr'45'push'45'frame_2444 v4
+      C_instr'45'push'45'frame_2446 v4
         -> coe
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v2) (coe v3)
-      C_instr'45'pop'45'frame_2446
+      C_instr'45'pop'45'frame_2448
         -> coe
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v2) (coe v3)
-      C_instr'45'call'45'closure_2448
+      C_instr'45'call'45'closure_2450
         -> coe
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v2) (coe v3)
-      C_worklist'45'init_2450 v4
+      C_worklist'45'init_2452 v4
         -> coe
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v2) (coe v3)
-      C_worklist'45'push_2452 v4
+      C_worklist'45'push_2454 v4
         -> coe
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
              (coe
@@ -5145,63 +5148,63 @@ d_exec'45'abstract_4142 v0 v1 v2 v3
                    (coe d_current'45'frame_450 (coe v3)) (coe v4))
                 (coe du_readReg_132 (coe d_regs_272 (coe v2)) (coe C_Output_58)))
              (coe v3)
-      C_worklist'45'pop_2454 v4
+      C_worklist'45'pop_2456 v4
         -> coe
-             du_exec'45'load'45'from'45'slot'45'with'45'value_2854
+             du_exec'45'load'45'from'45'slot'45'with'45'value_2856
              (coe
                 du_readLoc_526 (coe v2)
                 (coe
                    MAlonzo.Code.Once.CCC.Machine.Locations.C_AtStack_16
                    (coe d_current'45'frame_450 (coe v3)) (coe v4)))
              (coe v2) (coe v3)
-      C_worklist'45'check_2456 v4
+      C_worklist'45'check_2458 v4
         -> coe
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v2) (coe v3)
-      C_instr'45'sigop_2462 v4 v5 v6
+      C_instr'45'sigop_2464 v4 v5 v6
         -> coe
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
              (coe
                 C_mkLocState_286
                 (coe
                    du_writeReg_140 (d_regs_272 (coe v2)) (coe C_Output_58)
-                   (d_exec'45'sigop'45'output_3630
+                   (d_exec'45'sigop'45'output_3632
                       (coe v0) (coe v4) (coe v5) (coe v6) (coe v2)))
                 (coe
                    d_stackMem_274
                    (coe
-                      d_sigop'45'store_3826 (coe v0) (coe v4) (coe v5) (coe v6)
+                      d_sigop'45'store_3828 (coe v0) (coe v4) (coe v5) (coe v6)
                       (coe v2)))
                 (coe
                    d_heapMem_276
                    (coe
-                      d_sigop'45'store_3826 (coe v0) (coe v4) (coe v5) (coe v6)
+                      d_sigop'45'store_3828 (coe v0) (coe v4) (coe v5) (coe v6)
                       (coe v2)))
                 (coe
                    MAlonzo.Code.Data.Bool.Base.d__'8744'__30
-                   (coe du_exec'45'sigop'45'halts_3696 (coe v4) (coe v6) (coe v2))
+                   (coe du_exec'45'sigop'45'halts_3698 (coe v4) (coe v6) (coe v2))
                    (coe
                       MAlonzo.Code.Data.Bool.Base.d_not_22
                       (coe
-                         d_sigop'45'gate_3810 (coe v0) (coe v4) (coe v5) (coe v3) (coe v6)
+                         d_sigop'45'gate_3812 (coe v0) (coe v4) (coe v5) (coe v3) (coe v6)
                          (coe v2))))
                 (coe
                    MAlonzo.Code.Data.List.Base.du__'43''43'__32
                    (coe d_ev'45'log_280 (coe v2))
-                   (coe du_sigop'45'events_3620 (coe v4) (coe v6) (coe v2)))
+                   (coe du_sigop'45'events_3622 (coe v4) (coe v6) (coe v2)))
                 (coe d_left_282 (coe v2))
                 (coe
                    MAlonzo.Code.Data.Bool.Base.d__'8744'__30
-                   (coe du_exec'45'sigop'45'faults_3666 (coe v4) (coe v6) (coe v2))
+                   (coe du_exec'45'sigop'45'faults_3668 (coe v4) (coe v6) (coe v2))
                    (coe
                       MAlonzo.Code.Data.Bool.Base.d__'8744'__30
                       (coe
                          MAlonzo.Code.Data.Bool.Base.d_not_22
                          (coe
-                            d_sigop'45'gate_3810 (coe v0) (coe v4) (coe v5) (coe v3) (coe v6)
+                            d_sigop'45'gate_3812 (coe v0) (coe v4) (coe v5) (coe v3) (coe v6)
                             (coe v2)))
                       (coe d_faulted_284 (coe v2)))))
              (coe v3)
-      C_instr'45'load'45'const_2468 v4 v5 v6
+      C_instr'45'load'45'const_2470 v4 v5 v6
         -> coe
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
              (coe
@@ -5210,12 +5213,12 @@ d_exec'45'abstract_4142 v0 v1 v2 v3
                    du_writeReg_140 (d_regs_272 (coe v2)) (coe C_Output_58)
                    (coe
                       C_SV'45'Lit_72 (coe v4) (coe v5)
-                      (coe du_lit'45'value_3912 (coe v0) (coe v5) (coe v6))))
+                      (coe du_lit'45'value_3914 (coe v0) (coe v5) (coe v6))))
                 (coe d_stackMem_274 (coe v2)) (coe d_heapMem_276 (coe v2))
                 (coe d_halted_278 (coe v2)) (coe d_ev'45'log_280 (coe v2))
                 (coe d_left_282 (coe v2)) (coe d_faulted_284 (coe v2)))
              (coe v3)
-      C_instr'45'load'45'code'45'addr_2470 v4
+      C_instr'45'load'45'code'45'addr_2472 v4
         -> coe
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
              (coe
@@ -5227,10 +5230,10 @@ d_exec'45'abstract_4142 v0 v1 v2 v3
                 (coe d_halted_278 (coe v2)) (coe d_ev'45'log_280 (coe v2))
                 (coe d_left_282 (coe v2)) (coe d_faulted_284 (coe v2)))
              (coe v3)
-      C_instr'45'save'45'closure'45'reg_2472
+      C_instr'45'save'45'closure'45'reg_2474
         -> coe
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v2) (coe v3)
-      C_instr'45'load'45'tag'45'lit_2474 v4
+      C_instr'45'load'45'tag'45'lit_2476 v4
         -> coe
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
              (coe
@@ -5242,7 +5245,7 @@ d_exec'45'abstract_4142 v0 v1 v2 v3
                 (coe d_halted_278 (coe v2)) (coe d_ev'45'log_280 (coe v2))
                 (coe d_left_282 (coe v2)) (coe d_faulted_284 (coe v2)))
              (coe v3)
-      C_instr'45'alloc'45'heap_2476 v4
+      C_instr'45'alloc'45'heap_2478 v4
         -> coe
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
              (coe
@@ -5278,22 +5281,22 @@ d_exec'45'abstract_4142 v0 v1 v2 v3
                    (coe d_next'45'heap'45'ref_458 (coe v3))
                    (coe d_block'45'size_460 (coe v3)))
                 (coe d_freed_462 (coe v3)))
-      C_instr'45'reg'45'op_2478
+      C_instr'45'reg'45'op_2480
         -> coe
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
              (coe du_exec'45'reg'45'op_302 (coe v2)) (coe v3)
-      C_instr'45'ctrl_2480 v4
+      C_instr'45'ctrl_2482 v4
         -> coe
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v2) (coe v3)
-      C_instr'45'free'45'heap_2482 v4
+      C_instr'45'free'45'heap_2484 v4
         -> coe
-             du_freeBlock_4134
+             du_freeBlock_4136
              (coe du_readReg_132 (coe d_regs_272 (coe v2)) (coe C_Input1_56))
              (coe v2) (coe v3)
-      C_instr'45'room_2484 v4
+      C_instr'45'room_2486 v4
         -> coe
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v2) (coe v3)
-      C_load'45'at_2486 v4
+      C_load'45'at_2488 v4
         -> coe
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
              (coe
@@ -5305,7 +5308,7 @@ d_exec'45'abstract_4142 v0 v1 v2 v3
                       (coe du_readReg_132 (coe d_regs_272 (coe v2)) (coe C_Input1_56))))
                 v2)
              (coe v3)
-      C_store'45'at_2488 v4
+      C_store'45'at_2490 v4
         -> coe
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
              (coe
@@ -5324,7 +5327,7 @@ d_exec'45'abstract_4142 v0 v1 v2 v3
                 (coe du_readReg_132 (coe d_regs_272 (coe v2)) (coe C_Output_58))
                 v2)
              (coe v3)
-      C_addr'45'at_2490 v4
+      C_addr'45'at_2492 v4
         -> coe
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
              (coe
@@ -5337,14 +5340,14 @@ d_exec'45'abstract_4142 v0 v1 v2 v3
                       (coe du_readReg_132 (coe d_regs_272 (coe v2)) (coe C_Input1_56))))
                 v2)
              (coe v3)
-      C_load'45'rec_2492 v4
+      C_load'45'rec_2494 v4
         -> coe
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
              (coe
                 du_exec'45'load'45'via'45'resolved_1378 (coe C_Output_58)
                 (coe du_rec'45'gate_1532 (coe v3) (coe v4)) v2)
              (coe v3)
-      C_store'45'rec_2494 v4
+      C_store'45'rec_2496 v4
         -> coe
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
              (coe
@@ -5355,12 +5358,12 @@ d_exec'45'abstract_4142 v0 v1 v2 v3
              (coe v3)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.SMCore.AbstractExec.exec-trace
-d_exec'45'trace_4144 ::
+d_exec'45'trace_4146 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  [T_AbstractInstr_2416] ->
+  [T_AbstractInstr_2418] ->
   T_LocState_254 ->
   T_AllocState_348 -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_exec'45'trace_4144 v0 v1 v2 v3
+d_exec'45'trace_4146 v0 v1 v2 v3
   = case coe v1 of
       []
         -> coe
@@ -5372,41 +5375,41 @@ d_exec'45'trace_4144 v0 v1 v2 v3
                 then coe
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v2) (coe v3)
                 else coe
-                       d_exec'45'trace_4144 (coe v0) (coe v5)
+                       d_exec'45'trace_4146 (coe v0) (coe v5)
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                          (coe d_exec'45'abstract_4142 (coe v0) (coe v4) (coe v2) (coe v3)))
+                          (coe d_exec'45'abstract_4144 (coe v0) (coe v4) (coe v2) (coe v3)))
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
-                          (coe d_exec'45'abstract_4142 (coe v0) (coe v4) (coe v2) (coe v3))))
+                          (coe d_exec'45'abstract_4144 (coe v0) (coe v4) (coe v2) (coe v3))))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.SMCore.AbstractExec.exec-trace-cons
-d_exec'45'trace'45'cons_4392 ::
+d_exec'45'trace'45'cons_4394 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  T_AbstractInstr_2416 ->
-  [T_AbstractInstr_2416] ->
+  T_AbstractInstr_2418 ->
+  [T_AbstractInstr_2418] ->
   T_LocState_254 ->
   T_AllocState_348 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_exec'45'trace'45'cons_4392 = erased
+d_exec'45'trace'45'cons_4394 = erased
 -- Once.CCC.Machine.SMCore.AbstractExec.exec-trace-single
-d_exec'45'trace'45'single_4438 ::
+d_exec'45'trace'45'single_4440 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  T_AbstractInstr_2416 ->
+  T_AbstractInstr_2418 ->
   T_LocState_254 ->
   T_AllocState_348 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_exec'45'trace'45'single_4438 = erased
+d_exec'45'trace'45'single_4440 = erased
 -- Once.CCC.Machine.SMCore.AbstractExec.getTag
-d_getTag_4472 ::
+d_getTag_4474 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   T_LocState_254 -> T_AllocState_348 -> Integer -> Maybe Integer
-d_getTag_4472 ~v0 v1 v2 v3 = du_getTag_4472 v1 v2 v3
-du_getTag_4472 ::
+d_getTag_4474 ~v0 v1 v2 v3 = du_getTag_4474 v1 v2 v3
+du_getTag_4474 ::
   T_LocState_254 -> T_AllocState_348 -> Integer -> Maybe Integer
-du_getTag_4472 v0 v1 v2
+du_getTag_4474 v0 v1 v2
   = let v3
           = coe d_stackMem_274 v0 (d_current'45'frame_450 (coe v1)) v2 in
     coe
@@ -5417,41 +5420,41 @@ du_getTag_4472 v0 v1 v2
          MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v3
          _ -> MAlonzo.RTE.mazUnreachableError)
 -- Once.CCC.Machine.SMCore.AbstractExec.exec-tree-trace
-d_exec'45'tree'45'trace_4496 ::
+d_exec'45'tree'45'trace_4498 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  T_TreeTrace_2610 ->
+  T_TreeTrace_2612 ->
   T_LocState_254 ->
   T_AllocState_348 -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_exec'45'tree'45'trace_4496 v0 v1 v2 v3
+d_exec'45'tree'45'trace_4498 v0 v1 v2 v3
   = case coe v1 of
-      C_ε_2612
+      C_ε_2614
         -> coe
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v2) (coe v3)
-      C_instr_2614 v4
+      C_instr_2616 v4
         -> let v5 = d_halted_278 (coe v2) in
            coe
              (if coe v5
                 then coe
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v2) (coe v3)
                 else coe
-                       d_exec'45'abstract_4142 (coe v0) (coe v4) (coe v2) (coe v3))
-      C__'9656'__2616 v4 v5
+                       d_exec'45'abstract_4144 (coe v0) (coe v4) (coe v2) (coe v3))
+      C__'9656'__2618 v4 v5
         -> let v6 = d_halted_278 (coe v2) in
            coe
              (if coe v6
                 then coe
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v2) (coe v3)
                 else coe
-                       d_exec'45'tree'45'trace_4496 (coe v0) (coe v5)
+                       d_exec'45'tree'45'trace_4498 (coe v0) (coe v5)
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                           (coe
-                             d_exec'45'tree'45'trace_4496 (coe v0) (coe v4) (coe v2) (coe v3)))
+                             d_exec'45'tree'45'trace_4498 (coe v0) (coe v4) (coe v2) (coe v3)))
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                           (coe
-                             d_exec'45'tree'45'trace_4496 (coe v0) (coe v4) (coe v2) (coe v3))))
-      C_branch_2618 v4 v5 v6
+                             d_exec'45'tree'45'trace_4498 (coe v0) (coe v4) (coe v2) (coe v3))))
+      C_branch_2620 v4 v5 v6
         -> let v7 = d_halted_278 (coe v2) in
            coe
              (if coe v7
@@ -5466,91 +5469,91 @@ d_exec'45'tree'45'trace_4496 v0 v1 v2 v3
                                 coe
                                   (case coe v10 of
                                      0 -> coe
-                                            d_exec'45'tree'45'trace_4496 (coe v0) (coe v5) (coe v2)
+                                            d_exec'45'tree'45'trace_4498 (coe v0) (coe v5) (coe v2)
                                             (coe v3)
                                      _ -> coe
-                                            d_exec'45'tree'45'trace_4496 (coe v0) (coe v6) (coe v2)
+                                            d_exec'45'tree'45'trace_4498 (coe v0) (coe v6) (coe v2)
                                             (coe v3))
                            MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                              -> case coe v8 of
                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v9
                                     -> case coe v9 of
                                          0 -> coe
-                                                d_exec'45'tree'45'trace_4496 (coe v0) (coe v5)
+                                                d_exec'45'tree'45'trace_4498 (coe v0) (coe v5)
                                                 (coe v2) (coe v3)
                                          _ -> coe
-                                                d_exec'45'tree'45'trace_4496 (coe v0) (coe v6)
+                                                d_exec'45'tree'45'trace_4498 (coe v0) (coe v6)
                                                 (coe v2) (coe v3)
                                   MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                     -> coe
-                                         d_exec'45'tree'45'trace_4496 (coe v0) (coe v5) (coe v2)
+                                         d_exec'45'tree'45'trace_4498 (coe v0) (coe v5) (coe v2)
                                          (coe v3)
                                   _ -> MAlonzo.RTE.mazUnreachableError
                            _ -> MAlonzo.RTE.mazUnreachableError)))
-      C_call'45'sub_2620 v4
+      C_call'45'sub_2622 v4
         -> let v5 = d_halted_278 (coe v2) in
            coe
              (if coe v5
                 then coe
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v2) (coe v3)
                 else coe
-                       d_exec'45'tree'45'trace_4496 (coe v0) (coe v4) (coe v2) (coe v3))
-      C_flat_2622 v4
-        -> coe d_exec'45'trace_4144 (coe v0) (coe v4) (coe v2) (coe v3)
+                       d_exec'45'tree'45'trace_4498 (coe v0) (coe v4) (coe v2) (coe v3))
+      C_flat_2624 v4
+        -> coe d_exec'45'trace_4146 (coe v0) (coe v4) (coe v2) (coe v3)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.SMCore.AbstractExec.exec-tree-trace-ε
-d_exec'45'tree'45'trace'45'ε_4656 ::
+d_exec'45'tree'45'trace'45'ε_4658 ::
   T_LocState_254 ->
   T_AllocState_348 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_exec'45'tree'45'trace'45'ε_4656 = erased
+d_exec'45'tree'45'trace'45'ε_4658 = erased
 -- Once.CCC.Machine.SMCore.AbstractExec.exec-tree-trace-seq
-d_exec'45'tree'45'trace'45'seq_4674 ::
+d_exec'45'tree'45'trace'45'seq_4676 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  T_TreeTrace_2610 ->
-  T_TreeTrace_2610 ->
+  T_TreeTrace_2612 ->
+  T_TreeTrace_2612 ->
   T_LocState_254 ->
   T_AllocState_348 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_exec'45'tree'45'trace'45'seq_4674 = erased
+d_exec'45'tree'45'trace'45'seq_4676 = erased
 -- Once.CCC.Machine.SMCore.AbstractExec.exec-tree-trace-instr
-d_exec'45'tree'45'trace'45'instr_4720 ::
+d_exec'45'tree'45'trace'45'instr_4722 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  T_AbstractInstr_2416 ->
+  T_AbstractInstr_2418 ->
   T_LocState_254 ->
   T_AllocState_348 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_exec'45'tree'45'trace'45'instr_4720 = erased
+d_exec'45'tree'45'trace'45'instr_4722 = erased
 -- Once.CCC.Machine.SMCore.AbstractExec.exec-tree-trace-call-sub
-d_exec'45'tree'45'trace'45'call'45'sub_4760 ::
+d_exec'45'tree'45'trace'45'call'45'sub_4762 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  T_TreeTrace_2610 ->
+  T_TreeTrace_2612 ->
   T_LocState_254 ->
   T_AllocState_348 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_exec'45'tree'45'trace'45'call'45'sub_4760 = erased
+d_exec'45'tree'45'trace'45'call'45'sub_4762 = erased
 -- Once.CCC.Machine.SMCore.AbstractExec.exec-tree-trace-flat
-d_exec'45'tree'45'trace'45'flat_4800 ::
+d_exec'45'tree'45'trace'45'flat_4802 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  [T_AbstractInstr_2416] ->
+  [T_AbstractInstr_2418] ->
   T_LocState_254 ->
   T_AllocState_348 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_exec'45'tree'45'trace'45'flat_4800 = erased
+d_exec'45'tree'45'trace'45'flat_4802 = erased
 -- Once.CCC.Machine.SMCore.AbstractExec.exec-tree-flat-equiv-simple
-d_exec'45'tree'45'flat'45'equiv'45'simple_4814 ::
+d_exec'45'tree'45'flat'45'equiv'45'simple_4816 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  T_TreeTrace_2610 ->
+  T_TreeTrace_2612 ->
   T_LocState_254 ->
   T_AllocState_348 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Unit.T_'8868'_6
-d_exec'45'tree'45'flat'45'equiv'45'simple_4814 ~v0 ~v1 ~v2 ~v3 ~v4
-  = du_exec'45'tree'45'flat'45'equiv'45'simple_4814
-du_exec'45'tree'45'flat'45'equiv'45'simple_4814 ::
+d_exec'45'tree'45'flat'45'equiv'45'simple_4816 ~v0 ~v1 ~v2 ~v3 ~v4
+  = du_exec'45'tree'45'flat'45'equiv'45'simple_4816
+du_exec'45'tree'45'flat'45'equiv'45'simple_4816 ::
   MAlonzo.Code.Agda.Builtin.Unit.T_'8868'_6
-du_exec'45'tree'45'flat'45'equiv'45'simple_4814
+du_exec'45'tree'45'flat'45'equiv'45'simple_4816
   = coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8

@@ -363,8 +363,7 @@ checks-sig E (i ∷ t) si (there m) = there (by (boundary? i) m)
     by false m′ = checks-sig E t si m′
 
 room-sig : ∀ t {A B} (si : SigOpInfo A B) → instr-sigop si ∈ room-checks t → instr-sigop si ∈ t
-room-sig t si (here ())
-room-sig t si (there m) = checks-sig (max-entry t) t si m
+room-sig t si m = checks-sig (max-entry t) t si m
 
 ∈-checks : ∀ E t {i} → i ∈ t → i ∈ checks E t
 ∈-checks E (x ∷ t) (here e) = here e
@@ -375,4 +374,4 @@ room-sig t si (there m) = checks-sig (max-entry t) t si m
     by false = ∈-checks E t m
 
 ∈-room : ∀ t {i} → i ∈ t → i ∈ room-checks t
-∈-room t m = there (∈-checks (max-entry t) t m)
+∈-room t m = ∈-checks (max-entry t) t m

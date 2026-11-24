@@ -60,9 +60,9 @@ module RoomSim {FS : FrameSemantics} (t : AbstractTrace) where
     after-x : ∀ (c : ℕ) (x : AbstractInstr) → fetch t c ≡ just x
             → (b : Bool) → boundary? x ≡ b → PcRel (suc c) (suc (φ t c))
     after-x c x e false bf =
-      inj₁ (cong suc (sym (trans (ψ-next t c e) (cong (λ z → suc (bump z (ψ t c))) bf))))
+      inj₁ (sym (trans (ψ-next t c e) (cong (λ z → suc (bump z (ψ t c))) bf)))
     after-x c x e true  bt =
-      inj₂ ( cong suc (sym (trans (ψ-next t c e) (cong (λ z → suc (bump z (ψ t c))) bt)))
+      inj₂ ( sym (trans (ψ-next t c e) (cong (λ z → suc (bump z (ψ t c))) bt))
            , stretch (max-entry t) (Data.List.drop (suc c) t)
            , check-at (max-entry t) t c e bt )
 
@@ -71,7 +71,7 @@ module RoomSim {FS : FrameSemantics} (t : AbstractTrace) where
   pcRel-after : ∀ (c : ℕ) → PcRel (suc c) (suc (φ t c))
   pcRel-after c with fetch t c in e
   ... | just x  = after-x c x e (boundary? x) refl
-  ... | nothing = inj₁ (cong suc (sym (ψ-next-nothing t c e)))
+  ... | nothing = inj₁ (sym (ψ-next-nothing t c e))
 
   -- …so a return address maps to a pc that stands for it.
   pcRel-ret : ∀ (r : ℕ) → PcRel r (ret-map r)

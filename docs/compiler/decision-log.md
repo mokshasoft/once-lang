@@ -25110,6 +25110,30 @@ region (the split is the program's, from its own bound).
 * **Work order**: (a1) `L` in the view, `lim-eq`, record word 0 out of the abstract record, the start
   writing `L` (no check changed); (a2) `instr-room h s` against `L`, the budget split; (a3) the start's
   own check, the index-0 check gone. Then point 2.
+* **(a1) done** (b1265b402): the view's limit and `lim-eq`, nothing set. **(a2), as built**: `c-start b`
+  lowers to the room check's own code at `start-stack-words + b` (`once_exhausted` without room), the
+  frame, and `L := sp − slots B` stored to word 0; `room-checks` puts no check at index 0 and `c-start` is
+  a boundary (spend 0), so the check after it covers the allocator's set-up. The proof: `Supply.start-step`
+  (per arch, like `room-step`: lands in the correspondence at `start-view (descend-view …) L`, or reaches
+  `once_exhausted`), `EventDispatch.events-agree-start` (one function for the old boot and start),
+  `sim-set-lim`. `bs-c-start` and `bg-start` went. **Assumption added, for review**: x86-32 and riscv64
+  emit the start's need as an immediate, so `LitFits` gains `start-fits` (`slots (start-stack-words + b)`
+  is a word) beside `room-fits`, the same class (an emitted immediate fits; D378). `start-stack-words` is
+  `opaque` (performance pattern A10).
+* **Decided (the user, 2026-11-24): prove it, don't assume it.** `start-fits` and `room-fits` are to be
+  discharged, not taken as `LitFits` fields: a decidable gate in the pipeline (every emitted need fits a
+  word, else the build is refused, like the other gates), whose evidence the arch proofs read. Until then
+  `start-fits` stands beside `room-fits` as a marked debt.
+* **Decided (the user, 2026-11-24): option A** — a fixed default stack for programs without a static bound
+  (`start-stack-words`, 32768 words), configurable (`--stack-words N`).
+* **Decided (the user, 2026-11-24): every program's stack is statically bounded; a fold's recursion lives
+  on the heap.** Replaces point 2's "unbounded programs keep checks at the fold's entry". A fold's algebra
+  has a static frame and folds nest only as deep as the program text, so the stack the algebras need is a
+  static bound for every program; the recursion's pending levels (one per node, the part that grows with
+  the data) go to a heap worklist, freed as the fold climbs — with plan 0.154 S3's linearity, by pointer
+  reversal in the consumed input's cells, without allocating. So `B` is exact, the start sets `L = sp − B`,
+  no code has a stack check, and running out is the heap's alone, in the allocator (CakeML's discipline).
+  Option A (`start-stack-words`, `--stack-words`) stays as the fallback where no bound is computed.
 
 ## D487 — `--unchecked`: THE SAME FILE WITHOUT ROOM CHECKS, OUTSIDE THE PROOF, SAID SO AT EVERY BUILD (2026-11-24, proposed — for the user's review; plan 0.154 S1, D3)
 **Context.** The user, 2026-11-24: "If we implement that feature that bypasses checks completely, then we can

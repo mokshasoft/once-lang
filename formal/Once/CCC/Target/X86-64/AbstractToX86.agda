@@ -13,7 +13,7 @@
 
 module Once.CCC.Target.X86-64.AbstractToX86 where
 
-open import Data.Nat using (ℕ; zero; suc)
+open import Data.Nat using (ℕ; zero; suc; _+_)
 import Data.Nat as ℕ
 open import Data.List using ([]; _∷_; _++_)
 
@@ -262,7 +262,19 @@ compile-abstract (instr-ctrl (c-jmp n))            = jmp (once n) ∷ []
 compile-abstract (instr-ctrl (c-entry e b))        = label (callee e) ∷ sub (reg rsp) (imm (slots b)) ∷ []
 -- plan 0.107: the start (`once_main`) — the outermost frame (nothing called the
 -- program, so no return to spill). The Host set the heap register (C.5).
-compile-abstract (instr-ctrl (c-start b))          = sub (reg rsp) (imm (slots b)) ∷ []
+-- D486: the start checks that `main`'s frame and the stack it reserves fit
+-- (the room check's code at `start-stack-words + b`), reserves the frame, and
+-- sets the stack limit, record word 0, to `rsp − 8·start-stack-words`
+compile-abstract (instr-ctrl (c-start b))          =
+  lea r11 (base+disp r15 (slots (start-stack-words + b))) ∷
+  cmp (reg r11) (reg rsp) ∷
+  jbe-fwd ∷
+  call-sym host-exhausted-symbol ∷
+  local-1 ∷
+  sub (reg rsp) (imm (slots b)) ∷
+  mov (reg r11) (reg rsp) ∷
+  sub (reg r11) (imm (slots start-stack-words)) ∷
+  mov (mem (rip+sym alloc-record-symbol 0)) (reg r11) ∷ []
 -- D320: the program leaves by the Host's `leave`, a call of its one fixed symbol.
 compile-abstract (instr-ctrl c-leave)                   = call-sym host-leave-symbol ∷ []
 -- D245: a direct call of a program function is `call once_<f>`.

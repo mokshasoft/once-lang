@@ -37,7 +37,7 @@ import Once.Adequacy.ArchCorrectness.RiscV64.FlatCorrespondence as FCr
 import Once.Adequacy.ArchCorrectness.FlatCore.RunLow as RLr
 import Once.CCC.Target.RiscV64.Semantics as RS
 open import Once.CCC.Machine.SMCore using
-  (AbstractTrace; lea-slot; instr-ctrl; c-ret; instr-load-tag-lit; instr-load-const; instr-room; instr-sigop)
+  (AbstractTrace; lea-slot; instr-ctrl; c-ret; c-start; start-stack-words; instr-load-tag-lit; instr-load-const; instr-room; instr-sigop)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Target.RiscV64.Syntax using (slots)
 open import Once.Target.RiscV64.PhysReg using (sp) renaming (Reg to Reg')
@@ -133,6 +133,13 @@ module Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim
              → FlatMachine.fetch {FS} prog (FlatMachine.FlatState.fpc {FS} fs)
                  ≡ just (instr-room k)
              → slots k < RS.W.modulus)
+  (start-fits : ∀ {hv : FCr.FlatCorrespondence.HeapView FS word-eq} (prog : AbstractTrace)
+                 (fs : FlatMachine.FlatState {FS}) (s : RS.State) (b : ℕ)
+             → RLr.RunLow o FS slot-size word-eq prog fs
+             → FSimr.CompiledCorrespondence.CompiledCorr o FS word-eq fmt-eq hv prog fs s
+             → FlatMachine.fetch {FS} prog (FlatMachine.FlatState.fpc {FS} fs)
+                 ≡ just (instr-ctrl (c-start b))
+             → slots (start-stack-words + b) < RS.W.modulus)
   where
 
 open import Data.Nat using (ℕ; suc; _+_)
@@ -386,7 +393,7 @@ open import Once.Adequacy.ArchCorrectness.FlatCore.FlatComposition FS Instr
 ------------------------------------------------------------------------
 import Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation
 module FlatSimulation = Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation o FS word-eq fmt-eq using
-  (block-step-lea-slot; room-step-riscv64
+  (block-step-lea-slot; room-step-riscv64; start-step-riscv64
   ; block-step-mov-to-output; block-step-mov-to-input
   ; block-step-c-label; block-step-reclaim-to; block-step-free-heap
   ; block-step-worklist-init; block-step-worklist-check
@@ -400,7 +407,7 @@ module FlatSimulation = Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation o F
   ; block-step-load-at; block-step-store-at; block-step-load-rec; block-step-store-rec; block-step-addr-at; addr-at-no-wrap; block-step-load-at-stack; block-step-store-at-stack
   ; block-step-c-jmp
   ; block-step-c-branch-tag-zero; block-step-c-branch-tag-nz
-  ; block-step-c-thunk; block-step-c-start; block-step-out-nz; block-step-c-ret
+  ; block-step-c-thunk; block-step-out-nz; block-step-c-ret
   ; block-step-load-const; block-step-load-const-float
   ; block-step-load-code-addr; block-step-call; block-step-call-fn; block-step-alloc-heap
   -- `CompiledCorr`, `dataCorr`, `pc-off`, `BlockStep(s)` come from this copy's
@@ -576,7 +583,6 @@ riscv64-block-steps = record
   ; bs-c-branch-tag-nz          = block-step-c-branch-tag-nz
   ; bs-out-nz                   = block-step-out-nz
   ; bs-c-thunk                  = block-step-c-thunk
-  ; bs-c-start                  = block-step-c-start
   ; bs-c-ret                    = block-step-c-ret
   ; bs-load-const               = block-step-load-const
   ; bs-load-const-float         = block-step-load-const-float
@@ -749,6 +755,8 @@ riscv64-supply = record
   { bss = riscv64-block-steps ; sts = riscv64-stuck-steps
   ; room-step = λ prog fs s k run cc h ft → room-step-riscv64 prog fs s k cc h ft
       (reg-range prog fs s sp run cc) (room-fits prog fs s k run cc ft)
+  ; start-step = λ prog fs s b run cc h ft _ nf → start-step-riscv64 prog fs s b cc h ft
+      (reg-range prog fs s sp run cc) (start-fits prog fs s b run cc ft) nf
   ; reg-range = reg-range ; ret-no-wrap = ret-no-wrap
   ; tag-fits = tag-fits ; lit-fits = lit-fits ; float-fits = float-fits
   ; arith-sigop-contract = arith-sigop-contract
@@ -761,4 +769,4 @@ riscv64-supply = record
 -- dispatch twice.
 module Dispatch′ = Dispatch.Dispatch o FS slot-size word-eq Reg riscv64-roles RS.W.modulus
                        riscv64-emitter riscv64-machine riscv64-traceloop riscv64-supply
-  using (events-agree; events-agree-start; events-agree-boot; AgreeAt)
+  using (events-agree; events-agree-start; AgreeAt)

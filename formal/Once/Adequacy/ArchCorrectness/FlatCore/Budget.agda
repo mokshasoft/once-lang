@@ -222,14 +222,8 @@ bg-alloc {hv} {hv′} {prog} {fs} {fs′} bg f hf pc′ fb′ =
   bg-move {hv′} {prog} {fs′} pc′ fb′
     (subst (λ h → h + slots (need prog (suc (fpc fs))) ≤ fbase fs) (sym hf) (bg-split {hv} {prog} {fs} bg f refl))
 
--- the start: the frame base falls by what the measure falls
-bg-start : ∀ {hv : HeapView} {prog : AbstractTrace} {fs fs′ : FlatState} {b : ℕ}
-         → Budget hv prog fs → fetch prog (fpc fs) ≡ just (instr-ctrl (c-start b))
-         → fpc fs′ ≡ suc (fpc fs) → fbase fs′ ≡ fbase fs ∸ slots b → Budget hv prog fs′
-bg-start {hv} {prog} {fs} {fs′} {b} bg f pc′ fb′ =
-  bg-move {hv} {prog} {fs′} pc′ fb′
-    (m+n≤o⇒m≤o∸n (hfront hv + slots (need prog (suc (fpc fs))))
-      (subst (_≤ fbase fs) (swap (hfront hv) (slots b) (slots (need prog (suc (fpc fs))))) (bg-split {hv} {prog} {fs} bg f refl)))
+-- (D486: the start is a boundary — its own check precedes the image's first
+-- check — so past it the budget is `bg-boundary`'s; `bg-start` went.)
 
 -- a call lands ON its callee's entry, one slot down: the entry's frame is at
 -- most the largest, which the call's spend covered

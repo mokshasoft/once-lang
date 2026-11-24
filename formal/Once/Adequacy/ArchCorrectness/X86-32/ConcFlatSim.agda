@@ -43,7 +43,7 @@ open import Once.Spec.Float.Dyadic using (binary32)
 open import Once.Spec.Float.Decimal using (Decimal)
 open import Data.Integer using (ℤ)
 open import Once.CCC.Machine.SMCore
-  using (AbstractTrace; instr-ctrl; c-ret; instr-load-tag-lit; instr-load-const; instr-room)
+  using (AbstractTrace; instr-ctrl; c-ret; c-start; start-stack-words; instr-load-tag-lit; instr-load-const; instr-room)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 import Once.CCC.Target.X86-32.Semantics as X
 import Once.Adequacy.ArchCorrectness.X86-32.FlatCorrespondence as FC
@@ -135,6 +135,14 @@ module Once.Adequacy.ArchCorrectness.X86-32.ConcFlatSim (o : CanonicalName)
              → FlatMachine.fetch {FS} prog (FlatMachine.FlatState.fpc {FS} fs)
                  ≡ just (instr-room k)
              → slots k < X.W.modulus)
+  (start-fits : ∀ {hv : FC.FlatCorrespondence.HeapView FS word-eq}
+                 (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
+                 (s : X.State) (b : ℕ)
+             → RL.RunLow o FS slot-size word-eq prog fs
+             → FSim.CompiledCorrespondence.CompiledCorr o FS word-eq fmt-eq hv prog fs s
+             → FlatMachine.fetch {FS} prog (FlatMachine.FlatState.fpc {FS} fs)
+                 ≡ just (instr-ctrl (c-start b))
+             → slots (start-stack-words + b) < X.W.modulus)
   where
 
 open import Data.Maybe using (Maybe; just; nothing)
@@ -154,7 +162,7 @@ import Once.CCC.Target.X86-32.Semantics as X
 -- the correspondence it re-exports) into this interface.
 import Once.Adequacy.ArchCorrectness.X86-32.FlatSimulation
 module FlatSimulation = Once.Adequacy.ArchCorrectness.X86-32.FlatSimulation o FS word-eq fmt-eq
-  using (b-cmp-reg-imm; room-step-x86-32; x86-32-block-steps; x86-32-link-claim; xrreg; module C; module CompiledCorrespondence)
+  using (b-cmp-reg-imm; room-step-x86-32; start-step-x86-32; x86-32-block-steps; x86-32-link-claim; xrreg; module C; module CompiledCorrespondence)
 open FlatSimulation
 open FlatSimulation.CompiledCorrespondence using (CompiledCorr; module CompiledCorr)
 open FlatSimulation.CompiledCorrespondence.CompiledCorr using (dataCorr; pc-off)
@@ -817,6 +825,8 @@ x86-32-supply = record
   { bss = x86-32-block-steps ; sts = x86-32-stuck-steps
   ; room-step = λ prog fs s k run cc h ft → room-step-x86-32 prog fs s k cc h ft (reg-range prog fs s PhysReg.esi run cc)
       (reg-range prog fs s PhysReg.esp run cc) (room-fits prog fs s k run cc ft)
+  ; start-step = λ prog fs s b run cc h ft _ nf → start-step-x86-32 prog fs s b cc h ft
+      (reg-range prog fs s PhysReg.esi run cc) (reg-range prog fs s PhysReg.esp run cc) (start-fits prog fs s b run cc ft) nf
   ; reg-range = reg-range ; ret-no-wrap = ret-no-wrap
   ; tag-fits = tag-fits ; lit-fits = lit-fits ; float-fits = float-fits
   ; arith-sigop-contract = arith-sigop-contract
@@ -829,4 +839,4 @@ x86-32-supply = record
 -- dispatch twice.
 module Dispatch′ = Dispatch.Dispatch o FS slot-size word-eq Reg x86-32-roles X.W.modulus
                        x86-32-emitter x86-32-machine x86-32-traceloop x86-32-supply
-  using (events-agree; events-agree-start; events-agree-boot; AgreeAt)
+  using (events-agree; events-agree-start; AgreeAt)

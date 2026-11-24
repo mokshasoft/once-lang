@@ -75,7 +75,7 @@ module Once.Adequacy.ArchCorrectness.FlatCore.EventDispatch
 open import Once.Adequacy.ArchCorrectness.FlatCore.EventEngine
   o FS slot-size word-eq Reg roles modulus E M T
 open CompiledCorrespondence using (CompiledCorr; BlockStep; store-guard; slot-heap-disj)
-open CompiledCorrespondence.BlockSteps using (bs-c-thunk; bs-c-ret; bs-call; bs-call-fn; bs-c-jmp; bs-c-branch-tag-zero; bs-c-branch-tag-nz; bs-out-nz; bs-load-indirect; bs-load-indirect-stack; bs-load-indirect-suc; bs-load-indirect-suc-stack; bs-load-from-slot; bs-restore-input; bs-worklist-pop; bs-store-indirect; bs-store-indirect-stack; bs-store-indirect-suc; bs-store-indirect-suc-stack; bs-load-at; bs-addr-at; bs-store-at; bs-mov-to-output; bs-mov-to-input; bs-store-at-slot; bs-worklist-push; bs-alloc-heap; bs-load-const; bs-load-const-float; bs-lea-slot; bs-load-code-addr; bs-save-closure-reg; bs-worklist-init; bs-worklist-check; bs-reclaim-to; bs-load-tag-lit; bs-c-label; bs-c-start; bs-load-at-stack; bs-store-at-stack; bs-free-heap; bs-load-rec; bs-store-rec)
+open CompiledCorrespondence.BlockSteps using (bs-c-thunk; bs-c-ret; bs-call; bs-call-fn; bs-c-jmp; bs-c-branch-tag-zero; bs-c-branch-tag-nz; bs-out-nz; bs-load-indirect; bs-load-indirect-stack; bs-load-indirect-suc; bs-load-indirect-suc-stack; bs-load-from-slot; bs-restore-input; bs-worklist-pop; bs-store-indirect; bs-store-indirect-stack; bs-store-indirect-suc; bs-store-indirect-suc-stack; bs-load-at; bs-addr-at; bs-store-at; bs-mov-to-output; bs-mov-to-input; bs-store-at-slot; bs-worklist-push; bs-alloc-heap; bs-load-const; bs-load-const-float; bs-lea-slot; bs-load-code-addr; bs-save-closure-reg; bs-worklist-init; bs-worklist-check; bs-reclaim-to; bs-load-tag-lit; bs-c-label; bs-load-at-stack; bs-store-at-stack; bs-free-heap; bs-load-rec; bs-store-rec)
 open CompiledCorrespondence.CompiledCorr using (dataCorr)
 open FlatComposition using (blk-len; blk-off; find-thunk-corr)
 open FlatInv using (inv-run; inv-ev; inv-env; inv-wf; inv-closure; inv-started; inv-left)
@@ -124,7 +124,7 @@ open CFC using (HeapView; slots)
 -- plan 0.123 A.4 step 5: THE BUDGET the room checks re-arm, carried beside the
 -- correspondence; it is where every spending instruction's room comes from.
 open import Once.Adequacy.ArchCorrectness.FlatCore.Budget o FS slot-size word-eq Reg roles State rreg memory xhalted heap-base
-  using (Budget; fbase-shift; straight-frame; room-of; call-room-of; bg-view; bg-plain; bg-str; bg-spent-str; bg-alloc; bg-start
+  using (Budget; fbase-shift; straight-frame; room-of; call-room-of; bg-view; bg-plain; bg-str; bg-spent-str; bg-alloc
         ; bg-call; bg-room; bg-boundary; bg-label; bg-ret)
 
 ------------------------------------------------------------------------
@@ -1330,15 +1330,15 @@ module Dispatch (sup : Supply) where
       call-step n (events-agree n) ev env prog fs s cc bg wf h ftq
 
 
-  -- Plan 0.107: THE START, THEN THE RUN. The correspondence's induction begins
-  -- ONE STEP IN — after the start, which no step returns to (`inv-started`).
-  -- This carries it across: the start's block (`bs-c-start`) takes the
-  -- environment's state to `main`'s first instruction, and the run from there
-  -- is `events-agree`'s. What the start needs of the environment is the stack
-  -- room for `main`'s frame (`stack-room`, the same resource fact a body entry
-  -- needs) and a frontier at the heap's base.
+  -- Plan 0.107, D486: THE START, THEN THE RUN. The correspondence's induction
+  -- begins ONE STEP IN — after the start, which no step returns to
+  -- (`inv-started`). The start checks for itself (`start-step`): with room it
+  -- lands in the correspondence past it, where a check is next (it is a
+  -- boundary), so the budget there is the layout's (`bg-boundary`) and the run
+  -- from there is `events-agree`'s; without room the concrete run ends
+  -- `exhausted` before any event — a run that RAN OUT of the flat one.
   events-agree-start : ∀ {hv : HeapView} N (ev : RT.EvExtractor) (env : RT.ArithEnv) prog fs s b
-    → CompiledCorr hv prog fs s → Budget hv prog fs
+    → CompiledCorr hv prog fs s
     → FlatWF fs → sv-below (next-heap-ref (falloc fs)) (fclosure fs)
     → ev ≡ ev-arch → ArithTable prog env → RunAt prog fs
     → halted (floc fs) ≡ false
@@ -1348,35 +1348,20 @@ module Dispatch (sup : Supply) where
     → LocState.left (floc fs) ≡ false
     → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
                  (flat-events (suc N) prog fs) (flat-ctrls (suc N) prog fs) M)
-  events-agree-start {hv} N ev env prog fs s b cc bg wf cl evq envq run h ftq h0 nf lf0 =
-    (blk-len i + proj₁ rec)
-    , subst (λ o → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) (blk-len i + proj₁ rec) (compile-trace prog) s)
-                           o (flat-ctrls (suc N) prog fs) (blk-len i + proj₁ rec))
+  events-agree-start {hv} N ev env prog fs s b cc wf cl evq envq run h ftq h0 nf lf0
+    with start-step prog fs s b run cc h ftq h0 nf
+  ... | inj₁ (c , s′ , ex , hv′ , cc′) =
+    suc c + proj₁ rec
+    , subst (λ o → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) (suc c + proj₁ rec) (compile-trace prog) s)
+                           o (flat-ctrls (suc N) prog fs) (suc c + proj₁ rec))
             (sym step-eq) (agree-pre [] pre-eq bound (proj₂ rec))
     where
       i = instr-ctrl (c-start b)
-      -- `main`'s frame, from the budget the start's check armed
-      room : CFC.HeapView.hfront hv + slots b ≤ rreg s sp-reg
-      room = room-of bg (dataCorr cc) ftq refl
-      fits : slots b ≤ rreg s sp-reg
-      fits = ≤-trans (m≤n+m (slots b) (CFC.HeapView.hfront hv)) room
-      front-rsp : CFC.HeapView.hfront hv ≤ rreg s sp-reg ∸ slots b
-      front-rsp = m+n≤o⇒m≤o∸n (CFC.HeapView.hfront hv) room
-      lo' : ℕ
-      lo' = CFC.HeapView.lo hv ⊓ (rreg s sp-reg ∸ slots b)
-      lo'≤lo : lo' ≤ CFC.HeapView.lo hv
-      lo'≤lo = m⊓n≤m (CFC.HeapView.lo hv) (rreg s sp-reg ∸ slots b)
-      lo'≤rsp : lo' ≤ rreg s sp-reg ∸ slots b
-      lo'≤rsp = m⊓n≤n (CFC.HeapView.lo hv) (rreg s sp-reg ∸ slots b)
-      front-lo' : CFC.HeapView.hfront hv ≤ lo'
-      front-lo' = ⊓-glb (CFC.HeapView.front-lo hv) front-rsp
-      bs = bs-c-start bss prog fs s b cc h ftq lo' lo'≤lo front-lo' lo'≤rsp fits
-                      (reg-range prog fs s sp-reg run cc) h0 nf
+      fs₁ = flat-exec-instr i prog fs
       -- the post-start invariant, from the flat-machine theorems; the start
       -- is behind it now (its pc is one past)
-      -- D377: the start is an image instruction, so the base run moves past pc 0
       nxt = low-step-image prog fs i run ftq h (λ _ ())
-      inv₁ : FlatInv ev env prog (flat-exec-instr i prog fs)
+      inv₁ : FlatInv ev env prog fs₁
       inv₁ = record
         { inv-wf      = flat-wf-step i prog fs wf
         ; inv-closure = cl-step i prog fs wf cl
@@ -1386,74 +1371,24 @@ module Dispatch (sup : Supply) where
         ; inv-started = proj₂ nxt
         ; inv-left    = trans (LL.flat-exec-instr-left i tt prog fs) lf0
         }
-      -- the start spent `main`'s frame from the budget: the frame base fell by it
-      bg₁ = bg-view refl $ bg-start bg ftq refl (fbase-shift (flat-exec-instr i prog fs) fs b refl)
-      rec = events-agree N ev env prog (flat-exec-instr i prog fs) (proj₁ bs) (proj₂ (proj₂ bs)) bg₁ inv₁
-      pre-eq : RT.run-events ev env (LocState.ev-log (floc fs)) (blk-len i + proj₁ rec) (compile-trace prog) s
-             ≡ RT.run-events ev env (LocState.ev-log (floc (flat-exec-instr i prog fs))) (proj₁ rec) (compile-trace prog) (proj₁ bs)
-      pre-eq =
-        block-run-exec ev env (LocState.ev-log (floc fs)) (blk-len i) (proj₁ rec) (compile-trace prog) s
-          (proj₁ (proj₂ bs)) (trans (CFC.FlatCorr.halt-eq (dataCorr (proj₂ (proj₂ bs)))) h)
-      step-eq : flat-events (suc N) prog fs ≡ flat-events N prog (flat-exec-instr i prog fs)
-      step-eq rewrite h | ftq = refl
-      step-ctrls : flat-ctrls (suc N) prog fs ≡ ctrl-of i + flat-ctrls N prog (flat-exec-instr i prog fs)
-      step-ctrls rewrite h | ftq = refl
-      bound : flat-ctrls N prog (flat-exec-instr i prog fs) ≤ suc (proj₁ rec)
-            → flat-ctrls (suc N) prog fs ≤ suc (blk-len i + proj₁ rec)
-      bound b = ≤-trans (≤-reflexive step-ctrls) (≤-trans (+-mono-≤ (ctrl-le i) b) (≤-reflexive (+-suc (blk-len i) (proj₁ rec))))
-
-  -- D377: THE BOOT — the start's check, then the start. The lowered image holds
-  -- the check for the whole first stretch at pc 0 and the start right after.
-  -- Room: the check's run lands in the correspondence one past it, where the
-  -- start is (`events-agree-start`); the flat check emits nothing and counts no
-  -- control step. No room: the concrete run ends `exhausted` before any event —
-  -- a run that RAN OUT of the flat one, as at any other check.
-  events-agree-boot : ∀ {hv : HeapView} N (ev : RT.EvExtractor) (env : RT.ArithEnv) prog fs s b k
-    → CompiledCorr hv prog fs s
-    → FlatWF fs → sv-below (next-heap-ref (falloc fs)) (fclosure fs)
-    → ev ≡ ev-arch → ArithTable prog env → RunAt prog fs
-    → halted (floc fs) ≡ false
-    → fetch prog (fpc fs) ≡ just (instr-room k)
-    → fetch prog (suc (fpc fs)) ≡ just (instr-ctrl (c-start b))
-    → CFC.HeapView.hfront hv ≡ heap-base + rec-size * slot-size
-    → fret fs ≡ []
-    → LocState.left (floc fs) ≡ false
-    → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
-                 (flat-events (suc (suc N)) prog fs) (flat-ctrls (suc (suc N)) prog fs) M)
-  events-agree-boot {hv} N ev env prog fs s b k cc wf cl evq envq run h ftq fts h0 nf lf0
-    with room-step prog fs s k run cc h ftq
-  ... | inj₁ (c , s′ , ex , cc′ , le) =
-    c + proj₁ rec
-    , subst (λ o → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) (c + proj₁ rec) (compile-trace prog) s)
-                           o (flat-ctrls (suc (suc N)) prog fs) (c + proj₁ rec))
-            (sym step-eq)
-            (agree-pre [] pre-eq bound (proj₂ rec))
-    where
-      i = instr-room k
-      fs₁ = flat-exec-instr i prog fs
-      -- the start's check armed the budget for the first stretch
-      rec = events-agree-start N ev env prog fs₁ s′ b cc′
-              (bg-room run (dataCorr cc) ftq le refl (straight-frame i fs))
-              (flat-wf-step i prog fs wf) (cl-step i prog fs wf cl)
-              evq envq (low-step prog fs i run ftq h) h fts h0 nf
-              (trans (LL.flat-exec-instr-left i tt prog fs) lf0)
-      pre-eq : RT.run-events ev env (LocState.ev-log (floc fs)) (c + proj₁ rec) (compile-trace prog) s
+      -- the start is a boundary: its check comes next, where nothing is owed
+      bg₁ : Budget hv′ prog fs₁
+      bg₁ = bg-boundary run ftq refl refl (dataCorr cc′)
+      rec = events-agree N ev env prog fs₁ s′ cc′ bg₁ inv₁
+      pre-eq : RT.run-events ev env (LocState.ev-log (floc fs)) (suc c + proj₁ rec) (compile-trace prog) s
              ≡ RT.run-events ev env (LocState.ev-log (floc fs₁)) (proj₁ rec) (compile-trace prog) s′
-      pre-eq = block-run-exec ev env (LocState.ev-log (floc fs)) c (proj₁ rec) (compile-trace prog) s ex
+      pre-eq = block-run-exec ev env (LocState.ev-log (floc fs)) (suc c) (proj₁ rec) (compile-trace prog) s ex
                  (trans (CFC.FlatCorr.halt-eq (dataCorr cc′)) h)
-      ev-room : flat-events-fetch (just i) (suc N) prog fs ≡ flat-events (suc N) prog fs₁
-      ev-room = refl
-      ct-room : flat-ctrls-fetch (just i) (suc N) prog fs ≡ flat-ctrls (suc N) prog fs₁
-      ct-room = refl
-      step-eq : flat-events (suc (suc N)) prog fs ≡ flat-events (suc N) prog fs₁
-      step-eq = trans (cong (λ hb → flat-events-step hb (suc N) prog fs) h) (trans (cong (λ mi → flat-events-fetch mi (suc N) prog fs) ftq) ev-room)
-      step-ctrls : flat-ctrls (suc (suc N)) prog fs ≡ flat-ctrls (suc N) prog fs₁
-      step-ctrls = trans (cong (λ hb → flat-ctrls-step hb (suc N) prog fs) h) (trans (cong (λ mi → flat-ctrls-fetch mi (suc N) prog fs) ftq) ct-room)
-      bound : flat-ctrls (suc N) prog fs₁ ≤ suc (proj₁ rec) → flat-ctrls (suc (suc N)) prog fs ≤ suc (c + proj₁ rec)
-      bound b′ = ≤-trans (≤-reflexive step-ctrls) (≤-trans b′ (s≤s (m≤n+m (proj₁ rec) c)))
+      step-eq : flat-events (suc N) prog fs ≡ flat-events N prog fs₁
+      step-eq rewrite h | ftq = refl
+      step-ctrls : flat-ctrls (suc N) prog fs ≡ ctrl-of i + flat-ctrls N prog fs₁
+      step-ctrls rewrite h | ftq = refl
+      bound : flat-ctrls N prog fs₁ ≤ suc (proj₁ rec)
+            → flat-ctrls (suc N) prog fs ≤ suc (suc c + proj₁ rec)
+      bound b′ = ≤-trans (≤-reflexive step-ctrls) (s≤s (≤-trans b′ (s≤s (m≤n+m (proj₁ rec) c))))
   ... | inj₂ (c , s′ , ex , hs′ , ft′) =
-    c + 1 , subst (λ o → AgreeAt o (flat-events (suc (suc N)) prog fs) (flat-ctrls (suc (suc N)) prog fs) (c + 1))
+    c + 1 , subst (λ o → AgreeAt o (flat-events (suc N) prog fs) (flat-ctrls (suc N) prog fs) (c + 1))
                   (sym (trans (block-run-exec ev env (LocState.ev-log (floc fs)) c 1 (compile-trace prog) s ex hs′)
                               (RT.run-events-exhausted ev env (LocState.ev-log (floc fs)) 0 (compile-trace prog) s′
                                  (sigop-call host-exhausted-symbol) hs′ ft′ (sigop-matchCall host-exhausted-symbol))))
-                  (inj₂ (refl , proj₁ (flat-events (suc (suc N)) prog fs) , refl))
+                  (inj₂ (refl , proj₁ (flat-events (suc N) prog fs) , refl))

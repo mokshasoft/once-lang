@@ -740,7 +740,7 @@ module Img (nm : CanonicalName) {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     refs-ok (instr-ctrl (c-branch-tag-zero n)) r jin m = lab-G (jin n refl) ∷ []
     refs-ok (instr-ctrl (c-ret _)) r jin m = []
     refs-ok (instr-ctrl (c-call-fn _)) ((σ , κ) , p , refl) jin m = fn-G p ∷ []
-    refs-ok (instr-ctrl (c-start _)) r jin m = []
+    refs-ok (instr-ctrl (c-start _)) r jin m = inj₂ (there (here refl)) ∷ inj₁ (there (here refl)) ∷ []
     refs-ok (instr-ctrl c-leave) r jin m = inj₂ (here refl) ∷ []
     refs-ok mov-to-output r jin m = []
     refs-ok mov-to-input r jin m = []
@@ -1155,7 +1155,7 @@ module Img (nm : CanonicalName) {Γ} (ds : Defs Γ) (f : LTm Γ One One)
 
       -- what a kept instruction of the outlined image references
       kept-refs : ∀ i → i ∈ imageᵒ → (∀ k → i ≡ instr-alloc-heap k → ⊥) → (∀ k → i ≡ instr-free-heap k → ⊥) → AllR i
-      kept-refs i (here refl) _ _ = []
+      kept-refs i (here refl) _ _ = inj₂ (there (here refl)) ∷ rec-G ∷ []
       kept-refs i (there q) nA nF = by (∈-++⁻ (skip ksᵒ) q)
         where
           rou-refs : ∀ {j} → RouI ksᵒ j → (∀ k → j ≡ instr-alloc-heap k → ⊥) → (∀ k → j ≡ instr-free-heap k → ⊥) → AllR j

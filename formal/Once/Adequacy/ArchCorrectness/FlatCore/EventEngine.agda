@@ -31,7 +31,7 @@
 -- about the ABSTRACT machine and was never arch-specific to begin with.
 ------------------------------------------------------------------------
 
-open import Data.Nat using (ℕ; zero; suc; _+_; _≤_; _<_; NonZero)
+open import Data.Nat using (ℕ; zero; suc; _+_; _*_; _≤_; _<_; NonZero)
 open import Data.Bool using (Bool; true; false)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _++_; drop)
@@ -149,7 +149,7 @@ open AllocState using (next-heap-ref)
 open LocState using (halted; regs)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open FlatMachine {FS} using (FlatState; fetch; flat-exec-instr; module FlatState)
-open FlatState using (falloc; fclosure; fpc; floc)
+open FlatState using (falloc; fclosure; fpc; floc; fret)
 open MemOps {FS} using (readLoc)
 open import Once.CCC.Machine.FlatStoreWF FS using (FlatWF; flat-wf-step; cl-step; sv-below)
 
@@ -491,9 +491,30 @@ RoomStep hv prog fs s k =
                 × xhalted s' ≡ false
                 × mfetch (compile-trace prog) (xpc s') ≡ just (sigop-call host-exhausted-symbol)))
 
+-- D486: THE START's two outcomes, as the room check's: it checks that the
+-- region holds `main`'s frame and the stack it reserves (`start-stack-words`),
+-- then reserves the frame and sets the stack limit — landing in the
+-- correspondence past it, at a view of the arch's choosing (the frame's
+-- descent and the limit) — or, without room, reaches `once_exhausted`.
+StartStep : AbstractTrace → FlatState → State → ℕ → Set₁
+StartStep prog fs s b =
+    Σ ℕ (λ c → Σ State (λ s' → (exec (suc c) (compile-trace prog) s ≡ just s')
+                × Σ HeapView (λ hv′ → CompiledCorr hv′ prog (flat-exec-instr (instr-ctrl (c-start b)) prog fs) s')))
+  ⊎ Σ ℕ (λ c → Σ State (λ s' → (exec c (compile-trace prog) s ≡ just s')
+                × xhalted s' ≡ false
+                × mfetch (compile-trace prog) (xpc s') ≡ just (sigop-call host-exhausted-symbol)))
+
 record Supply : Set₁ where
   field
     bss : BlockSteps
+    -- D486: the start (pc 0): proved per arch
+    start-step : ∀ {hv : HeapView} prog fs s b → RunAt prog fs
+             → CompiledCorr hv prog fs s
+             → halted (floc fs) ≡ false
+             → fetch prog (fpc fs) ≡ just (instr-ctrl (c-start b))
+             → CFC.HeapView.hfront hv ≡ heap-base + rec-size * slot-size
+             → fret fs ≡ []
+             → StartStep prog fs s b
     -- the room check (plan 0.123 A.4): proved per arch, not assumed.
     room-step : ∀ {hv : HeapView} prog fs s k → RunAt prog fs
              → CompiledCorr hv prog fs s

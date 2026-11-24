@@ -1208,6 +1208,16 @@ RecW (suc k) = suc k < rec-size
 recw-< : ∀ k → RecW k → k < rec-size
 recw-< (suc k) lt = lt
 
+-- D486: the stack the start reserves above the limit, in words, for a program
+-- whose depth is not bounded statically (a stated default, as CakeML fixes its
+-- stack's size at start): 256 KiB on the 64-bit targets, 128 KiB on x86-32,
+-- inside seL4's 1 MiB program regions
+-- (opaque: no proof needs its value, and a literal this size under `_*_`
+-- unfolds one `suc` at a time in conversion)
+opaque
+  start-stack-words : ℕ
+  start-stack-words = 32768
+
 data AbstractInstr : Set where
   -- Register operations
   mov-to-output      : AbstractInstr              -- Output := Input1

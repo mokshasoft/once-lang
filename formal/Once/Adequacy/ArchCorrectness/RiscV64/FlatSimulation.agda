@@ -84,7 +84,7 @@ open import Once.CCC.Label using (once; thunk; callee; e-thunk; e-fn)
 import Once.CCC.Target.RiscV64.Semantics as R
 import Once.Adequacy.ArchCorrectness.RiscV64.FlatCorrespondence as FC
 module C = FC FS word-eq
-  using (keeps-t1-t2-riscv64; role-off-ra; role-off-t1; sets-2roles-riscv64; sets-mem-riscv64; sets-role-riscv64; sets-out-t1-riscv64; sets-mem-t1-riscv64; module FlatCorrespondence)
+  using (keeps-t1-t2-riscv64; keeps-t2-riscv64; role-off-ra; role-off-t1; sets-2roles-riscv64; sets-mem-riscv64; sets-role-riscv64; sets-out-t1-riscv64; sets-mem-t1-riscv64; module FlatCorrespondence)
 open C using ()
 open C.FlatCorrespondence using (HeapView)
 open C.FlatCorrespondence.HeapView using (HDom; haddr)
@@ -104,7 +104,9 @@ open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles
 open import Once.CCC.Target.RiscV64.AbstractToRiscV using (compile-trace; compile-abstract; slot-to-disp)
 open import Relation.Binary.PropositionalEquality using (subst₂)
 open import Data.Nat.Properties using (+-monoʳ-<; *-monoˡ-<; ≤-<-trans; ≤-trans; <-trans; <-≤-trans; <⇒≢
-                                      ; m∸n+n≡m; m≤o∸n⇒m+n≤o)
+                                      ; m∸n+n≡m; m≤o∸n⇒m+n≤o; *-distribʳ-+; m≤n+m; +-monoʳ-≤; m+n≤o⇒m≤o∸n
+                                      ; m⊓n≤m; m⊓n≤n; ⊓-glb)
+open import Data.Nat using (_⊓_)
 open import Data.Empty using (⊥)
 open import Once.CCC.FrameSemantics using (module FrameSemantics)
 open FrameSemantics using (frame-base; slot-addr; slot-addr-linear; shift-frame; shift-base)
@@ -627,6 +629,208 @@ room-step-riscv64 {hv} prog fs s k@(suc _) cc h ft sp<m k<m =
         d = C.FlatCorrespondence.keep-all dc kr
         pco : R.State.pc q4 ≡ blk-off prog (fpc (flat-exec-instr i prog fs))
         pco = trans (room-a5 p) (trans (cong (_+ 5) po) (sym (blk-off-suc prog (fpc fs) i ft)))
+    go true lt = inj₂ (3 , q3 , exec3 , halt-s , f3)
+      where
+        q3 : R.State
+        q3 = record q2 { pc = R.State.pc q2 + 1 }
+        st2 : R.step-not-halted cp q2 ≡ just q3
+        st2 = step-bgeu-not {cp} {q2} {t1} {t2} f2 lt
+        exec3 : R.exec 3 cp s ≡ just q3
+        exec3 = trans (exec-1 {cp} {2} {s} {q1} halt-s st0 halt-s)
+               (trans (exec-1 {cp} {1} {q1} {q2} halt-s st1 halt-s)
+                      (exec-1 {cp} {0} {q2} {q3} halt-s st2 halt-s))
+
+------------------------------------------------------------------------
+-- Plan 0.107, D486: THE START ↔ the room check for `main`'s frame and the stack
+-- it reserves (the check's own five instructions at `start-stack-words + b`),
+-- `addi sp, sp, -8b` (the outermost frame: `sim-thunk`, WITHOUT the spill —
+-- nothing called the program), then the stack limit: `li t2, 8B ; sub t2, sp,
+-- t2 ; lla t1, record ; sd t2, 0(t1)` (`sim-set-lim`). Nothing is owed at the
+-- start, so the return rows are empty on both sides.
+------------------------------------------------------------------------
+private
+  st-a6 : ∀ p → (p + 5) + 1 ≡ p + 6
+  st-a6 p = +-assoc p 5 1
+  st-a7 : ∀ p → (p + 6) + 1 ≡ p + 7
+  st-a7 p = +-assoc p 6 1
+  st-a8 : ∀ p → (p + 7) + 1 ≡ p + 8
+  st-a8 p = +-assoc p 7 1
+  st-a9 : ∀ p → (p + 8) + 1 ≡ p + 9
+  st-a9 p = +-assoc p 8 1
+  st-a10 : ∀ p → (p + 9) + 1 ≡ p + 10
+  st-a10 p = +-assoc p 9 1
+
+start-step-riscv64 : ∀ {hv : HeapView} prog fs s bf → CompiledCorr hv prog fs s
+  → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just (instr-ctrl (c-start bf))
+  → R.readReg (R.State.regs s) sp < R.W.modulus
+  → slots (start-stack-words + bf) < R.W.modulus
+  → fret fs ≡ []
+  → Σ ℕ (λ c → Σ R.State (λ s' → (R.exec (suc c) (compile-trace prog) s ≡ just s')
+                × Σ HeapView (λ hv′ → CompiledCorr hv′ prog (flat-exec-instr (instr-ctrl (c-start bf)) prog fs) s')))
+    ⊎ Σ ℕ (λ c → Σ R.State (λ s' → (R.exec c (compile-trace prog) s ≡ just s')
+                × rhalted s' ≡ false
+                × R.fetch (compile-trace prog) (R.State.pc s') ≡ just (call-sym host-exhausted-symbol)))
+start-step-riscv64 {hv} prog fs s bf cc h ft sp<m k<m nf =
+  go (R.readReg (R.State.regs q2) t1 <ᵇ R.readReg (R.State.regs q2) t2) refl
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    cp = compile-trace prog
+    i = instr-ctrl (c-start bf)
+    B = start-stack-words
+    k = B + bf
+    p = R.State.pc s
+    halt-s : rhalted s ≡ false
+    halt-s = trans (C.FlatCorrespondence.FlatCorr.halt-eq dc) h
+    at : ∀ n q → q ≡ p + n
+       → R.fetch cp q ≡ R.fetch (drop n (compile-abstract i ++ compile-trace (drop (suc (fpc fs)) prog))) zero
+    at n q eq = trans (cong (R.fetch cp) (trans eq (cong (_+ n) po))) (fetch-block-nth prog (fpc fs) n i ft)
+    sp₀ = R.readReg (R.State.regs s) sp
+    fr₀ = R.readReg (R.State.regs s) s2
+    f0 : R.fetch cp p ≡ just (sub t1 sp s2)
+    f0 = trans (cong (R.fetch cp) po) (fetch-block-head prog (fpc fs) i ft)
+    q1 : R.State
+    q1 = record s { regs = R.writeReg (R.State.regs s) t1 (sp₀ R.W.⊖ fr₀) ; pc = p + 1 }
+    f1 : R.fetch cp (R.State.pc q1) ≡ just (li t2 (ℤ.+ slots k))
+    f1 = at 1 (p + 1) refl
+    q2 : R.State
+    q2 = record q1 { regs = R.writeReg (R.State.regs q1) t2 (R.W.fromℤ (ℤ.+ slots k))
+                   ; pc = R.State.pc q1 + 1 }
+    f2 : R.fetch cp (R.State.pc q2) ≡ just (bgeu-fwd t1 t2)
+    f2 = at 2 (R.State.pc q2) (room-a2 p)
+    fr≤sp : fr₀ ≤ sp₀
+    fr≤sp = subst (_≤ sp₀) (sym (C.FlatCorrespondence.FlatCorr.frontier-eq dc)) (C.FlatCorrespondence.sep dc)
+    room-eq : R.readReg (R.State.regs q2) t1 ≡ sp₀ ∸ fr₀
+    room-eq = R.WL.⊖≡∸ sp₀ fr₀ fr≤sp sp<m
+    need-eq : R.readReg (R.State.regs q2) t2 ≡ slots k
+    need-eq = R.WL.norm-id k<m
+    f3 : R.fetch cp (R.State.pc q2 + 1) ≡ just (call-sym host-exhausted-symbol)
+    f3 = at 3 (R.State.pc q2 + 1) (room-a3 p)
+    f4 : R.fetch cp (suc (R.State.pc q2 + 1)) ≡ just local-1
+    f4 = at 4 (suc (R.State.pc q2 + 1)) (room-a4 p)
+    st0 : R.step-not-halted cp s ≡ just q1
+    st0 = step-sub {cp} {s} {t1} {sp} {s2} f0
+    st1 : R.step-not-halted cp q1 ≡ just q2
+    st1 = step-li {cp} {q1} {t2} {ℤ.+ slots k} f1
+    go : ∀ bb → (R.readReg (R.State.regs q2) t1 <ᵇ R.readReg (R.State.regs q2) t2) ≡ bb
+       → Σ ℕ (λ c → Σ R.State (λ s' → (R.exec (suc c) cp s ≡ just s')
+                × Σ HeapView (λ hv′ → CompiledCorr hv′ prog (flat-exec-instr i prog fs) s')))
+         ⊎ Σ ℕ (λ c → Σ R.State (λ s' → (R.exec c cp s ≡ just s')
+                × rhalted s' ≡ false
+                × R.fetch cp (R.State.pc s') ≡ just (call-sym host-exhausted-symbol)))
+    go false lt = inj₁ (8 , q9 , exec9 , C.FlatCorrespondence.start-view dv L
+                       , record { dataCorr = d9 ; pc-off = pco ; ret-eq = retPost ; code-eq = code-eq cc })
+      where
+        hf = C.FlatCorrespondence.HeapView.hfront hv
+        fitsk : slots k ≤ sp₀ ∸ fr₀
+        fitsk = subst₂ _≤_ need-eq room-eq (nlt-≥ _ _ lt)
+        le : hf + slots k ≤ sp₀
+        le = subst (λ z → z + slots k ≤ sp₀) (C.FlatCorrespondence.FlatCorr.frontier-eq dc)
+                   (subst (_≤ sp₀) (+-comm (slots k) fr₀) (m≤o∸n⇒m+n≤o (slots k) fr≤sp fitsk))
+        q3 : R.State
+        q3 = record q2 { pc = suc (R.State.pc q2 + 1) }
+        q4 : R.State
+        q4 = record q3 { pc = R.State.pc q3 + 1 }
+        st2 : R.step-not-halted cp q2 ≡ just q3
+        st2 = step-bgeu-taken {cp} {q2} {t1} {t2} f2 lt (find-local-1-past-call {cp} {R.State.pc q2 + 1} f3 f4)
+        st3 : R.step-not-halted cp q3 ≡ just q4
+        st3 = step-local-1 {cp} {q3} f4
+        d4 = C.FlatCorrespondence.keep-all dc (C.keeps-t1-t2-riscv64 s (sp₀ R.W.⊖ fr₀) (R.W.fromℤ (ℤ.+ slots k)) _)
+        -- THE FRAME
+        kb : slots bf ≤ slots k
+        kb = subst (slots bf ≤_) (sym (*-distribʳ-+ slot-size B bf)) (m≤n+m (slots bf) (slots B))
+        hb : hf + slots bf ≤ sp₀
+        hb = ≤-trans (+-monoʳ-≤ hf kb) le
+        fits : slots bf ≤ sp₀
+        fits = ≤-trans (m≤n+m (slots bf) hf) hb
+        front-rsp : hf ≤ sp₀ ∸ slots bf
+        front-rsp = m+n≤o⇒m≤o∸n hf hb
+        lo′ : ℕ
+        lo′ = C.FlatCorrespondence.HeapView.lo hv ⊓ (sp₀ ∸ slots bf)
+        lo′≤lo : lo′ ≤ C.FlatCorrespondence.HeapView.lo hv
+        lo′≤lo = m⊓n≤m (C.FlatCorrespondence.HeapView.lo hv) (sp₀ ∸ slots bf)
+        lo′≤rsp : lo′ ≤ sp₀ ∸ slots bf
+        lo′≤rsp = m⊓n≤n (C.FlatCorrespondence.HeapView.lo hv) (sp₀ ∸ slots bf)
+        front-lo′ : hf ≤ lo′
+        front-lo′ = ⊓-glb (C.FlatCorrespondence.HeapView.front-lo hv) front-rsp
+        dv = C.FlatCorrespondence.descend-view hv lo′ lo′≤lo front-lo′
+        e5 : R.State.pc q4 ≡ p + 5
+        e5 = room-a5 p
+        f5 : R.fetch cp (R.State.pc q4) ≡ just (addi sp sp (ℤ.-_ (ℤ.+ (slots bf))))
+        f5 = at 5 (R.State.pc q4) e5
+        q5 : R.State
+        q5 = record q4 { regs = R.writeReg (R.State.regs q4) sp (sp₀ ∸ slots bf) ; pc = R.State.pc q4 + 1 }
+        st4 : R.step-not-halted cp q4 ≡ just q5
+        st4 = subst (λ w → R.step-not-halted cp q4
+                           ≡ just (record q4 { regs = R.writeReg (R.State.regs q4) sp w
+                                             ; pc = R.State.pc q4 + 1 }))
+                    (R.WL.⊕-neg sp₀ (slots bf) fits sp<m)
+                    (step-addi {cp} {q4} {sp} {sp} {ℤ.-_ (ℤ.+ (slots bf))} f5)
+        fs₁ = flat-exec-instr i prog fs
+        d5 : C.FlatCorrespondence.FlatCorr dv fs₁ q5
+        d5 = C.FlatCorrespondence.sim-thunk bf fs q4 q5 d4 lo′ lo′≤lo front-lo′ lo′≤rsp fits
+               (C.sets-role-riscv64 q4 role-sp _ _)
+        -- THE LIMIT
+        e6 : R.State.pc q4 + 1 ≡ p + 6
+        e6 = trans (cong (_+ 1) e5) (st-a6 p)
+        f6 : R.fetch cp (R.State.pc q5) ≡ just (li t2 (ℤ.+ slots B))
+        f6 = at 6 (R.State.pc q5) e6
+        q6 : R.State
+        q6 = record q5 { regs = R.writeReg (R.State.regs q5) t2 (R.W.fromℤ (ℤ.+ slots B)) ; pc = R.State.pc q5 + 1 }
+        st5 : R.step-not-halted cp q5 ≡ just q6
+        st5 = step-li {cp} {q5} {t2} {ℤ.+ slots B} f6
+        e7 : R.State.pc q5 + 1 ≡ p + 7
+        e7 = trans (cong (_+ 1) e6) (st-a7 p)
+        f7 : R.fetch cp (R.State.pc q6) ≡ just (sub t2 sp t2)
+        f7 = at 7 (R.State.pc q6) e7
+        L : ℕ
+        L = R.readReg (R.State.regs q6) sp R.W.⊖ R.readReg (R.State.regs q6) t2
+        q7 : R.State
+        q7 = record q6 { regs = R.writeReg (R.State.regs q6) t2 L ; pc = R.State.pc q6 + 1 }
+        st6 : R.step-not-halted cp q6 ≡ just q7
+        st6 = step-sub {cp} {q6} {t2} {sp} {t2} f7
+        e8 : R.State.pc q6 + 1 ≡ p + 8
+        e8 = trans (cong (_+ 1) e7) (st-a8 p)
+        f8 : R.fetch cp (R.State.pc q7) ≡ just (lla-sym t1 alloc-record-symbol)
+        f8 = at 8 (R.State.pc q7) e8
+        q8 : R.State
+        q8 = record q7 { regs = R.writeReg (R.State.regs q7) t1 R.heap-base ; pc = R.State.pc q7 + 1 }
+        st7 : R.step-not-halted cp q7 ≡ just q8
+        st7 = step-lla-sym {cp} {q7} {t1} {alloc-record-symbol} f8
+        e9 : R.State.pc q7 + 1 ≡ p + 9
+        e9 = trans (cong (_+ 1) e8) (st-a9 p)
+        f9 : R.fetch cp (R.State.pc q8) ≡ just (sd t2 t1 0)
+        f9 = at 9 (R.State.pc q8) e9
+        q9 : R.State
+        q9 = record q8 { memory = R.writeMem (R.State.memory q8) (R.effectiveAddr (R.State.regs q8) t1 0)
+                                    (R.readReg (R.State.regs q8) t2)
+                       ; pc = R.State.pc q8 + 1 }
+        st8 : R.step-not-halted cp q8 ≡ just q9
+        st8 = step-sd {cp} {q8} {t2} {t1} {0} f9
+        e10 : R.State.pc q8 + 1 ≡ p + 10
+        e10 = trans (cong (_+ 1) e9) (st-a10 p)
+        exec9 : R.exec 9 cp s ≡ just q9
+        exec9 = trans (exec-1 {cp} {8} {s} {q1} halt-s st0 halt-s)
+               (trans (exec-1 {cp} {7} {q1} {q2} halt-s st1 halt-s)
+               (trans (exec-1 {cp} {6} {q2} {q3} halt-s st2 halt-s)
+               (trans (exec-1 {cp} {5} {q3} {q4} halt-s st3 halt-s)
+               (trans (exec-1 {cp} {4} {q4} {q5} halt-s st4 halt-s)
+               (trans (exec-1 {cp} {3} {q5} {q6} halt-s st5 halt-s)
+               (trans (exec-1 {cp} {2} {q6} {q7} halt-s st6 halt-s)
+               (trans (exec-1 {cp} {1} {q7} {q8} halt-s st7 halt-s)
+                      (exec-1 {cp} {0} {q8} {q9} halt-s st8 halt-s))))))))
+        d7 = C.FlatCorrespondence.keep-all d5 (C.keeps-t2-riscv64 q5 (R.W.fromℤ (ℤ.+ slots B)) L _)
+        sm : C.FlatCorrespondence.SetsMem q7 q9 R.heap-base L
+        sm = subst (λ a′ → C.FlatCorrespondence.SetsMem q7 q9 a′ L) (+-identityʳ R.heap-base)
+                   (C.sets-mem-t1-riscv64 q7 R.heap-base _ _ _)
+        d9 = C.FlatCorrespondence.sim-set-lim fs₁ q7 q9 L d7 sm
+        pco : R.State.pc q9 ≡ blk-off prog (fpc fs₁)
+        pco = trans e10 (trans (cong (_+ 10) po) (sym (blk-off-suc prog (fpc fs) i ft)))
+        retPost : C.FlatCorrespondence.RetAddrs (blk-off prog) (R.State.memory q9) (riscv64-link-claim q9)
+                    (flink fs₁) (C.FlatCorrespondence.frames-of (falloc fs₁)) (fret fs₁)
+        retPost = subst (C.FlatCorrespondence.RetAddrs (blk-off prog) (R.State.memory q9) (riscv64-link-claim q9)
+                           (flink fs₁) (C.FlatCorrespondence.frames-of (falloc fs₁)))
+                        (sym nf) tt
     go true lt = inj₂ (3 , q3 , exec3 , halt-s , f3)
       where
         q3 : R.State
@@ -2089,65 +2293,6 @@ block-step-alloc-heap {hv} prog fs s n cc h ft wf1 wfcl wf-heap wf-stack fresh-a
     pco' : R.State.pc post-add ≡ blk-off prog (fpc (flat-exec-instr (instr-alloc-heap n) prog fs))
     pco' = trans (trans (cong (λ p → (p + 1) + 1) po) (+-assoc (blk-off prog (fpc fs)) 1 1))
                  (sym (blk-off-suc prog (fpc fs) (instr-alloc-heap n) ft))
-
-------------------------------------------------------------------------
--- Plan 0.107: THE START ↔ `addi sp, sp, -8b` — the outermost frame exactly as
--- a body marker reserves its own (`sim-thunk`), WITHOUT the spill: nothing
--- called the program, so there is no return address to save. The heap
--- register is the Host's (plan 0.123 C.5), and the correspondence at the start
--- already says it is the frontier (`frontier-eq`); `hfront hv ≡ heap-base` (D367) is kept for
--- the callers' shape, unused.
-------------------------------------------------------------------------
-block-step-c-start : ∀ {hv : HeapView} prog fs s b → CompiledCorr hv prog fs s
-  → halted (floc fs) ≡ false
-  → fetch prog (fpc fs) ≡ just (instr-ctrl (c-start b))
-  → (lo' : ℕ) (lo'≤lo : lo' ≤ C.FlatCorrespondence.HeapView.lo hv) (front-lo' : C.FlatCorrespondence.HeapView.hfront hv ≤ lo')
-  → lo' ≤ R.readReg (R.State.regs s) sp ∸ slots b
-  → slots b ≤ R.readReg (R.State.regs s) sp
-  → R.readReg (R.State.regs s) sp < R.W.modulus
-  → C.FlatCorrespondence.HeapView.hfront hv ≡ R.heap-front
-  → fret fs ≡ []
-  → BlockStepAt hv (C.FlatCorrespondence.descend-view hv lo' lo'≤lo front-lo') prog fs s (instr-ctrl (c-start b))
-block-step-c-start {hv} prog fs s b cc h ft lo' lo'≤lo front-lo' lo'≤sp fits sp<mod _ nf =
-  post-addi , exec-eq , record { dataCorr = dataPost ; pc-off = pco'
-                               ; ret-eq = retPost ; code-eq = code-eq cc }
-  where
-    dc = dataCorr cc ; po = pc-off cc
-    halt-s : R.State.halted s ≡ false
-    halt-s = trans (C.FlatCorrespondence.FlatCorr.halt-eq dc) h
-    fetch-addi : R.fetch (compile-trace prog) (R.State.pc s)
-               ≡ just (addi sp sp (ℤ.-_ (ℤ.+ (slots b))))
-    fetch-addi = trans (cong (R.fetch (compile-trace prog)) po)
-                       (fetch-block-head prog (fpc fs) (instr-ctrl (c-start b)) ft)
-    post-addi : R.State
-    post-addi = record s { regs = R.writeReg (R.State.regs s) sp
-                                   (R.readReg (R.State.regs s) sp ∸ slots b)
-                         ; pc = R.State.pc s + 1 }
-    step-addi' : R.step-not-halted (compile-trace prog) s ≡ just post-addi
-    step-addi' = subst (λ w → R.step-not-halted (compile-trace prog) s
-                              ≡ just (record s { regs = R.writeReg (R.State.regs s) sp w
-                                               ; pc = R.State.pc s + 1 }))
-                       (R.WL.⊕-neg (R.readReg (R.State.regs s) sp) (slots b) fits sp<mod)
-                       (step-addi {compile-trace prog} {s} {sp} {sp}
-                                  {ℤ.-_ (ℤ.+ (slots b))} fetch-addi)
-    exec-eq : R.exec 1 (compile-trace prog) s ≡ just post-addi
-    exec-eq = exec-1 {compile-trace prog} {0} {s} {post-addi} halt-s step-addi' halt-s
-    dataPost : C.FlatCorrespondence.FlatCorr (C.FlatCorrespondence.descend-view hv lo' lo'≤lo front-lo')
-                          (flat-exec-instr (instr-ctrl (c-start b)) prog fs) post-addi
-    dataPost = C.FlatCorrespondence.sim-thunk b fs s _ dc lo' lo'≤lo front-lo' lo'≤sp fits
-                           (C.sets-role-riscv64 s role-sp _ _)
-    pco' : R.State.pc post-addi
-         ≡ blk-off prog (fpc (flat-exec-instr (instr-ctrl (c-start b)) prog fs))
-    pco' = trans (cong (_+ 1) po)
-                 (sym (blk-off-suc prog (fpc fs) (instr-ctrl (c-start b)) ft))
-    retPost : C.FlatCorrespondence.RetAddrs (blk-off prog) (R.State.memory post-addi) (riscv64-link-claim post-addi)
-                         (flink (flat-exec-instr (instr-ctrl (c-start b)) prog fs))
-                         (C.FlatCorrespondence.frames-of (falloc (flat-exec-instr (instr-ctrl (c-start b)) prog fs)))
-                         (fret (flat-exec-instr (instr-ctrl (c-start b)) prog fs))
-    retPost = subst (C.FlatCorrespondence.RetAddrs (blk-off prog) (R.State.memory post-addi) (riscv64-link-claim post-addi)
-                                (flink (flat-exec-instr (instr-ctrl (c-start b)) prog fs))
-                                (C.FlatCorrespondence.frames-of (falloc (flat-exec-instr (instr-ctrl (c-start b)) prog fs))))
-                    (sym nf) tt
 
 ------------------------------------------------------------------------
 -- THE BODY MARKER (plan 0.65 G2) — `label (thunk n) ; addi sp,sp,-8b ;

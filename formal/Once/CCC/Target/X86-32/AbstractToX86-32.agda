@@ -25,7 +25,7 @@
 
 module Once.CCC.Target.X86-32.AbstractToX86-32 where
 
-open import Data.Nat using (ℕ; zero; suc; _∸_)
+open import Data.Nat using (ℕ; zero; suc; _∸_; _+_)
 import Data.Nat as ℕ
 open import Data.List using ([]; _∷_; _++_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
@@ -37,7 +37,7 @@ open import Once.Target.Symbol using (once-symbol-path)
 open import Once.CCC.Target.X86-32.Syntax
   using (base; base+disp; abs-sym; reg; mem; imm; mov; lea; add; sub; sbb; cmp; push; pop; call; call-sym; ret; je; jbe-fwd; local-1; label; call-l; mov-code; jmp-l; Program; slot-size; slots)
 open import Once.CCC.Label using (once; callee; e-fn)
-open import Once.Target.X86-32.PhysReg using (eax; ecx; esp; esi; ebp; ebx)
+open import Once.Target.X86-32.PhysReg using (eax; ecx; edx; esp; esi; ebp; ebx)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.SigOp.Info using (SigOpInfo)
 open import Once.Type using (fits-int; fits-float)
@@ -49,7 +49,7 @@ module IntW = OnceWord.Width 32
 
 -- Import AbstractInstr from SMCore
 open import Once.CCC.Machine.SMCore
-  using (AbstractInstr; AbstractTrace; mov-to-output; mov-to-input; load-indirect; load-indirect-suc; load-from-slot; store-at-slot; store-indirect; store-indirect-suc; lea-slot; restore-input; instr-alloc-stack; instr-alloc-heap; instr-dealloc-stack; instr-push-frame; instr-pop-frame; instr-call-closure; worklist-init; worklist-push; worklist-pop; worklist-check; instr-reclaim-to; instr-sigop; instr-load-const; instr-load-code-addr; instr-save-closure-reg; instr-load-tag-lit; instr-reg-op; instr-free-heap; instr-room; load-at; store-at; addr-at; load-rec; store-rec; instr-ctrl; out-nz; c-label; c-jmp; c-branch-tag-zero; c-ret; c-entry; c-call-fn; c-start; c-leave)
+  using (start-stack-words; AbstractInstr; AbstractTrace; mov-to-output; mov-to-input; load-indirect; load-indirect-suc; load-from-slot; store-at-slot; store-indirect; store-indirect-suc; lea-slot; restore-input; instr-alloc-stack; instr-alloc-heap; instr-dealloc-stack; instr-push-frame; instr-pop-frame; instr-call-closure; worklist-init; worklist-push; worklist-pop; worklist-check; instr-reclaim-to; instr-sigop; instr-load-const; instr-load-code-addr; instr-save-closure-reg; instr-load-tag-lit; instr-reg-op; instr-free-heap; instr-room; load-at; store-at; addr-at; load-rec; store-rec; instr-ctrl; out-nz; c-label; c-jmp; c-branch-tag-zero; c-ret; c-entry; c-call-fn; c-start; c-leave)
 open import Once.CCC.Machine.Locations using (Slot)
 
 ------------------------------------------------------------------------
@@ -287,7 +287,23 @@ compile-abstract (instr-ctrl (c-jmp n))                 = jmp-l (once n) ∷ []
 compile-abstract (instr-ctrl (c-entry e b))             = label (callee e) ∷ sub (reg esp) (imm (slots b)) ∷ []
 -- plan 0.107: the start (`once_main`) — the outermost frame. The Host set the
 -- heap register (plan 0.123 C.5).
-compile-abstract (instr-ctrl (c-start b))               = sub (reg esp) (imm (slots b)) ∷ []
+-- D486: the start checks that `main`'s frame and the stack it reserves fit
+-- (the room check's code at `start-stack-words + b`), reserves the frame, and
+-- sets the stack limit, record word 0, to `esp − 4·start-stack-words`
+-- (`edx` is no role's)
+compile-abstract (instr-ctrl (c-start b))               =
+  sub (reg esi) (reg esp) ∷
+  sub (reg esi) (imm 1) ∷
+  cmp (reg esi) (imm (IntW.modulus ∸ suc (slots (start-stack-words + b)))) ∷
+  jbe-fwd ∷
+  call-sym host-exhausted-symbol ∷
+  local-1 ∷
+  add (reg esi) (imm 1) ∷
+  add (reg esi) (reg esp) ∷
+  sub (reg esp) (imm (slots b)) ∷
+  mov (reg edx) (reg esp) ∷
+  sub (reg edx) (imm (slots start-stack-words)) ∷
+  mov (mem (abs-sym alloc-record-symbol 0)) (reg edx) ∷ []
 -- D320: the program leaves by the Host's `leave`, a call of its one fixed symbol.
 compile-abstract (instr-ctrl c-leave)                   = call-sym host-leave-symbol ∷ []
 -- D245: a direct call of a program function is `call once_<f>`.

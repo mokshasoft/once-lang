@@ -47,7 +47,7 @@ d_at_6 v0 v1
                        MAlonzo.Code.Once.Measure.Image.d_show'45'stats_106
                        (coe
                           MAlonzo.Code.Once.Measure.Image.d_image'45'stats_104
-                          (MAlonzo.Code.Once.CCC.Codegen.RoomChecks.d_room'45'checks_84
+                          (MAlonzo.Code.Once.CCC.Codegen.RoomChecks.d_room'45'checks_80
                              (coe
                                 MAlonzo.Code.Once.LinCore.ExprImage.d_imageAt_10
                                 (coe

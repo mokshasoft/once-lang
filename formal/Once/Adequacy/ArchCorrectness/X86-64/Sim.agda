@@ -64,7 +64,7 @@ open import Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim o
   (RB.AddrNoWrap.ret-no-wrap x86-64-addr-no-wrap)
   (RB.LitFits.tag-fits x86-64-lit-fits) (RB.LitFits.lit-fits x86-64-lit-fits) (RB.float-fits o ι)
   using (module Dispatch′; x86-64-arith-table)
-open Dispatch′ using (events-agree-boot; AgreeAt)
+open Dispatch′ using (events-agree-start; AgreeAt)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunLow o x86-64-frame-semantics slot-size refl using (RunLow; low-start)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunContext o x86-64-frame-semantics slot-size refl using (Emitted; module Emitted; mkRunAt; reach-start)
 
@@ -104,10 +104,10 @@ x86-64-sim = record
         run₀ = low-start image start-flat (mkRunAt em (reach-start start-flat (entry-like 0) refl snd)) refl
         fact = λ k → case fl k of λ where
           (N , e , c) →
-            let open RoomEvents {x86-64-frame-semantics} image using (ev-boot)
-                boot = ev-boot N start-flat 0 refl _ refl
-                agree₀ = events-agree-boot (proj₁ boot) ev-x86-64 env P′ start-flat X.initState _ _ (entry-corr P′)
-                           (entry-wf 0) tt refl tb run₀ refl refl refl refl refl refl
+            let open RoomEvents {x86-64-frame-semantics} image using (ev-start)
+                boot = ev-start N start-flat
+                agree₀ = events-agree-start (proj₁ boot) ev-x86-64 env P′ start-flat X.initState _ (entry-corr P′)
+                           (entry-wf 0) tt refl tb run₀ refl refl refl refl refl
                 agree = retarget (proj₁ (proj₂ boot)) (proj₂ (proj₂ boot)) agree₀
             in budget-fact-of (run-of env (compile-trace P′)) ([] , X.initState) ι (runIR (arch-numerics x86-64) (pureHalf ι) q) k (proj₁ agree) _
                  -- (the run's events named, so they are matched, not computed)

@@ -97,6 +97,13 @@ module RoomEvents {FS : FrameSemantics} (t : AbstractTrace) where
   ...   | ee′ , ec′ = suc m , ee′ , ec′
 
 
+  -- D486: THE START'S FUEL: the lowered start is the image's own first
+  -- instruction (no check before it), so the fuel that matches the original's
+  -- `suc n` is a `suc N` from the start's image.
+  ev-start : ∀ (n : ℕ) (fs : FlatState) → Σ ℕ (λ N → Same (suc N) (lift fs (φ t (fpc fs))) (suc n) fs)
+  ev-start n fs with ev-step n fs (LocState.halted (floc fs)) refl
+  ... | m , ee , ec = m , ee , ec
+
   -- THE BOOT'S FUEL: from a check state (the lowered start is one), the fuel
   -- that matches the original's `suc n` is of the form `suc (suc N)` — the check
   -- step, then the original's first step. (`ev-rel` hides that shape in a Σ.)

@@ -163,7 +163,7 @@ module NewImage (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Uni
   module IS = Once.LinCore.ImageSyms.Img (fs-numerics FS) (fs-ffi FS) bw o IT.ds IT.f₀ ML.ldConst ld-is IT.canon {FS}
 
   file-wfᴺ : Backend.AsmWF B (Backend.file B P′ (file-table (Backend.payload B) bs) (image-externs image))
-  file-wfᴺ = file-wf _ _ _ bs (image-externs image) IS.image-wf
+  file-wfᴺ = file-wf _ _ bs (image-externs image) IS.image-wf
 
   -- …the file the compiler writes (`ExprImage.fileAt`, its externs the image's)
 
@@ -231,7 +231,7 @@ module NewImage (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Uni
 
     -- (in the image's own names: the file's shape is the room-checked expansion's)
     file-wfˣ : Backend.AsmWF B (Backend.file B P″ (file-table (Backend.payload B) bs) (image-externs image))
-    file-wfˣ = file-wf _ _ _ bs (image-externs image) ISX.image-wfˣ
+    file-wfˣ = file-wf _ _ bs (image-externs image) ISX.image-wfˣ
     file-wf-atˣ : Backend.AsmWF B (Once.LinCore.ExprImage.fileAt (fs-numerics FS) B a true IT.BF.tl IT.BF.mpm
                                      (image-externs (Once.LinCore.ExprImage.imageAt (fs-numerics FS) IT.BF.tl IT.BF.mpm)))
     file-wf-atˣ = file-wfˣ
@@ -307,7 +307,7 @@ module NewImage (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Uni
     module ISC = IS.Xc PLC.C
 
     file-wfᶜ : Backend.AsmWF B (Backend.file B P‴ (file-table (Backend.payload B) bs) (image-externs image))
-    file-wfᶜ = file-wf _ _ _ bs (image-externs image) ISC.image-wfᶜ
+    file-wfᶜ = file-wf _ _ bs (image-externs image) ISC.image-wfᶜ
     file-wf-atᶜ : Backend.AsmWF B (Once.LinCore.ExprImage.fileAt (fs-numerics FS) B a false IT.BF.tl IT.BF.mpm
                                      (image-externs (Once.LinCore.ExprImage.imageAt (fs-numerics FS) IT.BF.tl IT.BF.mpm)))
     file-wf-atᶜ = file-wfᶜ

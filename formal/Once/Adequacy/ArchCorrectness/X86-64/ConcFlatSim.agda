@@ -142,7 +142,7 @@ import Once.CCC.Target.X86-64.Semantics as X
 -- the correspondence it re-exports) into this interface.
 import Once.Adequacy.ArchCorrectness.X86-64.FlatSimulation
 module FlatSimulation = Once.Adequacy.ArchCorrectness.X86-64.FlatSimulation o FS word-eq fmt-eq
-  using (b-cmp-reg-imm; room-step-x86; x86-64-block-steps; x86-64-link-claim; xrreg; module C; module CompiledCorrespondence)
+  using (b-cmp-reg-imm; room-step-x86; start-step-x86; x86-64-block-steps; x86-64-link-claim; xrreg; module C; module CompiledCorrespondence)
 open FlatSimulation
 open FlatSimulation.CompiledCorrespondence using (CompiledCorr; module CompiledCorr)
 open FlatSimulation.CompiledCorrespondence.CompiledCorr using (dataCorr; pc-off)
@@ -797,6 +797,7 @@ x86-64-supply : EE.Supply
 x86-64-supply = record
   { bss = x86-64-block-steps ; sts = x86-64-stuck-steps
   ; room-step = λ prog fs s k _ → room-step-x86 prog fs s k
+  ; start-step = λ prog fs s b run cc h ft → start-step-x86 prog fs s b cc h ft (reg-range prog fs s rsp run cc)
   ; reg-range = reg-range ; ret-no-wrap = ret-no-wrap
   ; tag-fits = tag-fits ; lit-fits = lit-fits ; float-fits = float-fits
   ; arith-sigop-contract = arith-sigop-contract
@@ -809,4 +810,4 @@ x86-64-supply = record
 -- dispatch twice.
 module Dispatch′ = Dispatch.Dispatch o FS slot-size word-eq Reg x86-64-roles X.W.modulus
                        x86-64-emitter x86-64-machine x86-64-traceloop x86-64-supply
-  using (events-agree; events-agree-start; events-agree-boot; AgreeAt)
+  using (events-agree; events-agree-start; AgreeAt)

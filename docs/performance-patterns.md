@@ -42,7 +42,12 @@ its cap is a failure to report and fix, never a run to wait out.
    comparison: seal it (`opaque`) or use a named helper.
 9. **Interface load**: importing a large walk (the front end) into an apex module can exceed
    the memory cap on import alone; take its facts as a record premise instead.
-10. **Bisect with probe modules**: copy the module header, `head -N` of the body, `?` bodies
+10. **Large literals in proofs: make the constant `opaque`.** A literal used as the
+    *first* argument of a non-builtin-reducing function (`(32768 + b) * 4`: `_*_` recurses on
+    its first argument) unfolds one `suc` at a time in conversion. D486's
+    `start-stack-words` took x86-32's `FlatSimulation` past the 2.7 GB heap until it was
+    sealed; after, 23 s. Proofs need no constant's value; extraction still sees it.
+11. **Bisect with probe modules**: copy the module header, `head -N` of the body, `?` bodies
     (they still give timings), `--profile=definitions` (`--profile=internal` when
     "Miscellaneous" is large), `/usr/bin/time -f %M` for memory.
 

@@ -51,7 +51,7 @@ rreg s r = R.readReg (R.State.regs s) r
 import Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence
 module FlatCorrespondence = Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence
        FS slot-size word-eq Reg riscv64-roles R.State rreg memory rhalted R.heap-base
-  using (FlatCorr; rec-cell; rec-cell-addr; sim-load-rec; sim-store-rec; GapNext; HeapView; KeepsRoles; Memory; RetAddrs; Sets2Roles; SetsMem; SetsRole; SetsRoleMem; Word; corr-regs-agree; corr-store-gap; descend-view; enc-sv; extend-view; frames-of; haddr-offset; keep-all; lit-word; read-write-hit; read-write-miss; ret-agree-above; ret-agree-nothing; ret-head; ret-relk; ret-spill; ret-write-in-frame; sep; sim-addr-at; sim-alloc-heap; sim-call-frame; sim-lea-slot; sim-load-at; sim-load-code-addr; sim-load-const; sim-load-const-float; sim-load-from-slot; sim-load-indirect; sim-load-indirect-stack; sim-load-indirect-suc; sim-load-indirect-suc-stack; sim-load-tag-lit; sim-mov-to-input; sim-mov-to-output; sim-out-nz; sim-restore-input; sim-ret; sim-save-closure-reg; sim-store-at; sim-store-at-slot; sim-store-indirect; sim-store-indirect-stack; sim-store-indirect-suc; sim-store-indirect-suc-stack; sim-thunk; slots; stack-eq-cur; writeMem; gate-win; ret-write-in-window; sim-load-at-stack; sim-store-at-stack; stack-addr; stack-read; range-win; stack-arg-read; module FlatCorr; module HeapView; module SetsRole)
+  using (FlatCorr; rec-cell; rec-cell-addr; sim-load-rec; sim-store-rec;  start-view; sim-set-lim; GapNext; HeapView; KeepsRoles; Memory; RetAddrs; Sets2Roles; SetsMem; SetsRole; SetsRoleMem; Word; corr-regs-agree; corr-store-gap; descend-view; enc-sv; extend-view; frames-of; haddr-offset; keep-all; lit-word; read-write-hit; read-write-miss; ret-agree-above; ret-agree-nothing; ret-head; ret-relk; ret-spill; ret-write-in-frame; sep; sim-addr-at; sim-alloc-heap; sim-call-frame; sim-lea-slot; sim-load-at; sim-load-code-addr; sim-load-const; sim-load-const-float; sim-load-from-slot; sim-load-indirect; sim-load-indirect-stack; sim-load-indirect-suc; sim-load-indirect-suc-stack; sim-load-tag-lit; sim-mov-to-input; sim-mov-to-output; sim-out-nz; sim-restore-input; sim-ret; sim-save-closure-reg; sim-store-at; sim-store-at-slot; sim-store-indirect; sim-store-indirect-stack; sim-store-indirect-suc; sim-store-indirect-suc-stack; sim-thunk; slots; stack-eq-cur; writeMem; gate-win; ret-write-in-window; sim-load-at-stack; sim-store-at-stack; stack-addr; stack-read; range-win; stack-arg-read; module FlatCorr; module HeapView; module SetsRole)
 open FlatCorrespondence
 open SetsRole using (at-role; off-role)
 
@@ -121,6 +121,19 @@ keeps-t1-t2-riscv64 : ∀ (s : R.State) (v w : Word) (p : ℕ)
 keeps-t1-t2-riscv64 s v w p = record { kr-role = kr ; kr-mem = refl ; kr-halt = refl }
   where
     kr : ∀ ρ → R.readReg (rwriteReg (rwriteReg (rregs s) t1 v) t2 w) (reg-of ρ) ≡ rreg s (reg-of ρ)
+    kr role-sp      = refl
+    kr role-clos    = refl
+    kr role-heap    = refl
+    kr role-out     = refl
+    kr role-in1     = refl
+
+-- D486: the start computes the stack limit in `t2`, no role's (twice: the
+-- reserved stack's size, then the limit).
+keeps-t2-riscv64 : ∀ (s : R.State) (v w : Word) (p : ℕ)
+  → KeepsRoles s (mkstate (rwriteReg (rwriteReg (rregs s) t2 v) t2 w) (memory s) p (rhalted s))
+keeps-t2-riscv64 s v w p = record { kr-role = kr ; kr-mem = refl ; kr-halt = refl }
+  where
+    kr : ∀ ρ → R.readReg (rwriteReg (rwriteReg (rregs s) t2 v) t2 w) (reg-of ρ) ≡ rreg s (reg-of ρ)
     kr role-sp      = refl
     kr role-clos    = refl
     kr role-heap    = refl
