@@ -25139,6 +25139,16 @@ region (the split is the program's, from its own bound).
   reversal in the consumed input's cells, without allocating. So `B` is exact, the start sets `L = sp − B`,
   no code has a stack check, and running out is the heap's alone, in the allocator (CakeML's discipline).
   Option A (`start-stack-words`, `--stack-words`) stays as the fallback where no bound is computed.
+* **(a3), as built**: `instr-room` takes a `Room` (cell words, stack words); the pass's measures are
+  `Room`-valued (`spend` of an allocation is cells, of a frame/call/SigOp stack). Each arch lowers a check to
+  its two parts against record word 0 — x86-64 `lea r11,[r15+8h]; cmp r11,[rec]` and `mov r11,[rec]; lea
+  r11,[r11+8s]; cmp r11,rsp`; x86-32 the D378 complement in `edx` (`esi − L − 1`, `L − esp − 1`); riscv64
+  `L − frontier`, `sp − L` in `t1` against `li t2` — each a part of 0 emitting nothing and (x86-32, riscv64)
+  a need that is no word lowering to the call. The view's laws `front-lim` (cells below `L`) and `lim-lo`
+  (the stack mark at or above `L`) hold once started; descents take a `Floor`, allocations a `Fresh`;
+  `Budget` is three parts (started, cells ≤ `L`, `L` + stack ≤ `sp`). The start's facts about `L` need the
+  entry's mark at `sp` (`Supply.start-step`'s premises, `refl` at each Sim). Stack checks still sit at every
+  boundary: removing them is point 2 (the static bound, with the fold's recursion on the heap).
 
 ## D487 — `--unchecked`: THE SAME FILE WITHOUT ROOM CHECKS, OUTSIDE THE PROOF, SAID SO AT EVERY BUILD (2026-11-24, proposed — for the user's review; plan 0.154 S1, D3)
 **Context.** The user, 2026-11-24: "If we implement that feature that bypasses checks completely, then we can

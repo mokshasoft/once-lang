@@ -38,7 +38,7 @@ d_backend_8
            (coe
               MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
               (coe
-                 MAlonzo.Code.Once.CCC.Target.RiscV64.AbstractToRiscV.du_compile'45'trace'45'cnt_138
+                 MAlonzo.Code.Once.CCC.Target.RiscV64.AbstractToRiscV.du_compile'45'trace'45'cnt_160
                  (coe (0 :: Integer)) (coe v0)))
            (coe
               MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe (0 :: Integer)))

@@ -125,7 +125,7 @@ open import Once.Adequacy.ArchCorrectness.FlatCore.RunLow o FS slot-size word-eq
 -- already binds). Same application, hence the same types.
 import Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence as FC
 module CFC = FC FS slot-size word-eq Reg roles State rreg memory xhalted heap-base
-  using (HeapView; enc-sv; slots; stack-eq-cur; stack-read; rec-gate-open; module FlatCorr; module HeapView)
+  using (HeapView; Floor; Fresh; mkFloor; mkFresh; enc-sv; slots; stack-eq-cur; stack-read; rec-gate-open; module FlatCorr; module HeapView)
 open CFC using (HeapView; slots)
 
 ------------------------------------------------------------------------
@@ -482,11 +482,14 @@ stuck-result ev env lg (suc n) prog fs s i hpost lpost ev-eq st =
 -- That is what re-arms the budget (`Budget.bg-room`): the check's `k` is what
 -- the code spends before the next check, so from here to there no room is
 -- assumed.
-RoomStep : HeapView → AbstractTrace → FlatState → State → ℕ → Set
+-- (D486 (a3): two compares — the cells' part against the limit, the stack's
+-- part from the limit to the stack pointer)
+RoomStep : HeapView → AbstractTrace → FlatState → State → Room → Set
 RoomStep hv prog fs s k =
     Σ ℕ (λ c → Σ State (λ s' → (exec c (compile-trace prog) s ≡ just s')
                 × CompiledCorr hv prog (flat-exec-instr (instr-room k) prog fs) s'
-                × (CFC.HeapView.hfront hv + slots k ≤ rreg s sp-reg)))
+                × (CFC.HeapView.hfront hv + slots (Room.room-h k) ≤ CFC.HeapView.hlim hv)
+                × (CFC.HeapView.hlim hv + slots (Room.room-s k) ≤ rreg s sp-reg)))
   ⊎ Σ ℕ (λ c → Σ State (λ s' → (exec c (compile-trace prog) s ≡ just s')
                 × xhalted s' ≡ false
                 × mfetch (compile-trace prog) (xpc s') ≡ just (sigop-call host-exhausted-symbol)))
@@ -499,7 +502,8 @@ RoomStep hv prog fs s k =
 StartStep : AbstractTrace → FlatState → State → ℕ → Set₁
 StartStep prog fs s b =
     Σ ℕ (λ c → Σ State (λ s' → (exec (suc c) (compile-trace prog) s ≡ just s')
-                × Σ HeapView (λ hv′ → CompiledCorr hv′ prog (flat-exec-instr (instr-ctrl (c-start b)) prog fs) s')))
+                × Σ HeapView (λ hv′ → (CFC.HeapView.hstarted hv′ ≡ true)
+                    × CompiledCorr hv′ prog (flat-exec-instr (instr-ctrl (c-start b)) prog fs) s')))
   ⊎ Σ ℕ (λ c → Σ State (λ s' → (exec c (compile-trace prog) s ≡ just s')
                 × xhalted s' ≡ false
                 × mfetch (compile-trace prog) (xpc s') ≡ just (sigop-call host-exhausted-symbol)))
@@ -514,10 +518,14 @@ record Supply : Set₁ where
              → fetch prog (fpc fs) ≡ just (instr-ctrl (c-start b))
              → CFC.HeapView.hfront hv ≡ heap-base + rec-size * slot-size
              → fret fs ≡ []
+             -- D486 (a3): nothing has set the limit, and the stack mark is the loader's `%rsp`
+             → CFC.HeapView.hstarted hv ≡ false
+             → CFC.HeapView.lo hv ≡ rreg s sp-reg
              → StartStep prog fs s b
     -- the room check (plan 0.123 A.4): proved per arch, not assumed.
     room-step : ∀ {hv : HeapView} prog fs s k → RunAt prog fs
              → CompiledCorr hv prog fs s
+             → CFC.HeapView.hstarted hv ≡ true
              → halted (floc fs) ≡ false
              → fetch prog (fpc fs) ≡ just (instr-room k)
              → RoomStep hv prog fs s k
@@ -565,7 +573,7 @@ record Supply : Set₁ where
                         → fetch prog (fpc fs) ≡ just (instr-sigop si)
                         -- D393: the room the check before it left for the
                         -- block's frame, and the run has not stopped
-                        → CFC.HeapView.hfront hv + slots (spend (max-entry prog) (instr-sigop si)) ≤ rreg s sp-reg
+                        → CFC.HeapView.hfront hv + slots (Room.room-s (spend (max-entry prog) (instr-sigop si))) ≤ rreg s sp-reg
                         → LocState.halted (floc fs) ≡ false
                         → Σ Payload (λ pl → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl
                             × CompiledCorr hv prog (flat-exec-instr (instr-sigop si) prog fs)

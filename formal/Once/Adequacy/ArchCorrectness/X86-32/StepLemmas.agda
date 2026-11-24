@@ -259,6 +259,16 @@ step-sub-rr : ∀ {prog s r r'}
                                ; pc = pc s + 1 })
 step-sub-rr ft rewrite ft = refl
 
+-- D486 (a3): sub reg, mem — the cells' check against the limit's word
+step-sub-rm : ∀ {prog s r m v}
+            → fetch prog (pc s) ≡ just (sub (reg r) (mem m))
+            → readMem (memory s) (effectiveAddr s m) ≡ just v
+            → step-not-halted prog s
+              ≡ just (record s { regs = writeReg (regs s) r (readReg (regs s) r W.⊖ v)
+                               ; flags = updateFlags (readReg (regs s) r W.⊖ v)
+                               ; pc = pc s + 1 })
+step-sub-rm ft rd rewrite ft | rd = refl
+
 step-add-rr : ∀ {prog s r r'}
             → fetch prog (pc s) ≡ just (add (reg r) (reg r'))
             → step-not-halted prog s

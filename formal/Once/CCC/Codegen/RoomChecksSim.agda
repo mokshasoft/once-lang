@@ -28,7 +28,7 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
-open import Once.CCC.Machine.SMCore using (AbstractInstr; AbstractTrace; instr-room; module AllocState)
+open import Once.CCC.Machine.SMCore using (AbstractInstr; AbstractTrace; instr-room; Room; module AllocState)
 open import Once.CCC.Machine.InstrSlot using (slot-of)
 open import Once.CCC.Codegen.RoomChecks using (boundary?; stretch; checks; room-checks; max-entry)
 open import Once.CCC.Codegen.RoomChecksFacts using (ψ; φ; bump; module RoomFacts)
@@ -53,7 +53,7 @@ module RoomSim {FS : FrameSemantics} (t : AbstractTrace) where
   -- the image-with-checks pc `p` stands for the original pc `i`: at its image,
   -- or on the check just before it
   PcRel : ℕ → ℕ → Set
-  PcRel i p = (p ≡ φ t i) ⊎ ((suc p ≡ φ t i) × Σ ℕ (λ k → fetch P′ p ≡ just (instr-room k)))
+  PcRel i p = (p ≡ φ t i) ⊎ ((suc p ≡ φ t i) × Σ Room (λ k → fetch P′ p ≡ just (instr-room k)))
 
   private
     -- past an instruction `x`: one place further, or two with `x`'s check between

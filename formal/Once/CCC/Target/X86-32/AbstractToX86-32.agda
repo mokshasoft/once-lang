@@ -50,7 +50,7 @@ module IntW = OnceWord.Width 32
 
 -- Import AbstractInstr from SMCore
 open import Once.CCC.Machine.SMCore
-  using (start-stack-words; AbstractInstr; AbstractTrace; mov-to-output; mov-to-input; load-indirect; load-indirect-suc; load-from-slot; store-at-slot; store-indirect; store-indirect-suc; lea-slot; restore-input; instr-alloc-stack; instr-alloc-heap; instr-dealloc-stack; instr-push-frame; instr-pop-frame; instr-call-closure; worklist-init; worklist-push; worklist-pop; worklist-check; instr-reclaim-to; instr-sigop; instr-load-const; instr-load-code-addr; instr-save-closure-reg; instr-load-tag-lit; instr-reg-op; instr-free-heap; instr-room; load-at; store-at; addr-at; load-rec; store-rec; instr-ctrl; out-nz; c-label; c-jmp; c-branch-tag-zero; c-ret; c-entry; c-call-fn; c-start; c-leave)
+  using (start-stack-words; module Room; AbstractInstr; AbstractTrace; mov-to-output; mov-to-input; load-indirect; load-indirect-suc; load-from-slot; store-at-slot; store-indirect; store-indirect-suc; lea-slot; restore-input; instr-alloc-stack; instr-alloc-heap; instr-dealloc-stack; instr-push-frame; instr-pop-frame; instr-call-closure; worklist-init; worklist-push; worklist-pop; worklist-check; instr-reclaim-to; instr-sigop; instr-load-const; instr-load-code-addr; instr-save-closure-reg; instr-load-tag-lit; instr-reg-op; instr-free-heap; instr-room; load-at; store-at; addr-at; load-rec; store-rec; instr-ctrl; out-nz; c-label; c-jmp; c-branch-tag-zero; c-ret; c-entry; c-call-fn; c-start; c-leave)
 open import Once.CCC.Machine.Locations using (Slot)
 
 ------------------------------------------------------------------------
@@ -96,6 +96,47 @@ fits-or-out false _ = call-sym host-exhausted-symbol ∷ []
 -- …whether a need of `k` words is a word
 room-fits? : ℕ → Bool
 room-fits? k = slots k <ᵇ IntW.modulus
+
+-- D486 (a3): a part whose need is no word: the call, the limit's word read first (as
+-- the part's code reads it: one shape of references)
+out-code : Program
+out-code = mov (reg edx) (mem (abs-sym alloc-record-symbol 0)) ∷ call-sym host-exhausted-symbol ∷ []
+
+part : Bool → Program → Program
+part true  c = c
+part false _ = out-code
+
+-- the cells' part, the room `L − esi` in edx (no borrow: the frontier is at or below
+-- `L`), compared as the room check compares (D378): `edx := esi − L − 1`, which is
+-- `2³² − (L − esi) − 1`, against `2³² − 4h − 1`
+heap-room : ℕ → Program
+heap-room h =
+  mov (reg edx) (reg esi) ∷
+  sub (reg edx) (mem (abs-sym alloc-record-symbol 0)) ∷
+  sub (reg edx) (imm 1) ∷
+  cmp (reg edx) (imm (IntW.modulus ∸ suc (slots h))) ∷
+  jbe-fwd ∷
+  call-sym host-exhausted-symbol ∷
+  local-1 ∷ []
+
+-- the stack's: the room `esp − L` (no borrow: the limit is at or below the stack pointer)
+stack-room : ℕ → Program
+stack-room k =
+  mov (reg edx) (mem (abs-sym alloc-record-symbol 0)) ∷
+  sub (reg edx) (reg esp) ∷
+  sub (reg edx) (imm 1) ∷
+  cmp (reg edx) (imm (IntW.modulus ∸ suc (slots k))) ∷
+  jbe-fwd ∷
+  call-sym host-exhausted-symbol ∷
+  local-1 ∷ []
+
+heap-code : ℕ → Program
+heap-code zero      = []
+heap-code h@(suc _) = part (room-fits? h) (heap-room h)
+
+stack-code : ℕ → Program
+stack-code zero      = []
+stack-code k@(suc _) = part (room-fits? k) (stack-room k)
 
 -- D486: the start past its check: the frame, then the stack limit into record word 0
 start-tail : ℕ → Program
@@ -254,10 +295,11 @@ compile-abstract (addr-at n) =
 -- x86-32: subl %esp, %esi ; subl $1, %esi ; cmpl $(2³²−4k−1), %esi ; jbe 1f ;
 --         call once_exhausted ; 1: addl $1, %esi ; addl %esp, %esi
 -- D483: a check of no words emits nothing (the layout's separation is its room)
-compile-abstract (instr-room zero) = []
+-- D486 (a3): the check is two parts against the stack limit `L` (record word 0):
+-- cells, `frontier + 4h ≤ L`; stack, `L + 4s ≤ %esp`; a part of 0 emits nothing
+compile-abstract (instr-room r) = heap-code (Room.room-h r) ++ stack-code (Room.room-s r)
 -- D486: a need that is no word (`4k ≥ 2³²`) no region meets: the check is then the call
 -- itself (`fits-or-out`), so no assumption says needs fit
-compile-abstract (instr-room k@(suc _)) = fits-or-out (room-fits? k) (room-code k)
 
 -- Plan 0.11: name-agnostic SigOp codegen.
 -- Emit a single symbolic call; linker resolves the name at build time

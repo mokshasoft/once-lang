@@ -28,7 +28,7 @@ open SigOpInfo using (name)
 open import Once.Target.Symbol using (once-symbol-path)
 import Data.Nat
 open import Once.CCC.Machine.SMCore
-  using (AbstractInstr; AbstractTrace; FlatCtrl; instr-ctrl; instr-sigop; instr-load-code-addr; instr-room; load-rec; store-rec; c-label; c-jmp; c-branch-tag-zero; c-entry; c-ret; c-call-fn; c-start; c-leave)
+  using (AbstractInstr; AbstractTrace; FlatCtrl; module Room; instr-ctrl; instr-sigop; instr-load-code-addr; instr-room; load-rec; store-rec; c-label; c-jmp; c-branch-tag-zero; c-entry; c-ret; c-call-fn; c-start; c-leave)
 open import Once.Target.SymbolFresh using (host-leave-symbol; host-exhausted-symbol; alloc-record-symbol)
 
 -- The program's portable entry (plan 0.123 C.5): the Host's `enter` (Linux:
@@ -64,13 +64,18 @@ instr-defs (instr-ctrl c) = ctrl-defs c
 {-# CATCHALL #-}
 instr-defs _              = []
 
+part-refs : Data.Nat.ℕ → List String
+part-refs Data.Nat.zero    = []
+part-refs (Data.Nat.suc _) = alloc-record-symbol ∷ host-exhausted-symbol ∷ []
+
 instr-refs : AbstractInstr → List String
 instr-refs (instr-ctrl c)           = ctrl-refs c
 instr-refs (instr-sigop si)         = once-symbol-path (name si) ∷ []
 instr-refs (instr-load-code-addr n) = thunkSym n ∷ []
 -- plan 0.123 A.4: the room check calls the Host's `once_exhausted` when it fails.
-instr-refs (instr-room Data.Nat.zero)    = []   -- D483: a check of no words has no code
-instr-refs (instr-room (Data.Nat.suc _)) = host-exhausted-symbol ∷ []
+-- (D486 (a3): each part of a check reads the limit in the record, then may call; a part of
+-- no words has no code, D483)
+instr-refs (instr-room r)           = part-refs (Room.room-h r) ++ part-refs (Room.room-s r)
 -- D470: the allocator record is at its own symbol (the file defines it)
 instr-refs (load-rec _)             = alloc-record-symbol ∷ []
 instr-refs (store-rec _)            = alloc-record-symbol ∷ []

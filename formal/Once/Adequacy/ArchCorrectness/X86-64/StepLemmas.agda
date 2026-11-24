@@ -216,6 +216,14 @@ step-cmp-ri : ∀ {prog s r n}
 step-cmp-ri ft rewrite ft = refl
 
 -- cmp [mem], imm (reads memory — needs the read value).
+-- D486 (a3): cmp reg, mem — the cells' check against the limit's word
+step-cmp-rm : ∀ {prog s r m v}
+            → fetch prog (pc s) ≡ just (cmp (reg r) (mem m))
+            → readMem (memory s) (effectiveAddr s m) ≡ just v
+            → step-not-halted prog s
+              ≡ just (record s { flags = mkflags (readReg (regs s) r ≡ᵇ v) (readReg (regs s) r <ᵇ v) false ; pc = pc s + 1 })
+step-cmp-rm ft rd rewrite ft | rd = refl
+
 step-cmp-mi : ∀ {prog s m n v}
             → fetch prog (pc s) ≡ just (cmp (mem m) (imm n))
             → readMem (memory s) (effectiveAddr s m) ≡ just v

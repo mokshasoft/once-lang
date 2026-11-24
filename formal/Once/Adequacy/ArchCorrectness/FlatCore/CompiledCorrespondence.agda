@@ -137,12 +137,12 @@ import Once.Adequacy.ArchCorrectness.FlatCore.RunLow as RL
 -- application is by alias), so the two `RunAt`s are one type.
 private
   module CFC = FC FS slot-size word-eq Reg roles State rreg memory xhalted heap-base
-    using (FlatCorr; HeapView; RetAddrs; descend-view; extend-view; frames-of; sep; slots; module FlatCorr; module HeapView)
+    using (FlatCorr; HeapView; RetAddrs; descend-view; Floor; Fresh; extend-view; frames-of; sep; slots; module FlatCorr; module HeapView)
   module CRC = RC o FS slot-size word-eq
   module CRL = RL o FS slot-size word-eq
     using (RunLow)
 
-open CFC using (HeapView; FlatCorr; RetAddrs; frames-of; descend-view; extend-view; slots)
+open CFC using (HeapView; FlatCorr; RetAddrs; frames-of; descend-view; Floor; Fresh; extend-view; slots)
 open CFC.FlatCorr using (dom-fresh)
 open CFC.HeapView using (caddr; HDom; haddr; lo; hfront)
 open RegRoles roles using (sp-reg; in1-reg; out-reg)
@@ -639,7 +639,7 @@ record BlockSteps : Set₁ where
       ∀ {hv : HeapView} prog fs s n b r rpc rest → CompiledCorr hv prog fs s
       → halted (floc fs) ≡ false
       → fetch prog (fpc fs) ≡ just (instr-ctrl (c-entry n b))
-      → (lo' : ℕ) (lo'≤lo : lo' ≤ lo hv) (front-lo' : hfront hv ≤ lo')
+      → (lo' : ℕ) (lo'≤lo : lo' ≤ lo hv) (front-lo' : Floor hv lo')
       → lo' ≤ rreg s sp-reg ∸ b * slot-size
       → b * slot-size ≤ rreg s sp-reg
       → frame-slots (falloc fs) ≡ 0
@@ -734,7 +734,7 @@ record BlockSteps : Set₁ where
       → heapMem (floc fs) (sucHL hl) ≡ just (SV-Code ℓ)
       → HDom hv (sucHL hl)
       → FlatMachine.find-thunk {FS} prog ℓ ≡ just j
-      → (lo' : ℕ) (lo'≤lo : lo' ≤ lo hv) (front-lo' : hfront hv ≤ lo')
+      → (lo' : ℕ) (lo'≤lo : lo' ≤ lo hv) (front-lo' : Floor hv lo')
       → lo' ≤ rreg s sp-reg ∸ slot-size
       → slot-size ≤ rreg s sp-reg
       -- THE MACHINE IS FINITE (plan 0.70 phase C). x86-64's `call` reserves the
@@ -759,7 +759,7 @@ record BlockSteps : Set₁ where
       → halted (floc fs) ≡ false
       → fetch prog (fpc fs) ≡ just (instr-ctrl (c-call-fn f))
       → FlatMachine.find-fn {FS} prog f ≡ just j
-      → (lo' : ℕ) (lo'≤lo : lo' ≤ lo hv) (front-lo' : hfront hv ≤ lo')
+      → (lo' : ℕ) (lo'≤lo : lo' ≤ lo hv) (front-lo' : Floor hv lo')
       → lo' ≤ rreg s sp-reg ∸ slot-size
       → slot-size ≤ rreg s sp-reg
       → rreg s sp-reg < modulus
@@ -789,8 +789,8 @@ record BlockSteps : Set₁ where
            → svm-below (next-heap-ref (falloc fs)) (stackMem (floc fs) f k))
       → (∀ hl → ref-id (heap-ref hl) ≡ next-heap-ref (falloc fs)
               → heapMem (floc fs) hl ≡ nothing)
-      → (room : hfront hv + slots n ≤ rreg s sp-reg)
+      → (rm : Fresh hv n (rreg s sp-reg))
       → rreg s sp-reg < modulus
       → BlockStep (extend-view hv (next-heap-ref (falloc fs)) n
-                               (dom-fresh (dataCorr cc)) room)
+                               (dom-fresh (dataCorr cc)) rm)
                   prog fs s (instr-alloc-heap n)

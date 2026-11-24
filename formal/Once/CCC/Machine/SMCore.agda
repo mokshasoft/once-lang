@@ -1218,6 +1218,12 @@ opaque
   start-stack-words : ℕ
   start-stack-words = 32768
 
+-- D486: a room check's need, in words: cells (`room-h`) and stack (`room-s`)
+record Room : Set where
+  constructor room
+  field
+    room-h room-s : ℕ
+
 data AbstractInstr : Set where
   -- Register operations
   mov-to-output      : AbstractInstr              -- Output := Input1
@@ -1365,7 +1371,9 @@ data AbstractInstr : Set where
   -- machine has unbounded memory, so here it is a no-op; the run that ends
   -- is the concrete one. Not emittable yet (`EmittableI`). Added LAST for
   -- MAlonzo ctor-index stability.
-  instr-room : ℕ → AbstractInstr
+  -- D486: the need is two parts, `Room`: cell words (`frontier + h ≤ L`) and
+  -- stack words (`L + s ≤ sp`).
+  instr-room : Room → AbstractInstr
 
   -- Plan 0.123 B.4 R1 (D381): a FLAT value is its `Spec.ABI` words at
   -- consecutive locations, so a field is a word at an OFFSET from the value's

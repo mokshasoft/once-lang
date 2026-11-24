@@ -57,7 +57,7 @@ open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Label using (Label; once; callee; LabelId; EntryId; e-thunk; e-fn; labelSym; thunkSym)
 open import Once.CCC.Codegen.RoomChecks using (room-checks)
 open import Once.CCC.Codegen.RoomChecksFacts using (fold-room; All-fold-room)
-open import Once.CCC.Codegen.ImageSymbols using (instr-defs; instr-refs; adefs; arefs; entry-symbol)
+open import Once.CCC.Codegen.ImageSymbols using (instr-defs; instr-refs; adefs; arefs; entry-symbol; part-refs)
 open import Once.CCC.Codegen.ImageExterns using (image-externs; ext-in; ImageWF; image-externs-valid)
 open import Once.Target.Symbol using (once-symbol-path)
 open import Once.Target.SymbolFresh using (host-leave-symbol; host-exhausted-symbol; alloc-record-symbol; record≢osp)
@@ -99,6 +99,15 @@ open import Once.LinCore.Jumps fmt ans bw using (jump-of; jmp; Jmps; Jmps-nj; mv
 import Once.CCC.Codegen.AllocExpand
 import Once.CCC.Codegen.AllocExpandClasses
 import Once.LinCore.ImageSymsX
+-- D486 (a3): a check's references, per part: the record (its limit), then `once_exhausted`
+room-refs-G : ∀ {G : String → Set} → G alloc-record-symbol → G host-exhausted-symbol
+            → ∀ (k : Room) → All G (instr-refs (instr-room k))
+room-refs-G {G} rg eg k = ++⁺ (pr (Room.room-h k)) (pr (Room.room-s k))
+  where
+    pr : ∀ n → All G (part-refs n)
+    pr zero    = []
+    pr (suc _) = rg ∷ eg ∷ []
+
 module LI = Once.LinCore.LabelsI fmt ans bw
 module EI = Once.LinCore.EntriesI fmt ans bw
 module IAll = Once.LinCore.ImageAll fmt ans bw
@@ -761,8 +770,7 @@ module Img (nm : CanonicalName) {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     refs-ok (addr-at _) r jin m = []
     refs-ok (load-rec _) r jin m = inj₁ (there (here refl)) ∷ []
     refs-ok (store-rec _) r jin m = inj₁ (there (here refl)) ∷ []
-    refs-ok (instr-room zero) r jin m = []
-    refs-ok (instr-room (suc _)) r jin m = inj₂ (there (here refl)) ∷ []
+    refs-ok (instr-room q) r jin m = room-refs-G (inj₁ (there (here refl))) (inj₂ (there (here refl))) q
     refs-ok (instr-push-frame _) r jin m = []
     refs-ok instr-pop-frame r jin m = []
     refs-ok instr-call-closure r jin m = []
@@ -780,7 +788,7 @@ module Img (nm : CanonicalName) {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   -- ★★ the file's references resolve
   resolved : All G (arefs P′)
   resolved =
-    All-fold-room arefs instr-refs (λ _ _ → refl) (λ { zero → [] ; (suc _) → inj₂ (there (here refl)) ∷ [] }) image
+    All-fold-room arefs instr-refs (λ _ _ → refl) (room-refs-G (inj₁ (there (here refl))) (inj₂ (there (here refl)))) image
       (arefs-of image (refs-ok _ tt (λ l ()) (here refl)
         ∷ Data.List.Relation.Unary.All.tabulate (λ {i} m →
             refs-ok i (proj₂ (proj₂ (Data.List.Relation.Unary.All.lookup IA.tail-ok m)))
@@ -954,7 +962,7 @@ module Img (nm : CanonicalName) {Γ} (ds : Defs Γ) (f : LTm Γ One One)
 
     resolvedˣ : All Gˣ (arefs P″)
     resolvedˣ =
-      All-fold-room arefs instr-refs (λ _ _ → refl) (λ { zero → [] ; (suc _) → inj₂ (there (here refl)) ∷ [] }) imageˣ
+      All-fold-room arefs instr-refs (λ _ _ → refl) (room-refs-G (inj₁ (there (here refl))) (inj₂ (there (here refl)))) imageˣ
         (arefs-of imageˣ (Data.List.Relation.Unary.All.tabulate (λ {i} m → refs-x i m)))
 
     -- ★★ THE EXPANSION'S FILE IS WELL-FORMED, as symbols
@@ -1207,7 +1215,7 @@ module Img (nm : CanonicalName) {Γ} (ds : Defs Γ) (f : LTm Γ One One)
 
     resolvedᶜ : All Gᶜ (arefs Pᶜ)
     resolvedᶜ =
-      All-fold-room arefs instr-refs (λ _ _ → refl) (λ { zero → [] ; (suc _) → inj₂ (there (here refl)) ∷ [] }) imageᶜ
+      All-fold-room arefs instr-refs (λ _ _ → refl) (room-refs-G (inj₁ (there (here refl))) (inj₂ (there (here refl)))) imageᶜ
         (arefs-of imageᶜ (Data.List.Relation.Unary.All.tabulate (λ {i} m → refs-c i m)))
 
     -- ★★ THE CALL MODE'S FILE IS WELL-FORMED, as symbols

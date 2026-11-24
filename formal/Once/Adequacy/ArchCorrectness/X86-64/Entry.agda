@@ -158,6 +158,8 @@ entry-view cprog = record
   ; hstarted   = false
   ; dom-above  = rec-above
   ; base-front = m<m+n X.heap-base (s≤s z≤n)
+  ; front-lim  = λ ()
+  ; lim-lo     = λ ()
   }
   where
     rec-above : ∀ {hl : HeapLocation} → RecDom hl → X.heap-base < X.heap-base + slot-to-disp (heap-offset hl)

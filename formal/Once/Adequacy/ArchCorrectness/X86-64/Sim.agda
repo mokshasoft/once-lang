@@ -107,7 +107,7 @@ x86-64-sim = record
             let open RoomEvents {x86-64-frame-semantics} image using (ev-start)
                 boot = ev-start N start-flat
                 agree₀ = events-agree-start (proj₁ boot) ev-x86-64 env P′ start-flat X.initState _ (entry-corr P′)
-                           (entry-wf 0) tt refl tb run₀ refl refl refl refl refl
+                           (entry-wf 0) tt refl tb run₀ refl refl refl refl refl refl refl
                 agree = retarget (proj₁ (proj₂ boot)) (proj₂ (proj₂ boot)) agree₀
             in budget-fact-of (run-of env (compile-trace P′)) ([] , X.initState) ι (runIR (arch-numerics x86-64) (pureHalf ι) q) k (proj₁ agree) _
                  -- (the run's events named, so they are matched, not computed)

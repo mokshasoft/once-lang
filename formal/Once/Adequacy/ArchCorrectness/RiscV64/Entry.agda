@@ -225,6 +225,8 @@ entry-view cprog = record
   ; hstarted   = false
   ; dom-above  = rec-above
   ; base-front = m<m+n RS.heap-base (s≤s z≤n)
+  ; front-lim  = λ ()
+  ; lim-lo     = λ ()
   }
   where
     rec-above : ∀ {hl : HeapLocation} → RecDom hl → RS.heap-base < RS.heap-base + slot-to-disp (heap-offset hl)

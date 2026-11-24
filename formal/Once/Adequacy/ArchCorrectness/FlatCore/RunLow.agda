@@ -68,7 +68,7 @@ open RunLow
 -- WHAT A LOWERED STATE FETCHES: a check, or `t`'s own instruction at the state
 -- the lift is of (and then the lift is AT that state's image).
 data LowView (src : AbstractTrace) (fs₀ : FlatState) (p : ℕ) (i : AbstractInstr) : Set where
-  at-check : ∀ (k : ℕ) → i ≡ instr-room k → suc p ≡ φ src (fpc fs₀) → LowView src fs₀ p i
+  at-check : ∀ (k : Room) → i ≡ instr-room k → suc p ≡ φ src (fpc fs₀) → LowView src fs₀ p i
   at-image : p ≡ φ src (fpc fs₀) → fetch src (fpc fs₀) ≡ just i → LowView src fs₀ p i
 
 low-view : ∀ (src : AbstractTrace) (fs₀ : FlatState) (p : ℕ) {i : AbstractInstr}
@@ -78,7 +78,7 @@ low-view src fs₀ p (inj₂ (sp , k , fk)) f = at-check k (just-injective (tran
 low-view src fs₀ p (inj₁ refl)          f = at-image refl (trans (sym (fetch-room src (fpc fs₀))) f)
 
 -- a check is no instruction a site fact is about
-room≢ : ∀ {k : ℕ} {i : AbstractInstr} → i ≡ instr-room k → (∀ {k′} → i ≡ instr-room k′ → ⊥) → ⊥
+room≢ : ∀ {k : Room} {i : AbstractInstr} → i ≡ instr-room k → (∀ {k′} → i ≡ instr-room k′ → ⊥) → ⊥
 room≢ e ne = ne e
 
 open RoomFacts {FS} using (ψ-zero)
@@ -555,16 +555,16 @@ low-step-image .(room-checks src) .(RoomSim.lift {FS} src fs₀ p) i (mkRunLow s
 -- return addresses are one past a call (`RetMatch`, D094), the lift maps one past
 -- a call to one past its image, and the pass put a check right there.
 ret-lands-check : ∀ prog (fs : FlatState) → RunLow prog fs → ∀ rpc rest → fret fs ≡ rpc ∷ rest
-                → Σ ℕ (λ k → fetch prog rpc ≡ just (instr-room k))
+                → Σ Room (λ k → fetch prog rpc ≡ just (instr-room k))
 ret-lands-check .(room-checks src) .(L.lift src fs₀ p) (mkRunLow src fs₀ p refl r refl pc) rpc rest req
   = go (fret fs₀) (saved-frames (falloc fs₀)) (RW.FrameWF.fw-stack (RW.run-frame-wf-at src fs₀ r)) req
   where
     open import Once.CCC.Codegen.RoomChecksFacts using (module NeedFacts)
     open NeedFacts {FS} using (boundary-next; call-boundary)
     go : ∀ (rs : List ℕ) (frs : List (Frame × ℕ)) → RW.RetMatch src frs rs → map (L.ret-map src) rs ≡ rpc ∷ rest
-       → Σ ℕ (λ k → fetch (room-checks src) rpc ≡ just (instr-room k))
+       → Σ Room (λ k → fetch (room-checks src) rpc ≡ just (instr-room k))
     go .(_ ∷ _) .(_ ∷ _) (RW.rm-∷ (q , refl , c , fq , ci) _) e =
-      subst (λ z → Σ ℕ (λ k → fetch (room-checks src) z ≡ just (instr-room k))) (cong head′ e)
+      subst (λ z → Σ Room (λ k → fetch (room-checks src) z ≡ just (instr-room k))) (cong head′ e)
         (boundary-next src (φ src q) (trans (fetch-room src q) fq) (call-boundary c ci))
       where head′ : List ℕ → ℕ
             head′ []      = 0

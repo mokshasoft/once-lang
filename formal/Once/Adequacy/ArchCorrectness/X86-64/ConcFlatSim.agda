@@ -41,7 +41,7 @@ open import Once.Spec.Float.Dyadic using (binary64)
 open import Once.Spec.Float.Decimal using (Decimal)
 open import Data.Integer using (ℤ)
 open import Once.CCC.Machine.SMCore
-  using (AbstractTrace; instr-ctrl; c-ret; instr-load-tag-lit; instr-load-const)
+  using (AbstractTrace; instr-ctrl; c-ret; instr-load-tag-lit; instr-load-const; module Room)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 import Once.CCC.Target.X86-64.Semantics as X
 import Once.Adequacy.ArchCorrectness.X86-64.FlatCorrespondence as FC
@@ -672,13 +672,13 @@ private
             → SpillsWF n blk → 8 + 8 * n ≤ W → W ≤ xrreg s rsp
             → xrreg (dispatch-arith val-x86-64 blk n s) rax ≡ v
             → ArithRun s (dispatch-arith val-x86-64 blk n s) W v
-  frame-run s n blk W v ok fits room out = record
+  frame-run s n blk W v ok fits rm out = record
     { ar-out  = out
     ; ar-role = λ { role-sp _ → Sub.sub-rsp ; role-clos _ → Sub.sub-r12 ; role-heap _ → Sub.sub-r15
                   ; role-in1 _ → Sub.sub-rdi ; role-out ne → ⊥-elim (ne refl) }
     ; ar-mem  = Sub.sub-mem
     ; ar-halt = Sub.sub-halt }
-    where module Sub = AF.Sub val-x86-64 n blk s W ok fits room
+    where module Sub = AF.Sub val-x86-64 n blk s W ok fits rm
 
 -- Plan 0.129 B5 / plan 0.123 α′ (f3): THE VALUE half of the block's run — a
 -- theorem (`X86-64.ArithBlockValue`): the decoded argument is the block's input
@@ -687,47 +687,47 @@ private
 arith-block-value  : ∀ {hv : HeapView} prog fs s {A B} (si : SigOpInfo A B)
                    → RunLow prog fs
                    → Internal (sem si) → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-sigop si)
-                   → hfront hv + C.FlatCorrespondence.slots (spend (max-entry prog) (instr-sigop si)) ≤ xrreg s rsp
+                   → hfront hv + C.FlatCorrespondence.slots (Room.room-s (spend (max-entry prog) (instr-sigop si))) ≤ xrreg s rsp
                    → LocState.halted (floc fs) ≡ false
                    -- plan 0.123 α′ (f1): the block run is the SigOp's own (`arith-sigop-block`)
                    → ∀ (b : ArithBlock) → BlockOf si b
                    → xrreg (uncurry (dispatch-arith val-x86-64) (AE.block-payload b) s) rax
                      ≡ C.FlatCorrespondence.enc-sv hv (AbstractExec.exec-sigop-output {FS} si (floc fs))
-arith-block-value {hv} prog fs s si r int cc ftq room h .(mk-block _ NInt e) (is-block {n = NInt} e refl refl eq) =
+arith-block-value {hv} prog fs s si r int cc ftq rm h .(mk-block _ NInt e) (is-block {n = NInt} e refl refl eq) =
   ABV.value-int prog fs s si e eq r int cc ftq h
     (≤-trans (+-monoʳ-≤ (hfront hv)
                (subst (8 + 8 * required-scratch (normalize e) ≤_) (sym (cong (λ x → (5 + sigop-scratch x) * 8) eq))
                       (fits-W (required-scratch (normalize e)))))
-             room)
-arith-block-value {hv} prog fs s si r int cc ftq room h .(mk-block _ NFloat e) (is-block {n = NFloat} e refl refl eq) =
+             rm)
+arith-block-value {hv} prog fs s si r int cc ftq rm h .(mk-block _ NFloat e) (is-block {n = NFloat} e refl refl eq) =
   ABV.value-flt prog fs s si e eq r int cc ftq h
     (≤-trans (+-monoʳ-≤ (hfront hv)
                (subst (8 + 8 * required-scratch e ≤_) (sym (cong (λ x → (5 + sigop-scratch x) * 8) eq))
                       (fits-W (required-scratch e))))
-             room)
+             rm)
 
 arith-dispatch-run : ∀ {hv : HeapView} prog fs s {A B} (si : SigOpInfo A B)
                    → RunLow prog fs
                    → Internal (sem si) → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-sigop si)
-                   → hfront hv + C.FlatCorrespondence.slots (spend (max-entry prog) (instr-sigop si)) ≤ xrreg s rsp
+                   → hfront hv + C.FlatCorrespondence.slots (Room.room-s (spend (max-entry prog) (instr-sigop si))) ≤ xrreg s rsp
                    → LocState.halted (floc fs) ≡ false
                    -- plan 0.123 α′ (f1): the block run is the SigOp's own (`arith-sigop-block`)
                    → ∀ (b : ArithBlock) → BlockOf si b
                    → ArithRun s (uncurry (dispatch-arith val-x86-64) (AE.block-payload b) s)
-                              (C.FlatCorrespondence.slots (spend (max-entry prog) (instr-sigop si)))
+                              (C.FlatCorrespondence.slots (Room.room-s (spend (max-entry prog) (instr-sigop si))))
                               (C.FlatCorrespondence.enc-sv hv (AbstractExec.exec-sigop-output {FS} si (floc fs)))
-arith-dispatch-run {hv} prog fs s si r int cc ftq room h .(mk-block _ NInt e) bo@(is-block {n = NInt} e eA eB eq) =
+arith-dispatch-run {hv} prog fs s si r int cc ftq rm h .(mk-block _ NInt e) bo@(is-block {n = NInt} e eA eB eq) =
   frame-run s (required-scratch (normalize e)) (emit-program (compile-abs (normalize e))) _ _
     (block-spills (normalize e))
     (subst (8 + 8 * required-scratch (normalize e) ≤_) (sym (cong (λ x → (5 + sigop-scratch x) * 8) eq)) (fits-W (required-scratch (normalize e))))
-    (m+n≤o⇒n≤o (hfront hv) room)
-    (arith-block-value {hv} prog fs s si r int cc ftq room h _ bo)
-arith-dispatch-run {hv} prog fs s si r int cc ftq room h .(mk-block _ NFloat e) bo@(is-block {n = NFloat} e eA eB eq) =
+    (m+n≤o⇒n≤o (hfront hv) rm)
+    (arith-block-value {hv} prog fs s si r int cc ftq rm h _ bo)
+arith-dispatch-run {hv} prog fs s si r int cc ftq rm h .(mk-block _ NFloat e) bo@(is-block {n = NFloat} e eA eB eq) =
   frame-run s (required-scratch e) (emit-program (compile-abs e)) _ _
     (block-spills e)
     (subst (8 + 8 * required-scratch e ≤_) (sym (cong (λ x → (5 + sigop-scratch x) * 8) eq)) (fits-W (required-scratch e)))
-    (m+n≤o⇒n≤o (hfront hv) room)
-    (arith-block-value {hv} prog fs s si r int cc ftq room h _ bo)
+    (m+n≤o⇒n≤o (hfront hv) rm)
+    (arith-block-value {hv} prog fs s si r int cc ftq rm h _ bo)
 
 ------------------------------------------------------------------------
 -- Plan 0.123 α′ (e): THE RUN HALF, from the frame lemma — the link, the halt
@@ -737,15 +737,15 @@ arith-sigop-run : ∀ {hv : HeapView} (env : RTx.RunTrace.ArithEnv val-x86-64 (a
                 → RunLow prog fs
                 → x86-64-arith-table prog env
                 → Internal (sem si) → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-sigop si)
-                → hfront hv + C.FlatCorrespondence.slots (spend (max-entry prog) (instr-sigop si)) ≤ xrreg s rsp
+                → hfront hv + C.FlatCorrespondence.slots (Room.room-s (spend (max-entry prog) (instr-sigop si))) ≤ xrreg s rsp
                 → LocState.halted (floc fs) ≡ false
                 → ∀ (pl : List XInstr × ℕ) → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl
                 → CompiledCorr hv prog (flat-exec-instr (instr-sigop si) prog fs) (uncurry (dispatch-arith val-x86-64) pl s)
-arith-sigop-run {hv} env prog fs s si r t int cc ftq room h pl hit
+arith-sigop-run {hv} env prog fs s si r t int cc ftq rm h pl hit
   with arith-sigop-block env prog fs si t int ftq pl hit
 ... | b , bo , refl =
-  sigop-arith-step prog fs s (uncurry (dispatch-arith val-x86-64) (AE.block-payload b) s) si r int (block-not-in-memory bo) cc ftq h room
-    (arith-dispatch-run {hv} prog fs s si r int cc ftq room h b bo) refl
+  sigop-arith-step prog fs s (uncurry (dispatch-arith val-x86-64) (AE.block-payload b) s) si r int (block-not-in-memory bo) cc ftq h rm
+    (arith-dispatch-run {hv} prog fs s si r int cc ftq rm h b bo) refl
     (trans (cong suc (pc-off cc))
            (sym (trans (blk-off-suc prog (fpc fs) (instr-sigop si) ftq) (+-comm (blk-off prog (fpc fs)) 1))))
 
@@ -753,13 +753,13 @@ arith-sigop-contract : ∀ {hv : HeapView} (env : RTx.RunTrace.ArithEnv val-x86-
                      → RunLow prog fs
                      → x86-64-arith-table prog env
                      → Internal (sem si) → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-sigop si)
-                     → hfront hv + C.FlatCorrespondence.slots (spend (max-entry prog) (instr-sigop si)) ≤ xrreg s rsp
+                     → hfront hv + C.FlatCorrespondence.slots (Room.room-s (spend (max-entry prog) (instr-sigop si))) ≤ xrreg s rsp
                      → LocState.halted (floc fs) ≡ false
                      → Σ (List XInstr × ℕ) (λ pl → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl
                          × CompiledCorr hv prog (flat-exec-instr (instr-sigop si) prog fs) (uncurry (dispatch-arith val-x86-64) pl s))
-arith-sigop-contract {hv} env prog fs s si r t int cc ftq room h =
+arith-sigop-contract {hv} env prog fs s si r t int cc ftq rm h =
   let (pl , hit) = arith-sigop-lookup env prog fs si t int ftq
-  in pl , hit , arith-sigop-run {hv} env prog fs s si r t int cc ftq room h pl hit
+  in pl , hit , arith-sigop-run {hv} env prog fs s si r t int cc ftq rm h pl hit
 
 ------------------------------------------------------------------------
 -- THE FLAT MACHINE'S WELL-FORMEDNESS LAYER IS ARCH-GENERIC (Plan 0.65 G1d).

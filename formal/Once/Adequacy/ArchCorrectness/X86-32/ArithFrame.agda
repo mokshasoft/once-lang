@@ -218,7 +218,7 @@ private
 module _ (val : XInstr → State → Reg → Word) where
 
   module Sub (n : ℕ) (blk : List XInstr) (s : State) (W : ℕ)
-             (ok : SpillsWF n blk) (fits : 20 + 4 * n ≤ W) (room : W ≤ readReg (regs s) esp) where
+             (ok : SpillsWF n blk) (fits : 20 + 4 * n ≤ W) (rm : W ≤ readReg (regs s) esp) where
 
     private
       s₁ = call-frame val n s
@@ -241,7 +241,7 @@ module _ (val : XInstr → State → Reg → Word) where
       base = ∸-+-assoc sp 20 (4 * n)
       top : (sp ∸ (20 + 4 * n)) + 4 * n ≡ sp ∸ 20
       top = trans (cong (_+ 4 * n) (sym base))
-                  (m∸n+n≡m (Data.Nat.Properties.m+n≤o⇒m≤o∸n (4 * n) (subst (_≤ sp) (+-comm 20 (4 * n)) (≤-trans fits room))))
+                  (m∸n+n≡m (Data.Nat.Properties.m+n≤o⇒m≤o∸n (4 * n) (subst (_≤ sp) (+-comm 20 (4 * n)) (≤-trans fits rm))))
         where import Data.Nat.Properties
       20≤ : 20 ≤ 20 + 4 * n
       20≤ = m≤m+n 20 (4 * n)
@@ -265,7 +265,7 @@ module _ (val : XInstr → State → Reg → Word) where
         frame = [ (λ lo → inj₁ (<-≤-trans lo (subst (sp ∸ W ≤_) (sym base) (∸-monoʳ-≤ sp fits))))
                 , (λ hi → inj₂ (subst (_≤ a) (sym (trans (cong (_+ 4 * n) base) top)) (≤-trans (m∸n≤m sp 20) hi))) ]′ out
         sp≥ : 20 + 4 * n ≤ sp
-        sp≥ = ≤-trans fits room
+        sp≥ = ≤-trans fits rm
         not-at : ∀ k → 1 ≤ k → k ≤ 20 + 4 * n → a ≢ sp ∸ k
         not-at k one le eq = [ (λ lo → <-irrefl eq (<-≤-trans lo (∸-monoʳ-≤ sp (≤-trans le fits))))
                              , (λ hi → <-irrefl (sym eq) (<-≤-trans (ltk sp k one (≤-trans le sp≥)) hi)) ]′ out

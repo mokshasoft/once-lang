@@ -125,7 +125,7 @@ open CFC using (HeapView; slots)
 -- correspondence; it is where every spending instruction's room comes from.
 open import Once.Adequacy.ArchCorrectness.FlatCore.Budget o FS slot-size word-eq Reg roles State rreg memory xhalted heap-base
   using (Budget; fbase-shift; straight-frame; room-of; call-room-of; bg-view; bg-plain; bg-str; bg-spent-str; bg-alloc
-        ; bg-call; bg-room; bg-boundary; bg-label; bg-ret)
+        ; bg-call; bg-room; bg-boundary; bg-label; bg-ret; floor-by; room-s; call-lim-of; room-h; fresh-of; module Budget)
 
 ------------------------------------------------------------------------
 -- THE TRACE LOOP. `RT.run-events` here IS the arch's `run-events`: both are
@@ -391,7 +391,7 @@ module Dispatch (sup : Supply) where
                           (reg-range prog fs s sp-reg (inv-run wf) cc)
                           (proj₂ lnk) (proj₂ (proj₂ pend)))
       -- past an entry, a check is next
-      (λ cc′ → bg-boundary (inv-run wf) ftq refl refl (dataCorr cc′)) wf ftq h refl tt tt h
+      (λ cc′ → bg-boundary (Budget.bg-started bg) (inv-run wf) ftq refl refl (dataCorr cc′)) wf ftq h refl tt tt h
     where
       -- A BODY ENTRY IS REACHED BY A CALL, hence with the link still live —
       -- what an arch whose marker SPILLS needs before it may store.
@@ -402,20 +402,20 @@ module Dispatch (sup : Supply) where
       pend = entry-ret prog fs m b (inv-run wf) ftq
       -- the site's room: the reservation stays above the heap frontier — the
       -- budget's, since the call that landed here spent for it (plan 0.123)
-      room : CFC.HeapView.hfront hv + slots b ≤ rreg s sp-reg
-      room = room-of bg (dataCorr cc) ftq refl
+      rm : CFC.HeapView.hfront hv + slots b ≤ rreg s sp-reg
+      rm = room-of bg (dataCorr cc) ftq refl
       fits : slots b ≤ rreg s sp-reg
-      fits = ≤-trans (m≤n+m (slots b) (CFC.HeapView.hfront hv)) room
+      fits = ≤-trans (m≤n+m (slots b) (CFC.HeapView.hfront hv)) rm
       front-rsp : CFC.HeapView.hfront hv ≤ rreg s sp-reg ∸ slots b
-      front-rsp = m+n≤o⇒m≤o∸n (CFC.HeapView.hfront hv) room
+      front-rsp = m+n≤o⇒m≤o∸n (CFC.HeapView.hfront hv) rm
       lo' : ℕ
       lo' = CFC.HeapView.lo hv ⊓ (rreg s sp-reg ∸ slots b)
       lo'≤lo : lo' ≤ CFC.HeapView.lo hv
       lo'≤lo = m⊓n≤m (CFC.HeapView.lo hv) (rreg s sp-reg ∸ slots b)
       lo'≤rsp : lo' ≤ rreg s sp-reg ∸ slots b
       lo'≤rsp = m⊓n≤n (CFC.HeapView.lo hv) (rreg s sp-reg ∸ slots b)
-      front-lo' : CFC.HeapView.hfront hv ≤ lo'
-      front-lo' = ⊓-glb (CFC.HeapView.front-lo hv) front-rsp
+      front-lo' : CFC.Floor hv lo'
+      front-lo' = floor-by (slots b) rm (room-s bg (dataCorr cc) ftq refl)
 
   -- THE RETURN — A THEOREM (D095). `block-step-c-ret` does the machine work
   -- (the `add` lands `%rsp` on the pending return's cell, the `ret` pops it and
@@ -459,7 +459,7 @@ module Dispatch (sup : Supply) where
                  (run-link-nothing prog fs (inv-run wf) ftq (λ _ ())
                     (λ ℓ bb teq → ret≢thunk (trans (sym ftq) teq))))
               -- one past a call, a check is there
-              (λ cc′ → bg-ret (inv-run wf) req pc′ (dataCorr cc′)) wf ftq h refl tt tt hpost
+              (λ cc′ → bg-ret (Budget.bg-started bg) (inv-run wf) req pc′ (dataCorr cc′)) wf ftq h refl tt tt hpost
             where be : b ≡ frame-slots (falloc fs)
                   be = ret-budget-matches prog fs b (inv-run wf) h ftq
                   hpost : halted (floc (flat-exec-instr (instr-ctrl (c-ret b)) prog fs)) ≡ false
@@ -504,27 +504,27 @@ module Dispatch (sup : Supply) where
              (run-link-nothing prog fs (inv-run wf) ftq (λ _ ())
                 (λ ℓ bb teq → call≢thunk (trans (sym ftq) teq))))
           -- the call lands on its body's entry, one slot down
-          (λ _ → bg-view refl $ bg-call (inv-run wf) bg ftq refl refl refl (proj₂ (find-thunk-sound prog ℓ j fteq))
+          (λ _ → bg-view refl refl refl $ bg-call (inv-run wf) bg ftq refl refl refl (proj₂ (find-thunk-sound prog ℓ j fteq))
                    (cong fpc step-eq)
                    (fbase-shift (flat-exec-instr instr-call-closure prog fs) fs 1
                                 (cong (λ z → current-frame (falloc z)) step-eq)))
           wf ftq h refl tt tt hpost
         where
           -- the call's own slot, from the budget (plan 0.123 A.4 step 5)
-          room : CFC.HeapView.hfront hv + slot-size ≤ rreg s sp-reg
-          room = call-room-of bg (dataCorr cc) ftq refl refl
+          rm : CFC.HeapView.hfront hv + slot-size ≤ rreg s sp-reg
+          rm = call-room-of bg (dataCorr cc) ftq refl refl
           fits : slot-size ≤ rreg s sp-reg
-          fits = ≤-trans (m≤n+m slot-size (CFC.HeapView.hfront hv)) room
+          fits = ≤-trans (m≤n+m slot-size (CFC.HeapView.hfront hv)) rm
           front-rsp : CFC.HeapView.hfront hv ≤ rreg s sp-reg ∸ slot-size
-          front-rsp = m+n≤o⇒m≤o∸n (CFC.HeapView.hfront hv) room
+          front-rsp = m+n≤o⇒m≤o∸n (CFC.HeapView.hfront hv) rm
           lo' : ℕ
           lo' = CFC.HeapView.lo hv ⊓ (rreg s sp-reg ∸ slot-size)
           lo'≤lo : lo' ≤ CFC.HeapView.lo hv
           lo'≤lo = m⊓n≤m (CFC.HeapView.lo hv) (rreg s sp-reg ∸ slot-size)
           lo'≤rsp : lo' ≤ rreg s sp-reg ∸ slot-size
           lo'≤rsp = m⊓n≤n (CFC.HeapView.lo hv) (rreg s sp-reg ∸ slot-size)
-          front-lo' : CFC.HeapView.hfront hv ≤ lo'
-          front-lo' = ⊓-glb (CFC.HeapView.front-lo hv) front-rsp
+          front-lo' : CFC.Floor hv lo'
+          front-lo' = floor-by slot-size rm (call-lim-of bg (dataCorr cc) ftq refl refl)
           -- the site's shape says the call ENTERS (it does not halt), so the
           -- post-state's halt flag is the pre-state's
           step-eq : flat-exec-instr instr-call-closure prog fs
@@ -563,27 +563,27 @@ module Dispatch (sup : Supply) where
              (run-link-nothing prog fs (inv-run wf) ftq (λ _ ())
                 (λ ℓ bb teq → callfn≢thunk (trans (sym ftq) teq))))
           -- the call lands on the function's entry, one slot down
-          (λ _ → bg-view refl $ bg-call (inv-run wf) bg ftq refl refl refl (proj₂ (find-entry-sound prog (e-fn f) j fe))
+          (λ _ → bg-view refl refl refl $ bg-call (inv-run wf) bg ftq refl refl refl (proj₂ (find-entry-sound prog (e-fn f) j fe))
                    (cong (λ mj → fpc (do-call-at mj fs)) fe)
                    (fbase-shift (flat-exec-instr (instr-ctrl (c-call-fn f)) prog fs) fs 1
                                 (cong (λ mj → current-frame (falloc (do-call-at mj fs))) fe)))
           wf ftq h refl tt tt hpost
         where
           -- the call's own slot, from the budget (plan 0.123 A.4 step 5)
-          room : CFC.HeapView.hfront hv + slot-size ≤ rreg s sp-reg
-          room = call-room-of bg (dataCorr cc) ftq refl refl
+          rm : CFC.HeapView.hfront hv + slot-size ≤ rreg s sp-reg
+          rm = call-room-of bg (dataCorr cc) ftq refl refl
           fits : slot-size ≤ rreg s sp-reg
-          fits = ≤-trans (m≤n+m slot-size (CFC.HeapView.hfront hv)) room
+          fits = ≤-trans (m≤n+m slot-size (CFC.HeapView.hfront hv)) rm
           front-rsp : CFC.HeapView.hfront hv ≤ rreg s sp-reg ∸ slot-size
-          front-rsp = m+n≤o⇒m≤o∸n (CFC.HeapView.hfront hv) room
+          front-rsp = m+n≤o⇒m≤o∸n (CFC.HeapView.hfront hv) rm
           lo' : ℕ
           lo' = CFC.HeapView.lo hv ⊓ (rreg s sp-reg ∸ slot-size)
           lo'≤lo : lo' ≤ CFC.HeapView.lo hv
           lo'≤lo = m⊓n≤m (CFC.HeapView.lo hv) (rreg s sp-reg ∸ slot-size)
           lo'≤rsp : lo' ≤ rreg s sp-reg ∸ slot-size
           lo'≤rsp = m⊓n≤n (CFC.HeapView.lo hv) (rreg s sp-reg ∸ slot-size)
-          front-lo' : CFC.HeapView.hfront hv ≤ lo'
-          front-lo' = ⊓-glb (CFC.HeapView.front-lo hv) front-rsp
+          front-lo' : CFC.Floor hv lo'
+          front-lo' = floor-by slot-size rm (call-lim-of bg (dataCorr cc) ftq refl refl)
           hpost : halted (floc (flat-exec-instr (instr-ctrl (c-call-fn f)) prog fs)) ≡ false
           hpost rewrite fe = h
 
@@ -604,7 +604,7 @@ module Dispatch (sup : Supply) where
                         ▹ flat-events n prog (flat-exec-instr (instr-ctrl (c-jmp m)) prog fs)) (ctrl-of (instr-ctrl (c-jmp m)) + flat-ctrls n prog (flat-exec-instr (instr-ctrl (c-jmp m)) prog fs)) M)
           go-fl (just j) fl-eq =
             ccc-step-bs {hv} n IH ev env prog fs s (instr-ctrl (c-jmp m))
-              (bs-c-jmp bss prog fs s m j cc h ftq fl-eq) (λ cc′ → bg-label (inv-run wf) fl-eq pc′ (dataCorr cc′))
+              (bs-c-jmp bss prog fs s m j cc h ftq fl-eq) (λ cc′ → bg-label (Budget.bg-started bg) (inv-run wf) fl-eq pc′ (dataCorr cc′))
               wf ftq h refl tt tt hpost
             where hpost : halted (floc (flat-exec-instr (instr-ctrl (c-jmp m)) prog fs)) ≡ false
                   hpost rewrite fl-eq = h
@@ -648,7 +648,7 @@ module Dispatch (sup : Supply) where
       go-fl loc zero i-eq g r-eq rd (just j) fl-eq =
         ccc-step-bs {hv} n IH ev env prog fs s (instr-ctrl (c-branch-tag-zero m))
           (bs-c-branch-tag-zero bss prog fs s m loc zero j cc h ftq i-eq g r-eq rd fl-eq)
-          (λ cc′ → bg-label (inv-run wf) fl-eq pc′ (dataCorr cc′)) wf ftq h refl tt tt hpost
+          (λ cc′ → bg-label (Budget.bg-started bg) (inv-run wf) fl-eq pc′ (dataCorr cc′)) wf ftq h refl tt tt hpost
         where hpost : halted (floc (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) ≡ false
               hpost rewrite i-eq | g | r-eq | fl-eq = h
               pc′ : fpc (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs) ≡ j
@@ -1099,11 +1099,11 @@ module Dispatch (sup : Supply) where
                   → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
                         (event-of (instr-room k) fs ▹ flat-events n prog (flat-exec-instr (instr-room k) prog fs))
                         (ctrl-of (instr-room k) + flat-ctrls n prog (flat-exec-instr (instr-room k) prog fs)) M)
-  room-check-step n IH ev env prog fs s k cc bg wf h ftq with room-step prog fs s k (inv-run wf) cc h ftq
-  -- the compare found the room for what follows the check: the budget re-arms
-  ... | inj₁ (c , s′ , ex , cc′ , le) =
+  room-check-step n IH ev env prog fs s k cc bg wf h ftq with room-step prog fs s k (inv-run wf) cc (Budget.bg-started bg) h ftq
+  -- the compares found the room for what follows the check: the budget re-arms
+  ... | inj₁ (c , s′ , ex , cc′ , lh , ls) =
     ccc-step-c n IH ev env prog fs s (instr-room k) c z≤n (s′ , ex , cc′)
-      (λ _ → bg-room (inv-run wf) (dataCorr cc) ftq le refl (straight-frame (instr-room k) fs))
+      (λ _ → bg-room (Budget.bg-started bg) (inv-run wf) (dataCorr cc) ftq lh ls refl (straight-frame (instr-room k) fs))
       wf ftq h refl tt tt h
   ... | inj₂ (c , s' , ex , hs' , ft') =
     c + 1 , subst (λ o → AgreeAt o (flat-events n prog (flat-exec-instr (instr-room k) prog fs))
@@ -1223,9 +1223,9 @@ module Dispatch (sup : Supply) where
            (λ hl _ → wf-heap (inv-wf wf) hl) (wf-stack (inv-wf wf))
            (λ hl eq → wf-fresh (inv-wf wf) hl (≤-reflexive (sym eq)))
            -- the allocation's room, from the budget (plan 0.123 A.4 step 5)
-           (room-of bg (dataCorr cc) ftq refl)
+           (fresh-of bg (dataCorr cc) ftq)
            (reg-range prog fs s sp-reg (inv-run wf) cc))
-        (λ _ → bg-alloc bg ftq refl refl (straight-frame (instr-alloc-heap k) fs)) wf ftq h refl tt tt h
+        (λ _ → bg-alloc bg ftq refl refl refl refl (straight-frame (instr-alloc-heap k) fs)) wf ftq h refl tt tt h
     events-running-fetch {hv} n ev env prog fs s (instr-dealloc-stack k) cc bg wf h ftq =
       ⊥-elim (frame-op-absurd prog fs (instr-dealloc-stack k) (inv-run wf) ftq (λ _ ()))
     -- a free (plan 0.146: the new image emits one), past its gate (D468, the run is sound): no code
@@ -1346,11 +1346,13 @@ module Dispatch (sup : Supply) where
     → CFC.HeapView.hfront hv ≡ heap-base + rec-size * slot-size
     → fret fs ≡ []
     → LocState.left (floc fs) ≡ false
+    → CFC.HeapView.hstarted hv ≡ false
+    → CFC.HeapView.lo hv ≡ rreg s sp-reg
     → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
                  (flat-events (suc N) prog fs) (flat-ctrls (suc N) prog fs) M)
-  events-agree-start {hv} N ev env prog fs s b cc wf cl evq envq run h ftq h0 nf lf0
-    with start-step prog fs s b run cc h ftq h0 nf
-  ... | inj₁ (c , s′ , ex , hv′ , cc′) =
+  events-agree-start {hv} N ev env prog fs s b cc wf cl evq envq run h ftq h0 nf lf0 nst lo-eq
+    with start-step prog fs s b run cc h ftq h0 nf nst lo-eq
+  ... | inj₁ (c , s′ , ex , hv′ , st′ , cc′) =
     suc c + proj₁ rec
     , subst (λ o → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) (suc c + proj₁ rec) (compile-trace prog) s)
                            o (flat-ctrls (suc N) prog fs) (suc c + proj₁ rec))
@@ -1373,7 +1375,7 @@ module Dispatch (sup : Supply) where
         }
       -- the start is a boundary: its check comes next, where nothing is owed
       bg₁ : Budget hv′ prog fs₁
-      bg₁ = bg-boundary run ftq refl refl (dataCorr cc′)
+      bg₁ = bg-boundary st′ run ftq refl refl (dataCorr cc′)
       rec = events-agree N ev env prog fs₁ s′ cc′ bg₁ inv₁
       pre-eq : RT.run-events ev env (LocState.ev-log (floc fs)) (suc c + proj₁ rec) (compile-trace prog) s
              ≡ RT.run-events ev env (LocState.ev-log (floc fs₁)) (proj₁ rec) (compile-trace prog) s′

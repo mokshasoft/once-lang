@@ -244,6 +244,19 @@ d_ref'45'syms_96 v0
                        MAlonzo.Code.Agda.Builtin.List.C__'8759'__22 (coe v4)
                        (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
                 _ -> coe v1
+         MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_cmp_42 v2 v3
+           -> case coe v2 of
+                MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_24 v4
+                  -> case coe v3 of
+                       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mem_26 v5
+                         -> case coe v5 of
+                              MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rip'43'sym_20 v6 v7
+                                -> coe
+                                     MAlonzo.Code.Agda.Builtin.List.C__'8759'__22 (coe v6)
+                                     (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
+                              _ -> coe v1
+                       _ -> coe v1
+                _ -> coe v1
          MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_jmp_46 v2
            -> coe
                 MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
@@ -270,21 +283,21 @@ d_ref'45'syms_96 v0
                 (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
          _ -> coe v1)
 -- Once.CCC.Target.X86-64.File.refs
-d_refs_116 ::
+d_refs_118 ::
   [MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.T_Instr_30] ->
   [MAlonzo.Code.Agda.Builtin.String.T_String_6]
-d_refs_116 v0
+d_refs_118 v0
   = case coe v0 of
       [] -> coe v0
       (:) v1 v2
         -> coe
              MAlonzo.Code.Data.List.Base.du__'43''43'__32
-             (coe d_ref'45'syms_96 (coe v1)) (coe d_refs_116 (coe v2))
+             (coe d_ref'45'syms_96 (coe v1)) (coe d_refs_118 (coe v2))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Target.X86-64.File.start-defs
-d_start'45'defs_122 ::
+d_start'45'defs_124 ::
   Maybe Integer -> [MAlonzo.Code.Agda.Builtin.String.T_String_6]
-d_start'45'defs_122 v0
+d_start'45'defs_124 v0
   = case coe v0 of
       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v1
         -> coe
@@ -298,12 +311,12 @@ d_start'45'defs_122 v0
         -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Target.X86-64.File.defs
-d_defs_124 ::
+d_defs_126 ::
   T_Image_12 -> [MAlonzo.Code.Agda.Builtin.String.T_String_6]
-d_defs_124 v0
+d_defs_126 v0
   = coe
       MAlonzo.Code.Data.List.Base.du__'43''43'__32
-      (coe d_start'45'defs_122 (coe d_entry_24 (coe v0)))
+      (coe d_start'45'defs_124 (coe d_entry_24 (coe v0)))
       (coe
          MAlonzo.Code.Data.List.Base.du__'43''43'__32
          (coe d_label'45'defs_88 (coe d_code_22 (coe v0)))
@@ -312,47 +325,47 @@ d_defs_124 v0
             (coe (\ v1 -> MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28 (coe v1)))
             (coe d_blocks_26 (coe v0))))
 -- Once.CCC.Target.X86-64.File.EntryIn
-d_EntryIn_128 :: Maybe Integer -> Integer -> ()
-d_EntryIn_128 = erased
+d_EntryIn_130 :: Maybe Integer -> Integer -> ()
+d_EntryIn_130 = erased
 -- Once.CCC.Target.X86-64.File.AsmWF
-d_AsmWF_138 a0 = ()
-data T_AsmWF_138
-  = C_constructor_166 MAlonzo.Code.Data.List.Relation.Unary.AllPairs.Core.T_AllPairs_20
+d_AsmWF_140 a0 = ()
+data T_AsmWF_140
+  = C_constructor_168 MAlonzo.Code.Data.List.Relation.Unary.AllPairs.Core.T_AllPairs_20
                       MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 AgdaAny
                       MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
                       MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
 -- Once.CCC.Target.X86-64.File.AsmWF.defined-once
-d_defined'45'once_154 ::
-  T_AsmWF_138 ->
+d_defined'45'once_156 ::
+  T_AsmWF_140 ->
   MAlonzo.Code.Data.List.Relation.Unary.AllPairs.Core.T_AllPairs_20
-d_defined'45'once_154 v0
+d_defined'45'once_156 v0
   = case coe v0 of
-      C_constructor_166 v1 v2 v3 v4 v5 -> coe v1
+      C_constructor_168 v1 v2 v3 v4 v5 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Target.X86-64.File.AsmWF.resolved
-d_resolved_158 ::
-  T_AsmWF_138 -> MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
-d_resolved_158 v0
+d_resolved_160 ::
+  T_AsmWF_140 -> MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
+d_resolved_160 v0
   = case coe v0 of
-      C_constructor_166 v1 v2 v3 v4 v5 -> coe v2
+      C_constructor_168 v1 v2 v3 v4 v5 -> coe v2
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Target.X86-64.File.AsmWF.entry-in
-d_entry'45'in_160 :: T_AsmWF_138 -> AgdaAny
-d_entry'45'in_160 v0
+d_entry'45'in_162 :: T_AsmWF_140 -> AgdaAny
+d_entry'45'in_162 v0
   = case coe v0 of
-      C_constructor_166 v1 v2 v3 v4 v5 -> coe v3
+      C_constructor_168 v1 v2 v3 v4 v5 -> coe v3
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Target.X86-64.File.AsmWF.defs-valid
-d_defs'45'valid_162 ::
-  T_AsmWF_138 -> MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
-d_defs'45'valid_162 v0
+d_defs'45'valid_164 ::
+  T_AsmWF_140 -> MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
+d_defs'45'valid_164 v0
   = case coe v0 of
-      C_constructor_166 v1 v2 v3 v4 v5 -> coe v4
+      C_constructor_168 v1 v2 v3 v4 v5 -> coe v4
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Target.X86-64.File.AsmWF.externs-valid
-d_externs'45'valid_164 ::
-  T_AsmWF_138 -> MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
-d_externs'45'valid_164 v0
+d_externs'45'valid_166 ::
+  T_AsmWF_140 -> MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
+d_externs'45'valid_166 v0
   = case coe v0 of
-      C_constructor_166 v1 v2 v3 v4 v5 -> coe v5
+      C_constructor_168 v1 v2 v3 v4 v5 -> coe v5
       _ -> MAlonzo.RTE.mazUnreachableError

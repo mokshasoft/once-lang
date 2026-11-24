@@ -238,7 +238,30 @@ record HeapView : Set₁ where
     hstarted   : Bool
     dom-above  : ∀ {hl : HeapLocation} → HDom hl → heap-base < haddr hl
     base-front : heap-base < hfront
+    -- D486 (a3): once started, the cells stay below the limit, and the stack
+    -- has never gone below it (the high-water mark is at or above it)
+    front-lim  : hstarted ≡ true → hfront ≤ hlim
+    lim-lo     : hstarted ≡ true → hlim ≤ lo
 open HeapView
+
+-- D486 (a3): A NEW FLOOR for the stack mark (a descent): the frontier and, once
+-- started, the limit are at or below it
+record Floor (hv : HeapView) (lo' : ℕ) : Set where
+  constructor mkFloor
+  field
+    fl-front : hfront hv ≤ lo'
+    fl-lim   : hstarted hv ≡ true → hlim hv ≤ lo'
+open Floor
+
+-- D486 (a3): A FRESH BLOCK'S ROOM: its `n` words stay below the new floor and,
+-- once started, below the limit, which is itself at or below the floor
+record Fresh (hv : HeapView) (n : ℕ) (lo' : ℕ) : Set where
+  constructor mkFresh
+  field
+    fr-room : hfront hv + n * slot-size ≤ lo'
+    fr-lim  : hstarted hv ≡ true → hfront hv + n * slot-size ≤ hlim hv
+    fr-lo   : hstarted hv ≡ true → hlim hv ≤ lo'
+open Fresh
 
 ------------------------------------------------------------------------
 -- Value encoding: typed StoredValue → untyped x86 Word.
@@ -902,7 +925,7 @@ sep {hv} corr = ≤-trans (front-lo hv) (lo-le corr)
 -- Lowering is a WEAKENING of `untouched` (a smaller region), which is why no
 -- write can break it and why the descending instructions can write below the old
 -- `%rsp` at all: they descend first, then write inside `[lo', %rsp)`.
-descend-view : (hv : HeapView) (lo' : ℕ) → lo' ≤ lo hv → hfront hv ≤ lo' → HeapView
+descend-view : (hv : HeapView) (lo' : ℕ) → lo' ≤ lo hv → Floor hv lo' → HeapView
 descend-view hv lo' _ front-lo' = record
   { haddr     = haddr hv
   ; caddr     = caddr hv
@@ -912,7 +935,7 @@ descend-view hv lo' _ front-lo' = record
   ; haddr-inj = haddr-inj hv
   ; dom-below = dom-below hv
   ; lo        = lo'
-  ; front-lo  = front-lo'
+  ; front-lo  = fl-front front-lo'
   ; front-pos = front-pos hv
   ; dom-pos   = dom-pos hv
   ; rec-dom   = rec-dom hv
@@ -921,6 +944,8 @@ descend-view hv lo' _ front-lo' = record
   ; hstarted   = hstarted hv
   ; dom-above  = dom-above hv
   ; base-front = base-front hv
+  ; front-lim  = front-lim hv
+  ; lim-lo     = fl-lim front-lo'
   }
 
 -- (No encoding-transport lemma is needed across a descent: `descend-view` copies
@@ -1574,16 +1599,17 @@ sim-store-rec {hv} k fs s s' corr lt guard sm =
 -- set; the store of record word 0 misses every written cell and every window
 -- (all above `heap-base`), so the whole correspondence carries over.
 ------------------------------------------------------------------------
-start-view : HeapView → ℕ → HeapView
-start-view hv L = record hv { hlim = L ; hstarted = true }
+-- (its check put the frontier at or below `L`, and `L` is below the stack mark)
+start-view : (hv : HeapView) (L : ℕ) → hfront hv ≤ L → L ≤ lo hv → HeapView
+start-view hv L fl ll = record hv { hlim = L ; hstarted = true ; front-lim = λ _ → fl ; lim-lo = λ _ → ll }
 
 -- the limit's word is below the high-water mark
 base-lo : ∀ (hv : HeapView) → heap-base < lo hv
 base-lo hv = <-≤-trans (base-front hv) (front-lo hv)
 
-sim-set-lim : {hv : HeapView} (fs : FlatState) (s s' : State) (L : ℕ) → FlatCorr hv fs s
-  → SetsMem s s' heap-base L → FlatCorr (start-view hv L) fs s'
-sim-set-lim {hv} fs s s' L corr sm = record
+sim-set-lim : {hv : HeapView} (fs : FlatState) (s s' : State) (L : ℕ) (fl : hfront hv ≤ L) (ll : L ≤ lo hv)
+  → FlatCorr hv fs s → SetsMem s s' heap-base L → FlatCorr (start-view hv L fl ll) fs s'
+sim-set-lim {hv} fs s s' L fl ll corr sm = record
   { in1-eq = mkeep-in1 corr sm ; out-eq = mkeep-out corr sm ; clos-eq = mkeep-clos corr sm
   ; halt-eq = mkeep-halt corr sm ; sp-eq = mkeep-sp corr sm ; frontier-eq = mkeep-heap-reg corr sm
   ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr ; dom-sized = dom-sized corr
@@ -1790,7 +1816,7 @@ sim-alloc-stack : {hv : HeapView} (n : ℕ) (fs : FlatState) (s s' : State) → 
   -- OVERFLOW, the honest exhaustion assumption) is spent. The mark only ever moves
   -- DOWN, so re-entering a frame that was already reached does not (falsely)
   -- re-declare its cells virgin.
-  → (lo' : ℕ) (lo'≤lo : lo' ≤ lo hv) (front-lo' : hfront hv ≤ lo')
+  → (lo' : ℕ) (lo'≤lo : lo' ≤ lo hv) (front-lo' : Floor hv lo')
   → lo' ≤ rreg s sp-reg ∸ slots n
   -- THE FRAME FITS (Plan 0.63, D085): the reservation does not run `%rsp` off
   -- the bottom of the address space. Without it `frame-base (shift cf n) + 8n`
@@ -1870,7 +1896,7 @@ sim-thunk : {hv : HeapView} (b : ℕ)
   -- assumption. Postulating freshness here would have been assuming something
   -- false — a re-entered frame keeps the previous incarnation's writes unless
   -- the machine clears them, which is why the fix belongs in `do-thunk`.
-  → (lo' : ℕ) (lo'≤lo : lo' ≤ lo hv) (front-lo' : hfront hv ≤ lo')
+  → (lo' : ℕ) (lo'≤lo : lo' ≤ lo hv) (front-lo' : Floor hv lo')
   → lo' ≤ rreg s sp-reg ∸ slots b
   → slots b ≤ rreg s sp-reg
   → SetsRole s s' role-sp (rreg s sp-reg ∸ slots b)
@@ -1959,7 +1985,7 @@ sim-thunk {hv} b fs s s' corr lo' lo'≤lo front-lo' lo'≤sp-reg fits st = reco
 -- so only an arch can name the intermediate state.
 ------------------------------------------------------------------------
 sim-call-frame : {hv : HeapView} (jₐ : ℕ) (fs : FlatState) (s s' : State) → FlatCorr hv fs s
-  → (lo' : ℕ) (lo'≤lo : lo' ≤ lo hv) (front-lo' : hfront hv ≤ lo')
+  → (lo' : ℕ) (lo'≤lo : lo' ≤ lo hv) (front-lo' : Floor hv lo')
   → lo' ≤ rreg s sp-reg ∸ slot-size
   -- ROOM FOR THE RETURN ADDRESS: the one slot the call spends. Same class as
   -- `StackRoom` (D087) and supplied the same way.
@@ -2254,9 +2280,9 @@ ext-suc hv st (heap-loc r o) = ext-suc-aux hv st r o (ref-id r ≟ st)
 -- unmapped any more, so the heap may grow up to the stack pointer itself).
 extend-view : (hv : HeapView) (st n : ℕ)
             → (∀ {hl : HeapLocation} → HDom hv hl → ref-id (heap-ref hl) < st)
-            → {lo' : ℕ} → hfront hv + slots n ≤ lo'
+            → {lo' : ℕ} → Fresh hv n lo'
             → HeapView
-extend-view hv st n fresh {lo'} room = record
+extend-view hv st n fresh {lo'} rm = record
   { haddr     = ext-addr hv st
   -- D096: an allocation extends the HEAP map; the code map is a property of
   -- the PROGRAM, so it rides through untouched.
@@ -2267,7 +2293,7 @@ extend-view hv st n fresh {lo'} room = record
   ; haddr-inj = inj
   ; dom-below = below
   ; lo        = lo'
-  ; front-lo  = room
+  ; front-lo  = fr-room rm
   ; front-pos = <-≤-trans (front-pos hv) (m≤m+n (hfront hv) (slots n))
   ; dom-pos   = pos
   -- D470: the record is an old block (ref 0, below the fresh ref)
@@ -2277,6 +2303,8 @@ extend-view hv st n fresh {lo'} room = record
   ; hstarted   = hstarted hv
   ; dom-above  = above
   ; base-front = <-≤-trans (base-front hv) (m≤m+n (hfront hv) (slots n))
+  ; front-lim  = fr-lim rm
+  ; lim-lo     = fr-lo rm
   }
   where
     above : ∀ {hl : HeapLocation} → ExtDom hv st n hl → heap-base < ext-addr hv st hl
@@ -2335,7 +2363,7 @@ extend-view hv st n fresh {lo'} room = record
 -- fresh ref: the extension only ADDS addresses.
 enc-ext : ∀ (hv : HeapView) (st n : ℕ)
             (pf : ∀ {hl : HeapLocation} → HDom hv hl → ref-id (heap-ref hl) < st)
-            {lo' : ℕ} (rm : hfront hv + slots n ≤ lo')
+            {lo' : ℕ} (rm : Fresh hv n lo')
             (v : StoredValue FS) → sv-below st v
         → enc-sv (extend-view hv st n pf rm) v ≡ enc-sv hv v
 enc-ext hv st n pf rm (SV-Ptr (AtDynamic hl)) lt = ext-addr-old hv st hl lt
@@ -2347,7 +2375,7 @@ enc-ext hv st n pf rm (SV-Code _)             _  = refl
 
 enc-ext-maybe : ∀ (hv : HeapView) (st n : ℕ)
                   (pf : ∀ {hl : HeapLocation} → HDom hv hl → ref-id (heap-ref hl) < st)
-                  {lo' : ℕ} (rm : hfront hv + slots n ≤ lo')
+                  {lo' : ℕ} (rm : Fresh hv n lo')
                   (mv : Maybe (StoredValue FS)) → svm-below st mv
               → enc-maybe (extend-view hv st n pf rm) mv ≡ enc-maybe hv mv
 enc-ext-maybe hv st n pf rm (just v) wf = cong just (enc-ext hv st n pf rm v wf)
@@ -2359,7 +2387,7 @@ enc-ext-maybe hv st n pf rm nothing  _  = refl
 -- quantified over all frames (`FlatWF.wf-stack`), so this needs no new fact.
 windows-enc-ext : ∀ (hv : HeapView) (st n : ℕ)
                     (pf : ∀ {hl : HeapLocation} → HDom hv hl → ref-id (heap-ref hl) < st)
-                    {lo' : ℕ} (rm : hfront hv + slots n ≤ lo')
+                    {lo' : ℕ} (rm : Fresh hv n lo')
                     (mem : Memory) (stk : StackMem FS) (fl : ℕ) (fr : List (Frame × ℕ))
                 → (∀ (f : Frame) (k : Slot) → svm-below st (stk f k))
                 → StackWindows (amap hv) mem stk fl fr
@@ -2397,18 +2425,18 @@ sim-alloc-heap : ∀ {hv : HeapView} (n : ℕ)
   -- stack has visited may keep its contents, and that is harmless now that
   -- `heap-eq` claims only written cells. This is HEAP EXHAUSTION. The extended
   -- view's floor `lo` rises to `%rsp` with it.
-  → (room : hfront hv + slots n ≤ rreg s sp-reg)
+  → (rm : Fresh hv n (rreg s sp-reg))
   -- the two-instruction block writes Output (the block's base) and then the
   -- frontier; `Sets2Roles` is what says the OTHER three roles survive both.
   → Sets2Roles s s' role-out role-heap
                (rreg s heap-reg)
                (rreg s heap-reg + slots n)
-  → FlatCorr (extend-view hv (next-heap-ref (falloc fs)) n (dom-fresh corr) room)
+  → FlatCorr (extend-view hv (next-heap-ref (falloc fs)) n (dom-fresh corr) rm)
              (flat-exec-instr (instr-alloc-heap n) [] fs) s'
-sim-alloc-heap {hv} n fs s s' corr wf1 wfcl wf-heap wf-stack fresh-abs room s2 = record
-  { in1-eq  = trans (trans (off-roles s2 role-in1 (λ ()) (λ ())) (in1-eq corr)) (sym (enc-ext hv st n dfr room (readReg (regs (floc fs)) Input1) wf1))
+sim-alloc-heap {hv} n fs s s' corr wf1 wfcl wf-heap wf-stack fresh-abs rm s2 = record
+  { in1-eq  = trans (trans (off-roles s2 role-in1 (λ ()) (λ ())) (in1-eq corr)) (sym (enc-ext hv st n dfr rm (readReg (regs (floc fs)) Input1) wf1))
   ; out-eq  = trans (trans (at-role₁ s2) (frontier-eq corr)) (sym (ext-addr-base hv st))
-  ; clos-eq  = trans (trans (off-roles s2 role-clos (λ ()) (λ ())) (clos-eq corr)) (sym (enc-ext hv st n dfr room (fclosure fs) wfcl))
+  ; clos-eq  = trans (trans (off-roles s2 role-clos (λ ()) (λ ())) (clos-eq corr)) (sym (enc-ext hv st n dfr rm (fclosure fs) wfcl))
   ; halt-eq = trans (keeps-halt₂ s2) (halt-eq corr)
   ; sp-eq  = trans (off-roles s2 role-sp (λ ()) (λ ())) (sp-eq corr)
   ; frontier-eq  = trans (at-role₂ s2) (cong (_+ slots n) (frontier-eq corr))
@@ -2421,12 +2449,12 @@ sim-alloc-heap {hv} n fs s s' corr wf1 wfcl wf-heap wf-stack fresh-abs room s2 =
   -- %rsp is untouched by the bump, and the new floor IS %rsp; the windows are
   -- re-anchored there (`%rsp` is the current frame's base, `sp-eq`).
   ; lo-le = ≤-reflexive (sym (off-roles s2 role-sp (λ ()) (λ ())))
-  ; stack-eq = subst (λ m → StackWindows (amap (extend-view hv st n dfr room)) m
+  ; stack-eq = subst (λ m → StackWindows (amap (extend-view hv st n dfr rm)) m
                                           (stackMem (floc fs)) (rreg s sp-reg) (frames-of (falloc fs)))
                      (sym (keeps-mem₂ s2))
                      (windows-reanchor (lo hv) (rreg s sp-reg) (current-frame (falloc fs))
                         (frame-slots (falloc fs)) (saved-frames (falloc fs)) (≤-reflexive (sp-eq corr))
-                        (windows-enc-ext hv st n dfr room (memory s) (stackMem (floc fs))
+                        (windows-enc-ext hv st n dfr rm (memory s) (stackMem (floc fs))
                            (lo hv) (frames-of (falloc fs)) wf-stack (stack-eq corr)))
   ; lim-eq = λ e → trans (cong (λ m → readMem m heap-base) (keeps-mem₂ s2)) (lim-eq corr e)
   }
@@ -2448,7 +2476,7 @@ sim-alloc-heap {hv} n fs s s' corr wf1 wfcl wf-heap wf-stack fresh-abs room s2 =
                → ExtDom hv st n hl
             go (yes req) o<n = ext-fresh req o<n
             go (no  _)   o<b = ext-old (dom-sized corr hl o<b)
-    hv' = extend-view hv st n dfr room
+    hv' = extend-view hv st n dfr rm
     df : ∀ {hl : HeapLocation} → ExtDom hv st n hl → ref-id (heap-ref hl) < suc st
     df (ext-old d)       = m<n⇒m<1+n (dfr d)
     df (ext-fresh req _) = subst (_< suc st) (sym req) ≤-refl
@@ -2463,7 +2491,7 @@ sim-alloc-heap {hv} n fs s s' corr wf1 wfcl wf-heap wf-stack fresh-abs room s2 =
       trans (cong (λ m → readMem m (ext-addr hv st hl)) (keeps-mem₂ s2))
       (trans (cong (readMem (memory s)) (ext-addr-old hv st hl (dfr d)))
             (trans (heap-eq corr hl eq)
-                   (sym (enc-ext-maybe hv st n dfr room (just v) (subst (svm-below st) eq (wf-heap hl d))))))
+                   (sym (enc-ext-maybe hv st n dfr rm (just v) (subst (svm-below st) eq (wf-heap hl d))))))
       where d = dom-written corr hl eq
 
 ------------------------------------------------------------------------

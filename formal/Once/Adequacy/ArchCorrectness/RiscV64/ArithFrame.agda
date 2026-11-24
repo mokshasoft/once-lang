@@ -192,7 +192,7 @@ module _ (val : XInstr → State → Reg → Word) (N : ℕ) where
 module _ (val : XInstr → State → Reg → Word) where
 
   module Sub (n : ℕ) (blk : List XInstr) (s : State) (W : ℕ)
-             (ok : SpillsWF n blk) (fits : 8 * n ≤ W) (room : W ≤ readReg (regs s) sp) where
+             (ok : SpillsWF n blk) (fits : 8 * n ≤ W) (rm : W ≤ readReg (regs s) sp) where
 
     private
       s₁ = call-frame val n s
@@ -218,7 +218,7 @@ module _ (val : XInstr → State → Reg → Word) where
     sub-mem a out = block-mem val (8 * n) n blk s₁ ok a frame
       where
         top : (rsp′ ∸ 8 * n) + 8 * n ≡ rsp′
-        top = m∸n+n≡m (≤-trans fits room)
+        top = m∸n+n≡m (≤-trans fits rm)
         frame : (a < rsp′ ∸ 8 * n) ⊎ ((rsp′ ∸ 8 * n) + 8 * n ≤ a)
         frame = [ (λ lo → inj₁ (<-≤-trans lo (∸-monoʳ-≤ rsp′ fits)))
                 , (λ hi → inj₂ (subst (_≤ a) (sym top) hi)) ]′ out

@@ -29,7 +29,7 @@ module Once.Adequacy.ArchCorrectness.X86-64.FlatComposition (FS : FrameSemantics
 open import Data.Nat using (ℕ; zero; suc)
 open import Data.Bool using (Bool; true; false)
 open import Data.Maybe using (just)
-open import Data.List using ([]; _∷_)
+open import Data.List using ([]; _∷_; _++_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.CCC.Machine.SMCore
@@ -40,7 +40,7 @@ import Once.CCC.Target.X86-64.Syntax as XS
 open import Once.CCC.Target.X86-64.Syntax
   using (Program; mov; lea; add; sub; sbb; cmp; test; jmp; je; jne; call; call-sym; call-l; ret; push; pop; nop; ud2; syscall; jbe-fwd; local-1; label; reg; imm; slots)
 open import Once.Target.X86-64.PhysReg using (rsp)
-open import Once.CCC.Target.X86-64.AbstractToX86 using (compile-abstract; compile-trace)
+open import Once.CCC.Target.X86-64.AbstractToX86 using (compile-abstract; compile-trace; heap-code; stack-code)
 
 ------------------------------------------------------------------------
 -- WHICH INSTRUCTIONS ARE LABELS, and the three scan equations that follow.
@@ -129,6 +129,13 @@ const-no-label : ∀ {A} (p : FitsInReg A) (v : _) → has-label (compile-abstra
 const-no-label fits-int   v = refl
 const-no-label fits-float v = refl
 
+-- D486 (a3): a check's two parts have no label
+room-no-label : ∀ h k → has-label (heap-code h ++ stack-code k) ≡ false
+room-no-label zero    zero    = refl
+room-no-label zero    (suc _) = refl
+room-no-label (suc _) zero    = refl
+room-no-label (suc _) (suc _) = refl
+
 headView : ∀ (i : AbstractInstr) → HeadView i
 headView mov-to-output = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView mov-to-input = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
@@ -152,8 +159,7 @@ headView (store-at _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (addr-at _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (load-rec _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (store-rec _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
-headView (instr-room zero) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
-headView (instr-room (suc _)) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
+headView (instr-room q) = hv-plain (room-no-label (Room.room-h q) (Room.room-s q)) (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (instr-push-frame _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (worklist-init _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (worklist-push _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)

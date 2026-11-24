@@ -118,6 +118,8 @@ ref-syms (lea _ (rip+label n)) = thunkSym n ∷ []
 ref-syms (lea _ (rip+sym s _)) = s ∷ []
 ref-syms (mov (reg _) (mem (rip+sym s _))) = s ∷ []
 ref-syms (mov (mem (rip+sym s _)) _)       = s ∷ []
+-- D486 (a3): the cells' check compares with the limit's word
+ref-syms (cmp (reg _) (mem (rip+sym s _))) = s ∷ []
 {-# CATCHALL #-}
 ref-syms _                     = []
 

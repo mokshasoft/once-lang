@@ -32,7 +32,8 @@ open import Data.Nat using (ℕ; zero; suc; _+_)
 open import Data.Bool using (Bool; true; false)
 open import Data.Maybe using (just)
 open import Data.List using ([]; _∷_; _++_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; cong)
+open import Data.List.Properties using (++-identityʳ)
 
 open import Once.CCC.Machine.SMCore
 open import Once.CCC.Label using (Label; _≡ᵇᴸ_)
@@ -42,7 +43,7 @@ import Once.CCC.Target.X86-32.Syntax as XS
 open import Once.CCC.Target.X86-32.Syntax
   using (Program; mov; lea; add; sub; sbb; cmp; test; jmp; je; jne; call; call-sym; call-l; ret; push; pop; nop; ud2; jbe-fwd; local-1; label; mov-code; jmp-l; reg; imm; slots)
 open import Once.Target.X86-32.PhysReg using (esp)
-open import Once.CCC.Target.X86-32.AbstractToX86-32 using (compile-abstract; compile-trace; fits-or-out; room-code; room-fits?; start-tail)
+open import Once.CCC.Target.X86-32.AbstractToX86-32 using (compile-abstract; compile-trace; fits-or-out; room-code; room-fits?; start-tail; part; heap-room; stack-room; heap-code; stack-code)
 
 ------------------------------------------------------------------------
 -- WHICH INSTRUCTIONS ARE LABELS, and the three scan equations that follow.
@@ -143,6 +144,27 @@ start-no-label : ∀ (c : Bool) k b → has-label (fits-or-out c (room-code k) +
 start-no-label true  k b = refl
 start-no-label false k b = refl
 
+-- D486 (a3): a check's two parts (each its code or the call) have no label
+part-no-label : ∀ (c : Bool) (code : Program) → has-label code ≡ false → has-label (part c code) ≡ false
+part-no-label true  code e = e
+part-no-label false code e = refl
+
+hc-no-label : ∀ h → has-label (heap-code h) ≡ false
+hc-no-label zero        = refl
+hc-no-label h@(suc _)   = part-no-label (room-fits? h) (heap-room h) refl
+
+room-no-label : ∀ h k → has-label (heap-code h ++ stack-code k) ≡ false
+room-no-label zero      zero      = refl
+room-no-label zero      k@(suc _) = part-no-label (room-fits? k) (stack-room k) refl
+room-no-label h@(suc _) zero      = trans (cong has-label (++-identityʳ (heap-code h))) (hc-no-label h)
+room-no-label h@(suc _) k@(suc _) = by (room-fits? h) (room-fits? k)
+  where
+    by : ∀ c d → has-label (part c (heap-room h) ++ part d (stack-room k)) ≡ false
+    by true  true  = refl
+    by true  false = refl
+    by false true  = refl
+    by false false = refl
+
 headView : ∀ (i : AbstractInstr) → HeadView i
 headView mov-to-output = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView mov-to-input = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
@@ -166,8 +188,7 @@ headView (store-at _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (addr-at _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (load-rec _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (store-rec _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
-headView (instr-room zero) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
-headView (instr-room (suc k)) = hv-plain (fo-no-label (room-fits? (suc k)) (suc k)) (λ _ _ _ → refl) (λ _ _ _ → refl)
+headView (instr-room q) = hv-plain (room-no-label (Room.room-h q) (Room.room-s q)) (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (instr-push-frame _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (worklist-init _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (worklist-push _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)

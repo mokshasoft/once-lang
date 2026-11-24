@@ -26,7 +26,7 @@ open import Data.Nat using (ℕ; zero; suc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
-open import Once.CCC.Machine.SMCore using (AbstractInstr; AbstractTrace; instr-room)
+open import Once.CCC.Machine.SMCore using (AbstractInstr; AbstractTrace; instr-room; Room)
 open import Once.CCC.Codegen.RoomChecks using (boundary?; stretch; checks; room-checks; max-entry)
 
 -- one more index when the instruction just passed is a boundary (its check follows it)
@@ -49,7 +49,7 @@ module RoomFacts {FS : FrameSemantics} where
 
   -- what follows a boundary instruction in `checks`, read at a bumped index
   private
-    fetch-after : ∀ (b : Bool) (k : ℕ) (C : AbstractTrace) (j : ℕ) {r : Maybe AbstractInstr}
+    fetch-after : ∀ (b : Bool) (k : Room) (C : AbstractTrace) (j : ℕ) {r : Maybe AbstractInstr}
                 → fetch C j ≡ r
                 → fetch (if b then instr-room k ∷ C else C) (bump b j) ≡ r
     fetch-after true  k C j e = e
@@ -106,7 +106,7 @@ module RoomFacts {FS : FrameSemantics} where
 
   private
     -- the label scan past one instruction of `t` and (if it is a boundary) its check
-    fl-pass : ∀ (b : Bool) (k : ℕ) (C t : AbstractTrace) (m : LabelId) (a : ℕ)
+    fl-pass : ∀ (b : Bool) (k : Room) (C t : AbstractTrace) (m : LabelId) (a : ℕ)
             → (∀ a' → fl-go C m a' ≡ mmap (λ i → a' + ψ t i) (fl-go t m 0))
             → fl-go (if b then instr-room k ∷ C else C) m (suc a)
               ≡ mmap (λ i → a + suc (bump b (ψ t i))) (fl-go t m 0)
@@ -147,7 +147,7 @@ module RoomFacts {FS : FrameSemantics} where
   ftm-suc false xs e b = ft-go-suc xs e (suc b)
 
   private
-    ft-pass : ∀ (b : Bool) (k : ℕ) (C t : AbstractTrace) (e : EntryId) (a : ℕ)
+    ft-pass : ∀ (b : Bool) (k : Room) (C t : AbstractTrace) (e : EntryId) (a : ℕ)
             → (∀ a' → ft-go C e a' ≡ mmap (λ i → a' + ψ t i) (ft-go t e 0))
             → ft-go (if b then instr-room k ∷ C else C) e (suc a)
               ≡ mmap (λ i → a + suc (bump b (ψ t i))) (ft-go t e 0)
@@ -211,14 +211,14 @@ module RoomFacts {FS : FrameSemantics} where
 
   private
     -- the place just after a bumped index, read through `checks`' branch
-    fetch-after-suc : ∀ (b : Bool) (k : ℕ) (C : AbstractTrace) (j : ℕ) {r : Maybe AbstractInstr}
+    fetch-after-suc : ∀ (b : Bool) (k : Room) (C : AbstractTrace) (j : ℕ) {r : Maybe AbstractInstr}
                     → fetch C (suc j) ≡ r
                     → fetch (if b then instr-room k ∷ C else C) (suc (bump b j)) ≡ r
     fetch-after-suc true  k C j e = e
     fetch-after-suc false k C j e = e
 
     -- …and right after a boundary instruction: its check
-    check-here : ∀ (b : Bool) (k : ℕ) (C : AbstractTrace) → b ≡ true
+    check-here : ∀ (b : Bool) (k : Room) (C : AbstractTrace) → b ≡ true
                → fetch (if b then instr-room k ∷ C else C) zero ≡ just (instr-room k)
     check-here true k C refl = refl
 
@@ -246,12 +246,12 @@ open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.List.Relation.Unary.Any using (Any; here; there)
 
 private
-  all-after : ∀ {P : AbstractInstr → Set} (b : Bool) (k : ℕ) {C : AbstractTrace}
+  all-after : ∀ {P : AbstractInstr → Set} (b : Bool) (k : Room) {C : AbstractTrace}
             → P (instr-room k) → All P C → All P (if b then instr-room k ∷ C else C)
   all-after true  k pk a = pk ∷ a
   all-after false k pk a = a
 
-  any-after : ∀ {P : AbstractInstr → Set} (b : Bool) (k : ℕ) {C : AbstractTrace}
+  any-after : ∀ {P : AbstractInstr → Set} (b : Bool) (k : Room) {C : AbstractTrace}
             → Any P C → Any P (if b then instr-room k ∷ C else C)
   any-after true  k a = there a
   any-after false k a = a
@@ -281,7 +281,7 @@ module _ {X : Set} (F : AbstractTrace → X) (g : AbstractInstr → X → X)
   open import Relation.Binary.PropositionalEquality using (trans; cong; sym)
 
   private
-    fold-after : ∀ (b : Bool) (k : ℕ) (C : AbstractTrace) → F (if b then instr-room k ∷ C else C) ≡ F C
+    fold-after : ∀ (b : Bool) (k : Room) (C : AbstractTrace) → F (if b then instr-room k ∷ C else C) ≡ F C
     fold-after true  k C = trans (F-∷ (instr-room k) C) (g-room k (F C))
     fold-after false k C = refl
 
@@ -306,7 +306,7 @@ module _ {X : Set} {P : X → Set} (F : AbstractTrace → List X) (f : AbstractI
   open import Data.Product using (proj₁; proj₂)
 
   private
-    all-fold-after : ∀ (b : Bool) (k : ℕ) (C : AbstractTrace) → All P (F C)
+    all-fold-after : ∀ (b : Bool) (k : Room) (C : AbstractTrace) → All P (F C)
                    → All P (F (if b then instr-room k ∷ C else C))
     all-fold-after true  k C a = subst (All P) (sym (F-∷ (instr-room k) C)) (++⁺ (f-room k) a)
     all-fold-after false k C a = a
@@ -326,7 +326,8 @@ module _ {X : Set} {P : X → Set} (F : AbstractTrace → List X) (f : AbstractI
 -- code spends after it up to the next check, and an ordinary instruction's
 -- measure is its own spend plus its successor's.
 ------------------------------------------------------------------------
-open import Once.CCC.Codegen.RoomChecks using (room?; till-check; spend; entry-frame)
+open import Once.CCC.Codegen.RoomChecks using (room?; till-check; spend; entry-frame; r0; _⊕ʳ_)
+
 open import Data.List using (drop)
 open import Data.Nat using (_⊔_; _+_)
 
@@ -339,20 +340,20 @@ max-entry-room : ∀ (t : AbstractTrace) → max-entry (room-checks t) ≡ max-e
 max-entry-room = fold-room max-entry (λ i x → entry-frame i ⊔ x) (λ _ _ → refl) (λ _ _ → refl)
 
 private
-  till-after : ∀ (E : ℕ) (b : Bool) (k : ℕ) (C : AbstractTrace)
-             → till-check E (if b then instr-room k ∷ C else C) ≡ (if b then 0 else till-check E C)
+  till-after : ∀ (E : ℕ) (b : Bool) (k : Room) (C : AbstractTrace)
+             → till-check E (if b then instr-room k ∷ C else C) ≡ (if b then r0 else till-check E C)
   till-after E true  k C = refl
   till-after E false k C = refl
 
-  plus-if : ∀ (a : ℕ) (b : Bool) (x y : ℕ) → x ≡ y → a + (if b then 0 else x) ≡ a + (if b then 0 else y)
-  plus-if a b x y e = cong (λ z → a + (if b then 0 else z)) e
+  plus-if : ∀ (a : Room) (b : Bool) (x y : Room) → x ≡ y → a ⊕ʳ (if b then r0 else x) ≡ a ⊕ʳ (if b then r0 else y)
+  plus-if a b x y e = cong (λ z → a ⊕ʳ (if b then r0 else z)) e
     where open import Relation.Binary.PropositionalEquality using (cong)
 
 -- WHAT FOLLOWS A CHECK SPENDS ITS STRETCH
 till-checks : ∀ (E : ℕ) (t : AbstractTrace) → NoRoom t → till-check E (checks E t) ≡ stretch E t
 till-checks E []      []        = refl
 till-checks E (x ∷ t) (nr ∷ a) rewrite nr =
-  trans (cong (spend E x +_) (till-after E (boundary? x) (stretch E t) (checks E t)))
+  trans (cong (spend E x ⊕ʳ_) (till-after E (boundary? x) (stretch E t) (checks E t)))
         (plus-if (spend E x) (boundary? x) (till-check E (checks E t)) (stretch E t) (till-checks E t a))
   where open import Relation.Binary.PropositionalEquality using (trans; cong)
 
@@ -363,12 +364,12 @@ module CheckK {FS : FrameSemantics} where
   open import Data.Empty using (⊥; ⊥-elim)
 
   private
-    room≢ : ∀ {x : AbstractInstr} {k : ℕ} → room? x ≡ false → x ≡ instr-room k → ⊥
+    room≢ : ∀ {x : AbstractInstr} {k : Room} → room? x ≡ false → x ≡ instr-room k → ⊥
     room≢ () refl
 
     -- in `checks`' branch after `x`: a check found there is the one just past `x`,
     -- or one further on
-    k-after : ∀ (E : ℕ) (b : Bool) (t : AbstractTrace) (j k : ℕ) → NoRoom t
+    k-after : ∀ (E : ℕ) (b : Bool) (t : AbstractTrace) (j : ℕ) (k : Room) → NoRoom t
             → (∀ j′ → fetch (checks E t) j′ ≡ just (instr-room k) → k ≡ till-check E (drop (suc j′) (checks E t)))
             → fetch (if b then instr-room (stretch E t) ∷ checks E t else checks E t) j ≡ just (instr-room k)
             → k ≡ till-check E (drop (suc j) (if b then instr-room (stretch E t) ∷ checks E t else checks E t))
@@ -377,14 +378,14 @@ module CheckK {FS : FrameSemantics} where
     k-after E false t j       k a ih f = ih j f
 
   -- EVERY CHECK OF `checks E t` HOLDS THE MEASURE OF WHAT FOLLOWS IT
-  checks-k : ∀ (E : ℕ) (t : AbstractTrace) → NoRoom t → ∀ (j k : ℕ)
+  checks-k : ∀ (E : ℕ) (t : AbstractTrace) → NoRoom t → ∀ (j : ℕ) (k : Room)
            → fetch (checks E t) j ≡ just (instr-room k) → k ≡ till-check E (drop (suc j) (checks E t))
   checks-k E (x ∷ t) (nr ∷ a) zero    k f = ⊥-elim (room≢ nr (just-injective f))
   checks-k E (x ∷ t) (nr ∷ a) (suc j) k f =
     k-after E (boundary? x) t j k a (λ j′ f′ → checks-k E t a j′ k f′) f
 
   -- …and so does every check of the pass's output
-  check-k : ∀ (t : AbstractTrace) → NoRoom t → ∀ (pc k : ℕ)
+  check-k : ∀ (t : AbstractTrace) → NoRoom t → ∀ (pc : ℕ) (k : Room)
           → fetch (room-checks t) pc ≡ just (instr-room k) → k ≡ till-check (max-entry t) (drop (suc pc) (room-checks t))
   check-k t a pc k f = checks-k (max-entry t) t a pc k f
 
@@ -395,12 +396,12 @@ module CheckK {FS : FrameSemantics} where
   drop-fetch (x ∷ P) (suc pc) f   = drop-fetch P pc f
 
   till-step : ∀ (E : ℕ) (P : AbstractTrace) (pc : ℕ) {i : AbstractInstr} → fetch P pc ≡ just i → room? i ≡ false
-            → till-check E (drop pc P) ≡ spend E i + till-check E (drop (suc pc) P)
+            → till-check E (drop pc P) ≡ spend E i ⊕ʳ till-check E (drop (suc pc) P)
   till-step E P pc {i} f nr rewrite drop-fetch P pc f | nr = refl
 
   -- …and at a check it is nothing
-  till-room : ∀ (E : ℕ) (P : AbstractTrace) (pc k : ℕ) → fetch P pc ≡ just (instr-room k)
-            → till-check E (drop pc P) ≡ 0
+  till-room : ∀ (E : ℕ) (P : AbstractTrace) (pc : ℕ) (k : Room) → fetch P pc ≡ just (instr-room k)
+            → till-check E (drop pc P) ≡ r0
   till-room E P pc k f rewrite drop-fetch P pc f = refl
 
 ------------------------------------------------------------------------
@@ -477,10 +478,10 @@ module NeedFacts {FS : FrameSemantics} where
   private
     next-in : ∀ (E : ℕ) (b : Bool) (t : AbstractTrace) (j : ℕ) {i : AbstractInstr}
             → (∀ (j′ : ℕ) {i′ : AbstractInstr} → fetch (checks E t) j′ ≡ just i′ → boundary? i′ ≡ true
-               → Σ ℕ (λ k → fetch (checks E t) (suc j′) ≡ just (instr-room k)))
+               → Σ Room (λ k → fetch (checks E t) (suc j′) ≡ just (instr-room k)))
             → fetch (if b then instr-room (stretch E t) ∷ checks E t else checks E t) j ≡ just i
             → boundary? i ≡ true
-            → Σ ℕ (λ k → fetch (if b then instr-room (stretch E t) ∷ checks E t else checks E t) (suc j)
+            → Σ Room (λ k → fetch (if b then instr-room (stretch E t) ∷ checks E t else checks E t) (suc j)
                            ≡ just (instr-room k))
     next-in E true  t zero    ih refl ()
     next-in E true  t (suc j) ih f    bd = ih j f bd
@@ -488,7 +489,7 @@ module NeedFacts {FS : FrameSemantics} where
 
   checks-next : ∀ (E : ℕ) (t : AbstractTrace) (j : ℕ) {i : AbstractInstr}
               → fetch (checks E t) j ≡ just i → boundary? i ≡ true
-              → Σ ℕ (λ k → fetch (checks E t) (suc j) ≡ just (instr-room k))
+              → Σ Room (λ k → fetch (checks E t) (suc j) ≡ just (instr-room k))
   checks-next E (x ∷ t) zero    refl bd rewrite bd = stretch E t , refl
   checks-next E (x ∷ t) (suc j) f    bd =
     next-in E (boundary? x) t j (λ j′ f′ bd′ → checks-next E t j′ f′ bd′) f bd
@@ -496,7 +497,7 @@ module NeedFacts {FS : FrameSemantics} where
   -- RIGHT AFTER EVERY BOUNDARY INSTRUCTION OF THE PASS'S OUTPUT, A CHECK
   boundary-next : ∀ (t : AbstractTrace) (j : ℕ) {i : AbstractInstr}
                 → fetch (room-checks t) j ≡ just i → boundary? i ≡ true
-                → Σ ℕ (λ k → fetch (room-checks t) (suc j) ≡ just (instr-room k))
+                → Σ Room (λ k → fetch (room-checks t) (suc j) ≡ just (instr-room k))
   boundary-next t j f bd = checks-next (max-entry t) t j f bd
 
   -- an entry reserves at most the largest frame (what a call's spend covers)

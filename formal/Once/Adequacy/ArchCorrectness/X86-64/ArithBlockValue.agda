@@ -120,7 +120,7 @@ enc-fitsN hv NFloat v = refl
 ------------------------------------------------------------------------
 module _ {hv : HeapView} (prog : AbstractTrace) (fs : FlatState) (s : X.State)
          (r : RunLow prog fs) (cc : CompiledCorr hv prog fs s) (n : ℕ)
-         (room : hfront hv + (8 + 8 * n) ≤ xrreg s rsp) where
+         (room₀ : hfront hv + (8 + 8 * n) ≤ xrreg s rsp) where
 
   private
     ls = floc fs
@@ -129,7 +129,7 @@ module _ {hv : HeapView} (prog : AbstractTrace) (fs : FlatState) (s : X.State)
 
     below : ∀ {x} → x < hfront hv → x < (xrreg s rsp ∸ 8) ∸ 8 * n
     below lt = <-≤-trans lt (subst (hfront hv ≤_) (sym (∸-+-assoc (xrreg s rsp) 8 (8 * n)))
-                                   (m+n≤o⇒m≤o∸n (hfront hv) room))
+                                   (m+n≤o⇒m≤o∸n (hfront hv) room₀))
 
     -- a compound input: a heap pointer, its leaves the cells at their offsets
     mem-leaf′ : ∀ {l r′ m} (hl : _) {a} → readReg (regs ls) Input1 ≡ SV-Ptr (AtDynamic hl)
@@ -183,7 +183,7 @@ module _ {hv : HeapView} (prog : AbstractTrace) (fs : FlatState) (s : X.State)
                     (trans (proj₁ sar) (cong just (enc-fitsN hv m (leafM P a))))
         bnd = subst (xrreg s rsp ≤_) (sym addr) (proj₂ sar)
         rm : 8 + 8 * n ≤ xrreg s rsp
-        rm = ≤-trans (Data.Nat.Properties.m≤n+m (8 + 8 * n) (hfront hv)) room
+        rm = ≤-trans (Data.Nat.Properties.m≤n+m (8 + 8 * n) (hfront hv)) room₀
 
     stack-leaf : ∀ {l r′ m} f j {a} → readReg (regs ls) Input1 ≡ SV-Ptr (AtStack f j)
                → range-ok (live-frames (falloc fs)) (tsize (shape-as-type (shape-pair l r′))) (SV-Ptr (AtStack f j)) ≡ true
@@ -241,9 +241,9 @@ value-int : ∀ {hv : HeapView} prog fs s {sh} (si : SigOpInfo (shape-as-type sh
           → hfront hv + (8 + 8 * required-scratch (normalize e)) ≤ xrreg s rsp
           → xrreg (dispatch-arith val-x86-64 (emit-program (compile-abs (normalize e))) (required-scratch (normalize e)) s) rax
             ≡ enc-sv hv (exec-sigop-output si (floc fs))
-value-int {hv} prog fs s {sh} si e eq r int cc ftq h room with sigop-decodes prog fs si r h ftq (internal-pure int)
+value-int {hv} prog fs s {sh} si e eq r int cc ftq h room₀ with sigop-decodes prog fs si r h ftq (internal-pure int)
 ... | a , d =
-  trans (AS.block-value-x86-64 e (fromM tn sh a) s (entry-leaves prog fs s r cc n room (baseA si) (gate-in prog fs si r h ftq) d) ib)
+  trans (AS.block-value-x86-64 e (fromM tn sh a) s (entry-leaves prog fs s r cc n room₀ (baseA si) (gate-in prog fs si r h ftq) d) ib)
     (trans (cong (block-semM e tn) (toWord-fromM tn sh a))
       (trans (cong (λ t → block-semM e t a) (sym numerics-agree))
              (cong (enc-sv hv) (sym (AO.block-output si e eq (floc fs) d)))))
@@ -260,9 +260,9 @@ value-flt : ∀ {hv : HeapView} prog fs s {sh} (si : SigOpInfo (shape-as-type sh
           → hfront hv + (8 + 8 * required-scratch e) ≤ xrreg s rsp
           → xrreg (dispatch-arith val-x86-64 (emit-program (compile-abs e)) (required-scratch e) s) rax
             ≡ enc-sv hv (exec-sigop-output si (floc fs))
-value-flt {hv} prog fs s {sh} si e eq r int cc ftq h room with sigop-decodes prog fs si r h ftq (internal-pure int)
+value-flt {hv} prog fs s {sh} si e eq r int cc ftq h room₀ with sigop-decodes prog fs si r h ftq (internal-pure int)
 ... | a , d =
-  trans (AS.block-value-x86-64-flt e (fromM tn sh a) s (entry-leaves prog fs s r cc (required-scratch e) room (baseA si) (gate-in prog fs si r h ftq) d))
+  trans (AS.block-value-x86-64-flt e (fromM tn sh a) s (entry-leaves prog fs s r cc (required-scratch e) room₀ (baseA si) (gate-in prog fs si r h ftq) d))
     (trans (cong (block-semM e tn) (toWord-fromM tn sh a))
       (trans (cong (λ t → block-semM e t a) (sym numerics-agree))
              (cong (enc-sv hv) (sym (AO.block-output-flt si e eq (floc fs) d)))))

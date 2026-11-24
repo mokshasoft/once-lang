@@ -154,7 +154,7 @@ sigop-arith-corr₀ : ∀ {hv : HeapView} (prog : AbstractTrace) (fs : FlatState
                  → (exec-sigop-halts si (floc fs) Data.Bool.∨ Data.Bool.not (sigop-gate (falloc fs) si (floc fs))) ≡ halted (floc fs)
                  → xpc s′ ≡ blk-off prog (suc (fpc fs))
                  → CompiledCorr hv prog (sigop-at fs si (floc fs)) s′
-sigop-arith-corr₀ {hv} prog fs s s′ si {W} {v} cc room lk ar val hl pc′ = record
+sigop-arith-corr₀ {hv} prog fs s s′ si {W} {v} cc rm lk ar val hl pc′ = record
   { dataCorr = record
       { in1-eq      = trans (ar-role ar role-in1 (λ ())) (CFC.FlatCorr.in1-eq corr)
       ; out-eq      = trans (ar-out ar) val
@@ -169,7 +169,7 @@ sigop-arith-corr₀ {hv} prog fs s s′ si {W} {v} cc room lk ar val hl pc′ = 
       ; lo-le       = subst (lo hv ≤_) (sym (ar-role ar role-sp (λ ()))) (CFC.FlatCorr.lo-le corr)
       ; stack-eq    = stack′
       -- D486: the limit's word is below the block's frame, as the heap is
-      ; lim-eq      = λ e → trans (ar-mem ar heap-base (inj₁ (<-≤-trans (base-front hv) (m+n≤o⇒m≤o∸n (hfront hv) room))))
+      ; lim-eq      = λ e → trans (ar-mem ar heap-base (inj₁ (<-≤-trans (base-front hv) (m+n≤o⇒m≤o∸n (hfront hv) rm))))
                                   (CFC.FlatCorr.lim-eq corr e)
       }
   ; pc-off  = pc′
@@ -187,7 +187,7 @@ sigop-arith-corr₀ {hv} prog fs s s′ si {W} {v} cc room lk ar val hl pc′ = 
     -- every live heap cell is below the block's frame
     below : ∀ hl′ {w} → heapMem (floc fs) hl′ ≡ just w → haddr hv hl′ < sp ∸ W
     below hl′ d = <-≤-trans (dom-below hv (CFC.FlatCorr.dom-written corr hl′ d))
-                            (m+n≤o⇒m≤o∸n (hfront hv) room)
+                            (m+n≤o⇒m≤o∸n (hfront hv) rm)
     above : ∀ a → sp ≤ a → readMem (memory s′) a ≡ readMem (memory s) a
     above a le = ar-mem ar a (inj₂ le)
     -- the windows, re-anchored at the stack pointer (the current frame's base)
@@ -216,9 +216,9 @@ sigop-arith-corr : ∀ {hv : HeapView} (prog : AbstractTrace) (fs : FlatState) (
                  → (exec-sigop-halts si (floc fs) Data.Bool.∨ Data.Bool.not (sigop-gate (falloc fs) si (floc fs))) ≡ halted (floc fs)
                  → xpc s′ ≡ blk-off prog (suc (fpc fs))
                  → CompiledCorr hv prog (flat-exec-instr (instr-sigop si) prog fs) s′
-sigop-arith-corr {hv} prog fs s s′ si nm cc room lk ar val hl pc′ =
+sigop-arith-corr {hv} prog fs s s′ si nm cc rm lk ar val hl pc′ =
   subst (λ x → CompiledCorr hv prog (sigop-at fs si x) s′) (sym (AbstractExec.sigop-store-id {FS} si (floc fs) nm))
-    (sigop-arith-corr₀ prog fs s s′ si cc room lk ar val hl pc′)
+    (sigop-arith-corr₀ prog fs s s′ si cc rm lk ar val hl pc′)
 
 private
   module CRL = RL o FS slot-size word-eq
@@ -241,8 +241,8 @@ sigop-arith-step : ∀ {hv : HeapView} (prog : AbstractTrace) (fs : FlatState) (
                  → v ≡ enc-sv hv (exec-sigop-output si (floc fs))
                  → xpc s′ ≡ blk-off prog (suc (fpc fs))
                  → CompiledCorr hv prog (flat-exec-instr (instr-sigop si) prog fs) s′
-sigop-arith-step prog fs s s′ si r int nm cc ftq h room ar val pc′ =
-  sigop-arith-corr prog fs s s′ si nm cc room
+sigop-arith-step prog fs s s′ si r int nm cc ftq h rm ar val pc′ =
+  sigop-arith-corr prog fs s s′ si nm cc rm
     (CRL.run-link-nothing prog fs r ftq (λ _ ()) (λ ℓ bb fe → clash (trans (sym ftq) fe)))
     ar val
     (trans (cong (λ g → exec-sigop-halts si (floc fs) Data.Bool.∨ Data.Bool.not g) (CRL.sigop-gated prog fs si r h ftq))

@@ -118,6 +118,8 @@ ref-syms (mov-code _ n)      = thunkSym n ∷ []
 ref-syms (lea _ (abs-sym s _)) = s ∷ []
 ref-syms (mov (reg _) (mem (abs-sym s _))) = s ∷ []
 ref-syms (mov (mem (abs-sym s _)) _)       = s ∷ []
+-- D486 (a3): the cells' check subtracts the limit's word
+ref-syms (sub (reg _) (mem (abs-sym s _))) = s ∷ []
 {-# CATCHALL #-}
 ref-syms _                   = []
 

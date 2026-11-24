@@ -199,7 +199,7 @@ module _ (val : XInstr → State → Reg → Word) where
     s₁ n s = call-frame val n s
 
   module Sub (n : ℕ) (blk : List XInstr) (s : State) (W : ℕ)
-             (ok : SpillsWF n blk) (fits : 8 + 8 * n ≤ W) (room : W ≤ readReg (regs s) rsp) where
+             (ok : SpillsWF n blk) (fits : 8 + 8 * n ≤ W) (rm : W ≤ readReg (regs s) rsp) where
 
     sp = readReg (regs s) rsp
     s′ = dispatch-arith val blk n s
@@ -221,14 +221,14 @@ module _ (val : XInstr → State → Reg → Word) where
 
     private
       8≤sp : 8 ≤ sp
-      8≤sp = ≤-trans (≤-trans (m≤m+n 8 (8 * n)) fits) room
+      8≤sp = ≤-trans (≤-trans (m≤m+n 8 (8 * n)) fits) rm
       base : readReg (regs (s₁ n s)) rsp ≡ sp ∸ (8 + 8 * n)
       base = ∸-+-assoc sp 8 (8 * n)
       -- the frame's top is the return address's cell
       top : (sp ∸ (8 + 8 * n)) + 8 * n ≡ sp ∸ 8
       top = trans (cong (_+ 8 * n) (sym base)) (m∸n+n≡m 8n≤)
         where 8n≤ : 8 * n ≤ sp ∸ 8
-              8n≤ = Data.Nat.Properties.m+n≤o⇒m≤o∸n (8 * n) (subst (_≤ sp) (+-comm 8 (8 * n)) (≤-trans fits room))
+              8n≤ = Data.Nat.Properties.m+n≤o⇒m≤o∸n (8 * n) (subst (_≤ sp) (+-comm 8 (8 * n)) (≤-trans fits rm))
 
     sub-mem : ∀ a → (a < sp ∸ W) ⊎ (sp ≤ a) → readMem (memory s′) a ≡ readMem (memory s) a
     sub-mem a out =

@@ -56,6 +56,27 @@ slot-to-disp n = n ℕ.* slot-size
 -- The mapping follows the SlotMachine operational semantics.
 ------------------------------------------------------------------------
 
+-- D486 (a3): the cells' part: `leaq 8h(%r15), %r11 ; cmpq L, %r11 ; jbe 1f ; call once_exhausted ; 1:`
+heap-code : ℕ → Program
+heap-code zero      = []
+heap-code h@(suc _) =
+  lea r11 (base+disp r15 (slots h)) ∷
+  cmp (reg r11) (mem (rip+sym alloc-record-symbol 0)) ∷
+  jbe-fwd ∷
+  call-sym host-exhausted-symbol ∷
+  local-1 ∷ []
+
+-- …the stack's: `movq L, %r11 ; leaq 8s(%r11), %r11 ; cmpq %rsp, %r11 ; jbe 1f ; call ; 1:`
+stack-code : ℕ → Program
+stack-code zero      = []
+stack-code s@(suc _) =
+  mov (reg r11) (mem (rip+sym alloc-record-symbol 0)) ∷
+  lea r11 (base+disp r11 (slots s)) ∷
+  cmp (reg r11) (reg rsp) ∷
+  jbe-fwd ∷
+  call-sym host-exhausted-symbol ∷
+  local-1 ∷ []
+
 compile-abstract : AbstractInstr → Program
 
 -- mov-to-output: Output := Input1
@@ -208,13 +229,9 @@ compile-abstract (addr-at n) =
 -- x86: leaq 8k(%r15), %r11 ; cmpq %rsp, %r11 ; jbe 1f ; call once_exhausted ; 1:
 -- D483: a check of no words emits nothing (the layout keeps the frontier at or below
 -- the stack pointer: `FlatCorrespondence.sep`)
-compile-abstract (instr-room zero) = []
-compile-abstract (instr-room k@(suc _)) =
-  lea r11 (base+disp r15 (slots k)) ∷
-  cmp (reg r11) (reg rsp) ∷
-  jbe-fwd ∷
-  call-sym host-exhausted-symbol ∷
-  local-1 ∷ []
+-- D486 (a3): the check is two parts against the stack limit `L` (record word 0):
+-- cells, `frontier + 8h ≤ L`; stack, `L + 8s ≤ %rsp`; a part of 0 emits nothing
+compile-abstract (instr-room r) = heap-code (Room.room-h r) ++ stack-code (Room.room-s r)
 
 -- Plan 0.10 Phase B: SigOp dispatch.
 -- Delegates to the existing per-name handler in CodeGen/Compile.
