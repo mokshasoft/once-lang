@@ -40,9 +40,12 @@ STD_LIB=$$(find /nix/store -maxdepth 2 -name "standard-library.agda-lib" 2>/dev/
 if [ -z "$$STD_LIB" ]; then echo "Error: standard-library not found in Nix store"; exit 1; fi; \
 AGDA_RUN=; \
 if [ -z "$$AGDA_SAFE_ACTIVE" ] && [ -z "$$AGDA_SAFE_DISABLE" ]; then AGDA_RUN="$(CURDIR)/scripts/agda-safe.sh --exec"; fi; \
-unset AGDA_DIR; $$AGDA_RUN agda --library-file=<(echo "$$STD_LIB"; echo "Once.agda-lib")
+unset AGDA_DIR; $(CURDIR)/scripts/watchdog.sh $${AGDA_UNIT_SECS:-60} $$AGDA_RUN agda --library-file=<(echo "$$STD_LIB"; echo "Once.agda-lib")
 endef
-# Every agda run goes through scripts/agda-safe.sh (a cgroup memory cap), so a
+# Every agda run goes through scripts/watchdog.sh, the module time cap: a module that
+# checks for more than AGDA_UNIT_SECS (default 60) seconds without a new "Checking" line
+# kills the run and is named; the run's slowest module is reported at the end.
+# And through scripts/agda-safe.sh (a cgroup memory cap), so a
 # runaway type-check from ANY target can only kill agda — never the session
 # that launched it. Set AGDA_SAFE_DISABLE=1 to opt out (e.g. CI with its own
 # memory controls). AGDA_SAFE_ACTIVE=1 means "already inside a scope".

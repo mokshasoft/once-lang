@@ -39,9 +39,9 @@ for f in "$TESTDIR"/*.once; do
   done < <(grep -oE '^import +[A-Za-z0-9_.]+' "$f" | awk '{print $2}')
   for opt in "${OPTS[@]}"; do
     tag="${opt:+-noopt}"
-    $ONCE build --exe --target x86_32 $params $opt "${Iargs[@]}" --strata "$STRATA" "$f" -o "$BUILD/$name$tag" >"$BUILD/$name$tag.log" 2>&1
+    timeout "${ONCE_BUILD_TIMEOUT:-5}" $ONCE build --exe --target x86_32 $params $opt "${Iargs[@]}" --strata "$STRATA" "$f" -o "$BUILD/$name$tag" >"$BUILD/$name$tag.log" 2>&1; brc=$?
     if [ ! -f "$BUILD/$name$tag" ]; then
-      echo "FAIL(build) $name$tag (expected exit $exp) — see $BUILD/$name$tag.log"
+      echo "FAIL(build) $name$tag (expected exit $exp)$([ "$brc" = 124 ] && echo " TIMEOUT: compile over ${ONCE_BUILD_TIMEOUT:-5}s") — see $BUILD/$name$tag.log"
       fail=$((fail+1)); failed+=("$name$tag"); continue
     fi
     # D220: `emit` is a REAL SigOp now, so an emitting test writes machine words
