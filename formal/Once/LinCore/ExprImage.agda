@@ -65,3 +65,10 @@ imageAtₘ false = imageAtᶜ
 
 fileAt : (B : Backend) → Once.CCC.Codegen.AllocExpandClasses.Alloc → Bool → List CompiledSrc → ∀ {T : Type} → T <: EffUU → List String → Backend.File B
 fileAt B a inl tl pm ex = Backend.file B (room-checks (imageAtₘ inl a tl pm)) (file-table (Backend.payload B) (blocksAt tl pm)) ex
+
+-- ★ D487: the same file WITHOUT its room checks (`--unchecked`, plan 0.154 S1). OUTSIDE the proof: no
+-- theorem is about this file, and running out of memory (stack or cells) is not detected; the
+-- compiler says so when it writes one. For comparing with master and for trusted inputs, until the
+-- verified bound (D486) removes the checks a bounded program does not need.
+fileAtᵘ : (B : Backend) → Once.CCC.Codegen.AllocExpandClasses.Alloc → Bool → List CompiledSrc → ∀ {T : Type} → T <: EffUU → List String → Backend.File B
+fileAtᵘ B a inl tl pm ex = Backend.file B (imageAtₘ inl a tl pm) (file-table (Backend.payload B) (blocksAt tl pm)) ex

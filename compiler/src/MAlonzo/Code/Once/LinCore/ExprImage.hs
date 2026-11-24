@@ -194,3 +194,22 @@ d_fileAt_54 v0 v1 v2 v3 v4 v5 v6 v7
          (coe MAlonzo.Code.Once.Target.Backend.d_payload_28 (coe v1))
          (coe d_blocksAt_18 (coe v0) (coe v4) (coe v5) (coe v6)))
       v7
+-- Once.LinCore.ExprImage.fileAtᵘ
+d_fileAt'7512'_72 ::
+  MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
+  MAlonzo.Code.Once.Target.Backend.T_Backend_6 ->
+  MAlonzo.Code.Once.CCC.Codegen.AllocExpandClasses.T_Alloc_378 ->
+  Bool ->
+  [MAlonzo.Code.Once.CompileSrc.T_CompiledSrc_1012] ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+  MAlonzo.Code.Once.Spec.Sub.T__'60''58'__8 ->
+  [MAlonzo.Code.Agda.Builtin.String.T_String_6] -> AgdaAny
+d_fileAt'7512'_72 v0 v1 v2 v3 v4 v5 v6 v7
+  = coe
+      MAlonzo.Code.Once.Target.Backend.d_file_30 v1
+      (coe d_imageAt'8344'_48 v0 v3 v2 v4 v5 v6)
+      (coe
+         MAlonzo.Code.Once.Target.Backend.du_file'45'table_40
+         (coe MAlonzo.Code.Once.Target.Backend.d_payload_28 (coe v1))
+         (coe d_blocksAt_18 (coe v0) (coe v4) (coe v5) (coe v6)))
+      v7

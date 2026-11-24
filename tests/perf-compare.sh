@@ -6,6 +6,8 @@
 #   tests/perf-compare.sh measure OUTDIR [ONCE]   # OUTDIR/perf.tsv, OUTDIR/bench.tsv
 #   tests/perf-compare.sh compare A_DIR B_DIR     # totals, ratios, the benchmarks' growth
 #   tests/perf-compare.sh master OUTDIR           # measure origin/master (a cached worktree) and this tree
+# PERF_BRANCH_FLAGS: extra `once build` flags for THIS tree's compiler (e.g. `--unchecked`, D487;
+# master's compiler gets none).
 #
 # perf.tsv, one row per corpus program (compiler/test, examples, tests), run with empty stdin (5 s cap):
 #   run         user instructions retired (NA: did not build, or no count)
@@ -57,13 +59,13 @@ kinds() {
     END {printf "%d %d %d %d %d %d %d %d %d", t, k["checks"], k["slot-moves"], k["reg-moves"], k["heap-moves"], k["alloc-rec"], k["frames"], k["calls"], k["rets"]}'
 }
 
-# measure OUT ONCE TREE — the corpus of TREE built from TREE (its own libraries); this tree's benchmarks
+# measure OUT ONCE TREE [FLAGS] — the corpus of TREE built from TREE (its own libraries); this tree's benchmarks
 measure() {
-  local out=$1 once=$2 tree=$3 tmp; tmp=$(mktemp -d); mkdir -p "$out"
+  local out=$1 once=$2 tree=$3 flags=${4:-} tmp; tmp=$(mktemp -d); mkdir -p "$out"
   printf 'program\trun\ttext\tstatic\tchecks\tslot-moves\treg-moves\theap-moves\talloc-rec\tframes\tcalls\trets\n' > "$out/perf.tsv"
   while read -r f; do
     cp "$f" "$tmp/p.once"; rm -f "$tmp/p" "$tmp/p.s"
-    if (cd "$tree" && "$once" build --target x86_64 --exe "$tmp/p.once" -o "$tmp/p" --save-temps >/dev/null 2>&1); then
+    if (cd "$tree" && "$once" build $flags --target x86_64 --exe "$tmp/p.once" -o "$tmp/p" --save-temps >/dev/null 2>&1); then
       printf '%s\t%s\t%s\t%s\n' "$(key "$f" "$tree")" "$(run_count "$tmp/p")" "$(text_size "$tmp/p")" "$(kinds "$tmp/p.s" | tr ' ' '\t')"
     else
       printf '%s\tNA\tNA\tNA\tNA\tNA\tNA\tNA\tNA\tNA\tNA\tNA\n' "$(key "$f" "$tree")"
@@ -73,7 +75,7 @@ measure() {
   for f in "$ROOT"/bench/*.once; do
     for n in "${SIZES[@]}"; do
       sed "s/BENCH_N/$n/" "$f" > "$tmp/b.once"; rm -f "$tmp/b"
-      if (cd "$tree" && "$once" build --target x86_64 "$tmp/b.once" -o "$tmp/b" >/dev/null 2>&1); then
+      if (cd "$tree" && "$once" build $flags --target x86_64 "$tmp/b.once" -o "$tmp/b" >/dev/null 2>&1); then
         (cd "$tmp" && timeout 60 ./b </dev/null >/dev/null 2>&1); st=$?
         printf '%s\t%s\t%s\t%s\n' "$(basename "$f" .once)" "$n" "$(run_count "$tmp/b")" "$st"
       else
@@ -109,7 +111,7 @@ PY
 }
 
 case "${1:-}" in
-  measure) [ $# -ge 2 ] || die "measure OUTDIR [ONCE]"; measure "$2" "${3:-$(default_once)}" "$ROOT" ;;
+  measure) [ $# -ge 2 ] || die "measure OUTDIR [ONCE]"; measure "$2" "${3:-$(default_once)}" "$ROOT" "${PERF_BRANCH_FLAGS:-}" ;;
   compare) [ $# -eq 3 ] || die "compare A_DIR B_DIR"; compare "$2" "$3" ;;
   master)
     [ $# -eq 2 ] || die "master OUTDIR"
@@ -120,7 +122,7 @@ case "${1:-}" in
     (cd "$wt/compiler" && cabal build -v0 exe:once >/dev/null 2>&1) || die "master build failed"
     mone=$(cd "$wt/compiler" && cabal list-bin once)
     # master's corpus from master's tree; the benchmarks are this tree's
-    measure "$2/master" "$mone" "$wt"; measure "$2/branch" "$(default_once)" "$ROOT"
+    measure "$2/master" "$mone" "$wt"; measure "$2/branch" "$(default_once)" "$ROOT" "${PERF_BRANCH_FLAGS:-}"
     compare "$2/master" "$2/branch" ;;
   *) die "usage: measure OUTDIR [ONCE] | compare A_DIR B_DIR | master OUTDIR" ;;
 esac

@@ -139,6 +139,7 @@ data BuildOptions = BuildOptions
   , buildOptimize  :: Bool                        -- ^ Run optimizer (default: True)
   , buildAlloc     :: Bridge.Alloc                -- ^ D468: the cell allocator (`--alloc`, default: slab)
   , buildInlineAlloc :: Bool                      -- ^ D480: inline the allocator at each site (`--inline-alloc`; default: a call)
+  , buildUnchecked :: Bool                        -- ^ D487: no room checks (`--unchecked`): OUTSIDE the proof
   -- Future options (not yet wired to Agda)
   , buildStrata    :: Maybe FilePath              -- ^ Strata directory path
   , buildInterp    :: Maybe FilePath              -- ^ Legacy interpretation path
@@ -339,7 +340,12 @@ emitWarnings arch src m = mapM_ (hPutStrLn stderr . T.unpack) (Bridge.moduleWarn
 -- | The assembly of a resolved module: the verified compiler's file (plan 0.146
 -- D464: the linear core's image of a program, `Once.LinCore.Emit.assemblyCore`).
 assemblyOf :: BuildOptions -> Bridge.Arch -> Bridge.Resolved -> IO (Either T.Text T.Text)
-assemblyOf opts arch mod_ = pure (Bridge.assemblyFromModule (buildOptimize opts) (buildAlloc opts) (buildInlineAlloc opts) arch mod_)
+assemblyOf opts arch mod_ = do
+  when (buildUnchecked opts) $
+    hPutStrLn stderr ("warning: --unchecked: the program has no room checks. Running out of memory (stack or "
+                      ++ "cells) is not detected, so the verification does not cover this build: a run that "
+                      ++ "runs out writes past its region.")
+  pure (Bridge.assemblyFromModule (buildOptimize opts) (buildAlloc opts) (buildInlineAlloc opts) (buildUnchecked opts) arch mod_)
 
 runVerifiedBuild :: BuildOptions -> FilePath -> Bridge.Arch -> T.Text -> Bridge.Resolved
                  -> FilePath -> [[T.Text]] -> IO ()

@@ -101,3 +101,30 @@ coreFileOf arch doOpt a inl mod = coreAfter arch a inl mod (checkModule Heap doO
 -- the assembly text the CLI writes
 assemblyCore : Bool → Alloc → Bool → Arch → Resolved → String ⊎ String
 assemblyCore doOpt a inl arch mod = printResult arch (coreFileOf arch doOpt a inl mod)
+
+-- ★ D487: `--unchecked` — the same pipeline (the gates, a program's image, a library's empty file), its
+-- file without room checks (`ExprImage.fileAtᵘ`). OUTSIDE the proof: the certified chain above is not
+-- this one, and no theorem is about its file.
+fileOfᵘ : (B : Backend) (a : Alloc) (inl : Bool) (fmt : TargetNum) → List CompiledSrc → ∀ {T : Type} → T <: EffUU → Backend.File B
+fileOfᵘ B a inl fmt srcs pm =
+  Once.LinCore.ExprImage.fileAtᵘ fmt B a inl (Once.LinCore.ExprBuild.srcOrder fmt srcs []) pm
+    (image-externs (Once.LinCore.ExprImage.imageAt fmt (Once.LinCore.ExprBuild.srcOrder fmt srcs []) pm))
+
+mainAtᵘ : (arch : Arch) → Alloc → Bool → List CompiledSrc → Maybe (Σ Type (λ T → T <: EffUU)) → String ⊎ FileOf arch
+mainAtᵘ arch a inl srcs (just (T , pm)) = inj₂ (toFileOf arch (fileOfᵘ (backend arch) a inl (arch-numerics arch) srcs pm))
+mainAtᵘ arch a inl srcs nothing         = inj₁ "internal error: the sources have no main the program has"
+
+srcsAtᵘ : (arch : Arch) → Alloc → Bool → String ⊎ List CompiledSrc → String ⊎ FileOf arch
+srcsAtᵘ arch a inl (inj₁ e)    = inj₁ e
+srcsAtᵘ arch a inl (inj₂ srcs) = mainAtᵘ arch a inl srcs (mainOf srcs)
+
+coreAtᵘ : (arch : Arch) → Alloc → Bool → Resolved → Maybe (IR ⌊ Once.Spec.Type.Unit {0} ⌋ ⌊ Once.Spec.Type.Unit {0} ⌋) → String ⊎ FileOf arch
+coreAtᵘ arch a inl mod nothing  = inj₂ (toFileOf arch (Backend.empty (backend arch)))
+coreAtᵘ arch a inl mod (just _) = srcsAtᵘ arch a inl (srcModule Heap false mod)
+
+coreAfterᵘ : (arch : Arch) → Alloc → Bool → Resolved → String ⊎ List CompiledFun → String ⊎ FileOf arch
+coreAfterᵘ arch a inl mod (inj₁ e) = inj₁ e
+coreAfterᵘ arch a inl mod (inj₂ _) = coreAtᵘ arch a inl mod (moduleToIR mod)
+
+assemblyCoreᵘ : Bool → Alloc → Bool → Arch → Resolved → String ⊎ String
+assemblyCoreᵘ doOpt a inl arch mod = printResult arch (coreAfterᵘ arch a inl mod (checkModule Heap doOpt arch mod))

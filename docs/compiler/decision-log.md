@@ -25050,3 +25050,58 @@ the call mode's image as `ExprImage`'s, 147 → 117 s); `make certified` passes 
 split or sealed. Every other module is under 60 s.
 **Landed** (2026-11-24): `make certified` green (`AGDA_UNIT_SECS=180`, for `Apex`); 188 exit tests × 3 arches (each
 compile under 5 s), seL4 × 3 (7 min, the compiler's nix build included), `cabal test`: all pass.
+
+## D486 — ONE REGION, A STACK LIMIT SET AT START: HEAP CHECKS IN THE ALLOCATOR, STACK CHECKS ONLY WHERE DEPTH GROWS (2026-11-24, proposed — for the user's review; plan 0.154 S1, D1)
+**Context.** Plan 0.154 S1 (the user, 2026-11-24: "lower the number of runtime checks … programs with a known
+bounded stack should never perform any checks"; CakeML: heap space reserved per stretch at allocation, out of
+memory an allowed outcome). Today one region holds cells (from the bottom, the frontier `r15`/`edi`/`s11`
+growing up) and the stack (from the top, down); a room check (`instr-room k`) compares `frontier + k` with the
+stack pointer at every block entry, label, and after every call (D377): 63,726 checks over the corpus, 9.3×
+master. The abstract machine already keeps cells (`heapMem`) and frames (`stackMem`) apart; the one region is
+the arch layer's (`FlatCore.Budget`: `hfront + need ≤ frame-base`; `FlatCorrespondence`'s virgin region,
+`sep : hfront ≤ sp`, `descend-view`), used by all three arch correspondences.
+**Decision (proposed).** Keep ONE region, split by a STACK LIMIT `L` fixed at start: cells below it, the
+stack above it. Two invariants replace the one: `hfront + heap-need ≤ L` and `L + stack-need ≤ sp`; their
+sum is today's (`sep` is `hfront ≤ L ≤ sp`, so every disjointness proof stands unchanged).
+1. **The heap's check is the allocator's**: the bump path of each allocation routine (D480: one per size)
+   compares `frontier + k` with `L` (a word of the allocator record, set at start) and calls
+   `once_exhausted` when it does not fit. No heap check anywhere else.
+2. **The stack bound**: the compiler computes `B`, the deepest the stack can go (frames and return words
+   over the image's call graph: block calls, closure calls through their labels, D422, so the graph is
+   static; a loop is iterative). A cycle in the graph — recursion through a fold over data — makes the
+   program UNBOUNDED.
+3. **Bounded programs**: the start sets `L = sp₀ − B` (one comparison: `L` at or above the frontier, else
+   `exhausted`) and the code has NO stack check. The theorem's invariant `L + stack-need ≤ sp` holds by the
+   bound, not by checks.
+4. **Unbounded programs**: the start sets `L` by a default split of the region (a stated fraction); stack
+   checks stay only on the cycle (a fold's recursive entry), each `sp − frame ≥ L`.
+5. **`--unchecked`** (plan 0.154 D3): drops the remaining stack checks; when the program is unbounded the
+   compiler says the proof no longer covers running out of stack. The allocator's heap check stays (without
+   it a full heap is silent corruption).
+**Order of work.** (a) `L` in the machine contract and the start (every check still in place, against `L`);
+(b) the heap check into the allocator, the stack checks against `L`, `FlatCore.Budget` split in two;
+(c) the stack bound and the bounded programs' checks removed; (d) `--unchecked`. Each certified, tested on
+three arches, measured (`tests/perf-compare.sh`, checks, `.text`, run).
+**Supersedes** the draft of plan 0.146's item e (batched checks after calls): the checks it batched go.
+**Why one region, not two.** Two regions would change the virgin-region argument (`descend-view`, `sep`)
+in all three arch correspondences; a limit inside one region keeps it, and the Hosts keep handing one
+region (the split is the program's, from its own bound).
+
+## D487 — `--unchecked`: THE SAME FILE WITHOUT ROOM CHECKS, OUTSIDE THE PROOF, SAID SO AT EVERY BUILD (2026-11-24, proposed — for the user's review; plan 0.154 S1, D3)
+**Context.** The user, 2026-11-24: "If we implement that feature that bypasses checks completely, then we can
+compare better towards master … That flag should of course clearly state when it voids the verification."
+D486 (the verified removal of the checks a bounded program does not need) is several sessions of arch proof
+work; the comparison is wanted now.
+**Decision (proposed).** `once build --unchecked` writes the same file without the room-check pass
+(`ExprImage.fileAtᵘ`: `Backend.file` of the image, no `room-checks`; `Emit.assemblyCoreᵘ` the same pipeline
+of gates, a program's image, a library's empty file; `Root.assembly-unchecked`). No theorem is about that
+file: the certified chain (`fileAt`, `coreFileOf`, `assemblyCore`) is untouched, and every build with the
+flag prints that running out of memory (stack or cells) is not detected and the verification does not
+cover the build. Until D486's bound lands, the flag always voids the proof; after it, a bounded program
+has no checks to drop and the warning is for unbounded programs only. `tests/perf-compare.sh` passes
+`PERF_BRANCH_FLAGS` to this tree's compiler only.
+**Measured** (x86_64, 108 programs, against master 601f75f26): with checks → `--unchecked`: `.text` 2.50× →
+1.92×, static instructions 3.59× → 2.47×, run time median per program 2.36× → 1.84× (min 1.02×), `loop-sum`
+3.1× → 2.5×, `list-build-sum` still quadratic (S2). What remains is the lowering's: calls 12.3×, frames
+6.8×, returns 7.3×, slot moves 2.6× (the block per combinator, closures for a `case`'s arms, the context's
+moves), plan 0.154 S2–S3.

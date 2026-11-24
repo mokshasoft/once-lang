@@ -71,6 +71,8 @@ record Runs : Set₁ where
     -- the compiler (`once build`)
     -- (D468: the cell allocator, `--alloc`)
     assembly        : Bool → Once.CCC.Codegen.AllocExpandClasses.Alloc → Bool → Arch → Resolved → String ⊎ String
+    -- D487: the same without room checks (`--unchecked`; outside the proof)
+    assembly-unchecked : Bool → Once.CCC.Codegen.AllocExpandClasses.Alloc → Bool → Arch → Resolved → String ⊎ String
     -- the tools beside it (D352)
     signatures      : Resolved → String ⊎ String
     check           : Resolved → String ⊎ ⊤
@@ -89,6 +91,7 @@ runs = record
   ; resolve-imports = Resolve.resolveImports
   ; warnings        = Warnings.warningsFor
   ; assembly        = Emit.assemblyCore
+  ; assembly-unchecked = Emit.assemblyCoreᵘ
   ; signatures      = Inspect.signatures
   ; check           = Inspect.check
   ; dump-ir         = Inspect.dumpIR
