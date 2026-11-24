@@ -15,7 +15,7 @@ open import Data.List.Membership.Propositional using (_∈_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Unit using (tt)
-open import Data.Bool using (false)
+open import Data.Bool using (false; true)
 open import Function using (case_of_)
 open import Relation.Nullary using (¬_)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
@@ -163,7 +163,7 @@ module DispC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   -- `frame 0 w`, the caller's destination in its save slot `w`, the caller under it
   mk-trampc : ∀ {T X C} {Es S V} {i : Insᴵ (C ∷ Es ∣ One ∷ S) (C ∷ Es ∣ C ∷ S)} {k : Codeᴵ (C ∷ Es ∣ C ∷ S) V}
                 {es : Slots (C ∷ Es)} {os : Stk S} {r : Ret V T} {fs fs′ cell q}
-                (p : under (ktrc X C) ∈ allK U) (d : DSite i k)
+                (p : under (ktrc X C) ∈ allK U) (l : liveT (idx p) ≡ true) (d : DSite i k)
             → CopyIn fs fs′ cell (Tp (dsiteφ d) S ∸ 1) (suc (suc (suc (wsz X)))) (wsz X) (suc (wsz X)) q
             → fret fs′ ≡ dsitePos d ∷ fret fs
             → CfgW (LocState.heapMem (floc fs)) (slot fs) (dsiteφ d) (es ∥ mone ∷ˢ os)
@@ -173,8 +173,8 @@ module DispC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
             → AllocState.frame-slots (falloc fs) ≡ fbudget (dsiteφ d)
             → RetOK (rtramp {κ = ktrc X C} p) (trFin (idx p) (ktrc X C)) (frm {t = just C} {Es = Es} k es os r)
                     (AllocState.current-frame (falloc fs′)) (fret fs′) (AllocState.saved-frames (falloc fs′)) fs′
-  mk-trampc {X = X} {S = S} {es = es} {os = os} {r = r} {fs = fs} {fs′} p d CI eR C fr frR ok esl =
-    ok-trampc p d cfc (AllocState.frame-slots (falloc fs)) (AllocState.saved-frames (falloc fs)) (fret fs)
+  mk-trampc {X = X} {S = S} {es = es} {os = os} {r = r} {fs = fs} {fs′} p l d CI eR C fr frR ok esl =
+    ok-trampc p l d cfc (AllocState.frame-slots (falloc fs)) (AllocState.saved-frames (falloc fs)) (fret fs)
       refl refl eR (cy-saved CI) esl under-cfc
       (subst (λ g′ → LocState.stackMem (floc fs′) g′ (wsz X) ≡ just (SV-Ptr (AtStack cfc (Tp (dsiteφ d) S ∸ 1)))) (sym (cy-frame CI)) (cy-s₁ CI))
       (env-stand (λ j le → proj₁ (fr j le)) (λ _ ()) old (envW-frame es (λ y _ → kept y) (CfgW.c-env C)))
@@ -205,7 +205,7 @@ module DispC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
           → slot fs (ws Es) ≡ just (cellPtr i)
           → VW (LocState.heapMem (floc fs)) (see es) (cellPtr i ∷ [])
           → Rel.At {FS} U wordOf (LocState.heapMem (floc fs)) i 0 (cellPtr i ∷ w₁ ∷ w₂ ∷ wf ∷ wx)
-          → Rel.CodeOf {FS} U wordOf (kc X) w₂
+          → Rel.CodeOfC {FS} U wordOf X w₂
           → suc (suc (suc (suc (suc (suc (suc (suc (fpc fs)))))))) ≡ dsitePos d
           → AllocState.next-heap-ref (falloc fs) ≡ n
           → RetOK (dsiteRoot d) (dsiteFin d) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
@@ -223,10 +223,10 @@ module DispC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                  (Data.Nat.Properties.≤-trans (Data.Nat.Properties.m∸n≤m (Tp (dsiteφ d) S) 1) (Data.Nat.Properties.m∸n≤m (budget (dsiteφ d)) (ws S)))
                  (sv₁<fb (dsiteφ d))))
            s₀ pcv words cc I of λ where
-      (m , N , fs′ , run′ , T0 , q , CI) →
+      (m , lm , N , fs′ , run′ , T0 , q , CI) →
         N , fs′ , run′ ,
-        record { g-pt = p-tramp m (at whole) ; g-here = (tc0 m , T0) ; g-next = trans (cy-next CI) nx
-               ; g-ret = mk-trampc m d CI (trans (cy-ret CI) (cong (_∷ fret fs) pe)) C′
+        record { g-pt = p-tramp m (at whole) ; g-here = (tc0 m lm , T0) ; g-next = trans (cy-next CI) nx
+               ; g-ret = mk-trampc m lm d CI (trans (cy-ret CI) (cong (_∷ fret fs) pe)) C′
                            (λ j le → fresh-cfg inv j (subst (_≤ serial j) nx le))
                            (subst (FreshR r) (sym nx) (fresh-ret inv)) ok fsl
                ; g-blk = inb-pt {fs} {fs′} (λ hl → cong (λ h′ → h′ hl) (cy-heap CI)) (cy-next CI) (cy-size CI) I

@@ -65,7 +65,7 @@ open import Data.List.Membership.Propositional using (_∈_)
 open import Once.LinCore.StepOp fmt ans bw using (module Agree; hdOr)
 
 module OpSim {FS : FrameSemantics} (U : Univ)
-             (ncty : ∀ {F S} → (F , S) ∈ nus U → cty (F , S) ∈ tys U)
+             (ncty : ∀ {F S} → (F , S) ∈ nus U → cty (F , S) ∈ Univ.cts U)
              (ldConst : ∀ {b} → Lit b → AbstractInstr)
              (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue FS) where
   open Lowering U ncty ldConst using (answer; ansDst; argIn; lowOp; fbudget; sv₁<fb)
@@ -584,7 +584,7 @@ op-n (r-op _) = refl
 op-n (r-tmp r _ _) = op-n r
 
 module OpR {FS : FrameSemantics} (U : Univ)
-           (ncty : ∀ {F S} → (F , S) ∈ nus U → cty (F , S) ∈ tys U)
+           (ncty : ∀ {F S} → (F , S) ∈ nus U → cty (F , S) ∈ Univ.cts U)
            (ldConst : ∀ {b} → Lit b → AbstractInstr)
            (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue FS)
            (prog : AbstractTrace)

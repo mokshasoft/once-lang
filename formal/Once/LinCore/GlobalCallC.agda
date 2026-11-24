@@ -15,7 +15,7 @@ open import Data.List.Membership.Propositional using (_∈_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Unit using (tt)
-open import Data.Bool using (false)
+open import Data.Bool using (false; true)
 open import Function using (case_of_)
 open import Relation.Nullary using (¬_)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
@@ -151,21 +151,21 @@ module CallC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   -- ★ ITS INNER CALL (i-call at its depth 1): the copy's block, the trampoline saved above it; the
   -- area the trampoline frame's bottom, its viewed cell (save slot `suc w`) kept
   gcallc : ∀ {T X C} {r : Ret (C ∷ [] ∣ C ∷ []) T} {es : Slots (X ∷ C ∷ [])} {a : MV One} {os : Stk []} {n h fs}
-             (p : under (ktrc X C) ∈ allK U)
-         → InvI (es ∥ a ∷ˢ os) r n h → HereTr (tc1 {X = X} {C} p) (es ∥ a ∷ˢ os) fs
+             (p : under (ktrc X C) ∈ allK U) (l : liveT (idx p) ≡ true)
+         → InvI (es ∥ a ∷ˢ os) r n h → HereTr (tc1 {X = X} {C} p l) (es ∥ a ∷ˢ os) fs
          → AllocState.next-heap-ref (falloc fs) ≡ n
          → RetOK (rtramp {κ = ktrc X C} p) (trFin (idx p) (ktrc X C)) r
                  (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
          → InBlk fs → LiveG r (es ∥ a ∷ˢ os) fs → FreshAl (falloc fs)
          → Arrives (blockᴵ (kcopy X)) (frm {t = just X} {Es = C ∷ []} {B = X} (epop ⨾ reclose ⨾ end) es os r) (topv (just X) es ∥ a ∷ˢ []ˢ) n fs
-  gcallc {X = X} {C} {r = r} {es = es@(vw x (vw cv []ᵉ))} {a = mone} {os = []ˢ} {n = n} {fs = fs} p inv T1 nx ok I lv F =
-    case tc-call {X} {C} p T1 of λ where
+  gcallc {X = X} {C} {r = r} {es = es@(vw x (vw cv []ᵉ))} {a = mone} {os = []ˢ} {n = n} {fs = fs} p l inv T1 nx ok I lv F =
+    case tc-call {X} {C} p l T1 of λ where
       (N , fs′ , run , H′ , CD) →
         N , fs′ , run ,
         record { g-pt = p-block p (at whole) ; g-here = H′ ; g-next = trans (dh-next CD) nx
                ; g-ret = ok-callc p cur (AllocState.frame-slots (falloc fs)) (AllocState.saved-frames (falloc fs)) (fret fs) (TrC1.c1-i T1)
                            refl refl
-                           (trans (dh-ret CD) (cong (_∷ fret fs) (trans (cong (λ z → suc (suc (suc (suc z)))) (TrC1.c1-pc T1)) (sym (tC-pos₂ {X} {C} p)))))
+                           (trans (dh-ret CD) (cong (_∷ fret fs) (trans (cong (λ z → suc (suc (suc (suc z)))) (TrC1.c1-pc T1)) (sym (tC-pos₂ {X} {C} p l)))))
                            (dh-saved CD) (TrC1.c1-slots T1) (under-cur CD) (dh-area CD)
                            (trans (dh-others CD cur (suc (wsz X)) (callee-≢ cur bb)) (TrC1.c1-s₂ T1))
                            (vw-stand {v = cv} (λ j le → cnt-snd x cv j (proj₁ (fresh-cfg inv j (subst (_≤ serial j) nx le)))) (λ _ ()) (dh-old CD) (TrC1.c1-cv T1))

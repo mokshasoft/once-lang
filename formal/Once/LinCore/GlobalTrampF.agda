@@ -78,13 +78,15 @@ module TrampF {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open Program ds f using (ncty)
   open Program′ ds f ldConst using (image; j₀)
   open Lowering U ncty ldConst
+  open In U using (inFc)
   open Calls {FS} ds f ldConst ld-nl wordOf using (blockR; module K; module From; call-core)
   open Rel {FS} U wordOf using (EnvW; StkW)
   open FlatMachine {FS} using (FlatState; module FlatState)
   open FlatState using (floc; falloc; fret; fpc)
   open FrameSemantics FS using (_≺_)
   open TrImg {FS} ds f ldConst ld-nl using (image-tr)
-  open Tr U ncty ldConst using (trAt)
+  open Tr U ncty ldConst using (trAt; trAtF; tr-inF; if-in-pre)
+  open import Data.Bool using (true; false; if_then_else_)
   open Rel {FS} U wordOf using (CfgW; VW; vpair; vfn; vnu; SlotsAt; cellPtr)
   open import Once.LinCore.Moves {FS} using (slot; InBlk)
   open import Once.LinCore.LowerSim fmt ans bw using (module Sim)
@@ -173,78 +175,90 @@ module TrampF {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     tail-split1 : ∀ (A : AbstractTrace) c (K : AbstractTrace) → A ++ (c ∷ K) ≡ (A ++ (c ∷ [])) ++ K
     tail-split1 A c K = sym (++-assoc A (c ∷ []) K)
 
-  -- the addresses after the cell part, after the inner call
-  tF-pos₁ : ∀ {X C} (p : under (ktrf X C) ∈ allK U) → trPos (ktrf X C) p 1 ≡ tFN X + trPos (ktrf X C) p 0
-  tF-pos₁ {X} {C} p =
-    trans (pre-len (tFQ {X} {C} p) (tFP0 {X} {C} p) (tFCELL X))
-      (trans (cong (trPos (ktrf X C) p 0 +_) (tF-cell-len X)) (Data.Nat.Properties.+-comm (trPos (ktrf X C) p 0) (tFN X)))
+  -- (D484: a live trampoline's point is at its own code's place)
+  tF-at : ∀ {X C} (p : under (ktrf X C) ∈ allK U) → liveT (idx p) ≡ true → ∀ d
+        → trPos (ktrf X C) p d ≡ length (tFQ {X} {C} p ++ proj₁ (tr-inF (idx p) X d))
+  tF-at {X} {C} p l d = cong (λ z → length (tFQ {X} {C} p ++ z)) (if-in-pre (liveT (idx p)) l (tr-inF (idx p) X d))
 
-  tF-pos₂ : ∀ {X C} (p : under (ktrf X C) ∈ allK U) → trPos (ktrf X C) p 2 ≡ suc (suc (suc (trPos (ktrf X C) p 1)))
-  tF-pos₂ {X} {C} p =
-    trans (pre-len (tFQ {X} {C} p) (tFP0 {X} {C} p ++ tFCELL X) (tFL3 {X} {C} p)) (Data.Nat.Properties.+-comm (trPos (ktrf X C) p 1) 3)
+  -- the addresses after the cell part, after the inner call
+  tF-pos₁ : ∀ {X C} (p : under (ktrf X C) ∈ allK U) → liveT (idx p) ≡ true → trPos (ktrf X C) p 1 ≡ tFN X + trPos (ktrf X C) p 0
+  tF-pos₁ {X} {C} p l =
+    trans (tF-at {X} {C} p l 1) (trans (pre-len (tFQ {X} {C} p) (tFP0 {X} {C} p) (tFCELL X))
+      (trans (cong (_+ length (tFCELL X)) (sym (tF-at {X} {C} p l 0)))
+        (trans (cong (trPos (ktrf X C) p 0 +_) (tF-cell-len X)) (Data.Nat.Properties.+-comm (trPos (ktrf X C) p 0) (tFN X)))))
+
+  tF-pos₂ : ∀ {X C} (p : under (ktrf X C) ∈ allK U) → liveT (idx p) ≡ true → trPos (ktrf X C) p 2 ≡ suc (suc (suc (trPos (ktrf X C) p 1)))
+  tF-pos₂ {X} {C} p l =
+    trans (tF-at {X} {C} p l 2) (trans (pre-len (tFQ {X} {C} p) (tFP0 {X} {C} p ++ tFCELL X) (tFL3 {X} {C} p))
+      (trans (cong (_+ 3) (sym (tF-at {X} {C} p l 1))) (Data.Nat.Properties.+-comm (trPos (ktrf X C) p 1) 3)))
 
   private
     -- the cell part's code, the inner call's, the way out's, at their addresses
-    tF-seg0 : ∀ {X C} (p : under (ktrf X C) ∈ allK U) {pc}
+    -- (D484: a live trampoline's code at a point)
+    tF-live : ∀ {X C} (p : under (ktrf X C) ∈ allK U) → liveT (idx p) ≡ true → ∀ d {pc}
+            → Seg image pc (trAt (idx p) (ktrf X C) d) → Seg image pc (trAtF (idx p) X d)
+    tF-live {X} p l d {pc} sq = subst (λ b → Seg image pc (if b then trAtF (idx p) X d else [])) l sq
+
+    tF-seg0 : ∀ {X C} (p : under (ktrf X C) ∈ allK U) → liveT (idx p) ≡ true → ∀ {pc}
             → pc ≡ trPos (ktrf X C) p 0 → Seg image pc (tFCELL X)
-    tF-seg0 {X} {C} p {pc} e =
+    tF-seg0 {X} {C} p l {pc} e =
       Seg-++ˡ image pc (tFCELL X) _
         (subst (Seg image pc) (cong (restore-input (wsz X) ∷_) (tail-split1 (mvPS hdr 0 (wsz X)) _ _))
-          (subst (λ z → Seg image z (trAt (idx p) (ktrf X C) 0)) (sym e) (in-seg (image-tr (ktrf X C) p 0))))
+          (tF-live {X} {C} p l 0 (subst (λ z → Seg image z (trAt (idx p) (ktrf X C) 0)) (sym e) (in-seg (image-tr (ktrf X C) p 0)))))
 
-    tF-seg1 : ∀ {X C} (p : under (ktrf X C) ∈ allK U) {pc}
+    tF-seg1 : ∀ {X C} (p : under (ktrf X C) ∈ allK U) → liveT (idx p) ≡ true → ∀ {pc}
             → pc ≡ trPos (ktrf X C) p 1 → Seg image pc (tFL3 {X} {C} p)
-    tF-seg1 {X} {C} p {pc} e =
-      Seg-++ˡ image pc (tFL3 {X} {C} p) _ (subst (λ z → Seg image z (trAt (idx p) (ktrf X C) 1)) (sym e) (in-seg (image-tr (ktrf X C) p 1)))
+    tF-seg1 {X} {C} p l {pc} e =
+      Seg-++ˡ image pc (tFL3 {X} {C} p) _ (tF-live {X} {C} p l 1 (subst (λ z → Seg image z (trAt (idx p) (ktrf X C) 1)) (sym e) (in-seg (image-tr (ktrf X C) p 1))))
 
-    tF-seg2 : ∀ {X C} (p : under (ktrf X C) ∈ allK U) {pc}
+    tF-seg2 : ∀ {X C} (p : under (ktrf X C) ∈ allK U) → liveT (idx p) ≡ true → ∀ {pc}
             → pc ≡ trPos (ktrf X C) p 2 → Seg image pc (instr-ctrl (c-ret (suc (wsz X))) ∷ [])
-    tF-seg2 {X} {C} p {pc} e = subst (λ z → Seg image z (trAt (idx p) (ktrf X C) 2)) (sym e) (in-seg (image-tr (ktrf X C) p 2))
+    tF-seg2 {X} {C} p l {pc} e = tF-live {X} {C} p l 2 (subst (λ z → Seg image z (trAt (idx p) (ktrf X C) 2)) (sym e) (in-seg (image-tr (ktrf X C) p 2)))
 
     tF-area : ∀ X → ((wsz X ⊔ 0) ∸ wsz X) + 0 ≡ wsz X ∸ (wsz X + 0)
     tF-area X = trans (Data.Nat.Properties.+-identityʳ ((wsz X ⊔ 0) ∸ wsz X)) (trans (cong (_∸ wsz X) (Data.Nat.Properties.⊔-identityʳ (wsz X)))
                   (cong (wsz X ∸_) (sym (Data.Nat.Properties.+-identityʳ (wsz X)))))
 
   -- ★ a free's cell part (`fopen`): the contents into the frame, the cell freed
-  tf-open : ∀ {X C} (p : under (ktrf X C) ∈ allK U) {i} {x : MV X} {fs}
+  tf-open : ∀ {X C} (p : under (ktrf X C) ∈ allK U) → liveT (idx p) ≡ true → ∀ {i} {x : MV X} {fs}
           → TrF0 (wsz X) (trPos (ktrf X C) p 0) i x fs
           -- D468: the cell's block live at its size, the value held not sharing it
           → LiveB (falloc fs) (hdr + wsz X) i → (∀ j → 1 ≤ cnt x j → ¬ serial j ≡ serial i)
           → Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′
               × HereF (frame 0 (wsz X)) (suc (wsz X)) (trPos (ktrf X C) p 1) ([]ᵉ ∥ x ∷ˢ []ˢ) fs′
               × Ran N [] (serial i ∷ []) (AllocState.next-heap-ref (falloc fs)) (wsz X) fs fs′
-  tf-open {X} {C} p {i} {x} {fs} T lv nd =
+  tf-open {X} {C} p l {i} {x} {fs} T lv nd =
     case fopen-sim image fs (wsz X) hdr (hdr + wsz X) i (TrF0.f0-wx T) Data.Nat.Properties.≤-refl (TrF0.f0-M T)
            (TrF0.f0-x T) (TrF0.f0-at T)
            (subst (λ z → Seg image (fpc fs) (restore-input (wsz X) ∷ mvPS hdr z (wsz X) ++ instr-free-heap (hdr + wsz X) ∷ []))
-                  (sym (Data.Nat.Properties.n∸n≡0 (wsz X))) (tF-seg0 {X} {C} p (TrF0.f0-pc T)))
+                  (sym (Data.Nat.Properties.n∸n≡0 (wsz X))) (tF-seg0 {X} {C} p l (TrF0.f0-pc T)))
            (TrF0.f0-run T) (subst (wsz X Data.Nat.<_) (sym (TrF0.f0-slots T)) (Data.Nat.Properties.n<1+n (wsz X)))
            lv (Data.Nat.s≤s Data.Nat.z≤n) nd of λ where
       (fs′ , run , C′ , Rn) →
         tFN X , fs′ , run ,
-        record { f-pc = trans (r-pc Rn) (trans (cong (tFN X +_) (TrF0.f0-pc T)) (sym (tF-pos₁ {X} {C} p)))
+        record { f-pc = trans (r-pc Rn) (trans (cong (tFN X +_) (TrF0.f0-pc T)) (sym (tF-pos₁ {X} {C} p l)))
                ; f-run = trans (k-halt (r-keep Rn)) (TrF0.f0-run T) ; f-cfg = C′ ; f-slots = trans (k-slots (r-keep Rn)) (TrF0.f0-slots T) } ,
         Rn
 
   -- ★ its inner call: the contents' free, the area at the frame's bottom
-  tf-call : ∀ {X C} (p : under (ktrf X C) ∈ allK U) {es : Slots []} {v : MV X} {os : Stk []} {fs}
+  tf-call : ∀ {X C} (p : under (ktrf X C) ∈ allK U) → liveT (idx p) ≡ true → ∀ {es : Slots []} {v : MV X} {os : Stk []} {fs}
           → HereF (frame 0 (wsz X)) (suc (wsz X)) (trPos (ktrf X C) p 1) (es ∥ v ∷ˢ os) fs
           → Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′
               × K.Here p whole ([]ᵉ ∥ v ∷ˢ []ˢ) fs′
               × Called fs fs′ (suc (suc (suc (fpc fs)))) (fbudget (frameOf (blockᴵ (kfree X))))
                        (sv₁ (frameOf (blockᴵ (kfree X)))) 0
-  tf-call {X} {C} p H =
-    call-core p (frame 0 (wsz X)) 0 (tF-seg1 {X} {C} p (HereF.f-pc H)) (HereF.f-run H) (HereF.f-cfg H) (tF-area X)
+  tf-call {X} {C} p l H =
+    call-core p (frame 0 (wsz X)) 0 (tF-seg1 {X} {C} p l (HereF.f-pc H)) (HereF.f-run H) (HereF.f-cfg H) (tF-area X)
       (subst (Data.Nat._<_ (wsz X)) (sym (HereF.f-slots H)) (Data.Nat.Properties.n<1+n (wsz X)))
 
   -- ★ its way out: a bare return (the result One, no words)
-  tf-end : ∀ {X C} (p : under (ktrf X C) ∈ allK U) {fs} (cfc : FrameSemantics.Frame FS) (pc : ℕ) (rest : List ℕ)
+  tf-end : ∀ {X C} (p : under (ktrf X C) ∈ allK U) → liveT (idx p) ≡ true → ∀ {fs} (cfc : FrameSemantics.Frame FS) (pc : ℕ) (rest : List ℕ)
              (sv : List (FrameSemantics.Frame FS × ℕ)) (sl : ℕ)
          → fpc fs ≡ trPos (ktrf X C) p 2 → LocState.halted (floc fs) ≡ false
          → fret fs ≡ pc ∷ rest → AllocState.frame-slots (falloc fs) ≡ suc (wsz X) → AllocState.saved-frames (falloc fs) ≡ (cfc , sl) ∷ sv
          → Σ FlatState λ fs′ → FlatSteps image 1 fs fs′ × CallOut fs fs′ cfc 0 0 0 0 pc rest sv sl
-  tf-end {X} {C} p {fs} cfc pc rest sv sl epc run hret bs hsv =
-    ret-out image fs cfc (suc (wsz X)) pc rest sv sl hret (sym bs) hsv (tF-seg2 {X} {C} p epc) run
+  tf-end {X} {C} p l {fs} cfc pc rest sv sl epc run hret bs hsv =
+    ret-out image fs cfc (suc (wsz X)) pc rest sv sl hret (sym bs) hsv (tF-seg2 {X} {C} p l epc) run
 
   -- ★ a free's dispatch (D434, `cfree`/`nfree`): into the free trampoline its cell's word 3 names,
   -- at its depth 0 (TrF0); the address of word 2 is in the cell's block, the word written (D441)
@@ -255,16 +269,17 @@ module TrampF {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
           → slot fs c ≡ just (cellPtr i)
           → VW (LocState.heapMem (floc fs)) x wx
           → Rel.At {FS} U wordOf (LocState.heapMem (floc fs)) i 0 (cellPtr i ∷ w₁ ∷ w₂ ∷ wf ∷ wo ∷ wx)
-          → Rel.CodeOf {FS} U wordOf (kf X) wf
+          → Rel.CodeOfF {FS} U wordOf X wf
           → InBlk fs
-          → Σ (under (ktrf X C) ∈ allK U) λ p → Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′
+          → Σ (under (ktrf X C) ∈ allK U) λ p → liveT (idx p) ≡ true × Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′
               × TrF0 (wsz X) (trPos (ktrf X C) p 0) i x fs′
               × Σ ℕ λ q → FreeIn fs fs′ (cellPtr i) (suc (wsz X)) (wsz X) q
-  tf-disp {X} {C} c {i} {x} {wx} {fs = fs} seg h lc sx px words (m , refl) I =
-    m , fin (free-in image fs c (cellLoc i 0) (tl (idx m)) (e-thunk (tl (idx m))) q (suc (wsz X)) (wsz X)
+  tf-disp {X} {C} c {i} {x} {wx} {fs = fs} seg h lc sx px words (xc , refl) I =
+    m , live-f xc , fin (free-in image fs c (cellLoc i 0) (tl (idx m)) (e-thunk (tl (idx m))) q (suc (wsz X)) (wsz X)
                sx (proj₂ (I (cellLoc i 2) (proj₁ (proj₂ (proj₂ words))))) (proj₁ (proj₂ (proj₂ (proj₂ words))))
-               seg (image-tramp m refl) segq h lc (Data.Nat.Properties.n<1+n (wsz X)))
+               seg (image-tramp m (tramp-f xc)) segq h lc (Data.Nat.Properties.n<1+n (wsz X)))
     where
+      m = inFc xc
       LB = lowBlock (idx m) (kfree X) (blocks-in m)
       q = length (proj₁ (image-at m)) + length LB
       Q = proj₁ (in-trans (image-at m) (in-r LB (tramp (idx m) (kfree X))))
@@ -272,12 +287,12 @@ module TrampF {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       qQ = length-++ (proj₁ (image-at m))
       segq : Seg image q (instr-ctrl (c-entry (e-thunk (tl (idx m))) (suc (wsz X))) ∷ store-at-slot (wsz X) ∷ [])
       segq = Seg-++ˡ image q _ _
-               (subst (λ z → Seg image z (tramp (idx m) (kfree X))) qQ
-                 (in-seg (in-trans (image-at m) (in-r LB (tramp (idx m) (kfree X))))))
+               (subst (Seg image q) (tramp-f xc) (subst (λ z → Seg image z (tramp (idx m) (kfree X))) qQ
+                 (in-seg (in-trans (image-at m) (in-r LB (tramp (idx m) (kfree X)))))))
       fin : Σ FlatState (λ fs′ → FlatSteps image 9 fs fs′ × FreeIn fs fs′ (cellPtr i) (suc (wsz X)) (wsz X) q) → _
       fin (fs′ , run , FI) =
         9 , fs′ , run ,
-        record { f0-pc = trans (fr-pc FI) (sym (trans (length-++ Q) (trans (cong (_+ 2) qQ) (Data.Nat.Properties.+-comm q 2))))
+        record { f0-pc = trans (fr-pc FI) (sym (trans (tF-at {X} {C} m (live-f xc) 0) (trans (length-++ Q) (trans (cong (_+ 2) qQ) (Data.Nat.Properties.+-comm q 2)))))
                ; f0-run = trans (fr-halt FI) h ; f0-slots = fr-slots FI
                ; f0-wx = wx
                ; f0-x = subst (λ r → VW r x wx) (sym (fr-heap FI)) px

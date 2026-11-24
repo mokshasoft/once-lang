@@ -48,7 +48,7 @@ open BSig using (top)
 open import Once.LinCore.ImageRun fmt ans bw
 open import Once.LinCore.ImageSim fmt ans bw using (StepsI; done; _⟫_; start)
 open import Once.LinCore.Keys fmt bw
-open Univ using (tys; nus)
+open Univ using (tys; nus; cts)
 
 module Keep (U : Univ) where
   open In U
@@ -59,11 +59,11 @@ module Keep (U : Univ) where
   ----------------------------------------------------------------------
 
   LamIn : ∀ {k g X A B} → Lam k g X A B → Set
-  LamIn (c1 {X = X} ds b γ) = (_ , kbody1 ds b γ) ∈ allK U × X ∈ tys U
-  LamIn (cω {X = X} ds b γ) = (_ , kbodyω ds b γ) ∈ allK U × X ∈ tys U × (_ , kbody1 ds (ownBg b) (ownBg-gd b γ)) ∈ allK U
-  LamIn (cωᶜ {X = X} ds b₀ γ) = (_ , kbodyω ds (cin b₀) (cin-gd b₀ γ)) ∈ allK U × X ∈ tys U × (_ , kbody1 ds b₀ γ) ∈ allK U
+  LamIn (c1 {X = X} ds b γ) = (_ , kbody1 ds b γ) ∈ allK U × X ∈ cts U
+  LamIn (cω {X = X} ds b γ) = (_ , kbodyω ds b γ) ∈ allK U × X ∈ cts U × (_ , kbody1 ds (ownBg b) (ownBg-gd b γ)) ∈ allK U
+  LamIn (cωᶜ {X = X} ds b₀ γ) = (_ , kbodyω ds (cin b₀) (cin-gd b₀ γ)) ∈ allK U × X ∈ cts U × (_ , kbody1 ds b₀ γ) ∈ allK U
 
-  lam-X : ∀ {k g X A B} (lam : Lam k g X A B) → LamIn lam → X ∈ tys U
+  lam-X : ∀ {k g X A B} (lam : Lam k g X A B) → LamIn lam → X ∈ cts U
   lam-X (c1 ds b γ) (_ , x) = x
   lam-X (cω ds b γ) (_ , x , _) = x
   lam-X (cωᶜ ds b₀ γ) (_ , x , _) = x
@@ -180,7 +180,7 @@ module Keep (U : Univ) where
   ----------------------------------------------------------------------
 
   module Steps (blk : ∀ {κ} → κ ∈ allK U → BIn κ)
-               (ncty : ∀ {F S} → (F , S) ∈ nus U → cty (F , S) ∈ tys U) where
+               (ncty : ∀ {F S} → (F , S) ∈ nus U → cty (F , S) ∈ cts U) where
 
     keep : ∀ {T sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m m′ n n′ t}
          → StepI c r m n t c′ r′ m′ n′ → CIn c → RIn r → MIn m → CIn c′ × RIn r′ × MIn m′
@@ -224,11 +224,11 @@ module Keep (U : Univ) where
       (tt , proj₁ (proj₁ (seen eq E)) , tt , tt) , (ck , E , os , R) , (see-in es E , tt) , a , tt
     keep i-iobs (o , ck) R (E , (n , p) , os) = (tt , inO o n , tt) , (ck , E , os , R) , tt , (n , p) , tt
     keep (i-ccopy {lam = lam} {es = es} eq) (_ , ck) R (E , _ , os) =
-      (tt , inC (lam-X lam (proj₁ (seen eq E))) , tt , tt , tt) , (ck , E , os , R) , (see-in es E , tt) , tt , tt
+      (tt , inCc (lam-X lam (proj₁ (seen eq E))) , tt , tt , tt) , (ck , E , os , R) , (see-in es E , tt) , tt , tt
     keep (i-ncopy {es = es} eq) (_ , ck) R (E , _ , os) =
-      (tt , inC (ncty (proj₁ (seen eq E))) , tt , tt , tt) , (ck , E , os , R) , (see-in es E , tt) , tt , tt
-    keep (i-cfree {lam = lam}) (_ , ck) R (E , (l , x) , os) = (tt , inF (lam-X lam l) , tt) , (ck , E , os , R) , tt , (l , x) , tt
-    keep i-nfree  (_ , ck) R (E , (n , p) , os) = (tt , inF (ncty n) , tt) , (ck , E , os , R) , tt , (n , p) , tt
+      (tt , inCc (ncty (proj₁ (seen eq E))) , tt , tt , tt) , (ck , E , os , R) , (see-in es E , tt) , tt , tt
+    keep (i-cfree {lam = lam}) (_ , ck) R (E , (l , x) , os) = (tt , inFc (lam-X lam l) , tt) , (ck , E , os , R) , tt , (l , x) , tt
+    keep i-nfree  (_ , ck) R (E , (n , p) , os) = (tt , inFc (ncty n) , tt) , (ck , E , os , R) , tt , (n , p) , tt
     -- a trampoline's cell part
     keep i-open1  (_ , ck) R (E , ((l , x) , a) , os) = ck , R , E , (x , a) , os
     keep (i-openω eq) (_ , ck) R (E , os)       = ck , R , (proj₂ (seen eq E) , E) , os

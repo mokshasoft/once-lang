@@ -68,6 +68,11 @@ module Rel {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
   CodeOf : Σ BSig Key → W → Set
   CodeOf κ w = Σ (κ ∈ allK U) λ m → w ≡ SV-Code (tl (idx m))
 
+  -- ★ D484: a cell's copy and free words: the trampolines of a CELL type's keys (live ones)
+  CodeOfC CodeOfF : LTy → W → Set
+  CodeOfC X w = Σ (X ∈ Univ.cts U) λ x → w ≡ SV-Code (tl (idx (In.inCc U x)))
+  CodeOfF X w = Σ (X ∈ Univ.cts U) λ x → w ≡ SV-Code (tl (idx (In.inFc U x)))
+
   -- ★ D478: a cell's word 1 matters only for a many-use cell (its lent call reads it; a one-shot
   -- call enters word 4, `okey`)
   Word1 : ∀ {k g X A B} → Lam k g X A B → W → Set
@@ -88,11 +93,11 @@ module Rel {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
     vct   : ∀ {l X} {x : MV X} {w} → VW rd x w → VW rd (mct {l = l} x) w
     -- (D478: word 4 the owned body's entry, `okey`)
     vfn   : ∀ {k g X A B i} {lam : Lam k g X A B} {x : MV X} {wx wb wc wf wo}
-          → Word1 lam wb → CodeOf (kc X) wc → CodeOf (kf X) wf → CodeOf (okey lam) wo → VW rd x wx
+          → Word1 lam wb → CodeOfC X wc → CodeOfF X wf → CodeOf (okey lam) wo → VW rd x wx
           → At rd i 0 (cellPtr i ∷ wb ∷ wc ∷ wf ∷ wo ∷ wx)
           → VW rd (mfn i lam x) (cellPtr i ∷ [])
     vnu   : ∀ {F S i} {p : MV (Coalg F S ⊗t S)} {wp wo wc wf wo′}
-          → CodeOf (_ , kobs ε F S) wo → CodeOf (kc (cty (F , S))) wc → CodeOf (kf (cty (F , S))) wf
+          → CodeOf (_ , kobs ε F S) wo → CodeOfC (cty (F , S)) wc → CodeOfF (cty (F , S)) wf
           → CodeOf (_ , kobs ε F S) wo′ → VW rd p wp
           → At rd i 0 (cellPtr i ∷ wo ∷ wc ∷ wf ∷ wo′ ∷ wp)
           → VW rd (mnu i p) (cellPtr i ∷ [])

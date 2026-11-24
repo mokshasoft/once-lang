@@ -128,7 +128,7 @@ sub-peak (body {E} {Es} {A} {B} {S} {b = b} {k} p) =
 ------------------------------------------------------------------------
 
 module Loc {FS : FrameSemantics} (U : Univ)
-           (ncty : ∀ {F S} → (F , S) ∈ nus U → cty (F , S) ∈ tys U)
+           (ncty : ∀ {F S} → (F , S) ∈ nus U → cty (F , S) ∈ Univ.cts U)
            (ldConst : ∀ {b} → Lit b → AbstractInstr)
            (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue FS)
            (prog : AbstractTrace)

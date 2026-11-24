@@ -24984,3 +24984,69 @@ file's entry is the start's code (`Interface.file-wf` and `CoreFileWF.core-wf` t
 `instr-room k ∷ c-start b ∷ t″`: the leading check may now have no code).
 **Landed** (2026-11-24): `make certified` green; 188 exit tests ×3 arches, seL4 ×3, `cabal test`: all pass.
 **Measured** (D482 → D483): run 0.93× (`list-build-sum` 0.95×, `loop-sum` 0.95×), `.text` 0.99×, checks 0.97×.
+
+
+## D484 — A TYPE'S COPY AND FREE TRAMPOLINES ONLY WHERE A CELL HOLDS IT (2026-11-24, proposed — for the user's review)
+**Finding.** Every key of the universe gets a trampoline (`Lower.tramp`), an `e-thunk` entry a cell's code word
+names. A type's copy and free blocks (`kcopy T`, `kfree T`) are called by name by `dup`/`drop`/`bcopy` for every
+type the program copies or frees, but their trampolines are reached only through words 2 and 3 of a CELL whose
+contents are `T` (a closure's environment, a ν's coalgebra and seed). Over the corpus (x86_64, D481) the
+never-referenced trampolines are 155,699 of 583,530 emitted instructions (26.7%): almost all copy (48–50
+instructions, with an allocation) and free (21–31) trampolines of types no cell holds.
+**Decision.** The universe records its CELL TYPES (`cts`: each closure's environment type, each ν's contents
+type, with their place in `tys`); a key index is LIVE when it is a cell type's copy or free key. `blocksOf`
+emits a `kcopy`/`kfree` trampoline only at a live index (every other key's as before). A cell's words 2 and 3
+carry the liveness of their keys (`Words.vfn`/`vnu`), from the `PrimIn` evidence of the closure or ν that built
+it (`Keys`: a `llam`'s environment is a cell type, from its `Got`), so a dispatch through them finds its
+trampoline (`EntriesI.image-tramp`) as before.
+**Landed** (2026-11-24, with D485): `make certified` green; the tests as D485's.
+**Measured** (D483 → D484, x86_64, 108 programs): run time 1.00×, `.text` 0.76×, static instructions 0.73×,
+room checks 0.72×, slot moves 0.74×.
+**Found after** (the overnight test run): D484 made the compiler far slower on large programs (an seL4 image 76
+min): `cts⊆` searched the program's collection at every closure site. Fixed by D485.
+
+## D485 — THE COMPILER IS FAST AGAIN: ONE UNIVERSE, COMPUTED ONCE, TYPES WITHOUT REPEATS, TEXT JOINED ONCE (2026-11-24, proposed — for the user's review)
+**Found** (the overnight test run, 2026-11-24: 6.5 h instead of ~50 min, unnoticed). With D484 an seL4 image took
+76 min to compile (Caps); before D484 the branch already took 15–60+ s per image where master takes ≤ 0.9 s. Nothing
+was capped, so nothing failed. Measured with `+RTS -s` (31–63 GB allocated, < 2 MB resident: recomputation) and
+`perf` on the optimised compiler. Four causes, each a pattern now in `docs/performance-patterns.md` (B1, B2, B4, B7):
+1. **The universe was recomputed at every use.** `Keys.Program.U = univ ds f` (and `g₀`) are definitions under the
+   module's parameters: compiled, a function of `ds f`, so every Program-level function (a block's evidence, a type's
+   closure fact, a cell type's membership) rebuilt the program's key and type lists (`ks`, `ts`, `cs`, `++`).
+2. **Evidence was searched for per block.** `blocks-in` derived a block's evidence from its membership proof
+   (`tm-good`, `defs-good`), rebuilding every enclosing subterm's key list per lookup.
+3. **Types repeated per occurrence.** `tys` had one entry per mention, so the universe (`allK`) and every position
+   walk (`idx`) grew with the program, and the image emitted a copy and a free block per mention (Words: 1,394
+   blocks, 290 distinct; 69% of its lines duplicates).
+4. **The text was built quadratically.** The file printers wrote `line ++ˢ rest`; `String` is strict, so each line
+   copied the rest of the file (65% of Caps's compile once 1–3 were fixed).
+
+**Fixed.**
+* `Keys.ProgramW ds f V eV`: the program's facts over a universe `V` passed in (a module parameter: one argument,
+  shared by every use); `Program ds f = ProgramW ds f (univ ds f) refl` (the proofs see the same definitions);
+  `Lower.Program′W` likewise, so the driver's one call computes the universe once.
+* `In.tm-all`/`defs-all`: every key's evidence in one pass (`All BIn`), `blocks-all` the universe's;
+  `blocks-in = lookupA blocks-all` (still opaque).
+* `TyEq`: a sound and complete Boolean equality of types (an injective tree encoding with a total decoder; no
+  clause per pair of constructors). `close` deduplicates `tys` and `cts` once (`closeD`, the lists passed once);
+  every membership in the shared lists is FOUND (`find`: a search by `eqT`), its existence a witness at the program's
+  own universe moved along `eV`, read only in the impossible branch, so never computed.
+* `Once.Target.Text.join`: the three printers build the file's pieces as a list and join once (byte-identical
+  output: checked on 7 files, 3 arches).
+
+**Measured** (x86_64, the same inputs; master 601f75f26): exit tests 6.6 s → 6.7 s in total (master 6.6 s; slowest
+0.13 s vs 0.10 s); seL4 images: Caps > 60 s → 1.18 s (master 0.89 s), Words > 60 s → 0.96 s (0.55 s), Echo
+1.10 s (0.57 s); at most 1.93× master per image. The Words image's assembly: 2.27 MB (D480) → 1.14 MB.
+**The caps** (the same day): every unit of work has one (`formal/scripts/watchdog.sh`: an Agda module 60 s by its
+silence; the tests 5 s per compile, 10 s per run; an seL4 image's compile 5 s in the flake; nix's steps by the
+watchdog), so a regression like this fails in seconds, named.
+**The code, too** (D484 → D485, x86_64, 108 programs; types deduplicated): `.text` 0.78×, static instructions 0.73×,
+room checks 0.72×, slot moves 0.71×, frames 0.56×, run time 1.00×.
+**Against master** (601f75f26, the same corpus): `.text` 2.50× (D480: 4.7×); run time per program median 2.36×
+(D480: 2.8×), min 1.29×; the corpus total 12.3× is `alloc-forever` (an allocation loop run to exhaustion: 8.6M of
+master's 8.7M instructions); without it ~2.0×. `list-build-sum` is still quadratic (D479's B2 open).
+**Open** (the module cap): `LinCore.Apex` checks in ~100–120 s (it did before D485: 150–170 s alone; D485 respells
+the call mode's image as `ExprImage`'s, 147 → 117 s); `make certified` passes with `AGDA_UNIT_SECS=180` until it is
+split or sealed. Every other module is under 60 s.
+**Landed** (2026-11-24): `make certified` green (`AGDA_UNIT_SECS=180`, for `Apex`); 188 exit tests × 3 arches (each
+compile under 5 s), seL4 × 3 (7 min, the compiler's nix build included), `cabal test`: all pass.

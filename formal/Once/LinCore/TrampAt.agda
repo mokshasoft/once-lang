@@ -28,6 +28,7 @@ open import Once.LinCore.Flat using (Base)
 open import Once.CCC.Machine.SMCore
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Data.Maybe using (nothing)
+open import Data.Bool using (true; false; if_then_else_)
 
 module Once.LinCore.TrampAt
   (fmt : TargetNum) (ans : FFIAnswers)
@@ -116,9 +117,29 @@ in-drop2 : ∀ {a b xs} → Inside (a ∷ b ∷ xs) xs
 in-drop2 = in-trans in-∷ in-∷
 
 module Tr (U : Univ)
-          (ncty : ∀ {F S} → (F , S) ∈ nus U → cty (F , S) ∈ tys U)
+          (ncty : ∀ {F S} → (F , S) ∈ nus U → cty (F , S) ∈ Univ.cts U)
           (ldConst : ∀ {b} → Lit b → AbstractInstr) where
   open Lowering U ncty ldConst
+
+  -- the code at a point of a copy's trampoline (`copen`; the call; `epop`; `reclose`; `end`)
+  trAtC : ℕ → LTy → ℕ → AbstractTrace
+  trAtC j X d =
+    let w = wsz X ; s₁ = w ; s₂ = suc w ; s₃ = suc (suc w) ; b = suc s₃
+        E = restore-input s₁ ∷ load-from-slot s₃ ∷ store-at 0 ∷ instr-ctrl (c-ret b) ∷ []
+        R = instr-alloc-heap (hdr + w) ∷ store-at-slot s₃
+            ∷ restore-input s₂ ∷ load-at 1 ∷ restore-input s₃ ∷ store-at 1
+            ∷ restore-input s₂ ∷ load-at 2 ∷ restore-input s₃ ∷ store-at 2
+            ∷ restore-input s₂ ∷ load-at 3 ∷ restore-input s₃ ∷ store-at 3
+            ∷ restore-input s₂ ∷ load-at 4 ∷ restore-input s₃ ∷ store-at 4
+            ∷ mov-to-output ∷ store-at 0 ∷ mvSP 0 hdr w ++ E
+        K = lea-slot 0 ∷ mov-to-input ∷ load-from-slot s₃ ∷ instr-ctrl (c-call-fn (nameOf j)) ∷ R
+    in pick d (restore-input s₂ ∷ contentsAddr w ∷ store-at-slot s₃ ∷ K) K R R E
+  trAtF : ℕ → LTy → ℕ → AbstractTrace
+  trAtF j X d =
+    let w = wsz X
+        E = instr-ctrl (c-ret (suc w)) ∷ []
+        K = lea-slot 0 ∷ mov-to-input ∷ instr-ctrl (c-call-fn (nameOf j)) ∷ E
+    in pick d (restore-input w ∷ mvPS hdr 0 w ++ instr-free-heap (hdr + w) ∷ K) K E [] []
 
   trAt : ∀ {σ} (j : ℕ) → Key σ → ℕ → AbstractTrace
   -- one-shot body: `open1` the environment and argument in, the cell freed;
@@ -145,29 +166,42 @@ module Tr (U : Univ)
   -- a copy: `copen` the contents' address; the call (the contents' copy);
   -- `epop` nothing; `reclose` a fresh cell, the code words, the contents;
   -- `end` its address back
-  trAt j (ktrc X C) d =
-    let w = wsz X ; s₁ = w ; s₂ = suc w ; s₃ = suc (suc w) ; b = suc s₃
-        E = restore-input s₁ ∷ load-from-slot s₃ ∷ store-at 0 ∷ instr-ctrl (c-ret b) ∷ []
-        R = instr-alloc-heap (hdr + w) ∷ store-at-slot s₃
-            ∷ restore-input s₂ ∷ load-at 1 ∷ restore-input s₃ ∷ store-at 1
-            ∷ restore-input s₂ ∷ load-at 2 ∷ restore-input s₃ ∷ store-at 2
-            ∷ restore-input s₂ ∷ load-at 3 ∷ restore-input s₃ ∷ store-at 3
-            ∷ restore-input s₂ ∷ load-at 4 ∷ restore-input s₃ ∷ store-at 4
-            ∷ mov-to-output ∷ store-at 0 ∷ mvSP 0 hdr w ++ E
-        K = lea-slot 0 ∷ mov-to-input ∷ load-from-slot s₃ ∷ instr-ctrl (c-call-fn (nameOf j)) ∷ R
-    in pick d (restore-input s₂ ∷ contentsAddr w ∷ store-at-slot s₃ ∷ K) K R R E
+  -- (D484: a copy's and a free's trampoline only at a live index: its points' code, or none)
+  trAt j (ktrc X C) d = if liveT j then trAtC j X d else []
+  trAt j (ktrf X C) d = if liveT j then trAtF j X d else []
   -- a free: `fopen` the contents out, the cell freed; the call; `end` the return
-  trAt j (ktrf X C) d =
-    let w = wsz X
-        E = instr-ctrl (c-ret (suc w)) ∷ []
-        K = lea-slot 0 ∷ mov-to-input ∷ instr-ctrl (c-call-fn (nameOf j)) ∷ E
-    in pick d (restore-input w ∷ mvPS hdr 0 w ++ instr-free-heap (hdr + w) ∷ K) K E [] []
   trAt j (kbody1 _ _ _) d = []
   trAt j (kbodyω _ _ _) d = []
   trAt j (kfold _ _ _)  d = []
   trAt j (kobs _ _ _)   d = []
   trAt j (kcopy _)      d = []
   trAt j (kfree _)      d = []
+
+  -- (D484: a live trampoline's points, or none)
+  if-in : ∀ b {T x} → Inside T x → Inside (if b then T else []) (if b then x else [])
+  if-in true  i = i
+  if-in false i = in-[] []
+
+  -- …a live one's points as the trampoline's own
+  if-in-pre : ∀ b → b ≡ true → ∀ {T x} (i : Inside T x) → proj₁ (if-in b i) ≡ proj₁ i
+  if-in-pre true refl i = refl
+
+  tr-inC : ∀ j X d → Inside (trampC j X) (trAtC j X d)
+  tr-inC j X d =
+    let w = wsz X
+        i₀ = in-drop4
+        i₁ = in-trans i₀ in-drop3
+        i₂ = in-trans i₁ in-drop4
+        i₄ = in-trans i₂ (in-trans in-drop4 (in-trans in-drop4 (in-trans in-drop4 (in-trans in-drop4 (in-trans in-drop4 (in-r (mvSP 0 hdr w) _))))))
+    in pick-in d i₀ i₁ i₂ i₂ i₄
+  tr-inF : ∀ j X d → Inside (trampF j X) (trAtF j X d)
+  tr-inF j X d =
+    let w = wsz X
+        i₀ = in-drop2
+        i₁ = in-trans i₀ (in-trans in-∷ (in-trans (in-r (mvPS hdr 0 w) _) in-∷))
+        i₂ = in-trans i₁ in-drop3
+    in pick-in d i₀ i₁ i₂ (in-[] _) (in-[] _)
+
 
   -- ★ the code at a point lies inside the underlying key's trampoline
   tr-in : ∀ {σ} j (κ : Key σ) d → Inside (tramp j (proj₂ (under κ))) (trAt j κ d)
@@ -186,19 +220,8 @@ module Tr (U : Univ)
         i₁ = in-trans i₀ (in-trans (in-r (mvPS hdr (M ∸ wP) wP) _) in-drop2)
         i₂ = in-trans i₁ in-drop3
     in pick-in d i₀ i₁ i₂ (in-[] _) (in-[] _)
-  tr-in j (ktrc X C) d =
-    let w = wsz X
-        i₀ = in-drop4
-        i₁ = in-trans i₀ in-drop3
-        i₂ = in-trans i₁ in-drop4
-        i₄ = in-trans i₂ (in-trans in-drop4 (in-trans in-drop4 (in-trans in-drop4 (in-trans in-drop4 (in-trans in-drop4 (in-r (mvSP 0 hdr w) _))))))
-    in pick-in d i₀ i₁ i₂ i₂ i₄
-  tr-in j (ktrf X C) d =
-    let w = wsz X
-        i₀ = in-drop2
-        i₁ = in-trans i₀ (in-trans in-∷ (in-trans (in-r (mvPS hdr 0 w) _) in-∷))
-        i₂ = in-trans i₁ in-drop3
-    in pick-in d i₀ i₁ i₂ (in-[] _) (in-[] _)
+  tr-in j (ktrc X C) d = if-in (liveT j) (tr-inC j X d)
+  tr-in j (ktrf X C) d = if-in (liveT j) (tr-inF j X d)
   tr-in j (kbody1 _ _ _) d = in-[] _
   tr-in j (kbodyω _ _ _) d = in-[] _
   tr-in j (kfold _ _ _)  d = in-[] _

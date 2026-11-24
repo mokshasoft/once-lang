@@ -159,16 +159,16 @@ module LocalR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     gtr-local (to0 _) st () H nx ok I lv F
     gtr-local (to1 _) st () H nx ok I lv F
     gtr-local (to2 _) st () H nx ok I lv F
-    gtr-local (tf0 _) st () H nx ok I lv F
-    gtr-local (tf1 _) st () H nx ok I lv F
-    gtr-local (tf2 _) st () H nx ok I lv F
+    gtr-local (tf0 _ _) st () H nx ok I lv F
+    gtr-local (tf1 _ _) st () H nx ok I lv F
+    gtr-local (tf2 _ _) st () H nx ok I lv F
     gtr-local (tw0 _) st () H nx ok I lv F
     gtr-local (tw1 _) st () H nx ok I lv F
     gtr-local (tw3 _) st () H nx ok I lv F
-    gtr-local (tc0 _) st () H nx ok I lv F
-    gtr-local (tc1 _) st () H nx ok I lv F
-    gtr-local (tc3 _) st () H nx ok I lv F
-    gtr-local (tc4 _) st () H nx ok I lv F
+    gtr-local (tc0 _ _) st () H nx ok I lv F
+    gtr-local (tc1 _ _) st () H nx ok I lv F
+    gtr-local (tc3 _ _) st () H nx ok I lv F
+    gtr-local (tc4 _ _) st () H nx ok I lv F
     gtr-local {r = r} {n = n} {fs = fs} (tw2 p) st _ H nx ok I lv F =
       epop-inv (λ m₀ c′ r′ m′ n′ → HereTr (tw2 p) m₀ fs → AllocState.next-heap-ref (falloc fs) ≡ n → LiveG r m₀ fs → Onward c′ r′ m′ n′ fs)
         (λ { {os = v ∷ˢ os′} H′ nx′ lv′ →
@@ -176,11 +176,11 @@ module LocalR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                record { g-pt = p-tramp p (at (next (next (next whole)))) ; g-here = tw3 p , H′ ; g-next = nx′ ; g-ret = ok ; g-blk = I ; g-live = lv′ ; g-fal = F } , refl })
         st H nx lv
     -- a copy's `epop` (its contents' view dropped)
-    gtr-local {r = r} {n = n} {fs = fs} (tc2 p) st _ H nx ok I lv F =
-      epop-inv (λ m₀ c′ r′ m′ n′ → HereTr (tc2 p) m₀ fs → AllocState.next-heap-ref (falloc fs) ≡ n → LiveG r m₀ fs → Onward c′ r′ m′ n′ fs)
+    gtr-local {r = r} {n = n} {fs = fs} (tc2 p l₂) st _ H nx ok I lv F =
+      epop-inv (λ m₀ c′ r′ m′ n′ → HereTr (tc2 p l₂) m₀ fs → AllocState.next-heap-ref (falloc fs) ≡ n → LiveG r m₀ fs → Onward c′ r′ m′ n′ fs)
         (λ { {es = vw cv es′} {os = v ∷ˢ os′} H′ nx′ lv′ →
                0 , fs , FlatStepsAPI.[] ,
-               record { g-pt = p-tramp p (at (next (next (next whole)))) ; g-here = tc3 p , H′ ; g-next = nx′ ; g-ret = ok ; g-blk = I ; g-live = lv′ ; g-fal = F } , refl })
+               record { g-pt = p-tramp p (at (next (next (next whole)))) ; g-here = tc3 p l₂ , H′ ; g-next = nx′ ; g-ret = ok ; g-blk = I ; g-live = lv′ ; g-fal = F } , refl })
         st H nx lv
 
     -- ★ a straight step (local, not a `case`): only at a path; no case

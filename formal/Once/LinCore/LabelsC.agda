@@ -154,7 +154,7 @@ module LabsC {FS : FrameSemantics} where
   ----------------------------------------------------------------------
 
   module C (U : Univ)
-           (ncty : ∀ {F S} → (F , S) ∈ nus U → cty (F , S) ∈ tys U)
+           (ncty : ∀ {F S} → (F , S) ∈ nus U → cty (F , S) ∈ Univ.cts U)
            (ldConst : ∀ {b} → Lit b → AbstractInstr)
            (ld-nl : ∀ {b} (v : Lit b) → mark (ldConst v) ≡ nothing) where
     open In U

@@ -118,7 +118,7 @@ module PrimW {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
 ------------------------------------------------------------------------
 
 module Prims {FS : FrameSemantics} (U : Univ)
-             (ncty : ∀ {F S} → (F , S) ∈ nus U → cty (F , S) ∈ tys U)
+             (ncty : ∀ {F S} → (F , S) ∈ nus U → cty (F , S) ∈ Univ.cts U)
              (ldConst : ∀ {b} → Lit b → AbstractInstr)
              (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue FS)
              (prog : AbstractTrace)
@@ -295,7 +295,7 @@ module Prims {FS : FrameSemantics} (U : Univ)
          → Moved (next s) fs (szc X ∷ []) [] (es ∥ mfn (szc X , AllocState.next-heap-ref (falloc fs)) (c1 ds b γ) x ∷ˢ os)
   st-lam {X = X} {S = S} s {fs = fs} H fr fz =
     let ev = proj₁ (lcin (lowAt s)) in
-    straight s H _ _ (sym (len-cell (wsz X) (idx (proj₁ ev)) (idx (inC (proj₂ ev))) (idx (inF (proj₂ ev))) (idx (proj₁ ev)) (Tp φ S)))
+    straight s H _ _ (sym (len-cell (wsz X) (idx (proj₁ ev)) (idx (inCc (proj₂ ev))) (idx (inFc (proj₂ ev))) (idx (proj₁ ev)) (Tp φ S)))
       (λ sg h Bf C → drop-next (llam-sim prog fs φ (proj₁ ev) (proj₂ ev) fr fz sg h Bf C (proj₂ (shape-fits (next s)))))
 
   st-lamω : ∀ {Γ} {ds : Defs Γ} {Es g X A B S V} {b : Tm Γ X A B} {γ : Gd g b}
@@ -305,7 +305,7 @@ module Prims {FS : FrameSemantics} (U : Univ)
           → Moved (next s) fs (szc X ∷ []) [] (es ∥ mfn (szc X , AllocState.next-heap-ref (falloc fs)) (cω ds b γ) x ∷ˢ os)
   st-lamω {X = X} {S = S} s {fs = fs} H fr fz =
     let ev = proj₁ (lcin (lowAt s)) in
-    straight s H _ _ (sym (len-cell (wsz X) (idx (proj₁ ev)) (idx (inC (proj₁ (proj₂ ev)))) (idx (inF (proj₁ (proj₂ ev)))) (idx (proj₂ (proj₂ ev))) (Tp φ S)))
+    straight s H _ _ (sym (len-cell (wsz X) (idx (proj₁ ev)) (idx (inCc (proj₁ (proj₂ ev)))) (idx (inFc (proj₁ (proj₂ ev)))) (idx (proj₂ (proj₂ ev))) (Tp φ S)))
       (λ sg h Bf C → drop-next (llamω-sim prog fs φ (proj₁ ev) (proj₁ (proj₂ ev)) (proj₂ (proj₂ ev)) fr fz sg h Bf C (proj₂ (shape-fits (next s)))))
 
   -- ★ D478
@@ -316,7 +316,7 @@ module Prims {FS : FrameSemantics} (U : Univ)
           → Moved (next s) fs (szc X ∷ []) [] (es ∥ mfn (szc X , AllocState.next-heap-ref (falloc fs)) (cωᶜ ds b₀ γ) x ∷ˢ os)
   st-lamωᶜ {X = X} {S = S} s {fs = fs} H fr fz =
     let ev = proj₁ (lcin (lowAt s)) in
-    straight s H _ _ (sym (len-cell (wsz X) (idx (proj₁ ev)) (idx (inC (proj₁ (proj₂ ev)))) (idx (inF (proj₁ (proj₂ ev)))) (idx (proj₂ (proj₂ ev))) (Tp φ S)))
+    straight s H _ _ (sym (len-cell (wsz X) (idx (proj₁ ev)) (idx (inCc (proj₁ (proj₂ ev)))) (idx (inFc (proj₁ (proj₂ ev)))) (idx (proj₂ (proj₂ ev))) (Tp φ S)))
       (λ sg h Bf C → drop-next (llamωᶜ-sim prog fs φ (proj₁ ev) (proj₁ (proj₂ ev)) (proj₂ (proj₂ ev)) fr fz sg h Bf C (proj₂ (shape-fits (next s)))))
 
   st-unf : ∀ {Γ} {ds : Defs Γ} {Es F S₀ S V} {k : Codeᴵ (Es ∣ Nu F ∷ S) V}
@@ -327,5 +327,5 @@ module Prims {FS : FrameSemantics} (U : Univ)
   st-unf {F = F} {S₀} {S} s {fs = fs} H fr fz =
     let ev = proj₁ (lcin (lowAt s)) ; n = proj₁ ev ; o = proj₂ ev in
     straight s H _ _
-      (sym (len-cell (wsz (cty (F , S₀))) (idx (inO o n)) (idx (inC (ncty n))) (idx (inF (ncty n))) (idx (inO o n)) (Tp φ S)))
+      (sym (len-cell (wsz (cty (F , S₀))) (idx (inO o n)) (idx (inCc (ncty n))) (idx (inFc (ncty n))) (idx (inO o n)) (Tp φ S)))
       (λ sg h Bf C → drop-next (lunf-sim prog fs φ n o (ncty n) fr fz sg h Bf C (proj₂ (shape-fits (next s)))))

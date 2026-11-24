@@ -15,7 +15,7 @@ open import Data.List.Membership.Propositional using (_∈_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Unit using (tt)
-open import Data.Bool using (false)
+open import Data.Bool using (false; true)
 open import Function using (case_of_)
 open import Relation.Nullary using (¬_)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
@@ -78,7 +78,7 @@ module DispF {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open Program ds f using (U)
   open Program ds f using (ncty)
   open Program′ ds f ldConst using (image; j₀)
-  open Lowering U ncty ldConst using (Tp; fbudget; sv₁<fb)
+  open Lowering U ncty ldConst using (Tp; fbudget; sv₁<fb; liveT)
   open Calls {FS} ds f ldConst ld-nl wordOf using (blockR; module K; module From; call-core)
   open Rel {FS} U wordOf using (EnvW; StkW)
   open FlatMachine {FS} using (FlatState; module FlatState)
@@ -151,7 +151,7 @@ module DispF {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   -- it; no area (the result One)
   mk-trampf : ∀ {T X C} {Es D S V} {i : Insᴵ (Es ∣ D ∷ S) (Es ∣ One ∷ S)} {k : Codeᴵ (Es ∣ One ∷ S) V}
                 {es : Slots Es} {os : Stk S} {r : Ret V T} {v : MV D} {fs fs′ cell b s q}
-                (p : under (ktrf X C) ∈ allK U) (d : DSite i k)
+                (p : under (ktrf X C) ∈ allK U) (l : liveT (idx p) ≡ true) (d : DSite i k)
             → FreeIn fs fs′ cell b s q
             → fret fs′ ≡ dsitePos d ∷ fret fs
             → CfgW (LocState.heapMem (floc fs)) (slot fs) (dsiteφ d) (es ∥ v ∷ˢ os)
@@ -161,8 +161,8 @@ module DispF {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
             → AllocState.frame-slots (falloc fs) ≡ fbudget (dsiteφ d)
             → RetOK (rtramp {κ = ktrf X C} p) (trFin (idx p) (ktrf X C)) (frm {t = nothing} {Es = Es} k es os r)
                     (AllocState.current-frame (falloc fs′)) (fret fs′) (AllocState.saved-frames (falloc fs′)) fs′
-  mk-trampf {es = es} {os = os} {r = r} {fs = fs} {fs′} {b = b} p d FI eR C fr frR ok esl =
-    ok-trampf p d cfc (AllocState.frame-slots (falloc fs)) (AllocState.saved-frames (falloc fs)) (fret fs)
+  mk-trampf {es = es} {os = os} {r = r} {fs = fs} {fs′} {b = b} p l d FI eR C fr frR ok esl =
+    ok-trampf p l d cfc (AllocState.frame-slots (falloc fs)) (AllocState.saved-frames (falloc fs)) (fret fs)
       refl refl eR (fr-saved FI) esl under-cfc
       (env-stand (λ j le → proj₁ (fr j le)) (λ _ ()) old (envW-frame es (λ y _ → kept y) (CfgW.c-env C)))
       (stk-stand (λ j le → nat-r0 (proj₂ (fr j le))) (λ _ ()) old (stk-all os kept (proj₂ (CfgW.c-stk C))))
@@ -215,10 +215,10 @@ module DispF {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                      (Data.Nat.Properties.≤-trans (Data.Nat.Properties.m∸n≤m (Tp (dsiteφ d) S) 1) (Data.Nat.Properties.m∸n≤m (budget (dsiteφ d)) (ws S)))
                      (sv₁<fb (dsiteφ d))))
                (subst (λ z → slot fs z ≡ just (cellPtr i)) (tp-top (dsiteφ d) S) st₀) px words cfr I of λ where
-          (m , N , fs′ , run′ , T0 , q , FI) →
-            N , fs′ , run′ , record { g-pt = p-tramp m (at whole) ; g-here = (tf0 {X = X} {Fn kd g A B} m , T0)
+          (m , lm , N , fs′ , run′ , T0 , q , FI) →
+            N , fs′ , run′ , record { g-pt = p-tramp m (at whole) ; g-here = (tf0 {X = X} {Fn kd g A B} m lm , T0)
                                     ; g-next = trans (fr-next FI) nx
-                                    ; g-ret = mk-trampf m d FI (trans (fr-ret FI) (cong (_∷ fret fs) pe)) C
+                                    ; g-ret = mk-trampf m lm d FI (trans (fr-ret FI) (cong (_∷ fret fs) pe)) C
                                                 (λ j le → fresh-cfg inv j (subst (_≤ serial j) nx le))
                                                 (subst (FreshR r) (sym nx) (fresh-ret inv)) ok fsl
                                     ; g-blk = fblk FI I
@@ -252,10 +252,10 @@ module DispF {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                      (Data.Nat.Properties.≤-trans (Data.Nat.Properties.m∸n≤m (Tp (dsiteφ d) S′) 1) (Data.Nat.Properties.m∸n≤m (budget (dsiteφ d)) (ws S′)))
                      (sv₁<fb (dsiteφ d))))
                (subst (λ z → slot fs z ≡ just (cellPtr i)) (tp-top (dsiteφ d) S′) st₀) pp words cfr I of λ where
-          (m , N , fs′ , run′ , T0 , q , FI) →
-            N , fs′ , run′ , record { g-pt = p-tramp m (at whole) ; g-here = (tf0 {X = Coalg F S ⊗t S} {Nu F} m , T0)
+          (m , lm , N , fs′ , run′ , T0 , q , FI) →
+            N , fs′ , run′ , record { g-pt = p-tramp m (at whole) ; g-here = (tf0 {X = Coalg F S ⊗t S} {Nu F} m lm , T0)
                                     ; g-next = trans (fr-next FI) nx
-                                    ; g-ret = mk-trampf m d FI (trans (fr-ret FI) (cong (_∷ fret fs) pe)) C
+                                    ; g-ret = mk-trampf m lm d FI (trans (fr-ret FI) (cong (_∷ fret fs) pe)) C
                                                 (λ j le → fresh-cfg inv j (subst (_≤ serial j) nx le))
                                                 (subst (FreshR r) (sym nx) (fresh-ret inv)) ok fsl
                                     ; g-blk = fblk FI I
@@ -315,10 +315,10 @@ module DispF {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
            → RetOK (rtramp p) (trFin (idx p) κ) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
            → InBlk fs → LiveG r (es ∥ mfn i lam x ∷ˢ os) fs → FreshAl (falloc fs)
            → Arrives k r (es ∥ x ∷ˢ os) n fs
-  gfopen-t {X = X} {k = k} {r = r} {i = i} {lam = lam} {x = x} {n = n} {h = h} {fs = fs} (it-tf0 {C = C} p) {es = []ᵉ} {os = []ˢ} inv T0 nx ok I lv Fa =
-    case tf-open {X} {C} p T0 lb nd of λ where
+  gfopen-t {X = X} {k = k} {r = r} {i = i} {lam = lam} {x = x} {n = n} {h = h} {fs = fs} (it-tf0 {C = C} p l) {es = []ᵉ} {os = []ˢ} inv T0 nx ok I lv Fa =
+    case tf-open {X} {C} p l T0 lb nd of λ where
       (N , fs′ , run , H′ , Rn) →
-        N , fs′ , run , record { g-pt = p-tramp p (at (next whole)) ; g-here = (tf1 {X = X} {C} p , H′) ; g-next = trans (r-next Rn) nx
+        N , fs′ , run , record { g-pt = p-tramp p (at (next whole)) ; g-here = (tf1 {X = X} {C} p l , H′) ; g-next = trans (r-next Rn) nx
                                ; g-ret = ret-step (r-keep Rn) (r-old Rn) (r-top Rn) (subst (FreshR r) (sym nx) (fresh-ret inv)) af ok ; g-blk = r-inb Rn I
                                ; g-live = live-after {fs = fs} st₁ inv nx lv (fx Rn) ; g-fal = fresh-after Fa (fx Rn) } , k-log (r-keep Rn)
     where
@@ -354,10 +354,10 @@ module DispF {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
             → RetOK (rtramp p) (trFin (idx p) κ) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
             → InBlk fs → LiveG r (es ∥ mnu i x ∷ˢ os) fs → FreshAl (falloc fs)
             → Arrives k r (es ∥ x ∷ˢ os) n fs
-  gfopenν-t {F = F} {S} {k = k} {r = r} {i = i} {x = x} {n = n} {h = h} {fs = fs} (it-tf0 {C = C} p) {es = []ᵉ} {os = []ˢ} inv T0 nx ok I lv Fa =
-    case tf-open {Coalg F S ⊗t S} {C} p T0 lb nd of λ where
+  gfopenν-t {F = F} {S} {k = k} {r = r} {i = i} {x = x} {n = n} {h = h} {fs = fs} (it-tf0 {C = C} p l) {es = []ᵉ} {os = []ˢ} inv T0 nx ok I lv Fa =
+    case tf-open {Coalg F S ⊗t S} {C} p l T0 lb nd of λ where
       (N , fs′ , run , H′ , Rn) →
-        N , fs′ , run , record { g-pt = p-tramp p (at (next whole)) ; g-here = (tf1 {X = Coalg F S ⊗t S} {C} p , H′) ; g-next = trans (r-next Rn) nx
+        N , fs′ , run , record { g-pt = p-tramp p (at (next whole)) ; g-here = (tf1 {X = Coalg F S ⊗t S} {C} p l , H′) ; g-next = trans (r-next Rn) nx
                                ; g-ret = ret-step (r-keep Rn) (r-old Rn) (r-top Rn) (subst (FreshR r) (sym nx) (fresh-ret inv)) af ok ; g-blk = r-inb Rn I
                                ; g-live = live-after {fs = fs} st₁ inv nx lv (fx Rn) ; g-fal = fresh-after Fa (fx Rn) } , k-log (r-keep Rn)
     where

@@ -29,6 +29,7 @@ import qualified MAlonzo.Code.Once.Arith.Backend.X86Z45Z64.Emit
 import qualified MAlonzo.Code.Once.CCC.Label
 import qualified MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Emit
 import qualified MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax
+import qualified MAlonzo.Code.Once.Target.Text
 
 -- Once.CCC.Target.X86-64.File.Payload
 d_Payload_10 :: ()
@@ -91,59 +92,63 @@ d_start'45'mark_34 v0 v1
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
         -> coe ("" :: Data.Text.Text)
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.CCC.Target.X86-64.File.code-text
-d_code'45'text_54 ::
+-- Once.CCC.Target.X86-64.File.code-lines
+d_code'45'lines_54 ::
   Maybe Integer ->
   Integer ->
   [MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.T_Instr_30] ->
-  MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_code'45'text_54 v0 v1 v2
+  [MAlonzo.Code.Agda.Builtin.String.T_String_6]
+d_code'45'lines_54 v0 v1 v2
   = case coe v2 of
-      [] -> coe ("" :: Data.Text.Text)
+      [] -> coe v2
       (:) v3 v4
         -> coe
-             MAlonzo.Code.Data.String.Base.d__'43''43'__20
-             (d_start'45'mark_34 (coe v0) (coe v1))
+             MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+             (coe d_start'45'mark_34 (coe v0) (coe v1))
              (coe
-                MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                (MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Emit.d_instrToLine_90
+                MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+                (coe
+                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Emit.d_instrToLine_90
                    (coe v3))
-                (d_code'45'text_54
-                   (coe v0) (coe addInt (coe (1 :: Integer)) (coe v1)) (coe v4)))
+                (coe
+                   d_code'45'lines_54 (coe v0)
+                   (coe addInt (coe (1 :: Integer)) (coe v1)) (coe v4)))
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.CCC.Target.X86-64.File.blocks-text
-d_blocks'45'text_68 ::
+-- Once.CCC.Target.X86-64.File.blocks-lines
+d_blocks'45'lines_68 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
-  MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_blocks'45'text_68 v0
+  [MAlonzo.Code.Agda.Builtin.String.T_String_6]
+d_blocks'45'lines_68 v0
   = case coe v0 of
-      [] -> coe ("" :: Data.Text.Text)
+      [] -> coe v0
       (:) v1 v2
         -> case coe v1 of
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v3 v4
                -> coe
-                    MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                    (MAlonzo.Code.Once.Arith.Backend.X86Z45Z64.Emit.d_emit'45'payload_314
+                    MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+                    (coe
+                       MAlonzo.Code.Once.Arith.Backend.X86Z45Z64.Emit.d_emit'45'payload_314
                        (coe v3) (coe v4))
-                    (d_blocks'45'text_68 (coe v2))
+                    (coe d_blocks'45'lines_68 (coe v2))
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.CCC.Target.X86-64.File.externs-text
-d_externs'45'text_76 ::
+-- Once.CCC.Target.X86-64.File.externs-lines
+d_externs'45'lines_76 ::
   [MAlonzo.Code.Agda.Builtin.String.T_String_6] ->
-  MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_externs'45'text_76 v0
+  [MAlonzo.Code.Agda.Builtin.String.T_String_6]
+d_externs'45'lines_76 v0
   = case coe v0 of
-      [] -> coe ("" :: Data.Text.Text)
+      [] -> coe v0
       (:) v1 v2
         -> coe
-             MAlonzo.Code.Data.String.Base.d__'43''43'__20
-             (".extern " :: Data.Text.Text)
+             MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+             (coe (".extern " :: Data.Text.Text))
              (coe
-                MAlonzo.Code.Data.String.Base.d__'43''43'__20 v1
+                MAlonzo.Code.Agda.Builtin.List.C__'8759'__22 (coe v1)
                 (coe
-                   MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                   ("\n" :: Data.Text.Text) (d_externs'45'text_76 (coe v2))))
+                   MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+                   (coe ("\n" :: Data.Text.Text))
+                   (coe d_externs'45'lines_76 (coe v2))))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Target.X86-64.File.record-text
 d_record'45'text_82 ::
@@ -163,19 +168,24 @@ d_print_84 ::
   T_Image_12 -> MAlonzo.Code.Agda.Builtin.String.T_String_6
 d_print_84 v0
   = coe
-      MAlonzo.Code.Data.String.Base.d__'43''43'__20 d_preamble_32
+      MAlonzo.Code.Once.Target.Text.d_join_6
       (coe
-         MAlonzo.Code.Data.String.Base.d__'43''43'__20
-         (d_externs'45'text_76 (coe d_externs_28 (coe v0)))
+         MAlonzo.Code.Agda.Builtin.List.C__'8759'__22 (coe d_preamble_32)
          (coe
-            MAlonzo.Code.Data.String.Base.d__'43''43'__20
-            (d_code'45'text_54
-               (coe d_entry_24 (coe v0)) (coe (0 :: Integer))
-               (coe d_code_22 (coe v0)))
+            MAlonzo.Code.Data.List.Base.du__'43''43'__32
+            (coe d_externs'45'lines_76 (coe d_externs_28 (coe v0)))
             (coe
-               MAlonzo.Code.Data.String.Base.d__'43''43'__20
-               (d_blocks'45'text_68 (coe d_blocks_26 (coe v0)))
-               (d_record'45'text_82 (coe d_entry_24 (coe v0))))))
+               MAlonzo.Code.Data.List.Base.du__'43''43'__32
+               (coe
+                  d_code'45'lines_54 (coe d_entry_24 (coe v0)) (coe (0 :: Integer))
+                  (coe d_code_22 (coe v0)))
+               (coe
+                  MAlonzo.Code.Data.List.Base.du__'43''43'__32
+                  (coe d_blocks'45'lines_68 (coe d_blocks_26 (coe v0)))
+                  (coe
+                     MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+                     (coe d_record'45'text_82 (coe d_entry_24 (coe v0)))
+                     (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))))))
 -- Once.CCC.Target.X86-64.File.label-defs
 d_label'45'defs_88 ::
   [MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.T_Instr_30] ->

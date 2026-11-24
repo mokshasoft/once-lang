@@ -14,7 +14,7 @@ open import Data.List.Membership.Propositional using (_∈_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Unit using (tt)
-open import Data.Bool using (false)
+open import Data.Bool using (false; true)
 open import Function using (case_of_)
 open import Relation.Nullary using (¬_)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
@@ -80,7 +80,7 @@ module RetTC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open Program ds f using (U)
   open Program ds f using (ncty)
   open Program′ ds f ldConst using (image; j₀)
-  open Lowering U ncty ldConst using (Tp; fbudget)
+  open Lowering U ncty ldConst using (Tp; fbudget; liveT)
   open Calls {FS} ds f ldConst ld-nl wordOf using (blockR; module K; module From; call-core)
   open Rel {FS} U wordOf using (EnvW; StkW)
   open FlatMachine {FS} using (FlatState; module FlatState)
@@ -164,18 +164,18 @@ module RetTC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       rc-trampo p₂ (p-start (at e)) _ cfc sl sv′ rets′ () eF eC H eRets eSv eSl abv area ev sk fr rest nx I lv Fa
       rc-trampo p₂ (p-tramp _ _) _ cfc sl sv′ rets′ () eF eC H eRets eSv eSl abv area ev sk fr rest nx I lv Fa
 
-      rc-trampf : ∀ {X C} (p₂ : under (ktrf X C) ∈ allK U) → GretC (s-trampf {X = X} {C} p₂)
-      rc-trampf {X} {C} p₂ {r = r} {es = []ᵉ} {os = []ˢ} {b = b} {fs = fs} (p-block p (at e)) _ cfc sl sv′ rets′ refl eF eC H eRets eSv eSl abv area ev sk fr rest nx I lv Fa =
-        case tr-back′ p e cfc (sitePos (s-trampf {X = X} {C} p₂)) rets′ sv′ sl eF H eRets eSv (λ e″ → ≺-≢ abv (sym e″))
+      rc-trampf : ∀ {X C} (p₂ : under (ktrf X C) ∈ allK U) (l₂ : liveT (idx p₂) ≡ true) → GretC (s-trampf {X = X} {C} p₂ l₂)
+      rc-trampf {X} {C} p₂ l₂ {r = r} {es = []ᵉ} {os = []ˢ} {b = b} {fs = fs} (p-block p (at e)) _ cfc sl sv′ rets′ refl eF eC H eRets eSv eSl abv area ev sk fr rest nx I lv Fa =
+        case tr-back′ p e cfc (sitePos (s-trampf {X = X} {C} p₂ l₂)) rets′ sv′ sl eF H eRets eSv (λ e″ → ≺-≢ abv (sym e″))
                (area0 fs area (trans (cong (wsz X ∸_) (Data.Nat.Properties.⊔-identityʳ (wsz X))) (Data.Nat.Properties.n∸n≡0 (wsz X))))
                (subst (λ z → _ ≤ z) (sym eSl) (Data.Nat.Properties.≤-trans (Data.Nat.Properties.≤-reflexive (Data.Nat.Properties.⊔-identityʳ (wsz X))) (Data.Nat.Properties.n≤1+n (wsz X)))) of λ where
           (N , fs′ , run , H′ , CO , tk) →
             N , fs′ , run , record { g-pt = p-tramp p₂ (at (next (next whole)))
-                                   ; g-here = (tf2 {X = X} {C} p₂
-                                              , subst (λ M → HereF (frame 0 M) (suc (wsz X)) (sitePos (s-trampf {X = X} {C} p₂)) ([]ᵉ ∥ b ∷ˢ []ˢ) fs′)
+                                   ; g-here = (tf2 {X = X} {C} p₂ l₂
+                                              , subst (λ M → HereF (frame 0 M) (suc (wsz X)) (sitePos (s-trampf {X = X} {C} p₂ l₂)) ([]ᵉ ∥ b ∷ˢ []ˢ) fs′)
                                                       (Data.Nat.Properties.⊔-identityʳ (wsz X))
-                                                      (subst (λ z → HereF (frame 0 (wsz X ⊔ 0)) z (sitePos (s-trampf {X = X} {C} p₂)) ([]ᵉ ∥ b ∷ˢ []ˢ) fs′) eSl H′))
+                                                      (subst (λ z → HereF (frame 0 (wsz X ⊔ 0)) z (sitePos (s-trampf {X = X} {C} p₂ l₂)) ([]ᵉ ∥ b ∷ˢ []ˢ) fs′) eSl H′))
                                    ; g-next = trans (co-next CO) nx ; g-ret = back CO (λ x le → tk x (subst (_≤ x) (sym (Data.Nat.Properties.⊔-identityʳ (wsz X))) le)) fr rest ; g-blk = co-inb CO I
                                    ; g-live = proj₁ (live-out r ([]ᵉ ∥ b ∷ˢ []ˢ) CO lv Fa) ; g-fal = proj₂ (live-out r ([]ᵉ ∥ b ∷ˢ []ˢ) CO lv Fa) } , co-log CO
-      rc-trampf p₂ (p-start (at e)) _ cfc sl sv′ rets′ () eF eC H eRets eSv eSl abv area ev sk fr rest nx I lv Fa
-      rc-trampf p₂ (p-tramp _ _) _ cfc sl sv′ rets′ () eF eC H eRets eSv eSl abv area ev sk fr rest nx I lv Fa
+      rc-trampf p₂ l₂ (p-start (at e)) _ cfc sl sv′ rets′ () eF eC H eRets eSv eSl abv area ev sk fr rest nx I lv Fa
+      rc-trampf p₂ l₂ (p-tramp _ _) _ cfc sl sv′ rets′ () eF eC H eRets eSv eSl abv area ev sk fr rest nx I lv Fa

@@ -15,7 +15,7 @@ open import Data.List.Membership.Propositional using (_∈_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Unit using (tt)
-open import Data.Bool using (false)
+open import Data.Bool using (false; true)
 open import Function using (case_of_)
 open import Relation.Nullary using (¬_)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
@@ -218,17 +218,17 @@ module RecloseC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
              → RetOK (rtramp p) (trFin (idx p) κ) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
              → InBlk fs → LiveG r (es ∥ x′ ∷ˢ os) fs → FreshAl (falloc fs)
              → Arrives k r (es ∥ mfn (szc X , n) lam x′ ∷ˢ os) (suc n) fs
-  greclose-t {X = X} {k = k} {r = r} {lam = lam} {i} {x} {x′} {fs = fs} (it-tc3 {C = C} p) {es = vw cv []ᵉ} {os} refl inv T2 refl ok I lv Fa =
+  greclose-t {X = X} {k = k} {r = r} {lam = lam} {i} {x} {x′} {fs = fs} (it-tc3 {C = C} p l) {es = vw cv []ᵉ} {os} refl inv T2 refl ok I lv Fa =
     fin (fn-inv (TrC2.c2-cv T2))
     where
       w = wsz X
       fin : (cellPtr (TrC2.c2-i T2) ∷ [] ≡ cellPtr i ∷ []) × FnP (LocState.heapMem (floc fs)) i lam x → _
       fin (e , P) =
-        case tc-reclose {X} {C} p (szc X) {i = i} T2 (trans (TrC2.c2-s₂ T2) (cong just (hd-eq e))) e₁ e₂ e₃ e₄ (cell-below {fs = fs} {i = i} {k = 1} I e₁) (Fa _ Data.Nat.Properties.≤-refl) of λ where
+        case tc-reclose {X} {C} p l (szc X) {i = i} T2 (trans (TrC2.c2-s₂ T2) (cong just (hd-eq e))) e₁ e₂ e₃ e₄ (cell-below {fs = fs} {i = i} {k = 1} I e₁) (Fa _ Data.Nat.Properties.≤-refl) of λ where
           (fs′ , st , RC , pc4) →
             _ , fs′ , st ,
             record { g-pt = p-tramp p (at (next (next (next (next whole)))))
-                   ; g-here = (tc4 p , record { c4-pc = pc4 ; c4-run = trans (rc-halt RC) (TrC2.c2-run T2) ; c4-slots = trans (cong AllocState.frame-slots (rc-alloc RC)) (TrC2.c2-slots T2)
+                   ; g-here = (tc4 p l , record { c4-pc = pc4 ; c4-run = trans (rc-halt RC) (TrC2.c2-run T2) ; c4-slots = trans (cong AllocState.frame-slots (rc-alloc RC)) (TrC2.c2-slots T2)
                                               ; c4-af = TrC2.c2-af T2 ; c4-d = TrC2.c2-d T2
                                               ; c4-s₁ = trans (rc-slot RC w (s₃≢w w)) (TrC2.c2-s₁ T2)
                                               ; c4-w = cellPtr (szc X , AllocState.next-heap-ref (falloc fs))
@@ -275,17 +275,17 @@ module RecloseC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
               → RetOK (rtramp p) (trFin (idx p) κ) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
               → InBlk fs → LiveG r (es ∥ q′ ∷ˢ os) fs → FreshAl (falloc fs)
               → Arrives k r (es ∥ mnu (szν F S′ , n) q′ ∷ˢ os) (suc n) fs
-  grecloseν-t {F = F} {S′} {k = k} {r = r} {i} {q} {q′} {fs = fs} (it-tc3 p) {es = vw cv []ᵉ} {os} refl inv T2 refl ok I lv Fa =
+  grecloseν-t {F = F} {S′} {k = k} {r = r} {i} {q} {q′} {fs = fs} (it-tc3 p l) {es = vw cv []ᵉ} {os} refl inv T2 refl ok I lv Fa =
     fin (nu-inv (TrC2.c2-cv T2))
     where
       w = wsz (Coalg F S′ ⊗t S′)
       fin : (cellPtr (TrC2.c2-i T2) ∷ [] ≡ cellPtr i ∷ []) × NuP (LocState.heapMem (floc fs)) i q → _
       fin (e , P) =
-        case tc-reclose {Coalg F S′ ⊗t S′} {Nu F} p (szν F S′) {i = i} T2 (trans (TrC2.c2-s₂ T2) (cong just (hd-eq e))) e₁ e₂ e₃ e₄ (cell-below {fs = fs} {i = i} {k = 1} I e₁) (Fa _ Data.Nat.Properties.≤-refl) of λ where
+        case tc-reclose {Coalg F S′ ⊗t S′} {Nu F} p l (szν F S′) {i = i} T2 (trans (TrC2.c2-s₂ T2) (cong just (hd-eq e))) e₁ e₂ e₃ e₄ (cell-below {fs = fs} {i = i} {k = 1} I e₁) (Fa _ Data.Nat.Properties.≤-refl) of λ where
           (fs′ , st , RC , pc4) →
             _ , fs′ , st ,
             record { g-pt = p-tramp p (at (next (next (next (next whole)))))
-                   ; g-here = (tc4 p , record { c4-pc = pc4 ; c4-run = trans (rc-halt RC) (TrC2.c2-run T2) ; c4-slots = trans (cong AllocState.frame-slots (rc-alloc RC)) (TrC2.c2-slots T2)
+                   ; g-here = (tc4 p l , record { c4-pc = pc4 ; c4-run = trans (rc-halt RC) (TrC2.c2-run T2) ; c4-slots = trans (cong AllocState.frame-slots (rc-alloc RC)) (TrC2.c2-slots T2)
                                               ; c4-af = TrC2.c2-af T2 ; c4-d = TrC2.c2-d T2
                                               ; c4-s₁ = trans (rc-slot RC w (s₃≢w w)) (TrC2.c2-s₁ T2)
                                               ; c4-w = cellPtr (szν F S′ , AllocState.next-heap-ref (falloc fs))

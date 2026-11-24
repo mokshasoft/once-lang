@@ -85,7 +85,9 @@ module TrampC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open FlatState using (floc; falloc; fret; fpc)
   open FrameSemantics FS using (_≺_)
   open TrImg {FS} ds f ldConst ld-nl using (image-tr)
-  open Tr U ncty ldConst using (trAt)
+  open Tr U ncty ldConst using (trAt; trAtC; tr-inC; if-in-pre)
+  open In U using (inCc)
+  open import Data.Bool using (true; false; if_then_else_)
   open Rel {FS} U wordOf using (CfgW; VW; vpair; vfn; vnu; SlotsAt; cellPtr)
   open import Once.LinCore.Moves {FS} using (slot; InBlk)
   open import Once.LinCore.LowerSim fmt ans bw using (module Sim)
@@ -175,24 +177,36 @@ module TrampC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     shuf20 : ∀ a b → a + (20 + b) ≡ b + (20 + a)
     shuf20 = solve-∀
 
+  -- (D484: a live trampoline's point is at its own code's place)
+  tC-at : ∀ {X C} (p : under (ktrc X C) ∈ allK U) → liveT (idx p) ≡ true → ∀ d
+        → trPos (ktrc X C) p d ≡ length (tCQ {X} {C} p ++ proj₁ (tr-inC (idx p) X d))
+  tC-at {X} {C} p l d = cong (λ z → length (tCQ {X} {C} p ++ z)) (if-in-pre (liveT (idx p)) l (tr-inC (idx p) X d))
+
   -- the addresses of the trampoline's points
-  tC-pos₁ : ∀ {X C} (p : under (ktrc X C) ∈ allK U) → trPos (ktrc X C) p 1 ≡ suc (suc (suc (trPos (ktrc X C) p 0)))
-  tC-pos₁ {X} {C} p = trans (pre-len (tCQ {X} {C} p) (tCP0 {X} {C} p) (tCP1 X)) (Data.Nat.Properties.+-comm (trPos (ktrc X C) p 0) 3)
+  tC-pos₁ : ∀ {X C} (p : under (ktrc X C) ∈ allK U) → liveT (idx p) ≡ true → trPos (ktrc X C) p 1 ≡ suc (suc (suc (trPos (ktrc X C) p 0)))
+  tC-pos₁ {X} {C} p l =
+    trans (tC-at {X} {C} p l 1) (trans (pre-len (tCQ {X} {C} p) (tCP0 {X} {C} p) (tCP1 X))
+      (trans (cong (_+ 3) (sym (tC-at {X} {C} p l 0))) (Data.Nat.Properties.+-comm (trPos (ktrc X C) p 0) 3)))
 
-  tC-pos₂ : ∀ {X C} (p : under (ktrc X C) ∈ allK U) → trPos (ktrc X C) p 2 ≡ suc (suc (suc (suc (trPos (ktrc X C) p 1))))
-  tC-pos₂ {X} {C} p = trans (pre-len (tCQ {X} {C} p) (tCP0 {X} {C} p ++ tCP1 X) (tCP2 {X} {C} p)) (Data.Nat.Properties.+-comm (trPos (ktrc X C) p 1) 4)
+  tC-pos₂ : ∀ {X C} (p : under (ktrc X C) ∈ allK U) → liveT (idx p) ≡ true → trPos (ktrc X C) p 2 ≡ suc (suc (suc (suc (trPos (ktrc X C) p 1))))
+  tC-pos₂ {X} {C} p l =
+    trans (tC-at {X} {C} p l 2) (trans (pre-len (tCQ {X} {C} p) (tCP0 {X} {C} p ++ tCP1 X) (tCP2 {X} {C} p))
+      (trans (cong (_+ 4) (sym (tC-at {X} {C} p l 1))) (Data.Nat.Properties.+-comm (trPos (ktrc X C) p 1) 4)))
 
-  tC-pos₄ : ∀ {X C} (p : under (ktrc X C) ∈ allK U)
+  tC-pos₄ : ∀ {X C} (p : under (ktrc X C) ∈ allK U) → liveT (idx p) ≡ true
           → trPos (ktrc X C) p 4 ≡ Once.LinCore.Moves.ln {FS} (wsz X) + (20 + trPos (ktrc X C) p 2)
-  tC-pos₄ {X} {C} p =
-    trans (pre-len (tCQ {X} {C} p) ((tCP0 {X} {C} p ++ tCP1 X) ++ tCP2 {X} {C} p) (tCR X))
+  tC-pos₄ {X} {C} p l =
+    trans (tC-at {X} {C} p l 4) (trans (pre-len (tCQ {X} {C} p) ((tCP0 {X} {C} p ++ tCP1 X) ++ tCP2 {X} {C} p) (tCR X))
+      (trans (cong (_+ length (tCR X)) (sym (tC-at {X} {C} p l 2)))
       (trans (cong (λ z → trPos (ktrc X C) p 2 + (20 + z)) (len-mvSP 0 hdr (wsz X)))
-             (shuf20 (trPos (ktrc X C) p 2) (Once.LinCore.Moves.ln {FS} (wsz X))))
+             (shuf20 (trPos (ktrc X C) p 2) (Once.LinCore.Moves.ln {FS} (wsz X))))))
     where open import Once.LinCore.LowerSimE {FS} using (len-mvSP)
 
   private
-    tC-seg : ∀ {X C} (p : under (ktrc X C) ∈ allK U) (d : ℕ) {pc} → pc ≡ trPos (ktrc X C) p d → Seg image pc (trAt (idx p) (ktrc X C) d)
-    tC-seg {X} {C} p d {pc} e = subst (λ z → Seg image z (trAt (idx p) (ktrc X C) d)) (sym e) (in-seg (image-tr (ktrc X C) p d))
+    tC-seg : ∀ {X C} (p : under (ktrc X C) ∈ allK U) → liveT (idx p) ≡ true → ∀ (d : ℕ) {pc} → pc ≡ trPos (ktrc X C) p d → Seg image pc (trAtC (idx p) X d)
+    tC-seg {X} {C} p l d {pc} e =
+      subst (λ b → Seg image pc (if b then trAtC (idx p) X d else [])) l
+        (subst (λ z → Seg image z (trAt (idx p) (ktrc X C) d)) (sym e) (in-seg (image-tr (ktrc X C) p d)))
 
   -- ★ its dispatch (`ccopy`/`ncopy`): into the trampoline the cell's word 2 names, at depth 0 (TrC0);
   -- word 1's address is in the cell's block (D441: a written word)
@@ -204,18 +218,19 @@ module TrampC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
           → slot fs c ≡ just (cellPtr i)
           → VW (LocState.heapMem (floc fs)) cv (cellPtr i ∷ [])
           → Rel.At {FS} U wordOf (LocState.heapMem (floc fs)) i 0 (cellPtr i ∷ w₁ ∷ w₂ ∷ wf ∷ wx)
-          → Rel.CodeOf {FS} U wordOf (kc X) w₂
+          → Rel.CodeOfC {FS} U wordOf X w₂
           → InBlk fs
-          → Σ (under (ktrc X C) ∈ allK U) λ p → Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′
+          → Σ (under (ktrc X C) ∈ allK U) λ p → liveT (idx p) ≡ true × Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′
               × TrC0 (wsz X) (trPos (ktrc X C) p 0) cv fs′
               × Σ ℕ λ q → CopyIn fs fs′ (cellPtr i) d (suc (suc (suc (wsz X)))) (wsz X) (suc (wsz X)) q
-  tc-disp {X} {C} c d {i} {cv} {wx} {fs = fs} seg h lc ld sx pcv words (m , refl) I =
-    m , fin (copy-in image fs c d (cellLoc i 0) (tl (idx m)) (e-thunk (tl (idx m))) q (suc (suc (suc (wsz X)))) (wsz X) (suc (wsz X))
+  tc-disp {X} {C} c d {i} {cv} {wx} {fs = fs} seg h lc ld sx pcv words (xc , refl) I =
+    m , live-c xc , fin (copy-in image fs c d (cellLoc i 0) (tl (idx m)) (e-thunk (tl (idx m))) q (suc (suc (suc (wsz X)))) (wsz X) (suc (wsz X))
                (λ e → Data.Nat.Properties.<-irrefl e (Data.Nat.Properties.n<1+n (wsz X)))
-               sx (proj₂ (I (cellLoc i 1) (proj₁ (proj₂ words)))) (proj₁ (proj₂ (proj₂ words))) seg (image-tramp m refl) segq h
+               sx (proj₂ (I (cellLoc i 1) (proj₁ (proj₂ words)))) (proj₁ (proj₂ (proj₂ words))) seg (image-tramp m (tramp-c xc)) segq h
                lc ld (Data.Nat.Properties.m<n⇒m<1+n (Data.Nat.Properties.m<n⇒m<1+n (Data.Nat.Properties.n<1+n (wsz X))))
                (Data.Nat.Properties.m<n⇒m<1+n (Data.Nat.Properties.n<1+n (suc (wsz X)))))
     where
+      m = inCc xc
       LB = lowBlock (idx m) (kcopy X) (blocks-in m)
       q = length (proj₁ (image-at m)) + length LB
       Q = proj₁ (in-trans (image-at m) (in-r LB (tramp (idx m) (kcopy X))))
@@ -225,12 +240,12 @@ module TrampC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       segq : Seg image q (instr-ctrl (c-entry (e-thunk (tl (idx m))) (suc (suc (suc (wsz X))))) ∷ store-at-slot (suc (wsz X))
                           ∷ mov-to-output ∷ store-at-slot (wsz X) ∷ [])
       segq = Seg-++ˡ image q _ _
-               (subst (λ z → Seg image z (tramp (idx m) (kcopy X))) qQ
-                 (in-seg (in-trans (image-at m) (in-r LB (tramp (idx m) (kcopy X))))))
+               (subst (Seg image q) (tramp-c xc) (subst (λ z → Seg image z (tramp (idx m) (kcopy X))) qQ
+                 (in-seg (in-trans (image-at m) (in-r LB (tramp (idx m) (kcopy X)))))))
       fin : Σ FlatState (λ fs′ → FlatSteps image 12 fs fs′ × CopyIn fs fs′ (cellPtr i) d (suc (suc (suc (wsz X)))) (wsz X) (suc (wsz X)) q) → _
       fin (fs′ , run , CI) =
         12 , fs′ , run ,
-        record { c0-pc = trans (cy-pc CI) (sym (trans (length-++ Q) (trans (cong (_+ 4) qQ) (Data.Nat.Properties.+-comm q 4))))
+        record { c0-pc = trans (cy-pc CI) (sym (trans (tC-at {X} {C} m (live-c xc) 0) (trans (length-++ Q) (trans (cong (_+ 4) qQ) (Data.Nat.Properties.+-comm q 4)))))
                ; c0-run = trans (cy-halt CI) h ; c0-slots = cy-slots CI
                ; c0-i = i ; c0-af = cf ; c0-d = d
                ; c0-lt = subst (_≺ cf) (sym (cy-frame CI)) (callee-below cf (suc (suc (suc (wsz X)))))
@@ -264,18 +279,18 @@ module TrampC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       s3-log   : LocState.ev-log (floc fs′) ≡ LocState.ev-log (floc fs)
 
   -- ★ its cell part (`copen`): the contents' address into save slot `suc (suc w)`
-  tc-open : ∀ {X C} (p : under (ktrc X C) ∈ allK U) {i} {cv : MV C} {x : MV X} {wx : List (StoredValue FS)} {fs}
+  tc-open : ∀ {X C} (p : under (ktrc X C) ∈ allK U) → liveT (idx p) ≡ true → ∀ {i} {cv : MV C} {x : MV X} {wx : List (StoredValue FS)} {fs}
           → (T : TrC0 (wsz X) (trPos (ktrc X C) p 0) cv fs)
           → slot fs (suc (wsz X)) ≡ just (cellPtr i) → VW (LocState.heapMem (floc fs)) cv (cellPtr i ∷ [])
           → VW (LocState.heapMem (floc fs)) x wx → Rel.At {FS} U wordOf (LocState.heapMem (floc fs)) i hdr wx
           → InBlk fs
           → Σ FlatState λ fs′ → FlatSteps image 3 fs fs′ × TrC1 (wsz X) (trPos (ktrc X C) p 1) cv x fs′ × S3W fs fs′ (suc (suc (wsz X)))
-  tc-open {X} {C} p {i} {cv} {x} {wx} {fs} T s₂ pcv px ax I =
+  tc-open {X} {C} p l {i} {cv} {x} {wx} {fs} T s₂ pcv px ax I =
     fs₃ ,
     step-at fs₁ (h , g₁) (restore-step fs (suc w) (subst (suc w Data.Nat.<_) (sym (TrC0.c0-slots T)) (Data.Nat.Properties.m<n⇒m<1+n (Data.Nat.Properties.n<1+n (suc w)))) s₂)
       (step-at fs₂ (h , g₂) (ca-step w fs₁ i wx (vw-len px) refl ax I)
         (step-at fs₃ (h , g₃) (store-step fs₂ (suc (suc w)) (subst (suc (suc w) Data.Nat.<_) (sym (TrC0.c0-slots T)) (Data.Nat.Properties.n<1+n (suc (suc w))))) FlatStepsAPI.[])) ,
-    record { c1-pc = trans (cong (λ z → suc (suc (suc z))) (TrC0.c0-pc T)) (sym (tC-pos₁ {X} {C} p))
+    record { c1-pc = trans (cong (λ z → suc (suc (suc z))) (TrC0.c0-pc T)) (sym (tC-pos₁ {X} {C} p l))
            ; c1-run = h ; c1-slots = TrC0.c0-slots T ; c1-i = i ; c1-af = TrC0.c0-af T ; c1-d = TrC0.c0-d T ; c1-lt = TrC0.c0-lt T
            ; c1-s₁ = trans (store-other (floc fs₂) cur (suc (suc w)) _ w (λ e → Data.Nat.Properties.<-irrefl (sym e) (Data.Nat.Properties.m≤n⇒m≤1+n (Data.Nat.Properties.n<1+n w))))
                        (TrC0.c0-s₁ T)
@@ -290,7 +305,7 @@ module TrampC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       w = wsz X
       cur = AllocState.current-frame (falloc fs)
       h = TrC0.c0-run T
-      sg₀ = tC-seg {X} {C} p 0 (TrC0.c0-pc T)
+      sg₀ = tC-seg {X} {C} p l 0 (TrC0.c0-pc T)
       g₁ = proj₁ sg₀
       g₂ = proj₁ (proj₂ sg₀)
       g₃ = proj₁ (proj₂ (proj₂ sg₀))
@@ -300,15 +315,15 @@ module TrampC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       fs₃ = record fs₂ { floc = MemOps.writeLoc {FS} (floc fs₂) (AtStack cur (suc (suc w))) ptr ; fpc = suc (fpc fs₂) }
 
   -- ★ its inner call: the copy's block, the area the frame's bottom, the view by pointer
-  tc-call : ∀ {X C} (p : under (ktrc X C) ∈ allK U) {cv : MV C} {x : MV X} {fs}
+  tc-call : ∀ {X C} (p : under (ktrc X C) ∈ allK U) → liveT (idx p) ≡ true → ∀ {cv : MV C} {x : MV X} {fs}
           → (T : TrC1 (wsz X) (trPos (ktrc X C) p 1) cv x fs)
           → Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′
               × K.Here p whole (vw x []ᵉ ∥ mone ∷ˢ []ˢ) fs′
               × CalledH fs fs′ (suc (suc (suc (suc (fpc fs))))) (fbudget (frameOf (blockᴵ (kcopy X)))) (sv₁ (frameOf (blockᴵ (kcopy X))))
                         (SV-Ptr (AtStack (AllocState.current-frame (falloc fs)) 0))
-  tc-call {X} {C} p {cv} {x} {fs} T =
+  tc-call {X} {C} p l {cv} {x} {fs} T =
     call-core-c p (suc (suc (wsz X))) (cOff (wsz X)) (TrC1.c1-i T) (TrC1.c1-wx T) []
-      (Seg-++ˡ image (fpc fs) (tCP2 {X} {C} p) _ (tC-seg {X} {C} p 1 (TrC1.c1-pc T))) (TrC1.c1-run T)
+      (Seg-++ˡ image (fpc fs) (tCP2 {X} {C} p) _ (tC-seg {X} {C} p l 1 (TrC1.c1-pc T))) (TrC1.c1-run T)
       (subst (0 Data.Nat.<_) (sym (TrC1.c1-slots T)) (Data.Nat.s≤s Data.Nat.z≤n))
       (subst (suc (suc (wsz X)) Data.Nat.<_) (sym (TrC1.c1-slots T)) (Data.Nat.Properties.n<1+n (suc (suc (wsz X))))) (TrC1.c1-s₃ T) (TrC1.c1-x T)
       (at-cOff (wsz X) (TrC1.c1-wx T) (vw-len (TrC1.c1-x T)) (TrC1.c1-at T)) Rel.vone tt (λ k ())
@@ -370,7 +385,7 @@ module TrampC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
             CO
 
   -- ★ `reclose`: a fresh cell, the viewed cell's code words, the copy's words
-  tc-reclose : ∀ {X C} (p : under (ktrc X C) ∈ allK U) (sz : ℕ) {i} {cv : MV C} {x′ : MV X} {w₁ w₂ w₃ w₄ : StoredValue FS} {fs}
+  tc-reclose : ∀ {X C} (p : under (ktrc X C) ∈ allK U) → liveT (idx p) ≡ true → ∀ (sz : ℕ) {i} {cv : MV C} {x′ : MV X} {w₁ w₂ w₃ w₄ : StoredValue FS} {fs}
              → (T : TrC2 (wsz X) (trPos (ktrc X C) p 3) cv x′ fs)
              → slot fs (suc (wsz X)) ≡ just (cellPtr i)
              → LocState.heapMem (floc fs) (cellLoc i 1) ≡ just w₁ → LocState.heapMem (floc fs) (cellLoc i 2) ≡ just w₂
@@ -379,7 +394,7 @@ module TrampC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
              → AllocState.freed (falloc fs) (AllocState.next-heap-ref (falloc fs)) ≡ false
              → Σ FlatState λ fs′ → FlatSteps image _ fs fs′ × ReCl fs fs′ (suc (suc (wsz X))) sz w₁ w₂ w₃ w₄ (TrC2.c2-wx T)
                  × fpc fs′ ≡ trPos (ktrc X C) p 4
-  tc-reclose {X} {C} p sz {i} {fs = fs} T s₂ e₁ e₂ e₃ e₄ ne fz =
+  tc-reclose {X} {C} p l sz {i} {fs = fs} T s₂ e₁ e₂ e₃ e₄ ne fz =
     fin (reclose-run image fs (suc w) (suc (suc w)) sz i _ _ _ _ (TrC2.c2-wx T)
            (subst (λ n → Seg image (fpc fs) (instr-alloc-heap (hdr + n) ∷ store-at-slot (suc (suc w))
                                    ∷ restore-input (suc w) ∷ load-at 1 ∷ restore-input (suc (suc w)) ∷ store-at 1
@@ -387,7 +402,7 @@ module TrampC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                                    ∷ restore-input (suc w) ∷ load-at 3 ∷ restore-input (suc (suc w)) ∷ store-at 3
                                    ∷ restore-input (suc w) ∷ load-at 4 ∷ restore-input (suc (suc w)) ∷ store-at 4
                                    ∷ mov-to-output ∷ store-at 0 ∷ mvSP 0 hdr n))
-                  (sym lw) (Seg-++ˡ image (fpc fs) (tCR X) _ (tC-seg {X} {C} p 3 (TrC2.c2-pc T))))
+                  (sym lw) (Seg-++ˡ image (fpc fs) (tCR X) _ (tC-seg {X} {C} p l 3 (TrC2.c2-pc T))))
            (TrC2.c2-run T)
            (subst (suc w Data.Nat.<_) (sym (TrC2.c2-slots T)) (Data.Nat.Properties.m<n⇒m<1+n (Data.Nat.Properties.n<1+n (suc w))))
            (subst (suc (suc w) Data.Nat.<_) (sym (TrC2.c2-slots T)) (Data.Nat.Properties.n<1+n (suc (suc w))))
@@ -406,10 +421,10 @@ module TrampC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       fin (fs′ , st , RC) =
         fs′ , st , RC ,
         trans (rc-pc RC) (trans (cong (λ n → Once.LinCore.Moves.ln {FS} n + (20 + fpc fs)) lw)
-                                (trans (cong (λ z → Once.LinCore.Moves.ln {FS} w + (20 + z)) (TrC2.c2-pc T)) (sym (tC-pos₄ {X} {C} p))))
+                                (trans (cong (λ z → Once.LinCore.Moves.ln {FS} w + (20 + z)) (TrC2.c2-pc T)) (sym (tC-pos₄ {X} {C} p l))))
 
   -- ★ its way out: the new cell's word into the caller's destination, the return
-  tc-end : ∀ {X C} (p : under (ktrc X C) ∈ allK U) {nv : MV C} {fs} (pc : ℕ) (rest : List ℕ)
+  tc-end : ∀ {X C} (p : under (ktrc X C) ∈ allK U) → liveT (idx p) ≡ true → ∀ {nv : MV C} {fs} (pc : ℕ) (rest : List ℕ)
              (sv : List (FrameSemantics.Frame FS × ℕ)) (sl : ℕ)
          → (T : TrC4 (wsz X) (trPos (ktrc X C) p 4) nv fs)
          → fret fs ≡ pc ∷ rest → AllocState.saved-frames (falloc fs) ≡ (TrC4.c4-af T , sl) ∷ sv
@@ -417,9 +432,9 @@ module TrampC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
          → TrC4.c4-d T Data.Nat.< sl
          → Σ FlatState λ fs′ → FlatSteps image _ fs fs′
              × CallOut fs fs′ (TrC4.c4-af T) (TrC4.c4-d T) (suc (suc (wsz X))) 0 1 pc rest sv sl
-  tc-end {X} {C} p {fs = fs} pc rest sv sl T hret hsv ne dlt =
+  tc-end {X} {C} p l {fs = fs} pc rest sv sl T hret hsv ne dlt =
     call-out image fs (TrC4.c4-af T) (TrC4.c4-d T) (wsz X) (suc (suc (wsz X))) 0 1 (suc (suc (suc (wsz X)))) pc rest sv sl hret (sym (TrC4.c4-slots T)) hsv ne
-      (TrC4.c4-s₁ T) (λ { zero _ → _ , TrC4.c4-s₃ T ; (suc k) (Data.Nat.s≤s ()) }) (λ { zero _ → dlt ; (suc k) (Data.Nat.s≤s ()) }) (tC-seg {X} {C} p 4 (TrC4.c4-pc T)) (TrC4.c4-run T)
+      (TrC4.c4-s₁ T) (λ { zero _ → _ , TrC4.c4-s₃ T ; (suc k) (Data.Nat.s≤s ()) }) (λ { zero _ → dlt ; (suc k) (Data.Nat.s≤s ()) }) (tC-seg {X} {C} p l 4 (TrC4.c4-pc T)) (TrC4.c4-run T)
       (subst (wsz X Data.Nat.<_) (sym (TrC4.c4-slots T))
          (Data.Nat.Properties.m<n⇒m<1+n (Data.Nat.Properties.m<n⇒m<1+n (Data.Nat.Properties.n<1+n (wsz X)))))
       (infr (Data.Nat.Properties.≤-reflexive (sym (TrC4.c4-slots T))) (Data.Nat.Properties.≤-reflexive (Data.Nat.Properties.+-comm (suc (suc (wsz X))) 1)))

@@ -16,7 +16,7 @@ open import Data.List.Membership.Propositional using (_∈_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Unit using (tt)
-open import Data.Bool using (false)
+open import Data.Bool using (false; true)
 open import Function using (case_of_)
 open import Relation.Nullary using (¬_)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
@@ -183,12 +183,12 @@ module RetC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
              → InBlk fs → LiveG r₁ (vw x (vw cv []ᵉ) ∥ w ∷ˢ []ˢ) fs → FreshAl (falloc fs)
              → ArrivesAt (epop ⨾ reclose ⨾ end) r₁ (vw x (vw cv []ᵉ) ∥ w ∷ˢ []ˢ) n fs
     gret-cc′ {X = X} {C} {x} {cv} {w = w} {fs = fs} p e cfc sl sv′ rets′ ci eF H eRets eSv eSl abv ap s₂ pcv fr
-             tail@(tc-info {Es = Es} {S = S} {k = k} {es = es} {os = os} {r = r} d af sl₂ sv₂ rets₂ eRets₂ eSv₂ eSl₂ abv₂ area₂ ev sk rest₂) nx I lv Fa =
+             tail@(tc-info {Es = Es} {S = S} {k = k} {es = es} {os = os} {r = r} l d af sl₂ sv₂ rets₂ eRets₂ eSv₂ eSl₂ abv₂ area₂ ev sk rest₂) nx I lv Fa =
       case tc-back {X} {C} p e cfc rets′ sv′ sl eF H eRets eSv (λ e″ → ≺-≢ abv (sym e″)) ap eSl of λ where
         (N , fs′ , run , (wv , pv , s0) , CO) →
           N , fs′ , run ,
           record { g-pt = p-tramp p (at (next (next whole)))
-                 ; g-here = (tc2 p , record
+                 ; g-here = (tc2 p l , record
                      { c2-pc = co-pc CO ; c2-run = trans (co-halt CO) (K.Here.h-run {p = p} H) ; c2-slots = trans (co-slots CO) eSl
                      ; c2-i = ci ; c2-af = af ; c2-d = Tp (dsiteφ d) S ∸ 1
                      ; c2-lt = subst (_≺ af) (sym (co-frame CO)) abv₂
@@ -305,8 +305,8 @@ module RetC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
             → ArrivesAt k r (es ∥ w ∷ˢ os) n fs
     gret-tc (p-start (at _)) _ d cfc sl sv′ rets′ () H eRets eSv eSl abv area ev sk fr rest nx I lv Fa
     gret-tc (p-block _ (at _)) _ d cfc sl sv′ rets′ () H eRets eSv eSl abv area ev sk fr rest nx I lv Fa
-    gret-tc {X = X} {C} {S = S} {es = es} {os = os} {r = R} {e′ = vw cv []ᵉ} {w = w} {fs = fs} (p-tramp _ _) _ (d-start s) cfc sl sv′ rets′ refl (tc4 p , T) eRets eSv eSl abv area ev sk fr rest nx I lv Fa =
-      case tc-end {X} {C} p (S.pos (next s)) rets′ sv′ sl T eRets (trans eSv (cong (λ g → (g , sl) ∷ sv′) (sym ea))) (λ e″ → ≺-≢ abv (trans (sym e″) ea))
+    gret-tc {X = X} {C} {S = S} {es = es} {os = os} {r = R} {e′ = vw cv []ᵉ} {w = w} {fs = fs} (p-tramp _ _) _ (d-start s) cfc sl sv′ rets′ refl (tc4 p l , T) eRets eSv eSl abv area ev sk fr rest nx I lv Fa =
+      case tc-end {X} {C} p l (S.pos (next s)) rets′ sv′ sl T eRets (trans eSv (cong (λ g → (g , sl) ∷ sv′) (sym ea))) (λ e″ → ≺-≢ abv (trans (sym e″) ea))
              (subst₂ Data.Nat._<_ (sym ed) (sym eSl) (Data.Nat.Properties.≤-<-trans (Data.Nat.Properties.≤-trans (Data.Nat.Properties.m∸n≤m _ 1) (Data.Nat.Properties.m∸n≤m (budget (frameOf main)) (ws S))) (Data.Nat.Properties.m<n⇒m<1+n (Data.Nat.Properties.n<1+n (budget (frameOf main)))))) of λ where
         (fs′ , run , CO₀) →
           let CO = subst₂ (λ g d₀ → CallOut fs fs′ g d₀ (suc (suc (wsz X))) 0 1 (S.pos (next s)) rets′ sv′ sl) ea ed CO₀
@@ -322,8 +322,8 @@ module RetC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
         pe = ptr-eq (trans (sym (TrC4.c4-s₁ T)) area)
         ea = proj₁ pe
         ed = proj₂ pe
-    gret-tc {X = X} {C} {S = S} {es = es} {os = os} {r = R} {e′ = vw cv []ᵉ} {w = w} {fs = fs} (p-tramp _ _) _ (d-block {κ′ = κ′} p′ s) cfc sl sv′ rets′ refl (tc4 p , T) eRets eSv eSl abv area ev sk fr rest nx I lv Fa =
-      case tc-end {X} {C} p (K.pos p′ (next s)) rets′ sv′ sl T eRets (trans eSv (cong (λ g → (g , sl) ∷ sv′) (sym ea))) (λ e″ → ≺-≢ abv (trans (sym e″) ea))
+    gret-tc {X = X} {C} {S = S} {es = es} {os = os} {r = R} {e′ = vw cv []ᵉ} {w = w} {fs = fs} (p-tramp _ _) _ (d-block {κ′ = κ′} p′ s) cfc sl sv′ rets′ refl (tc4 p l , T) eRets eSv eSl abv area ev sk fr rest nx I lv Fa =
+      case tc-end {X} {C} p l (K.pos p′ (next s)) rets′ sv′ sl T eRets (trans eSv (cong (λ g → (g , sl) ∷ sv′) (sym ea))) (λ e″ → ≺-≢ abv (trans (sym e″) ea))
              (subst₂ Data.Nat._<_ (sym ed) (sym eSl) (Data.Nat.Properties.≤-<-trans (Data.Nat.Properties.≤-trans (Data.Nat.Properties.m∸n≤m _ 1) (Data.Nat.Properties.m∸n≤m (budget (frameOf (blockᴵ κ′))) (ws S))) (Data.Nat.Properties.m<n⇒m<1+n (Data.Nat.Properties.n<1+n (budget (frameOf (blockᴵ κ′))))))) of λ where
         (fs′ , run , CO₀) →
           let CO = subst₂ (λ g d₀ → CallOut fs fs′ g d₀ (suc (suc (wsz X))) 0 1 (K.pos p′ (next s)) rets′ sv′ sl) ea ed CO₀

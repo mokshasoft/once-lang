@@ -77,7 +77,7 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open Program ds f using (U)
   open Program ds f using (ncty)
   open Program′ ds f ldConst using (image; j₀)
-  open Lowering U ncty ldConst using (Tp; fbudget; sv₁)
+  open Lowering U ncty ldConst using (Tp; fbudget; sv₁; liveT)
   open Calls {FS} ds f ldConst ld-nl wordOf using (blockR; module K; module From; call-core)
   open Rel {FS} U wordOf using (EnvW; StkW)
   open FlatMachine {FS} using (FlatState; module FlatState)
@@ -332,6 +332,7 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       c4-nv  : VW (LocState.heapMem (floc fs)) nv (c4-w ∷ [])
       c4-s₃  : slot fs (suc (suc w)) ≡ just c4-w
 
+  -- (D484: a copy's and a free's points at a LIVE index: their trampoline is emitted)
   -- the trampoline points related so far: a one-shot body's three, an observation's three, a free's three
   data TrPt : ∀ {σ sh V} {κ : Key σ} {c : Codeᴵ sh V} → under κ ∈ allK U → Pt (blockᴵ κ) c → Set where
     tp0 : ∀ {Γ′ g X A B} {ds′ : Defs Γ′} {b : Tm Γ′ One (X ⊗t A) B} {γ : Gd g b} (p : under (ktr1 ds′ b γ) ∈ allK U)
@@ -343,9 +344,9 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     to0 : ∀ {Γ′} {ds′ : Defs Γ′} {F S} (p : under (ktro ds′ F S) ∈ allK U) → TrPt {κ = ktro ds′ F S} p (at whole)
     to1 : ∀ {Γ′} {ds′ : Defs Γ′} {F S} (p : under (ktro ds′ F S) ∈ allK U) → TrPt {κ = ktro ds′ F S} p (at (next whole))
     to2 : ∀ {Γ′} {ds′ : Defs Γ′} {F S} (p : under (ktro ds′ F S) ∈ allK U) → TrPt {κ = ktro ds′ F S} p (at (next (next whole)))
-    tf0 : ∀ {X C} (p : under (ktrf X C) ∈ allK U) → TrPt {κ = ktrf X C} p (at whole)
-    tf1 : ∀ {X C} (p : under (ktrf X C) ∈ allK U) → TrPt {κ = ktrf X C} p (at (next whole))
-    tf2 : ∀ {X C} (p : under (ktrf X C) ∈ allK U) → TrPt {κ = ktrf X C} p (at (next (next whole)))
+    tf0 : ∀ {X C} (p : under (ktrf X C) ∈ allK U) → liveT (idx p) ≡ true → TrPt {κ = ktrf X C} p (at whole)
+    tf1 : ∀ {X C} (p : under (ktrf X C) ∈ allK U) → liveT (idx p) ≡ true → TrPt {κ = ktrf X C} p (at (next whole))
+    tf2 : ∀ {X C} (p : under (ktrf X C) ∈ allK U) → liveT (idx p) ≡ true → TrPt {κ = ktrf X C} p (at (next (next whole)))
     tw0 : ∀ {Γ′ g X A B} {ds′ : Defs Γ′} {b : Tm Γ′ X A B} {γ : Gd g b} (p : under (ktrω ds′ b γ) ∈ allK U)
         → TrPt {κ = ktrω ds′ b γ} p (at whole)
     tw1 : ∀ {Γ′ g X A B} {ds′ : Defs Γ′} {b : Tm Γ′ X A B} {γ : Gd g b} (p : under (ktrω ds′ b γ) ∈ allK U)
@@ -354,11 +355,11 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
         → TrPt {κ = ktrω ds′ b γ} p (at (next (next whole)))
     tw3 : ∀ {Γ′ g X A B} {ds′ : Defs Γ′} {b : Tm Γ′ X A B} {γ : Gd g b} (p : under (ktrω ds′ b γ) ∈ allK U)
         → TrPt {κ = ktrω ds′ b γ} p (at (next (next (next whole))))
-    tc0 : ∀ {X C} (p : under (ktrc X C) ∈ allK U) → TrPt {κ = ktrc X C} p (at whole)
-    tc1 : ∀ {X C} (p : under (ktrc X C) ∈ allK U) → TrPt {κ = ktrc X C} p (at (next whole))
-    tc2 : ∀ {X C} (p : under (ktrc X C) ∈ allK U) → TrPt {κ = ktrc X C} p (at (next (next whole)))
-    tc3 : ∀ {X C} (p : under (ktrc X C) ∈ allK U) → TrPt {κ = ktrc X C} p (at (next (next (next whole))))
-    tc4 : ∀ {X C} (p : under (ktrc X C) ∈ allK U) → TrPt {κ = ktrc X C} p (at (next (next (next (next whole)))))
+    tc0 : ∀ {X C} (p : under (ktrc X C) ∈ allK U) → liveT (idx p) ≡ true → TrPt {κ = ktrc X C} p (at whole)
+    tc1 : ∀ {X C} (p : under (ktrc X C) ∈ allK U) → liveT (idx p) ≡ true → TrPt {κ = ktrc X C} p (at (next whole))
+    tc2 : ∀ {X C} (p : under (ktrc X C) ∈ allK U) → liveT (idx p) ≡ true → TrPt {κ = ktrc X C} p (at (next (next whole)))
+    tc3 : ∀ {X C} (p : under (ktrc X C) ∈ allK U) → liveT (idx p) ≡ true → TrPt {κ = ktrc X C} p (at (next (next (next whole))))
+    tc4 : ∀ {X C} (p : under (ktrc X C) ∈ allK U) → liveT (idx p) ≡ true → TrPt {κ = ktrc X C} p (at (next (next (next (next whole)))))
 
   HereTr : ∀ {σ sh V} {κ : Key σ} {c : Codeᴵ sh V} {p : under κ ∈ allK U} {pt : Pt (blockᴵ κ) c} → TrPt p pt → Cfg sh → FlatState → Set
   HereTr (tp0 {X = X} {A} {B} {ds′} {b} {γ} p) (es ∥ (mpair (mfn i lam x) a ∷ˢ os)) fs =
@@ -369,10 +370,10 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   HereTr (to1 {ds′ = ds′} {F} {S} p) m fs = HereF (trφ (ktro ds′ F S)) (trB (ktro ds′ F S)) (trPos (ktro ds′ F S) p 1) m fs
   HereTr (to2 {ds′ = ds′} {F} {S} p) m fs = HereF (trφ (ktro ds′ F S)) (trB (ktro ds′ F S)) (trPos (ktro ds′ F S) p 2) m fs
   -- a free's cell: a closure's (`cfree`) or a ν's (`nfree`)
-  HereTr (tf0 {X = X} {C} p) (es ∥ (mfn i lam x ∷ˢ os)) fs = TrF0 (wsz X) (trPos (ktrf X C) p 0) i x fs
-  HereTr (tf0 {X = X} {C} p) (es ∥ (mnu i x ∷ˢ os)) fs = TrF0 (wsz X) (trPos (ktrf X C) p 0) i x fs
-  HereTr (tf1 {X = X} {C} p) m fs = HereF (trφ (ktrf X C)) (trB (ktrf X C)) (trPos (ktrf X C) p 1) m fs
-  HereTr (tf2 {X = X} {C} p) m fs = HereF (trφ (ktrf X C)) (trB (ktrf X C)) (trPos (ktrf X C) p 2) m fs
+  HereTr (tf0 {X = X} {C} p _) (es ∥ (mfn i lam x ∷ˢ os)) fs = TrF0 (wsz X) (trPos (ktrf X C) p 0) i x fs
+  HereTr (tf0 {X = X} {C} p _) (es ∥ (mnu i x ∷ˢ os)) fs = TrF0 (wsz X) (trPos (ktrf X C) p 0) i x fs
+  HereTr (tf1 {X = X} {C} p _) m fs = HereF (trφ (ktrf X C)) (trB (ktrf X C)) (trPos (ktrf X C) p 1) m fs
+  HereTr (tf2 {X = X} {C} p _) m fs = HereF (trφ (ktrf X C)) (trB (ktrf X C)) (trPos (ktrf X C) p 2) m fs
   -- a many-use body's: its cell the top view, the argument in the area; then the contents viewed;
   -- the result in the area (before and after `epop`: one address)
   HereTr (tw0 {A = A} {B} {ds′} {b} {γ} p) (vw (mfn i lam x) _ ∥ a ∷ˢ _) fs = TrW0 (wsz A ⊔ wsz B) (trPos (ktrω ds′ b γ) p 0) i x a fs
@@ -380,19 +381,19 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   HereTr (tw2 {A = A} {B} {ds′} {b} {γ} p) (_ ∥ v ∷ˢ _) fs = TrW2 (wsz A ⊔ wsz B) (trPos (ktrω ds′ b γ) p 2) v fs
   HereTr (tw3 {A = A} {B} {ds′} {b} {γ} p) (_ ∥ v ∷ˢ _) fs = TrW2 (wsz A ⊔ wsz B) (trPos (ktrω ds′ b γ) p 3) v fs
   -- a copy's: the viewed cell (and its contents viewed), the copy, the new cell
-  HereTr (tc0 {X = X} {C} p) (vw cv _ ∥ _) fs = TrC0 (wsz X) (trPos (ktrc X C) p 0) cv fs
-  HereTr (tc1 {X = X} {C} p) (vw x (vw cv _) ∥ _) fs = TrC1 (wsz X) (trPos (ktrc X C) p 1) cv x fs
-  HereTr (tc2 {X = X} {C} p) (vw _ (vw cv _) ∥ x′ ∷ˢ _) fs = TrC2 (wsz X) (trPos (ktrc X C) p 2) cv x′ fs
-  HereTr (tc3 {X = X} {C} p) (vw cv _ ∥ x′ ∷ˢ _) fs = TrC2 (wsz X) (trPos (ktrc X C) p 3) cv x′ fs
-  HereTr (tc4 {X = X} {C} p) (vw cv _ ∥ nv ∷ˢ _) fs = TrC4 (wsz X) (trPos (ktrc X C) p 4) nv fs
+  HereTr (tc0 {X = X} {C} p _) (vw cv _ ∥ _) fs = TrC0 (wsz X) (trPos (ktrc X C) p 0) cv fs
+  HereTr (tc1 {X = X} {C} p _) (vw x (vw cv _) ∥ _) fs = TrC1 (wsz X) (trPos (ktrc X C) p 1) cv x fs
+  HereTr (tc2 {X = X} {C} p _) (vw _ (vw cv _) ∥ x′ ∷ˢ _) fs = TrC2 (wsz X) (trPos (ktrc X C) p 2) cv x′ fs
+  HereTr (tc3 {X = X} {C} p _) (vw cv _ ∥ x′ ∷ˢ _) fs = TrC2 (wsz X) (trPos (ktrc X C) p 3) cv x′ fs
+  HereTr (tc4 {X = X} {C} p _) (vw cv _ ∥ nv ∷ˢ _) fs = TrC4 (wsz X) (trPos (ktrc X C) p 4) nv fs
   {-# CATCHALL #-}
-  HereTr (tf0 p) m fs = ⊥
+  HereTr (tf0 p _) m fs = ⊥
   {-# CATCHALL #-}
   HereTr (tw1 p) m fs = ⊥
   {-# CATCHALL #-}
-  HereTr (tc1 p) m fs = ⊥
+  HereTr (tc1 p _) m fs = ⊥
   {-# CATCHALL #-}
-  HereTr (tc2 p) m fs = ⊥
+  HereTr (tc2 p _) m fs = ⊥
 
   -- ★ at a point, in its root's frame (a trampoline's point, and the stop: owed)
   HereP : ∀ {sh V} {c : Codeᴵ sh V} → Pnt c → Cfg sh → FlatState → Set
@@ -428,7 +429,7 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     s-trampo : ∀ {Γ′} {ds′ : Defs Γ′} {F S′} (p : under (ktro ds′ F S′) ∈ allK U)
              → Site {t = nothing} {Es = []} {S = []} (proj₂ (under (ktro ds′ F S′))) (end {sh = [] ∣ LF∙ F (Nu F) ∷ []})
     -- a free's trampoline's inner call (D434): its contents' free
-    s-trampf : ∀ {X C} (p : under (ktrf X C) ∈ allK U)
+    s-trampf : ∀ {X C} (p : under (ktrf X C) ∈ allK U) → liveT (idx p) ≡ true
              → Site {t = nothing} {Es = []} {S = []} (proj₂ (under (ktrf X C))) (end {sh = [] ∣ One ∷ []})
 
   module _ {t A B Es S V} {κ : Key (bsig t A B)} {k : Codeᴵ (t ⊳ Es ∣ B ∷ S) V} where
@@ -437,7 +438,7 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     siteRoot (s-block p′ _) = rblock p′
     siteRoot (s-tramp {ds′ = ds′} {b} {γ} p) = rtramp {κ = ktr1 ds′ b γ} p
     siteRoot (s-trampo {ds′ = ds′} {F} {S′} p) = rtramp {κ = ktro ds′ F S′} p
-    siteRoot (s-trampf {X = X} {C} p) = rtramp {κ = ktrf X C} p
+    siteRoot (s-trampf {X = X} {C} p _) = rtramp {κ = ktrf X C} p
 
     -- the block the call was lowered to reach
     siteCallee : Site κ k → (bsig t A B , κ) ∈ allK U
@@ -445,7 +446,7 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     siteCallee (s-block p′ s) = FrK.callee p′ s
     siteCallee (s-tramp p)    = p
     siteCallee (s-trampo p)   = p
-    siteCallee (s-trampf p)   = p
+    siteCallee (s-trampf p _) = p
 
     -- the caller's frame, the address after the call, its way out
     siteφ : Site κ k → Frame
@@ -453,7 +454,7 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     siteφ (s-block {κ′ = κ′} p′ _)    = frameOf (blockᴵ κ′)
     siteφ (s-tramp {ds′ = ds′} {b} {γ} p) = trφ (ktr1 ds′ b γ)
     siteφ (s-trampo {ds′ = ds′} {F} {S′} p) = trφ (ktro ds′ F S′)
-    siteφ (s-trampf {X = X} {C} p) = trφ (ktrf X C)
+    siteφ (s-trampf {X = X} {C} p _) = trφ (ktrf X C)
 
     -- the caller's reservation: its frame's budget, a trampoline's its own
     siteB : Site κ k → ℕ
@@ -461,21 +462,21 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     siteB (s-block {κ′ = κ′} p′ _)    = fbudget (frameOf (blockᴵ κ′))
     siteB (s-tramp {ds′ = ds′} {b} {γ} p) = trB (ktr1 ds′ b γ)
     siteB (s-trampo {ds′ = ds′} {F} {S′} p) = trB (ktro ds′ F S′)
-    siteB (s-trampf {X = X} {C} p) = trB (ktrf X C)
+    siteB (s-trampf {X = X} {C} p _) = trB (ktrf X C)
 
     sitePos : Site κ k → ℕ
     sitePos (s-start s)    = FrS.C.pos (next s)
     sitePos (s-block p′ s) = FrK.C.pos p′ (next s)
     sitePos (s-tramp {ds′ = ds′} {b} {γ} p) = trPos (ktr1 ds′ b γ) p 2
     sitePos (s-trampo {ds′ = ds′} {F} {S′} p) = trPos (ktro ds′ F S′) p 2
-    sitePos (s-trampf {X = X} {C} p) = trPos (ktrf X C) p 2
+    sitePos (s-trampf {X = X} {C} p _) = trPos (ktrf X C) p 2
 
     siteFin : Site κ k → AbstractTrace
     siteFin (s-start s)    = SA.Low.lfin (S.lowAt s)
     siteFin (s-block p′ s) = KA.Low.lfin {p = p′} (K.lowAt p′ s)
     siteFin (s-tramp {ds′ = ds′} {b} {γ} p) = trAt (idx p) (ktr1 ds′ b γ) 2
     siteFin (s-trampo {ds′ = ds′} {F} {S′} p) = trAt (idx p) (ktro ds′ F S′) 2
-    siteFin (s-trampf {X = X} {C} p) = trAt (idx p) (ktrf X C) 2
+    siteFin (s-trampf {X = X} {C} p _) = trAt (idx p) (ktrf X C) 2
 
   -- ★ a site, by its kind: the one split on a site (its index unification
   -- costs tens of seconds in a large context), its cases in one record
@@ -489,7 +490,7 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       on-tramp  : ∀ {Γ′ g X A B} {ds′ : Defs Γ′} {b : Tm Γ′ One (X ⊗t A) B} {γ : Gd g b}
                   (p : under (ktr1 ds′ b γ) ∈ allK U) → SP (s-tramp p)
       on-trampo : ∀ {Γ′} {ds′ : Defs Γ′} {F S′} (p : under (ktro ds′ F S′) ∈ allK U) → SP (s-trampo p)
-      on-trampf : ∀ {X C} (p : under (ktrf X C) ∈ allK U) → SP (s-trampf {X = X} {C} p)
+      on-trampf : ∀ {X C} (p : under (ktrf X C) ∈ allK U) (l : liveT (idx p) ≡ true) → SP (s-trampf {X = X} {C} p l)
 
   site-elim : (C : SiteCases) → ∀ {t A B Es S V} {κ : Key (bsig t A B)} {k : Codeᴵ (t ⊳ Es ∣ B ∷ S) V}
               (st : Site κ k) → SiteCases.SP C st
@@ -497,7 +498,7 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   site-elim C (s-block p′ s) = SiteCases.on-block C p′ s
   site-elim C (s-tramp p)    = SiteCases.on-tramp C p
   site-elim C (s-trampo p)   = SiteCases.on-trampo C p
-  site-elim C (s-trampf {X = X} {C′} p) = SiteCases.on-trampf C {X} {C′} p
+  site-elim C (s-trampf {X = X} {C′} p l) = SiteCases.on-trampf C {X} {C′} p l
 
   -- ★ a dispatch site: a dispatch through a cell's code word (`icall`,
   -- `iobs`) in the start's code or a block's (D438)
@@ -571,7 +572,7 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     -- area (the result is One, no words)
     ok-trampf : ∀ {X C} {Es D S V} {i : Insᴵ (Es ∣ D ∷ S) (Es ∣ One ∷ S)} {k : Codeᴵ (Es ∣ One ∷ S) V}
                   {es : Slots Es} {os : Stk S} {r : Ret V T} {R fin cur rets sv fs}
-                  (p : under (ktrf X C) ∈ allK U) (d : DSite i k) (cfc : FrameSemantics.Frame FS) (sl : ℕ)
+                  (p : under (ktrf X C) ∈ allK U) (l : liveT (idx p) ≡ true) (d : DSite i k) (cfc : FrameSemantics.Frame FS) (sl : ℕ)
                   (sv′ : List (FrameSemantics.Frame FS × ℕ)) (rets′ : List ℕ)
               → R ≡ rtramp {κ = ktrf X C} p → fin ≡ trFin (idx p) (ktrf X C)
               → rets ≡ dsitePos d ∷ rets′ → sv ≡ (cfc , sl) ∷ sv′ → sl ≡ fbudget (dsiteφ d) → cur ≺ cfc
@@ -612,7 +613,7 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     -- destination (the top operand's slot) in the trampoline frame's save slot `w`
     ok-trampc : ∀ {X C} {Es S V} {i : Insᴵ (C ∷ Es ∣ One ∷ S) (C ∷ Es ∣ C ∷ S)} {k : Codeᴵ (C ∷ Es ∣ C ∷ S) V}
                   {es : Slots (C ∷ Es)} {os : Stk S} {r : Ret V T} {R fin cur rets sv fs}
-                  (p : under (ktrc X C) ∈ allK U) (d : DSite i k) (cfc : FrameSemantics.Frame FS) (sl : ℕ)
+                  (p : under (ktrc X C) ∈ allK U) (l : liveT (idx p) ≡ true) (d : DSite i k) (cfc : FrameSemantics.Frame FS) (sl : ℕ)
                   (sv′ : List (FrameSemantics.Frame FS × ℕ)) (rets′ : List ℕ)
               → R ≡ rtramp {κ = ktrc X C} p → fin ≡ trFin (idx p) (ktrc X C)
               → rets ≡ dsitePos d ∷ rets′ → sv ≡ (cfc , sl) ∷ sv′ → sl ≡ fbudget (dsiteφ d) → cur ≺ cfc
@@ -739,8 +740,8 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     where
       ne : ¬ cfc ≡ cur₀
       ne e = ≺-≢ (≺-trans lt abv) (sym e)
-  ret-deep {cur = cur} cur₀ lt oth old (fes , fr) (aes , af) (ok-trampf {es = es} {os = os} p d cfc sl sv′ rets′ eR eF eRets eSv eSl abv ev sk rest) =
-    ok-trampf p d cfc sl sv′ rets′ eR eF eRets eSv eSl abv
+  ret-deep {cur = cur} cur₀ lt oth old (fes , fr) (aes , af) (ok-trampf {es = es} {os = os} p l d cfc sl sv′ rets′ eR eF eRets eSv eSl abv ev sk rest) =
+    ok-trampf p l d cfc sl sv′ rets′ eR eF eRets eSv eSl abv
       (env-stand (λ i le → proj₁ (fes i le)) (λ i m → proj₁ (aes i m)) old (envW-frame es (λ x _ → oth cfc x ne) ev))
       (stk-stand (λ i le → proj₂ (fes i le)) (λ i m → proj₂ (aes i m)) old (stk-all os (λ x → oth cfc x ne) sk))
       (ret-deep cur₀ (≺-trans lt abv) oth old fr af rest)
@@ -756,8 +757,8 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     where
       ne : ¬ cfc ≡ cur₀
       ne e = ≺-≢ (≺-trans lt abv) (sym e)
-  ret-deep {cur = cur} cur₀ lt oth old (fes , fr) (aes , af) (ok-trampc {es = es} {os = os} p d cfc sl sv′ rets′ eR eF eRets eSv eSl abv area ev sk rest) =
-    ok-trampc p d cfc sl sv′ rets′ eR eF eRets eSv eSl abv
+  ret-deep {cur = cur} cur₀ lt oth old (fes , fr) (aes , af) (ok-trampc {es = es} {os = os} p l d cfc sl sv′ rets′ eR eF eRets eSv eSl abv area ev sk rest) =
+    ok-trampc p l d cfc sl sv′ rets′ eR eF eRets eSv eSl abv
       (trans (oth cur _ (λ e → ≺-≢ lt (sym e))) area)
       (env-stand (λ i le → proj₁ (fes i le)) (λ i m → proj₁ (aes i m)) old (envW-frame es (λ x _ → oth cfc x ne) ev))
       (stk-stand (λ i le → proj₂ (fes i le)) (λ i m → proj₂ (aes i m)) old (stk-all os (λ x → oth cfc x ne) sk))
@@ -810,8 +811,8 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       import Data.Nat.Properties
       ne : ¬ cfc ≡ cur
       ne e = ≺-≢ abv (sym e)
-  ret-top {cur = cur} oth top old (fes , fr) (aes , af) (ok-trampf {es = es} {os = os} p d cfc sl sv′ rets′ refl eF eRets eSv eSl abv ev sk rest) =
-    ok-trampf p d cfc sl sv′ rets′ refl eF eRets eSv eSl abv
+  ret-top {cur = cur} oth top old (fes , fr) (aes , af) (ok-trampf {es = es} {os = os} p l d cfc sl sv′ rets′ refl eF eRets eSv eSl abv ev sk rest) =
+    ok-trampf p l d cfc sl sv′ rets′ refl eF eRets eSv eSl abv
       (env-stand (λ i le → proj₁ (fes i le)) (λ i m → proj₁ (aes i m)) old (envW-frame es (λ x _ → oth cfc x ne) ev))
       (stk-stand (λ i le → proj₂ (fes i le)) (λ i m → proj₂ (aes i m)) old (stk-all os (λ x → oth cfc x ne) sk))
       (ret-deep cur abv oth old fr af rest)
@@ -827,8 +828,8 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     where
       ne : ¬ cfc ≡ cur
       ne e = ≺-≢ abv (sym e)
-  ret-top {cur = cur} oth top old (fes , fr) (aes , af) (ok-trampc {X = X} {es = es} {os = os} p d cfc sl sv′ rets′ refl eF eRets eSv eSl abv area ev sk rest) =
-    ok-trampc p d cfc sl sv′ rets′ refl eF eRets eSv eSl abv
+  ret-top {cur = cur} oth top old (fes , fr) (aes , af) (ok-trampc {X = X} {es = es} {os = os} p l d cfc sl sv′ rets′ refl eF eRets eSv eSl abv area ev sk rest) =
+    ok-trampc p l d cfc sl sv′ rets′ refl eF eRets eSv eSl abv
       (trans (top (wsz X) Data.Nat.Properties.≤-refl) area)
       (env-stand (λ i le → proj₁ (fes i le)) (λ i m → proj₁ (aes i m)) old (envW-frame es (λ x _ → oth cfc x ne) ev))
       (stk-stand (λ i le → proj₂ (fes i le)) (λ i m → proj₂ (aes i m)) old (stk-all os (λ x → oth cfc x ne) sk))

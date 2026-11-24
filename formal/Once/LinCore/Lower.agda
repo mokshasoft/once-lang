@@ -22,11 +22,15 @@
 
 {-# OPTIONS --guardedness #-}
 
-open import Data.Bool using (Bool; true; false)
-open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _⊔_)
+open import Data.Bool using (Bool; true; false; if_then_else_)
+open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _⊔_; _≡ᵇ_)
 import Data.Nat.Properties
 open import Data.List using (List; []; _∷_; _++_; concat; length)
-open import Data.List.Membership.Propositional using (_∈_)
+open import Data.Bool.ListAction using (any)
+import Data.Bool
+open import Data.List.Membership.Propositional.Properties using (∈-++⁺ˡ; ∈-++⁺ʳ)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
+open import Data.List.Membership.Propositional using (_∈_; mapWith∈)
 open import Data.List.Relation.Unary.Any using (here; there)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 open import Data.Maybe using (Maybe; just; nothing)
@@ -60,7 +64,7 @@ open import Once.LinCore.Code fmt bw using (Sh; _∣_)
 open import Once.LinCore.Image fmt bw
 open import Once.LinCore.Values fmt bw using (wsz; hdr)
 open import Once.LinCore.Keys fmt bw
-open Univ using (tys; nus)
+open Univ using (tys; nus; cts)
 open import Once.LinCore.Layout fmt bw
 
 -- ★ D445: the sigop an op's code runs: its own, or a compare's block
@@ -127,11 +131,11 @@ contentsAddr (suc _) = addr-at hdr
 --
 -- `ldConst` loads a base constant into `Output` (the target's encoding of a
 -- word, a parameter until B1.7 wires the path); `ncty` is the universe's
--- fact that a ν's contents type is among its types (`KeysRun.ncty`).
+-- fact that a ν's contents type is a cell type (`Keys.Program.ncty`, D484).
 ------------------------------------------------------------------------
 
 module Lowering (U : Univ)
-                (ncty : ∀ {F S} → (F , S) ∈ nus U → cty (F , S) ∈ tys U)
+                (ncty : ∀ {F S} → (F , S) ∈ nus U → cty (F , S) ∈ cts U)
                 (ldConst : ∀ {b} → Lit b → AbstractInstr) where
   open In U
 
@@ -235,19 +239,19 @@ module Lowering (U : Univ)
   lowP ds (lop s) φ S p = lowOp s (cmpOf s) (Tp φ S)
   lowP ds (llam {X = X} b γ) φ S (kb , x) =
     let bot = Tp φ S ; wX = wsz X
-    in header wX (idx kb) (idx (inC x)) (idx (inF x)) (idx kb) ++ mvSP (bot ∸ wX) hdr wX
+    in header wX (idx kb) (idx (inCc x)) (idx (inFc x)) (idx kb) ++ mvSP (bot ∸ wX) hdr wX
        ++ mov-to-output ∷ store-at-slot (bot ∸ 1) ∷ []
   lowP ds (llamω {X = X} b γ) φ S (kb , x , ko) =
     let bot = Tp φ S ; wX = wsz X
-    in header wX (idx kb) (idx (inC x)) (idx (inF x)) (idx ko) ++ mvSP (bot ∸ wX) hdr wX
+    in header wX (idx kb) (idx (inCc x)) (idx (inFc x)) (idx ko) ++ mvSP (bot ∸ wX) hdr wX
        ++ mov-to-output ∷ store-at-slot (bot ∸ 1) ∷ []
   lowP ds (llamωᶜ {X = X} b₀ γ) φ S (kb , x , ko) =
     let bot = Tp φ S ; wX = wsz X
-    in header wX (idx kb) (idx (inC x)) (idx (inF x)) (idx ko) ++ mvSP (bot ∸ wX) hdr wX
+    in header wX (idx kb) (idx (inCc x)) (idx (inFc x)) (idx ko) ++ mvSP (bot ∸ wX) hdr wX
        ++ mov-to-output ∷ store-at-slot (bot ∸ 1) ∷ []
   lowP ds (lunf {F = F} {S = S₀}) φ S (n , o) =
     let bot = Tp φ S ; wP = wsz (cty (F , S₀))
-    in header wP (idx (inO o n)) (idx (inC (ncty n))) (idx (inF (ncty n))) (idx (inO o n)) ++ mvSP (bot ∸ wP) hdr wP
+    in header wP (idx (inO o n)) (idx (inCc (ncty n))) (idx (inFc (ncty n))) (idx (inO o n)) ++ mvSP (bot ∸ wP) hdr wP
        ++ mov-to-output ∷ store-at-slot (bot ∸ 1) ∷ []
   {-# CATCHALL #-}
   lowP ds g φ S p = []
@@ -387,6 +391,66 @@ module Lowering (U : Univ)
        ∷ mvPS (M ∸ wsz A) (Tp φ (A ∷ [])) (wsz A) ++ view φ
        ++ proj₁ (lowC φ j 0 fin (blockᴵ κ) ev)
 
+  -- ★ D484: the LIVE trampoline indices: a cell type's copy and free keys (a cell's words 2
+  -- and 3 name them); every other type's copy and free blocks are called by name only
+  liveIdx : List ℕ
+  liveIdx = mapWith∈ (cts U) (λ m → idx (inCc m)) ++ mapWith∈ (cts U) (λ m → idx (inFc m))
+
+  liveT : ℕ → Bool
+  liveT j = any (j ≡ᵇ_) liveIdx
+
+  -- a cell type's copy and free indices are live: their trampolines are the image's
+  private
+    mapWith∈-∈ : ∀ {A B : Set} (xs : List A) (f : ∀ {x} → x ∈ xs → B) {x} (m : x ∈ xs) → f m ∈ mapWith∈ xs f
+    mapWith∈-∈ (x ∷ xs) f (here refl) = here refl
+    mapWith∈-∈ (x ∷ xs) f (there m)   = there (mapWith∈-∈ xs (λ p → f (there p)) m)
+
+    ≡ᵇ-refl : ∀ n → (n ≡ᵇ n) ≡ true
+    ≡ᵇ-refl zero    = refl
+    ≡ᵇ-refl (suc n) = ≡ᵇ-refl n
+
+    ∨-l : ∀ {a} b → a ≡ true → (a Data.Bool.∨ b) ≡ true
+    ∨-l b refl = refl
+
+    ∨-r : ∀ a {b} → b ≡ true → (a Data.Bool.∨ b) ≡ true
+    ∨-r true  e = refl
+    ∨-r false e = e
+
+    any-∈ : ∀ j (xs : List ℕ) → j ∈ xs → any (j ≡ᵇ_) xs ≡ true
+    any-∈ j (x ∷ xs) (here refl) = ∨-l _ (≡ᵇ-refl j)
+    any-∈ j (x ∷ xs) (there m)   = ∨-r (j ≡ᵇ x) (any-∈ j xs m)
+
+  live-c : ∀ {T} (m : T ∈ cts U) → liveT (idx (inCc m)) ≡ true
+  live-c m = any-∈ _ liveIdx (∈-++⁺ˡ (mapWith∈-∈ (cts U) (λ m → idx (inCc m)) m))
+
+  live-f : ∀ {T} (m : T ∈ cts U) → liveT (idx (inFc m)) ≡ true
+  live-f m = any-∈ _ liveIdx (∈-++⁺ʳ (mapWith∈ (cts U) (λ m → idx (inCc m))) (mapWith∈-∈ (cts U) (λ m → idx (inFc m)) m))
+
+
+  -- a copy of a cell: its contents copied (the view the cell's), then a
+  -- fresh cell with the same code words
+  trampC : ℕ → LTy → AbstractTrace
+  trampC j T₀ =
+    let w = wsz T₀ ; s₁ = w ; s₂ = suc w ; s₃ = suc (suc w) ; b = suc s₃
+    in instr-ctrl (c-entry (e-thunk (tl j)) b)
+       ∷ store-at-slot s₂ ∷ mov-to-output ∷ store-at-slot s₁
+       ∷ restore-input s₂ ∷ contentsAddr w ∷ store-at-slot s₃
+       ∷ lea-slot 0 ∷ mov-to-input ∷ load-from-slot s₃ ∷ instr-ctrl (c-call-fn (nameOf j))
+       ∷ instr-alloc-heap (hdr + w) ∷ store-at-slot s₃
+       ∷ restore-input s₂ ∷ load-at 1 ∷ restore-input s₃ ∷ store-at 1
+       ∷ restore-input s₂ ∷ load-at 2 ∷ restore-input s₃ ∷ store-at 2
+       ∷ restore-input s₂ ∷ load-at 3 ∷ restore-input s₃ ∷ store-at 3
+       ∷ restore-input s₂ ∷ load-at 4 ∷ restore-input s₃ ∷ store-at 4
+       ∷ mov-to-output ∷ store-at 0 ∷ mvSP 0 hdr w
+       ++ restore-input s₁ ∷ load-from-slot s₃ ∷ store-at 0 ∷ instr-ctrl (c-ret b) ∷ []
+  -- a free of a cell: its contents out, the cell freed, then their free
+  trampF : ℕ → LTy → AbstractTrace
+  trampF j T₀ =
+    let w = wsz T₀
+    in instr-ctrl (c-entry (e-thunk (tl j)) (suc w))
+       ∷ store-at-slot w ∷ restore-input w ∷ mvPS hdr 0 w ++ instr-free-heap (hdr + w)
+       ∷ lea-slot 0 ∷ mov-to-input ∷ instr-ctrl (c-call-fn (nameOf j)) ∷ instr-ctrl (c-ret (suc w)) ∷ []
+
   -- ★ block `j`'s trampoline, by its key: the cell's part, then the block
   tramp : ∀ {σ} (j : ℕ) → Key σ → AbstractTrace
   -- one-shot body: the environment out of the cell, the argument from the
@@ -412,27 +476,10 @@ module Lowering (U : Univ)
        ∷ mvPS hdr (M ∸ wP) wP ++ restore-input M ∷ instr-free-heap (hdr + wP)
        ∷ lea-slot 0 ∷ mov-to-input ∷ instr-ctrl (c-call-fn (nameOf j))
        ∷ restore-input (suc M) ∷ mvSP (M ∸ wL) (Mc ∸ wL) wL ++ instr-ctrl (c-ret (suc (suc M))) ∷ []
-  -- a copy of a cell: its contents copied (the view the cell's), then a
-  -- fresh cell with the same code words
-  tramp j (kcopy T₀) =
-    let w = wsz T₀ ; s₁ = w ; s₂ = suc w ; s₃ = suc (suc w) ; b = suc s₃
-    in instr-ctrl (c-entry (e-thunk (tl j)) b)
-       ∷ store-at-slot s₂ ∷ mov-to-output ∷ store-at-slot s₁
-       ∷ restore-input s₂ ∷ contentsAddr w ∷ store-at-slot s₃
-       ∷ lea-slot 0 ∷ mov-to-input ∷ load-from-slot s₃ ∷ instr-ctrl (c-call-fn (nameOf j))
-       ∷ instr-alloc-heap (hdr + w) ∷ store-at-slot s₃
-       ∷ restore-input s₂ ∷ load-at 1 ∷ restore-input s₃ ∷ store-at 1
-       ∷ restore-input s₂ ∷ load-at 2 ∷ restore-input s₃ ∷ store-at 2
-       ∷ restore-input s₂ ∷ load-at 3 ∷ restore-input s₃ ∷ store-at 3
-       ∷ restore-input s₂ ∷ load-at 4 ∷ restore-input s₃ ∷ store-at 4
-       ∷ mov-to-output ∷ store-at 0 ∷ mvSP 0 hdr w
-       ++ restore-input s₁ ∷ load-from-slot s₃ ∷ store-at 0 ∷ instr-ctrl (c-ret b) ∷ []
-  -- a free of a cell: its contents out, the cell freed, then their free
-  tramp j (kfree T₀) =
-    let w = wsz T₀
-    in instr-ctrl (c-entry (e-thunk (tl j)) (suc w))
-       ∷ store-at-slot w ∷ restore-input w ∷ mvPS hdr 0 w ++ instr-free-heap (hdr + w)
-       ∷ lea-slot 0 ∷ mov-to-input ∷ instr-ctrl (c-call-fn (nameOf j)) ∷ instr-ctrl (c-ret (suc w)) ∷ []
+  -- ★ D484: a type's copy and free trampolines, only at a LIVE index (a cell type's: a cell's
+  -- words 2 and 3 name them); every other type's copy and free blocks are called by name only
+  tramp j (kcopy T₀) = if liveT j then trampC j T₀ else []
+  tramp j (kfree T₀) = if liveT j then trampF j T₀ else []
   -- a fold is never called through a cell
   tramp j (kfold ds F alg) = []
   -- the image's trampoline keys (D434) are not in the universe: their
@@ -447,14 +494,23 @@ module Lowering (U : Univ)
   -- 5. ★ THE IMAGE: the start, then every key's block and trampoline.
   ----------------------------------------------------------------------
 
+  -- …so a cell type's trampolines are emitted
+  tramp-c : ∀ {T} (m : T ∈ cts U) → tramp (idx (inCc m)) (kcopy T) ≡ trampC (idx (inCc m)) T
+  tramp-c {T} m = cong (λ b → if b then trampC (idx (inCc m)) T else []) (live-c m)
+
+  tramp-f : ∀ {T} (m : T ∈ cts U) → tramp (idx (inFc m)) (kfree T) ≡ trampF (idx (inFc m)) T
+  tramp-f {T} m = cong (λ b → if b then trampF (idx (inFc m)) T else []) (live-f m)
+
   -- the keys with their indices and their blocks' evidence
   blocksOf : ∀ (ks : List AKey) → (∀ {κ} → κ ∈ ks → BIn κ) → ℕ → AbstractTrace
   blocksOf []             ev j = []
   blocksOf ((σ , κ) ∷ ks) ev j = lowBlock j κ (ev (here refl)) ++ tramp j κ ++ blocksOf ks (λ p → ev (there p)) (suc j)
     where open import Relation.Binary.PropositionalEquality using (refl)
 
-module Program′ {Γ} (ds : Defs Γ) (f : LTm Γ One One) (ldConst : ∀ {b} → Lit b → AbstractInstr) where
-  open Program ds f using (U; blocks-in; start-in; ncty)
+-- ★ D485: over the universe computed once (`Keys.ProgramW`): every use reads the same lists
+module Program′W {Γ} (ds : Defs Γ) (f : LTm Γ One One) (ldConst : ∀ {b} → Lit b → AbstractInstr)
+                 (V : Univ) (eV : univ ds f ≡ V) where
+  open ProgramW ds f V eV using (U; blocks-in; start-in; ncty)
   open Lowering U ncty ldConst
 
   -- ★ the program's image: its start (the main term, ending in the Host's
@@ -468,3 +524,7 @@ module Program′ {Γ} (ds : Defs Γ) (f : LTm Γ One One) (ldConst : ∀ {b} �
     let main = compᴵ ds f {[]} {[]} end ; φ = frameOf main ; b = fbudget φ
     in instr-ctrl (c-start b) ∷ proj₁ (lowC φ j₀ 0 (instr-ctrl c-leave ∷ []) main (start-in {[]} {[]} tt))
        ++ blocksOf (allK U) blocks-in 0
+
+-- the program's: at its own universe (the driver's call computes it once)
+module Program′ {Γ} (ds : Defs Γ) (f : LTm Γ One One) (ldConst : ∀ {b} → Lit b → AbstractInstr) =
+  Program′W ds f ldConst (univ ds f) refl

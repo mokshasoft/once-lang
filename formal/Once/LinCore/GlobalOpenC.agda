@@ -15,7 +15,7 @@ open import Data.List.Membership.Propositional using (_∈_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Unit using (tt)
-open import Data.Bool using (false)
+open import Data.Bool using (false; true)
 open import Function using (case_of_)
 open import Relation.Nullary using (¬_)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
@@ -151,7 +151,7 @@ module OpenC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
 
 
   open TrV {FS} ds f ldConst ld-nl wordOf using (Is-tc0; it-tc0; copen-v)
-  open Rel {FS} U wordOf using (W; At; CodeOf; vw-frame)
+  open Rel {FS} U wordOf using (W; At; CodeOf; CodeOfC; CodeOfF; vw-frame)
 
   ----------------------------------------------------------------------
   -- a cell's value, inverted (its words' index a variable: `cellPtr` is no constructor)
@@ -162,8 +162,8 @@ module OpenC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       fp-wx : List W
       fp-wb fp-wc fp-wf fp-wo : W
       fp-cb : Word1 lam fp-wb
-      fp-cc : CodeOf (kc X) fp-wc
-      fp-cf : CodeOf (kf X) fp-wf
+      fp-cc : CodeOfC X fp-wc
+      fp-cf : CodeOfF X fp-wf
       fp-co : CodeOf (okey lam) fp-wo
       fp-x  : VW rd x fp-wx
       fp-at : At rd i 0 (cellPtr i ∷ fp-wb ∷ fp-wc ∷ fp-wf ∷ fp-wo ∷ fp-wx)
@@ -176,8 +176,8 @@ module OpenC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       np-wp : List W
       np-wo np-wc np-wf np-wo′ : W
       np-co : CodeOf (_ , kobs ε F S) np-wo
-      np-cc : CodeOf (kc (cty (F , S))) np-wc
-      np-cf : CodeOf (kf (cty (F , S))) np-wf
+      np-cc : CodeOfC (cty (F , S)) np-wc
+      np-cf : CodeOfF (cty (F , S)) np-wf
       np-co′ : CodeOf (_ , kobs ε F S) np-wo′
       np-p  : VW rd q np-wp
       np-at : At rd i 0 (cellPtr i ∷ np-wo ∷ np-wc ∷ np-wf ∷ np-wo′ ∷ np-wp)
@@ -208,7 +208,7 @@ module OpenC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
        : ∀ {U′} → Ret U′ T → FrameSemantics.Frame FS → List ℕ → List (FrameSemantics.Frame FS × ℕ) → FlatState → Set where
     tc-info : ∀ {Es S V} {i : Insᴵ (C ∷ Es ∣ One ∷ S) (C ∷ Es ∣ C ∷ S)} {k : Codeᴵ (C ∷ Es ∣ C ∷ S) V}
                 {es : Slots (C ∷ Es)} {os : Stk S} {r : Ret V T} {cur rets sv fs}
-                (d : DSite i k) (cfc : FrameSemantics.Frame FS) (sl : ℕ) (sv′ : List (FrameSemantics.Frame FS × ℕ)) (rets′ : List ℕ)
+                (l : liveT (idx p) ≡ true) (d : DSite i k) (cfc : FrameSemantics.Frame FS) (sl : ℕ) (sv′ : List (FrameSemantics.Frame FS × ℕ)) (rets′ : List ℕ)
             → rets ≡ dsitePos d ∷ rets′ → sv ≡ (cfc , sl) ∷ sv′ → sl ≡ fbudget (dsiteφ d) → cur ≺ cfc
             → LocState.stackMem (floc fs) cur (wsz X) ≡ just (SV-Ptr (AtStack cfc (Tp (dsiteφ d) S ∸ 1)))
             → EnvW (LocState.heapMem (floc fs)) (LocState.stackMem (floc fs) cfc) es
@@ -222,11 +222,11 @@ module OpenC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   tail-c (ok-loop K lk _) = ⊥-elim (loop-no K lk)
   tail-c (ok-call _ _ _ _ _ _ () _ _ _ _ _ _ _ _ _ _)
   tail-c (ok-tramp _ o _ _ _ _ _ refl _ _ _ _ _ _ _ _ _ _) = ⊥-elim (no-trm o)
-  tail-c (ok-trampf _ _ _ _ _ _ () _ _ _ _ _ _ _ _)
+  tail-c (ok-trampf _ _ _ _ _ _ _ () _ _ _ _ _ _ _ _)
   tail-c (ok-trampω _ _ _ _ _ _ () _ _ _ _ _ _ _ _ _ _ _)
   tail-c (ok-callω _ _ _ _ _ () _ _ _ _ _ _ _)
   tail-c (ok-callc _ _ _ _ _ _ () _ _ _ _ _ _ _ _ _)
-  tail-c (ok-trampc _ d cfc sl sv′ rets′ refl _ eRets eSv eSl abv area ev sk rest) = tc-info d cfc sl sv′ rets′ eRets eSv eSl abv area ev sk rest
+  tail-c (ok-trampc _ l d cfc sl sv′ rets′ refl _ eRets eSv eSl abv area ev sk rest) = tc-info l d cfc sl sv′ rets′ eRets eSv eSl abv area ev sk rest
 
   -- ★ the trampoline's level kept over a run that changed its frame's other slots and newer cells only
   trampc-keep : ∀ {T X C} {p : under (ktrc X C) ∈ allK U} {U′} {r₁ : Ret U′ T} {cur rets sv fs fs′}
@@ -235,8 +235,8 @@ module OpenC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
               → LocState.stackMem (floc fs′) cur (wsz X) ≡ LocState.stackMem (floc fs) cur (wsz X)
               → Old (AllocState.next-heap-ref (falloc fs)) [] fs fs′ → FreshR r₁ (AllocState.next-heap-ref (falloc fs))
               → RetOK (rtramp {κ = ktrc X C} p) (trFin (idx p) (ktrc X C)) r₁ cur rets sv fs′
-  trampc-keep {p = p} (tc-info {es = es} {os = os} {r = r₀} d cfc sl sv′ rets′ eRets eSv eSl abv area ev sk rest) oth s1 old fr =
-    ok-trampc p d cfc sl sv′ rets′ refl refl eRets eSv eSl abv (trans s1 area)
+  trampc-keep {p = p} (tc-info {es = es} {os = os} {r = r₀} l d cfc sl sv′ rets′ eRets eSv eSl abv area ev sk rest) oth s1 old fr =
+    ok-trampc p l d cfc sl sv′ rets′ refl refl eRets eSv eSl abv (trans s1 area)
       (env-stand (λ j le → proj₁ (proj₁ fr j le)) (λ _ ()) old (envW-frame es (λ y _ → oth cfc y ne) ev))
       (stk-stand (λ j le → proj₂ (proj₁ fr j le)) (λ _ ()) old (stk-all os (λ y → oth cfc y ne) sk))
       (ret-deep _ abv oth old (proj₂ fr) (away-[] r₀) rest)
@@ -274,17 +274,17 @@ module OpenC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
            → RetOK (rtramp p) (trFin (idx p) κ) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
            → InBlk fs → LiveG r (es ∥ os) fs → FreshAl (falloc fs)
            → Arrives k r (vw x es ∥ os) n fs
-  gcopen-t {X = X} {k = k} {r = r} {lam = lam} {i} {x} {n = n} {fs = fs} (it-tc0 {C = C} p) {es = vw cv []ᵉ} {os} refl inv T0 nx ok I lv Fa =
+  gcopen-t {X = X} {k = k} {r = r} {lam = lam} {i} {x} {n = n} {fs = fs} (it-tc0 {C = C} p l) {es = vw cv []ᵉ} {os} refl inv T0 nx ok I lv Fa =
     fin (fn-inv (TrC0.c0-cv T0))
     where
       st₁ = StepI.i-copen {k = k} {r = r} {lam = lam} {i = i} {x = x} {es = vw cv []ᵉ} {os = os} {n = n} refl
       fin : (cellPtr (TrC0.c0-i T0) ∷ [] ≡ cellPtr i ∷ []) × FnP (LocState.heapMem (floc fs)) i lam x → _
       fin (e , P) =
-        case tc-open {X} {C} p T0 (trans (TrC0.c0-s₂ T0) (cong just (hd-eq e))) (subst (VW (LocState.heapMem (floc fs)) cv) e (TrC0.c0-cv T0))
+        case tc-open {X} {C} p l T0 (trans (TrC0.c0-s₂ T0) (cong just (hd-eq e))) (subst (VW (LocState.heapMem (floc fs)) cv) e (TrC0.c0-cv T0))
                (FnP.fp-x P) (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (FnP.fp-at P)))))) I of λ where
           (fs′ , run , T1 , W3) →
             3 , fs′ , run ,
-            record { g-pt = p-tramp p (at (next whole)) ; g-here = (tc1 p , T1)
+            record { g-pt = p-tramp p (at (next whole)) ; g-here = (tc1 p l , T1)
                    ; g-next = trans (cong AllocState.next-heap-ref (S3W.s3-alloc W3)) nx
                    ; g-ret = open-ret W3 (subst (FreshR r) (sym nx) (fresh-ret inv)) ok
                    ; g-blk = inb-pt {fs} {fs′} (λ hl → cong (λ h′ → h′ hl) (S3W.s3-heap W3)) (cong AllocState.next-heap-ref (S3W.s3-alloc W3))
@@ -315,17 +315,17 @@ module OpenC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
             → RetOK (rtramp p) (trFin (idx p) κ) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
             → InBlk fs → LiveG r (es ∥ os) fs → FreshAl (falloc fs)
             → Arrives k r (vw q es ∥ os) n fs
-  gcopenν-t {F = F} {S′} {k = k} {r = r} {i} {q} {n = n} {fs = fs} (it-tc0 p) {es = vw cv []ᵉ} {os} refl inv T0 nx ok I lv Fa =
+  gcopenν-t {F = F} {S′} {k = k} {r = r} {i} {q} {n = n} {fs = fs} (it-tc0 p l) {es = vw cv []ᵉ} {os} refl inv T0 nx ok I lv Fa =
     fin (nu-inv (TrC0.c0-cv T0))
     where
       st₁ = StepI.i-copenν {k = k} {r = r} {i = i} {p = q} {es = vw cv []ᵉ} {os = os} {n = n} refl
       fin : (cellPtr (TrC0.c0-i T0) ∷ [] ≡ cellPtr i ∷ []) × NuP (LocState.heapMem (floc fs)) i q → _
       fin (e , P) =
-        case tc-open {Coalg F S′ ⊗t S′} {Nu F} p T0 (trans (TrC0.c0-s₂ T0) (cong just (hd-eq e))) (subst (VW (LocState.heapMem (floc fs)) cv) e (TrC0.c0-cv T0))
+        case tc-open {Coalg F S′ ⊗t S′} {Nu F} p l T0 (trans (TrC0.c0-s₂ T0) (cong just (hd-eq e))) (subst (VW (LocState.heapMem (floc fs)) cv) e (TrC0.c0-cv T0))
                (NuP.np-p P) (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (NuP.np-at P)))))) I of λ where
           (fs′ , run , T1 , W3) →
             3 , fs′ , run ,
-            record { g-pt = p-tramp p (at (next whole)) ; g-here = (tc1 p , T1)
+            record { g-pt = p-tramp p (at (next whole)) ; g-here = (tc1 p l , T1)
                    ; g-next = trans (cong AllocState.next-heap-ref (S3W.s3-alloc W3)) nx
                    ; g-ret = open-ret W3 (subst (FreshR r) (sym nx) (fresh-ret inv)) ok
                    ; g-blk = inb-pt {fs} {fs′} (λ hl → cong (λ h′ → h′ hl) (S3W.s3-heap W3)) (cong AllocState.next-heap-ref (S3W.s3-alloc W3))

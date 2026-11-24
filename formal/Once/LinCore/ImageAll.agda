@@ -23,6 +23,7 @@
 {-# OPTIONS --guardedness #-}
 
 open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _⊔_; _≤_; s≤s; z≤n)
+open import Data.Bool using (true; false; if_then_else_)
 open import Data.Nat.Properties using (m≤m⊔n; +-identityʳ; +-suc)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
@@ -81,7 +82,7 @@ LoadConst ldConst = ∀ {b} (v : Lit b) → Σ _ λ A → Σ (FitsInReg A) λ p 
 -- depend on it, but two applications are two stuck terms; `Emitted`'s is
 -- the arch layer's, at the program's name)
 module Ok (nm : CanonicalName) (U : Univ)
-          (ncty : ∀ {F S} → (F , S) ∈ nus U → cty (F , S) ∈ tys U)
+          (ncty : ∀ {F S} → (F , S) ∈ nus U → cty (F , S) ∈ Univ.cts U)
           (ldConst : ∀ {b} → Lit b → AbstractInstr) where
   open In U
   open Lowering U ncty ldConst
@@ -253,14 +254,14 @@ module Ok (nm : CanonicalName) (U : Univ)
     lowP-ok ds (blift _) φ S p    = []
     lowP-ok ds bcopy φ S p        = []
     lowP-ok ds (llam {X = X} b γ) φ S (kb , x) =
-      cell-ok (wsz X) kb (inC x) (inF x) kb (_ , _ , refl) (_ , _ , refl) (_ , _ , refl) (_ , _ , refl) (Tp φ S ∸ wsz X) hdr (Tp φ S ∸ 1)
+      cell-ok (wsz X) kb (inCc x) (inFc x) kb (_ , _ , refl) (_ , _ , tramp-c x) (_ , _ , tramp-f x) (_ , _ , refl) (Tp φ S ∸ wsz X) hdr (Tp φ S ∸ 1)
     lowP-ok ds (llamω {X = X} b γ) φ S (kb , x , ko) =
-      cell-ok (wsz X) kb (inC x) (inF x) ko (_ , _ , refl) (_ , _ , refl) (_ , _ , refl) (_ , _ , refl) (Tp φ S ∸ wsz X) hdr (Tp φ S ∸ 1)
+      cell-ok (wsz X) kb (inCc x) (inFc x) ko (_ , _ , refl) (_ , _ , tramp-c x) (_ , _ , tramp-f x) (_ , _ , refl) (Tp φ S ∸ wsz X) hdr (Tp φ S ∸ 1)
     lowP-ok ds (llamωᶜ {X = X} b₀ γ) φ S (kb , x , ko) =
-      cell-ok (wsz X) kb (inC x) (inF x) ko (_ , _ , refl) (_ , _ , refl) (_ , _ , refl) (_ , _ , refl) (Tp φ S ∸ wsz X) hdr (Tp φ S ∸ 1)
+      cell-ok (wsz X) kb (inCc x) (inFc x) ko (_ , _ , refl) (_ , _ , tramp-c x) (_ , _ , tramp-f x) (_ , _ , refl) (Tp φ S ∸ wsz X) hdr (Tp φ S ∸ 1)
     lowP-ok ds lev φ S p          = []
     lowP-ok ds (lunf {F = F} {S = S₀}) φ S (n , o) =
-      cell-ok (wsz (cty (F , S₀))) (inO o n) (inC (ncty n)) (inF (ncty n)) (inO o n) (_ , _ , refl) (_ , _ , refl) (_ , _ , refl) (_ , _ , refl)
+      cell-ok (wsz (cty (F , S₀))) (inO o n) (inCc (ncty n)) (inFc (ncty n)) (inO o n) (_ , _ , refl) (_ , _ , tramp-c (ncty n)) (_ , _ , tramp-f (ncty n)) (_ , _ , refl)
               (Tp φ S ∸ wsz (cty (F , S₀))) hdr (Tp φ S ∸ 1)
     lowP-ok ds lout φ S p         = []
     lowP-ok ds (lconst v) φ S p   = ld-ok v ∷ ✓ ∷ []
@@ -347,6 +348,11 @@ module Ok (nm : CanonicalName) (U : Univ)
              (lowC-ok φ j 0 _ (✓ ∷ ++⁺ (mvSP-ok (Tp φ (B ∷ [])) (M ∸ wsz B) (wsz B)) (✓ ∷ [])) (blockᴵ κ) ev))
 
     -- block `j`'s trampoline: its call is of block `j`, the key at index `j`
+    -- (D484: a copy's or a free's trampoline, or none)
+    if-ok : ∀ b {x} → All OK x → All OK (if b then x else [])
+    if-ok true  a = a
+    if-ok false a = []
+
     tramp-ok : ∀ {σ} j (κ : Key σ) (p : (σ , κ) ∈ allK U) → idx p ≡ j → All OK (tramp j κ)
     tramp-ok j (kbody1 {X = X} {A = A} {B = B} ds b γ) p e =
       let wX = wsz X ; wA = wsz A ; wB = wsz B ; M = (wX + wA) ⊔ wB ; Mc = suc wA ⊔ wB ; a = M ∸ (wX + wA)
@@ -358,14 +364,20 @@ module Ok (nm : CanonicalName) (U : Univ)
       let wP = wsz (cty (F , S)) ; wL = wsz (LF∙ F (Nu F)) ; M = wP ⊔ wL ; Mc = 1 ⊔ wL
       in ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ++⁺ (mvPS-ok hdr (M ∸ wP) wP)
            (✓ ∷ fr ∷ ✓ ∷ ✓ ∷ callAt p e ∷ ✓ ∷ ++⁺ (mvSP-ok (M ∸ wL) (Mc ∸ wL) wL) (✓ ∷ []))
-    tramp-ok j (kcopy T₀) p e =
-      let w = wsz T₀
-      in ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ contentsAddr-ok w ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ callAt p e ∷ cell-word w
+    tramp-ok j (kcopy T₀) p e = if-ok (liveT j) (trampC-ok)
+      where
+      trampC-ok : All OK (trampC j T₀)
+      trampC-ok =
+       let w = wsz T₀
+       in ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ contentsAddr-ok w ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ callAt p e ∷ cell-word w
          ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓
          ∷ ++⁺ (mvSP-ok 0 hdr w) (✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ [])
-    tramp-ok j (kfree T₀) p e =
-      let w = wsz T₀
-      in ✓ ∷ ✓ ∷ ✓ ∷ ++⁺ (mvPS-ok hdr 0 w) (fr ∷ ✓ ∷ ✓ ∷ callAt p e ∷ ✓ ∷ [])
+    tramp-ok j (kfree T₀) p e = if-ok (liveT j) (trampF-ok)
+      where
+      trampF-ok : All OK (trampF j T₀)
+      trampF-ok =
+       let w = wsz T₀
+       in ✓ ∷ ✓ ∷ ✓ ∷ ++⁺ (mvPS-ok hdr 0 w) (fr ∷ ✓ ∷ ✓ ∷ callAt p e ∷ ✓ ∷ [])
     tramp-ok j (kfold ds F alg) p e = []
     tramp-ok j (ktr1 ds b γ) p e = []
     tramp-ok j (ktrω ds b γ) p e = []

@@ -44,7 +44,7 @@ d_imageAt_10 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2404]
 d_imageAt_10 v0 v1 v2 v3
   = coe
-      MAlonzo.Code.Once.LinCore.Lower.d_image_2542 (coe v0)
+      MAlonzo.Code.Once.LinCore.Lower.du_image_2812 (coe v0)
       (coe MAlonzo.Code.Once.LinCore.Loader.d_bw_6)
       (coe
          MAlonzo.Code.Once.LinCore.ExprBuild.d_L_1330
@@ -65,6 +65,30 @@ d_imageAt_10 v0 v1 v2 v3
                (coe v1)))
          (coe v2) (coe v3))
       (coe MAlonzo.Code.Once.LinCore.Loader.d_ldConst_10)
+      (coe
+         MAlonzo.Code.Once.LinCore.Keys.d_univ_2026 (coe v0)
+         (coe MAlonzo.Code.Once.LinCore.Loader.d_bw_6)
+         (coe
+            MAlonzo.Code.Once.LinCore.ExprBuild.d_L_1330
+            (coe
+               MAlonzo.Code.Once.LinCore.ExprBuild.d_exprTable_1338 (coe v0)
+               (coe v1)))
+         (coe
+            MAlonzo.Code.Once.LinCore.ExprBuild.d_defs_1332
+            (coe
+               MAlonzo.Code.Once.LinCore.ExprBuild.d_exprTable_1338 (coe v0)
+               (coe v1)))
+         (coe MAlonzo.Code.Once.LinCore.Core.C_One_180)
+         (coe MAlonzo.Code.Once.LinCore.Core.C_One_180)
+         (coe MAlonzo.Code.Once.LinCore.Core.C_One_180)
+         (coe
+            MAlonzo.Code.Once.LinCore.ExprBuild.du_mainCore_1552 (coe v0)
+            (coe
+               MAlonzo.Code.Once.LinCore.ExprBuild.d_rs_1334
+               (coe
+                  MAlonzo.Code.Once.LinCore.ExprBuild.d_exprTable_1338 (coe v0)
+                  (coe v1)))
+            (coe v2) (coe v3)))
 -- Once.LinCore.ExprImage.blocksAt
 d_blocksAt_18 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
@@ -74,9 +98,9 @@ d_blocksAt_18 ::
   [MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_58]
 d_blocksAt_18 v0 v1 v2 v3
   = coe
-      MAlonzo.Code.Once.LinCore.ImageBlocks.du_imageBlocks_62
+      MAlonzo.Code.Once.LinCore.ImageBlocks.du_imageBlocks_66
       (coe
-         MAlonzo.Code.Once.LinCore.Keys.d_univ_1808 (coe v0)
+         MAlonzo.Code.Once.LinCore.Keys.d_univ_2026 (coe v0)
          (coe MAlonzo.Code.Once.LinCore.Loader.d_bw_6)
          (coe
             MAlonzo.Code.Once.LinCore.ExprBuild.d_L_1330

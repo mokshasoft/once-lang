@@ -204,7 +204,7 @@ module RetW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     tail-ω (ok-loop K lk _) = ⊥-elim (loop-no K lk)
     tail-ω (ok-call _ _ _ _ _ _ () _ _ _ _ _ _ _ _ _ _)
     tail-ω (ok-tramp _ o _ _ _ _ _ refl _ _ _ _ _ _ _ _ _ _) = ⊥-elim (no-trm o)
-    tail-ω (ok-trampf _ _ _ _ _ _ () _ _ _ _ _ _ _ _)
+    tail-ω (ok-trampf _ _ _ _ _ _ _ () _ _ _ _ _ _ _ _)
     tail-ω (ok-callω _ _ _ _ _ () _ _ _ _ _ _ _)
     tail-ω (ok-trampω _ d cfc sl sv′ rets′ refl _ eRets eSv eSl abv area fit efit ev sk rest) = tw-info d cfc sl sv′ rets′ eRets eSv eSl abv area fit efit ev sk rest
 

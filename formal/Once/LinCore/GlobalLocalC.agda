@@ -126,18 +126,18 @@ module CaseR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   tr-notcase (to0 _) = tt
   tr-notcase (to1 _) = tt
   tr-notcase (to2 _) = tt
-  tr-notcase (tf0 _) = tt
-  tr-notcase (tf1 _) = tt
-  tr-notcase (tf2 _) = tt
+  tr-notcase (tf0 _ _) = tt
+  tr-notcase (tf1 _ _) = tt
+  tr-notcase (tf2 _ _) = tt
   tr-notcase (tw0 _) = tt
   tr-notcase (tw1 _) = tt
   tr-notcase (tw2 _) = tt
   tr-notcase (tw3 _) = tt
-  tr-notcase (tc0 _) = tt
-  tr-notcase (tc1 _) = tt
-  tr-notcase (tc2 _) = tt
-  tr-notcase (tc3 _) = tt
-  tr-notcase (tc4 _) = tt
+  tr-notcase (tc0 _ _) = tt
+  tr-notcase (tc1 _ _) = tt
+  tr-notcase (tc2 _ _) = tt
+  tr-notcase (tc3 _ _) = tt
+  tr-notcase (tc4 _ _) = tt
 
   module Whole (ld : ∀ {b} (v : Lit b) (fs : FlatState)
                     → FlatMachine.flat-exec-instr {FS} (ldConst v) image fs

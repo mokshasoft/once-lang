@@ -17,6 +17,7 @@
 {-# OPTIONS --guardedness #-}
 
 open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _⊔_)
+open import Data.Bool using (true; false; if_then_else_)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.List.Relation.Unary.All.Properties using (++⁺)
@@ -128,7 +129,7 @@ stores-nj b zero    = []
 stores-nj b (suc n) = refl ∷ stores-nj (suc b) n
 
 module Free (U : Univ)
-            (ncty : ∀ {F S} → (F , S) ∈ nus U → cty (F , S) ∈ tys U)
+            (ncty : ∀ {F S} → (F , S) ∈ nus U → cty (F , S) ∈ Univ.cts U)
             (ldConst : ∀ {b} → Lit b → AbstractInstr)
             (ld-nj : ∀ {b} (v : Lit b) → jump-of (ldConst v) ≡ nothing) where
   open In U
@@ -212,14 +213,14 @@ module Free (U : Univ)
   lowP-nj ds (blift _) φ S p    = []
   lowP-nj ds bcopy φ S p        = []
   lowP-nj ds (llam {X = X} b γ) φ S (kb , x) =
-    cell-nj (wsz X) (idx kb) (idx (inC x)) (idx (inF x)) (idx kb) (Tp φ S ∸ wsz X) hdr (Tp φ S ∸ 1)
+    cell-nj (wsz X) (idx kb) (idx (inCc x)) (idx (inFc x)) (idx kb) (Tp φ S ∸ wsz X) hdr (Tp φ S ∸ 1)
   lowP-nj ds (llamω {X = X} b γ) φ S (kb , x , ko) =
-    cell-nj (wsz X) (idx kb) (idx (inC x)) (idx (inF x)) (idx ko) (Tp φ S ∸ wsz X) hdr (Tp φ S ∸ 1)
+    cell-nj (wsz X) (idx kb) (idx (inCc x)) (idx (inFc x)) (idx ko) (Tp φ S ∸ wsz X) hdr (Tp φ S ∸ 1)
   lowP-nj ds (llamωᶜ {X = X} b₀ γ) φ S (kb , x , ko) =
-    cell-nj (wsz X) (idx kb) (idx (inC x)) (idx (inF x)) (idx ko) (Tp φ S ∸ wsz X) hdr (Tp φ S ∸ 1)
+    cell-nj (wsz X) (idx kb) (idx (inCc x)) (idx (inFc x)) (idx ko) (Tp φ S ∸ wsz X) hdr (Tp φ S ∸ 1)
   lowP-nj ds lev φ S p          = []
   lowP-nj ds (lunf {F = F} {S = S₀}) φ S (n , o) =
-    cell-nj (wsz (cty (F , S₀))) (idx (inO o n)) (idx (inC (ncty n))) (idx (inF (ncty n))) (idx (inO o n)) (Tp φ S ∸ wsz (cty (F , S₀))) hdr (Tp φ S ∸ 1)
+    cell-nj (wsz (cty (F , S₀))) (idx (inO o n)) (idx (inCc (ncty n))) (idx (inFc (ncty n))) (idx (inO o n)) (Tp φ S ∸ wsz (cty (F , S₀))) hdr (Tp φ S ∸ 1)
   lowP-nj ds lout φ S p         = []
   lowP-nj ds (lconst v) φ S p   = ld-nj v ∷ refl ∷ []
   lowP-nj ds (lop s) φ S p      = lowOp-nj s (cmpOf s) (Tp φ S)
@@ -277,6 +278,11 @@ module Free (U : Univ)
     cA zero    = refl
     cA (suc w) = refl
 
+  -- (D484: a copy's or a free's trampoline, or none)
+  if-nj : ∀ b {x} → NoJ x → NoJ (if b then x else [])
+  if-nj true  p = p
+  if-nj false p = []
+
   -- ★ a trampoline jumps nowhere
   tramp-nj : ∀ {σ} j (κ : Key σ) → NoJ (tramp j κ)
   tramp-nj j (kbody1 {X = X} {A = A} {B = B} ds b γ) =
@@ -289,15 +295,21 @@ module Free (U : Univ)
     let wP = wsz (cty (F , S)) ; wL = wsz (LF∙ F (Nu F)) ; M = wP ⊔ wL ; Mc = 1 ⊔ wL
     in refl ∷ refl ∷ refl ∷ refl ∷ nj (mvPS hdr (M ∸ wP) wP) (mvPS-nj hdr (M ∸ wP) wP)
          (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ nj (mvSP (M ∸ wL) (Mc ∸ wL) wL) (mvSP-nj (M ∸ wL) (Mc ∸ wL) wL) (refl ∷ []))
-  tramp-nj j (kcopy T₀) =
-    let w = wsz T₀
-    in refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ cA w ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl
+  tramp-nj j (kcopy T₀) = if-nj (liveT j) (trampC-nj T₀)
+    where
+    trampC-nj : ∀ T₀ → NoJ (trampC j T₀)
+    trampC-nj T₀ =
+     let w = wsz T₀
+     in refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ cA w ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl
        ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl
        ∷ refl ∷ refl ∷ refl ∷ refl
        ∷ nj (mvSP 0 hdr w) (mvSP-nj 0 hdr w) (refl ∷ refl ∷ refl ∷ refl ∷ [])
-  tramp-nj j (kfree T₀) =
-    let w = wsz T₀
-    in refl ∷ refl ∷ refl ∷ nj (mvPS hdr 0 w) (mvPS-nj hdr 0 w) (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
+  tramp-nj j (kfree T₀) = if-nj (liveT j) (trampF-nj T₀)
+    where
+    trampF-nj : ∀ T₀ → NoJ (trampF j T₀)
+    trampF-nj T₀ =
+     let w = wsz T₀
+     in refl ∷ refl ∷ refl ∷ nj (mvPS hdr 0 w) (mvPS-nj hdr 0 w) (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
   tramp-nj j (kfold ds F alg) = []
   tramp-nj j (ktr1 ds b γ) = []
   tramp-nj j (ktrω ds b γ) = []
@@ -346,7 +358,7 @@ module Closed {FS : FrameSemantics} where
   in-suf xs ys {l} p = subst (l ∈_) (sym (Labs-++ xs ys)) (∈-++⁺ʳ (Labs xs) p)
 
   module C (U : Univ)
-           (ncty : ∀ {F S} → (F , S) ∈ nus U → cty (F , S) ∈ tys U)
+           (ncty : ∀ {F S} → (F , S) ∈ nus U → cty (F , S) ∈ Univ.cts U)
            (ldConst : ∀ {b} → Lit b → AbstractInstr)
            (ld-nj : ∀ {b} (v : Lit b) → jump-of (ldConst v) ≡ nothing) where
     open In U

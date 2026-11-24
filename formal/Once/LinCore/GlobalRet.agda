@@ -250,7 +250,7 @@ module RetR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
         (proj₂ (subst (FreshR (frm {t = t} {Es = Es} k es os r)) (sym nx) (fresh-ret inv))) rest nx I (live-ret {t = t} {Es = Es} {k = k} {es = es} {os = os} {r = r} {e′ = e′} {b = b} {fs = fs} lv) Fa
 
     gret {t = t} {Es = Es} {k = k} {r = r} {es = es} {os = os} {e′ = e′} {b = b} {fs = fs} P inv H nx
-         (ok-trampf p d cfc sl sv′ rets′ eR eF eRets eSv eSl abv ev sk rest) I lv Fa =
+         (ok-trampf p _ d cfc sl sv′ rets′ eR eF eRets eSv eSl abv ev sk rest) I lv Fa =
       gret-tf P d p cfc sl sv′ rets′ eR eF H eRets eSv eSl abv ev sk
         (proj₂ (subst (FreshR (frm {t = t} {Es = Es} k es os r)) (sym nx) (fresh-ret inv))) rest nx I (live-ret {t = t} {Es = Es} {k = k} {es = es} {os = os} {r = r} {e′ = e′} {b = b} {fs = fs} lv) Fa
     gret {t = t} {Es = Es} {k = k} {r = r} {es = es} {os = os} {e′ = e′} {b = b} {fs = fs} P inv H nx
@@ -262,7 +262,7 @@ module RetR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       gret-cω P p cfc sl sv′ rets′ eR eF H eRets eSv eSl abv ap
         (proj₂ (subst (FreshR (frm {t = t} {Es = Es} k es os r)) (sym nx) (fresh-ret inv))) rest nx I (live-ret {t = t} {Es = Es} {k = k} {es = es} {os = os} {r = r} {e′ = e′} {b = b} {fs = fs} lv) Fa
     gret {t = t} {Es = Es} {k = k} {r = r} {es = es} {os = os} {e′ = e′} {b = b} {fs = fs} P inv H nx
-         (ok-trampc p d cfc sl sv′ rets′ eR eF eRets eSv eSl abv area ev sk rest) I lv Fa =
+         (ok-trampc p _ d cfc sl sv′ rets′ eR eF eRets eSv eSl abv area ev sk rest) I lv Fa =
       gret-tc P p d cfc sl sv′ rets′ eR H eRets eSv eSl abv area ev sk
         (proj₂ (subst (FreshR (frm {t = t} {Es = Es} k es os r)) (sym nx) (fresh-ret inv))) rest nx I (live-ret {t = t} {Es = Es} {k = k} {es = es} {os = os} {r = r} {e′ = e′} {b = b} {fs = fs} lv) Fa
     gret {t = t} {Es = Es} {k = k} {r = r} {es = es} {os = os} {e′ = e′} {b = b} {fs = fs} P inv H nx

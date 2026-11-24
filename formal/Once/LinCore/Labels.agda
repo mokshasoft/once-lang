@@ -14,6 +14,7 @@
 {-# OPTIONS --guardedness #-}
 
 open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _⊔_)
+open import Data.Bool using (true; false; if_then_else_)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.List.Relation.Unary.All.Properties using (++⁺)
@@ -117,7 +118,7 @@ module NoLabels {FS : FrameSemantics} where
   ----------------------------------------------------------------------
 
   module Free (U : Univ)
-              (ncty : ∀ {F S} → (F , S) ∈ nus U → cty (F , S) ∈ tys U)
+              (ncty : ∀ {F S} → (F , S) ∈ nus U → cty (F , S) ∈ Univ.cts U)
               (ldConst : ∀ {b} → Lit b → AbstractInstr)
               (ld-nl : ∀ {b} (v : Lit b) → mark (ldConst v) ≡ nothing) where
     open In U
@@ -205,14 +206,14 @@ module NoLabels {FS : FrameSemantics} where
     lowP-nl ds (blift _) φ S p    = []
     lowP-nl ds bcopy φ S p        = []
     lowP-nl ds (llam {X = X} b γ) φ S (kb , x) =
-      cell-nl (wsz X) (idx kb) (idx (inC x)) (idx (inF x)) (idx kb) (Tp φ S ∸ wsz X) hdr (Tp φ S ∸ 1)
+      cell-nl (wsz X) (idx kb) (idx (inCc x)) (idx (inFc x)) (idx kb) (Tp φ S ∸ wsz X) hdr (Tp φ S ∸ 1)
     lowP-nl ds (llamω {X = X} b γ) φ S (kb , x , ko) =
-      cell-nl (wsz X) (idx kb) (idx (inC x)) (idx (inF x)) (idx ko) (Tp φ S ∸ wsz X) hdr (Tp φ S ∸ 1)
+      cell-nl (wsz X) (idx kb) (idx (inCc x)) (idx (inFc x)) (idx ko) (Tp φ S ∸ wsz X) hdr (Tp φ S ∸ 1)
     lowP-nl ds (llamωᶜ {X = X} b₀ γ) φ S (kb , x , ko) =
-      cell-nl (wsz X) (idx kb) (idx (inC x)) (idx (inF x)) (idx ko) (Tp φ S ∸ wsz X) hdr (Tp φ S ∸ 1)
+      cell-nl (wsz X) (idx kb) (idx (inCc x)) (idx (inFc x)) (idx ko) (Tp φ S ∸ wsz X) hdr (Tp φ S ∸ 1)
     lowP-nl ds lev φ S p          = []
     lowP-nl ds (lunf {F = F} {S = S₀}) φ S (n , o) =
-      cell-nl (wsz (cty (F , S₀))) (idx (inO o n)) (idx (inC (ncty n))) (idx (inF (ncty n))) (idx (inO o n)) (Tp φ S ∸ wsz (cty (F , S₀))) hdr (Tp φ S ∸ 1)
+      cell-nl (wsz (cty (F , S₀))) (idx (inO o n)) (idx (inCc (ncty n))) (idx (inFc (ncty n))) (idx (inO o n)) (Tp φ S ∸ wsz (cty (F , S₀))) hdr (Tp φ S ∸ 1)
     lowP-nl ds lout φ S p         = []
     lowP-nl ds (lconst v) φ S p   = ld-nl v ∷ refl ∷ []
     lowP-nl ds (lop s) φ S p      = lowOp-nl s (cmpOf s) (Tp φ S)
@@ -271,6 +272,11 @@ module NoLabels {FS : FrameSemantics} where
     TrampShape : ℕ → AbstractTrace → Set
     TrampShape j xs = xs ≡ [] ⊎ Σ ℕ λ b → Σ AbstractTrace λ r → xs ≡ instr-ctrl (c-entry (e-thunk (tl j)) b) ∷ r × NoLab r
 
+    -- (D484: a copy's or a free's trampoline, or none)
+    if-sh : ∀ {j} b {x} → TrampShape j x → TrampShape j (if b then x else [])
+    if-sh true  s = s
+    if-sh false s = inj₁ refl
+
     tramp-nl : ∀ {σ} j (κ : Key σ) → TrampShape j (tramp j κ)
     tramp-nl j (kbody1 {X = X} {A = A} {B = B} ds b γ) =
       let wX = wsz X ; wA = wsz A ; wB = wsz B ; M = (wX + wA) ⊔ wB ; Mc = suc wA ⊔ wB ; a = M ∸ (wX + wA)
@@ -285,18 +291,24 @@ module NoLabels {FS : FrameSemantics} where
       let wP = wsz (cty (F , S)) ; wL = wsz (LF∙ F (Nu F)) ; M = wP ⊔ wL ; Mc = 1 ⊔ wL
       in inj₂ (_ , _ , refl , refl ∷ refl ∷ refl ∷ nl (mvPS hdr (M ∸ wP) wP) (mvPS-nl hdr (M ∸ wP) wP)
            (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ nl (mvSP (M ∸ wL) (Mc ∸ wL) wL) (mvSP-nl (M ∸ wL) (Mc ∸ wL) wL) (refl ∷ [])))
-    tramp-nl j (kcopy T₀) =
-      let w = wsz T₀
-      in inj₂ (_ , _ , refl , refl ∷ refl ∷ refl ∷ refl ∷ cA w ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl
+    tramp-nl j (kcopy T₀) = if-sh (liveT j) (trampC-nl T₀)
+      where
+      cA : ∀ w → mark (contentsAddr w) ≡ nothing
+      cA zero    = refl
+      cA (suc w) = refl
+      trampC-nl : ∀ T₀ → TrampShape j (trampC j T₀)
+      trampC-nl T₀ =
+       let w = wsz T₀
+       in inj₂ (_ , _ , refl , refl ∷ refl ∷ refl ∷ refl ∷ cA w ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl
          ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl
          ∷ refl ∷ refl ∷ refl ∷ refl
          ∷ nl (mvSP 0 hdr w) (mvSP-nl 0 hdr w) (refl ∷ refl ∷ refl ∷ refl ∷ []))
-      where cA : ∀ w → mark (contentsAddr w) ≡ nothing
-            cA zero    = refl
-            cA (suc w) = refl
-    tramp-nl j (kfree T₀) =
-      let w = wsz T₀
-      in inj₂ (_ , _ , refl , refl ∷ refl ∷ nl (mvPS hdr 0 w) (mvPS-nl hdr 0 w) (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []))
+    tramp-nl j (kfree T₀) = if-sh (liveT j) (trampF-nl T₀)
+      where
+      trampF-nl : ∀ T₀ → TrampShape j (trampF j T₀)
+      trampF-nl T₀ =
+       let w = wsz T₀
+       in inj₂ (_ , _ , refl , refl ∷ refl ∷ nl (mvPS hdr 0 w) (mvPS-nl hdr 0 w) (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []))
     tramp-nl j (kfold ds F alg) = inj₁ refl
     tramp-nl j (ktr1 ds b γ) = inj₁ refl
     tramp-nl j (ktrω ds b γ) = inj₁ refl

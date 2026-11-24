@@ -19,6 +19,7 @@
 {-# OPTIONS --guardedness #-}
 
 open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _⊔_)
+open import Data.Bool using (true; false; if_then_else_)
 open import Data.List using (List; []; _∷_; _++_; last; head)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 import Data.List.Relation.Unary.All
@@ -135,7 +136,7 @@ module G {FS : FrameSemantics} where
   lk-cons x (ny ∷ nys) = (λ ie → ⊥-elim (ne-not ny ie)) ∷ lk-cons _ nys
 
   module L (U : Univ)
-           (ncty : ∀ {F S} → (F , S) ∈ nus U → cty (F , S) ∈ tys U)
+           (ncty : ∀ {F S} → (F , S) ∈ nus U → cty (F , S) ∈ Univ.cts U)
            (ldConst : ∀ {b} → Lit b → AbstractInstr)
            (ld-nl : ∀ {b} (v : Lit b) → NoLabels.mark {FS} (ldConst v) ≡ nothing) where
     open In U
@@ -177,6 +178,11 @@ module G {FS : FrameSemantics} where
            (lastG-cat (view-in t φ)
              (lowC-last φ j 0 _ (▸ lastG-cat (mvSP (Tp φ (B ∷ [])) (M ∸ wsz B) (wsz B)) ends-ret) (blockᴵ κ) ev))
 
+    -- (D484: a copy's or a free's trampoline, or none)
+    if-last : ∀ b {x} → LastG x → (if b then x else []) ≡ [] ⊎ LastG (if b then x else [])
+    if-last true  g = inj₂ g
+    if-last false g = inj₁ refl
+
     -- ★ a trampoline: none, or one that ends in its `c-ret`
     tramp-last : ∀ {σ} j (κ : Key σ) → tramp j κ ≡ [] ⊎ LastG (tramp j κ)
     tramp-last j (kbody1 {X = X} {A = A} {B = B} ds b γ) =
@@ -187,9 +193,11 @@ module G {FS : FrameSemantics} where
     tramp-last j (kobs ds F S) =
       let wP = wsz (cty (F , S)) ; wL = wsz (LF∙ F (Nu F)) ; M = wP ⊔ wL ; Mc = 1 ⊔ wL
       in inj₂ (▸ ▸ ▸ ▸ lastG-cat (mvPS hdr (M ∸ wP) wP) (▸ ▸ ▸ ▸ ▸ ▸ lastG-cat (mvSP (M ∸ wL) (Mc ∸ wL) wL) ends-ret))
-    tramp-last j (kcopy T₀) =
-      inj₂ (▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ lastG-cat (mvSP 0 hdr (wsz T₀)) (lg refl g-ret))
-    tramp-last j (kfree T₀) = inj₂ (▸ ▸ ▸ lastG-cat (mvPS hdr 0 (wsz T₀)) (lg refl g-ret))
+    tramp-last j (kcopy T₀) = if-last (liveT j) (trampC-last T₀)
+      where
+      trampC-last : ∀ T₀ → LastG (trampC j T₀)
+      trampC-last T₀ = (▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ ▸ lastG-cat (mvSP 0 hdr (wsz T₀)) (lg refl g-ret))
+    tramp-last j (kfree T₀) = if-last (liveT j) (▸ ▸ ▸ lastG-cat (mvPS hdr 0 (wsz T₀)) (lg refl g-ret))
     tramp-last j (kfold ds F alg) = inj₁ refl
     tramp-last j (ktr1 ds b γ) = inj₁ refl
     tramp-last j (ktrω ds b γ) = inj₁ refl

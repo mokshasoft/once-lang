@@ -229,9 +229,12 @@ module NewImage (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Uni
 
     module ISX = IS.Xp PL.C
 
+    -- (in the image's own names: the file's shape is the room-checked expansion's)
+    file-wfˣ : Backend.AsmWF B (Backend.file B P″ (file-table (Backend.payload B) bs) (image-externs image))
+    file-wfˣ = file-wf _ _ _ bs (image-externs image) ISX.image-wfˣ
     file-wf-atˣ : Backend.AsmWF B (Once.LinCore.ExprImage.fileAt (fs-numerics FS) B a true IT.BF.tl IT.BF.mpm
                                      (image-externs (Once.LinCore.ExprImage.imageAt (fs-numerics FS) IT.BF.tl IT.BF.mpm)))
-    file-wf-atˣ = file-wf _ _ _ bs (image-externs image) ISX.image-wfˣ
+    file-wf-atˣ = file-wfˣ
 
 
     ------------------------------------------------------------------------
@@ -245,11 +248,13 @@ module NewImage (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Uni
     module OS = Once.CCC.Codegen.AllocOutlineSizes {FS}
 
     -- the routines' sizes: the image's, each once
+    -- (spelled as `ExprImage.imageAtᶜ`: the file's statement and this compare by names, not by
+    -- evaluating the sizes over two spellings of the image; docs/performance-patterns.md A3)
     ksᶜ : List ℕ
-    ksᶜ = CL.dsizes image
+    ksᶜ = CL.dsizes (Once.LinCore.ExprImage.imageAt (fs-numerics FS) IT.BF.tl IT.BF.mpm)
 
     imageᵒ : AbstractTrace
-    imageᵒ = Once.CCC.Codegen.AllocExpand.outline ksᶜ image
+    imageᵒ = Once.CCC.Codegen.AllocExpand.outline ksᶜ (Once.LinCore.ExprImage.imageAt (fs-numerics FS) IT.BF.tl IT.BF.mpm)
 
     module PLC = Once.CCC.Codegen.AllocExpandClasses.Choice a imageᵒ
     module CDC = Once.CCC.Codegen.AllocExpandEmitted.Code {FS} PLC.C PLC.small PLC.in-range PLC.fits
@@ -301,9 +306,11 @@ module NewImage (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Uni
 
     module ISC = IS.Xc PLC.C
 
+    file-wfᶜ : Backend.AsmWF B (Backend.file B P‴ (file-table (Backend.payload B) bs) (image-externs image))
+    file-wfᶜ = file-wf _ _ _ bs (image-externs image) ISC.image-wfᶜ
     file-wf-atᶜ : Backend.AsmWF B (Once.LinCore.ExprImage.fileAt (fs-numerics FS) B a false IT.BF.tl IT.BF.mpm
                                      (image-externs (Once.LinCore.ExprImage.imageAt (fs-numerics FS) IT.BF.tl IT.BF.mpm)))
-    file-wf-atᶜ = file-wf _ _ _ bs (image-externs image) ISC.image-wfᶜ
+    file-wf-atᶜ = file-wfᶜ
 
     -- ★★ THE FILE THE COMPILER WRITES, in either mode (`--inline-alloc`: `true`)
     file-at : (inl : Bool) (ex : List String) → Owed

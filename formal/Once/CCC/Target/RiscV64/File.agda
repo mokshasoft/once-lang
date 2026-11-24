@@ -34,6 +34,7 @@ import Data.Unit
 
 open import Once.CCC.Label using (labelSym; thunkSym)
 open import Once.Target.AsmSymbol using (AsmSym)
+open import Once.Target.Text using (join)
 open import Once.CCC.Target.RiscV64.Syntax
 open import Once.CCC.Target.RiscV64.Emit using (instrToLine)
 open import Once.Arith.Backend.XInstr.Syntax using (XProgram)
@@ -69,19 +70,21 @@ start-mark (just e) k with e Data.Nat.≡ᵇ k
 ... | true  = ".globl once_main\nonce_main:\n"
 ... | false = ""
 
-code-text : Maybe ℕ → ℕ → Program → String
-code-text e k []       = ""
-code-text e k (i ∷ is) = start-mark e k ++ˢ instrToLine i ++ˢ code-text e (suc k) is
+-- ★ D485: the text as its pieces, joined once (`Text.join`; a strict `++` per line copied the
+-- rest of the file at every line)
+code-lines : Maybe ℕ → ℕ → Program → List String
+code-lines e k []       = []
+code-lines e k (i ∷ is) = start-mark e k ∷ instrToLine i ∷ code-lines e (suc k) is
 
-blocks-text : List (String × Payload) → String
-blocks-text []               = ""
-blocks-text ((s , p) ∷ bs)   = emit-payload s p ++ˢ blocks-text bs
+blocks-lines : List (String × Payload) → List String
+blocks-lines []               = []
+blocks-lines ((s , p) ∷ bs)   = emit-payload s p ∷ blocks-lines bs
 
 -- D272: the externs are PART of the text. Leaving them out made `print` identify
 -- images that differ only in `externs`, and `as-faithful` then proved ⊥.
-externs-text : List String → String
-externs-text []       = ""
-externs-text (s ∷ ss) = ".extern " ++ˢ s ++ˢ "\n" ++ˢ externs-text ss
+externs-lines : List String → List String
+externs-lines []       = []
+externs-lines (s ∷ ss) = ".extern " ∷ s ∷ "\n" ∷ externs-lines ss
 
 -- D470: a program's file holds its allocator record, `rec-size` words of `.bss`
 -- at a local symbol (each program its own); a library's file (no entry) none
@@ -90,8 +93,8 @@ record-text nothing  = ""
 record-text (just _) = "\n.section .bss\n.balign 8\nonce_alloc_record:\n    .skip 512\n"
 
 print : Image → String
-print F = preamble ++ˢ externs-text (externs F) ++ˢ code-text (entry F) 0 (code F) ++ˢ blocks-text (blocks F)
-          ++ˢ record-text (entry F)
+print F = join (preamble ∷ externs-lines (externs F) ++ code-lines (entry F) 0 (code F) ++ blocks-lines (blocks F)
+                ++ record-text (entry F) ∷ [])
 
 ------------------------------------------------------------------------
 -- WHAT `as` (WITH `ld`) DEMANDS OF A FILE. Every symbol the text defines is

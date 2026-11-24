@@ -15,7 +15,7 @@ open import Data.List.Membership.Propositional using (_∈_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Unit using (tt)
-open import Data.Bool using (false)
+open import Data.Bool using (false; true)
 open import Function using (case_of_)
 open import Relation.Nullary using (¬_)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
@@ -81,7 +81,7 @@ module RetT {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open Program ds f using (U)
   open Program ds f using (ncty)
   open Program′ ds f ldConst using (image; j₀)
-  open Lowering U ncty ldConst using (Tp; fbudget)
+  open Lowering U ncty ldConst using (Tp; fbudget; liveT)
   open Calls {FS} ds f ldConst ld-nl wordOf using (blockR; module K; module From; call-core)
   open Rel {FS} U wordOf using (EnvW; StkW)
   open FlatMachine {FS} using (FlatState; module FlatState)
@@ -223,7 +223,7 @@ module RetT {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     module _ where
       gret-outf : ∀ {T X C} {Es D S V} {i : Insᴵ (Es ∣ D ∷ S) (Es ∣ One ∷ S)} {k : Codeᴵ (Es ∣ One ∷ S) V}
                     {es : Slots Es} {os : Stk S} {r : Ret V T} {w : MV One} {n fs}
-                    (p : under (ktrf X C) ∈ allK U) (d : DSite i k) (cfc : FrameSemantics.Frame FS) (sl : ℕ)
+                    (p : under (ktrf X C) ∈ allK U) (l : liveT (idx p) ≡ true) (d : DSite i k) (cfc : FrameSemantics.Frame FS) (sl : ℕ)
                     (sv′ : List (FrameSemantics.Frame FS × ℕ)) (rets′ : List ℕ)
                 → HereF (frame 0 (wsz X)) (suc (wsz X)) (trPos (ktrf X C) p 2) ([]ᵉ ∥ w ∷ˢ []ˢ) fs
                 → fret fs ≡ dsitePos d ∷ rets′ → AllocState.saved-frames (falloc fs) ≡ (cfc , sl) ∷ sv′
@@ -236,8 +236,8 @@ module RetT {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                 → AllocState.next-heap-ref (falloc fs) ≡ n
                 → InBlk fs → LiveG r (es ∥ w ∷ˢ os) fs → FreshAl (falloc fs)
                 → ArrivesAt k r (es ∥ w ∷ˢ os) n fs
-      gret-outf {X = X} {C} {es = es} {os = os} {r = r} {w = w} {fs = fs} p (d-start s) cfc sl sv′ rets′ H eRets eSv eSl abv ev sk fr rest nx I lv Fa =
-        case tf-end {X} {C} p cfc (S.pos (next s)) rets′ sv′ sl (HereF.f-pc H) (HereF.f-run H) eRets (HereF.f-slots H) eSv of λ where
+      gret-outf {X = X} {C} {es = es} {os = os} {r = r} {w = w} {fs = fs} p l (d-start s) cfc sl sv′ rets′ H eRets eSv eSl abv ev sk fr rest nx I lv Fa =
+        case tf-end {X} {C} p l cfc (S.pos (next s)) rets′ sv′ sl (HereF.f-pc H) (HereF.f-run H) eRets (HereF.f-slots H) eSv of λ where
           (fs′ , run , CO) →
             1 , fs′ , run , record { g-pt = p-start (at (next s))
                                    ; g-here = record { h-pc = co-pc CO ; h-run = trans (co-halt CO) (HereF.f-run H)
@@ -246,8 +246,8 @@ module RetT {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                                    ; g-ret = back CO (λ x _ → co-rest CO (AtStack cfc x) (λ k ())) fr rest ; g-blk = co-inb CO I
                                    ; g-live = live-eq {r = r} {r′ = r} {m = es ∥ w ∷ˢ os} {m′ = es ∥ w ∷ˢ os} {fs = fs} {fs′ = fs′} (λ _ q → q) (λ q → cong (λ fr → fr q) (co-freed CO)) (λ q → cong (λ bs → bs q) (co-size CO)) lv
                                    ; g-fal = fresh-eq {fs = fs} {fs′ = fs′} (λ q → cong (λ fr → fr q) (co-freed CO)) (co-next CO) Fa } , co-log CO
-      gret-outf {X = X} {C} {es = es} {os = os} {r = r} {w = w} {fs = fs} p (d-block {κ′ = κ′} p′ s) cfc sl sv′ rets′ H eRets eSv eSl abv ev sk fr rest nx I lv Fa =
-        case tf-end {X} {C} p cfc (K.pos p′ (next s)) rets′ sv′ sl (HereF.f-pc H) (HereF.f-run H) eRets (HereF.f-slots H) eSv of λ where
+      gret-outf {X = X} {C} {es = es} {os = os} {r = r} {w = w} {fs = fs} p l (d-block {κ′ = κ′} p′ s) cfc sl sv′ rets′ H eRets eSv eSl abv ev sk fr rest nx I lv Fa =
+        case tf-end {X} {C} p l cfc (K.pos p′ (next s)) rets′ sv′ sl (HereF.f-pc H) (HereF.f-run H) eRets (HereF.f-slots H) eSv of λ where
           (fs′ , run , CO) →
             1 , fs′ , run , record { g-pt = p-block p′ (at (next s))
                                    ; g-here = record { h-pc = co-pc CO ; h-run = trans (co-halt CO) (HereF.f-run H)
@@ -282,7 +282,7 @@ module RetT {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
         gret-out p d cfc sl sv′ rets′ H eRets eSv eSl abv area fit ev sk fr rest nx I lv Fa
       gret-t {e′ = []ᵉ} (p-tramp p₂ _) d p cfc sl sv′ rets′ refl eF (to2 _ , H) _ eRets eSv eSl abv area fit ev sk fr rest nx I lv Fa =
         gret-outo p d cfc sl sv′ rets′ H eRets eSv eSl abv area fit ev sk fr rest nx I lv Fa
-      gret-t {e′ = []ᵉ} (p-tramp p₂ _) d p cfc sl sv′ rets′ refl eF (tf2 _ , H) () eRets eSv eSl abv area fit ev sk fr rest nx I lv Fa
+      gret-t {e′ = []ᵉ} (p-tramp p₂ _) d p cfc sl sv′ rets′ refl eF (tf2 _ _ , H) () eRets eSv eSl abv area fit ev sk fr rest nx I lv Fa
       gret-t (p-start (at e)) d p cfc sl sv′ rets′ () eF H _ eRets eSv eSl abv area fit ev sk fr rest nx I lv Fa
       gret-t (p-block _ (at e)) d p cfc sl sv′ rets′ () eF H _ eRets eSv eSl abv area fit ev sk fr rest nx I lv Fa
 
@@ -303,8 +303,8 @@ module RetT {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
               → AllocState.next-heap-ref (falloc fs) ≡ n
               → InBlk fs → LiveG r (es ∥ b ∷ˢ os) fs → FreshAl (falloc fs)
               → ArrivesAt k r (es ∥ b ∷ˢ os) n fs
-      gret-tf {X = X} {C} {e′ = []ᵉ} (p-tramp p₂ _) d p cfc sl sv′ rets′ refl eF (tf2 _ , H) eRets eSv eSl abv ev sk fr rest nx I lv Fa =
-        gret-outf {X = X} {C} p d cfc sl sv′ rets′ H eRets eSv eSl abv ev sk fr rest nx I lv Fa
+      gret-tf {X = X} {C} {e′ = []ᵉ} (p-tramp p₂ _) d p cfc sl sv′ rets′ refl eF (tf2 _ l , H) eRets eSv eSl abv ev sk fr rest nx I lv Fa =
+        gret-outf {X = X} {C} p l d cfc sl sv′ rets′ H eRets eSv eSl abv ev sk fr rest nx I lv Fa
       gret-tf (p-start (at e)) d p cfc sl sv′ rets′ () eF H eRets eSv eSl abv ev sk fr rest nx I lv Fa
       gret-tf (p-block _ (at e)) d p cfc sl sv′ rets′ () eF H eRets eSv eSl abv ev sk fr rest nx I lv Fa
 

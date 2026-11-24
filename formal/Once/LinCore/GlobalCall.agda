@@ -15,7 +15,7 @@ open import Data.List.Membership.Propositional using (_∈_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Unit using (tt)
-open import Data.Bool using (false)
+open import Data.Bool using (false; true)
 open import Function using (case_of_)
 open import Relation.Nullary using (¬_)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
@@ -275,12 +275,12 @@ module CallR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     -- a many-use body's trampoline's inner call (D442)
     gcall (p-tramp p _) inv (tw1 _ , H) nx ok I lv Fa = gcallω p inv H nx ok I lv Fa
     -- a copy's trampoline's inner call (D434)
-    gcall (p-tramp p _) inv (tc1 {X = X} {C} _ , H) nx ok I lv Fa = gcallc {X = X} {C} p inv H nx ok I lv Fa
-    gcall {κ = κ} {k = k} {r = r} {fs = fs} (p-tramp p _) inv (tf1 {X = X} {C} _ , H) nx ok I lv Fa = case tf-call {X} {C} p H of λ where
+    gcall (p-tramp p _) inv (tc1 {X = X} {C} _ l , H) nx ok I lv Fa = gcallc {X = X} {C} p l inv H nx ok I lv Fa
+    gcall {κ = κ} {k = k} {r = r} {fs = fs} (p-tramp p _) inv (tf1 {X = X} {C} _ l , H) nx ok I lv Fa = case tf-call {X} {C} p l H of λ where
       (N , fs′ , run , H′ , CD) →
         N , fs′ , run , record { g-pt = p-block p (at whole) ; g-here = H′ ; g-next = trans (cd-next CD) nx
-                               ; g-ret = mk-call p (s-trampf {X = X} {C} p) refl
-                                           (called-re (trans (cong (λ z → suc (suc (suc z))) (HereF.f-pc H)) (sym (tF-pos₂ {X} {C} p)))
+                               ; g-ret = mk-call p (s-trampf {X = X} {C} p l) refl
+                                           (called-re (trans (cong (λ z → suc (suc (suc z))) (HereF.f-pc H)) (sym (tF-pos₂ {X} {C} p l)))
                                                       (sym (trans (cong (wsz X ∸_) (Data.Nat.Properties.⊔-identityʳ (wsz X))) (Data.Nat.Properties.n∸n≡0 (wsz X)))) CD)
                                            (HereF.f-cfg H)
                                            (λ i le → fresh-cfg inv i (subst (_≤ serial i) nx le))
