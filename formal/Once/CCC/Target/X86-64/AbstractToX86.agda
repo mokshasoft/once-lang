@@ -77,6 +77,36 @@ stack-code s@(suc _) =
   call-sym host-exhausted-symbol ∷
   local-1 ∷ []
 
+-- D491 (the moving limit): the stack part of a check with words `s` (cells `h`).
+-- First the region: `leaq 8(h+s)(%r15), %r11 ; cmpq %rsp, %r11 ; jbe 1f ; call ; 1:` —
+-- the frontier, the cells and the stack fit below `%rsp` (else exhausted; and so
+-- `%rsp − 8s` has no borrow). Then the limit: `movq L, %r11 ; leaq 8s(%r11), %r11 ;
+-- cmpq %rsp, %r11 ; jbe 1f ; movq %rsp, %r11 ; subq $8s, %r11 ; movq %r11, L ; 1:` —
+-- if the stack does not fit above `L`, `L` is lowered to `%rsp − 8s`. The cells' part
+-- (`heap-code h`) follows, against the limit as it now is.
+fit-code : ℕ → Program
+fit-code n =
+  lea r11 (base+disp r15 (slots n)) ∷
+  cmp (reg r11) (reg rsp) ∷
+  jbe-fwd ∷
+  call-sym host-exhausted-symbol ∷
+  local-1 ∷ []
+
+lower-code : ℕ → Program
+lower-code s =
+  mov (reg r11) (mem (rip+sym alloc-record-symbol 0)) ∷
+  lea r11 (base+disp r11 (slots s)) ∷
+  cmp (reg r11) (reg rsp) ∷
+  jbe-fwd ∷
+  mov (reg r11) (reg rsp) ∷
+  sub (reg r11) (imm (slots s)) ∷
+  mov (mem (rip+sym alloc-record-symbol 0)) (reg r11) ∷
+  local-1 ∷ []
+
+room-code : ℕ → ℕ → Program
+room-code h zero        = heap-code h
+room-code h s@(suc _)   = fit-code (h + s) ++ lower-code s ++ heap-code h
+
 compile-abstract : AbstractInstr → Program
 
 -- mov-to-output: Output := Input1
@@ -231,7 +261,8 @@ compile-abstract (addr-at n) =
 -- the stack pointer: `FlatCorrespondence.sep`)
 -- D488 (a3): the check is two parts against the stack limit `L` (record word 0):
 -- cells, `frontier + 8h ≤ L`; stack, `L + 8s ≤ %rsp`; a part of 0 emits nothing
-compile-abstract (instr-room r) = heap-code (Room.room-h r) ++ stack-code (Room.room-s r)
+-- D491: the stack part first (it may lower the limit), then the cells' part
+compile-abstract (instr-room r) = room-code (Room.room-h r) (Room.room-s r)
 
 -- Plan 0.10 Phase B: SigOp dispatch.
 -- Delegates to the existing per-name handler in CodeGen/Compile.

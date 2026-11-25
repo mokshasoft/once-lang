@@ -16,8 +16,8 @@ open import Data.List using ([]; _∷_; _++_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans; sym)
 open import Once.Type using (fits-int; fits-float)
 open import Once.CCC.Machine.SMCore
-open import Once.CCC.Codegen.ImageSymbols using (instr-defs; instr-refs; adefs; arefs; part-refs)
-open import Once.CCC.Target.X86-64.AbstractToX86 using (compile-abstract; compile-trace; heap-code; stack-code)
+open import Once.CCC.Codegen.ImageSymbols using (instr-defs; instr-refs; adefs; arefs; part-refs; stack-refs)
+open import Once.CCC.Target.X86-64.AbstractToX86 using (compile-abstract; compile-trace; heap-code; stack-code; room-code; fit-code; lower-code)
 open import Data.List.Properties using (++-assoc)
 open import Once.CCC.Target.X86-64.File using (label-defs; refs)
 open import Once.CCC.Target.X86-64.Syntax using (Program)
@@ -36,14 +36,19 @@ private
   sc-refs : ∀ (k : Data.Nat.ℕ) (r : Program) → refs (stack-code k ++ r) ≡ part-refs k ++ refs r
   sc-refs Data.Nat.zero    r = refl
   sc-refs (Data.Nat.suc _) r = refl
-  room-defs : ∀ (h k : Data.Nat.ℕ) (r : Program) → label-defs ((heap-code h ++ stack-code k) ++ r) ≡ label-defs r
-  room-defs h k r = trans (cong label-defs (++-assoc (heap-code h) (stack-code k) r))
-                          (trans (hc-defs h (stack-code k ++ r)) (sc-defs k r))
+  room-defs : ∀ (h k : Data.Nat.ℕ) (r : Program) → label-defs (room-code h k ++ r) ≡ label-defs r
+  room-defs h Data.Nat.zero    r = hc-defs h r
+  room-defs h (Data.Nat.suc k) r =
+    trans (cong label-defs (++-assoc (fit-code (h Data.Nat.+ Data.Nat.suc k)) (lower-code (Data.Nat.suc k) ++ heap-code h) r))
+      (trans (cong (λ x → label-defs (fit-code (h Data.Nat.+ Data.Nat.suc k) ++ x)) (++-assoc (lower-code (Data.Nat.suc k)) (heap-code h) r))
+             (hc-defs h r))
   room-refs : ∀ (h k : Data.Nat.ℕ) (r : Program)
-            → refs ((heap-code h ++ stack-code k) ++ r) ≡ (part-refs h ++ part-refs k) ++ refs r
-  room-refs h k r = trans (cong refs (++-assoc (heap-code h) (stack-code k) r))
-                      (trans (hc-refs h (stack-code k ++ r))
-                        (trans (cong (part-refs h ++_) (sc-refs k r)) (sym (++-assoc (part-refs h) (part-refs k) (refs r)))))
+            → refs (room-code h k ++ r) ≡ (stack-refs k ++ part-refs h) ++ refs r
+  room-refs h Data.Nat.zero    r = hc-refs h r
+  room-refs h (Data.Nat.suc k) r =
+    trans (cong refs (++-assoc (fit-code (h Data.Nat.+ Data.Nat.suc k)) (lower-code (Data.Nat.suc k) ++ heap-code h) r))
+      (trans (cong (λ x → refs (fit-code (h Data.Nat.+ Data.Nat.suc k) ++ x)) (++-assoc (lower-code (Data.Nat.suc k)) (heap-code h) r))
+             (cong (λ x → stack-refs (Data.Nat.suc k) Data.List.++ x) (hc-refs h r)))
 
 defs-step : ∀ (i : AbstractInstr) (r : Program)
           → label-defs (compile-abstract i ++ r) ≡ instr-defs i ++ label-defs r

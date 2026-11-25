@@ -408,6 +408,15 @@ find-local-1-past-call : ∀ {prog i nm}
 find-local-1-past-call {prog} {i} f1 f2
   rewrite drop-fetch {prog} {i} f1 | drop-fetch {prog} {suc i} f2 = refl
 
+-- D491: past the limit's store (`mov %rsp, %r11 ; sub $n, %r11 ; mov %r11, m`)
+find-local-1-past-lower : ∀ {prog i r n m}
+  → fetch prog i ≡ just (mov (reg r) (reg rsp)) → fetch prog (suc i) ≡ just (sub (reg r) (imm n))
+  → fetch prog (suc (suc i)) ≡ just (mov (mem m) (reg r)) → fetch prog (suc (suc (suc i))) ≡ just local-1
+  → find-local-1 prog i ≡ just (suc (suc (suc i)))
+find-local-1-past-lower {prog} {i} f1 f2 f3 f4
+  rewrite drop-fetch {prog} {i} f1 | drop-fetch {prog} {suc i} f2
+        | drop-fetch {prog} {suc (suc i)} f3 | drop-fetch {prog} {suc (suc (suc i))} f4 = refl
+
 ------------------------------------------------------------------------
 -- Chaining: a `Steps prog k s s'` is k consecutive non-halting steps.
 -- Each link's post-state s' is FORCED by its `step-not-halted ≡ just s'`

@@ -144,6 +144,42 @@ stack-code : ℕ → Program
 stack-code zero      = []
 stack-code k@(suc _) = part (room-fits? k) (stack-room k)
 
+-- D491 (the moving limit): a check's stack part with words `s` (cells `h`). First the
+-- region, as the start checks it (the room `sp − frontier` against `8(h+s)`); then the
+-- limit: the room `sp − L` against `8s` (`stack-room`'s compare), and when it is short,
+-- `L := sp − 8s` (no borrow: the region held it). A part whose words are no word cannot
+-- fit, and the region's part has then already called; its limit part is the two
+-- references alone, never run.
+lower-room : ℕ → Program
+lower-room k =
+  lla-sym t1 alloc-record-symbol ∷
+  ld t1 t1 0 ∷
+  sub t1 sp t1 ∷
+  li t2 (+ slots k) ∷
+  bgeu-fwd t1 t2 ∷
+  li t2 (+ slots k) ∷
+  sub t2 sp t2 ∷
+  lla-sym t1 alloc-record-symbol ∷
+  sd t2 t1 0 ∷
+  local-1 ∷ []
+
+lower-out : Program
+lower-out = lla-sym t1 alloc-record-symbol ∷ lla-sym t1 alloc-record-symbol ∷ []
+
+lower-pick : Bool → ℕ → Program
+lower-pick true  k = lower-room k
+lower-pick false k = lower-out
+
+lower-code : ℕ → Program
+lower-code k = lower-pick (room-fits? k) k
+
+fit-code : ℕ → Program
+fit-code n = fits-or-out (room-fits? n) (room-code n)
+
+room-code′ : ℕ → ℕ → Program
+room-code′ h zero        = heap-code h
+room-code′ h s@(suc _)   = fit-code (h Data.Nat.+ s) ++ lower-code s ++ heap-code h
+
 -- D488: the start past its check: the frame, then the stack limit into record word 0
 start-tail : ℕ → Program
 start-tail b =
@@ -346,7 +382,8 @@ compile-abstract (addr-at n) =
 -- D485: a check of no words emits nothing (the layout's separation is its room)
 -- D488 (a3): the check is two parts against the stack limit `L` (record word 0):
 -- cells, `frontier + 8h ≤ L`; stack, `L + 8s ≤ sp`; a part of 0 emits nothing
-compile-abstract (instr-room r) = heap-code (Room.room-h r) ++ stack-code (Room.room-s r)
+-- D491: the stack part first (it may lower the limit), then the cells' part
+compile-abstract (instr-room r) = room-code′ (Room.room-h r) (Room.room-s r)
 -- D488: a need that is no word no region meets: the check is then the call itself
 
 -- Plan 0.11: name-agnostic SigOp codegen.

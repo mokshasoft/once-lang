@@ -57,7 +57,7 @@ open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Label using (Label; once; callee; LabelId; EntryId; e-thunk; e-fn; labelSym; thunkSym)
 open import Once.CCC.Codegen.RoomChecks using (room-checks)
 open import Once.CCC.Codegen.RoomChecksFacts using (fold-room; All-fold-room)
-open import Once.CCC.Codegen.ImageSymbols using (instr-defs; instr-refs; adefs; arefs; entry-symbol; part-refs)
+open import Once.CCC.Codegen.ImageSymbols using (instr-defs; instr-refs; adefs; arefs; entry-symbol; part-refs; stack-refs)
 open import Once.CCC.Codegen.ImageExterns using (image-externs; ext-in; ImageWF; image-externs-valid)
 open import Once.Target.Symbol using (once-symbol-path)
 open import Once.Target.SymbolFresh using (host-leave-symbol; host-exhausted-symbol; alloc-record-symbol; record≢osp)
@@ -100,13 +100,17 @@ import Once.CCC.Codegen.AllocExpand
 import Once.CCC.Codegen.AllocExpandClasses
 import Once.LinCore.ImageSymsX
 -- D488 (a3): a check's references, per part: the record (its limit), then `once_exhausted`
+-- (D491: the stack part first — `once_exhausted`, then the record twice, read and written)
 room-refs-G : ∀ {G : String → Set} → G alloc-record-symbol → G host-exhausted-symbol
             → ∀ (k : Room) → All G (instr-refs (instr-room k))
-room-refs-G {G} rg eg k = ++⁺ (pr (Room.room-h k)) (pr (Room.room-s k))
+room-refs-G {G} rg eg k = ++⁺ (sr (Room.room-s k)) (pr (Room.room-h k))
   where
     pr : ∀ n → All G (part-refs n)
     pr zero    = []
     pr (suc _) = rg ∷ eg ∷ []
+    sr : ∀ n → All G (stack-refs n)
+    sr zero    = []
+    sr (suc _) = eg ∷ rg ∷ rg ∷ []
 
 module LI = Once.LinCore.LabelsI fmt ans bw
 module EI = Once.LinCore.EntriesI fmt ans bw

@@ -116,7 +116,7 @@ d_Defs_36 v0 v1
          (coe
             MAlonzo.Code.Data.List.Base.du__'43''43'__32
             (coe
-               MAlonzo.Code.Once.CCC.Codegen.ImageSymbols.d_adefs_40 (coe v0))
+               MAlonzo.Code.Once.CCC.Codegen.ImageSymbols.d_adefs_42 (coe v0))
             (coe MAlonzo.Code.Once.Compile.Emit.d_block'45'syms_50 (coe v1))))
 -- Once.CCC.Codegen.ImageExterns.ImageWF
 d_ImageWF_42 ::

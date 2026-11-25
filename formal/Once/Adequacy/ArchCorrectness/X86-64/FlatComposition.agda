@@ -40,7 +40,7 @@ import Once.CCC.Target.X86-64.Syntax as XS
 open import Once.CCC.Target.X86-64.Syntax
   using (Program; mov; lea; add; sub; sbb; cmp; test; jmp; je; jne; call; call-sym; call-l; ret; push; pop; nop; ud2; syscall; jbe-fwd; local-1; label; reg; imm; slots)
 open import Once.Target.X86-64.PhysReg using (rsp)
-open import Once.CCC.Target.X86-64.AbstractToX86 using (compile-abstract; compile-trace; heap-code; stack-code)
+open import Once.CCC.Target.X86-64.AbstractToX86 using (compile-abstract; compile-trace; heap-code; stack-code; room-code)
 
 ------------------------------------------------------------------------
 -- WHICH INSTRUCTIONS ARE LABELS, and the three scan equations that follow.
@@ -130,7 +130,8 @@ const-no-label fits-int   v = refl
 const-no-label fits-float v = refl
 
 -- D488 (a3): a check's two parts have no label
-room-no-label : ∀ h k → has-label (heap-code h ++ stack-code k) ≡ false
+-- (D491: the region's part and the limit's first, when there are stack words)
+room-no-label : ∀ h k → has-label (room-code h k) ≡ false
 room-no-label zero    zero    = refl
 room-no-label zero    (suc _) = refl
 room-no-label (suc _) zero    = refl

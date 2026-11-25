@@ -288,6 +288,17 @@ find-local-1-past-call : ∀ {prog i nm}
 find-local-1-past-call {prog} {i} f1 f2
   rewrite drop-fetch {prog} {i} f1 | drop-fetch {prog} {suc i} f2 = refl
 
+-- D491: past the limit's store (`li r, n ; sub r, x, r ; lla-sym r′, m ; sd r, r′, 0`)
+find-local-1-past-lower : ∀ {prog i r r′ x n m o}
+  → fetch prog i ≡ just (li r n) → fetch prog (suc i) ≡ just (sub r x r)
+  → fetch prog (suc (suc i)) ≡ just (lla-sym r′ m) → fetch prog (suc (suc (suc i))) ≡ just (sd r r′ o)
+  → fetch prog (suc (suc (suc (suc i)))) ≡ just local-1
+  → find-local-1 prog i ≡ just (suc (suc (suc (suc i))))
+find-local-1-past-lower {prog} {i} f1 f2 f3 f4 f5
+  rewrite drop-fetch {prog} {i} f1 | drop-fetch {prog} {suc i} f2
+        | drop-fetch {prog} {suc (suc i)} f3 | drop-fetch {prog} {suc (suc (suc i))} f4
+        | drop-fetch {prog} {suc (suc (suc (suc i)))} f5 = refl
+
 -- …and `j` with its label RESOLVED, which is the form a block-step wants
 -- (`step-j` above leaves the `jump-to` unreduced). Same shape as
 -- `step-beq-taken`: the `with` inside `jump-to` is on `find-label prog target`,

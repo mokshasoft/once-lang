@@ -138,6 +138,43 @@ stack-code : ℕ → Program
 stack-code zero      = []
 stack-code k@(suc _) = part (room-fits? k) (stack-room k)
 
+-- D491 (the moving limit): a check's stack part with words `s` (cells `h`). First the
+-- region, as the start checks it (D378's room `esp − esi` against `4(h+s)`, the frontier
+-- register restored past the skip); then the limit: the room `esp − L` against `4s`
+-- (`stack-room`'s compare), and when it is short, `L := esp − 4s` (no borrow: the region
+-- held it). A part whose words are no word cannot fit, and the region's part has then
+-- already called; its limit part is the two references alone, never run.
+lower-room : ℕ → Program
+lower-room k =
+  mov (reg edx) (mem (abs-sym alloc-record-symbol 0)) ∷
+  sub (reg edx) (reg esp) ∷
+  sub (reg edx) (imm 1) ∷
+  cmp (reg edx) (imm (IntW.modulus ∸ suc (slots k))) ∷
+  jbe-fwd ∷
+  mov (reg edx) (reg esp) ∷
+  sub (reg edx) (imm (slots k)) ∷
+  mov (mem (abs-sym alloc-record-symbol 0)) (reg edx) ∷
+  local-1 ∷ []
+
+lower-out : Program
+lower-out =
+  mov (reg edx) (mem (abs-sym alloc-record-symbol 0)) ∷
+  mov (mem (abs-sym alloc-record-symbol 0)) (reg edx) ∷ []
+
+lower-pick : Bool → ℕ → Program
+lower-pick true  k = lower-room k
+lower-pick false k = lower-out
+
+lower-code : ℕ → Program
+lower-code k = lower-pick (room-fits? k) k
+
+fit-code : ℕ → Program
+fit-code n = fits-or-out (room-fits? n) (room-code n)
+
+room-code′ : ℕ → ℕ → Program
+room-code′ h zero        = heap-code h
+room-code′ h s@(suc _)   = fit-code (h + s) ++ lower-code s ++ heap-code h
+
 -- D488: the start past its check: the frame, then the stack limit into record word 0
 start-tail : ℕ → Program
 start-tail b =
@@ -297,7 +334,8 @@ compile-abstract (addr-at n) =
 -- D485: a check of no words emits nothing (the layout's separation is its room)
 -- D488 (a3): the check is two parts against the stack limit `L` (record word 0):
 -- cells, `frontier + 4h ≤ L`; stack, `L + 4s ≤ %esp`; a part of 0 emits nothing
-compile-abstract (instr-room r) = heap-code (Room.room-h r) ++ stack-code (Room.room-s r)
+-- D491: the stack part first (it may lower the limit), then the cells' part
+compile-abstract (instr-room r) = room-code′ (Room.room-h r) (Room.room-s r)
 -- D488: a need that is no word (`4k ≥ 2³²`) no region meets: the check is then the call
 -- itself (`fits-or-out`), so no assumption says needs fit
 

@@ -43,7 +43,7 @@ import Once.CCC.Target.X86-32.Syntax as XS
 open import Once.CCC.Target.X86-32.Syntax
   using (Program; mov; lea; add; sub; sbb; cmp; test; jmp; je; jne; call; call-sym; call-l; ret; push; pop; nop; ud2; jbe-fwd; local-1; label; mov-code; jmp-l; reg; imm; slots)
 open import Once.Target.X86-32.PhysReg using (esp)
-open import Once.CCC.Target.X86-32.AbstractToX86-32 using (compile-abstract; compile-trace; fits-or-out; room-code; room-fits?; start-tail; part; heap-room; stack-room; heap-code; stack-code)
+open import Once.CCC.Target.X86-32.AbstractToX86-32 using (compile-abstract; compile-trace; fits-or-out; room-code; room-fits?; start-tail; part; heap-room; stack-room; heap-code; stack-code; room-code′; lower-pick)
 
 ------------------------------------------------------------------------
 -- WHICH INSTRUCTIONS ARE LABELS, and the three scan equations that follow.
@@ -153,17 +153,17 @@ hc-no-label : ∀ h → has-label (heap-code h) ≡ false
 hc-no-label zero        = refl
 hc-no-label h@(suc _)   = part-no-label (room-fits? h) (heap-room h) refl
 
-room-no-label : ∀ h k → has-label (heap-code h ++ stack-code k) ≡ false
-room-no-label zero      zero      = refl
-room-no-label zero      k@(suc _) = part-no-label (room-fits? k) (stack-room k) refl
-room-no-label h@(suc _) zero      = trans (cong has-label (++-identityʳ (heap-code h))) (hc-no-label h)
-room-no-label h@(suc _) k@(suc _) = by (room-fits? h) (room-fits? k)
+-- (D491: the region's part and the limit's first, when there are stack words)
+room-no-label : ∀ h k → has-label (room-code′ h k) ≡ false
+room-no-label h zero      = hc-no-label h
+room-no-label h k@(suc _) = by (room-fits? (h + k)) (room-fits? k) (heap-code h) (hc-no-label h)
   where
-    by : ∀ c d → has-label (part c (heap-room h) ++ part d (stack-room k)) ≡ false
-    by true  true  = refl
-    by true  false = refl
-    by false true  = refl
-    by false false = refl
+    by : ∀ c d (H : Program) → has-label H ≡ false
+       → has-label (fits-or-out c (room-code (h + k)) ++ lower-pick d k ++ H) ≡ false
+    by true  true  H e = e
+    by true  false H e = e
+    by false true  H e = e
+    by false false H e = e
 
 headView : ∀ (i : AbstractInstr) → HeadView i
 headView mov-to-output = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)

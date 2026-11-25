@@ -432,6 +432,15 @@ find-local-1-past-call : ∀ {prog i nm}
 find-local-1-past-call {prog} {i} f1 f2
   rewrite drop-fetch {prog} {i} f1 | drop-fetch {prog} {suc i} f2 = refl
 
+-- D491: past the limit's store (`mov %esp, r ; sub $n, r ; mov r, m`)
+find-local-1-past-lower : ∀ {prog i r n m}
+  → fetch prog i ≡ just (mov (reg r) (reg esp)) → fetch prog (suc i) ≡ just (sub (reg r) (imm n))
+  → fetch prog (suc (suc i)) ≡ just (mov (mem m) (reg r)) → fetch prog (suc (suc (suc i))) ≡ just local-1
+  → find-local-1 prog i ≡ just (suc (suc (suc i)))
+find-local-1-past-lower {prog} {i} f1 f2 f3 f4
+  rewrite drop-fetch {prog} {i} f1 | drop-fetch {prog} {suc i} f2
+        | drop-fetch {prog} {suc (suc i)} f3 | drop-fetch {prog} {suc (suc (suc i))} f4 = refl
+
 -- ud2 traps: the emitter uses it for the unemittable structured nodes, so the
 -- correspondence needs its halt route to be a readout like any other.
 step-ud2 : ∀ {prog s}

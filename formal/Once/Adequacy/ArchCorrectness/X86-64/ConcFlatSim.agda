@@ -795,7 +795,7 @@ arith-sigop-contract {hv} env prog fs s si r t int cc ftq rm h =
 x86-64-supply : EE.Supply
 x86-64-supply = record
   { bss = x86-64-block-steps ; sts = x86-64-stuck-steps
-  ; room-step = λ prog fs s k _ cc st h ft → EE.room-same {prog = prog} {fs = fs} {s = s} {k = k} (room-step-x86 prog fs s k cc st h ft)
+  ; room-step = λ prog fs s k run cc st h ft → room-step-x86 prog fs s k cc st h ft (reg-range prog fs s rsp run cc)
   ; start-step = λ prog fs s b run cc h ft → start-step-x86 prog fs s b cc h ft (reg-range prog fs s rsp run cc)
   ; reg-range = reg-range ; ret-no-wrap = ret-no-wrap
   ; tag-fits = tag-fits ; lit-fits = lit-fits ; float-fits = float-fits

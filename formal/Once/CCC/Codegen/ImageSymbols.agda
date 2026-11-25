@@ -68,14 +68,22 @@ part-refs : Data.Nat.ℕ → List String
 part-refs Data.Nat.zero    = []
 part-refs (Data.Nat.suc _) = alloc-record-symbol ∷ host-exhausted-symbol ∷ []
 
+-- D491 (the moving limit): a check's stack part, when it has words, first checks the
+-- region holds the cells and the stack below the stack pointer (it may call), then
+-- reads the limit and may store a lower one
+stack-refs : Data.Nat.ℕ → List String
+stack-refs Data.Nat.zero    = []
+stack-refs (Data.Nat.suc _) = host-exhausted-symbol ∷ alloc-record-symbol ∷ alloc-record-symbol ∷ []
+
 instr-refs : AbstractInstr → List String
 instr-refs (instr-ctrl c)           = ctrl-refs c
 instr-refs (instr-sigop si)         = once-symbol-path (name si) ∷ []
 instr-refs (instr-load-code-addr n) = thunkSym n ∷ []
 -- plan 0.123 A.4: the room check calls the Host's `once_exhausted` when it fails.
 -- (D488 (a3): each part of a check reads the limit in the record, then may call; a part of
--- no words has no code, D485)
-instr-refs (instr-room r)           = part-refs (Room.room-h r) ++ part-refs (Room.room-s r)
+-- no words has no code, D485. D491: the stack part first, as it may lower the limit
+-- the cells' part reads)
+instr-refs (instr-room r)           = stack-refs (Room.room-s r) ++ part-refs (Room.room-h r)
 -- D472: the allocator record is at its own symbol (the file defines it)
 instr-refs (load-rec _)             = alloc-record-symbol ∷ []
 instr-refs (store-rec _)            = alloc-record-symbol ∷ []

@@ -25425,3 +25425,25 @@ bounds, and the check gives the heap side). ~5 instructions per flagged call (to
 call, depth limited by total memory; every other call static and unchecked; `L` starts at `sp − B`.
 Not taken: segments (frames in heap blocks: a segment-aware correspondence and abstract frames inside heap
 blocks on three arches, for ~10 instructions per flagged call and no compare).
+**Landed: the moving limit, stages 1–3 (2026-11-25).**
+* Stage 1 (generic, aee8e057a): `EventEngine.RoomStep`'s room branch lands at a view `hv′` with the same
+  frontier and a limit at most the old (`room-same` for a check that keeps it); `Budget.bg-room` takes it
+  (`saved-lower`: a lower limit keeps every saved frame's bound).
+* Stages 2–3 (the three arches): a check with stack words `s` (cells `h`) is now three parts, in one order
+  on every arch — the region (`frontier + w(h+s) ≤ sp`, else `once_exhausted`; also what makes `sp − ws`
+  borrow-free), the limit (if `L + ws > sp`, `L := sp − ws`, stored in record word 0), then the cells'
+  part against the limit as it now is (`fit-code`/`lower-code`/`heap-code`, `room-code`/`room-code′`).
+  A check without stack words is the cells' part alone. The file's references follow one order
+  (`ImageSymbols.stack-refs`: `once_exhausted`, the record twice), so the three `FileSymbols` and
+  `ImageSyms.room-refs-G` agree. Each arch proves the parts (`fit-part`, `lower-part` with `LowerRun`, the
+  existing `heap-part`); the store reuses the start's `sim-set-lim`/`start-view`; the return rows are kept
+  by `ret-agree-above` from the stack mark (the store is at `heap-base`, below it).
+* Not yet: the start still reserves `start-stack-words`; `L` is not restored on return (a low-water mark
+  until stage 5).
+**Measured** (x86_64, 108 programs, against D490 d816e9d07): run 1.03× (median 1.03×, max 1.04×), `.text` 1.07×,
+check instructions 1.59× (the region's part runs on the fast path too: four instructions a flagged check).
+What it buys is not in the corpus: deep data runs out only when the region does, never at the fixed reserve.
+**Open:** fuse the region's part into the limit's slow path (a second local label per arch) to give the
+fast path back; the start's reserve exactly its depth (stage 4); `L` restored on return (stage 5).
+**Landed:** `make certified` green (180 s unit cap, the top module's load); 188 exit tests × 3 arches,
+seL4 × 3, `cabal test` 1025.
