@@ -30,7 +30,8 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Machine.SMCore using (AbstractInstr; AbstractTrace; instr-room; Room; module AllocState)
 open import Once.CCC.Machine.InstrSlot using (slot-of)
-open import Once.CCC.Codegen.RoomChecks using (boundary?; stretch; checks; room-checks; pick)
+open import Once.CCC.Codegen.RoomChecks using (boundary?; stretch; checks; room-checks; room-checks-def; pick)
+import Relation.Binary.PropositionalEquality
 open import Once.CCC.Codegen.StackDepth using (o-start; owner-from)
 open import Once.CCC.Codegen.RoomChecksFacts using (ψ; φ; bump; module RoomFacts)
 
@@ -65,7 +66,8 @@ module RoomSim {FS : FrameSemantics} (t : AbstractTrace) where
     after-x c x e true  bt =
       inj₂ ( sym (trans (ψ-next t c e) (cong (λ z → suc (bump z (ψ t c))) bt))
            , stretch (pick t) (owner-from o-start t c) (Data.List.drop (suc c) t)
-           , check-at (pick t) o-start t c e bt )
+           , Relation.Binary.PropositionalEquality.subst (λ p → fetch p (suc (φ t c)) ≡ just (instr-room (stretch (pick t) (owner-from o-start t c) (Data.List.drop (suc c) t))))
+               (sym (room-checks-def t)) (check-at (pick t) o-start t c e bt) )
 
   -- ONE PLACE ON: after the instruction at `c` (or a return to `suc c`), the
   -- image with checks is at `suc (φ t c)` — which stands for `suc c`.

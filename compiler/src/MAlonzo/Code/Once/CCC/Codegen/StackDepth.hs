@@ -107,7 +107,7 @@ d__'8801''7495''7484'__42 v0 v1
              C_o'45'start_38 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
              C_o'45'entry_40 v3
                -> coe
-                    MAlonzo.Code.Once.CCC.Label.d__'8801''7495''7473'__228 (coe v2)
+                    MAlonzo.Code.Once.CCC.Label.d__'8801''7495''7473'__136 (coe v2)
                     (coe v3)
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
@@ -174,7 +174,7 @@ d_own'45'k_98 v0 v1
         -> coe
              MAlonzo.Code.Data.Bool.Base.du_if_then_else__44
              (coe
-                MAlonzo.Code.Once.CCC.Label.d__'8801''7495''7477'__150 (coe v2)
+                MAlonzo.Code.Once.CCC.Label.d__'8801''7495''7477'__58 (coe v2)
                 (coe
                    MAlonzo.Code.Once.CCC.Codegen.AllocExpand.d_skip'45'label_154))
              (coe C_o'45'start_38) (coe v0)
@@ -312,8 +312,8 @@ d_Depths_254 = ()
 data T_Depths_254
   = C_depths_288 (MAlonzo.Code.Once.CCC.Label.T_EntryId_22 -> Bool)
                  (MAlonzo.Code.Once.CCC.Label.T_EntryId_22 -> Integer)
-                 (MAlonzo.Code.Once.CCC.Label.T_EntryId_22 -> Integer) Integer Bool
-                 Integer Bool
+                 (MAlonzo.Code.Once.CCC.Label.T_EntryId_22 -> Integer) Integer
+                 (T_Owner_36 -> Bool) Integer Bool
                  (MAlonzo.Code.Once.CCC.Label.T_LabelId_6 -> T_Owner_36)
 -- Once.CCC.Codegen.StackDepth.Depths.bnd
 d_bnd_272 ::
@@ -343,7 +343,7 @@ d_past'8320'_278 v0
       C_depths_288 v1 v2 v3 v4 v5 v6 v7 v8 -> coe v4
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.StackDepth.Depths.clo-chk
-d_clo'45'chk_280 :: T_Depths_254 -> Bool
+d_clo'45'chk_280 :: T_Depths_254 -> T_Owner_36 -> Bool
 d_clo'45'chk_280 v0
   = case coe v0 of
       C_depths_288 v1 v2 v3 v4 v5 v6 v7 v8 -> coe v5
@@ -398,7 +398,7 @@ d_cost'45'k_306 v0 v1 v2
       C_k'45'clo_64
         -> coe
              MAlonzo.Code.Data.Bool.Base.du_if_then_else__44
-             (coe d_clo'45'chk_280 (coe v0)) (coe (0 :: Integer))
+             (coe d_clo'45'chk_280 v0 v1) (coe (0 :: Integer))
              (coe addInt (coe (1 :: Integer)) (coe d_clo'45'dep_282 (coe v0)))
       C_k'45'sig_66 v3
         -> coe
@@ -878,22 +878,23 @@ d_T'8320'_986 v0
       C_depths_288
       (coe (\ v1 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8))
       (coe (\ v1 -> v0)) (coe (\ v1 -> 0 :: Integer))
-      (coe (0 :: Integer)) (coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10)
+      (coe (0 :: Integer))
+      (coe (\ v1 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10))
       (coe v0) (coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10)
       (coe (\ v1 -> coe C_o'45'start_38))
 -- Once.CCC.Codegen.StackDepth.cost₀-k
-d_cost'8320''45'k_1004 ::
+d_cost'8320''45'k_1006 ::
   Integer ->
   T_Owner_36 ->
   T_Kind_60 -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_cost'8320''45'k_1004 = erased
+d_cost'8320''45'k_1006 = erased
 -- Once.CCC.Codegen.StackDepth.pastO₀
-d_pastO'8320'_1054 ::
+d_pastO'8320'_1056 ::
   Integer ->
   T_Owner_36 -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_pastO'8320'_1054 = erased
+d_pastO'8320'_1056 = erased
 -- Once.CCC.Codegen.StackDepth.cert₀
-d_cert'8320'_1070 ::
+d_cert'8320'_1072 ::
   Integer ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430] ->
   (Integer ->
@@ -902,8 +903,8 @@ d_cert'8320'_1070 ::
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
    MAlonzo.Code.Data.Nat.Base.T__'8804'__22) ->
   T_Cert_500
-d_cert'8320'_1070 v0 ~v1 v2 = du_cert'8320'_1070 v0 v2
-du_cert'8320'_1070 ::
+d_cert'8320'_1072 v0 ~v1 v2 = du_cert'8320'_1072 v0 v2
+du_cert'8320'_1072 ::
   Integer ->
   (Integer ->
    MAlonzo.Code.Once.CCC.Label.T_EntryId_22 ->
@@ -911,7 +912,7 @@ du_cert'8320'_1070 ::
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
    MAlonzo.Code.Data.Nat.Base.T__'8804'__22) ->
   T_Cert_500
-du_cert'8320'_1070 v0 v1
+du_cert'8320'_1072 v0 v1
   = coe
       C_constructor_594
       (coe (\ v2 v3 v4 -> coe MAlonzo.Code.Data.Nat.Base.C_z'8804'n_26))

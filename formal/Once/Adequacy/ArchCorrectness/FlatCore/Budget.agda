@@ -401,7 +401,12 @@ call-clo-room : ∀ {hv : HeapView} {prog : AbstractTrace} {fs : FlatState}
               → Budget hv prog fs → fetch prog (fpc fs) ≡ just instr-call-closure
               → hlim hv + slots (suc (Depths.clo-dep (tbl prog))) ≤ fbase fs
 call-clo-room {hv} {prog} {fs} bg f =
-  call-cover (Depths.clo-dep (tbl prog)) (Depths.clo-chk (tbl prog)) bg f refl refl refl refl
+  call-cover (Depths.clo-dep (tbl prog)) (Depths.clo-chk (tbl prog) (ow prog (fpc fs))) bg f refl refl (by _) (by′ _)
+  where
+    by : ∀ b → (if b then suc (Depths.clo-dep (tbl prog)) else 0) ≡ (if b then suc (Depths.clo-dep (tbl prog)) else 0)
+    by b = refl
+    by′ : ∀ b → (if b then 0 else suc (Depths.clo-dep (tbl prog))) ≡ (if b then 0 else suc (Depths.clo-dep (tbl prog)))
+    by′ b = refl
 
 ------------------------------------------------------------------------
 -- A SIGOP'S ROOM (D488): its block's words, the check's (the fallback) or its

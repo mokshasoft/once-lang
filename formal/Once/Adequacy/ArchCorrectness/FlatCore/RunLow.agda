@@ -599,7 +599,7 @@ check-need .(room-checks src) .(L.lift src fs₀ p) (mkRunLow src fs₀ p refl r
 -- into an entry (`em-guard`, across the checks)
 ------------------------------------------------------------------------
 open import Once.CCC.Codegen.StackDepth using (Cert; o-start; kind; entry-k)
-open import Once.CCC.Codegen.RoomChecks using (tbl; pick)
+open import Once.CCC.Codegen.RoomChecks using (tbl; pick; room-checks-def)
 open import Once.CCC.Codegen.RoomChecksFacts using (module PickCert; module NoFall; image-noroom; tbl-room; NoRoom)
 open PickCert {FS} using (pick-cert)
 open NoFall {FS} using (FF; FF-checks; leaves?)
@@ -673,4 +673,4 @@ private
 
 low-ff : ∀ {prog fs} → RunLow prog fs → FF prog
 low-ff (mkRunLow src fs₀ p refl r refl pc) =
-  FF-checks (pick src) o-start src (guard-ff src (Emitted.em-guard (RunAt.run-em r)))
+  subst FF (sym (room-checks-def src)) (FF-checks (pick src) o-start src (guard-ff src (Emitted.em-guard (RunAt.run-em r))))

@@ -37,9 +37,9 @@ open import Once.Denotation.ProgramTrace using (⟦_⟧IRᵗ)
 open import Once.Denotation.Program using (IRFun; irProgram)
 open import Once.IR.Semantics.Trace using (module Interp)
 open import Once.CCC.FrameSemantics using (fs-numerics; fs-ffi; module FrameSemantics)
-open import Once.CCC.Codegen.RoomChecks using (room-checks)
+open import Once.CCC.Codegen.RoomChecks using (room-checks; room-rest; room-checks-∷)
 open import Once.CCC.Machine.SMCore
-  using (AbstractTrace; AbstractInstr; instr-ctrl; c-ret; instr-call-closure; instr-sigop; instr-alloc-heap; instr-free-heap; SV-Ptr; SV-Code; module LocState; module AllocState)
+  using (AbstractTrace; AbstractInstr; instr-ctrl; c-ret; c-start; instr-call-closure; instr-sigop; instr-alloc-heap; instr-free-heap; SV-Ptr; SV-Code; module LocState; module AllocState)
 open import Data.Sum using (_⊎_)
 open import Data.Bool using (Bool; true; false)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
@@ -71,7 +71,7 @@ import Once.CCC.Codegen.AllocExpand
 import Once.SigOp.Info
 import Data.Nat
 import Data.List.Relation.Unary.Any
-open import Once.CCC.Codegen.ImageExterns using (image-externs)
+open import Once.CCC.Codegen.ImageExterns using (image-externs; ImageWF)
 
 open ArchSim A
 open FlatMachine {FS} using (fetch; find-thunk; module FlatState)
@@ -80,6 +80,14 @@ open Once.Adequacy.ArchCorrectness.FlatCore.RunContext o FS slot-size word-eq us
 
 
 module ML = Once.LinCore.MachineLit FS bw
+
+-- (`file-wf` at a room-checked image: the pass keeps its start first)
+wf-room : ∀ b (t : AbstractTrace) (bs : List ArithBlock) (ex : List String)
+        → ImageWF (room-checks (instr-ctrl (c-start b) ∷ t)) bs ex
+        → Backend.AsmWF B (Backend.file B (room-checks (instr-ctrl (c-start b) ∷ t)) (file-table (Backend.payload B) bs) ex)
+wf-room b t bs ex w =
+  subst (λ p → Backend.AsmWF B (Backend.file B p (file-table (Backend.payload B) bs) ex)) (sym (room-checks-∷ _ t))
+        (file-wf b (room-rest _ t) bs ex (subst (λ p → ImageWF p bs ex) (room-checks-∷ _ t) w))
 
 -- a constant's loader is an `instr-load-const`
 ld-is : Once.LinCore.ImageAll.LoadConst (fs-numerics FS) (fs-ffi FS) bw ML.ldConst
@@ -163,7 +171,7 @@ module NewImage (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Uni
   module IS = Once.LinCore.ImageSyms.Img (fs-numerics FS) (fs-ffi FS) bw o IT.ds IT.f₀ ML.ldConst ld-is IT.canon {FS}
 
   file-wfᴺ : Backend.AsmWF B (Backend.file B P′ (file-table (Backend.payload B) bs) (image-externs image))
-  file-wfᴺ = file-wf _ _ bs (image-externs image) IS.image-wf
+  file-wfᴺ = wf-room _ _ bs (image-externs image) IS.image-wf
 
   -- …the file the compiler writes (`ExprImage.fileAt`, its externs the image's)
 
@@ -231,7 +239,7 @@ module NewImage (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Uni
 
     -- (in the image's own names: the file's shape is the room-checked expansion's)
     file-wfˣ : Backend.AsmWF B (Backend.file B P″ (file-table (Backend.payload B) bs) (image-externs image))
-    file-wfˣ = file-wf _ _ bs (image-externs image) ISX.image-wfˣ
+    file-wfˣ = wf-room _ _ bs (image-externs image) ISX.image-wfˣ
     file-wf-atˣ : Backend.AsmWF B (Once.LinCore.ExprImage.fileAt (fs-numerics FS) B a true IT.BF.tl IT.BF.mpm
                                      (image-externs (Once.LinCore.ExprImage.imageAt (fs-numerics FS) IT.BF.tl IT.BF.mpm)))
     file-wf-atˣ = file-wfˣ
@@ -307,7 +315,7 @@ module NewImage (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Uni
     module ISC = IS.Xc PLC.C
 
     file-wfᶜ : Backend.AsmWF B (Backend.file B P‴ (file-table (Backend.payload B) bs) (image-externs image))
-    file-wfᶜ = file-wf _ _ bs (image-externs image) ISC.image-wfᶜ
+    file-wfᶜ = wf-room _ _ bs (image-externs image) ISC.image-wfᶜ
     file-wf-atᶜ : Backend.AsmWF B (Once.LinCore.ExprImage.fileAt (fs-numerics FS) B a false IT.BF.tl IT.BF.mpm
                                      (image-externs (Once.LinCore.ExprImage.imageAt (fs-numerics FS) IT.BF.tl IT.BF.mpm)))
     file-wf-atᶜ = file-wfᶜ

@@ -46,7 +46,9 @@ open import Data.Bool using (Bool; true; false; _∧_; T)
 open import Relation.Binary using (DecidableEquality)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst)
 open import Relation.Nullary using (yes; no; ¬_; does)
-open import Relation.Nullary.Decidable using (toWitness; isYes≗does; dec-true; dec-false)
+open import Relation.Nullary.Decidable using (toWitness; isYes≗does; dec-true; dec-false; map′; _×-dec_)
+open import Data.Product using (_,_)
+open import Relation.Binary.PropositionalEquality using (cong)
 open import Data.Unit using (tt)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.CanonicalName using (_≟ᶜ_)
@@ -111,14 +113,13 @@ pattern thunk n = callee (e-thunk n)
 -- String/List boolean-equality reflection.
 ------------------------------------------------------------------------
 
+-- (the index first, then the path, the name last: distinct labels mostly differ
+-- in a number, and a name is decided character by character)
 _≟ᴵ_ : DecidableEquality LabelId
-mkLabelId o p i ≟ᴵ mkLabelId o' p' i' with o ≟ᶜ o'
-... | no ¬q = no λ where refl → ¬q refl
-... | yes refl with ≡-dec Nat._≟_ p p'
-...   | no ¬q = no λ where refl → ¬q refl
-...   | yes refl with i Nat.≟ i'
-...     | no ¬q = no λ where refl → ¬q refl
-...     | yes refl = yes refl
+mkLabelId o p i ≟ᴵ mkLabelId o' p' i' =
+  map′ (λ { (refl , refl , refl) → refl })
+       (λ e → cong idx e , cong path e , cong owner e)
+       (i Nat.≟ i' ×-dec (≡-dec Nat._≟_ p p' ×-dec o ≟ᶜ o'))
 
 infix 4 _≡ᵇᴵ_
 _≡ᵇᴵ_ : LabelId → LabelId → Bool

@@ -346,7 +346,7 @@ module Code (C : Classes) (small : 3 + count C ≤ rec-size) (in-range : ∀ k �
 -- The room checks add checks only
 ------------------------------------------------------------------------
 
-open import Once.CCC.Codegen.RoomChecks using (room-checks; checks; boundary?; stretch; pick)
+open import Once.CCC.Codegen.RoomChecks using (room-checks; room-checks-def; checks; boundary?; stretch; pick)
 open import Once.CCC.Codegen.StackDepth using (own; o-start)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Relation.Unary.Any using (here; there)
@@ -365,7 +365,7 @@ checks-sig T o (i ∷ t) si (there m) = there (by (boundary? i) m)
     by false m′ = checks-sig T (own o i) t si m′
 
 room-sig : ∀ t {A B} (si : SigOpInfo A B) → instr-sigop si ∈ room-checks t → instr-sigop si ∈ t
-room-sig t si m = checks-sig (pick t) o-start t si m
+room-sig t si m = checks-sig (pick t) o-start t si (subst (instr-sigop si ∈_) (room-checks-def t) m)
 
 ∈-checks : ∀ T o t {i} → i ∈ t → i ∈ checks T o t
 ∈-checks T o (x ∷ t) (here e) = here e
@@ -376,4 +376,4 @@ room-sig t si m = checks-sig (pick t) o-start t si m
     by false = ∈-checks T (own o x) t m
 
 ∈-room : ∀ t {i} → i ∈ t → i ∈ room-checks t
-∈-room t m = ∈-checks (pick t) o-start t m
+∈-room t m = subst (_ ∈_) (sym (room-checks-def t)) (∈-checks (pick t) o-start t m)

@@ -35,6 +35,7 @@ module Once.CCC.Codegen.RoomChecks where
 open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Data.List using (List; []; _∷_)
 open import Data.Nat using (ℕ; suc; _+_; _⊔_)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.CCC.Machine.SMCore
   using (AbstractInstr; AbstractTrace; instr-ctrl; instr-room; instr-alloc-heap; instr-call-closure; instr-sigop
         ; c-label; c-entry; c-start; c-call-fn; Room; room; module Room)
@@ -78,7 +79,7 @@ cells _                    = 0
 
 stack-k : Depths → Owner → Kind → ℕ
 stack-k T o (k-call g)    = if chk T o g then suc (Depths.dep T g) else 0
-stack-k T o k-clo         = if Depths.clo-chk T then suc (Depths.clo-dep T) else 0
+stack-k T o k-clo         = if Depths.clo-chk T o then suc (Depths.clo-dep T) else 0
 stack-k T o (k-sig w)     = if Depths.sig-chk T then w else 0
 stack-k T o (k-entry _ _) = 0
 stack-k T o (k-label _)   = 0
@@ -139,8 +140,25 @@ opaque
   pick : AbstractTrace → Depths
   pick t = pick-of t (table t)
 
-room-checks : AbstractTrace → AbstractTrace
-room-checks t = checks (pick t) o-start t
+-- (opaque too: a proof that compares two spellings of the checked image then
+-- compares the images, not their checked forms instruction by instruction; the
+-- body is `room-checks-def`)
+opaque
+  room-checks : AbstractTrace → AbstractTrace
+  room-checks t = checks (pick t) o-start t
+
+opaque
+  unfolding room-checks
+  room-checks-def : ∀ t → room-checks t ≡ checks (pick t) o-start t
+  room-checks-def t = refl
+
+  -- (the pass keeps the image's first instruction first: the rest of it, after)
+  room-rest : AbstractInstr → AbstractTrace → AbstractTrace
+  room-rest i t = Data.List.drop 1 (room-checks (i ∷ t))
+    where import Data.List
+
+  room-checks-∷ : ∀ i t → room-checks (i ∷ t) ≡ i ∷ room-rest i t
+  room-checks-∷ i t = refl
 
 ------------------------------------------------------------------------
 -- THE BUDGET'S MEASURE: what the code spends from here up to the next check.

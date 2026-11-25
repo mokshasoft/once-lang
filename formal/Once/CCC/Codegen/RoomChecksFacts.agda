@@ -23,11 +23,12 @@ open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Nat using (ℕ; zero; suc)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; cong)
+import Relation.Binary.PropositionalEquality
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Machine.SMCore using (AbstractInstr; AbstractTrace; instr-room; Room)
-open import Once.CCC.Codegen.RoomChecks using (boundary?; stretch; checks; room-checks; max-entry; pick)
+open import Once.CCC.Codegen.RoomChecks using (boundary?; stretch; checks; room-checks; room-checks-def; max-entry; pick)
 open import Once.CCC.Codegen.StackDepth using (Depths; Owner; o-start; own; owner-from; before-from)
 
 -- one more index when the instruction just passed is a boundary (its check follows it)
@@ -65,7 +66,7 @@ module RoomFacts {FS : FrameSemantics} where
 
   -- …and the whole pass.
   fetch-room : ∀ (t : AbstractTrace) (i : ℕ) → fetch (room-checks t) (φ t i) ≡ fetch t i
-  fetch-room t i = fetch-checks (pick t) o-start t i
+  fetch-room t i = trans (cong (λ p → fetch p (φ t i)) (room-checks-def t)) (fetch-checks (pick t) o-start t i)
 
   ------------------------------------------------------------------------
   -- THE SCANS COMMUTE with the map: a check is neither a label nor an entry, so
@@ -134,7 +135,7 @@ module RoomFacts {FS : FrameSemantics} where
   -- JUMPS: the image with checks finds each label at `φ` of its old index.
   find-label-room : ∀ (t : AbstractTrace) (m : LabelId)
                   → find-label (room-checks t) m ≡ mmap (φ t) (find-label t m)
-  find-label-room t m = fl-checks (pick t) o-start t m 0
+  find-label-room t m = Relation.Binary.PropositionalEquality.subst (λ p → find-label p m ≡ mmap (φ t) (find-label t m)) (Relation.Binary.PropositionalEquality.sym (room-checks-def t)) (fl-checks (pick t) o-start t m 0)
 
   -- …and the same for the entry scan (calls).
   ft-go-suc : ∀ (xs : AbstractTrace) (e : EntryId) (b : ℕ) → ft-go xs e (suc b) ≡ mmap suc (ft-go xs e b)
@@ -175,7 +176,7 @@ module RoomFacts {FS : FrameSemantics} where
   -- CALLS: the image with checks finds each entry at `φ` of its old index.
   find-entry-room : ∀ (t : AbstractTrace) (e : EntryId)
                   → find-entry (room-checks t) e ≡ mmap (φ t) (find-entry t e)
-  find-entry-room t e = ft-checks (pick t) o-start t e 0
+  find-entry-room t e = Relation.Binary.PropositionalEquality.subst (λ p → find-entry p e ≡ mmap (φ t) (find-entry t e)) (Relation.Binary.PropositionalEquality.sym (room-checks-def t)) (ft-checks (pick t) o-start t e 0)
 
   ------------------------------------------------------------------------
   -- ONE INSTRUCTION FURTHER: the map advances by one, or by two when the
@@ -264,14 +265,14 @@ All-checks T o (x ∷ t) pr (px ∷ a) = px ∷ all-after (boundary? x) (stretch
 
 All-room : ∀ {P : AbstractInstr → Set} (t : AbstractTrace)
          → (∀ k → P (instr-room k)) → All P t → All P (room-checks t)
-All-room t pr a = All-checks (pick t) o-start t pr a
+All-room {P} t pr a = Relation.Binary.PropositionalEquality.subst (All P) (Relation.Binary.PropositionalEquality.sym (room-checks-def t)) (All-checks (pick t) o-start t pr a)
 
 Any-checks : ∀ {P : AbstractInstr → Set} (T : Depths) (o : Owner) (t : AbstractTrace) → Any P t → Any P (checks T o t)
 Any-checks T o (x ∷ t) (here p)  = here p
 Any-checks T o (x ∷ t) (there a) = there (any-after (boundary? x) (stretch T (own o x) t) (Any-checks T (own o x) t a))
 
 Any-room : ∀ {P : AbstractInstr → Set} (t : AbstractTrace) → Any P t → Any P (room-checks t)
-Any-room t a = Any-checks (pick t) o-start t a
+Any-room {P} t a = Relation.Binary.PropositionalEquality.subst (Any P) (Relation.Binary.PropositionalEquality.sym (room-checks-def t)) (Any-checks (pick t) o-start t a)
 
 ------------------------------------------------------------------------
 -- WHAT A TRACE DEFINES: a fold to which a check contributes nothing (a check
@@ -293,7 +294,7 @@ module _ {X : Set} (F : AbstractTrace → X) (g : AbstractInstr → X → X)
                            (sym (F-∷ x t)))
 
   fold-room : ∀ (t : AbstractTrace) → F (room-checks t) ≡ F t
-  fold-room t = fold-checks (pick t) o-start t
+  fold-room t = Relation.Binary.PropositionalEquality.subst (λ p → F p ≡ F t) (Relation.Binary.PropositionalEquality.sym (room-checks-def t)) (fold-checks (pick t) o-start t)
 
 ------------------------------------------------------------------------
 -- WHAT A TRACE REFERENCES: a check DOES reference something — the Host's
@@ -320,7 +321,7 @@ module _ {X : Set} {P : X → Set} (F : AbstractTrace → List X) (f : AbstractI
     where split = ++⁻ (f x) (subst (All P) (F-∷ x t) a)
 
   All-fold-room : ∀ (t : AbstractTrace) → All P (F t) → All P (F (room-checks t))
-  All-fold-room t a = All-fold-checks (pick t) o-start t a
+  All-fold-room t a = Relation.Binary.PropositionalEquality.subst (λ p → All P (F p)) (Relation.Binary.PropositionalEquality.sym (room-checks-def t)) (All-fold-checks (pick t) o-start t a)
 
 ------------------------------------------------------------------------
 -- THE BUDGET'S ARITHMETIC (plan 0.123 A.4 step 5): each check's `k` is what the
@@ -353,7 +354,7 @@ strip-checks T o (x ∷ t) (nr ∷ a) =
     R = if boundary? x then instr-room (stretch T (own o x) t) ∷ checks T (own o x) t else checks T (own o x) t
 
 tbl-room : ∀ (t : AbstractTrace) → NoRoom t → tbl (room-checks t) ≡ pick t
-tbl-room t a = cong pick (strip-checks (pick t) o-start t a)
+tbl-room t a = Relation.Binary.PropositionalEquality.subst (λ p → tbl p ≡ pick t) (Relation.Binary.PropositionalEquality.sym (room-checks-def t)) (cong pick (strip-checks (pick t) o-start t a))
   where open import Relation.Binary.PropositionalEquality using (cong)
 
 -- a check reserves no frame, so the largest entry frame is the same
@@ -410,7 +411,7 @@ module CheckK {FS : FrameSemantics} where
   -- …and so does every check of the pass's output
   check-k : ∀ (t : AbstractTrace) → NoRoom t → ∀ (pc : ℕ) (k : Room)
           → fetch (room-checks t) pc ≡ just (instr-room k) → k ≡ till-check (pick t) (owner-from o-start (room-checks t) pc) (drop (suc pc) (room-checks t))
-  check-k t a pc k f = checks-k (pick t) o-start t a pc k f
+  check-k t a pc k f = Relation.Binary.PropositionalEquality.subst (λ p → fetch p pc ≡ just (instr-room k) → k ≡ till-check (pick t) (owner-from o-start p pc) (drop (suc pc) p)) (Relation.Binary.PropositionalEquality.sym (room-checks-def t)) (checks-k (pick t) o-start t a pc k) f
 
   -- what an ordinary instruction's measure is: its own spend, then its successor's
   drop-fetch : ∀ (P : AbstractTrace) (pc : ℕ) {i : AbstractInstr} → fetch P pc ≡ just i
@@ -536,7 +537,7 @@ module NeedFacts {FS : FrameSemantics} where
   boundary-next : ∀ (t : AbstractTrace) (j : ℕ) {i : AbstractInstr}
                 → fetch (room-checks t) j ≡ just i → boundary? i ≡ true
                 → Σ Room (λ k → fetch (room-checks t) (suc j) ≡ just (instr-room k))
-  boundary-next t j f bd = checks-next (pick t) o-start t j f bd
+  boundary-next t j {i} f bd = Relation.Binary.PropositionalEquality.subst (λ p → fetch p j ≡ just i → Σ Room (λ k → fetch p (suc j) ≡ just (instr-room k))) (Relation.Binary.PropositionalEquality.sym (room-checks-def t)) (λ f′ → checks-next (pick t) o-start t j f′ bd) f
 
   -- an entry reserves at most the largest frame (what a call's spend covers)
   entry-le : ∀ (P : AbstractTrace) (j : ℕ) (m : EntryId) (b : ℕ)
@@ -618,7 +619,7 @@ module PickCert {FS : FrameSemantics} where
     subst (b ≤_) (max-entry-checks T o t) (entry-le (checks T o t) pc e b (trans (sym (at-fetch (checks T o t) pc)) f))
 
   opaque
-    unfolding pick
+    unfolding pick room-checks
     pick-cert : ∀ (t : AbstractTrace) → Cert (pick t) (room-checks t)
     pick-cert t = by (table t) (consistent? (table t) (checks (table t) o-start t)) refl
       where

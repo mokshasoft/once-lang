@@ -206,6 +206,17 @@ d_go_56 v0 v1 v2 v3 v4 v5 v6 v7
                       (coe du_o'8242'_54 (coe v1) (coe v2)) (coe v9))
                    (coe addInt (coe (1 :: Integer)) (coe v5)) (coe v5))
                 (coe addInt (coe (1 :: Integer)) (coe v6))
+         MAlonzo.Code.Once.CCC.Codegen.StackDepth.C_k'45'clo_64
+           -> coe
+                d_counts_24 (coe v0) (coe du_o'8242'_54 (coe v1) (coe v2)) (coe v3)
+                (coe v4)
+                (coe
+                   MAlonzo.Code.Data.Bool.Base.du_if_then_else__44
+                   (coe
+                      MAlonzo.Code.Once.CCC.Codegen.StackDepth.d_clo'45'chk_280 v0
+                      (coe du_o'8242'_54 (coe v1) (coe v2)))
+                   (coe addInt (coe (1 :: Integer)) (coe v5)) (coe v5))
+                (coe addInt (coe (1 :: Integer)) (coe v6))
          MAlonzo.Code.Once.CCC.Codegen.StackDepth.C_k'45'entry_68 v9 v10
            -> coe
                 d_counts_24 (coe v0) (coe du_o'8242'_54 (coe v1) (coe v2)) (coe v3)
@@ -223,7 +234,7 @@ d_depth'45'diag_62 v0
   = coe
       d_go_70 (coe v0)
       (coe
-         MAlonzo.Code.Once.CCC.Codegen.StackDepthTable.d_table_898 (coe v0))
+         MAlonzo.Code.Once.CCC.Codegen.StackDepthTable.d_table_846 (coe v0))
 -- Once.Measure._.go
 d_go_70 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430] ->
@@ -253,31 +264,21 @@ d_go_70 v0 v1
                      (coe v1)))
                (coe
                   MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                  (" clo-chk=" :: Data.Text.Text)
+                  (" " :: Data.Text.Text)
                   (coe
                      MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                     (coe
-                        MAlonzo.Code.Data.Bool.Base.du_if_then_else__44
-                        (coe
-                           MAlonzo.Code.Once.CCC.Codegen.StackDepth.d_clo'45'chk_280 (coe v1))
-                        (coe ("yes" :: Data.Text.Text)) (coe ("no" :: Data.Text.Text)))
+                     (d_counts_24
+                        (coe v1)
+                        (coe MAlonzo.Code.Once.CCC.Codegen.StackDepth.C_o'45'start_38)
+                        (coe v0) (coe (0 :: Integer)) (coe (0 :: Integer))
+                        (coe (0 :: Integer)))
                      (coe
                         MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                        (" " :: Data.Text.Text)
-                        (coe
-                           MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                           (d_counts_24
-                              (coe v1)
-                              (coe MAlonzo.Code.Once.CCC.Codegen.StackDepth.C_o'45'start_38)
-                              (coe v0) (coe (0 :: Integer)) (coe (0 :: Integer))
-                              (coe (0 :: Integer)))
-                           (coe
-                              MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                              (" first-fail=" :: Data.Text.Text)
-                              (d_first'45'fail_6
-                                 (coe v1)
-                                 (coe MAlonzo.Code.Once.CCC.Codegen.StackDepth.C_o'45'start_38)
-                                 (coe (0 :: Integer)) (coe d_P_78 (coe v0) (coe v1)))))))))))
+                        (" first-fail=" :: Data.Text.Text)
+                        (d_first'45'fail_6
+                           (coe v1)
+                           (coe MAlonzo.Code.Once.CCC.Codegen.StackDepth.C_o'45'start_38)
+                           (coe (0 :: Integer)) (coe d_P_78 (coe v0) (coe v1)))))))))
 -- Once.Measure._._.P
 d_P_78 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430] ->

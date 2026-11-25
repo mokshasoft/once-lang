@@ -217,7 +217,7 @@ record Depths : Set where
     dep     : EntryId → ℕ       -- its whole depth: frame and past (an upper bound)
     past    : EntryId → ℕ       -- its depth past its frame
     past₀   : ℕ                 -- the start segment's
-    clo-chk : Bool              -- an indirect call is checked
+    clo-chk : Owner → Bool      -- an indirect call it makes is checked
     clo-dep : ℕ                 -- every closure body's whole depth is at most this
     sig-chk : Bool              -- a SigOp is checked (its words in the stretch)
     lown    : LabelId → Owner   -- whose a label is
@@ -234,7 +234,7 @@ chk T o g = not (bnd T g) ∨ (o ≡ᵇᴼ o-entry g)
 -- WHAT AN INSTRUCTION PUSHES BEYOND ITS FUNCTION'S FRAME (at owner `o`)
 cost-k : Depths → Owner → Kind → ℕ
 cost-k T o (k-call g)    = if chk T o g then 0 else suc (dep T g)
-cost-k T o k-clo         = if clo-chk T then 0 else suc (clo-dep T)
+cost-k T o k-clo         = if clo-chk T o then 0 else suc (clo-dep T)
 cost-k T o (k-sig w)     = if sig-chk T then 0 else w
 cost-k T o (k-entry _ _) = 0
 cost-k T o (k-label _)   = 0
@@ -394,7 +394,7 @@ cert-of T prog c = record
 ------------------------------------------------------------------------
 -- (`E`: the largest entry frame)
 T₀ : ℕ → Depths
-T₀ E = depths (λ _ → false) (λ _ → E) (λ _ → 0) 0 true E true (λ _ → o-start)
+T₀ E = depths (λ _ → false) (λ _ → E) (λ _ → 0) 0 (λ _ → true) E true (λ _ → o-start)
 
 private
   cost₀-k : ∀ E o (k : Kind) → cost-k (T₀ E) o k ≡ 0

@@ -25277,3 +25277,27 @@ more free); 188 exit tests × 3 arches, seL4 × 3, `cabal test` 1025. **Measured
 programs): room checks 0.13× (63,698 → 8,471), `.text` 0.73×, static instructions 0.69×, run time 0.81×
 (median per program 0.78×, max 0.82×). **Open:** compile time on seL4 images (Caps 2.7 s, D485 1.2 s — the
 pass's lookups re-encode names); the indirect calls' checks (per closure body, not all-or-nothing).
+**Refined twice** (2026-11-25). Three changes, two measured, one a proof-checking cost:
+* **An indirect call is checked only where it may close a cycle.** `Depths.clo-chk` is per owner: an
+  indirect call is checked when its function is one a closure body reaches by direct calls
+  (`StackDepthTable.marks`, the bodies included); every other indirect call costs a word and `clo-dep`,
+  which the closure bodies, computed first, give. The old all-or-nothing flag and its phase (`reach`,
+  `clo-cycle`) are gone: an owner outside the marked set never checks, and a marked one without indirect
+  calls is unaffected. Proof cost: `clo-chk` takes the owner (`cost-k`, `stack-k`, `Budget.call-clo-room`),
+  nothing else. Measured: room-check instructions 8,471 → 8,459 on the corpus; what remains stands at the
+  fold-recursion cycles, which plan 0.154 S1's heap worklist removes.
+* **The pass's compile time** (profiled: `cabal build --enable-profiling`, `+RTS -p` on Caps). 61% of the
+  run was the pass, and most of that was equality of names decided character by character (stdlib's
+  `String._≟_` goes through `toList`): `segments` compared owners per instruction, and label equality
+  compared the name first. Now `segments` decides an owner change by the instruction's kind (an entry, the
+  outline's skip label), and `Label._≟ᴵ_` compares the index, then the path, then the name (no `with`:
+  `map′` over `×-dec`). Caps 2.84 → 2.08 s, Words 2.15 → 1.58 s, Echo 0.56 → 0.41 s. Left: the map's key
+  comparison (`cmp`, ~13%), and name equality elsewhere (`chk`'s owner test, the certificate's labels).
+* **`room-checks` is opaque** (its body `RoomChecks.room-checks-def`, its first instruction kept first
+  `room-checks-∷`). Comparing two spellings of the checked image (`fileAt …` against `Backend.file B P″ …`
+  in `LinCore.Apex`) reduced both to weak head normal form, through `checks` into the expanded image: ten
+  conversions of ~9 s each. Apex 131 s → 67 s under the profiler (typing 30 s; the rest is loading its
+  imports' interfaces). The proofs that read the body take the equation (`RoomChecksFacts`, `RoomChecksSim`,
+  `AllocExpandEmitted`, `RunLow`, the three arch `Sim`s; `Apex.wf-room` for `file-wf`'s start).
+**Landed** (refined twice): `make certified` green (at a 180 s unit cap: `Once.Certified` loads its cone for
+63 s before its first line, as before this change — open); 188 exit tests × 3 arches, seL4 × 3, `cabal test`.

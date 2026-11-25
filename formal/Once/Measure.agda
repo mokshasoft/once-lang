@@ -75,6 +75,7 @@ private
       go : Kind → String
       go (k-entry e _) = counts T o′ r (if Depths.bnd T e then u else suc u) c n
       go (k-call g)    = counts T o′ r u (if chk T o′ g then suc c else c) (suc n)
+      go k-clo         = counts T o′ r u (if Depths.clo-chk T o′ then suc c else c) (suc n)
       {-# CATCHALL #-}
       go _             = counts T o′ r u c n
 
@@ -84,7 +85,6 @@ private
       go : Depths → String
       go T = "depth-table: " Data.String.++ (if consistent? T P then "certified" else "FALLBACK")
              Data.String.++ " past0=" Data.String.++ Data.Nat.Show.show (Depths.past₀ T)
-             Data.String.++ " clo-chk=" Data.String.++ (if Depths.clo-chk T then "yes" else "no")
              Data.String.++ " " Data.String.++ counts T o-start t 0 0 0
              Data.String.++ " first-fail=" Data.String.++ first-fail T o-start 0 P
         where P = checks T o-start t

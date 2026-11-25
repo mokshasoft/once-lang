@@ -26,6 +26,7 @@ import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Data.Bool.Base
 import qualified MAlonzo.Code.Data.List.Base
 import qualified MAlonzo.Code.Data.Nat.Base
+import qualified MAlonzo.Code.Once.CCC.Codegen.AllocExpand
 import qualified MAlonzo.Code.Once.CCC.Codegen.StackDepth
 import qualified MAlonzo.Code.Once.CCC.Label
 import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
@@ -441,7 +442,7 @@ du_maybe_268 v0 v1 v2
 d_toDepths_280 ::
   T_Map_62 ->
   Integer ->
-  Bool ->
+  T_Map_62 ->
   Integer ->
   T_Map_62 -> MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Depths_254
 d_toDepths_280 v0 v1 v2 v3 v4
@@ -468,7 +469,7 @@ d_toDepths_280 v0 v1 v2 v3 v4
               du_maybe_268 (coe (0 :: Integer))
               (coe (\ v6 -> d_r'45'past_258 (coe v6)))
               (coe du_lookup_218 (coe v0) (coe d_enc'45'entry_36 (coe v5)))))
-      (coe v1) (coe v2) (coe v3)
+      (coe v1) (coe du_marked_296 (coe v2)) (coe v3)
       (coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8)
       (coe
          (\ v5 ->
@@ -477,114 +478,137 @@ d_toDepths_280 v0 v1 v2 v3 v4
               (coe MAlonzo.Code.Once.CCC.Codegen.StackDepth.C_o'45'start_38)
               (coe (\ v6 -> v6))
               (coe du_lookup_218 (coe v4) (coe d_enc'45'label_28 (coe v5)))))
+-- Once.CCC.Codegen.StackDepthTable._.marked
+d_marked_296 ::
+  T_Map_62 ->
+  Integer ->
+  T_Map_62 ->
+  Integer ->
+  T_Map_62 ->
+  T_Map_62 ->
+  MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Owner_36 -> Bool
+d_marked_296 ~v0 ~v1 ~v2 ~v3 ~v4 v5 v6 = du_marked_296 v5 v6
+du_marked_296 ::
+  T_Map_62 ->
+  MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Owner_36 -> Bool
+du_marked_296 v0 v1
+  = case coe v1 of
+      MAlonzo.Code.Once.CCC.Codegen.StackDepth.C_o'45'start_38
+        -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+      MAlonzo.Code.Once.CCC.Codegen.StackDepth.C_o'45'entry_40 v2
+        -> coe
+             du_maybe_268 (coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8)
+             (coe (\ v3 -> v3))
+             (coe du_lookup_218 (coe v0) (coe d_enc'45'entry_36 (coe v2)))
+      _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.StackDepthTable.Op
-d_Op_304 = ()
-data T_Op_304
-  = C_op'45'call_306 [Integer]
+d_Op_318 = ()
+data T_Op_318
+  = C_op'45'call_320 [Integer]
                      MAlonzo.Code.Once.CCC.Label.T_EntryId_22 |
-    C_op'45'clo_308 | C_op'45'sig_310 Integer
+    C_op'45'clo_322 | C_op'45'sig_324 Integer
 -- Once.CCC.Codegen.StackDepthTable.Seg
-d_Seg_312 = ()
-data T_Seg_312
-  = C_seg_326 MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Owner_36
-              Integer [T_Op_304]
+d_Seg_326 = ()
+data T_Seg_326
+  = C_seg_340 MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Owner_36
+              Integer [T_Op_318]
 -- Once.CCC.Codegen.StackDepthTable.Seg.sg-own
-d_sg'45'own_320 ::
-  T_Seg_312 -> MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Owner_36
-d_sg'45'own_320 v0
+d_sg'45'own_334 ::
+  T_Seg_326 -> MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Owner_36
+d_sg'45'own_334 v0
   = case coe v0 of
-      C_seg_326 v1 v2 v3 -> coe v1
+      C_seg_340 v1 v2 v3 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.StackDepthTable.Seg.sg-frame
-d_sg'45'frame_322 :: T_Seg_312 -> Integer
-d_sg'45'frame_322 v0
+d_sg'45'frame_336 :: T_Seg_326 -> Integer
+d_sg'45'frame_336 v0
   = case coe v0 of
-      C_seg_326 v1 v2 v3 -> coe v2
+      C_seg_340 v1 v2 v3 -> coe v2
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.StackDepthTable.Seg.sg-ops
-d_sg'45'ops_324 :: T_Seg_312 -> [T_Op_304]
-d_sg'45'ops_324 v0
+d_sg'45'ops_338 :: T_Seg_326 -> [T_Op_318]
+d_sg'45'ops_338 v0
   = case coe v0 of
-      C_seg_326 v1 v2 v3 -> coe v3
+      C_seg_340 v1 v2 v3 -> coe v3
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.StackDepthTable.op-of
-d_op'45'of_328 ::
+d_op'45'of_342 ::
   MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Kind_60 ->
-  Maybe T_Op_304
-d_op'45'of_328 v0
+  Maybe T_Op_318
+d_op'45'of_342 v0
   = let v1 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
     coe
       (case coe v0 of
          MAlonzo.Code.Once.CCC.Codegen.StackDepth.C_k'45'call_62 v2
            -> coe
                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                (coe C_op'45'call_306 (coe d_enc'45'entry_36 (coe v2)) (coe v2))
+                (coe C_op'45'call_320 (coe d_enc'45'entry_36 (coe v2)) (coe v2))
          MAlonzo.Code.Once.CCC.Codegen.StackDepth.C_k'45'clo_64
            -> coe
-                MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe C_op'45'clo_308)
+                MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe C_op'45'clo_322)
          MAlonzo.Code.Once.CCC.Codegen.StackDepth.C_k'45'sig_66 v2
            -> coe
                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                (coe C_op'45'sig_310 (coe v2))
+                (coe C_op'45'sig_324 (coe v2))
          _ -> coe v1)
 -- Once.CCC.Codegen.StackDepthTable.segments
-d_segments_334 ::
+d_segments_348 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430] ->
-  [T_Seg_312]
-d_segments_334 v0
+  [T_Seg_326]
+d_segments_348 v0
   = coe
-      d_go_342 (coe v0) (coe v0)
+      d_go_356 (coe v0) (coe v0)
       (coe MAlonzo.Code.Once.CCC.Codegen.StackDepth.C_o'45'start_38)
       (coe (0 :: Integer))
       (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
       (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
 -- Once.CCC.Codegen.StackDepthTable._.go
-d_go_342 ::
+d_go_356 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430] ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430] ->
   MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Owner_36 ->
-  Integer -> [T_Op_304] -> [T_Seg_312] -> [T_Seg_312]
-d_go_342 v0 v1 v2 v3 v4 v5
+  Integer -> [T_Op_318] -> [T_Seg_326] -> [T_Seg_326]
+d_go_356 v0 v1 v2 v3 v4 v5
   = case coe v1 of
       []
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-             (coe C_seg_326 (coe v2) (coe v3) (coe v4)) (coe v5)
+             (coe C_seg_340 (coe v2) (coe v3) (coe v4)) (coe v5)
       (:) v6 v7
         -> coe
-             d_at_374 (coe v0) (coe v6) (coe v7) (coe v2) (coe v3) (coe v4)
+             d_at_388 (coe v0) (coe v6) (coe v7) (coe v2) (coe v3) (coe v4)
              (coe v5)
              (coe MAlonzo.Code.Once.CCC.Codegen.StackDepth.d_kind_82 (coe v6))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.StackDepthTable._._.o′
-d_o'8242'_368 ::
+d_o'8242'_382 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430] ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430] ->
   MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Owner_36 ->
   Integer ->
-  [T_Op_304] ->
-  [T_Seg_312] -> MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Owner_36
-d_o'8242'_368 ~v0 v1 ~v2 v3 ~v4 ~v5 ~v6 = du_o'8242'_368 v1 v3
-du_o'8242'_368 ::
+  [T_Op_318] ->
+  [T_Seg_326] -> MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Owner_36
+d_o'8242'_382 ~v0 v1 ~v2 v3 ~v4 ~v5 ~v6 = du_o'8242'_382 v1 v3
+du_o'8242'_382 ::
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430 ->
   MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Owner_36 ->
   MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Owner_36
-du_o'8242'_368 v0 v1
+du_o'8242'_382 v0 v1
   = coe
       MAlonzo.Code.Once.CCC.Codegen.StackDepth.d_own_124 (coe v1)
       (coe v0)
 -- Once.CCC.Codegen.StackDepthTable._._.more
-d_more_370 ::
+d_more_384 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430] ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430] ->
   MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Owner_36 ->
   Integer ->
-  [T_Op_304] -> [T_Seg_312] -> Maybe T_Op_304 -> [T_Op_304]
-d_more_370 ~v0 ~v1 ~v2 ~v3 ~v4 v5 ~v6 v7 = du_more_370 v5 v7
-du_more_370 :: [T_Op_304] -> Maybe T_Op_304 -> [T_Op_304]
-du_more_370 v0 v1
+  [T_Op_318] -> [T_Seg_326] -> Maybe T_Op_318 -> [T_Op_318]
+d_more_384 ~v0 ~v1 ~v2 ~v3 ~v4 v5 ~v6 v7 = du_more_384 v5 v7
+du_more_384 :: [T_Op_318] -> Maybe T_Op_318 -> [T_Op_318]
+du_more_384 v0 v1
   = case coe v1 of
       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v2
         -> coe
@@ -592,407 +616,299 @@ du_more_370 v0 v1
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v0
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.StackDepthTable._._.at
-d_at_374 ::
+d_at_388 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430] ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430] ->
   MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Owner_36 ->
   Integer ->
-  [T_Op_304] ->
-  [T_Seg_312] ->
-  MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Kind_60 -> [T_Seg_312]
-d_at_374 v0 v1 v2 v3 v4 v5 v6 v7
+  [T_Op_318] ->
+  [T_Seg_326] ->
+  MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Kind_60 -> [T_Seg_326]
+d_at_388 v0 v1 v2 v3 v4 v5 v6 v7
   = let v8
-          = coe
-              MAlonzo.Code.Data.Bool.Base.du_if_then_else__44
-              (coe
-                 MAlonzo.Code.Once.CCC.Codegen.StackDepth.d__'8801''7495''7484'__42
-                 (coe du_o'8242'_368 (coe v1) (coe v3)) (coe v3))
-              (coe
-                 d_go_342 (coe v0) (coe v2) (coe v3) (coe v4)
-                 (coe du_more_370 (coe v5) (coe d_op'45'of_328 (coe v7))) (coe v6))
-              (coe
-                 d_go_342 (coe v0) (coe v2) (coe du_o'8242'_368 (coe v1) (coe v3))
-                 (coe (0 :: Integer))
-                 (coe du_single_386 (coe d_op'45'of_328 (coe v7)))
-                 (coe
-                    MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-                    (coe C_seg_326 (coe v3) (coe v4) (coe v5)) (coe v6))) in
+          = d_go_356
+              (coe v0) (coe v2) (coe v3) (coe v4)
+              (coe du_more_384 (coe v5) (coe d_op'45'of_342 (coe v7)))
+              (coe v6) in
     coe
       (case coe v7 of
          MAlonzo.Code.Once.CCC.Codegen.StackDepth.C_k'45'entry_68 v9 v10
            -> coe
-                d_go_342 (coe v0) (coe v2) (coe du_o'8242'_368 (coe v1) (coe v3))
+                d_go_356 (coe v0) (coe v2) (coe du_o'8242'_382 (coe v1) (coe v3))
                 (coe v10) (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
                 (coe
                    MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-                   (coe C_seg_326 (coe v3) (coe v4) (coe v5)) (coe v6))
+                   (coe C_seg_340 (coe v3) (coe v4) (coe v5)) (coe v6))
+         MAlonzo.Code.Once.CCC.Codegen.StackDepth.C_k'45'label_70 v9
+           -> coe
+                MAlonzo.Code.Data.Bool.Base.du_if_then_else__44
+                (coe
+                   MAlonzo.Code.Once.CCC.Label.d__'8801''7495''7477'__58 (coe v9)
+                   (coe
+                      MAlonzo.Code.Once.CCC.Codegen.AllocExpand.d_skip'45'label_154))
+                (coe
+                   d_go_356 (coe v0) (coe v2)
+                   (coe MAlonzo.Code.Once.CCC.Codegen.StackDepth.C_o'45'start_38)
+                   (coe (0 :: Integer))
+                   (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
+                   (coe
+                      MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+                      (coe C_seg_340 (coe v3) (coe v4) (coe v5)) (coe v6)))
+                (coe
+                   d_go_356 (coe v0) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6))
          _ -> coe v8)
--- Once.CCC.Codegen.StackDepthTable._._._.single
-d_single_386 ::
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430] ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430] ->
-  MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Owner_36 ->
-  Integer ->
-  [T_Op_304] ->
-  [T_Seg_312] ->
-  MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Kind_60 ->
-  Maybe T_Op_304 -> [T_Op_304]
-d_single_386 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 v8 = du_single_386 v8
-du_single_386 :: Maybe T_Op_304 -> [T_Op_304]
-du_single_386 v0
-  = case coe v0 of
-      MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v1
-        -> coe
-             MAlonzo.Code.Agda.Builtin.List.C__'8759'__22 (coe v1)
-             (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
-      MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
-        -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
-      _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.StackDepthTable.seg-map
-d_seg'45'map_390 :: [T_Seg_312] -> T_Map_62
-d_seg'45'map_390 v0
+d_seg'45'map_398 :: [T_Seg_326] -> T_Map_62
+d_seg'45'map_398 v0
   = case coe v0 of
       [] -> coe C_tip_66
       (:) v1 v2
         -> case coe v1 of
-             C_seg_326 v3 v4 v5
+             C_seg_340 v3 v4 v5
                -> case coe v3 of
                     MAlonzo.Code.Once.CCC.Codegen.StackDepth.C_o'45'start_38
-                      -> coe d_seg'45'map_390 (coe v2)
+                      -> coe d_seg'45'map_398 (coe v2)
                     MAlonzo.Code.Once.CCC.Codegen.StackDepth.C_o'45'entry_40 v6
                       -> coe
                            du_insert_192 (coe d_enc'45'entry_36 (coe v6)) (coe v1)
-                           (coe d_seg'45'map_390 (coe v2))
+                           (coe d_seg'45'map_398 (coe v2))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.CCC.Codegen.StackDepthTable.RSt
-d_RSt_408 = ()
-data T_RSt_408 = C_r'45'busy_410 | C_r'45'fin_412 Bool
--- Once.CCC.Codegen.StackDepthTable.reach
-d_reach_414 ::
-  Integer ->
-  T_Map_62 ->
-  [Integer] -> T_Map_62 -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_reach_414 v0 v1 v2 v3
+-- Once.CCC.Codegen.StackDepthTable.mark
+d_mark_416 ::
+  Integer -> T_Map_62 -> [Integer] -> T_Map_62 -> T_Map_62
+d_mark_416 v0 v1 v2 v3
   = case coe v0 of
-      0 -> coe
-             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-             (coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8) (coe v3)
+      0 -> coe v3
       _ -> let v4 = subInt (coe v0) (coe (1 :: Integer)) in
            coe
              (coe
-                d_by_438 (coe v4) (coe v1) (coe v2) (coe v3)
+                d_by_446 (coe v4) (coe v1) (coe v2) (coe v3)
                 (coe du_lookup_218 (coe v3) (coe v2)))
--- Once.CCC.Codegen.StackDepthTable.reach-ops
-d_reach'45'ops_416 ::
-  Integer ->
-  T_Map_62 ->
-  [T_Op_304] -> T_Map_62 -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_reach'45'ops_416 v0 v1 v2 v3
+-- Once.CCC.Codegen.StackDepthTable.mark-ops
+d_mark'45'ops_418 ::
+  Integer -> T_Map_62 -> [T_Op_318] -> T_Map_62 -> T_Map_62
+d_mark'45'ops_418 v0 v1 v2 v3
   = case coe v2 of
-      []
-        -> coe
-             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-             (coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8) (coe v3)
+      [] -> coe v3
       (:) v4 v5
         -> case coe v4 of
-             C_op'45'call_306 v6 v7
+             C_op'45'call_320 v6 v7
                -> coe
-                    du_more_506 (coe v0) (coe v1) (coe v5)
-                    (coe d_reach_414 (coe v0) (coe v1) (coe v6) (coe v3))
-             C_op'45'clo_308
-               -> coe
-                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                    (coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10) (coe v3)
-             C_op'45'sig_310 v6
-               -> coe d_reach'45'ops_416 (coe v0) (coe v1) (coe v5) (coe v3)
+                    d_mark'45'ops_418 (coe v0) (coe v1) (coe v5)
+                    (coe d_mark_416 (coe v0) (coe v1) (coe v6) (coe v3))
+             C_op'45'clo_322
+               -> coe d_mark'45'ops_418 (coe v0) (coe v1) (coe v5) (coe v3)
+             C_op'45'sig_324 v6
+               -> coe d_mark'45'ops_418 (coe v0) (coe v1) (coe v5) (coe v3)
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.CCC.Codegen.StackDepthTable.reach-seg
-d_reach'45'seg_418 ::
+-- Once.CCC.Codegen.StackDepthTable._.from
+d_from_438 ::
   Integer ->
   T_Map_62 ->
-  [Integer] ->
-  Maybe T_Seg_312 ->
-  T_Map_62 -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_reach'45'seg_418 v0 v1 v2 v3 v4
-  = case coe v3 of
-      MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v5
-        -> case coe v5 of
-             C_seg_326 v6 v7 v8
-               -> coe
-                    du_fin_464 (coe v2)
-                    (coe d_reach'45'ops_416 (coe v0) (coe v1) (coe v8) (coe v4))
+  [Integer] -> T_Map_62 -> Maybe T_Seg_326 -> T_Map_62 -> T_Map_62
+d_from_438 v0 v1 ~v2 ~v3 v4 v5 = du_from_438 v0 v1 v4 v5
+du_from_438 ::
+  Integer -> T_Map_62 -> Maybe T_Seg_326 -> T_Map_62 -> T_Map_62
+du_from_438 v0 v1 v2 v3
+  = case coe v2 of
+      MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v4
+        -> case coe v4 of
+             C_seg_340 v5 v6 v7
+               -> coe d_mark'45'ops_418 (coe v0) (coe v1) (coe v7) (coe v3)
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
-        -> coe
-             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-             (coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8)
-             (coe
-                du_insert_192 (coe v2)
-                (coe C_r'45'fin_412 (coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8))
-                (coe v4))
+      MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v3
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.StackDepthTable._.by
-d_by_438 ::
+d_by_446 ::
   Integer ->
-  T_Map_62 ->
-  [Integer] ->
-  T_Map_62 ->
-  Maybe T_RSt_408 -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_by_438 v0 v1 v2 v3 v4
+  T_Map_62 -> [Integer] -> T_Map_62 -> Maybe Bool -> T_Map_62
+d_by_446 v0 v1 v2 v3 v4
   = case coe v4 of
-      MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v5
-        -> case coe v5 of
-             C_r'45'busy_410
-               -> coe
-                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                    (coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8) (coe v3)
-             C_r'45'fin_412 v6
-               -> coe
-                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v6) (coe v3)
-             _ -> MAlonzo.RTE.mazUnreachableError
+      MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v5 -> coe v3
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
         -> coe
-             d_reach'45'seg_418 (coe v0) (coe v1) (coe v2)
-             (coe du_lookup_218 (coe v1) (coe v2))
-             (coe du_insert_192 (coe v2) (coe C_r'45'busy_410) (coe v3))
+             du_from_438 (coe v0) (coe v1) (coe du_lookup_218 (coe v1) (coe v2))
+             (coe
+                du_insert_192 (coe v2)
+                (coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10) (coe v3))
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.CCC.Codegen.StackDepthTable._.fin
-d_fin_464 ::
-  Integer ->
-  T_Map_62 ->
-  [Integer] ->
-  MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Owner_36 ->
-  Integer ->
-  [T_Op_304] ->
-  T_Map_62 ->
-  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
-  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_fin_464 ~v0 ~v1 v2 ~v3 ~v4 ~v5 ~v6 v7 = du_fin_464 v2 v7
-du_fin_464 ::
-  [Integer] ->
-  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
-  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_fin_464 v0 v1
-  = case coe v1 of
-      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v2 v3
-        -> coe
-             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v2)
-             (coe du_insert_192 (coe v0) (coe C_r'45'fin_412 (coe v2)) (coe v3))
-      _ -> MAlonzo.RTE.mazUnreachableError
--- Once.CCC.Codegen.StackDepthTable._.more
-d_more_506 ::
-  Integer ->
-  T_Map_62 ->
-  [Integer] ->
-  MAlonzo.Code.Once.CCC.Label.T_EntryId_22 ->
-  [T_Op_304] ->
-  T_Map_62 ->
-  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
-  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_more_506 v0 v1 ~v2 ~v3 v4 ~v5 v6 = du_more_506 v0 v1 v4 v6
-du_more_506 ::
-  Integer ->
-  T_Map_62 ->
-  [T_Op_304] ->
-  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
-  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_more_506 v0 v1 v2 v3
-  = case coe v3 of
-      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v4 v5
-        -> if coe v4
-             then coe v3
-             else coe d_reach'45'ops_416 (coe v0) (coe v1) (coe v2) (coe v5)
-      _ -> MAlonzo.RTE.mazUnreachableError
--- Once.CCC.Codegen.StackDepthTable.clo-cycle
-d_clo'45'cycle_512 :: Integer -> [T_Seg_312] -> T_Map_62 -> Bool
-d_clo'45'cycle_512 v0 v1 v2
-  = coe d_go_524 (coe v0) (coe v1) (coe v2) (coe v1) (coe C_tip_66)
--- Once.CCC.Codegen.StackDepthTable._.go
-d_go_524 ::
-  Integer ->
-  [T_Seg_312] -> T_Map_62 -> [T_Seg_312] -> T_Map_62 -> Bool
-d_go_524 v0 v1 v2 v3 v4
-  = case coe v3 of
-      [] -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
-      (:) v5 v6
-        -> case coe v5 of
-             C_seg_326 v7 v8 v9
-               -> let v10
-                        = d_go_524 (coe v0) (coe v1) (coe v2) (coe v6) (coe v4) in
+-- Once.CCC.Codegen.StackDepthTable.marks
+d_marks_480 ::
+  Integer -> T_Map_62 -> [T_Seg_326] -> T_Map_62 -> T_Map_62
+d_marks_480 v0 v1 v2 v3
+  = case coe v2 of
+      [] -> coe v3
+      (:) v4 v5
+        -> case coe v4 of
+             C_seg_340 v6 v7 v8
+               -> let v9 = d_marks_480 (coe v0) (coe v1) (coe v5) (coe v3) in
                   coe
-                    (case coe v7 of
-                       MAlonzo.Code.Once.CCC.Codegen.StackDepth.C_o'45'entry_40 v11
-                         -> case coe v11 of
-                              MAlonzo.Code.Once.CCC.Label.C_e'45'thunk_24 v12
+                    (case coe v6 of
+                       MAlonzo.Code.Once.CCC.Codegen.StackDepth.C_o'45'entry_40 v10
+                         -> case coe v10 of
+                              MAlonzo.Code.Once.CCC.Label.C_e'45'thunk_24 v11
                                 -> coe
-                                     du_any_538 (coe v0) (coe v1) (coe v2) (coe v6)
+                                     d_marks_480 (coe v0) (coe v1) (coe v5)
                                      (coe
-                                        d_reach_414 (coe v0) (coe v2)
-                                        (coe d_enc'45'entry_36 (coe v11)) (coe v4))
-                              _ -> coe v10
-                       _ -> coe v10)
+                                        d_mark_416 (coe v0) (coe v1)
+                                        (coe d_enc'45'entry_36 (coe v10)) (coe v3))
+                              _ -> coe v9
+                       _ -> coe v9)
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.CCC.Codegen.StackDepthTable._._.any
-d_any_538 ::
-  Integer ->
-  [T_Seg_312] ->
-  T_Map_62 ->
-  MAlonzo.Code.Once.CCC.Label.T_LabelId_6 ->
-  Integer ->
-  [T_Op_304] ->
-  [T_Seg_312] ->
-  T_Map_62 -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 -> Bool
-d_any_538 v0 v1 v2 ~v3 ~v4 ~v5 v6 ~v7 v8
-  = du_any_538 v0 v1 v2 v6 v8
-du_any_538 ::
-  Integer ->
-  [T_Seg_312] ->
-  T_Map_62 ->
-  [T_Seg_312] -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 -> Bool
-du_any_538 v0 v1 v2 v3 v4
-  = case coe v4 of
-      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v5 v6
-        -> if coe v5
-             then coe v5
-             else coe d_go_524 (coe v0) (coe v1) (coe v2) (coe v3) (coe v6)
-      _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.StackDepthTable.d-max
-d_d'45'max_546 :: Integer
-d_d'45'max_546 = coe (4096 :: Integer)
+d_d'45'max_506 :: Integer
+d_d'45'max_506 = coe (4096 :: Integer)
 -- Once.CCC.Codegen.StackDepthTable.DSt
-d_DSt_548 = ()
-data T_DSt_548 = C_d'45'busy_550 Bool | C_d'45'fin_552 T_Row_248
+d_DSt_508 = ()
+data T_DSt_508 = C_d'45'busy_510 Bool | C_d'45'fin_512 T_Row_248
+-- Once.CCC.Codegen.StackDepthTable.Ctx
+d_Ctx_514 = ()
+data T_Ctx_514 = C_ctx_528 T_Map_62 Integer T_Map_62
+-- Once.CCC.Codegen.StackDepthTable.Ctx.c-cr
+d_c'45'cr_522 :: T_Ctx_514 -> T_Map_62
+d_c'45'cr_522 v0
+  = case coe v0 of
+      C_ctx_528 v1 v2 v3 -> coe v1
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.CCC.Codegen.StackDepthTable.Ctx.c-cd
+d_c'45'cd_524 :: T_Ctx_514 -> Integer
+d_c'45'cd_524 v0
+  = case coe v0 of
+      C_ctx_528 v1 v2 v3 -> coe v2
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.CCC.Codegen.StackDepthTable.Ctx.c-sm
+d_c'45'sm_526 :: T_Ctx_514 -> T_Map_62
+d_c'45'sm_526 v0
+  = case coe v0 of
+      C_ctx_528 v1 v2 v3 -> coe v3
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.CCC.Codegen.StackDepthTable.clo-at
+d_clo'45'at_530 :: T_Ctx_514 -> [Integer] -> Bool
+d_clo'45'at_530 v0 v1
+  = coe
+      du_maybe_268 (coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8)
+      (coe (\ v2 -> v2))
+      (coe du_lookup_218 (coe d_c'45'cr_522 (coe v0)) (coe v1))
 -- Once.CCC.Codegen.StackDepthTable.depth
-d_depth_554 ::
+d_depth_538 ::
   Integer ->
-  Bool ->
-  Integer ->
-  T_Map_62 ->
+  T_Ctx_514 ->
   [Integer] -> T_Map_62 -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_depth_554 v0 v1 v2 v3 v4 v5
+d_depth_538 v0 v1 v2 v3
   = case coe v0 of
       0 -> coe
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-             (coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18) (coe v5)
-      _ -> let v6 = subInt (coe v0) (coe (1 :: Integer)) in
+             (coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18) (coe v3)
+      _ -> let v4 = subInt (coe v0) (coe (1 :: Integer)) in
            coe
              (coe
-                d_by_586 (coe v6) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
-                (coe du_lookup_218 (coe v5) (coe v4)))
+                d_by_562 (coe v4) (coe v1) (coe v2) (coe v3)
+                (coe du_lookup_218 (coe v3) (coe v2)))
 -- Once.CCC.Codegen.StackDepthTable.depth-seg
-d_depth'45'seg_556 ::
+d_depth'45'seg_540 ::
   Integer ->
-  Bool ->
-  Integer ->
-  T_Map_62 ->
+  T_Ctx_514 ->
   [Integer] ->
   MAlonzo.Code.Once.CCC.Label.T_EntryId_22 ->
-  T_Seg_312 -> T_Map_62 -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_depth'45'seg_556 v0 v1 v2 v3 v4 v5 v6 v7
-  = case coe v6 of
-      C_seg_326 v8 v9 v10
+  T_Seg_326 -> T_Map_62 -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
+d_depth'45'seg_540 v0 v1 v2 v3 v4 v5
+  = case coe v4 of
+      C_seg_340 v6 v7 v8
         -> coe
-             du_fin_626 (coe v4) (coe v9)
+             du_fin_598 (coe v2) (coe v7)
              (coe
-                d_depth'45'ops_558 (coe v0) (coe v1) (coe v2) (coe v3) (coe v5)
-                (coe v10) (coe v7))
+                d_depth'45'ops_542 (coe v0) (coe v1)
+                (coe d_clo'45'at_530 (coe v1) (coe v2)) (coe v3) (coe v8) (coe v5))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.StackDepthTable.depth-ops
-d_depth'45'ops_558 ::
+d_depth'45'ops_542 ::
   Integer ->
+  T_Ctx_514 ->
   Bool ->
-  Integer ->
-  T_Map_62 ->
   MAlonzo.Code.Once.CCC.Label.T_EntryId_22 ->
-  [T_Op_304] -> T_Map_62 -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_depth'45'ops_558 v0 v1 v2 v3 v4 v5 v6
-  = case coe v5 of
+  [T_Op_318] -> T_Map_62 -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
+d_depth'45'ops_542 v0 v1 v2 v3 v4 v5
+  = case coe v4 of
       []
         -> coe
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe (0 :: Integer))
-             (coe v6)
-      (:) v7 v8
+             (coe v5)
+      (:) v6 v7
         -> coe
-             du_one_696 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v8)
-             (coe v6) (coe v7)
+             du_one_664 (coe v0) (coe v1) (coe v2) (coe v3) (coe v7) (coe v5)
+             (coe v6)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.StackDepthTable._.by
-d_by_586 ::
+d_by_562 ::
   Integer ->
-  Bool ->
-  Integer ->
-  T_Map_62 ->
+  T_Ctx_514 ->
   [Integer] ->
   T_Map_62 ->
-  Maybe T_DSt_548 -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_by_586 v0 v1 v2 v3 v4 v5 v6
-  = case coe v6 of
-      MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v7
-        -> case coe v7 of
-             C_d'45'busy_550 v8
+  Maybe T_DSt_508 -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
+d_by_562 v0 v1 v2 v3 v4
+  = case coe v4 of
+      MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v5
+        -> case coe v5 of
+             C_d'45'busy_510 v6
                -> coe
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                     (coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)
                     (coe
-                       du_insert_192 (coe v4)
+                       du_insert_192 (coe v2)
                        (coe
-                          C_d'45'busy_550 (coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10))
-                       (coe v5))
-             C_d'45'fin_552 v8
-               -> case coe v8 of
-                    C_row_262 v9 v10 v11
+                          C_d'45'busy_510 (coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10))
+                       (coe v3))
+             C_d'45'fin_512 v6
+               -> case coe v6 of
+                    C_row_262 v7 v8 v9
                       -> coe
                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                            (coe
-                              MAlonzo.Code.Data.Bool.Base.du_if_then_else__44 (coe v9)
+                              MAlonzo.Code.Data.Bool.Base.du_if_then_else__44 (coe v7)
                               (coe
                                  MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                 (coe addInt (coe v10) (coe v11)))
+                                 (coe addInt (coe v8) (coe v9)))
                               (coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18))
-                           (coe v5)
+                           (coe v3)
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
         -> coe
-             d_from_598 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
-             (coe du_lookup_218 (coe v3) (coe v4))
+             d_from_574 (coe v0) (coe v1) (coe v2) (coe v3)
+             (coe du_lookup_218 (coe d_c'45'sm_526 (coe v1)) (coe v2))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.StackDepthTable._._.from
-d_from_598 ::
+d_from_574 ::
   Integer ->
-  Bool ->
-  Integer ->
-  T_Map_62 ->
+  T_Ctx_514 ->
   [Integer] ->
   T_Map_62 ->
-  Maybe T_Seg_312 -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_from_598 v0 v1 v2 v3 v4 v5 v6
-  = case coe v6 of
-      MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v7
-        -> case coe v7 of
-             C_seg_326 v8 v9 v10
-               -> case coe v8 of
+  Maybe T_Seg_326 -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
+d_from_574 v0 v1 v2 v3 v4
+  = case coe v4 of
+      MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v5
+        -> case coe v5 of
+             C_seg_340 v6 v7 v8
+               -> case coe v6 of
                     MAlonzo.Code.Once.CCC.Codegen.StackDepth.C_o'45'start_38
                       -> coe
                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                            (coe
                               MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe (0 :: Integer)))
-                           (coe v5)
-                    MAlonzo.Code.Once.CCC.Codegen.StackDepth.C_o'45'entry_40 v11
+                           (coe v3)
+                    MAlonzo.Code.Once.CCC.Codegen.StackDepth.C_o'45'entry_40 v9
                       -> coe
-                           d_depth'45'seg_556 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
-                           (coe v11) (coe v7)
+                           d_depth'45'seg_540 (coe v0) (coe v1) (coe v2) (coe v9) (coe v5)
                            (coe
-                              du_insert_192 (coe v4)
+                              du_insert_192 (coe v2)
                               (coe
-                                 C_d'45'busy_550 (coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8))
-                              (coe v5))
+                                 C_d'45'busy_510 (coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8))
+                              (coe v3))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
@@ -1000,84 +916,77 @@ d_from_598 v0 v1 v2 v3 v4 v5 v6
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
              (coe
                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe (0 :: Integer)))
-             (coe v5)
+             (coe v3)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.StackDepthTable._.fin
-d_fin_626 ::
+d_fin_598 ::
   Integer ->
-  Bool ->
-  Integer ->
-  T_Map_62 ->
+  T_Ctx_514 ->
   [Integer] ->
   MAlonzo.Code.Once.CCC.Label.T_EntryId_22 ->
   MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Owner_36 ->
   Integer ->
-  [T_Op_304] ->
+  [T_Op_318] ->
   T_Map_62 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_fin_626 ~v0 ~v1 ~v2 ~v3 v4 ~v5 ~v6 v7 ~v8 ~v9 v10
-  = du_fin_626 v4 v7 v10
-du_fin_626 ::
+d_fin_598 ~v0 ~v1 v2 ~v3 ~v4 v5 ~v6 ~v7 v8 = du_fin_598 v2 v5 v8
+du_fin_598 ::
   [Integer] ->
   Integer ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_fin_626 v0 v1 v2
+du_fin_598 v0 v1 v2
   = case coe v2 of
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v3 v4
         -> coe
-             du_done_640 (coe v0) (coe v1) (coe v3) (coe v4)
+             du_done_612 (coe v0) (coe v1) (coe v3) (coe v4)
              (coe du_lookup_218 (coe v4) (coe v0))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.StackDepthTable._._.cut
-d_cut_636 ::
+d_cut_608 ::
   Integer ->
-  Bool ->
-  Integer ->
-  T_Map_62 ->
+  T_Ctx_514 ->
   [Integer] ->
   MAlonzo.Code.Once.CCC.Label.T_EntryId_22 ->
   MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Owner_36 ->
   Integer ->
-  [T_Op_304] ->
-  T_Map_62 -> Integer -> T_Map_62 -> Maybe T_DSt_548 -> Bool
-d_cut_636 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10 ~v11 v12
-  = du_cut_636 v12
-du_cut_636 :: Maybe T_DSt_548 -> Bool
-du_cut_636 v0
+  [T_Op_318] ->
+  T_Map_62 -> Integer -> T_Map_62 -> Maybe T_DSt_508 -> Bool
+d_cut_608 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 v10
+  = du_cut_608 v10
+du_cut_608 :: Maybe T_DSt_508 -> Bool
+du_cut_608 v0
   = let v1 = coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8 in
     coe
       (case coe v0 of
          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v2
            -> case coe v2 of
-                C_d'45'busy_550 v3 -> coe v3
+                C_d'45'busy_510 v3 -> coe v3
                 _ -> coe v1
          _ -> coe v1)
 -- Once.CCC.Codegen.StackDepthTable._._.done
-d_done_640 ::
+d_done_612 ::
   Integer ->
-  Bool ->
-  Integer ->
-  T_Map_62 ->
+  T_Ctx_514 ->
   [Integer] ->
   MAlonzo.Code.Once.CCC.Label.T_EntryId_22 ->
   MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Owner_36 ->
   Integer ->
-  [T_Op_304] ->
+  [T_Op_318] ->
   T_Map_62 ->
   Integer ->
   T_Map_62 ->
-  Maybe T_DSt_548 -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_done_640 ~v0 ~v1 ~v2 ~v3 v4 ~v5 ~v6 v7 ~v8 ~v9 v10 v11 v12
-  = du_done_640 v4 v7 v10 v11 v12
-du_done_640 ::
+  Maybe T_DSt_508 -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
+d_done_612 ~v0 ~v1 v2 ~v3 ~v4 v5 ~v6 ~v7 v8 v9 v10
+  = du_done_612 v2 v5 v8 v9 v10
+du_done_612 ::
   [Integer] ->
   Integer ->
   Integer ->
   T_Map_62 ->
-  Maybe T_DSt_548 -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_done_640 v0 v1 v2 v3 v4
+  Maybe T_DSt_508 -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
+du_done_612 v0 v1 v2 v3 v4
   = coe
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
       (coe
@@ -1085,10 +994,10 @@ du_done_640 v0 v1 v2 v3 v4
          (coe
             MAlonzo.Code.Data.Bool.Base.d__'8743'__24
             (coe
-               MAlonzo.Code.Data.Bool.Base.d_not_22 (coe du_cut_636 (coe v4)))
+               MAlonzo.Code.Data.Bool.Base.d_not_22 (coe du_cut_608 (coe v4)))
             (coe
                MAlonzo.Code.Data.Nat.Base.d__'8804''7495'__14
-               (coe addInt (coe v1) (coe v2)) (coe d_d'45'max_546)))
+               (coe addInt (coe v1) (coe v2)) (coe d_d'45'max_506)))
          (coe
             MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
             (coe addInt (coe v1) (coe v2)))
@@ -1096,67 +1005,64 @@ du_done_640 v0 v1 v2 v3 v4
       (coe
          du_insert_192 (coe v0)
          (coe
-            C_d'45'fin_552
+            C_d'45'fin_512
             (coe
                C_row_262
                (coe
                   MAlonzo.Code.Data.Bool.Base.d__'8743'__24
                   (coe
-                     MAlonzo.Code.Data.Bool.Base.d_not_22 (coe du_cut_636 (coe v4)))
+                     MAlonzo.Code.Data.Bool.Base.d_not_22 (coe du_cut_608 (coe v4)))
                   (coe
                      MAlonzo.Code.Data.Nat.Base.d__'8804''7495'__14
-                     (coe addInt (coe v1) (coe v2)) (coe d_d'45'max_546)))
+                     (coe addInt (coe v1) (coe v2)) (coe d_d'45'max_506)))
                (coe v2) (coe v1)))
          (coe v3))
 -- Once.CCC.Codegen.StackDepthTable._.rest
-d_rest_678 ::
+d_rest_646 ::
   Integer ->
+  T_Ctx_514 ->
   Bool ->
-  Integer ->
-  T_Map_62 ->
   MAlonzo.Code.Once.CCC.Label.T_EntryId_22 ->
-  T_Op_304 ->
-  [T_Op_304] ->
+  T_Op_318 ->
+  [T_Op_318] ->
   T_Map_62 ->
   Integer -> T_Map_62 -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_rest_678 v0 v1 v2 v3 v4 ~v5 v6 ~v7 v8 v9
-  = du_rest_678 v0 v1 v2 v3 v4 v6 v8 v9
-du_rest_678 ::
+d_rest_646 v0 v1 v2 v3 ~v4 v5 ~v6 v7 v8
+  = du_rest_646 v0 v1 v2 v3 v5 v7 v8
+du_rest_646 ::
   Integer ->
+  T_Ctx_514 ->
   Bool ->
-  Integer ->
-  T_Map_62 ->
   MAlonzo.Code.Once.CCC.Label.T_EntryId_22 ->
-  [T_Op_304] ->
+  [T_Op_318] ->
   Integer -> T_Map_62 -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_rest_678 v0 v1 v2 v3 v4 v5 v6 v7
+du_rest_646 v0 v1 v2 v3 v4 v5 v6
   = coe
-      du_add_688 (coe v6)
+      du_add_656 (coe v5)
       (coe
-         d_depth'45'ops_558 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
-         (coe v5) (coe v7))
+         d_depth'45'ops_542 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
+         (coe v6))
 -- Once.CCC.Codegen.StackDepthTable._._.add
-d_add_688 ::
+d_add_656 ::
   Integer ->
+  T_Ctx_514 ->
   Bool ->
-  Integer ->
-  T_Map_62 ->
   MAlonzo.Code.Once.CCC.Label.T_EntryId_22 ->
-  T_Op_304 ->
-  [T_Op_304] ->
+  T_Op_318 ->
+  [T_Op_318] ->
   T_Map_62 ->
   Integer ->
   T_Map_62 ->
   Integer ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_add_688 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 v10 v11
-  = du_add_688 v10 v11
-du_add_688 ::
+d_add_656 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 v9 v10
+  = du_add_656 v9 v10
+du_add_656 ::
   Integer ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_add_688 v0 v1
+du_add_656 v0 v1
   = case coe v1 of
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v2 v3
         -> coe
@@ -1165,178 +1071,162 @@ du_add_688 v0 v1
              (coe v3)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.StackDepthTable._.one
-d_one_696 ::
+d_one_664 ::
   Integer ->
+  T_Ctx_514 ->
   Bool ->
-  Integer ->
-  T_Map_62 ->
   MAlonzo.Code.Once.CCC.Label.T_EntryId_22 ->
-  T_Op_304 ->
-  [T_Op_304] ->
-  T_Map_62 -> T_Op_304 -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_one_696 v0 v1 v2 v3 v4 ~v5 v6 v7 v8
-  = du_one_696 v0 v1 v2 v3 v4 v6 v7 v8
-du_one_696 ::
+  T_Op_318 ->
+  [T_Op_318] ->
+  T_Map_62 -> T_Op_318 -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
+d_one_664 v0 v1 v2 v3 ~v4 v5 v6 v7
+  = du_one_664 v0 v1 v2 v3 v5 v6 v7
+du_one_664 ::
   Integer ->
+  T_Ctx_514 ->
   Bool ->
-  Integer ->
-  T_Map_62 ->
   MAlonzo.Code.Once.CCC.Label.T_EntryId_22 ->
-  [T_Op_304] ->
-  T_Map_62 -> T_Op_304 -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_one_696 v0 v1 v2 v3 v4 v5 v6 v7
-  = case coe v7 of
-      C_op'45'call_306 v8 v9
+  [T_Op_318] ->
+  T_Map_62 -> T_Op_318 -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
+du_one_664 v0 v1 v2 v3 v4 v5 v6
+  = case coe v6 of
+      C_op'45'call_320 v7 v8
         -> coe
              MAlonzo.Code.Data.Bool.Base.du_if_then_else__44
              (coe
-                MAlonzo.Code.Once.CCC.Label.d__'8801''7495''7473'__228 (coe v9)
-                (coe v4))
+                MAlonzo.Code.Once.CCC.Label.d__'8801''7495''7473'__136 (coe v8)
+                (coe v3))
              (coe
-                du_rest_678 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
-                (coe (0 :: Integer)) (coe v6))
+                du_rest_646 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
+                (coe (0 :: Integer)) (coe v5))
              (coe
-                du_call_708 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
-                (coe
-                   d_depth_554 (coe v0) (coe v1) (coe v2) (coe v3) (coe v8) (coe v6)))
-      C_op'45'clo_308
+                du_call_676 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
+                (coe d_depth_538 (coe v0) (coe v1) (coe v7) (coe v5)))
+      C_op'45'clo_322
         -> coe
-             du_rest_678 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
+             du_rest_646 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
              (coe
-                MAlonzo.Code.Data.Bool.Base.du_if_then_else__44 (coe v1)
-                (coe (0 :: Integer)) (coe addInt (coe (1 :: Integer)) (coe v2)))
-             (coe v6)
-      C_op'45'sig_310 v8
+                MAlonzo.Code.Data.Bool.Base.du_if_then_else__44 (coe v2)
+                (coe (0 :: Integer))
+                (coe addInt (coe (1 :: Integer)) (coe d_c'45'cd_524 (coe v1))))
+             (coe v5)
+      C_op'45'sig_324 v7
         -> coe
-             du_rest_678 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
-             (coe v8) (coe v6)
+             du_rest_646 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v7)
+             (coe v5)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.StackDepthTable._._.call
-d_call_708 ::
+d_call_676 ::
   Integer ->
+  T_Ctx_514 ->
   Bool ->
-  Integer ->
-  T_Map_62 ->
   MAlonzo.Code.Once.CCC.Label.T_EntryId_22 ->
-  T_Op_304 ->
-  [T_Op_304] ->
+  T_Op_318 ->
+  [T_Op_318] ->
   T_Map_62 ->
   [Integer] ->
   MAlonzo.Code.Once.CCC.Label.T_EntryId_22 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_call_708 v0 v1 v2 v3 v4 ~v5 v6 ~v7 ~v8 ~v9 v10
-  = du_call_708 v0 v1 v2 v3 v4 v6 v10
-du_call_708 ::
+d_call_676 v0 v1 v2 v3 ~v4 v5 ~v6 ~v7 ~v8 v9
+  = du_call_676 v0 v1 v2 v3 v5 v9
+du_call_676 ::
   Integer ->
+  T_Ctx_514 ->
   Bool ->
-  Integer ->
-  T_Map_62 ->
   MAlonzo.Code.Once.CCC.Label.T_EntryId_22 ->
-  [T_Op_304] ->
+  [T_Op_318] ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_call_708 v0 v1 v2 v3 v4 v5 v6
-  = case coe v6 of
-      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v7 v8
-        -> case coe v7 of
-             MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v9
+du_call_676 v0 v1 v2 v3 v4 v5
+  = case coe v5 of
+      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v6 v7
+        -> case coe v6 of
+             MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v8
                -> coe
-                    du_rest_678 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
-                    (coe addInt (coe (1 :: Integer)) (coe v9)) (coe v8)
+                    du_rest_646 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
+                    (coe addInt (coe (1 :: Integer)) (coe v8)) (coe v7)
              MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                -> coe
-                    du_rest_678 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
-                    (coe (0 :: Integer)) (coe v8)
+                    du_rest_646 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
+                    (coe (0 :: Integer)) (coe v7)
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.StackDepthTable.start-ops
-d_start'45'ops_716 ::
+d_start'45'ops_684 ::
   Integer ->
-  Bool ->
-  Integer ->
-  T_Map_62 ->
-  [T_Seg_312] -> T_Map_62 -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_start'45'ops_716 v0 v1 v2 v3 v4 v5
-  = case coe v4 of
+  T_Ctx_514 ->
+  [T_Seg_326] -> T_Map_62 -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
+d_start'45'ops_684 v0 v1 v2 v3
+  = case coe v2 of
       []
         -> coe
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe (0 :: Integer))
-             (coe v5)
-      (:) v6 v7
-        -> case coe v6 of
-             C_seg_326 v8 v9 v10
-               -> let v11
-                        = d_start'45'ops_716
-                            (coe v0) (coe v1) (coe v2) (coe v3) (coe v7) (coe v5) in
+             (coe v3)
+      (:) v4 v5
+        -> case coe v4 of
+             C_seg_340 v6 v7 v8
+               -> let v9
+                        = d_start'45'ops_684 (coe v0) (coe v1) (coe v5) (coe v3) in
                   coe
-                    (case coe v8 of
+                    (case coe v6 of
                        MAlonzo.Code.Once.CCC.Codegen.StackDepth.C_o'45'start_38
                          -> coe
-                              du_both_746 (coe v0) (coe v1) (coe v2) (coe v3) (coe v7)
+                              du_both_706 (coe v0) (coe v1) (coe v5)
                               (coe
-                                 d_depth'45'ops_558 (coe v0) (coe v1) (coe v2) (coe v3)
+                                 d_depth'45'ops_542 (coe v0) (coe v1)
+                                 (coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8)
                                  (coe
                                     MAlonzo.Code.Once.CCC.Label.C_e'45'fn_26
                                     (coe
                                        MAlonzo.Code.Once.Spec.Name.C_canonical_12
                                        (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)))
-                                 (coe v10) (coe v5))
-                       _ -> coe v11)
+                                 (coe v8) (coe v3))
+                       _ -> coe v9)
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.StackDepthTable._.both
-d_both_746 ::
+d_both_706 ::
   Integer ->
-  Bool ->
+  T_Ctx_514 ->
   Integer ->
-  T_Map_62 ->
-  Integer ->
-  [T_Op_304] ->
-  [T_Seg_312] ->
+  [T_Op_318] ->
+  [T_Seg_326] ->
   T_Map_62 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_both_746 v0 v1 v2 v3 ~v4 ~v5 v6 ~v7 v8
-  = du_both_746 v0 v1 v2 v3 v6 v8
-du_both_746 ::
+d_both_706 v0 v1 ~v2 ~v3 v4 ~v5 v6 = du_both_706 v0 v1 v4 v6
+du_both_706 ::
   Integer ->
-  Bool ->
-  Integer ->
-  T_Map_62 ->
-  [T_Seg_312] ->
+  T_Ctx_514 ->
+  [T_Seg_326] ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_both_746 v0 v1 v2 v3 v4 v5
-  = case coe v5 of
-      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v6 v7
+du_both_706 v0 v1 v2 v3
+  = case coe v3 of
+      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v4 v5
         -> coe
-             du_more_756 (coe v6)
-             (coe
-                d_start'45'ops_716 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
-                (coe v7))
+             du_more_716 (coe v4)
+             (coe d_start'45'ops_684 (coe v0) (coe v1) (coe v2) (coe v5))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.StackDepthTable._._.more
-d_more_756 ::
+d_more_716 ::
   Integer ->
-  Bool ->
+  T_Ctx_514 ->
   Integer ->
-  T_Map_62 ->
-  Integer ->
-  [T_Op_304] ->
-  [T_Seg_312] ->
+  [T_Op_318] ->
+  [T_Seg_326] ->
   T_Map_62 ->
   Integer ->
   T_Map_62 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_more_756 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 v8 ~v9 v10
-  = du_more_756 v8 v10
-du_more_756 ::
+d_more_716 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 v6 ~v7 v8 = du_more_716 v6 v8
+du_more_716 ::
   Integer ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_more_756 v0 v1
+du_more_716 v0 v1
   = case coe v1 of
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v2 v3
         -> coe
@@ -1345,101 +1235,84 @@ du_more_756 v0 v1
              (coe v3)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.StackDepthTable.all-entries
-d_all'45'entries_774 ::
-  Integer ->
-  Bool ->
-  Integer -> T_Map_62 -> Bool -> [T_Seg_312] -> T_Map_62 -> T_Map_62
-d_all'45'entries_774 v0 v1 v2 v3 v4 v5 v6
-  = case coe v5 of
-      [] -> coe v6
-      (:) v7 v8
+d_all'45'entries_730 ::
+  Integer -> T_Ctx_514 -> Bool -> [T_Seg_326] -> T_Map_62 -> T_Map_62
+d_all'45'entries_730 v0 v1 v2 v3 v4
+  = case coe v3 of
+      [] -> coe v4
+      (:) v5 v6
         -> coe
-             du_one_816 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v8)
-             (coe v6) (coe d_sg'45'own_320 (coe v7))
+             du_one_764 (coe v0) (coe v1) (coe v2) (coe v6) (coe v4)
+             (coe d_sg'45'own_334 (coe v5))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.StackDepthTable._.visit
-d_visit_808 ::
+d_visit_756 ::
   Integer ->
+  T_Ctx_514 ->
   Bool ->
-  Integer ->
-  T_Map_62 ->
-  Bool ->
-  T_Seg_312 ->
-  [T_Seg_312] ->
+  T_Seg_326 ->
+  [T_Seg_326] ->
   T_Map_62 -> MAlonzo.Code.Once.CCC.Label.T_EntryId_22 -> T_Map_62
-d_visit_808 v0 v1 v2 v3 v4 ~v5 v6 v7 v8
-  = du_visit_808 v0 v1 v2 v3 v4 v6 v7 v8
-du_visit_808 ::
+d_visit_756 v0 v1 v2 ~v3 v4 v5 v6 = du_visit_756 v0 v1 v2 v4 v5 v6
+du_visit_756 ::
   Integer ->
+  T_Ctx_514 ->
   Bool ->
-  Integer ->
-  T_Map_62 ->
-  Bool ->
-  [T_Seg_312] ->
+  [T_Seg_326] ->
   T_Map_62 -> MAlonzo.Code.Once.CCC.Label.T_EntryId_22 -> T_Map_62
-du_visit_808 v0 v1 v2 v3 v4 v5 v6 v7
+du_visit_756 v0 v1 v2 v3 v4 v5
   = coe
-      d_all'45'entries_774 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
-      (coe v5)
+      d_all'45'entries_730 (coe v0) (coe v1) (coe v2) (coe v3)
       (coe
          MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
          (coe
-            d_depth_554 (coe addInt (coe (1 :: Integer)) (coe v0)) (coe v1)
-            (coe v2) (coe v3) (coe d_enc'45'entry_36 (coe v7)) (coe v6)))
+            d_depth_538 (coe addInt (coe (1 :: Integer)) (coe v0)) (coe v1)
+            (coe d_enc'45'entry_36 (coe v5)) (coe v4)))
 -- Once.CCC.Codegen.StackDepthTable._.one
-d_one_816 ::
+d_one_764 ::
   Integer ->
+  T_Ctx_514 ->
   Bool ->
-  Integer ->
-  T_Map_62 ->
-  Bool ->
-  T_Seg_312 ->
-  [T_Seg_312] ->
+  T_Seg_326 ->
+  [T_Seg_326] ->
   T_Map_62 ->
   MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Owner_36 -> T_Map_62
-d_one_816 v0 v1 v2 v3 v4 ~v5 v6 v7 v8
-  = du_one_816 v0 v1 v2 v3 v4 v6 v7 v8
-du_one_816 ::
+d_one_764 v0 v1 v2 ~v3 v4 v5 v6 = du_one_764 v0 v1 v2 v4 v5 v6
+du_one_764 ::
   Integer ->
+  T_Ctx_514 ->
   Bool ->
-  Integer ->
-  T_Map_62 ->
-  Bool ->
-  [T_Seg_312] ->
+  [T_Seg_326] ->
   T_Map_62 ->
   MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Owner_36 -> T_Map_62
-du_one_816 v0 v1 v2 v3 v4 v5 v6 v7
-  = case coe v7 of
+du_one_764 v0 v1 v2 v3 v4 v5
+  = case coe v5 of
       MAlonzo.Code.Once.CCC.Codegen.StackDepth.C_o'45'start_38
         -> coe
-             d_all'45'entries_774 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
-             (coe v5) (coe v6)
-      MAlonzo.Code.Once.CCC.Codegen.StackDepth.C_o'45'entry_40 v8
-        -> case coe v8 of
-             MAlonzo.Code.Once.CCC.Label.C_e'45'thunk_24 v9
+             d_all'45'entries_730 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
+      MAlonzo.Code.Once.CCC.Codegen.StackDepth.C_o'45'entry_40 v6
+        -> case coe v6 of
+             MAlonzo.Code.Once.CCC.Label.C_e'45'thunk_24 v7
                -> coe
-                    du_visit_808 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
-                    (coe v6) (coe v8)
-             MAlonzo.Code.Once.CCC.Label.C_e'45'fn_26 v9
+                    du_visit_756 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v6)
+             MAlonzo.Code.Once.CCC.Label.C_e'45'fn_26 v7
                -> coe
-                    MAlonzo.Code.Data.Bool.Base.du_if_then_else__44 (coe v4)
+                    MAlonzo.Code.Data.Bool.Base.du_if_then_else__44 (coe v2)
                     (coe
-                       d_all'45'entries_774 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
-                       (coe v5) (coe v6))
+                       d_all'45'entries_730 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4))
                     (coe
-                       du_visit_808 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
-                       (coe v6) (coe v8))
+                       du_visit_756 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v6))
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.StackDepthTable.clo-max
-d_clo'45'max_822 :: [T_Seg_312] -> T_Map_62 -> Integer
-d_clo'45'max_822 v0 v1
+d_clo'45'max_770 :: [T_Seg_326] -> T_Map_62 -> Integer
+d_clo'45'max_770 v0 v1
   = case coe v0 of
       [] -> coe (0 :: Integer)
       (:) v2 v3
         -> case coe v2 of
-             C_seg_326 v4 v5 v6
-               -> let v7 = d_clo'45'max_822 (coe v3) (coe v1) in
+             C_seg_340 v4 v5 v6
+               -> let v7 = d_clo'45'max_770 (coe v3) (coe v1) in
                   coe
                     (case coe v4 of
                        MAlonzo.Code.Once.CCC.Codegen.StackDepth.C_o'45'entry_40 v8
@@ -1448,122 +1321,122 @@ d_clo'45'max_822 v0 v1
                                 -> coe
                                      MAlonzo.Code.Data.Nat.Base.d__'8852'__208
                                      (coe
-                                        du_at_836
+                                        du_at_784
                                         (coe
                                            du_lookup_218 (coe v1) (coe d_enc'45'entry_36 (coe v8))))
-                                     (coe d_clo'45'max_822 (coe v3) (coe v1))
+                                     (coe d_clo'45'max_770 (coe v3) (coe v1))
                               _ -> coe v7
                        _ -> coe v7)
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.StackDepthTable._.at
-d_at_836 ::
+d_at_784 ::
   MAlonzo.Code.Once.CCC.Label.T_LabelId_6 ->
   Integer ->
-  [T_Op_304] -> [T_Seg_312] -> T_Map_62 -> Maybe T_DSt_548 -> Integer
-d_at_836 ~v0 ~v1 ~v2 ~v3 ~v4 v5 = du_at_836 v5
-du_at_836 :: Maybe T_DSt_548 -> Integer
-du_at_836 v0
+  [T_Op_318] -> [T_Seg_326] -> T_Map_62 -> Maybe T_DSt_508 -> Integer
+d_at_784 ~v0 ~v1 ~v2 ~v3 ~v4 v5 = du_at_784 v5
+du_at_784 :: Maybe T_DSt_508 -> Integer
+du_at_784 v0
   = let v1 = 0 :: Integer in
     coe
       (case coe v0 of
          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v2
            -> case coe v2 of
-                C_d'45'fin_552 v3
+                C_d'45'fin_512 v3
                   -> case coe v3 of
                        C_row_262 v4 v5 v6 -> coe addInt (coe v5) (coe v6)
                        _ -> MAlonzo.RTE.mazUnreachableError
                 _ -> coe v1
          _ -> coe v1)
 -- Once.CCC.Codegen.StackDepthTable.rows-of
-d_rows'45'of_846 :: [T_Seg_312] -> T_Map_62 -> T_Map_62
-d_rows'45'of_846 v0 v1
+d_rows'45'of_794 :: [T_Seg_326] -> T_Map_62 -> T_Map_62
+d_rows'45'of_794 v0 v1
   = case coe v0 of
       [] -> coe C_tip_66
       (:) v2 v3
         -> case coe v2 of
-             C_seg_326 v4 v5 v6
+             C_seg_340 v4 v5 v6
                -> case coe v4 of
                     MAlonzo.Code.Once.CCC.Codegen.StackDepth.C_o'45'start_38
-                      -> coe d_rows'45'of_846 (coe v3) (coe v1)
+                      -> coe d_rows'45'of_794 (coe v3) (coe v1)
                     MAlonzo.Code.Once.CCC.Codegen.StackDepth.C_o'45'entry_40 v7
                       -> coe
-                           du_at_860 (coe v7) (coe v3) (coe v1)
+                           du_at_808 (coe v7) (coe v3) (coe v1)
                            (coe du_lookup_218 (coe v1) (coe d_enc'45'entry_36 (coe v7)))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.StackDepthTable._.at
-d_at_860 ::
+d_at_808 ::
   MAlonzo.Code.Once.CCC.Label.T_EntryId_22 ->
   Integer ->
-  [T_Op_304] ->
-  [T_Seg_312] -> T_Map_62 -> Maybe T_DSt_548 -> T_Map_62
-d_at_860 v0 ~v1 ~v2 v3 v4 v5 = du_at_860 v0 v3 v4 v5
-du_at_860 ::
+  [T_Op_318] ->
+  [T_Seg_326] -> T_Map_62 -> Maybe T_DSt_508 -> T_Map_62
+d_at_808 v0 ~v1 ~v2 v3 v4 v5 = du_at_808 v0 v3 v4 v5
+du_at_808 ::
   MAlonzo.Code.Once.CCC.Label.T_EntryId_22 ->
-  [T_Seg_312] -> T_Map_62 -> Maybe T_DSt_548 -> T_Map_62
-du_at_860 v0 v1 v2 v3
-  = let v4 = d_rows'45'of_846 (coe v1) (coe v2) in
+  [T_Seg_326] -> T_Map_62 -> Maybe T_DSt_508 -> T_Map_62
+du_at_808 v0 v1 v2 v3
+  = let v4 = d_rows'45'of_794 (coe v1) (coe v2) in
     coe
       (case coe v3 of
          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v5
            -> case coe v5 of
-                C_d'45'fin_552 v6
+                C_d'45'fin_512 v6
                   -> coe
                        du_insert_192 (coe d_enc'45'entry_36 (coe v0)) (coe v6)
-                       (coe d_rows'45'of_846 (coe v1) (coe v2))
+                       (coe d_rows'45'of_794 (coe v1) (coe v2))
                 _ -> coe v4
          _ -> coe v4)
 -- Once.CCC.Codegen.StackDepthTable.labels
-d_labels_868 ::
+d_labels_816 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430] ->
   T_Map_62
-d_labels_868 v0
+d_labels_816 v0
   = coe
-      du_go_876
+      du_go_824
       (coe MAlonzo.Code.Once.CCC.Codegen.StackDepth.C_o'45'start_38)
       (coe v0) (coe C_tip_66)
 -- Once.CCC.Codegen.StackDepthTable._.go
-d_go_876 ::
+d_go_824 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430] ->
   MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Owner_36 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430] ->
   T_Map_62 -> T_Map_62
-d_go_876 ~v0 v1 v2 v3 = du_go_876 v1 v2 v3
-du_go_876 ::
+d_go_824 ~v0 v1 v2 v3 = du_go_824 v1 v2 v3
+du_go_824 ::
   MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Owner_36 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430] ->
   T_Map_62 -> T_Map_62
-du_go_876 v0 v1 v2
+du_go_824 v0 v1 v2
   = case coe v1 of
       [] -> coe v2
       (:) v3 v4
         -> coe
-             du_go_876
+             du_go_824
              (coe
                 MAlonzo.Code.Once.CCC.Codegen.StackDepth.d_own_124 (coe v0)
                 (coe v3))
              (coe v4)
              (coe
-                du_add_894 (coe v0) (coe v3) (coe v2)
+                du_add_842 (coe v0) (coe v3) (coe v2)
                 (coe MAlonzo.Code.Once.CCC.Codegen.StackDepth.d_kind_82 (coe v3)))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.StackDepthTable._._.add
-d_add_894 ::
+d_add_842 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430] ->
   MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Owner_36 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430] ->
   T_Map_62 ->
   MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Kind_60 -> T_Map_62
-d_add_894 ~v0 v1 v2 ~v3 v4 v5 = du_add_894 v1 v2 v4 v5
-du_add_894 ::
+d_add_842 ~v0 v1 v2 ~v3 v4 v5 = du_add_842 v1 v2 v4 v5
+du_add_842 ::
   MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Owner_36 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430 ->
   T_Map_62 ->
   MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Kind_60 -> T_Map_62
-du_add_894 v0 v1 v2 v3
+du_add_842 v0 v1 v2 v3
   = case coe v3 of
       MAlonzo.Code.Once.CCC.Codegen.StackDepth.C_k'45'label_70 v4
         -> coe
@@ -1574,100 +1447,96 @@ du_add_894 v0 v1 v2 v3
              (coe v2)
       _ -> coe v2
 -- Once.CCC.Codegen.StackDepthTable.table
-d_table_898 ::
+d_table_846 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430] ->
   MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Depths_254
-d_table_898 v0
+d_table_846 v0
   = coe
-      d_build_912 (coe v0)
+      d_finish_866 (coe v0)
       (coe
-         d_clo'45'cycle_512 (coe d_fuel_910 (coe v0))
-         (coe d_ss_906 (coe v0)) (coe d_sm_908 (coe v0)))
+         d_all'45'entries_730 (coe d_fuel_858 (coe v0))
+         (coe
+            C_ctx_528 (coe d_cr_860 (coe v0)) (coe d_cd_864 (coe v0))
+            (coe d_sm_856 (coe v0)))
+         (coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8)
+         (coe d_ss_854 (coe v0)) (coe d_m'8321'_862 (coe v0)))
 -- Once.CCC.Codegen.StackDepthTable._.ss
-d_ss_906 ::
+d_ss_854 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430] ->
-  [T_Seg_312]
-d_ss_906 v0 = coe d_segments_334 (coe v0)
+  [T_Seg_326]
+d_ss_854 v0 = coe d_segments_348 (coe v0)
 -- Once.CCC.Codegen.StackDepthTable._.sm
-d_sm_908 ::
+d_sm_856 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430] ->
   T_Map_62
-d_sm_908 v0 = coe d_seg'45'map_390 (coe d_ss_906 (coe v0))
+d_sm_856 v0 = coe d_seg'45'map_398 (coe d_ss_854 (coe v0))
 -- Once.CCC.Codegen.StackDepthTable._.fuel
-d_fuel_910 ::
+d_fuel_858 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430] ->
   Integer
-d_fuel_910 v0
+d_fuel_858 v0
   = coe
       addInt (coe (1 :: Integer))
-      (coe MAlonzo.Code.Data.List.Base.du_length_268 (d_ss_906 (coe v0)))
--- Once.CCC.Codegen.StackDepthTable._.build
-d_build_912 ::
+      (coe MAlonzo.Code.Data.List.Base.du_length_268 (d_ss_854 (coe v0)))
+-- Once.CCC.Codegen.StackDepthTable._.cr
+d_cr_860 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430] ->
-  Bool -> MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Depths_254
-d_build_912 v0 v1
+  T_Map_62
+d_cr_860 v0
   = coe
-      d_finish_924 (coe v0) (coe v1)
-      (coe
-         d_all'45'entries_774 (coe d_fuel_910 (coe v0)) (coe v1)
-         (coe d_cd_922 (coe v0) (coe v1)) (coe d_sm_908 (coe v0))
-         (coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8)
-         (coe d_ss_906 (coe v0)) (coe d_m'8321'_920 (coe v0) (coe v1)))
--- Once.CCC.Codegen.StackDepthTable._._.m₁
-d_m'8321'_920 ::
+      d_marks_480 (coe d_fuel_858 (coe v0)) (coe d_sm_856 (coe v0))
+      (coe d_ss_854 (coe v0)) (coe C_tip_66)
+-- Once.CCC.Codegen.StackDepthTable._.m₁
+d_m'8321'_862 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430] ->
-  Bool -> T_Map_62
-d_m'8321'_920 v0 v1
+  T_Map_62
+d_m'8321'_862 v0
   = coe
-      MAlonzo.Code.Data.Bool.Base.du_if_then_else__44 (coe v1)
-      (coe C_tip_66)
+      d_all'45'entries_730 (coe d_fuel_858 (coe v0))
       (coe
-         d_all'45'entries_774 (coe d_fuel_910 (coe v0)) (coe v1)
-         (coe (0 :: Integer)) (coe d_sm_908 (coe v0))
-         (coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10)
-         (coe d_ss_906 (coe v0)) (coe C_tip_66))
--- Once.CCC.Codegen.StackDepthTable._._.cd
-d_cd_922 ::
+         C_ctx_528 (coe d_cr_860 (coe v0)) (coe (0 :: Integer))
+         (coe d_sm_856 (coe v0)))
+      (coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10)
+      (coe d_ss_854 (coe v0)) (coe C_tip_66)
+-- Once.CCC.Codegen.StackDepthTable._.cd
+d_cd_864 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430] ->
-  Bool -> Integer
-d_cd_922 v0 v1
+  Integer
+d_cd_864 v0
   = coe
-      MAlonzo.Code.Data.Bool.Base.du_if_then_else__44 (coe v1)
-      (coe (0 :: Integer))
-      (coe
-         d_clo'45'max_822 (coe d_ss_906 (coe v0))
-         (coe d_m'8321'_920 (coe v0) (coe v1)))
--- Once.CCC.Codegen.StackDepthTable._._.finish
-d_finish_924 ::
+      d_clo'45'max_770 (coe d_ss_854 (coe v0))
+      (coe d_m'8321'_862 (coe v0))
+-- Once.CCC.Codegen.StackDepthTable._.finish
+d_finish_866 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430] ->
-  Bool ->
   T_Map_62 -> MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Depths_254
-d_finish_924 v0 v1 v2
+d_finish_866 v0 v1
   = coe
-      du_from_932 (coe v0) (coe v1)
+      du_from_874 (coe v0)
       (coe
-         d_start'45'ops_716 (coe d_fuel_910 (coe v0)) (coe v1)
-         (coe d_cd_922 (coe v0) (coe v1)) (coe d_sm_908 (coe v0))
-         (coe d_ss_906 (coe v0)) (coe v2))
--- Once.CCC.Codegen.StackDepthTable._._._.from
-d_from_932 ::
+         d_start'45'ops_684 (coe d_fuel_858 (coe v0))
+         (coe
+            C_ctx_528 (coe d_cr_860 (coe v0)) (coe d_cd_864 (coe v0))
+            (coe d_sm_856 (coe v0)))
+         (coe d_ss_854 (coe v0)) (coe v1))
+-- Once.CCC.Codegen.StackDepthTable._._.from
+d_from_874 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430] ->
-  Bool ->
   T_Map_62 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Depths_254
-d_from_932 v0 v1 ~v2 v3 = du_from_932 v0 v1 v3
-du_from_932 ::
+d_from_874 v0 ~v1 v2 = du_from_874 v0 v2
+du_from_874 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430] ->
-  Bool ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Depths_254
-du_from_932 v0 v1 v2
-  = case coe v2 of
-      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v3 v4
+du_from_874 v0 v1
+  = case coe v1 of
+      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v2 v3
         -> coe
              d_toDepths_280
-             (coe d_rows'45'of_846 (coe d_ss_906 (coe v0)) (coe v4)) (coe v3)
-             (coe v1) (coe d_clo'45'max_822 (coe d_ss_906 (coe v0)) (coe v4))
-             (coe d_labels_868 (coe v0))
+             (coe d_rows'45'of_794 (coe d_ss_854 (coe v0)) (coe v3)) (coe v2)
+             (coe d_cr_860 (coe v0))
+             (coe d_clo'45'max_770 (coe d_ss_854 (coe v0)) (coe v3))
+             (coe d_labels_816 (coe v0))
       _ -> MAlonzo.RTE.mazUnreachableError
