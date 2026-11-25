@@ -25363,3 +25363,37 @@ pass's lookups re-encode names); the indirect calls' checks (per closure body, n
   `AllocExpandEmitted`, `RunLow`, the three arch `Sim`s; `Apex.wf-room` for `file-wf`'s start).
 **Landed** (refined twice): `make certified` green (at a 180 s unit cap: `Once.Certified` loads its cone for
 63 s before its first line, as before this change — open); 188 exit tests × 3 arches, seL4 × 3, `cabal test`.
+
+## D491 — A CALL THAT MAY CLOSE A CYCLE RUNS ITS CALLER'S FRAME IN A HEAP CELL: EVERY PROGRAM'S STACK STATIC, NO STACK CHECK (2026-11-25, decided by the user; plan 0.157 S1; amends D488's "a fold's recursion on a heap worklist")
+
+**The finding.** D488 (amendment, the user 2026-11-24) put a fold's recursion on a heap worklist so that
+every program's stack is statically bounded. Reading the lowering (`LinCore/Image.agda`) shows the data's
+depth reaches the call stack in three more ways the worklist does not cover: `kcopy` and `kfree` at a
+μ-type recurse per node (`copyᴵ`/`freeᴵ (μt F)`), and a fold at an ARROW carrier (the Spec's `⊢fold`, any
+carrier) builds a chain of closures, one per node, whose application nests as deep as the data through
+indirect calls. These are exactly the calls the depth table (D490) flags: a direct call back into a
+function in progress, and an indirect call from code a closure body reaches.
+
+**Structured recursion is untouched.** The cycles are in the compiled call graph only: the source has fold,
+unfold and the server loop, no self-referring definition; `kfold` calling itself on a node's children is
+how `Cata` has always run; copy and free are structural recursions the compiler generates; an arrow-carrier
+fold's closure chain is built by the fold, each closure calling the one for a smaller subterm. Every
+re-entry is on a strictly smaller part of finite data. Moving the pending levels changes where they live,
+not what recursion exists.
+
+**Decided (the user, 2026-11-25): option B.** Every flagged call (the depth table's checked calls: the cut
+direct calls and the marked indirect calls) runs with its CALLER'S FRAME IN A HEAP CELL, taken from the
+allocator (LIFO: freed on return, so a size class's free list gives it back at near-stack cost; plan 0.157
+S3 may reuse the consumed node's own cell instead). One rule covers fold, copy, free and closure chains.
+So every function's depth is static, `B` is exact for every program, the start sets `L = sp − B`, there is
+no stack check anywhere, and the only exhaustion is the heap's, in the allocator.
+* Not taken: (A) worklists for fold, copy and free, with stack checks kept before the flagged indirect calls
+  (arrow-carrier folds would still run out at the fixed reserve); (C) restricting arrow-carrier folds (a
+  Spec change).
+* **Runtime (estimated):** a flagged call costs a free-list pop and push (~10 instructions with the
+  allocator's check) where today it costs a stack check (~4); code size about neutral (8,459 check
+  instructions in the corpus, 0.8% of the static instructions); depth limited by total memory, not by
+  `start-stack-words` (which stays only as a fallback where no table is certified).
+* **Proof:** the budget's stack part becomes static (`deep-le` with no checked call); the heap frame is an
+  allocation, covered by the allocator's check; the D490 certificate is reused, its `chk` now meaning "runs
+  on a heap frame".
