@@ -25415,3 +25415,13 @@ frame lying above the heap). So B is STACK SEGMENTS:
 5. the three arches lower the pair and prove it.
 Order: abstract machine and its facts; the pass and the certificate's meaning; the budget; x86-64, then
 x86-32 and riscv64; then the room checks' stack part removed and `B` exact at the start.
+**Amended (the user, 2026-11-25, the same day): a MOVING LIMIT, not segments.** Heap and stack already share
+one region split by `L` (record word 0). A flagged call's check becomes: if `L + s ≤ sp` go on; else if the
+heap front with the stretch's cells still fits below `sp − s`, LOWER `L` to `sp − s`; else exhausted. On
+return `L` is restored (saved at the call, so every saved frame's bound still holds; a first step may keep
+`L` a low-water mark). Frames stay contiguous on the stack — the arch correspondences' frame windows are
+unchanged; the budget's `hlim` becomes movable at a flagged call (lowering it only weakens the stack-side
+bounds, and the check gives the heap side). ~5 instructions per flagged call (today's ~4), no allocator
+call, depth limited by total memory; every other call static and unchecked; `L` starts at `sp − B`.
+Not taken: segments (frames in heap blocks: a segment-aware correspondence and abstract frames inside heap
+blocks on three arches, for ~10 instructions per flagged call and no compare).
