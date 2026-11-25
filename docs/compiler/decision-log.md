@@ -25252,3 +25252,28 @@ instruction falls into an entry, from `em-guard`, across the checks). `Budget`: 
 0.82×, `list-build-sum` 0.87×. Stack parts on the 109 exit tests: 21,735 → 6,708. **Open:** the rounds' rule
 for `bnd` (a function bounded only when all its callees are) lets one cycle — often through the indirect
 calls — leave every caller of it checked; the next step makes only the functions on a cycle unbounded.
+**Refined** (2026-11-25, the same day). Three findings, each from `once stats`' new `depth-table` line (the
+certificate on the plain and on the built image, its first failing instruction, the counts):
+* **The rounds' rule was the limit, not the cycles.** A function bounded only when all its callees were let
+  one indirect-call cycle leave every caller checked. Now the table is ONE memoized depth-first pass over the
+  call graph (`StackDepthTable.depth`): each function's depth once, callees first; a call that meets a
+  function in progress closes a cycle and makes that function unbounded; so does a depth above `d-max`
+  (4096 words: no check then asks for much more, and the start's depth stays within its reserve). Indirect
+  calls are checked when some closure body reaches one (`reach`), else the bodies go first and give `clo-dep`.
+  It is also what keeps the compile fast: the rounds rescanned the image once per call-chain level (an seL4
+  image 7.9 s, over its 5 s cap); the pass scans it once (Caps 2.7 s, Words 2.0 s, Echo 0.5 s).
+* **The allocator outline splits the start.** `AllocExpand.outline` puts the allocator routines in the start's
+  code, jumped over (`c-jmp skip-label … c-label skip-label`); by position the start's code after the label was
+  the last routine's, and the jump looked like it landed in another function — the certificate refused it
+  and every built image took the fallback. The owner now returns to the start at the outline's skip label
+  (`own-k`), and the certificate gains a FALL-THROUGH condition (`Cert.fall-le`: where control falls through,
+  the next instruction's function is no deeper; trivially true of the fallback), which replaces the argument
+  that falling through keeps the owner. `boundary?` and `NoFall.leaves?` read the instruction's `kind`
+  (jumps and branches split, returns their own kind).
+* Stack parts on the 109 exit tests: 21,735 (a3) → 6,708 (D488 first) → 2,705; what remains stands before
+  indirect calls (some closure body reaches one, so all are checked).
+**Landed** (refined): `make certified` green (the cone per module, the apex at a 3.5 GB cap: the box had no
+more free); 188 exit tests × 3 arches, seL4 × 3, `cabal test` 1025. **Measured** (against (a3), x86_64, 108
+programs): room checks 0.13× (63,698 → 8,471), `.text` 0.73×, static instructions 0.69×, run time 0.81×
+(median per program 0.78×, max 0.82×). **Open:** compile time on seL4 images (Caps 2.7 s, D485 1.2 s — the
+pass's lookups re-encode names); the indirect calls' checks (per closure body, not all-or-nothing).

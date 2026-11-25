@@ -34,7 +34,7 @@
 ------------------------------------------------------------------------
 
 open import Data.Nat using (ℕ; zero; suc; _+_; _*_; _∸_; _≤_; NonZero)
-open import Data.Bool using (Bool; true; false; if_then_else_)
+open import Data.Bool using (Bool; true; false; if_then_else_; not)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
@@ -83,7 +83,7 @@ open NoFall {FS} using (FF; leaves?)
 open import Once.CCC.Codegen.StackDepth
   using (Depths; module Depths; Owner; o-start; o-entry; own; own-k; kind; Kind; k-call; k-clo; k-sig; k-entry
         ; k-label; k-jump; k-start; k-none; owner-from; before-from; pastO; chk; cost; cost-k; entry-k; frame-k
-        ; own-other; frame-other; owner-from-suc; owner-from-end; Cert; module Cert; sigop-need; jumps-to)
+        ; frame-other; owner-from-suc; owner-from-end; Cert; module Cert; sigop-need; jumps-to; jumps-k; falls-k; jumps-not-entry)
 open import Once.SigOp.Info using (SigOpInfo)
 open RegRoles roles using (sp-reg)
 import Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence as FC
@@ -221,36 +221,45 @@ private
   t≢f : true ≡ false → ∀ {A : Set} → A
   t≢f ()
 
-  -- the next instruction is no entry (`em-guard`): the function goes on
-  next-owner : ∀ (prog : AbstractTrace) (pc : ℕ) {i : AbstractInstr} → FF prog → fetch prog pc ≡ just i → leaves? i ≡ false
-             → (ow prog (suc pc) ≡ ow prog pc) × (frame-at (fetch prog (suc pc)) ≡ 0)
-  next-owner prog pc {i} ff f lv = by (fetch prog (suc pc)) refl
-    where
-      by : ∀ m → fetch prog (suc pc) ≡ m → (ow prog (suc pc) ≡ ow prog pc) × (frame-at m ≡ 0)
-      by nothing  e = owner-from-end o-start prog pc (trans (at-fetch prog (suc pc)) e) , refl
-      by (just x) e = go (entry-k (kind x)) refl
-        where
-          go : ∀ b → entry-k (kind x) ≡ b → (ow prog (suc pc) ≡ ow prog pc) × (frame-k (kind x) ≡ 0)
-          go false ne = trans (owner-from-suc o-start prog pc x (trans (at-fetch prog (suc pc)) e)) (own-other (ow prog pc) (kind x) ne)
-                      , frame-other (kind x) ne
-          go true  ye = t≢f (trans (sym (proj₂ (proj₂ w))) (trans (cong leaves? (just-inj (trans (sym (proj₁ (proj₂ w))) f))) lv))
-            where w = ff pc x e ye
-                  just-inj : ∀ {a b : AbstractInstr} → just a ≡ just b → a ≡ b
-                  just-inj refl = refl
+  -- (what does not leave, falls through)
+  falls-of : ∀ (i : AbstractInstr) → leaves? i ≡ false → falls-k (kind i) ≡ true
+  falls-of i lv = go (falls-k (kind i)) refl
+    where go : ∀ c → falls-k (kind i) ≡ c → falls-k (kind i) ≡ true
+          go true  e = e
+          go false e = t≢f (trans (sym (cong not e)) lv)
 
--- FALLING THROUGH: what is to come one on is what was, less this instruction's frame
-deep-next : ∀ (prog : AbstractTrace) (pc : ℕ) {i : AbstractInstr} → FF prog → fetch prog pc ≡ just i → leaves? i ≡ false
-          → frame-k (kind i) + deep prog (suc pc) ≡ deep prog pc
-deep-next prog pc {i} ff f lv =
-  trans (cong (frame-k (kind i) +_) (trans (cong (_+ pastO (tbl prog) (ow prog (suc pc))) (proj₂ no))
-                                           (cong (pastO (tbl prog)) (proj₁ no))))
-        (cong (λ m → frame-at m + pastO (tbl prog) (ow prog pc)) (sym f))
-  where no = next-owner prog pc ff f lv
+  just-inj : ∀ {a b : AbstractInstr} → just a ≡ just b → a ≡ b
+  just-inj refl = refl
+
+-- FALLING THROUGH: what is to come one on, and this instruction's frame, is at most
+-- what was — the next instruction is no entry (`em-guard`), and its function no
+-- deeper (the certificate)
+deep-next : ∀ (prog : AbstractTrace) (pc : ℕ) {i : AbstractInstr} → Cert (tbl prog) prog → FF prog
+          → fetch prog pc ≡ just i → leaves? i ≡ false
+          → frame-k (kind i) + deep prog (suc pc) ≤ deep prog pc
+deep-next prog pc {i} ce ff f lv = by (fetch prog (suc pc)) refl
+  where
+    here : deep prog pc ≡ frame-k (kind i) + pastO (tbl prog) (ow prog pc)
+    here = cong (λ m → frame-at m + pastO (tbl prog) (ow prog pc)) f
+    by : ∀ m → fetch prog (suc pc) ≡ m → frame-k (kind i) + (frame-at m + pastO (tbl prog) (ow prog (suc pc))) ≤ deep prog pc
+    by nothing  e = ≤-reflexive (trans (cong (λ o′ → frame-k (kind i) + pastO (tbl prog) o′)
+                                             (owner-from-end o-start prog pc (trans (at-fetch prog (suc pc)) e)))
+                                       (sym here))
+    by (just x) e = go (entry-k (kind x)) refl
+      where
+        go : ∀ c → entry-k (kind x) ≡ c → frame-k (kind i) + (frame-k (kind x) + pastO (tbl prog) (ow prog (suc pc))) ≤ deep prog pc
+        go false ne = subst (λ z → frame-k (kind i) + (z + pastO (tbl prog) (ow prog (suc pc))) ≤ deep prog pc) (sym (frame-other (kind x) ne))
+                        (subst (frame-k (kind i) + pastO (tbl prog) (ow prog (suc pc)) ≤_) (sym here)
+                           (+-monoʳ-≤ (frame-k (kind i))
+                              (Cert.fall-le ce pc i x (trans (at-fetch prog pc) f) (trans (at-fetch prog (suc pc)) e) (falls-of i lv))))
+        go true  ye = t≢f (trans (sym (proj₂ (proj₂ w))) (trans (cong leaves? (just-inj (trans (sym (proj₁ (proj₂ w))) f))) lv))
+          where w = ff pc x e ye
 
 -- …so it does not grow
-deep-le-next : ∀ (prog : AbstractTrace) (pc : ℕ) {i : AbstractInstr} → FF prog → fetch prog pc ≡ just i → leaves? i ≡ false
+deep-le-next : ∀ (prog : AbstractTrace) (pc : ℕ) {i : AbstractInstr} → Cert (tbl prog) prog → FF prog
+             → fetch prog pc ≡ just i → leaves? i ≡ false
              → deep prog (suc pc) ≤ deep prog pc
-deep-le-next prog pc {i} ff f lv = subst (deep prog (suc pc) ≤_) (deep-next prog pc ff f lv) (m≤n+m _ (frame-k (kind i)))
+deep-le-next prog pc {i} ce ff f lv = ≤-trans (m≤n+m _ (frame-k (kind i))) (deep-next prog pc ce ff f lv)
 
 -- an entry's depth to come: its frame and its function's
 deep-entry : ∀ (prog : AbstractTrace) (pc : ℕ) (e : EntryId) (b : ℕ) → fetch prog pc ≡ just (instr-ctrl (c-entry e b))
@@ -440,7 +449,7 @@ private
           → Budget hv prog fs → fetch prog (fpc fs) ≡ just i → leaves? i ≡ false
           → hlim hv + slots (deep prog (suc (fpc fs))) ≤ fbase fs
   deep-on {hv} {prog} {fs} bg f lv =
-    ≤-trans (+-monoʳ-≤ (hlim hv) (*-monoˡ-≤ slot-size (deep-le-next prog (fpc fs) (bg-ff bg) f lv))) (deep-le bg)
+    ≤-trans (+-monoʳ-≤ (hlim hv) (*-monoˡ-≤ slot-size (deep-le-next prog (fpc fs) (bg-cert bg) (bg-ff bg) f lv))) (deep-le bg)
 
 -- a step that falls through, its frame, saved frames and return stack unmoved
 -- (D393: a step that SPENDS but moves neither the frontier nor the frame base,
@@ -556,16 +565,16 @@ bg-entry {hv} {hv′} {prog} {fs} {fs′} {m} {b} bg r f hf hl hs pc′ fb′ rq
     dp : hlim hv + slots (deep prog (suc (fpc fs))) ≤ fbase fs ∸ slots b
     dp = m+n≤o⇒m≤o∸n (hlim hv + slots (deep prog (suc (fpc fs))))
            (subst (_≤ fbase fs)
-             (trans (cong (λ x → hlim hv + slots x) (sym (deep-next prog (fpc fs) (bg-ff bg) f refl)))
-               (trans (cong (hlim hv +_) (sl+ b (deep prog (suc (fpc fs)))))
-                 (trans (cong (hlim hv +_) (+-comm (slots b) (slots (deep prog (suc (fpc fs))))))
-                        (sym (+-assoc (hlim hv) (slots (deep prog (suc (fpc fs)))) (slots b))))))
-             (deep-le bg))
+             (trans (cong (hlim hv +_) (sl+ b (deep prog (suc (fpc fs)))))
+               (trans (cong (hlim hv +_) (+-comm (slots b) (slots (deep prog (suc (fpc fs))))))
+                      (sym (+-assoc (hlim hv) (slots (deep prog (suc (fpc fs)))) (slots b)))))
+             (≤-trans (+-monoʳ-≤ (hlim hv) (*-monoˡ-≤ slot-size (deep-next prog (fpc fs) (bg-cert bg) (bg-ff bg) f refl)))
+                      (deep-le bg)))
 
 -- ON A LABEL (a jump, a taken branch): a check is next, and the label's function
 -- is no deeper than the jump's (the certificate)
 bg-label : ∀ {hv hv′ : HeapView} {prog : AbstractTrace} {fs fs′ : FlatState} {m : LabelId} {j : ℕ} {i : AbstractInstr}
-         → Budget hv prog fs → RunLow prog fs → fetch prog (fpc fs) ≡ just i → kind i ≡ k-jump m
+         → Budget hv prog fs → RunLow prog fs → fetch prog (fpc fs) ≡ just i → jumps-k (kind i) m
          → find-label prog m ≡ just j
          → hfront hv′ ≡ hfront hv → hlim hv′ ≡ hlim hv → hstarted hv′ ≡ hstarted hv
          → fpc fs′ ≡ j → fbase fs′ ≡ fbase fs
@@ -584,7 +593,7 @@ bg-label {hv} {hv′} {prog} {fs} {fs′} {m} {j} {i} bg r f ki fl hf hl hs pc�
     nj : need prog j ≡ r0
     nj = trans (need-boundary r j fj refl refl) refl
     dj : deep prog j ≤ deep prog (fpc fs)
-    dj = subst₂ _≤_ (sym (deep-other prog j fj refl)) (sym (deep-other prog (fpc fs) f (cong entry-k ki)))
+    dj = subst₂ _≤_ (sym (deep-other prog j fj refl)) (sym (deep-other prog (fpc fs) f (jumps-not-entry (kind i) m ki)))
            (Cert.jump-le (bg-cert bg) (fpc fs) j m
               (subst (λ x → jumps-to x m) (sym (trans (at-fetch prog (fpc fs)) f)) ki) (trans (at-fetch prog j) fj))
 
@@ -646,8 +655,7 @@ bg-start {hv′} {prog} {fs} {fs′} {s′} {b} r f st pc′ corr′ lim′ rq =
     base-le = subst (hlim hv′ + slots start-stack-words ≤_) (sp-eq corr′) lim′
     -- what is to come past the start is the start's function's depth
     dle : deep prog (suc (fpc fs)) ≤ start-stack-words
-    dle = subst (_≤ start-stack-words)
-            (sym (deep-next prog (fpc fs) ff f refl))
+    dle = ≤-trans (deep-next prog (fpc fs) (low-cert r) ff f refl)
             (subst (_≤ start-stack-words) (sym (deep-other prog (fpc fs) f refl))
                    (Cert.start-le (low-cert r) (fpc fs) b (trans (at-fetch prog (fpc fs)) f)))
 

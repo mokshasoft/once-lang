@@ -40,7 +40,7 @@ open import Once.CCC.Machine.SMCore
         ; c-label; c-entry; c-start; c-call-fn; Room; room; module Room)
 open import Once.CCC.Codegen.StackDepth
   using (Depths; module Depths; Owner; o-start; own; before-from; Kind; kind; k-call; k-clo; k-sig; k-entry
-        ; k-label; k-jump; k-start; k-none; chk; consistent?; T₀)
+        ; k-label; k-jump; k-branch; k-ret; k-start; k-none; chk; consistent?; T₀)
 open import Once.CCC.Codegen.StackDepthTable using (table)
 
 -- the frame an entry reserves (0 for anything that is not one)
@@ -83,6 +83,8 @@ stack-k T o (k-sig w)     = if Depths.sig-chk T then w else 0
 stack-k T o (k-entry _ _) = 0
 stack-k T o (k-label _)   = 0
 stack-k T o (k-jump _)    = 0
+stack-k T o (k-branch _)  = 0
+stack-k T o k-ret         = 0
 stack-k T o k-start       = 0
 stack-k T o k-none        = 0
 
@@ -91,14 +93,21 @@ spend T o i = room (cells i) (stack-k T o (kind i))
 
 -- a check goes right after these: control arrives there other than by falling
 -- through (a jump lands on a label, a call on an entry, a return after a call)
+boundary-k : Kind → Bool
+boundary-k k-start       = true
+boundary-k (k-label _)   = true
+boundary-k (k-entry _ _) = true
+boundary-k (k-call _)    = true
+boundary-k k-clo         = true
+boundary-k (k-sig _)     = false
+boundary-k (k-jump _)    = false
+boundary-k (k-branch _)  = false
+boundary-k k-ret         = false
+boundary-k k-none        = false
+
+-- (D488: by the instruction's kind — the start, a label, an entry, a call)
 boundary? : AbstractInstr → Bool
-boundary? (instr-ctrl (c-start _))    = true
-boundary? (instr-ctrl (c-label _))    = true
-boundary? (instr-ctrl (c-entry _ _))  = true
-boundary? (instr-ctrl (c-call-fn _))  = true
-boundary? instr-call-closure          = true
-{-# CATCHALL #-}
-boundary? _                           = false
+boundary? i = boundary-k (kind i)
 
 -- what a stretch spends: up to and including its first boundary instruction
 stretch : Depths → Owner → AbstractTrace → Room

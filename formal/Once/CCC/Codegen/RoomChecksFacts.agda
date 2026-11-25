@@ -637,26 +637,19 @@ module NoFall {FS : FrameSemantics} where
   open import Data.Empty using (⊥-elim)
   open import Relation.Binary.PropositionalEquality using (sym; trans; cong; subst)
   open import Once.CCC.Machine.SMCore using (instr-ctrl; c-jmp; c-ret; c-leave)
-  open import Once.CCC.Codegen.StackDepth using (kind; entry-k)
+  open import Once.CCC.Codegen.StackDepth using (kind; entry-k; falls-k; Kind; k-start; k-label; k-entry; k-call; k-clo)
+  open import Once.CCC.Codegen.RoomChecks using (boundary-k)
+  open import Data.Bool using (not)
 
   -- a jump, a return, the leave: control does not fall through
   leaves? : AbstractInstr → Bool
-  leaves? (instr-ctrl (c-jmp _)) = true
-  leaves? (instr-ctrl (c-ret _)) = true
-  leaves? (instr-ctrl c-leave)   = true
-  {-# CATCHALL #-}
-  leaves? _                      = false
+  leaves? i = not (falls-k (kind i))
 
   FF : AbstractTrace → Set
   FF t = ∀ q (x : AbstractInstr) → fetch t (suc q) ≡ just x → entry-k (kind x) ≡ true
        → Σ AbstractInstr (λ y → fetch t q ≡ just y × leaves? y ≡ true)
 
   private
-    leaves-not-boundary : ∀ (y : AbstractInstr) → leaves? y ≡ true → boundary? y ≡ false
-    leaves-not-boundary (instr-ctrl (c-jmp _)) _ = refl
-    leaves-not-boundary (instr-ctrl (c-ret _)) _ = refl
-    leaves-not-boundary (instr-ctrl c-leave)   _ = refl
-
     room-not-entry : ∀ (k : Room) → entry-k (kind (instr-room k)) ≡ false
     room-not-entry k = refl
 
@@ -675,11 +668,15 @@ module NoFall {FS : FrameSemantics} where
 
   private
     -- what a boundary is, it does not leave
+    leaves-bnd-k : ∀ (k : Kind) → boundary-k k ≡ true → not (falls-k k) ≡ false
+    leaves-bnd-k k-start       _ = refl
+    leaves-bnd-k (k-label _)   _ = refl
+    leaves-bnd-k (k-entry _ _) _ = refl
+    leaves-bnd-k (k-call _)    _ = refl
+    leaves-bnd-k k-clo         _ = refl
+
     leaves-bnd : ∀ (z : AbstractInstr) → boundary? z ≡ true → leaves? z ≡ false
-    leaves-bnd z bz = by-l (leaves? z) refl
-      where by-l : ∀ c → leaves? z ≡ c → leaves? z ≡ false
-            by-l false lz = lz
-            by-l true  lz = t≢f (trans (sym bz) (leaves-not-boundary z lz))
+    leaves-bnd z bz = leaves-bnd-k (kind z) bz
 
     just-inj : ∀ {a b : AbstractInstr} → just a ≡ just b → a ≡ b
     just-inj refl = refl

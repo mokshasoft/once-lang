@@ -248,5 +248,5 @@ d_runs_66
       (coe MAlonzo.Code.Once.Inspect.d_signatures_40)
       (coe MAlonzo.Code.Once.Inspect.d_check_48)
       (coe MAlonzo.Code.Once.Inspect.d_dumpIR_68)
-      (\ v0 v1 -> coe MAlonzo.Code.Once.Measure.du_statsOf_22 v1)
+      (\ v0 v1 -> coe MAlonzo.Code.Once.Measure.du_statsOf_106 v1)
       (coe MAlonzo.Code.Once.Format.d_formatSource_14)
