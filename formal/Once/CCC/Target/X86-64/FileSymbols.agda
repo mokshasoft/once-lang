@@ -11,14 +11,39 @@
 
 module Once.CCC.Target.X86-64.FileSymbols where
 
+import Data.Nat
 open import Data.List using ([]; _∷_; _++_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans; sym)
 open import Once.Type using (fits-int; fits-float)
 open import Once.CCC.Machine.SMCore
-open import Once.CCC.Codegen.ImageSymbols using (instr-defs; instr-refs; adefs; arefs)
-open import Once.CCC.Target.X86-64.AbstractToX86 using (compile-abstract; compile-trace)
+open import Once.CCC.Codegen.ImageSymbols using (instr-defs; instr-refs; adefs; arefs; part-refs)
+open import Once.CCC.Target.X86-64.AbstractToX86 using (compile-abstract; compile-trace; heap-code; stack-code)
+open import Data.List.Properties using (++-assoc)
 open import Once.CCC.Target.X86-64.File using (label-defs; refs)
 open import Once.CCC.Target.X86-64.Syntax using (Program)
+
+-- D488 (a3): a check's two parts define nothing; each reads the record, then may call
+private
+  hc-defs : ∀ (h : Data.Nat.ℕ) (r : Program) → label-defs (heap-code h ++ r) ≡ label-defs r
+  hc-defs Data.Nat.zero    r = refl
+  hc-defs (Data.Nat.suc _) r = refl
+  sc-defs : ∀ (k : Data.Nat.ℕ) (r : Program) → label-defs (stack-code k ++ r) ≡ label-defs r
+  sc-defs Data.Nat.zero    r = refl
+  sc-defs (Data.Nat.suc _) r = refl
+  hc-refs : ∀ (h : Data.Nat.ℕ) (r : Program) → refs (heap-code h ++ r) ≡ part-refs h ++ refs r
+  hc-refs Data.Nat.zero    r = refl
+  hc-refs (Data.Nat.suc _) r = refl
+  sc-refs : ∀ (k : Data.Nat.ℕ) (r : Program) → refs (stack-code k ++ r) ≡ part-refs k ++ refs r
+  sc-refs Data.Nat.zero    r = refl
+  sc-refs (Data.Nat.suc _) r = refl
+  room-defs : ∀ (h k : Data.Nat.ℕ) (r : Program) → label-defs ((heap-code h ++ stack-code k) ++ r) ≡ label-defs r
+  room-defs h k r = trans (cong label-defs (++-assoc (heap-code h) (stack-code k) r))
+                          (trans (hc-defs h (stack-code k ++ r)) (sc-defs k r))
+  room-refs : ∀ (h k : Data.Nat.ℕ) (r : Program)
+            → refs ((heap-code h ++ stack-code k) ++ r) ≡ (part-refs h ++ part-refs k) ++ refs r
+  room-refs h k r = trans (cong refs (++-assoc (heap-code h) (stack-code k) r))
+                      (trans (hc-refs h (stack-code k ++ r))
+                        (trans (cong (part-refs h ++_) (sc-refs k r)) (sym (++-assoc (part-refs h) (part-refs k) (refs r)))))
 
 defs-step : ∀ (i : AbstractInstr) (r : Program)
           → label-defs (compile-abstract i ++ r) ≡ instr-defs i ++ label-defs r
@@ -39,7 +64,9 @@ defs-step (instr-free-heap k) r = refl
 defs-step (load-at k) r = refl
 defs-step (store-at k) r = refl
 defs-step (addr-at k) r = refl
-defs-step (instr-room k) r = refl
+defs-step (load-rec k) r = refl
+defs-step (store-rec k) r = refl
+defs-step (instr-room q) r = room-defs (Room.room-h q) (Room.room-s q) r
 defs-step (instr-push-frame k) r = refl
 defs-step instr-pop-frame r = refl
 defs-step instr-call-closure r = refl
@@ -83,7 +110,9 @@ refs-step (instr-free-heap k) r = refl
 refs-step (load-at k) r = refl
 refs-step (store-at k) r = refl
 refs-step (addr-at k) r = refl
-refs-step (instr-room k) r = refl
+refs-step (load-rec k) r = refl
+refs-step (store-rec k) r = refl
+refs-step (instr-room q) r = room-refs (Room.room-h q) (Room.room-s q) r
 refs-step (instr-push-frame k) r = refl
 refs-step instr-pop-frame r = refl
 refs-step instr-call-closure r = refl

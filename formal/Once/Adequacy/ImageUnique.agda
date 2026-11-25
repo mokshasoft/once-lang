@@ -5,7 +5,9 @@
 -- Once.Adequacy.ImageUnique — plan 0.107 §8 step 4: EVERY SYMBOL A FILE
 -- DEFINES IS DEFINED ONCE (`AsmWF.defined-once`).
 --
--- Were `ImageWF.prog-unique` / `lib-unique`, postulates. The argument:
+-- Were `ImageWF.prog-unique` / `lib-unique`, postulates (master's image, deleted with it in plan
+-- 0.146 step 4, D467: the linear core's image is `LinCore.ImageSyms`). What is left is generic: the
+-- defined labels of a trace, the table's names, the arith blocks' symbols. The argument was:
 --   * the image's definitions are the `labelSym` of its defined LABELS;
 --   * a label's `key` — a counter label's index, a function entry's symbol —
 --     is recovered from its symbol (`LabelSymbols.sym-key`), so distinct keys
@@ -109,6 +111,8 @@ idefs (instr-free-heap _) = refl
 idefs (load-at _) = refl
 idefs (store-at _) = refl
 idefs (addr-at _) = refl
+idefs (load-rec _) = refl
+idefs (store-rec _) = refl
 idefs (instr-room _) = refl
 idefs (instr-push-frame _) = refl
 idefs instr-pop-frame = refl
@@ -153,6 +157,8 @@ idefl (instr-free-heap _) = []
 idefl (load-at _) = []
 idefl (store-at _) = []
 idefl (addr-at _) = []
+idefl (load-rec _) = []
+idefl (store-rec _) = []
 idefl (instr-room _) = []
 idefl (instr-push-frame _) = []
 idefl instr-pop-frame = []
@@ -197,6 +203,8 @@ ileft (instr-free-heap _) = refl
 ileft (load-at _) = refl
 ileft (store-at _) = refl
 ileft (addr-at _) = refl
+ileft (load-rec _) = refl
+ileft (store-rec _) = refl
 ileft (instr-room _) = refl
 ileft (instr-push-frame _) = refl
 ileft instr-pop-frame = refl
@@ -240,6 +248,8 @@ iright (instr-free-heap _) = refl
 iright (load-at _) = refl
 iright (store-at _) = refl
 iright (addr-at _) = refl
+iright (load-rec _) = refl
+iright (store-rec _) = refl
 iright (instr-room _) = refl
 iright (instr-push-frame _) = refl
 iright instr-pop-frame = refl
@@ -325,104 +335,9 @@ adefs-unique t dc df =
             all-map⁻ {[]}     []       = []
             all-map⁻ {y ∷ ys} (p ∷ ps) = p ∷ all-map⁻ ps
 
-------------------------------------------------------------------------
--- THE IMAGE: its units sit in disjoint windows of the one counter.
-------------------------------------------------------------------------
-
 open import Data.Nat using (suc; _≤_)
-open import Data.Nat.Properties using (≤-refl; ≤-trans; n≤1+n)
 open import Once.Denotation.Program using (IRFun; IRProgram)
-open Once.Denotation.Program.IRProgram using (main; table)
 open Once.Denotation.Program.IRFun using (fbody; fname)
-open import Once.CCC.Codegen.ProgramImage using (fns-image; fn-image; fn-next; program-image)
-open import Once.CCC.Codegen.RoomChecksFacts using (fold-room)
-open import Once.CCC.Codegen.LabelDefs using (Win; dst-++; dj-win; win-weaken; clabs-++; nf)
-import Once.CCC.Codegen.CLabelsUnique as CLU
-import Once.CCC.Codegen.IRToTrace as IT
-import Once.CCC.Codegen.LabelRange as LR
-import Once.CCC.Codegen.LabelScope as LSc
-
-fns-end : ℕ → List IRFun → ℕ
-fns-end l []       = l
-fns-end l (e ∷ es) = fns-end (fn-next l e) es
-
-private
-  unit-cl : ∀ (e : IRFun) (l : ℕ)
-          → clabs (fn-image l e) ≡ CLU.TL (fname e) (fbody e) 0 l ++ CLU.BL (fname e) (fbody e) 0 l
-  unit-cl e l = clabs-++ (LSc.trace-of (fname e) (IT.ir-to-trace' (fname e) 0 l (fbody e))) _
-
-  unit-nf : ∀ (e : IRFun) (l : ℕ) → fdefs (fn-image l e) ≡ fname e ∷ []
-  unit-nf e l = cong (fname e ∷_) (nf (LSc.trace-of (fname e) (IT.ir-to-trace' (fname e) 0 l (fbody e))) _
-                                     (proj₁ (CLU.frag-nf (fname e) (fbody e) 0 l)) (proj₂ (CLU.frag-nf (fname e) (fbody e) 0 l)))
-
-fns-end-≥ : ∀ (l : ℕ) (es : List IRFun) → l ≤ fns-end l es
-fns-end-≥ l []       = ≤-refl
-fns-end-≥ l (e ∷ es) = ≤-trans (LR.label-mono (fname e) (fbody e) 0 l) (fns-end-≥ (fn-next l e) es)
-
-fns-cl : ∀ (l : ℕ) (es : List IRFun) → Dst (clabs (fns-image l es)) × Win l (fns-end l es) (clabs (fns-image l es))
-fns-cl l []       = [] , []
-fns-cl l (e ∷ es) =
-  subst (λ z → Dst z × Win l (fns-end l (e ∷ es)) z) (sym eq)
-    ( dst-++ dU (proj₁ rest) (dj-win wU (proj₂ rest) ≤-refl)
-    , All-++⁺ (win-weaken ≤-refl (fns-end-≥ (fn-next l e) es) wU)
-              (win-weaken (LR.label-mono (fname e) (fbody e) 0 l) ≤-refl (proj₂ rest)) )
-  where
-    o = fname e
-    F = CLU.frag o (fbody e) 0 l
-    dU = CLU.frag-dst o (fbody e) 0 l
-    wU : Win l (fn-next l e) (CLU.TL o (fbody e) 0 l ++ CLU.BL o (fbody e) 0 l)
-    wU = All-++⁺ (proj₁ (proj₂ F)) (proj₂ (proj₂ F))
-    rest = fns-cl (fn-next l e) es
-    eq : clabs (fns-image l (e ∷ es)) ≡ (CLU.TL o (fbody e) 0 l ++ CLU.BL o (fbody e) 0 l) ++ clabs (fns-image (fn-next l e) es)
-    eq = trans (clabs-++ (fn-image l e) _) (cong (_++ clabs (fns-image (fn-next l e) es)) (unit-cl e l))
-
-fns-fdefs : ∀ (l : ℕ) (es : List IRFun) → fdefs (fns-image l es) ≡ Data.List.map fname es
-fns-fdefs l []       = refl
-fns-fdefs l (e ∷ es) =
-  trans (fdefs-++ (fn-image l e) _) (trans (cong (_++ fdefs (fns-image (fn-next l e) es)) (unit-nf e l))
-                                           (cong (fname e ∷_) (fns-fdefs (fn-next l e) es)))
-  where
-    fdefs-++ : ∀ (x y : AbstractTrace) → fdefs (x ++ y) ≡ fdefs x ++ fdefs y
-    fdefs-++ []       y = refl
-    fdefs-++ (i ∷ is) y = trans (cong (fdef-of i ++_) (fdefs-++ is y)) (sym (++-assoc (fdef-of i) (fdefs is) (fdefs y)))
-
--- the program image: the start, `main`'s unit ending in the leave (D320), the table
-image-cl : ∀ (o : CanonicalName) (q : IRProgram) → Dst (clabs (program-image o q))
-image-cl o q =
-  subst Dst (sym eq)
-    (dst-++ dM (proj₁ FS) (dj-win wM (proj₂ FS) ≤-refl))
-  where
-    X  = IT.ir-to-trace' o 0 0 (main q)
-    nM = LR.label-of o X
-    F  = CLU.frag o (main q) 0 0
-    dT = proj₁ (proj₁ F) ; dB = proj₁ (proj₂ (proj₁ F)) ; jTB = proj₂ (proj₂ (proj₁ F))
-    wT = proj₁ (proj₂ F) ; wB = proj₂ (proj₂ F)
-    TL = CLU.TL o (main q) 0 0
-    BL = CLU.BL o (main q) 0 0
-    -- D320: the leave defines no label, so `main`'s unit is its trace's and
-    -- its blocks', as a function's is.
-    dM : Dst (TL ++ BL)
-    dM = CLU.frag-dst o (main q) 0 0
-    wM : Win 0 (suc nM) (TL ++ BL)
-    wM = All-++⁺ (win-weaken ≤-refl (n≤1+n nM) wT) (win-weaken ≤-refl (n≤1+n nM) wB)
-    FS = fns-cl (suc nM) (table q)
-    eq : clabs (program-image o q) ≡ (TL ++ BL) ++ clabs (fns-image (suc nM) (table q))
-    eq = trans (clabs-++ (link-top (IT.ir-to-unit o (main q))) _)
-               (cong (_++ clabs (fns-image (suc nM) (table q))) (clabs-++ (LSc.trace-of o X) _))
-
-image-fdefs : ∀ (o : CanonicalName) (q : IRProgram) → fdefs (program-image o q) ≡ Data.List.map fname (table q)
-image-fdefs o q =
-  trans (fdefs-++′ (link-top (IT.ir-to-unit o (main q))) _)
-        (cong (_++ fdefs (fns-image (suc (IT.ir-next-label o 0 (main q))) (table q)))
-              (nf (LSc.trace-of o X) _ (proj₁ (CLU.frag-nf o (main q) 0 0)) (proj₂ (CLU.frag-nf o (main q) 0 0)))
-         ∙ fns-fdefs (suc (IT.ir-next-label o 0 (main q))) (table q))
-  where
-    X = IT.ir-to-trace' o 0 0 (main q)
-    _∙_ : ∀ {a b c : List CanonicalName} → a ≡ b → b ≡ c → a ≡ c
-    _∙_ = trans
-    fdefs-++′ : ∀ (x y : AbstractTrace) → fdefs (x ++ y) ≡ fdefs x ++ fdefs y
-    fdefs-++′ []       y = refl
-    fdefs-++′ (i ∷ is) y = trans (cong (fdef-of i ++_) (fdefs-++′ is y)) (sym (++-assoc (fdef-of i) (fdefs is) (fdefs y)))
 
 ------------------------------------------------------------------------
 -- The table's entries: distinct symbols, each an identifier's (D249 guard).
@@ -691,124 +606,6 @@ adefs-class t = subst (All (DefClass (fdefs t))) (sym (adefs-labs t)) (All-map�
             no-sigop ()
 
 ------------------------------------------------------------------------
--- THE THEOREMS
-------------------------------------------------------------------------
-
-open import Data.List.Relation.Unary.Unique.Propositional using (Unique)
-open import Data.List.Properties using (map-∘)
-open import Once.IR using (IR)
-open import Once.IRTy using (⌊_⌋)
-open import Once.Spec.Type using (Unit)
-open import Once.Denotation.Program using (irProgram)
-open import Once.Adequacy.ImageWF using (prog-defs; lib-defs)
-
-private
-  rt-names : ∀ (T : List IRFun) → Data.List.map fname (Emit.rewrite-table T) ≡ Data.List.map fname T
-  rt-names []       = refl
-  rt-names (e ∷ es) = cong (fname e ∷_) (rt-names es)
-
-  -- An own symbol is apart from the blocks and the entry; stated over
-  -- the symbol as a variable (plan 0.144: matched by `with` inside `Apart`,
-  -- each cost 5–7 s).
-  OwnSym : String → Set
-  OwnSym s = Σ[ x ∈ String ] (ValidName x × s ≡ once-symbol-own x)
-
-  own≢blk : ∀ {s t} → OwnSym s → BlockSym t → s ≢ t
-  own≢blk (x , vx , refl) (d , refl) = own≢block x d vx
-
-  entry≢own : ∀ {s} → OwnSym s → entry-symbol ≢ s
-  entry≢own (x , _ , refl) = entry≢osp (canonical (x ∷ []))
-
-  -- the function entries of an image whose table is `T`'s, read through the guard
-  module Entries (T : List IRFun) (tn : TableNames T) where
-    open TableNames tn
-    EF : List String
-    EF = Data.List.map once-symbol-path (Data.List.map fname (Emit.rewrite-table T))
-    EF≡ : EF ≡ reverse (Data.List.map once-symbol-own names)
-    EF≡ = trans (cong (Data.List.map once-symbol-path) (rt-names T)) (trans (sym (map-∘ T)) syms≡)
-    EF-dist : AllPairs _≢_ EF
-    EF-dist = subst (AllPairs _≢_) (sym EF≡) (ap-reverse dist)
-    EF-own : ∀ {s} → s ∈ EF → OwnSym s
-    EF-own {s} s∈ =
-      let (x , x∈ , eq) = ∈-map⁻ once-symbol-own (AnyP.reverse⁻ {xs = Data.List.map once-symbol-own names} (subst (s ∈_) EF≡ s∈))
-      in x , lookup valid x∈ , eq
-
-  -- …and so the definitions, the blocks and the entry are apart.
-  module Apart (fs : List CanonicalName) (T : List IRFun) (tn : TableNames T)
-               (fs≡ : Data.List.map once-symbol-path fs ≡ Entries.EF T tn) where
-    open Entries T tn
-    toEF : ∀ {s} → s ∈ Data.List.map once-symbol-path fs → s ∈ EF
-    toEF = subst (_ ∈_) fs≡
-
-    def≢blk : ∀ {s t} → DefClass fs s → BlockSym t → s ≢ t
-    def≢blk (inj₁ h) (d , refl) = hd≢ h (osp-hd (canonical (("arith.block." ++ˢ d) ∷ []))) (λ ())
-    def≢blk (inj₂ s∈) b = own≢blk (EF-own (toEF s∈)) b
-
-    entry≢def : ∀ {s} → DefClass fs s → entry-symbol ≢ s
-    entry≢def (inj₁ h) = hd≢ refl h (λ ())
-    entry≢def (inj₂ s∈) = entry≢own (EF-own (toEF s∈))
-
-    entry≢blk : ∀ {t} → BlockSym t → entry-symbol ≢ t
-    entry≢blk (d , refl) = entry≢osp (canonical (("arith.block." ++ˢ d) ∷ []))
-
-    defs++blocks : ∀ (D B : List String) → All (DefClass fs) D → All BlockSym B
-                 → AllPairs _≢_ D → AllPairs _≢_ B → AllPairs _≢_ (D ++ B)
-    defs++blocks D B cD cB uD uB =
-      AP-++⁺ uD uB (Data.List.Relation.Unary.All.map (λ {s} cs → Data.List.Relation.Unary.All.map (def≢blk cs) cB) cD)
-
-    entry-fresh : ∀ (D B : List String) → All (DefClass fs) D → All BlockSym B → All (entry-symbol ≢_) (D ++ B)
-    entry-fresh D B cD cB = All-++⁺ (Data.List.Relation.Unary.All.map entry≢def cD) (Data.List.Relation.Unary.All.map entry≢blk cB)
-
--- THE PROGRAM (was `ImageWF.prog-unique`, a postulate).
--- Over any table whose names are distinct and valid (plan 0.39: the optimized
--- build's too).
-prog-unique-at : ∀ (T : List IRFun) (tn : TableNames T) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) → Unique (prog-defs (irProgram T ir))
-prog-unique-at T tn ir =
-  entry-fresh D B cD cB ∷ defs++blocks D B cD cB uD (blocks-unique (Emit.program-blocks p))
-  where
-    p  = irProgram T ir
-    q  = Emit.rewrite-program p
-    img = Emit.image-of p
-    fs = fdefs img
-    fs≡ : Data.List.map once-symbol-path fs ≡ Entries.EF T tn
-    -- D377: the image is the program image with its room checks, which define
-    -- no function and no closure label (`fold-room`)
-    fs≡ = cong (Data.List.map once-symbol-path)
-               (trans (fold-room fdefs (λ i xs → fdef-of i ++ xs) (λ _ _ → refl) (λ _ _ → refl) (program-image Emit.entry-owner q))
-                      (image-fdefs Emit.entry-owner q))
-    cl-room : Dst (clabs img)
-    cl-room = subst Dst (sym (fold-room clabs (λ i → cl-at (clab-of i)) (λ _ _ → refl) (λ _ _ → refl) (program-image Emit.entry-owner q)))
-                    (image-cl Emit.entry-owner q)
-    open Apart fs T tn fs≡
-    D = adefs img
-    B = Emit.block-syms (Emit.program-blocks p)
-    cD = adefs-class img
-    cB = blocks-sym (Emit.program-blocks p)
-    uD = adefs-unique img cl-room (subst (AllPairs _≢_) (sym fs≡) (Entries.EF-dist T tn))
-
-prog-unique : ∀ (m : Resolved) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) → Unique (prog-defs (irProgram (C.moduleTable m) ir))
-prog-unique m ir = prog-unique-at (C.moduleTable m) (table-names m) ir
-
--- THE LIBRARY (was `ImageWF.lib-unique`, a postulate).
-lib-unique-at : ∀ (T : List IRFun) (tn : TableNames T) → Unique (lib-defs T)
-lib-unique-at T tn =
-  defs++blocks D B cD cB uD (blocks-unique (Emit.lib-blocks T))
-  where
-    img = Emit.lib-image T
-    fs = fdefs img
-    fs≡ : Data.List.map once-symbol-path fs ≡ Entries.EF T tn
-    fs≡ = cong (Data.List.map once-symbol-path) (fns-fdefs 0 (Emit.rewrite-table T))
-    open Apart fs T tn fs≡
-    D = adefs img
-    B = Emit.block-syms (Emit.lib-blocks T)
-    cD = adefs-class img
-    cB = blocks-sym (Emit.lib-blocks T)
-    uD = adefs-unique img (proj₁ (fns-cl 0 (Emit.rewrite-table T))) (subst (AllPairs _≢_) (sym fs≡) (Entries.EF-dist T tn))
-
-lib-unique : ∀ (m : Resolved) → Unique (lib-defs (C.moduleTable m))
-lib-unique m = lib-unique-at (C.moduleTable m) (table-names m)
-
-------------------------------------------------------------------------
 -- plan 0.135 S3: THE TABLE'S NAMES ARE DISTINCT (`LinkedProgram`'s last
 -- component, what `find-fn` resolving a linked call to ITS entry needs). The
 -- symbols are distinct (the extractor guard), and equal names give equal
@@ -835,8 +632,3 @@ names-distinct-at T tn =
 
 table-names-distinct : ∀ (m : Resolved) → NamesDistinct (C.moduleTable m)
 table-names-distinct m = names-distinct-at (C.moduleTable m) (table-names m)
-
--- plan 0.135 S3: a function entry defines exactly its own name (for the call
--- scan's resolution, `FnLayout`).
-fn-unit-nf : ∀ (e : IRFun) (l : ℕ) → fdefs (fn-image l e) ≡ fname e ∷ []
-fn-unit-nf = unit-nf

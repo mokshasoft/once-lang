@@ -12,7 +12,14 @@ command -v nix >/dev/null || { echo "missing nix"; exit 2; }
 
 log="$(mktemp)"
 # One job on one core: the compiler's build takes most of a small machine.
-if (cd "$ROOT/examples/seL4" && nix build ".#all-$ARCH" --no-link -L --max-jobs 1 --cores 1) > "$log" 2>&1; then
+# Capped per unit, not as a whole: each image's compile by the flake (`timeout`
+# in mkImage), each boot by the flake (`timeout` around QEMU), and every other
+# step by formal/scripts/watchdog.sh: with -L nix prints a line per GHC module,
+# so SEL4_UNIT_SECS (default 600) of silence means one step is stuck, and the
+# log's last line names it. The slowest step is reported on a pass.
+if (cd "$ROOT/examples/seL4" && "$ROOT/formal/scripts/watchdog.sh" "${SEL4_UNIT_SECS:-600}" \
+      nix build ".#all-$ARCH" --no-link -L --max-jobs 1 --cores 1) > "$log" 2>&1; then
+  grep '^watchdog: slowest' "$log" | sed "s/^/$ARCH\/seL4 /"
   rm -f "$log"
   echo "=== $ARCH/seL4 tests: passed ==="
 else

@@ -7,7 +7,7 @@
 -- The compile pipeline is a composition of named stages:
 --
 --   GModule  ──gmoduleToModule──▶  Module
---   Module   ──compileFileFromModule──▶  FileOf arch (or the error)
+--   Module   ──coreFileOf (D466)    ──▶  FileOf arch (or the error)
 --   file     ──file-bytes─────────▶  bytes
 --   bytes    ──exec arch──────────▶  Tr ⊤                (CPU semantics, D320)
 --
@@ -35,6 +35,7 @@ module Once.Adequacy.Compile where
 open import Once.Module using (ModuleTyped; moduleSig)
 open import Data.Bool using (Bool; false; true)
 open import Data.List using (List)
+import Once.CCC.Codegen.AllocExpandClasses
 import Data.List
 open import Once.Name using (showCanonical)
 open import Data.Maybe using (Maybe; just; nothing; map)
@@ -50,7 +51,9 @@ open import Once.Denotation.Behavior using (Source)
 -- D320: what a program does is its TRACE (`Spec.Trace.Tr ⊤`): its calls and how
 -- the run ended; two are the same when weakly bisimilar.
 open import Once.Spec.Trace using (Tr; _≈ᵗ⟨_⟩_; _⊑ᵗ⟨_⟩_)
-open import Once.Metatheory.Trace using (⊑≈-trans; WB-trans)
+open import Once.Denotation.TraceTr using (trT∞)
+open import Once.Metatheory.Trace using (⊑≈-trans)
+import Once.Core.Telescope as TL
 open import Once.Spec.Signature using (Signature; WellFormed; Decl)
 open import Data.List.Relation.Unary.Unique.Propositional using (Unique)
 import Once.Spec.Observation as Obs
@@ -58,16 +61,15 @@ open import Once.Adequacy.SpecInterp using (toInterp)
 open import Once.Core.Decl using (toISig)
 import Data.Unit
 
-open import Once.Adequacy.SourceTrace using (⟦_⟧IRᵗ; srcToModule; srcToModule-just; srcToModule-inv)
+open Once.Denotation.Behavior.Behavior using (at)
+open import Once.Core.Telescope using (Program; program)
+open import Once.Adequacy.SourceTrace using (srcToModule; srcToModule-just; srcToModule-inv)
+open import Once.Denotation.ProgramTrace using (⟦_⟧IRᵗ)
 open import Once.Compile using (moduleToIR; moduleToProgram; moduleTable; programAt)
-open import Once.Compile.Emit using (rewrite-program)
-import Once.Compile.Emit as Emit
-open import Once.Adequacy.OptimizedModule using (moduleToIR-opt)
-open import Once.Adequacy.OptimizedTable using (optimized-trace)
 import Once.IR as IR
 import Once.Parser as Parser
-open import Once.Adequacy.RewritePreserves using (rewrite-program-trace)
-open import Once.Denotation.Program using (IRProgram; irProgram)
+open import Once.Adequacy.ProgramLinked using (moduleToProgram-linked)
+open import Once.Denotation.Program using (IRProgram; irProgram; LinkedProgram)
 
 -- Plan 0.49 (route 3): the INDEPENDENT surface denotation `SD.⟦_⟧ˢ` (over the
 -- intrinsically-typed `Expr`, NOT through the compiler's `evalᴰ ∘ moduleToIR`),
@@ -99,6 +101,9 @@ open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Once.Target.Arch using (arch-numerics; x86-64; x86-32; riscv64)
 
 import Once.Compile as C
+import Once.LinCore.Emit as E
+import Once.Compile.Emit as Emit
+import Once.Grammar as G
 import Once.Parser.Module.Core as P
 import Once.Spec.Surface.Syntax as Syn
 import Once.Parser.Module.Resolve as Resolve
@@ -113,7 +118,7 @@ import Once.Adequacy.CPU as CPU
 
 -- `Arch` (here, via `Once.Adequacy.CPU.Interface`) and `C.Arch` (via
 -- `Once.Compile`) are now the SAME type — both re-export `Once.Target.Arch`
--- — so `compileFileFromModule` takes `arch` directly; no coercion needed.
+-- — so `coreFileOf` takes `arch` directly; no coercion needed.
 
 ------------------------------------------------------------------------
 -- Per-stage adapters and trust postulates.
@@ -161,7 +166,7 @@ import Once.Adequacy.CPU as CPU
 -- ════════════════════════════════════════════════════════════════════
 -- Plan 0.105: at an interpretation `ι`, the world both the binary and the
 -- meaning run in; the apex takes every arch's record at every `ι`.
--- PLAN 0.107: THE FILE, PER ARCH. What the compiler emits (`C.FileOf arch`)
+-- PLAN 0.107: THE FILE, PER ARCH. What the compiler emits (`Emit.FileOf arch`)
 -- and what the CPU model decodes are the SAME type, so a file's execution,
 -- well-formedness and bytes are read off the arch's own `ArchSemantics`.
 AsmWF-of : (arch : Arch) → Emit.FileOf arch → Set
@@ -198,9 +203,12 @@ record ArchCorrect (arch : Arch) (ι : Interp) : Set where
     -- defined once, every reference defined or an interpretation symbol, the
     -- entry point an instruction. A PROOF obligation: the compiler must SHOW
     -- what the toolchain will check (D100/D167 were its postulated halves).
+    -- (plan 0.146 D466: the file is the compiler's, `LinCore.Emit.coreFileOf`: a program's
+    -- is its linear core's image; in the world that declares the module's signatures)
     file-wf :
       ∀ (doOpt : Bool) (m : P.Resolved) (F : Emit.FileOf arch) →
-      C.compileFileFromModule IR.Heap doOpt arch m ≡ inj₂ F →
+      E.coreFileOf arch doOpt Once.CCC.Codegen.AllocExpandClasses.alloc-slab Data.Bool.false m ≡ inj₂ F →
+      moduleSig m ≡ sig ι →
       AsmWF-of arch F
     -- RUNNING THE FILE FOLLOWS THE TRACE OF THE PROGRAM IT WAS EMITTED FROM, UP
     -- TO RUNNING OUT (D320, D374): the lowered image, ending as the program's
@@ -209,12 +217,14 @@ record ArchCorrect (arch : Arch) (ι : Interp) : Set where
     -- failed proof, not a hidden one (D261).
     -- (At either build: the optimized build's file is the emission of its own
     -- program, plan 0.39.)
+    -- (plan 0.146 D466: at the meaning of the program the module compiles to: the new
+    -- image is the sources', unoptimized, at either build)
     file-tr :
       ∀ (doOpt : Bool) (m : P.Resolved) (F : Emit.FileOf arch) →
-      C.compileFileFromModule IR.Heap doOpt arch m ≡ inj₂ F →
-      ∀ (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) (mi : C.moduleToIR-aux (C.compileResolvedModule IR.Heap doOpt m) ≡ just ir) →
+      E.coreFileOf arch doOpt Once.CCC.Codegen.AllocExpandClasses.alloc-slab Data.Bool.false m ≡ inj₂ F →
+      ∀ (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) (mi : moduleToIR m ≡ just ir) →
       (ls : moduleSig m ≡ sig ι) →
-      run-file arch ι F ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (rewrite-program (irProgram (C.tableOfResult (C.compileResolvedModule IR.Heap doOpt m)) ir)) ⟧IRᵗ (arch-numerics arch) ι
+      run-file arch ι F ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram (moduleTable m) ir) ⟧IRᵗ (arch-numerics arch) ι
 
 -- (The former `no-main-empty` library-case postulate is gone: with
 -- `⟦_⟧M = ⟦ moduleToIR m ⟧IR`, the library case `moduleToIR m ≡ nothing` is
@@ -261,16 +271,22 @@ import Once.Adequacy.FrontEndBridge as FB
 -- `Once.Adequacy.CPU.arch-semantics`.
 ------------------------------------------------------------------------
 
-module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect arch ι) where
+module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect arch ι)
+  -- plan 0.146 (D466): a module with a compilable `main` Builds (`main⇒built`, through the
+  -- compiler's file: `LinCore.CoreFile.Prog.core-built`), injected as `arch-correct` is
+  (core-built : ∀ (arch : Arch) (doOpt : Bool) (m : P.Resolved) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) →
+                AdmissibleM arch (P.Resolved.rmodule m) → moduleToIR m ≡ just ir →
+                Σ-syntax (Emit.FileOf arch) (λ F → E.coreFileOf arch doOpt Once.CCC.Codegen.AllocExpandClasses.alloc-slab Data.Bool.false m ≡ inj₂ F)) where
 
   -- The compile function — the VERIFIED *executable* compiler (Plan 0.48): bytes
   -- only for a runnable program (a module with a compilable `main`); a library
   -- has no runnable behaviour, so `compile ≡ nothing`. PLAN 0.107: the bytes are
   -- `as` on the PRINT of the emitted FILE — the same file the obligations below
   -- are about. Explicit-argument helpers, no `with`.
-  -- D353: the text assembled is `C.assemblyFromModule`'s, the very function
-  -- the CLI's `build` calls (`Extract.Root.runs.assembly`), so the CLI's compiler
-  -- is the one this theorem is about, not a wrapper around it.
+  -- D353: the text assembled is `E.assemblyCore`'s (plan 0.146 D466; was master's
+  -- `C.assemblyFromModule`), the very function the CLI's `build` calls
+  -- (`Extract.Root.runs.assembly`), so the CLI's compiler is the one this theorem is
+  -- about, not a wrapper around it.
   compile-text : Arch → String ⊎ String → Maybe (List Byte)
   compile-text arch (inj₁ _)   = nothing
   compile-text arch (inj₂ asm) = just (ArchSemantics.assemble (CPU.arch-semantics arch) asm)
@@ -280,7 +296,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
 
   compile-mir : Arch → Bool → P.Resolved → Maybe (IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) → Maybe (List Byte)
   compile-mir arch doOpt m nothing   = nothing
-  compile-mir arch doOpt m (just _)  = compile-text arch (C.assemblyFromModule doOpt arch m)
+  compile-mir arch doOpt m (just _)  = compile-text arch (E.assemblyCore doOpt Once.CCC.Codegen.AllocExpandClasses.alloc-slab Data.Bool.false arch m)
 
   compile-gm : Arch → Bool → Maybe P.Resolved → Maybe (List Byte)
   compile-gm arch doOpt nothing   = nothing
@@ -299,16 +315,21 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
   -- module were admissible we would have a contradiction with `¬adm`. That is
   -- what makes this the compiler's refusal rather than a coincidence about
   -- some other path returning `nothing`.
+  -- plan 0.146 (D466, D467): the bytes of a gate's result — the compiler's file, written after
+  -- master's gates (`C.checkModule`, `E.coreAfter`)
+  compile-ck : (arch : Arch) → P.Resolved → String ⊎ List C.CompiledFun → Maybe (List Byte)
+  compile-ck arch m X = compile-fe arch (E.coreAfter arch Once.CCC.Codegen.AllocExpandClasses.alloc-slab Data.Bool.false m X)
+
   refuse-gated : ∀ (arch : Arch) (doOpt : Bool) (m : P.Resolved)
                    (es : List Parser.Entry)
                    (d : Dec (AdmissibleM arch (P.Resolved.rmodule m))) → ¬ AdmissibleM arch (P.Resolved.rmodule m)
-               → compile-fe arch (C.cfm-file-gated IR.Heap doOpt arch m es d) ≡ nothing
+               → compile-ck arch m (C.checkGated IR.Heap doOpt arch m es d) ≡ nothing
   refuse-gated arch doOpt m es (yes p) ¬adm = ⊥-elim (¬adm p)
   refuse-gated arch doOpt m es (no  _) ¬adm = refl
 
   refuse-ef : ∀ (arch : Arch) (doOpt : Bool) (m : P.Resolved)
                 (ef : String ⊎ List Parser.Entry) → ¬ AdmissibleM arch (P.Resolved.rmodule m)
-            → compile-fe arch (C.cfm-file-ef IR.Heap doOpt arch m ef) ≡ nothing
+            → compile-ck arch m (C.checkEf IR.Heap doOpt arch m ef) ≡ nothing
   refuse-ef arch doOpt m (inj₁ err)            ¬adm = refl
   refuse-ef arch doOpt m (inj₂ es) ¬adm =
     refuse-gated arch doOpt m es (admissibleM? arch (P.Resolved.rmodule m)) ¬adm
@@ -332,14 +353,14 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
   accept-gated : ∀ (arch : Arch) (doOpt : Bool) (m : P.Resolved)
                    (es : List Parser.Entry)
                    (d : Dec (AdmissibleM arch (P.Resolved.rmodule m))) {bytes : List Byte}
-               → compile-fe arch (C.cfm-file-gated IR.Heap doOpt arch m es d) ≡ just bytes
+               → compile-ck arch m (C.checkGated IR.Heap doOpt arch m es d) ≡ just bytes
                → AdmissibleM arch (P.Resolved.rmodule m)
   accept-gated arch doOpt m es (yes p) eq = p
   accept-gated arch doOpt m es (no  _) ()
 
   accept-ef : ∀ (arch : Arch) (doOpt : Bool) (m : P.Resolved)
                 (ef : String ⊎ List Parser.Entry) {bytes : List Byte}
-            → compile-fe arch (C.cfm-file-ef IR.Heap doOpt arch m ef) ≡ just bytes
+            → compile-ck arch m (C.checkEf IR.Heap doOpt arch m ef) ≡ just bytes
             → AdmissibleM arch (P.Resolved.rmodule m)
   accept-ef arch doOpt m (inj₁ err)            ()
   accept-ef arch doOpt m (inj₂ es) eq =
@@ -398,7 +419,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
   -- `resolveImports` fact that `srcToModule-just` needs.
   correctR-complete arch doOpt src (mR , mt , hvm) (mU , pt , rmR) adm
     with MC.moduleToIR-complete mR mt hvm
-  ... | (ir , mi) with main⇒built arch doOpt mR ir adm mi
+  ... | (ir , mi) with core-built arch doOpt mR ir adm mi
   ...   | (F , file-eq) = file-bytes arch F , c≡j
     where p-eq : parseStrict (Source.srcText src) ≡ inj₂ mU
           p-eq = FB.parseStrict-complete (Source.srcText src) mU pt
@@ -480,21 +501,20 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
 
     -- PLAN 0.107 / D320: THE CHAIN, over the FILE. Assembled, the well-formed
     -- file runs its program (`as`, the one trust); running the file has the
-    -- trace of the rewritten program (`file-tr`: calls and end); the arith pass
-    -- preserves the program's trace (`rewrite-program-trace`). Every link but the
-    -- first is a proof.
+    -- trace of the program (`file-tr`: calls and end). Plan 0.146 (D466): the
+    -- file is the linear core's image of the module's sources, unoptimized at
+    -- either build, so its trace is the module's program's — no rewrite, no
+    -- optimizer between them (master's `rewrite-program-trace`, `opt-trace`).
     file-correct :
-      ∀ (arch : Arch) (m : P.Resolved) (F : Emit.FileOf arch) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) →
-      C.compileFileFromModule IR.Heap false arch m ≡ inj₂ F →
+      ∀ (arch : Arch) (doOpt : Bool) (m : P.Resolved) (F : Emit.FileOf arch) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) →
+      E.coreFileOf arch doOpt Once.CCC.Codegen.AllocExpandClasses.alloc-slab Data.Bool.false m ≡ inj₂ F →
       moduleToIR m ≡ just ir →
       moduleSig m ≡ sig ι →
       exec arch (file-bytes arch F) ≋ ⟦ just (irProgram (moduleTable m) ir) ⟧IRᵗ (arch-numerics arch) ι
-    file-correct arch m F ir eq mi ls =
-      subst (_≋ ⟦ just P ⟧IRᵗ (arch-numerics arch) ι)
-            (sym (exec-file arch ι F (ArchCorrect.file-wf (arch-correct ι arch) false m F eq)))
-            (⊑≈-trans trans (ArchCorrect.file-tr (arch-correct ι arch) false m F eq ir mi ls)
-                            (rewrite-program-trace (arch-numerics arch) ι P))
-      where P = irProgram (moduleTable m) ir
+    file-correct arch doOpt m F ir eq mi ls =
+      subst (_≋ ⟦ just (irProgram (moduleTable m) ir) ⟧IRᵗ (arch-numerics arch) ι)
+            (sym (exec-file arch ι F (ArchCorrect.file-wf (arch-correct ι arch) doOpt m F eq ls)))
+            (ArchCorrect.file-tr (arch-correct ι arch) doOpt m F eq ir mi ls)
 
     --------------------------------------------------------------------
     -- The grand theorem — by composition of the per-stage postulates.
@@ -577,33 +597,13 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
       Σ-syntax P.Resolved (λ m → (srcToModule src ≡ just m) × ModuleTyped m)
     ⟦⟧⊥-sound src arch beh eq = ⟦⟧⊥-m-sound (srcToModule src) arch beh eq
 
-    -- PLAN 0.39 (D347): THE OPTIMIZED BUILD, a theorem (was a postulate). The
-    -- optimized build's file runs its own program (the chain above, at `true`);
-    -- that program, arith-rewritten or not, has the source program's trace: the
-    -- optimizer keeps every function's run and the program's `main` is the same
-    -- (`OptimizedTable.optimized-trace`, `OptimizedModule.moduleToIR-opt`).
-    opt-trace : ∀ (arch : Arch) (m : P.Resolved) (F : Emit.FileOf arch) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) →
-      C.compileFileFromModule IR.Heap true arch m ≡ inj₂ F →
-      moduleToIR m ≡ just ir →
-      -- plan 0.105: in a world that declares the module's signatures
-      moduleSig m ≡ sig ι →
-      exec arch (file-bytes arch F) ≋ ⟦ just (irProgram (moduleTable m) ir) ⟧IRᵗ (arch-numerics arch) ι
-    opt-trace arch m F ir eq mi ls =
-      subst (_≋ ⟦ just (irProgram (moduleTable m) ir) ⟧IRᵗ (arch-numerics arch) ι)
-            (sym (exec-file arch ι F (ArchCorrect.file-wf (arch-correct ι arch) true m F eq)))
-            (⊑≈-trans trans (ArchCorrect.file-tr (arch-correct ι arch) true m F eq ir (trans (moduleToIR-opt m) mi) ls)
-              (WB-trans trans (rewrite-program-trace (arch-numerics arch) ι P₁)
-                              (optimized-trace (arch-numerics arch) ι m ir)))
-      where P₁ = irProgram (C.tableOfResult (C.compileResolvedModule IR.Heap true m)) ir
-
-
     -- The Built-case trace obligation, abstracted: GIVEN a `main` (`moduleToIR m
     -- ≡ just ir`) and that the pipeline Builds `asm`, the bytes' trace equals the
     -- source meaning `⟦ just ir ⟧IR`. Supplied per `doOpt` by `correct` below
     -- (the proven codegen chain for `false`; `opt-trace`, its optimized twin, for `true`).
     TraceAt : Arch → Bool → P.Resolved → IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋ → Set
     TraceAt arch doOpt m ir =
-      ∀ (F : Emit.FileOf arch) → C.compileFileFromModule IR.Heap doOpt arch m ≡ inj₂ F →
+      ∀ (F : Emit.FileOf arch) → E.coreFileOf arch doOpt Once.CCC.Codegen.AllocExpandClasses.alloc-slab Data.Bool.false m ≡ inj₂ F →
       exec arch (file-bytes arch F) ≋ ⟦ just (irProgram (moduleTable m) ir) ⟧IRᵗ (arch-numerics arch) ι
 
     -- Layer 3 — over the compile RESULT. The accept case is `PW.just` of the
@@ -611,14 +611,14 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
     -- `main⇒built` (a `main` always Builds), so `compile` here can only Build.
     correct-fe : ∀ (arch : Arch) (doOpt : Bool) (m : P.Resolved) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋)
                    (fe : String ⊎ Emit.FileOf arch) → AdmissibleM arch (P.Resolved.rmodule m) →
-                   C.compileFileFromModule IR.Heap doOpt arch m ≡ fe →
+                   E.coreFileOf arch doOpt Once.CCC.Codegen.AllocExpandClasses.alloc-slab Data.Bool.false m ≡ fe →
                    moduleToIR m ≡ just ir →
                    TraceAt arch doOpt m ir →
                    Pointwise _≋_ (map (exec arch) (compile-fe arch fe)) (⟦ programAt (moduleTable m) (just ir) ⟧⊥-ir arch)
     correct-fe arch doOpt m ir (inj₂ F)   adm fe-eq mi-eq tw = PW.just (tw F fe-eq)
     correct-fe arch doOpt m ir (inj₁ err) adm fe-eq mi-eq tw =
-      -- a program with `main` always Builds (`main⇒built`): the file cannot be an error.
-      case trans (sym fe-eq) (proj₂ (main⇒built arch doOpt m ir adm mi-eq)) of λ ()
+      -- a program with `main` always Builds (`main⇒built`, `CoreFile.core-built`): the file cannot be an error.
+      case trans (sym fe-eq) (proj₂ (core-built arch doOpt m ir adm mi-eq)) of λ ()
 
     -- Layer 2 — over `moduleToIR m`. No `main` ⇒ both sides `nothing` (the
     -- executable gate, definitional); a `main` ⇒ defer to `correct-cr`.
@@ -629,7 +629,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
                     Pointwise _≋_ (map (exec arch) (compile-mir arch doOpt m mir)) (⟦ programAt (moduleTable m) mir ⟧⊥-ir arch)
     correct-mir arch doOpt m nothing   adm mi-eq tw = PW.nothing
     correct-mir arch doOpt m (just ir) adm mi-eq tw =
-      correct-fe arch doOpt m ir (C.compileFileFromModule IR.Heap doOpt arch m) adm refl mi-eq (tw ir refl)
+      correct-fe arch doOpt m ir (E.coreFileOf arch doOpt Once.CCC.Codegen.AllocExpandClasses.alloc-slab Data.Bool.false m) adm refl mi-eq (tw ir refl)
 
 
     -- Layer 1 — over `gmoduleToModule src`. Unparseable ⇒ both `nothing`;
@@ -658,7 +658,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
       correct-gm-adm arch doOpt m (admissibleM? arch (P.Resolved.rmodule m)) (λ ir mi → tw m refl ir mi)
 
     -- THE unconditional claim (Plan 0.48), COMPOSED from three layers. They
-    -- walk `gmoduleToModule → moduleToIR → compileFileFromModule` on explicit
+    -- walk `gmoduleToModule → moduleToIR → coreFileOf` on explicit
     -- arguments (no `with`); only the Built-case trace differs by `doOpt`:
     -- `false` is the PROVEN codegen chain, `true` is `opt-trace` (proven, plan 0.39).
     -- plan 0.105: in a world that declares the signatures of the module `src`
@@ -666,10 +666,8 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
     correct : ∀ (arch : Arch) (doOpt : Bool) (src : Source) →
               (∀ m → srcToModule src ≡ just m → moduleSig m ≡ sig ι) →
               Pointwise _≋_ (map (exec arch) (compile arch doOpt src)) (⟦ src ⟧⊥ arch)
-    correct arch false src ls = correct-gm arch false (srcToModule src)
-      (λ m sm ir mi F cf → file-correct arch m F ir cf mi (ls m sm))
-    correct arch true src ls = correct-gm arch true (srcToModule src)
-      (λ m sm ir mi F cf → opt-trace arch m F ir cf mi (ls m sm))
+    correct arch doOpt src ls = correct-gm arch doOpt (srcToModule src)
+      (λ m sm ir mi F cf → file-correct arch doOpt m F ir cf mi (ls m sm))
 
     -- ════════════════════════════════════════════════════════════════════
     -- SOUNDNESS, as a COROLLARY OF `correct` (Plan 0.48): not a sibling

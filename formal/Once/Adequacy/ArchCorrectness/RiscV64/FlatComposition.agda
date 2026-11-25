@@ -33,12 +33,13 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 
 module Once.Adequacy.ArchCorrectness.RiscV64.FlatComposition (FS : FrameSemantics) where
 
-open import Data.Nat using (ℕ; suc)
+open import Data.Nat using (ℕ; zero; suc; _+_)
 open import Data.Bool using (Bool; true; false)
 open import Data.Maybe using (just)
 open import Data.Integer using (+_) renaming (-_ to ℤ-)
-open import Data.List using ([]; _∷_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Data.List using ([]; _∷_; _++_)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; cong)
+open import Data.List.Properties using (++-identityʳ)
 
 open import Once.CCC.Machine.SMCore
 open import Once.CCC.Label using (Label; _≡ᵇᴸ_)
@@ -48,7 +49,7 @@ import Once.CCC.Target.RiscV64.Syntax as RS
 open import Once.CCC.Target.RiscV64.Syntax
   using (Program; ld; sd; add; sub; sltu; addi; li; auipc; lla; lla-sym; mv; beq; bne; jal; jalr; j; ret; call; call-sym; nop; unimp; bgeu-fwd; local-1; label; slots)
 open import Once.Target.RiscV64.PhysReg using (sp; ra)
-open import Once.CCC.Target.RiscV64.AbstractToRiscV using (compile-abstract; compile-trace)
+open import Once.CCC.Target.RiscV64.AbstractToRiscV using (compile-abstract; compile-trace; fits-or-out; room-code; room-fits?; start-tail; part; heap-room; stack-room; heap-code; stack-code)
 
 ------------------------------------------------------------------------
 -- WHICH INSTRUCTIONS ARE LABELS, and the three scan equations that follow.
@@ -138,6 +139,37 @@ const-no-label fits-float v = refl
 -- instructions long — the label, the frame reservation, and the `ra` spill
 -- D102 restored.
 ------------------------------------------------------------------------
+-- D488: a check is its code or its call, and the start that code then the frame and the limit:
+-- no label either way
+fo-no-label : ∀ (c : Bool) k → has-label (fits-or-out c (room-code k)) ≡ false
+fo-no-label true  k = refl
+fo-no-label false k = refl
+
+start-no-label : ∀ (c : Bool) k b → has-label (fits-or-out c (room-code k) ++ start-tail b) ≡ false
+start-no-label true  k b = refl
+start-no-label false k b = refl
+
+-- D488 (a3): a check's two parts (each its code or the call) have no label
+part-no-label : ∀ (c : Bool) (code : Program) → has-label code ≡ false → has-label (part c code) ≡ false
+part-no-label true  code e = e
+part-no-label false code e = refl
+
+hc-no-label : ∀ h → has-label (heap-code h) ≡ false
+hc-no-label zero        = refl
+hc-no-label h@(suc _)   = part-no-label (room-fits? h) (heap-room h) refl
+
+room-no-label : ∀ h k → has-label (heap-code h ++ stack-code k) ≡ false
+room-no-label zero      zero      = refl
+room-no-label zero      k@(suc _) = part-no-label (room-fits? k) (stack-room k) refl
+room-no-label h@(suc _) zero      = trans (cong has-label (++-identityʳ (heap-code h))) (hc-no-label h)
+room-no-label h@(suc _) k@(suc _) = by (room-fits? h) (room-fits? k)
+  where
+    by : ∀ c d → has-label (part c (heap-room h) ++ part d (stack-room k)) ≡ false
+    by true  true  = refl
+    by true  false = refl
+    by false true  = refl
+    by false false = refl
+
 headView : ∀ (i : AbstractInstr) → HeadView i
 headView mov-to-output = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView mov-to-input = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
@@ -159,7 +191,9 @@ headView (instr-free-heap _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → r
 headView (load-at _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (store-at _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (addr-at _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
-headView (instr-room _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
+headView (load-rec _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
+headView (store-rec _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
+headView (instr-room q) = hv-plain (room-no-label (Room.room-h q) (Room.room-s q)) (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (instr-push-frame _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (worklist-init _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (worklist-push _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
@@ -176,7 +210,7 @@ headView (instr-ctrl (c-label m)) = hv-clabel m refl (λ _ _ _ → refl) (λ _ _
 -- reservation, and the `ra` spill (D102). `hv-otherlabel`'s explicit tail
 -- absorbs the difference — no core change, one longer list here.
 headView (instr-ctrl (c-call-fn f)) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
-headView (instr-ctrl (c-start b)) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
+headView (instr-ctrl (c-start b)) = hv-plain (start-no-label (room-fits? (start-stack-words + b)) (start-stack-words + b) b) (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (instr-ctrl c-leave) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (instr-ctrl (c-entry m b)) =
   hv-otherlabel m (addi sp sp (ℤ- (+ (slots b))) ∷ sd ra sp (slots b) ∷ []) refl refl

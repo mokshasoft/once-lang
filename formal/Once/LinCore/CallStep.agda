@@ -1,0 +1,612 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+------------------------------------------------------------------------
+-- Once.LinCore.CallStep — plan 0.146 B1.4b (D436, step 3): ★ A CALL, in
+-- the image.
+--
+-- At a path `s` of a root, `call κ ⨾ k` lowers to the caller's argument
+-- area into `Input1` and the call of `nameOf (idx p)`, where `p` is the
+-- membership the call was lowered with; the image's block `p` is there
+-- (`image-fn`), its entry, saves and prologue first (`lowBlock`). The flat
+-- run goes `Here` at `s` to `Here` at the callee's start, in the callee's
+-- frame, and what the return needs is `Called`: the return pc the address
+-- of `k`, the caller's frame saved and every slot of it kept, the callee's
+-- first save slot the caller's area, the heap counter and the old heap
+-- kept.
+------------------------------------------------------------------------
+
+{-# OPTIONS --guardedness #-}
+
+open import Data.Bool using (true)
+open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _⊔_; _≤_; _<_)
+open import Data.Nat.Properties using (+-comm; +-suc; ≤-refl; ≤-trans; m≤n+m)
+open import Data.Nat.Tactic.RingSolver using (solve-∀)
+open import Data.List using (List; []; _∷_; _++_; length)
+open import Data.List.Properties using (length-++; ++-identityʳ)
+open import Data.List.Membership.Propositional using (_∈_)
+open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Bool using (false)
+open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
+open import Data.Unit using (tt)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
+open import Relation.Nullary using (¬_)
+open import Once.Spec.Numerics using (TargetNum)
+open import Once.IR.Semantics.Trace using (FFIAnswers)
+open import Once.LinCore.Flat using (Base)
+open import Once.CCC.FrameSemantics using (FrameSemantics; module FrameSemantics)
+open import Once.CCC.Machine.SMCore
+open import Once.CCC.Label using (e-fn)
+open import Once.CCC.Machine.Locations using (AtStack)
+open import Once.CCC.Machine.Flat using (module FlatMachine)
+open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
+
+module Once.LinCore.CallStep
+  (fmt : TargetNum) (ans : FFIAnswers)
+  (bw : Base → ℕ)
+  where
+
+open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (Base; ⟦_⟧b; Lit)
+open import Once.IR.Semantics.Trace using (call)
+open Sg using (cod)
+open import Once.LinCore.NbEPLinCore fmt ans
+open import Once.LinCore.Events fmt ans bw
+open import Once.LinCore.Values fmt bw
+open import Once.LinCore.Code fmt bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots; []ᵉ; vw; see; Cfg; _∥_)
+open import Once.LinCore.Image fmt bw
+open BSig using (top; cod)
+open import Once.LinCore.Keys fmt bw
+open import Once.LinCore.Layout fmt bw
+open Frame using (EP; OP)
+open import Once.LinCore.Lower fmt bw
+open import Once.LinCore.MoveCode using (mvPS; mvSP)
+open import Once.LinCore.Words fmt ans bw
+open import Once.LinCore.LowerSim fmt ans bw
+open import Once.LinCore.LowerSimF fmt ans bw using (module SimF)
+open import Once.LinCore.ImagePt fmt ans bw using (Sub; whole; next)
+open import Once.LinCore.LowAt fmt ans bw using (Inside; in-trans; in-l; module At)
+open import Once.LinCore.Labels fmt ans bw using (module NoLabels)
+open import Once.LinCore.EntriesI fmt ans bw using (module ImgE)
+open import Once.LinCore.PointAt fmt ans bw using (module Ctl; module Fetch)
+open import Once.LinCore.StepLocal fmt ans bw using (module Loc)
+open import Once.LinCore.KeysRun fmt ans bw using (module ProgramRun)
+import Once.LinCore.Moves
+
+------------------------------------------------------------------------
+-- 1. WHAT A CALL LEAVES FOR ITS RETURN.
+------------------------------------------------------------------------
+
+module Frames {FS : FrameSemantics} where
+  open FlatMachine {FS} using (FlatState; module FlatState)
+  open FlatState using (floc; falloc; fpc; fret)
+  open import Once.LinCore.LowerSimE {FS} using (callee-frame)
+  open import Once.LinCore.Moves {FS} using (slot; Old; InBlk; inb-pt; keep-freed-eq)
+
+  -- the return pc `r`, the callee's budget `b`, its first save slot `sv`, the caller's area `area`
+  record Called (fs fs′ : FlatState) (r b sv area : ℕ) : Set where
+    field
+      cd-ret    : fret fs′ ≡ r ∷ fret fs
+      cd-saved  : AllocState.saved-frames (falloc fs′)
+                  ≡ (AllocState.current-frame (falloc fs) , AllocState.frame-slots (falloc fs)) ∷ AllocState.saved-frames (falloc fs)
+      cd-frame  : AllocState.current-frame (falloc fs′) ≡ callee-frame (AllocState.current-frame (falloc fs)) b
+      cd-others : ∀ f′ x → ¬ callee-frame (AllocState.current-frame (falloc fs)) b ≡ f′
+                → LocState.stackMem (floc fs′) f′ x ≡ LocState.stackMem (floc fs) f′ x
+      cd-area   : slot fs′ sv ≡ just (SV-Ptr (AtStack (AllocState.current-frame (falloc fs)) area))
+      cd-next   : AllocState.next-heap-ref (falloc fs′) ≡ AllocState.next-heap-ref (falloc fs)
+      -- D471: the allocator's blocks untouched
+      cd-freed  : ∀ q → AllocState.freed (falloc fs′) q ≡ AllocState.freed (falloc fs) q
+      cd-bsize  : ∀ q → q < AllocState.next-heap-ref (falloc fs) → AllocState.block-size (falloc fs′) q ≡ AllocState.block-size (falloc fs) q
+      cd-old    : Old (AllocState.next-heap-ref (falloc fs)) [] fs fs′
+      cd-inb    : InBlk fs → InBlk fs′
+      cd-log    : LocState.ev-log (floc fs′) ≡ LocState.ev-log (floc fs)
+
+------------------------------------------------------------------------
+-- 2. ★ THE CALL, from any root of the image to a block.
+------------------------------------------------------------------------
+
+module Calls {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
+             (ldConst : ∀ {b} → Lit b → AbstractInstr)
+             (ld-nl : ∀ {b} (v : Lit b) → NoLabels.mark {FS} (ldConst v) ≡ nothing)
+             (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue FS) where
+  open Ctl {FS} ds f ldConst ld-nl using (L₀ᵇ; block-root; blockFin)
+  open Program ds f using (U; blocks-in)
+  open Program ds f using (ncty)
+  open Program′ ds f ldConst using (image)
+  open In U
+  open Lowering U ncty ldConst
+  open ImgE {FS} ds f ldConst ld-nl using (image-at; image-fn)
+  open Rel {FS} U wordOf
+  open Sim {FS} U wordOf using (len-mvPS; ≤∸; slots-frame; topW)
+  open SimF {FS} U wordOf using (enter-n; enter-j; leave)
+  open Fetch {FS} using (in-seg)
+  open Frames {FS}
+  open FlatMachine {FS} using (FlatState; module FlatState)
+  open FlatState using (floc; falloc; fpc; fret)
+  open FlatStepsAPI {FS} using (FlatSteps; FlatSteps-++)
+  open import Once.LinCore.LowerSimE {FS}
+    using (CallIn; module CallIn; call-in; call-in-v; callee-frame; callee-≢; CallOut; module CallOutA; caller-win)
+  open CallOutA using (co-slots; co-pc; co-halt)
+  open CallIn using (ci-frame; ci-saved; ci-slots; ci-ret; ci-pc; ci-in; ci-s₁; ci-s₂; ci-other; ci-heap; ci-next; ci-size; ci-freed; ci-halt; ci-log)
+  open import Once.LinCore.Moves {FS}
+    using (Seg; Seg-++ˡ; slot; Fr; InFr; infr; sub-in; Ran; module Ran; module Keep; r-inb; inb-pt; keep-freed-eq)
+  open Ran using (r-keep; r-pc; r-next; r-old)
+  open Keep using (k-frame; k-slots; k-saved; k-ret; k-other; k-halt; k-log; k-size)
+
+  -- a block's code, inside the image
+  -- (opaque: its prefix is the image up to the block, which a conversion check would otherwise
+  -- compute; `blockR-pre` gives the prefix)
+  opaque
+    blockR : ∀ {σ} {κ : Key σ} (p : (σ , κ) ∈ allK U) → Inside image (At.code U ncty ldConst (frameOf (blockᴵ κ)) (idx p) (L₀ᵇ κ p))
+    blockR {κ = κ} p = in-trans (in-trans (image-at p) (in-l _ _)) (block-root (idx p) κ (blocks-in p))
+
+  opaque
+    unfolding blockR
+    blockR-pre : ∀ {σ} {κ : Key σ} (p : (σ , κ) ∈ allK U)
+               → proj₁ (blockR p) ≡ (proj₁ (image-at p) ++ []) ++ proj₁ (block-root (idx p) κ (blocks-in p))
+    blockR-pre p = refl
+
+  -- the callee, at its block's root
+  module K {σ} {κ : Key σ} (p : (σ , κ) ∈ allK U) = Loc {FS} U ncty ldConst wordOf image (blockᴵ κ) (idx p) (L₀ᵇ κ p) (blockR p) using (Here; module Here; lowAt; pos; pos-def; seg-at; shape-fits)
+
+  private
+    sv-ne : ∀ n → ¬ n ≡ suc n
+    sv-ne n ()
+
+    -- B1.7b (D458): a frame's regions are below its save slots, inside its reservation
+    b<fb : ∀ (φ : Frame) {n : ℕ} → n ≡ fbudget φ → budget φ < n
+    b<fb φ e = subst (budget φ <_) (sym e) (sv₁<fb φ)
+
+    b≤ent : ∀ (φ : Frame) {n : ℕ} → n ≡ fbudget φ → budget φ ≤ n
+    b≤ent φ e = Data.Nat.Properties.<⇒≤ (b<fb φ e)
+
+    sv₂<ent : ∀ (φ : Frame) {n : ℕ} → n ≡ fbudget φ → sv₂ φ < n
+    sv₂<ent φ e = subst (sv₂ φ <_) (sym e) (sv₂<fb φ)
+
+    shuffle : ∀ x p → x + suc (suc (suc (suc p))) ≡ p + suc (suc (suc (suc x)))
+    shuffle = solve-∀
+
+    -- the callee's start: past the entry, its saves and the argument's copy
+    start-len : ∀ (P X : AbstractTrace) a b c d → length (((P ++ []) ++ (a ∷ b ∷ c ∷ d ∷ (X ++ []))) ++ []) ≡ length P + suc (suc (suc (suc (length X))))
+    start-len P X a b c d =
+      trans (cong length (++-identityʳ ((P ++ []) ++ (a ∷ b ∷ c ∷ d ∷ (X ++ [])))))
+        (trans (cong (λ z → length (z ++ (a ∷ b ∷ c ∷ d ∷ (X ++ [])))) (++-identityʳ P))
+          (trans (length-++ P) (cong (λ z → length P + suc (suc (suc (suc z)))) (cong length (++-identityʳ X)))))
+
+    -- the caller's argument, at its area's offset
+    area-at : ∀ B wA wB s → wA + s ≤ B → wB + s ≤ B → ((wA ⊔ wB) ∸ wA) + ((B ∸ s) ∸ (wA ⊔ wB)) ≡ B ∸ (wA + s)
+    area-at B wA wB s le₁ le₂ = trans (+-comm ((wA ⊔ wB) ∸ wA) _)
+      (trans (sym (Data.Nat.Properties.+-∸-assoc ((B ∸ s) ∸ (wA ⊔ wB)) (Data.Nat.Properties.m≤m⊔n wA wB)))
+        (trans (cong (_∸ wA) (Data.Nat.Properties.m∸n+n≡m M≤))
+          (trans (Data.Nat.Properties.∸-+-assoc B s wA) (cong (B ∸_) (+-comm s wA)))))
+      where
+        import Data.Nat.Properties
+        M≤ : wA ⊔ wB ≤ B ∸ s
+        M≤ = Data.Nat.Properties.⊔-lub (≤∸ wA s B le₁) (≤∸ wB s B le₂)
+
+    -- D454: the argument's words, read through the area pointer, lie in the
+    -- caller's window (its frame saved under the callee's, its reservation
+    -- covering its budget)
+    arg-win : ∀ (fs fs₁ : FlatState) (Bg s wA o area : ℕ)
+            → AllocState.saved-frames (falloc fs₁) ≡ (AllocState.current-frame (falloc fs) , AllocState.frame-slots (falloc fs)) ∷ AllocState.saved-frames (falloc fs)
+            → Bg ≤ AllocState.frame-slots (falloc fs)
+            → o + area ≡ Bg ∸ (wA + s) → wA + s ≤ Bg
+            → ∀ k → k Data.Nat.< wA
+            → ExecFinal.in-window {FS} (ExecFinal.live-frames {FS} (falloc fs₁)) (AllocState.current-frame (falloc fs)) ((k + o) + area) ≡ true
+    arg-win fs fs₁ Bg s wA o area sv bsl eq fit k k< =
+      caller-win (falloc fs₁) (AllocState.current-frame (falloc fs)) (AllocState.frame-slots (falloc fs)) (AllocState.saved-frames (falloc fs)) ((k + o) + area) sv
+        (Data.Nat.Properties.<-≤-trans lt bsl)
+      where
+        import Data.Nat.Properties
+        lt : (k + o) + area Data.Nat.< Bg
+        lt = subst (Data.Nat._< Bg) (sym (Data.Nat.Properties.+-assoc k o area))
+               (subst (λ z → k + z Data.Nat.< Bg) (sym eq)
+                 (Data.Nat.Properties.<-≤-trans (Data.Nat.Properties.+-monoˡ-< (Bg ∸ (wA + s)) k<)
+                   (Data.Nat.Properties.≤-trans (Data.Nat.Properties.+-monoˡ-≤ (Bg ∸ (wA + s)) (Data.Nat.Properties.m≤m+n wA s))
+                     (Data.Nat.Properties.≤-reflexive (Data.Nat.Properties.m+[n∸m]≡n fit)))))
+
+
+  ----------------------------------------------------------------------
+  -- the block's code, by its parts (no view read)
+  ----------------------------------------------------------------------
+
+  module Callee {A B} {κ : Key (bsig nothing A B)} (p : (bsig nothing A B , κ) ∈ allK U) where
+    φ′ : Frame
+    φ′ = frameOf (blockᴵ κ)
+    q : ℕ
+    q = length (proj₁ (image-at p))
+    M : ℕ
+    M = wsz A ⊔ wsz B
+    dst : ℕ
+    dst = budget φ′ ∸ ws (A ∷ [])
+    argMv : AbstractTrace
+    argMv = mvPS (M ∸ wsz A) dst (wsz A)
+    body : AbstractTrace
+    body = proj₁ (lowC φ′ (idx p) 0 (blockFin κ) (blockᴵ κ) (blocks-in p))
+    entry : AbstractTrace
+    entry = instr-ctrl (c-entry (e-fn (nameOf (idx p))) (fbudget φ′)) ∷ store-at-slot (sv₂ φ′) ∷ mov-to-output ∷ store-at-slot (sv₁ φ′) ∷ []
+
+    whole-seg : Seg image q (entry ++ ((argMv ++ ([] ++ body)) ++ tramp (idx p) κ))
+    whole-seg = in-seg (image-at p)
+
+    entry-seg : Seg image q entry
+    entry-seg = Seg-++ˡ image q entry ((argMv ++ ([] ++ body)) ++ tramp (idx p) κ) whole-seg
+
+    arg-seg : Seg image (suc (suc (suc (suc q)))) argMv
+    arg-seg = Seg-++ˡ image _ argMv ([] ++ body)
+                (Seg-++ˡ image _ (argMv ++ ([] ++ body)) (tramp (idx p) κ)
+                  (proj₂ (proj₂ (proj₂ (proj₂ whole-seg)))))
+
+    -- the callee's start
+    start-pos : K.pos p whole ≡ q + suc (suc (suc (suc (Once.LinCore.Moves.ln {FS} (wsz A)))))
+    start-pos = trans (K.pos-def p whole) (trans (cong (λ z → length (z ++ [])) (blockR-pre p)) (trans (start-len (proj₁ (image-at p)) argMv _ _ _ _)
+                  (cong (λ z → q + suc (suc (suc (suc z)))) (len-mvPS (M ∸ wsz A) dst (wsz A)))))
+
+  private
+    seg-join : ∀ {pc} (xs ys : AbstractTrace) → Seg image pc xs → Seg image (pc + length xs) ys → Seg image pc (xs ++ ys)
+    seg-join {pc} []       ys tt       s = subst (λ z → Seg image z ys) (Data.Nat.Properties.+-identityʳ pc) s
+      where import Data.Nat.Properties
+    seg-join {pc} (x ∷ xs) ys (e , sx) s = e , seg-join {suc pc} xs ys sx (subst (λ z → Seg image z ys) (+-suc pc (length xs)) s)
+
+    start-len-v : ∀ (P X V : AbstractTrace) a b c d
+                → length (((P ++ []) ++ (a ∷ b ∷ c ∷ d ∷ (X ++ V))) ++ []) ≡ length P + suc (suc (suc (suc (length X + length V))))
+    start-len-v P X V a b c d =
+      trans (cong length (++-identityʳ ((P ++ []) ++ (a ∷ b ∷ c ∷ d ∷ (X ++ V)))))
+        (trans (cong (λ z → length (z ++ (a ∷ b ∷ c ∷ d ∷ (X ++ V)))) (++-identityʳ P))
+          (trans (length-++ P) (cong (λ z → length P + suc (suc (suc (suc z)))) (length-++ X))))
+
+    shuffle-v : ∀ x y p → (x + suc y) + suc (suc (suc (suc p))) ≡ p + suc (suc (suc (suc (x + suc y))))
+    shuffle-v = solve-∀
+
+  -- the code of a block that reads the caller's top view, by its parts
+  module CalleeV {E A B} {κ : Key (bsig (just E) A B)} (p : (bsig (just E) A B , κ) ∈ allK U) where
+    φ′ : Frame
+    φ′ = frameOf (blockᴵ κ)
+    q : ℕ
+    q = length (proj₁ (image-at p))
+    M : ℕ
+    M = wsz A ⊔ wsz B
+    dst : ℕ
+    dst = budget φ′ ∸ ws (A ∷ [])
+    argMv : AbstractTrace
+    argMv = mvPS (M ∸ wsz A) dst (wsz A)
+    viewMv : AbstractTrace
+    viewMv = restore-input (sv₂ φ′) ∷ mvPS 0 0 (wsz E)
+    body : AbstractTrace
+    body = proj₁ (lowC φ′ (idx p) 0 (blockFin κ) (blockᴵ κ) (blocks-in p))
+    entry : AbstractTrace
+    entry = instr-ctrl (c-entry (e-fn (nameOf (idx p))) (fbudget φ′)) ∷ store-at-slot (sv₂ φ′) ∷ mov-to-output ∷ store-at-slot (sv₁ φ′) ∷ []
+
+    whole-seg : Seg image q (entry ++ ((argMv ++ (viewMv ++ body)) ++ tramp (idx p) κ))
+    whole-seg = in-seg (image-at p)
+
+    entry-seg : Seg image q entry
+    entry-seg = Seg-++ˡ image q entry ((argMv ++ (viewMv ++ body)) ++ tramp (idx p) κ) whole-seg
+
+    pro-seg : Seg image (suc (suc (suc (suc q)))) (argMv ++ viewMv)
+    pro-seg =
+      let s₀ = Seg-++ˡ image _ (argMv ++ (viewMv ++ body)) (tramp (idx p) κ) (proj₂ (proj₂ (proj₂ (proj₂ whole-seg)))) in
+      seg-join argMv viewMv (Seg-++ˡ image _ argMv (viewMv ++ body) s₀)
+        (Seg-++ˡ image _ viewMv body (Once.LinCore.Moves.Seg-++ʳ {FS} image _ argMv (viewMv ++ body) s₀))
+
+    start-pos : K.pos p whole ≡ q + suc (suc (suc (suc (Once.LinCore.Moves.ln {FS} (wsz A) + suc (Once.LinCore.Moves.ln {FS} (wsz E))))))
+    start-pos = trans (K.pos-def p whole) (trans (cong (λ z → length (z ++ [])) (blockR-pre p)) (trans (start-len-v (proj₁ (image-at p)) argMv viewMv _ _ _ _)
+                  (cong (λ z → q + suc (suc (suc (suc z))))
+                    (cong₂ _+_ (len-mvPS (M ∸ wsz A) dst (wsz A)) (cong suc (len-mvPS 0 0 (wsz E)))))))
+
+  -- ★ THE CALL'S CORE, from any frame: the caller's configuration in its
+  -- frame `φ`, the call's code at the pc, its area where the argument's words
+  -- are its `M ∸ wsz A` words in (a trampoline calls with these, D440)
+  call-core : ∀ {A B Es S} {κ : Key (bsig nothing A B)} (p : (bsig nothing A B , κ) ∈ allK U) (φ : Frame) (area : ℕ)
+                {es : Slots Es} {a : MV A} {os : Stk S} {fs}
+            → Seg image (fpc fs) (lea-slot area ∷ mov-to-input ∷ instr-ctrl (c-call-fn (nameOf (idx p))) ∷ [])
+            → LocState.halted (floc fs) ≡ false
+            → CfgW (LocState.heapMem (floc fs)) (slot fs) φ (es ∥ a ∷ˢ os)
+            → ((wsz A ⊔ wsz B) ∸ wsz A) + area ≡ budget φ ∸ ws (A ∷ S)
+            → budget φ < AllocState.frame-slots (falloc fs)
+            → Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′
+                × K.Here p whole ([]ᵉ ∥ a ∷ˢ []ˢ) fs′
+                × Called fs fs′ (suc (suc (suc (fpc fs)))) (fbudget (frameOf (blockᴵ κ))) (sv₁ (frameOf (blockᴵ κ))) area
+  call-core {A} {B} {Es} {S} {κ} p φ area {es} {a} {os} {fs} seg h C eq blt = with-arg (Rel.CfgW.c-stk C)
+    where
+      Goal = Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′ × K.Here p whole ([]ᵉ ∥ a ∷ˢ []ˢ) fs′
+             × Called fs fs′ (suc (suc (suc (fpc fs)))) (fbudget (frameOf (blockᴵ κ))) (sv₁ (frameOf (blockᴵ κ))) area
+      import Data.Nat.Properties
+      bsl : budget φ ≤ AllocState.frame-slots (falloc fs)
+      bsl = Data.Nat.Properties.<⇒≤ blt
+      open Callee p
+      b = fbudget φ′
+      cf = AllocState.current-frame (falloc fs)
+      with-arg : StkW (LocState.heapMem (floc fs)) (slot fs) φ (a ∷ˢ os) → Goal
+      with-arg ((wa , pa , sa) , _) =
+        fin (call-in image fs area (nameOf (idx p)) (e-fn (nameOf (idx p))) q b (sv₁ φ′) (sv₂ φ′)
+               (sv-ne (budget φ′)) seg (image-fn p) entry-seg h
+               (Data.Nat.Properties.≤-<-trans
+                  (≤-trans (m≤n+m area ((wsz A ⊔ wsz B) ∸ wsz A)) (≤-trans (Data.Nat.Properties.≤-reflexive eq) (Data.Nat.Properties.m∸n≤m (budget φ) (ws (A ∷ S)))))
+                  blt)
+               (sv₁<fb φ′) (sv₂<fb φ′))
+        where
+          fin : Σ FlatState (λ fs₁ → FlatSteps image 7 fs fs₁
+                  × CallIn fs fs₁ area b (sv₁ φ′) (sv₂ φ′) q (suc (suc (suc (fpc fs)))) (SV-Ptr (AtStack cf area))) → Goal
+          fin (fs₁ , st₁ , CI) = fin₂ (enter-n image fs₁ φ′ cf area (M ∸ wsz A) wa ne₁ (ci-in CI) pa₁ sa₁
+                                         (arg-win fs fs₁ (budget φ) (ws S) (wsz A) (M ∸ wsz A) area (ci-saved CI) bsl eq (≤-trans (Rel.CfgW.c-sfit C) (m≤n+m (OP φ) (EP φ)))) seg₂ h₁
+                                         (b≤ent φ′ (ci-slots CI))
+                                         (proj₂ (K.shape-fits p whole)))
+            where
+              ne₁ : ¬ AllocState.current-frame (falloc fs₁) ≡ cf
+              ne₁ e′ = callee-≢ cf b (trans (sym (ci-frame CI)) e′)
+              h₁ : LocState.halted (floc fs₁) ≡ false
+              h₁ = trans (ci-halt CI) h
+              pa₁ : VW (LocState.heapMem (floc fs₁)) a wa
+              pa₁ = subst (λ r → VW r a wa) (sym (ci-heap CI)) pa
+              sa₁ : SlotsAt (LocState.stackMem (floc fs₁) cf) ((M ∸ wsz A) + area) wa
+              sa₁ = slots-frame {LocState.stackMem (floc fs) cf} {LocState.stackMem (floc fs₁) cf} wa
+                      (λ k _ → ci-other CI cf (k + ((M ∸ wsz A) + area)) (callee-≢ cf b))
+                      (subst (λ z → SlotsAt (LocState.stackMem (floc fs) cf) z wa) (sym eq) sa)
+              seg₂ : Seg image (fpc fs₁) argMv
+              seg₂ = subst (λ z → Seg image z argMv) (sym (ci-pc CI)) arg-seg
+              fin₂ : Σ FlatState (λ fs₂ → FlatSteps image (Once.LinCore.Moves.ln {FS} (wsz A)) fs₁ fs₂
+                       × CfgW (LocState.heapMem (floc fs₂)) (slot fs₂) φ′ ([]ᵉ ∥ a ∷ˢ []ˢ)
+                       × Ran (Once.LinCore.Moves.ln {FS} (wsz A)) [] [] (AllocState.next-heap-ref (falloc fs₁)) (budget φ′) fs₁ fs₂
+                       × (∀ x → budget φ′ ≤ x → slot fs₂ x ≡ slot fs₁ x))
+                   → Goal
+              fin₂ (fs₂ , st₂ , C₂ , Rn , top) =
+                7 + Once.LinCore.Moves.ln {FS} (wsz A) , fs₂ , FlatSteps-++ st₁ st₂ ,
+                record { h-pc  = trans (r-pc Rn) (trans (cong (Once.LinCore.Moves.ln {FS} (wsz A) +_) (ci-pc CI))
+                                   (trans (shuffle (Once.LinCore.Moves.ln {FS} (wsz A)) q) (sym start-pos)))
+                       ; h-run = trans (k-halt (r-keep Rn)) h₁
+                       ; h-cfg = C₂
+                       ; h-slots = trans (k-slots (r-keep Rn)) (ci-slots CI) } ,
+                record { cd-ret    = trans (k-ret (r-keep Rn)) (ci-ret CI)
+                       ; cd-saved  = trans (k-saved (r-keep Rn)) (ci-saved CI)
+                       ; cd-frame  = trans (k-frame (r-keep Rn)) (ci-frame CI)
+                       ; cd-others = λ f′ x ne → trans (k-other (r-keep Rn) f′ x (λ e′ → ne (trans (sym (ci-frame CI)) (sym e′))))
+                                                       (ci-other CI f′ x ne)
+                       ; cd-area   = trans (top (sv₁ φ′) ≤-refl)
+                                       (subst (λ g → LocState.stackMem (floc fs₁) g (sv₁ φ′) ≡ just (SV-Ptr (AtStack cf area)))
+                                              (sym (ci-frame CI)) (ci-s₁ CI))
+                       ; cd-next   = trans (r-next Rn) (ci-next CI)
+
+                       ; cd-freed  = λ q → trans (keep-freed-eq (r-keep Rn) q) (cong (λ fr → fr q) (ci-freed CI))
+
+                       ; cd-bsize  = λ q lt → trans (k-size (r-keep Rn) q (subst (q <_) (sym (ci-next CI)) lt)) (cong (λ bs → bs q) (ci-size CI))
+                       ; cd-old    = λ hl lt f → trans (r-old Rn hl (subst (_ <_) (sym (ci-next CI)) lt) f) (cong (λ h′ → h′ hl) (ci-heap CI))
+                       ; cd-inb    = λ I → r-inb Rn (inb-pt {fs} {fs₁} (λ hl → cong (λ h′ → h′ hl) (ci-heap CI)) (ci-next CI) (ci-size CI) I)
+                       ; cd-log    = trans (k-log (r-keep Rn)) (ci-log CI) }
+
+  -- ★ THE CALL of a block that reads no view
+  module From {sh₀ U₀} (root : Codeᴵ sh₀ U₀) (j : ℕ)
+              (L₀ : At.Low U ncty ldConst (frameOf root) j root)
+              (R : Inside image (At.code U ncty ldConst (frameOf root) j L₀)) where
+    module C = Loc {FS} U ncty ldConst wordOf image root j L₀ R using (Here; module Here; lowAt; pos; pos-next; seg-at; shape-fits; φ)
+    module CA = At U ncty ldConst (frameOf root) j using (module Low)
+    open Loc.Here
+
+    -- the membership the call was lowered with
+    -- sealed: two spellings of a callee are compared as terms, never by running the keys' membership
+    opaque
+      callee : ∀ {σ Es S V} {κ : Key σ} {k : Codeᴵ (top σ ⊳ Es ∣ cod σ ∷ S) V} → Sub root (call κ ⨾ k) → (σ , κ) ∈ allK U
+      callee s = proj₁ (CA.Low.lcin (C.lowAt s))
+
+      callee-def : ∀ {σ Es S V} {κ : Key σ} {k : Codeᴵ (top σ ⊳ Es ∣ cod σ ∷ S) V} (s : Sub root (call κ ⨾ k))
+                 → callee s ≡ proj₁ (CA.Low.lcin (C.lowAt s))
+      callee-def s = refl
+
+    -- what the call leaves
+    Into : ∀ {A B Es S V} {κ : Key (bsig nothing A B)} {k : Codeᴵ (Es ∣ B ∷ S) V} → Sub root (call κ ⨾ k) → MV A → FlatState → Set
+    Into {A} {B} {S = S} {κ = κ} s a fs =
+      Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′
+        × K.Here (callee s) whole ([]ᵉ ∥ a ∷ˢ []ˢ) fs′
+        × Called fs fs′ (C.pos (next s)) (fbudget (frameOf (blockᴵ κ))) (sv₁ (frameOf (blockᴵ κ))) (Tp C.φ S ∸ (wsz A ⊔ wsz B))
+
+    call-n : ∀ {A B Es S V} {κ : Key (bsig nothing A B)} {k : Codeᴵ (Es ∣ B ∷ S) V} (s : Sub root (call κ ⨾ k))
+               {es : Slots Es} {a : MV A} {os : Stk S} {fs}
+           → C.Here s (es ∥ a ∷ˢ os) fs → Into s a fs
+    call-n {A} {B} {Es} {S} {κ = κ} s {es} {a} {os} {fs} H =
+      fix (call-core (callee s) C.φ area {es = es} {a = a} {os = os} {fs = fs} seg (h-run H) (h-cfg H)
+             (area-at (budget C.φ) (wsz A) (wsz B) (ws S) fitsB fitsB′) (b<fb C.φ (h-slots H)))
+      where
+        -- by `call-core` at `callee s`: an instance, so `K.Here (callee s)` is never converted
+        area = Tp C.φ S ∸ (wsz A ⊔ wsz B)
+        seg : Seg image (fpc fs) (lea-slot area ∷ mov-to-input ∷ instr-ctrl (c-call-fn (nameOf (idx (callee s)))) ∷ [])
+        seg = subst (λ c → Seg image (fpc fs) (lea-slot area ∷ mov-to-input ∷ instr-ctrl (c-call-fn (nameOf (idx c))) ∷ [])) (sym (callee-def s))
+                (Seg-++ˡ image (fpc fs) (lea-slot area ∷ mov-to-input ∷ instr-ctrl (c-call-fn (nameOf (idx (proj₁ (CA.Low.lcin (C.lowAt s)))))) ∷ []) _ (C.seg-at s H))
+        fitsB : ws (A ∷ S) ≤ budget C.φ
+        fitsB = ≤-trans (Rel.CfgW.c-sfit (h-cfg H)) (m≤n+m (OP C.φ) (EP C.φ))
+        fitsB′ : ws (B ∷ S) ≤ budget C.φ
+        fitsB′ = ≤-trans (proj₂ (C.shape-fits (next s))) (m≤n+m (OP C.φ) (EP C.φ))
+        ret : suc (suc (suc (fpc fs))) ≡ C.pos (next s)
+        ret = trans (cong (λ z → suc (suc (suc z))) (h-pc H)) (trans (+-comm 3 (C.pos s)) (sym (C.pos-next s)))
+        fix : (Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′ × K.Here (callee s) whole ([]ᵉ ∥ a ∷ˢ []ˢ) fs′
+                × Called fs fs′ (suc (suc (suc (fpc fs)))) (fbudget (frameOf (blockᴵ κ))) (sv₁ (frameOf (blockᴵ κ))) area)
+            → Into s a fs
+        fix (N , fs′ , st , hr , cd) =
+          N , fs′ , st , hr , subst (λ r → Called fs fs′ r (fbudget (frameOf (blockᴵ κ))) (sv₁ (frameOf (blockᴵ κ))) area) ret cd
+
+    -- ★ THE CALL of a block that reads the caller's top view
+    IntoV : ∀ {E A B Es S V} {κ : Key (bsig (just E) A B)} {k : Codeᴵ (E ∷ Es ∣ B ∷ S) V} → Sub root (call κ ⨾ k)
+          → Slots (E ∷ Es) → MV A → FlatState → Set
+    IntoV {E} {A} {B} {S = S} {κ = κ} s es a fs =
+      Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′
+        × K.Here (callee s) whole (vw (see es) []ᵉ ∥ a ∷ˢ []ˢ) fs′
+        × Called fs fs′ (C.pos (next s)) (fbudget (frameOf (blockᴵ κ))) (sv₁ (frameOf (blockᴵ κ))) (Tp C.φ S ∸ (wsz A ⊔ wsz B))
+
+    call-v : ∀ {E A B Es S V} {κ : Key (bsig (just E) A B)} {k : Codeᴵ (E ∷ Es ∣ B ∷ S) V} (s : Sub root (call κ ⨾ k))
+               {es : Slots (E ∷ Es)} {a : MV A} {os : Stk S} {fs}
+           → C.Here s (es ∥ a ∷ˢ os) fs → IntoV s es a fs
+    call-v {E} {A} {B} {Es} {S} {κ = κ} s {es} {a} {os} {fs} H =
+      with-arg (Rel.CfgW.c-stk (h-cfg H)) (topW es (Rel.CfgW.c-env (h-cfg H)))
+      where
+        p = callee s
+        open CalleeV p
+        b = fbudget φ′
+        area = Tp C.φ S ∸ M
+        cf = AllocState.current-frame (falloc fs)
+        seg : Seg image (fpc fs) (lea-slot area ∷ mov-to-input ∷ lea-slot (ws Es) ∷ instr-ctrl (c-call-fn (nameOf (idx p))) ∷ [])
+        seg = subst (λ c → Seg image (fpc fs) (lea-slot area ∷ mov-to-input ∷ lea-slot (ws Es) ∷ instr-ctrl (c-call-fn (nameOf (idx c))) ∷ [])) (sym (callee-def s))
+                (Seg-++ˡ image (fpc fs) (lea-slot area ∷ mov-to-input ∷ lea-slot (ws Es) ∷ instr-ctrl (c-call-fn (nameOf (idx (proj₁ (CA.Low.lcin (C.lowAt s)))))) ∷ []) _
+                  (C.seg-at s H))
+        fitsB : ws (A ∷ S) ≤ budget C.φ
+        fitsB = ≤-trans (Rel.CfgW.c-sfit (h-cfg H)) (m≤n+m (OP C.φ) (EP C.φ))
+        fitsB′ : ws (B ∷ S) ≤ budget C.φ
+        fitsB′ = ≤-trans (proj₂ (C.shape-fits (next s))) (m≤n+m (OP C.φ) (EP C.φ))
+        -- D454: the view's words, below the environment's top
+        view-lt : ∀ k → k Data.Nat.< wsz E → (k + 0) + ws Es Data.Nat.< budget C.φ
+        view-lt k k< = Data.Nat.Properties.<-≤-trans
+                         (Data.Nat.Properties.+-monoˡ-< (ws Es) (subst (Data.Nat._< wsz E) (sym (Data.Nat.Properties.+-identityʳ k)) k<))
+                         (≤-trans (Rel.CfgW.c-efit (h-cfg H)) (Data.Nat.Properties.m≤m+n (EP C.φ) (OP C.φ)))
+        with-arg : StkW (LocState.heapMem (floc fs)) (slot fs) C.φ (a ∷ˢ os)
+                 → Σ (List W) (λ w → VW (LocState.heapMem (floc fs)) (see es) w × SlotsAt (slot fs) (ws Es) w)
+                 → IntoV s es a fs
+        with-arg ((wa , pa , sa) , _) (we , pe , se) =
+          fin (call-in-v image fs area (ws Es) (nameOf (idx p)) (e-fn (nameOf (idx p))) q b (sv₁ φ′) (sv₂ φ′)
+                 (sv-ne (budget φ′)) seg (image-fn p) entry-seg (h-run H)
+                 (Data.Nat.Properties.≤-<-trans
+                    (≤-trans (m≤n+m area (M ∸ wsz A))
+                      (≤-trans (Data.Nat.Properties.≤-reflexive (area-at (budget C.φ) (wsz A) (wsz B) (ws S) fitsB fitsB′))
+                        (Data.Nat.Properties.m∸n≤m (budget C.φ) (ws (A ∷ S)))))
+                    (b<fb C.φ (h-slots H)))
+                 (Data.Nat.Properties.≤-<-trans
+                    (≤-trans (m≤n+m (ws Es) (wsz E)) (≤-trans (Rel.CfgW.c-efit (h-cfg H)) (Data.Nat.Properties.m≤m+n (EP C.φ) (OP C.φ))))
+                    (b<fb C.φ (h-slots H)))
+                 (sv₁<fb φ′) (sv₂<fb φ′))
+          where
+            fin : Σ FlatState (λ fs₁ → FlatSteps image 8 fs fs₁
+                    × CallIn fs fs₁ area b (sv₁ φ′) (sv₂ φ′) q (suc (suc (suc (suc (fpc fs))))) (SV-Ptr (AtStack cf (ws Es))))
+                → IntoV s es a fs
+            fin (fs₁ , st₁ , CI) =
+              fin₂ (enter-j image fs₁ φ′ cf area (M ∸ wsz A) (ws Es) (sv₂ φ′) we wa ne₁ (ci-in CI) sv₂-at
+                      (Data.Nat.Properties.n≤1+n (budget φ′)) pa₁ sa₁ pe₁ se₁
+                      (arg-win fs fs₁ (budget C.φ) (ws S) (wsz A) (M ∸ wsz A) area (ci-saved CI) (subst (budget C.φ ≤_) (sym (h-slots H)) (Data.Nat.Properties.m≤n⇒m≤1+n (Data.Nat.Properties.n≤1+n (budget C.φ)))) (area-at (budget C.φ) (wsz A) (wsz B) (ws S) fitsB fitsB′) fitsB)
+                      (λ k k< → caller-win (falloc fs₁) cf (AllocState.frame-slots (falloc fs)) (AllocState.saved-frames (falloc fs)) _ (ci-saved CI)
+                                  (Data.Nat.Properties.<-≤-trans (view-lt k k<) (subst (budget C.φ ≤_) (sym (h-slots H)) (Data.Nat.Properties.m≤n⇒m≤1+n (Data.Nat.Properties.n≤1+n (budget C.φ))))))
+                      seg₂ h₁ (b≤ent φ′ (ci-slots CI)) (sv₂<ent φ′ (ci-slots CI))
+                      (proj₁ (K.shape-fits p whole)) (proj₂ (K.shape-fits p whole)))
+              where
+                import Data.Nat.Properties
+                ne₁ : ¬ AllocState.current-frame (falloc fs₁) ≡ cf
+                ne₁ e′ = callee-≢ cf b (trans (sym (ci-frame CI)) e′)
+                h₁ : LocState.halted (floc fs₁) ≡ false
+                h₁ = trans (ci-halt CI) (h-run H)
+                kept : ∀ x → LocState.stackMem (floc fs₁) cf x ≡ LocState.stackMem (floc fs) cf x
+                kept x = ci-other CI cf x (callee-≢ cf b)
+                sv₂-at : slot fs₁ (sv₂ φ′) ≡ just (SV-Ptr (AtStack cf (ws Es)))
+                sv₂-at = subst (λ g → LocState.stackMem (floc fs₁) g (sv₂ φ′) ≡ just (SV-Ptr (AtStack cf (ws Es))))
+                           (sym (ci-frame CI)) (ci-s₂ CI)
+                pa₁ : VW (LocState.heapMem (floc fs₁)) a wa
+                pa₁ = subst (λ r → VW r a wa) (sym (ci-heap CI)) pa
+                pe₁ : VW (LocState.heapMem (floc fs₁)) (see es) we
+                pe₁ = subst (λ r → VW r (see es) we) (sym (ci-heap CI)) pe
+                sa₁ : SlotsAt (LocState.stackMem (floc fs₁) cf) ((M ∸ wsz A) + area) wa
+                sa₁ = slots-frame {LocState.stackMem (floc fs) cf} {LocState.stackMem (floc fs₁) cf} wa
+                        (λ k _ → kept (k + ((M ∸ wsz A) + area)))
+                        (subst (λ z → SlotsAt (LocState.stackMem (floc fs) cf) z wa)
+                           (sym (area-at (budget C.φ) (wsz A) (wsz B) (ws S) fitsB fitsB′)) sa)
+                se₁ : SlotsAt (LocState.stackMem (floc fs₁) cf) (ws Es) we
+                se₁ = slots-frame {LocState.stackMem (floc fs) cf} {LocState.stackMem (floc fs₁) cf} we (λ k _ → kept (k + ws Es)) se
+                seg₂ : Seg image (fpc fs₁) (argMv ++ viewMv)
+                seg₂ = subst (λ z → Seg image z (argMv ++ viewMv)) (sym (ci-pc CI)) pro-seg
+                nE = Once.LinCore.Moves.ln {FS} (wsz A) + suc (Once.LinCore.Moves.ln {FS} (wsz E))
+                fin₂ : Σ FlatState (λ fs₂ → FlatSteps image nE fs₁ fs₂
+                         × CfgW (LocState.heapMem (floc fs₂)) (slot fs₂) φ′ (vw (see es) []ᵉ ∥ a ∷ˢ []ˢ)
+                         × Ran nE [] [] (AllocState.next-heap-ref (falloc fs₁)) (budget φ′) fs₁ fs₂
+                         × (∀ x → budget φ′ ≤ x → slot fs₂ x ≡ slot fs₁ x))
+                     → IntoV s es a fs
+                fin₂ (fs₂ , st₂ , C₂ , Rn , top) =
+                  _ , fs₂ , FlatSteps-++ st₁ st₂ ,
+                  record { h-pc  = trans (r-pc Rn) (trans (cong (nE +_) (ci-pc CI))
+                                     (trans (shuffle-v _ _ q) (sym start-pos)))
+                         ; h-run = trans (k-halt (r-keep Rn)) h₁
+                         ; h-cfg = C₂
+                         ; h-slots = trans (k-slots (r-keep Rn)) (ci-slots CI) } ,
+                  record { cd-ret    = trans (k-ret (r-keep Rn)) (trans (ci-ret CI)
+                                         (cong (_∷ fret fs) (trans (cong (λ z → suc (suc (suc (suc z)))) (h-pc H))
+                                           (trans (+-comm 4 (C.pos s)) (sym (C.pos-next s))))))
+                         ; cd-saved  = trans (k-saved (r-keep Rn)) (ci-saved CI)
+                         ; cd-frame  = trans (k-frame (r-keep Rn)) (ci-frame CI)
+                         ; cd-others = λ f′ x ne → trans (k-other (r-keep Rn) f′ x (λ e′ → ne (trans (sym (ci-frame CI)) (sym e′))))
+                                                         (ci-other CI f′ x ne)
+                         ; cd-area   = trans (top (sv₁ φ′) ≤-refl)
+                                         (subst (λ g → LocState.stackMem (floc fs₁) g (sv₁ φ′) ≡ just (SV-Ptr (AtStack cf area)))
+                                                (sym (ci-frame CI)) (ci-s₁ CI))
+                         ; cd-next   = trans (r-next Rn) (ci-next CI)
+
+                         ; cd-freed  = λ q → trans (keep-freed-eq (r-keep Rn) q) (cong (λ fr → fr q) (ci-freed CI))
+
+                         ; cd-bsize  = λ q lt → trans (k-size (r-keep Rn) q (subst (q <_) (sym (ci-next CI)) lt)) (cong (λ bs → bs q) (ci-size CI))
+                         ; cd-old    = λ hl lt f → trans (r-old Rn hl (subst (_ <_) (sym (ci-next CI)) lt) f) (cong (λ h → h hl) (ci-heap CI))
+                         ; cd-inb    = λ I → r-inb Rn (inb-pt {fs} {fs₁} (λ hl → cong (λ h → h hl) (ci-heap CI)) (ci-next CI) (ci-size CI) I)
+                       ; cd-log    = trans (k-log (r-keep Rn)) (ci-log CI) }
+
+    -- ★ THE RETURN: at the callee's `end` (its way out, `blockFin`), back to
+    -- the caller after the call, the result on its stack
+    module KA {σ} {κ : Key σ} (p : (σ , κ) ∈ allK U) = At U ncty ldConst (frameOf (blockᴵ κ)) (idx p) using (module Low)
+
+    -- the callee's membership as a variable `q` (with `callee s ≡ q`): a
+    -- caller's `q` meets `callee s` here by substitution, not by comparing
+    -- `K.Here`'s parameters (whose normal forms hold the image's prefix)
+    return : ∀ {t A B Es S V} {κ : Key (bsig t A B)} {k : Codeᴵ (t ⊳ Es ∣ B ∷ S) V} (s : Sub root (call κ ⨾ k))
+            (e : Sub (blockᴵ κ) (end {sh = t ⊳ [] ∣ B ∷ []}))
+            {e′ : Slots (t ⊳ [])} {b : MV B} {es : Slots (t ⊳ Es)} {os : Stk S} {fs}
+            (cfc : FrameSemantics.Frame FS) (rest : List ℕ) (sv : List (FrameSemantics.Frame FS × ℕ)) (sl : ℕ)
+            (q : (bsig t A B , κ) ∈ allK U) → callee s ≡ q
+        → KA.Low.lfin {p = q} (K.lowAt q e) ≡ blockFin κ
+        → K.Here q e (e′ ∥ b ∷ˢ []ˢ) fs
+        → fret fs ≡ C.pos (next s) ∷ rest → AllocState.saved-frames (falloc fs) ≡ (cfc , sl) ∷ sv
+        → sl ≡ fbudget C.φ
+        → ¬ cfc ≡ AllocState.current-frame (falloc fs)
+        → slot fs (sv₁ (frameOf (blockᴵ κ))) ≡ just (SV-Ptr (AtStack cfc (Tp C.φ S ∸ (wsz A ⊔ wsz B))))
+        → EnvW (LocState.heapMem (floc fs)) (LocState.stackMem (floc fs) cfc) es
+        → StkW (LocState.heapMem (floc fs)) (LocState.stackMem (floc fs) cfc) C.φ os
+        → Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′ × C.Here (next s) (es ∥ b ∷ˢ os) fs′
+            × CallOut fs fs′ cfc (Tp C.φ S ∸ (wsz A ⊔ wsz B)) (budget (frameOf (blockᴵ κ)) ∸ ws (B ∷ []))
+                      ((wsz A ⊔ wsz B) ∸ wsz B) (wsz B) (C.pos (next s)) rest sv sl
+            × (∀ x → budget C.φ ≤ x → LocState.stackMem (floc fs′) cfc x ≡ LocState.stackMem (floc fs) cfc x)
+    return {t} {A} {B} {Es} {S} {κ = κ} s e {e′} {b} {es} {os} {fs} cfc rest sv sl _ refl lf H hret hsv esl ne ep ev st =
+      with-res (Rel.CfgW.c-stk (K.Here.h-cfg {p = callee s} H))
+      where
+        import Data.Nat.Properties
+        p = callee s
+        φ′ = frameOf (blockᴵ κ)
+        M = wsz A ⊔ wsz B
+        fitA : ws (A ∷ S) ≤ OP C.φ
+        fitA = proj₂ (C.shape-fits s)
+        fitB : ws (B ∷ S) ≤ OP C.φ
+        fitB = proj₂ (C.shape-fits (next s))
+        fitM : M + ws S ≤ OP C.φ
+        fitM = Data.Nat.Properties.≤-trans (Data.Nat.Properties.≤-reflexive (Data.Nat.Properties.+-distribʳ-⊔ (ws S) (wsz A) (wsz B)))
+                 (Data.Nat.Properties.⊔-lub fitA fitB)
+        seg : Seg image (fpc fs) (restore-input (budget φ′) ∷ mvSP (budget φ′ ∸ ws (B ∷ [])) (M ∸ wsz B) (wsz B)
+                                   ++ instr-ctrl (c-ret (fbudget φ′)) ∷ [])
+        seg = subst (Seg image (fpc fs)) lf (K.seg-at p e H)
+        -- B1.7b: the callee's save slot and its result are inside its reservation
+        Bφ′ : budget φ′ ≤ Fr fs
+        Bφ′ = subst (budget φ′ ≤_) (sym (K.Here.h-slots {p = callee s} H))
+                (Data.Nat.Properties.≤-trans (Data.Nat.Properties.n≤1+n (budget φ′)) (Data.Nat.Properties.n≤1+n (suc (budget φ′))))
+        ls : budget φ′ < Fr fs
+        ls = subst (budget φ′ <_) (sym (K.Here.h-slots {p = callee s} H))
+               (Data.Nat.Properties.m<n⇒m<1+n (Data.Nat.Properties.n<1+n (budget φ′)))
+        rs : InFr fs (budget φ′ ∸ ws (B ∷ [])) (wsz B)
+        rs = infr Bφ′ (sub-in (budget φ′) (wsz B) 0
+               (Data.Nat.Properties.≤-trans (Rel.CfgW.c-sfit (K.Here.h-cfg {p = callee s} H)) (m≤n+m (OP φ′) (EP φ′))))
+        with-res : StkW (LocState.heapMem (floc fs)) (slot fs) φ′ (b ∷ˢ []ˢ)
+                 → Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′ × C.Here (next s) (es ∥ b ∷ˢ os) fs′
+                     × CallOut fs fs′ cfc (Tp C.φ S ∸ M) (budget φ′ ∸ ws (B ∷ [])) (M ∸ wsz B) (wsz B) (C.pos (next s)) rest sv sl
+                     × (∀ x → budget C.φ ≤ x → LocState.stackMem (floc fs′) cfc x ≡ LocState.stackMem (floc fs) cfc x)
+        with-res ((wb , pb , sb) , _) =
+          fin (leave image fs C.φ φ′ cfc (budget φ′) (Tp C.φ S ∸ M) M (fbudget φ′) (C.pos (next s)) rest sv sl
+                 {es = es} {os = os} {b = b} wb hret (sym (K.Here.h-slots {p = callee s} H)) hsv (subst (budget C.φ ≤_) (sym esl) (Data.Nat.Properties.m≤n⇒m≤1+n (Data.Nat.Properties.n≤1+n (budget C.φ)))) ne ep pb sb ev st refl
+                 (Data.Nat.Properties.m≤n⊔m (wsz A) (wsz B)) fitM (proj₁ (C.shape-fits (next s))) fitB seg
+                 (K.Here.h-run {p = callee s} H) ls rs)
+          where
+            fin : Σ FlatState (λ fs′ → FlatSteps image (suc (Once.LinCore.Moves.ln {FS} (wsz B) + 1)) fs fs′
+                    × CfgW (LocState.heapMem (floc fs′)) (slot fs′) C.φ (es ∥ b ∷ˢ os)
+                    × CallOut fs fs′ cfc (Tp C.φ S ∸ M) (budget φ′ ∸ ws (B ∷ [])) (M ∸ wsz B) (wsz B) (C.pos (next s)) rest sv sl
+                    × (∀ x → budget C.φ ≤ x → LocState.stackMem (floc fs′) cfc x ≡ LocState.stackMem (floc fs) cfc x))
+                → Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′ × C.Here (next s) (es ∥ b ∷ˢ os) fs′
+                    × CallOut fs fs′ cfc (Tp C.φ S ∸ M) (budget φ′ ∸ ws (B ∷ [])) (M ∸ wsz B) (wsz B) (C.pos (next s)) rest sv sl
+                    × (∀ x → budget C.φ ≤ x → LocState.stackMem (floc fs′) cfc x ≡ LocState.stackMem (floc fs) cfc x)
+            fin (fs′ , st′ , C′ , CO , tk) =
+              _ , fs′ , st′ ,
+              record { h-pc = co-pc CO ; h-run = trans (co-halt CO) (K.Here.h-run {p = callee s} H) ; h-cfg = C′ ; h-slots = trans (co-slots CO) esl } ,
+              CO , tk

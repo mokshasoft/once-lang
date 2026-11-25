@@ -468,7 +468,8 @@ module _ (N : ℕ) where
 -- plan 0.123 α′ (f3c): THE BLOCK'S ENTRY STATE. The dispatch enters the
 -- block's frame (`call-frame`, D394): `ra` linked, `sp` lowered by `8n`, no
 -- memory written. Each typed leaf of the input is the input register `t0` (a
--- scalar, D396/D398) or the word at `t0 + 8k` (D391) below that frame.
+-- scalar, D396/D398) or the word at `t0 + 8k` (D391) below that frame — or,
+-- D454 (d), at or above `sp` (the caller's stack, a live frame's window).
 ------------------------------------------------------------------------
 open import Once.Arith.Backend.RiscV64.Dispatch using (call-frame; dispatch-arith)
 open import Once.Arith.Machine.Shape using (⟦_⟧S; IntsBelow)
@@ -476,10 +477,15 @@ open import Once.Arith.Machine.AbsState using (init)
 open import Data.Nat using (_∸_)
 open import Data.Product using (proj₁; proj₂)
 
+import Data.Sum
+open import Data.Sum using (_⊎_)
+open import Data.Nat.Properties using (m∸n+n≡m)
+
 EntryLeaf : ℕ → State → InputPath → ℕ → ℕ → Set
 EntryLeaf n s []      k w = readReg (regs s) t0 ≡ w
 EntryLeaf n s (x ∷ q) k w = (readMem (memory s) (readReg (regs s) t0 + 8 * k) ≡ just w)
-                          × (readReg (regs s) t0 + 8 * k < readReg (regs s) sp ∸ 8 * n)
+                          × ((readReg (regs s) t0 + 8 * k < readReg (regs s) sp ∸ 8 * n)
+                             ⊎ ((readReg (regs s) sp ≤ readReg (regs s) t0 + 8 * k) × (8 * n ≤ readReg (regs s) sp)))
 
 entry-at : ∀ n s {sh} (env : ⟦ sh ⟧S)
          → (∀ {m} (p : Path sh m) → EntryLeaf n s ⌊ p ⌋ᴾ (flat-off p) (Sim.leafWord (8 * n) p env))
@@ -492,8 +498,9 @@ entry-at n s {sh} env leaf = ri , wf
     ri-at (x ∷ q) k w (m , _) = cong def m
     out-at : ∀ q k w → EntryLeaf n s q k w → Out (8 * n) (call-frame val-riscv64 n s) q k
     out-at []      k w _        = tt
-    out-at (x ∷ q) k w (_ , lt) = Data.Sum.inj₁ lt
-      where import Data.Sum
+    out-at (x ∷ q) k w (_ , Data.Sum.inj₁ lt)        = Data.Sum.inj₁ lt
+    out-at (x ∷ q) k w (_ , Data.Sum.inj₂ (le , rm)) =
+      Data.Sum.inj₂ (subst (_≤ readReg (regs s) t0 + 8 * k) (sym (m∸n+n≡m rm)) le)
     ri : Sim.R-input (8 * n) (init env) (call-frame val-riscv64 n s)
     ri p = ri-at ⌊ p ⌋ᴾ (flat-off p) _ (leaf p)
     wf : WF (8 * n) sh (call-frame val-riscv64 n s)

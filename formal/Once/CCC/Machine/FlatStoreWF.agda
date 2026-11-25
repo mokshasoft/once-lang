@@ -24,12 +24,13 @@ open import Once.CCC.FrameSemantics using (FrameSemantics; fs-numerics; fs-ffi)
 
 module Once.CCC.Machine.FlatStoreWF (FS : FrameSemantics) where
 
-open import Data.Nat using (ℕ; suc; _<_; _≤_; _≟_)
+open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; _≟_)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; <-irrefl; n≤1+n)
-open import Data.Bool using (Bool; true; false)
+open import Data.Bool using (Bool; true; false; not)
 open import Data.Bool using () renaming (_∨_ to _∨_)
 open import Data.Empty using (⊥-elim)
 open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Sum using (inj₁; inj₂)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.Unit using (⊤; tt)
@@ -38,7 +39,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst
 
 open import Once.CCC.Label using (LabelId)
 open import Once.Spec.Type using (Type; var; Unit; Void; _*_; _+_; _⇒[_]_; μ; ν; Int; Float)
-open import Once.SigOp.Words using (Words; LitWord; ResWord; IM; atTarget-word; semM-of-word)
+open import Once.SigOp.Words using (Words; LitWord; ResWord; IM; atTarget-word; semM-of-word; Leaves; ResLeaves; atTarget-leaves; semM-of-leaves)
 open import Once.SigOp.Info using (module SigOpInfo)
 open import Once.Word using (module WidthLaws)
 open import Data.Nat.Properties using (m^n>0)
@@ -100,6 +101,11 @@ mloc-below : ℕ → Maybe (ValueLocation FS) → Set
 mloc-below n (just loc) = loc-below n loc
 mloc-below n nothing    = ⊤
 
+-- D470: the record's word is below any frontier past it
+rec-below : ∀ n k → mloc-below n (rec-at n k)
+rec-below zero    k = tt
+rec-below (suc _) k = Data.Nat.s≤s Data.Nat.z≤n
+
 -- Monotone in the frontier (which only grows).
 loc-mono : ∀ {m n} (loc : ValueLocation FS) → m ≤ n → loc-below m loc → loc-below n loc
 loc-mono (AtDynamic hl) m≤n lt = ≤-trans lt m≤n
@@ -123,6 +129,21 @@ sv-as-loc-below n (SV-Ptr (AtStack f k))  b = tt
 sv-as-loc-below n (SV-Tag _)              _ = tt
 sv-as-loc-below n (SV-Lit _ _)            _ = tt
 sv-as-loc-below n (SV-Code _)             _ = tt
+
+-- D454: the frame gate passes a location or faults
+stack-gate-below : ∀ (n : ℕ) (ok : Bool) (loc : ValueLocation FS) → loc-below n loc → mloc-below n (stack-gate ok loc)
+stack-gate-below n true  loc b = b
+stack-gate-below n false loc b = tt
+
+gate-below : ∀ (n : ℕ) (al : AllocState {FS}) (k : ℕ) (ml : Maybe (ValueLocation FS)) → mloc-below n ml → mloc-below n (frame-gate al k ml)
+gate-below n al k (just (AtStack f j))  b = stack-gate-below n (in-window (live-frames al) f (k Data.Nat.+ j)) (AtStack f j) b
+gate-below n al k (just (AtDynamic hl)) b = b
+gate-below n al k nothing               b = b
+
+heap-gate-below : ∀ (n : ℕ) (ml : Maybe (ValueLocation FS)) → mloc-below n ml → mloc-below n (heap-gate ml)
+heap-gate-below n (just (AtDynamic hl)) b = b
+heap-gate-below n (just (AtStack f j))  b = tt
+heap-gate-below n nothing               b = b
 
 
 -- Same block ⇒ same ref-id, so offsets stay below.
@@ -352,10 +373,8 @@ wf-slot-load = wf-load-value
 -- non-register-fittable case, which gets the companion axiom below — the same
 -- trusted base as `structured-pure-sigop-output` itself (D061).
 ------------------------------------------------------------------------
-postulate
-  structured-pure-sigop-below :
-    ∀ (n : ℕ) {A B} (si : SigOpInfo A B) (ls : LocState FS)
-    → sv-below n (structured-pure-sigop-output si ls)
+-- (D451: a structured answer is in memory; `Output` keeps its address, so
+-- the companion axiom is gone.)
 
 -- plan 0.98: a Pure SigOp's output is `res-sv fitB (semM …)`, and `res-sv`
 -- dispatches on the `Res`. D397: a returned value is a word when the SigOp's
@@ -441,7 +460,7 @@ sigop-output-below n {A} {B} si ls wf = go (effect si)
     aux (just fitB) (just in-loc) = pure-out-val-below n si fitB (readTyped A in-loc ls) (readTyped-words wf A in-loc)
     aux (just fitB) nothing       = pure-out-val-below n si fitB (readReg-typed A (readReg (regs ls) Input1))
                                       (readReg-words A (readReg (regs ls) Input1) (wf-regs wf Input1))
-    aux nothing     _             = structured-pure-sigop-below n si ls
+    aux nothing     _             = wf-regs wf Output
     go : ∀ (e : EffectShape B) → sv-below n (exec-sigop-output-of e si ls)
     go Pure      = aux (fits-in-reg? B) (sv-as-loc (readReg (regs ls) Input1))
     go (Emits _) = unit-below n
@@ -457,7 +476,84 @@ sigop-output-below n {A} {B} si ls wf = go (effect si)
                         at (just _) = atTarget-word (fs-numerics FS) f _
                         at nothing  = unit-below n
                 ans (no _)  = unit-below n
-        call-below nothing  = unit-below n
+        call-below nothing  = wf-regs wf Output
+
+------------------------------------------------------------------------
+-- D451: A STRUCTURED ANSWER WRITTEN IN PLACE keeps the store well formed:
+-- its words are its leaves (an `Int` a word, a tag none), at a location below.
+------------------------------------------------------------------------
+wf-zeros : ∀ {n ls} (k : ℕ) (loc : ValueLocation FS) → loc-below n loc
+         → StoreWF n ls → StoreWF n (writeZeros k loc ls)
+wf-zeros {n} zero    loc b wf = wf
+wf-zeros {n} (suc k) loc b wf = wf-zeros k (sucLoc loc) (sucLoc-below n loc b) (wf-write-loc loc zero-word wf b 0<IMfs)
+
+wf-writeTyped : ∀ {n ls} (A : Type) (v : ⟦ A ⟧) (loc : ValueLocation FS)
+              → StoreWF n ls → loc-below n loc → Leaves IMfs A v
+              → StoreWF n (writeTyped A v loc ls)
+wf-writeTyped Unit         v        loc wf b l = wf
+wf-writeTyped Int          v        loc wf b l = wf-write-loc loc (SV-Lit fits-int v) wf b l
+wf-writeTyped Float        v        loc wf b l = wf-write-loc loc (SV-Lit fits-float v) wf b tt
+wf-writeTyped {n} (A * B)  (x , y)  loc wf b (lx , ly) =
+  wf-writeTyped B y (offsetLoc loc (tsize A)) (wf-writeTyped A x loc wf b lx) (offsetLoc-below n loc (tsize A) b) ly
+wf-writeTyped {n} (A + B)  (inj₁ x) loc wf b l =
+  wf-zeros ((tsize A Data.Nat.⊔ tsize B) Data.Nat.∸ tsize A) (offsetLoc loc (suc (tsize A))) (offsetLoc-below n loc (suc (tsize A)) b)
+    (wf-writeTyped A x (sucLoc loc) (wf-write-loc loc (SV-Tag 0) wf b tt) (sucLoc-below n loc b) l)
+wf-writeTyped {n} (A + B)  (inj₂ y) loc wf b l =
+  wf-zeros ((tsize A Data.Nat.⊔ tsize B) Data.Nat.∸ tsize B) (offsetLoc loc (suc (tsize B))) (offsetLoc-below n loc (suc (tsize B)) b)
+    (wf-writeTyped B y (sucLoc loc) (wf-write-loc loc (SV-Tag 1) wf b tt) (sucLoc-below n loc b) l)
+wf-writeTyped (var _)      v        loc wf b l = wf
+wf-writeTyped Void         v        loc wf b l = wf
+wf-writeTyped (_ ⇒[ _ ] _) v        loc wf b l = wf
+wf-writeTyped (μ _)        v        loc wf b l = wf
+wf-writeTyped (ν _ _)      v        loc wf b l = wf
+
+-- an answer the machine may hold: its leaves words
+MLeaves : (B : Type) → Maybe ⟦ B ⟧ → Set
+MLeaves B (just v) = Leaves IMfs B v
+MLeaves B nothing  = ⊤
+
+private
+  res-just-leaves : ∀ {B : Type} (r : Res ⟦ B ⟧) → ResLeaves IMfs B r → MLeaves B (res-just r)
+  res-just-leaves (returns v) l = l
+  res-just-leaves stopped     _ = tt
+
+  answer-leaves : ∀ {A B} (si : SigOpInfo A B) (ls : LocState FS) → fits-in-reg? B ≡ nothing
+                → ∀ (e : EffectShape B) → MLeaves B (sigop-answer-of e si ls)
+  answer-leaves {A} {B} si ls nf Pure = pure (decode-at (SigOpInfo.baseA si) (readReg (regs ls) Input1) ls)
+    where pure : ∀ ma → MLeaves B (pure-ans-at si ma)
+          pure (just a) = res-just-leaves (semM (fs-ffi FS) si (fs-numerics FS) a)
+                            (semM-of-leaves (fs-numerics FS) (fs-ffi FS) (SigOpInfo.name si) (SigOpInfo.sem si) a nf)
+          pure nothing  = tt
+  answer-leaves {A} {B} si ls nf Answers = ans (call-sigop-dec si) (decode-at (SigOpInfo.baseA si) (readReg (regs ls) Input1) ls)
+    where ans : ∀ d ma → MLeaves B (call-ans-at si ls d ma)
+          ans (yes p) (just a) = atTarget-leaves (fs-numerics FS) B _
+          ans (yes p) nothing  = tt
+          ans (no _)  _        = tt
+  answer-leaves si ls nf (Emits _) = tt
+  answer-leaves si ls nf (Halts _) = tt
+
+  store-at-wf : ∀ {n ls} {B : Type} (mf : Bool) → in-memory? B ≡ mf
+              → ∀ (ml : Maybe (ValueLocation FS)) → mloc-below n ml
+              → ∀ (ma : Maybe ⟦ B ⟧) → (fits-in-reg? B ≡ nothing → MLeaves B ma)
+              → StoreWF n ls → StoreWF n (sigop-store-at mf ml ma ls)
+  store-at-wf         false _  _          _ _        _ wf = wf
+  store-at-wf {B = B} true  eq (just loc) b (just v) l wf = wf-writeTyped B v loc wf b (l (in-memory-nofit B eq))
+  store-at-wf         true  _  (just loc) _ nothing  _ wf = wf
+  store-at-wf         true  _  nothing    _ _        _ wf = wf
+
+wf-sigop-store : ∀ {n ls} {A B} (si : SigOpInfo A B) → StoreWF n ls → StoreWF n (sigop-store si ls)
+wf-sigop-store {n} {ls} {B = B} si wf =
+  store-at-wf (in-memory? B) refl (sv-as-loc (readReg (regs ls) Output))
+    (sv-as-loc-below n (readReg (regs ls) Output) (wf-regs wf Output))
+    (sigop-answer si ls) (λ nf → answer-leaves si ls nf (effect si)) wf
+
+-- the SigOp step: the stored state's memory, the old state's registers
+wf-write-reg-halt-on : ∀ {n ls ls₀} (x : AbstractReg) (v : StoredValue FS) (b fl : Bool) (es : List SigOpEvent)
+                     → StoreWF n ls → StoreWF n ls₀ → sv-below (n) v
+                     → StoreWF n (record ls { regs = writeReg (regs ls) x v ; stackMem = stackMem ls₀ ; heapMem = heapMem ls₀ ; halted = b ; faulted = fl ; ev-log = es })
+wf-write-reg-halt-on {n} {ls} x v b fl es wf wf₀ bv = record
+  { wf-regs  = λ y → rw-below (n) (regs ls) x y v bv (wf-regs wf y)
+  ; wf-heap  = wf-heap wf₀ ; wf-stack = wf-stack wf₀ ; wf-fresh = wf-fresh wf₀ }
 
 ------------------------------------------------------------------------
 -- Slot loads (they thread `alloc` through, so they need their own shape).
@@ -528,17 +624,26 @@ mutual
   -- `stackSlot` mirror is gone), so these are the identity on the store.
   wf-abstract (instr-alloc-stack n) ls alloc wf = wf , ≤-refl
   wf-abstract (instr-dealloc-stack n) ls alloc wf = wf , ≤-refl
-  wf-abstract (instr-free-heap n) ls alloc wf = wf , ≤-refl
+  -- D470: a free clears its block's cells — an empty cell points nowhere and is fresh
+  wf-abstract (instr-free-heap n) ls alloc wf =
+    record { wf-regs  = wf-regs wf
+           ; wf-heap  = λ hl → freeMem-keeps (svm-below (next-heap-ref alloc)) (readReg (regs ls) Input1) (heapMem ls) hl tt (wf-heap wf hl)
+           ; wf-stack = wf-stack wf
+           ; wf-fresh = λ hl le → freeMem-keeps (λ m → m ≡ nothing) (readReg (regs ls) Input1) (heapMem ls) hl refl (wf-fresh wf hl le) } , ≤-refl
   wf-abstract (instr-room n) ls alloc wf = wf , ≤-refl
   wf-abstract (load-at k) ls alloc wf =
-    wf-load-at-resolved k Output (sv-as-loc (readReg (regs ls) Input1)) wf
-      (sv-as-loc-below (next-heap-ref alloc) (readReg (regs ls) Input1) (wf-regs wf Input1)) , ≤-refl
+    wf-load-at-resolved k Output (frame-gate alloc k (sv-as-loc (readReg (regs ls) Input1))) wf
+      (gate-below (next-heap-ref alloc) alloc k (sv-as-loc (readReg (regs ls) Input1)) (sv-as-loc-below (next-heap-ref alloc) (readReg (regs ls) Input1) (wf-regs wf Input1))) , ≤-refl
   wf-abstract (store-at k) ls alloc wf =
-    wf-store-at-resolved (AllocState.block-size alloc) k (sv-as-loc (readReg (regs ls) Input1)) (readReg (regs ls) Output) wf
-      (sv-as-loc-below (next-heap-ref alloc) (readReg (regs ls) Input1) (wf-regs wf Input1)) (wf-regs wf Output) , ≤-refl
+    wf-store-at-resolved (live-size alloc) k (frame-gate alloc k (sv-as-loc (readReg (regs ls) Input1))) (readReg (regs ls) Output) wf
+      (gate-below (next-heap-ref alloc) alloc k (sv-as-loc (readReg (regs ls) Input1)) (sv-as-loc-below (next-heap-ref alloc) (readReg (regs ls) Input1) (wf-regs wf Input1))) (wf-regs wf Output) , ≤-refl
   wf-abstract (addr-at k) ls alloc wf =
-    wf-addr-at-resolved (AllocState.block-size alloc) k (sv-as-loc (readReg (regs ls) Input1)) wf
-      (sv-as-loc-below (next-heap-ref alloc) (readReg (regs ls) Input1) (wf-regs wf Input1)) , ≤-refl
+    wf-addr-at-resolved (AllocState.block-size alloc) k (heap-gate (sv-as-loc (readReg (regs ls) Input1))) wf
+      (heap-gate-below (next-heap-ref alloc) (sv-as-loc (readReg (regs ls) Input1)) (sv-as-loc-below (next-heap-ref alloc) (readReg (regs ls) Input1) (wf-regs wf Input1))) , ≤-refl
+  wf-abstract (load-rec k) ls alloc wf =
+    wf-load-resolved Output (rec-gate alloc k) wf (rec-below (next-heap-ref alloc) k) , ≤-refl
+  wf-abstract (store-rec k) ls alloc wf =
+    wf-store-resolved (rec-gate alloc k) (readReg (regs ls) Output) wf (rec-below (next-heap-ref alloc) k) (wf-regs wf Output) , ≤-refl
   wf-abstract (instr-reclaim-to n) ls alloc wf = wf , ≤-refl
   wf-abstract (instr-push-frame cap) ls alloc wf = wf , ≤-refl
   wf-abstract instr-pop-frame ls alloc wf = wf , ≤-refl
@@ -552,8 +657,8 @@ mutual
       (readLoc-below (AtStack (current-frame alloc) slot) wf)
   wf-abstract (worklist-check slot) ls alloc wf = wf , ≤-refl
   wf-abstract (instr-sigop si) ls alloc wf =
-    wf-write-reg-halt Output (exec-sigop-output si ls) (exec-sigop-halts si ls) (exec-sigop-faults si ls ∨ LocState.faulted ls) (ev-log ls ++ sigop-events si ls) wf
-      (sigop-output-below (next-heap-ref alloc) si ls wf) , ≤-refl
+    wf-write-reg-halt-on Output (exec-sigop-output si ls) (exec-sigop-halts si ls ∨ not (sigop-gate alloc si ls)) (exec-sigop-faults si ls ∨ (not (sigop-gate alloc si ls) ∨ LocState.faulted ls)) (ev-log ls ++ sigop-events si ls) wf
+      (wf-sigop-store si wf) (sigop-output-below (next-heap-ref alloc) si ls wf) , ≤-refl
   -- D113: `exec-abstract` MATERIALISES the literal (`lit-value`), so the cell
   -- holds the target's representation, not the payload. Mirrors the machine.
   wf-abstract (instr-load-const p v) ls alloc wf =
@@ -625,12 +730,10 @@ wf-nz (SV-Code _)           fs wf = wf-fault wf
 -- FRONTIER and quantifies over all frames — only the frontier term has to
 -- be transported through `leave-frame`, exactly as the dealloc-stack
 -- clause below does.
-wf-ret : ∀ (r : List ℕ) (fs : FlatState) → FlatWF fs → FlatWF (do-ret r fs)
-wf-ret []           fs wf =
-  subst (λ n → StoreWF n (record (floc fs) { halted = true }))
-        (sym (leave-frame-heap-ref (falloc fs))) (wf-halt wf)
-wf-ret (pc' ∷ rest) fs wf =
-  subst (λ n → StoreWF n (floc fs)) (sym (leave-frame-heap-ref (falloc fs))) wf
+wf-ret : ∀ (b : ℕ) (r : List ℕ) (fs : FlatState) → FlatWF fs → FlatWF (do-ret b r fs)
+wf-ret b r fs wf =
+  do-ret-keeps FlatWF b r fs (wf-fault wf)
+    (λ _ _ _ _ → subst (λ n → StoreWF n (floc fs)) (sym (leave-frame-heap-ref (falloc fs))) wf)
 
 -- `grow-frame` is a plain record update on the frame fields, so the frontier is
 -- unchanged definitionally. Plan 0.54 rung D: `do-thunk` now also CLEARS the
@@ -660,13 +763,13 @@ wf-thunk b fs wf = record
 wf-call : ∀ (prog : AbstractTrace) (fs : FlatState) → FlatWF fs → FlatWF (do-call prog fs)
 wf-call prog fs wf = go (callView prog fs)
   where go : CallPost prog fs → FlatWF (do-call prog fs)
-        go (cp-halt    e) rewrite e = wf-halt wf
-        go (cp-enter ℓ j fq e) rewrite e = wf
+        go (cp-fault e) rewrite e = wf-fault wf
+        go (cp-enter ℓ j hl ce he fq e) rewrite e = wf
 
 -- D245: a DIRECT call is the same transfer with the target named statically.
 wf-call-at : ∀ (mj : Maybe ℕ) (fs : FlatState) → FlatWF fs → FlatWF (do-call-at mj fs)
 wf-call-at (just j) fs wf = wf
-wf-call-at nothing  fs wf = wf-halt wf
+wf-call-at nothing  fs wf = wf-fault wf
 
 -- D097: THE CLOSURE REGISTER STAYS BELOW THE FRONTIER. `fclosure` is a
 -- `FlatState` field, so `StoreWF` (indexed by the `LocState`) says nothing
@@ -702,13 +805,12 @@ cl-nz (SV-Tag _)            fs wf b = b
 cl-nz (SV-Ptr _)            fs wf b = b
 cl-nz (SV-Code _)           fs wf b = b
 
-cl-ret : ∀ (r : List ℕ) (fs : FlatState)
+cl-ret : ∀ (bb : ℕ) (r : List ℕ) (fs : FlatState)
        → sv-below (next-heap-ref (falloc fs)) (fclosure fs)
-       → sv-below (next-heap-ref (falloc (do-ret r fs))) (fclosure (do-ret r fs))
-cl-ret []           fs b = subst (λ n → sv-below n (fclosure fs))
-                                 (sym (leave-frame-heap-ref (falloc fs))) b
-cl-ret (pc' ∷ rest) fs b = subst (λ n → sv-below n (fclosure fs))
-                                 (sym (leave-frame-heap-ref (falloc fs))) b
+       → sv-below (next-heap-ref (falloc (do-ret bb r fs))) (fclosure (do-ret bb r fs))
+cl-ret bb r fs b =
+  do-ret-keeps (λ s → sv-below (next-heap-ref (falloc s)) (fclosure s)) bb r fs b
+    (λ _ _ _ _ → subst (λ n → sv-below n (fclosure fs)) (sym (leave-frame-heap-ref (falloc fs))) b)
 
 cl-call : ∀ (prog : AbstractTrace) (fs : FlatState)
         → sv-below (next-heap-ref (falloc fs)) (fclosure fs)
@@ -716,14 +818,25 @@ cl-call : ∀ (prog : AbstractTrace) (fs : FlatState)
 cl-call prog fs b = go (callView prog fs)
   where go : CallPost prog fs
            → sv-below (next-heap-ref (falloc (do-call prog fs))) (fclosure (do-call prog fs))
-        go (cp-halt    e) rewrite e = b
-        go (cp-enter ℓ j fq e) rewrite e = b
+        go (cp-fault e) rewrite e = b
+        go (cp-enter ℓ j hl ce he fq e) rewrite e = b
 
 cl-call-at : ∀ (mj : Maybe ℕ) (fs : FlatState)
            → sv-below (next-heap-ref (falloc fs)) (fclosure fs)
            → sv-below (next-heap-ref (falloc (do-call-at mj fs))) (fclosure (do-call-at mj fs))
 cl-call-at (just j) fs b = b
 cl-call-at nothing  fs b = b
+
+-- B1.7b (D458): a slot instruction's step is the plain one or, out of the
+-- frame, the fault; both keep the store well formed and the closure below
+wf-slot : ∀ (i : AbstractInstr) (fs : FlatState) → FlatWF fs → FlatWF (flat-step-straight i fs)
+wf-slot i fs wf = straight-keeps FlatWF i fs (proj₁ (wf-abstract i (floc fs) (falloc fs) wf)) (wf-fault wf)
+
+cl-slot : ∀ (i : AbstractInstr) (fs : FlatState) → FlatWF fs
+        → sv-below (next-heap-ref (falloc fs)) (fclosure fs)
+        → sv-below (next-heap-ref (falloc (flat-step-straight i fs))) (fclosure (flat-step-straight i fs))
+cl-slot i fs wf b = straight-keeps (λ t → sv-below (next-heap-ref (falloc t)) (fclosure t)) i fs
+                      (sv-mono (fclosure fs) (proj₂ (wf-abstract i (floc fs) (falloc fs) wf)) b) b
 
 cl-step : ∀ (i : AbstractInstr) (prog : AbstractTrace) (fs : FlatState) → FlatWF fs
         → sv-below (next-heap-ref (falloc fs)) (fclosure fs)
@@ -734,10 +847,10 @@ cl-step (instr-ctrl (c-entry m bb))            prog fs wf b = b
 cl-step (instr-ctrl (c-start bb))            prog fs wf b = b
 cl-step (instr-ctrl c-leave)                  prog fs wf b = b
 cl-step (instr-ctrl (c-call-fn f))             prog fs wf b = cl-call-at (find-fn prog f) fs b
-cl-step (instr-ctrl (c-ret bb))                prog fs wf b = cl-ret (fret fs) fs b
+cl-step (instr-ctrl (c-ret bb))                prog fs wf b = cl-ret bb (fret fs) fs b
 cl-step (instr-ctrl (c-jmp m))                 prog fs wf b = cl-jump (find-label prog m) fs b
 cl-step (instr-ctrl (c-branch-tag-zero m))     prog fs wf b =
-  cl-test (tag-test (flat-read-tag (floc fs))) m prog fs b
+  cl-test (tag-test (flat-read-tag (falloc fs) (floc fs))) m prog fs b
 cl-step instr-call-closure                     prog fs wf b = cl-call prog fs b
 -- the ONE writer: the register takes `Input1`, whose bound is `wf-regs`
 cl-step instr-save-closure-reg                 prog fs wf b = wf-regs wf Input1
@@ -757,24 +870,26 @@ cl-step mov-to-output            prog fs wf b = sv-mono (fclosure fs) (proj₂ (
 cl-step mov-to-input             prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract mov-to-input (floc fs) (falloc fs) wf)) b
 cl-step load-indirect            prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract load-indirect (floc fs) (falloc fs) wf)) b
 cl-step load-indirect-suc        prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract load-indirect-suc (floc fs) (falloc fs) wf)) b
-cl-step (load-from-slot k)       prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (load-from-slot k) (floc fs) (falloc fs) wf)) b
-cl-step (store-at-slot k)        prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (store-at-slot k) (floc fs) (falloc fs) wf)) b
+cl-step (load-from-slot k)       prog fs wf b = cl-slot (load-from-slot k) fs wf b
+cl-step (store-at-slot k)        prog fs wf b = cl-slot (store-at-slot k) fs wf b
 cl-step store-indirect           prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract store-indirect (floc fs) (falloc fs) wf)) b
 cl-step store-indirect-suc       prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract store-indirect-suc (floc fs) (falloc fs) wf)) b
-cl-step (lea-slot k)             prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (lea-slot k) (floc fs) (falloc fs) wf)) b
-cl-step (restore-input k)        prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (restore-input k) (floc fs) (falloc fs) wf)) b
+cl-step (load-rec k)             prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (load-rec k) (floc fs) (falloc fs) wf)) b
+cl-step (store-rec k)            prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (store-rec k) (floc fs) (falloc fs) wf)) b
+cl-step (lea-slot k)             prog fs wf b = cl-slot (lea-slot k) fs wf b
+cl-step (restore-input k)        prog fs wf b = cl-slot (restore-input k) fs wf b
 cl-step (instr-reclaim-to k)     prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (instr-reclaim-to k) (floc fs) (falloc fs) wf)) b
-cl-step (worklist-init k)        prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (worklist-init k) (floc fs) (falloc fs) wf)) b
-cl-step (worklist-push k)        prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (worklist-push k) (floc fs) (falloc fs) wf)) b
-cl-step (worklist-pop k)         prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (worklist-pop k) (floc fs) (falloc fs) wf)) b
-cl-step (worklist-check k)       prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (worklist-check k) (floc fs) (falloc fs) wf)) b
+cl-step (worklist-init k)        prog fs wf b = cl-slot (worklist-init k) fs wf b
+cl-step (worklist-push k)        prog fs wf b = cl-slot (worklist-push k) fs wf b
+cl-step (worklist-pop k)         prog fs wf b = cl-slot (worklist-pop k) fs wf b
+cl-step (worklist-check k)       prog fs wf b = cl-slot (worklist-check k) fs wf b
 cl-step (instr-sigop si)         prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (instr-sigop si) (floc fs) (falloc fs) wf)) b
 cl-step (instr-load-const p v)   prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (instr-load-const p v) (floc fs) (falloc fs) wf)) b
 cl-step (instr-load-code-addr k) prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (instr-load-code-addr k) (floc fs) (falloc fs) wf)) b
 cl-step (instr-load-tag-lit k)   prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (instr-load-tag-lit k) (floc fs) (falloc fs) wf)) b
 cl-step (instr-alloc-heap k)     prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (instr-alloc-heap k) (floc fs) (falloc fs) wf)) b
 cl-step (instr-reg-op out-nz)    prog fs wf b = cl-nz (readReg (regs (floc fs)) Output) fs wf b
-cl-step (instr-free-heap n)      prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (instr-free-heap n) (floc fs) (falloc fs) wf)) b
+cl-step (instr-free-heap n)      prog fs wf b = cl-slot (instr-free-heap n) fs wf b
 cl-step (instr-room n)           prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (instr-room n) (floc fs) (falloc fs) wf)) b
 cl-step (load-at n)           prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (load-at n) (floc fs) (falloc fs) wf)) b
 cl-step (store-at n)           prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (store-at n) (floc fs) (falloc fs) wf)) b
@@ -789,22 +904,24 @@ flat-wf-step (instr-ctrl (c-entry m b))             prog fs wf = wf-thunk b fs w
 flat-wf-step (instr-ctrl (c-start b))             prog fs wf = wf-thunk b fs wf
 flat-wf-step (instr-ctrl c-leave)                   prog fs wf = wf-leave wf
 flat-wf-step (instr-ctrl (c-call-fn f))             prog fs wf = wf-call-at (find-fn prog f) fs wf
-flat-wf-step (instr-ctrl (c-ret b))                 prog fs wf = wf-ret (fret fs) fs wf
+flat-wf-step (instr-ctrl (c-ret b))                 prog fs wf = wf-ret b (fret fs) fs wf
 flat-wf-step (instr-ctrl (c-jmp m))                 prog fs wf = wf-jump (find-label prog m) fs wf
 flat-wf-step (instr-ctrl (c-branch-tag-zero m))     prog fs wf =
-  wf-test (tag-test (flat-read-tag (floc fs))) m prog fs wf
+  wf-test (tag-test (flat-read-tag (falloc fs) (floc fs))) m prog fs wf
 -- The straight-line cases are ENUMERATED (a catch-all would not reduce
 -- `flat-exec-instr`'s own catch-all in the case tree); each is `wf-abstract`.
 flat-wf-step mov-to-output            prog fs wf = proj₁ (wf-abstract mov-to-output (floc fs) (falloc fs) wf)
 flat-wf-step mov-to-input             prog fs wf = proj₁ (wf-abstract mov-to-input (floc fs) (falloc fs) wf)
 flat-wf-step load-indirect            prog fs wf = proj₁ (wf-abstract load-indirect (floc fs) (falloc fs) wf)
 flat-wf-step load-indirect-suc        prog fs wf = proj₁ (wf-abstract load-indirect-suc (floc fs) (falloc fs) wf)
-flat-wf-step (load-from-slot k)       prog fs wf = proj₁ (wf-abstract (load-from-slot k) (floc fs) (falloc fs) wf)
-flat-wf-step (store-at-slot k)        prog fs wf = proj₁ (wf-abstract (store-at-slot k) (floc fs) (falloc fs) wf)
+flat-wf-step (load-from-slot k)       prog fs wf = wf-slot (load-from-slot k) fs wf
+flat-wf-step (store-at-slot k)        prog fs wf = wf-slot (store-at-slot k) fs wf
 flat-wf-step store-indirect           prog fs wf = proj₁ (wf-abstract store-indirect (floc fs) (falloc fs) wf)
 flat-wf-step store-indirect-suc       prog fs wf = proj₁ (wf-abstract store-indirect-suc (floc fs) (falloc fs) wf)
-flat-wf-step (lea-slot k)             prog fs wf = proj₁ (wf-abstract (lea-slot k) (floc fs) (falloc fs) wf)
-flat-wf-step (restore-input k)        prog fs wf = proj₁ (wf-abstract (restore-input k) (floc fs) (falloc fs) wf)
+flat-wf-step (load-rec k)             prog fs wf = proj₁ (wf-abstract (load-rec k) (floc fs) (falloc fs) wf)
+flat-wf-step (store-rec k)            prog fs wf = proj₁ (wf-abstract (store-rec k) (floc fs) (falloc fs) wf)
+flat-wf-step (lea-slot k)             prog fs wf = wf-slot (lea-slot k) fs wf
+flat-wf-step (restore-input k)        prog fs wf = wf-slot (restore-input k) fs wf
 flat-wf-step (instr-alloc-stack k)    prog fs wf = proj₁ (wf-abstract (instr-alloc-stack k) (floc fs) (falloc fs) wf)
 -- Plan 0.61: the flat machine MOVES THE FRAME on dealloc-stack / pop-frame.
 -- `StoreWF` is indexed by the allocation FRONTIER and quantifies over ALL
@@ -822,10 +939,10 @@ flat-wf-step instr-pop-frame          prog fs wf =
         (sym (leave-frame-heap-ref (proj₂ (exec-abstract instr-pop-frame (floc fs) (falloc fs)))))
         (proj₁ (wf-abstract instr-pop-frame (floc fs) (falloc fs) wf))
 flat-wf-step instr-call-closure       prog fs wf = wf-call prog fs wf
-flat-wf-step (worklist-init k)        prog fs wf = proj₁ (wf-abstract (worklist-init k) (floc fs) (falloc fs) wf)
-flat-wf-step (worklist-push k)        prog fs wf = proj₁ (wf-abstract (worklist-push k) (floc fs) (falloc fs) wf)
-flat-wf-step (worklist-pop k)         prog fs wf = proj₁ (wf-abstract (worklist-pop k) (floc fs) (falloc fs) wf)
-flat-wf-step (worklist-check k)       prog fs wf = proj₁ (wf-abstract (worklist-check k) (floc fs) (falloc fs) wf)
+flat-wf-step (worklist-init k)        prog fs wf = wf-slot (worklist-init k) fs wf
+flat-wf-step (worklist-push k)        prog fs wf = wf-slot (worklist-push k) fs wf
+flat-wf-step (worklist-pop k)         prog fs wf = wf-slot (worklist-pop k) fs wf
+flat-wf-step (worklist-check k)       prog fs wf = wf-slot (worklist-check k) fs wf
 flat-wf-step (instr-sigop si)         prog fs wf = proj₁ (wf-abstract (instr-sigop si) (floc fs) (falloc fs) wf)
 flat-wf-step (instr-load-const p v)   prog fs wf = proj₁ (wf-abstract (instr-load-const p v) (floc fs) (falloc fs) wf)
 flat-wf-step (instr-load-code-addr k) prog fs wf = proj₁ (wf-abstract (instr-load-code-addr k) (floc fs) (falloc fs) wf)
@@ -833,7 +950,7 @@ flat-wf-step instr-save-closure-reg   prog fs wf = proj₁ (wf-abstract instr-sa
 flat-wf-step (instr-load-tag-lit k)   prog fs wf = proj₁ (wf-abstract (instr-load-tag-lit k) (floc fs) (falloc fs) wf)
 flat-wf-step (instr-alloc-heap k)     prog fs wf = proj₁ (wf-abstract (instr-alloc-heap k) (floc fs) (falloc fs) wf)
 flat-wf-step (instr-reg-op out-nz)    prog fs wf = wf-nz (readReg (regs (floc fs)) Output) fs wf
-flat-wf-step (instr-free-heap n)      prog fs wf = proj₁ (wf-abstract (instr-free-heap n) (floc fs) (falloc fs) wf)
+flat-wf-step (instr-free-heap n)      prog fs wf = wf-slot (instr-free-heap n) fs wf
 flat-wf-step (instr-room n)           prog fs wf = proj₁ (wf-abstract (instr-room n) (floc fs) (falloc fs) wf)
 flat-wf-step (load-at n)           prog fs wf = proj₁ (wf-abstract (load-at n) (floc fs) (falloc fs) wf)
 flat-wf-step (store-at n)           prog fs wf = proj₁ (wf-abstract (store-at n) (floc fs) (falloc fs) wf)

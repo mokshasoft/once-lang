@@ -1,5 +1,6 @@
 module Main (main) where
 
+import qualified Once.Compile.Bridge as Bridge
 import System.Environment (getArgs)
 import System.Exit (exitFailure)
 import qualified Data.Text.IO as TIO
@@ -71,6 +72,9 @@ data BuildConfig = BuildConfig
   , bcTarget    :: Maybe Target
   , bcSaveTemps :: Bool
   , bcOptimize  :: Bool
+  , bcAlloc     :: Bridge.Alloc
+  , bcInlineAlloc :: Bool
+  , bcUnchecked :: Bool
   , bcStrata    :: Maybe String
   , bcInterp    :: Maybe String
   , bcExplicit  :: [(InterpType, String)]
@@ -86,6 +90,9 @@ defaultBuildConfig = BuildConfig
   , bcTarget    = hostTarget
   , bcSaveTemps = False
   , bcOptimize  = True
+  , bcAlloc     = Bridge.AllocSlab
+  , bcInlineAlloc = False  -- D482: the allocator is a call; `--inline-alloc` inlines it
+  , bcUnchecked = False    -- D489: room checks on; `--unchecked` drops them (outside the proof)
   , bcStrata    = Nothing
   , bcInterp    = Nothing
   , bcExplicit  = []
@@ -109,6 +116,9 @@ parseBuild args = go args defaultBuildConfig
         , buildTarget    = bcTarget cfg
         , buildSaveTemps = bcSaveTemps cfg
         , buildOptimize  = bcOptimize cfg
+        , buildAlloc     = bcAlloc cfg
+        , buildInlineAlloc = bcInlineAlloc cfg
+        , buildUnchecked = bcUnchecked cfg
         , buildStrata    = bcStrata cfg
         , buildInterp    = bcInterp cfg
         , buildExplicitInterps = bcExplicit cfg
@@ -122,6 +132,10 @@ parseBuild args = go args defaultBuildConfig
       Nothing -> Nothing  -- invalid target
     go ("--save-temps" : rest) cfg = go rest cfg { bcSaveTemps = True }
     go ("--no-optimize" : rest) cfg = go rest cfg { bcOptimize = False }
+    go ("--alloc=slab" : rest) cfg = go rest cfg { bcAlloc = Bridge.AllocSlab }
+    go ("--alloc=pool" : rest) cfg = go rest cfg { bcAlloc = Bridge.AllocPool }
+    go ("--inline-alloc" : rest) cfg = go rest cfg { bcInlineAlloc = True }
+    go ("--unchecked" : rest) cfg = go rest cfg { bcUnchecked = True }
     go ("--strata" : s : rest) cfg = go rest cfg { bcStrata = Just s }
     go ("--interp" : i : rest) cfg = go rest cfg { bcInterp = Just i }
     go ("--host" : h : rest) cfg = go rest cfg { bcHost = h }
@@ -168,6 +182,9 @@ usage = do
   TIO.putStrLn "  --target ARCH       Target architecture (x86_64|x86_32|riscv64) [default: the host's]"
   TIO.putStrLn "  --save-temps        Keep intermediate files (.s, .o)"
   TIO.putStrLn "  --no-optimize       Skip optimizer"
+  TIO.putStrLn "  --inline-alloc      Inline the allocator at each site (default: a call)"
+  TIO.putStrLn "  --unchecked         No room checks: running out of memory is NOT detected and the"
+  TIO.putStrLn "                      verification does not cover the build (for comparison, trusted inputs)"
   TIO.putStrLn "  --strata PATH       Path to Strata directory for imports"
   TIO.putStrLn "  --interp PATH       Interpretation path (deprecated)"
   TIO.putStrLn "  -I:TYPE MODULE      Link interpretation (e.g., -I:x86_64 I.Linux.Syscalls)"

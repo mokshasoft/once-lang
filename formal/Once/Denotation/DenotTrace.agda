@@ -20,7 +20,7 @@
 -- `⟦_⟧ᴰ : IR A B → ⟦A⟧ᴰ → T ⟦B⟧ᴰ` is added in M1c.)
 --
 -- Data (`μ`/`ν`) and base types reuse the existing PURE value domain
--- (`Once.Semantics.Machine.⟦_⟧`): effects live on arrows, not inside first-order
+-- (`Once.Semantics.Machine.Value.⟦_⟧`): effects live on arrows, not inside first-order
 -- data. (Effects-in-data — a `μ` whose layers carry effectful closures —
 -- is a later refinement; flagged, not silently dropped.)
 ------------------------------------------------------------------------

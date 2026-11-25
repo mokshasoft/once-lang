@@ -22,19 +22,22 @@ module Once.CCC.Codegen.RoomChecksSim where
 open import Data.Bool using (Bool; true; false)
 open import Data.List using (List; []; _∷_; map)
 open import Data.Maybe using (Maybe; just; nothing) renaming (map to mmap)
-open import Data.Nat using (ℕ; zero; suc)
+open import Data.Nat using (ℕ; zero; suc; _≡ᵇ_)
 open import Data.Product using (Σ; _×_; _,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
-open import Once.CCC.Machine.SMCore using (AbstractInstr; AbstractTrace; instr-room)
-open import Once.CCC.Codegen.RoomChecks using (boundary?; stretch; room-checks; max-entry)
+open import Once.CCC.Machine.SMCore using (AbstractInstr; AbstractTrace; instr-room; Room; module AllocState)
+open import Once.CCC.Machine.InstrSlot using (slot-of)
+open import Once.CCC.Codegen.RoomChecks using (boundary?; stretch; checks; room-checks; room-checks-def; pick)
+import Relation.Binary.PropositionalEquality
+open import Once.CCC.Codegen.StackDepth using (o-start; owner-from)
 open import Once.CCC.Codegen.RoomChecksFacts using (ψ; φ; bump; module RoomFacts)
 
 module RoomSim {FS : FrameSemantics} (t : AbstractTrace) where
   open FlatMachine {FS}
-  open FlatState using (fret; flink; fpc; floc; fclosure)
+  open FlatState using (fret; flink; fpc; floc; fclosure; falloc)
   open RoomFacts {FS}
 
   P′ : AbstractTrace
@@ -52,25 +55,26 @@ module RoomSim {FS : FrameSemantics} (t : AbstractTrace) where
   -- the image-with-checks pc `p` stands for the original pc `i`: at its image,
   -- or on the check just before it
   PcRel : ℕ → ℕ → Set
-  PcRel i p = (p ≡ φ t i) ⊎ ((suc p ≡ φ t i) × Σ ℕ (λ k → fetch P′ p ≡ just (instr-room k)))
+  PcRel i p = (p ≡ φ t i) ⊎ ((suc p ≡ φ t i) × Σ Room (λ k → fetch P′ p ≡ just (instr-room k)))
 
   private
     -- past an instruction `x`: one place further, or two with `x`'s check between
     after-x : ∀ (c : ℕ) (x : AbstractInstr) → fetch t c ≡ just x
             → (b : Bool) → boundary? x ≡ b → PcRel (suc c) (suc (φ t c))
     after-x c x e false bf =
-      inj₁ (cong suc (sym (trans (ψ-next t c e) (cong (λ z → suc (bump z (ψ t c))) bf))))
+      inj₁ (sym (trans (ψ-next t c e) (cong (λ z → suc (bump z (ψ t c))) bf)))
     after-x c x e true  bt =
-      inj₂ ( cong suc (sym (trans (ψ-next t c e) (cong (λ z → suc (bump z (ψ t c))) bt)))
-           , stretch (max-entry t) (Data.List.drop (suc c) t)
-           , check-at (max-entry t) t c e bt )
+      inj₂ ( sym (trans (ψ-next t c e) (cong (λ z → suc (bump z (ψ t c))) bt))
+           , stretch (pick t) (owner-from o-start t c) (Data.List.drop (suc c) t)
+           , Relation.Binary.PropositionalEquality.subst (λ p → fetch p (suc (φ t c)) ≡ just (instr-room (stretch (pick t) (owner-from o-start t c) (Data.List.drop (suc c) t))))
+               (sym (room-checks-def t)) (check-at (pick t) o-start t c e bt) )
 
   -- ONE PLACE ON: after the instruction at `c` (or a return to `suc c`), the
   -- image with checks is at `suc (φ t c)` — which stands for `suc c`.
   pcRel-after : ∀ (c : ℕ) → PcRel (suc c) (suc (φ t c))
   pcRel-after c with fetch t c in e
   ... | just x  = after-x c x e (boundary? x) refl
-  ... | nothing = inj₁ (cong suc (sym (ψ-next-nothing t c e)))
+  ... | nothing = inj₁ (sym (ψ-next-nothing t c e))
 
   -- …so a return address maps to a pc that stands for it.
   pcRel-ret : ∀ (r : ℕ) → PcRel r (ret-map r)
@@ -131,11 +135,17 @@ module RoomSim {FS : FrameSemantics} (t : AbstractTrace) where
     call-to fs nothing  = φ t (fpc fs) , refl , inj₁ refl
 
     -- a return to what the stack holds
-    ret-to : ∀ (fs : FlatState) (rs : List ℕ)
-           → Σ ℕ (λ p → (do-ret (map ret-map rs) (lift fs (φ t (fpc fs))) ≡ lift (do-ret rs fs) p)
-                      × PcRel (fpc (do-ret rs fs)) p)
-    ret-to fs []       = φ t (fpc fs) , refl , inj₁ refl
-    ret-to fs (r ∷ rs) = ret-map r , refl , pcRel-ret r
+    -- (B1.7b: …or a fault, the gate deciding the same on both sides: the lift keeps the frame)
+    ret-to : ∀ (b : ℕ) (fs : FlatState) (rs : List ℕ)
+           → Σ ℕ (λ p → (do-ret b (map ret-map rs) (lift fs (φ t (fpc fs))) ≡ lift (do-ret b rs fs) p)
+                      × PcRel (fpc (do-ret b rs fs)) p)
+    ret-to b fs []       = φ t (fpc fs) , refl , inj₁ refl
+    ret-to b fs (r ∷ rs) = land (b ≡ᵇ AllocState.frame-slots (falloc fs))
+      where
+        land : ∀ tb → Σ ℕ (λ p → (ret-land tb (ret-map r) (map ret-map rs) (lift fs (φ t (fpc fs))) ≡ lift (ret-land tb r rs fs) p)
+                                × PcRel (fpc (ret-land tb r rs fs)) p)
+        land true  = ret-map r , refl , pcRel-ret r
+        land false = φ t (fpc fs) , refl , inj₁ refl
 
   private
     -- the tag branch, by what its test found
@@ -177,17 +187,39 @@ module RoomSim {FS : FrameSemantics} (t : AbstractTrace) where
     sv-at fs (SV-Lit _ _)            = φ t (fpc fs) , refl , inj₁ refl
     sv-at fs (SV-Code _)             = φ t (fpc fs) , refl , inj₁ refl
 
+  private
+    -- B1.7b (D458): a slot instruction, gated the same on both sides (the lift
+    -- keeps the frame): it moves on, or faults where it stands
+    -- (D470: a free is gated the same way, by `free-ok`)
+    gated′ : ∀ (fs : FlatState) (i : AbstractInstr) → (∀ prog fs′ → flat-exec-instr i prog fs′ ≡ flat-step-straight i fs′)
+           → StepLift fs i
+    gated′ fs i st = go (gate-ok i (floc fs) (falloc fs)) refl
+      where
+        q = φ t (fpc fs)
+        go : ∀ b → gate-ok i (floc fs) (falloc fs) ≡ b → StepLift fs i
+        go true e = on fs i (trans (trans (st P′ (lift fs q)) (straight-pass i (lift fs q) e))
+                                   (cong (λ z → lift z (suc q)) (sym X)))
+                            (cong fpc X)
+          where X = trans (st t fs) (straight-pass i fs e)
+        go false e = stay fs i (trans (trans (st P′ (lift fs q)) (cong (λ b → straight-at b i (lift fs q)) e))
+                                      (cong (λ z → lift z q) (sym Y)))
+                              (cong fpc Y)
+          where Y = trans (st t fs) (cong (λ b → straight-at b i fs) e)
+
+    gated : ∀ (fs : FlatState) (i : AbstractInstr) {k} → slot-of i ≡ just k → StepLift fs i
+    gated fs i sk = gated′ fs i (λ prog fs′ → slot-straight i prog fs′ sk)
+
   step-lift : ∀ (fs : FlatState) (i : AbstractInstr) → StepLift fs i
   step-lift fs i@mov-to-output = on fs i refl refl
   step-lift fs i@mov-to-input = on fs i refl refl
   step-lift fs i@load-indirect = on fs i refl refl
   step-lift fs i@load-indirect-suc = on fs i refl refl
-  step-lift fs i@(load-from-slot _) = on fs i refl refl
-  step-lift fs i@(store-at-slot _) = on fs i refl refl
+  step-lift fs i@(load-from-slot _) = gated fs i refl
+  step-lift fs i@(store-at-slot _) = gated fs i refl
   step-lift fs i@store-indirect = on fs i refl refl
   step-lift fs i@store-indirect-suc = on fs i refl refl
-  step-lift fs i@(lea-slot _) = on fs i refl refl
-  step-lift fs i@(restore-input _) = on fs i refl refl
+  step-lift fs i@(lea-slot _) = gated fs i refl
+  step-lift fs i@(restore-input _) = gated fs i refl
   step-lift fs i@(instr-alloc-stack _) = on fs i refl refl
   step-lift fs i@(instr-dealloc-stack _) = on fs i refl refl
   step-lift fs i@(instr-reclaim-to _) = on fs i refl refl
@@ -195,8 +227,8 @@ module RoomSim {FS : FrameSemantics} (t : AbstractTrace) where
   step-lift fs i@instr-pop-frame = on fs i refl refl
   step-lift fs instr-call-closure       = sv-at fs (fclosure fs)
   step-lift fs i@(worklist-init _) = on fs i refl refl
-  step-lift fs i@(worklist-push _) = on fs i refl refl
-  step-lift fs i@(worklist-pop _) = on fs i refl refl
+  step-lift fs i@(worklist-push _) = gated fs i refl
+  step-lift fs i@(worklist-pop _) = gated fs i refl
   step-lift fs i@(worklist-check _) = on fs i refl refl
   step-lift fs i@(instr-sigop _) = on fs i refl refl
   step-lift fs i@(instr-load-const _ _) = on fs i refl refl
@@ -205,19 +237,21 @@ module RoomSim {FS : FrameSemantics} (t : AbstractTrace) where
   step-lift fs i@(instr-load-tag-lit _) = on fs i refl refl
   step-lift fs i@(instr-alloc-heap _) = on fs i refl refl
   step-lift fs (instr-reg-op out-nz)    = nz-at fs (readReg (LocState.regs (floc fs)) Output)
-  step-lift fs i@(instr-free-heap _) = on fs i refl refl
+  step-lift fs i@(instr-free-heap _) = gated′ fs i (λ _ _ → refl)
   step-lift fs i@(load-at _) = on fs i refl refl
   step-lift fs i@(store-at _) = on fs i refl refl
   step-lift fs i@(addr-at _) = on fs i refl refl
+  step-lift fs i@(AbstractInstr.load-rec _) = on fs i refl refl
+  step-lift fs i@(AbstractInstr.store-rec _) = on fs i refl refl
   step-lift fs i@(instr-room _) = on fs i refl refl
   step-lift fs i@(instr-ctrl (c-label _)) = on fs i refl refl
   step-lift fs i@(instr-ctrl (c-entry _ _)) = on fs i refl refl
   step-lift fs i@(instr-ctrl (c-start _)) = on fs i refl refl
   step-lift fs i@(instr-ctrl c-leave) = stay fs i refl refl
-  step-lift fs (instr-ctrl (c-ret _))           = ret-to fs (fret fs)
+  step-lift fs (instr-ctrl (c-ret b))           = ret-to b fs (fret fs)
   step-lift fs (instr-ctrl (c-jmp n)) with jump-to fs (find-label t n)
   ... | p , e , r = p , trans (cong (λ z → do-jump z (lift fs (φ t (fpc fs)))) (find-label-room t n)) e , r
-  step-lift fs (instr-ctrl (c-branch-tag-zero n)) = branch-at fs n (tag-test (flat-read-tag (floc fs)))
+  step-lift fs (instr-ctrl (c-branch-tag-zero n)) = branch-at fs n (tag-test (flat-read-tag (falloc fs) (floc fs)))
   step-lift fs (instr-ctrl (c-call-fn f)) with call-to fs (find-entry t (e-fn f))
   ... | p , e , r = p , trans (cong (λ z → do-call-at z (lift fs (φ t (fpc fs)))) (find-entry-room t (e-fn f))) e , r
 

@@ -4,13 +4,12 @@
 ------------------------------------------------------------------------
 -- Once.Adequacy.BlockTable   (plan 0.129 B5)
 --
--- A COMPILER-OWNED SIGOP'S SYMBOL IS IN THE FILE'S BLOCK TABLE. Two halves,
--- both arch-free:
+-- A COMPILER-OWNED SIGOP'S SYMBOL IS IN THE FILE'S BLOCK TABLE. Arch-free:
 --
---   * `image-owned`: every `instr-sigop si` of the program image satisfies
---     `Named (program-blocks p)` — the IR fact `program-owned` carried through
---     the emitter's walk (`ImageInstrs`);
---   * `table-has`: a block of `program-blocks p` keeps its symbol through
+--   * every `instr-sigop si` of the image names a block of its list (`SigNamed`;
+--     the linear core's image: `LinCore.ImageOwned`; master's image, with its
+--     `image-owned`, went with master's lowering, plan 0.146 D467);
+--   * `table-has`: a block of the list keeps its symbol through
 --     `dedup-blocks` (a later duplicate is dropped only for an earlier one with
 --     the same symbol), whatever the arch's symbol and payload.
 --
@@ -36,13 +35,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; subst; cong; sym
 open import Relation.Nullary using (yes; no)
 
 open import Once.Arith.Machine.IR using (ArithBlock)
-open import Once.Compile.Emit using (program-blocks; image-of; entry-owner; rewrite-program; dedup-go; dedup-blocks; block-symbol)
-open import Once.CCC.Codegen.ProgramImage using (program-image)
-open import Once.CCC.Codegen.RoomChecksFacts using (All-room)
-open import Once.Denotation.Program using (IRProgram)
-open import Once.CCC.Codegen.CallOK using (InstrOK)
-import Once.CCC.Codegen.ImageInstrs as II
-open import Once.Adequacy.RewriteOwned using (Named; BlockOf; program-owned)
+open import Once.Compile.Emit using (dedup-go; dedup-blocks; block-symbol)
+open import Once.Adequacy.RewriteOwned using (Named; BlockOf)
 open import Once.Arith.SigOp.DigestInjective using (block-symbol-injective)
 open import Once.Arith.SigOp.Block using (block-name)
 open import Once.Arith.Machine.IR using (mk-block)
@@ -54,15 +48,6 @@ open import Once.Spec.Name using (bare)
 open import Data.Product using (Σ)
 open import Data.List.Relation.Unary.Any.Properties using (map⁻)
 open import Relation.Binary.PropositionalEquality using (refl; trans)
-
-------------------------------------------------------------------------
--- The image's SigOps name blocks.
-------------------------------------------------------------------------
-
-image-owned : ∀ (p : IRProgram) → All (InstrOK (λ _ _ _ → ⊤) (Named (program-blocks p))) (image-of p)
-image-owned p = All-room (program-image entry-owner (rewrite-program p)) (λ _ → tt) (
-  II.image-ok (λ _ _ _ _ → ⊤) tt (Named (program-blocks p)) entry-owner (rewrite-program p)
-    (proj₁ (program-owned p)) (proj₂ (program-owned p)))
 
 ------------------------------------------------------------------------
 -- `dedup-blocks` keeps every symbol.
@@ -143,3 +128,19 @@ which-block pay bs si nd a
     same : ∀ (b b₀ : ArithBlock) → block-symbol b ≡ once-symbol-path (bare (block-name (block-body b₀))) → b ≡ b₀
     same (mk-block sh n e) (mk-block sh₀ n₀ e₀) eq with block-symbol-injective e e₀ eq
     ... | refl = refl
+
+------------------------------------------------------------------------
+-- D464: THE TABLE OF A BLOCK LIST, for any image whose calls name its blocks.
+--
+-- The linear core's image has its own blocks (`LinCore.ImageOwned`). What the
+-- arch layer reads: every `instr-sigop si` of the program names a block of
+-- `bs` (`SigNamed`), and the file's table is `bs`'s, by symbol, once each
+-- (`Target.Backend.file-table`).
+------------------------------------------------------------------------
+
+open import Once.CCC.Machine.SMCore using (AbstractTrace; AbstractInstr; instr-sigop)
+import Data.List.Relation.Unary.All as All
+
+-- an instruction that calls an op names a block of `bs`
+SigNamed : List ArithBlock → AbstractInstr → Set
+SigNamed bs i = ∀ {A B} (si : SigOpInfo A B) → i ≡ instr-sigop si → Named bs si

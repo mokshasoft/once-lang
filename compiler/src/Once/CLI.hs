@@ -137,6 +137,9 @@ data BuildOptions = BuildOptions
   , buildTarget    :: Maybe Target                -- ^ Target architecture (default: hostTarget; Nothing on an unknown host)
   , buildSaveTemps :: Bool                        -- ^ Keep intermediate files (.s, .o)
   , buildOptimize  :: Bool                        -- ^ Run optimizer (default: True)
+  , buildAlloc     :: Bridge.Alloc                -- ^ D470: the cell allocator (`--alloc`, default: slab)
+  , buildInlineAlloc :: Bool                      -- ^ D482: inline the allocator at each site (`--inline-alloc`; default: a call)
+  , buildUnchecked :: Bool                        -- ^ D489: no room checks (`--unchecked`): OUTSIDE the proof
   -- Future options (not yet wired to Agda)
   , buildStrata    :: Maybe FilePath              -- ^ Strata directory path
   , buildInterp    :: Maybe FilePath              -- ^ Legacy interpretation path
@@ -334,11 +337,22 @@ runBuild opts = do
 emitWarnings :: Bridge.Arch -> T.Text -> Bridge.Resolved -> IO ()
 emitWarnings arch src m = mapM_ (hPutStrLn stderr . T.unpack) (Bridge.moduleWarnings arch src m)
 
+-- | The assembly of a resolved module: the verified compiler's file (plan 0.146
+-- D466: the linear core's image of a program, `Once.LinCore.Emit.assemblyCore`).
+assemblyOf :: BuildOptions -> Bridge.Arch -> Bridge.Resolved -> IO (Either T.Text T.Text)
+assemblyOf opts arch mod_ = do
+  when (buildUnchecked opts) $
+    hPutStrLn stderr ("warning: --unchecked: the program has no room checks. Running out of memory (stack or "
+                      ++ "cells) is not detected, so the verification does not cover this build: a run that "
+                      ++ "runs out writes past its region.")
+  pure (Bridge.assemblyFromModule (buildOptimize opts) (buildAlloc opts) (buildInlineAlloc opts) (buildUnchecked opts) arch mod_)
+
 runVerifiedBuild :: BuildOptions -> FilePath -> Bridge.Arch -> T.Text -> Bridge.Resolved
                  -> FilePath -> [[T.Text]] -> IO ()
 runVerifiedBuild opts outputBase arch source mod_ strataDir importPaths = do
   emitWarnings arch source mod_
-  case Bridge.assemblyFromModule (buildOptimize opts) arch mod_ of
+  asm <- assemblyOf opts arch mod_
+  case asm of
     Right asmText -> do
       let asmPath = outputBase ++ ".s"
           objPath = outputBase ++ ".o"
@@ -437,8 +451,8 @@ runImageBuild opts = do
     unless (Bridge.isProgram mod_) $
       orDie "Error" (Left (input ++ " defines no `main`, so it cannot be a program of an image"))
     emitWarnings arch source mod_
-    asmText <- orDie "Compilation error"
-                 (either (Left . T.unpack) Right (Bridge.assemblyFromModule (buildOptimize opts) arch mod_))
+    asm <- assemblyOf opts arch mod_
+    asmText <- orDie "Compilation error" (either (Left . T.unpack) Right asm)
     let base    = outputBase ++ ".p" ++ show n
         asmPath = base ++ ".s"
         objPath = base ++ ".o"
@@ -574,8 +588,12 @@ archAsFlags Bridge.X86_32 = ["--32"]
 archAsFlags _             = []
 
 archLdFlags :: Bridge.Arch -> [String]
-archLdFlags Bridge.X86_32 = ["-m", "elf_i386"]
-archLdFlags _             = []
+archLdFlags Bridge.X86_32  = ["-m", "elf_i386"]
+-- D472: no linker relaxation on riscv64. A `.bss` symbol near the global
+-- pointer (the program's allocator record) would have its `lla` relaxed to a
+-- `gp`-relative add, and no Host sets `gp`: the code addresses what it says.
+archLdFlags Bridge.RiscV64 = ["--no-relax"]
+archLdFlags _              = []
 
 -- | Assemble a .s file to .o using the system assembler
 -- Checks AS environment variable, falls back to "as"

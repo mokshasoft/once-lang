@@ -29,10 +29,12 @@ slot-of (load-from-slot k)  = just k
 slot-of (store-at-slot k)   = just k
 slot-of (lea-slot k)        = just k
 slot-of (restore-input k)   = just k
-slot-of (worklist-init k)   = just k
+-- (B1.7b: `worklist-init`/`worklist-check` compile to nothing and touch no
+-- slot — the machine's slot gate does not apply to them)
+slot-of (worklist-init _)   = nothing
 slot-of (worklist-push k)   = just k
 slot-of (worklist-pop k)    = just k
-slot-of (worklist-check k)  = just k
+slot-of (worklist-check _)  = nothing
 slot-of mov-to-output          = nothing
 slot-of mov-to-input           = nothing
 slot-of load-indirect          = nothing
@@ -57,4 +59,6 @@ slot-of (instr-room _)    = nothing
 slot-of (load-at _)    = nothing
 slot-of (store-at _)    = nothing
 slot-of (addr-at _)    = nothing
+slot-of (load-rec _)    = nothing
+slot-of (store-rec _)    = nothing
 slot-of (instr-ctrl _)         = nothing

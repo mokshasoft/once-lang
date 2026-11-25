@@ -1,0 +1,314 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+------------------------------------------------------------------------
+-- Once.LinCore.WordStep — plan 0.146 B1.4b (D436 step 3, D439): ★★ THE STEP THEOREM: every covered image step is matched by flat steps that keep the relation
+-- (split from `Global` for its build time; over `Global.Relate`).
+------------------------------------------------------------------------
+
+{-# OPTIONS --guardedness #-}
+
+
+open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _⊔_; _≤_)
+open import Data.List using (List; []; _∷_; _++_; length)
+open import Data.List.Membership.Propositional using (_∈_)
+open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Empty using (⊥; ⊥-elim)
+open import Data.Unit using (tt)
+open import Data.Bool using (false)
+open import Function using (case_of_)
+open import Relation.Nullary using (¬_)
+open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
+open import Once.Spec.Numerics using (TargetNum)
+open import Once.IR.Semantics.Trace using (FFIAnswers)
+open import Once.LinCore.Flat using (Base)
+open import Once.CCC.FrameSemantics using (FrameSemantics; module FrameSemantics)
+open import Once.CCC.Machine.SMCore
+open import Once.CCC.Machine.Locations using (AtStack; AtDynamic)
+open import Once.CCC.Machine.Flat using (module FlatMachine)
+import Data.Nat
+import Once.Memory.HeapAddress
+import Once.LinCore.Moves
+import Data.Nat.Properties
+import Level
+
+
+module Once.LinCore.WordStep
+  (fmt : TargetNum) (ans : FFIAnswers)
+  (bw : Base → ℕ)
+  where
+
+open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (Base; ⟦_⟧b; Lit)
+open import Once.IR.Semantics.Trace using (T; call)
+open import Once.LinCore.NbEPLinCore fmt ans
+open import Once.LinCore.Events fmt ans bw
+open import Once.LinCore.Values fmt bw
+open import Once.LinCore.Code fmt bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots; []ᵉ; vw; see; Cfg; _∥_)
+open import Once.LinCore.Image fmt bw
+open import Once.LinCore.ImageRun fmt ans bw using (Ret; []ʳ; frm; _∷ⁱ_)
+open import Once.LinCore.Keys fmt bw
+open import Once.LinCore.Layout fmt bw using (Frame; frame; frameOf; budget; ws; module Frame)
+open Frame using (EP; OP)
+open import Once.LinCore.Lower fmt bw
+open import Once.LinCore.Words fmt ans bw
+open import Once.LinCore.ImagePt fmt ans bw using (Sub; Pt; at; disp; next; body; whole)
+open import Once.LinCore.LowAt fmt ans bw using (module At)
+open import Once.LinCore.Labels fmt ans bw using (module NoLabels)
+open import Once.LinCore.PointAt fmt ans bw using (module Ctl)
+open import Once.LinCore.StepLocal fmt ans bw using (module Loc)
+open import Once.LinCore.LoopStep fmt ans bw using (module Loops)
+open import Once.LinCore.CallStep fmt ans bw using (module Calls; module Frames)
+open import Once.LinCore.KeysRun fmt ans bw using (module ProgramRun)
+open import Once.LinCore.TrampAt fmt ans bw using (under; module TrImg; module Tr)
+
+open import Once.LinCore.Global fmt ans bw using (module Relate)
+open import Once.LinCore.GlobalLocal fmt ans bw using (module LocalR)
+open import Once.LinCore.GlobalLocalC fmt ans bw using (module CaseR)
+open import Once.LinCore.GlobalLocalR fmt ans bw using (module EndR)
+open import Once.LinCore.GlobalCall fmt ans bw using (module CallR)
+open import Once.LinCore.GlobalRet fmt ans bw using (module RetR)
+open import Once.LinCore.GlobalDispatch fmt ans bw using (module DispR)
+open import Once.LinCore.GlobalDispatchF fmt ans bw using (module DispF)
+open import Once.LinCore.GlobalDispatchW fmt ans bw using (module DispW)
+open import Once.LinCore.GlobalDispatchC fmt ans bw using (module DispC)
+open import Once.LinCore.GlobalOpenC fmt ans bw using (module OpenC)
+open import Once.LinCore.GlobalRecloseC fmt ans bw using (module RecloseC)
+open import Once.LinCore.GlobalOp fmt ans bw using (module OpG)
+open import Once.LinCore.StepOp fmt ans bw using (module Agree; evsOf; ioEvent)
+open import Once.LinCore.StepIos fmt ans bw using (module IosG)
+open import Once.IR.Semantics.Event using (SigOpEvent)
+
+module StepR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
+           (ldConst : ∀ {b} → Lit b → AbstractInstr)
+           (ld-nl : ∀ {b} (v : Lit b) → NoLabels.mark {FS} (ldConst v) ≡ nothing)
+           (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue FS) where
+  open Relate {FS} ds f ldConst ld-nl wordOf
+  module WL = LocalR {FS} ds f ldConst ld-nl wordOf
+  module WC = CaseR {FS} ds f ldConst ld-nl wordOf
+  module WE = EndR {FS} ds f ldConst ld-nl wordOf
+  open CallR {FS} ds f ldConst ld-nl wordOf using (module GCall)
+  open RetR {FS} ds f ldConst ld-nl wordOf using (module GRet)
+  open DispR {FS} ds f ldConst ld-nl wordOf using (gicall; gopen1; gnopen; giobs)
+  open DispF {FS} ds f ldConst ld-nl wordOf using (gcfree; gnfree; gfopen; gfopenν)
+  open DispW {FS} ds f ldConst ld-nl wordOf using (gicallω; gopenω)
+  open DispC {FS} ds f ldConst ld-nl wordOf using (gccopy; gncopy)
+  open OpenC {FS} ds f ldConst ld-nl wordOf using (gcopen; gcopenν)
+  open RecloseC {FS} ds f ldConst ld-nl wordOf using (greclose; grecloseν)
+  open OpG {FS} ds f ldConst ld-nl wordOf using (gop; gopend)
+  open Ctl {FS} ds f ldConst ld-nl using (main; L₀ˢ; L₀ᵇ; start-root; blockFin; Pnt; p-start; p-block; p-tramp; p-halt; ptFin)
+  open Program ds f using (U)
+  open Agree {FS} U wordOf using (Agrees)
+  open IosG {FS} ds f ldConst ld-nl wordOf using (straight-ios)
+  open Program ds f using (ncty)
+  open Program′ ds f ldConst using (image; j₀)
+  open Lowering U ncty ldConst
+  open Calls {FS} ds f ldConst ld-nl wordOf using (blockR; module K; module From; call-core)
+  open Rel {FS} U wordOf using (EnvW; StkW)
+  open FlatMachine {FS} using (FlatState; module FlatState)
+  open FlatState using (floc; falloc; fret; fpc)
+  open FrameSemantics FS using (_≺_)
+  open TrImg {FS} ds f ldConst ld-nl using (image-tr)
+  open Tr U ncty ldConst using (trAt)
+  open Rel {FS} U wordOf using (CfgW; VW; vpair; vfn; SlotsAt; cellPtr)
+  open import Once.LinCore.Moves {FS} using (slot)
+  open import Once.LinCore.LowerSim fmt ans bw using (module Sim)
+  open Sim {FS} U wordOf using (envW-heap; stkW-heap; envW-frame; slots-frame; cntE; cntS)
+  open Rel {FS} U wordOf using (cellLoc)
+  open import Once.LinCore.FreshI fmt ans bw using (module Cells)
+  open Cells {FS} U wordOf using (FreshR)
+  open import Once.LinCore.Moves {FS} using (Old)
+  open FrameSemantics FS using (≺-trans; ≺-irrefl)
+  open import Once.LinCore.ImageRun fmt ans bw using (StepI)
+  open import Once.LinCore.LocalStep fmt ans bw using (module Steps)
+  open import Once.LinCore.StepKinds fmt ans bw using (Local; LocalC; LocalI; StraightC; straight-local; CoveredC; Motive; CoveredCases; covered-elim)
+  open import Once.LinCore.HeldI fmt ans bw using (InvI)
+  open import Once.LinCore.LabelsI fmt ans bw using (module Img)
+  open import Once.LinCore.LowAt fmt ans bw using (Inside)
+  open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
+  open FlatStepsAPI {FS} using (FlatSteps)
+  open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
+  open FlatEventTrace {FS} using (chain-ctrls)
+  open import Once.LinCore.ImageSim fmt ans bw using (isLoop; loopI; loopC)
+  open import Once.LinCore.Moves {FS} using (Keep; module Keep)
+  open Keep using (k-frame; k-saved; k-ret; k-other)
+  open Cells {FS} U wordOf using (fresh-cfg; fresh-ret)
+  open Img {FS} ds f ldConst ld-nl using (image-label)
+  open Frames {FS} using (Called)
+  open Called
+  open import Once.LinCore.LowerSimE {FS} using (callee-frame; callee-below; callee-≢; CallOut; module CallOutA)
+  open CallOutA using (co-frame; co-saved; co-ret; co-rest; co-next)
+  open import Once.LinCore.LowerSimH fmt ans bw using (module SimH)
+  open SimH {FS} U wordOf using (open1-sim)
+  open import Once.LinCore.LowAt fmt ans bw using (in-trans; in-r)
+  open import Once.LinCore.EntriesI fmt ans bw using (module ImgE)
+  open ImgE {FS} ds f ldConst ld-nl using (image-at)
+  open Program ds f using (blocks-in)
+  open import Data.List.Properties using (length-++; ++-assoc; ++-identityʳ)
+  open Sim {FS} U wordOf using (len-mvPS)
+  open import Once.LinCore.PointAt fmt ans bw using (module Fetch)
+  open Fetch {FS} using (in-seg)
+  open import Once.LinCore.Moves {FS} using (Seg; Seg-++ˡ; Ran; module Ran)
+  open Ran using (r-keep; r-pc)
+  open Keep using (k-halt)
+  open import Once.LinCore.LowerSimF fmt ans bw using (module SimF)
+  open SimF {FS} U wordOf using (leave; area-gen)
+  open CallOutA using (co-pc; co-halt)
+  open import Once.LinCore.LowerSimG {FS} using (ClosIn; closure-in)
+  open ClosIn
+  open ImgE {FS} ds f ldConst ld-nl using (image-tramp)
+  open Sim {FS} U wordOf using (≤∸)
+
+  ----------------------------------------------------------------------
+  -- 8. ★★ THE STEP THEOREM: every covered image step is matched by flat
+  -- steps that keep the relation. Covered: the one-shot and the observation
+  -- dispatches (`icall`, `iobs`, `icallω`, `cfree`, `nfree`) and their trampolines
+  -- (`open1`, `nopen`, `openω`, `fopen`, the inner call, the way out; D440, D442,
+  -- D436, D444), and the copy's (`ccopy`, `ncopy`, `copen`, `reclose`; D436); an op
+  -- (`lop`), relative to the machine's world (D445: `Agrees`), a halting op landing in a
+  -- halted machine (`Lands`).
+  ----------------------------------------------------------------------
+
+  module Theorem (ld : ∀ {b} (v : Lit b) (fs : FlatState)
+                       → FlatMachine.flat-exec-instr {FS} (ldConst v) image fs
+                         ≡ record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Output (wordOf (lit v)) } ; fpc = suc (FlatMachine.FlatState.fpc fs) }) where
+    open WL.Whole ld using (gstep-local)
+    open WC.Whole ld using (gcase₁; gcase₂; gloop; gloop-ctrl)
+    open WE.Whole ld using (greti)
+    open GCall using (gcall; ArrivesAt)
+    open GRet using (gret)
+    open Related
+    -- where a step lands: related, or (the image halted) a halted machine
+    -- (D448: and a running state on the way, after which the halting op left `left` as it was)
+    HaltC : ∀ {sh U′} → Codeᴵ sh U′ → FlatState → FlatState → Set
+    HaltC c fs fs′ = (c ≡ halted) × (LocState.halted (floc fs′) ≡ Data.Bool.true)
+                     × Σ FlatState λ fs₀ → Σ ℕ λ M → FlatSteps image M fs fs₀ × LocState.halted (floc fs₀) ≡ Data.Bool.false
+                         × ending (floc fs′) ≡ ending (floc fs₀)
+
+    -- (D446: the machine's log grown by the events the step shows the world)
+    Lands : ∀ {T sh U′} → List SigOpEvent → Codeᴵ sh U′ → Ret U′ T → Cfg sh → ℕ → FlatState → Set
+    Lands E c r m n fs = Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′ × (Related c r m n fs′ ⊎ HaltC c fs fs′)
+                           × LocState.ev-log (floc fs′) ≡ LocState.ev-log (floc fs) ++ E
+
+    -- a step that shows nothing keeps the log
+    lift : ∀ {T sh U′} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n fs E} → E ≡ [] → ArrivesAt c r m n fs → Lands E c r m n fs
+    lift {fs = fs} refl (N , fs′ , st , G , lg) = N , fs′ , st , inj₁ G , trans lg (sym (++-identityʳ (LocState.ev-log (floc fs))))
+
+    -- what a step owes: from a related state, in the machine's world (D445), where it lands
+    Owes : ∀ {T} → Motive {Level.zero} {T}
+    Owes {c = c} {r = r} {m = m} {n = n} {t = t} {c′ = c′} {r′ = r′} {m′ = m′} {n′ = n′} st =
+      ∀ {h fs} → InvI m r n h → Related c r m n fs → Agrees st fs
+      → Σ (Lands (evsOf t) c′ r′ m′ n′ fs) λ L → isLoop st ≤ chain-ctrls (proj₁ (proj₂ (proj₂ L)))
+
+    -- the cases, by the step's kind
+    private
+      halt-out : ∀ {T sh U′} {r : Ret U′ T} {m : Cfg sh} {n fs E}
+           → Σ ℕ (λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′ × LocState.halted (floc fs′) ≡ Data.Bool.true
+                          × LocState.ev-log (floc fs′) ≡ LocState.ev-log (floc fs) ++ E
+                          × ending (floc fs′) ≡ ending (floc fs) × LocState.halted (floc fs) ≡ Data.Bool.false)
+           → Lands E (halted {sh = sh}) r m n fs
+      halt-out {fs = fs} (N , fs′ , st , hlt , lg , lft , run) =
+        N , fs′ , st , inj₂ (refl , hlt , fs , 0 , FlatStepsAPI.[] , run , lft) , lg
+
+      -- an op: the log grown by its events
+      op-out : ∀ {T sh U′} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n fs E}
+           → Σ ℕ (λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′ × Related c r m n fs′
+                          × LocState.ev-log (floc fs′) ≡ LocState.ev-log (floc fs) ++ E)
+           → Lands E c r m n fs
+      op-out (N , fs′ , st , G , lg) = N , fs′ , st , inj₁ G , lg
+
+      -- a straight step enters no loop
+      local-0 : ∀ {sh sh′} (i : Insᴵ sh sh′) → LocalI i → loopI i ≡ 0
+      local-0 unpair l = refl
+      local-0 pair l = refl
+      local-0 swap l = refl
+      local-0 unit l = refl
+      local-0 untag l = refl
+      local-0 untag₁ l = refl
+      local-0 tag₁ l = refl
+      local-0 elend l = refl
+      local-0 eunlend l = refl
+      local-0 elift l = refl
+      local-0 efst l = refl
+      local-0 esnd l = refl
+      local-0 eout l = refl
+      local-0 eoutq l = refl
+      local-0 eapp l = refl
+      local-0 epop l = refl
+      local-0 eword l = refl
+      local-0 oncify l = refl
+      local-0 (prim ds g) l = refl
+      local-0 (call _) ()
+      local-0 icall ()
+      local-0 icallω ()
+      local-0 (iobs _) ()
+      local-0 ccopy ()
+      local-0 ncopy ()
+      local-0 cfree ()
+      local-0 nfree ()
+      local-0 open1 ()
+      local-0 openω ()
+      local-0 nopen ()
+      local-0 copen ()
+      local-0 reclose ()
+      local-0 fopen ()
+      local-0 (loop _) ()
+      local-0 stuck ()
+
+      straight-0 : ∀ {sh U} (c : Codeᴵ sh U) → StraightC c → loopC c ≡ 0
+      straight-0 (i ⨾ k) l = local-0 i l
+      straight-0 (ecase _ _) l = refl
+      straight-0 (case _ _) ()
+      straight-0 end ()
+      straight-0 halted ()
+
+      zs : ∀ {T sh U′} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n fs E} {j} → j ≡ 0
+         → (L : Lands E c r m n fs) → Σ (Lands E c r m n fs) λ L′ → j ≤ chain-ctrls (proj₁ (proj₂ (proj₂ L′)))
+      zs refl L = L , Data.Nat.z≤n
+
+      -- a step that enters no loop: no control step owed
+      z0 : ∀ {T sh U′} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n fs E}
+         → (L : Lands E c r m n fs) → Σ (Lands E c r m n fs) λ L′ → 0 ≤ chain-ctrls (proj₁ (proj₂ (proj₂ L′)))
+      z0 L = L , Data.Nat.z≤n
+
+    word-cases : ∀ {T} → CoveredCases {Level.zero} {T}
+    word-cases = record
+      { P   = Owes
+      ; loc = λ {c = c} st l inv G _ → zs (straight-0 c l) (lift (cong (Data.List.map ioEvent) (straight-ios st l G)) (gstep-local st l inv G))
+      ; cs₁ = λ inv G _ → z0 (lift refl (gcase₁ (g-pt G) inv (g-here G) (g-next G) (g-ret G) (g-blk G) (g-live G) (g-fal G)))
+      ; cs₂ = λ inv G _ → z0 (lift refl (gcase₂ (g-pt G) inv (g-here G) (g-next G) (g-ret G) (g-blk G) (g-live G) (g-fal G)))
+      ; lp  = λ inv G _ → (lift refl (gloop (g-pt G) inv (g-here G) (g-next G) (g-ret G) (g-blk G) (g-live G) (g-fal G)) , gloop-ctrl (g-pt G) inv (g-here G) (g-next G) (g-ret G) (g-blk G) (g-live G) (g-fal G))
+      ; rti = λ inv G _ → z0 (lift refl (greti (g-pt G) inv (g-here G) (g-next G) (g-ret G) (g-blk G) (g-live G) (g-fal G)))
+      ; cl  = λ inv G _ → z0 (lift refl (gcall (g-pt G) inv (g-here G) (g-next G) (g-ret G) (g-blk G) (g-live G) (g-fal G)))
+      ; rt  = λ inv G _ → z0 (lift refl (gret (g-pt G) inv (g-here G) (g-next G) (g-ret G) (g-blk G) (g-live G) (g-fal G)))
+      ; ic  = λ inv G _ → z0 (lift refl (gicall (g-pt G) inv (g-here G) (g-next G) (g-ret G) (g-blk G) (g-live G) (g-fal G)))
+      ; op1 = λ inv G _ → z0 (lift refl (gopen1 (g-pt G) inv (g-here G) (g-next G) (g-ret G) (g-blk G) (g-live G) (g-fal G)))
+      ; nop = λ inv G _ → z0 (lift refl (gnopen (g-pt G) inv (g-here G) (g-next G) (g-ret G) (g-blk G) (g-live G) (g-fal G)))
+      ; iob = λ inv G _ → z0 (lift refl (giobs (g-pt G) inv (g-here G) (g-next G) (g-ret G) (g-blk G) (g-live G) (g-fal G)))
+      ; cf  = λ inv G _ → z0 (lift refl (gcfree (g-pt G) inv (g-here G) (g-next G) (g-ret G) (g-blk G) (g-live G) (g-fal G)))
+      ; nf  = λ inv G _ → z0 (lift refl (gnfree (g-pt G) inv (g-here G) (g-next G) (g-ret G) (g-blk G) (g-live G) (g-fal G)))
+      ; fo  = λ inv G _ → z0 (lift refl (gfopen (g-pt G) inv (g-here G) (g-next G) (g-ret G) (g-blk G) (g-live G) (g-fal G)))
+      ; foν = λ inv G _ → z0 (lift refl (gfopenν (g-pt G) inv (g-here G) (g-next G) (g-ret G) (g-blk G) (g-live G) (g-fal G)))
+      ; icω = λ eq inv G _ → z0 (lift refl (gicallω (g-pt G) eq inv (g-here G) (g-next G) (g-ret G) (g-blk G) (g-live G) (g-fal G)))
+      ; opω = λ eq inv G _ → z0 (lift refl (gopenω (g-pt G) eq inv (g-here G) (g-next G) (g-ret G) (g-blk G) (g-live G) (g-fal G)))
+      ; cc  = λ eq inv G _ → z0 (lift refl (gccopy (g-pt G) eq inv (g-here G) (g-next G) (g-ret G) (g-blk G) (g-live G) (g-fal G)))
+      ; nc  = λ eq inv G _ → z0 (lift refl (gncopy (g-pt G) eq inv (g-here G) (g-next G) (g-ret G) (g-blk G) (g-live G) (g-fal G)))
+      ; co  = λ eq inv G _ → z0 (lift refl (gcopen (g-pt G) eq inv (g-here G) (g-next G) (g-ret G) (g-blk G) (g-live G) (g-fal G)))
+      ; coν = λ eq inv G _ → z0 (lift refl (gcopenν (g-pt G) eq inv (g-here G) (g-next G) (g-ret G) (g-blk G) (g-live G) (g-fal G)))
+      ; rc  = λ eq inv G _ → z0 (lift refl (greclose (g-pt G) eq inv (g-here G) (g-next G) (g-ret G) (g-blk G) (g-live G) (g-fal G)))
+      ; rcν = λ eq inv G _ → z0 (lift refl (grecloseν (g-pt G) eq inv (g-here G) (g-next G) (g-ret G) (g-blk G) (g-live G) (g-fal G)))
+      ; op  = λ run inv G ag → z0 (op-out (gop (g-pt G) run inv (g-here G) (g-next G) (g-ret G) (g-blk G) ag (g-live G) (g-fal G)))
+      ; ope = λ p inv G ag → z0 (halt-out (gopend (g-pt G) (g-here G) ag))
+      }
+
+    -- ★ by the step's kind (the one split on a step is StepKinds'), with a control step per loop entry
+    word-stepC : ∀ {T sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n t} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m′ n′ h fs}
+           (st : StepI c r m n t c′ r′ m′ n′) → CoveredC c → InvI m r n h → Related c r m n fs → Agrees st fs
+           → Σ (Lands (evsOf t) c′ r′ m′ n′ fs) λ L → isLoop st ≤ chain-ctrls (proj₁ (proj₂ (proj₂ L)))
+    word-stepC st cv inv G ag = covered-elim word-cases st cv inv G ag
+
+    word-step : ∀ {T sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n t} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m′ n′ h fs}
+           (st : StepI c r m n t c′ r′ m′ n′) → CoveredC c → InvI m r n h → Related c r m n fs → Agrees st fs → Lands (evsOf t) c′ r′ m′ n′ fs
+    word-step st cv inv G ag = proj₁ (word-stepC st cv inv G ag)

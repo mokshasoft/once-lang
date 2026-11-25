@@ -61,17 +61,7 @@ open import Once.Adequacy.RewriteLinked using (rewrite-ir-linked)
 open import Once.Parser using (parseStrict)
 open import Once.Parser.Module.Resolve using (resolveImports; ModuleMap)
 open import Once.Denotation.Behavior using (Source)
-open import Once.Spec.Trace using (Tr)
-open import Once.Denotation.TraceTr using (trT∞)
-open import Once.Adequacy.MachineTrace using (silentTr)
-open import Data.Unit using (⊤)
--- Plan 0.73 (D113): the meaning is target-relative at `Float`, so the format
--- is threaded in. An explicit ARGUMENT, not a module parameter — these are
--- recursive and a parameterised module stops reducing at a variable instance.
-open import Once.Spec.Numerics using (TargetNum)
-open import Once.IR.Semantics.Trace
-  using (Interp; pureHalf)
-open import Once.Denotation.Program using (IRFun; IRProgram; runIR; LinkedAt; LinkedAt-at; Linked; LinkedProgram; TeleLinked; NamesDistinct)
+open import Once.Denotation.Program using (IRFun; IRProgram; LinkedAt; LinkedAt-at; Linked; LinkedProgram; TeleLinked; NamesDistinct)
 open import Data.List.Relation.Unary.AllPairs using ([]; _∷_)
 open import Relation.Binary.PropositionalEquality using (_≢_)
 open Once.Denotation.Program.IRProgram using (main; table)
@@ -228,15 +218,9 @@ rewrite-program-linked p (lm , les , tl , nd) =
   , tele-rewrite-linked (table p) tl
   , names-rewrite (table p) nd
 
-------------------------------------------------------------------------
--- IR-level meaning (the source observable).
-------------------------------------------------------------------------
-
--- D320: …and as a TRACE — the run's calls, then how it ended (`returned` or
--- `halted`, `TraceTr.runTr`). A module with no `main` shows nothing, ever.
-⟦_⟧IRᵗ : Maybe IRProgram → TargetNum → Interp → Tr ⊤
-⟦ just p ⟧IRᵗ fmt ι = trT∞ fmt ι [] (runIR fmt (pureHalf ι) p)
-⟦ nothing ⟧IRᵗ _ _ = silentTr
+-- The IR-level meaning (the source observable, D320) is
+-- `Denotation.ProgramTrace.⟦_⟧IRᵗ`: it is about the IR program only, so it
+-- lives below the front end (D419).
 
 -- D165, RESTATED AT THE MEANING (plan 0.103 6a″): the arith lifting preserves
 -- a program's denotation — `Adequacy.RewritePreserves.rewrite-program-preserves`.

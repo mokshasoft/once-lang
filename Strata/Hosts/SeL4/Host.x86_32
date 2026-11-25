@@ -138,13 +138,12 @@ once_sel4_copy_arg:
     ret
 .size once_sel4_copy_arg, .-once_sel4_copy_arg
 
-# The n words at %edx (n >= 1, in %ecx) as a flat block allocated at the
-# heap pointer %esi (advanced); the block in %eax. Clobbers %ebx, %ecx.
+# The n words at %edx (n >= 1, in %ecx) into the answer's buffer at %eax,
+# the address the program put in Output before the SigOp (D451: a
+# structured answer is written in place); %eax is kept. Clobbers %ebx, %ecx.
 .global once_sel4_answer
 .type once_sel4_answer, @function
 once_sel4_answer:
-    movl    %esi, %eax
-    leal    (%esi,%ecx,4), %esi
 1:  decl    %ecx
     movl    (%edx,%ecx,4), %ebx
     movl    %ebx, (%eax,%ecx,4)

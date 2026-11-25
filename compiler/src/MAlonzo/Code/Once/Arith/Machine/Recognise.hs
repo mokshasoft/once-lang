@@ -366,12 +366,12 @@ du_rb'45'view_424 v0
            -> case coe v5 of
                 MAlonzo.Code.Once.IR.C__'8728'__28 v8 v10 v11
                   -> coe C_v'45'reassoc_380
-                MAlonzo.Code.Once.IR.C_const_134 v8 v9
+                MAlonzo.Code.Once.IR.C_const_138 v8 v9
                   -> case coe v8 of
                        MAlonzo.Code.Once.IRTy.C_fits'45'int_516 -> coe C_v'45'cint_400
                        MAlonzo.Code.Once.IRTy.C_fits'45'float_518 -> coe C_v'45'cflt_408
                        _ -> MAlonzo.RTE.mazUnreachableError
-                MAlonzo.Code.Once.IR.C_SigOp_140 v7 v8 v9 -> coe C_v'45'sigop_392
+                MAlonzo.Code.Once.IR.C_SigOp_144 v7 v8 v9 -> coe C_v'45'sigop_392
                 _ -> coe v1
          _ -> coe v1)
 -- Once.Arith.Machine.Recognise.lit-at
@@ -492,7 +492,7 @@ du_recognise'45'primA_508 v0 v1 v2 v3
                        (coe
                           du_recognise'45'binopA_496 (coe v0) (coe v1)
                           (coe
-                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_50 (coe (0 :: Integer))
+                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_56 (coe (0 :: Integer))
                              (coe
                                 MAlonzo.Code.Once.Spec.Type.C__'42'__22
                                 (coe MAlonzo.Code.Once.Spec.Type.C_Int_32)
@@ -504,7 +504,7 @@ du_recognise'45'primA_508 v0 v1 v2 v3
                        (coe
                           du_recognise'45'binopA_496 (coe v0) (coe v1)
                           (coe
-                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_50 (coe (0 :: Integer))
+                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_56 (coe (0 :: Integer))
                              (coe
                                 MAlonzo.Code.Once.Spec.Type.C__'42'__22
                                 (coe MAlonzo.Code.Once.Spec.Type.C_Int_32)
@@ -516,7 +516,7 @@ du_recognise'45'primA_508 v0 v1 v2 v3
                        (coe
                           du_recognise'45'binopA_496 (coe v0) (coe v1)
                           (coe
-                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_50 (coe (0 :: Integer))
+                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_56 (coe (0 :: Integer))
                              (coe
                                 MAlonzo.Code.Once.Spec.Type.C__'42'__22
                                 (coe MAlonzo.Code.Once.Spec.Type.C_Int_32)
@@ -528,7 +528,7 @@ du_recognise'45'primA_508 v0 v1 v2 v3
                        (coe
                           du_recognise'45'binopA_496 (coe v0) (coe v1)
                           (coe
-                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_50 (coe (0 :: Integer))
+                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_56 (coe (0 :: Integer))
                              (coe
                                 MAlonzo.Code.Once.Spec.Type.C__'42'__22
                                 (coe MAlonzo.Code.Once.Spec.Type.C_Int_32)
@@ -540,7 +540,7 @@ du_recognise'45'primA_508 v0 v1 v2 v3
                        (coe
                           du_recognise'45'binopA_496 (coe v0) (coe v1)
                           (coe
-                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_50 (coe (0 :: Integer))
+                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_56 (coe (0 :: Integer))
                              (coe
                                 MAlonzo.Code.Once.Spec.Type.C__'42'__22
                                 (coe MAlonzo.Code.Once.Spec.Type.C_Int_32)
@@ -552,7 +552,7 @@ du_recognise'45'primA_508 v0 v1 v2 v3
                        (coe
                           du_recognise'45'bodyA_486 (coe v0) (coe v1)
                           (coe
-                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_50 (coe (0 :: Integer))
+                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_56 (coe (0 :: Integer))
                              (coe MAlonzo.Code.Once.Spec.Type.C_Int_32))
                           (coe v3))
                 _ -> coe v4
@@ -592,7 +592,7 @@ du_rb'45'at_518 v0 v1 v2 v3 v4
         -> case coe v3 of
              MAlonzo.Code.Once.IR.C__'8728'__28 v11 v13 v14
                -> case coe v13 of
-                    MAlonzo.Code.Once.IR.C_SigOp_140 v15 v16 v17
+                    MAlonzo.Code.Once.IR.C_SigOp_144 v15 v16 v17
                       -> coe
                            du_recognise'45'primA_508 (coe v0) (coe v1)
                            (coe MAlonzo.Code.Once.SigOp.Info.d_sem_118 (coe v17)) (coe v14)
@@ -602,7 +602,7 @@ du_rb'45'at_518 v0 v1 v2 v3 v4
         -> case coe v3 of
              MAlonzo.Code.Once.IR.C__'8728'__28 v9 v11 v12
                -> case coe v11 of
-                    MAlonzo.Code.Once.IR.C_const_134 v14 v15
+                    MAlonzo.Code.Once.IR.C_const_138 v14 v15
                       -> coe
                            du_lit'45'at_448 (coe du_is'45'terminal'63'_200 (coe v1) (coe v12))
                            (coe v15)
@@ -842,7 +842,7 @@ du_recognise'45'prim'45'floatA_770 v0 v1 v2 v3
                        (coe
                           du_recognise'45'binop'45'floatA_758 (coe v0) (coe v1)
                           (coe
-                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_50 (coe (0 :: Integer))
+                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_56 (coe (0 :: Integer))
                              (coe
                                 MAlonzo.Code.Once.Spec.Type.C__'42'__22
                                 (coe MAlonzo.Code.Once.Spec.Type.C_Float_34)
@@ -854,7 +854,7 @@ du_recognise'45'prim'45'floatA_770 v0 v1 v2 v3
                        (coe
                           du_recognise'45'binop'45'floatA_758 (coe v0) (coe v1)
                           (coe
-                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_50 (coe (0 :: Integer))
+                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_56 (coe (0 :: Integer))
                              (coe
                                 MAlonzo.Code.Once.Spec.Type.C__'42'__22
                                 (coe MAlonzo.Code.Once.Spec.Type.C_Float_34)
@@ -866,7 +866,7 @@ du_recognise'45'prim'45'floatA_770 v0 v1 v2 v3
                        (coe
                           du_recognise'45'binop'45'floatA_758 (coe v0) (coe v1)
                           (coe
-                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_50 (coe (0 :: Integer))
+                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_56 (coe (0 :: Integer))
                              (coe
                                 MAlonzo.Code.Once.Spec.Type.C__'42'__22
                                 (coe MAlonzo.Code.Once.Spec.Type.C_Float_34)
@@ -878,7 +878,7 @@ du_recognise'45'prim'45'floatA_770 v0 v1 v2 v3
                        (coe
                           du_recognise'45'binop'45'floatA_758 (coe v0) (coe v1)
                           (coe
-                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_50 (coe (0 :: Integer))
+                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_56 (coe (0 :: Integer))
                              (coe
                                 MAlonzo.Code.Once.Spec.Type.C__'42'__22
                                 (coe MAlonzo.Code.Once.Spec.Type.C_Float_34)
@@ -890,7 +890,7 @@ du_recognise'45'prim'45'floatA_770 v0 v1 v2 v3
                        (coe
                           du_recognise'45'bodyA_486 (coe v0) (coe v1)
                           (coe
-                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_50 (coe (0 :: Integer))
+                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_56 (coe (0 :: Integer))
                              (coe MAlonzo.Code.Once.Spec.Type.C_Int_32))
                           (coe v3))
                 MAlonzo.Code.Once.Arith.Prim.C_p'45'fneg_252
@@ -899,7 +899,7 @@ du_recognise'45'prim'45'floatA_770 v0 v1 v2 v3
                        (coe
                           du_recognise'45'body'45'floatA_748 (coe v0) (coe v1)
                           (coe
-                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_50 (coe (0 :: Integer))
+                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_56 (coe (0 :: Integer))
                              (coe MAlonzo.Code.Once.Spec.Type.C_Float_34))
                           (coe v3))
                 _ -> coe v4
@@ -940,7 +940,7 @@ du_rbf'45'at_780 v0 v1 v2 v3 v4
         -> case coe v3 of
              MAlonzo.Code.Once.IR.C__'8728'__28 v11 v13 v14
                -> case coe v13 of
-                    MAlonzo.Code.Once.IR.C_SigOp_140 v15 v16 v17
+                    MAlonzo.Code.Once.IR.C_SigOp_144 v15 v16 v17
                       -> coe
                            du_recognise'45'prim'45'floatA_770 (coe v0) (coe v1)
                            (coe MAlonzo.Code.Once.SigOp.Info.d_sem_118 (coe v17)) (coe v14)
@@ -951,7 +951,7 @@ du_rbf'45'at_780 v0 v1 v2 v3 v4
         -> case coe v3 of
              MAlonzo.Code.Once.IR.C__'8728'__28 v9 v11 v12
                -> case coe v11 of
-                    MAlonzo.Code.Once.IR.C_const_134 v14 v15
+                    MAlonzo.Code.Once.IR.C_const_138 v14 v15
                       -> coe
                            du_flit'45'at_456
                            (coe du_is'45'terminal'63'_200 (coe v1) (coe v12)) (coe v15)

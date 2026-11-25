@@ -44,16 +44,16 @@ for f in "$TESTDIR"/*.once; do
   done < <(grep -oE '^import +[A-Za-z0-9_.]+' "$f" | awk '{print $2}')
   for opt in "${OPTS[@]}"; do
     tag="${opt:+-noopt}"
-    $ONCE build --exe --target x86_64 $params $opt "${Iargs[@]}" --strata "$STRATA" "$f" -o "$BUILD/$name$tag" >"$BUILD/$name$tag.log" 2>&1
+    timeout "${ONCE_BUILD_TIMEOUT:-5}" $ONCE build --exe --target x86_64 $params $opt "${Iargs[@]}" --strata "$STRATA" "$f" -o "$BUILD/$name$tag" >"$BUILD/$name$tag.log" 2>&1; brc=$?
     if [ ! -x "$BUILD/$name$tag" ]; then
-      echo "FAIL(build) $name$tag (expected exit $exp) — see $BUILD/$name$tag.log"
+      echo "FAIL(build) $name$tag (expected exit $exp)$([ "$brc" = 124 ] && echo " TIMEOUT: compile over ${ONCE_BUILD_TIMEOUT:-5}s") — see $BUILD/$name$tag.log"
       fail=$((fail+1)); failed+=("$name$tag"); continue
     fi
     # D220: `emit` is a REAL SigOp now, so a test that emits writes machine words
     # to stdout. Capture that output (it is kept next to the build log for
     # inspection, and the two builds' outputs are compared below) rather than
     # letting raw bytes into the terminal. The ORDERED trace is asserted by `traceCases`.
-    "$BUILD/$name$tag" > "$BUILD/$name$tag.trace" 2>/dev/null; got=$?
+    timeout 10 "$BUILD/$name$tag" > "$BUILD/$name$tag.trace" 2>/dev/null; got=$?
     if [ "$got" -eq "$exp" ]; then
       pass=$((pass+1))
     else

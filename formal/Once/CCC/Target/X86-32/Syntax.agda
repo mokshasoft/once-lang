@@ -60,7 +60,8 @@ data Mem : Set where
   base+disp : Reg → ℕ → Mem          -- [reg + disp]
   label-rel : ℕ → Mem                -- [label] (for static data)
   -- Plan 0.107: an absolute DATA symbol (the runtime's `.bss` heap).
-  abs-sym   : String → Mem
+  -- D472: at an offset (the allocator record's word `d / 4`)
+  abs-sym   : String → ℕ → Mem
 
 ------------------------------------------------------------------------
 -- Operands

@@ -39,7 +39,7 @@ open import Data.Empty using (⊥-elim)
 import Once.CCC.Target.RiscV64.Semantics as R
 open R using (mkstate) renaming (writeReg to rwriteReg)
 open R.State using (memory) renaming (regs to rregs; halted to rhalted)
-open import Once.Target.RiscV64.PhysReg using (Reg; ra; t1; t2)
+open import Once.Target.RiscV64.PhysReg using (Reg; ra; t1; t2; a0)
 open import Once.Adequacy.ArchCorrectness.RiscV64.RegRoles using (riscv64-roles)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles
   using (RegRoles; Role; role-sp; role-clos; role-heap; role-out; role-in1)
@@ -50,8 +50,8 @@ rreg s r = R.readReg (R.State.regs s) r
 
 import Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence
 module FlatCorrespondence = Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence
-       FS slot-size word-eq Reg riscv64-roles R.State rreg memory rhalted
-  using (FlatCorr; GapNext; HeapView; KeepsRoles; Memory; RetAddrs; Sets2Roles; SetsMem; SetsRole; SetsRoleMem; Word; corr-regs-agree; corr-store-gap; descend-view; enc-sv; extend-view; frames-of; haddr-offset; keep-all; lit-word; read-write-hit; read-write-miss; ret-agree-above; ret-agree-nothing; ret-head; ret-relk; ret-spill; ret-write-in-frame; sep; sim-addr-at; sim-alloc-heap; sim-call-frame; sim-lea-slot; sim-load-at; sim-load-code-addr; sim-load-const; sim-load-const-float; sim-load-from-slot; sim-load-indirect; sim-load-indirect-stack; sim-load-indirect-suc; sim-load-indirect-suc-stack; sim-load-tag-lit; sim-mov-to-input; sim-mov-to-output; sim-out-nz; sim-restore-input; sim-ret; sim-save-closure-reg; sim-store-at; sim-store-at-slot; sim-store-indirect; sim-store-indirect-stack; sim-store-indirect-suc; sim-store-indirect-suc-stack; sim-thunk; slots; stack-eq-cur; writeMem; module FlatCorr; module HeapView; module SetsRole)
+       FS slot-size word-eq Reg riscv64-roles R.State rreg memory rhalted R.heap-base
+  using (FlatCorr; rec-cell; rec-cell-addr; sim-load-rec; sim-store-rec;  start-view; sim-set-lim; Floor; Fresh; mkFloor; mkFresh; module Floor; module Fresh; module KeepsRoles; GapNext; HeapView; KeepsRoles; Memory; RetAddrs; Sets2Roles; SetsMem; SetsRole; SetsRoleMem; Word; corr-regs-agree; corr-store-gap; descend-view; enc-sv; extend-view; frames-of; haddr-offset; keep-all; lit-word; read-write-hit; read-write-miss; ret-agree-above; ret-agree-nothing; ret-head; ret-relk; ret-spill; ret-write-in-frame; sep; sim-addr-at; sim-alloc-heap; sim-call-frame; sim-lea-slot; sim-load-at; sim-load-code-addr; sim-load-const; sim-load-const-float; sim-load-from-slot; sim-load-indirect; sim-load-indirect-stack; sim-load-indirect-suc; sim-load-indirect-suc-stack; sim-load-tag-lit; sim-mov-to-input; sim-mov-to-output; sim-out-nz; sim-restore-input; sim-ret; sim-save-closure-reg; sim-store-at; sim-store-at-slot; sim-store-indirect; sim-store-indirect-stack; sim-store-indirect-suc; sim-store-indirect-suc-stack; sim-thunk; slots; stack-eq-cur; writeMem; gate-win; ret-write-in-window; sim-load-at-stack; sim-store-at-stack; stack-addr; stack-read; range-win; stack-arg-read; module FlatCorr; module HeapView; module SetsRole)
 open FlatCorrespondence
 open SetsRole using (at-role; off-role)
 
@@ -126,6 +126,50 @@ keeps-t1-t2-riscv64 s v w p = record { kr-role = kr ; kr-mem = refl ; kr-halt = 
     kr role-heap    = refl
     kr role-out     = refl
     kr role-in1     = refl
+
+-- D488: the start computes the stack limit in `t2`, no role's (twice: the
+-- reserved stack's size, then the limit).
+keeps-t2-riscv64 : ∀ (s : R.State) (v w : Word) (p : ℕ)
+  → KeepsRoles s (mkstate (rwriteReg (rwriteReg (rregs s) t2 v) t2 w) (memory s) p (rhalted s))
+keeps-t2-riscv64 s v w p = record { kr-role = kr ; kr-mem = refl ; kr-halt = refl }
+  where
+    kr : ∀ ρ → R.readReg (rwriteReg (rwriteReg (rregs s) t2 v) t2 w) (reg-of ρ) ≡ rreg s (reg-of ρ)
+    kr role-sp      = refl
+    kr role-clos    = refl
+    kr role-heap    = refl
+    kr role-out     = refl
+    kr role-in1     = refl
+
+-- D472: a record access puts the record's symbol (its address) in `t1` (no role's) first;
+-- the load then sets Output, the store writes memory — roles as one write.
+sets-out-t1-riscv64 : ∀ (s : R.State) (a w : Word) (p : ℕ)
+  → SetsRole s (mkstate (rwriteReg (rwriteReg (rregs s) t1 a) a0 w) (memory s) p (rhalted s)) role-out w
+sets-out-t1-riscv64 s a w p = record
+  { at-role = refl ; off-role = off ; keeps-mem = refl ; keeps-halt = refl }
+  where
+    off : ∀ ρ' → ¬ (ρ' ≡ role-out)
+        → R.readReg (rwriteReg (rwriteReg (rregs s) t1 a) a0 w) (reg-of ρ') ≡ R.readReg (rregs s) (reg-of ρ')
+    off role-sp   _ = refl
+    off role-clos _ = refl
+    off role-heap _ = refl
+    off role-out  ne = ⊥-elim (ne refl)
+    off role-in1  _ = refl
+
+sets-mem-t1-riscv64 : ∀ (s : R.State) (a : Word) (ad : ℕ) (v : Word) (p : ℕ)
+  → SetsMem s (mkstate (rwriteReg (rregs s) t1 a) (writeMem (memory s) ad v) p (rhalted s)) ad v
+sets-mem-t1-riscv64 s a ad v p = record
+  { at-addr  = read-write-hit (memory s) ad v
+  ; off-addr = λ a' ne → read-write-miss (memory s) ad v a' ne
+  ; mem-regs = regs-eq
+  ; mem-halt = refl
+  }
+  where
+    regs-eq : ∀ ρ → R.readReg (rwriteReg (rregs s) t1 a) (reg-of ρ) ≡ R.readReg (rregs s) (reg-of ρ)
+    regs-eq role-sp   = refl
+    regs-eq role-clos = refl
+    regs-eq role-heap = refl
+    regs-eq role-out  = refl
+    regs-eq role-in1  = refl
 
 sets-role-riscv64 : ∀ (s : R.State) (ρ : Role) (v : Word) (p : ℕ)
   → SetsRole s (mkstate (rwriteReg (rregs s) (reg-of ρ) v) (memory s) p (rhalted s)) ρ v

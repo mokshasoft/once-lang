@@ -1,0 +1,22 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+-- bench/loop-sum.once: a counted loop of scalar steps (plan 0.146 §5 item 8 b).
+-- Exits with the sum of 1..N, mod 256.
+
+import I.Linux.Syscalls as S
+
+stop : Int * Int -> Unit -> Int + Void
+stop p _ = inl (snd p)
+
+next : Int * Int -> Unit -> Void + Int * Int
+next p _ = inr (fst p - 1, snd p + fst p)
+
+step : Int * Int -> Int + Int * Int
+step p = case (next p) (stop p) (fst p == 0)
+
+loopSum : Eff (Int * Int) Int
+loopSum = ana step
+
+main : Eff Unit Void
+main = exit@S . (loopSum . (\_ -> (BENCH_N, 0)))

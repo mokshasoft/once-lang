@@ -26,9 +26,10 @@ open import Once.CCC.Label using (once; callee; labelSym; thunkSym; e-fn)
 open import Once.SigOp.Info using (module SigOpInfo)
 open SigOpInfo using (name)
 open import Once.Target.Symbol using (once-symbol-path)
+import Data.Nat
 open import Once.CCC.Machine.SMCore
-  using (AbstractInstr; AbstractTrace; FlatCtrl; instr-ctrl; instr-sigop; instr-load-code-addr; instr-room; c-label; c-jmp; c-branch-tag-zero; c-entry; c-ret; c-call-fn; c-start; c-leave)
-open import Once.Target.SymbolFresh using (host-leave-symbol; host-exhausted-symbol)
+  using (AbstractInstr; AbstractTrace; FlatCtrl; module Room; instr-ctrl; instr-sigop; instr-load-code-addr; instr-room; load-rec; store-rec; c-label; c-jmp; c-branch-tag-zero; c-entry; c-ret; c-call-fn; c-start; c-leave)
+open import Once.Target.SymbolFresh using (host-leave-symbol; host-exhausted-symbol; alloc-record-symbol)
 
 -- The program's portable entry (plan 0.123 C.5): the Host's `enter` (Linux:
 -- `_start`) sets up the region and jumps here. The compiler emits no data and
@@ -50,7 +51,8 @@ ctrl-refs : FlatCtrl → List String
 ctrl-refs (c-jmp n)                 = labelSym (once n) ∷ []
 ctrl-refs (c-branch-tag-zero n)     = labelSym (once n) ∷ []
 ctrl-refs (c-call-fn f)             = labelSym (callee (e-fn f)) ∷ []
-ctrl-refs (c-start _)               = []
+-- D488: the start's own check calls `once_exhausted`; it sets the limit in the record
+ctrl-refs (c-start _)               = host-exhausted-symbol ∷ alloc-record-symbol ∷ []
 -- D320: the Host's `leave`.
 ctrl-refs c-leave                   = host-leave-symbol ∷ []
 ctrl-refs (c-label _)               = []
@@ -62,12 +64,21 @@ instr-defs (instr-ctrl c) = ctrl-defs c
 {-# CATCHALL #-}
 instr-defs _              = []
 
+part-refs : Data.Nat.ℕ → List String
+part-refs Data.Nat.zero    = []
+part-refs (Data.Nat.suc _) = alloc-record-symbol ∷ host-exhausted-symbol ∷ []
+
 instr-refs : AbstractInstr → List String
 instr-refs (instr-ctrl c)           = ctrl-refs c
 instr-refs (instr-sigop si)         = once-symbol-path (name si) ∷ []
 instr-refs (instr-load-code-addr n) = thunkSym n ∷ []
 -- plan 0.123 A.4: the room check calls the Host's `once_exhausted` when it fails.
-instr-refs (instr-room _)           = host-exhausted-symbol ∷ []
+-- (D488 (a3): each part of a check reads the limit in the record, then may call; a part of
+-- no words has no code, D485)
+instr-refs (instr-room r)           = part-refs (Room.room-h r) ++ part-refs (Room.room-s r)
+-- D472: the allocator record is at its own symbol (the file defines it)
+instr-refs (load-rec _)             = alloc-record-symbol ∷ []
+instr-refs (store-rec _)            = alloc-record-symbol ∷ []
 {-# CATCHALL #-}
 instr-refs _                        = []
 

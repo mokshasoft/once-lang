@@ -10,7 +10,9 @@
 #
 # "Clear" means both:
 #   * MemAvailable ≥ WAIT_MEM_MIN_MB (default 4500), and
-#   * no other agda process is running (any checkout, any user session).
+#   * no other agda process is running (any checkout, any user session),
+#     unless WAIT_ALONE=0: a run that fits beside another session (one module
+#     per process, `make certified-per-module`, D417) only needs the memory.
 #
 # Usage:
 #   formal/scripts/wait-for-memory.sh                      # just wait
@@ -20,6 +22,10 @@
 #   WAIT_MEM_MIN_MB=4500   available memory required, in MiB
 #   WAIT_INTERVAL=300      seconds between checks (5 min)
 #   WAIT_MAX_HOURS=24      give up (exit 3) after this long
+#   WAIT_ALONE=1           0: do not wait for other agda processes to end
+#
+# For the per-module check (3.3 GB cap per process):
+#   WAIT_ALONE=0 WAIT_MEM_MIN_MB=3400 formal/scripts/wait-for-memory.sh make certified-per-module
 
 set -u
 
@@ -28,7 +34,7 @@ INTERVAL="${WAIT_INTERVAL:-300}"
 MAX_S=$(( ${WAIT_MAX_HOURS:-24} * 3600 ))
 
 avail_mb() { awk '/^MemAvailable:/ { print int($2 / 1024) }' /proc/meminfo; }
-other_agda() { pgrep -x agda | tr '\n' ' '; }
+other_agda() { [ "${WAIT_ALONE:-1}" = 0 ] && return; pgrep -x agda | tr '\n' ' '; }
 
 start=$(date +%s)
 while :; do

@@ -39,9 +39,12 @@ STD_LIB=$$(find /nix/store -maxdepth 2 -name "standard-library.agda-lib" 2>/dev/
 if [ -z "$$STD_LIB" ]; then echo "Error: standard-library not found in Nix store"; exit 1; fi; \
 AGDA_RUN=; \
 if [ -z "$$AGDA_SAFE_ACTIVE" ] && [ -z "$$AGDA_SAFE_DISABLE" ]; then AGDA_RUN="$(CURDIR)/scripts/agda-safe.sh --exec"; fi; \
-unset AGDA_DIR; $$AGDA_RUN agda --library-file=<(echo "$$STD_LIB"; echo "Once.agda-lib")
+unset AGDA_DIR; $(CURDIR)/scripts/watchdog.sh $${AGDA_UNIT_SECS:-60} $$AGDA_RUN agda --library-file=<(echo "$$STD_LIB"; echo "Once.agda-lib")
 endef
-# Every agda run goes through scripts/agda-safe.sh (a cgroup memory cap), so a
+# Every agda run goes through scripts/watchdog.sh, the module time cap: a module that
+# checks for more than AGDA_UNIT_SECS (default 60) seconds without a new "Checking" line
+# kills the run and is named; the run's slowest module is reported at the end.
+# And through scripts/agda-safe.sh (a cgroup memory cap), so a
 # runaway type-check from ANY target can only kill agda — never the session
 # that launched it. Set AGDA_SAFE_DISABLE=1 to opt out (e.g. CI with its own
 # memory controls). AGDA_SAFE_ACTIVE=1 means "already inside a scope".
@@ -112,7 +115,7 @@ backstop:
 # then the backstop and the certified apex. (lint-imports is not part of it:
 # under -W error, the backstop and the apex already fail on a stale import.)
 .PHONY: merge-gate
-merge-gate: public-gate layer-gate pragma-gate metatheory-gate spec-gate implementation-gate backstop certified
+merge-gate: public-gate layer-gate pragma-gate with-gate metatheory-gate spec-gate implementation-gate backstop certified
 	@echo "merge-gate: OK"
 
 # Per-module cost: wall time and peak memory, one Agda process per module,
@@ -231,6 +234,11 @@ pragma-gate:
 public-gate:
 	@scripts/public-gate.sh
 
+.PHONY: with-gate
+# No new with/rewrite (plan 0.156): a per-module ratchet on scripts/with-gate.baseline.
+with-gate:
+	@scripts/with-gate.sh
+
 .PHONY: spec-gate
 # The Spec imports only the Spec (plan 0.114): a ratchet on its full import closure;
 # and the Spec is frozen at its approved hashes (scripts/spec.sha256).
@@ -275,7 +283,7 @@ malonzo:
 .PHONY: dead-code-ccc-x86-64
 dead-code-ccc-x86-64:
 	@echo "Running dead code analysis on X86-64 (Adequacy apex)..."
-	@./run-dead-code.sh Once.Adequacy.ArchCorrectness.X86-64.x86-64-correct Once/Adequacy/ArchCorrectness/X86-64.agda
+	@./run-dead-code.sh Once.Adequacy.ArchCorrectness.X86-64.Sim.x86-64-sim Once/Adequacy/ArchCorrectness/X86-64/Sim.agda
 
 #-----------------------------------------------------------------------------
 # Postulate Detection

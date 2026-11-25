@@ -236,7 +236,7 @@ du_sz'45'sigop_106 v0 v1
             (coe
                du_sz_12
                (coe
-                  MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_50 (coe (0 :: Integer))
+                  MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_56 (coe (0 :: Integer))
                   (coe v0))
                (coe v1)))
          (coe
@@ -246,7 +246,7 @@ du_sz'45'sigop_106 v0 v1
                (coe
                   du_sz_12
                   (coe
-                     MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_50 (coe (0 :: Integer))
+                     MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_56 (coe (0 :: Integer))
                      (coe v0))
                   (coe v1)))))
 -- Once.Arith.Machine.Size.sz-pairˡ

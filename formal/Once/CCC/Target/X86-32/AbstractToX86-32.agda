@@ -25,19 +25,20 @@
 
 module Once.CCC.Target.X86-32.AbstractToX86-32 where
 
-open import Data.Nat using (ℕ; suc; _∸_)
+open import Data.Nat using (ℕ; zero; suc; _∸_; _+_; _<ᵇ_)
+open import Data.Bool using (Bool; true; false)
 import Data.Nat as ℕ
 open import Data.List using ([]; _∷_; _++_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
-open import Once.Target.SymbolFresh using (host-leave-symbol; host-exhausted-symbol)
+open import Once.Target.SymbolFresh using (host-leave-symbol; host-exhausted-symbol; alloc-record-symbol)
 open import Once.Target.Symbol using (once-symbol-path)
 
 -- Import x86-32 syntax
 open import Once.CCC.Target.X86-32.Syntax
-  using (base; base+disp; reg; mem; imm; mov; lea; add; sub; sbb; cmp; push; pop; call; call-sym; ret; je; jbe-fwd; local-1; label; call-l; mov-code; jmp-l; Program; slot-size; slots)
+  using (base; base+disp; abs-sym; reg; mem; imm; mov; lea; add; sub; sbb; cmp; push; pop; call; call-sym; ret; je; jbe-fwd; local-1; label; call-l; mov-code; jmp-l; Program; slot-size; slots)
 open import Once.CCC.Label using (once; callee; e-fn)
-open import Once.Target.X86-32.PhysReg using (eax; ecx; esp; esi; ebp; ebx)
+open import Once.Target.X86-32.PhysReg using (eax; ecx; edx; esp; esi; ebp; ebx)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.SigOp.Info using (SigOpInfo)
 open import Once.Type using (fits-int; fits-float)
@@ -49,7 +50,7 @@ module IntW = OnceWord.Width 32
 
 -- Import AbstractInstr from SMCore
 open import Once.CCC.Machine.SMCore
-  using (AbstractInstr; AbstractTrace; mov-to-output; mov-to-input; load-indirect; load-indirect-suc; load-from-slot; store-at-slot; store-indirect; store-indirect-suc; lea-slot; restore-input; instr-alloc-stack; instr-alloc-heap; instr-dealloc-stack; instr-push-frame; instr-pop-frame; instr-call-closure; worklist-init; worklist-push; worklist-pop; worklist-check; instr-reclaim-to; instr-sigop; instr-load-const; instr-load-code-addr; instr-save-closure-reg; instr-load-tag-lit; instr-reg-op; instr-free-heap; instr-room; load-at; store-at; addr-at; instr-ctrl; out-nz; c-label; c-jmp; c-branch-tag-zero; c-ret; c-entry; c-call-fn; c-start; c-leave)
+  using (start-stack-words; module Room; AbstractInstr; AbstractTrace; mov-to-output; mov-to-input; load-indirect; load-indirect-suc; load-from-slot; store-at-slot; store-indirect; store-indirect-suc; lea-slot; restore-input; instr-alloc-stack; instr-alloc-heap; instr-dealloc-stack; instr-push-frame; instr-pop-frame; instr-call-closure; worklist-init; worklist-push; worklist-pop; worklist-check; instr-reclaim-to; instr-sigop; instr-load-const; instr-load-code-addr; instr-save-closure-reg; instr-load-tag-lit; instr-reg-op; instr-free-heap; instr-room; load-at; store-at; addr-at; load-rec; store-rec; instr-ctrl; out-nz; c-label; c-jmp; c-branch-tag-zero; c-ret; c-entry; c-call-fn; c-start; c-leave)
 open import Once.CCC.Machine.Locations using (Slot)
 
 ------------------------------------------------------------------------
@@ -74,6 +75,76 @@ slot-to-disp n = n ℕ.* slot-size
 --   Frame  → esp (slots are ESP-relative, as on x86-64 — plan 0.69)
 --   Closure → ebx (environment pointer)
 ------------------------------------------------------------------------
+
+-- D378: the room check's code for a need of `k` words (see `instr-room` below)
+room-code : ℕ → Program
+room-code k =
+  sub (reg esi) (reg esp) ∷
+  sub (reg esi) (imm 1) ∷
+  cmp (reg esi) (imm (IntW.modulus ∸ suc (slots k))) ∷
+  jbe-fwd ∷
+  call-sym host-exhausted-symbol ∷
+  local-1 ∷
+  add (reg esi) (imm 1) ∷
+  add (reg esi) (reg esp) ∷ []
+
+-- D488: the check when its need is a word, else the call it would make
+fits-or-out : Bool → Program → Program
+fits-or-out true  c = c
+fits-or-out false _ = call-sym host-exhausted-symbol ∷ []
+
+-- …whether a need of `k` words is a word
+room-fits? : ℕ → Bool
+room-fits? k = slots k <ᵇ IntW.modulus
+
+-- D488 (a3): a part whose need is no word: the call, the limit's word read first (as
+-- the part's code reads it: one shape of references)
+out-code : Program
+out-code = mov (reg edx) (mem (abs-sym alloc-record-symbol 0)) ∷ call-sym host-exhausted-symbol ∷ []
+
+part : Bool → Program → Program
+part true  c = c
+part false _ = out-code
+
+-- the cells' part, the room `L − esi` in edx (no borrow: the frontier is at or below
+-- `L`), compared as the room check compares (D378): `edx := esi − L − 1`, which is
+-- `2³² − (L − esi) − 1`, against `2³² − 4h − 1`
+heap-room : ℕ → Program
+heap-room h =
+  mov (reg edx) (reg esi) ∷
+  sub (reg edx) (mem (abs-sym alloc-record-symbol 0)) ∷
+  sub (reg edx) (imm 1) ∷
+  cmp (reg edx) (imm (IntW.modulus ∸ suc (slots h))) ∷
+  jbe-fwd ∷
+  call-sym host-exhausted-symbol ∷
+  local-1 ∷ []
+
+-- the stack's: the room `esp − L` (no borrow: the limit is at or below the stack pointer)
+stack-room : ℕ → Program
+stack-room k =
+  mov (reg edx) (mem (abs-sym alloc-record-symbol 0)) ∷
+  sub (reg edx) (reg esp) ∷
+  sub (reg edx) (imm 1) ∷
+  cmp (reg edx) (imm (IntW.modulus ∸ suc (slots k))) ∷
+  jbe-fwd ∷
+  call-sym host-exhausted-symbol ∷
+  local-1 ∷ []
+
+heap-code : ℕ → Program
+heap-code zero      = []
+heap-code h@(suc _) = part (room-fits? h) (heap-room h)
+
+stack-code : ℕ → Program
+stack-code zero      = []
+stack-code k@(suc _) = part (room-fits? k) (stack-room k)
+
+-- D488: the start past its check: the frame, then the stack limit into record word 0
+start-tail : ℕ → Program
+start-tail b =
+  sub (reg esp) (imm (slots b)) ∷
+  mov (reg edx) (reg esp) ∷
+  sub (reg edx) (imm (slots start-stack-words)) ∷
+  mov (mem (abs-sym alloc-record-symbol 0)) (reg edx) ∷ []
 
 compile-abstract : AbstractInstr → Program
 
@@ -196,6 +267,12 @@ compile-abstract (instr-reclaim-to n) = []
 -- instr-free-heap: no code yet (plan 0.123 M2: the bump allocator never
 -- reuses a block; the free-list and pop code come with M3)
 compile-abstract (instr-free-heap n) = []
+-- D470/D472: the allocator record's word k, at the program's record symbol plus 4k
+-- x86-32: mov eax, [once_alloc_record + 4k] ; mov [once_alloc_record + 4k], eax
+compile-abstract (load-rec n) =
+  mov (reg eax) (mem (abs-sym alloc-record-symbol (slot-to-disp n))) ∷ []
+compile-abstract (store-rec n) =
+  mov (mem (abs-sym alloc-record-symbol (slot-to-disp n))) (reg eax) ∷ []
 -- plan 0.123 B.4 α: a flat value's word k, by its offset from Input1.
 -- x86-32: mov eax, [ecx + 4k] ; mov [ecx + 4k], eax ; lea eax, [ecx + 4k]
 compile-abstract (load-at n) =
@@ -217,15 +294,12 @@ compile-abstract (addr-at n) =
 -- `jbe` against 2³² − 4k − 1 skips iff D ≥ 4k — at every D, none included.
 -- x86-32: subl %esp, %esi ; subl $1, %esi ; cmpl $(2³²−4k−1), %esi ; jbe 1f ;
 --         call once_exhausted ; 1: addl $1, %esi ; addl %esp, %esi
-compile-abstract (instr-room k) =
-  sub (reg esi) (reg esp) ∷
-  sub (reg esi) (imm 1) ∷
-  cmp (reg esi) (imm (IntW.modulus ∸ suc (slots k))) ∷
-  jbe-fwd ∷
-  call-sym host-exhausted-symbol ∷
-  local-1 ∷
-  add (reg esi) (imm 1) ∷
-  add (reg esi) (reg esp) ∷ []
+-- D485: a check of no words emits nothing (the layout's separation is its room)
+-- D488 (a3): the check is two parts against the stack limit `L` (record word 0):
+-- cells, `frontier + 4h ≤ L`; stack, `L + 4s ≤ %esp`; a part of 0 emits nothing
+compile-abstract (instr-room r) = heap-code (Room.room-h r) ++ stack-code (Room.room-s r)
+-- D488: a need that is no word (`4k ≥ 2³²`) no region meets: the check is then the call
+-- itself (`fits-or-out`), so no assumption says needs fit
 
 -- Plan 0.11: name-agnostic SigOp codegen.
 -- Emit a single symbolic call; linker resolves the name at build time
@@ -279,7 +353,12 @@ compile-abstract (instr-ctrl (c-jmp n))                 = jmp-l (once n) ∷ []
 compile-abstract (instr-ctrl (c-entry e b))             = label (callee e) ∷ sub (reg esp) (imm (slots b)) ∷ []
 -- plan 0.107: the start (`once_main`) — the outermost frame. The Host set the
 -- heap register (plan 0.123 C.5).
-compile-abstract (instr-ctrl (c-start b))               = sub (reg esp) (imm (slots b)) ∷ []
+-- D488: the start checks that `main`'s frame and the stack it reserves fit
+-- (the room check's code at `start-stack-words + b`), reserves the frame, and
+-- sets the stack limit, record word 0, to `esp − 4·start-stack-words`
+-- (`edx` is no role's)
+compile-abstract (instr-ctrl (c-start b))               =
+  fits-or-out (room-fits? (start-stack-words + b)) (room-code (start-stack-words + b)) ++ start-tail b
 -- D320: the program leaves by the Host's `leave`, a call of its one fixed symbol.
 compile-abstract (instr-ctrl c-leave)                   = call-sym host-leave-symbol ∷ []
 -- D245: a direct call of a program function is `call once_<f>`.

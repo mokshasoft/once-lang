@@ -33,13 +33,14 @@
 
 module Once.CCC.Target.RiscV64.AbstractToRiscV where
 
-open import Data.Nat using (ℕ; suc)
+open import Data.Nat using (ℕ; zero; suc)
 import Data.Nat as ℕ
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 open import Data.Integer using (+_)
 open import Data.List using ([]; _∷_; _++_)
-open import Once.Target.SymbolFresh using (host-leave-symbol; host-exhausted-symbol)
+open import Data.Bool using (Bool; true; false)
+open import Once.Target.SymbolFresh using (host-leave-symbol; host-exhausted-symbol; alloc-record-symbol)
 open import Once.Target.Symbol using (once-symbol-path)
 
 -- Import RISC-V syntax
@@ -47,9 +48,9 @@ open import Once.Spec.Float.Dyadic using (binary64)
 open import Once.Float.Word using (round)
 import Once.Spec.Word as OnceWord
 module IntW = OnceWord.Width 64
-  using (fromℤ)
+  using (fromℤ; modulus)
 open import Once.CCC.Target.RiscV64.Syntax
-  using (ld; sd; sub; sltu; addi; li; lla; mv; beq; jal; jalr; j; ret; call-sym; bgeu-fwd; local-1; label; Program; slot-size; slots)
+  using (ld; sd; sub; sltu; addi; li; lla; lla-sym; mv; beq; jal; jalr; j; ret; call-sym; bgeu-fwd; local-1; label; Program; slot-size; slots)
 open import Once.Target.RiscV64.PhysReg using (a0; t0; sp; s2; fp; t1; s1; ra; t2; zero)
 open import Once.CCC.Label using (once; callee; e-fn)
 open import Once.Spec.Name using (CanonicalName)
@@ -58,7 +59,7 @@ open import Once.Type using (fits-int; fits-float)
 
 -- Import AbstractInstr from SMCore
 open import Once.CCC.Machine.SMCore
-  using (AbstractInstr; AbstractTrace; mov-to-output; mov-to-input; load-indirect; load-indirect-suc; load-from-slot; store-at-slot; store-indirect; store-indirect-suc; lea-slot; restore-input; instr-alloc-stack; instr-alloc-heap; instr-dealloc-stack; instr-push-frame; instr-pop-frame; instr-call-closure; worklist-init; worklist-push; worklist-pop; worklist-check; instr-reclaim-to; instr-sigop; instr-load-const; instr-load-code-addr; instr-save-closure-reg; instr-load-tag-lit; instr-reg-op; instr-free-heap; instr-room; load-at; store-at; addr-at; instr-ctrl; out-nz; c-label; c-jmp; c-branch-tag-zero; c-ret; c-entry; c-call-fn; c-start; c-leave)
+  using (start-stack-words; module Room; AbstractInstr; AbstractTrace; mov-to-output; mov-to-input; load-indirect; load-indirect-suc; load-from-slot; store-at-slot; store-indirect; store-indirect-suc; lea-slot; restore-input; instr-alloc-stack; instr-alloc-heap; instr-dealloc-stack; instr-push-frame; instr-pop-frame; instr-call-closure; worklist-init; worklist-push; worklist-pop; worklist-check; instr-reclaim-to; instr-sigop; instr-load-const; instr-load-code-addr; instr-save-closure-reg; instr-load-tag-lit; instr-reg-op; instr-free-heap; instr-room; load-at; store-at; addr-at; load-rec; store-rec; instr-ctrl; out-nz; c-label; c-jmp; c-branch-tag-zero; c-ret; c-entry; c-call-fn; c-start; c-leave)
 open import Once.CCC.Machine.Locations using (Slot)
 
 ------------------------------------------------------------------------
@@ -84,6 +85,74 @@ slot-to-disp n = n ℕ.* slot-size
 --   Closure → s1 (environment pointer, callee-saved)
 --   Temp   → t0 (when we need separate addr/value)
 ------------------------------------------------------------------------
+
+-- D378: the room check's code for a need of `k` words (see `instr-room` below)
+room-code : ℕ → Program
+room-code k =
+  sub t1 sp s2 ∷
+  li t2 (+ slots k) ∷
+  bgeu-fwd t1 t2 ∷
+  call-sym host-exhausted-symbol ∷
+  local-1 ∷ []
+
+-- D488: the check when its need is a word, else the call it would make
+fits-or-out : Bool → Program → Program
+fits-or-out true  c = c
+fits-or-out false _ = call-sym host-exhausted-symbol ∷ []
+
+-- …whether a need of `k` words is a word
+room-fits? : ℕ → Bool
+room-fits? k = slots k Data.Nat.<ᵇ IntW.modulus
+  where import Data.Nat
+
+-- D488 (a3): a part whose need is no word: the call, the record named first (as the
+-- part's code names it: one shape of references)
+out-code : Program
+out-code = lla-sym t1 alloc-record-symbol ∷ call-sym host-exhausted-symbol ∷ []
+
+part : Bool → Program → Program
+part true  c = c
+part false _ = out-code
+
+-- the cells' part: the room `L − frontier` (no borrow) against `8h`
+heap-room : ℕ → Program
+heap-room h =
+  lla-sym t1 alloc-record-symbol ∷
+  ld t1 t1 0 ∷
+  sub t1 t1 s2 ∷
+  li t2 (+ slots h) ∷
+  bgeu-fwd t1 t2 ∷
+  call-sym host-exhausted-symbol ∷
+  local-1 ∷ []
+
+-- the stack's: the room `sp − L` (no borrow) against `8s`
+stack-room : ℕ → Program
+stack-room k =
+  lla-sym t1 alloc-record-symbol ∷
+  ld t1 t1 0 ∷
+  sub t1 sp t1 ∷
+  li t2 (+ slots k) ∷
+  bgeu-fwd t1 t2 ∷
+  call-sym host-exhausted-symbol ∷
+  local-1 ∷ []
+
+heap-code : ℕ → Program
+heap-code zero      = []
+heap-code h@(suc _) = part (room-fits? h) (heap-room h)
+
+stack-code : ℕ → Program
+stack-code zero      = []
+stack-code k@(suc _) = part (room-fits? k) (stack-room k)
+
+-- D488: the start past its check: the frame, then the stack limit into record word 0
+start-tail : ℕ → Program
+start-tail b =
+  addi sp sp (Data.Integer.-_ (+ (slots b))) ∷
+  li t2 (+ slots start-stack-words) ∷
+  sub t2 sp t2 ∷
+  lla-sym t1 alloc-record-symbol ∷
+  sd t2 t1 0 ∷ []
+  where import Data.Integer
 
 compile-abstract : AbstractInstr → Program
 
@@ -249,6 +318,13 @@ compile-abstract (instr-reclaim-to n) = []
 -- instr-free-heap: no code yet (plan 0.123 M2: the bump allocator never
 -- reuses a block; the free-list and pop code come with M3)
 compile-abstract (instr-free-heap n) = []
+-- D470/D472: the allocator record's word k, at the program's record symbol plus
+-- 8k; t1 (no role's) holds the symbol's address (8k < 512 fits the immediate)
+-- riscv64: lla t1, once_alloc_record ; ld a0, 8k(t1)   /   … ; sd a0, 8k(t1)
+compile-abstract (load-rec n) =
+  lla-sym t1 alloc-record-symbol ∷ ld a0 t1 (slot-to-disp n) ∷ []
+compile-abstract (store-rec n) =
+  lla-sym t1 alloc-record-symbol ∷ sd a0 t1 (slot-to-disp n) ∷ []
 -- plan 0.123 B.4 α: a flat value's word k, by its offset from Input1.
 -- riscv64: ld a0, 8k(t0) ; sd a0, 8k(t0) ; addi a0, t0, 8k (the offset is
 -- unbounded in the model, as a slot's is; beyond the 12-bit immediate the
@@ -267,12 +343,11 @@ compile-abstract (addr-at n) =
 -- must fail (D378). t1 and t2 are no role's; `li` because `addi`'s 12-bit
 -- immediate cannot hold every k.
 -- riscv64: sub t1, sp, s2 ; li t2, 8k ; bgeu t1, t2, 1f ; call once_exhausted ; 1:
-compile-abstract (instr-room k) =
-  sub t1 sp s2 ∷
-  li t2 (+ slots k) ∷
-  bgeu-fwd t1 t2 ∷
-  call-sym host-exhausted-symbol ∷
-  local-1 ∷ []
+-- D485: a check of no words emits nothing (the layout's separation is its room)
+-- D488 (a3): the check is two parts against the stack limit `L` (record word 0):
+-- cells, `frontier + 8h ≤ L`; stack, `L + 8s ≤ sp`; a part of 0 emits nothing
+compile-abstract (instr-room r) = heap-code (Room.room-h r) ++ stack-code (Room.room-s r)
+-- D488: a need that is no word no region meets: the check is then the call itself
 
 -- Plan 0.11: name-agnostic SigOp codegen.
 -- Emit a single symbolic call; linker resolves the name at build time
@@ -341,8 +416,13 @@ compile-abstract (instr-ctrl (c-entry e b))             = label (callee e) ∷ a
 -- plan 0.107: the start (`once_main`) — the outermost frame (the Host set the
 -- heap register `s2`, plan 0.123 C.5);
 -- nothing called the program, so no `ra` to spill.
-compile-abstract (instr-ctrl (c-start b))               = addi sp sp (Data.Integer.-_ (+ (slots b))) ∷ []
-  where import Data.Integer
+-- D488: the start checks that `main`'s frame and the stack it reserves fit
+-- (the room check's code at `start-stack-words + b`), reserves the frame, and
+-- sets the stack limit, record word 0, to `sp − 8·start-stack-words` (`t1`,
+-- `t2` are no role's)
+compile-abstract (instr-ctrl (c-start b))               =
+  fits-or-out (room-fits? (start-stack-words Data.Nat.+ b)) (room-code (start-stack-words Data.Nat.+ b)) ++ start-tail b
+  where import Data.Nat
 -- D320: the program leaves by the Host's `leave`, a call of its one fixed symbol.
 compile-abstract (instr-ctrl c-leave)                   = call-sym host-leave-symbol ∷ []
 compile-abstract (instr-ctrl (c-ret b))                 = ld ra sp (slots b) ∷ addi sp sp (+ (slots (suc b))) ∷ ret ∷ []

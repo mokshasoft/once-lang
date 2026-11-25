@@ -19,21 +19,25 @@
 -- the flat machine's runs of the program image the compiler emits, the last
 -- level where an allocation and a free are instructions (in the bytes a
 -- pop-heap free is the frontier register moving down, like any arithmetic).
+-- Plan 0.146 (D467): the image is the linear core's, of the module's sources
+-- at their `main`, room-checked (`LinCore.ExprImage.imageAt`, what
+-- `LinCore.Emit` writes); it was master's (`ProgramImage.program-image`).
 --
 -- A BLOCK IS AN ALLOCATION EVENT. The abstract allocator is a counter
 -- (`next-heap-ref`), so the block step k allocates is named by the counter at
 -- k: the n-th allocation of the run, unique and never reused.
 --
--- THE CLAIM, for every run from an entry state of every linked program image:
+-- THE CLAIM, for every run from an entry state of every program image the
+-- compiler emits (D429 amended, D474: a safety claim, at every step):
 --   * every free hits a live block (allocated, not freed since), so a block
 --     is never freed twice;
---   * every block live at some point is freed later in the run, or the run
---     stops first other than by returning: a run that returns (the Host's
---     `leave`, `left`) has nothing live; a run that halts in an operation into
---     `Void` (such as `exit`: the process ends there) is exempt, and so will
---     be one that ends `exhausted` (D374, once the machine has that end).
--- Together: every allocation is freed exactly once. A run that never ends (a
--- server) is covered by the second: each block is freed later in the run.
+--   * at every step every live block is reachable from what the state holds
+--     (its registers, its live frames' slots, through heap cells): nothing
+--     allocated is garbage; a server holds its state and nothing of the
+--     rounds before. (A stale pointer, a register or dead slot still naming a
+--     block, only adds reachability: the claim is the leak half of D429's
+--     "exactly", the other half being memory safety, which the machine's
+--     gates give.)
 --
 -- Ownership (D6) is how the compiler meets the claim, not part of it.
 ------------------------------------------------------------------------
@@ -56,13 +60,22 @@ open AllocState using (next-heap-ref; frame-slots)
 open LocState using (halted; left; regs)
 open import Once.CCC.Machine.Locations using (AtDynamic)
 open import Once.CCC.Machine.Flat
-open import Once.Memory.HeapAddress using (HeapLocation; HeapRef; module HeapRef; hl-ref)
+open import Once.Memory.HeapAddress using (HeapLocation; HeapRef; module HeapRef; hl-ref; heap-loc; mkHeapRef)
 open HeapRef using (ref-id)
-open import Once.IR using (IR)
-open import Once.IRTy using (Unit)
-open import Once.CCC.Codegen.ProgramImage using (program-image)
-open import Once.Denotation.Program using (IRFun; irProgram)
+open import Data.List using ([])
+open import Data.Product using (_,_)
+open import Data.Sum using (inj₂)
+open import Once.IR using (Heap)
+open import Once.Spec.Type using (Type)
+open import Once.Spec.Sub using (_<:_)
+open import Once.CCC.FrameSemantics using (fs-numerics)
+open import Once.CCC.Codegen.RoomChecks using (room-checks)
+open import Once.Parser.Module.Core using (Resolved)
+open import Once.CompileSrc using (CompiledSrc; srcModule; mainOf)
+open import Once.Compile using (EffUU)
 open import Once.Compile.Emit using (entry-owner)
+import Once.LinCore.ExprBuild
+import Once.LinCore.ExprImage
 import Once.Adequacy.ArchCorrectness.FlatCore.RunContext as RunContext
 
 ------------------------------------------------------------------------
@@ -105,25 +118,40 @@ module Run (FS : FrameSemantics) (prog : AbstractTrace) where
   StoppedAt : FlatState → ℕ → Set
   StoppedAt fs₀ k = halted (floc (at fs₀ k)) ≡ true × left (floc (at fs₀ k)) ≡ false
 
+  -- D429 amended, D474: what the state still holds — a block a root points into
+  -- (a register, the closure register, a slot inside a live frame's window), or
+  -- one a held block's cell points into
+  data Reach (fs : FlatState) : ℕ → Set where
+    r-reg  : ∀ (x : AbstractReg) r → PointsTo (readReg (regs (floc fs)) x) r → Reach fs r
+    r-clo  : ∀ r → PointsTo (FlatState.fclosure fs) r → Reach fs r
+    r-slot : ∀ f k r {v} → ExecFinal.in-window {FS} (ExecFinal.live-frames {FS} (falloc fs)) f k ≡ true
+           → LocState.stackMem (floc fs) f k ≡ just v → PointsTo v r → Reach fs r
+    r-heap : ∀ r′ o r {v} → Reach fs r′ → LocState.heapMem (floc fs) (heap-loc (mkHeapRef r′) o) ≡ just v
+           → PointsTo v r → Reach fs r
+
   record LeakFree (fs₀ : FlatState) : Set where
     field
       -- every free hits a live block: no double free, no free of a stranger
       frees-live : ∀ k r → Frees fs₀ k r → Live fs₀ k r
-      -- every live block is freed later, unless the run stops first other
-      -- than by returning (a return with a block live is a leak)
-      freed      : ∀ k r → Live fs₀ k r
-                 → (∃[ j ] (k ≤ j × Frees fs₀ j r)) ⊎ (∃[ j ] (k ≤ j × StoppedAt fs₀ j))
+      -- D429 amended (a safety claim, at every step), D474: every live block is
+      -- one the state still holds — nothing allocated is garbage
+      reachable  : ∀ k r → Live fs₀ k r → Reach (at fs₀ k) r
 
 ------------------------------------------------------------------------
--- The claim: every run of every linked program image the compiler emits
+-- The claim: every run of every program image the compiler emits
 ------------------------------------------------------------------------
+
+-- the image the compiler emits for a module whose sources compile, at their `main`
+-- (`LinCore.Emit.fileOf`'s, before the arch lowers it)
+EmittedImage : FrameSemantics → (srcs : List CompiledSrc) → ∀ {T : Type} → T <: EffUU → AbstractTrace
+EmittedImage FS srcs pm =
+  room-checks (Once.LinCore.ExprImage.imageAt (fs-numerics FS) (Once.LinCore.ExprBuild.srcOrder (fs-numerics FS) srcs []) pm)
 
 NoLeak : Set₁
 NoLeak =
-  ∀ (FS : FrameSemantics) (tbl : List IRFun) (ir : IR Unit Unit)
+  ∀ (FS : FrameSemantics) (m : Resolved) (srcs : List CompiledSrc) → srcModule Heap false m ≡ inj₂ srcs
+  → ∀ {T : Type} (pm : T <: EffUU) → mainOf srcs ≡ just (T , pm)
   → let module RC = RunContext entry-owner FS (frame-word FS) refl
-        prog      = program-image entry-owner (irProgram tbl ir)
-    in RC.LinkedImage tbl ir
-  → ∀ (fs₀ : FlatMachine.FlatState {FS})
+    in ∀ (fs₀ : FlatMachine.FlatState {FS})
   → RC.EntryLike fs₀ → frame-slots (FlatMachine.FlatState.falloc {FS} fs₀) ≡ 0
-  → Run.LeakFree FS prog fs₀
+  → Run.LeakFree FS (EmittedImage FS srcs pm) fs₀

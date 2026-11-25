@@ -29,8 +29,7 @@ open import Once.Type.DecEq using (_≟T_)
 open import Once.Type.Sub using (⊑π-refl)
 open import Once.Functor.Decide using (wfFun?)
 open import Once.TypeCheck.DeciderComplete using (wfFun?-complete-at)
-open import Once.IR as IR using (IR)
-open import Once.IRTy using (⌊_⌋)
+open import Once.Surface.Map using (Map)
 open import Once.TypeCheck.Table
 
 ------------------------------------------------------------------------
@@ -68,11 +67,11 @@ module _ {m} {Δ : KCtx m} {s} {S : Defs s} {n : _} where
   ------------------------------------------------------------------------
 
   -- What `mapFrom?` answers.
-  record FromOK (g : Gen) (A : Ty m) (π : Purity) (B : Ty m) (mI : IR ⌊ A ⌋ ⌊ B ⌋) : Set where
+  record FromOK (g : Gen) (A : Ty m) (π : Purity) (B : Ty m) (mI : Map A B) : Set where
     field
       from  : FromDomain (kind g)
       row   : Mor g A π B
-      ir    : morphIR (proj₂ (proj₂ row)) ≡ mI
+      ir    : morphMap (proj₂ (proj₂ row)) ≡ mI
       least : ∀ {k′ B′} {t′ : Tm S m n} → Morphism {S = S} Δ {n = n} g k′ A π B′ t′ → B <:ᶜ B′
 
   private
@@ -146,7 +145,7 @@ module _ {m} {Δ : KCtx m} {s} {S : Defs s} {n : _} where
 
   mapFrom?-complete : ∀ {g k A π B} {t : Tm S m n} → FromDomain (kind g) → (mo : Morphism {S = S} Δ {n = n} g k A π B t)
                     → (∀ {k′ B′} {t′ : Tm S m n} → Morphism {S = S} Δ {n = n} g k′ A π B′ t′ → B <:ᶜ B′)
-                    → mapFrom? Δ g A ≡ just (B , morphIR mo)
+                    → mapFrom? Δ g A ≡ just (B , morphMap mo)
   mapFrom?-complete fd m-id       _ = refl
   mapFrom?-complete fd m-fst      _ = refl
   mapFrom?-complete fd m-snd      _ = refl
@@ -160,11 +159,11 @@ module _ {m} {Δ : KCtx m} {s} {S : Defs s} {n : _} where
   -- To a codomain (at pure)
   ------------------------------------------------------------------------
 
-  record ToOK (g : Gen) (A B : Ty m) (mI : IR ⌊ A ⌋ ⌊ B ⌋) : Set where
+  record ToOK (g : Gen) (A B : Ty m) (mI : Map A B) : Set where
     field
       to  : FromCodomain (kind g)
       row : Mor g A pure B
-      ir  : morphIR (proj₂ (proj₂ row)) ≡ mI
+      ir  : morphMap (proj₂ (proj₂ row)) ≡ mI
 
   private
     inlS : ∀ {B : Ty m} (v : SumV B) {A mI} → mapTo?-inl v ≡ just (A , mI) → ToOK inl A B mI
@@ -201,7 +200,7 @@ module _ {m} {Δ : KCtx m} {s} {S : Defs s} {n : _} where
   mapTo?-sound toFloat B ()
 
   mapTo?-complete : ∀ {g k A B} {t : Tm S m n} → FromCodomain (kind g) → (mo : Morphism {S = S} Δ {n = n} g k A pure B t)
-                  → mapTo? Δ g B ≡ just (A , morphIR mo)
+                  → mapTo? Δ g B ≡ just (A , morphMap mo)
   mapTo?-complete fc m-id      = refl
   mapTo?-complete fc m-inl     = refl
   mapTo?-complete fc m-inr     = refl
@@ -212,10 +211,10 @@ module _ {m} {Δ : KCtx m} {s} {S : Defs s} {n : _} where
   -- At an arrow
   ------------------------------------------------------------------------
 
-  record AtOK (g : Gen) (A : Ty m) (π : Purity) (B : Ty m) (mI : IR ⌊ A ⌋ ⌊ B ⌋) : Set where
+  record AtOK (g : Gen) (A : Ty m) (π : Purity) (B : Ty m) (mI : Map A B) : Set where
     field
       row : Mor g A π B
-      ir  : morphIR (proj₂ (proj₂ row)) ≡ mI
+      ir  : morphMap (proj₂ (proj₂ row)) ≡ mI
 
   private
     viaFrom : ∀ g (A : Ty m) π (B : Ty m) {mI} → mapAt?-by-dom {A = A} B (mapFrom? Δ g A) ≡ just mI → AtOK g A π B mI
@@ -245,7 +244,7 @@ module _ {m} {Δ : KCtx m} {s} {S : Defs s} {n : _} where
         regrade (m-In w)  = is-map , _ , m-In w
         regrade (m-Out w) = is-map , _ , m-Out w
         same : ∀ {g k A B} {t : Tm S m n} (mo : Morphism {S = S} Δ {n = n} g k A pure B t)
-             → morphIR (proj₂ (proj₂ (regrade mo))) ≡ morphIR mo
+             → morphMap (proj₂ (proj₂ (regrade mo))) ≡ morphMap mo
         same m-id = refl
         same m-inl = refl
         same m-inr = refl
@@ -286,7 +285,7 @@ module _ {m} {Δ : KCtx m} {s} {S : Defs s} {n : _} where
   mapAt?-sound toFloat  A π B ()
 
   mapAt?-complete : ∀ {g k A π B} {t : Tm S m n} (mo : Morphism {S = S} Δ {n = n} g k A π B t)
-                  → mapAt? Δ g A B ≡ just (morphIR mo)
+                  → mapAt? Δ g A B ≡ just (morphMap mo)
   mapAt?-complete {A = A} m-id rewrite ≟T-refl A = refl
   mapAt?-complete {B = B} m-fst rewrite ≟T-refl B = refl
   mapAt?-complete {B = B} m-snd rewrite ≟T-refl B = refl

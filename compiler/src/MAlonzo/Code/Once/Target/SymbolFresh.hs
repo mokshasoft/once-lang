@@ -290,3 +290,14 @@ d_leave'8802'exhausted_176 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20
 d_leave'8802'exhausted_176 = erased
+-- Once.Target.SymbolFresh.alloc-record-symbol
+d_alloc'45'record'45'symbol_178 ::
+  MAlonzo.Code.Agda.Builtin.String.T_String_6
+d_alloc'45'record'45'symbol_178
+  = coe ("once_alloc_record" :: Data.Text.Text)
+-- Once.Target.SymbolFresh.record≢osp
+d_record'8802'osp_182 ::
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20
+d_record'8802'osp_182 = erased

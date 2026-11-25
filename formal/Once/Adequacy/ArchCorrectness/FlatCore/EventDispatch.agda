@@ -75,7 +75,7 @@ module Once.Adequacy.ArchCorrectness.FlatCore.EventDispatch
 open import Once.Adequacy.ArchCorrectness.FlatCore.EventEngine
   o FS slot-size word-eq Reg roles modulus E M T
 open CompiledCorrespondence using (CompiledCorr; BlockStep; store-guard; slot-heap-disj)
-open CompiledCorrespondence.BlockSteps using (bs-c-thunk; bs-c-ret; bs-call; bs-call-fn; bs-c-jmp; bs-c-branch-tag-zero; bs-c-branch-tag-nz; bs-out-nz; bs-load-indirect; bs-load-indirect-stack; bs-load-indirect-suc; bs-load-indirect-suc-stack; bs-load-from-slot; bs-restore-input; bs-worklist-pop; bs-store-indirect; bs-store-indirect-stack; bs-store-indirect-suc; bs-store-indirect-suc-stack; bs-load-at; bs-addr-at; bs-store-at; bs-mov-to-output; bs-mov-to-input; bs-store-at-slot; bs-worklist-push; bs-alloc-heap; bs-load-const; bs-load-const-float; bs-lea-slot; bs-load-code-addr; bs-save-closure-reg; bs-worklist-init; bs-worklist-check; bs-reclaim-to; bs-load-tag-lit; bs-c-label; bs-c-start)
+open CompiledCorrespondence.BlockSteps using (bs-c-thunk; bs-c-ret; bs-call; bs-call-fn; bs-c-jmp; bs-c-branch-tag-zero; bs-c-branch-tag-nz; bs-out-nz; bs-load-indirect; bs-load-indirect-stack; bs-load-indirect-suc; bs-load-indirect-suc-stack; bs-load-from-slot; bs-restore-input; bs-worklist-pop; bs-store-indirect; bs-store-indirect-stack; bs-store-indirect-suc; bs-store-indirect-suc-stack; bs-load-at; bs-addr-at; bs-store-at; bs-mov-to-output; bs-mov-to-input; bs-store-at-slot; bs-worklist-push; bs-alloc-heap; bs-load-const; bs-load-const-float; bs-lea-slot; bs-load-code-addr; bs-save-closure-reg; bs-worklist-init; bs-worklist-check; bs-reclaim-to; bs-load-tag-lit; bs-c-label; bs-load-at-stack; bs-store-at-stack; bs-free-heap; bs-load-rec; bs-store-rec)
 open CompiledCorrespondence.CompiledCorr using (dataCorr)
 open FlatComposition using (blk-len; blk-off; find-thunk-corr)
 open FlatInv using (inv-run; inv-ev; inv-env; inv-wf; inv-closure; inv-started; inv-left)
@@ -123,9 +123,15 @@ open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong;
 open CFC using (HeapView; slots)
 -- plan 0.123 A.4 step 5: THE BUDGET the room checks re-arm, carried beside the
 -- correspondence; it is where every spending instruction's room comes from.
-open import Once.Adequacy.ArchCorrectness.FlatCore.Budget o FS slot-size word-eq Reg roles State rreg memory xhalted
-  using (Budget; fbase-shift; straight-frame; room-of; call-room-of; bg-view; bg-plain; bg-str; bg-spent-str; bg-alloc; bg-start
-        ; bg-call; bg-room; bg-boundary; bg-label; bg-ret)
+open import Once.Adequacy.ArchCorrectness.FlatCore.Budget o FS slot-size word-eq Reg roles State rreg memory xhalted heap-base
+  using (Budget; fbase-shift; straight-frame; straight-saved; bg-view; bg-plain; bg-str; bg-spent-str; bg-alloc
+        ; bg-call; bg-room; bg-entry; bg-label; bg-ret; bg-start; floor-by; room-h; fresh-of; entry-room; entry-front
+        ; call-fn-room; call-clo-room; call-slot; call-front; sigop-room; module Budget)
+-- D490: the depth table the checks were placed by, and its certificate
+open import Once.CCC.Codegen.RoomChecks using (tbl)
+open import Once.CCC.Codegen.StackDepth using (module Depths; module Cert)
+open import Once.CCC.Codegen.RoomChecksFacts using (module PickCert)
+open PickCert {FS} using (at-fetch)
 
 ------------------------------------------------------------------------
 -- THE TRACE LOOP. `RT.run-events` here IS the arch's `run-events`: both are
@@ -141,7 +147,7 @@ open import Once.CCC.Machine.SMCore hiding (Instr)
 open AllocState using (saved-frames; current-frame; block-size; frame-slots; next-heap-ref)
 open LocState using (halted; heapMem; regs; stackMem)
 open import Once.CCC.Machine.Locations using (AtDynamic; ValueLocation; AtStack)
-open import Once.Memory.HeapAddress using (HeapLocation; module HeapRef; module HeapLocation; sucHL; offsetHL)
+open import Once.Memory.HeapAddress using (HeapLocation; module HeapRef; module HeapLocation; sucHL; offsetHL; heap-loc; mkHeapRef)
 open HeapLocation using (heap-offset; heap-ref)
 open HeapRef using (ref-id)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
@@ -149,17 +155,14 @@ open FlatMachine {FS} using
   -- `find-label` is RENAMED: this module's own `find-label` parameter is the
   -- CONCRETE program's scan, and the flat machine's is the abstract one. Two
   -- different functions over two different types — see `bs-c-jmp`'s comment.
-  (fetch; flat-exec-instr; find-thunk; find-fn; enter-call; do-call-sv; do-call-code; do-call-at
-  ; find-thunk-sound; find-entry-sound; module FlatState)
+  (fetch; flat-exec-instr; find-thunk; find-fn; enter-call; do-call-sv; do-call-code; do-call-at; ret-pass; do-ret-pc-∷; straight-go; slot-go
+  ; find-thunk-sound; find-entry-sound; module FlatState; fret-straight; leave-frame-aux; leave-frame-saved-∷)
   renaming (find-label to flat-find-label)
 open FlatState using (floc; fpc; fret; falloc; fclosure)
 open MemOps {FS} using (readLoc; writeLoc-halted)
 open import Once.CCC.Machine.FlatStoreWF FS using
   (FlatWF; flat-wf-step; cl-step; sv-below; module StoreWF)
 open StoreWF using (wf-regs; wf-heap; wf-stack; wf-fresh)
-open import Once.CCC.Machine.FlatStackPtr FS using
-  (stack-ptr-live; stack-ptr-suc-live; StackPtrOK; StackPtrOK?; module SPInv)
-open SPInv using (sp-heap; sp-stack)
 open import Once.CCC.Machine.FlatPtrBounds FS using (PtrB; PtrB?; module PBInv)
 open PBInv using (pb-heap; pb-stack)
 open import Once.CCC.Label using (thunk; EntryId; LabelId; e-fn; e-thunk)
@@ -175,9 +178,9 @@ open FrameSemantics FS using (Frame)
 -- D377: the site facts the engine uses are the LOWERED run's (`RunLow`), each
 -- `RunWF`'s at the image state the lift is of.
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunWF o FS slot-size word-eq
-  hiding (slot-read-written; load-indirect-target-wf; load-indirect-suc-target-wf; heap-load-written; heap-load-suc-written; out-nz-output-word; store-nonptr-absurd; store-suc-nonptr-absurd; branch-tag-scrutinee-wf; store-indirect-inbounds; store-indirect-suc-inbounds; entry-empty; entry-link; entry-ret; ret-site-owes; ret-budget-matches; run-link-nothing; frame-op-absurd; slot-read-in-frame; run-stack-ptr; run-ptr-bounds; stack-ptr-current; stack-ptr-current-suc; emitted-call-fn-resolves; call-site-shape; step-ok; load-at-target-ptr; heap-load-at-written; store-at-target-ptr; store-at-in-block; store-at-inbounds; addr-at-target-ptr; addr-at-in-block; addr-at-inbounds)
+  hiding (slot-read-written; load-indirect-target-wf; load-indirect-suc-target-wf; heap-load-written; heap-load-suc-written; out-nz-output-word; store-nonptr-absurd; store-suc-nonptr-absurd; branch-tag-scrutinee-wf; store-indirect-inbounds; store-indirect-suc-inbounds; entry-empty; entry-link; entry-ret; ret-site-owes; ret-budget-matches; run-link-nothing; frame-op-absurd; slot-read-in-frame; free-gate; run-ptr-bounds; emitted-call-fn-resolves; call-site-shape; step-ok; load-at-target-ptr; heap-load-at-written; store-at-target-ptr; store-at-in-block; store-at-inbounds; addr-at-target-ptr; addr-at-in-block; addr-at-inbounds)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunLow o FS slot-size word-eq
-  using (load-at-target-ptr; heap-load-at-written; store-at-target-ptr; store-at-in-block; store-at-inbounds; addr-at-target-ptr; addr-at-in-block; addr-at-inbounds; slot-read-written; load-indirect-target-wf; load-indirect-suc-target-wf; heap-load-written; heap-load-suc-written; out-nz-output-word; store-nonptr-absurd; store-suc-nonptr-absurd; branch-tag-scrutinee-wf; store-indirect-inbounds; store-indirect-suc-inbounds; entry-empty; entry-link; entry-ret; ret-site-owes; ret-budget-matches; run-link-nothing; frame-op-absurd; slot-read-in-frame; run-stack-ptr; run-ptr-bounds; stack-ptr-current; stack-ptr-current-suc; emitted-call-fn-resolves; call-site-shape; start-behind; ret-saved; code-addr-has-body; low-step-image; low-step)
+  using (load-at-target-ptr; heap-load-at-written; load-at-gate; store-at-gate; stack-load-at-written; addr-at-not-stack; store-at-target-ptr; store-at-in-block; store-at-inbounds; addr-at-target-ptr; addr-at-in-block; addr-at-inbounds; slot-read-written; load-indirect-target-wf; load-indirect-suc-target-wf; heap-load-written; heap-load-suc-written; out-nz-output-word; store-nonptr-absurd; store-suc-nonptr-absurd; branch-tag-scrutinee-wf; store-indirect-inbounds; store-indirect-suc-inbounds; entry-empty; entry-link; entry-ret; ret-site-owes; ret-budget-matches; run-link-nothing; frame-op-absurd; slot-read-in-frame; free-gate; run-ptr-bounds; emitted-call-fn-resolves; call-site-shape; step-ok; start-behind; ret-saved; code-addr-has-body; low-step-image; low-step)
   renaming (RunLow to RunAt)
 open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
 open FlatEventTrace {FS} using (flat-events; flat-events-step; flat-events-fetch; event-of; flat-ctrls; flat-ctrls-step; flat-ctrls-fetch; ctrl-of)
@@ -239,6 +242,8 @@ module Dispatch (sup : Supply) where
   ctrl-le (load-at _) = z≤n
   ctrl-le (store-at _) = z≤n
   ctrl-le (addr-at _) = z≤n
+  ctrl-le (load-rec _) = z≤n
+  ctrl-le (store-rec _) = z≤n
   ctrl-le (instr-room _) = z≤n
   ctrl-le (instr-reclaim-to _) = z≤n
   ctrl-le (instr-push-frame _) = z≤n
@@ -392,7 +397,8 @@ module Dispatch (sup : Supply) where
                           (reg-range prog fs s sp-reg (inv-run wf) cc)
                           (proj₂ lnk) (proj₂ (proj₂ pend)))
       -- past an entry, a check is next
-      (λ cc′ → bg-boundary (inv-run wf) ftq refl refl (dataCorr cc′)) wf ftq h refl tt tt h
+      (λ cc′ → bg-entry bg (inv-run wf) ftq refl refl refl refl
+                  (fbase-shift (flat-exec-instr (instr-ctrl (c-entry m b)) prog fs) fs b refl) refl refl) wf ftq h refl tt tt h
     where
       -- A BODY ENTRY IS REACHED BY A CALL, hence with the link still live —
       -- what an arch whose marker SPILLS needs before it may store.
@@ -403,20 +409,20 @@ module Dispatch (sup : Supply) where
       pend = entry-ret prog fs m b (inv-run wf) ftq
       -- the site's room: the reservation stays above the heap frontier — the
       -- budget's, since the call that landed here spent for it (plan 0.123)
-      room : CFC.HeapView.hfront hv + slots b ≤ rreg s sp-reg
-      room = room-of bg (dataCorr cc) ftq refl
+      rm : CFC.HeapView.hfront hv + slots b ≤ rreg s sp-reg
+      rm = entry-front bg (dataCorr cc) ftq
       fits : slots b ≤ rreg s sp-reg
-      fits = ≤-trans (m≤n+m (slots b) (CFC.HeapView.hfront hv)) room
+      fits = ≤-trans (m≤n+m (slots b) (CFC.HeapView.hfront hv)) rm
       front-rsp : CFC.HeapView.hfront hv ≤ rreg s sp-reg ∸ slots b
-      front-rsp = m+n≤o⇒m≤o∸n (CFC.HeapView.hfront hv) room
+      front-rsp = m+n≤o⇒m≤o∸n (CFC.HeapView.hfront hv) rm
       lo' : ℕ
       lo' = CFC.HeapView.lo hv ⊓ (rreg s sp-reg ∸ slots b)
       lo'≤lo : lo' ≤ CFC.HeapView.lo hv
       lo'≤lo = m⊓n≤m (CFC.HeapView.lo hv) (rreg s sp-reg ∸ slots b)
       lo'≤rsp : lo' ≤ rreg s sp-reg ∸ slots b
       lo'≤rsp = m⊓n≤n (CFC.HeapView.lo hv) (rreg s sp-reg ∸ slots b)
-      front-lo' : CFC.HeapView.hfront hv ≤ lo'
-      front-lo' = ⊓-glb (CFC.HeapView.front-lo hv) front-rsp
+      front-lo' : CFC.Floor hv lo'
+      front-lo' = floor-by (slots b) rm (entry-room bg (dataCorr cc) ftq)
 
   -- THE RETURN — A THEOREM (D095). `block-step-c-ret` does the machine work
   -- (the `add` lands `%rsp` on the pending return's cell, the `ret` pops it and
@@ -432,15 +438,15 @@ module Dispatch (sup : Supply) where
            → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
                  (event-of (instr-ctrl (c-ret b)) fs
                    ▹ flat-events n prog (flat-exec-instr (instr-ctrl (c-ret b)) prog fs)) (ctrl-of (instr-ctrl (c-ret b)) + flat-ctrls n prog (flat-exec-instr (instr-ctrl (c-ret b)) prog fs)) M)
-  ret-step {hv} n IH ev env prog fs s b cc bg wf h ftq = go (ret-site-owes prog fs b (inv-run wf) ftq)
+  ret-step {hv} n IH ev env prog fs s b cc bg wf h ftq = go (ret-site-owes prog fs b (inv-run wf) h ftq)
     where
       -- `RetMatch` pairs the two stacks, so a cons `fret` forces a cons frame
       -- stack — J-style, because the pairing is data.
-      saved-cons : ∀ {frs' rs'} → RetMatch prog 0 frs' rs'
+      saved-cons : ∀ {frs' rs'} → RetMatch prog frs' rs'
                  → ∀ rpc rest → rs' ≡ rpc ∷ rest
                  → Σ Frame (λ f₀ → Σ ℕ (λ b₀ → Σ (List (Frame × ℕ)) (λ frs → frs' ≡ (f₀ , b₀) ∷ frs)))
       saved-cons rm-[] rpc rest ()
-      saved-cons (rm-∷ {f} {b'} {rpc'} {frs} {rs} _ _ _) rpc rest e = f , b' , frs , refl
+      saved-cons (rm-∷ {f} {b'} {rpc'} {frs} {rs} _ _) rpc rest e = f , b' , frs , refl
       go : Σ ℕ (λ rpc → Σ (List ℕ) (λ rest → fret fs ≡ rpc ∷ rest))
          → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
                (event-of (instr-ctrl (c-ret b)) fs
@@ -455,16 +461,28 @@ module Dispatch (sup : Supply) where
           go-sv (f₀ , b₀ , frs , feq) =
             ccc-step-bs n IH ev env prog fs s (instr-ctrl (c-ret b))
               (bs-c-ret bss prog fs s b rpc rest f₀ b₀ frs cc h ftq req
-                 (ret-budget-matches prog fs b (inv-run wf) ftq) feq
+                 (ret-budget-matches prog fs b (inv-run wf) h ftq) feq
                  (ret-no-wrap prog fs s b (inv-run wf) cc ftq)
                  (run-link-nothing prog fs (inv-run wf) ftq (λ _ ())
                     (λ ℓ bb teq → ret≢thunk (trans (sym ftq) teq))))
               -- one past a call, a check is there
-              (λ cc′ → bg-ret (inv-run wf) req pc′ (dataCorr cc′)) wf ftq h refl tt tt hpost
-            where hpost : halted (floc (flat-exec-instr (instr-ctrl (c-ret b)) prog fs)) ≡ false
-                  hpost rewrite req = h
+              (λ cc′ → bg-ret bg (inv-run wf) req feq refl refl refl pc′ fb′ rq′ sq′) wf ftq h refl tt tt hpost
+            where be : b ≡ frame-slots (falloc fs)
+                  be = ret-budget-matches prog fs b (inv-run wf) h ftq
+                  hpost : halted (floc (flat-exec-instr (instr-ctrl (c-ret b)) prog fs)) ≡ false
+                  hpost = subst (λ t → halted (floc t) ≡ false) (sym (ret-pass b fs rpc rest req be)) h
                   pc′ : fpc (flat-exec-instr (instr-ctrl (c-ret b)) prog fs) ≡ rpc
-                  pc′ rewrite req = refl
+                  pc′ = do-ret-pc-∷ b fs rpc rest req be
+                  post = ret-pass b fs rpc rest req be
+                  -- the caller's frame, back
+                  fb′ : FrameSemantics.frame-base FS (current-frame (falloc (flat-exec-instr (instr-ctrl (c-ret b)) prog fs)))
+                      ≡ FrameSemantics.frame-base FS f₀
+                  fb′ = trans (cong (λ z → FrameSemantics.frame-base FS (current-frame (falloc z))) post)
+                              (cong (λ l → FrameSemantics.frame-base FS (current-frame (leave-frame-aux l (falloc fs)))) feq)
+                  rq′ : fret (flat-exec-instr (instr-ctrl (c-ret b)) prog fs) ≡ rest
+                  rq′ = cong fret post
+                  sq′ : saved-frames (falloc (flat-exec-instr (instr-ctrl (c-ret b)) prog fs)) ≡ frs
+                  sq′ = trans (cong (λ z → saved-frames (falloc z)) post) (leave-frame-saved-∷ (falloc fs) f₀ b₀ frs feq)
 
   -- THE CALL — A THEOREM (D098), and the last of them.
   --
@@ -485,7 +503,7 @@ module Dispatch (sup : Supply) where
                   (event-of instr-call-closure fs
                     ▹ flat-events n prog (flat-exec-instr instr-call-closure prog fs)) (ctrl-of instr-call-closure + flat-ctrls n prog (flat-exec-instr instr-call-closure prog fs)) M)
   call-step {hv} n IH ev env prog fs s cc bg wf h ftq =
-    go (call-site-shape prog fs (inv-run wf) ftq)
+    go (call-site-shape prog fs (inv-run wf) h ftq)
     where
       go : Σ HeapLocation (λ hl → Σ LabelId (λ ℓ → Σ ℕ (λ j →
              (fclosure fs ≡ SV-Ptr (AtDynamic hl))
@@ -503,27 +521,33 @@ module Dispatch (sup : Supply) where
              (run-link-nothing prog fs (inv-run wf) ftq (λ _ ())
                 (λ ℓ bb teq → call≢thunk (trans (sym ftq) teq))))
           -- the call lands on its body's entry, one slot down
-          (λ _ → bg-view refl $ bg-call (inv-run wf) bg ftq refl refl refl (proj₂ (find-thunk-sound prog ℓ j fteq))
+          (λ _ → bg-view refl refl refl $ bg-call (Depths.clo-dep (tbl prog)) (inv-run wf) bg ftq refl refl cov fe′ le′
                    (cong fpc step-eq)
                    (fbase-shift (flat-exec-instr instr-call-closure prog fs) fs 1
-                                (cong (λ z → current-frame (falloc z)) step-eq)))
+                                (cong (λ z → current-frame (falloc z)) step-eq))
+                   (cong fret step-eq) (cong (λ z → saved-frames (falloc z)) step-eq))
           wf ftq h refl tt tt hpost
         where
+          -- D490: the call's room — its return word and any closure body's depth
+          cov = call-clo-room bg ftq
+          fe′ = proj₂ (find-thunk-sound prog ℓ j fteq)
+          le′ = ≤-trans (Cert.dep-le (Budget.bg-cert bg) j (e-thunk ℓ) _ (trans (at-fetch prog j) fe′))
+                        (Cert.clo-le (Budget.bg-cert bg) j ℓ _ (trans (at-fetch prog j) fe′))
           -- the call's own slot, from the budget (plan 0.123 A.4 step 5)
-          room : CFC.HeapView.hfront hv + slot-size ≤ rreg s sp-reg
-          room = call-room-of bg (dataCorr cc) ftq refl refl
+          rm : CFC.HeapView.hfront hv + slot-size ≤ rreg s sp-reg
+          rm = call-front (Depths.clo-dep (tbl prog)) bg (dataCorr cc) cov
           fits : slot-size ≤ rreg s sp-reg
-          fits = ≤-trans (m≤n+m slot-size (CFC.HeapView.hfront hv)) room
+          fits = ≤-trans (m≤n+m slot-size (CFC.HeapView.hfront hv)) rm
           front-rsp : CFC.HeapView.hfront hv ≤ rreg s sp-reg ∸ slot-size
-          front-rsp = m+n≤o⇒m≤o∸n (CFC.HeapView.hfront hv) room
+          front-rsp = m+n≤o⇒m≤o∸n (CFC.HeapView.hfront hv) rm
           lo' : ℕ
           lo' = CFC.HeapView.lo hv ⊓ (rreg s sp-reg ∸ slot-size)
           lo'≤lo : lo' ≤ CFC.HeapView.lo hv
           lo'≤lo = m⊓n≤m (CFC.HeapView.lo hv) (rreg s sp-reg ∸ slot-size)
           lo'≤rsp : lo' ≤ rreg s sp-reg ∸ slot-size
           lo'≤rsp = m⊓n≤n (CFC.HeapView.lo hv) (rreg s sp-reg ∸ slot-size)
-          front-lo' : CFC.HeapView.hfront hv ≤ lo'
-          front-lo' = ⊓-glb (CFC.HeapView.front-lo hv) front-rsp
+          front-lo' : CFC.Floor hv lo'
+          front-lo' = floor-by slot-size rm (call-slot (Depths.clo-dep (tbl prog)) bg (dataCorr cc) cov)
           -- the site's shape says the call ENTERS (it does not halt), so the
           -- post-state's halt flag is the pre-state's
           step-eq : flat-exec-instr instr-call-closure prog fs
@@ -562,27 +586,32 @@ module Dispatch (sup : Supply) where
              (run-link-nothing prog fs (inv-run wf) ftq (λ _ ())
                 (λ ℓ bb teq → callfn≢thunk (trans (sym ftq) teq))))
           -- the call lands on the function's entry, one slot down
-          (λ _ → bg-view refl $ bg-call (inv-run wf) bg ftq refl refl refl (proj₂ (find-entry-sound prog (e-fn f) j fe))
+          (λ _ → bg-view refl refl refl $ bg-call (Depths.dep (tbl prog) (e-fn f)) (inv-run wf) bg ftq refl refl cov fe′
+                   (Cert.dep-le (Budget.bg-cert bg) j (e-fn f) _ (trans (at-fetch prog j) fe′))
                    (cong (λ mj → fpc (do-call-at mj fs)) fe)
                    (fbase-shift (flat-exec-instr (instr-ctrl (c-call-fn f)) prog fs) fs 1
-                                (cong (λ mj → current-frame (falloc (do-call-at mj fs))) fe)))
+                                (cong (λ mj → current-frame (falloc (do-call-at mj fs))) fe))
+                   (cong (λ mj → fret (do-call-at mj fs)) fe) (cong (λ mj → saved-frames (falloc (do-call-at mj fs))) fe))
           wf ftq h refl tt tt hpost
         where
+          -- D490: the call's room — its return word and the callee's whole depth
+          cov = call-fn-room bg ftq
+          fe′ = proj₂ (find-entry-sound prog (e-fn f) j fe)
           -- the call's own slot, from the budget (plan 0.123 A.4 step 5)
-          room : CFC.HeapView.hfront hv + slot-size ≤ rreg s sp-reg
-          room = call-room-of bg (dataCorr cc) ftq refl refl
+          rm : CFC.HeapView.hfront hv + slot-size ≤ rreg s sp-reg
+          rm = call-front (Depths.dep (tbl prog) (e-fn f)) bg (dataCorr cc) cov
           fits : slot-size ≤ rreg s sp-reg
-          fits = ≤-trans (m≤n+m slot-size (CFC.HeapView.hfront hv)) room
+          fits = ≤-trans (m≤n+m slot-size (CFC.HeapView.hfront hv)) rm
           front-rsp : CFC.HeapView.hfront hv ≤ rreg s sp-reg ∸ slot-size
-          front-rsp = m+n≤o⇒m≤o∸n (CFC.HeapView.hfront hv) room
+          front-rsp = m+n≤o⇒m≤o∸n (CFC.HeapView.hfront hv) rm
           lo' : ℕ
           lo' = CFC.HeapView.lo hv ⊓ (rreg s sp-reg ∸ slot-size)
           lo'≤lo : lo' ≤ CFC.HeapView.lo hv
           lo'≤lo = m⊓n≤m (CFC.HeapView.lo hv) (rreg s sp-reg ∸ slot-size)
           lo'≤rsp : lo' ≤ rreg s sp-reg ∸ slot-size
           lo'≤rsp = m⊓n≤n (CFC.HeapView.lo hv) (rreg s sp-reg ∸ slot-size)
-          front-lo' : CFC.HeapView.hfront hv ≤ lo'
-          front-lo' = ⊓-glb (CFC.HeapView.front-lo hv) front-rsp
+          front-lo' : CFC.Floor hv lo'
+          front-lo' = floor-by slot-size rm (call-slot (Depths.dep (tbl prog) (e-fn f)) bg (dataCorr cc) cov)
           hpost : halted (floc (flat-exec-instr (instr-ctrl (c-call-fn f)) prog fs)) ≡ false
           hpost rewrite fe = h
 
@@ -603,12 +632,19 @@ module Dispatch (sup : Supply) where
                         ▹ flat-events n prog (flat-exec-instr (instr-ctrl (c-jmp m)) prog fs)) (ctrl-of (instr-ctrl (c-jmp m)) + flat-ctrls n prog (flat-exec-instr (instr-ctrl (c-jmp m)) prog fs)) M)
           go-fl (just j) fl-eq =
             ccc-step-bs {hv} n IH ev env prog fs s (instr-ctrl (c-jmp m))
-              (bs-c-jmp bss prog fs s m j cc h ftq fl-eq) (λ cc′ → bg-label (inv-run wf) fl-eq pc′ (dataCorr cc′))
+              (bs-c-jmp bss prog fs s m j cc h ftq fl-eq) (λ cc′ → bg-label bg (inv-run wf) ftq refl fl-eq refl refl refl pc′ fb′ rq′ sq′)
               wf ftq h refl tt tt hpost
             where hpost : halted (floc (flat-exec-instr (instr-ctrl (c-jmp m)) prog fs)) ≡ false
                   hpost rewrite fl-eq = h
                   pc′ : fpc (flat-exec-instr (instr-ctrl (c-jmp m)) prog fs) ≡ j
                   pc′ rewrite fl-eq = refl
+                  fb′ : FrameSemantics.frame-base FS (current-frame (falloc (flat-exec-instr (instr-ctrl (c-jmp m)) prog fs)))
+                      ≡ FrameSemantics.frame-base FS (current-frame (falloc fs))
+                  fb′ rewrite fl-eq = refl
+                  rq′ : fret (flat-exec-instr (instr-ctrl (c-jmp m)) prog fs) ≡ fret fs
+                  rq′ rewrite fl-eq = refl
+                  sq′ : saved-frames (falloc (flat-exec-instr (instr-ctrl (c-jmp m)) prog fs)) ≡ saved-frames (falloc fs)
+                  sq′ rewrite fl-eq = refl
           go-fl nothing fl-eq = agree-eq (
             stuck-result ev env (LocState.ev-log (floc fs)) n prog fs s (instr-ctrl (c-jmp m)) hpost (left-post (instr-ctrl (c-jmp m)) prog fs tt wf) refl
               (st-c-jmp sts ev env prog fs s m cc h ftq fl-eq))
@@ -628,7 +664,8 @@ module Dispatch (sup : Supply) where
                           ▹ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) (ctrl-of (instr-ctrl (c-branch-tag-zero m)) + flat-ctrls n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) M)
   tag-branch-step {hv} n IH ev env prog fs s m cc bg wf h ftq =
     go-loc (proj₁ wits) (proj₁ (proj₂ wits)) (proj₁ (proj₂ (proj₂ wits)))
-           (proj₁ (proj₂ (proj₂ (proj₂ wits)))) (proj₂ (proj₂ (proj₂ (proj₂ wits))))
+           (proj₁ (proj₂ (proj₂ (proj₂ wits)))) (proj₁ (proj₂ (proj₂ (proj₂ (proj₂ wits)))))
+           (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ wits)))))
     where
       -- The scrutinee discipline (D367) hands a POINTER (either residence) to a
       -- written cell holding a TAG or a POINTER; the concrete read is derived
@@ -636,54 +673,68 @@ module Dispatch (sup : Supply) where
       wits = branch-tag-scrutinee-wf prog fs m (inv-run wf) h ftq
       dc = dataCorr cc
       pbwf = run-ptr-bounds prog fs (inv-run wf)
-      spwf = run-stack-ptr prog fs (inv-run wf)
-      go-fl : ∀ loc k → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
+      go-fl : ∀ loc k → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc → ExecFinal.frame-gate {FS} (falloc fs) 0 (just loc) ≡ just loc
             → readLoc (floc fs) loc ≡ just (SV-Tag k)
             → memory s (rreg s in1-reg + 0) ≡ just k
             → ∀ (mj : Maybe ℕ) → flat-find-label prog m ≡ mj
             → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
                   (event-of (instr-ctrl (c-branch-tag-zero m)) fs
                     ▹ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) (ctrl-of (instr-ctrl (c-branch-tag-zero m)) + flat-ctrls n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) M)
-      go-fl loc zero i-eq r-eq rd (just j) fl-eq =
+      go-fl loc zero i-eq g r-eq rd (just j) fl-eq =
         ccc-step-bs {hv} n IH ev env prog fs s (instr-ctrl (c-branch-tag-zero m))
-          (bs-c-branch-tag-zero bss prog fs s m loc zero j cc h ftq i-eq r-eq rd fl-eq)
-          (λ cc′ → bg-label (inv-run wf) fl-eq pc′ (dataCorr cc′)) wf ftq h refl tt tt hpost
+          (bs-c-branch-tag-zero bss prog fs s m loc zero j cc h ftq i-eq g r-eq rd fl-eq)
+          (λ cc′ → bg-label bg (inv-run wf) ftq refl fl-eq refl refl refl pc′ fb′ rq′ sq′) wf ftq h refl tt tt hpost
         where hpost : halted (floc (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) ≡ false
-              hpost rewrite i-eq | r-eq | fl-eq = h
+              hpost rewrite i-eq | g | r-eq | fl-eq = h
               pc′ : fpc (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs) ≡ j
-              pc′ rewrite i-eq | r-eq | fl-eq = refl
-      go-fl loc (suc k') i-eq r-eq rd (just j) fl-eq =
+              pc′ rewrite i-eq | g | r-eq | fl-eq = refl
+              fb′ : FrameSemantics.frame-base FS (current-frame (falloc (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)))
+                  ≡ FrameSemantics.frame-base FS (current-frame (falloc fs))
+              fb′ rewrite i-eq | g | r-eq | fl-eq = refl
+              rq′ : fret (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs) ≡ fret fs
+              rq′ rewrite i-eq | g | r-eq | fl-eq = refl
+              sq′ : saved-frames (falloc (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) ≡ saved-frames (falloc fs)
+              sq′ rewrite i-eq | g | r-eq | fl-eq = refl
+      go-fl loc (suc k') i-eq g r-eq rd (just j) fl-eq =
         ccc-step-bs {hv} n IH ev env prog fs s (instr-ctrl (c-branch-tag-zero m))
-          (bs-c-branch-tag-zero bss prog fs s m loc (suc k') j cc h ftq i-eq r-eq rd fl-eq)
-          (λ _ → bg-plain bg ftq refl refl pc′ (cong (FrameSemantics.frame-base FS) fb′)) wf ftq h refl tt tt hpost
+          (bs-c-branch-tag-zero bss prog fs s m loc (suc k') j cc h ftq i-eq g r-eq rd fl-eq)
+          (λ _ → bg-plain bg ftq refl refl pc′ (cong (FrameSemantics.frame-base FS) fb′) rq′ sq′) wf ftq h refl tt tt hpost
         where hpost : halted (floc (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) ≡ false
-              hpost rewrite i-eq | r-eq = h
+              hpost rewrite i-eq | g | r-eq = h
               pc′ : fpc (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs) ≡ suc (fpc fs)
-              pc′ rewrite i-eq | r-eq = refl
+              pc′ rewrite i-eq | g | r-eq = refl
               fb′ : current-frame (falloc (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs))
                   ≡ current-frame (falloc fs)
-              fb′ rewrite i-eq | r-eq = refl
+              fb′ rewrite i-eq | g | r-eq = refl
+              rq′ : fret (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs) ≡ fret fs
+              rq′ rewrite i-eq | g | r-eq = refl
+              sq′ : saved-frames (falloc (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) ≡ saved-frames (falloc fs)
+              sq′ rewrite i-eq | g | r-eq = refl
       -- MISSING LABEL, NOT TAKEN: never consults the label — the ordinary
       -- fall-through via the label-free `block-step-c-branch-tag-nz`.
-      go-fl loc (suc k') i-eq r-eq rd nothing fl-eq =
+      go-fl loc (suc k') i-eq g r-eq rd nothing fl-eq =
         ccc-step-bs {hv} n IH ev env prog fs s (instr-ctrl (c-branch-tag-zero m))
-          (bs-c-branch-tag-nz bss prog fs s m loc k' cc h ftq i-eq (cong (FlatMachine.tag-test {FS}) r-eq) rd)
-          (λ _ → bg-plain bg ftq refl refl pc′ (cong (FrameSemantics.frame-base FS) fb′)) wf ftq h refl tt tt hpost
+          (bs-c-branch-tag-nz bss prog fs s m loc k' cc h ftq i-eq g (cong (FlatMachine.tag-test {FS}) r-eq) rd)
+          (λ _ → bg-plain bg ftq refl refl pc′ (cong (FrameSemantics.frame-base FS) fb′) rq′ sq′) wf ftq h refl tt tt hpost
         where hpost : halted (floc (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) ≡ false
-              hpost rewrite i-eq | r-eq = h
+              hpost rewrite i-eq | g | r-eq = h
               pc′ : fpc (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs) ≡ suc (fpc fs)
-              pc′ rewrite i-eq | r-eq = refl
+              pc′ rewrite i-eq | g | r-eq = refl
               fb′ : current-frame (falloc (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs))
                   ≡ current-frame (falloc fs)
-              fb′ rewrite i-eq | r-eq = refl
+              fb′ rewrite i-eq | g | r-eq = refl
+              rq′ : fret (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs) ≡ fret fs
+              rq′ rewrite i-eq | g | r-eq = refl
+              sq′ : saved-frames (falloc (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) ≡ saved-frames (falloc fs)
+              sq′ rewrite i-eq | g | r-eq = refl
       -- MISSING LABEL, TAKEN: both machines halt — the concrete `je` to an
       -- absent label sets `halted` (`find-label-none-corr`), and
       -- `do-jump nothing` halts the flat machine. Both traces [].
-      go-fl loc zero i-eq r-eq rd nothing fl-eq =
+      go-fl loc zero i-eq g r-eq rd nothing fl-eq =
         agree-eq (stuck-result ev env (LocState.ev-log (floc fs)) n prog fs s (instr-ctrl (c-branch-tag-zero m)) hpost (left-post (instr-ctrl (c-branch-tag-zero m)) prog fs tt wf) refl
           (st-c-branch-tag-zero sts ev env prog fs s m loc cc h ftq i-eq r-eq rd fl-eq))
         where hpost : halted (floc (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) ≡ true
-              hpost rewrite i-eq | r-eq | fl-eq = refl
+              hpost rewrite i-eq | g | r-eq | fl-eq = refl
       -- D367: A POINTER CELL — a cata stack's top element. Never the sentinel:
       -- the address it encodes to is mapped (`PtrBoundsWF` puts the pointee in
       -- bounds, `dom-sized` maps it), and no mapped address is 0
@@ -691,51 +742,53 @@ module Dispatch (sup : Supply) where
       -- (A STACK pointer in a cell does not exist under heap mode: `StackPtrWF`.)
       pos-suc : ∀ {x : ℕ} → 0 < x → Σ ℕ (λ y → x ≡ suc y)
       pos-suc {suc y} _ = y , refl
-      go-ptr : ∀ loc hl′ → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
+      go-ptr : ∀ loc hl′ → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc → ExecFinal.frame-gate {FS} (falloc fs) 0 (just loc) ≡ just loc
              → readLoc (floc fs) loc ≡ just (SV-Ptr (AtDynamic hl′))
              → PtrB (block-size (falloc fs)) (SV-Ptr (AtDynamic hl′))
              → memory s (rreg s in1-reg + 0) ≡ just (CFC.HeapView.haddr hv hl′)
              → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
                   (event-of (instr-ctrl (c-branch-tag-zero m)) fs
                     ▹ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) (ctrl-of (instr-ctrl (c-branch-tag-zero m)) + flat-ctrls n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) M)
-      go-ptr loc hl′ i-eq r-eq pb rd =
+      go-ptr loc hl′ i-eq g r-eq pb rd =
         ccc-step-bs {hv} n IH ev env prog fs s (instr-ctrl (c-branch-tag-zero m))
-          (bs-c-branch-tag-nz bss prog fs s m loc (proj₁ pz) cc h ftq i-eq (cong (FlatMachine.tag-test {FS}) r-eq)
+          (bs-c-branch-tag-nz bss prog fs s m loc (proj₁ pz) cc h ftq i-eq g (cong (FlatMachine.tag-test {FS}) r-eq)
              (trans rd (cong just (proj₂ pz))))
-          (λ _ → bg-plain bg ftq refl refl pc′ (cong (FrameSemantics.frame-base FS) fb′)) wf ftq h refl tt tt hpost
+          (λ _ → bg-plain bg ftq refl refl pc′ (cong (FrameSemantics.frame-base FS) fb′) rq′ sq′) wf ftq h refl tt tt hpost
         where pz = pos-suc {CFC.HeapView.haddr hv hl′}
                      (CFC.HeapView.dom-pos hv (CFC.FlatCorr.dom-sized dc hl′ pb))
               hpost : halted (floc (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) ≡ false
-              hpost rewrite i-eq | r-eq = h
+              hpost rewrite i-eq | g | r-eq = h
               pc′ : fpc (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs) ≡ suc (fpc fs)
-              pc′ rewrite i-eq | r-eq = refl
+              pc′ rewrite i-eq | g | r-eq = refl
               fb′ : current-frame (falloc (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs))
                   ≡ current-frame (falloc fs)
-              fb′ rewrite i-eq | r-eq = refl
+              fb′ rewrite i-eq | g | r-eq = refl
+              rq′ : fret (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs) ≡ fret fs
+              rq′ rewrite i-eq | g | r-eq = refl
+              sq′ : saved-frames (falloc (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) ≡ saved-frames (falloc fs)
+              sq′ rewrite i-eq | g | r-eq = refl
       -- per cell, once the concrete read is in hand
-      on-cell : ∀ loc (v : StoredValue FS) → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
+      on-cell : ∀ loc (v : StoredValue FS) → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc → ExecFinal.frame-gate {FS} (falloc fs) 0 (just loc) ≡ just loc
               → readLoc (floc fs) loc ≡ just v → TagCell v
-              → PtrB (block-size (falloc fs)) v → StackPtrOK v
+              → PtrB (block-size (falloc fs)) v
               → memory s (rreg s in1-reg + 0) ≡ just (CFC.enc-sv hv v)
               → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
                   (event-of (instr-ctrl (c-branch-tag-zero m)) fs
                     ▹ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) (ctrl-of (instr-ctrl (c-branch-tag-zero m)) + flat-ctrls n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) M)
-      on-cell loc .(SV-Tag k) i-eq r-eq (tc-tag k) _ _ rd = go-fl loc k i-eq r-eq rd (flat-find-label prog m) refl
-      on-cell loc .(SV-Ptr (AtDynamic hl′)) i-eq r-eq (tc-ptr hl′) pb _ rd = go-ptr loc hl′ i-eq r-eq pb rd
-      on-cell loc .(SV-Ptr (AtStack f k)) i-eq r-eq (tc-stk f k) _ () rd
+      on-cell loc .(SV-Tag k) i-eq g r-eq (tc-tag k) _ rd = go-fl loc k i-eq g r-eq rd (flat-find-label prog m) refl
+      on-cell loc .(SV-Ptr (AtDynamic hl′)) i-eq g r-eq (tc-ptr hl′) pb rd = go-ptr loc hl′ i-eq g r-eq pb rd
       -- THE RESIDENCE DISPATCH: derive the concrete read per residence.
       go-loc : ∀ (loc : ValueLocation FS) (v : StoredValue FS)
              → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
-             → readLoc (floc fs) loc ≡ just v → TagCell v
+             → readLoc (floc fs) loc ≡ just v → TagCell v → ExecFinal.frame-gate {FS} (falloc fs) 0 (just loc) ≡ just loc
              → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
                   (event-of (instr-ctrl (c-branch-tag-zero m)) fs
                     ▹ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) (ctrl-of (instr-ctrl (c-branch-tag-zero m)) + flat-ctrls n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) M)
       -- HEAP: the cell is written ⇒ mapped (`dom-written`), `heap-eq`
       -- relates it, and the address is the pointer's encoding.
-      go-loc (AtDynamic hl) v i-eq r-eq tc =
-        on-cell (AtDynamic hl) v i-eq r-eq tc
-          (subst (PtrB? (block-size (falloc fs))) r-eq (pb-heap pbwf hl))
-          (subst StackPtrOK? r-eq (sp-heap spwf hl)) rd-heap
+      go-loc (AtDynamic hl) v i-eq r-eq tc g =
+        on-cell (AtDynamic hl) v i-eq g r-eq tc
+          (subst (PtrB? (block-size (falloc fs))) r-eq (pb-heap pbwf hl)) rd-heap
         where
           addr-val : rreg s in1-reg + 0 ≡ CFC.HeapView.haddr hv hl
           addr-val = trans (+-identityʳ (rreg s in1-reg))
@@ -743,28 +796,12 @@ module Dispatch (sup : Supply) where
           rd-heap : memory s (rreg s in1-reg + 0) ≡ just (CFC.enc-sv hv v)
           rd-heap = trans (cong (memory s) addr-val)
                           (CFC.FlatCorr.heap-eq dc hl r-eq)
-      -- STACK (the probe's route): the pointer denotes `slot-addr f k'`; the
-      -- live-pair theorem pins it to the current frame's live window, where
-      -- `sp-eq` + `stack-eq` relate exactly that cell.
-      go-loc (AtStack f k') v i-eq r-eq tc =
-        on-cell (AtStack f k') v i-eq r-eq tc
+      -- STACK: the tag cell is a slot of a live window (the gate's outcome),
+      -- read there (D454)
+      go-loc (AtStack f k') v i-eq r-eq tc g =
+        on-cell (AtStack f k') v i-eq g r-eq tc
           (subst (PtrB? (block-size (falloc fs))) r-eq (pb-stack pbwf f k'))
-          (subst StackPtrOK? r-eq (sp-stack spwf f k')) rd-stack
-        where
-          spc = stack-ptr-current prog fs f k' (inv-run wf) i-eq
-          st-cf : stackMem (floc fs) (current-frame (falloc fs)) k' ≡ just v
-          st-cf = trans (cong (λ fr → stackMem (floc fs) fr k') (sym (proj₁ spc))) r-eq
-          rdi-val : rreg s in1-reg + 0
-                  ≡ rreg s sp-reg + k' * slot-size
-          rdi-val = trans (+-identityʳ (rreg s in1-reg))
-                    (trans (CFC.FlatCorr.in1-eq dc)
-                    (trans (cong (CFC.enc-sv hv) i-eq)
-                    (trans (cong (λ fr → slot-addr FS fr k') (proj₁ spc))
-                    (trans (slot-addr-linear FS (current-frame (falloc fs)) k')
-                           (cong₂ (λ b w' → b + k' * w') (sym (CFC.FlatCorr.sp-eq dc)) word-eq)))))
-          rd-stack : memory s (rreg s in1-reg + 0) ≡ just (CFC.enc-sv hv v)
-          rd-stack = trans (cong (memory s) rdi-val)
-                           (CFC.stack-eq-cur dc k' (proj₂ spc) _ st-cf)
+          (CFC.stack-read 0 f k' v dc i-eq g r-eq)
 
   -- plan 0.108: `out-nz` — its block-step, at the word the shape discipline
   -- guarantees is in Output (`out-nz-output-word`).
@@ -783,7 +820,7 @@ module Dispatch (sup : Supply) where
           hpost rewrite proj₂ wd = h
           -- on an `Int` it is the straight-line step
           bg′ : Budget hv prog (flat-exec-instr (instr-reg-op out-nz) prog fs)
-          bg′ rewrite proj₂ wd = bg-str _ bg ftq refl refl
+          bg′ rewrite proj₂ wd = bg-str _ bg ftq refl refl refl
 
   -- MEMORY load-indirect (D073: every route is a theorem now). The load-site
   -- discipline (`load-indirect-target-wf`) hands the pointer + dynamic
@@ -796,58 +833,8 @@ module Dispatch (sup : Supply) where
                      → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
                            (event-of load-indirect fs ▹ flat-events n prog (flat-exec-instr load-indirect prog fs)) (ctrl-of load-indirect + flat-ctrls n prog (flat-exec-instr load-indirect prog fs)) M)
   load-indirect-step {hv} n IH ev env prog fs s cc bg wf h ftq =
-    go-loc (proj₁ wits) (proj₁ (proj₂ wits)) (proj₂ (proj₂ wits))
-    where wits = load-indirect-target-wf prog fs (inv-run wf) h ftq
-          go-mem : ∀ hl → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
-                 → heap-offset hl < block-size (falloc fs) (ref-id (heap-ref hl))
-                 → ∀ (mw : Maybe (StoredValue FS)) → heapMem (floc fs) hl ≡ mw
-                 → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
-                       (event-of load-indirect fs ▹ flat-events n prog (flat-exec-instr load-indirect prog fs)) (ctrl-of load-indirect + flat-ctrls n prog (flat-exec-instr load-indirect prog fs)) M)
-          go-mem hl i-eq ib (just w) h-eq =
-            ccc-step-bs {hv} n IH ev env prog fs s load-indirect
-              (bs-load-indirect bss prog fs s hl w cc h ftq i-eq
-                 (CFC.FlatCorr.dom-written (dataCorr cc) hl h-eq) h-eq)
-              (λ _ → bg-str _ bg ftq refl refl) wf ftq h refl tt tt hpost
-            where hpost : halted (floc (flat-exec-instr load-indirect prog fs)) ≡ false
-                  hpost rewrite i-eq | h-eq = h
-          go-mem hl i-eq ib nothing h-eq =
-            -- UNREACHABLE (plan 0.123 A.4 step 4, D367): reading an unwritten
-            -- heap cell FAULTS, and the program's run never faults
-            -- (`heap-load-written`).
-            ⊥-elim (heap-load-written prog fs hl (inv-run wf) h ftq i-eq h-eq)
-          go-stack : ∀ f k → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f k)
-                   → (f ≡ current-frame (falloc fs)) × (k < frame-slots (falloc fs))
-                   → ∀ (mw : Maybe (StoredValue FS))
-                   → stackMem (floc fs) (current-frame (falloc fs)) k ≡ mw
-                   → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
-                         (event-of load-indirect fs ▹ flat-events n prog (flat-exec-instr load-indirect prog fs)) (ctrl-of load-indirect + flat-ctrls n prog (flat-exec-instr load-indirect prog fs)) M)
-          go-stack f k i-eq (f-eq , k<ss) (just w) st-eq =
-            ccc-step-bs {hv} n IH ev env prog fs s load-indirect
-              (bs-load-indirect-stack bss prog fs s f k w cc h ftq i-eq f-eq k<ss st-eq)
-              (λ _ → bg-str _ bg ftq refl refl) wf ftq h refl tt tt hpost
-            where hpost : halted (floc (flat-exec-instr load-indirect prog fs)) ≡ false
-                  hpost rewrite i-eq | f-eq | st-eq = h
-          -- UNREACHABLE (Plan 0.54 rung D): under heap mode `StackPtrWF` says there
-          -- is NO stack pointer, so `Input1` holding one is refuted outright —
-          -- the same `⊥` that `stack-ptr-current` already returns for `k<ss`.
-          -- This used to route through `load-indirect-stack-empty-stuck`, which
-          -- needed the old bidirectional `Window` to claim the concrete cell was
-          -- unmapped too. That claim is gone; the branch was impossible anyway.
-          go-stack f k i-eq (f-eq , k<ss) nothing st-eq =
-            ⊥-elim (stack-ptr-live fs Input1 f k (run-stack-ptr prog fs (inv-run wf)) i-eq)
-          go-loc : ∀ (loc : ValueLocation FS) → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
-                 → (∀ hl → loc ≡ AtDynamic hl
-                    → heap-offset hl < block-size (falloc fs) (ref-id (heap-ref hl)))
-                 → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
-                       (event-of load-indirect fs ▹ flat-events n prog (flat-exec-instr load-indirect prog fs)) (ctrl-of load-indirect + flat-ctrls n prog (flat-exec-instr load-indirect prog fs)) M)
-          go-loc (AtDynamic hl) i-eq ib = go-mem hl i-eq (ib hl refl) (heapMem (floc fs) hl) refl
-          -- Plan 0.61: a load THROUGH A STACK POINTER is an ordinary step —
-          -- the pointer denotes `slot-addr f k`, and for the CURRENT frame's live
-          -- slots (`stack-ptr-current`, a THEOREM) `sp-eq` + `stack-eq` relate
-          -- exactly that cell.
-          go-loc (AtStack f k)  i-eq ib =
-            go-stack f k i-eq (stack-ptr-current prog fs f k (inv-run wf) i-eq)
-                     (stackMem (floc fs) (current-frame (falloc fs)) k) refl
+    -- retired (plan 0.123): no emitted image holds it
+    ⊥-elim (frame-op-absurd prog fs load-indirect (inv-run wf) ftq (λ _ ()))
 
   -- MEMORY load-indirect-suc: as load-indirect but the SECOND cell (sucHL hl).
   load-indirect-suc-step : ∀ {hv : HeapView} n → EventsIH n → ∀ (ev : RT.EvExtractor) (env : RT.ArithEnv)
@@ -856,49 +843,8 @@ module Dispatch (sup : Supply) where
                          → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
                                (event-of load-indirect-suc fs ▹ flat-events n prog (flat-exec-instr load-indirect-suc prog fs)) (ctrl-of load-indirect-suc + flat-ctrls n prog (flat-exec-instr load-indirect-suc prog fs)) M)
   load-indirect-suc-step {hv} n IH ev env prog fs s cc bg wf h ftq =
-    go-loc (proj₁ wits) (proj₁ (proj₂ wits)) (proj₂ (proj₂ wits))
-    where wits = load-indirect-suc-target-wf prog fs (inv-run wf) h ftq
-          go-mem : ∀ hl → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
-                 → heap-offset (sucHL hl) < block-size (falloc fs) (ref-id (heap-ref (sucHL hl)))
-                 → ∀ (mw : Maybe (StoredValue FS)) → heapMem (floc fs) (sucHL hl) ≡ mw
-                 → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
-                       (event-of load-indirect-suc fs ▹ flat-events n prog (flat-exec-instr load-indirect-suc prog fs)) (ctrl-of load-indirect-suc + flat-ctrls n prog (flat-exec-instr load-indirect-suc prog fs)) M)
-          go-mem hl i-eq ib (just w) h-eq =
-            ccc-step-bs {hv} n IH ev env prog fs s load-indirect-suc
-              (bs-load-indirect-suc bss prog fs s hl w cc h ftq i-eq
-                 (CFC.FlatCorr.dom-written (dataCorr cc) (sucHL hl) h-eq) h-eq)
-              (λ _ → bg-str _ bg ftq refl refl) wf ftq h refl tt tt hpost
-            where hpost : halted (floc (flat-exec-instr load-indirect-suc prog fs)) ≡ false
-                  hpost rewrite i-eq | h-eq = h
-          go-mem hl i-eq ib nothing h-eq =
-            -- UNREACHABLE, as for `load-indirect` (`heap-load-suc-written`).
-            ⊥-elim (heap-load-suc-written prog fs hl (inv-run wf) h ftq i-eq h-eq)
-          -- SECOND cell of a stack pair: `[rdi+8]` is slot `suc k` of the same frame.
-          go-stack : ∀ f k → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f k)
-                   → (f ≡ current-frame (falloc fs)) × (suc k < frame-slots (falloc fs))
-                   → ∀ (mw : Maybe (StoredValue FS))
-                   → stackMem (floc fs) (current-frame (falloc fs)) (suc k) ≡ mw
-                   → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
-                         (event-of load-indirect-suc fs ▹ flat-events n prog (flat-exec-instr load-indirect-suc prog fs)) (ctrl-of load-indirect-suc + flat-ctrls n prog (flat-exec-instr load-indirect-suc prog fs)) M)
-          go-stack f k i-eq (f-eq , sk<ss) (just w) st-eq =
-            ccc-step-bs {hv} n IH ev env prog fs s load-indirect-suc
-              (bs-load-indirect-suc-stack bss prog fs s f k w cc h ftq i-eq f-eq sk<ss st-eq)
-              (λ _ → bg-str _ bg ftq refl refl) wf ftq h refl tt tt hpost
-            where hpost : halted (floc (flat-exec-instr load-indirect-suc prog fs)) ≡ false
-                  hpost rewrite i-eq | f-eq | st-eq = h
-          -- UNREACHABLE, same as the `load-indirect` case above: heap mode admits
-          -- no stack pointer at all, so `Input1` holding one is `⊥`.
-          go-stack f k i-eq (f-eq , sk<ss) nothing st-eq =
-            ⊥-elim (stack-ptr-suc-live fs Input1 f k (run-stack-ptr prog fs (inv-run wf)) i-eq)
-          go-loc : ∀ (loc : ValueLocation FS) → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
-                 → (∀ hl → loc ≡ AtDynamic hl
-                    → heap-offset (sucHL hl) < block-size (falloc fs) (ref-id (heap-ref (sucHL hl))))
-                 → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
-                       (event-of load-indirect-suc fs ▹ flat-events n prog (flat-exec-instr load-indirect-suc prog fs)) (ctrl-of load-indirect-suc + flat-ctrls n prog (flat-exec-instr load-indirect-suc prog fs)) M)
-          go-loc (AtDynamic hl) i-eq ib = go-mem hl i-eq (ib hl refl) (heapMem (floc fs) (sucHL hl)) refl
-          go-loc (AtStack f k)  i-eq ib =
-            go-stack f k i-eq (stack-ptr-current-suc prog fs f k (inv-run wf) i-eq)
-                     (stackMem (floc fs) (current-frame (falloc fs)) (suc k)) refl
+    -- retired (plan 0.123): no emitted image holds it
+    ⊥-elim (frame-op-absurd prog fs load-indirect-suc (inv-run wf) ftq (λ _ ()))
 
   -- STACK load-from-slot: J-bridge on the slot's abstract value. `just w` ⇒ the PROVEN
   -- block-step-load-from-slot (the stack read pinned by stack-eq) ⇒ ccc-step-bs; the
@@ -915,10 +861,13 @@ module Dispatch (sup : Supply) where
                        (event-of (load-from-slot slot) fs ▹ flat-events n prog (flat-exec-instr (load-from-slot slot) prog fs)) (ctrl-of (load-from-slot slot) + flat-ctrls n prog (flat-exec-instr (load-from-slot slot) prog fs)) M)
           go-mem (just w) st-eq =
             ccc-step-bs {hv} n IH ev env prog fs s (load-from-slot slot)
-              (bs-load-from-slot bss prog fs s slot w cc h ftq (slot-read-in-frame prog fs slot _ (inv-run wf) ftq refl) st-eq)
-              (λ _ → bg-str _ bg ftq refl refl) wf ftq h refl tt tt hpost
-            where hpost : halted (floc (flat-exec-instr (load-from-slot slot) prog fs)) ≡ false
-                  hpost rewrite st-eq = h
+              (bs-load-from-slot bss prog fs s slot w cc h ftq (slot-read-in-frame prog fs slot _ (inv-run wf) h ftq refl) st-eq)
+              (λ _ → bg-str _ bg ftq refl refl refl) wf ftq h refl tt tt hpost
+            where hgo : halted (floc (straight-go (load-from-slot slot) fs)) ≡ false
+                  hgo rewrite st-eq = h
+                  hpost : halted (floc (flat-exec-instr (load-from-slot slot) prog fs)) ≡ false
+                  hpost = subst (λ t → halted (floc t) ≡ false)
+                            (sym (slot-go (load-from-slot slot) prog fs refl (slot-read-in-frame prog fs slot _ (inv-run wf) h ftq refl))) hgo
           go-mem nothing st-eq =
             -- UNREACHABLE (Plan 0.54 rung D, D367): reading an unwritten slot
             -- FAULTS, and the program's run never faults (`slot-read-written`)
@@ -939,10 +888,13 @@ module Dispatch (sup : Supply) where
                        (event-of (restore-input slot) fs ▹ flat-events n prog (flat-exec-instr (restore-input slot) prog fs)) (ctrl-of (restore-input slot) + flat-ctrls n prog (flat-exec-instr (restore-input slot) prog fs)) M)
           go-mem (just w) st-eq =
             ccc-step-bs {hv} n IH ev env prog fs s (restore-input slot)
-              (bs-restore-input bss prog fs s slot w cc h ftq (slot-read-in-frame prog fs slot _ (inv-run wf) ftq refl) st-eq)
-              (λ _ → bg-str _ bg ftq refl refl) wf ftq h refl tt tt hpost
-            where hpost : halted (floc (flat-exec-instr (restore-input slot) prog fs)) ≡ false
-                  hpost rewrite st-eq = h
+              (bs-restore-input bss prog fs s slot w cc h ftq (slot-read-in-frame prog fs slot _ (inv-run wf) h ftq refl) st-eq)
+              (λ _ → bg-str _ bg ftq refl refl refl) wf ftq h refl tt tt hpost
+            where hgo : halted (floc (straight-go (restore-input slot) fs)) ≡ false
+                  hgo rewrite st-eq = h
+                  hpost : halted (floc (flat-exec-instr (restore-input slot) prog fs)) ≡ false
+                  hpost = subst (λ t → halted (floc t) ≡ false)
+                            (sym (slot-go (restore-input slot) prog fs refl (slot-read-in-frame prog fs slot _ (inv-run wf) h ftq refl))) hgo
           go-mem nothing st-eq =
             -- UNREACHABLE (Plan 0.54 rung D, D367): reading an unwritten slot
             -- FAULTS, and the program's run never faults (`slot-read-written`)
@@ -963,10 +915,13 @@ module Dispatch (sup : Supply) where
                        (event-of (worklist-pop slot) fs ▹ flat-events n prog (flat-exec-instr (worklist-pop slot) prog fs)) (ctrl-of (worklist-pop slot) + flat-ctrls n prog (flat-exec-instr (worklist-pop slot) prog fs)) M)
           go-mem (just w) st-eq =
             ccc-step-bs {hv} n IH ev env prog fs s (worklist-pop slot)
-              (bs-worklist-pop bss prog fs s slot w cc h ftq (slot-read-in-frame prog fs slot _ (inv-run wf) ftq refl) st-eq)
-              (λ _ → bg-str _ bg ftq refl refl) wf ftq h refl tt tt hpost
-            where hpost : halted (floc (flat-exec-instr (worklist-pop slot) prog fs)) ≡ false
-                  hpost rewrite st-eq = h
+              (bs-worklist-pop bss prog fs s slot w cc h ftq (slot-read-in-frame prog fs slot _ (inv-run wf) h ftq refl) st-eq)
+              (λ _ → bg-str _ bg ftq refl refl refl) wf ftq h refl tt tt hpost
+            where hgo : halted (floc (straight-go (worklist-pop slot) fs)) ≡ false
+                  hgo rewrite st-eq = h
+                  hpost : halted (floc (flat-exec-instr (worklist-pop slot) prog fs)) ≡ false
+                  hpost = subst (λ t → halted (floc t) ≡ false)
+                            (sym (slot-go (worklist-pop slot) prog fs refl (slot-read-in-frame prog fs slot _ (inv-run wf) h ftq refl))) hgo
           go-mem nothing st-eq =
             -- UNREACHABLE (Plan 0.54 rung D, D367): reading an unwritten slot
             -- FAULTS, and the program's run never faults (`slot-read-written`)
@@ -982,35 +937,9 @@ module Dispatch (sup : Supply) where
                       → fetch prog (fpc fs) ≡ just store-indirect
                       → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
                             (event-of store-indirect fs ▹ flat-events n prog (flat-exec-instr store-indirect prog fs)) (ctrl-of store-indirect + flat-ctrls n prog (flat-exec-instr store-indirect prog fs)) M)
-  store-indirect-step {hv} n IH ev env prog fs s cc bg wf h ftq = go-ptr (readReg (regs (floc fs)) Input1) refl
-    where go-ptr : ∀ (sv : StoredValue FS) → readReg (regs (floc fs)) Input1 ≡ sv
-                 → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
-                       (event-of store-indirect fs ▹ flat-events n prog (flat-exec-instr store-indirect prog fs)) (ctrl-of store-indirect + flat-ctrls n prog (flat-exec-instr store-indirect prog fs)) M)
-          go-ptr (SV-Ptr (AtDynamic hl)) i-eq =
-            ccc-step-bs {hv} n IH ev env prog fs s store-indirect
-              (bs-store-indirect bss prog fs s hl cc h ftq i-eq
-                 (CFC.FlatCorr.dom-sized (dataCorr cc) hl (store-indirect-inbounds prog fs hl (inv-run wf) ftq i-eq)) (store-guard fs hl))
-              (λ _ → bg-str _ bg ftq refl refl) wf ftq h refl tt tt hpost
-            where hpost : halted (floc (flat-exec-instr store-indirect prog fs)) ≡ false
-                  hpost rewrite i-eq = trans (writeLoc-halted (floc fs) (AtDynamic hl) (readReg (regs (floc fs)) Output)) h
-          -- STORE through a stack pointer: `writeLoc … (AtStack f k)` is the plain
-          -- stack write (no cross-region guard needed — that is the heap branch),
-          -- and the x86 writes at `rsp + 8·k`.
-          go-ptr (SV-Ptr (AtStack f k))  i-eq =
-            ccc-step-bs {hv} n IH ev env prog fs s store-indirect
-              (bs-store-indirect-stack bss prog fs s f k cc h ftq i-eq
-                 (proj₁ (stack-ptr-current prog fs f k (inv-run wf) i-eq))
-                 (proj₂ (stack-ptr-current prog fs f k (inv-run wf) i-eq))
-                 (slot-heap-disj {hv} fs s (dataCorr cc) k))
-              (λ _ → bg-str _ bg ftq refl refl) wf ftq h refl tt tt hpost
-            where hpost : halted (floc (flat-exec-instr store-indirect prog fs)) ≡ false
-                  hpost rewrite i-eq = trans (writeLoc-halted (floc fs) (AtStack f k) (readReg (regs (floc fs)) Output)) h
-          go-ptr (SV-Tag _)   i-eq =
-            ⊥-elim (store-nonptr-absurd prog fs (inv-run wf) h ftq i-eq (λ { _ () }))
-          go-ptr (SV-Lit _ _) i-eq =
-            ⊥-elim (store-nonptr-absurd prog fs (inv-run wf) h ftq i-eq (λ { _ () }))
-          go-ptr (SV-Code _)  i-eq =
-            ⊥-elim (store-nonptr-absurd prog fs (inv-run wf) h ftq i-eq (λ { _ () }))
+  store-indirect-step {hv} n IH ev env prog fs s cc bg wf h ftq =
+    -- retired (plan 0.123): no emitted image holds it
+    ⊥-elim (frame-op-absurd prog fs store-indirect (inv-run wf) ftq (λ _ ()))
 
   -- MEMORY store-indirect-suc: as store-indirect but the SECOND cell (sucHL hl).
   store-indirect-suc-step : ∀ {hv : HeapView} n → EventsIH n → ∀ (ev : RT.EvExtractor) (env : RT.ArithEnv)
@@ -1018,34 +947,9 @@ module Dispatch (sup : Supply) where
                           → fetch prog (fpc fs) ≡ just store-indirect-suc
                           → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
                                 (event-of store-indirect-suc fs ▹ flat-events n prog (flat-exec-instr store-indirect-suc prog fs)) (ctrl-of store-indirect-suc + flat-ctrls n prog (flat-exec-instr store-indirect-suc prog fs)) M)
-  store-indirect-suc-step {hv} n IH ev env prog fs s cc bg wf h ftq = go-ptr (readReg (regs (floc fs)) Input1) refl
-    where go-ptr : ∀ (sv : StoredValue FS) → readReg (regs (floc fs)) Input1 ≡ sv
-                 → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
-                       (event-of store-indirect-suc fs ▹ flat-events n prog (flat-exec-instr store-indirect-suc prog fs)) (ctrl-of store-indirect-suc + flat-ctrls n prog (flat-exec-instr store-indirect-suc prog fs)) M)
-          go-ptr (SV-Ptr (AtDynamic hl)) i-eq =
-            ccc-step-bs {hv} n IH ev env prog fs s store-indirect-suc
-              (bs-store-indirect-suc bss prog fs s hl cc h ftq i-eq
-                 (CFC.FlatCorr.dom-sized (dataCorr cc) (sucHL hl) (store-indirect-suc-inbounds prog fs hl (inv-run wf) ftq i-eq)) (store-guard fs (sucHL hl)))
-              (λ _ → bg-str _ bg ftq refl refl) wf ftq h refl tt tt hpost
-            where hpost : halted (floc (flat-exec-instr store-indirect-suc prog fs)) ≡ false
-                  hpost rewrite i-eq = trans (writeLoc-halted (floc fs) (AtDynamic (sucHL hl)) (readReg (regs (floc fs)) Output)) h
-          -- STORE-SUC through a stack pointer: the pair's SECOND slot, `suc k`,
-          -- reserved by the same prologue (`stack-ptr-current`) — an ordinary step.
-          go-ptr (SV-Ptr (AtStack f k))  i-eq =
-            ccc-step-bs {hv} n IH ev env prog fs s store-indirect-suc
-              (bs-store-indirect-suc-stack bss prog fs s f k cc h ftq i-eq
-                 (proj₁ (stack-ptr-current prog fs f k (inv-run wf) i-eq))
-                 (proj₂ (stack-ptr-current-suc prog fs f k (inv-run wf) i-eq))
-                 (slot-heap-disj {hv} fs s (dataCorr cc) (suc k)))
-              (λ _ → bg-str _ bg ftq refl refl) wf ftq h refl tt tt hpost
-            where hpost : halted (floc (flat-exec-instr store-indirect-suc prog fs)) ≡ false
-                  hpost rewrite i-eq = trans (writeLoc-halted (floc fs) (AtStack f (suc k)) (readReg (regs (floc fs)) Output)) h
-          go-ptr (SV-Tag _)   i-eq =
-            ⊥-elim (store-suc-nonptr-absurd prog fs (inv-run wf) h ftq i-eq (λ { _ () }))
-          go-ptr (SV-Lit _ _) i-eq =
-            ⊥-elim (store-suc-nonptr-absurd prog fs (inv-run wf) h ftq i-eq (λ { _ () }))
-          go-ptr (SV-Code _)  i-eq =
-            ⊥-elim (store-suc-nonptr-absurd prog fs (inv-run wf) h ftq i-eq (λ { _ () }))
+  store-indirect-suc-step {hv} n IH ev env prog fs s cc bg wf h ftq =
+    -- retired (plan 0.123): no emitted image holds it
+    ⊥-elim (frame-op-absurd prog fs store-indirect-suc (inv-run wf) ftq (λ _ ()))
 
   -- plan 0.123 B.4 α: MEMORY load-at k. The site hands a pointer (anything else
   -- faults); a stack one is refuted (`StackPtrWF`); a heap one reads a WRITTEN
@@ -1066,17 +970,31 @@ module Dispatch (sup : Supply) where
             ccc-step-bs {hv} n IH ev env prog fs s (load-at k)
               (bs-load-at bss prog fs s k hl w cc h ftq i-eq
                  (CFC.FlatCorr.dom-written (dataCorr cc) (offsetHL hl k) h-eq) h-eq)
-              (λ _ → bg-str _ bg ftq refl refl) wf ftq h refl tt tt hpost
+              (λ _ → bg-str _ bg ftq refl refl refl) wf ftq h refl tt tt hpost
             where hpost : halted (floc (flat-exec-instr (load-at k) prog fs)) ≡ false
                   hpost rewrite i-eq | h-eq = h
           go-mem hl i-eq nothing h-eq =
             ⊥-elim (heap-load-at-written prog fs k hl (inv-run wf) h ftq i-eq h-eq)
+          go-stk : ∀ f j → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f j)
+                 → ExecFinal.frame-gate {FS} (falloc fs) k (just (AtStack f j)) ≡ just (AtStack f j)
+                 → ∀ (mw : Maybe (StoredValue FS)) → LocState.stackMem (floc fs) f (k + j) ≡ mw
+                 → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
+                       (event-of (load-at k) fs ▹ flat-events n prog (flat-exec-instr (load-at k) prog fs)) (ctrl-of (load-at k) + flat-ctrls n prog (flat-exec-instr (load-at k) prog fs)) M)
           go-loc : ∀ (loc : ValueLocation FS) → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
                  → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
                        (event-of (load-at k) fs ▹ flat-events n prog (flat-exec-instr (load-at k) prog fs)) (ctrl-of (load-at k) + flat-ctrls n prog (flat-exec-instr (load-at k) prog fs)) M)
           go-loc (AtDynamic hl) i-eq = go-mem hl i-eq (heapMem (floc fs) (offsetHL hl k)) refl
-          go-loc (AtStack f j)  i-eq =
-            ⊥-elim (stack-ptr-live fs Input1 f j (run-stack-ptr prog fs (inv-run wf)) i-eq)
+          -- D454: a STACK pointer — the slot of a live window, written
+          go-loc (AtStack f j)  i-eq = go-stk f j i-eq (load-at-gate prog fs k (AtStack f j) (inv-run wf) h ftq i-eq)
+                                               (LocState.stackMem (floc fs) f (k + j)) refl
+          go-stk f j i-eq g (just w) h-eq =
+            ccc-step-bs {hv} n IH ev env prog fs s (load-at k)
+              (bs-load-at-stack bss prog fs s k f j w cc h ftq i-eq g h-eq)
+              (λ _ → bg-str _ bg ftq refl refl refl) wf ftq h refl tt tt hpost
+            where hpost : halted (floc (flat-exec-instr (load-at k) prog fs)) ≡ false
+                  hpost rewrite i-eq | ExecFinal.stack-gate-true {FS} _ (AtStack f j) g | h-eq = h
+          go-stk f j i-eq g nothing h-eq =
+            ⊥-elim (stack-load-at-written prog fs k f j (inv-run wf) h ftq i-eq g h-eq)
 
   -- plan 0.123 B.4 α: addr-at k. The address is a cell of its block (D385), so
   -- a mapped one (`dom-sized`); the arch writes it to the Output role.
@@ -1096,12 +1014,13 @@ module Dispatch (sup : Supply) where
               (bs-addr-at bss prog fs s k hl cc h ftq i-eq
                  (CFC.FlatCorr.dom-sized (dataCorr cc) (offsetHL hl k) (addr-at-inbounds prog fs k hl (inv-run wf) h ftq i-eq))
                  ib (inv-run wf))
-              (λ _ → bg-str _ bg ftq refl refl) wf ftq h refl tt tt hpost
+              (λ _ → bg-str _ bg ftq refl refl refl) wf ftq h refl tt tt hpost
             where ib = addr-at-in-block prog fs k hl (inv-run wf) h ftq i-eq
                   hpost : halted (floc (flat-exec-instr (addr-at k) prog fs)) ≡ false
                   hpost rewrite i-eq | ib = h
+          -- D454: an offset ADDRESS is a heap block's only
           go-loc (AtStack f j)  i-eq =
-            ⊥-elim (stack-ptr-live fs Input1 f j (run-stack-ptr prog fs (inv-run wf)) i-eq)
+            ⊥-elim (addr-at-not-stack prog fs k f j (inv-run wf) h ftq i-eq)
 
   -- plan 0.123 B.4 α: MEMORY store-at k. A heap pointer's offset cell is OF ITS
   -- BLOCK (D385: anything else faults), so mapped (`dom-sized`).
@@ -1121,12 +1040,19 @@ module Dispatch (sup : Supply) where
               (bs-store-at bss prog fs s k hl cc h ftq i-eq
                  (CFC.FlatCorr.dom-sized (dataCorr cc) (offsetHL hl k) (store-at-inbounds prog fs k hl (inv-run wf) h ftq i-eq))
                  ib (store-guard fs (offsetHL hl k)))
-              (λ _ → bg-str _ bg ftq refl refl) wf ftq h refl tt tt hpost
+              (λ _ → bg-str _ bg ftq refl refl refl) wf ftq h refl tt tt hpost
             where ib = store-at-in-block prog fs k hl (inv-run wf) h ftq i-eq
                   hpost : halted (floc (flat-exec-instr (store-at k) prog fs)) ≡ false
                   hpost rewrite i-eq | ib = trans (writeLoc-halted (floc fs) (AtDynamic (offsetHL hl k)) (readReg (regs (floc fs)) Output)) h
+          -- D454: a STACK pointer — the slot of a live window
           go-loc (AtStack f j)  i-eq =
-            ⊥-elim (stack-ptr-live fs Input1 f j (run-stack-ptr prog fs (inv-run wf)) i-eq)
+            ccc-step-bs {hv} n IH ev env prog fs s (store-at k)
+              (bs-store-at-stack bss prog fs s k f j cc h ftq i-eq g)
+              (λ _ → bg-str _ bg ftq refl refl refl) wf ftq h refl tt tt hpost
+            where g = store-at-gate prog fs k (AtStack f j) (inv-run wf) h ftq i-eq
+                  hpost : halted (floc (flat-exec-instr (store-at k) prog fs)) ≡ false
+                  hpost rewrite i-eq | ExecFinal.stack-gate-true {FS} _ (AtStack f j) g
+                    = trans (writeLoc-halted (floc fs) (AtStack f (k + j)) (readReg (regs (floc fs)) Output)) h
 
   -- EXTERNAL SIGOP engine: run-events-external EMITS `ev lbl s` then continues past the
   -- call (sigop-run-external, PROVEN); the external contract pins `ev ≡ event-of` and the
@@ -1143,7 +1069,7 @@ module Dispatch (sup : Supply) where
           lbl = once-symbol-path (SigOpInfo.name si)
           rec = IH ev env prog (flat-exec-instr (instr-sigop si) prog fs)
                   (ret-call (LocState.ev-log (floc fs)) lbl s) (proj₂ (proj₂ contract))
-                  (bg-spent-str _ bg ftq refl)
+                  (bg-spent-str _ bg ftq refl refl)
                   (flat-inv-step (instr-sigop si) prog fs ftq h tt wf)
           -- plan 0.105: both logs grow by the call's event — the flat one by
           -- definition, the concrete one by the event the contract pins.
@@ -1182,11 +1108,11 @@ module Dispatch (sup : Supply) where
           route (inj₁ int) = suc (proj₁ rec) , goal
             where eqe = internal-pure int
                   contract = arith-sigop-contract env prog fs s si (inv-run wf) (inv-env wf) int cc ftq
-                               (room-of bg (dataCorr cc) ftq refl) h
+                               (sigop-room bg (dataCorr cc) ftq) h
                   pl  = proj₁ contract
                   rec = IH ev env prog (flat-exec-instr (instr-sigop si) prog fs)
                           (dispatchArith pl s) (proj₂ (proj₂ contract))
-                          (bg-spent-str _ bg ftq refl)
+                          (bg-spent-str _ bg ftq refl refl)
                           (flat-inv-step (instr-sigop si) prog fs ftq h tt wf)
                   goal : AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) (suc (proj₁ rec)) (compile-trace prog) s)
                                  (event-of (instr-sigop si) fs ▹ flat-events n prog (flat-exec-instr (instr-sigop si) prog fs))
@@ -1227,11 +1153,12 @@ module Dispatch (sup : Supply) where
                   → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
                         (event-of (instr-room k) fs ▹ flat-events n prog (flat-exec-instr (instr-room k) prog fs))
                         (ctrl-of (instr-room k) + flat-ctrls n prog (flat-exec-instr (instr-room k) prog fs)) M)
-  room-check-step n IH ev env prog fs s k cc bg wf h ftq with room-step prog fs s k (inv-run wf) cc h ftq
-  -- the compare found the room for what follows the check: the budget re-arms
-  ... | inj₁ (c , s′ , ex , cc′ , le) =
+  room-check-step n IH ev env prog fs s k cc bg wf h ftq with room-step prog fs s k (inv-run wf) cc (Budget.bg-started bg) h ftq
+  -- the compares found the room for what follows the check: the budget re-arms
+  ... | inj₁ (c , s′ , ex , cc′ , lh , ls) =
     ccc-step-c n IH ev env prog fs s (instr-room k) c z≤n (s′ , ex , cc′)
-      (λ _ → bg-room (inv-run wf) (dataCorr cc) ftq le refl (straight-frame (instr-room k) fs))
+      (λ _ → bg-room bg (inv-run wf) (dataCorr cc) ftq lh ls refl (straight-frame (instr-room k) fs)
+                (fret-straight (instr-room k) fs) (straight-saved (instr-room k) fs))
       wf ftq h refl tt tt h
   ... | inj₂ (c , s' , ex , hs' , ft') =
     c + 1 , subst (λ o → AgreeAt o (flat-events n prog (flat-exec-instr (instr-room k) prog fs))
@@ -1286,8 +1213,8 @@ module Dispatch (sup : Supply) where
     -- leave `halted` untouched (exec-abstract is a `record {regs=…}` or flat-exec-instr
     -- just bumps fpc), so halted-post = h and event-of = [] (refl). Each feeds its PROVEN
     -- block-step lemma directly to ccc-step-bs (no block-step-any dispatcher — deleted).
-    events-running-fetch {hv} n ev env prog fs s mov-to-output          cc bg wf h ftq = ccc-step-bs n (events-agree n) ev env prog fs s mov-to-output          (bs-mov-to-output bss          prog fs s cc h ftq) (λ _ → bg-str _ bg ftq refl refl) wf ftq h refl tt tt h
-    events-running-fetch {hv} n ev env prog fs s mov-to-input           cc bg wf h ftq = ccc-step-bs n (events-agree n) ev env prog fs s mov-to-input           (bs-mov-to-input bss           prog fs s cc h ftq) (λ _ → bg-str _ bg ftq refl refl) wf ftq h refl tt tt h
+    events-running-fetch {hv} n ev env prog fs s mov-to-output          cc bg wf h ftq = ccc-step-bs n (events-agree n) ev env prog fs s mov-to-output          (bs-mov-to-output bss          prog fs s cc h ftq) (λ _ → bg-str _ bg ftq refl refl refl) wf ftq h refl tt tt h
+    events-running-fetch {hv} n ev env prog fs s mov-to-input           cc bg wf h ftq = ccc-step-bs n (events-agree n) ev env prog fs s mov-to-input           (bs-mov-to-input bss           prog fs s cc h ftq) (λ _ → bg-str _ bg ftq refl refl refl) wf ftq h refl tt tt h
     events-running-fetch {hv} n ev env prog fs s (instr-reg-op out-nz) cc bg wf h ftq = out-nz-step n (events-agree n) ev env prog fs s cc bg wf h ftq
     events-running-fetch {hv} n ev env prog fs s load-indirect cc bg wf h ftq = load-indirect-step n (events-agree n) ev env prog fs s cc bg wf h ftq
     events-running-fetch {hv} n ev env prog fs s load-indirect-suc cc bg wf h ftq = load-indirect-suc-step n (events-agree n) ev env prog fs s cc bg wf h ftq
@@ -1297,19 +1224,52 @@ module Dispatch (sup : Supply) where
     events-running-fetch {hv} n ev env prog fs s (store-at-slot slot) cc bg wf h ftq =
       ccc-step-bs {hv} n (events-agree n) ev env prog fs s (store-at-slot slot)
         (bs-store-at-slot bss prog fs s slot cc h ftq
-           (slot-read-in-frame prog fs slot (store-at-slot slot) (inv-run wf) ftq refl)
-           (slot-heap-disj {hv} fs s (dataCorr cc) slot)) (λ _ → bg-str _ bg ftq refl refl) wf ftq h refl tt tt h
+           (slot-read-in-frame prog fs slot (store-at-slot slot) (inv-run wf) h ftq refl)
+           (slot-heap-disj {hv} fs s (dataCorr cc) slot)) (λ _ → bg-str _ bg ftq refl refl refl) wf ftq h refl tt tt
+        (subst (λ t → halted (floc t) ≡ false)
+               (sym (slot-go (store-at-slot slot) prog fs refl (slot-read-in-frame prog fs slot (store-at-slot slot) (inv-run wf) h ftq refl))) h)
     events-running-fetch {hv} n ev env prog fs s (restore-input slot) cc bg wf h ftq = restore-input-step n (events-agree n) ev env prog fs s slot cc bg wf h ftq
     events-running-fetch {hv} n ev env prog fs s (worklist-push slot) cc bg wf h ftq =
       ccc-step-bs {hv} n (events-agree n) ev env prog fs s (worklist-push slot)
         (bs-worklist-push bss prog fs s slot cc h ftq
-           (slot-read-in-frame prog fs slot (worklist-push slot) (inv-run wf) ftq refl)
-           (slot-heap-disj {hv} fs s (dataCorr cc) slot)) (λ _ → bg-str _ bg ftq refl refl) wf ftq h refl tt tt h
+           (slot-read-in-frame prog fs slot (worklist-push slot) (inv-run wf) h ftq refl)
+           (slot-heap-disj {hv} fs s (dataCorr cc) slot)) (λ _ → bg-str _ bg ftq refl refl refl) wf ftq h refl tt tt
+        (subst (λ t → halted (floc t) ≡ false)
+               (sym (slot-go (worklist-push slot) prog fs refl (slot-read-in-frame prog fs slot (worklist-push slot) (inv-run wf) h ftq refl))) h)
     events-running-fetch {hv} n ev env prog fs s (worklist-pop slot) cc bg wf h ftq = worklist-pop-step n (events-agree n) ev env prog fs s slot cc bg wf h ftq
     -- THE FOUR FRAME OPS ARE UNREACHABLE (plan 0.54 rung D, item 2): `ir-to-trace`
     -- emits none of them, and `FlatInv` carries `Emitted prog`. See `FrameFree`.
     events-running-fetch {hv} n ev env prog fs s (instr-alloc-stack k) cc bg wf h ftq =
       ⊥-elim (frame-op-absurd prog fs (instr-alloc-stack k) (inv-run wf) ftq (λ _ ()))
+    -- D470/D472: the allocator record's words. The record's gate is open (the
+    -- record is mapped, so the counter is past it); a load reads a written cell
+    -- (else it faults, and the run does not), a store one of the record's.
+    events-running-fetch {hv} n ev env prog fs s (load-rec k) cc bg wf h ftq =
+      go (heapMem (floc fs) (heap-loc (mkHeapRef 0) k)) refl
+      where
+        gate = CFC.rec-gate-open hv (dataCorr cc) k
+        go : ∀ mw → heapMem (floc fs) (heap-loc (mkHeapRef 0) k) ≡ mw
+           → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
+                 (event-of (load-rec k) fs ▹ flat-events n prog (flat-exec-instr (load-rec k) prog fs)) (ctrl-of (load-rec k) + flat-ctrls n prog (flat-exec-instr (load-rec k) prog fs)) M)
+        go (just w) h-eq =
+          ccc-step-bs {hv} n (events-agree n) ev env prog fs s (load-rec k)
+            (bs-load-rec bss prog fs s k w cc h ftq h-eq)
+            (λ _ → bg-str _ bg ftq refl refl refl) wf ftq h refl tt tt
+            (trans (cong (λ m → halted (ExecFinal.exec-load-via-resolved {FS} Output m (floc fs))) gate)
+                   (trans (cong (λ mv → halted (ExecFinal.exec-load-with-value {FS} Output mv (floc fs))) h-eq) h))
+        go nothing h-eq =
+          ⊥-elim (true≢false (trans (sym (trans (cong (λ m → LocState.faulted (ExecFinal.exec-load-via-resolved {FS} Output m (floc fs))) gate)
+                                                (cong (λ mv → LocState.faulted (ExecFinal.exec-load-with-value {FS} Output mv (floc fs))) h-eq)))
+                                    (step-ok prog fs (load-rec k) (inv-run wf) h ftq)))
+          where
+            true≢false : true ≡ false → ⊥
+            true≢false ()
+    events-running-fetch {hv} n ev env prog fs s (store-rec k) cc bg wf h ftq =
+      ccc-step-bs {hv} n (events-agree n) ev env prog fs s (store-rec k)
+        (bs-store-rec bss prog fs s k cc h ftq (frame-op-absurd prog fs (store-rec k) (inv-run wf) ftq (λ _ ())))
+        (λ _ → bg-str _ bg ftq refl refl refl) wf ftq h refl tt tt
+        (trans (cong (λ m → halted (ExecFinal.exec-store-via-resolved {FS} m (readReg (regs (floc fs)) Output) (floc fs))) (CFC.rec-gate-open hv (dataCorr cc) k))
+               (trans (writeLoc-halted (floc fs) (AtDynamic (heap-loc (mkHeapRef 0) k)) (readReg (regs (floc fs)) Output)) h))
     events-running-fetch {hv} n ev env prog fs s (instr-alloc-heap k) cc bg wf h ftq =
       ccc-step-bs n (events-agree n) ev env prog fs s (instr-alloc-heap k)
         (bs-alloc-heap bss prog fs s k cc h ftq
@@ -1318,13 +1278,19 @@ module Dispatch (sup : Supply) where
            (λ hl _ → wf-heap (inv-wf wf) hl) (wf-stack (inv-wf wf))
            (λ hl eq → wf-fresh (inv-wf wf) hl (≤-reflexive (sym eq)))
            -- the allocation's room, from the budget (plan 0.123 A.4 step 5)
-           (room-of bg (dataCorr cc) ftq refl)
+           (fresh-of bg (dataCorr cc) ftq)
            (reg-range prog fs s sp-reg (inv-run wf) cc))
-        (λ _ → bg-alloc bg ftq refl refl (straight-frame (instr-alloc-heap k) fs)) wf ftq h refl tt tt h
+        (λ _ → bg-alloc bg ftq refl refl refl refl (straight-frame (instr-alloc-heap k) fs)
+                  (fret-straight (instr-alloc-heap k) fs) (straight-saved (instr-alloc-heap k) fs)) wf ftq h refl tt tt h
     events-running-fetch {hv} n ev env prog fs s (instr-dealloc-stack k) cc bg wf h ftq =
       ⊥-elim (frame-op-absurd prog fs (instr-dealloc-stack k) (inv-run wf) ftq (λ _ ()))
+    -- a free (plan 0.146: the new image emits one), past its gate (D470, the run is sound): no code
     events-running-fetch {hv} n ev env prog fs s (instr-free-heap k) cc bg wf h ftq =
-      ⊥-elim (frame-op-absurd prog fs (instr-free-heap k) (inv-run wf) ftq (λ _ ()))
+      ccc-step-bs n (events-agree n) ev env prog fs s (instr-free-heap k) (bs-free-heap bss prog fs s k cc h ftq gk)
+        (λ _ → bg-str _ bg ftq refl refl refl) wf ftq h refl tt tt hpost
+      where gk = free-gate prog fs k (inv-run wf) h ftq
+            hpost : halted (floc (flat-exec-instr (instr-free-heap k) prog fs)) ≡ false
+            hpost = subst (λ t → halted (floc t) ≡ false) (sym (FlatMachine.straight-pass (instr-free-heap k) fs gk)) h
     events-running-fetch {hv} n ev env prog fs s (load-at k) cc bg wf h ftq =
       load-at-step n (events-agree n) ev env prog fs s k cc bg wf h ftq
     events-running-fetch {hv} n ev env prog fs s (store-at k) cc bg wf h ftq =
@@ -1340,15 +1306,17 @@ module Dispatch (sup : Supply) where
     events-running-fetch {hv} n ev env prog fs s (instr-load-const fits-int v) cc bg wf h ftq =
       ccc-step-bs {hv} n (events-agree n) ev env prog fs s (instr-load-const fits-int v)
         (bs-load-const bss prog fs s v cc h ftq
-           (lit-fits prog fs s v (inv-run wf) cc ftq)) (λ _ → bg-str _ bg ftq refl refl) wf ftq h refl tt tt h
+           (lit-fits prog fs s v (inv-run wf) cc ftq)) (λ _ → bg-str _ bg ftq refl refl refl) wf ftq h refl tt tt h
     events-running-fetch {hv} n ev env prog fs s (instr-load-const fits-float v) cc bg wf h ftq =
       ccc-step-bs {hv} n (events-agree n) ev env prog fs s (instr-load-const fits-float v)
         (bs-load-const-float bss prog fs s v cc h ftq
-           (float-fits prog fs s v (inv-run wf) cc ftq)) (λ _ → bg-str _ bg ftq refl refl) wf ftq h refl tt tt h
+           (float-fits prog fs s v (inv-run wf) cc ftq)) (λ _ → bg-str _ bg ftq refl refl refl) wf ftq h refl tt tt h
     -- plan 0.61: a stack POINTER now has an address, so lea-slot routes.
     events-running-fetch {hv} n ev env prog fs s (lea-slot slot) cc bg wf h ftq =
       ccc-step-bs {hv} n (events-agree n) ev env prog fs s (lea-slot slot)
-        (bs-lea-slot bss prog fs s slot cc h ftq (inv-run wf)) (λ _ → bg-str _ bg ftq refl refl) wf ftq h refl tt tt h
+        (bs-lea-slot bss prog fs s slot cc h ftq (slot-read-in-frame prog fs slot (lea-slot slot) (inv-run wf) h ftq refl) (inv-run wf)) (λ _ → bg-str _ bg ftq refl refl refl) wf ftq h refl tt tt
+        (subst (λ t → halted (floc t) ≡ false)
+               (sym (slot-go (lea-slot slot) prog fs refl (slot-read-in-frame prog fs slot (lea-slot slot) (inv-run wf) h ftq refl))) h)
     -- D096: the code address is RESOLVED now, so this dispatches on the scan
     -- exactly as `cjmp-step` does — and the two scans agree by `find-thunk-corr`,
     -- which has been sitting in `FlatComposition` waiting for its consumer since
@@ -1365,7 +1333,7 @@ module Dispatch (sup : Supply) where
             (bs-load-code-addr bss prog fs s k (blk-off prog j) cc h ftq
                (trans (find-label-def (compile-trace prog) (thunk k))
                       (find-thunk-corr prog (e-thunk k) 0 j fteq)))
-            (λ _ → bg-str _ bg ftq refl refl) wf ftq h refl tt tt h
+            (λ _ → bg-str _ bg ftq refl refl refl) wf ftq h refl tt tt h
         go nothing fteq = ⊥-elim (no-body (proj₂ (has-body)))
           where
             has-body : Σ ℕ (λ j → find-thunk prog k ≡ just j)
@@ -1375,13 +1343,13 @@ module Dispatch (sup : Supply) where
               where nj : ∀ {A : Set} {j : ℕ} → nothing ≡ just j → A
                     nj ()
     events-running-fetch {hv} n ev env prog fs s instr-save-closure-reg cc bg wf h ftq =
-      ccc-step-bs {hv} n (events-agree n) ev env prog fs s instr-save-closure-reg (bs-save-closure-reg bss prog fs s cc h ftq) (λ _ → bg-plain bg ftq refl refl refl refl) wf ftq h refl tt tt h
+      ccc-step-bs {hv} n (events-agree n) ev env prog fs s instr-save-closure-reg (bs-save-closure-reg bss prog fs s cc h ftq) (λ _ → bg-plain bg ftq refl refl refl refl refl refl) wf ftq h refl tt tt h
     -- Trivial cata bookkeeping (blk-len 0, flat identity): proven block-step ⇒ ccc-step-bs.
-    events-running-fetch {hv} n ev env prog fs s (worklist-init k) cc bg wf h ftq = ccc-step-bs n (events-agree n) ev env prog fs s (worklist-init k) (bs-worklist-init bss prog fs s k cc h ftq) (λ _ → bg-str _ bg ftq refl refl) wf ftq h refl tt tt h
-    events-running-fetch {hv} n ev env prog fs s (worklist-check k) cc bg wf h ftq = ccc-step-bs n (events-agree n) ev env prog fs s (worklist-check k) (bs-worklist-check bss prog fs s k cc h ftq) (λ _ → bg-str _ bg ftq refl refl) wf ftq h refl tt tt h
-    events-running-fetch {hv} n ev env prog fs s (instr-reclaim-to k) cc bg wf h ftq = ccc-step-bs n (events-agree n) ev env prog fs s (instr-reclaim-to k) (bs-reclaim-to bss prog fs s k cc h ftq) (λ _ → bg-str _ bg ftq refl refl) wf ftq h refl tt tt h
-    events-running-fetch {hv} n ev env prog fs s (instr-load-tag-lit k) cc bg wf h ftq = ccc-step-bs n (events-agree n) ev env prog fs s (instr-load-tag-lit k) (bs-load-tag-lit bss prog fs s k cc h ftq (tag-fits prog fs s k (inv-run wf) cc ftq)) (λ _ → bg-str _ bg ftq refl refl) wf ftq h refl tt tt h
-    events-running-fetch {hv} n ev env prog fs s (instr-ctrl (c-label m)) cc bg wf h ftq = ccc-step-bs n (events-agree n) ev env prog fs s (instr-ctrl (c-label m)) (bs-c-label bss prog fs s m cc h ftq) (λ _ → bg-plain bg ftq refl refl refl refl) wf ftq h refl tt tt h
+    events-running-fetch {hv} n ev env prog fs s (worklist-init k) cc bg wf h ftq = ccc-step-bs n (events-agree n) ev env prog fs s (worklist-init k) (bs-worklist-init bss prog fs s k cc h ftq) (λ _ → bg-str _ bg ftq refl refl refl) wf ftq h refl tt tt h
+    events-running-fetch {hv} n ev env prog fs s (worklist-check k) cc bg wf h ftq = ccc-step-bs n (events-agree n) ev env prog fs s (worklist-check k) (bs-worklist-check bss prog fs s k cc h ftq) (λ _ → bg-str _ bg ftq refl refl refl) wf ftq h refl tt tt h
+    events-running-fetch {hv} n ev env prog fs s (instr-reclaim-to k) cc bg wf h ftq = ccc-step-bs n (events-agree n) ev env prog fs s (instr-reclaim-to k) (bs-reclaim-to bss prog fs s k cc h ftq) (λ _ → bg-str _ bg ftq refl refl refl) wf ftq h refl tt tt h
+    events-running-fetch {hv} n ev env prog fs s (instr-load-tag-lit k) cc bg wf h ftq = ccc-step-bs n (events-agree n) ev env prog fs s (instr-load-tag-lit k) (bs-load-tag-lit bss prog fs s k cc h ftq (tag-fits prog fs s k (inv-run wf) cc ftq)) (λ _ → bg-str _ bg ftq refl refl refl) wf ftq h refl tt tt h
+    events-running-fetch {hv} n ev env prog fs s (instr-ctrl (c-label m)) cc bg wf h ftq = ccc-step-bs n (events-agree n) ev env prog fs s (instr-ctrl (c-label m)) (bs-c-label bss prog fs s m cc h ftq) (λ _ → bg-plain bg ftq refl refl refl refl refl refl) wf ftq h refl tt tt h
     -- Plan 0.63 step 2a: NEITHER CLOSURE MARKER HAS A PRODUCER yet
     -- (`ir-to-trace` is main-only), and both now MOVE THE FRAME — the body's
     -- `subq`/`addq` reservation rides on them. So both route absurdly, via
@@ -1418,53 +1386,40 @@ module Dispatch (sup : Supply) where
       call-step n (events-agree n) ev env prog fs s cc bg wf h ftq
 
 
-  -- Plan 0.107: THE START, THEN THE RUN. The correspondence's induction begins
-  -- ONE STEP IN — after the start, which no step returns to (`inv-started`).
-  -- This carries it across: the start's block (`bs-c-start`) takes the
-  -- environment's state to `main`'s first instruction, and the run from there
-  -- is `events-agree`'s. What the start needs of the environment is the stack
-  -- room for `main`'s frame (`stack-room`, the same resource fact a body entry
-  -- needs) and a frontier at the heap's base.
+  -- Plan 0.107, D488: THE START, THEN THE RUN. The correspondence's induction
+  -- begins ONE STEP IN — after the start, which no step returns to
+  -- (`inv-started`). The start checks for itself (`start-step`): with room it
+  -- lands in the correspondence past it, where a check is next (it is a
+  -- boundary), so the budget there is the layout's (`bg-boundary`) and the run
+  -- from there is `events-agree`'s; without room the concrete run ends
+  -- `exhausted` before any event — a run that RAN OUT of the flat one.
   events-agree-start : ∀ {hv : HeapView} N (ev : RT.EvExtractor) (env : RT.ArithEnv) prog fs s b
-    → CompiledCorr hv prog fs s → Budget hv prog fs
+    → CompiledCorr hv prog fs s
     → FlatWF fs → sv-below (next-heap-ref (falloc fs)) (fclosure fs)
     → ev ≡ ev-arch → ArithTable prog env → RunAt prog fs
     → halted (floc fs) ≡ false
     → fetch prog (fpc fs) ≡ just (instr-ctrl (c-start b))
-    → CFC.HeapView.hfront hv ≡ slot-size
+    → CFC.HeapView.hfront hv ≡ heap-base + rec-size * slot-size
     → fret fs ≡ []
     → LocState.left (floc fs) ≡ false
+    → CFC.HeapView.hstarted hv ≡ false
+    → CFC.HeapView.lo hv ≡ rreg s sp-reg
     → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
                  (flat-events (suc N) prog fs) (flat-ctrls (suc N) prog fs) M)
-  events-agree-start {hv} N ev env prog fs s b cc bg wf cl evq envq run h ftq h0 nf lf0 =
-    (blk-len i + proj₁ rec)
-    , subst (λ o → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) (blk-len i + proj₁ rec) (compile-trace prog) s)
-                           o (flat-ctrls (suc N) prog fs) (blk-len i + proj₁ rec))
+  events-agree-start {hv} N ev env prog fs s b cc wf cl evq envq run h ftq h0 nf lf0 nst lo-eq
+    with start-step prog fs s b run cc h ftq h0 nf nst lo-eq
+  ... | inj₁ (c , s′ , ex , hv′ , st′ , lim′ , cc′) =
+    suc c + proj₁ rec
+    , subst (λ o → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) (suc c + proj₁ rec) (compile-trace prog) s)
+                           o (flat-ctrls (suc N) prog fs) (suc c + proj₁ rec))
             (sym step-eq) (agree-pre [] pre-eq bound (proj₂ rec))
     where
       i = instr-ctrl (c-start b)
-      -- `main`'s frame, from the budget the start's check armed
-      room : CFC.HeapView.hfront hv + slots b ≤ rreg s sp-reg
-      room = room-of bg (dataCorr cc) ftq refl
-      fits : slots b ≤ rreg s sp-reg
-      fits = ≤-trans (m≤n+m (slots b) (CFC.HeapView.hfront hv)) room
-      front-rsp : CFC.HeapView.hfront hv ≤ rreg s sp-reg ∸ slots b
-      front-rsp = m+n≤o⇒m≤o∸n (CFC.HeapView.hfront hv) room
-      lo' : ℕ
-      lo' = CFC.HeapView.lo hv ⊓ (rreg s sp-reg ∸ slots b)
-      lo'≤lo : lo' ≤ CFC.HeapView.lo hv
-      lo'≤lo = m⊓n≤m (CFC.HeapView.lo hv) (rreg s sp-reg ∸ slots b)
-      lo'≤rsp : lo' ≤ rreg s sp-reg ∸ slots b
-      lo'≤rsp = m⊓n≤n (CFC.HeapView.lo hv) (rreg s sp-reg ∸ slots b)
-      front-lo' : CFC.HeapView.hfront hv ≤ lo'
-      front-lo' = ⊓-glb (CFC.HeapView.front-lo hv) front-rsp
-      bs = bs-c-start bss prog fs s b cc h ftq lo' lo'≤lo front-lo' lo'≤rsp fits
-                      (reg-range prog fs s sp-reg run cc) h0 nf
+      fs₁ = flat-exec-instr i prog fs
       -- the post-start invariant, from the flat-machine theorems; the start
       -- is behind it now (its pc is one past)
-      -- D377: the start is an image instruction, so the base run moves past pc 0
       nxt = low-step-image prog fs i run ftq h (λ _ ())
-      inv₁ : FlatInv ev env prog (flat-exec-instr i prog fs)
+      inv₁ : FlatInv ev env prog fs₁
       inv₁ = record
         { inv-wf      = flat-wf-step i prog fs wf
         ; inv-closure = cl-step i prog fs wf cl
@@ -1474,74 +1429,24 @@ module Dispatch (sup : Supply) where
         ; inv-started = proj₂ nxt
         ; inv-left    = trans (LL.flat-exec-instr-left i tt prog fs) lf0
         }
-      -- the start spent `main`'s frame from the budget: the frame base fell by it
-      bg₁ = bg-view refl $ bg-start bg ftq refl (fbase-shift (flat-exec-instr i prog fs) fs b refl)
-      rec = events-agree N ev env prog (flat-exec-instr i prog fs) (proj₁ bs) (proj₂ (proj₂ bs)) bg₁ inv₁
-      pre-eq : RT.run-events ev env (LocState.ev-log (floc fs)) (blk-len i + proj₁ rec) (compile-trace prog) s
-             ≡ RT.run-events ev env (LocState.ev-log (floc (flat-exec-instr i prog fs))) (proj₁ rec) (compile-trace prog) (proj₁ bs)
-      pre-eq =
-        block-run-exec ev env (LocState.ev-log (floc fs)) (blk-len i) (proj₁ rec) (compile-trace prog) s
-          (proj₁ (proj₂ bs)) (trans (CFC.FlatCorr.halt-eq (dataCorr (proj₂ (proj₂ bs)))) h)
-      step-eq : flat-events (suc N) prog fs ≡ flat-events N prog (flat-exec-instr i prog fs)
-      step-eq rewrite h | ftq = refl
-      step-ctrls : flat-ctrls (suc N) prog fs ≡ ctrl-of i + flat-ctrls N prog (flat-exec-instr i prog fs)
-      step-ctrls rewrite h | ftq = refl
-      bound : flat-ctrls N prog (flat-exec-instr i prog fs) ≤ suc (proj₁ rec)
-            → flat-ctrls (suc N) prog fs ≤ suc (blk-len i + proj₁ rec)
-      bound b = ≤-trans (≤-reflexive step-ctrls) (≤-trans (+-mono-≤ (ctrl-le i) b) (≤-reflexive (+-suc (blk-len i) (proj₁ rec))))
-
-  -- D377: THE BOOT — the start's check, then the start. The lowered image holds
-  -- the check for the whole first stretch at pc 0 and the start right after.
-  -- Room: the check's run lands in the correspondence one past it, where the
-  -- start is (`events-agree-start`); the flat check emits nothing and counts no
-  -- control step. No room: the concrete run ends `exhausted` before any event —
-  -- a run that RAN OUT of the flat one, as at any other check.
-  events-agree-boot : ∀ {hv : HeapView} N (ev : RT.EvExtractor) (env : RT.ArithEnv) prog fs s b k
-    → CompiledCorr hv prog fs s
-    → FlatWF fs → sv-below (next-heap-ref (falloc fs)) (fclosure fs)
-    → ev ≡ ev-arch → ArithTable prog env → RunAt prog fs
-    → halted (floc fs) ≡ false
-    → fetch prog (fpc fs) ≡ just (instr-room k)
-    → fetch prog (suc (fpc fs)) ≡ just (instr-ctrl (c-start b))
-    → CFC.HeapView.hfront hv ≡ slot-size
-    → fret fs ≡ []
-    → LocState.left (floc fs) ≡ false
-    → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
-                 (flat-events (suc (suc N)) prog fs) (flat-ctrls (suc (suc N)) prog fs) M)
-  events-agree-boot {hv} N ev env prog fs s b k cc wf cl evq envq run h ftq fts h0 nf lf0
-    with room-step prog fs s k run cc h ftq
-  ... | inj₁ (c , s′ , ex , cc′ , le) =
-    c + proj₁ rec
-    , subst (λ o → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) (c + proj₁ rec) (compile-trace prog) s)
-                           o (flat-ctrls (suc (suc N)) prog fs) (c + proj₁ rec))
-            (sym step-eq)
-            (agree-pre [] pre-eq bound (proj₂ rec))
-    where
-      i = instr-room k
-      fs₁ = flat-exec-instr i prog fs
-      -- the start's check armed the budget for the first stretch
-      rec = events-agree-start N ev env prog fs₁ s′ b cc′
-              (bg-room run (dataCorr cc) ftq le refl (straight-frame i fs))
-              (flat-wf-step i prog fs wf) (cl-step i prog fs wf cl)
-              evq envq (low-step prog fs i run ftq h) h fts h0 nf
-              (trans (LL.flat-exec-instr-left i tt prog fs) lf0)
-      pre-eq : RT.run-events ev env (LocState.ev-log (floc fs)) (c + proj₁ rec) (compile-trace prog) s
+      -- the start is a boundary: its check comes next, where nothing is owed
+      bg₁ : Budget hv′ prog fs₁
+      bg₁ = bg-start run ftq st′ refl (dataCorr cc′) lim′ nf
+      rec = events-agree N ev env prog fs₁ s′ cc′ bg₁ inv₁
+      pre-eq : RT.run-events ev env (LocState.ev-log (floc fs)) (suc c + proj₁ rec) (compile-trace prog) s
              ≡ RT.run-events ev env (LocState.ev-log (floc fs₁)) (proj₁ rec) (compile-trace prog) s′
-      pre-eq = block-run-exec ev env (LocState.ev-log (floc fs)) c (proj₁ rec) (compile-trace prog) s ex
+      pre-eq = block-run-exec ev env (LocState.ev-log (floc fs)) (suc c) (proj₁ rec) (compile-trace prog) s ex
                  (trans (CFC.FlatCorr.halt-eq (dataCorr cc′)) h)
-      ev-room : flat-events-fetch (just i) (suc N) prog fs ≡ flat-events (suc N) prog fs₁
-      ev-room = refl
-      ct-room : flat-ctrls-fetch (just i) (suc N) prog fs ≡ flat-ctrls (suc N) prog fs₁
-      ct-room = refl
-      step-eq : flat-events (suc (suc N)) prog fs ≡ flat-events (suc N) prog fs₁
-      step-eq = trans (cong (λ hb → flat-events-step hb (suc N) prog fs) h) (trans (cong (λ mi → flat-events-fetch mi (suc N) prog fs) ftq) ev-room)
-      step-ctrls : flat-ctrls (suc (suc N)) prog fs ≡ flat-ctrls (suc N) prog fs₁
-      step-ctrls = trans (cong (λ hb → flat-ctrls-step hb (suc N) prog fs) h) (trans (cong (λ mi → flat-ctrls-fetch mi (suc N) prog fs) ftq) ct-room)
-      bound : flat-ctrls (suc N) prog fs₁ ≤ suc (proj₁ rec) → flat-ctrls (suc (suc N)) prog fs ≤ suc (c + proj₁ rec)
-      bound b′ = ≤-trans (≤-reflexive step-ctrls) (≤-trans b′ (s≤s (m≤n+m (proj₁ rec) c)))
+      step-eq : flat-events (suc N) prog fs ≡ flat-events N prog fs₁
+      step-eq rewrite h | ftq = refl
+      step-ctrls : flat-ctrls (suc N) prog fs ≡ ctrl-of i + flat-ctrls N prog fs₁
+      step-ctrls rewrite h | ftq = refl
+      bound : flat-ctrls N prog fs₁ ≤ suc (proj₁ rec)
+            → flat-ctrls (suc N) prog fs ≤ suc (suc c + proj₁ rec)
+      bound b′ = ≤-trans (≤-reflexive step-ctrls) (s≤s (≤-trans b′ (s≤s (m≤n+m (proj₁ rec) c))))
   ... | inj₂ (c , s′ , ex , hs′ , ft′) =
-    c + 1 , subst (λ o → AgreeAt o (flat-events (suc (suc N)) prog fs) (flat-ctrls (suc (suc N)) prog fs) (c + 1))
+    c + 1 , subst (λ o → AgreeAt o (flat-events (suc N) prog fs) (flat-ctrls (suc N) prog fs) (c + 1))
                   (sym (trans (block-run-exec ev env (LocState.ev-log (floc fs)) c 1 (compile-trace prog) s ex hs′)
                               (RT.run-events-exhausted ev env (LocState.ev-log (floc fs)) 0 (compile-trace prog) s′
                                  (sigop-call host-exhausted-symbol) hs′ ft′ (sigop-matchCall host-exhausted-symbol))))
-                  (inj₂ (refl , proj₁ (flat-events (suc (suc N)) prog fs) , refl))
+                  (inj₂ (refl , proj₁ (flat-events (suc N) prog fs) , refl))

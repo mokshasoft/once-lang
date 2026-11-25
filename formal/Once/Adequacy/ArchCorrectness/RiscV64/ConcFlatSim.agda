@@ -37,7 +37,7 @@ import Once.Adequacy.ArchCorrectness.RiscV64.FlatCorrespondence as FCr
 import Once.Adequacy.ArchCorrectness.FlatCore.RunLow as RLr
 import Once.CCC.Target.RiscV64.Semantics as RS
 open import Once.CCC.Machine.SMCore using
-  (AbstractTrace; lea-slot; instr-ctrl; c-ret; instr-load-tag-lit; instr-load-const; instr-room)
+  (AbstractTrace; lea-slot; instr-ctrl; c-ret; c-start; start-stack-words; instr-load-tag-lit; instr-load-const; instr-room; instr-sigop; module Room)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Target.RiscV64.Syntax using (slots)
 open import Once.Target.RiscV64.PhysReg using (sp) renaming (Reg to Reg')
@@ -50,6 +50,9 @@ open import Once.Spec.Float.Decimal using (Decimal)
 open import Data.Integer using (ℤ)
 open import Data.Maybe using (just)
 
+open import Data.Sum using (_⊎_; inj₁; inj₂)
+import Data.List.Relation.Unary.All
+open import Data.Product using (Σ)
 module Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim
   (o : CanonicalName)
   (FS : FrameSemantics)
@@ -121,15 +124,6 @@ module Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim
               → FlatMachine.fetch {FS} prog (FlatMachine.FlatState.fpc {FS} fs)
                   ≡ just (instr-load-const fits-float v)
               → Once.CCC.Machine.SMCore.AbstractExec.lit-value {FS} fits-float v < RS.W.modulus)
-  -- D378: a room check's need, `8k`, is an emitted immediate (`li t2, 8k`)
-  -- and fits a word — the literal seam, as `tag-fits`.
-  (room-fits : ∀ {hv : FCr.FlatCorrespondence.HeapView FS word-eq} (prog : AbstractTrace)
-                 (fs : FlatMachine.FlatState {FS}) (s : RS.State) (k : ℕ)
-             → RLr.RunLow o FS slot-size word-eq prog fs
-             → FSimr.CompiledCorrespondence.CompiledCorr o FS word-eq fmt-eq hv prog fs s
-             → FlatMachine.fetch {FS} prog (FlatMachine.FlatState.fpc {FS} fs)
-                 ≡ just (instr-room k)
-             → slots k < RS.W.modulus)
   where
 
 open import Data.Nat using (ℕ; suc; _+_)
@@ -151,9 +145,10 @@ open import Once.Adequacy.ArchCorrectness.RiscV64.StepLemmas using (execInstr-ld
 open import Once.Adequacy.CPU.RiscV64 using (ev-riscv64; block-env; call-at-riscv64)
 import Once.Compile.Emit as Emit
 import Once.Adequacy.BlockTable as BT
+open import Once.Target.Backend using (file-table)
 import Once.Arith.Backend.RiscV64.Emit as AE
 open import Once.Adequacy.CPU.RiscV64 using (block-env-hit; block-env-sound)
-open import Once.Adequacy.RewriteOwned using (BlockOf; is-block)
+open import Once.Adequacy.RewriteOwned using (BlockOf; is-block; block-not-in-memory)
 import Once.Adequacy.ArchCorrectness.RiscV64.ArithFrame as AF
 import Once.Adequacy.ArchCorrectness.RiscV64.ArithBlockValue o FS word-eq fmt-eq as ABV
 open import Once.Arith.Backend.XInstr.SpillBound using (SpillsWF; block-spills)
@@ -161,7 +156,7 @@ open import Once.Arith.Backend.XInstr.CodeGen using (emit-program)
 open import Once.Arith.Machine.Compile using (compile-abs; required-scratch; normalize)
 open import Once.Arith.Machine.IR using (mk-block)
 open import Once.Arith.Type using (NInt; NFloat)
-open import Once.CCC.Codegen.RoomChecks using (sigop-scratch)
+open import Once.CCC.Codegen.StackDepth using (sigop-scratch; sigop-need)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles using (role-sp; role-clos; role-heap; role-in1; role-out)
 open import Data.Nat.Properties using (*-distribʳ-+; *-comm; m≤n+m; m+n≤o⇒n≤o; ≤-trans; +-monoʳ-≤)
 open import Data.Nat using (_*_)
@@ -270,7 +265,16 @@ ctrl-len-arch (c-branch-tag-zero _) = s≤s z≤n
 ctrl-len-arch (c-entry _ _) = s≤s z≤n
 ctrl-len-arch (c-ret _) = s≤s z≤n
 ctrl-len-arch (c-call-fn _) = s≤s z≤n
-ctrl-len-arch (c-start _) = s≤s z≤n
+ctrl-len-arch (c-start b) = st-len (AC.room-fits? (start-stack-words Data.Nat.+ b))
+  where
+    import Once.CCC.Target.RiscV64.AbstractToRiscV as AC
+    import Data.Nat
+    open import Data.Bool using (Bool; true; false)
+    open import Data.List using (_++_)
+    -- D488: the start's check is its code or its call
+    st-len : ∀ (c : Bool) → 1 ≤ length (AC.fits-or-out c (AC.room-code (start-stack-words Data.Nat.+ b)) ++ AC.start-tail b)
+    st-len true  = s≤s z≤n
+    st-len false = s≤s z≤n
 ctrl-len-arch c-leave = s≤s z≤n
 
 riscv64-emitter : EI.Emitter FS Reg
@@ -291,7 +295,7 @@ riscv64-machine : EI.Machine FS Reg riscv64-emitter
 riscv64-machine = record
   { State = R.State ; rreg = λ s r → R.readReg (R.State.regs s) r
   ; memory = R.State.memory
-  ; xhalted = R.State.halted ; xpc = R.State.pc
+  ; xhalted = R.State.halted ; heap-base = R.heap-base ; xpc = R.State.pc
   -- `jalr` writes the LINK REGISTER and nothing else: until the callee's
   -- `sd ra` there is no cell to point at, so the claim ignores the address.
   ; link-claim = FSimr.riscv64-link-claim o FS word-eq fmt-eq
@@ -302,12 +306,19 @@ riscv64-machine = record
   }
 
 
+open import Once.SigOp.Info using (SigOpInfo; Internal; External; module SigOpInfo)
+open SigOpInfo using (sem)
+open import Once.Target.Symbol using (once-symbol-path)
+
 -- Plan 0.107: THE ARITH TABLE IS THE FILE'S — the block table `Once.Compile`
 -- emits for the program whose image this is. It was the postulated
 -- `arith-env-riscv64`, "read off the code"; the code does not hold it, the file does.
 riscv64-arith-table : AbstractTrace → (String → Maybe (List XInstr × ℕ)) → Set
 riscv64-arith-table prog env =
-  Σ IRProgram (λ p → (prog ≡ Emit.image-of p) × (env ≡ block-env (Emit.blocks-riscv64 p)))
+  Σ (List ArithBlock) (λ bs → Data.List.Relation.Unary.All.All (BT.SigNamed bs) prog
+                                × (env ≡ block-env (file-table AE.block-payload bs))
+                                × (∀ {A B} (si : SigOpInfo A B) k → External (sem si) → FlatMachine.fetch {FS} prog k ≡ just (instr-sigop si)
+                                     → env (once-symbol-path (SigOpInfo.name si)) ≡ nothing))
 
 riscv64-traceloop : EI.TraceLoop FS Reg riscv64-emitter riscv64-machine
 riscv64-traceloop = record
@@ -348,9 +359,6 @@ open MemOps {FS} using (readLoc)
 open import Once.CCC.Label using (once)
 open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
 open FlatEventTrace {FS} using (event-of)
-open import Once.SigOp.Info using (SigOpInfo; Internal; External; module SigOpInfo)
-open SigOpInfo using (sem)
-open import Once.Target.Symbol using (once-symbol-path)
 -- (`zero` is BOTH a riscv64 register and `ℕ`'s constructor; the register is
 -- renamed so the two never collide in this module.)
 open import Once.Target.RiscV64.PhysReg using (a0; t0; t1) renaming (zero to rzero)
@@ -378,9 +386,9 @@ open import Once.Adequacy.ArchCorrectness.FlatCore.FlatComposition FS Instr
 ------------------------------------------------------------------------
 import Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation
 module FlatSimulation = Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation o FS word-eq fmt-eq using
-  (block-step-lea-slot; room-step-riscv64
+  (block-step-lea-slot; room-step-riscv64; start-step-riscv64
   ; block-step-mov-to-output; block-step-mov-to-input
-  ; block-step-c-label; block-step-reclaim-to
+  ; block-step-c-label; block-step-reclaim-to; block-step-free-heap
   ; block-step-worklist-init; block-step-worklist-check
   ; block-step-save-closure-reg; block-step-load-tag-lit
   ; block-step-load-indirect; block-step-load-indirect-stack
@@ -389,10 +397,10 @@ module FlatSimulation = Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation o F
   ; block-step-store-at-slot; block-step-worklist-push
   ; block-step-store-indirect; block-step-store-indirect-stack
   ; block-step-store-indirect-suc; block-step-store-indirect-suc-stack
-  ; block-step-load-at; block-step-store-at; block-step-addr-at; addr-at-no-wrap
+  ; block-step-load-at; block-step-store-at; block-step-load-rec; block-step-store-rec; block-step-addr-at; addr-at-no-wrap; block-step-load-at-stack; block-step-store-at-stack
   ; block-step-c-jmp
   ; block-step-c-branch-tag-zero; block-step-c-branch-tag-nz
-  ; block-step-c-thunk; block-step-c-start; block-step-out-nz; block-step-c-ret
+  ; block-step-c-thunk; block-step-out-nz; block-step-c-ret
   ; block-step-load-const; block-step-load-const-float
   ; block-step-load-code-addr; block-step-call; block-step-call-fn; block-step-alloc-heap
   -- `CompiledCorr`, `dataCorr`, `pc-off`, `BlockStep(s)` come from this copy's
@@ -414,20 +422,20 @@ module CFr = FCr FS word-eq
 open import Once.Adequacy.ArchCorrectness.RiscV64.FlatComposition FS using (module FlatComposition)
 open FlatComposition using (blk-off; blk-len; blk-off-suc)
 open import Once.Adequacy.ArchCorrectness.FlatCore.SigOpFrame
-       o FS slot-size word-eq Reg riscv64-roles R.State (FSimr.rreg' o FS word-eq fmt-eq) R.State.memory R.State.halted
+       o FS slot-size word-eq Reg riscv64-roles R.State (FSimr.rreg' o FS word-eq fmt-eq) R.State.memory R.State.halted R.heap-base
        (FSimr.riscv64-link-claim o FS word-eq fmt-eq) R.State.pc Once.CCC.Target.RiscV64.Syntax.Program compile-trace
        R.find-label blk-off blk-len R.exec R.W.modulus
   using (ArithRun; sigop-arith-step)
-open import Once.CCC.Codegen.RoomChecks using (spend; max-entry)
 open import Data.Nat.Properties using (+-comm)
 
 riscv64-lea-slot : ∀ {hv : HeapView} prog fs s slot → CompiledCorr hv prog fs s
                  → halted (floc fs) ≡ false
                  → fetch prog (fpc fs) ≡ just (lea-slot slot)
+                 → slot < AllocState.frame-slots (falloc fs)
                  → RLr.RunLow o FS slot-size word-eq prog fs
                  → BlockStep hv prog fs s (lea-slot slot)
-riscv64-lea-slot prog fs s slot cc h ft run =
-  block-step-lea-slot prog fs s slot cc h ft
+riscv64-lea-slot prog fs s slot cc h ft lt run =
+  block-step-lea-slot prog fs s slot cc h ft lt
     (slot-addr-no-wrap prog fs s slot run cc ft)
 
 -- plan 0.123 B.4 α (D385): `addr-at k` is `addi t0, t0, 8k`; its no-wrap
@@ -534,6 +542,7 @@ riscv64-block-steps = record
   ; bs-mov-to-input         = block-step-mov-to-input
   ; bs-c-label              = block-step-c-label
   ; bs-reclaim-to           = block-step-reclaim-to
+  ; bs-free-heap            = block-step-free-heap
   ; bs-worklist-init        = block-step-worklist-init
   ; bs-worklist-check       = block-step-worklist-check
   -- the ONE shape that differs: riscv64 computes a slot address with `addi`,
@@ -555,14 +564,17 @@ riscv64-block-steps = record
   ; bs-store-indirect-suc       = block-step-store-indirect-suc
   ; bs-load-at                  = block-step-load-at
   ; bs-store-at                 = block-step-store-at
+  ; bs-load-rec                 = block-step-load-rec
+  ; bs-store-rec                = block-step-store-rec
   ; bs-addr-at                  = riscv64-addr-at
   ; bs-store-indirect-suc-stack = block-step-store-indirect-suc-stack
   ; bs-c-jmp                    = block-step-c-jmp
+  ; bs-load-at-stack            = block-step-load-at-stack
+  ; bs-store-at-stack           = block-step-store-at-stack
   ; bs-c-branch-tag-zero        = block-step-c-branch-tag-zero
   ; bs-c-branch-tag-nz          = block-step-c-branch-tag-nz
   ; bs-out-nz                   = block-step-out-nz
   ; bs-c-thunk                  = block-step-c-thunk
-  ; bs-c-start                  = block-step-c-start
   ; bs-c-ret                    = block-step-c-ret
   ; bs-load-const               = block-step-load-const
   ; bs-load-const-float         = block-step-load-const-float
@@ -606,11 +618,10 @@ postulate
 arith-sigop-lookup : ∀ (env : EE.RT.ArithEnv) prog fs {A B} (si : SigOpInfo A B)
                    → riscv64-arith-table prog env → Internal (sem si) → fetch prog (fpc fs) ≡ just (instr-sigop si)
                    → Σ (List XInstr × ℕ) (λ pl → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl)
-arith-sigop-lookup .(block-env (Emit.blocks-riscv64 p)) .(Emit.image-of p) fs si (p , refl , refl) int ftq
-  with FlatMachine.fetch-All {FS} {k = fpc fs} (BT.image-owned p) ftq int
-... | b , m , e , _ =
-  subst (λ n → Σ (List XInstr × ℕ) (λ pl → block-env (Emit.blocks-riscv64 p) (once-symbol-path n) ≡ just pl)) (sym e)
-        (block-env-hit (Emit.blocks-riscv64 p) _ (BT.table-has AE.arith-block-symbol AE.block-payload (Emit.program-blocks p) m))
+arith-sigop-lookup .(block-env (file-table AE.block-payload bs)) prog fs si (bs , nm , refl , _) int ftq =
+  let (b , m , e , _) = FlatMachine.fetch-All {FS} {P = BT.SigNamed bs} {k = fpc fs} nm ftq si refl int
+  in subst (λ n → Σ (List XInstr × ℕ) (λ pl → block-env (file-table AE.block-payload bs) (once-symbol-path n) ≡ just pl)) (sym e)
+           (block-env-hit (file-table AE.block-payload bs) _ (BT.table-has Emit.block-symbol AE.block-payload bs m))
 
 -- plan 0.123 α′ (f1): …and what it finds is the SigOp's OWN block — the
 -- table entry under its symbol is a program block with that symbol, and one
@@ -619,10 +630,10 @@ arith-sigop-block : ∀ (env : EE.RT.ArithEnv) prog fs {A B} (si : SigOpInfo A B
                   → riscv64-arith-table prog env → Internal (sem si) → fetch prog (fpc fs) ≡ just (instr-sigop si)
                   → ∀ (pl : List XInstr × ℕ) → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl
                   → Σ ArithBlock (λ b → BlockOf si b × pl ≡ AE.block-payload b)
-arith-sigop-block .(block-env (Emit.blocks-riscv64 p)) .(Emit.image-of p) fs si (p , refl , refl) int ftq pl hit =
-  let (b , _ , bo , e) = BT.which-block AE.block-payload (Emit.program-blocks p) si
-                           (FlatMachine.fetch-All {FS} {k = fpc fs} (BT.image-owned p) ftq int)
-                           (block-env-sound (Emit.blocks-riscv64 p) _ hit)
+arith-sigop-block .(block-env (file-table AE.block-payload bs)) prog fs si (bs , nm , refl , _) int ftq pl hit =
+  let (b , _ , bo , e) = BT.which-block AE.block-payload bs si
+                           (FlatMachine.fetch-All {FS} {P = BT.SigNamed bs} {k = fpc fs} nm ftq si refl int)
+                           (block-env-sound (file-table AE.block-payload bs) _ hit)
   in b , bo , e
 
 ------------------------------------------------------------------------
@@ -640,13 +651,13 @@ private
             → SpillsWF n blk → 8 * n ≤ W → W ≤ FSimr.rreg' o FS word-eq fmt-eq s sp
             → FSimr.rreg' o FS word-eq fmt-eq (dispatch-arith val-riscv64 blk n s) a0 ≡ v
             → ArithRun s (dispatch-arith val-riscv64 blk n s) W v
-  frame-run s n blk W v ok fits room out = record
+  frame-run s n blk W v ok fits rm out = record
     { ar-out  = out
     ; ar-role = λ { role-sp _ → Sub.sub-sp ; role-clos _ → Sub.sub-s1 ; role-heap _ → Sub.sub-s2
                   ; role-in1 _ → Sub.sub-t0 ; role-out ne → ⊥-elim (ne refl) }
     ; ar-mem  = Sub.sub-mem
     ; ar-halt = Sub.sub-halt }
-    where module Sub = AF.Sub val-riscv64 n blk s W ok fits room
+    where module Sub = AF.Sub val-riscv64 n blk s W ok fits rm
 
 -- Plan 0.129 B5 / plan 0.123 α′ (f3): THE VALUE half of the block's run — a
 -- theorem (`RiscV64.ArithBlockValue`, x86-64's twin): the decoded argument is
@@ -655,46 +666,46 @@ private
 arith-block-value  : ∀ {hv : HeapView} prog fs s {A B} (si : SigOpInfo A B)
                    → RLr.RunLow o FS slot-size word-eq prog fs
                    → Internal (sem si) → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-sigop si)
-                   → CFr.FlatCorrespondence.HeapView.hfront hv + CFr.FlatCorrespondence.slots (spend (max-entry prog) (instr-sigop si)) ≤ FSimr.rreg' o FS word-eq fmt-eq s sp
+                   → CFr.FlatCorrespondence.HeapView.hfront hv + CFr.FlatCorrespondence.slots (sigop-need si) ≤ FSimr.rreg' o FS word-eq fmt-eq s sp
                    → LocState.halted (floc fs) ≡ false
                    → ∀ (b : ArithBlock) → BlockOf si b
                    → FSimr.rreg' o FS word-eq fmt-eq (uncurry (dispatch-arith val-riscv64) (AE.block-payload b) s) a0
                      ≡ CFr.FlatCorrespondence.enc-sv hv (AbstractExec.exec-sigop-output {FS} si (floc fs))
-arith-block-value {hv} prog fs s si r int cc ftq room h .(mk-block _ NInt e) (is-block {n = NInt} e refl refl eq) =
+arith-block-value {hv} prog fs s si r int cc ftq rm h .(mk-block _ NInt e) (is-block {n = NInt} e refl refl eq) =
   ABV.value-int prog fs s si e eq r int cc ftq h
     (≤-trans (+-monoʳ-≤ (CFr.FlatCorrespondence.HeapView.hfront hv)
                (subst (8 * required-scratch (normalize e) ≤_) (sym (cong (λ x → (5 + sigop-scratch x) * 8) eq))
                       (fits-W (required-scratch (normalize e)))))
-             room)
-arith-block-value {hv} prog fs s si r int cc ftq room h .(mk-block _ NFloat e) (is-block {n = NFloat} e refl refl eq) =
+             rm)
+arith-block-value {hv} prog fs s si r int cc ftq rm h .(mk-block _ NFloat e) (is-block {n = NFloat} e refl refl eq) =
   ABV.value-flt prog fs s si e eq r int cc ftq h
     (≤-trans (+-monoʳ-≤ (CFr.FlatCorrespondence.HeapView.hfront hv)
                (subst (8 * required-scratch e ≤_) (sym (cong (λ x → (5 + sigop-scratch x) * 8) eq))
                       (fits-W (required-scratch e))))
-             room)
+             rm)
 
 arith-dispatch-run : ∀ {hv : HeapView} prog fs s {A B} (si : SigOpInfo A B)
                    → RLr.RunLow o FS slot-size word-eq prog fs
                    → Internal (sem si) → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-sigop si)
-                   → CFr.FlatCorrespondence.HeapView.hfront hv + CFr.FlatCorrespondence.slots (spend (max-entry prog) (instr-sigop si)) ≤ FSimr.rreg' o FS word-eq fmt-eq s sp
+                   → CFr.FlatCorrespondence.HeapView.hfront hv + CFr.FlatCorrespondence.slots (sigop-need si) ≤ FSimr.rreg' o FS word-eq fmt-eq s sp
                    → LocState.halted (floc fs) ≡ false
                    -- plan 0.123 α′ (f1): the block run is the SigOp's own (`arith-sigop-block`)
                    → ∀ (b : ArithBlock) → BlockOf si b
                    → ArithRun s (uncurry (dispatch-arith val-riscv64) (AE.block-payload b) s)
-                              (CFr.FlatCorrespondence.slots (spend (max-entry prog) (instr-sigop si)))
+                              (CFr.FlatCorrespondence.slots (sigop-need si))
                               (CFr.FlatCorrespondence.enc-sv hv (AbstractExec.exec-sigop-output {FS} si (floc fs)))
-arith-dispatch-run {hv} prog fs s si r int cc ftq room h .(mk-block _ NInt e) bo@(is-block {n = NInt} e eA eB eq) =
+arith-dispatch-run {hv} prog fs s si r int cc ftq rm h .(mk-block _ NInt e) bo@(is-block {n = NInt} e eA eB eq) =
   frame-run s (required-scratch (normalize e)) (emit-program (compile-abs (normalize e))) _ _
     (block-spills (normalize e))
     (subst (8 * required-scratch (normalize e) ≤_) (sym (cong (λ x → (5 + sigop-scratch x) * 8) eq)) (fits-W (required-scratch (normalize e))))
-    (m+n≤o⇒n≤o (CFr.FlatCorrespondence.HeapView.hfront hv) room)
-    (arith-block-value {hv} prog fs s si r int cc ftq room h _ bo)
-arith-dispatch-run {hv} prog fs s si r int cc ftq room h .(mk-block _ NFloat e) bo@(is-block {n = NFloat} e eA eB eq) =
+    (m+n≤o⇒n≤o (CFr.FlatCorrespondence.HeapView.hfront hv) rm)
+    (arith-block-value {hv} prog fs s si r int cc ftq rm h _ bo)
+arith-dispatch-run {hv} prog fs s si r int cc ftq rm h .(mk-block _ NFloat e) bo@(is-block {n = NFloat} e eA eB eq) =
   frame-run s (required-scratch e) (emit-program (compile-abs e)) _ _
     (block-spills e)
     (subst (8 * required-scratch e ≤_) (sym (cong (λ x → (5 + sigop-scratch x) * 8) eq)) (fits-W (required-scratch e)))
-    (m+n≤o⇒n≤o (CFr.FlatCorrespondence.HeapView.hfront hv) room)
-    (arith-block-value {hv} prog fs s si r int cc ftq room h _ bo)
+    (m+n≤o⇒n≤o (CFr.FlatCorrespondence.HeapView.hfront hv) rm)
+    (arith-block-value {hv} prog fs s si r int cc ftq rm h _ bo)
 
 ------------------------------------------------------------------------
 -- Plan 0.123 α′ (e): THE RUN HALF, from the frame lemma — the link, the halt
@@ -704,15 +715,15 @@ arith-sigop-run : ∀ {hv : HeapView} (env : EE.RT.ArithEnv) prog fs s {A B} (si
                 → RLr.RunLow o FS slot-size word-eq prog fs
                 → riscv64-arith-table prog env
                 → Internal (sem si) → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-sigop si)
-                → CFr.FlatCorrespondence.HeapView.hfront hv + CFr.FlatCorrespondence.slots (spend (max-entry prog) (instr-sigop si)) ≤ FSimr.rreg' o FS word-eq fmt-eq s sp
+                → CFr.FlatCorrespondence.HeapView.hfront hv + CFr.FlatCorrespondence.slots (sigop-need si) ≤ FSimr.rreg' o FS word-eq fmt-eq s sp
                 → LocState.halted (floc fs) ≡ false
                 → ∀ (pl : List XInstr × ℕ) → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl
                 → CompiledCorr hv prog (flat-exec-instr (instr-sigop si) prog fs) (uncurry (dispatch-arith val-riscv64) pl s)
-arith-sigop-run {hv} env prog fs s si r t int cc ftq room h pl hit
+arith-sigop-run {hv} env prog fs s si r t int cc ftq rm h pl hit
   with arith-sigop-block env prog fs si t int ftq pl hit
 ... | b , bo , refl =
-  sigop-arith-step prog fs s (uncurry (dispatch-arith val-riscv64) (AE.block-payload b) s) si r int cc ftq h room
-    (arith-dispatch-run {hv} prog fs s si r int cc ftq room h b bo) refl
+  sigop-arith-step prog fs s (uncurry (dispatch-arith val-riscv64) (AE.block-payload b) s) si r int (block-not-in-memory bo) cc ftq h rm
+    (arith-dispatch-run {hv} prog fs s si r int cc ftq rm h b bo) refl
     (trans (cong suc (pc-off cc))
            (sym (trans (blk-off-suc prog (fpc fs) (instr-sigop si) ftq) (+-comm (blk-off prog (fpc fs)) 1))))
 
@@ -720,13 +731,13 @@ arith-sigop-contract : ∀ {hv : HeapView} (env : EE.RT.ArithEnv) prog fs s {A B
                      → RLr.RunLow o FS slot-size word-eq prog fs
                      → riscv64-arith-table prog env
                      → Internal (sem si) → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-sigop si)
-                     → CFr.FlatCorrespondence.HeapView.hfront hv + CFr.FlatCorrespondence.slots (spend (max-entry prog) (instr-sigop si)) ≤ FSimr.rreg' o FS word-eq fmt-eq s sp
+                     → CFr.FlatCorrespondence.HeapView.hfront hv + CFr.FlatCorrespondence.slots (sigop-need si) ≤ FSimr.rreg' o FS word-eq fmt-eq s sp
                      → LocState.halted (floc fs) ≡ false
                      → Σ (List XInstr × ℕ) (λ pl → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl
                          × CompiledCorr hv prog (flat-exec-instr (instr-sigop si) prog fs) (uncurry (dispatch-arith val-riscv64) pl s))
-arith-sigop-contract {hv} env prog fs s si r t int cc ftq room h =
+arith-sigop-contract {hv} env prog fs s si r t int cc ftq rm h =
   let (pl , hit) = arith-sigop-lookup env prog fs si t int ftq
-  in pl , hit , arith-sigop-run {hv} env prog fs s si r t int cc ftq room h pl hit
+  in pl , hit , arith-sigop-run {hv} env prog fs s si r t int cc ftq rm h pl hit
 
 ------------------------------------------------------------------------
 -- …AND THE WHOLE SUPPLY, which is what opens the dispatch.
@@ -734,8 +745,10 @@ arith-sigop-contract {hv} env prog fs s si r t int cc ftq room h =
 riscv64-supply : EE.Supply
 riscv64-supply = record
   { bss = riscv64-block-steps ; sts = riscv64-stuck-steps
-  ; room-step = λ prog fs s k run cc h ft → room-step-riscv64 prog fs s k cc h ft
-      (reg-range prog fs s sp run cc) (room-fits prog fs s k run cc ft)
+  ; room-step = λ prog fs s k run cc st h ft → room-step-riscv64 prog fs s k cc st h ft
+      (reg-range prog fs s sp run cc)
+  ; start-step = λ prog fs s b run cc h ft _ nf nst loq → start-step-riscv64 prog fs s b cc h ft
+      (reg-range prog fs s sp run cc) nf nst loq
   ; reg-range = reg-range ; ret-no-wrap = ret-no-wrap
   ; tag-fits = tag-fits ; lit-fits = lit-fits ; float-fits = float-fits
   ; arith-sigop-contract = arith-sigop-contract
@@ -748,4 +761,4 @@ riscv64-supply = record
 -- dispatch twice.
 module Dispatch′ = Dispatch.Dispatch o FS slot-size word-eq Reg riscv64-roles RS.W.modulus
                        riscv64-emitter riscv64-machine riscv64-traceloop riscv64-supply
-  using (events-agree; events-agree-start; events-agree-boot; AgreeAt)
+  using (events-agree; events-agree-start; AgreeAt)

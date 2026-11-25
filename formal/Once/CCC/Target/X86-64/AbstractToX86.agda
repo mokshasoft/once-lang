@@ -13,7 +13,7 @@
 
 module Once.CCC.Target.X86-64.AbstractToX86 where
 
-open import Data.Nat using (ℕ)
+open import Data.Nat using (ℕ; zero; suc; _+_)
 import Data.Nat as ℕ
 open import Data.List using ([]; _∷_; _++_)
 
@@ -27,7 +27,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 
 -- Import X86 syntax
 open import Once.CCC.Target.X86-64.Syntax
-  using (base; base+disp; rip+label; reg; mem; imm; mov; lea; add; sub; sbb; cmp; push; pop; call; call-l; call-sym; ret; jmp; je; label; jbe-fwd; local-1; Program; slot-size; slots)
+  using (base; base+disp; rip+label; rip+sym; reg; mem; imm; mov; lea; add; sub; sbb; cmp; push; pop; call; call-l; call-sym; ret; jmp; je; label; jbe-fwd; local-1; Program; slot-size; slots)
 open import Once.Target.X86-64.PhysReg using (rax; rdi; rsp; r15; rbp; r12; r11)
 
 -- Import AbstractInstr from SMCore
@@ -36,7 +36,7 @@ open import Once.CCC.Machine.Locations using (Slot)
 open import Data.List.Relation.Unary.All using ([]; _∷_)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.SigOp.Info using (SigOpInfo)
-open import Once.Target.SymbolFresh using (host-leave-symbol; host-exhausted-symbol)
+open import Once.Target.SymbolFresh using (host-leave-symbol; host-exhausted-symbol; alloc-record-symbol)
 open import Once.CCC.Label using (once; callee; e-fn)
 
 ------------------------------------------------------------------------
@@ -55,6 +55,27 @@ slot-to-disp n = n ℕ.* slot-size
 -- Each AbstractInstr compiles to a short x86 instruction sequence.
 -- The mapping follows the SlotMachine operational semantics.
 ------------------------------------------------------------------------
+
+-- D488 (a3): the cells' part: `leaq 8h(%r15), %r11 ; cmpq L, %r11 ; jbe 1f ; call once_exhausted ; 1:`
+heap-code : ℕ → Program
+heap-code zero      = []
+heap-code h@(suc _) =
+  lea r11 (base+disp r15 (slots h)) ∷
+  cmp (reg r11) (mem (rip+sym alloc-record-symbol 0)) ∷
+  jbe-fwd ∷
+  call-sym host-exhausted-symbol ∷
+  local-1 ∷ []
+
+-- …the stack's: `movq L, %r11 ; leaq 8s(%r11), %r11 ; cmpq %rsp, %r11 ; jbe 1f ; call ; 1:`
+stack-code : ℕ → Program
+stack-code zero      = []
+stack-code s@(suc _) =
+  mov (reg r11) (mem (rip+sym alloc-record-symbol 0)) ∷
+  lea r11 (base+disp r11 (slots s)) ∷
+  cmp (reg r11) (reg rsp) ∷
+  jbe-fwd ∷
+  call-sym host-exhausted-symbol ∷
+  local-1 ∷ []
 
 compile-abstract : AbstractInstr → Program
 
@@ -185,6 +206,13 @@ compile-abstract (instr-reclaim-to n) = []
 -- instr-free-heap: no code yet (plan 0.123 M2: the bump allocator never
 -- reuses a block; the free-list and pop code come with M3)
 compile-abstract (instr-free-heap n) = []
+-- D470/D472: the allocator record's word k, at the program's record symbol plus 8k
+-- load-rec k:  Output := record[k]      x86: mov rax, [once_alloc_record + 8k]
+-- store-rec k: record[k] := Output      x86: mov [once_alloc_record + 8k], rax
+compile-abstract (load-rec n) =
+  mov (reg rax) (mem (rip+sym alloc-record-symbol (slot-to-disp n))) ∷ []
+compile-abstract (store-rec n) =
+  mov (mem (rip+sym alloc-record-symbol (slot-to-disp n))) (reg rax) ∷ []
 -- plan 0.123 B.4 α: a flat value's word k, by its offset from Input1.
 -- load-at k:  Output := *(Input1 + k)      x86: mov rax, [rdi + 8k]
 -- store-at k: *(Input1 + k) := Output      x86: mov [rdi + 8k], rax
@@ -199,12 +227,11 @@ compile-abstract (addr-at n) =
 -- them is at or below the stack pointer; if not, call the Host's `once_exhausted`,
 -- which ends the run. r11 is no role's, and `jbe 1f` skips the call.
 -- x86: leaq 8k(%r15), %r11 ; cmpq %rsp, %r11 ; jbe 1f ; call once_exhausted ; 1:
-compile-abstract (instr-room k) =
-  lea r11 (base+disp r15 (slots k)) ∷
-  cmp (reg r11) (reg rsp) ∷
-  jbe-fwd ∷
-  call-sym host-exhausted-symbol ∷
-  local-1 ∷ []
+-- D485: a check of no words emits nothing (the layout keeps the frontier at or below
+-- the stack pointer: `FlatCorrespondence.sep`)
+-- D488 (a3): the check is two parts against the stack limit `L` (record word 0):
+-- cells, `frontier + 8h ≤ L`; stack, `L + 8s ≤ %rsp`; a part of 0 emits nothing
+compile-abstract (instr-room r) = heap-code (Room.room-h r) ++ stack-code (Room.room-s r)
 
 -- Plan 0.10 Phase B: SigOp dispatch.
 -- Delegates to the existing per-name handler in CodeGen/Compile.
@@ -252,7 +279,19 @@ compile-abstract (instr-ctrl (c-jmp n))            = jmp (once n) ∷ []
 compile-abstract (instr-ctrl (c-entry e b))        = label (callee e) ∷ sub (reg rsp) (imm (slots b)) ∷ []
 -- plan 0.107: the start (`once_main`) — the outermost frame (nothing called the
 -- program, so no return to spill). The Host set the heap register (C.5).
-compile-abstract (instr-ctrl (c-start b))          = sub (reg rsp) (imm (slots b)) ∷ []
+-- D488: the start checks that `main`'s frame and the stack it reserves fit
+-- (the room check's code at `start-stack-words + b`), reserves the frame, and
+-- sets the stack limit, record word 0, to `rsp − 8·start-stack-words`
+compile-abstract (instr-ctrl (c-start b))          =
+  lea r11 (base+disp r15 (slots (start-stack-words + b))) ∷
+  cmp (reg r11) (reg rsp) ∷
+  jbe-fwd ∷
+  call-sym host-exhausted-symbol ∷
+  local-1 ∷
+  sub (reg rsp) (imm (slots b)) ∷
+  mov (reg r11) (reg rsp) ∷
+  sub (reg r11) (imm (slots start-stack-words)) ∷
+  mov (mem (rip+sym alloc-record-symbol 0)) (reg r11) ∷ []
 -- D320: the program leaves by the Host's `leave`, a call of its one fixed symbol.
 compile-abstract (instr-ctrl c-leave)                   = call-sym host-leave-symbol ∷ []
 -- D245: a direct call of a program function is `call once_<f>`.

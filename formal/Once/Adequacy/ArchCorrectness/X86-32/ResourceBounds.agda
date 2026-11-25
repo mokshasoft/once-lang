@@ -44,7 +44,7 @@ module W = W32.Width 32
   using (modulus)
 module WL = W32L.WidthLaws 32
 open import Once.CCC.Machine.SMCore
-  using (AbstractTrace; instr-ctrl; c-ret; instr-load-tag-lit; instr-load-const; instr-room)
+  using (AbstractTrace; instr-ctrl; c-ret; c-start; start-stack-words; instr-load-tag-lit; instr-load-const; instr-room)
 open import Once.Type using (fits-int; fits-float)
 open import Once.Spec.Float.Dyadic using (binary32)
 open import Once.Spec.Float.Decimal using (Decimal)
@@ -176,16 +176,8 @@ record LitFits : Set₁ where
           (FlatMachine.FlatState.fpc {x86-32-frame-semantics} fs) ≡ just (instr-load-const fits-int v)
       → Once.CCC.Machine.SMCore.AbstractExec.lit-value {x86-32-frame-semantics} fits-int v < W.modulus
 
-    -- D378: a room check's need `4k`, in the compare's immediate `2³² − 4k − 1`.
-    room-fits :
-      ∀ {hv : FCx.FlatCorrespondence.HeapView x86-32-frame-semantics refl}
-        (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-32-frame-semantics})
-        (s : X.State) (k : ℕ)
-      → RLx.RunLow o x86-32-frame-semantics slot-size refl prog fs
-      → FSimx.CompiledCorrespondence.CompiledCorr o x86-32-frame-semantics refl refl hv prog fs s
-      → FlatMachine.fetch {x86-32-frame-semantics} prog
-          (FlatMachine.FlatState.fpc {x86-32-frame-semantics} fs) ≡ just (instr-room k)
-      → slots k < W.modulus
+    -- (D488: `room-fits`/`start-fits` went: a need that is no word lowers to the call
+    -- itself, `AbstractToX86-32.fits-or-out`, so no need is assumed to fit.)
 
 
 ------------------------------------------------------------------------

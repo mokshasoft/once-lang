@@ -618,16 +618,6 @@ moduleToProgram mod = programAt (moduleTable mod) (moduleToIR mod)
 
 open import Once.Compile.Emit
 
--- | THE FILE OF A COMPILE RESULT — the one walk: a program file when the module
--- has `main`, a library file otherwise; the compile error if it failed.
-emit-at : (arch : Arch) → List CompiledFun → Maybe (IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) → FileOf arch
-emit-at arch funs nothing   = emitLibrary arch (tableOf funs)
-emit-at arch funs (just ir) = emitProgram arch (irProgram (tableOf funs) ir)
-
-emitFromCompiled : (arch : Arch) → String ⊎ List CompiledFun → String ⊎ FileOf arch
-emitFromCompiled arch (inj₁ err)  = inj₁ err
-emitFromCompiled arch (inj₂ funs) = inj₂ (emit-at arch funs (findMain funs))
-
 -- | THE LITERAL-RANGE GATE (plan 0.74 J3, D115).
 --
 -- An `Int` literal that does not fit this target's signed range is a compile
@@ -686,28 +676,26 @@ litRangeError arch mod = badLit (firstBadLit arch mod)
 
 -- Explicit-argument aux (no `with`), matching this file's convention, so the
 -- decision stays a subterm downstream proofs can rewrite by.
--- plan 0.107: THE FILE the gated build produces — the verified compiler
--- assembles it, the CLI prints it. One pipeline, two consumers.
-cfm-file-gated : AllocMode → Bool → (arch : Arch) → (mod : Resolved)
-               → List Entry
-               → Dec (AdmissibleM arch (Resolved.rmodule mod)) → String ⊎ FileOf arch
-cfm-file-gated m doOpt arch mod es (no  _) = inj₁ (litRangeError arch (Resolved.rmodule mod))
-cfm-file-gated m doOpt arch mod es (yes _) =
-  emitFromCompiled arch (compileEntries m doOpt emptyCScope es)
+-- plan 0.146 (D467): THE GATES — what is checked before a file is written: the
+-- module's functions extract, its literals fit the target, its definitions
+-- compile (type errors, `main`'s type). The file is the linear core's
+-- (`LinCore.Emit.coreFileOf`), written after these pass.
+checkGated : AllocMode → Bool → (arch : Arch) → (mod : Resolved)
+           → List Entry
+           → Dec (AdmissibleM arch (Resolved.rmodule mod)) → String ⊎ List CompiledFun
+checkGated m doOpt arch mod es (no  _) = inj₁ (litRangeError arch (Resolved.rmodule mod))
+checkGated m doOpt arch mod es (yes _) = compileEntries m doOpt emptyCScope es
 
-cfm-file-ef : AllocMode → Bool → (arch : Arch) → Resolved → String ⊎ List Entry → String ⊎ FileOf arch
-cfm-file-ef m doOpt arch mod (inj₁ err) = inj₁ err
-cfm-file-ef m doOpt arch mod (inj₂ es)  = cfm-file-gated m doOpt arch mod es (admissibleM? arch (Resolved.rmodule mod))
+checkEf : AllocMode → Bool → (arch : Arch) → Resolved → String ⊎ List Entry → String ⊎ List CompiledFun
+checkEf m doOpt arch mod (inj₁ err) = inj₁ err
+checkEf m doOpt arch mod (inj₂ es)  = checkGated m doOpt arch mod es (admissibleM? arch (Resolved.rmodule mod))
 
-compileFileFromModule : AllocMode → Bool → (arch : Arch) → Resolved → String ⊎ FileOf arch
-compileFileFromModule m doOpt arch mod =
-  cfm-file-ef m doOpt arch mod (extractFunctions mod)
+checkModule : AllocMode → Bool → (arch : Arch) → Resolved → String ⊎ List CompiledFun
+checkModule m doOpt arch mod = checkEf m doOpt arch mod (extractFunctions mod)
 
--- | The assembly text the CLI writes: the print of the file (plan 0.107), in
--- `Heap`. The compiler exposes functions, not CLI stages (D352).
+-- | The assembly text of a file (plan 0.107; the CLI's is `LinCore.Emit.assemblyCore`).
+-- The compiler exposes functions, not CLI stages (D352).
 printResult : (arch : Arch) → String ⊎ FileOf arch → String ⊎ String
 printResult arch (inj₁ err) = inj₁ err
 printResult arch (inj₂ F)   = inj₂ (printFile arch F)
 
-assemblyFromModule : Bool → Arch → Resolved → String ⊎ String
-assemblyFromModule doOpt arch mod = printResult arch (compileFileFromModule Heap doOpt arch mod)

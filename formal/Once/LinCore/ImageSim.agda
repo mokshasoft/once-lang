@@ -1,0 +1,514 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+------------------------------------------------------------------------
+-- Once.LinCore.ImageSim — plan 0.146 B1.4a: the image simulates the run.
+--
+-- A16's `Machine.sim`, for the image: the image on the compiled code reaches
+-- the code after it with the run's result, its events the run's (temporaries
+-- erased) with balanced temporaries — its frames — woven in. Every state
+-- carries the return stack; A16's `enter … leave` bracket is a call: the
+-- block run to its `end` under the pushed continuation, then the return.
+--
+-- §1–§2 here: multi-step runs, and what a stretch of the image claims (the
+-- records and their combinators, A16's §4–§5).
+------------------------------------------------------------------------
+
+{-# OPTIONS --guardedness #-}
+
+open import Data.Nat using (ℕ; suc; _+_; _∸_; _≤_; z≤n; s≤s; _≟_)
+import Data.Nat.Properties
+open import Data.Nat.Properties using (n∸n≡0; ≤-trans; ≤-refl; ≤-reflexive; +-mono-≤; m≤n+m; m≤m+n; +-identityʳ)
+open import Data.List using (List; []; _∷_; _++_)
+open import Data.List.Properties using (++-assoc; ++-identityʳ; map-++)
+open import Data.List.Relation.Unary.All.Properties using (++⁺)
+open import Data.List.Relation.Unary.All using (All; []; _∷_)
+open import Agda.Builtin.Equality using (_≡_; refl)
+open import Agda.Builtin.Sigma using (Σ; _,_; fst; snd)
+open import Data.Unit using (tt)
+open import Data.Product using (_×_)
+open import Data.Maybe using (just; nothing)
+open import Data.Empty using (⊥-elim)
+open import Relation.Nullary using (yes; no)
+open import Relation.Binary.PropositionalEquality using (subst; sym; cong; trans)
+open import Once.Spec.Numerics using (TargetNum)
+open import Once.IR.Semantics.Trace using (FFIAnswers)
+open import Once.LinCore.Flat using (Base)
+open import Once.LinCore.Free using (_≼_; []≼; ≼-trans; ≼-refl; ++-≼; weave-pre; Weave; w-[]; w-run; w-tmp; w-++; w-self; Along-++)
+
+module Once.LinCore.ImageSim
+  (fmt : TargetNum) (ans : FFIAnswers)
+  (bw : Base → ℕ)
+  where
+
+open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (Base)
+open import Once.IR.Semantics.Trace using (T; call)
+open Sg using (cod)
+open import Once.LinCore.NbEPLinCore fmt ans
+open import Once.LinCore.Events fmt ans bw
+open import Once.LinCore.Values fmt bw
+open import Once.LinCore.Temps fmt ans bw
+open import Once.LinCore.Machine fmt ans bw using (Plain; PlainM; op-NoT)
+open import Once.LinCore.Code fmt bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots; []ᵉ; vw; ln; see; Cfg; _∥_; fsz)
+open import Once.LinCore.Spends fmt ans bw using (rounds; roundsM)
+open import Once.LinCore.Image fmt bw
+open BSig using (top; cod)
+open import Once.LinCore.ImageRun fmt ans bw
+-- a ν is observed at the empty table (D442)
+open import Once.LinCore.ObsTable fmt ans bw using (TF; tf-id; tf-∘; tf-⊗; tf-case; tf-inl; tf-inr; tf-lul; tf-lul⁻; tf-drop; tf-lend; tf-bsnd; tf-bcopy; tf-bev; tf-unf; rt; obsT-tf; rt-obsT)
+
+------------------------------------------------------------------------
+-- 1. RUNS OF THE IMAGE.
+------------------------------------------------------------------------
+
+infixr 5 _⟫_
+data StepsI {T : Sh} : ∀ {sh U sh′ U′} → Codeᴵ sh U → Ret U T → Cfg sh → ℕ → Trace
+                     → Codeᴵ sh′ U′ → Ret U′ T → Cfg sh′ → ℕ → Set where
+  done : ∀ {sh U} {c : Codeᴵ sh U} {r : Ret U T} {m n} → StepsI c r m n [] c r m n
+  _⟫_  : ∀ {sh U sh′ U′ sh″ U″} {c : Codeᴵ sh U} {r : Ret U T} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T}
+           {c″ : Codeᴵ sh″ U″} {r″ : Ret U″ T} {m m′ m″ n n′ n″ t₁ t₂}
+       → StepI c r m n t₁ c′ r′ m′ n′ → StepsI c′ r′ m′ n′ t₂ c″ r″ m″ n″ → StepsI c r m n (t₁ ++ t₂) c″ r″ m″ n″
+
+stepsI-++ : ∀ {T sh U sh′ U′ sh″ U″} {c : Codeᴵ sh U} {r : Ret U T} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T}
+              {c″ : Codeᴵ sh″ U″} {r″ : Ret U″ T} {m m′ m″ n n′ n″ t₁ t₂}
+          → StepsI c r m n t₁ c′ r′ m′ n′ → StepsI c′ r′ m′ n′ t₂ c″ r″ m″ n″ → StepsI c r m n (t₁ ++ t₂) c″ r″ m″ n″
+stepsI-++ done st₂ = st₂
+stepsI-++ {c = c} {r} {c″ = c″} {r″} {m = m} {m″ = m″} {n = n} {n″ = n″} {t₂ = t₂} (_⟫_ {t₁ = u₁} {t₂ = u₂} x st₁) st₂ =
+  subst (λ z → StepsI c r m n z c″ r″ m″ n″) (sym (++-assoc u₁ u₂ t₂)) (x ⟫ stepsI-++ st₁ st₂)
+
+-- ★ how many times a stretch entered a loop (a round started: master's budget counts rounds, D449)
+-- (read off the code: only a loop's code enters one, by `i-loop`)
+loopI : ∀ {sh sh′} → Insᴵ sh sh′ → ℕ
+loopI (loop _) = 1
+{-# CATCHALL #-}
+loopI _        = 0
+
+loopC : ∀ {sh U} → Codeᴵ sh U → ℕ
+loopC (i ⨾ _) = loopI i
+{-# CATCHALL #-}
+loopC _       = 0
+
+isLoop : ∀ {T sh U sh′ U′} {c : Codeᴵ sh U} {r : Ret U T} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T} {m m′ n n′ t}
+       → StepI c r m n t c′ r′ m′ n′ → ℕ
+isLoop {c = c} _ = loopC c
+
+loops : ∀ {T sh U sh′ U′} {c : Codeᴵ sh U} {r : Ret U T} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T} {m m′ n n′ t}
+      → StepsI c r m n t c′ r′ m′ n′ → ℕ
+loops done       = 0
+loops (x ⟫ rest) = isLoop x + loops rest
+
+oneI : ∀ {T sh U sh′ U′} {c : Codeᴵ sh U} {r : Ret U T} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T} {m m′ n n′ t}
+     → StepI c r m n t c′ r′ m′ n′ → StepsI c r m n t c′ r′ m′ n′
+oneI {c = c} {r} {c′} {r′} {m} {m′} {n} {n′} {t} x = subst (λ z → StepsI c r m n z c′ r′ m′ n′) (++-identityʳ t) (x ⟫ done)
+
+-- the loop entries of a joined stretch
+loops-subst : ∀ {T sh U sh′ U′} {c : Codeᴵ sh U} {r : Ret U T} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T} {m m′ n n′ t t′}
+              (e : t ≡ t′) (st : StepsI c r m n t c′ r′ m′ n′) → loops (subst (λ z → StepsI c r m n z c′ r′ m′ n′) e st) ≡ loops st
+loops-subst refl st = refl
+
+loops-++ : ∀ {T sh U sh′ U′ sh″ U″} {c : Codeᴵ sh U} {r : Ret U T} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T}
+             {c″ : Codeᴵ sh″ U″} {r″ : Ret U″ T} {m m′ m″ n n′ n″ t₁ t₂}
+           (st₁ : StepsI c r m n t₁ c′ r′ m′ n′) (st₂ : StepsI c′ r′ m′ n′ t₂ c″ r″ m″ n″)
+         → loops (stepsI-++ st₁ st₂) ≡ loops st₁ + loops st₂
+loops-++ done st₂ = refl
+loops-++ (_⟫_ {t₁ = u₁} {t₂ = u₂} x st₁) st₂ {- -}
+  = trans (loops-subst (sym (++-assoc u₁ u₂ _)) (x ⟫ stepsI-++ st₁ st₂))
+          (trans (cong (isLoop x +_) (loops-++ st₁ st₂)) (sym (Data.Nat.Properties.+-assoc (isLoop x) (loops st₁) (loops st₂))))
+
+-- a bound kept past more steps, or joined
+lp-pre : ∀ {T sh U sh′ U′ sh″ U″} {c : Codeᴵ sh U} {r : Ret U T} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T}
+           {c″ : Codeᴵ sh″ U″} {r″ : Ret U″ T} {m m′ m″ n n′ n″ t₁ t₂} {j}
+         (x : StepI c r m n t₁ c′ r′ m′ n′) (st : StepsI c′ r′ m′ n′ t₂ c″ r″ m″ n″) → j ≤ loops st → j ≤ loops (x ⟫ st)
+lp-pre x st h = ≤-trans h (m≤n+m (loops st) (isLoop x))
+
+lp-++ : ∀ {T sh U sh′ U′ sh″ U″} {c : Codeᴵ sh U} {r : Ret U T} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T}
+          {c″ : Codeᴵ sh″ U″} {r″ : Ret U″ T} {m m′ m″ n n′ n″ t₁ t₂} {j₁ j₂}
+        (st₁ : StepsI c r m n t₁ c′ r′ m′ n′) (st₂ : StepsI c′ r′ m′ n′ t₂ c″ r″ m″ n″)
+      → j₁ ≤ loops st₁ → j₂ ≤ loops st₂ → j₁ + j₂ ≤ loops (stepsI-++ st₁ st₂)
+lp-++ st₁ st₂ h₁ h₂ = subst (_ ≤_) (sym (loops-++ st₁ st₂)) (+-mono-≤ h₁ h₂)
+
+lp-post : ∀ {T sh U sh′ U′ sh″ U″} {c : Codeᴵ sh U} {r : Ret U T} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T}
+            {c″ : Codeᴵ sh″ U″} {r″ : Ret U″ T} {m m′ m″ n n′ n″ t₁ t₂} {j}
+          (st₁ : StepsI c r m n t₁ c′ r′ m′ n′) (st₂ : StepsI c′ r′ m′ n′ t₂ c″ r″ m″ n″)
+        → j ≤ loops st₁ → j ≤ loops (stepsI-++ st₁ st₂)
+lp-post {j = j} st₁ st₂ h = subst (_≤ _) (+-identityʳ j) (lp-++ st₁ st₂ h z≤n)
+
+------------------------------------------------------------------------
+-- 2. WHAT A STRETCH OF THE IMAGE CLAIMS (A16's §4–§5, the return stack
+-- threaded).
+------------------------------------------------------------------------
+
+-- to a configuration: the events are a run's (erased) with balanced
+-- temporaries woven in
+-- (D449: `j` loop entries at least — a round of the budget each)
+record OutI {T sh U sh′ U′} (c : Codeᴵ sh U) (r : Ret U T) (m : Cfg sh) (n : ℕ) (t : Trace)
+            (c′ : Codeᴵ sh′ U′) (r′ : Ret U′ T) (m′ : Cfg sh′) (n′ : ℕ) (j : ℕ) : Set where
+  constructor out
+  field
+    ts    : List TEv
+    mt    : Trace
+    steps : StepsI c r m n mt c′ r′ m′ n′
+    woven : Weave tmp (erase t) ts mt
+    bal   : TBal (tmps ts)
+    lp    : j ≤ loops steps
+
+-- to some point: a cell trace the run's events (erased) are a prefix of,
+-- with legal temporaries (a frame may be open)
+record PausedI {T sh U} (c : Codeᴵ sh U) (r : Ret U T) (m : Cfg sh) (n : ℕ) (t : Trace) (j : ℕ) : Set where
+  constructor paused
+  field
+    {sh′ U′} : Sh
+    c′    : Codeᴵ sh′ U′
+    r′    : Ret U′ T
+    m′    : Cfg sh′
+    n′    : ℕ
+    ts    : List TEv
+    mt t₀ : Trace
+    steps : StepsI c r m n mt c′ r′ m′ n′
+    woven : Weave tmp t₀ ts mt
+    pref  : erase t ≼ t₀
+    clean : NoT t₀
+    leg   : TLeg (tmps ts)
+    lp    : j ≤ loops steps
+
+-- ★ D448: a run that HALTED pauses the image at `halted`, having made exactly the run's events; one the
+-- budget cut, somewhere, having made exactly them (D449: the cut is at a loop, `r-exh`)
+HaltIf : ∀ {T sh U} {c : Codeᴵ sh U} {r : Ret U T} {m n t j} → Why → PausedI c r m n t j → Set
+HaltIf {t = t} exhausted p = PausedI.t₀ p ≡ erase t
+HaltIf {t = t} halted    p = (PausedI.c′ p ≡ halted) × (PausedI.t₀ p ≡ erase t)
+
+-- by the run's outcome
+SimRI : ∀ {T sh U Es B S U′} → Outcome B → Codeᴵ sh U → Ret U T → Cfg sh → ℕ → Trace
+      → Codeᴵ (Es ∣ B ∷ S) U′ → Ret U′ T → Slots Es → Stk S → ℕ → Set
+SimRI (gives w n′) c r m n t k r′ es os j = OutI c r m n t k r′ (es ∥ w ∷ˢ os) n′ j
+SimRI (stop y)     c r m n t k r′ es os j = Σ (PausedI c r m n t j) (HaltIf y)
+
+-- a simulation of a code is one of an equal code
+sim-code : ∀ {T sh U Es B S U′} {o : Outcome B} {c c′ : Codeᴵ sh U} {r : Ret U T} {m : Cfg sh} {n : ℕ} {t : Trace}
+             {k : Codeᴵ (Es ∣ B ∷ S) U′} {r′ : Ret U′ T} {es : Slots Es} {os : Stk S} {j}
+         → c ≡ c′ → SimRI o c r m n t k r′ es os j → SimRI o c′ r m n t k r′ es os j
+sim-code refl x = x
+
+private
+  δn-same : ∀ k → δn k k ≡ 1
+  δn-same k = δd-yes refl (k ≟ k)
+
+  bracket : ∀ k ts → TBal (tmps ts) → TBal (tmps (tnew k ∷ (ts ++ tdel k ∷ [])))
+  bracket k ts (okX , zX) =
+    subst (λ z → TBal (tmp (tnew k) ∷ z)) (sym (map-++ tmp ts (tdel k ∷ [])))
+    ( (tt , Along-++ X (tmp (tdel k) ∷ []) L₁ okX′ (subst (1 ≤_) (sym (eqX k)) one≤ , tt))
+    , λ j → trans (cong (λ M → M j) (tplay-++ X (tmp (tdel k) ∷ []) L₁))
+                  (trans (cong (_∸ δn k j) (eqX j)) (n∸n≡0 (δn k j))) )
+    where
+      X  = tmps ts
+      L₁ : TL
+      L₁ j = 0 + δn k j
+      w  = weave-ok (w-self X) none L₁ L₁ (λ j → refl) okX tt
+      okX′ = fst w
+      eqX : ∀ j → tplay X L₁ j ≡ L₁ j
+      eqX j = trans (snd w j) (cong (_+ L₁ j) (zX j))
+      one≤ : 1 ≤ L₁ k
+      one≤ = subst (1 ≤_) (sym (δn-same k)) (s≤s z≤n)
+
+  opened : ∀ k ts → TLeg (tmps ts) → TLeg (tmps (tnew k ∷ ts))
+  opened k ts l = (tt , TOK-mono (tmps ts) (λ j → z≤n) l)
+
+bal∅ : TBal (tmps [])
+bal∅ = (tt , λ k → refl)
+
+-- a silent step first
+pre : ∀ {T sh U sh′ U′ sh″ U″} {c : Codeᴵ sh U} {r : Ret U T} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T}
+        {c″ : Codeᴵ sh″ U″} {r″ : Ret U″ T} {m m′ m″ n n′ n″ t j}
+    → StepI c r m n [] c′ r′ m′ n′ → OutI c′ r′ m′ n′ t c″ r″ m″ n″ j → OutI c r m n t c″ r″ m″ n″ j
+pre x (out ts mt st w b lp) = out ts mt (x ⟫ st) w b (lp-pre x st lp)
+
+preP : ∀ {T sh U sh′ U′} {c : Codeᴵ sh U} {r : Ret U T} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T} {m m′ n n′ t j}
+     → StepI c r m n [] c′ r′ m′ n′ → PausedI c′ r′ m′ n′ t j → PausedI c r m n t j
+preP x (paused c′ r′ m′ n′ ts mt t₀ st w p cl l lp) = paused c′ r′ m′ n′ ts mt t₀ (x ⟫ st) w p cl l (lp-pre x st lp)
+
+-- (a halt's pause carried along)
+preH : ∀ {T sh U sh′ U′} (y : Why) {c : Codeᴵ sh U} {r : Ret U T} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T} {m m′ n n′ t j}
+     → StepI c r m n [] c′ r′ m′ n′ → Σ (PausedI c′ r′ m′ n′ t j) (HaltIf y) → Σ (PausedI c r m n t j) (HaltIf y)
+preH halted    x (p , h) = preP x p , h
+preH exhausted x (p , h) = preP x p , h
+
+preR : ∀ {T sh U sh′ U′ Es B S V} (o : Outcome B) {c : Codeᴵ sh U} {r : Ret U T} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T}
+         {m m′ n t} {k : Codeᴵ (Es ∣ B ∷ S) V} {ρ : Ret V T} {es os j}
+     → StepI c r m n [] c′ r′ m′ n → SimRI o c′ r′ m′ n t k ρ es os j → SimRI o c r m n t k ρ es os j
+preR (gives _ _) x s = pre x s
+preR (stop y)    x s = preH y x s
+
+-- ★ a loop entered: a round started (D449)
+module _ {T E Es A B S V} {body : Codeᴵ (E ∷ Es ∣ A ∷ S) (E ∷ Es ∣ (B ⊕t A) ∷ S)} {k : Codeᴵ (E ∷ Es ∣ B ∷ S) V}
+         {r : Ret V T} {m n} where
+  preL : ∀ {sh″ U″} {c″ : Codeᴵ sh″ U″} {r″ : Ret U″ T} {m″ n″ t j}
+       → OutI body (case k (loop body ⨾ k) ∷ⁱ r) m n t c″ r″ m″ n″ j → OutI (loop body ⨾ k) r m n t c″ r″ m″ n″ (suc j)
+  preL (out ts mt st w b lp) = out ts mt (i-loop ⟫ st) w b (s≤s lp)
+
+  preLP : ∀ {t j} → PausedI body (case k (loop body ⨾ k) ∷ⁱ r) m n t j → PausedI (loop body ⨾ k) r m n t (suc j)
+  preLP (paused c′ r′ m′ n′ ts mt t₀ st w p cl l lp) = paused c′ r′ m′ n′ ts mt t₀ (i-loop ⟫ st) w p cl l (s≤s lp)
+
+  preLH : ∀ (y : Why) {t j} → Σ (PausedI body (case k (loop body ⨾ k) ∷ⁱ r) m n t j) (HaltIf y)
+        → Σ (PausedI (loop body ⨾ k) r m n t (suc j)) (HaltIf y)
+  preLH halted    (p , h) = preLP p , h
+  preLH exhausted (p , h) = preLP p , h
+
+  preLR : ∀ {Es′ B′ S′ V′} (o : Outcome B′) {t j} {k′ : Codeᴵ (Es′ ∣ B′ ∷ S′) V′} {ρ : Ret V′ T} {es os}
+        → SimRI o body (case k (loop body ⨾ k) ∷ⁱ r) m n t k′ ρ es os j → SimRI o (loop body ⨾ k) r m n t k′ ρ es os (suc j)
+  preLR (gives _ _) s = preL s
+  preLR (stop y)    s = preLH y s
+
+-- a silent step after
+after : ∀ {T sh U sh′ U′ sh″ U″} {c : Codeᴵ sh U} {r : Ret U T} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T}
+          {c″ : Codeᴵ sh″ U″} {r″ : Ret U″ T} {m m′ m″ n n′ n″ t j}
+      → OutI c r m n t c′ r′ m′ n′ j → StepI c′ r′ m′ n′ [] c″ r″ m″ n″ → OutI c r m n t c″ r″ m″ n″ j
+after {t = t} (out ts mt st w b lp) x =
+  out ts (mt ++ []) (stepsI-++ st (oneI x)) (subst (λ z → Weave tmp (erase t) ts z) (sym (++-identityʳ mt)) w) b (lp-post st (oneI x) lp)
+
+-- one step whose events hold no temporary
+leaf : ∀ {T sh U sh′ U′} {c : Codeᴵ sh U} {r : Ret U T} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T} {m m′ n n′ t}
+     → StepI c r m n t c′ r′ m′ n′ → NoT t → OutI c r m n t c′ r′ m′ n′ 0
+leaf {t = t} x nt = out [] t (oneI x) (subst (λ z → Weave tmp z [] t) (sym (erase-NoT t nt)) (w-self t)) bal∅ z≤n
+
+-- one stretch, then the next
+then : ∀ {T sh U sh′ U′ sh″ U″} {c : Codeᴵ sh U} {r : Ret U T} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T}
+         {c″ : Codeᴵ sh″ U″} {r″ : Ret U″ T} {m m′ m″ n n′ n″ t₁ t₂ j₁ j₂}
+     → OutI c r m n t₁ c′ r′ m′ n′ j₁ → OutI c′ r′ m′ n′ t₂ c″ r″ m″ n″ j₂ → OutI c r m n (t₁ ++ t₂) c″ r″ m″ n″ (j₁ + j₂)
+then {t₁ = t₁} {t₂} (out ts₁ m₁ st₁ w₁ b₁ lp₁) (out ts₂ m₂ st₂ w₂ b₂ lp₂) =
+  out (ts₁ ++ ts₂) (m₁ ++ m₂) (stepsI-++ st₁ st₂)
+      (subst (λ z → Weave tmp z (ts₁ ++ ts₂) (m₁ ++ m₂)) (sym (erase-++ t₁ t₂)) (w-++ w₁ w₂))
+      (subst TBal (sym (map-++ tmp ts₁ ts₂)) (IsSubmonoid.∙-∈ balanced {tmps ts₁} {tmps ts₂} b₁ b₂))
+      (lp-++ st₁ st₂ lp₁ lp₂)
+
+thenP : ∀ {T sh U sh′ U′} {c : Codeᴵ sh U} {r : Ret U T} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T} {m m′ n n′ t₁ t₂ j₁ j₂}
+      → OutI c r m n t₁ c′ r′ m′ n′ j₁ → PausedI c′ r′ m′ n′ t₂ j₂ → PausedI c r m n (t₁ ++ t₂) (j₁ + j₂)
+thenP {t₁ = t₁} {t₂} (out ts₁ m₁ st₁ w₁ b₁ lp₁) (paused c″ r″ m″ n″ ts₂ m₂ t₀ st₂ w₂ p cl l lp₂) =
+  paused c″ r″ m″ n″ (ts₁ ++ ts₂) (m₁ ++ m₂) (erase t₁ ++ t₀) (stepsI-++ st₁ st₂) (w-++ w₁ w₂)
+         (subst (_≼ erase t₁ ++ t₀) (sym (erase-++ t₁ t₂)) (++-≼ (erase t₁) p))
+         (++⁺ (erase-clean t₁) cl)
+         (subst TLeg (sym (map-++ tmp ts₁ ts₂)) (IsSubmonoid.∙-∈ legal {tmps ts₁} {tmps ts₂} (fst b₁) l))
+         (lp-++ st₁ st₂ lp₁ lp₂)
+
+thenH : ∀ {T sh U sh′ U′} (y : Why) {c : Codeᴵ sh U} {r : Ret U T} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T} {m m′ n n′ t₁ t₂ j₁ j₂}
+      → OutI c r m n t₁ c′ r′ m′ n′ j₁ → Σ (PausedI c′ r′ m′ n′ t₂ j₂) (HaltIf y) → Σ (PausedI c r m n (t₁ ++ t₂) (j₁ + j₂)) (HaltIf y)
+thenH halted {t₁ = t₁} {t₂} a (p , (hc , ht)) = thenP a p , (hc , trans (cong (erase t₁ ++_) ht) (sym (erase-++ t₁ t₂)))
+thenH exhausted {t₁ = t₁} {t₂} a (p , ht) = thenP a p , trans (cong (erase t₁ ++_) ht) (sym (erase-++ t₁ t₂))
+
+thenR : ∀ {T sh U sh′ U′ Es B S V} (o : Outcome B) {c : Codeᴵ sh U} {r : Ret U T} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T}
+          {m m′ n n′ t₁ t₂ j₁ j₂} {k : Codeᴵ (Es ∣ B ∷ S) V} {ρ : Ret V T} {es os}
+      → OutI c r m n t₁ c′ r′ m′ n′ j₁ → SimRI o c′ r′ m′ n′ t₂ k ρ es os j₂ → SimRI o c r m n (t₁ ++ t₂) k ρ es os (j₁ + j₂)
+thenR (gives _ _) a s = then a s
+thenR (stop y)    a s = thenH y a s
+
+-- ★ A CALL: the block run to its end in a frame of its own (D434: the
+-- caller's top view and the argument), the caller's configuration saved
+-- below; then the return puts the result back on it (A16's `enter … leave`)
+-- ★ ENTERED by a step that opens the frame: a call, or a dispatch through a
+-- cell's code word into its trampoline (D436)
+Enters : ∀ {T} t {Es A B S U} → Codeᴵ (t ⊳ Es ∣ A ∷ S) U → Codeᴵ (t ⊳ [] ∣ A ∷ []) (t ⊳ [] ∣ B ∷ [])
+       → Codeᴵ (t ⊳ Es ∣ B ∷ S) U → Ret U T → Slots (t ⊳ Es) → MV A → Stk S → ℕ → Set
+Enters t c₀ blk k r es a os n =
+  StepI c₀ r (es ∥ a ∷ˢ os) n (tmp (tnew fsz) ∷ []) blk (frm {t = t} k es os r) (topv t es ∥ a ∷ˢ []ˢ) n
+
+called′ : ∀ {T t Es A B S U sh′ U′} {c₀ : Codeᴵ (t ⊳ Es ∣ A ∷ S) U} {blk : Codeᴵ (t ⊳ [] ∣ A ∷ []) (t ⊳ [] ∣ B ∷ [])}
+            {k : Codeᴵ (t ⊳ Es ∣ B ∷ S) U} {r : Ret U T}
+            {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T} {es : Slots (t ⊳ Es)} {a os} {e₁ b₁} {m′ n n₁ n′ tr j₁ j₂}
+        → Enters t c₀ blk k r es a os n
+        → OutI blk (frm {t = t} k es os r) (topv t es ∥ a ∷ˢ []ˢ) n tr end (frm {t = t} k es os r) (e₁ ∥ b₁ ∷ˢ []ˢ) n₁ j₁
+        → OutI k r (es ∥ b₁ ∷ˢ os) n₁ [] c′ r′ m′ n′ j₂
+        → OutI c₀ r (es ∥ a ∷ˢ os) n tr c′ r′ m′ n′ (j₁ + j₂)
+called′ {tr = tr} {j₁ = j₁} {j₂} x (out ts mt st w b lp) (out ts₂ mt₂ st₂ w₂ b₂ lp₂) =
+  subst (λ z → OutI _ _ _ _ z _ _ _ _ (j₁ + j₂)) (++-identityʳ tr)
+    (then {t₁ = tr} {t₂ = []} (out (tnew fsz ∷ (ts ++ tdel fsz ∷ [])) (tmp (tnew fsz) ∷ (mt ++ tmp (tdel fsz) ∷ []))
+               (x ⟫ stepsI-++ st (oneI i-ret))
+               (w-tmp (subst (λ z → Weave tmp z (ts ++ tdel fsz ∷ []) (mt ++ tmp (tdel fsz) ∷ []))
+                             (++-identityʳ (erase tr)) (w-++ w (w-tmp w-[]))))
+               (bracket fsz ts b) (lp-pre x (stepsI-++ st (oneI i-ret)) (lp-post st (oneI i-ret) lp)))
+          (out ts₂ mt₂ st₂ w₂ b₂ lp₂))
+
+calledP′ : ∀ {T t Es A B S U} {c₀ : Codeᴵ (t ⊳ Es ∣ A ∷ S) U} {blk : Codeᴵ (t ⊳ [] ∣ A ∷ []) (t ⊳ [] ∣ B ∷ [])}
+             {k : Codeᴵ (t ⊳ Es ∣ B ∷ S) U} {r : Ret U T} {es : Slots (t ⊳ Es)} {a os n tr j}
+         → Enters t c₀ blk k r es a os n
+         → PausedI blk (frm {t = t} k es os r) (topv t es ∥ a ∷ˢ []ˢ) n tr j → PausedI c₀ r (es ∥ a ∷ˢ os) n tr j
+calledP′ x (paused c′ r′ m′ n′ ts mt t₀ st w p cl l lp) =
+  paused c′ r′ m′ n′ (tnew fsz ∷ ts) (tmp (tnew fsz) ∷ mt) t₀ (x ⟫ st) (w-tmp w) p cl (opened fsz ts l) (lp-pre x st lp)
+
+calledH : ∀ {T t Es A B S U} (y : Why) {c₀ : Codeᴵ (t ⊳ Es ∣ A ∷ S) U} {blk : Codeᴵ (t ⊳ [] ∣ A ∷ []) (t ⊳ [] ∣ B ∷ [])}
+            {k : Codeᴵ (t ⊳ Es ∣ B ∷ S) U} {r : Ret U T} {es : Slots (t ⊳ Es)} {a os n tr j}
+        → Enters t c₀ blk k r es a os n
+        → Σ (PausedI blk (frm {t = t} k es os r) (topv t es ∥ a ∷ˢ []ˢ) n tr j) (HaltIf y) → Σ (PausedI c₀ r (es ∥ a ∷ˢ os) n tr j) (HaltIf y)
+calledH halted    x (p , h) = calledP′ x p , h
+calledH exhausted x (p , h) = calledP′ x p , h
+
+called : ∀ {T σ Es S U sh′ U′} {κ : Key σ} {k : Codeᴵ (top σ ⊳ Es ∣ cod σ ∷ S) U} {r : Ret U T}
+           {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T} {es : Slots (top σ ⊳ Es)} {a os} {e₁ b₁} {m′ n n₁ n′ t j₁ j₂}
+       → OutI (blockᴵ κ) (frm {t = top σ} k es os r) (topv (top σ) es ∥ a ∷ˢ []ˢ) n t end (frm {t = top σ} k es os r) (e₁ ∥ b₁ ∷ˢ []ˢ) n₁ j₁
+       → OutI k r (es ∥ b₁ ∷ˢ os) n₁ [] c′ r′ m′ n′ j₂
+       → OutI (call κ ⨾ k) r (es ∥ a ∷ˢ os) n t c′ r′ m′ n′ (j₁ + j₂)
+called = called′ i-call
+
+calledP : ∀ {T σ Es S U} {κ : Key σ} {k : Codeᴵ (top σ ⊳ Es ∣ cod σ ∷ S) U} {r : Ret U T}
+            {es : Slots (top σ ⊳ Es)} {a os n t j}
+        → PausedI (blockᴵ κ) (frm {t = top σ} k es os r) (topv (top σ) es ∥ a ∷ˢ []ˢ) n t j → PausedI (call κ ⨾ k) r (es ∥ a ∷ˢ os) n t j
+calledP = calledP′ i-call
+
+-- a stretch whose trace gains `++ []`
+P-[] : ∀ {T sh U} {c : Codeᴵ sh U} {r : Ret U T} {m n t j} → PausedI c r m n t j → PausedI c r m n (t ++ []) j
+P-[] {t = t} (paused c′ r′ m′ n′ ts mt t₀ st w p cl l lp) =
+  paused c′ r′ m′ n′ ts mt t₀ st w (subst (_≼ t₀) (sym (trans (erase-++ t []) (++-identityʳ (erase t)))) p) cl l lp
+
+P-[]H : ∀ {T sh U} (y : Why) {c : Codeᴵ sh U} {r : Ret U T} {m n t j}
+      → Σ (PausedI c r m n t j) (HaltIf y) → Σ (PausedI c r m n (t ++ []) j) (HaltIf y)
+P-[]H halted {t = t} (p , (hc , ht)) = P-[] p , (hc , trans ht (sym (trans (erase-++ t []) (++-identityʳ (erase t)))))
+P-[]H exhausted {t = t} (p , ht) = P-[] p , trans ht (sym (trans (erase-++ t []) (++-identityʳ (erase t))))
+
+O-[] : ∀ {T sh U sh′ U′} {c : Codeᴵ sh U} {r : Ret U T} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T} {m m′ n n′ t j}
+     → OutI c r m n t c′ r′ m′ n′ j → OutI c r m n (t ++ []) c′ r′ m′ n′ j
+O-[] {t = t} (out ts mt st w b lp) =
+  out ts mt st (subst (λ z → Weave tmp z ts mt) (sym (trans (erase-++ t []) (++-identityʳ (erase t)))) w) b lp
+
+-- fewer loop entries claimed
+wkO : ∀ {T sh U sh′ U′} {c : Codeᴵ sh U} {r : Ret U T} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T} {m m′ n n′ t j j′}
+    → j′ ≤ j → OutI c r m n t c′ r′ m′ n′ j → OutI c r m n t c′ r′ m′ n′ j′
+wkO le (out ts mt st w b lp) = out ts mt st w b (≤-trans le lp)
+
+------------------------------------------------------------------------
+-- 3. ★ THE COPY BLOCK: `Events.copy` (post-order), by induction on the
+-- value; each cell's contents copied by a call, then the cell built.
+------------------------------------------------------------------------
+
+doneO : ∀ {T sh U} {c : Codeᴵ sh U} {r : Ret U T} {m n} → OutI c r m n [] c r m n 0
+doneO = out [] [] done w-[] bal∅ z≤n
+
+-- a stretch, then one whose trace is empty
+thenL : ∀ {T sh U sh′ U′ sh″ U″} {c : Codeᴵ sh U} {r : Ret U T} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T}
+          {c″ : Codeᴵ sh″ U″} {r″ : Ret U″ T} {m m′ m″ n n′ n″ t j₁ j₂}
+      → OutI c r m n t c′ r′ m′ n′ j₁ → OutI c′ r′ m′ n′ [] c″ r″ m″ n″ j₂ → OutI c r m n t c″ r″ m″ n″ (j₁ + j₂)
+thenL {t = t} {j₁ = j₁} {j₂} a b = subst (λ z → OutI _ _ _ _ z _ _ _ _ (j₁ + j₂)) (++-identityʳ t) (then a b)
+
+mutual
+  copyS : ∀ {T A} (v : MV A) {Es S U} {es : Slots (A ∷ Es)} → see es ≡ v → (os : Stk S)
+          {k : Codeᴵ (A ∷ Es ∣ A ∷ S) U} {r : Ret U T} (n : ℕ)
+        → OutI (call (kcopy A) ⨾ k) r (es ∥ mone ∷ˢ os) n (snd (snd (copy v n)))
+               k r (es ∥ fst (copy v n) ∷ˢ os) (fst (snd (copy v n))) 0
+  copyS v e os n = called (copyB v e n) doneO
+
+  -- the copy block, in its own frame: the view, the unit it fills
+  copyB : ∀ {T A} (v : MV A) {es : Slots (A ∷ [])} → see es ≡ v → {r : Ret (A ∷ [] ∣ A ∷ []) T} (n : ℕ)
+        → OutI (blockᴵ (kcopy A)) r (es ∥ mone ∷ˢ []ˢ) n (snd (snd (copy v n)))
+               end r (es ∥ fst (copy v n) ∷ˢ []ˢ) (fst (snd (copy v n))) 0
+  copyB mone e n = doneO
+  copyB (mbase x) e n = leaf (i-eword e) []
+  copyB (mpair a b) e n =
+    pre (i-efst e) (then (after (copyS a refl []ˢ n) i-epop)
+      (pre i-unit (pre (i-esnd e) (after (after (after (copyS b refl (fst (copy a n) ∷ˢ []ˢ) (fst (snd (copy a n)))) i-epop) i-swap) i-pair))))
+  copyB (minl a) e n = pre (i-ecase₁ e) (thenL (after (copyS a refl []ˢ n) i-epop) (leaf (i-prim r-inl) []))
+  copyB (minr b) e n = pre (i-ecase₂ e) (thenL (after (copyS b refl []ˢ n) i-epop) (leaf (i-prim r-inr) []))
+  copyB (mmu i v) e n = pre (i-eoutq e) (then (after (copyS v refl []ˢ n) i-epop) (leaf (i-prim r-In) (k-alloc ∷ [])))
+  copyB (mct x) e n = pre (i-eapp e) (after (after (copyS x refl []ˢ n) i-epop) i-tag₁)
+  -- ★ a cell: its trampoline (D436) views the contents, copies them, and
+  -- builds a cell with the same code words
+  copyB (mfn i lam x) e n =
+    called′ (i-ccopy e) (pre (i-copen e) (then (after (copyS x refl []ˢ n) i-epop) (leaf (i-reclose e) (k-alloc ∷ [])))) doneO
+  copyB (mnu i p) e n =
+    called′ (i-ncopy e) (pre (i-copenν e) (then (after (copyS p refl []ˢ n) i-epop) (leaf (i-recloseν e) (k-alloc ∷ [])))) doneO
+
+------------------------------------------------------------------------
+-- 4. ★ THE FREE BLOCK: `Events.freeAll`, by induction on the value; each
+-- cell freed, then what it held by a call.
+------------------------------------------------------------------------
+
+mutual
+  freeS : ∀ {T A} (v : MV A) {Es S U} {es : Slots Es} (os : Stk S) {k : Codeᴵ (Es ∣ One ∷ S) U} {r : Ret U T} (n : ℕ)
+        → OutI (call (kfree A) ⨾ k) r (es ∥ v ∷ˢ os) n (freeAll v) k r (es ∥ mone ∷ˢ os) n 0
+  freeS v os n = called (freeB v n) doneO
+
+  -- the free block, in its own frame: no view, the operand
+  freeB : ∀ {T A} (v : MV A) {r : Ret ([] ∣ One ∷ []) T} (n : ℕ)
+        → OutI (blockᴵ (kfree A)) r ([]ᵉ ∥ v ∷ˢ []ˢ) n (freeAll v) end r ([]ᵉ ∥ mone ∷ˢ []ˢ) n 0
+  freeB mone n = doneO
+  freeB (mbase x) n = leaf (i-prim r-drop) []
+  freeB (mpair a b) n =
+    pre i-unpair (then (after (freeS a (b ∷ˢ []ˢ) n) i-swap)
+                       (thenL (after (freeS b (mone ∷ˢ []ˢ) n) i-pair) (leaf (i-prim r-λ) [])))
+  freeB (minl a) n = pre i-case₁ (freeS a []ˢ n)
+  freeB (minr b) n = pre i-case₂ (freeS b []ˢ n)
+  freeB (mmu i v) n = then (leaf (i-prim r-Outμ) (k-free ∷ [])) (freeS v []ˢ n)
+  freeB (mct x) n = pre i-untag₁ (freeS x []ˢ n)
+  -- ★ a cell: its trampoline (D436) frees it, then frees what it held
+  freeB (mfn i lam x) n = called′ i-cfree (then (leaf i-fopen (k-free ∷ [])) (freeS x []ˢ n)) doneO
+  freeB (mnu i p) n = called′ i-nfree (then (leaf i-fopenν (k-free ∷ [])) (freeS p []ˢ n)) doneO
+
+------------------------------------------------------------------------
+-- 5. MORE COMBINATORS: a view around, a call by outcome, a cut, the run's
+-- own temporaries.
+------------------------------------------------------------------------
+
+-- a call by the run's outcome: a block that reads no view, and one that
+-- reads the top view
+calledR′ : ∀ {T t A Es B S U} (o : Outcome B) {c₀ : Codeᴵ (t ⊳ Es ∣ A ∷ S) U} {blk : Codeᴵ (t ⊳ [] ∣ A ∷ []) (t ⊳ [] ∣ B ∷ [])}
+             {k : Codeᴵ (t ⊳ Es ∣ B ∷ S) U} {ρ : Ret U T} {a n tr} {es : Slots (t ⊳ Es)} {os : Stk S} {j}
+         → Enters t c₀ blk k ρ es a os n
+         → SimRI o blk (frm {t = t} k es os ρ) (topv t es ∥ a ∷ˢ []ˢ) n tr end (frm {t = t} k es os ρ) (topv t es) []ˢ j
+         → SimRI o c₀ ρ (es ∥ a ∷ˢ os) n tr k ρ es os j
+calledR′ (gives _ _) {j = j} x s = wkO (m≤m+n j 0) (called′ x s doneO)
+calledR′ (stop y)    x s = calledH y x s
+
+calledR : ∀ {T A Es B S U} (o : Outcome B) {κ : Key (bsig nothing A B)} {k : Codeᴵ (Es ∣ B ∷ S) U} {ρ : Ret U T}
+            {a n t} {es : Slots Es} {os : Stk S} {j}
+          → SimRI o (blockᴵ κ) (frm {t = nothing} k es os ρ) ([]ᵉ ∥ a ∷ˢ []ˢ) n t end (frm {t = nothing} k es os ρ) []ᵉ []ˢ j
+          → SimRI o (call κ ⨾ k) ρ (es ∥ a ∷ˢ os) n t k ρ es os j
+calledR o = calledR′ o i-call
+
+calledRω : ∀ {T X A Es B S U} (o : Outcome B) {κ : Key (bsig (just X) A B)} {k : Codeᴵ (X ∷ Es ∣ B ∷ S) U} {ρ : Ret U T}
+             {a n t} {es : Slots (X ∷ Es)} {os : Stk S} {j}
+           → SimRI o (blockᴵ κ) (frm {t = just X} k es os ρ) (vw (see es) []ᵉ ∥ a ∷ˢ []ˢ) n t end (frm {t = just X} k es os ρ) (vw (see es) []ᵉ) []ˢ j
+           → SimRI o (call κ ⨾ k) ρ (es ∥ a ∷ˢ os) n t k ρ es os j
+calledRω o = calledR′ o i-call
+
+-- a view opened by a silent step, closed after
+around : ∀ {T E′ Es B S S₀ U V} (o : Outcome B) {c₀ : Codeᴵ (Es ∣ S₀) U} {r₀ : Ret U T}
+           {c₁ : Codeᴵ (E′ ∷ Es ∣ S₀) U} {e′ : MV E′} {es : Slots Es} {v : Stk S₀} {os : Stk S} {n t}
+           {k : Codeᴵ (Es ∣ B ∷ S) V} {ρ : Ret V T} {j}
+       → StepI c₀ r₀ (es ∥ v) n [] c₁ r₀ (vw e′ es ∥ v) n
+       → SimRI o c₁ r₀ (vw e′ es ∥ v) n t (epop ⨾ k) ρ (vw e′ es) os j
+       → SimRI o c₀ r₀ (es ∥ v) n t k ρ es os j
+around (gives _ _) x s = pre x (after s i-epop)
+around (stop y)    x s = preH y x s
+
+-- a run cut short: what the image did for the whole run covers the prefix
+cutR : ∀ {T sh U Es B S V} (o : Outcome B) {c : Codeᴵ sh U} {r : Ret U T} {m n t t′}
+         {k : Codeᴵ (Es ∣ B ∷ S) V} {ρ : Ret V T} {es os j}
+     → t′ ≼ t → SimRI o c r m n t k ρ es os j → PausedI c r m n t′ j
+cutR (gives _ _) {t = t} q (out ts mt st w b lp) = paused _ _ _ _ ts mt (erase t) st w (erase-≼ q) (erase-clean t) (fst b) lp
+cutR (stop _) q (paused c′ r′ m′ n′ ts mt t₀ st w p cl l lp , _) = paused c′ r′ m′ n′ ts mt t₀ st w (≼-trans (erase-≼ q) p) cl l lp
+
+-- the run's own temporaries: erased, the same events
+tmpR : ∀ {T sh U Es B S V} (o : Outcome B) {c : Codeᴵ sh U} {r : Ret U T} {m n t t″ ts₀}
+         {k : Codeᴵ (Es ∣ B ∷ S) V} {ρ : Ret V T} {es os j}
+     → Weave tmp t ts₀ t″ → SimRI o c r m n t k ρ es os j → SimRI o c r m n t″ k ρ es os j
+tmpR (gives _ _) w (out ts mt st wv b lp) = out ts mt st (subst (λ z → Weave tmp z ts mt) (sym (erase-weave w)) wv) b lp
+tmpR (stop halted) w (paused c′ r′ m′ n′ ts mt t₀ st wv p cl l lp , (hc , ht)) =
+  paused c′ r′ m′ n′ ts mt t₀ st wv (subst (_≼ t₀) (sym (erase-weave w)) p) cl l lp , (hc , trans ht (sym (erase-weave w)))
+tmpR (stop exhausted) w (paused c′ r′ m′ n′ ts mt t₀ st wv p cl l lp , ht) =
+  paused c′ r′ m′ n′ ts mt t₀ st wv (subst (_≼ t₀) (sym (erase-weave w)) p) cl l lp , trans ht (sym (erase-weave w))
+
+-- a label's key is its body's block
+look-key1 : ∀ {Γ Δ l g X A B} {ds : Defs Γ} {p : Γ ∋[ l ] sg once g X A B} {ds′ : Defs Δ} {b : LTm Δ (X ⊗t A) B} {γ : Gd g b}
+          → Look ds p ds′ (b1 b γ) → key1 ds p ≡ kbody1 ds′ b γ
+look-key1 lk-here      = refl
+look-key1 (lk-there q) = look-key1 q
+
+look-keyω : ∀ {Γ Δ l g X A B} {ds : Defs Γ} {p : Γ ∋[ l ] sg many g X A B} {ds′ : Defs Δ} {b : Tm Δ X A B} {γ : Gd g b}
+          → Look ds p ds′ (bω b γ) → keyω ds p ≡ kbodyω ds′ b γ
+look-keyω lk-here      = refl
+look-keyω (lk-there q) = look-keyω q
+
+------------------------------------------------------------------------
+-- 6. The start (the simulation is `ImageSimRun`)
+------------------------------------------------------------------------
+
+-- a closed program starts with nothing lent and nothing given
+start : Cfg (One ∷ [] ∣ One ∷ [])
+start = vw mone []ᵉ ∥ mone ∷ˢ []ˢ

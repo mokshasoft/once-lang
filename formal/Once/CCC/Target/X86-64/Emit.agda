@@ -35,7 +35,7 @@ showMem (base r) = "(" ++ showReg r ++ ")"
 showMem (base+disp r n) = showNat n ++ "(" ++ showReg r ++ ")"
 showMem (rip+disp n) = showNat n ++ "(%rip)"
 showMem (rip+label n) = thunkSym n ++ "(%rip)"
-showMem (rip+sym s)   = s ++ "(%rip)"
+showMem (rip+sym s d) = s ++ "+" ++ showNat d ++ "(%rip)"
 
 ------------------------------------------------------------------------
 -- Operands (AT&T syntax: $ for immediates)

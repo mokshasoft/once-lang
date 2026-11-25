@@ -171,14 +171,13 @@ once_sel4_copy_arg:
     ret
 .size once_sel4_copy_arg, .-once_sel4_copy_arg
 
-# once_sel4_answer: the n words at rsi (n >= 1, in rcx) as a flat block
-# allocated at the heap pointer r15 (advanced); the block in rax (D381).
+# once_sel4_answer: the n words at rsi (n >= 1, in rcx) into the answer's
+# buffer at rax, the address the program put in Output before the SigOp
+# (D451: a structured answer is written in place); rax is kept.
 # Clobbers rcx, rdx.
 .global once_sel4_answer
 .type once_sel4_answer, @function
 once_sel4_answer:
-    movq    %r15, %rax
-    leaq    (%r15,%rcx,8), %r15
 1:  decq    %rcx
     movq    (%rsi,%rcx,8), %rdx
     movq    %rdx, (%rax,%rcx,8)

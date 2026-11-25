@@ -28,7 +28,7 @@ data T_Mem_10
     C_base'43'disp_14 MAlonzo.Code.Once.Target.X86Z45Z32.PhysReg.T_Reg_8
                       Integer |
     C_label'45'rel_16 Integer |
-    C_abs'45'sym_18 MAlonzo.Code.Agda.Builtin.String.T_String_6
+    C_abs'45'sym_18 MAlonzo.Code.Agda.Builtin.String.T_String_6 Integer
 -- Once.CCC.Target.X86-32.Syntax.Operand
 d_Operand_20 = ()
 data T_Operand_20

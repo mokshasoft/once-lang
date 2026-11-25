@@ -31,7 +31,7 @@
 -- about the ABSTRACT machine and was never arch-specific to begin with.
 ------------------------------------------------------------------------
 
-open import Data.Nat using (ℕ; zero; suc; _+_; _≤_; _<_; NonZero)
+open import Data.Nat using (ℕ; zero; suc; _+_; _*_; _≤_; _<_; NonZero)
 open import Data.Bool using (Bool; true; false)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _++_; drop)
@@ -103,7 +103,7 @@ open FlatComposition
 
 import Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
 module CompiledCorrespondence = Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
-       o FS slot-size word-eq Reg roles State rreg memory xhalted link-claim
+       o FS slot-size word-eq Reg roles State rreg memory xhalted heap-base link-claim
        xpc (List Instr) compile-trace find-label blk-off blk-len exec modulus
   using (BlockStep; BlockSteps; CompiledCorr; fetch-just-drop; fetch-nothing-drop; slot-heap-disj; store-guard; module BlockSteps; module CompiledCorr)
 open CompiledCorrespondence
@@ -124,8 +124,8 @@ open import Once.Adequacy.ArchCorrectness.FlatCore.RunLow o FS slot-size word-eq
 -- private (an instance re-opened publicly would clash with the `C` every arch
 -- already binds). Same application, hence the same types.
 import Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence as FC
-module CFC = FC FS slot-size word-eq Reg roles State rreg memory xhalted
-  using (HeapView; enc-sv; slots; stack-eq-cur; module FlatCorr; module HeapView)
+module CFC = FC FS slot-size word-eq Reg roles State rreg memory xhalted heap-base
+  using (HeapView; Floor; Fresh; mkFloor; mkFresh; enc-sv; slots; stack-eq-cur; stack-read; rec-gate-open; module FlatCorr; module HeapView)
 open CFC using (HeapView; slots)
 
 ------------------------------------------------------------------------
@@ -149,7 +149,7 @@ open AllocState using (next-heap-ref)
 open LocState using (halted; regs)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open FlatMachine {FS} using (FlatState; fetch; flat-exec-instr; module FlatState)
-open FlatState using (falloc; fclosure; fpc; floc)
+open FlatState using (falloc; fclosure; fpc; floc; fret)
 open MemOps {FS} using (readLoc)
 open import Once.CCC.Machine.FlatStoreWF FS using (FlatWF; flat-wf-step; cl-step; sv-below)
 
@@ -279,7 +279,7 @@ block-run-exec ev env h (suc L) rest cprog s {s'} eq hs' = go-h (xhalted s) refl
 open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
 open FlatEventTrace {FS} using (flat-events; event-of; flat-ctrls; ctrl-of; ctrl-≤1)
 open import Data.Nat.Properties using (≤-trans; ≤-reflexive; +-identityʳ)
-open import Once.CCC.Codegen.RoomChecks using (spend; max-entry)
+open import Once.CCC.Codegen.StackDepth using (sigop-need)
 open import Data.Nat using (s≤s; z≤n)
 
 -- PROGRAM END: the abstract fetch runs out, so the concrete pc — which `pc-off`
@@ -482,11 +482,30 @@ stuck-result ev env lg (suc n) prog fs s i hpost lpost ev-eq st =
 -- That is what re-arms the budget (`Budget.bg-room`): the check's `k` is what
 -- the code spends before the next check, so from here to there no room is
 -- assumed.
-RoomStep : HeapView → AbstractTrace → FlatState → State → ℕ → Set
+-- (D488 (a3): two compares — the cells' part against the limit, the stack's
+-- part from the limit to the stack pointer)
+RoomStep : HeapView → AbstractTrace → FlatState → State → Room → Set
 RoomStep hv prog fs s k =
     Σ ℕ (λ c → Σ State (λ s' → (exec c (compile-trace prog) s ≡ just s')
                 × CompiledCorr hv prog (flat-exec-instr (instr-room k) prog fs) s'
-                × (CFC.HeapView.hfront hv + slots k ≤ rreg s sp-reg)))
+                × (CFC.HeapView.hfront hv + slots (Room.room-h k) ≤ CFC.HeapView.hlim hv)
+                × (CFC.HeapView.hlim hv + slots (Room.room-s k) ≤ rreg s sp-reg)))
+  ⊎ Σ ℕ (λ c → Σ State (λ s' → (exec c (compile-trace prog) s ≡ just s')
+                × xhalted s' ≡ false
+                × mfetch (compile-trace prog) (xpc s') ≡ just (sigop-call host-exhausted-symbol)))
+
+-- D488: THE START's two outcomes, as the room check's: it checks that the
+-- region holds `main`'s frame and the stack it reserves (`start-stack-words`),
+-- then reserves the frame and sets the stack limit — landing in the
+-- correspondence past it, at a view of the arch's choosing (the frame's
+-- descent and the limit) — or, without room, reaches `once_exhausted`.
+StartStep : AbstractTrace → FlatState → State → ℕ → Set₁
+StartStep prog fs s b =
+    Σ ℕ (λ c → Σ State (λ s' → (exec (suc c) (compile-trace prog) s ≡ just s')
+                × Σ HeapView (λ hv′ → (CFC.HeapView.hstarted hv′ ≡ true)
+                    -- D490: the limit `start-stack-words` below the start's frame
+                    × (CFC.HeapView.hlim hv′ + slots start-stack-words ≤ rreg s' sp-reg)
+                    × CompiledCorr hv′ prog (flat-exec-instr (instr-ctrl (c-start b)) prog fs) s')))
   ⊎ Σ ℕ (λ c → Σ State (λ s' → (exec c (compile-trace prog) s ≡ just s')
                 × xhalted s' ≡ false
                 × mfetch (compile-trace prog) (xpc s') ≡ just (sigop-call host-exhausted-symbol)))
@@ -494,9 +513,21 @@ RoomStep hv prog fs s k =
 record Supply : Set₁ where
   field
     bss : BlockSteps
+    -- D488: the start (pc 0): proved per arch
+    start-step : ∀ {hv : HeapView} prog fs s b → RunAt prog fs
+             → CompiledCorr hv prog fs s
+             → halted (floc fs) ≡ false
+             → fetch prog (fpc fs) ≡ just (instr-ctrl (c-start b))
+             → CFC.HeapView.hfront hv ≡ heap-base + rec-size * slot-size
+             → fret fs ≡ []
+             -- D488 (a3): nothing has set the limit, and the stack mark is the loader's `%rsp`
+             → CFC.HeapView.hstarted hv ≡ false
+             → CFC.HeapView.lo hv ≡ rreg s sp-reg
+             → StartStep prog fs s b
     -- the room check (plan 0.123 A.4): proved per arch, not assumed.
     room-step : ∀ {hv : HeapView} prog fs s k → RunAt prog fs
              → CompiledCorr hv prog fs s
+             → CFC.HeapView.hstarted hv ≡ true
              → halted (floc fs) ≡ false
              → fetch prog (fpc fs) ≡ just (instr-room k)
              → RoomStep hv prog fs s k
@@ -544,7 +575,7 @@ record Supply : Set₁ where
                         → fetch prog (fpc fs) ≡ just (instr-sigop si)
                         -- D393: the room the check before it left for the
                         -- block's frame, and the run has not stopped
-                        → CFC.HeapView.hfront hv + slots (spend (max-entry prog) (instr-sigop si)) ≤ rreg s sp-reg
+                        → CFC.HeapView.hfront hv + slots (sigop-need si) ≤ rreg s sp-reg
                         → LocState.halted (floc fs) ≡ false
                         → Σ Payload (λ pl → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl
                             × CompiledCorr hv prog (flat-exec-instr (instr-sigop si) prog fs)

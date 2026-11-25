@@ -45,7 +45,7 @@ import Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation as FSimr
 import Once.Adequacy.ArchCorrectness.FlatCore.RunLow as RLr
 import Once.CCC.Target.RiscV64.Semantics as R
 open import Once.CCC.Machine.SMCore
-  using (AbstractTrace; instr-ctrl; c-ret; lea-slot; instr-load-tag-lit; instr-load-const; instr-room)
+  using (AbstractTrace; instr-ctrl; c-ret; c-start; start-stack-words; lea-slot; instr-load-tag-lit; instr-load-const; instr-room)
 open import Once.CCC.Target.RiscV64.Syntax using (slots; slot-size)
 open import Once.Target.RiscV64.PhysReg using (sp; Reg)
 open import Once.CCC.Target.RiscV64.AbstractToRiscV using (slot-to-disp)
@@ -186,16 +186,8 @@ record LitFits : Set₁ where
           (FlatMachine.FlatState.fpc {rv64-frame-semantics} fs) ≡ just (instr-load-const fits-int v)
       → Once.CCC.Machine.SMCore.AbstractExec.lit-value {rv64-frame-semantics} fits-int v < R.W.modulus
 
-    -- D378: a room check's need `8k` is the `li t2, 8k` immediate.
-    room-fits :
-      ∀ {hv : FCr.FlatCorrespondence.HeapView rv64-frame-semantics refl}
-        (prog : AbstractTrace) (fs : FlatMachine.FlatState {rv64-frame-semantics})
-        (s : R.State) (k : ℕ)
-      → RLr.RunLow o rv64-frame-semantics slot-size refl prog fs
-      → FSimr.CompiledCorrespondence.CompiledCorr o rv64-frame-semantics refl refl hv prog fs s
-      → FlatMachine.fetch {rv64-frame-semantics} prog
-          (FlatMachine.FlatState.fpc {rv64-frame-semantics} fs) ≡ just (instr-room k)
-      → slots k < R.W.modulus
+    -- (D488: `room-fits`/`start-fits` went: a need that is no word lowers to the call
+    -- itself, `AbstractToRiscV.fits-or-out`, so no need is assumed to fit.)
 
 
 ------------------------------------------------------------------------

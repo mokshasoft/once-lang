@@ -51,6 +51,6 @@ module ArchCorrectness = Once.Adequacy.ArchCorrectness
        riscv64-reg-range riscv64-slot-addr-no-wrap
        riscv64-addr-no-wrap riscv64-lit-fits
        x86-32-reg-range x86-32-addr-no-wrap x86-32-lit-fits
-       using (arch-correctness)
+       using (arch-correctness; core-built)
 -- The CLI is extracted from `Once.Extract.Root`; the correctness theorem over
 -- what it runs is `Once.Certified` (plan 0.121, D332).

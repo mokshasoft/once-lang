@@ -1,0 +1,269 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+------------------------------------------------------------------------
+-- Once.LinCore.LowerSimB — plan 0.146 B1.4b, `LowerSim` layer (4),
+-- continued: steps built from `LowerSim`'s.
+------------------------------------------------------------------------
+
+{-# OPTIONS --guardedness #-}
+
+open import Data.Nat using (ℕ; _+_; _∸_; _≤_)
+open import Data.Nat.Properties using (+-assoc; ≤-trans; ≤-reflexive; m≤n+m)
+open import Data.List using (List; []; _∷_; _++_; length)
+open import Data.Product using (Σ; _×_; _,_)
+open import Data.Sum using (inj₁)
+open import Data.Unit using (tt)
+open import Relation.Binary.PropositionalEquality using (_≡_; sym; trans; subst)
+open import Once.Spec.Numerics using (TargetNum)
+open import Once.IR.Semantics.Trace using (FFIAnswers)
+open import Once.LinCore.Flat using (Base)
+open import Once.CCC.FrameSemantics using (FrameSemantics)
+open import Once.CCC.Machine.SMCore using (StoredValue)
+open import Data.Bool using (false)
+import Data.Empty
+
+module Once.LinCore.LowerSimB
+  (fmt : TargetNum) (ans : FFIAnswers)
+  (bw : Base → ℕ)
+  where
+
+open import Once.LinCore.Core fmt
+open import Once.LinCore.Flat using (Base; ⟦_⟧b)
+open import Once.LinCore.NbEPLinCore fmt ans
+open import Once.LinCore.Values fmt bw using (MV; mpair; hdr; wsz)
+open import Once.LinCore.Code fmt bw using (Stk; _∷ˢ_; Slots; _∥_)
+open import Once.LinCore.Keys fmt bw using (Univ)
+open import Once.LinCore.Layout fmt bw
+open Frame using (EP; OP)
+open import Once.LinCore.Words fmt ans bw
+open import Once.LinCore.LowerSim fmt ans bw
+
+module SimB {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue FS) where
+  open Rel {FS} U wordOf
+  open Sim {FS} U wordOf
+  open CfgW
+  open import Once.LinCore.Moves {FS} using (Seg; slot; Fr; Keep; Ran; InBlk; module Keep; sw-old) renaming (ln to nsteps)
+  open Keep using (k-frame; k-slots; k-saved; k-ret; k-other; k-halt)
+  open import Once.LinCore.MoveCode using (swapMv)
+  open import Once.CCC.Machine.Flat using (module FlatMachine)
+  open FlatMachine {FS} using (FlatState; module FlatState)
+  open FlatState using (floc; falloc; fpc; fret; fclosure; flink)
+  open import Once.CCC.Machine.SMCore using (module LocState; module AllocState)
+  open LocState using (heapMem) renaming (halted to fhalted)
+  open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
+  open FlatStepsAPI {FS} using (FlatSteps)
+
+  -- ★ `lswap`: `swap`'s code on the pair's components, in place
+  lswap-sim : ∀ prog (fs : FlatState) (φ : Frame) {Es A B S} {es : Slots Es} {os : Stk S} {a : MV A} {b : MV B}
+            → let t = budget φ ∸ ws (A ∷ B ∷ S) in
+              Seg prog (fpc fs) (swapMv t (wsz A) (wsz B))
+            → fhalted (floc fs) ≡ false → budget φ ≤ Fr fs
+            → CfgW (heapMem (floc fs)) (slot fs) φ (es ∥ mpair a b ∷ˢ os)
+            → wsz A + ws ((A ⊗t B) ∷ S) ≤ OP φ
+            → Σ FlatState λ fs₃ → FlatSteps prog (length (swapMv t (wsz A) (wsz B))) fs fs₃
+                × CfgW (heapMem (floc fs₃)) (slot fs₃) φ (es ∥ mpair b a ∷ˢ os)
+                × Ran (length (swapMv t (wsz A) (wsz B))) [] [] (AllocState.next-heap-ref (falloc fs)) (budget φ) fs fs₃
+  lswap-sim prog fs φ {Es} {A} {B} {S} {es} {os} {a} {b} s h Bf C fitT
+    = finish (swapMv-sim prog fs φ {Es} {A} {B} {S} {es} {os} {a} {b} s h Bf C′ fitT′)
+    where
+      rd = heapMem (floc fs)
+      assoc : ws ((A ⊗t B) ∷ S) ≡ ws (A ∷ B ∷ S)
+      assoc = +-assoc (wsz A) (wsz B) (ws S)
+      fitB : ws (A ∷ B ∷ S) ≤ budget φ
+      fitB = ≤-trans (subst (_≤ OP φ) assoc (c-sfit C)) (m≤n+m (OP φ) (EP φ))
+      C′ : CfgW rd (slot fs) φ (es ∥ a ∷ˢ b ∷ˢ os)
+      C′ = record { c-env = c-env C
+                  ; c-stk = unpair-W {rd} {slot fs} {φ} {A} {B} {S} {a} {b} {os} fitB (c-stk C)
+                  ; c-efit = c-efit C
+                  ; c-sfit = subst (_≤ OP φ) assoc (c-sfit C) }
+      fitT′ : wsz A + ws (A ∷ B ∷ S) ≤ OP φ
+      fitT′ = subst (λ z → wsz A + z ≤ OP φ) assoc fitT
+      t = budget φ ∸ ws (A ∷ B ∷ S)
+      n = length (swapMv t (wsz A) (wsz B))
+      finish : Σ FlatState (λ fs₃ → FlatSteps prog n fs fs₃ × CfgW (heapMem (floc fs₃)) (slot fs₃) φ (es ∥ b ∷ˢ a ∷ˢ os) × Ran n [] [] (AllocState.next-heap-ref (falloc fs)) (budget φ) fs fs₃)
+             → Σ FlatState (λ fs₃ → FlatSteps prog n fs fs₃ × CfgW (heapMem (floc fs₃)) (slot fs₃) φ (es ∥ mpair b a ∷ˢ os) × Ran n [] [] (AllocState.next-heap-ref (falloc fs)) (budget φ) fs fs₃)
+      finish (fs₃ , st , C₃ , K) =
+        fs₃ , st ,
+        record { c-env = c-env C₃
+               ; c-stk = pair-W {heapMem (floc fs₃)} {slot fs₃} {φ} {B} {A} {S} {b} {a} {os}
+                           (≤-trans (c-sfit C₃) (m≤n+m (OP φ) (EP φ))) (c-stk C₃)
+               ; c-efit = c-efit C₃
+               ; c-sfit = subst (_≤ OP φ) (sym (+-assoc (wsz B) (wsz A) (ws S))) (c-sfit C₃) } , K
+
+  ----------------------------------------------------------------------
+  -- ★ A CELL'S HEADER (`Lower.header`): a fresh block, its contents-word
+  -- and its three code words; `Input1` its address.
+  ----------------------------------------------------------------------
+
+  open import Once.LinCore.Lower fmt bw using (tl)
+  open import Once.CCC.Label using (LabelId)
+  open import Once.CCC.Machine.Locations using (AtDynamic; AtStack)
+  open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; mkHeapRef; HeapRef; module HeapLocation)
+  open import Once.CCC.Machine.SMCore
+    using (instr-alloc-heap; mov-to-input; mov-to-output; store-at; instr-load-code-addr; SV-Ptr; SV-Code; offsetLoc
+          ; readReg; writeReg; Input1; Output; size-with; module AllocState; module MemOps; module ExecFinal)
+  open import Once.CCC.Machine.SMPrimitives using (module MemoryOps)
+  open MemoryOps {FS} using (readLoc-writeLoc-same)
+  open MemOps {FS} using (writeLoc; readLoc; writeLoc-preserves-other)
+  open import Once.LinCore.Moves {FS} using (alloc-step; mov-in-step; mov-out-step; storeat-step; code-step)
+  open FlatMachine {FS} using (fetch)
+  open FlatStepsAPI {FS} using (step-at) renaming ([] to done)
+  open import Data.Maybe using (just)
+  open import Data.Nat using (suc; _<_; s≤s; z≤n)
+  open import Relation.Nullary using (¬_)
+  open import Relation.Binary.PropositionalEquality using (refl; cong)
+
+  -- the trace (`Lower.header`, spelled out; D480: word 4 the owned entry)
+  headerTr : ℕ → LabelId → LabelId → LabelId → LabelId → List _
+  headerTr w lb lc lf lo =
+    instr-alloc-heap (hdr + w) ∷ mov-to-input ∷ mov-to-output ∷ store-at 0
+    ∷ instr-load-code-addr lb ∷ store-at 1 ∷ instr-load-code-addr lc ∷ store-at 2
+    ∷ instr-load-code-addr lf ∷ store-at 3 ∷ instr-load-code-addr lo ∷ store-at 4 ∷ []
+
+  record Header (fs fs′ : FlatState) (w : ℕ) (lb lc lf lo : LabelId) : Set where
+    field
+      h-pc    : fpc fs′ ≡ 12 + fpc fs
+      h-in    : readReg (LocState.regs (floc fs′)) Input1
+                ≡ SV-Ptr (AtDynamic (heap-loc (mkHeapRef (AllocState.next-heap-ref (falloc fs))) 0))
+      h-alloc : falloc fs′ ≡ record (falloc fs) { next-heap-ref = suc (AllocState.next-heap-ref (falloc fs))
+                                               ; block-size = size-with (hdr + w) (AllocState.next-heap-ref (falloc fs)) (AllocState.block-size (falloc fs)) }
+      h-ret   : fret fs′ ≡ fret fs
+      h-clo   : fclosure fs′ ≡ fclosure fs
+      h-link  : flink fs′ ≡ flink fs
+      h-halt  : fhalted (floc fs′) ≡ fhalted (floc fs)
+      h-log   : LocState.ev-log (floc fs′) ≡ LocState.ev-log (floc fs)
+      h-stack : LocState.stackMem (floc fs′) ≡ LocState.stackMem (floc fs)
+      h-words : (heapMem (floc fs′) (heap-loc (mkHeapRef (AllocState.next-heap-ref (falloc fs))) 0)
+                  ≡ just (SV-Ptr (AtDynamic (heap-loc (mkHeapRef (AllocState.next-heap-ref (falloc fs))) 0))))
+              × (heapMem (floc fs′) (heap-loc (mkHeapRef (AllocState.next-heap-ref (falloc fs))) 1) ≡ just (SV-Code lb))
+              × (heapMem (floc fs′) (heap-loc (mkHeapRef (AllocState.next-heap-ref (falloc fs))) 2) ≡ just (SV-Code lc))
+              × (heapMem (floc fs′) (heap-loc (mkHeapRef (AllocState.next-heap-ref (falloc fs))) 3) ≡ just (SV-Code lf))
+              × (heapMem (floc fs′) (heap-loc (mkHeapRef (AllocState.next-heap-ref (falloc fs))) 4) ≡ just (SV-Code lo))
+      h-other : ∀ (hl : HeapLocation) → ¬ HeapLocation.heap-ref hl ≡ mkHeapRef (AllocState.next-heap-ref (falloc fs))
+              → heapMem (floc fs′) hl ≡ heapMem (floc fs) hl
+      -- D443: the words written are inside the fresh block
+      h-inb   : InBlk fs → InBlk fs′
+  open Header
+
+  header-run : ∀ prog (fs : FlatState) w lb lc lf lo → Seg prog (fpc fs) (headerTr w lb lc lf lo) → fhalted (floc fs) ≡ false
+             → AllocState.freed (falloc fs) (AllocState.next-heap-ref (falloc fs)) ≡ false
+             → Σ FlatState λ fs′ → FlatSteps prog 12 fs fs′ × Header fs fs′ w lb lc lf lo
+  header-run prog fs w lb lc lf lo (f₁ , f₂ , f₃ , f₄ , f₅ , f₆ , f₇ , f₈ , f₉ , f₁₀ , f₁₁ , f₁₂ , _) h fz =
+    fs₁₂ ,
+    step-at fs₁ (h , f₁) (alloc-step fs (hdr + w)) (step-at fs₂ (h , f₂) (mov-in-step fs₁)
+    (step-at fs₃ (h , f₃) (mov-out-step fs₂)
+    (step-at fs₄ (h , f₄) (storeat-step fs₃ 0 refl refl fz (ib 0 (s≤s z≤n)))
+    (step-at fs₅ (h , f₅) (code-step fs₄ lb) (step-at fs₆ (h , f₆) (storeat-step fs₅ 1 refl refl fz (ib 1 (s≤s (s≤s z≤n))))
+    (step-at fs₇ (h , f₇) (code-step fs₆ lc) (step-at fs₈ (h , f₈) (storeat-step fs₇ 2 refl refl fz (ib 2 (s≤s (s≤s (s≤s z≤n)))))
+    (step-at fs₉ (h , f₉) (code-step fs₈ lf) (step-at fs₁₀ (h , f₁₀) (storeat-step fs₉ 3 refl refl fz (ib 3 (s≤s (s≤s (s≤s (s≤s z≤n))))))
+    (step-at fs₁₁ (h , f₁₁) (code-step fs₁₀ lo) (step-at fs₁₂ (h , f₁₂) (storeat-step fs₁₁ 4 refl refl fz (ib 4 (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))) done))))))))))) ,
+    record { h-pc = refl ; h-in = refl ; h-alloc = refl ; h-ret = refl ; h-clo = refl ; h-link = refl ; h-halt = refl ; h-log = refl
+           ; h-stack = refl
+           ; h-words = w0 , w1 , w2 , w3 , w4
+           ; h-other = other
+           ; h-inb = inb }
+    where
+      import Data.Nat.Properties
+      r = AllocState.next-heap-ref (falloc fs)
+      p : ℕ → HeapLocation
+      p k = heap-loc (mkHeapRef r) k
+      P = AtDynamic {FS} (p 0)
+      fs₁ = record fs { floc   = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Output (SV-Ptr P) }
+                      ; falloc = record (falloc fs) { next-heap-ref = suc r
+                                                    ; block-size = size-with (hdr + w) r (AllocState.block-size (falloc fs)) }
+                      ; fpc    = suc (fpc fs) }
+      fs₂ = record fs₁ { floc = record (floc fs₁) { regs = writeReg (LocState.regs (floc fs₁)) Input1 (SV-Ptr P) } ; fpc = suc (fpc fs₁) }
+      fs₃ = record fs₂ { floc = record (floc fs₂) { regs = writeReg (LocState.regs (floc fs₂)) Output (SV-Ptr P) } ; fpc = suc (fpc fs₂) }
+      fs₄ = record fs₃ { floc = writeLoc (floc fs₃) (AtDynamic (p 0)) (SV-Ptr P) ; fpc = suc (fpc fs₃) }
+      fs₅ = record fs₄ { floc = record (floc fs₄) { regs = writeReg (LocState.regs (floc fs₄)) Output (SV-Code lb) } ; fpc = suc (fpc fs₄) }
+      fs₆ = record fs₅ { floc = writeLoc (floc fs₅) (AtDynamic (p 1)) (SV-Code lb) ; fpc = suc (fpc fs₅) }
+      fs₇ = record fs₆ { floc = record (floc fs₆) { regs = writeReg (LocState.regs (floc fs₆)) Output (SV-Code lc) } ; fpc = suc (fpc fs₆) }
+      fs₈ = record fs₇ { floc = writeLoc (floc fs₇) (AtDynamic (p 2)) (SV-Code lc) ; fpc = suc (fpc fs₇) }
+      fs₉ = record fs₈ { floc = record (floc fs₈) { regs = writeReg (LocState.regs (floc fs₈)) Output (SV-Code lf) } ; fpc = suc (fpc fs₈) }
+      fs₁₀ = record fs₉ { floc = writeLoc (floc fs₉) (AtDynamic (p 3)) (SV-Code lf) ; fpc = suc (fpc fs₉) }
+      fs₁₁ = record fs₁₀ { floc = record (floc fs₁₀) { regs = writeReg (LocState.regs (floc fs₁₀)) Output (SV-Code lo) } ; fpc = suc (fpc fs₁₀) }
+      fs₁₂ = record fs₁₁ { floc = writeLoc (floc fs₁₁) (AtDynamic (p 4)) (SV-Code lo) ; fpc = suc (fpc fs₁₁) }
+      -- every word stored is inside the fresh block
+      ib : ∀ o → o < hdr + w → ExecFinal.in-block? {FS} (AllocState.block-size (falloc fs₁)) (offsetLoc P o) ≡ Data.Bool.true
+      ib o o< = trans (cong ((o + 0) Data.Nat.<ᵇ_) (size-with-same (hdr + w) r (AllocState.block-size (falloc fs))))
+                      (<ᵇ-true (subst (_< hdr + w) (sym (Data.Nat.Properties.+-identityʳ o)) o<))
+        where import Data.Bool
+      -- a write at word j leaves word k (k ≠ j) as it was
+      keepW : ∀ (f : FlatState) j k → ¬ j ≡ k → ∀ v → heapMem (writeLoc (floc f) (AtDynamic (p j)) v) (p k) ≡ heapMem (floc f) (p k)
+      keepW f j k ne v = writeLoc-preserves-other (floc f) (AtDynamic (p j)) (AtDynamic (p k)) v (λ e → ne (cong HeapLocation.heap-offset (at-inj e)))
+        where
+          at-inj : ∀ {a b : HeapLocation} → AtDynamic {FS} a ≡ AtDynamic b → a ≡ b
+          at-inj refl = refl
+      -- the words, read back
+      w0 = trans (keepW fs₁₁ 4 0 (λ ()) (SV-Code lo)) (trans (keepW fs₉ 3 0 (λ ()) (SV-Code lf)) (trans (keepW fs₇ 2 0 (λ ()) (SV-Code lc))
+             (trans (keepW fs₅ 1 0 (λ ()) (SV-Code lb)) (readLoc-writeLoc-same (floc fs₃) (AtDynamic (p 0)) (SV-Ptr P)))))
+      w1 = trans (keepW fs₁₁ 4 1 (λ ()) (SV-Code lo)) (trans (keepW fs₉ 3 1 (λ ()) (SV-Code lf)) (trans (keepW fs₇ 2 1 (λ ()) (SV-Code lc))
+             (readLoc-writeLoc-same (floc fs₅) (AtDynamic (p 1)) (SV-Code lb))))
+      w2 = trans (keepW fs₁₁ 4 2 (λ ()) (SV-Code lo)) (trans (keepW fs₉ 3 2 (λ ()) (SV-Code lf)) (readLoc-writeLoc-same (floc fs₇) (AtDynamic (p 2)) (SV-Code lc)))
+      w3 = trans (keepW fs₁₁ 4 3 (λ ()) (SV-Code lo)) (readLoc-writeLoc-same (floc fs₉) (AtDynamic (p 3)) (SV-Code lf))
+      w4 = readLoc-writeLoc-same (floc fs₁₁) (AtDynamic (p 4)) (SV-Code lo)
+      other : ∀ (hl : HeapLocation) → ¬ HeapLocation.heap-ref hl ≡ mkHeapRef r → heapMem (floc fs₁₂) hl ≡ heapMem (floc fs) hl
+      other hl ne =
+        trans (writeLoc-preserves-other (floc fs₁₁) (AtDynamic (p 4)) (AtDynamic hl) (SV-Code lo) (ne′ 4))
+        (trans (writeLoc-preserves-other (floc fs₉) (AtDynamic (p 3)) (AtDynamic hl) (SV-Code lf) (ne′ 3))
+          (trans (writeLoc-preserves-other (floc fs₇) (AtDynamic (p 2)) (AtDynamic hl) (SV-Code lc) (ne′ 2))
+            (trans (writeLoc-preserves-other (floc fs₅) (AtDynamic (p 1)) (AtDynamic hl) (SV-Code lb) (ne′ 1))
+              (writeLoc-preserves-other (floc fs₃) (AtDynamic (p 0)) (AtDynamic hl) (SV-Ptr P) (ne′ 0)))))
+        where
+          ne′ : ∀ k → ¬ AtDynamic {FS} (p k) ≡ AtDynamic hl
+          ne′ k refl = ne refl
+      -- the fresh block's other words: as before (so none, below the counter)
+      rest : ∀ k → hdr ≤ k → heapMem (floc fs₁₂) (p k) ≡ heapMem (floc fs) (p k)
+      rest k le =
+        trans (writeLoc-preserves-other (floc fs₁₁) (AtDynamic (p 4)) (AtDynamic (p k)) (SV-Code lo) (ne-off 4 (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))
+        (trans (writeLoc-preserves-other (floc fs₉) (AtDynamic (p 3)) (AtDynamic (p k)) (SV-Code lf) (ne-off 3 (s≤s (s≤s (s≤s (s≤s z≤n))))))
+          (trans (writeLoc-preserves-other (floc fs₇) (AtDynamic (p 2)) (AtDynamic (p k)) (SV-Code lc) (ne-off 2 (s≤s (s≤s (s≤s z≤n)))))
+            (trans (writeLoc-preserves-other (floc fs₅) (AtDynamic (p 1)) (AtDynamic (p k)) (SV-Code lb) (ne-off 1 (s≤s (s≤s z≤n))))
+              (writeLoc-preserves-other (floc fs₃) (AtDynamic (p 0)) (AtDynamic (p k)) (SV-Ptr P) (ne-off 0 (s≤s z≤n))))))
+        where
+          ne-off : ∀ j → j < hdr → ¬ AtDynamic {FS} (p j) ≡ AtDynamic (p k)
+          ne-off j j< refl = Data.Nat.Properties.<-irrefl refl (Data.Nat.Properties.<-≤-trans j< le)
+      inb : InBlk fs → InBlk fs₁₂
+      inb I hl {v} e = by-ref (HeapRef.ref-id (HeapLocation.heap-ref hl) Data.Nat.≟ r)
+        where
+          rf = HeapRef.ref-id (HeapLocation.heap-ref hl)
+          off = HeapLocation.heap-offset hl
+          by-off : rf ≡ r → Relation.Nullary.Dec (off < hdr)
+                 → rf < suc r × ExecFinal.in-block? {FS} (size-with (hdr + w) r (AllocState.block-size (falloc fs))) (AtDynamic hl) ≡ Data.Bool.true
+          by-off refl (Relation.Nullary.yes o<) =
+            Data.Nat.Properties.n<1+n r ,
+            trans (cong (off Data.Nat.<ᵇ_) (size-with-same (hdr + w) r (AllocState.block-size (falloc fs))))
+                  (<ᵇ-true (Data.Nat.Properties.<-≤-trans o< (Data.Nat.Properties.m≤m+n hdr w)))
+          by-off refl (Relation.Nullary.no o≮) =
+            Data.Empty.⊥-elim (Data.Nat.Properties.<-irrefl refl
+              (Data.Product.proj₁ (I (p off) (trans (sym (rest off (Data.Nat.Properties.≮⇒≥ o≮))) e))))
+          by-ref : Relation.Nullary.Dec (rf ≡ r)
+                 → rf < suc r × ExecFinal.in-block? {FS} (size-with (hdr + w) r (AllocState.block-size (falloc fs))) (AtDynamic hl) ≡ Data.Bool.true
+          by-ref (Relation.Nullary.yes er) = by-off er (off Data.Nat.<? hdr)
+          by-ref (Relation.Nullary.no ne) = after (I hl (trans (sym (other hl (λ eq → ne (cong HeapRef.ref-id eq)))) e))
+            where
+              after : rf < r × ExecFinal.in-block? {FS} (AllocState.block-size (falloc fs)) (AtDynamic hl) ≡ Data.Bool.true
+                    → rf < suc r × ExecFinal.in-block? {FS} (size-with (hdr + w) r (AllocState.block-size (falloc fs))) (AtDynamic hl) ≡ Data.Bool.true
+              after (lt , ib′) = Data.Nat.Properties.m<n⇒m<1+n lt , trans (cong (off Data.Nat.<ᵇ_) (sw-old (hdr + w) r (AllocState.block-size (falloc fs)) rf ne)) ib′
+
+  -- a header leaves the frames alone (D437)
+  keepH : ∀ {fs fs′ w lb lc lf lo} → Header fs fs′ w lb lc lf lo → Keep [] fs fs′
+  keepH {fs} {w = w} H = record { k-frame = cong AllocState.current-frame (h-alloc H) ; k-slots = cong AllocState.frame-slots (h-alloc H)
+                   ; k-saved = cong AllocState.saved-frames (h-alloc H) ; k-ret = h-ret H
+                   ; k-other = λ f x _ → cong (λ m → m f x) (h-stack H) ; k-halt = h-halt H ; k-log = h-log H ; k-inb = h-inb H
+                   ; k-freed = λ r e → trans (cong (λ al → AllocState.freed al r) (h-alloc H)) e
+                   ; k-next = Data.Nat.Properties.≤-trans (Data.Nat.Properties.n≤1+n _) (Data.Nat.Properties.≤-reflexive (cong AllocState.next-heap-ref (sym (h-alloc H))))
+                   ; k-size = λ r lt → trans (cong (λ al → AllocState.block-size al r) (h-alloc H))
+                                             (sw-old (hdr + w) (AllocState.next-heap-ref (falloc fs)) (AllocState.block-size (falloc fs)) r (λ eq → Data.Nat.Properties.<-irrefl eq lt))
+                   ; k-unfr = λ r e → inj₁ (trans (cong (λ al → AllocState.freed al r) (sym (h-alloc H))) e) }
+    where import Data.Nat.Properties
+
+  ranH : ∀ {hi fs fs′ w lb lc lf lo} → Header fs fs′ w lb lc lf lo → Ran 12 ((hdr + w) ∷ []) [] (AllocState.next-heap-ref (falloc fs)) hi fs fs′
+  ranH {fs = fs} {fs′ = fs′} {w = w} {lb} {lc} {lf} {lo} H = record { r-keep = keepH {fs} {fs′} {w} {lb} {lc} {lf} {lo} H
+                  ; r-pc = h-pc H ; r-next = cong AllocState.next-heap-ref (h-alloc H)
+                  ; r-born = trans (cong (λ al → AllocState.block-size al (AllocState.next-heap-ref (falloc fs))) (h-alloc H)) (size-with-same (hdr + w) (AllocState.next-heap-ref (falloc fs)) (AllocState.block-size (falloc fs))) , tt
+                  ; r-old = λ hl lt _ → h-other H hl (λ e → Data.Nat.Properties.<-irrefl (cong Once.Memory.HeapAddress.HeapRef.ref-id e) lt)
+                  ; r-top = λ x _ → trans (cong (λ g → LocState.stackMem (floc fs′) g x) (cong AllocState.current-frame (h-alloc H)))
+                                         (cong (λ m → m _ x) (h-stack H)) }
+    where import Data.Nat.Properties

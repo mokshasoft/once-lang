@@ -210,7 +210,9 @@
         } ''
           ${arches.${arch}.toolEnv}
           mkdir -p $out
-          once build --target ${arch} --host SeL4 --strata ${strata} -o $out/image \
+          # Capped like an exit test's compile (master compiles every image in under 1 s): a
+          # compiler that blows up on an image fails here, named, instead of running for hours.
+          timeout 5 once build --target ${arch} --host SeL4 --strata ${strata} -o $out/image \
             ${lib.concatMapStringsSep " " (program: "${program}") programs}
         '';
 

@@ -19,6 +19,8 @@
 
 open import Data.Nat using (ℕ; NonZero)
 open import Data.Bool using (Bool)
+import Data.Bool
+import Data.List
 open import Data.Maybe using (Maybe)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.CCC.FrameSemantics using (FrameSemantics; module FrameSemantics)
@@ -40,6 +42,7 @@ module Once.Adequacy.ArchCorrectness.FlatCore.SigOpFrame
   (rreg : State → Reg → ℕ)
   (memory : State → (ℕ → Maybe ℕ))
   (xhalted : State → Bool)
+  (heap-base : ℕ)            -- D472: the allocator record's address
   (link-claim : State → ℕ → ℕ → Set)
   (xpc : State → ℕ)
   (Program : Set)
@@ -59,12 +62,13 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Empty using (⊥)
 open import Data.List using (List; []; _∷_)
 open import Relation.Nullary using (¬_)
-open import Relation.Binary.PropositionalEquality using (refl; sym; trans; subst)
+open import Relation.Binary.PropositionalEquality using (refl; sym; trans; subst; cong)
 open import Once.SigOp.Info using (SigOpInfo)
+import Data.Bool.Properties
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open FlatMachine {FS} using (FlatState; flat-exec-instr; fetch; module FlatState)
 open FlatState using (flink; floc; fpc; falloc; fret)
-open AbstractExec {FS} using (exec-sigop-output; exec-sigop-halts; decode-at)
+open AbstractExec {FS} using (exec-sigop-output; exec-sigop-halts; decode-at; sigop-gate)
 open AllocState using (current-frame; frame-slots; saved-frames)
 open LocState using (regs; halted; heapMem; stackMem)
 open FrameSemantics FS using (Frame; frame-base)
@@ -78,14 +82,14 @@ open SigOpInfo using (baseA; sem)
 open import Data.Bool using (false)
 open import Data.Product using (∃)
 private
-  module CFC = FC FS slot-size word-eq Reg roles State rreg memory xhalted
+  module CFC = FC FS slot-size word-eq Reg roles State rreg memory xhalted heap-base
     using (AddrMap; HeapView; Memory; RetAddrs; StackWindows; amap; enc-sv; frames-of; readMem; slots; windows-above; windows-lower; windows-reanchor; module FlatCorr; module HeapView)
-  module CCC = CC o FS slot-size word-eq Reg roles State rreg memory xhalted link-claim
+  module CCC = CC o FS slot-size word-eq Reg roles State rreg memory xhalted heap-base link-claim
                  xpc Program compile-trace find-label blk-off blk-len exec modulus
     using (CompiledCorr; module CompiledCorr)
 open CFC using (HeapView; Memory; readMem; StackWindows; RetAddrs; frames-of; amap; enc-sv; slots
                ; windows-above; windows-reanchor; windows-lower)
-open CFC.HeapView using (hfront; haddr; lo; dom-below)
+open CFC.HeapView using (hfront; haddr; lo; dom-below; base-front)
 open CCC using (CompiledCorr)
 open CCC.CompiledCorr using (ret-eq; code-eq; dataCorr)
 
@@ -126,17 +130,31 @@ private
 ------------------------------------------------------------------------
 -- THE FRAME LEMMA.
 ------------------------------------------------------------------------
-sigop-arith-corr : ∀ {hv : HeapView} (prog : AbstractTrace) (fs : FlatState) (s s′ : State)
+-- D451: the sigop's step at a memory `x` (its own store, or none)
+private
+  sigop-at : ∀ (fs : FlatState) {A B} (si : SigOpInfo A B) → LocState FS → FlatState
+  sigop-at fs si x = record fs
+    { floc   = record (floc fs)
+        { regs     = writeReg (regs (floc fs)) Output (exec-sigop-output si (floc fs))
+        ; stackMem = stackMem x
+        ; heapMem  = heapMem x
+        ; halted   = exec-sigop-halts si (floc fs) Data.Bool.∨ Data.Bool.not (sigop-gate (falloc fs) si (floc fs))
+        ; faulted  = AbstractExec.exec-sigop-faults {FS} si (floc fs) Data.Bool.∨ (Data.Bool.not (sigop-gate (falloc fs) si (floc fs)) Data.Bool.∨ LocState.faulted (floc fs))
+        ; ev-log   = LocState.ev-log (floc fs) Data.List.++ AbstractExec.sigop-events {FS} si (floc fs) }
+    ; falloc = falloc fs
+    ; fpc    = suc (fpc fs) }
+
+sigop-arith-corr₀ : ∀ {hv : HeapView} (prog : AbstractTrace) (fs : FlatState) (s s′ : State)
                      {A B} (si : SigOpInfo A B) {W v : ℕ}
                  → CompiledCorr hv prog fs s
                  → hfront hv + W ≤ rreg s sp-reg
                  → flink fs ≡ nothing
                  → ArithRun s s′ W v
                  → v ≡ enc-sv hv (exec-sigop-output si (floc fs))
-                 → exec-sigop-halts si (floc fs) ≡ halted (floc fs)
+                 → (exec-sigop-halts si (floc fs) Data.Bool.∨ Data.Bool.not (sigop-gate (falloc fs) si (floc fs))) ≡ halted (floc fs)
                  → xpc s′ ≡ blk-off prog (suc (fpc fs))
-                 → CompiledCorr hv prog (flat-exec-instr (instr-sigop si) prog fs) s′
-sigop-arith-corr {hv} prog fs s s′ si {W} {v} cc room lk ar val hl pc′ = record
+                 → CompiledCorr hv prog (sigop-at fs si (floc fs)) s′
+sigop-arith-corr₀ {hv} prog fs s s′ si {W} {v} cc rm lk ar val hl pc′ = record
   { dataCorr = record
       { in1-eq      = trans (ar-role ar role-in1 (λ ())) (CFC.FlatCorr.in1-eq corr)
       ; out-eq      = trans (ar-out ar) val
@@ -150,6 +168,9 @@ sigop-arith-corr {hv} prog fs s s′ si {W} {v} cc room lk ar val hl pc′ = rec
       ; heap-eq     = λ hl′ d → trans (ar-mem ar (haddr hv hl′) (inj₁ (below hl′ d))) (CFC.FlatCorr.heap-eq corr hl′ d)
       ; lo-le       = subst (lo hv ≤_) (sym (ar-role ar role-sp (λ ()))) (CFC.FlatCorr.lo-le corr)
       ; stack-eq    = stack′
+      -- D488: the limit's word is below the block's frame, as the heap is
+      ; lim-eq      = λ e → trans (ar-mem ar heap-base (inj₁ (<-≤-trans (base-front hv) (m+n≤o⇒m≤o∸n (hfront hv) rm))))
+                                  (CFC.FlatCorr.lim-eq corr e)
       }
   ; pc-off  = pc′
   ; ret-eq  = subst (λ l → RetAddrs (blk-off prog) (memory s′) (link-claim s′) l
@@ -166,7 +187,7 @@ sigop-arith-corr {hv} prog fs s s′ si {W} {v} cc room lk ar val hl pc′ = rec
     -- every live heap cell is below the block's frame
     below : ∀ hl′ {w} → heapMem (floc fs) hl′ ≡ just w → haddr hv hl′ < sp ∸ W
     below hl′ d = <-≤-trans (dom-below hv (CFC.FlatCorr.dom-written corr hl′ d))
-                            (m+n≤o⇒m≤o∸n (hfront hv) room)
+                            (m+n≤o⇒m≤o∸n (hfront hv) rm)
     above : ∀ a → sp ≤ a → readMem (memory s′) a ≡ readMem (memory s) a
     above a le = ar-mem ar a (inj₂ le)
     -- the windows, re-anchored at the stack pointer (the current frame's base)
@@ -183,9 +204,25 @@ sigop-arith-corr {hv} prog fs s s′ si {W} {v} cc room lk ar val hl pc′ = rec
 -- abstract side, the run supplies: no link is pending there (it is not an
 -- entry), and its Pure argument decoded (D392), so it does not halt.
 ------------------------------------------------------------------------
+-- D451: a sigop whose answer is not in memory stores none (`sigop-store-id`)
+sigop-arith-corr : ∀ {hv : HeapView} (prog : AbstractTrace) (fs : FlatState) (s s′ : State)
+                     {A B} (si : SigOpInfo A B) {W v : ℕ}
+                 → in-memory? B ≡ false
+                 → CompiledCorr hv prog fs s
+                 → hfront hv + W ≤ rreg s sp-reg
+                 → flink fs ≡ nothing
+                 → ArithRun s s′ W v
+                 → v ≡ enc-sv hv (exec-sigop-output si (floc fs))
+                 → (exec-sigop-halts si (floc fs) Data.Bool.∨ Data.Bool.not (sigop-gate (falloc fs) si (floc fs))) ≡ halted (floc fs)
+                 → xpc s′ ≡ blk-off prog (suc (fpc fs))
+                 → CompiledCorr hv prog (flat-exec-instr (instr-sigop si) prog fs) s′
+sigop-arith-corr {hv} prog fs s s′ si nm cc rm lk ar val hl pc′ =
+  subst (λ x → CompiledCorr hv prog (sigop-at fs si x) s′) (sym (AbstractExec.sigop-store-id {FS} si (floc fs) nm))
+    (sigop-arith-corr₀ prog fs s s′ si cc rm lk ar val hl pc′)
+
 private
   module CRL = RL o FS slot-size word-eq
-    using (RunLow; run-link-nothing; sigop-decodes)
+    using (RunLow; run-link-nothing; sigop-decodes; sigop-gated)
 
 sigop-halts-pure : ∀ {A B} (si : SigOpInfo A B) (ls : LocState FS)
                  → effect si ≡ Pure
@@ -195,7 +232,7 @@ sigop-halts-pure si ls pe (a , d) rewrite pe | d = refl
 
 sigop-arith-step : ∀ {hv : HeapView} (prog : AbstractTrace) (fs : FlatState) (s s′ : State)
                      {A B} (si : SigOpInfo A B) {W v : ℕ}
-                 → CRL.RunLow prog fs → Internal (sem si)
+                 → CRL.RunLow prog fs → Internal (sem si) → in-memory? B ≡ false
                  → CompiledCorr hv prog fs s
                  → fetch prog (fpc fs) ≡ just (instr-sigop si)
                  → halted (floc fs) ≡ false
@@ -204,13 +241,15 @@ sigop-arith-step : ∀ {hv : HeapView} (prog : AbstractTrace) (fs : FlatState) (
                  → v ≡ enc-sv hv (exec-sigop-output si (floc fs))
                  → xpc s′ ≡ blk-off prog (suc (fpc fs))
                  → CompiledCorr hv prog (flat-exec-instr (instr-sigop si) prog fs) s′
-sigop-arith-step prog fs s s′ si r int cc ftq h room ar val pc′ =
-  sigop-arith-corr prog fs s s′ si cc room
+sigop-arith-step prog fs s s′ si r int nm cc ftq h rm ar val pc′ =
+  sigop-arith-corr prog fs s s′ si nm cc rm
     (CRL.run-link-nothing prog fs r ftq (λ _ ()) (λ ℓ bb fe → clash (trans (sym ftq) fe)))
     ar val
+    (trans (cong (λ g → exec-sigop-halts si (floc fs) Data.Bool.∨ Data.Bool.not g) (CRL.sigop-gated prog fs si r h ftq))
+    (trans (Data.Bool.Properties.∨-identityʳ _)
     (trans (sigop-halts-pure si (floc fs) (internal-pure int)
               (CRL.sigop-decodes prog fs si r h ftq (internal-pure int)))
-           (sym h))
+           (sym h))))
     pc′
   where
     clash : ∀ {ℓ bb} → just (instr-sigop si) ≡ just (instr-ctrl (c-entry ℓ bb)) → ⊥

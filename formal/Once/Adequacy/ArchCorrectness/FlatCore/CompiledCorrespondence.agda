@@ -69,6 +69,7 @@ module Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
   (rreg : State → Reg → ℕ)
   (memory : State → (ℕ → Maybe ℕ))
   (xhalted : State → Bool)
+  (heap-base : ℕ)            -- D472: the allocator record's address
   -- WHERE AN UNSPILLED RETURN ADDRESS LIVES (plan 0.65 G2, 2026-08-16). In the
   -- one-instruction window between a call and the callee's body marker the head
   -- pending return has not reached its stack cell yet, and where it IS is an ABI
@@ -103,8 +104,8 @@ open FlatState using (fpc; flink; falloc; fret; fclosure)
 open MemOps {FS} using (writeLoc; writeLocToHeap; readLoc)
 open FlatMachine {FS} using (fetch)
 open FlatState using (floc)
-open import Once.Memory.HeapAddress using (HeapLocation; sucHL; offsetHL; module HeapRef; module HeapLocation)
-open ExecFinal {FS} using (in-block?)
+open import Once.Memory.HeapAddress using (HeapLocation; sucHL; offsetHL; heap-loc; mkHeapRef; module HeapRef; module HeapLocation)
+open ExecFinal {FS} using (in-block?; live-size)
 open AllocState using (block-size)
 open import Data.Bool using (true)
 open HeapLocation using (heap-ref)
@@ -135,13 +136,13 @@ import Once.Adequacy.ArchCorrectness.FlatCore.RunLow as RL
 -- ambiguous at every engine consumer. Same instance either way (module
 -- application is by alias), so the two `RunAt`s are one type.
 private
-  module CFC = FC FS slot-size word-eq Reg roles State rreg memory xhalted
-    using (FlatCorr; HeapView; RetAddrs; descend-view; extend-view; frames-of; sep; slots; module FlatCorr; module HeapView)
+  module CFC = FC FS slot-size word-eq Reg roles State rreg memory xhalted heap-base
+    using (FlatCorr; HeapView; RetAddrs; descend-view; Floor; Fresh; extend-view; frames-of; sep; slots; module FlatCorr; module HeapView)
   module CRC = RC o FS slot-size word-eq
   module CRL = RL o FS slot-size word-eq
     using (RunLow)
 
-open CFC using (HeapView; FlatCorr; RetAddrs; frames-of; descend-view; extend-view; slots)
+open CFC using (HeapView; FlatCorr; RetAddrs; frames-of; descend-view; Floor; Fresh; extend-view; slots)
 open CFC.FlatCorr using (dom-fresh)
 open CFC.HeapView using (caddr; HDom; haddr; lo; hfront)
 open RegRoles roles using (sp-reg; in1-reg; out-reg)
@@ -298,6 +299,15 @@ record BlockSteps : Set₁ where
       → halted (floc fs) ≡ false
       → fetch prog (fpc fs) ≡ just (instr-reclaim-to n)
       → BlockStep hv prog fs s (instr-reclaim-to n)
+    -- a free past its gate (D470: `Input1` the base of a live block of `n` words):
+    -- in the machine its cells are cleared and it is marked freed; no code yet on
+    -- any arch (the free lists of D470 are plan 0.146 B1.6 item 3's next step)
+    bs-free-heap :
+      ∀ {hv : HeapView} prog fs s n → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just (instr-free-heap n)
+      → FlatMachine.block-base? {FS} n (readReg (regs (floc fs)) Input1) (falloc fs) ≡ true
+      → BlockStep hv prog fs s (instr-free-heap n)
     bs-worklist-init :
       ∀ {hv : HeapView} prog fs s n → CompiledCorr hv prog fs s
       → halted (floc fs) ≡ false
@@ -335,6 +345,7 @@ record BlockSteps : Set₁ where
       ∀ {hv : HeapView} prog fs s slot → CompiledCorr hv prog fs s
       → halted (floc fs) ≡ false
       → fetch prog (fpc fs) ≡ just (lea-slot slot)
+      → slot < frame-slots (falloc fs)   -- B1.7b: the machine's slot gate, passed
       → CRL.RunLow prog fs
       → BlockStep hv prog fs s (lea-slot slot)
     bs-save-closure-reg :
@@ -511,10 +522,24 @@ record BlockSteps : Set₁ where
       → fetch prog (fpc fs) ≡ just (store-at k)
       → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
       → HDom hv (offsetHL hl k)
-      → in-block? (block-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ true
+      → in-block? (live-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ true
       → writeLoc (floc fs) (AtDynamic (offsetHL hl k)) (readReg (regs (floc fs)) Output)
         ≡ writeLocToHeap (floc fs) (offsetHL hl k) (readReg (regs (floc fs)) Output)
       → BlockStep hv prog fs s (store-at k)
+    -- D470/D472: the allocator record's words — a load reads a written record
+    -- cell, a store writes one of the record's `rec-size` (mapped: `rec-dom`)
+    bs-load-rec :
+      ∀ {hv : HeapView} prog fs s k w → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just (load-rec k)
+      → heapMem (floc fs) (heap-loc (mkHeapRef 0) k) ≡ just w
+      → BlockStep hv prog fs s (load-rec k)
+    bs-store-rec :
+      ∀ {hv : HeapView} prog fs s k → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just (store-rec k)
+      → RecW k
+      → BlockStep hv prog fs s (store-rec k)
     -- plan 0.123 B.4 α: an address at an offset, a cell of its block (D385),
     -- so a mapped one; the run is handed over for an arch whose address is a
     -- real add (riscv64's `addi`: its no-wrap is the frontier's register range).
@@ -527,6 +552,24 @@ record BlockSteps : Set₁ where
       → in-block? (block-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ true
       → CRL.RunLow prog fs
       → BlockStep hv prog fs s (addr-at k)
+    -- D454: a load and a store through a STACK pointer — a slot inside a live
+    -- frame's window, the gate's outcome (the instruction is the heap's; an
+    -- offset ADDRESS is a heap block's only)
+    bs-load-at-stack :
+      ∀ {hv : HeapView} prog fs s k f j w → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just (load-at k)
+      → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f j)
+      → ExecFinal.frame-gate {FS} (falloc fs) k (just (AtStack f j)) ≡ just (AtStack f j)
+      → LocState.stackMem (floc fs) f (k + j) ≡ just w
+      → BlockStep hv prog fs s (load-at k)
+    bs-store-at-stack :
+      ∀ {hv : HeapView} prog fs s k f j → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just (store-at k)
+      → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f j)
+      → ExecFinal.frame-gate {FS} (falloc fs) k (just (AtStack f j)) ≡ just (AtStack f j)
+      → BlockStep hv prog fs s (store-at k)
     ------------------------------------------------------------------
     -- GROUP 3b, the band's other half — CONTROL, `out-nz`, and the two frame
     -- markers.
@@ -561,6 +604,7 @@ record BlockSteps : Set₁ where
       → halted (floc fs) ≡ false
       → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-tag-zero n))
       → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
+      → ExecFinal.frame-gate {FS} (falloc fs) 0 (just loc) ≡ just loc
       → readLoc (floc fs) loc ≡ just (SV-Tag k)
       → memory s (rreg s in1-reg + 0) ≡ just k
       → FlatMachine.find-label {FS} prog n ≡ just j
@@ -570,6 +614,7 @@ record BlockSteps : Set₁ where
       → halted (floc fs) ≡ false
       → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-tag-zero n))
       → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
+      → ExecFinal.frame-gate {FS} (falloc fs) 0 (just loc) ≡ just loc
       → FlatMachine.tag-test {FS} (readLoc (floc fs) loc) ≡ just false
       → memory s (rreg s in1-reg + 0) ≡ just (suc m)
       → BlockStep hv prog fs s (instr-ctrl (c-branch-tag-zero n))
@@ -594,7 +639,7 @@ record BlockSteps : Set₁ where
       ∀ {hv : HeapView} prog fs s n b r rpc rest → CompiledCorr hv prog fs s
       → halted (floc fs) ≡ false
       → fetch prog (fpc fs) ≡ just (instr-ctrl (c-entry n b))
-      → (lo' : ℕ) (lo'≤lo : lo' ≤ lo hv) (front-lo' : hfront hv ≤ lo')
+      → (lo' : ℕ) (lo'≤lo : lo' ≤ lo hv) (front-lo' : Floor hv lo')
       → lo' ≤ rreg s sp-reg ∸ b * slot-size
       → b * slot-size ≤ rreg s sp-reg
       → frame-slots (falloc fs) ≡ 0
@@ -614,22 +659,8 @@ record BlockSteps : Set₁ where
       → fret fs ≡ rpc ∷ rest
       → BlockStepAt hv (descend-view hv lo' lo'≤lo front-lo') prog fs s
                     (instr-ctrl (c-entry n b))
-    -- plan 0.107: THE START (pc 0) — the heap register at the heap's base,
-    -- then the outermost frame, reserved exactly as a body marker reserves its
-    -- own (`do-thunk`). At the start nothing is owed (`fret ≡ []`) and the
-    -- view's frontier IS the base — one word up (D367: no heap address is 0).
-    bs-c-start :
-      ∀ {hv : HeapView} prog fs s b → CompiledCorr hv prog fs s
-      → halted (floc fs) ≡ false
-      → fetch prog (fpc fs) ≡ just (instr-ctrl (c-start b))
-      → (lo' : ℕ) (lo'≤lo : lo' ≤ lo hv) (front-lo' : hfront hv ≤ lo')
-      → lo' ≤ rreg s sp-reg ∸ b * slot-size
-      → b * slot-size ≤ rreg s sp-reg
-      → rreg s sp-reg < modulus
-      → hfront hv ≡ slot-size      -- D367: the heap starts one word up
-      → fret fs ≡ []
-      → BlockStepAt hv (descend-view hv lo' lo'≤lo front-lo') prog fs s
-                    (instr-ctrl (c-start b))
+    -- (D488: THE START left the block steps: it branches — its own room check —
+    -- so it is `EventEngine.Supply.start-step`, as the room check is.)
     -- `c-ret` (D095): the two shapes only the RUN knows — the return stack is
     -- a cons and the released budget IS the reservation in force — plus the
     -- frame it returns into, which `RetMatch` pairs with the return stack for
@@ -703,7 +734,7 @@ record BlockSteps : Set₁ where
       → heapMem (floc fs) (sucHL hl) ≡ just (SV-Code ℓ)
       → HDom hv (sucHL hl)
       → FlatMachine.find-thunk {FS} prog ℓ ≡ just j
-      → (lo' : ℕ) (lo'≤lo : lo' ≤ lo hv) (front-lo' : hfront hv ≤ lo')
+      → (lo' : ℕ) (lo'≤lo : lo' ≤ lo hv) (front-lo' : Floor hv lo')
       → lo' ≤ rreg s sp-reg ∸ slot-size
       → slot-size ≤ rreg s sp-reg
       -- THE MACHINE IS FINITE (plan 0.70 phase C). x86-64's `call` reserves the
@@ -728,7 +759,7 @@ record BlockSteps : Set₁ where
       → halted (floc fs) ≡ false
       → fetch prog (fpc fs) ≡ just (instr-ctrl (c-call-fn f))
       → FlatMachine.find-fn {FS} prog f ≡ just j
-      → (lo' : ℕ) (lo'≤lo : lo' ≤ lo hv) (front-lo' : hfront hv ≤ lo')
+      → (lo' : ℕ) (lo'≤lo : lo' ≤ lo hv) (front-lo' : Floor hv lo')
       → lo' ≤ rreg s sp-reg ∸ slot-size
       → slot-size ≤ rreg s sp-reg
       → rreg s sp-reg < modulus
@@ -758,8 +789,8 @@ record BlockSteps : Set₁ where
            → svm-below (next-heap-ref (falloc fs)) (stackMem (floc fs) f k))
       → (∀ hl → ref-id (heap-ref hl) ≡ next-heap-ref (falloc fs)
               → heapMem (floc fs) hl ≡ nothing)
-      → (room : hfront hv + slots n ≤ rreg s sp-reg)
+      → (rm : Fresh hv n (rreg s sp-reg))
       → rreg s sp-reg < modulus
       → BlockStep (extend-view hv (next-heap-ref (falloc fs)) n
-                               (dom-fresh (dataCorr cc)) room)
+                               (dom-fresh (dataCorr cc)) rm)
                   prog fs s (instr-alloc-heap n)

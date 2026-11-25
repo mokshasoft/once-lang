@@ -117,3 +117,12 @@ exhausted≢osp = letter≢osp host-exhausted-symbol 'e' (toList "xhausted") ref
 -- The two Host entries are apart.
 leave≢exhausted : host-leave-symbol ≢ host-exhausted-symbol
 leave≢exhausted ()
+
+-- D472: THE ALLOCATOR RECORD's symbol — a program file's own `.bss` record
+-- (local: each program has its own), where the cell allocator's lists are.
+-- No name of the program's.
+alloc-record-symbol : String
+alloc-record-symbol = "once_alloc_record"
+
+record≢osp : ∀ (cn : CanonicalName) → alloc-record-symbol ≢ once-symbol-path cn
+record≢osp = letter≢osp alloc-record-symbol 'a' (toList "lloc_record") refl refl

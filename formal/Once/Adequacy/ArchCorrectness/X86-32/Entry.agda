@@ -1,0 +1,394 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+------------------------------------------------------------------------
+-- Once.Adequacy.ArchCorrectness.X86-32
+--
+-- x86-32 backend correctness, CONSTRUCTED via the shared `FlatFromObs`.
+--
+-- PLAN 0.66 X2/X3: `x86-32-conc-flat-sim` — the whole-cloth postulate that used
+-- to assume the entire simulation here — is DELETED, and the apex now proves it
+-- from the ConcFlatSim assembly, exactly as x86-64 and riscv64 do. Deleting it
+-- is what made this arch's model answerable at all: it is what turned `esp ≡ 0`
+-- and the `ud2` float lowering into type errors (D107's lesson, D109's find).
+-- Explicit trust surface: `asm-sem` DEFINED, `assemble-correct` = `refl`,
+-- `flat-trace` DEFINED, `ir-flat-correct` PROVED. The one remaining seam
+-- `asm-trace-correct` is DECOMPOSED here (Plan 0.54 rung B step 2) into an
+-- honest external axiom + a provable simulation — see below.
+------------------------------------------------------------------------
+
+-- Plan 0.63 (D089): parameterised by the DEFINITION'S identity, which keys its
+-- labels. `o` is constant for a whole definition, so it belongs on the module
+-- rather than on every lemma — which is what keeps the statements below
+-- UNCHANGED: the emitter is imported APPLIED, so each call site reads as before.
+open import Once.Spec.Name using (CanonicalName)
+
+
+import Once.Adequacy.ArchCorrectness.X86-32.ResourceBounds as RB
+
+open import Data.List using (List)
+open import Once.Denotation.Program using (IRFun)
+open import Once.IR.Semantics.Trace using (Interp; module Interp)
+open Interp using (sig)
+module Once.Adequacy.ArchCorrectness.X86-32.Entry
+  (o : CanonicalName)
+  -- Plan 0.105: the interpretation the program runs against.
+  (ι : Interp)
+  -- (`HeapRoom`, `StackRoom`, `CallRoom` stood here until plan 0.123 A.4 step 5:
+  -- the room checks and their budget, `FlatCore.Budget`, retired them.)
+  -- PLAN 0.70 PHASE C: the machine is finite (D087) — a fact about the running
+  -- program that a loader or the emitter establishes, and a parameter is the
+  -- hole its proof slots into.
+  (x86-32-reg-range : RB.RegRange o ι)
+  -- …and the emitted `add` sites' range obligations, bundled: `add` computes
+  -- `W.⊕` unconditionally (D054 — wraparound is correct, defined semantics, so
+  -- no no-overflow precondition may sit on the instruction), which moves the
+  -- range obligation to the consumer. All are LAYOUT facts, never claims about
+  -- user arithmetic.
+  (x86-32-addr-no-wrap : RB.AddrNoWrap o ι)
+  -- …and the LITERAL seam (phase D): an emitted immediate fits in a machine
+  -- word. Not a linker fact like the rooms — D054 makes an elaborated literal
+  -- in range BY CONSTRUCTION; this is the frontend's range, not yet threaded.
+  (x86-32-lit-fits : RB.LitFits o ι) where
+
+import Once.CCC.Machine.SMCore
+open import Data.Nat using (ℕ; _+_; _<_; z≤n; s≤s; suc; zero)
+open import Data.Unit using (tt)
+open import Data.Maybe using (Maybe; just; nothing)
+open import Data.List using ([])
+open import Once.Spec.Trace using (_⊑ᵗ⟨_⟩_)
+open import Once.Adequacy.MachineTrace using (module Machine)
+import Once.Target.Arch
+open import Once.Adequacy.BudgetApex (Once.Target.Arch.arch-numerics Once.Target.Arch.x86-32) using (budget-apex-⊑; BudgetFact⊑; budget-fact-of)
+open import Once.Denotation.Program using (runIR)
+open import Once.IR.Semantics.Trace using (pureHalf)
+open import Data.Bool using (Bool; false)
+open import Data.Product using (proj₁; proj₂; _,_; _×_)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
+open import Once.Memory.HeapAddress using (HeapLocation; sucHL; heap-loc; mkHeapRef; module HeapLocation; module HeapRef)
+open HeapLocation using (heap-offset)
+open import Once.CCC.Machine.SMCore using (module AllocState; rec-size; RecW; recw-<)
+open AllocState using (current-frame)
+open import Once.CCC.FrameSemantics using (module FrameSemantics)
+open FrameSemantics using (frame-base)
+open import Once.CCC.Machine.Flat using (module FlatMachine)
+open import Once.CCC.Target.X86-32.Syntax using (slot-size)
+open import Once.CCC.Target.X86-32.AbstractToX86-32 using (slot-to-disp)
+open import Data.Empty using (⊥)
+open import Data.Nat using (_*_)
+open import Data.Nat.Properties using (+-comm; +-assoc; ≤-refl; ≤-reflexive; m≤m+n; *-cancelʳ-≡; +-cancelˡ-≡; +-monoʳ-<; *-monoˡ-<; m<m+n)
+open import Once.Adequacy.CPU.X86-32 using (call-at-x86-32; ev-x86-32; block-env; run-trace-x86-32)
+import Once.CCC.Target.X86-32.File as RF
+import Data.Maybe
+open import Data.Sum using (inj₁; inj₂)
+open import Once.IR.Semantics.Event using (SigOpEvent)
+-- `val-x86-32` lives with the arith simulation on this arch (x86-64 re-exports
+-- its own from `Adequacy.CPU`).
+open import Once.Adequacy.ArchCorrectness.ArithSimX86-32 using (val-x86-32)
+import Once.Arith.Backend.X86-32.RunTrace as RTx
+import Once.CCC.Target.X86-32.Semantics as X
+import Once.CCC.Target.X86-32.Syntax as XS
+open import Once.CCC.Label using (LabelId; thunk)
+open import Once.IR using (IR)
+open import Once.IRTy using (Unit)  -- Plan 0.52 M2: IRTy Unit
+open import Once.Adequacy.CPU using (arch-semantics)
+open import Once.Target.Arch using (x86-32)
+open import Once.Arith.Backend.CallAnswer using (answer-at)
+open import Once.Denotation.ProgramTrace using (⟦_⟧IRᵗ)
+import Once.IR as IR
+open import Once.Denotation.Program using (irProgram; LinkedProgram; IRProgram)
+open Once.Denotation.Program.IRProgram using (main; table)
+open import Once.Target.Arch using (arch-numerics)
+open import Once.CCC.Target.X86-32.Layout using (module Regions; module StackSlots)
+open StackSlots using (stack-addr)
+open Regions using (InStack)
+open import Once.CCC.Target.X86-32.FrameInstantiation using (X86-32Frame)
+open import Once.CCC.Target.X86-32.FrameInstantiation using () renaming (x86-32-frame-semantics to x86-32-frame-semantics-at)
+open import Once.CCC.FrameSemantics using (FrameSemantics)
+
+x86-32-frame-semantics : FrameSemantics
+x86-32-frame-semantics = x86-32-frame-semantics-at ι
+open import Once.CCC.Target.X86-32.AbstractToX86-32
+  using (compile-trace; compile-trace-cnt; compile-trace-cnt-agrees)
+-- D100: the assembler's precondition (distinct emitted local labels), threaded
+-- into this arch's `loader-faithful` axiom.
+open import Once.CCC.Codegen.RoomChecks using (room-checks)
+open import Once.Adequacy.RoomChecksEvents using (module RoomEvents)
+
+-- Plan 0.91 S1 (D213): `program-bound` is GONE. It was introduced by Plan 0.54
+-- rung D / D087 as a per-arch RESOURCE BOUND, threaded from the apex so the
+-- top-level statement said "for any program bound" — but `ir-obs-correct`
+-- recurses STRUCTURALLY on the IR and never read the bound as a fact, and the
+-- apex could not discharge `ir-size ir < program-bound` for an `ir` that does
+-- not exist yet (that was the false `entry-size`). The premise and the whole
+-- telescope are deleted; this `open` takes no bound.
+
+-- The FlatFromObs bundle at the x86-32 params (concrete machine now VISIBLE).
+------------------------------------------------------------------------
+-- THE ENTRY FRAME, CONSTRUCTED (Plan 0.54 rung D).
+--
+-- `FlatFromObs` used to postulate this as an opaque `Frame FS`. Opaque means
+-- nothing about it is provable — which is why the apex needed a SECOND
+-- postulate, `entry-frame-base`, just to say that its base is the `%esp` the
+-- loader hands `main`. Two postulates to express one fact, and the second one
+-- unprovable BY CONSTRUCTION.
+--
+-- An x86-32 `Frame` is a `StackAddr` (an address plus a proof it lies in the
+-- stack region) tagged with its depth, with `frame-base = addr` (plan 0.134).
+-- So the frame can simply BE the loader's `%esp` at depth zero, and `entry-frame-base` collapses to `refl` (see
+-- `entry-frame-base` below — a theorem now).
+--
+-- What survives is the one irreducible loader fact: that the `%esp` we are
+-- handed is inside the stack region. `stack-top` itself is already postulated
+-- next door in `…X86-32.Semantics` as "the %esp the loader hands main"; this
+-- says where it lives. It is the honest residue of the two it replaces.
+------------------------------------------------------------------------
+postulate
+  stack-top-in-stack : InStack X.stack-top
+
+entry-frame-x86-32 : X86-32Frame
+entry-frame-x86-32 = stack-addr X.stack-top stack-top-in-stack , 0
+
+-- the entry state (`FlatFromObs`'s, `Interface.start-at`): outside every frame, nothing in its
+-- heap or log, every register the tag filler (D074)
+entry-regs : Once.CCC.Machine.SMCore.Registers x86-32-frame-semantics
+entry-regs = Once.CCC.Machine.SMCore.mkRegs (Once.CCC.Machine.SMCore.SV-Tag 0) (Once.CCC.Machine.SMCore.SV-Tag 0)
+
+entry-alloc : ℕ → Once.CCC.Machine.SMCore.AllocState {x86-32-frame-semantics}
+entry-alloc slots = Once.CCC.Machine.SMCore.mkAllocState entry-frame-x86-32 [] slots 0 1 (λ _ → 0) (λ _ → false)
+
+entry-s : Once.CCC.Machine.SMCore.LocState x86-32-frame-semantics
+entry-s = Once.CCC.Machine.SMCore.mkLocState entry-regs (λ _ _ → nothing) (λ _ → nothing) false [] false false
+
+start-flat : FlatMachine.FlatState {x86-32-frame-semantics}
+start-flat = FlatMachine.mkFlat {x86-32-frame-semantics} entry-s (entry-alloc 0) 0
+
+
+-- A THEOREM: the entry frame IS the loader's `%esp`
+-- (`entry-frame-x86-32 = stack-addr stack-top _ , 0`) and `frame-base` on x86-32 is
+-- the `addr` projection, so this holds DEFINITIONALLY. Both `entry-corr`'s
+-- `sp-eq` and the `stack-eq` floor bound consume it.
+entry-frame-base : frame-base x86-32-frame-semantics
+                     (current-frame (entry-alloc 0)) ≡ X.stack-top
+entry-frame-base = refl
+as32 = arch-semantics x86-32
+
+------------------------------------------------------------------------
+-- Plan 0.107: THE LOADER AXIOM IS GONE. `x86-32-loader-faithful` stood here,
+-- quantified over the TEXT the compiler emitted — so it trusted every piece of
+-- code that built the text (D261's riscv64 prologue hid behind its sibling).
+-- What replaces it is a THEOREM over the FILE (`file-flat-x86-32` below). The only
+-- trust left is `as-faithful`.
+------------------------------------------------------------------------
+
+-- ── (B) THE SIMULATION, WIRED to the ConcFlatSim assembly.
+-- The apex node `conc-flat-sim-just` is DEFINED via `events-agree`; every gap it
+-- rests on is a NAMED obligation on THIS path (deleting it fails the typecheck).
+open FlatMachine {x86-32-frame-semantics} using (mkFlat)
+
+-- THE MEMORY BOUND, now supplied HERE rather than postulated inside the
+-- correspondence (2026-08-05): a statement that a finite resource does not
+-- run out belongs at the apex,
+-- and moving it means the correspondence carries NO resource postulate at all.
+-- The unapplied imports let the statement be written before `ConcFlatSim` is
+-- instantiated (it is one of its arguments).
+
+open import Once.Adequacy.ArchCorrectness.X86-32.ConcFlatSim o
+  x86-32-frame-semantics refl refl
+  x86-32-reg-range
+  (RB.AddrNoWrap.ret-no-wrap x86-32-addr-no-wrap)
+  (RB.LitFits.tag-fits x86-32-lit-fits) (RB.LitFits.lit-fits x86-32-lit-fits) (RB.float-fits o ι)
+ 
+  using (module RunContext′; module FlatSimulation)
+open FlatSimulation.C using ()
+open FlatSimulation.C.FlatCorrespondence using (HeapView)
+open FlatSimulation using ()
+open FlatSimulation.CompiledCorrespondence using (CompiledCorr)
+open RunContext′ using ()
+open RunContext′.RunContext using (EntryLike)
+open import Once.CCC.Machine.FlatStoreWF x86-32-frame-semantics using (FlatWF; sv-below)
+open import Once.CCC.Machine.SMCore using (AbstractReg; AbstractTrace; Input1; Output; readReg; SV-Ptr; SV-Lit; module LocState)
+open LocState using (regs)
+
+-- The heap address map is CARRIED by the correspondence and EXTENDED at each
+-- `instr-alloc-heap` (the fresh block lands at the concrete `%esi` frontier), so
+-- the apex no longer postulates a global `enc-hl` / `LiveIn` / injectivity /
+-- successor law / entry-address — it EXHIBITS the entry view and the extension
+-- proves the rest. At entry nothing is allocated yet: the domain is EMPTY, the
+-- frontier is 0 (= the concrete `%esi` of `emptyRegFile`), and the placeholder
+-- address map only has to be slot-linear (`haddr-suc`) and put the erased Unit
+-- filler cell at 0 — which the x86 entry registers (all 0) match exactly.
+-- D096: THE CODE MAP. A code address is the label's index in the compiled
+-- program, so the entry view is now indexed by the program — and the map is
+-- literally the scan the concrete `lea`/`call` perform, which is what makes
+-- `entry-corr`'s `code-eq` `refl` on the found case. `0` for an unresolvable
+-- label is a filler that no emitted program reaches (`emitted-code-addr-has-body`).
+-- a label's code index: where the scan found it (0 if nowhere)
+code-pick : Maybe ℕ → ℕ
+code-pick (just j) = j
+code-pick nothing  = 0
+
+code-map : XS.Program → LabelId → ℕ
+code-map prog ℓ = code-pick (X.find-label prog (thunk ℓ))
+
+-- D472: the record's cells — ref 0, below `rec-size`
+RecDom : HeapLocation → Set
+RecDom hl = (HeapRef.ref-id (HeapLocation.heap-ref hl) ≡ 0) × RecW (heap-offset hl)
+
+entry-view : XS.Program → HeapView
+entry-view cprog = record
+  -- D472: the region starts at `heap-base`; its first `rec-size` words are the
+  -- allocator record (ref 0), mapped from the start, and the frontier is past them
+  { haddr     = λ hl → X.heap-base + slot-to-disp (heap-offset hl)
+  ; caddr     = code-map cprog
+  ; HDom      = RecDom
+  ; hfront    = X.heap-front
+  ; haddr-suc = suc-law
+  ; haddr-inj = rec-inj
+  ; dom-below = rec-below
+  -- THE ENTRY HIGH-WATER MARK (plan 0.54 rung D step 3): nothing has run yet, so
+  -- the lowest %esp ever reached IS the loader's `stack-top`, and the whole gap
+  -- `[0, stack-top)` is virgin — which `entry-corr.untouched` discharges from
+  -- `emptyMemory`. `front-lo`: the stack top is above the heap base (D367).
+  ; lo        = X.stack-top
+  ; front-lo  = m≤m+n X.heap-front X.stack-span
+  -- D367: the heap starts one word up, so no mapped address is 0
+  ; front-pos = s≤s z≤n
+  ; dom-pos   = λ _ → s≤s z≤n
+  ; rec-dom   = λ k lt → refl , lt
+  ; rec-addr  = refl
+  -- D488: the stack limit is the start's; until it runs nothing reads it
+  ; hlim       = X.heap-front
+  ; hstarted   = false
+  ; dom-above  = rec-above
+  ; base-front = m<m+n X.heap-base (s≤s z≤n)
+  ; front-lim  = λ ()
+  ; lim-lo     = λ ()
+  }
+  where
+    rec-above : ∀ {hl : HeapLocation} → RecDom hl → X.heap-base < X.heap-base + slot-to-disp (heap-offset hl)
+    rec-above {heap-loc _ zero}    (_ , ())
+    rec-above {heap-loc _ (suc o)} _ = m<m+n X.heap-base (s≤s z≤n)
+    suc-law : ∀ (hl : HeapLocation) → X.heap-base + slot-to-disp (heap-offset (sucHL hl))
+                                    ≡ (X.heap-base + slot-to-disp (heap-offset hl)) + slot-size
+    suc-law (heap-loc r o) = trans (cong (X.heap-base +_) (+-comm slot-size (o * slot-size)))
+                                   (sym (+-assoc X.heap-base (o * slot-size) slot-size))
+    rec-inj : ∀ {a b : HeapLocation} → RecDom a → RecDom b
+            → X.heap-base + slot-to-disp (heap-offset a) ≡ X.heap-base + slot-to-disp (heap-offset b) → a ≡ b
+    rec-inj {heap-loc (mkHeapRef .0) oa} {heap-loc (mkHeapRef .0) ob} (refl , _) (refl , _) e =
+      cong (heap-loc (mkHeapRef 0)) (*-cancelʳ-≡ oa ob slot-size (+-cancelˡ-≡ X.heap-base _ _ e))
+    rec-below : ∀ {hl : HeapLocation} → RecDom hl → X.heap-base + slot-to-disp (heap-offset hl) < X.heap-front
+    rec-below {heap-loc _ o} (_ , lt) = +-monoʳ-< X.heap-base (*-monoˡ-< slot-size (recw-< o lt))
+
+-- (`main-heap-moded` WAS A POSTULATE here: every IR is heap-moded now,
+-- `ShapeTable.heap-moded`, and the run context no longer carries it.)
+
+-- Initial-state correspondence, PROVEN: the concrete `initState` (all registers 0,
+-- empty memory, pc 0, running) relates to the flat entry state `mkFlat entry-s
+-- entry-alloc 0`. The four register equalities all reduce to `enc-hl (entry heap-
+-- loc) ≡ 0` (the `enc-hl-entry` leaf); halt/pc are refl; heap-eq is vacuous
+-- (`nothing ≡ nothing`, the entry heap is empty). No longer a postulate.
+entry-corr : ∀ (prog : AbstractTrace)
+           → CompiledCorr (entry-view (compile-trace prog)) prog
+                          start-flat X.initState
+entry-corr prog = record
+  { dataCorr = record
+      { in1-eq  = refl
+      -- D097: the entry `%ebx` is 0 and the entry `fclosure` is the D074 tag
+      -- filler, which encodes to 0 — the same match the other registers make.
+      ; clos-eq  = refl
+      ; out-eq  = refl
+      ; halt-eq = refl
+      ; sp-eq  = sym entry-frame-base   -- initState's %esp IS the entry frame's base
+      ; frontier-eq  = refl          -- initState's %esi IS the heap base, the entry frontier (D367)
+      -- D472: the record's cells are ref 0's, below the counter (1)
+      ; dom-fresh = λ d → subst (_< 1) (sym (proj₁ d)) (s≤s z≤n)
+      -- …and nothing needs to be: the entry heap is empty (`dom-written`'s
+      -- hypothesis is `nothing ≡ just w`) and no block has a size yet
+      -- (`dom-sized`'s is `offset < 0`). Both absurd, both `λ _ ()`.
+      ; dom-written = λ _ ()
+      ; dom-sized = λ _ ()
+      ; heap-eq = λ _ ()
+      -- LAYOUT SEPARATION at entry: the heap frontier is 0 and both the mark and
+      -- %esp are the loader's `stack-top`, so the heap is (vacuously) below the
+      -- stack. This is the base case of the invariant that replaced the
+      -- disjointness postulates (`front-lo` in `entry-view`).
+      ; lo-le = ≤-refl          -- initState's %esp IS `stack-top` (the entry mark)
+      -- THE VIRGIN REGION at entry: `initState`'s memory is `emptyMemory`, so
+      -- every address reads `nothing` — no address arithmetic needed.
+      -- THE RESERVED FRAME AGREES — VACUOUSLY, now that `C.Window` is
+      -- one-directional (Plan 0.54 rung D): the entry frame is unwritten
+      -- abstractly (`λ _ _ → nothing`), and nothing is claimed about cells the
+      -- abstract side has not written. The old bidirectional statement ALSO had
+      -- to say the concrete cells were unmapped; that happened to be true here
+      -- (`emptyMemory`) but was false at every later frame entry, which is why
+      -- it had to go.
+      -- Plan 0.63 (D085): the frame LIST at entry is one frame long
+      -- (`entry-alloc`'s `saved-frames` is `[]`), so the tail is `tt` and the
+      -- floor bound is `entry-frame-base` — the loader's `%esp` IS the entry
+      -- frame's base, so the mark sits exactly at it.
+      ; stack-eq = ≤-reflexive (sym entry-frame-base) , (λ _ _ _ ()) , tt
+      -- D488: the limit is not set before the start
+      ; lim-eq = λ ()
+      }
+  ; pc-off = refl
+  -- NOTHING IS OWED AT ENTRY (D093): `mkFlat` starts the ghost return stack
+  -- empty, so the pending-return component is trivially `tt`. Written out
+  -- rather than left to eta — a field Agda solves silently is a field nobody
+  -- notices going stale.
+  ; ret-eq = tt
+  -- …and the code map IS the program's own scan, by construction
+  ; code-eq = λ ℓ j fl → cong-pick fl
+  }
+  where cong-pick : ∀ {ℓ j} → X.find-label (compile-trace prog) (thunk ℓ) ≡ just j
+                  → code-map (compile-trace prog) ℓ ≡ j
+        cong-pick e = cong code-pick e
+
+-- The ENTRY store-WF: at the entry state the heap and stack are empty and every
+-- register holds the tag filler `SV-Tag 0` (D074) — `sv-below` puts no
+-- constraint on a non-pointer, so every case is `tt`. Everything downstream is
+-- the flat-machine theorem (`FlatStoreWF.flat-wf-step`), applied once per step
+-- inside `ccc-step-bs` — no per-instruction obligation here.
+entry-wf : ∀ (B : ℕ) → FlatWF (mkFlat entry-s (entry-alloc B) 0)
+entry-wf B = record
+  { wf-regs = reg-below ; wf-heap = λ _ → tt ; wf-stack = λ _ _ → tt ; wf-fresh = λ _ _ → refl }
+  where
+    reg-below : ∀ (r : AbstractReg) → sv-below 1 (readReg (regs entry-s) r)
+    reg-below Input1  = tt
+    reg-below Output  = tt
+
+
+------------------------------------------------------------------------
+-- THE RUN CONTEXT AT ENTRY (2026-07-30, the vacuity fix).
+--
+-- Every state/program residual in ConcFlatSim is now conditioned on "this program
+-- is compiler output and this state is one it can reach" — without that they were
+-- FALSE (⊥ was derivable from six of them by hand-building a violating state). The
+-- apex is where the hypothesis is EXHIBITED, and it costs nothing real: the
+-- program IS `ir-to-trace ir`, and the entry state IS a start state.
+------------------------------------------------------------------------
+
+-- the loader's state is a legitimate starting state: first instruction, running,
+-- nothing allocated on stack or heap, no block sized yet
+-- NB `frame-slots ≡ 0` is GONE from `EntryLike`: the loader hands `main` a frame the
+-- prologue already reserved (`ir-stack-budget`), which is exactly what makes the
+-- slot residuals dischargeable instead of false. See the note in `FlatFromObs`.
+open import Once.Type using (FitsInReg)
+entry-like : ∀ (B : ℕ) → EntryLike (mkFlat entry-s (entry-alloc B) 0)
+entry-like B = refl , refl , refl , refl , refl
+             , (λ _ → refl) , (λ _ _ → refl) , (λ _ → refl)
+             -- no register holds ANY pointer: every entry register is the
+             -- tag filler `SV-Tag 0` (D074)
+             , no-ptr
+             -- the entry state is not inside a call window (plan 0.65 G2)
+             , refl
+             -- no register holds a literal either (D397's word range starts)
+             , no-lit
+  where no-ptr : ∀ (r : AbstractReg) loc
+               → readReg (regs entry-s) r ≡ SV-Ptr loc → ⊥
+        no-ptr Input1  loc ()
+        no-ptr Output  loc ()
+        no-lit : ∀ (r : AbstractReg) {A} (p : FitsInReg A) v
+               → readReg (regs entry-s) r ≡ SV-Lit p v → ⊥
+        no-lit Input1  p v ()
+        no-lit Output  p v ()

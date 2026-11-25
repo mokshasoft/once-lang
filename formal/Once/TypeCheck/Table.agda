@@ -29,6 +29,8 @@ open import Once.Spec.Surface.Generators
 open import Once.Type.DecEq using (_≟T_)
 open import Once.Functor.Decide using (wfFun?)
 open import Once.IR as IR using (IR)
+open import Once.Surface.Map using (Map; mp-id; mp-fst; mp-snd; mp-terminal; mp-inl; mp-inr; mp-initial; mp-apply; mp-In; mp-Out; mp-toFloat)
+open import Once.Arith.SigOp.Builders using (i2f-info)
 open import Once.IRTy using (⌊_⌋; ⌊⟧T-commute)
 open import Once.IRTy.WF using (wf-⌊⌋)
 
@@ -55,18 +57,37 @@ outTIR : ∀ {m} {Δ : KCtx m} (F : Fun m) (f : Finite) → WFFun Δ F → IR �
 outTIR F pureᶠ w = outIR F pureᶠ w
 outTIR F actᶠ  w = IR.curry (outIR F actᶠ w IR.∘ IR.fst)
 
+-- ★ D461: a structure map's IR, a function of its table entry
+mapIR : ∀ {m} {A B : Ty m} → Map A B → IR ⌊ A ⌋ ⌊ B ⌋
+mapIR mp-id             = IR.id
+mapIR mp-fst            = IR.fst
+mapIR mp-snd            = IR.snd
+mapIR mp-terminal       = IR.terminal
+mapIR mp-inl            = IR.inl
+mapIR mp-inr            = IR.inr
+mapIR mp-initial        = IR.initial
+mapIR (mp-apply A B ρ)  = applyIR A B ρ
+mapIR (mp-In F w)       = inIR F w
+mapIR (mp-Out F f w)    = outTIR F f w
+mapIR mp-toFloat        = IR.SigOp i2f-info
+
+-- the entry the Spec's row names
+morphMap : ∀ {m} {Δ : KCtx m} {s} {S : Defs s} {n} {g k A π B} {t : Tm S m n}
+         → Morphism Δ g k A π B t → Map A B
+morphMap m-id                         = mp-id
+morphMap m-fst                        = mp-fst
+morphMap m-snd                        = mp-snd
+morphMap m-terminal                   = mp-terminal
+morphMap m-inl                        = mp-inl
+morphMap m-inr                        = mp-inr
+morphMap m-initial                    = mp-initial
+morphMap (m-apply {A = A} {B} {ρ})    = mp-apply A B ρ
+morphMap (m-In {F = F} w)             = mp-In F w
+morphMap (m-Out {F = F} {f} w)        = mp-Out F f w
+
 morphIR : ∀ {m} {Δ : KCtx m} {s} {S : Defs s} {n} {g k A π B} {t : Tm S m n}
         → Morphism Δ g k A π B t → IR ⌊ A ⌋ ⌊ B ⌋
-morphIR m-id                         = IR.id
-morphIR m-fst                        = IR.fst
-morphIR m-snd                        = IR.snd
-morphIR m-terminal                   = IR.terminal
-morphIR m-inl                        = IR.inl
-morphIR m-inr                        = IR.inr
-morphIR m-initial                    = IR.initial
-morphIR (m-apply {A = A} {B} {ρ})    = applyIR A B ρ
-morphIR (m-In {F = F} w)             = inIR F w
-morphIR (m-Out {F = F} {f} w)        = outTIR F f w
+morphIR mo = mapIR (morphMap mo)
 
 ------------------------------------------------------------------------
 -- Type views the deciders read
@@ -124,21 +145,21 @@ module _ where
 
 -- The least codomain and the morphism; `nothing` for a map its domain does
 -- not fix, or a domain the map has no instance at.
-mapFrom? : ∀ {m} (Δ : KCtx m) (g : Gen) (A : Ty m) → Maybe (Σ[ B ∈ Ty m ] IR ⌊ A ⌋ ⌊ B ⌋)
-mapFrom?-fst      : ∀ {m} {A : Ty m} → ProdV A → Maybe (Σ[ B ∈ Ty m ] IR ⌊ A ⌋ ⌊ B ⌋)
-mapFrom?-snd      : ∀ {m} {A : Ty m} → ProdV A → Maybe (Σ[ B ∈ Ty m ] IR ⌊ A ⌋ ⌊ B ⌋)
-mapFrom?-apply    : ∀ {m} {A : Ty m} → ApplyV A → Maybe (Σ[ B ∈ Ty m ] IR ⌊ A ⌋ ⌊ B ⌋)
+mapFrom? : ∀ {m} (Δ : KCtx m) (g : Gen) (A : Ty m) → Maybe (Σ[ B ∈ Ty m ] Map A B)
+mapFrom?-fst      : ∀ {m} {A : Ty m} → ProdV A → Maybe (Σ[ B ∈ Ty m ] Map A B)
+mapFrom?-snd      : ∀ {m} {A : Ty m} → ProdV A → Maybe (Σ[ B ∈ Ty m ] Map A B)
+mapFrom?-apply    : ∀ {m} {A : Ty m} → ApplyV A → Maybe (Σ[ B ∈ Ty m ] Map A B)
 mapFrom?-apply-at : ∀ {m} (A : Ty m) ρ B {A′ : Ty m} → Relation.Nullary.Dec (A ≡ A′)
-                  → Maybe (Σ[ C ∈ Ty m ] IR ⌊ (A ⇒[ mk-kind Many ρ ] B) * A′ ⌋ ⌊ C ⌋)
-mapFrom?-initial  : ∀ {m} (A : Ty m) → Relation.Nullary.Dec (A ≡ Void) → Maybe (Σ[ B ∈ Ty m ] IR ⌊ A ⌋ ⌊ B ⌋)
-mapFrom?-Out      : ∀ {m} (Δ : KCtx m) {A : Ty m} → NuV A → Maybe (Σ[ B ∈ Ty m ] IR ⌊ A ⌋ ⌊ B ⌋)
+                  → Maybe (Σ[ C ∈ Ty m ] Map ((A ⇒[ mk-kind Many ρ ] B) * A′) C)
+mapFrom?-initial  : ∀ {m} (A : Ty m) → Relation.Nullary.Dec (A ≡ Void) → Maybe (Σ[ B ∈ Ty m ] Map A B)
+mapFrom?-Out      : ∀ {m} (Δ : KCtx m) {A : Ty m} → NuV A → Maybe (Σ[ B ∈ Ty m ] Map A B)
 mapFrom?-Out-wf   : ∀ {m} {Δ : KCtx m} (F : Fun m) (f : Finite) → Maybe (WFFun Δ F)
-                  → Maybe (Σ[ B ∈ Ty m ] IR ⌊ ν F f ⌋ ⌊ B ⌋)
+                  → Maybe (Σ[ B ∈ Ty m ] Map (ν F f) B)
 
-mapFrom? Δ id       A = just (A , IR.id)
+mapFrom? Δ id       A = just (A , mp-id)
 mapFrom? Δ fst      A = mapFrom?-fst (prodV A)
 mapFrom? Δ snd      A = mapFrom?-snd (prodV A)
-mapFrom? Δ terminal A = just (Unit , IR.terminal)
+mapFrom? Δ terminal A = just (Unit , mp-terminal)
 mapFrom? Δ initial  A = mapFrom?-initial A (A ≟T Void)
 mapFrom? Δ apply    A = mapFrom?-apply (applyV A)
 mapFrom? Δ Out      A = mapFrom?-Out Δ (nuV A)
@@ -154,35 +175,35 @@ mapFrom? Δ ana      A = nothing
 mapFrom? Δ unit     A = nothing
 mapFrom? Δ toFloat  A = nothing
 
-mapFrom?-fst (prod-at A B) = just (A , IR.fst)
+mapFrom?-fst (prod-at A B) = just (A , mp-fst)
 mapFrom?-fst prod-other    = nothing
-mapFrom?-snd (prod-at A B) = just (B , IR.snd)
+mapFrom?-snd (prod-at A B) = just (B , mp-snd)
 mapFrom?-snd prod-other    = nothing
-mapFrom?-initial .Void (yes refl) = just (Void , IR.initial)
+mapFrom?-initial .Void (yes refl) = just (Void , mp-initial)
 mapFrom?-initial A     (no _)     = nothing
 mapFrom?-apply (apply-at A ρ B A′) = mapFrom?-apply-at A ρ B (A ≟T A′)
 mapFrom?-apply apply-other         = nothing
-mapFrom?-apply-at A ρ B (yes refl) = just (𝕋 ρ B , applyIR A B ρ)
+mapFrom?-apply-at A ρ B (yes refl) = just (𝕋 ρ B , mp-apply A B ρ)
 mapFrom?-apply-at A ρ B (no _)     = nothing
 mapFrom?-Out Δ (nu-at F f) = mapFrom?-Out-wf {Δ = Δ} F f (wfFun? Δ F)
 mapFrom?-Out Δ nu-other    = nothing
-mapFrom?-Out-wf F f (just w) = just (𝕋 (fin f) (⟦ F ⟧F (ν F f)) , outTIR F f w)
+mapFrom?-Out-wf F f (just w) = just (𝕋 (fin f) (⟦ F ⟧F (ν F f)) , mp-Out F f w)
 mapFrom?-Out-wf F f nothing  = nothing
 
 ------------------------------------------------------------------------
 -- From a given codomain, at pure, for a map its codomain fixes (`c-map-app`)
 ------------------------------------------------------------------------
 
-mapTo? : ∀ {m} (Δ : KCtx m) (g : Gen) (B : Ty m) → Maybe (Σ[ A ∈ Ty m ] IR ⌊ A ⌋ ⌊ B ⌋)
-mapTo?-inl   : ∀ {m} {B : Ty m} → SumV B → Maybe (Σ[ A ∈ Ty m ] IR ⌊ A ⌋ ⌊ B ⌋)
-mapTo?-inr   : ∀ {m} {B : Ty m} → SumV B → Maybe (Σ[ A ∈ Ty m ] IR ⌊ A ⌋ ⌊ B ⌋)
-mapTo?-In    : ∀ {m} (Δ : KCtx m) {B : Ty m} → MuV B → Maybe (Σ[ A ∈ Ty m ] IR ⌊ A ⌋ ⌊ B ⌋)
-mapTo?-In-wf : ∀ {m} {Δ : KCtx m} (F : Fun m) → Maybe (WFFun Δ F) → Maybe (Σ[ A ∈ Ty m ] IR ⌊ A ⌋ ⌊ μ F ⌋)
+mapTo? : ∀ {m} (Δ : KCtx m) (g : Gen) (B : Ty m) → Maybe (Σ[ A ∈ Ty m ] Map A B)
+mapTo?-inl   : ∀ {m} {B : Ty m} → SumV B → Maybe (Σ[ A ∈ Ty m ] Map A B)
+mapTo?-inr   : ∀ {m} {B : Ty m} → SumV B → Maybe (Σ[ A ∈ Ty m ] Map A B)
+mapTo?-In    : ∀ {m} (Δ : KCtx m) {B : Ty m} → MuV B → Maybe (Σ[ A ∈ Ty m ] Map A B)
+mapTo?-In-wf : ∀ {m} {Δ : KCtx m} (F : Fun m) → Maybe (WFFun Δ F) → Maybe (Σ[ A ∈ Ty m ] Map A (μ F))
 
-mapTo? Δ id       B = just (B , IR.id)
+mapTo? Δ id       B = just (B , mp-id)
 mapTo? Δ inl      B = mapTo?-inl (sumV B)
 mapTo? Δ inr      B = mapTo?-inr (sumV B)
-mapTo? Δ initial  B = just (Void , IR.initial)
+mapTo? Δ initial  B = just (Void , mp-initial)
 mapTo? Δ In       B = mapTo?-In Δ (muV B)
 mapTo? Δ compose  B = nothing
 mapTo? Δ fst      B = nothing
@@ -198,13 +219,13 @@ mapTo? Δ ana      B = nothing
 mapTo? Δ unit     B = nothing
 mapTo? Δ toFloat  B = nothing
 
-mapTo?-inl (sum-at A B) = just (A , IR.inl)
+mapTo?-inl (sum-at A B) = just (A , mp-inl)
 mapTo?-inl sum-other    = nothing
-mapTo?-inr (sum-at A B) = just (B , IR.inr)
+mapTo?-inr (sum-at A B) = just (B , mp-inr)
 mapTo?-inr sum-other    = nothing
 mapTo?-In Δ (mu-at F) = mapTo?-In-wf {Δ = Δ} F (wfFun? Δ F)
 mapTo?-In Δ mu-other  = nothing
-mapTo?-In-wf F (just w) = just (⟦ F ⟧F (μ F) , inIR F w)
+mapTo?-In-wf F (just w) = just (⟦ F ⟧F (μ F) , mp-In F w)
 mapTo?-In-wf F nothing  = nothing
 
 ------------------------------------------------------------------------
@@ -214,12 +235,12 @@ mapTo?-In-wf F nothing  = nothing
 -- A structure map's instances at `A ⇒⟨ π ⟩ B` are its instances from the
 -- domain whose codomain is `B`, but for `initial` (any codomain) and the
 -- maps only the codomain fixes.
-mapAt? : ∀ {m} (Δ : KCtx m) (g : Gen) (A : Ty m) (B : Ty m) → Maybe (IR ⌊ A ⌋ ⌊ B ⌋)
-mapAt?-by-dom : ∀ {m} {A : Ty m} (B : Ty m) → Maybe (Σ[ B′ ∈ Ty m ] IR ⌊ A ⌋ ⌊ B′ ⌋) → Maybe (IR ⌊ A ⌋ ⌊ B ⌋)
-mapAt?-by-dom-eq : ∀ {m} {A : Ty m} (B B′ : Ty m) → IR ⌊ A ⌋ ⌊ B′ ⌋ → Relation.Nullary.Dec (B′ ≡ B) → Maybe (IR ⌊ A ⌋ ⌊ B ⌋)
-mapAt?-by-cod : ∀ {m} (A : Ty m) {B : Ty m} → Maybe (Σ[ A′ ∈ Ty m ] IR ⌊ A′ ⌋ ⌊ B ⌋) → Maybe (IR ⌊ A ⌋ ⌊ B ⌋)
-mapAt?-by-cod-eq : ∀ {m} (A A′ : Ty m) {B : Ty m} → IR ⌊ A′ ⌋ ⌊ B ⌋ → Relation.Nullary.Dec (A′ ≡ A) → Maybe (IR ⌊ A ⌋ ⌊ B ⌋)
-mapAt?-initial : ∀ {m} (A : Ty m) {B : Ty m} → Relation.Nullary.Dec (A ≡ Void) → Maybe (IR ⌊ A ⌋ ⌊ B ⌋)
+mapAt? : ∀ {m} (Δ : KCtx m) (g : Gen) (A : Ty m) (B : Ty m) → Maybe (Map A B)
+mapAt?-by-dom : ∀ {m} {A : Ty m} (B : Ty m) → Maybe (Σ[ B′ ∈ Ty m ] Map A B′) → Maybe (Map A B)
+mapAt?-by-dom-eq : ∀ {m} {A : Ty m} (B B′ : Ty m) → Map A B′ → Relation.Nullary.Dec (B′ ≡ B) → Maybe (Map A B)
+mapAt?-by-cod : ∀ {m} (A : Ty m) {B : Ty m} → Maybe (Σ[ A′ ∈ Ty m ] Map A′ B) → Maybe (Map A B)
+mapAt?-by-cod-eq : ∀ {m} (A A′ : Ty m) {B : Ty m} → Map A′ B → Relation.Nullary.Dec (A′ ≡ A) → Maybe (Map A B)
+mapAt?-initial : ∀ {m} (A : Ty m) {B : Ty m} → Relation.Nullary.Dec (A ≡ Void) → Maybe (Map A B)
 
 mapAt? Δ initial  A B = mapAt?-initial A {B = B} (A ≟T Void)
 mapAt? Δ inl      A B = mapAt?-by-cod A {B = B} (mapTo? Δ inl B)
@@ -248,5 +269,5 @@ mapAt?-by-cod A nothing          = nothing
 mapAt?-by-cod A {B} (just (A′ , m′)) = mapAt?-by-cod-eq A A′ {B = B} m′ (A′ ≟T A)
 mapAt?-by-cod-eq A .A m′ (yes refl) = just m′
 mapAt?-by-cod-eq A A′ m′ (no _)     = nothing
-mapAt?-initial .Void (yes refl) = just IR.initial
+mapAt?-initial .Void (yes refl) = just mp-initial
 mapAt?-initial A     (no _)     = nothing

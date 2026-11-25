@@ -29,6 +29,7 @@ open import Once.Spec.Type using (Unit)
 open import Once.Spec.Surface.Syntax using (Module)
 open import Once.Parser.Module.Core using (Resolved)
 open import Once.Parser.Module.Resolve using (ModuleMap)
+import Once.CCC.Codegen.AllocExpandClasses
 import Once.Compile as Compile
 import Once.Parser as Parser
 import Once.Parser.Module.Resolve as Resolve
@@ -37,6 +38,7 @@ import Once.Extract.Names as Names
 import Once.Format as Format
 import Once.Inspect as Inspect
 import Once.Measure as Measure
+import Once.LinCore.Emit as Emit
 
 -- The datatypes the Haskell side builds or reads directly (the arith IR the
 -- test evaluator walks, the IR and type modules' constructors).
@@ -67,13 +69,17 @@ record Runs : Set₁ where
     resolve-imports : ModuleMap → Module → String ⊎ Resolved
     warnings        : Arch → String → Resolved → List String
     -- the compiler (`once build`)
-    assembly        : Bool → Arch → Resolved → String ⊎ String
+    -- (D470: the cell allocator, `--alloc`)
+    assembly        : Bool → Once.CCC.Codegen.AllocExpandClasses.Alloc → Bool → Arch → Resolved → String ⊎ String
+    -- D489: the same without room checks (`--unchecked`; outside the proof)
+    assembly-unchecked : Bool → Once.CCC.Codegen.AllocExpandClasses.Alloc → Bool → Arch → Resolved → String ⊎ String
     -- the tools beside it (D352)
     signatures      : Resolved → String ⊎ String
     check           : Resolved → String ⊎ ⊤
     dump-ir         : Bool → Resolved → String ⊎ String
     stats           : Bool → Resolved → String ⊎ String
     format          : String → String ⊎ String
+    -- plan 0.146 B1.7 (D463): the linear core's image, beside master's until its apex is the top
 
 runs : Runs
 runs = record
@@ -84,7 +90,8 @@ runs = record
   ; main-ir         = Compile.moduleToIR
   ; resolve-imports = Resolve.resolveImports
   ; warnings        = Warnings.warningsFor
-  ; assembly        = Compile.assemblyFromModule
+  ; assembly        = Emit.assemblyCore
+  ; assembly-unchecked = Emit.assemblyCoreᵘ
   ; signatures      = Inspect.signatures
   ; check           = Inspect.check
   ; dump-ir         = Inspect.dumpIR

@@ -18,6 +18,7 @@
 module Once.CCC.Machine.FlatLog where
 
 open import Data.Unit using (⊤)
+open import Data.Nat using (ℕ)
 open import Data.Empty using (⊥)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_)
@@ -142,9 +143,11 @@ module LogPres {FS : FrameSemantics} where
   exec-abstract-log (instr-reg-op op)        _ s alloc = refl
   exec-abstract-log (instr-free-heap n)      _ s alloc = refl
   exec-abstract-log (instr-room n)      _ s alloc = refl
-  exec-abstract-log (load-at k)              _ s alloc = load-at-log k Output (sv-as-loc (readReg (regs s) Input1)) s
-  exec-abstract-log (store-at k)             _ s alloc = store-at-log (AllocState.block-size alloc) k (sv-as-loc (readReg (regs s) Input1)) (readReg (regs s) Output) s
-  exec-abstract-log (addr-at k)              _ s alloc = addr-at-log (AllocState.block-size alloc) k (sv-as-loc (readReg (regs s) Input1)) s
+  exec-abstract-log (load-at k)              _ s alloc = load-at-log k Output (ExecFinal.frame-gate {FS} alloc k (sv-as-loc (readReg (regs s) Input1))) s
+  exec-abstract-log (store-at k)             _ s alloc = store-at-log (ExecFinal.live-size {FS} alloc) k (ExecFinal.frame-gate {FS} alloc k (sv-as-loc (readReg (regs s) Input1))) (readReg (regs s) Output) s
+  exec-abstract-log (addr-at k)              _ s alloc = addr-at-log (AllocState.block-size alloc) k (ExecFinal.heap-gate {FS} (sv-as-loc (readReg (regs s) Input1))) s
+  exec-abstract-log (load-rec k)             _ s alloc = load-via-log Output (ExecFinal.rec-gate {FS} alloc k) s
+  exec-abstract-log (store-rec k)            _ s alloc = store-via-log (ExecFinal.rec-gate {FS} alloc k) (readReg (regs s) Output) s
   exec-abstract-log (instr-ctrl c)           _ s alloc = refl
 
   -- The control helpers of the flat machine, by their own cases.
@@ -172,9 +175,8 @@ module LogPres {FS : FrameSemantics} where
   do-nz-log (SV-Ptr _)            fs = refl
   do-nz-log (SV-Code _)           fs = refl
 
-  do-ret-log : ∀ (rl : List _) fs → flog (do-ret rl fs) ≡ flog fs
-  do-ret-log []         fs = refl
-  do-ret-log (pc' ∷ rs) fs = refl
+  do-ret-log : ∀ (b : ℕ) (rl : List _) fs → flog (do-ret b rl fs) ≡ flog fs
+  do-ret-log b rl fs = do-ret-keeps (λ s → flog s ≡ flog fs) b rl fs refl (λ _ _ _ _ → refl)
 
   do-call-at-log : ∀ (mj : Maybe _) fs → flog (do-call-at mj fs) ≡ flog fs
   do-call-at-log (just j) fs = refl
@@ -202,10 +204,10 @@ module LogPres {FS : FrameSemantics} where
   flat-exec-instr-log (instr-ctrl (c-start b))             _ prog fs = refl
   flat-exec-instr-log (instr-ctrl c-leave)                   _ prog fs = refl
   flat-exec-instr-log (instr-ctrl (c-call-fn f))             _ prog fs = do-call-at-log (find-fn prog f) fs
-  flat-exec-instr-log (instr-ctrl (c-ret b))                 _ prog fs = do-ret-log (fret fs) fs
+  flat-exec-instr-log (instr-ctrl (c-ret b))                 _ prog fs = do-ret-log b (fret fs) fs
   flat-exec-instr-log (instr-ctrl (c-jmp n))                 _ prog fs = do-jump-log (find-label prog n) fs
   flat-exec-instr-log (instr-ctrl (c-branch-tag-zero n))     _ prog fs =
-    do-test-log (tag-test (flat-read-tag (floc fs))) n prog fs
+    do-test-log (tag-test (flat-read-tag (falloc fs) (floc fs))) n prog fs
   flat-exec-instr-log instr-call-closure                     _ prog fs = do-call-sv-log prog (fclosure fs) fs
   flat-exec-instr-log instr-save-closure-reg                 _ prog fs = refl
   flat-exec-instr-log (instr-alloc-stack n)   lf prog fs = exec-abstract-log (instr-alloc-stack n) lf (floc fs) (falloc fs)
@@ -216,25 +218,54 @@ module LogPres {FS : FrameSemantics} where
   flat-exec-instr-log mov-to-input             lf prog fs = exec-abstract-log mov-to-input lf (floc fs) (falloc fs)
   flat-exec-instr-log load-indirect            lf prog fs = exec-abstract-log load-indirect lf (floc fs) (falloc fs)
   flat-exec-instr-log load-indirect-suc        lf prog fs = exec-abstract-log load-indirect-suc lf (floc fs) (falloc fs)
-  flat-exec-instr-log (load-from-slot slot)    lf prog fs = exec-abstract-log (load-from-slot slot) lf (floc fs) (falloc fs)
-  flat-exec-instr-log (store-at-slot slot)     lf prog fs = exec-abstract-log (store-at-slot slot) lf (floc fs) (falloc fs)
+  flat-exec-instr-log (load-from-slot slot)    lf prog fs =
+    straight-keeps (λ t → flog t ≡ flog fs) (load-from-slot slot) fs
+      (exec-abstract-log (load-from-slot slot) lf (floc fs) (falloc fs))
+      refl
+  flat-exec-instr-log (store-at-slot slot)     lf prog fs =
+    straight-keeps (λ t → flog t ≡ flog fs) (store-at-slot slot) fs
+      (exec-abstract-log (store-at-slot slot) lf (floc fs) (falloc fs))
+      refl
   flat-exec-instr-log store-indirect           lf prog fs = exec-abstract-log store-indirect lf (floc fs) (falloc fs)
   flat-exec-instr-log store-indirect-suc       lf prog fs = exec-abstract-log store-indirect-suc lf (floc fs) (falloc fs)
-  flat-exec-instr-log (lea-slot slot)          lf prog fs = exec-abstract-log (lea-slot slot) lf (floc fs) (falloc fs)
-  flat-exec-instr-log (restore-input slot)     lf prog fs = exec-abstract-log (restore-input slot) lf (floc fs) (falloc fs)
+  flat-exec-instr-log (lea-slot slot)          lf prog fs =
+    straight-keeps (λ t → flog t ≡ flog fs) (lea-slot slot) fs
+      (exec-abstract-log (lea-slot slot) lf (floc fs) (falloc fs))
+      refl
+  flat-exec-instr-log (restore-input slot)     lf prog fs =
+    straight-keeps (λ t → flog t ≡ flog fs) (restore-input slot) fs
+      (exec-abstract-log (restore-input slot) lf (floc fs) (falloc fs))
+      refl
   flat-exec-instr-log (instr-reclaim-to n)     lf prog fs = exec-abstract-log (instr-reclaim-to n) lf (floc fs) (falloc fs)
-  flat-exec-instr-log (worklist-init slot)     lf prog fs = exec-abstract-log (worklist-init slot) lf (floc fs) (falloc fs)
-  flat-exec-instr-log (worklist-push slot)     lf prog fs = exec-abstract-log (worklist-push slot) lf (floc fs) (falloc fs)
-  flat-exec-instr-log (worklist-pop slot)      lf prog fs = exec-abstract-log (worklist-pop slot) lf (floc fs) (falloc fs)
-  flat-exec-instr-log (worklist-check slot)    lf prog fs = exec-abstract-log (worklist-check slot) lf (floc fs) (falloc fs)
+  flat-exec-instr-log (worklist-init slot)     lf prog fs =
+    straight-keeps (λ t → flog t ≡ flog fs) (worklist-init slot) fs
+      (exec-abstract-log (worklist-init slot) lf (floc fs) (falloc fs))
+      refl
+  flat-exec-instr-log (worklist-push slot)     lf prog fs =
+    straight-keeps (λ t → flog t ≡ flog fs) (worklist-push slot) fs
+      (exec-abstract-log (worklist-push slot) lf (floc fs) (falloc fs))
+      refl
+  flat-exec-instr-log (worklist-pop slot)      lf prog fs =
+    straight-keeps (λ t → flog t ≡ flog fs) (worklist-pop slot) fs
+      (exec-abstract-log (worklist-pop slot) lf (floc fs) (falloc fs))
+      refl
+  flat-exec-instr-log (worklist-check slot)    lf prog fs =
+    straight-keeps (λ t → flog t ≡ flog fs) (worklist-check slot) fs
+      (exec-abstract-log (worklist-check slot) lf (floc fs) (falloc fs))
+      refl
   flat-exec-instr-log (instr-sigop si)         () prog fs
   flat-exec-instr-log (instr-load-const p v)   lf prog fs = exec-abstract-log (instr-load-const p v) lf (floc fs) (falloc fs)
   flat-exec-instr-log (instr-load-code-addr n) lf prog fs = exec-abstract-log (instr-load-code-addr n) lf (floc fs) (falloc fs)
   flat-exec-instr-log (instr-load-tag-lit n)   lf prog fs = exec-abstract-log (instr-load-tag-lit n) lf (floc fs) (falloc fs)
   flat-exec-instr-log (instr-alloc-heap n)     lf prog fs = exec-abstract-log (instr-alloc-heap n) lf (floc fs) (falloc fs)
   flat-exec-instr-log (instr-reg-op out-nz)    lf prog fs = do-nz-log (readReg (regs (floc fs)) Output) fs
-  flat-exec-instr-log (instr-free-heap n)      lf prog fs = exec-abstract-log (instr-free-heap n) lf (floc fs) (falloc fs)
+  flat-exec-instr-log (instr-free-heap n)      lf prog fs =
+    straight-keeps (λ t → flog t ≡ flog fs) (instr-free-heap n) fs
+      (exec-abstract-log (instr-free-heap n) lf (floc fs) (falloc fs))
+      refl
   flat-exec-instr-log (instr-room n)           lf prog fs = exec-abstract-log (instr-room n) lf (floc fs) (falloc fs)
   flat-exec-instr-log (load-at n)           lf prog fs = exec-abstract-log (load-at n) lf (floc fs) (falloc fs)
   flat-exec-instr-log (store-at n)           lf prog fs = exec-abstract-log (store-at n) lf (floc fs) (falloc fs)
   flat-exec-instr-log (addr-at n)           lf prog fs = exec-abstract-log (addr-at n) lf (floc fs) (falloc fs)
+  flat-exec-instr-log (load-rec n)          lf prog fs = exec-abstract-log (load-rec n) lf (floc fs) (falloc fs)
+  flat-exec-instr-log (store-rec n)         lf prog fs = exec-abstract-log (store-rec n) lf (floc fs) (falloc fs)

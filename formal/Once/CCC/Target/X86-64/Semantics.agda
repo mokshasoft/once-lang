@@ -34,7 +34,7 @@ module W = W64.Width 64
 module WL = W64L.WidthLaws 64
   using (1<modulus; norm-id; sbb-pos; sbb-zero; ⊕-normʳ; ⊕≡+; ⊖-normʳ; ⊖≡∸)
 
-open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _≡ᵇ_)
+open import Data.Nat using (ℕ; zero; suc; _+_; _*_; _∸_; _≡ᵇ_)
 open import Data.Bool using (Bool; true; false; if_then_else_; _∨_)
 open import Data.List using ([]; _∷_; drop)
 open import Data.Maybe using (Maybe; just; nothing)
@@ -194,15 +194,24 @@ heap-base = 8
 postulate
   stack-span : Word         -- how far above the heap base the loader's %rsp sits
 
+-- D472: the region's first 64 words are the allocator record (`SMCore.rec-size`
+-- words of 8 bytes).
+-- The model places every data symbol at `heap-base` and the region (`%r15`'s
+-- start) here, past it: the record (the program's `.bss`) and the Host's region
+-- are two disjoint areas, each addressed only by offsets inside it — the same
+-- w.l.o.g. ordering the heap's base already is (D367)
+heap-front : Word
+heap-front = heap-base + 64 * 8
+
 stack-top : Word            -- the %rsp the loader hands `main`
-stack-top = heap-base + stack-span
+stack-top = heap-front + stack-span
 
 emptyRegFile : RegFile
 emptyRegFile = mkregfile 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 
 -- Plan 0.107: the environment hands the program over AT ITS ENTRY POINT.
 initStateAt : ℕ → State
-initStateAt e = mkstate (writeReg (writeReg emptyRegFile rsp stack-top) r15 heap-base) emptyMemory initFlags e false
+initStateAt e = mkstate (writeReg (writeReg emptyRegFile rsp stack-top) r15 heap-front) emptyMemory initFlags e false
 
 initState : State
 initState = initStateAt 0
@@ -230,7 +239,7 @@ effectiveAddr s (rip+disp d)     = pc s + d
 effectiveAddr s (rip+label n)    = idx n
 -- Plan 0.107: the runtime's only data symbol is the `.bss` heap, placed at 0
 -- without loss of generality (only the order of addresses matters).
-effectiveAddr s (rip+sym _)      = heap-base
+effectiveAddr s (rip+sym _ d)    = heap-base + d
 
 readOperand : State → Operand → Maybe Word
 readOperand s (reg r) = just (readReg (regs s) r)

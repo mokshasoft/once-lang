@@ -8,7 +8,7 @@
 -- (Plan 0.65 G1d, 2026-08-12).
 --
 -- Everything a REACHABLE state of an EMITTED program satisfies, driven by
--- `RunAt`: the segment discipline (`SegWF`, `RetMatch`, `run-seg-wf`), the two
+-- `RunAt`: the segment discipline (`FrameWF`, `RetMatch`, `run-frame-wf`), the two
 -- pointer invariants (`StackPtrWF` via `stack-ptr-step`, `PtrBoundsWF` via
 -- `ptr-bounds-step`), the shape-table consistency (`run-shape-check`), and the
 -- dataflow disciplines the correspondence consumes at its load/store/branch
@@ -59,7 +59,7 @@ module Once.Adequacy.ArchCorrectness.FlatCore.RunWF
 
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Maybe.Properties using (just-injective)
-open import Data.Bool using (Bool; true; false; _∨_)
+open import Data.Bool using (Bool; true; false; _∨_; not; if_then_else_)
 open import Data.Nat using (zero; suc)
 open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong; subst; subst₂)
 
@@ -71,32 +71,29 @@ open import Once.Memory.HeapAddress using (HeapLocation; module HeapRef; module 
 open HeapLocation using (heap-offset; heap-ref)
 open HeapRef using (ref-id)
 open MemOps {FS} using (readLoc)
-open ExecFinal {FS} using (exec-load-with-value; exec-load-via-resolved; exec-load-suc-via-resolved; exec-store-via-resolved; exec-store-suc-via-resolved; exec-load-at-resolved; exec-store-at-resolved; exec-store-in-block; in-block?; exec-addr-at-resolved; exec-addr-in-block)
+open ExecFinal {FS} using (exec-load-with-value; exec-load-via-resolved; exec-load-suc-via-resolved; exec-store-via-resolved; exec-store-suc-via-resolved; exec-load-at-resolved; exec-store-at-resolved; frame-gate; heap-gate; gate-or; exec-store-in-block; in-block?; exec-addr-at-resolved; exec-addr-in-block; live-size)
+open import Once.Memory.HeapAddress using (offsetHL)
 open import Data.Bool using (T)
 open import Data.Nat.Properties using (<ᵇ⇒<)
-open AbstractExec {FS} using (exec-load-from-slot-with-value; exec-restore-input-with-value; unread?; exec-sigop-faults-of; decode-at)
+open AbstractExec {FS} using (exec-load-from-slot-with-value; exec-restore-input-with-value; unread?; exec-sigop-faults-of; decode-at; sigop-gate; exec-sigop-faults)
 open FrameSemantics FS using (Frame)
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
 open FlatState using (fpc; fclosure; floc; fret; falloc; flink)
 open import Once.CCC.Machine.FlatStoreWF FS
 open import Data.Product using (Σ; ∃; _,_; _×_; proj₁; proj₂)
-open import Once.CCC.Codegen.IRToTrace o using (ir-stack-budget; ir-to-unit)
 open import Once.CCC.Machine.FrameFree
 open import Data.List.Relation.Unary.All using () renaming (All to AllL)
 open import Once.CCC.Machine.InstrSlot
 open import Once.CCC.Machine.FlatStackSlot FS
 open SameFrames using (sf-slots; sf-saved; sf-ret)
-open import Once.CCC.Machine.FlatStackPtr FS
 open import Once.CCC.Machine.FlatPtrBounds FS
-open import Once.CCC.Codegen.AllocMin o
+open import Once.CCC.Machine.AllocMin using (AllocMinI)
 open import Once.CCC.Codegen.LabelSeg
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Once.CCC.Codegen.SlotSeg
 open SegState using (cur; saved)
 open SlotBelow using (below)
-open import Once.CCC.Codegen.ProgramImage using (program-image; image-body; fns-image; fn-image; fn-next)
-import Once.CCC.Codegen.ImageInstrs as IIn
 open import Data.List.Relation.Unary.All using () renaming (map to All-mapL)
 open import Once.CCC.Codegen.CallOK using (InstrOK; Calls; calls-⊤)
 open import Once.SigOp.Info using (module SigOpInfo; SigOpInfo; effect; Pure)
@@ -110,7 +107,7 @@ open import Once.IRTy using (_≟IRTy_; Unit)
 open import Once.Denotation.Program using (IRFun; irProgram; Linked; LinkedAt; LinkedAt-at; LinkedProgram; Leaves; leaves-map)
 open Once.Denotation.Program.IRFun using (fbody; fcod; fdom; fname)
 open import Once.Contract using (ISig)
-open import Once.CCC.Codegen.ProgramImageFacts o using (image-frame-free; body-frame-free; image-alloc-min; image-slots; image-jump-in-segment)
+open import Data.List.Relation.Unary.All.Properties using (++⁺)
 open import Once.IR using (IR)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Unit using (⊤; tt)
@@ -122,7 +119,8 @@ open import Once.Type using (fits-int; fits-float)
 -- i.e. `matchCall j ≡ nothing`. (The one absurd case is `call-sym`, ruled out by
 -- the halt clash; every other instruction is `matchCall … = nothing` definitionally.)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunContext o FS slot-size word-eq
-open RunAt using (run-emit; run-ir; run-tbl; run-linked)
+open Emitted using (em-budget; em-zero; em-start; em-image; em-alloc; em-calls; em-guard)
+open RunAt using (run-em; run-reach)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open FlatStepsAPI {FS} using ([]; _∷_)
 
@@ -145,137 +143,44 @@ open FlatStepsAPI {FS} using ([]; _∷_)
 -- The two that stayed behind are `arith-sigop-run` (D351) and
 -- `external-sigop-contract`: both quantify over `HeapView` and the x86-64
 -- arith runtime, so they are genuinely x86-64's.
-------------------------------------------------------------------------
--- D245: A DIRECT CALL IN A LINKED IMAGE FINDS ITS CALLEE — PROVED (plan 0.103
--- 6a‴). The emitter writes `c-call-fn f` for a `Call f` and nowhere else, so in
--- a linked image every direct call names an entry of the table
--- (`CallsLinked`); the image holds every entry under its `e-fn` marker
--- (`fn-image`); and the entry scan finds any marker that is there.
-------------------------------------------------------------------------
-
-private
-  -- a direct call names a table entry; a SigOp call is unconstrained here
-  CallOKI : List IRFun → AbstractInstr → Set
-  CallOKI tbl = InstrOK (LinkedAt tbl) (λ _ → ⊤)
-
-  linked-calls : ∀ {σ : ISig} (tbl : List IRFun) {A B} (ir : IR A B) → Linked σ tbl ir
-               → Leaves LinkedAt tbl (λ si → Calls (λ _ → ⊤) si (cmp-of (SigOpInfo.sem si))) ir
-  linked-calls tbl = leaves-map (λ _ _ _ c → c) (λ si _ → calls-⊤ si (cmp-of (SigOpInfo.sem si)))
-
-  image-calls : ∀ {σ : ISig} (tbl : List IRFun) (ir : IR Unit Unit) → LinkedProgram σ (irProgram tbl ir)
-              → AllL (CallOKI tbl) (program-image o (irProgram tbl ir))
-  image-calls tbl ir (lm , les , _) =
-    IIn.image-ok LinkedAt tbl (λ _ → ⊤) o (irProgram tbl ir) (linked-calls tbl ir lm) (All-mapL (λ {e} → linked-calls tbl (fbody e)) les)
-
-  -- a linked call names an entry
-  linked-any : ∀ (tbl : List IRFun) {f A B} → LinkedAt tbl f A B → Any (λ e → fname e ≡ f) tbl
-  linked-any []       ()
-  linked-any (e ∷ es) {f} {A} {B} lk = go (fname e ≟ᶜ f) (fdom e ≟IRTy A) (fcod e ≟IRTy B) lk
-    where
-      go : ∀ d₁ d₂ d₃ → LinkedAt-at e es f A B d₁ d₂ d₃ → Any (λ e′ → fname e′ ≡ f) (e ∷ es)
-      go (yes p) (yes _) (yes _) _  = here p
-      go (yes _) (yes _) (no _)  lk = there (linked-any es lk)
-      go (yes _) (no _)  _       lk = there (linked-any es lk)
-      go (no _)  _       _       lk = there (linked-any es lk)
-
-  -- every entry of the table has its marker in the image
-  entries-in : ∀ (l : ℕ) (es : List IRFun) (f : CanonicalName) → Any (λ e → fname e ≡ f) es
-             → Any (λ x → entry-of? x ≡ just (e-fn f)) (fns-image l es)
-  entries-in l (e ∷ es) f (here p)  = Any++⁺ˡ {xs = fn-image l e} {ys = fns-image (fn-next l e) es} (here (cong (λ g → just (e-fn g)) p))
-  entries-in l (e ∷ es) f (there a) = Any++⁺ʳ (fn-image l e) (entries-in (fn-next l e) es f a)
-
-  -- the scan finds a marker that is there
-  ft-at-complete : ∀ (m : Maybe EntryId) (is : AbstractTrace) (tg : EntryId) (i : ℕ)
-                 → (∀ i′ → Σ ℕ (λ j → ft-go is tg i′ ≡ just j)) → Σ ℕ (λ j → ft-at m is tg i ≡ just j)
-  ft-at-complete nothing  is tg i ih = ih (suc i)
-  ft-at-complete (just m) is tg i ih = match (m ≡ᵇᴱ tg)
-    where
-      match : ∀ (b : Bool) → Σ ℕ (λ j → ft-match b is tg i ≡ just j)
-      match true  = i , refl
-      match false = ih (suc i)
-
-  ft-go-complete : ∀ (prog : AbstractTrace) (tg : EntryId) (i : ℕ)
-                 → Any (λ x → entry-of? x ≡ just tg) prog → Σ ℕ (λ j → ft-go prog tg i ≡ just j)
-  ft-go-complete (x ∷ is) tg i (here e) =
-    i , subst (λ m → ft-at m is tg i ≡ just i) (sym e) (subst (λ b → ft-match b is tg i ≡ just i) (sym (≡ᵇᴱ-refl tg)) refl)
-  ft-go-complete (x ∷ is) tg i (there a) =
-    ft-at-complete (entry-of? x) is tg i (λ i′ → ft-go-complete is tg i′ a)
-
 emitted-call-fn-resolves : ∀ prog (fs : FlatState) (f : CanonicalName) → RunAt prog fs
                          → fetch prog (fpc fs) ≡ just (instr-ctrl (c-call-fn f))
                          → Σ ℕ (λ j → find-fn prog f ≡ just j)
-emitted-call-fn-resolves prog fs f r ftq =
-  ft-go-complete prog (e-fn f) 0
-    (subst (Any (λ x → entry-of? x ≡ just (e-fn f))) (sym (run-emit r))
-           (Any++⁺ʳ (instr-ctrl (c-start (ir-stack-budget (run-ir r))) ∷ link-top (ir-to-unit (run-ir r))) (entries-in _ (run-tbl r) f (linked-any (run-tbl r) (proj₂ (proj₂ ok))))))
-  where
-    ok : CallOKI (run-tbl r) (instr-ctrl (c-call-fn f))
-    ok = fetch-All (subst (AllL (CallOKI (run-tbl r))) (sym (run-emit r)) (image-calls (run-tbl r) (run-ir r) (run-linked r))) ftq
+emitted-call-fn-resolves prog fs f r ftq = em-calls (run-em r) (fpc fs) f ftq
 
-------------------------------------------------------------------------
-postulate
-  call-site-shape : ∀ prog (fs : FlatState) → RunAt prog fs
-                  → fetch prog (fpc fs) ≡ just instr-call-closure
-                  → Σ HeapLocation (λ hl → Σ LabelId (λ ℓ → Σ ℕ (λ j →
-                      (fclosure fs ≡ SV-Ptr (AtDynamic hl))
-                      × (heapMem (floc fs) (sucHL hl) ≡ just (SV-Code ℓ))
-                      × (find-thunk prog ℓ ≡ just j))))
+-- B1.7b (D458): THE RUN'S FACTS ARE THE MACHINE'S GATES. A reached step does
+-- not fault (its run is sound, `run-sound`), and the machine faults a call
+-- that names no body and a return that is not owed or not at the reservation
+-- in force (`Flat.do-call`, `do-ret`); so at a reached call or return the gate
+-- passed. They were the image's (`Emitted.em-call-site`, `em-ret-owes`,
+-- `em-ret-budget`), owed by the linear core's.
+step-sound : ∀ prog (fs : FlatState) {i : AbstractInstr} → RunAt prog fs → halted (floc fs) ≡ false
+           → fetch prog (fpc fs) ≡ just i → LocState.faulted (floc (flat-exec-instr i prog fs)) ≡ false
+step-sound prog fs r h ftq = run-sound r ((h , ftq) ∷ [])
 
-  -- (`events-running-thunk` LIVED HERE. It is now a THEOREM — `thunk-step`
-  -- below.)
-  --
-  -- THE RETURN'S TWO INPUTS (D095). `events-running-ret` is GONE — the
-  -- correspondence for `c-ret` is now the theorem `ret-step` below, built on
-  -- the proven `block-step-c-ret`. What is left are two facts about the
-  -- ABSTRACT machine running an EMITTED program; neither mentions `X.State`,
-  -- so neither is a correspondence gap.
-  --
-  -- (1) A REACHABLE RETURN OWES A RETURN. A `c-ret` sits inside a closure body,
-  -- and a body is entered only by a CALL, which pushes. (This is `ret-site-owes`
-  -- from D091 — the same statement, but now TRUE-and-provable rather than
-  -- colliding with `run-no-ret`: the call is modelled.) Route: the static
-  -- segment stack and the dynamic `fret` have the same depth (with the same
-  -- one-instant exception `SegCur` already names), and `SlotBudget`'s
-  -- neutrality says an emitted body is a matched `c-thunk`/`c-ret` bracket —
-  -- so at a `c-ret` the static stack is non-empty, hence so is `fret`.
-  ret-site-owes : ∀ prog (fs : FlatState) (b : ℕ) → RunAt prog fs
-                → fetch prog (fpc fs) ≡ just (instr-ctrl (c-ret b))
-                → Σ ℕ (λ rpc → Σ (List ℕ) (λ rest → fret fs ≡ rpc ∷ rest))
+call-site-shape : ∀ prog (fs : FlatState) → RunAt prog fs → halted (floc fs) ≡ false
+                → fetch prog (fpc fs) ≡ just instr-call-closure
+                → Σ HeapLocation (λ hl → Σ LabelId (λ ℓ → Σ ℕ (λ j →
+                    (fclosure fs ≡ SV-Ptr (AtDynamic hl))
+                    × (heapMem (floc fs) (sucHL hl) ≡ just (SV-Code ℓ))
+                    × (find-thunk prog ℓ ≡ just j))))
+call-site-shape prog fs r h ftq = call-ok prog fs (step-sound prog fs r h ftq)
 
-  -- THE EMITTER'S GUARD (D094): in an emitted trace a `c-thunk` is at `suc q`
-  -- with a `c-jmp` at `q` — the jump that stops the parent falling into the
-  -- body. CODEGEN-class (only `ir-to-trace` in the type). Discharge: the
-  -- structural induction over `ir-to-trace'`, shape written up in D094.
-  -- D245: stated over the PROGRAM IMAGE and for every callable ENTRY. What
-  -- precedes an entry is a `c-jmp` (an inlined body's guard) or a `c-ret` (a
-  -- unit's terminator, or the block before it: a function entry follows the
-  -- previous unit, and a linked block the one before it). Either way it is an
-  -- instruction that does not fall through.
-  emitted-thunk-guarded : ∀ (tbl : List IRFun) (ir : IR Unit Unit) (p : ℕ) (ℓ : EntryId) (bb : ℕ)
-                        → fetch (program-image o (irProgram tbl ir)) p ≡ just (instr-ctrl (c-entry ℓ bb))
-                        → Σ ℕ (λ q → (p ≡ suc q)
-                              × ((Σ LabelId (λ m → fetch (program-image o (irProgram tbl ir)) q
-                                                    ≡ just (instr-ctrl (c-jmp m))))
-                                 ⊎ (Σ ℕ (λ b → fetch (program-image o (irProgram tbl ir)) q
-                                                 ≡ just (instr-ctrl (c-ret b))))))
+private
+  ret-gate : ∀ prog (fs : FlatState) (b : ℕ) → RunAt prog fs → halted (floc fs) ≡ false
+           → fetch prog (fpc fs) ≡ just (instr-ctrl (c-ret b))
+           → Σ ℕ (λ rpc → Σ (List ℕ) (λ rest → fret fs ≡ rpc ∷ rest)) × (b ≡ frame-slots (falloc fs))
+  ret-gate prog fs b r h ftq = ret-ok b fs (step-sound prog fs r h ftq)
 
-  -- …and its sibling (D096): an emitted code address names a body that EXISTS.
-  -- `ir-to-trace'`'s `curry` clause emits `instr-load-code-addr (ℓ o this)` and
-  -- `c-thunk (ℓ o this)` together, so the scan cannot miss. CODEGEN-class, and
-  -- it belongs in the same induction as the two above.
-  -- D245: over the program image. A closure's label is owned by the definition
-  -- that minted it (D089), so the scan finds its body in that definition's unit.
-  emitted-code-addr-has-body : ∀ (tbl : List IRFun) (ir : IR Unit Unit) (p : ℕ) (ℓ : LabelId)
-                             → fetch (program-image o (irProgram tbl ir)) p ≡ just (instr-load-code-addr ℓ)
-                             → Σ ℕ (λ j → find-thunk (program-image o (irProgram tbl ir)) ℓ ≡ just j)
+ret-site-owes : ∀ prog (fs : FlatState) (b : ℕ) → RunAt prog fs → halted (floc fs) ≡ false
+              → fetch prog (fpc fs) ≡ just (instr-ctrl (c-ret b))
+              → Σ ℕ (λ rpc → Σ (List ℕ) (λ rest → fret fs ≡ rpc ∷ rest))
+ret-site-owes prog fs b r h ftq = proj₁ (ret-gate prog fs b r h ftq)
 
-  -- (2) THE BRACKET: the budget a return RELEASES is the reservation in force.
-  -- `ir-to-trace'` emits `c-thunk ℓ bb … c-ret bb` — one `bb`, written twice —
-  -- so this is the emitter's own bracket, and it belongs with
-  -- `emitted-thunk-guarded` in the same induction over `ir-to-trace'`.
-  ret-budget-matches : ∀ prog (fs : FlatState) (b : ℕ) → RunAt prog fs
-                     → fetch prog (fpc fs) ≡ just (instr-ctrl (c-ret b))
-                     → b ≡ frame-slots (falloc fs)
+ret-budget-matches : ∀ prog (fs : FlatState) (b : ℕ) → RunAt prog fs → halted (floc fs) ≡ false
+                   → fetch prog (fpc fs) ≡ just (instr-ctrl (c-ret b))
+                   → b ≡ frame-slots (falloc fs)
+ret-budget-matches prog fs b r h ftq = proj₂ (ret-gate prog fs b r h ftq)
 
   -- D367: the two shape-check obligations of plan 0.62 (M2b, the emitter's
   -- shape check, and M3, run consistency) STOOD HERE as postulates, and M2b was
@@ -382,176 +287,52 @@ postulate
 ------------------------------------------------------------------------
 frame-op-absurd : ∀ prog (fs : FlatState) (i : AbstractInstr) (em : Emitted prog)
                 → fetch prog (fpc fs) ≡ just i → ImageI i
-frame-op-absurd .(program-image o (irProgram tbl ir)) fs i (tbl , ir , refl) ftq =
-  fetch-All {prog = program-image o (irProgram tbl ir)} {k = fpc fs} (image-frame-free tbl ir) ftq
+frame-op-absurd prog fs i em ftq = fetch-All {prog = prog} {k = fpc fs} (em-image em) ftq
 
 -- Plan 0.107: THE START IS AT pc 0 AND NOWHERE ELSE. The rest of the image is
 -- units (`ProgramImage.image-body`), and no unit holds a start.
 start-at-zero : ∀ prog (k b : ℕ) → Emitted prog
               → fetch prog k ≡ just (instr-ctrl (c-start b)) → k ≡ 0
-start-at-zero .(program-image o (irProgram tbl ir)) zero    b (tbl , ir , refl) _   = refl
-start-at-zero .(program-image o (irProgram tbl ir)) (suc k) b (tbl , ir , refl) ftq =
-  ⊥-elim (fetch-All {prog = image-body o (irProgram tbl ir)} {k = k} (body-frame-free tbl ir) ftq)
+start-at-zero prog k b em ftq = em-start em k b ftq
 
 -- …and pc 0 holds it.
 fetch-zero : ∀ prog → (em : Emitted prog)
-           → fetch prog 0 ≡ just (instr-ctrl (c-start (ir-stack-budget (proj₁ (proj₂ em)))))
-fetch-zero .(program-image o (irProgram tbl ir)) (tbl , ir , refl) = refl
-
-
-------------------------------------------------------------------------
--- SLOT LIVENESS IS NOW A THEOREM (plan 0.54 rung D, item 2).
---
--- `slot-read-in-frame` used to be the residual that carried the whole slot
--- cluster (`load-from-slot`, `store-at-slot`, `restore-input`, `worklist-*`).
--- It splits cleanly into a MACHINE fact and an EMITTER fact:
--- the live window never moves during a run, and it started out big enough.
-------------------------------------------------------------------------
-
--- THE EMITTER HALF: every slot an emitted instruction addresses is below the
--- reservation IN FORCE AT ITS POSITION (`ir-to-trace'` threads the frontier and
--- hands it back as `ir-stack-budget`; a `c-thunk` inside the trace switches to
--- the body's). Proved in the codegen layer — see `SlotBudget.SegOK`.
---
--- Plan 0.63 (2b): the bound is POSITIONAL now, because with closure bodies
--- inlined a single budget per trace is false. `fetch` is the frame-semantics-
--- parameterised copy of the codegen layer's `trace-lookup`, so they bridge by
--- an induction on the trace.
-fetch≡lookup : ∀ (t : AbstractTrace) (k : ℕ) → fetch t k ≡ trace-lookup t k
-fetch≡lookup []       _       = refl
-fetch≡lookup (i ∷ is) zero    = refl
-fetch≡lookup (i ∷ is) (suc k) = fetch≡lookup is k
-
-emitted-slot-below-budget : ∀ (tbl : List IRFun) (ir : IR Unit Unit) (k : ℕ) (i : AbstractInstr) (slot : Slot)
-                          → fetch (program-image o (irProgram tbl ir)) k ≡ just i → slot-of i ≡ just slot
-                          → slot < cur (seg-at (program-image o (irProgram tbl ir)) k (mkSeg 0 []))
-emitted-slot-below-budget tbl ir k i slot ftq soq =
-  below (allseg-at (program-image o (irProgram tbl ir)) k (image-slots tbl ir)
-           (trans (sym (fetch≡lookup (program-image o (irProgram tbl ir)) k)) ftq)) slot soq
-
--- THE SEGMENTATION IS STILL CONSTANT — for exactly as long as no emitted trace
--- contains a marker. `FrameFreeI` puts `c-thunk`/`c-ret` in its ⊥ set (they
--- MOVE THE FRAME), and `ir-to-trace-frame-free` says a heap-moded emitted trace
--- has none, so `seg-at` is the identity and the positional bound collapses to
--- the flat one. THIS IS THE BRIDGE THE FLIP REPLACES: once bodies are inlined
--- the fold genuinely varies, and what takes its place is the per-pc invariant
--- plus label scoping (a jump inside a body lands inside that body's segment).
--- ENUMERATED, like `stack-ptr-step`: a catchall would leave `seg-action i`
--- stuck on the variable, and neither classifier can be read off the other
--- without the split.
-ff→seg-id : ∀ (i : AbstractInstr) → FrameFreeI i → is-id? (seg-action i) ≡ true
-ff→seg-id (instr-ctrl (c-thunk _ _))          ()
-ff→seg-id (instr-ctrl (c-ret _))              ()
-ff→seg-id (instr-ctrl (c-label _))            _ = refl
-ff→seg-id (instr-ctrl c-leave)            _ = refl
-ff→seg-id (instr-ctrl (c-jmp _))              _ = refl
-ff→seg-id (instr-ctrl (c-branch-tag-zero _))  _ = refl
-ff→seg-id mov-to-output                       _ = refl
-ff→seg-id mov-to-input                        _ = refl
-ff→seg-id load-indirect                       _ = refl
-ff→seg-id load-indirect-suc                   _ = refl
-ff→seg-id (load-from-slot _)                  _ = refl
-ff→seg-id (store-at-slot _)                   _ = refl
-ff→seg-id store-indirect                      _ = refl
-ff→seg-id store-indirect-suc                  _ = refl
-ff→seg-id (lea-slot _)                        _ = refl
-ff→seg-id (restore-input _)                   _ = refl
-ff→seg-id (instr-alloc-stack _)               _ = refl
-ff→seg-id (instr-dealloc-stack _)             _ = refl
-ff→seg-id (instr-free-heap _)                 _ = refl
-ff→seg-id (load-at _)                 _ = refl
-ff→seg-id (store-at _)                 _ = refl
-ff→seg-id (addr-at _)                 _ = refl
-ff→seg-id (instr-room _)                 _ = refl
-ff→seg-id (instr-reclaim-to _)                _ = refl
-ff→seg-id (instr-push-frame _)                _ = refl
-ff→seg-id instr-pop-frame                     _ = refl
-ff→seg-id instr-call-closure                  ()
-ff→seg-id (worklist-init _)                   _ = refl
-ff→seg-id (worklist-push _)                   _ = refl
-ff→seg-id (worklist-pop _)                    _ = refl
-ff→seg-id (worklist-check _)                  _ = refl
-ff→seg-id (instr-sigop _)                     _ = refl
-ff→seg-id (instr-load-const _ _)              _ = refl
-ff→seg-id (instr-load-code-addr _)            _ = refl
-ff→seg-id instr-save-closure-reg              _ = refl
-ff→seg-id (instr-load-tag-lit _)              _ = refl
-ff→seg-id (instr-alloc-heap _)                _ = refl
-ff→seg-id (instr-reg-op _)                    _ = refl
-
--- …and the CALL's segment fact, standalone now that it has left `FrameFreeI`
--- (D092). The static segment does NOT move at a call: the reservation belongs
--- to the body's own `c-thunk` marker (D086), which is the next instruction the
--- callee runs. This is what pairs the caller's frame with the segment in force
--- at the pc it will return to — i.e. what `RetMatch` records at the push.
-call-seg-id : is-id? (seg-action instr-call-closure) ≡ true
-call-seg-id = refl
-
--- (`ff→idle` / `idle-seg-at` / `emitted-seg-const` are GONE with the flip.
--- They said "an emitted trace never moves the segment", which is exactly what
--- stopped being true: closure bodies are inline, so an emitted trace contains
--- the two markers and the segmentation genuinely varies along it. Everything
--- that leant on them is now proved per-instruction below — the last of them,
--- the JUMP case, is the label-scoping obligation.)
-
--- (An `emitted-jump-in-segment` POSTULATE stood here while the flip was being
--- measured. It is now the PROVED `LabelScope.emitted-jump-in-segment`, wired
--- into the jump clause below — so the scaffolding is deleted rather than left
--- beside its theorem.)
+           → fetch prog 0 ≡ just (instr-ctrl (c-start (em-budget em)))
+fetch-zero prog em = em-zero em
 
 ------------------------------------------------------------------------
 -- THE FRAME STACK AND THE RETURN STACK ARE ONE STACK (Plan 0.63).
 --
 -- `c-thunk` pushes the caller's frame while `instr-call-closure` pushes the
--- return pc; `c-ret` pops both. So they have the same length, and — the part
--- that makes the SEGMENTED budget survive a return — each saved frame's
--- reservation is the segment in force at the pc it will return to. Without
--- that second half, `c-ret` restores a slot count from `saved-frames` and
--- lands the pc at a return address with NOTHING relating the two, and
--- `run-stack-slot` below cannot be re-established.
+-- return pc; `c-ret` pops both. So they have the same length, and each return
+-- address is one past a call.
+--
+-- D457: the invariant is the RUN's, read off no scan of the code. Master's
+-- positional segments (the reservation in force at each pc, a saved frame's
+-- at its return pc) are master's proof of the slot fact, and live with its
+-- image (`OldSeg`); the slot fact itself is the machine's slot gate
+-- (B1.7b, D458: `slot-read-in-frame`).
 --
 -- A DATATYPE (not a `with`-free function on two lists) so the cons/nil cases
 -- compose at the pushes and pops the markers produce.
 ------------------------------------------------------------------------
-data RetMatch (prog : AbstractTrace) (B : ℕ) : List (Frame × ℕ) → List ℕ → Set where
-  rm-[]  : RetMatch prog B [] []
+data RetMatch (prog : AbstractTrace) : List (Frame × ℕ) → List ℕ → Set where
+  rm-[]  : RetMatch prog [] []
   rm-∷   : ∀ {f b rpc frs rs}
-         → b ≡ cur (seg-at prog rpc (mkSeg B []))
-         -- …and WHERE THE RETURN ADDRESS CAME FROM (D094): one past a CALL,
+         -- WHERE THE RETURN ADDRESS CAME FROM (D094): one past a CALL,
          -- because the call is the only pusher. That is what says a return
          -- lands after a call site rather than anywhere — in particular never
-         -- on a body entry, whose predecessor is a `c-jmp`.
+         -- on a body entry, whose predecessor is a guard.
          → Σ ℕ (λ q → (rpc ≡ suc q) × Σ AbstractInstr (λ c → (fetch prog q ≡ just c) × CallI c))
-         → RetMatch prog B frs rs
-         → RetMatch prog B ((f , b) ∷ frs) (rpc ∷ rs)
+         → RetMatch prog frs rs
+         → RetMatch prog ((f , b) ∷ frs) (rpc ∷ rs)
 
--- THE RESERVATION IN FORCE, and its ONE EXCEPTION (D092).
---
--- Normally the current frame's reservation IS the static segment at the pc.
--- The exception is the instant a CALL has landed on a body entry: the frame it
--- entered reserves NOTHING (D086 — the body's `c-thunk` marker has not run
--- yet), while the positional scan still reads the CALLER's segment, because
--- bodies are spliced inline and the scan walks the trace in order.
---
--- Naming that state precisely is what keeps the invariant both TRUE and
--- USABLE: the exception's pc holds a `c-thunk`, which addresses no slot, so
--- every consumer (all of them slot reads) refutes it from the instruction it
--- already has. Weakening the equation to "…or the frame is empty" would have
--- been unusable — a consumer cannot refute that.
-SegCur : AbstractTrace → ℕ → FlatState → Set
-SegCur prog B fs =
-  (frame-slots (falloc fs) ≡ cur (seg-at prog (fpc fs) (mkSeg B [])))
-  ⊎ (Σ EntryId (λ ℓ → Σ ℕ (λ bb →
-       (fetch prog (fpc fs) ≡ just (instr-ctrl (c-entry ℓ bb)))
-       × (frame-slots (falloc fs) ≡ 0))))
-
--- THE RUN INVARIANT, per frame. `seg-cur` is what `slot-read-in-frame`
--- consumes; `seg-stack` is what a return consumes. One induction.
-record SegWF (prog : AbstractTrace) (B : ℕ) (fs : FlatState) : Set where
-  constructor mkSegWF
+-- THE RUN INVARIANT, per frame. `fw-stack` is what a return consumes;
+-- `fw-entry` what an entry consumes. One induction.
+record FrameWF (prog : AbstractTrace) (fs : FlatState) : Set where
+  constructor mkFrameWF
   field
-    seg-cur   : SegCur prog B fs
-    seg-stack : RetMatch prog B (saved-frames (falloc fs)) (fret fs)
+    fw-stack : RetMatch prog (saved-frames (falloc fs)) (fret fs)
     -- A BODY ENTRY IS REACHED WITH AN EMPTY RESERVATION (D094). The frame a
     -- `c-thunk` deepens is the one a CALL entered, and `enter-call` reserves
     -- nothing (D086). Every other way of arriving at a body entry is refuted:
@@ -576,11 +357,11 @@ record SegWF (prog : AbstractTrace) (B : ℕ) (fs : FlatState) : Set where
     -- caller's base is one slot ABOVE the cell being written — the half
     -- `StackWindows`' `≤`-threaded floor cannot supply. Both live at the head
     -- of `RetAddrs`, which exists only when `fret` is a cons.
-    seg-entry : ∀ (ℓ : EntryId) (bb : ℕ)
-              → fetch prog (fpc fs) ≡ just (instr-ctrl (c-entry ℓ bb))
-              → (frame-slots (falloc fs) ≡ 0) × Σ ℕ (λ r → flink fs ≡ just r)
-                × Σ ℕ (λ rpc → Σ (List ℕ) (λ rest → fret fs ≡ rpc ∷ rest))
-open SegWF
+    fw-entry : ∀ (ℓ : EntryId) (bb : ℕ)
+             → fetch prog (fpc fs) ≡ just (instr-ctrl (c-entry ℓ bb))
+             → (frame-slots (falloc fs) ≡ 0) × Σ ℕ (λ r → flink fs ≡ just r)
+               × Σ ℕ (λ rpc → Σ (List ℕ) (λ rest → fret fs ≡ rpc ∷ rest))
+open FrameWF
 
 ------------------------------------------------------------------------
 -- HOW THE PC MOVES, per instruction. Everything a frame-free step can be
@@ -653,8 +434,10 @@ data JumpPost (i : AbstractInstr) (m : LabelId) (prog : AbstractTrace) (fs : Fla
 -- inductions consume); `pv-thunk`/`pv-ret` are the two that MOVE THE FRAME and
 -- carry their reservation instead.
 data PcView (i : AbstractInstr) : Set where
+  -- (B1.7b: …or a slot instruction out of its frame faulted where it stands)
   pv-suc   : FrameFreeI i → NotJmpI i
-           → (∀ prog fs → fpc (flat-exec-instr i prog fs) ≡ suc (fpc fs)) → PcView i
+           → (∀ prog fs → (fpc (flat-exec-instr i prog fs) ≡ suc (fpc fs)) ⊎ (flat-exec-instr i prog fs ≡ flat-fault fs))
+           → PcView i
   pv-jump  : FrameFreeI i → ∀ (m : LabelId) → once-label-of i ≡ just m
            → (∀ prog fs → JumpPost i m prog fs) → PcView i
   -- D245: a callable ENTRY, a closure body's or a program function's.
@@ -670,8 +453,16 @@ data PcView (i : AbstractInstr) : Set where
   -- D245: …and the direct call, the same transfer to a statically named entry.
   pv-call-fn : ∀ (f : CanonicalName) → i ≡ instr-ctrl (c-call-fn f) → PcView i
 
+-- B1.7b (D458): a slot instruction's step moves on, or faults where it stands
+slot-adv : ∀ i (fs : FlatState) → (fpc (flat-step-straight i fs) ≡ suc (fpc fs)) ⊎ (flat-step-straight i fs ≡ flat-fault fs)
+slot-adv i fs = go (straightView i fs)
+  where
+    go : StraightPost i fs → (fpc (flat-step-straight i fs) ≡ suc (fpc fs)) ⊎ (flat-step-straight i fs ≡ flat-fault fs)
+    go (sp-fault e) = inj₂ e
+    go (sp-go _ e) = inj₁ (cong fpc e)
+
 pcView : ∀ (i : AbstractInstr) → ImageI i → PcView i
-pcView (instr-ctrl (c-label _))               _ = pv-suc tt tt (λ _ _ → refl)
+pcView (instr-ctrl (c-label _))               _ = pv-suc tt tt (λ _ _ → inj₁ refl)
 pcView (instr-ctrl (c-start bb))              _ = pv-start bb refl
 pcView (instr-ctrl c-leave)                   _ = pv-leave refl
 pcView (instr-ctrl (c-jmp m))                 _ = pv-jump tt m refl go
@@ -688,7 +479,7 @@ pcView (instr-ctrl (c-jmp m))                 _ = pv-jump tt m refl go
 pcView (instr-ctrl (c-branch-tag-zero m))     _ = pv-jump tt m refl go
   where
     go : ∀ prog fs → JumpPost (instr-ctrl (c-branch-tag-zero m)) m prog fs
-    go prog fs = mk (dt-aux (tag-test (flat-read-tag (floc fs))) m prog fs)
+    go prog fs = mk (dt-aux (tag-test (flat-read-tag (falloc fs) (floc fs))) m prog fs)
       where mk : _ → JumpPost (instr-ctrl (c-branch-tag-zero m)) m prog fs
             mk (inj₁ e)                     = jp-suc e tt
             mk (inj₂ (inj₁ e))              = jp-halt e
@@ -698,224 +489,176 @@ pcView (instr-ctrl (c-call-fn f))             _ = pv-call-fn f refl
 pcView (instr-ctrl (c-ret bb))                _ = pv-ret bb refl
 pcView (instr-alloc-stack _)                  ()
 pcView (instr-dealloc-stack _)                ()
-pcView (instr-free-heap _)                    ()
-pcView (load-at _)                            _ = pv-suc tt tt (λ _ _ → refl)
-pcView (store-at _)                           _ = pv-suc tt tt (λ _ _ → refl)
-pcView (addr-at _)                            _ = pv-suc tt tt (λ _ _ → refl)
+pcView (instr-free-heap n)                    _ = pv-suc tt tt (λ _ fs → slot-adv (instr-free-heap n) fs)
+pcView (load-at _)                            _ = pv-suc tt tt (λ _ _ → inj₁ refl)
+pcView (store-at _)                           _ = pv-suc tt tt (λ _ _ → inj₁ refl)
+pcView (addr-at _)                            _ = pv-suc tt tt (λ _ _ → inj₁ refl)
+pcView (load-rec k)                           e = pv-suc e tt (λ _ _ → inj₁ refl)
+pcView (store-rec k)                          e = pv-suc e tt (λ _ _ → inj₁ refl)
 pcView (instr-room _)                    ()
 pcView (instr-push-frame _)                   ()
 pcView instr-pop-frame                        ()
-pcView (lea-slot _)                           ()
-pcView mov-to-output                          _ = pv-suc tt tt (λ _ _ → refl)
-pcView mov-to-input                           _ = pv-suc tt tt (λ _ _ → refl)
+pcView (lea-slot k)                         _ = pv-suc tt tt (λ _ fs → slot-adv (lea-slot k) fs)
+pcView mov-to-output                          _ = pv-suc tt tt (λ _ _ → inj₁ refl)
+pcView mov-to-input                           _ = pv-suc tt tt (λ _ _ → inj₁ refl)
 pcView load-indirect                          ()
 pcView load-indirect-suc                      ()
-pcView (load-from-slot _)                     _ = pv-suc tt tt (λ _ _ → refl)
-pcView (store-at-slot _)                      _ = pv-suc tt tt (λ _ _ → refl)
+pcView (load-from-slot k)                   _ = pv-suc tt tt (λ _ fs → slot-adv (load-from-slot k) fs)
+pcView (store-at-slot k)                    _ = pv-suc tt tt (λ _ fs → slot-adv (store-at-slot k) fs)
 pcView store-indirect                         ()
 pcView store-indirect-suc                     ()
-pcView (restore-input _)                      _ = pv-suc tt tt (λ _ _ → refl)
-pcView (instr-reclaim-to _)                   _ = pv-suc tt tt (λ _ _ → refl)
+pcView (restore-input k)                    _ = pv-suc tt tt (λ _ fs → slot-adv (restore-input k) fs)
+pcView (instr-reclaim-to _)                   _ = pv-suc tt tt (λ _ _ → inj₁ refl)
 pcView instr-call-closure                     _ = pv-call refl
-pcView (worklist-init _)                      _ = pv-suc tt tt (λ _ _ → refl)
-pcView (worklist-push _)                      _ = pv-suc tt tt (λ _ _ → refl)
-pcView (worklist-pop _)                       _ = pv-suc tt tt (λ _ _ → refl)
-pcView (worklist-check _)                     _ = pv-suc tt tt (λ _ _ → refl)
-pcView (instr-sigop _)                        _ = pv-suc tt tt (λ _ _ → refl)
-pcView (instr-load-const _ _)                 _ = pv-suc tt tt (λ _ _ → refl)
-pcView (instr-load-code-addr _)               _ = pv-suc tt tt (λ _ _ → refl)
-pcView instr-save-closure-reg                 _ = pv-suc tt tt (λ _ _ → refl)
-pcView (instr-load-tag-lit _)                 _ = pv-suc tt tt (λ _ _ → refl)
-pcView (instr-alloc-heap _)                   _ = pv-suc tt tt (λ _ _ → refl)
-pcView (instr-reg-op out-nz)                  _ = pv-suc tt tt (λ _ fs → nz-pc (readReg (regs (floc fs)) Output) fs)
+pcView (worklist-init k)                    _ = pv-suc tt tt (λ _ fs → slot-adv (worklist-init k) fs)
+pcView (worklist-push k)                    _ = pv-suc tt tt (λ _ fs → slot-adv (worklist-push k) fs)
+pcView (worklist-pop k)                     _ = pv-suc tt tt (λ _ fs → slot-adv (worklist-pop k) fs)
+pcView (worklist-check k)                   _ = pv-suc tt tt (λ _ fs → slot-adv (worklist-check k) fs)
+pcView (instr-sigop _)                        _ = pv-suc tt tt (λ _ _ → inj₁ refl)
+pcView (instr-load-const _ _)                 _ = pv-suc tt tt (λ _ _ → inj₁ refl)
+pcView (instr-load-code-addr _)               _ = pv-suc tt tt (λ _ _ → inj₁ refl)
+pcView instr-save-closure-reg                 _ = pv-suc tt tt (λ _ _ → inj₁ refl)
+pcView (instr-load-tag-lit _)                 _ = pv-suc tt tt (λ _ _ → inj₁ refl)
+pcView (instr-alloc-heap _)                   _ = pv-suc tt tt (λ _ _ → inj₁ refl)
+pcView (instr-reg-op out-nz)                  _ = pv-suc tt tt (λ _ fs → inj₁ (nz-pc (readReg (regs (floc fs)) Output) fs))
 
--- The live stack window is the reservation IN FORCE at the current pc — the
--- CURRENT FRAME's, once frames move. Induction on `Reachable`; each step is
--- frame-free because the program is emitted (`frame-op-absurd`), so it moves
--- neither the frame stack nor the return stack (`flat-same-frames`).
---
--- THE ONE PLACE THE FLIP LANDS: the step case needs the segment in force to be
--- the same at the post-pc as at the pre-pc. Today that is `emitted-seg-const`
--- (no emitted trace holds a marker, so `seg-at` is the identity). With bodies
--- inlined it becomes two obligations — the marker steps, which move the
--- segment exactly as they move the frame, and LABEL SCOPING for the jumps.
-run-seg-wf : ∀ prog (fs : FlatState) (r : RunAt prog fs)
-           → SegWF prog 0 fs
-run-seg-wf prog fs (mkRunAt tbl ir eq lkd reach) = go fs reach
+-- THE RUN INVARIANT is the run's own: an induction on `Reachable` whose steps
+-- read two facts of the code and nothing else (D457): what each instruction
+-- is (`ImageI`, the emitter's fence) and the guard before each entry
+-- (`GuardAt`). Taken as arguments rather than from `RunAt`, so a provider of
+-- `Emitted` (master's scan, `OldSeg`) can use the invariant while building it.
+run-frame-wf : ∀ prog → AllL ImageI prog → GuardAt prog
+             → ∀ (fs : FlatState) → Reachable prog 0 fs → FrameWF prog fs
+run-frame-wf prog img grd = go
   where
-    B₀ = mkSeg 0 []
     0≢suc : ∀ {n : ℕ} → 0 ≡ suc n → ⊥
     0≢suc ()
     suc-inj : ∀ {m n : ℕ} → suc m ≡ suc n → m ≡ n
     suc-inj refl = refl
     just-injI : ∀ {a b : AbstractInstr} → just a ≡ just b → a ≡ b
     just-injI refl = refl
-    -- the emitter's guard, at THIS program (D245: a `c-jmp` or a `c-ret`)
+    -- the emitter's guard, at THIS program (D245: a `c-jmp` or a `c-ret`;
+    -- D456: or a `c-leave`, which halts where it stands)
     Guard : ℕ → Set
     Guard q = (Σ LabelId (λ m → fetch prog q ≡ just (instr-ctrl (c-jmp m))))
               ⊎ (Σ ℕ (λ b → fetch prog q ≡ just (instr-ctrl (c-ret b))))
+              ⊎ (fetch prog q ≡ just (instr-ctrl c-leave))
+    -- a step that moves the pc on is not a `c-leave`
+    n≢sn : ∀ (n : ℕ) → n ≡ suc n → ⊥
+    n≢sn zero    ()
+    n≢sn (suc n) e = n≢sn n (suc-inj e)
     guard : ∀ (p : ℕ) (ℓ : EntryId) (bb : ℕ)
           → fetch prog p ≡ just (instr-ctrl (c-entry ℓ bb))
           → Σ ℕ (λ q → (p ≡ suc q) × Guard q)
-    guard p ℓ bb H =
-      subst (λ pr → Σ ℕ (λ q → (p ≡ suc q)
-                    × ((Σ LabelId (λ m → fetch pr q ≡ just (instr-ctrl (c-jmp m))))
-                       ⊎ (Σ ℕ (λ b → fetch pr q ≡ just (instr-ctrl (c-ret b)))))))
-            (sym eq)
-            (emitted-thunk-guarded tbl ir p ℓ bb
-              (subst (λ pr → fetch pr p ≡ just (instr-ctrl (c-entry ℓ bb))) eq H))
-    go : ∀ (fs' : FlatState) → Reachable prog 0 fs'
-       → SegWF prog 0 fs'
-    -- AT ENTRY the pc is 0 and `seg-at _ zero` is the starting state outright.
+    guard p ℓ bb H = grd p ℓ bb H
+    go : ∀ (fs' : FlatState) → Reachable prog 0 fs' → FrameWF prog fs'
     go fs' (reach-start .fs' el eqB _) =
-      mkSegWF (inj₁ (subst (λ z → frame-slots (falloc fs') ≡ cur (seg-at prog z B₀))
-                           (sym (proj₁ el)) eqB))
-              (subst₂ (RetMatch prog 0)
-                      (sym (proj₁ (proj₂ (proj₂ (proj₂ el)))))
-                      (sym (proj₁ (proj₂ (proj₂ (proj₂ (proj₂ el))))))
-                      rm-[])
-              -- AT ENTRY the pc is 0, and a body entry is never at position 0
-              -- (the emitter's guard sits before it).
-              (λ ℓ bb H → ⊥-elim (0≢suc (proj₁ (proj₂ (guard 0 ℓ bb
-                            (subst (λ z → fetch prog z ≡ just (instr-ctrl (c-entry ℓ bb)))
-                                   (proj₁ el) H))))))
+      mkFrameWF (subst₂ (RetMatch prog)
+                        (sym (proj₁ (proj₂ (proj₂ (proj₂ el)))))
+                        (sym (proj₁ (proj₂ (proj₂ (proj₂ (proj₂ el))))))
+                        rm-[])
+                -- AT ENTRY the pc is 0, and a body entry is never at position 0
+                -- (the emitter's guard sits before it).
+                (λ ℓ bb H → ⊥-elim (0≢suc (proj₁ (proj₂ (guard 0 ℓ bb
+                              (subst (λ z → fetch prog z ≡ just (instr-ctrl (c-entry ℓ bb)))
+                                     (proj₁ el) H))))))
     go .(flat-exec-instr i prog fs'') (reach-step i fs'' r' ftq h) =
-      step (pcView i em)
+      step (pcView i (fetch-All {prog = prog} {k = fpc fs''} img ftq))
       where
-        em  = frame-op-absurd prog fs'' i (tbl , ir , eq) ftq
         ih  = go fs'' r'
-        lk : trace-lookup prog (fpc fs'') ≡ just i
-        lk = trans (sym (fetch≡lookup prog (fpc fs''))) ftq
-        -- the segment one position along, stepped by the fetched instruction
-        seg-suc : seg-at prog (suc (fpc fs'')) B₀ ≡ seg-step i (seg-at prog (fpc fs'') B₀)
-        seg-suc = seg-at-suc prog (fpc fs'') B₀ lk
-        -- THE PRE-STATE'S EQUATION (D092). `SegCur` has an exception row — the
-        -- pc holds a body entry — and every case below is at an instruction
-        -- that is NOT one, so each discharges the row from `i`'s own shape.
-        ih-eq : (∀ ℓ bb → i ≡ instr-ctrl (c-entry ℓ bb) → ⊥)
-              → frame-slots (falloc fs'') ≡ cur (seg-at prog (fpc fs'') B₀)
-        ih-eq nt = go-eq (seg-cur ih)
-          where go-eq : SegCur prog 0 fs''
-                      → frame-slots (falloc fs'') ≡ cur (seg-at prog (fpc fs'') B₀)
-                go-eq (inj₁ e) = e
-                go-eq (inj₂ (ℓ , bb , tq , _)) =
-                  ⊥-elim (nt ℓ bb (just-injI (trans (sym ftq) tq)))
-        -- …and the two ways a case knows it is not at a body entry
-        ff-not-thunk : FrameFreeI i → ∀ ℓ bb → i ≡ instr-ctrl (c-entry ℓ bb) → ⊥
-        ff-not-thunk ff ℓ bb e = subst FrameFreeI e ff
         -- D094: NO FALL-THROUGH LANDS ON A BODY ENTRY. The emitter's guard
         -- puts a `c-jmp` immediately before one, and the instruction actually
         -- fetched here is not a `c-jmp` — whoever calls this says so.
         -- D245: …or a `c-ret` — so the instruction here must be neither.
+        -- D456: …or a `c-leave`, which a step that falls through is not.
         no-fallthrough : ∀ (p : ℕ) (ℓ : EntryId) (bb : ℕ) (i' : AbstractInstr)
                        → (∀ m → i' ≡ instr-ctrl (c-jmp m) → ⊥) → (∀ b → i' ≡ instr-ctrl (c-ret b) → ⊥)
+                       → (i' ≡ instr-ctrl c-leave → ⊥)
                        → fetch prog p ≡ just i'
                        → fetch prog (suc p) ≡ just (instr-ctrl (c-entry ℓ bb)) → ⊥
-        no-fallthrough p ℓ bb i' nj nr ftq' H = clash (guard (suc p) ℓ bb H)
+        no-fallthrough p ℓ bb i' nj nr nl ftq' H = clash (guard (suc p) ℓ bb H)
           where clash : Σ ℕ (λ q → (suc p ≡ suc q) × Guard q) → ⊥
                 clash (q , sq , inj₁ (m , fq)) =
                   nj m (just-injI (trans (sym ftq')
                                     (subst (λ z → fetch prog z ≡ just (instr-ctrl (c-jmp m)))
                                            (sym (suc-inj sq)) fq)))
-                clash (q , sq , inj₂ (b , fq)) =
+                clash (q , sq , inj₂ (inj₁ (b , fq))) =
                   nr b (just-injI (trans (sym ftq')
                                     (subst (λ z → fetch prog z ≡ just (instr-ctrl (c-ret b)))
                                            (sym (suc-inj sq)) fq)))
+                clash (q , sq , inj₂ (inj₂ fq)) =
+                  nl (just-injI (trans (sym ftq')
+                                  (subst (λ z → fetch prog z ≡ just (instr-ctrl c-leave))
+                                         (sym (suc-inj sq)) fq)))
+        -- a step that moves the pc on is not a `c-leave` (which halts in place)
+        adv-not-leave : ∀ {i' : AbstractInstr} → fpc (flat-exec-instr i' prog fs'') ≡ suc (fpc fs'')
+                      → i' ≡ instr-ctrl c-leave → ⊥
+        adv-not-leave a refl = n≢sn (fpc fs'') a
         -- a frame-free instruction is not a `c-ret` (which moves the frame)
         ff-not-ret : FrameFreeI i → ∀ b → i ≡ instr-ctrl (c-ret b) → ⊥
         ff-not-ret ff b e = subst FrameFreeI e ff
         nj-eq : ∀ {i' : AbstractInstr} → NotJmpI i' → ∀ m → i' ≡ instr-ctrl (c-jmp m) → ⊥
         nj-eq nj m e = subst NotJmpI e nj
-        step : PcView i → SegWF prog 0 (flat-exec-instr i prog fs'')
-        -- FRAME-FREE, FALLING THROUGH: frames untouched, segment unmoved.
+        step : PcView i → FrameWF prog (flat-exec-instr i prog fs'')
+        -- FRAME-FREE, FALLING THROUGH: frames untouched.
         step (pv-suc ff nj adv) =
-          mkSegWF
-            (inj₁ (trans (sf-slots same) (trans (ih-eq (ff-not-thunk ff)) (sym stable))))
-            (subst₂ (RetMatch prog 0)
-                    (sym (sf-saved same)) (sym (sf-ret same)) (seg-stack ih))
-            -- a FALL-THROUGH cannot land on a body entry: the emitter put a
-            -- `c-jmp` there, and this instruction is not one.
-            (λ ℓ bb H → ⊥-elim (no-fallthrough (fpc fs'') ℓ bb i (nj-eq nj) (ff-not-ret ff) ftq
-                          (subst (λ z → fetch prog z ≡ just (instr-ctrl (c-entry ℓ bb)))
-                                 (adv prog fs'') H)))
+          mkFrameWF
+            (subst₂ (RetMatch prog) (sym (sf-saved same)) (sym (sf-ret same)) (fw-stack ih))
+            (land (adv prog fs''))
           where
             same = flat-same-frames i prog fs'' ff
-            stable : cur (seg-at prog (fpc (flat-exec-instr i prog fs'')) B₀)
-                   ≡ cur (seg-at prog (fpc fs'') B₀)
-            stable = cong cur (trans (cong (λ z → seg-at prog z B₀) (adv prog fs''))
-                              (trans seg-suc
-                                     (idle-step i (ff→seg-id i ff) (seg-at prog (fpc fs'') B₀))))
-        -- FRAME-FREE JUMP: frames untouched; the segment survives by LABEL
-        -- SCOPING (`ProgramImageFacts.image-jump-in-segment`).
+            -- a FALL-THROUGH cannot land on a body entry: the emitter put a
+            -- guard there, and this instruction is not one. (B1.7b: a fault
+            -- stays on this instruction, which is not an entry either.)
+            land : (fpc (flat-exec-instr i prog fs'') ≡ suc (fpc fs'')) ⊎ (flat-exec-instr i prog fs'' ≡ flat-fault fs'')
+                 → ∀ ℓ bb → fetch prog (fpc (flat-exec-instr i prog fs'')) ≡ just (instr-ctrl (c-entry ℓ bb))
+                 → (frame-slots (falloc (flat-exec-instr i prog fs'')) ≡ 0) × Σ ℕ (λ r → flink (flat-exec-instr i prog fs'') ≡ just r)
+                   × Σ ℕ (λ rpc → Σ (List ℕ) (λ rest → fret (flat-exec-instr i prog fs'') ≡ rpc ∷ rest))
+            land (inj₁ a) ℓ bb H =
+              ⊥-elim (no-fallthrough (fpc fs'') ℓ bb i (nj-eq nj) (ff-not-ret ff) (adv-not-leave a) ftq
+                        (subst (λ z → fetch prog z ≡ just (instr-ctrl (c-entry ℓ bb))) a H))
+            land (inj₂ e) ℓ bb H =
+              ⊥-elim (subst FrameFreeI (just-injI (trans (sym ftq) (subst (λ z → fetch prog z ≡ just (instr-ctrl (c-entry ℓ bb))) (cong fpc e) H))) ff)
+        -- FRAME-FREE JUMP: frames untouched.
         step (pv-jump ff m mlab jp) =
-          mkSegWF
-            (inj₁ (trans (sf-slots same)
-                         (trans (ih-eq (ff-not-thunk ff)) (sym (jgo (jp prog fs''))))))
-            (subst₂ (RetMatch prog 0)
-                    (sym (sf-saved same)) (sym (sf-ret same)) (seg-stack ih))
+          mkFrameWF
+            (subst₂ (RetMatch prog) (sym (sf-saved same)) (sym (sf-ret same)) (fw-stack ih))
             -- THE THREE WAYS A JUMP CAN LAND, and none is a body entry: a
             -- fall-through (branch not taken) is guarded as above; a HALT
             -- leaves the pc on this very instruction, which `once-label-of`
-            -- says is not a `c-thunk`; and a resolved target holds a
-            -- `c-label` (`find-label-sound` — D082's disjoint provenances).
+            -- says is not an entry; and a resolved target holds a `c-label`
+            -- (`find-label-sound` — D082's disjoint provenances).
             (λ ℓ bb H → ⊥-elim (ego (jp prog fs'') ℓ bb H))
           where
             same = flat-same-frames i prog fs'' ff
-            lkm : mention-at prog (fpc fs'') ≡ just m
-            lkm = trans (cong mention-of lk) mlab
-            jgo : JumpPost i m prog fs''
-                → cur (seg-at prog (fpc (flat-exec-instr i prog fs'')) B₀)
-                ≡ cur (seg-at prog (fpc fs'') B₀)
-            jgo (jp-suc adv nj) =
-              cong cur (trans (cong (λ z → seg-at prog z B₀) adv)
-                       (trans seg-suc (idle-step i (ff→seg-id i ff) (seg-at prog (fpc fs'') B₀))))
-            jgo (jp-halt e) = cong cur (cong (λ z → seg-at prog z B₀) e)
-            jgo (jp-to q fq e) =
-              cong cur (trans (cong (λ z → seg-at prog z B₀) e)
-                        (subst (λ pr → seg-at pr q B₀ ≡ seg-at pr (fpc fs'') B₀) (sym eq)
-                          (image-jump-in-segment {FS} tbl ir (fpc fs'') q m B₀
-                            (subst (λ pr → mention-at pr (fpc fs'') ≡ just m) eq lkm)
-                            (subst (λ pr → find-label pr m ≡ just q) eq fq))))
-            -- …and the same three rows, for the body-entry claim
             ego : JumpPost i m prog fs'' → ∀ ℓ bb
                 → fetch prog (fpc (flat-exec-instr i prog fs''))
                     ≡ just (instr-ctrl (c-entry ℓ bb)) → ⊥
             ego (jp-suc adv nj) ℓ bb H =
-              no-fallthrough (fpc fs'') ℓ bb i (nj-eq nj) (ff-not-ret ff) ftq
+              no-fallthrough (fpc fs'') ℓ bb i (nj-eq nj) (ff-not-ret ff) (adv-not-leave adv) ftq
                 (subst (λ z → fetch prog z ≡ just (instr-ctrl (c-entry ℓ bb))) adv H)
-            -- the pc did not move, so the instruction there is `i` itself —
-            -- and a `c-thunk` mentions no `once` label
             ego (jp-halt e) ℓ bb H = no-once (trans (sym mlab) (cong once-label-of i≡thunk))
               where i≡thunk : i ≡ instr-ctrl (c-entry ℓ bb)
                     i≡thunk = just-injI (trans (sym ftq)
                                 (subst (λ z → fetch prog z ≡ just (instr-ctrl (c-entry ℓ bb))) e H))
                     no-once : ∀ {A : Set} → just m ≡ nothing → A
                     no-once ()
-            -- a resolved jump target holds a `c-label`, never a body entry
             ego (jp-to q fq e) ℓ bb H = clash (trans (sym (find-label-sound prog m q fq))
                     (subst (λ z → fetch prog z ≡ just (instr-ctrl (c-entry ℓ bb))) e H))
               where clash : ∀ {A : Set}
                           → just (instr-ctrl (c-label m)) ≡ just (instr-ctrl (c-entry ℓ bb)) → A
                     clash ()
-        -- THE BODY MARKER: `grow-frame bb` sets `frame-slots := bb` and the
-        -- static `seg-push bb` sets `cur := bb` — they agree by construction,
-        -- which is the whole point of D086 putting the PUSH at the call and
-        -- only the reservation here. `saved-frames`/`fret` are untouched, so
-        -- `RetMatch` rides through.
+        -- THE ENTRY: `saved-frames`/`fret` untouched; it falls through, so the
+        -- same guard applies to the position after it.
         step (pv-thunk ℓ bb ieq) =
-          mkSegWF (inj₁ (trans (cong (λ z → frame-slots (falloc (flat-exec-instr z prog fs''))) ieq)
-                         (sym (cong cur (trans (cong (λ z → seg-at prog z B₀) (pc-eq ieq))
-                                               (trans seg-suc (step-eq ieq)))))))
-                  (subst₂ (RetMatch prog 0)
-                          (sym (cong (λ z → saved-frames (falloc (flat-exec-instr z prog fs''))) ieq))
-                          (sym (cong (λ z → fret (flat-exec-instr z prog fs'')) ieq))
-                          (seg-stack ih))
-                  -- the marker FALLS THROUGH, so the same guard applies: the
-                  -- position after a body entry is not another body entry.
-                  (λ ℓ' bb' H → ⊥-elim (no-fallthrough (fpc fs'') ℓ' bb' i
-                                  (entry-not-jmp ieq) (entry-not-ret ieq) ftq
-                                  (subst (λ z → fetch prog z ≡ just (instr-ctrl (c-entry ℓ' bb')))
-                                         (pc-eq ieq) H)))
+          mkFrameWF (subst₂ (RetMatch prog)
+                            (sym (cong (λ z → saved-frames (falloc (flat-exec-instr z prog fs''))) ieq))
+                            (sym (cong (λ z → fret (flat-exec-instr z prog fs'')) ieq))
+                            (fw-stack ih))
+                    (λ ℓ' bb' H → ⊥-elim (no-fallthrough (fpc fs'') ℓ' bb' i
+                                    (entry-not-jmp ieq) (entry-not-ret ieq) (adv-not-leave (pc-eq ieq)) ftq
+                                    (subst (λ z → fetch prog z ≡ just (instr-ctrl (c-entry ℓ' bb')))
+                                           (pc-eq ieq) H)))
           where
             entry-not-ret : i ≡ instr-ctrl (c-entry ℓ bb) → ∀ b → i ≡ instr-ctrl (c-ret b) → ⊥
             entry-not-ret refl b ()
@@ -924,44 +667,28 @@ run-seg-wf prog fs (mkRunAt tbl ir eq lkd reach) = go fs reach
             pc-eq : i ≡ instr-ctrl (c-entry ℓ bb)
                   → fpc (flat-exec-instr i prog fs'') ≡ suc (fpc fs'')
             pc-eq refl = refl
-            step-eq : i ≡ instr-ctrl (c-entry ℓ bb)
-                    → seg-step i (seg-at prog (fpc fs'') B₀)
-                      ≡ mkSeg bb (cur (seg-at prog (fpc fs'') B₀) ∷ saved (seg-at prog (fpc fs'') B₀))
-            step-eq refl = refl
-        -- plan 0.107: THE START reserves the outermost frame exactly as a body
-        -- marker reserves its own — `grow-frame bb` against `seg-push bb`.
+        -- plan 0.107: THE START, likewise.
         step (pv-start bb ieq) =
-          mkSegWF (inj₁ (trans (cong (λ z → frame-slots (falloc (flat-exec-instr z prog fs''))) ieq)
-                         (sym (cong cur (trans (cong (λ z → seg-at prog z B₀) (pc-eq′ ieq))
-                                               (trans seg-suc (step-eq′ ieq)))))))
-                  (subst₂ (RetMatch prog 0)
-                          (sym (cong (λ z → saved-frames (falloc (flat-exec-instr z prog fs''))) ieq))
-                          (sym (cong (λ z → fret (flat-exec-instr z prog fs'')) ieq))
-                          (seg-stack ih))
-                  -- the marker FALLS THROUGH, so the same guard applies: the
-                  -- position after a body entry is not another body entry.
-                  (λ ℓ' bb' H → ⊥-elim (no-fallthrough (fpc fs'') ℓ' bb' i
-                                  (start-not-jmp ieq) (start-not-ret ieq) ftq
-                                  (subst (λ z → fetch prog z ≡ just (instr-ctrl (c-entry ℓ' bb')))
-                                         (pc-eq′ ieq) H)))
+          mkFrameWF (subst₂ (RetMatch prog)
+                            (sym (cong (λ z → saved-frames (falloc (flat-exec-instr z prog fs''))) ieq))
+                            (sym (cong (λ z → fret (flat-exec-instr z prog fs'')) ieq))
+                            (fw-stack ih))
+                    (λ ℓ' bb' H → ⊥-elim (no-fallthrough (fpc fs'') ℓ' bb' i
+                                    (start-not-jmp ieq) (start-not-ret ieq) (adv-not-leave (pc-eq′ ieq)) ftq
+                                    (subst (λ z → fetch prog z ≡ just (instr-ctrl (c-entry ℓ' bb')))
+                                           (pc-eq′ ieq) H)))
           where
             start-not-ret : i ≡ instr-ctrl (c-start bb) → ∀ b → i ≡ instr-ctrl (c-ret b) → ⊥
             start-not-ret refl b ()
             start-not-jmp : i ≡ instr-ctrl (c-start bb) → ∀ m → i ≡ instr-ctrl (c-jmp m) → ⊥
             start-not-jmp refl m ()
             pc-eq′ : i ≡ instr-ctrl (c-start bb)
-                  → fpc (flat-exec-instr i prog fs'') ≡ suc (fpc fs'')
+                   → fpc (flat-exec-instr i prog fs'') ≡ suc (fpc fs'')
             pc-eq′ refl = refl
-            step-eq′ : i ≡ instr-ctrl (c-start bb)
-                    → seg-step i (seg-at prog (fpc fs'') B₀)
-                      ≡ mkSeg bb (cur (seg-at prog (fpc fs'') B₀) ∷ saved (seg-at prog (fpc fs'') B₀))
-            step-eq′ refl = refl
         -- D320: THE LEAVE halts where it stands — frames, pc and returns as they were.
-        step (pv-leave ieq) = subst (λ z → SegWF prog 0 (flat-exec-instr z prog fs'')) (sym ieq)
-                                (mkSegWF (seg-cur ih) (seg-stack ih) (seg-entry ih))
-        -- THE RETURN: `leave-frame` restores the caller's count and the pc goes
-        -- to the popped return address. That those two BELONG TOGETHER is
-        -- exactly `RetMatch`, which is what it was built for.
+        step (pv-leave ieq) = subst (λ z → FrameWF prog (flat-exec-instr z prog fs'')) (sym ieq)
+                                (mkFrameWF (fw-stack ih) (fw-entry ih))
+        -- THE RETURN pops both stacks and lands one past a call.
         step (pv-ret bb ieq) = ret-step ieq
           where
             -- the pc has not moved, so the instruction is this `c-ret`
@@ -970,131 +697,69 @@ run-seg-wf prog fs (mkRunAt tbl ir eq lkd reach) = go fs reach
             ret-clash refl ℓ bb' H = go-c (just-injI (trans (sym ftq) H))
               where go-c : instr-ctrl (c-ret bb) ≡ instr-ctrl (c-entry ℓ bb') → ⊥
                     go-c ()
-            ret-step : i ≡ instr-ctrl (c-ret bb)
-                     → SegWF prog 0 (flat-exec-instr i prog fs'')
-            ret-step refl = go-rm (fret fs'') (saved-frames (falloc fs'')) refl refl (seg-stack ih)
+            ret-step : i ≡ instr-ctrl (c-ret bb) → FrameWF prog (flat-exec-instr i prog fs'')
+            ret-step refl = rgo (retView bb fs'')
               where
-                -- J-style on BOTH stacks at once: `RetMatch` pairs them, so
-                -- the length-mismatch rows are absurd and the cons row hands
-                -- back exactly the two facts the post-state needs — the
-                -- caller's reservation (`beq`) and the tail pairing.
-                go-rm : ∀ (rs : List ℕ) (frs : List (Frame × ℕ))
-                      → fret fs'' ≡ rs → saved-frames (falloc fs'') ≡ frs
-                      → RetMatch prog 0 frs rs
-                      → SegWF prog 0
-                              (flat-exec-instr (instr-ctrl (c-ret bb)) prog fs'')
-                -- an empty return stack HALTS with the pc unmoved, so the
-                -- caller's window is this frame's and the pairing stays empty
-                go-rm [] [] req feq rm-[] =
-                  mkSegWF (inj₁ (trans (cong frame-slots (do-ret-alloc fs''))
-                          (trans (leave-frame-slots-[] (falloc fs'') feq)
-                          (trans (ih-eq (λ _ _ ()))
-                                 (cong (λ z → cur (seg-at prog z B₀))
-                                       (sym (do-ret-pc-[] fs'' req)))))))
-                          (subst₂ (RetMatch prog 0)
-                                  (sym (trans (cong saved-frames (do-ret-alloc fs''))
-                                              (leave-frame-saved-[] (falloc fs'') feq)))
-                                  (sym (do-ret-fret-[] fs'' req)) rm-[])
-                          -- an empty return stack HALTS with the pc unmoved,
-                          -- so the instruction there is still this `c-ret`
-                          (λ ℓ bb H → ⊥-elim (ret-clash ieq ℓ bb
-                                        (subst (λ z → fetch prog z ≡ just (instr-ctrl (c-entry ℓ bb)))
-                                               (do-ret-pc-[] fs'' req) H)))
-                -- …and a real return takes the caller's reservation `b` and
-                -- lands at `rpc`; `RetMatch` says those two belong together
-                go-rm (rpc ∷ rs) ((f , b) ∷ frs) req feq (rm-∷ beq prov rest) =
-                  mkSegWF (inj₁ (trans (cong frame-slots (do-ret-alloc fs''))
-                          (trans (leave-frame-slots-∷ (falloc fs'') f b frs feq)
-                          (trans beq (cong (λ z → cur (seg-at prog z B₀))
-                                           (sym (do-ret-pc-∷ fs'' rpc rs req)))))))
-                          (subst₂ (RetMatch prog 0)
-                                  (sym (trans (cong saved-frames (do-ret-alloc fs''))
-                                              (leave-frame-saved-∷ (falloc fs'') f b frs feq)))
-                                  (sym (do-ret-fret-∷ fs'' rpc rs req)) rest)
-                          -- …and a REAL return lands one past a CALL
-                          -- (`RetMatch`'s provenance), which is not the `c-jmp`
-                          -- a body entry is preceded by.
-                          (λ ℓ bb H → ⊥-elim
-                            (no-fallthrough (proj₁ prov) ℓ bb (proj₁ (proj₂ (proj₂ prov)))
-                              (call-not-jmp (proj₁ (proj₂ (proj₂ prov))) (proj₂ (proj₂ (proj₂ (proj₂ prov)))))
-                              (call-not-ret (proj₁ (proj₂ (proj₂ prov))) (proj₂ (proj₂ (proj₂ (proj₂ prov)))))
-                              (proj₁ (proj₂ (proj₂ (proj₂ prov))))
-                              (subst (λ z → fetch prog z ≡ just (instr-ctrl (c-entry ℓ bb)))
-                                     (trans (do-ret-pc-∷ fs'' rpc rs req) (proj₁ (proj₂ prov)))
-                                     H)))
-                go-rm [] ((f , b) ∷ frs) req feq ()
-                go-rm (rpc ∷ rs) [] req feq ()
-        -- THE CALL (D092): it PUSHES both stacks and lands on a body entry.
-        --
-        -- `seg-cur` takes the EXCEPTION row: the frame `enter-call` entered
-        -- reserves nothing (`refl`), and the pc holds the `c-thunk` the scan
-        -- found (`find-thunk-sound`) — the body's reservation is that marker's
-        -- job, one step later.
-        --
-        -- `seg-stack` gains a pair, and its `rm-∷` obligation is exactly what
-        -- D086 was for: the caller's reservation must be the segment in force
-        -- at the pc it will RETURN to. That pc is `suc (fpc fs'')` and the call
-        -- is segment-idle (`call-seg-id`), so it is the caller's own segment —
-        -- which the pre-state's equation supplies.
+                rgo : RetPost bb fs'' → FrameWF prog (do-ret bb (fret fs'') fs'')
+                -- B1.7b: a return that fails FAULTS: no stack moves, the pc stays
+                rgo (rp-fault e) rewrite e =
+                  mkFrameWF (fw-stack ih) (λ ℓ bb′ H → ⊥-elim (ret-clash ieq ℓ bb′ H))
+                -- …and a real return lands at `rpc`, one past a CALL
+                -- (`RetMatch`'s provenance), which is not a guard.
+                rgo (rp-ret rpc rs req be e) rewrite e =
+                  land (saved-frames (falloc fs'')) refl (subst (RetMatch prog (saved-frames (falloc fs''))) req (fw-stack ih))
+                  where
+                    land : ∀ (frs : List (Frame × ℕ)) → saved-frames (falloc fs'') ≡ frs → RetMatch prog frs (rpc ∷ rs)
+                         → FrameWF prog (record fs'' { falloc = leave-frame (falloc fs'') ; fpc = rpc ; fret = rs })
+                    land ((f , b) ∷ frs) feq (rm-∷ prov rest) =
+                      mkFrameWF (subst (λ x → RetMatch prog x rs) (sym (leave-frame-saved-∷ (falloc fs'') f b frs feq)) rest)
+                                (λ ℓ bb′ H → ⊥-elim
+                                  (no-fallthrough (proj₁ prov) ℓ bb′ (proj₁ (proj₂ (proj₂ prov)))
+                                    (call-not-jmp (proj₁ (proj₂ (proj₂ prov))) (proj₂ (proj₂ (proj₂ (proj₂ prov)))))
+                                    (call-not-ret (proj₁ (proj₂ (proj₂ prov))) (proj₂ (proj₂ (proj₂ (proj₂ prov)))))
+                                    (λ e′ → subst CallI e′ (proj₂ (proj₂ (proj₂ (proj₂ prov)))))
+                                    (proj₁ (proj₂ (proj₂ (proj₂ prov))))
+                                    (subst (λ z → fetch prog z ≡ just (instr-ctrl (c-entry ℓ bb′)))
+                                           (proj₁ (proj₂ prov)) H)))
+        -- THE CALL (D092): it PUSHES both stacks and lands on a body entry,
+        -- with a frame that reserves nothing (D086) and a live link.
         step (pv-call ieq) = call-go ieq
           where
-            call-go : i ≡ instr-call-closure
-                    → SegWF prog 0 (flat-exec-instr i prog fs'')
+            call-go : i ≡ instr-call-closure → FrameWF prog (flat-exec-instr i prog fs'')
             call-go refl = cgo (callView prog fs'')
               where
                 call-clash : ∀ {ℓ' bb'} → instr-call-closure ≡ instr-ctrl (c-entry ℓ' bb') → ⊥
                 call-clash ()
-                -- the caller's reservation IS the segment at its return pc
-                beq : frame-slots (falloc fs'')
-                    ≡ cur (seg-at prog (suc (fpc fs'')) B₀)
-                beq = trans (ih-eq (λ _ _ ()))
-                            (sym (cong cur (trans seg-suc
-                                   (idle-step instr-call-closure call-seg-id
-                                              (seg-at prog (fpc fs'') B₀)))))
-                cgo : CallPost prog fs''
-                    → SegWF prog 0 (do-call prog fs'')
-                -- a malformed call HALTS: no stack moves, so both fields ride
-                cgo (cp-halt e) rewrite e =
-                  mkSegWF (seg-cur ih) (seg-stack ih)
-                          -- the pc has not moved: this instruction is the call
-                          (λ ℓ bb H → ⊥-elim (call-clash (just-injI (trans (sym ftq) H))))
-                cgo (cp-enter ℓ j fteq e) rewrite e =
-                  mkSegWF (inj₂ (e-thunk ℓ , proj₁ landing , proj₂ landing , refl))
-                          (rm-∷ beq (fpc fs'' , refl , instr-call-closure , ftq , tt) (seg-stack ih))
-                          -- …and THIS is the case the whole invariant is about:
-                          -- the frame a call enters reserves nothing (D086),
-                          -- and the call is also what leaves the link live.
-                          (λ _ _ _ → refl , (suc (fpc fs'') , refl)
-                                           , suc (fpc fs'') , fret fs'' , refl)
-                  where landing = find-entry-sound prog (e-thunk ℓ) j fteq
-        -- D245: THE DIRECT CALL, the same transfer with the target named
-        -- statically: it lands on the function's entry (`find-entry-sound`),
-        -- or finds none and halts.
+                cgo : CallPost prog fs'' → FrameWF prog (do-call prog fs'')
+                -- B1.7b: a malformed call FAULTS: no stack moves
+                cgo (cp-fault e) rewrite e =
+                  mkFrameWF (fw-stack ih)
+                            (λ ℓ bb H → ⊥-elim (call-clash (just-injI (trans (sym ftq) H))))
+                cgo (cp-enter ℓ j hl ce he fteq e) rewrite e =
+                  mkFrameWF (rm-∷ (fpc fs'' , refl , instr-call-closure , ftq , tt) (fw-stack ih))
+                            (λ _ _ _ → refl , (suc (fpc fs'') , refl)
+                                             , suc (fpc fs'') , fret fs'' , refl)
+        -- D245: THE DIRECT CALL, the same transfer to a statically named entry.
         step (pv-call-fn f ieq) = callfn-go ieq
           where
-            callfn-go : i ≡ instr-ctrl (c-call-fn f)
-                      → SegWF prog 0 (flat-exec-instr i prog fs'')
+            callfn-go : i ≡ instr-ctrl (c-call-fn f) → FrameWF prog (flat-exec-instr i prog fs'')
             callfn-go refl = cfgo (find-fn prog f) refl
               where
                 cf-clash : ∀ {ℓ' bb'} → instr-ctrl (c-call-fn f) ≡ instr-ctrl (c-entry ℓ' bb') → ⊥
                 cf-clash ()
-                beq : frame-slots (falloc fs'')
-                    ≡ cur (seg-at prog (suc (fpc fs'')) B₀)
-                beq = trans (ih-eq (λ _ _ ()))
-                            (sym (cong cur (trans seg-suc
-                                   (idle-step (instr-ctrl (c-call-fn f)) refl
-                                              (seg-at prog (fpc fs'') B₀)))))
                 cfgo : ∀ (mj : Maybe ℕ) → find-fn prog f ≡ mj
-                     → SegWF prog 0 (do-call-at (find-fn prog f) fs'')
+                     → FrameWF prog (do-call-at (find-fn prog f) fs'')
                 cfgo nothing fe rewrite fe =
-                  mkSegWF (seg-cur ih) (seg-stack ih)
-                          (λ ℓ bb H → ⊥-elim (cf-clash (just-injI (trans (sym ftq) H))))
+                  mkFrameWF (fw-stack ih)
+                            (λ ℓ bb H → ⊥-elim (cf-clash (just-injI (trans (sym ftq) H))))
                 cfgo (just j) fe rewrite fe =
-                  mkSegWF (inj₂ (e-fn f , proj₁ landing , proj₂ landing , refl))
-                          (rm-∷ beq (fpc fs'' , refl , instr-ctrl (c-call-fn f) , ftq , tt) (seg-stack ih))
-                          (λ _ _ _ → refl , (suc (fpc fs'') , refl)
-                                           , suc (fpc fs'') , fret fs'' , refl)
-                  where landing = find-entry-sound prog (e-fn f) j fe
+                  mkFrameWF (rm-∷ (fpc fs'' , refl , instr-ctrl (c-call-fn f) , ftq , tt) (fw-stack ih))
+                            (λ _ _ _ → refl , (suc (fpc fs'') , refl)
+                                             , suc (fpc fs'') , fret fs'' , refl)
+
+-- …at a run context
+run-frame-wf-at : ∀ prog (fs : FlatState) → RunAt prog fs → FrameWF prog fs
+run-frame-wf-at prog fs (mkRunAt emt reach) = run-frame-wf prog (em-image emt) (em-guard emt) fs reach
 
 -- …and the form the correspondence consumes (D093/D094). Was a POSTULATE for
 -- one commit; it is now a projection of the run invariant, which is where it
@@ -1103,22 +768,22 @@ run-seg-wf prog fs (mkRunAt tbl ir eq lkd reach) = go fs reach
 entry-empty : ∀ prog (fs : FlatState) (ℓ : EntryId) (bb : ℕ) → RunAt prog fs
             → fetch prog (fpc fs) ≡ just (instr-ctrl (c-entry ℓ bb))
             → frame-slots (falloc fs) ≡ 0
-entry-empty prog fs ℓ bb r ftq = proj₁ (seg-entry (run-seg-wf prog fs r) ℓ bb ftq)
+entry-empty prog fs ℓ bb r ftq = proj₁ (fw-entry (run-frame-wf-at prog fs r) ℓ bb ftq)
 
 entry-link : ∀ prog (fs : FlatState) (ℓ : EntryId) (bb : ℕ) → RunAt prog fs
            → fetch prog (fpc fs) ≡ just (instr-ctrl (c-entry ℓ bb))
            → Σ ℕ (λ r → flink fs ≡ just r)
-entry-link prog fs ℓ bb r ftq = proj₁ (proj₂ (seg-entry (run-seg-wf prog fs r) ℓ bb ftq))
+entry-link prog fs ℓ bb r ftq = proj₁ (proj₂ (fw-entry (run-frame-wf-at prog fs r) ℓ bb ftq))
 
 entry-ret : ∀ prog (fs : FlatState) (ℓ : EntryId) (bb : ℕ) → RunAt prog fs
           → fetch prog (fpc fs) ≡ just (instr-ctrl (c-entry ℓ bb))
           → Σ ℕ (λ rpc → Σ (List ℕ) (λ rest → fret fs ≡ rpc ∷ rest))
-entry-ret prog fs ℓ bb r ftq = proj₂ (proj₂ (seg-entry (run-seg-wf prog fs r) ℓ bb ftq))
+entry-ret prog fs ℓ bb r ftq = proj₂ (proj₂ (fw-entry (run-frame-wf-at prog fs r) ℓ bb ftq))
 
 thunk-entry-empty : ∀ prog (fs : FlatState) (ℓ : LabelId) (bb : ℕ) → RunAt prog fs
                   → fetch prog (fpc fs) ≡ just (instr-ctrl (c-thunk ℓ bb))
                   → frame-slots (falloc fs) ≡ 0
-thunk-entry-empty prog fs ℓ bb r ftq = proj₁ (seg-entry (run-seg-wf prog fs r) (e-thunk ℓ) bb ftq)
+thunk-entry-empty prog fs ℓ bb r ftq = proj₁ (fw-entry (run-frame-wf-at prog fs r) (e-thunk ℓ) bb ftq)
 
 -- …and its twin, which riscv64's body marker needs: A BODY ENTRY IS REACHED
 -- WITH A LIVE LINK. Same projection, same one assumption (the emitter's guard)
@@ -1129,7 +794,7 @@ thunk-entry-empty prog fs ℓ bb r ftq = proj₁ (seg-entry (run-seg-wf prog fs 
 thunk-entry-link : ∀ prog (fs : FlatState) (ℓ : LabelId) (bb : ℕ) → RunAt prog fs
                  → fetch prog (fpc fs) ≡ just (instr-ctrl (c-thunk ℓ bb))
                  → Σ ℕ (λ r → flink fs ≡ just r)
-thunk-entry-link prog fs ℓ bb r ftq = proj₁ (proj₂ (seg-entry (run-seg-wf prog fs r) (e-thunk ℓ) bb ftq))
+thunk-entry-link prog fs ℓ bb r ftq = proj₁ (proj₂ (fw-entry (run-frame-wf-at prog fs r) (e-thunk ℓ) bb ftq))
 
 -- …and the third projection: A BODY ENTRY HAS A PENDING RETURN. Same one
 -- assumption; what riscv64's marker needs it for is `RetAddrs`' head row, which
@@ -1138,12 +803,12 @@ thunk-entry-link prog fs ℓ bb r ftq = proj₁ (proj₂ (seg-entry (run-seg-wf 
 thunk-entry-ret : ∀ prog (fs : FlatState) (ℓ : LabelId) (bb : ℕ) → RunAt prog fs
                 → fetch prog (fpc fs) ≡ just (instr-ctrl (c-thunk ℓ bb))
                 → Σ ℕ (λ rpc → Σ (List ℕ) (λ rest → fret fs ≡ rpc ∷ rest))
-thunk-entry-ret prog fs ℓ bb r ftq = proj₂ (proj₂ (seg-entry (run-seg-wf prog fs r) (e-thunk ℓ) bb ftq))
+thunk-entry-ret prog fs ℓ bb r ftq = proj₂ (proj₂ (fw-entry (run-frame-wf-at prog fs r) (e-thunk ℓ) bb ftq))
 
 -- (`run-stack-slot` — "the window is the whole trace's budget" — is GONE with
 -- the flip. It is FALSE inside a closure body, whose window is the body's own
--- reservation. Its consumer wants the POSITIONAL form, which `SegWF.seg-cur`
--- already is, so the two now compose with no intermediate at all.)
+-- reservation. Its consumer wants the slot inside the CURRENT frame, which is
+-- the machine's slot gate, B1.7b D458: `slot-read-in-frame`.)
 
 ------------------------------------------------------------------------
 -- (`run-no-ret` STOOD HERE and is now DELETED — on purpose, and it is the
@@ -1158,86 +823,6 @@ thunk-entry-ret prog fs ℓ bb r ftq = proj₂ (proj₂ (seg-entry (run-seg-wf p
 -- live route again, and `ret-site-owes` — the residual that stood in for it —
 -- is gone with it.)
 ------------------------------------------------------------------------
-
--- ONE FRAME-FREE STEP PRESERVES THE INVARIANT — a THEOREM for EVERY
--- constructor. Plan 0.63 step 2b SIMPLIFIED this: `lea-slot` joined
--- `FrameFreeI`'s ⊥ set (a heap-moded trace emits none), so its route is now
--- absurd like the fossils' and the whole pair-bound plumbing it used to need
--- — `emitted-lea-slot-pair`, `SlotBudget.SlotBelow`'s second field, and the
--- `run-stack-slot` transport — is gone with it.
-stack-ptr-step : ∀ (i : AbstractInstr) prog (fs : FlatState) → RunAt prog fs
-               → fetch prog (fpc fs) ≡ just i → ImageI i
-               → StackPtrWF fs → StackPtrWF (flat-exec-instr i prog fs)
-stack-ptr-step (lea-slot slot) prog fs r ftq () wf
-stack-ptr-step (instr-alloc-stack n)   prog fs r ftq () wf
-stack-ptr-step (instr-dealloc-stack n) prog fs r ftq () wf
-stack-ptr-step (instr-free-heap n)     prog fs r ftq () wf
-stack-ptr-step (load-at n)     prog fs r ftq ff wf = flat-stack-ptr (load-at n) prog fs ff wf
-stack-ptr-step (store-at n)     prog fs r ftq ff wf = flat-stack-ptr (store-at n) prog fs ff wf
-stack-ptr-step (addr-at n)     prog fs r ftq ff wf = flat-stack-ptr (addr-at n) prog fs ff wf
-stack-ptr-step (instr-room n)     prog fs r ftq ff wf = flat-stack-ptr (instr-room n) prog fs ff wf
-stack-ptr-step (instr-push-frame cap)  prog fs r ftq () wf
-stack-ptr-step instr-pop-frame         prog fs r ftq () wf
-stack-ptr-step mov-to-output prog fs r ftq ff wf =
-  flat-stack-ptr mov-to-output prog fs ff wf
-stack-ptr-step mov-to-input prog fs r ftq ff wf =
-  flat-stack-ptr mov-to-input prog fs ff wf
-stack-ptr-step load-indirect prog fs r ftq ff wf =
-  flat-stack-ptr load-indirect prog fs ff wf
-stack-ptr-step load-indirect-suc prog fs r ftq ff wf =
-  flat-stack-ptr load-indirect-suc prog fs ff wf
-stack-ptr-step (load-from-slot k) prog fs r ftq ff wf =
-  flat-stack-ptr (load-from-slot k) prog fs ff wf
-stack-ptr-step (store-at-slot k) prog fs r ftq ff wf =
-  flat-stack-ptr (store-at-slot k) prog fs ff wf
-stack-ptr-step store-indirect prog fs r ftq ff wf =
-  flat-stack-ptr store-indirect prog fs ff wf
-stack-ptr-step store-indirect-suc prog fs r ftq ff wf =
-  flat-stack-ptr store-indirect-suc prog fs ff wf
-stack-ptr-step (restore-input k) prog fs r ftq ff wf =
-  flat-stack-ptr (restore-input k) prog fs ff wf
-stack-ptr-step (instr-reclaim-to k) prog fs r ftq ff wf =
-  flat-stack-ptr (instr-reclaim-to k) prog fs ff wf
-stack-ptr-step instr-call-closure prog fs r ftq ff wf =
-  flat-stack-ptr instr-call-closure prog fs ff wf
-stack-ptr-step (worklist-init k) prog fs r ftq ff wf =
-  flat-stack-ptr (worklist-init k) prog fs ff wf
-stack-ptr-step (worklist-push k) prog fs r ftq ff wf =
-  flat-stack-ptr (worklist-push k) prog fs ff wf
-stack-ptr-step (worklist-pop k) prog fs r ftq ff wf =
-  flat-stack-ptr (worklist-pop k) prog fs ff wf
-stack-ptr-step (worklist-check k) prog fs r ftq ff wf =
-  flat-stack-ptr (worklist-check k) prog fs ff wf
-stack-ptr-step (instr-sigop si) prog fs r ftq ff wf =
-  flat-stack-ptr (instr-sigop si) prog fs ff wf
-stack-ptr-step (instr-load-const p v) prog fs r ftq ff wf =
-  flat-stack-ptr (instr-load-const p v) prog fs ff wf
-stack-ptr-step (instr-load-code-addr k) prog fs r ftq ff wf =
-  flat-stack-ptr (instr-load-code-addr k) prog fs ff wf
-stack-ptr-step instr-save-closure-reg prog fs r ftq ff wf =
-  flat-stack-ptr instr-save-closure-reg prog fs ff wf
-stack-ptr-step (instr-load-tag-lit k) prog fs r ftq ff wf =
-  flat-stack-ptr (instr-load-tag-lit k) prog fs ff wf
-stack-ptr-step (instr-alloc-heap k) prog fs r ftq ff wf =
-  flat-stack-ptr (instr-alloc-heap k) prog fs ff wf
-stack-ptr-step (instr-reg-op op) prog fs r ftq ff wf =
-  flat-stack-ptr (instr-reg-op op) prog fs ff wf
-stack-ptr-step (instr-ctrl c) prog fs r ftq ff wf =
-  flat-stack-ptr (instr-ctrl c) prog fs ff wf
-
--- A start state satisfies the invariant vacuously: both memories are empty and
--- no register holds a pointer.
-entry-stack-ptr : ∀ (fs : FlatState) → EntryLike fs → StackPtrWF fs
-entry-stack-ptr fs (_ , _ , _ , _ , _ , hemp , semp , _ , noptr , _) = record
-  { sp-regs  = λ r → go r (readReg (regs (floc fs)) r) refl
-  ; sp-heap  = λ hl → subst StackPtrOK? (sym (hemp hl)) tt
-  ; sp-stack = λ f k → subst StackPtrOK? (sym (semp f k)) tt }
-  where go : ∀ (r : AbstractReg) (v : StoredValue FS) → readReg (regs (floc fs)) r ≡ v
-           → StackPtrOK (readReg (regs (floc fs)) r)
-        go r (SV-Ptr loc)  eq = ⊥-elim (noptr r loc eq)
-        go r (SV-Tag t)    eq rewrite eq = tt
-        go r (SV-Lit p v)  eq rewrite eq = tt
-        go r (SV-Code c)   eq rewrite eq = tt
 
 -- …and the pointer-bounds and store-WF invariants likewise (D074: the entry
 -- registers are all tags, both memories empty).
@@ -1282,7 +867,7 @@ run-step-pc-pos prog fs i r ftq = step (pcView i (frame-op-absurd prog fs i (run
     jI refl = refl
     -- whatever sits at a position that is 0 is the start
     at-zero : ∀ (k : ℕ) (i' : AbstractInstr) → fetch prog k ≡ just i' → k ≡ 0
-            → i' ≡ instr-ctrl (c-start (ir-stack-budget (proj₁ (proj₂ (run-emitted r)))))
+            → i' ≡ instr-ctrl (c-start (em-budget (run-emitted r)))
     at-zero k i' fq refl = jI (trans (sym fq) (fetch-zero prog (run-emitted r)))
     -- the pc did not move: then `i` itself sat at 0, so `i` is the start
     unmoved : (∀ b → i ≡ instr-ctrl (c-start b) → ⊥)
@@ -1293,7 +878,11 @@ run-step-pc-pos prog fs i r ftq = step (pcView i (frame-op-absurd prog fs i (run
     ent≢start : ∀ {e b' b} → instr-ctrl (c-entry e b') ≡ instr-ctrl (c-start b) → ⊥
     ent≢start ()
     step : PcView i → fpc (flat-exec-instr i prog fs) ≡ 0 → ⊥
-    step (pv-suc ff nj adv) z = z≢s (trans (sym (adv prog fs)) z)
+    step (pv-suc ff nj adv) z = sgo (adv prog fs)
+      where
+        sgo : (fpc (flat-exec-instr i prog fs) ≡ suc (fpc fs)) ⊎ (flat-exec-instr i prog fs ≡ flat-fault fs) → ⊥
+        sgo (inj₁ a) = z≢s (trans (sym a) z)
+        sgo (inj₂ e) = unmoved (λ b eq → subst FrameFreeI eq ff) (cong fpc e) z
     step (pv-jump ff m mlab jp) z = jgo (jp prog fs)
       where
         not-start : ∀ b → i ≡ instr-ctrl (c-start b) → ⊥
@@ -1308,24 +897,26 @@ run-step-pc-pos prog fs i r ftq = step (pcView i (frame-op-absurd prog fs i (run
     step (pv-thunk ℓ bb refl) z = z≢s z
     step (pv-start bb refl)   z = z≢s z
     step (pv-leave refl)      z = unmoved (λ b ()) refl z
-    step (pv-ret bb refl) z = go (fret fs) refl (seg-stack (run-seg-wf prog fs r))
+    step (pv-ret bb refl) z = rgo (retView bb fs)
       where
         ret≢start : ∀ b → instr-ctrl (c-ret bb) ≡ instr-ctrl (c-start b) → ⊥
         ret≢start b ()
-        go : ∀ (rs : List ℕ) → fret fs ≡ rs → RetMatch prog 0 (saved-frames (falloc fs)) (fret fs) → ⊥
-        go []         e _  = unmoved ret≢start (do-ret-pc-[] fs e) z
-        go (rpc ∷ rs) e rm = prov-go (subst (RetMatch prog 0 (saved-frames (falloc fs))) e rm)
+        rgo : RetPost bb fs → ⊥
+        -- B1.7b: a failing return faults, the pc stays
+        rgo (rp-fault e) = unmoved ret≢start (cong fpc e) z
+        rgo (rp-ret rpc rs e be eq) =
+          prov-go (subst (RetMatch prog (saved-frames (falloc fs))) e (fw-stack (run-frame-wf-at prog fs r)))
           where
-            prov-go : RetMatch prog 0 (saved-frames (falloc fs)) (rpc ∷ rs) → ⊥
-            prov-go (rm-∷ _ (q , rq , _) _) =
-              z≢s (trans (sym rq) (trans (sym (do-ret-pc-∷ fs rpc rs e)) z))
+            prov-go : RetMatch prog (saved-frames (falloc fs)) (rpc ∷ rs) → ⊥
+            prov-go (rm-∷ (q , rq , _) _) =
+              z≢s (trans (sym rq) (trans (sym (cong fpc eq)) z))
     step (pv-call refl) z = cgo (callView prog fs)
       where
         cl≢start : ∀ b → instr-call-closure ≡ instr-ctrl (c-start b) → ⊥
         cl≢start b ()
         cgo : CallPost prog fs → ⊥
-        cgo (cp-halt heq)         = unmoved cl≢start (cong fpc heq) z
-        cgo (cp-enter ℓ j feq eeq) =
+        cgo (cp-fault heq)        = unmoved cl≢start (cong fpc heq) z
+        cgo (cp-enter ℓ j hl ce he feq eeq) =
           ent≢start (at-zero j _ (proj₂ (find-thunk-sound prog ℓ j feq)) (trans (sym (cong fpc eeq)) z))
     step (pv-call-fn f refl) z = fgo (find-fn prog f) refl
       where
@@ -1337,69 +928,19 @@ run-step-pc-pos prog fs i r ftq = step (pcView i (frame-op-absurd prog fs i (run
           ent≢start (at-zero j _ (proj₂ (find-entry-sound prog (e-fn f) j fe))
                      (trans (sym (cong (λ x → fpc (do-call-at x fs)) fe)) z))
 
--- Every stack pointer in a reachable state addresses a live pair of the current
--- frame. Induction on `Reachable`, exactly like `run-stack-slot`: the entry
--- state holds no stack pointer at all (its registers hold the heap filler and
--- both memories are empty), and each step preserves the invariant because the
--- program is emitted — frame-free, and its `lea-slot`s address reserved pairs.
-run-stack-ptr : ∀ prog (fs : FlatState) (r : RunAt prog fs) → StackPtrWF fs
-run-stack-ptr prog fs (mkRunAt tbl ir eq lkd reach) = go fs reach
-  where go : ∀ (fs' : FlatState) → Reachable prog 0 fs' → StackPtrWF fs'
-        go fs' (reach-start .fs' el _ _) = entry-stack-ptr fs' el
-        go .(flat-exec-instr i prog fs'') (reach-step i fs'' r' ftq h) =
-          stack-ptr-step i prog fs'' (mkRunAt tbl ir eq lkd r') ftq
-            (frame-op-absurd prog fs'' i (tbl , ir , eq) ftq)
-            (go fs'' r')
-
--- The two forms the block-steps ask for. Since Plan 0.63's `StackPtrWF`
--- became "there is no stack pointer", holding one in `Input1` is refuted
--- outright — these keep their signatures so nothing downstream changes, but
--- both components are now `⊥-elim`.
-stack-ptr-current : ∀ prog (fs : FlatState) (f : Frame) (k : Slot) → RunAt prog fs
-                  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f k)
-                  → (f ≡ current-frame (falloc fs)) × (k < frame-slots (falloc fs))
-stack-ptr-current prog fs f k r eq =
-  stack-ptr-frame fs Input1 f k (run-stack-ptr prog fs r) eq
-  , ⊥-elim (stack-ptr-live fs Input1 f k (run-stack-ptr prog fs r) eq)
-
-stack-ptr-current-suc : ∀ prog (fs : FlatState) (f : Frame) (k : Slot) → RunAt prog fs
-                      → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f k)
-                      → (f ≡ current-frame (falloc fs)) × (suc k < frame-slots (falloc fs))
-stack-ptr-current-suc prog fs f k r eq =
-  stack-ptr-frame fs Input1 f k (run-stack-ptr prog fs r) eq
-  , ⊥-elim (stack-ptr-suc-live fs Input1 f k (run-stack-ptr prog fs r) eq)
-
 slot-read-in-frame : ∀ prog (fs : FlatState) (slot : Slot) (i : AbstractInstr) → RunAt prog fs
+                   → halted (floc fs) ≡ false
                    → fetch prog (fpc fs) ≡ just i → slot-of i ≡ just slot
                    → slot < frame-slots (falloc fs)
--- the positional bound, then the two equations that place it: the segment in
--- force at this pc (constant today — `emitted-seg-const`) and the machine's own
--- window (`run-stack-slot`).
-slot-read-in-frame prog fs slot i r ftq soq =
-  -- the emitter's positional bound, at the machine's positional window
-  subst (slot <_) (sym seg-eq)
-    (subst (λ pr → slot < cur (seg-at pr (fpc fs) (mkSeg 0 [])))
-           (sym (run-emit r))
-           (emitted-slot-below-budget (run-tbl r) (run-ir r) (fpc fs) i slot
-             (subst (λ p → fetch p (fpc fs) ≡ just i) (run-emit r) ftq) soq))
-  where
-    -- D092: `SegCur`'s exception row is a pc holding a body ENTRY, and a
-    -- marker addresses no slot (`slot-of (instr-ctrl _) = nothing`) — so the
-    -- instruction this very lemma was handed refutes it.
-    just-injI : ∀ {a b : AbstractInstr} → just a ≡ just b → a ≡ b
-    just-injI refl = refl
-    seg-eq : frame-slots (falloc fs)
-           ≡ cur (seg-at prog (fpc fs) (mkSeg 0 []))
-    seg-eq = go (seg-cur (run-seg-wf prog fs r))
-      where go : SegCur prog 0 fs
-               → frame-slots (falloc fs)
-               ≡ cur (seg-at prog (fpc fs) (mkSeg 0 []))
-            go (inj₁ e) = e
-            go (inj₂ (ℓ , bb , tq , _)) =
-              ⊥-elim (no-slot (subst (λ z → slot-of z ≡ just slot)
-                                     (just-injI (trans (sym ftq) tq)) soq))
-              where no-slot : ∀ {A : Set} → nothing ≡ just slot → A
-                    no-slot ()
+-- B1.7b (D458): the machine's slot gate, passed at a reached step (it did not
+-- fault: the run is sound). It was the image's (`Emitted.em-slots`, D457).
+slot-read-in-frame prog fs slot i r h ftq soq = slot-gate-ok i prog fs soq (step-sound prog fs r h ftq)
+
+-- D470: the machine's free gate, passed at a reached free (it did not fault: the run is sound)
+free-gate : ∀ prog (fs : FlatState) n → RunAt prog fs → halted (floc fs) ≡ false
+          → fetch prog (fpc fs) ≡ just (instr-free-heap n)
+          → block-base? n (readReg (regs (floc fs)) Input1) (falloc fs) ≡ true
+free-gate prog fs n r h ftq = straight-ok (instr-free-heap n) fs (step-sound prog fs r h ftq)
 
 ------------------------------------------------------------------------
 -- THE POINTER-BOUNDS INVARIANT IS A THEOREM (plan 0.54 rung D, item 5).
@@ -1420,8 +961,7 @@ slot-read-in-frame prog fs slot i r ftq soq =
 -- allocation discipline (`AllocMinI`).
 emitted-alloc-min : ∀ prog (fs : FlatState) (i : AbstractInstr) → Emitted prog
                   → fetch prog (fpc fs) ≡ just i → AllocMinI i
-emitted-alloc-min .(program-image o (irProgram tbl ir)) fs i (tbl , ir , refl) ftq =
-  fetch-All {prog = program-image o (irProgram tbl ir)} {k = fpc fs} (image-alloc-min tbl ir) ftq
+emitted-alloc-min prog fs i em ftq = fetch-All {prog = prog} {k = fpc fs} (em-alloc em) ftq
 
 -- ONE FRAME-FREE STEP PRESERVES THE INVARIANT — enumerated like
 -- `stack-ptr-step` (the vacuous alloc premises need `i` concrete).
@@ -1431,10 +971,12 @@ ptr-bounds-step : ∀ (i : AbstractInstr) prog (fs : FlatState) → RunAt prog f
                 → PtrBoundsWF fs → PtrBoundsWF (flat-exec-instr i prog fs)
 ptr-bounds-step (instr-alloc-stack n)   prog fs r ftq () wfS wf
 ptr-bounds-step (instr-dealloc-stack n) prog fs r ftq () wfS wf
-ptr-bounds-step (instr-free-heap n)     prog fs r ftq () wfS wf
+ptr-bounds-step (instr-free-heap n)     prog fs r ftq ff wfS wf = flat-ptr-bounds (instr-free-heap n) prog fs ff (λ { _ () }) wfS wf
 ptr-bounds-step (load-at n)     prog fs r ftq ff wfS wf = flat-ptr-bounds (load-at n) prog fs ff (λ { _ () }) wfS wf
 ptr-bounds-step (store-at n)     prog fs r ftq ff wfS wf = flat-ptr-bounds (store-at n) prog fs ff (λ { _ () }) wfS wf
 ptr-bounds-step (addr-at n)     prog fs r ftq ff wfS wf = flat-ptr-bounds (addr-at n) prog fs ff (λ { _ () }) wfS wf
+ptr-bounds-step (load-rec n)    prog fs r ftq ff wfS wf = flat-ptr-bounds (load-rec n) prog fs ff (λ { _ () }) wfS wf
+ptr-bounds-step (store-rec n)   prog fs r ftq ff wfS wf = flat-ptr-bounds (store-rec n) prog fs ff (λ { _ () }) wfS wf
 ptr-bounds-step (instr-room n)     prog fs r ftq ff wfS wf = flat-ptr-bounds (instr-room n) prog fs ff (λ { _ () }) wfS wf
 ptr-bounds-step (instr-push-frame cap)  prog fs r ftq () wfS wf
 ptr-bounds-step instr-pop-frame         prog fs r ftq () wfS wf
@@ -1496,15 +1038,15 @@ ptr-bounds-step (instr-ctrl c) prog fs r ftq ff wfS wf =
 -- registers, empty memories — starts both off).
 run-wf-ptr-bounds : ∀ prog (fs : FlatState) (r : RunAt prog fs)
                   → FlatWF fs × PtrBoundsWF fs
-run-wf-ptr-bounds prog fs (mkRunAt tbl ir eq lkd reach) = go fs reach
+run-wf-ptr-bounds prog fs (mkRunAt em reach) = go fs reach
   where go : ∀ (fs' : FlatState) → Reachable prog 0 fs'
            → FlatWF fs' × PtrBoundsWF fs'
         go fs' (reach-start .fs' el _ _) = entry-flat-wf fs' el , entry-ptr-bounds fs' el
         go .(flat-exec-instr i prog fs'') (reach-step i fs'' r' ftq h) =
           let ih = go fs'' r' in
           flat-wf-step i prog fs'' (proj₁ ih) ,
-          ptr-bounds-step i prog fs'' (mkRunAt tbl ir eq lkd r') ftq
-            (frame-op-absurd prog fs'' i (tbl , ir , eq) ftq)
+          ptr-bounds-step i prog fs'' (mkRunAt em r') ftq
+            (frame-op-absurd prog fs'' i em ftq)
             (proj₁ ih) (proj₂ ih)
 
 run-ptr-bounds : ∀ prog (fs : FlatState) (r : RunAt prog fs) → PtrBoundsWF fs
@@ -1560,13 +1102,13 @@ slot-read-written : ∀ prog (fs : FlatState) (slot : Slot) (i : AbstractInstr) 
                   → stackMem (floc fs) (current-frame (falloc fs)) slot ≡ nothing → ⊥
 slot-read-written prog fs slot .(load-from-slot slot) r h ftq sr-load empty =
   true≢false (at (λ mv → LocState.faulted (proj₁ (exec-load-from-slot-with-value mv (floc fs) (falloc fs)))) empty
-                 (step-ok prog fs (load-from-slot slot) r h ftq))
+                 (slot-go-ok (load-from-slot slot) prog fs refl (step-ok prog fs (load-from-slot slot) r h ftq)))
 slot-read-written prog fs slot .(restore-input slot) r h ftq sr-restore empty =
   true≢false (at (λ mv → LocState.faulted (proj₁ (exec-restore-input-with-value mv (floc fs) (falloc fs)))) empty
-                 (step-ok prog fs (restore-input slot) r h ftq))
+                 (slot-go-ok (restore-input slot) prog fs refl (step-ok prog fs (restore-input slot) r h ftq)))
 slot-read-written prog fs slot .(worklist-pop slot) r h ftq sr-pop empty =
   true≢false (at (λ mv → LocState.faulted (proj₁ (exec-load-from-slot-with-value mv (floc fs) (falloc fs)))) empty
-                 (step-ok prog fs (worklist-pop slot) r h ftq))
+                 (slot-go-ok (worklist-pop slot) prog fs refl (step-ok prog fs (worklist-pop slot) r h ftq)))
 
 -- THE LOAD/STORE TARGET DISCIPLINE: at an emitted load or store site `Input1`
 -- holds a POINTER — a resolution of anything else faults. (For a store this
@@ -1650,7 +1192,7 @@ load-at-target-ptr : ∀ prog (fs : FlatState) (k : ℕ) → RunAt prog fs → h
                    → fetch prog (fpc fs) ≡ just (load-at k)
                    → Σ (ValueLocation FS) (λ loc → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc)
 load-at-target-ptr prog fs k r h ftq =
-  in1-ptr fs (λ ml → LocState.faulted (exec-load-at-resolved k Output ml (floc fs))) refl
+  in1-ptr fs (λ ml → LocState.faulted (exec-load-at-resolved k Output (frame-gate (falloc fs) k ml) (floc fs))) refl
           (step-ok prog fs (load-at k) r h ftq)
 
 -- D392: A PURE SIGOP'S ARGUMENT DECODED, at a non-faulting step — the site fact
@@ -1671,40 +1213,104 @@ sigop-decodes prog fs si r h ftq pe =
   read-of _ (subst (λ e → exec-sigop-faults-of e si (floc fs) ≡ false) pe
               (∨-false-l _ _ (step-ok prog fs (instr-sigop si) r h ftq)))
 
+-- D454 (d): A SIGOP'S WINDOW CHECK PASSED, at a non-faulting step — its
+-- argument's and its answer's words, when on the stack, are in a live window.
+private
+  ∨-false-r : ∀ a b → (a ∨ b) ≡ false → b ≡ false
+  ∨-false-r false b e = e
+  ∨-false-r true  b ()
+
+  not-false : ∀ g → not g ≡ false → g ≡ true
+  not-false true  _ = refl
+  not-false false ()
+
+sigop-gated : ∀ prog (fs : FlatState) {A B} (si : SigOpInfo A B) → RunAt prog fs → halted (floc fs) ≡ false
+            → fetch prog (fpc fs) ≡ just (instr-sigop si)
+            → sigop-gate (falloc fs) si (floc fs) ≡ true
+sigop-gated prog fs si r h ftq =
+  not-false _ (∨-false-l _ _ (∨-false-r (exec-sigop-faults si (floc fs)) _ (step-ok prog fs (instr-sigop si) r h ftq)))
+
 heap-load-at-written : ∀ prog (fs : FlatState) (k : ℕ) (hl : HeapLocation) → RunAt prog fs
                      → halted (floc fs) ≡ false → fetch prog (fpc fs) ≡ just (load-at k)
                      → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
                      → heapMem (floc fs) (offsetHL hl k) ≡ nothing → ⊥
 heap-load-at-written prog fs k hl r h ftq i-eq empty =
   true≢false (at (λ mv → LocState.faulted (exec-load-with-value Output mv (floc fs))) empty
-                 (at (λ v → LocState.faulted (exec-load-at-resolved k Output (sv-as-loc v) (floc fs))) i-eq
+                 (at (λ v → LocState.faulted (exec-load-at-resolved k Output (frame-gate (falloc fs) k (sv-as-loc v)) (floc fs))) i-eq
                      (step-ok prog fs (load-at k) r h ftq)))
 
 store-at-target-ptr : ∀ prog (fs : FlatState) (k : ℕ) → RunAt prog fs → halted (floc fs) ≡ false
                     → fetch prog (fpc fs) ≡ just (store-at k)
                     → Σ (ValueLocation FS) (λ loc → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc)
 store-at-target-ptr prog fs k r h ftq =
-  in1-ptr fs (λ ml → LocState.faulted (exec-store-at-resolved (block-size (falloc fs)) k ml
+  in1-ptr fs (λ ml → LocState.faulted (exec-store-at-resolved (live-size (falloc fs)) k (frame-gate (falloc fs) k ml)
                                          (readReg (regs (floc fs)) Output) (floc fs))) refl
           (step-ok prog fs (store-at k) r h ftq)
 
 store-at-in-block : ∀ prog (fs : FlatState) (k : ℕ) (hl : HeapLocation) → RunAt prog fs
                   → halted (floc fs) ≡ false → fetch prog (fpc fs) ≡ just (store-at k)
                   → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
-                  → in-block? (block-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ true
+                  → in-block? (live-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ true
 store-at-in-block prog fs k hl r h ftq i-eq = ib _ refl
   where
-    ok : LocState.faulted (exec-store-at-resolved (block-size (falloc fs)) k (just (AtDynamic hl))
+    ok : LocState.faulted (exec-store-at-resolved (live-size (falloc fs)) k (just (AtDynamic hl))
                              (readReg (regs (floc fs)) Output) (floc fs)) ≡ false
-    ok = at (λ v → LocState.faulted (exec-store-at-resolved (block-size (falloc fs)) k (sv-as-loc v)
+    ok = at (λ v → LocState.faulted (exec-store-at-resolved (live-size (falloc fs)) k (frame-gate (falloc fs) k (sv-as-loc v))
                                        (readReg (regs (floc fs)) Output) (floc fs))) i-eq
             (step-ok prog fs (store-at k) r h ftq)
-    ib : ∀ b → in-block? (block-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ b
-       → in-block? (block-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ true
+    ib : ∀ b → in-block? (live-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ b
+       → in-block? (live-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ true
     ib true  e = e
     ib false e = ⊥-elim (true≢false
       (at (λ b → LocState.faulted (exec-store-in-block b (AtDynamic (offsetHL hl k))
                                      (readReg (regs (floc fs)) Output) (floc fs))) e ok))
+
+-- D454: AT A NON-FAULTING OFFSET LOAD OR STORE, THE GATE PASSED ITS LOCATION
+-- (a stack location is a slot of a live window); a stack slot read is written;
+-- an `addr-at` never sees a stack pointer (a heap block's address only).
+load-at-gate-wf : ∀ prog (fs : FlatState) (k : ℕ) (loc : ValueLocation FS) → RunAt prog fs → halted (floc fs) ≡ false
+             → fetch prog (fpc fs) ≡ just (load-at k) → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
+             → frame-gate (falloc fs) k (just loc) ≡ just loc
+load-at-gate-wf prog fs k loc r h ftq i-eq = go (gate-or (falloc fs) k loc)
+  where
+    ok = at (λ v → LocState.faulted (exec-load-at-resolved k Output (frame-gate (falloc fs) k (sv-as-loc v)) (floc fs))) i-eq
+            (step-ok prog fs (load-at k) r h ftq)
+    go : (frame-gate (falloc fs) k (just loc) ≡ just loc) ⊎ (frame-gate (falloc fs) k (just loc) ≡ nothing)
+       → frame-gate (falloc fs) k (just loc) ≡ just loc
+    go (inj₁ g) = g
+    go (inj₂ g) = ⊥-elim (true≢false (at (λ m → LocState.faulted (exec-load-at-resolved k Output m (floc fs))) g ok))
+
+store-at-gate-wf : ∀ prog (fs : FlatState) (k : ℕ) (loc : ValueLocation FS) → RunAt prog fs → halted (floc fs) ≡ false
+              → fetch prog (fpc fs) ≡ just (store-at k) → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
+              → frame-gate (falloc fs) k (just loc) ≡ just loc
+store-at-gate-wf prog fs k loc r h ftq i-eq = go (gate-or (falloc fs) k loc)
+  where
+    ok = at (λ v → LocState.faulted (exec-store-at-resolved (live-size (falloc fs)) k (frame-gate (falloc fs) k (sv-as-loc v))
+                                       (readReg (regs (floc fs)) Output) (floc fs))) i-eq
+            (step-ok prog fs (store-at k) r h ftq)
+    go : (frame-gate (falloc fs) k (just loc) ≡ just loc) ⊎ (frame-gate (falloc fs) k (just loc) ≡ nothing)
+       → frame-gate (falloc fs) k (just loc) ≡ just loc
+    go (inj₁ g) = g
+    go (inj₂ g) = ⊥-elim (true≢false (at (λ m → LocState.faulted (exec-store-at-resolved (live-size (falloc fs)) k m
+                                                                    (readReg (regs (floc fs)) Output) (floc fs))) g ok))
+
+stack-load-at-written-wf : ∀ prog (fs : FlatState) (k : ℕ) (f : Frame) (j : ℕ) → RunAt prog fs
+                      → halted (floc fs) ≡ false → fetch prog (fpc fs) ≡ just (load-at k)
+                      → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f j)
+                      → frame-gate (falloc fs) k (just (AtStack f j)) ≡ just (AtStack f j)
+                      → stackMem (floc fs) f (k Data.Nat.+ j) ≡ nothing → ⊥
+stack-load-at-written-wf prog fs k f j r h ftq i-eq g empty =
+  true≢false (at (λ mv → LocState.faulted (exec-load-with-value Output mv (floc fs))) empty
+               (at (λ m → LocState.faulted (exec-load-at-resolved k Output m (floc fs))) g
+                 (at (λ v → LocState.faulted (exec-load-at-resolved k Output (frame-gate (falloc fs) k (sv-as-loc v)) (floc fs))) i-eq
+                     (step-ok prog fs (load-at k) r h ftq))))
+
+addr-at-not-stack-wf : ∀ prog (fs : FlatState) (k : ℕ) (f : Frame) (j : ℕ) → RunAt prog fs
+                  → halted (floc fs) ≡ false → fetch prog (fpc fs) ≡ just (addr-at k)
+                  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f j) → ⊥
+addr-at-not-stack-wf prog fs k f j r h ftq i-eq =
+  true≢false (at (λ v → LocState.faulted (exec-addr-at-resolved (block-size (falloc fs)) k (heap-gate (sv-as-loc v)) (floc fs))) i-eq
+                 (step-ok prog fs (addr-at k) r h ftq))
 
 -- plan 0.123 B.4 α (D385): an address at an offset is a cell of its block, or
 -- the step faults — so at an emitted `addr-at` it is.
@@ -1712,7 +1318,7 @@ addr-at-target-ptr : ∀ prog (fs : FlatState) (k : ℕ) → RunAt prog fs → h
                    → fetch prog (fpc fs) ≡ just (addr-at k)
                    → Σ (ValueLocation FS) (λ loc → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc)
 addr-at-target-ptr prog fs k r h ftq =
-  in1-ptr fs (λ ml → LocState.faulted (exec-addr-at-resolved (block-size (falloc fs)) k ml (floc fs))) refl
+  in1-ptr fs (λ ml → LocState.faulted (exec-addr-at-resolved (block-size (falloc fs)) k (heap-gate ml) (floc fs))) refl
           (step-ok prog fs (addr-at k) r h ftq)
 
 addr-at-in-block : ∀ prog (fs : FlatState) (k : ℕ) (hl : HeapLocation) → RunAt prog fs
@@ -1722,7 +1328,7 @@ addr-at-in-block : ∀ prog (fs : FlatState) (k : ℕ) (hl : HeapLocation) → R
 addr-at-in-block prog fs k hl r h ftq i-eq = ib _ refl
   where
     ok : LocState.faulted (exec-addr-at-resolved (block-size (falloc fs)) k (just (AtDynamic hl)) (floc fs)) ≡ false
-    ok = at (λ v → LocState.faulted (exec-addr-at-resolved (block-size (falloc fs)) k (sv-as-loc v) (floc fs))) i-eq
+    ok = at (λ v → LocState.faulted (exec-addr-at-resolved (block-size (falloc fs)) k (heap-gate (sv-as-loc v)) (floc fs))) i-eq
             (step-ok prog fs (addr-at k) r h ftq)
     ib : ∀ b → in-block? (block-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ b
        → in-block? (block-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ true
@@ -1746,11 +1352,17 @@ store-at-inbounds : ∀ prog (fs : FlatState) (k : ℕ) (hl : HeapLocation) → 
                   → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
                   → heap-offset (offsetHL hl k) < block-size (falloc fs) (ref-id (heap-ref (offsetHL hl k)))
 store-at-inbounds prog fs k hl r h ftq i-eq =
-  <ᵇ⇒< (heap-offset (offsetHL hl k)) (block-size (falloc fs) (ref-id (heap-ref (offsetHL hl k))))
-       (T-of (store-at-in-block prog fs k hl r h ftq i-eq))
+  Data.Nat.Properties.<-≤-trans
+    (<ᵇ⇒< (heap-offset (offsetHL hl k)) (live-size (falloc fs) (ref-id (heap-ref (offsetHL hl k))))
+          (T-of (store-at-in-block prog fs k hl r h ftq i-eq)))
+    (if-le (AllocState.freed (falloc fs) (ref-id (heap-ref (offsetHL hl k)))) (block-size (falloc fs) (ref-id (heap-ref (offsetHL hl k)))))
   where
     T-of : ∀ {b : Bool} → b ≡ true → T b
     T-of refl = tt
+    -- the store gate's size is at most the block's
+    if-le : ∀ (b : Bool) n → (if b then 0 else n) Data.Nat.≤ n
+    if-le true  n = Data.Nat.z≤n
+    if-le false n = Data.Nat.Properties.≤-refl
 
 -- plan 0.108 / D367: AT AN EMITTED `out-nz`, OUTPUT HOLDS AN `Int` WORD — the
 -- comparison's arith block just wrote it; anything else faults (`do-nz`).
@@ -1798,42 +1410,54 @@ store-suc-nonptr-absurd prog fs r h ftq i-eq nptr =
 data TagCell : StoredValue FS → Set where
   tc-tag : ∀ (k : ℕ) → TagCell (SV-Tag k)
   tc-ptr : ∀ (hl : HeapLocation) → TagCell (SV-Ptr (AtDynamic hl))
-  tc-stk : ∀ (f : Frame) (k : Slot) → TagCell (SV-Ptr (AtStack f k))
 
 branch-tag-scrutinee-wf : ∀ prog (fs : FlatState) (m : LabelId) → RunAt prog fs
                         → halted (floc fs) ≡ false
                         → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-tag-zero m))
                         → Σ (ValueLocation FS) (λ loc → Σ (StoredValue FS) (λ v →
                             (readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc)
-                            × (readLoc (floc fs) loc ≡ just v) × TagCell v))
+                            × (readLoc (floc fs) loc ≡ just v) × TagCell v × (frame-gate (falloc fs) 0 (just loc) ≡ just loc)))
 branch-tag-scrutinee-wf prog fs m r h ftq = go-in1 (readReg (regs (floc fs)) Input1) refl
   where
     ok = step-ok prog fs (instr-ctrl (c-branch-tag-zero m)) r h ftq
     -- the fault flag of the branch, as a function of what it reads
     flt : Maybe (StoredValue FS) → Bool
     flt mv = LocState.faulted (floc (do-branch-test (tag-test mv) m prog fs))
+    -- through the frame gate (D454): it passes the location, or the branch faults
+    rd : StoredValue FS → Bool
+    rd v = flt (flat-read-at (floc fs) (frame-gate (falloc fs) 0 (sv-as-loc v)))
     go-cell : ∀ (loc : ValueLocation FS) → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
+            → frame-gate (falloc fs) 0 (just loc) ≡ just loc
             → ∀ (mv : Maybe (StoredValue FS)) → readLoc (floc fs) loc ≡ mv
             → Σ (ValueLocation FS) (λ loc → Σ (StoredValue FS) (λ v →
                 (readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc)
-                × (readLoc (floc fs) loc ≡ just v) × TagCell v))
-    go-cell loc ie (just (SV-Tag k))              re = loc , SV-Tag k , ie , re , tc-tag k
-    go-cell loc ie (just (SV-Ptr (AtDynamic hl))) re = loc , _ , ie , re , tc-ptr hl
-    go-cell loc ie (just (SV-Ptr (AtStack f k)))  re = loc , _ , ie , re , tc-stk f k
-    go-cell loc ie (just (SV-Lit _ _))            re =
-      ⊥-elim (true≢false (at flt re (at (λ v → flt (flat-read-at (floc fs) (sv-as-loc v))) ie ok)))
-    go-cell loc ie (just (SV-Code _))             re =
-      ⊥-elim (true≢false (at flt re (at (λ v → flt (flat-read-at (floc fs) (sv-as-loc v))) ie ok)))
-    go-cell loc ie nothing                        re =
-      ⊥-elim (true≢false (at flt re (at (λ v → flt (flat-read-at (floc fs) (sv-as-loc v))) ie ok)))
+                × (readLoc (floc fs) loc ≡ just v) × TagCell v × (frame-gate (falloc fs) 0 (just loc) ≡ just loc)))
+    go-cell loc ie g (just (SV-Tag k))              re = loc , SV-Tag k , ie , re , tc-tag k , g
+    go-cell loc ie g (just (SV-Ptr (AtDynamic hl))) re = loc , _ , ie , re , tc-ptr hl , g
+    -- D454: a stack pointer has no tag (`tag-test` faults)
+    go-cell loc ie g (just (SV-Ptr (AtStack f k)))  re =
+      ⊥-elim (true≢false (at flt re (at (λ z → flt (flat-read-at (floc fs) z)) g (at rd ie ok))))
+    go-cell loc ie g (just (SV-Lit _ _))            re =
+      ⊥-elim (true≢false (at flt re (at (λ z → flt (flat-read-at (floc fs) z)) g (at rd ie ok))))
+    go-cell loc ie g (just (SV-Code _))             re =
+      ⊥-elim (true≢false (at flt re (at (λ z → flt (flat-read-at (floc fs) z)) g (at rd ie ok))))
+    go-cell loc ie g nothing                        re =
+      ⊥-elim (true≢false (at flt re (at (λ z → flt (flat-read-at (floc fs) z)) g (at rd ie ok))))
+    go-gate : ∀ (loc : ValueLocation FS) → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
+            → (frame-gate (falloc fs) 0 (just loc) ≡ just loc) ⊎ (frame-gate (falloc fs) 0 (just loc) ≡ nothing)
+            → Σ (ValueLocation FS) (λ loc → Σ (StoredValue FS) (λ v →
+                (readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc)
+                × (readLoc (floc fs) loc ≡ just v) × TagCell v × (frame-gate (falloc fs) 0 (just loc) ≡ just loc)))
+    go-gate loc ie (inj₁ g) = go-cell loc ie g (readLoc (floc fs) loc) refl
+    go-gate loc ie (inj₂ g) = ⊥-elim (true≢false (at (λ z → flt (flat-read-at (floc fs) z)) g (at rd ie ok)))
     go-in1 : ∀ (v : StoredValue FS) → readReg (regs (floc fs)) Input1 ≡ v
            → Σ (ValueLocation FS) (λ loc → Σ (StoredValue FS) (λ v →
                (readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc)
-               × (readLoc (floc fs) loc ≡ just v) × TagCell v))
-    go-in1 (SV-Ptr loc) ie = go-cell loc ie (readLoc (floc fs) loc) refl
-    go-in1 (SV-Tag _)   ie = ⊥-elim (true≢false (at (λ v → flt (flat-read-at (floc fs) (sv-as-loc v))) ie ok))
-    go-in1 (SV-Lit _ _) ie = ⊥-elim (true≢false (at (λ v → flt (flat-read-at (floc fs) (sv-as-loc v))) ie ok))
-    go-in1 (SV-Code _)  ie = ⊥-elim (true≢false (at (λ v → flt (flat-read-at (floc fs) (sv-as-loc v))) ie ok))
+               × (readLoc (floc fs) loc ≡ just v) × TagCell v × (frame-gate (falloc fs) 0 (just loc) ≡ just loc)))
+    go-in1 (SV-Ptr loc) ie = go-gate loc ie (gate-or (falloc fs) 0 loc)
+    go-in1 (SV-Tag _)   ie = ⊥-elim (true≢false (at rd ie ok))
+    go-in1 (SV-Lit _ _) ie = ⊥-elim (true≢false (at rd ie ok))
+    go-in1 (SV-Code _)  ie = ⊥-elim (true≢false (at rd ie ok))
 
 ------------------------------------------------------------------------
 
@@ -1914,7 +1538,7 @@ run-link-at-thunk : ∀ prog (fs : FlatState) → RunAt prog fs
                   → ∀ {r : ℕ} → flink fs ≡ just r
                   → Σ EntryId (λ ℓ → Σ ℕ (λ bb →
                       fetch prog (fpc fs) ≡ just (instr-ctrl (c-entry ℓ bb))))
-run-link-at-thunk prog fs (mkRunAt tbl ir eq lkd reach) = go fs reach
+run-link-at-thunk prog fs (mkRunAt em reach) = go fs reach
   where
     Goal : FlatState → Set
     Goal fs' = Σ EntryId (λ ℓ → Σ ℕ (λ bb →
@@ -1944,7 +1568,7 @@ run-link-at-thunk prog fs (mkRunAt tbl ir eq lkd reach) = go fs reach
             -- a HALTING call writes no link, so the link was already live and
             -- the IH says the pc held a body marker — but `ftq` says it held
             -- the call.
-            call-step (cp-halt heq) =
+            call-step (cp-fault heq) =
               ⊥-elim (thunk≢call (proj₂ (proj₂ (ih-thunk pre))))
               where
                 pre : flink fs'' ≡ just r
@@ -1954,7 +1578,7 @@ run-link-at-thunk prog fs (mkRunAt tbl ir eq lkd reach) = go fs reach
                 ... | ()
             -- and an ENTERING call is the theorem: its pc IS the resolved
             -- body index, and `find-thunk-sound` says what sits there.
-            call-step (cp-enter ℓ j feq eeq) =
+            call-step (cp-enter ℓ j hl ce he feq eeq) =
               e-thunk ℓ , proj₁ fts ,
               subst (λ z → fetch prog z ≡ just (instr-ctrl (c-thunk ℓ (proj₁ fts))))
                     (sym (cong fpc (trans red eeq))) (proj₂ fts)
@@ -2026,3 +1650,4 @@ run-link-nothing : ∀ prog (fs : FlatState) → RunAt prog fs
                       → fetch prog (fpc fs) ≡ just (instr-ctrl (c-entry ℓ bb)) → ⊥)
                  → flink fs ≡ nothing
 run-link-nothing prog fs ra nt = run-link-nothing-aux prog fs ra nt (flink fs) refl
+

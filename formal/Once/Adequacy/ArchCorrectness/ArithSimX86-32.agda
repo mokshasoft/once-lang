@@ -501,7 +501,8 @@ module _ (N : ℕ) where
 -- block's frame (`call-frame`, D394): the return address and the four borrowed
 -- registers pushed below `esp`, then `4n` of scratch. Each typed leaf of the
 -- input is the input register `ecx` (a scalar, D396/D398) or the word at
--- `ecx + 4k` (D391) below that frame.
+-- `ecx + 4k` (D391) below that frame — or, D454 (d), at or above `esp` (the
+-- caller's stack, a live frame's window).
 ------------------------------------------------------------------------
 open import Once.Arith.Backend.X86-32.Dispatch using (call-frame; dispatch-arith)
 open import Once.Arith.Machine.Shape using (⟦_⟧S; IntsBelow)
@@ -511,10 +512,20 @@ open import Data.Nat.Properties using (m∸n≤m; ∸-monoʳ-≤; ≤-trans; ≤
 open import Once.Target.X86-32.PhysReg using (ebx; esi; edx; edi)
 open import Data.Product using (proj₁; proj₂)
 
+import Data.Sum
+open import Data.Sum using (_⊎_)
+open import Data.Nat using (suc; s≤s)
+open import Data.Nat.Properties using (m∸n+n≡m; m+n≤o⇒m≤o∸n; +-comm)
+
+-- a word strictly below a nonzero bound
+sub-lt : ∀ m j → suc j Data.Nat.≤ m → m ∸ suc j < m
+sub-lt (suc m) j (s≤s le) = s≤s (m∸n≤m m j)
+
 EntryLeaf : ℕ → State → InputPath → ℕ → ℕ → Set
 EntryLeaf n s []      k w = readReg (regs s) ecx ≡ w
 EntryLeaf n s (x ∷ q) k w = (readMem (memory s) (readReg (regs s) ecx + 4 * k) ≡ just w)
-                          × (readReg (regs s) ecx + 4 * k < readReg (regs s) esp ∸ 20 ∸ 4 * n)
+                          × ((readReg (regs s) ecx + 4 * k < readReg (regs s) esp ∸ 20 ∸ 4 * n)
+                             ⊎ ((readReg (regs s) esp ≤ readReg (regs s) ecx + 4 * k) × (20 + 4 * n ≤ readReg (regs s) esp)))
 
 entry-at : ∀ n s {sh} (env : ⟦ sh ⟧S)
          → (∀ {m} (p : Path sh m) → EntryLeaf n s ⌊ p ⌋ᴾ (flat-off p) (Sim.leafWord (4 * n) p env))
@@ -524,16 +535,18 @@ entry-at n s {sh} env leaf = ri , wf
   where
     sp = readReg (regs s) esp
     -- a leaf below the frame misses every pushed word
-    off : ∀ {a} j → j Data.Nat.≤ 20 → a < sp ∸ 20 ∸ 4 * n → ¬ (a ≡ sp ∸ j)
-    off j j≤ lt eq = <-irrefl eq (<-≤-trans lt (≤-trans (m∸n≤m (sp ∸ 20) (4 * n)) (∸-monoʳ-≤ sp j≤)))
+    off : ∀ {a} j → suc j Data.Nat.≤ 20 → (a < sp ∸ 20 ∸ 4 * n) ⊎ ((sp ≤ a) × (20 + 4 * n ≤ sp)) → ¬ (a ≡ sp ∸ suc j)
+    off j j≤ (Data.Sum.inj₁ lt)        eq = <-irrefl eq (<-≤-trans lt (≤-trans (m∸n≤m (sp ∸ 20) (4 * n)) (∸-monoʳ-≤ sp j≤)))
+    off j j≤ (Data.Sum.inj₂ (le , rm)) eq =
+      <-irrefl (sym eq) (<-≤-trans (sub-lt sp j (≤-trans j≤ (≤-trans (m≤m+n 20 (4 * n)) rm))) le)
     ri-at : ∀ q k w → EntryLeaf n s q k w → path-load (call-frame val-x86-32 n s) q k ≡ w
     ri-at []      k w e        = e
     ri-at (x ∷ q) k w (m , lt) =
-      cong def (trans (readMem-writeMem-other m4 (sp ∸ 20) (readReg (regs s) edi) a (off 20 ≤-refl lt))
-               (trans (readMem-writeMem-other m3 (sp ∸ 16) (readReg (regs s) edx) a (off 16 (m≤m+n 16 4) lt))
-               (trans (readMem-writeMem-other m2 (sp ∸ 12) (readReg (regs s) esi) a (off 12 (m≤m+n 12 8) lt))
-               (trans (readMem-writeMem-other m1 (sp ∸ 8)  (readReg (regs s) ebx) a (off 8 (m≤m+n 8 12) lt))
-               (trans (readMem-writeMem-other (memory s) (sp ∸ 4) (Data.Nat.suc (State.pc s)) a (off 4 (m≤m+n 4 16) lt)) m)))))
+      cong def (trans (readMem-writeMem-other m4 (sp ∸ 20) (readReg (regs s) edi) a (off 19 ≤-refl lt))
+               (trans (readMem-writeMem-other m3 (sp ∸ 16) (readReg (regs s) edx) a (off 15 (m≤m+n 16 4) lt))
+               (trans (readMem-writeMem-other m2 (sp ∸ 12) (readReg (regs s) esi) a (off 11 (m≤m+n 12 8) lt))
+               (trans (readMem-writeMem-other m1 (sp ∸ 8)  (readReg (regs s) ebx) a (off 7 (m≤m+n 8 12) lt))
+               (trans (readMem-writeMem-other (memory s) (sp ∸ 4) (Data.Nat.suc (State.pc s)) a (off 3 (m≤m+n 4 16) lt)) m)))))
       where
         import Data.Nat
         a  = readReg (regs s) ecx + 4 * k
@@ -543,8 +556,12 @@ entry-at n s {sh} env leaf = ri , wf
         m4 = writeMem m3 (sp ∸ 16) (readReg (regs s) edx)
     out-at : ∀ q k w → EntryLeaf n s q k w → Out (4 * n) (call-frame val-x86-32 n s) q k
     out-at []      k w _        = tt
-    out-at (x ∷ q) k w (_ , lt) = Data.Sum.inj₁ lt
-      where import Data.Sum
+    out-at (x ∷ q) k w (_ , Data.Sum.inj₁ lt)        = Data.Sum.inj₁ lt
+    out-at (x ∷ q) k w (_ , Data.Sum.inj₂ (le , rm)) =
+      Data.Sum.inj₂ (subst (_≤ readReg (regs s) ecx + 4 * k) (sym (m∸n+n≡m fr))
+                       (≤-trans (m∸n≤m sp 20) le))
+      where fr : 4 * n ≤ sp ∸ 20
+            fr = m+n≤o⇒m≤o∸n (4 * n) (subst (_≤ sp) (+-comm 20 (4 * n)) rm)
     ri : Sim.R-input (4 * n) (init env) (call-frame val-x86-32 n s)
     ri p = ri-at ⌊ p ⌋ᴾ (flat-off p) _ (leaf p)
     wf : WF (4 * n) sh (call-frame val-x86-32 n s)

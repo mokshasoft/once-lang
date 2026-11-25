@@ -24,7 +24,7 @@ open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; cong)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
-open import Once.CCC.Machine.SMCore using (AbstractInstr; AbstractTrace; instr-room; module LocState)
+open import Once.CCC.Machine.SMCore using (AbstractInstr; AbstractTrace; instr-room; Room; module LocState)
 open import Once.CCC.Codegen.RoomChecksFacts using (φ; module RoomFacts)
 open import Once.CCC.Codegen.RoomChecksSim using (module RoomSim)
 open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
@@ -72,7 +72,7 @@ module RoomEvents {FS : FrameSemantics} (t : AbstractTrace) where
   -- on a check: one more step, emitting nothing and counting nothing, to the
   -- image — given what the image shows (not recursive: `ev-rel` supplies it)
   chk : ∀ (n : ℕ) (fs : FlatState) (p : ℕ) → suc p ≡ φ t (fpc fs)
-      → ∀ (k : ℕ) → fetch P′ p ≡ just (instr-room k)
+      → ∀ (k : Room) → fetch P′ p ≡ just (instr-room k)
       → ∀ (m : ℕ) → flat-events m P′ (lift fs (φ t (fpc fs))) ≡ flat-events (suc n) t fs
       → flat-ctrls m P′ (lift fs (φ t (fpc fs))) ≡ flat-ctrls (suc n) t fs
       → (h : Bool) → LocState.halted (floc fs) ≡ h
@@ -97,11 +97,18 @@ module RoomEvents {FS : FrameSemantics} (t : AbstractTrace) where
   ...   | ee′ , ec′ = suc m , ee′ , ec′
 
 
+  -- D488: THE START'S FUEL: the lowered start is the image's own first
+  -- instruction (no check before it), so the fuel that matches the original's
+  -- `suc n` is a `suc N` from the start's image.
+  ev-start : ∀ (n : ℕ) (fs : FlatState) → Σ ℕ (λ N → Same (suc N) (lift fs (φ t (fpc fs))) (suc n) fs)
+  ev-start n fs with ev-step n fs (LocState.halted (floc fs)) refl
+  ... | m , ee , ec = m , ee , ec
+
   -- THE BOOT'S FUEL: from a check state (the lowered start is one), the fuel
   -- that matches the original's `suc n` is of the form `suc (suc N)` — the check
   -- step, then the original's first step. (`ev-rel` hides that shape in a Σ.)
   ev-boot : ∀ (n : ℕ) (fs : FlatState) (p : ℕ) → suc p ≡ φ t (fpc fs)
-          → ∀ (k : ℕ) → fetch P′ p ≡ just (instr-room k)
+          → ∀ (k : Room) → fetch P′ p ≡ just (instr-room k)
           → Σ ℕ (λ N → Same (suc (suc N)) (lift fs p) (suc n) fs)
   ev-boot n fs p sp k fk with ev-step n fs (LocState.halted (floc fs)) refl
   ... | m , ee , ec with chk n fs p sp k fk (suc m) ee ec (LocState.halted (floc fs)) refl

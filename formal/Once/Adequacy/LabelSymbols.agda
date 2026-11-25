@@ -102,18 +102,17 @@ private
   digits-free n = subst (All (_≢ '_')) (sym (toList-showNat n)) (All-map digit≢_ (charsInBase-all-digits n))
 
 -- a label id's rendering ends in `_<index>`
-private
-  lid-shape : ∀ (pre : String) (n : LabelId)
-            → toList (pre ++ˢ showLabelId n)
-              ≡ (toList pre ++ (toList (once-symbol-path (owner n)) ++ toList (showPath (path n)))) ++ ('_' ∷ toList (showNat (idx n)))
-  lid-shape pre n =
-    trans (toList-++ pre _)
-      (trans (cong (toList pre ++_)
-               (trans (toList-++ (once-symbol-path (owner n)) _)
-                 (cong (toList (once-symbol-path (owner n)) ++_)
-                   (trans (toList-++ (showPath (path n)) _) (cong (toList (showPath (path n)) ++_) (toList-++ "_" (showNat (idx n))))))))
-        (trans (cong (toList pre ++_) (sym (++-assoc (toList (once-symbol-path (owner n))) (toList (showPath (path n))) _)))
-               (sym (++-assoc (toList pre) _ _))))
+lid-shape : ∀ (pre : String) (n : LabelId)
+          → toList (pre ++ˢ showLabelId n)
+            ≡ (toList pre ++ (toList (once-symbol-path (owner n)) ++ toList (showPath (path n)))) ++ ('_' ∷ toList (showNat (idx n)))
+lid-shape pre n =
+  trans (toList-++ pre _)
+    (trans (cong (toList pre ++_)
+             (trans (toList-++ (once-symbol-path (owner n)) _)
+               (cong (toList (once-symbol-path (owner n)) ++_)
+                 (trans (toList-++ (showPath (path n)) _) (cong (toList (showPath (path n)) ++_) (toList-++ "_" (showNat (idx n))))))))
+      (trans (cong (toList pre ++_) (sym (++-assoc (toList (once-symbol-path (owner n))) (toList (showPath (path n))) _)))
+             (sym (++-assoc (toList pre) _ _))))
 
 idx-of-once : ∀ (n : LabelId) → last-seg (toList (labelSym (once n))) ≡ toList (showNat (idx n))
 idx-of-once n = trans (cong last-seg (lid-shape ".Lonce_" n))
@@ -123,32 +122,30 @@ idx-of-thunk : ∀ (n : LabelId) → last-seg (toList (labelSym (callee (e-thunk
 idx-of-thunk n = trans (cong last-seg (lid-shape ".L_thunk_" n))
   (last-seg-split (toList ".L_thunk_" ++ (toList (once-symbol-path (owner n)) ++ toList (showPath (path n)))) _ (digits-free (idx n)))
 
-private
-  showNat-inj : ∀ {i j : ℕ} → toList (showNat i) ≡ toList (showNat j) → i ≡ j
-  showNat-inj {i} {j} eq = charsInBase-injective 10 i j (trans (sym (toList-showNat i)) (trans eq (toList-showNat j)))
+showNat-inj : ∀ {i j : ℕ} → toList (showNat i) ≡ toList (showNat j) → i ≡ j
+showNat-inj {i} {j} eq = charsInBase-injective 10 i j (trans (sym (toList-showNat i)) (trans eq (toList-showNat j)))
 
 ------------------------------------------------------------------------
 -- First characters
 ------------------------------------------------------------------------
 
-private
-  head-of : List Char → Char
-  head-of []      = ' '
-  head-of (c ∷ _) = c
+head-of : List Char → Char
+head-of []      = ' '
+head-of (c ∷ _) = c
 
-  once-head : ∀ (n : LabelId) → head-of (toList (labelSym (once n))) ≡ '.'
-  once-head n = cong head-of (toList-++ ".Lonce_" (showLabelId n))
+once-head : ∀ (n : LabelId) → head-of (toList (labelSym (once n))) ≡ '.'
+once-head n = cong head-of (toList-++ ".Lonce_" (showLabelId n))
 
-  thunk-head : ∀ (n : LabelId) → head-of (toList (labelSym (callee (e-thunk n)))) ≡ '.'
-  thunk-head n = cong head-of (toList-++ ".L_thunk_" (showLabelId n))
+thunk-head : ∀ (n : LabelId) → head-of (toList (labelSym (callee (e-thunk n)))) ≡ '.'
+thunk-head n = cong head-of (toList-++ ".L_thunk_" (showLabelId n))
 
-  fn-head : ∀ (f : CanonicalName) → head-of (toList (once-symbol-path f)) ≡ 'o'
-  fn-head f = cong head-of (toList-++ once-prefix (join-us (Data.List.map mangle-component (Once.Spec.Name.CanonicalName.parts f))))
+fn-head : ∀ (f : CanonicalName) → head-of (toList (once-symbol-path f)) ≡ 'o'
+fn-head f = cong head-of (toList-++ once-prefix (join-us (Data.List.map mangle-component (Once.Spec.Name.CanonicalName.parts f))))
 
-  -- a counter symbol is no function symbol
-  cnt≢fn : ∀ {s : String} (f : CanonicalName) → head-of (toList s) ≡ '.' → s ≢ once-symbol-path f
-  cnt≢fn f h eq with trans (sym h) (trans (cong (λ z → head-of (toList z)) eq) (fn-head f))
-  ... | ()
+-- a counter symbol is no function symbol
+cnt≢fn : ∀ {s : String} (f : CanonicalName) → head-of (toList s) ≡ '.' → s ≢ once-symbol-path f
+cnt≢fn f h eq with trans (sym h) (trans (cong (λ z → head-of (toList z)) eq) (fn-head f))
+... | ()
 
 ------------------------------------------------------------------------
 -- THE READING: equal symbols, equal keys (for defined labels).
