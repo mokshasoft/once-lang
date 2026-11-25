@@ -346,32 +346,34 @@ module Code (C : Classes) (small : 3 + count C ≤ rec-size) (in-range : ∀ k �
 -- The room checks add checks only
 ------------------------------------------------------------------------
 
-open import Once.CCC.Codegen.RoomChecks using (room-checks; checks; boundary?; stretch; max-entry)
+open import Once.CCC.Codegen.RoomChecks using (room-checks; checks; boundary?; stretch; pick)
+open import Once.CCC.Codegen.StackDepth using (own; o-start)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Relation.Unary.Any using (here; there)
 open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Once.SigOp.Info using (SigOpInfo)
 
-checks-sig : ∀ E t {A B} (si : SigOpInfo A B) → instr-sigop si ∈ checks E t → instr-sigop si ∈ t
-checks-sig E []      si ()
-checks-sig E (i ∷ t) si (here e) = here e
-checks-sig E (i ∷ t) si (there m) = there (by (boundary? i) m)
+checks-sig : ∀ T o t {A B} (si : SigOpInfo A B) → instr-sigop si ∈ checks T o t → instr-sigop si ∈ t
+checks-sig T o []      si ()
+checks-sig T o (i ∷ t) si (here e) = here e
+checks-sig T o (i ∷ t) si (there m) = there (by (boundary? i) m)
   where
-    by : ∀ b → instr-sigop si ∈ (if b then instr-room (stretch E t) ∷ checks E t else checks E t) → instr-sigop si ∈ t
+    by : ∀ b → instr-sigop si ∈ (if b then instr-room (stretch T (own o i) t) ∷ checks T (own o i) t else checks T (own o i) t)
+       → instr-sigop si ∈ t
     by true  (here ())
-    by true  (there m′) = checks-sig E t si m′
-    by false m′ = checks-sig E t si m′
+    by true  (there m′) = checks-sig T (own o i) t si m′
+    by false m′ = checks-sig T (own o i) t si m′
 
 room-sig : ∀ t {A B} (si : SigOpInfo A B) → instr-sigop si ∈ room-checks t → instr-sigop si ∈ t
-room-sig t si m = checks-sig (max-entry t) t si m
+room-sig t si m = checks-sig (pick t) o-start t si m
 
-∈-checks : ∀ E t {i} → i ∈ t → i ∈ checks E t
-∈-checks E (x ∷ t) (here e) = here e
-∈-checks E (x ∷ t) {i} (there m) = there (by (boundary? x))
+∈-checks : ∀ T o t {i} → i ∈ t → i ∈ checks T o t
+∈-checks T o (x ∷ t) (here e) = here e
+∈-checks T o (x ∷ t) {i} (there m) = there (by (boundary? x))
   where
-    by : ∀ b → i ∈ (if b then instr-room (stretch E t) ∷ checks E t else checks E t)
-    by true  = there (∈-checks E t m)
-    by false = ∈-checks E t m
+    by : ∀ b → i ∈ (if b then instr-room (stretch T (own o x) t) ∷ checks T (own o x) t else checks T (own o x) t)
+    by true  = there (∈-checks T (own o x) t m)
+    by false = ∈-checks T (own o x) t m
 
 ∈-room : ∀ t {i} → i ∈ t → i ∈ room-checks t
-∈-room t m = ∈-checks (max-entry t) t m
+∈-room t m = ∈-checks (pick t) o-start t m

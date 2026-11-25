@@ -118,6 +118,8 @@ library
       MAlonzo.Code.Once.CCC.Codegen.AllocExpand
       MAlonzo.Code.Once.CCC.Codegen.AllocExpandClasses
       MAlonzo.Code.Once.CCC.Codegen.RoomChecks
+      MAlonzo.Code.Once.CCC.Codegen.StackDepth
+      MAlonzo.Code.Once.CCC.Codegen.StackDepthTable
       MAlonzo.Code.Once.CCC.FrameSemantics
       MAlonzo.Code.Once.CCC.Label
       MAlonzo.Code.Once.CCC.Machine.Flat

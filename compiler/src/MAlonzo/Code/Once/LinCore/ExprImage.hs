@@ -187,7 +187,7 @@ d_fileAt_54 ::
 d_fileAt_54 v0 v1 v2 v3 v4 v5 v6 v7
   = coe
       MAlonzo.Code.Once.Target.Backend.d_file_30 v1
-      (MAlonzo.Code.Once.CCC.Codegen.RoomChecks.d_room'45'checks_92
+      (MAlonzo.Code.Once.CCC.Codegen.RoomChecks.d_room'45'checks_130
          (coe d_imageAt'8344'_48 v0 v3 v2 v4 v5 v6))
       (coe
          MAlonzo.Code.Once.Target.Backend.du_file'45'table_40

@@ -33,15 +33,15 @@
 module Once.CCC.Codegen.RoomChecks where
 
 open import Data.Bool using (Bool; true; false; if_then_else_)
-open import Data.List using ([]; _∷_)
+open import Data.List using (List; []; _∷_)
 open import Data.Nat using (ℕ; suc; _+_; _⊔_)
 open import Once.CCC.Machine.SMCore
   using (AbstractInstr; AbstractTrace; instr-ctrl; instr-room; instr-alloc-heap; instr-call-closure; instr-sigop
         ; c-label; c-entry; c-start; c-call-fn; Room; room; module Room)
-open import Once.SigOp.Info using (SigOpSem; blockV; module SigOpInfo)
-open import Once.Arith.Machine.IR using (MArithIR)
-open import Once.Arith.Machine.Compile using (required-scratch; normalize)
-open import Once.Arith.Type using (NInt; NFloat)
+open import Once.CCC.Codegen.StackDepth
+  using (Depths; module Depths; Owner; o-start; own; before-from; Kind; kind; k-call; k-clo; k-sig; k-entry
+        ; k-label; k-jump; k-start; k-none; chk; consistent?; T₀)
+open import Once.CCC.Codegen.StackDepthTable using (table)
 
 -- the frame an entry reserves (0 for anything that is not one)
 entry-frame : AbstractInstr → ℕ
@@ -54,23 +54,6 @@ max-entry : AbstractTrace → ℕ
 max-entry []      = 0
 max-entry (i ∷ t) = entry-frame i ⊔ max-entry t
 
--- D393: the scratch words an arith block reserves (Int blocks are normalized
--- before they are compiled; Float blocks are not — `block-payload`)
-block-scratch : ∀ {sh n} → MArithIR sh n → ℕ
-block-scratch {n = NInt}   e = required-scratch (normalize e)
-block-scratch {n = NFloat} e = required-scratch e
-
--- D393: the words an arith block's call pushes before its scratch, on the arch
--- that pushes most — x86-32: the return address and the four borrowed registers
--- (%ebx %esi %edx %edi); x86-64 pushes one, riscv64 none
-sigop-call-words : ℕ
-sigop-call-words = 5
-
-sigop-scratch : ∀ {A B} → SigOpSem A B → ℕ
-sigop-scratch (blockV e _ _) = block-scratch e
-{-# CATCHALL #-}
-sigop-scratch _              = 0
-
 -- D486: needs add part by part (cells, stack), and nothing is `r0`
 _⊕ʳ_ : Room → Room → Room
 r ⊕ʳ q = room (Room.room-h r + Room.room-h q) (Room.room-s r + Room.room-s q)
@@ -82,19 +65,29 @@ r0 = room 0 0
 tot : Room → ℕ
 tot r = Room.room-h r + Room.room-s r
 
--- what one instruction spends, in words, given the largest entry frame `E`:
--- an allocation cells, a frame or a call stack
-spend : ℕ → AbstractInstr → Room
-spend E (instr-alloc-heap n)        = room n 0
-spend E (instr-ctrl (c-entry _ b))  = room 0 b
-spend E (instr-ctrl (c-call-fn _))  = room 0 (suc E)
-spend E instr-call-closure          = room 0 (suc E)
--- D393: a SigOp is a call too — what its block pushes, and an arith block's own
--- scratch frame below the stack pointer (what its code reserves, as each arch's
--- `block-payload` computes it)
-spend E (instr-sigop si)            = room 0 (sigop-call-words + sigop-scratch (SigOpInfo.sem si))
+-- D488: what one instruction spends, in words, at owner `o` under the depth
+-- table `T`: an allocation cells; a CHECKED call (`StackDepth.chk`) its return
+-- word and the callee's whole depth; a checked closure call the same over every
+-- closure body; a checked SigOp (the fallback) its block's words. An unchecked
+-- call or SigOp, and an entry, spend nothing here: their stack is in their
+-- function's static depth (`StackDepth.past`), which the budget carries.
+cells : AbstractInstr → ℕ
+cells (instr-alloc-heap n) = n
 {-# CATCHALL #-}
-spend E _                           = r0
+cells _                    = 0
+
+stack-k : Depths → Owner → Kind → ℕ
+stack-k T o (k-call g)    = if chk T o g then suc (Depths.dep T g) else 0
+stack-k T o k-clo         = if Depths.clo-chk T then suc (Depths.clo-dep T) else 0
+stack-k T o (k-sig w)     = if Depths.sig-chk T then w else 0
+stack-k T o (k-entry _ _) = 0
+stack-k T o (k-label _)   = 0
+stack-k T o (k-jump _)    = 0
+stack-k T o k-start       = 0
+stack-k T o k-none        = 0
+
+spend : Depths → Owner → AbstractInstr → Room
+spend T o i = room (cells i) (stack-k T o (kind i))
 
 -- a check goes right after these: control arrives there other than by falling
 -- through (a jump lands on a label, a call on an entry, a return after a call)
@@ -108,21 +101,37 @@ boundary? instr-call-closure          = true
 boundary? _                           = false
 
 -- what a stretch spends: up to and including its first boundary instruction
-stretch : ℕ → AbstractTrace → Room
-stretch E []      = r0
-stretch E (i ∷ t) = spend E i ⊕ʳ (if boundary? i then r0 else stretch E t)
+stretch : Depths → Owner → AbstractTrace → Room
+stretch T o []      = r0
+stretch T o (i ∷ t) = spend T (own o i) i ⊕ʳ (if boundary? i then r0 else stretch T (own o i) t)
 
 -- the image after a check: every boundary instruction is followed by the check
 -- for the stretch after it
-checks : ℕ → AbstractTrace → AbstractTrace
-checks E []      = []
-checks E (i ∷ t) =
-  i ∷ (if boundary? i then instr-room (stretch E t) ∷ checks E t else checks E t)
+checks : Depths → Owner → AbstractTrace → AbstractTrace
+checks T o []      = []
+checks T o (i ∷ t) =
+  i ∷ (if boundary? i then instr-room (stretch T (own o i) t) ∷ checks T (own o i) t else checks T (own o i) t)
 
 -- THE PASS. (D486: no check at index 0 any more — the program's first
 -- instruction is its start, which checks for itself, and is a boundary.)
+-- D488: the depth table it runs on — the computed one when its certificate holds
+-- of the output, else the fallback (every call checked)
+-- (the computed table an argument, so it is computed once)
+pick-by : AbstractTrace → Depths → Bool → Depths
+pick-by t T true  = T
+pick-by t T false = T₀ (max-entry t)
+
+pick-of : AbstractTrace → Depths → Depths
+pick-of t T = pick-by t T (consistent? T (checks T o-start t))
+
+-- (opaque: no proof needs more of it than its certificate, `RoomChecksFacts.pick-cert`,
+-- and unfolded it is the whole table computation)
+opaque
+  pick : AbstractTrace → Depths
+  pick t = pick-of t (table t)
+
 room-checks : AbstractTrace → AbstractTrace
-room-checks t = checks (max-entry t) t
+room-checks t = checks (pick t) o-start t
 
 ------------------------------------------------------------------------
 -- THE BUDGET'S MEASURE: what the code spends from here up to the next check.
@@ -135,11 +144,20 @@ room? (instr-room _) = true
 {-# CATCHALL #-}
 room? _              = false
 
-till-check : ℕ → AbstractTrace → Room
-till-check E []      = r0
-till-check E (i ∷ t) = if room? i then r0 else spend E i ⊕ʳ till-check E t
+till-check : Depths → Owner → AbstractTrace → Room
+till-check T o []      = r0
+till-check T o (i ∷ t) = if room? i then r0 else spend T (own o i) i ⊕ʳ till-check T (own o i) t
+
+-- the image without its checks (the pass's input, read back off its output)
+strip : AbstractTrace → AbstractTrace
+strip []      = []
+strip (i ∷ t) = if room? i then strip t else i ∷ strip t
+
+-- the table a program's checks were placed by
+tbl : AbstractTrace → Depths
+tbl prog = pick (strip prog)
 
 -- …from the instruction at `pc` on
 need : AbstractTrace → ℕ → Room
-need prog pc = till-check (max-entry prog) (Data.List.drop pc prog)
+need prog pc = till-check (tbl prog) (before-from o-start prog pc) (Data.List.drop pc prog)
   where import Data.List

@@ -114,6 +114,7 @@ import Data.List
 import Data.Bool
 open import Data.Empty using (⊥)
 open import Data.Nat using (zero; suc)
+import Data.Nat.Properties
 open import Data.Nat.Properties using (+-assoc; +-identityʳ; +-comm; +-monoʳ-<; *-monoˡ-<; <⇒≢; <-≤-trans; ≤-trans; m∸n+n≡m; m<m+n; ≤-refl; ≤-<-trans; m≤n+m; +-monoʳ-≤
   ; ≤-pred; m∸[m∸n]≡n; m+n≤o⇒m≤o∸n; +-monoˡ-≤; ≤-reflexive; m∸n≤m; +-∸-assoc; m≤o∸n⇒m+n≤o; <⇒≤
   ; *-distribʳ-+; m⊓n≤m; m⊓n≤n; ⊓-glb; <ᵇ⇒<; +-suc)
@@ -2745,6 +2746,7 @@ start-step-x86-32 : ∀ {hv : HeapView} prog fs s bf → CompiledCorr hv prog fs
   → C.FlatCorrespondence.HeapView.lo hv ≡ xreadReg (xregs s) esp
   → Σ ℕ (λ c → Σ X.State (λ s' → (X.exec (suc c) (compile-trace prog) s ≡ just s')
                 × Σ HeapView (λ hv′ → (C.FlatCorrespondence.HeapView.hstarted hv′ ≡ true)
+                    × (C.FlatCorrespondence.HeapView.hlim hv′ + slots start-stack-words ≤ xreadReg (xregs s') esp)
                     × CompiledCorr hv′ prog (flat-exec-instr (instr-ctrl (c-start bf)) prog fs) s')))
     ⊎ Σ ℕ (λ c → Σ X.State (λ s' → (X.exec c (compile-trace prog) s ≡ just s')
                 × xhalted s' ≡ false
@@ -2761,6 +2763,7 @@ start-fits-step : ∀ {hv : HeapView} prog fs s bf → CompiledCorr hv prog fs s
   → room-fits? (start-stack-words + bf) ≡ true
   → Σ ℕ (λ c → Σ X.State (λ s' → (X.exec (suc c) (compile-trace prog) s ≡ just s')
                 × Σ HeapView (λ hv′ → (C.FlatCorrespondence.HeapView.hstarted hv′ ≡ true)
+                    × (C.FlatCorrespondence.HeapView.hlim hv′ + slots start-stack-words ≤ xreadReg (xregs s') esp)
                     × CompiledCorr hv′ prog (flat-exec-instr (instr-ctrl (c-start bf)) prog fs) s')))
     ⊎ Σ ℕ (λ c → Σ X.State (λ s' → (X.exec c (compile-trace prog) s ≡ just s')
                 × xhalted s' ≡ false
@@ -2771,6 +2774,7 @@ start-step-x86-32 {hv} prog fs s bf cc h ft esi<m esp<m nf nst lo-eq = fit (room
     fit : ∀ c → room-fits? (start-stack-words + bf) ≡ c
         → Σ ℕ (λ c → Σ X.State (λ s' → (X.exec (suc c) (compile-trace prog) s ≡ just s')
                 × Σ HeapView (λ hv′ → (C.FlatCorrespondence.HeapView.hstarted hv′ ≡ true)
+                    × (C.FlatCorrespondence.HeapView.hlim hv′ + slots start-stack-words ≤ xreadReg (xregs s') esp)
                     × CompiledCorr hv′ prog (flat-exec-instr (instr-ctrl (c-start bf)) prog fs) s')))
           ⊎ Σ ℕ (λ c → Σ X.State (λ s' → (X.exec c (compile-trace prog) s ≡ just s')
                 × xhalted s' ≡ false
@@ -2833,11 +2837,12 @@ start-fits-step {hv} prog fs s bf cc h ft esi<m esp<m nf nst lo-eq e = go (X.Fla
     go : ∀ c → (X.Flags.cf (flags s3) ∨ X.Flags.zf (flags s3)) ≡ c
        → Σ ℕ (λ c → Σ X.State (λ s' → (X.exec (suc c) cp s ≡ just s')
                 × Σ HeapView (λ hv′ → (C.FlatCorrespondence.HeapView.hstarted hv′ ≡ true)
+                    × (C.FlatCorrespondence.HeapView.hlim hv′ + slots start-stack-words ≤ xreadReg (xregs s') esp)
                     × CompiledCorr hv′ prog (flat-exec-instr i prog fs) s')))
          ⊎ Σ ℕ (λ c → Σ X.State (λ s' → (X.exec c cp s ≡ just s')
                 × xhalted s' ≡ false
                 × X.fetch cp (pc s') ≡ just (call-sym host-exhausted-symbol)))
-    go true be = inj₁ (10 , s11 , exec11 , C.FlatCorrespondence.start-view dv L fl ll , refl
+    go true be = inj₁ (10 , s11 , exec11 , C.FlatCorrespondence.start-view dv L fl ll , refl , limS
                       , record { dataCorr = d11 ; pc-off = pco ; ret-eq = retPost ; code-eq = code-eq cc })
       where
         hf = C.FlatCorrespondence.HeapView.hfront hv
@@ -2921,6 +2926,9 @@ start-fits-step {hv} prog fs s bf cc h ft esi<m esp<m nf nst lo-eq e = go (X.Fla
                      (X.WL.⊖≡∸ (b ∸ slots bf) (slots B) a3 sb<m)
         fl : hf ≤ L₀
         fl = subst (hf ≤_) (sym L-eq) (m+n≤o⇒m≤o∸n hf a2)
+        -- D488: the limit is `B` words below the frame's base
+        limS : L₀ + slots B ≤ b ∸ slots bf
+        limS = subst (λ z → z + slots B ≤ b ∸ slots bf) (sym L-eq) (Data.Nat.Properties.≤-reflexive (m∸n+n≡m a3))
         ll : L₀ ≤ lo′
         ll = subst (_≤ lo′) (sym L-eq)
                (⊓-glb (subst (Lℕ ≤_) (sym lo-eq) (≤-trans (m∸n≤m (b ∸ slots bf) (slots B)) (m∸n≤m b (slots bf))))

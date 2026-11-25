@@ -176,7 +176,7 @@ open import Once.Arith.Backend.XInstr.CodeGen using (emit-program)
 open import Once.Arith.Machine.Compile using (compile-abs; required-scratch; normalize)
 open import Once.Arith.Machine.IR using (mk-block)
 open import Once.Arith.Type using (NInt; NFloat)
-open import Once.CCC.Codegen.RoomChecks using (sigop-scratch)
+open import Once.CCC.Codegen.StackDepth using (sigop-scratch; sigop-need)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles using (role-sp; role-clos; role-heap; role-in1; role-out)
 open import Data.Nat.Properties using (*-distribʳ-+; *-comm; +-monoˡ-≤; m≤m+n; m+n≤o⇒n≤o; ≤-trans; +-monoʳ-≤)
 open import Data.Nat using (_*_)
@@ -200,7 +200,6 @@ open import Once.Adequacy.ArchCorrectness.FlatCore.SigOpFrame
        x86-64-link-claim X.State.pc Once.CCC.Target.X86-64.Syntax.Program compile-trace X.find-label blk-off blk-len X.exec
        X.W.modulus
   using (ArithRun; sigop-arith-step)
-open import Once.CCC.Codegen.RoomChecks using (spend; max-entry)
 open import Data.Nat.Properties using (+-comm)
 open import Data.Product using (uncurry)
 
@@ -687,7 +686,7 @@ private
 arith-block-value  : ∀ {hv : HeapView} prog fs s {A B} (si : SigOpInfo A B)
                    → RunLow prog fs
                    → Internal (sem si) → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-sigop si)
-                   → hfront hv + C.FlatCorrespondence.slots (Room.room-s (spend (max-entry prog) (instr-sigop si))) ≤ xrreg s rsp
+                   → hfront hv + C.FlatCorrespondence.slots (sigop-need si) ≤ xrreg s rsp
                    → LocState.halted (floc fs) ≡ false
                    -- plan 0.123 α′ (f1): the block run is the SigOp's own (`arith-sigop-block`)
                    → ∀ (b : ArithBlock) → BlockOf si b
@@ -709,12 +708,12 @@ arith-block-value {hv} prog fs s si r int cc ftq rm h .(mk-block _ NFloat e) (is
 arith-dispatch-run : ∀ {hv : HeapView} prog fs s {A B} (si : SigOpInfo A B)
                    → RunLow prog fs
                    → Internal (sem si) → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-sigop si)
-                   → hfront hv + C.FlatCorrespondence.slots (Room.room-s (spend (max-entry prog) (instr-sigop si))) ≤ xrreg s rsp
+                   → hfront hv + C.FlatCorrespondence.slots (sigop-need si) ≤ xrreg s rsp
                    → LocState.halted (floc fs) ≡ false
                    -- plan 0.123 α′ (f1): the block run is the SigOp's own (`arith-sigop-block`)
                    → ∀ (b : ArithBlock) → BlockOf si b
                    → ArithRun s (uncurry (dispatch-arith val-x86-64) (AE.block-payload b) s)
-                              (C.FlatCorrespondence.slots (Room.room-s (spend (max-entry prog) (instr-sigop si))))
+                              (C.FlatCorrespondence.slots (sigop-need si))
                               (C.FlatCorrespondence.enc-sv hv (AbstractExec.exec-sigop-output {FS} si (floc fs)))
 arith-dispatch-run {hv} prog fs s si r int cc ftq rm h .(mk-block _ NInt e) bo@(is-block {n = NInt} e eA eB eq) =
   frame-run s (required-scratch (normalize e)) (emit-program (compile-abs (normalize e))) _ _
@@ -737,7 +736,7 @@ arith-sigop-run : ∀ {hv : HeapView} (env : RTx.RunTrace.ArithEnv val-x86-64 (a
                 → RunLow prog fs
                 → x86-64-arith-table prog env
                 → Internal (sem si) → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-sigop si)
-                → hfront hv + C.FlatCorrespondence.slots (Room.room-s (spend (max-entry prog) (instr-sigop si))) ≤ xrreg s rsp
+                → hfront hv + C.FlatCorrespondence.slots (sigop-need si) ≤ xrreg s rsp
                 → LocState.halted (floc fs) ≡ false
                 → ∀ (pl : List XInstr × ℕ) → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl
                 → CompiledCorr hv prog (flat-exec-instr (instr-sigop si) prog fs) (uncurry (dispatch-arith val-x86-64) pl s)
@@ -753,7 +752,7 @@ arith-sigop-contract : ∀ {hv : HeapView} (env : RTx.RunTrace.ArithEnv val-x86-
                      → RunLow prog fs
                      → x86-64-arith-table prog env
                      → Internal (sem si) → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-sigop si)
-                     → hfront hv + C.FlatCorrespondence.slots (Room.room-s (spend (max-entry prog) (instr-sigop si))) ≤ xrreg s rsp
+                     → hfront hv + C.FlatCorrespondence.slots (sigop-need si) ≤ xrreg s rsp
                      → LocState.halted (floc fs) ≡ false
                      → Σ (List XInstr × ℕ) (λ pl → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl
                          × CompiledCorr hv prog (flat-exec-instr (instr-sigop si) prog fs) (uncurry (dispatch-arith val-x86-64) pl s))

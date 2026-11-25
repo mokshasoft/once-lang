@@ -113,6 +113,7 @@ open import Data.List.Properties using (++-assoc; length-++)
 import Data.List
 open import Data.Empty using (⊥)
 open import Data.Nat using (zero; suc)
+import Data.Nat.Properties
 open import Data.Nat.Properties using (+-assoc; +-identityʳ; +-comm; +-monoʳ-<; *-monoˡ-<; <⇒≢; <-≤-trans; ≤-trans; m∸n+n≡m; m<m+n; ≤-refl; ≤-<-trans; m≤n+m; +-monoʳ-≤; *-distribʳ-+; m+n≤o⇒m≤o∸n; m⊓n≤m; m⊓n≤n; ⊓-glb; m∸n≤m)
 open import Data.Empty using (⊥-elim)
 import Data.Empty
@@ -2614,6 +2615,7 @@ start-step-x86 : ∀ {hv : HeapView} prog fs s b → CompiledCorr hv prog fs s
   → C.FlatCorrespondence.HeapView.lo hv ≡ X.readReg (xregs s) rsp
   → Σ ℕ (λ c → Σ X.State (λ s' → (X.exec (suc c) (compile-trace prog) s ≡ just s')
                 × Σ HeapView (λ hv′ → (C.FlatCorrespondence.HeapView.hstarted hv′ ≡ true)
+                    × (C.FlatCorrespondence.HeapView.hlim hv′ + slots start-stack-words ≤ X.readReg (xregs s') rsp)
                     × CompiledCorr hv′ prog (flat-exec-instr (instr-ctrl (c-start b)) prog fs) s')))
     ⊎ Σ ℕ (λ c → Σ X.State (λ s' → (X.exec c (compile-trace prog) s ≡ just s')
                 × xhalted s' ≡ false
@@ -2654,11 +2656,12 @@ start-step-x86 {hv} prog fs s b cc h ft rsp<mod _ nf nst lo-eq = go (X.Flags.cf 
     go : ∀ bb → (X.Flags.cf (flags s2) ∨ X.Flags.zf (flags s2)) ≡ bb
        → Σ ℕ (λ c → Σ X.State (λ s' → (X.exec (suc c) cp s ≡ just s')
                 × Σ HeapView (λ hv′ → (C.FlatCorrespondence.HeapView.hstarted hv′ ≡ true)
+                    × (C.FlatCorrespondence.HeapView.hlim hv′ + slots start-stack-words ≤ X.readReg (xregs s') rsp)
                     × CompiledCorr hv′ prog (flat-exec-instr i prog fs) s')))
          ⊎ Σ ℕ (λ c → Σ X.State (λ s' → (X.exec c cp s ≡ just s')
                 × xhalted s' ≡ false
                 × X.fetch cp (pc s') ≡ just (call-sym host-exhausted-symbol)))
-    go true be = inj₁ (7 , s8 , exec8 , C.FlatCorrespondence.start-view dv L fl ll , refl
+    go true be = inj₁ (7 , s8 , exec8 , C.FlatCorrespondence.start-view dv L fl ll , refl , lim8
                       , record { dataCorr = d8 ; pc-off = pco ; ret-eq = retPost ; code-eq = code-eq cc })
       where
         rsp0 = xreadReg (xregs s) rsp
@@ -2706,6 +2709,9 @@ start-step-x86 {hv} prog fs s b cc h ft rsp<mod _ nf nst lo-eq = go (X.Flags.cf 
         ll = subst (_≤ lo′) (sym L-eq)
                (⊓-glb (subst (Lℕ ≤_) (sym lo-eq) (≤-trans (m∸n≤m (rsp0 ∸ slots b) (slots B)) (m∸n≤m rsp0 (slots b))))
                       (m∸n≤m (rsp0 ∸ slots b) (slots B)))
+        -- D488: the limit is `B` words below the frame's base
+        lim8 : L₀ + slots B ≤ rsp0 ∸ slots b
+        lim8 = subst (λ z → z + slots B ≤ rsp0 ∸ slots b) (sym L-eq) (Data.Nat.Properties.≤-reflexive (m∸n+n≡m a3))
         -- the skip, past the call
         s3 : X.State
         s3 = record s2 { pc = suc (pc s2 + 1) }

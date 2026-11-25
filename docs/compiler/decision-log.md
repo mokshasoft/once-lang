@@ -25211,3 +25211,44 @@ has no checks to drop and the warning is for unbounded programs only. `tests/per
 3.1× → 2.5×, `list-build-sum` still quadratic (S2). What remains is the lowering's: calls 12.3×, frames
 6.8×, returns 7.3×, slot moves 2.6× (the block per combinator, closures for a `case`'s arms, the context's
 moves), plan 0.154 S2–S3.
+
+## D488 — STACK CHECKS ONLY WHERE A CALL CLOSES A CYCLE: EVERY FUNCTION'S DEPTH STATIC, A CHECKED CERTIFICATE (2026-11-25, proposed — unattended, for the user's review; plan 0.154 S1, D486 amendment 2)
+**Found** (x86_64, the 109 exit-test programs at 778e44327): of the 22,092 exhaustion branches, 21,735 are
+stack parts and 357 cell parts (the cells' are in the allocator since D480). A stack part stands before almost
+every call (`1 + E`, E the largest frame), because the run's depth is unknown at the call.
+**Decided.** Each function's depth past its frame is static (`Codegen.StackDepth`): the most any instruction
+pushes beyond the frame — a SigOp its block's words, an UNCHECKED call one return word plus the callee's frame
+and depth. A call is CHECKED (a stack part `1 + frame g + past g` before it, its own cost 0) only where it
+closes a cycle: a call to the function it is in (a fold's recursion, `kfold` calling itself) or to a callee not
+bounded; an indirect call is checked unless every closure body is bounded. Every other call, and every SigOp
+and entry, has no stack check. The start reserves `start-stack-words + past₀` above its frame.
+**The certificate.** The table (`bnd`, `past`, `past₀`) is computed by iteration and used only through a
+decidable `consistent?`: at every instruction its cost is at most its owner's `past`; every jump's target owner
+has at most the jumping owner's `past`; an entry fallen into fits the falling owner's. A table that fails is
+replaced by the one with nothing bounded and every `past` its SigOps' — the a3 scheme, every call checked.
+**The invariant** (the engine's `Budget`): `L + S(need pc) ≤ base` (the last check's) and `L + past(owner pc) ≤
+base` for the running frame, and `L + past(owner rpc) ≤ base` for every saved frame (its return pc and base).
+A call keeps the caller's as a saved frame (the return site's owner is the call's: no entry between); a return
+restores it; an unchecked call lands with `base − 1 − frame g ≥ L + past g` from the caller's cost.
+**Then** the fold's recursion on the heap (amendment 2) leaves no checked call; `B = frame₀ + past₀` exactly.
+**As built** (2026-11-25). `Codegen.StackDepth`: `Owner`, `own` and `kind` (a view of the instruction for
+depth: call, closure call, SigOp, entry, label, jump, start), the table `Depths` (`bnd`, `dep`, `past`,
+`past₀`, `clo-chk`, `clo-dep`, `sig-chk`, `lown`), `cost`, the per-instruction `consistent?` and its meaning
+`Cert` (cost within the owner's `past`; an entry's `frame + past ≤ dep`, a closure body's `dep ≤ clo-dep`; a
+jump's target owner no deeper; at the start its owner's `past ≤ start-stack-words`), `cert-of`, and the
+fallback `T₀ E` (every call and SigOp checked, `past` 0, `dep = E` the largest frame) with `cert₀`.
+`Codegen.StackDepthTable`: the candidate, computed by rounds over an unverified height-balanced map keyed by
+encoded names — proved nothing about, used only through the check. `RoomChecks`: `spend T o i` (cells; a
+checked call `1 + dep`, a checked closure call `1 + clo-dep`, a checked SigOp its words), `checks T o`,
+`pick t` (opaque: the candidate if its check holds of the output, else `T₀`), `tbl` (the table read back off
+the output, `strip`). `RoomChecksFacts`: everything over any `T o`, `tbl-room`, `pick-cert`, `FF-checks` (no
+instruction falls into an entry, from `em-guard`, across the checks). `Budget`: `deep-le`, `SavedOK` over
+`fret` × `saved-frames`, the certificate and `FF` carried; `bg-call` (either cover), `bg-entry`, `bg-label`,
+`bg-ret`, `bg-start`; `sigop-room`, `entry-room`, `call-fn-room`, `call-clo-room`. Each arch's start proves
+`L + slots start-stack-words ≤ sp` after it.
+**Landed** (2026-11-25): `make certified` green (`AGDA_UNIT_SECS=180`); 188 exit tests × 3 arches, seL4 × 3,
+`cabal test` 1025. **Measured** (against (a3), x86_64, 108 programs): room checks 0.31× (63,698 → 19,985),
+`.text` 0.79×, static instructions 0.75×, run time 0.84× (median per program 0.82×, max 0.87×); `loop-sum`
+0.82×, `list-build-sum` 0.87×. Stack parts on the 109 exit tests: 21,735 → 6,708. **Open:** the rounds' rule
+for `bnd` (a function bounded only when all its callees are) lets one cycle — often through the indirect
+calls — leave every caller of it checked; the next step makes only the functions on a cycle unbounded.

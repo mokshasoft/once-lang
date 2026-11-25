@@ -279,7 +279,7 @@ block-run-exec ev env h (suc L) rest cprog s {s'} eq hs' = go-h (xhalted s) refl
 open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
 open FlatEventTrace {FS} using (flat-events; event-of; flat-ctrls; ctrl-of; ctrl-≤1)
 open import Data.Nat.Properties using (≤-trans; ≤-reflexive; +-identityʳ)
-open import Once.CCC.Codegen.RoomChecks using (spend; max-entry)
+open import Once.CCC.Codegen.StackDepth using (sigop-need)
 open import Data.Nat using (s≤s; z≤n)
 
 -- PROGRAM END: the abstract fetch runs out, so the concrete pc — which `pc-off`
@@ -503,6 +503,8 @@ StartStep : AbstractTrace → FlatState → State → ℕ → Set₁
 StartStep prog fs s b =
     Σ ℕ (λ c → Σ State (λ s' → (exec (suc c) (compile-trace prog) s ≡ just s')
                 × Σ HeapView (λ hv′ → (CFC.HeapView.hstarted hv′ ≡ true)
+                    -- D488: the limit `start-stack-words` below the start's frame
+                    × (CFC.HeapView.hlim hv′ + slots start-stack-words ≤ rreg s' sp-reg)
                     × CompiledCorr hv′ prog (flat-exec-instr (instr-ctrl (c-start b)) prog fs) s')))
   ⊎ Σ ℕ (λ c → Σ State (λ s' → (exec c (compile-trace prog) s ≡ just s')
                 × xhalted s' ≡ false
@@ -573,7 +575,7 @@ record Supply : Set₁ where
                         → fetch prog (fpc fs) ≡ just (instr-sigop si)
                         -- D393: the room the check before it left for the
                         -- block's frame, and the run has not stopped
-                        → CFC.HeapView.hfront hv + slots (Room.room-s (spend (max-entry prog) (instr-sigop si))) ≤ rreg s sp-reg
+                        → CFC.HeapView.hfront hv + slots (sigop-need si) ≤ rreg s sp-reg
                         → LocState.halted (floc fs) ≡ false
                         → Σ Payload (λ pl → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl
                             × CompiledCorr hv prog (flat-exec-instr (instr-sigop si) prog fs)

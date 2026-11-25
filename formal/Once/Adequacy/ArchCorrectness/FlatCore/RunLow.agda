@@ -20,7 +20,7 @@
 
 open import Once.CCC.FrameSemantics using (FrameSemantics; module FrameSemantics)
 open FrameSemantics using (frame-word)
-open import Data.Nat using (ℕ; suc)
+open import Data.Nat using (ℕ; zero; suc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 open import Once.Spec.Name using (CanonicalName)
 
@@ -36,6 +36,7 @@ open import Data.Maybe using (just; nothing)
 open import Data.Maybe.Properties using (just-injective)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 open import Data.Sum using (inj₁; inj₂)
+import Data.Sum
 open import Once.CCC.Machine.SMCore
 open import Once.CCC.Label using (LabelId; EntryId; e-fn; e-thunk)
 open import Once.CCC.Machine.Flat
@@ -578,13 +579,98 @@ check-need : ∀ prog (fs : FlatState) → RunLow prog fs → ∀ k
            → k ≡ need prog (suc (fpc fs))
 check-need .(room-checks src) .(L.lift src fs₀ p) (mkRunLow src fs₀ p refl r refl pc) k f =
   trans (check-k src noroom p k f)
-        (cong (λ E → till-check E (Data.List.drop (suc p) (room-checks src))) (sym (max-entry-room src)))
+        (cong₂ (λ T o → till-check T o (Data.List.drop (suc p) (room-checks src)))
+               (sym (tbl-room src noroom)) (sym (before-suc o-start (room-checks src) p f)))
   where
     import Data.List
     open import Data.List.Relation.Unary.All using (All)
     open import Once.CCC.Machine.FrameFree using (ImageI)
     open import Once.CCC.Codegen.RoomChecks using (till-check)
-    open import Once.CCC.Codegen.RoomChecksFacts using (module CheckK; image-noroom; max-entry-room; NoRoom)
-    open CheckK {FS} using (check-k)
+    open import Once.CCC.Codegen.StackDepth using (o-start)
+    open import Relation.Binary.PropositionalEquality using (cong₂)
+    open import Once.CCC.Codegen.RoomChecksFacts using (module CheckK; image-noroom; tbl-room; NoRoom)
+    open CheckK {FS} using (check-k; before-suc)
     noroom : NoRoom src
     noroom = image-noroom src (em-image (RunAt.run-em r))
+
+------------------------------------------------------------------------
+-- D488: WHAT THE BUDGET KNOWS OF THE LOWERED IMAGE, statically — its checks were
+-- placed by a certified depth table (`pick-cert`), and nothing falls through
+-- into an entry (`em-guard`, across the checks)
+------------------------------------------------------------------------
+open import Once.CCC.Codegen.StackDepth using (Cert; o-start; kind; entry-k)
+open import Once.CCC.Codegen.RoomChecks using (tbl; pick)
+open import Once.CCC.Codegen.RoomChecksFacts using (module PickCert; module NoFall; image-noroom; tbl-room; NoRoom)
+open PickCert {FS} using (pick-cert)
+open NoFall {FS} using (FF; FF-checks; leaves?)
+
+low-cert : ∀ {prog fs} → RunLow prog fs → Cert (tbl prog) prog
+low-cert (mkRunLow src fs₀ p refl r refl pc) =
+  subst (λ T → Cert T (room-checks src)) (sym (tbl-room src noroom)) (pick-cert src)
+  where noroom = image-noroom src (em-image (RunAt.run-em r))
+
+private
+  guard-ff : ∀ (src : AbstractTrace) → GuardAt src → FF src
+  guard-ff src g q x f e = go (proj₂ (proj₂ w)) (cong pred (proj₁ (proj₂ w)))
+    where
+      ent : Σ EntryId (λ m → Σ ℕ (λ b → x ≡ instr-ctrl (c-entry m b)))
+      ent = is-entry x e
+        where
+          is-entry : ∀ (y : AbstractInstr) → entry-k (kind y) ≡ true → Σ EntryId (λ m → Σ ℕ (λ b → y ≡ instr-ctrl (c-entry m b)))
+          is-entry (instr-ctrl (c-entry m b)) _ = m , b , refl
+          is-entry (instr-ctrl (c-label _)) ()
+          is-entry (instr-ctrl (c-jmp _)) ()
+          is-entry (instr-ctrl (c-branch-tag-zero _)) ()
+          is-entry (instr-ctrl (c-ret _)) ()
+          is-entry (instr-ctrl (c-call-fn _)) ()
+          is-entry (instr-ctrl (c-start _)) ()
+          is-entry (instr-ctrl c-leave) ()
+          is-entry mov-to-output ()
+          is-entry mov-to-input ()
+          is-entry load-indirect ()
+          is-entry load-indirect-suc ()
+          is-entry (load-from-slot _) ()
+          is-entry (store-at-slot _) ()
+          is-entry store-indirect ()
+          is-entry store-indirect-suc ()
+          is-entry (lea-slot _) ()
+          is-entry (restore-input _) ()
+          is-entry (instr-alloc-stack _) ()
+          is-entry (instr-dealloc-stack _) ()
+          is-entry (instr-reclaim-to _) ()
+          is-entry (instr-push-frame _) ()
+          is-entry instr-pop-frame ()
+          is-entry instr-call-closure ()
+          is-entry (worklist-init _) ()
+          is-entry (worklist-push _) ()
+          is-entry (worklist-pop _) ()
+          is-entry (worklist-check _) ()
+          is-entry (instr-sigop _) ()
+          is-entry (instr-load-const _ _) ()
+          is-entry (instr-load-code-addr _) ()
+          is-entry instr-save-closure-reg ()
+          is-entry (instr-load-tag-lit _) ()
+          is-entry (instr-alloc-heap _) ()
+          is-entry (instr-reg-op _) ()
+          is-entry (instr-free-heap _) ()
+          is-entry (load-at _) ()
+          is-entry (store-at _) ()
+          is-entry (addr-at _) ()
+          is-entry (AbstractInstr.load-rec _) ()
+          is-entry (AbstractInstr.store-rec _) ()
+          is-entry (instr-room _) ()
+      pred : ℕ → ℕ
+      pred zero    = zero
+      pred (suc n) = n
+      w = g (suc q) (proj₁ ent) (proj₁ (proj₂ ent)) (trans f (cong just (proj₂ (proj₂ ent))))
+      go : ∀ {q′} → ((Σ LabelId (λ m → fetch src q′ ≡ just (instr-ctrl (c-jmp m))))
+                    Data.Sum.⊎ (Σ ℕ (λ b → fetch src q′ ≡ just (instr-ctrl (c-ret b))))
+                    Data.Sum.⊎ (fetch src q′ ≡ just (instr-ctrl c-leave)))
+         → q ≡ q′ → Σ AbstractInstr (λ y → fetch src q ≡ just y × leaves? y ≡ true)
+      go (inj₁ (m , fq))        refl = instr-ctrl (c-jmp m) , fq , refl
+      go (inj₂ (inj₁ (b , fq))) refl = instr-ctrl (c-ret b) , fq , refl
+      go (inj₂ (inj₂ fq))       refl = instr-ctrl c-leave , fq , refl
+
+low-ff : ∀ {prog fs} → RunLow prog fs → FF prog
+low-ff (mkRunLow src fs₀ p refl r refl pc) =
+  FF-checks (pick src) o-start src (guard-ff src (Emitted.em-guard (RunAt.run-em r)))
