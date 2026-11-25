@@ -534,18 +534,30 @@ bg-call {hv} {prog} {fs} {fs′} {c} {j} {m} {b′} D r bg f bd ne cov fe le pc�
                              refl))
                  (subst (λ x → hlim hv + slots x ≤ fbase fs) (deep-other prog (fpc fs) f ne) (deep-le bg))
 
+-- (D491: a lower limit keeps every saved frame's bound — it only weakens them)
+saved-lower : ∀ {hv hv′ : HeapView} {prog : AbstractTrace} (rs : List ℕ) (frs : List (Frame × ℕ))
+            → hlim hv′ ≤ hlim hv → SavedOK hv prog rs frs → SavedOK hv′ prog rs frs
+saved-lower []       _               le _        = tt
+saved-lower (r ∷ rs) []              le _        = tt
+saved-lower {hv} {hv′} {prog} (r ∷ rs) ((f , _) ∷ frs) le (a , ok) =
+  ≤-trans (+-monoˡ-≤ (slots (pastO (tbl prog) (ow prog r))) le) a , saved-lower {hv} {hv′} {prog} rs frs le ok
+
 -- a check: its compares said the room for what follows it is there, per part
-bg-room : ∀ {hv : HeapView} {prog : AbstractTrace} {fs fs′ : FlatState} {s : State} {k : Room}
+-- (D491: at a view whose limit the check may have LOWERED, all else the same)
+bg-room : ∀ {hv hv′ : HeapView} {prog : AbstractTrace} {fs fs′ : FlatState} {s : State} {k : Room}
         → Budget hv prog fs → RunLow prog fs → FlatCorr hv fs s → fetch prog (fpc fs) ≡ just (instr-room k)
-        → hfront hv + H k ≤ hlim hv → hlim hv + S k ≤ rreg s sp-reg
+        → hfront hv′ ≡ hfront hv → hstarted hv′ ≡ hstarted hv → hlim hv′ ≤ hlim hv
+        → hfront hv′ + H k ≤ hlim hv′ → hlim hv′ + S k ≤ rreg s sp-reg
         → fpc fs′ ≡ suc (fpc fs) → fbase fs′ ≡ fbase fs
-        → fret fs′ ≡ fret fs → saved-frames (falloc fs′) ≡ saved-frames (falloc fs) → Budget hv prog fs′
-bg-room {hv} {prog} {fs} {fs′} {s} {k} bg r corr f rh rs pc′ fb′ rq sq =
-  bg-move {hv} {prog} {fs′} (bg-started bg) pc′ fb′
-    (subst (λ x → hfront hv + H x ≤ hlim hv) (check-need prog fs r k f) rh)
-    (subst₂ (λ x y → hlim hv + S x ≤ y) (check-need prog fs r k f) (sp-eq corr) rs)
-    (deep-on bg f refl)
-    (saved-same {hv} {hv} {prog} {fs} {fs′} refl rq sq (saved-le bg)) (bg-cert bg) (bg-ff bg)
+        → fret fs′ ≡ fret fs → saved-frames (falloc fs′) ≡ saved-frames (falloc fs) → Budget hv′ prog fs′
+bg-room {hv} {hv′} {prog} {fs} {fs′} {s} {k} bg r corr f hf hs ll rh rs pc′ fb′ rq sq =
+  bg-move {hv′} {prog} {fs′} (trans hs (bg-started bg)) pc′ fb′
+    (subst (λ x → hfront hv′ + H x ≤ hlim hv′) (check-need prog fs r k f) rh)
+    (subst₂ (λ x y → hlim hv′ + S x ≤ y) (check-need prog fs r k f) (sp-eq corr) rs)
+    (≤-trans (+-monoˡ-≤ (slots (deep prog (suc (fpc fs)))) ll) (deep-on bg f refl))
+    (saved-lower {hv} {hv′} {prog} (fret fs′) (saved-frames (falloc fs′)) ll
+       (saved-same {hv} {hv} {prog} {fs} {fs′} refl rq sq (saved-le bg)))
+    (bg-cert bg) (bg-ff bg)
 
 -- PAST AN ENTRY: its frame reserved, a check next
 bg-entry : ∀ {hv hv′ : HeapView} {prog : AbstractTrace} {fs fs′ : FlatState} {m : EntryId} {b : ℕ}

@@ -40,7 +40,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.CCC.FrameSemantics using (FrameSemantics; module FrameSemantics)
 open FrameSemantics using (frame-word)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles using (RegRoles)
-open import Data.Sum using (_⊎_)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Once.SigOp.Info using (SigOpInfo; effect; Pure; Internal; External; module SigOpInfo)
 open SigOpInfo using (sem)
 open import Once.Target.Symbol using (once-symbol-path)
@@ -278,7 +278,7 @@ block-run-exec ev env h (suc L) rest cprog s {s'} eq hs' = go-h (xhalted s) refl
 ------------------------------------------------------------------------
 open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
 open FlatEventTrace {FS} using (flat-events; event-of; flat-ctrls; ctrl-of; ctrl-≤1)
-open import Data.Nat.Properties using (≤-trans; ≤-reflexive; +-identityʳ)
+open import Data.Nat.Properties using (≤-trans; ≤-reflexive; +-identityʳ; ≤-refl)
 open import Once.CCC.Codegen.StackDepth using (sigop-need)
 open import Data.Nat using (s≤s; z≤n)
 
@@ -484,8 +484,25 @@ stuck-result ev env lg (suc n) prog fs s i hpost lpost ev-eq st =
 -- assumed.
 -- (D488 (a3): two compares — the cells' part against the limit, the stack's
 -- part from the limit to the stack pointer)
-RoomStep : HeapView → AbstractTrace → FlatState → State → Room → Set
+-- D491 (the moving limit): the room branch lands at a view whose limit may be LOWER
+-- (the check moved it to make the stack's part fit), all else the same; the
+-- compares are against that view.
+RoomStep : HeapView → AbstractTrace → FlatState → State → Room → Set₁
 RoomStep hv prog fs s k =
+    Σ HeapView (λ hv′ → (CFC.HeapView.hfront hv′ ≡ CFC.HeapView.hfront hv)
+      × (CFC.HeapView.hstarted hv′ ≡ CFC.HeapView.hstarted hv)
+      × (CFC.HeapView.hlim hv′ ≤ CFC.HeapView.hlim hv)
+      × Σ ℕ (λ c → Σ State (λ s' → (exec c (compile-trace prog) s ≡ just s')
+                × CompiledCorr hv′ prog (flat-exec-instr (instr-room k) prog fs) s'
+                × (CFC.HeapView.hfront hv′ + slots (Room.room-h k) ≤ CFC.HeapView.hlim hv′)
+                × (CFC.HeapView.hlim hv′ + slots (Room.room-s k) ≤ rreg s sp-reg))))
+  ⊎ Σ ℕ (λ c → Σ State (λ s' → (exec c (compile-trace prog) s ≡ just s')
+                × xhalted s' ≡ false
+                × mfetch (compile-trace prog) (xpc s') ≡ just (sigop-call host-exhausted-symbol)))
+
+-- …the room branch at the SAME view (a check that never moves the limit)
+RoomStep₀ : HeapView → AbstractTrace → FlatState → State → Room → Set
+RoomStep₀ hv prog fs s k =
     Σ ℕ (λ c → Σ State (λ s' → (exec c (compile-trace prog) s ≡ just s')
                 × CompiledCorr hv prog (flat-exec-instr (instr-room k) prog fs) s'
                 × (CFC.HeapView.hfront hv + slots (Room.room-h k) ≤ CFC.HeapView.hlim hv)
@@ -493,6 +510,10 @@ RoomStep hv prog fs s k =
   ⊎ Σ ℕ (λ c → Σ State (λ s' → (exec c (compile-trace prog) s ≡ just s')
                 × xhalted s' ≡ false
                 × mfetch (compile-trace prog) (xpc s') ≡ just (sigop-call host-exhausted-symbol)))
+
+room-same : ∀ {hv prog fs s k} → RoomStep₀ hv prog fs s k → RoomStep hv prog fs s k
+room-same {hv} (inj₁ r) = inj₁ (hv , refl , refl , ≤-refl , r)
+room-same      (inj₂ r) = inj₂ r
 
 -- D488: THE START's two outcomes, as the room check's: it checks that the
 -- region holds `main`'s frame and the stack it reserves (`start-stack-words`),

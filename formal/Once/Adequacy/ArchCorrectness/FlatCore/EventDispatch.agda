@@ -1155,9 +1155,9 @@ module Dispatch (sup : Supply) where
                         (ctrl-of (instr-room k) + flat-ctrls n prog (flat-exec-instr (instr-room k) prog fs)) M)
   room-check-step n IH ev env prog fs s k cc bg wf h ftq with room-step prog fs s k (inv-run wf) cc (Budget.bg-started bg) h ftq
   -- the compares found the room for what follows the check: the budget re-arms
-  ... | inj₁ (c , s′ , ex , cc′ , lh , ls) =
+  ... | inj₁ (hv′ , hf , hs , ll , c , s′ , ex , cc′ , lh , ls) =
     ccc-step-c n IH ev env prog fs s (instr-room k) c z≤n (s′ , ex , cc′)
-      (λ _ → bg-room bg (inv-run wf) (dataCorr cc) ftq lh ls refl (straight-frame (instr-room k) fs)
+      (λ _ → bg-room bg (inv-run wf) (dataCorr cc) ftq hf hs ll lh ls refl (straight-frame (instr-room k) fs)
                 (fret-straight (instr-room k) fs) (straight-saved (instr-room k) fs))
       wf ftq h refl tt tt h
   ... | inj₂ (c , s' , ex , hs' , ft') =

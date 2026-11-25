@@ -412,7 +412,7 @@ x86-64-traceloop = record
 -- `using`, for the same reason as the dispatch's application at the end.
 module EE = Engine o FS slot-size word-eq Reg x86-64-roles X.W.modulus
                    x86-64-emitter x86-64-machine x86-64-traceloop
-  using ( FlatInv; mkFlatInv; flat-inv-step; block-run-exec
+  using ( FlatInv; room-same; mkFlatInv; flat-inv-step; block-run-exec
         ; events-running-end; sigop-concrete-fetch; sigop-run-arith
         ; sigop-run-external; event-of-pure; StuckAt; StuckSteps; Supply
         ; stuck-result )
@@ -795,7 +795,7 @@ arith-sigop-contract {hv} env prog fs s si r t int cc ftq rm h =
 x86-64-supply : EE.Supply
 x86-64-supply = record
   { bss = x86-64-block-steps ; sts = x86-64-stuck-steps
-  ; room-step = λ prog fs s k _ → room-step-x86 prog fs s k
+  ; room-step = λ prog fs s k _ cc st h ft → EE.room-same {prog = prog} {fs = fs} {s = s} {k = k} (room-step-x86 prog fs s k cc st h ft)
   ; start-step = λ prog fs s b run cc h ft → start-step-x86 prog fs s b cc h ft (reg-range prog fs s rsp run cc)
   ; reg-range = reg-range ; ret-no-wrap = ret-no-wrap
   ; tag-fits = tag-fits ; lit-fits = lit-fits ; float-fits = float-fits

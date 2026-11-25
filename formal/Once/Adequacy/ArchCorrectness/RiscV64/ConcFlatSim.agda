@@ -337,7 +337,7 @@ riscv64-traceloop = record
 -- `using`, for the same reason as the dispatch's application at the end.
 module EE = Engine o FS slot-size word-eq Reg riscv64-roles R.W.modulus
                    riscv64-emitter riscv64-machine riscv64-traceloop
-  using ( FlatInv; mkFlatInv; flat-inv-step; block-run-exec
+  using ( FlatInv; room-same; mkFlatInv; flat-inv-step; block-run-exec
         ; events-running-end; sigop-concrete-fetch; sigop-run-arith
         ; sigop-run-external; event-of-pure; StuckAt; StuckSteps
         ; stuck-result; Supply
@@ -745,8 +745,8 @@ arith-sigop-contract {hv} env prog fs s si r t int cc ftq rm h =
 riscv64-supply : EE.Supply
 riscv64-supply = record
   { bss = riscv64-block-steps ; sts = riscv64-stuck-steps
-  ; room-step = λ prog fs s k run cc st h ft → room-step-riscv64 prog fs s k cc st h ft
-      (reg-range prog fs s sp run cc)
+  ; room-step = λ prog fs s k run cc st h ft → EE.room-same {prog = prog} {fs = fs} {s = s} {k = k} (room-step-riscv64 prog fs s k cc st h ft
+      (reg-range prog fs s sp run cc))
   ; start-step = λ prog fs s b run cc h ft _ nf nst loq → start-step-riscv64 prog fs s b cc h ft
       (reg-range prog fs s sp run cc) nf nst loq
   ; reg-range = reg-range ; ret-no-wrap = ret-no-wrap

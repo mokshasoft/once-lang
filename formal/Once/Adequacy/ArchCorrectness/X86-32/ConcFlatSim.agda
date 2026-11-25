@@ -427,7 +427,7 @@ x86-32-traceloop = record
 -- `using`, for the same reason as the dispatch's application at the end.
 module EE = Engine o FS slot-size word-eq Reg x86-32-roles X.W.modulus
                    x86-32-emitter x86-32-machine x86-32-traceloop
-  using ( FlatInv; mkFlatInv; flat-inv-step; block-run-exec
+  using ( FlatInv; room-same; mkFlatInv; flat-inv-step; block-run-exec
         ; events-running-end; sigop-concrete-fetch; sigop-run-arith
         ; sigop-run-external; event-of-pure; StuckAt; StuckSteps; Supply
         ; stuck-result )
@@ -815,8 +815,8 @@ arith-sigop-contract {hv} env prog fs s si r t int cc ftq rm h =
 x86-32-supply : EE.Supply
 x86-32-supply = record
   { bss = x86-32-block-steps ; sts = x86-32-stuck-steps
-  ; room-step = λ prog fs s k run cc st h ft → room-step-x86-32 prog fs s k cc st h ft (reg-range prog fs s PhysReg.esi run cc)
-      (reg-range prog fs s PhysReg.esp run cc)
+  ; room-step = λ prog fs s k run cc st h ft → EE.room-same {prog = prog} {fs = fs} {s = s} {k = k} (room-step-x86-32 prog fs s k cc st h ft (reg-range prog fs s PhysReg.esi run cc)
+      (reg-range prog fs s PhysReg.esp run cc))
   ; start-step = λ prog fs s b run cc h ft _ nf nst loq → start-step-x86-32 prog fs s b cc h ft
       (reg-range prog fs s PhysReg.esi run cc) (reg-range prog fs s PhysReg.esp run cc) nf nst loq
   ; reg-range = reg-range ; ret-no-wrap = ret-no-wrap
