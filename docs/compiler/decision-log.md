@@ -25397,3 +25397,21 @@ no stack check anywhere, and the only exhaustion is the heap's, in the allocator
 * **Proof:** the budget's stack part becomes static (`deep-le` with no checked call); the heap frame is an
   allocation, covered by the allocator's check; the D490 certificate is reused, its `chk` now meaning "runs
   on a heap frame".
+**As to build (unattended design, 2026-11-25).** Frames are abstract in the flat machine; their placement is
+the arch correspondence's (`StackWindows` threads a floor — each newer frame wholly below the older —
+and `GapNext` pins a caller's base one slot above its callee's end; heap/stack disjointness rests on every
+frame lying above the heap). So B is STACK SEGMENTS:
+1. two abstract instructions around a flagged call: `far-enter n` (an `n`-word heap block from the
+   allocator, a segment record pushed, the stack pointer moved to the block's top) and `far-leave` (the
+   segment popped, the stack pointer restored, the block freed). The call between them is unchanged, so no
+   callee's code changes;
+2. the pass wraps each flagged call (`StackDepth.chk`; a marked indirect call) in `far-enter (1 + dep)` /
+   `far-leave` where it now places a room check's stack part;
+3. the correspondence is segment-aware: a segment boundary resets the floor to its block's base; frames in
+   different segments are apart by the heap's live-block disjointness; the boundary holds the saved stack
+   pointer instead of `GapNext`;
+4. the budget's stack part is measured from the current segment's floor (`hlim` on the main stack, the
+   block's base in a block): every bound static;
+5. the three arches lower the pair and prove it.
+Order: abstract machine and its facts; the pass and the certificate's meaning; the budget; x86-64, then
+x86-32 and riscv64; then the room checks' stack part removed and `B` exact at the start.
