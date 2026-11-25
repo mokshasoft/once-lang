@@ -132,6 +132,8 @@ data Instr : Set where
   -- No symbol is defined or referenced.
   jbe-fwd : Instr                     -- jbe 1f
   local-1 : Instr                     -- 1:
+  jbe-fwd2 : Instr                    -- jbe 2f (D491: a second forward label)
+  local-2 : Instr                     -- 2:
 
   -- Assembly pseudo-instructions
   label : Label → Instr               -- .L<provenance>:

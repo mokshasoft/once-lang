@@ -50,7 +50,7 @@ import Once.Spec.Word as OnceWord
 module IntW = OnceWord.Width 64
   using (fromℤ; modulus)
 open import Once.CCC.Target.RiscV64.Syntax
-  using (ld; sd; sub; sltu; addi; li; lla; lla-sym; mv; beq; jal; jalr; j; ret; call-sym; bgeu-fwd; local-1; label; Program; slot-size; slots)
+  using (ld; sd; sub; sltu; addi; li; lla; lla-sym; mv; beq; jal; jalr; j; ret; call-sym; bgeu-fwd; local-1; bgeu-fwd2; local-2; label; Program; slot-size; slots)
 open import Once.Target.RiscV64.PhysReg using (a0; t0; sp; s2; fp; t1; s1; ra; t2; zero)
 open import Once.CCC.Label using (once; callee; e-fn)
 open import Once.Spec.Name using (CanonicalName)
@@ -144,41 +144,42 @@ stack-code : ℕ → Program
 stack-code zero      = []
 stack-code k@(suc _) = part (room-fits? k) (stack-room k)
 
--- D491 (the moving limit): a check's stack part with words `s` (cells `h`). First the
--- region, as the start checks it (the room `sp − frontier` against `8(h+s)`); then the
--- limit: the room `sp − L` against `8s` (`stack-room`'s compare), and when it is short,
--- `L := sp − 8s` (no borrow: the region held it). A part whose words are no word cannot
--- fit, and the region's part has then already called; its limit part is the two
--- references alone, never run.
-lower-room : ℕ → Program
-lower-room k =
+-- D491 (the moving limit): a check's stack part with words `s` (cells `h`). If the room
+-- `sp − L` holds `8s` (`stack-room`'s compare), on (`bgeu …, 2f`); else the region must
+-- hold the cells and the stack (the start's check: the room `sp − frontier` against
+-- `8(h+s)`; also what makes `sp − 8s` borrow-free), and `L := sp − 8s` (`2:`). A stack part
+-- whose words are no word cannot fit: it names the record, calls, and names the record (the
+-- references in their order), never past the call.
+lower-room-c : Bool → ℕ → ℕ → Program
+lower-room-c c h k =
   lla-sym t1 alloc-record-symbol ∷
   ld t1 t1 0 ∷
   sub t1 sp t1 ∷
   li t2 (+ slots k) ∷
-  bgeu-fwd t1 t2 ∷
-  li t2 (+ slots k) ∷
-  sub t2 sp t2 ∷
-  lla-sym t1 alloc-record-symbol ∷
-  sd t2 t1 0 ∷
-  local-1 ∷ []
+  bgeu-fwd2 t1 t2 ∷
+  (fits-or-out c (room-code (h Data.Nat.+ k)) ++
+  (li t2 (+ slots k) ∷
+   sub t2 sp t2 ∷
+   lla-sym t1 alloc-record-symbol ∷
+   sd t2 t1 0 ∷
+   local-2 ∷ []))
+
+lower-room : ℕ → ℕ → Program
+lower-room h k = lower-room-c (room-fits? (h Data.Nat.+ k)) h k
 
 lower-out : Program
-lower-out = lla-sym t1 alloc-record-symbol ∷ lla-sym t1 alloc-record-symbol ∷ []
+lower-out = lla-sym t1 alloc-record-symbol ∷ call-sym host-exhausted-symbol ∷ lla-sym t1 alloc-record-symbol ∷ []
 
-lower-pick : Bool → ℕ → Program
-lower-pick true  k = lower-room k
-lower-pick false k = lower-out
+lower-pick : Bool → ℕ → ℕ → Program
+lower-pick true  h k = lower-room h k
+lower-pick false h k = lower-out
 
-lower-code : ℕ → Program
-lower-code k = lower-pick (room-fits? k) k
-
-fit-code : ℕ → Program
-fit-code n = fits-or-out (room-fits? n) (room-code n)
+lower-code : ℕ → ℕ → Program
+lower-code h k = lower-pick (room-fits? k) h k
 
 room-code′ : ℕ → ℕ → Program
 room-code′ h zero        = heap-code h
-room-code′ h s@(suc _)   = fit-code (h Data.Nat.+ s) ++ lower-code s ++ heap-code h
+room-code′ h s@(suc _)   = lower-code h s ++ heap-code h
 
 -- D488: the start past its check: the frame, then the stack limit into record word 0
 start-tail : ℕ → Program

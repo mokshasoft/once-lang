@@ -114,6 +114,8 @@ data Instr : Set where
   -- is defined or referenced.
   bgeu-fwd : Reg → Reg → Instr        -- bgeu rs1, rs2, 1f
   local-1  : Instr                    -- 1:
+  bgeu-fwd2 : Reg → Reg → Instr       -- bgeu rs1, rs2, 2f (D491: a second forward label)
+  local-2  : Instr                    -- 2:
 
   -- Jumps
   jal    : Reg → Label → Instr        -- jal rd, label (rd = PC+4, jump)
@@ -215,6 +217,8 @@ instr-consumed-slots (beq _ _ _)     = 0
 instr-consumed-slots (bne _ _ _)     = 0
 instr-consumed-slots (bgeu-fwd _ _)  = 0
 instr-consumed-slots local-1         = 0
+instr-consumed-slots (bgeu-fwd2 _ _) = 0
+instr-consumed-slots local-2         = 0
 instr-consumed-slots (jal _ _)       = 0   -- call: return addr saved by callee
 instr-consumed-slots (jalr _ _ _)    = 0
 instr-consumed-slots (j _)           = 0

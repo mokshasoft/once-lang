@@ -243,12 +243,16 @@ d_showInstr_32 v0
         -> coe ("    jbe 1f" :: Data.Text.Text)
       MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.C_local'45'1_68
         -> coe ("1:" :: Data.Text.Text)
-      MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.C_label_70 v1
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.C_jbe'45'fwd2_70
+        -> coe ("    jbe 2f" :: Data.Text.Text)
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.C_local'45'2_72
+        -> coe ("2:" :: Data.Text.Text)
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.C_label_74 v1
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
              (MAlonzo.Code.Once.CCC.Label.d_labelSym_198 (coe v1))
              (":" :: Data.Text.Text)
-      MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.C_mov'45'code_72 v1 v2
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.C_mov'45'code_76 v1 v2
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
              ("    movl $" :: Data.Text.Text)
@@ -260,7 +264,7 @@ d_showInstr_32 v0
                    (", " :: Data.Text.Text)
                    (MAlonzo.Code.Once.Target.X86Z45Z32.PhysReg.d_showReg_26
                       (coe v1))))
-      MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.C_jmp'45'l_74 v1
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.C_jmp'45'l_78 v1
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
              ("    jmp " :: Data.Text.Text)

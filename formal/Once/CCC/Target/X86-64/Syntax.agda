@@ -144,6 +144,8 @@ data Instr : Set where
   -- No symbol is defined or referenced.
   jbe-fwd : Instr                       -- jbe 1f
   local-1 : Instr                       -- 1:
+  jbe-fwd2 : Instr                      -- jbe 2f (D491: a second forward label)
+  local-2 : Instr                       -- 2:
 
   -- Label (pseudo-instruction for assembly)
   label  : Label → Instr                -- label n:
@@ -266,6 +268,8 @@ instr-consumed-slots ud2              = 0
 instr-consumed-slots syscall          = 0
 instr-consumed-slots jbe-fwd          = 0
 instr-consumed-slots local-1          = 0
+instr-consumed-slots jbe-fwd2         = 0
+instr-consumed-slots local-2          = 0
 instr-consumed-slots (label _)        = 0
 
 -- | Total stack slots consumed by an instruction sequence

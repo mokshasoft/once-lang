@@ -299,9 +299,25 @@ find-local-1-go (_ ∷ is)       i = find-local-1-go is (suc i)
 find-local-1 : Program → ℕ → Maybe ℕ
 find-local-1 prog from = find-local-1-go (drop from prog) from
 
+-- D491: the next `2:` (GNU `as`'s `2f`)
+find-local-2-go : Program → ℕ → Maybe ℕ
+find-local-2-go []             i = nothing
+find-local-2-go (local-2 ∷ is) i = just i
+{-# CATCHALL #-}
+find-local-2-go (_ ∷ is)       i = find-local-2-go is (suc i)
+
+find-local-2 : Program → ℕ → Maybe ℕ
+find-local-2 prog from = find-local-2-go (drop from prog) from
+
 ------------------------------------------------------------------------
 -- Instruction semantics
 ------------------------------------------------------------------------
+
+-- D491: a forward skip, taken to the label found (a missing label halts), else on
+jump-fwd : State → Bool → Maybe ℕ → Maybe State
+jump-fwd s true  (just pc') = just (record s { pc = pc' })
+jump-fwd s true  nothing    = just (record s { halted = true })
+jump-fwd s false _          = just (record s { pc = pc s + 1 })
 
 execInstr : Program → State → Instr → Maybe State
 
@@ -415,6 +431,11 @@ execInstr prog s jbe-fwd with cf (flags s) ∨ zf (flags s)
 ... | false = just (record s { pc = pc s + 1 })
 
 execInstr prog s local-1 = just (record s { pc = pc s + 1 })
+
+-- D491: below-or-equal jumps forward to the next `2:`
+execInstr prog s jbe-fwd2 = jump-fwd s (cf (flags s) ∨ zf (flags s)) (find-local-2 prog (pc s + 1))
+
+execInstr prog s local-2 = just (record s { pc = pc s + 1 })
 
 -- call: push return address, jump to target
 execInstr prog s (call target) =

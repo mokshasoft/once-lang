@@ -17,7 +17,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; tran
 open import Once.Type using (fits-int; fits-float)
 open import Once.CCC.Machine.SMCore
 open import Once.CCC.Codegen.ImageSymbols using (instr-defs; instr-refs; adefs; arefs; part-refs; stack-refs)
-open import Once.CCC.Target.X86-32.AbstractToX86-32 using (compile-abstract; compile-trace; fits-or-out; room-code; room-fits?; start-tail; part; heap-room; stack-room; heap-code; stack-code; room-code′; fit-code; lower-code; lower-pick)
+open import Once.CCC.Target.X86-32.AbstractToX86-32 using (compile-abstract; compile-trace; fits-or-out; room-code; room-fits?; start-tail; part; heap-room; stack-room; heap-code; stack-code; room-code′; lower-code; lower-pick)
 open import Data.List.Properties using (++-assoc)
 open import Data.Bool using (Bool; true; false)
 open import Once.Target.SymbolFresh using (host-exhausted-symbol; alloc-record-symbol)
@@ -65,31 +65,27 @@ private
   sc-refs : ∀ (k : Data.Nat.ℕ) (r : Program) → refs (stack-code k ++ r) ≡ part-refs k ++ refs r
   sc-refs Data.Nat.zero      r = refl
   sc-refs k@(Data.Nat.suc _) r = prefs (room-fits? k) (stack-room k) r refl
-  -- D491: the limit's part, in either form, defines no label and reads then writes the record
-  lp-defs : ∀ (c : Bool) (k : Data.Nat.ℕ) (r : Program) → label-defs (lower-pick c k ++ r) ≡ label-defs r
-  lp-defs true  k r = refl
-  lp-defs false k r = refl
-  lp-refs : ∀ (c : Bool) (k : Data.Nat.ℕ) (r : Program)
-          → refs (lower-pick c k ++ r) ≡ alloc-record-symbol ∷ alloc-record-symbol ∷ refs r
-  lp-refs true  k r = refl
-  lp-refs false k r = refl
+  -- D491: the limit's part, in either form, defines no label and names the record, then
+  -- `once_exhausted`, then the record
+  lp-defs : ∀ (c : Bool) (h k : Data.Nat.ℕ) (r : Program) → label-defs (lower-pick c h k ++ r) ≡ label-defs r
+  lp-defs true  h k r = fo-defs (room-fits? (h Data.Nat.+ k)) (h Data.Nat.+ k) _ r
+  lp-defs false h k r = refl
+  lp-refs : ∀ (c : Bool) (h k : Data.Nat.ℕ) (r : Program)
+          → refs (lower-pick c h k ++ r) ≡ alloc-record-symbol ∷ host-exhausted-symbol ∷ alloc-record-symbol ∷ refs r
+  lp-refs true  h k r = cong (alloc-record-symbol ∷_) (fo-refs (room-fits? (h Data.Nat.+ k)) (h Data.Nat.+ k) _ r)
+  lp-refs false h k r = refl
   room-defs : ∀ (h k : Data.Nat.ℕ) (r : Program) → label-defs (room-code′ h k ++ r) ≡ label-defs r
   room-defs h Data.Nat.zero      r = hc-defs h r
   room-defs h k@(Data.Nat.suc _) r =
-    trans (cong label-defs (++-assoc (fit-code (h Data.Nat.+ k)) (lower-code k ++ heap-code h) r))
-      (trans (fo-defs₁ (room-fits? (h Data.Nat.+ k)) (h Data.Nat.+ k) ((lower-code k ++ heap-code h) ++ r))
-        (trans (cong label-defs (++-assoc (lower-code k) (heap-code h) r))
-          (trans (lp-defs (room-fits? k) k (heap-code h ++ r)) (hc-defs h r))))
+    trans (cong label-defs (++-assoc (lower-code h k) (heap-code h) r))
+          (trans (lp-defs (room-fits? k) h k (heap-code h ++ r)) (hc-defs h r))
   room-refs : ∀ (h k : Data.Nat.ℕ) (r : Program)
             → refs (room-code′ h k ++ r) ≡ (stack-refs k ++ part-refs h) ++ refs r
   room-refs h Data.Nat.zero      r = hc-refs h r
   room-refs h k@(Data.Nat.suc _) r =
-    trans (cong refs (++-assoc (fit-code (h Data.Nat.+ k)) (lower-code k ++ heap-code h) r))
-      (trans (fo-refs₁ (room-fits? (h Data.Nat.+ k)) (h Data.Nat.+ k) ((lower-code k ++ heap-code h) ++ r))
-        (cong (host-exhausted-symbol ∷_)
-          (trans (cong refs (++-assoc (lower-code k) (heap-code h) r))
-            (trans (lp-refs (room-fits? k) k (heap-code h ++ r))
-              (cong (λ x → alloc-record-symbol ∷ alloc-record-symbol ∷ x) (hc-refs h r))))))
+    trans (cong refs (++-assoc (lower-code h k) (heap-code h) r))
+          (trans (lp-refs (room-fits? k) h k (heap-code h ++ r))
+                 (cong (λ x → alloc-record-symbol ∷ host-exhausted-symbol ∷ alloc-record-symbol ∷ x) (hc-refs h r)))
 
 defs-step : ∀ (i : AbstractInstr) (r : Program)
           → label-defs (compile-abstract i ++ r) ≡ instr-defs i ++ label-defs r

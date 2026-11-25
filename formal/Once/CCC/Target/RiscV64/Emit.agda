@@ -59,6 +59,8 @@ showInstr (beq  rs1 rs2 o)    = "    beq "   ++ showReg rs1 ++ ", " ++ showReg r
 showInstr (bne  rs1 rs2 o)    = "    bne "   ++ showReg rs1 ++ ", " ++ showReg rs2 ++ ", " ++ labelSym o
 showInstr (bgeu-fwd rs1 rs2)  = "    bgeu "  ++ showReg rs1 ++ ", " ++ showReg rs2 ++ ", 1f"
 showInstr local-1             = "1:"
+showInstr (bgeu-fwd2 rs1 rs2) = "    bgeu "  ++ showReg rs1 ++ ", " ++ showReg rs2 ++ ", 2f"
+showInstr local-2             = "2:"
 -- (a call through `ra` is printed `call`: `auipc ra` + `jalr ra`, which reaches any
 -- label (`jal`'s 20-bit offset reaches ±1 MiB, and an image's code can be larger, D479);
 -- linked `--no-relax`, it stays those two instructions)

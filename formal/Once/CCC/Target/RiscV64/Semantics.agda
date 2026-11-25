@@ -307,6 +307,29 @@ find-local-1-go (_ ∷ is)       i = find-local-1-go is (suc i)
 find-local-1 : Program → ℕ → Maybe ℕ
 find-local-1 prog from = find-local-1-go (drop from prog) from
 
+-- D491: the next `2:` (GNU `as`'s `2f`), one instruction at a time
+is-l2 : Instr → Bool
+is-l2 local-2 = true
+{-# CATCHALL #-}
+is-l2 _       = false
+
+l2-or : Bool → ℕ → Maybe ℕ → Maybe ℕ
+l2-or true  i _ = just i
+l2-or false i r = r
+
+find-local-2-go : Program → ℕ → Maybe ℕ
+find-local-2-go []       i = nothing
+find-local-2-go (x ∷ is) i = l2-or (is-l2 x) i (find-local-2-go is (suc i))
+
+find-local-2 : Program → ℕ → Maybe ℕ
+find-local-2 prog from = find-local-2-go (drop from prog) from
+
+-- (a forward skip, taken when the first is not below the second)
+skip-fwd : State → Bool → Maybe ℕ → Maybe State
+skip-fwd s true  _          = just (record s { pc = pc s + 1 })
+skip-fwd s false (just pc') = just (record s { pc = pc' })
+skip-fwd s false nothing    = just (record s { halted = true })
+
 -- The shared "transfer control to a label" move: land at the resolved index,
 -- or halt when the label is absent (x86-64's `jmp`/`je` do exactly this
 -- inline; RV64 has four such instructions, so it is named).
@@ -472,6 +495,11 @@ execInstr prog s (bgeu-fwd rs1 rs2) =
             nothing    → just (record s { halted = true })
 
 execInstr prog s local-1 = just (record s { pc = pc s + 1 })
+
+-- D491: `bgeu rs1, rs2, 2f`
+execInstr prog s (bgeu-fwd2 rs1 rs2) = skip-fwd s (readReg (regs s) rs1 <ᵇ readReg (regs s) rs2) (find-local-2 prog (pc s + 1))
+
+execInstr prog s local-2 = just (record s { pc = pc s + 1 })
 
 ------------------------------------------------------------------------
 -- Jump Instructions

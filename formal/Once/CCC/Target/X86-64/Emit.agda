@@ -103,6 +103,10 @@ showInstr jbe-fwd =
   "    jbe 1f"
 showInstr local-1 =
   "1:"
+showInstr jbe-fwd2 =
+  "    jbe 2f"
+showInstr local-2 =
+  "2:"
 showInstr (label n) =
   labelSym n ++ ":"
 

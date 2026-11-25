@@ -17,7 +17,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; tran
 open import Once.Type using (fits-int; fits-float)
 open import Once.CCC.Machine.SMCore
 open import Once.CCC.Codegen.ImageSymbols using (instr-defs; instr-refs; adefs; arefs; part-refs; stack-refs)
-open import Once.CCC.Target.X86-64.AbstractToX86 using (compile-abstract; compile-trace; heap-code; stack-code; room-code; fit-code; lower-code)
+open import Once.CCC.Target.X86-64.AbstractToX86 using (compile-abstract; compile-trace; heap-code; stack-code; room-code; lower-code)
 open import Data.List.Properties using (++-assoc)
 open import Once.CCC.Target.X86-64.File using (label-defs; refs)
 open import Once.CCC.Target.X86-64.Syntax using (Program)
@@ -39,16 +39,13 @@ private
   room-defs : ∀ (h k : Data.Nat.ℕ) (r : Program) → label-defs (room-code h k ++ r) ≡ label-defs r
   room-defs h Data.Nat.zero    r = hc-defs h r
   room-defs h (Data.Nat.suc k) r =
-    trans (cong label-defs (++-assoc (fit-code (h Data.Nat.+ Data.Nat.suc k)) (lower-code (Data.Nat.suc k) ++ heap-code h) r))
-      (trans (cong (λ x → label-defs (fit-code (h Data.Nat.+ Data.Nat.suc k) ++ x)) (++-assoc (lower-code (Data.Nat.suc k)) (heap-code h) r))
-             (hc-defs h r))
+    trans (cong label-defs (++-assoc (lower-code h (Data.Nat.suc k)) (heap-code h) r)) (hc-defs h r)
   room-refs : ∀ (h k : Data.Nat.ℕ) (r : Program)
             → refs (room-code h k ++ r) ≡ (stack-refs k ++ part-refs h) ++ refs r
   room-refs h Data.Nat.zero    r = hc-refs h r
   room-refs h (Data.Nat.suc k) r =
-    trans (cong refs (++-assoc (fit-code (h Data.Nat.+ Data.Nat.suc k)) (lower-code (Data.Nat.suc k) ++ heap-code h) r))
-      (trans (cong (λ x → refs (fit-code (h Data.Nat.+ Data.Nat.suc k) ++ x)) (++-assoc (lower-code (Data.Nat.suc k)) (heap-code h) r))
-             (cong (λ x → stack-refs (Data.Nat.suc k) Data.List.++ x) (hc-refs h r)))
+    trans (cong refs (++-assoc (lower-code h (Data.Nat.suc k)) (heap-code h) r))
+          (cong (λ x → stack-refs (Data.Nat.suc k) Data.List.++ x) (hc-refs h r))
 
 defs-step : ∀ (i : AbstractInstr) (r : Program)
           → label-defs (compile-abstract i ++ r) ≡ instr-defs i ++ label-defs r

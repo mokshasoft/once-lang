@@ -36,7 +36,7 @@ open import Once.Target.Symbol using (once-symbol-path)
 
 -- Import x86-32 syntax
 open import Once.CCC.Target.X86-32.Syntax
-  using (base; base+disp; abs-sym; reg; mem; imm; mov; lea; add; sub; sbb; cmp; push; pop; call; call-sym; ret; je; jbe-fwd; local-1; label; call-l; mov-code; jmp-l; Program; slot-size; slots)
+  using (base; base+disp; abs-sym; reg; mem; imm; mov; lea; add; sub; sbb; cmp; push; pop; call; call-sym; ret; je; jbe-fwd; local-1; jbe-fwd2; local-2; label; call-l; mov-code; jmp-l; Program; slot-size; slots)
 open import Once.CCC.Label using (once; callee; e-fn)
 open import Once.Target.X86-32.PhysReg using (eax; ecx; edx; esp; esi; ebp; ebx)
 open import Once.Spec.Name using (CanonicalName)
@@ -138,42 +138,45 @@ stack-code : ℕ → Program
 stack-code zero      = []
 stack-code k@(suc _) = part (room-fits? k) (stack-room k)
 
--- D491 (the moving limit): a check's stack part with words `s` (cells `h`). First the
--- region, as the start checks it (D378's room `esp − esi` against `4(h+s)`, the frontier
--- register restored past the skip); then the limit: the room `esp − L` against `4s`
--- (`stack-room`'s compare), and when it is short, `L := esp − 4s` (no borrow: the region
--- held it). A part whose words are no word cannot fit, and the region's part has then
--- already called; its limit part is the two references alone, never run.
-lower-room : ℕ → Program
-lower-room k =
+-- D491 (the moving limit): a check's stack part with words `s` (cells `h`). If the room
+-- `esp − L` holds `4s` (`stack-room`'s compare), on (`jbe 2f`); else the region must hold
+-- the cells and the stack (the start's check, D378's room `esp − esi` against `4(h+s)`, the
+-- frontier register restored past its skip; also what makes `esp − 4s` borrow-free), and
+-- `L := esp − 4s` (`2:`). A stack part whose words are no word cannot fit: it reads the
+-- record, calls, and writes the record (the references in their order), never past the call.
+-- (the region's part given whether its need is a word)
+lower-room-c : Bool → ℕ → ℕ → Program
+lower-room-c c h k =
   mov (reg edx) (mem (abs-sym alloc-record-symbol 0)) ∷
   sub (reg edx) (reg esp) ∷
   sub (reg edx) (imm 1) ∷
   cmp (reg edx) (imm (IntW.modulus ∸ suc (slots k))) ∷
-  jbe-fwd ∷
-  mov (reg edx) (reg esp) ∷
-  sub (reg edx) (imm (slots k)) ∷
-  mov (mem (abs-sym alloc-record-symbol 0)) (reg edx) ∷
-  local-1 ∷ []
+  jbe-fwd2 ∷
+  (fits-or-out c (room-code (h + k)) ++
+  (mov (reg edx) (reg esp) ∷
+   sub (reg edx) (imm (slots k)) ∷
+   mov (mem (abs-sym alloc-record-symbol 0)) (reg edx) ∷
+   local-2 ∷ []))
+
+lower-room : ℕ → ℕ → Program
+lower-room h k = lower-room-c (room-fits? (h + k)) h k
 
 lower-out : Program
 lower-out =
   mov (reg edx) (mem (abs-sym alloc-record-symbol 0)) ∷
+  call-sym host-exhausted-symbol ∷
   mov (mem (abs-sym alloc-record-symbol 0)) (reg edx) ∷ []
 
-lower-pick : Bool → ℕ → Program
-lower-pick true  k = lower-room k
-lower-pick false k = lower-out
+lower-pick : Bool → ℕ → ℕ → Program
+lower-pick true  h k = lower-room h k
+lower-pick false h k = lower-out
 
-lower-code : ℕ → Program
-lower-code k = lower-pick (room-fits? k) k
-
-fit-code : ℕ → Program
-fit-code n = fits-or-out (room-fits? n) (room-code n)
+lower-code : ℕ → ℕ → Program
+lower-code h k = lower-pick (room-fits? k) h k
 
 room-code′ : ℕ → ℕ → Program
 room-code′ h zero        = heap-code h
-room-code′ h s@(suc _)   = fit-code (h + s) ++ lower-code s ++ heap-code h
+room-code′ h s@(suc _)   = lower-code h s ++ heap-code h
 
 -- D488: the start past its check: the frame, then the stack limit into record word 0
 start-tail : ℕ → Program

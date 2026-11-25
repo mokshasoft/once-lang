@@ -100,7 +100,7 @@ import Once.CCC.Codegen.AllocExpand
 import Once.CCC.Codegen.AllocExpandClasses
 import Once.LinCore.ImageSymsX
 -- D488 (a3): a check's references, per part: the record (its limit), then `once_exhausted`
--- (D491: the stack part first — `once_exhausted`, then the record twice, read and written)
+-- (D491: the stack part first — the record, `once_exhausted`, the record)
 room-refs-G : ∀ {G : String → Set} → G alloc-record-symbol → G host-exhausted-symbol
             → ∀ (k : Room) → All G (instr-refs (instr-room k))
 room-refs-G {G} rg eg k = ++⁺ (sr (Room.room-s k)) (pr (Room.room-h k))
@@ -110,7 +110,7 @@ room-refs-G {G} rg eg k = ++⁺ (sr (Room.room-s k)) (pr (Room.room-h k))
     pr (suc _) = rg ∷ eg ∷ []
     sr : ∀ n → All G (stack-refs n)
     sr zero    = []
-    sr (suc _) = eg ∷ rg ∷ rg ∷ []
+    sr (suc _) = rg ∷ eg ∷ rg ∷ []
 
 module LI = Once.LinCore.LabelsI fmt ans bw
 module EI = Once.LinCore.EntriesI fmt ans bw

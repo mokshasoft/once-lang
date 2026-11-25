@@ -47,9 +47,9 @@ open import Once.Type using (FitsInReg; fits-int; fits-float)
 import Once.CCC.Target.RiscV64.Semantics as R
 import Once.CCC.Target.RiscV64.Syntax as RS
 open import Once.CCC.Target.RiscV64.Syntax
-  using (Program; ld; sd; add; sub; sltu; addi; li; auipc; lla; lla-sym; mv; beq; bne; jal; jalr; j; ret; call; call-sym; nop; unimp; bgeu-fwd; local-1; label; slots)
+  using (Program; ld; sd; add; sub; sltu; addi; li; auipc; lla; lla-sym; mv; beq; bne; jal; jalr; j; ret; call; call-sym; nop; unimp; bgeu-fwd; local-1; bgeu-fwd2; local-2; label; slots)
 open import Once.Target.RiscV64.PhysReg using (sp; ra)
-open import Once.CCC.Target.RiscV64.AbstractToRiscV using (compile-abstract; compile-trace; fits-or-out; room-code; room-fits?; start-tail; part; heap-room; stack-room; heap-code; stack-code; room-code′; lower-pick)
+open import Once.CCC.Target.RiscV64.AbstractToRiscV using (compile-abstract; compile-trace; fits-or-out; room-code; room-fits?; start-tail; part; heap-room; stack-room; heap-code; stack-code; room-code′; lower-pick; lower-room-c)
 
 ------------------------------------------------------------------------
 -- WHICH INSTRUCTIONS ARE LABELS, and the three scan equations that follow.
@@ -81,6 +81,8 @@ is-label? nop = false
 is-label? unimp = false
 is-label? (bgeu-fwd _ _) = false
 is-label? local-1 = false
+is-label? (bgeu-fwd2 _ _) = false
+is-label? local-2 = false
 
 skip-law : ∀ (t : Label) (i : RS.Instr) (rest : Program) (xi : ℕ)
          → is-label? i ≡ false
@@ -109,6 +111,8 @@ skip-law t nop rest xi _ = refl
 skip-law t unimp rest xi _ = refl
 skip-law t (bgeu-fwd _ _) rest xi _ = refl
 skip-law t local-1 rest xi _ = refl
+skip-law t (bgeu-fwd2 _ _) rest xi _ = refl
+skip-law t local-2 rest xi _ = refl
 
 label-hit : ∀ (ℓ t : Label) (rest : Program) (xi : ℕ)
           → (ℓ ≡ᵇᴸ t) ≡ true
@@ -158,17 +162,17 @@ hc-no-label : ∀ h → has-label (heap-code h) ≡ false
 hc-no-label zero        = refl
 hc-no-label h@(suc _)   = part-no-label (room-fits? h) (heap-room h) refl
 
--- (D491: the region's part and the limit's first, when there are stack words)
+-- (D491: the limit's part first, when there are stack words)
 room-no-label : ∀ h k → has-label (room-code′ h k) ≡ false
 room-no-label h zero      = hc-no-label h
-room-no-label h k@(suc _) = by (room-fits? (h Data.Nat.+ k)) (room-fits? k) (heap-code h) (hc-no-label h)
+room-no-label h k@(suc _) = by (room-fits? k)
   where
-    by : ∀ c d (H : Program) → has-label H ≡ false
-       → has-label (fits-or-out c (room-code (h Data.Nat.+ k)) ++ lower-pick d k ++ H) ≡ false
-    by true  true  H e = e
-    by true  false H e = e
-    by false true  H e = e
-    by false false H e = e
+    lr : ∀ c → has-label (lower-room-c c h k ++ heap-code h) ≡ false
+    lr true  = hc-no-label h
+    lr false = hc-no-label h
+    by : ∀ d → has-label (lower-pick d h k ++ heap-code h) ≡ false
+    by true  = lr (room-fits? (h Data.Nat.+ k))
+    by false = hc-no-label h
 
 headView : ∀ (i : AbstractInstr) → HeadView i
 headView mov-to-output = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)

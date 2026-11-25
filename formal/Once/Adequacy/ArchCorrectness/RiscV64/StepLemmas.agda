@@ -271,6 +271,20 @@ step-bgeu-not : ∀ {prog s rs1 rs2}
               → step-not-halted prog s ≡ just (record s { pc = pc s + 1 })
 step-bgeu-not ft lt rewrite ft | lt = refl
 
+-- D491: the second forward label
+step-bgeu2-taken : ∀ {prog s rs1 rs2 tgt}
+                 → fetch prog (pc s) ≡ just (bgeu-fwd2 rs1 rs2)
+                 → (readReg (regs s) rs1 <ᵇ readReg (regs s) rs2) ≡ false
+                 → find-local-2 prog (pc s + 1) ≡ just tgt
+                 → step-not-halted prog s ≡ just (record s { pc = tgt })
+step-bgeu2-taken ft lt fl rewrite ft | lt | fl = refl
+
+step-bgeu2-not : ∀ {prog s rs1 rs2}
+               → fetch prog (pc s) ≡ just (bgeu-fwd2 rs1 rs2)
+               → (readReg (regs s) rs1 <ᵇ readReg (regs s) rs2) ≡ true
+               → step-not-halted prog s ≡ just (record s { pc = pc s + 1 })
+step-bgeu2-not ft lt rewrite ft | lt = refl
+
 step-local-1 : ∀ {prog s}
              → fetch prog (pc s) ≡ just local-1
              → step-not-halted prog s ≡ just (record s { pc = pc s + 1 })
@@ -287,6 +301,18 @@ find-local-1-past-call : ∀ {prog i nm}
   → find-local-1 prog i ≡ just (suc i)
 find-local-1-past-call {prog} {i} f1 f2
   rewrite drop-fetch {prog} {i} f1 | drop-fetch {prog} {suc i} f2 = refl
+
+step-local-2 : ∀ {prog s}
+             → fetch prog (pc s) ≡ just local-2
+             → step-not-halted prog s ≡ just (record s { pc = pc s + 1 })
+step-local-2 ft rewrite ft = refl
+
+-- the `2:` scan, one instruction at a time
+skip2 : ∀ {prog i x} → fetch prog i ≡ just x → is-l2 x ≡ false → find-local-2 prog i ≡ find-local-2 prog (suc i)
+skip2 {prog} {i} f n rewrite drop-fetch {prog} {i} f | n = refl
+
+hit2 : ∀ {prog i} → fetch prog i ≡ just local-2 → find-local-2 prog i ≡ just i
+hit2 {prog} {i} f rewrite drop-fetch {prog} {i} f = refl
 
 -- D491: past the limit's store (`li r, n ; sub r, x, r ; lla-sym r′, m ; sd r, r′, 0`)
 find-local-1-past-lower : ∀ {prog i r r′ x n m o}

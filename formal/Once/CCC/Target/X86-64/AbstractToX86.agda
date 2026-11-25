@@ -27,7 +27,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 
 -- Import X86 syntax
 open import Once.CCC.Target.X86-64.Syntax
-  using (base; base+disp; rip+label; rip+sym; reg; mem; imm; mov; lea; add; sub; sbb; cmp; push; pop; call; call-l; call-sym; ret; jmp; je; label; jbe-fwd; local-1; Program; slot-size; slots)
+  using (base; base+disp; rip+label; rip+sym; reg; mem; imm; mov; lea; add; sub; sbb; cmp; push; pop; call; call-l; call-sym; ret; jmp; je; label; jbe-fwd; local-1; jbe-fwd2; local-2; Program; slot-size; slots)
 open import Once.Target.X86-64.PhysReg using (rax; rdi; rsp; r15; rbp; r12; r11)
 
 -- Import AbstractInstr from SMCore
@@ -77,35 +77,32 @@ stack-code s@(suc _) =
   call-sym host-exhausted-symbol ∷
   local-1 ∷ []
 
--- D491 (the moving limit): the stack part of a check with words `s` (cells `h`).
--- First the region: `leaq 8(h+s)(%r15), %r11 ; cmpq %rsp, %r11 ; jbe 1f ; call ; 1:` —
--- the frontier, the cells and the stack fit below `%rsp` (else exhausted; and so
--- `%rsp − 8s` has no borrow). Then the limit: `movq L, %r11 ; leaq 8s(%r11), %r11 ;
--- cmpq %rsp, %r11 ; jbe 1f ; movq %rsp, %r11 ; subq $8s, %r11 ; movq %r11, L ; 1:` —
--- if the stack does not fit above `L`, `L` is lowered to `%rsp − 8s`. The cells' part
--- (`heap-code h`) follows, against the limit as it now is.
-fit-code : ℕ → Program
-fit-code n =
-  lea r11 (base+disp r15 (slots n)) ∷
-  cmp (reg r11) (reg rsp) ∷
-  jbe-fwd ∷
-  call-sym host-exhausted-symbol ∷
-  local-1 ∷ []
-
-lower-code : ℕ → Program
-lower-code s =
+-- D491 (the moving limit): the stack part of a check with words `s` (cells `h`): if the
+-- stack fits above the limit, on (`movq L, %r11 ; leaq 8s(%r11), %r11 ; cmpq %rsp, %r11 ;
+-- jbe 2f`); else the region must hold the cells and the stack below `%rsp` (`leaq
+-- 8(h+s)(%r15), %r11 ; cmpq %rsp, %r11 ; jbe 1f ; call once_exhausted ; 1:`, which also
+-- makes `%rsp − 8s` borrow-free) and the limit moves down to it (`movq %rsp, %r11 ; subq
+-- $8s, %r11 ; movq %r11, L ; 2:`). The cells' part (`heap-code h`) follows, against the
+-- limit as it now is. The fast path is the old stack part's four instructions.
+lower-code : ℕ → ℕ → Program
+lower-code h s =
   mov (reg r11) (mem (rip+sym alloc-record-symbol 0)) ∷
   lea r11 (base+disp r11 (slots s)) ∷
   cmp (reg r11) (reg rsp) ∷
+  jbe-fwd2 ∷
+  lea r11 (base+disp r15 (slots (h + s))) ∷
+  cmp (reg r11) (reg rsp) ∷
   jbe-fwd ∷
+  call-sym host-exhausted-symbol ∷
+  local-1 ∷
   mov (reg r11) (reg rsp) ∷
   sub (reg r11) (imm (slots s)) ∷
   mov (mem (rip+sym alloc-record-symbol 0)) (reg r11) ∷
-  local-1 ∷ []
+  local-2 ∷ []
 
 room-code : ℕ → ℕ → Program
 room-code h zero        = heap-code h
-room-code h s@(suc _)   = fit-code (h + s) ++ lower-code s ++ heap-code h
+room-code h s@(suc _)   = lower-code h s ++ heap-code h
 
 compile-abstract : AbstractInstr → Program
 

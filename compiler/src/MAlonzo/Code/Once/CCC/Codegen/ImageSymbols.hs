@@ -149,11 +149,11 @@ d_stack'45'refs_30 v0
       _ -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe
-                MAlonzo.Code.Once.Target.SymbolFresh.d_host'45'exhausted'45'symbol_170)
+                MAlonzo.Code.Once.Target.SymbolFresh.d_alloc'45'record'45'symbol_178)
              (coe
                 MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                 (coe
-                   MAlonzo.Code.Once.Target.SymbolFresh.d_alloc'45'record'45'symbol_178)
+                   MAlonzo.Code.Once.Target.SymbolFresh.d_host'45'exhausted'45'symbol_170)
                 (coe
                    MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                    (coe

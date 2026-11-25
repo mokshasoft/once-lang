@@ -25447,3 +25447,10 @@ What it buys is not in the corpus: deep data runs out only when the region does,
 fast path back; the start's reserve exactly its depth (stage 4); `L` restored on return (stage 5).
 **Landed:** `make certified` green (180 s unit cap, the top module's load); 188 exit tests × 3 arches,
 seL4 × 3, `cabal test` 1025.
+**Fused (2026-11-25).** A second forward local label on each arch (x86 `jbe 2f`/`2:`, riscv `bgeu …, 2f`/`2:`;
+`find-local-2`, and on x86-32/riscv64 a one-instruction-at-a-time scan with `skip2`/`hit2`) puts the region's
+check inside the limit's slow path: the fast path is the old stack part's compare again. The references'
+order is the record, `once_exhausted`, the record (`ImageSymbols.stack-refs`). **Measured** (x86_64, 108
+programs): against the unfused run 0.97×; against D490 (before the moving limit) run 1.00× (min 1.00×, max
+1.00×), `.text` 1.07× (the slow path's code at each flagged check), check instructions 1.29×.
+**Landed:** `make certified` green; 188 exit tests × 3 arches, seL4 × 3, `cabal test` 1025.

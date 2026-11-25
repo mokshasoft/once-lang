@@ -68,12 +68,12 @@ part-refs : Data.Nat.ℕ → List String
 part-refs Data.Nat.zero    = []
 part-refs (Data.Nat.suc _) = alloc-record-symbol ∷ host-exhausted-symbol ∷ []
 
--- D491 (the moving limit): a check's stack part, when it has words, first checks the
--- region holds the cells and the stack below the stack pointer (it may call), then
--- reads the limit and may store a lower one
+-- D491 (the moving limit): a check's stack part, when it has words, reads the limit;
+-- when the stack does not fit above it, checks the region (it may call) and stores a
+-- lower limit
 stack-refs : Data.Nat.ℕ → List String
 stack-refs Data.Nat.zero    = []
-stack-refs (Data.Nat.suc _) = host-exhausted-symbol ∷ alloc-record-symbol ∷ alloc-record-symbol ∷ []
+stack-refs (Data.Nat.suc _) = alloc-record-symbol ∷ host-exhausted-symbol ∷ alloc-record-symbol ∷ []
 
 instr-refs : AbstractInstr → List String
 instr-refs (instr-ctrl c)           = ctrl-refs c

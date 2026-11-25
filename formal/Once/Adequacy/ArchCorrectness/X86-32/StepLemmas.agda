@@ -432,6 +432,32 @@ find-local-1-past-call : ∀ {prog i nm}
 find-local-1-past-call {prog} {i} f1 f2
   rewrite drop-fetch {prog} {i} f1 | drop-fetch {prog} {suc i} f2 = refl
 
+-- D491: the second forward label
+step-jbe2-taken : ∀ {prog s tgt}
+                → fetch prog (pc s) ≡ just jbe-fwd2
+                → (cf (flags s) ∨ zf (flags s)) ≡ true
+                → find-local-2 prog (pc s + 1) ≡ just tgt
+                → step-not-halted prog s ≡ just (record s { pc = tgt })
+step-jbe2-taken ft be fl rewrite ft | be | fl = refl
+
+step-jbe2-not : ∀ {prog s}
+              → fetch prog (pc s) ≡ just jbe-fwd2
+              → (cf (flags s) ∨ zf (flags s)) ≡ false
+              → step-not-halted prog s ≡ just (record s { pc = pc s + 1 })
+step-jbe2-not ft be rewrite ft | be = refl
+
+step-local-2 : ∀ {prog s}
+             → fetch prog (pc s) ≡ just local-2
+             → step-not-halted prog s ≡ just (record s { pc = pc s + 1 })
+step-local-2 ft rewrite ft = refl
+
+-- the `2:` scan, one instruction at a time
+skip2 : ∀ {prog i x} → fetch prog i ≡ just x → is-l2 x ≡ false → find-local-2 prog i ≡ find-local-2 prog (suc i)
+skip2 {prog} {i} f n rewrite drop-fetch {prog} {i} f | n = refl
+
+hit2 : ∀ {prog i} → fetch prog i ≡ just local-2 → find-local-2 prog i ≡ just i
+hit2 {prog} {i} f rewrite drop-fetch {prog} {i} f = refl
+
 -- D491: past the limit's store (`mov %esp, r ; sub $n, r ; mov r, m`)
 find-local-1-past-lower : ∀ {prog i r n m}
   → fetch prog i ≡ just (mov (reg r) (reg esp)) → fetch prog (suc i) ≡ just (sub (reg r) (imm n))

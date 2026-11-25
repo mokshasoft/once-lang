@@ -25,7 +25,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics; module FrameSemantics
 open FrameSemantics using (frame-word)
 open import Once.CCC.Label using (once)
 open import Once.CCC.Target.X86-32.Syntax using
-  (slot-size; slots; imm; mem; base; mov; lea; add; sub; sbb; cmp; test; jmp; je; jne; call; call-sym; ret; push; pop; nop; ud2; label; mov-code; jmp-l; call-l; jbe-fwd; local-1)
+  (slot-size; slots; imm; mem; base; mov; lea; add; sub; sbb; cmp; test; jmp; je; jne; call; call-sym; ret; push; pop; nop; ud2; label; mov-code; jmp-l; call-l; jbe-fwd; local-1; jbe-fwd2; local-2)
 open import Once.Target.X86-32.PhysReg using (Reg; esp; ecx; eax)
 import Once.Target.X86-32.PhysReg as PhysReg
 open import Data.Nat using (ℕ; suc; _+_; _<_; _≤_; _≡ᵇ_)
@@ -237,6 +237,8 @@ nonhalt-noncall prog s nop        eq hnh = refl
 nonhalt-noncall prog s ud2        eq hnh = refl
 nonhalt-noncall prog s jbe-fwd    eq hnh = refl
 nonhalt-noncall prog s local-1    eq hnh = refl
+nonhalt-noncall prog s jbe-fwd2   eq hnh = refl
+nonhalt-noncall prog s local-2    eq hnh = refl
 nonhalt-noncall prog s (mov-code _ _) eq hnh = refl
 nonhalt-noncall prog s (jmp-l _)  eq hnh = refl
 nonhalt-noncall prog s (label _)  eq hnh = refl

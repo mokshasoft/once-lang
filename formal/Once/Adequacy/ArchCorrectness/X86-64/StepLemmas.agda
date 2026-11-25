@@ -396,6 +396,25 @@ step-local-1 : ∀ {prog s}
              → step-not-halted prog s ≡ just (record s { pc = pc s + 1 })
 step-local-1 ft rewrite ft = refl
 
+-- D491: the second forward label
+step-jbe2-taken : ∀ {prog s tgt}
+                → fetch prog (pc s) ≡ just jbe-fwd2
+                → (cf (flags s) ∨ zf (flags s)) ≡ true
+                → find-local-2 prog (pc s + 1) ≡ just tgt
+                → step-not-halted prog s ≡ just (record s { pc = tgt })
+step-jbe2-taken ft be fl rewrite ft | be | fl = refl
+
+step-jbe2-not : ∀ {prog s}
+              → fetch prog (pc s) ≡ just jbe-fwd2
+              → (cf (flags s) ∨ zf (flags s)) ≡ false
+              → step-not-halted prog s ≡ just (record s { pc = pc s + 1 })
+step-jbe2-not ft be rewrite ft | be = refl
+
+step-local-2 : ∀ {prog s}
+             → fetch prog (pc s) ≡ just local-2
+             → step-not-halted prog s ≡ just (record s { pc = pc s + 1 })
+step-local-2 ft rewrite ft = refl
+
 -- The skip's scan: past the call, the next `1:`.
 drop-fetch : ∀ {prog : Program} {i x} → fetch prog i ≡ just x → drop i prog ≡ x ∷ drop (suc i) prog
 drop-fetch {[]}     ()
@@ -416,6 +435,20 @@ find-local-1-past-lower : ∀ {prog i r n m}
 find-local-1-past-lower {prog} {i} f1 f2 f3 f4
   rewrite drop-fetch {prog} {i} f1 | drop-fetch {prog} {suc i} f2
         | drop-fetch {prog} {suc (suc i)} f3 | drop-fetch {prog} {suc (suc (suc i))} f4 = refl
+
+-- D491: past the region's check and the limit's store, the next `2:`
+-- (`lea ; cmp ; jbe 1f ; call ; 1: ; mov ; sub ; mov ; 2:`)
+find-local-2-past-lower : ∀ {prog i r b d n nm m}
+  → fetch prog i ≡ just (lea r (base+disp b d)) → fetch prog (suc i) ≡ just (cmp (reg r) (reg rsp))
+  → fetch prog (2 + i) ≡ just jbe-fwd → fetch prog (3 + i) ≡ just (call-sym nm)
+  → fetch prog (4 + i) ≡ just local-1 → fetch prog (5 + i) ≡ just (mov (reg r) (reg rsp))
+  → fetch prog (6 + i) ≡ just (sub (reg r) (imm n)) → fetch prog (7 + i) ≡ just (mov (mem m) (reg r))
+  → fetch prog (8 + i) ≡ just local-2
+  → find-local-2 prog i ≡ just (8 + i)
+find-local-2-past-lower {prog} {i} f1 f2 f3 f4 f5 f6 f7 f8 f9
+  rewrite drop-fetch {prog} {i} f1 | drop-fetch {prog} {suc i} f2 | drop-fetch {prog} {2 + i} f3
+        | drop-fetch {prog} {3 + i} f4 | drop-fetch {prog} {4 + i} f5 | drop-fetch {prog} {5 + i} f6
+        | drop-fetch {prog} {6 + i} f7 | drop-fetch {prog} {7 + i} f8 | drop-fetch {prog} {8 + i} f9 = refl
 
 ------------------------------------------------------------------------
 -- Chaining: a `Steps prog k s s'` is k consecutive non-halting steps.

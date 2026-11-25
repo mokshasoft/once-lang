@@ -108,7 +108,7 @@ d_code'45'lines_54 v0 v1 v2
              (coe
                 MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                 (coe
-                   MAlonzo.Code.Once.CCC.Target.RiscV64.Emit.d_instrToLine_110
+                   MAlonzo.Code.Once.CCC.Target.RiscV64.Emit.d_instrToLine_114
                    (coe v3))
                 (coe
                    d_code'45'lines_54 (coe v0)
@@ -197,7 +197,7 @@ d_label'45'defs_88 v0
         -> let v3 = d_label'45'defs_88 (coe v2) in
            coe
              (case coe v1 of
-                MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.C_label_58 v4
+                MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.C_label_62 v4
                   -> coe
                        MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                        (coe MAlonzo.Code.Once.CCC.Label.d_labelSym_198 (coe v4))
@@ -231,17 +231,17 @@ d_ref'45'syms_96 v0
                 MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                 (coe MAlonzo.Code.Once.CCC.Label.d_labelSym_198 (coe v4))
                 (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
-         MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.C_jal_42 v2 v3
+         MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.C_jal_46 v2 v3
            -> coe
                 MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                 (coe MAlonzo.Code.Once.CCC.Label.d_labelSym_198 (coe v3))
                 (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
-         MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.C_j_46 v2
+         MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.C_j_50 v2
            -> coe
                 MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                 (coe MAlonzo.Code.Once.CCC.Label.d_labelSym_198 (coe v2))
                 (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
-         MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.C_call'45'sym_52 v2
+         MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.C_call'45'sym_56 v2
            -> coe
                 MAlonzo.Code.Agda.Builtin.List.C__'8759'__22 (coe v2)
                 (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
