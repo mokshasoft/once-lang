@@ -6,7 +6,7 @@
 -- deeper nestings.
 --
 -- Plan 0.53: runs on every backend arch (x86_64 native, x86_32 / riscv64
--- under qemu) via the shared multi-arch `exitCases` helper.
+-- under qemu) via the shared multi-arch `valueCases` helper.
 --
 -- Run with: cabal test --test-option='-p "/Layer3/"'
 
@@ -14,11 +14,11 @@ module Layer3Spec (layer3Tests) where
 
 import Test.Tasty
 
-import Backend.Common (exitCases)
+import Backend.Common (valueCases)
 
 layer3Tests :: TestTree
 layer3Tests = testGroup "Layer3"
-  [ exitCases "pair nested inside a sum (exit 42)"     "layer3-pair-in-sum" 42
-  , exitCases "sum nested inside a pair (exit 42)"     "layer3-sum-in-pair" 42
-  , exitCases "nested-mix: pair / sum / pair (exit 42)" "layer3-nested-mix" 42
+  [ valueCases "pair nested inside a sum (emits 42)"     "layer3-pair-in-sum" 42
+  , valueCases "sum nested inside a pair (emits 42)"     "layer3-sum-in-pair" 42
+  , valueCases "nested-mix: pair / sum / pair (emits 42)" "layer3-nested-mix" 42
   ]

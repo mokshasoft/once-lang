@@ -6,9 +6,8 @@
 -- the loop returns the sum 3 + 2 + 1 = 6. A round that emits is not silent,
 -- so the compiler gives no warning.
 --
--- Expected: exit code 6.
+-- Expected: trace [3, 2, 1, 0, 6].
 
-import I.Linux.Syscalls as S
 import I.Test.Emit as E
 
 stop : Int * Int -> Unit -> Int + Void
@@ -28,5 +27,5 @@ round = step . (snd . pair (emit@E . fst) id)
 loopEmit : Eff (Int * Int) Int
 loopEmit = ana round
 
-main : Eff Unit Void
-main = exit@S . (loopEmit . (\_ -> (3, 0)))
+main : Eff Unit Unit
+main = emit@E . (loopEmit . (\_ -> (3, 0)))

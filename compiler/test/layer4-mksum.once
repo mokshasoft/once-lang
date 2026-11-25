@@ -12,10 +12,10 @@
 --
 -- Distinct from `layer4-sum-and-fn` which has a user fn CONSUMING a sum.
 
-import I.Linux.Syscalls as S
+import I.Test.Emit as E
 
 mkSum : Int -> Int + Void
 mkSum x = inl x
 
-main : Act Unit Void
-main = exit@S (destruct mkSum 42 of { Left x -> x ; Right y -> 99 })
+main : Act Unit Unit
+main = emit@E (destruct mkSum 42 of { Left x -> x ; Right y -> 99 })

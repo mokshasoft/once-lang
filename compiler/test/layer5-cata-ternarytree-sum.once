@@ -8,9 +8,9 @@
 -- recursive positions (n-ary product of Id, n > 2). `*` is right-assoc,
 -- so the layer over A is Int + (A * (A * A)).
 --
--- Expected observable: exit code 42 (sum-of-leaves of node(40, 0, 2)).
+-- Expected observable: trace [42] (sum-of-leaves of node(40, 0, 2)).
 
-import I.Linux.Syscalls as S
+import I.Test.Emit as E
 
 -- `*` is LEFT-associative in the functor grammar, so `Id * Id * Id` =
 -- `(Id * Id) * Id` and the layer over A is Int + ((A * A) * A).
@@ -27,5 +27,5 @@ sumTri = cata (case id triOp)
 t : Mu (K Int + Id * Id * Id)
 t = In (inr ((In (inl 40), In (inl 0)), In (inl 2)))
 
-main : Act Unit Void
-main = exit@S (sumTri t)
+main : Act Unit Unit
+main = emit@E (sumTri t)

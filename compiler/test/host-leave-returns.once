@@ -6,7 +6,7 @@
 -- Before D320 the image ended `main` in a silent self-jump and the binary never
 -- terminated.
 --
--- Expected: exit code 0.
+-- Expected: trace [], end returned.
 
 main : Unit -> Unit
 main u = u

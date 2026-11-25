@@ -7,9 +7,9 @@
 -- Built several ways (a literal, a function argument, inside a pair) and
 -- consumed by `cata`.
 --
--- Expected: exit 47
+-- Expected: trace [47]
 
-import I.Linux.Syscalls as S
+import I.Test.Emit as E
 
 getInt : Mu (K Int) -> Int
 getInt = cata id
@@ -26,5 +26,5 @@ unitTwo = cata (\_ -> 2)
 u : Mu (K Unit)
 u = In unit
 
-main : Act Unit Void
-main = exit@S (getInt (fst boxed) + getInt (snd boxed) + unitTwo u + getInt (wrap 0))
+main : Act Unit Unit
+main = emit@E (getInt (fst boxed) + getInt (snd boxed) + unitTwo u + getInt (wrap 0))

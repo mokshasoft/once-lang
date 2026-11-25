@@ -8,10 +8,10 @@
 --   `code` : Int           (inferred from the integer literal)
 --   `main` : Eff Unit Unit (inferred; `main` is canonically Eff Unit Unit)
 --
--- Expected: exit code 7
+-- Expected: trace [7]
 
-import I.Linux.Syscalls as S
+import I.Test.Emit as E
 
 code = 7
 
-main = exit@S code
+main = emit@E code

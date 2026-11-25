@@ -7,9 +7,9 @@
 -- Functor shape #1 (degenerate): Mu (K Int) — ZERO recursive positions,
 -- no loop. `cata id` just reads the single K-Int layer.
 --
--- Expected observable: exit code 42.
+-- Expected observable: trace [42].
 
-import I.Linux.Syscalls as S
+import I.Test.Emit as E
 
 -- The one and only layer: In 42 : Mu (K Int)
 val : Mu (K Int)
@@ -19,5 +19,5 @@ val = In 42
 getInt : Mu (K Int) -> Int
 getInt = cata id
 
-main : Act Unit Void
-main = exit@S (getInt val)
+main : Act Unit Unit
+main = emit@E (getInt val)

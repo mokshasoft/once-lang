@@ -8,9 +8,9 @@
 --
 --   pick (id (inl 5)) = 5;  orZero (inl 2) = 2;  5 + 2 = 7
 --
--- Expected: exit code 7.
+-- Expected: trace [7].
 
-import I.Linux.Syscalls as S
+import I.Test.Emit as E
 
 pick : Int + Unit -> Int
 pick = case (\x -> x) (\_ -> 0)
@@ -19,5 +19,5 @@ pick = case (\x -> x) (\_ -> 0)
 orZero : Int + Void -> Int
 orZero = case (\x -> x) (\v -> let y = initial v in y)
 
-main : Act Unit Void
-main = exit@S (pick (id (inl 5)) + orZero (inl 2))
+main : Act Unit Unit
+main = emit@E (pick (id (inl 5)) + orZero (inl 2))

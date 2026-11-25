@@ -3,16 +3,16 @@
 
 -- Plan 0.20 Phase G: single-arg arith lambda.
 --   f x = x + 3 * 5 - 2 * x
--- For x = 5: 5 + 15 - 10 = 10. Exits 10.
+-- For x = 5: 5 + 15 - 10 = 10. Emits 10.
 --
 -- The recognise pass should lift the body of `f` into a single
 -- `arith.block.<digest>` SigOp whose input shape is `shape-int`,
 -- and the call site `f 5` flows through the standard apply IR.
 
-import I.Linux.Syscalls as S
+import I.Test.Emit as E
 
 f : Int -> Int
 f x = x + 3 * 5 - 2 * x
 
-main : Act Unit Void
-main = exit@S (f 5)
+main : Act Unit Unit
+main = emit@E (f 5)

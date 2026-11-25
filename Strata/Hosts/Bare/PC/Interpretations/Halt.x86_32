@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2025-2026 Jonas Claesson
+#
+# `I.Halt` on the bare-metal `pc` Host, x86_32 (plan 0.140 §3.4–3.5): the run
+# ends `halted`, which `isa-debug-exit` reports as QEMU's exit status 5 (the
+# Host's end table: `returned` 1, `exhausted` 3, `halted` 5). The argument is
+# Unit; the routine never returns.
+
+.equ DEBUG_EXIT, 0xf4
+.equ END_HALTED, 2
+
+.text
+.global halt
+.type halt, @function
+halt:
+    movb    $END_HALTED, %al
+    outb    %al, $DEBUG_EXIT
+1:  hlt                                 # the device has ended QEMU
+    jmp     1b
+.size halt, .-halt

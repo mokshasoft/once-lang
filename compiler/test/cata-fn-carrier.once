@@ -15,9 +15,9 @@
 --   go t x = go r (v + go l x),  go leaf x = x
 --   go t 1 = 7 + (5 + (3 + 1)) = 16
 --
--- Expected: exit code 16.
+-- Expected: trace [16].
 
-import I.Linux.Syscalls as S
+import I.Test.Emit as E
 
 leafF : Unit -> Int -> Int
 leafF _ x = x
@@ -34,5 +34,5 @@ leaf = In (inl unit)
 t : Mu (K Unit + Id * (K Int * Id))
 t = In (inr (In (inr (leaf, (3, leaf))), (5, In (inr (leaf, (7, leaf))))))
 
-main : Act Unit Void
-main = exit@S (go t 1)
+main : Act Unit Unit
+main = emit@E (go t 1)

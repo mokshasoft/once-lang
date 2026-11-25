@@ -12,9 +12,9 @@
 -- `size` counts nodes: empty=1, unary=child+1, binary=left+right+1.
 -- t = binary(unary(empty), empty) = (1+1) + 1 + 1 = 4.
 --
--- Expected observable: exit code 4.
+-- Expected observable: trace [4].
 
-import I.Linux.Syscalls as S
+import I.Test.Emit as E
 
 -- algebra : (Unit + (Int + (Int * Int))) -> Int
 oneI : Unit -> Int
@@ -36,5 +36,5 @@ empty = In (inl unit)
 t : Mu (K Unit + (Id + Id * Id))
 t = In (inr (inr (In (inr (inl empty)), empty)))
 
-main : Act Unit Void
-main = exit@S (size t)
+main : Act Unit Unit
+main = emit@E (size t)

@@ -1,8 +1,8 @@
--- Layer 4: morphism alias for snd. Expected: exit 42.
-import I.Linux.Syscalls as S
+-- Layer 4: morphism alias for snd. Expected: trace [42].
+import I.Test.Emit as E
 
 mysnd : Int * Int -> Int
 mysnd = snd
 
-main : Act Unit Void
-main = exit@S (mysnd (99, 42))
+main : Act Unit Unit
+main = emit@E (mysnd (99, 42))

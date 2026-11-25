@@ -3,8 +3,7 @@
 
 -- Point-free effectful cata (Plan 0.36). The algebra invokes the test-local
 -- `emit` Emits SigOp once per cons layer, and THAT is what this test asserts —
--- the byte trace [5, 3], read back from the observable interpretation, not the
--- exit code.
+-- the byte trace [5, 3], read back from the observable interpretation.
 --
 -- D220: this file used to end `main = let r = emitAll xs in exit@S 7`, which
 -- binds a SUSPENSION and never forces it. It emitted nothing, compiled
@@ -13,9 +12,8 @@
 -- top-level def is required to put it there — a `let`-bound name is not
 -- interchangeable with one (plan 0.94).
 --
--- Expected: exit code 7, trace [5, 3].
+-- Expected: trace [5, 3, 7].
 
-import I.Linux.Syscalls as S
 import I.Test.Emit as E
 
 -- [3, 5]
@@ -30,5 +28,5 @@ emitAll = cata (case terminal (emit@E . fst))
 runAll : Act Unit Unit
 runAll = emitAll xs
 
-main : Act Unit Void
-main = exit@S . ((\_ -> 7) . runAll)
+main : Act Unit Unit
+main = emit@E . ((\_ -> 7) . runAll)

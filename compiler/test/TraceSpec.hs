@@ -4,15 +4,14 @@
 -- | Observable effect-trace tests (Plan 0.44 / 0.46).
 --
 -- The observable of a Once program is its ordered sequence of SigOp
--- invocations (Once.Denotation.Behavior); every other codegen test only sees
--- the final `exit` argument. These tests observe a MULTI-SigOp trace — effect
--- ordering AND arguments.
+-- invocations (Once.Denotation.Behavior), and its end. These tests observe a
+-- MULTI-SigOp trace — effect ordering AND arguments.
 --
 -- Each program imports the observable test interpretation `I.Test.Emit` (whose
 -- `emit : Eff Int Unit` writes its argument's WHOLE MACHINE WORD to stdout)
--- and takes `exit` from the real `I.Linux.Syscalls`. Both resolve under the
--- single test strata root (Backend.Common.testStrataDir), and the compiler
--- links their implementations.
+-- and the portable `I.Halt`; the compiler links their implementations. A
+-- program's last value is emitted too, and `main` returns (plan 0.140 §3.5:
+-- the end carries no value).
 --
 -- The captured stdout is therefore a sequence of little-endian machine words,
 -- one per `emit`, which `decodeTrace` reads back as the ARGUMENTS themselves.
@@ -31,23 +30,22 @@ import Test.Tasty.HUnit
 
 import qualified Data.Text as T
 
-import Backend.Common (BackendArch (X86_64), buildAndRunTrace, decodeTrace, signedAt)
+import Backend.Common (BackendArch (X86_64), End (..), assertEnd, buildAndRunTrace, decodeTrace, signedAt)
 
 traceTests :: TestTree
 -- Plan 0.52 retired `arr`. D127 then retired the implicit value-lift that had
 -- replaced it, so a const morphism in a `compose` arm is WRITTEN as one:
--- `\\_ -> 7`, not the bare literal `7`. Effect ordering and exit codes are
--- unchanged — only the spelling of the arms moved.
+-- `\\_ -> 7`, not the bare literal `7`.
 traceTests = testGroup "Effect traces (observable)"
-  [ traceTest "exit only is an empty emit trace"
+  [ traceTest "a halt alone is an empty trace, ended halted"
       []
-      [ "main = compose exit@S (\\_ -> 5)" ]
-      [] 5
+      [ "main = halt@H" ]
+      [] Halted
 
-  , traceTest "single emit then exit"
+  , traceTest "two emits, the second after the first's result"
       []
-      [ "main = compose exit@S (compose (\\_ -> 0) (compose emit@E (\\_ -> 42)))" ]
-      [42] 0
+      [ "main = compose emit@E (compose (\\_ -> 0) (compose emit@E (\\_ -> 42)))" ]
+      [42, 0] Returned
 
   -- NEGATIVE ARGUMENTS. Once's integers are SIGNED, so these pin down that a
   -- negative argument reaches the SigOp as itself. They are not idle: the
@@ -60,15 +58,15 @@ traceTests = testGroup "Effect traces (observable)"
       [ "emitNeg : Act Unit Unit"
       , "emitNeg = emit@E (-5)"
       ]
-      [ "main = compose exit@S (compose (\\_ -> 7) emitNeg)" ]
-      [-5] 7
+      [ "main = compose emit@E (compose (\\_ -> 7) emitNeg)" ]
+      [-5, 7] Returned
 
   , traceTest "subtraction below zero emits a negative, not zero"
       [ "emitNeg : Act Unit Unit"
       , "emitNeg = emit@E (3 - 8)"
       ]
-      [ "main = compose exit@S (compose (\\_ -> 7) emitNeg)" ]
-      [-5] 7
+      [ "main = compose emit@E (compose (\\_ -> 7) emitNeg)" ]
+      [-5, 7] Returned
 
   , traceTest "negative and positive arguments keep their order and signs"
       [ "emitA : Act Unit Unit"
@@ -77,22 +75,22 @@ traceTests = testGroup "Effect traces (observable)"
       , "emitB : Act Unit Unit"
       , "emitB = emit@E 2"
       ]
-      [ "main = compose exit@S (compose (\\_ -> 7) (compose emitB emitA))" ]
-      [-1, 2] 7
+      [ "main = compose emit@E (compose (\\_ -> 7) (compose emitB emitA))" ]
+      [-1, 2, 7] Returned
 
   , traceTest "two emits preserve order (emit 5 before emit 3)"
       []
-      [ "main = compose exit@S"
+      [ "main = compose emit@E"
       , "         (compose (\\_ -> 7)"
       , "           (compose emit@E"
       , "             (compose (\\_ -> 3)"
       , "               (compose emit@E (\\_ -> 5)))))"
       ]
-      [5, 3] 7
+      [5, 3, 7] Returned
 
   , traceTest "three emits preserve order and arguments"
       []
-      [ "main = compose exit@S"
+      [ "main = compose emit@E"
       , "         (compose (\\_ -> 9)"
       , "           (compose emit@E"
       , "             (compose (\\_ -> 3)"
@@ -100,7 +98,7 @@ traceTests = testGroup "Effect traces (observable)"
       , "                 (compose (\\_ -> 2)"
       , "                   (compose emit@E (\\_ -> 1)))))))"
       ]
-      [1, 2, 3] 9
+      [1, 2, 3, 9] Returned
 
   -- THE TEST PLAN 0.76 / D127 EXISTS FOR. The `compose` arm `\_ -> x` mentions
   -- the ENCLOSING binder `x`. Under D126 a combinator arm was CLOSED BY
@@ -119,21 +117,22 @@ traceTests = testGroup "Effect traces (observable)"
       , "emitFive : Act Unit Unit"
       , "emitFive = emitCaptured 5"
       ]
-      [ "main = compose exit@S (compose (\\_ -> 7) emitFive)" ]
-      [5] 7
+      [ "main = compose emit@E (compose (\\_ -> 7) emitFive)" ]
+      [5, 7] Returned
   ]
 
 -- | Build a trace program (helper definitions + a `main`), run it, and assert
--- the emitted ARGUMENT sequence and exit code. @emitted@ is the expected list
+-- the emitted ARGUMENT sequence and the end. @emitted@ is the expected list
 -- of values passed to `emit`, in order — full values, not projections.
-traceTest :: TestName -> [T.Text] -> [T.Text] -> [Integer] -> Int -> TestTree
-traceTest name helpers mainLines emitted exitCode =
+traceTest :: TestName -> [T.Text] -> [T.Text] -> [Integer] -> End -> TestTree
+traceTest name helpers mainLines emitted end =
   testCase name $ do
     let source = T.unlines $
-          [ "import I.Linux.Syscalls as S"
+          [ "import I.Halt as H"
           , "import I.Test.Emit as E"
           , ""
-          ] ++ helpers ++ [ "", "main : Act Unit Void" ] ++ mainLines
+          ] ++ helpers ++ [ "", mainSig ] ++ mainLines
+        mainSig = if end == Halted then "main : Act Unit Void" else "main : Act Unit Unit"
     result <- buildAndRunTrace (slug name) source
     case result of
       Left err -> assertFailure err
@@ -144,7 +143,7 @@ traceTest name helpers mainLines emitted exitCode =
           -- signed integers, so this is what `emit`'s `Int` argument MEANS.
           assertEqual "emitted arguments (effect order + full signed values)"
                       emitted (map (signedAt X86_64) ws)
-          assertEqual "exit code (final exit SigOp argument)" exitCode code
+          assertEnd "" end code
 
 -- | A filesystem-safe name for the per-test build directory.
 slug :: TestName -> String

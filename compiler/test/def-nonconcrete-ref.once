@@ -6,9 +6,9 @@
 -- (`Mu (K Unit + Id) -> Int` and `Mu (K Unit + Id)`), neither of them
 -- concrete; `main` refers to both.
 --
--- Expected observable: exit code 3.
+-- Expected observable: trace [3].
 
-import I.Linux.Syscalls as S
+import I.Test.Emit as E
 
 zeroI : Unit -> Int
 zeroI _ = 0
@@ -26,5 +26,5 @@ count = toInt
 
 num = three
 
-main : Act Unit Void
-main = exit@S (count num)
+main : Act Unit Unit
+main = emit@E (count num)

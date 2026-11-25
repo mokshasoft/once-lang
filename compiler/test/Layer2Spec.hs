@@ -8,7 +8,7 @@
 -- dispatches on the tag at offset 0 (case-on-tag codegen).
 --
 -- Plan 0.53: runs on every backend arch (x86_64 native, x86_32 / riscv64
--- under qemu) via the shared multi-arch `exitCases` helper.
+-- under qemu) via the shared multi-arch `valueCases` helper.
 --
 -- Run with: cabal test --test-option='-p "/Layer2/"'
 
@@ -16,11 +16,11 @@ module Layer2Spec (layer2Tests) where
 
 import Test.Tasty
 
-import Backend.Common (exitCases)
+import Backend.Common (valueCases)
 
 layer2Tests :: TestTree
 layer2Tests = testGroup "Layer2"
-  [ exitCases "destruct on inl selects Left branch (exit 42)"   "layer2-case-inl-direct" 42
-  , exitCases "destruct on inr selects Right branch (exit 99)"  "layer2-case-inr-direct" 99
-  , exitCases "initial typechecks/links as Void -> A (exit 42)" "layer2-initial"         42
+  [ valueCases "destruct on inl selects Left branch (emits 42)"   "layer2-case-inl-direct" 42
+  , valueCases "destruct on inr selects Right branch (emits 99)"  "layer2-case-inr-direct" 99
+  , valueCases "initial typechecks/links as Void -> A (emits 42)" "layer2-initial"         42
   ]

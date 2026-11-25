@@ -374,7 +374,7 @@ runVerifiedBuild opts outputBase arch source mod_ strataDir importPaths = do
               -- one becomes a .o that gets linked into the binary,
               -- providing the `once_<name>` symbols that
               -- `compile-sigOp` calls into.
-              implResult <- assembleImplFiles strataDir outputBase arch importPaths
+              implResult <- assembleImplFiles strataDir outputBase arch (buildHost opts) importPaths
               case implResult of
                 Left err -> do
                   TIO.putStrLn $ "Impl-file assembly failed: " <> T.pack err
@@ -390,7 +390,8 @@ runVerifiedBuild opts outputBase arch source mod_ strataDir importPaths = do
                   Right hostObj -> do
                     let implObjs = implObjs0 ++ [hostObj]
                     -- Link all .o files (user + impls + Host) to executable
-                    linkResult <- link arch (objPath : implObjs) outputBase
+                    script <- hostLinkScript strataDir arch (buildHost opts)
+                    linkResult <- link arch script (objPath : implObjs) outputBase
                     case linkResult of
                       Left err -> do
                         TIO.putStrLn $ "Link failed: " <> T.pack err
@@ -462,11 +463,12 @@ runImageBuild opts = do
       orDie "Error" (Left ("the Host " ++ buildHost opts ++ " has no program " ++ show n
                            ++ ": this image holds more programs than it can start"))
   implObjs <- orDie "Impl-file assembly failed" =<<
-    assembleImplFiles strataDir outputBase arch (nub (concat [ ps | (_, _, _, ps) <- compiled ]))
+    assembleImplFiles strataDir outputBase arch (buildHost opts) (nub (concat [ ps | (_, _, _, ps) <- compiled ]))
   hostObj <- orDie "Host assembly failed" =<< assembleHost strataDir outputBase arch (buildHost opts)
   let programObjs = [ o | (_, o, _, _) <- compiled ]
       temps       = [ a | (a, _, _, _) <- compiled ] ++ programObjs ++ implObjs ++ [hostObj]
-  exePath <- orDie "Link failed" =<< link arch (programObjs ++ implObjs ++ [hostObj]) outputBase
+  script <- hostLinkScript strataDir arch (buildHost opts)
+  exePath <- orDie "Link failed" =<< link arch script (programObjs ++ implObjs ++ [hostObj]) outputBase
   unless (buildSaveTemps opts) $ mapM_ removeFile temps
   TIO.putStrLn $ "Generated: " <> T.pack exePath
   exitSuccess
@@ -474,6 +476,16 @@ runImageBuild opts = do
 -- | The Host's source (`Strata/Hosts/<host>/Host.<arch>`).
 hostFile :: FilePath -> Bridge.Arch -> String -> FilePath
 hostFile strataDir arch host = strataDir </> "Hosts" </> host </> ("Host." ++ archImplExtension arch)
+
+-- | Plan 0.140: a Host with no operating system beneath it (`Bare/<Platform>`)
+-- fixes the image's memory layout, by a linker script beside its source
+-- (`Strata/Hosts/<host>/link.<arch>.ld`); an OS Host has none, and the
+-- linker's default layout is the OS's.
+hostLinkScript :: FilePath -> Bridge.Arch -> String -> IO (Maybe FilePath)
+hostLinkScript strataDir arch host = do
+  let path = strataDir </> "Hosts" </> host </> ("link." ++ archImplExtension arch ++ ".ld")
+  exists <- doesFileExist path
+  pure (if exists then Just path else Nothing)
 
 -- | D320: assemble the Host (`Strata/Hosts/<host>/Host.<arch>`).
 -- Plan 0.125: its object goes beside the output (`<output>.Host.<host>.o`);
@@ -485,7 +497,7 @@ assembleHost strataDir outputBase arch host = do
   if not exists
     then pure (Left ("no Host " ++ host ++ " for this target: " ++ hostPath ++ " is missing"))
     else do
-      let objPath = outputBase ++ ".Host." ++ host ++ ".o"
+      let objPath = outputBase ++ ".Host." ++ map (\c -> if c == '/' then '-' else c) host ++ ".o"
       r <- assemble arch hostPath objPath
       pure (either (\e -> Left ("Failed to assemble " ++ hostPath ++ ": " ++ e)) (const (Right objPath)) r)
 
@@ -494,16 +506,41 @@ assembleHost strataDir outputBase arch host = do
 -- as input). Skips imports that have no `.<arch>` companion file.
 -- Plan 0.125: each object goes beside the output
 -- (`<output>.<module path>.o`), never into the Strata tree.
-assembleImplFiles :: FilePath -> FilePath -> Bridge.Arch -> [[T.Text]] -> IO (Either String [FilePath])
-assembleImplFiles strataDir outputBase arch paths = go paths []
+--
+-- Plan 0.140 §3.3: the code of an Interpretation is chosen by the Host. An
+-- Interpretation under `Interpretations/<E>/…` where `Hosts/<E>` is a Host
+-- (`Linux`, `SeL4`) belongs to that environment: it links only under that
+-- Host, and its code is beside its signature. Any other (a portable one,
+-- `Test/Emit`) takes its code from the Host's directory first
+-- (`Hosts/<host>/Interpretations/…/<Module>.<arch>`), then from beside its
+-- signature.
+assembleImplFiles :: FilePath -> FilePath -> Bridge.Arch -> String -> [[T.Text]] -> IO (Either String [FilePath])
+assembleImplFiles strataDir outputBase arch host paths = go paths []
   where
     go []           acc = pure (Right (reverse acc))
     go (p : rest)   acc = do
-      let implPath = importPathToImplPath strataDir arch p
-      exists <- doesFileExist implPath
-      if not exists
-        then go rest acc  -- Skip: no impl for this arch (may be intentional)
-        else do
+      let parts    = canonicalParts p
+          hostRoot = takeWhile (/= '/') host
+      owner <- case parts of
+        (_ : env : _ : _) -> do
+          isHost <- doesDirectoryExist (strataDir </> "Hosts" </> env)
+          pure (if isHost then Just env else Nothing)
+        _ -> pure Nothing
+      case owner of
+        Just env | env /= hostRoot ->
+          pure (Left ("I." ++ intercalate "." (drop 1 parts) ++ " is an Interpretation of the "
+                      ++ env ++ " Host; this image is for the Host " ++ host))
+        _ -> do
+          let hostImpl = strataDir </> "Hosts" </> host
+                           </> intercalate "/" parts ++ "." ++ archImplExtension arch
+          fromHost <- doesFileExist hostImpl
+          let implPath = if fromHost then hostImpl else importPathToImplPath strataDir arch p
+          exists <- doesFileExist implPath
+          if not exists
+            then go rest acc  -- Skip: no impl for this arch (may be intentional)
+            else assembleOne p implPath rest acc
+
+    assembleOne p implPath rest acc = do
           let objPath = outputBase ++ "." ++ intercalate "." (canonicalParts p) ++ ".o"
           asmResult <- assemble arch implPath objPath
           case asmResult of
@@ -591,12 +628,13 @@ assemble arch asmFile objFile = do
         ExitSuccess -> pure $ Right objFile
         ExitFailure _ -> pure $ Left $ "Assembly failed (" ++ as ++ "): " ++ stderr
 
--- | Link object files to an executable using the system linker
+-- | Link object files to an executable using the system linker, with the
+-- Host's linker script when it has one (`hostLinkScript`).
 -- Checks LD environment variable, falls back to "ld"
-link :: Bridge.Arch -> [FilePath] -> FilePath -> IO (Either String FilePath)
-link arch objFiles output = do
+link :: Bridge.Arch -> Maybe FilePath -> [FilePath] -> FilePath -> IO (Either String FilePath)
+link arch script objFiles output = do
   ld <- maybe "ld" id <$> lookupEnv "LD"
-  let args = archLdFlags arch ++ objFiles ++ ["-o", output]
+  let args = archLdFlags arch ++ maybe [] (\t -> ["-T", t]) script ++ objFiles ++ ["-o", output]
   result <- try $ readProcessWithExitCode ld args ""
   case result of
     Left (e :: SomeException) ->

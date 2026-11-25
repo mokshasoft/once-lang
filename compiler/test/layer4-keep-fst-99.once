@@ -1,9 +1,9 @@
 -- Layer 4: capture-fidelity check. Same fn as keepFst, different
--- args. Returns the captured x = 99. Expected: exit 99.
-import I.Linux.Syscalls as S
+-- args. Returns the captured x = 99. Expected: trace [99].
+import I.Test.Emit as E
 
 keepFst : Int -> Int -> Int
 keepFst x y = x
 
-main : Act Unit Void
-main = exit@S (keepFst 99 42)
+main : Act Unit Unit
+main = emit@E (keepFst 99 42)

@@ -5,16 +5,16 @@
 -- IEEE's totalOrder (`<`: `-0.0 < 0.0`, the one NaN above everything) and
 -- identity (`==`: `NaN == NaN`, `-0.0 != 0.0`); the dotted ones are IEEE's
 -- quiet comparisons (false on a NaN, `-0.0 ==. 0.0`). Each bit has its own
--- weight, so any wrong answer changes the exit code.
+-- weight, so any wrong answer changes the emitted sum.
 --
 --   -(0.0) < 0.0          = 1 (·1)     nan == nan     = 1 (·2)
 --   -(0.0) == 0.0         = 0 (·4)     nan ==. nan    = 0 (·8)
 --   -(0.0) ==. 0.0        = 1 (·16)    1.0 < nan      = 1 (·32)
 --   1.0 <. nan            = 0 (·64)    -(0.0) <. 0.0  = 0 (·128)
 --
--- Expected: exit 51
+-- Expected: trace [51]
 
-import I.Linux.Syscalls as S
+import I.Test.Emit as E
 
 no : Unit -> Int
 no _ = 0
@@ -48,5 +48,5 @@ part2 _ =
     + 64 * bit (1.0 <. nan ())
     + 128 * bit (nz () <. 0.0)
 
-main : Act Unit Void
-main = exit@S (part1 () + part2 ())
+main : Act Unit Unit
+main = emit@E (part1 () + part2 ())

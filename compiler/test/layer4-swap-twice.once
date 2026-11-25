@@ -1,8 +1,8 @@
--- Layer 4: applying swap twice returns the original pair. Expected: exit 42.
-import I.Linux.Syscalls as S
+-- Layer 4: applying swap twice returns the original pair. Expected: trace [42].
+import I.Test.Emit as E
 
 swap : Int * Int -> Int * Int
 swap p = (snd p, fst p)
 
-main : Act Unit Void
-main = exit@S (fst (swap (swap (42, 99))))
+main : Act Unit Unit
+main = emit@E (fst (swap (swap (42, 99))))

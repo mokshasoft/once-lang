@@ -38,8 +38,8 @@ import GHC.Float (castDoubleToWord64, castFloatToWord32)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (assertEqual, assertFailure, testCase)
 
-import Backend.Common (BackendArch (..), archName, backendArches,
-                       buildAndRunTraceOn, decodeTrace)
+import Backend.Common (BackendArch (..), End (..), archName, assertEnd, backendArches,
+                       buildAndRunTraceOn, decodeTrace, signedAt)
 
 ------------------------------------------------------------------------
 -- The per-target float format — this test's mirror of `arch-float-format`.
@@ -95,7 +95,7 @@ literals =
   ]
 
 ------------------------------------------------------------------------
--- The program: `emitF <lit>` sequenced before `exit 7`.
+-- The program: `emitF <lit>`, and `main` returns.
 ------------------------------------------------------------------------
 
 -- TWO SHAPE CONSTRAINTS, both learned the hard way and both worth keeping:
@@ -105,8 +105,7 @@ literals =
 --     emits nothing — verified with the Int `emit` too, so this is not a float
 --     matter. (The shipped `test/float-emit-*.once` exit tests USED the `let`
 --     shape and so never invoked `emitF`; since b486a4750 they sequence with
---     `compose` and emit at run time — their scripts still check only the exit
---     code, which is why the float itself is asserted here.)
+--     `compose` and emit at run time.)
 --   * The literal needs a SIGNATURE-CARRYING binding. `compose emitF@E
 --     (\\_ -> 0.5)` checks fine against a declared `Eff Unit Unit`, but nested inside
 --     another `compose` it lands in an INFERENCE position and a float literal
@@ -118,14 +117,13 @@ literals =
 --     ordinary terms of arrow type, so the lift is spelled.
 program :: String -> T.Text
 program lit = T.unlines
-  [ "import I.Linux.Syscalls as S"
-  , "import I.Test.Emit as E"
+  [ "import I.Test.Emit as E"
   , ""
   , "emitLit : Act Unit Unit"
   , T.pack ("emitLit = compose emitF@E (\\_ -> " ++ lit ++ ")")
   , ""
-  , "main : Act Unit Void"
-  , "main = compose exit@S (compose (\\_ -> 7) emitLit)"
+  , "main : Act Unit Unit"
+  , "main = emitLit"
   ]
 
 ------------------------------------------------------------------------
@@ -144,7 +142,7 @@ floatEmitTests = testGroup "Float format in the effect trace"
    | (e, vs) <- wideningCases ]
    ++
    [ testGroup ("argument: " ++ e)
-       [ testCase (archName a) (checkProgram a ("arg-" ++ slug e) (argProgram e) vs) | a <- backendArches ]
+       [ testCase (archName a) (checkProgramThen a ("arg-" ++ slug e) (argProgram e) vs [7]) | a <- backendArches ]
    | (e, vs) <- argumentCases ]
    ++
    -- Plan 0.150: `-1e-400` (written out: Once has no exponent syntax) is
@@ -183,19 +181,25 @@ floatEmitTests = testGroup "Float format in the effect trace"
 checkArith :: BackendArch -> String -> (Double, Float) -> IO ()
 checkArith arch expr = checkProgram arch (slug expr) (arithProgram expr)
 
--- | …for any program that emits one float and exits with 7.
+-- | …for any program that emits one float and returns.
 checkProgram :: BackendArch -> String -> T.Text -> (Double, Float) -> IO ()
-checkProgram arch name prog vs = do
+checkProgram arch name prog vs = checkProgramThen arch name prog vs []
+
+-- | …for a program that emits one float, then the `Int`s @rest@, and returns.
+checkProgramThen :: BackendArch -> String -> T.Text -> (Double, Float) -> [Integer] -> IO ()
+checkProgramThen arch name prog vs rest = do
   r <- buildAndRunTraceOn arch name prog
   case r of
     Left err -> assertFailure err
     Right (out, code) -> case decodeTrace arch out of
       Left err  -> assertFailure ("[" ++ tag ++ "] " ++ err)
       Right ws  -> do
-        assertEqual ("[" ++ tag ++ "] one emitF invocation") 1 (length ws)
+        assertEqual ("[" ++ tag ++ "] one emitF invocation, then " ++ show rest)
+                    (1 + length rest) (length ws)
         assertEqual ("[" ++ tag ++ "] emitted machine word for " ++ name)
                     (encodeArith (archFloatFormat arch) vs) (head ws)
-        assertEqual ("[" ++ tag ++ "] exit code") 7 code
+        assertEqual ("[" ++ tag ++ "] the Ints after it") rest (map (signedAt arch) (tail ws))
+        assertEnd ("[" ++ tag ++ "]") Returned code
   where tag = archName arch
 
 -- | `-1e-400`, in the decimal Once writes.
@@ -235,7 +239,7 @@ checkCanonNaN arch expr = do
         assertEqual ("[" ++ tag ++ "] one emitF invocation") 1 (length ws)
         assertEqual ("[" ++ tag ++ "] canonical NaN (D055) for " ++ expr)
                     (canonNaN (archFloatFormat arch)) (head ws)
-        assertEqual ("[" ++ tag ++ "] exit code") 7 code
+        assertEnd ("[" ++ tag ++ "]") Returned code
   where tag = archName arch
 
 -- | `(2^e − 1) · 2^s + 2^(s−1)` — `Once.Float.Arith.nan`, in Haskell.
@@ -265,7 +269,7 @@ checkOne arch lit v = do
           [] -> do
             assertEqual ("[" ++ tag ++ "] emitted machine word for " ++ lit)
                         want got
-            assertEqual ("[" ++ tag ++ "] exit code") 7 code
+            assertEnd ("[" ++ tag ++ "]") Returned code
   where
     tag    = archName arch
     others = filter (/= archFloatFormat arch)
@@ -288,14 +292,13 @@ checkOne arch lit v = do
 -- a `let _ = … in` binding, which is a different shape again.
 arithProgram :: String -> T.Text
 arithProgram expr = T.unlines
-  [ "import I.Linux.Syscalls as S"
-  , "import I.Test.Emit as E"
+  [ "import I.Test.Emit as E"
   , ""
   , "emitExpr : Act Unit Unit"
   , T.pack ("emitExpr = emitF@E (" ++ expr ++ ")")
   , ""
-  , "main : Act Unit Void"
-  , "main = compose exit@S (compose (\\_ -> 7) emitExpr)"
+  , "main : Act Unit Unit"
+  , "main = emitExpr"
   ]
 
 -- | The expressions under test. Each carries its value at both precisions;
@@ -357,12 +360,11 @@ wideningCases =
 -- call to `arith.add.float`, which nothing defines, and the program failed to
 -- link. `addI` is the same tree at `Int`: their blocks differ only in the kind
 -- of their input leaves, which the block's symbol must therefore name, or one
--- body is linked for both. The exit code checks `addI`, the emitted word
--- `addF`, so a shared body fails one of the two whichever one is kept.
+-- body is linked for both. The first emitted word checks `addF`, the second
+-- `addI`, so a shared body fails one of the two whichever one is kept.
 argProgram :: String -> T.Text
 argProgram expr = T.unlines
-  [ "import I.Linux.Syscalls as S"
-  , "import I.Test.Emit as E"
+  [ "import I.Test.Emit as E"
   , ""
   , "addF : Float * Float -> Float"
   , "addF p = fst p +. snd p"
@@ -379,8 +381,8 @@ argProgram expr = T.unlines
   , "emitExpr : Act Unit Unit"
   , T.pack ("emitExpr = emitF@E (" ++ expr ++ ")")
   , ""
-  , "main : Act Unit Void"
-  , "main = compose exit@S (compose (\\_ -> addI (3, 4)) emitExpr)"
+  , "main : Act Unit Unit"
+  , "main = compose emit@E (compose (\\_ -> addI (3, 4)) emitExpr)"
   ]
 
 argumentCases :: [(String, (Double, Float))]

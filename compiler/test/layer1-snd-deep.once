@@ -2,9 +2,9 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 -- Layer 1 test: deeply-nested snd projection (3 levels)
--- Expected: exit code 42
+-- Expected: trace [42]
 
-import I.Linux.Syscalls as S
+import I.Test.Emit as E
 
-main : Act Unit Void
-main = exit@S (snd (snd (snd (1, (2, (3, 42))))))
+main : Act Unit Unit
+main = emit@E (snd (snd (snd (1, (2, (3, 42))))))

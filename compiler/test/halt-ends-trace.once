@@ -3,12 +3,13 @@
 
 -- D225/D227: an effectful arrow into `Void` HALTS. Whatever is composed after
 -- the halt is never observed: the trace is `[1]`, not `[1, 2]` — the meaning's
--- `halt` node has no continuation, and the machine's exit ends the run.
+-- `halt` node has no continuation, and the run ends `halted` (`I.Halt`, plan
+-- 0.140), under every Host.
 --
--- Expected: exit code 3, trace [1].
+-- Expected: trace [1], end halted.
 
-import I.Linux.Syscalls as S
+import I.Halt as H
 import I.Test.Emit as E
 
 main : Act Unit Unit
-main = emit@E . (\_ -> 2) . (exit@S . ((\_ -> 3) . (emit@E . (\_ -> 1))))
+main = emit@E . (\_ -> 2) . (halt@H . (emit@E . (\_ -> 1)))

@@ -1,0 +1,86 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2025-2026 Jonas Claesson
+#
+# `I.Test.Emit` on the bare-metal `virt` Host, riscv64 (plan 0.140 §3.3): the
+# same bytes Linux's code writes to stdout, written to the 16550 UART at
+# 0x1000_0000 (QEMU's `-serial`), so a trace test compares the same expected
+# output under both Hosts.
+#
+# Once RV64 convention: the argument arrives in Input1 (t0). Both routines
+# preserve every role register (t0, s1 clos, s2 heap, s3 scratch, s4 count)
+# and return Unit (0) in Output (a0).
+
+.equ UART,      0x10000000
+.equ UART_LSR,  5               # line status register
+.equ LSR_THRE,  0x20            # the transmit holding register is empty
+
+.text
+
+# uart_word — writes the 8 bytes of a1, little-endian. Clobbers a1, a2, a3, a4.
+.align 4
+uart_word:
+    li      a2, UART
+    li      a3, 8
+1:  lbu     a4, UART_LSR(a2)
+    andi    a4, a4, LSR_THRE
+    beqz    a4, 1b              # wait until the UART takes a byte
+    sb      a1, 0(a2)
+    srli    a1, a1, 8
+    addi    a3, a3, -1
+    bnez    a3, 1b
+    ret
+
+# `emit : Eff Int Unit` — the argument's WHOLE machine word (8 bytes),
+# little-endian.
+.align 4
+.global emit
+.type emit, @function
+emit:
+    addi    sp, sp, -48
+    sd      ra, 0(sp)
+    sd      a1, 8(sp)
+    sd      a2, 16(sp)
+    sd      a3, 24(sp)
+    sd      a4, 32(sp)
+    mv      a1, t0
+    call    uart_word
+    ld      ra, 0(sp)
+    ld      a1, 8(sp)
+    ld      a2, 16(sp)
+    ld      a3, 24(sp)
+    ld      a4, 32(sp)
+    addi    sp, sp, 48
+    li      a0, 0               # return Unit (0)
+    ret
+.size emit, .-emit
+
+# `emitF : Eff Float Unit` — the argument's whole 8-byte machine word,
+# little-endian, a NaN written as THE NaN, `0x7ff8000000000000`, as Linux's
+# code does.
+.align 4
+.global emitF
+.type emitF, @function
+emitF:
+    addi    sp, sp, -48
+    sd      ra, 0(sp)
+    sd      a1, 8(sp)
+    sd      a2, 16(sp)
+    sd      a3, 24(sp)
+    sd      a4, 32(sp)
+    slli    a1, t0, 1
+    srli    a1, a1, 1           # the magnitude bits
+    li      a2, 0x7ff0000000000000
+    bgtu    a1, a2, 1f          # above +inf's pattern: a NaN
+    mv      a1, t0
+    j       2f
+1:  li      a1, 0x7ff8000000000000   # THE NaN's encoding
+2:  call    uart_word
+    ld      ra, 0(sp)
+    ld      a1, 8(sp)
+    ld      a2, 16(sp)
+    ld      a3, 24(sp)
+    ld      a4, 32(sp)
+    addi    sp, sp, 48
+    li      a0, 0
+    ret
+.size emitF, .-emitF

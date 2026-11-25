@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2025-2026 Jonas Claesson
+#
+# `I.Halt` under the Linux Host, x86_64 (plan 0.140 §3.4–3.5): the run ends
+# `halted`, which Linux reports as exit status 2 (`returned` is 0, `exhausted`
+# is SIGABRT). The argument is Unit; the routine never returns.
+
+.equ SYS_exit_group, 231
+.equ END_HALTED, 2
+
+.text
+.global halt
+.type halt, @function
+halt:
+    movl    $END_HALTED, %edi
+    movl    $SYS_exit_group, %eax
+    syscall
+.size halt, .-halt

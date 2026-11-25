@@ -17,9 +17,8 @@
 -- second. Neither can pass by accident — which is exactly what the cata-emit
 -- tests lacked before D220.
 --
--- Expected: exit code 7, trace [5].
+-- Expected: trace [5, 7].
 
-import I.Linux.Syscalls as S
 import I.Test.Emit as E
 
 -- BUILD: `curry f a b = f (a , b)`, so this emits whichever component `fst`
@@ -31,5 +30,5 @@ k = curry (emit@E . fst)
 fire : Act Unit Unit
 fire = apply (k 5, 9)
 
-main : Act Unit Void
-main = exit@S . ((\_ -> 7) . fire)
+main : Act Unit Unit
+main = emit@E . ((\_ -> 7) . fire)

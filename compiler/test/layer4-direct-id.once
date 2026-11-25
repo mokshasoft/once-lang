@@ -1,4 +1,4 @@
-import I.Linux.Syscalls as S
+import I.Test.Emit as E
 
-main : Act Unit Void
-main = exit@S (id 42)
+main : Act Unit Unit
+main = emit@E (id 42)

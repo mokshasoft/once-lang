@@ -1,0 +1,108 @@
+# ======================================================================
+# The bare-metal Host on QEMU's `virt` machine — riscv64 (D320; plan 0.140)
+#
+# A Host is the layer directly beneath the program: `enter ; main ; leave`.
+# Here there is no operating system, so the Host is the platform itself:
+# QEMU `-machine virt -bios none -kernel <image>` loads the image at the
+# addresses of its linker script (`link.riscv64.ld`, RAM at 0x8000_0000) and
+# starts every hart in machine mode at the start of RAM, not at the ELF
+# entry: so `_start` is in `.text.start`, which the script places first.
+#
+# The run's end leaves through the SiFive test finisher at 0x10_0000; QEMU
+# exits with the status the table below gives (plan 0.140 §3.5). The end is
+# a kind and carries no value:
+#
+#   end         finisher word           QEMU's exit status
+#   returned    0x5555 (pass)           0
+#   exhausted   (1 << 16) | 0x3333      1
+#   halted      (2 << 16) | 0x3333      2     (`I.Halt`'s code)
+#
+# A trap is not an end: the program's run never faults, so a trap is a defect
+# of the trusted base, and `once_fault` stops the run with 255, a status
+# outside the table.
+# ======================================================================
+
+.equ FINISHER,        0x100000
+.equ FINISHER_PASS,   0x5555
+.equ FINISHER_FAIL,   0x3333
+.equ END_EXHAUSTED,   1
+.equ END_FAULT,       255
+
+.text
+.global once_leave
+.type once_leave, @function
+once_leave:
+    li      t0, FINISHER
+    li      t1, FINISHER_PASS
+    sw      t1, 0(t0)
+1:  wfi                             # the finisher has ended QEMU
+    j       1b
+.size once_leave, .-once_leave
+
+# ----------------------------------------------------------------------
+# once_exhausted — the run ran out of memory (D374). The compiler calls it
+# when a room check fails; it never returns. Its contract: the run ends
+# `exhausted`.
+# ----------------------------------------------------------------------
+.global once_exhausted
+.type once_exhausted, @function
+once_exhausted:
+    li      t0, FINISHER
+    li      t1, (END_EXHAUSTED << 16) | FINISHER_FAIL
+    sw      t1, 0(t0)
+1:  wfi
+    j       1b
+.size once_exhausted, .-once_exhausted
+
+# ----------------------------------------------------------------------
+# once_fault — every trap. A compiled program raises none, so a trap is a
+# defect of the trusted base (the Host, an Interpretation's code, the
+# platform): the run stops with a status outside the end table instead of
+# hanging.
+# ----------------------------------------------------------------------
+.balign 4
+once_fault:
+    li      t0, FINISHER
+    li      t1, (END_FAULT << 16) | FINISHER_FAIL
+    sw      t1, 0(t0)
+1:  wfi
+    j       1b
+
+# ----------------------------------------------------------------------
+# _start — the Host's `enter`. The Host owns the run's memory: one region,
+# the cells at its bottom growing up, the stack at its top growing down;
+# running out is the two meeting. It points the frontier register at the
+# bottom and the stack pointer at the top, and enters the program at
+# `once_main` (the compiler's portable entry, which knows no platform).
+# The region is in `.bss`; QEMU's loader zeroes it, as Linux's does.
+#
+# Machine mode starts with the floating-point unit off (mstatus.FS = 0), so
+# a program's first float instruction would trap: `enter` turns it on, as
+# Linux does for a process. Harts other than hart 0 wait forever.
+# ----------------------------------------------------------------------
+.equ ONCE_REGION_SIZE, 8388608          # 8 MiB
+.equ MSTATUS_FS_INITIAL, 0x2000
+
+.section .bss
+.balign 16
+once_region:
+    .skip ONCE_REGION_SIZE
+once_region_end:
+
+.section .text.start, "ax"
+.global _start
+.type _start, @function
+_start:
+    csrr    t0, mhartid
+    bnez    t0, 2f
+    lla     t0, once_fault
+    csrw    mtvec, t0                   # every trap ends the run
+    li      t0, MSTATUS_FS_INITIAL
+    csrs    mstatus, t0                 # the FPU on
+    csrw    fcsr, zero
+    lla     s2, once_region             # the frontier: the region's bottom
+    lla     sp, once_region_end         # the stack pointer: its top
+    j       once_main
+2:  wfi
+    j       2b
+.size _start, .-_start

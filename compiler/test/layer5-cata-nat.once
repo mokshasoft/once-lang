@@ -7,9 +7,9 @@
 -- Functor shape #2 (Nat): Mu (K Unit + Id) — ONE recursive position,
 -- bare Id successor. `toInt` counts the layers.
 --
--- Expected observable: exit code 3 (three = suc (suc (suc zero))).
+-- Expected observable: trace [3] (three = suc (suc (suc zero))).
 
-import I.Linux.Syscalls as S
+import I.Test.Emit as E
 
 -- algebra : (Unit + Int) -> Int
 zeroI : Unit -> Int
@@ -24,5 +24,5 @@ toInt = cata (case zeroI incI)
 three : Mu (K Unit + Id)
 three = In (inr (In (inr (In (inr (In (inl unit)))))))
 
-main : Act Unit Void
-main = exit@S (toInt three)
+main : Act Unit Unit
+main = emit@E (toInt three)

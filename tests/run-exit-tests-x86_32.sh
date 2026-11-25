@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # x86-32 (i386) runtime regression net — mirror of run-exit-tests.sh.
 #
-# Builds each compiler/test/*.once that declares an expected exit code for
+# Builds each compiler/test/*.once that declares its expected observable for
 # --target x86_32 and runs the resulting static ELF under qemu-i386 (user
-# mode), checking the process exit code. Plan 0.57 wired the i386 toolchain
+# mode), checking its trace and its end (`tests/check-trace.py`). Plan 0.57 wired the i386 toolchain
 # into the CLI (as --32 / ld -m elf_i386), so no AS/LD wrappers are needed.
 #
 # Requires: a host `as`/`ld` able to emit 32-bit objects and qemu-i386.
@@ -23,12 +23,22 @@ ONCE="$(cd "$ROOT/compiler" && cabal list-bin once 2>/dev/null)"
 QEMU="${QEMU_I386:-qemu-i386}"
 command -v "$QEMU" >/dev/null 2>&1 || { echo "no $QEMU (set QEMU_I386)"; exit 2; }
 
+# The Host the tests run under: ONCE_TEST_HOST=linux (default) or bare.
+ARCH=x86_32; LINUX_RUN=("$QEMU")
+source "$ROOT/tests/test-host.sh"
+
 pass=0; fail=0; skip=0; declare -a failed=()
 for f in "$TESTDIR"/*.once; do
   name="$(basename "$f" .once)"
   grep -qiE '^--.*\bPENDING\b' "$f" && { skip=$((skip+1)); echo "SKIP $name (PENDING)"; continue; }
-  exp="$(grep -oiE 'expected.*exit (code )?[0-9]+|exit code [0-9]+' "$f" | grep -oE '[0-9]+' | head -1)"
-  [ -z "$exp" ] && continue
+  if why="$(host_skip "$f")"; then skip=$((skip+1)); echo "SKIP $name ($why)"; continue; fi
+  # The expected observable (plan 0.140 §3.5): "Expected: trace [v, …]", and
+  # ", end halted" / ", end exhausted" when the run does not return.
+  line="$(grep -iE '^--.*expected[^:]*: *trace \[' "$f" | head -1)"
+  [ -z "$line" ] && continue
+  exp="$(printf '%s' "$line" | grep -oE 'trace \[[^]]*\]' | sed 's/^trace //')"
+  end="$(printf '%s' "$line" | grep -oE 'end (returned|halted|exhausted)' | sed 's/^end //')"
+  end="${end:-returned}"
   params="$(grep -oiE '^-- *params:.*' "$f" | sed -E 's/^-- *params: *//I' | head -1)"
   [ -z "$params" ] && params="$DEFAULT_PARAMS"
   # Link each imported interpretation that ships an x86_32 implementation.
@@ -39,22 +49,18 @@ for f in "$TESTDIR"/*.once; do
   done < <(grep -oE '^import +[A-Za-z0-9_.]+' "$f" | awk '{print $2}')
   for opt in "${OPTS[@]}"; do
     tag="${opt:+-noopt}"
-    $ONCE build --exe --target x86_32 $params $opt "${Iargs[@]}" --strata "$STRATA" "$f" -o "$BUILD/$name$tag" >"$BUILD/$name$tag.log" 2>&1
+    $ONCE build --exe --target x86_32 "${HOST_FLAGS[@]}" $params $opt "${Iargs[@]}" --strata "$STRATA" "$f" -o "$BUILD/$name$tag" >"$BUILD/$name$tag.log" 2>&1
     if [ ! -f "$BUILD/$name$tag" ]; then
-      echo "FAIL(build) $name$tag (expected exit $exp) — see $BUILD/$name$tag.log"
+      echo "FAIL(build) $name$tag (expected trace $exp, end $end) — see $BUILD/$name$tag.log"
       fail=$((fail+1)); failed+=("$name$tag"); continue
     fi
-    # D220: `emit` is a REAL SigOp now, so an emitting test writes machine words
-    # to stdout. Capture them next to the build log rather than into the terminal;
-    # the two builds' outputs are compared below.
-    timeout 10 "$QEMU" "$BUILD/$name$tag" > "$BUILD/$name$tag.trace" 2>/dev/null; got=$?
-    if [ "$got" -eq 124 ]; then
-      echo "FAIL $name$tag: TIMEOUT (hang) under qemu-i386, expected exit $exp"
-      fail=$((fail+1)); failed+=("$name$tag")
-    elif [ "$got" -eq "$exp" ]; then
+    # The trace is machine words on stdout: captured next to the build log,
+    # checked against the expectation, and compared between the two builds.
+    "${RUN[@]}" "$BUILD/$name$tag" > "$BUILD/$name$tag.trace" 2>/dev/null; got=$?
+    if why="$(python3 "$ROOT/tests/check-trace.py" "$END_TABLE" 4 "$BUILD/$name$tag.trace" "$got" "$exp" "$end")"; then
       pass=$((pass+1))
     else
-      echo "FAIL $name$tag: expected exit $exp, got $got (qemu-i386)"
+      echo "FAIL $name$tag: $why"
       fail=$((fail+1)); failed+=("$name$tag")
     fi
   done
@@ -63,6 +69,7 @@ for f in "$TESTDIR"/*.once; do
     fail=$((fail+1)); failed+=("$name")
   fi
 done
-echo "=== x86_32/qemu exit-code tests: $pass passed, $fail failed, $skip skipped ==="
-"$ROOT/tests/run-sel4-tests.sh" x86_32 || fail=$((fail+1))
+echo "=== x86_32/$HOST_LABEL exit tests (trace and end): $pass passed, $fail failed, $skip skipped ==="
+# The seL4 Host has its own runner; it runs with the Linux pass.
+[ "$ONCE_TEST_HOST" = linux ] && { "$ROOT/tests/run-sel4-tests.sh" x86_32 || fail=$((fail+1)); }
 [ "$fail" -eq 0 ]

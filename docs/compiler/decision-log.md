@@ -22501,3 +22501,39 @@ Plan 0.153 rebuilt the parser and recogniser without either (D420).
 
 ### What programs see
 Nothing.
+
+## D489 — A HOST IS THE LAYER BENEATH THE PROGRAM; THE END OF A RUN IS A KIND, VALUES GO IN THE TRACE; THE TESTS RUN ON BARE METAL (2026-11-25)
+
+**Relates** D320 (a Host is `enter ; main ; leave`), D349, D374 (the three ends), D376, D225/D227 (an
+arrow into `Void` halts), D220 (`emit` is observable). **Decided** by the user 2026-11-25 (plan 0.140 §3).
+
+### Decision
+1. **A Host is the layer directly beneath the program**: what starts it, ends it and gives it its
+   region. An OS hides the platform, so an OS Host is one name keyed by arch (`Linux`, `SeL4`). With no
+   OS nothing hides the platform, so a bare-metal Host names its platform: `Strata/Hosts/Bare/<Platform>`
+   (`Bare/Virt`: QEMU `virt`, riscv64; `Bare/PC`: QEMU `pc`, x86_32 and x86_64). A Host may carry a
+   linker script, `link.<arch>.ld`, which the link passes with `-T`.
+2. **An Interpretation's signature is portable; its code may be a Host's.** The code is looked up in
+   `Strata/Hosts/<host>/Interpretations/<path>.<arch>` first, then beside the signature. An
+   Interpretation under `Interpretations/<E>/…`, where `Hosts/<E>` is a Host, belongs to `<E>` and is
+   refused under another Host, naming both. Portable now: `I.Test.Emit`, and `I.Halt`
+   (`halt : Act Unit Void`).
+3. **The end of a run is a kind and carries no value.** The Spec's ends are `returned`, `exhausted`
+   and `halted`; each Host's exit device has a fixed table of exactly those (Linux `0`/SIGABRT/`2`;
+   `Bare/Virt`'s test finisher `0`/`1`/`2`; `Bare/PC`'s `isa-debug-exit` `1`/`3`/`5`). A value a test
+   observes goes in the trace. There is no portable `exit n`: `I.Linux.Syscalls.exit` stays Linux's
+   process status. A trap is not an end: the program's run never faults (`FlatFromObs.start-sound`), so
+   a trap is a defect of the trusted base; a bare Host stops it with a status outside its table (255).
+4. **The tests run under either Host**: `ONCE_TEST_HOST=linux` (default) or `bare`, for the exit-test
+   scripts and the Haskell suite. A test states its observable as `-- Expected: trace [..]` (`, end
+   halted|exhausted` when it does not return); `tests/check-trace.py` reads a run against the Host's
+   table. A program importing `I.Linux.*` is skipped under `bare`, with that reason.
+
+### Why
+The test suite ran only as Linux processes, so Linux was part of every test and "Once runs without an
+OS" was untested. Packing a value into an exit status mixed the Spec's end with a program's value in one
+byte, which no exit device can carry in general (the tests already expected codes up to 255); the trace
+carries a whole word, at the value's own type.
+
+### What programs see
+`I.Halt.halt` is new. `I.Linux.*` Interpretations no longer link under a bare-metal Host. Nothing else.

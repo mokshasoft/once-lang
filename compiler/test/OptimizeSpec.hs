@@ -12,8 +12,9 @@
 --     before (`once elaborate`) and after (`once optimize`). The rules only
 --     hand-built IR reaches are shown in `Once.Optimize.Examples`;
 --   * that program's trace, with and without the optimizer (`traceCases`);
---   * representative Layer 0-5 + arith programs exit alike built both ways
---     (the exit suites in `tests/` do the same for every program).
+--   * representative Layer 0-5 + arith programs emit their value built both
+--     ways, on every arch (the exit suites in `tests/` do the same for every
+--     program).
 module OptimizeSpec (optimizeTests) where
 
 import Test.Tasty
@@ -21,22 +22,17 @@ import Test.Tasty.HUnit
 
 import Data.List (isInfixOf, stripPrefix)
 import qualified Data.Text.IO as TIO
-import System.Directory (createDirectoryIfMissing)
 import System.Exit (ExitCode (..))
-import System.FilePath ((</>))
-import System.Process (readProcessWithExitCode)
 
-import Backend.Common (runOnce, cleanupDir, traceCases)
+import Backend.Common (End (..), runOnce, traceCases)
 
 optimizeTests :: TestTree
 optimizeTests = testGroup "Optimizer"
   [ testGroup "rules fire on elaborated code (opt-rules.once)"
       [ ruleTest fn rule before after | (fn, rule, before, after) <- ruleFixtures ]
-  , traceCases "opt-rules.once keeps its trace" "opt-rules" [5, 6] 7
-  , testGroup "optimized exit code matches --no-optimize"
-      [ differentialTest name | name <- fixtures ]
-  , testGroup "optimized build still produces the correct exit code"
-      [ optimizedExitTest name code | (name, code) <- correctnessFixtures ]
+  , traceCases "opt-rules.once keeps its trace" "opt-rules" [5, 6, 7] Returned
+  , testGroup "optimized and --no-optimize builds emit the same value"
+      [ traceCases name name [v] Returned | (name, v) <- fixtures ]
   ]
 
 -- | (definition in `opt-rules.once`, rule, a redex in its elaborated IR, its
@@ -86,89 +82,22 @@ dumpIR stage = do
       | Just ir <- stripPrefix "  = " body = (takeWhile (/= ' ') sig, ir) : defs rest
     defs _ = []
 
--- | Fixtures spread across the categorical layers and
--- the arith lowering so the differential covers projections, sums, closures,
--- catamorphisms and arith blocks.
-fixtures :: [String]
+-- | Fixtures spread across the categorical layers and the arith lowering, so
+-- the comparison covers projections, sums, closures, catamorphisms and arith
+-- blocks, each with the value it emits.
+fixtures :: [(String, Integer)]
 fixtures =
-  [ "layer0-id"
-  , "layer0-terminal"
-  , "layer1-fst"
-  , "layer1-snd-deep"
-  , "layer2-case-inl-direct"
-  , "layer3-pair-in-sum"
-  , "layer3-sum-in-pair"
-  , "layer4-keep-fst"
-  , "layer4-twice"
-  , "layer4-closure-in-pair"
-  , "layer5-iseven"
-  , "arith-simple"
-  , "arith-lambda-1"
-  ]
-
--- | A few fixtures whose exact exit code we also pin on the OPTIMIZED path
--- (the un-optimized values are already pinned by the Layer*/Arith specs).
-correctnessFixtures :: [(String, Int)]
-correctnessFixtures =
-  [ ("layer2-case-inl-direct", 42)
-  , ("arith-simple", 13)
+  [ ("layer0-id", 42)
+  , ("layer0-terminal", 42)
+  , ("layer1-fst", 42)
+  , ("layer1-snd-deep", 42)
+  , ("layer2-case-inl-direct", 42)
+  , ("layer3-pair-in-sum", 42)
+  , ("layer3-sum-in-pair", 42)
   , ("layer4-keep-fst", 42)
+  , ("layer4-twice", 42)
+  , ("layer4-closure-in-pair", 42)
+  , ("layer5-iseven", 42)
+  , ("arith-simple", 13)
+  , ("arith-lambda-1", 10)
   ]
-
--- | Build `name` both optimized and unoptimized and assert the exit codes agree.
-differentialTest :: String -> TestTree
-differentialTest name =
-  testCase (name ++ " (opt == no-opt)") $ do
-    optE   <- buildAndExit name Optimized
-    noOptE <- buildAndExit name NoOptimize
-    case (optE, noOptE) of
-      (Right o, Right n)
-        | o == n    -> return ()
-        | otherwise -> assertFailure $
-            name ++ ": optimizer changed the observable — optimized exit " ++
-            show o ++ " /= --no-optimize exit " ++ show n
-      (Left e, _) -> assertFailure $ "optimized build/run failed: " ++ e
-      (_, Left e) -> assertFailure $ "--no-optimize build/run failed: " ++ e
-
--- | Build `name` optimized and assert it exits with the expected code.
-optimizedExitTest :: String -> Int -> TestTree
-optimizedExitTest name code =
-  testCase (name ++ " optimized (exit " ++ show code ++ ")") $ do
-    e <- buildAndExit name Optimized
-    case e of
-      Right got
-        | got == code -> return ()
-        | otherwise   -> assertFailure $
-            "optimized " ++ name ++ ": expected exit " ++ show code ++
-            " but got " ++ show got
-      Left err -> assertFailure err
-
-------------------------------------------------------------------------
--- Helpers
-------------------------------------------------------------------------
-
-data OptMode = Optimized | NoOptimize
-
--- | Build a fixture and return its process exit code (Right) or an error.
-buildAndExit :: String -> OptMode -> IO (Either String Int)
-buildAndExit name mode = do
-  let tag = case mode of Optimized -> "opt"; NoOptimize -> "noopt"
-      testDir = "/tmp/once_opt_" ++ name ++ "_" ++ tag
-      exeFile = testDir </> name
-  createDirectoryIfMissing True testDir
-  source <- TIO.readFile ("test/" ++ name ++ ".once")
-  TIO.writeFile (testDir </> name ++ ".once") source
-
-  let optArgs = case mode of Optimized -> []; NoOptimize -> ["--no-optimize"]
-  (buildExit, _out, buildErr) <- runOnce $
-    ["build", "--target", "x86_64", "--exe"] ++ optArgs ++
-    [testDir </> name ++ ".once", "-o", exeFile]
-
-  case buildExit of
-    ExitFailure _ -> cleanupDir testDir >> return (Left ("build failed: " ++ buildErr))
-    ExitSuccess -> do
-      (runExit, _, _) <- readProcessWithExitCode exeFile [] ""
-      cleanupDir testDir
-      return $ Right $ case runExit of
-        ExitSuccess   -> 0
-        ExitFailure c -> c

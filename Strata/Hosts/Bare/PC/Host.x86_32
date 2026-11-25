@@ -1,0 +1,166 @@
+# ======================================================================
+# The bare-metal Host on QEMU's `pc` machine — x86_32 (D320; plan 0.140)
+#
+# A Host is the layer directly beneath the program: `enter ; main ; leave`.
+# Here there is no operating system, so the Host is the platform itself:
+# QEMU `-machine pc -kernel <image>` loads the image as a Multiboot kernel at
+# the addresses of its linker script (`link.x86_32.ld`, from 1 MiB) and
+# enters `_start` in 32-bit protected mode, paging off, interrupts off, with
+# no stack and a GDT and IDT it does not promise.
+#
+# The run's end leaves through QEMU's `isa-debug-exit` device (`-device
+# isa-debug-exit,iobase=0xf4,iosize=0x04`): writing v to port 0xf4 ends QEMU
+# with status (v << 1) | 1. The end is a kind and carries no value (plan
+# 0.140 §3.5):
+#
+#   end         v       QEMU's exit status
+#   returned    0       1
+#   exhausted   1       3
+#   halted      2       5     (`I.Halt`'s code)
+#
+# A trap is not an end: the program's run never faults, so a trap is a defect
+# of the trusted base, and `once_fault` stops the run with v = 0x7f, status
+# 255, outside the table.
+# ======================================================================
+
+.equ DEBUG_EXIT,      0xf4
+.equ END_RETURNED,    0
+.equ END_EXHAUSTED,   1
+.equ END_FAULT,       0x7f
+
+.equ MB_MAGIC,        0x1BADB002
+.equ MB_FLAGS,        0
+.section .multiboot, "a"
+.balign 4
+    .long   MB_MAGIC
+    .long   MB_FLAGS
+    .long   -(MB_MAGIC + MB_FLAGS)
+
+.text
+.global once_leave
+.type once_leave, @function
+once_leave:
+    movb    $END_RETURNED, %al
+    outb    %al, $DEBUG_EXIT
+1:  hlt                                 # the device has ended QEMU
+    jmp     1b
+.size once_leave, .-once_leave
+
+# ----------------------------------------------------------------------
+# once_exhausted — the run ran out of memory (D374). The compiler calls it
+# when a room check fails; it never returns. Its contract: the run ends
+# `exhausted`.
+# ----------------------------------------------------------------------
+.global once_exhausted
+.type once_exhausted, @function
+once_exhausted:
+    movb    $END_EXHAUSTED, %al
+    outb    %al, $DEBUG_EXIT
+1:  hlt
+    jmp     1b
+.size once_exhausted, .-once_exhausted
+
+# ----------------------------------------------------------------------
+# once_fault — every exception. A compiled program raises none, so one is a
+# defect of the trusted base (the Host, an Interpretation's code, the
+# platform): the run stops with a status outside the end table instead of
+# triple-faulting, which QEMU would answer by resetting the machine.
+# ----------------------------------------------------------------------
+.balign 16
+once_fault:
+    movb    $END_FAULT, %al
+    outb    %al, $DEBUG_EXIT
+1:  hlt
+    jmp     1b
+
+# ----------------------------------------------------------------------
+# The descriptor tables: a flat GDT (code 0x08, data 0x10, the whole 4 GiB),
+# and an IDT whose 32 exception gates all lead to `once_fault`. `_start`
+# fills the gates, since an IDT entry splits the handler's address in two.
+# ----------------------------------------------------------------------
+.section .data
+.balign 8
+gdt:
+    .quad   0                           # null
+    .quad   0x00CF9A000000FFFF          # 0x08: code, base 0, limit 4 GiB, 32-bit
+    .quad   0x00CF92000000FFFF          # 0x10: data, base 0, limit 4 GiB
+gdt_end:
+gdt_ptr:
+    .word   gdt_end - gdt - 1
+    .long   gdt
+
+.equ IDT_GATES, 32
+.section .bss
+.balign 8
+idt:
+    .skip   IDT_GATES * 8
+idt_end:
+
+.section .data
+idt_ptr:
+    .word   IDT_GATES * 8 - 1
+    .long   idt
+
+# ----------------------------------------------------------------------
+# _start — the Host's `enter`. It installs its own GDT and IDT, turns on the
+# FPU and SSE (the compiler's Float code is SSE, D113; QEMU starts with the
+# FPU's state undefined and SSE off, as a PC does), and then, as every Host:
+# the Host owns the run's memory, one region, the cells at its bottom growing
+# up, the stack at its top growing down; running out is the two meeting. It
+# points the frontier register at the bottom and the stack pointer at the
+# top, and enters the program at `once_main` (the compiler's portable entry,
+# which knows no platform). The region is in `.bss`, which the Multiboot
+# loader zeroes.
+# ----------------------------------------------------------------------
+.equ ONCE_REGION_SIZE, 8388608          # 8 MiB
+.equ CR0_MP,           0x2
+.equ CR0_EM,           0x4
+.equ CR4_OSFXSR,       0x200
+.equ CR4_OSXMMEXCPT,   0x400
+
+.section .bss
+.balign 16
+once_region:
+    .skip ONCE_REGION_SIZE
+once_region_end:
+
+.section .text.start, "ax"
+.global _start
+.type _start, @function
+_start:
+    cli
+    lgdt    gdt_ptr
+    ljmp    $0x08, $1f
+1:  movw    $0x10, %ax
+    movw    %ax, %ds
+    movw    %ax, %es
+    movw    %ax, %fs
+    movw    %ax, %gs
+    movw    %ax, %ss
+    # every exception gate: an interrupt gate (0x8E) to once_fault in 0x08
+    movl    $idt, %edi
+    movl    $IDT_GATES, %ecx
+    movl    $once_fault, %eax
+2:  movw    %ax, 0(%edi)                # offset 15..0
+    movw    $0x08, 2(%edi)              # selector
+    movw    $0x8E00, 4(%edi)            # present, ring 0, 32-bit interrupt gate
+    movl    %eax, %edx
+    shrl    $16, %edx
+    movw    %dx, 6(%edi)                # offset 31..16
+    addl    $8, %edi
+    decl    %ecx
+    jnz     2b
+    lidt    idt_ptr
+    # the FPU and SSE on
+    movl    %cr0, %eax
+    andl    $~CR0_EM, %eax
+    orl     $CR0_MP, %eax
+    movl    %eax, %cr0
+    movl    %cr4, %eax
+    orl     $(CR4_OSFXSR | CR4_OSXMMEXCPT), %eax
+    movl    %eax, %cr4
+    fninit
+    movl    $once_region, %esi          # the frontier: the region's bottom
+    movl    $once_region_end, %esp      # the stack pointer: its top
+    jmp     once_main
+.size _start, .-_start

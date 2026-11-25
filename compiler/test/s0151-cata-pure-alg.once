@@ -12,9 +12,9 @@
 --   a subtype: `wide (inl unit) + 1` = 4.
 --   12 + 4 = 16.
 --
--- Expected: exit code 16.
+-- Expected: trace [16].
 
-import I.Linux.Syscalls as S
+import I.Test.Emit as E
 
 nil : Mu (K Unit + K Int * Id)
 nil = In (inl unit)
@@ -31,7 +31,7 @@ wide = case (\_ -> 3) (\x -> x)
 widened : Mu (K Unit + K Void) -> Int
 widened = (\x -> x + 1) . cata wide
 
-main : Act Unit Void
+main : Act Unit Unit
 main =
-  exit@S
+  emit@E
     . ((\t -> t + widened (In (inl unit))) . (cata sumAlg . (\_ -> cons 3 (cons 4 (cons 5 nil)))))

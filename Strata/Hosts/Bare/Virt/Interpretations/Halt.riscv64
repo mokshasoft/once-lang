@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2025-2026 Jonas Claesson
+#
+# `I.Halt` on the bare-metal `virt` Host, riscv64 (plan 0.140 §3.4–3.5): the
+# run ends `halted`, which the SiFive test finisher reports as QEMU's exit
+# status 2 (the Host's end table: `returned` 0, `exhausted` 1, `halted` 2).
+# The argument is Unit; the routine never returns.
+
+.equ FINISHER,      0x100000
+.equ FINISHER_FAIL, 0x3333
+.equ END_HALTED,    2
+
+.text
+.global halt
+.type halt, @function
+halt:
+    li      t1, FINISHER
+    li      t2, (END_HALTED << 16) | FINISHER_FAIL
+    sw      t2, 0(t1)
+1:  wfi                             # the finisher has ended QEMU
+    j       1b
+.size halt, .-halt

@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # Heap-mode runtime regression net.
 #
-# For every compiler/test/*.once that declares an expected exit code
-# ("-- Expected: exit N"), build it for x86_64 and run the binary, checking
-# the process exit code. This catches regressions that are invisible to the
+# For every compiler/test/*.once that declares its expected observable
+# ("-- Expected: trace [v, …]", optionally ", end halted|exhausted"), build it
+# for x86_64, run the binary, and check the trace `I.Test.Emit` writes and the
+# end (`tests/check-trace.py`; plan 0.140 §3.5: the end is a kind and carries
+# no value, values go in the trace). This catches regressions that are invisible to the
 # Agda proofs because the proofs are value-level while the observable is the
 # SigOp trace (e.g. the optimizer's `→Unit ⇒ terminal` rule dropping
 # effectful SigOps so a program silently exits 0).
@@ -28,12 +30,22 @@ BUILD="$(mktemp -d)"
 ONCE="$(cd "$ROOT/compiler" && cabal list-bin once 2>/dev/null)"
 [ -x "$ONCE" ] || { echo "no once binary (run: cd compiler && cabal build exe:once)"; exit 2; }
 
+# The Host the tests run under: ONCE_TEST_HOST=linux (default) or bare.
+ARCH=x86_64; LINUX_RUN=()
+source "$ROOT/tests/test-host.sh"
+
 pass=0; fail=0; skip=0; declare -a failed=()
 for f in "$TESTDIR"/*.once; do
   name="$(basename "$f" .once)"
   grep -qiE '^--.*\bPENDING\b' "$f" && { skip=$((skip+1)); echo "SKIP $name (PENDING)"; continue; }
-  exp="$(grep -oiE 'expected.*exit (code )?[0-9]+|exit code [0-9]+' "$f" | grep -oE '[0-9]+' | head -1)"
-  [ -z "$exp" ] && continue
+  if why="$(host_skip "$f")"; then skip=$((skip+1)); echo "SKIP $name ($why)"; continue; fi
+  # The expected observable (plan 0.140 §3.5): "Expected: trace [v, …]", and
+  # ", end halted" / ", end exhausted" when the run does not return.
+  line="$(grep -iE '^--.*expected[^:]*: *trace \[' "$f" | head -1)"
+  [ -z "$line" ] && continue
+  exp="$(printf '%s' "$line" | grep -oE 'trace \[[^]]*\]' | sed 's/^trace //')"
+  end="$(printf '%s' "$line" | grep -oE 'end (returned|halted|exhausted)' | sed 's/^end //')"
+  end="${end:-returned}"
   params="$(grep -oiE '^-- *params:.*' "$f" | sed -E 's/^-- *params: *//I' | head -1)"
   [ -z "$params" ] && params="$DEFAULT_PARAMS"
   # Link each imported interpretation that ships an x86_64 implementation.
@@ -44,20 +56,18 @@ for f in "$TESTDIR"/*.once; do
   done < <(grep -oE '^import +[A-Za-z0-9_.]+' "$f" | awk '{print $2}')
   for opt in "${OPTS[@]}"; do
     tag="${opt:+-noopt}"
-    $ONCE build --exe --target x86_64 $params $opt "${Iargs[@]}" --strata "$STRATA" "$f" -o "$BUILD/$name$tag" >"$BUILD/$name$tag.log" 2>&1
+    $ONCE build --exe --target x86_64 "${HOST_FLAGS[@]}" $params $opt "${Iargs[@]}" --strata "$STRATA" "$f" -o "$BUILD/$name$tag" >"$BUILD/$name$tag.log" 2>&1
     if [ ! -x "$BUILD/$name$tag" ]; then
-      echo "FAIL(build) $name$tag (expected exit $exp) — see $BUILD/$name$tag.log"
+      echo "FAIL(build) $name$tag (expected trace $exp, end $end) — see $BUILD/$name$tag.log"
       fail=$((fail+1)); failed+=("$name$tag"); continue
     fi
-    # D220: `emit` is a REAL SigOp now, so a test that emits writes machine words
-    # to stdout. Capture that output (it is kept next to the build log for
-    # inspection, and the two builds' outputs are compared below) rather than
-    # letting raw bytes into the terminal. The ORDERED trace is asserted by `traceCases`.
-    "$BUILD/$name$tag" > "$BUILD/$name$tag.trace" 2>/dev/null; got=$?
-    if [ "$got" -eq "$exp" ]; then
+    # The trace is machine words on stdout: captured next to the build log,
+    # checked against the expectation, and compared between the two builds.
+    "${RUN[@]}" "$BUILD/$name$tag" > "$BUILD/$name$tag.trace" 2>/dev/null; got=$?
+    if why="$(python3 "$ROOT/tests/check-trace.py" "$END_TABLE" 8 "$BUILD/$name$tag.trace" "$got" "$exp" "$end")"; then
       pass=$((pass+1))
     else
-      echo "FAIL $name$tag: expected exit $exp, got $got"
+      echo "FAIL $name$tag: $why"
       fail=$((fail+1)); failed+=("$name$tag")
     fi
   done
@@ -66,6 +76,7 @@ for f in "$TESTDIR"/*.once; do
     fail=$((fail+1)); failed+=("$name")
   fi
 done
-echo "=== exit-code tests: $pass passed, $fail failed, $skip skipped ==="
-"$ROOT/tests/run-sel4-tests.sh" x86_64 || fail=$((fail+1))
+echo "=== x86_64/$HOST_LABEL exit tests (trace and end): $pass passed, $fail failed, $skip skipped ==="
+# The seL4 Host has its own runner; it runs with the Linux pass.
+[ "$ONCE_TEST_HOST" = linux ] && { "$ROOT/tests/run-sel4-tests.sh" x86_64 || fail=$((fail+1)); }
 [ "$fail" -eq 0 ]

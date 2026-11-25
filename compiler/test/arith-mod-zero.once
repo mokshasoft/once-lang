@@ -2,12 +2,12 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 -- arith-mod-zero.once: D055 total remainder by zero: x % 0 = x.
--- f 7 = 7 % 0 = 7. Expected exit code 7.
+-- f 7 = 7 % 0 = 7. Expected trace [7].
 
-import I.Linux.Syscalls as S
+import I.Test.Emit as E
 
 f : Int -> Int
 f x = x % 0
 
-main : Act Unit Void
-main = exit@S (f 7)
+main : Act Unit Unit
+main = emit@E (f 7)

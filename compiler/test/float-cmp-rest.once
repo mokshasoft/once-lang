@@ -9,12 +9,11 @@
 --   -(0.0) >= 0.0         = 0 (·16)    nan !=. nan    = 1 (·32)
 --   1.0 <=. 1.0           = 1 (·64)    nan >=. nan    = 0 (·128)
 --
--- An exit code has eight bits, so the twelfth comparison, `2.0 >. 1.0` (= 1),
--- enters as `bit … - 1`: it adds 0 when right and -1 when wrong.
+--   2.0 >. 1.0            = 1 (·256)
 --
--- Expected: exit 110
+-- Expected: trace [366]
 
-import I.Linux.Syscalls as S
+import I.Test.Emit as E
 
 no : Unit -> Int
 no _ = 0
@@ -49,7 +48,7 @@ part2 _ =
     + 128 * bit (nan () >=. nan ())
 
 part3 : Unit -> Int
-part3 _ = bit (2.0 >. 1.0) - 1
+part3 _ = 256 * bit (2.0 >. 1.0)
 
-main : Act Unit Void
-main = exit@S (part1 () + part2 () + part3 ())
+main : Act Unit Unit
+main = emit@E (part1 () + part2 () + part3 ())

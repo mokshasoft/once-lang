@@ -8,10 +8,10 @@
 --   `answer` : Int             (inferred from `id 7`)
 --   `main`   : Eff Unit Unit    (inferred)
 --
--- Expected: exit code 7
+-- Expected: trace [7]
 
-import I.Linux.Syscalls as S
+import I.Test.Emit as E
 
 answer = id 7
 
-main = exit@S answer
+main = emit@E answer

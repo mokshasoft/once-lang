@@ -3,9 +3,14 @@ module Backend.Common
     BackendArch (..)
   , archName
   , backendArches
-  , buildAndRunOn
   , buildAsmOn
-  , exitCases
+  , End (..)
+  , TestHost (..)
+  , testHost
+  , endOfStatus
+  , assertEnd
+  , valueCases
+  , runCases
   , runOnceArch
     -- * Test Programs
   , testPrograms
@@ -46,7 +51,7 @@ import Control.Exception (SomeException, try)
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import System.Directory (createDirectoryIfMissing, findExecutable, listDirectory, makeAbsolute, removeDirectoryRecursive)
-import System.Environment (getEnvironment)
+import System.Environment (getEnvironment, lookupEnv)
 import System.Exit (ExitCode (..))
 import System.FilePath ((</>), takeExtension)
 import System.IO (IOMode (WriteMode), withFile)
@@ -92,11 +97,39 @@ archToolEnv RiscV64 = pure
   , ("LD", "riscv64-unknown-linux-gnu-ld")
   , ("OBJCOPY", "riscv64-unknown-linux-gnu-objcopy") ]
 
--- | qemu prefix to run a built exe for this arch (empty = native).
-archRunPrefix :: BackendArch -> [String]
-archRunPrefix X86_64  = []
-archRunPrefix X86_32  = ["qemu-i386"]
-archRunPrefix RiscV64 = ["qemu-riscv64"]
+-- | The Host the runtime tests run under (plan 0.140 §3.6):
+-- `ONCE_TEST_HOST=linux` (the default) runs each image as a Linux process,
+-- natively or under qemu user mode; `ONCE_TEST_HOST=bare` builds it for the
+-- bare-metal Host of the arch's QEMU machine (`Bare/Virt` on riscv64,
+-- `Bare/PC` on x86) and boots it under qemu-system, the UART on stdout.
+data TestHost = LinuxHost | BareHost deriving (Eq, Show)
+
+testHost :: IO TestHost
+testHost = do
+  v <- lookupEnv "ONCE_TEST_HOST"
+  case v of
+    Just "bare" -> pure BareHost
+    _           -> pure LinuxHost
+
+-- | The `once build` flags that pick the Host.
+hostBuildFlags :: TestHost -> BackendArch -> [String]
+hostBuildFlags LinuxHost _       = []
+hostBuildFlags BareHost RiscV64  = ["--host", "Bare/Virt"]
+hostBuildFlags BareHost _        = ["--host", "Bare/PC"]
+
+-- | The command prefix that runs a built image (empty = native).
+hostRunPrefix :: TestHost -> BackendArch -> [String]
+hostRunPrefix LinuxHost X86_64  = []
+hostRunPrefix LinuxHost X86_32  = ["qemu-i386"]
+hostRunPrefix LinuxHost RiscV64 = ["qemu-riscv64"]
+hostRunPrefix BareHost  RiscV64 =
+  ["qemu-system-riscv64", "-machine", "virt", "-bios", "none"] ++ qemuBare ++ ["-kernel"]
+hostRunPrefix BareHost  arch    =
+  [if arch == X86_32 then "qemu-system-i386" else "qemu-system-x86_64"]
+    ++ qemuBare ++ ["-device", "isa-debug-exit,iobase=0xf4,iosize=0x04", "-kernel"]
+
+qemuBare :: [String]
+qemuBare = ["-display", "none", "-serial", "stdio", "-monitor", "none", "-no-reboot"]
 
 -- | Run `once build …` with the arch's cross tools injected into the env.
 runOnceArch :: BackendArch -> [String] -> IO (ExitCode, String, String)
@@ -110,36 +143,46 @@ runOnceArch arch args = do
              Nothing -> proc "cabal" (["run", "once", "--"] ++ args)
   readCreateProcessWithExitCode cp { env = Just env' } ""
 
--- | Build `test/<name>.once` for `arch` and run it (native or qemu, with a
--- 10s wall-clock cap so a codegen bug that loops shows as a failure, not a
--- hang). Returns Right () iff the process exit code equals `expected`.
-buildAndRunOn :: BackendArch -> String -> Int -> IO (Either String ())
-buildAndRunOn arch name expected = do
-  let tag     = archName arch
-      testDir = "/tmp/once_" ++ tag ++ "_" ++ name
-      srcFile = testDir </> name ++ ".once"
-      exeFile = testDir </> name
-  createDirectoryIfMissing True testDir
-  source <- TIO.readFile ("test/" ++ name ++ ".once")
-  TIO.writeFile srcFile source
-  (buildExit, _out, buildErr) <- runOnceArch arch
-    ["build", "--target", tag, "--no-optimize", "--exe", srcFile, "-o", exeFile]
-  case buildExit of
-    ExitFailure _ -> cleanupDir testDir >> pure (Left ("[" ++ tag ++ "] build failed: " ++ buildErr))
-    ExitSuccess -> do
-      (runExit, _rout, _rerr) <- readProcessWithExitCode "timeout"
-        (["10"] ++ archRunPrefix arch ++ [exeFile]) ""
-      cleanupDir testDir
-      let code = case runExit of ExitSuccess -> 0; ExitFailure c -> c
-      pure $ if code == expected
-               then Right ()
-               else Left ("[" ++ tag ++ "] expected exit " ++ show expected
-                          ++ " but got " ++ show code
-                          ++ (if code == 124 then " (TIMEOUT/hang)" else ""))
+-- | How a run ended (plan 0.140 §3.5). The Spec has three ends (D374), and
+-- the end is a kind: it carries no value. A value a test observes goes in the
+-- trace (`I.Test.Emit`).
+data End = Returned | Exhausted | Halted deriving (Eq, Show)
+
+-- | A Host's end table, its exit device's, read off the status as the runner
+-- sees it. Linux: `exit_group(0)` is `returned`, `I.Halt`'s `exit_group(2)`
+-- is `halted`, `once_exhausted`'s SIGABRT is `exhausted` (134 through
+-- `timeout`, -6 when the signal is passed on). `Bare/Virt`: the test
+-- finisher's 0, 1, 2. `Bare/PC`: `isa-debug-exit`'s (v << 1) | 1, so 1, 3, 5.
+-- Any other status is no end of the Spec: a timeout (124), or a defect of the
+-- trusted base.
+endOfStatus :: TestHost -> BackendArch -> Int -> Either Int End
+endOfStatus LinuxHost _ c = case c of
+  0    -> Right Returned
+  2    -> Right Halted
+  134  -> Right Exhausted
+  (-6) -> Right Exhausted
+  _    -> Left c
+endOfStatus BareHost RiscV64 c = case c of
+  0 -> Right Returned
+  1 -> Right Exhausted
+  2 -> Right Halted
+  _ -> Left c
+endOfStatus BareHost _ c = case c of
+  1 -> Right Returned
+  3 -> Right Exhausted
+  5 -> Right Halted
+  _ -> Left c
+
+-- | Assert that a run ended @want@.
+assertEnd :: String -> End -> Either Int End -> IO ()
+assertEnd tag want got = case got of
+  Right e -> assertEqual (tag ++ " end") want e
+  Left c  -> assertFailure (tag ++ " expected end " ++ show want ++ ", got status " ++ show c
+                            ++ " (no end of the Spec" ++ (if c == 124 then ": TIMEOUT/hang)" else ")"))
 
 -- | Build `test/<name>.once` for `arch` with `--save-temps` and return the
--- emitted assembly text. Goes through `runOnceArch`, the same build path
--- `buildAndRunOn` uses, so the two cannot disagree about how a test program is
+-- emitted assembly text. Goes through `runOnceArch`, the same build path the
+-- runtime tests use, so the two cannot disagree about how a test program is
 -- compiled — which is the whole point of not writing this as a shell script.
 buildAsmOn :: BackendArch -> String -> IO (Either String String)
 buildAsmOn arch name = do
@@ -164,54 +207,54 @@ buildAsmOn arch name = do
           length asm `seq` cleanupDir testDir
           pure (Right asm)
 
--- | One test program → a per-arch test group (each arch is its own case, so a
--- partial backend shows exactly which arches pass). Reads `test/<name>.once`.
-exitCases :: String -> String -> Int -> TestTree
-exitCases label name expected =
+-- | A `.once` FILE that computes one value: it emits @v@ and returns. One
+-- per-arch test group (each arch is its own case, so a partial backend shows
+-- exactly which arches pass), built with `--no-optimize`; 'traceCases' is the
+-- same check with and without the optimizer.
+valueCases :: String -> String -> Integer -> TestTree
+valueCases label name v = runCases label name [v] Returned
+
+-- | A `.once` FILE's trace and end, on every backend arch, built with
+-- `--no-optimize`.
+runCases :: String -> String -> [Integer] -> End -> TestTree
+runCases label name emitted end =
   testGroup label
-    [ testCase (archName a) (buildAndRunOn a name expected >>= either assertFailure pure)
+    [ testCase (archName a) (runTraceFile ["--no-optimize"] a name emitted end)
     | a <- backendArches ]
 
 -- | 'buildAndRunTraceWith' for a `.once` FILE in `test/`, rather than inline
--- source.
---
--- D220/D221: this is the piece that did not exist, and its absence is why a
--- vacuous test could sit next to a real one for a whole plan cycle. Before
--- this, NO `.once` file was ever built against the byte-writing interpretation
--- by any harness: `buildAndRunOn` passes no `--strata` at all, so `findStrataDir`
--- walks up to the repo root and links the PRODUCTION `Strata/Interpretations/
--- Test/Emit.*`, whose `emit` is a bare `ret`. An exit code therefore could not
--- distinguish "emitted, then exited 7" from "exited 7", and the crown cata test
--- compiled byte-identical to `main = exit@S 7` while claiming one emit per
--- layer.
---
--- Everything else is shared with `buildAndRunTraceWith`, so a file-based trace
--- test and an inline one cannot disagree about how a program is compiled.
-buildAndRunTraceFile :: [String] -> BackendArch -> String -> IO (Either String (String, Int))
+-- source. Everything else is shared with `buildAndRunTraceWith`, so a
+-- file-based trace test and an inline one cannot disagree about how a program
+-- is compiled.
+buildAndRunTraceFile :: [String] -> BackendArch -> String -> IO (Either String (String, Either Int End))
 buildAndRunTraceFile flags arch name = do
   source <- TIO.readFile ("test/" ++ name ++ ".once")
   buildAndRunTraceWith flags arch name source
 
 -- | Assert a `.once` FILE's whole observable: the ordered SigOp trace AND the
--- exit code, on every backend arch, built with the optimizer and without it.
+-- end, on every backend arch, built with the optimizer and without it.
 --
--- The trace is the observable (D058); the exit code alone is not. A test that
--- asserts only `exit@S N` guards the exit path and nothing else — which is what
--- D220 found six of them doing.
-traceCases :: String -> String -> [Integer] -> Int -> TestTree
-traceCases label name emitted expected =
+-- The trace is the observable (D058); the end is a kind and carries no value
+-- (plan 0.140 §3.5).
+traceCases :: String -> String -> [Integer] -> End -> TestTree
+traceCases label name emitted end =
   testGroup label
-    [ testCase (archName a ++ concatMap (' ' :) flags) $ do
-        r <- buildAndRunTraceFile flags a name
-        case r of
-          Left err -> assertFailure err
-          Right (out, code) -> case decodeTrace a out of
-            Left err -> assertFailure ("[" ++ archName a ++ "] " ++ err)
-            Right ws -> do
-              assertEqual ("[" ++ archName a ++ "] emitted arguments (effect order + values)")
-                          emitted (map (signedAt a) ws)
-              assertEqual ("[" ++ archName a ++ "] exit code") expected code
+    [ testCase (archName a ++ concatMap (' ' :) flags) (runTraceFile flags a name emitted end)
     | a <- backendArches, flags <- [[], ["--no-optimize"]] ]
+
+-- | Build and run a `.once` FILE, and assert its trace (each word read as a
+-- signed `Int`) and its end.
+runTraceFile :: [String] -> BackendArch -> String -> [Integer] -> End -> IO ()
+runTraceFile flags a name emitted end = do
+  r <- buildAndRunTraceFile flags a name
+  case r of
+    Left err -> assertFailure err
+    Right (out, code) -> case decodeTrace a out of
+      Left err -> assertFailure ("[" ++ archName a ++ "] " ++ err)
+      Right ws -> do
+        assertEqual ("[" ++ archName a ++ "] emitted arguments (effect order + values)")
+                    emitted (map (signedAt a) ws)
+        assertEnd ("[" ++ archName a ++ "]") end code
 
 -- | A `.once` FILE that must never end (D317: a server is the anamorphism into
 -- `Eff`, which need not stop). On every backend arch it is run for `foreverSecs`
@@ -241,9 +284,11 @@ foreverCases label name prefix =
           exeFile = testDir </> nm
           want    = length prefix * archWordBytes arch
       createDirectoryIfMissing True testDir
+      host <- testHost
       (buildExit, _out, buildErr) <- runOnceArch arch
-        [ "build", "--target", tag, "--exe"
-        , "--strata", testStrataDir, "test/" ++ nm ++ ".once", "-o", exeFile ]
+        ([ "build", "--target", tag, "--exe"
+         , "--strata", testStrataDir, "test/" ++ nm ++ ".once", "-o", exeFile ]
+         ++ hostBuildFlags host arch)
       case buildExit of
         ExitFailure _ -> do
           cleanupDir testDir
@@ -252,7 +297,7 @@ foreverCases label name prefix =
           let outPath = testDir </> "stdout.bin"
           code <- withFile outPath WriteMode $ \h -> do
             (_, _, _, ph) <- createProcess
-              (proc "timeout" ([show foreverSecs] ++ archRunPrefix arch ++ [exeFile]))
+              (proc "timeout" ([show foreverSecs] ++ hostRunPrefix host arch ++ [exeFile]))
                 { std_out = UseHandle h }
             runExit <- waitForProcess ph
             pure (case runExit of ExitSuccess -> 0; ExitFailure c -> c)
@@ -285,28 +330,17 @@ cleanupDir dir = do
   _ <- try (removeDirectoryRecursive dir) :: IO (Either SomeException ())
   return ()
 
--- | Strata root for the trace tests. It contains the OBSERVABLE test
--- interpretation `I.Test.Emit` (whose `emit` writes a byte to stdout) and a
--- symlink to the real Linux interpretation (so `exit` comes from
--- `I.Linux.Syscalls`); a single --strata root resolves both imports. Relative
--- to the package dir, which is the cwd under `cabal test`. Reusable by any spec
--- wanting to observe an effect trace at runtime.
+-- | Strata root for the runtime tests: the repository's `Strata`, relative to
+-- the package dir, which is the cwd under `cabal test`.
 testStrataDir :: FilePath
--- D220: was "test/teststrata", a DUPLICATE strata root that existed only to
--- pair a byte-writing `emit` with a symlink to the real Linux interpretations.
--- The production `I.Test.Emit` was a NOP, so the two roots disagreed about what
--- `emit` DOES, and every `.once` harness resolved the nop one. `emit` is now
--- observable in `Strata/` itself, so there is one interpretation and no way for
--- a harness to pick the blind copy.
 testStrataDir = "../Strata"
 
 -- | Build a Once program (given as source) for x86_64 against 'testStrataDir',
--- run it, and return @(stdout, exitCode)@ on success or a build error on the
--- left. The program imports `I.Test.Emit` and `I.Linux.Syscalls`; each `emit`
--- writes one stdout byte, so @stdout@ is the emitted byte sequence and the exit
--- code is the final `exit` argument. The compiler links the interpretation
--- implementations itself — no manual assembly/link step.
-buildAndRunTrace :: String -> T.Text -> IO (Either String (String, Int))
+-- run it, and return @(stdout, status)@ on success or a build error on the
+-- left. Each `emit` writes one machine word to stdout, so @stdout@ is the
+-- trace ('decodeTrace'); the status gives the end ('endOfStatus'). The
+-- compiler links the interpretation implementations itself.
+buildAndRunTrace :: String -> T.Text -> IO (Either String (String, Either Int End))
 buildAndRunTrace = buildAndRunTraceOn X86_64
 
 -- | This target's machine word, in bytes. `emit`/`emitF` write exactly one of
@@ -360,11 +394,11 @@ decodeTrace arch out
 -- observable at RUNTIME rather than only in the emitted assembly: the same
 -- literal emits eight bytes of `binary64` here and four of `binary32` on
 -- x86-32, because a `Float` denotes its target's representation (D113).
-buildAndRunTraceOn :: BackendArch -> String -> T.Text -> IO (Either String (String, Int))
+buildAndRunTraceOn :: BackendArch -> String -> T.Text -> IO (Either String (String, Either Int End))
 buildAndRunTraceOn = buildAndRunTraceWith []
 
 -- | 'buildAndRunTraceOn' with extra build flags (e.g. `--no-optimize`).
-buildAndRunTraceWith :: [String] -> BackendArch -> String -> T.Text -> IO (Either String (String, Int))
+buildAndRunTraceWith :: [String] -> BackendArch -> String -> T.Text -> IO (Either String (String, Either Int End))
 buildAndRunTraceWith flags arch name source = do
   let tag     = archName arch
       testDir = "/tmp/once_trace_" ++ tag ++ concat flags ++ "_" ++ name
@@ -372,9 +406,10 @@ buildAndRunTraceWith flags arch name source = do
       exeFile = testDir </> name
   createDirectoryIfMissing True testDir
   TIO.writeFile srcFile source
+  host <- testHost
   (buildExit, _out, buildErr) <- runOnceArch arch
     ([ "build", "--target", tag, "--exe"
-     , "--strata", testStrataDir, srcFile, "-o", exeFile ] ++ flags)
+     , "--strata", testStrataDir, srcFile, "-o", exeFile ] ++ flags ++ hostBuildFlags host arch)
   case buildExit of
     ExitFailure _ -> do
       cleanupDir testDir
@@ -389,14 +424,14 @@ buildAndRunTraceWith flags arch name source = do
       let outPath = testDir </> "stdout.bin"
       code <- withFile outPath WriteMode $ \h -> do
         (_, _, _, ph) <- createProcess
-          (proc "timeout" (["10"] ++ archRunPrefix arch ++ [exeFile]))
+          (proc "timeout" (["10"] ++ hostRunPrefix host arch ++ [exeFile]))
             { std_out = UseHandle h }
         runExit <- waitForProcess ph
         pure (case runExit of ExitSuccess -> 0; ExitFailure c -> c)
       raw <- BS.readFile outPath
       let out = map (toEnum . fromIntegral) (BS.unpack raw)
       length out `seq` cleanupDir testDir
-      return $ Right (out, code)
+      return $ Right (out, endOfStatus host arch code)
 
 -- | Test main for C swap test
 testMain :: T.Text

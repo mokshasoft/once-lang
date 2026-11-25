@@ -15,9 +15,8 @@
 -- correspondence was a POSTULATE and here it is a PROOF; this test is what makes
 -- the proof falsifiable rather than merely believed.
 --
--- Expected: exit code 7, trace [1, 2].
+-- Expected: trace [1, 2, 7].
 
-import I.Linux.Syscalls as S
 import I.Test.Emit as E
 
 both : Act Int (Unit * Unit)
@@ -26,5 +25,5 @@ both = pair (emit@E . (\_ -> 1)) (emit@E . (\_ -> 2))
 run : Act Unit Unit
 run = (\_ -> unit) . (both . (\_ -> 0))
 
-main : Act Unit Void
-main = exit@S . ((\_ -> 7) . run)
+main : Act Unit Unit
+main = emit@E . ((\_ -> 7) . run)

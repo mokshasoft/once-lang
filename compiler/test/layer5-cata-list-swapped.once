@@ -6,9 +6,9 @@
 -- The deleted shape-specialised cata codegens (strat-nat / strat-linear)
 -- miscompiled it; every recursive functor now takes the generic walk.
 --
--- Expected: exit 5
+-- Expected: trace [5]
 
-import I.Linux.Syscalls as S
+import I.Test.Emit as E
 
 zeroI : Unit -> Int
 zeroI _ = 0
@@ -22,5 +22,5 @@ f = cata (case step zeroI)
 v : Mu (K Int * Id + K Unit)
 v = In (inl (2, In (inl (3, In (inr unit)))))
 
-main : Act Unit Void
-main = exit@S (f v)
+main : Act Unit Unit
+main = emit@E (f v)

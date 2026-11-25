@@ -1,0 +1,75 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2025-2026 Jonas Claesson
+#
+# `I.Test.Emit` on the bare-metal `pc` Host, x86_32 (plan 0.140 §3.3): the
+# same bytes Linux's code writes to stdout, written to the COM1 16550 UART at
+# port 0x3F8 (QEMU's `-serial`), so a trace test compares the same expected
+# output under both Hosts.
+#
+# Once x86-32 convention: the argument arrives in Input1 (%ecx). Both routines
+# preserve every role register — clos (%ebx), heap (%esi), scratch (%edx),
+# count (%edi) and Input1 itself — and return Unit (0) in Output (%eax).
+
+.equ COM1,      0x3F8
+.equ COM1_LSR,  0x3FD           # line status register
+.equ LSR_THRE,  0x20            # the transmit holding register is empty
+
+.text
+
+# com1_word — writes the 4 bytes of %eax, little-endian. Clobbers %eax, %ecx,
+# %edx.
+.align 16
+com1_word:
+    movl    %eax, %ecx
+    movl    $4, %eax
+1:  pushl   %eax
+    movw    $COM1_LSR, %dx
+2:  inb     %dx, %al
+    testb   $LSR_THRE, %al
+    jz      2b                  # wait until the UART takes a byte
+    movb    %cl, %al
+    movw    $COM1, %dx
+    outb    %al, %dx
+    shrl    $8, %ecx
+    popl    %eax
+    decl    %eax
+    jnz     1b
+    ret
+
+# `emit : Eff Int Unit` — the argument's WHOLE machine word (4 bytes here),
+# little-endian.
+.align 16
+.global emit
+.type emit, @function
+emit:
+    pushl   %ecx                # Input1 — must survive the call
+    pushl   %edx
+    movl    %ecx, %eax
+    call    com1_word
+    popl    %edx
+    popl    %ecx
+    xorl    %eax, %eax          # return Unit (0)
+    ret
+.size emit, .-emit
+
+# `emitF : Eff Float Unit` — the argument's whole 4-byte machine word
+# (`binary32`), little-endian, a NaN written as THE NaN, `0x7fc00000`, as
+# Linux's code does.
+.align 16
+.global emitF
+.type emitF, @function
+emitF:
+    pushl   %ecx
+    pushl   %edx
+    movl    %ecx, %eax
+    andl    $0x7fffffff, %eax   # the magnitude bits
+    cmpl    $0x7f800000, %eax   # above +inf's pattern: a NaN
+    movl    %ecx, %eax
+    jbe     1f
+    movl    $0x7fc00000, %eax   # THE NaN's encoding
+1:  call    com1_word
+    popl    %edx
+    popl    %ecx
+    xorl    %eax, %eax
+    ret
+.size emitF, .-emitF

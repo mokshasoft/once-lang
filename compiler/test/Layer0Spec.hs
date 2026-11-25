@@ -3,24 +3,24 @@
 
 -- | Layer 0 codegen tests
 --
--- Tests that compile to executables and verify output via exit codes.
+-- Tests that compile to executables and verify the value each emits.
 -- Uses only Layer 0 constructs: id, composition, primitives.
 --
 -- Plan 0.53: runs on every backend arch (x86_64 native, x86_32 / riscv64
--- under qemu) via the shared multi-arch `exitCases` helper.
+-- under qemu) via the shared multi-arch `valueCases` helper.
 
 module Layer0Spec (layer0Tests) where
 
 import Test.Tasty
 
-import Backend.Common (exitCases)
+import Backend.Common (valueCases)
 
 layer0Tests :: TestTree
 layer0Tests = testGroup "Layer0"
-  [ exitCases "id returns input (exit 42)"              "layer0-id"       42
-  , exitCases "composition of ids (exit 42)"            "layer0-compose"  42
-  , exitCases "constant function (exit 7)"              "layer0-neg"      7
-  , exitCases "terminal collapses Int to Unit (exit 42)" "layer0-terminal" 42
+  [ valueCases "id returns input (emits 42)"              "layer0-id"       42
+  , valueCases "composition of ids (emits 42)"            "layer0-compose"  42
+  , valueCases "constant function (emits 7)"              "layer0-neg"      7
+  , valueCases "terminal collapses Int to Unit (emits 42)" "layer0-terminal" 42
     -- Ported from tests/run-exit-tests.sh (2026-09-08).
-  , exitCases "exit takes an integer literal (exit 42)" "layer0-exit-literal" 42
+  , valueCases "emit takes an integer literal (emits 42)" "layer0-exit-literal" 42
   ]

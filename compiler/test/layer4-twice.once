@@ -1,8 +1,8 @@
--- Layer 4: higher-order — twice f x = f (f x). Expected: exit 42.
-import I.Linux.Syscalls as S
+-- Layer 4: higher-order — twice f x = f (f x). Expected: trace [42].
+import I.Test.Emit as E
 
 twice : (Int -> Int) -> Int -> Int
 twice f x = f (f x)
 
-main : Act Unit Void
-main = exit@S (twice id 42)
+main : Act Unit Unit
+main = emit@E (twice id 42)

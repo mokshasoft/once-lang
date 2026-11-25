@@ -9,9 +9,9 @@
 -- codegen follows only ONE recursive child and provably cannot compile
 -- this.
 --
--- Expected observable: exit code 42 (sum-of-leaves of node(leaf 40, leaf 2)).
+-- Expected observable: trace [42] (sum-of-leaves of node(leaf 40, leaf 2)).
 
-import I.Linux.Syscalls as S
+import I.Test.Emit as E
 
 -- algebra : (Int + (Int * Int)) -> Int
 --   leaf : Int -> Int          = id
@@ -26,5 +26,5 @@ sumTree = cata (case id addPair)
 t : Mu (K Int + Id * Id)
 t = In (inr (In (inl 40), In (inl 2)))
 
-main : Act Unit Void
-main = exit@S (sumTree t)
+main : Act Unit Unit
+main = emit@E (sumTree t)

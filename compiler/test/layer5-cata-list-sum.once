@@ -7,9 +7,9 @@
 -- Functor shape #3 (List Int): Mu (K Unit + (K Int * Id)) — ONE recursive
 -- position living inside a product with an Int payload (foldr shape).
 --
--- Expected observable: exit code 42 (sum [10, 20, 12]).
+-- Expected observable: trace [42] (sum [10, 20, 12]).
 
-import I.Linux.Syscalls as S
+import I.Test.Emit as E
 
 -- algebra : (Unit + (Int * Int)) -> Int (cons's Id position is the folded tail)
 zeroI : Unit -> Int
@@ -25,5 +25,5 @@ sumList = cata (case zeroI addPair)
 xs : Mu (K Unit + K Int * Id)
 xs = In (inr (10, In (inr (20, In (inr (12, In (inl unit)))))))
 
-main : Act Unit Void
-main = exit@S (sumList xs)
+main : Act Unit Unit
+main = emit@E (sumList xs)

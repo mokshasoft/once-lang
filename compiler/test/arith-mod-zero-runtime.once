@@ -3,12 +3,12 @@
 
 -- arith-mod-zero-runtime.once: D055 total remainder, RUNTIME zero divisor.
 -- f 7 = 7 % (7 - 7) = 7 % 0 = 7 (dividend). x86 must guard, not trap.
--- Expected exit code 7.
+-- Expected trace [7].
 
-import I.Linux.Syscalls as S
+import I.Test.Emit as E
 
 f : Int -> Int
 f x = x % (x - x)
 
-main : Act Unit Void
-main = exit@S (f 7)
+main : Act Unit Unit
+main = emit@E (f 7)

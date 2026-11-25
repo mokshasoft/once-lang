@@ -1,7 +1,7 @@
 -- SPDX-License-Identifier: AGPL-3.0-or-later
 -- Copyright (C) 2025-2026 Jonas Claesson
 
--- FLOAT ARITHMETIC OVER AN ARGUMENT (plan 0.129 B5). Expected exit code 23
+-- FLOAT ARITHMETIC OVER AN ARGUMENT (plan 0.129 B5). Expected trace [3.25, 23]
 --
 -- Until B5 an arith block could not read a `Float` input, so `x + x` stayed a
 -- call to `arith.add.float`, a symbol nothing defines, and this program failed
@@ -10,7 +10,6 @@
 -- the two blocks must get different symbols. The values are checked by
 -- `FloatEmitSpec`'s "argument:" group; this test checks both builds link and run.
 
-import I.Linux.Syscalls as S
 import I.Test.Emit as E
 
 addF : Float * Float -> Float
@@ -25,5 +24,5 @@ twice x = x +. x
 emitArg : Act Unit Unit
 emitArg = emitF@E (addF (twice 1.5, 0.25))
 
-main : Act Unit Void
-main = exit@S . ((\_ -> addI (20, 3)) . emitArg)
+main : Act Unit Unit
+main = emit@E . ((\_ -> addI (20, 3)) . emitArg)

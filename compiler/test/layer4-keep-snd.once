@@ -1,9 +1,9 @@
 -- Layer 4: curried fn returns second arg (no capture in the body,
--- but the curry'd closure must still propagate the env). Expected: exit 42.
-import I.Linux.Syscalls as S
+-- but the curry'd closure must still propagate the env). Expected: trace [42].
+import I.Test.Emit as E
 
 keepSnd : Int -> Int -> Int
 keepSnd x y = y
 
-main : Act Unit Void
-main = exit@S (keepSnd 99 42)
+main : Act Unit Unit
+main = emit@E (keepSnd 99 42)

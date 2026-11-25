@@ -5,12 +5,12 @@
 -- AFTER `main` is part of the module (typed once, in its prefix), and the
 -- program still runs `main`.
 --
--- Expected: exit code 3.
+-- Expected: trace [3].
 
-import I.Linux.Syscalls as S
+import I.Test.Emit as E
 
-main : Act Unit Void
-main = exit@S 3
+main : Act Unit Unit
+main = emit@E 3
 
 later : Int
 later = 4

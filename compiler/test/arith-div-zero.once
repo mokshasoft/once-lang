@@ -2,12 +2,12 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 -- arith-div-zero.once: D055 total division by zero: x / 0 = -1 (all-ones).
--- f 7 = 7 / 0 = -1; low byte = 255. Expected exit code 255.
+-- f 7 = 7 / 0 = -1; low byte = 255. Expected trace [-1].
 
-import I.Linux.Syscalls as S
+import I.Test.Emit as E
 
 f : Int -> Int
 f x = x / 0
 
-main : Act Unit Void
-main = exit@S (f 7)
+main : Act Unit Unit
+main = emit@E (f 7)

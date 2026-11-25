@@ -14,9 +14,9 @@
 -- (A `let` body is INFERRED and a bare `cata` only CHECKS, so the let-bound
 -- fold carries an annotation — a mode fact, unrelated to capture.)
 --
--- Expected: exit code 67.
+-- Expected: trace [67].
 
-import I.Linux.Syscalls as S
+import I.Test.Emit as E
 
 addPair : Int * Int -> Int
 addPair p = fst p + snd p
@@ -30,5 +30,5 @@ viaLet = let b = 2 in (cata (case (\_ -> b) addPair) : Mu (K Unit + K Int * Id) 
 xs : Mu (K Unit + K Int * Id)
 xs = In (inr (10, In (inr (20, In (inl unit)))))
 
-main : Act Unit Void
-main = exit@S (withBase 5 xs + viaLet xs)
+main : Act Unit Unit
+main = emit@E (withBase 5 xs + viaLet xs)

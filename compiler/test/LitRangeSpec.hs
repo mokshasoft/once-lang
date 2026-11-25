@@ -44,7 +44,7 @@ import System.FilePath ((</>))
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (assertBool, assertEqual, assertFailure, testCase)
 
-import Backend.Common (BackendArch (..), archName, backendArches,
+import Backend.Common (BackendArch (..), End (..), archName, assertEnd, backendArches,
                        buildAndRunTraceOn, cleanupDir, decodeTrace,
                        runOnceArch, signedAt, testStrataDir)
 
@@ -106,19 +106,18 @@ literals =
   , ("(- 9223372036854775808)", -9223372036854775808)
   ]
 
--- | `emit <lit>` sequenced before `exit 7`. The literal is hoisted into a
+-- | `emit <lit>`, and `main` returns. The literal is hoisted into a
 -- signature-carrying binding for the same reason `FloatEmitSpec` does it —
 -- nested inside a `compose` chain it would land in an inference position.
 program :: String -> T.Text
 program lit = T.unlines
-  [ "import I.Linux.Syscalls as S"
-  , "import I.Test.Emit as E"
+  [ "import I.Test.Emit as E"
   , ""
   , "emitLit : Act Unit Unit"
   , T.pack ("emitLit = emit@E " ++ lit)
   , ""
-  , "main : Act Unit Void"
-  , "main = compose exit@S (compose (\\_ -> 7) emitLit)"
+  , "main : Act Unit Unit"
+  , "main = emitLit"
   ]
 
 ------------------------------------------------------------------------
@@ -142,8 +141,8 @@ checkLit arch lit z
   where bits = archIntBits arch
 
 -- | Admissible: it builds, it runs, and the value that reaches the SigOp is
--- the literal itself — not a truncation of it. Reading the TRACE rather than
--- the exit code is what makes "compiles" mean "means what it says".
+-- the literal itself — not a truncation of it. Reading the TRACE is what makes
+-- "compiles" mean "means what it says".
 expectAccepted :: BackendArch -> String -> Integer -> IO ()
 expectAccepted arch lit z = do
   r <- buildAndRunTraceOn arch (slug arch lit) (program lit)
@@ -156,7 +155,7 @@ expectAccepted arch lit z = do
       Right ws -> do
         assertEqual (tag ++ " one emit invocation") 1 (length ws)
         assertEqual (tag ++ " emitted argument") z (signedAt arch (head ws))
-        assertEqual (tag ++ " exit code") 7 code
+        assertEnd tag Returned code
   where tag = "[" ++ archName arch ++ "]"
 
 -- | Inadmissible: the build FAILS, and the message names both the literal and
@@ -212,21 +211,20 @@ checkWrap arch = do
         assertEqual (tag ++ " " ++ show a ++ " + " ++ show b ++ " wrapped at "
                          ++ show bits ++ " bits")
                     (wrapAt bits (a + b)) (signedAt arch (head ws))
-        assertEqual (tag ++ " exit code") 7 code
+        assertEnd tag Returned code
   where
     tag  = "[" ++ archName arch ++ "]"
     bits = archIntBits arch
     a    = 2000000000
     b    = 2000000000
     src  = T.unlines
-      [ "import I.Linux.Syscalls as S"
-      , "import I.Test.Emit as E"
+      [ "import I.Test.Emit as E"
       , ""
       , "emitSum : Act Unit Unit"
       , T.pack ("emitSum = emit@E (" ++ show a ++ " + " ++ show b ++ ")")
       , ""
-      , "main : Act Unit Void"
-      , "main = compose exit@S (compose (\\_ -> 7) emitSum)"
+      , "main : Act Unit Unit"
+      , "main = emitSum"
       ]
 
 -- | NEGATION AT `Int` (plan 0.150, D409): `-x` of a value, and `-minInt` is
@@ -248,13 +246,12 @@ checkNeg arch = do
         assertEqual (tag ++ " two emit invocations") 2 (length ws)
         assertEqual (tag ++ " -(5)") (-5) (signedAt arch (head ws))
         assertEqual (tag ++ " -minInt") least (signedAt arch (ws !! 1))
-        assertEqual (tag ++ " exit code") 7 code
+        assertEnd tag Returned code
   where
     tag   = "[" ++ archName arch ++ "]"
     least = negate (2 ^ (archIntBits arch - 1))
     src   = T.unlines
-      [ "import I.Linux.Syscalls as S"
-      , "import I.Test.Emit as E"
+      [ "import I.Test.Emit as E"
       , ""
       , "negI : Int -> Int"
       , "negI x = -x"
@@ -262,8 +259,8 @@ checkNeg arch = do
       , "emitTwo : Act Unit Unit"
       , T.pack ("emitTwo = compose (emit@E) (compose (\\_ -> negI (" ++ show least ++ ")) (compose (emit@E) (\\_ -> negI 5)))")
       , ""
-      , "main : Act Unit Void"
-      , "main = compose exit@S (compose (\\_ -> 7) emitTwo)"
+      , "main : Act Unit Unit"
+      , "main = emitTwo"
       ]
 
 -- | A filesystem-safe per-case build directory name.

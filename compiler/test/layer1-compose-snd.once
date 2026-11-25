@@ -5,9 +5,9 @@
 -- (snd . snd . snd) (1, (2, (3, 42))) should yield 42 via the
 -- morphism-realm bypass (Plan 0.2.4.5 D2): three composes
 -- collapse to a single CCC `_∘_`, no apply chain.
--- Expected: exit code 42
+-- Expected: trace [42]
 
-import I.Linux.Syscalls as S
+import I.Test.Emit as E
 
-main : Act Unit Void
-main = exit@S ((snd . snd . snd) (1, (2, (3, 42))))
+main : Act Unit Unit
+main = emit@E ((snd . snd . snd) (1, (2, (3, 42))))

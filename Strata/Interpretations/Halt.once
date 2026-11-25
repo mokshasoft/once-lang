@@ -1,0 +1,14 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+-- | Halting the run, under every Host (plan 0.140 §3.4).
+--
+-- An operation into `Void` halts (D225/D227): nothing composed after it is
+-- observed, and the run ends `halted`, one of the Spec's three ends with
+-- `returned` and `exhausted` (D374). The end carries no value; a program that
+-- wants something observed emits it first.
+--
+-- The signature is portable. Each Host supplies the code
+-- (`Strata/Hosts/<host>/Interpretations/Halt.<arch>`) and its exit device's
+-- status for `halted`: 2 under Linux and on `Bare/Virt`.
+signature halt : Act Unit Void

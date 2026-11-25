@@ -7,9 +7,8 @@
 -- each, and that the program emits the same trace with and without the
 -- optimizer. `Once.Optimize.Examples` shows every rule on hand-built IR.
 --
--- Expected observable: exit 7, after emitting 5 and 6.
+-- Expected observable: trace [5, 6, 7].
 
-import I.Linux.Syscalls as S
 import I.Test.Emit as E
 
 -- a morphism into Unit with no effect is `terminal`
@@ -32,5 +31,5 @@ outer x = destruct (inl 0 : Int + Int) of { Left a -> x ; Right b -> b }
 applied : Int -> Int
 applied x = (\y -> y) x
 
-main : Act Unit Void
-main = exit@S . ((\_ -> 7) . emit@E . (\_ -> outer 6) . emit@E . (\_ -> left 5))
+main : Act Unit Unit
+main = emit@E . ((\_ -> 7) . emit@E . (\_ -> outer 6) . emit@E . (\_ -> left 5))

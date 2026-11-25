@@ -3,11 +3,11 @@
 
 -- D018 value-lift regression test: an integer literal applied to a syscall.
 -- `42` elaborates to the constant morphism `const 42 ∘ terminal` (intLit,
--- Once/Surface/Elaborate.agda) and is fed to exit. If the literal→const-
+-- Once/Surface/Elaborate.agda) and is fed to emit. If the literal→const-
 -- morphism lift regresses, this test catches it (previously UNCOVERED).
--- Expected: exit code 42.
+-- Expected: trace [42].
 
-import I.Linux.Syscalls as S
+import I.Test.Emit as E
 
-main : Act Unit Void
-main = exit@S 42
+main : Act Unit Unit
+main = emit@E 42

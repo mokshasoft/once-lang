@@ -1,7 +1,7 @@
 -- SPDX-License-Identifier: AGPL-3.0-or-later
 -- Copyright (C) 2025-2026 Jonas Claesson
 
--- NEGATIVE Int literal in a VALUE-LIFT position. Expected exit code 17
+-- NEGATIVE Int literal in a VALUE-LIFT position. Expected trace [-5, 17]
 --
 -- This is D120's other half (plan 0.73 F3, D124). D120 folded `-5` into one
 -- literal in the INFER realm only, so `- <literal>` had no rule in `⊢ᵍ` — the
@@ -23,11 +23,10 @@
 -- application ends at the first token that cannot start an atom, so
 -- `compose emit@E -5` would parse as the SUBTRACTION `(compose emit@E) - 5`.
 
-import I.Linux.Syscalls as S
 import I.Test.Emit as E
 
 emitLit : Act Unit Unit
 emitLit = emit@E . (\_ -> -5)
 
-main : Act Unit Void
-main = exit@S . ((\_ -> 17) . emitLit)
+main : Act Unit Unit
+main = emit@E . ((\_ -> 17) . emitLit)

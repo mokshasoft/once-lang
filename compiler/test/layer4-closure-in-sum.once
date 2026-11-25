@@ -5,9 +5,9 @@
 -- Exercises CCT1 (exponentials) crossed with CCT2 (coproducts):
 --   pickFn : (Unit -> Int) + (Unit -> Int) -> Int
 -- The destruct selects the Left branch and applies the captured fn.
--- Expected: exit 42.
+-- Expected: trace [42].
 
-import I.Linux.Syscalls as S
+import I.Test.Emit as E
 
 forty2 : Unit -> Int
 forty2 _ = 42
@@ -15,5 +15,5 @@ forty2 _ = 42
 pickFn : (Unit -> Int) + (Unit -> Int) -> Int
 pickFn s = destruct s of { Left f -> f () ; Right g -> g () }
 
-main : Act Unit Void
-main = exit@S (pickFn (inl forty2 : (Unit -> Int) + (Unit -> Int)))
+main : Act Unit Unit
+main = emit@E (pickFn (inl forty2 : (Unit -> Int) + (Unit -> Int)))

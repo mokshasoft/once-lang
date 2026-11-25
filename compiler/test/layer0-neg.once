@@ -3,12 +3,12 @@
 
 -- Layer 0 test: composition with constant
 -- Tests composition with a constant function
--- Expected: exit code 7
+-- Expected: trace [7]
 
-import I.Linux.Syscalls as S
+import I.Test.Emit as E
 
 seven : Int
 seven = 7
 
-main : Act Unit Void
-main = exit@S seven
+main : Act Unit Unit
+main = emit@E seven

@@ -2,10 +2,8 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 -- D220: the float literal is USED — passed to `emitF` and emitted at run time.
--- What this exit test CHECKS is the exit code (the scripts save the emitted
--- bytes to `$BUILD/<name>.trace` but do not compare them); the emitted float
--- itself is asserted by `FloatEmitSpec` (plan 0.113 D: the header said "the
--- TRACE is what this test asserts", which it was not).
+-- The exit-test scripts compare the whole trace, the float's word included,
+-- at each target's precision; `FloatEmitSpec` asserts the float as well.
 --
 -- It used to end `main = let _ = emitF@T (-0.5) in exit@S 13`, which binds a
 -- suspension and never forces it. It emitted nothing and compiled
@@ -19,13 +17,12 @@
 --     `compose` it lands in an inference position, and a float literal has no
 --     inferable type (a pre-existing frontend gap).
 --
--- Expected: exit code 13.
+-- Expected: trace [-0.5, 13].
 
-import I.Linux.Syscalls as S
 import I.Test.Emit as E
 
 emitLit : Act Unit Unit
 emitLit = emitF@E . (\_ -> -0.5)
 
-main : Act Unit Void
-main = exit@S . ((\_ -> 13) . emitLit)
+main : Act Unit Unit
+main = emit@E . ((\_ -> 13) . emitLit)

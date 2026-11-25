@@ -1,0 +1,206 @@
+# ======================================================================
+# The bare-metal Host on QEMU's `pc` machine — x86_64 (D320; plan 0.140)
+#
+# A Host is the layer directly beneath the program: `enter ; main ; leave`.
+# Here there is no operating system, so the Host is the platform itself:
+# QEMU `-machine pc -kernel <image>` loads the image as a Multiboot kernel at
+# the addresses of its linker script (`link.x86_64.ld`, from 1 MiB, an ELF32
+# container) and enters `_start` in 32-bit protected mode, paging off,
+# interrupts off, with no stack and a GDT and IDT it does not promise.
+# `_start` enters long mode (O2) and then does what every Host's `enter` does.
+#
+# The run's end leaves through QEMU's `isa-debug-exit` device (`-device
+# isa-debug-exit,iobase=0xf4,iosize=0x04`): writing v to port 0xf4 ends QEMU
+# with status (v << 1) | 1. The end is a kind and carries no value (plan
+# 0.140 §3.5):
+#
+#   end         v       QEMU's exit status
+#   returned    0       1
+#   exhausted   1       3
+#   halted      2       5     (`I.Halt`'s code)
+#
+# A trap is not an end: the program's run never faults, so a trap is a defect
+# of the trusted base, and `once_fault` stops the run with v = 0x7f, status
+# 255, outside the table.
+# ======================================================================
+
+.equ DEBUG_EXIT,      0xf4
+.equ END_RETURNED,    0
+.equ END_EXHAUSTED,   1
+.equ END_FAULT,       0x7f
+
+.equ MB_MAGIC,        0x1BADB002
+.equ MB_FLAGS,        0
+.section .multiboot, "a"
+.balign 4
+    .long   MB_MAGIC
+    .long   MB_FLAGS
+    .long   -(MB_MAGIC + MB_FLAGS)
+
+.code64
+.text
+.global once_leave
+.type once_leave, @function
+once_leave:
+    movb    $END_RETURNED, %al
+    outb    %al, $DEBUG_EXIT
+1:  hlt                                 # the device has ended QEMU
+    jmp     1b
+.size once_leave, .-once_leave
+
+# ----------------------------------------------------------------------
+# once_exhausted — the run ran out of memory (D374). The compiler calls it
+# when a room check fails; it never returns. Its contract: the run ends
+# `exhausted`.
+# ----------------------------------------------------------------------
+.global once_exhausted
+.type once_exhausted, @function
+once_exhausted:
+    movb    $END_EXHAUSTED, %al
+    outb    %al, $DEBUG_EXIT
+1:  hlt
+    jmp     1b
+.size once_exhausted, .-once_exhausted
+
+# ----------------------------------------------------------------------
+# once_fault — every exception. A compiled program raises none, so one is a
+# defect of the trusted base (the Host, an Interpretation's code, the
+# platform): the run stops with a status outside the end table instead of
+# triple-faulting, which QEMU would answer by resetting the machine.
+# ----------------------------------------------------------------------
+.balign 16
+once_fault:
+    movb    $END_FAULT, %al
+    outb    %al, $DEBUG_EXIT
+1:  hlt
+    jmp     1b
+
+# ----------------------------------------------------------------------
+# The descriptor tables and the page tables. The GDT has a 64-bit code
+# segment (0x08) and a data segment (0x10); the IDT's 32 exception gates all
+# lead to `once_fault`; the page tables map the first 1 GiB onto itself with
+# 2 MiB pages, which holds the image and its region.
+# ----------------------------------------------------------------------
+.section .data
+.balign 8
+gdt:
+    .quad   0                           # null
+    .quad   0x00AF9A000000FFFF          # 0x08: code, 64-bit (L)
+    .quad   0x00CF92000000FFFF          # 0x10: data
+gdt_end:
+gdt_ptr:
+    .word   gdt_end - gdt - 1
+    .quad   gdt
+
+.equ IDT_GATES, 32
+idt_ptr:
+    .word   IDT_GATES * 16 - 1
+    .quad   idt
+
+.section .bss
+.balign 4096
+pml4:   .skip 4096
+pdpt:   .skip 4096
+pd:     .skip 4096
+.balign 16
+idt:    .skip IDT_GATES * 16
+
+# ----------------------------------------------------------------------
+# _start — the Host's `enter`. In 32-bit protected mode it builds the page
+# tables, turns on PAE, long mode and paging, and jumps to 64-bit code. There
+# it installs the IDT, turns on the FPU and SSE (the compiler's Float code is
+# SSE, D113), and then, as every Host: the Host owns the run's memory, one
+# region, the cells at its bottom growing up, the stack at its top growing
+# down; running out is the two meeting. It points the frontier register at
+# the bottom and the stack pointer at the top, and enters the program at
+# `once_main` (the compiler's portable entry, which knows no platform). The
+# region is in `.bss`, which the Multiboot loader zeroes.
+# ----------------------------------------------------------------------
+.equ ONCE_REGION_SIZE, 8388608          # 8 MiB
+.equ PTE_PW,           0x3              # present, writable
+.equ PTE_PS,           0x80             # a 2 MiB page
+.equ CR0_MP,           0x2
+.equ CR0_EM,           0x4
+.equ CR0_PG,           0x80000000
+.equ CR4_PAE,          0x20
+.equ CR4_OSFXSR,       0x200
+.equ CR4_OSXMMEXCPT,   0x400
+.equ MSR_EFER,         0xC0000080
+.equ EFER_LME,         0x100
+
+.section .bss
+.balign 16
+once_region:
+    .skip ONCE_REGION_SIZE
+once_region_end:
+
+.section .text.start, "ax"
+.code32
+.global _start
+.type _start, @function
+_start:
+    cli
+    # the page tables: pml4[0] -> pdpt, pdpt[0] -> pd, pd[i] = i * 2 MiB
+    movl    $pdpt, %eax
+    orl     $PTE_PW, %eax
+    movl    %eax, pml4
+    movl    $pd, %eax
+    orl     $PTE_PW, %eax
+    movl    %eax, pdpt
+    movl    $pd, %edi
+    xorl    %eax, %eax
+    movl    $512, %ecx
+1:  movl    %eax, %edx
+    orl     $(PTE_PW | PTE_PS), %edx
+    movl    %edx, (%edi)
+    movl    $0, 4(%edi)
+    addl    $0x200000, %eax
+    addl    $8, %edi
+    decl    %ecx
+    jnz     1b
+    movl    $pml4, %eax
+    movl    %eax, %cr3
+    movl    %cr4, %eax
+    orl     $(CR4_PAE | CR4_OSFXSR | CR4_OSXMMEXCPT), %eax
+    movl    %eax, %cr4
+    movl    $MSR_EFER, %ecx
+    rdmsr
+    orl     $EFER_LME, %eax
+    wrmsr
+    movl    %cr0, %eax
+    andl    $~CR0_EM, %eax
+    orl     $(CR0_PG | CR0_MP), %eax
+    movl    %eax, %cr0
+    lgdt    gdt_ptr
+    ljmp    $0x08, $long_mode
+
+.code64
+long_mode:
+    movw    $0x10, %ax
+    movw    %ax, %ds
+    movw    %ax, %es
+    movw    %ax, %fs
+    movw    %ax, %gs
+    movw    %ax, %ss
+    # every exception gate: a 64-bit interrupt gate (0x8E) to once_fault
+    leaq    idt(%rip), %rdi
+    movl    $IDT_GATES, %ecx
+    leaq    once_fault(%rip), %rax
+2:  movw    %ax, 0(%rdi)                # offset 15..0
+    movw    $0x08, 2(%rdi)              # selector
+    movw    $0x8E00, 4(%rdi)            # present, ring 0, interrupt gate
+    movq    %rax, %rdx
+    shrq    $16, %rdx
+    movw    %dx, 6(%rdi)                # offset 31..16
+    shrq    $16, %rdx
+    movl    %edx, 8(%rdi)               # offset 63..32
+    movl    $0, 12(%rdi)
+    addq    $16, %rdi
+    decl    %ecx
+    jnz     2b
+    lidt    idt_ptr(%rip)
+    fninit
+    leaq    once_region(%rip), %r15     # the frontier: the region's bottom
+    leaq    once_region_end(%rip), %rsp # the stack pointer: its top
+    jmp     once_main
+.size _start, .-_start

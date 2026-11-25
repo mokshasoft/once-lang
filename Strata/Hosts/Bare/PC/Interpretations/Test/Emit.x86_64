@@ -1,0 +1,76 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2025-2026 Jonas Claesson
+#
+# `I.Test.Emit` on the bare-metal `pc` Host, x86_64 (plan 0.140 §3.3): the
+# same bytes Linux's code writes to stdout, written to the COM1 16550 UART at
+# port 0x3F8 (QEMU's `-serial`), so a trace test compares the same expected
+# output under both Hosts.
+#
+# Once SysV convention: the argument arrives in Input1 (%rdi). Both routines
+# preserve every register but %rax, and return Unit (0) in %rax.
+
+.equ COM1,      0x3F8
+.equ COM1_LSR,  0x3FD           # line status register
+.equ LSR_THRE,  0x20            # the transmit holding register is empty
+
+.text
+
+# com1_word — writes the 8 bytes of %rcx, little-endian. Clobbers %rax, %rcx,
+# %rdx, %rsi.
+.align 16
+com1_word:
+    movl    $8, %esi
+1:  movw    $COM1_LSR, %dx
+2:  inb     %dx, %al
+    testb   $LSR_THRE, %al
+    jz      2b                  # wait until the UART takes a byte
+    movb    %cl, %al
+    movw    $COM1, %dx
+    outb    %al, %dx
+    shrq    $8, %rcx
+    decl    %esi
+    jnz     1b
+    ret
+
+# `emit : Eff Int Unit` — the argument's WHOLE machine word (8 bytes),
+# little-endian.
+.align 16
+.global emit
+.type emit, @function
+emit:
+    pushq   %rcx
+    pushq   %rdx
+    pushq   %rsi
+    movq    %rdi, %rcx
+    call    com1_word
+    popq    %rsi
+    popq    %rdx
+    popq    %rcx
+    xorq    %rax, %rax          # return Unit (0)
+    ret
+.size emit, .-emit
+
+# `emitF : Eff Float Unit` — the argument's whole 8-byte machine word,
+# little-endian, a NaN written as THE NaN, `0x7ff8000000000000`, as Linux's
+# code does.
+.align 16
+.global emitF
+.type emitF, @function
+emitF:
+    pushq   %rcx
+    pushq   %rdx
+    pushq   %rsi
+    movq    %rdi, %rcx
+    btrq    $63, %rcx           # the magnitude bits
+    movabsq $0x7ff0000000000000, %rdx
+    cmpq    %rdx, %rcx          # above +inf's pattern: a NaN
+    movq    %rdi, %rcx
+    jbe     1f
+    movabsq $0x7ff8000000000000, %rcx   # THE NaN's encoding
+1:  call    com1_word
+    popq    %rsi
+    popq    %rdx
+    popq    %rcx
+    xorq    %rax, %rax
+    ret
+.size emitF, .-emitF

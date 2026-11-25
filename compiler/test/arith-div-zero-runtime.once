@@ -5,12 +5,12 @@
 -- zero divisor — the case the guard actually exists for. The divisor `x - x`
 -- is computed (not a literal), so guard elision does NOT apply; x86 must run
 -- the guard to return the RISC-V value -1 instead of trapping (#DE/SIGFPE).
--- f 7 = 7 / (7 - 7) = 7 / 0 = -1; low byte = 255. Expected exit code 255.
+-- f 7 = 7 / (7 - 7) = 7 / 0 = -1; low byte = 255. Expected trace [-1].
 
-import I.Linux.Syscalls as S
+import I.Test.Emit as E
 
 f : Int -> Int
 f x = x / (x - x)
 
-main : Act Unit Void
-main = exit@S (f 7)
+main : Act Unit Unit
+main = emit@E (f 7)

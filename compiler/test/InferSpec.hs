@@ -12,10 +12,10 @@ module InferSpec (inferTests) where
 
 import Test.Tasty
 
-import Backend.Common (exitCases)
+import Backend.Common (valueCases)
 
 inferTests :: TestTree
 inferTests = testGroup "No signature: the synthesized type (D323)"
-  [ exitCases "a literal (exit 7)"                   "infer-literal"       7
-  , exitCases "an applied generator (exit 7)"        "infer-applied"       7
+  [ valueCases "a literal (emits 7)"                   "infer-literal"       7
+  , valueCases "an applied generator (emits 7)"        "infer-applied"       7
   ]

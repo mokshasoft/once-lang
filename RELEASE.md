@@ -37,6 +37,9 @@ tests memory-capped, as for a merge (`MERGE.md` §4); the cabal build uses the s
 cd compiler && systemd-run --user --scope --quiet -p MemoryMax=5500M -p MemorySwapMax=2G -- \
   bash -c 'exec cabal build all && cabal test'
 cd .. && tests/run-exit-tests.sh && tests/run-exit-tests-x86_32.sh && tests/run-exit-tests-riscv64.sh
+export ONCE_TEST_HOST=bare      # the same, on the bare-metal Hosts (D489)
+tests/run-exit-tests.sh && tests/run-exit-tests-x86_32.sh && tests/run-exit-tests-riscv64.sh
+(cd compiler && cabal test)     # capped, as above
 ```
 
 A failure stops the release: it is fixed on a branch and merged first.

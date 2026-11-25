@@ -20,9 +20,9 @@
 -- is parked one lemma short), so the ν is built and discarded. The companion
 -- `nu-ana-force.once` is the real guard, and it waits on D194.
 --
--- Expected: exit code 42.
+-- Expected: trace [42].
 
-import I.Linux.Syscalls as S
+import I.Test.Emit as E
 
 -- The coalgebra of a degenerate functor: `⟦ K Int ⟧T Int = Int`, so a
 -- coalgebra `Int → ⟦ K Int ⟧T Int` is just `Int → Int`, and `id` is one.
@@ -40,5 +40,5 @@ mkNu = ana id
 useNu : Nu (K Int) -> Int
 useNu = (\u -> 42) . terminal
 
-main : Act Unit Void
-main = exit@S (useNu (mkNu 7))
+main : Act Unit Unit
+main = emit@E (useNu (mkNu 7))

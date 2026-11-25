@@ -1,13 +1,13 @@
 -- SPDX-License-Identifier: AGPL-3.0-or-later
 -- Copyright (C) 2025-2026 Jonas Claesson
 
--- arith-div-1.once: integer division. f x = x / 4; f 20 = 5. Expected exit code 5.
+-- arith-div-1.once: integer division. f x = x / 4; f 20 = 5. Expected trace [5].
 -- Plan 0.57 (D055): / is total, truncated toward zero.
 
-import I.Linux.Syscalls as S
+import I.Test.Emit as E
 
 f : Int -> Int
 f x = x / 4
 
-main : Act Unit Void
-main = exit@S (f 20)
+main : Act Unit Unit
+main = emit@E (f 20)

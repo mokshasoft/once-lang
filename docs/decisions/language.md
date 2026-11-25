@@ -69,6 +69,11 @@ entry updates the rule it changes here, in the same commit.
   is the Host's third entry, `once_exhausted`: the run ends `exhausted`, and
   the Host decides how that looks (Linux SIGABRT; seL4 a fault the kernel
   delivers, D405). (D374 ← D320)
+- **A Host is the layer beneath the program**: an OS Host by name (`Linux`, `SeL4`), a bare-metal
+  Host by platform (`Bare/Virt`, `Bare/PC`). An Interpretation's signature is portable and a Host may
+  supply its code; one under `Interpretations/<E>/` links only under the Host `<E>`. The end of a run is
+  a kind with no value, one fixed table per exit device; a program's values go in the trace; a trap is
+  not an end. (D489 ← D320)
 - **An seL4 image holds several programs**, each built alone with its own
   `main`, stack and heap, and started by number: a signature is first-order,
   so the world cannot call a Once closure. (D404)

@@ -9,7 +9,7 @@
 -- uninhabited). The test guards that `initial` continues to typecheck
 -- and link as a CCT2 primitive.
 
-import I.Linux.Syscalls as S
+import I.Test.Emit as E
 
 -- D321: `initial`'s principal type over the domain `Void` is `Void -> Void`;
 -- the destruct is at the join of its branches, `Int ⊔ Void = Int` (D322).
@@ -19,5 +19,5 @@ fromVoid = initial
 pickInt : Int + Void -> Int
 pickInt s = destruct s of { Left x -> x ; Right v -> fromVoid v }
 
-main : Act Unit Void
-main = exit@S (pickInt (inl 42 : Int + Void))
+main : Act Unit Unit
+main = emit@E (pickInt (inl 42 : Int + Void))

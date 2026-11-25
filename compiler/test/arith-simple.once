@@ -7,9 +7,9 @@
 -- `once_arith.mul.int` are recognized at elaboration but no Strata
 -- implementation exposes them as linkable symbols).
 --
--- When those symbols land, this should build and exit with code 13.
+-- When those symbols land, this should build and emit 13.
 
-import I.Linux.Syscalls as S
+import I.Test.Emit as E
 
-main : Act Unit Void
-main = exit@S (3 + 5 * 2)
+main : Act Unit Unit
+main = emit@E (3 + 5 * 2)

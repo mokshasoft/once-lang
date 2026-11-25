@@ -6,12 +6,13 @@
 -- argument; the kernel answers the lowest free descriptor each time (3, then 4),
 -- so the two reads differ. Under the old writer semantics the Spec equated them.
 --
--- Expected: exit code 1 (the second answer minus the first).
+-- Expected: trace [1] (the second answer minus the first).
 
 import I.Linux.Syscalls as S
+import I.Test.Emit as E
 
 dupOut : Act Unit Int
 dupOut = fd_dup@S . (\_ -> 1)
 
-main : Act Unit Void
-main = exit@S . ((\p -> snd p - fst p) . pair dupOut dupOut)
+main : Act Unit Unit
+main = emit@E . ((\p -> snd p - fst p) . pair dupOut dupOut)

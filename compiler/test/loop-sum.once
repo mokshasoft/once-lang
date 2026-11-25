@@ -6,9 +6,9 @@
 -- The round here is a pure block (it performs no event); the loop sums
 -- 10 + 9 + … + 1 from the state (10, 0), one silent step per round.
 --
--- Expected: exit code 55.
+-- Expected: trace [55].
 
-import I.Linux.Syscalls as S
+import I.Test.Emit as E
 
 stop : Int * Int -> Unit -> Int + Void
 stop p _ = inl (snd p)
@@ -24,5 +24,5 @@ step p = case (next p) (stop p) (fst p == 0)
 loopSum : Eff (Int * Int) Int
 loopSum = ana step
 
-main : Eff Unit Void
-main = exit@S . (loopSum . (\_ -> (10, 0)))
+main : Eff Unit Unit
+main = emit@E . (loopSum . (\_ -> (10, 0)))

@@ -1,6 +1,6 @@
 -- Layer 4: g aliases f aliases id. Both substituted by resolveExpr.
--- Expected: exit 42.
-import I.Linux.Syscalls as S
+-- Expected: trace [42].
+import I.Test.Emit as E
 
 f : Int -> Int
 f = id
@@ -8,5 +8,5 @@ f = id
 g : Int -> Int
 g = f
 
-main : Act Unit Void
-main = exit@S (g 42)
+main : Act Unit Unit
+main = emit@E (g 42)

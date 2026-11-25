@@ -2,14 +2,14 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 -- arith-div8-neg.once: signed divide by a power-of-two literal, negative
--- dividend. f x = x / 8; f (0 - 24) = -3 (truncate toward zero). The process
--- exit code is the low byte of -3, i.e. 253. Expected exit code 253.
+-- dividend. f x = x / 8; f (0 - 24) = -3 (truncate toward zero). Emitted
+-- whole. Expected: trace [-3].
 -- Exercises the sign-corrected arithmetic-shift-right (sar + bias, not idiv).
 
-import I.Linux.Syscalls as S
+import I.Test.Emit as E
 
 f : Int -> Int
 f x = x / 8
 
-main : Act Unit Void
-main = exit@S (f (0 - 24))
+main : Act Unit Unit
+main = emit@E (f (0 - 24))

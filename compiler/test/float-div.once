@@ -1,7 +1,7 @@
 -- SPDX-License-Identifier: AGPL-3.0-or-later
 -- Copyright (C) 2025-2026 Jonas Claesson
 
--- FLOAT DIVISION end to end. Expected exit code 29
+-- FLOAT DIVISION end to end. Expected trace [0.9696969696969697, 29]
 --
 -- `/` was refused on floats until now, and the refusal was principled rather
 -- than lazy: a correctly-rounded quotient needs a STICKY BIT, because the exact
@@ -18,16 +18,15 @@
 -- What this checks that the pins cannot: that the block LOWERS (the recogniser
 -- folds `arith.div.float` into an arith block rather than leaving a call to a
 -- runtime symbol that does not exist), that it ASSEMBLES on all three targets
--- (`divsd` / `divss` / `fdiv.d`), and that the program reaches its exit code.
+-- (`divsd` / `divss` / `fdiv.d`), and that the program emits its final value.
 --
 -- The VALUE is read back by `FloatEmitSpec` out of the effect trace, at each
 -- arch's own precision — that is where the answer is checked, not here.
 
-import I.Linux.Syscalls as S
 import I.Test.Emit as E
 
 emitQuot : Act Unit Unit
 emitQuot = emitF@E (1.0 /. 3.0 +. 7.0 /. 11.0)
 
-main : Act Unit Void
-main = exit@S . ((\_ -> 29) . emitQuot)
+main : Act Unit Unit
+main = emit@E . ((\_ -> 29) . emitQuot)

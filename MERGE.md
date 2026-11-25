@@ -218,8 +218,9 @@ rm -rf formal/_build/malonzo/MAlonzo && make -C formal malonzo   # syncs compile
 
 Register new modules and drop deleted ones in `compiler/once.cabal`. Then run `cabal build all`
 and `cabal test` (memory-capped, like agda), and the exit tests on all three arches:
-`tests/run-exit-tests.sh`, `tests/run-exit-tests-x86_32.sh`, `tests/run-exit-tests-riscv64.sh`.
-A green apex says nothing about the extracted pipeline.
+`tests/run-exit-tests.sh`, `tests/run-exit-tests-x86_32.sh`, `tests/run-exit-tests-riscv64.sh`;
+then the same three scripts and `cabal test` again with `ONCE_TEST_HOST=bare`, on the bare-metal Hosts
+under QEMU (D489). A green apex says nothing about the extracted pipeline.
 
 If §1 measured the emitted code, run `tests/codegen-measure.sh measure` on the rebased build. Its
 totals must match the decision entries; a difference means an entry is stale.

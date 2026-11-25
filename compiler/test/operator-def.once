@@ -8,9 +8,9 @@
 -- so the two operators below (`<+>`, and `.+.` with `.`) get
 -- distinct, assembler-safe symbols.
 --
--- Expected: exit code 9.
+-- Expected: trace [9].
 
-import I.Linux.Syscalls as S
+import I.Test.Emit as E
 
 (<+>) : Int -> Int
 (<+>) x = x + 1
@@ -18,5 +18,5 @@ import I.Linux.Syscalls as S
 (.+.) : Int -> Int
 (.+.) x = x * 2
 
-main : Act Unit Void
-main = exit@S ((<+>) ((.+.) 4))
+main : Act Unit Unit
+main = emit@E ((<+>) ((.+.) 4))
