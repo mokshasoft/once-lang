@@ -25149,6 +25149,49 @@ region (the split is the program's, from its own bound).
   `Budget` is three parts (started, cells ≤ `L`, `L` + stack ≤ `sp`). The start's facts about `L` need the
   entry's mark at `sp` (`Supply.start-step`'s premises, `refl` at each Sim). Stack checks still sit at every
   boundary: removing them is point 2 (the static bound, with the fold's recursion on the heap).
+  **Measured** (x86_64, 108 programs, against D485 a8dfa75eb): run 1.03× (median 1.07×), `.text` 1.12×,
+  checks 1.00× (63,698): the stack part now loads `L`; the gain is point 2's.
+**Amendment 2 (2026-11-25, proposed; point 2's mechanism, unattended).** A stack check after a return or a
+label cannot go by a per-stretch measure: what the caller still needs after the call returns was never
+checked. So the stack's invariant moves from stretches to FRAMES:
+* **The static depth.** For each function (an entry and the code to the next), `D(f)` = its frame + the most
+  any one of its stretches pushes beyond the frame: a call one return word plus, when the callee is BOUNDED,
+  its `D`; a SigOp its words and scratch. A callee is bounded when its own depth computes within fuel =
+  the number of entries (the call graph below it is acyclic; a closure call's callee is every closure
+  body). Today folds and the μ copies/frees recurse, so they and their callers are UNBOUNDED.
+* **Checks only before calls to unbounded callees.** With every function's depth `D′(f)` = frame + the
+  most its stretches push beyond the frame *counting only bounded callees* (an unbounded callee is checked
+  at its call), a call to a bounded callee needs nothing (the caller's depth covers it) and a call to an
+  unbounded `g` keeps the stretch check before it, of `1 + D′(g)` stack words. That is today's placement
+  with a smaller `spend`: entries spend nothing (the caller covered the frame), so labels, return points and
+  bounded calls emit no stack check (D483: a part of 0 has no code). The cells' part stays at the
+  allocator's bump labels.
+* **The proof**: the engine carries, beside `Budget`'s cells part, `L + Dafter(f) ≤ base` for the current
+  frame and for every saved frame (the return pc names the caller's function), `Dafter` the depth past the
+  frame. A call to a bounded callee lands with the caller's slack covering it; a return restores the
+  caller's frame, whose fact was saved.
+* Then the fold's recursion moves to the heap (the user's decision above) and the unbounded set empties:
+  every program's depth is static, the start sets `L = sp − B` exactly, and no code checks the stack.
+**Amendment 3 (2026-11-25, built, measured, NOT TAKEN; unattended).** The per-function depth needs
+the pc's owner tied to the running frame — that jumps stay inside their function, a new LinCore image fact.
+A first step needs none: A UNIFORM SLACK. The view's law becomes `L + K ≤ lo` (`K` = `slack-words`, 256),
+and the stack mark is below every frame base, so after a return the caller's frame has `K` words above `L`
+without a saved-frame invariant. Then:
+* a SigOp of at most `K` words needs no check (its transient push is the slack's); a larger one keeps its;
+* a stack check stays only in a stretch that ends in a call (`1 + E`) or holds a large SigOp, and checks
+  `K` more (`L + K + s ≤ sp`), so the slack is there again after it;
+* `start-stack-words ≥ K` keeps the start's `L` under the law.
+(Not taken: ending stretches where control leaves — `c-jmp`, `c-ret`. What follows a jump is a label and
+what follows a return an entry, both boundaries already, so it would save nearly nothing and add a premise
+to every step.) Proof shape: `HeapView.lim-lo : hlim + kslots ≤ lo`; `Budget.stack-le` over `hk = hlim +
+kslots`; `bg-room` takes the budget before the check (a part needing nothing checks nothing, the slack is
+the old budget's); `sigop-room` gives a SigOp's arch proof its `sigop-need` words either way.
+**Measured** (against (a3), x86_64, 108 programs; `make certified`, 188 × 3, seL4 × 3, `cabal test` 1025 all
+green): checks 1.00× (63,698), run 1.00×, `.text` 1.04× — no check went (a stretch's stack need is almost always
+a call's, rarely a SigOp's alone), and every stack part's offset grew by `8K` (past disp8 on x86, past riscv's
+12-bit immediate). **Not taken**: a measured loss with no gain, and the slack has no place in the end state (the
+fold's recursion on the heap, `B` exact, no stack checks), where the per-function depth (`Codegen.StackDepth`,
+kept) is what computes `B`. The patch is kept out of tree; the depth analysis is wired in when `B` is.
 
 ## D487 — `--unchecked`: THE SAME FILE WITHOUT ROOM CHECKS, OUTSIDE THE PROOF, SAID SO AT EVERY BUILD (2026-11-24, proposed — for the user's review; plan 0.154 S1, D3)
 **Context.** The user, 2026-11-24: "If we implement that feature that bypasses checks completely, then we can
