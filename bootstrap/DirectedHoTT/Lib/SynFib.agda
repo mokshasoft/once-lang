@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- OCP-0009 · Lib — ★★★ A FAMILY FIBRED BY CASE ON A SYNTAX TERM (D077),
+-- OCP-0009 · Lib — ★★★ A FAMILY FIBRED BY CASE ON A SYNTAX TERM (D496),
 -- generic in the signature.
 --
 -- A judgement over a syntax is presented by its fibres: the rows a term

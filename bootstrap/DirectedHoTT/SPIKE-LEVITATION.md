@@ -253,14 +253,14 @@ notions (and as Knot notation); the kernel, MT and Knot reify only `dσ`
 over `enum`. Still open: whether the elaborator lives in the kernel repo's
 Lib (a verified elaboration, as here) or in the surface; Σ-η vs `split`.
 
-### ✅ DECIDED (2026-09-26) — Σ is POSITIVE: `split`, no Σ-η — decision-log D071
+### ✅ DECIDED (2026-09-26) — Σ is POSITIVE: `split`, no Σ-η — decision-log D490
 
 Reasons: β plus surjective pairing is not confluent as untyped rewriting
 (Klop), and the kernel's conversion is untyped reduction. The linear/QTT core
 needs ⊗-style pattern-matching elimination. Σ is left adjoint to weakening.
 Σ-η remains a provable propositional theorem. `fst`/`snd` become derived.
 
-### ✅ DECIDED (2026-09-26) — ONE datatype former (decision-log D072); plan: `PLAN-LEVITATION.md`
+### ✅ DECIDED (2026-09-26) — ONE datatype former (decision-log D491); plan: `PLAN-LEVITATION.md`
 
 `Mu`/`Desc` merges into the indexed levitated form (unit index). Lib is
 100% indexed today, and the Knot reifies both families (41 and 159 files).

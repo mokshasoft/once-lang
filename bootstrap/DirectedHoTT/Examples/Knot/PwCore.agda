@@ -12,7 +12,7 @@
 --
 --     ⌜Pw⌝ d t u = ⌜IMu⌝ (ref #PwJ) (ref #PwD) (ixPw d t u)
 --
--- ★ PLAN-REF (D082): a reference is a projection from the AMBIENT
+-- ★ PLAN-REF (D501): a reference is a projection from the AMBIENT
 --   signature, so this module is over any signature that CONTAINS the
 --   core (`core : Kc ⊑ᴰ 𝒮`, `Spec/SigExtend`) — the Knot citing the core
 --   is typed in a context extending it.

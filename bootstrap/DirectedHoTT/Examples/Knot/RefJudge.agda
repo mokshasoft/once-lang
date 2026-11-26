@@ -3,7 +3,7 @@
 
 ------------------------------------------------------------------------
 -- OCP-0009 · KNOT — ★ DEFINITIONS, the typing rule about `kref`
---                      (PLAN-REF K4, D082: a reference is a PROJECTION).
+--                      (PLAN-REF K4, D501: a reference is a PROJECTION).
 --
 --   ⊢ref  a name below the BOUND has its declared type, read off the
 --         signature and weakened to the depth — no premise:

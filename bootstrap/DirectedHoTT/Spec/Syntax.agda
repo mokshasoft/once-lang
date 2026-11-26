@@ -77,7 +77,7 @@ data Var : Cx → Set where
 
 data RTy : Cx → Set
 data RTm : Cx → Set
--- ★★ LEVITATION (PLAN-LEVITATION, D071–D073): descriptions are TERMS
+-- ★★ LEVITATION (PLAN-LEVITATION, D490–D492): descriptions are TERMS
 --   of the large type `Desc I`, so there is no separate description
 --   syntax — and renaming/substitution traverse them like any term.
 
@@ -103,7 +103,7 @@ data RTy where
   Id   : ∀ {Γ} → RTy Γ → RTm Γ → RTm Γ → RTy Γ
   -- ★★ INDUCTIVE FAMILIES (levitated).  `IMu I D i`: the family described
   --   by the TERM `D : Desc I` at index `i : El I`.  The index type is a
-  --   CODE in Γ (D073).
+  --   CODE in Γ (D492).
   IMu  : ∀ {Γ} → RTm Γ → RTm Γ → RTm Γ → RTy Γ
   -- ★ the LARGE type of descriptions over the index code `I` (no code:
   --   level 1, SPIKE-LEVITATION S0).
@@ -173,7 +173,7 @@ data RTm where
   --                     motive lives in the derivation (the ⊢natrec pattern).
   con   : ∀ {Γ} → RTm Γ → RTm Γ
   ielim : ∀ {Γ} → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ
-  -- ★ telescopes (D074, FIBRED — a family's description is a FUNCTION of
+  -- ★ telescopes (D493, FIBRED — a family's description is a FUNCTION of
   --   the index, `D : Π (El I) (Desc I)`): end / a field of code `S` then
   --   the rest as a FUNCTION of it / a recursive field at index `j`.  Strict
   --   positivity is the GRAMMAR: `dρ` names an index, never a family.
@@ -190,7 +190,7 @@ data RTm where
   fsuc   : ∀ {Γ} → RTm Γ → RTm Γ
   fcase  : ∀ {Γ} → RTm Γ → RTm Γ → RTm (Γ ∙) → RTm Γ
   fcase0 : ∀ {Γ} → RTm Γ → RTm Γ
-  -- ★ Σ-INDUCTION (D071): `psplit b q`, `b` binds both halves.
+  -- ★ Σ-INDUCTION (D490): `psplit b q`, `b` binds both halves.
   psplit : ∀ {Γ} → RTm ((Γ ∙) ∙) → RTm Γ → RTm Γ
   -- ★ WF-axis stage C (N-in): `Nat` becomes SMALL — it gets a code, so
   -- it can appear in `U`-families.  That is what unlocks Id-rewriting
@@ -202,7 +202,7 @@ data RTm where
   ⌜IMu⌝  : ∀ {Γ} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
   ⌜Fin⌝  : ∀ {Γ} → RTm Γ → RTm Γ
   ⌜Unit⌝ : ∀ {Γ} → RTm Γ
-  -- ★ A DEFINITION (PLAN-REF, D082): a PROJECTION from the signature —
+  -- ★ A DEFINITION (PLAN-REF, D501): a PROJECTION from the signature —
   --   the definition context.  It carries no body: δ unfolds it to the
   --   signature's body (`Spec/Reduction.δref`), and renaming and
   --   substitution leave it alone.  A reference is O(1) syntax; a body is
@@ -1182,7 +1182,7 @@ subTm-id (ap c b p)    =
 Π-BeckChevalley A B = subTy-subTy (Π A B)
 
 ------------------------------------------------------------------------
--- ★ THE KERNEL SIGNATURE (PLAN-REF, D082): the definition context.  A
+-- ★ THE KERNEL SIGNATURE (PLAN-REF, D501): the definition context.  A
 --   telescope of closed entries — a declared type and a body — read by
 --   projection (`ref d`).  Entry d is meant to be typed over the entries
 --   before it (`Spec/Typing`'s `WfSig`); the length is cached, so a lookup

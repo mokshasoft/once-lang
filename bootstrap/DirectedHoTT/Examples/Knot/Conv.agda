@@ -3,7 +3,7 @@
 
 ------------------------------------------------------------------------
 -- OCP-0009 · KNOT — the CONVERSIONS `t ≅ u` and `A ≅ᵀ B` as families
--- (D077): their four rules have a bare-variable subject, so every fibre
+-- (D496): their four rules have a bare-variable subject, so every fibre
 -- is the same four rows at the subject `conₗ k p` — ONE parametric fibre,
 -- typed once, at every head.
 --

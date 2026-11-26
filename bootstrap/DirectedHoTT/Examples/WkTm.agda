@@ -16,7 +16,7 @@
 --   RENAMING is `subTy (single u)` (⊢app's index), not binders as such.
 --   That distinction is the useful output of this file.
 --
--- ⚠ AND `TmD` IS FORD-FREE — under D074 its constructors' targets are
+-- ⚠ AND `TmD` IS FORD-FREE — under D493 its constructors' targets are
 --   the fibre's, where `Fin`'s `fzero`/`fsuc` ford theirs.  So no
 --   method here needs the `⊢jsub` transport `WkFin` needed; the
 --   transport is reached only THROUGH `wkFinTm`, in the `var` case.

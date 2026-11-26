@@ -5,7 +5,7 @@
 -- OCP-0009 · dHoTT — the SIGNATURE-FREE part of the judgements: the
 -- substitutions the rules plug in, typed contexts, variable lookup.
 --
--- Split out of `Spec/Typing` by PLAN-REF (D082): reduction depends on the
+-- Split out of `Spec/Typing` by PLAN-REF (D501): reduction depends on the
 -- signature (δ reads a body from it), typing on the signature AND the names
 -- a derivation may use.  What depends on neither lives here, so it is ONE
 -- Agda type/function for every signature — a transport across a signature
@@ -106,7 +106,7 @@ methS (vs (vs x)) = var (vs (vs (vs x)))
 wk2M : RTy ((Γ ∙) ∙) → RTy ((((Γ ∙) ∙) ∙) ∙)
 wk2M M = renTy (extR (extR (λ x → vs (vs x)))) M
 
--- ★★ D074: a description is FIBRED — a family of telescopes over the
+-- ★★ D493: a description is FIBRED — a family of telescopes over the
 --   index, `D : Π (El I) (Desc I)` (Chapman–Dagand–McBride–Morris).
 DescF : RTm Γ → RTy Γ
 DescF I = Π (El I) (Desc (renTm vs I))

@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- OCP-0009 · dHoTT — ★ A WELL-FORMED SIGNATURE (PLAN-REF, D082).
+-- OCP-0009 · dHoTT — ★ A WELL-FORMED SIGNATURE (PLAN-REF, D501).
 --
 -- The signature is the definition context, and this is its context
 -- formation: entry m is typed using only the names before it (its

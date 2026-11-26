@@ -3,7 +3,7 @@
 
 ------------------------------------------------------------------------
 -- OCP-0009 · KNOT — `⊢conv : Γ ⊢ t ∷ A → A ≅ᵀ B → Γ ⊢ t ∷ B`, the `⊢`
--- rule with a bare-variable subject: one row in EVERY term fibre (D077),
+-- rule with a bare-variable subject: one row in EVERY term fibre (D496),
 -- parametric in the subject, typed once.  `A` is a σ-field, `A ≅ᵀ B` a
 -- σ-field of the lower stratum's code (`Knot/Conv`), at the signature of
 -- the typing parameter (`sigT q`; PLAN-REF).  And the `∋` premise of

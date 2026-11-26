@@ -17,7 +17,7 @@
 --                   READS the nested field (`⊢payHyp`)
 --     unwrap-wrap : …and it COMPUTES
 --
--- ★ Levitated (D072): ℕ and `Wrap` are ordinary families over `⌜Unit⌝`,
+-- ★ Levitated (D491): ℕ and `Wrap` are ordinary families over `⌜Unit⌝`,
 --   written as constructor telescopes (`Lib/Tel`).
 ------------------------------------------------------------------------
 

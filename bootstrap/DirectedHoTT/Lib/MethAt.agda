@@ -300,7 +300,7 @@ mkAllQAt {I = I} {D} {i} {f} {M} {k = k} ((r , dm) ∷ₐ ps) =
 --
 --      methAt ms = λ q. psplit (λ t p'. selM ms t p') q
 --
--- `psplit` is required: the kernel has no Σ-η (D071), so the payload must
+-- `psplit` is required: the kernel has no Σ-η (D490), so the payload must
 -- be split before the selection can see its tag.
 ------------------------------------------------------------------------
 

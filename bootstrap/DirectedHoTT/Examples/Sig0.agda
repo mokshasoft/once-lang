@@ -3,7 +3,7 @@
 
 ------------------------------------------------------------------------
 -- OCP-0009 · EXAMPLES — the EMPTY signature, for examples that define
--- nothing (PLAN-REF, D082).  The kernel, its metatheory and its libraries
+-- nothing (PLAN-REF, D501).  The kernel, its metatheory and its libraries
 -- are parameterised by the signature; an example that uses no reference
 -- instantiates them here, so its tests compute on a concrete signature.
 --

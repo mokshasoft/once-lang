@@ -573,7 +573,7 @@ dpay-≅ {I' = I'} {D = D} {D' = D'} {i = i} {i' = i'} cI cD ci =
                       (λ r → ⟶ᵀ*-El (⟶*-trans (⟶*-dpayᴰ r) (⟶*-dpayᶜ (⟶*-appˡ r)))) cD)
            (conv-lift (λ x → El (dpay I' D' (app D' x))) (λ r → ⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-appʳ r))) ci))
 
--- ★ D074: a stepped index code steps the type of its descriptions
+-- ★ D493: a stepped index code steps the type of its descriptions
 DescF-step : {Γ : Cx} {I I' : RTm Γ} → I ⟶ I' → DescF I ≅ᵀ DescF I'
 DescF-step r = ctrnᵀ (credᵀ (ξ-Πˡ (ξ-El r))) (credᵀ (ξ-Πʳ (ξ-Desc (⟶-ren vs r))))
 

@@ -65,7 +65,7 @@ sMot = Π (El ⌜Nat⌝) (Π (Π (Fin (var (vs (vs vz)))) (Tm (var (vs vz)))) (T
 
 ------------------------------------------------------------------------
 -- ★ A `Fin` ZERO AT A **VARIABLE** DEPTH is simply `fzero` (at `suc n`):
---   under D074 its constructor telescopes are depth-generic, so the
+--   under D493 its constructor telescopes are depth-generic, so the
 --   variable-index twin the one-telescope form needed (and its
 --   `wk-single` round trip) is gone.  Every `Tm` at a variable depth
 --   bottoms out at `tvar` of a `Fin`, and `Fin (suc n)` has exactly this.

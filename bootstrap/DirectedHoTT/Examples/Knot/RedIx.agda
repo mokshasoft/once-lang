@@ -3,10 +3,10 @@
 
 ------------------------------------------------------------------------
 -- OCP-0009 · KNOT — the REDUCTION judgements `t ⟶ u` and `A ⟶ᵀ B` as
--- families fibred by their SUBJECT (the source; D077), the target in the
+-- families fibred by their SUBJECT (the source; D496), the target in the
 -- convoy: `Lib/SynFam` at the Knot, convoy = a Knot term at the subject's
 -- own index.  ★ PLAN-REF: over the quoted signature (`Knot/QSig`) — the
--- parameter δ reads; `Pw` is over nothing.  Two families (D077's strata: `⟶ᵀ` cites `⟶`), one index.
+-- parameter δ reads; `Pw` is over nothing.  Two families (D496's strata: `⟶ᵀ` cites `⟶`), one index.
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
@@ -84,7 +84,7 @@ ix⟶ᵀ d A B = RedTₘ.ixJ ((tag 0) ,ₚ d) A B
 
 -- ★ the CONVERSIONS `t ≅ u` / `A ≅ᵀ B`: the same index; their rules
 --   (red, refl, sym, trans) have a bare-variable subject, so they sit in
---   every fibre (D077)
+--   every fibre (D496)
 module Convₘ = SynFam KOK ⌜QSig⌝ ⌜QSig⌝-sub ⊢⌜QSig⌝ CR CR-sub ⊢CR     -- t ≅ u
 module ConvTₘ = SynFam KOK ⌜QSig⌝ ⌜QSig⌝-sub ⊢⌜QSig⌝ CR CR-sub ⊢CR    -- A ≅ᵀ B
 

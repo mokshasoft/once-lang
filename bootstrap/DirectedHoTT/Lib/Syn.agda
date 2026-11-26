@@ -16,8 +16,8 @@
 -- ambient scope, the kernel's own `Fin`.  Variables are a shape, not a field kind,
 -- because substitution replaces the whole node (Allais et al.'s `'var`).
 --
--- and the syntax is the sorted, fibred family (`Lib/Sorted`, D075) over
--- `Σ (s : Fin ns) Nat` — sort and SCOPE DEPTH, the depth riding (D074).
+-- and the syntax is the sorted, fibred family (`Lib/Sorted`, D494) over
+-- `Σ (s : Fin ns) Nat` — sort and SCOPE DEPTH, the depth riding (D493).
 -- Everything is defined ONCE, by recursion on shapes: the telescopes,
 -- their well-formedness, the constructors (`⊢conSyn`) — and, in the
 -- modules above this one, the fold, renaming and substitution.

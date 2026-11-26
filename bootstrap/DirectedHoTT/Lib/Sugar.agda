@@ -3,9 +3,9 @@
 
 ------------------------------------------------------------------------
 -- OCP-0009 · Lib — ★ THE CONSTRUCTOR-LIST SURFACE, elaborated into the
---               ONE-TELESCOPE kernel (SPIKE-LEVITATION S4, promoted; D072).
+--               ONE-TELESCOPE kernel (SPIKE-LEVITATION S4, promoted; D491).
 --
--- The kernel's family is FIBRED (D074): `IMu I D i` for
+-- The kernel's family is FIBRED (D493): `IMu I D i` for
 -- `D : Π (El I) (Desc I)` — a telescope over every index.  The surface —
 -- examples, the Knot — keeps writing a constructor LIST `C₀ … C_{c-1}`
 -- (each a telescope OVER THE INDEX VARIABLE) and one method PER
@@ -99,7 +99,7 @@ sel (C ∷ Cs) t = fcase t C (sel (wkC Cs) (var vz))
 selF : Cons Δ c → RTm Δ
 selF Cs = lam (sel (wkC Cs) (var vz))
 
--- ★ D074: the FIBRE over the index variable — the tag, then the selected
+-- ★ D493: the FIBRE over the index variable — the tag, then the selected
 --   constructor telescope (the list lives OVER the index) — and the family
 -- a fibre of `c` rules: a tag, then the selected rule
 Dσ : Cons Δ c → RTm Δ
@@ -348,7 +348,7 @@ subAllD {I = I} {i = i} (d ∷ᵈ ds) di =
 
 -- ★ A PAYLOAD, ONE FIELD AT A TIME — the three telescope heads.  A
 --   payload is the Σ-chain `dpay` computes; these type it head by head.
---   `ι`: nothing (the index is the FIBRE's — D074); `σ`: a field of code
+--   `ι`: nothing (the index is the FIBRE's — D493); `σ`: a field of code
 --   `S` and the rest at the selected telescope `f a`; `ρ`: a recursive
 --   field at its own index, and the rest.
 ⊢pay-ι : {Γ : Ctx} {I D e : RTm ⌊ Γ ⌋} →
@@ -416,7 +416,7 @@ subAllD {I = I} {i = i} (d ∷ᵈ ds) di =
 --      methₗ ms = λ i q. psplit (λ t p'. (sel (msᵢ) t) p') q
 --
 --    where `msᵢ` is each per-constructor method applied to the index.
---    `psplit` is REQUIRED: the kernel has no Σ-η (D071), so the payload
+--    `psplit` is REQUIRED: the kernel has no Σ-η (D490), so the payload
 --    `q` must be split before the selection can see its tag; `sel`'s
 --    motive abstracts the payload and the hypotheses, whose types depend
 --    on the tag.

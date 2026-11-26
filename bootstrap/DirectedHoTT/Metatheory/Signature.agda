@@ -3,7 +3,7 @@
 
 ------------------------------------------------------------------------
 -- OCP-0009 · dHoTT — ★ A WELL-FORMED SIGNATURE (the checker's), and what
---                      it means for the KERNEL (PLAN-REF, D082).
+--                      it means for the KERNEL (PLAN-REF, D501).
 --
 -- ★ `WfSig S`: the signature is a TELESCOPE and well-formedness is context
 --   formation — each entry has an ANNOTATED body, typed at its declared

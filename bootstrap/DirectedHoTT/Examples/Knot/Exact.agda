@@ -18,7 +18,7 @@
 --   exactLk              Γ ∋ x ∷ A                  (LookupDecode)
 --   exactPw, exactNNC, exactStkA, exactStkC, exactFlat   the side conditions
 --
--- ★ PLAN-REF (D082): the judgements are read AT THE QUOTED AMBIENT
+-- ★ PLAN-REF (D501): the judgements are read AT THE QUOTED AMBIENT
 --   SIGNATURE — reduction and conversion at `q𝒮 = quoteDefs 𝒮`, typing at
 --   `tN 𝓃 = (q𝒮 , 𝓃)` (`Knot/QuoteSig`): the Knot over `𝒮` says exactly what
 --   the kernel over `𝒮` says, the typing at any bound 𝓃 (`Spec.Typing 𝒮 𝓃`,

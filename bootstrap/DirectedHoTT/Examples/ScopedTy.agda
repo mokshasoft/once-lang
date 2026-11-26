@@ -10,7 +10,7 @@
 --     lam : Tm (Γ , A) B → Tm Γ (A ⇒ B)
 --     app : Tm Γ (A ⇒ B) → Tm Γ A → Tm Γ B
 --
--- ★★ D074 (fibred descriptions).  Each constructor telescope sees the
+-- ★★ D493 (fibred descriptions).  Each constructor telescope sees the
 --   index `(Γ , T)` it lands at:
 --
 --     `app`  target IS the ambient              ⇒ NO ford, one σ for A
@@ -23,7 +23,7 @@
 --   context field and half the equation.
 --
 -- ★ The two auxiliary datatypes are ordinary families over `⌜Unit⌝`
---   (D072: one datatype former).  §6 is `ScopedTySz`, folded in: the
+--   (D491: one datatype former).  §6 is `ScopedTySz`, folded in: the
 --   library `size` fold over a STRUCTURAL pair index.
 --
 -- ⚠ No constructor has a base case (no `var`), so the family is EMPTY:

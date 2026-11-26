@@ -27,7 +27,7 @@
 --   `Spec/Syntax`'s `RTm` constructor list): a former missing here is a
 --   generator failure, not a silent row.
 --
--- ★ THE SIGNATURE (PLAN-REF, D082).  `ref d` names the d-th entry of the
+-- ★ THE SIGNATURE (PLAN-REF, D501).  `ref d` names the d-th entry of the
 --   signature — the definition context — in BOTH layers: a projection,
 --   with no body.  Erasure keeps the name; δ (`Spec/Reduction`) reads the
 --   body from the signature.  Syntax, renaming, substitution and erasure

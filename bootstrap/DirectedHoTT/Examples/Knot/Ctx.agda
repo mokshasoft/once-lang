@@ -3,7 +3,7 @@
 
 ------------------------------------------------------------------------
 -- OCP-0009 · KNOT — CONTEXTS, a family FIBRED OVER THE DEPTH
--- (`Lib/NatFib`, D076):
+-- (`Lib/NatFib`, D495):
 --
 --     Ctx 0       = ε
 --     Ctx (suc m) = Ctx m ▹ Ty m

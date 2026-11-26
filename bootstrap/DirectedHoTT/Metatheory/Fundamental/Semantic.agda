@@ -1652,7 +1652,7 @@ ne-nostk (ne-psplit _) = refl
 ne-nostk (ne-ordtr _) = refl
 
 ------------------------------------------------------------------------
--- ★ THE REFERENCE ORACLE (PLAN-REF, D082).  A reference is a projection
+-- ★ THE REFERENCE ORACLE (PLAN-REF, D501).  A reference is a projection
 --   from the signature, so its reducibility is not a property of a
 --   subderivation: `fund` reads it from here, at the names below m.
 --   `Metatheory/Entries` builds it from the signature's context formation,

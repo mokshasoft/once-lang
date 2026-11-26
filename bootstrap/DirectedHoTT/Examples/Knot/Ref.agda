@@ -3,7 +3,7 @@
 
 ------------------------------------------------------------------------
 -- OCP-0009 · KNOT — ★ DEFINITIONS, the reduction rule about `kref`.
---                      (PLAN-REF K4, D082: a reference is a PROJECTION)
+--                      (PLAN-REF K4, D501: a reference is a PROJECTION)
 --
 --   δ     a name below the quoted signature's size steps to its body,
 --         read off the signature `q` (the family's parameter) and weakened

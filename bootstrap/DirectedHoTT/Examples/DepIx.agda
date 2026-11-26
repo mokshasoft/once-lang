@@ -13,7 +13,7 @@
 --
 --     I  =  ⌜Σ⌝ ⌜Nat⌝ (⌜IMu⌝ ⌜Nat⌝ TmD (var vz))   -- a depth, and a term AT it
 --
--- ★ The index is a CODE (D073), and `⌜Σ⌝` BINDS, so the second component
+-- ★ The index is a CODE (D492), and `⌜Σ⌝` BINDS, so the second component
 --   mentions the first as `var vz`.  `El-⌜Σ⌝` decodes it to a dependent
 --   `Σ'`, and `⊢snd` lands at `Tm (fst i)` DEFINITIONALLY — the
 --   dependency costs nothing to read.

@@ -182,7 +182,7 @@ wk-ren : (ρ : Ren Γ Δ) (t : RTm Γ) →
          renTm (extR ρ) (renTm vs t) ≡ renTm vs (renTm ρ t)
 wk-ren ρ t = trans (renTm-renTm t) (sym (renTm-renTm t))
 
--- ★ D074: the type of a fibred description is stable (its codomain is
+-- ★ D493: the type of a fibred description is stable (its codomain is
 --   one binder in)
 DescF-ren : (ρ : Ren Γ Δ) (I : RTm Γ) → renTy ρ (DescF I) ≡ DescF (renTm ρ I)
 DescF-ren ρ I = cong (λ X → Π (El (renTm ρ I)) (Desc X)) (wk-ren ρ I)

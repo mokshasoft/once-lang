@@ -524,6 +524,6 @@ Probes on SigCore's 34 erasure checks (21 196 nodes in all):
   (no `yes refl` matching on the computational path). `SigBuild` passes
   verdicts to helpers instead of `with` — on SigBuild itself neither change
   measured (67 s), its `with`s were not on the hot path.
-- What moved SigCore 66 → 43 s / 3.4 → 2.8 GB was D081: the entry's
+- What moved SigCore 66 → 43 s / 3.4 → 2.8 GB was D500: the entry's
   stored body is its own erasure (`refl`), so the erasure comparison is
   gone, and each entry is checked over the elaboration telescope.

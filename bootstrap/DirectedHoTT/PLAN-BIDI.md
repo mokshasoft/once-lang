@@ -1,7 +1,7 @@
 # PLAN · DECIDABLE TYPE CHECKING — an annotated core, a bidirectional surface
 
 > **Stage R2 (done) and R4 (S7, in progress) of `ROADMAP.md`** — read that
-> first. The evaluator S7 runs on is PLAN-EVAL (R3, D080).
+> first. The evaluator S7 runs on is PLAN-EVAL (R3, D499).
 
 ★ Decided 2026-09-25. The goal is OCP-0009's title claim, *decidable
 dependent types*, stated so that it holds of the KERNEL, not only of a
@@ -604,7 +604,7 @@ tag rules key on it (`⊢fzero : Fin (suc n)`). After:
     Lib-form payload types at `⌜KSig⌝` normalised to the whole `KD` cascade
     and OOMed the checker; with it SigCore checks in 71 s / 4.6 GB.
     Also `normLazy` (certified normal order: weak-head first).
-  - ✅ **RESOLVED 2026-10-05 → PLAN-EVAL (D080): an environment-based
+  - ✅ **RESOLVED 2026-10-05 → PLAN-EVAL (D499): an environment-based
     evaluator, option (a) below.** E0 done the same day: the parked tests
     pass under `Algorithm/NbE` (≈10 s, 0.6 GB), as does the whole `KD`
     (5.8 s; it OOMed by `normLazy`); the decoder stays in the Lib form
@@ -628,7 +628,7 @@ tag rules key on it (`⊢fzero : Fin (suc n)`). After:
     (c) evaluate erased programs OUTSIDE type checking (compiled Agda),
         keeping `refl` tests only for small cases.
 
-- ★ **Signatures are TELESCOPES, checked in SEGMENTS (D081, 2026-10-05).**
+- ★ **Signatures are TELESCOPES, checked in SEGMENTS (D500, 2026-10-05).**
   `Algorithm/SigBuild.SigExtend base abase wbase …` checks new entries over
   a signature built and checked in another module, reusing its proof
   (`WfSig (S ▸ˢ e)` is `WfSig S × EntryWf S e` definitionally). SigCore
@@ -638,7 +638,7 @@ tag rules key on it (`⊢fzero : Fin (suc n)`). After:
 
 - ★ **Pw POC, REVISED (2026-10-05).** The 2026-10-02 sketch (a Ford-style
   family, two constructors) predates F6, which ELIMINATES Pw (decoding),
-  and contradicts D077 (fibre by the subject, Ford only computed outputs).
+  and contradicts D496 (fibre by the subject, Ford only computed outputs).
   The core Pw is the Lib's fibred family: a generic fibre method in the
   core over the decoder's tables (mirroring `Lib/MethAt.methAt`'s
   `psplit` + selection cascade, as `#tabD` mirrors `tabD`), Pw's two rows

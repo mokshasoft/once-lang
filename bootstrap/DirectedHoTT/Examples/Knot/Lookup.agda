@@ -3,7 +3,7 @@
 
 ------------------------------------------------------------------------
 -- OCP-0009 · KNOT — ★ `Γ ∋ x ∷ A`, the first judgement, FIBRED BY ITS
--- SUBJECT (D077).
+-- SUBJECT (D496).
 --
 -- The index is `(d , Γ , x , A)`.  The fibre over it is computed by CASE:
 -- on the context (`Ctx 0 = ε` has no variable, so its fibre is EMPTY),

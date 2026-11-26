@@ -3,7 +3,7 @@
 
 ------------------------------------------------------------------------
 -- OCP-0009 · KNOT — the `⊢` rows' NESTED CASE on the conclusion type
--- (D077, `Lib/SynPat`): its convoy.
+-- (D496, `Lib/SynPat`): its convoy.
 --
 -- A term rule whose conclusion type is a constructor pattern (`⊢lam`'s
 -- `Π A B`) cases on the type; the case's rows need the context and the

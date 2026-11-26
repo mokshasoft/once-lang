@@ -44,7 +44,7 @@ private
   w2⊢ {A = A} v = ∋-cast (renTy-renTy A) (there (there v))
 
 -- the motive, renamed under its own two binders
--- ★ D074: weakening a DESCRIPTION keeps its type a description of the
+-- ★ D493: weakening a DESCRIPTION keeps its type a description of the
 --   weakened index
 ⊢wkD : {Δ : Ctx} {B : RTy ⌊ Δ ⌋} {I D : RTm ⌊ Δ ⌋} →
        Δ ⊢ D ∷ DescF I → (Δ ▹ B) ⊢ renTm vs D ∷ DescF (renTm vs I)
@@ -75,7 +75,7 @@ methSg s vz          = s
 methSg s (vs vz)     = var (vs (vs vz))
 methSg s (vs (vs x)) = var (vs (vs (vs x)))
 
--- ★ D074: the telescope `C` lives over the INDEX variable (the fibre of
+-- ★ D493: the telescope `C` lives over the INDEX variable (the fibre of
 --   the constructor being matched); the kernel's is `D`'s own fibre.
 MethG : {Δ : Cx} → RTm Δ → RTm Δ → RTy ((Δ ∙) ∙) → RTm (Δ ∙) → RTm (((Δ ∙) ∙) ∙) → RTy Δ
 MethG I D M C s =

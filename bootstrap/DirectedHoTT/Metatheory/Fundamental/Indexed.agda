@@ -14,7 +14,7 @@
 --   everything the eliminator needs:
 --     · `payInterp₀` — the payload CODE's decoding, `El (dpay I D C)`,
 --       by recursion on the telescope's interpretation: `dι` gives
---       `⊩₀Unit` (D074: fibred, no index equation), `dσ` a `⊩₀Σ` over the field code's
+--       `⊩₀Unit` (D493: fibred, no index equation), `dσ` a `⊩₀Σ` over the field code's
 --       interpretation, `dρ` a `⊩₀Σ` over the WHOLE family's `⊩₀IMu`, a
 --       stuck telescope a neutral type, a head step `bwd₀`;
 --     · `liftPay₀`/`payLift₀` — membership there IS `ILift` (definitionally,
@@ -62,7 +62,7 @@ private
 -- 0. The two tails and a cast.
 ------------------------------------------------------------------------
 
--- ★ D074: the family's interpretation is FIBRED — a telescope
+-- ★ D493: the family's interpretation is FIBRED — a telescope
 --   interpretation over every VALID index — and its membership predicate
 IKFam : {I₀ : RTm Ξ} (⊩I : ⊩₀ (El I₀)) → RTm Ξ → Set
 IKFam {Ξ} ⊩I D = (j : RTm Ξ) → ⊩I ⊩₀∋ j → IKInterp ⊩I (app D j)
@@ -571,7 +571,7 @@ idxMem {j = j} cI ⊩I hj =
 rebase : {I C I₀ : RTm Ξ} → DescView I C → (⊩I : ⊩₀ (El I₀)) → I ≅ I₀ → IKInterp ⊩I C
 rebase (mkDV I₁ c₁ ⊩I₁ K) ⊩I cI = ikinterp-irrel (El≅ (ctrn (csym c₁) cI)) ⊩I₁ ⊩I K
 
--- ★ D074: a DESCRIPTION `D ∷ Π (El I) (Desc I)` gives a telescope
+-- ★ D493: a DESCRIPTION `D ∷ Π (El I) (Desc I)` gives a telescope
 --   interpretation over every valid index — its fibre `D j`.
 famInterp : {I D I₀ : RTm Ξ} (cI : I ≅ I₀) (⊩I : ⊩₀ (El I₀)) → Rel (DescF I) D → IKFam ⊩I D
 famInterp {I = I} {D = D} cI ⊩I h j hj = rebase (desc-view (dfst a) (dsnd a)) ⊩I cI

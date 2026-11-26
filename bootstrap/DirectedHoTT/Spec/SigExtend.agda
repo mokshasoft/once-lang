@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- OCP-0009 · dHoTT — ★ SIGNATURE EXTENSION (PLAN-REF, D082).
+-- OCP-0009 · dHoTT — ★ SIGNATURE EXTENSION (PLAN-REF, D501).
 --
 -- The signature is the definition context; `𝒮 ⊑ᴰ 𝒮'` is context
 -- extension: every name of `𝒮` is a name of `𝒮'`, declared with the same

@@ -3,14 +3,14 @@
 
 ------------------------------------------------------------------------
 -- OCP-0009 · Lib — ★★ A NESTED PATTERN: a `Desc`-valued case on a
--- syntax term that has ONE live row (D077).
+-- syntax term that has ONE live row (D496).
 --
 -- A judgement's rule whose conclusion has a constructor PATTERN in a
 -- non-subject position (`⊢lam`'s type `Π A B`) is a nested case: the
 -- outer fibre (on the subject) cases on that component, and exactly one
 -- head — the pattern's — has a row; every other head is empty.  The
 -- pattern's variables are the scrutinee's payload: no existential, no
--- Ford (D077 "Where the target is a constructor pattern, the fibre is
+-- Ford (D496 "Where the target is a constructor pattern, the fibre is
 -- computed by unification, i.e. by case").
 --
 --     CASE q j a c  =  app (ielim D (tag s₀ , j) (PATM q) a) c

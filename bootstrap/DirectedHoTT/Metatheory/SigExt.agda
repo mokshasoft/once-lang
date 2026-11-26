@@ -12,7 +12,7 @@
 -- is stuck under 𝒮), and every derivation at bound n — whose references
 -- also agree on their declared types — is one at bound n under 𝒮'.
 --
--- This is how a signature built in segments (D081) moves its results
+-- This is how a signature built in segments (D500) moves its results
 -- across a boundary: an entry is checked over its prefix, and used over
 -- the whole.  SN, the logical relation and canonicity are NOT moved: they
 -- are theorems about one well-formed signature.

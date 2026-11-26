@@ -103,7 +103,7 @@ private
   count : {Γ : Cx} → RTm Γ
   count = lam (lam (lam (fcase (fst v1) nzero (nsuc (fst v1)))))
 
--- the signature the lazy-δ rows refer into (D082: a reference is a NAME,
+-- the signature the lazy-δ rows refer into (D501: a reference is a NAME,
 --   its body is the entry's): 3 ↦ 0, 4 ↦ ack, 7 ↦ suc; the rest fillers
 δS : Sig
 δS = mkSig 8 (∅ˢ ▸ˢ u ▸ˢ u ▸ˢ u ▸ˢ ⟨ A.Nat ∣ nzero ⟩ ▸ˢ ⟨ A.Π A.Nat (A.Π A.Nat A.Nat) ∣ ack ⟩

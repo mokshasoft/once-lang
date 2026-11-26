@@ -7,7 +7,7 @@
 -- OCP-0009 · EXAMPLES — ★ THE SIDE CONDITIONS IN THE CORE (PLAN-BIDI §3g,
 -- P6): the first (the shared index and StkA) segment, a `SigExtend` segment over the one before.
 --
--- The Knot's side conditions (`Knot/Preds`: predicates on codes, D077's
+-- The Knot's side conditions (`Knot/Preds`: predicates on codes, D496's
 -- lower stratum) are fibred families with a TRIVIAL convoy, all over one
 -- index `#PJ` (`Examples/PredsStkA`); a family is its non-empty rows (the
 -- PREDS table, the same one `Knot/Preds` is generated from) and its

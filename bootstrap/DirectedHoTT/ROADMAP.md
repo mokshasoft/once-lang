@@ -65,9 +65,9 @@ Legend: ✅ done · 🟡 in progress · ⬜ planned · 🔬 research (no plan ye
 | # | stage | plan | state |
 |---|---|---|---|
 | R0 | **Kernel + metatheory.** Directed `Hom = ⟶*`, `Id = core(Hom)`; SR, confluence, injectivity, LR, fundamental theorem, canonicity, consistency; empty, checked trust surface | `Spec/`, `Metatheory/`, LESSONS.md | ✅ |
-| R1 | **One datatype former, levitated descriptions; the Knot is EXACT.** Indexed fibred descriptions (D071–D079); the Knot's judgements faithful (F1–F5) and decoded (F6) | PLAN-LEVITATION, PLAN-FAITHFUL | ✅ (2026-10-04) |
+| R1 | **One datatype former, levitated descriptions; the Knot is EXACT.** Indexed fibred descriptions (D490–D498); the Knot's judgements faithful (F1–F5) and decoded (F6) | PLAN-LEVITATION, PLAN-FAITHFUL | ✅ (2026-10-04) |
 | R2 | **Decidable checking** (S0–S6): annotated core `⊢ᴬ` decidable (CheckA), type conversion (route C), signature + δ + conservativity, untrusted bidirectional elaborator | PLAN-BIDI §3–§3f | ✅ (2026-10-02) |
-| R3 | **The evaluator.** Environment-based NbE over the kernel syntax: closures, neutrals, readback, lazy δ. Untrusted first (tests, elaborator), then certified (checker, conversion) | **PLAN-EVAL** | 🟡 E0 ✅ (2026-10-05: the parked traversal tests and the whole `KD` run in ~10 s); E1 ✅ (agreement oracle with the certified evaluator, every rule); ★ E3 soundness PROVED for terms and types (`nbe-sound`, `nbeᵀ-sound`, 2026-10-06); conversion DECIDED by NbE and used by CheckA (`ConvNbE`); ✅ the checker's cost at the Knot's scale FOUND by profiling, not the stuck-signature hypothesis (PLAN-EVAL §2f: `lvl` recomputed the context length, `lvlAt`/`idEnvAt` fix it; CheckA's `decTo` compares syntax before normalising): Pw sort 0 73 s → 19.5 s, full Pw segment OOM → 144 s / 4.8 GB. E4 TRIGGERED 2026-10-07 (reference evaluation ~38% of PwCore after the readback fixes) → ✅ **PLAN-REF** (closed 2026-10-12): references as projections, in the KERNEL (D082) — ✅ K1–K6 green, every layer; full sweep ALL GREEN (288 modules, 2026-10-11) after the compile regression was traced to instance COPIES of signature-free definitions (`SD` opaque; `Spec.Base` no longer re-exported by the instances: Gcd.LeEq 1057 → 10 s). ✅ K4's internal image of `Spec/SigWf` with faithfulness (`SigWfAgree`) and `𝒮 ⊑ᴰ (𝒮 ▸ᴷ e)` (2026-10-12). Re-exports of non-parameterised modules by parameterised ones are a lint ERROR (2026-10-12); splitting signature-free DATA out is ⏸ until two instances meet. Step 5 measured: cost-NEUTRAL at PwCore (49.4M unfoldings vs 49.0M, 81 s) once the value table is indexed by LEVEL; E4's predicted ~38% saving was a misattribution (force/eval run for every value). |
+| R3 | **The evaluator.** Environment-based NbE over the kernel syntax: closures, neutrals, readback, lazy δ. Untrusted first (tests, elaborator), then certified (checker, conversion) | **PLAN-EVAL** | 🟡 E0 ✅ (2026-10-05: the parked traversal tests and the whole `KD` run in ~10 s); E1 ✅ (agreement oracle with the certified evaluator, every rule); ★ E3 soundness PROVED for terms and types (`nbe-sound`, `nbeᵀ-sound`, 2026-10-06); conversion DECIDED by NbE and used by CheckA (`ConvNbE`); ✅ the checker's cost at the Knot's scale FOUND by profiling, not the stuck-signature hypothesis (PLAN-EVAL §2f: `lvl` recomputed the context length, `lvlAt`/`idEnvAt` fix it; CheckA's `decTo` compares syntax before normalising): Pw sort 0 73 s → 19.5 s, full Pw segment OOM → 144 s / 4.8 GB. E4 TRIGGERED 2026-10-07 (reference evaluation ~38% of PwCore after the readback fixes) → ✅ **PLAN-REF** (closed 2026-10-12): references as projections, in the KERNEL (D501) — ✅ K1–K6 green, every layer; full sweep ALL GREEN (288 modules, 2026-10-11) after the compile regression was traced to instance COPIES of signature-free definitions (`SD` opaque; `Spec.Base` no longer re-exported by the instances: Gcd.LeEq 1057 → 10 s). ✅ K4's internal image of `Spec/SigWf` with faithfulness (`SigWfAgree`) and `𝒮 ⊑ᴰ (𝒮 ▸ᴷ e)` (2026-10-12). Re-exports of non-parameterised modules by parameterised ones are a lint ERROR (2026-10-12); splitting signature-free DATA out is ⏸ until two instances meet. Step 5 measured: cost-NEUTRAL at PwCore (49.4M unfoldings vs 49.0M, 81 s) once the value table is indexed by LEVEL; E4's predicted ~38% saving was a misattribution (force/eval run for every value). |
 | R4 | **The Knot in the core** (S7): the Lib's `Sig` levitated (S7b, ✅ steps 2, 3, 5); Pw POC (step 4); then family-by-family migration | PLAN-BIDI §3g | 🟡 Pw POC: P1/P2 done (`Examples/SigMeth`, the core `methAt`; the core traversal IS the Knot's `wk`, `NbETravAgree`); P3 done (`Examples/PwCore`: `#PwD` ≡ the Knot's `PwF.DF`, `NbEPwAgree`); ★ P4 done 2026-10-06 (`Knot/PwCore`: the Knot's `⌜Pw⌝` IS a `ref` to the core entries, `El-⌜Pw⌝` by `nbe-sound`; `gen-judge.py` `CORE_CODE`; sweep ALL GREEN, 273 modules); 🟡 P5: measured (the planned line comparison counted GENERATED output; the Lib route's human input is the 5-line `PWRULES`), PwCore 146 s / 4.9 GB → 49.0M unfoldings / ~3.4 GB (`EraName`, readback length once); the rest is PLAN-REF; ★ P6 done 2026-10-13: the four side conditions (StkA, StkC, Flat, NNC) are core entries, one SigExtend segment per family over a shared index (`Examples/Preds*`, frame in `Examples/KnotFrame`, Knot side in `Knot/CoreRef`); `Knot/Preds`' codes are refs; `NbEPredsAgree` checks all four; a family is 1–3 lines of rows. Lesson: never read the Knot at the CONCRETE core (imports alone 81 s / 5 GB vs 8 s at a parameter) |
 | R5 | **Linear / QTT layer on the kernel.** Grades {0,1,ω} in the judgement, erasure, an allocation-aware evaluator. Blueprint: `poc/OCP0009/NbEPLinCore.agda`, `NbEPQTT*`, `NbEPLinQTT` (§4) | to write (PLAN-LINEAR) | 🔬 |
 | R6 | **Converge with the compiler core.** Present R3's evaluator as a CAM / `Evaluable` instance over a CwF (OCP-0009's "two pillars", `:397-458`); reconcile with `formal/` and the CCC-VM; decide the TCB0 mechanism (§3, Q2) | to write | 🔬 |
@@ -105,8 +105,8 @@ R3 and R5. R7 needs all of them.
   category or contextual category. OCP-0009 names the CwF as the structural
   pillar. No design exists for this kernel's formers (Hom/Id/tr/ap, IMu,
   Desc).
-- **Q5 — references as context projections** — ✅ DONE 2026-10-11 (D082, **PLAN-REF**, decided 2026-10-07): the kernel's `ref d` carries no body; δ projects from the signature, NbE reads a shared value table. The history below is kept for the reasoning. ✅ PARTLY DONE 2026-10-05
-  (D081): the signature is a TELESCOPE and `WfSig` is context formation, so
+- **Q5 — references as context projections** — ✅ DONE 2026-10-11 (D501, **PLAN-REF**, decided 2026-10-07): the kernel's `ref d` carries no body; δ projects from the signature, NbE reads a shared value table. The history below is kept for the reasoning. ✅ PARTLY DONE 2026-10-05
+  (D500): the signature is a TELESCOPE and `WfSig` is context formation, so
   signatures extend across modules (the Knot is checked in segments). Still
   open: the erased `ref d b` carries its body (E4's global value table is
   the projection reading). The
@@ -117,10 +117,11 @@ R3 and R5. R7 needs all of them.
   The environment evaluator makes the categorical reading concrete: a
   GLOBAL environment of entry values, so `ref d` is a projection evaluated
   once. That is E4 (sharing) and the shape R6 should adopt. Not blocking.
-- **Housekeeping — decision-log numbering diverged.** `D071`–`D079` mean
-  different things here (OCP-0009 levitation) and on the compiler branch
-  (D071 = references as projections, …, up to D272 there). D080 here is the
-  evaluator. Reconcile the numbering when the branches meet.
+- **Housekeeping — decision-log numbering diverged.** ✅ RESOLVED 2026-11-26:
+  the POC line's D071–D082 collided with the compiler's D071+ (D071 there =
+  references as projections). On the rebase onto master the POC entries were
+  renumbered D490–D501 (old number + 419; each entry says what it was), and
+  the compiler's numbers are unchanged. D499 here is the evaluator.
 - **Q4 — totality without fuel** (PLAN-BIDI `:983`, old PLAN-NF Phase 2).
   The certified evaluator should become total by the LR's normalization
   (`wnorm`), not by fuel. Owner: PLAN-EVAL E3.
@@ -153,12 +154,12 @@ Not transferable:
 - `ROADMAP.md` (this file): top level.
 - `PLAN-BIDI.md`: R2 (done) and R4 (S7).
 - `PLAN-EVAL.md`: R3.
-- `PLAN-REF.md`: R3 E4 — references as projections in the kernel (D082).
+- `PLAN-REF.md`: R3 E4 — references as projections in the kernel (D501).
 - `LESSONS.md`, `KNOT-LESSONS.md`, `PERF.md`: rules, which stay valid.
 - `TODO.md`: a checklist, subordinate to the plans.
 - The newest `HANDOFF-*.md`: session state.
-- `docs/compiler/decision-log.md`: decisions D071+ (OCP-0009 entries). The
-  evaluator design is D080.
+- `docs/compiler/decision-log.md`: decisions D490–D501 (OCP-0009 entries). The
+  evaluator design is D499.
 
 **Done, kept as records:**
 - PLAN-LEVITATION (R1);

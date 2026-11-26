@@ -15,9 +15,9 @@
 --   a context depth, and `RTy`-at-the-same-depth is a function of the
 --   ambient index in one component while the other is held fixed.  Every
 --   other example is indexed by `⌜Nat⌝`; this one's index CODE is
---   `⌜Σ⌝ ⌜Nat⌝ ⌜Nat⌝` (D073: the index is a code in Γ).
+--   `⌜Σ⌝ ⌜Nat⌝ ⌜Nat⌝` (D492: the index is a code in Γ).
 --
--- ★★ D074 (fibred descriptions) + FORD THE COMPONENT, NOT THE PAIR.  Each
+-- ★★ D493 (fibred descriptions) + FORD THE COMPONENT, NOT THE PAIR.  Each
 --   constructor telescope sees the index `i` it lands at.  The DEPTH is
 --   an input — `klam`'s field is simply at `(1, suc (snd i))` — so it
 --   rides with no equation.  The SORT is a computed target (a constant),

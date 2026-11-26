@@ -22540,8 +22540,9 @@ carries a whole word, at the value's own type.
 
 ---
 
-## D071: Σ Is POSITIVE — `split` Is Its Primitive Eliminator, No Σ-η (OCP-0009 kernel, levitation)
+## D490: Σ Is POSITIVE — `split` Is Its Primitive Eliminator, No Σ-η (OCP-0009 kernel, levitation)
 
+**Renumbered**: D071 on the OCP-0009 POC line; renumbered on its rebase onto master (2026-11-26), where D071 was already taken. Older POC documents and commit messages may cite the old number.
 **Date**: 2026-09-26
 **Status**: Accepted
 
@@ -22601,8 +22602,9 @@ kept only as sugar. There is **no definitional Σ-η**.
 
 ---
 
-## D072: One Datatype Former — `Mu`/`Desc` Merges Into the Indexed Levitated Form (OCP-0009 kernel)
+## D491: One Datatype Former — `Mu`/`Desc` Merges Into the Indexed Levitated Form (OCP-0009 kernel)
 
+**Renumbered**: D072 on the OCP-0009 POC line; renumbered on its rebase onto master (2026-11-26), where D072 was already taken. Older POC documents and commit messages may cite the old number.
 **Date**: 2026-09-26
 **Status**: Accepted
 
@@ -22610,7 +22612,7 @@ kept only as sugar. There is **no definitional Σ-η**.
 
 The kernel has two datatype systems: non-indexed `Mu`/`⌜Mu⌝`/`con`/`elim`
 over the closed `Desc`/`DCon`, and indexed
-`IMu`/`⌜IMu⌝`/`icon`/`ielim` over `IDesc`. Levitation (D071,
+`IMu`/`⌜IMu⌝`/`icon`/`ielim` over `IDesc`. Levitation (D490,
 SPIKE-LEVITATION) replaces descriptions with terms anyway.
 Measured on 2026-09-26:
 
@@ -22640,12 +22642,13 @@ the indexed form at the unit index. Constructor lists stay surface sugar
 
 ### See Also
 
-D071, SPIKE-LEVITATION S0–S4, `bootstrap/DirectedHoTT/PLAN-LEVITATION.md`.
+D490, SPIKE-LEVITATION S0–S4, `bootstrap/DirectedHoTT/PLAN-LEVITATION.md`.
 
 ---
 
-## D073: The Index Type Is a CODE IN Γ, Not a Closed Type (OCP-0009 kernel, levitation)
+## D492: The Index Type Is a CODE IN Γ, Not a Closed Type (OCP-0009 kernel, levitation)
 
+**Renumbered**: D073 on the OCP-0009 POC line; renumbered on its rebase onto master (2026-11-26), where D073 was already taken. Older POC documents and commit messages may cite the old number.
 **Date**: 2026-09-26
 **Status**: Accepted
 
@@ -22653,7 +22656,7 @@ D071, SPIKE-LEVITATION S0–S4, `bootstrap/DirectedHoTT/PLAN-LEVITATION.md`.
 
 A-math required the index type to be closed (`IDescWf I D = (◇ ⊢ty I) × …`),
 and `IMu` carries an `RTy ε`. This closedness followed from descriptions
-being CLOSED. Levitation (D071/D072) makes descriptions ordinary terms in Γ.
+being CLOSED. Levitation (D490/D491) makes descriptions ordinary terms in Γ.
 
 ### Decision
 
@@ -22681,14 +22684,15 @@ condition.
 
 ### See Also
 
-D071, D072, `bootstrap/DirectedHoTT/PLAN-LEVITATION.md`.
+D490, D491, `bootstrap/DirectedHoTT/PLAN-LEVITATION.md`.
 
 ---
 
-## D074: Descriptions Are FIBRED — `D : Π (El I) (Desc I)`, Not a Forded `Desc I` (OCP-0009 kernel, levitation)
+## D493: Descriptions Are FIBRED — `D : Π (El I) (Desc I)`, Not a Forded `Desc I` (OCP-0009 kernel, levitation)
 
+**Renumbered**: D074 on the OCP-0009 POC line; renumbered on its rebase onto master (2026-11-26), where D074 was already taken. Older POC documents and commit messages may cite the old number.
 **Date**: 2026-09-26
-**Status**: Accepted (supersedes the `Desc I` telescope shape used by D072/D073's first implementation)
+**Status**: Accepted (supersedes the `Desc I` telescope shape used by D491/D492's first implementation)
 
 ### Context
 
@@ -22734,20 +22738,21 @@ The Chapman–Dagand–McBride–Morris levitated form.
 
 ### See Also
 
-D072, D073, `bootstrap/DirectedHoTT/PLAN-LEVITATION.md`, PLAN-INDEXED §1–3
+D491, D492, `bootstrap/DirectedHoTT/PLAN-LEVITATION.md`, PLAN-INDEXED §1–3
 (the ambient-index design this levitates), PLAN-JUDGEMENT §1 (Fording cost).
 
-## D075: Mutual Families Are FIBRED BY SORT — No Sort Ford (OCP-0009, levitation; the Knot's encoding)
+## D494: Mutual Families Are FIBRED BY SORT — No Sort Ford (OCP-0009, levitation; the Knot's encoding)
 
+**Renumbered**: D075 on the OCP-0009 POC line; renumbered on its rebase onto master (2026-11-26), where D075 was already taken. Older POC documents and commit messages may cite the old number.
 **Date**: 2026-09-27
-**Status**: Accepted (follows from D074; user: "like always, which one is most principled mathematically, we should not consider edits")
+**Status**: Accepted (follows from D493; user: "like always, which one is most principled mathematically, we should not consider edits")
 
 ### Context
 
-After D074 the depth of a syntax rides (an input). The Knot's index is
+After D493 the depth of a syntax rides (an input). The Knot's index is
 `(sort, depth)`, and its SORT was still Forded: every constructor ended
 with `⌜Id⌝ ⌜Nat⌝ (fst i) s`. That is the `Id`-encoding of the fibre over
-the sort, which D074 names as a hidden choice. It is permitted, but it is
+the sort, which D493 names as a hidden choice. It is permitted, but it is
 not the definition.
 
 ### Decision
@@ -22781,12 +22786,13 @@ it:
 
 ### See Also
 
-D074, `bootstrap/DirectedHoTT/PLAN-LEVITATION.md` Stage 5.
+D493, `bootstrap/DirectedHoTT/PLAN-LEVITATION.md` Stage 5.
 
-## D076: `Fin` Is FIBRED OVER ℕ — Families With a Numeric Index Case on It (OCP-0009, levitation)
+## D495: `Fin` Is FIBRED OVER ℕ — Families With a Numeric Index Case on It (OCP-0009, levitation)
 
+**Renumbered**: D076 on the OCP-0009 POC line; renumbered on its rebase onto master (2026-11-26), where D076 was already taken. Older POC documents and commit messages may cite the old number.
 **Date**: 2026-09-27
-**Status**: Accepted (D075's reasoning at a numeric index)
+**Status**: Accepted (D494's reasoning at a numeric index)
 
 ### Decision
 
@@ -22807,12 +22813,13 @@ carries its index or an equation.
 
 ### See Also
 
-D074, D075.
+D493, D494.
 
-## D077: Judgement Families Are FIBRED BY THEIR SUBJECT — Ford Only Computed Outputs (OCP-0009, levitation; the Knot's judgement layer)
+## D496: Judgement Families Are FIBRED BY THEIR SUBJECT — Ford Only Computed Outputs (OCP-0009, levitation; the Knot's judgement layer)
 
+**Renumbered**: D077 on the OCP-0009 POC line; renumbered on its rebase onto master (2026-11-26), where D077 was already taken. Older POC documents and commit messages may cite the old number.
 **Date**: 2026-09-27
-**Status**: Accepted (D074–D076's principle applied to the judgements. The record check found no prior decision: PLAN-JUDGEMENT's uniform Ford predates D072 and its substrate is deleted.)
+**Status**: Accepted (D493–D495's principle applied to the judgements. The record check found no prior decision: PLAN-JUDGEMENT's uniform Ford predates D491 and its substrate is deleted.)
 
 ### Context
 
@@ -22826,7 +22833,7 @@ was the old Knot's dominant cost, e.g. `Judge/Ielim` took 358 s / 4.3 GB.
 ### Decision
 
 A judgement's fibre over its index is presented BY CASE on the index
-wherever the rules' targets are patterns, as D076 does for `Fin`.
+wherever the rules' targets are patterns, as D495 does for `Fin`.
 - The SUBJECT decides the rows. That is the term for `⊢`/`⟶`, the type for
   `⊢ty`/`⟶ᵀ`, and the variable (then the context) for `∋`. The fibre
   function eliminates the subject with a `Desc`-valued motive. Each head
@@ -22836,8 +22843,8 @@ wherever the rules' targets are patterns, as D076 does for `Fin`.
 - A NESTED pattern (`β`'s `app (lam t) u`, `natrec-suc`, `ι-ielim`,
   `ordtr`) is a nested case, not a Ford.
 - A component that is a computed OUTPUT (`⊢app`'s `B[u]`, `here`'s
-  `wk A`) Fords explicitly, with a `dσ (⌜Id⌝ …)` field (D074).
-- ONE FAMILY PER MUTUAL BLOCK (D075). `⊢ty`/`⊢` are one family, sorted.
+  `wk A`) Fords explicitly, with a `dσ (⌜Id⌝ …)` field (D493).
+- ONE FAMILY PER MUTUAL BLOCK (D494). `⊢ty`/`⊢` are one family, sorted.
   The others are separate families, stratified: `∋`; `⟶`; `⟶ᵀ` (cites
   `⟶`); `≅`/`≅ᵀ`. A premise of a lower stratum is a σ-field of its code.
 
@@ -22853,17 +22860,18 @@ wherever the rules' targets are patterns, as D076 does for `Fin`.
 
 ### See Also
 
-D074, D075, D076; PLAN-LEVITATION Stage 5; PLAN-JUDGEMENT (superseded
+D493, D494, D495; PLAN-LEVITATION Stage 5; PLAN-JUDGEMENT (superseded
 mechanism, still-valid cost evidence).
 
-## D078: D077 Applied to the `⊢` Rows — When a Case, When a Ford; Side Conditions as Lower Strata (OCP-0009, levitation; the Knot's judgement layer)
+## D497: D496 Applied to the `⊢` Rows — When a Case, When a Ford; Side Conditions as Lower Strata (OCP-0009, levitation; the Knot's judgement layer)
 
+**Renumbered**: D078 on the OCP-0009 POC line; renumbered on its rebase onto master (2026-11-26), where D078 was already taken. Older POC documents and commit messages may cite the old number.
 **Date**: 2026-09-28
-**Status**: Accepted (refines D077 at the cases its text left open; all 38 `⊢` heads built this way — `Examples/Knot/JudgeRowsGen.agda`, `tools/gen-judge.py`)
+**Status**: Accepted (refines D496 at the cases its text left open; all 38 `⊢` heads built this way — `Examples/Knot/JudgeRowsGen.agda`, `tools/gen-judge.py`)
 
 ### Context
 
-D077 said: a pattern target is a case, a computed output Fords. Building
+D496 said: a pattern target is a case, a computed output Fords. Building
 the 38 `⊢` rows met four situations that text does not settle: a
 conclusion type determined by the subject (`absurd c e ∷ El c`), a
 pattern under a binder in a subject field (`tr`'s motive `var vz` /
@@ -22898,7 +22906,7 @@ pattern under a binder in a subject field (`tr`'s motive `var vz` /
 
 ### Rationale
 
-- **The fibre is computed by unification** (D077): unification binds fresh
+- **The fibre is computed by unification** (D496): unification binds fresh
   pattern variables (a case) and leaves an equation for a determined one
   (a Ford). A case that only re-derives the subject costs a nested case
   AND the equations.
@@ -22908,11 +22916,12 @@ pattern under a binder in a subject field (`tr`'s motive `var vz` /
 
 ### See Also
 
-D074, D075, D077; PLAN-LEVITATION Stage 5; memory
+D493, D494, D496; PLAN-LEVITATION Stage 5; memory
 `context-form-mismatch-opaque` (the cost model the rows are built under).
 
-## D079: `scopeAt` Over Tel Is Not Built; `ScopeHazard` Stays Retired (OCP-0009, levitation; Stage 5)
+## D498: `scopeAt` Over Tel Is Not Built; `ScopeHazard` Stays Retired (OCP-0009, levitation; Stage 5)
 
+**Renumbered**: D079 on the OCP-0009 POC line; renumbered on its rebase onto master (2026-11-26), where D079 was already taken. Older POC documents and commit messages may cite the old number.
 **Date**: 2026-09-29
 **Status**: Accepted (retires PLAN-LEVITATION Stage 5's last library item)
 
@@ -22931,7 +22940,7 @@ Tel and restore the example.
 Do not rebuild it. The hazard has no customer in the levitated
 development:
 
-- **No level-comparing fold remains.** D078 made `occTm vz c ≡ false` a
+- **No level-comparing fold remains.** D497 made `occTm vz c ≡ false` a
   strengthening (`c = wk c₀`), so the occurrence fold is gone. The Tel
   folds (`Lib/TelFold`: size, depth) are level-agnostic.
 - **The Knot cannot express the hazard.** In `Lib/Syn`'s Shape grammar a
@@ -22951,10 +22960,11 @@ demand the rule (as it did for `occK`).
 
 ### See Also
 
-D072, D077, D078; HANDOFF-2026-09-10 §2; OCC-ATTEMPTS.md §35.
+D491, D496, D497; HANDOFF-2026-09-10 §2; OCC-ATTEMPTS.md §35.
 
-## D080: The Evaluator Is ENVIRONMENT-BASED NbE — Closures, Levels, Lazy δ (OCP-0009, DirectedHoTT ROADMAP R3)
+## D499: The Evaluator Is ENVIRONMENT-BASED NbE — Closures, Levels, Lazy δ (OCP-0009, DirectedHoTT ROADMAP R3)
 
+**Renumbered**: D080 on the OCP-0009 POC line; renumbered on its rebase onto master (2026-11-26), where D080 was already taken. Older POC documents and commit messages may cite the old number.
 **Date**: 2026-10-05
 **Status**: Accepted (user, 2026-10-05; plan: `bootstrap/DirectedHoTT/PLAN-EVAL.md`)
 
@@ -23023,8 +23033,9 @@ D071; `bootstrap/DirectedHoTT/PLAN-EVAL.md`;
 `bootstrap/DirectedHoTT/ROADMAP.md`; OCP-0009 `:133-148`, `:397-458`;
 `poc/OCP0009/FINDINGS.md` F3, P1/P2.
 
-## D081: The Signature Is a TELESCOPE; Well-Formedness Is Context Formation (OCP-0009, DirectedHoTT S7 / ROADMAP Q5)
+## D500: The Signature Is a TELESCOPE; Well-Formedness Is Context Formation (OCP-0009, DirectedHoTT S7 / ROADMAP Q5)
 
+**Renumbered**: D081 on the OCP-0009 POC line; renumbered on its rebase onto master (2026-11-26), where D081 was already taken. Older POC documents and commit messages may cite the old number.
 **Date**: 2026-10-05
 **Status**: Accepted (autonomous session under the user's keep-going mandate; principled per the compiler's D071 on branch `plan-0.91-program-facts`)
 
@@ -23086,13 +23097,14 @@ is a projection from it.
 
 ### See Also
 
-D071 (compiler branch), D080; `bootstrap/DirectedHoTT/ROADMAP.md` Q5;
+D071 (compiler branch), D499; `bootstrap/DirectedHoTT/ROADMAP.md` Q5;
 PLAN-BIDI §3g; PERF §8.
 
-## D082: References Are PROJECTIONS From the Signature, in the Kernel (OCP-0009, DirectedHoTT PLAN-REF / ROADMAP R3 E4, Q5)
+## D501: References Are PROJECTIONS From the Signature, in the Kernel (OCP-0009, DirectedHoTT PLAN-REF / ROADMAP R3 E4, Q5)
 
+**Renumbered**: D082 on the OCP-0009 POC line; renumbered on its rebase onto master (2026-11-26), where D082 was already taken. Older POC documents and commit messages may cite the old number.
 **Date**: 2026-10-07 (decided); recorded 2026-10-11
-**Status**: Accepted (autonomous session under the user's keep-going mandate; principled per D071 on branch `plan-0.91-program-facts` and D081)
+**Status**: Accepted (autonomous session under the user's keep-going mandate; principled per D071 on branch `plan-0.91-program-facts` and D500)
 
 ### Context
 
@@ -23108,7 +23120,7 @@ the bodies a term mentions, not for the term. Measured 2026-10-06:
   so `Knot/PwCore` needed `ref d (Sig.body S d)` written exactly as the
   typing carried it (>300 s / out of memory otherwise).
 
-D081 had already made the signature a telescope and `WfSig` context
+D500 had already made the signature a telescope and `WfSig` context
 formation.
 
 ### Decision
@@ -23143,7 +23155,7 @@ soundness (the same, inside the proofs).
 
 ### Rationale
 
-- Extension by definitions in a CwF: the signature is a context (D081), a
+- Extension by definitions in a CwF: the signature is a context (D500), a
   reference is a projection, δ is the definitional isomorphism. It is the
   compiler's D071 (`⟦ref x⟧Γ = Γ(x)`), so R6 has one shape to converge on.
 - A reference is O(1) syntax everywhere; a body is touched only when δ
@@ -23166,5 +23178,5 @@ soundness (the same, inside the proofs).
 
 ### See Also
 
-D071 (compiler branch), D080, D081; `bootstrap/DirectedHoTT/PLAN-REF.md`
+D071 (compiler branch), D499, D500; `bootstrap/DirectedHoTT/PLAN-REF.md`
 (§0 decision, §6 progress); HANDOFF-2026-10-08, HANDOFF-2026-10-11.

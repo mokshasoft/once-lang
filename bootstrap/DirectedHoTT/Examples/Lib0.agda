@@ -5,7 +5,7 @@
 -- ⚠ GENERATED (PLAN-REF; scratch `canon.py`).
 --
 -- OCP-0009 · EXAMPLES — ONE instance of each parameterised module at the
--- EMPTY signature, shared by every example (PLAN-REF, D082).  Each
+-- EMPTY signature, shared by every example (PLAN-REF, D501).  Each
 -- `open import M args` would be a NEW module application, and two of them
 -- make a name ambiguous wherever they meet (a re-export, two imports);
 -- opening the one instance here never does.

@@ -1578,7 +1578,7 @@ fund {σ = σ} (⊢fcase0 {P = P} {t = t} dP dt) x₀ ρ =
     MotC = fund-ty dP x₀ (⊩ˢ-ext ρ (⊩₁Fin doneᵀ) (subTm σ t) h)
 fund (⊢fcase dP dt da db) x₀ ρ =
   sem-fcase dP dt da db (fund-ty dP) (fund dt) (fund da) (fund db) x₀ ρ
--- ★ Σ-INDUCTION (D071).  Σ's semantics is projection-based, so `psplit`
+-- ★ Σ-INDUCTION (D490).  Σ's semantics is projection-based, so `psplit`
 --   inspects the scrutinee's SN derivation: a pair fires the rule (its
 --   halves recovered through the projections' head steps), a neutral is
 --   stuck, a head step expands, and every other canonical form is refuted

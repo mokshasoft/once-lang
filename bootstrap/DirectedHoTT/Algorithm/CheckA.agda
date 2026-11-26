@@ -503,11 +503,11 @@ motCtx-wf {Γ} {I} {D} wΓ dI dD =
         (subst (λ b → (⌈ Γ ⌉ᶜ ▹ El ⌈ I ⌉) ⊢ty IMu (renTm vs ⌈ I ⌉) b (var vz)) (sym (era-renTm vs D))
           (ty-IMu (⊢wk dI) (⊢wkD dD) (⊢var here))))
 
--- ★ D074: an annotated description's derivation, erased, at `DescF`
+-- ★ D493: an annotated description's derivation, erased, at `DescF`
 eD : {Γ : ACtx} (I : ATm ⌊ Γ ⌋ᴬ) {D : ATm ⌊ Γ ⌋ᴬ} → Γ ⊢ᴬ D ∷ DescFᴬ I → ⌈ Γ ⌉ᶜ ⊢ ⌈ D ⌉ ∷ DescF ⌈ I ⌉
 eD I dD = ⊢-cast (era-DescF I) (erase dD)
 
--- ★ D074: the type of a description is well-formed
+-- ★ D493: the type of a description is well-formed
 wfDF : {Γ : ACtx} {I : ATm ⌊ Γ ⌋ᴬ} → ⌈ Γ ⌉ᶜ ⊢ ⌈ I ⌉ ∷ U → ⌈ Γ ⌉ᶜ ⊢ty ⌈ DescFᴬ I ⌉ᵀ
 wfDF {Γ} {I} dI =
   subst (λ Z → ⌈ Γ ⌉ᶜ ⊢ty Z) (sym (era-DescF I)) (ty-Π (ty-El dI) (ty-Desc (⊢wk dI)))

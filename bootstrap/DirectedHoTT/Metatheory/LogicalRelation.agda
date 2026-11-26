@@ -5438,7 +5438,7 @@ idpay-transfer (v , (av , a'v)) (v₂ , (bv₂ , b'v₂)) pay ch with pay ch
 --   every transport is the SN transport.
 ------------------------------------------------------------------------
 
--- ★ D074 (FIBRED): the shape is parameterised by the INDEX-VALIDITY
+-- ★ D493 (FIBRED): the shape is parameterised by the INDEX-VALIDITY
 --   predicate `PI`; a `dρ` node stores the validity of its own index, which
 --   is what the recursive member at that index is interpreted with.
 data IKPred (Γ : Cx) (PI : RTm Γ → Set) : RTm Γ → Set₁ where
@@ -5450,7 +5450,7 @@ data IKPred (Γ : Cx) (PI : RTm Γ → Set) : RTm Γ → Set₁ where
   ikp-exp : {C C' : RTm Γ} → SNRed C C' → IKPred Γ PI C' → IKPred Γ PI C
 
 -- the payload predicate, walked in lockstep with `dpay`: the `dι` leaf is
--- `⌜Unit⌝` (D074: the index is the FIBRE's, not an equation), a `dσ` field
+-- `⌜Unit⌝` (D493: the index is the FIBRE's, not an equation), a `dσ` field
 -- is a member of its code and the tail at its VALUE, a `dρ` field is a
 -- recursive member AT ITS OWN INDEX `j`, with the validity `dρ` stored.
 -- PROJECTION-BASED and SN at every node, for the reasons the list form's

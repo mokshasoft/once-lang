@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""PLAN-REF (D082): parameterise a module by the ambient SIGNATURE.
+"""PLAN-REF (D501): parameterise a module by the ambient SIGNATURE.
 
 The kernel, its metatheory and its libraries are parameterised by the
 signature `𝒮 : Defs` (and, for typing, the bound `n` and the entries'

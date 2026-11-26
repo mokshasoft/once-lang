@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------
 -- OCP-0009 · dHoTT — REDUCTION and CONVERSION, over a SIGNATURE.
 --
--- Split out of `Spec/Typing` by PLAN-REF (D082).  The only rule that reads
+-- Split out of `Spec/Typing` by PLAN-REF (D501).  The only rule that reads
 -- the signature is δ: a reference is a PROJECTION from the definition
 -- context, and unfolds to the signature's body.  Everything else is the
 -- kernel's computation as before (see `Spec/Typing`'s header).
@@ -253,7 +253,7 @@ data _⟶_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
   --   which computes on the telescope head and is stuck on a neutral one.
   ι         : (D i e p : RTm Γ) →
               ielim D i e (con p) ⟶ app (app (app e i) p) (dih D e (app D i) p)
-  -- the payload CODE of a telescope: nothing at `dι` (D074: the index is
+  -- the payload CODE of a telescope: nothing at `dι` (D493: the index is
   --   the FIBRE's, not an equation), a Σ at `dσ`, a Σ over the family at
   --   `dρ`.
   dpay-ι    : (I D : RTm Γ) → dpay I D dι ⟶ ⌜Unit⌝
@@ -273,7 +273,7 @@ data _⟶_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
   fcase-s   : (t a : RTm Γ) (b : RTm (Γ ∙)) → fcase (fsuc t) a b ⟶ subTm (single t) b
   psplit-β  : (b : RTm ((Γ ∙) ∙)) (x y : RTm Γ) → psplit b (pair x y) ⟶ subTm (single2 x y) b
   -- ★ δ: a reference is a projection from the signature, and unfolds to
-  --   its body (PLAN-REF, D082).  The body is closed, so the rule is
+  --   its body (PLAN-REF, D501).  The body is closed, so the rule is
   --   context-free; a name beyond the signature is stuck.
   δref      : {Δ : Cx} (d : ℕ) → d <ˢ Defs.size 𝒮 → ref {Δ} d ⟶ εwkTm {Δ} (Defs.body 𝒮 d)
   -- congruences

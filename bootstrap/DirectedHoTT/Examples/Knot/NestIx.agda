@@ -2,13 +2,13 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- OCP-0009 · KNOT — the CONVOY of a nested case on a SUBJECT FIELD (D077:
+-- OCP-0009 · KNOT — the CONVOY of a nested case on a SUBJECT FIELD (D496:
 -- "a nested pattern is a nested case"): β's `app (lam t) u` cases on the
 -- application's first field, `ordtr (nsuc a) nzero …` on three fields in
 -- turn.  Each nested case is a `Lib/SynPat` case whose convoy carries the
 -- judgement's TARGET and every payload met so far (the subject's, then
 -- each pattern's) — a STACK, all at the scrutinee's own depth (a subject
--- field under a binder Fords instead, D078):
+-- field under a binder Fords instead, D497):
 --
 --     NC S st  =  Σ (target : K S d) (PS st d)
 --     PS ((s , sh) ∷ st) d  =  Σ (payload sh at (s , d)) (PS st d)

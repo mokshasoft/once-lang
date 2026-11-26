@@ -19,7 +19,7 @@
 --
 --   ⇒ **MUTUALITY NEEDS NO KERNEL CHANGE AT ALL.**  It is ONE family
 --     over `Σ (s : Fin 2) Unit`, presented BY FIBRES OVER THE SORT
---     (`Lib/Sorted`, D074): the fibre over `(s , _)` is sort `s`'s
+--     (`Lib/Sorted`, D493): the fibre over `(s , _)` is sort `s`'s
 --     constructors.  No constructor carries a sort equation — the sort
 --     is where the constructor LIVES, not something it proves.
 --     Cross-sort references are `tρ` at the other sort's index.

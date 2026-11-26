@@ -4,13 +4,13 @@
 ------------------------------------------------------------------------
 -- OCP-0009 · EXAMPLES — `Vec`, LEVITATED and FIBRED.  THE ACCEPTANCE TEST
 -- for a family whose target index is COMPUTED (PLAN-LEVITATION stage 4,
--- D074): a constructor LIST of telescopes over the index, one method per
+-- D493): a constructor LIST of telescopes over the index, one method per
 -- constructor, elaborated by `Lib/Sugar` through the view `Lib/Tel`.
 --
 --        nil  :                              n ≡ zero  → Vec n
 --        cons : (m : Nat) → Nat → Vec m →  n ≡ suc m → Vec n
 --
--- ★ D074: a description is FIBRED — `D : Π (El I) (Desc I)` — so a family
+-- ★ D493: a description is FIBRED — `D : Π (El I) (Desc I)` — so a family
 --   whose constructors' targets are inputs (a syntax) needs no equations.
 --   `Vec`'s targets are COMPUTED (`zero`, `suc m`), and it says so
 --   EXPLICITLY: each constructor ends with an `⌜Id⌝` field.  That is

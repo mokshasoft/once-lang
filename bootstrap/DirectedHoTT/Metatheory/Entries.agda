@@ -3,7 +3,7 @@
 
 ------------------------------------------------------------------------
 -- OCP-0009 · dHoTT — ★ THE SIGNATURE'S ENTRIES, for the metatheory
---   (PLAN-REF, D082).
+--   (PLAN-REF, D501).
 --
 -- From the signature's context formation (`Spec/SigWf`: each entry typed
 -- in its prefix) to the two things the metatheory reads:

@@ -10,7 +10,7 @@
 -- the constructors at `0`, and the constructors at `suc m` (a list over
 -- the PREDECESSOR `m`).  `Fin` is the example: `Fin 0 = ∅`,
 -- `Fin (suc m) = fzero | fsuc (Fin m)` — its targets are presented BY
--- FIBRES (D075's reasoning at a numeric index), so no constructor carries
+-- FIBRES (D494's reasoning at a numeric index), so no constructor carries
 -- an index equation and none owes a transport.
 --
 -- ★ THE METHODS PATTERN-MATCH ON THE INDEX, as in `Lib/Sorted`: the one

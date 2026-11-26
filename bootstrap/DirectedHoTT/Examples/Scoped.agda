@@ -14,7 +14,7 @@
 -- `size` a FOLD (`Lib/TelFold`) — no per-constructor method, no
 -- per-constructor typing, and a two-line computation.
 --
--- ★★ D074, SEEN FROM A SYNTAX.  A description is FIBRED
+-- ★★ D493, SEEN FROM A SYNTAX.  A description is FIBRED
 --   (`D : Π (El I) (Desc I)`): each constructor telescope sees the index
 --   `n` it lands at.  So `lam`'s recursive field is simply `tρ (suc n)`,
 --   `var`'s field is `Fin n`, and there is NO index equation anywhere —

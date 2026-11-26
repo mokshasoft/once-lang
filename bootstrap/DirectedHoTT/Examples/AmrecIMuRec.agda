@@ -110,7 +110,7 @@ Mot = MotAt (var (vs vz)) (var vz)
 --
 -- Each is FOUR binders — the index, the payload, the structural
 -- hypotheses, and then the amrec IH the motive's codomain asks for.
--- ★ D074: `app`'s fields sit at the fibre's OWN index `i`, so the amrec
+-- ★ D493: `app`'s fields sit at the fibre's OWN index `i`, so the amrec
 --   IH (at `Tm i`) applies to them as they are — no transport.
 ------------------------------------------------------------------------
 

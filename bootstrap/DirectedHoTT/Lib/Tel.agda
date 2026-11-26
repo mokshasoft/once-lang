@@ -11,7 +11,7 @@
 --     ⌜ T ⌝ᵗ           dι j | dσ S (lam ⌜T⌝) | dρ j ⌜T⌝  (the term)
 --
 -- ★ WHY A VIEW, AND WHY IT IS NOT THE OLD `ICon` COMING BACK.  The kernel
---   has ONE datatype former; descriptions are ordinary terms (D072).  A
+--   has ONE datatype former; descriptions are ordinary terms (D491).  A
 --   `Tel` is not a second kind of description: it is a way of WRITING a
 --   description term, and `⌜_⌝ᵗ` says which.  Nothing here is trusted —
 --   `TelOK` is typing of the term by the ordinary rules (`⊢tel`), and
@@ -65,7 +65,7 @@ private
 ------------------------------------------------------------------------
 
 data Tel (Δ : Cx) : Set where
-  tι : Tel Δ                         -- the end (D074: the index is the fibre's)
+  tι : Tel Δ                         -- the end (D493: the index is the fibre's)
   tσ : RTm Δ → Tel (Δ ∙) → Tel Δ     -- a non-recursive field (a code), BOUND
   tρ : RTm Δ → Tel Δ → Tel Δ         -- a recursive field at an index, NOT bound
 
@@ -205,7 +205,7 @@ payN-red σ (tρ j T) I D =
 ------------------------------------------------------------------------
 
 -- the method's context: index, payload of the telescope (OVER the index
---   binder — D074), hypotheses in normal form (the telescope's pending
+--   binder — D493), hypotheses in normal form (the telescope's pending
 --   substitution is the weakening past the payload)
 HypCtx : (Γ : Ctx) → RTm ⌊ Γ ⌋ → RTm ⌊ Γ ⌋ → RTy ((⌊ Γ ⌋ ∙) ∙) → Tel (⌊ Γ ⌋ ∙) → Ctx
 HypCtx Γ I D M T =

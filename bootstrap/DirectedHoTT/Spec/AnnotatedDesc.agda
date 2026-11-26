@@ -124,7 +124,7 @@ era-methS I D (vs (vs z)) = refl
 wk2Mᴬ : ATy ((Γ ∙) ∙) → ATy ((((Γ ∙) ∙) ∙) ∙)
 wk2Mᴬ M = renTyᴬ (extR (extR (λ x → vs (vs x)))) M
 
--- D074: the type of a (fibred) description
+-- D493: the type of a (fibred) description
 DescFᴬ : ATm Γ → ATy Γ
 DescFᴬ I = Π (El I) (Desc (renTmᴬ vs I))
 

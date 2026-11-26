@@ -3,7 +3,7 @@
 
 ------------------------------------------------------------------------
 -- OCP-0009 · KNOT — ★★ `Γ ⊢ty A` / `Γ ⊢ t ∷ A`: THE TYPING JUDGEMENT,
--- ONE FAMILY OVER BOTH SORTS, FIBRED BY ITS SUBJECT (D077, `Lib/SynFib`).
+-- ONE FAMILY OVER BOTH SORTS, FIBRED BY ITS SUBJECT (D496, `Lib/SynFib`).
 --
 -- The index is `(i , t , c)`: a Knot index `i = (sort , depth)`, the
 -- subject `t : K sort depth`, and the CONVOY `c`:

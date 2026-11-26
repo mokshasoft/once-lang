@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------
 -- OCP-0009 · dHoTT step 21 — INTRINSIC TYPING over a SIGNATURE.
 --
--- Parameters (PLAN-REF, D082): the signature 𝒮 (the definition context;
+-- Parameters (PLAN-REF, D501): the signature 𝒮 (the definition context;
 -- reduction, re-exported from `Spec/Reduction 𝒮`) and `n`, the number of
 -- its names a derivation may USE (`⊢ref`).  An entry d is typed at n = d,
 -- its prefix, under the SAME reduction as every other entry.
@@ -237,7 +237,7 @@ data _⊢_∷_ where
   -- `⊢dpay` types each term it contains (the index code included).
   ⊢dpay : ∀ {Γ I D C} → Γ ⊢ I ∷ U → Γ ⊢ D ∷ DescF I → Γ ⊢ C ∷ Desc I →
           Γ ⊢ dpay I D C ∷ U
-  -- ★ D074: a constructor at index `i` is a payload of the telescope
+  -- ★ D493: a constructor at index `i` is a payload of the telescope
   --   `D i` — the FIBRE over `i`.  Its type mentions the index code, so it
   --   types it (validity).
   ⊢con  : ∀ {Γ I D i p} → Γ ⊢ I ∷ U → Γ ⊢ D ∷ DescF I → Γ ⊢ i ∷ El I →
@@ -260,14 +260,14 @@ data _⊢_∷_ where
             Γ ⊢ fcase t a b ∷ subTy (single t) P
   ⊢fcase0 : ∀ {Γ P t} → (Γ ▹ Fin nzero) ⊢ty P → Γ ⊢ t ∷ Fin nzero →
             Γ ⊢ fcase0 t ∷ subTy (single t) P
-  -- ★ Σ-INDUCTION (D071)
+  -- ★ Σ-INDUCTION (D490)
   ⊢psplit : ∀ {Γ A B P q b} →
             Γ ⊢ty A → (Γ ▹ A) ⊢ty B → (Γ ▹ Σ' A B) ⊢ty P → Γ ⊢ q ∷ Σ' A B →
             ((Γ ▹ A) ▹ B) ⊢ b ∷ subTy pairS P →
             Γ ⊢ psplit b q ∷ subTy (single q) P
   -- ★ a definition is typed by its body's typing in the EMPTY context —
   --   one shared proof per definition, weakened to every use
-  -- ★ a reference is typed by its DECLARATION alone (PLAN-REF, D082): a
+  -- ★ a reference is typed by its DECLARATION alone (PLAN-REF, D501): a
   --   projection from the signature, among the first n names
   ⊢ref : ∀ {Γ d} → d <ˢ n → Γ ⊢ ref d ∷ εwkTy (Defs.type 𝒮 d)
   ⊢conv : ∀ {Γ t A B}   → Γ ⊢ t ∷ A → A ≅ᵀ B → Γ ⊢ t ∷ B
@@ -355,7 +355,7 @@ conv-El d r = ⊢conv d (credᵀ (ξ-El r))
 
 
 ------------------------------------------------------------------------
--- ★ THE SIGNATURE'S ENTRIES ARE TYPED (PLAN-REF, D082) — the hypothesis
+-- ★ THE SIGNATURE'S ENTRIES ARE TYPED (PLAN-REF, D501) — the hypothesis
 --   δ needs: subject reduction unfolds `ref d` to its body, which must be
 --   typed at the reference's declared type.  Stated at THIS judgement's
 --   names; `Metatheory/Signature` derives it from the telescope's

@@ -3,7 +3,7 @@
 
 ------------------------------------------------------------------------
 -- OCP-0009 · Lib — ★★ A FAMILY OVER A SYNTAX, FIBRED BY ITS SUBJECT
--- (D077), generic in the signature and the CONVOY.
+-- (D496), generic in the signature and the CONVOY.
 --
 -- The index is `(i , t , c)`: a syntax index `i`, the SUBJECT `t : SK i`,
 -- and a convoy `c : El (C i)`.  The fibre over it is `Lib/SynFib`'s case

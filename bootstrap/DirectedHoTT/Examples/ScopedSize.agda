@@ -58,7 +58,7 @@ appNode p = conₗ (suc (suc zero)) p
 --
 -- The library fold's ι (`fold-ι`) delivers `suc (fst h + fst (snd h))`
 -- with `h` the walked hypotheses — both recursive calls at the AMBIENT
--- index `n` (D074: `app`'s fields sit at the fibre's own index) — and
+-- index `n` (D493: `app`'s fields sit at the fibre's own index) — and
 -- three projections finish it.
 ------------------------------------------------------------------------
 

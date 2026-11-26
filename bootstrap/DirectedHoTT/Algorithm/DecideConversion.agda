@@ -51,7 +51,7 @@ private
 
 -- ★ `Dec` lives in `Algorithm/DecEq` (it has no dependencies there) and is
 --   NOT re-exported: a parameterised module never `public`-re-exports a
---   non-parameterised one (each instance would copy it; PLAN-REF D082).
+--   non-parameterised one (each instance would copy it; PLAN-REF D501).
 open import DirectedHoTT.Algorithm.DecEq using ( Dec; yes; no )
 
 ------------------------------------------------------------------------

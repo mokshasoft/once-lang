@@ -7,7 +7,7 @@
 --
 -- A mutual family (the Knot's `RTy`/`RTm`, `Examples/Mutual`) is one
 -- family over `I = Σ (s : Fin ns) (J s)`, and its fibre over `(s , j)` is
--- the constructors OF SORT `s` (D074: fibres of the target map are the
+-- the constructors OF SORT `s` (D493: fibres of the target map are the
 -- definition — no sort Ford, no Id-vs-Hom commitment on the tag):
 --
 --   Dₛ Css = λ i. sel [Dσ Cs₀, …, Dσ Cs_{ns-1}] (fst i)

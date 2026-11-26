@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- OCP-0009 · KNOT — the `⊢` rows' shared machinery (D077):
+-- OCP-0009 · KNOT — the `⊢` rows' shared machinery (D496):
 --   * `CaseRow` — a row whose conclusion TYPE is a constructor pattern
 --     with fresh variables: the fibre cases on the type (`Lib/SynPat`),
 --     the case's convoy is `(Γ , term payload)` (`JudgeTmIx`);

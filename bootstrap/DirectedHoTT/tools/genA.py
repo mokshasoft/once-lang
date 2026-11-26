@@ -64,7 +64,7 @@ TMS = [
  ('fcase0', [f(T,1,A), f(M)]),                      # fcase0 [P] t
  ('psplit', [f(T,0,A), f(T,1,A), f(T,1,A), f(M,2), f(M)]),  # psplit [A B P] b q
  # ★ a reference to the d-th entry of the signature: a PROJECTION, in
- #   both layers (PLAN-REF, D082) — erasure keeps the name.
+ #   both layers (PLAN-REF, D501) — erasure keeps the name.
  ('ref', [f(N)]),                                   # ref d
 ]
 SIGONLY = set()

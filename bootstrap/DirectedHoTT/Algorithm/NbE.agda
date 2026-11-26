@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- OCP-0009 · dHoTT — ★ THE ENVIRONMENT EVALUATOR (PLAN-EVAL E0, D080).
+-- OCP-0009 · dHoTT — ★ THE ENVIRONMENT EVALUATOR (PLAN-EVAL E0, D499).
 --                      UNTRUSTED: nothing certified rests on it yet.
 --
 -- ★ WHAT IT IS.  Untyped normalisation by evaluation over erased kernel
@@ -54,7 +54,7 @@ private
     Γ Δ : Cx
 
 -- ★ not `public`: a parameterised module never re-exports a non-parameterised
---   one (each `NbE tbl` would copy Value's definitions; PLAN-REF D082).
+--   one (each `NbE tbl` would copy Value's definitions; PLAN-REF D501).
 --   Importers take Value's names from `Algorithm/NbE/Value` directly.
 open import DirectedHoTT.Algorithm.NbE.Value
 

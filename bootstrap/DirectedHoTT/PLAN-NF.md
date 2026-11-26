@@ -3,7 +3,7 @@
 > ⛔ **HISTORICAL (2026-10-05).** Phase 1 shipped as PLAN-BIDI S7a
 > (`Algorithm/Eval`, the certified evaluator). The rest — Phase 2 (`infer`
 > without fuel) and the evaluator that RUNS core programs — moved to
-> **PLAN-EVAL** (ROADMAP R3, D080). Read this file for the evidence (§0,
+> **PLAN-EVAL** (ROADMAP R3, D499). Read this file for the evidence (§0,
 > KNOT-LESSONS §10), not as a plan.
 
 ★ Rationale and evidence: `KNOT-LESSONS.md` §10. The Knot's proofs are

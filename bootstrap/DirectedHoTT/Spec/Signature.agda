@@ -9,12 +9,12 @@
 --   types `ref d` by them (`Spec/TypingA.⊢ᴬref`).  The bodies are kernel
 --   terms.
 --
--- ★ THE KERNEL'S VIEW (PLAN-REF, D082).  `kernel S` erases the declared
+-- ★ THE KERNEL'S VIEW (PLAN-REF, D501).  `kernel S` erases the declared
 --   types: it is the definition context the kernel reduces and types
 --   under (`Spec/Reduction`, `Spec/Typing`).  A reference is a projection
 --   from it, in both layers.
 --
--- ★ A TELESCOPE (D081): entry n is checked over the entries before it;
+-- ★ A TELESCOPE (D500): entry n is checked over the entries before it;
 --   extending a signature is context extension, so a signature built in
 --   one module is extended in another without re-checking it
 --   (`Metatheory/Signature.WfSig` is the context-formation rule).

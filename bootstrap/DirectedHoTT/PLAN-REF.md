@@ -1,7 +1,7 @@
 # PLAN-REF — references are PROJECTIONS from the signature (kernel)
 
 > Opened 2026-10-07. Stage E4 of PLAN-EVAL (R3), and the open half of
-> ROADMAP Q5. Decision D082 (to record in `docs/compiler/decision-log.md`).
+> ROADMAP Q5. Decision D501 (to record in `docs/compiler/decision-log.md`).
 > Supersedes PLAN-BIDI §2-ter's "`ref` carrying its body (B1′)".
 
 ## 0. The decision, and why
@@ -30,7 +30,7 @@ use site and the clarity of use-site code and proofs. Both pick projections:
   body (and the `cls` field kind that exists only to copy it). `EraName`,
   `fill` and the "write the body exactly so" rules disappear.
 - **The mathematics.** Extension by definitions in a CwF: the signature is a
-  context (D081 already made `WfSig` context formation), a reference is a
+  context (D500 already made `WfSig` context formation), a reference is a
   projection, δ is the definitional isomorphism. It is the compiler's D071
   (`⟦ref x⟧Γ = Γ(x)`), so R6 has one shape to converge on.
 
@@ -77,13 +77,13 @@ No spikes, no compatibility layer, no old/new coexistence.
   reducibility be proved by induction on `n` with ONE logical relation
   (§2.2), with no transport between relations.
 - `WfSig Σ`: for every `d <ˢ size Σ`, `◇ ⊢[Σ , d] body Σ d ∷ type Σ d`
-  (and the type well-formed at `d`). Context formation, as D081.
+  (and the type well-formed at `d`). Context formation, as D500.
 
 ### 1.4 Extension
 
 `Σ ≤ Σ'` (a prefix of the telescope). Lemmas, each one induction:
 `⟶`, `≅`/`≅ᵀ`, `⊢`/`⊢ty` transport along `≤` (same `n`), and `⊢[n]` to
-`⊢[n']` for `n ≤ n'`. A Knot segment (`SigExtend`, D081) moves its
+`⊢[n']` for `n ≤ n'`. A Knot segment (`SigExtend`, D500) moves its
 predecessor's results across one `≤` at the boundary; nothing else ever
 transports.
 
@@ -141,7 +141,7 @@ substitution of the bodies for the names, by induction on the telescope.
   disregarded). `kref ⌜d⌝`: no quoted body, the `cls` field kind gone. The
   DESCRIBED signature is an INDEX of the Knot's judgement families, a
   quoted signature `⌜𝒮⌝` beside the quoted variable context:
-  - the signature IS a context (D081), and the Knot already indexes its
+  - the signature IS a context (D500), and the Knot already indexes its
     judgements by the quoted variable context — the definition context
     gets the same treatment;
   - internalising "for all 𝒮" (Spec's meta-parameter) is a family over
@@ -624,7 +624,7 @@ Next: Lib, then Examples, then the Knot.
   unfoldings (49.4M vs 49.0M) and somewhat faster. It did not deliver the
   ~38% E4 predicted, because that prediction misattributed the cost (see
   above). What PLAN-REF bought is its other two criteria: the
-  mathematics (a reference IS a projection; D082) and clarity (`ref d`
+  mathematics (a reference IS a projection; D501) and clarity (`ref d`
   with no body, `⊢ref` without a premise, `EraName` deleted). The
   remaining evaluator cost is `eval`/`force` on every value; that is
   PLAN-EVAL's business, not the reference representation's.
