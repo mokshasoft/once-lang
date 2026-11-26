@@ -10793,7 +10793,7 @@ type system says does not exist.
 
 ### On the OCP-0009 POC
 
-`bootstrap/poc/OCP0009/NbEPQTT.agda` realises the phase distinction at the
+`POC/OCP0009/NbEPQTT.agda` realises the phase distinction at the
 CONTEXT level (`⟦Γ⟧full` / `⟦Γ⟧run` / `erase`, with `erase-irrelevant` true by
 construction), and `NbEPQTTJ.agda` the graded judgment with `erase-arg`. It has
 NO erasing arrow denotation — the proposal names that as Rung 5's remaining
@@ -17443,7 +17443,7 @@ golden vector on both sides (`["a b"] ↦ once_7azu32_b`).
 **Supersedes**: D003 (its semiring stands; its reading of `One` as "used exactly once" and its
 silence on the order do not). **Relates**: D143 (erasure is semantic), D232 (standard QTT
 scaling), D250 (pure is referential transparency), plan 0.102 §6–§7, the OCP-0009 linear-core
-direction (`bootstrap/poc/OCP0009/NbEPLinCore.agda`, `NbEPLinQTT.agda`).
+direction (`POC/OCP0009/NbEPLinCore.agda`, `NbEPLinQTT.agda`).
 
 ### Context
 Plan 0.102 phase B found the exact-usage substitution lemma FALSE in `Spec/Core`: `case` joins its
@@ -20867,9 +20867,9 @@ already covers for definitions through `ParamDefs`.
 cases on types (an eliminator on universe codes, a type-indexed primitive) may only take them at grade
 `𝟘`, or is a decision of its own. The theorem is stated externally, over derivations, so it holds as long
 as no such construct exists; OCP-0009's kernel has no eliminator on `U`.
-Read on 2026-11-03 (branch `origin/plan-ref`): `bootstrap/DirectedHoTT/Spec/Syntax.agda` has `U`/`El` and
+Read on 2026-11-03 (branch `origin/plan-ref`): `POC/DirectedHoTT/Spec/Syntax.agda` has `U`/`El` and
 codes but no eliminator on `U` (`PLAN-BIDI.md`: "`U` has no eliminator, so codes cannot be cased on").
-Two things there bear on the rule: the earlier PoC took `U = μ UF` as data (`poc/OCP0009/NbEPCwF.agda`)
+Two things there bear on the rule: the earlier PoC took `U = μ UF` as data (`POC/OCP0009/NbEPCwF.agda`)
 and OCP-0009 Rung 1 proposes letting `Cata` compute over types, a type-case that breaks parametricity
 over `U` unless the code argument is erased; and the kernel deliberately does not carry naturality in its
 hom-types (`ARCHITECTURE.md` §G8, refuted at `U` by `SpikeHomNatU`), so naturality stays an external
@@ -22548,7 +22548,7 @@ carries a whole word, at the value's own type.
 
 ### Context
 
-SPIKE-LEVITATION (`bootstrap/DirectedHoTT/SPIKE-LEVITATION.md`, S0–S4)
+SPIKE-LEVITATION (`POC/DirectedHoTT/SPIKE-LEVITATION.md`, S0–S4)
 showed descriptions-as-terms is feasible in the one-telescope form: a
 datatype is ONE telescope whose first field is a tag in a finite enumeration
 (`dσ (enum c) (λ t. switch t Cs)`), and the eliminator takes ONE method. The
@@ -22642,7 +22642,7 @@ the indexed form at the unit index. Constructor lists stay surface sugar
 
 ### See Also
 
-D490, SPIKE-LEVITATION S0–S4, `bootstrap/DirectedHoTT/PLAN-LEVITATION.md`.
+D490, SPIKE-LEVITATION S0–S4, `POC/DirectedHoTT/PLAN-LEVITATION.md`.
 
 ---
 
@@ -22684,7 +22684,7 @@ condition.
 
 ### See Also
 
-D490, D491, `bootstrap/DirectedHoTT/PLAN-LEVITATION.md`.
+D490, D491, `POC/DirectedHoTT/PLAN-LEVITATION.md`.
 
 ---
 
@@ -22738,7 +22738,7 @@ The Chapman–Dagand–McBride–Morris levitated form.
 
 ### See Also
 
-D491, D492, `bootstrap/DirectedHoTT/PLAN-LEVITATION.md`, PLAN-INDEXED §1–3
+D491, D492, `POC/DirectedHoTT/PLAN-LEVITATION.md`, PLAN-INDEXED §1–3
 (the ambient-index design this levitates), PLAN-JUDGEMENT §1 (Fording cost).
 
 ## D494: Mutual Families Are FIBRED BY SORT — No Sort Ford (OCP-0009, levitation; the Knot's encoding)
@@ -22786,7 +22786,7 @@ it:
 
 ### See Also
 
-D493, `bootstrap/DirectedHoTT/PLAN-LEVITATION.md` Stage 5.
+D493, `POC/DirectedHoTT/PLAN-LEVITATION.md` Stage 5.
 
 ## D495: `Fin` Is FIBRED OVER ℕ — Families With a Numeric Index Case on It (OCP-0009, levitation)
 
@@ -22966,7 +22966,7 @@ D491, D496, D497; HANDOFF-2026-09-10 §2; OCC-ATTEMPTS.md §35.
 
 **Renumbered**: D080 on the OCP-0009 POC line; renumbered on its rebase onto master (2026-11-26), where D080 was already taken. Older POC documents and commit messages may cite the old number.
 **Date**: 2026-10-05
-**Status**: Accepted (user, 2026-10-05; plan: `bootstrap/DirectedHoTT/PLAN-EVAL.md`)
+**Status**: Accepted (user, 2026-10-05; plan: `POC/DirectedHoTT/PLAN-EVAL.md`)
 
 ### Context
 
@@ -23025,13 +23025,13 @@ fallback, and (b) is part of (a).
 - The decoder-form question (select-then-map vs the Lib's form, PLAN-BIDI
   §3g) is re-judged on E0's measurements.
 - The linear/QTT layer (ROADMAP R5) builds its allocation-aware evaluator
-  on this value domain, following `poc/OCP0009/NbEPLinCore.agda`.
+  on this value domain, following `POC/OCP0009/NbEPLinCore.agda`.
 
 ### See Also
 
-D071; `bootstrap/DirectedHoTT/PLAN-EVAL.md`;
-`bootstrap/DirectedHoTT/ROADMAP.md`; OCP-0009 `:133-148`, `:397-458`;
-`poc/OCP0009/FINDINGS.md` F3, P1/P2.
+D071; `POC/DirectedHoTT/PLAN-EVAL.md`;
+`POC/DirectedHoTT/ROADMAP.md`; OCP-0009 `:133-148`, `:397-458`;
+`POC/OCP0009/FINDINGS.md` F3, P1/P2.
 
 ## D500: The Signature Is a TELESCOPE; Well-Formedness Is Context Formation (OCP-0009, DirectedHoTT S7 / ROADMAP Q5)
 
@@ -23097,7 +23097,7 @@ is a projection from it.
 
 ### See Also
 
-D071 (compiler branch), D499; `bootstrap/DirectedHoTT/ROADMAP.md` Q5;
+D071 (compiler branch), D499; `POC/DirectedHoTT/ROADMAP.md` Q5;
 PLAN-BIDI §3g; PERF §8.
 
 ## D501: References Are PROJECTIONS From the Signature, in the Kernel (OCP-0009, DirectedHoTT PLAN-REF / ROADMAP R3 E4, Q5)
@@ -23178,5 +23178,5 @@ soundness (the same, inside the proofs).
 
 ### See Also
 
-D071 (compiler branch), D499, D500; `bootstrap/DirectedHoTT/PLAN-REF.md`
+D071 (compiler branch), D499, D500; `POC/DirectedHoTT/PLAN-REF.md`
 (§0 decision, §6 progress); HANDOFF-2026-10-08, HANDOFF-2026-10-11.

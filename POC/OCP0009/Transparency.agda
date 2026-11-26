@@ -1,0 +1,71 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+------------------------------------------------------------------------
+-- OCP-0009 · POC-0 — Adequacy of `conv` (status board, FINALIZED)
+--
+-- `conv` decides CONVERSION for the closed first-order fragment of the IR,
+-- where conversion is observational (model) equality `_≋_` — the correct,
+-- fully-extensional definitional equality (Sound.agda). This is the
+-- evaluator route of OCP-0009 fully realized for the fragment: determinism
+-- of `eval` replaces confluence; no rewriting/SN/confluence is used.
+--
+--   · terminating — `conv` is a total Agda function (Conv.agda, --safe).      ✓
+--   · sound       — conv-sound : conv fo t u ≡ true → t ≋ u   (Sound.agda).   ✓
+--   · complete    — conv-complete : t ≋ u → conv fo t u ≡ true (Sound.agda).  ✓
+--   ⇒ conv-decides : conv is a decision procedure for `_≋_`.                  ✓
+--
+-- Both directions are PROVEN with ZERO postulates. The reduction theory is
+-- related by `≈⊆≋` (eval-soundness): `conv` also accepts everything `_⟶_`
+-- equates (≈→conv), so it respects the reduction rules too.
+--
+-- Whole-POC axiom inventory: exactly ONE — `funext` (Complete.agda), used
+-- only for congruence under `curry` in eval-soundness (the `≈⊆≋` bridge).
+-- The core decision result `conv-decides` is funext-free.
+--
+-- Scope: closed morphisms `Term Unit C`, first-order `C`. Lifting to open
+-- terms / higher-order codomains (where `_≋_`'s `∀ x` no longer collapses to
+-- a single point) is POC-0b — residualizing NbE.
+------------------------------------------------------------------------
+
+module OCP0009.Transparency where
+
+open import OCP0009.Conv public
+open import OCP0009.Complete public
+  using (_≈_; ≈-refl; ≈-step; ≈-back; eval-sound; eval-≈; ≈→conv)
+open import OCP0009.Sound public
+  using (_≋_; ≋-refl; ≋-sym; ≋-trans; ≋-∘; ≋-⟨,⟩; ⟶⊆≋; ≈⊆≋;
+         eq-val-sound; conv-sound; conv-complete; conv-decides)
+-- POC-0b(i): conversion on any FINITE first-order domain (not just `Unit`),
+-- by enumeration. Fully proven, zero postulates. Maps the boundary: `μ`/`⇒`
+-- domains are exactly what enumeration cannot reach — the NbE frontier.
+open import OCP0009.Finite public
+  using (FiniteFO; conv-fin; conv-fin-sound; conv-fin-complete; conv-fin-decides)
+-- The capstone: conversion is DECIDABLE (proof-carrying `Dec`), the literal
+-- "decidable dependent-type conversion" for the fragment. Zero new postulates.
+open import OCP0009.Decidable public using (≋-dec; ≋-dec₀)
+-- POC-0b(ii): higher-order codomains (functions with finite arguments),
+-- compared by enumerating the argument. Proven; funext only.
+open import OCP0009.Higher public
+  using (Checkable; check-eq; conv-h; conv-h-sound; conv-h-complete)
+-- POC-1: dependent-index conversion. `Vec m ≡ Vec n` reduces to `conv` on the
+-- index terms; `+` is a real `cata` in the IR. Same evaluator, no new engine.
+open import OCP0009.Dependent public
+  using (add; plus; VecConv; Vec-0+3≡Vec-3; Vec-3+0≡Vec-3)
+-- POC-1b: extend Code with a universe carrying Π/Σ formers; type conversion
+-- IS the proven `conv`, and the CwF congruence laws are proven from `_≋_`.
+open import OCP0009.Universe public
+  using (U; ⌜nat⌝; Π[_,_]; Σ[_,_]; TyConv; TyConv-decides; Π-cong; Σ-cong)
+-- The neutrals frontier, correctly framed: on OPEN terms, `_≋_` exceeds
+-- definitional equality. Proven split — `0+n≋n` (definitional, decided by
+-- evaluation) vs `+F-runit`/`n+0=n` (propositional, needs induction).
+open import OCP0009.Open public
+  using (plus0; 0+n≋n; _+F_; +F-lunit; +F-runit)
+-- The NbE engine: residualizing reify/reflect that normalizes OPEN terms
+-- (products, sums, AND inductive types via cata-β/out-η/stuck-on-neutral).
+open import OCP0009.NbE public
+  using (Val; Ne; reflect; reifyVal; eval-nbe; nf)
+-- The engine as an open-term conversion DECIDER for {Unit,×,+,μ}: accepts
+-- definitional equals, rejects the rest.
+open import OCP0009.NbEConv public
+  using (conv-nbe; erase; eqTree)

@@ -494,7 +494,7 @@ plain BCCR, nothing above it stands — so the POC order is the risk order: prov
 hardest, most load-bearing thing (evaluator adequacy at CCT3) first, on the smallest
 system, *before* adding Π/Σ.
 
-**Status — realized (`bootstrap/poc/OCP0009/`).** `conv(a,b) = eq-val (eval a)(eval
+**Status — realized (`POC/OCP0009/`).** `conv(a,b) = eq-val (eval a)(eval
 b)` over the real IR + evaluator (compiler untouched), proven a **sound + complete**
 decision procedure (`conv-decides`) on closed first-order-codomain morphisms, with
 **one axiom** (funext, for `curry`-congruence; the core result is funext-free).
@@ -578,7 +578,7 @@ term-dependency yet).
 - **Obligation:** none hard — no term-in-type conversion yet.
 - **Cheap** because Once already reifies functors; this just types that level.
 
-**Status — universe HIERARCHY realized (`bootstrap/poc/OCP0009/NbEPUnivH.agda`,
+**Status — universe HIERARCHY realized (`POC/OCP0009/NbEPUnivH.agda`,
 2026-07-12).** Beyond one universe: a predicative two-level tower `U₀ ⊂ U₁`. A
 single universe cannot hold a code for itself (`Type : Type` = Girard's paradox),
 so `U₀`'s code lives one level up — `` `U₀ : U₁ `` with `El₁ `U₀ = U₀` and a
@@ -596,7 +596,7 @@ The first genuinely dependent step (λP). Types may now mention *terms* (`Vec n`
   (normalize-compare terminates because the core is SN). Keep equality
   **intensional** (smallest decidable choice).
 
-**Status — type layer realized (`bootstrap/poc/OCP0009/NbEPCwF.agda`, 2026-07-12).**
+**Status — type layer realized (`POC/OCP0009/NbEPCwF.agda`, 2026-07-12).**
 The universe of type-codes `U = μ UF` (Tarski-style, as `Universe.agda`) lives
 entirely inside the principled NbE's `{Unit,×,+,μ}` fragment, so `Π`/`Σ`/`⇒`/`×`
 are fragment morphisms `Tm _ U` and **type conversion IS the principled `nf`** —
@@ -611,7 +611,7 @@ it named: **OPEN type-codes that mention the context variable, with computation
 UNDER the context** (a `fst∘⟨-,-⟩` redex on the variable normalized away),
 decided by `nf`.
 
-**Status — Tarski decoder realized (`bootstrap/poc/OCP0009/NbEPEl.agda`,
+**Status — Tarski decoder realized (`POC/OCP0009/NbEPEl.agda`,
 2026-07-12).** `El : Code → Ty` decodes the first-order type-code family to the
 `Ty` it denotes; the reflection `⌜_⌝ : Code → Tm Unit U` lands codes as IR
 `U`-data agreeing with the `NbEPCwF` smart constructors (the self-hosting
@@ -651,7 +651,7 @@ types but cannot *state a proof obligation*.
 - **Obligation:** pick intensional first (revisit for funext/OTT/cubical later —
   see Open Questions).
 
-**Status — definitional `Id` + `J` realized (`bootstrap/poc/OCP0009/NbEPId.agda`,
+**Status — definitional `Id` + `J` realized (`POC/OCP0009/NbEPId.agda`,
 2026-07-12).** A value-indexed identity type `Id {A} (u v : Val Unit A)` with
 `Refl` and the **full dependent eliminator `J`** (genuine, by pattern matching —
 not a `subst` surrogate); `transp`/`Id-sym`/`Id-trans` derive from `J`. On terms,
@@ -692,7 +692,7 @@ indexed families.
 - **Obligation:** strict positivity for the families (respected by the existing WF
   machinery).
 
-**Status — native indexed families realized (`bootstrap/poc/OCP0009/NbEPIndexed.agda`,
+**Status — native indexed families realized (`POC/OCP0009/NbEPIndexed.agda`,
 2026-07-12).** The container core is generalized to INDEXED containers
 (Altenkirch–Morris): `IxCon` (Op/Ar/ix), extension `⟦_⟧ix`, the indexed fixpoint
 `μix`, and generic indexed induction `elim` (= `Cata` over an indexed family) —
@@ -710,7 +710,7 @@ as a type" (the summit).
   separate, unresolved bill — not a free extension of this rung (FAQ Q9, Open
   Questions → *Induction-recursion*).
 
-  **Status — IR universe PROTOTYPED (`bootstrap/poc/OCP0009/NbEPUniv.agda`,
+  **Status — IR universe PROTOTYPED (`POC/OCP0009/NbEPUniv.agda`,
   2026-07-12).** Per the plan's §6 foundations-first reframing (which merges the
   universe row with this IR/II row), the inductive-recursive Tarski universe is
   built: `U` and `El` MUTUAL (Dybjer–Setzer), the `Π`/`Σ` codes storing a genuine
@@ -735,7 +735,7 @@ Rung 2 onward**, so the dependent layer is erasable-by-construction rather than
 retrofitted. Multiplicity `0` = erased proof/index; `1` = linear resource (folds
 Once's resource-control work into the same mechanism); `ω` = unrestricted.
 
-**Status — QTT substrate realized (`bootstrap/poc/OCP0009/NbEPQTT.agda`,
+**Status — QTT substrate realized (`POC/OCP0009/NbEPQTT.agda`,
 2026-07-12).** The multiplicity semiring `Mult = {𝟘,𝟙,ω}` with `+ᵐ`/`·ᵐ` and the
 full ordered-semiring laws (Atkey's resource semiring), machine-checked. Graded
 contexts `Ctxq` (per-entry multiplicity) with the **phase distinction**: a full
@@ -760,7 +760,7 @@ argument is inferred `𝟘` (erased). Remaining for this rung: elaborate
 `𝟘`-graded arguments — the compiler's Surface→IR pass, connecting to the IR-level
 `erase-irrelevant` soundness.
 
-**Status — summit SHAPE demonstrated (`bootstrap/poc/OCP0009/NbEPSummit.agda`,
+**Status — summit SHAPE demonstrated (`POC/OCP0009/NbEPSummit.agda`,
 2026-07-12).** On the canonical verified-compiler example: a tiny expression
 language + evaluator (spec) + compiler to a stack machine + the machine-checked
 `compile-correct : ∀ e s → exec (compile e) s ≡ (eval e ∷ s)`, by structural
@@ -1577,10 +1577,10 @@ clean (arrows).
 ## Appendix — the compiler-side hand-off (from plan 0.102 §10, 2026-10-06; plan deleted 2026-10-09, closure D289)
 
 
-The dependent kernel (`origin/ocp-0009-nbe-sound`, `bootstrap/DirectedHoTT/`) lands by
+The dependent kernel (`origin/ocp-0009-nbe-sound`, `POC/DirectedHoTT/`) lands by
 EXTENDING `Spec.Core`'s judgment `Γ ⊢[ Ψ ] t ∷ A ! π`, never as a second kernel:
 
-| POC (`bootstrap/DirectedHoTT/…`) | compiler core (`formal/Once/Spec/Core/…`) | how they meet |
+| POC (`POC/DirectedHoTT/…`) | compiler core (`formal/Once/Spec/Core/…`) | how they meet |
 |---|---|---|
 | `Spec/Syntax`: well-scoped de Bruijn `RTm Γ`/`RTy Γ` (mutual, `El`) | `Syntax`: `Tm n`; types are `Once.Type` (closed) | types become `RTy n`; today's `Type` is the closed, term-free fragment |
 | `Spec/Typing` `_⊢_∷_` (ungraded, effect-free) | `Typing` `_⊢[_]_∷_!_` (usage Ψ, effect π) | add Π/Σ/U/El/Hom/Id/IMu as rules carrying Ψ and π |

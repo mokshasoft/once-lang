@@ -1,0 +1,3778 @@
+# Future Tasks — the OCP-0009 POC
+
+*Moved from the repository root FUTURE.md (2026-11-26), where the POC line had appended it.*
+
+## ~~OCP-0009 POC: split the four de-facto libraries out of `Examples*`~~ — DONE 2026-08-20
+
+**Goal**: stop `Lib*` modules importing `Examples*` modules. **Achieved** —
+`grep -l "open import OCP0009.NbEPDirDBExamples" NbEPDirDBLib*.agda`
+returns nothing.
+
+Four new library modules, each re-exported `public` by the `Examples*` module
+it came from, so **no importer outside `Lib*` had to change**:
+
+| new module | holds | was in | `Lib*` importers repointed |
+| --- | --- | --- | --- |
+| `…LibNat` | `plusTm`, `⊢plus` | `…ExamplesNat` | 4 |
+| `…LibOrd` | `⊢trans`, `⊢strong-base`, `⊢strong-step`, `⊢strong-base'`, `⊢strong-descend` | `…ExamplesOrd` | 6 |
+| `…LibStrong` | `El-homNat`, `natAsEl`, `elAsNat`, `reflMot`, `reflTm`, `⊢reflMot`, `⊢le-refl-z/s`, `⊢le-refl` | `…ExamplesStrong` | 7 |
+| `…LibMonus` | `predTm`, `monusTm`, `⊢pred`, `⊢monus`, the four reduction laws, `homˡ*`, `predMot`, `⊢predMot`, `⊢pred-le` | `…ExamplesDiv` | 1 |
+
+### What the plan got wrong, and what made it cheap
+
+⚠ **The `⊢le-refl-z/s` row was wrong.** The table above listed them as
+"genuine examples" that stay behind. They are not demos — `⊢le-refl` is
+literally `natrec ⊢reflMot ⊢le-refl-z ⊢le-refl-s`, so they are its two
+branches and had to move with it. Check what a primitive is DEFINED BY
+before classifying its neighbours as examples.
+
+★ **The estimate of ~70 import sites was the expensive framing, and it was
+avoidable.** The `Lib* → Examples*` edges are NARROW — only a handful of
+names cross, and only 12 modules are on the library side:
+
+```
+ExamplesOrd     ⊢strong-base', ⊢strong-step                    → 7 libs
+ExamplesStrong  ⊢le-refl, reflTm, natAsEl, El-homNat           → 7 libs
+ExamplesNat     plusTm, ⊢plus                                  → 4 libs
+ExamplesDiv     10 monus/pred names                            → 1 lib
+```
+
+So the move is: split out exactly those, have the `Examples*` module
+`open import … public` its new `Lib*`, and repoint **only the `Lib*`
+importers**. Every other importer — the ~70 — keeps working untouched.
+Measuring the edges before planning the churn turned a ~70-site refactor
+into a ~18-site one.
+
+## OCP-0009: the SECOND Lib/Examples inversion — general lemmas stranded in examples
+
+**Goal**: find general lemmas that live in `Examples*` because they were
+STATED at that example's instantiation.
+
+⚠ **The 2026-08-20 split does NOT cover this.** That one asked *"does any
+`Lib*` import an `Examples*`?"* and drove it to zero. Sound, but it can only
+see the inversion when the dependency already runs library→example. A
+general lemma sitting in an example is invisible to it, because **nothing
+imports it yet** — the dependency appears the moment some future library
+combinator needs it.
+
+**How it hides.** `⊢descS-at` is a fact about `descS-at`, which is
+`…LibAmrec`'s own construct — but it was written at gcd's `msr` rather than
+at the abstract measure `m`. Instantiating a general lemma at an example's
+parameters makes it *look* example-specific when its content is not.
+
+**Found so far** (`…ExamplesGcdEqs`, surfaced by `amrec-ind` needing a
+certificate typing): `extR-id`, `extR⁶-id`, `descS-at-idR`, `⊢descS-at`.
+
+⚠⚠ **AND THE MOVE IS NOT A PURE RENAME — MEASURED 2026-08-20.** Relocating
+them with `msr → m` FAILS:
+
+    renTm (extR idR) m != m   of type RTm (⌊ Δ ⌋ ∙)
+
+For gcd's **closed** `msr` that identity renaming reduces away
+definitionally; for an abstract `m` it is only propositional. So
+`⊢descS-at`'s proof silently depends on the measure being closed, and
+generalising it needs `renTm-idR` casts threaded through `descS-peel`'s
+endpoints.
+
+⇒ **Being stated at an instance can hide a real dependency on that
+instance, not just a cosmetic one.** The audit below must therefore CHECK
+each candidate generalises, not assume it. Reverted rather than left
+half-done.
+
+### The audit
+
+For each `Examples*` module, list the lemmas whose statements mention only
+LIBRARY constructs (`descS-at`, `auxAt`, `aIHTat`, `Hom`, `natrec`, …) and
+no example-specific term, once the example's own parameters are abstracted.
+Those belong in the library.
+
+⚠ Do this at a consolidation point, and expect it to be a bigger set than
+the four above — those were found by a single combinator needing a single
+certificate typing.
+
+## OCP-0009 WF library: lift `eqG`/`pwT` out of gcd into the combinator
+
+**Goal**: make "prove a step function is IH-extensional" a LIBRARY combinator,
+not something each caller rebuilds.
+
+**Current behavior**: discharging `StepExt` for gcd (done 2026-08-17,
+`…GcdStepExtA.gcdStepExt`) needed a machine that is shaped generally but is
+hard-wired to gcd's `PairT` / `msr` / `⌜Nat⌝`:
+
+| piece | what it is | gcd-specific? |
+| --- | --- | --- |
+| `pwT` / `pwIntro` / `pwElim` | the pointwise hypothesis as an object-language `Π`, and its intro/elim | **no** — only the carrier/measure/code are baked in |
+| `eqG μ f` | the `Id`-analogue of the step's result type, carrying the two IHs and the hypothesis as `Π`-bound | **no** — same |
+| `eqG-red` | a reduction of `f` is a CONVERSION of `eqG μ f` (pushes through 3 `Π`s and both `Id` sides) | **no** |
+| `eqGElim` | feed `eqG` its two IHs and the hypothesis | **no** |
+| `⊢natrec-var` | re-type a `natrec` at a VARIABLE scrutinee | **no** — every splitting step needs it |
+| `certAt` | fix the certificate slot of a `RecCall`-shaped reduction | **no** |
+| `gcdIH-w/-w²/-w³`, `pwT-w`, `gcdIH-sub`, `pwT-sub`, `eqG-sub` | the naturality twins | **no**, modulo the same hard-wiring |
+| `M₁`/`M₂`/`M₃`, the four leaves, `G1z`…`G3s`, `PAIRᶻ`/`CERTᶻ`/`PAIRˢ`/`CERTˢ` | subtractive Euclid | **yes** |
+
+⇒ Parameterised over `A` / `cM` / `m` (exactly `AmTΠ`'s parameters), everything
+in the "no" rows belongs beside `StepExt` in `NbEPDirDBLibAmrec`, and **the
+whole three-split pattern becomes a combinator**: "a step that case-splits `n`
+times on `natrec` scrutinees is IH-extensional if each leaf is".
+
+### Why this is worth doing
+
+The judging criterion is `WF-LIBRARY.md`'s: an abstraction is judged by how
+simple it is to USE; build cost amortises, use cost is paid by every caller.
+Right now the reusable machinery is ~600 lines that the NEXT recursive function
+would have to rewrite, and the genuinely function-specific part (the leaves) is
+the small, cheap half. That is the wrong way round.
+
+### Notes / constraints discovered while building it
+
+- ⚠ **Cost forced a ten-module split.** All of it in one module OOM-killed at
+  the cgroup cap on a 7 GB box. What worked, in order of effect: `where` →
+  top-level Defs (leaf 4: OOM → 10s); one module per expensive term; naming
+  `eqG-red`'s two instances (`split2` alone: OOM → 4.8s). A library version
+  should be laid out this way from the start.
+- ⚠ **Lifting is NOT universally cheaper.** The same move that rescued `leaf₃s`
+  from an OOM cost 13x when applied to `gcd-gt-term`'s intermediate scrutinees
+  (31s → 6m35s), because `where`-bound definitions are elaborated once per
+  clause while top-level functions of the clause's parameters are re-unfolded
+  at every use. The rule that holds is "one big term per Def", not "always
+  lift".
+- ⚠ **`eqG`'s motive boundaries are `refl` only at variables.** In the splits
+  every slot is a variable and `subTy` computes; instantiating at an abstract
+  carrier needs `eqG-sub`, because there `extS σ` meets a `w`.
+
+## The arithmetic library is REDUCTION-BIASED — audit it for the propositional half
+
+**Observed 2026-08-18, from closing equation 4's bridge.** Four ordinary
+arithmetic facts had to be built from scratch before gcd's `a ≤ b` branch could
+even be stated at variables:
+
+| built | what it is |
+|---|---|
+| `congPred` | congruence under `predTm` |
+| `⊢monus0` | `0 ∸ b ≡ 0` |
+| `⊢monusSS` | `suc a ∸ suc b ≡ a ∸ b` |
+| `congAt` | one-hole congruence at `Nat` |
+
+None is exotic. The pattern in what was missing is the point:
+
+**The library had the REDUCTION (`⟶*`) form of nearly every monus fact and
+almost none of the PROPOSITIONAL (`Id`) form.** `monus-zero`, `monus-suc`,
+`pred-suc`, `pred-zero`, `mlt-chain` are all `⟶*`. That is exactly the wrong
+bias for "at variables" results, because a `⟶*` premise forces its subject
+GROUND — a variable never reduces — which is precisely why equation 4 was
+unreachable for months and why equation 3 is stuck at *numeral `b`*.
+
+**Congruences were missing too.** `congS` existed (for `nsuc`) and nothing else,
+so every step that moves an identity under a former had to be invented at the
+point of use.
+
+### The audit worth doing
+
+1. **For each `⟶*` lemma in `…ExamplesDiv` / `…LibArith*`, ask whether the `Id`
+   form exists.** Where it doesn't, ask which "at variables" theorem it blocks.
+2. **Enumerate the congruences.** One per Nat former (`nsuc`, `predTm`,
+   `plusTm`, `monusTm` in each argument), plus the general one-hole `congAt`
+   now in `…LibArithMonus`.
+3. **Order facts.** `Hom Nat` COMPUTES (`Hom-Nat-z`/`-sz`/`-ss`), so inversion,
+   ex-falso and `0 ≤ n` are conversions rather than lemmas — but transitivity,
+   antisymmetry and `≤` vs `∸` bridges beyond `⊢monusLe` are not, and each is a
+   candidate premise for a "at variables" statement.
+
+### Why it pays
+
+The test for whether a missing lemma matters is the one this session used:
+**does its absence force a premise that variables cannot discharge?** That is
+the difference between a theorem and a vacuous one, and this repo already has a
+post-mortem on two lemmas that were `--safe`, hole-free, green and vacuous.
+Every propositional fact added widens what can be stated at variables; every
+`⟶*`-only fact silently narrows it.
+
+## The WF libraries do not insulate their clients — every OOM is at a use site
+
+**Measured across 2026-08-18/19, not inferred.** Every OOM this session landed
+in an `Examples` module instantiating a library, never in a library:
+
+| where | |
+|---|---|
+| `irrAt` (`…GcdRec`) | OOM with ~9GB headroom |
+| `gcd-gt-eq` as one term | 75 min, never finished |
+| `⊢Fnr` (`…GcdLeMid`) | OOM twice — 2m04s as one term, 1m50s split into 5 `Def`s |
+| `…LibAmrec` | ~53s **green** |
+| `…LibNatrec` | seconds |
+
+### The mechanism, isolated by `…ExamplesAbsProbe`
+
+Same `irrSplit` rung, varying only what is held abstract as a module parameter:
+
+    stp        ext          total    marginal
+    ABSTRACT   ABSTRACT      5.4s    —
+    gcdStp     ABSTRACT     17.5s   12.1s
+    gcdStp     gcdStepExt   15.3s    9.9s
+
+⇒ the cost is the **concrete step term, in the TYPE**. `irrT` mentions
+`auxAt`, which mentions `auxS x`, which carries `stp`. `⊢Fnr`'s type is five
+nested `subTy`s over `G3`, and `G3` carries the same material.
+
+### Why this is an ABSTRACTION problem and not just "big proofs"
+
+`AmTΠ` *is* parametrised over `stp` — that part is right, and it is why the
+library itself compiles. But its exported **types mention the parameter**, so
+the parametrisation does not insulate the client: a use site pays
+proportionally to the step term at **every mention**, and an assembly has many.
+
+⚠ By this project's own stated priority — *libraries may be slow, use sites must
+be simple and fast* — the WF libraries currently FAIL, because the cost lands
+exactly where it was not supposed to.
+
+### The remedy is already demonstrated — `irr-at`
+
+`irrAt` resisted NINE fixes. What worked needed BOTH halves at once:
+
+1. **Do the elimination inside the parametrised module**, where `stp` and `ext`
+   are still variables. (5.8× on the rung.)
+2. **Return `Prv`, never a raw `⊢` judgement.** A type naming the witness —
+   `Δ ⊢ app (prvTm (irr-ind ext …)) n₂ ∷ …` — forces the whole assembly just to
+   STATE it, and kills `…LibAmrec` outright.
+
+Generalised: **a type that names a witness pays for that witness at every
+mention; `Prv` exists to prevent exactly that.**
+
+### The audit
+
+1. For each WF library export, ask: does its TYPE mention `stp` (directly, or
+   via `auxAt`/`G3`/`irrT`)? If so, the client pays per mention.
+2. Where it does, can the work move inside the parametrised module and export a
+   `Prv`-wrapped (or otherwise witness-free) result?
+3. `⊢Fnr` / the eq-4 assembly is the live instance: structurally correct,
+   OOMs, and the first thing to try is `AbsProbe`'s abstract-then-instantiate.
+
+## Once: a DATATYPE DECLARATION carries no totality obligation — design it out
+
+**The trap, in Agda.** Agda's coverage checker checks **functions, not
+datatypes**. A `data` declaration that is missing a constructor is a
+perfectly well-formed declaration: it type-checks, the module compiles
+green, and nothing anywhere is obliged to notice. The omission surfaces
+only where some later *function* is finally required to produce the
+missing constructor — which in OCP-0009 is several modules and many
+minutes of proof-checking downstream, as a bogus-looking unification
+error rather than "you forgot a case".
+
+Concretely: adding a term former to `RTm` and forgetting to add its row
+to the SN layer (`SNe`/`SN`/`SNRed`/`Ne`) is invisible until `fund` is
+obliged to build one. It happened with `ordtr` (2026-08-05 → 06) and
+again with `icon`/`ielim`/`⌜IMu⌝` (2026-08-22), and the only thing that
+caught either was an out-of-band shell script,
+`DirectedHoTT/tools/check-formers.sh`, which greps the Agda source.
+
+**Why the asymmetry is the tell.** The development already has TWO
+per-former layers that need no such script, and the script's own header
+says why:
+
+> NOT CHECKED, deliberately — these are protected by a producer's own
+> coverage: `Canon`/`Prog` — `prog` must return a canonical form or a
+> step for every former, so its coverage forces the decision.
+> `⊩₀`/`⊩₁` rows — `fund-ty` must build an interpretation for every
+> `⊢ty`.
+
+So wherever a **total function** must produce something per former,
+Agda enforces it for free. The gap is exactly the layers that are
+**datatypes**.
+
+**What Once could do about it.** Three options, in increasing order of
+how much they change the language:
+
+1. **A derived-datatype obligation.** Let a datatype declare itself
+   INDEXED BY another datatype's constructors, with the checker
+   demanding one row per constructor — the datatype analogue of
+   coverage. Cheap, local, and it is the whole content of
+   `check-formers` checks 1 and 2.
+
+2. **Generate the layer from a DESCRIPTION.** This is the one OCP-0009
+   is already building the machinery for. If the syntax is a `Desc` /
+   `IDesc` rather than a hand-written `data`, then the SN layer, the
+   logical relation, and the classifiers are all *computed from* that
+   description. A former with no row is then not a silent omission —
+   it is not expressible. ⚠ This is the dogfooding target, and it is
+   the reason the indexed increment matters beyond `Vec`: the payoff is
+   not "we can write `Vec`", it is "the metatheory layers stop being
+   hand-maintained parallel lists".
+
+3. **Make the classifiers total by construction too.** `check-formers`
+   check 3 exists for the same reason one level down: a *function's*
+   catch-all (`stkC? _ = false`) IS total, so coverage is satisfied and
+   the decision is silent. That is not a datatype problem, so option 2
+   does not fix it; it needs the classifier to be derived from the
+   description as well, or a `--no-catch-all` discipline on the ones
+   that are semantically per-former.
+
+⚠ Cost of NOT doing this, measured 2026-08-24: `⌜IMu⌝` inherited the
+catch-all `false` from three classifiers at once (`stkC?`, `stkA?`,
+`stablecd?`). The consequence was not an unprovable goal — it was that
+**progress was FALSE**, and it took a new reduction rule (`tr-J-IMu`)
+threaded through eleven modules to fix. A one-line row at the time the
+former landed would have prevented all of it.
+
+## Once: THE CHECKER'S COST IS A LANGUAGE-DESIGN QUESTION — five invariants
+
+⚠⚠ **PROVOKED BY A DAY OF BEING WRONG.** 2026-09-13/14 produced four
+confident, measured, WRONG models of why the Knot is slow (see the Judge
+section and `HANDOFF-2026-09-13.md` §4). The eventual mechanism —
+**Agda's INJECTIVITY heuristic, 1,431 attempts and 0 wins** — was
+reported directly by `--profile=conversion`, a flag found on the last
+hour of the day. None of the four models could have survived contact with
+it. ⇒ the lesson is not about Agda's speed; it is about what a language
+must make VISIBLE and DECLARABLE.
+
+### The observation that starts it
+
+A declaration is **three** things, and the type system records two:
+
+```agda
+K : {Γ : Cx} → RTm Γ → RTy Γ      -- signature: declares the CONSTANT
+K i = IMu KnotD IPair i            -- definition: adds a DEFINITIONAL EQUATION (δ-rule)
+```
+
+The equation `K i ≡ IMu KnotD IPair i` enters the context INVISIBLY. It
+is what `opaque` withdraws, and nothing declares it. ⇒ adding `opaque`
+can break downstream code while removing it never can — an asymmetry that
+exists only because the thing it changes was never written down.
+
+★ **This is ML module sealing** (Mitchell–Plotkin, "abstract types have
+existential type"), where it IS a type-level operation with a signature.
+Agda has the same act as an annotation. That is the whole discomfort.
+
+### ⇒ THE PROPOSAL: EXPORTED EQUATIONS GO IN THE SIGNATURE
+
+```
+K : RTm Γ → RTy Γ
+  exports  ren-K : renTy ρ (K i) = K (renTm ρ i)
+           sub-K : subTy σ (K i) = K (subTm σ i)
+K i = IMu KnotD IPair i
+```
+
+Downstream sees the constant, the type, and **exactly those equations**.
+`K i ≡ IMu KnotD IPair i` does not escape.
+
+| | |
+|---|---|
+| symmetric | the declaration is the contract, checked from both sides — no ambient fallback |
+| a proof obligation | the compiler verifies the exports by unfolding internally |
+| implementation-free | the body may change while the exports hold — the ML signature property |
+| ★ | **the three naturality lemmas this session needed would have been part of the declaration** rather than discovered under duress at three separate layers |
+
+### ★★★ THE FIVE INVARIANTS
+
+**Premise: TOTALITY + PRODUCTIVITY.** ⚠ "conversion is undecidable in
+general" is the WRONG frame for Once — Once is total and productive, so
+conversion IS decidable. Decidability was never the issue; **complexity
+is**, and the absence of a cost model. Turing-completeness is upstream:
+without totality you cannot state a budget at all, so you are forced into
+heuristics-plus-timeouts. That is the enabling condition for 2 and 4, not
+an item.
+
+1. **UNFOLDING IS INTERFACE — declare it in the signature**, exported
+   equations as proof obligations. Not an ambient tag.
+
+2. **THE CHECKER NEVER SEARCHES.** Formally: *the trusted checking
+   relation must be SYNTAX-DIRECTED and MODE-CORRECT* — at most one rule
+   applies per goal shape, and every premise's inputs are determined by
+   the conclusion's inputs plus earlier premises' outputs. Nothing is
+   guessed. ⇒ no backtracking, no metas in the TCB, cost linear in the
+   certificate. All search (unification, normalisation strategy,
+   injectivity inversion) lives OUTSIDE and communicates by certificate.
+   ★ **Mechanically enforceable** — mode analysis is standard (Twelf,
+   logic programming). This is a checkable invariant, not a slogan.
+
+2b. ★★★ **AND SOLVE ORDER IS PART OF INVARIANT 2 — MEASURED 267×.**
+   A datatype constructor whose CONCLUSION contains a computed term
+   (`there : Γ ∋ x ∷ A → (Γ ▹ B) ∋ vs x ∷ renTy vs A`) costs **nothing**
+   forward and **267×** when the checker solves BACKWARDS through it
+   (`tmp/ProbeFord`: 15,998 ms → 60 ms forded).
+
+   ⇒ **the defect is SOLVE ORDER, not the computed index.** Agda unified
+   the conclusion first, making `A` a meta to invert through `renTy`,
+   instead of running the premise first and COMPARING two known terms.
+
+   ⚠⚠ ELEVEN PROBES, SIX CANDIDATES, **ONE BIT** — and it is
+   INDISTINGUISHABLE BY INSPECTION from the five that did not. Three
+   conditions must coincide: the operation is INVERTIBLE (Agda *refuses*
+   `subTy`/`subTm`/`εwkTm`, instantly); the argument is NOT recoverable
+   elsewhere in the conclusion; and the term is LARGE.
+
+   ⇒ **a computed conclusion is a FORWARD-MODE-ONLY declaration.** Under
+   mode-correctness the arguments are determined by matching the source
+   and the target is COMPUTED AS OUTPUT. The backward reading needs an
+   inversion, and mode analysis **rejects it statically** instead of
+   attempting it expensively. ⇒ **none of the six needs fording in
+   Once** — see [[computed-index-cost-is-solve-order]].
+
+   ⚠ `Hom-U`/`β` are safe in Agda BY ACCIDENT — it *happened* to attack
+   the source constraint first. A heuristic, not a theorem.
+
+3. **INJECTIVITY AND VARIANCE ARE DECLARED AND PROVED, NEVER GUESSED.**
+   Injectivity is a THEOREM. Make it a declared attribute and inversion
+   becomes a rule with a discharged side condition. ⇒ the 1,431 losing
+   attempts are not optimised away; they are **impossible to write**.
+
+4. **CONVERSION COST IS DERIVABLE FROM THE INTERFACE.** With exports
+   declared, the set of equations that can fire is known, so checking
+   cost is a TYPING-time quantity rather than a profiling discovery.
+   ⇒ this is [[ORDO TYPES]] applied to the CHECKER — the idea was
+   proposed for programs; the checker is where it pays first.
+
+5. **SHARING IS TRACKED BY THE GRADING**, not left to the implementation.
+   Once's surface is already QTT-graded `{0,1,ω}` and grading tracks
+   DUPLICATION. `pointer equality: terms = 1` — measured in this
+   session's probe — is what happens when duplication is invisible to the
+   type system.
+
+### ✅ FIRST INSTANCE OF INVARIANT 1 — `bootstrap/tmp/KSealed.agda`, rc=0
+
+Agda cannot put exported equations in a signature, so the convention is a
+module that seals the former and exports exactly what may be used:
+
+```agda
+opaque
+  K        : RTm Γ → RTy Γ
+  ty-K     : Γ ⊢ i ∷ εwkTy IPair → Γ ⊢ty K i
+  ren-K    : renTy ρ (K i) ≡ K (renTm ρ i)
+  sub-K    : subTy σ (K i) ≡ K (subTm σ i)
+  unfold-K : K i ≡ IMu KnotD IPair i          -- the escape hatch, NAMED
+```
+
+Three points, because this is the template:
+
+- **`ty-K` is what makes the seal usable.** Sealing without exporting
+  well-formedness just moves the problem — every caller would need
+  `unfolding` to build a `⊢ty`. Bundling it is the difference between an
+  abstraction barrier and an obstruction.
+- **The transport laws are stated where the former lives.** Yesterday the
+  same fact was rebuilt by hand at THREE separate sites (`⊢methLamN`,
+  `motA-ren`/`motA-at`, `ren-Kop`) because nothing said it existed.
+- ★ **`unfold-K` makes the escape greppable.** A caller needing the
+  implementation cites a named lemma instead of opening an `unfolding`
+  block, so *"who depends on `K`'s definition?"* is a grep, not an audit,
+  and every use is a reviewable claim that the interface was
+  insufficient. ⇒ in Once this is a signature obligation, not a
+  convention.
+
+⚠ TEMPLATE, NOT A MIGRATION. The tree's `K` has **68 `IMu` use sites**;
+swapping it is a separate and much larger change.
+
+### ★★★ `Judge/Elim` PROFILED — COST IS **THE SIZE OF THE DESCRIPTION MENTIONED**
+
+The first per-definition profile of a REAL Judge module (199 s profiled
+against 158.8 s raw — ~25% overhead, tolerable):
+
+```
+W_JΠΒ8   89,728ms   ← 45% of the module in ONE slot
+W_JΠΒ13  18,899ms      W_JΠΒ15   1,537ms
+W_JΠΒ12  18,064ms      W_JΠΒ14     934ms
+W_JΠΒ9   16,233ms      W_JΠΒ11     256ms   ← cliff
+W_JΠΒ7   15,540ms      W_JΠΒ10      58ms
+```
+
+⚠ **NOT monotonic in depth, and NOT predicted by size.** Slots 7 and 11
+are the same size (361 vs 366 chars) and differ **60×**; slots 8 and 15
+are the same size and differ **58×**.
+
+★★★ **THE `iκ` SLOTS SPLIT BY WHICH DESCRIPTION THEY MENTION:**
+
+| slot | description | rows | ms | ms/row |
+|---|---|---|---|---|
+| `kJΠΒ10` | `⌜Nat⌝` | 0 | 58 | — |
+| `kJΠΒ14` | `⌜Nat⌝` | 0 | 934 | — |
+| `kJΠΒ11` | `CtxD` | 2 | 256 | 128 |
+| `kJΠΒ15` | `IxD` | 5 | 1,537 | 307 |
+| `kJΠΒ12` | **`KnotD`** | **53** | **18,064** | 341 |
+| `kJΠΒ13` | **`KnotD`** | **53** | **18,899** | 357 |
+
+⇒ **~340 ms PER ROW OF THE DESCRIPTION MENTIONED.** A ford on `⌜Nat⌝` is
+free; the same ford on `KnotD` costs 18 s. ★ And the four expensive
+non-ford slots (6–9) are the **`iρ` recursive premises**, typed at
+`IMu JudgeD IJudge _` — `JudgeD` is **56 rows**, the biggest description
+in the tree.
+
+⇒ this looked like the SAME law as the `K`-motive probes, at a second
+site and on production code.
+
+### ⛔⛔ REFUTED BY REPLICATION — `Judge/Pair`
+
+| ford | `Judge/Elim` | `Judge/Pair` |
+|---|---|---|
+| `KnotD` (53 rows) | **18,064 ms** | **358 ms** |
+| `KnotD` (53 rows) | **18,899 ms** | **530 ms** |
+| `IxD` (5 rows) | 1,537 ms | **815 ms** |
+| `CtxD` (2 rows) | 256 ms | 168 ms |
+
+**Same description, same ford shape `⌜Id⌝ (⌜IMu⌝ KnotD IPair …)`, 34–50×
+apart.** And inside `Pair` the ordering INVERTS: the 5-row `IxD` ford
+costs MORE than both 53-row `KnotD` fords. ⇒ "~340 ms per description
+row" was a within-`Elim` coincidence. **Eighth model refuted today.**
+
+⚠ A crude corpus test (description-rows vs wall time over 11 timed
+modules) gave correlation **0.378** — but that test is itself invalid:
+`TrC` and `TrA` SHARE the `kJΒΒ` prefix, so it counted the same slots for
+both and reported identical exposure for modules 17.6× apart. Inconclusive,
+not evidence.
+
+### ★★★★ THE PREDICTOR, CLEAN ACROSS 16 SLOTS IN 2 MODULES
+
+A slot's cost is decided by **whether its type contains an OBJECT-LEVEL
+ELIMINATOR CALL** — nothing else:
+
+| | slots | cost |
+|---|---|---|
+| **WITH** an `ielim`-backed call | `Elim` 7, 8, 9, 12, 13 · `Pair` 8 | **12,905 – 89,728 ms** |
+| **WITHOUT** | `Elim` 6, 11, 15 · `Pair` 6, 7, 9, 10, 11, 12, 13, 14 | **44 – 1,537 ms** |
+
+**NO OVERLAP** — the cheapest with-call slot is **8.4×** the dearest
+without. And the count is linear-ish: `Elim` slots 7 and 9 have exactly
+one `εwkK` each and cost 15,540 / 16,233 ms; slot 8 has three
+(`methsTyFromK` + 2× `εwkK`) and costs 89,728.
+
+★ The classification is `icon` vs `ielim`, not size: `Ctx-extK`,
+`Tm-pairK`, `Ty-SgK`, `Ty-MuK` are CONSTRUCTORS and cost nothing;
+`εwkK`, `subTyAtK`, `singleK`, `methsTyFromK` bottom out in `ielim` and
+cost ~15 s each.
+
+⇒ this supersedes the description-size law (refuted), the depth law
+(refuted), and slot-8-is-special (it was just the slot with three calls).
+
+### ⇒ AND IT NAMES THE ABSTRACTION GAP — why the Knot is harder than `Spec`
+
+```agda
+-- Spec: a META-level function.  Reduces by PATTERN MATCHING,
+--       one step per constructor, native to the checker.
+subTy σ (IMu D I i) = IMu D I (subTm σ i)
+
+-- Knot: an OBJECT-level PROGRAM.  One reduction step =
+--       fire ι-ielim → `sel k ms` into a 53-ELEMENT TUPLE →
+--       build `ifields` (which runs `iihs` over the fields) →
+--       apply a triply-nested lam.
+subTyAtK dd m σ A  ⇝  app (ielim KnotD <53-method tuple> …) …
+```
+
+**Measured: ~15 s per object-level eliminator call, against microseconds
+for the meta-level equivalent.** ⇒ the Knot is not written badly; every
+meta-level operation becomes an `ielim` over a 53-row description, and
+anything in a TYPE gets compared.
+
+⚠⚠ **FORDING DOES NOT FIX IT** — tested and refuted the moment it was
+proposed. `kJΠΒ12`/`kJΠΒ13` ARE fords and cost 18 s each, because they
+CONTAIN `εwkK`/`singleK`/`subTyAtK`. **The cost follows the CALL, not
+the position.**
+
+### ★★★★★ THE MECHANISM, PROVED — **WEAKENING A TYPE THAT HOLDS A STUCK `ielim`**
+
+`tmp/ProbeMatch3`, `--profile=definitions`. Four `⊢var`s, one context:
+
+| | operation | type holds | ms |
+|---|---|---|---|
+| `dTop` | `⊢var here` | a stuck `ielim` | **35** |
+| `dScr` | `⊢var (there (there here))` | no eliminator | 49 |
+| `dIx` | `⊢var (there³ here)` | no eliminator | 37 |
+| **`dElim`** | **`⊢var (there here)`** | **a stuck `ielim`** | **14,080** |
+
+⇒ **402× from ONE extra `there`.** ⚠ Note `dScr` is weakened TWICE and
+`dElim` only once — so it is not lookup depth. It is one `renTy vs`
+applied to a type containing a stuck eliminator.
+
+★★★ **AND AGDA'S OWN ERROR NAMES THE CONSTRAINT.** Seal the tuple
+(`tmp/ProbeMatch4`) and the checker says:
+
+```
+renTm vs _ms_207 != myMeths
+```
+
+That is what it must solve to weaken the context entry. **Transparently
+it solves it by unfolding `szMethsK` and renaming all 53 methods** —
+14 s. Sealed, `dElim` drops to **30 ms** and the module total from
+17,308 ms to 1,072 ms.
+
+⇒ **THIS IS THE WHOLE JUDGE COST**: 19-deep telescopes ×
+`⊢var (there^k here)` × types carrying eliminator calls. It explains why
+the expensive slots correlate with eliminator calls and with NOTHING else
+— not depth, not size, not description rows.
+
+### ★★★★★ AND THE FOOTGUN IS **CLOSABLE** — FORD THE INDEX
+
+`_∋_∷_`'s `there` COMPUTES its index:
+
+```agda
+there : Γ ∋ x ∷ A → (Γ ▹ B) ∋ vs x ∷ renTy vs A      -- computed
+tf    : Γ ∋f x ∷ A → renTy vs A ≡ A' → (Γ ▹ B) ∋f vs x ∷ A'   -- FORDED
+```
+
+`tmp/ProbeFord` — same context, same lookup, same stuck-eliminator type,
+the two judgements side by side:
+
+| | ms |
+|---|---|
+| `lookC` — computed index (the kernel's shape) | **15,998** |
+| `lookF` — forded index, `refl` supplied | **60** |
+
+⇒ **267×, and it needs no naturality lemma at all** — plain `refl`.
+
+⚠⚠ **I PREDICTED THE OPPOSITE** ("the work merely relocates to the
+equation argument") and was wrong. The two forms ask for DIFFERENT KINDS
+of work:
+
+- **computed** — Agda must solve `renTm vs ?ms ≡ myMeths`, **INVERTING a
+  renaming against a METAVARIABLE**. That is literally the error
+  `tmp/ProbeMatch4` printed. Inversion is SEARCH.
+- **forded** — `A'` is determined by the conclusion, so both sides are
+  known and `refl` is a **CHECK**.
+
+★★★ **THIS IS INVARIANT 2 IN MINIATURE** — *the checker never searches*.
+A computed datatype index forces a search; fording replaces it with a
+validation. ⇒ and it is the SECOND measurement of this law in the project
+after [[datatype-index-accumulating-codes]]'s 40× (2026-08-28).
+
+### ⇒ SO: SHOULD THE KERNEL'S `_∋_∷_` BE FORDED?
+
+**Blast radius: 7,580 `⊢var (there …)` uses over 183 files** (66
+generated — free; 117 hand-written). Every site gains a `refl`.
+
+⚠ NOT ATTEMPTED, and n=1. But the probe is a clean A/B with everything
+but the index formulation held fixed, and the mechanism (search vs check)
+explains both this result and `ProbeMatch4`'s error message.
+
+★ FOR ONCE the rule is sharper than "ford everything": **a computed
+datatype index makes the checker INVERT, and inversion is unbounded.
+Keep indices variable and put the computation in an explicit equation —
+then let ELABORATION insert the `refl` so the surface cost is nil.**
+Core: no search. Surface: ergonomics. They are separable, and conflating
+them is what costs 267×.
+
+### ⛔⛔ AND THE SEALING FIX IS BLOCKED BY A **PROPOSITIONAL/COMPUTATIONAL GAP**
+
+`tmp/ProbeMatch5` states the naturality lemma INSIDE the seal:
+
+```agda
+opaque
+  myMeths = szMethsK
+  ⊢myMeths = ⊢szMethsK
+  ren-myMeths : renTm ρ (myMeths {Γ}) ≡ myMeths {Δ}
+  ren-myMeths = refl          -- ★ PROVES.  line 54-55, no error.
+```
+
+★ **The equation is TRUE and holds by `refl`** — the tuple really is
+renaming-invariant, and inside the seal Agda can see it.
+
+⛔ **But `dElim` STILL FAILS with the same constraint.** Agda's UNIFIER
+cannot use a PROPOSITIONAL equation to solve `renTm vs ?ms ≡ myMeths`,
+and the constraint arises inside `⊢var`'s own `_∋_∷_` derivation — there
+is no call site to wrap in a cast.
+
+⇒ **SEALING IS NOT AVAILABLE HERE**, not for want of the fact, but
+because a sealed interface can export only PROPOSITIONS while the checker
+needs a COMPUTATION RULE. (Agda's `--rewriting` is the escape and is a
+different trust posture; out of scope for a `--safe` development.)
+
+### ⇒⇒ AND THIS IS EXACTLY WHAT INVARIANT 1 MUST MEAN FOR ONCE
+
+The five invariants above say *"unfolding is interface, so declare it."*
+**This measurement says the declared equations must be COMPUTATIONAL, not
+merely propositional** — a signature that exports `ren-K` must make the
+checker able to REWRITE with it, or the export is useless exactly where
+it is needed. ⇒ sharpen invariant 1: an `exports` clause is a set of
+REDUCTION RULES the caller may use, discharged as proof obligations by
+the implementation.
+
+★ FOURTH INSTANCE OF THE SAME PATTERN TODAY — `⊢methLamN`, `motA-ren`/
+`motA-at`, `ren-Kop`, `ren-myMeths`. Every layer that transports a term
+needs its naturality threaded; three of the four could be threaded by
+hand at a call site, and THIS ONE CANNOT, because `⊢var` has no call
+site to thread through.
+
+### ⛔ THE METHOD-TUPLE HYPOTHESIS — TESTED, AND THE PROBE WAS INVALID
+
+`tmp/ProbeElimOpen` vs `tmp/ProbeElimSeal` differ by ONE `opaque` block
+around `szMethsK` (a genuine 53-method tuple), with the motive's depth
+slot holding a stuck `ielim KnotD i szMethsK (var vz)`:
+
+| motive, same 53-row harness | wall | `compare` | injectivity |
+|---|---|---|---|
+| no eliminator (`ProbeVar`) | 61.0 s | — | — |
+| eliminator, tuple TRANSPARENT | 74.9 s | 7,928 | **1,436** |
+| eliminator, tuple SEALED | 76.6 s | 7,194 | **1,436** |
+
+Sealing moved time **+2%** and injectivity **not at all** — 1,436 to the
+digit. (Contrast the `K` probe, where sealing took `compare`
+7,012 → 1,273 and injectivity **1,431 → 3**. That is what a working seal
+looks like.)
+
+⚠⚠ **BUT THE PROBE ONLY REPRODUCED +23%, NOT 20–160×** — so it does NOT
+exhibit the phenomenon it was built to test, and therefore says nothing
+about sealing against the REAL effect. ⇒ *"sealing is the last cheap
+lever and it does not work"* is **RETRACTED**; sealing is UNTESTED here.
+
+★ AND THE COUNTERS SAY WHY — `compare by reduction` as a share:
+
+| | share |
+|---|---|
+| `ProbeElimOpen` | **38%** |
+| `ProbeElimSeal` | 31% |
+| `Judge/Elim` | **96%** |
+| `Judge/Pair` | 93% |
+
+⇒ **the probe is in a different regime.** `imethsTyFrom-wf` THREADS the
+motive through 53 rows — comparing it against ITSELF. `Judge`'s
+`IConWf` proofs MATCH a built type against a differently-shaped EXPECTED
+type, with the eliminator on only one side.
+
+⇒ **THE SHARPER CLAIM, replacing the old hypothesis:** it is not
+"an eliminator in a type is expensive" but **"MATCHING two types where
+one side holds a stuck eliminator is expensive"** — Agda must reduce to
+decide, cannot, and falls back to structural comparison. ⬜ A faithful
+probe must MATCH, not thread. Consistent
+with `compare by reduction` being **96%** (tries, fails, compares
+structurally). ⇒ if so the lever is to SEAL the method tuples —
+`subMethsK` is `Def`-backed but its body is `isubMeths giveK 0 subDescK`,
+a computation that BUILDS the 53-element tuple, so one unfold yields the
+huge term. ⚠ Counter-evidence: injectivity is only 0.09% in Judge, so the
+`K`-probe's mechanism is NOT what is happening here; any win would come
+from stopping the EXPANSION, not the search.
+
+### ⬜ WHAT SURVIVES: **SLOT 8**, in both modules
+
+| module | slot-8 | total | share |
+|---|---|---|---|
+| `Judge/Elim` | 89,728 ms | 199,102 ms | **45%** |
+| `Judge/Pair` | 12,905 ms | 35,726 ms | **36%** |
+
+In both it is an `iρ` RECURSIVE-PREMISE index tuple —
+`pair (var …) (pair (var …) (pair …))`, the 5-component judgement index.
+⚠ **n = 2.** Two modules agreeing on one slot is suggestive, not a law.
+⬜ Next: a third module, and find what distinguishes slot 8 from its
+sibling `iρ` premises (in `Elim` the four cost 550 / 15,540 / **89,728** /
+16,233 ms — slot 8 is 5.8× its neighbour).
+
+### ⛔ AND IT KILLS THE `opaque` PLAN FOR JUDGE
+
+`Judge/Elim`: **2,827,803 comparisons at 0.070 ms each** — the
+MANY-AND-TINY regime, like `IihsRhoAGen`. With
+**`compare by reduction: injectivity` = 2,475 of 2.8 M = 0.09%.**
+
+Sealing attacks injectivity. Injectivity is a rounding error here. ⇒ the
+sealing lever measured at 2×/3.1× on the `K` probe **cannot help Judge**,
+and 2026-09-13's *"`JudgeD` is 56 rows with 103 `IMu` uses — the same
+lever points at Judge"* is REFUTED. ⚠ Seventh model of mine to die this
+way; the instrument found it in one run.
+
+⬜ WHAT WOULD HELP IS UNKNOWN. The cost is 2.7 M reductions comparing
+types that carry 53- and 56-row descriptions. Not injectivity, not
+sharing (`pointer equality: terms` = 81,393), not depth.
+
+### ⚠ AND PROFILING PERTURBS THE FEW-AND-HUGE REGIME BADLY
+
+`tmp/IihsRho2Tmp` (the 4-passenger baseline) runs in 120 s unprofiled and
+was **SIGTERM-killed at 537 s** under `--profile`, twice. ⇒ the direct
+baseline-vs-ambient comparison is **NOT OBTAINABLE on this box**, and
+the counters it printed are dependency accumulation, not the target.
+★ Note the asymmetry: `TupleAVar` (many-tiny) profiled fine at 7 s. The
+modules that most need instrumenting are the hardest to instrument.
+
+### ★★★ THERE ARE **TWO COST REGIMES**, NOT A SPECTRUM — and that is why every single-number model failed
+
+Four modules, `--profile=definitions --profile=conversion`:
+
+| module | comparisons | ms EACH | wall |
+|---|---|---|---|
+| `TupleP` — Γ-polymorphic motive | 1,477 | **36.6** | 54 s |
+| `ProbeClosed` — `K` transparent | 7,012 | 10.4 | 73 s |
+| `ProbeOpaque` — `K` sealed | 1,273 | 27.9 | 35 s |
+| `TupleAVar` — ambient VARIABLE | 24,580 | **0.29** | 7 s |
+| `IihsRhoAGen` — ambient row | **615,809** | **0.058** | 38 s |
+
+⇒ **FEW-AND-HUGE (10–37 ms each) versus MANY-AND-TINY (0.06–0.3 ms
+each).** They reach similar wall times by opposite routes. ★ That is why
+every law I fitted today died: **I was fitting one curve across two
+populations.**
+
+### ⇒ AND IT EXPLAINS THE 6.64 s vs 43.92 s GAP LEFT OPEN ON 2026-09-13
+
+Same 44-row tuple, same harness, only the motive changes — and it is a
+REGIME CHANGE, not a speed-up:
+
+| | `TupleP` (Γ-poly) | `TupleAVar` (ambient var) |
+|---|---|---|
+| Miscellaneous (imports) | 3,569 ms | 3,532 ms |
+| **WORK** (the definitions) | **50,455 ms** | **3,557 ms** |
+| comparisons | 1,477 | **24,580** |
+| ms per comparison | 34.2 | **0.145** |
+
+★ **16.6× MORE comparisons, 236× CHEAPER each, net 14.2× faster on work.**
+
+**Mechanism:** a comparison costs what the terms it walks are worth. With
+a CONCRETE motive the compared types carry it inline and every comparison
+is huge. With the ambient reference a VARIABLE the types stay small —
+more comparisons, because nothing is short-circuited, but each is
+trivial. ⇒ this is the real content of
+[[variable-is-the-cheapest-position]], and the mechanism behind the row's
+7.7× memory win: **small terms do not accumulate.**
+
+⚠ AND THE FIXED COST IS NOW VISIBLE: `Miscellaneous` is 3.5 s in BOTH —
+50% of `TupleAVar`'s total. Import/deserialisation is a floor that
+dominates once the work is optimised, and wall-clock comparisons that
+ignore it understate the real ratio (6.6× measured, **14.2×** on work).
+
+### ⛔ AND THE `opaque` LEVER DOES **NOT** APPLY TO THE `iihs` ROW — profiled
+
+I predicted the row's two residual metas were the same guessing
+phenomenon as the `K` probe, said so, and profiled it. **Refuted.**
+
+| counter | `K` probe | `IihsRhoAGen` |
+|---|---|---|
+| `compare` | 7,012 | **615,809** |
+| `compare by reduction` | 2,172 (31%) | **592,745 (96%)** |
+| `…: injectivity` | **1,431** | 369 |
+| `…: injectivity successful` | 0 | 36 |
+| `compare meta` | 4,164 | 1,963 |
+| `meta shortcut successful` | 4,160 | **1,902 of 1,903** |
+| `pointer equality: terms` | 1 | **17,878** |
+| **time per comparison** | **10.38 ms** | **0.058 ms** |
+
+★★★ **TWO OPPOSITE COST PROFILES.** The `K` probe is FEW comparisons,
+each EXPENSIVE, driven by a losing injectivity search. The `iihs` row is
+**600 000 comparisons, each CHEAP**, 96% of them requiring reduction,
+with injectivity barely involved (369 attempts, 36 wins) and the meta
+machinery working fine (1,902 of 1,903 shortcuts succeed).
+
+⇒ **the `opaque` fix is for the first profile and cannot help the
+second.** Do not apply it to the row.
+
+⇒ AND THE TWO RESIDUAL METAS ARE NOT WHERE THE TIME GOES: 2 unsolved out
+of **1,893** created, in a module whose cost is 592 745 reductions. They
+are a tiny unification tail, not a search failure. ⚠ So the four
+hypotheses refuted on 2026-09-13 were refuted for the RIGHT reason, and
+"it is a metas problem" — my fifth — is refuted too.
+
+⬜ WHAT THE ROW'S COST ACTUALLY IS: 600 000 reduction-requiring
+comparisons at 58 µs each. That is the substitution-tower machinery
+(`pw^`, `towerA`/`towerJ`, `wk-single`) doing very many small reductions.
+UNDIAGNOSED — and note `pointer equality: terms` is 17 878 here against 1
+in the `K` probe, so sharing IS occurring; the volume is the problem, not
+the per-term size.
+
+### ⚠ AND THE HEADER-POINTER PASS COST A LESSON
+
+11 formers in `Spec/Typing` have their transport laws a layer up in
+`Metatheory/TySub` — **for a REASON**: `TySub` imports `Spec/Typing`,
+`RedCong` and `SubjectReductionBase`, so it sits strictly ABOVE the
+kernel spec. ⇒ "bundle every former with its laws" would INVERT the
+layering. The rule that survives is weaker and correct:
+
+> a former's laws live at the LOWEST layer that can state them, and the
+> former's header NAMES where they are.
+
+⚠⚠ The pointers themselves are written and VERIFIED (`Spec/Typing.agda`
+checks in 2.28 s with them) but are **held in
+`bootstrap/tmp/spec-typing-pointers.patch`, not applied** — a
+comment-only edit to a kernel file forces a full closure rebuild, which
+this box killed twice (137, then 143 at `Examples/Knot/Wf`). ⇒ apply with
+the next real batch, never alone.
+
+### ⇒ THE TEST THAT THE DESIGN WORKED
+
+**Nobody ever has an operational reason to seal.**
+
+Sealing has two uses with DIFFERENT truth conditions: *semantic* ("this
+proof does not need the construction" — a claim, checkable) and
+*operational* ("stop the checker searching" — a performance hint with no
+semantic content). They are conflated because one mechanism serves both.
+
+⚠ **The smell is not the conflation. It is that the operational motive
+EXISTS.** You do not fix it by splitting the keyword; you fix it by
+removing the motive. If that motive reappears in Once, cost control has
+failed somewhere and 2 or 4 is not holding.
+
+### ⚠ WHAT THIS IS NOT
+
+It is not a claim that Agda is defective. The heuristics answer a real
+difficulty, and Agda has totality too. What is genuinely weak is the
+ERGONOMICS: no way to declare intent, no visibility until an obscure
+flag, no cost accounting, no sharing. ⇒ three of those four are
+mathematically avoidable, and **two of them by ideas already in this
+file** (ORDO, the graded core).
+
+## Once: "ORDO TYPES" — carry a COST BOUND in the type, and compose it
+
+**The idea.** A function's type carries a complexity bound alongside its
+value type, and the bounds *compose* when you apply or pass functions —
+so `map`'s cost is a function of its argument's cost. Ask the compiler,
+or the language server, and you are told the complexity of what you just
+wrote instead of having to run it and time it.
+
+### What provoked it, measured 2026-08-26
+
+`DirectedHoTT/Examples/Knot/Sz.agda` assembles a 53-method tuple. Three
+versions were written, all correct, differing only in how one rung is
+discharged. Cold, on a 7.7 GB box:
+
+| rung discharged by | cold |
+|---|---|
+| plain (Agda normalises `renTy vs` through the tail) | 140s ✓ |
+| a cast along `imethsTyFrom-ren` | 350s ✓ |
+| `ren-ty … there` | OOM |
+
+Nothing in any type distinguished them. It took three ~4-minute runs to
+learn that all three are **O(n²)** — `ty-Σ`'s second argument sits at
+`Γ ▹ A`, so the whole remaining tail is traversed at every one of 53
+rungs — and that the fix is not a better rung but to stop *enumerating*
+rungs (a generic induction at an ABSTRACT tail is O(n) once). The same
+lesson had already been paid for once that week: `Lib/IPay.ipayTy-wf`
+took `cTm-ordtr` from OOM to 3.7s for exactly this reason.
+
+⚠ **And note what an Ordo type would NOT have caught.** Big-O quotients
+out constants, and 140 vs 350 vs OOM is a *constant-factor* difference
+among three O(n²) programs. What it *would* have caught is the real
+defect — "this rung is O(tail), so the chain is O(n²)" — at the
+definition site, which is the diagnosis those three runs bought. ⇒ Ordo
+types catch SHAPE errors early and cheaply; a profiler is still what
+tells you about constants. Complementary, not competing.
+
+### Prior art, so this is not invented from scratch
+
+- **Danielsson, POPL '08**, *Lightweight Semiformal Time Complexity
+  Analysis for Purely Functional Data Structures* — a tick/thunk monad
+  with the cost in the index. ⚠ Note this is **in Agda**, so "not
+  expressible in a dependent type theory" is not the obstacle.
+- **RAML** (Hoffmann et al.) — *infers* polynomial bounds automatically
+  for a first-order fragment by reduction to linear programming. The
+  evidence that inference is feasible if the fragment is restricted.
+- **Granule / Idris 2** — graded types over an arbitrary ordered
+  semiring; one framework serves usage, security *and* cost.
+
+### The structure it wants
+
+Costs form an **ordered semiring**: sequential composition ADDs, a call
+under a loop MULTIPLIES, and `≤` gives weakening (an O(n) function is
+usable where O(n²) was demanded). Then
+
+    f : A →[p] B     g : B →[q] C     ⇒   g ∘ f : A →[p + q] C
+
+★ **Higher-order is where a TYPE earns its place over an analysis.**
+
+    map : (A →[c] B) → List A →[n · c] List B
+
+is *cost-polymorphic* — the bound is a variable abstracted over the
+argument's cost. No profiler can give you that; it is a typing
+discipline or nothing.
+
+⚠ **The hard part is value-dependence.** `sort` is O(n log n) in the
+*length*, so the grade must be indexed by a MEASURE of the input, which
+drags the cost algebra into the dependent setting.
+
+### Why Once is unusually well placed
+
+1. `Hom Nat` **computes** here, so ordering facts are conversions rather
+   than proof obligations (`Eq 4: order premise + bridge`).
+2. The WF axis already puts a measure `μ : A → Nat` **in the type** of
+   `⊢amrec`. A function defined by measure recursion already carries its
+   own measure — the gap from "measure that justifies termination" to
+   "measure that bounds cost" is small, and the expensive half is paid.
+3. Once's surface is **already graded** (QTT `{0,1,ω}`). Generalising
+   that semiring from usage counts to a cost algebra is the natural
+   move, and Granule is the existence proof that one grade framework
+   covers both.
+
+### Risks, stated up front
+
+- ⚠ **Infection.** This is exactly why `no-sized-types` is a hard ban
+  here: an index that every signature must carry infects the whole
+  development. Granule's answer is that grades are INFERRED by default
+  and surface only where constrained. Decide this before module 200,
+  not after.
+- **Incompleteness is not optional** — bounds cannot be inferred in
+  general. The practical shape is therefore *gradual*: infer and show as
+  an inlay hint over the decidable fragment, CHECK where the programmer
+  writes the bound down. Same bargain as gradual typing.
+
+### Addendum 2026-08-26: cost is a property of an INSTANTIATION, not of a function
+
+A back-to-back measurement in `Knot/Sz` sharpened the Ordo idea in a way
+worth writing down, because it is the case a naive cost type gets wrong.
+
+`Lib/IPay` has two generic lemmas of the same shape — each replaces a
+hand-built chain with one induction. One is a large win, the other is a
+loss, **and the difference is not in the lemma**:
+
+| lemma | consumer | result |
+|---|---|---|
+| `ipayTy-wf` | needs it ONCE per method, argument abstract | `ordtr` OOM → 3.7s |
+| `imethsTyFromNat-wf` | a 53-rung ENUMERATION, argument concrete each time | 147s → OOM |
+
+⇒ **A generic lemma is only generic if its argument stays abstract at the
+use site.** Instantiated at a concrete 53-element description, Agda
+unfolds the induction 53 deep at every rung — the same O(n²) it was meant
+to remove, now building derivations instead of normalising types.
+
+**What this means for an Ordo type.** The cost of `imethsTyFromNat-wf` is
+O(1) applied abstractly and O(n) applied concretely. So a bound attached
+to a *definition* is not enough; the grade has to be a function of how the
+argument is instantiated — which is the dependent, value-indexed case
+(`sort` is O(n log n) *in the length*) showing up in the metatheory rather
+than in user code. ⚠ A cost system that grades definitions only would
+report both lemmas as wins here, and be wrong about one of them.
+
+--------------------------------------------------------------------------
+## Once: de Bruijn INDICES make a variable reference context-BOUND — should levels be an option?
+
+Raised 2026-08-28 while writing `Examples/Knot/Lookup`, OCP-0009's first
+judgement row.
+
+### The observation
+
+This does not type-check, and asking why turns out to be worth writing down:
+
+```agda
+A₃ : {Γ : Cx} → RTm Γ
+A₃ = var (vs (vs (vs vz)))          -- ✗
+```
+
+⚠ **And it SHOULD not.** `{Γ : Cx} → RTm Γ` says "usable in ANY context,
+including `ε`" — i.e. CLOSED. `⌜Nat⌝`, `nzero` and the sort tags really are
+closed, which is why they are polymorphic and work. `var (vs³ vz)` is not:
+it denotes the fourth variable from the inside and needs a context at least
+four deep. Agda is refusing a scope error. **Nothing is broken.**
+
+### But the friction underneath it is real, and it is NOT polymorphism
+
+Writing that row, the actual cost was keeping **two encodings of the same
+index in sync by hand**:
+
+| | the term level | the derivation level |
+|---|---|---|
+| the k-th field | `var (vs^k vz)` | `⊢var (there^k here)` |
+
+Every `iκ`'s code counts one way and its `IConWf` counts the other, and the
+count changes per field *and* per binder the type sits under. Most of the
+iterations on `lkHere` were off-by-one between these two, not anything
+semantic. Same story in `Knot/Build`, `Knot/WkRows` and `Lib/IWk`.
+
+### Two candidate fixes, at different levels
+
+**(a) POC-level, and the cheaper one: generate the row's `IConWf` the way
+`Lib/IWk` generates methods.** `Lib/IWk` walks an `ICon` generically and
+never names a de Bruijn index; that is exactly why it has no off-by-one
+class of bug. A judgement row's well-formedness is the same shape of walk.
+⇒ this is a library job and needs no language change.
+
+**(b) Language-level: de Bruijn LEVELS instead of indices.** A level is
+stable under context EXTENSION, so a variable reference genuinely would be
+context-polymorphic (at any context deep enough), and `A₃` above would be
+legal. That is the standard answer to this exact complaint.
+
+⚠ **The cost is not small and should be stated before anyone tries it.**
+Levels make WEAKENING free and SUBSTITUTION expensive — every `subTm` has
+to renumber — where indices do the reverse. This POC's whole
+`renTm`/`subTm`/`extS`/`wk-single` layer, plus `Spec/Variance`'s `occTm`,
+is index-shaped, and the metatheory rests on it. So this is a design axis
+to evaluate on its merits, not a fix to retrofit.
+
+### What would decide it
+
+The `ap`-landing test the other axes use: does levels-vs-indices remove a
+class of *proof* obligation, or only a class of typo? Everything seen so
+far is the latter — off-by-one errors that Agda catches immediately. ⇒ on
+current evidence **(a) is the one worth doing** and (b) is a note, not a
+plan. Revisit if a judgement row turns out to need a variable reference
+that must survive weakening *propositionally* rather than definitionally —
+that would be a real obligation and would change the verdict.
+
+## Once: TACTIC-STYLE HOLE FILLING — a syntax-directed search for the forced steps
+
+**Where the idea came from.** Encoding OCP-0009's judgement layer produced
+thousands of lines of *derivations* that a human never chose: coercion
+chains (`toI`/`fromI`/`toMu`/`fordAs`), `⊢ty` well-formedness, `⊢pair`
+telescope tuples, `⊢wk` depth derivations. They are generated today by a
+Python emitter that has to know each rule. Idris2 has `auto` / proof
+search for exactly this class, and Agda has Agsy.
+
+★ **MEASURED, not assumed.** Replacing all 24 `⊢pair` well-formedness
+arguments in `Examples/Knot/TyRedWf` with `_` gives **24 unsolved metas** —
+so plain unification does *not* determine them. They are derivations, and
+`_⊢ty_` has eleven constructors with no proof irrelevance.
+
+⇒ **But that is the argument FOR a search.** The goals are strictly
+syntax-directed: a goal `Γ ⊢ty Σ' A B` admits only `ty-Σ`, and its
+subgoals follow the telescope's shape. Depth-first with the goal's head
+selecting the rule closes all 24. This tier is most of the *volume* of a
+mechanised metatheory.
+
+### ⚠ What it would NOT do, and this is the point
+
+The expensive steps in `SUBTM-ATTEMPTS.md` and `JUDGEMENT-ATTEMPTS.md`
+were **not** unfilled holes. They were:
+
+* `IsNum` instead of closedness — closedness cannot cross a substitution;
+* `fordMap` — a κ ford is not a copy under substitution;
+* an explicit general depth instead of `sucs j (var x)` — which does not
+  unify;
+* a tagged index for the mutual pair;
+* `iρ` versus `icw-imu` for a foreign premise.
+
+**In every one the goal itself was wrong.** A search fills a hole; it
+cannot tell you the hole is in the wrong place. ⇒ do not sell this as a
+silver bullet, and do not let it hide interface errors by making a wrong
+statement *provable-looking*.
+
+### ★ The real value: turning thinking into mechanism, and failing faster
+
+Two concrete wins, both worth having:
+
+1. **Volume.** The bookkeeping tier stops being hand- or generator-written.
+2. **Faster refutation.** If the search *cannot* close a forced-looking
+   goal, that is evidence the statement is wrong — arriving in seconds
+   rather than after a hand-written attempt. Several of the corrections
+   above took multiple attempts precisely because "this should be
+   mechanical" was never tested cheaply.
+
+### Design notes for Once
+
+* **Syntax-directed first, not general resolution.** The win comes from
+  the goal's head determining the rule; unrestricted search is what makes
+  these tools unpredictable.
+* **Budgeted and reported.** A search that silently gives up is
+  `verification-that-covers-less-than-it-claims`; it must say what it
+  could not close, by name — the same contract the row emitters have.
+* **Never across an interface boundary.** If closing a goal requires
+  inventing a lemma statement, refuse and report: that is the tier where
+  a human is deciding what the statement should be.
+
+---
+
+## LIBRARIES: an INTERFACE / IMPLEMENTATION split, once the use sites settle
+
+A library module today exports its signatures **and** every proof behind
+them, and a client importing `Lib/IPay` gets all of it. The proposal is
+the same split the kernel already has: an interface naming what a client
+may rely on, an implementation holding the proofs.
+
+### ⚠ The obvious justification is NOT supported by our measurements
+
+"Clients pay to import the proofs" sounds right and this POC's own
+numbers do not back it:
+
+* interface **size** does not predict cost — `RedWfB` has a 2413 KB
+  `.agdai` and checks in 5s; `JudgeWfA` has ~955 KB and took 125s;
+* in the one usable profile, `Deserialization` was **3.7s of 99.6s**.
+
+So the split should not be sold as an import-cost win until somebody
+measures one. ⇒ do not cite this section as evidence that it is.
+
+### ★ The mechanism that WOULD pay is `abstract`, and it is a different one
+
+Agda will not unfold an `abstract` definition during conversion checking.
+Cost in this POC lives in elaboration and conversion, not in loading, so
+an interface whose bodies are `abstract` stops clients from unfolding
+proof terms they never needed to see. That is a real lever and it is
+about **unfolding**, not about bytes.
+
+⚠ It is also a semantic commitment, not a repackaging: anything a client
+proves by `refl` through a library definition breaks the moment that
+definition becomes `abstract`. The split therefore has to wait until the
+use sites say which equations clients actually depend on — which is
+exactly the sequencing already proposed: **do it when the interface is
+observed, not guessed.**
+
+### ★ And it is the prerequisite for the documentation loop below
+
+An interface is the surface a document can describe. Generating docs for
+a module that exports 60 lemmas, 45 of them internal, documents the wrong
+45.
+
+---
+
+## LIBRARIES: DOCUMENTATION CONVERGED BY AGENT EVALUATION
+
+Generate per-library documentation, then **test it** by giving it to an
+agent with a use site whose solution we already have, and comparing what
+the agent writes to what is in the repo. Failures become documentation
+deltas; iterate until they stop.
+
+### ★ Why this is worth doing: the failure it targets is our most frequent one
+
+Not "the proof was hard" — *"the library already had it and I rebuilt
+it."* Three instances in a single day (2026-08-31):
+
+* `⊢motAppK` — already exactly the `subAtK` wrapper; I began rebuilding
+  it from `βsnd`/`βfst`/`sortMap-red` before looking.
+* the emitter's `DD` role — already consumed the prepended depth; I added
+  a `DDEP` role that emitted it twice and silently dropped an argument.
+* `methsAt` — built for `pw?`, which turned out not to need it.
+
+⇒ the eval question is sharp and mechanical: **did the agent find the
+existing thing, or write a second one?** That is checkable without
+judging proof style.
+
+### ⚠ The experiment is only valid if the agent CANNOT read the answer
+
+The agent has a repo. If it can `grep` the library bodies or the existing
+call site, it will find the lemma and the documentation is never tested —
+the run measures the search, not the doc. So the harness must hand it
+**the document and the goal, and nothing else**: no `Lib/**` bodies, no
+the module that already solves it. Getting this isolation wrong produces
+a green result that means nothing — `verification-that-covers-less-than-
+it-claims`, in a new place.
+
+### Design notes
+
+* **Held-out use sites, rotated.** Iterating docs against one fixed site
+  converges to a doc that solves that site. Keep a pool; report per-site.
+* **Record the failure MODE, not just pass/fail.** "Rebuilt an existing
+  lemma", "found it but mis-instantiated", "could not state the goal" are
+  three different doc bugs — the first wants a discoverability index, the
+  second wants an example, the third wants the interface.
+* **Two audiences, and they want opposite documents.** A user needs "what
+  do I call and what does it cost me"; a library dev needs "why is the
+  premise shaped like this and what was tried instead". The attempts logs
+  (`SUBTM-ATTEMPTS.md`, `JUDGEMENT-ATTEMPTS.md`) are already the second
+  document — do not let the first swallow them.
+* **The cost model belongs in the doc.** Half this POC's dead ends were
+  cost, not correctness (`half-generalization-is-worst`,
+  `meta-standing-for-a-computation`). A signature that is cheap to *use*
+  and ruinous to *build* is exactly what `judge-abstractions-at-the-use-
+  site` says to record.
+
+## Once: THE BUGS AGDA CANNOT SEE — and how many of them are mechanizable ANYWAY
+
+⚠⚠ **This section starts by CORRECTING ITS OWN PREMISE.**
+`DirectedHoTT/JUDGEMENT-ATTEMPTS.md` §13 classified nine real defects
+from 2026-09-01 and concluded that a type checker "cannot see" the
+correspondence between `Spec/Typing.agda` and the emitted rows. The
+first half was measured; **the second half was wrong**, and the objection
+that broke it was one sentence long: *"it is just Agda that can't find
+it, right? Why can't `length X == length Y` be an invariant?"*
+
+★ It can. Agda cannot see a correspondence **nobody wrote down**. Written
+down, it checks it. `Examples/Knot/Census` is the demonstration and it is
+now in the sweep.
+
+### What was actually blocking it — and it was not Agda
+
+The rules live in `Spec/Typing.agda` as **datatype declarations**. The
+generator reads them by **parsing text in Python**, so the left-hand side
+of the correspondence lived outside the logic and every invariant about
+it had to be a script assertion. ⇒ the missing ingredient was never
+expressiveness; it was **reflection** — a way to make the declaration a
+value the logic can compute over.
+
+### ✅ What is mechanizable TODAY (and now mechanized)
+
+**Measured 2026-09-01: `Agda.Builtin.Reflection` works under `--safe`.**
+`getDefinition` on a `data-type` yields its constructor list at
+type-check time. So:
+
+| invariant | mechanism | status |
+|---|---|---|
+| how many rules the SOURCE has | reflection (`rules _⊢_∷_ ≡ 32`) | ✅ `Knot/Census` |
+| how many rows the ENCODING has | ordinary Agda — `IDesc` is a first-order list, so `ilen D` and `refl` | ✅ |
+| **the two, RELATED** — `ilen JudgeD + 5 ≡ srcJudge` | an equation, checked in the sweep | ✅ |
+| a rule ADDED to `Spec/Typing` with no row | falls out of the same equation | ✅ **new coverage** |
+
+⚠ And the control was run: a deliberately wrong count is a type error
+(`2 != 99 of type Nat`). An assertion that cannot fail proves nothing.
+
+★★★ **This replaces a Python ratchet with a THEOREM.** The ratchet was a
+FLOOR (`Judge ≥ 34`) and on 2026-09-01 the row count went 51 → 49 → 51
+while depth bugs were being fixed — **the floor saw nothing, because a
+floor only catches a fall below ITSELF.** The census is an exact
+equation; drift is a type error, in the sweep, for free.
+
+### ⬜ What is mechanizable but NOT YET done, in Agda as it is
+
+1. **NAME-level correspondence.** Reflection yields constructor NAMES,
+   not just their count, and the emitter derives each row's name from the
+   rule's. `primQNameToString` + the emitted names would check that every
+   constructor of `_⊢_∷_` has the row it should, not merely that the
+   totals agree. Counting is the cheap shadow; this is the next rung.
+2. ★★★ **The adequacy map, `enDeriv`.** THE tier that makes the
+   *dangerous* class impossible rather than unlikely — a well-formed row
+   that encodes the WRONG RULE (`dwf-cons` emitting `DescWf C` for
+   `DescWf (C ◃ E)`, which typechecked). A total function
+   `Γ ⊢ t ∷ A → ⟨inhabitant at ⌈Γ⌉ ⌈t⌉ ⌈A⌉⟩` cannot be written for such a
+   row, because its TARGET TYPE names the index. `Knot/Map`'s
+   `enTy`/`enTm` and `Knot/SzAgree` already do exactly this **for the
+   syntax**; there is no `enJudge`.
+   ⇒ and it is not extra work: `prog`'s type mentions `_⊢_∷_`, so step 4
+   needs this correspondence anyway.
+3. **Coverage, as opposed to correctness.** Two 2026-09-01 defects were
+   neither: a spike left `JudgeWfJ`–`Q` as real files the sweep would
+   have checked GREEN, and `check.sh` returning 0 off a cached `.agdai`
+   checks nothing. These are properties of the BUILD, not of any module,
+   and no in-language invariant reaches them. A content-addressed build
+   would; that is a tooling item, not a language one.
+
+### ★ What Once could do that Agda makes awkward
+
+* **Make the declaration a value.** Everything above is reflection
+  working around the fact that a datatype declaration is not data. The
+  knot exists to make `RTm` a kernel type; the same move applied to
+  JUDGEMENTS means the correspondence is stateable **without** a
+  reflection macro and without a Python parser — one language, one
+  artifact, `enDeriv` an ordinary function.
+* **Totality obligations on a declaration** — see the section above on
+  datatype declarations carrying none. A generated family whose row count
+  is part of its INTERFACE cannot drift.
+* **An adequacy obligation as a first-class notion.** "This encoding is
+  faithful to that declaration" is the proposition we keep re-proving by
+  hand (`LookupGen`, `SzAgree`, `WkRows`) and never state once.
+
+⇒ ⚠ **the honest summary: of the four defect classes Agda missed, ONE was
+never a language problem (counting — now checked), ONE is ordinary work
+we have not done (`enDeriv`), and TWO are build-system properties.** None
+of them is evidence that the checking is inherently manual. "Rely on
+inspection with scripts" was the wrong conclusion and this section is
+the retraction.
+
+### ⇒ SO WHICH OF THE CHECKING SCRIPTS CAN GO? — audited 2026-09-01, and mostly NOT
+
+Asked directly once `Knot/Census` landed. **One thing is subsumed. The
+rest check different properties, and two Agda facts had to be MEASURED
+before the answer was even stable — I had the first of them backwards.**
+
+    ✅ MEASURED: `--safe` BANS `postulate`          (`SafeFlagPostulate`)
+    ✅ MEASURED: `--safe` PROPAGATES through imports (`CoInfectiveImport`)
+
+| script | verdict |
+|---|---|
+| `gen-knot.py`'s `_FLOOR` ratchet | ✅ **SUBSUMED** by `Knot/Census` — and strictly improved: a floor cannot see 51 → 49, an equation can |
+| `POC/OCP0009/check-mf.sh`, `POC/OCP0009/check-formers.sh` | ⚪ **dead already** — `sweep.sh:24` never builds that tree. Deleting them is housekeeping, not a consequence of anything |
+| `tools/check-trust.sh` | 🟡 **its CONTENT checks are redundant with `--safe`** (postulates, `TERMINATING`, `NO_POSITIVITY_CHECK`, `primTrustMe` are all rejected outright; holes stop the check). What remains is ONE thing: **that every file declares `--safe` at all** |
+| `tools/check-formers.sh` gates 1–3 | 🟡 **encodable, not yet encoded** — "every `RTm` former appears in the SN layer" is a NAME-LEVEL correspondence between two datatypes, exactly what reflection does |
+| `tools/check-formers.sh` gates 4–6 | ⛔ **not propositions** — vacuous rows, promissory notes, and conditional lemmas with NO CONSUMER are statements about the ABSENCE of something across the whole program. A review list, honestly labelled as one |
+
+★★★ **AND THERE IS A REAL FIX AVAILABLE FOR `check-trust.sh`.** Because
+`--safe` is co-infective, a single `--safe` module importing the WHOLE
+tree makes Agda enforce the trust surface transitively. `Trust.agda`
+claims to be that module — *"it is not a promise, it is checked"* — and
+imports **zero** modules; the checking is entirely in the shell script.
+⇒ give it the full import list and the script shrinks to the one question
+that is genuinely a filesystem property: **does the import list name
+every `.agda` file?** That is a `find | diff`, not a 25-line scanner.
+
+⚠ The residue is real and worth naming: a module NOTHING imports is
+invisible to the language, whatever we do. It is the same class as the
+stale `JudgeWfJ`–`Q` files and a green `check.sh` off a cached `.agdai` —
+**coverage, not correctness.** Those three want a content-addressed
+build, and no in-language invariant reaches them.
+
+### ★★★ THE CATEGORIES — every defect class that survived `--safe`, audited from the git history
+
+Assembled 2026-09-01 by reading ~1000 commits for the ones whose subject
+admits a defect that TYPECHECKED. ⚠ The striking result is how many were
+called unencodable and are not: **A, E and most of F were closed within
+one session, once the question "why can't that be an invariant?" was
+asked instead of assumed.**
+
+| | category | it actually happened | Agda TODAY | Once |
+|---|---|---|---|---|
+| **A** | **DATATYPE COVERAGE** — a declaration missing a row. Agda's coverage checks FUNCTIONS, not datatypes | `ordtr` absent from the whole SN layer (2026-08-05→06); `icon`/`ielim`/`⌜IMu⌝` (2026-08-22) | ✅ **NOW CHECKED** — `Metatheory/FormerCensus`, by reflection, and it NAMES the orphans | §"a DATATYPE DECLARATION carries no totality obligation" opts 1–2: a derived-datatype obligation, or generate the layer FROM the description |
+| **B** | **A CATCH-ALL HIDING A MISSING CASE** — `_ = false` makes a function total, so coverage is satisfied and the omission is SILENT | `spine?`/`stablecd?` inherited `_ = false` for `icon`/`ielim` — THREE silently wrong answers, `--safe`, zero warnings (`25602107`) | ✅ **NOW PINNED** — `FormerCensus` asserts the catch-all's EXTENT (`spine?` 12 of 30, `stablecd?` 7); adding a former moves the number and FAILS. ★ AND Agda has a native flag we were not using: `--exact-split -Werror` makes a catch-all a hard error, by clause — see below | option 2 again: a function generated from a `Desc` has no catch-all to inherit. This is the strongest argument for the dogfooding target |
+| **C** | **VACUITY** — a true theorem that says nothing | `subTI` quantified over an arbitrary env-top, so `consistency` was VACUOUS; `gcd-gt-gen`/`gcd-le-gen` premises uninhabitable at variables (`5edcde10`) | ⛔ not in general — an implication with an unsatisfiable premise is a fine proof | ★ **the real idea: a hypothesis OWES A NON-VACUITY WITNESS.** `∃ args. premise args` IS a proposition. Once could demand one per conditional lemma — `check-formers` gate 6 is the shadow of it |
+| **D** | **ENCODING CORRESPONDENCE** — a well-formed row that encodes the WRONG RULE | `dwf-cons` emitting `DescWf C` for `DescWf (C ◃ E)` (2026-09-01) | ✅ **COUNTS** (`Knot/Census`) **AND VALUES** (`Knot/Adequacy`, 32 checks against `Knot/Map`, generated) — CONTROLLED: reintroducing the `◃` bug makes it a type error. ⬜ Row STRUCTURE/fords still want a full `enDeriv` | make the declaration a VALUE, so the correspondence is an ordinary function rather than a reflection macro over a Python-parsed source |
+| **D′** | **WRAPPER ADEQUACY** — an object-level FUNCTION that is well-typed and denotes a DIFFERENT function. The index records a DEPTH, so two different renamings have the SAME TYPE | `wkK` is not `renTm vs` — it keeps the de Bruijn index where `renTm vs` shifts it (2026-09-02). Sound where the argument is closed (`payTy`), wrong where it is open (`ihTy`) | 🟡 **the encoding EXISTS and was written once** — `Knot/SzAgree` proves `szsTm i ⌈t⌉ ⟶* num (sz t)` for all 30 rows, GENERATED. That is exactly the statement `wkK` fails. It was never instantiated for any other wrapper. ✅ **the OBLIGATION is now forced** — `gen-knot.py`'s `_WRAP_LEDGER`, checked both ways against a scan of the EMITTED rows: 19 wrappers, 11 still owed, and a new wrapper with no entry fails generation | make the renaming a VALUE. `subTmK` takes `σ : SubTy d n` as an argument and so cannot be silently wrong about which substitution it is; `wkK` bakes its renaming into `Lib/IWk`'s fold. ★ **a function whose behaviour depends on a parameter absent from its type will be silently wrong** |
+| **E** | **CLAIM / COMMENT DRIFT** — a header asserting "N of M" that is false | two stale census claims in `Knot/Terms`, 32 → **13** (`da699bd1`); stale ⬜/⛔ markers (`ef6e408b`, `cbb181cd`) | ✅ where NUMERIC — turn the claim into a `refl`; that is exactly what `Knot/Census` is | claims in the doc layer that are checked, not prose |
+| **F** | **BUILD COVERAGE** — a file the checker never reaches | stale `JudgeWfJ`–`Q` the sweep globbed GREEN; `check.sh` rc=0 off a cached `.agdai`; a module with no `--safe` line | 🟡 mostly — `--safe` is CO-INFECTIVE, so `Trust.agda` importing the tree enforces it; the residue is `find \| diff` | content-addressed build; a project manifest that is itself checked |
+
+⇒ ★ **the honest scoreboard: of six categories, ONE (A) was closed
+outright this session, TWO (E, F) were closed in the part that matters,
+ONE (D) is half-closed with the other half being ordinary work we have
+not done, and TWO (B, C) are genuinely open.** "Rely on inspection with
+scripts" was true of none of them by the end.
+
+⚠⚠ **And C is the one worth Once's attention**, because it is the only
+one where the obstacle is not tooling. `subTI` is the sharpest instance
+in this repo's history: `--safe`, zero holes, a green build, and
+`consistency` proved nothing at all. A language that made
+*"this hypothesis is inhabited somewhere"* an obligation would have
+caught it at the definition, not months later.
+
+### ★★★ CATEGORY D′ IN DETAIL — the check existed, in one place, and the gap was CORRELATED with the bug
+
+Added 2026-09-02, after `wkK` turned out not to be `renTm vs`.
+
+**The defect.** `Knot/Wk.wkK : K (s,d) → K (s,suc d)` is derived by
+`Lib/IWk` as a generic depth-bumping fold. Its two `Var` rows rebuild
+`cVar-vz` at `m' = nsuc m`, i.e.
+
+    wkK (var vz)     = var vz          not  var (vs vz)
+    wkK (var (vs x)) = var (vs (wkK x))
+
+— the identity on de Bruijn INDICES. `renTm vs` shifts them. Both are
+well-typed at `K (s,d) → K (s,suc d)`, because the index records only a
+DEPTH; nothing in the type distinguishes two renamings between the same
+two lengths.
+
+**★★★ And it could not have been `renTm vs`.** A tag-preserving fold can
+only implement a renaming that is stable under going through a binder —
+`extR ρ ≡ ρ` one depth up. The outermost insertion is the only weakening
+that is; `renTm vs` becomes `renTm (extR vs)` under a `lam`. ⇒ this was
+not a slip in two rows, it is a statement about what `Lib/IWk` CAN
+produce, and the same argument applies to any future generic fold.
+
+**⇒ the two agree on CLOSED terms and only there.** `payTy D C` is
+closed, so `Knot/PayTy`'s use is sound; `ipayTy` weakens nothing;
+`Knot/IhTyRho` weakened an open answer and was wrong. That is the
+practical rule: **an adequacy suite whose witnesses are all closed cannot
+see a renaming bug.**
+
+### The encoding was already in the repo — once
+
+| tier | what it checks | covers `wkK`? |
+|---|---|---|
+| `Knot/Census` | row COUNTS, per family, by reflection | no — no count changes |
+| `…Wf` modules | each row is well-formed | no — both renamings are well-typed |
+| `Knot/Adequacy` | a rule's CONCLUSION SUBJECTS are the ones the rule names, by `refl` | no — `wkK`'s three uses are all in PREMISES and INDEX components, which no tier scans |
+| `Knot/SzAgree` | `szsTm i ⌈t⌉ ⟶* num (sz t)`, **all 30 rows, GENERATED** | ★ **this is the shape that catches it** — and it exists for `sz` and for nothing else |
+
+So the answer to "is this a new class needing new machinery" is **no**:
+`SzAgree` is a generated, full-induction proof that an encoded FUNCTION
+agrees with the meta-level function it names. `wk-agree : wkK ⌈t⌉ ⟶*
+⌈renTm vs t⌉` is the same statement and is FALSE at the `var` row — it
+would have failed the day `wkK` was written. The machinery was built and
+instantiated once.
+
+### ⚠⚠ AND THE COVERAGE GAP HAD THE SAME CAUSE AS THE BUG
+
+`gen_adequacy` refuses any subject applying a wrapper, and it is RIGHT
+to: `enTy (subTy σ B) ≡ subTyAtK … (enTy B)` is a commutation lemma, not
+`refl`, and asserting it would be a false claim about the right subject.
+The generator says so, in a comment, at the refusal.
+
+What it could not do is notice that the lemma was never written. And
+every such refusal was reported as `_Undepthed` — which reads as depth
+bookkeeping, not as *"this row applies an unchecked function"*. `wkK`
+takes a depth; that is simultaneously (a) why the depth-only index loses
+the information that would have distinguished the two renamings and (b)
+why every rule using it lands in the skip list. **The hole and the bug
+were not independent; they had one cause.** Cf. the standing note that a
+verification can cover less than it claims — this is the sharpest
+instance: the skips were exactly complementary to the bug.
+
+### ✅ What is mechanized now, and what is script-only and why
+
+**Encoded (Agda):** nothing new is needed — `SzAgree`'s shape is the
+statement. Writing it per wrapper is ordinary work, not research.
+
+**Forced (generator, 2026-09-02):** `_WRAP_LEDGER` in `tools/gen-knot.py`,
+fed by TWO scans — the wrappers an EMITTED row applies, and the
+eliminators the hand-written `Examples/Knot` modules DEFINE (a top-level
+definition whose body applies `ielim KnotD`). Each must carry an entry
+saying what discharges its adequacy obligation or why it is not owed.
+Checked BOTH WAYS, and both directions were controlled by deleting an
+entry and by adding an unused one: **32 object-level programs, 21 still
+OWED.** `wkK`'s entry records that its statement is not merely unproved
+but FALSE.
+
+### ⇒ SO WHERE ELSE IS THIS OWED? — audited 2026-09-02
+
+Seventeen object-level programs over the knot. **`sz` is the only one
+with an agreement, and it has two** (`Knot/SzAgree` for `szsTm`, all 30
+rows and generated; `Knot/SzProbe` for `szTm`'s row counts).
+
+| owes an `agree` | meta-level counterpart |
+|---|---|
+| `wkK` | `renTm vs` — ⚠ **FALSE as stated**; use `Knot/WkSub` |
+| `subTmK`, `extSK`, `singleSK`, `nrsK`, `conSSK` | `subTm`, `extS`, `single`, `nrs`, `conS` |
+| `lookupDK`, `ilookupDK` | `lookupD`, `ilookupD` |
+| `payTyK`, `ihTyK`, `ipayTyK` | `payTy`, `ihTy`, `ipayTy` |
+| `pwK`, `pwBodyK`, `flatK`, `stkAK`, `stkCK` | `pw?`, `flat?`, `stkA?`, `stkC?` |
+
+**★★★ AND THE DISCRIMINATOR IS NOT "syntax vs arithmetic" — it is
+whether a caller needs the function to COMPUTE.** The arithmetic library
+has its agreements (`Lib/NatNum.plus-num : plusTm (num a) (num b) ⟶*
+num (a + b)`, and the same for `mulTm`, `monusTm`, `predTm`) because its
+callers reduce them. `szsTm` has one because canonicity needs the NUMBER.
+Every function in the table above is used only to TYPE a row — a term of
+the right index is all any caller ever asked for — so nothing ever forced
+the question of what it computes. ⇒ **a function that is only ever
+type-checked and never reduced has no evidence behind its name.**
+
+⚠⚠ **`wkK` even had a probe, and the probe checked the wrong thing.**
+`Knot/WkProbe` asks whether `Lib/IWk`'s classifier CLASSIFIES the knot's
+rows — i.e. whether the derivation applies — not whether its result means
+what the name says. So the most-checked of the unchecked wrappers was
+checked orthogonally to its defect.
+
+⚠ Two refinements the first attempt got wrong, both worth keeping:
+
+1. **Scanning the checkable subjects finds nothing.** The adequacy loop
+   builds a rule's telescope first and abandons the rule if a binder's
+   meta-level type is unpinned, so for `⊢ap` it never reaches the subject
+   at all. A scan that runs only where the check succeeds cannot see what
+   the check is missing.
+2. **Even scanning every subject finds the wrong set.** Adequacy is about
+   CONCLUSION SUBJECTS; `wkK` is used in premises and index components.
+   ⇒ the ledger is fed by scanning the **emitted files**, which is the
+   only view that sees every use.
+
+**★ Why the ledger is a SCRIPT and not a reflection macro.** Categories A
+and B were closable in Agda because `getDefinition` enumerates a
+DATATYPE's constructors. There is no primitive that enumerates a
+MODULE's definitions: Agda 2.8.0's TC monad has `getType`/`getDefinition`
+**by name** and nothing that lists names (checked against
+`lib/prim/Agda/Builtin/Reflection.agda`). So *"every wrapper owes an
+`agree`"* cannot be stated in Agda at all — the set to quantify over is
+not reachable. ⇒ **this is the first defect class in the table whose
+obstacle is a genuine reflection limit rather than our not having tried.**
+
+### ⇒ For Once
+
+Two obligations, and the first is the cheap one:
+
+* **A module-level census.** If a module's definitions were enumerable —
+  as a datatype's constructors are — the ledger is an ordinary
+  proposition and needs no script. This is the same request as
+  §"a DATATYPE DECLARATION carries no totality obligation", one level up:
+  *a MODULE should be able to carry an obligation over its own
+  definitions.*
+* **Make the parameter appear in the type.** `wkK` is "the weakening",
+  singular, with the renaming baked into its derivation; `subTmK` takes
+  `σ` and cannot be wrong in the same way. A language that made a
+  derived function name its own specification — or a depth index that
+  recorded the SCOPE rather than its LENGTH — removes the class rather
+  than checking for it.
+
+### ★★★ CATEGORY C IN DETAIL — can VACUITY be checked automatically?
+
+Asked directly. The answer splits, and the split is the useful part.
+
+#### ⛔ In general: NO, and it is a THEOREM, not a tooling gap
+
+"Is this premise inhabited?" is inhabitation in a dependent type theory,
+i.e. **provability** — undecidable. There is no complete automatic
+vacuity checker for the same reason there is no complete prover. ⇒ any
+proposal that *decides* vacuity is wrong; the question is what to do
+instead.
+
+#### ★ The move that works: turn a DECISION into a CERTIFICATE
+
+Undecidable to decide, trivial to CHECK:
+
+    lemma   : (x : A) → P x → Q x
+    lemma-ne : Σ A P                  -- ⚠ OWED, and type-checked
+
+Exhibiting a witness is ordinary type-checking. This is the same trade
+the whole development already makes everywhere else — and it would have
+killed **both** of this repo's real instances outright.
+
+⚠⚠ **BUT A NAKED WITNESS IS NOT ENOUGH, and `gcd-gt-gen` is exactly why.**
+Its premise IS inhabitable — at LITERALS. The lemma was stated at
+VARIABLES, where `monusTm` is stuck and the premise is not. So "P is
+inhabited somewhere" would have been discharged and the lemma still
+proved nothing where it lived.
+
+⇒ ★★★ **the obligation has to be tied to a USE SITE, not to existence:**
+
+    a conditional lemma owes a CONSUMER, and the consumer must
+    DISCHARGE the premise at the arguments the lemma is stated for.
+
+That is decidable (a call-graph question) *plus* type-checked (the
+consumer must actually build the premise). `5edcde10`'s own diagnosis was
+literally *"asking what exercises these lemmas showed nothing does"* —
+the check is the question, mechanized. And `subTI` fails it for the other
+reason: its consumer could not supply the env-top.
+
+#### ✅ Sound-but-incomplete things that ARE automatic today
+
+* **structurally empty premises** — `⊥`, a datatype with no constructors,
+  or a constructor set empty at the given indices. Agda already decides
+  this: it is what an `()` pattern IS. `Examples/Vec.no-cons-at-zero` is
+  this repo's own instance.
+* **dead conditional lemmas** — `check-formers` gate 6. A graph property,
+  decidable, already implemented; what it lacks is teeth, being a review
+  list rather than a gate.
+
+#### ⇒ and the user's sharper version — "forget a use-site for all BRANCHES"
+
+★ **That one is not category C at all — it is category A pointed
+backwards, and it is mechanizable with the machinery just built.**
+
+    A  every constructor has a ROW        (production coverage)  ✅ FormerCensus
+    A′ every constructor has a CONSUMER   (consumption coverage) ⬜ same technique
+
+`Metatheory/FormerCensus` reflects over a datatype's constructors and
+checks each is MENTIONED across a set of layers. Pointed at consumers
+instead of producers, the identical macro answers "which branch does
+nothing ever use?". ⚠ Mentioning is still the cheap shadow of exercising
+— but it is exactly the shadow that caught `ordtr`, and the asymmetry is
+worth naming: **we check that everything is PRODUCED and never that
+anything is CONSUMED.**
+
+#### what Once should take from this
+
+1. **A conditional lemma owes a discharging consumer** — the strongest of
+   the three, and the only one that catches `gcd-gt-gen`.
+2. **Consumption coverage as a first-class obligation**, dual to the
+   totality obligation already proposed for datatype declarations.
+3. ⚠ **Do NOT promise a vacuity decision procedure.** It cannot exist;
+   promising it is how a checker ends up trusted for something it does
+   not do — which is the failure mode this whole section documents.
+
+#### ⚠⚠ AND THE DECIDABILITY CLAIM ABOVE WAS TOO GLIB — the precise version
+
+"Inhabitation is provability, undecidable" is the right conclusion from
+the wrong premise, and the difference matters for Once.
+
+* **Strong normalization does NOT buy decidable inhabitation.** System F
+  is SN and its inhabitation problem is UNDECIDABLE (Löb 1976).
+  Conversely simply-typed λ-calculus HAS decidable inhabitation
+  (PSPACE-complete, Statman 1979). ⇒ totality of the TERM language is not
+  the deciding property, so "Once is total" buys nothing here.
+* **The deciding property is UNBOUNDED QUANTIFICATION OVER AN INFINITE
+  DOMAIN in the TYPE language.** In any total theory with `ℕ` and a
+  structurally-recursive step function you can write
+
+      Halts M = Σ ℕ (λ n → run M n ≡ halted)
+
+  — `run` structural on `n`, entirely total — and `Halts M` is inhabited
+  iff `M` halts. ⇒ inhabitation is undecidable **without any general
+  recursion anywhere**. Once inherits this the moment its types quantify
+  over `ℕ`.
+
+★★★ **AND THE ASYMMETRY IS THE ACTIONABLE PART.** Type-checking is
+decidable in a total theory, so enumerate-and-check is a genuine
+semi-decision procedure:
+
+    "NOT vacuous" (∃ a witness)   — r.e.:      a search FINDS it, eventually
+    "vacuous"     (∄ any witness) — co-r.e.:   NO procedure confirms it
+
+⇒ a complete vacuity checker is impossible, but a complete **non-vacuity
+finder** exists in the limit. That is the right shape to build: search
+for a witness, and treat *found* as definitive and *not found in budget*
+as a flag. It improves monotonically with compute, which "inspection"
+never does.
+
+#### ⇒ four SOUND partial vacuity checkers, in increasing order of reach
+
+1. **Structural emptiness** — `⊥`, a constructor-free datatype, or a
+   family with no constructor available at the given index. Agda already
+   decides this: it is what an `()` pattern IS. ⚠ For the ENCODED
+   families it is not free — `Examples/Vec.no-cons-at-zero` is a
+   hand-written proof, not a decided one.
+2. ★ **STUCK-INDEX emptiness — and this one would have caught the actual
+   instance.** `gcd-gt-gen`'s premise was uninhabitable because
+   `monusTm (nsuc A) B` with `B` a VARIABLE is stuck: it reaches neither
+   `nsuc d` nor `nzero`, so no constructor's index can match. In a total
+   theory normalization is DECIDABLE, so "normalize the premise's index;
+   if it is a stuck neutral and every constructor Fords its index to a
+   constructor-headed form, the family is empty" is a decidable check.
+3. **Bounded proof search** for the witness — the semi-decision procedure
+   above, i.e. Agsy. §6 of `JUDGEMENT-ATTEMPTS` already measured that
+   these goals are syntax-directed and exactly Agsy-shaped.
+4. **Consumer-discharge** — a conditional lemma owes a consumer that
+   builds the premise at the arguments the lemma is stated for.
+   Decidable (call graph) *plus* type-checked. Catches both real cases.
+
+★ **A fifth, for Once specifically: a DECIDABLY-INHABITED FRAGMENT.**
+Undecidability comes from unbounded quantification; types built only from
+finite domains and bounded quantifiers have decidable inhabitation. A
+language could mark that fragment and offer a COMPLETE vacuity check
+inside it, refusing to guess outside. That is a real design lever and it
+is honest at the boundary.
+
+#### ⚠ AND ARE CATCH-ALLS EVEN ALLOWED UNDER `--safe`? — MEASURED: yes, and Agda has a flag for them
+
+Asked directly, and worth testing rather than asserting.
+
+    {-# OPTIONS --safe #-}                        catch-all → rc=0   ✅ ALLOWED
+    {-# OPTIONS --safe --exact-split #-}          → CoverageNoExactSplit, NAMING the clause
+    {-# OPTIONS --safe --exact-split -Werror #-}  → rc=42, a HARD GATE
+
+★ So `--safe` says nothing about catch-alls — they are ordinary total
+code, and this repo relies on it: `Metatheory/LogicalRelation` is
+`--safe` and contains `spine? _ = false`.
+
+★★★ **BUT AGDA ALREADY HAS THE CHECK, AND WE WERE NOT USING IT.**
+`--exact-split` flags exactly the clauses that are not preserved as
+definitional equalities — i.e. the catch-alls — **by name**, and
+`-Werror` turns that into a failure. That is a NATIVE, per-clause answer
+to category B, strictly more precise than counting.
+
+⇒ two mechanisms, and they are complements, not rivals:
+
+| | catches | cost |
+|---|---|---|
+| `--exact-split -Werror`, per module | every catch-all, AT ITS CLAUSE | every legitimate one must be expanded into explicit clauses — a real rewrite, and often worse code |
+| `FormerCensus.catchAllN` (this repo) | a catch-all's EXTENT MOVING | none — the catch-alls stay; a new former joining one changes the number and fails |
+
+⇒ ⬜ **the pin is the right default and `--exact-split` the right tool for
+a module under suspicion.** Adopt the flag where a function is
+load-bearing and small (`spine?`, `stablecd?`, the classifiers); keep the
+pin everywhere, because it is the one that costs nothing and still makes
+a NEW former impossible to add silently — which is the actual bug.
+
+### ⇒ WHAT TO CALL THESE — four levels, and "metatheory" is only one of them
+
+Asked once `FormerCensus`/`Census`/`Adequacy` existed: *is this a
+metatheory of the libraries?* Nearly, and the distinction earns its keep.
+
+| | what it establishes | needs reflection? | where |
+|---|---|---|---|
+| **METATHEORY** | properties of the OBJECT LANGUAGE — SN, canonicity, subject reduction | no | `Metatheory/` |
+| **ADEQUACY** | the encoding is FAITHFUL to what it encodes | no — an ordinary theorem | `Knot/Adequacy`, `SzAgree`, `LookupGen`; ⬜ `enDeriv` |
+| **COHERENCE** | parallel artifacts stay IN STEP — former ↔ SN row, rule ↔ emitted row, header claim ↔ fact | **yes**, when one side is a DECLARATION | `Metatheory/FormerCensus`, `Knot/Census` |
+| **COVERAGE** | the checker REACHED everything | no — a build property | `Trust.agda` + `check-trust.sh` |
+
+★ Metatheory is about the system the development is ABOUT; the other
+three are about the development itself. Adequacy is the bridge: it is an
+ordinary theorem whose CONTENT is a claim about our encoding. Coherence
+is the one that genuinely needs reflection, because its left-hand side is
+a `data` declaration rather than a definition. ⇒ **the unifying idea is
+that coherence conditions are CODING CONVENTIONS MADE INTO PROPOSITIONS.**
+
+### ★★★ AND CAN THE COHERENCE ROW BE FORCED? — yes, and the first attempt was WEAKER than what it replaced
+
+`InIDD` shipped as `inil` — a WELL-FORMED EMPTY DESCRIPTION — because
+`ICon (ε ∙)` was missing from the binder table and both `_∈ID_` rows
+silently failed to translate. `Census` would have caught it and did not,
+because the family had been **added without adding its census row**.
+
+⇒ **the fix is to make the single source of truth actually single:**
+`Census.agda` is now GENERATED from the generator's own family table, so
+adding a family and adding its check are one act. `gen_census` refuses a
+family with no entry.
+
+⚠⚠ **BUT THE FIRST GENERATED VERSION WAS WEAKER THAN THE HAND-WRITTEN ONE,
+AND ONLY THE CONTROL SHOWED IT.** It emitted the generator's OWN skip
+count, which makes
+
+    ilen D + skips ≡ rules X
+
+true *by construction*: with both `_∈ID_` rows gone, `skips` became 2,
+`ilen InIDD` became 0, and `0 + 2 ≡ 2` **passed**. The check had become
+insensitive to precisely the failure it exists for.
+
+⇒ ★ so the skip count is now a HAND-MAINTAINED CLAIM (`_SKIP_EXPECT`),
+checked against reality in the generator and pinned exactly in Agda.
+Control re-run: the generator refuses with
+*"InIDD: 2 rule(s) did not translate, expected 0 … a rule just went
+silently missing."*
+
+★★ **THE LESSON GENERALISES AND IS THE SHARPEST ONE HERE: a check whose
+EXPECTED VALUE is computed by the thing being checked is not a check.**
+`_FLOOR` had this shape too (a floor cannot see a fall to itself); so did
+the "N of M" prose claims. **The expected side must come from somewhere
+the producer does not control** — reflection over the SOURCE datatype, or
+a human-written constant.
+
+### ⬜ SHOULD `Examples/` GET THE SAME TREATMENT? — yes, three obligations, each from a real bug
+
+`Examples/` is where descriptions are BUILT, so it is where the
+"well-formed but empty" hazard lives — the exact thing `⊢lkVz`'s note
+names: *"a well-formed description with no closed inhabitant is
+indistinguishable from a good one."* `InIDD` is that hazard, realised.
+
+1. **INHABITATION** — every demonstration family exhibits a closed
+   inhabitant. `⊢lkVz` and `ctx1` do it by hand; nothing forces it, and
+   `Negative/WkEmp` plus `Vec.no-cons-at-zero` are the record of what
+   goes wrong.
+2. **CENSUS CLAIMS** — 10 files under `Examples/` carry prose `N of M`
+   claims, and category E bit exactly there (`Knot/Terms`, 32 → **13**).
+   Each should be a `refl`, the way `Knot/Census` now is.
+3. **`Comparison/`'s REDUNDANCY claim** — it asserts two routes compute
+   the same thing, in prose. That is a coherence claim and could be
+   `refl`.
+
+⇒ ★ i.e. **turn every prose claim in an `Examples/` header into a
+proposition.** The technique is the one already built; what is missing is
+the pass.
+
+## Once: A TYPED METALANGUAGE FOR ITS OWN GENERATORS — "two-level Once"
+
+**The idea.** `DirectedHoTT/tools/gen-knot.py` is ~5 200 lines of
+*untyped* Python that emits Agda. The output is fully typechecked, so the
+TCB is not the issue. The issue is that the **generator** is a program
+like any other, and it is written in the one language in this repository
+that has no types. Give Once a static stage and the generator becomes an
+Once program — checked, not just its output.
+
+⚠ **The trust story is NOT the argument, and conflating them hides the
+real one.** "The generated code is checked, so Python is fine" answers a
+question nobody asked. Types do not only protect consumers; they make the
+*author* faster and the program more likely to be right the first time.
+That benefit is forfeited entirely today.
+
+### The evidence: five generator bugs in two days, all of a typeable kind
+
+| bug | what a type would have said |
+|---|---|
+| `_WRAP_LEDGER` had `subTmK` **twice**; Python keeps the last silently, so a `✅` vanished and neither existing gate could see it | a total map from the constructor enum — a duplicate key is not writable |
+| `_PRE_N` was a **count** that secretly carried `extNK`'s convention (`two` ⇒ `(d, pred d)`); `ipayTyKᵏ` also takes two and they are `(1, d)` | the domain was never `ℕ`; it is a *list of shift-expressions* (`_PRE_D`, the fix) |
+| `ihn` counted `recs` (recursive fields) where the type quantified over `ihs` (fields taking a hypothesis) — `CannotEliminateWithPattern` | two lists in lockstep ⇒ one length-indexed vector |
+| `_depth` answers `0` for **both** `D` and `lit(0)`, so a PINNED slot was indistinguishable from depth zero | a sum projected to `ℕ` loses its tag; don't project |
+| a `str.replace` on a header hit the wrong one of two near-identical templates; 59 modules failed 351 s later | a module header is a record, not a string |
+
+⇒ every one is a *representation* error: a sum flattened to a number, a
+list flattened to its length, a keyed map with no key discipline, a
+program manipulated as text. This is precisely the class typed
+metaprogramming removes, and it is not a small tail — it is most of what
+goes wrong in this generator.
+
+### The name for it, and the prior art
+
+Program generation / **staged metaprogramming** (MSP, Taha & Sheard). The
+distinction that matters here is exactly the untyped/typed one this entry
+is about:
+
+- **Template Haskell** — `Q Exp`, untyped; splices fail at the use site.
+- **Typed Template Haskell** — `Code Q a`: quoted code carries its object
+  type. ★ The single closest analogue to what is wanted.
+- **MetaOCaml** — `.<e>.` / `.~e`; generated code is guaranteed
+  well-typed *and* well-scoped.
+- **Two-level type theory** (Annenkov–Capriotti–Kraus–Sattler) and
+  **Kovács, *Staged Compilation with Two-Level Type Theory*, ICFP 2022** —
+  a static and a dynamic universe with a modality between them; staging
+  provably yields well-typed object code. This is the dependent-typed
+  answer, and Agda does not have it.
+- **MetaCoq**, **Idris 2 elaborator reflection** — the same move in
+  neighbouring systems.
+
+⚠ Agda *does* have reflection (`macro`, `unquoteDecl`), and it would be
+the wrong tool: `Term` is untyped, so a buggy macro reports at the splice
+site with no provenance. That is strictly worse to debug than a `.agda`
+file on disk which can be read, diffed and checked module by module —
+and it buys no type safety over Python.
+
+### ★★★ Why Once is unusually well placed — the knot is already half of it
+
+This is the striking part. **OCP-0009 has already built the object half
+of a staged system and did not set out to.**
+
+1. `Knot/Map.enTm : RTm Γ → RTm Γ'` is a **quoter**. Note the arbitrary
+   target context: a quoted term is closed data, exactly `Code`.
+2. `Knot/Desc.K i = IMu KnotD IPair i` is the **type of code**, and
+   `IPair = Σ' Nat Nat` — a (sort tag, depth) pair. So the knot's code is
+   already **scope-safe and sort-safe**: `K (pair sTm n)` is "a term at
+   depth `n`", and a generator that built a term at the wrong depth would
+   not typecheck.
+3. `PLAN-JUDGEMENT` step 4 (`prog` at the object level) is the *splice*
+   side, already on the roadmap for a different reason (dogfooding).
+
+⇒ what is missing is not the representation. It is (a) code indexed by
+its object **type**, not just its sort, and (b) a stage separation that
+says which computations run before the object program does.
+
+### ⚠ The obstacle is MEASURED, and it is the same 40×
+
+Making the knot's index carry the object type — `Code Γ A` instead of
+`K (sort, depth)` — is *precisely* "a datatype index that accumulates
+codes", which this project has already measured at **40×**
+(`datatype-indices-that-accumulate`: a `Def`-backed name shares, a
+datatype index cannot). It is also what
+`agda-perf-is-mutual-block-size` says is expensive: indices feed the
+positivity and termination graphs, which are 84 % of compile time.
+
+⇒ **the reason generation beats reification is the same reason the
+knot is sort-indexed rather than type-indexed.** One measurement, two
+consequences. Any "just index code by its type" proposal has to answer
+that number first, and Typed Template Haskell's `Code Q a` is the
+existence proof only for a *simply*-typed object language.
+
+### ⚠ QTT `{0,1,ω}` does NOT already give this
+
+Once's surface is graded, and grade `0` is tempting to read as "the
+static stage". It is not: erasure says *not needed at runtime*, staging
+says *computed before runtime*. A `0`-quantity value still cannot be
+matched on to emit different code. Idris 2 is the demonstration — it has
+QTT **and, separately,** elaborator reflection. ⇒ two-level Once is an
+addition to the grading story, not a corollary of it.
+
+### The honest counter-argument: the generator should be SHRINKING
+
+Every time a lemma lands in `Lib/`, generated bulk collapses —
+`Lib/ISzRed`'s header is literally titled *"WHY A LEMMA AND NOT 30
+CHAINS"*, and `isubMethod-red`, `ren-head-red`, `szsSum-red` each turned
+~10 lines per row into one. 2026-09-06 is another instance: five
+hand-written cross-sort agreement rows became **zero** once the emitter
+learned to *classify* a field (ford / ℕ / pinned / closed / ih).
+
+⇒ so the generator is a **staging area for discovering which parts are
+uniform**, and its answers keep migrating into Agda as `Lib` lemmas. If
+that trend continues to its limit, what is left to generate is a table
+and a call — and the case for a typed metalanguage weakens with it.
+⚠ But it has not reached that limit and will not soon: the emitter is
+still growing structure (`_AGREE_SORT`, `_fclass`, `_PRE_D` are all
+2026-09), and structure in an untyped language is where the five bugs
+above came from.
+
+### What would decide it
+
+1. **Count the residue.** Track generated lines per release. If it is
+   falling fast, wait; if it plateaus above ~2 000, the generator is a
+   permanent component and deserves a real language.
+2. **Try the cheap half first.** Do NOT start with `Code Γ A`. Start by
+   giving the *table* (`KNOT`, `FIELD_DEPTH`, `_PRE_D`, `_WRAP_LEDGER`) a
+   checked schema — that alone kills bugs 1, 2 and 4 above, and costs
+   nothing at the object level.
+3. **Then ask whether the type index pays**, with the 40 × measurement in
+   hand and a specific object-language fragment in mind.
+
+## Once: THE KNOT REFUSED EXACTLY ONE RULE, AND IT WAS RIGHT — `⊢tr`'s boolean premise
+
+**The finding.** `tools/gen-knot.py` encodes 55 of the kernel's 56
+judgement rules. The one it cannot encode is `⊢tr`, and the reason is two
+premises:
+
+    occTm vz c ≡ false → occTm vz a ≡ false →
+
+⇒ **that refusal is the POC working.** The knot's job is to find design
+defects by trying to write the system down inside itself; it flagged the
+one premise in 56 rules that is formulated unlike every other.
+
+### The controlled contrast is inside the same rule
+
+`⊢tr` has THREE side conditions. One — `NoNatC c` — is an inductive
+family, and it encodes without trouble (`NoNatCD`, 7/7 rows). The other
+two are booleans, and they are the only things in the whole judgement
+layer that do not encode. Same author, same rule: the difference is the
+FORMULATION, not the difficulty.
+
+### What the premise is actually saying, and the cheaper way to say it
+
+`occTm vz c ≡ false` says "`c` does not mention the bound variable" — i.e.
+`c : RTm (Γ ▹ A)` is really a `Γ`-term. **The context already expresses
+that.** Take the code and the point as `Γ`-terms and weaken them:
+
+    ⊢tr : … → Γ ⊢ c₀ ∷ U → Γ ⊢ a₀ ∷ El c₀ → NoNatC c₀ → …
+          Γ ⊢ tr (⌜Hom⌝ (renTm vs c₀) (renTm vs a₀) (var vz)) p e ∷ …
+
+Both boolean premises are then discharged BY CONSTRUCTION and vanish.
+
+### ★★★ And the development is already paying to undo the formulation
+
+This is the decisive evidence, and it was already in the tree:
+
+    Metatheory/Fundamental:1828  strength   : (t₂ : RTm (Ξ ∙)) →
+                                              occTm vz t₂ ≡ false → …
+    Metatheory/Fundamental:1838  strengthC  : renTm vs cT ≡ subTm (extS σ) c₀
+    Metatheory/Fundamental:1842  strengthA  : renTm vs aT ≡ subTm (extS σ) a₀
+
+`strengthC` RECONSTRUCTS "the code is a weakening of something" from the
+boolean fact — which is exactly the reformulated rule's hypothesis,
+derived the hard way. ⇒ the boolean form does not avoid the structural
+fact; it hides it and then pays a lemma to get it back.
+
+### The preservation obligations get BETTER, not merely fewer
+
+`Fundamental`'s `occCS`/`occAS` and `SubjectReduction`'s `hc-in`/`ha-in`
+prove the occurrence fact survives substitution and reduction. Under the
+reformulation each becomes a renaming COMMUTATION —
+`subTm (extS σ) (w c₀) ≡ w (subTm σ c₀)`, already `Lib/Wk.sub-w` — instead
+of an induction over a boolean. That is this project's own recorded
+direction (*transport-free sweep at consolidation*: replace transports
+with structural data).
+
+### ⚠ The alternative, and why it is good engineering but the wrong fix
+
+The other route is to build `occTmK` so the premise encodes. `Knot/Sz` is
+37 lines because `Lib/IFold` computes all 53 methods generically — but its
+header says:
+
+> THE MOTIVE STAYS `Nat`, deliberately… Generalise the motive when
+> something wants a non-`Nat` fold, not before.
+
+`occTm x t` is worse than that note anticipates: each child's contribution
+is a FUNCTION of the shifted variable, so the motive is
+`Π (K (sVar, d)) Nat` — INDEX-DEPENDENT, not merely non-`Nat`. ⇒ real Lib
+work, in service of encoding a formulation the knot is telling us is
+wrong. Solving the wrong problem well.
+
+### Cost, measured
+
+~13 real call sites (`Metatheory/TySub` 4, `SubjectReduction` 6,
+`Fundamental` 1, `Examples/Overview` 1, plus the rule itself) — the naive
+grep says 41, but most are comments.
+
+### The general lesson, which outlives this rule
+
+⇒ **A decidable side condition stated as `f x ≡ literal` is a code smell
+in a type theory's rules.** Either it is a scoping fact, and the CONTEXT
+should carry it; or it is a genuine predicate, and it should be an
+INDUCTIVE FAMILY like `NoNatC`. The boolean spelling looks cheapest at the
+definition site and is the most expensive everywhere else — it does not
+encode, it does not compose with substitution, and it forces a
+strengthening lemma at the first consumer that needs the structure back.
+
+### ⚠⚠ ATTEMPTED 2026-09-06, AND IT BROKE `sr`'s TERMINATION
+
+The reformulation was built and most of it WORKED — and the parts that
+worked confirmed the thesis:
+
+* `Spec/Typing` green with both boolean premises gone;
+* `Metatheory/TySub` green and SIMPLER — both `with posc-ren`/`posc-sub`
+  blocks deleted, replaced by `wk-ren`/`wk-sub-tm`, which that module
+  already proved for other reasons;
+* `SubjectReduction`'s `tr-pw` block COLLAPSED: `eq-cu`/`eq-au` became
+  `wk-single`, `a-comp` became `refl`, and `pwBody-occ c key hcM` became
+  the observation that `pwShift ≡ vs ∘ pwDrop` (nothing maps to `vz`);
+* `red-reflects-w` — reduction reflects weakening — turned out to be
+  EIGHT LINES, not a 58-case induction: `occ-red` carries vz-freeness
+  across the step, `subTm-occ` turns that into the witness, and the
+  strengthened step is `⟶-sub (single x)` with `wk-single` cancelling
+  the left side.
+
+**Then `sr` failed to terminate.** `sr` recurses structurally on the
+reduction derivation. At `ξ-trᵈ` the boolean form passes the SUBDERIVATION
+`rc` straight through; the structural form cannot, because `rc` is a step
+on the WEAKENED code and the rebuilt `⊢tr` needs a `Γ`-code — so the step
+must be strengthened first, and `red-reflects-w` produces that via
+`⟶-sub`, a derivation Agda cannot see as smaller.
+
+    Termination checking failed for: sr
+      … with-8518 cM aM r (hsˡ ra) … | subTm (single t) a' , (sym (eq …) , red …)
+
+⇒ **the rule is right and the metatheory is not ready for it.** Three ways
+out, none small: a size-preserving `red-reflects-w` plus well-founded
+recursion for `sr` (~1200 lines touched); a typing-STRENGTHENING lemma
+`(Γ ∙) ⊢ renTm vs X ∷ renTy vs A → Γ ⊢ X ∷ A` (does not exist); or leave
+the rule alone.
+
+⇒ **DECISION 2026-09-06: leave the rule alone and generalise `Lib/IFold`
+instead** (the alternative above). ★ And the generalisation is SMALLER
+than this entry first claimed, because of one observation: use a de Bruijn
+**LEVEL** rather than an index as the occurrence check's parameter.
+`occTm x (lam t) = occTm (vs x) t` shifts the INDEX — which is what forces
+an index-dependent motive — but a LEVEL is unchanged under a binder. With
+a level the motive is `Π Nat Nat`, and
+
+    subTy σ Nat = Nat        subTy σ (Π A B) = Π (subTy σ A) (subTy (extS σ) B)
+
+so `Π Nat Nat` is substitution-stable DEFINITIONALLY, exactly as `Nat` is.
+⇒ what `IFold` needs is the CONSTANT abstract motive its header already
+sanctions, not the index-dependent one. ★ See also the levels-vs-indices
+entry above: this is a second, independent place where levels are the
+cheaper representation.
+
+## LIBRARIES CONSTRAIN TYPING AND NOTHING ELSE — audited 2026-09-09
+
+Provoked by a question after `occK` turned out unfaithful: *"is this the
+client setting a constraint or the provider forcing the client to prove it
+follows correct usage? … lets look for all similar obligations we already
+have in the libraries and encode the sensible set."*
+
+### The measurement
+
+Across `Lib/` + `Spec/` + `Metatheory/`: 12 genuinely parametrised
+modules, **57 parameters that are laws — every one of them a TYPING or
+STABILITY law** (`⊢z`, `⊢op`, `tyA`, `subA`, `renA`, `dstp`, …). Exactly
+**one semantic law exists in the whole library tree**:
+
+```agda
+ISub.Sub (decStable : (k : ℕ) → Maybe (smap (num k) ⟶* num k))
+```
+
+and it returns `Maybe`, so a client may decline it. **Nine
+behaviour-determining parameters carry no law at all** — `IFold.Fold`'s
+`rsum`/`pick`, `ISub.Sub`'s `extN`/`smap`/`fordMap`, `ISub.Typing`'s
+`STy`, plus `IFold`'s `z`/`op`/`nd`, which have typing laws but no
+algebraic ones (`op` has no associativity or unit law, which is why
+`maxℕ-assoc` had to be proved separately on the meta side for every
+three-child row).
+
+⇒ **the libraries constrain what will type-check and say nothing about
+what anything means.** Same sentence as category D′'s: *a function that is
+only ever type-checked and never reduced has no evidence behind its name.*
+
+### ⚠ AND THE PROVIDER CANNOT SIMPLY STATE THE LAW — measured
+
+The obvious fix is a `pick-sound` parameter on `Lib/IFold.Fold`. The tree
+refutes it:
+
+| client | `pick` | agreement |
+|---|---|---|
+| `ISzSort` → `szsTm` | `sameSortAt` | ✅ proved, `Knot/SzAgree`, 30 rows |
+| `ISz` → `szTm` | `λ _ → true` | none claimed |
+| `IDepth` | `λ _ → true` | none needed — a termination measure |
+| `IOcc` → `occK` | `λ _ → true` | ❌ claimed and FALSE |
+
+**The same `pick` value is correct in two clients and fatal in a third**,
+because the correct filter is a function of what the client MEANS.
+`szb (⌜Mu⌝ D) = zero` — the meta `sz` treats a description as an atom, so
+`szsTm` is faithful precisely BECAUSE it filters. A generic provider
+cannot know that.
+
+### ⇒ THE SHAPE THAT WORKS: two tiers, pitched at `ielim`
+
+```
+proved ONCE, generically:   an object-level `ielim` over the encoded
+                            family agrees with the corresponding
+                            meta-level eliminator
+owed by each client:        my meta function ≡ that generic fold
+                            — an ordinary equation, no reductions
+```
+
+The second obligation is **false for `occTy` at `λ _ → true`, visibly and
+immediately**; it would have failed the day `Lib/IOcc` was written, at the
+instantiation site. The provider states the SHAPE of the obligation; the
+client supplies the content. That is the only arrangement consistent with
+the table above.
+
+⚠⚠ **PITCH IT AT `ielim`, NOT AT `IFold`.** At `IFold` it covers three of
+the ledger's 31 OWED entries; `wkK` comes from `Lib/IWk` and `subTmK` from
+`Lib/ISub`. The ledger's own scan criterion — *"a top-level definition
+whose body applies `ielim KnotD`"* — means **every one of the 31 is an
+`ielim` application**, so an `ielim`-level theorem covers all of them by
+construction. It also stops being proof-organisation and becomes *the
+adequacy of the kernel's indexed eliminator*, which is what the POC exists
+to get right.
+
+### For Once
+
+An `ielim`-level adequacy theorem is a **simulation between two instances
+of the same eliminator, one level apart** — which is what the old POC
+handoff already called *"the Once-in-Once moral: 'Once+' = same tower, one
+universe level up"*. Shaped this way the work transfers; shaped as "prove
+`occTy` equals an Agda fold" it does not.
+
+⚠ Two honest caveats. (1) Tier 2 is cheap now because the meta level is
+Agda, where these equations fall to definitional equality; when the outer
+level is Once, that depends on Once's outer definitional equality — the
+open `Code Γ A` question, measured at the same 40×. The SHAPE transfers,
+the ECONOMICS are unproven. (2) It does not unblock PLAN-JUDGEMENT step 4,
+which goes through `⊢amrec`, not `ielim`.
+
+### ⬜ AND A SEPARATE COST DATUM — a description is not extensible in place
+
+Found while spiking: `IConWf D I Δ C` is indexed by the **whole**
+description, so adding ONE row to `Examples/Scoped` invalidated
+`varWf`/`lamWf`/`appWf` and they had to be re-proved verbatim at the
+four-row description. This compounds the 40× already recorded for indices
+that accumulate, and it is an argument for descriptions being *values*
+rather than *indices* wherever the choice exists.
+
+---
+
+## Once: A DESCRIPTION AND ITS METHOD TUPLE ARE ONE THING — the passenger wall, measured 2026-09-11
+
+A FIFTH design finding of the shape `HANDOFF-2026-08-24` §1 records for
+the other four: *"found by trying to PROVE something, never by reading
+the rules."* It came out of building `iihsK`, the object-level `iihs`.
+
+### The wall, and it is a COUNT
+
+An object-level fold's methods are CLOSED terms, so everything the
+meta-level function takes must ride as a `Π` passenger in the motive.
+Measured, same techniques throughout (compacting collector, local
+Def-hoists, per-row modules):
+
+| program | passengers | |
+|---|---|---|
+| `ipayTyK` — `n`, `σ`, `D`, `I` | **4** | ✅ compiles (in the tree) |
+| `ihsK` — `n`, `D`, `ms`, `p` | **4** | ✅ built 2026-09-11 |
+| `iihsK` — `n`, `σ`, `D`, `ms`, `p` | **5** | ❌ does not fit |
+
+`iihsRho` was tried plain (5:38, killed), with its first component
+hoisted (4:22), with the five-app spine hoisted (4:13), and with the IH
+pick hoisted as well (4:39) — all killed at the 5.5 GB cap. The same
+module WITHOUT that one row checks in **4.3 s**, so the row is the whole
+cost and hoisting its pieces does not reduce it: the definitions move
+out, the INSTANTIATION against the method context stays.
+
+⚠ **Four fits and five does not** is two data points either side of a
+line, not a mechanism. Treat it as the live hypothesis, not a law.
+
+### Where the fifth passenger comes from — and why it cannot simply go
+
+`σ` is the telescope ENVIRONMENT. `iρ j C` puts a recursive field's index
+`j` in the telescope context `Δ`, so every traversal threads
+`σ : Sub Δ Γ` and extends it per field (`iext σ (fst p)`). At the meta
+level σ is an Agda function and free; at the object level it is a
+passenger.
+
+⚠ **THAT DESIGN WAS ALREADY A REVISION AND IT WAS FORCED.**
+`HANDOFF-2026-08-24` §9.2: *"`iρ f` could not express §3's own `Vec` →
+telescope."* A field's index can depend on EARLIER FIELDS, which a closed
+function of the ambient index cannot see. So "drop the environment" is
+not available — that door was measured shut.
+
+★ Exactly TWO motives in the knot carry a `SubTy` passenger —
+`Knot/IPayTyMot` and `Knot/IhITyMot` — and they are precisely the two
+that traverse an `ICon` telescope. The non-indexed twins (`payTy`,
+`ihTy`, `ihs`) carry none. So the environment is not incidental to
+`iihs`; it is the standing cost of the telescope design, paid by every
+object-level `ICon` traversal.
+
+### ★★★ THE FINDING: `D` AND `ms` TRAVEL TOGETHER AND ARE OPENED ONCE
+
+⚠⚠ **AN EARLIER DRAFT OF THIS SECTION SAID "NEVER USED APART" AND THAT IS
+FALSE** — caught by a reader's question, not by me. The ι-rules use each
+half ALONE, and they are the rules this whole line of work is heading
+toward:
+
+```agda
+ι-ielim : ielim D i ms (icon k p) ⟶ ifields D i ms (isingle i) (ilookupD D k) (sel k ms) p
+ι-elim  : elim  D ms  (con  k p) ⟶ fields  D ms             (lookupD  D k) (sel k ms) p
+```
+
+`ilookupD D k` is `D` alone; `sel k ms` is `ms` alone.
+
+★ **BUT THE CORRECTED STATEMENT IS BETTER, NOT WEAKER.** The two halves
+are destructured at exactly ONE site, and by the SAME selection: `k`,
+applied to each. So `(D , ms)` is not "a pair that happens to move
+together" — it is a value with a single elimination form, *select the
+k-th (telescope, method)*. Every other site carries it whole.
+
+⇒ the bundle survives the counterexample: the ι-rule projects, and a
+kernel `Σ'` projection is `⊢fst`/`⊢snd`. What changes is the design
+claim — an ALGEBRA with one eliminator, rather than an inseparable pair.
+
+In `iihs` — and in `ifields` — the description and the method tuple
+occur only together:
+
+```agda
+iihs D ms σ (iρ j C) p = pair (ielim D (subTm σ j) ms (fst p)) …
+ifields D i ms σ C m p = app (app (app m i) p) (iihs D ms σ C p)
+ι-ielim : ielim D i ms (icon k p) ⟶ ifields D i ms (isingle i) (ilookupD D k) (sel k ms) p
+```
+
+`(D , ms)` is the ELIMINATOR'S ALGEBRA. The encoding splits it into two
+passengers; nothing ever reads one without the other.
+
+⇒ **if a description and its method tuple were ONE object, `iihs` would
+have four passengers** and land on the compiling side of the wall. That
+is an encoding change, not a proof trick, and it reaches `ielim` itself.
+
+### What to check before believing it
+
+1. ~~**Does bundling actually pay?**~~ ✅ **TESTED 2026-09-11, AND IT
+   DOES — categorically, not marginally.** Same row, same hoists, same
+   `-c`:
+
+   | | |
+   |---|---|
+   | 5 passengers (`n`, `σ`, `D`, `ms`, `p`) | **killed** at 4:39 |
+   | 4 passengers (`D`/`ms` bundled as `Σ'`) | **completes**, 1:53–2:06 |
+
+   The five-passenger version never finished elaborating; the
+   four-passenger one is down to a single unsolved meta. ⚠ And an
+   INVERSE of `meta-standing-for-a-computation` fell out: pinning
+   `⊢iihsIH`'s `i`/`q` took it from 1:53-with-one-meta to a KILL at
+   2:56. A pinned BIG TERM is re-elaborated where a meta was solved
+   once — the other edge of that rule.
+
+   ★★★ AND THE BUNDLE MUST BE A **KERNEL `Σ'`, NOT A `Tm-pairK`.**
+   `D : K (pair sIDesc n)` and `ms : K (pair sTm n)` are at DIFFERENT
+   SORTS, so they cannot be paired as an object term at all — the only
+   bundle available is the kernel's own `Σ'`. That is the good case:
+   projecting it is `⊢fst`/`⊢snd`, a two-line derivation, where
+   `Tm-fstK`/`Tm-sndK` are `⊢icon` + nested `ty-Σ` towers (`⊢Tm-elimKv`
+   alone is 35 lines). ⇒ my earlier objection to bundling — *"it moves
+   work INTO the body, and the body is the cost"* — was about the WRONG
+   bundle, and does not apply to the `Σ'` one.
+2. **Is four really the line?** Two points. A dummy fifth passenger on
+   `ihsK` — body unchanged — would say whether the count or the body
+   drives it. ⚠ I attempted this twice and broke the file both times;
+   it needs the de Bruijn reindexing done mechanically, with assertions.
+3. **What would an algebra former cost?** Bundling at the `ielim` level
+   means `ielim` takes one argument where it took two, which touches the
+   53-row table, `⊢ielim`, `ι-ielim`, and every client. `IConWf D I Δ C`
+   is already indexed by the WHOLE description (see the cost datum
+   above), so this is the same blast radius.
+
+### For Once
+
+The general shape is worth stating independently of this bug: **an
+eliminator's algebra is one value, and splitting it across arguments
+costs at every site that carries it.** Once's own `elim`/`ielim` should
+decide this deliberately rather than inherit Agda's habit of currying —
+and the POC has now paid for the evidence twice, once in `IConWf`'s
+whole-description index and once here.
+
+---
+
+## OCP-0009: THE **JUDGE** LAYER IS TELESCOPE DEPTH — measured 2026-09-12
+
+`Judge/*` is 58 GENERATED modules, 14 630 lines, and
+[[agda-timing-needs-a-cold-interface]] records it as 26 of the 28 slow
+modules in the tree — invisible because the sweep kept loading its
+interfaces instead of checking them.
+
+### ★ THE PROFILE — and it refutes two standing hypotheses
+
+`Judge/Ielim`, cold, `--profile=all`:
+
+```
+Total                      497,220ms
+Typing                       1,679ms (326,729ms)   66%
+  Typing.CheckRHS          320,668ms               ← 64.5%
+Serialization              134,702ms               ← 27%
+Positivity                  10,703ms                 2%
+Deserialization              5,489ms                1.5%
+Termination                      0ms   (1,388ms)   0.3%
+```
+
+⚠ [[agda-perf-is-mutual-block-size]] says *"positivity + termination are
+84%, type checking 3%"* — **exactly inverted here.** ⚠
+[[split-modules-by-consumption]]'s *"deserialization is ~70%"* is **1.5%**
+here. Both were measured on different material; neither applies to Judge.
+
+⇒ what is left is [[agda-cost-is-elaborated-term-size]]: CheckRHS and
+Serialization are both just TERM SIZE, and together they are **91%**.
+
+### ★★★ AND THE TERM SIZE IS TELESCOPE DEPTH — 1.7× PER SLOT
+
+Each Judge row builds a telescope `J…0 … J…n`, one slot per premise or
+fording constraint. Depths across the 58 modules run **0 to 25**: TrA 25,
+Ap 21, Jsub/Ielim 19, Ordtr 18, … CodeBase/CodeNat/CodeUnit 0. Cold,
+unprofiled, same RTS:
+
+| module | depth | wall | peak RSS |
+|---|---|---|---|
+| Pair | 15 | 56.2 s | 1.64 GB |
+| IwfKappa | 15 | 31.7 s | 2.14 GB |
+| **Ielim** | **19** | **358.2 s** | **4.29 GB** |
+
+⇒ **time 1.59–1.83× per slot, memory 1.19–1.27× per slot** — and that
+BRACKETS [[agda-cost-is-context-depth]]'s recorded 1.7×/slot, measured
+independently on different material.
+
+**The mechanism, read off the generated source.** The slot codes are NOT
+closed: `kJΣΒ18 = ⌜Id⌝ (⌜IMu⌝ IxD INat (fst (var (vs¹⁸ vz)))) …`. Each
+carries a variable at its own depth and is renamed once per level below
+it, so `Ielim` holds **1246 `there` tokens in 29 KB**, chains up to 18
+deep, each repeated 3–6×. ⇒ the compound-term-in-a-renamed-position case
+of [[variable-is-the-cheapest-position]], at corpus scale.
+
+### ⚠⚠⚠ AND THE DEPTH LAW WAS **REFUTED BY ITS OWN PREDICTION**
+
+I fitted ×1.54/slot over depths 0–19 and was about to propose a
+generator rewrite for a predicted 8.7×. The law predicts `TrA`
+(depth 25) at ~4800 s, while the whole cold sweep is recorded at 1946 s —
+so it makes a falsifiable claim. **Tested: `TrA` is 130.5 s.** 37× off,
+and FASTER than `Ielim` at depth 19 despite being deeper, with more
+`there` tokens and more `iρ` premises.
+
+| span | per-slot |
+|---|---|
+| depth 10 → 17 | ×1.40 |
+| depth 17 → 25 | **×1.005 — flat** |
+
+⇒ it rises then SATURATES. Depth is not the driver; it merely correlated
+over the range I happened to sample. ⚠ [[agda-cost-is-context-depth]]'s
+1.7×/slot does **not** extrapolate on this material past ~17.
+
+★ Running the extreme-value check before proposing cost one measurement
+and stopped a generator rewrite built on a dead law.
+
+### ⇒ WHAT THE COST ACTUALLY IS: **TWO MODULES, AND THEY ARE THE TUPLE**
+
+⚠ Per-module cold timings each pay ~7.4 s of dependency load that a
+sweep pays ONCE ([[sweep-first-module-eats-the-closure]]), so MARGINAL
+cost is the number that matters:
+
+| module | depth | wall | marginal | methsTy |
+|---|---|---|---|---|
+| TyEl | 10 | 11.7 s | 4.3 s | |
+| Snd | 12 | 27.0 s | 19.6 s | |
+| TyIMu | 13 | 42.1 s | 34.7 s | |
+| Con | 14 | 76.0 s | 68.6 s | |
+| IwfKappa | 15 | 31.7 s | 24.3 s | |
+| Pair | 15 | 56.2 s | 48.8 s | |
+| **Elim** | 16 | 158.8 s | **151.4 s** | **YES** |
+| Icon | 17 | 124.9 s | 117.5 s | |
+| **Ielim** | 19 | 358.2 s | **350.8 s** | **YES** |
+| TrA | 25 | 130.5 s | 123.1 s | |
+
+★★★ **`Elim` + `Ielim` = 502 s of 943 s measured marginal = 53%** — and
+they are the **ONLY TWO** of the 58 modules that mention the METHOD-TUPLE
+type `imethsTy D I M D`. Against the local trend (×1.18/slot over
+depth 14→17) `Elim` runs 1.5× high and `Ielim` 2.1× high.
+
+⇒ **SO JUDGE'S COST CENTRE IS THE SAME DEFECT AS THE `iihs` WORK.**
+`imethsTyFrom` stacks one `renTy vs` per row and normalises QUADRATICALLY
+in row count — measured this session at 3.12 s for a 7-row type against
+173.64 s for the 53-row one. The two Judge rules that name a 53-row tuple
+type are half the layer's cost.
+
+⚠ CONFIDENCE. The methsTy signal is 1.5–2× above trend, not 10× — it is a
+real effect and it identifies the right two modules, but it is not proven
+to be the WHOLE of their excess. ⚠ And the fit has ±1.8× scatter
+(`IwfKappa` 24.3 s vs `Pair` 48.8 s, both depth 15), so no per-module
+prediction should be made from it.
+
+### ✅ THE FIX IS WRITTEN AND WELL-FORMED — `bootstrap/tmp/MethsTy2.agda`
+
+The kernel's shape wraps the WHOLE TAIL in a renaming, once per row, so a
+53-row chain pushes 53 renamings through a growing structure. **But the
+tail does not depend on the first component** — the only thing needing
+weakening is the MOTIVE:
+
+```agda
+imethsTyFrom2 D I M j (C ◂ E) =
+  Σ' (imethTy D I j C M)
+     (imethsTyFrom2 D I (renTy (extR (extR vs)) M) (suc j) E)
+```
+
+⇒ O(n) renamings of a SMALL term instead of O(n²) of a growing one.
+
+★ **`imethsTyFrom2` AND `imethsTyFrom2-wf` BOTH TYPECHECK (rc=0).** That
+was the part that could have failed outright: the recursive call has to
+carry `ren-ty wM (Ren⊢-ins² (εwk-ren vs I))` in place of renaming the
+tail, and it does.
+
+⚠ THE TWO ARE ONLY **PROPOSITIONALLY** EQUAL — that is `imethsTyFrom`'s
+naturality in `M` — so this is a change to `Spec/Typing`, not a lemma.
+Every proof that unfolds `imethsTyFrom` moves with it (`⊢methsFrom`,
+`⊢methsCons`, `imethsTyFrom-wf`, and whatever in the metatheory matches
+on it), and `⊢ielim`'s premise changes shape.
+
+### ✅ MEASURED — AS **BOUNDS**, because the old form cannot complete
+
+`tmp/ProbeOld` / `tmp/ProbeNew` drive `imethsTyFrom-wf` /
+`imethsTyFrom2-wf` over the whole of `KnotD` at an ambient motive — the
+same recursion `⊢methsFrom` does per row, and what `Judge/Elim` and
+`Judge/Ielim` pay. Cold, same RTS, one at a time:
+
+| | outcome | wall | peak RSS |
+|---|---|---|---|
+| **ProbeNew** — renaming on the MOTIVE | **COMPLETED rc=0** | **72.9 s** | **2.33 GB** |
+| ProbeOld — renaming on the TAIL | **KILLED (137)** | >248.8 s | >2.96 GB |
+
+⇒ **time ≥ 3.4× · memory ≥ 1.27× — LOWER BOUNDS, not a ratio.** A killed
+run bounds the cost from below; the true ratio is larger. `ProbeOld` was
+killed at 2.2 GB and again at 2.7 GB, so it needs more than this 7.6 GB
+box has free.
+
+★ AND THAT INDEPENDENTLY EXPLAINS THE JUDGE NUMBERS: `Judge/Ielim` peaks
+at **4.29 GB**, which is exactly the regime a tail-renaming `imethsTyFrom`
+puts it in.
+
+⚠⚠ **MY PREDICTION WAS WRONG BY 24×.** I said `ProbeNew` would land near
+3 s, from the morning's 3.12 s-at-7-rows figure. It is **72.9 s**. So the
+new form still does substantial work, and whatever that 73 s is, it is
+NOT the tail renaming. ⇒ the O(n²)→O(n) story is the right DIRECTION and
+the wrong MAGNITUDE; do not quote 50×.
+
+⚠ ONE ASYMMETRY, unquantified: `imethsTyFrom-wf` is deserialised from
+`Lib/IPay` while `imethsTyFrom2-wf` is elaborated from `tmp/MethsTy2` in
+the run. That handicaps the NEW form, so the bound is conservative.
+
+### ⛔⛔ AND THEN THE DIAGNOSIS COLLAPSED — IT IS THE **MOTIVE**, NOT THE TAIL
+
+Re-run the SAME 53-row recursion at a CONSTANT motive (`Nat`), where
+`renTy ρ Nat = Nat` definitionally so every per-row renaming vanishes:
+
+| motive | OLD (tail renaming) | NEW (motive renaming) |
+|---|---|---|
+| **`Nat` — constant** | **0.98 s / 0.15 GB** | **1.02 s / 0.15 GB** |
+| ambient `motA nn` (abstract) | >248.8 s KILLED | 72.9 s / 2.33 GB |
+
+★★★ **AT A CONSTANT MOTIVE THE TWO FORMS ARE INDISTINGUISHABLE** —
+0.98 s against 1.02 s, inside noise. **The tail renaming costs NOTHING.**
+The entire cost of both shapes is the MOTIVE.
+
+⇒ **DO NOT CHANGE `Spec/Typing`.** `imethsTyFrom2` was a fix for a defect
+that does not exist. It looked like a ≥3.4× win only because it happens
+to handle an ambient motive less badly, and the ambient motive is itself
+the problem.
+
+### ★★★ THE REAL LAW — COST IS WHAT SITS IN THE MOTIVE
+
+Same recursion, 44–53 rows, only the motive changes:
+
+| motive | cost |
+|---|---|
+| `Nat` — CONSTANT (`renTy ρ A ≡ A`) | **~1 s** |
+| a **VARIABLE** (`tmp/TupleAVar`) | 6.6 s |
+| Γ-polymorphic CONCRETE (`tmp/TupleP`, `payTyMotK`) | 43.9 s |
+| ABSTRACT ambient (`tmp/TupleA`, `motA nn`) | 173.6 s |
+
+**~250× end to end**, and it is [[variable-is-the-cheapest-position]]
+sharpened: a renaming is free when the motive is CONSTANT, O(1) when it
+is a VARIABLE, O(|M|) when CONCRETE, and STUCK — accumulating — when
+ABSTRACT. ⚠ Note a variable beats a concrete Γ-polymorphic motive:
+renaming a variable is one step, renaming a concrete term walks it.
+
+★ SO `Lib/IFold`'s `renA`/`subA` INVARIANCE HYPOTHESES ARE NOT A
+LIMITATION — they are the performance design, and its header saying the
+motive generalisation *"HAS to thread `subTy σ A ≡ A`"* was recording
+exactly this cost.
+
+### ⛔ REFUTED — IT IS NOT INDEX-READING EITHER.  IT IS **`KnotD` IN THE MOTIVE**
+
+Four probes, IDENTICAL harness (`imethsTyFrom-wf` over all 53 rows),
+only the motive changes:
+
+| motive | what it is | cost |
+|---|---|---|
+| `Nat` | mentions NOTHING | **0.98 s** |
+| `K (pair sTm nzero)` | **CLOSED**, index-free, 3 nodes | 62.28 s |
+| `K (pair sTm (var …))` | ambient **VARIABLE**, 4 nodes | 60.99 s |
+| `K (pair sTm (snd ⟨i⟩))` | index-**READING**, 4 nodes | 61.38 s |
+
+⇒ **every `K`-built motive ≈ 61 s; `Nat` ≈ 1 s — 63×**, and index-reading
+vs ambient-variable vs closed makes NO difference (60.99 / 61.38 / 62.28,
+inside noise).
+
+★★★ `K x = IMu KnotD IPair x`. **They all carry the 53-row DESCRIPTION,
+and `Nat` carries nothing.** 53 rows × a 53-row description walked per
+row = 2809 units against `Nat`'s 53 — a predicted ~53× against a measured
+~63×. ⇒ **the cost is QUADRATIC IN THE DESCRIPTION, and the motive is
+what carries the second factor.**
+
+⚠⚠⚠ **THREE OF MY MODELS DIED TESTING THIS, IN ORDER:** "cost ∝ |M|"
+(refuted by `ProbeSmall`), "evidence-passing fixes tier 3" (refuted by
+reasoning — `imethsTyFrom` is a plain function), and "index-reading is
+the dividing line" (refuted by `ProbeVar`, which is one token different
+from `ProbeSmall` and costs the same). ⇒ every motive-CLASS law I
+recorded today is wrong; only this one survives its own discriminator.
+
+### ⚠ AND IT LEAVES THE 6.64 s vs 43.92 s GAP UNEXPLAINED
+
+`TupleAVar` (6.64 s) and `TupleP` (43.92 s) BOTH use `K`-built motives,
+so on this evidence they should cost the same. The difference must be in
+the METHODS — `junkA` via `⊢methLamN` against `payTyJunk` via
+`⊢methLam` — not the motive. ⇒ **this morning's row-level 7.7× needs
+re-attributing too**, and the `iihs` conversion's measured win is not yet
+explained by any surviving mechanism.
+
+### ⬜ THE ONE LEVER LEFT: STOP AGDA WALKING `KnotD`
+
+`KnotD` is already a Def, so sharing is not the issue — Agda unfolds it
+on comparison. The mechanism that would stop that is `abstract`/`opaque`,
+**which this file already identifies elsewhere** (*"the mechanism that
+WOULD pay is `abstract`"*, in the INTERFACE/IMPLEMENTATION section).
+
+⚠ It cannot be blanket: `ipayTy`/`iihTy` RECURSE on the `ICon`, so the
+description must compute there. The candidate is narrower — keep `K`'s
+`IMu KnotD IPair _` opaque where the description is INERT (the motive)
+while leaving it transparent where it is eliminated.
+
+### ✅ TESTED — `bootstrap/tmp/ProbeOpaque.agda`, AND IT WORKS
+
+Seal `K` with its ⊢ty proof sealed ALONGSIDE it, so callers get
+well-formedness without looking inside:
+
+```agda
+opaque
+  Kop : {Γ : Cx} → RTm Γ → RTy Γ
+  Kop i = IMu KnotD IPair i
+
+  ty-Kop : Γ ⊢ i ∷ εwkTy IPair → Γ ⊢ty Kop i
+  ty-Kop di = ty-IMu KnotWf di
+```
+
+| motive | wall | peak RSS |
+|---|---|---|
+| `K (pair sTm nzero)` — transparent | 62.28 s | 2.15 GB |
+| **the same, `K` SEALED** | **31.60 s** | **0.69 GB** |
+
+⇒ **2× time and 3.1× MEMORY, rc=0, no errors** — and it is a LOCAL
+change, no kernel surface touched. ★ The memory figure is the one that
+matters: 2.15 → 0.69 GB, against a 5.5 GB cap that has been killing
+modules all session.
+
+### ⚠ BUT IT IS 2×, NOT 63× — SEALING STOPS THE **WALK**, NOT THE **ACCUMULATION**
+
+31.60 s is still 32× `Nat`'s 0.98 s in the same harness. The reason:
+`renTy ρ (Kop i)` is now STUCK — it cannot reduce without unfolding — so
+the types accumulate `renTy ρ₁ (renTy ρ₂ (… (Kop i)))`. Each layer is
+CHEAP to build (nothing is walked) but they still pile up quadratically.
+
+⇒ **the full fix is `opaque` PLUS naturality threading** — a sealed
+`ren-Kop : renTy ρ (Kop i) ≡ Kop (renTm ρ i)` carried the way
+`⊢methLamN` carries `motA-ren`, one level down at the TYPE FORMER instead
+of the motive. ⚠ NOT TESTED, and `imethsTyFrom-wf` is generic in `M` so
+it cannot use such a lemma without being made transport-aware.
+
+### ★★★ AND THE CHECKER'S OWN COUNTERS NAME THE MECHANISM — `--profile=conversion`
+
+⚠ I hand-built EIGHT probes over a day to find this. Agda reports it
+directly: `--profile=definitions --profile=conversion --profile=sharing`
+(⚠ one flag per option — a comma-separated list is rejected).
+
+Same probe, transparent vs sealed:
+
+| counter | transparent | sealed | |
+|---|---|---|---|
+| `compare` | 7,012 | 1,273 | 5.5× fewer |
+| `compare by reduction` | 2,172 | 546 | 4.0× fewer |
+| **`compare by reduction: injectivity`** | **1,431** | **3** | **477× fewer** |
+| `compare equal` | 679 | 697 | unchanged |
+| **`compare meta`** | **4,164** | **43** | **97× fewer** |
+| time in `probe` | 72,759 ms | 35,487 ms | 2.05× |
+
+★★★ **IT IS THE INJECTIVITY HEURISTIC.** Comparing `f a ≟ f b` for a
+DEFINED `f`, Agda tries injectivity — reduce both sides and conclude
+`a ≟ b`. Unfolded `K` gives it 1,431 chances to try; sealed `Kop` gives
+it 3, because `Kop i ≟ Kop j` matches on the head and recurses on the
+index. The 4,164 → 43 meta comparisons are the same storm.
+
+⇒ **this is [[pin-implicits-on-defined-set-types]] MEASURED** — that
+memory says "not injective; Agda unfolds, the metas never solve". Same
+phenomenon, now with counters.
+
+⚠⚠ AND SEALING DOES NOT MAKE COMPARISONS CHEAPER — IT MAKES THEM RARER:
+10.4 ms each transparent, **27.9 ms each sealed**. The survivors are the
+hard ones; what vanished was the storm. ⇒ do not expect the remaining
+35 s to yield to the same trick.
+
+⚠ `--profile=definitions` attributes per TOP-LEVEL definition, so a
+one-definition probe reports one line. For LIBRARY attribution it must be
+run on a module with many definitions — `Judge/Ielim` would give per-row
+figures. NOT DONE (4.3 GB, and the box has ~3 GB free).
+
+⚠ **This tree uses `abstract`/`opaque` NOWHERE today** (0 files). Adopting
+it is a new convention and needs a policy, not just a patch. — `⊢methLamN`
+for the prologue, `motA-ren`/`motA-at` for the motive, and now `ren-Kop`
+for the type former. ⇒ a result about the ENCODING, not about any one
+module: **every layer that transports a term needs its naturality
+threaded, and every layer that does not costs a factor.**
+
+
+
+`tmp/ProbeSmall` is a motive of FOUR nodes
+(`K (pair sTm (snd (var (vs vz))))`) that reads the index, run in the
+IDENTICAL harness as the `Nat` probe:
+
+| motive | harness | cost |
+|---|---|---|
+| `Nat` — closed, index-FREE | 53 rows, `imethsTyFrom-wf` | **0.98 s** |
+| `Msmall` — TINY, index-READING | 53 rows, `imethsTyFrom-wf` | **61.38 s** |
+| motA at a VARIABLE — index-free | 44 rows, `⊢methsFrom` | **6.64 s** |
+| `payTyMotK` — index-READING | 44 rows, `⊢methsFrom` | 43.92 s |
+| motA ABSTRACT | 44 rows, `⊢methsFrom` | 173.64 s |
+
+⇒ **63× for 4× the size.** Cost does NOT track motive size. ⚠ Two of my
+models died here: "cost ∝ |M|" (refuted by `Msmall`) and
+"evidence-passing fixes tier 3" (refuted by reasoning — `imethsTyFrom` is
+a plain function, so evidence at `⊢methsFrom` cannot change how Agda
+computes the type, the same reason a call-site lemma failed in step 1).
+
+★ THE ORDERING, all measured:
+
+    closed index-free (1 s) < ambient VARIABLE (6.6 s)
+      < index-READING (44–61 s) < ambient ABSTRACT (174 s)
+
+### ⇒ SO THE `iihs` CONVERSION IS VINDICATED, AND NOW WITH A MECHANISM
+
+Replacing an index-reading motive with an ambient-VARIABLE one is
+**6.6×** in the same harness (43.92 s → 6.64 s) — which is where the
+row-level 7.7× came from. That was not luck; this is the mechanism.
+
+⬜ **THE LEVER FOR THE 22 TIER-3 MODULES**: move them off index-reading
+motives onto ambient-variable ones — the `iihs` pattern, generalised.
+Predicted ~6.6× on `PayTy`, `Ihs`, `ConS`, `Single`, `Occ`, `MethsTy`,
+`IPayTy` and the rest. ⚠ PREDICTED, not measured, and today every
+prediction I made was wrong by 20×+ in one direction or the other.
+
+⚠ AND THE TOP TIER STAYS OUT OF REACH: `Lib/IFold`'s 34 modules get ~1 s
+because their motives are index-FREE AND closed, which is only possible
+for a NON-DEPENDENT fold. A program whose result type varies with the
+depth cannot have one — that is the parameter question again, and the
+kernel has no parameters.
+
+⚠⚠ AND IT PUTS A PRICE ON THE `iihs` AMBIENT-MOTIVE WORK. That conversion
+measured 7.7× BETTER than the passenger baseline at the ROW, and it buys
+the worst motive class at the TUPLE. The mixed formulation (generic
+lemma, instantiated at a VARIABLE) already avoids the worst of it — 6.6 s
+against 173.6 s — which is why that combination won, and this is the
+mechanism behind it.
+
+⛔ Do NOT pursue the ford collapse: it was justified by the refuted depth
+law.
+
+## Once: THE ELIMINATOR HAS NO PARAMETERS — and the substitution ladder is the bill
+
+⚠⚠ **THIS REFRAMES THE PASSENGER WALL ABOVE AS A SYMPTOM.** Provoked by
+the question *"are we working around a kernel limitation with constructs
+like bundling? … the metatheory proofs were difficult, but not nearly as
+difficult as the Knot."*
+
+### The measurement
+
+Uses of substitution-tower-undoing lemmas in `Examples/Knot` alone:
+
+| lemma | uses |
+|---|---|
+| `wk-single` | **262** |
+| `towerA` | 43 |
+| `pw^` | 40 |
+| `towerJ` | 35 |
+| `sub-w²-single` · `sub-w³-single` · `towerJ⁵` | 21 |
+
+`Lib/Wk` is 609 lines and is essentially all of this — `peel¹²³`,
+`pw1..pw5` plus an indexed `pw^`, `towerA`/`towerJ`/`towerJ⁵`/`towerP`,
+`sub-w`/`w²`/`w³`, `wᶠ¹²³-single`, `wkGen`/`wkGenR`, `extS^`. **A ladder
+indexed by depth**, which that file's own header already flags as the
+tell that something wants indexing rather than listing.
+
+### The mechanism, and it is ONE thing
+
+`ielim` hands a method exactly three things: the index, the payload, the
+IH tuple. **Everything else the meta-level function needs must become a
+`Π` in the MOTIVE.** Applying a k-`Π` motive to k arguments produces a
+**k-rung substitution tower at every slot**, and undoing those towers is
+what the whole ladder is for. The tower count grows with the passenger
+count — which is precisely the 4-fits/5-does-not wall measured above.
+
+⇒ the ladder is not incidental library work. It is the price of one
+missing feature.
+
+### THE MISSING FEATURE: no parameters
+
+In Agda or Coq, an eliminator's **parameters** — the `A` in `Vec A n` —
+are fixed across the recursion, may be mentioned by the motive, and are
+NOT arguments. Only indices vary. Here there is no such notion:
+everything is either the index or a `Π`-passenger.
+
+For `iihs`, `n`/`D`/`ms` are fixed across the entire recursion and only
+`σ`/`p` vary — **two** passengers with parameters, five without.
+★ And bundling `D`/`ms` (the fix that made it compile) is exactly a
+hand-rolled partial parameter mechanism: grouping what does not vary so
+it costs one binder instead of two.
+
+### ★★★ THE EVIDENCE IS IN THIS POC'S OWN ACCEPTANCE TEST
+
+`Examples/Vec` is the acceptance test for indexed descriptions
+(PLAN-INDEXED §3). Its `cons` row reads:
+
+```agda
+consC = iκ ⌜Nat⌝                  -- m
+          (iκ ⌜Nat⌝               -- the element   ← a CLOSED code
+            (iρ (var (vs vz)) …)) -- Vec m
+```
+
+**It is `Vec n`, a vector of Nats — not `Vec A n`.** The element type is
+the closed code `⌜Nat⌝`, discharged by `icw-clo`. The parameter was not
+rejected; it was silently dropped, because `ICodeWf` admits a κ field
+only as a CLOSED small type, a FORDING constraint, or a nested `IMu`.
+
+⚠ That is `typechecking-cannot-see-an-encoding` again: the file is
+green, it genuinely demonstrates §9.2 and §10, and it demonstrates a
+WEAKER type than its name invites everyone to read.
+
+★ And the knot itself already pays the workaround: its index is
+`pair sort depth`, i.e. **a parameter encoded as an index**, carried
+through every `K (pair s n)`, every motive and every passenger in the
+tree.
+
+### ⚠ WHY §10.1 SAYS THIS IS NOT FREE
+
+`ICodeWf` is restricted for a recorded reason: *"`iki-κ` demands a
+κ-interpretation at EVERY environment, and `Θ ⊢ κ ∷ U` does not give
+one"*, and the header adds that it is *"NOT CLOSED UNDER
+`⌜Π⌝`/`⌜Σ⌝`/`⌜Hom⌝`, deliberately"* because `⊩₀` needs a real
+interpretation the environment cannot supply.
+
+★ **But a PARAMETER may be the tractable special case.** §10.1 failed on
+fields interpreted at EVERY environment; a parameter is interpreted
+ONCE, fixed for the whole elimination. That difference is exactly the
+one `icw-clo` already exploits for closed codes — a parameter is
+`icw-clo` with the "closed" weakened to "fixed per use".
+
+### ⚠ AND THE FAIR COMPARISON WITH AGDA/COQ
+
+They have parameters — but they have them because **datatypes are a
+kernel primitive with declaration syntax**, checked once, outside the
+term language. This POC deliberately makes descriptions FIRST-CLASS
+VALUES (`⌜IMu⌝` is a term former, `KnotD` is a term). Once descriptions
+are values, the parameter/index split must be ENCODED and interpreted at
+arbitrary environments — which is the wall §10.1 hit.
+
+⇒ so the honest question is NOT "did Agda get it right and we did not".
+It is: **is the 609-line ladder and the 4-passenger ceiling the price of
+first-class descriptions?** If so that is a POC RESULT, arguably worth
+more than closing the Knot — a measured price for a design goal, which
+Once can then choose to pay, or avoid by making descriptions values but
+elimination primitive.
+
+⚠ Neither system is clean on its own terms either: Agda does not use
+eliminators internally at all (pattern matching → case trees; deriving
+them without K is its own research problem), and Coq's parameter/index
+distinction has known rough edges. ⚠⚠ These two paragraphs are recalled,
+NOT verified against sources from inside the session — check before
+citing.
+
+### ⬜ THE SPIKE THAT WOULD DECIDE IT
+
+**Write `Vec A n` — a genuine parameter — in the current encoding, and
+record exactly what breaks.** It is the right spike because it is small
+(one description, two rows), it is the POC's own acceptance test so the
+result is directly comparable to `Vec n`, and it has three possible
+outcomes and all three are informative:
+
+1. **It works as an INDEX** (`IMu VecD I (pair A n)`, the knot's own
+   `pair sort depth` trick). Then parameters are expressible and the
+   question becomes COST — measure the towers against `Vec n`.
+2. **It needs a new `ICodeWf` row.** Then write that row and see whether
+   `⊩₀` can interpret it at a fixed-per-use code; if it can, that is the
+   kernel change, minimal and motivated.
+3. **It cannot be done.** Then first-class descriptions genuinely cost
+   parameters, and THAT is the result to report.
+
+⚠ Do it at `Vec`, NOT at the knot. The knot's 53 rows would confound the
+measurement with everything else that is expensive about it.
+
+### ✅ THE SPIKE WAS RUN, 2026-09-11 — OUTCOME 2, AND IT IS ONE ROW
+
+`bootstrap/tmp/VecASpike.agda`. **Everything except one thing works.**
+The paired index `Σ' U (El ⌜Nat⌝)` is accepted; `nil`'s ford on
+`snd ⟨i⟩` is accepted; `cons`'s `iρ` at `pair (fst ⟨i⟩) m` is accepted;
+the whole `IConWf` skeleton type-checks. **`Vec A n` is exactly ONE
+`ICodeWf` row away** — so pairing the index is NOT the obstacle, and
+the knot's `pair sort depth` trick does generalise.
+
+The gap, named by Agda:
+
+```agda
+icw-clo : (c : RTm ε) → ◇ ⊢ c ∷ U → ICodeWf (εwkTm c)
+-- _Γ_96 ∙ != ε of type Cx
+```
+
+`icw-clo` demands the code live in the EMPTY context; a parameter read
+from the index is `fst (var (vs vz))`, a variable. `icw-ford` wants a
+`⌜Id⌝`, `icw-imu` a `⌜IMu⌝`. None of the three fits.
+
+⚠⚠ **BUT THE ROW IS NOT FREE, AND §10 ALREADY SAYS WHY.** Both admitted
+rows are admitted because neither needs the code INTERPRETED —
+`icw-clo`'s witness is `elW` at the empty environment, and `icw-ford`
+works because `El (⌜Id⌝ c a b)` reduces to `Id (El c) a b` and `⊩₀Id`
+needs only that chain, *"no interpretation of `c`"*. A parameter field's
+type is `El (fst ⟨i⟩)` and `⊩₀` **does** have to interpret that code —
+which is exactly why `⌜Π⌝`/`⌜Σ⌝`/`⌜Hom⌝` are excluded.
+
+★ **WHAT IS STILL PROMISING** — and what the spike does NOT settle: the
+index is PART OF THE TYPE. At a concrete `IMu D I i` the code `fst i` is
+DETERMINED, so the interpretation is not arbitrary the way a `⌜Π⌝`
+domain is. Whether `⊩₀`'s structure can exploit that is a question about
+the LOGICAL RELATION, not about the description language.
+
+⇒ **THE DECISION NOW RESTS ON ONE READ**: can `⊩₀` interpret a code that
+is a projection of the ambient index? If yes, the kernel change is a
+single `ICodeWf` constructor plus its `⊩₀` clause — minimal, motivated,
+and it removes the parameter workaround everywhere at once. If no, then
+first-class descriptions genuinely cannot carry parameters in this
+kernel, and THAT is the POC result.
+
+⚠ Note what this is NOT: it is not a 53-row rewrite, and not the
+`ielim`-arity change costed above at 87 hand-written files. The spike
+narrowed the question from "should the kernel interface change" to "is
+one `ICodeWf` row admissible", which is answerable by reading
+`Metatheory/LogicalRelation`'s `⊩₀` clauses.
+
+### ✅ `⊩₀` READ, 2026-09-11 — IT IS **NOT** ONE ROW, AND HERE IS WHY
+
+```agda
+iki-κ : {Θ : Cx} {κ : RTm Θ} {C : ICon (Θ ∙)} →
+        ((σ : Sub Θ Γ) → ⊩₀ (El (subTm σ κ))) →     -- ← a FAMILY, per environment
+        IKInterp Γ C → IKInterp Γ (iκ κ C)
+```
+
+and the forward declaration says why it is a family:
+
+> ⚠ `IKInterp` is indexed by the TELESCOPE, and the `iκ` row's
+> interpretation is a FUNCTION OF THE ENVIRONMENT — `iκ`'s field type is
+> `El (subTm σ κ)`, which **depends on the earlier fields**, so there is
+> no single `⊩₀` to hand over. … this is the one place the indexed
+> interpretation is genuinely bigger, and **it is the price of §9.2**.
+
+★ **A PARAMETER IS DIFFERENT IN KIND, and that is the opening.** §9.2's
+case is a field type depending on EARLIER FIELDS. A parameter's code
+depends on the AMBIENT INDEX — and in every real use `σ`'s action on the
+ambient variable IS the actual index `i`, which `⊩₀IMu` already knows
+(`A ⟶ᵀ* IMu D I i`). So the family-over-`σ` is more general than a
+parameter needs: fix the ambient component, quantify only over the field
+prefix, and `⊩₀ (El (fst i))` becomes a SINGLE obligation, dischargeable
+where `⊩₀IMu` is built.
+
+⚠⚠ **AND HERE IS WHAT THAT COSTS.** Fixing the ambient component means
+indexing `IKInterp`/`IDInterp` by `i` — and the index is a TERM THAT
+REDUCES:
+
+```agda
+IMu-reduct : IMu D I i ⟶ᵀ* C → IMuRed D I i C
+-- ⚠ the index is only ≅, not ≡ — it is a TERM and it reduces.  That is
+--   the whole difference from `Mu-inj`, and it is why `⊢ielim` can
+--   retype its scrutinee across `ξ-ielimⁱ`.
+```
+
+⇒ an `IDInterp` indexed by `i` must be STABLE UNDER INDEX REDUCTION —
+`IDInterp Γ i D → i ⟶* i' → IDInterp Γ i' D` — a new property of the
+logical relation, in the same class as `⊢ielim` retyping its scrutinee.
+`⊩₀IMu`'s own comment already flags the phenomenon: *"two reducts of the
+same type can differ in their index and `IMu-reduct` is what relates
+them."*
+
+### ⇒ THE ANSWER, AS PRECISE AS THIS INVESTIGATION GETS
+
+**One `ICodeWf` row PLUS an index-stability property for `IDInterp`.**
+Not a 53-row rewrite; not the 87-file `ielim`-arity change; but not free
+either, and the stability property is a genuine metatheory question
+rather than an afternoon's plumbing.
+
+⚠ CONFIDENCE: the `iki-κ` signature, the forward-declaration note and
+`IMu-reduct` are quoted verbatim and are solid. The inference that
+fixing the ambient component would suffice, and that stability is the
+only new obligation, is REASONING OVER A 7 000-LINE LOGICAL RELATION
+FROM THREE DEFINITIONS — it should be checked before anyone commits to
+the change.
+
+### ✅✅ THE STABILITY PROPERTY IS **PROVED** — `bootstrap/tmp/ParamStable.agda`
+
+```agda
+param-stable : {Γ : Cx} {i i' : RTm Γ} →
+               i ⟶* i' → ⊩₀ (El (fst i)) → ⊩₀ (El (fst i'))
+param-stable r R = fwd₀ (⟶ᵀ*-El (⟶*-fst r)) R
+```
+
+Three lines, `rc=0`, no holes or postulates, and every ingredient
+already existed:
+
+| | |
+|---|---|
+| `⟶*-fst` | reduction is a congruence for `fst` |
+| `⟶ᵀ*-El` | …and lifts to TYPE reduction through `El` |
+| `fwd₀` | **`⊩₀` is forward-closed under type reduction** |
+
+★★★ **AND THE HARDER VERSION IS ALREADY IN THE TREE.**
+`Metatheory/LogicalRelation:4409`:
+
+```agda
+irrelIMu : (di₁ di₂ : IDInterp Γ D)
+           {i i' v : RTm Γ} → i ⟶* v → i' ⟶* v →
+           IMuMem D I (ipredsOf di₁) i t → IMuMem D I (ipredsOf di₂) i' t
+```
+
+Membership already transports across indices that JOIN, with two
+DIFFERENT interpretations — its own comment says *"the only additions
+are the index-reduction witnesses threaded through, and the κ slot's
+conversion"*, and that κ conversion is `ienv-conv`, built on the same
+`⟶ᵀ*-El (subTm-monoˢ …)`. ⇒ the index-reduction machinery this change
+needs is not hypothetical; it is deployed.
+
+### ⇒ CONCLUSION
+
+**The blocking concern is removed.** What looked like "one row plus an
+open metatheory question" is **one row plus a property that is three
+lines from existing lemmas**, in a relation that already does the harder
+indexed transfer.
+
+⚠ **WHAT IS PROVED AND WHAT IS NOT.** Proved: the stability property at
+the shape a parameter needs, `El (fst i)`. NOT done: the `icw-par` row
+itself, its `⊩₀` clause, and the `IKInterp` refinement that fixes the
+ambient component. Those are ordinary work; nothing now suggests a wall.
+
+### ⚠ THE `IKInterp` REFINEMENT IS REQUIRED, AND IT PULLS IN `icw-imu`
+
+Measured: **`iκW` (`Metatheory/Fundamental:322`) is the ONLY eliminator
+of `ICodeWf` in the tree** — three clauses, one function. So the row
+itself is nearly free. But `iκW`'s type is
+
+```agda
+ICodeWf κ → … → (σ : Sub Θ Γ) → ⊩₀ (El (subTm σ κ))
+```
+
+with σ **arbitrary**, so a parameter code gives `fst (σ v)` — an
+arbitrary code, the `⌜Π⌝` problem again. The three existing rows each
+dodge it: `icw-clo` because σ cannot disturb a closed term, `icw-ford`
+because `⊩₀Id` needs no interpretation of `c`, `icw-imu` because —
+in its own words — *"the `IDInterp` does NOT mention the index, so
+`subTm σ` moving the index is invisible to it."*
+
+⇒ the refinement (fix σ's ambient component, index `IKInterp`/`IDInterp`
+by `i`) is REQUIRED. Blast radius measured: `IKInterp`/`IDInterp`/
+`ikpredsOf`/`ipredsOf`/`IMuMem`, ~115 mentions across ~5 files — against
+**87 hand-written files** for the `ielim`-arity alternative.
+
+⚠⚠ **BUT IT BREAKS `icw-imu`'s INVARIANT.** Its nested index is
+`i : RTm Θ` — in the TELESCOPE — so `subTm σ` genuinely moves it, and the
+clause survives today only because `IDInterp` is index-free. Index it
+and `interpID` must build the interpretation at `subTm σ i`, which for a
+parameter-carrying description needs that parameter's interpretation AT
+that index — which `icw-imu` does not carry.
+
+⇒ `icw-imu`'s signature changes too. NOT a wall, but a SECOND change,
+and not verified.
+
+### ✅✅ AND THEN THE DIAGNOSIS CHANGED — `bootstrap/tmp/ParWSpike.agda`
+
+Indexing by `i` was the WRONG refinement. The real obstruction is that
+`iki-κ` and `ILift` thread a **BARE `Sub Θ Γ`**. Give them a SEMANTIC
+environment and `fund` supplies the interpretation directly — PROVED:
+
+```agda
+parW : Γ ⊢ i ∷ Σ' U X → (x₀ : Var Ξ) → Γ ⊩ˢ σ →
+       ⊩₀ (El (fst (subTm σ i)))
+```
+
+`rc=0`, no holes, modelled on `elW` but at a GENERAL `ρ : Γ ⊩ˢ σ`
+instead of `⊩ˢ-ε`, and on `⊢fst di` instead of a closed code.
+
+★★★ **SO §10.1 IS ABOUT THE ENVIRONMENT, NOT THE CODE.** *"`Θ ⊢ κ ∷ U`
+does not give one"* is true for a bare `Sub` and FALSE for a `⊩ˢ`. With a
+semantic environment the parameter row needs no indexing of `IDInterp`,
+so `icw-imu`'s invariant is untouched and the second change evaporates.
+
+⇒ `icw-par` should carry **the index's TYPING derivation**, exactly as
+`icw-clo` carries `◇ ⊢ c ∷ U` — a SYNTACTIC witness carried, the
+SEMANTIC interpretation derived. Layering stays clean and the
+termination argument is `icw-clo`'s, unchanged.
+
+### ⬜ THE ONE REMAINING UNKNOWN, precisely
+
+```agda
+ILift (iκ κ C) (ikp-κ Q ikp) P σ t =
+  SN t × (Q σ (fst t) × ILift C ikp P (iext σ (fst t)) (snd t))
+```
+
+`ILift` threads a bare σ and extends it with `iext σ (fst t)`. Making it
+semantic means extending with each field's OWN membership witness —
+which for a κ field is exactly `Q σ (fst t)`, already to hand. That is
+the standard semantic-environment construction, so the SHAPE is known.
+
+⚠ THE RISK IS UNIVERSES, not logic: `IKPred`/`IDPred` are already in
+`Set₁`, and `LogicalRelation`'s own header records what a level bump
+cost last time — *"with no cumulativity that means `Lift`-wrapping every
+`⊩₁` clause across five modules."*
+
+### ⛔ REFUTED 2026-09-25 — the existential is NOT strictly positive against the REAL `⊩₀`
+
+The positivity spike below (`ExistLiftPos`) modelled `⊩₀` with only a
+`Unit` and an `IMu` clause. The real `⊩₀` has a **`Π` clause**, and there
+`_⊩₀∋_` occurs to the LEFT of an arrow (`(r : ⊩F ⊩₀∋ u) → …`). With that
+one clause added (`bootstrap/tmp/ExistLiftPi.agda`) Agda rejects it:
+
+    IMuMem is not strictly positive, because it occurs … in the definition
+    of _⊩₀∋_, which occurs to the left of an arrow in the type of the
+    constructor ⊩₀Π … in the definition of ILift … imm-icon … IMuMem.
+
+Control (`ExistLiftPiCtl`, the same module with the κ clause reverted to a
+predicate-free one): accepted. ⇒ the existential is the cause. This is the
+SAME wall `LogicalRelation`'s own header records for gates 6/6b ("carrying
+witnesses INTO it … `_⊩₀∋_` is negative at Π"). The section below stays for
+the record; its conclusion does not hold. ⚠ Lesson: a positivity spike must
+include every clause of the relation that can reach the new occurrence —
+here, any `⊩₀` clause, because the κ code is arbitrary once `ICodeWf` is gone.
+
+### ★★★ AND THEN IT INVERTED — THE CHANGE IS A *REMOVAL*
+
+`bootstrap/tmp/ExistLiftPos.agda` (rc=0) + `ExistLiftNeg.agda` (control,
+correctly REJECTED).
+
+`⊩₀_ : RTy Γ → Set` — **`Set`, not `Set₁`** (`LogicalRelation:4153`). The
+universe caveat above is simply false, and with it goes the reason to
+thread a semantic environment at all. Because then this is legal:
+
+```agda
+ILift (iκ κ C) P σ t =
+  SN t × (Σ (⊩₀ (El (subTm σ κ))) (λ r → r ⊩₀∋ fst t)
+          × ILift C P (iext σ (fst t)) (snd t))
+```
+
+★ **the interpretation is carried BY THE MEMBER, not supplied uniformly
+by the description.** And `iki-κ`'s σ-FAMILY — the thing `ICodeWf` exists
+to inhabit — is then carrying nothing anybody reads.
+
+**⇒ WHAT THAT DELETES:** `IKPred` · `IDPred` · `ikpredsOf` · `ipredsOf` ·
+`ilookupP` · `ipayInterp` · `IMuMem`'s `dp` parameter (so `irrelIMu`
+becomes `id`) · `iki-κ`'s field ⇒ `IKInterp`/`IDInterp` go contentless ⇒
+**`ICodeWf`, `iκW` and `interpIK` have nothing left to do.**
+
+⇒⇒ **SO `icw-par` NEVER GETS WRITTEN.** `icw-clo`'s closed-code
+restriction is not relaxed — it is *deleted*, and `Vec A n` needs no new
+kernel row. The parameter wall was never a missing row; it was a uniform
+interpretation demanded one layer too early.
+
+**The two directions, checked against the real code:**
+
+| | site | verdict |
+|---|---|---|
+| build | `ipayLiftK` (`Indexed:187`) | **strictly simpler** — it already computes `dfst m₁`, the field's own interp, and throws it away through `irrel₁`. Keep it instead. |
+| consume | `iliftPay` (`Indexed:167`) | takes `R : ⊩₁ (ipayTy …)` as an ARGUMENT, mirroring `ipayLiftK`, instead of building `ipayInterp`. |
+
+⚠ THE ONE UNVERIFIED LINK: `iliftPay`'s caller must project that `R` out
+of the method's own `⊩₁Π` (`Fundamental:820`, `app1'`). That needs a
+`Π-dom : ⊩₁ (Π F G) → ⊩₁ F` — which does not exist yet, but is `⊩₁-app`'s
+own case analysis with every non-Π case absurd via `Π-reduct`. Mechanical,
+not free.
+
+★ POSITIVITY WAS THE REAL RISK AND IT PASSED. The existential creates a
+cycle `IMuMem → ILift → _⊩₀∋_ → ⊩₀ → IMuMem`: a datatype whose
+constructor mentions a function defined by recursion on a datatype in the
+same block. Agda's polarity analysis accepts it. ⚠ The spike quantifies
+`C` so `ILift C p` is STUCK — with a concrete `iι` the checker unfolds to
+`SN p` and reads no κ clause at all — and the negative control is
+rejected *naming* "the third clause in the definition of `ILift`", so the
+test demonstrably bites.
+
+### ⬜ CAN PARAMETERS SIMPLIFY THE KNOT? — evidence gathered 2026-09-11
+
+⚠ FIRST, WHICH ROUTE. The two routes to parameters are not
+interchangeable, and only ONE of them targets the Knot:
+
+| route | buys | Knot? |
+|---|---|---|
+| `icw-par` (description-side) — a κ field may read the index | `Vec A n` becomes writable | **NO.** `A` becomes an INDEX; the motive still takes it, the towers still get built |
+| `ielim` parameters (eliminator-side) | data fixed across the recursion leaves the motive | **this is the one** |
+
+★ THE COST LAW, IN THE TREE'S OWN WORDS. `Lib/Wk:591` — *"the count is
+the number of binders that follow the payload in the METHOD, **which is
+one per motive passenger** plus the IH tuple."* And `IhITyMot:95` —
+*"EACH PASSENGER PAYS A DIFFERENT RUNG, and the count is positional:
+passenger 2 reads `n` definitionally, 3 needs `wk-single`, 4 needs
+`towerA`, and the RESULT needs `towerJ`."* ⇒ rungs = passengers + 1.
+
+★ THE PASSENGER CENSUS — **17 motives, 39 `Π`s.** Of the 7 whose
+passenger lists are documented (23 `Π`s), **14 are FIXED across the
+recursion**, i.e. parameter-eligible:
+
+| motive | passengers | fixed |
+|---|---|---|
+| `imethsTyMotK` | n, D, I, M, j | D, I, M |
+| `iihs` (the KILLED one) | n, D, ms, σ, p | n, D, ms |
+| `ipayTyMotK` | n, σ, D, I | D, I |
+| `ihsMotK` | n, D, ms, p | n, D, ms |
+| `iihTyMotK` | n, σ, q, M | n, M |
+| `methsTyMotK` | D, M, j | D, M |
+| `ihTyMotK` | q, M | M |
+
+⇒ **`iihs` would go 5 passengers → 2**, under the measured 4-ceiling, so
+the bundling hack would be unnecessary. That is the headline claim.
+
+### ⚠⚠ BUT FIRST CHECK WHETHER THE KERNEL ALREADY ALLOWS IT
+
+**`ihsK`'s own definition round-trips its fixed data:**
+
+```agda
+ihsK n C D ms p =
+  app (app (app (app (ielim KnotD (pair sDCon n) ihsMethsK C) n) D) ms) p
+```
+
+`n`/`D`/`ms` are Agda arguments — **already free terms at the ambient
+`Γ`** — that leave through the motive as `Π`s and are applied straight
+back. Four converging pieces of evidence say the motive could just
+mention them:
+
+- `⊢ielim`'s rule states the motive at the AMBIENT context —
+  `((Γ ▹ εwkTy I) ▹ IMu D I (var vz)) ⊢ty M` — not at `ε`;
+- `⊢methLam`'s method body is typed at `Γ ▹ … ▹ … ▹ …`, so `Γ` is in
+  scope for the method too;
+- `⊢methLam` transports the motive in by `renTy (extR (extR vs))`,
+  **twice** — a renaming that weakens the `Γ`-part while fixing the top
+  two slots, which is exactly and only what a `Γ`-mentioning `M` needs;
+- the tree ALREADY does this at `natrec`: `Lib/Arith`'s
+  `plusMonoMot : {Γ : Cx} (x y : RTm Γ) → RTy (Γ ∙)` takes ambient terms
+  and weakens them with `w`/`⊢wk`.
+
+⚠ AGAINST IT, and it is a direct assertion: `IPayTyMot:16` — *"a free
+variable of `Γ` cannot be used — `⊢methLam` fixes the motive at a `Γ`
+the wrapper does not get to choose — so all four ride."* ⚠ **ALL 17 Knot
+motives are `{Γ : Cx} → RTy ((Γ ∙) ∙)`, Γ-POLYMORPHIC**, so none of them
+*could* mention an ambient term; whether that is forced or habitual is
+not recorded anywhere, and no counter-example exists in the tree because
+no `elim`/`ielim` motive has ever been tried at a concrete `Γ`.
+
+### ✅✅✅ THE SPIKE WAS RUN, 2026-09-11 — **THE WALL IS SELF-INFLICTED**
+
+Four files in `bootstrap/tmp`, each one variable apart from the last.
+
+| file | what it changes | rc |
+|---|---|---|
+| `AmbientMotC.agda` | **CONTROL** — `D` as `payTyMotK`'s `Π` passenger | **0** |
+| `AmbientMot.agda` | `D` ambient, motive still reads `snd ⟨i⟩` | **FAILS** |
+| `AmbientMotN.agda` | `D` ambient, motive reads the ambient `n` | **0** |
+| `AmbientMotIH.agda` | …and the **IH** taken under that motive | **0** |
+
+⇒ **AN AMBIENT `Γ`-TERM IS USABLE IN A METHOD BODY.** `IPayTyMot:16`'s
+*"a free variable of `Γ` cannot be used"* is FALSE as stated;
+`PayTy:11`'s *"it could equally be a free variable of the method tuple"*
+is right. What is true is narrower, and `AmbientMot.agda` pins it:
+
+★ **an ambient term cannot satisfy a demand stated at `snd ⟨i⟩`** —
+`⟨i⟩` is bound by the method, an ambient term's index is not, and
+`vs _x != vz`. So the motive must stop reading the index; once it does,
+the ambient term goes through.
+
+### ★★★ AND HERE IS WHY NOBODY NOTICED — `renTy (extR (extR vs))`
+
+`AmbientMotIH` needed the motive written out at THREE sites — the IH
+binder, the IH's type inside the binder, and `⊢ihHere`'s `M` — each a
+`renTy (extR (extR vs))` transport, plus the method context `Γm` pinned
+because Agda can no longer solve it from the motive.
+
+**Every one of those is the IDENTITY for a `Γ`-POLYMORPHIC motive.**
+That is the entire reason all 17 Knot motives are
+`{Γ : Cx} → RTy ((Γ ∙) ∙)`: it makes the transports vanish. The
+`Π`-passenger encoding is what you get for free once you have made that
+choice — nobody chose the passengers, they chose the polymorphism.
+
+⇒ **THE TRADE, AND IT IS A TRADE, NOT A WALL:**
+
+| | Γ-polymorphic motive (today) | Γ-mentioning motive |
+|---|---|---|
+| motive transports | free (identity) | 3 explicit `renTy (extR² vs)` per IH use, context pinned |
+| passengers | one `Π` per fixed argument | **none** |
+| tower rungs | **one per passenger, at every application** | none to climb |
+| ceiling | **4 passengers** (measured) | no passenger count to cap |
+
+⚠ SCOPE — this applies to the DEPTH-PRESERVING recursions only. The
+spike's motive reads the ambient `n` instead of `snd ⟨i⟩`, which is
+sound exactly when the recursion does not move the depth. `ihs`,
+`iihs` and `iihTy` all qualify (`iext σ (fst p)` is a CONS and
+`IhITyMot:12` records that the target is unchanged); **`ipayTy` does
+NOT** — its `extS σ` raises, so its IH is taken at `nsuc n`. ⇒ the
+relief lands on `iihs` — the one that was killed — and not everywhere.
+
+⚠ AND THE RUNG SAVING IS INFERRED, NOT MEASURED: no passengers means
+no motive application, hence nothing for `towerA`/`towerJ` to undo. The
+next measurement is to rebuild ONE real function both ways and compare.
+
+### ✅✅✅ REBUILT AND MEASURED, 2026-09-11 — `iihs`'s `iρ` ROW
+
+`bootstrap/tmp/IihsRhoATmp.agda` against `tmp/IihsRho2Tmp.agda`, same
+row, cold, same RTS (`-M5G -A64m -c`), no contention:
+
+| | passengers | lams | wall | peak RSS |
+|---|---|---|---|---|
+| baseline (`D`/`ms` bundled into a `Σ'`) | 4 | 7 | 2:11.99 | **4.24 GB** |
+| ambient (`n`/`D`/`ms` in `Γ`) | **2** | **5** | **1:41.27** | **1.46 GB** |
+
+⇒ **23% faster and 2.9× less memory** — and the memory figure is the one
+that matters, because the 5-passenger version was KILLED at the 5.5 GB
+cap and 4.24 GB is most of the way back to it. ⚠ 2.9× is far outside the
+±12% RSS noise floor; the 23% is not.
+
+⚠ THE MODULE-SPLIT CONFOUND, KILLED BY A CONTROL. The baseline's motive
+lives in a SIBLING module (deserialised) where the ambient one is
+elaborated IN-module, so `tmp/IihsRho2Inline.agda` re-runs the baseline
+with its motive inlined — same structure as the ambient version:
+
+| | wall | peak RSS |
+|---|---|---|
+| baseline, split module | 2:11.99 | 4.24 GB |
+| baseline, **inlined (control)** | 2:00.22 | 4.42 GB |
+| ambient, inlined | **1:41.27** | **1.46 GB** |
+
+⇒ inlining moves the baseline by −9% time / +4% memory, both inside
+noise. **The memory result survives at 3.0×.** ⚠⚠ BUT THE TIME RESULT
+DOES NOT SURVIVE AS A CLAIM: against the control it is 16% on ONE sample,
+inside the band where [[agda-rss-noise-floor]] says a single run proves
+nothing. ⇒ **claim the memory, not the speed.**
+
+★ Both end in the same state — one site with unsolved metas at
+`⊢iihsIH`'s application, which the baseline's own header already records
+as un-pinnable. ⚠ So NEITHER version closes, and `iihsK` is not done by
+this.
+
+### ★★★ THE RUNGS CHANGED IN KIND, NOT JUST IN COUNT
+
+| slot | baseline | ambient |
+|---|---|---|
+| `n` | — (motive-local) | — (ambient) |
+| `σ'` | `towerA` (3 rungs) + `subBwd` | **`towerP` (2 rungs)** + `subBwd` |
+| `D`/`ms` | `wk-single` + `sub-w-single` | **gone** |
+| `p` | `sub-w²-single` | 3-rung `pw^` chain |
+| result | `towerJ` | 4-rung **`pw^`** chain |
+
+⇒ the baseline's `n` sits INSIDE the tower and must be EXTRACTED, which
+is what the hand-LISTED `towerA`/`towerJ`/`towerJ⁵` family is for — and
+`Lib/Wk:487` already flags that family as *"iterates of one lemma [that]
+want INDEXING, not listing. Two rungs is where it stops being worth
+it."* An ambient `nn` is a Γ-VARIABLE, BELOW every binder, so every
+substitution merely WEAKENS past it and **`pw^ k` — the INDEXED lemma
+already in `Lib/Wk` — discharges every rung at every depth.**
+★ So the encoding that removes the passengers also lands the tower on
+the lemma the library already wanted to be using.
+
+### ⚠ THE PRICE — AND THE FIRST VERSION OF THIS SECTION WAS WRONG
+
+Stated generically over `{nn : RTm ⌊ Γ ⌋}` the row FAILS at `⊢methLam`:
+
+```
+vs x != extR vs x
+```
+
+`renTy (extR (extR vs))` cannot compute through an abstract
+`renTm vs (renTm vs nn)`, and I concluded *"the ambient terms must be
+VARIABLES"* and retreated to a concrete `Γa`.
+
+⚠⚠ **THAT CONCLUSION WAS WRONG, AND THE RETREAT WAS THE MOVE THIS
+PROJECT HAS REPEATEDLY MEASURED AS THE BAD ONE** —
+[[half-generalization-is-worst]], [[narrow-twin-shadows-general-form]].
+Prompted by the user asking why a SPECIALISATION was winning when
+generalisation usually does. `bootstrap/tmp/MotRen.agda`, **rc=0 first
+try**:
+
+```agda
+motA-ren : {Γ Δ : Cx} {ρ : Ren Γ Δ} (nn : RTm Γ) →
+           renTy (extR (extR ρ)) (motA nn) ≡ motA (renTm ρ nn)
+motA-ren {ρ = ρ} nn =
+  cong₂ (λ a b → Π (Π (K (pair sVar (snd (var (vs vz))))) (K (pair sTm a)))
+                   (Π (K (pair sTm a)) (K (pair sTm b))))
+        (ren-w³ {ρ = ρ} nn) (ren-w⁴ {ρ = ρ} nn)
+```
+
+★ **the ambient motive IS natural in `⊢methLam`'s transport** — four
+lines, and `Lib/Wk` already had `ren-w³`; only the fourth iterate was
+missing. ⇒ ambient references do NOT have to be variables.
+
+### ⬜ WHAT ACTUALLY BLOCKS THE GENERIC FORM — and it is one lemma
+
+`tmp/IihsRhoAGen.agda` still fails, but NOT for the reason above: the
+method's CONTEXT carries `iihTy … (renTy (extR² vs) (renTy (extR² vs) M))`
+un-normalised, so the very first `⊢lam` cannot match its domain against
+the nice `motA (w (w nn))` form. Casting the goal does not help — the
+mismatch is in the ARGUMENT type `⊢methLam` demands.
+
+### ✅✅✅ DONE — THE `Lib/IPay` PATTERN WINS, AND BY THE LARGEST MARGIN YET
+
+`tmp/MethLamN.agda` is `⊢methLam` with the motive transport as a
+PARAMETER, and it needs no transport machinery at all — matching both
+equations as `refl` lets Agda solve `M₁`/`M₂` by unification and the body
+argument then IS `⊢methLam`'s:
+
+```agda
+⊢methLamN D I k C refl refl wD wC tI wM db = ⊢methLam D I k C wD wC tI wM db
+```
+
+⇒ THE OBLIGATION IS A SMALL FAMILY OF NATURALITY LEMMAS, one per motive,
+stated ONCE and used by all 53 rows — where a Γ-polymorphic motive gets
+them free as identities:
+
+| lemma | what it unsticks | lines |
+|---|---|---|
+| `motA-ren` | the prologue's two `renTy (extR² vs)` | 4 |
+| `motA-at` | the body's `renTy vs (iatCon k (var vz) M)` | 10 |
+| `ren-SubTy` | `SubTy d n` hides a `renTm vs n` under its own `Π` | 3 |
+
+★ AND `⊢methLamN` + ONE `⊢-cast` through `motA-at` mean the body is built
+at the NICE form throughout, instead of every sub-proof fighting an
+un-normalised `renTy vs (iatCon …)`.
+
+**THE MEASUREMENT** — same row, cold, same RTS, no contention, deps
+verified cold:
+
+| | passengers | generic in Γ | wall | peak RSS |
+|---|---|---|---|---|
+| baseline, split module | 4 | yes | 2:11.99 | 4.04 GB |
+| baseline, INLINED (control) | 4 | yes | 2:00.22 | 4.21 GB |
+| ambient, concrete `Γ` | 2 | **NO** | 1:41.27 | 1.39 GB |
+| **ambient, generic `Γ` (IPay)** | **2** | **yes** | **0:35.92** | **0.55 GB** |
+
+⇒ against the control: **7.6× less memory and 3.3× faster** — and the
+result is MORE general than the baseline, not less.
+
+★★★ **SO THE SPECIALISATION WAS NEVER THE WIN.** The concrete-`Γ` row
+(1:41 / 1.39 GB) is the HALF-GENERALISED middle, and it is 2.8× worse on
+memory than the fully general one — [[half-generalization-is-worst]]
+measured a third time, in the direction the memory predicts.
+
+### ⚠⚠ AND THE TUPLE LAYER IS THE OTHER HALF — SPIKED 2026-09-12
+
+`imethsTyFrom` stacks **one `renTy vs` per row** on the motive:
+
+```agda
+imethsTyFrom D I M j (C ◂ E) =
+  Σ' (imethTy D I j C M) (renTy vs (imethsTyFrom D I M (suc j) E))
+```
+
+For a Γ-polymorphic motive all 44 collapse; for an ambient one none do.
+`tmp/TupleA.agda` vs `tmp/TupleP.agda` — the REAL 44-row junk run
+(`Knot/PayTy`'s own `cdTake 44 KnotD`), motive swapped and nothing else:
+
+| 44-row junk run | wall | peak RSS | rc |
+|---|---|---|---|
+| control — Γ-polymorphic motive | 0:43.92 | 0.94 GB | **0** |
+| ambient — `motA` | **2:53.64** | 1.11 GB | **0** |
+
+★ **IT PASSES** — `rc=0`, no errors, no metas. The accumulating
+weakenings do NOT blow up: memory is 1.18×, inside the noise floor. ⇒ the
+`datatype-index-accumulating-codes` 40× shape did NOT recur.
+
+⚠ **BUT IT IS 4.0× SLOWER IN TIME**, and that is the opposite profile
+from the row, where memory was the win and time was not. Per motive:
+
+| | row + tuple | peak RSS |
+|---|---|---|
+| baseline | 164s | **4.21 GB** |
+| ambient | 210s | **1.11 GB** |
+
+⇒ **MEMORY 3.8× BETTER, TIME ~28% WORSE.** And memory is the binding
+constraint — the 5.5 GB cgroup cap is what KILLED the 5-passenger row in
+the first place, so a 4.21 → 1.11 GB peak is the result that matters and
+a 28% time regression is affordable.
+
+### ✅ STEP 1 — AND THE FIX IS NOT A LEMMA, IT IS WHERE YOU INSTANTIATE
+
+⚠⚠ **FIRST, A BAD MEASUREMENT OF MY OWN.** The 11/22/44 growth curve
+(187/178/174 s) varied `cdTake n` — how many rows the TERM builds. The
+TYPE was `imethsTy … KnotD`, all 53 rows, in every run, so the stack
+depth never moved and the curve was flat BY CONSTRUCTION. Another
+[[verification-that-covers-less-than-it-claims]], this time in a
+diagnostic I designed to test my own hypothesis.
+
+Varying the TYPE instead (`tmp/TupleAShort.agda`):
+
+| result type | wall |
+|---|---|
+| 7-row (`imethsTyFrom … 46 D46`) | **3.12s** |
+| 53-row (`imethsTy … KnotD`) | **173.64s** |
+
+⇒ 56× for 7.6× the rows — **QUADRATIC in stack depth.** Each of the 53
+`renTy vs` pushes through the whole remaining tail and cannot reduce on
+an abstract `renTm vs (… nn)`.
+
+★★★ **SO A CALL-SITE LEMMA WAS THE WRONG FIX** — the cost is inside
+Agda's normalisation of `imethsTyFrom`, which no lemma at the use site
+can reach. But ONE THING RENAMES IN A SINGLE STEP: a VARIABLE.
+`tmp/TupleAVar.agda`, `nn := var vz`, same 53-row type:
+
+**6.64s · 0.50 GB · rc=0** — against 173.64s · 1.11 GB. **26×.**
+
+### ⇒ THE TWO LAYERS WANT OPPOSITE THINGS, AND A GENERIC LEMMA GIVES BOTH
+
+| | wall | peak RSS |
+|---|---|---|
+| row · generic (abstract `nn`) | **0:35.92** | **0.55 GB** |
+| row · concrete (variable `nn`) | 1:41.27 | 1.39 GB |
+| tuple · abstract `nn` | 2:53.64 | 1.11 GB |
+| tuple · **variable** `nn` | **0:06.64** | **0.50 GB** |
+
+The ROW wants `nn` abstract; the TUPLE wants it a variable. **There is no
+conflict** — a generic lemma is a SUPERSET, so state the row generically
+and INSTANTIATE it at a variable when building the tuple:
+
+| combination | row + tuple | peak |
+|---|---|---|
+| baseline (4 passengers) | 164 s | 4.21 GB |
+| all-abstract | 210 s | 1.11 GB |
+| all-concrete | 108 s | 1.39 GB |
+| **MIXED — generic row @ a variable** | **43 s** | **0.55 GB** |
+
+⇒ **3.8× faster AND 7.7× less memory than the baseline.** ★ And this is
+the third time in this investigation that generalising the LEMMA and
+specialising the USE beat both pure alternatives —
+[[half-generalization-is-worst]], now with the mixed point measured.
+
+### ⇒ STEP 2, AS FAR AS IT GOT — and the residue is PRE-EXISTING
+
+| artifact | state |
+|---|---|
+| `tmp/MotAt` — `motA` + `motA-ren` + `motA-at` | **rc=0** |
+| `tmp/MethLamN` — the transport-parameterised prologue | **rc=0** |
+| `tmp/JunkA` — the junk method at `motA` | **rc=0** |
+| `tmp/TupleAVar` — the 53-row tuple at a variable | **rc=0** |
+| `tmp/IihsRhoAGen` — the `iρ` row, generic | **2 error sites** |
+
+★ **AND `iihs` WAS NEVER CLOSED.** The 4-passenger baseline
+(`tmp/IihsRho2Tmp`) ends with one `UnsolvedMetaVariables`; the 5-passenger
+version was KILLED outright. So the residue is a PRE-EXISTING open item,
+not something the conversion introduced — the conversion moved the same
+gap from 164 s / 4.21 GB to 43 s / 0.55 GB.
+
+⬜ **THE ONE UNCLOSED JOIN**, precisely: `⊢iihsIHA`'s output meeting
+`⊢iihsAppA`'s input. Ruled out, each by a run:
+
+- **not naturality** — `ihEq nn = refl` typechecks, so
+  `renTy vs³ (iihTy … (motA (w² nn))) ≡ iihTy … (motA (w⁵ nn))` holds
+  DEFINITIONALLY;
+- **not `i`/`q`** — pinning both changes nothing (36.21 s, same 2 sites);
+- **not `SubTy`'s hidden `renTm vs`** — inlining it into `motA` changes
+  nothing;
+- **not the `subTm` in the conclusion** — restating `⊢iihsIHA` at its
+  reduct `iinst (pair sICon (nsuc (snd i))) (fst (snd q)) M` typechecks
+  and changes nothing.
+
+⇒ what is left is `renTm (extR vs) _b != subTm … (w⁸ nn)`: Agda inverting
+a renaming against a meta it cannot solve. ⚠ Four hypotheses tested and
+refuted; I did not find the fifth, and stopped rather than keep guessing
+at pins.
+
+⬜ ALSO NOT DONE: the `iκ`/`iι` rows, the real (non-junk) tuple, and the
+wrapper `iihsK`.
+
+### ⚠ WHAT IS STILL OPEN: **neither version closes.** The baseline ends with
+one `UnsolvedMetaVariables` site; the generic ambient row ends with that
+plus an `UnsolvedConstraints`, both at `⊢iihsIHA`'s application — so on
+RESIDUE it is arguably one worse. Pinning `i`/`q` changes nothing
+(36.21s), and pinning `M` to `motA (w⁵ nn)` is the wrong term. ⬜ And
+this is still ONE row of 53, with the tuple and the wrapper unbuilt.
+
+⬜ NOT DONE: the other 52 rows, the junk row, the tuple, and the wrapper
+`iihsK`. The measurement is ONE row — the expensive one — and the rest is
+the ordinary work.
+
+### ⇒ SO: NO KERNEL CHANGE IS NEEDED FOR THE KNOT
+
+The `ielim`-arity change (95 hand-written files) is **not** justified by
+the passenger wall. Neither is `icw-par`, which was about expressivity
+and is in any case dissolved by the existential above. What the Knot
+needs is a different MOTIVE DISCIPLINE, and that is ordinary work in
+`Examples/Knot` with no kernel surface touched at all.
+
+### ⬜ THE ORIGINAL PLAN FOR THE SPIKE, kept for the record
+
+
+
+Take ONE small Knot elimination with a fixed passenger — `payTyMotK`
+(Π=1, its only passenger `D` is fixed) is the cheapest — restate its
+motive as `RTm ⌊ Γ ⌋ → RTy ((⌊ Γ ⌋ ∙) ∙)` at a CONCRETE `Γ`, and see
+whether `⊢methLam` + `⊢ielim` still go through.
+
+- **passes** ⇒ the passenger wall is SELF-INFLICTED, the 609-line ladder
+  is largely avoidable, and **no kernel change is needed at all**. That
+  is a bigger result than the kernel change, and a cheaper one.
+- **fails** ⇒ record the exact obstruction; *that* is the precise
+  statement of the missing feature, and the `ielim`-arity change is
+  justified — **95 hand-written files mention `ielim`** (measured; the
+  earlier "87" was the right order).
+
+⚠ Do NOT cost or start the `ielim`-arity change before this spike. Per
+`stale-blockers-recheck-first`, `IPayTyMot:16`'s assertion is a single
+undated remark and the four pieces of evidence above all point the other
+way.
+
+### ⇒ RECOMMENDATION: TAKE THE CHANGE
+
+Scope: `icw-par` (additive) · one clause in `iκW` (the sole `ICodeWf`
+eliminator) · semantic threading in `ILift`/`IKPred`/`IDPred`/`IMuMem`
+(~115 mentions, ~5 files). Both hard-looking sub-obligations are PROVED
+(`param-stable`, `parW`); the remainder is a known construction with a
+universe caveat.
+
+Against: `Scope A` (bundle `D`/`ms` in `iihsK`) is one module but builds
+on an encoding this investigation concluded is wrong, and does not
+generalise. The `ielim`-arity alternative is 87 hand-written files and is
+not needed.
+
+⚠ Note the property is proved for a PROJECTION OF THE INDEX — exactly
+the parameter case — not for an arbitrary index-dependent code. That
+restriction is the point: it is what keeps the row on the right side of
+§10.1, which excluded `⌜Π⌝`/`⌜Σ⌝`/`⌜Hom⌝` because `⊩₀` cannot interpret
+them at an arbitrary environment. A projection needs no interpretation
+of its own — `fwd₀` carries it.
+
+---
+
+## Once: TYPE-INDEXED SEARCH IS A LANGUAGE FEATURE, NOT A TOOL — and it must be COST-AWARE
+
+⬜ OPEN — for Once-in-Once. Discovered 2026-09-20/21 while closing the
+OCP-0009 adequacy ledger; the Agda-side write-up is
+`POC/DirectedHoTT/AGDA-TYPE-SEARCH-PROPOSAL.md` (untracked), and a
+working text-level prototype is `DirectedHoTT/tools/find-dup-lemmas.py`.
+
+### The observation that starts it
+
+A proof assistant can find a definition **by name**, and can **synthesise**
+a term for a goal. It cannot answer the question in between:
+
+> *which definitions have **this type** — or match **this pattern**?*
+
+Coq (`SearchPattern`), Lean (`exact?`, Loogle), Isabelle
+(`find_theorems`) and Haskell (Hoogle) all have it; Agda does not. And
+the cost of not having it is not theoretical — it was **measured on this
+repository**:
+
+* a lemma family whose own source comment reads *"three customers now;
+  at a fourth, stop and generalise"* — i.e. the author had already
+  noticed — nevertheless had rungs **six and seven written twice**, in
+  different directories, with byte-identical statements;
+* one module carried **seven** lemmas that were already in `Lib`, four
+  byte-identical in statement *and* proof; the module already imported
+  the library, it just did not import those names (−86 lines to fix);
+* two lemmas **twenty lines apart in one module** had the identical
+  type, one of them dead.
+
+⇒ the failure mode is not carelessness. A duplicate is invisible from
+**both** sides: the copy looks self-contained to anyone reading it, and
+the original's module never mentions the copy. **Noticing does not scale
+past one module.** Only a query over the whole signature can see it.
+
+### Why this belongs in the LANGUAGE for Once, not beside it
+
+1. **The index is a by-product of checking.** Once already elaborates
+   every declaration to a normalised type; grouping those by α-canonical
+   form is one traversal over data the checker holds anyway. Doing it
+   outside means re-deriving, from surface text, information the checker
+   had exactly — which is what the prototype does, and why it needs
+   heuristics (an IDF filter to go from 153 candidates to 13) that an
+   in-language version needs *none* of.
+2. **Every real find was an EXACT type match.** All four cases above are
+   literal type duplicates. The anti-unification machinery in the
+   prototype exists only to see through α-naming, implicit spelling and
+   line breaks. In-language, exact grouping finds all of them with **zero
+   false positives** — precise enough to be a build gate.
+3. **It composes with the invariants.** See *"Once: THE CHECKER'S COST IS
+   A LANGUAGE-DESIGN QUESTION"* above: that section argues cost should be
+   VISIBLE in the language. This is the same principle applied to search
+   — and §4 below is where the two meet.
+
+### The three tiers
+
+| tier | query | verdict | where |
+|---|---|---|---|
+| 1 | group by elaborated type (α, optionally defeq) | **delete** | language; CI gate |
+| 2 | pattern search with holes, ranked | **reuse** | language; interactive |
+| 3 | N lemmas sharing a shape | **generate** | external linter |
+
+Tier 2 needs three matching modes, of which the third is the one no
+existing system exposes and the one that would have prevented the
+duplicate above:
+
+* `exact` — α-equal;
+* `instance-of` — the found lemma generalises the query (*"would this
+  close my goal"*, Hoogle's relation);
+* **`generalises`** — the query generalises the found lemma (*"is the
+  lemma I am about to write a special case of something"*). Nearly free
+  once the index exists: the same traversal with the arguments swapped.
+
+⚠ **Ranking is not optional.** In a dependently-typed development the
+interesting patterns are the common ones — `Γ ⊢ _ ∷ _` matches thousands
+of declarations here. Take Hoogle's lesson (rank) over Coq's (filter).
+
+### ★★★ §4 — AND THE RANKING MUST INCLUDE ELABORATED BODY SIZE
+
+**This is the part that is specific to Once and that no existing system
+has.** Measured 2026-09-21, and it inverted the conclusion I had already
+written down:
+
+A query flagged 42 equations in a generated module. **All 42 were true
+positives** — each letter-for-letter an instance of a library lemma.
+A/B, two samples each, warm:
+
+    longhand (baseline)            13.46 / 13.39 s    870 MB
+    27 of them collapsed           12.99 / 12.34 s    889 MB    +2%
+    all 42 collapsed               14.51 / 13.23 s   1167 MB   +34%
+
+(measured RSS noise floor is ±12%: +2% is noise, +34% is not)
+
+**27 were wins, 15 were 34%-memory regressions, and NOTHING ABOUT THEIR
+STATEMENTS DISTINGUISHES THEM.** The hand-written chain was never a
+missed library call — it is a *specialised* route, cheaper precisely
+because the term it acts on is **closed**. The general lemma and the
+specialised one prove the same statement at very different costs,
+because the difference lives in the elaborated size of the **proof**,
+not the statement.
+
+⇒ three consequences, all binding on the design:
+
+1. **Never auto-apply.** No codemod, no "apply this rewrite" action,
+   however exact the match. Exactness is not evidence of improvement.
+2. **Recall over precision is correct**, and now for a proved reason: no
+   type-level precision could have separated the 27 from the 15, so a
+   stricter filter could only have discarded true wins.
+3. **Put the elaborated body size next to every hit.** Two lemmas with
+   identical statements are different propositions if one elaborates to
+   ten times the term. Once will know this number and nothing else will.
+   *"`wk-single`: 2 nodes; `sub-w³-single`: 47 nodes"* predicts the
+   result above **without running the A/B**. In a language whose binding
+   constraint is memory, that is arguably the most useful column in the
+   output — and it is the natural meeting point with the cost-invariant
+   work above.
+
+### Why it is worth doing early
+
+The prototype is ~200 lines of text processing and has already paid for
+itself: it caught a duplicate **as it was being written**, deleted 7
+more, found 1 dead lemma, and surfaced the 42-match result that produced
+§4. In-language it is simpler, exact, and gate-able. ⇒ build it with the
+checker, not after it — a library that cannot be searched by type grows
+duplicates at a rate proportional to its size, and this repository is
+the evidence.
+
+## Once: AN INTERVAL-BASED `Hom` — cubical / simplicial — tempting, and parked
+
+★ **Raised 2026-09-25**, while building S4 (type normalisation) for
+`POC/DirectedHoTT/PLAN-BIDI.md` §3b. Recorded as a TEMPTING
+addition, not a decision.
+
+### What prompted it
+
+The kernel's `Hom` COMPUTES at `Π` — directed function extensionality as a
+TYPE reduction:
+
+    Hom (Π A B) f g ⟶ᵀ Π A (Hom B (app (renTm vs f) (var vz)) (app (renTm vs g) (var vz)))
+
+It is the ONE rule that makes type normalisation non-structural: it creates
+new terms, so SN of types needs typing (route C). In **cubical** type theory
+a path is a function out of an interval, so funext holds *by construction of
+terms* and no type ever reduces this way. The directed analogue is
+**simplicial type theory** (Riehl–Shulman): `hom_A(x,y)` is an extension type
+over a directed interval `Δ¹`, and `hom` at `Π` is argument-swapping.
+
+### What it would buy — the abstraction powers
+
+- funext definitional, by construction;
+- univalence that COMPUTES (Glue types) — transport along an equivalence
+  runs, instead of being an axiom;
+- higher inductive types, quotients, propositional truncation — with
+  canonicity;
+- for this kernel: `Hom-Π` disappears, and with it the only non-structural
+  case of type normalisation.
+
+### Why it is parked
+
+1. **The difficulty moves, it does not vanish.** Cubical TYPES compute too
+   (transport through Glue, `hcomp` in the universe). Normalisation for
+   cubical type theory is proven (Sterling–Angiuli 2021) but is among the
+   hardest results in the field.
+2. **This kernel is DIRECTED; cubical is symmetric.** The directed side —
+   simplicial type theory, directed univalence (Gratzer–Weinberger–
+   Buchholtz 2024) — is the research frontier. `rzk` implements
+   Riehl–Shulman, but its normalisation/decidability metatheory is far less
+   developed.
+3. **The de Bruijn criterion.** Interval + face lattice + Kan operations
+   make the trusted kernel much larger; PLAN-BIDI §0 exists to keep an
+   independent, small checker possible. Cubical Agda has none.
+4. **The linear core.** Once's direction is a linear SMCC core + QTT
+   grades; graded/linear cubical type theory is open research.
+5. **It restarts most of the metatheory** — reduction, confluence, the
+   logical relation and the Knot's encoding all assume `Hom` is a former
+   with computation rules.
+
+### The cheap experiment, if it is ever picked up
+
+A spike: present `Hom` as an extension type over a directed interval
+WITHOUT Kan operations (Riehl–Shulman style), for the Π fragment only.
+Measure (a) whether type normalisation becomes structural, (b) what `J`
+and transport cost. That decides whether the redesign pays BEFORE anything
+is rewritten. Route C's outputs — validity, SR for types, inversion, typed
+normalisation — are needed by ANY kernel, interval-based or not, so
+continuing with C loses nothing.
+
+## Once: CONTEXTS INDEXED BY THEIR SCOPE — so A-math's `ρ`/`x` are COMPUTED, not carried
+
+*(OCP-0009, 2026-09-25, raised while porting A-math to the Knot.)*
+
+### What prompted it
+
+A-math types a constructor telescope against an abstract family `X` sitting
+at the BOTTOM of the telescope, with the constructor's own syntax in the
+X-free scope `Δ`. The kernel states that as `IConWf I Θ ρ x C` with
+`ρ : Ren Δ ⌊ Θ ⌋` and `x : Var ⌊ Θ ⌋` as PARAMETERS. Mathematically both
+are DETERMINED: `⌊ Θ ⌋` is `Δ` with one variable inserted at the bottom,
+and that is structural on snoc scopes:
+
+    _⁺ : Cx → Cx          ε ⁺ = ε ∙ ;  (Δ ∙) ⁺ = Δ ⁺ ∙
+    up  : Ren Δ (Δ ⁺)     up vz = vz ;  up (vs y) = vs (up y)   (= extR up)
+    bot : (Δ : Cx) → Var (Δ ⁺)   bot ε = vz ;  bot (Δ ∙) = vs (bot Δ)
+
+### Why the kernel cannot say it today
+
+`Ctx` is NOT indexed by its scope — `⌊_⌋` is COMPUTED. "The telescope's
+scope is `Δ ⁺`" is then only statable as an equation index
+`⌊ Θ ⌋ ≡ Δ ⁺`, i.e. transports everywhere. So the general `(ρ, x)` is the
+honest presentation, and the Knot reifies it 1:1 (a `SubTy` slot for `ρ`,
+an `sVar` for `x`).
+
+### What it would buy
+
+With `Ctx : Cx → Set` (intrinsically scoped contexts, `Γ ▹ A` with
+`A : RTy Δ` for `Γ : Ctx Δ`), a telescope could be `Ctx (Δ ⁺)` directly:
+`ρ`/`x` become `up`/`bot`, two parameters disappear from `IConWf`, from
+`XEnv`, and from the Knot's `IConWf` subjects. It also removes every
+`⌊ Γ ⌋` coercion in signatures kernel-wide.
+
+### Why it is parked
+
+It re-indexes the most-used type in the kernel (every judgment, every
+Lib lemma, every Knot row's context), and the gain is two DETERMINED
+parameters that are harmless as data. Revisit if a second judgment wants
+a scope relation that the current `Ctx` can only state by equation — that
+would make it a pattern, not a one-off.

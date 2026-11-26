@@ -41,3 +41,6 @@ ast-*.json
 formal/EverythingFiltered.agda
 
 __pycache__/
+
+# POC interfaces (POC/check.sh builds into POC/_build)
+POC/_build/

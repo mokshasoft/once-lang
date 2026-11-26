@@ -1,0 +1,86 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+------------------------------------------------------------------------
+-- OCP-0009 · KNOT — ★ THE CONVERSIONS ARE FAITHFUL (PLAN-FAITHFUL F5,
+-- `≅`/`≅ᵀ`): every Spec conversion maps to a Knot inhabitant AT THE QUOTED
+-- JUDGEMENT.  `Knot/ConvCon`'s constructors are generic in the subject's
+-- head, so each case takes the quoted subject's HEAD VIEW (`Knot/QView`),
+-- builds at `conₗ k p`, and transports back along the view's `refl`-born
+-- equation.
+------------------------------------------------------------------------
+
+{-# OPTIONS --safe #-}
+open import DirectedHoTT.Spec.Syntax using ( Defs )
+open import DirectedHoTT.Spec.SigWf using ( WfK )
+import DirectedHoTT.Metatheory.Entries as Entries
+open import DirectedHoTT.Spec.SigExtend using ( _⊑ᴰ_ )
+import DirectedHoTT.Examples.PredsCore as Core₀
+open import DirectedHoTT.Spec.Base hiding ( _,,_; _×_ )
+module DirectedHoTT.Examples.Knot.ConvAgree (𝒮 : Defs) (wf : WfK 𝒮) (core : Core₀.Kc ⊑ᴰ 𝒮) where
+
+
+
+open import DirectedHoTT.Prelude using ( _≡_; refl; sym; subst; Σ; _,_ )
+open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
+open import DirectedHoTT.Spec.Syntax
+open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮)
+open import DirectedHoTT.Examples.Knot.Terms 𝒮 wf
+open import DirectedHoTT.Examples.Knot.QView 𝒮 wf
+open import DirectedHoTT.Examples.Knot.Red 𝒮 wf core using ( El-⌜⟶⌝; K⟶ )
+open import DirectedHoTT.Examples.Knot.RedT 𝒮 wf core using ( El-⌜⟶ᵀ⌝; K⟶ᵀ )
+open import DirectedHoTT.Examples.Knot.Conv 𝒮 wf core using ( K≅; K≅ᵀ )
+open import DirectedHoTT.Examples.Knot.ConvCon 𝒮 wf core
+open import DirectedHoTT.Examples.Knot.RedAgree 𝒮 wf core using ( enRed )
+open import DirectedHoTT.Examples.Knot.RedTAgree 𝒮 wf core using ( enRedT )
+open import DirectedHoTT.Examples.Knot.QuoteSig 𝒮 wf using ( q𝒮; ⊢q𝒮 )
+
+------------------------------------------------------------------------
+-- 1. t ≅ u
+------------------------------------------------------------------------
+
+enConv : {Γ : Cx} {t u : RTm Γ} → t ≅ u → {Θ : Ctx} → Σ (RTm ⌊ Θ ⌋) (λ c → Θ ⊢ c ∷ K≅ q𝒮 (dep Γ) (quoteTm t) (quoteTm u))
+enConv {Γ} {t} {u} (cred r) {Θ} =
+  subst (λ T → Σ (RTm ⌊ Θ ⌋) (λ c → Θ ⊢ c ∷ K≅ q𝒮 (dep Γ) T (quoteTm u))) (sym eq)
+    (_ , cred≅ nh ⊢q𝒮 (⊢dep' Γ) dp (⊢quoteTm u)
+               (⊢conv (subst (λ T → Θ ⊢ Σ.fst (enRed r) ∷ K⟶ q𝒮 (dep Γ) T (quoteTm u)) eq (Σ.snd (enRed r))) (csymᵀ El-⌜⟶⌝)))
+  where open HeadV (qviewTm t {Θ})
+enConv {Γ} {t} {.t} crfl {Θ} =
+  subst (λ T → Σ (RTm ⌊ Θ ⌋) (λ c → Θ ⊢ c ∷ K≅ q𝒮 (dep Γ) T T)) (sym eq) (_ , crfl≅ nh ⊢q𝒮 (⊢dep' Γ) dp)
+  where open HeadV (qviewTm t {Θ})
+enConv {Γ} {t} {u} (csym d) {Θ} =
+  subst (λ T → Σ (RTm ⌊ Θ ⌋) (λ c → Θ ⊢ c ∷ K≅ q𝒮 (dep Γ) T (quoteTm u))) (sym eq)
+    (_ , csym≅ nh ⊢q𝒮 (⊢dep' Γ) dp (⊢quoteTm u)
+               (subst (λ T → Θ ⊢ Σ.fst (enConv d) ∷ K≅ q𝒮 (dep Γ) (quoteTm u) T) eq (Σ.snd (enConv d))))
+  where open HeadV (qviewTm t {Θ})
+enConv {Γ} {t} {u} (ctrn {u = v} d₁ d₂) {Θ} =
+  subst (λ T → Σ (RTm ⌊ Θ ⌋) (λ c → Θ ⊢ c ∷ K≅ q𝒮 (dep Γ) T (quoteTm u))) (sym eq)
+    (_ , ctrn≅ nh ⊢q𝒮 (⊢dep' Γ) dp (⊢quoteTm u) (⊢quoteTm v)
+               (subst (λ T → Θ ⊢ Σ.fst (enConv d₁) ∷ K≅ q𝒮 (dep Γ) T (quoteTm v)) eq (Σ.snd (enConv d₁)))
+               (Σ.snd (enConv d₂)))
+  where open HeadV (qviewTm t {Θ})
+
+------------------------------------------------------------------------
+-- 2. A ≅ᵀ B
+------------------------------------------------------------------------
+
+enConvT : {Γ : Cx} {A B : RTy Γ} → A ≅ᵀ B → {Θ : Ctx} → Σ (RTm ⌊ Θ ⌋) (λ c → Θ ⊢ c ∷ K≅ᵀ q𝒮 (dep Γ) (quoteTy A) (quoteTy B))
+enConvT {Γ} {A} {B} (credᵀ r) {Θ} =
+  subst (λ T → Σ (RTm ⌊ Θ ⌋) (λ c → Θ ⊢ c ∷ K≅ᵀ q𝒮 (dep Γ) T (quoteTy B))) (sym eq)
+    (_ , cred≅ᵀ nh ⊢q𝒮 (⊢dep' Γ) dp (⊢quoteTy B)
+                (⊢conv (subst (λ T → Θ ⊢ Σ.fst (enRedT r) ∷ K⟶ᵀ q𝒮 (dep Γ) T (quoteTy B)) eq (Σ.snd (enRedT r))) (csymᵀ El-⌜⟶ᵀ⌝)))
+  where open HeadV (qviewTy A {Θ})
+enConvT {Γ} {A} {.A} crflᵀ {Θ} =
+  subst (λ T → Σ (RTm ⌊ Θ ⌋) (λ c → Θ ⊢ c ∷ K≅ᵀ q𝒮 (dep Γ) T T)) (sym eq) (_ , crfl≅ᵀ nh ⊢q𝒮 (⊢dep' Γ) dp)
+  where open HeadV (qviewTy A {Θ})
+enConvT {Γ} {A} {B} (csymᵀ d) {Θ} =
+  subst (λ T → Σ (RTm ⌊ Θ ⌋) (λ c → Θ ⊢ c ∷ K≅ᵀ q𝒮 (dep Γ) T (quoteTy B))) (sym eq)
+    (_ , csym≅ᵀ nh ⊢q𝒮 (⊢dep' Γ) dp (⊢quoteTy B)
+                (subst (λ T → Θ ⊢ Σ.fst (enConvT d) ∷ K≅ᵀ q𝒮 (dep Γ) (quoteTy B) T) eq (Σ.snd (enConvT d))))
+  where open HeadV (qviewTy A {Θ})
+enConvT {Γ} {A} {B} (ctrnᵀ {B = V} d₁ d₂) {Θ} =
+  subst (λ T → Σ (RTm ⌊ Θ ⌋) (λ c → Θ ⊢ c ∷ K≅ᵀ q𝒮 (dep Γ) T (quoteTy B))) (sym eq)
+    (_ , ctrn≅ᵀ nh ⊢q𝒮 (⊢dep' Γ) dp (⊢quoteTy B) (⊢quoteTy V)
+                (subst (λ T → Θ ⊢ Σ.fst (enConvT d₁) ∷ K≅ᵀ q𝒮 (dep Γ) T (quoteTy V)) eq (Σ.snd (enConvT d₁)))
+                (Σ.snd (enConvT d₂)))
+  where open HeadV (qviewTy A {Θ})

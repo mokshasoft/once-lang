@@ -1,0 +1,979 @@
+#!/usr/bin/env python3
+"""
+gen-knot.py — the kernel's own syntax (`RTy`/`RTm`) as ONE levitated family,
+FIBRED BY SORT (D494) with the depth RIDING (D493).
+
+★ THE ENCODING.  Index `KI = SortI ⌜Nat⌝ 2 = Σ (s : Fin 2) Nat`: a SORT
+  (0 RTy · 1 RTm) and a CONTEXT DEPTH.  The fibre over `(s , d)` is sort
+  `s`'s constructor list (`Lib/Sorted.Dₛ`): NO constructor carries a sort
+  equation, and none carries a depth equation — a recursive field names
+  its own index outright (`lam`'s body is at `(1 , suc d)`).
+  `Var Γ` is the kernel's `Fin` of the depth, a σ-field at the
+  ambient depth; `ℕ` arguments are σ-fields of code `⌜Nat⌝`.
+  Descriptions are terms (D491), so there are no Desc/DCon/IDesc/ICon sorts.
+
+★ THE ROWS ARE PARSED OUT OF `Spec/Syntax.agda`, not transcribed: every
+  constructor of `RTy`/`RTm`, in declaration order, its argument types read
+  as fields.  A kernel former added or removed changes the Knot on the next
+  run, and `--check` fails if the committed output is stale.
+
+★★ THE KNOT IS A SIGNATURE (`Lib/Syn`): one SHAPE per constructor, and
+  every operation — telescopes, typing, constructors, fold, renaming,
+  substitution — is a generic theorem about signatures.  The generator
+  emits DATA, not proofs.
+
+Outputs (under Examples/Knot/):
+  Sig.agda    the shapes, the signature `KSig`, its well-formedness, the
+              family `KD`, and the term formers `k…`
+  Terms.agda  the QUOTATION: every `RTy Γ`/`RTm Γ` as a Knot term at depth
+              `|Γ|`, typed by `⊢conSyn` — the encoding reaches the whole syntax
+
+Usage:  python3 tools/gen-knot.py [--check]
+"""
+import os, re, sys
+
+ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+SYNTAX = os.path.join(ROOT, "Spec", "Syntax.agda")
+OUTDIR = os.path.join(ROOT, "Examples", "Knot")
+# the licence header every Agda file in POC/ carries
+COPYRIGHT = "-- SPDX-License-Identifier: AGPL-3.0-or-later\n-- Copyright (C) 2025-2026 Jonas Claesson\n\n"
+
+SORTS = {"RTy": 0, "RTm": 1}
+
+# Agda-safe names for the source constructors
+NAMES = {
+    "⌜base⌝": "cbase", "⌜Π⌝": "cPi", "⌜Σ⌝": "cSg", "⌜Hom⌝": "cHom", "⌜Id⌝": "cId",
+    "⌜Nat⌝": "cNat", "⌜IMu⌝": "cIMu", "⌜Fin⌝": "cFin", "⌜Unit⌝": "cUnit",
+    "Π": "Pi", "Σ'": "Sg", "dι": "dI", "dσ": "dS", "dρ": "dR",
+}
+
+def kname(src):
+    return "k" + NAMES.get(src, src)
+
+# ------------------------------------------------------------ the parser
+def parse():
+    txt = open(SYNTAX, encoding="utf-8").read()
+    rows = []
+    for data in ("RTy", "RTm"):
+        m = re.search(r"^data %s where\n(.*?)(?=^\S)" % data, txt, re.S | re.M)
+        assert m, data
+        for line in m.group(1).split("\n"):
+            line = line.split("--")[0].rstrip()
+            mm = re.match(r"^  (\S+)\s*:\s*∀ \{Γ\} → (.*)$", line)
+            if not mm:
+                assert not line.strip(), "unparsed constructor line: %r" % line
+                continue
+            name, ty = mm.group(1), mm.group(2)
+            parts = [p.strip() for p in split_arrows(ty)]
+            assert parts[-1] == data + " Γ", (name, parts)
+            rows.append((data, name, [field(p, name) for p in parts[:-1]]))
+    return rows
+
+def split_arrows(ty):
+    out, depth, cur = [], 0, ""
+    i = 0
+    while i < len(ty):
+        c = ty[i]
+        if c == "(": depth += 1
+        if c == ")": depth -= 1
+        if depth == 0 and ty.startswith("→", i):
+            out.append(cur); cur = ""; i += 1; continue
+        cur += c; i += 1
+    out.append(cur)
+    return out
+
+def field(p, name):
+    """('rec', sort, n) | ('var',) | ('nat',) | ('cls', sort)"""
+    if p == "ℕ": return ("nat",)
+    # ★ a CLOSED subterm (a definition's body, `RTm ε`): `Lib/Syn.cls`
+    if p in ("RTy ε", "RTm ε"): return ("cls", SORTS[p.split()[0]])
+    if p == "Var Γ": return ("var",)
+    m = re.match(r"^(RTy|RTm) (.*)$", p)
+    assert m, (name, p)
+    ctx = m.group(2)
+    n = ctx.count("∙")
+    assert ctx.replace("(", "").replace(")", "").replace("∙", "").strip() == "Γ", (name, p)
+    return ("rec", SORTS[m.group(1)], n)
+
+# ------------------------------------------------------------ emission
+def nat(k):
+    t = "zero"
+    for _ in range(k): t = "(suc %s)" % t
+    return t
+
+def lt(s):
+    return "lt-z" if s == 0 else "(lt-s lt-z)"
+
+def fld(f):
+    if f[0] == "rec": return "rec %d %d" % (f[1], f[2])
+    if f[0] == "cls": return "cls %d" % f[1]
+    return f[0]
+
+def fldok(f):
+    if f[0] == "rec": return "ok-rec %s" % lt(f[1])
+    if f[0] == "cls": return "ok-cls %s" % lt(f[1])
+    return "ok-" + f[0]
+
+def shape(fs):
+    if any(f[0] == "var" for f in fs):
+        assert fs == [("var",)], "a variable is a whole shape (`vʰ`), not a field"
+        return "vʰ"
+    return " ∷ʰ ".join([fld(f) for f in fs] + ["[]ʰ"])
+
+def shapeok(fs):
+    if fs == [("var",)]: return "vᵒʰ"
+    return "fᵒʰ (%s)" % " ∷ᶠ ".join(["(%s)" % fldok(f) for f in fs] + ["[]ᶠ"])
+
+HDR = """------------------------------------------------------------------------
+-- ⚠⚠ GENERATED by tools/gen-knot.py — DO NOT EDIT BY HAND. ⚠⚠
+--
+-- The kernel's syntax as a SIGNATURE of `Lib/Syn` (sorts 0 RTy · 1 RTm,
+-- index (sort, depth), fibred by sort — D494), rows parsed out of
+-- `Spec/Syntax.agda`.  The encoding is documented in the generator's header.
+------------------------------------------------------------------------
+"""
+
+def gen_sig(rows):
+    L = [HDR, """{-# OPTIONS --safe #-}
+module DirectedHoTT.Examples.Knot.Sig where
+open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
+open import DirectedHoTT.Spec.Syntax hiding ( Fin )
+open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
+open import DirectedHoTT.Lib.Sugar using ( conₗ; lt-z; lt-s )
+open import DirectedHoTT.Lib.Syn
+
+------------------------------------------------------------------------
+-- 1. ONE SHAPE PER CONSTRUCTOR.
+------------------------------------------------------------------------
+"""]
+    for data, name, fs in rows:
+        L.append("-- %s" % name)
+        L.append("sh-%s : Shape" % kname(name))
+        L.append("sh-%s = %s" % (kname(name), shape(fs)))
+        L.append("")
+    ty = [r for r in rows if r[0] == "RTy"]
+    tm = [r for r in rows if r[0] == "RTm"]
+    for nm, rs in (("Ty", ty), ("Tm", tm)):
+        L.append("%sShs : Shapes %d" % (nm, len(rs)))
+        L.append("%sShs = %s" % (nm, " ∷ˢʰ ".join(["sh-" + kname(r[1]) for r in rs] + ["[]ˢʰ"])))
+        L.append("")
+    L.append("""-- ★ THE SIGNATURE — the Knot
+KSig : Sig 2
+KSig = TyShs ∷ᵍ TmShs ∷ᵍ []ᵍ
+""")
+    for data, name, fs in rows:
+        L.append("ok-%s : ShOK 2 sh-%s" % (kname(name), kname(name)))
+        L.append("ok-%s = %s" % (kname(name), shapeok(fs)))
+    L.append("")
+    L.append("KOK : SigOK 2 KSig")
+    L.append("KOK = (%s)" % " ∷ᵒˢ ".join(["ok-" + kname(r[1]) for r in ty] + ["[]ᵒˢ"]))
+    L.append("   ∷ᵒᵍ (%s)" % " ∷ᵒˢ ".join(["ok-" + kname(r[1]) for r in tm] + ["[]ᵒˢ"]))
+    L.append("   ∷ᵒᵍ []ᵒᵍ")
+    L.append("""
+-- the family, and the syntax at a sort and depth
+KD : {Γ : Cx} → RTm Γ
+KD = SD KSig
+
+K : {Γ : Cx} → ℕ → RTm Γ → RTy Γ
+K = SK KSig
+
+⊢KD : {Γ : Ctx} → Γ ⊢ KD ∷ DescF (SI 2)
+⊢KD = ⊢SD KOK
+
+------------------------------------------------------------------------
+-- 2. THE TERM FORMERS (typed by `Lib/Syn.⊢conSyn`).
+------------------------------------------------------------------------
+""")
+    idx = {"RTy": 0, "RTm": 0}
+    for data, name, fs in rows:
+        k = idx[data]; idx[data] += 1
+        args = ["a%d" % j for j in range(len(fs))]
+        pay = "unit"
+        for a in reversed(args): pay = "pair %s (%s)" % (a, pay)
+        L.append("%s : {Γ : Cx} → %sRTm Γ" % (kname(name), "RTm Γ → " * len(fs)))
+        L.append("%s %s= conₗ %s (%s)" % (kname(name), "".join(a + " " for a in args), nat(k), pay))
+    return "\n".join(L) + "\n"
+
+# ------------------------------------------------------------ quotation
+def gen_terms(rows):
+    L = [HDR, """{-# OPTIONS --safe #-}
+module DirectedHoTT.Examples.Knot.Terms where
+open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
+open import DirectedHoTT.Spec.Syntax
+open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
+open import DirectedHoTT.Lib.NatCode using ( toI; fromI; ⊢isuc )
+open import DirectedHoTT.Lib.Syn
+open import DirectedHoTT.Examples.Knot.Sig
+
+------------------------------------------------------------------------
+-- The QUOTATION of the kernel's syntax into the Knot: a term of depth
+-- `|Γ|` becomes a Knot term at `(sort, |Γ|)`, a variable a `Fin |Γ|`.
+------------------------------------------------------------------------
+
+-- the depth of a context, as an object numeral
+dep : Cx → {Θ : Cx} → RTm Θ
+dep ε       = nzero
+dep (Γ ∙)   = nsuc (dep Γ)
+
+⊢dep' : (Γ : Cx) {Θ : Ctx} → Θ ⊢ dep Γ ∷ El ⌜Nat⌝
+⊢dep' ε       = toI ⊢nzero
+⊢dep' (Γ ∙)   = ⊢isuc (⊢dep' Γ)
+
+-- a meta-level natural, as an object numeral
+quoteℕ : ℕ → {Θ : Cx} → RTm Θ
+quoteℕ zero    = nzero
+quoteℕ (suc n) = nsuc (quoteℕ n)
+
+⊢quoteℕ : (n : ℕ) {Θ : Ctx} → Θ ⊢ quoteℕ n ∷ El ⌜Nat⌝
+⊢quoteℕ zero    = toI ⊢nzero
+⊢quoteℕ (suc n) = ⊢isuc (⊢quoteℕ n)
+
+-- a variable is a `Fin` of the depth
+quoteVar : {Γ : Cx} → Var Γ → {Θ : Cx} → RTm Θ
+quoteVar {Γ ∙} vz     = fzero
+quoteVar {Γ ∙} (vs x) = fsuc (quoteVar x)
+
+⊢quoteVar : {Γ : Cx} (x : Var Γ) {Θ : Ctx} → Θ ⊢ quoteVar x ∷ Fin (dep Γ)
+⊢quoteVar {Γ ∙} vz     = ⊢fzero (fromI (⊢dep' Γ))
+⊢quoteVar {Γ ∙} (vs x) = ⊢fsuc (⊢quoteVar x)
+
+quoteTy : {Γ : Cx} → RTy Γ → {Θ : Cx} → RTm Θ
+quoteTm : {Γ : Cx} → RTm Γ → {Θ : Cx} → RTm Θ
+"""]
+    Q = {"RTy": "quoteTy", "RTm": "quoteTm"}
+    def qf(f, a):
+        if f[0] in ("rec", "cls"): return "(%s %s)" % (["quoteTy", "quoteTm"][f[1]], a)
+        if f[0] == "nat": return "(quoteℕ %s)" % a
+        if f[0] == "var": return "(quoteVar %s)" % a
+    def df(f, a):
+        if f[0] == "rec": return "a-rec (⊢%s %s)" % (["quoteTy", "quoteTm"][f[1]], a)
+        if f[0] == "cls": return "a-cls (⊢%s %s)" % (["quoteTy", "quoteTm"][f[1]], a)
+        if f[0] == "nat": return "a-nat (⊢quoteℕ %s)" % a
+        if f[0] == "var": return "a-v (⊢quoteVar %s)" % a
+    def args_proof(fs, args):
+        if fs == [("var",)]: return "(a-v (⊢quoteVar %s))" % args[0]
+        t = "a[]"
+        for f, a in reversed(list(zip(fs, args))): t = "(%s %s)" % (df(f, a), t)
+        return t
+    def nthsh(k):
+        return "(atʰ %d)" % k   # a position by its number (Lib/Syn.atʰ)
+    for data in ("RTy", "RTm"):
+        for d, name, fs in rows:
+            if d != data: continue
+            args = ["a%d" % j for j in range(len(fs))]
+            pat = "(%s)" % " ".join([name] + args) if args else name
+            L.append("%s %s = %s" % (Q[data], pat, " ".join([kname(name)] + [qf(f, a) for f, a in zip(fs, args)])))
+        L.append("")
+    L.append("⊢quoteTy : {Γ : Cx} (A : RTy Γ) {Θ : Ctx} → Θ ⊢ quoteTy A ∷ K 0 (dep Γ)")
+    L.append("⊢quoteTm : {Γ : Cx} (t : RTm Γ) {Θ : Ctx} → Θ ⊢ quoteTm t ∷ K 1 (dep Γ)")
+    for data in ("RTy", "RTm"):
+        k = 0
+        for d, name, fs in rows:
+            if d != data: continue
+            args = ["a%d" % j for j in range(len(fs))]
+            pat = "(%s)" % " ".join([name] + args) if args else name
+            # ⚠ PIN the signature, the sort's list and the row (see `Knot/Sig`)
+            L.append("⊢%s {Γ} %s =" % (Q[data], pat))
+            L.append("  ⊢conSyn {sg = KSig} {shs = %sShs} {sh = sh-%s} KOK %s %s (⊢dep' Γ) %s"
+                     % (["Ty", "Tm"][SORTS[data]], kname(name),
+                        "(atᵍ %d)" % SORTS[data], nthsh(k), args_proof(fs, args)))
+            k += 1
+        L.append("")
+    return "\n".join(L)
+
+# ------------------------------------------------------------ typed formers
+def gen_ctors(rows):
+    L = [HDR, """{-# OPTIONS --safe #-}
+module DirectedHoTT.Examples.Knot.Ctors where
+open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
+open import DirectedHoTT.Spec.Syntax
+open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
+open import DirectedHoTT.Lib.Syn
+open import DirectedHoTT.Examples.Knot.Sig
+
+------------------------------------------------------------------------
+-- The Knot's term formers, TYPED at any depth `d` — each one `⊢conSyn`
+-- with the signature, the sort's list and the row PINNED (an inferred
+-- one costs seconds per use; see `Knot/Sig`).
+------------------------------------------------------------------------
+"""]
+    def depth(k):
+        t = "d"
+        for _ in range(k): t = "(nsuc %s)" % t
+        return t
+    def fty(f, a):
+        if f[0] == "rec": return "Γ ⊢ %s ∷ K %d %s" % (a, f[1], depth(f[2]))
+        if f[0] == "cls": return "Γ ⊢ %s ∷ K %d nzero" % (a, f[1])
+        if f[0] == "nat": return "Γ ⊢ %s ∷ El ⌜Nat⌝" % a
+        if f[0] == "var": return "Γ ⊢ %s ∷ Fin d" % a
+    def darg(f, a):
+        if f[0] == "rec": return "a-rec d" + a
+        if f[0] == "cls": return "a-cls d" + a
+        if f[0] == "nat": return "a-nat d" + a
+        if f[0] == "var": return "a-v d" + a
+    def nthsh(k):
+        return "(atʰ %d)" % k   # a position by its number (Lib/Syn.atʰ)
+    for data in ("RTy", "RTm"):
+        k = 0
+        for d, name, fs in rows:
+            if d != data: continue
+            kn = kname(name)
+            args = ["a%d" % j for j in range(len(fs))]
+            pay = "unit"
+            for a in reversed(args): pay = "pair %s (%s)" % (a, pay)
+            imp = "{Γ : Ctx} {d%s : RTm ⌊ Γ ⌋}" % "".join(" " + a for a in args)
+            prem = " → ".join(["Γ ⊢ d ∷ El ⌜Nat⌝"] + [fty(f, a) for f, a in zip(fs, args)])
+            L.append("⊢%s : %s → %s → Γ ⊢ %s ∷ K %d d" % (kn, imp, prem, " ".join([kn] + args), SORTS[data]))
+            if fs == [("var",)]:
+                ap = "(a-v da0)"
+            else:
+                ap = "a[]"
+                for f, a in reversed(list(zip(fs, args))): ap = "(%s %s)" % (darg(f, a), ap)
+            L.append("⊢%s {Γ} {d}%s dd%s =" % (kn, "".join(" {%s}" % a for a in args), "".join(" d" + a for a in args)))
+            L.append("  ⊢conSyn {sg = KSig} {shs = %sShs} {sh = sh-%s} {d = d} {p = %s} KOK %s %s dd %s"
+                     % (["Ty", "Tm"][SORTS[data]], kn, pay,
+                        "(atᵍ %d)" % SORTS[data], nthsh(k), ap))
+            L.append("")
+            k += 1
+    return "\n".join(L)
+
+# ------------------------------------------------------------ agreement (PLAN-FAITHFUL F2)
+def agree_cases(rows, fn, TR, lifts, var_case):
+    """the traversal at a quoted node reduces to the quotation of the operated
+    term: `trav-con`, then per field the IH (a recursive field, the environment
+    lifted under its binders) or a copy (a numeral)"""
+    L = []
+    FN = {"RTy": fn + "-ty", "RTm": fn + "-tm"}
+    def nthsh(k):
+        return "(atʰ %d)" % k   # a position by its number (Lib/Syn.atʰ)
+    for data in ("RTy", "RTm"):
+        srt = SORTS[data]
+        ng = "(atᵍ %d)" % srt
+        k = 0
+        for d, name, fs in rows:
+            if d != data: continue
+            args = ["a%d" % j for j in range(len(fs))]
+            pat = "(%s)" % " ".join([name] + args) if args else name
+            if fs == [("var",)]:
+                L.append("%s %s r = %s" % (FN[data], pat, var_case(ng, nthsh(k))))
+            elif not fs:
+                L.append("%s %s r = %s.trav-con %s %s %s.f-nil" % (FN[data], pat, TR, ng, nthsh(k), TR))
+            else:
+                chain = "done"
+                for j in reversed(range(len(fs))):
+                    f = fs[j]
+                    rest = shape(fs[j + 1:])
+                    pins = "{sh = %s} {e = dep Δ} {f = f} {d = dep Γ}" % rest
+                    if f[0] == "nat":
+                        chain = "(%s.fld-nat %s %s)" % (TR, pins, chain)
+                    elif f[0] == "cls":   # a closed field is copied
+                        chain = "(%s.fld-cls {s = %d} %s %s)" % (TR, f[1], pins, chain)
+                    else:
+                        ih = "(%s %s (%s %d r))" % (FN["RTy" if f[1] == 0 else "RTm"], args[j], lifts, f[2])
+                        chain = "(%s.fld-rec {s = %d} {k = %d} %s %s %s)" % (TR, f[1], f[2], pins, ih, chain)
+                L.append("%s {Γ} {Δ} %s {f = f} r =" % (FN[data], pat))
+                L.append("  ⟶*-trans (%s.trav-con %s %s %s.f-cons) (⟶*-con (⟶*-pairʳ %s))" % (TR, ng, nthsh(k), TR, chain))
+            k += 1
+        L.append("")
+    return L
+
+AGREE_HDR = """{-# OPTIONS --safe #-}
+module DirectedHoTT.Examples.Knot.RenAgree where
+
+open import DirectedHoTT.Prelude using ( _≡_; refl; cong )
+open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
+open import DirectedHoTT.Spec.Syntax
+open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
+open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-appʳ; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-con; ⟶*-fsuc )
+open import DirectedHoTT.Lib.Syn
+open import DirectedHoTT.Lib.SynRed using ( _∙ⁿ_ )
+open import DirectedHoTT.Lib.SynTrav using ( module Trav )
+open import DirectedHoTT.Lib.SynTravRed
+open import DirectedHoTT.Examples.Knot.Sig
+open import DirectedHoTT.Examples.Knot.Terms
+open import DirectedHoTT.Examples.Knot.Ren
+
+private
+  variable
+    Γ Δ Θ : Cx
+
+open Trav KOK renKit using ( LIFTS )
+module TR = TravRed KOK renKit KVars (λ σ → refl) (λ σ → refl)
+module ER = EnvRed KOK renKit (λ σ → refl) (λ σ → refl)
+
+private
+  subst₂ : {A B : Set} (P : A → B → Set) {a a' : A} {b b' : B} → a ≡ a' → b ≡ b' → P a b → P a' b'
+  subst₂ P refl refl x = x
+
+------------------------------------------------------------------------
+-- ★ an environment REPRESENTS a renaming: at every quoted variable it
+--   reduces to the quoted image
+------------------------------------------------------------------------
+
+RepR : Ren Γ Δ → RTm Θ → Set
+RepR {Γ} ρ f = (x : Var Γ) → app f (quoteVar x) ⟶* quoteVar (ρ x)
+
+-- …and the lifted environment the lifted renaming
+repR-lift : {ρ : Ren Γ Δ} {f : RTm Θ} → RepR ρ f → RepR (extR ρ) (ER.LIFT· (dep Δ) (dep Γ) f)
+repR-lift {Δ = Δ} r vz     = ⟶*-trans ER.lift-z (step (β fzero (dep Δ)) done)
+repR-lift         r (vs x) = ⟶*-trans ER.lift-s (step (ξ-appˡ (β _ _)) (step (β _ _) (⟶*-fsuc (r x))))
+
+extRⁿ : (k : ℕ) → Ren Γ Δ → Ren (Γ ∙ⁿ k) (Δ ∙ⁿ k)
+extRⁿ zero    ρ = ρ
+extRⁿ (suc k) ρ = extR (extRⁿ k ρ)
+
+-- the depth of `k` more binders
+dep-∙ⁿ : (Γ : Cx) (k : ℕ) {Θ : Cx} → dep (Γ ∙ⁿ k) {Θ} ≡ nsucs k (dep Γ)
+dep-∙ⁿ Γ zero    = refl
+dep-∙ⁿ Γ (suc k) = cong nsuc (dep-∙ⁿ Γ k)
+
+liftsR : (k : ℕ) {ρ : Ren Γ Δ} {f : RTm Θ} → RepR ρ f → RepR (extRⁿ k ρ) (LIFTS k (dep Δ) (dep Γ) f)
+liftsR zero    r = r
+liftsR {Γ} {Δ} (suc k) {ρ} {f} r =
+  subst₂ (λ e d → RepR (extRⁿ (suc k) ρ) (ER.LIFT· e d (LIFTS k (dep Δ) (dep Γ) f))) (dep-∙ⁿ Δ k) (dep-∙ⁿ Γ k) (repR-lift (liftsR k r))
+
+------------------------------------------------------------------------
+-- ★★★ RENAMING AGREES: the Knot's traversal at a quoted term, under an
+--   environment representing ρ, reduces to the quotation of `renTm ρ t`
+------------------------------------------------------------------------
+
+ren-agree-ty : (A : RTy Γ) {ρ : Ren Γ Δ} {f : RTm Θ} → RepR ρ f → trav 0 (dep Γ) (quoteTy A) (dep Δ) f ⟶* quoteTy (renTy ρ A)
+ren-agree-tm : (t : RTm Γ) {ρ : Ren Γ Δ} {f : RTm Θ} → RepR ρ f → trav 1 (dep Γ) (quoteTm t) (dep Δ) f ⟶* quoteTm (renTm ρ t)
+
+"""
+
+def gen_renagree(rows):
+    var = lambda ng, nh: ("⟶*-trans (TR.trav-var %s %s) (step (ξ-appˡ (β _ _)) (step (β _ _) "
+                          "(⟶*-con (⟶*-pairʳ (⟶*-pairˡ (⟶*-trans (⟶*-appʳ (step (βfst _ _) done)) (r a0)))))))") % (ng, nh)
+    return "\n".join([HDR.replace("The kernel's syntax as a SIGNATURE of `Lib/Syn` (sorts 0 RTy · 1 RTm,\n-- index (sort, depth), fibred by sort — D494), rows parsed out of\n-- `Spec/Syntax.agda`.  The encoding is documented in the generator's header.",
+                                   "RENAMING AGREES (PLAN-FAITHFUL F2): the Knot's renaming traversal at a\n-- quoted term reduces to the quotation of the renamed term, one case per\n-- former of `Spec/Syntax` (`Lib/SynTravRed` does the work)."),
+                       AGREE_HDR] + agree_cases(rows, "ren-agree", "TR", "liftsR", var))
+
+SUBAGREE_HDR = """{-# OPTIONS --safe #-}
+module DirectedHoTT.Examples.Knot.SubAgree where
+
+open import DirectedHoTT.Prelude using ( _≡_; refl; cong; sym; subst )
+open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
+open import DirectedHoTT.Spec.Syntax
+open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
+open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-appʳ; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-con; ⟶*-fsuc )
+open import DirectedHoTT.Lib.Syn
+open import DirectedHoTT.Lib.SynRed using ( _∙ⁿ_ )
+open import DirectedHoTT.Lib.SynTrav using ( module Trav; module Kit )
+open import DirectedHoTT.Lib.SynTravRed
+open import DirectedHoTT.Examples.Knot.Sig
+open import DirectedHoTT.Examples.Knot.Terms
+open import DirectedHoTT.Examples.Knot.Sub
+import DirectedHoTT.Examples.Knot.Ren as KR
+open import DirectedHoTT.Examples.Knot.RenAgree using ( RepR; ren-agree-tm; dep-∙ⁿ )
+
+private
+  variable
+    Γ Δ Θ : Cx
+
+open Trav KOK subKit using ( LIFTS )
+
+private
+  -- the substitution kit's LIFT mentions the (opaque) description: closed by unfolding it
+  opaque
+    unfolding SD
+    LIFTˢ-sub : (σ : Sub Δ Θ) → subTm σ (Trav.LIFT KOK subKit {Δ}) ≡ Trav.LIFT KOK subKit
+    LIFTˢ-sub σ = refl
+
+    WKˢ-sub : (σ : Sub Δ Θ) → subTm σ (Kit.WK subKit {Δ}) ≡ Kit.WK subKit
+    WKˢ-sub σ = refl
+
+module TS = TravRed KOK subKit KR.KVars LIFTˢ-sub (λ σ → refl)
+module ES = EnvRed KOK subKit (λ σ → refl) WKˢ-sub
+module TRR = TravRed KOK KR.renKit KR.KVars (λ σ → refl) (λ σ → refl)
+
+private
+  subst₂ : {A B : Set} (P : A → B → Set) {a a' : A} {b b' : B} → a ≡ a' → b ≡ b' → P a b → P a' b'
+  subst₂ P refl refl x = x
+
+------------------------------------------------------------------------
+-- ★ an environment REPRESENTS a substitution
+------------------------------------------------------------------------
+
+RepS : Sub Γ Δ → RTm Θ → Set
+RepS {Γ} σ f = (x : Var Γ) → app f (quoteVar x) ⟶* quoteTm (σ x)
+
+-- a depth is CLOSED: a weakening of it cancels
+dep-wk : (v : RTm Θ) (Δ : Cx) → subTm (single v) (renTm vs (dep Δ {Θ})) ≡ dep Δ
+dep-wk v ε       = refl
+dep-wk v (Δ ∙)   = cong nsuc (dep-wk v Δ)
+
+-- the weakening environment represents `vs`
+repR-wk : RepR {Γ} vs (KR.WKρ {Θ})
+repR-wk x = step (β _ _) done
+
+-- …and the lifted environment the lifted substitution: at the fresh
+--   variable its node, at an old one the old value WEAKENED — which is
+--   renaming agreement at `vs`
+opaque
+  unfolding SD
+  repS-lift : {σ : Sub Γ Δ} {f : RTm Θ} → RepS σ f → RepS (extS σ) (ES.LIFT· (dep Δ) (dep Γ) f)
+  repS-lift {Δ = Δ} r vz     = ⟶*-trans ES.lift-z (step (β _ (dep Δ)) done)
+  repS-lift {Δ = Δ} {σ = σ} {f = f} r (vs x) =
+    ⟶*-trans ES.lift-s (step (ξ-appˡ (β _ _)) (step (β _ _)
+      (subst (λ z → KR.trav 1 z (app f (quoteVar x)) (nsuc z) KR.WKρ ⟶* quoteTm (renTm vs (σ x)))
+             (sym (dep-wk (app f (quoteVar x)) Δ))
+             (⟶*-trans (TRR.trav-t-mono (r x)) (ren-agree-tm (σ x) repR-wk)))))
+
+extSⁿ : (k : ℕ) → Sub Γ Δ → Sub (Γ ∙ⁿ k) (Δ ∙ⁿ k)
+extSⁿ zero    σ = σ
+extSⁿ (suc k) σ = extS (extSⁿ k σ)
+
+liftsS : (k : ℕ) {σ : Sub Γ Δ} {f : RTm Θ} → RepS σ f → RepS (extSⁿ k σ) (LIFTS k (dep Δ) (dep Γ) f)
+liftsS zero    r = r
+liftsS {Γ} {Δ} (suc k) {σ} {f} r =
+  subst₂ (λ e d → RepS (extSⁿ (suc k) σ) (ES.LIFT· e d (LIFTS k (dep Δ) (dep Γ) f))) (dep-∙ⁿ Δ k) (dep-∙ⁿ Γ k) (repS-lift (liftsS k r))
+
+------------------------------------------------------------------------
+-- ★★★ SUBSTITUTION AGREES
+------------------------------------------------------------------------
+
+sub-agree-ty : (A : RTy Γ) {σ : Sub Γ Δ} {f : RTm Θ} → RepS σ f → trav 0 (dep Γ) (quoteTy A) (dep Δ) f ⟶* quoteTy (subTy σ A)
+sub-agree-tm : (t : RTm Γ) {σ : Sub Γ Δ} {f : RTm Θ} → RepS σ f → trav 1 (dep Γ) (quoteTm t) (dep Δ) f ⟶* quoteTm (subTm σ t)
+
+"""
+
+def gen_subagree(rows):
+    var = lambda ng, nh: ("⟶*-trans (TS.trav-var %s %s) (step (ξ-appˡ (β _ _)) (step (β _ _) "
+                          "(⟶*-trans (⟶*-appʳ (step (βfst _ _) done)) (r a0))))") % (ng, nh)
+    return "\n".join([HDR.replace("The kernel's syntax as a SIGNATURE of `Lib/Syn` (sorts 0 RTy · 1 RTm,\n-- index (sort, depth), fibred by sort — D494), rows parsed out of\n-- `Spec/Syntax.agda`.  The encoding is documented in the generator's header.",
+                                   "SUBSTITUTION AGREES (PLAN-FAITHFUL F2): the Knot's substitution traversal\n-- at a quoted term reduces to the quotation of the substituted term, one\n-- case per former; lifting under a binder is renaming agreement at `vs`."),
+                       SUBAGREE_HDR] + agree_cases(rows, "sub-agree", "TS", "liftsS", var))
+
+QVIEW_HDR = """{-# OPTIONS --safe #-}
+module DirectedHoTT.Examples.Knot.QView where
+
+open import DirectedHoTT.Prelude using ( _≡_; refl )
+open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
+open import DirectedHoTT.Spec.Syntax
+open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
+open import DirectedHoTT.Lib.Sugar using ( tag; conₗ; lt-z; lt-s )
+open import DirectedHoTT.Lib.SynView using ( PayV )
+open import DirectedHoTT.Lib.Syn
+open import DirectedHoTT.Examples.Knot.Sig
+open import DirectedHoTT.Examples.Knot.Terms
+open import DirectedHoTT.Examples.Knot.JudgeIx using ( ⊢payK )
+
+------------------------------------------------------------------------
+-- ★ A QUOTED TERM IS A NODE: its head, its payload (the quoted fields) and
+--   the payload's typing — what a family generic in the subject's head
+--   (`Knot/ConvCon`) consumes.  One clause per former, `eq = refl`.
+------------------------------------------------------------------------
+
+-- the sort's constructor list, as the lookup a head view carries
+NthS : ℕ → ℕ → Shape → Set
+NthS zero    = NthSh TyShs
+NthS (suc _) = NthSh TmShs
+
+record HeadV (s : ℕ) {Θ : Ctx} (j t : RTm ⌊ Θ ⌋) : Set where
+  field
+    k  : ℕ
+    sh : Shape
+    p  : RTm ⌊ Θ ⌋
+    nh : NthS s k sh
+    eq : t ≡ conₗ k p
+    dp : Θ ⊢ p ∷ PayV sh (pair (tag s) j) (SI 2) (SD KSig)
+
+qviewTy : {Γ : Cx} (A : RTy Γ) {Θ : Ctx} → HeadV 0 {Θ} (dep Γ) (quoteTy A)
+qviewTm : {Γ : Cx} (t : RTm Γ) {Θ : Ctx} → HeadV 1 {Θ} (dep Γ) (quoteTm t)
+"""
+
+def gen_qview(rows):
+    L = [HDR.replace("The kernel's syntax as a SIGNATURE of `Lib/Syn` (sorts 0 RTy · 1 RTm,\n-- index (sort, depth), fibred by sort — D494), rows parsed out of\n-- `Spec/Syntax.agda`.  The encoding is documented in the generator's header.",
+                     "THE HEAD VIEW of the quotation (PLAN-FAITHFUL F5): a quoted term is a\n-- node, with its head, payload and payload typing, one clause per former."),
+         QVIEW_HDR]
+    def nthsh(k):
+        return "(atʰ %d)" % k   # a position by its number (Lib/Syn.atʰ)
+    for data in ("RTy", "RTm"):
+        srt = SORTS[data]
+        k = 0
+        for d, name, fs in rows:
+            if d != data: continue
+            args = ["a%d" % j for j in range(len(fs))]
+            pat = "(%s)" % " ".join([name] + args) if args else name
+            def qf(f, a):
+                if f[0] in ("rec", "cls"): return "(%s %s)" % (["quoteTy", "quoteTm"][f[1]], a)
+                if f[0] == "nat": return "(quoteℕ %s)" % a
+                return "(quoteVar %s)" % a
+            def df(f, a):
+                if f[0] == "rec": return "a-rec (⊢%s %s)" % (["quoteTy", "quoteTm"][f[1]], a)
+                if f[0] == "cls": return "a-cls (⊢%s %s)" % (["quoteTy", "quoteTm"][f[1]], a)
+                if f[0] == "nat": return "a-nat (⊢quoteℕ %s)" % a
+                return "a-v (⊢quoteVar %s)" % a
+            if fs == [("var",)]:
+                pay, argp = "(pair (quoteVar a0) unit)", "(a-v (⊢quoteVar a0))"
+            else:
+                pay, argp = "unit", "a[]"
+                for f, a in reversed(list(zip(fs, args))):
+                    pay = "(pair %s %s)" % (qf(f, a), pay); argp = "(%s %s)" % (df(f, a), argp)
+            L.append("%s {Γ} %s = record { k = %d ; sh = sh-%s ; p = %s ; nh = %s ; eq = refl ; dp = ⊢payK %s ok-%s (⊢dep' Γ) %s }" % (
+                "qviewTy" if srt == 0 else "qviewTm", pat, k, kname(name), pay, nthsh(k), lt(srt), kname(name), argp))
+            k += 1
+        L.append("")
+    return "\n".join(L)
+
+CONVHEAD_HDR = """{-# OPTIONS --safe #-}
+module DirectedHoTT.Examples.Knot.ConvHead where
+
+open import DirectedHoTT.Prelude using ( Σ; _,_ )
+open import DirectedHoTT.Spec.Syntax
+open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
+open import DirectedHoTT.Examples.Knot.Sig using ( K )
+open import DirectedHoTT.Examples.Knot.Terms
+open import DirectedHoTT.Examples.Knot.Ctx using ( quoteCtx; ⊢quoteCtx )
+open import DirectedHoTT.Examples.Knot.JudgeIx using ( JT; tmIx )
+open import DirectedHoTT.Examples.Knot.Judge using ( D⊢ )
+open import DirectedHoTT.Examples.Knot.Conv using ( ⌜≅ᵀ⌝ )
+open import DirectedHoTT.Examples.Knot.JudgeConGen
+open import DirectedHoTT.Examples.Knot.RefCon using ( conv⊢ref )
+open import DirectedHoTT.Examples.Knot.QSig using ( sigT )
+open import DirectedHoTT.Examples.Knot.QuoteSig using ( tN; ⊢tN )
+
+------------------------------------------------------------------------
+-- ★ The Knot's `⊢conv` rows are ONE PER SUBJECT HEAD (`conv⊢…`), so the
+--   Spec's head-generic `⊢conv` dispatches on the subject: one clause per
+--   term former, its fields' typings the quotation's.
+------------------------------------------------------------------------
+
+convAt : (Γ : Ctx) (t : RTm ⌊ Γ ⌋) {Θ : Ctx} {A B r e : RTm ⌊ Θ ⌋} →
+         Θ ⊢ A ∷ K 0 (dep ⌊ Γ ⌋) → Θ ⊢ B ∷ K 0 (dep ⌊ Γ ⌋) →
+         Θ ⊢ r ∷ IMu JT (D⊢ (tN 𝓃)) (tmIx (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteTm t) A) → Θ ⊢ e ∷ El (⌜≅ᵀ⌝ (sigT (tN 𝓃)) (dep ⌊ Γ ⌋) A B) →
+         Σ (RTm ⌊ Θ ⌋) (λ c → Θ ⊢ c ∷ IMu JT (D⊢ (tN 𝓃)) (tmIx (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteTm t) B))
+"""
+
+def gen_convhead(rows):
+    L = [HDR.replace("The kernel's syntax as a SIGNATURE of `Lib/Syn` (sorts 0 RTy · 1 RTm,\n-- index (sort, depth), fibred by sort — D494), rows parsed out of\n-- `Spec/Syntax.agda`.  The encoding is documented in the generator's header.",
+                     "THE CONVERSION ROW BY HEAD (PLAN-FAITHFUL F5): the Spec's `⊢conv`, whose\n-- subject is any term, reaches the Knot's per-head `conv⊢…` rows."),
+         CONVHEAD_HDR]
+    for d, name, fs in rows:
+        if d != "RTm": continue
+        args = ["a%d" % j for j in range(len(fs))]
+        pat = "(%s)" % " ".join([name] + args) if args else name
+        def df(f, a):
+            if f[0] in ("rec", "cls"): return "(⊢%s %s)" % (["quoteTy", "quoteTm"][f[1]], a)
+            if f[0] == "nat": return "(⊢quoteℕ %s)" % a
+            return "(⊢quoteVar %s)" % a
+        ds = " ".join(df(f, a) for f, a in zip(fs, args))
+        L.append("convAt Γ %s dA dB dr de = _ , conv⊢%s (⊢tN 𝓃) (⊢dep' ⌊ Γ ⌋) (⊢quoteCtx Γ) %sdA dB dr de" % (
+            pat, kname(name)[1:], ds + " " if ds else ""))
+    L.append("")
+    return "\n".join(L)
+
+# ------------------------------------------------------------ F6.2: unquote
+UNQ_HDR = """{-# OPTIONS --safe #-}
+module DirectedHoTT.Examples.Knot.Unquote where
+
+------------------------------------------------------------------------
+-- ⚠⚠ GENERATED by tools/gen-knot.py — DO NOT EDIT BY HAND. ⚠⚠
+--
+-- ★ PLAN-FAITHFUL F6.2 — the Knot's syntax is EXACTLY the quoted Spec.
+--
+--     unqTy/unqTm  a CLOSED NORMAL Knot term of sort Ty/Tm at depth
+--                  `dep Γ` IS `quoteTy A`/`quoteTm u` for some `A`/`u`
+--     quoteTy-inj/quoteTm-inj   quotation is injective
+--
+-- The typed work is generic (`Lib/SynUnq.syn-unquote`, `⌜⌝ˢ-inj`); this
+-- module only bridges the Spec's datatypes to the generic trees `STm`,
+-- structurally, row by row — from the same rows as the quotation.
+------------------------------------------------------------------------
+
+open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; cong; cong₂; subst; Σ; _,_ )
+open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
+open import DirectedHoTT.Spec.Syntax
+open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast )
+open import DirectedHoTT.Metatheory.LogicalRelation using ( IsNormal )
+open import DirectedHoTT.Lib.Sugar using ( Lt; lt-z; lt-s; conₗ; tag )
+open import DirectedHoTT.Lib.NatNum using ( num )
+open import DirectedHoTT.Lib.Syn
+open import DirectedHoTT.Lib.SynUnq
+open import DirectedHoTT.Examples.Knot.Sig
+open import DirectedHoTT.Examples.Knot.Terms
+
+private
+  variable
+    Γ : Cx
+    Θ : Cx
+
+private
+  c3 : {A B C D : Set} (f : A → B → C → D) {a a' : A} {b b' : B} {c c' : C} →
+       a ≡ a' → b ≡ b' → c ≡ c' → f a b c ≡ f a' b' c'
+  c3 f refl refl refl = refl
+  c4 : {A B C D E : Set} (f : A → B → C → D → E) {a a' : A} {b b' : B} {c c' : C} {d d' : D} →
+       a ≡ a' → b ≡ b' → c ≡ c' → d ≡ d' → f a b c d ≡ f a' b' c' d'
+  c4 f refl refl refl refl = refl
+  c5 : {A B C D E F : Set} (f : A → B → C → D → E → F) {a a' : A} {b b' : B} {c c' : C} {d d' : D} {e e' : E} →
+       a ≡ a' → b ≡ b' → c ≡ c' → d ≡ d' → e ≡ e' → f a b c d e ≡ f a' b' c' d' e'
+  c5 f refl refl refl refl refl = refl
+
+------------------------------------------------------------------------
+-- 1. Depths, numerals and variables.
+------------------------------------------------------------------------
+
+len : Cx → ℕ
+len ε     = zero
+len (Γ ∙) = suc (len Γ)
+
+dep-num : (Γ : Cx) → dep Γ {Θ} ≡ num (len Γ)
+dep-num ε     = refl
+dep-num (Γ ∙) = cong nsuc (dep-num Γ)
+
+quoteℕ-num : (m : ℕ) → quoteℕ m {Θ} ≡ num m
+quoteℕ-num zero    = refl
+quoteℕ-num (suc m) = cong nsuc (quoteℕ-num m)
+
+toVar : {i : ℕ} → Lt i (len Γ) → Var Γ
+toVar {ε}   ()
+toVar {Γ ∙} {zero}  lt-z     = vz
+toVar {Γ ∙} {suc i} (lt-s l) = vs (toVar l)
+
+fromVar : Var Γ → ℕ
+fromVar vz     = zero
+fromVar (vs x) = suc (fromVar x)
+
+fromVar-lt : (x : Var Γ) → Lt (fromVar x) (len Γ)
+fromVar-lt vz     = lt-z
+fromVar-lt (vs x) = lt-s (fromVar-lt x)
+
+toVar-from : (x : Var Γ) → toVar (fromVar-lt x) ≡ x
+toVar-from vz     = refl
+toVar-from (vs x) = cong vs (toVar-from x)
+
+tag-fromVar : (x : Var Γ) → tag (fromVar x) ≡ quoteVar x {Θ}
+tag-fromVar vz     = refl
+tag-fromVar (vs x) = cong fsuc (tag-fromVar x)
+
+quoteVar-toVar : {i : ℕ} (l : Lt i (len Γ)) → quoteVar (toVar l) {Θ} ≡ tag i
+quoteVar-toVar {Γ = ε}   ()
+quoteVar-toVar {Γ = Γ ∙} {i = zero}  lt-z     = refl
+quoteVar-toVar {Γ = Γ ∙} {i = suc i} (lt-s l) = cong fsuc (quoteVar-toVar l)
+
+------------------------------------------------------------------------
+-- 2. The Spec's syntax and the generic trees, row by row.
+------------------------------------------------------------------------
+
+fromTy : STm KSig 0 (len Γ) → RTy Γ
+fromTm : STm KSig 1 (len Γ) → RTm Γ
+toTy   : RTy Γ → STm KSig 0 (len Γ)
+toTm   : RTm Γ → STm KSig 1 (len Γ)
+"""
+
+def gen_unquote(rows):
+    L = [UNQ_HDR]
+    FROM = ["fromTy", "fromTm"]; TO = ["toTy", "toTm"]
+    QF = ["quote-fromTy", "quote-fromTm"]; QT = ["quote-toTy", "quote-toTm"]; FT = ["from-toTy", "from-toTm"]
+    def nthsh(k):
+        t = "nthʰ-z"
+        for _ in range(k): t = "(nthʰ-s %s)" % t
+        return t
+    NG = ["nthᵍ-z", "(nthᵍ-s nthᵍ-z)"]
+    def ctx(n):
+        return "Γ" + " ∙" * n
+    KIND = {"rec": "s-rec", "nat": "s-nat", "cls": "s-cls"}
+    def sargs_pat(fs, args):
+        if fs == [("var",)]: return "(s-v %s l0)" % args[0]
+        t = "s[]"
+        for f, a in reversed(list(zip(fs, args))): t = "(%s %s %s)" % (KIND[f[0]], a, t)
+        return t
+    def sargs_to(fs, args):
+        if fs == [("var",)]: return "(s-v (fromVar %s) (fromVar-lt %s))" % (args[0], args[0])
+        t = "s[]"
+        for f, a in reversed(list(zip(fs, args))):
+            if f[0] in ("rec", "cls"): v = "(%s %s)" % (TO[f[1]], a)
+            else: v = a
+            t = "(%s %s %s)" % (KIND[f[0]], v, t)
+        return t
+    def from_field(f, a):
+        if f[0] in ("rec", "cls"): return "(%s %s)" % (FROM[f[1]], a)
+        if f[0] == "nat": return a
+        return "(toVar l0)"
+    def congs(con, eqs):
+        if not eqs: return "refl"
+        f = {1: "cong", 2: "cong₂", 3: "c3", 4: "c4", 5: "c5"}[len(eqs)]
+        return "%s %s %s" % (f, con, " ".join(eqs))
+    by = {0: [], 1: []}
+    for d, name, fs in rows: by[SORTS[d]].append((name, fs))
+    for s in (0, 1):
+        for k, (name, fs) in enumerate(by[s]):
+            args = ["a%d" % j for j in range(len(fs))]
+            L.append("%s (node %s %s %s) = %s" % (FROM[s], NG[s], nthsh(k), sargs_pat(fs, args),
+                     " ".join([name] + [from_field(f, a) for f, a in zip(fs, args)])))
+        L.append("")
+    for s in (0, 1):
+        for k, (name, fs) in enumerate(by[s]):
+            args = ["a%d" % j for j in range(len(fs))]
+            pat = "(%s)" % " ".join([name] + args) if args else name
+            L.append("%s %s = node %s %s %s" % (TO[s], pat, NG[s], nthsh(k), sargs_to(fs, args)))
+        L.append("")
+    L.append("-- the Spec's quotation IS the generic quotation of its tree")
+    L.append("quote-fromTy : (x : STm KSig 0 (len Γ)) → quoteTy (fromTy x) {Θ} ≡ ⌜ x ⌝ˢ")
+    L.append("quote-fromTm : (x : STm KSig 1 (len Γ)) → quoteTm (fromTm x) {Θ} ≡ ⌜ x ⌝ˢ")
+    for s in (0, 1):
+        for k, (name, fs) in enumerate(by[s]):
+            args = ["a%d" % j for j in range(len(fs))]
+            eqs = []
+            for f, a in zip(fs, args):
+                if f[0] in ("rec", "cls"): eqs.append("(%s %s)" % (QF[f[1]], a))
+                elif f[0] == "nat": eqs.append("(quoteℕ-num %s)" % a)
+                else: eqs.append("(quoteVar-toVar l0)")
+            L.append("%s (node %s %s %s) = %s" % (QF[s], NG[s], nthsh(k), sargs_pat(fs, args), congs(kname(name), eqs)))
+        L.append("")
+    L.append("quote-toTy : (A : RTy Γ) → ⌜ toTy A ⌝ˢ {Θ} ≡ quoteTy A")
+    L.append("quote-toTm : (t : RTm Γ) → ⌜ toTm t ⌝ˢ {Θ} ≡ quoteTm t")
+    for s in (0, 1):
+        for k, (name, fs) in enumerate(by[s]):
+            args = ["a%d" % j for j in range(len(fs))]
+            pat = "(%s)" % " ".join([name] + args) if args else name
+            eqs = []
+            for f, a in zip(fs, args):
+                if f[0] in ("rec", "cls"): eqs.append("(%s %s)" % (QT[f[1]], a))
+                elif f[0] == "nat": eqs.append("(sym (quoteℕ-num %s))" % a)
+                else: eqs.append("(tag-fromVar %s)" % a)
+            L.append("%s %s = %s" % (QT[s], pat, congs(kname(name), eqs)))
+        L.append("")
+    L.append("from-toTy : (A : RTy Γ) → fromTy (toTy A) ≡ A")
+    L.append("from-toTm : (t : RTm Γ) → fromTm (toTm t) ≡ t")
+    for s in (0, 1):
+        for k, (name, fs) in enumerate(by[s]):
+            args = ["a%d" % j for j in range(len(fs))]
+            pat = "(%s)" % " ".join([name] + args) if args else name
+            eqs = []
+            for f, a in zip(fs, args):
+                if f[0] in ("rec", "cls"): eqs.append("(%s %s)" % (FT[f[1]], a))
+                elif f[0] == "nat": eqs.append("refl")
+                else: eqs.append("(toVar-from %s)" % a)
+            L.append("%s %s = %s" % (FT[s], pat, congs(name, eqs)))
+        L.append("")
+    # ★ the HEAD VIEW: the head's position, the quoted payload, and the way back
+    L.append("------------------------------------------------------------------------")
+    L.append("-- 2b. ★ THE HEAD VIEW (F6 nested patterns): `quoteTm t` IS `conₗ (hdTm t)")
+    L.append("--     (pfTm t)`, the head's position typed (`nhTm`), and `is⟨H⟩` reads a head")
+    L.append("--     equation back as the Spec constructor.")
+    L.append("------------------------------------------------------------------------")
+    L.append("")
+    HD = ["hdTy", "hdTm"]; PF = ["pfTy", "pfTm"]; SH = ["shTy", "shTm"]; NH = ["nhTy", "nhTm"]; QH = ["quote-hdTy", "quote-hdTm"]
+    RT = ["RTy", "RTm"]; SHS = ["TyShs", "TmShs"]; QN = ["quoteTy", "quoteTm"]
+    def qfld(f, a):
+        if f[0] in ("rec", "cls"): return "(%s %s)" % (QN[f[1]], a)
+        if f[0] == "nat": return "(quoteℕ %s)" % a
+        return "(quoteVar %s)" % a
+    for s_ in (0, 1):
+        L.append("%s : RTy Γ → ℕ" % HD[s_] if s_ == 0 else "%s : RTm Γ → ℕ" % HD[s_])
+        L.append("%s : %s Γ → RTm Θ" % (PF[s_], RT[s_]))
+        L.append("%s : %s Γ → Shape" % (SH[s_], RT[s_]))
+        L.append("%s : (t : %s Γ) → NthSh %s (%s t) (%s t)" % (NH[s_], RT[s_], SHS[s_], HD[s_], SH[s_]))
+        L.append("%s : (t : %s Γ) → %s t {Θ} ≡ conₗ (%s t) (%s t)" % (QH[s_], RT[s_], QN[s_], HD[s_], PF[s_]))
+        rowsH = []
+        for k, (name, fs) in enumerate(by[s_]):
+            args = ["a%d" % j for j in range(len(fs))]
+            pat = "(%s)" % " ".join([name] + args) if args else name
+            pf = "unit"
+            for f, a in reversed(list(zip(fs, args))): pf = "(pair %s %s)" % (qfld(f, a), pf)
+            rowsH.append((k, name, pat, pf))
+        for k, name, pat, pf in rowsH: L.append("%s %s = %d" % (HD[s_], pat, k))
+        for k, name, pat, pf in rowsH: L.append("%s %s = %s" % (PF[s_], pat, pf))
+        for k, name, pat, pf in rowsH: L.append("%s %s = %s" % (SH[s_], pat, "sh-" + kname(name)))
+        for k, name, pat, pf in rowsH: L.append("%s %s = %s" % (NH[s_], pat, nthsh(k)))
+        for k, name, pat, pf in rowsH: L.append("%s %s = refl" % (QH[s_], pat))
+        L.append("")
+    # is⟨H⟩: a head equation, read back
+    for s_ in (0, 1):
+        for k, (name, fs) in enumerate(by[s_]):
+            if any(f[0] == "var" for f in fs): continue
+            nm = "is" + kname(name)[1:]
+            binds = []
+            for j, f in enumerate(fs):
+                if f[0] == "nat": binds.append(("b%d" % j, "ℕ"))
+                elif f[0] == "cls": binds.append(("b%d" % j, "%s ε" % RT[f[1]]))
+                else: binds.append(("b%d" % j, "%s (Γ%s)" % (RT[f[1]], " ∙" * f[2])))
+            res = "%s ≡ %s" % ("t", "(%s)" % " ".join([name + ("" if any(f[0] in ("rec", "cls") for f in fs) else " {Γ}")] + [b for b, _ in binds]))
+            ty = res
+            for b, bt in reversed(binds): ty = "Σ (%s) (λ %s → %s)" % (bt, b, ty)
+            if not binds: ty = res
+            L.append("%s : (t : %s Γ) → %s t ≡ %d → %s" % (nm, RT[s_], HD[s_], k, ty))
+            for k2, (name2, fs2) in enumerate(by[s_]):
+                args = ["a%d" % j for j in range(len(fs2))]
+                pat = "(%s)" % " ".join([name2] + args) if args else name2
+                if k2 == k:
+                    val = "refl"
+                    for a in reversed(args): val = "(%s , %s)" % (a, val)
+                    L.append("%s %s refl = %s" % (nm, pat, val))
+                else:
+                    L.append("%s %s ()" % (nm, pat))
+            L.append("")
+    L.append("""------------------------------------------------------------------------
+-- 3. ★ THE THEOREMS.
+------------------------------------------------------------------------
+
+-- a closed normal Knot type / term IS a quote
+unqTy : {n : RTm ε} → ◇ ⊢ n ∷ K 0 (dep Γ) → IsNormal n → Σ (RTy Γ) (λ A → n ≡ quoteTy A)
+unqTy {Γ = Γ} dn nrm with syn-unquote KOK nthᵍ-z (⊢-cast (cong (K 0) (dep-num Γ)) dn) nrm
+... | x , eq = fromTy x , trans eq (sym (quote-fromTy x))
+
+unqTm : {n : RTm ε} → ◇ ⊢ n ∷ K 1 (dep Γ) → IsNormal n → Σ (RTm Γ) (λ u → n ≡ quoteTm u)
+unqTm {Γ = Γ} dn nrm with syn-unquote KOK (nthᵍ-s nthᵍ-z) (⊢-cast (cong (K 1) (dep-num Γ)) dn) nrm
+... | x , eq = fromTm x , trans eq (sym (quote-fromTm x))
+
+-- quotation is injective
+quoteTy-inj : (A B : RTy Γ) → quoteTy A {Θ} ≡ quoteTy B → A ≡ B
+quoteTy-inj A B e =
+  trans (sym (from-toTy A))
+    (trans (cong fromTy (⌜⌝ˢ-inj (toTy A) (toTy B) (trans (quote-toTy A) (trans e (sym (quote-toTy B))))))
+           (from-toTy B))
+
+-- quotes are normal
+quoteTy-normal : (A : RTy Γ) → IsNormal (quoteTy A {Θ})
+quoteTy-normal {Θ = Θ} A = subst IsNormal (quote-toTy A) (⌜⌝ˢ-normal (toTy A))
+
+quoteTm-normal : (t : RTm Γ) → IsNormal (quoteTm t {Θ})
+quoteTm-normal {Θ = Θ} t = subst IsNormal (quote-toTm t) (⌜⌝ˢ-normal (toTm t))
+
+quoteTm-inj : (u v : RTm Γ) → quoteTm u {Θ} ≡ quoteTm v → u ≡ v
+quoteTm-inj u v e =
+  trans (sym (from-toTm u))
+    (trans (cong fromTm (⌜⌝ˢ-inj (toTm u) (toTm v) (trans (quote-toTm u) (trans e (sym (quote-toTm v))))))
+           (from-toTm v))
+""")
+    return "\n".join(L)
+
+
+def main():
+    rows = parse()
+    outs = {"Sig.agda": gen_sig(rows), "Terms.agda": gen_terms(rows), "Ctors.agda": gen_ctors(rows),
+            "RenAgree.agda": gen_renagree(rows), "SubAgree.agda": gen_subagree(rows), "QView.agda": gen_qview(rows),
+            "ConvHead.agda": gen_convhead(rows), "Unquote.agda": gen_unquote(rows)}
+    check = "--check" in sys.argv
+    os.makedirs(OUTDIR, exist_ok=True)
+    stale = []
+    outs = {fn: COPYRIGHT + txt for fn, txt in outs.items()}
+    # the object-term notation (v₃, e ,ₚ …) — pattern synonyms, see tools/notation.py
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import notation
+    outs = {fn: notation.notate(txt) for fn, txt in outs.items()}
+    # PLAN-REF: parameterised by the ambient signature (tools/planref.py)
+    import planref
+    outs = {fn: t for fn, t in zip(outs, planref.convert_all({os.path.join(OUTDIR, fn): t for fn, t in outs.items()}).values())}
+    for fn, txt in outs.items():
+        p = os.path.join(OUTDIR, fn)
+        if check:
+            if not os.path.exists(p) or open(p, encoding="utf-8").read() != txt: stale.append(fn)
+        else:
+            open(p, "w", encoding="utf-8").write(txt)
+    # ★ the deletion pass: a generated file this run did not emit is stale
+    for fn in sorted(os.listdir(OUTDIR)):
+        p = os.path.join(OUTDIR, fn)
+        if fn.endswith(".agda") and fn not in outs and "GENERATED by tools/gen-knot.py" in open(p, encoding="utf-8").read():
+            if check: stale.append(fn + " (no longer emitted)")
+            else: os.remove(p); print("gen-knot: removed stale", fn)
+    if check and stale:
+        print("gen-knot: STALE:", " ".join(stale)); sys.exit(1)
+    print("gen-knot: %d rows (%d Ty, %d Tm)%s" % (len(rows), sum(r[0] == "RTy" for r in rows),
+                                                  sum(r[0] == "RTm" for r in rows), " — up to date" if check else ""))
+
+if __name__ == "__main__":
+    main()

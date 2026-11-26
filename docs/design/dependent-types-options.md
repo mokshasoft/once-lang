@@ -520,7 +520,7 @@ Given Once's goals (systems programming, categorical semantics, linear types), I
 
 **STATUS (2026-07-13, OCP-0009 POC):** the OTT branch of this fork has FIRED
 and been machine-checked — quotients did become important (`NbEPOTTQ`), and
-the `poc/OCP0009` tower built OTT through internalization (`NbEPOTTU`: `eq`
+the `POC/OCP0009` tower built OTT through internalization (`NbEPOTTU`: `eq`
 as a universe code with computation) and the heterogeneous `coe`/`coh` layer
 (`NbEPOTTH`), all `--safe`. The deciding synergy is recorded in the plan
 (§6): OTT's proof-IRRELEVANT equality is exactly what QTT can grade `𝟘` and
@@ -534,7 +534,7 @@ OTT-vs-cubical): directed morphisms for resources can coexist with OTT
 equality on the pure fragment (Option 4b's sketch). Maturity note: directed
 TT still has no decidable-kernel implementation anywhere — it remains
 research-grade, evaluate at the linear-core decision, not before. A
-DIRECTED RUNG 0 exists as of 2026-07-13 (`poc/OCP0009/NbEPDir.agda`,
+DIRECTED RUNG 0 exists as of 2026-07-13 (`POC/OCP0009/NbEPDir.agda`,
 `--safe`): Once's own rewrite system as a proven Hom-category with genuine
 (proven) irreversibility — the reasoning shape, demonstrated on the
 reflected IR, ahead of any object-language directed types.

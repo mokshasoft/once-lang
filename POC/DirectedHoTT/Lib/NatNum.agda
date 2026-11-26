@@ -1,0 +1,87 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+------------------------------------------------------------------------
+-- OCP-0009 · LIB — NUMERALS, AND THE ONE FACT THAT MAKES THEM USEFUL:
+-- `plusTm` ON TWO NUMERALS REDUCES TO A NUMERAL.
+--
+--     num a         = nsucᵃ nzero
+--     plus-num a b  : plusTm (num a) (num b) ⟶* num (a + b)
+--
+-- ★ WHY THIS IS NOT FOLKLORE.  `plusTm m n = natrec n (nsuc (var vz)) m`
+--   recurses on `m`, so `plusTm c x` is STUCK on `c` and TRANSPARENT in
+--   `x` (see `Lib/Arith`'s header).  On two NUMERALS neither stays
+--   stuck, but getting there costs `a` `natrec-suc` steps — this lemma
+--   is that induction, done once.
+--
+-- ⚠ `num` USED TO LIVE IN `Examples/Knot/Sorts`, which is above `Lib`.
+--   The lemma belongs next to `plusTm`, so the definition moved down
+--   and `Sorts` re-exports it; there is still exactly ONE `num`.
+------------------------------------------------------------------------
+
+{-# OPTIONS --safe #-}
+open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; _<ˢ?_ )
+open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+open import DirectedHoTT.Spec.Base using ( Ctx; ⌊_⌋ )
+module DirectedHoTT.Lib.NatNum (𝒮 : Defs) (n : ℕ) where
+open import DirectedHoTT.Prelude using ( _≡_; refl; cong; trans )
+open import Agda.Builtin.Nat using ( zero; suc; _+_ ) renaming ( Nat to ℕ )
+open import DirectedHoTT.Spec.Syntax
+  using ( Cx; RTm; Ren; Sub; renTm; subTm; nzero; nsuc; natrec; var; vz; Nat )
+open import DirectedHoTT.Spec.Typing 𝒮 n
+  using ( _⊢_∷_; ⊢nzero; ⊢nsuc; _⟶*_; done; step; natrec-zero; natrec-suc )
+open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( ⟶*-nsuc )
+open import DirectedHoTT.Lib.Nat 𝒮 n using ( plusTm )
+
+num : {Γ : Cx} → ℕ → RTm Γ
+num zero    = nzero
+num (suc n) = nsuc (num n)
+
+⊢num : {Δ : Ctx} (n : ℕ) → Δ ⊢ num n ∷ Nat
+⊢num zero    = ⊢nzero
+⊢num (suc n) = ⊢nsuc (⊢num n)
+
+-- ★ a numeral is FIXED by every renaming and every substitution.  Two
+--   inductions, two lines each, and they absorb an ARBITRARY action —
+--   which is what keeps the chains that use them from growing with
+--   position.
+num-ren : {Γ Δ : Cx} (ρ : Ren Γ Δ) (n : ℕ) → renTm ρ (num n) ≡ num n
+num-ren ρ zero    = refl
+num-ren ρ (suc n) = cong nsuc (num-ren ρ n)
+
+num-sub : {Γ Δ : Cx} (σ : Sub Γ Δ) (n : ℕ) → subTm σ (num n) ≡ num n
+num-sub σ zero    = refl
+num-sub σ (suc n) = cong nsuc (num-sub σ n)
+
+------------------------------------------------------------------------
+-- ★★★ ADDITION OF NUMERALS.
+--
+-- ⚠ THE TWO SUBSTITUTIONS IN `natrec-suc` VANISH DEFINITIONALLY HERE,
+--   and only because the step body is `nsuc (var vz)`: `extS (single n)`
+--   leaves `vz` alone, and `single (natrec …)` then puts the recursive
+--   call in its place.  For any other body they would not, and this
+--   proof would need `subTm` lemmas rather than `refl`.
+------------------------------------------------------------------------
+
+plus-num : {Γ : Cx} (a b : ℕ) → plusTm {Γ} (num a) (num b) ⟶* num (a + b)
+plus-num zero    b = step (natrec-zero (num b) (nsuc (var vz))) done
+plus-num (suc a) b =
+  step (natrec-suc (num b) (nsuc (var vz)) (num a))
+       (⟶*-nsuc (plus-num a b))
+
+-- ★ A NUMERAL SURVIVES ANY MIX OF RENAMINGS AND SUBSTITUTIONS, so a
+--   payload's `num` field comes back however many binders it has passed.
+--
+-- ⚠ THE INNER TWO ARE RENAMINGS, NOT SUBSTITUTIONS, and a `subTm`-only
+--   chain does not match: `Lib/IPay`'s method telescope weakens the
+--   payload past the two remaining binders with `renTm vs`, and only the
+--   outer two are `subTm`.  Agda names it —
+--   `renTm vs (renTm vs (num n)) != subTm _ρ (num n)`.
+--   `Knot/OccAgree`'s `cVar-vz` row is the customer.
+num-stable : {Γ Δ Θ Ξ Ω : Cx}
+             (σ : Sub Θ Ω) (τ : Sub Ξ Θ) (ρ₁ : Ren Δ Ξ) (ρ₂ : Ren Γ Δ) (n : ℕ) →
+             subTm σ (subTm τ (renTm ρ₁ (renTm ρ₂ (num n)))) ≡ num n
+num-stable σ τ ρ₁ ρ₂ n =
+  trans (cong (λ z → subTm σ (subTm τ (renTm ρ₁ z))) (num-ren ρ₂ n))
+  (trans (cong (λ z → subTm σ (subTm τ z)) (num-ren ρ₁ n))
+  (trans (cong (subTm σ) (num-sub τ n)) (num-sub σ n)))

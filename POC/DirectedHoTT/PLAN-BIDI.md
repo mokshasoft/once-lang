@@ -1,0 +1,1228 @@
+# PLAN · DECIDABLE TYPE CHECKING — an annotated core, a bidirectional surface
+
+> **Stage R2 (done) and R4 (S7, in progress) of `ROADMAP.md`** — read that
+> first. The evaluator S7 runs on is PLAN-EVAL (R3, D499).
+
+★ Decided 2026-09-25. The goal is OCP-0009's title claim, *decidable
+dependent types*, stated so that it holds of the KERNEL, not only of a
+front end.
+
+---
+
+## 0. The criterion
+
+Once aims at a **provable, self-hosting compiler**. That is the de Bruijn
+criterion: a small, independent checker must be able to re-verify **any
+kernel term** without trusting whatever produced it. Hence:
+
+> **A kernel term, in its context, determines its type up to conversion.**
+> Type checking the core is a total, syntax-directed `infer`; bidirectional
+> checking belongs to the ELABORATOR that produces core terms.
+
+That is the Coq and Lean kernel architecture. Agda's core does not meet
+it (unannotated λ, motive-free eliminators), and Agda has no independent
+kernel checker because of it.
+
+## 1. ★ DECISION 1 — motives, and binder annotations, live IN THE TERM (1b)
+
+Today `natrec`, `elim` and `ielim` keep their motive **only in the
+derivation** (the `⊢lam` pattern), and `lam`/`pair` carry no domain or
+family. No algorithm can type such a term without guessing the motive,
+which is higher-order unification.
+
+| option | verdict |
+|---|---|
+| 1a · annotated SURFACE syntax erasing to today's `RTm` | ⛔ fails §0: the kernel's own terms stay uncheckable; decidability would be a property of the front end only. Right for a SURFACE, wrong for a CORE. |
+| 1b · **types in terms** — `natrec M z s n`, `lam A t`, … | ✅ **CHOSEN** |
+| 1c · CODE motives — `natrec d z s n`, result `El (d[n])` | ⚠ forbids LARGE elimination: a motive landing in `U` needs a code for `U`, which does not exist. The restriction is an accident of the current single universe, not a principle. **With a universe hierarchy 1c COINCIDES with 1b** (every type is `El` of a code at some level) — so it is 1b at a fixed level, not an alternative. |
+
+⛔ **Rejected reasons, recorded so they are not reused:** "1a leaves the
+kernel untouched" (edit cost is recoverable; a formulation that fails the
+criterion is not — `principledness-over-edit-cost`), and "count which
+motives the examples USE" (that measures what we wrote, not what we should
+support).
+
+★ **The full consequence.** A bidirectional checker over a motive-annotated
+core still cannot INFER a β-redex `app (lam t) u` — the domain is not in
+the term. §0 requires every core term to check, redexes included, so the
+end state is a FULLY annotated core:
+
+| former | annotation it gains |
+|---|---|
+| `lam` | domain `A` |
+| `pair` | family `B` |
+| `natrec` | motive `M : RTy (Γ ∙)` |
+| `elim` | motive `M : RTy (Γ ∙)` |
+| `ielim` | two-slot motive `M` |
+| `tr`, `jsub`, `ap`, `absurd`, `hrefl`, `idrefl` | already carry codes — **check each for what the RULE still takes from the derivation** (e.g. `⊢tr`'s `A`, `t`, `u`; `⊢jsub`'s `A`) |
+
+⚠ **The expected structural cost** — the thing the spike measures. Today
+`_⟶_` never reduces inside a TYPE (`⌜IMu⌝`'s `RTy ε` is closed and inert).
+A motive in a term makes `_⟶_` and `_⟶ᵀ_` **mutual**: the principled
+conversion compares annotations up to conversion (Coq does), so a term
+needs a `ξ` rule into its annotation. Confluence, subject reduction and
+the logical relation all grow a type-in-term case.
+
+## 2. ★ DECISION 2 — a global SIGNATURE of definitions (2b)
+
+Library lemmas (`⊢symN`, `KnotWf`, …) are proved once and reused.
+
+| option | verdict |
+|---|---|
+| 2a · trusted-derivation leaves in a surface syntax | ⛔ a POC device with no counterpart in a real Once; teaches nothing transferable |
+| 2b · **constants with declared types, δ-unfolding** | ✅ **CHOSEN** |
+| 2c · re-check everything (a library is macro expansion) | principled only as "smallest kernel"; nested definitions grow terms exponentially |
+
+★ **Caching IS 2b in disguise.** A cache keyed on the TERM needs term
+equality to look anything up — as costly as encoding the term — and Agda
+does not memoise, so the cache is explicit threaded data. A NAME is the
+cheap key; the declared type is the cached result.
+
+★★ **What makes 2b principled rather than convenient: it is CONSERVATIVE
+over 2c.** δ-expanding every constant translates a 2b derivation into a 2c
+one, so 2b proves exactly what 2c proves while checking each definition
+once. That is a theorem to state and prove (δ-elimination), not an
+assumption. Opacity (`abstract`-style constants that do not δ-unfold) is
+the follow-on question.
+
+### 2-bis. ★ DECISION 2 REFINED (2026-10-02): definitions extend the THEORY — a global signature Σ
+
+Three candidates were weighed by the mathematics. The compiler's core (branch
+`plan-0.91-program-facts`, `formal/Once/Spec/Core`) was read as evidence, not
+as the answer: neither line is the truth.
+
+- **What a definition is.** Extending a theory by `c := e : A` is an
+  EXTENSION BY DEFINITIONS. It is conservative and eliminable: a model of
+  `T + (c := e)` is a model of `T` with `c` forced to `⟦e⟧`, so every model
+  extends uniquely. Locally, in a CwF, the context `Γ, x := e` is isomorphic
+  to `Γ` via the substitution `x ↦ e`, and δ is that isomorphism acting on
+  syntax.
+- **(i) Constants only in the annotated layer, erased by inlining.** ⛔ Not a
+  theory of definitions: they never exist in the theory, so the checker
+  reasons about expanded terms. It is 2c with names on top; "check once" is
+  lost exactly in conversion.
+- **(iii) Definitions as context entries `Γ, x : A := e`.** A different, more
+  general feature: LOCAL definitions (`let`, ζ). Reduction becomes
+  context-dependent (`Γ ⊢ x ⟶ e`), so confluence, SR, the logical relation
+  and SN must carry contexts through reduction. The kernel's reduction is
+  context-free today. Not needed for S5; it can be added later on top of
+  (ii).
+- **(ii) A global signature Σ of CLOSED definitions.** ✅ CHOSEN. This is
+  extension by definitions exactly, not an approximation of (iii).
+  - Each entry `d : A = e` is typed in its PREFIX (acyclic).
+  - `ref d` is typed from the declared type alone; `ref d ⟶ body d` (δ).
+  - The bodies are closed, so δ is CONTEXT-FREE: Σ is a fixed parameter of
+    the metatheory, and the existing proofs extend by one more reduction
+    rule rather than a re-architecture.
+  - Conservativity (δ-elimination) is substitution of closed terms, by
+    induction on the telescope.
+
+**Where dHoTT and the compiler differ, and which side should move:**
+
+- The compiler's `ref d τ` carries a `GSub` instantiating prenex type
+  variables, because its non-dependent core has no type abstraction in terms.
+  In a dependent kernel polymorphism is `Π` over `U`, so a CLOSED `ref d`
+  applied to codes is the principled form. When the compiler's core gains
+  dependent formers, its `∀`-schemas become `Π`-types: the compiler moves.
+- The compiler gives `ref` meaning through an environment, with no δ. That is
+  right for a non-dependent core, where types never compute. A dependent
+  kernel needs δ in conversion. Not a disagreement.
+- Prefix-typed, acyclic telescopes: both, for the same reason
+  (well-foundedness of δ).
+
+**How the metatheory is obtained: ROUTE B (user, 2026-10-02).** This is a
+second axis, independent of (ii)/(iii):
+
+| | definitions PRIMITIVE (the metatheory re-proved with them) | definitions ELIMINATED (justified by unfolding) |
+|---|---|---|
+| (ii) global, closed | route A | ✅ **route B** — unfolding needs only weakening |
+| (iii) in the context | heaviest | via substitution |
+
+- Route B's main theorem IS the meaning of (ii). Extension by definitions
+  means "eliminable": δ-expansion maps every derivation to a
+  signature-free one. The kernel's metatheory (SN, LR, confluence,
+  canonicity) is reused, not reopened.
+- **B2: `ref` lives only in the ANNOTATED layer.** The kernel `RTm` is
+  unchanged. Erasure unfolds `ref d` to its closed body, and conversion in
+  `⊢ᴬ` is already on erasures (decision (c)), so δ is in conversion for
+  free.
+  - This is not (i): `ref d` is typed by its DECLARATION alone and each
+    body is checked once, in its prefix. Only conversion sees bodies.
+  - The relation is the same as lazy-δ conversion, by the conservativity
+    theorem. Lazy δ inside the checker is an S7-efficiency increment,
+    not a correctness one.
+- ⚠ Route A is what OPAQUE definitions (no δ) would need, since there
+  unfolding changes conversion. That would be an increment on top of B.
+- User: *"if we find that the Knot can be heavily simplified by adding
+  more increments, then we do that."*
+
+### 2-ter. ★ DECISION 2 REVISED (2026-10-02): `ref` IN THE KERNEL, carrying its body (B1′)
+
+S7 found what B2 (`ref` only in `ATm`) cannot do. The Knot's terms are BUILT
+by Lib functions as kernel `RTm`, and they must NAME their pieces: ~20
+Knot codes (`⌜Ty⌝`, `⌜Tm⌝`, `wk`, `SK`, `CR`/`CP`, every family's `⌜X⌝`)
+are Agda `opaque` today, exactly to keep big codes from being compared by
+normalisation. Under B2 nothing in `RTm` can refer to an entry. User: "if
+this is principled and all the opaque blocks disappear automatically, why
+not?"
+
+- **The former:** `ref : ℕ → RTm ε → RTm Γ`, a name with its CLOSED
+  body.
+  - **δ:** `ref d b ⟶ εwkTm b`. Context-free and SIGNATURE-FREE: `Spec`
+    gets no parameter.
+  - **Typing:** `⊢ref : ◇ ⊢ b ∷ A → Γ ⊢ ref d b ∷ εwkTy A`. In Agda the
+    premise is a shared, named proof.
+- **The metatheory is local:**
+  - renaming and substitution stop at `ref` (the body is closed);
+  - δ has no congruence and overlaps nothing (confluence);
+  - SR is the premise, weakened;
+  - the LR case is the fundamental lemma on the premise (a strictly
+    smaller derivation) at `◇`, then closure under one expansion step.
+  - No induction on names.
+- **The S5 layer stays as the checker's CACHE.** `⊢ᴬref` is typed from
+  the declared type, bodies are checked once, and `SigOK` supplies the
+  body's derivation. Erasure maps `ref d` to `ref d (body d)` instead of
+  unfolding.
+- **Conversion needs LAZY δ.** References are compared as atoms first
+  and unfolded only on a mismatch, or when a redex needs the body. A full
+  normal form would re-inline `KD`.
+- **The quoted kernel ENCODES definitions (option 3, ✅ 2026-10-02).** The
+  Knot quotes `ref d b` as `kref ⌜d⌝ ⌜b⌝`, the 39th term constructor.
+  - Its body is a new Lib field kind, `cls s`: a CLOSED subterm at
+    depth 0, which traversals copy instead of entering.
+  - δ and ⊢ref are HAND-WRITTEN rows (`Knot/Ref`, `Knot/RefJudge`); the
+    generated tables cite them (`gen-judge.py`'s `HANDROWS`).
+  - Their constructors at values are `Knot/RefCon` (`con⟶δ`, `con⊢ref`,
+    `conv⊢ref`).
+  - The weakening of a closed body to depth `j` is `εwkK s j t =
+    natrec t (wk s v₁ v₀) j`. It meets the kernel's `εwkTm`/`εwkTy` by
+    `OpAgree.εwk-agree`/`εwk-agree-ty`, by induction on the context.
+  - So faithfulness covers δ (`RedAgree`) and ⊢ref (`TypingAgree`).
+- **What it buys:** the Knot's `opaque` blocks become references, and its
+  generic machinery can become hand-written core definitions. User: the
+  end state is a Knot a human would write; "generators are only ok in the
+  end if it generates code that humans would have written".
+
+## 3. Stages
+
+| # | stage | state |
+|---|---|---|
+| S0 | `Algorithm/DecEq` (`Dec` equality, all sorts); `Algorithm/DecideConversionTyped` (term conversion, no parameters); `Algorithm/Check` slice 1 (certifying bidirectional checker, Π/Σ/U/El/Nat/Unit/Hom/Id) | ✅ `e4135b26` |
+| S1 | SPIKE `natrecᴹ` inside `RTm` (branch `ocp-0009-spike-natrecM`) | ✅ done — superseded by §3c/§3d; it showed (a) needs a mutual SN theorem to be decided |
+| S2 | The annotated layer (§3d): `Spec/Annotated` (`ATm`/`ATy`, ren/sub, erasure + commutation), `⊢ᴬ`, erasure-soundness | ✅ `70a8c1b2e`. Ported to the levitated kernel in PLAN-LEVITATION Stage F: `Spec/AnnotatedDesc`, and `Spec/TypingA` via `tools/genA.py` |
+| S3 | The checker for `⊢ᴬ` (`Algorithm/CheckA`): certifying, STRUCTURAL (every former infers — no fuel); the term's own annotations checked with `⊢ᴬ`, all type reasoning on ERASURES (`validity`, `normTy`, `decConvᵀ`), annotated views of inferred types LIFTED from erased normal forms. Then COMPLETENESS (uniqueness of types up to conversion) | ✅ **2026-10-02: `⊢ᴬ` is DECIDABLE** (§3a). `inferᴬ`/`checkᴬ`/`checkTyᴬ` return `Dec`, certifying both the YES and the NO, for every former. |
+| S4 | Decide TYPE conversion `≅ᵀ` completely — ROUTE C (§3b): ① validity + `srᵀ` (`Metatheory/Validity`) ✅; ② inversion — the existing `gen-*` sufficed ✅; ③ `normTy`/`decConvᵀ` (`Metatheory/NormTy`) ✅ — **structural, NO measure needed**: `homNF` recurses on the NORMAL ambient (`G` ⊂ `Π F G`), the created `app f↑ vz` go through the typed `wnorm`, and a `NoU` witness breaks the harmless `elNF ↔ homNF` cycle | ✅ |
+| S5 | The signature: constants, δ, and the conservativity theorem — design (ii), §2-bis, route B | ✅ **2026-10-02** (§3e): `ref d` in the annotated layer, `⊢ᴬref`, δ by erasure; δ-elimination + conservativity (`Metatheory/Signature`); `CheckA` decides `ref` |
+| S6 | The bidirectional SURFACE → annotated core elaborator | ✅ **2026-10-02** (§3f): `Algorithm/Surface` (generated: the annotated syntax + holes) and `Algorithm/Elab` (UNTRUSTED; re-checked by `CheckA`) |
+| S7 | The Knot WRITTEN in the annotated core with signature references; its wf derivations come from `inferᴬ`, not from a generator. User, 2026-10-02: "if we have to write code to generate the Knot something is wrong". Measure against `HANDOFF-2026-09-24` §4's split | 🟡 **in progress** (§3g): machinery ✅, slice 1 (the closed core) ✅, S7a the certified evaluator ✅ (Core 56 → 7.4 s), B1′ `ref` in the kernel + the Knot encodes it ✅; S7b (c)+(c1) levitate the Lib's `Sig`: steps 2, 3, 5 ✅ (Fin over a Nat term, `Examples/SigCore`, FinFam deleted), lazy conversion `ConvLazy` ✅; **running core programs is blocked on PLAN-EVAL E0** (the environment evaluator), then step 4 (Pw) |
+
+## 3g. ★ S7 — THE KNOT IN THE CORE (in progress, 2026-10-02)
+
+**Machinery (done):**
+- `Algorithm/SigBuild` (n surface entries) gives `S` and `wfSig : R (WfSig S)`
+  in two passes.
+  - ELABORATE (untrusted) entry n over `sigAt n`, built by structural
+    recursion.
+  - CHECK (trusted) the result with `CheckA` over `prefix S n`, plus an
+    erasure comparison (`_≟Tm_`).
+  - No lemma relates the two passes. On concrete entries
+    `wf = fromJust wfSig _`: nobody writes a derivation.
+- `Algorithm/Surface` adds:
+  - `holesTy`/`holesTm`: a kernel term with every annotation a hole, for
+    terms the Lib computes;
+  - `renTmˢ`/`subTmˢ`, generated.
+- `Algorithm/Result`: the elaborator's failures carry a path and a reason.
+  Read one off a type error with `why … ≡ "ok"`.
+- Elaborator rules added for β-redexes `app (lam □ t) u`: the domain comes
+  from the argument, and in checking mode the body is checked at the
+  constant family. A `DIh`'s index code comes from its payload's `dpay`.
+
+**Probes (measured):**
+- `KD` (51 constructors, as computed by `SD KSig`) is re-derived by
+  elaboration + `CheckA` from holes in about 10 s. This is the whole of
+  `⊢KD`.
+- ⛔ Big terms with their sub-definitions INLINED do not scale. `FIBM`,
+  and even `MethTy (SI 2) KD FM`, run out of memory (5.5 GB cap, 215 s):
+  `KD` is re-elaborated at every occurrence, and Agda's evaluation does
+  not share the work.
+- ⇒ **Every Knot definition is its own ENTRY, and a use is `ref d`.** This
+  is "abstract the substituted terms" and "a variable is the cheapest
+  position" again. Where the Lib computes a body, it computes it with
+  VARIABLES for the earlier entries, and `subTmˢ` turns them into `ref`s.
+  `Knot/Core`'s `CtxDᵛ` is the template.
+- `⌜Ty⌝` is OPAQUE in today's Knot precisely so that two syntactic forms
+  never compare it by normalisation. **A `ref` is exactly that discipline,
+  built into the kernel:** a name, unfolded only on demand.
+
+**Slice 1 (done), `Examples/Knot/Core`**, written by hand: `KD`, `Ty`,
+`CtxD`, `Ctx`, `CT`, `JT`.
+- `wf = fromJust wfSig _` checks in **56 s, 1.3 GB**.
+- It replaces `⊢KD`, `⊢⌜Ty⌝`, `⊢CtxD`, `⊢CT`, `⊢JT` and every
+  `-sub`/`-ren` lemma of these entries (`subTmᴬ σ (ref d) = ref d` by
+  definition).
+
+**S7a — next: the certified FAST evaluator.**
+- `agda-profile.sh` on `Knot/Core` counts 25.2 M unfoldings, almost all
+  of it the checker evaluating PROOFS:
+  - `renTm` 3.9 M, `extS` 3.7 M, `cong` 3.4 M, `extS-cong` 3.0 M,
+    `subTm-cong` 2.5 M;
+  - the logical relation (`relTy`, `⊩ˢ-ext`, `_,ₛ_` 1.5 M);
+  - `church-rosserᵀ`.
+- **Causes:**
+  - `nfOf`/`decTo` with-match on `validity (erase d)`, forcing the
+    derivation and every cast's equality proof;
+  - `normTy`/`decConvᵀ` normalise THROUGH the SN proof.
+- **The fix** is a certified fast path, PLAN-NF Phase 1:
+  - a fuel-bounded evaluator over ALL of `_⟶_`/`_⟶ᵀ_` that returns the
+    normal form WITH its chain (`Lib/Eval`'s design, which today covers
+    only β/fst/snd);
+  - `decTo`/`viewΠ`/`viewΣ` try it first. A "yes" is certified by the
+    chains, with no derivation and no validity.
+  - The complete procedure runs only when the fast path fails, so
+    completeness is unchanged.
+- That is the increment the Knot needs before its ~1000 schema entries
+  (user, 2026-10-02: add increments when they simplify the Knot).
+
+**S7a — ✅ DONE (2026-10-02): `Algorithm/Eval`, the certified evaluator.**
+- **`head`/`headᵀ`**: the computation rules as a FUNCTION. A head redex
+  gives `just` its `_⟶_` step, anything else `nothing`. Guarded rules
+  pass the Boolean together with its equation (`hreflG`, `trHomG`,
+  `trPwG`, `apG`).
+- **`Nf`/`Nfᵀ`**: every congruence position is normal and the head gives
+  `nothing`.
+- **`nf-irr`/`nf-irrᵀ`: a normal form does not step.** It is proved by
+  case on the STEP, so it covers all 98 + 39 rules.
+  - ⇒ The evaluator stays IN SYNC with the kernel by compilation.
+    Control: deleting the `hrefl-pw` clause is a `CoverageIssue`.
+- **`eval`/`evalᵀ`**: innermost; the fields first (`fld`), then the head
+  (`fin`/`contract`, one fuel unit per contraction). The result is a
+  normal form with its chain and `Nf`, or `out` with the chain when the
+  fuel runs out.
+- **`decConvFast`**: conversion DECIDED by normal forms.
+  - yes = the two chains;
+  - no = `nf-uniqueᵀ` (Church–Rosser + `nf-stuckᵀ`).
+- **`CheckA`** tries it first. `decTo` uses `decConvFast`. `viewΠ`/`viewΣ`
+  use `evalᵀ`, and their "no" is `nf-Π`/`nf-Σ` at `nf-irrᵀ`.
+  - The domain's well-formedness (`domΠ`) is a function call, so it is
+    computed only on demand.
+  - The derivation-driven procedure (`…slow`) runs only when the fuel
+    runs out (`evalFuel = 100000`).
+- **Measured: `Knot/Core` 56 s / 1.3 GB → 7.4 s / 0.58 GB.** `Eval`
+  checks in 7 s and `CheckA` in 12.5 s.
+
+**Lazy δ — DEFERRED until measured (2026-10-02).** Full normal forms
+unfold every `ref`, but nothing measures slow yet (`Knot/Core` 7.4 s),
+so lazy δ waits for a profile (profile, then fix). When it lands, the
+real constraint is the VIEWS, not `decConvFast`:
+- `viewΠ`/`viewΣ` lift the erased Π back to annotated syntax (`liftTy`).
+  `era-liftTy` is proved only for terms with no reducible subterm,
+  because lifting `ref d b` is sound only if `b` is entry `d`'s body.
+- A lazy view therefore needs the invariant "every `ref` in an erased
+  type is a signature reference" (`b ≡ body S d`). Reduction preserves
+  it: δ unfolds a body whose own refs are signature refs. It would
+  replace the normality premise.
+- `decConvFast` can go lazy alone: compare with refs as atoms first,
+  fall back to full normal forms, which still decide every "no".
+
+**The Pw POC (in progress)** — the recipe on the smallest family. Pw is
+only ever CONSTRUCTED (`pwC`), never eliminated, so its hand-written
+form is an indexed family, Ford-style, with two constructors:
+
+    pwPi  : (A : Tm j) (B : Tm (suc j))                    → Pw j (kcPi A B) B
+    pwHom : (c a b : Tm j) (c' : Tm (suc j)) → Pw j c c'
+          → Pw j (kcHom c a b) (kcHom c' (wk a · 0) (wk b · 0))
+
+1. **Entries** in `Knot/Core`: `#Tm`, `#wk` (the Lib's traversal with
+   `KD` abstracted, the `CtxDᵛ` pattern), `#PwI` (the index
+   `(j , t , u)`), `#PwD` (the description), `#Pw`, `#pwPi`, `#pwHom`.
+   The checker certifies all of them; nothing is written about them.
+2. **`⊢inst`**: the kernel typing of `app ⋯ (app (ref d b) a₁) ⋯ aₙ` from
+   `WfSig` (`wf→ok`, `⊢ref`, `⊢app`). Its conversions are computed by
+   `eval` at OBJECT VARIABLES and instantiated by substitution, because
+   `eval` blocks on an Agda variable.
+3. **Knot/Pw by hand**, same interface: `⌜Pw⌝ d t u` is the instance,
+   `⌜Pw⌝-sub` is `refl` (a ref is closed), and `⊢⌜Pw⌝`, `El-⌜Pw⌝` and
+   `⊢pwC` come from `⊢inst`. `PwConGen` is deleted and gen-judge stops
+   emitting Pw.
+4. **Measure** against today: Pw 256 + PwConGen 86 + PwAgree 121
+   generated lines.
+
+**⛔ Step 1 BLOCKED at `#wk` (2026-10-02) — and the decision.**
+- `#wk` was written as an `ielim` over `ref #KD`: the motive written out
+  with `ref #KD`, the Lib's method tuple `TRAVM` and environment `WKρ`
+  lifted with holes (`↑`). `KD` occurs only in the `ielim`'s description
+  and the motive, because the kernel's `con`/`lam` carry no annotations.
+- **The elaborator cannot fill it.** First the `fcase` motive had no
+  expected type. That is fixed: `constMot` in `Algorithm/Elab` takes the
+  constant motive at the first branch's inferred type. Then "cannot fill
+  hole: the domain" on an unannotated `lam` in synthesis position.
+  ⇒ **Lifting with holes works for first-order DATA (`KD`, `CtxD`), never
+  for Lib CODE.** A bidirectional elaborator cannot infer an
+  unannotated λ, and the Lib's methods are full of them (β-redexes,
+  λs in function position). This is not a missing elaborator rule.
+- Rejected:
+  - annotating from the Lib's kernel derivations (`⊢TRAVM`): the
+    annotations inline `KD` (the OOM pattern), and Lib output stays in
+    the core, so it fails "code a human would write";
+  - patching the elaborator per idiom: a dead end in principle.
+- ★ **DECIDED (user, 2026-10-02): option 1, the Lib's generic machinery
+  as CORE definitions.** The traversal is written once, over ANY
+  description; `wk` is its instance at `ref #KD`. User: "Kernel and MT
+  proofs are still pretty simple compared to the Knot."
+- **It needs one KERNEL increment.** `Desc I` is a large type with no
+  eliminator: only the built-in folds `dpay`/`dih`/`ielim` consume a
+  description (PLAN-LEVITATION kept `Desc` primitive). Two candidates:
+  - (a) a dependent eliminator for `Desc` (motive over the description;
+    rules for `dι`/`dσ`/`dρ`) and its metatheory;
+  - (b) LEVITATE `Desc` itself: a description is data described by a
+    description. `ielim` then does generic programming, and `dpay`/`dih`
+    may become definitions — less kernel in the end, a bigger change.
+
+**Next, in order (S7b):**
+1. **Paper sketch (a) against (b):** the rules, the metatheory impact
+   (LR/Fundamental/SR/Confluence/Canonicity/Eval/CheckA/genA), what each
+   lets us DELETE, and the Knot's side (a new former means new rows,
+   unless (b) removes formers). Decide on principledness, not edit cost.
+2. **The kernel increment**, through the metatheory, the annotated layer,
+   the evaluator and the Knot (`gen-knot` rows plus faithfulness).
+3. **Spike: the generic traversal as core entries.** First over a small
+   description (`CtxD`), then `#wk` over `ref #KD`. Measure the checking
+   time; this is where lazy δ may become necessary.
+4. **Resume the Pw POC at step 1.** The Pw entries (`#Tm`, `#PwI`,
+   `#PwD`, `#Pw`, `#pwPi`, `#pwHom`) are sketched above. Then
+   `⊢inst`, the hand-written Knot/Pw, and the measurement.
+
+**S7b step 1 — the sketch (2026-10-03). ★ Finding: neither (a) nor (b)
+gives `#wk`. The traversal recurses on the SIGNATURE, not on `Desc`.**
+- **What the Lib actually does.** `Lib/Syn`'s traversal (`TRAVM`, and so
+  `wk`/`sub`/`sz`) is defined "ONCE, by recursion on shapes": Agda
+  recursion over `Sig`/`Shapes`/`Shape`/`Fld`. Those carry the BINDING
+  structure: `rec s k` (a subterm under `k` binders), `vʰ` (the
+  variable), `nat`, `cls s`. The description `SD sg` is only the
+  DECODING of a signature. The traversal never inspects `KD`.
+- **Why (a) cannot express `wk`.** A `Desc` eliminator sees `dσ S f` and
+  `dρ j C`. Renaming must:
+  - rename the variable field, a `dσ` whose code is `⌜IMu⌝ ⌜Nat⌝ FinD d`.
+    No eliminator can tell this `dσ` from any other: `U` has no
+    eliminator, so codes cannot be cased on;
+  - shift the depth under `k` binders. `dρ` carries the index
+    `pair (tag s) (k + d)` as an opaque term; the `k` is gone.
+  So (a) gives generic FMAP over recursive positions (and `All`, decidable
+  equality, …), but not renaming or substitution. This is Allais et al.'s
+  point: generic traversals live over a description OF SYNTAXES WITH
+  BINDING, which is `Sig`, not over plain indexed descriptions.
+- **Why (b) is out of scale.** A levitated `Desc` needs:
+  - a field ranging over `U` (`dσ`'s `S : U`), i.e. a code for `U` and a
+    universe hierarchy;
+  - infinitary recursion (`dσ`'s `f : Π (El S) (Desc I)` recurses under a
+    function), i.e. the deferred `dπ`;
+  - the self-description fixpoint (`DescD : Desc ⌜Unit⌝` mentions `Desc`).
+  Each is a kernel increment larger than (a), and none is needed by `#wk`.
+- ★ **(c) LEVITATE THE LIB'S `Sig`, not the kernel's `Desc`.** It is the
+  direct transcription of the Lib, and it matches the `CtxDᵛ` template:
+  - `#Fld`, `#Shape`, `#Sig`: core DATATYPES. They are first-order data,
+    exactly what lifting with holes (`↑`) handles.
+  - `#SD : Π #Sig. DescF (SI n)`: the decoder, by `ielim` with motive
+    `Desc`. LARGE elimination into `Desc` is in the kernel today and used
+    (`Lib/NatFib`, `Knot/Lookup`'s `GM`); `⊢ielim` takes any `⊢ty` motive.
+  - `#trav`: `ielim` on the syntax term; its method recurses on the shape
+    (`ielim` on `#Shape`, motive `Π (El (dpay … (#SDsh sh d))) (…)`). At a
+    constructor shape the motive's payload type reduces by `#SDsh`'s ι, so
+    the method sees a Σ. The IH tuple `DIh` computes on the same head.
+  - `#wk = #trav ⌜KSig⌝ WKkit`, and `#KD` becomes `app #SD ⌜KSig⌝` (a
+    definition, compared by evaluation, lazily once lazy δ lands).
+  - Every λ in it is WRITTEN in the core, with its annotations. Nothing is
+    lifted from Lib code, so the S6 obstruction does not arise.
+- **The one kernel increment (c) needs: tag arities from object
+  numbers.** `Fin`/`⌜Fin⌝` take a META `ℕ`. `SD` builds the constructor
+  tag `dσ (⌜Fin⌝ c) …` and the sort index `SortI = ⌜Σ⌝ (⌜Fin⌝ n) ⌜Nat⌝`
+  from the LENGTHS of the signature's lists. In the core those lengths are
+  object `Nat` terms, so `⌜Fin⌝ c` cannot be written. Three ways:
+  - (c1) ★ **`Fin`/`⌜Fin⌝` indexed by a `Nat` TERM.** `fzero`/`fsuc` at
+    `Fin (nsuc n)`, `fcase0` at `Fin nzero`, `fcase` unchanged otherwise.
+    Then the kernel's `Fin` and `Lib/FinFam`'s `FinD` are the same thing:
+    `FinFam` can be DELETED and the Knot's variable field becomes
+    `⌜Fin⌝ d`. One notion of finite set instead of two.
+  - (c2) tags from `FinFam` in the decoded description. No kernel change,
+    but `KD`'s form changes and two notions of finite set remain.
+  - (c3) right-nested binary tags (`⌜Fin⌝ 2` per constructor). No kernel
+    change, but constructor numbering changes everywhere; a workaround.
+  (c1) is the principled one (memory `grounded-not-standard`): a meta
+  arity is a hidden side condition on which descriptions the core can
+  WRITE. Its metatheory is local (the index is a term like `IMu`'s;
+  `Fin n` is stuck at a neutral `n`; canonicity at `nzero`/`nsuc`).
+- **What each lets us DELETE.**
+  - (a): `dpay` as a definition (`descElim` into `U`); `dih` as a
+    definition (into `DIh`, which stays primitive). But the ι rule and
+    `⊢con` would then cite a derived combinator; not in a first increment.
+  - (b): possibly `dpay`/`dih`/`DIh`, after the three increments above.
+  - (c1): `Lib/FinFam` and the Knot's `FinD`-based variable field; the
+    Lib's `Syn`/`SynTrav`/`SynRen`/`SynSub` in the end, once the core
+    versions carry the Knot; gen-knot's `Sig`/`Ctors`/`Terms` emitters.
+- **The Knot's side.**
+  - (a): a 40th term former, its typing, 3 ι rows, ξ rows, conversion
+    and faithfulness rows. Generated mechanically (gen-knot parses
+    `Spec/Syntax`), but more Knot for no `#wk`.
+  - (c1): no new former. `Fin`/`⌜Fin⌝`'s `nat` field becomes a `rec Tm`
+    field; the `fzero`/`fsuc`/`fcase0` typing rows change their index
+    form. Faithfulness: `OpAgree`/`TypingAgree` at those rows.
+- **(a) is deferred, not rejected.** A `Desc` eliminator is the right
+  tool for generic programs over ARBITRARY descriptions (`All`, decidable
+  equality, generic `map`). Nothing in the Knot needs one yet (memory
+  `s5-signature-route-b`: add increments when the Knot needs them).
+- **Recommendation:** (c) with (c1). Then step 2 is the `Fin`-index
+  increment end to end, and step 3's spike is `#Sig`/`#SD`/`#trav` over a SMALL
+  signature (one sort, `var`/`lam`/`app`), then `#wk` at `⌜KSig⌝`.
+- ✅ **DECIDED (user, 2026-10-04): (c) with (c1).** Levitate the Lib's `Sig`
+  (`#Sig`/`#SD`/`#trav` as core datatypes and definitions); the one kernel
+  increment is `Fin`/`⌜Fin⌝` indexed by a Nat TERM. This revises the
+  2026-10-02 framing "(a) or (b)"; (a) stays deferred.
+- ▶ **S7b RESUMED 2026-10-04** after PLAN-FAITHFUL F6 (DONE: `Knot/Exact`).
+  F6 is the oracle the migration runs against. Step 2 = the `Fin`-index
+  increment end to end (kernel, metatheory, Knot rows, F5/F6 at the Fin rows).
+
+**S7b step 2 — `Fin` indexed by a Nat TERM (design, 2026-10-04).**
+Today: `Fin : ℕ → RTy Γ` and `⌜Fin⌝ : ℕ → RTm Γ` take a META number, and the
+tag rules key on it (`⊢fzero : Fin (suc n)`). After:
+- **Syntax.** `Fin : RTm Γ → RTy Γ`, `⌜Fin⌝ : RTm Γ → RTm Γ`. The index is
+  a subterm, so `renTm`/`subTm`/`occ`/`sz` traverse it, as `IMu`'s index.
+- **Typing.** `ty-Fin : Γ ⊢ n ∷ Nat → Γ ⊢ty Fin n`; `⊢⌜Fin⌝` likewise into
+  `U`. `⊢fzero : Γ ⊢ n ∷ Nat → Γ ⊢ fzero ∷ Fin (nsuc n)`;
+  `⊢fsuc : Γ ⊢ t ∷ Fin n → Γ ⊢ fsuc t ∷ Fin (nsuc n)`; `⊢fcase` at
+  `Fin (nsuc n)` with `b` at `Fin n`; `⊢fcase0` at `Fin nzero`. The
+  premise `Γ ⊢ n ∷ Nat` is there because the conclusion contains `n` (every
+  former types each term it contains: levitation stage-2 lesson).
+- **Reduction.** `El-⌜Fin⌝ : El (⌜Fin⌝ n) ⟶ᵀ Fin n` and congruences `ξ-Fin`
+  and `ξ-⌜Fin⌝` on the index. `tr-J-Fin`/`Hom (Fin n)` keep their shape,
+  with `n` a term.
+- **Metatheory, the one real change.** `Fin n` is a type whose inhabitants
+  depend on WHERE `n` reduces. The LR interprets `Fin n` through `n`'s
+  normal form: at a numeral `num m` the tags below `m`; at a neutral `n`
+  only neutrals (`fzero` needs `nsuc`, so `Fin n` is stuck like `IMu` at a
+  neutral index). Canonicity: closed `Fin n` means `n ⟶* num m`, so the
+  closed inhabitants are tags `< m` (F6's `tag-dec` restated). Injectivity
+  gains `Fin n ≅ᵀ Fin n' → n ≅ n'`.
+- **Lib.** Every meta-arity tag code `⌜Fin⌝ c` becomes `⌜Fin⌝ (num c)`
+  (103 sites in Lib/, plus the generated Knot rows). `Lib/FinFam`'s
+  `FinD`/`FinI` become `Fin`/`⌜Fin⌝` themselves and are DELETED in a
+  follow-up: the Knot's variable field is `⌜Fin⌝ d`.
+  - ⚠ Watch [[literal-vs-suc-index-mismatch]]: a numeral appears as
+    `num (suc c)` in one place and `nsuc (num c)` in another. Pick ONE form
+    (the reduct) in the generated codes.
+- **Knot.** gen-knot parses `Spec/Syntax`, so `Fin`/`⌜Fin⌝`'s field
+  becomes `rec Tm`. The `fzero`/`fsuc`/`fcase`/`fcase0` typing rows change
+  their index form, and `JudgeConFin`/`JudgeDecodeHand`'s Fin rows follow.
+  F5 (`TypingAgree`) and F6 (`Exact`) must stay green: they are the oracle.
+- **Order.** (1) Spec + metatheory on a branch, cold sweep of `Trust/Kernel`;
+  (2) Lib numerals; (3) Knot regenerate + Fin rows + F5/F6; (4) cold sweep,
+  ff; (5) FinFam deletion as its own step.
+- **Status (2026-10-04).** (1)–(3) DONE on `ocp-0009-fin-term`; (4) the cold
+  sweep is the gate before ff.
+  - Lib: `num c` is stuck under `renTm`/`subTm` at a variable `c`, so the
+    arity casts live in ONE place each — `Lib/Syn` (`SI-ren`/`SI-sub`,
+    `SI-wks k` for `k` stacked weakenings, `⊢varSI`, `IMuSI-sub`,
+    `⊢wkSI`/`⊢wkDSI`/`⊢wkDescSI`, `motSI`) and `Lib/Sugar` (`Dσ-sub`, `Dσ` now
+    at any context). Two private `SD-ren` copies merged into `Lib/Syn`.
+  - Knot: SIMPLER. With the index a term, `fzero`/`fsuc` are ordinary Ford
+    rows of the table; the hand-written case-on-the-type rows (`PFz`/`PFs`),
+    `Knot/JudgeConFin` and the `jdfzero`/`jdfsuc` decoders are DELETED.
+    `rows` is `Dσ`. F5 (`TypingAgree`) and F6 (`Exact`) green.
+- **Step 5 (2026-10-05): `Lib/FinFam` DELETED.** Variables are the kernel's
+  `fzero`/`fsuc` at `Fin d` everywhere. What it simplified:
+  - `Lib/SynTrav.CONS` is one `fcase` at a constant motive (`CM`, `consM`,
+    `predT` gone); `SynTravRed`'s `cons-z`/`cons-s` are one step each.
+  - `Lib/SynUnq`: `fin-zero`/`fin-step`/`fin-unq` are Decode's `tag-dec`;
+    `fnum` is Sugar's `tag`.
+  - `Knot/Lookup`: the variable case is one `fcase` (no `pd`, no convoy
+    motive `XM`, no `xM` methods) — 232 lines out, 61 in; `LookupCon`'s
+    chains end in one `fcase-z`/`fcase-s`, and the `there` row's variable
+    is clean (no `fst (y , unit)`). Net −116 lines.
+  - The Nat-at-code helpers moved to `Lib/NatCode`.
+  - `Examples/WkFin` is `natrec` + `fcase` (weakening needs recursion on
+    the index; the kernel's `fcase` is only a case).
+- **Step 3 spike (2026-10-05): DONE — `Examples/SigCore`.** The Lib's `Sig`,
+  its decoder and generic RENAMING, written in the core and checked by
+  `SigBuild` (26 entries, no derivation written):
+  - **Representation: finite maps.** `Sig n = Fin n → Σ c. Fin c → Shape n`,
+    `Shape`/`Fld` Σ-coded by a `Fin` tag. Selection is application; a list
+    fold is `natrec` on its length. Only Π, Σ, `natrec`, `fcase`.
+  - **Two decoder forms, and the decision.** The Lib's form maps then
+    selects (`tabD`: a `fcase` cascade of descriptions) — `#SDℓ` has the
+    Lib's `SD` normal form EXACTLY (tested: λ-calculus whole; `⌜KSig⌝` per
+    constructor). But at a VARIABLE constructor it is stuck in the cascade,
+    so a generic program would have to re-walk it. The core's `#SD` SELECTS
+    THEN MAPS: its fibre at variable `k` is `tel n (sg s k) i`, which is what
+    generic programs need. ★ DECIDED (principled): `#SD` is the decoder;
+    `#SDℓ` stays only as the bridge evidence. Consequence: `#KD := #SD 2
+    ⌜KSig⌝` is NOT convertible to the Lib's `KD` (no commuting conversions)
+    — the Knot moves onto `#KD`, as the plan already intended.
+  - **Generic renaming** (`#ren`): `ielim` whose method follows the decoder in
+    LOCKSTEP — the decoder's pieces are named entries (`#telV`, `#dRec`,
+    `#dNat`, `#dCls`, `#telF`, `#telFs`, `#tel`) and the traversal's convoy
+    motives mention the same terms (`tfBody`/`tBody` generators).
+    Tested: on the λ-calculus (free variable moves, bound stays), and at
+    `⌜KSig⌝` AGAINST THE KERNEL: `ren (quoteTm t) ≡ quoteTm (renTm vs t)` for
+    a term with a binder, a crossing variable and a `ref` (nat + cls).
+    Every test has a negative control.
+  - **Elaborator**: its weak-head evaluator now has `fcase`, `dpay` and
+    `DIh` (untrusted, so free); without them every convoy binder needed its
+    reduced type by hand.
+  - **Limits found**: Agda refuses literal patterns > 20 (entries are now a
+    table); the WHOLE `KD` by normal form OOMs the type checker (cgroup cap,
+    4.7 min) — per-constructor tests instead.
+  - ✅ **Kit-generic traversal (2026-10-05):** `#trav` takes the Lib's kit
+    (`VF`/`WK`/`V0`/`NODE`); the renaming kit and the substitution kit (its
+    `WK` is renaming, `NODE` the identity) are entries. A signature now
+    carries its variable sort `vs` and, in each variable shape, a proof
+    `Id (Fin n) vs s` — the Lib's `VarsAt` hypothesis AS DATA (once per
+    signature, not per term): the traversal's variable case transports the
+    kit's node along it, and at a concrete signature (`idrefl`) the
+    transport computes away. Entries are written by LEVEL (`L ℓ`).
+    Tests (`SigCoreTest`, `SigTravTest`, `SigSubKnotTest`; each with a
+    negative control): substitution on the λ-calculus, under a binder too;
+    at the Knot AGAINST THE KERNEL: `ren`/`sub` of a quotation = quotation of
+    `renTm vs`/`subTm (single u)`.
+  - ⚠ **Test-evaluator limit:** `Algorithm/Eval` is applicative order with
+    eager δ, so a substitution UNDER A BINDER at the Knot (its `WK` is a
+    nested `#trav`) normalises the generic traversal inlined in itself and
+    OOMs the type checker. Not an encoding problem (the λ-calculus covers
+    it); a normal-order / lazy-δ evaluator would lift it.
+  - ↺ **Decoder form, REVISED (2026-10-05): back to the Lib's form.** The
+    migration recipe moves the Knot family by family, which needs the core
+    `#KD` CONVERTIBLE with the Lib's `KD` — only the map-then-select form
+    is. Generic programs walk its `tabD` cascades with ONE generic entry,
+    `#walk` (lockstep natrec + fcase over a table of descriptions, a
+    convoy over payload, hypotheses and a node builder `mk`); the method
+    walks sorts, then constructors. So the Lib form is generic AND
+    compatible; select-then-map's only advantage was cheaper evaluation.
+    All 34 entries check (`wf`), the decoder tests pass.
+  - ★ **Lazy conversion in the checker** (`Algorithm/ConvLazy`, hooked
+    first in `CheckA.decTo`): syntactic, then certified weak-head, then
+    field by field through ONE generic congruence (`cong≅`: any one-hole
+    context + its ξ-rule). It returns a proof or `nothing` (full normal
+    forms then decide), so it is sound by construction. Without it the
+    Lib-form payload types at `⌜KSig⌝` normalised to the whole `KD` cascade
+    and OOMed the checker; with it SigCore checks in 71 s / 4.6 GB.
+    Also `normLazy` (certified normal order: weak-head first).
+  - ✅ **RESOLVED 2026-10-05 → PLAN-EVAL (D499): an environment-based
+    evaluator, option (a) below.** E0 done the same day: the parked tests
+    pass under `Algorithm/NbE` (≈10 s, 0.6 GB), as does the whole `KD`
+    (5.8 s; it OOMed by `normLazy`); the decoder stays in the Lib form
+    (PLAN-EVAL §2a). Record of the question:
+  - ⛔ **(was OPEN) — evaluating core programs inside Agda.** With the Lib form,
+    the traversal's evaluation tests OOM the type checker EVEN AT FUEL 40
+    (normal order or applicative). Measured: the erased bodies are small
+    (`#rnM`: 190 nodes shallow, ~900 deep) and one elaboration is ~5 s, so
+    neither re-elaboration nor body size is the cause; it is Agda's
+    evaluation of an object-level interpreter — every β leaves a `subTm`
+    tower as an unshared closure that each later inspection recomputes.
+    Select-then-map stayed under the cliff (its tests passed, commit
+    `cb30cfb1a`); the Lib form's extra cascade steps push past it. The
+    tests are parked in `Negative/` (not built). This bears on S7's
+    "checker by evaluation" generally, not only on the spike. Candidate
+    fixes (decided: (a), user 2026-10-05; (c) is PLAN-EVAL's recorded fallback):
+    (a) an ENVIRONMENT-based evaluator (closures, NbE-style) — no `subTm`
+        towers, so work is shared by construction;
+    (b) lazy δ with refs as atoms in comparisons (helps conversion, not
+        running programs);
+    (c) evaluate erased programs OUTSIDE type checking (compiled Agda),
+        keeping `refl` tests only for small cases.
+
+- ★ **Signatures are TELESCOPES, checked in SEGMENTS (D500, 2026-10-05).**
+  `Algorithm/SigBuild.SigExtend base abase wbase …` checks new entries over
+  a signature built and checked in another module, reusing its proof
+  (`WfSig (S ▸ˢ e)` is `WfSig S × EntryWf S e` definitionally). SigCore
+  66 → 43 s; `Examples/SigExtendTest` extends it by two entries in 4.7 s.
+  This is how the Knot scales past one module's memory: one segment per
+  family.
+
+- ★ **Pw POC, REVISED (2026-10-05).** The 2026-10-02 sketch (a Ford-style
+  family, two constructors) predates F6, which ELIMINATES Pw (decoding),
+  and contradicts D496 (fibre by the subject, Ford only computed outputs).
+  The core Pw is the Lib's fibred family: a generic fibre method in the
+  core over the decoder's tables (mirroring `Lib/MethAt.methAt`'s
+  `psplit` + selection cascade, as `#tabD` mirrors `tabD`), Pw's two rows
+  (`kcPi`, `kcHom`; every other constructor the empty row), instantiated
+  at `⌜KSig⌝` in a `SigExtend` segment over SigCore. The interface keeps
+  the Lib's `KPw`, so the consumers (`Red`, `RedAgree`, `PwAgree`,
+  `PwDecode`, `Exact`) are untouched IF the core description is
+  CONVERTIBLE with `PwF.DF`. It is closed, so that is a normal-form
+  comparison — but its certified PROOF (`El-⌜Pw⌝`) needs a certified
+  conversion at the scale of a whole `KD`-sized method cascade, where the
+  substitution evaluator OOMs. ⇒ PLAN-EVAL E3 (NbE soundness) is on the
+  critical path of the Pw POC. Order: E3 → core fibre method → Pw rows →
+  `El-⌜Pw⌝` by NbE-certified conversion → measure.
+  - Two small facts from the design: `U` has no code for `Desc` (by design:
+    a `⌜Desc⌝` in `U` would need a universe hierarchy), so the fibre walk is
+    its own entry at `Desc`-valued results, not an instance of `#walk`; and
+    entries above literal 20 cannot be matched, so segments index their
+    tables RELATIVELY (`SigExtend`).
+
+- **Pw POC — the construction (2026-10-06).** The Lib's family is
+  `SynFam` (`Lib/SynFam`): `DF = λx. ielim (SD sg) (fst x) FIBMₒ (fst (snd x))
+  (snd (snd x))`, `FIBM = methAt (per sort s: λ j. methAt (per constructor k:
+  λ p h c. R_{s,k} j p c))`, `methAt ms = λx. psplit (λ t r. selM ms t r) x`,
+  `selM` an `fcase` cascade (`Lib/Sugar.sel`). `FIBMₒ` and the convoy `CP`
+  are Agda-`opaque` (`context-form-mismatch-opaque`), so the conversion
+  proof sits in an `unfolding` block. The core side, as `SigExtend` entries
+  over SigCore:
+  - P1 `#selM`/`#methAt`: the selection cascade from a table by `natrec`
+    on its length — the `#tabD` pattern, which already reproduces `tabD`'s
+    normal form exactly; typed over a per-entry method-type family (the
+    `#walk` pattern, `Desc`-valued results).
+  - P2 `#FIBM n vs sg rows`: sorts then constructors, leaves `λ p h c. rows
+    s k j p c`; rows a typed table (per-constructor payload types — a
+    dependent cascade, the `FCONS`/`MOTM` pattern of `#rnM`).
+  - P3 Pw's rows (`kcPi`: `dσ (⌜Id⌝ A₀ X F₁) dι`; `kcHom`: one `dρ` at the
+    inner code, then the equation; every other constructor the empty row),
+    `#PwD = DF` at `⌜KSig⌝`, `#Pw d t u = ⌜IMu⌝ J #PwD (ix d t u)`.
+  - P4 the interface (`Knot/PwCore`): `⌜Pw⌝ d t u = app³ (ref #Pw) d t u`,
+    `⌜Pw⌝-sub = refl`, `⊢⌜Pw⌝` from `WfSig`, `El-⌜Pw⌝ : El (⌜Pw⌝ d t u) ≅ᵀ KPw
+    d t u` by δ + β³ + `Algorithm/NbESound` on the closed descriptions (the
+    pattern of `NbEKDTest.kd-conv`). Consumers unchanged; `PwConGen`'s
+    constructors re-derived through the same conversion.
+  - P5 measure: lines a human writes vs the generated Pw (256) + PwConGen
+    (86) + PwAgree (121).
+  Each step is checked by an NbE normal-form equality with the Lib's
+  term at `⌜KSig⌝` (and a negative control) before the next.
+
+- **Pw POC — progress (2026-10-06, overnight).**
+  - ✅ **P1+P2, as `Examples/SigMeth`** (a segment over SigCore, 48 s):
+    the core's `methAt`. A method is written as the Lib writes it:
+    1. split the index;
+    2. a cascade over the sorts;
+    3. split the payload;
+    4. a cascade over the constructors;
+    5. a leaf per constructor.
+
+    Leaves are typed at the decoder's MAP form (a `dσ`, a telescope) and
+    results at its TABULATED form (`tabD G k`). The `natrec` over the
+    table's length lines the two up in lockstep. At the identity embedding,
+    the tabulated form is the decoder. There is one generator per result
+    kind (`Casc`), because the motive is over the index only and `U` has
+    no code for `Desc`:
+    - Desc-valued (`#methD`, for fibres);
+    - U-coded (`#methU`, for programs).
+  - ★ **The traversal was rebuilt on it, because the old one had the wrong
+    normal form.**
+    - Measured: SigCore's walk-based `#trav` at `⌜KSig⌝` on an open term
+      normalised to 2317 nodes; the Knot's `wk` normalises to 1921.
+    - The methods differ (the old one was `λ i p h e σ. walk …`). Pw's
+      kcHom row uses `wk`, so no family using `wk` could have moved onto
+      the core by conversion.
+    - `#trav` is now `#methU` with leaves `#rnL`. Nodes are built by
+      `#conAt`, the constructor at the map form, through the two cascades
+      in the other direction.
+    - `Examples/NbETravAgree.trav-is-wk`: the normal forms are EQUAL, with
+      a negative control.
+    - `#walk`/`#rnM`/old `#trav` are deleted. SigCore went from 34 entries
+      in 43 s to 22 entries in 18.7 s.
+  - ✅ **P3: `Examples/PwCore`** (144 s / 4.8 GB, compacting collector).
+    It was unblocked by E3 plus two checker fixes (PLAN-EVAL §2f).
+    ★ `#PwD` has EXACTLY the normal form of the Knot's generated `PwF.DF`
+    (`Examples/NbEPwAgree.pw-is-pw`, with a negative control). The test
+    module needs `unfolding PwF.FIBMₒ CP KR.wk JI.⌜Tm⌝`, because the
+    Knot's pieces are Agda-opaque.
+  - ✅ **P4: `Examples/Knot/PwCore`** (71 s / 1.3 GB).
+    - The definition is `⌜Pw⌝ d t u = ⌜IMu⌝ (ref #PwJ) (ref #PwD) (ixPw d t u)`.
+    - `⌜Pw⌝-sub` is `refl`.
+    - `⊢⌜Pw⌝` is `⊢⌜IMu⌝` on `⊢ref` of the entries, typed by `PwCore.wf`
+      (`wf→ok`), with the index cast by a certified conversion.
+    - `El-⌜Pw⌝` is `El-⌜IMu⌝` followed by `cJ`/`cD`: closed `nbe-sound`
+      conversions with the Knot's `J`/`DF`, then weakened.
+    - `tools/gen-judge.py` has `CORE_CODE = {"Pw": …}`: the generated
+      `Knot/Pw` no longer emits a code, and its consumers (Red, RedAgree,
+      RedCompDecode, …) import the code interface from `Knot/PwCore`.
+    - Agda-cost lessons, each measured as more than 300 s or out of memory:
+      Agda compares two DIFFERENTLY WRITTEN forms of one erased body or
+      type by descending through the erasure, into every body it
+      references (here the rows' cascade). So:
+      - an entry's typing `wf→ok …` gets an INFERRED type;
+      - a reference's body is written exactly as that typing carries it
+        (`ref d (Sig.body S d)`);
+      - implicits hiding substituted terms are pinned.
+  - 🟡 **P5: measured (2026-10-06).**
+    - ★ **The planned comparison was the wrong one.** Pw (243) + PwConGen
+      (88) + PwAgree (120) are GENERATED; what a human writes for Pw on
+      the Lib route is the 5-line `PWRULES` table in `gen-judge.py`. On
+      the core route a human writes `Examples/PwCore` (187) +
+      `Knot/PwCore` (119), and nothing generated went away yet (`Knot/Pw`
+      still emits `KPw`/`PwF.DF`, the targets `El-⌜Pw⌝` converts to).
+    - Code lines of the core route, by kind:
+
+      | part | lines | kind |
+      |---|---|---|
+      | Pw's rows (cPi, cHom) | 11 | Pw-specific (the same rules: 5 in `PWRULES`) |
+      | Pw's entries (convoy, index, rows table, description, ⌜Pw⌝) | 15 | Pw-specific, mostly template |
+      | surface helpers (`lenC`, `λ⁺`, `_·_`, `app³`, `at`, …) | 36 | generic; copied in SigCore, SigMeth, PwCore |
+      | Knot signature frame, Knot syntax, `none`/`one`, motives | 50 | generic for every Knot family |
+      | entry numbering, assembly | 17 | boilerplate |
+      | `Knot/PwCore` | 63 | a per-family template (`IsYes`/`fromYes` are copied in 3 modules; `≡→≅` duplicates `NbESound`'s) |
+
+    - So ~26 lines are Pw's own, against 5; the rest is a library to
+      extract and a template to generate (`CORE_CODE`'s other side).
+      The rows are written in de Bruijn LEVEL arithmetic (`L (b + 3)`);
+      the generator's notation is far denser. ⬜ Extract the generic
+      parts, generate `Knot/<fam>Core`, then compare again.
+    - ★ **The peak: profiled, half the time removed.** All of PwCore's
+      cost is the checker run inside `wf` (403 GB allocated).
+      - ~40% was `≟Ty` in `decTo`'s syntactic fast path. Erasure inlines
+        a reference's BODY (`⌈ ref d ⌉ = ref d (δ d)`), and bodies nest,
+        so every comparison walked the Knot signature's bodies.
+        `Algorithm/EraName` compares the erasures with DUMMY bodies and
+        restores the real ones by name (`fill-era`, one clause per
+        constructor; `by-names`). PwCore: 146 s / 4.9 GB → 84.5 s /
+        4.25 GB; unfoldings 88.8M → 57.9M.
+      - Not the cost: the size of the elaborated rows. A probe measured
+        `#PwL` at 173k annotated nodes, 96% of them type annotations
+        (the largest, 28.8k nodes, the domain of the kcHom equation's
+        `lam`, holding the elaborated `con` payloads). Making the Knot's
+        constructors closed entries cut it to 116k nodes and `decTo`
+        calls by 29%, and the time not at all.
+      - ✅ Readback computes the context length ONCE (`NbE.rbAt` and
+        friends, the length passed down as `lvlAt`; the old names are
+        wrappers, `len (Γ ∙)` is `suc (len Γ)`, so no proof changed).
+        Unfoldings 57.9M → 49.0M (`len` 8.94M → 0.20M); peak 4.25 →
+        3.4 GB (two runs; wall-clock time not comparable, the machine
+        was shared).
+      - ⬜ What remains is reference evaluation in NbE (2503 conversions
+        that differ syntactically): `eval`, `force`, `refV`, `lookup`
+        (~38%). Every conversion re-evaluates the bodies it unfolds:
+        PLAN-EVAL E4's trigger, now measured.
+
+- ✅ **P6 — the second family: the SIDE CONDITIONS (2026-10-12 → 10-13,
+  after PLAN-REF closed).** `Knot/Preds`' four families (StkA, StkC, Flat,
+  NNC) have Pw's interface (`⌜F⌝`, `⊢⌜F⌝`, `⌜F⌝-sub`, `El-⌜F⌝`) and Pw's
+  shape (lower stratum, no parameter), and all four are ONE `SynFam`
+  instance (convoy `⌜Unit⌝`): in the core they share one index and one
+  convoy entry, and a family is its rows, its description, its code.
+  Four customers at once is what separates the generic frame from Pw.
+  1. ✅ the surface NOTATION shared (`Algorithm/Surface/Notation`: levels,
+     spines, λ-telescopes, tags, `fcases`, list helpers) — it was copied
+     in SigCore, SigMeth and PwCore; PwCore and SigMeth take the base's
+     entry numbers from the base (they had hand copies).
+  2. ✅ the core is the TOP segment: `⊑ᴰ-trans` (Spec) and `SigExtend.base⊑`
+     (a segment extends its base); `Core₀` is now `Examples/PredsCore` in
+     `tools/planref.py` and every hand-written / generated Knot module.
+  3. ✅ the KNOT FRAME (`Examples/KnotFrame`: the Knot signature closed, its
+     syntax and constructor numbers, `WK`, side-condition premises
+     `ixAt`/`recAt`, and per family `R`/`none`/`one`/`unconditional`/
+     `PS`/`PK`/`holds`/SPARSE row tables/the description), and the shared
+     Knot side (`Knot/CoreRef`: `⊢core`, `byNbE`, `lift≅`, `below`).
+     PwCore and the new segments use it.
+  4. ✅ the four side conditions in the core, ONE SEGMENT PER FAMILY:
+     `Examples/PredsStkA` (the shared index `#PJ`, convoy `Cₚ`, StkA),
+     `PredsStkC`, `PredsFlat`, `PredsCore` (NNC; the TOP: `Kc`, `wfKc`).
+     `gen-judge` emits each family's CODE as a reference to its core entry
+     (`PCORE`): `⌜P⌝ = ⌜IMu⌝ (ref #PJ) (ref <D>) …`, typed by `⊢core`, and
+     `El-⌜P⌝` through the Knot family's description by one NbE-decided
+     conversion at the core (`cJ₀P`/`cD₀P = byNbE _ _ tt`).
+     `Examples/NbEPredsAgree` checks index and all four descriptions against
+     the Knot's, normal form for normal form, each with a ✗ control.
+     - ⚠ one 9-entry segment did NOT check: >1529 s and an OOM at 5.6 GB in
+       `wf` (alone, twice). Split per family it is 120 + 46 + 53 + 159 s
+       (peaks 3.4 / 2.3 / 2.3 / 4.8 GB; the last includes `Kc`/`wfKc`).
+       A segment's check covers its own entries only, so a family is a
+       segment.
+     - ⚠ ★ NEVER read the Knot at the CONCRETE core. `CoreRef.⊢core`,
+       whose cast mentions `Defs.type Core₀.Kc d`, went from 6 s to an OOM
+       when the core grew. It is now proved over an abstract `K ⊑ᴰ 𝒮`
+       (`⊢refAt`) and instantiated: 7 s. Applying `Knot.Preds`/`Lib.Syn`
+       at `Core₀.Kc` costs 81 s / ~5 GB for the IMPORTS ALONE, against
+       8 s at a parameter. So the NbE tests (`NbEPredsAgree`,
+       `NbEPwAgree`) are parameterised by `(𝒮 wf) (core : Core₀.Kc ⊑ᴰ 𝒮)`
+       (20 s and 13 s; before: OOM). NbE at the concrete core TABLE is
+       cheap (7 s at every chain depth). Reading `Kc` re-runs the
+       elaborating SigExtend chain, and Agda memoises nothing.
+  5. ✅ measured. What a human writes per family is its rows: 1–3 lines
+     (the PREDS table in `gen-judge` was 2–3 lines per family). Each
+     segment has ~28 non-comment lines of frame (imports, `tys`/`tms`,
+     the SigExtend line), the same for every family. ⬜ A segment
+     generator would remove that frame. The Knot family itself stays: it
+     is the target of `El-⌜F⌝` (851 generated lines in `Knot/Preds`).
+  6. ✅ the Knot side shares what the core shares: ONE `SynFam` instance
+     (`Predₘ`), one index `ixₚ`/`⊢ixₚ`, one NbE-decided index conversion
+     (`cJ₀ₚ`/`cJₚ`) for all four families. Each extra `module … = SynFam …`
+     was a separate instance (memory: parameterised-module-instances).
+     Knot/Preds 851 → 815 generated lines, 10 s / 0.7 GB.
+  7. ✅ the segment generator (item 5's ⬜): `gen-judge.py` (`PSEGS`,
+     `gen_pseg`) emits each whole `Examples/Preds<P>` segment from the
+     PREDS rows — header, imports, re-exports, entry numbers, `Rows`,
+     `tys`/`tms`, the SigExtend line, `wf`, and `Kc`/`wfKc` at the top.
+     A family is now its PREDS row and nothing else. `core_code` is the
+     one template for "a family's code is a ref to its core entry": the
+     side conditions use it byte-identically, and `Knot/PwCore` (P4, hand-
+     written until now) is generated from it too. Sweep ALL GREEN, 298
+     modules.
+
+**Then, the migration recipe** (each step is one family):
+- a schema becomes a CLOSED λ-entry; an instance becomes
+  `app (ref d) args`;
+- the kernel-level derivations still consumed downstream come from
+  δ-elimination plus subject reduction: one generic `⊢inst` replaces each
+  `okT…`/`⊢k…`;
+- the *Agree modules stay at kernel level, on erasures.
+
+## 3f. ★ S6 — THE ELABORATOR (done 2026-10-02)
+
+- **Untrusted, by the de Bruijn criterion.** `Algorithm/Elab` only
+  PROPOSES an annotated term. `Checked.elaborate` re-checks it with
+  `CheckA` and returns CheckA's derivation. No elaborator proof is
+  needed: a bug can make a term fail, never produce a false derivation.
+  `Algorithm/Check` (slice 1, fuel, `RTm`) is superseded as the seed. The
+  compiler's elaborator is non-dependent (combinator translation) and was
+  not a usable template.
+- **The surface syntax** (`Algorithm/Surface`) is generated by `genA.py`
+  from the same field table as `ATm`/`ATy`. It is the annotated syntax
+  plus holes `□ᵀ`/`□` and ascription `the A t`. The two cannot drift.
+- **One bidirectional function**, `el Γ t (just T | nothing)`. A hole in
+  an annotation position is filled from:
+  - the expected type: `lam`, `pair`, `con`, `dι`/`dσ`/`dρ`, `fsuc`;
+  - a premise's inferred type: `tr`/`jsub`/`ap` from the path,
+    `ielim`/`dih` from the scrutinee or description, `psplit` from the
+    pair, `fcase` from the `Fin`;
+  - for a MOTIVE in checking mode, the CONSTANT motive. Dependent motives
+    are written out.
+  - A `pair` with no family falls back to the non-dependent one.
+- **Types stay annotated.** Filling a hole needs an annotated type, so the
+  elaborator has its own fuel-bounded weak-head evaluator on `ATm`/`ATy`:
+  β, projections, `natrec`, δ through the signature's annotated bodies
+  (a HINT parameter), and `El` of a code. It never goes through erasure.
+- **`Examples/Elab`**, over Σ₃, all by evaluation in 4 s:
+  - `lam □ᵀ (nsuc v₀)`;
+  - doubling by `natrec □ᵀ` at the constant motive;
+  - `pair □ᵀ □ᵀ`, `fsuc` at its bound;
+  - `app (ref 0) (ref 2)` via δ;
+  - `app (ref 0) unit` rejected.
+
+## 3e. ★ S5 — THE SIGNATURE (done 2026-10-02)
+
+- **`Spec/Signature`**: `record Sig` with fields `size`, `type : ℕ → ATy ε`
+  (the declarations), and `body : ℕ → RTm ε` (the bodies, ERASED). Also
+  `d <ˢ n` (an entry), `prefix S d`, and `SigOK S` (each erased body has
+  its erased type in `◇`).
+- **`Spec/Annotated`** (`genA.py`):
+  - `ref : ℕ → ATm Γ`; renaming and substitution leave it alone.
+  - Erasure is parameterised by the bodies, `module Era (δ : ℕ → RTm ε)`,
+    with `⌈ ref d ⌉ = εwkTm (δ d)`. The commutation lemmas get one clause
+    each (`εwkTm-ren`/`εwkTm-sub`).
+- **`Spec/TypingA (S : Sig)`**: one judgment for every signature.
+  `⊢ᴬref : d <ˢ size → Γ ⊢ᴬ ref d ∷ εwkTyᴬ (type d)`. `⊢ᴬconv` on
+  erasures now includes δ.
+- **`Metatheory/Erasure (S) (ok : SigOK S)`** is δ-ELIMINATION. Its new
+  case is the body, weakened by `sub-lemma` from `◇`.
+- **`Metatheory/Signature`**:
+  - `WfSig`: each entry has an annotated body typed over its PREFIX that
+    erases to `body d`.
+  - `wf→ok` by induction on the entries: each one is erased by `Erasure`
+    over its prefix.
+  - `consistencyˢ`: CONSERVATIVITY. Every kernel theorem holds over every
+    well-formed signature.
+- **`GenerationA`, `UniquenessA`, `CheckA`** are parameterised by `S` and
+  each gains one `ref` clause. `CheckA` decides `d <ˢ size`, and its "no"
+  is certified by `genᴬ-ref`.
+- **`Examples/Signature`**:
+  - A 3-entry signature: `suc′`, `N := ⌜Nat⌝`, `one : El (ref 1)`.
+  - δ works inside TYPES (`zero∷N`).
+  - The checker decides `app (ref 0) (ref 2) ∷ Nat` and rejects `ref 3`,
+    both by evaluation in 4 s.
+- ⚠ **Side effect:** erasure is no longer constructor-headed (`ref`
+  erases to a body), so Agda stops inverting `⌈ _I ⌉ = ⌈ I ⌉`. Five
+  helper calls (`motCtx-era`, `motCtx-wf`, `wfDF`, `wfFib`) now pin
+  `I`/`D`/`i` explicitly (memory `unsolved-meta-means-missing-pin`).
+
+## 3a. ★ S3 — COMPLETENESS: `⊢ᴬ` is DECIDABLE (plan, 2026-10-02)
+
+The criterion (§0) is that a kernel term determines its type. `CheckA` is
+CERTIFYING: a success returns the derivation, so soundness holds by
+construction. Completeness is made certifying the same way, by changing
+the result types:
+
+    inferᴬ   : … → Dec (Σ A. Γ ⊢ᴬ t ∷ A)
+    checkᴬ   : … → Dec (Γ ⊢ᴬ t ∷ A)
+    checkTyᴬ : … → Dec (Γ ⊢tyᴬ A)
+
+A separate theorem about the `Maybe`-returning `inferᴬ` is rejected: it
+would mean reasoning about `with`-abstractions over `validity`/`normTy` on
+abstract terms.
+
+Where a "no" comes from today, and what refutes it:
+
+| failing branch | refutation |
+| --- | --- |
+| a sub-check fails | GENERATION: a typing of the whole gives a typing of the part |
+| `convTo`: `decConvᵀ` says no | UNIQUENESS of types up to conversion |
+| `viewΠ`/`viewΣ`/`viewId` find no Π/Σ/Id | a NORMAL form convertible to Π IS a Π |
+| `isFalse`/`isTrue`/`noNatC?` | already exact; `noNatC?` returns `Dec` |
+| `tr` at another motive | generation: `⊢ᴬ` has exactly two `tr` rules (`⊢ᴬtrU`, `⊢ᴬtr`) |
+
+Steps:
+
+- **C1 — generation for `⊢ᴬ`** (`Metatheory/GenerationA`). There is one
+  lemma per former, with two clauses: the rule, and `⊢ᴬconv`, which
+  recurses and composes the conversion. ⊢ᴬconv is the only rule that is
+  not syntax-directed, and `⊢tyᴬ` has none, so `⊢tyᴬ` needs no lemma.
+  - A single `strip` lemma was considered and rejected: after a catch-all
+    clause Agda cannot know that the remaining derivation is not a
+    conversion, so each former would still owe that case.
+- **C2 — normal forms keep their shape.** `nfOf` keeps `normTy`'s
+  `IsNormalᵀ`. A normal `N ≅ᵀ Π A B` is literally a `Π` (by
+  `church-rosserᵀ`: a normal form reduces only to itself), and likewise
+  for Σ and Id.
+- **C3 — uniqueness**, `uniqᴬ : Γ ⊢ᴬ t ∷ A → Γ ⊢ᴬ t ∷ B → ⌈A⌉ ≅ᵀ ⌈B⌉`, by
+  induction on `t` through C1.
+  - Most formers: the type is computed from the annotations.
+  - `var`: lookup is deterministic.
+  - `app`: `Π-inj` + `≅ᵀ-sub`. `fst`/`snd`: `Σ-inj`. All exist.
+  - `Hom` never needs injectivity, which it lacks, because `jsub`/`tr`/`ap`
+    carry their endpoints (the §1 audit).
+- **C4 — the checker returns `Dec`.**
+  - One combinator, `bindᴰ : Dec A → (B → A) → (A → Dec B) → Dec B`; its
+    middle argument is C1's projection.
+  - `convTo` uses C3, and the views use C2.
+  - The non-vacuity tests' rejections become `no` proofs.
+  - By former group: Π/Σ/Nat/Unit, then paths, then the levitated
+    formers. Watch `CheckA`'s compile time (≈ 6 s cold).
+
+Scope: this decides `⊢ᴬ`, the trusted judgement, not plain `⊢`; `⊢` is its
+meaning (§0, §3d).
+
+### 3a — log
+
+- ✅ **C1** (2026-10-02) `Metatheory/GenerationA`: 40 generation lemmas
+  `genᴬ-*`, one per former and two clauses each; `tr`'s two rules
+  (`genᴬ-trU`, `genᴬ-tr`) are covered. Each takes any typing of the former,
+  at any `Z`, to its rule's premises and `⌈ rule-type ⌉ᵀ ≅ᵀ ⌈ Z ⌉ᵀ`. It
+  checks in 3 s and is in `Trust/Kernel`.
+- ✅ **C2** (2026-10-02) `Metatheory/NormalShape`. `nf-stuck`: a normal
+  type reduces only to itself. `nf-Π`/`nf-Σ`/`nf-Id`: a normal type
+  convertible to a Π/Σ/Id is one, by `church-rosserᵀ` and `Π-/Σ-/Id-reduct`.
+  `CheckA`'s `NF` now keeps `normTy`'s `IsNormalᵀ` witness instead of
+  discarding it.
+- ✅ **C3** (2026-10-02) `Metatheory/UniquenessA`:
+  `uniqᴬ : Γ ⊢ᴬ t ∷ A → Γ ⊢ᴬ t ∷ B → ⌈ A ⌉ᵀ ≅ᵀ ⌈ B ⌉ᵀ`, one clause per
+  former (38). It checks in 5 s.
+  - 31 formers are one composition (`via`): their type is in the term.
+  - Six recurse: `var` by `∋ᴬ-uniq`; `lam`/`pair` by `≅ᵀ-Πʳ`/`≅ᵀ-Σˡ`;
+    `app`/`fst`/`snd` by `Π-inj`/`Σ-inj`, with `sub1≅` (`≅ᵀ-sub` + `sub1`)
+    for the substitution.
+  - `tr` dispatches on `genᴬ-tr-shape`, now in GenerationA: a `tr` is typed
+    at exactly two motive shapes.
+- ✅ **C4 proof of concept** (2026-10-02) `Algorithm/DecideA`:
+  - `decTo`/`checkᴰ`: a target check whose "no" refutes by `uniqᴬ`.
+  - `viewΠᴰ`: a Π view, or a refutation of every Π-typing by `nf-Π`; the
+    shape test `isΠ?` needs one clause per `RTy` former.
+  - The steps `decVar`, `decLam`, `decApp`, each taking its recursive
+    calls' results as arguments.
+  - The non-vacuity runs EVALUATE: `(λx.x) 0` YES, `0 0` NO (normal shape),
+    `(λx.x) tt` NO (uniqueness).
+  - It checks in 5 s, first time.
+  - (superseded by C4, below; `DecideA` is deleted)
+- ★ **DECISION (2026-10-02): `pair` carries its first type, `pair A B a b`.**
+  - Found while writing the full checker: `pair` was the ONE former whose
+    premise CONTEXT was not in the term. `B`'s premise lives in `Γ ▹ A`,
+    and `A` is `a`'s type, known only up to conversion.
+  - Without the annotation, a "no" on `B` would need context conversion
+    for `⊢ᴬ`, and no `⊢ᴬ` renaming, substitution or conversion lemma
+    exists. With it, every premise context is determined by the term.
+  - This is §3d's own rule (annotate what the typing takes from the
+    derivation), and it is Lean's `Sigma.mk`.
+  - Changes: `genA.py`'s field table, `⊢ᴬpair` (+ `Γ ⊢tyᴬ A`), `pairSᴬ A B`
+    for `psplit`'s branch. `uniqᴬ`'s `pair` clause became a plain `via`.
+    The old `Maybe` checker's `pair` no longer lifts `a`'s normal form.
+- ✅ **C4** (2026-10-02) `Algorithm/CheckA` IS the decision procedure:
+  `inferᴬ`/`checkᴬ`/`checkTyᴬ : … → Dec …`.
+  - `bind` takes, with each sub-decision, the generation projection that
+    turns a typing of the whole into one of the part.
+  - Of the 38 `inferᴬ` clauses, 32 regular ones were derived one to one
+    from the `Maybe` clauses. `var`, `lam`, `app` (`appStep`, uniqueness +
+    `Π-inj` for the argument), `fst`/`snd` (`viewΣ`) and `tr` are written
+    by hand.
+  - `tr` dispatches on the three-way view `trShape`, whose `none` case
+    carries the refutation. It is built with an inspect-style helper:
+    `with … in` needs Agda's builtin equality, and this project uses its
+    own `_≡_`. A catch-all clause could not refute.
+  - `decNoNatC` is complete by induction on the witness (`noNatC?-complete`).
+  - `checkTyᴬ`'s "no" inverts the one `⊢tyᴬ` rule.
+  - The runs evaluate YES and NO. The new rejections: `fst 0` (no Σ view)
+    and a `tr` at an untypable motive.
+  - `CheckA` checks in 11 s (7 s before). `viewId`/`IdV` and `nf-Id` were
+    dead (`jsub` carries its endpoints) and are deleted, as is the POC
+    module `DecideA`.
+## 3b. ★ DECISION 3 — S4 by ROUTE C: normalise types BECAUSE they are well-typed
+
+Found on the `natrecᴹ` spike (`SPIKE-NATRECM.md` §3, 2026-09-25). Type
+normalisation is structural for every former EXCEPT one rule:
+
+    Hom (Π A B) f g ⟶ᵀ Π A (Hom B (app (renTm vs f) (var vz)) (app (renTm vs g) (var vz)))
+
+It CREATES terms. For an ill-typed "junk" `f` (a non-λ value) the
+application is stuck — genuinely SN — but the untyped JM predicate has no
+row for it, so an untyped structural `SNᵀ` is not closed under normal forms.
+
+| route | verdict |
+|---|---|
+| A · make untyped SN treat "application of a non-λ value" as neutral | sound, cheapest; unlocks NOTHING beyond S4 |
+| B · a local predicate inside `SNᵀ` only | ⛔ a patch — the same fact known at types, denied at terms |
+| C · **normalise types via typing** — validity, SR for types, inversion, recursion on a measure | ✅ **CHOSEN** |
+
+★ **Why C, recorded because the cost argument points the other way:**
+1. **Its prerequisites are owed anyway.** Validity, SR for types and
+   inversion are what S3's `infer` (well-formed results — slice 1 re-checks
+   every inferred domain without it), S3 completeness (uniqueness of types)
+   and S6's elaborator need.
+2. **It is the η foundation.** G4 (2026-08-04) kept the kernel β-only
+   *because* η "would force a typed-conversion re-foundation" (untyped η +
+   surjective pairing is not confluent — Klop). C is that re-foundation's
+   first step. It does NOT reopen G4; it makes the re-evaluation "at the
+   welding" start from typed infrastructure. η is the largest use-site lever
+   identified: `f ≡ λx. f x`, surjective pairing, unit-η definitional.
+
+⚠ **Validity is UP TO CONVERSION (V2)**, not a choice of convenience:
+`⊢conv` has no `⊢ty B` premise, so the plain statement is FALSE
+(`El (fst (pair ⌜base⌝ junk))` is convertible to `base` but ill-formed).
+V1 — adding the premise, as Abel–Öhman–Vezzosi do — is a separate kernel
+decision touching every `⊢conv` in Lib and the Knot; not taken.
+
+★ **A homotopy-inspired alternative, recorded for the axes question.** The
+difficulty exists only because `Hom` COMPUTES at `Π` (directed funext as a
+TYPE reduction). Simplicial type theory (Riehl–Shulman) presents
+`hom_A(x,y)` as an extension type over a directed interval `Δ¹`, where
+`hom` at `Π` is argument-swapping between terms — types never grow, and
+type normalisation is structural. A kernel redesign; not now.
+
+★ **S4 OUTCOME (2026-09-25).** Route C was costed as "validity + SR +
+inversion + a measure". The measure was NOT needed: recursing on the
+NORMAL ambient is structural, and typing makes the terms `Hom-Π` creates
+normalisable by `wnorm`. That is the transferable lesson — the same move
+as `wnᵀ` in route A, made sound by typing instead of by extending the
+untyped SN predicate. Decidable conversion now covers the WHOLE kernel:
+`decide-≅` (terms) + `decConvᵀ` (types).
+
+## 3c. ★ DECISION 4 — annotations are irrelevant to conversion (c)
+
+Found while bringing S4 onto the `natrecᴹ` spike (2026-09-25).
+
+| option | conversion on a motive | deciding conversion needs |
+|---|---|---|
+| (a1) reduction enters motives | up to `≅ᵀ` | a MUTUAL term+type SN theorem — S4 (route C) derives type SN FROM term SN, and (a) makes term SN depend on type SN |
+| (d) motives inert, compared by `≅ᵀ` | up to `≅ᵀ` | ⛔ the SAME mutual theorem, for TERMINATION of the comparison: substitution/duplication nests motives arbitrarily deep (`(λx. natrecᴹ (El x) …) u`, iterated by a `natrec`), so no size or depth measure decreases |
+| **(c) annotations irrelevant** | **ignored — conversion compares erasures** | **nothing new**: the existing term SN, then compare erasures |
+
+★ **Grounds, and not edit cost:** (1) annotations exist so a kernel term's
+TYPE is recoverable (§0) — they are typing data, not computational content,
+and irrelevance says exactly that; (2) the metatheory is LAYERED — terms
+normalise without reference to types, then types (S4), then conversion;
+(3) the equality is strictly COARSER (a superset) — nothing typable before
+stops being typable.
+
+⚠ **Obligations it creates:** subject reduction and uniqueness of types
+under the coarser conversion; the logical relation must respect "same
+erasure". Proved FIRST, before anything builds on (c).
+
+⚠ **Correction recorded:** (d) was recommended once on the claim that it
+removes the cycle. It removes it from NORMALISATION only; the DECISION
+procedure still needs the mutual theorem. (a1) is not a planned follow-up —
+it returns only if equality should ever distinguish annotations.
+
+## 3d. ★ DECISION 5 — (c) is implemented as a SEPARATE ANNOTATED LAYER
+
+The kernel the checker checks is an ANNOTATED syntax `ATm`/`ATy` with its
+own syntax-directed judgment `⊢ᴬ`; its MEANING is erasure to today's `RTm`,
+whose metatheory is already proven:
+
+    ⌈_⌉ : ATm → RTm          erasure-soundness : Γ ⊢ᴬ t ∷ A → ⌈Γ⌉ ⊢ ⌈t⌉ ∷ ⌈A⌉
+    conversion in ⊢ᴬ  :=  conversion of erasures   (decision (c))
+
+★ **Why this and not annotations inside `RTm`:** it states (c)
+STRUCTURALLY — the computational calculus has no annotations because they
+carry no computation; the typing layer has them because they carry typing.
+Putting them in `RTm` would force every metatheorem (LR, confluence, SR,
+canonicity) to re-prove that they are irrelevant. Consistency, SN and
+canonicity TRANSFER through erasure; conversion is decided by `decide-≅` /
+`decConvᵀ` unchanged.
+
+⚠ **Correction recorded:** this is the SHAPE of option 1a, rejected in §1
+for failing the de Bruijn criterion. That rejection conflated WHERE
+annotations live with WHICH judgment is trusted: here the trusted judgment
+is the annotated, decidable `⊢ᴬ`, and plain `⊢` is its semantics — §0 holds.
+
+Annotations `ATm` carries (each is what `⊢` takes from the derivation):
+`lam A`, `pair A B` (A added 2026-10-02, §3a), `natrec M`, `con D`, `elim M`, `icon D I i`, `ielim I M`,
+and — the §1 AUDIT's finding, made while writing the checker — `jsub A t u`,
+`tr A t u`, `ap cA t u`: these took their ambient and ENDPOINTS from the
+derivation, and a checker cannot recover them (`Hom` computes away at
+`U`/`Π`/`Nat`, and a recovered endpoint has no annotated derivation).
+⬜ Descriptions (`Desc`/`IDesc`) stay erased-level for now: their
+well-formedness premises are the `⊢`-level ones — an annotated description
+layer is a follow-up before `⊢ᴬ` is fully decidable.
+
+## 3e. ★ DECISION 6 (pending adoption) — descriptions are FUNCTORS: "A-math"
+
+Found while giving the annotated checker the inductive formers
+(2026-09-25). `IConWf` puts the FIXED POINT `IMu D I j` into its own
+telescope (`iwf-ρ`). The declarative judgment tolerates it (it never needs
+the context well-formed); the certifying checker cannot — its conversion
+engine must prove `⊢ctx`, which needs `IDescWf D`, the thing being
+checked. A hidden invariant exposed by an algorithm, like the annotation
+audit.
+
+★ **The mathematics:** an indexed description is a code for a STRICTLY
+POSITIVE FUNCTOR `F : (I → Type) → (I → Type)`; `IMu D` is its initial
+algebra. Well-formedness is a property of `F`, checked with the recursive
+positions typed by an ABSTRACT FAMILY `X : Π I U` — never the fixed point.
+Positivity is STRUCTURAL (recursive positions exist only via `iρ`), not a
+side check — unlike Coq's inductive-as-assumption + syntactic positivity.
+
+★ **The model already IS this** (read from the code, not the record):
+`ILift C … P` is the constructor's functor applied to an abstract predicate
+`P`; `ikp-ρ`/`iki-ρ` carry nothing; the fixed point is tied ONLY in
+`IMuMem`. Only the SYNTAX lags. §9.2 put `IMu D I j` in the telescope for
+EXPRESSIVITY (a recursive index may name earlier fields) — A-math keeps it
+(the family is applied to the same `j`). No recorded decision rejects it.
+
+★ **SPIKE — `bootstrap/tmp/AMathSpike.agda`, GREEN:**
+- Q-shape: `IConWfˣ` does not mention `D` at all; `PairIx`'s description
+  ports almost verbatim (only a recursive field's TYPE changes). Carried
+  terms live in the constructor's `X`-free scope and reach the telescope by
+  a renaming `ρ` — positivity is SYNTACTIC; `X` at the ROOT keeps every
+  carried index unchanged.
+- Q-check: `telWf` — EVERY context the judgment visits is well-formed from
+  `◇ ⊢ty I` alone. **The checker's circularity is gone.**
+- Q-use (syntactic): `TySub.iihTy-wf` ports (`iihTy-wfˣ`) with
+  `X := λj. ⌜IMu⌝ D I j`; cost = ONE conversion (β, then decode) per
+  recursive field.
+- Q-use (semantic) + termination: `relX` builds the `X` entry's
+  interpretation DIRECTLY from `idi` (as `fund`'s `⊢⌜IMu⌝` case does) — no
+  recursion into `fund`, so the recorded "fund-mutual helpers cannot be
+  parameterized" trap does not arise; `relRec` is one `sem-conv`.
+
+⚠ **It must REPLACE `iwf-ρ`, not sit beside it:** bridging new → old needs
+`IDescWf D` to type `X`'s instance — the circle again.
+
+⬜ **Adoption cost** (from the model read): the telescope gains a root slot
+(carried through `ρ`); `ipayTy`/`iihTy`/`iihs`/`isingle`/`imeth*`
+consumers restated over `(σ, τ)` as `iihTy-wfˣ` is; `fund`'s `iihsSem`
+uses `relX`/`relRec`; `Examples/PairIx`, `DepIx`, and the Knot's
+description rows are rewritten; `Spec/TypingA`'s annotated twin follows.
+
+## 4. Open questions, recorded not answered
+
+- **A universe hierarchy.** Needed for large elimination under code
+  motives, and for `U : U`-free typing of `U` itself. Independent of this
+  plan but interacts with §1's 1b/1c equivalence.
+- ~~**Conversion on annotations.**~~ ✅ **DECIDED 2026-09-25: (c) —
+  annotations are IRRELEVANT to conversion** (conversion compares erasures;
+  domain-free PTS, Barthe–Sørensen). See §3c.
+- **Fuel.** `Algorithm/Check` and `Lib/Eval` take fuel. `snorm` makes a
+  fuel-free normaliser derivable (`PLAN-NF` Phase 2); a kernel `infer`
+  should not ultimately depend on fuel.
+
+## 5. Evidence and pointers
+
+- `snorm`/`wnorm`/`dec-conv-typed`: `Metatheory/Fundamental.agda:2008-2030`.
+- Constructor injectivity and `church-rosserᵀ`: `Metatheory/Injectivity.agda`.
+- Inversion lemmas `gen-*`: `Metatheory/SubjectReduction.agda:496-983`.
+- Clash lemmas for rejection branches: `POC/OCP0009/NbEPDirDBCanon.agda`.
+- The Knot's wf burden by constructor: `iwf-κ` 823, `⊢⌜IMu⌝` 755,
+  `icw-ford`/`icw-imu` 360 each, `⊢var` 3 101 (RedWfA+B, TyRedWf, Wf).
