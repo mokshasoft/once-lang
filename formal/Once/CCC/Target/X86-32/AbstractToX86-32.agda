@@ -179,11 +179,11 @@ room-code′ h zero        = heap-code h
 room-code′ h s@(suc _)   = lower-code h s ++ heap-code h
 
 -- D488: the start past its check: the frame, then the stack limit into record word 0
-start-tail : ℕ → Program
-start-tail b =
+start-tail : ℕ → ℕ → Program
+start-tail b rsv =
   sub (reg esp) (imm (slots b)) ∷
   mov (reg edx) (reg esp) ∷
-  sub (reg edx) (imm (slots start-stack-words)) ∷
+  sub (reg edx) (imm (slots rsv)) ∷
   mov (mem (abs-sym alloc-record-symbol 0)) (reg edx) ∷ []
 
 compile-abstract : AbstractInstr → Program
@@ -398,8 +398,8 @@ compile-abstract (instr-ctrl (c-entry e b))             = label (callee e) ∷ s
 -- (the room check's code at `start-stack-words + b`), reserves the frame, and
 -- sets the stack limit, record word 0, to `esp − 4·start-stack-words`
 -- (`edx` is no role's)
-compile-abstract (instr-ctrl (c-start b))               =
-  fits-or-out (room-fits? (start-stack-words + b)) (room-code (start-stack-words + b)) ++ start-tail b
+compile-abstract (instr-ctrl (c-start b rsv))               =
+  fits-or-out (room-fits? (rsv + b)) (room-code (rsv + b)) ++ start-tail b rsv
 -- D320: the program leaves by the Host's `leave`, a call of its one fixed symbol.
 compile-abstract (instr-ctrl c-leave)                   = call-sym host-leave-symbol ∷ []
 -- D245: a direct call of a program function is `call once_<f>`.

@@ -90,7 +90,7 @@ ctrl-clab (c-entry (e-thunk m) _)   = just (idx m)
 ctrl-clab (c-entry (e-fn _) _)      = nothing
 ctrl-clab (c-ret _)                 = nothing
 ctrl-clab (c-call-fn _)             = nothing
-ctrl-clab (c-start _)               = nothing
+ctrl-clab (c-start _ _)               = nothing
 ctrl-clab c-leave               = nothing
 
 clab-of : AbstractInstr → Maybe ℕ

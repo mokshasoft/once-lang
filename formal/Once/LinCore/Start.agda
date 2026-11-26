@@ -127,4 +127,4 @@ module StartR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
            ; g-live = λ i () ; g-fal = λ _ _ → refl } ,
     refl
     where
-      fs₁ = FlatMachine.flat-exec-instr {FS} (instr-ctrl (c-start (fbudget (frameOf main)))) image start-fs
+      fs₁ = FlatMachine.flat-exec-instr {FS} (instr-ctrl (c-start (fbudget (frameOf main)) start-stack-words)) image start-fs

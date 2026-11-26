@@ -444,10 +444,10 @@ d_toDepths_280 ::
   Integer ->
   T_Map_62 ->
   Integer ->
-  T_Map_62 -> MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Depths_254
+  T_Map_62 -> MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Depths_256
 d_toDepths_280 v0 v1 v2 v3 v4
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.StackDepth.C_depths_288
+      MAlonzo.Code.Once.CCC.Codegen.StackDepth.C_depths_290
       (coe
          (\ v5 ->
             coe
@@ -596,7 +596,7 @@ du_o'8242'_382 ::
   MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Owner_36
 du_o'8242'_382 v0 v1
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.StackDepth.d_own_124 (coe v1)
+      MAlonzo.Code.Once.CCC.Codegen.StackDepth.d_own_126 (coe v1)
       (coe v0)
 -- Once.CCC.Codegen.StackDepthTable._._.more
 d_more_384 ::
@@ -646,7 +646,7 @@ d_at_388 v0 v1 v2 v3 v4 v5 v6 v7
                 (coe
                    MAlonzo.Code.Once.CCC.Label.d__'8801''7495''7477'__58 (coe v9)
                    (coe
-                      MAlonzo.Code.Once.CCC.Codegen.AllocExpand.d_skip'45'label_154))
+                      MAlonzo.Code.Once.CCC.Codegen.AllocExpand.d_skip'45'label_156))
                 (coe
                    d_go_356 (coe v0) (coe v2)
                    (coe MAlonzo.Code.Once.CCC.Codegen.StackDepth.C_o'45'start_38)
@@ -1415,7 +1415,7 @@ du_go_824 v0 v1 v2
         -> coe
              du_go_824
              (coe
-                MAlonzo.Code.Once.CCC.Codegen.StackDepth.d_own_124 (coe v0)
+                MAlonzo.Code.Once.CCC.Codegen.StackDepth.d_own_126 (coe v0)
                 (coe v3))
              (coe v4)
              (coe
@@ -1442,14 +1442,14 @@ du_add_842 v0 v1 v2 v3
         -> coe
              du_insert_192 (coe d_enc'45'label_28 (coe v4))
              (coe
-                MAlonzo.Code.Once.CCC.Codegen.StackDepth.d_own_124 (coe v0)
+                MAlonzo.Code.Once.CCC.Codegen.StackDepth.d_own_126 (coe v0)
                 (coe v1))
              (coe v2)
       _ -> coe v2
 -- Once.CCC.Codegen.StackDepthTable.table
 d_table_846 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430] ->
-  MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Depths_254
+  MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Depths_256
 d_table_846 v0
   = coe
       d_finish_866 (coe v0)
@@ -1509,7 +1509,7 @@ d_cd_864 v0
 -- Once.CCC.Codegen.StackDepthTable._.finish
 d_finish_866 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430] ->
-  T_Map_62 -> MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Depths_254
+  T_Map_62 -> MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Depths_256
 d_finish_866 v0 v1
   = coe
       du_from_874 (coe v0)
@@ -1524,12 +1524,12 @@ d_from_874 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430] ->
   T_Map_62 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
-  MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Depths_254
+  MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Depths_256
 d_from_874 v0 ~v1 v2 = du_from_874 v0 v2
 du_from_874 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430] ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
-  MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Depths_254
+  MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Depths_256
 du_from_874 v0 v1
   = case coe v1 of
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v2 v3

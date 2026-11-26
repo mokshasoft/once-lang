@@ -337,7 +337,7 @@ d_ext'45'sym'45'asm_146 v0
                -> coe MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50
              MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'call'45'fn_2390 v2
                -> coe MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50
-             MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'start_2392 v2
+             MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'start_2392 v2 v3
                -> coe MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50
              MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'leave_2394
                -> coe MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50

@@ -53,7 +53,7 @@ ctrl-defs-asm (c-jmp _)                 = []
 ctrl-defs-asm (c-branch-tag-zero _)     = []
 ctrl-defs-asm (c-ret _)                 = []
 ctrl-defs-asm (c-call-fn _)             = []
-ctrl-defs-asm (c-start _)               = []
+ctrl-defs-asm (c-start _ _)               = []
 ctrl-defs-asm c-leave                   = []
 
 instr-defs-asm : ∀ (i : AbstractInstr) → All AsmSym (instr-defs i)

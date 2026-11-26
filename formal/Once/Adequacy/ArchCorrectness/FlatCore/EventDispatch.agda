@@ -1363,8 +1363,8 @@ module Dispatch (sup : Supply) where
       thunk-step n (events-agree n) ev env prog fs s m b cc bg wf h ftq
     -- plan 0.107: the START is at pc 0 only, and the correspondence runs after
     -- it — the per-arch start lemma is where its lowering is proved.
-    events-running-fetch {hv} n ev env prog fs s (instr-ctrl (c-start b)) cc bg wf h ftq =
-      ⊥-elim (start-behind prog fs b (inv-run wf) (inv-started wf) ftq)
+    events-running-fetch {hv} n ev env prog fs s (instr-ctrl (c-start b rsv)) cc bg wf h ftq =
+      ⊥-elim (start-behind prog fs b rsv (inv-run wf) (inv-started wf) ftq)
     -- D320: the program LEAVES — both machines end the run, `returned`.
     events-running-fetch {hv} n ev env prog fs s (instr-ctrl c-leave) cc bg wf h ftq =
       leave-step n ev env prog fs s cc h ftq
@@ -1393,12 +1393,12 @@ module Dispatch (sup : Supply) where
   -- boundary), so the budget there is the layout's (`bg-boundary`) and the run
   -- from there is `events-agree`'s; without room the concrete run ends
   -- `exhausted` before any event — a run that RAN OUT of the flat one.
-  events-agree-start : ∀ {hv : HeapView} N (ev : RT.EvExtractor) (env : RT.ArithEnv) prog fs s b
+  events-agree-start : ∀ {hv : HeapView} N (ev : RT.EvExtractor) (env : RT.ArithEnv) prog fs s b rsv
     → CompiledCorr hv prog fs s
     → FlatWF fs → sv-below (next-heap-ref (falloc fs)) (fclosure fs)
     → ev ≡ ev-arch → ArithTable prog env → RunAt prog fs
     → halted (floc fs) ≡ false
-    → fetch prog (fpc fs) ≡ just (instr-ctrl (c-start b))
+    → fetch prog (fpc fs) ≡ just (instr-ctrl (c-start b rsv))
     → CFC.HeapView.hfront hv ≡ heap-base + rec-size * slot-size
     → fret fs ≡ []
     → LocState.left (floc fs) ≡ false
@@ -1406,15 +1406,15 @@ module Dispatch (sup : Supply) where
     → CFC.HeapView.lo hv ≡ rreg s sp-reg
     → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
                  (flat-events (suc N) prog fs) (flat-ctrls (suc N) prog fs) M)
-  events-agree-start {hv} N ev env prog fs s b cc wf cl evq envq run h ftq h0 nf lf0 nst lo-eq
-    with start-step prog fs s b run cc h ftq h0 nf nst lo-eq
+  events-agree-start {hv} N ev env prog fs s b rsv cc wf cl evq envq run h ftq h0 nf lf0 nst lo-eq
+    with start-step prog fs s b rsv run cc h ftq h0 nf nst lo-eq
   ... | inj₁ (c , s′ , ex , hv′ , st′ , lim′ , cc′) =
     suc c + proj₁ rec
     , subst (λ o → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) (suc c + proj₁ rec) (compile-trace prog) s)
                            o (flat-ctrls (suc N) prog fs) (suc c + proj₁ rec))
             (sym step-eq) (agree-pre [] pre-eq bound (proj₂ rec))
     where
-      i = instr-ctrl (c-start b)
+      i = instr-ctrl (c-start b rsv)
       fs₁ = flat-exec-instr i prog fs
       -- the post-start invariant, from the flat-machine theorems; the start
       -- is behind it now (its pc is one past)

@@ -78,7 +78,7 @@ module _ (C : Classes) where
   data ExpView (s : ℕ) : AbstractInstr → Set where
     ev-alloc : ∀ k → ExpView s (instr-alloc-heap k)
     ev-free  : ∀ k → ExpView s (instr-free-heap k)
-    ev-start : ∀ b → ExpView s (instr-ctrl (c-start b))
+    ev-start : ∀ b r → ExpView s (instr-ctrl (c-start b r))
     ev-same  : ∀ {i} → expand-at C s i ≡ i ∷ [] → ExpView s i
 
   exp-view : ∀ s i → ExpView s i
@@ -122,7 +122,7 @@ module _ (C : Classes) where
   exp-view s (instr-ctrl (c-entry e b)) = ev-same refl
   exp-view s (instr-ctrl (c-call-fn f)) = ev-same refl
   exp-view s (instr-ctrl (c-ret b))     = ev-same refl
-  exp-view s (instr-ctrl (c-start b))   = ev-start b
+  exp-view s (instr-ctrl (c-start b rsv))   = ev-start b rsv
   exp-view s (instr-ctrl c-leave)       = ev-same refl
 
   ------------------------------------------------------------------------
@@ -248,7 +248,7 @@ module _ (C : Classes) where
       fl-cons : ExpView s x → fl-go (expand-at C s x ++ E′) L i ≡ Data.Maybe.map (λ p → i + off s (x ∷ P) p) (fl-go (x ∷ P) L 0)
       fl-cons (ev-alloc k) = past (alloc-code C s k) (alloc-nol s k L pe) refl refl
       fl-cons (ev-free k)  = past (free-code C k) (free-nol k L) refl refl
-      fl-cons (ev-start b) = past (instr-ctrl (c-start b) ∷ setup C) (plain refl ∷ᴺ start-nol L) refl refl
+      fl-cons (ev-start b rsv) = past (instr-ctrl (c-start b rsv) ∷ setup C) (plain refl ∷ᴺ start-nol L) refl refl
       fl-cons (ev-same ex) =
         trans (cong (λ xs → fl-go (xs ++ E′) L i) ex) (kept-at (label-of? x) refl ex)
 
@@ -342,7 +342,7 @@ module _ (C : Classes) where
       ft-cons : ExpView s x → ft-go (expand-at C s x ++ E′) E i ≡ Data.Maybe.map (λ p → i + off s (x ∷ P) p) (ft-go (x ∷ P) E 0)
       ft-cons (ev-alloc k) = past (alloc-code C s k) (alloc-noe s k) refl refl
       ft-cons (ev-free k)  = past (free-code C k) (free-noe k) refl refl
-      ft-cons (ev-start b) = past (instr-ctrl (c-start b) ∷ setup C) (noe refl ∷ᴱ start-noe) refl refl
+      ft-cons (ev-start b rsv) = past (instr-ctrl (c-start b rsv) ∷ setup C) (noe refl ∷ᴱ start-noe) refl refl
       ft-cons (ev-same ex) = trans (cong (λ xs → ft-go (xs ++ E′) E i) ex) (kept-at (entry-of? x) ex)
 
   ------------------------------------------------------------------------
@@ -448,7 +448,7 @@ module _ (C : Classes) where
       here-nol : ExpView t x → AllNoL L (expand-at C t x)
       here-nol (ev-alloc k′) = alloc-nol′ t k′ L (suc n + t) pe t≢
       here-nol (ev-free k′)  = free-nol k′ L
-      here-nol (ev-start b)  = plain refl ∷ᴺ start-nol L
+      here-nol (ev-start b _)  = plain refl ∷ᴺ start-nol L
       here-nol (ev-same ex)  = subst (AllNoL L) (sym ex) (kept-nol x L (suc n + t) pe (λ m e → img 0 m (cong just e)) ∷ᴺ []ᴺ)
 
   -- a pc off the primitive program maps off the expanded one

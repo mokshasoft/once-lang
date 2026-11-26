@@ -144,9 +144,9 @@ fo-no-label : ∀ (c : Bool) k → has-label (fits-or-out c (room-code k)) ≡ f
 fo-no-label true  k = refl
 fo-no-label false k = refl
 
-start-no-label : ∀ (c : Bool) k b → has-label (fits-or-out c (room-code k) ++ start-tail b) ≡ false
-start-no-label true  k b = refl
-start-no-label false k b = refl
+start-no-label : ∀ (c : Bool) k b r → has-label (fits-or-out c (room-code k) ++ start-tail b r) ≡ false
+start-no-label true  k b r = refl
+start-no-label false k b r = refl
 
 -- D488 (a3): a check's two parts (each its code or the call) have no label
 part-no-label : ∀ (c : Bool) (code : Program) → has-label code ≡ false → has-label (part c code) ≡ false
@@ -206,7 +206,7 @@ headView (instr-load-const p v) = hv-plain (const-no-label p v) (λ _ _ _ → re
 headView (instr-reg-op op) = hv-plain (reg-op-no-label op) (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (instr-ctrl (c-label m)) = hv-clabel m refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (instr-ctrl (c-call-fn f)) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
-headView (instr-ctrl (c-start b)) = hv-plain (start-no-label (room-fits? (start-stack-words + b)) (start-stack-words + b) b) (λ _ _ _ → refl) (λ _ _ _ → refl)
+headView (instr-ctrl (c-start b rsv)) = hv-plain (start-no-label (room-fits? (rsv + b)) (rsv + b) b rsv) (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (instr-ctrl c-leave) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (instr-ctrl (c-entry m b)) =
   hv-otherlabel m (sub (reg esp) (imm (slots b)) ∷ []) refl refl

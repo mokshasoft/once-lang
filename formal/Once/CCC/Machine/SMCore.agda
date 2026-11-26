@@ -1182,7 +1182,9 @@ data FlatCtrl : Set where
   -- target initialises its heap register to the runtime's `.bss` heap — the
   -- only runtime set-up there is, written in the machine, not beside it.
   -- Nothing calls the program, so unlike `c-entry` it spills no return.
-  c-start               : ℕ → FlatCtrl
+  -- D491 (stage 4): and the stack it reserves above the limit, in words (the start's
+  -- function's static depth; the certificate checks it: `StackDepth.Cert.start-le`)
+  c-start               : ℕ → ℕ → FlatCtrl
   -- D320: THE PROGRAM LEAVES — where `main`'s unit returns, the run ends by the
   -- Host's `leave` (`enter ; main ; leave`). The compiler never knows the Host:
   -- every target lowers it to a call of the one fixed symbol the Host defines.

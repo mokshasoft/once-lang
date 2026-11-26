@@ -182,10 +182,10 @@ room-code′ h zero        = heap-code h
 room-code′ h s@(suc _)   = lower-code h s ++ heap-code h
 
 -- D488: the start past its check: the frame, then the stack limit into record word 0
-start-tail : ℕ → Program
-start-tail b =
+start-tail : ℕ → ℕ → Program
+start-tail b rsv =
   addi sp sp (Data.Integer.-_ (+ (slots b))) ∷
-  li t2 (+ slots start-stack-words) ∷
+  li t2 (+ slots rsv) ∷
   sub t2 sp t2 ∷
   lla-sym t1 alloc-record-symbol ∷
   sd t2 t1 0 ∷ []
@@ -458,8 +458,8 @@ compile-abstract (instr-ctrl (c-entry e b))             = label (callee e) ∷ a
 -- (the room check's code at `start-stack-words + b`), reserves the frame, and
 -- sets the stack limit, record word 0, to `sp − 8·start-stack-words` (`t1`,
 -- `t2` are no role's)
-compile-abstract (instr-ctrl (c-start b))               =
-  fits-or-out (room-fits? (start-stack-words Data.Nat.+ b)) (room-code (start-stack-words Data.Nat.+ b)) ++ start-tail b
+compile-abstract (instr-ctrl (c-start b rsv))               =
+  fits-or-out (room-fits? (rsv Data.Nat.+ b)) (room-code (rsv Data.Nat.+ b)) ++ start-tail b rsv
   where import Data.Nat
 -- D320: the program leaves by the Host's `leave`, a call of its one fixed symbol.
 compile-abstract (instr-ctrl c-leave)                   = call-sym host-leave-symbol ∷ []

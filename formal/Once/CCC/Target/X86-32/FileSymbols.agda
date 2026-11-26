@@ -130,7 +130,7 @@ defs-step (instr-ctrl (c-branch-tag-zero n)) r = refl
 defs-step (instr-ctrl (c-entry e b)) r = refl
 defs-step (instr-ctrl (c-ret b)) r = refl
 defs-step (instr-ctrl (c-call-fn f)) r = refl
-defs-step (instr-ctrl (c-start b)) r = fo-defs (room-fits? (start-stack-words Data.Nat.+ b)) (start-stack-words Data.Nat.+ b) (start-tail b) r
+defs-step (instr-ctrl (c-start b rsv)) r = fo-defs (room-fits? (rsv Data.Nat.+ b)) (rsv Data.Nat.+ b) (start-tail b rsv) r
 defs-step (instr-ctrl c-leave) r = refl
 
 refs-step : ∀ (i : AbstractInstr) (r : Program)
@@ -176,7 +176,7 @@ refs-step (instr-ctrl (c-branch-tag-zero n)) r = refl
 refs-step (instr-ctrl (c-entry e b)) r = refl
 refs-step (instr-ctrl (c-ret b)) r = refl
 refs-step (instr-ctrl (c-call-fn f)) r = refl
-refs-step (instr-ctrl (c-start b)) r = fo-refs (room-fits? (start-stack-words Data.Nat.+ b)) (start-stack-words Data.Nat.+ b) (start-tail b) r
+refs-step (instr-ctrl (c-start b rsv)) r = fo-refs (room-fits? (rsv Data.Nat.+ b)) (rsv Data.Nat.+ b) (start-tail b rsv) r
 refs-step (instr-ctrl c-leave) r = refl
 
 defs-lower : ∀ (t : AbstractTrace) → label-defs (compile-trace t) ≡ adefs t

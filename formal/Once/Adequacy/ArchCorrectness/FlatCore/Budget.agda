@@ -648,15 +648,15 @@ bg-ret {hv} {hv′} {prog} {fs} {fs′} {rpc} {rest} {f₀} {b₀} {frs} bg r re
     relim-at l (r′ ∷ rs) []               _          = tt
     relim-at l (r′ ∷ rs) ((f , _) ∷ frs′) (h , more) = subst (λ x → x + _ ≤ frame-base f) (sym l) h , relim-at l rs frs′ more
 
--- PAST THE START: the limit set `start-stack-words` below the start's frame, which
+-- PAST THE START: the limit set the start's reserve below its frame, which
 -- holds its function's depth (the certificate); nothing saved yet
-bg-start : ∀ {hv′ : HeapView} {prog : AbstractTrace} {fs fs′ : FlatState} {s′ : State} {b : ℕ}
-         → RunLow prog fs → fetch prog (fpc fs) ≡ just (instr-ctrl (c-start b)) → hstarted hv′ ≡ true
+bg-start : ∀ {hv′ : HeapView} {prog : AbstractTrace} {fs fs′ : FlatState} {s′ : State} {b rsv : ℕ}
+         → RunLow prog fs → fetch prog (fpc fs) ≡ just (instr-ctrl (c-start b rsv)) → hstarted hv′ ≡ true
          → fpc fs′ ≡ suc (fpc fs) → FlatCorr hv′ fs′ s′
-         → hlim hv′ + slots start-stack-words ≤ rreg s′ sp-reg
+         → hlim hv′ + slots rsv ≤ rreg s′ sp-reg
          → fret fs′ ≡ []
          → Budget hv′ prog fs′
-bg-start {hv′} {prog} {fs} {fs′} {s′} {b} r f st pc′ corr′ lim′ rq =
+bg-start {hv′} {prog} {fs} {fs′} {s′} {b} {rsv} r f st pc′ corr′ lim′ rq =
   bg-move {hv′} {prog} {fs′} st pc′ refl
     (subst (λ x → hfront hv′ + H x ≤ hlim hv′) (sym nz) (subst (_≤ hlim hv′) (sym (z0 (hfront hv′))) (front-lim hv′ st)))
     (subst (λ x → hlim hv′ + S x ≤ fbase fs′) (sym nz) (subst (_≤ fbase fs′) (sym (z0 (hlim hv′))) (first≤ (hlim hv′) _ base-le)))
@@ -668,13 +668,13 @@ bg-start {hv′} {prog} {fs} {fs′} {s′} {b} r f st pc′ corr′ lim′ rq =
     nx = low-next r (fpc fs) f refl
     nz : need prog (suc (fpc fs)) ≡ r0
     nz = need-room prog (suc (fpc fs)) (proj₁ nx) (proj₂ nx)
-    base-le : hlim hv′ + slots start-stack-words ≤ fbase fs′
-    base-le = subst (hlim hv′ + slots start-stack-words ≤_) (sp-eq corr′) lim′
+    base-le : hlim hv′ + slots rsv ≤ fbase fs′
+    base-le = subst (hlim hv′ + slots rsv ≤_) (sp-eq corr′) lim′
     -- what is to come past the start is the start's function's depth
-    dle : deep prog (suc (fpc fs)) ≤ start-stack-words
+    dle : deep prog (suc (fpc fs)) ≤ rsv
     dle = ≤-trans (deep-next prog (fpc fs) (low-cert r) ff f refl)
-            (subst (_≤ start-stack-words) (sym (deep-other prog (fpc fs) f refl))
-                   (Cert.start-le (low-cert r) (fpc fs) b (trans (at-fetch prog (fpc fs)) f)))
+            (subst (_≤ rsv) (sym (deep-other prog (fpc fs) f refl))
+                   (Cert.start-le (low-cert r) (fpc fs) b rsv (trans (at-fetch prog (fpc fs)) f)))
 
 -- …as a straight step (a straight instruction does not leave)
 bg-spent-str : ∀ {hv : HeapView} {prog : AbstractTrace} {fs : FlatState} (i : AbstractInstr)

@@ -629,7 +629,7 @@ flat-ptr-bounds : ∀ (i : AbstractInstr) (prog : AbstractTrace) (fs : FlatState
 flat-ptr-bounds (instr-ctrl (c-label m))               prog fs ff am wfS wf = wf
 flat-ptr-bounds (instr-ctrl (c-entry m b))             prog fs ff am wfS wf =
   pb-thunk b fs wf
-flat-ptr-bounds (instr-ctrl (c-start b))             prog fs ff am wfS wf =
+flat-ptr-bounds (instr-ctrl (c-start b rsv))             prog fs ff am wfS wf =
   pb-thunk b fs wf
 flat-ptr-bounds (instr-ctrl c-leave)                   prog fs ff am wfS wf =
   record { pb-regs = pb-regs wf ; pb-heap = pb-heap wf ; pb-stack = pb-stack wf }

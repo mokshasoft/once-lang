@@ -151,7 +151,7 @@ module Code (C : Classes) (small : 3 + count C ≤ rec-size) (in-range : ∀ k �
   -- ★ an instruction of one primitive instruction's expansion: that one itself
   -- (kept, or the start, at its offset 0), or of the expansion's own code
   Kept : ℕ → AbstractInstr → Set
-  Kept s i = (expand-at C s i ≡ i ∷ []) ⊎ (Σ ℕ λ b → i ≡ instr-ctrl (c-start b))
+  Kept s i = (expand-at C s i ≡ i ∷ []) ⊎ (Σ ℕ λ b → Σ ℕ λ r → i ≡ instr-ctrl (c-start b r))
 
   gen-of : ∀ s i r {j} → (∀ n → i ≡ instr-alloc-heap n → 1 ≤ n) → fetch (expand-at C s i) r ≡ just j
          → ((r ≡ 0) × (j ≡ i) × Kept s i) ⊎ Gen j
@@ -160,10 +160,10 @@ module Code (C : Classes) (small : 3 + count C ≤ rec-size) (in-range : ∀ k �
       by : ExpView C s i → fetch (expand-at C s i) r ≡ just j → ((r ≡ 0) × (j ≡ i) × Kept s i) ⊎ Gen j
       by (ev-alloc k) f = inj₂ (all-fetch (alloc-code C s k) r (alloc-gen s k (am k refl)) f)
       by (ev-free k)  f = inj₂ (all-fetch (free-code C k) r (free-gen k) f)
-      by (ev-start b) f = st r f
+      by (ev-start b rsv) f = st r f
         where
-          st : ∀ r′ → fetch (instr-ctrl (c-start b) ∷ setup C) r′ ≡ just j → ((r′ ≡ 0) × (j ≡ instr-ctrl (c-start b)) × Kept s (instr-ctrl (c-start b))) ⊎ Gen j
-          st zero    f′ = inj₁ (refl , sym (just-injective f′) , inj₂ (b , refl))
+          st : ∀ r′ → fetch (instr-ctrl (c-start b rsv) ∷ setup C) r′ ≡ just j → ((r′ ≡ 0) × (j ≡ instr-ctrl (c-start b rsv)) × Kept s (instr-ctrl (c-start b rsv))) ⊎ Gen j
+          st zero    f′ = inj₁ (refl , sym (just-injective f′) , inj₂ (b , rsv , refl))
           st (suc r′) f′ = inj₂ (all-fetch (setup C) r′ setup-gen f′)
       by (ev-same eq) f = sm r (subst (λ xs → fetch xs r ≡ just j) eq f)
         where
@@ -213,7 +213,7 @@ module Code (C : Classes) (small : 3 + count C ≤ rec-size) (in-range : ∀ k �
       one : ExpView C s x → ImageI x → AllocMinI x → All Q (expand-at C s x)
       one (ev-alloc k) _ a = All′.map gq (alloc-gen s k a)
       one (ev-free k)  _ _ = All′.map gq (free-gen k)
-      one (ev-start b) i a = kq _ i a ∷ All′.map gq setup-gen
+      one (ev-start b _) i a = kq _ i a ∷ All′.map gq setup-gen
       one (ev-same eq) i a = subst (All Q) (sym eq) (kq x i a ∷ [])
 
   ------------------------------------------------------------------------
@@ -261,7 +261,7 @@ module Code (C : Classes) (small : 3 + count C ≤ rec-size) (in-range : ∀ k �
       emitted : Emitted E
       emitted = record
         { em-budget = em-budget
-        ; em-zero = subst (λ q → fetch E q ≡ just (instr-ctrl (c-start em-budget))) (off0 P) (kept-at 0 _ em-zero refl)
+        ; em-zero = subst (λ q → fetch E q ≡ just (instr-ctrl (c-start em-budget start-stack-words))) (off0 P) (kept-at 0 _ em-zero refl)
         ; em-start = start
         ; em-image = exp-all gen-image (λ i ii _ → ii) 0 P em-image em-alloc
         ; em-alloc = exp-all gen-alloc (λ i _ ai → ai) 0 P em-image em-alloc
@@ -270,13 +270,13 @@ module Code (C : Classes) (small : 3 + count C ≤ rec-size) (in-range : ∀ k �
         ; em-guard = guard
         }
         where
-          no-gen-start : ∀ {b} → Gen (instr-ctrl (c-start b)) → Data.Empty.⊥
+          no-gen-start : ∀ {b r} → Gen (instr-ctrl (c-start b r)) → Data.Empty.⊥
           no-gen-start (g-ctrl _ ())
-          start : ∀ k b → fetch E k ≡ just (instr-ctrl (c-start b)) → k ≡ 0
-          start k b e = by (classify k e)
+          start : ∀ k b rsv → fetch E k ≡ just (instr-ctrl (c-start b rsv)) → k ≡ 0
+          start k b rsv e = by (classify k e)
             where
-              by : Cls k (instr-ctrl (c-start b)) ⊎ Gen (instr-ctrl (c-start b)) → k ≡ 0
-              by (inj₁ (n , fP , refl , _)) = trans (cong (off C 0 P) (em-start n b fP)) (off0 P)
+              by : Cls k (instr-ctrl (c-start b rsv)) ⊎ Gen (instr-ctrl (c-start b rsv)) → k ≡ 0
+              by (inj₁ (n , fP , refl , _)) = trans (cong (off C 0 P) (em-start n b rsv fP)) (off0 P)
               by (inj₂ g) = Data.Empty.⊥-elim (no-gen-start g)
           calls : ∀ k f → fetch E k ≡ just (instr-ctrl (c-call-fn f)) → Σ ℕ (λ j → find-fn E f ≡ just j)
           calls k f e = by (classify k e)
@@ -332,8 +332,8 @@ module Code (C : Classes) (small : 3 + count C ≤ rec-size) (in-range : ∀ k �
       at : ExpView C s x → AllocMinI x → instr-sigop si ∈ expand-at C s x → instr-sigop si ∈ (x ∷ P)
       at (ev-alloc k) one m′ = Data.Empty.⊥-elim (no-gen-sig (All′.lookup (alloc-gen s k one) m′))
       at (ev-free k)  _ m′ = Data.Empty.⊥-elim (no-gen-sig (All′.lookup (free-gen k) m′))
-      at (ev-start b) _ (here ())
-      at (ev-start b) _ (there m′) = Data.Empty.⊥-elim (no-gen-sig (All′.lookup setup-gen m′))
+      at (ev-start b _) _ (here ())
+      at (ev-start b _) _ (there m′) = Data.Empty.⊥-elim (no-gen-sig (All′.lookup setup-gen m′))
       at (ev-same eq) _ m′ = in-one (subst (instr-sigop si ∈_) eq m′)
         where in-one : instr-sigop si ∈ (x ∷ []) → instr-sigop si ∈ (x ∷ P)
               in-one (here e) = here e

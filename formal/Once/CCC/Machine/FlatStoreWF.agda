@@ -844,7 +844,7 @@ cl-step : ∀ (i : AbstractInstr) (prog : AbstractTrace) (fs : FlatState) → Fl
                    (fclosure (flat-exec-instr i prog fs))
 cl-step (instr-ctrl (c-label m))               prog fs wf b = b
 cl-step (instr-ctrl (c-entry m bb))            prog fs wf b = b
-cl-step (instr-ctrl (c-start bb))            prog fs wf b = b
+cl-step (instr-ctrl (c-start bb rsv))            prog fs wf b = b
 cl-step (instr-ctrl c-leave)                  prog fs wf b = b
 cl-step (instr-ctrl (c-call-fn f))             prog fs wf b = cl-call-at (find-fn prog f) fs b
 cl-step (instr-ctrl (c-ret bb))                prog fs wf b = cl-ret bb (fret fs) fs b
@@ -901,7 +901,7 @@ flat-wf-step : ∀ (i : AbstractInstr) (prog : AbstractTrace) (fs : FlatState)
              → FlatWF fs → FlatWF (flat-exec-instr i prog fs)
 flat-wf-step (instr-ctrl (c-label m))               prog fs wf = wf
 flat-wf-step (instr-ctrl (c-entry m b))             prog fs wf = wf-thunk b fs wf
-flat-wf-step (instr-ctrl (c-start b))             prog fs wf = wf-thunk b fs wf
+flat-wf-step (instr-ctrl (c-start b rsv))             prog fs wf = wf-thunk b fs wf
 flat-wf-step (instr-ctrl c-leave)                   prog fs wf = wf-leave wf
 flat-wf-step (instr-ctrl (c-call-fn f))             prog fs wf = wf-call-at (find-fn prog f) fs wf
 flat-wf-step (instr-ctrl (c-ret b))                 prog fs wf = wf-ret b (fret fs) fs wf

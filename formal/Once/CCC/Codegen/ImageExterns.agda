@@ -104,7 +104,7 @@ private
   ext-sym-asm (instr-ctrl (c-branch-tag-zero _)) = []
   ext-sym-asm (instr-ctrl (c-ret _)) = []
   ext-sym-asm (instr-ctrl (c-call-fn _)) = []
-  ext-sym-asm (instr-ctrl (c-start _)) = []
+  ext-sym-asm (instr-ctrl (c-start _ _)) = []
   ext-sym-asm (instr-ctrl c-leave) = []
   ext-sym-asm mov-to-output = []
   ext-sym-asm mov-to-input = []

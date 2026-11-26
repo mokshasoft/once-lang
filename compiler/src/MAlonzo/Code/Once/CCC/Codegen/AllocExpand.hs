@@ -336,7 +336,7 @@ d_expand'45'at_98 v0 v1 v2
            -> coe d_alloc'45'code_70 (coe v0) (coe v1) (coe v4)
          MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'ctrl_2494 v4
            -> case coe v4 of
-                MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'start_2392 v5
+                MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'start_2392 v5 v6
                   -> coe
                        MAlonzo.Code.Agda.Builtin.List.C__'8759'__22 (coe v2)
                        (coe d_setup_96 (coe v0))
@@ -345,12 +345,12 @@ d_expand'45'at_98 v0 v1 v2
            -> coe d_free'45'code_82 (coe v0) (coe v4)
          _ -> coe v3)
 -- Once.CCC.Codegen.AllocExpand._.expand-from
-d_expand'45'from_116 ::
+d_expand'45'from_118 ::
   T_Classes_8 ->
   Integer ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430] ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430]
-d_expand'45'from_116 v0 v1 v2
+d_expand'45'from_118 v0 v1 v2
   = case coe v2 of
       [] -> coe v2
       (:) v3 v4
@@ -358,20 +358,20 @@ d_expand'45'from_116 v0 v1 v2
              MAlonzo.Code.Data.List.Base.du__'43''43'__32
              (coe d_expand'45'at_98 (coe v0) (coe v1) (coe v3))
              (coe
-                d_expand'45'from_116 (coe v0)
+                d_expand'45'from_118 (coe v0)
                 (coe addInt (coe (1 :: Integer)) (coe v1)) (coe v4))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.AllocExpand._.expand
-d_expand_126 ::
+d_expand_128 ::
   T_Classes_8 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430] ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430]
-d_expand_126 v0
-  = coe d_expand'45'from_116 (coe v0) (coe (0 :: Integer))
+d_expand_128 v0
+  = coe d_expand'45'from_118 (coe v0) (coe (0 :: Integer))
 -- Once.CCC.Codegen.AllocExpand.alloc-fn
-d_alloc'45'fn_128 ::
+d_alloc'45'fn_130 ::
   Integer -> MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6
-d_alloc'45'fn_128 v0
+d_alloc'45'fn_130 v0
   = coe
       MAlonzo.Code.Once.Spec.Name.C_canonical_12
       (coe
@@ -385,9 +385,9 @@ d_alloc'45'fn_128 v0
                (coe MAlonzo.Code.Once.Target.Symbol.d_showNat_6 v0))
             (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)))
 -- Once.CCC.Codegen.AllocExpand.free-fn
-d_free'45'fn_130 ::
+d_free'45'fn_132 ::
   Integer -> MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6
-d_free'45'fn_130 v0
+d_free'45'fn_132 v0
   = coe
       MAlonzo.Code.Once.Spec.Name.C_canonical_12
       (coe
@@ -401,29 +401,29 @@ d_free'45'fn_130 v0
                (coe MAlonzo.Code.Once.Target.Symbol.d_showNat_6 v0))
             (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)))
 -- Once.CCC.Codegen.AllocExpand.site-call
-d_site'45'call_136 ::
+d_site'45'call_138 ::
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430
-d_site'45'call_136 v0
+d_site'45'call_138 v0
   = case coe v0 of
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'alloc'45'heap_2490 v1
         -> coe
              MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'ctrl_2494
              (coe
                 MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'call'45'fn_2390
-                (coe d_alloc'45'fn_128 (coe v1)))
+                (coe d_alloc'45'fn_130 (coe v1)))
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'free'45'heap_2496 v1
         -> coe
              MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'ctrl_2494
              (coe
                 MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'call'45'fn_2390
-                (coe d_free'45'fn_130 (coe v1)))
+                (coe d_free'45'fn_132 (coe v1)))
       _ -> coe v0
 -- Once.CCC.Codegen.AllocExpand.prim-routine
-d_prim'45'routine_144 ::
+d_prim'45'routine_146 ::
   Integer ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430]
-d_prim'45'routine_144 v0
+d_prim'45'routine_146 v0
   = coe
       MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
       (coe
@@ -432,7 +432,7 @@ d_prim'45'routine_144 v0
             MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'entry_2386
             (coe
                MAlonzo.Code.Once.CCC.Label.C_e'45'fn_26
-               (coe d_alloc'45'fn_128 (coe v0)))
+               (coe d_alloc'45'fn_130 (coe v0)))
             (coe (0 :: Integer))))
       (coe
          MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
@@ -454,7 +454,7 @@ d_prim'45'routine_144 v0
                      MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'entry_2386
                      (coe
                         MAlonzo.Code.Once.CCC.Label.C_e'45'fn_26
-                        (coe d_free'45'fn_130 (coe v0)))
+                        (coe d_free'45'fn_132 (coe v0)))
                      (coe (0 :: Integer))))
                (coe
                   MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
@@ -470,21 +470,21 @@ d_prim'45'routine_144 v0
                            (coe (0 :: Integer))))
                      (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))))))
 -- Once.CCC.Codegen.AllocExpand.prim-routines
-d_prim'45'routines_148 ::
+d_prim'45'routines_150 ::
   [Integer] ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430]
-d_prim'45'routines_148 v0
+d_prim'45'routines_150 v0
   = case coe v0 of
       [] -> coe v0
       (:) v1 v2
         -> coe
              MAlonzo.Code.Data.List.Base.du__'43''43'__32
-             (coe d_prim'45'routine_144 (coe v1))
-             (coe d_prim'45'routines_148 (coe v2))
+             (coe d_prim'45'routine_146 (coe v1))
+             (coe d_prim'45'routines_150 (coe v2))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.AllocExpand.skip-label
-d_skip'45'label_154 :: MAlonzo.Code.Once.CCC.Label.T_LabelId_6
-d_skip'45'label_154
+d_skip'45'label_156 :: MAlonzo.Code.Once.CCC.Label.T_LabelId_6
+d_skip'45'label_156
   = coe
       MAlonzo.Code.Once.CCC.Label.C_mkLabelId_20
       (coe
@@ -496,34 +496,34 @@ d_skip'45'label_154
       (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
       (coe (0 :: Integer))
 -- Once.CCC.Codegen.AllocExpand.skip
-d_skip_156 ::
+d_skip_158 ::
   [Integer] ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430]
-d_skip_156 v0
+d_skip_158 v0
   = coe
       MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
       (coe
          MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'ctrl_2494
          (coe
             MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'jmp_2382
-            (coe d_skip'45'label_154)))
+            (coe d_skip'45'label_156)))
       (coe
          MAlonzo.Code.Data.List.Base.du__'43''43'__32
-         (coe d_prim'45'routines_148 (coe v0))
+         (coe d_prim'45'routines_150 (coe v0))
          (coe
             MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
             (coe
                MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'ctrl_2494
                (coe
                   MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'label_2380
-                  (coe d_skip'45'label_154)))
+                  (coe d_skip'45'label_156)))
             (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)))
 -- Once.CCC.Codegen.AllocExpand.outline
-d_outline_160 ::
+d_outline_162 ::
   [Integer] ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430] ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430]
-d_outline_160 v0 v1
+d_outline_162 v0 v1
   = case coe v1 of
       [] -> coe v1
       (:) v2 v3
@@ -531,19 +531,19 @@ d_outline_160 v0 v1
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22 (coe v2)
              (coe
                 MAlonzo.Code.Data.List.Base.du__'43''43'__32
-                (coe d_skip_156 (coe v0))
+                (coe d_skip_158 (coe v0))
                 (coe
-                   MAlonzo.Code.Data.List.Base.du_map_22 (coe d_site'45'call_136)
+                   MAlonzo.Code.Data.List.Base.du_map_22 (coe d_site'45'call_138)
                    (coe v3)))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.AllocExpand.expandₘ
-d_expand'8344'_170 ::
+d_expand'8344'_172 ::
   Bool ->
   T_Classes_8 ->
   [Integer] ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430] ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430]
-d_expand'8344'_170 v0 v1 v2 v3
+d_expand'8344'_172 v0 v1 v2 v3
   = if coe v0
-      then coe d_expand_126 v1 v3
-      else coe d_expand_126 v1 (d_outline_160 (coe v2) (coe v3))
+      then coe d_expand_128 v1 v3
+      else coe d_expand_128 v1 (d_outline_162 (coe v2) (coe v3))

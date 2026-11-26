@@ -92,7 +92,7 @@ data Kind : Set where
   k-jump  : LabelId → Kind          -- a jump to a label (control does not fall through)
   k-branch : LabelId → Kind         -- a branch to a label (or on)
   k-ret   : Kind                    -- a return, the leave (control does not fall through)
-  k-start : Kind                    -- the start (it reserves the stack)
+  k-start : ℕ → Kind               -- the start (it reserves the stack: D491 stage 4, its words)
   k-none  : Kind
 
 kind : AbstractInstr → Kind
@@ -105,7 +105,7 @@ kind (instr-ctrl (c-jmp ℓ))             = k-jump ℓ
 kind (instr-ctrl (c-branch-tag-zero ℓ)) = k-branch ℓ
 kind (instr-ctrl (c-ret _))             = k-ret
 kind (instr-ctrl c-leave)               = k-ret
-kind (instr-ctrl (c-start _))           = k-start
+kind (instr-ctrl (c-start _ r))           = k-start r
 {-# CATCHALL #-}
 kind _                                  = k-none
 
@@ -121,7 +121,7 @@ own-k o (k-label ℓ)   = if ℓ ≡ᵇᴵ skip-label then o-start else o
 own-k o (k-jump _)    = o
 own-k o (k-branch _)  = o
 own-k o k-ret         = o
-own-k o k-start       = o
+own-k o (k-start _)   = o
 own-k o k-none        = o
 
 own : Owner → AbstractInstr → Owner
@@ -137,7 +137,7 @@ entry-k (k-label _)   = false
 entry-k (k-jump _)    = false
 entry-k (k-branch _)  = false
 entry-k k-ret         = false
-entry-k k-start       = false
+entry-k (k-start _)   = false
 entry-k k-none        = false
 
 frame-k : Kind → ℕ
@@ -149,7 +149,7 @@ frame-k (k-label _)   = 0
 frame-k (k-jump _)    = 0
 frame-k (k-branch _)  = 0
 frame-k k-ret         = 0
-frame-k k-start       = 0
+frame-k (k-start _)   = 0
 frame-k k-none        = 0
 
 -- control falls through (to the next instruction) unless this is a jump or a return
@@ -169,7 +169,7 @@ frame-other (k-label _) _ = refl
 frame-other (k-jump _)  _ = refl
 frame-other (k-branch _) _ = refl
 frame-other k-ret       _ = refl
-frame-other k-start     _ = refl
+frame-other (k-start _) _ = refl
 frame-other k-none      _ = refl
 
 -- the owner BEFORE `pc` (what `own` turns into the instruction's)
@@ -241,7 +241,7 @@ cost-k T o (k-label _)   = 0
 cost-k T o (k-jump _)    = 0
 cost-k T o (k-branch _)  = 0
 cost-k T o k-ret         = 0
-cost-k T o k-start       = 0
+cost-k T o (k-start _)   = 0
 cost-k T o k-none        = 0
 
 cost : Depths → Owner → AbstractInstr → ℕ
@@ -263,7 +263,7 @@ extra-k T o k-ret         = true
 extra-k T o (k-call _)    = true
 extra-k T o k-clo         = true
 extra-k T o (k-sig _)     = true
-extra-k T o k-start       = pastO T o ≤ᵇ start-stack-words
+extra-k T o (k-start r)   = pastO T o ≤ᵇ r
 extra-k T o k-none        = true
 
 ok-at : Depths → Owner → AbstractInstr → Bool
@@ -312,7 +312,7 @@ record Cert (T : Depths) (prog : AbstractTrace) : Set where
     jump-le  : ∀ pc j ℓ → jumps-to (at prog pc) ℓ → at prog j ≡ just (instr-ctrl (c-label ℓ))
              → pastO T (owner prog j) ≤ pastO T (owner prog pc)
     -- the start's reserve holds the start's function's depth
-    start-le : ∀ pc b → at prog pc ≡ just (instr-ctrl (c-start b)) → pastO T (owner prog pc) ≤ start-stack-words
+    start-le : ∀ pc b r → at prog pc ≡ just (instr-ctrl (c-start b r)) → pastO T (owner prog pc) ≤ r
     -- where control falls through, the next instruction's function is no deeper
     fall-le  : ∀ pc (i x : AbstractInstr) → at prog pc ≡ just i → at prog (suc pc) ≡ just x → falls-k (kind i) ≡ true
              → pastO T (owner prog (suc pc)) ≤ pastO T (owner prog pc)
@@ -384,7 +384,7 @@ cert-of T prog c = record
             (label-owner T (owner prog j) ℓ
                (extra-of T (owner prog j) (instr-ctrl (c-label ℓ)) (ok-of T o-start false prog cs j (instr-ctrl (c-label ℓ)) fl)))
             (jump-at T o-start false prog pc ℓ cs jt)
-  ; start-le = λ pc b f → ≤ᵇ-sound (extra-of T (owner prog pc) (instr-ctrl (c-start b)) (ok-of T o-start false prog cs pc (instr-ctrl (c-start b)) f))
+  ; start-le = λ pc b r f → ≤ᵇ-sound (extra-of T (owner prog pc) (instr-ctrl (c-start b r)) (ok-of T o-start false prog cs pc (instr-ctrl (c-start b r)) f))
   ; fall-le  = λ pc i x f fx fi → fall-of T o-start false prog cs pc i x f fx fi }
   where
     cs = c
@@ -406,7 +406,7 @@ private
   cost₀-k E o (k-jump _)    = refl
   cost₀-k E o (k-branch _)  = refl
   cost₀-k E o k-ret         = refl
-  cost₀-k E o k-start       = refl
+  cost₀-k E o (k-start _)   = refl
   cost₀-k E o k-none        = refl
 
   pastO₀ : ∀ E o → pastO (T₀ E) o ≡ 0
@@ -420,6 +420,6 @@ cert₀ E prog le = record
   ; dep-le   = λ pc e b f → subst (_≤ E) (sym (+-identityʳ b)) (le pc e b f)
   ; clo-le   = λ pc ℓ b f → Data.Nat.Properties.≤-refl
   ; jump-le  = λ pc j ℓ jt fl → subst (_≤ pastO (T₀ E) (owner prog pc)) (sym (pastO₀ E (owner prog j))) z≤n
-  ; start-le = λ pc b f → subst (_≤ start-stack-words) (sym (pastO₀ E (owner prog pc))) z≤n
+  ; start-le = λ pc b r f → subst (_≤ r) (sym (pastO₀ E (owner prog pc))) z≤n
   ; fall-le  = λ pc i x f fx fi → subst (_≤ pastO (T₀ E) (owner prog pc)) (sym (pastO₀ E (owner prog (suc pc)))) z≤n }
   where import Data.Nat.Properties

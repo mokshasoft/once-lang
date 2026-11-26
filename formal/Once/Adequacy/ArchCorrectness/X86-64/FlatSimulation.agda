@@ -2842,7 +2842,7 @@ room-step-x86 {hv} prog fs s k cc st h ft rsp<mod = by-s (Room.room-s k) refl
 
 ------------------------------------------------------------------------
 -- Plan 0.107, D488: THE START ↔ the room check for `main`'s frame and the stack
--- it reserves (the check's own four instructions at `start-stack-words + b`),
+-- it reserves (the check's own four instructions at `rsv + b`),
 -- `sub $8b, %rsp` (the outermost frame, as a body marker reserves its own:
 -- `sim-thunk`), then the stack limit: `r11 := rsp ; r11 −= 8B ; record[0] :=
 -- r11` (`sim-set-lim`). Nothing is owed at the start, so the return rows are
@@ -2860,9 +2860,9 @@ private
   st-a9 : ∀ p → (p + 8) + 1 ≡ p + 9
   st-a9 p = +-assoc p 8 1
 
-start-step-x86 : ∀ {hv : HeapView} prog fs s b → CompiledCorr hv prog fs s
+start-step-x86 : ∀ {hv : HeapView} prog fs s b rsv → CompiledCorr hv prog fs s
   → halted (floc fs) ≡ false
-  → fetch prog (fpc fs) ≡ just (instr-ctrl (c-start b))
+  → fetch prog (fpc fs) ≡ just (instr-ctrl (c-start b rsv))
   → xreadReg (xregs s) rsp < X.W.modulus
   → C.FlatCorrespondence.HeapView.hfront hv ≡ X.heap-front
   → fret fs ≡ []
@@ -2870,17 +2870,17 @@ start-step-x86 : ∀ {hv : HeapView} prog fs s b → CompiledCorr hv prog fs s
   → C.FlatCorrespondence.HeapView.lo hv ≡ X.readReg (xregs s) rsp
   → Σ ℕ (λ c → Σ X.State (λ s' → (X.exec (suc c) (compile-trace prog) s ≡ just s')
                 × Σ HeapView (λ hv′ → (C.FlatCorrespondence.HeapView.hstarted hv′ ≡ true)
-                    × (C.FlatCorrespondence.HeapView.hlim hv′ + slots start-stack-words ≤ X.readReg (xregs s') rsp)
-                    × CompiledCorr hv′ prog (flat-exec-instr (instr-ctrl (c-start b)) prog fs) s')))
+                    × (C.FlatCorrespondence.HeapView.hlim hv′ + slots rsv ≤ X.readReg (xregs s') rsp)
+                    × CompiledCorr hv′ prog (flat-exec-instr (instr-ctrl (c-start b rsv)) prog fs) s')))
     ⊎ Σ ℕ (λ c → Σ X.State (λ s' → (X.exec c (compile-trace prog) s ≡ just s')
                 × xhalted s' ≡ false
                 × X.fetch (compile-trace prog) (pc s') ≡ just (call-sym host-exhausted-symbol)))
-start-step-x86 {hv} prog fs s b cc h ft rsp<mod _ nf nst lo-eq = go (X.Flags.cf (flags s2) ∨ X.Flags.zf (flags s2)) refl
+start-step-x86 {hv} prog fs s b rsv cc h ft rsp<mod _ nf nst lo-eq = go (X.Flags.cf (flags s2) ∨ X.Flags.zf (flags s2)) refl
   where
     dc = dataCorr cc ; po = pc-off cc
     cp = compile-trace prog
-    i = instr-ctrl (c-start b)
-    B = start-stack-words
+    i = instr-ctrl (c-start b rsv)
+    B = rsv
     k = B + b
     p = pc s
     halt-s : xhalted s ≡ false
@@ -2911,7 +2911,7 @@ start-step-x86 {hv} prog fs s b cc h ft rsp<mod _ nf nst lo-eq = go (X.Flags.cf 
     go : ∀ bb → (X.Flags.cf (flags s2) ∨ X.Flags.zf (flags s2)) ≡ bb
        → Σ ℕ (λ c → Σ X.State (λ s' → (X.exec (suc c) cp s ≡ just s')
                 × Σ HeapView (λ hv′ → (C.FlatCorrespondence.HeapView.hstarted hv′ ≡ true)
-                    × (C.FlatCorrespondence.HeapView.hlim hv′ + slots start-stack-words ≤ X.readReg (xregs s') rsp)
+                    × (C.FlatCorrespondence.HeapView.hlim hv′ + slots rsv ≤ X.readReg (xregs s') rsp)
                     × CompiledCorr hv′ prog (flat-exec-instr i prog fs) s')))
          ⊎ Σ ℕ (λ c → Σ X.State (λ s' → (X.exec c cp s ≡ just s')
                 × xhalted s' ≡ false

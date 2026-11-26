@@ -66,8 +66,8 @@ module X {FS : FrameSemantics} (C : Classes) where
       at : ExpView C s x → i ∈ expand-at C s x → InExp s (x ∷ P) i
       at (ev-alloc k) m′ = in-alloc 0 k refl m′
       at (ev-free k)  m′ = in-free k m′
-      at (ev-start b) (here refl) = in-kept (here refl) (λ _ ()) (λ _ ())
-      at (ev-start b) (there m′)  = in-setup m′
+      at (ev-start b _) (here refl) = in-kept (here refl) (λ _ ()) (λ _ ())
+      at (ev-start b _) (there m′)  = in-setup m′
       at (ev-same eq) m′ = one (subst (i ∈_) eq m′)
         where
           one : i ∈ (x ∷ []) → InExp s (x ∷ P) i
@@ -105,7 +105,7 @@ module X {FS : FrameSemantics} (C : Classes) where
       head-in : ExpView C s x → x ∈ expand-at C s x
       head-in (ev-alloc k) = ⊥-elim (na k refl)
       head-in (ev-free k)  = ⊥-elim (nf k refl)
-      head-in (ev-start b) = here refl
+      head-in (ev-start b _) = here refl
       head-in (ev-same eq) = subst (x ∈_) (sym eq) (here refl)
   kept-in s (x ∷ P) (there m) na nf = ∈-++⁺ʳ (expand-at C s x) (kept-in (suc s) P m na nf)
 
@@ -217,7 +217,7 @@ module X {FS : FrameSemantics} (C : Classes) where
           by′ : ExpView C s x → AllPairs _≢_ (Labs (expand-at C s x) ++ Labs rest)
           by′ (ev-alloc k) = ⊥-elim (lbl≢ (label-of?-sound x l e)) where lbl≢ : x ≡ instr-ctrl (c-label l) → ⊥ ; lbl≢ ()
           by′ (ev-free k)  = ⊥-elim (lbl≢ (label-of?-sound x l e)) where lbl≢ : x ≡ instr-ctrl (c-label l) → ⊥ ; lbl≢ ()
-          by′ (ev-start b) = ⊥-elim (lbl≢ (label-of?-sound x l e)) where lbl≢ : x ≡ instr-ctrl (c-label l) → ⊥ ; lbl≢ ()
+          by′ (ev-start b _) = ⊥-elim (lbl≢ (label-of?-sound x l e)) where lbl≢ : x ≡ instr-ctrl (c-label l) → ⊥ ; lbl≢ ()
           by′ (ev-same eq) = subst (λ z → AllPairs _≢_ (Labs z ++ Labs rest)) (sym eq) (subst (λ mo → AllPairs _≢_ (LabsC.lab {FS} mo [] ++ Labs rest)) (sym e) (cross ∷ IH))
             where
               kept-fork : ∀ m′ → (m′ ∈ Labs P) ⊎ (Σ ℕ λ s′ → (suc s ≤ s′) × SiteL m′ s′) → l ≡ m′ → ⊥
@@ -231,7 +231,7 @@ module X {FS : FrameSemantics} (C : Classes) where
           by′ : ExpView C s x → AllPairs _≢_ (Labs (expand-at C s x) ++ Labs rest)
           by′ (ev-alloc k) = (bump≢done s ∷ later 0 z≤n imgM) ∷ (later 1 (s≤s z≤n) imgM ∷ IH)
           by′ (ev-free k)  = IH
-          by′ (ev-start b) = subst (λ z → AllPairs _≢_ (z ++ Labs rest)) (sym (labs-empty (setup C) no-lab-setup)) IH
+          by′ (ev-start b _) = subst (λ z → AllPairs _≢_ (z ++ Labs rest)) (sym (labs-empty (setup C) no-lab-setup)) IH
           by′ (ev-same eq) = subst (λ z → AllPairs _≢_ (Labs z ++ Labs rest)) (sym eq) (subst (λ mo → AllPairs _≢_ (LabsC.lab {FS} mo [] ++ Labs rest)) (sym e) IH)
 
   -- an instruction list with no entry has none
@@ -258,7 +258,7 @@ module X {FS : FrameSemantics} (C : Classes) where
       by (ev-alloc k) = trans (cong (_++ Ents (expand-from C (suc s) P))
                                 (ents-none (alloc-code C s k) (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []))) IH
       by (ev-free k)  = trans (cong (_++ Ents (expand-from C (suc s) P)) (ents-none (free-code C k) (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []))) IH
-      by (ev-start b) = trans (cong (_++ Ents (expand-from C (suc s) P)) (ents-none (instr-ctrl (c-start b) ∷ setup C) (refl ∷ setup-ne))) IH
+      by (ev-start b rsv) = trans (cong (_++ Ents (expand-from C (suc s) P)) (ents-none (instr-ctrl (c-start b rsv) ∷ setup C) (refl ∷ setup-ne))) IH
       by (ev-same eq) = trans (cong (λ z → Ents z ++ Ents (expand-from C (suc s) P)) eq) (go (entry-of? x))
         where go : ∀ mo → LabsC.ent {FS} mo [] ++ Ents (expand-from C (suc s) P) ≡ LabsC.ent {FS} mo (Ents P)
               go (just e) = cong (e ∷_) IH

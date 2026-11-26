@@ -107,7 +107,7 @@ data SegAction : Set where
 
 seg-action : AbstractInstr → SegAction
 seg-action (instr-ctrl (c-entry _ b)) = seg-push b
-seg-action (instr-ctrl (c-start b))   = seg-push b   -- plan 0.107: the outermost frame
+seg-action (instr-ctrl (c-start b rsv))   = seg-push b   -- plan 0.107: the outermost frame
 seg-action (instr-ctrl (c-ret _))     = seg-pop
 {-# CATCHALL #-}
 seg-action _                          = seg-id

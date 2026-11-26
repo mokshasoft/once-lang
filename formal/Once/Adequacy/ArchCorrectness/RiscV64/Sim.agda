@@ -97,10 +97,10 @@ riscv64-sim = record
   }
   where
     sim : _
-    sim q b tail env em tb snd fl =
-      budget-apex-⊑ (run-of env (compile-trace (room-checks (instr-ctrl (c-start b) ∷ tail)))) ([] , X.initState) ι (runIR (arch-numerics riscv64) (pureHalf ι) q) fact
+    sim q b rsv tail env em tb snd fl =
+      budget-apex-⊑ (run-of env (compile-trace (room-checks (instr-ctrl (c-start b rsv) ∷ tail)))) ([] , X.initState) ι (runIR (arch-numerics riscv64) (pureHalf ι) q) fact
       where
-        image = instr-ctrl (c-start b) ∷ tail
+        image = instr-ctrl (c-start b rsv) ∷ tail
         P′ = room-checks image
         run₀ : RunLow P′ start-flat
         run₀ = low-start image start-flat (mkRunAt em (reach-start start-flat (entry-like 0) refl snd)) refl
@@ -108,7 +108,7 @@ riscv64-sim = record
           (N , e , c) →
             let open RoomEvents {rv64-frame-semantics} image using (ev-start)
                 boot = ev-start N start-flat
-                agree₀ = events-agree-start (proj₁ boot) ev-riscv64 env P′ start-flat X.initState _ (entry-corr P′)
+                agree₀ = events-agree-start (proj₁ boot) ev-riscv64 env P′ start-flat X.initState _ _ (entry-corr P′)
                            (entry-wf 0) tt refl tb run₀ refl (cong (λ p → FlatMachine.fetch {rv64-frame-semantics} p 0) (room-checks-∷ _ tail)) refl refl refl refl refl
                 agree = retarget (proj₁ (proj₂ boot)) (proj₂ (proj₂ boot)) agree₀
             in budget-fact-of (run-of env (compile-trace P′)) ([] , X.initState) ι (runIR (arch-numerics riscv64) (pureHalf ι) q) k (proj₁ agree) _

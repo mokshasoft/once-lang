@@ -154,7 +154,7 @@ shifted-instrᵍ d (load-rec k)                        p p′ fs fs' _ sh = shif
 shifted-instrᵍ d (store-rec k)                       p p′ fs fs' _ sh = shifted-straight d (store-rec k) fs fs' sh
 shifted-instrᵍ d (instr-ctrl (c-label _))               p p′ fs fs' _ sh = shifted-label d fs fs' sh
 shifted-instrᵍ d (instr-ctrl (c-entry _ b))             p p′ fs fs' _ sh = shifted-thunk d b fs fs' sh
-shifted-instrᵍ d (instr-ctrl (c-start b))               p p′ fs fs' _ sh = shifted-thunk d b fs fs' sh
+shifted-instrᵍ d (instr-ctrl (c-start b rsv))               p p′ fs fs' _ sh = shifted-thunk d b fs fs' sh
 shifted-instrᵍ d (instr-ctrl c-leave)                   p p′ fs fs' _ sh = shifted-leave d fs fs' sh
 shifted-instrᵍ d (instr-ctrl (c-call-fn f))             p p′ fs fs' a sh =
   shifted-call-at d (find-fn p f) (find-fn p′ f) fs fs' sh a
@@ -256,7 +256,7 @@ site-view (instr-ctrl (c-branch-tag-zero l)) = sv-same refl
 site-view (instr-ctrl (c-entry e b))         = sv-same refl
 site-view (instr-ctrl (c-call-fn f))         = sv-same refl
 site-view (instr-ctrl (c-ret b))             = sv-same refl
-site-view (instr-ctrl (c-start b))           = sv-same refl
+site-view (instr-ctrl (c-start b rsv))           = sv-same refl
 site-view (instr-ctrl c-leave)               = sv-same refl
 
 -- a called site that is no call: the instruction itself
@@ -575,10 +575,10 @@ fetch-split (x ∷ xs) ys (suc j) i e = up (fetch-split xs ys j i e)
 -- ★ The outlined program's scans: the program's own, `d` on
 ------------------------------------------------------------------------
 
-module Out (ks : List ℕ) (b : ℕ) (T : AbstractTrace) where
+module Out (ks : List ℕ) (b rsv : ℕ) (T : AbstractTrace) where
 
   P P′ : AbstractTrace
-  P  = instr-ctrl (c-start b) ∷ T
+  P  = instr-ctrl (c-start b rsv) ∷ T
   P′ = outline ks P
 
   d : ℕ
@@ -596,8 +596,8 @@ module Out (ks : List ℕ) (b : ℕ) (T : AbstractTrace) where
 
   -- the routines, at the outlined program's pc `2 + rpos ks k`
   private
-    shape : P′ ≡ instr-ctrl (c-start b) ∷ instr-ctrl (c-jmp skip-label) ∷ prim-routines ks ++ instr-ctrl (c-label skip-label) ∷ map site-call T
-    shape = cong (λ z → instr-ctrl (c-start b) ∷ instr-ctrl (c-jmp skip-label) ∷ z)
+    shape : P′ ≡ instr-ctrl (c-start b rsv) ∷ instr-ctrl (c-jmp skip-label) ∷ prim-routines ks ++ instr-ctrl (c-label skip-label) ∷ map site-call T
+    shape = cong (λ z → instr-ctrl (c-start b rsv) ∷ instr-ctrl (c-jmp skip-label) ∷ z)
                  (Data.List.Properties.++-assoc (prim-routines ks) (instr-ctrl (c-label skip-label) ∷ []) (map site-call T))
 
   rp : ℕ → ℕ
@@ -760,7 +760,7 @@ module Out (ks : List ℕ) (b : ℕ) (T : AbstractTrace) where
   agree (instr-ctrl (c-entry e b))            nj nc = tt
   agree (instr-ctrl (c-call-fn f))         nj nc = find-entry-out (e-fn f) (nc f refl)
   agree (instr-ctrl (c-ret b))                nj nc = tt
-  agree (instr-ctrl (c-start b))              nj nc = tt
+  agree (instr-ctrl (c-start b rsv))              nj nc = tt
   agree (instr-ctrl c-leave)                  nj nc = tt
 
   -- ★ A PLAIN STEP: the same instruction, one step each, shifted
@@ -780,8 +780,8 @@ module Out (ks : List ℕ) (b : ℕ) (T : AbstractTrace) where
     n : ℕ
     n = length (prim-routines ks)
 
-    shape′ : P′ ≡ instr-ctrl (c-start b) ∷ instr-ctrl (c-jmp skip-label) ∷ prim-routines ks ++ instr-ctrl (c-label skip-label) ∷ map site-call T
-    shape′ = cong (λ z → instr-ctrl (c-start b) ∷ instr-ctrl (c-jmp skip-label) ∷ z)
+    shape′ : P′ ≡ instr-ctrl (c-start b rsv) ∷ instr-ctrl (c-jmp skip-label) ∷ prim-routines ks ++ instr-ctrl (c-label skip-label) ∷ map site-call T
+    shape′ = cong (λ z → instr-ctrl (c-start b rsv) ∷ instr-ctrl (c-jmp skip-label) ∷ z)
                   (Data.List.Properties.++-assoc (prim-routines ks) (instr-ctrl (c-label skip-label) ∷ []) (map site-call T))
 
     find-skip : find-label P′ skip-label ≡ just (suc (suc n))
@@ -801,8 +801,8 @@ module Out (ks : List ℕ) (b : ℕ) (T : AbstractTrace) where
   -- ★ THE START: the program's start, then the jump over the routines and the
   -- skip label, reach the program's start step, shifted
   start-step : ∀ (s₀ : FlatState) → fpc s₀ ≡ 0 → fret s₀ ≡ [] → LocState.halted (floc s₀) ≡ false
-             → Σ FlatState λ fs″ → Σ (FlatSteps P′ 3 s₀ fs″) λ c → (chain-events c ≡ []) × (ctrl-of (instr-ctrl (c-start b)) ≤ chain-ctrls c)
-                 × Shifted d fs″ (flat-exec-instr (instr-ctrl (c-start b)) P s₀)
+             → Σ FlatState λ fs″ → Σ (FlatSteps P′ 3 s₀ fs″) λ c → (chain-events c ≡ []) × (ctrl-of (instr-ctrl (c-start b rsv)) ≤ chain-ctrls c)
+                 × Shifted d fs″ (flat-exec-instr (instr-ctrl (c-start b rsv)) P s₀)
   start-step s₀ p0 r0 h =
     s₃ , (h , trans (cong (fetch P′) p0) refl)
        ∷ (h , trans (cong (λ z → fetch P′ (suc z)) p0) refl)
@@ -812,7 +812,7 @@ module Out (ks : List ℕ) (b : ℕ) (T : AbstractTrace) where
        , refl , refl , pcs , trans r0 (cong (map (d +_)) (sym r0)) , refl , refl
     where
       s₁ s₃ : FlatState
-      s₁ = flat-exec-instr (instr-ctrl (c-start b)) P′ s₀
+      s₁ = flat-exec-instr (instr-ctrl (c-start b rsv)) P′ s₀
       s₃ = flat-exec-instr (instr-ctrl (c-label skip-label)) P′ (do-jump (just (suc (suc n))) s₁)
       pcs : suc (suc (suc n)) ≡ d + suc (fpc s₀)
       pcs = trans (cong suc (trans (sym (Data.Nat.Properties.+-comm n 2)) (sym (Data.Nat.Properties.+-assoc n 1 1))))
@@ -840,7 +840,7 @@ module Out (ks : List ℕ) (b : ℕ) (T : AbstractTrace) where
 
   module Run (Good : FlatState → Set)
              (g-step : ∀ {fs i} → Good fs → LocState.halted (floc fs) ≡ false → fetch P (fpc fs) ≡ just i → Good (flat-exec-instr i P fs))
-             (g-ns   : ∀ {fs} → Good fs → ¬ fetch P (fpc fs) ≡ just (instr-ctrl (c-start b)))
+             (g-ns   : ∀ {fs} → Good fs → ¬ fetch P (fpc fs) ≡ just (instr-ctrl (c-start b rsv)))
              (g-link : ∀ {fs i} → Good fs → fetch P (fpc fs) ≡ just i → (∀ e bb → ¬ i ≡ instr-ctrl (c-entry e bb)) → flink fs ≡ nothing)
              (g-nf   : ∀ {fs i} → Good fs → LocState.halted (floc fs) ≡ false → fetch P (fpc fs) ≡ just i
                      → LocState.faulted (floc (flat-exec-instr i P fs)) ≡ false)
@@ -912,25 +912,25 @@ module Out (ks : List ℕ) (b : ℕ) (T : AbstractTrace) where
 
     -- ★★ FROM THE START: the program's start step, then shifted states all the way
     start-ev : ∀ (s₀ : FlatState) → fpc s₀ ≡ 0 → fret s₀ ≡ [] → LocState.halted (floc s₀) ≡ false
-             → Good (flat-exec-instr (instr-ctrl (c-start b)) P s₀)
+             → Good (flat-exec-instr (instr-ctrl (c-start b rsv)) P s₀)
              → ∀ N → Σ ℕ λ m → (flat-events (suc m) P′ s₀ ≡ flat-events (suc N) P s₀)
                               × (flat-ctrls (suc N) P s₀ ≤ flat-ctrls (suc m) P′ s₀)
     start-ev s₀ p0 r0 h G N = fin (start-step s₀ p0 r0 h)
       where
-        f0 : fetch P (fpc s₀) ≡ just (instr-ctrl (c-start b))
+        f0 : fetch P (fpc s₀) ≡ just (instr-ctrl (c-start b rsv))
         f0 = cong (fetch P) p0
-        fin : (Σ FlatState λ fs″ → Σ (FlatSteps P′ 3 s₀ fs″) λ c → (chain-events c ≡ []) × (ctrl-of (instr-ctrl (c-start b)) ≤ chain-ctrls c)
-                 × Shifted d fs″ (flat-exec-instr (instr-ctrl (c-start b)) P s₀))
+        fin : (Σ FlatState λ fs″ → Σ (FlatSteps P′ 3 s₀ fs″) λ c → (chain-events c ≡ []) × (ctrl-of (instr-ctrl (c-start b rsv)) ≤ chain-ctrls c)
+                 × Shifted d fs″ (flat-exec-instr (instr-ctrl (c-start b rsv)) P s₀))
             → Σ ℕ λ m → (flat-events (suc m) P′ s₀ ≡ flat-events (suc N) P s₀) × (flat-ctrls (suc N) P s₀ ≤ flat-ctrls (suc m) P′ s₀)
         fin (fs″ , c , ce , cc , sh) = fin′ (ev N G sh)
           where
-            fin′ : Σ ℕ (λ m → Same m fs″ N (flat-exec-instr (instr-ctrl (c-start b)) P s₀))
+            fin′ : Σ ℕ (λ m → Same m fs″ N (flat-exec-instr (instr-ctrl (c-start b rsv)) P s₀))
                  → Σ ℕ λ m → (flat-events (suc m) P′ s₀ ≡ flat-events (suc N) P s₀) × (flat-ctrls (suc N) P s₀ ≤ flat-ctrls (suc m) P′ s₀)
             fin′ (m′ , ee , ec) =
               suc (suc m′)
               , trans (flat-events-steps c m′) (trans (cong₂ _▹_ ce ee) (sym (ev-unfold N P s₀ h f0)))
               , subst (_≤ flat-ctrls (3 + m′) P′ s₀) (sym (ct-unfold N P s₀ h f0))
-                  (subst (ctrl-of (instr-ctrl (c-start b)) + flat-ctrls N P (flat-exec-instr (instr-ctrl (c-start b)) P s₀) ≤_)
+                  (subst (ctrl-of (instr-ctrl (c-start b rsv)) + flat-ctrls N P (flat-exec-instr (instr-ctrl (c-start b rsv)) P s₀) ≤_)
                          (sym (flat-ctrls-steps c m′)) (≤-+ cc ec))
 
     -- one step of the program: a chain of the outlined one (one step, or the four of a site), shifted
@@ -997,13 +997,13 @@ module Out (ks : List ℕ) (b : ℕ) (T : AbstractTrace) where
     -- ★★ …and from the start
     sound-start : ∀ (s₀ : FlatState) → fpc s₀ ≡ 0 → fret s₀ ≡ [] → LocState.halted (floc s₀) ≡ false
                 → LocState.faulted (floc s₀) ≡ false
-                → Good (flat-exec-instr (instr-ctrl (c-start b)) P s₀)
-                → LocState.faulted (floc (flat-exec-instr (instr-ctrl (c-start b)) P s₀)) ≡ false
+                → Good (flat-exec-instr (instr-ctrl (c-start b rsv)) P s₀)
+                → LocState.faulted (floc (flat-exec-instr (instr-ctrl (c-start b rsv)) P s₀)) ≡ false
                 → Sound P′ s₀
     sound-start s₀ p0 r0 h nf0 G nf1 {fs' = x} dd = fin (start-step s₀ p0 r0 h)
       where
-        fin : (Σ FlatState λ fs″ → Σ (FlatSteps P′ 3 s₀ fs″) λ c → (chain-events c ≡ []) × (ctrl-of (instr-ctrl (c-start b)) ≤ chain-ctrls c)
-                 × Shifted d fs″ (flat-exec-instr (instr-ctrl (c-start b)) P s₀))
+        fin : (Σ FlatState λ fs″ → Σ (FlatSteps P′ 3 s₀ fs″) λ c → (chain-events c ≡ []) × (ctrl-of (instr-ctrl (c-start b rsv)) ≤ chain-ctrls c)
+                 × Shifted d fs″ (flat-exec-instr (instr-ctrl (c-start b rsv)) P s₀))
             → LocState.faulted (floc x) ≡ false
         fin (fs″ , c , _ , _ , sh) = split (meet c dd)
           where
@@ -1014,7 +1014,7 @@ module Out (ks : List ℕ) (b : ℕ) (T : AbstractTrace) where
 
   -- ★ what the outlined program holds, by where
   data WhereP′ (p : ℕ) (i : AbstractInstr) : Set where
-    w-start : p ≡ 0 → i ≡ instr-ctrl (c-start b) → WhereP′ p i
+    w-start : p ≡ 0 → i ≡ instr-ctrl (c-start b rsv) → WhereP′ p i
     w-jmp   : p ≡ 1 → i ≡ instr-ctrl (c-jmp skip-label) → WhereP′ p i
     w-rou   : ∀ j → p ≡ suc (suc j) → fetch (prim-routines ks) j ≡ just i → WhereP′ p i
     w-lab   : p ≡ suc (suc n) → i ≡ instr-ctrl (c-label skip-label) → WhereP′ p i
@@ -1071,10 +1071,10 @@ module _ {A B : _} (si : Once.SigOp.Info.SigOpInfo A B) where
             by (inj₂ (here ()))
             by (inj₂ (there ()))
 
-  sig-out : ∀ ks b T → instr-sigop si ∈ outline ks (instr-ctrl (c-start b) ∷ T) → instr-sigop si ∈ instr-ctrl (c-start b) ∷ T
-  sig-out ks b T (here ())
-  sig-out ks b T (there m) = by (∈-++⁻ (skip ks) m)
+  sig-out : ∀ ks b rsv T → instr-sigop si ∈ outline ks (instr-ctrl (c-start b rsv) ∷ T) → instr-sigop si ∈ instr-ctrl (c-start b rsv) ∷ T
+  sig-out ks b rsv T (here ())
+  sig-out ks b rsv T (there m) = by (∈-++⁻ (skip ks) m)
     where
-      by : (instr-sigop si ∈ skip ks) ⊎ (instr-sigop si ∈ map site-call T) → instr-sigop si ∈ instr-ctrl (c-start b) ∷ T
+      by : (instr-sigop si ∈ skip ks) ⊎ (instr-sigop si ∈ map site-call T) → instr-sigop si ∈ instr-ctrl (c-start b rsv) ∷ T
       by (inj₁ r) = ⊥-elim (no-skip ks r)
       by (inj₂ r) = let (x , mx , e) = ∈-map⁻ site-call r in there (subst (_∈ T) (site-same e (λ f ())) mx)

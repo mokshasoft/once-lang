@@ -53,7 +53,7 @@ private
   kind-name (k-jump _)    = "jump"
   kind-name (k-branch _)  = "branch"
   kind-name k-ret         = "return"
-  kind-name k-start       = "start"
+  kind-name (k-start _)   = "start"
   kind-name k-none        = "other"
 
   first-fail : Depths → Owner → ℕ → AbstractTrace → String

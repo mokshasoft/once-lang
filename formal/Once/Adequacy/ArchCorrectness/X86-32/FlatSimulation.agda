@@ -3055,7 +3055,7 @@ room-step-x86-32 {hv} prog fs s k cc st h ft esi<m esp<m = by-s (Room.room-s k) 
                           (cong (pc s +_) (trans (sym (length-++ W)) (cong (λ r → length (room-code′ hh r)) (sym e))))))
 ------------------------------------------------------------------------
 -- Plan 0.107, D488: THE START ↔ the room check for `main`'s frame and the stack
--- it reserves (the check's own eight instructions at `start-stack-words + b`),
+-- it reserves (the check's own eight instructions at `rsv + b`),
 -- `subl $4b, %esp` (the outermost frame: `sim-thunk`), then the stack limit:
 -- `edx := esp ; edx −= 4B ; record[0] := edx` (`sim-set-lim`). Nothing is owed
 -- at the start, so the return rows are empty on both sides.
@@ -3072,9 +3072,9 @@ private
   st-a12 : ∀ p → (p + 11) + 1 ≡ p + 12
   st-a12 p = +-assoc p 11 1
 
-start-step-x86-32 : ∀ {hv : HeapView} prog fs s bf → CompiledCorr hv prog fs s
+start-step-x86-32 : ∀ {hv : HeapView} prog fs s bf rsv → CompiledCorr hv prog fs s
   → halted (floc fs) ≡ false
-  → fetch prog (fpc fs) ≡ just (instr-ctrl (c-start bf))
+  → fetch prog (fpc fs) ≡ just (instr-ctrl (c-start bf rsv))
   → xreadReg (xregs s) esi < X.W.modulus
   → xreadReg (xregs s) esp < X.W.modulus
   → fret fs ≡ []
@@ -3082,51 +3082,51 @@ start-step-x86-32 : ∀ {hv : HeapView} prog fs s bf → CompiledCorr hv prog fs
   → C.FlatCorrespondence.HeapView.lo hv ≡ xreadReg (xregs s) esp
   → Σ ℕ (λ c → Σ X.State (λ s' → (X.exec (suc c) (compile-trace prog) s ≡ just s')
                 × Σ HeapView (λ hv′ → (C.FlatCorrespondence.HeapView.hstarted hv′ ≡ true)
-                    × (C.FlatCorrespondence.HeapView.hlim hv′ + slots start-stack-words ≤ xreadReg (xregs s') esp)
-                    × CompiledCorr hv′ prog (flat-exec-instr (instr-ctrl (c-start bf)) prog fs) s')))
+                    × (C.FlatCorrespondence.HeapView.hlim hv′ + slots rsv ≤ xreadReg (xregs s') esp)
+                    × CompiledCorr hv′ prog (flat-exec-instr (instr-ctrl (c-start bf rsv)) prog fs) s')))
     ⊎ Σ ℕ (λ c → Σ X.State (λ s' → (X.exec c (compile-trace prog) s ≡ just s')
                 × xhalted s' ≡ false
                 × X.fetch (compile-trace prog) (pc s') ≡ just (call-sym host-exhausted-symbol)))
 -- the start's code, when its need is a word
-start-fits-step : ∀ {hv : HeapView} prog fs s bf → CompiledCorr hv prog fs s
+start-fits-step : ∀ {hv : HeapView} prog fs s bf rsv → CompiledCorr hv prog fs s
   → halted (floc fs) ≡ false
-  → fetch prog (fpc fs) ≡ just (instr-ctrl (c-start bf))
+  → fetch prog (fpc fs) ≡ just (instr-ctrl (c-start bf rsv))
   → xreadReg (xregs s) esi < X.W.modulus
   → xreadReg (xregs s) esp < X.W.modulus
   → fret fs ≡ []
   → C.FlatCorrespondence.HeapView.hstarted hv ≡ false
   → C.FlatCorrespondence.HeapView.lo hv ≡ xreadReg (xregs s) esp
-  → room-fits? (start-stack-words + bf) ≡ true
+  → room-fits? (rsv + bf) ≡ true
   → Σ ℕ (λ c → Σ X.State (λ s' → (X.exec (suc c) (compile-trace prog) s ≡ just s')
                 × Σ HeapView (λ hv′ → (C.FlatCorrespondence.HeapView.hstarted hv′ ≡ true)
-                    × (C.FlatCorrespondence.HeapView.hlim hv′ + slots start-stack-words ≤ xreadReg (xregs s') esp)
-                    × CompiledCorr hv′ prog (flat-exec-instr (instr-ctrl (c-start bf)) prog fs) s')))
+                    × (C.FlatCorrespondence.HeapView.hlim hv′ + slots rsv ≤ xreadReg (xregs s') esp)
+                    × CompiledCorr hv′ prog (flat-exec-instr (instr-ctrl (c-start bf rsv)) prog fs) s')))
     ⊎ Σ ℕ (λ c → Σ X.State (λ s' → (X.exec c (compile-trace prog) s ≡ just s')
                 × xhalted s' ≡ false
                 × X.fetch (compile-trace prog) (pc s') ≡ just (call-sym host-exhausted-symbol)))
 -- D488: the need is a word (`room-fits?`), or the start's check is the call itself
-start-step-x86-32 {hv} prog fs s bf cc h ft esi<m esp<m nf nst lo-eq = fit (room-fits? (start-stack-words + bf)) refl
+start-step-x86-32 {hv} prog fs s bf rsv cc h ft esi<m esp<m nf nst lo-eq = fit (room-fits? (rsv + bf)) refl
   where
-    fit : ∀ c → room-fits? (start-stack-words + bf) ≡ c
+    fit : ∀ c → room-fits? (rsv + bf) ≡ c
         → Σ ℕ (λ c → Σ X.State (λ s' → (X.exec (suc c) (compile-trace prog) s ≡ just s')
                 × Σ HeapView (λ hv′ → (C.FlatCorrespondence.HeapView.hstarted hv′ ≡ true)
-                    × (C.FlatCorrespondence.HeapView.hlim hv′ + slots start-stack-words ≤ xreadReg (xregs s') esp)
-                    × CompiledCorr hv′ prog (flat-exec-instr (instr-ctrl (c-start bf)) prog fs) s')))
+                    × (C.FlatCorrespondence.HeapView.hlim hv′ + slots rsv ≤ xreadReg (xregs s') esp)
+                    × CompiledCorr hv′ prog (flat-exec-instr (instr-ctrl (c-start bf rsv)) prog fs) s')))
           ⊎ Σ ℕ (λ c → Σ X.State (λ s' → (X.exec c (compile-trace prog) s ≡ just s')
                 × xhalted s' ≡ false
                 × X.fetch (compile-trace prog) (pc s') ≡ just (call-sym host-exhausted-symbol)))
-    fit true  e = start-fits-step {hv} prog fs s bf cc h ft esi<m esp<m nf nst lo-eq e
+    fit true  e = start-fits-step {hv} prog fs s bf rsv cc h ft esi<m esp<m nf nst lo-eq e
     fit false e = inj₂ (0 , s , refl , trans (C.FlatCorrespondence.FlatCorr.halt-eq (dataCorr cc)) h
-                       , trans (trans (cong (X.fetch (compile-trace prog)) (pc-off cc)) (fetch-block-head prog (fpc fs) (instr-ctrl (c-start bf)) ft))
-                               (cong (λ c → X.fetch ((fits-or-out c (room-code (start-stack-words + bf)) ++ start-tail bf)
+                       , trans (trans (cong (X.fetch (compile-trace prog)) (pc-off cc)) (fetch-block-head prog (fpc fs) (instr-ctrl (c-start bf rsv)) ft))
+                               (cong (λ c → X.fetch ((fits-or-out c (room-code (rsv + bf)) ++ start-tail bf rsv)
                                                       ++ compile-trace (drop (suc (fpc fs)) prog)) zero) e))
 
-start-fits-step {hv} prog fs s bf cc h ft esi<m esp<m nf nst lo-eq e = go (X.Flags.cf (flags s3) ∨ X.Flags.zf (flags s3)) refl
+start-fits-step {hv} prog fs s bf rsv cc h ft esi<m esp<m nf nst lo-eq e = go (X.Flags.cf (flags s3) ∨ X.Flags.zf (flags s3)) refl
   where
     dc = dataCorr cc ; po = pc-off cc
     cp = compile-trace prog
-    i = instr-ctrl (c-start bf)
-    B = start-stack-words
+    i = instr-ctrl (c-start bf rsv)
+    B = rsv
     k = B + bf
     p = pc s
     M = X.W.modulus
@@ -3138,9 +3138,9 @@ start-fits-step {hv} prog fs s bf cc h ft esi<m esp<m nf nst lo-eq e = go (X.Fla
     halt-s : xhalted s ≡ false
     halt-s = trans (C.FlatCorrespondence.FlatCorr.halt-eq dc) h
     at : ∀ n q → q ≡ pc s + n
-       → X.fetch cp q ≡ X.fetch (drop n ((room-code k ++ start-tail bf) ++ compile-trace (drop (suc (fpc fs)) prog))) zero
+       → X.fetch cp q ≡ X.fetch (drop n ((room-code k ++ start-tail bf rsv) ++ compile-trace (drop (suc (fpc fs)) prog))) zero
     at n q eq = trans (trans (cong (X.fetch cp) (trans eq (cong (_+ n) po))) (fetch-block-nth prog (fpc fs) n i ft))
-                      (cong (λ c → X.fetch (drop n ((fits-or-out c (room-code k) ++ start-tail bf) ++ compile-trace (drop (suc (fpc fs)) prog))) zero) e)
+                      (cong (λ c → X.fetch (drop n ((fits-or-out c (room-code k) ++ start-tail bf rsv) ++ compile-trace (drop (suc (fpc fs)) prog))) zero) e)
     f0 : X.fetch cp (pc s) ≡ just (sub (reg esi) (reg esp))
     f0 = at 0 (pc s) (sym (+-identityʳ (pc s)))
     v₁ : ℕ
@@ -3173,7 +3173,7 @@ start-fits-step {hv} prog fs s bf cc h ft esi<m esp<m nf nst lo-eq e = go (X.Fla
     go : ∀ c → (X.Flags.cf (flags s3) ∨ X.Flags.zf (flags s3)) ≡ c
        → Σ ℕ (λ c → Σ X.State (λ s' → (X.exec (suc c) cp s ≡ just s')
                 × Σ HeapView (λ hv′ → (C.FlatCorrespondence.HeapView.hstarted hv′ ≡ true)
-                    × (C.FlatCorrespondence.HeapView.hlim hv′ + slots start-stack-words ≤ xreadReg (xregs s') esp)
+                    × (C.FlatCorrespondence.HeapView.hlim hv′ + slots rsv ≤ xreadReg (xregs s') esp)
                     × CompiledCorr hv′ prog (flat-exec-instr i prog fs) s')))
          ⊎ Σ ℕ (λ c → Σ X.State (λ s' → (X.exec c cp s ≡ just s')
                 × xhalted s' ≡ false
@@ -3340,7 +3340,7 @@ start-fits-step {hv} prog fs s bf cc h ft esi<m esp<m nf nst lo-eq e = go (X.Fla
         pco : pc s11 ≡ blk-off prog (fpc fs₁)
         pco = trans e12 (trans (cong (_+ 12) po)
                 (sym (trans (blk-off-suc prog (fpc fs) i ft)
-                            (cong (λ c → blk-off prog (fpc fs) + length (fits-or-out c (room-code k) ++ start-tail bf)) e))))
+                            (cong (λ c → blk-off prog (fpc fs) + length (fits-or-out c (room-code k) ++ start-tail bf rsv)) e))))
         retPost : C.FlatCorrespondence.RetAddrs (blk-off prog) (X.State.memory s11) (x86-32-link-claim s11)
                     (flink fs₁) (C.FlatCorrespondence.frames-of (falloc fs₁)) (fret fs₁)
         retPost = subst (C.FlatCorrespondence.RetAddrs (blk-off prog) (X.State.memory s11) (x86-32-link-claim s11)

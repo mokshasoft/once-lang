@@ -48,7 +48,7 @@ open import Once.CCC.Machine.SMCore
   using ( AbstractInstr; AbstractTrace; instr-ctrl; c-label; c-jmp; c-branch-tag-zero; c-entry; c-ret
         ; c-call-fn; c-start; c-leave; load-from-slot; store-at-slot; lea-slot; restore-input; mov-to-input
         ; mov-to-output; load-at; store-at; addr-at; instr-alloc-heap; instr-free-heap; instr-load-tag-lit
-        ; instr-load-code-addr; instr-save-closure-reg; instr-call-closure; instr-sigop; instr-reg-op; out-nz )
+        ; instr-load-code-addr; instr-save-closure-reg; instr-call-closure; instr-sigop; instr-reg-op; out-nz ; start-stack-words)
 open import Once.Arith.SigOp.Compare using (CmpAt; cmp-of; cmp-block-info)
 
 module Once.LinCore.Lower
@@ -522,7 +522,7 @@ module Program′W {Γ} (ds : Defs Γ) (f : LTm Γ One One) (ldConst : ∀ {b} �
   image : AbstractTrace
   image =
     let main = compᴵ ds f {[]} {[]} end ; φ = frameOf main ; b = fbudget φ
-    in instr-ctrl (c-start b) ∷ proj₁ (lowC φ j₀ 0 (instr-ctrl c-leave ∷ []) main (start-in {[]} {[]} tt))
+    in instr-ctrl (c-start b start-stack-words) ∷ proj₁ (lowC φ j₀ 0 (instr-ctrl c-leave ∷ []) main (start-in {[]} {[]} tt))
        ++ blocksOf (allK U) blocks-in 0
 
 -- the program's: at its own universe (the driver's call computes it once)

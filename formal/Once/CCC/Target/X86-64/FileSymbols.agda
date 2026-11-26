@@ -90,7 +90,7 @@ defs-step (instr-ctrl (c-branch-tag-zero n)) r = refl
 defs-step (instr-ctrl (c-entry e b)) r = refl
 defs-step (instr-ctrl (c-ret b)) r = refl
 defs-step (instr-ctrl (c-call-fn f)) r = refl
-defs-step (instr-ctrl (c-start b)) r = refl
+defs-step (instr-ctrl (c-start b rsv)) r = refl
 defs-step (instr-ctrl c-leave) r = refl
 
 refs-step : ∀ (i : AbstractInstr) (r : Program)
@@ -136,7 +136,7 @@ refs-step (instr-ctrl (c-branch-tag-zero n)) r = refl
 refs-step (instr-ctrl (c-entry e b)) r = refl
 refs-step (instr-ctrl (c-ret b)) r = refl
 refs-step (instr-ctrl (c-call-fn f)) r = refl
-refs-step (instr-ctrl (c-start b)) r = refl
+refs-step (instr-ctrl (c-start b rsv)) r = refl
 refs-step (instr-ctrl c-leave) r = refl
 
 defs-lower : ∀ (t : AbstractTrace) → label-defs (compile-trace t) ≡ adefs t

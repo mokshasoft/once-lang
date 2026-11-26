@@ -420,7 +420,7 @@ module FlatEventTrace {FS : FrameSemantics} where
     leave-or-free : ∀ (i : AbstractInstr) → (i ≡ SMC.instr-ctrl SMC.c-leave) ⊎ LeftFree i
     leave-or-free (SMC.instr-ctrl (SMC.c-label _)) = inj₂ tt
     leave-or-free (SMC.instr-ctrl (SMC.c-entry _ _)) = inj₂ tt
-    leave-or-free (SMC.instr-ctrl (SMC.c-start _)) = inj₂ tt
+    leave-or-free (SMC.instr-ctrl (SMC.c-start _ _)) = inj₂ tt
     leave-or-free (SMC.instr-ctrl SMC.c-leave) = inj₁ refl
     leave-or-free (SMC.instr-ctrl (SMC.c-call-fn _)) = inj₂ tt
     leave-or-free (SMC.instr-ctrl (SMC.c-ret _)) = inj₂ tt

@@ -460,12 +460,12 @@ module Img (nm : CanonicalName) {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     open FlatMachine {FS} using (fetch; fetch-All; find-fn; find-thunk)
     open ImgE {FS} ds f ldConst (ld-nl {FS}) using (image-fn; image-tramp)
 
-    em-zero : fetch image 0 ≡ just (instr-ctrl (c-start em-budget))
+    em-zero : fetch image 0 ≡ just (instr-ctrl (c-start em-budget start-stack-words))
     em-zero = refl
 
-    em-start : ∀ k b → fetch image k ≡ just (instr-ctrl (c-start b)) → k ≡ 0
-    em-start zero    b e = refl
-    em-start (suc k) b e = ⊥-elim (proj₁ (fetch-All {P = OK} {prog = tail} {k = k} tail-ok e))
+    em-start : ∀ k b rsv → fetch image k ≡ just (instr-ctrl (c-start b rsv)) → k ≡ 0
+    em-start zero    b rsv e = refl
+    em-start (suc k) b rsv e = ⊥-elim (proj₁ (fetch-All {P = OK} {prog = tail} {k = k} tail-ok e))
 
     -- D470: the image holds no allocator record word (the expansion adds them)
     no-lrec : ∀ k w → fetch image k ≡ just (load-rec w) → ⊥

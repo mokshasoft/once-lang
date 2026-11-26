@@ -216,7 +216,7 @@ module ImgE {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
 
   image-at : ∀ {σ} {κ : Key σ} (p : (σ , κ) ∈ allK U)
            → Inside image (lowBlock (idx p) κ (blocks-in p) ++ tramp (idx p) κ)
-  image-at p = in-trans (in-r (instr-ctrl (c-start (fbudget φ₀)) ∷ code₀) bl) (blocks-at (allK U) blocks-in 0 p)
+  image-at p = in-trans (in-r (instr-ctrl (c-start (fbudget φ₀) start-stack-words) ∷ code₀) bl) (blocks-at (allK U) blocks-in 0 p)
 
   ----------------------------------------------------------------------
   -- 5. ★ A CALL LANDS ON ITS BLOCK; A CODE WORD ON ITS TRAMPOLINE.

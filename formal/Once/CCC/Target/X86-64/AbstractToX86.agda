@@ -310,15 +310,16 @@ compile-abstract (instr-ctrl (c-entry e b))        = label (callee e) ∷ sub (r
 -- D488: the start checks that `main`'s frame and the stack it reserves fit
 -- (the room check's code at `start-stack-words + b`), reserves the frame, and
 -- sets the stack limit, record word 0, to `rsp − 8·start-stack-words`
-compile-abstract (instr-ctrl (c-start b))          =
-  lea r11 (base+disp r15 (slots (start-stack-words + b))) ∷
+-- (D491 stage 4: the reserve is the instruction's, `rsv`)
+compile-abstract (instr-ctrl (c-start b rsv))          =
+  lea r11 (base+disp r15 (slots (rsv + b))) ∷
   cmp (reg r11) (reg rsp) ∷
   jbe-fwd ∷
   call-sym host-exhausted-symbol ∷
   local-1 ∷
   sub (reg rsp) (imm (slots b)) ∷
   mov (reg r11) (reg rsp) ∷
-  sub (reg r11) (imm (slots start-stack-words)) ∷
+  sub (reg r11) (imm (slots rsv)) ∷
   mov (mem (rip+sym alloc-record-symbol 0)) (reg r11) ∷ []
 -- D320: the program leaves by the Host's `leave`, a call of its one fixed symbol.
 compile-abstract (instr-ctrl c-leave)                   = call-sym host-leave-symbol ∷ []

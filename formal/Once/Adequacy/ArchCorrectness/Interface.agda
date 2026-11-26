@@ -121,9 +121,9 @@ record ArchSim (o : CanonicalName) (B : Backend) : Set₁ where
     -- ★ the backend's file of a room-checked image (D488: it starts with its start, whose code
     -- makes the file's entry) is what the assembler demands when the image's symbols are
     -- (`ImageWF`: defined once, resolved, valid)
-    file-wf : ∀ b (t″ : AbstractTrace) (bs : List ArithBlock) (ex : List String)
-            → ImageWF (instr-ctrl (c-start b) ∷ t″) bs ex
-            → Backend.AsmWF B (Backend.file B (instr-ctrl (c-start b) ∷ t″) (file-table (Backend.payload B) bs) ex)
+    file-wf : ∀ b rsv (t″ : AbstractTrace) (bs : List ArithBlock) (ex : List String)
+            → ImageWF (instr-ctrl (c-start b rsv) ∷ t″) bs ex
+            → Backend.AsmWF B (Backend.file B (instr-ctrl (c-start b rsv) ∷ t″) (file-table (Backend.payload B) bs) ex)
     -- …and so is a library's (empty) file (D467)
     empty-wf : Backend.AsmWF B (Backend.empty B)
 
@@ -140,8 +140,8 @@ record ArchSim (o : CanonicalName) (B : Backend) : Set₁ where
     entry-cl   : Once.CCC.Machine.FlatStoreWF.sv-below FS (AllocState.next-heap-ref (FlatMachine.FlatState.falloc start)) (FlatMachine.FlatState.fclosure start)
     -- ★ THE ARCH'S THEOREM: the flat theorem of a well-shaped image (its start
     -- first, at main's budget `b`) becomes the machine's
-    sim : ∀ (q : IRProgram) (b : ℕ) (tail : AbstractTrace) (env : String → Maybe (Backend.Payload B))
-        → let image = instr-ctrl (c-start b) ∷ tail in
+    sim : ∀ (q : IRProgram) (b rsv : ℕ) (tail : AbstractTrace) (env : String → Maybe (Backend.Payload B))
+        → let image = instr-ctrl (c-start b rsv) ∷ tail in
           Emitted image → ArithTable (room-checks image) env
         → FlatStepsAPI.Sound {FS} image start → FlatShows FS image start q
         → Machine.trace (δ env (compile (room-checks image))) init ⊑ᵗ⟨ _≡_ ⟩ ⟦ just q ⟧IRᵗ (fs-numerics FS) (FrameSemantics.fs-interp FS)

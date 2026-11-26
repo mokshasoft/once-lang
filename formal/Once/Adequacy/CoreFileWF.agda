@@ -69,10 +69,10 @@ module X8664 where
   empty-wf : F.AsmWF (F.mkImage [] nothing [] [])
   empty-wf = record { defined-once = [] ; resolved = [] ; entry-in = tt ; defs-valid = [] ; externs-valid = [] }
 
-  core-wf : ∀ b (t″ : AbstractTrace) (bs : List ArithBlock) (ex : List String)
-          → ImageWF (instr-ctrl (c-start b) ∷ t″) bs ex
-          → F.AsmWF (F.mkImage (proj₂ (L.compile-trace-cnt C.entry-owner 0 (instr-ctrl (c-start b) ∷ t″))) (just 0) (file-table A.block-payload bs) ex)
-  core-wf b t″ bs ex (u , r , ev) = record
+  core-wf : ∀ b rsv (t″ : AbstractTrace) (bs : List ArithBlock) (ex : List String)
+          → ImageWF (instr-ctrl (c-start b rsv) ∷ t″) bs ex
+          → F.AsmWF (F.mkImage (proj₂ (L.compile-trace-cnt C.entry-owner 0 (instr-ctrl (c-start b rsv) ∷ t″))) (just 0) (file-table A.block-payload bs) ex)
+  core-wf b rsv t″ bs ex (u , r , ev) = record
     { defined-once  = subst Unique (sym defs≡) u
     ; resolved      = subst₂′ r
     ; entry-in      = s≤s z≤n
@@ -80,7 +80,7 @@ module X8664 where
     ; externs-valid = ev
     }
     where
-      t = instr-ctrl (c-start b) ∷ t″
+      t = instr-ctrl (c-start b rsv) ∷ t″
       -- D488: the image starts with its start, whose code makes the file's entry
       G = F.mkImage (proj₂ (L.compile-trace-cnt C.entry-owner 0 t)) (just 0) (file-table A.block-payload bs) ex
       code≡ : F.Image.code G ≡ L.compile-trace t
@@ -103,20 +103,20 @@ module X8632 where
   empty-wf : F.AsmWF (F.mkImage [] nothing [] [])
   empty-wf = record { defined-once = [] ; resolved = [] ; entry-in = tt ; defs-valid = [] ; externs-valid = [] }
 
-  core-wf : ∀ b (t″ : AbstractTrace) (bs : List ArithBlock) (ex : List String)
-          → ImageWF (instr-ctrl (c-start b) ∷ t″) bs ex
-          → F.AsmWF (F.mkImage (proj₂ (L.compile-trace-cnt C.entry-owner 0 (instr-ctrl (c-start b) ∷ t″))) (just 0) (file-table A.block-payload bs) ex)
-  core-wf b t″ bs ex (u , r , ev) = record
+  core-wf : ∀ b rsv (t″ : AbstractTrace) (bs : List ArithBlock) (ex : List String)
+          → ImageWF (instr-ctrl (c-start b rsv) ∷ t″) bs ex
+          → F.AsmWF (F.mkImage (proj₂ (L.compile-trace-cnt C.entry-owner 0 (instr-ctrl (c-start b rsv) ∷ t″))) (just 0) (file-table A.block-payload bs) ex)
+  core-wf b rsv t″ bs ex (u , r , ev) = record
     { defined-once  = subst Unique (sym defs≡) u
     ; resolved      = subst₂′ r
-    ; entry-in      = ent (L.room-fits? (start-stack-words Data.Nat.+ b))
+    ; entry-in      = ent (L.room-fits? (rsv Data.Nat.+ b))
     ; defs-valid    = subst (All AsmSym) (sym defs≡) (defs-asm t bs)
     ; externs-valid = ev
     }
     where
-      t = instr-ctrl (c-start b) ∷ t″
+      t = instr-ctrl (c-start b rsv) ∷ t″
       -- D488: the image starts with its start, whose code (its check or its call) makes the file's entry
-      ent : ∀ c → 1 Data.Nat.≤ Data.List.length ((L.fits-or-out c (L.room-code (start-stack-words Data.Nat.+ b)) ++ L.start-tail b)
+      ent : ∀ c → 1 Data.Nat.≤ Data.List.length ((L.fits-or-out c (L.room-code (rsv Data.Nat.+ b)) ++ L.start-tail b rsv)
                                                    ++ proj₂ (L.compile-trace-cnt C.entry-owner 0 t″))
       ent true  = s≤s z≤n
       ent false = s≤s z≤n
@@ -141,20 +141,20 @@ module RiscV64 where
   empty-wf : F.AsmWF (F.mkImage [] nothing [] [])
   empty-wf = record { defined-once = [] ; resolved = [] ; entry-in = tt ; defs-valid = [] ; externs-valid = [] }
 
-  core-wf : ∀ b (t″ : AbstractTrace) (bs : List ArithBlock) (ex : List String)
-          → ImageWF (instr-ctrl (c-start b) ∷ t″) bs ex
-          → F.AsmWF (F.mkImage (proj₂ (L.compile-trace-cnt C.entry-owner 0 (instr-ctrl (c-start b) ∷ t″))) (just 0) (file-table A.block-payload bs) ex)
-  core-wf b t″ bs ex (u , r , ev) = record
+  core-wf : ∀ b rsv (t″ : AbstractTrace) (bs : List ArithBlock) (ex : List String)
+          → ImageWF (instr-ctrl (c-start b rsv) ∷ t″) bs ex
+          → F.AsmWF (F.mkImage (proj₂ (L.compile-trace-cnt C.entry-owner 0 (instr-ctrl (c-start b rsv) ∷ t″))) (just 0) (file-table A.block-payload bs) ex)
+  core-wf b rsv t″ bs ex (u , r , ev) = record
     { defined-once  = subst Unique (sym defs≡) u
     ; resolved      = subst₂′ r
-    ; entry-in      = ent (L.room-fits? (start-stack-words Data.Nat.+ b))
+    ; entry-in      = ent (L.room-fits? (rsv Data.Nat.+ b))
     ; defs-valid    = subst (All AsmSym) (sym defs≡) (defs-asm t bs)
     ; externs-valid = ev
     }
     where
-      t = instr-ctrl (c-start b) ∷ t″
+      t = instr-ctrl (c-start b rsv) ∷ t″
       -- D488: the image starts with its start, whose code (its check or its call) makes the file's entry
-      ent : ∀ c → 1 Data.Nat.≤ Data.List.length ((L.fits-or-out c (L.room-code (start-stack-words Data.Nat.+ b)) ++ L.start-tail b)
+      ent : ∀ c → 1 Data.Nat.≤ Data.List.length ((L.fits-or-out c (L.room-code (rsv Data.Nat.+ b)) ++ L.start-tail b rsv)
                                                    ++ proj₂ (L.compile-trace-cnt C.entry-owner 0 t″))
       ent true  = s≤s z≤n
       ent false = s≤s z≤n

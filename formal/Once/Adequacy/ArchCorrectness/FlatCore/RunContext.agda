@@ -168,8 +168,8 @@ record Emitted (prog : AbstractTrace) : Set where
   field
     -- the start: pc 0 and nowhere else, at the program's stack budget
     em-budget : ℕ
-    em-zero   : fetch prog 0 ≡ just (instr-ctrl (c-start em-budget))
-    em-start  : ∀ k b → fetch prog k ≡ just (instr-ctrl (c-start b)) → k ≡ 0
+    em-zero   : fetch prog 0 ≡ just (instr-ctrl (c-start em-budget start-stack-words))
+    em-start  : ∀ k b r → fetch prog k ≡ just (instr-ctrl (c-start b r)) → k ≡ 0
     -- every instruction the arch layer covers, a heap block of two words at least
     em-image  : All ImageI prog
     em-alloc  : All AllocMinI prog

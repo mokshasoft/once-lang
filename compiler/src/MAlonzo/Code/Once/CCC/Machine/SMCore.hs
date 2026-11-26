@@ -2406,7 +2406,7 @@ data T_FlatCtrl_2378
                       Integer |
     C_c'45'ret_2388 Integer |
     C_c'45'call'45'fn_2390 MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 |
-    C_c'45'start_2392 Integer | C_c'45'leave_2394
+    C_c'45'start_2392 Integer Integer | C_c'45'leave_2394
 -- Once.CCC.Machine.SMCore.rec-size
 d_rec'45'size_2402 :: Integer
 d_rec'45'size_2402 = coe (64 :: Integer)

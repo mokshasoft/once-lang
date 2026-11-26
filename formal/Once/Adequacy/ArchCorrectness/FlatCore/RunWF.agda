@@ -291,13 +291,13 @@ frame-op-absurd prog fs i em ftq = fetch-All {prog = prog} {k = fpc fs} (em-imag
 
 -- Plan 0.107: THE START IS AT pc 0 AND NOWHERE ELSE. The rest of the image is
 -- units (`ProgramImage.image-body`), and no unit holds a start.
-start-at-zero : ∀ prog (k b : ℕ) → Emitted prog
-              → fetch prog k ≡ just (instr-ctrl (c-start b)) → k ≡ 0
-start-at-zero prog k b em ftq = em-start em k b ftq
+start-at-zero : ∀ prog (k b rsv : ℕ) → Emitted prog
+              → fetch prog k ≡ just (instr-ctrl (c-start b rsv)) → k ≡ 0
+start-at-zero prog k b rsv em ftq = em-start em k b rsv ftq
 
 -- …and pc 0 holds it.
 fetch-zero : ∀ prog → (em : Emitted prog)
-           → fetch prog 0 ≡ just (instr-ctrl (c-start (em-budget em)))
+           → fetch prog 0 ≡ just (instr-ctrl (c-start (em-budget em) start-stack-words))
 fetch-zero prog em = em-zero em
 
 ------------------------------------------------------------------------
@@ -444,7 +444,7 @@ data PcView (i : AbstractInstr) : Set where
   pv-thunk : ∀ (ℓ : EntryId) (bb : ℕ) → i ≡ instr-ctrl (c-entry ℓ bb) → PcView i
   pv-ret   : ∀ (bb : ℕ) → i ≡ instr-ctrl (c-ret bb) → PcView i
   -- plan 0.107: the program's START, which reserves the outermost frame.
-  pv-start : ∀ (bb : ℕ) → i ≡ instr-ctrl (c-start bb) → PcView i
+  pv-start : ∀ (bb rsv : ℕ) → i ≡ instr-ctrl (c-start bb rsv) → PcView i
   -- D320: the program's LEAVE, which halts where it stands.
   pv-leave : i ≡ instr-ctrl c-leave → PcView i
   -- D092: the call is the fifth kind. It moves BOTH stacks and lands the pc on
@@ -463,7 +463,7 @@ slot-adv i fs = go (straightView i fs)
 
 pcView : ∀ (i : AbstractInstr) → ImageI i → PcView i
 pcView (instr-ctrl (c-label _))               _ = pv-suc tt tt (λ _ _ → inj₁ refl)
-pcView (instr-ctrl (c-start bb))              _ = pv-start bb refl
+pcView (instr-ctrl (c-start bb rsv))              _ = pv-start bb rsv refl
 pcView (instr-ctrl c-leave)                   _ = pv-leave refl
 pcView (instr-ctrl (c-jmp m))                 _ = pv-jump tt m refl go
   where go : ∀ prog fs → JumpPost (instr-ctrl (c-jmp m)) m prog fs
@@ -668,7 +668,7 @@ run-frame-wf prog img grd = go
                   → fpc (flat-exec-instr i prog fs'') ≡ suc (fpc fs'')
             pc-eq refl = refl
         -- plan 0.107: THE START, likewise.
-        step (pv-start bb ieq) =
+        step (pv-start bb rsv ieq) =
           mkFrameWF (subst₂ (RetMatch prog)
                             (sym (cong (λ z → saved-frames (falloc (flat-exec-instr z prog fs''))) ieq))
                             (sym (cong (λ z → fret (flat-exec-instr z prog fs'')) ieq))
@@ -678,11 +678,11 @@ run-frame-wf prog img grd = go
                                     (subst (λ z → fetch prog z ≡ just (instr-ctrl (c-entry ℓ' bb')))
                                            (pc-eq′ ieq) H)))
           where
-            start-not-ret : i ≡ instr-ctrl (c-start bb) → ∀ b → i ≡ instr-ctrl (c-ret b) → ⊥
+            start-not-ret : i ≡ instr-ctrl (c-start bb rsv) → ∀ b → i ≡ instr-ctrl (c-ret b) → ⊥
             start-not-ret refl b ()
-            start-not-jmp : i ≡ instr-ctrl (c-start bb) → ∀ m → i ≡ instr-ctrl (c-jmp m) → ⊥
+            start-not-jmp : i ≡ instr-ctrl (c-start bb rsv) → ∀ m → i ≡ instr-ctrl (c-jmp m) → ⊥
             start-not-jmp refl m ()
-            pc-eq′ : i ≡ instr-ctrl (c-start bb)
+            pc-eq′ : i ≡ instr-ctrl (c-start bb rsv)
                    → fpc (flat-exec-instr i prog fs'') ≡ suc (fpc fs'')
             pc-eq′ refl = refl
         -- D320: THE LEAVE halts where it stands — frames, pc and returns as they were.
@@ -867,26 +867,26 @@ run-step-pc-pos prog fs i r ftq = step (pcView i (frame-op-absurd prog fs i (run
     jI refl = refl
     -- whatever sits at a position that is 0 is the start
     at-zero : ∀ (k : ℕ) (i' : AbstractInstr) → fetch prog k ≡ just i' → k ≡ 0
-            → i' ≡ instr-ctrl (c-start (em-budget (run-emitted r)))
+            → i' ≡ instr-ctrl (c-start (em-budget (run-emitted r)) start-stack-words)
     at-zero k i' fq refl = jI (trans (sym fq) (fetch-zero prog (run-emitted r)))
     -- the pc did not move: then `i` itself sat at 0, so `i` is the start
-    unmoved : (∀ b → i ≡ instr-ctrl (c-start b) → ⊥)
+    unmoved : (∀ b r → i ≡ instr-ctrl (c-start b r) → ⊥)
             → fpc (flat-exec-instr i prog fs) ≡ fpc fs → fpc (flat-exec-instr i prog fs) ≡ 0 → ⊥
-    unmoved ns e z = ns _ (at-zero (fpc fs) i ftq (trans (sym e) z))
-    lab≢start : ∀ {m b} → instr-ctrl (c-label m) ≡ instr-ctrl (c-start b) → ⊥
+    unmoved ns e z = ns _ _ (at-zero (fpc fs) i ftq (trans (sym e) z))
+    lab≢start : ∀ {m b r} → instr-ctrl (c-label m) ≡ instr-ctrl (c-start b r) → ⊥
     lab≢start ()
-    ent≢start : ∀ {e b' b} → instr-ctrl (c-entry e b') ≡ instr-ctrl (c-start b) → ⊥
+    ent≢start : ∀ {e b' b r} → instr-ctrl (c-entry e b') ≡ instr-ctrl (c-start b r) → ⊥
     ent≢start ()
     step : PcView i → fpc (flat-exec-instr i prog fs) ≡ 0 → ⊥
     step (pv-suc ff nj adv) z = sgo (adv prog fs)
       where
         sgo : (fpc (flat-exec-instr i prog fs) ≡ suc (fpc fs)) ⊎ (flat-exec-instr i prog fs ≡ flat-fault fs) → ⊥
         sgo (inj₁ a) = z≢s (trans (sym a) z)
-        sgo (inj₂ e) = unmoved (λ b eq → subst FrameFreeI eq ff) (cong fpc e) z
+        sgo (inj₂ e) = unmoved (λ b r eq → subst FrameFreeI eq ff) (cong fpc e) z
     step (pv-jump ff m mlab jp) z = jgo (jp prog fs)
       where
-        not-start : ∀ b → i ≡ instr-ctrl (c-start b) → ⊥
-        not-start b refl = no-once mlab
+        not-start : ∀ b r → i ≡ instr-ctrl (c-start b r) → ⊥
+        not-start b r refl = no-once mlab
           where no-once : ∀ {A : Set} → nothing ≡ just m → A
                 no-once ()
         jgo : JumpPost i m prog fs → ⊥
@@ -895,12 +895,12 @@ run-step-pc-pos prog fs i r ftq = step (pcView i (frame-op-absurd prog fs i (run
         jgo (jp-to q fq e) =
           lab≢start (at-zero q _ (find-label-sound prog m q fq) (trans (sym e) z))
     step (pv-thunk ℓ bb refl) z = z≢s z
-    step (pv-start bb refl)   z = z≢s z
-    step (pv-leave refl)      z = unmoved (λ b ()) refl z
+    step (pv-start bb _ refl) z = z≢s z
+    step (pv-leave refl)      z = unmoved (λ b r ()) refl z
     step (pv-ret bb refl) z = rgo (retView bb fs)
       where
-        ret≢start : ∀ b → instr-ctrl (c-ret bb) ≡ instr-ctrl (c-start b) → ⊥
-        ret≢start b ()
+        ret≢start : ∀ b r → instr-ctrl (c-ret bb) ≡ instr-ctrl (c-start b r) → ⊥
+        ret≢start b r ()
         rgo : RetPost bb fs → ⊥
         -- B1.7b: a failing return faults, the pc stays
         rgo (rp-fault e) = unmoved ret≢start (cong fpc e) z
@@ -912,16 +912,16 @@ run-step-pc-pos prog fs i r ftq = step (pcView i (frame-op-absurd prog fs i (run
               z≢s (trans (sym rq) (trans (sym (cong fpc eq)) z))
     step (pv-call refl) z = cgo (callView prog fs)
       where
-        cl≢start : ∀ b → instr-call-closure ≡ instr-ctrl (c-start b) → ⊥
-        cl≢start b ()
+        cl≢start : ∀ b r → instr-call-closure ≡ instr-ctrl (c-start b r) → ⊥
+        cl≢start b r ()
         cgo : CallPost prog fs → ⊥
         cgo (cp-fault heq)        = unmoved cl≢start (cong fpc heq) z
         cgo (cp-enter ℓ j hl ce he feq eeq) =
           ent≢start (at-zero j _ (proj₂ (find-thunk-sound prog ℓ j feq)) (trans (sym (cong fpc eeq)) z))
     step (pv-call-fn f refl) z = fgo (find-fn prog f) refl
       where
-        cf≢start : ∀ b → instr-ctrl (c-call-fn f) ≡ instr-ctrl (c-start b) → ⊥
-        cf≢start b ()
+        cf≢start : ∀ b r → instr-ctrl (c-call-fn f) ≡ instr-ctrl (c-start b r) → ⊥
+        cf≢start b r ()
         fgo : ∀ (mj : Maybe ℕ) → find-fn prog f ≡ mj → ⊥
         fgo nothing  fe = unmoved cf≢start (cong (λ x → fpc (do-call-at x fs)) fe) z
         fgo (just j) fe =
@@ -1610,7 +1610,7 @@ run-link-at-thunk prog fs (mkRunAt em reach) = go fs reach
           where cleared : flink (flat-exec-instr i prog fs'') ≡ nothing
                 cleared = cong (λ z → flink (flat-exec-instr z prog fs'')) ieq
         -- plan 0.107: …and so does the START (the same `do-thunk`).
-        step (fv-start bb ieq) =
+        step (fv-start bb _ ieq) =
           ⊥-elim (nothing≢justℕ (trans (sym cleared) lk))
           where cleared : flink (flat-exec-instr i prog fs'') ≡ nothing
                 cleared = cong (λ z → flink (flat-exec-instr z prog fs'')) ieq

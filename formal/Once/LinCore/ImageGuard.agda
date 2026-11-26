@@ -252,7 +252,7 @@ module G {FS : FrameSemantics} where
     image-lk : Linked R image
     image-lk =
       Data.List.Relation.Unary.Linked.Properties.++⁺
-        {xs = instr-ctrl (c-start (fbudget φ₀)) ∷ proj₁ (lowC φ₀ j₀ 0 (instr-ctrl c-leave ∷ []) main (start-in {[]} {[]} tt))}
+        {xs = instr-ctrl (c-start (fbudget φ₀) start-stack-words) ∷ proj₁ (lowC φ₀ j₀ 0 (instr-ctrl c-leave ∷ []) main (start-in {[]} {[]} tt))}
         (lk-cons _ (lowC-ne φ₀ j₀ 0 _ (refl ∷ []) main (start-in {[]} {[]} tt)))
         (con-last (▸ lowC-last φ₀ j₀ 0 _ (lg refl g-leave) main (start-in {[]} {[]} tt)) (blocksOf (allK U) blocks-in 0))
         (blocks-lk (allK U) blocks-in 0)

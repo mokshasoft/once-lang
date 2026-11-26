@@ -5511,7 +5511,9 @@ du_image_2812 v0 v1 v2 v3 v4 v5 v6
                               MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                               (coe MAlonzo.Code.Once.LinCore.Core.C_One_180)
                               (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)))
-                        (coe MAlonzo.Code.Once.LinCore.Image.C_end_1460)))))))
+                        (coe MAlonzo.Code.Once.LinCore.Image.C_end_1460)))))
+            (coe
+               MAlonzo.Code.Once.CCC.Machine.SMCore.d_start'45'stack'45'words_2416)))
       (coe
          MAlonzo.Code.Data.List.Base.du__'43''43'__32
          (coe

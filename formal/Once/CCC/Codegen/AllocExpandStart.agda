@@ -189,7 +189,7 @@ record Start (s : FlatState) : Set where
 module First (C : Classes) (P : AbstractTrace) (Sz : ℕ → Set) (x : FlatState) (S : Start x)
              (fe : ∀ j i → fetch (setup C) j ≡ just i → fetch (expand C P) (j + fpc x) ≡ just i)
              (pc1 : fpc x ≡ 1) (link : flink x ≡ nothing)
-             (b : ℕ) (st : fetch P 0 ≡ just (instr-ctrl (c-start b))) where
+             (b rsv : ℕ) (st : fetch P 0 ≡ just (instr-ctrl (c-start b rsv))) where
   open Start S
   module SR = SetupRun C (expand C P) x fe s-halt s-next (s-free 1)
   open SR using (z; z₆; H; O; I)
@@ -206,8 +206,8 @@ module First (C : Classes) (P : AbstractTrace) (Sz : ℕ → Set) (x : FlatState
     ; r-pc = trans (cong (λ t → 6 + t) (h-pc H))
                (trans (cong (λ t → 6 + (count C + (4 + t))) pc1)
                  (trans (arith (count C))
-                   (sym (trans (cong (off C 0 P) pc1) (trans (off-suc C 0 P 0 (instr-ctrl (c-start b)) st)
-                               (trans (cong (_+ length (expand-at C 0 (instr-ctrl (c-start b)))) (off-zero P))
+                   (sym (trans (cong (off C 0 P) pc1) (trans (off-suc C 0 P 0 (instr-ctrl (c-start b rsv)) st)
+                               (trans (cong (_+ length (expand-at C 0 (instr-ctrl (c-start b rsv)))) (off-zero P))
                                       (cong suc setup-len)))))))
     ; r-ret = trans (proj₁ (h-rest H)) (trans s-ret (cong (Data.List.map (off C 0 P)) (sym s-ret)))
     ; r-link = trans (proj₂ (proj₂ (h-rest H))) (trans link (cong (Data.Maybe.map (off C 0 P)) (sym link)))

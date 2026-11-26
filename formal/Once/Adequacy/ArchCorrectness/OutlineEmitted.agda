@@ -78,8 +78,8 @@ private
           go (c-free k)  _  = tt
           go {j} (c-same s) am′ = subst AllocMinI (sym s) am′
 
-module _ (ks : List ℕ) (b : ℕ) (T : AbstractTrace) where
-  open Out ks b T
+module _ (ks : List ℕ) (b rsv : ℕ) (T : AbstractTrace) where
+  open Out ks b rsv T
 
   module _ (em : Emitted P)
            (ks-pos : ∀ k → k ∈ ks → 1 ≤ k)
@@ -122,17 +122,17 @@ module _ (ks : List ℕ) (b : ℕ) (T : AbstractTrace) where
       ; em-guard  = guard
       }
       where
-        start : ∀ k b′ → fetch P′ k ≡ just (instr-ctrl (c-start b′)) → k ≡ 0
-        start k b′ f = go (where-P′ k _ f)
-          where go : WhereP′ k (instr-ctrl (c-start b′)) → k ≡ 0
+        start : ∀ k b′ rsv → fetch P′ k ≡ just (instr-ctrl (c-start b′ rsv)) → k ≡ 0
+        start k b′ rsv f = go (where-P′ k _ f)
+          where go : WhereP′ k (instr-ctrl (c-start b′ rsv)) → k ≡ 0
                 go (w-start e _)         = e
                 go (w-jmp _ ())
                 go (w-rou j _ r)         = ⊥-elim (no-start (rou ks j _ r))
-                  where no-start : RouI ks (instr-ctrl (c-start b′)) → ⊥
+                  where no-start : RouI ks (instr-ctrl (c-start b′ rsv)) → ⊥
                         no-start ()
                 go (w-lab _ ())
                 go (w-own q i′ _ ft ei)  =
-                  ⊥-elim (Data.Nat.Properties.1+n≢0 (E.em-start (suc q) b′ (trans ft (cong just (site-same ei (λ f ()))))))
+                  ⊥-elim (Data.Nat.Properties.1+n≢0 (E.em-start (suc q) b′ rsv (trans ft (cong just (site-same ei (λ f ()))))))
 
         calls : ∀ k f → fetch P′ k ≡ just (instr-ctrl (c-call-fn f)) → Σ ℕ (λ j → find-fn P′ f ≡ just j)
         calls k f fe = go (where-P′ k _ fe)

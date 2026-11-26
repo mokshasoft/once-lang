@@ -520,13 +520,13 @@ room-same      (inj₂ r) = inj₂ r
 -- then reserves the frame and sets the stack limit — landing in the
 -- correspondence past it, at a view of the arch's choosing (the frame's
 -- descent and the limit) — or, without room, reaches `once_exhausted`.
-StartStep : AbstractTrace → FlatState → State → ℕ → Set₁
-StartStep prog fs s b =
+StartStep : AbstractTrace → FlatState → State → ℕ → ℕ → Set₁
+StartStep prog fs s b rsv =
     Σ ℕ (λ c → Σ State (λ s' → (exec (suc c) (compile-trace prog) s ≡ just s')
                 × Σ HeapView (λ hv′ → (CFC.HeapView.hstarted hv′ ≡ true)
-                    -- D490: the limit `start-stack-words` below the start's frame
-                    × (CFC.HeapView.hlim hv′ + slots start-stack-words ≤ rreg s' sp-reg)
-                    × CompiledCorr hv′ prog (flat-exec-instr (instr-ctrl (c-start b)) prog fs) s')))
+                    -- D490: the limit the start's reserve below its frame (D491 stage 4: the instruction's)
+                    × (CFC.HeapView.hlim hv′ + slots rsv ≤ rreg s' sp-reg)
+                    × CompiledCorr hv′ prog (flat-exec-instr (instr-ctrl (c-start b rsv)) prog fs) s')))
   ⊎ Σ ℕ (λ c → Σ State (λ s' → (exec c (compile-trace prog) s ≡ just s')
                 × xhalted s' ≡ false
                 × mfetch (compile-trace prog) (xpc s') ≡ just (sigop-call host-exhausted-symbol)))
@@ -535,16 +535,16 @@ record Supply : Set₁ where
   field
     bss : BlockSteps
     -- D488: the start (pc 0): proved per arch
-    start-step : ∀ {hv : HeapView} prog fs s b → RunAt prog fs
+    start-step : ∀ {hv : HeapView} prog fs s b rsv → RunAt prog fs
              → CompiledCorr hv prog fs s
              → halted (floc fs) ≡ false
-             → fetch prog (fpc fs) ≡ just (instr-ctrl (c-start b))
+             → fetch prog (fpc fs) ≡ just (instr-ctrl (c-start b rsv))
              → CFC.HeapView.hfront hv ≡ heap-base + rec-size * slot-size
              → fret fs ≡ []
              -- D488 (a3): nothing has set the limit, and the stack mark is the loader's `%rsp`
              → CFC.HeapView.hstarted hv ≡ false
              → CFC.HeapView.lo hv ≡ rreg s sp-reg
-             → StartStep prog fs s b
+             → StartStep prog fs s b rsv
     -- the room check (plan 0.123 A.4): proved per arch, not assumed.
     room-step : ∀ {hv : HeapView} prog fs s k → RunAt prog fs
              → CompiledCorr hv prog fs s

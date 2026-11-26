@@ -67,7 +67,7 @@ FrameFreeI instr-pop-frame           = ⊥
 -- mark, plus the honest `stack-room`), and `c-ret`'s additionally needs
 -- the `FlatCorr` field relating the ghost `fret` to the machine stack.
 FrameFreeI (instr-ctrl (c-entry _ _)) = ⊥
-FrameFreeI (instr-ctrl (c-start _)) = ⊥  -- plan 0.107: it reserves the outermost frame
+FrameFreeI (instr-ctrl (c-start _ _)) = ⊥  -- plan 0.107: it reserves the outermost frame
 FrameFreeI (instr-room _)           = ⊥  -- D377: the room-check pass adds checks AFTER the image
 -- D470/D472: the record's words move no frame; inside the record, as `EmittableI` has them
 FrameFreeI (load-rec k)             = RecW k
@@ -118,7 +118,7 @@ EmittableI instr-pop-frame           = ⊥
 -- or answer by address); D454 checks every access through one
 -- plan 0.107: the program's START is not in any unit — it is the image's
 -- header (`ProgramImage.program-image`), at pc 0 only.
-EmittableI (instr-ctrl (c-start _))  = ⊥
+EmittableI (instr-ctrl (c-start _ _))  = ⊥
 -- (plan 0.146: the new image frees cells, `instr-free-heap`, emittable)
 -- D377: the image holds no check of its own; the room-check pass
 -- (`RoomChecks.room-checks`) adds them after it, to the lowered image.
@@ -141,7 +141,7 @@ EmittableI _                         = ⊤
 -- pointer inductions, `pcView`) take this; the dispatch, which runs only
 -- after the start, takes `EmittableI`.
 ImageI : AbstractInstr → Set
-ImageI (instr-ctrl (c-start _)) = ⊤
+ImageI (instr-ctrl (c-start _ _)) = ⊤
 {-# CATCHALL #-}
 ImageI i                        = EmittableI i
 
@@ -180,7 +180,7 @@ emittable-image (instr-ctrl (c-call-fn _)) e = e
 emittable-image (instr-ctrl (c-ret _)) e = e
 emittable-image (instr-ctrl (c-entry _ _)) e = e
 emittable-image (instr-ctrl c-leave) e = e
-emittable-image (instr-ctrl (c-start _)) ()
+emittable-image (instr-ctrl (c-start _ _)) ()
 emittable-image (instr-free-heap _) e = e
 emittable-image (instr-room _) e = e
 emittable-image (load-at _) e = e
@@ -199,7 +199,7 @@ frame-free-emittable (instr-push-frame _)      ()
 frame-free-emittable instr-pop-frame           ()
 frame-free-emittable (lea-slot _)              _ = tt
 frame-free-emittable (instr-ctrl (c-entry _ _)) ()
-frame-free-emittable (instr-ctrl (c-start _)) ()
+frame-free-emittable (instr-ctrl (c-start _ _)) ()
 frame-free-emittable (instr-free-heap _)       _ = tt
 frame-free-emittable (instr-room _)        ()
 frame-free-emittable (load-at _)           _ = tt

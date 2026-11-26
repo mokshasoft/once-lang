@@ -353,7 +353,7 @@ ctrl-len-arch (c-branch-tag-zero _) = s≤s z≤n
 ctrl-len-arch (c-entry _ _) = s≤s z≤n
 ctrl-len-arch (c-ret _) = s≤s z≤n
 ctrl-len-arch (c-call-fn _) = s≤s z≤n
-ctrl-len-arch (c-start _) = s≤s z≤n
+ctrl-len-arch (c-start _ _) = s≤s z≤n
 ctrl-len-arch c-leave = s≤s z≤n
 
 x86-64-emitter : EI.Emitter FS Reg
@@ -798,7 +798,7 @@ x86-64-supply : EE.Supply
 x86-64-supply = record
   { bss = x86-64-block-steps ; sts = x86-64-stuck-steps
   ; room-step = λ prog fs s k run cc st h ft → room-step-x86 prog fs s k cc st h ft (reg-range prog fs s rsp run cc)
-  ; start-step = λ prog fs s b run cc h ft → start-step-x86 prog fs s b cc h ft (reg-range prog fs s rsp run cc)
+  ; start-step = λ prog fs s b rsv run cc h ft → start-step-x86 prog fs s b rsv cc h ft (reg-range prog fs s rsp run cc)
   ; reg-range = reg-range ; ret-no-wrap = ret-no-wrap
   ; tag-fits = tag-fits ; lit-fits = lit-fits ; float-fits = float-fits
   ; arith-sigop-contract = arith-sigop-contract

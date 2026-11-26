@@ -147,7 +147,7 @@ module _ (C : Classes) where
   expand-at : ℕ → AbstractInstr → AbstractTrace
   expand-at site (instr-alloc-heap k)     = alloc-code site k
   expand-at site (instr-free-heap k)      = free-code k
-  expand-at site (instr-ctrl (c-start b)) = instr-ctrl (c-start b) ∷ setup
+  expand-at site (instr-ctrl (c-start b rsv)) = instr-ctrl (c-start b rsv) ∷ setup
   {-# CATCHALL #-}
   expand-at site i                        = i ∷ []
 

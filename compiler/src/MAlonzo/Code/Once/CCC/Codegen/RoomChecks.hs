@@ -102,7 +102,7 @@ d_cells_30 v0
          _ -> coe v1)
 -- Once.CCC.Codegen.RoomChecks.stack-k
 d_stack'45'k_34 ::
-  MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Depths_254 ->
+  MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Depths_256 ->
   MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Owner_36 ->
   MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Kind_60 -> Integer
 d_stack'45'k_34 v0 v1 v2
@@ -111,28 +111,28 @@ d_stack'45'k_34 v0 v1 v2
         -> coe
              MAlonzo.Code.Data.Bool.Base.du_if_then_else__44
              (coe
-                MAlonzo.Code.Once.CCC.Codegen.StackDepth.d_chk_298 (coe v0)
+                MAlonzo.Code.Once.CCC.Codegen.StackDepth.d_chk_300 (coe v0)
                 (coe v1) (coe v3))
              (coe
                 addInt (coe (1 :: Integer))
-                (coe MAlonzo.Code.Once.CCC.Codegen.StackDepth.d_dep_274 v0 v3))
+                (coe MAlonzo.Code.Once.CCC.Codegen.StackDepth.d_dep_276 v0 v3))
              (coe (0 :: Integer))
       MAlonzo.Code.Once.CCC.Codegen.StackDepth.C_k'45'clo_64
         -> coe
              MAlonzo.Code.Data.Bool.Base.du_if_then_else__44
              (coe
-                MAlonzo.Code.Once.CCC.Codegen.StackDepth.d_clo'45'chk_280 v0 v1)
+                MAlonzo.Code.Once.CCC.Codegen.StackDepth.d_clo'45'chk_282 v0 v1)
              (coe
                 addInt (coe (1 :: Integer))
                 (coe
-                   MAlonzo.Code.Once.CCC.Codegen.StackDepth.d_clo'45'dep_282
+                   MAlonzo.Code.Once.CCC.Codegen.StackDepth.d_clo'45'dep_284
                    (coe v0)))
              (coe (0 :: Integer))
       MAlonzo.Code.Once.CCC.Codegen.StackDepth.C_k'45'sig_66 v3
         -> coe
              MAlonzo.Code.Data.Bool.Base.du_if_then_else__44
              (coe
-                MAlonzo.Code.Once.CCC.Codegen.StackDepth.d_sig'45'chk_284 (coe v0))
+                MAlonzo.Code.Once.CCC.Codegen.StackDepth.d_sig'45'chk_286 (coe v0))
              (coe v3) (coe (0 :: Integer))
       MAlonzo.Code.Once.CCC.Codegen.StackDepth.C_k'45'entry_68 v3 v4
         -> coe (0 :: Integer)
@@ -144,14 +144,14 @@ d_stack'45'k_34 v0 v1 v2
         -> coe (0 :: Integer)
       MAlonzo.Code.Once.CCC.Codegen.StackDepth.C_k'45'ret_76
         -> coe (0 :: Integer)
-      MAlonzo.Code.Once.CCC.Codegen.StackDepth.C_k'45'start_78
+      MAlonzo.Code.Once.CCC.Codegen.StackDepth.C_k'45'start_78 v3
         -> coe (0 :: Integer)
       MAlonzo.Code.Once.CCC.Codegen.StackDepth.C_k'45'none_80
         -> coe (0 :: Integer)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.RoomChecks.spend
 d_spend_80 ::
-  MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Depths_254 ->
+  MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Depths_256 ->
   MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Owner_36 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_Room_2418
@@ -183,7 +183,7 @@ d_boundary'45'k_88 v0
         -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
       MAlonzo.Code.Once.CCC.Codegen.StackDepth.C_k'45'ret_76
         -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
-      MAlonzo.Code.Once.CCC.Codegen.StackDepth.C_k'45'start_78
+      MAlonzo.Code.Once.CCC.Codegen.StackDepth.C_k'45'start_78 v1
         -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
       MAlonzo.Code.Once.CCC.Codegen.StackDepth.C_k'45'none_80
         -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
@@ -197,7 +197,7 @@ d_boundary'63'_90 v0
       (coe MAlonzo.Code.Once.CCC.Codegen.StackDepth.d_kind_82 (coe v0))
 -- Once.CCC.Codegen.RoomChecks.stretch
 d_stretch_94 ::
-  MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Depths_254 ->
+  MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Depths_256 ->
   MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Owner_36 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430] ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_Room_2418
@@ -210,7 +210,7 @@ d_stretch_94 v0 v1 v2
              (coe
                 d_spend_80 (coe v0)
                 (coe
-                   MAlonzo.Code.Once.CCC.Codegen.StackDepth.d_own_124 (coe v1)
+                   MAlonzo.Code.Once.CCC.Codegen.StackDepth.d_own_126 (coe v1)
                    (coe v3))
                 (coe v3))
              (coe
@@ -219,13 +219,13 @@ d_stretch_94 v0 v1 v2
                 (coe
                    d_stretch_94 (coe v0)
                    (coe
-                      MAlonzo.Code.Once.CCC.Codegen.StackDepth.d_own_124 (coe v1)
+                      MAlonzo.Code.Once.CCC.Codegen.StackDepth.d_own_126 (coe v1)
                       (coe v3))
                    (coe v4)))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.RoomChecks.checks
 d_checks_108 ::
-  MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Depths_254 ->
+  MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Depths_256 ->
   MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Owner_36 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430] ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430]
@@ -245,43 +245,43 @@ d_checks_108 v0 v1 v2
                       (coe
                          d_stretch_94 (coe v0)
                          (coe
-                            MAlonzo.Code.Once.CCC.Codegen.StackDepth.d_own_124 (coe v1)
+                            MAlonzo.Code.Once.CCC.Codegen.StackDepth.d_own_126 (coe v1)
                             (coe v3))
                          (coe v4)))
                    (coe
                       d_checks_108 (coe v0)
                       (coe
-                         MAlonzo.Code.Once.CCC.Codegen.StackDepth.d_own_124 (coe v1)
+                         MAlonzo.Code.Once.CCC.Codegen.StackDepth.d_own_126 (coe v1)
                          (coe v3))
                       (coe v4)))
                 (coe
                    d_checks_108 (coe v0)
                    (coe
-                      MAlonzo.Code.Once.CCC.Codegen.StackDepth.d_own_124 (coe v1)
+                      MAlonzo.Code.Once.CCC.Codegen.StackDepth.d_own_126 (coe v1)
                       (coe v3))
                    (coe v4)))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.RoomChecks.pick-by
 d_pick'45'by_122 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430] ->
-  MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Depths_254 ->
-  Bool -> MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Depths_254
+  MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Depths_256 ->
+  Bool -> MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Depths_256
 d_pick'45'by_122 v0 v1 v2
   = if coe v2
       then coe v1
       else coe
-             MAlonzo.Code.Once.CCC.Codegen.StackDepth.d_T'8320'_986
+             MAlonzo.Code.Once.CCC.Codegen.StackDepth.d_T'8320'_996
              (coe d_max'45'entry_12 (coe v0))
 -- Once.CCC.Codegen.RoomChecks.pick-of
 d_pick'45'of_132 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430] ->
-  MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Depths_254 ->
-  MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Depths_254
+  MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Depths_256 ->
+  MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Depths_256
 d_pick'45'of_132 v0 v1
   = coe
       d_pick'45'by_122 (coe v0) (coe v1)
       (coe
-         MAlonzo.Code.Once.CCC.Codegen.StackDepth.d_consistent'63'_460
+         MAlonzo.Code.Once.CCC.Codegen.StackDepth.d_consistent'63'_464
          (coe v1)
          (coe
             d_checks_108 (coe v1)
@@ -290,7 +290,7 @@ d_pick'45'of_132 v0 v1
 -- Once.CCC.Codegen.RoomChecks.pick
 d_pick_138 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430] ->
-  MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Depths_254
+  MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Depths_256
 d_pick_138 v0
   = coe
       d_pick'45'of_132 (coe v0)
@@ -340,7 +340,7 @@ d_room'63'_172 v0
          _ -> coe v1)
 -- Once.CCC.Codegen.RoomChecks.till-check
 d_till'45'check_174 ::
-  MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Depths_254 ->
+  MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Depths_256 ->
   MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Owner_36 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430] ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_Room_2418
@@ -356,13 +356,13 @@ d_till'45'check_174 v0 v1 v2
                 (coe
                    d_spend_80 (coe v0)
                    (coe
-                      MAlonzo.Code.Once.CCC.Codegen.StackDepth.d_own_124 (coe v1)
+                      MAlonzo.Code.Once.CCC.Codegen.StackDepth.d_own_126 (coe v1)
                       (coe v3))
                    (coe v3))
                 (coe
                    d_till'45'check_174 (coe v0)
                    (coe
-                      MAlonzo.Code.Once.CCC.Codegen.StackDepth.d_own_124 (coe v1)
+                      MAlonzo.Code.Once.CCC.Codegen.StackDepth.d_own_126 (coe v1)
                       (coe v3))
                    (coe v4)))
       _ -> MAlonzo.RTE.mazUnreachableError
@@ -384,7 +384,7 @@ d_strip_188 v0
 -- Once.CCC.Codegen.RoomChecks.tbl
 d_tbl_194 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430] ->
-  MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Depths_254
+  MAlonzo.Code.Once.CCC.Codegen.StackDepth.T_Depths_256
 d_tbl_194 v0 = coe d_pick_138 (coe d_strip_188 (coe v0))
 -- Once.CCC.Codegen.RoomChecks.need
 d_need_198 ::
@@ -394,7 +394,7 @@ d_need_198 v0 v1
   = coe
       d_till'45'check_174 (coe d_tbl_194 (coe v0))
       (coe
-         MAlonzo.Code.Once.CCC.Codegen.StackDepth.d_before'45'from_142
+         MAlonzo.Code.Once.CCC.Codegen.StackDepth.d_before'45'from_144
          (coe MAlonzo.Code.Once.CCC.Codegen.StackDepth.C_o'45'start_38)
          (coe v0) (coe v1))
       (coe MAlonzo.Code.Data.List.Base.du_drop_542 (coe v1) (coe v0))

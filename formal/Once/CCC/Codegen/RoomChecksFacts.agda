@@ -555,7 +555,7 @@ module NeedFacts {FS : FrameSemantics} where
   call-boundary (instr-ctrl (c-branch-tag-zero _)) ()
   call-boundary (instr-ctrl (c-entry _ _))         ()
   call-boundary (instr-ctrl (c-ret _))             ()
-  call-boundary (instr-ctrl (c-start _))           ()
+  call-boundary (instr-ctrl (c-start _ _))           ()
   call-boundary (instr-ctrl c-leave)               ()
   call-boundary mov-to-output            ()
   call-boundary mov-to-input             ()
@@ -670,7 +670,7 @@ module NoFall {FS : FrameSemantics} where
   private
     -- what a boundary is, it does not leave
     leaves-bnd-k : ∀ (k : Kind) → boundary-k k ≡ true → not (falls-k k) ≡ false
-    leaves-bnd-k k-start       _ = refl
+    leaves-bnd-k (k-start _)   _ = refl
     leaves-bnd-k (k-label _)   _ = refl
     leaves-bnd-k (k-entry _ _) _ = refl
     leaves-bnd-k (k-call _)    _ = refl

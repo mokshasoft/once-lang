@@ -92,7 +92,7 @@ module _ (C : Classes) (P : AbstractTrace) (Sz : ℕ → Set)
       by []       e = 9 , AL.BumpStep.G R k f h wf cw e , AL.BumpStep.BB.run R k f h wf cw e , z≤n , AL.BumpStep.R′ R k f h wf cw e
 
   -- ★ one primitive step, by its instruction
-  dispatch : ∀ {fs gs} (R : Rel C P Sz fs gs) i → fetch P (fpc fs) ≡ just i → ImageI i → (∀ b → i ≡ instr-ctrl (c-start b) → ⊥) → NoRecI i
+  dispatch : ∀ {fs gs} (R : Rel C P Sz fs gs) i → fetch P (fpc fs) ≡ just i → ImageI i → (∀ b r → i ≡ instr-ctrl (c-start b r) → ⊥) → NoRecI i
            → LocState.halted (floc fs) ≡ false → LocState.faulted (floc (flat-exec-instr i P fs)) ≡ false
            → WF.StoreWF (AllocState.next-heap-ref (falloc fs)) (floc fs) → WF.sv-below (AllocState.next-heap-ref (falloc fs)) (fclosure fs)
            → Step i fs gs
@@ -142,4 +142,4 @@ module _ (C : Classes) (P : AbstractTrace) (Sz : ℕ → Set)
   dispatch R (instr-room _) f () ns nr h nf wf cw
   dispatch R (load-rec k) f em ns nr h nf wf cw = ⊥-elim (proj₁ nr k refl)
   dispatch R (store-rec k) f em ns nr h nf wf cw = ⊥-elim (proj₂ nr k refl)
-  dispatch R (instr-ctrl (c-start b)) f em ns nr h nf wf cw = ⊥-elim (ns b refl)
+  dispatch R (instr-ctrl (c-start b rsv)) f em ns nr h nf wf cw = ⊥-elim (ns b rsv refl)

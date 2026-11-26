@@ -99,16 +99,16 @@ d_step_52 v0 v1
         -> case coe v2 of
              MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'entry_2386 v3 v4
                -> coe d_frame_36 (coe v4) (coe v1)
-             MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'start_2392 v3
+             MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'start_2392 v3 v4
                -> coe d_frame_36 (coe v3) (coe v1)
              _ -> coe v1
       _ -> coe v1
 -- Once.Measure.Image.count
-d_count_78 ::
+d_count_80 ::
   T_ImageStats_6 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430 ->
   T_ImageStats_6
-d_count_78 v0 v1
+d_count_80 v0 v1
   = case coe v0 of
       C_mk'45'stats_32 v2 v3 v4 v5 v6 v7
         -> coe
@@ -118,25 +118,25 @@ d_count_78 v0 v1
                 (coe v3) (coe v4) (coe v5) (coe v6) (coe v7))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Measure.Image.go
-d_go_94 ::
+d_go_96 ::
   T_ImageStats_6 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430] ->
   T_ImageStats_6
-d_go_94 v0 v1
+d_go_96 v0 v1
   = case coe v1 of
       [] -> coe v0
       (:) v2 v3
-        -> coe d_go_94 (coe d_count_78 (coe v0) (coe v2)) (coe v3)
+        -> coe d_go_96 (coe d_count_80 (coe v0) (coe v2)) (coe v3)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Measure.Image.image-stats
-d_image'45'stats_104 ::
+d_image'45'stats_106 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430] ->
   T_ImageStats_6
-d_image'45'stats_104 = coe d_go_94 (coe d_empty_34)
+d_image'45'stats_106 = coe d_go_96 (coe d_empty_34)
 -- Once.Measure.Image.show-stats
-d_show'45'stats_106 ::
+d_show'45'stats_108 ::
   T_ImageStats_6 -> MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_show'45'stats_106 v0
+d_show'45'stats_108 v0
   = case coe v0 of
       C_mk'45'stats_32 v1 v2 v3 v4 v5 v6
         -> coe

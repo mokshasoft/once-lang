@@ -39,7 +39,7 @@ open import Once.IR.Semantics.Trace using (module Interp)
 open import Once.CCC.FrameSemantics using (fs-numerics; fs-ffi; module FrameSemantics)
 open import Once.CCC.Codegen.RoomChecks using (room-checks; room-rest; room-checks-∷)
 open import Once.CCC.Machine.SMCore
-  using (AbstractTrace; AbstractInstr; instr-ctrl; c-ret; c-start; instr-call-closure; instr-sigop; instr-alloc-heap; instr-free-heap; SV-Ptr; SV-Code; module LocState; module AllocState)
+  using (AbstractTrace; AbstractInstr; instr-ctrl; c-ret; c-start; start-stack-words; instr-call-closure; instr-sigop; instr-alloc-heap; instr-free-heap; SV-Ptr; SV-Code; module LocState; module AllocState)
 open import Data.Sum using (_⊎_)
 open import Data.Bool using (Bool; true; false)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
@@ -82,12 +82,12 @@ open Once.Adequacy.ArchCorrectness.FlatCore.RunContext o FS slot-size word-eq us
 module ML = Once.LinCore.MachineLit FS bw
 
 -- (`file-wf` at a room-checked image: the pass keeps its start first)
-wf-room : ∀ b (t : AbstractTrace) (bs : List ArithBlock) (ex : List String)
-        → ImageWF (room-checks (instr-ctrl (c-start b) ∷ t)) bs ex
-        → Backend.AsmWF B (Backend.file B (room-checks (instr-ctrl (c-start b) ∷ t)) (file-table (Backend.payload B) bs) ex)
-wf-room b t bs ex w =
+wf-room : ∀ b rsv (t : AbstractTrace) (bs : List ArithBlock) (ex : List String)
+        → ImageWF (room-checks (instr-ctrl (c-start b rsv) ∷ t)) bs ex
+        → Backend.AsmWF B (Backend.file B (room-checks (instr-ctrl (c-start b rsv) ∷ t)) (file-table (Backend.payload B) bs) ex)
+wf-room b rsv t bs ex w =
   subst (λ p → Backend.AsmWF B (Backend.file B p (file-table (Backend.payload B) bs) ex)) (sym (room-checks-∷ _ t))
-        (file-wf b (room-rest _ t) bs ex (subst (λ p → ImageWF p bs ex) (room-checks-∷ _ t) w))
+        (file-wf b rsv (room-rest _ t) bs ex (subst (λ p → ImageWF p bs ex) (room-checks-∷ _ t) w))
 
 -- a constant's loader is an `instr-load-const`
 ld-is : Once.LinCore.ImageAll.LoadConst (fs-numerics FS) (fs-ffi FS) bw ML.ldConst
@@ -147,7 +147,7 @@ module NewImage (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Uni
   -- ★★ THE NEW IMAGE ON THE ARCH: its run has the trace of the program (master's `conc-tr`)
   conc-trᴺ : Owed
            → Machine.trace (δ env (compile P′)) init ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (fs-numerics FS) (FrameSemantics.fs-interp FS)
-  conc-trᴺ O = sim (irProgram tbl ir) _ _ env emitted (o-table O)
+  conc-trᴺ O = sim (irProgram tbl ir) _ _ _ env emitted (o-table O)
                    (IT.flat-sound (λ {b} v → ML.ld {b} v image)) (IT.flat-ir (λ {b} v → ML.ld {b} v image))
 
   -- ★★ THE FILE: what the backend writes for the image (its code, its blocks' table, the
@@ -171,7 +171,7 @@ module NewImage (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Uni
   module IS = Once.LinCore.ImageSyms.Img (fs-numerics FS) (fs-ffi FS) bw o IT.ds IT.f₀ ML.ldConst ld-is IT.canon {FS}
 
   file-wfᴺ : Backend.AsmWF B (Backend.file B P′ (file-table (Backend.payload B) bs) (image-externs image))
-  file-wfᴺ = wf-room _ _ bs (image-externs image) IS.image-wf
+  file-wfᴺ = wf-room _ _ _ bs (image-externs image) IS.image-wf
 
   -- …the file the compiler writes (`ExprImage.fileAt`, its externs the image's)
 
@@ -219,7 +219,7 @@ module NewImage (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Uni
 
     conc-trˣ : Owed
              → Machine.trace (δ env (compile P″)) init ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (fs-numerics FS) (FrameSemantics.fs-interp FS)
-    conc-trˣ O = XS.sim-exp PL.C PL.small PL.in-range PL.fits (irProgram tbl ir) IA.em-budget IA.tail env
+    conc-trˣ O = XS.sim-exp PL.C PL.small PL.in-range PL.fits (irProgram tbl ir) IA.em-budget start-stack-words IA.tail env
                    (CL.Sz image) PL.uniform (CLF.sz-alloc image) (CLF.sz-free image)
                    IS.img-path IS.jmp-path IS.br-path IAF.no-lrec IAF.no-srec emitted
                    (IT.flat-sound (λ {b} v → ML.ld {b} v image))
@@ -239,7 +239,7 @@ module NewImage (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Uni
 
     -- (in the image's own names: the file's shape is the room-checked expansion's)
     file-wfˣ : Backend.AsmWF B (Backend.file B P″ (file-table (Backend.payload B) bs) (image-externs image))
-    file-wfˣ = wf-room _ _ bs (image-externs image) ISX.image-wfˣ
+    file-wfˣ = wf-room _ _ _ bs (image-externs image) ISX.image-wfˣ
     file-wf-atˣ : Backend.AsmWF B (Once.LinCore.ExprImage.fileAt (fs-numerics FS) B a true IT.BF.tl IT.BF.mpm
                                      (image-externs (Once.LinCore.ExprImage.imageAt (fs-numerics FS) IT.BF.tl IT.BF.mpm)))
     file-wf-atˣ = file-wfˣ
@@ -281,11 +281,11 @@ module NewImage (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Uni
       ks-in q k e = OS.in-dsizes image (Data.Nat.suc q) k e
 
       emᵒ : Emitted imageᵒ
-      emᵒ = OE.emitted ksᶜ IA.em-budget IA.tail emitted ks-pos ks-in IS.calls-apart
+      emᵒ = OE.emitted ksᶜ IA.em-budget start-stack-words IA.tail emitted ks-pos ks-in IS.calls-apart
 
       -- an op the room-checked call image calls is one the room-checked image calls
       sig-backᶜ : ∀ {A B} (si : Once.SigOp.Info.SigOpInfo A B) → instr-sigop si ∈ P‴ → instr-sigop si ∈ P′
-      sig-backᶜ si m = EM.∈-room image (Once.CCC.Codegen.AllocOutline.sig-out {FS} si ksᶜ IA.em-budget IA.tail
+      sig-backᶜ si m = EM.∈-room image (Once.CCC.Codegen.AllocOutline.sig-out {FS} si ksᶜ IA.em-budget start-stack-words IA.tail
                          (CDC.exp-sig 0 imageᵒ (Emitted.em-alloc emᵒ) si (EM.room-sig imageᶜ si m)))
 
     namedᶜ : Data.List.Relation.Unary.All.All (BT.SigNamed bs) P‴
@@ -299,10 +299,10 @@ module NewImage (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Uni
     -- ★★ THE CALL MODE ON THE ARCH: its run has the trace of the program
     conc-trᶜ : Owed
              → Machine.trace (δ env (compile P‴)) init ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (fs-numerics FS) (FrameSemantics.fs-interp FS)
-    conc-trᶜ O = XC.sim-call PLC.C PLC.small PLC.in-range PLC.fits (irProgram tbl ir) IA.em-budget IA.tail env
+    conc-trᶜ O = XC.sim-call PLC.C PLC.small PLC.in-range PLC.fits (irProgram tbl ir) IA.em-budget start-stack-words IA.tail env
                    ksᶜ (CL.Sz imageᵒ) PLC.uniform
                    emitted (IT.flat-sound (λ {b} v → ML.ld {b} v image))
-                   ks-pos (λ k m → OS.outline-sz ksᶜ IA.em-budget IA.tail k m) ks-in IS.skip-apart IS.calls-apart
+                   ks-pos (λ k m → OS.outline-sz ksᶜ IA.em-budget start-stack-words IA.tail k m) ks-in IS.skip-apart IS.calls-apart
                    IS.img-path IS.jmp-path IS.br-path IAF.no-lrec IAF.no-srec
                    (table P‴ bs namedᶜ (ext-missᶜ O)) (IT.flat-ir (λ {b} v → ML.ld {b} v image))
 
@@ -315,7 +315,7 @@ module NewImage (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Uni
     module ISC = IS.Xc PLC.C
 
     file-wfᶜ : Backend.AsmWF B (Backend.file B P‴ (file-table (Backend.payload B) bs) (image-externs image))
-    file-wfᶜ = wf-room _ _ bs (image-externs image) ISC.image-wfᶜ
+    file-wfᶜ = wf-room _ _ _ bs (image-externs image) ISC.image-wfᶜ
     file-wf-atᶜ : Backend.AsmWF B (Once.LinCore.ExprImage.fileAt (fs-numerics FS) B a false IT.BF.tl IT.BF.mpm
                                      (image-externs (Once.LinCore.ExprImage.imageAt (fs-numerics FS) IT.BF.tl IT.BF.mpm)))
     file-wf-atᶜ = file-wfᶜ

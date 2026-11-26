@@ -498,12 +498,12 @@ call-site-shape : ∀ prog (fs : FlatState) → RunLow prog fs → LocState.halt
 call-site-shape prog fs r h f = call-ok prog fs (step-ok prog fs _ r h f)
 
 -- THE START IS BEHIND US: the base run past its pc 0 never fetches the start
-start-behind : ∀ prog (fs : FlatState) (b : ℕ) (r : RunLow prog fs) → (fpc (run-at r) ≡ 0 → ⊥)
-             → fetch prog (fpc fs) ≡ just (instr-ctrl (c-start b)) → ⊥
-start-behind .(room-checks src) .(L.lift src fs₀ p) b (mkRunLow src fs₀ p refl r refl pc) past ft
+start-behind : ∀ prog (fs : FlatState) (b rsv : ℕ) (r : RunLow prog fs) → (fpc (run-at r) ≡ 0 → ⊥)
+             → fetch prog (fpc fs) ≡ just (instr-ctrl (c-start b rsv)) → ⊥
+start-behind .(room-checks src) .(L.lift src fs₀ p) b rsv (mkRunLow src fs₀ p refl r refl pc) past ft
   with low-view src fs₀ p pc ft
 ... | at-check k () _
-... | at-image _ fi = past (RW.start-at-zero src (fpc fs₀) b (run-emitted r) fi)
+... | at-image _ fi = past (RW.start-at-zero src (fpc fs₀) b _ (run-emitted r) fi)
 
 -- THE RUN GOES ON, PAST ITS START: `low-step`, and the base run is still past
 -- pc 0 after it (a check leaves the base where it is; any other step is a base
@@ -623,7 +623,7 @@ private
           is-entry (instr-ctrl (c-branch-tag-zero _)) ()
           is-entry (instr-ctrl (c-ret _)) ()
           is-entry (instr-ctrl (c-call-fn _)) ()
-          is-entry (instr-ctrl (c-start _)) ()
+          is-entry (instr-ctrl (c-start _ _)) ()
           is-entry (instr-ctrl c-leave) ()
           is-entry mov-to-output ()
           is-entry mov-to-input ()

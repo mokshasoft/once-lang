@@ -212,7 +212,7 @@ module LeftPres {FS : FrameSemantics} where
                       → flft (flat-exec-instr i prog fs) ≡ flft fs
   flat-exec-instr-left (instr-ctrl (c-label _))               _ prog fs = refl
   flat-exec-instr-left (instr-ctrl (c-entry _ b))             _ prog fs = refl
-  flat-exec-instr-left (instr-ctrl (c-start b))             _ prog fs = refl
+  flat-exec-instr-left (instr-ctrl (c-start b rsv))             _ prog fs = refl
   flat-exec-instr-left (instr-ctrl c-leave)                   () prog fs
   flat-exec-instr-left (instr-ctrl (c-call-fn f))             _ prog fs = do-call-at-left (find-fn prog f) fs
   flat-exec-instr-left (instr-ctrl (c-ret b))                 _ prog fs = do-ret-left b (fret fs) fs
@@ -478,7 +478,7 @@ module FaultPres {FS : FrameSemantics} where
                         → fflt (flat-exec-instr i prog fs) ≡ fflt fs
   flat-exec-instr-fault (instr-ctrl (c-label _))           prog fs _ = refl
   flat-exec-instr-fault (instr-ctrl (c-entry _ b))         prog fs _ = refl
-  flat-exec-instr-fault (instr-ctrl (c-start b))           prog fs _ = refl
+  flat-exec-instr-fault (instr-ctrl (c-start b rsv))           prog fs _ = refl
   flat-exec-instr-fault (instr-ctrl c-leave)               prog fs _ = refl
   flat-exec-instr-fault (instr-ctrl (c-call-fn f))         prog fs h = do-call-at-fault (find-fn prog f) fs h
   flat-exec-instr-fault (instr-ctrl (c-ret b))             prog fs h = do-ret-fault b (fret fs) fs h

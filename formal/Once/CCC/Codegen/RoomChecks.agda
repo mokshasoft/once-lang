@@ -86,7 +86,7 @@ stack-k T o (k-label _)   = 0
 stack-k T o (k-jump _)    = 0
 stack-k T o (k-branch _)  = 0
 stack-k T o k-ret         = 0
-stack-k T o k-start       = 0
+stack-k T o (k-start _)   = 0
 stack-k T o k-none        = 0
 
 spend : Depths → Owner → AbstractInstr → Room
@@ -95,7 +95,7 @@ spend T o i = room (cells i) (stack-k T o (kind i))
 -- a check goes right after these: control arrives there other than by falling
 -- through (a jump lands on a label, a call on an entry, a return after a call)
 boundary-k : Kind → Bool
-boundary-k k-start       = true
+boundary-k (k-start _)   = true
 boundary-k (k-label _)   = true
 boundary-k (k-entry _ _) = true
 boundary-k (k-call _)    = true

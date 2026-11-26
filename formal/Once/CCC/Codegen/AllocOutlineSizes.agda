@@ -84,7 +84,7 @@ size-view (instr-ctrl (c-branch-tag-zero l)) = szv-none refl
 size-view (instr-ctrl (c-entry e b))         = szv-none refl
 size-view (instr-ctrl (c-call-fn f))         = szv-none refl
 size-view (instr-ctrl (c-ret b))             = szv-none refl
-size-view (instr-ctrl (c-start b))           = szv-none refl
+size-view (instr-ctrl (c-start b rsv))           = szv-none refl
 size-view (instr-ctrl c-leave)               = szv-none refl
 
 sizes-++ : ∀ xs ys → sizes (xs ++ ys) ≡ sizes xs ++ sizes ys
@@ -112,8 +112,8 @@ routine-sizes : ∀ ks k → k ∈ ks → k ∈ sizes (prim-routines ks)
 routine-sizes (k′ ∷ ks) k (here refl) = here refl
 routine-sizes (k′ ∷ ks) k (there m)   = there (there (routine-sizes ks k m))
 
-outline-sz : ∀ ks b T k → k ∈ ks → Sz (outline ks (instr-ctrl (c-start b) ∷ T)) k
-outline-sz ks b T k m =
+outline-sz : ∀ ks b rsv T k → k ∈ ks → Sz (outline ks (instr-ctrl (c-start b rsv) ∷ T)) k
+outline-sz ks b rsv T k m =
   subst (k ∈_) (sym (sizes-++ (skip ks) (map site-call T)))
     (∈-++⁺ˡ (subst (k ∈_) (sym (sizes-++ (prim-routines ks) (instr-ctrl (c-label skip-label) ∷ []))) (∈-++⁺ˡ (routine-sizes ks k m))))
 

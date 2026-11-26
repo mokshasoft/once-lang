@@ -58,11 +58,11 @@ import Once.Adequacy.ArchCorrectness.ExpandSim
 
 module _ (C : Classes) (small : 3 + count C ≤ rec-size)
          (in-range : ∀ k → cls C k < count C) (fits : ∀ k → k ≤ bsz C k)
-         (q : IRProgram) (b : ℕ) (T : AbstractTrace) (env : String → Maybe (Backend.Payload B))
+         (q : IRProgram) (b rsv : ℕ) (T : AbstractTrace) (env : String → Maybe (Backend.Payload B))
          (ks : List ℕ) (Sz : ℕ → Set)
          (uniform  : ∀ k k′ → Sz k → Sz k′ → cls C k ≡ cls C k′ → bsz C k ≡ bsz C k′)
          where
-  open Out ks b T
+  open Out ks b rsv T
 
   module _ -- the image's
            (em     : Emitted P) (snd : Sound P start)
@@ -91,8 +91,8 @@ module _ (C : Classes) (small : 3 + count C ≤ rec-size)
       g-step : ∀ {fs i} → Good fs → LocState.halted (floc fs) ≡ false → fetch P (fpc fs) ≡ just i → Good (flat-exec-instr i P fs)
       g-step {fs} {i} (r , _) h f = mkRunAt (RunAt.run-em r) (reach-step i fs (RunAt.run-reach r) f h) , run-step-pc-pos P fs i r f
 
-      g-ns : ∀ {fs} → Good fs → ¬ fetch P (fpc fs) ≡ just (instr-ctrl (c-start b))
-      g-ns {fs} (r , ns) f = ns (start-at-zero P (fpc fs) b (RunAt.run-em r) f)
+      g-ns : ∀ {fs} → Good fs → ¬ fetch P (fpc fs) ≡ just (instr-ctrl (c-start b rsv))
+      g-ns {fs} (r , ns) f = ns (start-at-zero P (fpc fs) b _ (RunAt.run-em r) f)
 
       g-link : ∀ {fs i} → Good fs → fetch P (fpc fs) ≡ just i → (∀ e bb → ¬ i ≡ instr-ctrl (c-entry e bb)) → flink fs ≡ nothing
       g-link {fs} {i} (r , _) f ne = lk (flink fs) refl
@@ -109,12 +109,12 @@ module _ (C : Classes) (small : 3 + count C ≤ rec-size)
       r₀ : RunAt P start
       r₀ = mkRunAt em (reach-start start entry-like refl snd)
 
-      G₁ : Good (flat-exec-instr (instr-ctrl (c-start b)) P start)
-      G₁ = mkRunAt em (reach-step (instr-ctrl (c-start b)) start (RunAt.run-reach r₀) refl refl) , (λ ())
+      G₁ : Good (flat-exec-instr (instr-ctrl (c-start b rsv)) P start)
+      G₁ = mkRunAt em (reach-step (instr-ctrl (c-start b rsv)) start (RunAt.run-reach r₀) refl refl) , (λ ())
 
       -- the outlined image: emitted, its run sound
       em′ : Emitted P′
-      em′ = emitted ks b T em ks-pos sz nc
+      em′ = emitted ks b rsv T em ks-pos sz nc
 
       snd′ : Sound P′ start
       snd′ = R.sound-start start refl refl refl refl G₁ (run-sound r₀ ((refl , refl) ∷ []))
@@ -229,7 +229,7 @@ module _ (C : Classes) (small : 3 + count C ≤ rec-size)
     sim-call : ArithTable (room-checks (expand C P′)) env → FlatShows FS P start q
              → Machine.trace (δ env (compile (room-checks (expand C P′)))) init ⊑ᵗ⟨ _≡_ ⟩ ⟦ just q ⟧IRᵗ (fs-numerics FS) (FrameSemantics.fs-interp FS)
     sim-call tb fl =
-      ES.sim-exp C small in-range fits q b (skip ks ++ map site-call T) env Sz uniform
+      ES.sim-exp C small in-range fits q b rsv (skip ks ++ map site-call T) env Sz uniform
         sz-alloc′ sz-free′ (lab′ ImgL skip-img img) (jmp′ ImgL skip-img jmp-lbl) br′ no-lrec′ no-srec′ em′ snd′ tb shows′
       where
         shows′ : FlatShows FS P′ start q

@@ -256,7 +256,7 @@ module DL {FS : FrameSemantics} where
   ilab-sv (instr-ctrl (c-branch-tag-zero _)) = refl
   ilab-sv (instr-ctrl (c-ret _)) = refl
   ilab-sv (instr-ctrl (c-call-fn _)) = refl
-  ilab-sv (instr-ctrl (c-start _)) = refl
+  ilab-sv (instr-ctrl (c-start _ _)) = refl
   ilab-sv (instr-ctrl c-leave) = refl
   ilab-sv mov-to-output = refl
   ilab-sv mov-to-input = refl
@@ -753,7 +753,7 @@ module Img (nm : CanonicalName) {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     refs-ok (instr-ctrl (c-branch-tag-zero n)) r jin m = lab-G (jin n refl) ∷ []
     refs-ok (instr-ctrl (c-ret _)) r jin m = []
     refs-ok (instr-ctrl (c-call-fn _)) ((σ , κ) , p , refl) jin m = fn-G p ∷ []
-    refs-ok (instr-ctrl (c-start _)) r jin m = inj₂ (there (here refl)) ∷ inj₁ (there (here refl)) ∷ []
+    refs-ok (instr-ctrl (c-start _ _)) r jin m = inj₂ (there (here refl)) ∷ inj₁ (there (here refl)) ∷ []
     refs-ok (instr-ctrl c-leave) r jin m = inj₂ (here refl) ∷ []
     refs-ok mov-to-output r jin m = []
     refs-ok mov-to-input r jin m = []

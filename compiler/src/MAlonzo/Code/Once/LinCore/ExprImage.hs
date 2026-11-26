@@ -133,7 +133,7 @@ d_imageAt'739'_26 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430]
 d_imageAt'739'_26 v0 v1 v2 v3 v4
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.AllocExpand.d_expand_126
+      MAlonzo.Code.Once.CCC.Codegen.AllocExpand.d_expand_128
       (MAlonzo.Code.Once.CCC.Codegen.AllocExpandClasses.d_classes_384
          (coe v1) (coe d_imageAt_10 (coe v0) (coe v2) (coe v3) (coe v4)))
       (d_imageAt_10 (coe v0) (coe v2) (coe v3) (coe v4))
@@ -147,16 +147,16 @@ d_imageAt'7580'_36 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430]
 d_imageAt'7580'_36 v0 v1 v2 v3 v4
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.AllocExpand.d_expand_126
+      MAlonzo.Code.Once.CCC.Codegen.AllocExpand.d_expand_128
       (MAlonzo.Code.Once.CCC.Codegen.AllocExpandClasses.d_classes_384
          (coe v1)
          (coe
-            MAlonzo.Code.Once.CCC.Codegen.AllocExpand.d_outline_160
+            MAlonzo.Code.Once.CCC.Codegen.AllocExpand.d_outline_162
             (coe
                MAlonzo.Code.Once.CCC.Codegen.AllocExpandClasses.d_dsizes_268
                (coe d_imageAt_10 (coe v0) (coe v2) (coe v3) (coe v4)))
             (coe d_imageAt_10 (coe v0) (coe v2) (coe v3) (coe v4))))
-      (MAlonzo.Code.Once.CCC.Codegen.AllocExpand.d_outline_160
+      (MAlonzo.Code.Once.CCC.Codegen.AllocExpand.d_outline_162
          (coe
             MAlonzo.Code.Once.CCC.Codegen.AllocExpandClasses.d_dsizes_268
             (coe d_imageAt_10 (coe v0) (coe v2) (coe v3) (coe v4)))

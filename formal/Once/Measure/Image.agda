@@ -42,7 +42,7 @@ private
   -- CATCHALL: only allocation and frame reservation are counted.
   step : AbstractInstr → ImageStats → ImageStats
   step (instr-alloc-heap n)    (mk-stats i hs hc f fm fs) = mk-stats i (suc hs) (n + hc) f fm fs
-  step (instr-ctrl (c-start b))   s = frame b s
+  step (instr-ctrl (c-start b rsv))   s = frame b s
   step (instr-ctrl (c-entry _ b)) s = frame b s
   {-# CATCHALL #-}
   step _                          s = s

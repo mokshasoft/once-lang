@@ -60,12 +60,12 @@ import Once.CCC.Codegen.AllocExpandStart
 
 module _ (C : Classes) (small : 3 + count C ≤ rec-size)
          (in-range : ∀ k → cls C k < count C) (fits : ∀ k → k ≤ bsz C k)
-         (q : IRProgram) (b : ℕ) (tail : AbstractTrace) (env : String → Maybe (Backend.Payload B))
+         (q : IRProgram) (b rsv : ℕ) (tail : AbstractTrace) (env : String → Maybe (Backend.Payload B))
          (Sz : ℕ → Set)
          (uniform  : ∀ k k′ → Sz k → Sz k′ → cls C k ≡ cls C k′ → bsz C k ≡ bsz C k′)
          where
   P : AbstractTrace
-  P = instr-ctrl (c-start b) ∷ tail
+  P = instr-ctrl (c-start b rsv) ∷ tail
 
   E : AbstractTrace
   E = expand C P
@@ -92,7 +92,7 @@ module _ (C : Classes) (small : 3 + count C ≤ rec-size)
                      mkRunAt (RunAt.run-em r) (reach-step i fs (RunAt.run-reach r) f h)
                    , run-step-pc-pos P fs i r f , flat-wf-step i P fs wf , cl-step i P fs wf cl }
       ; g-em   = λ { {fs} {i} (r , _) f → frame-op-absurd P fs i (RunAt.run-em r) f }
-      ; g-ns   = λ { {fs} {i} (r , ns , _) f b′ e → ns (start-at-zero P (fpc fs) b′ (RunAt.run-em r) (subst (λ j → fetch P (fpc fs) ≡ just j) e f)) }
+      ; g-ns   = λ { {fs} {i} (r , ns , _) f b′ rsv′ e → ns (start-at-zero P (fpc fs) b′ rsv′ (RunAt.run-em r) (subst (λ j → fetch P (fpc fs) ≡ just j) e f)) }
       ; g-nr   = λ { {fs} {i} _ f → (λ k e → no-lrec (fpc fs) k (subst (λ j → fetch P (fpc fs) ≡ just j) e f))
                                    , (λ k e → no-srec (fpc fs) k (subst (λ j → fetch P (fpc fs) ≡ just j) e f)) }
       ; g-nf   = λ { {fs} {i} (r , _) h f → run-sound r ((h , f) ∷ []) }
@@ -102,19 +102,19 @@ module _ (C : Classes) (small : 3 + count C ≤ rec-size)
 
     -- the image's run past its start
     x : FlatState
-    x = flat-exec-instr (instr-ctrl (c-start b)) P start
+    x = flat-exec-instr (instr-ctrl (c-start b rsv)) P start
 
     r₀ : RunAt P start
     r₀ = mkRunAt em (reach-start start entry-like refl snd)
 
     G₁ : Good x
-    G₁ = mkRunAt em (reach-step (instr-ctrl (c-start b)) start (RunAt.run-reach r₀) refl refl)
-       , (λ ()) , flat-wf-step (instr-ctrl (c-start b)) P start entry-wf , cl-step (instr-ctrl (c-start b)) P start entry-wf entry-cl
+    G₁ = mkRunAt em (reach-step (instr-ctrl (c-start b rsv)) start (RunAt.run-reach r₀) refl refl)
+       , (λ ()) , flat-wf-step (instr-ctrl (c-start b rsv)) P start entry-wf , cl-step (instr-ctrl (c-start b rsv)) P start entry-wf entry-cl
 
     S₁ : Once.CCC.Codegen.AllocExpandStart.Start {FS} x
     S₁ = record { s-heap = λ _ → refl ; s-next = refl ; s-free = λ _ → refl ; s-size = λ _ → refl ; s-ret = refl ; s-halt = refl }
 
-    module St = Ev.Start′ C P Sz uniform fits in-range sz-alloc sz-free img jmp-lbl br-lbl keeps start b refl refl refl S₁ refl refl G₁
+    module St = Ev.Start′ C P Sz uniform fits in-range sz-alloc sz-free img jmp-lbl br-lbl keeps start b rsv refl refl refl S₁ refl refl G₁
 
     -- ★★ THE ARCH RUNS THE EXPANSION, room-checked, with the program's trace: the
     -- expansion is emitted, its flat run never faults (from the start, through the
@@ -122,7 +122,7 @@ module _ (C : Classes) (small : 3 + count C ≤ rec-size)
     -- at least its control steps
     sim-exp : ArithTable (room-checks E) env → FlatShows FS P start q
             → Machine.trace (δ env (compile (room-checks E))) init ⊑ᵗ⟨ _≡_ ⟩ ⟦ just q ⟧IRᵗ (fs-numerics FS) (FrameSemantics.fs-interp FS)
-    sim-exp tb fl = sim q b (setup C ++ expand-from C 1 tail) env
+    sim-exp tb fl = sim q b rsv (setup C ++ expand-from C 1 tail) env
                         (Cd.Em.emitted o slot-size word-eq P em) tb (St.sound-start refl refl) shows
       where
         shows : FlatShows FS E start q

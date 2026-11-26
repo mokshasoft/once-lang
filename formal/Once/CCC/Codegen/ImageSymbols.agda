@@ -44,7 +44,7 @@ ctrl-defs (c-jmp _)                 = []
 ctrl-defs (c-branch-tag-zero _)     = []
 ctrl-defs (c-ret _)                 = []
 ctrl-defs (c-call-fn _)             = []
-ctrl-defs (c-start _)               = []
+ctrl-defs (c-start _ _)               = []
 ctrl-defs c-leave                   = []
 
 ctrl-refs : FlatCtrl → List String
@@ -52,7 +52,7 @@ ctrl-refs (c-jmp n)                 = labelSym (once n) ∷ []
 ctrl-refs (c-branch-tag-zero n)     = labelSym (once n) ∷ []
 ctrl-refs (c-call-fn f)             = labelSym (callee (e-fn f)) ∷ []
 -- D488: the start's own check calls `once_exhausted`; it sets the limit in the record
-ctrl-refs (c-start _)               = host-exhausted-symbol ∷ alloc-record-symbol ∷ []
+ctrl-refs (c-start _ _)               = host-exhausted-symbol ∷ alloc-record-symbol ∷ []
 -- D320: the Host's `leave`.
 ctrl-refs c-leave                   = host-leave-symbol ∷ []
 ctrl-refs (c-label _)               = []

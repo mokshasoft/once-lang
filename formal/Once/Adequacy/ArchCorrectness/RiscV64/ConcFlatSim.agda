@@ -267,14 +267,14 @@ ctrl-len-arch (c-branch-tag-zero _) = s≤s z≤n
 ctrl-len-arch (c-entry _ _) = s≤s z≤n
 ctrl-len-arch (c-ret _) = s≤s z≤n
 ctrl-len-arch (c-call-fn _) = s≤s z≤n
-ctrl-len-arch (c-start b) = st-len (AC.room-fits? (start-stack-words Data.Nat.+ b))
+ctrl-len-arch (c-start b rsv) = st-len (AC.room-fits? (rsv Data.Nat.+ b))
   where
     import Once.CCC.Target.RiscV64.AbstractToRiscV as AC
     import Data.Nat
     open import Data.Bool using (Bool; true; false)
     open import Data.List using (_++_)
     -- D488: the start's check is its code or its call
-    st-len : ∀ (c : Bool) → 1 ≤ length (AC.fits-or-out c (AC.room-code (start-stack-words Data.Nat.+ b)) ++ AC.start-tail b)
+    st-len : ∀ (c : Bool) → 1 ≤ length (AC.fits-or-out c (AC.room-code (rsv Data.Nat.+ b)) ++ AC.start-tail b rsv)
     st-len true  = s≤s z≤n
     st-len false = s≤s z≤n
 ctrl-len-arch c-leave = s≤s z≤n
@@ -749,7 +749,7 @@ riscv64-supply = record
   { bss = riscv64-block-steps ; sts = riscv64-stuck-steps
   ; room-step = λ prog fs s k run cc st h ft → room-step-riscv64 prog fs s k cc st h ft
       (reg-range prog fs s sp run cc)
-  ; start-step = λ prog fs s b run cc h ft _ nf nst loq → start-step-riscv64 prog fs s b cc h ft
+  ; start-step = λ prog fs s b rsv run cc h ft _ nf nst loq → start-step-riscv64 prog fs s b rsv cc h ft
       (reg-range prog fs s sp run cc) nf nst loq
   ; reg-range = reg-range ; ret-no-wrap = ret-no-wrap
   ; tag-fits = tag-fits ; lit-fits = lit-fits ; float-fits = float-fits
