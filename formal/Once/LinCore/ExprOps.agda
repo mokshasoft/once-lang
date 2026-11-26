@@ -142,7 +142,7 @@ import Once.Spec.Grade as G
 import Data.Fin
 open import Once.LinCore.FromExpr fmt
   using (weak; split; carryL; mixL; var-at; bindL; apω; dist; cast;
-         Pth; p-var; p-fst; p-snd; p-mfst; p-msnd; Rd; rd-path; rd-int; rd-float; rd-num; rd-pair; rd-coe; coeRd; rd?; lv; Rp; Rt; lentS; scrutL; pairL; scrutA; appL; cp?; CP; cp)
+         Pth; p-var; p-fst; p-snd; p-mfst; p-msnd; Rd; rd-path; rd-int; rd-float; rd-num; rd-pair; rd-coe; coeRd; rd?; rdw?; lv; Rp; Rt; lentS; scrutL; pairL; scrutA; appL; cp?; CP; cp)
 open import Once.LinCore.PassTr fmt using (copyIn)
 
 module Ops (Σι : ISig) where
@@ -415,7 +415,7 @@ module Ops (Σι : ISig) where
       ok-clo ((_ , ((ok-Lq f rf , (ok-Lq x rx , ok-weak {Γ = Γ} (⊑ᵘ-*One Ψ₂))) , ok-split Γ Ψ₁ (G.One *ᵘ Ψ₂))) , tt)
     ok-Lq {Γ = Γ} (S.effApp {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = G.Many} f x) (rf , rx) =
       ok-clo ((_ , ((ok-Lq f rf , (ok-Lq x rx , ok-weak {Γ = Γ} (⊑ᵘ-*Many Ψ₂))) , ok-split Γ Ψ₁ (G.Many *ᵘ Ψ₂))) , tt)
-    ok-Lq {Γ = Γ} (S.pair a b) (ra , rb) = ok-pairL {Γ = Γ} a b (rd? a) (ok-Lq a ra) (ok-Lq b rb)
+    ok-Lq {Γ = Γ} (S.pair a b) (ra , rb) = ok-pairL {Γ = Γ} a b (rdw? a) (ok-Lq a ra) (ok-Lq b rb)
     ok-Lq (S.fst' p) r = _ , ok-Lq p r
     ok-Lq (S.snd' p) r = _ , ok-Lq p r
     ok-Lq (S.inl' a) r = tt , ok-Lq a r
@@ -423,7 +423,7 @@ module Ops (Σι : ISig) where
     ok-Lq {Γ = Γ} (S.case' {Ψs = Ψs} {Ψₗ = Ψₗ} {Ψᵣ = Ψᵣ} {qℓ = qℓ} {qr = qr} {A = A} {B = B} s l r′) (rs′ , rl , rr) =
       ((ok-Lq l rl , (ok-bind {Γ = Γ} {A = A} qℓ , (ok-weak {Γ = Γ} (⊑ᵘ-⊔ˡ Ψₗ Ψᵣ) , tt))) ,
        (ok-Lq r′ rr , (ok-bind {Γ = Γ} {A = B} qr , (ok-weak {Γ = Γ} (⊑ᵘ-⊔ʳ Ψₗ Ψᵣ) , tt)))) ,
-      (_ , ok-scrutL {Γ = Γ} {Φ = Ψₗ ⊔ᵘ Ψᵣ} s (rd? s) (ok-Lq s rs′))
+      (_ , ok-scrutL {Γ = Γ} {Φ = Ψₗ ⊔ᵘ Ψᵣ} s (rdw? s) (ok-Lq s rs′))
     ok-Lq S.unit r = tt
     ok-Lq (S.absurd v) r = tt , ok-Lq v r
     ok-Lq {Γ = Γ} (S.let' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = G.Zero} e1 e2) (r1 , r2) =
@@ -461,7 +461,7 @@ module Ops (Σι : ISig) where
       _ , ((ok-Lq f rf , (ok-Lq x rx , ok-weak {Γ = Γ} (⊑ᵘ-*Many Ψ₂))) , ok-split Γ Ψ₁ (G.Many *ᵘ Ψ₂))
     ok-appL {Γ = Γ} (S.copair' {Ψ₁ = Ψf} {Ψ₂ = Ψg} f g) x (just (cp _ _)) (rf , rg) rx =
       ((_ , ((ok-Lq f rf , ok-weak {Γ = Γ} (Once.Context.⊑ᵘ-+ˡ Ψf Ψg)) , tt)) , (_ , ((ok-Lq g rg , ok-weak {Γ = Γ} (⊑ᵘ-+ʳ Ψf Ψg)) , tt))) ,
-      (_ , ok-scrutA {Γ = Γ} {Φ = Ψf SC.+ᵘ Ψg} x (rd? x) (ok-Lq x rx))
+      (_ , ok-scrutA {Γ = Γ} {Φ = Ψf SC.+ᵘ Ψg} x (rdw? x) (ok-Lq x rx))
 
 ------------------------------------------------------------------------
 -- 3. ★ THE BRIDGE'S PROGRAM (`ExprBuild`): its table and its `main` run

@@ -24791,6 +24791,13 @@ Master shares (pointers are copied, nothing is freed), so it is linear but leaks
   (2026-11-23), and a quadratic loop is not parity.
 
 ### Decision (proposed): (a), as §5 item 8 step h, before d–f (it is the largest cost: asymptotic)
+**Amended (2026-11-26, plan 0.157 S2): a read in place only at a type without cells.** A read copies out
+what it reads (`bcopy`), so reading a closure or a list in place is a deep copy even where the value is used
+once and moving it costs nothing (`layer4-closure-in-sum`: `destruct s` of a closure copied it). The bridge
+now lends only where the read's type owns no cells (`FromExpr.flat?`: `Unit`, `Void`, `Int`, `Float`, and
+products and sums of them; `rdw?` at every scrutinee, pair and argument site); a value with cells is split
+off and moved. Corpus (x86_64): the one copy of a lent value with cells gone (`once stats` `bcopy-cells` 0),
+static 217591 → 217476, one program 0.78×, no program slower.
 
 ## D478 — THE seL4 BINDINGS ANSWER A TUPLE IN PLACE, AT THE ADDRESS IN OUTPUT (D451's Host side) (2026-11-23, bug fix)
 

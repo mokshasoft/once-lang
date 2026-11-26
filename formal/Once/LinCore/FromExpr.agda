@@ -33,6 +33,7 @@ module Once.LinCore.FromExpr (fmt : TargetNum) where
 
 open import Data.Nat using (ℕ)
 open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Bool using (Bool; true; false; _∧_; if_then_else_)
 open import Data.Product using (Σ; _,_)
 open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst; subst₂; cong)
@@ -478,6 +479,23 @@ rd? (pair a b)  = rdPair (rd? a) (rd? b)
 {-# CATCHALL #-}
 rd? e           = Data.Maybe.map rd-path (pth? e)
 
+-- ★ plan 0.157 S2: a read copies out what it reads (`bcopy`), so it is a
+-- read IN PLACE only where that is words: at a type whose values own no cells.
+-- A value with cells is moved (split off) instead — a deep copy never pays for
+-- a read, and a value used once is not copied at all.
+flat? : ∀ {m} → Ty m → Bool
+flat? ST.Unit      = true
+flat? ST.Void      = true
+flat? ST.Int       = true
+flat? ST.Float     = true
+flat? (A ST.* B)   = flat? A ∧ flat? B
+flat? (A ST.+ B)   = flat? A ∧ flat? B
+{-# CATCHALL #-}
+flat? _            = false
+
+rdw? : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} (e : Expr Γ Ψ A) → Maybe (Rd e)
+rdw? {A = A} e = if flat? A then rd? e else nothing
+
 ------------------------------------------------------------------------
 -- 5c. ★ D481 (B1): WHAT EVALUATES AT ONCE. The IR builds both arms of a case
 -- combinator before the case (`copairIR ∘ ⟨ f , g ⟩`). An arm whose evaluation
@@ -667,13 +685,13 @@ module _ {L : Cx} (rs : Rs L) where
   appL {Γ = Γ} (copair' {Ψ₁ = Ψf} {Ψ₂ = Ψg} f g) x (just (cp _ _)) =
     lcase (apω ∘l ((Lq f ∘l weak {Γ = Γ} (⊑ᵘ-+ˡ Ψf Ψg)) ⊗l lid))
           (apω ∘l ((Lq g ∘l weak {Γ = Γ} (⊑ᵘ-+ʳ Ψf Ψg)) ⊗l lid))
-    ∘l dist ∘l scrutA {Γ = Γ} {Φ = Ψf +ᵘ Ψg} x (rd? x)
+    ∘l dist ∘l scrutA {Γ = Γ} {Φ = Ψf +ᵘ Ψg} x (rdw? x)
   k-appL {Γ = Γ} {Ψ₁} {Ψ₂} f x nothing =
     k-∘ k-apω (k-∘ (k-⊗ (Lq-blk f) (k-∘ (Lq-blk x) (k-weak {Γ = Γ} (⊑ᵘ-*Many Ψ₂)))) (k-split Γ Ψ₁ (G.Many *ᵘ Ψ₂)))
   k-appL {Γ = Γ} (copair' {Ψ₁ = Ψf} {Ψ₂ = Ψg} f g) x (just (cp _ _)) =
     k-∘ (k-case (k-∘ k-apω (k-⊗ (k-∘ (Lq-blk f) (k-weak {Γ = Γ} (⊑ᵘ-+ˡ Ψf Ψg))) k-id))
                 (k-∘ k-apω (k-⊗ (k-∘ (Lq-blk g) (k-weak {Γ = Γ} (⊑ᵘ-+ʳ Ψf Ψg))) k-id)))
-        (k-∘ k-dist (k-scrutA {Γ = Γ} {Φ = Ψf +ᵘ Ψg} x (rd? x)))
+        (k-∘ k-dist (k-scrutA {Γ = Γ} {Φ = Ψf +ᵘ Ψg} x (rdw? x)))
 
   scrutL {Γ = Γ} {Ψs} {Φ} s nothing  = (lid ⊗l Lq s) ∘l lswap ∘l split Γ Ψs Φ
   scrutL {Γ = Γ} {Ψs} {Φ} s (just d) = lentS {Γ = Γ} {Ψs} {Φ} d
@@ -709,7 +727,7 @@ module _ {L : Cx} (rs : Rs L) where
     llamωᶜ ((apω ∘l (Lq f ⊗l (Lq x ∘l weak {Γ = Γ} (⊑ᵘ-*Many Ψ₂))) ∘l split Γ Ψ₁ (G.Many *ᵘ Ψ₂)) ∘l ρl)
           (gdB π (λ { refl → k-∘ (k-∘ k-apω (k-∘ (k-⊗ (Lq-blk f) (k-∘ (Lq-blk x) (k-weak {Γ = Γ} (⊑ᵘ-*Many Ψ₂))))
                                                     (k-split Γ Ψ₁ (G.Many *ᵘ Ψ₂)))) k-ρ }))
-  Lq {Γ = Γ} (pair a b) = pairL {Γ = Γ} a b (rd? a)
+  Lq {Γ = Γ} (pair a b) = pairL {Γ = Γ} a b (rdw? a)
   Lq (fst' p) = (ρl ∘l (lid ⊗l drop)) ∘l Lq p
   Lq (snd' p) = dropl ∘l Lq p
   Lq (inl' a) = linl ∘l Lq a
@@ -718,7 +736,7 @@ module _ {L : Cx} (rs : Rs L) where
   Lq {Γ = Γ} (case' {Ψs = Ψs} {Ψₗ = Ψₗ} {Ψᵣ = Ψᵣ} {qℓ = qℓ} {qr = qr} {A = A} {B = B} s l r) =
     lcase (Lq l ∘l bindL {Γ = Γ} {A = A} qℓ ∘l (weak {Γ = Γ} (⊑ᵘ-⊔ˡ Ψₗ Ψᵣ) ⊗l lid))
           (Lq r ∘l bindL {Γ = Γ} {A = B} qr ∘l (weak {Γ = Γ} (⊑ᵘ-⊔ʳ Ψₗ Ψᵣ) ⊗l lid))
-    ∘l dist ∘l scrutL {Γ = Γ} {Φ = Ψₗ ⊔ᵘ Ψᵣ} s (rd? s)
+    ∘l dist ∘l scrutL {Γ = Γ} {Φ = Ψₗ ⊔ᵘ Ψᵣ} s (rdw? s)
   Lq unit = drop
   Lq (absurd v) = lzero ∘l Lq v
   -- a let: an erased binding is never evaluated
@@ -786,7 +804,7 @@ module _ {L : Cx} (rs : Rs L) where
   Lq-blk {Γ = Γ} (effApp {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = G.Zero} f x) = k-castΦ {Γ = Γ} (sym (erase-arg-usage Ψ₁ Ψ₂)) k-lamωᶜ
   Lq-blk (effApp {q = G.One} f x) = k-lamωᶜ
   Lq-blk (effApp {q = G.Many} f x) = k-lamωᶜ
-  Lq-blk {Γ = Γ} (pair a b) = k-pairL {Γ = Γ} a b (rd? a)
+  Lq-blk {Γ = Γ} (pair a b) = k-pairL {Γ = Γ} a b (rdw? a)
   Lq-blk (fst' p) = k-∘ (k-∘ k-ρ (k-⊗ k-id k-drop)) (Lq-blk p)
   Lq-blk (snd' p) = k-∘ k-dropl (Lq-blk p)
   Lq-blk (inl' a) = k-∘ k-inl (Lq-blk a)
@@ -794,7 +812,7 @@ module _ {L : Cx} (rs : Rs L) where
   Lq-blk {Γ = Γ} (case' {Ψs = Ψs} {Ψₗ = Ψₗ} {Ψᵣ = Ψᵣ} {qℓ = qℓ} {qr = qr} {A = A} {B = B} s l r) =
     k-∘ (k-case (k-∘ (Lq-blk l) (k-∘ (k-bindL {Γ = Γ} {A = A} qℓ) (k-⊗ (k-weak {Γ = Γ} (⊑ᵘ-⊔ˡ Ψₗ Ψᵣ)) k-id)))
                 (k-∘ (Lq-blk r) (k-∘ (k-bindL {Γ = Γ} {A = B} qr) (k-⊗ (k-weak {Γ = Γ} (⊑ᵘ-⊔ʳ Ψₗ Ψᵣ)) k-id))))
-        (k-∘ k-dist (k-scrutL {Γ = Γ} {Φ = Ψₗ ⊔ᵘ Ψᵣ} s (rd? s)))
+        (k-∘ k-dist (k-scrutL {Γ = Γ} {Φ = Ψₗ ⊔ᵘ Ψᵣ} s (rdw? s)))
   Lq-blk unit = k-drop
   Lq-blk (absurd v) = k-∘ k-zero (Lq-blk v)
   Lq-blk {Γ = Γ} (let' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = G.Zero} e1 e2) =

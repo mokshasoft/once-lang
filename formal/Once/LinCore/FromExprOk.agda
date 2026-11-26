@@ -68,7 +68,7 @@ open import Once.IR.Semantics.Iterative using (T∞; return∞; _>>=∞_; bindBl
 open import Once.LinCore.NbEPLinCore fmt ans
 open Sem using (Lᶜ; cataC; travC)
 open import Once.LinCore.FromExpr fmt using (ty; Co; weak; split; carryL; mixL; apω; var-at; bindL; Rs; Lq; castΦ; opL; numL; sigL; cast; clo; callM; refL; mapT; layerEq; dist; coeL; coeR)
-open import Once.LinCore.FromExpr fmt using (Pth; p-var; p-fst; p-snd; p-mfst; p-msnd; mq; Rd; rd-path; rd-int; rd-float; rd-num; rd-pair; rd-coe; coeRd; rd?; lv; Rp; Rt; lentS; scrutL; pairL)
+open import Once.LinCore.FromExpr fmt using (Pth; p-var; p-fst; p-snd; p-mfst; p-msnd; mq; Rd; rd-path; rd-int; rd-float; rd-num; rd-pair; rd-coe; coeRd; rd?; rdw?; lv; Rp; Rt; lentS; scrutL; pairL)
 open import Once.LinCore.FromExpr fmt using (Im; im-var; im-lam; im-closed; im-coe; im-app1; im-appω; ImF; imf-lam; imf-closed; CP; cp; cp?; appL; scrutA)
 open import Once.Surface.Elaborate using (copairIR)
 open import Once.Context using (_⊔ᵘ_; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ)
@@ -1017,7 +1017,7 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRT
         by : ∀ dc → Lᶜ δ (coeRd c dc (Rt d q)) x tt ≈ Lᶜ δ (coeR c dc (Lq rs f)) tt (wv {Γ = Γ} q x)
         by (yes vf) = cast-≈ (cong ⟪_⟫ (erase-eq c vf)) (Rt d q) (Lq rs f) (rt-eq d q x)
         by (no _)   = >>=-cong (rt-eq d q x) (λ _ → ≈-refl)
-    rt-eq {Γ = Γ} (rd-pair {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {a = a} {b = b} da db) q x = by (rd? a)
+    rt-eq {Γ = Γ} (rd-pair {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {a = a} {b = b} da db) q x = by (rdw? a)
       where
         qa = ⊑ᵘ-trans (⊑ᵘ-+ˡ Ψ₁ Ψ₂) q
         qb = ⊑ᵘ-trans (⊑ᵘ-+ʳ Ψ₁ Ψ₂) q
@@ -1253,7 +1253,7 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRT
   rel-appB {Γ = Γ} {Ψf} {Ψg} {Ψx} {A} {B} {C} f g x i j rf rg rx =
     rel-≈ʳ (rel-∘ (rel-lcase (rel-∘ (rel-apω {π = G.pure}) (rel-side (rel-∘ rf (rel-weak am {Γ = Γ} pl))))
                              (rel-∘ (rel-apω {π = G.pure}) (rel-side (rel-∘ rg (rel-weak am {Γ = Γ} pr)))))
-                  (rel-∘ rel-dist (rel-scrutA {Γ = Γ} {Φ = Ψf +ᵘ Ψg} x (rd? x) rx)))
+                  (rel-∘ rel-dist (rel-scrutA {Γ = Γ} {Φ = Ψf +ᵘ Ψg} x (rdw? x) rx)))
            eq
     where
       pl = ⊑ᵘ-+ˡ Ψf Ψg
@@ -1316,7 +1316,7 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRT
   ok-case {Γ = Γ} {Ψs} {Ψₗ} {Ψᵣ} {qℓ} {qr} {A} {B} s l r rs′ rl rr =
     rel-∘ (rel-lcase (rel-∘ rl (rel-∘ (rel-bind {Γ = Γ} {A = A} qℓ) (rel-arm {Γ = Γ} (⊑ᵘ-⊔ˡ Ψₗ Ψᵣ))))
                      (rel-∘ rr (rel-∘ (rel-bind {Γ = Γ} {A = B} qr) (rel-arm {Γ = Γ} (⊑ᵘ-⊔ʳ Ψₗ Ψᵣ)))))
-          (rel-∘ rel-dist (rel-scrut {Γ = Γ} {Φ = Ψₗ ⊔ᵘ Ψᵣ} s (rd? s) rs′))
+          (rel-∘ rel-dist (rel-scrut {Γ = Γ} {Φ = Ψₗ ⊔ᵘ Ψᵣ} s (rdw? s) rs′))
 
   rel-distIR : ∀ {X A B : IRTy} → Rel (dist {L} {One} {⟪ X ⟫} {⟪ A ⟫} {⟪ B ⟫}) (distribIR {X} {A} {B} am)
   rel-distIR {X} {A} {B} = rel-pure (dist-pure {X} {A} {B}) (distribIR-pure {X} {A} {B}) dW
@@ -1535,7 +1535,7 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRT
     rel-app Γ Ψ₁ Ψ₂ (G.One *ᵘ Ψ₂) (⊑ᵘ-*One Ψ₂) (Lq-ok f rf) (Lq-ok x rx)
   Lq-ok {Γ = Γ} (app {q = G.Many} f x) (rf , rx) = ok-appL {Γ = Γ} f x (cp? f) rf rx
   Lq-ok (effApp f x) (rf , rx) = ok-effApp f x (Lq-ok f rf) (Lq-ok x rx)
-  Lq-ok {Γ = Γ} (pair a b) (ra , rb) = rel-pairL {Γ = Γ} a b (rd? a) (Lq-ok a ra) (Lq-ok b rb)
+  Lq-ok {Γ = Γ} (pair a b) (ra , rb) = rel-pairL {Γ = Γ} a b (rdw? a) (Lq-ok a ra) (Lq-ok b rb)
   Lq-ok (fst' p) r = rel-∘ rel-fst (Lq-ok p r)
   Lq-ok (snd' p) r = rel-∘ rel-snd (Lq-ok p r)
   Lq-ok (inl' a) r = rel-∘ rel-inl (Lq-ok a r)
