@@ -68,6 +68,8 @@ mutual
   gives-nh r-α = []
   gives-nh r-α⁻ = []
   gives-nh r-swap = []
+  gives-nh r-dist₁ = []
+  gives-nh r-dist₂ = []
   gives-nh (r-dup {v = v} {n}) = nh-[] (proj₂ (proj₂ (copy v n))) (ios-copy v n)
   gives-nh (r-drop {v = v}) = nh-[] (freeAll v) (ios-freeAll v)
   gives-nh r-inl = []

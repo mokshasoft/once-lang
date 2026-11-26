@@ -221,6 +221,15 @@ module Prims {FS : FrameSemantics} (U : Univ)
     straight s H _ [] refl
       (λ sg h Bf C → lswap-sim prog fs φ sg h Bf C (proj₂ (ins-fits s)))
 
+  -- ★ D492: distributivity, `X` swapped with the sum's tag
+  st-ldist : ∀ {Γ} {ds : Defs Γ} {Es X A B S V} {k : Codeᴵ (Es ∣ ((X ⊗t A) ⊕t (X ⊗t B)) ∷ S) V}
+               (s : Sub root (prim ds (ldist {X = X} {A} {B}) ⨾ k))
+               {es : Slots Es} {x : MV X} {v : MV (A ⊕t B)} {os : Stk S} {fs}
+           → Here s (es ∥ mpair x v ∷ˢ os) fs → Moved (next s) fs [] [] (es ∥ distMV x v ∷ˢ os)
+  st-ldist {X = X} {A} {B} {S} s {fs = fs} H =
+    straight s H _ [] refl
+      (λ sg h Bf C → ldist-sim prog fs φ sg h Bf C (proj₂ (ins-fits s)))
+
   st-inl : ∀ {Γ} {ds : Defs Γ} {Es A B S V} {k : Codeᴵ (Es ∣ (A ⊕t B) ∷ S) V}
              (s : Sub root (prim ds (linl {A = A} {B}) ⨾ k))
              {es : Slots Es} {a : MV A} {os : Stk S} {fs}

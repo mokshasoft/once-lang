@@ -39,7 +39,7 @@ module Once.LinCore.AgreeRun
   (bw : Base → ℕ)
   where
 
-open import Once.LinCore.Core fmt using (Sig; sdom; scod; ⌜_⌝; toF; LTm; One; Defs; lid; _∘l_; _⊗l_; ρl; ρl⁻; lul; lul⁻; lassoc; lassoc⁻; lswap; dup; drop; linl; linr; lcase; lzero; lIn; lOutμ; lcata; lclo; lapp; lend; blift; bfst; bsnd; bcaseE; bout; bcopy; bapp; llam; llamω; llamωᶜ; levω; lev; bev; lunf; lout; lconst; lop; liter)
+open import Once.LinCore.Core fmt using (Sig; sdom; scod; ⌜_⌝; toF; LTm; One; Defs; lid; _∘l_; _⊗l_; ρl; ρl⁻; lul; lul⁻; lassoc; lassoc⁻; lswap; dup; drop; linl; linr; lcase; lzero; ldist; lIn; lOutμ; lcata; lclo; lapp; lend; blift; bfst; bsnd; bcaseE; bout; bcopy; bapp; llam; llamω; llamωᶜ; levω; lev; bev; lunf; lout; lconst; lop; liter)
 open import Once.LinCore.Flat using (Base; ⟦_⟧b; Lit)
 open import Once.IR.Semantics.Trace using (T)
 open import Once.LinCore.NbEPLinCore fmt ans using (opF)
@@ -165,6 +165,7 @@ module AR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       prim-ok {g = lassoc} _ _ _ _ = tt
       prim-ok {g = lassoc⁻} _ _ _ _ = tt
       prim-ok {g = lswap} _ _ _ _ = tt
+      prim-ok {g = ldist} _ _ _ _ = tt
       prim-ok {g = dup} _ _ _ _ = tt
       prim-ok {g = drop} _ _ _ _ = tt
       prim-ok {g = linl} _ _ _ _ = tt

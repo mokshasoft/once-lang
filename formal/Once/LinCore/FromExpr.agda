@@ -182,12 +182,10 @@ module _ {L : Cx} {E : LTy} where
   k-apω : ∀ {A B} → Blk (apω {g = act} {A} {B})
   k-apω = k-evω
 
-  -- distributivity, by a one-shot closure per case (master's `distribute`)
+  -- distributivity: the core's primitive (D492; it was a one-shot closure per
+  -- case, master's `distribute`: a cell, a call and a free at every branch)
   dist : ∀ {X A B} → Tm L E (X ⊗t (A ⊕t B)) ((X ⊗t A) ⊕t (X ⊗t B))
-  dist = lev ∘l (lcase (llam (linl ∘l lswap) (k-∘ k-inl k-swap)) (llam (linr ∘l lswap) (k-∘ k-inr k-swap)) ⊗l lid) ∘l lswap
-
-  k-dist : ∀ {X A B} → Blk (dist {X} {A} {B})
-  k-dist = k-∘ k-ev (k-∘ (k-⊗ (k-case k-lam k-lam) k-id) k-swap)
+  dist = ldist
 
 -- a body's grade, when it is a block (D431: `pure` and `act` are blocks)
 gdOf : ∀ {L X A B} (π : G.Purity) {b : LTm L (X ⊗t A) B} → Blk b → Gd (grade π) b

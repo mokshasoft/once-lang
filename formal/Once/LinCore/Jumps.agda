@@ -188,6 +188,8 @@ module Free (U : Univ)
   lowP-nj ds lassoc⁻ φ S p      = []
   lowP-nj ds (lswap {A = A} {B = B}) φ S p =
     swapMv-nj (Tp φ (A ∷ B ∷ S)) (wsz A) (wsz B)
+  lowP-nj ds (ldist {X = X} {A = A} {B = B}) φ S p =
+    swapMv-nj (Tp φ ((X ⊗t (A ⊕t B)) ∷ S)) (wsz X) 1
   lowP-nj ds dup φ S p          = []
   lowP-nj ds drop φ S p         = []
   lowP-nj ds (linl {A = A} {B = B}) φ S p =

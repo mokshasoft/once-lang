@@ -156,6 +156,7 @@ mutual
   comp ds dup k            = prim ds dup ⨾ k
   comp ds drop k           = prim ds drop ⨾ k
   comp ds linl k           = prim ds linl ⨾ k
+  comp ds ldist k          = prim ds ldist ⨾ k
   comp ds linr k           = prim ds linr ⨾ k
   comp ds lIn k            = prim ds lIn ⨾ k
   comp ds lOutμ k          = prim ds lOutμ ⨾ k

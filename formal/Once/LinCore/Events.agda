@@ -189,6 +189,10 @@ data Run {Γ} ds where
           → Run ds f e a n o t → Run ds (lcase f g) e (minl a) n o t
   r-case₂ : ∀ {E A B C} {f : Tm Γ E A C} {g : Tm Γ E B C} {e b o n t}
           → Run ds g e b n o t → Run ds (lcase f g) e (minr b) n o t
+  r-dist₁ : ∀ {E X A B} {e : MV E} {x : MV X} {a : MV A} {n}
+          → Run ds (ldist {B = B}) e (mpair x (minl a)) n (gives (minl (mpair x a)) n) []
+  r-dist₂ : ∀ {E X A B} {e : MV E} {x : MV X} {b : MV B} {n}
+          → Run ds (ldist {A = A}) e (mpair x (minr b)) n (gives (minr (mpair x b)) n) []
   r-In    : ∀ {E F} {e : MV E} {v : MV (LF∙ F (μt F))} {n}
           → Run ds (lIn {F = F}) e v n (gives (mmu (szμ F , n) v) (suc n)) (alloc (szμ F , n) ∷ [])
   r-Outμ  : ∀ {E F} {e : MV E} {v : MV (LF∙ F (μt F))} {i n} → Run ds (lOutμ {F = F}) e (mmu i v) n (gives v n) (free i ∷ [])
@@ -560,6 +564,8 @@ sound r-swap = b-ret
 sound (r-dup {v = v} {n}) = ret-eq (cong (er v ,_) (copy-er v n)) (ios-copy v n)
 sound (r-drop {v = v}) = ret-eq refl (ios-freeAll v)
 sound r-inl  = b-ret
+sound r-dist₁ = b-ret
+sound r-dist₂ = b-ret
 sound r-inr  = b-ret
 sound (r-case₁ r) = sound r
 sound (r-case₂ r) = sound r
@@ -701,6 +707,8 @@ sized r-swap se (sa , sb) = (sb , sa)
 sized (r-dup {v = v} {n}) se sv = (sv , copy-sized v n)
 sized r-drop se sv = tt
 sized r-inl se sv = sv
+sized r-dist₁ se sv = sv
+sized r-dist₂ se sv = sv
 sized r-inr se sv = sv
 sized (r-case₁ r) se sv = sized r se sv
 sized (r-case₂ r) se sv = sized r se sv
@@ -1219,6 +1227,8 @@ mono r-swap        = ≤-refl
 mono (r-dup {v = v} {n}) = copy-mono v n
 mono r-drop        = ≤-refl
 mono r-inl         = ≤-refl
+mono r-dist₁       = ≤-refl
+mono r-dist₂       = ≤-refl
 mono r-inr         = ≤-refl
 mono (r-case₁ r)   = mono r
 mono (r-case₂ r)   = mono r
@@ -1277,6 +1287,8 @@ below (r-swap {a = a} {b = bb}) b i le = trans (comm (cnt bb i) (cnt a i)) (b i 
 below (r-dup {v = v} {n}) b i le = cong₂ _+_ (b i (≤-trans (copy-mono v n) le)) (copy-below v n i le)
 below r-drop b i le = refl
 below r-inl b = b
+below r-dist₁ b = b
+below r-dist₂ b = b
 below r-inr b = b
 below (r-case₁ r) b = below r b
 below (r-case₂ r) b = below r b
@@ -1499,6 +1511,8 @@ exchange (r-dup {v = v} {n}) {h} pre lent =
 exchange (r-drop {v = v}) {h} {r} pre lent =
   let (ok , eq) = free-ok v h r (le1 pre) (sub pre) in (ok , λ i → trans (eq i) (sym (+0 (h i))))
 exchange r-inl pre lent = (tt , λ i → refl)
+exchange r-dist₁ pre lent = (tt , λ i → refl)
+exchange r-dist₂ pre lent = (tt , λ i → refl)
 exchange r-inr pre lent = (tt , λ i → refl)
 exchange (r-case₁ r) pre lent = exchange r record { le1 = le1 pre ; above = above pre ; sub = sub pre } lent
 exchange (r-case₂ r) pre lent = exchange r record { le1 = le1 pre ; above = above pre ; sub = sub pre } lent

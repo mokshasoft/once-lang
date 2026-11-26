@@ -240,6 +240,7 @@ mutual
  compᴵ ds (dup {A = A}) k  = unit ⨾ swap ⨾ pair ⨾ elend ⨾ esnd ⨾ call (kcopy A) ⨾ epop ⨾ eunlend ⨾ k
  compᴵ ds (drop {A = A}) k = call (kfree A) ⨾ k
  compᴵ ds linl k           = prim ds linl ⨾ k
+ compᴵ ds ldist k          = prim ds ldist ⨾ k
  compᴵ ds linr k           = prim ds linr ⨾ k
  compᴵ ds lIn k            = prim ds lIn ⨾ k
  compᴵ ds lOutμ k          = prim ds lOutμ ⨾ k

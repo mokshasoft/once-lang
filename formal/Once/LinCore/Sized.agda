@@ -105,6 +105,8 @@ ws-run r-swap we (wa , wb) = wb , wa
 ws-run (r-dup {v = v} {n}) we wv = wv , ws-copy v n wv
 ws-run r-drop we wv = tt
 ws-run r-inl we wa = wa
+ws-run r-dist₁ we wv = wv
+ws-run r-dist₂ we wv = wv
 ws-run r-inr we wb = wb
 ws-run (r-case₁ r) we wa = ws-run r we wa
 ws-run (r-case₂ r) we wb = ws-run r we wb

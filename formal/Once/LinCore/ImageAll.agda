@@ -231,6 +231,8 @@ module Ok (nm : CanonicalName) (U : Univ)
     lowP-ok ds lassoc⁻ φ S p      = []
     lowP-ok ds (lswap {A = A} {B = B}) φ S p =
       swapMv-ok (Tp φ (A ∷ B ∷ S)) (wsz A) (wsz B)
+    lowP-ok ds (ldist {X = X} {A = A} {B = B}) φ S p =
+      swapMv-ok (Tp φ ((X ⊗t (A ⊕t B)) ∷ S)) (wsz X) 1
     lowP-ok ds dup φ S p          = []
     lowP-ok ds drop φ S p         = []
     lowP-ok ds (linl {A = A} {B = B}) φ S p =

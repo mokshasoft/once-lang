@@ -898,12 +898,8 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRT
   dv′ (x , inj₂ b) = inj₂ (x , b)
 
   dist-pure : ∀ {X A B : IRTy} → Pure δ (dist {L} {One} {⟪ X ⟫} {⟪ A ⟫} {⟪ B ⟫}) (dv {X} {A} {B})
-  dist-pure {X} {A} {B} e (x , inj₁ a) =
-    ≈-trans (bind-pure (≈-trans ret-bind (≈-trans ret-bind ret-bind)))
-            (≈-trans (≈-sym (blk-coh δ (k-∘ (k-inl {A = ⟪ X ⟫ ⊗t ⟪ A ⟫} {B = ⟪ X ⟫ ⊗t ⟪ B ⟫} {E = One}) (k-swap {A = ⟪ A ⟫} {B = ⟪ X ⟫} {E = One})) tt (a , x))) ret-bind)
-  dist-pure {X} {A} {B} e (x , inj₂ b) =
-    ≈-trans (bind-pure (≈-trans ret-bind (≈-trans ret-bind ret-bind)))
-            (≈-trans (≈-sym (blk-coh δ (k-∘ (k-inr {A = ⟪ X ⟫ ⊗t ⟪ A ⟫} {B = ⟪ X ⟫ ⊗t ⟪ B ⟫} {E = One}) (k-swap {A = ⟪ B ⟫} {B = ⟪ X ⟫} {E = One})) tt (b , x))) ret-bind)
+  dist-pure {X} {A} {B} e (x , inj₁ a) = ≈-refl
+  dist-pure {X} {A} {B} e (x , inj₂ b) = ≈-refl
 
   distribute-pure : ∀ {X A B : IRTy} → PureI ρ (distribute {X} {A} {B} am) (dv′ {X} {A} {B})
   distribute-pure (x , inj₁ a) =

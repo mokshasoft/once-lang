@@ -25529,3 +25529,37 @@ freed stays the stack's). The options weighed:
   memory (the user: the most performant kernel for Once on all three).
 `--stack-words N` is moot after stage 4 (the fallback table reserves nothing and checks every call), so it
 is not built; `start-stack-words` is only the producers' placeholder.
+
+## D492 — DISTRIBUTIVITY IS A PRIMITIVE OF THE CORE: A SUM'S TAG MOVED, NO CELL, NO CALL (2026-11-26, proposed — unattended, for the user's review; plan 0.157 S2)
+
+**The finding.** The linear core had no distributivity `X ⊗ (A ⊕ B) → (X ⊗ A) ⊕ (X ⊗ B)`, and it is not
+definable without a copy: lending `X` to a case's arms and keeping it in the result needs `bcopy`. The
+bridge built it as master's `distribute` does, from closures: `lev ∘ (lcase (llam …) (llam …) ⊗ id) ∘ swap`,
+a ONE-SHOT CLOSURE per branch. Every source `case` whose arms use the context (the scrutinee's share split
+off, the arms' share distributed; D481's applied `case`, `appL`, the same) therefore ran: allocate a cell,
+move the whole context `X` into it, call its body (an indirect jump, a frame), move `X` back out, free the
+cell. Per branch taken, at run time: one allocation, one free, one call, `2·|X|` word moves through the heap.
+
+**The decision.** `ldist : Tm Γ E (X ⊗t (A ⊕t B)) ((X ⊗t A) ⊕t (X ⊗t B))`, a primitive of `Tm` (and `Blk`),
+the core form of the IR's own `distribIR` (the Spec's distributive category). Meaning: `(x , inj₁ a) ↦
+inj₁ (x , a)`. Run: no event. The bridge's `dist` is `ldist`.
+
+**Its code (the layout decides it).** A pair's words are its components' in order, a sum's are its tag and
+its payload padded to the larger side (D435). So `X ⊗ (A ⊕ B)` is `[X][tag][payload, pad]` and `(X ⊗ A) ⊕
+(X ⊗ B)` is `[tag][X][payload, pad]`: the padding lines up exactly (`wsz X + (wsz A ⊔ wsz B) = (wsz X +
+wsz A) ⊔ (wsz X + wsz B)`). The tag moves before `X`; nothing else moves; no branch. Emitted as
+`swapMv t (wsz X) 1` (`X` swapped with the tag's word: `2·wsz X + 1` slot moves through scratch below the
+top; NOTHING when `X` has no words). Proved: `LowerSimB.swapRaw` (D483's swap, its three moves over raw
+word blocks, shared) and `ldist-sim` (the configuration after is the distributed sum's, `distMV`), wired as
+`StepPrim.st-ldist`.
+
+**Considered.**
+* *A rotation* (tag to scratch, `X` up one word highest first, tag back): `wsz X + 2` moves instead of
+  `2·wsz X + 1`, equal for a one-word `X`. A later refinement if measurement shows contexts of several
+  words dominate; it needs its own move lemma.
+* *Tag LAST in a sum's layout* (`[payload, pad][tag]`): then `[X][payload, pad][tag]` IS `[X ⊗ payload,
+  pad][tag]` and `ldist` is free, zero instructions. But the sum's word layout is `Spec.ABI`'s (D471: the
+  flat types' words are the ABI's; a SigOp's answer is decoded from them), so it is a Spec change: for the
+  user to decide. Reading the tag costs the same either way.
+* *A case with a context* (`lcaseX : Tm E (X ⊗ A) C → Tm E (X ⊗ B) C → Tm E (X ⊗ (A ⊕ B)) C`) instead of
+  `ldist`: the same power, but a branch where `ldist` needs none; `ldist ⨾ lcase` is the same code.

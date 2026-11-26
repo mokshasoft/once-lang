@@ -462,6 +462,7 @@ module In (U : Univ) where
   PrimIn ds lswap     = ⊤
   PrimIn ds drop      = ⊤
   PrimIn ds linl      = ⊤
+  PrimIn ds ldist     = ⊤
   PrimIn ds linr      = ⊤
   PrimIn ds lIn       = ⊤
   PrimIn ds lOutμ     = ⊤
@@ -519,6 +520,7 @@ module In (U : Univ) where
   comp-in ds dup g ck            = tt , tt , tt , tt , tt , inC (gt g (here refl)) , tt , tt , ck
   comp-in ds drop g ck           = inF (gt g (here refl)) , ck
   comp-in ds linl g ck           = tt , ck
+  comp-in ds ldist g ck          = tt , ck
   comp-in ds linr g ck           = tt , ck
   comp-in ds lIn g ck            = tt , ck
   comp-in ds lOutμ g ck          = tt , ck
@@ -674,6 +676,7 @@ module In (U : Univ) where
   tm-good dup d g ()
   tm-good drop d g ()
   tm-good linl d g ()
+  tm-good ldist d g ()
   tm-good linr d g ()
   tm-good lzero d g ()
   tm-good lIn d g ()
@@ -738,6 +741,7 @@ module In (U : Univ) where
   tm-all dup d g       = []
   tm-all drop d g      = []
   tm-all linl d g      = []
+  tm-all ldist d g     = []
   tm-all linr d g      = []
   tm-all lzero d g     = []
   tm-all lIn d g       = []

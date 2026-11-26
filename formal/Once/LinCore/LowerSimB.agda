@@ -11,7 +11,7 @@
 open import Data.Nat using (ℕ; _+_; _∸_; _≤_)
 open import Data.Nat.Properties using (+-assoc; ≤-trans; ≤-reflexive; m≤n+m)
 open import Data.List using (List; []; _∷_; _++_; length)
-open import Data.Product using (Σ; _×_; _,_)
+open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 open import Data.Sum using (inj₁)
 open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; sym; trans; subst)
@@ -31,7 +31,7 @@ module Once.LinCore.LowerSimB
 open import Once.LinCore.Core fmt
 open import Once.LinCore.Flat using (Base; ⟦_⟧b)
 open import Once.LinCore.NbEPLinCore fmt ans
-open import Once.LinCore.Values fmt bw using (MV; mpair; hdr; wsz)
+open import Once.LinCore.Values fmt bw using (MV; mpair; minl; minr; hdr; wsz)
 open import Once.LinCore.Code fmt bw using (Stk; _∷ˢ_; Slots; _∥_)
 open import Once.LinCore.Keys fmt bw using (Univ)
 open import Once.LinCore.Layout fmt bw
@@ -112,7 +112,7 @@ module SimB {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
   open import Data.Maybe using (just)
   open import Data.Nat using (suc; _<_; s≤s; z≤n)
   open import Relation.Nullary using (¬_)
-  open import Relation.Binary.PropositionalEquality using (refl; cong)
+  open import Relation.Binary.PropositionalEquality using (refl; cong; cong₂)
 
   -- the trace (`Lower.header`, spelled out; D480: word 4 the owned entry)
   headerTr : ℕ → LabelId → LabelId → LabelId → LabelId → List _
@@ -267,3 +267,233 @@ module SimB {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
                   ; r-top = λ x _ → trans (cong (λ g → LocState.stackMem (floc fs′) g x) (cong AllocState.current-frame (h-alloc H)))
                                          (cong (λ m → m _ x) (h-stack H)) }
     where import Data.Nat.Properties
+
+  ----------------------------------------------------------------------
+  -- ★ A SWAP OF TWO WORD BLOCKS (`MoveCode.swapMv₃`), on raw words: `wa` at
+  -- `t` and `wb` just above it end swapped; the scratch below `t` and
+  -- everything above both are kept. `swap-sim`'s three moves, for any words
+  -- (D492: `ldist` swaps `X` with a sum's tag, which is not a value).
+  ----------------------------------------------------------------------
+
+  open import Data.Nat using (_<_; _⊔_; zero; suc; s≤s; z≤n)
+  open import Data.Nat.Properties using (+-comm; +-suc; +-monoʳ-≤; m∸n≤m; m+[n∸m]≡n; <-≤-trans; m≤m+n; +-distribˡ-⊔; ∸-+-assoc)
+  open import Data.List.Properties using (++-assoc; length-++)
+  open import Data.Sum using (_⊎_; inj₂)
+  open import Relation.Nullary using (¬_)
+  open import Relation.Binary.PropositionalEquality using (refl; cong; cong₂)
+  open import Function using (case_of_)
+  open import Once.LinCore.Moves {FS} using (mvSS-run; MovedS; module MovedS; infr; ranS; ran-trans; ran-refl; Seg-++ˡ; Seg-++ʳ)
+  open MovedS using (m-pc; m-heap; m-halt; m-alloc)
+  open FlatStepsAPI {FS} using (FlatSteps-++)
+  open import Once.LinCore.MoveCode using (mvSS; swapMv₃)
+  open import Once.CCC.Machine.SMCore using (SV-Tag)
+
+  SwapRaw : ∀ prog (fs : FlatState) (t la lb hi : ℕ) (wa wb : List W) → Set
+  SwapRaw prog fs t la lb hi wa wb =
+    Σ FlatState λ fs₃ → FlatSteps prog (nsteps la + (nsteps lb + nsteps la)) fs fs₃
+      × SlotsAt (slot fs₃) t wb × SlotsAt (slot fs₃) (t + lb) wa
+      × (∀ x → (x < t ∸ la) ⊎ (t + (la + lb) ≤ x) → slot fs₃ x ≡ slot fs x)
+      × heapMem (floc fs₃) ≡ heapMem (floc fs)
+      × Ran (nsteps la + (nsteps lb + nsteps la)) [] [] (AllocState.next-heap-ref (falloc fs)) hi fs fs₃
+
+  swapRaw : ∀ prog (fs : FlatState) (t la lb hi : ℕ) (wa wb : List W)
+          → Seg prog (fpc fs) (swapMv₃ t la lb)
+          → fhalted (floc fs) ≡ false → hi ≤ Fr fs
+          → length wa ≡ la → length wb ≡ lb → la ≤ t → t + (la + lb) ≤ hi
+          → SlotsAt (slot fs) t wa → SlotsAt (slot fs) (t + la) wb
+          → SwapRaw prog fs t la lb hi wa wb
+  swapRaw prog fs t la lb hi wa wb s h Bf ea eb la≤t top sa sb =
+    run₁ (mvSS-run prog fs t scr la (Seg-++ˡ prog (fpc fs) X₁ _ s) h (infr Bf b₀) (infr Bf b₁) def₁
+           (λ k k′ lt _ → no-clash-down (m∸n≤m t la) lt))
+    where
+      scr = t ∸ la
+      X₁ = mvSS t scr la
+      X₂ = mvSS (t + la) t lb
+      X₃ = mvSS scr (t + lb) la
+      scrEnd : la + scr ≡ t
+      scrEnd = m+[n∸m]≡n la≤t
+      b₀ : t + la ≤ hi
+      b₀ = ≤-trans (+-monoʳ-≤ t (m≤m+n la lb)) top
+      b₁ : scr + la ≤ hi
+      b₁ = ≤-trans (≤-reflexive (trans (+-comm scr la) scrEnd)) (≤-trans (m≤m+n t (la + lb)) top)
+      b₂ : t + lb ≤ hi
+      b₂ = ≤-trans (+-monoʳ-≤ t (m≤n+m lb la)) top
+      b₂s : (t + la) + lb ≤ hi
+      b₂s = ≤-trans (≤-reflexive (+-assoc t la lb)) top
+      b₃ : (t + lb) + la ≤ hi
+      b₃ = ≤-trans (≤-reflexive (trans (+-assoc t lb la) (cong (t +_) (+-comm lb la)))) top
+      def₁ : ∀ k → k < la → Σ W λ v → slot fs (k + t) ≡ just v
+      def₁ k k< = slots-def {slot fs} {t} wa sa k (subst (k <_) (sym ea) k<)
+      run₁ : Σ FlatState (λ fs₁ → FlatSteps prog (nsteps la) fs fs₁ × MovedS fs fs₁ t scr la) → SwapRaw prog fs t la lb hi wa wb
+      run₁ (fs₁ , st₁ , M₁) =
+        run₂ (mvSS-run prog fs₁ (t + la) t lb s₂ (trans (m-halt M₁) h) (infr B₁ b₂s) (infr B₁ b₂) def₂
+               (λ k k′ lt _ → no-clash-down (m≤m+n t la) lt))
+        where
+          B₁ : hi ≤ Fr fs₁
+          B₁ = subst (hi ≤_) (sym (cong AllocState.frame-slots (m-alloc M₁))) Bf
+          s₂ : Seg prog (fpc fs₁) X₂
+          s₂ = subst (λ z → Seg prog z X₂)
+                 (trans (cong (fpc fs +_) (len-mvSS t scr la)) (trans (+-comm (fpc fs) (nsteps la)) (sym (m-pc M₁))))
+                 (Seg-++ˡ prog (fpc fs + length X₁) X₂ X₃ (Seg-++ʳ prog (fpc fs) X₁ _ s))
+          sb₁ : SlotsAt (slot fs₁) (t + la) wb
+          sb₁ = kept-words wb M₁ (inj₂ (≤-trans (≤-reflexive scrEnd) (m≤m+n t la))) sb
+          def₂ : ∀ k → k < lb → Σ W λ v → slot fs₁ (k + (t + la)) ≡ just v
+          def₂ k k< = slots-def {slot fs₁} {t + la} wb sb₁ k (subst (k <_) (sym eb) k<)
+          run₂ : Σ FlatState (λ fs₂ → FlatSteps prog (nsteps lb) fs₁ fs₂ × MovedS fs₁ fs₂ (t + la) t lb) → SwapRaw prog fs t la lb hi wa wb
+          run₂ (fs₂ , st₂ , M₂) =
+            run₃ (mvSS-run prog fs₂ scr (t + lb) la s₃ (trans (m-halt M₂) (trans (m-halt M₁) h)) (infr B₂ b₁) (infr B₂ b₃) def₃
+                   (λ k k′ _ lt′ → no-clash {k = k} (≤-trans (≤-reflexive (trans (+-comm scr la) scrEnd)) (m≤m+n t lb)) lt′))
+            where
+              B₂ : hi ≤ Fr fs₂
+              B₂ = subst (hi ≤_) (sym (cong AllocState.frame-slots (trans (m-alloc M₂) (m-alloc M₁)))) Bf
+              s₃ : Seg prog (fpc fs₂) X₃
+              s₃ = subst (λ z → Seg prog z X₃)
+                     (trans (cong (_+ length X₂) (cong (fpc fs +_) (len-mvSS t scr la)))
+                       (trans (cong ((fpc fs + nsteps la) +_) (len-mvSS (t + la) t lb))
+                         (trans (+-comm (fpc fs + nsteps la) (nsteps lb))
+                           (trans (cong (nsteps lb +_) (+-comm (fpc fs) (nsteps la)))
+                             (trans (cong (nsteps lb +_) (sym (m-pc M₁))) (sym (m-pc M₂)))))))
+                     (Seg-++ʳ prog (fpc fs + length X₁) X₂ X₃ (Seg-++ʳ prog (fpc fs) X₁ _ s))
+              sa₂ : SlotsAt (slot fs₂) scr wa
+              sa₂ = kept-words wa M₂ (inj₁ (≤-reflexive (trans (cong (_+ scr) ea) scrEnd))) (slots-moved wa M₁ sa ea)
+              def₃ : ∀ k → k < la → Σ W λ v → slot fs₂ (k + scr) ≡ just v
+              def₃ k k< = slots-def {slot fs₂} {scr} wa sa₂ k (subst (k <_) (sym ea) k<)
+              run₃ : Σ FlatState (λ fs₃ → FlatSteps prog (nsteps la) fs₂ fs₃ × MovedS fs₂ fs₃ scr (t + lb) la) → SwapRaw prog fs t la lb hi wa wb
+              run₃ (fs₃ , st₃ , M₃) =
+                fs₃ , FlatSteps-++ st₁ (FlatSteps-++ st₂ st₃)
+                , kept-words wb M₃ (inj₁ (≤-reflexive (trans (cong (_+ t) eb) (+-comm lb t)))) (slots-moved wb M₂ sb₁ eb)
+                , slots-moved wa M₃ sa₂ ea
+                , kept₃
+                , trans (m-heap M₃) (trans (m-heap M₂) (m-heap M₁))
+                , ran-trans (ranS M₁ b₁) (ran-trans (ranS M₂ b₂) (ranS M₃ b₃))
+                where
+                  end₃ : la + (t + lb) ≡ t + (la + lb)
+                  end₃ = trans (sym (+-assoc la t lb)) (trans (cong (_+ lb) (+-comm la t)) (+-assoc t la lb))
+                  kept₃ : ∀ x → (x < scr) ⊎ (t + (la + lb) ≤ x) → slot fs₃ x ≡ slot fs x
+                  kept₃ x (inj₁ x<) =
+                    trans (outside-move x M₃ (inj₁ (<-≤-trans x< (≤-trans (m∸n≤m t la) (m≤m+n t lb)))))
+                      (trans (outside-move x M₂ (inj₁ (<-≤-trans x< (m∸n≤m t la))))
+                             (outside-move x M₁ (inj₁ x<)))
+                  kept₃ x (inj₂ ge) =
+                    trans (outside-move x M₃ (inj₂ (≤-trans (≤-reflexive end₃) ge)))
+                      (trans (outside-move x M₂ (inj₂ (≤-trans (≤-trans (≤-reflexive (+-comm lb t)) (+-monoʳ-≤ t (m≤n+m lb la))) ge)))
+                             (outside-move x M₁ (inj₂ (≤-trans (≤-reflexive scrEnd) (≤-trans (m≤m+n t (la + lb)) ge)))))
+
+  ----------------------------------------------------------------------
+  -- ★ D492: `ldist`, the sum's tag moved before `X`: `X`'s words swapped
+  -- with the tag's, the payload (and its padding) in place.
+  ----------------------------------------------------------------------
+
+  distMV : ∀ {X A B} → MV X → MV (A ⊕t B) → MV ((X ⊗t A) ⊕t (X ⊗t B))
+  distMV x (minl a) = minl (mpair x a)
+  distMV x (minr b) = minr (mpair x b)
+
+  -- the sum after distribution has the words of the pair before
+  dist-words : ∀ X A B → wsz ((X ⊗t A) ⊕t (X ⊗t B)) ≡ wsz (X ⊗t (A ⊕t B))
+  dist-words X A B = trans (cong suc (sym (+-distribˡ-⊔ (wsz X) (wsz A) (wsz B)))) (sym (+-suc (wsz X) (wsz A ⊔ wsz B)))
+
+  ldist-sim : ∀ prog (fs : FlatState) (φ : Frame) {Es X A B S} {es : Slots Es} {os : Stk S} {x : MV X} {v : MV (A ⊕t B)}
+            → let t = budget φ ∸ ws ((X ⊗t (A ⊕t B)) ∷ S) in
+              Seg prog (fpc fs) (swapMv t (wsz X) 1)
+            → fhalted (floc fs) ≡ false → budget φ ≤ Fr fs
+            → CfgW (heapMem (floc fs)) (slot fs) φ (es ∥ mpair x v ∷ˢ os)
+            → wsz X + ws ((X ⊗t (A ⊕t B)) ∷ S) ≤ OP φ
+            → Σ FlatState λ fs₃ → FlatSteps prog (length (swapMv t (wsz X) 1)) fs fs₃
+                × CfgW (heapMem (floc fs₃)) (slot fs₃) φ (es ∥ distMV x v ∷ˢ os)
+                × Ran (length (swapMv t (wsz X) 1)) [] [] (AllocState.next-heap-ref (falloc fs)) (budget φ) fs fs₃
+  ldist-sim prog fs φ {Es} {X} {A} {B} {S} {es} {os} {x} {v} s h Bf C fitT = case c-stk C of λ where
+      ((w , pw , sw) , rest) → byW w pw sw rest
+    where
+      V = X ⊗t (A ⊕t B)
+      O = (X ⊗t A) ⊕t (X ⊗t B)
+      t = budget φ ∸ ws (V ∷ S)
+      n = length (swapMv t (wsz X) 1)
+      rd = heapMem (floc fs)
+      fitV : ws (V ∷ S) ≤ budget φ
+      fitV = ≤-trans (c-sfit C) (m≤n+m (OP φ) (EP φ))
+      wX≤t : wsz X ≤ t
+      wX≤t = ≤∸ (wsz X) (ws (V ∷ S)) (budget φ) (≤-trans fitT (m≤n+m (OP φ) (EP φ)))
+      -- the stack below the pair begins where its words end
+      vEnd : wsz V + t ≡ budget φ ∸ ws S
+      vEnd = pair-at (budget φ) (wsz V) 0 (ws S) fitV
+      top : t + (wsz X + 1) ≤ budget φ ∸ ws S
+      top = ≤-trans (+-monoʳ-≤ t (+-monoʳ-≤ (wsz X) (s≤s z≤n))) (≤-trans (≤-reflexive (+-comm t (wsz V))) (≤-reflexive vEnd))
+      top′ : t + (wsz X + 1) ≤ budget φ
+      top′ = ≤-trans top (m∸n≤m (budget φ) (ws S))
+      -- the environment lies below the scratch words
+      envBelow : ∀ y → y < ws Es → y < t ∸ wsz X
+      envBelow y y< = <-≤-trans y< (≤-trans (c-efit C)
+                        (subst (EP φ ≤_) (sym (trans (∸-+-assoc (budget φ) (ws (V ∷ S)) (wsz X)) (cong (budget φ ∸_) (+-comm (ws (V ∷ S)) (wsz X)))))
+                          (env-below φ (wsz X + ws (V ∷ S)) fitT)))
+      -- the words: `X`'s and the tag swapped, the rest kept
+      RotN : ℕ → List W → Set
+      RotN m ws′ = Σ FlatState λ fs₃ → FlatSteps prog m fs fs₃ × SlotsAt (slot fs₃) t ws′
+                     × (∀ y → (y < t ∸ wsz X) ⊎ (t + (wsz X + 1) ≤ y) → slot fs₃ y ≡ slot fs y)
+                     × heapMem (floc fs₃) ≡ heapMem (floc fs)
+                     × Ran m [] [] (AllocState.next-heap-ref (falloc fs)) (budget φ) fs fs₃
+      rot : ∀ a → wsz X ≡ a → ∀ (wx : List W) g r → length wx ≡ wsz X → SlotsAt (slot fs) t (wx ++ g ∷ r)
+          → Seg prog (fpc fs) (swapMv t a 1) → RotN (length (swapMv t a 1)) (g ∷ wx ++ r)
+      rot zero    eX []      g r ex sw′ s′ = fs , FlatStepsAPI.[] {FS} , sw′ , (λ _ _ → refl) , refl , ran-refl
+      rot zero    eX (_ ∷ _) g r ex sw′ s′ = case trans ex eX of λ ()
+      rot (suc a) eX wx      g r ex sw′ s′ =
+        case swapRaw prog fs t (suc a) 1 (budget φ) wx (g ∷ []) s′ h Bf (trans ex eX) refl
+               (subst (_≤ t) eX wX≤t) (subst (λ z → t + (z + 1) ≤ budget φ) eX top′) sx stag of λ where
+          (fs₃ , st , sg₃ , sx₃ , kept , hp , R) →
+            fs₃ , subst (λ m → FlatSteps prog m fs fs₃) (sym (len-swap₃ t (suc a) 1)) st
+            , (proj₁ sg₃ , slots-join {slot fs₃} wx r (subst (λ z → SlotsAt (slot fs₃) z wx) (+-comm t 1) sx₃) (sr₃ fs₃ kept))
+            , subst (λ z → ∀ y → (y < t ∸ z) ⊎ (t + (z + 1) ≤ y) → slot fs₃ y ≡ slot fs y) (sym eX) kept
+            , hp
+            , subst (λ m → Ran m [] [] (AllocState.next-heap-ref (falloc fs)) (budget φ) fs fs₃) (sym (len-swap₃ t (suc a) 1)) R
+        where
+          split = slots-++ {slot fs} wx (g ∷ r) sw′
+          sx : SlotsAt (slot fs) t wx
+          sx = proj₁ split
+          lw : length wx + t ≡ t + suc a
+          lw = trans (cong (_+ t) (trans ex eX)) (+-comm (suc a) t)
+          stag : SlotsAt (slot fs) (t + suc a) (g ∷ [])
+          stag = subst (λ z → slot fs z ≡ just g) lw (proj₁ (proj₂ split)) , tt
+          -- the payload's words: above everything moved, so kept
+          rAt : suc (length wx + t) ≡ t + (suc a + 1)
+          rAt = trans (cong suc lw) (trans (sym (+-suc t (suc a))) (cong (t +_) (+-comm 1 (suc a))))
+          rAt′ : t + (suc a + 1) ≡ length wx + suc t
+          rAt′ = trans (sym rAt) (sym (+-suc (length wx) t))
+          sr₃ : ∀ (fs₃ : FlatState) → (∀ y → (y < t ∸ suc a) ⊎ (t + (suc a + 1) ≤ y) → slot fs₃ y ≡ slot fs y)
+              → SlotsAt (slot fs₃) (length wx + suc t) r
+          sr₃ fs₃ kept =
+            subst (λ z → SlotsAt (slot fs₃) z r) rAt′
+              (slots-frame {slot fs} {slot fs₃} r (λ k k< → kept (k + (t + (suc a + 1))) (inj₂ (m≤n+m (t + (suc a + 1)) k)))
+                (subst (λ z → SlotsAt (slot fs) z r) rAt (proj₂ (proj₂ split))))
+      fitS : ws S ≤ budget φ
+      fitS = ≤-trans (m≤n+m (ws S) (wsz V)) fitV
+      -- the distributed sum's words: the tag, `X`'s, the payload's, the padding
+      lenD : ∀ (wx wa pad : List W) {p q} → length wx ≡ wsz X → length (wa ++ pad) ≡ p ⊔ q
+           → length ((wx ++ wa) ++ pad) ≡ (wsz X + p) ⊔ (wsz X + q)
+      lenD wx wa pad {p} {q} ex e =
+        trans (cong length (++-assoc wx wa pad)) (trans (length-++ wx) (trans (cong₂ _+_ ex e) (+-distribˡ-⊔ (wsz X) p q)))
+      slotsO : ∀ (fs₃ : FlatState) g (wx wa pad : List W) → SlotsAt (slot fs₃) t (g ∷ wx ++ (wa ++ pad))
+             → SlotsAt (slot fs₃) (budget φ ∸ ws (O ∷ S)) (g ∷ (wx ++ wa) ++ pad)
+      slotsO fs₃ g wx wa pad sl =
+        subst (λ z → SlotsAt (slot fs₃) z (g ∷ (wx ++ wa) ++ pad)) (cong (λ z → budget φ ∸ (z + ws S)) (sym (dist-words X A B)))
+          (subst (λ l → SlotsAt (slot fs₃) t (g ∷ l)) (sym (++-assoc wx wa pad)) sl)
+      cfg : ∀ (fs₃ : FlatState) → (∀ y → (y < t ∸ wsz X) ⊎ (t + (wsz X + 1) ≤ y) → slot fs₃ y ≡ slot fs y)
+          → heapMem (floc fs₃) ≡ heapMem (floc fs) → StkW rd (slot fs) φ os
+          → ∀ {o : MV O} {wo} → VW rd o wo → SlotsAt (slot fs₃) (budget φ ∸ ws (O ∷ S)) wo
+          → CfgW (heapMem (floc fs₃)) (slot fs₃) φ (es ∥ o ∷ˢ os)
+      cfg fs₃ kept hp rest {o} {wo} po so = record
+        { c-env  = subst (λ r → EnvW r (slot fs₃) es) (sym hp) (envW-frame es (λ y y< → kept y (inj₁ (envBelow y y<))) (c-env C))
+        ; c-stk  = (wo , subst (λ r → VW r o wo) (sym hp) po , so)
+                   , subst (λ r → StkW r (slot fs₃) φ os) (sym hp) (stkW-frame os fitS (λ y lo _ → kept y (inj₂ (≤-trans top lo))) rest)
+        ; c-efit = c-efit C
+        ; c-sfit = subst (λ z → z + ws S ≤ OP φ) (sym (dist-words X A B)) (c-sfit C) }
+      byW : ∀ {v′ : MV (A ⊕t B)} w → VW rd (mpair x v′) w → SlotsAt (slot fs) t w → StkW rd (slot fs) φ os
+          → Σ FlatState λ fs₃ → FlatSteps prog n fs fs₃
+              × CfgW (heapMem (floc fs₃)) (slot fs₃) φ (es ∥ distMV x v′ ∷ˢ os)
+              × Ran n [] [] (AllocState.next-heap-ref (falloc fs)) (budget φ) fs fs₃
+      byW _ (vpair {wa = wx} px (vinl {wa = wa} {pad = pad} pa e)) sw rest =
+        case rot (wsz X) refl wx (SV-Tag 0) (wa ++ pad) (vw-len px) sw s of λ where
+          (fs₃ , st , sl , kept , hp , R) →
+            fs₃ , st , cfg fs₃ kept hp rest (vinl (vpair px pa) (lenD wx wa pad (vw-len px) e)) (slotsO fs₃ (SV-Tag 0) wx wa pad sl) , R
+      byW _ (vpair {wa = wx} px (vinr {wb = wb} {pad = pad} pb e)) sw rest =
+        case rot (wsz X) refl wx (SV-Tag 1) (wb ++ pad) (vw-len px) sw s of λ where
+          (fs₃ , st , sl , kept , hp , R) →
+            fs₃ , st , cfg fs₃ kept hp rest (vinr (vpair px pb) (lenD wx wb pad (vw-len px) e)) (slotsO fs₃ (SV-Tag 1) wx wb pad sl) , R

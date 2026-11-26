@@ -167,6 +167,8 @@ plain r-λ⁻ = r-λ⁻
 plain r-α = r-α
 plain r-α⁻ = r-α⁻
 plain r-swap = r-swap
+plain r-dist₁ = r-dist₁
+plain r-dist₂ = r-dist₂
 plain (r-dup {v = v} {n}) = retrace (sym (erase-NoT _ (NoT-copy v n))) r-dup
 plain (r-drop {v = v}) = retrace (sym (erase-NoT _ (NoT-freeAll v))) r-drop
 plain r-inl = r-inl
@@ -482,6 +484,8 @@ tsound r-λ⁻ = bal[]
 tsound r-α = bal[]
 tsound r-α⁻ = bal[]
 tsound r-swap = bal[]
+tsound r-dist₁ = bal[]
+tsound r-dist₂ = bal[]
 tsound (r-dup {v = v} {n}) = NoT-Bal (snd (snd (copy v n))) (NoT-copy v n)
 tsound (r-drop {v = v}) = NoT-Bal (freeAll v) (NoT-freeAll v)
 tsound r-inl = bal[]

@@ -32,7 +32,7 @@ module Once.LinCore.StepIos
 open import Once.LinCore.Core fmt using (Defs; FS; LTm; One; module Defs)
 open import Once.LinCore.Flat using (Base; ⟦_⟧b; Lit)
 open import Once.IR.Semantics.Trace using (T)
-open import Once.LinCore.Events fmt ans bw using (Run; ds; gives; ios; ios-freeAll; ios-weave; r-In; r-Outμ; r-app; r-case₁; r-case₂; r-cata; r-cata-reuse; r-clo; r-const; r-copy; r-drop; r-dup; r-ev; r-id; r-inl; r-inr; r-iter; r-lam; r-lamω; r-lamωᶜ; r-lend; r-lift; r-nout; r-op; r-swap; r-tmp; r-unf; r-α; r-α⁻; r-λ; r-λ⁻; r-ρ; r-ρ⁻; r-∘; r-⊗; st; Γ; module Run)
+open import Once.LinCore.Events fmt ans bw using (Run; ds; gives; ios; ios-freeAll; ios-weave; r-In; r-Outμ; r-app; r-case₁; r-case₂; r-cata; r-cata-reuse; r-clo; r-const; r-copy; r-drop; r-dup; r-ev; r-id; r-inl; r-inr; r-iter; r-lam; r-lamω; r-lamωᶜ; r-lend; r-lift; r-nout; r-op; r-swap; r-dist₁; r-dist₂; r-tmp; r-unf; r-α; r-α⁻; r-λ; r-λ⁻; r-ρ; r-ρ⁻; r-∘; r-⊗; st; Γ; module Run)
 open import Once.LinCore.Values fmt bw using (MV; Trace; mone; module MV)
 open import Once.LinCore.Code fmt bw using (Cfg; _∣_)
 open import Once.LinCore.Image fmt bw using (Codeᴵ; _⨾_; prim)
@@ -57,6 +57,8 @@ module _ (U : Univ) where
   prim-ios _ _ r-α = refl
   prim-ios _ _ r-α⁻ = refl
   prim-ios _ _ r-swap = refl
+  prim-ios _ _ r-dist₁ = refl
+  prim-ios _ _ r-dist₂ = refl
   prim-ios _ _ (r-drop {v = v}) = ios-freeAll v
   prim-ios _ _ r-inl = refl
   prim-ios _ _ r-inr = refl

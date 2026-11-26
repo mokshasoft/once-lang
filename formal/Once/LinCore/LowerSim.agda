@@ -74,14 +74,13 @@ module Sim {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
   ----------------------------------------------------------------------
 
   -- the offset arithmetic of a stack whose top two are one pair's
-  private
-    pair-at : ∀ B (a b s : ℕ) → a + (b + s) ≤ B → a + (B ∸ (a + (b + s))) ≡ B ∸ (b + s)
-    pair-at B a b s le =
-      sym (trans (cong (_∸ (b + s)) (sym (m∸n+n≡m le)))
-          (trans (cong (_∸ (b + s)) (sym (+-assoc X a (b + s))))
-          (trans (Data.Nat.Properties.m+n∸n≡m (X + a) (b + s)) (+-comm X a))))
-      where import Data.Nat.Properties
-            X = B ∸ (a + (b + s))
+  pair-at : ∀ B (a b s : ℕ) → a + (b + s) ≤ B → a + (B ∸ (a + (b + s))) ≡ B ∸ (b + s)
+  pair-at B a b s le =
+    sym (trans (cong (_∸ (b + s)) (sym (m∸n+n≡m le)))
+        (trans (cong (_∸ (b + s)) (sym (+-assoc X a (b + s))))
+        (trans (Data.Nat.Properties.m+n∸n≡m (X + a) (b + s)) (+-comm X a))))
+    where import Data.Nat.Properties
+          X = B ∸ (a + (b + s))
 
   -- ★ `unpair`: a pair's words are its components', in place
   unpair-W : ∀ {rd sm φ A B S} {a : MV A} {b : MV B} {os : Stk S}
@@ -1553,17 +1552,16 @@ module Sim {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
   open import Data.List.Properties using (length-++)
   open Relation.Binary.PropositionalEquality using (cong₂)
 
-  private
-    len-swap₃ : ∀ t x y → length (swapMv₃ t x y) ≡ nsteps x + (nsteps y + nsteps x)
-    len-swap₃ t x y =
-      trans (length-++ (mvSS t (t ∸ x) x))
-        (cong₂ _+_ (len-mvSS t (t ∸ x) x)
-          (trans (length-++ (mvSS (t + x) t y)) (cong₂ _+_ (len-mvSS (t + x) t y) (len-mvSS (t ∸ x) (t + y) x))))
+  len-swap₃ : ∀ t x y → length (swapMv₃ t x y) ≡ nsteps x + (nsteps y + nsteps x)
+  len-swap₃ t x y =
+    trans (length-++ (mvSS t (t ∸ x) x))
+      (cong₂ _+_ (len-mvSS t (t ∸ x) x)
+        (trans (length-++ (mvSS (t + x) t y)) (cong₂ _+_ (len-mvSS (t + x) t y) (len-mvSS (t ∸ x) (t + y) x))))
 
-    -- no words: at any offset
-    nil-slots : ∀ {sm o o′} (w : List W) → length w ≡ 0 → SlotsAt sm o w → SlotsAt sm o′ w
-    nil-slots []      _  _ = tt
-    nil-slots (_ ∷ _) () _
+  -- no words: at any offset
+  nil-slots : ∀ {sm o o′} (w : List W) → length w ≡ 0 → SlotsAt sm o w → SlotsAt sm o′ w
+  nil-slots []      _  _ = tt
+  nil-slots (_ ∷ _) () _
 
   -- with an element of no words, the configuration is already the swapped one
   swap-none : ∀ {rd sm} (φ : Frame) {Es A B S} {es : Slots Es} {os : Stk S} {a : MV A} {b : MV B}

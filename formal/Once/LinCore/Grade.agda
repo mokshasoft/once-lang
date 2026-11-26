@@ -95,6 +95,8 @@ module _ {Γ : Cx} (ρ : Env Γ) where
     blk-coh (k-case φ ψ)    e (inj₁ a)      = blk-coh φ e a
     blk-coh (k-case φ ψ)    e (inj₂ b)      = blk-coh ψ e b
     blk-coh k-zero          e ()
+    blk-coh k-dist          e (x , inj₁ a)  = ret≈
+    blk-coh k-dist          e (x , inj₂ b)  = ret≈
     blk-coh k-in            e x             = ret≈
     blk-coh k-out           e x             = ret≈
     blk-coh (k-cata {F} φ)  e x             = cata-coh F (λ y → blk-coh φ e (coh⁻¹ F _ y)) x

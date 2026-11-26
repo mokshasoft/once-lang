@@ -452,6 +452,8 @@ sim r-λ⁻    fr es eq os k = leaf (s-prim r-λ⁻) []
 sim r-α     fr es eq os k = leaf (s-prim r-α) []
 sim r-α⁻    fr es eq os k = leaf (s-prim r-α⁻) []
 sim r-swap  fr es eq os k = leaf (s-prim r-swap) []
+sim r-dist₁ fr es eq os k = leaf (s-prim r-dist₁) []
+sim r-dist₂ fr es eq os k = leaf (s-prim r-dist₂) []
 sim (r-dup {v = v} {n}) fr es eq os k = leaf (s-prim r-dup) (NoT-copy v n)
 sim (r-drop {v = v}) fr es eq os k = leaf (s-prim r-drop) (NoT-freeAll v)
 sim r-inl   fr es eq os k = leaf (s-prim r-inl) []

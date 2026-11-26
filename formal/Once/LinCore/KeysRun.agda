@@ -141,6 +141,8 @@ module Keep (U : Univ) where
   prim-in r-swap p (a , b)       = b , a
   prim-in r-drop p v             = tt
   prim-in r-inl p a              = a
+  prim-in r-dist₁ p v            = v
+  prim-in r-dist₂ p v            = v
   prim-in r-inr p b              = b
   prim-in r-In  p v              = v
   prim-in r-Outμ p v             = v

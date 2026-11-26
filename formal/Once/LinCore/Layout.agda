@@ -74,6 +74,8 @@ peakI (loop c) = peakC c
 -- a swap keeps its top element below the stack while it moves the next
 peakI (swap {A = A} {B} {S}) = 0 , wsz A + ws (A ∷ B ∷ S)
 peakI (prim ds {S = S} (lswap {A = A} {B = B})) = 0 , wsz A + ws ((A ⊗t B) ∷ S)
+-- (D492: `ldist` is a swap of `X` and the sum's tag)
+peakI (prim ds {S = S} (ldist {X = X} {A = A} {B = B})) = 0 , wsz X + ws ((X ⊗t (A ⊕t B)) ∷ S)
 {-# CATCHALL #-}
 peakI _        = 0 , 0
 

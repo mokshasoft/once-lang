@@ -280,6 +280,8 @@ module S (ι : Interp) where
     soundₖ r-α sp u w = leaf [] refl sp refl w
     soundₖ r-α⁻ sp u w = leaf [] refl sp refl w
     soundₖ r-swap sp u w = leaf [] refl sp refl w
+    soundₖ r-dist₁ sp u w = leaf [] refl sp refl w
+    soundₖ r-dist₂ sp u w = leaf [] refl sp refl w
     soundₖ (r-dup {v = v} {n}) sp u w = leaf (proj₂ (proj₂ (copy v n))) (cong (er v ,_) (sym (copy-er v n))) sp (ios-copy v n) w
     soundₖ (r-drop {v = v}) sp u w = leaf (freeAll v) refl sp (ios-freeAll v) w
     soundₖ r-inl sp u w = leaf [] refl sp refl w

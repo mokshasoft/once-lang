@@ -626,6 +626,8 @@ module _ (W : World) where
       go k (lcase f g) e (minr b) n σ ge gb = case go k g e b n σ ge gb of λ where
         (ran o t r σ₁ c l s sp wo , gw) → (ran o t (r-case₂ r) σ₁ c l s sp wo , gw)
       go k lzero e () n σ ge gv
+      go k ldist e (mpair x (minl a)) n σ ge (gx , ga) = (ran _ _ r-dist₁ σ tt k ≤-refl refl refl , (gx , ga))
+      go k ldist e (mpair x (minr b)) n σ ge (gx , gb) = (ran _ _ r-dist₂ σ tt k ≤-refl refl refl , (gx , gb))
       go k lIn e v n σ ge gv = (ran _ _ r-In σ tt k ≤-refl refl refl , tt)
       go k (lOutμ {F}) e (mmu i v) n σ ge gv = (ran _ _ r-Outμ σ tt k ≤-refl refl refl , goodμ F v)
       go k (lcata F alg) e x n σ ge gx = cata k F alg e x n σ ge

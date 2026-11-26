@@ -33,7 +33,7 @@ module Once.LinCore.ImageSimRun
 open import Once.LinCore.Core fmt using (Defs; LF∙; LTm; LTy; One; Tm; ε; cin; cin-gd; lid; _⊗t_)
 open import Once.LinCore.Events fmt ans bw using (Outcome; Run; RunMap; gives; stop; go-on; stopped; again; done; fm-gives; fm-stop;
   m-id; m-one; m-b; m-μ; m-inl; m-inr; m-pair;
-  r-id; r-∘; r-⊗; r-ρ; r-ρ⁻; r-λ; r-λ⁻; r-α; r-α⁻; r-swap; r-dup; r-drop; r-inl; r-inr; r-case₁; r-case₂; r-In; r-Outμ; r-clo;
+  r-id; r-∘; r-⊗; r-ρ; r-ρ⁻; r-λ; r-λ⁻; r-α; r-α⁻; r-swap; r-dup; r-drop; r-inl; r-inr; r-dist₁; r-dist₂; r-case₁; r-case₂; r-In; r-Outμ; r-clo;
   r-app; r-cata; r-cata-reuse; r-lend; r-lift; r-fst; r-snd; r-caseE₁; r-caseE₂; r-out; r-copy; r-bapp; r-lam; r-lamω; r-unf;
   r-nout; r-ev; r-bev; r-lamωᶜ; r-bevᶜ; r-evωᶜ; r-evω; r-const; r-op; r-opend; r-iter; r-exh; r-cut; r-tmp;
   halted; exhausted; ios; ios-weave; io-call; io-halt; OK; OK-weave; Pre; exchange; noleak; play; play-weave; lent₀)
@@ -128,6 +128,8 @@ mutual
   simI r-α fr (ctx es eq os k ρ) = leaf (i-prim r-α) []
   simI r-α⁻ fr (ctx es eq os k ρ) = leaf (i-prim r-α⁻) []
   simI r-swap fr (ctx es eq os k ρ) = leaf (i-prim r-swap) []
+  simI r-dist₁ fr (ctx es eq os k ρ) = leaf (i-prim r-dist₁) []
+  simI r-dist₂ fr (ctx es eq os k ρ) = leaf (i-prim r-dist₂) []
   -- ★ `dup`: the operand lent (a lend's slot owns it), the copy block called
   -- on it, taken back beside its copy
   simI (r-dup {v = v} {n}) fr (ctx es eq os k ρ) =

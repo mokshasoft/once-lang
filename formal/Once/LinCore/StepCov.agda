@@ -43,6 +43,7 @@ prim-cov lul⁻ = pc-loc tt
 prim-cov lassoc = pc-loc tt
 prim-cov lassoc⁻ = pc-loc tt
 prim-cov lswap = pc-loc tt
+prim-cov ldist = pc-loc tt
 prim-cov dup = pc-loc tt
 prim-cov drop = pc-loc tt
 prim-cov linl = pc-loc tt

@@ -216,6 +216,8 @@ module Lowering (U : Univ)
   -- (the pair's words are its components' in place: `swap`'s code, at their offsets)
   -- (D483: nothing when either component has no words)
   lowP ds (lswap {A = A} {B = B}) φ S p = swapMv (Tp φ (A ∷ B ∷ S)) (wsz A) (wsz B)
+  -- ★ D492: distributivity, the sum's tag moved before `X` (a swap of `X` and the tag's word)
+  lowP ds (ldist {X = X} {A = A} {B = B}) φ S p = swapMv (Tp φ ((X ⊗t (A ⊕t B)) ∷ S)) (wsz X) 1
   lowP ds (linl {A = A} {B = B}) φ S p =
     let bot = Tp φ S ; M = wsz A ⊔ wsz B
     in mvSS (bot ∸ wsz A) (bot ∸ M) (wsz A) ++ instr-load-tag-lit 0 ∷ store-at-slot (bot ∸ suc M)

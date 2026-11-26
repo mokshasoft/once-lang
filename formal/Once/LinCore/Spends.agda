@@ -33,7 +33,7 @@ module Once.LinCore.Spends
 open import Once.LinCore.Core fmt using (_⊕t_; Blk; Defs; LF∙; Sig; Tm; liter; sdom; toF; ⌜_⌝; module Blk; module Defs; module Sig; module Tm)
 open import Once.LinCore.Flat using (Base)
 open import Once.LinCore.NbEPLinCore fmt ans using (opF)
-open import Once.LinCore.Events fmt ans bw using (OpPath; Outcome; Run; RunMap; Why; again; done; ds; er; exhausted; fm-gives; fm-stop; gives; go-on; halted; m-b; m-id; m-inl; m-inr; m-one; m-pair; m-μ; r-In; r-Outμ; r-app; r-bapp; r-bev; r-lamωᶜ; r-bevᶜ; r-evωᶜ; r-evω; r-caseE₁; r-caseE₂; r-case₁; r-case₂; r-cata; r-cata-reuse; r-clo; r-const; r-copy; r-cut; r-drop; r-dup; r-ev; r-exh; r-fst; r-id; r-inl; r-inr; r-iter; r-lam; r-lamω; r-lend; r-lift; r-nout; r-op; r-opend; r-out; r-snd; r-swap; r-tmp; r-unf; r-α; r-α⁻; r-λ; r-λ⁻; r-ρ; r-ρ⁻; r-∘; r-⊗; stop; stopped; Γ; module OpPath; module Outcome; module Run; module RunMap; module Why)
+open import Once.LinCore.Events fmt ans bw using (OpPath; Outcome; Run; RunMap; Why; again; done; ds; er; exhausted; fm-gives; fm-stop; gives; go-on; halted; m-b; m-id; m-inl; m-inr; m-one; m-pair; m-μ; r-In; r-Outμ; r-app; r-bapp; r-bev; r-lamωᶜ; r-bevᶜ; r-evωᶜ; r-evω; r-caseE₁; r-caseE₂; r-case₁; r-case₂; r-cata; r-cata-reuse; r-clo; r-const; r-copy; r-cut; r-drop; r-dup; r-ev; r-exh; r-fst; r-id; r-inl; r-inr; r-iter; r-lam; r-lamω; r-lend; r-lift; r-nout; r-op; r-opend; r-out; r-snd; r-swap; r-dist₁; r-dist₂; r-tmp; r-unf; r-α; r-α⁻; r-λ; r-λ⁻; r-ρ; r-ρ⁻; r-∘; r-⊗; stop; stopped; Γ; module OpPath; module Outcome; module Run; module RunMap; module Why)
 open import Once.LinCore.Values fmt bw using (MV; Trace; module MV)
 open import Data.Unit using (tt)
 open import Data.Product using (_,_; proj₁; proj₂)
@@ -298,6 +298,8 @@ module Budget (Cut : ∀ {s : Sig} {x : MV ⌜ sdom s ⌝} {t} → OpPath (opF s
     spends-plain r-α s u = tt
     spends-plain r-α⁻ s u = tt
     spends-plain r-swap s u = tt
+    spends-plain r-dist₁ s u = tt
+    spends-plain r-dist₂ s u = tt
     spends-plain r-dup s u = tt
     spends-plain r-drop s u = tt
     spends-plain r-inl s u = tt
@@ -380,6 +382,8 @@ module Budget (Cut : ∀ {s : Sig} {x : MV ⌜ sdom s ⌝} {t} → OpPath (opF s
         spends-uncut r-α s u = tt
         spends-uncut r-α⁻ s u = tt
         spends-uncut r-swap s u = tt
+        spends-uncut r-dist₁ s u = tt
+        spends-uncut r-dist₂ s u = tt
         spends-uncut r-dup s u = tt
         spends-uncut r-drop s u = tt
         spends-uncut r-inl s u = tt
@@ -474,6 +478,8 @@ module Budget (Cut : ∀ {s : Sig} {x : MV ⌜ sdom s ⌝} {t} → OpPath (opF s
     spent-rounds r-α s = same s
     spent-rounds r-α⁻ s = same s
     spent-rounds r-swap s = same s
+    spent-rounds r-dist₁ s = same s
+    spent-rounds r-dist₂ s = same s
     spent-rounds r-dup s = same s
     spent-rounds r-drop s = same s
     spent-rounds r-inl s = same s
@@ -561,6 +567,8 @@ module Budget (Cut : ∀ {s : Sig} {x : MV ⌜ sdom s ⌝} {t} → OpPath (opF s
     cut-zero r-α s u ()
     cut-zero r-α⁻ s u ()
     cut-zero r-swap s u ()
+    cut-zero r-dist₁ s u ()
+    cut-zero r-dist₂ s u ()
     cut-zero r-dup s u ()
     cut-zero r-drop s u ()
     cut-zero r-inl s u ()

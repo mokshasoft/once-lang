@@ -181,6 +181,8 @@ module NoLabels {FS : FrameSemantics} where
     lowP-nl ds lassoc⁻ φ S p      = []
     lowP-nl ds (lswap {A = A} {B = B}) φ S p =
       swapMv-nl (Tp φ (A ∷ B ∷ S)) (wsz A) (wsz B)
+    lowP-nl ds (ldist {X = X} {A = A} {B = B}) φ S p =
+      swapMv-nl (Tp φ ((X ⊗t (A ⊕t B)) ∷ S)) (wsz X) 1
     lowP-nl ds dup φ S p          = []
     lowP-nl ds drop φ S p         = []
     lowP-nl ds (linl {A = A} {B = B}) φ S p =

@@ -210,6 +210,8 @@ module Steps {FS : FrameSemantics} (U : Univ)
   prim-step s ld r-α      _ H nx fr = out00 (st-α s H) nx
   prim-step s ld r-α⁻     _ H nx fr = out00 (st-α⁻ s H) nx
   prim-step s ld r-swap   _ H nx fr = out00 (st-lswap s H) nx
+  prim-step s ld r-dist₁  _ H nx fr = out00 (st-ldist s H) nx
+  prim-step s ld r-dist₂  _ H nx fr = out00 (st-ldist s H) nx
   prim-step s ld (r-drop {v = v}) _ H nx fr = out0 (st-drop s H) (λ ()) (λ ()) (drop-na v) nx
   prim-step s ld r-inl    _ H nx fr = out00 (st-inl s H) nx
   prim-step s ld r-inr    _ H nx fr = out00 (st-inr s H) nx

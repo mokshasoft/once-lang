@@ -438,6 +438,9 @@ data Tm Γ where
   linr    : ∀ {A B E} → Tm Γ E B (A ⊕t B)
   lcase   : ∀ {A B C E} → Tm Γ E A C → Tm Γ E B C → Tm Γ E (A ⊕t B) C
   lzero   : ∀ {A E} → Tm Γ E Zero A
+  -- ★ D492: distributivity, a primitive: the sum's tag moved before `X`, the
+  -- words otherwise in place (no cell, no call; it was a one-shot closure)
+  ldist   : ∀ {X A B E} → Tm Γ E (X ⊗t (A ⊕t B)) ((X ⊗t A) ⊕t (X ⊗t B))
   -- initial algebra: constructor, DESTRUCTOR, fold (★ reads `E` at every layer,
   -- with no copy of `E`)
   lIn     : ∀ {F E} → Tm Γ E (LF∙ F (μt F)) (μt F)
@@ -520,6 +523,7 @@ data Blk {Γ} where
   k-inr    : ∀ {A B E} → Blk (linr {A = A} {B} {E})
   k-case   : ∀ {A B C E} {f : Tm Γ E A C} {g : Tm Γ E B C} → Blk f → Blk g → Blk (lcase f g)
   k-zero   : ∀ {A E} → Blk (lzero {A = A} {E})
+  k-dist   : ∀ {X A B E} → Blk (ldist {X = X} {A} {B} {E})
   k-in     : ∀ {F E} → Blk (lIn {F = F} {E})
   k-out    : ∀ {F E} → Blk (lOutμ {F = F} {E})
   k-cata   : ∀ {F A E} {alg : Tm Γ E (LF∙ F A) A} → Blk alg → Blk (lcata F alg)

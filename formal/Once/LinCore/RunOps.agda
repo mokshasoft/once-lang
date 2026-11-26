@@ -188,6 +188,8 @@ module _ (D : Sig → Set) where
     run-ok (r-dup {v = v} {n}) _ ek vk = tt , (vk , vok-~ (copy-~ v n) vk)
     run-ok r-drop _ ek vk = tt , tt
     run-ok r-inl _ ek vk = tt , vk
+    run-ok r-dist₁ _ ek vk = tt , vk
+    run-ok r-dist₂ _ ek vk = tt , vk
     run-ok r-inr _ ek vk = tt , vk
     run-ok {ds = ds} (r-case₁ {f = f} {g = g} r) (tf , td) ek vk = run-ok r (okˡ {tmGot ds f} {tmGot ds g} tf , td) ek vk
     run-ok {ds = ds} (r-case₂ {f = f} {g = g} r) (tf , td) ek vk = run-ok r (okʳ {tmGot ds f} {tmGot ds g} tf , td) ek vk

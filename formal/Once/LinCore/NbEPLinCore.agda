@@ -88,6 +88,8 @@ module Sem {Γ : Cx} (ρ : Env Γ) where
     Lᶜ (lcase f g)    e         (inj₁ a)       = Lᶜ f e a
     Lᶜ (lcase f g)    e         (inj₂ b)       = Lᶜ g e b
     Lᶜ lzero          e         ()
+    Lᶜ ldist          e         (x , inj₁ a)   = return∞ (inj₁ (x , a))
+    Lᶜ ldist          e         (x , inj₂ b)   = return∞ (inj₂ (x , b))
     Lᶜ (lIn {F})      e         x              = return∞ (inμ (coh F (μt F) x))
     Lᶜ (lOutμ {F})    e         x              = return∞ (coh⁻¹ F (μt F) (outμ x))
     Lᶜ (lcata F alg)  e         x              = cataC F (λ y → Lᶜ alg e (coh⁻¹ F _ y)) x
@@ -157,6 +159,8 @@ module Sem {Γ : Cx} (ρ : Env Γ) where
     Lᴮ (k-case φ ψ)  e         (inj₁ a)      = Lᴮ φ e a
     Lᴮ (k-case φ ψ)  e         (inj₂ b)      = Lᴮ ψ e b
     Lᴮ k-zero        e         ()
+    Lᴮ k-dist        e         (x , inj₁ a)  = ret (inj₁ (x , a))
+    Lᴮ k-dist        e         (x , inj₂ b)  = ret (inj₂ (x , b))
     Lᴮ (k-in {F})    e         x             = ret (inμ (coh F (μt F) x))
     Lᴮ (k-out {F})   e         x             = ret (coh⁻¹ F (μt F) (outμ x))
     Lᴮ (k-cata {F} φ) e        x             = cataB F (λ y → Lᴮ φ e (coh⁻¹ F _ y)) x

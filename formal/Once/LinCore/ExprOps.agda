@@ -87,6 +87,7 @@ module _ (D : Sig → Set) where
   ok-ps ds lassoc    o ()
   ok-ps ds lassoc⁻   o ()
   ok-ps ds lswap     o ()
+  ok-ps ds ldist     o ()
   ok-ps ds dup       o ()
   ok-ps ds drop      o ()
   ok-ps ds linl      o ()
