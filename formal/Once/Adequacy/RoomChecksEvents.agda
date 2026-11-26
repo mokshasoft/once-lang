@@ -27,6 +27,9 @@ open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Machine.SMCore using (AbstractInstr; AbstractTrace; instr-room; Room; module LocState)
 open import Once.CCC.Codegen.RoomChecksFacts using (φ; module RoomFacts)
 open import Once.CCC.Codegen.RoomChecksSim using (module RoomSim)
+open import Once.CCC.Codegen.RoomChecks using (re; rsv-of)
+open import Once.CCC.Codegen.RoomReserve using (re-inv)
+import Data.Maybe
 open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
 open import Once.IR.Semantics.Out using (_▹_)
 
@@ -65,8 +68,20 @@ module RoomEvents {FS : FrameSemantics} (t : AbstractTrace) where
     ev-step n fs true  _ = 0 , refl , refl
     ev-step n fs false _ with ev-fetch n fs (fetch t (fpc fs))
     ... | m , ee , ec =
-      m , trans (cong (λ z → flat-events-fetch z m P′ (lift fs (φ t (fpc fs)))) (fetch-room t (fpc fs))) ee
-        , trans (cong (λ z → flat-ctrls-fetch z m P′ (lift fs (φ t (fpc fs)))) (fetch-room t (fpc fs))) ec
+      m , trans (cong (λ z → flat-events-fetch z m P′ (lift fs (φ t (fpc fs)))) (fetch-room t (fpc fs)))
+                (trans (ev-re m (lift fs (φ t (fpc fs))) (fetch t (fpc fs))) ee)
+        , trans (cong (λ z → flat-ctrls-fetch z m P′ (lift fs (φ t (fpc fs)))) (fetch-room t (fpc fs)))
+                (trans (ct-re m (lift fs (φ t (fpc fs))) (fetch t (fpc fs))) ec)
+      where
+        -- (D491 stage 4: the start's reserve, set by the pass, shows nowhere)
+        ev-re : ∀ (m′ : ℕ) (g : FlatState) (mi : Maybe AbstractInstr)
+              → flat-events-fetch (Data.Maybe.map (re (rsv-of t)) mi) m′ P′ g ≡ flat-events-fetch mi m′ P′ g
+        ev-re m′ g nothing  = refl
+        ev-re m′ g (just i) = re-inv (λ j → flat-events-fetch (just j) m′ P′ g) (λ _ _ _ → refl) (rsv-of t) i
+        ct-re : ∀ (m′ : ℕ) (g : FlatState) (mi : Maybe AbstractInstr)
+              → flat-ctrls-fetch (Data.Maybe.map (re (rsv-of t)) mi) m′ P′ g ≡ flat-ctrls-fetch mi m′ P′ g
+        ct-re m′ g nothing  = refl
+        ct-re m′ g (just i) = re-inv (λ j → flat-ctrls-fetch (just j) m′ P′ g) (λ _ _ _ → refl) (rsv-of t) i
 
 
   -- on a check: one more step, emitting nothing and counting nothing, to the

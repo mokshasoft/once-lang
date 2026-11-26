@@ -27,8 +27,9 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; con
 import Relation.Binary.PropositionalEquality
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
-open import Once.CCC.Machine.SMCore using (AbstractInstr; AbstractTrace; instr-room; Room)
-open import Once.CCC.Codegen.RoomChecks using (boundary?; stretch; checks; room-checks; room-checks-def; max-entry; pick)
+open import Once.CCC.Machine.SMCore using (AbstractInstr; AbstractTrace; instr-room; Room; instr-ctrl; c-start)
+open import Once.CCC.Codegen.RoomChecks using (boundary?; stretch; checks; room-checks; room-checks-def; max-entry; pick; re; reserve; rsv-of)
+open import Once.CCC.Codegen.RoomReserve using (module ReserveRun; re-inv; re-same; StartAt; reserve-twice; reserve-drop; max-entry-reserve; owner-from-reserve; till-reserve; checks-reserve; strip-reserve; All-reserve)
 open import Once.CCC.Codegen.StackDepth using (Depths; Owner; o-start; own; owner-from; before-from)
 
 -- one more index when the instruction just passed is a boundary (its check follows it)
@@ -64,10 +65,26 @@ module RoomFacts {FS : FrameSemantics} where
   fetch-checks T o (x ∷ t) (suc i) =
     fetch-after (boundary? x) (stretch T (own o x) t) (checks T (own o x) t) (ψ t i) (fetch-checks T (own o x) t i)
 
-  -- …and the whole pass.
-  fetch-room : ∀ (t : AbstractTrace) (i : ℕ) → fetch (room-checks t) (φ t i) ≡ fetch t i
-  fetch-room t i = trans (cong (λ p → fetch p (φ t i)) (room-checks-def t)) (fetch-checks (pick t) o-start t i)
+  -- …and the whole pass (D491 stage 4: with the start's reserve set).
+  open ReserveRun {FS} using (fetch-reserve)
+  open import Data.Maybe using () renaming (map to mmap′)
+  open import Data.Product using (Σ; _×_; _,_)
 
+  fetch-room : ∀ (t : AbstractTrace) (i : ℕ) → fetch (room-checks t) (φ t i) ≡ mmap′ (re (rsv-of t)) (fetch t i)
+  fetch-room t i =
+    trans (cong (λ p → fetch p (φ t i)) (room-checks-def t))
+          (trans (fetch-reserve (rsv-of t) (checks (pick t) o-start t) (φ t i))
+                 (cong (mmap′ (re (rsv-of t))) (fetch-checks (pick t) o-start t i)))
+
+  -- what a `map` found, it found of something
+  mmap-just : ∀ {f : AbstractInstr → AbstractInstr} (m : Maybe AbstractInstr) {x : AbstractInstr}
+            → mmap′ f m ≡ just x → Σ AbstractInstr (λ y → m ≡ just y × f y ≡ x)
+  mmap-just (just y) refl = y , refl , refl
+
+  -- …so the image with checks holds there the image's instruction, its reserve set
+  fetch-room-back : ∀ (t : AbstractTrace) (i : ℕ) {x : AbstractInstr} → fetch (room-checks t) (φ t i) ≡ just x
+                  → Σ AbstractInstr (λ y → fetch t i ≡ just y × re (rsv-of t) y ≡ x)
+  fetch-room-back t i f = mmap-just (fetch t i) (trans (Relation.Binary.PropositionalEquality.sym (fetch-room t i)) f)
   ------------------------------------------------------------------------
   -- THE SCANS COMMUTE with the map: a check is neither a label nor an entry, so
   -- `find-label` / `find-entry` on the image with checks find `φ` of what they
@@ -135,7 +152,8 @@ module RoomFacts {FS : FrameSemantics} where
   -- JUMPS: the image with checks finds each label at `φ` of its old index.
   find-label-room : ∀ (t : AbstractTrace) (m : LabelId)
                   → find-label (room-checks t) m ≡ mmap (φ t) (find-label t m)
-  find-label-room t m = Relation.Binary.PropositionalEquality.subst (λ p → find-label p m ≡ mmap (φ t) (find-label t m)) (Relation.Binary.PropositionalEquality.sym (room-checks-def t)) (fl-checks (pick t) o-start t m 0)
+  find-label-room t m = Relation.Binary.PropositionalEquality.subst (λ p → find-label p m ≡ mmap (φ t) (find-label t m)) (Relation.Binary.PropositionalEquality.sym (room-checks-def t))
+    (trans (ReserveRun.find-label-reserve {FS} (rsv-of t) (checks (pick t) o-start t) m) (fl-checks (pick t) o-start t m 0))
 
   -- …and the same for the entry scan (calls).
   ft-go-suc : ∀ (xs : AbstractTrace) (e : EntryId) (b : ℕ) → ft-go xs e (suc b) ≡ mmap suc (ft-go xs e b)
@@ -176,7 +194,8 @@ module RoomFacts {FS : FrameSemantics} where
   -- CALLS: the image with checks finds each entry at `φ` of its old index.
   find-entry-room : ∀ (t : AbstractTrace) (e : EntryId)
                   → find-entry (room-checks t) e ≡ mmap (φ t) (find-entry t e)
-  find-entry-room t e = Relation.Binary.PropositionalEquality.subst (λ p → find-entry p e ≡ mmap (φ t) (find-entry t e)) (Relation.Binary.PropositionalEquality.sym (room-checks-def t)) (ft-checks (pick t) o-start t e 0)
+  find-entry-room t e = Relation.Binary.PropositionalEquality.subst (λ p → find-entry p e ≡ mmap (φ t) (find-entry t e)) (Relation.Binary.PropositionalEquality.sym (room-checks-def t))
+    (trans (ReserveRun.find-entry-reserve {FS} (rsv-of t) (checks (pick t) o-start t) e) (ft-checks (pick t) o-start t e 0))
 
   ------------------------------------------------------------------------
   -- ONE INSTRUCTION FURTHER: the map advances by one, or by two when the
@@ -263,16 +282,17 @@ All-checks : ∀ {P : AbstractInstr → Set} (T : Depths) (o : Owner) (t : Abstr
 All-checks T o []      pr []       = []
 All-checks T o (x ∷ t) pr (px ∷ a) = px ∷ all-after (boundary? x) (stretch T (own o x) t) (pr _) (All-checks T (own o x) t pr a)
 
+-- (D491 stage 4: …and when setting the start's reserve keeps the property)
 All-room : ∀ {P : AbstractInstr → Set} (t : AbstractTrace)
-         → (∀ k → P (instr-room k)) → All P t → All P (room-checks t)
-All-room {P} t pr a = Relation.Binary.PropositionalEquality.subst (All P) (Relation.Binary.PropositionalEquality.sym (room-checks-def t)) (All-checks (pick t) o-start t pr a)
+         → (∀ k → P (instr-room k)) → (∀ n i → P i → P (re n i)) → All P t → All P (room-checks t)
+All-room {P} t pr pre a =
+  Relation.Binary.PropositionalEquality.subst (All P) (Relation.Binary.PropositionalEquality.sym (room-checks-def t))
+    (All-reserve (rsv-of t) (checks (pick t) o-start t) (pre (rsv-of t)) (All-checks (pick t) o-start t pr a))
 
 Any-checks : ∀ {P : AbstractInstr → Set} (T : Depths) (o : Owner) (t : AbstractTrace) → Any P t → Any P (checks T o t)
 Any-checks T o (x ∷ t) (here p)  = here p
 Any-checks T o (x ∷ t) (there a) = there (any-after (boundary? x) (stretch T (own o x) t) (Any-checks T (own o x) t a))
 
-Any-room : ∀ {P : AbstractInstr → Set} (t : AbstractTrace) → Any P t → Any P (room-checks t)
-Any-room {P} t a = Relation.Binary.PropositionalEquality.subst (Any P) (Relation.Binary.PropositionalEquality.sym (room-checks-def t)) (Any-checks (pick t) o-start t a)
 
 ------------------------------------------------------------------------
 -- WHAT A TRACE DEFINES: a fold to which a check contributes nothing (a check
@@ -293,8 +313,19 @@ module _ {X : Set} (F : AbstractTrace → X) (g : AbstractInstr → X → X)
     trans (F-∷ x _) (trans (cong (g x) (trans (fold-after (boundary? x) (stretch T (own o x) t) (checks T (own o x) t)) (fold-checks T (own o x) t)))
                            (sym (F-∷ x t)))
 
-  fold-room : ∀ (t : AbstractTrace) → F (room-checks t) ≡ F t
-  fold-room t = Relation.Binary.PropositionalEquality.subst (λ p → F p ≡ F t) (Relation.Binary.PropositionalEquality.sym (room-checks-def t)) (fold-checks (pick t) o-start t)
+  -- (D491 stage 4: …and to which the start's reserve contributes nothing)
+  fold-reserve : (∀ b r r′ x → g (instr-ctrl (c-start b r)) x ≡ g (instr-ctrl (c-start b r′)) x)
+               → ∀ (n : ℕ) (t : AbstractTrace) → F (reserve n t) ≡ F t
+  fold-reserve gs n []      = refl
+  fold-reserve gs n (i ∷ t) =
+    trans (F-∷ (re n i) (reserve n t))
+          (trans (cong (g (re n i)) (fold-reserve gs n t))
+                 (trans (re-inv (λ j → g j (F t)) (λ b r r′ → gs b r r′ (F t)) n i) (sym (F-∷ i t))))
+
+  fold-room : (∀ b r r′ x → g (instr-ctrl (c-start b r)) x ≡ g (instr-ctrl (c-start b r′)) x)
+            → ∀ (t : AbstractTrace) → F (room-checks t) ≡ F t
+  fold-room gs t = Relation.Binary.PropositionalEquality.subst (λ p → F p ≡ F t) (Relation.Binary.PropositionalEquality.sym (room-checks-def t))
+    (trans (fold-reserve gs (rsv-of t) (checks (pick t) o-start t)) (fold-checks (pick t) o-start t))
 
 ------------------------------------------------------------------------
 -- WHAT A TRACE REFERENCES: a check DOES reference something — the Host's
@@ -320,8 +351,19 @@ module _ {X : Set} {P : X → Set} (F : AbstractTrace → List X) (f : AbstractI
       (++⁺ (proj₁ split) (all-fold-after (boundary? x) (stretch T (own o x) t) (checks T (own o x) t) (All-fold-checks T (own o x) t (proj₂ split))))
     where split = ++⁻ (f x) (subst (All P) (F-∷ x t) a)
 
-  All-fold-room : ∀ (t : AbstractTrace) → All P (F t) → All P (F (room-checks t))
-  All-fold-room t a = Relation.Binary.PropositionalEquality.subst (λ p → All P (F p)) (Relation.Binary.PropositionalEquality.sym (room-checks-def t)) (All-fold-checks (pick t) o-start t a)
+  -- (D491 stage 4: what the start references does not depend on its reserve)
+  All-fold-reserve : (∀ b r r′ → f (instr-ctrl (c-start b r)) ≡ f (instr-ctrl (c-start b r′)))
+                   → ∀ (n : ℕ) (t : AbstractTrace) → All P (F t) → All P (F (reserve n t))
+  All-fold-reserve fs n []      a = a
+  All-fold-reserve fs n (x ∷ t) a =
+    subst (All P) (sym (F-∷ (re n x) (reserve n t)))
+      (++⁺ (subst (All P) (sym (re-inv f fs n x)) (proj₁ split)) (All-fold-reserve fs n t (proj₂ split)))
+    where split = ++⁻ (f x) (subst (All P) (F-∷ x t) a)
+
+  All-fold-room : (∀ b r r′ → f (instr-ctrl (c-start b r)) ≡ f (instr-ctrl (c-start b r′)))
+                → ∀ (t : AbstractTrace) → All P (F t) → All P (F (room-checks t))
+  All-fold-room fs t a = Relation.Binary.PropositionalEquality.subst (λ p → All P (F p)) (Relation.Binary.PropositionalEquality.sym (room-checks-def t))
+    (All-fold-reserve fs (rsv-of t) (checks (pick t) o-start t) (All-fold-checks (pick t) o-start t a))
 
 ------------------------------------------------------------------------
 -- THE BUDGET'S ARITHMETIC (plan 0.123 A.4 step 5): each check's `k` is what the
@@ -353,13 +395,38 @@ strip-checks T o (x ∷ t) (nr ∷ a) =
     open import Relation.Binary.PropositionalEquality using (trans; cong; subst; sym)
     R = if boundary? x then instr-room (stretch T (own o x) t) ∷ checks T (own o x) t else checks T (own o x) t
 
-tbl-room : ∀ (t : AbstractTrace) → NoRoom t → tbl (room-checks t) ≡ pick t
-tbl-room t a = Relation.Binary.PropositionalEquality.subst (λ p → tbl p ≡ pick t) (Relation.Binary.PropositionalEquality.sym (room-checks-def t)) (cong pick (strip-checks (pick t) o-start t a))
-  where open import Relation.Binary.PropositionalEquality using (cong)
+-- D491 stage 4: THE TABLE DOES NOT READ THE RESERVE (it is computed with the
+-- reserve cleared, and the certificate's check commutes with setting it)
+module _ where
+  open import Relation.Binary.PropositionalEquality using (cong; sym)
+  open import Once.CCC.Codegen.RoomChecks using (pick-by; pick-of)
+  open import Once.CCC.Codegen.StackDepth using (T₀; consistent?)
+  open import Once.CCC.Codegen.StackDepthTable using (table)
+
+  private
+    pick-by-me : ∀ (u v : AbstractTrace) (T : Depths) (b : Bool) → max-entry u ≡ max-entry v → pick-by u T b ≡ pick-by v T b
+    pick-by-me u v T true  e = refl
+    pick-by-me u v T false e = cong T₀ e
+
+  pick-of-reserve : ∀ (n : ℕ) (t : AbstractTrace) (T : Depths) → pick-of (reserve n t) T ≡ pick-of t T
+  pick-of-reserve n t T =
+    trans (cong (λ C → pick-by (reserve n t) T (consistent? T (reserve (Depths.past₀ T) C))) (checks-reserve n T o-start t))
+          (trans (cong (λ C → pick-by (reserve n t) T (consistent? T C)) (reserve-twice (Depths.past₀ T) n (checks T o-start t)))
+                 (pick-by-me (reserve n t) t T _ (max-entry-reserve n t)))
+
+  opaque
+    unfolding pick
+    pick-reserve : ∀ (n : ℕ) (t : AbstractTrace) → pick (reserve n t) ≡ pick t
+    pick-reserve n t = trans (cong (λ u → pick-of (reserve n t) (table u)) (reserve-twice 0 n t)) (pick-of-reserve n t (table (reserve 0 t)))
+
+  tbl-room : ∀ (t : AbstractTrace) → NoRoom t → tbl (room-checks t) ≡ pick t
+  tbl-room t a = Relation.Binary.PropositionalEquality.subst (λ p → tbl p ≡ pick t) (sym (room-checks-def t))
+    (trans (cong pick (trans (strip-reserve (rsv-of t) (checks (pick t) o-start t)) (cong (reserve (rsv-of t)) (strip-checks (pick t) o-start t a))))
+           (pick-reserve (rsv-of t) t))
 
 -- a check reserves no frame, so the largest entry frame is the same
 max-entry-room : ∀ (t : AbstractTrace) → max-entry (room-checks t) ≡ max-entry t
-max-entry-room = fold-room max-entry (λ i x → entry-frame i ⊔ x) (λ _ _ → refl) (λ _ _ → refl)
+max-entry-room = fold-room max-entry (λ i x → entry-frame i ⊔ x) (λ _ _ → refl) (λ _ _ → refl) (λ _ _ _ _ → refl)
 
 private
   till-after : ∀ (T : Depths) (o : Owner) (b : Bool) (k : Room) (C : AbstractTrace)
@@ -411,7 +478,19 @@ module CheckK {FS : FrameSemantics} where
   -- …and so does every check of the pass's output
   check-k : ∀ (t : AbstractTrace) → NoRoom t → ∀ (pc : ℕ) (k : Room)
           → fetch (room-checks t) pc ≡ just (instr-room k) → k ≡ till-check (pick t) (owner-from o-start (room-checks t) pc) (drop (suc pc) (room-checks t))
-  check-k t a pc k f = Relation.Binary.PropositionalEquality.subst (λ p → fetch p pc ≡ just (instr-room k) → k ≡ till-check (pick t) (owner-from o-start p pc) (drop (suc pc) p)) (Relation.Binary.PropositionalEquality.sym (room-checks-def t)) (checks-k (pick t) o-start t a pc k) f
+  check-k t a pc k f =
+    Relation.Binary.PropositionalEquality.subst (λ p → fetch p pc ≡ just (instr-room k) → k ≡ till-check (pick t) (owner-from o-start p pc) (drop (suc pc) p))
+      (sym (room-checks-def t)) under f
+    where
+      n = rsv-of t
+      C = checks (pick t) o-start t
+      open import Relation.Binary.PropositionalEquality using (trans; cong₂)
+      under : fetch (reserve n C) pc ≡ just (instr-room k)
+            → k ≡ till-check (pick t) (owner-from o-start (reserve n C) pc) (drop (suc pc) (reserve n C))
+      under f′ =
+        trans (checks-k (pick t) o-start t a pc k (ReserveRun.fetch-under {FS} n C pc f′ (λ b r ())))
+              (sym (trans (cong₂ (till-check (pick t)) (owner-from-reserve n o-start C pc) (reserve-drop n (suc pc) C))
+                          (till-reserve n (pick t) (owner-from o-start C pc) (drop (suc pc) C))))
 
   -- what an ordinary instruction's measure is: its own spend, then its successor's
   drop-fetch : ∀ (P : AbstractTrace) (pc : ℕ) {i : AbstractInstr} → fetch P pc ≡ just i
@@ -507,7 +586,7 @@ image-noroom (i ∷ t) (p ∷ a) = imageI-noroom i p ∷ image-noroom t a
 ------------------------------------------------------------------------
 module NeedFacts {FS : FrameSemantics} where
   open FlatMachine {FS} using (fetch)
-  open import Data.Product using (Σ; _,_)
+  open import Data.Product using (Σ; _,_; _×_)
   open import Data.Nat using (_≤_)
   open import Data.Nat.Properties using (m≤m⊔n; m≤n⊔m; ≤-trans)
   open import Once.CCC.Machine.SMCore using (instr-ctrl; c-entry)
@@ -537,7 +616,22 @@ module NeedFacts {FS : FrameSemantics} where
   boundary-next : ∀ (t : AbstractTrace) (j : ℕ) {i : AbstractInstr}
                 → fetch (room-checks t) j ≡ just i → boundary? i ≡ true
                 → Σ Room (λ k → fetch (room-checks t) (suc j) ≡ just (instr-room k))
-  boundary-next t j {i} f bd = Relation.Binary.PropositionalEquality.subst (λ p → fetch p j ≡ just i → Σ Room (λ k → fetch p (suc j) ≡ just (instr-room k))) (Relation.Binary.PropositionalEquality.sym (room-checks-def t)) (λ f′ → checks-next (pick t) o-start t j f′ bd) f
+  boundary-next t j {i} f bd =
+    Relation.Binary.PropositionalEquality.subst (λ p → fetch p j ≡ just i → Σ Room (λ k → fetch p (suc j) ≡ just (instr-room k)))
+      (Relation.Binary.PropositionalEquality.sym (room-checks-def t)) under f
+    where
+      open import Relation.Binary.PropositionalEquality using (trans; sym; cong)
+      open import Once.CCC.Codegen.RoomReserve using (re-boundary?)
+      open ReserveRun {FS} using (fetch-back; fetch-reserve)
+      n = rsv-of t
+      C = checks (pick t) o-start t
+      past : Σ Room (λ k → fetch C (suc j) ≡ just (instr-room k)) → Σ Room (λ k → fetch (reserve n C) (suc j) ≡ just (instr-room k))
+      past (k , fk) = k , trans (fetch-reserve n C (suc j)) (cong (Data.Maybe.map (re n)) fk)
+        where import Data.Maybe
+      at : Σ AbstractInstr (λ y → fetch C j ≡ just y × re n y ≡ i) → Σ Room (λ k → fetch (reserve n C) (suc j) ≡ just (instr-room k))
+      at (y , fy , ey) = past (checks-next (pick t) o-start t j fy (trans (sym (re-boundary? n y)) (trans (cong boundary? ey) bd)))
+      under : fetch (reserve n C) j ≡ just i → Σ Room (λ k → fetch (reserve n C) (suc j) ≡ just (instr-room k))
+      under f′ = at (fetch-back n C j f′)
 
   -- an entry reserves at most the largest frame (what a call's spend covers)
   entry-le : ∀ (P : AbstractTrace) (j : ℕ) (m : EntryId) (b : ℕ)
@@ -621,11 +715,22 @@ module PickCert {FS : FrameSemantics} where
   opaque
     unfolding pick room-checks
     pick-cert : ∀ (t : AbstractTrace) → Cert (pick t) (room-checks t)
-    pick-cert t = by (table t) (consistent? (table t) (checks (table t) o-start t)) refl
+    pick-cert t = by T (consistent? T (reserve (Depths.past₀ T) (checks T o-start t))) refl
       where
-        by : ∀ T b → consistent? T (checks T o-start t) ≡ b → Cert (pick-by t T b) (checks (pick-by t T b) o-start t)
-        by T true  c = cert-of T (checks T o-start t) c
-        by T false _ = cert₀ (max-entry t) (checks (T₀ (max-entry t)) o-start t) (entries-le (T₀ (max-entry t)) o-start t)
+        T : Depths
+        T = table (reserve 0 t)
+        -- (an entry is not the start: the reserve leaves it where it was)
+        entries-le′ : ∀ (T′ : Depths) (m : ℕ) → ∀ pc e b → at (reserve m (checks T′ o-start t)) pc ≡ just (instr-ctrl (c-entry e b)) → b ≤ max-entry t
+        entries-le′ T′ m pc e b f =
+          entries-le T′ o-start t pc e b
+            (trans (at-fetch (checks T′ o-start t) pc)
+                   (ReserveRun.fetch-under {FS} m (checks T′ o-start t) pc (trans (sym (at-fetch (reserve m (checks T′ o-start t)) pc)) f) (λ _ _ ())))
+        by : ∀ T′ b → consistent? T′ (reserve (Depths.past₀ T′) (checks T′ o-start t)) ≡ b
+           → Cert (pick-by t T′ b) (reserve (Depths.past₀ (pick-by t T′ b)) (checks (pick-by t T′ b) o-start t))
+        by T′ true  c = cert-of T′ (reserve (Depths.past₀ T′) (checks T′ o-start t)) c
+        by T′ false _ =
+          cert₀ (max-entry t) (reserve (Depths.past₀ (T₀ (max-entry t))) (checks (T₀ (max-entry t)) o-start t))
+                (entries-le′ (T₀ (max-entry t)) (Depths.past₀ (T₀ (max-entry t))))
 
 ------------------------------------------------------------------------
 -- D490: NOTHING FALLS INTO AN ENTRY — an entry follows a jump, a return or the
@@ -706,3 +811,22 @@ module NoFall {FS : FrameSemantics} where
       by true  bd (suc (suc q′)) f′ = ih q′ x f′ e
       by false bd zero          f′ = ff zero x (first T o′ t f′) e
       by false bd (suc q′)      f′ = ih q′ x f′ e
+
+  -- D491 stage 4: the reserve set, nothing new falls into an entry (the start is
+  -- neither an entry nor leaves)
+  FF-reserve : ∀ (n : ℕ) (t : AbstractTrace) → FF t → FF (reserve n t)
+  FF-reserve n t ff q x f e = go (ReserveRun.fetch-back {FS} n t (suc q) f)
+    where
+      open import Data.Maybe using () renaming (map to mmap)
+      res : Σ AbstractInstr (λ z → fetch t q ≡ just z × leaves? z ≡ true)
+          → Σ AbstractInstr (λ z → fetch (reserve n t) q ≡ just z × leaves? z ≡ true)
+      res (z , fz , lz) = re n z , trans (ReserveRun.fetch-reserve {FS} n t q) (cong (mmap (re n)) fz)
+                                 , trans (re-inv leaves? (λ _ _ _ → refl) n z) lz
+      go : Σ AbstractInstr (λ y → fetch t (suc q) ≡ just y × re n y ≡ x)
+         → Σ AbstractInstr (λ z → fetch (reserve n t) q ≡ just z × leaves? z ≡ true)
+      go (y , fy , ey) =
+        res (ff q y fy (trans (sym (re-inv (λ j → entry-k (kind j)) (λ _ _ _ → refl) n y)) (trans (cong (λ j → entry-k (kind j)) ey) e)))
+
+  -- …so the pass keeps it
+  FF-room : ∀ (t : AbstractTrace) → FF t → FF (room-checks t)
+  FF-room t ff = subst FF (sym (room-checks-def t)) (FF-reserve (rsv-of t) (checks (pick t) o-start t) (FF-checks (pick t) o-start t ff))

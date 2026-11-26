@@ -483,7 +483,7 @@ module Img (nm : CanonicalName) {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   ----------------------------------------------------------------------
 
   adefs-eq : adefs P′ ≡ adefs image
-  adefs-eq = fold-room adefs (λ i xs → instr-defs i ++ xs) (λ _ _ → refl) (λ _ _ → refl) image
+  adefs-eq = fold-room adefs (λ i xs → instr-defs i ++ xs) (λ _ _ → refl) (λ _ _ → refl) (λ _ _ _ _ → refl) image
 
   adefs-dst : AllPairs _≢_ (adefs image)
   adefs-dst = subst (AllPairs _≢_) (sym (adefs-labs image))
@@ -792,7 +792,7 @@ module Img (nm : CanonicalName) {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   -- ★★ the file's references resolve
   resolved : All G (arefs P′)
   resolved =
-    All-fold-room arefs instr-refs (λ _ _ → refl) (room-refs-G (inj₁ (there (here refl))) (inj₂ (there (here refl)))) image
+    All-fold-room arefs instr-refs (λ _ _ → refl) (room-refs-G (inj₁ (there (here refl))) (inj₂ (there (here refl)))) (λ _ _ _ → refl) image
       (arefs-of image (refs-ok _ tt (λ l ()) (here refl)
         ∷ Data.List.Relation.Unary.All.tabulate (λ {i} m →
             refs-ok i (proj₂ (proj₂ (Data.List.Relation.Unary.All.lookup IA.tail-ok m)))
@@ -828,7 +828,7 @@ module Img (nm : CanonicalName) {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     Dˣ = entry-symbol ∷ alloc-record-symbol ∷ adefs P″ ++ block-syms bs
 
     adefs-eqˣ : adefs P″ ≡ adefs imageˣ
-    adefs-eqˣ = fold-room adefs (λ i xs → instr-defs i ++ xs) (λ _ _ → refl) (λ _ _ → refl) imageˣ
+    adefs-eqˣ = fold-room adefs (λ i xs → instr-defs i ++ xs) (λ _ _ → refl) (λ _ _ → refl) (λ _ _ _ _ → refl) imageˣ
 
     -- what the expansion defines: the image's labels and entries, and the sites' labels
     data ShapeX : Label → Set where
@@ -966,7 +966,7 @@ module Img (nm : CanonicalName) {Γ} (ds : Defs Γ) (f : LTm Γ One One)
 
     resolvedˣ : All Gˣ (arefs P″)
     resolvedˣ =
-      All-fold-room arefs instr-refs (λ _ _ → refl) (room-refs-G (inj₁ (there (here refl))) (inj₂ (there (here refl)))) imageˣ
+      All-fold-room arefs instr-refs (λ _ _ → refl) (room-refs-G (inj₁ (there (here refl))) (inj₂ (there (here refl)))) (λ _ _ _ → refl) imageˣ
         (arefs-of imageˣ (Data.List.Relation.Unary.All.tabulate (λ {i} m → refs-x i m)))
 
     -- ★★ THE EXPANSION'S FILE IS WELL-FORMED, as symbols
@@ -1000,7 +1000,7 @@ module Img (nm : CanonicalName) {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     Dᶜ = entry-symbol ∷ alloc-record-symbol ∷ adefs Pᶜ ++ block-syms bs
 
     adefs-eqᶜ : adefs Pᶜ ≡ adefs imageᶜ
-    adefs-eqᶜ = fold-room adefs (λ i xs → instr-defs i ++ xs) (λ _ _ → refl) (λ _ _ → refl) imageᶜ
+    adefs-eqᶜ = fold-room adefs (λ i xs → instr-defs i ++ xs) (λ _ _ → refl) (λ _ _ → refl) (λ _ _ _ _ → refl) imageᶜ
 
     data ShapeC : Label → Set where
       cx : ∀ {y} → ShapeL y → ShapeC y
@@ -1219,7 +1219,7 @@ module Img (nm : CanonicalName) {Γ} (ds : Defs Γ) (f : LTm Γ One One)
 
     resolvedᶜ : All Gᶜ (arefs Pᶜ)
     resolvedᶜ =
-      All-fold-room arefs instr-refs (λ _ _ → refl) (room-refs-G (inj₁ (there (here refl))) (inj₂ (there (here refl)))) imageᶜ
+      All-fold-room arefs instr-refs (λ _ _ → refl) (room-refs-G (inj₁ (there (here refl))) (inj₂ (there (here refl)))) (λ _ _ _ → refl) imageᶜ
         (arefs-of imageᶜ (Data.List.Relation.Unary.All.tabulate (λ {i} m → refs-c i m)))
 
     -- ★★ THE CALL MODE'S FILE IS WELL-FORMED, as symbols

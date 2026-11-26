@@ -49,6 +49,7 @@ import Once.Spec.Type as ST
 open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
 open import Once.CCC.Codegen.RoomChecks using (room-checks)
 open import Once.CCC.Codegen.RoomChecksFacts using (All-room)
+import Once.CCC.Codegen.RoomReserve
 open import Once.CCC.Machine.SMCore
 open import Once.CCC.Machine.FrameFree using (EmittableI; ImageI; emittable-image)
 import Once.CCC.Machine.AllocMin
@@ -440,9 +441,13 @@ module Img (nm : CanonicalName) {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     sig-in : ∀ i → OK i → SigIn i
     sig-in .(instr-sigop si) o si refl = proj₂ (proj₂ o)
 
+  -- (D491 stage 4: the pass sets the start's reserve; a SigOp is no start)
+  sig-re : ∀ n i → SigIn i → SigIn (Once.CCC.Codegen.RoomChecks.re n i)
+  sig-re n i s {A} {B} si e = s si (Once.CCC.Codegen.RoomReserve.re-keep n i (instr-sigop si) e (λ _ _ ()))
+
   sigops : ∀ {A B} (si : SigOpInfo A B) → instr-sigop si ∈ room-checks image → Σ Sig λ s → s ∈ ops U × sig si ≡ opSig s (cmpOf s)
   sigops {A} {B} si m = Data.List.Relation.Unary.All.lookup {P = SigIn}
-                  (All-room {P = SigIn} image (λ k {A} {B} si ()) ((λ {A} {B} si ()) ∷ Data.List.Relation.Unary.All.map (λ {i} o {A} {B} → sig-in i o {A} {B}) tail-ok)) m {A} {B} si refl
+                  (All-room {P = SigIn} image (λ k {A} {B} si ()) sig-re ((λ {A} {B} si ()) ∷ Data.List.Relation.Unary.All.map (λ {i} o {A} {B} → sig-in i o {A} {B}) tail-ok)) m {A} {B} si refl
 
   -- ★ the start: at pc 0, at the main term's budget, and nowhere else
   -- (`EmittableI` refutes it in the tail)

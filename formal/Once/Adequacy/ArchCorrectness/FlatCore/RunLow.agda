@@ -42,9 +42,10 @@ open import Once.CCC.Label using (LabelId; EntryId; e-fn; e-thunk)
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
 open FlatState using (fpc; floc; falloc; flink; fret; fclosure)
-open import Once.CCC.Codegen.RoomChecks using (room-checks; need)
+open import Once.CCC.Codegen.RoomChecks using (room-checks; need; re; rsv-of)
 open import Once.CCC.Codegen.RoomChecksFacts using (φ; module RoomFacts)
-open RoomFacts {FS} using (fetch-room)
+open RoomFacts {FS} using (fetch-room; fetch-room-back)
+open import Once.CCC.Codegen.RoomReserve using (module ReserveRun; re-keep; re-inv; start-back; re-boundary?)
 open import Once.CCC.Codegen.RoomChecksSim using (module RoomSim)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open FlatStepsAPI {FS} using (Sound)
@@ -70,13 +71,28 @@ open RunLow
 -- the lift is of (and then the lift is AT that state's image).
 data LowView (src : AbstractTrace) (fs₀ : FlatState) (p : ℕ) (i : AbstractInstr) : Set where
   at-check : ∀ (k : Room) → i ≡ instr-room k → suc p ≡ φ src (fpc fs₀) → LowView src fs₀ p i
-  at-image : p ≡ φ src (fpc fs₀) → fetch src (fpc fs₀) ≡ just i → LowView src fs₀ p i
+  -- (D491 stage 4: `t`'s instruction with the start's reserve set)
+  at-image : ∀ (y : AbstractInstr) → p ≡ φ src (fpc fs₀) → fetch src (fpc fs₀) ≡ just y → re (rsv-of src) y ≡ i → LowView src fs₀ p i
 
 low-view : ∀ (src : AbstractTrace) (fs₀ : FlatState) (p : ℕ) {i : AbstractInstr}
          → RoomSim.PcRel {FS} src (fpc fs₀) p
          → fetch (room-checks src) p ≡ just i → LowView src fs₀ p i
 low-view src fs₀ p (inj₂ (sp , k , fk)) f = at-check k (just-injective (trans (sym f) fk)) sp
-low-view src fs₀ p (inj₁ refl)          f = at-image refl (trans (sym (fetch-room src (fpc fs₀))) f)
+low-view src fs₀ p (inj₁ refl)          f = from (fetch-room-back src (fpc fs₀) f)
+  where
+    from : Σ AbstractInstr (λ y → fetch src (fpc fs₀) ≡ just y × re (rsv-of src) y ≡ _) → LowView src fs₀ (φ src (fpc fs₀)) _
+    from (y , fy , ey) = at-image y refl fy ey
+
+-- …which, for an instruction that is not the start, is the instruction itself
+image-at : ∀ {src : AbstractTrace} {fs₀ : FlatState} {i y : AbstractInstr}
+         → fetch src (fpc fs₀) ≡ just y → re (rsv-of src) y ≡ i → (∀ b r → i ≡ instr-ctrl (c-start b r) → ⊥)
+         → fetch src (fpc fs₀) ≡ just i
+image-at {src} {fs₀} {i} {y} fy ey ns = trans fy (cong just (re-keep (rsv-of src) y i ey ns))
+
+-- …and a step there is the base image's step
+step-at : ∀ (src : AbstractTrace) {y i : AbstractInstr} → re (rsv-of src) y ≡ i → ∀ (P : AbstractTrace) (g : FlatState)
+        → flat-exec-instr i P g ≡ flat-exec-instr y P g
+step-at src {y} ey P g = trans (cong (λ j → flat-exec-instr j P g) (sym ey)) (ReserveRun.exec-re {FS} (rsv-of src) y P g)
 
 -- a check is no instruction a site fact is about
 room≢ : ∀ {k : Room} {i : AbstractInstr} → i ≡ instr-room k → (∀ {k′} → i ≡ instr-room k′ → ⊥) → ⊥
@@ -95,11 +111,11 @@ low-step : ∀ (prog : AbstractTrace) (fs : FlatState) (i : AbstractInstr) → R
 low-step .(room-checks src) .(RoomSim.lift {FS} src fs₀ p) i (mkRunLow src fs₀ p refl r refl pc) f h
   with low-view src fs₀ p pc f
 ... | at-check k refl sp = mkRunLow src fs₀ (suc p) refl r refl (inj₁ sp)
-... | at-image refl fi with RoomSim.step-lift {FS} src fs₀ i
+... | at-image y refl fy ey with RoomSim.step-lift {FS} src fs₀ y
 ...   | p′ , e , pr′ =
-  mkRunLow src (flat-exec-instr i src fs₀) p′ refl
-    (mkRunAt (run-em r) (reach-step i fs₀ (run-reach r) fi h))
-    e pr′
+  mkRunLow src (flat-exec-instr y src fs₀) p′ refl
+    (mkRunAt (run-em r) (reach-step y fs₀ (run-reach r) fy h))
+    (trans (step-at src {y} ey (room-checks src) (RoomSim.lift {FS} src fs₀ (φ src (fpc fs₀)))) e) pr′
 
 -- …and NEVER FAULTS (D367 carried across the pass, `sound-room`).
 low-sound : ∀ {prog fs} → RunLow prog fs → Sound prog fs
@@ -146,24 +162,25 @@ private
 
 -- a fact about one non-check instruction `I`, from the base run's, when the fact
 -- speaks of the state only through what the lift keeps (memory, frames)
-lift-site : ∀ (I : AbstractInstr) → (∀ k → I ≡ instr-room k → ⊥) → (C : FlatState → Set)
+-- (and not the start, whose reserve the pass sets)
+lift-site : ∀ (I : AbstractInstr) → (∀ k → I ≡ instr-room k → ⊥) → (∀ b r → I ≡ instr-ctrl (c-start b r) → ⊥) → (C : FlatState → Set)
           → (∀ src fs₀ → RunAt src fs₀ → LocState.halted (floc fs₀) ≡ false → fetch src (fpc fs₀) ≡ just I → C fs₀)
           → (∀ src fs₀ p → C fs₀ → C (L.lift src fs₀ p))
           → ∀ prog fs → RunLow prog fs → LocState.halted (floc fs) ≡ false → fetch prog (fpc fs) ≡ just I → C fs
-lift-site I nr C base tr .(room-checks src) .(L.lift src fs₀ p) (mkRunLow src fs₀ p refl r refl pc) h f
+lift-site I nr ns C base tr .(room-checks src) .(L.lift src fs₀ p) (mkRunLow src fs₀ p refl r refl pc) h f
   with low-view src fs₀ p pc f
 ... | at-check k e _  = ⊥-elim (nr k e)
-... | at-image _ fi   = tr src fs₀ p (base src fs₀ r h fi)
+... | at-image _ _ fy ey = tr src fs₀ p (base src fs₀ r h (image-at {src} {fs₀} fy ey ns))
 
 -- …and the same without the running premise
-lift-site′ : ∀ (I : AbstractInstr) → (∀ k → I ≡ instr-room k → ⊥) → (C : FlatState → Set)
+lift-site′ : ∀ (I : AbstractInstr) → (∀ k → I ≡ instr-room k → ⊥) → (∀ b r → I ≡ instr-ctrl (c-start b r) → ⊥) → (C : FlatState → Set)
            → (∀ src fs₀ → RunAt src fs₀ → fetch src (fpc fs₀) ≡ just I → C fs₀)
            → (∀ src fs₀ p → C fs₀ → C (L.lift src fs₀ p))
            → ∀ prog fs → RunLow prog fs → fetch prog (fpc fs) ≡ just I → C fs
-lift-site′ I nr C base tr .(room-checks src) .(L.lift src fs₀ p) (mkRunLow src fs₀ p refl r refl pc) f
+lift-site′ I nr ns C base tr .(room-checks src) .(L.lift src fs₀ p) (mkRunLow src fs₀ p refl r refl pc) f
   with low-view src fs₀ p pc f
 ... | at-check k e _  = ⊥-elim (nr k e)
-... | at-image _ fi   = tr src fs₀ p (base src fs₀ r fi)
+... | at-image _ _ fy ey = tr src fs₀ p (base src fs₀ r (image-at {src} {fs₀} fy ey ns))
 
 step-ok : ∀ prog (fs : FlatState) (i : AbstractInstr) → RunLow prog fs
         → LocState.halted (floc fs) ≡ false → fetch prog (fpc fs) ≡ just i
@@ -179,7 +196,11 @@ slot-read-written .(room-checks src) .(L.lift src fs₀ p) slot i (mkRunLow src 
 ... | at-check k refl _ = λ _ → no-slot sr
   where no-slot : RW.SlotRead (instr-room k) slot → ⊥
         no-slot ()
-... | at-image _ fi = RW.slot-read-written src fs₀ slot i r h fi sr
+... | at-image _ _ fy ey = RW.slot-read-written src fs₀ slot i r h (image-at {src} {fs₀} fy ey (sr-ns sr)) sr
+  where sr-ns : ∀ {j} → RW.SlotRead j slot → ∀ b r → j ≡ instr-ctrl (c-start b r) → ⊥
+        sr-ns s b r refl = no s
+          where no : RW.SlotRead (instr-ctrl (c-start b r)) slot → ⊥
+                no ()
 
 load-indirect-target-wf : ∀ prog (fs : FlatState) → RunLow prog fs → LocState.halted (floc fs) ≡ false
                         → fetch prog (fpc fs) ≡ just load-indirect
@@ -187,7 +208,7 @@ load-indirect-target-wf : ∀ prog (fs : FlatState) → RunLow prog fs → LocSt
                             (readReg (LocState.regs (floc fs)) Input1 ≡ SV-Ptr loc)
                             × (∀ hl → loc ≡ AtDynamic hl
                                → heap-offset hl < block-size (falloc fs) (ref-id (heap-ref hl))))
-load-indirect-target-wf = lift-site load-indirect (λ _ ()) _ RW.load-indirect-target-wf (λ _ _ _ c → c)
+load-indirect-target-wf = lift-site load-indirect (λ _ ()) (λ _ _ ()) _ RW.load-indirect-target-wf (λ _ _ _ c → c)
 
 load-indirect-suc-target-wf : ∀ prog (fs : FlatState) → RunLow prog fs → LocState.halted (floc fs) ≡ false
                             → fetch prog (fpc fs) ≡ just load-indirect-suc
@@ -195,14 +216,14 @@ load-indirect-suc-target-wf : ∀ prog (fs : FlatState) → RunLow prog fs → L
                                 (readReg (LocState.regs (floc fs)) Input1 ≡ SV-Ptr loc)
                                 × (∀ hl → loc ≡ AtDynamic hl
                                    → heap-offset (sucHL hl) < block-size (falloc fs) (ref-id (heap-ref (sucHL hl)))))
-load-indirect-suc-target-wf = lift-site load-indirect-suc (λ _ ()) _ RW.load-indirect-suc-target-wf (λ _ _ _ c → c)
+load-indirect-suc-target-wf = lift-site load-indirect-suc (λ _ ()) (λ _ _ ()) _ RW.load-indirect-suc-target-wf (λ _ _ _ c → c)
 
 heap-load-written : ∀ prog (fs : FlatState) (hl : HeapLocation) → RunLow prog fs
                   → LocState.halted (floc fs) ≡ false → fetch prog (fpc fs) ≡ just load-indirect
                   → readReg (LocState.regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
                   → LocState.heapMem (floc fs) hl ≡ nothing → ⊥
 heap-load-written prog fs hl =
-  lift-site load-indirect (λ _ ()) (λ g → readReg (LocState.regs (floc g)) Input1 ≡ SV-Ptr (AtDynamic hl)
+  lift-site load-indirect (λ _ ()) (λ _ _ ()) (λ g → readReg (LocState.regs (floc g)) Input1 ≡ SV-Ptr (AtDynamic hl)
                                          → LocState.heapMem (floc g) hl ≡ nothing → ⊥)
     (λ src fs₀ r h f → RW.heap-load-written src fs₀ hl r h f) (λ _ _ _ c → c) prog fs
 
@@ -211,14 +232,14 @@ heap-load-suc-written : ∀ prog (fs : FlatState) (hl : HeapLocation) → RunLow
                       → readReg (LocState.regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
                       → LocState.heapMem (floc fs) (sucHL hl) ≡ nothing → ⊥
 heap-load-suc-written prog fs hl =
-  lift-site load-indirect-suc (λ _ ()) (λ g → readReg (LocState.regs (floc g)) Input1 ≡ SV-Ptr (AtDynamic hl)
+  lift-site load-indirect-suc (λ _ ()) (λ _ _ ()) (λ g → readReg (LocState.regs (floc g)) Input1 ≡ SV-Ptr (AtDynamic hl)
                                              → LocState.heapMem (floc g) (sucHL hl) ≡ nothing → ⊥)
     (λ src fs₀ r h f → RW.heap-load-suc-written src fs₀ hl r h f) (λ _ _ _ c → c) prog fs
 
 out-nz-output-word : ∀ prog (fs : FlatState) → RunLow prog fs → LocState.halted (floc fs) ≡ false
                    → fetch prog (fpc fs) ≡ just (instr-reg-op out-nz)
                    → ∃ λ w → readReg (LocState.regs (floc fs)) Output ≡ SV-Lit fits-int w
-out-nz-output-word = lift-site (instr-reg-op out-nz) (λ _ ()) _ RW.out-nz-output-word (λ _ _ _ c → c)
+out-nz-output-word = lift-site (instr-reg-op out-nz) (λ _ ()) (λ _ _ ()) _ RW.out-nz-output-word (λ _ _ _ c → c)
 
 store-nonptr-absurd : ∀ prog (fs : FlatState) {v : StoredValue FS} → RunLow prog fs
                     → LocState.halted (floc fs) ≡ false
@@ -227,7 +248,7 @@ store-nonptr-absurd : ∀ prog (fs : FlatState) {v : StoredValue FS} → RunLow 
                     → (∀ (loc : ValueLocation FS) → v ≡ SV-Ptr loc → ⊥)
                     → ⊥
 store-nonptr-absurd prog fs {v} =
-  lift-site store-indirect (λ _ ()) (λ g → readReg (LocState.regs (floc g)) Input1 ≡ v
+  lift-site store-indirect (λ _ ()) (λ _ _ ()) (λ g → readReg (LocState.regs (floc g)) Input1 ≡ v
                                          → (∀ (loc : ValueLocation FS) → v ≡ SV-Ptr loc → ⊥) → ⊥)
     (λ src fs₀ r h f → RW.store-nonptr-absurd src fs₀ r h f) (λ _ _ _ c → c) prog fs
 
@@ -238,7 +259,7 @@ store-suc-nonptr-absurd : ∀ prog (fs : FlatState) {v : StoredValue FS} → Run
                         → (∀ (loc : ValueLocation FS) → v ≡ SV-Ptr loc → ⊥)
                         → ⊥
 store-suc-nonptr-absurd prog fs {v} =
-  lift-site store-indirect-suc (λ _ ()) (λ g → readReg (LocState.regs (floc g)) Input1 ≡ v
+  lift-site store-indirect-suc (λ _ ()) (λ _ _ ()) (λ g → readReg (LocState.regs (floc g)) Input1 ≡ v
                                              → (∀ (loc : ValueLocation FS) → v ≡ SV-Ptr loc → ⊥) → ⊥)
     (λ src fs₀ r h f → RW.store-suc-nonptr-absurd src fs₀ r h f) (λ _ _ _ c → c) prog fs
 
@@ -249,7 +270,7 @@ branch-tag-scrutinee-wf : ∀ prog (fs : FlatState) (m : LabelId) → RunLow pro
                             (readReg (LocState.regs (floc fs)) Input1 ≡ SV-Ptr loc)
                             × (readLoc (floc fs) loc ≡ just v) × RW.TagCell v × (ExecFinal.frame-gate {FS} (falloc fs) 0 (just loc) ≡ just loc)))
 branch-tag-scrutinee-wf prog fs m =
-  lift-site (instr-ctrl (c-branch-tag-zero m)) (λ _ ()) _ (λ src fs₀ → RW.branch-tag-scrutinee-wf src fs₀ m)
+  lift-site (instr-ctrl (c-branch-tag-zero m)) (λ _ ()) (λ _ _ ()) _ (λ src fs₀ → RW.branch-tag-scrutinee-wf src fs₀ m)
     (λ _ _ _ c → c) prog fs
 
 store-indirect-inbounds : ∀ prog (fs : FlatState) (hl : HeapLocation) → RunLow prog fs
@@ -257,7 +278,7 @@ store-indirect-inbounds : ∀ prog (fs : FlatState) (hl : HeapLocation) → RunL
                         → readReg (LocState.regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
                         → heap-offset hl < block-size (falloc fs) (ref-id (heap-ref hl))
 store-indirect-inbounds prog fs hl =
-  lift-site′ store-indirect (λ _ ()) (λ g → readReg (LocState.regs (floc g)) Input1 ≡ SV-Ptr (AtDynamic hl)
+  lift-site′ store-indirect (λ _ ()) (λ _ _ ()) (λ g → readReg (LocState.regs (floc g)) Input1 ≡ SV-Ptr (AtDynamic hl)
                                           → heap-offset hl < block-size (falloc g) (ref-id (heap-ref hl)))
     (λ src fs₀ r f → RW.store-indirect-inbounds src fs₀ hl r f) (λ _ _ _ c → c) prog fs
 
@@ -266,7 +287,7 @@ store-indirect-suc-inbounds : ∀ prog (fs : FlatState) (hl : HeapLocation) → 
                             → readReg (LocState.regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
                             → heap-offset (sucHL hl) < block-size (falloc fs) (ref-id (heap-ref (sucHL hl)))
 store-indirect-suc-inbounds prog fs hl =
-  lift-site′ store-indirect-suc (λ _ ()) (λ g → readReg (LocState.regs (floc g)) Input1 ≡ SV-Ptr (AtDynamic hl)
+  lift-site′ store-indirect-suc (λ _ ()) (λ _ _ ()) (λ g → readReg (LocState.regs (floc g)) Input1 ≡ SV-Ptr (AtDynamic hl)
                                               → heap-offset (sucHL hl) < block-size (falloc g) (ref-id (heap-ref (sucHL hl))))
     (λ src fs₀ r f → RW.store-indirect-suc-inbounds src fs₀ hl r f) (λ _ _ _ c → c) prog fs
 
@@ -275,14 +296,14 @@ load-at-target-ptr : ∀ prog (fs : FlatState) (k : ℕ) → RunLow prog fs → 
                    → fetch prog (fpc fs) ≡ just (load-at k)
                    → Σ (ValueLocation FS) (λ loc → readReg (LocState.regs (floc fs)) Input1 ≡ SV-Ptr loc)
 load-at-target-ptr prog fs k =
-  lift-site (load-at k) (λ _ ()) _ (λ src fs₀ → RW.load-at-target-ptr src fs₀ k) (λ _ _ _ c → c) prog fs
+  lift-site (load-at k) (λ _ ()) (λ _ _ ()) _ (λ src fs₀ → RW.load-at-target-ptr src fs₀ k) (λ _ _ _ c → c) prog fs
 
 -- D392: a non-faulting Pure SigOp's argument decoded
 sigop-decodes : ∀ prog (fs : FlatState) {A B} (si : SigOpInfo A B) → RunLow prog fs → LocState.halted (floc fs) ≡ false
               → fetch prog (fpc fs) ≡ just (instr-sigop si) → effect si ≡ Pure
               → ∃ (λ a → decode-at (baseA si) (readReg (LocState.regs (floc fs)) Input1) (floc fs) ≡ just a)
 sigop-decodes prog fs si r h f pe =
-  lift-site (instr-sigop si) (λ _ ())
+  lift-site (instr-sigop si) (λ _ ()) (λ _ _ ())
     (λ g → ∃ (λ a → decode-at (baseA si) (readReg (LocState.regs (floc g)) Input1) (floc g) ≡ just a))
     (λ src fs₀ r′ h′ f′ → RW.sigop-decodes src fs₀ si r′ h′ f′ pe) (λ _ _ _ c → c) prog fs r h f
 
@@ -291,7 +312,7 @@ sigop-gated : ∀ prog (fs : FlatState) {A B} (si : SigOpInfo A B) → RunLow pr
             → fetch prog (fpc fs) ≡ just (instr-sigop si)
             → sigop-gate (falloc fs) si (floc fs) ≡ true
 sigop-gated prog fs si r h f =
-  lift-site (instr-sigop si) (λ _ ())
+  lift-site (instr-sigop si) (λ _ ()) (λ _ _ ())
     (λ g → sigop-gate (falloc g) si (floc g) ≡ true)
     (λ src fs₀ r′ h′ f′ → RW.sigop-gated src fs₀ si r′ h′ f′) (λ _ _ _ c → c) prog fs r h f
 
@@ -300,7 +321,7 @@ heap-load-at-written : ∀ prog (fs : FlatState) (k : ℕ) (hl : HeapLocation) �
                      → readReg (LocState.regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
                      → LocState.heapMem (floc fs) (offsetHL hl k) ≡ nothing → ⊥
 heap-load-at-written prog fs k hl =
-  lift-site (load-at k) (λ _ ()) (λ g → readReg (LocState.regs (floc g)) Input1 ≡ SV-Ptr (AtDynamic hl)
+  lift-site (load-at k) (λ _ ()) (λ _ _ ()) (λ g → readReg (LocState.regs (floc g)) Input1 ≡ SV-Ptr (AtDynamic hl)
                                        → LocState.heapMem (floc g) (offsetHL hl k) ≡ nothing → ⊥)
     (λ src fs₀ r h f → RW.heap-load-at-written src fs₀ k hl r h f) (λ _ _ _ c → c) prog fs
 
@@ -308,20 +329,20 @@ store-at-target-ptr : ∀ prog (fs : FlatState) (k : ℕ) → RunLow prog fs →
                     → fetch prog (fpc fs) ≡ just (store-at k)
                     → Σ (ValueLocation FS) (λ loc → readReg (LocState.regs (floc fs)) Input1 ≡ SV-Ptr loc)
 store-at-target-ptr prog fs k =
-  lift-site (store-at k) (λ _ ()) _ (λ src fs₀ → RW.store-at-target-ptr src fs₀ k) (λ _ _ _ c → c) prog fs
+  lift-site (store-at k) (λ _ ()) (λ _ _ ()) _ (λ src fs₀ → RW.store-at-target-ptr src fs₀ k) (λ _ _ _ c → c) prog fs
 
 -- D454's site facts, lifted
 load-at-gate : ∀ prog (fs : FlatState) (k : ℕ) (loc : ValueLocation FS) → RunLow prog fs → LocState.halted (floc fs) ≡ false
              → fetch prog (fpc fs) ≡ just (load-at k) → readReg (LocState.regs (floc fs)) Input1 ≡ SV-Ptr loc
              → ExecFinal.frame-gate {FS} (falloc fs) k (just loc) ≡ just loc
 load-at-gate prog fs k loc =
-  lift-site (load-at k) (λ _ ()) _ (λ src fs₀ r h f → RW.load-at-gate-wf src fs₀ k loc r h f) (λ _ _ _ c → c) prog fs
+  lift-site (load-at k) (λ _ ()) (λ _ _ ()) _ (λ src fs₀ r h f → RW.load-at-gate-wf src fs₀ k loc r h f) (λ _ _ _ c → c) prog fs
 
 store-at-gate : ∀ prog (fs : FlatState) (k : ℕ) (loc : ValueLocation FS) → RunLow prog fs → LocState.halted (floc fs) ≡ false
               → fetch prog (fpc fs) ≡ just (store-at k) → readReg (LocState.regs (floc fs)) Input1 ≡ SV-Ptr loc
               → ExecFinal.frame-gate {FS} (falloc fs) k (just loc) ≡ just loc
 store-at-gate prog fs k loc =
-  lift-site (store-at k) (λ _ ()) _ (λ src fs₀ r h f → RW.store-at-gate-wf src fs₀ k loc r h f) (λ _ _ _ c → c) prog fs
+  lift-site (store-at k) (λ _ ()) (λ _ _ ()) _ (λ src fs₀ r h f → RW.store-at-gate-wf src fs₀ k loc r h f) (λ _ _ _ c → c) prog fs
 
 stack-load-at-written : ∀ prog (fs : FlatState) (k : ℕ) (f : Frame) (j : ℕ) → RunLow prog fs
                       → LocState.halted (floc fs) ≡ false → fetch prog (fpc fs) ≡ just (load-at k)
@@ -329,26 +350,26 @@ stack-load-at-written : ∀ prog (fs : FlatState) (k : ℕ) (f : Frame) (j : ℕ
                       → ExecFinal.frame-gate {FS} (falloc fs) k (just (AtStack f j)) ≡ just (AtStack f j)
                       → LocState.stackMem (floc fs) f (k Data.Nat.+ j) ≡ nothing → ⊥
 stack-load-at-written prog fs k f j =
-  lift-site (load-at k) (λ _ ()) _ (λ src fs₀ r h ft → RW.stack-load-at-written-wf src fs₀ k f j r h ft) (λ _ _ _ c → c) prog fs
+  lift-site (load-at k) (λ _ ()) (λ _ _ ()) _ (λ src fs₀ r h ft → RW.stack-load-at-written-wf src fs₀ k f j r h ft) (λ _ _ _ c → c) prog fs
 
 addr-at-not-stack : ∀ prog (fs : FlatState) (k : ℕ) (f : Frame) (j : ℕ) → RunLow prog fs
                   → LocState.halted (floc fs) ≡ false → fetch prog (fpc fs) ≡ just (addr-at k)
                   → readReg (LocState.regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f j) → ⊥
 addr-at-not-stack prog fs k f j =
-  lift-site (addr-at k) (λ _ ()) _ (λ src fs₀ r h ft → RW.addr-at-not-stack-wf src fs₀ k f j r h ft) (λ _ _ _ c → c) prog fs
+  lift-site (addr-at k) (λ _ ()) (λ _ _ ()) _ (λ src fs₀ r h ft → RW.addr-at-not-stack-wf src fs₀ k f j r h ft) (λ _ _ _ c → c) prog fs
 
 addr-at-target-ptr : ∀ prog (fs : FlatState) (k : ℕ) → RunLow prog fs → LocState.halted (floc fs) ≡ false
                    → fetch prog (fpc fs) ≡ just (addr-at k)
                    → Σ (ValueLocation FS) (λ loc → readReg (LocState.regs (floc fs)) Input1 ≡ SV-Ptr loc)
 addr-at-target-ptr prog fs k =
-  lift-site (addr-at k) (λ _ ()) _ (λ src fs₀ → RW.addr-at-target-ptr src fs₀ k) (λ _ _ _ c → c) prog fs
+  lift-site (addr-at k) (λ _ ()) (λ _ _ ()) _ (λ src fs₀ → RW.addr-at-target-ptr src fs₀ k) (λ _ _ _ c → c) prog fs
 
 addr-at-in-block : ∀ prog (fs : FlatState) (k : ℕ) (hl : HeapLocation) → RunLow prog fs
                  → LocState.halted (floc fs) ≡ false → fetch prog (fpc fs) ≡ just (addr-at k)
                  → readReg (LocState.regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
                  → ExecFinal.in-block? {FS} (block-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ true
 addr-at-in-block prog fs k hl =
-  lift-site (addr-at k) (λ _ ()) (λ g → readReg (LocState.regs (floc g)) Input1 ≡ SV-Ptr (AtDynamic hl)
+  lift-site (addr-at k) (λ _ ()) (λ _ _ ()) (λ g → readReg (LocState.regs (floc g)) Input1 ≡ SV-Ptr (AtDynamic hl)
                                        → ExecFinal.in-block? {FS} (block-size (falloc g)) (AtDynamic (offsetHL hl k)) ≡ true)
     (λ src fs₀ r h f → RW.addr-at-in-block src fs₀ k hl r h f) (λ _ _ _ c → c) prog fs
 
@@ -357,7 +378,7 @@ addr-at-inbounds : ∀ prog (fs : FlatState) (k : ℕ) (hl : HeapLocation) → R
                  → readReg (LocState.regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
                  → heap-offset (offsetHL hl k) < block-size (falloc fs) (ref-id (heap-ref (offsetHL hl k)))
 addr-at-inbounds prog fs k hl =
-  lift-site (addr-at k) (λ _ ()) (λ g → readReg (LocState.regs (floc g)) Input1 ≡ SV-Ptr (AtDynamic hl)
+  lift-site (addr-at k) (λ _ ()) (λ _ _ ()) (λ g → readReg (LocState.regs (floc g)) Input1 ≡ SV-Ptr (AtDynamic hl)
                                        → heap-offset (offsetHL hl k) < block-size (falloc g) (ref-id (heap-ref (offsetHL hl k))))
     (λ src fs₀ r h f → RW.addr-at-inbounds src fs₀ k hl r h f) (λ _ _ _ c → c) prog fs
 
@@ -366,7 +387,7 @@ store-at-in-block : ∀ prog (fs : FlatState) (k : ℕ) (hl : HeapLocation) → 
                   → readReg (LocState.regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
                   → ExecFinal.in-block? {FS} (ExecFinal.live-size {FS} (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ true
 store-at-in-block prog fs k hl =
-  lift-site (store-at k) (λ _ ()) (λ g → readReg (LocState.regs (floc g)) Input1 ≡ SV-Ptr (AtDynamic hl)
+  lift-site (store-at k) (λ _ ()) (λ _ _ ()) (λ g → readReg (LocState.regs (floc g)) Input1 ≡ SV-Ptr (AtDynamic hl)
                                         → ExecFinal.in-block? {FS} (ExecFinal.live-size {FS} (falloc g)) (AtDynamic (offsetHL hl k)) ≡ true)
     (λ src fs₀ r h f → RW.store-at-in-block src fs₀ k hl r h f) (λ _ _ _ c → c) prog fs
 
@@ -375,7 +396,7 @@ store-at-inbounds : ∀ prog (fs : FlatState) (k : ℕ) (hl : HeapLocation) → 
                   → readReg (LocState.regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
                   → heap-offset (offsetHL hl k) < block-size (falloc fs) (ref-id (heap-ref (offsetHL hl k)))
 store-at-inbounds prog fs k hl =
-  lift-site (store-at k) (λ _ ()) (λ g → readReg (LocState.regs (floc g)) Input1 ≡ SV-Ptr (AtDynamic hl)
+  lift-site (store-at k) (λ _ ()) (λ _ _ ()) (λ g → readReg (LocState.regs (floc g)) Input1 ≡ SV-Ptr (AtDynamic hl)
                                         → heap-offset (offsetHL hl k) < block-size (falloc g) (ref-id (heap-ref (offsetHL hl k))))
     (λ src fs₀ r h f → RW.store-at-inbounds src fs₀ k hl r h f) (λ _ _ _ c → c) prog fs
 
@@ -388,14 +409,14 @@ entry-empty : ∀ prog (fs : FlatState) (ℓ : EntryId) (bb : ℕ) → RunLow pr
             → fetch prog (fpc fs) ≡ just (instr-ctrl (c-entry ℓ bb))
             → frame-slots (falloc fs) ≡ 0
 entry-empty prog fs ℓ bb =
-  lift-site′ (instr-ctrl (c-entry ℓ bb)) (λ _ ()) (λ g → frame-slots (falloc g) ≡ 0)
+  lift-site′ (instr-ctrl (c-entry ℓ bb)) (λ _ ()) (λ _ _ ()) (λ g → frame-slots (falloc g) ≡ 0)
     (λ src fs₀ r f → RW.entry-empty src fs₀ ℓ bb r f) (λ _ _ _ c → c) prog fs
 
 entry-link : ∀ prog (fs : FlatState) (ℓ : EntryId) (bb : ℕ) → RunLow prog fs
            → fetch prog (fpc fs) ≡ just (instr-ctrl (c-entry ℓ bb))
            → Σ ℕ (λ r → flink fs ≡ just r)
 entry-link prog fs ℓ bb =
-  lift-site′ (instr-ctrl (c-entry ℓ bb)) (λ _ ()) (λ g → Σ ℕ (λ r → flink g ≡ just r))
+  lift-site′ (instr-ctrl (c-entry ℓ bb)) (λ _ ()) (λ _ _ ()) (λ g → Σ ℕ (λ r → flink g ≡ just r))
     (λ src fs₀ r f → RW.entry-link src fs₀ ℓ bb r f)
     (λ src fs₀ p (r , e) → L.ret-map src r , cong (mmap (L.ret-map src)) e) prog fs
 
@@ -403,7 +424,7 @@ entry-ret : ∀ prog (fs : FlatState) (ℓ : EntryId) (bb : ℕ) → RunLow prog
           → fetch prog (fpc fs) ≡ just (instr-ctrl (c-entry ℓ bb))
           → Σ ℕ (λ rpc → Σ (List ℕ) (λ rest → fret fs ≡ rpc ∷ rest))
 entry-ret prog fs ℓ bb =
-  lift-site′ (instr-ctrl (c-entry ℓ bb)) (λ _ ()) (λ g → Σ ℕ (λ rpc → Σ (List ℕ) (λ rest → fret g ≡ rpc ∷ rest)))
+  lift-site′ (instr-ctrl (c-entry ℓ bb)) (λ _ ()) (λ _ _ ()) (λ g → Σ ℕ (λ rpc → Σ (List ℕ) (λ rest → fret g ≡ rpc ∷ rest)))
     (λ src fs₀ r f → RW.entry-ret src fs₀ ℓ bb r f)
     (λ src fs₀ p (rpc , rest , e) → L.ret-map src rpc , map (L.ret-map src) rest , cong (map (L.ret-map src)) e)
     prog fs
@@ -428,9 +449,9 @@ run-link-nothing : ∀ prog (fs : FlatState) → RunLow prog fs → ∀ {i : Abs
 run-link-nothing .(room-checks src) .(L.lift src fs₀ p) (mkRunLow src fs₀ p refl r refl pc) f nr ne
   with low-view src fs₀ p pc f
 ... | at-check k e _ = ⊥-elim (nr k e)
-... | at-image refl fi =
+... | at-image _ refl _ _ =
   cong (mmap (L.ret-map src))
-    (RW.run-link-nothing src fs₀ r (λ ℓ bb fe → ne ℓ bb (trans (fetch-room src (fpc fs₀)) fe)))
+    (RW.run-link-nothing src fs₀ r (λ ℓ bb fe → ne ℓ bb (trans (fetch-room src (fpc fs₀)) (cong (mmap (re (rsv-of src))) fe))))
 
 -- a return finds a saved frame (the base run's frames, `RetMatch`)
 ret-saved : ∀ prog (fs : FlatState) → RunLow prog fs → ∀ rpc rest → fret fs ≡ rpc ∷ rest
@@ -453,7 +474,8 @@ frame-op-absurd : ∀ prog (fs : FlatState) (i : AbstractInstr) → RunLow prog 
 frame-op-absurd .(room-checks src) .(L.lift src fs₀ p) i (mkRunLow src fs₀ p refl r refl pc) f nr
   with low-view src fs₀ p pc f
 ... | at-check k e _ = ⊥-elim (nr k e)
-... | at-image _ fi = RW.frame-op-absurd src fs₀ i (run-emitted r) fi
+... | at-image y _ fy ey =
+  subst ImageI ey (subst (λ X → X) (sym (re-inv ImageI (λ _ _ _ → refl) (rsv-of src) y)) (RW.frame-op-absurd src fs₀ y (run-emitted r) fy))
 
 -- a slot an instruction names is in the frame: the machine's slot gate (B1.7b)
 slot-read-in-frame : ∀ prog (fs : FlatState) (slot : Slot) (i : AbstractInstr) → RunLow prog fs
@@ -485,7 +507,7 @@ emitted-call-fn-resolves : ∀ prog (fs : FlatState) (f : CN) → RunLow prog fs
 emitted-call-fn-resolves .(room-checks src) .(L.lift src fs₀ p) f (mkRunLow src fs₀ p refl r refl pc) ft
   with low-view src fs₀ p pc ft
 ... | at-check k () _
-... | at-image _ fi with RW.emitted-call-fn-resolves src fs₀ f r fi
+... | at-image _ _ fy ey with RW.emitted-call-fn-resolves src fs₀ f r (image-at {src} {fs₀} fy ey (λ _ _ ()))
 ...   | j , e = φ src j , trans (find-entry-room src (e-fn f)) (cong (mmap (φ src)) e)
 
 -- …and a closure call's shape: the machine's gate too (`Flat.call-ok`)
@@ -503,7 +525,9 @@ start-behind : ∀ prog (fs : FlatState) (b rsv : ℕ) (r : RunLow prog fs) → 
 start-behind .(room-checks src) .(L.lift src fs₀ p) b rsv (mkRunLow src fs₀ p refl r refl pc) past ft
   with low-view src fs₀ p pc ft
 ... | at-check k () _
-... | at-image _ fi = past (RW.start-at-zero src (fpc fs₀) b _ (run-emitted r) fi)
+... | at-image y _ fy ey = by (start-back (rsv-of src) y b rsv ey)
+  where by : Σ ℕ (λ r′ → y ≡ instr-ctrl (c-start b r′)) → ⊥
+        by (r′ , e) = past (RW.start-at-zero src (fpc fs₀) b r′ (run-emitted r) (trans fy (cong just e)))
 
 -- THE RUN GOES ON, PAST ITS START: `low-step`, and the base run is still past
 -- pc 0 after it (a check leaves the base where it is; any other step is a base
@@ -515,12 +539,12 @@ low-step-past : ∀ (prog : AbstractTrace) (fs : FlatState) (i : AbstractInstr) 
 low-step-past .(room-checks src) .(RoomSim.lift {FS} src fs₀ p) i (mkRunLow src fs₀ p refl r refl pc) f h past
   with low-view src fs₀ p pc f
 ... | at-check k refl sp = mkRunLow src fs₀ (suc p) refl r refl (inj₁ sp) , past
-... | at-image refl fi with RoomSim.step-lift {FS} src fs₀ i
+... | at-image y refl fy ey with RoomSim.step-lift {FS} src fs₀ y
 ...   | p′ , e , pr′ =
-  mkRunLow src (flat-exec-instr i src fs₀) p′ refl
-    (mkRunAt (run-em r) (reach-step i fs₀ (run-reach r) fi h))
-    e pr′
-  , RW.run-step-pc-pos src fs₀ i r fi
+  mkRunLow src (flat-exec-instr y src fs₀) p′ refl
+    (mkRunAt (run-em r) (reach-step y fs₀ (run-reach r) fy h))
+    (trans (step-at src {y} ey (room-checks src) (RoomSim.lift {FS} src fs₀ (φ src (fpc fs₀)))) e) pr′
+  , RW.run-step-pc-pos src fs₀ y r fy
 
 -- a code address the image loads names a body that exists (the base image's
 -- fact, `RW.emitted-code-addr-has-body`; the entry scan commutes)
@@ -530,10 +554,10 @@ code-addr-has-body : ∀ prog (fs : FlatState) (ℓ : LabelId) → RunLow prog f
 code-addr-has-body .(room-checks src) .(L.lift src fs₀ p) ℓ (mkRunLow src fs₀ p refl r refl pc) ft
   with low-view src fs₀ p pc ft
 ... | at-check k () _
-... | at-image _ fi with base
+... | at-image _ _ fy ey with base
   where
     base : Σ ℕ (λ j → find-thunk src ℓ ≡ just j)
-    base = em-code (run-em r) (fpc fs₀) ℓ fi
+    base = em-code (run-em r) (fpc fs₀) ℓ (image-at {src} {fs₀} fy ey (λ _ _ ()))
 ...   | j , e = φ src j , trans (find-entry-room src (e-thunk ℓ)) (cong (mmap (φ src)) e)
 
 -- a step that is not a check moves the base run on — past its pc 0, whatever
@@ -545,12 +569,12 @@ low-step-image : ∀ (prog : AbstractTrace) (fs : FlatState) (i : AbstractInstr)
 low-step-image .(room-checks src) .(RoomSim.lift {FS} src fs₀ p) i (mkRunLow src fs₀ p refl r refl pc) f h nr
   with low-view src fs₀ p pc f
 ... | at-check k e _ = ⊥-elim (nr k e)
-... | at-image refl fi with RoomSim.step-lift {FS} src fs₀ i
+... | at-image y refl fy ey with RoomSim.step-lift {FS} src fs₀ y
 ...   | p′ , e , pr′ =
-  mkRunLow src (flat-exec-instr i src fs₀) p′ refl
-    (mkRunAt (run-em r) (reach-step i fs₀ (run-reach r) fi h))
-    e pr′
-  , RW.run-step-pc-pos src fs₀ i r fi
+  mkRunLow src (flat-exec-instr y src fs₀) p′ refl
+    (mkRunAt (run-em r) (reach-step y fs₀ (run-reach r) fy h))
+    (trans (step-at src {y} ey (room-checks src) (RoomSim.lift {FS} src fs₀ (φ src (fpc fs₀)))) e) pr′
+  , RW.run-step-pc-pos src fs₀ y r fy
 
 -- A RETURN LANDS ON A CHECK (plan 0.123 A.4 step 5, the budget): the base run's
 -- return addresses are one past a call (`RetMatch`, D094), the lift maps one past
@@ -566,7 +590,7 @@ ret-lands-check .(room-checks src) .(L.lift src fs₀ p) (mkRunLow src fs₀ p r
        → Σ Room (λ k → fetch (room-checks src) rpc ≡ just (instr-room k))
     go .(_ ∷ _) .(_ ∷ _) (RW.rm-∷ (q , refl , c , fq , ci) _) e =
       subst (λ z → Σ Room (λ k → fetch (room-checks src) z ≡ just (instr-room k))) (cong head′ e)
-        (boundary-next src (φ src q) (trans (fetch-room src q) fq) (call-boundary c ci))
+        (boundary-next src (φ src q) (trans (fetch-room src q) (cong (mmap (re (rsv-of src))) fq)) (trans (re-boundary? (rsv-of src) c) (call-boundary c ci)))
       where head′ : List ℕ → ℕ
             head′ []      = 0
             head′ (x ∷ _) = x
@@ -602,7 +626,7 @@ open import Once.CCC.Codegen.StackDepth using (Cert; o-start; kind; entry-k)
 open import Once.CCC.Codegen.RoomChecks using (tbl; pick; room-checks-def)
 open import Once.CCC.Codegen.RoomChecksFacts using (module PickCert; module NoFall; image-noroom; tbl-room; NoRoom)
 open PickCert {FS} using (pick-cert)
-open NoFall {FS} using (FF; FF-checks; leaves?)
+open NoFall {FS} using (FF; FF-room; leaves?)
 
 low-cert : ∀ {prog fs} → RunLow prog fs → Cert (tbl prog) prog
 low-cert (mkRunLow src fs₀ p refl r refl pc) =
@@ -673,4 +697,4 @@ private
 
 low-ff : ∀ {prog fs} → RunLow prog fs → FF prog
 low-ff (mkRunLow src fs₀ p refl r refl pc) =
-  subst FF (sym (room-checks-def src)) (FF-checks (pick src) o-start src (guard-ff src (Emitted.em-guard (RunAt.run-em r))))
+  FF-room src (guard-ff src (Emitted.em-guard (RunAt.run-em r)))

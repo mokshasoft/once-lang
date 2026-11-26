@@ -25454,3 +25454,18 @@ order is the record, `once_exhausted`, the record (`ImageSymbols.stack-refs`). *
 programs): against the unfused run 0.97×; against D490 (before the moving limit) run 1.00× (min 1.00×, max
 1.00×), `.text` 1.07× (the slow path's code at each flagged check), check instructions 1.29×.
 **Landed:** `make certified` green; 188 exit tests × 3 arches, seL4 × 3, `cabal test` 1025.
+**Stage 4 (2026-11-26): the start reserves exactly its segment's depth.** (4a, bc2aaa48e) The start carries
+its reserve, `c-start b r`; the arch start code reserves `r` words, the certificate checks `pastO ≤ r`
+(`Cert.start-le`). (4b) The room-check pass sets it: `room-checks t = reserve (past₀ T) (checks T o-start t)`,
+`T` the picked table, so the certificate is checked of the image as emitted, reserve included. The table is
+computed with the reserve cleared (`pick t = pick-of t (table (reserve 0 t))`), so it never reads it and the
+pass's output gives back its table (`pick-reserve`, `tbl-room`). Nothing but the start sees the reserve
+(`RoomReserve`: one view, `re-same`; the flat step, the scans, the measure, the events, by `re-inv`).
+`start-stack-words` stays the producers' placeholder. On the fallback table (`past₀ = 0`) the start reserves
+nothing and every call is checked. **Measured** (x86_64, 108 programs, against 15272da98): `.text` 1.00×, static
+instructions 1.00×; run 1.0145× without `alloc-forever` (at most 90 instructions a program: a flagged call's
+slow path now lowers `L` once per new deepest level, the stack no longer starting 32768 words deep);
+`alloc-forever` runs 1.03× longer before the heap is exhausted (the region the reserve held is the heap's).
+**Landed:** `make certified` green; 188 exit tests × 3 arches, seL4 × 3, `cabal test` 1025.
+**Open:** stage 5, `L` restored on return. Note for it: restoring makes the slow path recur at every flagged
+call that goes deeper than the restored limit, not once per level; the low-water mark is the cheaper run.

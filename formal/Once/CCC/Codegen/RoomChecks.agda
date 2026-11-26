@@ -131,25 +131,43 @@ pick-by : AbstractTrace → Depths → Bool → Depths
 pick-by t T true  = T
 pick-by t T false = T₀ (max-entry t)
 
+-- D491 stage 4: the start reserves exactly its segment's depth, `past₀` of the
+-- table the pass runs on. The pass sets the start's reserve (`reserve`), so the
+-- certificate is checked of the image as emitted, reserve included.
+re : ℕ → AbstractInstr → AbstractInstr
+re n (instr-ctrl (c-start b _)) = instr-ctrl (c-start b n)
+{-# CATCHALL #-}
+re n i                          = i
+
+reserve : ℕ → AbstractTrace → AbstractTrace
+reserve n []      = []
+reserve n (i ∷ t) = re n i ∷ reserve n t
+
 pick-of : AbstractTrace → Depths → Depths
-pick-of t T = pick-by t T (consistent? T (checks T o-start t))
+pick-of t T = pick-by t T (consistent? T (reserve (Depths.past₀ T) (checks T o-start t)))
 
 -- (opaque: no proof needs more of it than its certificate, `RoomChecksFacts.pick-cert`,
 -- and unfolded it is the whole table computation)
+-- (the table is computed with the reserve cleared, so it never reads it:
+-- `pick (reserve n t) ≡ pick t`, and the pass's own output gives back its table)
 opaque
   pick : AbstractTrace → Depths
-  pick t = pick-of t (table t)
+  pick t = pick-of t (table (reserve 0 t))
+
+-- the start's reserve the pass sets
+rsv-of : AbstractTrace → ℕ
+rsv-of t = Depths.past₀ (pick t)
 
 -- (opaque too: a proof that compares two spellings of the checked image then
 -- compares the images, not their checked forms instruction by instruction; the
 -- body is `room-checks-def`)
 opaque
   room-checks : AbstractTrace → AbstractTrace
-  room-checks t = checks (pick t) o-start t
+  room-checks t = reserve (rsv-of t) (checks (pick t) o-start t)
 
 opaque
   unfolding room-checks
-  room-checks-def : ∀ t → room-checks t ≡ checks (pick t) o-start t
+  room-checks-def : ∀ t → room-checks t ≡ reserve (rsv-of t) (checks (pick t) o-start t)
   room-checks-def t = refl
 
   -- (the pass keeps the image's first instruction first: the rest of it, after)
@@ -157,7 +175,7 @@ opaque
   room-rest i t = Data.List.drop 1 (room-checks (i ∷ t))
     where import Data.List
 
-  room-checks-∷ : ∀ i t → room-checks (i ∷ t) ≡ i ∷ room-rest i t
+  room-checks-∷ : ∀ i t → room-checks (i ∷ t) ≡ re (rsv-of (i ∷ t)) i ∷ room-rest i t
   room-checks-∷ i t = refl
 
 ------------------------------------------------------------------------

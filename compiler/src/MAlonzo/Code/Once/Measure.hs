@@ -306,7 +306,7 @@ d_at_82 v0 v1
                        (MAlonzo.Code.Once.Measure.Image.d_show'45'stats_108
                           (coe
                              MAlonzo.Code.Once.Measure.Image.d_image'45'stats_106
-                             (MAlonzo.Code.Once.CCC.Codegen.RoomChecks.d_room'45'checks_142
+                             (MAlonzo.Code.Once.CCC.Codegen.RoomChecks.d_room'45'checks_166
                                 (coe d_im_96 (coe v0) (coe v3) (coe v4)))))
                        (coe
                           MAlonzo.Code.Data.String.Base.d__'43''43'__20

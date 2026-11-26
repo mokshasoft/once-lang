@@ -30,7 +30,8 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Machine.SMCore using (AbstractInstr; AbstractTrace; instr-room; Room; module AllocState)
 open import Once.CCC.Machine.InstrSlot using (slot-of)
-open import Once.CCC.Codegen.RoomChecks using (boundary?; stretch; checks; room-checks; room-checks-def; pick)
+open import Once.CCC.Codegen.RoomChecks using (boundary?; stretch; checks; room-checks; room-checks-def; pick; re; rsv-of)
+open import Once.CCC.Codegen.RoomReserve using (module ReserveRun)
 import Relation.Binary.PropositionalEquality
 open import Once.CCC.Codegen.StackDepth using (o-start; owner-from)
 open import Once.CCC.Codegen.RoomChecksFacts using (ψ; φ; bump; module RoomFacts)
@@ -67,7 +68,9 @@ module RoomSim {FS : FrameSemantics} (t : AbstractTrace) where
       inj₂ ( sym (trans (ψ-next t c e) (cong (λ z → suc (bump z (ψ t c))) bt))
            , stretch (pick t) (owner-from o-start t c) (Data.List.drop (suc c) t)
            , Relation.Binary.PropositionalEquality.subst (λ p → fetch p (suc (φ t c)) ≡ just (instr-room (stretch (pick t) (owner-from o-start t c) (Data.List.drop (suc c) t))))
-               (sym (room-checks-def t)) (check-at (pick t) o-start t c e bt) )
+               (sym (room-checks-def t))
+               (trans (ReserveRun.fetch-reserve {FS} (rsv-of t) (checks (pick t) o-start t) (suc (φ t c)))
+                      (cong (mmap (re (rsv-of t))) (check-at (pick t) o-start t c e bt))) )
 
   -- ONE PLACE ON: after the instruction at `c` (or a return to `suc c`), the
   -- image with checks is at `suc (φ t c)` — which stands for `suc c`.
@@ -274,15 +277,19 @@ module RoomSim {FS : FrameSemantics} (t : AbstractTrace) where
     with just-injective (trans (sym f) fk)
   ... | refl = sound-lift fs (suc p) (inj₁ sp) snd rest
   -- at the image: the original's own step
-  sound-lift fs p {g} (inj₁ refl) snd (_∷_ {i = i′} (h , f) rest)
-    with step-lift fs i′
-  ... | p′ , e , pr′ =
-    sound-lift (flat-exec-instr i′ t fs) p′ {g} pr′
-      (sound-step snd h (trans (sym (fetch-room t (fpc fs))) f))
-      (subst-run e rest)
+  -- (D491 stage 4: the image's instruction, its reserve set — which the step ignores)
+  sound-lift fs p {g} (inj₁ refl) snd (_∷_ {i = i′} (h , f) rest) = at (fetch-room-back t (fpc fs) f)
     where
       subst-run : ∀ {a b c : FlatState} {m : ℕ} → a ≡ b → FlatSteps P′ m a c → FlatSteps P′ m b c
       subst-run refl r = r
+      at : Σ AbstractInstr (λ y → fetch t (fpc fs) ≡ just y × re (rsv-of t) y ≡ i′) → LocState.faulted (floc g) ≡ false
+      at (y , fy , ey) = go (step-lift fs y)
+        where
+          go : StepLift fs y → LocState.faulted (floc g) ≡ false
+          go (p′ , e , pr′) =
+            sound-lift (flat-exec-instr y t fs) p′ {g} pr′ (sound-step snd h fy)
+              (subst-run (trans (cong (λ j → flat-exec-instr j P′ (lift fs (φ t (fpc fs)))) (sym ey))
+                                (trans (ReserveRun.exec-re {FS} (rsv-of t) y P′ (lift fs (φ t (fpc fs)))) e)) rest)
 
   -- …so the image with checks, from the lift of a sound state, is sound.
   sound-room : ∀ (fs : FlatState) (p : ℕ) → PcRel (fpc fs) p → Sound t fs → Sound P′ (lift fs p)

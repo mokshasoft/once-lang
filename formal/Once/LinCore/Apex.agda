@@ -37,7 +37,7 @@ open import Once.Denotation.ProgramTrace using (⟦_⟧IRᵗ)
 open import Once.Denotation.Program using (IRFun; irProgram)
 open import Once.IR.Semantics.Trace using (module Interp)
 open import Once.CCC.FrameSemantics using (fs-numerics; fs-ffi; module FrameSemantics)
-open import Once.CCC.Codegen.RoomChecks using (room-checks; room-rest; room-checks-∷)
+open import Once.CCC.Codegen.RoomChecks using (room-checks; room-rest; room-checks-∷; rsv-of)
 open import Once.CCC.Machine.SMCore
   using (AbstractTrace; AbstractInstr; instr-ctrl; c-ret; c-start; start-stack-words; instr-call-closure; instr-sigop; instr-alloc-heap; instr-free-heap; SV-Ptr; SV-Code; module LocState; module AllocState)
 open import Data.Sum using (_⊎_)
@@ -87,7 +87,7 @@ wf-room : ∀ b rsv (t : AbstractTrace) (bs : List ArithBlock) (ex : List String
         → Backend.AsmWF B (Backend.file B (room-checks (instr-ctrl (c-start b rsv) ∷ t)) (file-table (Backend.payload B) bs) ex)
 wf-room b rsv t bs ex w =
   subst (λ p → Backend.AsmWF B (Backend.file B p (file-table (Backend.payload B) bs) ex)) (sym (room-checks-∷ _ t))
-        (file-wf b rsv (room-rest _ t) bs ex (subst (λ p → ImageWF p bs ex) (room-checks-∷ _ t) w))
+        (file-wf b (rsv-of (instr-ctrl (c-start b rsv) ∷ t)) (room-rest _ t) bs ex (subst (λ p → ImageWF p bs ex) (room-checks-∷ _ t) w))
 
 -- a constant's loader is an `instr-load-const`
 ld-is : Once.LinCore.ImageAll.LoadConst (fs-numerics FS) (fs-ffi FS) bw ML.ldConst
@@ -198,7 +198,7 @@ module NewImage (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Uni
     private
       -- an op the room-checked expansion calls is one the room-checked image calls
       sig-back : ∀ {A B} (si : Once.SigOp.Info.SigOpInfo A B) → instr-sigop si ∈ P″ → instr-sigop si ∈ P′
-      sig-back si m = EM.∈-room image (CD.exp-sig 0 image IA.em-alloc si (EM.room-sig imageˣ si m))
+      sig-back si m = EM.∈-room image (CD.exp-sig 0 image IA.em-alloc si (EM.room-sig imageˣ si m)) (λ _ _ ())
 
       fetch-∈ : ∀ (xs : AbstractTrace) k {i} → fetch xs k ≡ just i → i ∈ xs
       fetch-∈ (x ∷ xs) Data.Nat.zero    refl = Data.List.Relation.Unary.Any.here refl
@@ -286,7 +286,7 @@ module NewImage (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Uni
       -- an op the room-checked call image calls is one the room-checked image calls
       sig-backᶜ : ∀ {A B} (si : Once.SigOp.Info.SigOpInfo A B) → instr-sigop si ∈ P‴ → instr-sigop si ∈ P′
       sig-backᶜ si m = EM.∈-room image (Once.CCC.Codegen.AllocOutline.sig-out {FS} si ksᶜ IA.em-budget start-stack-words IA.tail
-                         (CDC.exp-sig 0 imageᵒ (Emitted.em-alloc emᵒ) si (EM.room-sig imageᶜ si m)))
+                         (CDC.exp-sig 0 imageᵒ (Emitted.em-alloc emᵒ) si (EM.room-sig imageᶜ si m))) (λ _ _ ())
 
     namedᶜ : Data.List.Relation.Unary.All.All (BT.SigNamed bs) P‴
     namedᶜ = Data.List.Relation.Unary.All.tabulate λ {i} m {A} {B} si e →
