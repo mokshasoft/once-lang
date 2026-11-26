@@ -39,6 +39,7 @@ open import Once.Measure.Image using (image-stats; show-stats)
 import Once.LinCore.ExprBuild
 import Once.LinCore.ExprImage
 import Once.CCC.Codegen.AllocExpandClasses
+import Once.Measure.Copies
 
 -- plan 0.146 (D467): the image the compiler emits (the linear core's, room-checked, at x86-64's
 -- numerics as the arch-neutral reference); a library has none
@@ -93,7 +94,11 @@ private
   at srcs nothing         = inj₂ (show-stats (image-stats []))
   at srcs (just (T , pm)) =
     inj₂ (show-stats (image-stats (room-checks im)) Data.String.++ "\n" Data.String.++ depth-diag im
-          Data.String.++ "\n(built) " Data.String.++ depth-diag imc)
+          Data.String.++ "\n(built) " Data.String.++ depth-diag imc
+          Data.String.++ "\n" Data.String.++ Once.Measure.Copies.show-copies (arch-numerics x86-64)
+               (Once.Measure.Copies.defs (arch-numerics x86-64)
+                  (Once.LinCore.ExprBuild.ETProg.defs (Once.LinCore.ExprBuild.exprTable (arch-numerics x86-64)
+                     (Once.LinCore.ExprBuild.srcOrder (arch-numerics x86-64) srcs [])))))
     where im = Once.LinCore.ExprImage.imageAt (arch-numerics x86-64)
                  (Once.LinCore.ExprBuild.srcOrder (arch-numerics x86-64) srcs []) pm
           imc = Once.LinCore.ExprImage.imageAtₘ (arch-numerics x86-64) false Once.CCC.Codegen.AllocExpandClasses.alloc-pool

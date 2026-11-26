@@ -283,6 +283,7 @@ library
       MAlonzo.Code.Once.Format.Print
       MAlonzo.Code.Once.Format.Spell
       MAlonzo.Code.Once.Measure
+      MAlonzo.Code.Once.Measure.Copies
       MAlonzo.Code.Once.Measure.Image
       Paths_once
       MAlonzo.Code.Data.Maybe.Relation.Binary.Pointwise

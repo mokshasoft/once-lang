@@ -24927,6 +24927,19 @@ carried through `Rs` and its meaning through `RefOK`, and a proof that such a ca
 does nothing else. Literal-`lam` arms need none of that. Proposed split: (B1) literal `lam` arms now;
 (B2) definition-shape facts through `Rs`/`RefOK` for review (the alternative to B2 is inlining, which the
 plan keeps behind a flag). Meanwhile the plan goes on with item c.
+**B1 landed (2026-11-26, plan 0.157 S2, keep-going mode; for the user's review).** Reading the benchmark's
+elaborated IR shows its arms are NOT references: `next`, `stop` reach `main` inlined as `closed` terms, and
+each arm is `coerce c (app (closed (lam (lam …))) p)` (the coercion: `Void + …` used at `Int + …`). So B1
+covers it without B2's definition facts. `FromExpr.Im` (what evaluates at once, emitting nothing): a
+variable, any `lam`, `closed`, `coerce` (every `coeIR` is pure), and `app` of an `ImF` (a literal `lam`
+whose body is `Im`, possibly `closed`) to an `Im` argument. `appL`: `app {Many} (copair' f g) x` with both
+arms `Im` (`cp?`) compiles as `lcase (apω ∘ (Lq f ∘ weak ⊗ id)) (apω ∘ (Lq g ∘ weak ⊗ id)) ∘ dist ∘ scrutA x`
+— the argument first (read in place when it is a read, D477), then only the chosen arm built, on the arms'
+context distributed (no `dup`). Proved in `FromExprOk` (`rel-appB`): the arms' IR meanings are pure
+(`im-I`/`imf-I`, through `PI`/`PF` records), so the IR's eager `copairIR ∘ ⟨ f , g ⟩` equals the branch.
+**Measured** (x86_64, against D491 stage 4): `list-build-sum` 14.67M/57.20M/225.90M → 0.43M/0.87M/1.73M at
+N = 250/500/1000 (linear; the same exit codes), `loop-sum` 0.61×, corpus static 217993 → 217591, one program
+0.63×. B2 (arms that are references) stays open until a program needs it.
 
 ## D482 — THE ALLOCATOR AS A CALL: ONE ROUTINE PER BLOCK SIZE, A CALL AT EACH SITE; `--inline-alloc` KEEPS THE EXPANSION (2026-11-23, proposed — for the user's review)
 **Proposed** (unattended, keep-going mode; plan 0.146 §5 item 8 c; the user, 2026-11-23: "the allocator … should

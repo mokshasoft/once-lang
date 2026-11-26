@@ -478,6 +478,66 @@ rd? (pair a b)  = rdPair (rd? a) (rd? b)
 {-# CATCHALL #-}
 rd? e           = Data.Maybe.map rd-path (pth? e)
 
+------------------------------------------------------------------------
+-- 5c. ★ D481 (B1): WHAT EVALUATES AT ONCE. The IR builds both arms of a case
+-- combinator before the case (`copairIR ∘ ⟨ f , g ⟩`). An arm whose evaluation
+-- returns at once and emits nothing — a closure built, a variable read, a
+-- literal function applied whose body is such — may instead be built inside
+-- the branch that uses it: the same meaning, and the context the arms share
+-- is DISTRIBUTED to the two branches, not split (no `dup`).
+------------------------------------------------------------------------
+
+mutual
+  -- an expression that evaluates at once, emitting nothing
+  data Im {m} : ∀ {n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} → Expr Γ Ψ A → Set where
+    im-var    : ∀ {n} {Γ : Ctx m n} (i : Data.Fin.Fin n) → Im (var {Γ = Γ} i)
+    im-lam    : ∀ {n} {Γ : Ctx m n} {Ψ : Usage n} {q′ π A B q} {p} {e : Expr (Γ SC.▸ A) (q′ ∷ Ψ) B}
+              → Im (lam {Ψ = Ψ} {q' = q′} {π = π} q p e)
+    im-closed : ∀ {n} {Γ : Ctx m n} {A} {e : Expr SC.∅ [] A} → Im e → Im (closed {Γ = Γ} e)
+    im-coe    : ∀ {n} {Γ : Ctx m n} {Ψ : Usage n} {A B} (c : A <: B) {e : Expr Γ Ψ A} → Im e → Im (coerce c e)
+    im-app1   : ∀ {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B} {f : Expr Γ Ψ₁ (A ⇒[ G.mk-kind G.One G.pure ] B)} {x : Expr Γ Ψ₂ A}
+              → ImF f → Im x → Im (app f x)
+    im-appω   : ∀ {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B} {f : Expr Γ Ψ₁ (A ⇒[ G.mk-kind G.Many G.pure ] B)} {x : Expr Γ Ψ₂ A}
+              → ImF f → Im x → Im (app f x)
+
+  -- a function that evaluates at once to a closure whose application returns at once
+  data ImF {m} : ∀ {n} {Γ : Ctx m n} {Ψ : Usage n} {T : Ty m} → Expr Γ Ψ T → Set where
+    imf-lam    : ∀ {n} {Γ : Ctx m n} {Ψ : Usage n} {q′ π A B q} {p} {e : Expr (Γ SC.▸ A) (q′ ∷ Ψ) B}
+               → Im e → ImF (lam {Ψ = Ψ} {q' = q′} {π = π} q p e)
+    imf-closed : ∀ {n} {Γ : Ctx m n} {T} {e : Expr SC.∅ [] T} → ImF e → ImF (closed {Γ = Γ} e)
+
+both : ∀ {X Y Z : Set} → (X → Y → Z) → Maybe X → Maybe Y → Maybe Z
+both h (just x) (just y) = just (h x y)
+{-# CATCHALL #-}
+both h _ _ = nothing
+
+mutual
+  im? : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} (e : Expr Γ Ψ A) → Maybe (Im e)
+  im? (var i)                 = just (im-var i)
+  im? (lam q p e)             = just im-lam
+  im? (closed e)              = Data.Maybe.map im-closed (im? e)
+  im? (coerce c e)            = Data.Maybe.map (im-coe c) (im? e)
+  im? (app {q = G.One} f x)   = both im-app1 (imf? f) (im? x)
+  im? (app {q = G.Many} f x)  = both im-appω (imf? f) (im? x)
+  {-# CATCHALL #-}
+  im? _                       = nothing
+
+  imf? : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {T : Ty m} (f : Expr Γ Ψ T) → Maybe (ImF f)
+  imf? (lam q p e) = Data.Maybe.map imf-lam (im? e)
+  imf? (closed e)  = Data.Maybe.map imf-closed (imf? e)
+  {-# CATCHALL #-}
+  imf? _           = nothing
+
+-- a case combinator whose arms evaluate at once
+data CP {m n} {Γ : Ctx m n} : ∀ {Ψ : Usage n} {T : Ty m} → Expr Γ Ψ T → Set where
+  cp : ∀ {Ψ₁ Ψ₂ : Usage n} {A B C π} {f : Expr Γ Ψ₁ (A ⇒[ G.mk-kind G.Many π ] C)} {g : Expr Γ Ψ₂ (B ⇒[ G.mk-kind G.Many π ] C)}
+     → Im f → Im g → CP (copair' f g)
+
+cp? : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {T : Ty m} (e : Expr Γ Ψ T) → Maybe (CP e)
+cp? (copair' f g) = both cp (im? f) (im? g)
+{-# CATCHALL #-}
+cp? _ = nothing
+
 module _ {L : Cx} where
 
   -- the variable's slot, inside a lent context: `t` reads it
@@ -582,6 +642,39 @@ module _ {L : Cx} (rs : Rs L) where
   k-pairL {Γ = Γ} {Ψ₁} {Ψ₂} a b nothing  = k-∘ (k-⊗ (Lq-blk a) (Lq-blk b)) (k-split Γ Ψ₁ Ψ₂)
   k-pairL {Γ = Γ} {Ψ₁} {Ψ₂} a b (just d) = k-∘ (k-⊗ k-id (Lq-blk b)) (k-∘ k-swap (k-lentS {Γ = Γ} {Ψ₁} {Ψ₂} d))
 
+  -- an application's argument as a scrutinee, the function's share beside it:
+  -- read in place (D477), else split off
+  scrutA : ∀ {m n} {Γ : Ctx m n} {Φ Ψs : Usage n} {S : Ty m} (s : Expr Γ Ψs S) → Maybe (Rd s)
+         → LTm L (Co Γ (Φ +ᵘ (G.Many *ᵘ Ψs))) (Co Γ Φ ⊗t ty S)
+  k-scrutA : ∀ {m n} {Γ : Ctx m n} {Φ Ψs : Usage n} {S : Ty m} (s : Expr Γ Ψs S) (d : Maybe (Rd s))
+           → Blk (scrutA {Γ = Γ} {Φ = Φ} s d)
+  scrutA {Γ = Γ} {Φ} {Ψs} s nothing  = (lid ⊗l (Lq s ∘l weak {Γ = Γ} (⊑ᵘ-*Many Ψs))) ∘l split Γ Φ (G.Many *ᵘ Ψs)
+  scrutA {Γ = Γ} {Φ} {Ψs} s (just d) =
+    (weak {Γ = Γ} (⊑ᵘ-+ˡ Φ (G.Many *ᵘ Ψs)) ⊗l lid) ∘l lend (bsnd (Rt d (⊑ᵘ-trans (⊑ᵘ-*Many Ψs) (⊑ᵘ-+ʳ Φ (G.Many *ᵘ Ψs))))) ∘l ρl⁻
+  k-scrutA {Γ = Γ} {Φ} {Ψs} s nothing  = k-∘ (k-⊗ k-id (k-∘ (Lq-blk s) (k-weak {Γ = Γ} (⊑ᵘ-*Many Ψs)))) (k-split Γ Φ (G.Many *ᵘ Ψs))
+  k-scrutA {Γ = Γ} {Φ} {Ψs} s (just d) =
+    k-∘ (k-⊗ (k-weak {Γ = Γ} (⊑ᵘ-+ˡ Φ (G.Many *ᵘ Ψs))) k-id) (k-∘ (k-lend (k-snd (k-Rt d (⊑ᵘ-trans (⊑ᵘ-*Many Ψs) (⊑ᵘ-+ʳ Φ (G.Many *ᵘ Ψs)))))) k-ρ⁻)
+
+  -- ★ D481 (B1): an application at `Many`; a case combinator whose arms evaluate
+  -- at once is a BRANCH: the argument first, then only the chosen arm built, on
+  -- the arms' context distributed (each arm's share kept by `weak`)
+  appL : ∀ {m n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B : Ty m} (f : Expr Γ Ψ₁ (A ⇒[ G.mk-kind G.Many G.pure ] B)) (x : Expr Γ Ψ₂ A)
+       → Maybe (CP f) → LTm L (Co Γ (Ψ₁ +ᵘ (G.Many *ᵘ Ψ₂))) (ty B)
+  k-appL : ∀ {m n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B : Ty m} (f : Expr Γ Ψ₁ (A ⇒[ G.mk-kind G.Many G.pure ] B)) (x : Expr Γ Ψ₂ A)
+         (d : Maybe (CP f)) → Blk (appL {Γ = Γ} f x d)
+  appL {Γ = Γ} {Ψ₁} {Ψ₂} f x nothing =
+    apω ∘l (Lq f ⊗l (Lq x ∘l weak {Γ = Γ} (⊑ᵘ-*Many Ψ₂))) ∘l split Γ Ψ₁ (G.Many *ᵘ Ψ₂)
+  appL {Γ = Γ} (copair' {Ψ₁ = Ψf} {Ψ₂ = Ψg} f g) x (just (cp _ _)) =
+    lcase (apω ∘l ((Lq f ∘l weak {Γ = Γ} (⊑ᵘ-+ˡ Ψf Ψg)) ⊗l lid))
+          (apω ∘l ((Lq g ∘l weak {Γ = Γ} (⊑ᵘ-+ʳ Ψf Ψg)) ⊗l lid))
+    ∘l dist ∘l scrutA {Γ = Γ} {Φ = Ψf +ᵘ Ψg} x (rd? x)
+  k-appL {Γ = Γ} {Ψ₁} {Ψ₂} f x nothing =
+    k-∘ k-apω (k-∘ (k-⊗ (Lq-blk f) (k-∘ (Lq-blk x) (k-weak {Γ = Γ} (⊑ᵘ-*Many Ψ₂)))) (k-split Γ Ψ₁ (G.Many *ᵘ Ψ₂)))
+  k-appL {Γ = Γ} (copair' {Ψ₁ = Ψf} {Ψ₂ = Ψg} f g) x (just (cp _ _)) =
+    k-∘ (k-case (k-∘ k-apω (k-⊗ (k-∘ (Lq-blk f) (k-weak {Γ = Γ} (⊑ᵘ-+ˡ Ψf Ψg))) k-id))
+                (k-∘ k-apω (k-⊗ (k-∘ (Lq-blk g) (k-weak {Γ = Γ} (⊑ᵘ-+ʳ Ψf Ψg))) k-id)))
+        (k-∘ k-dist (k-scrutA {Γ = Γ} {Φ = Ψf +ᵘ Ψg} x (rd? x)))
+
   scrutL {Γ = Γ} {Ψs} {Φ} s nothing  = (lid ⊗l Lq s) ∘l lswap ∘l split Γ Ψs Φ
   scrutL {Γ = Γ} {Ψs} {Φ} s (just d) = lentS {Γ = Γ} {Ψs} {Φ} d
   k-scrutL {Γ = Γ} {Ψs} {Φ} s nothing  = k-∘ (k-⊗ k-id (Lq-blk s)) (k-∘ k-swap (k-split Γ Ψs Φ))
@@ -602,8 +695,7 @@ module _ {L : Cx} (rs : Rs L) where
     castΦ {Γ = Γ} (sym (erase-arg-usage Ψ₁ Ψ₂)) (apω ∘l (Lq f ⊗l lid) ∘l ρl⁻)
   Lq {Γ = Γ} (app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = G.One} f x) =
     apω ∘l (Lq f ⊗l (Lq x ∘l weak {Γ = Γ} (⊑ᵘ-*One Ψ₂))) ∘l split Γ Ψ₁ (G.One *ᵘ Ψ₂)
-  Lq {Γ = Γ} (app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = G.Many} f x) =
-    apω ∘l (Lq f ⊗l (Lq x ∘l weak {Γ = Γ} (⊑ᵘ-*Many Ψ₂))) ∘l split Γ Ψ₁ (G.Many *ᵘ Ψ₂)
+  Lq {Γ = Γ} (app {q = G.Many} f x) = appL {Γ = Γ} f x (cp? f)
   -- an effectful application, suspended: a closure on `tt` that applies
   Lq {Γ = Γ} (effApp {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = G.Zero} {π = π} f x) =
     castΦ {Γ = Γ} (sym (erase-arg-usage Ψ₁ Ψ₂))
@@ -690,8 +782,7 @@ module _ {L : Cx} (rs : Rs L) where
     k-castΦ {Γ = Γ} (sym (erase-arg-usage Ψ₁ Ψ₂)) (k-∘ k-apω (k-∘ (k-⊗ (Lq-blk f) k-id) k-ρ⁻))
   Lq-blk {Γ = Γ} (app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = G.One} f x) =
     k-∘ k-apω (k-∘ (k-⊗ (Lq-blk f) (k-∘ (Lq-blk x) (k-weak {Γ = Γ} (⊑ᵘ-*One Ψ₂)))) (k-split Γ Ψ₁ (G.One *ᵘ Ψ₂)))
-  Lq-blk {Γ = Γ} (app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = G.Many} f x) =
-    k-∘ k-apω (k-∘ (k-⊗ (Lq-blk f) (k-∘ (Lq-blk x) (k-weak {Γ = Γ} (⊑ᵘ-*Many Ψ₂)))) (k-split Γ Ψ₁ (G.Many *ᵘ Ψ₂)))
+  Lq-blk {Γ = Γ} (app {q = G.Many} f x) = k-appL {Γ = Γ} f x (cp? f)
   Lq-blk {Γ = Γ} (effApp {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = G.Zero} f x) = k-castΦ {Γ = Γ} (sym (erase-arg-usage Ψ₁ Ψ₂)) k-lamωᶜ
   Lq-blk (effApp {q = G.One} f x) = k-lamωᶜ
   Lq-blk (effApp {q = G.Many} f x) = k-lamωᶜ

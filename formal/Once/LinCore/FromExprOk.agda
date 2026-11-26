@@ -69,6 +69,8 @@ open import Once.LinCore.NbEPLinCore fmt ans
 open Sem using (Lᶜ; cataC; travC)
 open import Once.LinCore.FromExpr fmt using (ty; Co; weak; split; carryL; mixL; apω; var-at; bindL; Rs; Lq; castΦ; opL; numL; sigL; cast; clo; callM; refL; mapT; layerEq; dist; coeL; coeR)
 open import Once.LinCore.FromExpr fmt using (Pth; p-var; p-fst; p-snd; p-mfst; p-msnd; mq; Rd; rd-path; rd-int; rd-float; rd-num; rd-pair; rd-coe; coeRd; rd?; lv; Rp; Rt; lentS; scrutL; pairL)
+open import Once.LinCore.FromExpr fmt using (Im; im-var; im-lam; im-closed; im-coe; im-app1; im-appω; ImF; imf-lam; imf-closed; CP; cp; cp?; appL; scrutA)
+open import Once.Surface.Elaborate using (copairIR)
 open import Once.Context using (_⊔ᵘ_; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ)
 open import Once.Surface.Map using (mp-id; mp-fst; mp-snd; mp-terminal; mp-inl; mp-inr; mp-initial; mp-apply; mp-In; mp-Out; mp-toFloat)
 open import Once.TypeCheck.Table using (mapIR)
@@ -1077,6 +1079,235 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRT
       q₁ = ⊑ᵘ-+ˡ Ψs Φ
       q₂ = ⊑ᵘ-+ʳ Ψs Φ
 
+  -- the combinators' distribution (`distribIR`), the same values
+  distribIR-pure : ∀ {X A B : IRTy} → PureI ρ (distribIR {X} {A} {B} am) (dv′ {X} {A} {B})
+  distribIR-pure (x , inj₁ a) =
+    ≈-trans (bind-pure (≈-trans (bind-pure ret-bind) ret-bind)) (bind-pure (≈-trans ret-bind ret-bind))
+  distribIR-pure (x , inj₂ b) =
+    ≈-trans (bind-pure (≈-trans (bind-pure ret-bind) ret-bind)) (bind-pure (≈-trans ret-bind ret-bind))
+
+  ------------------------------------------------------------------------
+  -- ★ D481 (B1): WHAT EVALUATES AT ONCE does so in the IR — a value, no
+  -- event — so a case combinator's arms may be built in the branch.
+  ------------------------------------------------------------------------
+
+  -- a pure IR morphism, its value named (a record: the morphism stays visible)
+  record PI {A B : IRTy} (t : M.IR A B) : Set where
+    constructor pi
+    field
+      ival : ⟦ A ⟧ᴰᴵ → ⟦ B ⟧ᴰᴵ
+      iprf : PureI ρ t ival
+  open PI using (ival; iprf)
+
+  -- a function value whose every application returns at once
+  AppNow : ∀ (C : IRTy) → ⟦ C ⟧ᴰᴵ → Set
+  AppNow (X I.⇛[ π ] Y) v = ∀ b → Σ ⟦ Y ⟧ᴰᴵ (λ c → v b ≈ return∞ c)
+  {-# CATCHALL #-}
+  AppNow _ _ = ⊤
+
+  record PF {A C : IRTy} (t : M.IR A C) : Set where
+    constructor pf
+    field
+      fv : ⟦ A ⟧ᴰᴵ → ⟦ C ⟧ᴰᴵ
+      fp : PureI ρ t fv
+      fn : ∀ a → AppNow C (fv a)
+  open PF using (fv; fp; fn)
+
+  pi-id : ∀ {A} → PI (M.id {A})
+  pi-id = pi (λ x → x) (λ x → ≈-refl)
+
+  pi-∘ : ∀ {A B C} {f : M.IR B C} {g : M.IR A B} → PI f → PI g → PI (f M.∘ g)
+  pi-∘ {f = f} {g = g} (pi u pu) (pi v pg) = pi (λ x → u (v x)) (q-∘ ρ {f = f} {g = g} pu pg)
+
+  pi-pair : ∀ {A B C} {f : M.IR A B} {g : M.IR A C} → PI f → PI g → PI M.⟨ f , g ⟩
+  pi-pair {f = f} {g = g} (pi u pu) (pi v pg) = pi (λ x → u x , v x) (q-pair ρ {f = f} {g = g} pu pg)
+
+  pi-fst : ∀ {A B} → PI (M.fst {A} {B})
+  pi-fst = pi proj₁ (λ x → ≈-refl)
+
+  pi-snd : ∀ {A B} → PI (M.snd {A} {B})
+  pi-snd = pi proj₂ (λ x → ≈-refl)
+
+  pi-term : ∀ {A} → PI (M.terminal {A})
+  pi-term = pi (λ _ → tt) (λ x → ≈-refl)
+
+  pi-curry : ∀ {A X Y π} (t : M.IR (A I.* X) Y) → PI (M.curry {π = π} t)
+  pi-curry t = pi (λ a b → evalᴰ fmt ρ t (a , b)) (λ x → ≈-refl)
+
+  pi-inl : ∀ {A B} → PI (M.inl {A} {B})
+  pi-inl = pi inj₁ (λ x → ≈-refl)
+
+  pi-inr : ∀ {A B} → PI (M.inr {A} {B})
+  pi-inr = pi inj₂ (λ x → ≈-refl)
+
+  pi-case : ∀ {A B C} {f : M.IR A C} {g : M.IR B C} → PI f → PI g → PI (M.case f g)
+  pi-case (pi u pu) (pi v pg) = pi (λ { (inj₁ a) → u a ; (inj₂ b) → v b }) (λ { (inj₁ a) → pu a ; (inj₂ b) → pg b })
+
+  pi-restrict : ∀ {m n} {Γ : Ctx m n} {Ψ Ψ′ : Usage n} (p : Ψ ⊑ᵘ Ψ′) → PI (restrictEnv {Γ = Γ} am p)
+  pi-restrict {Γ = Γ} p = pi (rv {Γ = Γ} p) (restrict-pure ρ am {Γ = Γ} p)
+
+  pi-subst : ∀ {Z X Y : IRTy} (e : X ≡ Y) {t : M.IR Z X} → PI t → PI (subst (M.IR Z) e t)
+  pi-subst refl p = p
+
+  -- every conversion is pure
+  coe-pure : ∀ {m} {A B : Ty m} (c : A <: B) → PI (coeIR c)
+  coe-pure sub-void = pi (λ ()) (λ ())
+  coe-pure sub-unit = pi-id
+  coe-pure sub-int = pi-id
+  coe-pure sub-float = pi-id
+  coe-pure (sub-arr {q = G.Zero} a b _) = pi-curry _
+  coe-pure (sub-arr {q = G.One} a b _)  = pi-curry _
+  coe-pure (sub-arr {q = G.Many} a b _) = pi-curry _
+  coe-pure (sub-* a b) = pi-pair (pi-∘ (coe-pure a) pi-fst) (pi-∘ (coe-pure b) pi-snd)
+  coe-pure (sub-+ a b) = pi-case (pi-∘ pi-inl (coe-pure a)) (pi-∘ pi-inr (coe-pure b))
+  coe-pure sub-μ = pi-id
+  coe-pure (sub-ν _) = pi-id
+  coe-pure sub-var = pi-id
+
+  coe-I : ∀ {m} {A B : Ty m} {Z : IRTy} (c : A <: B) (d : Dec (VoidFree c)) {t : M.IR Z ⌊ A ⌋} → PI t → PI (runCoe-dec c d t)
+  coe-I c (yes vf) p = pi-subst (erase-eq c vf) p
+  coe-I c (no _)   p = pi-∘ (coe-pure c) p
+
+  proj-pure : ∀ {m n} {Γ : Ctx m n} (i : Data.Fin.Fin n) → PI (projUsed {Γ = Γ} i)
+  proj-pure {Γ = Γ SC.▸ A} Data.Fin.zero    = pi-snd
+  proj-pure {Γ = Γ SC.▸ A} (Data.Fin.suc i) = proj-pure {Γ = Γ} i
+
+  -- a function that returns at once, after what returns at once
+  pf-∘ : ∀ {A B C} {f : M.IR B C} {g : M.IR A B} → PF f → PI g → PF (f M.∘ g)
+  pf-∘ {f = f} {g = g} (pf u pu nu) (pi v pg) = pf (λ x → u (v x)) (q-∘ ρ {f = f} {g = g} pu pg) (λ x → nu (v x))
+
+  pf-closed : ∀ {A C} {f : M.IR I.Unit C} → PF f → PF (f M.∘ M.terminal {A})
+  pf-closed {A} {f = f} (pf u pu nu) = pf (λ _ → u tt) (q-∘ ρ {f = f} {g = M.terminal {A}} pu (λ _ → ≈-refl)) (λ _ → nu tt)
+
+  -- ... applied to what returns at once
+  app-I : ∀ {A B C : IRTy} {π} {F : M.IR A (B I.⇛[ π ] C)} {X : M.IR A B} → PF F → PI X → PI (M.apply M.∘ M.⟨ F , X ⟩)
+  app-I {F = F} {X = X} (pf vF pF nF) (pi vX pX) =
+    pi (λ y → proj₁ (nF y (vX y))) (λ y → ≈-trans (bind-pure (q-pair ρ {f = F} {g = X} pF pX y)) (proj₂ (nF y (vX y))))
+
+  -- a closure whose body returns at once
+  pf-curry : ∀ {A X Y π} {t : M.IR (A I.* X) Y} → PI t → PF (M.curry {π = π} t)
+  pf-curry {t = t} (pi u pu) = pf (λ a b → evalᴰ fmt ρ t (a , b)) (λ x → ≈-refl) (λ a b → u (a , b) , pu (a , b))
+
+  im-I : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} {e : Expr Γ Ψ A} → Im e → PI (elaborate am e)
+  imf-I : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {T : Ty m} {e : Expr Γ Ψ T} → ImF e → PF (elaborate am e)
+  im-I {Γ = Γ} (im-var i) = proj-pure {Γ = Γ} i
+  im-I (im-lam {q′ = G.Zero} {q = G.Zero}) = pi-curry _
+  im-I (im-lam {q′ = G.Zero} {q = G.One})  = pi-curry _
+  im-I (im-lam {q′ = G.Zero} {q = G.Many}) = pi-curry _
+  im-I (im-lam {q′ = G.One}  {q = G.One})  = pi-curry _
+  im-I (im-lam {q′ = G.One}  {q = G.Many}) = pi-curry _
+  im-I (im-lam {q′ = G.Many} {q = G.Many}) = pi-curry _
+  im-I (im-lam {q′ = G.One}  {q = G.Zero} {p = ()})
+  im-I (im-lam {q′ = G.Many} {q = G.Zero} {p = ()})
+  im-I (im-lam {q′ = G.Many} {q = G.One}  {p = ()})
+  im-I (im-closed p) = pi-∘ (im-I p) pi-term
+  im-I (im-coe c p) = coe-I c (voidFree? c) (im-I p)
+  im-I {Γ = Γ} (im-app1 {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f x) =
+    app-I (pf-∘ (imf-I f) (pi-restrict {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ (G.One *ᵘ Ψ₂))))
+          (pi-∘ (im-I x) (pi-restrict {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*One Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (G.One *ᵘ Ψ₂)))))
+  im-I {Γ = Γ} (im-appω {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f x) =
+    app-I (pf-∘ (imf-I f) (pi-restrict {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ (G.Many *ᵘ Ψ₂))))
+          (pi-∘ (im-I x) (pi-restrict {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (G.Many *ᵘ Ψ₂)))))
+  imf-I (imf-lam {q′ = G.Zero} {q = G.Zero} p) = pf-curry (pi-∘ (im-I p) pi-fst)
+  imf-I (imf-lam {q′ = G.Zero} {q = G.One} p)  = pf-curry (pi-∘ (im-I p) pi-fst)
+  imf-I (imf-lam {q′ = G.Zero} {q = G.Many} p) = pf-curry (pi-∘ (im-I p) pi-fst)
+  imf-I (imf-lam {q′ = G.One}  {q = G.One} p)  = pf-curry (im-I p)
+  imf-I (imf-lam {q′ = G.One}  {q = G.Many} p) = pf-curry (im-I p)
+  imf-I (imf-lam {q′ = G.Many} {q = G.Many} p) = pf-curry (im-I p)
+  imf-I (imf-lam {q′ = G.One}  {q = G.Zero} {p = ()} _)
+  imf-I (imf-lam {q′ = G.Many} {q = G.Zero} {p = ()} _)
+  imf-I (imf-lam {q′ = G.Many} {q = G.One}  {p = ()} _)
+  imf-I (imf-closed p) = pf-closed (imf-I p)
+
+  -- a term beside a value it passes on
+  rel-side : ∀ {X Y A : IRTy} {t : LTm L ⟪ X ⟫ ⟪ Y ⟫} {t′ : M.IR X Y}
+           → Rel t t′ → Rel (t ⊗l lid {A = ⟪ A ⟫}) M.⟨ t′ M.∘ M.fst , M.snd ⟩
+  rel-side r = mkRel λ { {x , a} {x′ , a′} (w , wa) →
+    ≈-≈R (>>=-cong ≈-refl (λ _ → ret-bind))
+      (≈R-≈ (>>=-congR (relOf r w) (λ r′ → ret≈R (r′ , wa))) (≈-sym (>>=-cong ret-bind (λ _ → ret-bind)))) }
+
+  -- an argument as a scrutinee, the function's share beside it: read in place or split off
+  rel-scrutA : ∀ {m n} {Γ : Ctx m n} {Φ Ψs : Usage n} {S : Ty m} (s : Expr Γ Ψs S) (md : Maybe (Rd s)) → Goal s
+             → Rel (scrutA rs {Γ = Γ} {Φ = Φ} s md)
+                   M.⟨ M.id M.∘ restrictEnv {Γ = Γ} am (⊑ᵘ-+ˡ Φ (G.Many *ᵘ Ψs))
+                     , elaborate am s M.∘ restrictEnv {Γ = Γ} am (⊑ᵘ-trans (⊑ᵘ-*Many Ψs) (⊑ᵘ-+ʳ Φ (G.Many *ᵘ Ψs))) ⟩
+  rel-scrutA {Γ = Γ} {Φ} {Ψs} s nothing  rs′ = rel-pairW Γ Φ Ψs (G.Many *ᵘ Ψs) (⊑ᵘ-*Many Ψs) rel-id rs′
+  rel-scrutA {Γ = Γ} {Φ} {Ψs} s (just d) rs′ = mkRel λ {x} {x′} w →
+    ≈-≈R (≈-trans (>>=-cong ret-bind (λ _ → ≈-refl))
+           (≈-trans (bind-assoc (Lᶜ δ (Rt d q₁) x tt) _ _)
+             (>>=-cong ≈-refl (λ v → ≈-trans ret-bind (≈-trans (bind-pure (weak-pure δ {E = One} {Γ = Γ} q₂ tt x)) ret-bind)))))
+      (≈R-≈ (>>=-congR (≈-≈R (rt-eq d q₁ x) (relOf rs′ (weak-W {Γ = Γ} q₁ w))) (λ r → ret≈R (weak-W {Γ = Γ} q₂ w , r)))
+            (≈-sym (≈-trans (bind-pure (bind-pure (restrict-pure ρ am {Γ = Γ} q₂ x′)))
+                            (>>=-cong (bind-pure (restrict-pure ρ am {Γ = Γ} q₁ x′)) (λ _ → ≈-refl)))))
+    where
+      q₁ = ⊑ᵘ-trans (⊑ᵘ-*Many Ψs) (⊑ᵘ-+ʳ Φ (G.Many *ᵘ Ψs))
+      q₂ = ⊑ᵘ-+ˡ Φ (G.Many *ᵘ Ψs)
+
+  -- ★ the branch against the IR's eager copairing: the arms return at once,
+  -- so building both first and choosing after is choosing first and building one
+  rel-appB : ∀ {m n} {Γ : Ctx m n} {Ψf Ψg Ψx : Usage n} {A B C : Ty m}
+               (f : Expr Γ Ψf (A ⇒[ G.mk-kind G.Many G.pure ] C)) (g : Expr Γ Ψg (B ⇒[ G.mk-kind G.Many G.pure ] C))
+               (x : Expr Γ Ψx (A + B)) (i : Im f) (j : Im g)
+           → Goal f → Goal g → Goal x
+           → Rel (appL rs {Γ = Γ} (copair' f g) x (just (cp i j))) (elaborate am (app (copair' f g) x))
+  rel-appB {Γ = Γ} {Ψf} {Ψg} {Ψx} {A} {B} {C} f g x i j rf rg rx =
+    rel-≈ʳ (rel-∘ (rel-lcase (rel-∘ (rel-apω {π = G.pure}) (rel-side (rel-∘ rf (rel-weak am {Γ = Γ} pl))))
+                             (rel-∘ (rel-apω {π = G.pure}) (rel-side (rel-∘ rg (rel-weak am {Γ = Γ} pr)))))
+                  (rel-∘ rel-dist (rel-scrutA {Γ = Γ} {Φ = Ψf +ᵘ Ψg} x (rd? x) rx)))
+           eq
+    where
+      pl = ⊑ᵘ-+ˡ Ψf Ψg
+      pr = ⊑ᵘ-+ʳ Ψf Ψg
+      q₁ = ⊑ᵘ-+ˡ (Ψf +ᵘ Ψg) (G.Many *ᵘ Ψx)
+      q₂ = ⊑ᵘ-trans (⊑ᵘ-*Many Ψx) (⊑ᵘ-+ʳ (Ψf +ᵘ Ψg) (G.Many *ᵘ Ψx))
+      Fe = elaborate am f
+      Ge = elaborate am g
+      Xe = elaborate am x
+      PFl = pi-∘ (im-I i) (pi-restrict {Γ = Γ} pl)
+      PGr = pi-∘ (im-I j) (pi-restrict {Γ = Γ} pr)
+      A1 = M.apply M.∘ M.⟨ (Fe M.∘ restrictEnv {Γ = Γ} am pl) M.∘ M.fst , M.snd ⟩
+      A2 = M.apply M.∘ M.⟨ (Ge M.∘ restrictEnv {Γ = Γ} am pr) M.∘ M.fst , M.snd ⟩
+      B1 : M.IR (((⌊ A ⌋ I.⇛[ G.pure ] ⌊ C ⌋) I.* (⌊ B ⌋ I.⇛[ G.pure ] ⌊ C ⌋)) I.* ⌊ A ⌋) ⌊ C ⌋
+      B1 = M.apply M.∘ M.⟨ M.fst M.∘ M.fst , M.snd ⟩
+      B2 : M.IR (((⌊ A ⌋ I.⇛[ G.pure ] ⌊ C ⌋) I.* (⌊ B ⌋ I.⇛[ G.pure ] ⌊ C ⌋)) I.* ⌊ B ⌋) ⌊ C ⌋
+      B2 = M.apply M.∘ M.⟨ M.snd M.∘ M.fst , M.snd ⟩
+      FnA = ⌊ A ⌋ I.⇛[ G.pure ] ⌊ C ⌋
+      FnB = ⌊ B ⌋ I.⇛[ G.pure ] ⌊ C ⌋
+      Cx₀ = ⌊ ⟦ Γ ↾ (Ψf +ᵘ Ψg) ⟧ᶜ ⌋
+      PA1 : PI {Cx₀ I.* ⌊ A ⌋} {FnA I.* ⌊ A ⌋} M.⟨ (Fe M.∘ restrictEnv {Γ = Γ} am pl) M.∘ M.fst , M.snd ⟩
+      PA1 = pi-pair (pi-∘ PFl pi-fst) pi-snd
+      PA2 : PI {Cx₀ I.* ⌊ B ⌋} {FnB I.* ⌊ B ⌋} M.⟨ (Ge M.∘ restrictEnv {Γ = Γ} am pr) M.∘ M.fst , M.snd ⟩
+      PA2 = pi-pair (pi-∘ PGr pi-fst) pi-snd
+      PB1 : PI {(FnA I.* FnB) I.* ⌊ A ⌋} {FnA I.* ⌊ A ⌋} M.⟨ M.fst M.∘ M.fst , M.snd ⟩
+      PB1 = pi-pair (pi-∘ pi-fst pi-fst) pi-snd
+      PB2 : PI {(FnA I.* FnB) I.* ⌊ B ⌋} {FnB I.* ⌊ B ⌋} M.⟨ M.snd M.∘ M.fst , M.snd ⟩
+      PB2 = pi-pair (pi-∘ pi-snd pi-fst) pi-snd
+
+      -- one branch's two runs: the arm built after the choice, or chosen among two built
+      arm : ∀ (r : ⟦ ⌊ ⟦ Γ ↾ (Ψf +ᵘ Ψg) ⟧ᶜ ⌋ ⟧ᴰᴵ) (c : ⟦ ⌊ A ⌋ I.+ ⌊ B ⌋ ⟧ᴰᴵ)
+          → (evalᴰ fmt ρ (distribute am) (r , c) >>=∞ evalᴰ fmt ρ (M.case A1 A2))
+            ≈ (evalᴰ fmt ρ (distribIR am) ((ival PFl r , ival PGr r) , c) >>=∞ evalᴰ fmt ρ (M.case B1 B2))
+      arm r (inj₁ a) =
+        ≈-trans (bind-pure (distribute-pure (r , inj₁ a)))
+          (≈-trans (bind-pure {k = λ p → proj₁ p (proj₂ p)} (iprf PA1 (r , a)))
+            (≈-sym (≈-trans (bind-pure (distribIR-pure ((ival PFl r , ival PGr r) , inj₁ a)))
+                            (bind-pure {k = λ p → proj₁ p (proj₂ p)} (iprf PB1 ((ival PFl r , ival PGr r) , a))))))
+      arm r (inj₂ b) =
+        ≈-trans (bind-pure (distribute-pure (r , inj₂ b)))
+          (≈-trans (bind-pure {k = λ p → proj₁ p (proj₂ p)} (iprf PA2 (r , b)))
+            (≈-sym (≈-trans (bind-pure (distribIR-pure ((ival PFl r , ival PGr r) , inj₂ b)))
+                            (bind-pure {k = λ p → proj₁ p (proj₂ p)} (iprf PB2 ((ival PFl r , ival PGr r) , b))))))
+
+      eq : ∀ y → evalᴰ fmt ρ (M.case A1 A2 M.∘ (distribute am M.∘ M.⟨ M.id M.∘ restrictEnv {Γ = Γ} am q₁ , Xe M.∘ restrictEnv {Γ = Γ} am q₂ ⟩)) y
+                 ≈ evalᴰ fmt ρ (elaborate am (app {q = G.Many} (copair' f g) x)) y
+      eq y =
+        ≈-trans (>>=-cong (>>=-cong (bind-pure (iprf (pi-∘ pi-id (pi-restrict {Γ = Γ} q₁)) y)) (λ _ → ≈-refl)) (λ _ → ≈-refl))
+          (≈-trans (bind-assoc _ _ _) (≈-trans (bind-assoc (evalᴰ fmt ρ (Xe M.∘ restrictEnv {Γ = Γ} am q₂) y) _ _)
+            (≈-trans (>>=-cong ≈-refl (λ c → ≈-trans ret-bind (arm (rv {Γ = Γ} q₁ y) c)))
+              (≈-sym (≈-trans (>>=-cong (bind-pure (iprf (pi-∘ (pi-∘ (pi-curry {π = G.pure} (M.case B1 B2 M.∘ distribIR am)) (pi-pair PFl PGr)) (pi-restrict {Γ = Γ} q₁)) y))
+                                        (λ _ → ≈-refl))
+                        (≈-trans (bind-assoc _ _ _) (>>=-cong ≈-refl (λ _ → ret-bind))))))))
+
   -- ★ A CASE: the scrutinee's share split off, the arms' share distributed,
   -- each arm on its share and the bound value
   ok-case : ∀ {m n} {Γ : Ctx m n} {Ψs Ψₗ Ψᵣ : Usage n} {qℓ qr : G.Quantity} {A B C : Ty m}
@@ -1086,13 +1317,6 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRT
     rel-∘ (rel-lcase (rel-∘ rl (rel-∘ (rel-bind {Γ = Γ} {A = A} qℓ) (rel-arm {Γ = Γ} (⊑ᵘ-⊔ˡ Ψₗ Ψᵣ))))
                      (rel-∘ rr (rel-∘ (rel-bind {Γ = Γ} {A = B} qr) (rel-arm {Γ = Γ} (⊑ᵘ-⊔ʳ Ψₗ Ψᵣ)))))
           (rel-∘ rel-dist (rel-scrut {Γ = Γ} {Φ = Ψₗ ⊔ᵘ Ψᵣ} s (rd? s) rs′))
-
-  -- the combinators' distribution (`distribIR`), the same values
-  distribIR-pure : ∀ {X A B : IRTy} → PureI ρ (distribIR {X} {A} {B} am) (dv′ {X} {A} {B})
-  distribIR-pure (x , inj₁ a) =
-    ≈-trans (bind-pure (≈-trans (bind-pure ret-bind) ret-bind)) (bind-pure (≈-trans ret-bind ret-bind))
-  distribIR-pure (x , inj₂ b) =
-    ≈-trans (bind-pure (≈-trans (bind-pure ret-bind) ret-bind)) (bind-pure (≈-trans ret-bind ret-bind))
 
   rel-distIR : ∀ {X A B : IRTy} → Rel (dist {L} {One} {⟪ X ⟫} {⟪ A ⟫} {⟪ B ⟫}) (distribIR {X} {A} {B} am)
   rel-distIR {X} {A} {B} = rel-pure (dist-pure {X} {A} {B}) (distribIR-pure {X} {A} {B}) dW
@@ -1294,6 +1518,11 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRT
   -- ★★ THE BRIDGE'S MEANING: for every expression whose references are related
   Lq-ok : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} (e : Expr Γ Ψ A)
         → Refs (λ _ _ → ⊤) RefOK RefOK e → Goal e
+  -- an application at `Many`, a branch where `appL` makes one (D481 B1)
+  ok-appL : ∀ {m n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B : Ty m}
+              (f : Expr Γ Ψ₁ (A ⇒[ G.mk-kind G.Many G.pure ] B)) (x : Expr Γ Ψ₂ A) (md : Maybe (CP f))
+          → Refs (λ _ _ → ⊤) RefOK RefOK f → Refs (λ _ _ → ⊤) RefOK RefOK x
+          → Rel (appL rs {Γ = Γ} f x md) (elaborate am (app f x))
   Lq-ok {Γ = Γ} (var i) r = rel-var {Γ = Γ} i
   Lq-ok (lam {q' = G.Zero} {π = π} G.Zero _ e) r = rel-cloG π _ (rel-∘ (Lq-ok e r) rel-fst)
   Lq-ok (lam {q' = G.Zero} {π = π} G.One  _ e) r = rel-cloG π _ (rel-∘ (Lq-ok e r) rel-fst)
@@ -1304,8 +1533,7 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRT
   Lq-ok (app {q = G.Zero} f x) (rf , rx) = ok-app0 f x (Lq-ok f rf)
   Lq-ok {Γ = Γ} (app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = G.One} f x) (rf , rx) =
     rel-app Γ Ψ₁ Ψ₂ (G.One *ᵘ Ψ₂) (⊑ᵘ-*One Ψ₂) (Lq-ok f rf) (Lq-ok x rx)
-  Lq-ok {Γ = Γ} (app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = G.Many} f x) (rf , rx) =
-    rel-app Γ Ψ₁ Ψ₂ (G.Many *ᵘ Ψ₂) (⊑ᵘ-*Many Ψ₂) (Lq-ok f rf) (Lq-ok x rx)
+  Lq-ok {Γ = Γ} (app {q = G.Many} f x) (rf , rx) = ok-appL {Γ = Γ} f x (cp? f) rf rx
   Lq-ok (effApp f x) (rf , rx) = ok-effApp f x (Lq-ok f rf) (Lq-ok x rx)
   Lq-ok {Γ = Γ} (pair a b) (ra , rb) = rel-pairL {Γ = Γ} a b (rd? a) (Lq-ok a ra) (Lq-ok b rb)
   Lq-ok (fst' p) r = rel-∘ rel-fst (Lq-ok p r)
@@ -1337,3 +1565,8 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRT
   Lq-ok (cata wf alg) r = ok-cata wf alg (Lq-ok alg r)
   Lq-ok (ana wf c) r = ok-ana wf c (Lq-ok c r)
   Lq-ok (loop round) r = ok-loop round (Lq-ok round r)
+
+  ok-appL {Γ = Γ} {Ψ₁} {Ψ₂} f x nothing rf rx =
+    rel-app Γ Ψ₁ Ψ₂ (G.Many *ᵘ Ψ₂) (⊑ᵘ-*Many Ψ₂) (Lq-ok f rf) (Lq-ok x rx)
+  ok-appL {Γ = Γ} (copair' f g) x (just (cp i j)) (rf , rg) rx =
+    rel-appB {Γ = Γ} f g x i j (Lq-ok f rf) (Lq-ok g rg) (Lq-ok x rx)
