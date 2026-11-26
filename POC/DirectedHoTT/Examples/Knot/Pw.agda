@@ -24,7 +24,7 @@ open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; cong; cong₂;
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮)
-open import DirectedHoTT.Metatheory.TySub 𝒮 (Defs.size 𝒮) using ( ⊢wk )
+open import DirectedHoTT.Metatheory.TySub 𝒮 (Defs.size 𝒮) using ( ⊢wk; wk-cancel-tm )
 open import DirectedHoTT.Metatheory.SubjectReductionBase 𝒮 using () renaming ( wk-sub to wkS )
 open import DirectedHoTT.Lib.Sugar 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf) using ( Cons; []; _∷_; tag; Lt; lt-z; lt-s; []ᵈ; _∷ᵈ_; AllD; v₀; _,ₚ_ )
 open import DirectedHoTT.Lib.SynView 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf) using ( PayV; ⊢recFst; ⊢recSnd; ⊢atDepthSK; ⊢natFst; ⊢natSnd )
@@ -148,6 +148,9 @@ TPwcHom⁽1⁾-cong J J' X X' F0 F0' F1 F1' F2 F2' E0 E0' refl refl refl refl re
 
 TPwcHom⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ TPwcHom⁽1⁾ J X F0 F1 F2 E0 ⌝ᵗ ≡ ⌜ TPwcHom⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ F2) (subTm σ E0) ⌝ᵗ
 TPwcHom⁽1⁾-sub σ J X F0 F1 F2 E0 = (TPwcHomI-sub σ J X F0 F1 F2 E0)
+
+TPwcHom⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ TPwcHom⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀ ⌝ᵗ ≡ ⌜ TPwcHom⁽1⁾ J X F0 F1 F2 E0 ⌝ᵗ
+TPwcHom⁽1⁾-β J X F0 F1 F2 E0 = trans (TPwcHom⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀) (TPwcHom⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) (w1 F2)) F2 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) (wk-cancel-tm E0 F2) refl)
 
 TPwcHom⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 TPwcHom⁽0⁾ J X F0 F1 F2 = tσ (CPwcHom_0I J) (TPwcHom⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀)

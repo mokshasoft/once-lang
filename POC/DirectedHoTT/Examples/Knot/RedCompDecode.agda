@@ -624,13 +624,13 @@ cd⟶tr₍3₎ᴸ2 : {Γ : Cx} (a0 : RTm (Γ ∙)) (a2 : RTm (Γ)) (x0ᵢ1 : RTm
 cd⟶tr₍3₎ᴸ2 {Γ} a0 a2 x0ᵢ1 u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (e0 , (_ , (_ , ((de0 , dq1) , (ne0 , nq1))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₄⁽1⁾-sub (single e0) (w1 j) (w1 c) (w1 f0) (w1 f2) v₀) (T⟶tr₄⁽1⁾-cong (subTm (single e0) (w1 j)) j (subTm (single e0) (w1 c)) c (subTm (single e0) (w1 f0)) f0 (subTm (single e0) (w1 f2)) f2 (subTm (single e0) v₀) e0 (wk-cancel-tm e0 j) (wk-cancel-tm e0 c) (wk-cancel-tm e0 f0) (wk-cancel-tm e0 f2) refl))) (⊢conv dq1 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e0) done)))))) done nq1
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (T⟶tr₄⁽1⁾-β j c f0 f2 e0)) (⊢conv dq1 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e0) done)))))) done nq1
   ▷ λ { (e1 , (_ , (_ , ((de1 , dq2) , (ne1 , nq2))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₄⁽2⁾-sub (single e1) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 e0) v₀) (T⟶tr₄⁽2⁾-cong (subTm (single e1) (w1 j)) j (subTm (single e1) (w1 c)) c (subTm (single e1) (w1 f0)) f0 (subTm (single e1) (w1 f2)) f2 (subTm (single e1) (w1 e0)) e0 (subTm (single e1) v₀) e1 (wk-cancel-tm e1 j) (wk-cancel-tm e1 c) (wk-cancel-tm e1 f0) (wk-cancel-tm e1 f2) (wk-cancel-tm e1 e0) refl))) (⊢conv dq2 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e1) done)))))) done nq2
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (T⟶tr₄⁽2⁾-β j c f0 f2 e0 e1)) (⊢conv dq2 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e1) done)))))) done nq2
   ▷ λ { (e2 , (_ , (_ , ((de2 , dq3) , (ne2 , nq3))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₄⁽3⁾-sub (single e2) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 e0) (w1 e1) v₀) (T⟶tr₄⁽3⁾-cong (subTm (single e2) (w1 j)) j (subTm (single e2) (w1 c)) c (subTm (single e2) (w1 f0)) f0 (subTm (single e2) (w1 f2)) f2 (subTm (single e2) (w1 e0)) e0 (subTm (single e2) (w1 e1)) e1 (subTm (single e2) v₀) e2 (wk-cancel-tm e2 j) (wk-cancel-tm e2 c) (wk-cancel-tm e2 f0) (wk-cancel-tm e2 f2) (wk-cancel-tm e2 e0) (wk-cancel-tm e2 e1) refl))) (⊢conv dq3 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e2) done)))))) done nq3
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (T⟶tr₄⁽3⁾-β j c f0 f2 e0 e1 e2)) (⊢conv dq3 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e2) done)))))) done nq3
   ▷ λ { (e3 , (_ , (_ , ((de3 , dq4) , (ne3 , nq4))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₄⁽4⁾-sub (single e3) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 e0) (w1 e1) (w1 e2) v₀) (T⟶tr₄⁽4⁾-cong (subTm (single e3) (w1 j)) j (subTm (single e3) (w1 c)) c (subTm (single e3) (w1 f0)) f0 (subTm (single e3) (w1 f2)) f2 (subTm (single e3) (w1 e0)) e0 (subTm (single e3) (w1 e1)) e1 (subTm (single e3) (w1 e2)) e2 (subTm (single e3) v₀) e3 (wk-cancel-tm e3 j) (wk-cancel-tm e3 c) (wk-cancel-tm e3 f0) (wk-cancel-tm e3 f2) (wk-cancel-tm e3 e0) (wk-cancel-tm e3 e1) (wk-cancel-tm e3 e2) refl))) (⊢conv dq4 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e3) done)))))) done nq4
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (T⟶tr₄⁽4⁾-β j c f0 f2 e0 e1 e2 e3)) (⊢conv dq4 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e3) done)))))) done nq4
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
   unqTm {Γ = Γ ∙} (⊢conv de0 (credᵀ El-⌜Tm⌝)) ne0
   ▷ λ { (E0 , eqE0) →
@@ -705,13 +705,13 @@ cd⟶tr₍4₎ᴸ2 : {Γ : Cx} (a0 : RTm (Γ ∙)) (a2 : RTm (Γ)) (x0ᵢ1 : RTm
 cd⟶tr₍4₎ᴸ2 {Γ} a0 a2 x0ᵢ1 x1ᵢ0 x1ᵢ1 u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (e0 , (_ , (_ , ((de0 , dq1) , (ne0 , nq1))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₅⁽1⁾-sub (single e0) (w1 j) (w1 c) (w1 f0) (w1 f2) v₀) (T⟶tr₅⁽1⁾-cong (subTm (single e0) (w1 j)) j (subTm (single e0) (w1 c)) c (subTm (single e0) (w1 f0)) f0 (subTm (single e0) (w1 f2)) f2 (subTm (single e0) v₀) e0 (wk-cancel-tm e0 j) (wk-cancel-tm e0 c) (wk-cancel-tm e0 f0) (wk-cancel-tm e0 f2) refl))) (⊢conv dq1 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e0) done)))))) done nq1
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (T⟶tr₅⁽1⁾-β j c f0 f2 e0)) (⊢conv dq1 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e0) done)))))) done nq1
   ▷ λ { (e1 , (_ , (_ , ((de1 , dq2) , (ne1 , nq2))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₅⁽2⁾-sub (single e1) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 e0) v₀) (T⟶tr₅⁽2⁾-cong (subTm (single e1) (w1 j)) j (subTm (single e1) (w1 c)) c (subTm (single e1) (w1 f0)) f0 (subTm (single e1) (w1 f2)) f2 (subTm (single e1) (w1 e0)) e0 (subTm (single e1) v₀) e1 (wk-cancel-tm e1 j) (wk-cancel-tm e1 c) (wk-cancel-tm e1 f0) (wk-cancel-tm e1 f2) (wk-cancel-tm e1 e0) refl))) (⊢conv dq2 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e1) done)))))) done nq2
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (T⟶tr₅⁽2⁾-β j c f0 f2 e0 e1)) (⊢conv dq2 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e1) done)))))) done nq2
   ▷ λ { (e2 , (_ , (_ , ((de2 , dq3) , (ne2 , nq3))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₅⁽3⁾-sub (single e2) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 e0) (w1 e1) v₀) (T⟶tr₅⁽3⁾-cong (subTm (single e2) (w1 j)) j (subTm (single e2) (w1 c)) c (subTm (single e2) (w1 f0)) f0 (subTm (single e2) (w1 f2)) f2 (subTm (single e2) (w1 e0)) e0 (subTm (single e2) (w1 e1)) e1 (subTm (single e2) v₀) e2 (wk-cancel-tm e2 j) (wk-cancel-tm e2 c) (wk-cancel-tm e2 f0) (wk-cancel-tm e2 f2) (wk-cancel-tm e2 e0) (wk-cancel-tm e2 e1) refl))) (⊢conv dq3 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e2) done)))))) done nq3
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (T⟶tr₅⁽3⁾-β j c f0 f2 e0 e1 e2)) (⊢conv dq3 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e2) done)))))) done nq3
   ▷ λ { (e3 , (_ , (_ , ((de3 , dq4) , (ne3 , nq4))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₅⁽4⁾-sub (single e3) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 e0) (w1 e1) (w1 e2) v₀) (T⟶tr₅⁽4⁾-cong (subTm (single e3) (w1 j)) j (subTm (single e3) (w1 c)) c (subTm (single e3) (w1 f0)) f0 (subTm (single e3) (w1 f2)) f2 (subTm (single e3) (w1 e0)) e0 (subTm (single e3) (w1 e1)) e1 (subTm (single e3) (w1 e2)) e2 (subTm (single e3) v₀) e3 (wk-cancel-tm e3 j) (wk-cancel-tm e3 c) (wk-cancel-tm e3 f0) (wk-cancel-tm e3 f2) (wk-cancel-tm e3 e0) (wk-cancel-tm e3 e1) (wk-cancel-tm e3 e2) refl))) (⊢conv dq4 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e3) done)))))) done nq4
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (T⟶tr₅⁽4⁾-β j c f0 f2 e0 e1 e2 e3)) (⊢conv dq4 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e3) done)))))) done nq4
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
   unqTm {Γ = Γ ∙} (⊢conv de0 (credᵀ El-⌜Tm⌝)) ne0
   ▷ λ { (E0 , eqE0) →
@@ -788,13 +788,13 @@ cd⟶tr₍5₎ᴸ2 : {Γ : Cx} (a0 : RTm (Γ ∙)) (a2 : RTm (Γ)) (x0ᵢ1 : RTm
 cd⟶tr₍5₎ᴸ2 {Γ} a0 a2 x0ᵢ1 u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (e0 , (_ , (_ , ((de0 , dq1) , (ne0 , nq1))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₆⁽1⁾-sub (single e0) (w1 j) (w1 c) (w1 f0) (w1 f2) v₀) (T⟶tr₆⁽1⁾-cong (subTm (single e0) (w1 j)) j (subTm (single e0) (w1 c)) c (subTm (single e0) (w1 f0)) f0 (subTm (single e0) (w1 f2)) f2 (subTm (single e0) v₀) e0 (wk-cancel-tm e0 j) (wk-cancel-tm e0 c) (wk-cancel-tm e0 f0) (wk-cancel-tm e0 f2) refl))) (⊢conv dq1 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e0) done)))))) done nq1
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (T⟶tr₆⁽1⁾-β j c f0 f2 e0)) (⊢conv dq1 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e0) done)))))) done nq1
   ▷ λ { (e1 , (_ , (_ , ((de1 , dq2) , (ne1 , nq2))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₆⁽2⁾-sub (single e1) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 e0) v₀) (T⟶tr₆⁽2⁾-cong (subTm (single e1) (w1 j)) j (subTm (single e1) (w1 c)) c (subTm (single e1) (w1 f0)) f0 (subTm (single e1) (w1 f2)) f2 (subTm (single e1) (w1 e0)) e0 (subTm (single e1) v₀) e1 (wk-cancel-tm e1 j) (wk-cancel-tm e1 c) (wk-cancel-tm e1 f0) (wk-cancel-tm e1 f2) (wk-cancel-tm e1 e0) refl))) (⊢conv dq2 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e1) done)))))) done nq2
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (T⟶tr₆⁽2⁾-β j c f0 f2 e0 e1)) (⊢conv dq2 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e1) done)))))) done nq2
   ▷ λ { (e2 , (_ , (_ , ((de2 , dq3) , (ne2 , nq3))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₆⁽3⁾-sub (single e2) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 e0) (w1 e1) v₀) (T⟶tr₆⁽3⁾-cong (subTm (single e2) (w1 j)) j (subTm (single e2) (w1 c)) c (subTm (single e2) (w1 f0)) f0 (subTm (single e2) (w1 f2)) f2 (subTm (single e2) (w1 e0)) e0 (subTm (single e2) (w1 e1)) e1 (subTm (single e2) v₀) e2 (wk-cancel-tm e2 j) (wk-cancel-tm e2 c) (wk-cancel-tm e2 f0) (wk-cancel-tm e2 f2) (wk-cancel-tm e2 e0) (wk-cancel-tm e2 e1) refl))) (⊢conv dq3 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e2) done)))))) done nq3
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (T⟶tr₆⁽3⁾-β j c f0 f2 e0 e1 e2)) (⊢conv dq3 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e2) done)))))) done nq3
   ▷ λ { (e3 , (_ , (_ , ((de3 , dq4) , (ne3 , nq4))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₆⁽4⁾-sub (single e3) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 e0) (w1 e1) (w1 e2) v₀) (T⟶tr₆⁽4⁾-cong (subTm (single e3) (w1 j)) j (subTm (single e3) (w1 c)) c (subTm (single e3) (w1 f0)) f0 (subTm (single e3) (w1 f2)) f2 (subTm (single e3) (w1 e0)) e0 (subTm (single e3) (w1 e1)) e1 (subTm (single e3) (w1 e2)) e2 (subTm (single e3) v₀) e3 (wk-cancel-tm e3 j) (wk-cancel-tm e3 c) (wk-cancel-tm e3 f0) (wk-cancel-tm e3 f2) (wk-cancel-tm e3 e0) (wk-cancel-tm e3 e1) (wk-cancel-tm e3 e2) refl))) (⊢conv dq4 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e3) done)))))) done nq4
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (T⟶tr₆⁽4⁾-β j c f0 f2 e0 e1 e2 e3)) (⊢conv dq4 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e3) done)))))) done nq4
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
   unqTm {Γ = Γ ∙} (⊢conv de0 (credᵀ El-⌜Tm⌝)) ne0
   ▷ λ { (E0 , eqE0) →
@@ -869,13 +869,13 @@ cd⟶tr₍6₎ᴸ2 : {Γ : Cx} (a0 : RTm (Γ ∙)) (a2 : RTm (Γ)) (x0ᵢ1 : RTm
 cd⟶tr₍6₎ᴸ2 {Γ} a0 a2 x0ᵢ1 x1ᵢ0 x1ᵢ1 x1ᵢ2 u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (e0 , (_ , (_ , ((de0 , dq1) , (ne0 , nq1))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₇⁽1⁾-sub (single e0) (w1 j) (w1 c) (w1 f0) (w1 f2) v₀) (T⟶tr₇⁽1⁾-cong (subTm (single e0) (w1 j)) j (subTm (single e0) (w1 c)) c (subTm (single e0) (w1 f0)) f0 (subTm (single e0) (w1 f2)) f2 (subTm (single e0) v₀) e0 (wk-cancel-tm e0 j) (wk-cancel-tm e0 c) (wk-cancel-tm e0 f0) (wk-cancel-tm e0 f2) refl))) (⊢conv dq1 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e0) done)))))) done nq1
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (T⟶tr₇⁽1⁾-β j c f0 f2 e0)) (⊢conv dq1 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e0) done)))))) done nq1
   ▷ λ { (e1 , (_ , (_ , ((de1 , dq2) , (ne1 , nq2))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₇⁽2⁾-sub (single e1) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 e0) v₀) (T⟶tr₇⁽2⁾-cong (subTm (single e1) (w1 j)) j (subTm (single e1) (w1 c)) c (subTm (single e1) (w1 f0)) f0 (subTm (single e1) (w1 f2)) f2 (subTm (single e1) (w1 e0)) e0 (subTm (single e1) v₀) e1 (wk-cancel-tm e1 j) (wk-cancel-tm e1 c) (wk-cancel-tm e1 f0) (wk-cancel-tm e1 f2) (wk-cancel-tm e1 e0) refl))) (⊢conv dq2 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e1) done)))))) done nq2
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (T⟶tr₇⁽2⁾-β j c f0 f2 e0 e1)) (⊢conv dq2 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e1) done)))))) done nq2
   ▷ λ { (e2 , (_ , (_ , ((de2 , dq3) , (ne2 , nq3))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₇⁽3⁾-sub (single e2) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 e0) (w1 e1) v₀) (T⟶tr₇⁽3⁾-cong (subTm (single e2) (w1 j)) j (subTm (single e2) (w1 c)) c (subTm (single e2) (w1 f0)) f0 (subTm (single e2) (w1 f2)) f2 (subTm (single e2) (w1 e0)) e0 (subTm (single e2) (w1 e1)) e1 (subTm (single e2) v₀) e2 (wk-cancel-tm e2 j) (wk-cancel-tm e2 c) (wk-cancel-tm e2 f0) (wk-cancel-tm e2 f2) (wk-cancel-tm e2 e0) (wk-cancel-tm e2 e1) refl))) (⊢conv dq3 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e2) done)))))) done nq3
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (T⟶tr₇⁽3⁾-β j c f0 f2 e0 e1 e2)) (⊢conv dq3 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e2) done)))))) done nq3
   ▷ λ { (e3 , (_ , (_ , ((de3 , dq4) , (ne3 , nq4))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₇⁽4⁾-sub (single e3) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 e0) (w1 e1) (w1 e2) v₀) (T⟶tr₇⁽4⁾-cong (subTm (single e3) (w1 j)) j (subTm (single e3) (w1 c)) c (subTm (single e3) (w1 f0)) f0 (subTm (single e3) (w1 f2)) f2 (subTm (single e3) (w1 e0)) e0 (subTm (single e3) (w1 e1)) e1 (subTm (single e3) (w1 e2)) e2 (subTm (single e3) v₀) e3 (wk-cancel-tm e3 j) (wk-cancel-tm e3 c) (wk-cancel-tm e3 f0) (wk-cancel-tm e3 f2) (wk-cancel-tm e3 e0) (wk-cancel-tm e3 e1) (wk-cancel-tm e3 e2) refl))) (⊢conv dq4 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e3) done)))))) done nq4
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (T⟶tr₇⁽4⁾-β j c f0 f2 e0 e1 e2 e3)) (⊢conv dq4 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e3) done)))))) done nq4
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
   unqTm {Γ = Γ ∙} (⊢conv de0 (credᵀ El-⌜Tm⌝)) ne0
   ▷ λ { (E0 , eqE0) →
@@ -953,13 +953,13 @@ cd⟶tr₍7₎ᴸ2 : {Γ : Cx} (a0 : RTm (Γ ∙)) (a2 : RTm (Γ)) (x0ᵢ1 : RTm
 cd⟶tr₍7₎ᴸ2 {Γ} a0 a2 x0ᵢ1 x1ᵢ0 x1ᵢ1 x1ᵢ2 u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (e0 , (_ , (_ , ((de0 , dq1) , (ne0 , nq1))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₈⁽1⁾-sub (single e0) (w1 j) (w1 c) (w1 f0) (w1 f2) v₀) (T⟶tr₈⁽1⁾-cong (subTm (single e0) (w1 j)) j (subTm (single e0) (w1 c)) c (subTm (single e0) (w1 f0)) f0 (subTm (single e0) (w1 f2)) f2 (subTm (single e0) v₀) e0 (wk-cancel-tm e0 j) (wk-cancel-tm e0 c) (wk-cancel-tm e0 f0) (wk-cancel-tm e0 f2) refl))) (⊢conv dq1 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e0) done)))))) done nq1
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (T⟶tr₈⁽1⁾-β j c f0 f2 e0)) (⊢conv dq1 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e0) done)))))) done nq1
   ▷ λ { (e1 , (_ , (_ , ((de1 , dq2) , (ne1 , nq2))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₈⁽2⁾-sub (single e1) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 e0) v₀) (T⟶tr₈⁽2⁾-cong (subTm (single e1) (w1 j)) j (subTm (single e1) (w1 c)) c (subTm (single e1) (w1 f0)) f0 (subTm (single e1) (w1 f2)) f2 (subTm (single e1) (w1 e0)) e0 (subTm (single e1) v₀) e1 (wk-cancel-tm e1 j) (wk-cancel-tm e1 c) (wk-cancel-tm e1 f0) (wk-cancel-tm e1 f2) (wk-cancel-tm e1 e0) refl))) (⊢conv dq2 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e1) done)))))) done nq2
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (T⟶tr₈⁽2⁾-β j c f0 f2 e0 e1)) (⊢conv dq2 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e1) done)))))) done nq2
   ▷ λ { (e2 , (_ , (_ , ((de2 , dq3) , (ne2 , nq3))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₈⁽3⁾-sub (single e2) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 e0) (w1 e1) v₀) (T⟶tr₈⁽3⁾-cong (subTm (single e2) (w1 j)) j (subTm (single e2) (w1 c)) c (subTm (single e2) (w1 f0)) f0 (subTm (single e2) (w1 f2)) f2 (subTm (single e2) (w1 e0)) e0 (subTm (single e2) (w1 e1)) e1 (subTm (single e2) v₀) e2 (wk-cancel-tm e2 j) (wk-cancel-tm e2 c) (wk-cancel-tm e2 f0) (wk-cancel-tm e2 f2) (wk-cancel-tm e2 e0) (wk-cancel-tm e2 e1) refl))) (⊢conv dq3 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e2) done)))))) done nq3
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (T⟶tr₈⁽3⁾-β j c f0 f2 e0 e1 e2)) (⊢conv dq3 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e2) done)))))) done nq3
   ▷ λ { (e3 , (_ , (_ , ((de3 , dq4) , (ne3 , nq4))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₈⁽4⁾-sub (single e3) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 e0) (w1 e1) (w1 e2) v₀) (T⟶tr₈⁽4⁾-cong (subTm (single e3) (w1 j)) j (subTm (single e3) (w1 c)) c (subTm (single e3) (w1 f0)) f0 (subTm (single e3) (w1 f2)) f2 (subTm (single e3) (w1 e0)) e0 (subTm (single e3) (w1 e1)) e1 (subTm (single e3) (w1 e2)) e2 (subTm (single e3) v₀) e3 (wk-cancel-tm e3 j) (wk-cancel-tm e3 c) (wk-cancel-tm e3 f0) (wk-cancel-tm e3 f2) (wk-cancel-tm e3 e0) (wk-cancel-tm e3 e1) (wk-cancel-tm e3 e2) refl))) (⊢conv dq4 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e3) done)))))) done nq4
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (T⟶tr₈⁽4⁾-β j c f0 f2 e0 e1 e2 e3)) (⊢conv dq4 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e3) done)))))) done nq4
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
   unqTm {Γ = Γ ∙} (⊢conv de0 (credᵀ El-⌜Tm⌝)) ne0
   ▷ λ { (E0 , eqE0) →
@@ -1037,13 +1037,13 @@ cd⟶tr₍8₎ᴸ2 : {Γ : Cx} (a0 : RTm (Γ ∙)) (a2 : RTm (Γ)) (x0ᵢ1 : RTm
 cd⟶tr₍8₎ᴸ2 {Γ} a0 a2 x0ᵢ1 x1ᵢ0 u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (e0 , (_ , (_ , ((de0 , dq1) , (ne0 , nq1))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₉⁽1⁾-sub (single e0) (w1 j) (w1 c) (w1 f0) (w1 f2) v₀) (T⟶tr₉⁽1⁾-cong (subTm (single e0) (w1 j)) j (subTm (single e0) (w1 c)) c (subTm (single e0) (w1 f0)) f0 (subTm (single e0) (w1 f2)) f2 (subTm (single e0) v₀) e0 (wk-cancel-tm e0 j) (wk-cancel-tm e0 c) (wk-cancel-tm e0 f0) (wk-cancel-tm e0 f2) refl))) (⊢conv dq1 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e0) done)))))) done nq1
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (T⟶tr₉⁽1⁾-β j c f0 f2 e0)) (⊢conv dq1 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e0) done)))))) done nq1
   ▷ λ { (e1 , (_ , (_ , ((de1 , dq2) , (ne1 , nq2))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₉⁽2⁾-sub (single e1) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 e0) v₀) (T⟶tr₉⁽2⁾-cong (subTm (single e1) (w1 j)) j (subTm (single e1) (w1 c)) c (subTm (single e1) (w1 f0)) f0 (subTm (single e1) (w1 f2)) f2 (subTm (single e1) (w1 e0)) e0 (subTm (single e1) v₀) e1 (wk-cancel-tm e1 j) (wk-cancel-tm e1 c) (wk-cancel-tm e1 f0) (wk-cancel-tm e1 f2) (wk-cancel-tm e1 e0) refl))) (⊢conv dq2 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e1) done)))))) done nq2
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (T⟶tr₉⁽2⁾-β j c f0 f2 e0 e1)) (⊢conv dq2 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e1) done)))))) done nq2
   ▷ λ { (e2 , (_ , (_ , ((de2 , dq3) , (ne2 , nq3))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₉⁽3⁾-sub (single e2) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 e0) (w1 e1) v₀) (T⟶tr₉⁽3⁾-cong (subTm (single e2) (w1 j)) j (subTm (single e2) (w1 c)) c (subTm (single e2) (w1 f0)) f0 (subTm (single e2) (w1 f2)) f2 (subTm (single e2) (w1 e0)) e0 (subTm (single e2) (w1 e1)) e1 (subTm (single e2) v₀) e2 (wk-cancel-tm e2 j) (wk-cancel-tm e2 c) (wk-cancel-tm e2 f0) (wk-cancel-tm e2 f2) (wk-cancel-tm e2 e0) (wk-cancel-tm e2 e1) refl))) (⊢conv dq3 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e2) done)))))) done nq3
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (T⟶tr₉⁽3⁾-β j c f0 f2 e0 e1 e2)) (⊢conv dq3 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e2) done)))))) done nq3
   ▷ λ { (e3 , (_ , (_ , ((de3 , dq4) , (ne3 , nq4))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₉⁽4⁾-sub (single e3) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 e0) (w1 e1) (w1 e2) v₀) (T⟶tr₉⁽4⁾-cong (subTm (single e3) (w1 j)) j (subTm (single e3) (w1 c)) c (subTm (single e3) (w1 f0)) f0 (subTm (single e3) (w1 f2)) f2 (subTm (single e3) (w1 e0)) e0 (subTm (single e3) (w1 e1)) e1 (subTm (single e3) (w1 e2)) e2 (subTm (single e3) v₀) e3 (wk-cancel-tm e3 j) (wk-cancel-tm e3 c) (wk-cancel-tm e3 f0) (wk-cancel-tm e3 f2) (wk-cancel-tm e3 e0) (wk-cancel-tm e3 e1) (wk-cancel-tm e3 e2) refl))) (⊢conv dq4 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e3) done)))))) done nq4
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (T⟶tr₉⁽4⁾-β j c f0 f2 e0 e1 e2 e3)) (⊢conv dq4 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e3) done)))))) done nq4
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
   unqTm {Γ = Γ ∙} (⊢conv de0 (credᵀ El-⌜Tm⌝)) ne0
   ▷ λ { (E0 , eqE0) →
@@ -1119,15 +1119,15 @@ cd⟶tr₍9₎ᴸ2 : {Γ : Cx} (a0 : RTm (Γ ∙)) (a2 : RTm (Γ)) (x0ᵢ1 : RTm
 cd⟶tr₍9₎ᴸ2 {Γ} a0 a2 x0ᵢ1 x1ᵢ0 x1ᵢ1 x1ᵢ2 u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (e0 , (_ , (_ , ((de0 , dq1) , (ne0 , nq1))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₁₀⁽1⁾-sub (single e0) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 a1ᵢ0) v₀) (T⟶tr₁₀⁽1⁾-cong (subTm (single e0) (w1 j)) j (subTm (single e0) (w1 c)) c (subTm (single e0) (w1 f0)) f0 (subTm (single e0) (w1 f2)) f2 (subTm (single e0) (w1 a1ᵢ0)) a1ᵢ0 (subTm (single e0) v₀) e0 (wk-cancel-tm e0 j) (wk-cancel-tm e0 c) (wk-cancel-tm e0 f0) (wk-cancel-tm e0 f2) (wk-cancel-tm e0 a1ᵢ0) refl))) (⊢conv dq1 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e0) done)))))) done nq1
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (T⟶tr₁₀⁽1⁾-β j c f0 f2 a1ᵢ0 e0)) (⊢conv dq1 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e0) done)))))) done nq1
   ▷ λ { (e1 , (_ , (_ , ((de1 , dq2) , (ne1 , nq2))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₁₀⁽2⁾-sub (single e1) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 a1ᵢ0) (w1 e0) v₀) (T⟶tr₁₀⁽2⁾-cong (subTm (single e1) (w1 j)) j (subTm (single e1) (w1 c)) c (subTm (single e1) (w1 f0)) f0 (subTm (single e1) (w1 f2)) f2 (subTm (single e1) (w1 a1ᵢ0)) a1ᵢ0 (subTm (single e1) (w1 e0)) e0 (subTm (single e1) v₀) e1 (wk-cancel-tm e1 j) (wk-cancel-tm e1 c) (wk-cancel-tm e1 f0) (wk-cancel-tm e1 f2) (wk-cancel-tm e1 a1ᵢ0) (wk-cancel-tm e1 e0) refl))) (⊢conv dq2 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e1) done)))))) done nq2
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (T⟶tr₁₀⁽2⁾-β j c f0 f2 a1ᵢ0 e0 e1)) (⊢conv dq2 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e1) done)))))) done nq2
   ▷ λ { (e2 , (_ , (_ , ((de2 , dq3) , (ne2 , nq3))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₁₀⁽3⁾-sub (single e2) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 a1ᵢ0) (w1 e0) (w1 e1) v₀) (T⟶tr₁₀⁽3⁾-cong (subTm (single e2) (w1 j)) j (subTm (single e2) (w1 c)) c (subTm (single e2) (w1 f0)) f0 (subTm (single e2) (w1 f2)) f2 (subTm (single e2) (w1 a1ᵢ0)) a1ᵢ0 (subTm (single e2) (w1 e0)) e0 (subTm (single e2) (w1 e1)) e1 (subTm (single e2) v₀) e2 (wk-cancel-tm e2 j) (wk-cancel-tm e2 c) (wk-cancel-tm e2 f0) (wk-cancel-tm e2 f2) (wk-cancel-tm e2 a1ᵢ0) (wk-cancel-tm e2 e0) (wk-cancel-tm e2 e1) refl))) (⊢conv dq3 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e2) done)))))) done nq3
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (T⟶tr₁₀⁽3⁾-β j c f0 f2 a1ᵢ0 e0 e1 e2)) (⊢conv dq3 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e2) done)))))) done nq3
   ▷ λ { (e3 , (_ , (_ , ((de3 , dq4) , (ne3 , nq4))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₁₀⁽4⁾-sub (single e3) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 a1ᵢ0) (w1 e0) (w1 e1) (w1 e2) v₀) (T⟶tr₁₀⁽4⁾-cong (subTm (single e3) (w1 j)) j (subTm (single e3) (w1 c)) c (subTm (single e3) (w1 f0)) f0 (subTm (single e3) (w1 f2)) f2 (subTm (single e3) (w1 a1ᵢ0)) a1ᵢ0 (subTm (single e3) (w1 e0)) e0 (subTm (single e3) (w1 e1)) e1 (subTm (single e3) (w1 e2)) e2 (subTm (single e3) v₀) e3 (wk-cancel-tm e3 j) (wk-cancel-tm e3 c) (wk-cancel-tm e3 f0) (wk-cancel-tm e3 f2) (wk-cancel-tm e3 a1ᵢ0) (wk-cancel-tm e3 e0) (wk-cancel-tm e3 e1) (wk-cancel-tm e3 e2) refl))) (⊢conv dq4 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e3) done)))))) done nq4
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (T⟶tr₁₀⁽4⁾-β j c f0 f2 a1ᵢ0 e0 e1 e2 e3)) (⊢conv dq4 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e3) done)))))) done nq4
   ▷ λ { (e4 , (_ , (_ , ((de4 , dq5) , (ne4 , nq5))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₁₀⁽5⁾-sub (single e4) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 a1ᵢ0) (w1 e0) (w1 e1) (w1 e2) (w1 e3) v₀) (T⟶tr₁₀⁽5⁾-cong (subTm (single e4) (w1 j)) j (subTm (single e4) (w1 c)) c (subTm (single e4) (w1 f0)) f0 (subTm (single e4) (w1 f2)) f2 (subTm (single e4) (w1 a1ᵢ0)) a1ᵢ0 (subTm (single e4) (w1 e0)) e0 (subTm (single e4) (w1 e1)) e1 (subTm (single e4) (w1 e2)) e2 (subTm (single e4) (w1 e3)) e3 (subTm (single e4) v₀) e4 (wk-cancel-tm e4 j) (wk-cancel-tm e4 c) (wk-cancel-tm e4 f0) (wk-cancel-tm e4 f2) (wk-cancel-tm e4 a1ᵢ0) (wk-cancel-tm e4 e0) (wk-cancel-tm e4 e1) (wk-cancel-tm e4 e2) (wk-cancel-tm e4 e3) refl))) (⊢conv dq5 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e4) done)))))) done nq5
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (T⟶tr₁₀⁽5⁾-β j c f0 f2 a1ᵢ0 e0 e1 e2 e3 e4)) (⊢conv dq5 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e4) done)))))) done nq5
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
   unqTm {Γ = Γ ∙} (⊢conv de0 (credᵀ El-⌜Tm⌝)) ne0
   ▷ λ { (E0 , eqE0) →
@@ -1207,7 +1207,7 @@ cd⟶tr₍10₎ᴸ1 : {Γ : Cx} (a0 : RTm (Γ ∙)) (a2 : RTm (Γ)) (x0ᵢ0 : RT
 cd⟶tr₍10₎ᴸ1 {Γ} a0 a2 x0ᵢ0 u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (e0 , (_ , (_ , ((de0 , dq1) , (ne0 , nq1))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₁₁⁽1⁾-sub (single e0) (w1 j) (w1 c) (w1 f0) (w1 f1) (w1 f2) v₀) (T⟶tr₁₁⁽1⁾-cong (subTm (single e0) (w1 j)) j (subTm (single e0) (w1 c)) c (subTm (single e0) (w1 f0)) f0 (subTm (single e0) (w1 f1)) f1 (subTm (single e0) (w1 f2)) f2 (subTm (single e0) v₀) e0 (wk-cancel-tm e0 j) (wk-cancel-tm e0 c) (wk-cancel-tm e0 f0) (wk-cancel-tm e0 f1) (wk-cancel-tm e0 f2) refl))) (⊢conv dq1 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e0) done)))))) done nq1
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (T⟶tr₁₁⁽1⁾-β j c f0 f1 f2 e0)) (⊢conv dq1 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e0) done)))))) done nq1
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
   quoteTm-inj a0 v₀ (nf-≅ (quoteTm-normal {Γ = Γ ∙} a0) (quoteTm-normal {Γ = Γ ∙} v₀) (idrefl-decᶜ de0 ne0))
   ▷ λ eqM0 →
@@ -1250,15 +1250,15 @@ cd⟶tr₍11₎ᴸ1 : {Γ : Cx} (a0 : RTm (Γ ∙)) (a2 : RTm (Γ)) (x0ᵢ0 : RT
 cd⟶tr₍11₎ᴸ1 {Γ} a0 a2 x0ᵢ0 u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (e0 , (_ , (_ , ((de0 , dq1) , (ne0 , nq1))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₁₂⁽1⁾-sub (single e0) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 a0ᵢ0) v₀) (T⟶tr₁₂⁽1⁾-cong (subTm (single e0) (w1 j)) j (subTm (single e0) (w1 c)) c (subTm (single e0) (w1 f0)) f0 (subTm (single e0) (w1 f2)) f2 (subTm (single e0) (w1 a0ᵢ0)) a0ᵢ0 (subTm (single e0) v₀) e0 (wk-cancel-tm e0 j) (wk-cancel-tm e0 c) (wk-cancel-tm e0 f0) (wk-cancel-tm e0 f2) (wk-cancel-tm e0 a0ᵢ0) refl))) (⊢conv dq1 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e0) done)))))) done nq1
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (T⟶tr₁₂⁽1⁾-β j c f0 f2 a0ᵢ0 e0)) (⊢conv dq1 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e0) done)))))) done nq1
   ▷ λ { (e1 , (_ , (_ , ((de1 , dq2) , (ne1 , nq2))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₁₂⁽2⁾-sub (single e1) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 a0ᵢ0) (w1 e0) v₀) (T⟶tr₁₂⁽2⁾-cong (subTm (single e1) (w1 j)) j (subTm (single e1) (w1 c)) c (subTm (single e1) (w1 f0)) f0 (subTm (single e1) (w1 f2)) f2 (subTm (single e1) (w1 a0ᵢ0)) a0ᵢ0 (subTm (single e1) (w1 e0)) e0 (subTm (single e1) v₀) e1 (wk-cancel-tm e1 j) (wk-cancel-tm e1 c) (wk-cancel-tm e1 f0) (wk-cancel-tm e1 f2) (wk-cancel-tm e1 a0ᵢ0) (wk-cancel-tm e1 e0) refl))) (⊢conv dq2 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e1) done)))))) done nq2
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (T⟶tr₁₂⁽2⁾-β j c f0 f2 a0ᵢ0 e0 e1)) (⊢conv dq2 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e1) done)))))) done nq2
   ▷ λ { (e2 , (_ , (_ , ((de2 , dq3) , (ne2 , nq3))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₁₂⁽3⁾-sub (single e2) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 a0ᵢ0) (w1 e0) (w1 e1) v₀) (T⟶tr₁₂⁽3⁾-cong (subTm (single e2) (w1 j)) j (subTm (single e2) (w1 c)) c (subTm (single e2) (w1 f0)) f0 (subTm (single e2) (w1 f2)) f2 (subTm (single e2) (w1 a0ᵢ0)) a0ᵢ0 (subTm (single e2) (w1 e0)) e0 (subTm (single e2) (w1 e1)) e1 (subTm (single e2) v₀) e2 (wk-cancel-tm e2 j) (wk-cancel-tm e2 c) (wk-cancel-tm e2 f0) (wk-cancel-tm e2 f2) (wk-cancel-tm e2 a0ᵢ0) (wk-cancel-tm e2 e0) (wk-cancel-tm e2 e1) refl))) (⊢conv dq3 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e2) done)))))) done nq3
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (T⟶tr₁₂⁽3⁾-β j c f0 f2 a0ᵢ0 e0 e1 e2)) (⊢conv dq3 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e2) done)))))) done nq3
   ▷ λ { (e3 , (_ , (_ , ((de3 , dq4) , (ne3 , nq4))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₁₂⁽4⁾-sub (single e3) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 a0ᵢ0) (w1 e0) (w1 e1) (w1 e2) v₀) (T⟶tr₁₂⁽4⁾-cong (subTm (single e3) (w1 j)) j (subTm (single e3) (w1 c)) c (subTm (single e3) (w1 f0)) f0 (subTm (single e3) (w1 f2)) f2 (subTm (single e3) (w1 a0ᵢ0)) a0ᵢ0 (subTm (single e3) (w1 e0)) e0 (subTm (single e3) (w1 e1)) e1 (subTm (single e3) (w1 e2)) e2 (subTm (single e3) v₀) e3 (wk-cancel-tm e3 j) (wk-cancel-tm e3 c) (wk-cancel-tm e3 f0) (wk-cancel-tm e3 f2) (wk-cancel-tm e3 a0ᵢ0) (wk-cancel-tm e3 e0) (wk-cancel-tm e3 e1) (wk-cancel-tm e3 e2) refl))) (⊢conv dq4 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e3) done)))))) done nq4
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (T⟶tr₁₂⁽4⁾-β j c f0 f2 a0ᵢ0 e0 e1 e2 e3)) (⊢conv dq4 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e3) done)))))) done nq4
   ▷ λ { (e4 , (_ , (_ , ((de4 , dq5) , (ne4 , nq5))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₁₂⁽5⁾-sub (single e4) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 a0ᵢ0) (w1 e0) (w1 e1) (w1 e2) (w1 e3) v₀) (T⟶tr₁₂⁽5⁾-cong (subTm (single e4) (w1 j)) j (subTm (single e4) (w1 c)) c (subTm (single e4) (w1 f0)) f0 (subTm (single e4) (w1 f2)) f2 (subTm (single e4) (w1 a0ᵢ0)) a0ᵢ0 (subTm (single e4) (w1 e0)) e0 (subTm (single e4) (w1 e1)) e1 (subTm (single e4) (w1 e2)) e2 (subTm (single e4) (w1 e3)) e3 (subTm (single e4) v₀) e4 (wk-cancel-tm e4 j) (wk-cancel-tm e4 c) (wk-cancel-tm e4 f0) (wk-cancel-tm e4 f2) (wk-cancel-tm e4 a0ᵢ0) (wk-cancel-tm e4 e0) (wk-cancel-tm e4 e1) (wk-cancel-tm e4 e2) (wk-cancel-tm e4 e3) refl))) (⊢conv dq5 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e4) done)))))) done nq5
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (T⟶tr₁₂⁽5⁾-β j c f0 f2 a0ᵢ0 e0 e1 e2 e3 e4)) (⊢conv dq5 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e4) done)))))) done nq5
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
   unqTm {Γ = Γ ∙} (⊢conv de0 (credᵀ El-⌜Tm⌝)) ne0
   ▷ λ { (E0 , eqE0) →
@@ -1309,9 +1309,9 @@ cd⟶hrefl₍2₎ : {Γ : Cx} (a0 : RTm (Γ)) (a1 : RTm (Γ)) (u : RTm Γ) {q : 
 cd⟶hrefl₍2₎ {Γ} a0 a1 u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (e0 , (_ , (_ , ((de0 , dq1) , (ne0 , nq1))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶hrefl₃⁽1⁾-sub (single e0) (w1 j) (w1 c) (w1 f0) (w1 f1) v₀) (T⟶hrefl₃⁽1⁾-cong (subTm (single e0) (w1 j)) j (subTm (single e0) (w1 c)) c (subTm (single e0) (w1 f0)) f0 (subTm (single e0) (w1 f1)) f1 (subTm (single e0) v₀) e0 (wk-cancel-tm e0 j) (wk-cancel-tm e0 c) (wk-cancel-tm e0 f0) (wk-cancel-tm e0 f1) refl))) (⊢conv dq1 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e0) done)))))) done nq1
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (T⟶hrefl₃⁽1⁾-β j c f0 f1 e0)) (⊢conv dq1 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e0) done)))))) done nq1
   ▷ λ { (e1 , (_ , (_ , ((de1 , dq2) , (ne1 , nq2))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶hrefl₃⁽2⁾-sub (single e1) (w1 j) (w1 c) (w1 f0) (w1 f1) (w1 e0) v₀) (T⟶hrefl₃⁽2⁾-cong (subTm (single e1) (w1 j)) j (subTm (single e1) (w1 c)) c (subTm (single e1) (w1 f0)) f0 (subTm (single e1) (w1 f1)) f1 (subTm (single e1) (w1 e0)) e0 (subTm (single e1) v₀) e1 (wk-cancel-tm e1 j) (wk-cancel-tm e1 c) (wk-cancel-tm e1 f0) (wk-cancel-tm e1 f1) (wk-cancel-tm e1 e0) refl))) (⊢conv dq2 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e1) done)))))) done nq2
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (T⟶hrefl₃⁽2⁾-β j c f0 f1 e0 e1)) (⊢conv dq2 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e1) done)))))) done nq2
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
   unqTm {Γ = Γ ∙} (⊢conv de0 (credᵀ El-⌜Tm⌝)) ne0
   ▷ λ { (E0 , eqE0) →
@@ -1451,7 +1451,7 @@ cd⟶ap₍3₎ᴸ1 : {Γ : Cx} (a0 : RTm (Γ)) (a1 : RTm (Γ ∙)) (x0ᵢ0 : RTm
 cd⟶ap₍3₎ᴸ1 {Γ} a0 a1 x0ᵢ0 x0ᵢ1 u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (e0 , (_ , (_ , ((de0 , dq1) , (ne0 , nq1))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶ap₄⁽1⁾-sub (single e0) (w1 j) (w1 c) (w1 f0) (w1 f1) (w1 a0ᵢ0) (w1 a0ᵢ1) v₀) (T⟶ap₄⁽1⁾-cong (subTm (single e0) (w1 j)) j (subTm (single e0) (w1 c)) c (subTm (single e0) (w1 f0)) f0 (subTm (single e0) (w1 f1)) f1 (subTm (single e0) (w1 a0ᵢ0)) a0ᵢ0 (subTm (single e0) (w1 a0ᵢ1)) a0ᵢ1 (subTm (single e0) v₀) e0 (wk-cancel-tm e0 j) (wk-cancel-tm e0 c) (wk-cancel-tm e0 f0) (wk-cancel-tm e0 f1) (wk-cancel-tm e0 a0ᵢ0) (wk-cancel-tm e0 a0ᵢ1) refl))) (⊢conv dq1 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e0) done)))))) done nq1
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (T⟶ap₄⁽1⁾-β j c f0 f1 a0ᵢ0 a0ᵢ1 e0)) (⊢conv dq1 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e0) done)))))) done nq1
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
   decStkC {Γ = Γ} x0ᵢ0 (⊢conv de0 El-⌜StkC⌝) ne0
   ▷ λ pr0 →

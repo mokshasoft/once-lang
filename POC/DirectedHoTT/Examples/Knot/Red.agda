@@ -31,7 +31,7 @@ open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; cong; cong₂;
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮)
-open import DirectedHoTT.Metatheory.TySub 𝒮 (Defs.size 𝒮) using ( ⊢wk )
+open import DirectedHoTT.Metatheory.TySub 𝒮 (Defs.size 𝒮) using ( ⊢wk; wk-cancel-tm )
 open import DirectedHoTT.Metatheory.SubjectReductionBase 𝒮 using () renaming ( wk-sub to wkS )
 open import DirectedHoTT.Lib.Sugar 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf) using ( Cons; []; _∷_; tag; Lt; lt-z; lt-s; []ᵈ; _∷ᵈ_; AllD; v₀; _,ₚ_ )
 open import DirectedHoTT.Lib.SynView 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf) using ( PayV; ⊢recFst; ⊢recSnd; ⊢atDepthSK; ⊢natFst; ⊢natSnd )
@@ -111,6 +111,9 @@ T⟶lam⁽1⁾-cong J J' X X' F0 F0' E0 E0' refl refl refl refl = refl
 T⟶lam⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶lam⁽1⁾ J X F0 E0 ⌝ᵗ ≡ ⌜ T⟶lam⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ E0) ⌝ᵗ
 T⟶lam⁽1⁾-sub σ J X F0 E0 = (T⟶lamI-sub σ J X F0 E0)
 
+T⟶lam⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶lam⁽1⁾ (w1 J) (w1 X) (w1 F0) v₀ ⌝ᵗ ≡ ⌜ T⟶lam⁽1⁾ J X F0 E0 ⌝ᵗ
+T⟶lam⁽1⁾-β J X F0 E0 = trans (T⟶lam⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) v₀) (T⟶lam⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) refl)
+
 T⟶lam⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶lam⁽0⁾ J X F0 = tσ (C⟶lam_0I J) (T⟶lam⁽1⁾ (w1 J) (w1 X) (w1 F0) v₀)
 
@@ -189,6 +192,9 @@ T⟶app₁⁽1⁾-cong J J' X X' F0 F0' F1 F1' E0 E0' refl refl refl refl refl =
 T⟶app₁⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶app₁⁽1⁾ J X F0 F1 E0 ⌝ᵗ ≡ ⌜ T⟶app₁⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ E0) ⌝ᵗ
 T⟶app₁⁽1⁾-sub σ J X F0 F1 E0 = (T⟶app₁I-sub σ J X F0 F1 E0)
 
+T⟶app₁⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶app₁⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) v₀ ⌝ᵗ ≡ ⌜ T⟶app₁⁽1⁾ J X F0 F1 E0 ⌝ᵗ
+T⟶app₁⁽1⁾-β J X F0 F1 E0 = trans (T⟶app₁⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) v₀) (T⟶app₁⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) refl)
+
 T⟶app₁⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶app₁⁽0⁾ J X F0 F1 = tσ (C⟶app₁_0I J) (T⟶app₁⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) v₀)
 
@@ -258,6 +264,9 @@ T⟶app₂⁽1⁾-cong J J' X X' F0 F0' F1 F1' E0 E0' refl refl refl refl refl =
 
 T⟶app₂⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶app₂⁽1⁾ J X F0 F1 E0 ⌝ᵗ ≡ ⌜ T⟶app₂⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ E0) ⌝ᵗ
 T⟶app₂⁽1⁾-sub σ J X F0 F1 E0 = (T⟶app₂I-sub σ J X F0 F1 E0)
+
+T⟶app₂⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶app₂⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) v₀ ⌝ᵗ ≡ ⌜ T⟶app₂⁽1⁾ J X F0 F1 E0 ⌝ᵗ
+T⟶app₂⁽1⁾-β J X F0 F1 E0 = trans (T⟶app₂⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) v₀) (T⟶app₂⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) refl)
 
 T⟶app₂⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶app₂⁽0⁾ J X F0 F1 = tσ (C⟶app₂_0I J) (T⟶app₂⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) v₀)
@@ -383,6 +392,9 @@ T⟶pair₁⁽1⁾-cong J J' X X' F0 F0' F1 F1' E0 E0' refl refl refl refl refl 
 T⟶pair₁⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶pair₁⁽1⁾ J X F0 F1 E0 ⌝ᵗ ≡ ⌜ T⟶pair₁⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ E0) ⌝ᵗ
 T⟶pair₁⁽1⁾-sub σ J X F0 F1 E0 = (T⟶pair₁I-sub σ J X F0 F1 E0)
 
+T⟶pair₁⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶pair₁⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) v₀ ⌝ᵗ ≡ ⌜ T⟶pair₁⁽1⁾ J X F0 F1 E0 ⌝ᵗ
+T⟶pair₁⁽1⁾-β J X F0 F1 E0 = trans (T⟶pair₁⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) v₀) (T⟶pair₁⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) refl)
+
 T⟶pair₁⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶pair₁⁽0⁾ J X F0 F1 = tσ (C⟶pair₁_0I J) (T⟶pair₁⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) v₀)
 
@@ -452,6 +464,9 @@ T⟶pair₂⁽1⁾-cong J J' X X' F0 F0' F1 F1' E0 E0' refl refl refl refl refl 
 
 T⟶pair₂⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶pair₂⁽1⁾ J X F0 F1 E0 ⌝ᵗ ≡ ⌜ T⟶pair₂⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ E0) ⌝ᵗ
 T⟶pair₂⁽1⁾-sub σ J X F0 F1 E0 = (T⟶pair₂I-sub σ J X F0 F1 E0)
+
+T⟶pair₂⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶pair₂⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) v₀ ⌝ᵗ ≡ ⌜ T⟶pair₂⁽1⁾ J X F0 F1 E0 ⌝ᵗ
+T⟶pair₂⁽1⁾-β J X F0 F1 E0 = trans (T⟶pair₂⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) v₀) (T⟶pair₂⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) refl)
 
 T⟶pair₂⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶pair₂⁽0⁾ J X F0 F1 = tσ (C⟶pair₂_0I J) (T⟶pair₂⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) v₀)
@@ -532,6 +547,9 @@ T⟶absurd₁⁽1⁾-cong J J' X X' F0 F0' F1 F1' E0 E0' refl refl refl refl ref
 T⟶absurd₁⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶absurd₁⁽1⁾ J X F0 F1 E0 ⌝ᵗ ≡ ⌜ T⟶absurd₁⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ E0) ⌝ᵗ
 T⟶absurd₁⁽1⁾-sub σ J X F0 F1 E0 = (T⟶absurd₁I-sub σ J X F0 F1 E0)
 
+T⟶absurd₁⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶absurd₁⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) v₀ ⌝ᵗ ≡ ⌜ T⟶absurd₁⁽1⁾ J X F0 F1 E0 ⌝ᵗ
+T⟶absurd₁⁽1⁾-β J X F0 F1 E0 = trans (T⟶absurd₁⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) v₀) (T⟶absurd₁⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) refl)
+
 T⟶absurd₁⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶absurd₁⁽0⁾ J X F0 F1 = tσ (C⟶absurd₁_0I J) (T⟶absurd₁⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) v₀)
 
@@ -601,6 +619,9 @@ T⟶absurd₂⁽1⁾-cong J J' X X' F0 F0' F1 F1' E0 E0' refl refl refl refl ref
 
 T⟶absurd₂⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶absurd₂⁽1⁾ J X F0 F1 E0 ⌝ᵗ ≡ ⌜ T⟶absurd₂⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ E0) ⌝ᵗ
 T⟶absurd₂⁽1⁾-sub σ J X F0 F1 E0 = (T⟶absurd₂I-sub σ J X F0 F1 E0)
+
+T⟶absurd₂⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶absurd₂⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) v₀ ⌝ᵗ ≡ ⌜ T⟶absurd₂⁽1⁾ J X F0 F1 E0 ⌝ᵗ
+T⟶absurd₂⁽1⁾-β J X F0 F1 E0 = trans (T⟶absurd₂⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) v₀) (T⟶absurd₂⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) refl)
 
 T⟶absurd₂⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶absurd₂⁽0⁾ J X F0 F1 = tσ (C⟶absurd₂_0I J) (T⟶absurd₂⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) v₀)
@@ -681,6 +702,9 @@ T⟶ordtr₁⁽1⁾-cong J J' X X' F0 F0' F1 F1' F2 F2' F3 F3' F4 F4' E0 E0' ref
 T⟶ordtr₁⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (F3 : RTm Δ) (F4 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶ordtr₁⁽1⁾ J X F0 F1 F2 F3 F4 E0 ⌝ᵗ ≡ ⌜ T⟶ordtr₁⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ F2) (subTm σ F3) (subTm σ F4) (subTm σ E0) ⌝ᵗ
 T⟶ordtr₁⁽1⁾-sub σ J X F0 F1 F2 F3 F4 E0 = (T⟶ordtr₁I-sub σ J X F0 F1 F2 F3 F4 E0)
 
+T⟶ordtr₁⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (F3 : RTm Δ) (F4 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶ordtr₁⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) (w1 F3) (w1 F4) v₀ ⌝ᵗ ≡ ⌜ T⟶ordtr₁⁽1⁾ J X F0 F1 F2 F3 F4 E0 ⌝ᵗ
+T⟶ordtr₁⁽1⁾-β J X F0 F1 F2 F3 F4 E0 = trans (T⟶ordtr₁⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) (w1 F3) (w1 F4) v₀) (T⟶ordtr₁⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) (w1 F2)) F2 (subTm (single E0) (w1 F3)) F3 (subTm (single E0) (w1 F4)) F4 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) (wk-cancel-tm E0 F2) (wk-cancel-tm E0 F3) (wk-cancel-tm E0 F4) refl)
+
 T⟶ordtr₁⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶ordtr₁⁽0⁾ J X F0 F1 F2 F3 F4 = tσ (C⟶ordtr₁_0I J) (T⟶ordtr₁⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) (w1 F3) (w1 F4) v₀)
 
@@ -750,6 +774,9 @@ T⟶ordtr₂⁽1⁾-cong J J' X X' F0 F0' F1 F1' F2 F2' F3 F3' F4 F4' E0 E0' ref
 
 T⟶ordtr₂⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (F3 : RTm Δ) (F4 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶ordtr₂⁽1⁾ J X F0 F1 F2 F3 F4 E0 ⌝ᵗ ≡ ⌜ T⟶ordtr₂⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ F2) (subTm σ F3) (subTm σ F4) (subTm σ E0) ⌝ᵗ
 T⟶ordtr₂⁽1⁾-sub σ J X F0 F1 F2 F3 F4 E0 = (T⟶ordtr₂I-sub σ J X F0 F1 F2 F3 F4 E0)
+
+T⟶ordtr₂⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (F3 : RTm Δ) (F4 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶ordtr₂⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) (w1 F3) (w1 F4) v₀ ⌝ᵗ ≡ ⌜ T⟶ordtr₂⁽1⁾ J X F0 F1 F2 F3 F4 E0 ⌝ᵗ
+T⟶ordtr₂⁽1⁾-β J X F0 F1 F2 F3 F4 E0 = trans (T⟶ordtr₂⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) (w1 F3) (w1 F4) v₀) (T⟶ordtr₂⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) (w1 F2)) F2 (subTm (single E0) (w1 F3)) F3 (subTm (single E0) (w1 F4)) F4 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) (wk-cancel-tm E0 F2) (wk-cancel-tm E0 F3) (wk-cancel-tm E0 F4) refl)
 
 T⟶ordtr₂⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶ordtr₂⁽0⁾ J X F0 F1 F2 F3 F4 = tσ (C⟶ordtr₂_0I J) (T⟶ordtr₂⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) (w1 F3) (w1 F4) v₀)
@@ -821,6 +848,9 @@ T⟶ordtr₃⁽1⁾-cong J J' X X' F0 F0' F1 F1' F2 F2' F3 F3' F4 F4' E0 E0' ref
 T⟶ordtr₃⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (F3 : RTm Δ) (F4 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶ordtr₃⁽1⁾ J X F0 F1 F2 F3 F4 E0 ⌝ᵗ ≡ ⌜ T⟶ordtr₃⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ F2) (subTm σ F3) (subTm σ F4) (subTm σ E0) ⌝ᵗ
 T⟶ordtr₃⁽1⁾-sub σ J X F0 F1 F2 F3 F4 E0 = (T⟶ordtr₃I-sub σ J X F0 F1 F2 F3 F4 E0)
 
+T⟶ordtr₃⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (F3 : RTm Δ) (F4 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶ordtr₃⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) (w1 F3) (w1 F4) v₀ ⌝ᵗ ≡ ⌜ T⟶ordtr₃⁽1⁾ J X F0 F1 F2 F3 F4 E0 ⌝ᵗ
+T⟶ordtr₃⁽1⁾-β J X F0 F1 F2 F3 F4 E0 = trans (T⟶ordtr₃⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) (w1 F3) (w1 F4) v₀) (T⟶ordtr₃⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) (w1 F2)) F2 (subTm (single E0) (w1 F3)) F3 (subTm (single E0) (w1 F4)) F4 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) (wk-cancel-tm E0 F2) (wk-cancel-tm E0 F3) (wk-cancel-tm E0 F4) refl)
+
 T⟶ordtr₃⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶ordtr₃⁽0⁾ J X F0 F1 F2 F3 F4 = tσ (C⟶ordtr₃_0I J) (T⟶ordtr₃⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) (w1 F3) (w1 F4) v₀)
 
@@ -891,6 +921,9 @@ T⟶ordtr₄⁽1⁾-cong J J' X X' F0 F0' F1 F1' F2 F2' F3 F3' F4 F4' E0 E0' ref
 T⟶ordtr₄⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (F3 : RTm Δ) (F4 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶ordtr₄⁽1⁾ J X F0 F1 F2 F3 F4 E0 ⌝ᵗ ≡ ⌜ T⟶ordtr₄⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ F2) (subTm σ F3) (subTm σ F4) (subTm σ E0) ⌝ᵗ
 T⟶ordtr₄⁽1⁾-sub σ J X F0 F1 F2 F3 F4 E0 = (T⟶ordtr₄I-sub σ J X F0 F1 F2 F3 F4 E0)
 
+T⟶ordtr₄⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (F3 : RTm Δ) (F4 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶ordtr₄⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) (w1 F3) (w1 F4) v₀ ⌝ᵗ ≡ ⌜ T⟶ordtr₄⁽1⁾ J X F0 F1 F2 F3 F4 E0 ⌝ᵗ
+T⟶ordtr₄⁽1⁾-β J X F0 F1 F2 F3 F4 E0 = trans (T⟶ordtr₄⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) (w1 F3) (w1 F4) v₀) (T⟶ordtr₄⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) (w1 F2)) F2 (subTm (single E0) (w1 F3)) F3 (subTm (single E0) (w1 F4)) F4 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) (wk-cancel-tm E0 F2) (wk-cancel-tm E0 F3) (wk-cancel-tm E0 F4) refl)
+
 T⟶ordtr₄⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶ordtr₄⁽0⁾ J X F0 F1 F2 F3 F4 = tσ (C⟶ordtr₄_0I J) (T⟶ordtr₄⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) (w1 F3) (w1 F4) v₀)
 
@@ -960,6 +993,9 @@ T⟶ordtr₅⁽1⁾-cong J J' X X' F0 F0' F1 F1' F2 F2' F3 F3' F4 F4' E0 E0' ref
 
 T⟶ordtr₅⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (F3 : RTm Δ) (F4 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶ordtr₅⁽1⁾ J X F0 F1 F2 F3 F4 E0 ⌝ᵗ ≡ ⌜ T⟶ordtr₅⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ F2) (subTm σ F3) (subTm σ F4) (subTm σ E0) ⌝ᵗ
 T⟶ordtr₅⁽1⁾-sub σ J X F0 F1 F2 F3 F4 E0 = (T⟶ordtr₅I-sub σ J X F0 F1 F2 F3 F4 E0)
+
+T⟶ordtr₅⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (F3 : RTm Δ) (F4 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶ordtr₅⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) (w1 F3) (w1 F4) v₀ ⌝ᵗ ≡ ⌜ T⟶ordtr₅⁽1⁾ J X F0 F1 F2 F3 F4 E0 ⌝ᵗ
+T⟶ordtr₅⁽1⁾-β J X F0 F1 F2 F3 F4 E0 = trans (T⟶ordtr₅⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) (w1 F3) (w1 F4) v₀) (T⟶ordtr₅⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) (w1 F2)) F2 (subTm (single E0) (w1 F3)) F3 (subTm (single E0) (w1 F4)) F4 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) (wk-cancel-tm E0 F2) (wk-cancel-tm E0 F3) (wk-cancel-tm E0 F4) refl)
 
 T⟶ordtr₅⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶ordtr₅⁽0⁾ J X F0 F1 F2 F3 F4 = tσ (C⟶ordtr₅_0I J) (T⟶ordtr₅⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) (w1 F3) (w1 F4) v₀)
@@ -1313,6 +1349,9 @@ T⟶fst₁⁽1⁾-cong J J' X X' F0 F0' E0 E0' refl refl refl refl = refl
 T⟶fst₁⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶fst₁⁽1⁾ J X F0 E0 ⌝ᵗ ≡ ⌜ T⟶fst₁⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ E0) ⌝ᵗ
 T⟶fst₁⁽1⁾-sub σ J X F0 E0 = (T⟶fst₁I-sub σ J X F0 E0)
 
+T⟶fst₁⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶fst₁⁽1⁾ (w1 J) (w1 X) (w1 F0) v₀ ⌝ᵗ ≡ ⌜ T⟶fst₁⁽1⁾ J X F0 E0 ⌝ᵗ
+T⟶fst₁⁽1⁾-β J X F0 E0 = trans (T⟶fst₁⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) v₀) (T⟶fst₁⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) refl)
+
 T⟶fst₁⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶fst₁⁽0⁾ J X F0 = tσ (C⟶fst₁_0I J) (T⟶fst₁⁽1⁾ (w1 J) (w1 X) (w1 F0) v₀)
 
@@ -1436,6 +1475,9 @@ T⟶snd₁⁽1⁾-cong J J' X X' F0 F0' E0 E0' refl refl refl refl = refl
 
 T⟶snd₁⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶snd₁⁽1⁾ J X F0 E0 ⌝ᵗ ≡ ⌜ T⟶snd₁⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ E0) ⌝ᵗ
 T⟶snd₁⁽1⁾-sub σ J X F0 E0 = (T⟶snd₁I-sub σ J X F0 E0)
+
+T⟶snd₁⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶snd₁⁽1⁾ (w1 J) (w1 X) (w1 F0) v₀ ⌝ᵗ ≡ ⌜ T⟶snd₁⁽1⁾ J X F0 E0 ⌝ᵗ
+T⟶snd₁⁽1⁾-β J X F0 E0 = trans (T⟶snd₁⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) v₀) (T⟶snd₁⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) refl)
 
 T⟶snd₁⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶snd₁⁽0⁾ J X F0 = tσ (C⟶snd₁_0I J) (T⟶snd₁⁽1⁾ (w1 J) (w1 X) (w1 F0) v₀)
@@ -1561,6 +1603,9 @@ T⟶cPi₁⁽1⁾-cong J J' X X' F0 F0' F1 F1' E0 E0' refl refl refl refl refl =
 T⟶cPi₁⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶cPi₁⁽1⁾ J X F0 F1 E0 ⌝ᵗ ≡ ⌜ T⟶cPi₁⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ E0) ⌝ᵗ
 T⟶cPi₁⁽1⁾-sub σ J X F0 F1 E0 = (T⟶cPi₁I-sub σ J X F0 F1 E0)
 
+T⟶cPi₁⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶cPi₁⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) v₀ ⌝ᵗ ≡ ⌜ T⟶cPi₁⁽1⁾ J X F0 F1 E0 ⌝ᵗ
+T⟶cPi₁⁽1⁾-β J X F0 F1 E0 = trans (T⟶cPi₁⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) v₀) (T⟶cPi₁⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) refl)
+
 T⟶cPi₁⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶cPi₁⁽0⁾ J X F0 F1 = tσ (C⟶cPi₁_0I J) (T⟶cPi₁⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) v₀)
 
@@ -1630,6 +1675,9 @@ T⟶cPi₂⁽1⁾-cong J J' X X' F0 F0' F1 F1' E0 E0' refl refl refl refl refl =
 
 T⟶cPi₂⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶cPi₂⁽1⁾ J X F0 F1 E0 ⌝ᵗ ≡ ⌜ T⟶cPi₂⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ E0) ⌝ᵗ
 T⟶cPi₂⁽1⁾-sub σ J X F0 F1 E0 = (T⟶cPi₂I-sub σ J X F0 F1 E0)
+
+T⟶cPi₂⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶cPi₂⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) v₀ ⌝ᵗ ≡ ⌜ T⟶cPi₂⁽1⁾ J X F0 F1 E0 ⌝ᵗ
+T⟶cPi₂⁽1⁾-β J X F0 F1 E0 = trans (T⟶cPi₂⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) v₀) (T⟶cPi₂⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) refl)
 
 T⟶cPi₂⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶cPi₂⁽0⁾ J X F0 F1 = tσ (C⟶cPi₂_0I J) (T⟶cPi₂⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) v₀)
@@ -1710,6 +1758,9 @@ T⟶cSg₁⁽1⁾-cong J J' X X' F0 F0' F1 F1' E0 E0' refl refl refl refl refl =
 T⟶cSg₁⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶cSg₁⁽1⁾ J X F0 F1 E0 ⌝ᵗ ≡ ⌜ T⟶cSg₁⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ E0) ⌝ᵗ
 T⟶cSg₁⁽1⁾-sub σ J X F0 F1 E0 = (T⟶cSg₁I-sub σ J X F0 F1 E0)
 
+T⟶cSg₁⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶cSg₁⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) v₀ ⌝ᵗ ≡ ⌜ T⟶cSg₁⁽1⁾ J X F0 F1 E0 ⌝ᵗ
+T⟶cSg₁⁽1⁾-β J X F0 F1 E0 = trans (T⟶cSg₁⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) v₀) (T⟶cSg₁⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) refl)
+
 T⟶cSg₁⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶cSg₁⁽0⁾ J X F0 F1 = tσ (C⟶cSg₁_0I J) (T⟶cSg₁⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) v₀)
 
@@ -1779,6 +1830,9 @@ T⟶cSg₂⁽1⁾-cong J J' X X' F0 F0' F1 F1' E0 E0' refl refl refl refl refl =
 
 T⟶cSg₂⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶cSg₂⁽1⁾ J X F0 F1 E0 ⌝ᵗ ≡ ⌜ T⟶cSg₂⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ E0) ⌝ᵗ
 T⟶cSg₂⁽1⁾-sub σ J X F0 F1 E0 = (T⟶cSg₂I-sub σ J X F0 F1 E0)
+
+T⟶cSg₂⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶cSg₂⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) v₀ ⌝ᵗ ≡ ⌜ T⟶cSg₂⁽1⁾ J X F0 F1 E0 ⌝ᵗ
+T⟶cSg₂⁽1⁾-β J X F0 F1 E0 = trans (T⟶cSg₂⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) v₀) (T⟶cSg₂⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) refl)
 
 T⟶cSg₂⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶cSg₂⁽0⁾ J X F0 F1 = tσ (C⟶cSg₂_0I J) (T⟶cSg₂⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) v₀)
@@ -1859,6 +1913,9 @@ T⟶cHom₁⁽1⁾-cong J J' X X' F0 F0' F1 F1' F2 F2' E0 E0' refl refl refl ref
 T⟶cHom₁⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶cHom₁⁽1⁾ J X F0 F1 F2 E0 ⌝ᵗ ≡ ⌜ T⟶cHom₁⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ F2) (subTm σ E0) ⌝ᵗ
 T⟶cHom₁⁽1⁾-sub σ J X F0 F1 F2 E0 = (T⟶cHom₁I-sub σ J X F0 F1 F2 E0)
 
+T⟶cHom₁⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶cHom₁⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀ ⌝ᵗ ≡ ⌜ T⟶cHom₁⁽1⁾ J X F0 F1 F2 E0 ⌝ᵗ
+T⟶cHom₁⁽1⁾-β J X F0 F1 F2 E0 = trans (T⟶cHom₁⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀) (T⟶cHom₁⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) (w1 F2)) F2 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) (wk-cancel-tm E0 F2) refl)
+
 T⟶cHom₁⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶cHom₁⁽0⁾ J X F0 F1 F2 = tσ (C⟶cHom₁_0I J) (T⟶cHom₁⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀)
 
@@ -1929,6 +1986,9 @@ T⟶cHom₂⁽1⁾-cong J J' X X' F0 F0' F1 F1' F2 F2' E0 E0' refl refl refl ref
 T⟶cHom₂⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶cHom₂⁽1⁾ J X F0 F1 F2 E0 ⌝ᵗ ≡ ⌜ T⟶cHom₂⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ F2) (subTm σ E0) ⌝ᵗ
 T⟶cHom₂⁽1⁾-sub σ J X F0 F1 F2 E0 = (T⟶cHom₂I-sub σ J X F0 F1 F2 E0)
 
+T⟶cHom₂⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶cHom₂⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀ ⌝ᵗ ≡ ⌜ T⟶cHom₂⁽1⁾ J X F0 F1 F2 E0 ⌝ᵗ
+T⟶cHom₂⁽1⁾-β J X F0 F1 F2 E0 = trans (T⟶cHom₂⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀) (T⟶cHom₂⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) (w1 F2)) F2 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) (wk-cancel-tm E0 F2) refl)
+
 T⟶cHom₂⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶cHom₂⁽0⁾ J X F0 F1 F2 = tσ (C⟶cHom₂_0I J) (T⟶cHom₂⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀)
 
@@ -1998,6 +2058,9 @@ T⟶cHom₃⁽1⁾-cong J J' X X' F0 F0' F1 F1' F2 F2' E0 E0' refl refl refl ref
 
 T⟶cHom₃⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶cHom₃⁽1⁾ J X F0 F1 F2 E0 ⌝ᵗ ≡ ⌜ T⟶cHom₃⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ F2) (subTm σ E0) ⌝ᵗ
 T⟶cHom₃⁽1⁾-sub σ J X F0 F1 F2 E0 = (T⟶cHom₃I-sub σ J X F0 F1 F2 E0)
+
+T⟶cHom₃⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶cHom₃⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀ ⌝ᵗ ≡ ⌜ T⟶cHom₃⁽1⁾ J X F0 F1 F2 E0 ⌝ᵗ
+T⟶cHom₃⁽1⁾-β J X F0 F1 F2 E0 = trans (T⟶cHom₃⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀) (T⟶cHom₃⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) (w1 F2)) F2 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) (wk-cancel-tm E0 F2) refl)
 
 T⟶cHom₃⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶cHom₃⁽0⁾ J X F0 F1 F2 = tσ (C⟶cHom₃_0I J) (T⟶cHom₃⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀)
@@ -2078,6 +2141,9 @@ T⟶hrefl₁⁽1⁾-cong J J' X X' F0 F0' F1 F1' E0 E0' refl refl refl refl refl
 T⟶hrefl₁⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶hrefl₁⁽1⁾ J X F0 F1 E0 ⌝ᵗ ≡ ⌜ T⟶hrefl₁⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ E0) ⌝ᵗ
 T⟶hrefl₁⁽1⁾-sub σ J X F0 F1 E0 = (T⟶hrefl₁I-sub σ J X F0 F1 E0)
 
+T⟶hrefl₁⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶hrefl₁⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) v₀ ⌝ᵗ ≡ ⌜ T⟶hrefl₁⁽1⁾ J X F0 F1 E0 ⌝ᵗ
+T⟶hrefl₁⁽1⁾-β J X F0 F1 E0 = trans (T⟶hrefl₁⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) v₀) (T⟶hrefl₁⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) refl)
+
 T⟶hrefl₁⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶hrefl₁⁽0⁾ J X F0 F1 = tσ (C⟶hrefl₁_0I J) (T⟶hrefl₁⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) v₀)
 
@@ -2147,6 +2213,9 @@ T⟶hrefl₂⁽1⁾-cong J J' X X' F0 F0' F1 F1' E0 E0' refl refl refl refl refl
 
 T⟶hrefl₂⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶hrefl₂⁽1⁾ J X F0 F1 E0 ⌝ᵗ ≡ ⌜ T⟶hrefl₂⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ E0) ⌝ᵗ
 T⟶hrefl₂⁽1⁾-sub σ J X F0 F1 E0 = (T⟶hrefl₂I-sub σ J X F0 F1 E0)
+
+T⟶hrefl₂⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶hrefl₂⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) v₀ ⌝ᵗ ≡ ⌜ T⟶hrefl₂⁽1⁾ J X F0 F1 E0 ⌝ᵗ
+T⟶hrefl₂⁽1⁾-β J X F0 F1 E0 = trans (T⟶hrefl₂⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) v₀) (T⟶hrefl₂⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) refl)
 
 T⟶hrefl₂⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶hrefl₂⁽0⁾ J X F0 F1 = tσ (C⟶hrefl₂_0I J) (T⟶hrefl₂⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) v₀)
@@ -2236,6 +2305,9 @@ T⟶hrefl₃⁽2⁾-cong J J' X X' F0 F0' F1 F1' E0 E0' E1 E1' refl refl refl re
 T⟶hrefl₃⁽2⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (E0 : RTm Δ) (E1 : RTm Δ) → subTm σ ⌜ T⟶hrefl₃⁽2⁾ J X F0 F1 E0 E1 ⌝ᵗ ≡ ⌜ T⟶hrefl₃⁽2⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ E0) (subTm σ E1) ⌝ᵗ
 T⟶hrefl₃⁽2⁾-sub σ J X F0 F1 E0 E1 = (T⟶hrefl₃I-sub σ J X F1 E0)
 
+T⟶hrefl₃⁽2⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (E0 : RTm Δ) (E1 : RTm Δ) → subTm (single E1) ⌜ T⟶hrefl₃⁽2⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 E0) v₀ ⌝ᵗ ≡ ⌜ T⟶hrefl₃⁽2⁾ J X F0 F1 E0 E1 ⌝ᵗ
+T⟶hrefl₃⁽2⁾-β J X F0 F1 E0 E1 = trans (T⟶hrefl₃⁽2⁾-sub (single E1) (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 E0) v₀) (T⟶hrefl₃⁽2⁾-cong (subTm (single E1) (w1 J)) J (subTm (single E1) (w1 X)) X (subTm (single E1) (w1 F0)) F0 (subTm (single E1) (w1 F1)) F1 (subTm (single E1) (w1 E0)) E0 (subTm (single E1) v₀) E1 (wk-cancel-tm E1 J) (wk-cancel-tm E1 X) (wk-cancel-tm E1 F0) (wk-cancel-tm E1 F1) (wk-cancel-tm E1 E0) refl)
+
 T⟶hrefl₃⁽1⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶hrefl₃⁽1⁾ J X F0 F1 E0 = tσ (C⟶hrefl₃_1I J F0 E0) (T⟶hrefl₃⁽2⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 E0) v₀)
 
@@ -2245,6 +2317,9 @@ T⟶hrefl₃⁽1⁾-cong J J' X X' F0 F0' F1 F1' E0 E0' refl refl refl refl refl
 T⟶hrefl₃⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶hrefl₃⁽1⁾ J X F0 F1 E0 ⌝ᵗ ≡ ⌜ T⟶hrefl₃⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ E0) ⌝ᵗ
 T⟶hrefl₃⁽1⁾-sub σ J X F0 F1 E0 =
   dσ-cong1 (subTm σ (C⟶hrefl₃_1I J F0 E0)) (C⟶hrefl₃_1I (subTm σ J) (subTm σ F0) (subTm σ E0)) (subTm (extS σ) ⌜ T⟶hrefl₃⁽2⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 E0) v₀ ⌝ᵗ) ⌜ T⟶hrefl₃⁽2⁾ (w1 (subTm σ J)) (w1 (subTm σ X)) (w1 (subTm σ F0)) (w1 (subTm σ F1)) (w1 (subTm σ E0)) v₀ ⌝ᵗ (C⟶hrefl₃_1I-sub σ J F0 E0) (trans (T⟶hrefl₃⁽2⁾-sub (extS σ) (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 E0) v₀) (T⟶hrefl₃⁽2⁾-cong (subTm (extS σ) (w1 J)) (w1 (subTm σ J)) (subTm (extS σ) (w1 X)) (w1 (subTm σ X)) (subTm (extS σ) (w1 F0)) (w1 (subTm σ F0)) (subTm (extS σ) (w1 F1)) (w1 (subTm σ F1)) (subTm (extS σ) (w1 E0)) (w1 (subTm σ E0)) (subTm (extS σ) v₀) v₀ (w1-sub σ J) (w1-sub σ X) (w1-sub σ F0) (w1-sub σ F1) (w1-sub σ E0) refl))
+
+T⟶hrefl₃⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶hrefl₃⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) v₀ ⌝ᵗ ≡ ⌜ T⟶hrefl₃⁽1⁾ J X F0 F1 E0 ⌝ᵗ
+T⟶hrefl₃⁽1⁾-β J X F0 F1 E0 = trans (T⟶hrefl₃⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) v₀) (T⟶hrefl₃⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) refl)
 
 T⟶hrefl₃⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶hrefl₃⁽0⁾ J X F0 F1 = tσ (C⟶hrefl₃_0I J) (T⟶hrefl₃⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) v₀)
@@ -2430,6 +2505,9 @@ T⟶tr₁⁽1⁾-cong J J' X X' F0 F0' F1 F1' F2 F2' E0 E0' refl refl refl refl 
 T⟶tr₁⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶tr₁⁽1⁾ J X F0 F1 F2 E0 ⌝ᵗ ≡ ⌜ T⟶tr₁⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ F2) (subTm σ E0) ⌝ᵗ
 T⟶tr₁⁽1⁾-sub σ J X F0 F1 F2 E0 = (T⟶tr₁I-sub σ J X F0 F1 F2 E0)
 
+T⟶tr₁⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶tr₁⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀ ⌝ᵗ ≡ ⌜ T⟶tr₁⁽1⁾ J X F0 F1 F2 E0 ⌝ᵗ
+T⟶tr₁⁽1⁾-β J X F0 F1 F2 E0 = trans (T⟶tr₁⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀) (T⟶tr₁⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) (w1 F2)) F2 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) (wk-cancel-tm E0 F2) refl)
+
 T⟶tr₁⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶tr₁⁽0⁾ J X F0 F1 F2 = tσ (C⟶tr₁_0I J) (T⟶tr₁⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀)
 
@@ -2500,6 +2578,9 @@ T⟶tr₂⁽1⁾-cong J J' X X' F0 F0' F1 F1' F2 F2' E0 E0' refl refl refl refl 
 T⟶tr₂⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶tr₂⁽1⁾ J X F0 F1 F2 E0 ⌝ᵗ ≡ ⌜ T⟶tr₂⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ F2) (subTm σ E0) ⌝ᵗ
 T⟶tr₂⁽1⁾-sub σ J X F0 F1 F2 E0 = (T⟶tr₂I-sub σ J X F0 F1 F2 E0)
 
+T⟶tr₂⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶tr₂⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀ ⌝ᵗ ≡ ⌜ T⟶tr₂⁽1⁾ J X F0 F1 F2 E0 ⌝ᵗ
+T⟶tr₂⁽1⁾-β J X F0 F1 F2 E0 = trans (T⟶tr₂⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀) (T⟶tr₂⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) (w1 F2)) F2 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) (wk-cancel-tm E0 F2) refl)
+
 T⟶tr₂⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶tr₂⁽0⁾ J X F0 F1 F2 = tσ (C⟶tr₂_0I J) (T⟶tr₂⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀)
 
@@ -2569,6 +2650,9 @@ T⟶tr₃⁽1⁾-cong J J' X X' F0 F0' F1 F1' F2 F2' E0 E0' refl refl refl refl 
 
 T⟶tr₃⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶tr₃⁽1⁾ J X F0 F1 F2 E0 ⌝ᵗ ≡ ⌜ T⟶tr₃⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ F2) (subTm σ E0) ⌝ᵗ
 T⟶tr₃⁽1⁾-sub σ J X F0 F1 F2 E0 = (T⟶tr₃I-sub σ J X F0 F1 F2 E0)
+
+T⟶tr₃⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶tr₃⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀ ⌝ᵗ ≡ ⌜ T⟶tr₃⁽1⁾ J X F0 F1 F2 E0 ⌝ᵗ
+T⟶tr₃⁽1⁾-β J X F0 F1 F2 E0 = trans (T⟶tr₃⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀) (T⟶tr₃⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) (w1 F2)) F2 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) (wk-cancel-tm E0 F2) refl)
 
 T⟶tr₃⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶tr₃⁽0⁾ J X F0 F1 F2 = tσ (C⟶tr₃_0I J) (T⟶tr₃⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀)
@@ -2694,6 +2778,9 @@ T⟶tr₄⁽4⁾-cong J J' X X' F0 F0' F2 F2' E0 E0' E1 E1' E2 E2' E3 E3' refl r
 T⟶tr₄⁽4⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) (E1 : RTm Δ) (E2 : RTm Δ) (E3 : RTm Δ) → subTm σ ⌜ T⟶tr₄⁽4⁾ J X F0 F2 E0 E1 E2 E3 ⌝ᵗ ≡ ⌜ T⟶tr₄⁽4⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F2) (subTm σ E0) (subTm σ E1) (subTm σ E2) (subTm σ E3) ⌝ᵗ
 T⟶tr₄⁽4⁾-sub σ J X F0 F2 E0 E1 E2 E3 = (T⟶tr₄I-sub σ J X F2)
 
+T⟶tr₄⁽4⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) (E1 : RTm Δ) (E2 : RTm Δ) (E3 : RTm Δ) → subTm (single E3) ⌜ T⟶tr₄⁽4⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) (w1 E1) (w1 E2) v₀ ⌝ᵗ ≡ ⌜ T⟶tr₄⁽4⁾ J X F0 F2 E0 E1 E2 E3 ⌝ᵗ
+T⟶tr₄⁽4⁾-β J X F0 F2 E0 E1 E2 E3 = trans (T⟶tr₄⁽4⁾-sub (single E3) (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) (w1 E1) (w1 E2) v₀) (T⟶tr₄⁽4⁾-cong (subTm (single E3) (w1 J)) J (subTm (single E3) (w1 X)) X (subTm (single E3) (w1 F0)) F0 (subTm (single E3) (w1 F2)) F2 (subTm (single E3) (w1 E0)) E0 (subTm (single E3) (w1 E1)) E1 (subTm (single E3) (w1 E2)) E2 (subTm (single E3) v₀) E3 (wk-cancel-tm E3 J) (wk-cancel-tm E3 X) (wk-cancel-tm E3 F0) (wk-cancel-tm E3 F2) (wk-cancel-tm E3 E0) (wk-cancel-tm E3 E1) (wk-cancel-tm E3 E2) refl)
+
 T⟶tr₄⁽3⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶tr₄⁽3⁾ J X F0 F2 E0 E1 E2 = tσ (C⟶tr₄_3I J F0 E0 E1 E2) (T⟶tr₄⁽4⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) (w1 E1) (w1 E2) v₀)
 
@@ -2703,6 +2790,9 @@ T⟶tr₄⁽3⁾-cong J J' X X' F0 F0' F2 F2' E0 E0' E1 E1' E2 E2' refl refl ref
 T⟶tr₄⁽3⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) (E1 : RTm Δ) (E2 : RTm Δ) → subTm σ ⌜ T⟶tr₄⁽3⁾ J X F0 F2 E0 E1 E2 ⌝ᵗ ≡ ⌜ T⟶tr₄⁽3⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F2) (subTm σ E0) (subTm σ E1) (subTm σ E2) ⌝ᵗ
 T⟶tr₄⁽3⁾-sub σ J X F0 F2 E0 E1 E2 =
   dσ-cong1 (subTm σ (C⟶tr₄_3I J F0 E0 E1 E2)) (C⟶tr₄_3I (subTm σ J) (subTm σ F0) (subTm σ E0) (subTm σ E1) (subTm σ E2)) (subTm (extS σ) ⌜ T⟶tr₄⁽4⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) (w1 E1) (w1 E2) v₀ ⌝ᵗ) ⌜ T⟶tr₄⁽4⁾ (w1 (subTm σ J)) (w1 (subTm σ X)) (w1 (subTm σ F0)) (w1 (subTm σ F2)) (w1 (subTm σ E0)) (w1 (subTm σ E1)) (w1 (subTm σ E2)) v₀ ⌝ᵗ (C⟶tr₄_3I-sub σ J F0 E0 E1 E2) (trans (T⟶tr₄⁽4⁾-sub (extS σ) (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) (w1 E1) (w1 E2) v₀) (T⟶tr₄⁽4⁾-cong (subTm (extS σ) (w1 J)) (w1 (subTm σ J)) (subTm (extS σ) (w1 X)) (w1 (subTm σ X)) (subTm (extS σ) (w1 F0)) (w1 (subTm σ F0)) (subTm (extS σ) (w1 F2)) (w1 (subTm σ F2)) (subTm (extS σ) (w1 E0)) (w1 (subTm σ E0)) (subTm (extS σ) (w1 E1)) (w1 (subTm σ E1)) (subTm (extS σ) (w1 E2)) (w1 (subTm σ E2)) (subTm (extS σ) v₀) v₀ (w1-sub σ J) (w1-sub σ X) (w1-sub σ F0) (w1-sub σ F2) (w1-sub σ E0) (w1-sub σ E1) (w1-sub σ E2) refl))
+
+T⟶tr₄⁽3⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) (E1 : RTm Δ) (E2 : RTm Δ) → subTm (single E2) ⌜ T⟶tr₄⁽3⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) (w1 E1) v₀ ⌝ᵗ ≡ ⌜ T⟶tr₄⁽3⁾ J X F0 F2 E0 E1 E2 ⌝ᵗ
+T⟶tr₄⁽3⁾-β J X F0 F2 E0 E1 E2 = trans (T⟶tr₄⁽3⁾-sub (single E2) (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) (w1 E1) v₀) (T⟶tr₄⁽3⁾-cong (subTm (single E2) (w1 J)) J (subTm (single E2) (w1 X)) X (subTm (single E2) (w1 F0)) F0 (subTm (single E2) (w1 F2)) F2 (subTm (single E2) (w1 E0)) E0 (subTm (single E2) (w1 E1)) E1 (subTm (single E2) v₀) E2 (wk-cancel-tm E2 J) (wk-cancel-tm E2 X) (wk-cancel-tm E2 F0) (wk-cancel-tm E2 F2) (wk-cancel-tm E2 E0) (wk-cancel-tm E2 E1) refl)
 
 T⟶tr₄⁽2⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶tr₄⁽2⁾ J X F0 F2 E0 E1 = tσ (C⟶tr₄_2I J) (T⟶tr₄⁽3⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) (w1 E1) v₀)
@@ -2714,6 +2804,9 @@ T⟶tr₄⁽2⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) 
 T⟶tr₄⁽2⁾-sub σ J X F0 F2 E0 E1 =
   dσ-cong1 (subTm σ (C⟶tr₄_2I J)) (C⟶tr₄_2I (subTm σ J)) (subTm (extS σ) ⌜ T⟶tr₄⁽3⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) (w1 E1) v₀ ⌝ᵗ) ⌜ T⟶tr₄⁽3⁾ (w1 (subTm σ J)) (w1 (subTm σ X)) (w1 (subTm σ F0)) (w1 (subTm σ F2)) (w1 (subTm σ E0)) (w1 (subTm σ E1)) v₀ ⌝ᵗ (C⟶tr₄_2I-sub σ J) (trans (T⟶tr₄⁽3⁾-sub (extS σ) (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) (w1 E1) v₀) (T⟶tr₄⁽3⁾-cong (subTm (extS σ) (w1 J)) (w1 (subTm σ J)) (subTm (extS σ) (w1 X)) (w1 (subTm σ X)) (subTm (extS σ) (w1 F0)) (w1 (subTm σ F0)) (subTm (extS σ) (w1 F2)) (w1 (subTm σ F2)) (subTm (extS σ) (w1 E0)) (w1 (subTm σ E0)) (subTm (extS σ) (w1 E1)) (w1 (subTm σ E1)) (subTm (extS σ) v₀) v₀ (w1-sub σ J) (w1-sub σ X) (w1-sub σ F0) (w1-sub σ F2) (w1-sub σ E0) (w1-sub σ E1) refl))
 
+T⟶tr₄⁽2⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) (E1 : RTm Δ) → subTm (single E1) ⌜ T⟶tr₄⁽2⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) v₀ ⌝ᵗ ≡ ⌜ T⟶tr₄⁽2⁾ J X F0 F2 E0 E1 ⌝ᵗ
+T⟶tr₄⁽2⁾-β J X F0 F2 E0 E1 = trans (T⟶tr₄⁽2⁾-sub (single E1) (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) v₀) (T⟶tr₄⁽2⁾-cong (subTm (single E1) (w1 J)) J (subTm (single E1) (w1 X)) X (subTm (single E1) (w1 F0)) F0 (subTm (single E1) (w1 F2)) F2 (subTm (single E1) (w1 E0)) E0 (subTm (single E1) v₀) E1 (wk-cancel-tm E1 J) (wk-cancel-tm E1 X) (wk-cancel-tm E1 F0) (wk-cancel-tm E1 F2) (wk-cancel-tm E1 E0) refl)
+
 T⟶tr₄⁽1⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶tr₄⁽1⁾ J X F0 F2 E0 = tσ (C⟶tr₄_1I J) (T⟶tr₄⁽2⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) v₀)
 
@@ -2723,6 +2816,9 @@ T⟶tr₄⁽1⁾-cong J J' X X' F0 F0' F2 F2' E0 E0' refl refl refl refl refl = 
 T⟶tr₄⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶tr₄⁽1⁾ J X F0 F2 E0 ⌝ᵗ ≡ ⌜ T⟶tr₄⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F2) (subTm σ E0) ⌝ᵗ
 T⟶tr₄⁽1⁾-sub σ J X F0 F2 E0 =
   dσ-cong1 (subTm σ (C⟶tr₄_1I J)) (C⟶tr₄_1I (subTm σ J)) (subTm (extS σ) ⌜ T⟶tr₄⁽2⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) v₀ ⌝ᵗ) ⌜ T⟶tr₄⁽2⁾ (w1 (subTm σ J)) (w1 (subTm σ X)) (w1 (subTm σ F0)) (w1 (subTm σ F2)) (w1 (subTm σ E0)) v₀ ⌝ᵗ (C⟶tr₄_1I-sub σ J) (trans (T⟶tr₄⁽2⁾-sub (extS σ) (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) v₀) (T⟶tr₄⁽2⁾-cong (subTm (extS σ) (w1 J)) (w1 (subTm σ J)) (subTm (extS σ) (w1 X)) (w1 (subTm σ X)) (subTm (extS σ) (w1 F0)) (w1 (subTm σ F0)) (subTm (extS σ) (w1 F2)) (w1 (subTm σ F2)) (subTm (extS σ) (w1 E0)) (w1 (subTm σ E0)) (subTm (extS σ) v₀) v₀ (w1-sub σ J) (w1-sub σ X) (w1-sub σ F0) (w1-sub σ F2) (w1-sub σ E0) refl))
+
+T⟶tr₄⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶tr₄⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) v₀ ⌝ᵗ ≡ ⌜ T⟶tr₄⁽1⁾ J X F0 F2 E0 ⌝ᵗ
+T⟶tr₄⁽1⁾-β J X F0 F2 E0 = trans (T⟶tr₄⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F2) v₀) (T⟶tr₄⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F2)) F2 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F2) refl)
 
 T⟶tr₄⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶tr₄⁽0⁾ J X F0 F2 = tσ (C⟶tr₄_0I J) (T⟶tr₄⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) v₀)
@@ -2869,6 +2965,9 @@ T⟶tr₅⁽4⁾-cong J J' X X' F0 F0' F2 F2' E0 E0' E1 E1' E2 E2' E3 E3' refl r
 T⟶tr₅⁽4⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) (E1 : RTm Δ) (E2 : RTm Δ) (E3 : RTm Δ) → subTm σ ⌜ T⟶tr₅⁽4⁾ J X F0 F2 E0 E1 E2 E3 ⌝ᵗ ≡ ⌜ T⟶tr₅⁽4⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F2) (subTm σ E0) (subTm σ E1) (subTm σ E2) (subTm σ E3) ⌝ᵗ
 T⟶tr₅⁽4⁾-sub σ J X F0 F2 E0 E1 E2 E3 = (T⟶tr₅I-sub σ J X F2)
 
+T⟶tr₅⁽4⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) (E1 : RTm Δ) (E2 : RTm Δ) (E3 : RTm Δ) → subTm (single E3) ⌜ T⟶tr₅⁽4⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) (w1 E1) (w1 E2) v₀ ⌝ᵗ ≡ ⌜ T⟶tr₅⁽4⁾ J X F0 F2 E0 E1 E2 E3 ⌝ᵗ
+T⟶tr₅⁽4⁾-β J X F0 F2 E0 E1 E2 E3 = trans (T⟶tr₅⁽4⁾-sub (single E3) (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) (w1 E1) (w1 E2) v₀) (T⟶tr₅⁽4⁾-cong (subTm (single E3) (w1 J)) J (subTm (single E3) (w1 X)) X (subTm (single E3) (w1 F0)) F0 (subTm (single E3) (w1 F2)) F2 (subTm (single E3) (w1 E0)) E0 (subTm (single E3) (w1 E1)) E1 (subTm (single E3) (w1 E2)) E2 (subTm (single E3) v₀) E3 (wk-cancel-tm E3 J) (wk-cancel-tm E3 X) (wk-cancel-tm E3 F0) (wk-cancel-tm E3 F2) (wk-cancel-tm E3 E0) (wk-cancel-tm E3 E1) (wk-cancel-tm E3 E2) refl)
+
 T⟶tr₅⁽3⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶tr₅⁽3⁾ J X F0 F2 E0 E1 E2 = tσ (C⟶tr₅_3I J F0 E0 E1 E2) (T⟶tr₅⁽4⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) (w1 E1) (w1 E2) v₀)
 
@@ -2878,6 +2977,9 @@ T⟶tr₅⁽3⁾-cong J J' X X' F0 F0' F2 F2' E0 E0' E1 E1' E2 E2' refl refl ref
 T⟶tr₅⁽3⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) (E1 : RTm Δ) (E2 : RTm Δ) → subTm σ ⌜ T⟶tr₅⁽3⁾ J X F0 F2 E0 E1 E2 ⌝ᵗ ≡ ⌜ T⟶tr₅⁽3⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F2) (subTm σ E0) (subTm σ E1) (subTm σ E2) ⌝ᵗ
 T⟶tr₅⁽3⁾-sub σ J X F0 F2 E0 E1 E2 =
   dσ-cong1 (subTm σ (C⟶tr₅_3I J F0 E0 E1 E2)) (C⟶tr₅_3I (subTm σ J) (subTm σ F0) (subTm σ E0) (subTm σ E1) (subTm σ E2)) (subTm (extS σ) ⌜ T⟶tr₅⁽4⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) (w1 E1) (w1 E2) v₀ ⌝ᵗ) ⌜ T⟶tr₅⁽4⁾ (w1 (subTm σ J)) (w1 (subTm σ X)) (w1 (subTm σ F0)) (w1 (subTm σ F2)) (w1 (subTm σ E0)) (w1 (subTm σ E1)) (w1 (subTm σ E2)) v₀ ⌝ᵗ (C⟶tr₅_3I-sub σ J F0 E0 E1 E2) (trans (T⟶tr₅⁽4⁾-sub (extS σ) (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) (w1 E1) (w1 E2) v₀) (T⟶tr₅⁽4⁾-cong (subTm (extS σ) (w1 J)) (w1 (subTm σ J)) (subTm (extS σ) (w1 X)) (w1 (subTm σ X)) (subTm (extS σ) (w1 F0)) (w1 (subTm σ F0)) (subTm (extS σ) (w1 F2)) (w1 (subTm σ F2)) (subTm (extS σ) (w1 E0)) (w1 (subTm σ E0)) (subTm (extS σ) (w1 E1)) (w1 (subTm σ E1)) (subTm (extS σ) (w1 E2)) (w1 (subTm σ E2)) (subTm (extS σ) v₀) v₀ (w1-sub σ J) (w1-sub σ X) (w1-sub σ F0) (w1-sub σ F2) (w1-sub σ E0) (w1-sub σ E1) (w1-sub σ E2) refl))
+
+T⟶tr₅⁽3⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) (E1 : RTm Δ) (E2 : RTm Δ) → subTm (single E2) ⌜ T⟶tr₅⁽3⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) (w1 E1) v₀ ⌝ᵗ ≡ ⌜ T⟶tr₅⁽3⁾ J X F0 F2 E0 E1 E2 ⌝ᵗ
+T⟶tr₅⁽3⁾-β J X F0 F2 E0 E1 E2 = trans (T⟶tr₅⁽3⁾-sub (single E2) (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) (w1 E1) v₀) (T⟶tr₅⁽3⁾-cong (subTm (single E2) (w1 J)) J (subTm (single E2) (w1 X)) X (subTm (single E2) (w1 F0)) F0 (subTm (single E2) (w1 F2)) F2 (subTm (single E2) (w1 E0)) E0 (subTm (single E2) (w1 E1)) E1 (subTm (single E2) v₀) E2 (wk-cancel-tm E2 J) (wk-cancel-tm E2 X) (wk-cancel-tm E2 F0) (wk-cancel-tm E2 F2) (wk-cancel-tm E2 E0) (wk-cancel-tm E2 E1) refl)
 
 T⟶tr₅⁽2⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶tr₅⁽2⁾ J X F0 F2 E0 E1 = tσ (C⟶tr₅_2I J) (T⟶tr₅⁽3⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) (w1 E1) v₀)
@@ -2889,6 +2991,9 @@ T⟶tr₅⁽2⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) 
 T⟶tr₅⁽2⁾-sub σ J X F0 F2 E0 E1 =
   dσ-cong1 (subTm σ (C⟶tr₅_2I J)) (C⟶tr₅_2I (subTm σ J)) (subTm (extS σ) ⌜ T⟶tr₅⁽3⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) (w1 E1) v₀ ⌝ᵗ) ⌜ T⟶tr₅⁽3⁾ (w1 (subTm σ J)) (w1 (subTm σ X)) (w1 (subTm σ F0)) (w1 (subTm σ F2)) (w1 (subTm σ E0)) (w1 (subTm σ E1)) v₀ ⌝ᵗ (C⟶tr₅_2I-sub σ J) (trans (T⟶tr₅⁽3⁾-sub (extS σ) (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) (w1 E1) v₀) (T⟶tr₅⁽3⁾-cong (subTm (extS σ) (w1 J)) (w1 (subTm σ J)) (subTm (extS σ) (w1 X)) (w1 (subTm σ X)) (subTm (extS σ) (w1 F0)) (w1 (subTm σ F0)) (subTm (extS σ) (w1 F2)) (w1 (subTm σ F2)) (subTm (extS σ) (w1 E0)) (w1 (subTm σ E0)) (subTm (extS σ) (w1 E1)) (w1 (subTm σ E1)) (subTm (extS σ) v₀) v₀ (w1-sub σ J) (w1-sub σ X) (w1-sub σ F0) (w1-sub σ F2) (w1-sub σ E0) (w1-sub σ E1) refl))
 
+T⟶tr₅⁽2⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) (E1 : RTm Δ) → subTm (single E1) ⌜ T⟶tr₅⁽2⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) v₀ ⌝ᵗ ≡ ⌜ T⟶tr₅⁽2⁾ J X F0 F2 E0 E1 ⌝ᵗ
+T⟶tr₅⁽2⁾-β J X F0 F2 E0 E1 = trans (T⟶tr₅⁽2⁾-sub (single E1) (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) v₀) (T⟶tr₅⁽2⁾-cong (subTm (single E1) (w1 J)) J (subTm (single E1) (w1 X)) X (subTm (single E1) (w1 F0)) F0 (subTm (single E1) (w1 F2)) F2 (subTm (single E1) (w1 E0)) E0 (subTm (single E1) v₀) E1 (wk-cancel-tm E1 J) (wk-cancel-tm E1 X) (wk-cancel-tm E1 F0) (wk-cancel-tm E1 F2) (wk-cancel-tm E1 E0) refl)
+
 T⟶tr₅⁽1⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶tr₅⁽1⁾ J X F0 F2 E0 = tσ (C⟶tr₅_1I J) (T⟶tr₅⁽2⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) v₀)
 
@@ -2898,6 +3003,9 @@ T⟶tr₅⁽1⁾-cong J J' X X' F0 F0' F2 F2' E0 E0' refl refl refl refl refl = 
 T⟶tr₅⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶tr₅⁽1⁾ J X F0 F2 E0 ⌝ᵗ ≡ ⌜ T⟶tr₅⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F2) (subTm σ E0) ⌝ᵗ
 T⟶tr₅⁽1⁾-sub σ J X F0 F2 E0 =
   dσ-cong1 (subTm σ (C⟶tr₅_1I J)) (C⟶tr₅_1I (subTm σ J)) (subTm (extS σ) ⌜ T⟶tr₅⁽2⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) v₀ ⌝ᵗ) ⌜ T⟶tr₅⁽2⁾ (w1 (subTm σ J)) (w1 (subTm σ X)) (w1 (subTm σ F0)) (w1 (subTm σ F2)) (w1 (subTm σ E0)) v₀ ⌝ᵗ (C⟶tr₅_1I-sub σ J) (trans (T⟶tr₅⁽2⁾-sub (extS σ) (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) v₀) (T⟶tr₅⁽2⁾-cong (subTm (extS σ) (w1 J)) (w1 (subTm σ J)) (subTm (extS σ) (w1 X)) (w1 (subTm σ X)) (subTm (extS σ) (w1 F0)) (w1 (subTm σ F0)) (subTm (extS σ) (w1 F2)) (w1 (subTm σ F2)) (subTm (extS σ) (w1 E0)) (w1 (subTm σ E0)) (subTm (extS σ) v₀) v₀ (w1-sub σ J) (w1-sub σ X) (w1-sub σ F0) (w1-sub σ F2) (w1-sub σ E0) refl))
+
+T⟶tr₅⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶tr₅⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) v₀ ⌝ᵗ ≡ ⌜ T⟶tr₅⁽1⁾ J X F0 F2 E0 ⌝ᵗ
+T⟶tr₅⁽1⁾-β J X F0 F2 E0 = trans (T⟶tr₅⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F2) v₀) (T⟶tr₅⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F2)) F2 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F2) refl)
 
 T⟶tr₅⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶tr₅⁽0⁾ J X F0 F2 = tσ (C⟶tr₅_0I J) (T⟶tr₅⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) v₀)
@@ -3044,6 +3152,9 @@ T⟶tr₆⁽4⁾-cong J J' X X' F0 F0' F2 F2' E0 E0' E1 E1' E2 E2' E3 E3' refl r
 T⟶tr₆⁽4⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) (E1 : RTm Δ) (E2 : RTm Δ) (E3 : RTm Δ) → subTm σ ⌜ T⟶tr₆⁽4⁾ J X F0 F2 E0 E1 E2 E3 ⌝ᵗ ≡ ⌜ T⟶tr₆⁽4⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F2) (subTm σ E0) (subTm σ E1) (subTm σ E2) (subTm σ E3) ⌝ᵗ
 T⟶tr₆⁽4⁾-sub σ J X F0 F2 E0 E1 E2 E3 = (T⟶tr₆I-sub σ J X F2)
 
+T⟶tr₆⁽4⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) (E1 : RTm Δ) (E2 : RTm Δ) (E3 : RTm Δ) → subTm (single E3) ⌜ T⟶tr₆⁽4⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) (w1 E1) (w1 E2) v₀ ⌝ᵗ ≡ ⌜ T⟶tr₆⁽4⁾ J X F0 F2 E0 E1 E2 E3 ⌝ᵗ
+T⟶tr₆⁽4⁾-β J X F0 F2 E0 E1 E2 E3 = trans (T⟶tr₆⁽4⁾-sub (single E3) (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) (w1 E1) (w1 E2) v₀) (T⟶tr₆⁽4⁾-cong (subTm (single E3) (w1 J)) J (subTm (single E3) (w1 X)) X (subTm (single E3) (w1 F0)) F0 (subTm (single E3) (w1 F2)) F2 (subTm (single E3) (w1 E0)) E0 (subTm (single E3) (w1 E1)) E1 (subTm (single E3) (w1 E2)) E2 (subTm (single E3) v₀) E3 (wk-cancel-tm E3 J) (wk-cancel-tm E3 X) (wk-cancel-tm E3 F0) (wk-cancel-tm E3 F2) (wk-cancel-tm E3 E0) (wk-cancel-tm E3 E1) (wk-cancel-tm E3 E2) refl)
+
 T⟶tr₆⁽3⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶tr₆⁽3⁾ J X F0 F2 E0 E1 E2 = tσ (C⟶tr₆_3I J F0 E0 E1 E2) (T⟶tr₆⁽4⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) (w1 E1) (w1 E2) v₀)
 
@@ -3053,6 +3164,9 @@ T⟶tr₆⁽3⁾-cong J J' X X' F0 F0' F2 F2' E0 E0' E1 E1' E2 E2' refl refl ref
 T⟶tr₆⁽3⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) (E1 : RTm Δ) (E2 : RTm Δ) → subTm σ ⌜ T⟶tr₆⁽3⁾ J X F0 F2 E0 E1 E2 ⌝ᵗ ≡ ⌜ T⟶tr₆⁽3⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F2) (subTm σ E0) (subTm σ E1) (subTm σ E2) ⌝ᵗ
 T⟶tr₆⁽3⁾-sub σ J X F0 F2 E0 E1 E2 =
   dσ-cong1 (subTm σ (C⟶tr₆_3I J F0 E0 E1 E2)) (C⟶tr₆_3I (subTm σ J) (subTm σ F0) (subTm σ E0) (subTm σ E1) (subTm σ E2)) (subTm (extS σ) ⌜ T⟶tr₆⁽4⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) (w1 E1) (w1 E2) v₀ ⌝ᵗ) ⌜ T⟶tr₆⁽4⁾ (w1 (subTm σ J)) (w1 (subTm σ X)) (w1 (subTm σ F0)) (w1 (subTm σ F2)) (w1 (subTm σ E0)) (w1 (subTm σ E1)) (w1 (subTm σ E2)) v₀ ⌝ᵗ (C⟶tr₆_3I-sub σ J F0 E0 E1 E2) (trans (T⟶tr₆⁽4⁾-sub (extS σ) (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) (w1 E1) (w1 E2) v₀) (T⟶tr₆⁽4⁾-cong (subTm (extS σ) (w1 J)) (w1 (subTm σ J)) (subTm (extS σ) (w1 X)) (w1 (subTm σ X)) (subTm (extS σ) (w1 F0)) (w1 (subTm σ F0)) (subTm (extS σ) (w1 F2)) (w1 (subTm σ F2)) (subTm (extS σ) (w1 E0)) (w1 (subTm σ E0)) (subTm (extS σ) (w1 E1)) (w1 (subTm σ E1)) (subTm (extS σ) (w1 E2)) (w1 (subTm σ E2)) (subTm (extS σ) v₀) v₀ (w1-sub σ J) (w1-sub σ X) (w1-sub σ F0) (w1-sub σ F2) (w1-sub σ E0) (w1-sub σ E1) (w1-sub σ E2) refl))
+
+T⟶tr₆⁽3⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) (E1 : RTm Δ) (E2 : RTm Δ) → subTm (single E2) ⌜ T⟶tr₆⁽3⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) (w1 E1) v₀ ⌝ᵗ ≡ ⌜ T⟶tr₆⁽3⁾ J X F0 F2 E0 E1 E2 ⌝ᵗ
+T⟶tr₆⁽3⁾-β J X F0 F2 E0 E1 E2 = trans (T⟶tr₆⁽3⁾-sub (single E2) (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) (w1 E1) v₀) (T⟶tr₆⁽3⁾-cong (subTm (single E2) (w1 J)) J (subTm (single E2) (w1 X)) X (subTm (single E2) (w1 F0)) F0 (subTm (single E2) (w1 F2)) F2 (subTm (single E2) (w1 E0)) E0 (subTm (single E2) (w1 E1)) E1 (subTm (single E2) v₀) E2 (wk-cancel-tm E2 J) (wk-cancel-tm E2 X) (wk-cancel-tm E2 F0) (wk-cancel-tm E2 F2) (wk-cancel-tm E2 E0) (wk-cancel-tm E2 E1) refl)
 
 T⟶tr₆⁽2⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶tr₆⁽2⁾ J X F0 F2 E0 E1 = tσ (C⟶tr₆_2I J) (T⟶tr₆⁽3⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) (w1 E1) v₀)
@@ -3064,6 +3178,9 @@ T⟶tr₆⁽2⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) 
 T⟶tr₆⁽2⁾-sub σ J X F0 F2 E0 E1 =
   dσ-cong1 (subTm σ (C⟶tr₆_2I J)) (C⟶tr₆_2I (subTm σ J)) (subTm (extS σ) ⌜ T⟶tr₆⁽3⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) (w1 E1) v₀ ⌝ᵗ) ⌜ T⟶tr₆⁽3⁾ (w1 (subTm σ J)) (w1 (subTm σ X)) (w1 (subTm σ F0)) (w1 (subTm σ F2)) (w1 (subTm σ E0)) (w1 (subTm σ E1)) v₀ ⌝ᵗ (C⟶tr₆_2I-sub σ J) (trans (T⟶tr₆⁽3⁾-sub (extS σ) (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) (w1 E1) v₀) (T⟶tr₆⁽3⁾-cong (subTm (extS σ) (w1 J)) (w1 (subTm σ J)) (subTm (extS σ) (w1 X)) (w1 (subTm σ X)) (subTm (extS σ) (w1 F0)) (w1 (subTm σ F0)) (subTm (extS σ) (w1 F2)) (w1 (subTm σ F2)) (subTm (extS σ) (w1 E0)) (w1 (subTm σ E0)) (subTm (extS σ) (w1 E1)) (w1 (subTm σ E1)) (subTm (extS σ) v₀) v₀ (w1-sub σ J) (w1-sub σ X) (w1-sub σ F0) (w1-sub σ F2) (w1-sub σ E0) (w1-sub σ E1) refl))
 
+T⟶tr₆⁽2⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) (E1 : RTm Δ) → subTm (single E1) ⌜ T⟶tr₆⁽2⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) v₀ ⌝ᵗ ≡ ⌜ T⟶tr₆⁽2⁾ J X F0 F2 E0 E1 ⌝ᵗ
+T⟶tr₆⁽2⁾-β J X F0 F2 E0 E1 = trans (T⟶tr₆⁽2⁾-sub (single E1) (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) v₀) (T⟶tr₆⁽2⁾-cong (subTm (single E1) (w1 J)) J (subTm (single E1) (w1 X)) X (subTm (single E1) (w1 F0)) F0 (subTm (single E1) (w1 F2)) F2 (subTm (single E1) (w1 E0)) E0 (subTm (single E1) v₀) E1 (wk-cancel-tm E1 J) (wk-cancel-tm E1 X) (wk-cancel-tm E1 F0) (wk-cancel-tm E1 F2) (wk-cancel-tm E1 E0) refl)
+
 T⟶tr₆⁽1⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶tr₆⁽1⁾ J X F0 F2 E0 = tσ (C⟶tr₆_1I J) (T⟶tr₆⁽2⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) v₀)
 
@@ -3073,6 +3190,9 @@ T⟶tr₆⁽1⁾-cong J J' X X' F0 F0' F2 F2' E0 E0' refl refl refl refl refl = 
 T⟶tr₆⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶tr₆⁽1⁾ J X F0 F2 E0 ⌝ᵗ ≡ ⌜ T⟶tr₆⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F2) (subTm σ E0) ⌝ᵗ
 T⟶tr₆⁽1⁾-sub σ J X F0 F2 E0 =
   dσ-cong1 (subTm σ (C⟶tr₆_1I J)) (C⟶tr₆_1I (subTm σ J)) (subTm (extS σ) ⌜ T⟶tr₆⁽2⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) v₀ ⌝ᵗ) ⌜ T⟶tr₆⁽2⁾ (w1 (subTm σ J)) (w1 (subTm σ X)) (w1 (subTm σ F0)) (w1 (subTm σ F2)) (w1 (subTm σ E0)) v₀ ⌝ᵗ (C⟶tr₆_1I-sub σ J) (trans (T⟶tr₆⁽2⁾-sub (extS σ) (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) v₀) (T⟶tr₆⁽2⁾-cong (subTm (extS σ) (w1 J)) (w1 (subTm σ J)) (subTm (extS σ) (w1 X)) (w1 (subTm σ X)) (subTm (extS σ) (w1 F0)) (w1 (subTm σ F0)) (subTm (extS σ) (w1 F2)) (w1 (subTm σ F2)) (subTm (extS σ) (w1 E0)) (w1 (subTm σ E0)) (subTm (extS σ) v₀) v₀ (w1-sub σ J) (w1-sub σ X) (w1-sub σ F0) (w1-sub σ F2) (w1-sub σ E0) refl))
+
+T⟶tr₆⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶tr₆⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) v₀ ⌝ᵗ ≡ ⌜ T⟶tr₆⁽1⁾ J X F0 F2 E0 ⌝ᵗ
+T⟶tr₆⁽1⁾-β J X F0 F2 E0 = trans (T⟶tr₆⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F2) v₀) (T⟶tr₆⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F2)) F2 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F2) refl)
 
 T⟶tr₆⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶tr₆⁽0⁾ J X F0 F2 = tσ (C⟶tr₆_0I J) (T⟶tr₆⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) v₀)
@@ -3219,6 +3339,9 @@ T⟶tr₇⁽4⁾-cong J J' X X' F0 F0' F2 F2' E0 E0' E1 E1' E2 E2' E3 E3' refl r
 T⟶tr₇⁽4⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) (E1 : RTm Δ) (E2 : RTm Δ) (E3 : RTm Δ) → subTm σ ⌜ T⟶tr₇⁽4⁾ J X F0 F2 E0 E1 E2 E3 ⌝ᵗ ≡ ⌜ T⟶tr₇⁽4⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F2) (subTm σ E0) (subTm σ E1) (subTm σ E2) (subTm σ E3) ⌝ᵗ
 T⟶tr₇⁽4⁾-sub σ J X F0 F2 E0 E1 E2 E3 = (T⟶tr₇I-sub σ J X F2)
 
+T⟶tr₇⁽4⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) (E1 : RTm Δ) (E2 : RTm Δ) (E3 : RTm Δ) → subTm (single E3) ⌜ T⟶tr₇⁽4⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) (w1 E1) (w1 E2) v₀ ⌝ᵗ ≡ ⌜ T⟶tr₇⁽4⁾ J X F0 F2 E0 E1 E2 E3 ⌝ᵗ
+T⟶tr₇⁽4⁾-β J X F0 F2 E0 E1 E2 E3 = trans (T⟶tr₇⁽4⁾-sub (single E3) (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) (w1 E1) (w1 E2) v₀) (T⟶tr₇⁽4⁾-cong (subTm (single E3) (w1 J)) J (subTm (single E3) (w1 X)) X (subTm (single E3) (w1 F0)) F0 (subTm (single E3) (w1 F2)) F2 (subTm (single E3) (w1 E0)) E0 (subTm (single E3) (w1 E1)) E1 (subTm (single E3) (w1 E2)) E2 (subTm (single E3) v₀) E3 (wk-cancel-tm E3 J) (wk-cancel-tm E3 X) (wk-cancel-tm E3 F0) (wk-cancel-tm E3 F2) (wk-cancel-tm E3 E0) (wk-cancel-tm E3 E1) (wk-cancel-tm E3 E2) refl)
+
 T⟶tr₇⁽3⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶tr₇⁽3⁾ J X F0 F2 E0 E1 E2 = tσ (C⟶tr₇_3I J F0 E0 E1 E2) (T⟶tr₇⁽4⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) (w1 E1) (w1 E2) v₀)
 
@@ -3228,6 +3351,9 @@ T⟶tr₇⁽3⁾-cong J J' X X' F0 F0' F2 F2' E0 E0' E1 E1' E2 E2' refl refl ref
 T⟶tr₇⁽3⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) (E1 : RTm Δ) (E2 : RTm Δ) → subTm σ ⌜ T⟶tr₇⁽3⁾ J X F0 F2 E0 E1 E2 ⌝ᵗ ≡ ⌜ T⟶tr₇⁽3⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F2) (subTm σ E0) (subTm σ E1) (subTm σ E2) ⌝ᵗ
 T⟶tr₇⁽3⁾-sub σ J X F0 F2 E0 E1 E2 =
   dσ-cong1 (subTm σ (C⟶tr₇_3I J F0 E0 E1 E2)) (C⟶tr₇_3I (subTm σ J) (subTm σ F0) (subTm σ E0) (subTm σ E1) (subTm σ E2)) (subTm (extS σ) ⌜ T⟶tr₇⁽4⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) (w1 E1) (w1 E2) v₀ ⌝ᵗ) ⌜ T⟶tr₇⁽4⁾ (w1 (subTm σ J)) (w1 (subTm σ X)) (w1 (subTm σ F0)) (w1 (subTm σ F2)) (w1 (subTm σ E0)) (w1 (subTm σ E1)) (w1 (subTm σ E2)) v₀ ⌝ᵗ (C⟶tr₇_3I-sub σ J F0 E0 E1 E2) (trans (T⟶tr₇⁽4⁾-sub (extS σ) (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) (w1 E1) (w1 E2) v₀) (T⟶tr₇⁽4⁾-cong (subTm (extS σ) (w1 J)) (w1 (subTm σ J)) (subTm (extS σ) (w1 X)) (w1 (subTm σ X)) (subTm (extS σ) (w1 F0)) (w1 (subTm σ F0)) (subTm (extS σ) (w1 F2)) (w1 (subTm σ F2)) (subTm (extS σ) (w1 E0)) (w1 (subTm σ E0)) (subTm (extS σ) (w1 E1)) (w1 (subTm σ E1)) (subTm (extS σ) (w1 E2)) (w1 (subTm σ E2)) (subTm (extS σ) v₀) v₀ (w1-sub σ J) (w1-sub σ X) (w1-sub σ F0) (w1-sub σ F2) (w1-sub σ E0) (w1-sub σ E1) (w1-sub σ E2) refl))
+
+T⟶tr₇⁽3⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) (E1 : RTm Δ) (E2 : RTm Δ) → subTm (single E2) ⌜ T⟶tr₇⁽3⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) (w1 E1) v₀ ⌝ᵗ ≡ ⌜ T⟶tr₇⁽3⁾ J X F0 F2 E0 E1 E2 ⌝ᵗ
+T⟶tr₇⁽3⁾-β J X F0 F2 E0 E1 E2 = trans (T⟶tr₇⁽3⁾-sub (single E2) (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) (w1 E1) v₀) (T⟶tr₇⁽3⁾-cong (subTm (single E2) (w1 J)) J (subTm (single E2) (w1 X)) X (subTm (single E2) (w1 F0)) F0 (subTm (single E2) (w1 F2)) F2 (subTm (single E2) (w1 E0)) E0 (subTm (single E2) (w1 E1)) E1 (subTm (single E2) v₀) E2 (wk-cancel-tm E2 J) (wk-cancel-tm E2 X) (wk-cancel-tm E2 F0) (wk-cancel-tm E2 F2) (wk-cancel-tm E2 E0) (wk-cancel-tm E2 E1) refl)
 
 T⟶tr₇⁽2⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶tr₇⁽2⁾ J X F0 F2 E0 E1 = tσ (C⟶tr₇_2I J) (T⟶tr₇⁽3⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) (w1 E1) v₀)
@@ -3239,6 +3365,9 @@ T⟶tr₇⁽2⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) 
 T⟶tr₇⁽2⁾-sub σ J X F0 F2 E0 E1 =
   dσ-cong1 (subTm σ (C⟶tr₇_2I J)) (C⟶tr₇_2I (subTm σ J)) (subTm (extS σ) ⌜ T⟶tr₇⁽3⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) (w1 E1) v₀ ⌝ᵗ) ⌜ T⟶tr₇⁽3⁾ (w1 (subTm σ J)) (w1 (subTm σ X)) (w1 (subTm σ F0)) (w1 (subTm σ F2)) (w1 (subTm σ E0)) (w1 (subTm σ E1)) v₀ ⌝ᵗ (C⟶tr₇_2I-sub σ J) (trans (T⟶tr₇⁽3⁾-sub (extS σ) (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) (w1 E1) v₀) (T⟶tr₇⁽3⁾-cong (subTm (extS σ) (w1 J)) (w1 (subTm σ J)) (subTm (extS σ) (w1 X)) (w1 (subTm σ X)) (subTm (extS σ) (w1 F0)) (w1 (subTm σ F0)) (subTm (extS σ) (w1 F2)) (w1 (subTm σ F2)) (subTm (extS σ) (w1 E0)) (w1 (subTm σ E0)) (subTm (extS σ) (w1 E1)) (w1 (subTm σ E1)) (subTm (extS σ) v₀) v₀ (w1-sub σ J) (w1-sub σ X) (w1-sub σ F0) (w1-sub σ F2) (w1-sub σ E0) (w1-sub σ E1) refl))
 
+T⟶tr₇⁽2⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) (E1 : RTm Δ) → subTm (single E1) ⌜ T⟶tr₇⁽2⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) v₀ ⌝ᵗ ≡ ⌜ T⟶tr₇⁽2⁾ J X F0 F2 E0 E1 ⌝ᵗ
+T⟶tr₇⁽2⁾-β J X F0 F2 E0 E1 = trans (T⟶tr₇⁽2⁾-sub (single E1) (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) v₀) (T⟶tr₇⁽2⁾-cong (subTm (single E1) (w1 J)) J (subTm (single E1) (w1 X)) X (subTm (single E1) (w1 F0)) F0 (subTm (single E1) (w1 F2)) F2 (subTm (single E1) (w1 E0)) E0 (subTm (single E1) v₀) E1 (wk-cancel-tm E1 J) (wk-cancel-tm E1 X) (wk-cancel-tm E1 F0) (wk-cancel-tm E1 F2) (wk-cancel-tm E1 E0) refl)
+
 T⟶tr₇⁽1⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶tr₇⁽1⁾ J X F0 F2 E0 = tσ (C⟶tr₇_1I J) (T⟶tr₇⁽2⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) v₀)
 
@@ -3248,6 +3377,9 @@ T⟶tr₇⁽1⁾-cong J J' X X' F0 F0' F2 F2' E0 E0' refl refl refl refl refl = 
 T⟶tr₇⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶tr₇⁽1⁾ J X F0 F2 E0 ⌝ᵗ ≡ ⌜ T⟶tr₇⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F2) (subTm σ E0) ⌝ᵗ
 T⟶tr₇⁽1⁾-sub σ J X F0 F2 E0 =
   dσ-cong1 (subTm σ (C⟶tr₇_1I J)) (C⟶tr₇_1I (subTm σ J)) (subTm (extS σ) ⌜ T⟶tr₇⁽2⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) v₀ ⌝ᵗ) ⌜ T⟶tr₇⁽2⁾ (w1 (subTm σ J)) (w1 (subTm σ X)) (w1 (subTm σ F0)) (w1 (subTm σ F2)) (w1 (subTm σ E0)) v₀ ⌝ᵗ (C⟶tr₇_1I-sub σ J) (trans (T⟶tr₇⁽2⁾-sub (extS σ) (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) v₀) (T⟶tr₇⁽2⁾-cong (subTm (extS σ) (w1 J)) (w1 (subTm σ J)) (subTm (extS σ) (w1 X)) (w1 (subTm σ X)) (subTm (extS σ) (w1 F0)) (w1 (subTm σ F0)) (subTm (extS σ) (w1 F2)) (w1 (subTm σ F2)) (subTm (extS σ) (w1 E0)) (w1 (subTm σ E0)) (subTm (extS σ) v₀) v₀ (w1-sub σ J) (w1-sub σ X) (w1-sub σ F0) (w1-sub σ F2) (w1-sub σ E0) refl))
+
+T⟶tr₇⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶tr₇⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) v₀ ⌝ᵗ ≡ ⌜ T⟶tr₇⁽1⁾ J X F0 F2 E0 ⌝ᵗ
+T⟶tr₇⁽1⁾-β J X F0 F2 E0 = trans (T⟶tr₇⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F2) v₀) (T⟶tr₇⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F2)) F2 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F2) refl)
 
 T⟶tr₇⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶tr₇⁽0⁾ J X F0 F2 = tσ (C⟶tr₇_0I J) (T⟶tr₇⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) v₀)
@@ -3394,6 +3526,9 @@ T⟶tr₈⁽4⁾-cong J J' X X' F0 F0' F2 F2' E0 E0' E1 E1' E2 E2' E3 E3' refl r
 T⟶tr₈⁽4⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) (E1 : RTm Δ) (E2 : RTm Δ) (E3 : RTm Δ) → subTm σ ⌜ T⟶tr₈⁽4⁾ J X F0 F2 E0 E1 E2 E3 ⌝ᵗ ≡ ⌜ T⟶tr₈⁽4⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F2) (subTm σ E0) (subTm σ E1) (subTm σ E2) (subTm σ E3) ⌝ᵗ
 T⟶tr₈⁽4⁾-sub σ J X F0 F2 E0 E1 E2 E3 = (T⟶tr₈I-sub σ J X F2)
 
+T⟶tr₈⁽4⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) (E1 : RTm Δ) (E2 : RTm Δ) (E3 : RTm Δ) → subTm (single E3) ⌜ T⟶tr₈⁽4⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) (w1 E1) (w1 E2) v₀ ⌝ᵗ ≡ ⌜ T⟶tr₈⁽4⁾ J X F0 F2 E0 E1 E2 E3 ⌝ᵗ
+T⟶tr₈⁽4⁾-β J X F0 F2 E0 E1 E2 E3 = trans (T⟶tr₈⁽4⁾-sub (single E3) (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) (w1 E1) (w1 E2) v₀) (T⟶tr₈⁽4⁾-cong (subTm (single E3) (w1 J)) J (subTm (single E3) (w1 X)) X (subTm (single E3) (w1 F0)) F0 (subTm (single E3) (w1 F2)) F2 (subTm (single E3) (w1 E0)) E0 (subTm (single E3) (w1 E1)) E1 (subTm (single E3) (w1 E2)) E2 (subTm (single E3) v₀) E3 (wk-cancel-tm E3 J) (wk-cancel-tm E3 X) (wk-cancel-tm E3 F0) (wk-cancel-tm E3 F2) (wk-cancel-tm E3 E0) (wk-cancel-tm E3 E1) (wk-cancel-tm E3 E2) refl)
+
 T⟶tr₈⁽3⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶tr₈⁽3⁾ J X F0 F2 E0 E1 E2 = tσ (C⟶tr₈_3I J F0 E0 E1 E2) (T⟶tr₈⁽4⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) (w1 E1) (w1 E2) v₀)
 
@@ -3403,6 +3538,9 @@ T⟶tr₈⁽3⁾-cong J J' X X' F0 F0' F2 F2' E0 E0' E1 E1' E2 E2' refl refl ref
 T⟶tr₈⁽3⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) (E1 : RTm Δ) (E2 : RTm Δ) → subTm σ ⌜ T⟶tr₈⁽3⁾ J X F0 F2 E0 E1 E2 ⌝ᵗ ≡ ⌜ T⟶tr₈⁽3⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F2) (subTm σ E0) (subTm σ E1) (subTm σ E2) ⌝ᵗ
 T⟶tr₈⁽3⁾-sub σ J X F0 F2 E0 E1 E2 =
   dσ-cong1 (subTm σ (C⟶tr₈_3I J F0 E0 E1 E2)) (C⟶tr₈_3I (subTm σ J) (subTm σ F0) (subTm σ E0) (subTm σ E1) (subTm σ E2)) (subTm (extS σ) ⌜ T⟶tr₈⁽4⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) (w1 E1) (w1 E2) v₀ ⌝ᵗ) ⌜ T⟶tr₈⁽4⁾ (w1 (subTm σ J)) (w1 (subTm σ X)) (w1 (subTm σ F0)) (w1 (subTm σ F2)) (w1 (subTm σ E0)) (w1 (subTm σ E1)) (w1 (subTm σ E2)) v₀ ⌝ᵗ (C⟶tr₈_3I-sub σ J F0 E0 E1 E2) (trans (T⟶tr₈⁽4⁾-sub (extS σ) (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) (w1 E1) (w1 E2) v₀) (T⟶tr₈⁽4⁾-cong (subTm (extS σ) (w1 J)) (w1 (subTm σ J)) (subTm (extS σ) (w1 X)) (w1 (subTm σ X)) (subTm (extS σ) (w1 F0)) (w1 (subTm σ F0)) (subTm (extS σ) (w1 F2)) (w1 (subTm σ F2)) (subTm (extS σ) (w1 E0)) (w1 (subTm σ E0)) (subTm (extS σ) (w1 E1)) (w1 (subTm σ E1)) (subTm (extS σ) (w1 E2)) (w1 (subTm σ E2)) (subTm (extS σ) v₀) v₀ (w1-sub σ J) (w1-sub σ X) (w1-sub σ F0) (w1-sub σ F2) (w1-sub σ E0) (w1-sub σ E1) (w1-sub σ E2) refl))
+
+T⟶tr₈⁽3⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) (E1 : RTm Δ) (E2 : RTm Δ) → subTm (single E2) ⌜ T⟶tr₈⁽3⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) (w1 E1) v₀ ⌝ᵗ ≡ ⌜ T⟶tr₈⁽3⁾ J X F0 F2 E0 E1 E2 ⌝ᵗ
+T⟶tr₈⁽3⁾-β J X F0 F2 E0 E1 E2 = trans (T⟶tr₈⁽3⁾-sub (single E2) (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) (w1 E1) v₀) (T⟶tr₈⁽3⁾-cong (subTm (single E2) (w1 J)) J (subTm (single E2) (w1 X)) X (subTm (single E2) (w1 F0)) F0 (subTm (single E2) (w1 F2)) F2 (subTm (single E2) (w1 E0)) E0 (subTm (single E2) (w1 E1)) E1 (subTm (single E2) v₀) E2 (wk-cancel-tm E2 J) (wk-cancel-tm E2 X) (wk-cancel-tm E2 F0) (wk-cancel-tm E2 F2) (wk-cancel-tm E2 E0) (wk-cancel-tm E2 E1) refl)
 
 T⟶tr₈⁽2⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶tr₈⁽2⁾ J X F0 F2 E0 E1 = tσ (C⟶tr₈_2I J) (T⟶tr₈⁽3⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) (w1 E1) v₀)
@@ -3414,6 +3552,9 @@ T⟶tr₈⁽2⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) 
 T⟶tr₈⁽2⁾-sub σ J X F0 F2 E0 E1 =
   dσ-cong1 (subTm σ (C⟶tr₈_2I J)) (C⟶tr₈_2I (subTm σ J)) (subTm (extS σ) ⌜ T⟶tr₈⁽3⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) (w1 E1) v₀ ⌝ᵗ) ⌜ T⟶tr₈⁽3⁾ (w1 (subTm σ J)) (w1 (subTm σ X)) (w1 (subTm σ F0)) (w1 (subTm σ F2)) (w1 (subTm σ E0)) (w1 (subTm σ E1)) v₀ ⌝ᵗ (C⟶tr₈_2I-sub σ J) (trans (T⟶tr₈⁽3⁾-sub (extS σ) (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) (w1 E1) v₀) (T⟶tr₈⁽3⁾-cong (subTm (extS σ) (w1 J)) (w1 (subTm σ J)) (subTm (extS σ) (w1 X)) (w1 (subTm σ X)) (subTm (extS σ) (w1 F0)) (w1 (subTm σ F0)) (subTm (extS σ) (w1 F2)) (w1 (subTm σ F2)) (subTm (extS σ) (w1 E0)) (w1 (subTm σ E0)) (subTm (extS σ) (w1 E1)) (w1 (subTm σ E1)) (subTm (extS σ) v₀) v₀ (w1-sub σ J) (w1-sub σ X) (w1-sub σ F0) (w1-sub σ F2) (w1-sub σ E0) (w1-sub σ E1) refl))
 
+T⟶tr₈⁽2⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) (E1 : RTm Δ) → subTm (single E1) ⌜ T⟶tr₈⁽2⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) v₀ ⌝ᵗ ≡ ⌜ T⟶tr₈⁽2⁾ J X F0 F2 E0 E1 ⌝ᵗ
+T⟶tr₈⁽2⁾-β J X F0 F2 E0 E1 = trans (T⟶tr₈⁽2⁾-sub (single E1) (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) v₀) (T⟶tr₈⁽2⁾-cong (subTm (single E1) (w1 J)) J (subTm (single E1) (w1 X)) X (subTm (single E1) (w1 F0)) F0 (subTm (single E1) (w1 F2)) F2 (subTm (single E1) (w1 E0)) E0 (subTm (single E1) v₀) E1 (wk-cancel-tm E1 J) (wk-cancel-tm E1 X) (wk-cancel-tm E1 F0) (wk-cancel-tm E1 F2) (wk-cancel-tm E1 E0) refl)
+
 T⟶tr₈⁽1⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶tr₈⁽1⁾ J X F0 F2 E0 = tσ (C⟶tr₈_1I J) (T⟶tr₈⁽2⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) v₀)
 
@@ -3423,6 +3564,9 @@ T⟶tr₈⁽1⁾-cong J J' X X' F0 F0' F2 F2' E0 E0' refl refl refl refl refl = 
 T⟶tr₈⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶tr₈⁽1⁾ J X F0 F2 E0 ⌝ᵗ ≡ ⌜ T⟶tr₈⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F2) (subTm σ E0) ⌝ᵗ
 T⟶tr₈⁽1⁾-sub σ J X F0 F2 E0 =
   dσ-cong1 (subTm σ (C⟶tr₈_1I J)) (C⟶tr₈_1I (subTm σ J)) (subTm (extS σ) ⌜ T⟶tr₈⁽2⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) v₀ ⌝ᵗ) ⌜ T⟶tr₈⁽2⁾ (w1 (subTm σ J)) (w1 (subTm σ X)) (w1 (subTm σ F0)) (w1 (subTm σ F2)) (w1 (subTm σ E0)) v₀ ⌝ᵗ (C⟶tr₈_1I-sub σ J) (trans (T⟶tr₈⁽2⁾-sub (extS σ) (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) v₀) (T⟶tr₈⁽2⁾-cong (subTm (extS σ) (w1 J)) (w1 (subTm σ J)) (subTm (extS σ) (w1 X)) (w1 (subTm σ X)) (subTm (extS σ) (w1 F0)) (w1 (subTm σ F0)) (subTm (extS σ) (w1 F2)) (w1 (subTm σ F2)) (subTm (extS σ) (w1 E0)) (w1 (subTm σ E0)) (subTm (extS σ) v₀) v₀ (w1-sub σ J) (w1-sub σ X) (w1-sub σ F0) (w1-sub σ F2) (w1-sub σ E0) refl))
+
+T⟶tr₈⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶tr₈⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) v₀ ⌝ᵗ ≡ ⌜ T⟶tr₈⁽1⁾ J X F0 F2 E0 ⌝ᵗ
+T⟶tr₈⁽1⁾-β J X F0 F2 E0 = trans (T⟶tr₈⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F2) v₀) (T⟶tr₈⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F2)) F2 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F2) refl)
 
 T⟶tr₈⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶tr₈⁽0⁾ J X F0 F2 = tσ (C⟶tr₈_0I J) (T⟶tr₈⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) v₀)
@@ -3569,6 +3713,9 @@ T⟶tr₉⁽4⁾-cong J J' X X' F0 F0' F2 F2' E0 E0' E1 E1' E2 E2' E3 E3' refl r
 T⟶tr₉⁽4⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) (E1 : RTm Δ) (E2 : RTm Δ) (E3 : RTm Δ) → subTm σ ⌜ T⟶tr₉⁽4⁾ J X F0 F2 E0 E1 E2 E3 ⌝ᵗ ≡ ⌜ T⟶tr₉⁽4⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F2) (subTm σ E0) (subTm σ E1) (subTm σ E2) (subTm σ E3) ⌝ᵗ
 T⟶tr₉⁽4⁾-sub σ J X F0 F2 E0 E1 E2 E3 = (T⟶tr₉I-sub σ J X F2)
 
+T⟶tr₉⁽4⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) (E1 : RTm Δ) (E2 : RTm Δ) (E3 : RTm Δ) → subTm (single E3) ⌜ T⟶tr₉⁽4⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) (w1 E1) (w1 E2) v₀ ⌝ᵗ ≡ ⌜ T⟶tr₉⁽4⁾ J X F0 F2 E0 E1 E2 E3 ⌝ᵗ
+T⟶tr₉⁽4⁾-β J X F0 F2 E0 E1 E2 E3 = trans (T⟶tr₉⁽4⁾-sub (single E3) (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) (w1 E1) (w1 E2) v₀) (T⟶tr₉⁽4⁾-cong (subTm (single E3) (w1 J)) J (subTm (single E3) (w1 X)) X (subTm (single E3) (w1 F0)) F0 (subTm (single E3) (w1 F2)) F2 (subTm (single E3) (w1 E0)) E0 (subTm (single E3) (w1 E1)) E1 (subTm (single E3) (w1 E2)) E2 (subTm (single E3) v₀) E3 (wk-cancel-tm E3 J) (wk-cancel-tm E3 X) (wk-cancel-tm E3 F0) (wk-cancel-tm E3 F2) (wk-cancel-tm E3 E0) (wk-cancel-tm E3 E1) (wk-cancel-tm E3 E2) refl)
+
 T⟶tr₉⁽3⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶tr₉⁽3⁾ J X F0 F2 E0 E1 E2 = tσ (C⟶tr₉_3I J F0 E0 E1 E2) (T⟶tr₉⁽4⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) (w1 E1) (w1 E2) v₀)
 
@@ -3578,6 +3725,9 @@ T⟶tr₉⁽3⁾-cong J J' X X' F0 F0' F2 F2' E0 E0' E1 E1' E2 E2' refl refl ref
 T⟶tr₉⁽3⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) (E1 : RTm Δ) (E2 : RTm Δ) → subTm σ ⌜ T⟶tr₉⁽3⁾ J X F0 F2 E0 E1 E2 ⌝ᵗ ≡ ⌜ T⟶tr₉⁽3⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F2) (subTm σ E0) (subTm σ E1) (subTm σ E2) ⌝ᵗ
 T⟶tr₉⁽3⁾-sub σ J X F0 F2 E0 E1 E2 =
   dσ-cong1 (subTm σ (C⟶tr₉_3I J F0 E0 E1 E2)) (C⟶tr₉_3I (subTm σ J) (subTm σ F0) (subTm σ E0) (subTm σ E1) (subTm σ E2)) (subTm (extS σ) ⌜ T⟶tr₉⁽4⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) (w1 E1) (w1 E2) v₀ ⌝ᵗ) ⌜ T⟶tr₉⁽4⁾ (w1 (subTm σ J)) (w1 (subTm σ X)) (w1 (subTm σ F0)) (w1 (subTm σ F2)) (w1 (subTm σ E0)) (w1 (subTm σ E1)) (w1 (subTm σ E2)) v₀ ⌝ᵗ (C⟶tr₉_3I-sub σ J F0 E0 E1 E2) (trans (T⟶tr₉⁽4⁾-sub (extS σ) (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) (w1 E1) (w1 E2) v₀) (T⟶tr₉⁽4⁾-cong (subTm (extS σ) (w1 J)) (w1 (subTm σ J)) (subTm (extS σ) (w1 X)) (w1 (subTm σ X)) (subTm (extS σ) (w1 F0)) (w1 (subTm σ F0)) (subTm (extS σ) (w1 F2)) (w1 (subTm σ F2)) (subTm (extS σ) (w1 E0)) (w1 (subTm σ E0)) (subTm (extS σ) (w1 E1)) (w1 (subTm σ E1)) (subTm (extS σ) (w1 E2)) (w1 (subTm σ E2)) (subTm (extS σ) v₀) v₀ (w1-sub σ J) (w1-sub σ X) (w1-sub σ F0) (w1-sub σ F2) (w1-sub σ E0) (w1-sub σ E1) (w1-sub σ E2) refl))
+
+T⟶tr₉⁽3⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) (E1 : RTm Δ) (E2 : RTm Δ) → subTm (single E2) ⌜ T⟶tr₉⁽3⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) (w1 E1) v₀ ⌝ᵗ ≡ ⌜ T⟶tr₉⁽3⁾ J X F0 F2 E0 E1 E2 ⌝ᵗ
+T⟶tr₉⁽3⁾-β J X F0 F2 E0 E1 E2 = trans (T⟶tr₉⁽3⁾-sub (single E2) (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) (w1 E1) v₀) (T⟶tr₉⁽3⁾-cong (subTm (single E2) (w1 J)) J (subTm (single E2) (w1 X)) X (subTm (single E2) (w1 F0)) F0 (subTm (single E2) (w1 F2)) F2 (subTm (single E2) (w1 E0)) E0 (subTm (single E2) (w1 E1)) E1 (subTm (single E2) v₀) E2 (wk-cancel-tm E2 J) (wk-cancel-tm E2 X) (wk-cancel-tm E2 F0) (wk-cancel-tm E2 F2) (wk-cancel-tm E2 E0) (wk-cancel-tm E2 E1) refl)
 
 T⟶tr₉⁽2⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶tr₉⁽2⁾ J X F0 F2 E0 E1 = tσ (C⟶tr₉_2I J) (T⟶tr₉⁽3⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) (w1 E1) v₀)
@@ -3589,6 +3739,9 @@ T⟶tr₉⁽2⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) 
 T⟶tr₉⁽2⁾-sub σ J X F0 F2 E0 E1 =
   dσ-cong1 (subTm σ (C⟶tr₉_2I J)) (C⟶tr₉_2I (subTm σ J)) (subTm (extS σ) ⌜ T⟶tr₉⁽3⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) (w1 E1) v₀ ⌝ᵗ) ⌜ T⟶tr₉⁽3⁾ (w1 (subTm σ J)) (w1 (subTm σ X)) (w1 (subTm σ F0)) (w1 (subTm σ F2)) (w1 (subTm σ E0)) (w1 (subTm σ E1)) v₀ ⌝ᵗ (C⟶tr₉_2I-sub σ J) (trans (T⟶tr₉⁽3⁾-sub (extS σ) (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) (w1 E1) v₀) (T⟶tr₉⁽3⁾-cong (subTm (extS σ) (w1 J)) (w1 (subTm σ J)) (subTm (extS σ) (w1 X)) (w1 (subTm σ X)) (subTm (extS σ) (w1 F0)) (w1 (subTm σ F0)) (subTm (extS σ) (w1 F2)) (w1 (subTm σ F2)) (subTm (extS σ) (w1 E0)) (w1 (subTm σ E0)) (subTm (extS σ) (w1 E1)) (w1 (subTm σ E1)) (subTm (extS σ) v₀) v₀ (w1-sub σ J) (w1-sub σ X) (w1-sub σ F0) (w1-sub σ F2) (w1-sub σ E0) (w1-sub σ E1) refl))
 
+T⟶tr₉⁽2⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) (E1 : RTm Δ) → subTm (single E1) ⌜ T⟶tr₉⁽2⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) v₀ ⌝ᵗ ≡ ⌜ T⟶tr₉⁽2⁾ J X F0 F2 E0 E1 ⌝ᵗ
+T⟶tr₉⁽2⁾-β J X F0 F2 E0 E1 = trans (T⟶tr₉⁽2⁾-sub (single E1) (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) v₀) (T⟶tr₉⁽2⁾-cong (subTm (single E1) (w1 J)) J (subTm (single E1) (w1 X)) X (subTm (single E1) (w1 F0)) F0 (subTm (single E1) (w1 F2)) F2 (subTm (single E1) (w1 E0)) E0 (subTm (single E1) v₀) E1 (wk-cancel-tm E1 J) (wk-cancel-tm E1 X) (wk-cancel-tm E1 F0) (wk-cancel-tm E1 F2) (wk-cancel-tm E1 E0) refl)
+
 T⟶tr₉⁽1⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶tr₉⁽1⁾ J X F0 F2 E0 = tσ (C⟶tr₉_1I J) (T⟶tr₉⁽2⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) v₀)
 
@@ -3598,6 +3751,9 @@ T⟶tr₉⁽1⁾-cong J J' X X' F0 F0' F2 F2' E0 E0' refl refl refl refl refl = 
 T⟶tr₉⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶tr₉⁽1⁾ J X F0 F2 E0 ⌝ᵗ ≡ ⌜ T⟶tr₉⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F2) (subTm σ E0) ⌝ᵗ
 T⟶tr₉⁽1⁾-sub σ J X F0 F2 E0 =
   dσ-cong1 (subTm σ (C⟶tr₉_1I J)) (C⟶tr₉_1I (subTm σ J)) (subTm (extS σ) ⌜ T⟶tr₉⁽2⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) v₀ ⌝ᵗ) ⌜ T⟶tr₉⁽2⁾ (w1 (subTm σ J)) (w1 (subTm σ X)) (w1 (subTm σ F0)) (w1 (subTm σ F2)) (w1 (subTm σ E0)) v₀ ⌝ᵗ (C⟶tr₉_1I-sub σ J) (trans (T⟶tr₉⁽2⁾-sub (extS σ) (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 E0) v₀) (T⟶tr₉⁽2⁾-cong (subTm (extS σ) (w1 J)) (w1 (subTm σ J)) (subTm (extS σ) (w1 X)) (w1 (subTm σ X)) (subTm (extS σ) (w1 F0)) (w1 (subTm σ F0)) (subTm (extS σ) (w1 F2)) (w1 (subTm σ F2)) (subTm (extS σ) (w1 E0)) (w1 (subTm σ E0)) (subTm (extS σ) v₀) v₀ (w1-sub σ J) (w1-sub σ X) (w1-sub σ F0) (w1-sub σ F2) (w1-sub σ E0) refl))
+
+T⟶tr₉⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶tr₉⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) v₀ ⌝ᵗ ≡ ⌜ T⟶tr₉⁽1⁾ J X F0 F2 E0 ⌝ᵗ
+T⟶tr₉⁽1⁾-β J X F0 F2 E0 = trans (T⟶tr₉⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F2) v₀) (T⟶tr₉⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F2)) F2 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F2) refl)
 
 T⟶tr₉⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶tr₉⁽0⁾ J X F0 F2 = tσ (C⟶tr₉_0I J) (T⟶tr₉⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) v₀)
@@ -3762,6 +3918,9 @@ T⟶tr₁₀⁽5⁾-cong J J' X X' F0 F0' F2 F2' R1ᵢ0 R1ᵢ0' E0 E0' E1 E1' E2
 T⟶tr₁₀⁽5⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F2 : RTm Δ) (R1ᵢ0 : RTm Δ) (E0 : RTm Δ) (E1 : RTm Δ) (E2 : RTm Δ) (E3 : RTm Δ) (E4 : RTm Δ) → subTm σ ⌜ T⟶tr₁₀⁽5⁾ J X F0 F2 R1ᵢ0 E0 E1 E2 E3 E4 ⌝ᵗ ≡ ⌜ T⟶tr₁₀⁽5⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F2) (subTm σ R1ᵢ0) (subTm σ E0) (subTm σ E1) (subTm σ E2) (subTm σ E3) (subTm σ E4) ⌝ᵗ
 T⟶tr₁₀⁽5⁾-sub σ J X F0 F2 R1ᵢ0 E0 E1 E2 E3 E4 = (T⟶tr₁₀I-sub σ J X F2)
 
+T⟶tr₁₀⁽5⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F2 : RTm Δ) (R1ᵢ0 : RTm Δ) (E0 : RTm Δ) (E1 : RTm Δ) (E2 : RTm Δ) (E3 : RTm Δ) (E4 : RTm Δ) → subTm (single E4) ⌜ T⟶tr₁₀⁽5⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 R1ᵢ0) (w1 E0) (w1 E1) (w1 E2) (w1 E3) v₀ ⌝ᵗ ≡ ⌜ T⟶tr₁₀⁽5⁾ J X F0 F2 R1ᵢ0 E0 E1 E2 E3 E4 ⌝ᵗ
+T⟶tr₁₀⁽5⁾-β J X F0 F2 R1ᵢ0 E0 E1 E2 E3 E4 = trans (T⟶tr₁₀⁽5⁾-sub (single E4) (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 R1ᵢ0) (w1 E0) (w1 E1) (w1 E2) (w1 E3) v₀) (T⟶tr₁₀⁽5⁾-cong (subTm (single E4) (w1 J)) J (subTm (single E4) (w1 X)) X (subTm (single E4) (w1 F0)) F0 (subTm (single E4) (w1 F2)) F2 (subTm (single E4) (w1 R1ᵢ0)) R1ᵢ0 (subTm (single E4) (w1 E0)) E0 (subTm (single E4) (w1 E1)) E1 (subTm (single E4) (w1 E2)) E2 (subTm (single E4) (w1 E3)) E3 (subTm (single E4) v₀) E4 (wk-cancel-tm E4 J) (wk-cancel-tm E4 X) (wk-cancel-tm E4 F0) (wk-cancel-tm E4 F2) (wk-cancel-tm E4 R1ᵢ0) (wk-cancel-tm E4 E0) (wk-cancel-tm E4 E1) (wk-cancel-tm E4 E2) (wk-cancel-tm E4 E3) refl)
+
 T⟶tr₁₀⁽4⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶tr₁₀⁽4⁾ J X F0 F2 R1ᵢ0 E0 E1 E2 E3 = tσ (C⟶tr₁₀_4I J R1ᵢ0) (T⟶tr₁₀⁽5⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 R1ᵢ0) (w1 E0) (w1 E1) (w1 E2) (w1 E3) v₀)
 
@@ -3771,6 +3930,9 @@ T⟶tr₁₀⁽4⁾-cong J J' X X' F0 F0' F2 F2' R1ᵢ0 R1ᵢ0' E0 E0' E1 E1' E2
 T⟶tr₁₀⁽4⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F2 : RTm Δ) (R1ᵢ0 : RTm Δ) (E0 : RTm Δ) (E1 : RTm Δ) (E2 : RTm Δ) (E3 : RTm Δ) → subTm σ ⌜ T⟶tr₁₀⁽4⁾ J X F0 F2 R1ᵢ0 E0 E1 E2 E3 ⌝ᵗ ≡ ⌜ T⟶tr₁₀⁽4⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F2) (subTm σ R1ᵢ0) (subTm σ E0) (subTm σ E1) (subTm σ E2) (subTm σ E3) ⌝ᵗ
 T⟶tr₁₀⁽4⁾-sub σ J X F0 F2 R1ᵢ0 E0 E1 E2 E3 =
   dσ-cong1 (subTm σ (C⟶tr₁₀_4I J R1ᵢ0)) (C⟶tr₁₀_4I (subTm σ J) (subTm σ R1ᵢ0)) (subTm (extS σ) ⌜ T⟶tr₁₀⁽5⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 R1ᵢ0) (w1 E0) (w1 E1) (w1 E2) (w1 E3) v₀ ⌝ᵗ) ⌜ T⟶tr₁₀⁽5⁾ (w1 (subTm σ J)) (w1 (subTm σ X)) (w1 (subTm σ F0)) (w1 (subTm σ F2)) (w1 (subTm σ R1ᵢ0)) (w1 (subTm σ E0)) (w1 (subTm σ E1)) (w1 (subTm σ E2)) (w1 (subTm σ E3)) v₀ ⌝ᵗ (C⟶tr₁₀_4I-sub σ J R1ᵢ0) (trans (T⟶tr₁₀⁽5⁾-sub (extS σ) (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 R1ᵢ0) (w1 E0) (w1 E1) (w1 E2) (w1 E3) v₀) (T⟶tr₁₀⁽5⁾-cong (subTm (extS σ) (w1 J)) (w1 (subTm σ J)) (subTm (extS σ) (w1 X)) (w1 (subTm σ X)) (subTm (extS σ) (w1 F0)) (w1 (subTm σ F0)) (subTm (extS σ) (w1 F2)) (w1 (subTm σ F2)) (subTm (extS σ) (w1 R1ᵢ0)) (w1 (subTm σ R1ᵢ0)) (subTm (extS σ) (w1 E0)) (w1 (subTm σ E0)) (subTm (extS σ) (w1 E1)) (w1 (subTm σ E1)) (subTm (extS σ) (w1 E2)) (w1 (subTm σ E2)) (subTm (extS σ) (w1 E3)) (w1 (subTm σ E3)) (subTm (extS σ) v₀) v₀ (w1-sub σ J) (w1-sub σ X) (w1-sub σ F0) (w1-sub σ F2) (w1-sub σ R1ᵢ0) (w1-sub σ E0) (w1-sub σ E1) (w1-sub σ E2) (w1-sub σ E3) refl))
+
+T⟶tr₁₀⁽4⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F2 : RTm Δ) (R1ᵢ0 : RTm Δ) (E0 : RTm Δ) (E1 : RTm Δ) (E2 : RTm Δ) (E3 : RTm Δ) → subTm (single E3) ⌜ T⟶tr₁₀⁽4⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 R1ᵢ0) (w1 E0) (w1 E1) (w1 E2) v₀ ⌝ᵗ ≡ ⌜ T⟶tr₁₀⁽4⁾ J X F0 F2 R1ᵢ0 E0 E1 E2 E3 ⌝ᵗ
+T⟶tr₁₀⁽4⁾-β J X F0 F2 R1ᵢ0 E0 E1 E2 E3 = trans (T⟶tr₁₀⁽4⁾-sub (single E3) (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 R1ᵢ0) (w1 E0) (w1 E1) (w1 E2) v₀) (T⟶tr₁₀⁽4⁾-cong (subTm (single E3) (w1 J)) J (subTm (single E3) (w1 X)) X (subTm (single E3) (w1 F0)) F0 (subTm (single E3) (w1 F2)) F2 (subTm (single E3) (w1 R1ᵢ0)) R1ᵢ0 (subTm (single E3) (w1 E0)) E0 (subTm (single E3) (w1 E1)) E1 (subTm (single E3) (w1 E2)) E2 (subTm (single E3) v₀) E3 (wk-cancel-tm E3 J) (wk-cancel-tm E3 X) (wk-cancel-tm E3 F0) (wk-cancel-tm E3 F2) (wk-cancel-tm E3 R1ᵢ0) (wk-cancel-tm E3 E0) (wk-cancel-tm E3 E1) (wk-cancel-tm E3 E2) refl)
 
 T⟶tr₁₀⁽3⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶tr₁₀⁽3⁾ J X F0 F2 R1ᵢ0 E0 E1 E2 = tσ (C⟶tr₁₀_3I J F0 E0 E1 E2) (T⟶tr₁₀⁽4⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 R1ᵢ0) (w1 E0) (w1 E1) (w1 E2) v₀)
@@ -3782,6 +3944,9 @@ T⟶tr₁₀⁽3⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm �
 T⟶tr₁₀⁽3⁾-sub σ J X F0 F2 R1ᵢ0 E0 E1 E2 =
   dσ-cong1 (subTm σ (C⟶tr₁₀_3I J F0 E0 E1 E2)) (C⟶tr₁₀_3I (subTm σ J) (subTm σ F0) (subTm σ E0) (subTm σ E1) (subTm σ E2)) (subTm (extS σ) ⌜ T⟶tr₁₀⁽4⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 R1ᵢ0) (w1 E0) (w1 E1) (w1 E2) v₀ ⌝ᵗ) ⌜ T⟶tr₁₀⁽4⁾ (w1 (subTm σ J)) (w1 (subTm σ X)) (w1 (subTm σ F0)) (w1 (subTm σ F2)) (w1 (subTm σ R1ᵢ0)) (w1 (subTm σ E0)) (w1 (subTm σ E1)) (w1 (subTm σ E2)) v₀ ⌝ᵗ (C⟶tr₁₀_3I-sub σ J F0 E0 E1 E2) (trans (T⟶tr₁₀⁽4⁾-sub (extS σ) (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 R1ᵢ0) (w1 E0) (w1 E1) (w1 E2) v₀) (T⟶tr₁₀⁽4⁾-cong (subTm (extS σ) (w1 J)) (w1 (subTm σ J)) (subTm (extS σ) (w1 X)) (w1 (subTm σ X)) (subTm (extS σ) (w1 F0)) (w1 (subTm σ F0)) (subTm (extS σ) (w1 F2)) (w1 (subTm σ F2)) (subTm (extS σ) (w1 R1ᵢ0)) (w1 (subTm σ R1ᵢ0)) (subTm (extS σ) (w1 E0)) (w1 (subTm σ E0)) (subTm (extS σ) (w1 E1)) (w1 (subTm σ E1)) (subTm (extS σ) (w1 E2)) (w1 (subTm σ E2)) (subTm (extS σ) v₀) v₀ (w1-sub σ J) (w1-sub σ X) (w1-sub σ F0) (w1-sub σ F2) (w1-sub σ R1ᵢ0) (w1-sub σ E0) (w1-sub σ E1) (w1-sub σ E2) refl))
 
+T⟶tr₁₀⁽3⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F2 : RTm Δ) (R1ᵢ0 : RTm Δ) (E0 : RTm Δ) (E1 : RTm Δ) (E2 : RTm Δ) → subTm (single E2) ⌜ T⟶tr₁₀⁽3⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 R1ᵢ0) (w1 E0) (w1 E1) v₀ ⌝ᵗ ≡ ⌜ T⟶tr₁₀⁽3⁾ J X F0 F2 R1ᵢ0 E0 E1 E2 ⌝ᵗ
+T⟶tr₁₀⁽3⁾-β J X F0 F2 R1ᵢ0 E0 E1 E2 = trans (T⟶tr₁₀⁽3⁾-sub (single E2) (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 R1ᵢ0) (w1 E0) (w1 E1) v₀) (T⟶tr₁₀⁽3⁾-cong (subTm (single E2) (w1 J)) J (subTm (single E2) (w1 X)) X (subTm (single E2) (w1 F0)) F0 (subTm (single E2) (w1 F2)) F2 (subTm (single E2) (w1 R1ᵢ0)) R1ᵢ0 (subTm (single E2) (w1 E0)) E0 (subTm (single E2) (w1 E1)) E1 (subTm (single E2) v₀) E2 (wk-cancel-tm E2 J) (wk-cancel-tm E2 X) (wk-cancel-tm E2 F0) (wk-cancel-tm E2 F2) (wk-cancel-tm E2 R1ᵢ0) (wk-cancel-tm E2 E0) (wk-cancel-tm E2 E1) refl)
+
 T⟶tr₁₀⁽2⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶tr₁₀⁽2⁾ J X F0 F2 R1ᵢ0 E0 E1 = tσ (C⟶tr₁₀_2I J) (T⟶tr₁₀⁽3⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 R1ᵢ0) (w1 E0) (w1 E1) v₀)
 
@@ -3792,6 +3957,9 @@ T⟶tr₁₀⁽2⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm �
 T⟶tr₁₀⁽2⁾-sub σ J X F0 F2 R1ᵢ0 E0 E1 =
   dσ-cong1 (subTm σ (C⟶tr₁₀_2I J)) (C⟶tr₁₀_2I (subTm σ J)) (subTm (extS σ) ⌜ T⟶tr₁₀⁽3⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 R1ᵢ0) (w1 E0) (w1 E1) v₀ ⌝ᵗ) ⌜ T⟶tr₁₀⁽3⁾ (w1 (subTm σ J)) (w1 (subTm σ X)) (w1 (subTm σ F0)) (w1 (subTm σ F2)) (w1 (subTm σ R1ᵢ0)) (w1 (subTm σ E0)) (w1 (subTm σ E1)) v₀ ⌝ᵗ (C⟶tr₁₀_2I-sub σ J) (trans (T⟶tr₁₀⁽3⁾-sub (extS σ) (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 R1ᵢ0) (w1 E0) (w1 E1) v₀) (T⟶tr₁₀⁽3⁾-cong (subTm (extS σ) (w1 J)) (w1 (subTm σ J)) (subTm (extS σ) (w1 X)) (w1 (subTm σ X)) (subTm (extS σ) (w1 F0)) (w1 (subTm σ F0)) (subTm (extS σ) (w1 F2)) (w1 (subTm σ F2)) (subTm (extS σ) (w1 R1ᵢ0)) (w1 (subTm σ R1ᵢ0)) (subTm (extS σ) (w1 E0)) (w1 (subTm σ E0)) (subTm (extS σ) (w1 E1)) (w1 (subTm σ E1)) (subTm (extS σ) v₀) v₀ (w1-sub σ J) (w1-sub σ X) (w1-sub σ F0) (w1-sub σ F2) (w1-sub σ R1ᵢ0) (w1-sub σ E0) (w1-sub σ E1) refl))
 
+T⟶tr₁₀⁽2⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F2 : RTm Δ) (R1ᵢ0 : RTm Δ) (E0 : RTm Δ) (E1 : RTm Δ) → subTm (single E1) ⌜ T⟶tr₁₀⁽2⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 R1ᵢ0) (w1 E0) v₀ ⌝ᵗ ≡ ⌜ T⟶tr₁₀⁽2⁾ J X F0 F2 R1ᵢ0 E0 E1 ⌝ᵗ
+T⟶tr₁₀⁽2⁾-β J X F0 F2 R1ᵢ0 E0 E1 = trans (T⟶tr₁₀⁽2⁾-sub (single E1) (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 R1ᵢ0) (w1 E0) v₀) (T⟶tr₁₀⁽2⁾-cong (subTm (single E1) (w1 J)) J (subTm (single E1) (w1 X)) X (subTm (single E1) (w1 F0)) F0 (subTm (single E1) (w1 F2)) F2 (subTm (single E1) (w1 R1ᵢ0)) R1ᵢ0 (subTm (single E1) (w1 E0)) E0 (subTm (single E1) v₀) E1 (wk-cancel-tm E1 J) (wk-cancel-tm E1 X) (wk-cancel-tm E1 F0) (wk-cancel-tm E1 F2) (wk-cancel-tm E1 R1ᵢ0) (wk-cancel-tm E1 E0) refl)
+
 T⟶tr₁₀⁽1⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶tr₁₀⁽1⁾ J X F0 F2 R1ᵢ0 E0 = tσ (C⟶tr₁₀_1I J) (T⟶tr₁₀⁽2⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 R1ᵢ0) (w1 E0) v₀)
 
@@ -3801,6 +3969,9 @@ T⟶tr₁₀⁽1⁾-cong J J' X X' F0 F0' F2 F2' R1ᵢ0 R1ᵢ0' E0 E0' refl refl
 T⟶tr₁₀⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F2 : RTm Δ) (R1ᵢ0 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶tr₁₀⁽1⁾ J X F0 F2 R1ᵢ0 E0 ⌝ᵗ ≡ ⌜ T⟶tr₁₀⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F2) (subTm σ R1ᵢ0) (subTm σ E0) ⌝ᵗ
 T⟶tr₁₀⁽1⁾-sub σ J X F0 F2 R1ᵢ0 E0 =
   dσ-cong1 (subTm σ (C⟶tr₁₀_1I J)) (C⟶tr₁₀_1I (subTm σ J)) (subTm (extS σ) ⌜ T⟶tr₁₀⁽2⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 R1ᵢ0) (w1 E0) v₀ ⌝ᵗ) ⌜ T⟶tr₁₀⁽2⁾ (w1 (subTm σ J)) (w1 (subTm σ X)) (w1 (subTm σ F0)) (w1 (subTm σ F2)) (w1 (subTm σ R1ᵢ0)) (w1 (subTm σ E0)) v₀ ⌝ᵗ (C⟶tr₁₀_1I-sub σ J) (trans (T⟶tr₁₀⁽2⁾-sub (extS σ) (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 R1ᵢ0) (w1 E0) v₀) (T⟶tr₁₀⁽2⁾-cong (subTm (extS σ) (w1 J)) (w1 (subTm σ J)) (subTm (extS σ) (w1 X)) (w1 (subTm σ X)) (subTm (extS σ) (w1 F0)) (w1 (subTm σ F0)) (subTm (extS σ) (w1 F2)) (w1 (subTm σ F2)) (subTm (extS σ) (w1 R1ᵢ0)) (w1 (subTm σ R1ᵢ0)) (subTm (extS σ) (w1 E0)) (w1 (subTm σ E0)) (subTm (extS σ) v₀) v₀ (w1-sub σ J) (w1-sub σ X) (w1-sub σ F0) (w1-sub σ F2) (w1-sub σ R1ᵢ0) (w1-sub σ E0) refl))
+
+T⟶tr₁₀⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F2 : RTm Δ) (R1ᵢ0 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶tr₁₀⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 R1ᵢ0) v₀ ⌝ᵗ ≡ ⌜ T⟶tr₁₀⁽1⁾ J X F0 F2 R1ᵢ0 E0 ⌝ᵗ
+T⟶tr₁₀⁽1⁾-β J X F0 F2 R1ᵢ0 E0 = trans (T⟶tr₁₀⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 R1ᵢ0) v₀) (T⟶tr₁₀⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F2)) F2 (subTm (single E0) (w1 R1ᵢ0)) R1ᵢ0 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F2) (wk-cancel-tm E0 R1ᵢ0) refl)
 
 T⟶tr₁₀⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶tr₁₀⁽0⁾ J X F0 F2 R1ᵢ0 = tσ (C⟶tr₁₀_0I J) (T⟶tr₁₀⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 R1ᵢ0) v₀)
@@ -3895,6 +4066,9 @@ T⟶tr₁₁⁽1⁾-cong J J' X X' F0 F0' F1 F1' F2 F2' E0 E0' refl refl refl re
 
 T⟶tr₁₁⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶tr₁₁⁽1⁾ J X F0 F1 F2 E0 ⌝ᵗ ≡ ⌜ T⟶tr₁₁⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ F2) (subTm σ E0) ⌝ᵗ
 T⟶tr₁₁⁽1⁾-sub σ J X F0 F1 F2 E0 = (T⟶tr₁₁I-sub σ J X F1 F2)
+
+T⟶tr₁₁⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶tr₁₁⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀ ⌝ᵗ ≡ ⌜ T⟶tr₁₁⁽1⁾ J X F0 F1 F2 E0 ⌝ᵗ
+T⟶tr₁₁⁽1⁾-β J X F0 F1 F2 E0 = trans (T⟶tr₁₁⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀) (T⟶tr₁₁⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) (w1 F2)) F2 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) (wk-cancel-tm E0 F2) refl)
 
 T⟶tr₁₁⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶tr₁₁⁽0⁾ J X F0 F1 F2 = tσ (C⟶tr₁₁_0I J F0) (T⟶tr₁₁⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀)
@@ -4044,6 +4218,9 @@ T⟶tr₁₂⁽5⁾-cong J J' X X' F0 F0' F2 F2' R0ᵢ0 R0ᵢ0' E0 E0' E1 E1' E2
 T⟶tr₁₂⁽5⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F2 : RTm Δ) (R0ᵢ0 : RTm Δ) (E0 : RTm Δ) (E1 : RTm Δ) (E2 : RTm Δ) (E3 : RTm Δ) (E4 : RTm Δ) → subTm σ ⌜ T⟶tr₁₂⁽5⁾ J X F0 F2 R0ᵢ0 E0 E1 E2 E3 E4 ⌝ᵗ ≡ ⌜ T⟶tr₁₂⁽5⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F2) (subTm σ R0ᵢ0) (subTm σ E0) (subTm σ E1) (subTm σ E2) (subTm σ E3) (subTm σ E4) ⌝ᵗ
 T⟶tr₁₂⁽5⁾-sub σ J X F0 F2 R0ᵢ0 E0 E1 E2 E3 E4 = (T⟶tr₁₂I-sub σ J X F2 R0ᵢ0 E1 E3)
 
+T⟶tr₁₂⁽5⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F2 : RTm Δ) (R0ᵢ0 : RTm Δ) (E0 : RTm Δ) (E1 : RTm Δ) (E2 : RTm Δ) (E3 : RTm Δ) (E4 : RTm Δ) → subTm (single E4) ⌜ T⟶tr₁₂⁽5⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 R0ᵢ0) (w1 E0) (w1 E1) (w1 E2) (w1 E3) v₀ ⌝ᵗ ≡ ⌜ T⟶tr₁₂⁽5⁾ J X F0 F2 R0ᵢ0 E0 E1 E2 E3 E4 ⌝ᵗ
+T⟶tr₁₂⁽5⁾-β J X F0 F2 R0ᵢ0 E0 E1 E2 E3 E4 = trans (T⟶tr₁₂⁽5⁾-sub (single E4) (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 R0ᵢ0) (w1 E0) (w1 E1) (w1 E2) (w1 E3) v₀) (T⟶tr₁₂⁽5⁾-cong (subTm (single E4) (w1 J)) J (subTm (single E4) (w1 X)) X (subTm (single E4) (w1 F0)) F0 (subTm (single E4) (w1 F2)) F2 (subTm (single E4) (w1 R0ᵢ0)) R0ᵢ0 (subTm (single E4) (w1 E0)) E0 (subTm (single E4) (w1 E1)) E1 (subTm (single E4) (w1 E2)) E2 (subTm (single E4) (w1 E3)) E3 (subTm (single E4) v₀) E4 (wk-cancel-tm E4 J) (wk-cancel-tm E4 X) (wk-cancel-tm E4 F0) (wk-cancel-tm E4 F2) (wk-cancel-tm E4 R0ᵢ0) (wk-cancel-tm E4 E0) (wk-cancel-tm E4 E1) (wk-cancel-tm E4 E2) (wk-cancel-tm E4 E3) refl)
+
 T⟶tr₁₂⁽4⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶tr₁₂⁽4⁾ J X F0 F2 R0ᵢ0 E0 E1 E2 E3 = tσ (C⟶tr₁₂_4I J E0 E3) (T⟶tr₁₂⁽5⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 R0ᵢ0) (w1 E0) (w1 E1) (w1 E2) (w1 E3) v₀)
 
@@ -4053,6 +4230,9 @@ T⟶tr₁₂⁽4⁾-cong J J' X X' F0 F0' F2 F2' R0ᵢ0 R0ᵢ0' E0 E0' E1 E1' E2
 T⟶tr₁₂⁽4⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F2 : RTm Δ) (R0ᵢ0 : RTm Δ) (E0 : RTm Δ) (E1 : RTm Δ) (E2 : RTm Δ) (E3 : RTm Δ) → subTm σ ⌜ T⟶tr₁₂⁽4⁾ J X F0 F2 R0ᵢ0 E0 E1 E2 E3 ⌝ᵗ ≡ ⌜ T⟶tr₁₂⁽4⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F2) (subTm σ R0ᵢ0) (subTm σ E0) (subTm σ E1) (subTm σ E2) (subTm σ E3) ⌝ᵗ
 T⟶tr₁₂⁽4⁾-sub σ J X F0 F2 R0ᵢ0 E0 E1 E2 E3 =
   dσ-cong1 (subTm σ (C⟶tr₁₂_4I J E0 E3)) (C⟶tr₁₂_4I (subTm σ J) (subTm σ E0) (subTm σ E3)) (subTm (extS σ) ⌜ T⟶tr₁₂⁽5⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 R0ᵢ0) (w1 E0) (w1 E1) (w1 E2) (w1 E3) v₀ ⌝ᵗ) ⌜ T⟶tr₁₂⁽5⁾ (w1 (subTm σ J)) (w1 (subTm σ X)) (w1 (subTm σ F0)) (w1 (subTm σ F2)) (w1 (subTm σ R0ᵢ0)) (w1 (subTm σ E0)) (w1 (subTm σ E1)) (w1 (subTm σ E2)) (w1 (subTm σ E3)) v₀ ⌝ᵗ (C⟶tr₁₂_4I-sub σ J E0 E3) (trans (T⟶tr₁₂⁽5⁾-sub (extS σ) (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 R0ᵢ0) (w1 E0) (w1 E1) (w1 E2) (w1 E3) v₀) (T⟶tr₁₂⁽5⁾-cong (subTm (extS σ) (w1 J)) (w1 (subTm σ J)) (subTm (extS σ) (w1 X)) (w1 (subTm σ X)) (subTm (extS σ) (w1 F0)) (w1 (subTm σ F0)) (subTm (extS σ) (w1 F2)) (w1 (subTm σ F2)) (subTm (extS σ) (w1 R0ᵢ0)) (w1 (subTm σ R0ᵢ0)) (subTm (extS σ) (w1 E0)) (w1 (subTm σ E0)) (subTm (extS σ) (w1 E1)) (w1 (subTm σ E1)) (subTm (extS σ) (w1 E2)) (w1 (subTm σ E2)) (subTm (extS σ) (w1 E3)) (w1 (subTm σ E3)) (subTm (extS σ) v₀) v₀ (w1-sub σ J) (w1-sub σ X) (w1-sub σ F0) (w1-sub σ F2) (w1-sub σ R0ᵢ0) (w1-sub σ E0) (w1-sub σ E1) (w1-sub σ E2) (w1-sub σ E3) refl))
+
+T⟶tr₁₂⁽4⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F2 : RTm Δ) (R0ᵢ0 : RTm Δ) (E0 : RTm Δ) (E1 : RTm Δ) (E2 : RTm Δ) (E3 : RTm Δ) → subTm (single E3) ⌜ T⟶tr₁₂⁽4⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 R0ᵢ0) (w1 E0) (w1 E1) (w1 E2) v₀ ⌝ᵗ ≡ ⌜ T⟶tr₁₂⁽4⁾ J X F0 F2 R0ᵢ0 E0 E1 E2 E3 ⌝ᵗ
+T⟶tr₁₂⁽4⁾-β J X F0 F2 R0ᵢ0 E0 E1 E2 E3 = trans (T⟶tr₁₂⁽4⁾-sub (single E3) (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 R0ᵢ0) (w1 E0) (w1 E1) (w1 E2) v₀) (T⟶tr₁₂⁽4⁾-cong (subTm (single E3) (w1 J)) J (subTm (single E3) (w1 X)) X (subTm (single E3) (w1 F0)) F0 (subTm (single E3) (w1 F2)) F2 (subTm (single E3) (w1 R0ᵢ0)) R0ᵢ0 (subTm (single E3) (w1 E0)) E0 (subTm (single E3) (w1 E1)) E1 (subTm (single E3) (w1 E2)) E2 (subTm (single E3) v₀) E3 (wk-cancel-tm E3 J) (wk-cancel-tm E3 X) (wk-cancel-tm E3 F0) (wk-cancel-tm E3 F2) (wk-cancel-tm E3 R0ᵢ0) (wk-cancel-tm E3 E0) (wk-cancel-tm E3 E1) (wk-cancel-tm E3 E2) refl)
 
 T⟶tr₁₂⁽3⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶tr₁₂⁽3⁾ J X F0 F2 R0ᵢ0 E0 E1 E2 = tσ (C⟶tr₁₂_3I J) (T⟶tr₁₂⁽4⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 R0ᵢ0) (w1 E0) (w1 E1) (w1 E2) v₀)
@@ -4064,6 +4244,9 @@ T⟶tr₁₂⁽3⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm �
 T⟶tr₁₂⁽3⁾-sub σ J X F0 F2 R0ᵢ0 E0 E1 E2 =
   dσ-cong1 (subTm σ (C⟶tr₁₂_3I J)) (C⟶tr₁₂_3I (subTm σ J)) (subTm (extS σ) ⌜ T⟶tr₁₂⁽4⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 R0ᵢ0) (w1 E0) (w1 E1) (w1 E2) v₀ ⌝ᵗ) ⌜ T⟶tr₁₂⁽4⁾ (w1 (subTm σ J)) (w1 (subTm σ X)) (w1 (subTm σ F0)) (w1 (subTm σ F2)) (w1 (subTm σ R0ᵢ0)) (w1 (subTm σ E0)) (w1 (subTm σ E1)) (w1 (subTm σ E2)) v₀ ⌝ᵗ (C⟶tr₁₂_3I-sub σ J) (trans (T⟶tr₁₂⁽4⁾-sub (extS σ) (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 R0ᵢ0) (w1 E0) (w1 E1) (w1 E2) v₀) (T⟶tr₁₂⁽4⁾-cong (subTm (extS σ) (w1 J)) (w1 (subTm σ J)) (subTm (extS σ) (w1 X)) (w1 (subTm σ X)) (subTm (extS σ) (w1 F0)) (w1 (subTm σ F0)) (subTm (extS σ) (w1 F2)) (w1 (subTm σ F2)) (subTm (extS σ) (w1 R0ᵢ0)) (w1 (subTm σ R0ᵢ0)) (subTm (extS σ) (w1 E0)) (w1 (subTm σ E0)) (subTm (extS σ) (w1 E1)) (w1 (subTm σ E1)) (subTm (extS σ) (w1 E2)) (w1 (subTm σ E2)) (subTm (extS σ) v₀) v₀ (w1-sub σ J) (w1-sub σ X) (w1-sub σ F0) (w1-sub σ F2) (w1-sub σ R0ᵢ0) (w1-sub σ E0) (w1-sub σ E1) (w1-sub σ E2) refl))
 
+T⟶tr₁₂⁽3⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F2 : RTm Δ) (R0ᵢ0 : RTm Δ) (E0 : RTm Δ) (E1 : RTm Δ) (E2 : RTm Δ) → subTm (single E2) ⌜ T⟶tr₁₂⁽3⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 R0ᵢ0) (w1 E0) (w1 E1) v₀ ⌝ᵗ ≡ ⌜ T⟶tr₁₂⁽3⁾ J X F0 F2 R0ᵢ0 E0 E1 E2 ⌝ᵗ
+T⟶tr₁₂⁽3⁾-β J X F0 F2 R0ᵢ0 E0 E1 E2 = trans (T⟶tr₁₂⁽3⁾-sub (single E2) (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 R0ᵢ0) (w1 E0) (w1 E1) v₀) (T⟶tr₁₂⁽3⁾-cong (subTm (single E2) (w1 J)) J (subTm (single E2) (w1 X)) X (subTm (single E2) (w1 F0)) F0 (subTm (single E2) (w1 F2)) F2 (subTm (single E2) (w1 R0ᵢ0)) R0ᵢ0 (subTm (single E2) (w1 E0)) E0 (subTm (single E2) (w1 E1)) E1 (subTm (single E2) v₀) E2 (wk-cancel-tm E2 J) (wk-cancel-tm E2 X) (wk-cancel-tm E2 F0) (wk-cancel-tm E2 F2) (wk-cancel-tm E2 R0ᵢ0) (wk-cancel-tm E2 E0) (wk-cancel-tm E2 E1) refl)
+
 T⟶tr₁₂⁽2⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶tr₁₂⁽2⁾ J X F0 F2 R0ᵢ0 E0 E1 = tσ (C⟶tr₁₂_2I J F0 E0 E1) (T⟶tr₁₂⁽3⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 R0ᵢ0) (w1 E0) (w1 E1) v₀)
 
@@ -4074,6 +4257,9 @@ T⟶tr₁₂⁽2⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm �
 T⟶tr₁₂⁽2⁾-sub σ J X F0 F2 R0ᵢ0 E0 E1 =
   dσ-cong1 (subTm σ (C⟶tr₁₂_2I J F0 E0 E1)) (C⟶tr₁₂_2I (subTm σ J) (subTm σ F0) (subTm σ E0) (subTm σ E1)) (subTm (extS σ) ⌜ T⟶tr₁₂⁽3⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 R0ᵢ0) (w1 E0) (w1 E1) v₀ ⌝ᵗ) ⌜ T⟶tr₁₂⁽3⁾ (w1 (subTm σ J)) (w1 (subTm σ X)) (w1 (subTm σ F0)) (w1 (subTm σ F2)) (w1 (subTm σ R0ᵢ0)) (w1 (subTm σ E0)) (w1 (subTm σ E1)) v₀ ⌝ᵗ (C⟶tr₁₂_2I-sub σ J F0 E0 E1) (trans (T⟶tr₁₂⁽3⁾-sub (extS σ) (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 R0ᵢ0) (w1 E0) (w1 E1) v₀) (T⟶tr₁₂⁽3⁾-cong (subTm (extS σ) (w1 J)) (w1 (subTm σ J)) (subTm (extS σ) (w1 X)) (w1 (subTm σ X)) (subTm (extS σ) (w1 F0)) (w1 (subTm σ F0)) (subTm (extS σ) (w1 F2)) (w1 (subTm σ F2)) (subTm (extS σ) (w1 R0ᵢ0)) (w1 (subTm σ R0ᵢ0)) (subTm (extS σ) (w1 E0)) (w1 (subTm σ E0)) (subTm (extS σ) (w1 E1)) (w1 (subTm σ E1)) (subTm (extS σ) v₀) v₀ (w1-sub σ J) (w1-sub σ X) (w1-sub σ F0) (w1-sub σ F2) (w1-sub σ R0ᵢ0) (w1-sub σ E0) (w1-sub σ E1) refl))
 
+T⟶tr₁₂⁽2⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F2 : RTm Δ) (R0ᵢ0 : RTm Δ) (E0 : RTm Δ) (E1 : RTm Δ) → subTm (single E1) ⌜ T⟶tr₁₂⁽2⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 R0ᵢ0) (w1 E0) v₀ ⌝ᵗ ≡ ⌜ T⟶tr₁₂⁽2⁾ J X F0 F2 R0ᵢ0 E0 E1 ⌝ᵗ
+T⟶tr₁₂⁽2⁾-β J X F0 F2 R0ᵢ0 E0 E1 = trans (T⟶tr₁₂⁽2⁾-sub (single E1) (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 R0ᵢ0) (w1 E0) v₀) (T⟶tr₁₂⁽2⁾-cong (subTm (single E1) (w1 J)) J (subTm (single E1) (w1 X)) X (subTm (single E1) (w1 F0)) F0 (subTm (single E1) (w1 F2)) F2 (subTm (single E1) (w1 R0ᵢ0)) R0ᵢ0 (subTm (single E1) (w1 E0)) E0 (subTm (single E1) v₀) E1 (wk-cancel-tm E1 J) (wk-cancel-tm E1 X) (wk-cancel-tm E1 F0) (wk-cancel-tm E1 F2) (wk-cancel-tm E1 R0ᵢ0) (wk-cancel-tm E1 E0) refl)
+
 T⟶tr₁₂⁽1⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶tr₁₂⁽1⁾ J X F0 F2 R0ᵢ0 E0 = tσ (C⟶tr₁₂_1I J) (T⟶tr₁₂⁽2⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 R0ᵢ0) (w1 E0) v₀)
 
@@ -4083,6 +4269,9 @@ T⟶tr₁₂⁽1⁾-cong J J' X X' F0 F0' F2 F2' R0ᵢ0 R0ᵢ0' E0 E0' refl refl
 T⟶tr₁₂⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F2 : RTm Δ) (R0ᵢ0 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶tr₁₂⁽1⁾ J X F0 F2 R0ᵢ0 E0 ⌝ᵗ ≡ ⌜ T⟶tr₁₂⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F2) (subTm σ R0ᵢ0) (subTm σ E0) ⌝ᵗ
 T⟶tr₁₂⁽1⁾-sub σ J X F0 F2 R0ᵢ0 E0 =
   dσ-cong1 (subTm σ (C⟶tr₁₂_1I J)) (C⟶tr₁₂_1I (subTm σ J)) (subTm (extS σ) ⌜ T⟶tr₁₂⁽2⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 R0ᵢ0) (w1 E0) v₀ ⌝ᵗ) ⌜ T⟶tr₁₂⁽2⁾ (w1 (subTm σ J)) (w1 (subTm σ X)) (w1 (subTm σ F0)) (w1 (subTm σ F2)) (w1 (subTm σ R0ᵢ0)) (w1 (subTm σ E0)) v₀ ⌝ᵗ (C⟶tr₁₂_1I-sub σ J) (trans (T⟶tr₁₂⁽2⁾-sub (extS σ) (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 R0ᵢ0) (w1 E0) v₀) (T⟶tr₁₂⁽2⁾-cong (subTm (extS σ) (w1 J)) (w1 (subTm σ J)) (subTm (extS σ) (w1 X)) (w1 (subTm σ X)) (subTm (extS σ) (w1 F0)) (w1 (subTm σ F0)) (subTm (extS σ) (w1 F2)) (w1 (subTm σ F2)) (subTm (extS σ) (w1 R0ᵢ0)) (w1 (subTm σ R0ᵢ0)) (subTm (extS σ) (w1 E0)) (w1 (subTm σ E0)) (subTm (extS σ) v₀) v₀ (w1-sub σ J) (w1-sub σ X) (w1-sub σ F0) (w1-sub σ F2) (w1-sub σ R0ᵢ0) (w1-sub σ E0) refl))
+
+T⟶tr₁₂⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F2 : RTm Δ) (R0ᵢ0 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶tr₁₂⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 R0ᵢ0) v₀ ⌝ᵗ ≡ ⌜ T⟶tr₁₂⁽1⁾ J X F0 F2 R0ᵢ0 E0 ⌝ᵗ
+T⟶tr₁₂⁽1⁾-β J X F0 F2 R0ᵢ0 E0 = trans (T⟶tr₁₂⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 R0ᵢ0) v₀) (T⟶tr₁₂⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F2)) F2 (subTm (single E0) (w1 R0ᵢ0)) R0ᵢ0 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F2) (wk-cancel-tm E0 R0ᵢ0) refl)
 
 T⟶tr₁₂⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶tr₁₂⁽0⁾ J X F0 F2 R0ᵢ0 = tσ (C⟶tr₁₂_0I J) (T⟶tr₁₂⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F2) (w1 R0ᵢ0) v₀)
@@ -4181,6 +4370,9 @@ T⟶ap₁⁽1⁾-cong J J' X X' F0 F0' F1 F1' F2 F2' E0 E0' refl refl refl refl 
 T⟶ap₁⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶ap₁⁽1⁾ J X F0 F1 F2 E0 ⌝ᵗ ≡ ⌜ T⟶ap₁⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ F2) (subTm σ E0) ⌝ᵗ
 T⟶ap₁⁽1⁾-sub σ J X F0 F1 F2 E0 = (T⟶ap₁I-sub σ J X F0 F1 F2 E0)
 
+T⟶ap₁⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶ap₁⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀ ⌝ᵗ ≡ ⌜ T⟶ap₁⁽1⁾ J X F0 F1 F2 E0 ⌝ᵗ
+T⟶ap₁⁽1⁾-β J X F0 F1 F2 E0 = trans (T⟶ap₁⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀) (T⟶ap₁⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) (w1 F2)) F2 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) (wk-cancel-tm E0 F2) refl)
+
 T⟶ap₁⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶ap₁⁽0⁾ J X F0 F1 F2 = tσ (C⟶ap₁_0I J) (T⟶ap₁⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀)
 
@@ -4250,6 +4442,9 @@ T⟶ap₂⁽1⁾-cong J J' X X' F0 F0' F1 F1' F2 F2' E0 E0' refl refl refl refl 
 
 T⟶ap₂⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶ap₂⁽1⁾ J X F0 F1 F2 E0 ⌝ᵗ ≡ ⌜ T⟶ap₂⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ F2) (subTm σ E0) ⌝ᵗ
 T⟶ap₂⁽1⁾-sub σ J X F0 F1 F2 E0 = (T⟶ap₂I-sub σ J X F0 F1 F2 E0)
+
+T⟶ap₂⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶ap₂⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀ ⌝ᵗ ≡ ⌜ T⟶ap₂⁽1⁾ J X F0 F1 F2 E0 ⌝ᵗ
+T⟶ap₂⁽1⁾-β J X F0 F1 F2 E0 = trans (T⟶ap₂⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀) (T⟶ap₂⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) (w1 F2)) F2 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) (wk-cancel-tm E0 F2) refl)
 
 T⟶ap₂⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶ap₂⁽0⁾ J X F0 F1 F2 = tσ (C⟶ap₂_0I J) (T⟶ap₂⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀)
@@ -4321,6 +4516,9 @@ T⟶ap₃⁽1⁾-cong J J' X X' F0 F0' F1 F1' F2 F2' E0 E0' refl refl refl refl 
 T⟶ap₃⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶ap₃⁽1⁾ J X F0 F1 F2 E0 ⌝ᵗ ≡ ⌜ T⟶ap₃⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ F2) (subTm σ E0) ⌝ᵗ
 T⟶ap₃⁽1⁾-sub σ J X F0 F1 F2 E0 = (T⟶ap₃I-sub σ J X F0 F1 F2 E0)
 
+T⟶ap₃⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶ap₃⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀ ⌝ᵗ ≡ ⌜ T⟶ap₃⁽1⁾ J X F0 F1 F2 E0 ⌝ᵗ
+T⟶ap₃⁽1⁾-β J X F0 F1 F2 E0 = trans (T⟶ap₃⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀) (T⟶ap₃⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) (w1 F2)) F2 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) (wk-cancel-tm E0 F2) refl)
+
 T⟶ap₃⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶ap₃⁽0⁾ J X F0 F1 F2 = tσ (C⟶ap₃_0I J) (T⟶ap₃⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀)
 
@@ -4390,6 +4588,9 @@ T⟶ap₄⁽1⁾-cong J J' X X' F0 F0' F1 F1' R0ᵢ0 R0ᵢ0' R0ᵢ1 R0ᵢ1' E0 E
 
 T⟶ap₄⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (R0ᵢ0 : RTm Δ) (R0ᵢ1 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶ap₄⁽1⁾ J X F0 F1 R0ᵢ0 R0ᵢ1 E0 ⌝ᵗ ≡ ⌜ T⟶ap₄⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ R0ᵢ0) (subTm σ R0ᵢ1) (subTm σ E0) ⌝ᵗ
 T⟶ap₄⁽1⁾-sub σ J X F0 F1 R0ᵢ0 R0ᵢ1 E0 = (T⟶ap₄I-sub σ J X F0 F1 R0ᵢ1)
+
+T⟶ap₄⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (R0ᵢ0 : RTm Δ) (R0ᵢ1 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶ap₄⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 R0ᵢ0) (w1 R0ᵢ1) v₀ ⌝ᵗ ≡ ⌜ T⟶ap₄⁽1⁾ J X F0 F1 R0ᵢ0 R0ᵢ1 E0 ⌝ᵗ
+T⟶ap₄⁽1⁾-β J X F0 F1 R0ᵢ0 R0ᵢ1 E0 = trans (T⟶ap₄⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 R0ᵢ0) (w1 R0ᵢ1) v₀) (T⟶ap₄⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) (w1 R0ᵢ0)) R0ᵢ0 (subTm (single E0) (w1 R0ᵢ1)) R0ᵢ1 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) (wk-cancel-tm E0 R0ᵢ0) (wk-cancel-tm E0 R0ᵢ1) refl)
 
 T⟶ap₄⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶ap₄⁽0⁾ J X F0 F1 R0ᵢ0 R0ᵢ1 = tσ (C⟶ap₄_0I J R0ᵢ0) (T⟶ap₄⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 R0ᵢ0) (w1 R0ᵢ1) v₀)
@@ -4476,6 +4677,9 @@ T⟶cId₁⁽1⁾-cong J J' X X' F0 F0' F1 F1' F2 F2' E0 E0' refl refl refl refl
 T⟶cId₁⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶cId₁⁽1⁾ J X F0 F1 F2 E0 ⌝ᵗ ≡ ⌜ T⟶cId₁⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ F2) (subTm σ E0) ⌝ᵗ
 T⟶cId₁⁽1⁾-sub σ J X F0 F1 F2 E0 = (T⟶cId₁I-sub σ J X F0 F1 F2 E0)
 
+T⟶cId₁⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶cId₁⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀ ⌝ᵗ ≡ ⌜ T⟶cId₁⁽1⁾ J X F0 F1 F2 E0 ⌝ᵗ
+T⟶cId₁⁽1⁾-β J X F0 F1 F2 E0 = trans (T⟶cId₁⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀) (T⟶cId₁⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) (w1 F2)) F2 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) (wk-cancel-tm E0 F2) refl)
+
 T⟶cId₁⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶cId₁⁽0⁾ J X F0 F1 F2 = tσ (C⟶cId₁_0I J) (T⟶cId₁⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀)
 
@@ -4546,6 +4750,9 @@ T⟶cId₂⁽1⁾-cong J J' X X' F0 F0' F1 F1' F2 F2' E0 E0' refl refl refl refl
 T⟶cId₂⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶cId₂⁽1⁾ J X F0 F1 F2 E0 ⌝ᵗ ≡ ⌜ T⟶cId₂⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ F2) (subTm σ E0) ⌝ᵗ
 T⟶cId₂⁽1⁾-sub σ J X F0 F1 F2 E0 = (T⟶cId₂I-sub σ J X F0 F1 F2 E0)
 
+T⟶cId₂⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶cId₂⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀ ⌝ᵗ ≡ ⌜ T⟶cId₂⁽1⁾ J X F0 F1 F2 E0 ⌝ᵗ
+T⟶cId₂⁽1⁾-β J X F0 F1 F2 E0 = trans (T⟶cId₂⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀) (T⟶cId₂⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) (w1 F2)) F2 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) (wk-cancel-tm E0 F2) refl)
+
 T⟶cId₂⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶cId₂⁽0⁾ J X F0 F1 F2 = tσ (C⟶cId₂_0I J) (T⟶cId₂⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀)
 
@@ -4615,6 +4822,9 @@ T⟶cId₃⁽1⁾-cong J J' X X' F0 F0' F1 F1' F2 F2' E0 E0' refl refl refl refl
 
 T⟶cId₃⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶cId₃⁽1⁾ J X F0 F1 F2 E0 ⌝ᵗ ≡ ⌜ T⟶cId₃⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ F2) (subTm σ E0) ⌝ᵗ
 T⟶cId₃⁽1⁾-sub σ J X F0 F1 F2 E0 = (T⟶cId₃I-sub σ J X F0 F1 F2 E0)
+
+T⟶cId₃⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶cId₃⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀ ⌝ᵗ ≡ ⌜ T⟶cId₃⁽1⁾ J X F0 F1 F2 E0 ⌝ᵗ
+T⟶cId₃⁽1⁾-β J X F0 F1 F2 E0 = trans (T⟶cId₃⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀) (T⟶cId₃⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) (w1 F2)) F2 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) (wk-cancel-tm E0 F2) refl)
 
 T⟶cId₃⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶cId₃⁽0⁾ J X F0 F1 F2 = tσ (C⟶cId₃_0I J) (T⟶cId₃⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀)
@@ -4695,6 +4905,9 @@ T⟶idrefl₁⁽1⁾-cong J J' X X' F0 F0' F1 F1' E0 E0' refl refl refl refl ref
 T⟶idrefl₁⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶idrefl₁⁽1⁾ J X F0 F1 E0 ⌝ᵗ ≡ ⌜ T⟶idrefl₁⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ E0) ⌝ᵗ
 T⟶idrefl₁⁽1⁾-sub σ J X F0 F1 E0 = (T⟶idrefl₁I-sub σ J X F0 F1 E0)
 
+T⟶idrefl₁⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶idrefl₁⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) v₀ ⌝ᵗ ≡ ⌜ T⟶idrefl₁⁽1⁾ J X F0 F1 E0 ⌝ᵗ
+T⟶idrefl₁⁽1⁾-β J X F0 F1 E0 = trans (T⟶idrefl₁⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) v₀) (T⟶idrefl₁⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) refl)
+
 T⟶idrefl₁⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶idrefl₁⁽0⁾ J X F0 F1 = tσ (C⟶idrefl₁_0I J) (T⟶idrefl₁⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) v₀)
 
@@ -4764,6 +4977,9 @@ T⟶idrefl₂⁽1⁾-cong J J' X X' F0 F0' F1 F1' E0 E0' refl refl refl refl ref
 
 T⟶idrefl₂⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶idrefl₂⁽1⁾ J X F0 F1 E0 ⌝ᵗ ≡ ⌜ T⟶idrefl₂⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ E0) ⌝ᵗ
 T⟶idrefl₂⁽1⁾-sub σ J X F0 F1 E0 = (T⟶idrefl₂I-sub σ J X F0 F1 E0)
+
+T⟶idrefl₂⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶idrefl₂⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) v₀ ⌝ᵗ ≡ ⌜ T⟶idrefl₂⁽1⁾ J X F0 F1 E0 ⌝ᵗ
+T⟶idrefl₂⁽1⁾-β J X F0 F1 E0 = trans (T⟶idrefl₂⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) v₀) (T⟶idrefl₂⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) refl)
 
 T⟶idrefl₂⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶idrefl₂⁽0⁾ J X F0 F1 = tσ (C⟶idrefl₂_0I J) (T⟶idrefl₂⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) v₀)
@@ -4844,6 +5060,9 @@ T⟶jsub₁⁽1⁾-cong J J' X X' F0 F0' F1 F1' F2 F2' E0 E0' refl refl refl ref
 T⟶jsub₁⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶jsub₁⁽1⁾ J X F0 F1 F2 E0 ⌝ᵗ ≡ ⌜ T⟶jsub₁⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ F2) (subTm σ E0) ⌝ᵗ
 T⟶jsub₁⁽1⁾-sub σ J X F0 F1 F2 E0 = (T⟶jsub₁I-sub σ J X F0 F1 F2 E0)
 
+T⟶jsub₁⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶jsub₁⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀ ⌝ᵗ ≡ ⌜ T⟶jsub₁⁽1⁾ J X F0 F1 F2 E0 ⌝ᵗ
+T⟶jsub₁⁽1⁾-β J X F0 F1 F2 E0 = trans (T⟶jsub₁⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀) (T⟶jsub₁⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) (w1 F2)) F2 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) (wk-cancel-tm E0 F2) refl)
+
 T⟶jsub₁⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶jsub₁⁽0⁾ J X F0 F1 F2 = tσ (C⟶jsub₁_0I J) (T⟶jsub₁⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀)
 
@@ -4914,6 +5133,9 @@ T⟶jsub₂⁽1⁾-cong J J' X X' F0 F0' F1 F1' F2 F2' E0 E0' refl refl refl ref
 T⟶jsub₂⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶jsub₂⁽1⁾ J X F0 F1 F2 E0 ⌝ᵗ ≡ ⌜ T⟶jsub₂⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ F2) (subTm σ E0) ⌝ᵗ
 T⟶jsub₂⁽1⁾-sub σ J X F0 F1 F2 E0 = (T⟶jsub₂I-sub σ J X F0 F1 F2 E0)
 
+T⟶jsub₂⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶jsub₂⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀ ⌝ᵗ ≡ ⌜ T⟶jsub₂⁽1⁾ J X F0 F1 F2 E0 ⌝ᵗ
+T⟶jsub₂⁽1⁾-β J X F0 F1 F2 E0 = trans (T⟶jsub₂⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀) (T⟶jsub₂⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) (w1 F2)) F2 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) (wk-cancel-tm E0 F2) refl)
+
 T⟶jsub₂⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶jsub₂⁽0⁾ J X F0 F1 F2 = tσ (C⟶jsub₂_0I J) (T⟶jsub₂⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀)
 
@@ -4983,6 +5205,9 @@ T⟶jsub₃⁽1⁾-cong J J' X X' F0 F0' F1 F1' F2 F2' E0 E0' refl refl refl ref
 
 T⟶jsub₃⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶jsub₃⁽1⁾ J X F0 F1 F2 E0 ⌝ᵗ ≡ ⌜ T⟶jsub₃⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ F2) (subTm σ E0) ⌝ᵗ
 T⟶jsub₃⁽1⁾-sub σ J X F0 F1 F2 E0 = (T⟶jsub₃I-sub σ J X F0 F1 F2 E0)
+
+T⟶jsub₃⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶jsub₃⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀ ⌝ᵗ ≡ ⌜ T⟶jsub₃⁽1⁾ J X F0 F1 F2 E0 ⌝ᵗ
+T⟶jsub₃⁽1⁾-β J X F0 F1 F2 E0 = trans (T⟶jsub₃⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀) (T⟶jsub₃⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) (w1 F2)) F2 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) (wk-cancel-tm E0 F2) refl)
 
 T⟶jsub₃⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶jsub₃⁽0⁾ J X F0 F1 F2 = tσ (C⟶jsub₃_0I J) (T⟶jsub₃⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀)
@@ -5108,6 +5333,9 @@ T⟶nsuc⁽1⁾-cong J J' X X' F0 F0' E0 E0' refl refl refl refl = refl
 T⟶nsuc⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶nsuc⁽1⁾ J X F0 E0 ⌝ᵗ ≡ ⌜ T⟶nsuc⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ E0) ⌝ᵗ
 T⟶nsuc⁽1⁾-sub σ J X F0 E0 = (T⟶nsucI-sub σ J X F0 E0)
 
+T⟶nsuc⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶nsuc⁽1⁾ (w1 J) (w1 X) (w1 F0) v₀ ⌝ᵗ ≡ ⌜ T⟶nsuc⁽1⁾ J X F0 E0 ⌝ᵗ
+T⟶nsuc⁽1⁾-β J X F0 E0 = trans (T⟶nsuc⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) v₀) (T⟶nsuc⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) refl)
+
 T⟶nsuc⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶nsuc⁽0⁾ J X F0 = tσ (C⟶nsuc_0I J) (T⟶nsuc⁽1⁾ (w1 J) (w1 X) (w1 F0) v₀)
 
@@ -5186,6 +5414,9 @@ T⟶natrec₁⁽1⁾-cong J J' X X' F0 F0' F1 F1' F2 F2' E0 E0' refl refl refl r
 T⟶natrec₁⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶natrec₁⁽1⁾ J X F0 F1 F2 E0 ⌝ᵗ ≡ ⌜ T⟶natrec₁⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ F2) (subTm σ E0) ⌝ᵗ
 T⟶natrec₁⁽1⁾-sub σ J X F0 F1 F2 E0 = (T⟶natrec₁I-sub σ J X F0 F1 F2 E0)
 
+T⟶natrec₁⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶natrec₁⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀ ⌝ᵗ ≡ ⌜ T⟶natrec₁⁽1⁾ J X F0 F1 F2 E0 ⌝ᵗ
+T⟶natrec₁⁽1⁾-β J X F0 F1 F2 E0 = trans (T⟶natrec₁⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀) (T⟶natrec₁⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) (w1 F2)) F2 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) (wk-cancel-tm E0 F2) refl)
+
 T⟶natrec₁⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶natrec₁⁽0⁾ J X F0 F1 F2 = tσ (C⟶natrec₁_0I J) (T⟶natrec₁⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀)
 
@@ -5256,6 +5487,9 @@ T⟶natrec₂⁽1⁾-cong J J' X X' F0 F0' F1 F1' F2 F2' E0 E0' refl refl refl r
 T⟶natrec₂⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶natrec₂⁽1⁾ J X F0 F1 F2 E0 ⌝ᵗ ≡ ⌜ T⟶natrec₂⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ F2) (subTm σ E0) ⌝ᵗ
 T⟶natrec₂⁽1⁾-sub σ J X F0 F1 F2 E0 = (T⟶natrec₂I-sub σ J X F0 F1 F2 E0)
 
+T⟶natrec₂⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶natrec₂⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀ ⌝ᵗ ≡ ⌜ T⟶natrec₂⁽1⁾ J X F0 F1 F2 E0 ⌝ᵗ
+T⟶natrec₂⁽1⁾-β J X F0 F1 F2 E0 = trans (T⟶natrec₂⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀) (T⟶natrec₂⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) (w1 F2)) F2 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) (wk-cancel-tm E0 F2) refl)
+
 T⟶natrec₂⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶natrec₂⁽0⁾ J X F0 F1 F2 = tσ (C⟶natrec₂_0I J) (T⟶natrec₂⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀)
 
@@ -5325,6 +5559,9 @@ T⟶natrec₃⁽1⁾-cong J J' X X' F0 F0' F1 F1' F2 F2' E0 E0' refl refl refl r
 
 T⟶natrec₃⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶natrec₃⁽1⁾ J X F0 F1 F2 E0 ⌝ᵗ ≡ ⌜ T⟶natrec₃⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ F2) (subTm σ E0) ⌝ᵗ
 T⟶natrec₃⁽1⁾-sub σ J X F0 F1 F2 E0 = (T⟶natrec₃I-sub σ J X F0 F1 F2 E0)
+
+T⟶natrec₃⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶natrec₃⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀ ⌝ᵗ ≡ ⌜ T⟶natrec₃⁽1⁾ J X F0 F1 F2 E0 ⌝ᵗ
+T⟶natrec₃⁽1⁾-β J X F0 F1 F2 E0 = trans (T⟶natrec₃⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀) (T⟶natrec₃⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) (w1 F2)) F2 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) (wk-cancel-tm E0 F2) refl)
 
 T⟶natrec₃⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶natrec₃⁽0⁾ J X F0 F1 F2 = tσ (C⟶natrec₃_0I J) (T⟶natrec₃⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀)
@@ -5495,6 +5732,9 @@ T⟶con⁽1⁾-cong J J' X X' F0 F0' E0 E0' refl refl refl refl = refl
 T⟶con⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶con⁽1⁾ J X F0 E0 ⌝ᵗ ≡ ⌜ T⟶con⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ E0) ⌝ᵗ
 T⟶con⁽1⁾-sub σ J X F0 E0 = (T⟶conI-sub σ J X F0 E0)
 
+T⟶con⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶con⁽1⁾ (w1 J) (w1 X) (w1 F0) v₀ ⌝ᵗ ≡ ⌜ T⟶con⁽1⁾ J X F0 E0 ⌝ᵗ
+T⟶con⁽1⁾-β J X F0 E0 = trans (T⟶con⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) v₀) (T⟶con⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) refl)
+
 T⟶con⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶con⁽0⁾ J X F0 = tσ (C⟶con_0I J) (T⟶con⁽1⁾ (w1 J) (w1 X) (w1 F0) v₀)
 
@@ -5573,6 +5813,9 @@ T⟶ielim₁⁽1⁾-cong J J' X X' F0 F0' F1 F1' F2 F2' F3 F3' E0 E0' refl refl 
 T⟶ielim₁⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (F3 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶ielim₁⁽1⁾ J X F0 F1 F2 F3 E0 ⌝ᵗ ≡ ⌜ T⟶ielim₁⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ F2) (subTm σ F3) (subTm σ E0) ⌝ᵗ
 T⟶ielim₁⁽1⁾-sub σ J X F0 F1 F2 F3 E0 = (T⟶ielim₁I-sub σ J X F0 F1 F2 F3 E0)
 
+T⟶ielim₁⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (F3 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶ielim₁⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) (w1 F3) v₀ ⌝ᵗ ≡ ⌜ T⟶ielim₁⁽1⁾ J X F0 F1 F2 F3 E0 ⌝ᵗ
+T⟶ielim₁⁽1⁾-β J X F0 F1 F2 F3 E0 = trans (T⟶ielim₁⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) (w1 F3) v₀) (T⟶ielim₁⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) (w1 F2)) F2 (subTm (single E0) (w1 F3)) F3 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) (wk-cancel-tm E0 F2) (wk-cancel-tm E0 F3) refl)
+
 T⟶ielim₁⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶ielim₁⁽0⁾ J X F0 F1 F2 F3 = tσ (C⟶ielim₁_0I J) (T⟶ielim₁⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) (w1 F3) v₀)
 
@@ -5642,6 +5885,9 @@ T⟶ielim₂⁽1⁾-cong J J' X X' F0 F0' F1 F1' F2 F2' F3 F3' E0 E0' refl refl 
 
 T⟶ielim₂⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (F3 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶ielim₂⁽1⁾ J X F0 F1 F2 F3 E0 ⌝ᵗ ≡ ⌜ T⟶ielim₂⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ F2) (subTm σ F3) (subTm σ E0) ⌝ᵗ
 T⟶ielim₂⁽1⁾-sub σ J X F0 F1 F2 F3 E0 = (T⟶ielim₂I-sub σ J X F0 F1 F2 F3 E0)
+
+T⟶ielim₂⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (F3 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶ielim₂⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) (w1 F3) v₀ ⌝ᵗ ≡ ⌜ T⟶ielim₂⁽1⁾ J X F0 F1 F2 F3 E0 ⌝ᵗ
+T⟶ielim₂⁽1⁾-β J X F0 F1 F2 F3 E0 = trans (T⟶ielim₂⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) (w1 F3) v₀) (T⟶ielim₂⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) (w1 F2)) F2 (subTm (single E0) (w1 F3)) F3 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) (wk-cancel-tm E0 F2) (wk-cancel-tm E0 F3) refl)
 
 T⟶ielim₂⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶ielim₂⁽0⁾ J X F0 F1 F2 F3 = tσ (C⟶ielim₂_0I J) (T⟶ielim₂⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) (w1 F3) v₀)
@@ -5713,6 +5959,9 @@ T⟶ielim₃⁽1⁾-cong J J' X X' F0 F0' F1 F1' F2 F2' F3 F3' E0 E0' refl refl 
 T⟶ielim₃⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (F3 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶ielim₃⁽1⁾ J X F0 F1 F2 F3 E0 ⌝ᵗ ≡ ⌜ T⟶ielim₃⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ F2) (subTm σ F3) (subTm σ E0) ⌝ᵗ
 T⟶ielim₃⁽1⁾-sub σ J X F0 F1 F2 F3 E0 = (T⟶ielim₃I-sub σ J X F0 F1 F2 F3 E0)
 
+T⟶ielim₃⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (F3 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶ielim₃⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) (w1 F3) v₀ ⌝ᵗ ≡ ⌜ T⟶ielim₃⁽1⁾ J X F0 F1 F2 F3 E0 ⌝ᵗ
+T⟶ielim₃⁽1⁾-β J X F0 F1 F2 F3 E0 = trans (T⟶ielim₃⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) (w1 F3) v₀) (T⟶ielim₃⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) (w1 F2)) F2 (subTm (single E0) (w1 F3)) F3 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) (wk-cancel-tm E0 F2) (wk-cancel-tm E0 F3) refl)
+
 T⟶ielim₃⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶ielim₃⁽0⁾ J X F0 F1 F2 F3 = tσ (C⟶ielim₃_0I J) (T⟶ielim₃⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) (w1 F3) v₀)
 
@@ -5782,6 +6031,9 @@ T⟶ielim₄⁽1⁾-cong J J' X X' F0 F0' F1 F1' F2 F2' F3 F3' E0 E0' refl refl 
 
 T⟶ielim₄⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (F3 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶ielim₄⁽1⁾ J X F0 F1 F2 F3 E0 ⌝ᵗ ≡ ⌜ T⟶ielim₄⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ F2) (subTm σ F3) (subTm σ E0) ⌝ᵗ
 T⟶ielim₄⁽1⁾-sub σ J X F0 F1 F2 F3 E0 = (T⟶ielim₄I-sub σ J X F0 F1 F2 F3 E0)
+
+T⟶ielim₄⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (F3 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶ielim₄⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) (w1 F3) v₀ ⌝ᵗ ≡ ⌜ T⟶ielim₄⁽1⁾ J X F0 F1 F2 F3 E0 ⌝ᵗ
+T⟶ielim₄⁽1⁾-β J X F0 F1 F2 F3 E0 = trans (T⟶ielim₄⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) (w1 F3) v₀) (T⟶ielim₄⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) (w1 F2)) F2 (subTm (single E0) (w1 F3)) F3 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) (wk-cancel-tm E0 F2) (wk-cancel-tm E0 F3) refl)
 
 T⟶ielim₄⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶ielim₄⁽0⁾ J X F0 F1 F2 F3 = tσ (C⟶ielim₄_0I J) (T⟶ielim₄⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) (w1 F3) v₀)
@@ -5907,6 +6159,9 @@ T⟶dS₁⁽1⁾-cong J J' X X' F0 F0' F1 F1' E0 E0' refl refl refl refl refl = 
 T⟶dS₁⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶dS₁⁽1⁾ J X F0 F1 E0 ⌝ᵗ ≡ ⌜ T⟶dS₁⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ E0) ⌝ᵗ
 T⟶dS₁⁽1⁾-sub σ J X F0 F1 E0 = (T⟶dS₁I-sub σ J X F0 F1 E0)
 
+T⟶dS₁⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶dS₁⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) v₀ ⌝ᵗ ≡ ⌜ T⟶dS₁⁽1⁾ J X F0 F1 E0 ⌝ᵗ
+T⟶dS₁⁽1⁾-β J X F0 F1 E0 = trans (T⟶dS₁⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) v₀) (T⟶dS₁⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) refl)
+
 T⟶dS₁⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶dS₁⁽0⁾ J X F0 F1 = tσ (C⟶dS₁_0I J) (T⟶dS₁⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) v₀)
 
@@ -5976,6 +6231,9 @@ T⟶dS₂⁽1⁾-cong J J' X X' F0 F0' F1 F1' E0 E0' refl refl refl refl refl = 
 
 T⟶dS₂⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶dS₂⁽1⁾ J X F0 F1 E0 ⌝ᵗ ≡ ⌜ T⟶dS₂⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ E0) ⌝ᵗ
 T⟶dS₂⁽1⁾-sub σ J X F0 F1 E0 = (T⟶dS₂I-sub σ J X F0 F1 E0)
+
+T⟶dS₂⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶dS₂⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) v₀ ⌝ᵗ ≡ ⌜ T⟶dS₂⁽1⁾ J X F0 F1 E0 ⌝ᵗ
+T⟶dS₂⁽1⁾-β J X F0 F1 E0 = trans (T⟶dS₂⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) v₀) (T⟶dS₂⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) refl)
 
 T⟶dS₂⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶dS₂⁽0⁾ J X F0 F1 = tσ (C⟶dS₂_0I J) (T⟶dS₂⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) v₀)
@@ -6056,6 +6314,9 @@ T⟶dR₁⁽1⁾-cong J J' X X' F0 F0' F1 F1' E0 E0' refl refl refl refl refl = 
 T⟶dR₁⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶dR₁⁽1⁾ J X F0 F1 E0 ⌝ᵗ ≡ ⌜ T⟶dR₁⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ E0) ⌝ᵗ
 T⟶dR₁⁽1⁾-sub σ J X F0 F1 E0 = (T⟶dR₁I-sub σ J X F0 F1 E0)
 
+T⟶dR₁⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶dR₁⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) v₀ ⌝ᵗ ≡ ⌜ T⟶dR₁⁽1⁾ J X F0 F1 E0 ⌝ᵗ
+T⟶dR₁⁽1⁾-β J X F0 F1 E0 = trans (T⟶dR₁⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) v₀) (T⟶dR₁⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) refl)
+
 T⟶dR₁⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶dR₁⁽0⁾ J X F0 F1 = tσ (C⟶dR₁_0I J) (T⟶dR₁⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) v₀)
 
@@ -6125,6 +6386,9 @@ T⟶dR₂⁽1⁾-cong J J' X X' F0 F0' F1 F1' E0 E0' refl refl refl refl refl = 
 
 T⟶dR₂⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶dR₂⁽1⁾ J X F0 F1 E0 ⌝ᵗ ≡ ⌜ T⟶dR₂⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ E0) ⌝ᵗ
 T⟶dR₂⁽1⁾-sub σ J X F0 F1 E0 = (T⟶dR₂I-sub σ J X F0 F1 E0)
+
+T⟶dR₂⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶dR₂⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) v₀ ⌝ᵗ ≡ ⌜ T⟶dR₂⁽1⁾ J X F0 F1 E0 ⌝ᵗ
+T⟶dR₂⁽1⁾-β J X F0 F1 E0 = trans (T⟶dR₂⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) v₀) (T⟶dR₂⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) refl)
 
 T⟶dR₂⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶dR₂⁽0⁾ J X F0 F1 = tσ (C⟶dR₂_0I J) (T⟶dR₂⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) v₀)
@@ -6205,6 +6469,9 @@ T⟶dpay₁⁽1⁾-cong J J' X X' F0 F0' F1 F1' F2 F2' E0 E0' refl refl refl ref
 T⟶dpay₁⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶dpay₁⁽1⁾ J X F0 F1 F2 E0 ⌝ᵗ ≡ ⌜ T⟶dpay₁⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ F2) (subTm σ E0) ⌝ᵗ
 T⟶dpay₁⁽1⁾-sub σ J X F0 F1 F2 E0 = (T⟶dpay₁I-sub σ J X F0 F1 F2 E0)
 
+T⟶dpay₁⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶dpay₁⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀ ⌝ᵗ ≡ ⌜ T⟶dpay₁⁽1⁾ J X F0 F1 F2 E0 ⌝ᵗ
+T⟶dpay₁⁽1⁾-β J X F0 F1 F2 E0 = trans (T⟶dpay₁⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀) (T⟶dpay₁⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) (w1 F2)) F2 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) (wk-cancel-tm E0 F2) refl)
+
 T⟶dpay₁⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶dpay₁⁽0⁾ J X F0 F1 F2 = tσ (C⟶dpay₁_0I J) (T⟶dpay₁⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀)
 
@@ -6275,6 +6542,9 @@ T⟶dpay₂⁽1⁾-cong J J' X X' F0 F0' F1 F1' F2 F2' E0 E0' refl refl refl ref
 T⟶dpay₂⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶dpay₂⁽1⁾ J X F0 F1 F2 E0 ⌝ᵗ ≡ ⌜ T⟶dpay₂⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ F2) (subTm σ E0) ⌝ᵗ
 T⟶dpay₂⁽1⁾-sub σ J X F0 F1 F2 E0 = (T⟶dpay₂I-sub σ J X F0 F1 F2 E0)
 
+T⟶dpay₂⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶dpay₂⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀ ⌝ᵗ ≡ ⌜ T⟶dpay₂⁽1⁾ J X F0 F1 F2 E0 ⌝ᵗ
+T⟶dpay₂⁽1⁾-β J X F0 F1 F2 E0 = trans (T⟶dpay₂⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀) (T⟶dpay₂⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) (w1 F2)) F2 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) (wk-cancel-tm E0 F2) refl)
+
 T⟶dpay₂⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶dpay₂⁽0⁾ J X F0 F1 F2 = tσ (C⟶dpay₂_0I J) (T⟶dpay₂⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀)
 
@@ -6344,6 +6614,9 @@ T⟶dpay₃⁽1⁾-cong J J' X X' F0 F0' F1 F1' F2 F2' E0 E0' refl refl refl ref
 
 T⟶dpay₃⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶dpay₃⁽1⁾ J X F0 F1 F2 E0 ⌝ᵗ ≡ ⌜ T⟶dpay₃⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ F2) (subTm σ E0) ⌝ᵗ
 T⟶dpay₃⁽1⁾-sub σ J X F0 F1 F2 E0 = (T⟶dpay₃I-sub σ J X F0 F1 F2 E0)
+
+T⟶dpay₃⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶dpay₃⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀ ⌝ᵗ ≡ ⌜ T⟶dpay₃⁽1⁾ J X F0 F1 F2 E0 ⌝ᵗ
+T⟶dpay₃⁽1⁾-β J X F0 F1 F2 E0 = trans (T⟶dpay₃⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀) (T⟶dpay₃⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) (w1 F2)) F2 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) (wk-cancel-tm E0 F2) refl)
 
 T⟶dpay₃⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶dpay₃⁽0⁾ J X F0 F1 F2 = tσ (C⟶dpay₃_0I J) (T⟶dpay₃⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀)
@@ -6559,6 +6832,9 @@ T⟶dih₁⁽1⁾-cong J J' X X' F0 F0' F1 F1' F2 F2' F3 F3' E0 E0' refl refl re
 T⟶dih₁⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (F3 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶dih₁⁽1⁾ J X F0 F1 F2 F3 E0 ⌝ᵗ ≡ ⌜ T⟶dih₁⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ F2) (subTm σ F3) (subTm σ E0) ⌝ᵗ
 T⟶dih₁⁽1⁾-sub σ J X F0 F1 F2 F3 E0 = (T⟶dih₁I-sub σ J X F0 F1 F2 F3 E0)
 
+T⟶dih₁⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (F3 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶dih₁⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) (w1 F3) v₀ ⌝ᵗ ≡ ⌜ T⟶dih₁⁽1⁾ J X F0 F1 F2 F3 E0 ⌝ᵗ
+T⟶dih₁⁽1⁾-β J X F0 F1 F2 F3 E0 = trans (T⟶dih₁⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) (w1 F3) v₀) (T⟶dih₁⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) (w1 F2)) F2 (subTm (single E0) (w1 F3)) F3 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) (wk-cancel-tm E0 F2) (wk-cancel-tm E0 F3) refl)
+
 T⟶dih₁⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶dih₁⁽0⁾ J X F0 F1 F2 F3 = tσ (C⟶dih₁_0I J) (T⟶dih₁⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) (w1 F3) v₀)
 
@@ -6628,6 +6904,9 @@ T⟶dih₂⁽1⁾-cong J J' X X' F0 F0' F1 F1' F2 F2' F3 F3' E0 E0' refl refl re
 
 T⟶dih₂⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (F3 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶dih₂⁽1⁾ J X F0 F1 F2 F3 E0 ⌝ᵗ ≡ ⌜ T⟶dih₂⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ F2) (subTm σ F3) (subTm σ E0) ⌝ᵗ
 T⟶dih₂⁽1⁾-sub σ J X F0 F1 F2 F3 E0 = (T⟶dih₂I-sub σ J X F0 F1 F2 F3 E0)
+
+T⟶dih₂⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (F3 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶dih₂⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) (w1 F3) v₀ ⌝ᵗ ≡ ⌜ T⟶dih₂⁽1⁾ J X F0 F1 F2 F3 E0 ⌝ᵗ
+T⟶dih₂⁽1⁾-β J X F0 F1 F2 F3 E0 = trans (T⟶dih₂⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) (w1 F3) v₀) (T⟶dih₂⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) (w1 F2)) F2 (subTm (single E0) (w1 F3)) F3 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) (wk-cancel-tm E0 F2) (wk-cancel-tm E0 F3) refl)
 
 T⟶dih₂⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶dih₂⁽0⁾ J X F0 F1 F2 F3 = tσ (C⟶dih₂_0I J) (T⟶dih₂⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) (w1 F3) v₀)
@@ -6699,6 +6978,9 @@ T⟶dih₃⁽1⁾-cong J J' X X' F0 F0' F1 F1' F2 F2' F3 F3' E0 E0' refl refl re
 T⟶dih₃⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (F3 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶dih₃⁽1⁾ J X F0 F1 F2 F3 E0 ⌝ᵗ ≡ ⌜ T⟶dih₃⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ F2) (subTm σ F3) (subTm σ E0) ⌝ᵗ
 T⟶dih₃⁽1⁾-sub σ J X F0 F1 F2 F3 E0 = (T⟶dih₃I-sub σ J X F0 F1 F2 F3 E0)
 
+T⟶dih₃⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (F3 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶dih₃⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) (w1 F3) v₀ ⌝ᵗ ≡ ⌜ T⟶dih₃⁽1⁾ J X F0 F1 F2 F3 E0 ⌝ᵗ
+T⟶dih₃⁽1⁾-β J X F0 F1 F2 F3 E0 = trans (T⟶dih₃⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) (w1 F3) v₀) (T⟶dih₃⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) (w1 F2)) F2 (subTm (single E0) (w1 F3)) F3 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) (wk-cancel-tm E0 F2) (wk-cancel-tm E0 F3) refl)
+
 T⟶dih₃⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶dih₃⁽0⁾ J X F0 F1 F2 F3 = tσ (C⟶dih₃_0I J) (T⟶dih₃⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) (w1 F3) v₀)
 
@@ -6768,6 +7050,9 @@ T⟶dih₄⁽1⁾-cong J J' X X' F0 F0' F1 F1' F2 F2' F3 F3' E0 E0' refl refl re
 
 T⟶dih₄⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (F3 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶dih₄⁽1⁾ J X F0 F1 F2 F3 E0 ⌝ᵗ ≡ ⌜ T⟶dih₄⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ F2) (subTm σ F3) (subTm σ E0) ⌝ᵗ
 T⟶dih₄⁽1⁾-sub σ J X F0 F1 F2 F3 E0 = (T⟶dih₄I-sub σ J X F0 F1 F2 F3 E0)
+
+T⟶dih₄⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (F3 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶dih₄⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) (w1 F3) v₀ ⌝ᵗ ≡ ⌜ T⟶dih₄⁽1⁾ J X F0 F1 F2 F3 E0 ⌝ᵗ
+T⟶dih₄⁽1⁾-β J X F0 F1 F2 F3 E0 = trans (T⟶dih₄⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) (w1 F3) v₀) (T⟶dih₄⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) (w1 F2)) F2 (subTm (single E0) (w1 F3)) F3 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) (wk-cancel-tm E0 F2) (wk-cancel-tm E0 F3) refl)
 
 T⟶dih₄⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶dih₄⁽0⁾ J X F0 F1 F2 F3 = tσ (C⟶dih₄_0I J) (T⟶dih₄⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) (w1 F3) v₀)
@@ -6983,6 +7268,9 @@ T⟶fsuc⁽1⁾-cong J J' X X' F0 F0' E0 E0' refl refl refl refl = refl
 T⟶fsuc⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶fsuc⁽1⁾ J X F0 E0 ⌝ᵗ ≡ ⌜ T⟶fsuc⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ E0) ⌝ᵗ
 T⟶fsuc⁽1⁾-sub σ J X F0 E0 = (T⟶fsucI-sub σ J X F0 E0)
 
+T⟶fsuc⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶fsuc⁽1⁾ (w1 J) (w1 X) (w1 F0) v₀ ⌝ᵗ ≡ ⌜ T⟶fsuc⁽1⁾ J X F0 E0 ⌝ᵗ
+T⟶fsuc⁽1⁾-β J X F0 E0 = trans (T⟶fsuc⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) v₀) (T⟶fsuc⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) refl)
+
 T⟶fsuc⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶fsuc⁽0⁾ J X F0 = tσ (C⟶fsuc_0I J) (T⟶fsuc⁽1⁾ (w1 J) (w1 X) (w1 F0) v₀)
 
@@ -7061,6 +7349,9 @@ T⟶fcase₁⁽1⁾-cong J J' X X' F0 F0' F1 F1' F2 F2' E0 E0' refl refl refl re
 T⟶fcase₁⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶fcase₁⁽1⁾ J X F0 F1 F2 E0 ⌝ᵗ ≡ ⌜ T⟶fcase₁⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ F2) (subTm σ E0) ⌝ᵗ
 T⟶fcase₁⁽1⁾-sub σ J X F0 F1 F2 E0 = (T⟶fcase₁I-sub σ J X F0 F1 F2 E0)
 
+T⟶fcase₁⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶fcase₁⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀ ⌝ᵗ ≡ ⌜ T⟶fcase₁⁽1⁾ J X F0 F1 F2 E0 ⌝ᵗ
+T⟶fcase₁⁽1⁾-β J X F0 F1 F2 E0 = trans (T⟶fcase₁⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀) (T⟶fcase₁⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) (w1 F2)) F2 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) (wk-cancel-tm E0 F2) refl)
+
 T⟶fcase₁⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶fcase₁⁽0⁾ J X F0 F1 F2 = tσ (C⟶fcase₁_0I J) (T⟶fcase₁⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀)
 
@@ -7131,6 +7422,9 @@ T⟶fcase₂⁽1⁾-cong J J' X X' F0 F0' F1 F1' F2 F2' E0 E0' refl refl refl re
 T⟶fcase₂⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶fcase₂⁽1⁾ J X F0 F1 F2 E0 ⌝ᵗ ≡ ⌜ T⟶fcase₂⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ F2) (subTm σ E0) ⌝ᵗ
 T⟶fcase₂⁽1⁾-sub σ J X F0 F1 F2 E0 = (T⟶fcase₂I-sub σ J X F0 F1 F2 E0)
 
+T⟶fcase₂⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶fcase₂⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀ ⌝ᵗ ≡ ⌜ T⟶fcase₂⁽1⁾ J X F0 F1 F2 E0 ⌝ᵗ
+T⟶fcase₂⁽1⁾-β J X F0 F1 F2 E0 = trans (T⟶fcase₂⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀) (T⟶fcase₂⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) (w1 F2)) F2 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) (wk-cancel-tm E0 F2) refl)
+
 T⟶fcase₂⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶fcase₂⁽0⁾ J X F0 F1 F2 = tσ (C⟶fcase₂_0I J) (T⟶fcase₂⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀)
 
@@ -7200,6 +7494,9 @@ T⟶fcase₃⁽1⁾-cong J J' X X' F0 F0' F1 F1' F2 F2' E0 E0' refl refl refl re
 
 T⟶fcase₃⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶fcase₃⁽1⁾ J X F0 F1 F2 E0 ⌝ᵗ ≡ ⌜ T⟶fcase₃⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ F2) (subTm σ E0) ⌝ᵗ
 T⟶fcase₃⁽1⁾-sub σ J X F0 F1 F2 E0 = (T⟶fcase₃I-sub σ J X F0 F1 F2 E0)
+
+T⟶fcase₃⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶fcase₃⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀ ⌝ᵗ ≡ ⌜ T⟶fcase₃⁽1⁾ J X F0 F1 F2 E0 ⌝ᵗ
+T⟶fcase₃⁽1⁾-β J X F0 F1 F2 E0 = trans (T⟶fcase₃⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀) (T⟶fcase₃⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) (w1 F2)) F2 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) (wk-cancel-tm E0 F2) refl)
 
 T⟶fcase₃⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶fcase₃⁽0⁾ J X F0 F1 F2 = tσ (C⟶fcase₃_0I J) (T⟶fcase₃⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀)
@@ -7370,6 +7667,9 @@ T⟶fcase0⁽1⁾-cong J J' X X' F0 F0' E0 E0' refl refl refl refl = refl
 T⟶fcase0⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶fcase0⁽1⁾ J X F0 E0 ⌝ᵗ ≡ ⌜ T⟶fcase0⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ E0) ⌝ᵗ
 T⟶fcase0⁽1⁾-sub σ J X F0 E0 = (T⟶fcase0I-sub σ J X F0 E0)
 
+T⟶fcase0⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶fcase0⁽1⁾ (w1 J) (w1 X) (w1 F0) v₀ ⌝ᵗ ≡ ⌜ T⟶fcase0⁽1⁾ J X F0 E0 ⌝ᵗ
+T⟶fcase0⁽1⁾-β J X F0 E0 = trans (T⟶fcase0⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) v₀) (T⟶fcase0⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) refl)
+
 T⟶fcase0⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶fcase0⁽0⁾ J X F0 = tσ (C⟶fcase0_0I J) (T⟶fcase0⁽1⁾ (w1 J) (w1 X) (w1 F0) v₀)
 
@@ -7448,6 +7748,9 @@ T⟶psplit₁⁽1⁾-cong J J' X X' F0 F0' F1 F1' E0 E0' refl refl refl refl ref
 T⟶psplit₁⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶psplit₁⁽1⁾ J X F0 F1 E0 ⌝ᵗ ≡ ⌜ T⟶psplit₁⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ E0) ⌝ᵗ
 T⟶psplit₁⁽1⁾-sub σ J X F0 F1 E0 = (T⟶psplit₁I-sub σ J X F0 F1 E0)
 
+T⟶psplit₁⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶psplit₁⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) v₀ ⌝ᵗ ≡ ⌜ T⟶psplit₁⁽1⁾ J X F0 F1 E0 ⌝ᵗ
+T⟶psplit₁⁽1⁾-β J X F0 F1 E0 = trans (T⟶psplit₁⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) v₀) (T⟶psplit₁⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) refl)
+
 T⟶psplit₁⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶psplit₁⁽0⁾ J X F0 F1 = tσ (C⟶psplit₁_0I J) (T⟶psplit₁⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) v₀)
 
@@ -7517,6 +7820,9 @@ T⟶psplit₂⁽1⁾-cong J J' X X' F0 F0' F1 F1' E0 E0' refl refl refl refl ref
 
 T⟶psplit₂⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶psplit₂⁽1⁾ J X F0 F1 E0 ⌝ᵗ ≡ ⌜ T⟶psplit₂⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ E0) ⌝ᵗ
 T⟶psplit₂⁽1⁾-sub σ J X F0 F1 E0 = (T⟶psplit₂I-sub σ J X F0 F1 E0)
+
+T⟶psplit₂⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶psplit₂⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) v₀ ⌝ᵗ ≡ ⌜ T⟶psplit₂⁽1⁾ J X F0 F1 E0 ⌝ᵗ
+T⟶psplit₂⁽1⁾-β J X F0 F1 E0 = trans (T⟶psplit₂⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) v₀) (T⟶psplit₂⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) refl)
 
 T⟶psplit₂⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶psplit₂⁽0⁾ J X F0 F1 = tσ (C⟶psplit₂_0I J) (T⟶psplit₂⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) v₀)
@@ -7642,6 +7948,9 @@ T⟶cIMu₁⁽1⁾-cong J J' X X' F0 F0' F1 F1' F2 F2' E0 E0' refl refl refl ref
 T⟶cIMu₁⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶cIMu₁⁽1⁾ J X F0 F1 F2 E0 ⌝ᵗ ≡ ⌜ T⟶cIMu₁⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ F2) (subTm σ E0) ⌝ᵗ
 T⟶cIMu₁⁽1⁾-sub σ J X F0 F1 F2 E0 = (T⟶cIMu₁I-sub σ J X F0 F1 F2 E0)
 
+T⟶cIMu₁⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶cIMu₁⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀ ⌝ᵗ ≡ ⌜ T⟶cIMu₁⁽1⁾ J X F0 F1 F2 E0 ⌝ᵗ
+T⟶cIMu₁⁽1⁾-β J X F0 F1 F2 E0 = trans (T⟶cIMu₁⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀) (T⟶cIMu₁⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) (w1 F2)) F2 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) (wk-cancel-tm E0 F2) refl)
+
 T⟶cIMu₁⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶cIMu₁⁽0⁾ J X F0 F1 F2 = tσ (C⟶cIMu₁_0I J) (T⟶cIMu₁⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀)
 
@@ -7712,6 +8021,9 @@ T⟶cIMu₂⁽1⁾-cong J J' X X' F0 F0' F1 F1' F2 F2' E0 E0' refl refl refl ref
 T⟶cIMu₂⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶cIMu₂⁽1⁾ J X F0 F1 F2 E0 ⌝ᵗ ≡ ⌜ T⟶cIMu₂⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ F2) (subTm σ E0) ⌝ᵗ
 T⟶cIMu₂⁽1⁾-sub σ J X F0 F1 F2 E0 = (T⟶cIMu₂I-sub σ J X F0 F1 F2 E0)
 
+T⟶cIMu₂⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶cIMu₂⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀ ⌝ᵗ ≡ ⌜ T⟶cIMu₂⁽1⁾ J X F0 F1 F2 E0 ⌝ᵗ
+T⟶cIMu₂⁽1⁾-β J X F0 F1 F2 E0 = trans (T⟶cIMu₂⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀) (T⟶cIMu₂⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) (w1 F2)) F2 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) (wk-cancel-tm E0 F2) refl)
+
 T⟶cIMu₂⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶cIMu₂⁽0⁾ J X F0 F1 F2 = tσ (C⟶cIMu₂_0I J) (T⟶cIMu₂⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀)
 
@@ -7781,6 +8093,9 @@ T⟶cIMu₃⁽1⁾-cong J J' X X' F0 F0' F1 F1' F2 F2' E0 E0' refl refl refl ref
 
 T⟶cIMu₃⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶cIMu₃⁽1⁾ J X F0 F1 F2 E0 ⌝ᵗ ≡ ⌜ T⟶cIMu₃⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ F1) (subTm σ F2) (subTm σ E0) ⌝ᵗ
 T⟶cIMu₃⁽1⁾-sub σ J X F0 F1 F2 E0 = (T⟶cIMu₃I-sub σ J X F0 F1 F2 E0)
+
+T⟶cIMu₃⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F1 : RTm Δ) (F2 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶cIMu₃⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀ ⌝ᵗ ≡ ⌜ T⟶cIMu₃⁽1⁾ J X F0 F1 F2 E0 ⌝ᵗ
+T⟶cIMu₃⁽1⁾-β J X F0 F1 F2 E0 = trans (T⟶cIMu₃⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀) (T⟶cIMu₃⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) (w1 F1)) F1 (subTm (single E0) (w1 F2)) F2 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) (wk-cancel-tm E0 F1) (wk-cancel-tm E0 F2) refl)
 
 T⟶cIMu₃⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶cIMu₃⁽0⁾ J X F0 F1 F2 = tσ (C⟶cIMu₃_0I J) (T⟶cIMu₃⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀)
@@ -7860,6 +8175,9 @@ T⟶cFin⁽1⁾-cong J J' X X' F0 F0' E0 E0' refl refl refl refl = refl
 
 T⟶cFin⁽1⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (E0 : RTm Δ) → subTm σ ⌜ T⟶cFin⁽1⁾ J X F0 E0 ⌝ᵗ ≡ ⌜ T⟶cFin⁽1⁾ (subTm σ J) (subTm σ X) (subTm σ F0) (subTm σ E0) ⌝ᵗ
 T⟶cFin⁽1⁾-sub σ J X F0 E0 = (T⟶cFinI-sub σ J X F0 E0)
+
+T⟶cFin⁽1⁾-β : {Δ : Cx} (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (E0 : RTm Δ) → subTm (single E0) ⌜ T⟶cFin⁽1⁾ (w1 J) (w1 X) (w1 F0) v₀ ⌝ᵗ ≡ ⌜ T⟶cFin⁽1⁾ J X F0 E0 ⌝ᵗ
+T⟶cFin⁽1⁾-β J X F0 E0 = trans (T⟶cFin⁽1⁾-sub (single E0) (w1 J) (w1 X) (w1 F0) v₀) (T⟶cFin⁽1⁾-cong (subTm (single E0) (w1 J)) J (subTm (single E0) (w1 X)) X (subTm (single E0) (w1 F0)) F0 (subTm (single E0) v₀) E0 (wk-cancel-tm E0 J) (wk-cancel-tm E0 X) (wk-cancel-tm E0 F0) refl)
 
 T⟶cFin⁽0⁾ : RTm Δ → RTm Δ → RTm Δ → Tel Δ
 T⟶cFin⁽0⁾ J X F0 = tσ (C⟶cFin_0I J) (T⟶cFin⁽1⁾ (w1 J) (w1 X) (w1 F0) v₀)

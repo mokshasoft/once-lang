@@ -768,6 +768,18 @@ def gen_alt(al):
             L.append("%s-sub σ %s =" % (tn(kk), " ".join(args)))
             L.append("  dσ-cong1 %s %s %s %s %s %s" % (X0, X0s, lhsZ, rhsZ, osub(co, xn, en(kk)), inner))
         L.append("")
+        # ★ fix 2: the β-cast for level kk, ONCE at variables — `subTm (single a)`
+        #   of the tail at (w1 xs) v₀ is the tail at xs a.  Constructors and
+        #   decoders cite it instead of inlining -sub/-cong/wk-cancel-tm chains.
+        if kk >= 1:
+            pre, last = args[:-1], args[-1]
+            nb = ["(w1 %s)" % x for x in pre] + ["(var vz)"]
+            L.append("%s-β : {Δ : Cx}%s → subTm (single %s) ⌜ %s ⌝ᵗ ≡ ⌜ %s ⌝ᵗ" % (tn(kk),
+                "".join(" (%s : RTm Δ)" % x for x in args), last, " ".join([tn(kk)] + nb), " ".join([tn(kk)] + args)))
+            L.append("%s-β %s = trans (%s-sub (single %s) %s) (%s-cong %s %s)" % (tn(kk), " ".join(args), tn(kk), last,
+                " ".join(nb), tn(kk), " ".join("(subTm (single %s) %s) %s" % (last, u, v) for u, v in zip(nb, args)),
+                " ".join(["(wk-cancel-tm %s %s)" % (last, x) for x in pre] + ["refl"])))
+            L.append("")
     srcs = [src(p) for p in XP]
     L.append("%s : RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ" % N)
     L.append("%s qs j %s c = %s" % (N, a, " ".join([tn(0)] + srcs)))
@@ -1071,9 +1083,7 @@ def gen_con(al, ci, nc, R, csf):
     for k in reversed(range(n)):
         args = xs + es[:k]
         nxt = ["(w1 %s)" % x for x in args] + ["(var vz)"]
-        eq = "(trans (%s-sub (single e%d) %s) (%s-cong %s %s))" % (tn(k + 1), k, " ".join(nxt), tn(k + 1),
-             " ".join("(subTm (single e%d) %s) %s" % (k, u, v) for u, v in zip(nxt, args + ["e%d" % k])),
-             " ".join(["(wk-cancel-tm e%d %s)" % (k, x) for x in args] + ["refl"]))
+        eq = "(%s-β %s)" % (tn(k + 1), " ".join(args + ["e%d" % k]))
         cast = "(⊢-cast {Ξ} {%s} {El (dpay %s %s ⌜ %s ⌝ᵗ)} {El (dpay %s %s (subTm (single e%d) ⌜ %s ⌝ᵗ))} (cong (λ Z → El (dpay %s %s Z)) (sym %s)) %s)" % (
             rest_from(k + 1), Jn, Dn, " ".join([tn(k + 1)] + args + ["e%d" % k]), Jn, Dn, k, " ".join([tn(k + 1)] + nxt), Jn, Dn, eq, tail)
         c = rc.ex[k]
@@ -2275,7 +2285,7 @@ open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; cong; cong₂;
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; wk-cancel-tm )
 open import DirectedHoTT.Metatheory.SubjectReductionBase using () renaming ( wk-sub to wkS )
 open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; tag; Lt; lt-z; lt-s; []ᵈ; _∷ᵈ_; AllD )
 open import DirectedHoTT.Lib.SynView using ( PayV; ⊢recFst; ⊢recSnd; ⊢atDepthSK; ⊢natFst; ⊢natSnd )
@@ -2437,7 +2447,7 @@ open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; cong; cong₂;
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; wk-cancel-tm )
 open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; tag; Lt; lt-z; lt-s; []ᵈ; _∷ᵈ_; AllD )
 open import DirectedHoTT.Lib.SynView using ( PayV; ⊢recFst; ⊢recSnd; ⊢atDepthSK )
 open import DirectedHoTT.Lib.NatCode using ( fromI )
@@ -2959,9 +2969,7 @@ def gen_rule_dec(fam, h, r, rec, hn, fs, args, pat, subjE, PP, entry, ximap, qf,
     def cast(k, dq):
         a_ = xs + es[:k]
         nxt = ["(w1 %s)" % x for x in a_] + ["(var vz)"]
-        eq = "(trans (%s-sub (single e%d) %s) (%s-cong %s %s))" % (tn(k + 1), k, " ".join(nxt), tn(k + 1),
-             " ".join("(subTm (single e%d) %s) %s" % (k, u_, v_) for u_, v_ in zip(nxt, a_ + ["e%d" % k])),
-             " ".join(["(wk-cancel-tm e%d %s)" % (k, x) for x in a_] + ["refl"]))
+        eq = "(%s-β %s)" % (tn(k + 1), " ".join(a_ + ["e%d" % k]))
         return "(⊢-cast (cong (λ Z → El (dpay %s %s Z)) %s) (⊢conv %s (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e%d) done))))))" % (
             Jn, Dn, eq, dq, k)
     lines = ["%s {Γ}%s%s u dq nq =" % (hn, "".join(" " + a for a in args), " ih" if ihf is not None else ""),
@@ -3260,9 +3268,7 @@ def comp_dec(fam, h, r, rec, spat, shyps, red):
     def cast(k, dq):
         a_ = xs + es[:k]
         nx = ["(w1 %s)" % x for x in a_] + ["(var vz)"]
-        eq = "(trans (%s-sub (single e%d) %s) (%s-cong %s %s))" % (tn(k + 1), k, " ".join(nx), tn(k + 1),
-             " ".join("(subTm (single e%d) %s) %s" % (k, u_, v_) for u_, v_ in zip(nx, a_ + ["e%d" % k])),
-             " ".join(["(wk-cancel-tm e%d %s)" % (k, x) for x in a_] + ["refl"]))
+        eq = "(%s-β %s)" % (tn(k + 1), " ".join(a_ + ["e%d" % k]))
         return "(⊢-cast (cong (λ Z → El (dpay %s %s Z)) %s) (⊢conv %s (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e%d) done))))))" % (
             Jn, Dn, eq, dq, k)
     body = ["  pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq"]
@@ -3561,9 +3567,7 @@ def judge_dec(fam, h, r, rec):
     def cast(k, dq):
         a_ = xs + es[:k]
         nx = ["(w1 %s)" % x for x in a_] + ["(var vz)"]
-        eq = "(trans (%s-sub (single e%d) %s) (%s-cong %s %s))" % (tn(k + 1), k, " ".join(nx), tn(k + 1),
-             " ".join("(subTm (single e%d) %s) %s" % (k, u_, v_) for u_, v_ in zip(nx, a_ + ["e%d" % k])),
-             " ".join(["(wk-cancel-tm e%d %s)" % (k, x) for x in a_] + ["refl"]))
+        eq = "(%s-β %s)" % (tn(k + 1), " ".join(a_ + ["e%d" % k]))
         return "(⊢-cast (cong (λ Z → El (dpay JT (D⊢ (tN 𝓃)) Z)) %s) (⊢conv %s (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e%d) done))))))" % (eq, dq, k)
     kval = dict(val, X="X0")
     kexpr = lambda a: al.body.expr(a, kval)

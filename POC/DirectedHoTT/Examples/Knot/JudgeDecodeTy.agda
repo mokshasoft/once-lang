@@ -299,7 +299,7 @@ jdᵀDIh₍0₎ : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx) (a0 : RTm (⌊ 
 jdᵀDIh₍0₎ ihTy ihTm Γ a0 a1 a2 a3 {w} hq dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (e0 , (b0 , (eq0 , ((de0 , dq1) , (ne0 , nq1))))) →
-  pay-ρ (⊢-cast (cong (λ Z → El (dpay JT (D⊢ (tN 𝓃)) Z)) (trans (T⊢tyDIh⁽1⁾-sub (single e0) (w1 j) (w1 g) (w1 f0) (w1 f1) (w1 f2) (w1 f3) v₀) (T⊢tyDIh⁽1⁾-cong (subTm (single e0) (w1 j)) j (subTm (single e0) (w1 g)) g (subTm (single e0) (w1 f0)) f0 (subTm (single e0) (w1 f1)) f1 (subTm (single e0) (w1 f2)) f2 (subTm (single e0) (w1 f3)) f3 (subTm (single e0) v₀) e0 (wk-cancel-tm e0 j) (wk-cancel-tm e0 g) (wk-cancel-tm e0 f0) (wk-cancel-tm e0 f1) (wk-cancel-tm e0 f2) (wk-cancel-tm e0 f3) refl))) (⊢conv dq1 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e0) done)))))) done nq1
+  pay-ρ (⊢-cast (cong (λ Z → El (dpay JT (D⊢ (tN 𝓃)) Z)) (T⊢tyDIh⁽1⁾-β j g f0 f1 f2 f3 e0)) (⊢conv dq1 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e0) done)))))) done nq1
   ▷ λ { (r0 , (b1 , (eq1 , ((dr0 , dq2) , (nr0 , nq2))))) →
   pay-ρ dq2 done nq2
   ▷ λ { (r1 , (b2 , (eq2 , ((dr1 , dq3) , (nr1 , nq3))))) →
