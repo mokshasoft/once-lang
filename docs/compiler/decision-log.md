@@ -25467,5 +25467,27 @@ instructions 1.00×; run 1.0145× without `alloc-forever` (at most 90 instructio
 slow path now lowers `L` once per new deepest level, the stack no longer starting 32768 words deep);
 `alloc-forever` runs 1.03× longer before the heap is exhausted (the region the reserve held is the heap's).
 **Landed:** `make certified` green; 188 exit tests × 3 arches, seL4 × 3, `cabal test` 1025.
-**Open:** stage 5, `L` restored on return. Note for it: restoring makes the slow path recur at every flagged
-call that goes deeper than the restored limit, not once per level; the low-water mark is the cheaper run.
+**Stage 5 not built (the user, 2026-11-26): `L` stays a low-water mark; the fix is pointer reversal (S3).**
+Restoring `L` treats a symptom. The cause is that the emitted code recurses: `kfold` on a node's children,
+`kcopy`/`kfree` per node of a μ-type, an arrow-carrier fold's closure chain — the flagged calls, deep as the
+data. In a server the data is the input, so with a low-water mark ONE large request lowers `L` for every
+later round (bounded: `L` falls only while the heap front fits, else exhausted — but the heap the request
+freed stays the stack's). The options weighed:
+* (A) save `L` in a third reserved frame slot at every flagged call, restore after the return: exact, but
+  ~3–4 instructions on every flagged call (fast path too), +1 word in every frame, and the slow path recurs
+  on every deep excursion. Every program that folds a recursive type pays.
+* (B′) reset `L := sp − max(round, after-loop)` at a server loop's head in the start's segment (sound with
+  no saved value: everything after it is static there); a loop inside a function stays a low-water mark.
+* (B″) save `L` at a server loop's entry, restore it at each round's head (sound anywhere: the same frames
+  are live, the same `sp`): ~2 instructions a round, one word per loop.
+* Recomputing `L` from `sp` at a return landing is UNSOUND (a caller's remaining need may exceed the callee's).
+* **Taken: none of these.** The recursion leaves the stack instead, by S3's linearity: a fold over OWNED data
+  walks it by pointer reversal in the consumed input's own cells (no allocation, no flagged call); `kfree`
+  the same in the cells it frees; `kcopy` reverses through the copy's new cells (the source is only
+  borrowed); a fold over BORROWED data keeps a heap worklist (the allocator takes it back, `L` does not move).
+  Open: the arrow-carrier fold (its chain is already heap; applying it nests). With the flagged calls gone,
+  every stack is static, `L` never moves, and the injection disappears at its root — plan 0.157 S1's own
+  statement, "every program's stack is statically bounded". The criteria, together: runtime, code size and
+  memory (the user: the most performant kernel for Once on all three).
+`--stack-words N` is moot after stage 4 (the fallback table reserves nothing and checks every call), so it
+is not built; `start-stack-words` is only the producers' placeholder.
