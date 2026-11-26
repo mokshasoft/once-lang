@@ -568,6 +568,17 @@ module RelClo {L : Cx} (δ : Env L) (ρ : CallEnv) where
   rel-cloG G.eff {b = b} γ rb = mkRel λ {x} {x′} w →
     ret≈R (λ {a} {a′} wa → relOf rb (w , wa))
 
+  -- ★ plan 0.157 S2: a closure whose body READS its environment (`llamω`):
+  -- related through its body's run on the lent environment
+  rel-cloL : ∀ (π : G.Purity) {X A B : IRTy} {b : Tm L ⟪ X ⟫ ⟪ A ⟫ ⟪ B ⟫} {b′ : M.IR (X I.* A) B}
+               (γ : Gd (grade π) b)
+           → (∀ {x x′} → W X x x′ → ∀ {a a′} → W A a a′ → Lᶜ δ b x a ≈[ W B ] evalᴰ fmt ρ b′ (x′ , a′))
+           → Rel (llamω b γ) (M.curry {π = π} b′)
+  rel-cloL (G.fin φ) γ rb = mkRel λ {x} {x′} w →
+    ret≈R (λ {a} {a′} wa → ≈-≈R (≈-sym (blk-coh δ γ x a)) (rb w wa))
+  rel-cloL G.eff γ rb = mkRel λ {x} {x′} w →
+    ret≈R (λ {a} {a′} wa → rb w wa)
+
 ------------------------------------------------------------------------
 -- 10. ★★ THE BRIDGE'S MEANING, by induction on the expression, every clause
 -- proved; its premise is the expression's references, related (`RefOK`, by
@@ -632,22 +643,20 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRT
   apω-≈ : ∀ {g A B} (f : ⟦ Fn many g A B ⟧) (a : ⟦ A ⟧) → Lᶜ δ (apω {L} {One} {g = g} {A} {B}) tt (f , a) ≈ up g (f a)
   apω-≈ {g} {A} {B} f a = ≈-refl
 
-  -- ★ the composite's body: `g` then `f`, linearly, against `compIR`'s
-  compB : ∀ {π} {A B C : IRTy}
-        → Rel (apω {g = grade π} {⟪ B ⟫} {⟪ C ⟫} ∘l (lid ⊗l apω {g = grade π} {⟪ A ⟫} {⟪ B ⟫}) ∘l lassoc)
-              (M.apply {B} {C} {π} M.∘ M.⟨ M.fst M.∘ M.fst , M.apply {A} {B} {π} M.∘ M.⟨ M.snd M.∘ M.fst , M.snd ⟩ ⟩)
-  compB {π} {A} {B} {C} = mkRel λ { {(f , g) , a} {(f′ , g′) , a′} ((wf , wg) , wa) →
-    ≈-≈R (≈-trans (>>=-cong (≈-trans ret-bind ret-bind) (λ _ → ≈-refl))
-                  (≈-trans (bind-assoc _ _ _) (>>=-cong (apω-≈ {grade π} {⟪ A ⟫} {⟪ B ⟫} g a) (λ y → ≈-trans ret-bind (apω-≈ {grade π} {⟪ B ⟫} {⟪ C ⟫} f y)))))
-      (≈R-≈ (>>=-congR (wg wa) (λ wb → wf wb))
-            (≈-sym (≈-trans (>>=-cong (≈-trans (bind-pure ret-bind) (>>=-cong (bind-pure (≈-trans (bind-pure ret-bind) ret-bind)) (λ _ → ≈-refl))) (λ _ → ≈-refl))
-                            (≈-trans (bind-assoc _ _ _) (>>=-cong ≈-refl (λ _ → ret-bind)))))) }
-
   ok-comp : ∀ {m n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B C : Ty m} {π}
               (f : Expr Γ Ψ₁ (B ⇒[ G.mk-kind G.Many π ] C)) (g : Expr Γ Ψ₂ (A ⇒[ G.mk-kind G.Many π ] B))
             → Goal f → Goal g → Goal (comp' f g)
   ok-comp {Γ = Γ} {Ψ₁} {Ψ₂} {π = π} f g rf rg =
-    rel-∘ (rel-cloG π _ compB) (rel-pairW Γ Ψ₁ Ψ₂ (G.Many *ᵘ Ψ₂) (⊑ᵘ-*Many Ψ₂) rf rg)
+    rel-∘ (rel-cloL π _ compL) (rel-pairW Γ Ψ₁ Ψ₂ (G.Many *ᵘ Ψ₂) (⊑ᵘ-*Many Ψ₂) rf rg)
+    where
+      -- the lent body: `g` applied lent, then `f`
+      compL : ∀ {A B C : IRTy} {x x′} → W ((B I.⇛[ π ] C) I.* (A I.⇛[ π ] B)) x x′ → ∀ {a a′} → W A a a′
+            → Lᶜ δ (bfst (bev {g = grade π} {⟪ B ⟫} {⟪ C ⟫}) ∘l bsnd (bev {g = grade π} {⟪ A ⟫} {⟪ B ⟫})) x a
+              ≈[ W C ] evalᴰ fmt ρ (M.apply {B} {C} {π} M.∘ M.⟨ M.fst M.∘ M.fst , M.apply {A} {B} {π} M.∘ M.⟨ M.snd M.∘ M.fst , M.snd ⟩ ⟩) (x′ , a′)
+      compL {x = f₀ , g₀} {f′ , g′} (wf , wg) {a} {a′} wa =
+        ≈R-≈ (>>=-congR (wg wa) (λ wb → wf wb))
+             (≈-sym (≈-trans (>>=-cong (≈-trans (bind-pure ret-bind) (>>=-cong (bind-pure (≈-trans (bind-pure ret-bind) ret-bind)) (λ _ → ≈-refl))) (λ _ → ≈-refl))
+                             (≈-trans (bind-assoc _ _ _) (>>=-cong ≈-refl (λ _ → ret-bind)))))
 
   -- ★ the fork's body: the argument copied, each closure applied to one copy
   forkB : ∀ {π} {A B C : IRTy}
@@ -1318,34 +1327,20 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRT
                      (rel-∘ rr (rel-∘ (rel-bind {Γ = Γ} {A = B} qr) (rel-arm {Γ = Γ} (⊑ᵘ-⊔ʳ Ψₗ Ψᵣ)))))
           (rel-∘ rel-dist (rel-scrut {Γ = Γ} {Φ = Ψₗ ⊔ᵘ Ψᵣ} s (rdw? s) rs′))
 
-  rel-distIR : ∀ {X A B : IRTy} → Rel (dist {L} {One} {⟪ X ⟫} {⟪ A ⟫} {⟪ B ⟫}) (distribIR {X} {A} {B} am)
-  rel-distIR {X} {A} {B} = rel-pure (dist-pure {X} {A} {B}) (distribIR-pure {X} {A} {B}) dW
-    where
-      dW : ∀ {x x′} → W (X I.* (A I.+ B)) x x′ → W ((X I.* A) I.+ (X I.* B)) (dv {X} {A} {B} x) (dv′ {X} {A} {B} x′)
-      dW {_ , inj₁ _} {_ , inj₁ _} (wx , Data.Sum.Relation.Binary.Pointwise.inj₁ wa) = Data.Sum.Relation.Binary.Pointwise.inj₁ (wx , wa)
-      dW {_ , inj₂ _} {_ , inj₂ _} (wx , Data.Sum.Relation.Binary.Pointwise.inj₂ wb) = Data.Sum.Relation.Binary.Pointwise.inj₂ (wx , wb)
-
-  -- ★ the copairing's body: distributed, each arm one closure, the other dropped
-  copairB : ∀ {π} {A B C : IRTy}
-          → Rel (lcase (apω {g = grade π} {⟪ A ⟫} {⟪ C ⟫} ∘l ((ρl ∘l (lid ⊗l drop)) ⊗l lid))
-                       (apω {g = grade π} {⟪ B ⟫} {⟪ C ⟫} ∘l (Once.LinCore.PassTr.dropl fmt ⊗l lid)) ∘l dist)
-                (M.case (M.apply {A} {C} {π} M.∘ M.⟨ M.fst M.∘ M.fst , M.snd ⟩) (M.apply {B} {C} {π} M.∘ M.⟨ M.snd M.∘ M.fst , M.snd ⟩)
-                 M.∘ distribIR am)
-  copairB {π} {A} {B} {C} =
-    rel-∘ (rel-lcase (rel-∘ (rel-apω {π = π})
-                       (mkRel λ { {(f , g) , a} {(f′ , g′) , a′} ((wf , wg) , wa) →
-                         ≈-≈R (≈-trans (bind-pure (bind-pure (≈-trans ret-bind ret-bind))) ret-bind)
-                              (≈R-≈ (ret≈R (wf , wa)) (≈-sym (≈-trans (bind-pure ret-bind) ret-bind))) }))
-                     (rel-∘ (rel-apω {π = π})
-                       (mkRel λ { {(f , g) , b} {(f′ , g′) , b′} ((wf , wg) , wb) →
-                         ≈-≈R (≈-trans (bind-pure (bind-pure (≈-trans ret-bind ret-bind))) ret-bind)
-                              (≈R-≈ (ret≈R (wg , wb)) (≈-sym (≈-trans (bind-pure ret-bind) ret-bind))) })))
-          rel-distIR
-
   ok-copair : ∀ {m n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B C : Ty m} {π}
                 (f : Expr Γ Ψ₁ (A ⇒[ G.mk-kind G.Many π ] C)) (g : Expr Γ Ψ₂ (B ⇒[ G.mk-kind G.Many π ] C))
               → Goal f → Goal g → Goal (copair' f g)
-  ok-copair {Γ = Γ} {Ψ₁} {Ψ₂} {π = π} f g rf rg = rel-∘ (rel-cloG π _ copairB) (rel-pair am Γ Ψ₁ Ψ₂ rf rg)
+  ok-copair {Γ = Γ} {Ψ₁} {Ψ₂} {A} {B} {C} {π = π} f g rf rg = rel-∘ (rel-cloL π _ copairL) (rel-pair am Γ Ψ₁ Ψ₂ rf rg)
+    where
+      -- the lent body: the chosen arm applied lent
+      copairL : ∀ {x x′} → W ((⌊ A ⌋ I.⇛[ π ] ⌊ C ⌋) I.* (⌊ B ⌋ I.⇛[ π ] ⌊ C ⌋)) x x′ → ∀ {s s′} → W (⌊ A ⌋ I.+ ⌊ B ⌋) s s′
+              → Lᶜ δ (lcase (bfst (bev {g = grade π} {ty A} {ty C})) (bsnd (bev {g = grade π} {ty B} {ty C}))) x s
+                ≈[ W ⌊ C ⌋ ] evalᴰ fmt ρ (M.case (M.apply {⌊ A ⌋} {⌊ C ⌋} {π} M.∘ M.⟨ M.fst M.∘ M.fst , M.snd ⟩)
+                                                 (M.apply {⌊ B ⌋} {⌊ C ⌋} {π} M.∘ M.⟨ M.snd M.∘ M.fst , M.snd ⟩) M.∘ distribIR am) (x′ , s′)
+      copairL {x = f₀ , g₀} {f′ , g′} (wf , wg) {inj₁ a} {inj₁ a′} (Data.Sum.Relation.Binary.Pointwise.inj₁ wa) =
+        ≈R-≈ (wf wa) (≈-sym (≈-trans (bind-pure (distribIR-pure ((f′ , g′) , inj₁ a′))) (bind-pure (≈-trans (bind-pure ret-bind) ret-bind))))
+      copairL {x = f₀ , g₀} {f′ , g′} (wf , wg) {inj₂ b} {inj₂ b′} (Data.Sum.Relation.Binary.Pointwise.inj₂ wb) =
+        ≈R-≈ (wg wb) (≈-sym (≈-trans (bind-pure (distribIR-pure ((f′ , g′) , inj₂ b′))) (bind-pure (≈-trans (bind-pure ret-bind) ret-bind))))
 
   -- ★ THE LOOP: the round lent to every round, against master's `Iter` of `apply`
   loopB : ∀ {A B : IRTy}

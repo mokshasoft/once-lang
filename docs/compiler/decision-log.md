@@ -24906,6 +24906,21 @@ all three, `cabal test`: all pass.
 **Measured** (`tests/perf-compare.sh`, user instructions retired, before → after): `loop-sum` at N = 1000
 4.94M → 2.45M (master 0.66M); `list-build-sum` 1.05e9 → 2.64e8 (master 1.23M). The owned call removed the
 copy per call; `list-build-sum` still grows ×4 per doubling, for another cause (D481).
+**Amended (2026-11-26, plan 0.157 S2): a combinator's closure READS what it holds.** A lent call still copies
+the environment, and a fold's algebra (`case zeroI addPair`, a `copair'`) or a composite is lent at every
+layer: its two held closures were copied per node (`once stats` `clo-cells`: 210 closures over 60
+programs whose environment owns cells). `comp'` and `copair'` now build `llamω` closures whose bodies read
+the held closures lent and apply them lent (`bfst bev ∘l bsnd bev`; `lcase (bfst bev) (bsnd bev)`): a lent
+call copies nothing, an owned call runs the lent body and frees the environment (the lowering's `ownBg`).
+Proved by `FromExprOk.rel-cloL` (a lent body against the IR's `curry`). **Measured** (x86_64, 108
+programs): `.text` 0.92×, static 0.91×, every fold 0.59–0.65× (`cata-fn-carrier` 8452 → 5524),
+`list-build-sum` 1.73M → 1.31M at N = 1000 (master 1.23M); against master, run 1.62× → 1.35× and `.text`
+2.18× → 2.00× (107 programs without `alloc-forever`). **Cost**: an owned call now applies the held closures
+lent, and a held closure that is a lambda (`llamωᶜ`) copies its environment on a lent call: compose chains
+and some emitting programs 1.1–1.4× (`loop-emit` 9489 → 13214, `layer0-compose` 729 → 889). **Next**: a
+closure with BOTH bodies — the owned one for an owned call, the lent one for a lent call — removes that cost
+(a core generator beside `llamωᶜ`, lowered and proved like it); and lambdas whose body only reads what they
+capture get the lent form too.
 
 ## D481 — A CASE COMBINATOR OVER CLOSURE-BUILDING ARMS COPIES ITS SHARED CONTEXT INTO EACH ARM (2026-11-23, proposed — for the user's review)
 **Found** (after D480): `bench/list-build-sum` still grows ×4 per doubling (2.64e8 at N = 1000; master 1.23M).

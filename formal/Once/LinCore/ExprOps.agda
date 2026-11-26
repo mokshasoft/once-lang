@@ -444,9 +444,9 @@ module Ops (Σι : ISig) where
     ok-Lq {Γ = Γ} (S.morph-app {Ψ = Ψ} mp x) (rm , rx) =
       ok-mapT mp rm , (ok-Lq x rx , ok-weak {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψ) (⊑ᵘ-+ʳ zeroUsage (G.Many *ᵘ Ψ))))
     ok-Lq {Γ = Γ} (S.comp' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f g) (rf , rg) =
-      ok-clo (_ , ((tt , _) , tt)) , ((ok-Lq f rf , (ok-Lq g rg , ok-weak {Γ = Γ} (⊑ᵘ-*Many Ψ₂))) , ok-split Γ Ψ₁ (G.Many *ᵘ Ψ₂))
+      _ , ((ok-Lq f rf , (ok-Lq g rg , ok-weak {Γ = Γ} (⊑ᵘ-*Many Ψ₂))) , ok-split Γ Ψ₁ (G.Many *ᵘ Ψ₂))
     ok-Lq {Γ = Γ} (S.copair' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f g) (rf , rg) =
-      ok-clo (((_ , (_ , tt)) , (_ , (_ , tt))) , _) , ((ok-Lq f rf , ok-Lq g rg) , ok-split Γ Ψ₁ Ψ₂)
+      _ , ((ok-Lq f rf , ok-Lq g rg) , ok-split Γ Ψ₁ Ψ₂)
     ok-Lq {Γ = Γ} (S.fork' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f g) (rf , rg) =
       ok-clo ((_ , _) , (_ , (tt , tt))) , ((ok-Lq f rf , ok-Lq g rg) , ok-split Γ Ψ₁ Ψ₂)
     ok-Lq (S.curry' f) r = ok-clo (ok-clo (_ , tt)) , ok-Lq f r

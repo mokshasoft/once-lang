@@ -242,6 +242,11 @@ gdB : ∀ {L X A B} (π : G.Purity) {b : LTm L (X ⊗t A) B} → (∀ {φ} → �
 gdB (G.fin φ) h = h refl
 gdB G.eff     h = tt
 
+-- the same, for a body that READS its environment (`llamω`, plan 0.157 S2)
+gdL : ∀ {L X A B} (π : G.Purity) {b : Tm L X A B} → (∀ {φ} → π ≡ G.fin φ → Blk b) → Gd (grade π) b
+gdL (G.fin φ) h = h refl
+gdL G.eff     h = tt
+
 -- a functor's layer, at the IR's types and at the core's code
 layerEq : ∀ {m} {Δ : ST.KCtx m} (F : ST.Fun m) → ST.WFFun Δ F → ∀ (A : Ty m)
         → ty (ST.⟦ F ⟧F A) ≡ LF∙ (lf (I.eraseF F)) (ty A)
@@ -758,14 +763,13 @@ module _ {L : Cx} (rs : Rs L) where
   Lq {Γ = Γ} (morph-app {Ψ = Ψ} mp x) =
     mapT mp ∘l Lq x ∘l weak {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψ) (⊑ᵘ-+ʳ zeroUsage (G.Many *ᵘ Ψ)))
   -- the combinators: closures over the closures they combine
+  -- (plan 0.157 S2, D480 amended: a combinator's body READS the closures it holds —
+  -- `llamω`, applied lent with `bev` — so a lent call of it copies nothing)
   Lq {Γ = Γ} (comp' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {π = π} f g) =
-    llamωᶜ (apω ∘l (lid ⊗l apω) ∘l lassoc)
-          (gdB π (λ { refl → k-∘ k-apω (k-∘ (k-⊗ k-id k-apω) k-assoc) }))
+    llamω (bfst bev ∘l bsnd bev) (gdL π (λ { refl → k-∘ (k-fst k-bev) (k-snd k-bev) }))
     ∘l (Lq f ⊗l (Lq g ∘l weak {Γ = Γ} (⊑ᵘ-*Many Ψ₂))) ∘l split Γ Ψ₁ (G.Many *ᵘ Ψ₂)
   Lq {Γ = Γ} (copair' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {π = π} f g) =
-    llamωᶜ (lcase (apω ∘l ((ρl ∘l (lid ⊗l drop)) ⊗l lid)) (apω ∘l (dropl ⊗l lid)) ∘l dist)
-          (gdB π (λ { refl → k-∘ (k-case (k-∘ k-apω (k-⊗ (k-∘ k-ρ (k-⊗ k-id k-drop)) k-id))
-                                          (k-∘ k-apω (k-⊗ k-dropl k-id))) k-dist }))
+    llamω (lcase (bfst bev) (bsnd bev)) (gdL π (λ { refl → k-case (k-fst k-bev) (k-snd k-bev) }))
     ∘l (Lq f ⊗l Lq g) ∘l split Γ Ψ₁ Ψ₂
   Lq {Γ = Γ} (fork' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {π = π} f g) =
     llamωᶜ ((apω ⊗l apω) ∘l mixL ∘l (lid ⊗l dup))
@@ -835,8 +839,8 @@ module _ {L : Cx} (rs : Rs L) where
   Lq-blk {Γ = Γ} (morph-app {Ψ = Ψ} mp x) =
     k-∘ (k-mapT mp) (k-∘ (Lq-blk x) (k-weak {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψ) (⊑ᵘ-+ʳ zeroUsage (G.Many *ᵘ Ψ)))))
   Lq-blk {Γ = Γ} (comp' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f g) =
-    k-∘ k-lamωᶜ (k-∘ (k-⊗ (Lq-blk f) (k-∘ (Lq-blk g) (k-weak {Γ = Γ} (⊑ᵘ-*Many Ψ₂)))) (k-split Γ Ψ₁ (G.Many *ᵘ Ψ₂)))
-  Lq-blk {Γ = Γ} (copair' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f g) = k-∘ k-lamωᶜ (k-∘ (k-⊗ (Lq-blk f) (Lq-blk g)) (k-split Γ Ψ₁ Ψ₂))
+    k-∘ k-lamω (k-∘ (k-⊗ (Lq-blk f) (k-∘ (Lq-blk g) (k-weak {Γ = Γ} (⊑ᵘ-*Many Ψ₂)))) (k-split Γ Ψ₁ (G.Many *ᵘ Ψ₂)))
+  Lq-blk {Γ = Γ} (copair' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f g) = k-∘ k-lamω (k-∘ (k-⊗ (Lq-blk f) (Lq-blk g)) (k-split Γ Ψ₁ Ψ₂))
   Lq-blk {Γ = Γ} (fork' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f g) = k-∘ k-lamωᶜ (k-∘ (k-⊗ (Lq-blk f) (Lq-blk g)) (k-split Γ Ψ₁ Ψ₂))
   Lq-blk (curry' f) = k-∘ k-lamωᶜ (Lq-blk f)
   Lq-blk {Γ = Γ} (cata {Ψ = Ψ} wfF alg) = k-∘ k-lamωᶜ (k-∘ (Lq-blk alg) (k-weak {Γ = Γ} (⊑ᵘ-*Many Ψ)))

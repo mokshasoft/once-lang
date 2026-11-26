@@ -716,7 +716,7 @@ d_val_1126 v0 v1 v2 v3 v4
              (coe
                 MAlonzo.Code.Once.LinCore.FromExpr.du_Co_666 (coe v0)
                 (coe (0 :: Integer)) (coe v6) (coe v7))
-             (MAlonzo.Code.Once.LinCore.FromExpr.d_Lq_2950
+             (MAlonzo.Code.Once.LinCore.FromExpr.d_Lq_2972
                 (coe v0) (coe v1) (coe v3) (coe (0 :: Integer)) (coe v5) (coe v6)
                 (coe v7) (coe v2) (coe v11))
              (coe du_eraseL_688 (coe v0) (coe (0 :: Integer)) (coe v6) (coe v7))
@@ -739,7 +739,7 @@ d_k'45'val_1150 v0 v1 v2 v3 v4
         -> coe
              MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1156
              (coe
-                MAlonzo.Code.Once.LinCore.FromExpr.du_Lq'45'blk_2964 (coe v0)
+                MAlonzo.Code.Once.LinCore.FromExpr.du_Lq'45'blk_2986 (coe v0)
                 (coe v1) (coe v3) (coe (0 :: Integer)) (coe v5) (coe v6) (coe v2)
                 (coe v11))
              (coe du_k'45'eraseL_716 (coe v6) (coe v7))
@@ -1225,7 +1225,7 @@ du_mainCore_1552 v0 v1 v2 v3
              (coe MAlonzo.Code.Once.LinCore.Core.C_Zero_182)
              (coe MAlonzo.Code.Once.LinCore.Core.C_lzero_904)
              (coe
-                MAlonzo.Code.Once.LinCore.FromExpr.du_callM_1752
+                MAlonzo.Code.Once.LinCore.FromExpr.du_callM_1774
                 (coe MAlonzo.Code.Once.LinCore.Core.C_act_158)
                 (coe
                    MAlonzo.Code.Once.LinCore.FromIR.d_'10218'_'10219'_866 (coe v0)
@@ -1252,7 +1252,7 @@ du_mainCore_1552 v0 v1 v2 v3
                                   (coe MAlonzo.Code.Once.LinCore.Core.C_Zero_182)
                                   (coe MAlonzo.Code.Once.LinCore.Core.C_lzero_904)
                                   (coe
-                                     MAlonzo.Code.Once.LinCore.FromExpr.du_callM_1752
+                                     MAlonzo.Code.Once.LinCore.FromExpr.du_callM_1774
                                      (coe MAlonzo.Code.Once.LinCore.FromIR.du_grade_864 (coe v18))
                                      (coe
                                         MAlonzo.Code.Once.LinCore.FromIR.d_'10218'_'10219'_866
@@ -1271,7 +1271,7 @@ du_mainCore_1552 v0 v1 v2 v3
                                            (coe v18))))
                            MAlonzo.Code.Once.Spec.Sub.C_sub'45'unit_20
                              -> coe
-                                  MAlonzo.Code.Once.LinCore.FromExpr.du_callM_1752
+                                  MAlonzo.Code.Once.LinCore.FromExpr.du_callM_1774
                                   (coe MAlonzo.Code.Once.LinCore.FromIR.du_grade_864 (coe v18))
                                   (coe
                                      MAlonzo.Code.Once.LinCore.FromIR.d_'10218'_'10219'_866 (coe v0)

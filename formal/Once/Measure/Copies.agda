@@ -9,6 +9,8 @@
 --   dups         every `dup`
 --   dup-cells    a `dup` at a type that owns cells (a deep copy at run time)
 --   bcopy-cells  a lent value copied out at a type that owns cells
+--   clo-cells    a many-use closure whose environment owns cells: each LENT call
+--                (a fold's layer, a loop's round) copies that environment (D480)
 -- A `dup` or `bcopy` at a type without cells is words, not cells.
 ------------------------------------------------------------------------
 
@@ -38,14 +40,14 @@ cells (μt _)     = true
 record Copies : Set where
   constructor copies
   field
-    dups dup-cells bcopy-cells : ℕ
+    dups dup-cells bcopy-cells clo-cells : ℕ
 
 private
   none : Copies
-  none = copies 0 0 0
+  none = copies 0 0 0 0
 
   _⊞_ : Copies → Copies → Copies
-  copies a b c ⊞ copies a′ b′ c′ = copies (a + a′) (b + b′) (c + c′)
+  copies a b c d ⊞ copies a′ b′ c′ d′ = copies (a + a′) (b + b′) (c + c′) (d + d′)
 
   bump : Bool → ℕ → ℕ
   bump b n = if b then suc n else n
@@ -63,10 +65,10 @@ tm (bcaseE f g)      = tm f ⊞ tm g
 tm (bout f)          = tm f
 tm (llam b _)        = tm b
 tm (llamω b _)       = tm b
-tm (llamωᶜ b _)      = tm b
+tm (llamωᶜ {X = X} b _) = copies 0 0 0 (bump (cells X) 0) ⊞ tm b
 tm (liter f _)       = tm f
-tm (dup {A = A})     = copies 1 (bump (cells A) 0) 0
-tm (bcopy {E = E})   = copies 0 0 (bump (cells E) 0)
+tm (dup {A = A})     = copies 1 (bump (cells A) 0) 0 0
+tm (bcopy {E = E})   = copies 0 0 (bump (cells E) 0) 0
 {-# CATCHALL #-}
 tm _                 = none
 
@@ -79,5 +81,5 @@ defs ε        = none
 defs (ds ▸ b) = defs ds ⊞ body b
 
 show-copies : Copies → String
-show-copies (copies a b c) =
-  "copies: dups=" ++ show a ++ " dup-cells=" ++ show b ++ " bcopy-cells=" ++ show c
+show-copies (copies a b c d) =
+  "copies: dups=" ++ show a ++ " dup-cells=" ++ show b ++ " bcopy-cells=" ++ show c ++ " clo-cells=" ++ show d
