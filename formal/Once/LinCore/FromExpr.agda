@@ -778,10 +778,10 @@ module _ {L : Cx} (rs : Rs L) where
   Lq (curry' {π₀ = π₀} {π = π} f) =
     clo π₀ (llamωᶜ (apω ∘l lassoc) (gdB π (λ { refl → k-∘ k-apω k-assoc }))) k-lamωᶜ
     ∘l Lq f
-  -- the fold: the algebra LENT to every layer, no copy per layer
+  -- the fold: the algebra LENT to every layer, no copy per layer (the closure reads it: `llamω`)
   Lq {Γ = Γ} (cata {Ψ = Ψ} {F = F} {A = A} {π = π} wfF alg) =
-    llamωᶜ (dropl ∘l lend (lcata (lf (I.eraseF F)) (bsnd (cast (layerEq F wfF A) refl bev))))
-          (gdB π (λ { refl → k-∘ k-dropl (k-lend (k-cata (k-snd (k-cast (layerEq F wfF A) refl k-bev)))) }))
+    llamω (lcata (lf (I.eraseF F)) (cast (layerEq F wfF A) refl bev))
+          (gdL π (λ { refl → k-cata (k-cast (layerEq F wfF A) refl k-bev) }))
     ∘l Lq alg ∘l weak {Γ = Γ} (⊑ᵘ-*Many Ψ)
   -- the unfold: the coalgebra and the seed, a ν
   Lq {Γ = Γ} (ana {Ψ = Ψ} {F = F} {A = A} {π₀ = π₀} wfF coalg) =
@@ -790,7 +790,7 @@ module _ {L : Cx} (rs : Rs L) where
     ∘l Lq coalg ∘l weak {Γ = Γ} (⊑ᵘ-*Many Ψ)
   -- the loop: the round LENT to every round
   Lq {Γ = Γ} (loop {Ψ = Ψ} round) =
-    llamωᶜ (dropl ∘l lend (liter (bsnd bev) (k-snd k-bev))) tt
+    llamω (liter bev k-bev) tt
     ∘l Lq round ∘l weak {Γ = Γ} (⊑ᵘ-*Many Ψ)
 
   Lq-blk {Γ = Γ} (var i) = k-var-at {Γ = Γ} i
@@ -843,6 +843,6 @@ module _ {L : Cx} (rs : Rs L) where
   Lq-blk {Γ = Γ} (copair' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f g) = k-∘ k-lamω (k-∘ (k-⊗ (Lq-blk f) (Lq-blk g)) (k-split Γ Ψ₁ Ψ₂))
   Lq-blk {Γ = Γ} (fork' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f g) = k-∘ k-lamωᶜ (k-∘ (k-⊗ (Lq-blk f) (Lq-blk g)) (k-split Γ Ψ₁ Ψ₂))
   Lq-blk (curry' f) = k-∘ k-lamωᶜ (Lq-blk f)
-  Lq-blk {Γ = Γ} (cata {Ψ = Ψ} wfF alg) = k-∘ k-lamωᶜ (k-∘ (Lq-blk alg) (k-weak {Γ = Γ} (⊑ᵘ-*Many Ψ)))
+  Lq-blk {Γ = Γ} (cata {Ψ = Ψ} wfF alg) = k-∘ k-lamω (k-∘ (Lq-blk alg) (k-weak {Γ = Γ} (⊑ᵘ-*Many Ψ)))
   Lq-blk {Γ = Γ} (ana {Ψ = Ψ} wfF coalg) = k-∘ k-lamωᶜ (k-∘ (Lq-blk coalg) (k-weak {Γ = Γ} (⊑ᵘ-*Many Ψ)))
-  Lq-blk {Γ = Γ} (loop {Ψ = Ψ} round) = k-∘ k-lamωᶜ (k-∘ (Lq-blk round) (k-weak {Γ = Γ} (⊑ᵘ-*Many Ψ)))
+  Lq-blk {Γ = Γ} (loop {Ψ = Ψ} round) = k-∘ k-lamω (k-∘ (Lq-blk round) (k-weak {Γ = Γ} (⊑ᵘ-*Many Ψ)))

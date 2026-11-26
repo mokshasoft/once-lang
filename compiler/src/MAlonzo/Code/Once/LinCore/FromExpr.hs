@@ -7311,81 +7311,18 @@ d_Lq_2972 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                            MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_56 (coe v3)
                                            (coe v20))))
                                   (coe
-                                     MAlonzo.Code.Once.LinCore.Core.C_llamω'7580'_1088
+                                     MAlonzo.Code.Once.LinCore.Core.C_llamω_1056
                                      (coe
-                                        MAlonzo.Code.Once.LinCore.Core.C__'8728'l__796
-                                        (coe
-                                           MAlonzo.Code.Once.LinCore.Core.C__'8855't__184
-                                           (coe
-                                              MAlonzo.Code.Once.LinCore.Core.C_Fn_190
-                                              (coe MAlonzo.Code.Once.LinCore.Core.C_many_154)
-                                              (coe
-                                                 MAlonzo.Code.Once.LinCore.FromIR.du_grade_864
-                                                 (coe v23))
-                                              (coe
-                                                 d_ty_658 (coe v0) (coe v3)
-                                                 (coe
-                                                    MAlonzo.Code.Once.Spec.Type.du_'10214'_'10215'F_50
-                                                    (coe v21) (coe v20)))
-                                              (coe
-                                                 MAlonzo.Code.Once.LinCore.FromIR.d_'10218'_'10219'_866
-                                                 (coe v0)
-                                                 (coe
-                                                    MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_56
-                                                    (coe v3) (coe v20))))
-                                           (coe
-                                              MAlonzo.Code.Once.LinCore.FromIR.d_'10218'_'10219'_866
-                                              (coe v0)
-                                              (coe
-                                                 MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_56 (coe v3)
-                                                 (coe v20))))
-                                        (coe
-                                           MAlonzo.Code.Once.LinCore.Core.C__'8728'l__796
-                                           (coe
-                                              MAlonzo.Code.Once.LinCore.Core.C__'8855't__184
-                                              (coe MAlonzo.Code.Once.LinCore.Core.C_One_180)
-                                              (coe
-                                                 MAlonzo.Code.Once.LinCore.FromIR.d_'10218'_'10219'_866
-                                                 (coe v0)
-                                                 (coe
-                                                    MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_56
-                                                    (coe v3) (coe v20))))
-                                           (coe MAlonzo.Code.Once.LinCore.Core.C_lul_826)
-                                           (coe
-                                              MAlonzo.Code.Once.LinCore.Core.C__'8855'l__808
-                                              (coe MAlonzo.Code.Once.LinCore.Core.C_drop_872)
-                                              (coe MAlonzo.Code.Once.LinCore.Core.C_lid_786)))
-                                        (coe
-                                           MAlonzo.Code.Once.LinCore.Core.C_lend_966
-                                           (coe
-                                              MAlonzo.Code.Once.LinCore.Core.C_lcata_924
-                                              (coe
-                                                 MAlonzo.Code.Once.LinCore.Core.C_bsnd_994
-                                                 (coe MAlonzo.Code.Once.LinCore.Core.C_bev_1074)))))
+                                        MAlonzo.Code.Once.LinCore.Core.C_lcata_924
+                                        (coe MAlonzo.Code.Once.LinCore.Core.C_bev_1074))
                                      (coe
-                                        du_gdB_1284 (coe v23)
+                                        du_gdL_1306 (coe v23)
                                         (coe
                                            (\ v24 v25 ->
                                               coe
-                                                MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1156
+                                                MAlonzo.Code.Once.LinCore.Core.C_k'45'cata_1294
                                                 (coe
-                                                   MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1156
-                                                   (coe
-                                                      MAlonzo.Code.Once.LinCore.Core.C_k'45'lul_1190)
-                                                   (coe
-                                                      MAlonzo.Code.Once.LinCore.Core.C_k'45''8855'_1172
-                                                      (coe
-                                                         MAlonzo.Code.Once.LinCore.Core.C_k'45'drop_1236)
-                                                      (coe
-                                                         MAlonzo.Code.Once.LinCore.Core.C_k'45'id_1142)))
-                                                (coe
-                                                   MAlonzo.Code.Once.LinCore.Core.C_k'45'lend_1340
-                                                   (coe
-                                                      MAlonzo.Code.Once.LinCore.Core.C_k'45'cata_1294
-                                                      (coe
-                                                         MAlonzo.Code.Once.LinCore.Core.C_k'45'snd_1374
-                                                         (coe
-                                                            MAlonzo.Code.Once.LinCore.Core.C_k'45'bev_1460))))))))
+                                                   MAlonzo.Code.Once.LinCore.Core.C_k'45'bev_1460)))))
                                   (coe
                                      MAlonzo.Code.Once.LinCore.Core.C__'8728'l__796
                                      (coe du_Co_666 (coe v0) (coe v3) (coe v5) (coe v11))
@@ -7516,62 +7453,11 @@ d_Lq_2972 v0 v1 v2 v3 v4 v5 v6 v7 v8
                              (coe
                                 MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_56 (coe v3) (coe v15)))))
                     (coe
-                       MAlonzo.Code.Once.LinCore.Core.C_llamω'7580'_1088
+                       MAlonzo.Code.Once.LinCore.Core.C_llamω_1056
                        (coe
-                          MAlonzo.Code.Once.LinCore.Core.C__'8728'l__796
-                          (coe
-                             MAlonzo.Code.Once.LinCore.Core.C__'8855't__184
-                             (coe
-                                MAlonzo.Code.Once.LinCore.Core.C_Fn_190
-                                (coe MAlonzo.Code.Once.LinCore.Core.C_many_154)
-                                (coe MAlonzo.Code.Once.LinCore.Core.C_act_158)
-                                (coe
-                                   MAlonzo.Code.Once.LinCore.FromIR.d_'10218'_'10219'_866 (coe v0)
-                                   (coe
-                                      MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_56 (coe v3) (coe v15)))
-                                (coe
-                                   MAlonzo.Code.Once.LinCore.Core.C__'8853't__186
-                                   (coe
-                                      MAlonzo.Code.Once.LinCore.FromIR.d_'10218'_'10219'_866
-                                      (coe v0)
-                                      (coe
-                                         MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_56 (coe v3)
-                                         (coe v17)))
-                                   (coe
-                                      MAlonzo.Code.Once.LinCore.FromIR.d_'10218'_'10219'_866
-                                      (coe v0)
-                                      (coe
-                                         MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_56 (coe v3)
-                                         (coe v15)))))
-                             (coe
-                                MAlonzo.Code.Once.LinCore.FromIR.d_'10218'_'10219'_866 (coe v0)
-                                (coe
-                                   MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_56 (coe v3) (coe v17))))
-                          (coe
-                             MAlonzo.Code.Once.LinCore.Core.C__'8728'l__796
-                             (coe
-                                MAlonzo.Code.Once.LinCore.Core.C__'8855't__184
-                                (coe MAlonzo.Code.Once.LinCore.Core.C_One_180)
-                                (coe
-                                   MAlonzo.Code.Once.LinCore.FromIR.d_'10218'_'10219'_866 (coe v0)
-                                   (coe
-                                      MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_56 (coe v3)
-                                      (coe v17))))
-                             (coe MAlonzo.Code.Once.LinCore.Core.C_lul_826)
-                             (coe
-                                MAlonzo.Code.Once.LinCore.Core.C__'8855'l__808
-                                (coe MAlonzo.Code.Once.LinCore.Core.C_drop_872)
-                                (coe MAlonzo.Code.Once.LinCore.Core.C_lid_786)))
-                          (coe
-                             MAlonzo.Code.Once.LinCore.Core.C_lend_966
-                             (coe
-                                MAlonzo.Code.Once.LinCore.Core.C_liter_1134
-                                (coe
-                                   MAlonzo.Code.Once.LinCore.Core.C_bsnd_994
-                                   (coe MAlonzo.Code.Once.LinCore.Core.C_bev_1074))
-                                (coe
-                                   MAlonzo.Code.Once.LinCore.Core.C_k'45'snd_1374
-                                   (coe MAlonzo.Code.Once.LinCore.Core.C_k'45'bev_1460)))))
+                          MAlonzo.Code.Once.LinCore.Core.C_liter_1134
+                          (coe MAlonzo.Code.Once.LinCore.Core.C_bev_1074)
+                          (coe MAlonzo.Code.Once.LinCore.Core.C_k'45'bev_1460))
                        (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))
                     (coe
                        MAlonzo.Code.Once.LinCore.Core.C__'8728'l__796
@@ -8207,7 +8093,7 @@ du_Lq'45'blk_2986 v0 v1 v2 v3 v4 v5 v6 v7
                            MAlonzo.Code.Once.Spec.Grade.C_mk'45'kind_90 v21 v22
                              -> coe
                                   MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1156
-                                  (coe MAlonzo.Code.Once.LinCore.Core.C_k'45'lamω'7580'_1476)
+                                  (coe MAlonzo.Code.Once.LinCore.Core.C_k'45'lamω_1446)
                                   (coe
                                      MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1156
                                      (coe
@@ -8273,7 +8159,7 @@ du_Lq'45'blk_2986 v0 v1 v2 v3 v4 v5 v6 v7
              MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 v14 v15 v16
                -> coe
                     MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1156
-                    (coe MAlonzo.Code.Once.LinCore.Core.C_k'45'lamω'7580'_1476)
+                    (coe MAlonzo.Code.Once.LinCore.Core.C_k'45'lamω_1446)
                     (coe
                        MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1156
                        (coe

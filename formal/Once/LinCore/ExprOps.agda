@@ -451,11 +451,11 @@ module Ops (Σι : ISig) where
       ok-clo ((_ , _) , (_ , (tt , tt))) , ((ok-Lq f rf , ok-Lq g rg) , ok-split Γ Ψ₁ Ψ₂)
     ok-Lq (S.curry' f) r = ok-clo (ok-clo (_ , tt)) , ok-Lq f r
     ok-Lq {Γ = Γ} (S.cata {Ψ = Ψ} {F = F} {A = A} wfF alg) r =
-      ok-clo (_ , ok-cast (layerEq F wfF A) refl {t = bev} tt) , (ok-Lq alg r , ok-weak {Γ = Γ} (⊑ᵘ-*Many Ψ))
+      ok-cast (layerEq F wfF A) refl {t = bev} tt , (ok-Lq alg r , ok-weak {Γ = Γ} (⊑ᵘ-*Many Ψ))
     ok-Lq {Γ = Γ} (S.ana {Ψ = Ψ} {F = F} {A = A} wfF coalg) r =
       ok-clo (tt , (ok-cast refl (cong (Fn many act (ty A)) (layerEq F wfF A)) {t = lid} tt , tt)) , (ok-Lq coalg r , ok-weak {Γ = Γ} (⊑ᵘ-*Many Ψ))
     ok-Lq {Γ = Γ} (S.loop {Ψ = Ψ} round) r =
-      ok-clo _ , (ok-Lq round r , ok-weak {Γ = Γ} (⊑ᵘ-*Many Ψ))
+      _ , (ok-Lq round r , ok-weak {Γ = Γ} (⊑ᵘ-*Many Ψ))
 
     ok-appL {Γ = Γ} {Ψ₁} {Ψ₂} f x nothing rf rx =
       _ , ((ok-Lq f rf , (ok-Lq x rx , ok-weak {Γ = Γ} (⊑ᵘ-*Many Ψ₂))) , ok-split Γ Ψ₁ (G.Many *ᵘ Ψ₂))

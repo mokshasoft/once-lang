@@ -24921,6 +24921,9 @@ and some emitting programs 1.1–1.4× (`loop-emit` 9489 → 13214, `layer0-comp
 closure with BOTH bodies — the owned one for an owned call, the lent one for a lent call — removes that cost
 (a core generator beside `llamωᶜ`, lowered and proved like it); and lambdas whose body only reads what they
 capture get the lent form too.
+**And `cata`, `loop` (same day).** Their closures read the algebra / round too (`llamω (lcata … bev)`,
+`llamω (liter bev)`; `FromExprOk.rel-foldL`, `loopL`): an owned call was already "lend, then free", so
+only a lent call changes (no copy). Corpus run 0.99×, `s0151-cata-pure-alg` 0.92×, no program slower.
 
 ## D481 — A CASE COMBINATOR OVER CLOSURE-BUILDING ARMS COPIES ITS SHARED CONTEXT INTO EACH ARM (2026-11-23, proposed — for the user's review)
 **Found** (after D480): `bench/list-build-sum` still grows ×4 per doubling (2.64e8 at N = 1000; master 1.23M).

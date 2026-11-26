@@ -1343,17 +1343,17 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRT
         ≈R-≈ (wg wb) (≈-sym (≈-trans (bind-pure (distribIR-pure ((f′ , g′) , inj₂ b′))) (bind-pure (≈-trans (bind-pure ret-bind) ret-bind))))
 
   -- ★ THE LOOP: the round lent to every round, against master's `Iter` of `apply`
-  loopB : ∀ {A B : IRTy}
-        → Rel (Once.LinCore.PassTr.dropl fmt ∘l lend (liter (bsnd (bev {g = act} {⟪ A ⟫} {⟪ B ⟫ ⊕t ⟪ A ⟫})) (k-snd k-bev)))
-              (M.Iter (M.apply {A} {B I.+ A} {G.act} M.∘ M.⟨ M.fst , M.snd ⟩))
-  loopB {A} {B} = mkRel λ { {F , a} {F′ , a′} (wF , wa) →
-    ≈-≈R (pair-drop (F ,_) (Lᶜ δ (Once.LinCore.PassTr.dropl fmt {Γ = L} {E = One} {A = Fn many act ⟪ A ⟫ (⟪ B ⟫ ⊕t ⟪ A ⟫)} {B = ⟪ B ⟫}) tt) (λ _ → refl))
-         (iter-congR (λ r → ≈R-≈ (wF r) (≈-sym (bind-pure (≈-trans ret-bind ret-bind))))
-                     (≈R-≈ (wF wa) (≈-sym (bind-pure (≈-trans ret-bind ret-bind))))) }
+  -- (the closure reads the round: `llamω`, plan 0.157 S2)
+  loopL : ∀ {A B : IRTy} {F F′} → W (A I.⇛[ G.act ] (B I.+ A)) F F′ → ∀ {a a′} → W A a a′
+        → Lᶜ δ (liter (bev {g = act} {⟪ A ⟫} {⟪ B ⟫ ⊕t ⟪ A ⟫}) k-bev) F a
+          ≈[ W B ] evalᴰ fmt ρ (M.Iter (M.apply {A} {B I.+ A} {G.act} M.∘ M.⟨ M.fst , M.snd ⟩)) (F′ , a′)
+  loopL wF wa =
+    iter-congR (λ r → ≈R-≈ (wF r) (≈-sym (bind-pure (≈-trans ret-bind ret-bind))))
+               (≈R-≈ (wF wa) (≈-sym (bind-pure (≈-trans ret-bind ret-bind))))
 
   ok-loop : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A B : Ty m}
               (r : Expr Γ Ψ (A ⇒[ G.mk-kind G.Many G.act ] (B + A))) → Goal r → Goal (loop r)
-  ok-loop {Γ = Γ} {Ψ} r rr = rel-∘ (rel-cloG G.eff tt loopB) (rel-∘ rr (rel-weak am {Γ = Γ} (⊑ᵘ-*Many Ψ)))
+  ok-loop {Γ = Γ} {Ψ} r rr = rel-∘ (rel-cloL G.eff tt loopL) (rel-∘ rr (rel-weak am {Γ = Γ} (⊑ᵘ-*Many Ψ)))
 
   -- ★ A CONVERSION, along the subtyping derivation (`coeIR`)
   -- (the argument converted, the closure beside it)
@@ -1419,24 +1419,24 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRT
             ≈[ W B ] evalᴰ fmt ρ (subst (λ o → M.IR ((X I.⇛[ π ] B) I.* o) B) c (M.apply M.∘ M.⟨ M.fst , M.snd ⟩)) x′
   fold-ih refl {f , y} {f′ , y′} (wf , wy) = ≈R-≈ (wf wy) (≈-sym (bind-pure (≈-trans ret-bind ret-bind)))
 
-  rel-fold : ∀ {m} {Δ : KCtx m} (F : Fun m) (wf : WFFun Δ F) (A : Ty m) {π}
-           → Rel (Once.LinCore.PassTr.dropl fmt ∘l lend (lcata (lf (I.eraseF F)) (bsnd (cast (layerEq F wf A) refl (bev {g = grade π} {ty (ST.⟦ F ⟧F A)} {ty A})))))
-                 (M.Cata (wf-⌊⌋ wf) (subst (λ o → M.IR ((⌊ ST.⟦ F ⟧F A ⌋ I.⇛[ π ] ⌊ A ⌋) I.* o) ⌊ A ⌋) (⌊⟧T-commute F A) (M.apply M.∘ M.⟨ M.fst , M.snd ⟩)))
-  rel-fold F wf A {π} = mkRel λ { {e , x} {e′ , x′} (we , wx) →
-    ≈-≈R (≈-trans (pair-drop (e ,_) (Lᶜ δ (Once.LinCore.PassTr.dropl fmt {Γ = L} {E = One} {A = Fn many (grade π) (ty (ST.⟦ F ⟧F A)) (ty A)} {B = ty A}) tt) (λ _ → refl))
-                  (cataC-≡ (lf (I.eraseF F))
-                     (λ y → trans (alg-eq (layerEq F wf A) e (coh⁻¹ (lf (I.eraseF F)) _ y))
-                                  (cong (λ c → ev δ c (e , coh⁻¹ (lf (I.eraseF F)) _ y))
-                                        (sym (subst-trans′ (cong ⟪_⟫ (⌊⟧T-commute F A)) (⟪⟫-TI (wf-⌊⌋ wf) ⌊ A ⌋) P.apply))))
-                     x))
+  rel-foldL : ∀ {m} {Δ : KCtx m} (F : Fun m) (wf : WFFun Δ F) (A : Ty m) {π} {e e′}
+            → W (⌊ ST.⟦ F ⟧F A ⌋ I.⇛[ π ] ⌊ A ⌋) e e′ → ∀ {x x′} → W ⌊ ST.μ F ⌋ x x′
+            → Lᶜ δ (lcata (lf (I.eraseF F)) (cast (layerEq F wf A) refl (bev {g = grade π} {ty (ST.⟦ F ⟧F A)} {ty A}))) e x
+              ≈[ W ⌊ A ⌋ ] evalᴰ fmt ρ (M.Cata (wf-⌊⌋ wf) (subst (λ o → M.IR ((⌊ ST.⟦ F ⟧F A ⌋ I.⇛[ π ] ⌊ A ⌋) I.* o) ⌊ A ⌋) (⌊⟧T-commute F A) (M.apply M.∘ M.⟨ M.fst , M.snd ⟩))) (e′ , x′)
+  rel-foldL F wf A {π} {e} {e′} we {x} {x′} wx =
+    ≈-≈R (cataC-≡ (lf (I.eraseF F))
+            (λ y → trans (alg-eq (layerEq F wf A) e (coh⁻¹ (lf (I.eraseF F)) _ y))
+                         (cong (λ c → ev δ c (e , coh⁻¹ (lf (I.eraseF F)) _ y))
+                               (sym (subst-trans′ (cong ⟪_⟫ (⌊⟧T-commute F A)) (⟪⟫-TI (wf-⌊⌋ wf) ⌊ A ⌋) P.apply))))
+            x)
          (BP.Casts.cata≈ (casts δ cs) (wf-⌊⌋ wf)
             (subst (λ o → M.IR ((⌊ ST.⟦ F ⟧F A ⌋ I.⇛[ π ] ⌊ A ⌋) I.* o) ⌊ A ⌋) (⌊⟧T-commute F A) (M.apply M.∘ M.⟨ M.fst , M.snd ⟩))
             (subst (λ Z → P.IR L (Fn many (grade π) (ty (ST.⟦ F ⟧F A)) (ty A) ⊗t Z) (ty A)) (cong ⟪_⟫ (⌊⟧T-commute F A)) (P.apply {g = grade π}))
-            (fold-ih (⌊⟧T-commute F A)) (we , wx)) }
+            (fold-ih (⌊⟧T-commute F A)) (we , wx))
 
   ok-cata : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {F : Fun m} {Δₖ : KCtx m} {A : Ty m} {π}
               (wf : WFFun Δₖ F) (alg : Expr Γ Ψ (ST.⟦ F ⟧F A ⇒[ G.mk-kind G.Many π ] A)) → Goal alg → Goal (cata wf alg)
-  ok-cata {Γ = Γ} {Ψ} {F} {A = A} {π} wf alg ra = rel-∘ (rel-cloG π _ (rel-fold F wf A {π})) (rel-∘ ra (rel-weak am {Γ = Γ} (⊑ᵘ-*Many Ψ)))
+  ok-cata {Γ = Γ} {Ψ} {F} {A = A} {π} wf alg ra = rel-∘ (rel-cloL π _ (rel-foldL F wf A {π})) (rel-∘ ra (rel-weak am {Γ = Γ} (⊑ᵘ-*Many Ψ)))
 
   -- ★ THE UNFOLD. A cast of the identity returns its input, moved
   cast-id : ∀ {X Y : LTy} (q : X ≡ Y) (v : ⟦ X ⟧) → Lᶜ δ (cast {L} {One} refl q (lid {A = X})) tt v ≡ return∞ (subst ⟦_⟧ q v)
