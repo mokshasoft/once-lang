@@ -857,6 +857,56 @@ def gen_alt(al):
     def okinst(po, lvl):
         return "(ok%s {_}%s%s)" % (po.name + "I", "".join(" {%s}" % arg(p, lvl) for p in po.params),
                                    "".join(" " + ptyp(p, lvl) for p in po.params))
+    # ★ the tails' TYPINGS, one per level, at VARIABLES: level k types the
+    #   code k and takes level k+1 under ONE more binder (one weakening per
+    #   position), so a typing at the sources or at a constructor's values
+    #   is ONE application — not a k-deep weakening tower per level, which
+    #   is cubic in the existentials (`con⊢tr₂`: 10.6 s, 2026-10-20).
+    #   Only the positions the remaining codes cite carry a typing.
+    okl = lambda kk: "ok" + tn(kk)
+    def cited(kk):
+        pos = al.codes[kk:] + [al.body]
+        return ([p for p in XP if any(p in po.params for po in pos)],
+                [i for i in range(kk) if any(("e", i) in po.params for po in pos)])
+    def lkind(p):
+        """a position's kind with its depth over the lemma's own `J`"""
+        if isinstance(p, tuple) and p[0] == "e":
+            c = rc.ex[p[1]]
+            assert c[0] in ("Ty", "Tm", "Nat"), ("a raw existential cited later", al.n, p)
+            return ("nat",) if c[0] == "Nat" else ("K", 0 if c[0] == "Ty" else 1, dep(c[1], "J"))
+        kd = kind(p)
+        return kd if kd[0] != "K" else ("K", kd[1], re.sub(r"(?<![\w'])j(?![\w'])", "J", kd[2]))
+    def lhyp(kd):
+        return {"nat": "El ⌜Nat⌝", "qsig": "El " + FAM["P"], "ctx": "KCtx J", "fin": "Fin J"}.get(kd[0]) or "K %d %s" % (kd[1], kd[2])
+    def lwk(kd, t, d):
+        assert kd[0] != "fin", ("a Fin position under a binder", al.n, t)
+        if kd[0] == "nat": return "(wkN {t = %s} %s)" % (t, d)
+        if kd[0] == "qsig": return "(%s {t = %s} %s)" % ("wkQ" if FAM["P"] == "⌜QSig⌝" else "wkT", t, d)
+        if kd[0] == "ctx": return "(wkG {d = J} {g = %s} %s)" % (t, d)
+        return "(wkK {s = %d} {d = %s} {t = %s} %s)" % (kd[1], kd[2], t, d)
+    for kk in reversed(range(n + 1)):
+        args = xn + en(kk)
+        cx, ce = cited(kk)
+        hyps = [(pname(p), lkind(p)) for p in cx] + [("E%d" % i, lkind(("e", i))) for i in ce]
+        L.append("%s : {Ξ : Ctx}%s → %sTelOK Ξ %s (%s)" % (okl(kk), " {%s : RTm ⌊ Ξ ⌋}" % " ".join(args) if args else "",
+                 "".join("Ξ ⊢ %s ∷ %s → " % (x, lhyp(kd)) for x, kd in hyps), FAM["J"], " ".join([tn(kk)] + args)))
+        lhs = "%s {Ξ} %s %s" % (okl(kk), " ".join("{%s}" % x for x in args), " ".join("d" + x for x, _ in hyps))
+        def at0(po):
+            return "(ok%s {_}%s%s)" % (po.name + "I", "".join(" {%s}" % targ(p, xn, en(kk)) for p in po.params),
+                                       "".join(" d" + targ(p, xn, en(kk)) for p in po.params))
+        if kk == n:
+            L.append("%s = %s" % (lhs, at0(al.body)))
+        else:
+            ncx, nce = cited(kk + 1)
+            nargs = ["(w1 %s)" % x for x in args] + ["(var vz)"]
+            ds = [lwk(lkind(p), pname(p), "d" + pname(p)) for p in ncx] + \
+                 [lwk(lkind(("e", i)), "E%d" % i, "dE%d" % i) for i in nce if i < kk]
+            if kk in nce:
+                c = rc.ex[kk]
+                ds.append("(⊢var here)" if c[0] == "Nat" else "(here%s {m = %s})" % (c[0], dep(c[1], "J")))
+            L.append("%s = %s %s (%s {_} %s %s)" % (lhs, FAM["okσ"], at0(al.codes[kk]), okl(kk + 1),
+                     " ".join("{%s}" % a_ for a_ in nargs), " ".join(ds)))
+        L.append("")
     if L_:
         st = stack_of(rc, L_ - 1)
         sL = nest_sort(rc, L_ - 1)
@@ -877,12 +927,10 @@ def gen_alt(al):
         for m in reversed(range(i, n)):
             body = "(tσ %s %s)" % (inst(al.codes[m], m), body)
         return body
-    expr = okinst(al.body, n)
-    for i in reversed(range(n)):
-        expr = "(%s %s %s)" % (FAM["okσ"], okinst(al.codes[i], i), expr)
+    expr = "(%s {_} %s %s)" % (okl(0), " ".join("{%s}" % src(p) for p in XP), " ".join(styp(p) for p in cited(0)[0]))
     L.append("ok%s {Ξ} {qs} {j} {%s} {c} %s = %s" % (N, a, srcs, expr))
     L.append("")
-    al.ctx = dict(kind=kind, weaken=weaken, src=src, tn=tn, XP=XP)
+    al.ctx = dict(kind=kind, weaken=weaken, src=src, tn=tn, XP=XP, okl=okl, cited=cited)
     return L
 
 # ------------------------------------------------------------ a row's CONSTRUCTOR
@@ -982,10 +1030,11 @@ def gen_con(al, ci, nc, R, csf):
         return "(ok%s {_}%s%s)" % (po.name + "I", "".join(" {%s}" % arg_v(p, lvl, k) for p in po.params),
                                    "".join(" " + ptyp_v(p, lvl, k) for p in po.params))
     def okt(k):
-        expr = okinst_v(al.body, n, k)
-        for i in reversed(range(k, n)):
-            expr = "(%s %s %s)" % (FAM["okσ"], okinst_v(al.codes[i], i, k), expr)
-        return expr
+        # one application of the level-k typing (`ok…⁽ᵏ⁾`) at the values
+        if k == n: return okinst_v(al.body, n, k)
+        cx, ce = al.ctx["cited"](k)
+        return "(%s {_} %s %s)" % (al.ctx["okl"](k), " ".join("{%s}" % val[p] for p in XP) + "".join(" {e%d}" % i for i in range(k)),
+                                   " ".join([vty[p] for p in cx] + [vty[("e", i)] for i in ce]))
     xs = [val[p] for p in XP]
     es = ["e%d" % i for i in range(n)]
     # the payload, and its typing at the values

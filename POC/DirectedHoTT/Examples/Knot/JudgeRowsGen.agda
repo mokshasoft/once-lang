@@ -25,7 +25,7 @@ open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮)
 open import DirectedHoTT.Metatheory.TySub 𝒮 (Defs.size 𝒮) using ( ⊢wk )
-open import DirectedHoTT.Lib.Sugar 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf) using ( Cons; []; _∷_; tag; Lt; lt-z; lt-s; []ᵈ; _∷ᵈ_; AllD; v₀; v₁; v₂; v₃; v₄; v₅; v₆; _,ₚ_ )
+open import DirectedHoTT.Lib.Sugar 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf) using ( Cons; []; _∷_; tag; Lt; lt-z; lt-s; []ᵈ; _∷ᵈ_; AllD; v₀; _,ₚ_ )
 open import DirectedHoTT.Lib.SynView 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf) using ( PayV; ⊢recFst; ⊢recSnd; ⊢atDepthSK )
 import DirectedHoTT.Lib.NatCode 𝒮 (Defs.size 𝒮) as ᴵNatCode
 open ᴵNatCode using ( fromI )
@@ -90,8 +90,11 @@ T⊢tybase qs j p c = T⊢tybase⁽0⁾
 T⊢tybase-law : TelLaw T⊢tybase
 T⊢tybase-law σ qs j p c = T⊢tybase⁽0⁾-sub σ 
 
+okT⊢tybase⁽0⁾ : {Ξ : Ctx} → TelOK Ξ JT (T⊢tybase⁽0⁾)
+okT⊢tybase⁽0⁾ {Ξ}   = (okT⊢tybaseI {_})
+
 okT⊢tybase : {Ξ : Ctx} {qs j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ qs ∷ El ⌜TSig⌝ → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ p ∷ PayV sh-kbase ((tag 0) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CTat ((tag 0) ,ₚ j)) → TelOK Ξ JT (T⊢tybase qs j p c)
-okT⊢tybase {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okT⊢tybaseI {_})
+okT⊢tybase {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okT⊢tybase⁽0⁾ {_}  )
 
 r⊢tybase : Row
 r⊢tybase = record { R = λ qs j p c → rows (⌜ T⊢tybase qs j p c ⌝ᵗ ∷ []) ; R-sub = λ σ qs j p c → trans (rows-sub' σ (⌜ T⊢tybase qs j p c ⌝ᵗ ∷ [])) (cong (λ X → rows (X ∷ [])) {x = subTm σ (⌜ T⊢tybase qs j p c ⌝ᵗ)} {y = ⌜ T⊢tybase (subTm σ qs) (subTm σ j) (subTm σ p) (subTm σ c) ⌝ᵗ} (T⊢tybase-law σ qs j p c)) }
@@ -134,8 +137,11 @@ T⊢tyU qs j p c = T⊢tyU⁽0⁾
 T⊢tyU-law : TelLaw T⊢tyU
 T⊢tyU-law σ qs j p c = T⊢tyU⁽0⁾-sub σ 
 
+okT⊢tyU⁽0⁾ : {Ξ : Ctx} → TelOK Ξ JT (T⊢tyU⁽0⁾)
+okT⊢tyU⁽0⁾ {Ξ}   = (okT⊢tyUI {_})
+
 okT⊢tyU : {Ξ : Ctx} {qs j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ qs ∷ El ⌜TSig⌝ → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ p ∷ PayV sh-kU ((tag 0) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CTat ((tag 0) ,ₚ j)) → TelOK Ξ JT (T⊢tyU qs j p c)
-okT⊢tyU {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okT⊢tyUI {_})
+okT⊢tyU {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okT⊢tyU⁽0⁾ {_}  )
 
 r⊢tyU : Row
 r⊢tyU = record { R = λ qs j p c → rows (⌜ T⊢tyU qs j p c ⌝ᵗ ∷ []) ; R-sub = λ σ qs j p c → trans (rows-sub' σ (⌜ T⊢tyU qs j p c ⌝ᵗ ∷ [])) (cong (λ X → rows (X ∷ [])) {x = subTm σ (⌜ T⊢tyU qs j p c ⌝ᵗ)} {y = ⌜ T⊢tyU (subTm σ qs) (subTm σ j) (subTm σ p) (subTm σ c) ⌝ᵗ} (T⊢tyU-law σ qs j p c)) }
@@ -178,8 +184,11 @@ T⊢tyPi qs j p c = T⊢tyPi⁽0⁾ j (fst c) (fst p) (fst (snd p))
 T⊢tyPi-law : TelLaw T⊢tyPi
 T⊢tyPi-law σ qs j p c = T⊢tyPi⁽0⁾-sub σ j (fst c) (fst p) (fst (snd p))
 
+okT⊢tyPi⁽0⁾ : {Ξ : Ctx} {J G F0 F1 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ F0 ∷ K 0 J → Ξ ⊢ F1 ∷ K 0 (nsuc J) → TelOK Ξ JT (T⊢tyPi⁽0⁾ J G F0 F1)
+okT⊢tyPi⁽0⁾ {Ξ} {J} {G} {F0} {F1} dJ dG dF0 dF1 = (okT⊢tyPiI {_} {J} {G} {F0} {F1} dJ dG dF0 dF1)
+
 okT⊢tyPi : {Ξ : Ctx} {qs j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ qs ∷ El ⌜TSig⌝ → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ p ∷ PayV sh-kPi ((tag 0) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CTat ((tag 0) ,ₚ j)) → TelOK Ξ JT (T⊢tyPi qs j p c)
-okT⊢tyPi {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okT⊢tyPiI {_} {j} {(fst c)} {(fst p)} {(fst (snd p))} dj (⊢ctxOf dc) (⊢atDepthSK {sg = KSig} {a = tag 0} {j = j} {s = 0} {k = 0} (⊢recFst {s = 0} {k = 0} {sh = (rec 0 1 ∷ʰ []ʰ)} dp)) (⊢atDepthSK {sg = KSig} {a = tag 0} {j = j} {s = 0} {k = 1} (⊢recFst {s = 0} {k = 1} {sh = ([]ʰ)} (⊢recSnd {s = 0} {k = 0} {sh = (rec 0 1 ∷ʰ []ʰ)} dp))))
+okT⊢tyPi {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okT⊢tyPi⁽0⁾ {_} {j} {(fst c)} {(fst p)} {(fst (snd p))} dj (⊢ctxOf dc) (⊢atDepthSK {sg = KSig} {a = tag 0} {j = j} {s = 0} {k = 0} (⊢recFst {s = 0} {k = 0} {sh = (rec 0 1 ∷ʰ []ʰ)} dp)) (⊢atDepthSK {sg = KSig} {a = tag 0} {j = j} {s = 0} {k = 1} (⊢recFst {s = 0} {k = 1} {sh = ([]ʰ)} (⊢recSnd {s = 0} {k = 0} {sh = (rec 0 1 ∷ʰ []ʰ)} dp))))
 
 r⊢tyPi : Row
 r⊢tyPi = record { R = λ qs j p c → rows (⌜ T⊢tyPi qs j p c ⌝ᵗ ∷ []) ; R-sub = λ σ qs j p c → trans (rows-sub' σ (⌜ T⊢tyPi qs j p c ⌝ᵗ ∷ [])) (cong (λ X → rows (X ∷ [])) {x = subTm σ (⌜ T⊢tyPi qs j p c ⌝ᵗ)} {y = ⌜ T⊢tyPi (subTm σ qs) (subTm σ j) (subTm σ p) (subTm σ c) ⌝ᵗ} (T⊢tyPi-law σ qs j p c)) }
@@ -222,8 +231,11 @@ T⊢tySg qs j p c = T⊢tySg⁽0⁾ j (fst c) (fst p) (fst (snd p))
 T⊢tySg-law : TelLaw T⊢tySg
 T⊢tySg-law σ qs j p c = T⊢tySg⁽0⁾-sub σ j (fst c) (fst p) (fst (snd p))
 
+okT⊢tySg⁽0⁾ : {Ξ : Ctx} {J G F0 F1 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ F0 ∷ K 0 J → Ξ ⊢ F1 ∷ K 0 (nsuc J) → TelOK Ξ JT (T⊢tySg⁽0⁾ J G F0 F1)
+okT⊢tySg⁽0⁾ {Ξ} {J} {G} {F0} {F1} dJ dG dF0 dF1 = (okT⊢tySgI {_} {J} {G} {F0} {F1} dJ dG dF0 dF1)
+
 okT⊢tySg : {Ξ : Ctx} {qs j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ qs ∷ El ⌜TSig⌝ → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ p ∷ PayV sh-kSg ((tag 0) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CTat ((tag 0) ,ₚ j)) → TelOK Ξ JT (T⊢tySg qs j p c)
-okT⊢tySg {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okT⊢tySgI {_} {j} {(fst c)} {(fst p)} {(fst (snd p))} dj (⊢ctxOf dc) (⊢atDepthSK {sg = KSig} {a = tag 0} {j = j} {s = 0} {k = 0} (⊢recFst {s = 0} {k = 0} {sh = (rec 0 1 ∷ʰ []ʰ)} dp)) (⊢atDepthSK {sg = KSig} {a = tag 0} {j = j} {s = 0} {k = 1} (⊢recFst {s = 0} {k = 1} {sh = ([]ʰ)} (⊢recSnd {s = 0} {k = 0} {sh = (rec 0 1 ∷ʰ []ʰ)} dp))))
+okT⊢tySg {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okT⊢tySg⁽0⁾ {_} {j} {(fst c)} {(fst p)} {(fst (snd p))} dj (⊢ctxOf dc) (⊢atDepthSK {sg = KSig} {a = tag 0} {j = j} {s = 0} {k = 0} (⊢recFst {s = 0} {k = 0} {sh = (rec 0 1 ∷ʰ []ʰ)} dp)) (⊢atDepthSK {sg = KSig} {a = tag 0} {j = j} {s = 0} {k = 1} (⊢recFst {s = 0} {k = 1} {sh = ([]ʰ)} (⊢recSnd {s = 0} {k = 0} {sh = (rec 0 1 ∷ʰ []ʰ)} dp))))
 
 r⊢tySg : Row
 r⊢tySg = record { R = λ qs j p c → rows (⌜ T⊢tySg qs j p c ⌝ᵗ ∷ []) ; R-sub = λ σ qs j p c → trans (rows-sub' σ (⌜ T⊢tySg qs j p c ⌝ᵗ ∷ [])) (cong (λ X → rows (X ∷ [])) {x = subTm σ (⌜ T⊢tySg qs j p c ⌝ᵗ)} {y = ⌜ T⊢tySg (subTm σ qs) (subTm σ j) (subTm σ p) (subTm σ c) ⌝ᵗ} (T⊢tySg-law σ qs j p c)) }
@@ -266,8 +278,11 @@ T⊢tyEl qs j p c = T⊢tyEl⁽0⁾ j (fst c) (fst p)
 T⊢tyEl-law : TelLaw T⊢tyEl
 T⊢tyEl-law σ qs j p c = T⊢tyEl⁽0⁾-sub σ j (fst c) (fst p)
 
+okT⊢tyEl⁽0⁾ : {Ξ : Ctx} {J G F0 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ F0 ∷ K 1 J → TelOK Ξ JT (T⊢tyEl⁽0⁾ J G F0)
+okT⊢tyEl⁽0⁾ {Ξ} {J} {G} {F0} dJ dG dF0 = (okT⊢tyElI {_} {J} {G} {F0} dJ dG dF0)
+
 okT⊢tyEl : {Ξ : Ctx} {qs j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ qs ∷ El ⌜TSig⌝ → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ p ∷ PayV sh-kEl ((tag 0) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CTat ((tag 0) ,ₚ j)) → TelOK Ξ JT (T⊢tyEl qs j p c)
-okT⊢tyEl {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okT⊢tyElI {_} {j} {(fst c)} {(fst p)} dj (⊢ctxOf dc) (⊢atDepthSK {sg = KSig} {a = tag 0} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} dp)))
+okT⊢tyEl {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okT⊢tyEl⁽0⁾ {_} {j} {(fst c)} {(fst p)} dj (⊢ctxOf dc) (⊢atDepthSK {sg = KSig} {a = tag 0} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} dp)))
 
 r⊢tyEl : Row
 r⊢tyEl = record { R = λ qs j p c → rows (⌜ T⊢tyEl qs j p c ⌝ᵗ ∷ []) ; R-sub = λ σ qs j p c → trans (rows-sub' σ (⌜ T⊢tyEl qs j p c ⌝ᵗ ∷ [])) (cong (λ X → rows (X ∷ [])) {x = subTm σ (⌜ T⊢tyEl qs j p c ⌝ᵗ)} {y = ⌜ T⊢tyEl (subTm σ qs) (subTm σ j) (subTm σ p) (subTm σ c) ⌝ᵗ} (T⊢tyEl-law σ qs j p c)) }
@@ -310,8 +325,11 @@ T⊢tyHom qs j p c = T⊢tyHom⁽0⁾ j (fst c) (fst p) (fst (snd p)) (fst (snd 
 T⊢tyHom-law : TelLaw T⊢tyHom
 T⊢tyHom-law σ qs j p c = T⊢tyHom⁽0⁾-sub σ j (fst c) (fst p) (fst (snd p)) (fst (snd (snd p)))
 
+okT⊢tyHom⁽0⁾ : {Ξ : Ctx} {J G F0 F1 F2 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ F0 ∷ K 0 J → Ξ ⊢ F1 ∷ K 1 J → Ξ ⊢ F2 ∷ K 1 J → TelOK Ξ JT (T⊢tyHom⁽0⁾ J G F0 F1 F2)
+okT⊢tyHom⁽0⁾ {Ξ} {J} {G} {F0} {F1} {F2} dJ dG dF0 dF1 dF2 = (okT⊢tyHomI {_} {J} {G} {F0} {F1} {F2} dJ dG dF0 dF1 dF2)
+
 okT⊢tyHom : {Ξ : Ctx} {qs j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ qs ∷ El ⌜TSig⌝ → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ p ∷ PayV sh-kHom ((tag 0) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CTat ((tag 0) ,ₚ j)) → TelOK Ξ JT (T⊢tyHom qs j p c)
-okT⊢tyHom {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okT⊢tyHomI {_} {j} {(fst c)} {(fst p)} {(fst (snd p))} {(fst (snd (snd p)))} dj (⊢ctxOf dc) (⊢atDepthSK {sg = KSig} {a = tag 0} {j = j} {s = 0} {k = 0} (⊢recFst {s = 0} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp)) (⊢atDepthSK {sg = KSig} {a = tag 0} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 0} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp))) (⊢atDepthSK {sg = KSig} {a = tag 0} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 0} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp)))))
+okT⊢tyHom {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okT⊢tyHom⁽0⁾ {_} {j} {(fst c)} {(fst p)} {(fst (snd p))} {(fst (snd (snd p)))} dj (⊢ctxOf dc) (⊢atDepthSK {sg = KSig} {a = tag 0} {j = j} {s = 0} {k = 0} (⊢recFst {s = 0} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp)) (⊢atDepthSK {sg = KSig} {a = tag 0} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 0} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp))) (⊢atDepthSK {sg = KSig} {a = tag 0} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 0} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp)))))
 
 r⊢tyHom : Row
 r⊢tyHom = record { R = λ qs j p c → rows (⌜ T⊢tyHom qs j p c ⌝ᵗ ∷ []) ; R-sub = λ σ qs j p c → trans (rows-sub' σ (⌜ T⊢tyHom qs j p c ⌝ᵗ ∷ [])) (cong (λ X → rows (X ∷ [])) {x = subTm σ (⌜ T⊢tyHom qs j p c ⌝ᵗ)} {y = ⌜ T⊢tyHom (subTm σ qs) (subTm σ j) (subTm σ p) (subTm σ c) ⌝ᵗ} (T⊢tyHom-law σ qs j p c)) }
@@ -354,8 +372,11 @@ T⊢tyUnit qs j p c = T⊢tyUnit⁽0⁾
 T⊢tyUnit-law : TelLaw T⊢tyUnit
 T⊢tyUnit-law σ qs j p c = T⊢tyUnit⁽0⁾-sub σ 
 
+okT⊢tyUnit⁽0⁾ : {Ξ : Ctx} → TelOK Ξ JT (T⊢tyUnit⁽0⁾)
+okT⊢tyUnit⁽0⁾ {Ξ}   = (okT⊢tyUnitI {_})
+
 okT⊢tyUnit : {Ξ : Ctx} {qs j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ qs ∷ El ⌜TSig⌝ → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ p ∷ PayV sh-kUnit ((tag 0) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CTat ((tag 0) ,ₚ j)) → TelOK Ξ JT (T⊢tyUnit qs j p c)
-okT⊢tyUnit {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okT⊢tyUnitI {_})
+okT⊢tyUnit {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okT⊢tyUnit⁽0⁾ {_}  )
 
 r⊢tyUnit : Row
 r⊢tyUnit = record { R = λ qs j p c → rows (⌜ T⊢tyUnit qs j p c ⌝ᵗ ∷ []) ; R-sub = λ σ qs j p c → trans (rows-sub' σ (⌜ T⊢tyUnit qs j p c ⌝ᵗ ∷ [])) (cong (λ X → rows (X ∷ [])) {x = subTm σ (⌜ T⊢tyUnit qs j p c ⌝ᵗ)} {y = ⌜ T⊢tyUnit (subTm σ qs) (subTm σ j) (subTm σ p) (subTm σ c) ⌝ᵗ} (T⊢tyUnit-law σ qs j p c)) }
@@ -398,8 +419,11 @@ T⊢tyNat qs j p c = T⊢tyNat⁽0⁾
 T⊢tyNat-law : TelLaw T⊢tyNat
 T⊢tyNat-law σ qs j p c = T⊢tyNat⁽0⁾-sub σ 
 
+okT⊢tyNat⁽0⁾ : {Ξ : Ctx} → TelOK Ξ JT (T⊢tyNat⁽0⁾)
+okT⊢tyNat⁽0⁾ {Ξ}   = (okT⊢tyNatI {_})
+
 okT⊢tyNat : {Ξ : Ctx} {qs j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ qs ∷ El ⌜TSig⌝ → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ p ∷ PayV sh-kNat ((tag 0) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CTat ((tag 0) ,ₚ j)) → TelOK Ξ JT (T⊢tyNat qs j p c)
-okT⊢tyNat {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okT⊢tyNatI {_})
+okT⊢tyNat {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okT⊢tyNat⁽0⁾ {_}  )
 
 r⊢tyNat : Row
 r⊢tyNat = record { R = λ qs j p c → rows (⌜ T⊢tyNat qs j p c ⌝ᵗ ∷ []) ; R-sub = λ σ qs j p c → trans (rows-sub' σ (⌜ T⊢tyNat qs j p c ⌝ᵗ ∷ [])) (cong (λ X → rows (X ∷ [])) {x = subTm σ (⌜ T⊢tyNat qs j p c ⌝ᵗ)} {y = ⌜ T⊢tyNat (subTm σ qs) (subTm σ j) (subTm σ p) (subTm σ c) ⌝ᵗ} (T⊢tyNat-law σ qs j p c)) }
@@ -442,8 +466,11 @@ T⊢tyId qs j p c = T⊢tyId⁽0⁾ j (fst c) (fst p) (fst (snd p)) (fst (snd (s
 T⊢tyId-law : TelLaw T⊢tyId
 T⊢tyId-law σ qs j p c = T⊢tyId⁽0⁾-sub σ j (fst c) (fst p) (fst (snd p)) (fst (snd (snd p)))
 
+okT⊢tyId⁽0⁾ : {Ξ : Ctx} {J G F0 F1 F2 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ F0 ∷ K 0 J → Ξ ⊢ F1 ∷ K 1 J → Ξ ⊢ F2 ∷ K 1 J → TelOK Ξ JT (T⊢tyId⁽0⁾ J G F0 F1 F2)
+okT⊢tyId⁽0⁾ {Ξ} {J} {G} {F0} {F1} {F2} dJ dG dF0 dF1 dF2 = (okT⊢tyIdI {_} {J} {G} {F0} {F1} {F2} dJ dG dF0 dF1 dF2)
+
 okT⊢tyId : {Ξ : Ctx} {qs j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ qs ∷ El ⌜TSig⌝ → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ p ∷ PayV sh-kId ((tag 0) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CTat ((tag 0) ,ₚ j)) → TelOK Ξ JT (T⊢tyId qs j p c)
-okT⊢tyId {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okT⊢tyIdI {_} {j} {(fst c)} {(fst p)} {(fst (snd p))} {(fst (snd (snd p)))} dj (⊢ctxOf dc) (⊢atDepthSK {sg = KSig} {a = tag 0} {j = j} {s = 0} {k = 0} (⊢recFst {s = 0} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp)) (⊢atDepthSK {sg = KSig} {a = tag 0} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 0} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp))) (⊢atDepthSK {sg = KSig} {a = tag 0} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 0} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp)))))
+okT⊢tyId {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okT⊢tyId⁽0⁾ {_} {j} {(fst c)} {(fst p)} {(fst (snd p))} {(fst (snd (snd p)))} dj (⊢ctxOf dc) (⊢atDepthSK {sg = KSig} {a = tag 0} {j = j} {s = 0} {k = 0} (⊢recFst {s = 0} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp)) (⊢atDepthSK {sg = KSig} {a = tag 0} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 0} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp))) (⊢atDepthSK {sg = KSig} {a = tag 0} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 0} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp)))))
 
 r⊢tyId : Row
 r⊢tyId = record { R = λ qs j p c → rows (⌜ T⊢tyId qs j p c ⌝ᵗ ∷ []) ; R-sub = λ σ qs j p c → trans (rows-sub' σ (⌜ T⊢tyId qs j p c ⌝ᵗ ∷ [])) (cong (λ X → rows (X ∷ [])) {x = subTm σ (⌜ T⊢tyId qs j p c ⌝ᵗ)} {y = ⌜ T⊢tyId (subTm σ qs) (subTm σ j) (subTm σ p) (subTm σ c) ⌝ᵗ} (T⊢tyId-law σ qs j p c)) }
@@ -486,8 +513,11 @@ T⊢tyIMu qs j p c = T⊢tyIMu⁽0⁾ j (fst c) (fst p) (fst (snd p)) (fst (snd 
 T⊢tyIMu-law : TelLaw T⊢tyIMu
 T⊢tyIMu-law σ qs j p c = T⊢tyIMu⁽0⁾-sub σ j (fst c) (fst p) (fst (snd p)) (fst (snd (snd p)))
 
+okT⊢tyIMu⁽0⁾ : {Ξ : Ctx} {J G F0 F1 F2 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ F0 ∷ K 1 J → Ξ ⊢ F1 ∷ K 1 J → Ξ ⊢ F2 ∷ K 1 J → TelOK Ξ JT (T⊢tyIMu⁽0⁾ J G F0 F1 F2)
+okT⊢tyIMu⁽0⁾ {Ξ} {J} {G} {F0} {F1} {F2} dJ dG dF0 dF1 dF2 = (okT⊢tyIMuI {_} {J} {G} {F0} {F1} {F2} dJ dG dF0 dF1 dF2)
+
 okT⊢tyIMu : {Ξ : Ctx} {qs j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ qs ∷ El ⌜TSig⌝ → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ p ∷ PayV sh-kIMu ((tag 0) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CTat ((tag 0) ,ₚ j)) → TelOK Ξ JT (T⊢tyIMu qs j p c)
-okT⊢tyIMu {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okT⊢tyIMuI {_} {j} {(fst c)} {(fst p)} {(fst (snd p))} {(fst (snd (snd p)))} dj (⊢ctxOf dc) (⊢atDepthSK {sg = KSig} {a = tag 0} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp)) (⊢atDepthSK {sg = KSig} {a = tag 0} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp))) (⊢atDepthSK {sg = KSig} {a = tag 0} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp)))))
+okT⊢tyIMu {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okT⊢tyIMu⁽0⁾ {_} {j} {(fst c)} {(fst p)} {(fst (snd p))} {(fst (snd (snd p)))} dj (⊢ctxOf dc) (⊢atDepthSK {sg = KSig} {a = tag 0} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp)) (⊢atDepthSK {sg = KSig} {a = tag 0} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp))) (⊢atDepthSK {sg = KSig} {a = tag 0} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp)))))
 
 r⊢tyIMu : Row
 r⊢tyIMu = record { R = λ qs j p c → rows (⌜ T⊢tyIMu qs j p c ⌝ᵗ ∷ []) ; R-sub = λ σ qs j p c → trans (rows-sub' σ (⌜ T⊢tyIMu qs j p c ⌝ᵗ ∷ [])) (cong (λ X → rows (X ∷ [])) {x = subTm σ (⌜ T⊢tyIMu qs j p c ⌝ᵗ)} {y = ⌜ T⊢tyIMu (subTm σ qs) (subTm σ j) (subTm σ p) (subTm σ c) ⌝ᵗ} (T⊢tyIMu-law σ qs j p c)) }
@@ -530,8 +560,11 @@ T⊢tyDesc qs j p c = T⊢tyDesc⁽0⁾ j (fst c) (fst p)
 T⊢tyDesc-law : TelLaw T⊢tyDesc
 T⊢tyDesc-law σ qs j p c = T⊢tyDesc⁽0⁾-sub σ j (fst c) (fst p)
 
+okT⊢tyDesc⁽0⁾ : {Ξ : Ctx} {J G F0 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ F0 ∷ K 1 J → TelOK Ξ JT (T⊢tyDesc⁽0⁾ J G F0)
+okT⊢tyDesc⁽0⁾ {Ξ} {J} {G} {F0} dJ dG dF0 = (okT⊢tyDescI {_} {J} {G} {F0} dJ dG dF0)
+
 okT⊢tyDesc : {Ξ : Ctx} {qs j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ qs ∷ El ⌜TSig⌝ → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ p ∷ PayV sh-kDesc ((tag 0) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CTat ((tag 0) ,ₚ j)) → TelOK Ξ JT (T⊢tyDesc qs j p c)
-okT⊢tyDesc {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okT⊢tyDescI {_} {j} {(fst c)} {(fst p)} dj (⊢ctxOf dc) (⊢atDepthSK {sg = KSig} {a = tag 0} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} dp)))
+okT⊢tyDesc {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okT⊢tyDesc⁽0⁾ {_} {j} {(fst c)} {(fst p)} dj (⊢ctxOf dc) (⊢atDepthSK {sg = KSig} {a = tag 0} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} dp)))
 
 r⊢tyDesc : Row
 r⊢tyDesc = record { R = λ qs j p c → rows (⌜ T⊢tyDesc qs j p c ⌝ᵗ ∷ []) ; R-sub = λ σ qs j p c → trans (rows-sub' σ (⌜ T⊢tyDesc qs j p c ⌝ᵗ ∷ [])) (cong (λ X → rows (X ∷ [])) {x = subTm σ (⌜ T⊢tyDesc qs j p c ⌝ᵗ)} {y = ⌜ T⊢tyDesc (subTm σ qs) (subTm σ j) (subTm σ p) (subTm σ c) ⌝ᵗ} (T⊢tyDesc-law σ qs j p c)) }
@@ -602,8 +635,14 @@ T⊢tyDIh qs j p c = T⊢tyDIh⁽0⁾ j (fst c) (fst p) (fst (snd p)) (fst (snd 
 T⊢tyDIh-law : TelLaw T⊢tyDIh
 T⊢tyDIh-law σ qs j p c = T⊢tyDIh⁽0⁾-sub σ j (fst c) (fst p) (fst (snd p)) (fst (snd (snd p))) (fst (snd (snd (snd p))))
 
+okT⊢tyDIh⁽1⁾ : {Ξ : Ctx} {J G F0 F1 F2 F3 E0 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ F0 ∷ K 1 J → Ξ ⊢ F1 ∷ K 0 (nsuc (nsuc J)) → Ξ ⊢ F2 ∷ K 1 J → Ξ ⊢ F3 ∷ K 1 J → Ξ ⊢ E0 ∷ K 1 J → TelOK Ξ JT (T⊢tyDIh⁽1⁾ J G F0 F1 F2 F3 E0)
+okT⊢tyDIh⁽1⁾ {Ξ} {J} {G} {F0} {F1} {F2} {F3} {E0} dJ dG dF0 dF1 dF2 dF3 dE0 = (okT⊢tyDIhI {_} {J} {G} {F0} {F1} {F2} {F3} {E0} dJ dG dF0 dF1 dF2 dF3 dE0)
+
+okT⊢tyDIh⁽0⁾ : {Ξ : Ctx} {J G F0 F1 F2 F3 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ F0 ∷ K 1 J → Ξ ⊢ F1 ∷ K 0 (nsuc (nsuc J)) → Ξ ⊢ F2 ∷ K 1 J → Ξ ⊢ F3 ∷ K 1 J → TelOK Ξ JT (T⊢tyDIh⁽0⁾ J G F0 F1 F2 F3)
+okT⊢tyDIh⁽0⁾ {Ξ} {J} {G} {F0} {F1} {F2} {F3} dJ dG dF0 dF1 dF2 dF3 = okσJ (okC⊢tyDIh_0I {_} {J} dJ) (okT⊢tyDIh⁽1⁾ {_} {(w1 J)} {(w1 G)} {(w1 F0)} {(w1 F1)} {(w1 F2)} {(w1 F3)} {v₀} (wkN {t = J} dJ) (wkG {d = J} {g = G} dG) (wkK {s = 1} {d = J} {t = F0} dF0) (wkK {s = 0} {d = (nsuc (nsuc J))} {t = F1} dF1) (wkK {s = 1} {d = J} {t = F2} dF2) (wkK {s = 1} {d = J} {t = F3} dF3) (hereTm {m = J}))
+
 okT⊢tyDIh : {Ξ : Ctx} {qs j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ qs ∷ El ⌜TSig⌝ → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ p ∷ PayV sh-kDIh ((tag 0) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CTat ((tag 0) ,ₚ j)) → TelOK Ξ JT (T⊢tyDIh qs j p c)
-okT⊢tyDIh {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okσJ (okC⊢tyDIh_0I {_} {j} dj) (okT⊢tyDIhI {_} {(w1 j)} {(w1 (fst c))} {(w1 (fst p))} {(w1 (fst (snd p)))} {(w1 (fst (snd (snd p))))} {(w1 (fst (snd (snd (snd p)))))} {v₀} (wkN {t = j} dj) (wkG {d = j} {g = (fst c)} (⊢ctxOf dc)) (wkK {s = 1} {d = j} {t = (fst p)} (⊢atDepthSK {sg = KSig} {a = tag 0} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 0 2 ∷ʰ rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp))) (wkK {s = 0} {d = (nsuc (nsuc j))} {t = (fst (snd p))} (⊢atDepthSK {sg = KSig} {a = tag 0} {j = j} {s = 0} {k = 2} (⊢recFst {s = 0} {k = 2} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 0 2 ∷ʰ rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp)))) (wkK {s = 1} {d = j} {t = (fst (snd (snd p)))} (⊢atDepthSK {sg = KSig} {a = tag 0} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 0} {k = 2} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 0 2 ∷ʰ rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp))))) (wkK {s = 1} {d = j} {t = (fst (snd (snd (snd p))))} (⊢atDepthSK {sg = KSig} {a = tag 0} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 0} {k = 2} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 0 2 ∷ʰ rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp)))))) (hereTm {m = j})))
+okT⊢tyDIh {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okT⊢tyDIh⁽0⁾ {_} {j} {(fst c)} {(fst p)} {(fst (snd p))} {(fst (snd (snd p)))} {(fst (snd (snd (snd p))))} dj (⊢ctxOf dc) (⊢atDepthSK {sg = KSig} {a = tag 0} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 0 2 ∷ʰ rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp)) (⊢atDepthSK {sg = KSig} {a = tag 0} {j = j} {s = 0} {k = 2} (⊢recFst {s = 0} {k = 2} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 0 2 ∷ʰ rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp))) (⊢atDepthSK {sg = KSig} {a = tag 0} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 0} {k = 2} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 0 2 ∷ʰ rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp)))) (⊢atDepthSK {sg = KSig} {a = tag 0} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 0} {k = 2} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 0 2 ∷ʰ rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp))))))
 
 r⊢tyDIh : Row
 r⊢tyDIh = record { R = λ qs j p c → rows (⌜ T⊢tyDIh qs j p c ⌝ᵗ ∷ []) ; R-sub = λ σ qs j p c → trans (rows-sub' σ (⌜ T⊢tyDIh qs j p c ⌝ᵗ ∷ [])) (cong (λ X → rows (X ∷ [])) {x = subTm σ (⌜ T⊢tyDIh qs j p c ⌝ᵗ)} {y = ⌜ T⊢tyDIh (subTm σ qs) (subTm σ j) (subTm σ p) (subTm σ c) ⌝ᵗ} (T⊢tyDIh-law σ qs j p c)) }
@@ -646,8 +685,11 @@ T⊢tyFin qs j p c = T⊢tyFin⁽0⁾ j (fst c) (fst p)
 T⊢tyFin-law : TelLaw T⊢tyFin
 T⊢tyFin-law σ qs j p c = T⊢tyFin⁽0⁾-sub σ j (fst c) (fst p)
 
+okT⊢tyFin⁽0⁾ : {Ξ : Ctx} {J G F0 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ F0 ∷ K 1 J → TelOK Ξ JT (T⊢tyFin⁽0⁾ J G F0)
+okT⊢tyFin⁽0⁾ {Ξ} {J} {G} {F0} dJ dG dF0 = (okT⊢tyFinI {_} {J} {G} {F0} dJ dG dF0)
+
 okT⊢tyFin : {Ξ : Ctx} {qs j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ qs ∷ El ⌜TSig⌝ → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ p ∷ PayV sh-kFin ((tag 0) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CTat ((tag 0) ,ₚ j)) → TelOK Ξ JT (T⊢tyFin qs j p c)
-okT⊢tyFin {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okT⊢tyFinI {_} {j} {(fst c)} {(fst p)} dj (⊢ctxOf dc) (⊢atDepthSK {sg = KSig} {a = tag 0} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} dp)))
+okT⊢tyFin {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okT⊢tyFin⁽0⁾ {_} {j} {(fst c)} {(fst p)} dj (⊢ctxOf dc) (⊢atDepthSK {sg = KSig} {a = tag 0} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} dp)))
 
 r⊢tyFin : Row
 r⊢tyFin = record { R = λ qs j p c → rows (⌜ T⊢tyFin qs j p c ⌝ᵗ ∷ []) ; R-sub = λ σ qs j p c → trans (rows-sub' σ (⌜ T⊢tyFin qs j p c ⌝ᵗ ∷ [])) (cong (λ X → rows (X ∷ [])) {x = subTm σ (⌜ T⊢tyFin qs j p c ⌝ᵗ)} {y = ⌜ T⊢tyFin (subTm σ qs) (subTm σ j) (subTm σ p) (subTm σ c) ⌝ᵗ} (T⊢tyFin-law σ qs j p c)) }
@@ -718,8 +760,14 @@ T⊢var qs j p c = T⊢var⁽0⁾ j (fst c) (snd c) (fst p)
 T⊢var-law : TelLaw T⊢var
 T⊢var-law σ qs j p c = T⊢var⁽0⁾-sub σ j (fst c) (snd c) (fst p)
 
+okT⊢var⁽1⁾ : {Ξ : Ctx} {J G X F0 E0 : RTm ⌊ Ξ ⌋} → TelOK Ξ JT (T⊢var⁽1⁾ J G X F0 E0)
+okT⊢var⁽1⁾ {Ξ} {J} {G} {X} {F0} {E0}  = (okT⊢varI {_})
+
+okT⊢var⁽0⁾ : {Ξ : Ctx} {J G X F0 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ F0 ∷ Fin J → TelOK Ξ JT (T⊢var⁽0⁾ J G X F0)
+okT⊢var⁽0⁾ {Ξ} {J} {G} {X} {F0} dJ dG dX dF0 = okσJ (okC⊢var_0I {_} {J} {G} {X} {F0} dJ dG dX dF0) (okT⊢var⁽1⁾ {_} {(w1 J)} {(w1 G)} {(w1 X)} {(w1 F0)} {v₀} )
+
 okT⊢var : {Ξ : Ctx} {qs j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ qs ∷ El ⌜TSig⌝ → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ p ∷ PayV sh-kvar ((tag 1) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CTat ((tag 1) ,ₚ j)) → TelOK Ξ JT (T⊢var qs j p c)
-okT⊢var {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okσJ (okC⊢var_0I {_} {j} {(fst c)} {(snd c)} {(fst p)} dj (⊢ctxOf dc) (⊢tyOf dc) (⊢varOf {j = j} dp)) (okT⊢varI {_}))
+okT⊢var {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okT⊢var⁽0⁾ {_} {j} {(fst c)} {(snd c)} {(fst p)} dj (⊢ctxOf dc) (⊢tyOf dc) (⊢varOf {j = j} dp))
 
 r⊢var : Row
 r⊢var = record { R = λ qs j p c → rows (⌜ T⊢var qs j p c ⌝ᵗ ∷ ⌜ TCVat 0 qs j p c ⌝ᵗ ∷ [])
@@ -763,8 +811,11 @@ T⊢lam qs j q c = T⊢lam⁽0⁾ j (fst c) (fst (snd c)) (fst q) (fst (snd q))
 T⊢lam-law : TelLaw T⊢lam
 T⊢lam-law σ qs j q c = T⊢lam⁽0⁾-sub σ j (fst c) (fst (snd c)) (fst q) (fst (snd q))
 
+okT⊢lam⁽0⁾ : {Ξ : Ctx} {J G F0 Q0 Q1 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ F0 ∷ K 1 (nsuc J) → Ξ ⊢ Q0 ∷ K 0 J → Ξ ⊢ Q1 ∷ K 0 (nsuc J) → TelOK Ξ JT (T⊢lam⁽0⁾ J G F0 Q0 Q1)
+okT⊢lam⁽0⁾ {Ξ} {J} {G} {F0} {Q0} {Q1} dJ dG dF0 dQ0 dQ1 = (okT⊢lamI {_} {J} {G} {F0} {Q0} {Q1} dJ dG dF0 dQ0 dQ1)
+
 okT⊢lam : {Ξ : Ctx} {qs j q c : RTm ⌊ Ξ ⌋} → Ξ ⊢ qs ∷ El ⌜TSig⌝ → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ q ∷ PayV sh-kPi ((tag 0) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CIat sh-klam ((tag 0) ,ₚ j)) → TelOK Ξ JT (T⊢lam qs j q c)
-okT⊢lam {Ξ} {qs} {j} {q} {c} dqs dj dq dc = (okT⊢lamI {_} {j} {(fst c)} {(fst (snd c))} {(fst q)} {(fst (snd q))} dj (⊢gI sh-klam dc) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 1} (⊢recFst {s = 1} {k = 1} {sh = ([]ʰ)} (⊢pI sh-klam dc))) (⊢atDepthSK {sg = KSig} {a = tag 0} {j = j} {s = 0} {k = 0} (⊢recFst {s = 0} {k = 0} {sh = (rec 0 1 ∷ʰ []ʰ)} dq)) (⊢atDepthSK {sg = KSig} {a = tag 0} {j = j} {s = 0} {k = 1} (⊢recFst {s = 0} {k = 1} {sh = ([]ʰ)} (⊢recSnd {s = 0} {k = 0} {sh = (rec 0 1 ∷ʰ []ʰ)} dq))))
+okT⊢lam {Ξ} {qs} {j} {q} {c} dqs dj dq dc = (okT⊢lam⁽0⁾ {_} {j} {(fst c)} {(fst (snd c))} {(fst q)} {(fst (snd q))} dj (⊢gI sh-klam dc) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 1} (⊢recFst {s = 1} {k = 1} {sh = ([]ʰ)} (⊢pI sh-klam dc))) (⊢atDepthSK {sg = KSig} {a = tag 0} {j = j} {s = 0} {k = 0} (⊢recFst {s = 0} {k = 0} {sh = (rec 0 1 ∷ʰ []ʰ)} dq)) (⊢atDepthSK {sg = KSig} {a = tag 0} {j = j} {s = 0} {k = 1} (⊢recFst {s = 0} {k = 1} {sh = ([]ʰ)} (⊢recSnd {s = 0} {k = 0} {sh = (rec 0 1 ∷ʰ []ʰ)} dq))))
 
 rT⊢lamI : Row
 rT⊢lamI = defRow₀ T⊢lam T⊢lam-law
@@ -869,8 +920,17 @@ T⊢app qs j p c = T⊢app⁽0⁾ j (fst c) (snd c) (fst p) (fst (snd p))
 T⊢app-law : TelLaw T⊢app
 T⊢app-law σ qs j p c = T⊢app⁽0⁾-sub σ j (fst c) (snd c) (fst p) (fst (snd p))
 
+okT⊢app⁽2⁾ : {Ξ : Ctx} {J G X F0 F1 E0 E1 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ F0 ∷ K 1 J → Ξ ⊢ F1 ∷ K 1 J → Ξ ⊢ E0 ∷ K 0 J → Ξ ⊢ E1 ∷ K 0 (nsuc J) → TelOK Ξ JT (T⊢app⁽2⁾ J G X F0 F1 E0 E1)
+okT⊢app⁽2⁾ {Ξ} {J} {G} {X} {F0} {F1} {E0} {E1} dJ dG dX dF0 dF1 dE0 dE1 = (okT⊢appI {_} {J} {G} {X} {F0} {F1} {E0} {E1} dJ dG dX dF0 dF1 dE0 dE1)
+
+okT⊢app⁽1⁾ : {Ξ : Ctx} {J G X F0 F1 E0 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ F0 ∷ K 1 J → Ξ ⊢ F1 ∷ K 1 J → Ξ ⊢ E0 ∷ K 0 J → TelOK Ξ JT (T⊢app⁽1⁾ J G X F0 F1 E0)
+okT⊢app⁽1⁾ {Ξ} {J} {G} {X} {F0} {F1} {E0} dJ dG dX dF0 dF1 dE0 = okσJ (okC⊢app_1I {_} {J} dJ) (okT⊢app⁽2⁾ {_} {(w1 J)} {(w1 G)} {(w1 X)} {(w1 F0)} {(w1 F1)} {(w1 E0)} {v₀} (wkN {t = J} dJ) (wkG {d = J} {g = G} dG) (wkK {s = 0} {d = J} {t = X} dX) (wkK {s = 1} {d = J} {t = F0} dF0) (wkK {s = 1} {d = J} {t = F1} dF1) (wkK {s = 0} {d = J} {t = E0} dE0) (hereTy {m = (nsuc J)}))
+
+okT⊢app⁽0⁾ : {Ξ : Ctx} {J G X F0 F1 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ F0 ∷ K 1 J → Ξ ⊢ F1 ∷ K 1 J → TelOK Ξ JT (T⊢app⁽0⁾ J G X F0 F1)
+okT⊢app⁽0⁾ {Ξ} {J} {G} {X} {F0} {F1} dJ dG dX dF0 dF1 = okσJ (okC⊢app_0I {_} {J} dJ) (okT⊢app⁽1⁾ {_} {(w1 J)} {(w1 G)} {(w1 X)} {(w1 F0)} {(w1 F1)} {v₀} (wkN {t = J} dJ) (wkG {d = J} {g = G} dG) (wkK {s = 0} {d = J} {t = X} dX) (wkK {s = 1} {d = J} {t = F0} dF0) (wkK {s = 1} {d = J} {t = F1} dF1) (hereTy {m = J}))
+
 okT⊢app : {Ξ : Ctx} {qs j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ qs ∷ El ⌜TSig⌝ → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ p ∷ PayV sh-kapp ((tag 1) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CTat ((tag 1) ,ₚ j)) → TelOK Ξ JT (T⊢app qs j p c)
-okT⊢app {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okσJ (okC⊢app_0I {_} {j} dj) (okσJ (okC⊢app_1I {_} {(w1 j)} (wkN {t = j} dj)) (okT⊢appI {_} {(w2 j)} {(w2 (fst c))} {(w2 (snd c))} {(w2 (fst p))} {(w2 (fst (snd p)))} {v₁} {v₀} (wkN {t = (w1 j)} (wkN {t = j} dj)) (wkG {d = (w1 j)} {g = (w1 (fst c))} (wkG {d = j} {g = (fst c)} (⊢ctxOf dc))) (wkK {s = 0} {d = (w1 j)} {t = (w1 (snd c))} (wkK {s = 0} {d = j} {t = (snd c)} (⊢tyOf dc))) (wkK {s = 1} {d = (w1 j)} {t = (w1 (fst p))} (wkK {s = 1} {d = j} {t = (fst p)} (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} dp)))) (wkK {s = 1} {d = (w1 j)} {t = (w1 (fst (snd p)))} (wkK {s = 1} {d = j} {t = (fst (snd p))} (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} dp))))) (wkK {s = 0} {d = (renTm vs j)} {t = v₀} (hereTy {m = j})) (hereTy {m = (nsuc (w1 j))}))))
+okT⊢app {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okT⊢app⁽0⁾ {_} {j} {(fst c)} {(snd c)} {(fst p)} {(fst (snd p))} dj (⊢ctxOf dc) (⊢tyOf dc) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} dp)) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} dp))))
 
 r⊢app : Row
 r⊢app = record { R = λ qs j p c → rows (⌜ T⊢app qs j p c ⌝ᵗ ∷ ⌜ TCVat 2 qs j p c ⌝ᵗ ∷ [])
@@ -914,8 +974,11 @@ T⊢pair qs j q c = T⊢pair⁽0⁾ j (fst c) (fst (snd c)) (fst (snd (snd c))) 
 T⊢pair-law : TelLaw T⊢pair
 T⊢pair-law σ qs j q c = T⊢pair⁽0⁾-sub σ j (fst c) (fst (snd c)) (fst (snd (snd c))) (fst q) (fst (snd q))
 
+okT⊢pair⁽0⁾ : {Ξ : Ctx} {J G F0 F1 Q0 Q1 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ F0 ∷ K 1 J → Ξ ⊢ F1 ∷ K 1 J → Ξ ⊢ Q0 ∷ K 0 J → Ξ ⊢ Q1 ∷ K 0 (nsuc J) → TelOK Ξ JT (T⊢pair⁽0⁾ J G F0 F1 Q0 Q1)
+okT⊢pair⁽0⁾ {Ξ} {J} {G} {F0} {F1} {Q0} {Q1} dJ dG dF0 dF1 dQ0 dQ1 = (okT⊢pairI {_} {J} {G} {F0} {F1} {Q0} {Q1} dJ dG dF0 dF1 dQ0 dQ1)
+
 okT⊢pair : {Ξ : Ctx} {qs j q c : RTm ⌊ Ξ ⌋} → Ξ ⊢ qs ∷ El ⌜TSig⌝ → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ q ∷ PayV sh-kSg ((tag 0) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CIat sh-kpair ((tag 0) ,ₚ j)) → TelOK Ξ JT (T⊢pair qs j q c)
-okT⊢pair {Ξ} {qs} {j} {q} {c} dqs dj dq dc = (okT⊢pairI {_} {j} {(fst c)} {(fst (snd c))} {(fst (snd (snd c)))} {(fst q)} {(fst (snd q))} dj (⊢gI sh-kpair dc) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢pI sh-kpair dc))) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢pI sh-kpair dc)))) (⊢atDepthSK {sg = KSig} {a = tag 0} {j = j} {s = 0} {k = 0} (⊢recFst {s = 0} {k = 0} {sh = (rec 0 1 ∷ʰ []ʰ)} dq)) (⊢atDepthSK {sg = KSig} {a = tag 0} {j = j} {s = 0} {k = 1} (⊢recFst {s = 0} {k = 1} {sh = ([]ʰ)} (⊢recSnd {s = 0} {k = 0} {sh = (rec 0 1 ∷ʰ []ʰ)} dq))))
+okT⊢pair {Ξ} {qs} {j} {q} {c} dqs dj dq dc = (okT⊢pair⁽0⁾ {_} {j} {(fst c)} {(fst (snd c))} {(fst (snd (snd c)))} {(fst q)} {(fst (snd q))} dj (⊢gI sh-kpair dc) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢pI sh-kpair dc))) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢pI sh-kpair dc)))) (⊢atDepthSK {sg = KSig} {a = tag 0} {j = j} {s = 0} {k = 0} (⊢recFst {s = 0} {k = 0} {sh = (rec 0 1 ∷ʰ []ʰ)} dq)) (⊢atDepthSK {sg = KSig} {a = tag 0} {j = j} {s = 0} {k = 1} (⊢recFst {s = 0} {k = 1} {sh = ([]ʰ)} (⊢recSnd {s = 0} {k = 0} {sh = (rec 0 1 ∷ʰ []ʰ)} dq))))
 
 rT⊢pairI : Row
 rT⊢pairI = defRow₀ T⊢pair T⊢pair-law
@@ -964,8 +1027,11 @@ T⊢absurd qs j p c = T⊢absurd⁽0⁾ j (fst c) (snd c) (fst p) (fst (snd p))
 T⊢absurd-law : TelLaw T⊢absurd
 T⊢absurd-law σ qs j p c = T⊢absurd⁽0⁾-sub σ j (fst c) (snd c) (fst p) (fst (snd p))
 
+okT⊢absurd⁽0⁾ : {Ξ : Ctx} {J G X F0 F1 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ F0 ∷ K 1 J → Ξ ⊢ F1 ∷ K 1 J → TelOK Ξ JT (T⊢absurd⁽0⁾ J G X F0 F1)
+okT⊢absurd⁽0⁾ {Ξ} {J} {G} {X} {F0} {F1} dJ dG dX dF0 dF1 = (okT⊢absurdI {_} {J} {G} {X} {F0} {F1} dJ dG dX dF0 dF1)
+
 okT⊢absurd : {Ξ : Ctx} {qs j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ qs ∷ El ⌜TSig⌝ → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ p ∷ PayV sh-kabsurd ((tag 1) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CTat ((tag 1) ,ₚ j)) → TelOK Ξ JT (T⊢absurd qs j p c)
-okT⊢absurd {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okT⊢absurdI {_} {j} {(fst c)} {(snd c)} {(fst p)} {(fst (snd p))} dj (⊢ctxOf dc) (⊢tyOf dc) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} dp)) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} dp))))
+okT⊢absurd {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okT⊢absurd⁽0⁾ {_} {j} {(fst c)} {(snd c)} {(fst p)} {(fst (snd p))} dj (⊢ctxOf dc) (⊢tyOf dc) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} dp)) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} dp))))
 
 r⊢absurd : Row
 r⊢absurd = record { R = λ qs j p c → rows (⌜ T⊢absurd qs j p c ⌝ᵗ ∷ ⌜ TCVat 4 qs j p c ⌝ᵗ ∷ [])
@@ -1009,8 +1075,11 @@ T⊢ordtr qs j p c = T⊢ordtr⁽0⁾ j (fst c) (snd c) (fst p) (fst (snd p)) (f
 T⊢ordtr-law : TelLaw T⊢ordtr
 T⊢ordtr-law σ qs j p c = T⊢ordtr⁽0⁾-sub σ j (fst c) (snd c) (fst p) (fst (snd p)) (fst (snd (snd p))) (fst (snd (snd (snd p)))) (fst (snd (snd (snd (snd p)))))
 
+okT⊢ordtr⁽0⁾ : {Ξ : Ctx} {J G X F0 F1 F2 F3 F4 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ F0 ∷ K 1 J → Ξ ⊢ F1 ∷ K 1 J → Ξ ⊢ F2 ∷ K 1 J → Ξ ⊢ F3 ∷ K 1 J → Ξ ⊢ F4 ∷ K 1 J → TelOK Ξ JT (T⊢ordtr⁽0⁾ J G X F0 F1 F2 F3 F4)
+okT⊢ordtr⁽0⁾ {Ξ} {J} {G} {X} {F0} {F1} {F2} {F3} {F4} dJ dG dX dF0 dF1 dF2 dF3 dF4 = (okT⊢ordtrI {_} {J} {G} {X} {F0} {F1} {F2} {F3} {F4} dJ dG dX dF0 dF1 dF2 dF3 dF4)
+
 okT⊢ordtr : {Ξ : Ctx} {qs j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ qs ∷ El ⌜TSig⌝ → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ p ∷ PayV sh-kordtr ((tag 1) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CTat ((tag 1) ,ₚ j)) → TelOK Ξ JT (T⊢ordtr qs j p c)
-okT⊢ordtr {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okT⊢ordtrI {_} {j} {(fst c)} {(snd c)} {(fst p)} {(fst (snd p))} {(fst (snd (snd p)))} {(fst (snd (snd (snd p))))} {(fst (snd (snd (snd (snd p)))))} dj (⊢ctxOf dc) (⊢tyOf dc) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp)) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp))) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp)))) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp))))) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp)))))))
+okT⊢ordtr {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okT⊢ordtr⁽0⁾ {_} {j} {(fst c)} {(snd c)} {(fst p)} {(fst (snd p))} {(fst (snd (snd p)))} {(fst (snd (snd (snd p))))} {(fst (snd (snd (snd (snd p)))))} dj (⊢ctxOf dc) (⊢tyOf dc) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp)) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp))) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp)))) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp))))) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp)))))))
 
 r⊢ordtr : Row
 r⊢ordtr = record { R = λ qs j p c → rows (⌜ T⊢ordtr qs j p c ⌝ᵗ ∷ ⌜ TCVat 5 qs j p c ⌝ᵗ ∷ [])
@@ -1082,8 +1151,14 @@ T⊢fst qs j p c = T⊢fst⁽0⁾ j (fst c) (snd c) (fst p)
 T⊢fst-law : TelLaw T⊢fst
 T⊢fst-law σ qs j p c = T⊢fst⁽0⁾-sub σ j (fst c) (snd c) (fst p)
 
+okT⊢fst⁽1⁾ : {Ξ : Ctx} {J G X F0 E0 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ F0 ∷ K 1 J → Ξ ⊢ E0 ∷ K 0 (nsuc J) → TelOK Ξ JT (T⊢fst⁽1⁾ J G X F0 E0)
+okT⊢fst⁽1⁾ {Ξ} {J} {G} {X} {F0} {E0} dJ dG dX dF0 dE0 = (okT⊢fstI {_} {J} {G} {X} {F0} {E0} dJ dG dX dF0 dE0)
+
+okT⊢fst⁽0⁾ : {Ξ : Ctx} {J G X F0 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ F0 ∷ K 1 J → TelOK Ξ JT (T⊢fst⁽0⁾ J G X F0)
+okT⊢fst⁽0⁾ {Ξ} {J} {G} {X} {F0} dJ dG dX dF0 = okσJ (okC⊢fst_0I {_} {J} dJ) (okT⊢fst⁽1⁾ {_} {(w1 J)} {(w1 G)} {(w1 X)} {(w1 F0)} {v₀} (wkN {t = J} dJ) (wkG {d = J} {g = G} dG) (wkK {s = 0} {d = J} {t = X} dX) (wkK {s = 1} {d = J} {t = F0} dF0) (hereTy {m = (nsuc J)}))
+
 okT⊢fst : {Ξ : Ctx} {qs j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ qs ∷ El ⌜TSig⌝ → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ p ∷ PayV sh-kfst ((tag 1) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CTat ((tag 1) ,ₚ j)) → TelOK Ξ JT (T⊢fst qs j p c)
-okT⊢fst {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okσJ (okC⊢fst_0I {_} {j} dj) (okT⊢fstI {_} {(w1 j)} {(w1 (fst c))} {(w1 (snd c))} {(w1 (fst p))} {v₀} (wkN {t = j} dj) (wkG {d = j} {g = (fst c)} (⊢ctxOf dc)) (wkK {s = 0} {d = j} {t = (snd c)} (⊢tyOf dc)) (wkK {s = 1} {d = j} {t = (fst p)} (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} dp))) (hereTy {m = (nsuc j)})))
+okT⊢fst {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okT⊢fst⁽0⁾ {_} {j} {(fst c)} {(snd c)} {(fst p)} dj (⊢ctxOf dc) (⊢tyOf dc) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} dp)))
 
 r⊢fst : Row
 r⊢fst = record { R = λ qs j p c → rows (⌜ T⊢fst qs j p c ⌝ᵗ ∷ ⌜ TCVat 6 qs j p c ⌝ᵗ ∷ [])
@@ -1183,8 +1258,17 @@ T⊢snd qs j p c = T⊢snd⁽0⁾ j (fst c) (snd c) (fst p)
 T⊢snd-law : TelLaw T⊢snd
 T⊢snd-law σ qs j p c = T⊢snd⁽0⁾-sub σ j (fst c) (snd c) (fst p)
 
+okT⊢snd⁽2⁾ : {Ξ : Ctx} {J G X F0 E0 E1 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ F0 ∷ K 1 J → Ξ ⊢ E0 ∷ K 0 J → Ξ ⊢ E1 ∷ K 0 (nsuc J) → TelOK Ξ JT (T⊢snd⁽2⁾ J G X F0 E0 E1)
+okT⊢snd⁽2⁾ {Ξ} {J} {G} {X} {F0} {E0} {E1} dJ dG dX dF0 dE0 dE1 = (okT⊢sndI {_} {J} {G} {X} {F0} {E0} {E1} dJ dG dX dF0 dE0 dE1)
+
+okT⊢snd⁽1⁾ : {Ξ : Ctx} {J G X F0 E0 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ F0 ∷ K 1 J → Ξ ⊢ E0 ∷ K 0 J → TelOK Ξ JT (T⊢snd⁽1⁾ J G X F0 E0)
+okT⊢snd⁽1⁾ {Ξ} {J} {G} {X} {F0} {E0} dJ dG dX dF0 dE0 = okσJ (okC⊢snd_1I {_} {J} dJ) (okT⊢snd⁽2⁾ {_} {(w1 J)} {(w1 G)} {(w1 X)} {(w1 F0)} {(w1 E0)} {v₀} (wkN {t = J} dJ) (wkG {d = J} {g = G} dG) (wkK {s = 0} {d = J} {t = X} dX) (wkK {s = 1} {d = J} {t = F0} dF0) (wkK {s = 0} {d = J} {t = E0} dE0) (hereTy {m = (nsuc J)}))
+
+okT⊢snd⁽0⁾ : {Ξ : Ctx} {J G X F0 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ F0 ∷ K 1 J → TelOK Ξ JT (T⊢snd⁽0⁾ J G X F0)
+okT⊢snd⁽0⁾ {Ξ} {J} {G} {X} {F0} dJ dG dX dF0 = okσJ (okC⊢snd_0I {_} {J} dJ) (okT⊢snd⁽1⁾ {_} {(w1 J)} {(w1 G)} {(w1 X)} {(w1 F0)} {v₀} (wkN {t = J} dJ) (wkG {d = J} {g = G} dG) (wkK {s = 0} {d = J} {t = X} dX) (wkK {s = 1} {d = J} {t = F0} dF0) (hereTy {m = J}))
+
 okT⊢snd : {Ξ : Ctx} {qs j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ qs ∷ El ⌜TSig⌝ → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ p ∷ PayV sh-ksnd ((tag 1) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CTat ((tag 1) ,ₚ j)) → TelOK Ξ JT (T⊢snd qs j p c)
-okT⊢snd {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okσJ (okC⊢snd_0I {_} {j} dj) (okσJ (okC⊢snd_1I {_} {(w1 j)} (wkN {t = j} dj)) (okT⊢sndI {_} {(w2 j)} {(w2 (fst c))} {(w2 (snd c))} {(w2 (fst p))} {v₁} {v₀} (wkN {t = (w1 j)} (wkN {t = j} dj)) (wkG {d = (w1 j)} {g = (w1 (fst c))} (wkG {d = j} {g = (fst c)} (⊢ctxOf dc))) (wkK {s = 0} {d = (w1 j)} {t = (w1 (snd c))} (wkK {s = 0} {d = j} {t = (snd c)} (⊢tyOf dc))) (wkK {s = 1} {d = (w1 j)} {t = (w1 (fst p))} (wkK {s = 1} {d = j} {t = (fst p)} (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} dp)))) (wkK {s = 0} {d = (renTm vs j)} {t = v₀} (hereTy {m = j})) (hereTy {m = (nsuc (w1 j))}))))
+okT⊢snd {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okT⊢snd⁽0⁾ {_} {j} {(fst c)} {(snd c)} {(fst p)} dj (⊢ctxOf dc) (⊢tyOf dc) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} dp)))
 
 r⊢snd : Row
 r⊢snd = record { R = λ qs j p c → rows (⌜ T⊢snd qs j p c ⌝ᵗ ∷ ⌜ TCVat 7 qs j p c ⌝ᵗ ∷ [])
@@ -1228,8 +1312,11 @@ T⊢cbase qs j q c = T⊢cbase⁽0⁾
 T⊢cbase-law : TelLaw T⊢cbase
 T⊢cbase-law σ qs j q c = T⊢cbase⁽0⁾-sub σ 
 
+okT⊢cbase⁽0⁾ : {Ξ : Ctx} → TelOK Ξ JT (T⊢cbase⁽0⁾)
+okT⊢cbase⁽0⁾ {Ξ}   = (okT⊢cbaseI {_})
+
 okT⊢cbase : {Ξ : Ctx} {qs j q c : RTm ⌊ Ξ ⌋} → Ξ ⊢ qs ∷ El ⌜TSig⌝ → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ q ∷ PayV sh-kU ((tag 0) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CIat sh-kcbase ((tag 0) ,ₚ j)) → TelOK Ξ JT (T⊢cbase qs j q c)
-okT⊢cbase {Ξ} {qs} {j} {q} {c} dqs dj dq dc = (okT⊢cbaseI {_})
+okT⊢cbase {Ξ} {qs} {j} {q} {c} dqs dj dq dc = (okT⊢cbase⁽0⁾ {_}  )
 
 rT⊢cbaseI : Row
 rT⊢cbaseI = defRow₀ T⊢cbase T⊢cbase-law
@@ -1278,8 +1365,11 @@ T⊢cPi qs j q c = T⊢cPi⁽0⁾ j (fst c) (fst (snd c)) (fst (snd (snd c)))
 T⊢cPi-law : TelLaw T⊢cPi
 T⊢cPi-law σ qs j q c = T⊢cPi⁽0⁾-sub σ j (fst c) (fst (snd c)) (fst (snd (snd c)))
 
+okT⊢cPi⁽0⁾ : {Ξ : Ctx} {J G F0 F1 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ F0 ∷ K 1 J → Ξ ⊢ F1 ∷ K 1 (nsuc J) → TelOK Ξ JT (T⊢cPi⁽0⁾ J G F0 F1)
+okT⊢cPi⁽0⁾ {Ξ} {J} {G} {F0} {F1} dJ dG dF0 dF1 = (okT⊢cPiI {_} {J} {G} {F0} {F1} dJ dG dF0 dF1)
+
 okT⊢cPi : {Ξ : Ctx} {qs j q c : RTm ⌊ Ξ ⌋} → Ξ ⊢ qs ∷ El ⌜TSig⌝ → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ q ∷ PayV sh-kU ((tag 0) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CIat sh-kcPi ((tag 0) ,ₚ j)) → TelOK Ξ JT (T⊢cPi qs j q c)
-okT⊢cPi {Ξ} {qs} {j} {q} {c} dqs dj dq dc = (okT⊢cPiI {_} {j} {(fst c)} {(fst (snd c))} {(fst (snd (snd c)))} dj (⊢gI sh-kcPi dc) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 1 ∷ʰ []ʰ)} (⊢pI sh-kcPi dc))) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 1} (⊢recFst {s = 1} {k = 1} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 1 ∷ʰ []ʰ)} (⊢pI sh-kcPi dc)))))
+okT⊢cPi {Ξ} {qs} {j} {q} {c} dqs dj dq dc = (okT⊢cPi⁽0⁾ {_} {j} {(fst c)} {(fst (snd c))} {(fst (snd (snd c)))} dj (⊢gI sh-kcPi dc) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 1 ∷ʰ []ʰ)} (⊢pI sh-kcPi dc))) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 1} (⊢recFst {s = 1} {k = 1} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 1 ∷ʰ []ʰ)} (⊢pI sh-kcPi dc)))))
 
 rT⊢cPiI : Row
 rT⊢cPiI = defRow₀ T⊢cPi T⊢cPi-law
@@ -1328,8 +1418,11 @@ T⊢cSg qs j q c = T⊢cSg⁽0⁾ j (fst c) (fst (snd c)) (fst (snd (snd c)))
 T⊢cSg-law : TelLaw T⊢cSg
 T⊢cSg-law σ qs j q c = T⊢cSg⁽0⁾-sub σ j (fst c) (fst (snd c)) (fst (snd (snd c)))
 
+okT⊢cSg⁽0⁾ : {Ξ : Ctx} {J G F0 F1 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ F0 ∷ K 1 J → Ξ ⊢ F1 ∷ K 1 (nsuc J) → TelOK Ξ JT (T⊢cSg⁽0⁾ J G F0 F1)
+okT⊢cSg⁽0⁾ {Ξ} {J} {G} {F0} {F1} dJ dG dF0 dF1 = (okT⊢cSgI {_} {J} {G} {F0} {F1} dJ dG dF0 dF1)
+
 okT⊢cSg : {Ξ : Ctx} {qs j q c : RTm ⌊ Ξ ⌋} → Ξ ⊢ qs ∷ El ⌜TSig⌝ → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ q ∷ PayV sh-kU ((tag 0) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CIat sh-kcSg ((tag 0) ,ₚ j)) → TelOK Ξ JT (T⊢cSg qs j q c)
-okT⊢cSg {Ξ} {qs} {j} {q} {c} dqs dj dq dc = (okT⊢cSgI {_} {j} {(fst c)} {(fst (snd c))} {(fst (snd (snd c)))} dj (⊢gI sh-kcSg dc) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 1 ∷ʰ []ʰ)} (⊢pI sh-kcSg dc))) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 1} (⊢recFst {s = 1} {k = 1} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 1 ∷ʰ []ʰ)} (⊢pI sh-kcSg dc)))))
+okT⊢cSg {Ξ} {qs} {j} {q} {c} dqs dj dq dc = (okT⊢cSg⁽0⁾ {_} {j} {(fst c)} {(fst (snd c))} {(fst (snd (snd c)))} dj (⊢gI sh-kcSg dc) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 1 ∷ʰ []ʰ)} (⊢pI sh-kcSg dc))) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 1} (⊢recFst {s = 1} {k = 1} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 1 ∷ʰ []ʰ)} (⊢pI sh-kcSg dc)))))
 
 rT⊢cSgI : Row
 rT⊢cSgI = defRow₀ T⊢cSg T⊢cSg-law
@@ -1378,8 +1471,11 @@ T⊢cHom qs j q c = T⊢cHom⁽0⁾ j (fst c) (fst (snd c)) (fst (snd (snd c))) 
 T⊢cHom-law : TelLaw T⊢cHom
 T⊢cHom-law σ qs j q c = T⊢cHom⁽0⁾-sub σ j (fst c) (fst (snd c)) (fst (snd (snd c))) (fst (snd (snd (snd c))))
 
+okT⊢cHom⁽0⁾ : {Ξ : Ctx} {J G F0 F1 F2 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ F0 ∷ K 1 J → Ξ ⊢ F1 ∷ K 1 J → Ξ ⊢ F2 ∷ K 1 J → TelOK Ξ JT (T⊢cHom⁽0⁾ J G F0 F1 F2)
+okT⊢cHom⁽0⁾ {Ξ} {J} {G} {F0} {F1} {F2} dJ dG dF0 dF1 dF2 = (okT⊢cHomI {_} {J} {G} {F0} {F1} {F2} dJ dG dF0 dF1 dF2)
+
 okT⊢cHom : {Ξ : Ctx} {qs j q c : RTm ⌊ Ξ ⌋} → Ξ ⊢ qs ∷ El ⌜TSig⌝ → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ q ∷ PayV sh-kU ((tag 0) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CIat sh-kcHom ((tag 0) ,ₚ j)) → TelOK Ξ JT (T⊢cHom qs j q c)
-okT⊢cHom {Ξ} {qs} {j} {q} {c} dqs dj dq dc = (okT⊢cHomI {_} {j} {(fst c)} {(fst (snd c))} {(fst (snd (snd c)))} {(fst (snd (snd (snd c))))} dj (⊢gI sh-kcHom dc) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} (⊢pI sh-kcHom dc))) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} (⊢pI sh-kcHom dc)))) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} (⊢pI sh-kcHom dc))))))
+okT⊢cHom {Ξ} {qs} {j} {q} {c} dqs dj dq dc = (okT⊢cHom⁽0⁾ {_} {j} {(fst c)} {(fst (snd c))} {(fst (snd (snd c)))} {(fst (snd (snd (snd c))))} dj (⊢gI sh-kcHom dc) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} (⊢pI sh-kcHom dc))) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} (⊢pI sh-kcHom dc)))) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} (⊢pI sh-kcHom dc))))))
 
 rT⊢cHomI : Row
 rT⊢cHomI = defRow₀ T⊢cHom T⊢cHom-law
@@ -1428,8 +1524,11 @@ T⊢hrefl qs j p c = T⊢hrefl⁽0⁾ j (fst c) (snd c) (fst p) (fst (snd p))
 T⊢hrefl-law : TelLaw T⊢hrefl
 T⊢hrefl-law σ qs j p c = T⊢hrefl⁽0⁾-sub σ j (fst c) (snd c) (fst p) (fst (snd p))
 
+okT⊢hrefl⁽0⁾ : {Ξ : Ctx} {J G X F0 F1 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ F0 ∷ K 1 J → Ξ ⊢ F1 ∷ K 1 J → TelOK Ξ JT (T⊢hrefl⁽0⁾ J G X F0 F1)
+okT⊢hrefl⁽0⁾ {Ξ} {J} {G} {X} {F0} {F1} dJ dG dX dF0 dF1 = (okT⊢hreflI {_} {J} {G} {X} {F0} {F1} dJ dG dX dF0 dF1)
+
 okT⊢hrefl : {Ξ : Ctx} {qs j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ qs ∷ El ⌜TSig⌝ → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ p ∷ PayV sh-khrefl ((tag 1) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CTat ((tag 1) ,ₚ j)) → TelOK Ξ JT (T⊢hrefl qs j p c)
-okT⊢hrefl {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okT⊢hreflI {_} {j} {(fst c)} {(snd c)} {(fst p)} {(fst (snd p))} dj (⊢ctxOf dc) (⊢tyOf dc) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} dp)) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} dp))))
+okT⊢hrefl {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okT⊢hrefl⁽0⁾ {_} {j} {(fst c)} {(snd c)} {(fst p)} {(fst (snd p))} dj (⊢ctxOf dc) (⊢tyOf dc) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} dp)) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} dp))))
 
 r⊢hrefl : Row
 r⊢hrefl = record { R = λ qs j p c → rows (⌜ T⊢hrefl qs j p c ⌝ᵗ ∷ ⌜ TCVat 12 qs j p c ⌝ᵗ ∷ [])
@@ -1557,8 +1656,20 @@ T⊢tr₁ qs j p c = T⊢tr₁⁽0⁾ j (fst c) (snd c) (fst p) (fst (snd p)) (f
 T⊢tr₁-law : TelLaw T⊢tr₁
 T⊢tr₁-law σ qs j p c = T⊢tr₁⁽0⁾-sub σ j (fst c) (snd c) (fst p) (fst (snd p)) (fst (snd (snd p)))
 
+okT⊢tr₁⁽3⁾ : {Ξ : Ctx} {J G X F0 F1 F2 E0 E1 E2 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ F1 ∷ K 1 J → Ξ ⊢ F2 ∷ K 1 J → Ξ ⊢ E0 ∷ K 1 J → Ξ ⊢ E1 ∷ K 1 J → TelOK Ξ JT (T⊢tr₁⁽3⁾ J G X F0 F1 F2 E0 E1 E2)
+okT⊢tr₁⁽3⁾ {Ξ} {J} {G} {X} {F0} {F1} {F2} {E0} {E1} {E2} dJ dG dX dF1 dF2 dE0 dE1 = (okT⊢tr₁I {_} {J} {G} {X} {F1} {F2} {E0} {E1} dJ dG dX dF1 dF2 dE0 dE1)
+
+okT⊢tr₁⁽2⁾ : {Ξ : Ctx} {J G X F0 F1 F2 E0 E1 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ F0 ∷ K 1 (nsuc J) → Ξ ⊢ F1 ∷ K 1 J → Ξ ⊢ F2 ∷ K 1 J → Ξ ⊢ E0 ∷ K 1 J → Ξ ⊢ E1 ∷ K 1 J → TelOK Ξ JT (T⊢tr₁⁽2⁾ J G X F0 F1 F2 E0 E1)
+okT⊢tr₁⁽2⁾ {Ξ} {J} {G} {X} {F0} {F1} {F2} {E0} {E1} dJ dG dX dF0 dF1 dF2 dE0 dE1 = okσJ (okC⊢tr₁_2I {_} {J} {F0} dJ dF0) (okT⊢tr₁⁽3⁾ {_} {(w1 J)} {(w1 G)} {(w1 X)} {(w1 F0)} {(w1 F1)} {(w1 F2)} {(w1 E0)} {(w1 E1)} {v₀} (wkN {t = J} dJ) (wkG {d = J} {g = G} dG) (wkK {s = 0} {d = J} {t = X} dX) (wkK {s = 1} {d = J} {t = F1} dF1) (wkK {s = 1} {d = J} {t = F2} dF2) (wkK {s = 1} {d = J} {t = E0} dE0) (wkK {s = 1} {d = J} {t = E1} dE1))
+
+okT⊢tr₁⁽1⁾ : {Ξ : Ctx} {J G X F0 F1 F2 E0 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ F0 ∷ K 1 (nsuc J) → Ξ ⊢ F1 ∷ K 1 J → Ξ ⊢ F2 ∷ K 1 J → Ξ ⊢ E0 ∷ K 1 J → TelOK Ξ JT (T⊢tr₁⁽1⁾ J G X F0 F1 F2 E0)
+okT⊢tr₁⁽1⁾ {Ξ} {J} {G} {X} {F0} {F1} {F2} {E0} dJ dG dX dF0 dF1 dF2 dE0 = okσJ (okC⊢tr₁_1I {_} {J} dJ) (okT⊢tr₁⁽2⁾ {_} {(w1 J)} {(w1 G)} {(w1 X)} {(w1 F0)} {(w1 F1)} {(w1 F2)} {(w1 E0)} {v₀} (wkN {t = J} dJ) (wkG {d = J} {g = G} dG) (wkK {s = 0} {d = J} {t = X} dX) (wkK {s = 1} {d = (nsuc J)} {t = F0} dF0) (wkK {s = 1} {d = J} {t = F1} dF1) (wkK {s = 1} {d = J} {t = F2} dF2) (wkK {s = 1} {d = J} {t = E0} dE0) (hereTm {m = J}))
+
+okT⊢tr₁⁽0⁾ : {Ξ : Ctx} {J G X F0 F1 F2 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ F0 ∷ K 1 (nsuc J) → Ξ ⊢ F1 ∷ K 1 J → Ξ ⊢ F2 ∷ K 1 J → TelOK Ξ JT (T⊢tr₁⁽0⁾ J G X F0 F1 F2)
+okT⊢tr₁⁽0⁾ {Ξ} {J} {G} {X} {F0} {F1} {F2} dJ dG dX dF0 dF1 dF2 = okσJ (okC⊢tr₁_0I {_} {J} dJ) (okT⊢tr₁⁽1⁾ {_} {(w1 J)} {(w1 G)} {(w1 X)} {(w1 F0)} {(w1 F1)} {(w1 F2)} {v₀} (wkN {t = J} dJ) (wkG {d = J} {g = G} dG) (wkK {s = 0} {d = J} {t = X} dX) (wkK {s = 1} {d = (nsuc J)} {t = F0} dF0) (wkK {s = 1} {d = J} {t = F1} dF1) (wkK {s = 1} {d = J} {t = F2} dF2) (hereTm {m = J}))
+
 okT⊢tr₁ : {Ξ : Ctx} {qs j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ qs ∷ El ⌜TSig⌝ → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ p ∷ PayV sh-ktr ((tag 1) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CTat ((tag 1) ,ₚ j)) → TelOK Ξ JT (T⊢tr₁ qs j p c)
-okT⊢tr₁ {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okσJ (okC⊢tr₁_0I {_} {j} dj) (okσJ (okC⊢tr₁_1I {_} {(w1 j)} (wkN {t = j} dj)) (okσJ (okC⊢tr₁_2I {_} {(w2 j)} {(w2 (fst p))} (wkN {t = (w1 j)} (wkN {t = j} dj)) (wkK {s = 1} {d = (w1 (nsuc j))} {t = (w1 (fst p))} (wkK {s = 1} {d = (nsuc j)} {t = (fst p)} (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 1} (⊢recFst {s = 1} {k = 1} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp))))) (okT⊢tr₁I {_} {(w3 j)} {(w3 (fst c))} {(w3 (snd c))} {(w3 (fst (snd p)))} {(w3 (fst (snd (snd p))))} {v₂} {v₁} (wkN {t = (w2 j)} (wkN {t = (w1 j)} (wkN {t = j} dj))) (wkG {d = (w2 j)} {g = (w2 (fst c))} (wkG {d = (w1 j)} {g = (w1 (fst c))} (wkG {d = j} {g = (fst c)} (⊢ctxOf dc)))) (wkK {s = 0} {d = (w2 j)} {t = (w2 (snd c))} (wkK {s = 0} {d = (w1 j)} {t = (w1 (snd c))} (wkK {s = 0} {d = j} {t = (snd c)} (⊢tyOf dc)))) (wkK {s = 1} {d = (w2 j)} {t = (w2 (fst (snd p)))} (wkK {s = 1} {d = (w1 j)} {t = (w1 (fst (snd p)))} (wkK {s = 1} {d = j} {t = (fst (snd p))} (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 1} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp)))))) (wkK {s = 1} {d = (w2 j)} {t = (w2 (fst (snd (snd p))))} (wkK {s = 1} {d = (w1 j)} {t = (w1 (fst (snd (snd p))))} (wkK {s = 1} {d = j} {t = (fst (snd (snd p)))} (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 1} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp))))))) (wkK {s = 1} {d = (w1 (renTm vs j))} {t = v₁} (wkK {s = 1} {d = (renTm vs j)} {t = v₀} (hereTm {m = j}))) (wkK {s = 1} {d = (renTm vs (w1 j))} {t = v₀} (hereTm {m = (w1 j)}))))))
+okT⊢tr₁ {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okT⊢tr₁⁽0⁾ {_} {j} {(fst c)} {(snd c)} {(fst p)} {(fst (snd p))} {(fst (snd (snd p)))} dj (⊢ctxOf dc) (⊢tyOf dc) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 1} (⊢recFst {s = 1} {k = 1} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp)) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 1} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp))) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 1} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp)))))
 
 C⊢tr₂_0A : RTm Δ → RTm Δ → RTm Δ
 C⊢tr₂_0A J A0 = A0
@@ -1789,8 +1900,32 @@ T⊢tr₂ qs j p c = T⊢tr₂⁽0⁾ j (fst c) (snd c) (fst p) (fst (snd p)) (f
 T⊢tr₂-law : TelLaw T⊢tr₂
 T⊢tr₂-law σ qs j p c = T⊢tr₂⁽0⁾-sub σ j (fst c) (snd c) (fst p) (fst (snd p)) (fst (snd (snd p)))
 
+okT⊢tr₂⁽7⁾ : {Ξ : Ctx} {J G X F0 F1 F2 E0 E1 E2 E3 E4 E5 E6 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ F1 ∷ K 1 J → Ξ ⊢ F2 ∷ K 1 J → Ξ ⊢ E0 ∷ K 0 J → Ξ ⊢ E1 ∷ K 1 J → Ξ ⊢ E2 ∷ K 1 J → Ξ ⊢ E5 ∷ K 1 J → Ξ ⊢ E6 ∷ K 1 J → TelOK Ξ JT (T⊢tr₂⁽7⁾ J G X F0 F1 F2 E0 E1 E2 E3 E4 E5 E6)
+okT⊢tr₂⁽7⁾ {Ξ} {J} {G} {X} {F0} {F1} {F2} {E0} {E1} {E2} {E3} {E4} {E5} {E6} dJ dG dX dF1 dF2 dE0 dE1 dE2 dE5 dE6 = (okT⊢tr₂I {_} {J} {G} {X} {F1} {F2} {E0} {E1} {E2} {E5} {E6} dJ dG dX dF1 dF2 dE0 dE1 dE2 dE5 dE6)
+
+okT⊢tr₂⁽6⁾ : {Ξ : Ctx} {J G X F0 F1 F2 E0 E1 E2 E3 E4 E5 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ F1 ∷ K 1 J → Ξ ⊢ F2 ∷ K 1 J → Ξ ⊢ E0 ∷ K 0 J → Ξ ⊢ E1 ∷ K 1 J → Ξ ⊢ E2 ∷ K 1 J → Ξ ⊢ E5 ∷ K 1 J → TelOK Ξ JT (T⊢tr₂⁽6⁾ J G X F0 F1 F2 E0 E1 E2 E3 E4 E5)
+okT⊢tr₂⁽6⁾ {Ξ} {J} {G} {X} {F0} {F1} {F2} {E0} {E1} {E2} {E3} {E4} {E5} dJ dG dX dF1 dF2 dE0 dE1 dE2 dE5 = okσJ (okC⊢tr₂_6I {_} {J} dJ) (okT⊢tr₂⁽7⁾ {_} {(w1 J)} {(w1 G)} {(w1 X)} {(w1 F0)} {(w1 F1)} {(w1 F2)} {(w1 E0)} {(w1 E1)} {(w1 E2)} {(w1 E3)} {(w1 E4)} {(w1 E5)} {v₀} (wkN {t = J} dJ) (wkG {d = J} {g = G} dG) (wkK {s = 0} {d = J} {t = X} dX) (wkK {s = 1} {d = J} {t = F1} dF1) (wkK {s = 1} {d = J} {t = F2} dF2) (wkK {s = 0} {d = J} {t = E0} dE0) (wkK {s = 1} {d = J} {t = E1} dE1) (wkK {s = 1} {d = J} {t = E2} dE2) (wkK {s = 1} {d = J} {t = E5} dE5) (hereTm {m = J}))
+
+okT⊢tr₂⁽5⁾ : {Ξ : Ctx} {J G X F0 F1 F2 E0 E1 E2 E3 E4 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ F1 ∷ K 1 J → Ξ ⊢ F2 ∷ K 1 J → Ξ ⊢ E0 ∷ K 0 J → Ξ ⊢ E1 ∷ K 1 J → Ξ ⊢ E2 ∷ K 1 J → TelOK Ξ JT (T⊢tr₂⁽5⁾ J G X F0 F1 F2 E0 E1 E2 E3 E4)
+okT⊢tr₂⁽5⁾ {Ξ} {J} {G} {X} {F0} {F1} {F2} {E0} {E1} {E2} {E3} {E4} dJ dG dX dF1 dF2 dE0 dE1 dE2 = okσJ (okC⊢tr₂_5I {_} {J} dJ) (okT⊢tr₂⁽6⁾ {_} {(w1 J)} {(w1 G)} {(w1 X)} {(w1 F0)} {(w1 F1)} {(w1 F2)} {(w1 E0)} {(w1 E1)} {(w1 E2)} {(w1 E3)} {(w1 E4)} {v₀} (wkN {t = J} dJ) (wkG {d = J} {g = G} dG) (wkK {s = 0} {d = J} {t = X} dX) (wkK {s = 1} {d = J} {t = F1} dF1) (wkK {s = 1} {d = J} {t = F2} dF2) (wkK {s = 0} {d = J} {t = E0} dE0) (wkK {s = 1} {d = J} {t = E1} dE1) (wkK {s = 1} {d = J} {t = E2} dE2) (hereTm {m = J}))
+
+okT⊢tr₂⁽4⁾ : {Ξ : Ctx} {J G X F0 F1 F2 E0 E1 E2 E3 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ F0 ∷ K 1 (nsuc J) → Ξ ⊢ F1 ∷ K 1 J → Ξ ⊢ F2 ∷ K 1 J → Ξ ⊢ E0 ∷ K 0 J → Ξ ⊢ E1 ∷ K 1 J → Ξ ⊢ E2 ∷ K 1 J → TelOK Ξ JT (T⊢tr₂⁽4⁾ J G X F0 F1 F2 E0 E1 E2 E3)
+okT⊢tr₂⁽4⁾ {Ξ} {J} {G} {X} {F0} {F1} {F2} {E0} {E1} {E2} {E3} dJ dG dX dF0 dF1 dF2 dE0 dE1 dE2 = okσJ (okC⊢tr₂_4I {_} {J} {F0} {E1} {E2} dJ dF0 dE1 dE2) (okT⊢tr₂⁽5⁾ {_} {(w1 J)} {(w1 G)} {(w1 X)} {(w1 F0)} {(w1 F1)} {(w1 F2)} {(w1 E0)} {(w1 E1)} {(w1 E2)} {(w1 E3)} {v₀} (wkN {t = J} dJ) (wkG {d = J} {g = G} dG) (wkK {s = 0} {d = J} {t = X} dX) (wkK {s = 1} {d = J} {t = F1} dF1) (wkK {s = 1} {d = J} {t = F2} dF2) (wkK {s = 0} {d = J} {t = E0} dE0) (wkK {s = 1} {d = J} {t = E1} dE1) (wkK {s = 1} {d = J} {t = E2} dE2))
+
+okT⊢tr₂⁽3⁾ : {Ξ : Ctx} {J G X F0 F1 F2 E0 E1 E2 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ F0 ∷ K 1 (nsuc J) → Ξ ⊢ F1 ∷ K 1 J → Ξ ⊢ F2 ∷ K 1 J → Ξ ⊢ E0 ∷ K 0 J → Ξ ⊢ E1 ∷ K 1 J → Ξ ⊢ E2 ∷ K 1 J → TelOK Ξ JT (T⊢tr₂⁽3⁾ J G X F0 F1 F2 E0 E1 E2)
+okT⊢tr₂⁽3⁾ {Ξ} {J} {G} {X} {F0} {F1} {F2} {E0} {E1} {E2} dJ dG dX dF0 dF1 dF2 dE0 dE1 dE2 = okσJ (okC⊢tr₂_3I {_} {J} {E1} dJ dE1) (okT⊢tr₂⁽4⁾ {_} {(w1 J)} {(w1 G)} {(w1 X)} {(w1 F0)} {(w1 F1)} {(w1 F2)} {(w1 E0)} {(w1 E1)} {(w1 E2)} {v₀} (wkN {t = J} dJ) (wkG {d = J} {g = G} dG) (wkK {s = 0} {d = J} {t = X} dX) (wkK {s = 1} {d = (nsuc J)} {t = F0} dF0) (wkK {s = 1} {d = J} {t = F1} dF1) (wkK {s = 1} {d = J} {t = F2} dF2) (wkK {s = 0} {d = J} {t = E0} dE0) (wkK {s = 1} {d = J} {t = E1} dE1) (wkK {s = 1} {d = J} {t = E2} dE2))
+
+okT⊢tr₂⁽2⁾ : {Ξ : Ctx} {J G X F0 F1 F2 E0 E1 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ F0 ∷ K 1 (nsuc J) → Ξ ⊢ F1 ∷ K 1 J → Ξ ⊢ F2 ∷ K 1 J → Ξ ⊢ E0 ∷ K 0 J → Ξ ⊢ E1 ∷ K 1 J → TelOK Ξ JT (T⊢tr₂⁽2⁾ J G X F0 F1 F2 E0 E1)
+okT⊢tr₂⁽2⁾ {Ξ} {J} {G} {X} {F0} {F1} {F2} {E0} {E1} dJ dG dX dF0 dF1 dF2 dE0 dE1 = okσJ (okC⊢tr₂_2I {_} {J} dJ) (okT⊢tr₂⁽3⁾ {_} {(w1 J)} {(w1 G)} {(w1 X)} {(w1 F0)} {(w1 F1)} {(w1 F2)} {(w1 E0)} {(w1 E1)} {v₀} (wkN {t = J} dJ) (wkG {d = J} {g = G} dG) (wkK {s = 0} {d = J} {t = X} dX) (wkK {s = 1} {d = (nsuc J)} {t = F0} dF0) (wkK {s = 1} {d = J} {t = F1} dF1) (wkK {s = 1} {d = J} {t = F2} dF2) (wkK {s = 0} {d = J} {t = E0} dE0) (wkK {s = 1} {d = J} {t = E1} dE1) (hereTm {m = J}))
+
+okT⊢tr₂⁽1⁾ : {Ξ : Ctx} {J G X F0 F1 F2 E0 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ F0 ∷ K 1 (nsuc J) → Ξ ⊢ F1 ∷ K 1 J → Ξ ⊢ F2 ∷ K 1 J → Ξ ⊢ E0 ∷ K 0 J → TelOK Ξ JT (T⊢tr₂⁽1⁾ J G X F0 F1 F2 E0)
+okT⊢tr₂⁽1⁾ {Ξ} {J} {G} {X} {F0} {F1} {F2} {E0} dJ dG dX dF0 dF1 dF2 dE0 = okσJ (okC⊢tr₂_1I {_} {J} dJ) (okT⊢tr₂⁽2⁾ {_} {(w1 J)} {(w1 G)} {(w1 X)} {(w1 F0)} {(w1 F1)} {(w1 F2)} {(w1 E0)} {v₀} (wkN {t = J} dJ) (wkG {d = J} {g = G} dG) (wkK {s = 0} {d = J} {t = X} dX) (wkK {s = 1} {d = (nsuc J)} {t = F0} dF0) (wkK {s = 1} {d = J} {t = F1} dF1) (wkK {s = 1} {d = J} {t = F2} dF2) (wkK {s = 0} {d = J} {t = E0} dE0) (hereTm {m = J}))
+
+okT⊢tr₂⁽0⁾ : {Ξ : Ctx} {J G X F0 F1 F2 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ F0 ∷ K 1 (nsuc J) → Ξ ⊢ F1 ∷ K 1 J → Ξ ⊢ F2 ∷ K 1 J → TelOK Ξ JT (T⊢tr₂⁽0⁾ J G X F0 F1 F2)
+okT⊢tr₂⁽0⁾ {Ξ} {J} {G} {X} {F0} {F1} {F2} dJ dG dX dF0 dF1 dF2 = okσJ (okC⊢tr₂_0I {_} {J} dJ) (okT⊢tr₂⁽1⁾ {_} {(w1 J)} {(w1 G)} {(w1 X)} {(w1 F0)} {(w1 F1)} {(w1 F2)} {v₀} (wkN {t = J} dJ) (wkG {d = J} {g = G} dG) (wkK {s = 0} {d = J} {t = X} dX) (wkK {s = 1} {d = (nsuc J)} {t = F0} dF0) (wkK {s = 1} {d = J} {t = F1} dF1) (wkK {s = 1} {d = J} {t = F2} dF2) (hereTy {m = J}))
+
 okT⊢tr₂ : {Ξ : Ctx} {qs j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ qs ∷ El ⌜TSig⌝ → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ p ∷ PayV sh-ktr ((tag 1) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CTat ((tag 1) ,ₚ j)) → TelOK Ξ JT (T⊢tr₂ qs j p c)
-okT⊢tr₂ {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okσJ (okC⊢tr₂_0I {_} {j} dj) (okσJ (okC⊢tr₂_1I {_} {(w1 j)} (wkN {t = j} dj)) (okσJ (okC⊢tr₂_2I {_} {(w2 j)} (wkN {t = (w1 j)} (wkN {t = j} dj))) (okσJ (okC⊢tr₂_3I {_} {(w3 j)} {v₁} (wkN {t = (w2 j)} (wkN {t = (w1 j)} (wkN {t = j} dj))) (wkK {s = 1} {d = (renTm vs (w1 j))} {t = v₀} (hereTm {m = (w1 j)}))) (okσJ (okC⊢tr₂_4I {_} {(w4 j)} {(w4 (fst p))} {v₂} {v₁} (wkN {t = (w3 j)} (wkN {t = (w2 j)} (wkN {t = (w1 j)} (wkN {t = j} dj)))) (wkK {s = 1} {d = (w3 (nsuc j))} {t = (w3 (fst p))} (wkK {s = 1} {d = (w2 (nsuc j))} {t = (w2 (fst p))} (wkK {s = 1} {d = (w1 (nsuc j))} {t = (w1 (fst p))} (wkK {s = 1} {d = (nsuc j)} {t = (fst p)} (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 1} (⊢recFst {s = 1} {k = 1} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp)))))) (wkK {s = 1} {d = (w1 (renTm vs (w1 j)))} {t = v₁} (wkK {s = 1} {d = (renTm vs (w1 j))} {t = v₀} (hereTm {m = (w1 j)}))) (wkK {s = 1} {d = (renTm vs (w2 j))} {t = v₀} (hereTm {m = (w2 j)}))) (okσJ (okC⊢tr₂_5I {_} {(w5 j)} (wkN {t = (w4 j)} (wkN {t = (w3 j)} (wkN {t = (w2 j)} (wkN {t = (w1 j)} (wkN {t = j} dj)))))) (okσJ (okC⊢tr₂_6I {_} {(w6 j)} (wkN {t = (w5 j)} (wkN {t = (w4 j)} (wkN {t = (w3 j)} (wkN {t = (w2 j)} (wkN {t = (w1 j)} (wkN {t = j} dj))))))) (okT⊢tr₂I {_} {(w7 j)} {(w7 (fst c))} {(w7 (snd c))} {(w7 (fst (snd p)))} {(w7 (fst (snd (snd p))))} {v₆} {v₅} {v₄} {v₁} {v₀} (wkN {t = (w6 j)} (wkN {t = (w5 j)} (wkN {t = (w4 j)} (wkN {t = (w3 j)} (wkN {t = (w2 j)} (wkN {t = (w1 j)} (wkN {t = j} dj))))))) (wkG {d = (w6 j)} {g = (w6 (fst c))} (wkG {d = (w5 j)} {g = (w5 (fst c))} (wkG {d = (w4 j)} {g = (w4 (fst c))} (wkG {d = (w3 j)} {g = (w3 (fst c))} (wkG {d = (w2 j)} {g = (w2 (fst c))} (wkG {d = (w1 j)} {g = (w1 (fst c))} (wkG {d = j} {g = (fst c)} (⊢ctxOf dc)))))))) (wkK {s = 0} {d = (w6 j)} {t = (w6 (snd c))} (wkK {s = 0} {d = (w5 j)} {t = (w5 (snd c))} (wkK {s = 0} {d = (w4 j)} {t = (w4 (snd c))} (wkK {s = 0} {d = (w3 j)} {t = (w3 (snd c))} (wkK {s = 0} {d = (w2 j)} {t = (w2 (snd c))} (wkK {s = 0} {d = (w1 j)} {t = (w1 (snd c))} (wkK {s = 0} {d = j} {t = (snd c)} (⊢tyOf dc)))))))) (wkK {s = 1} {d = (w6 j)} {t = (w6 (fst (snd p)))} (wkK {s = 1} {d = (w5 j)} {t = (w5 (fst (snd p)))} (wkK {s = 1} {d = (w4 j)} {t = (w4 (fst (snd p)))} (wkK {s = 1} {d = (w3 j)} {t = (w3 (fst (snd p)))} (wkK {s = 1} {d = (w2 j)} {t = (w2 (fst (snd p)))} (wkK {s = 1} {d = (w1 j)} {t = (w1 (fst (snd p)))} (wkK {s = 1} {d = j} {t = (fst (snd p))} (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 1} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp)))))))))) (wkK {s = 1} {d = (w6 j)} {t = (w6 (fst (snd (snd p))))} (wkK {s = 1} {d = (w5 j)} {t = (w5 (fst (snd (snd p))))} (wkK {s = 1} {d = (w4 j)} {t = (w4 (fst (snd (snd p))))} (wkK {s = 1} {d = (w3 j)} {t = (w3 (fst (snd (snd p))))} (wkK {s = 1} {d = (w2 j)} {t = (w2 (fst (snd (snd p))))} (wkK {s = 1} {d = (w1 j)} {t = (w1 (fst (snd (snd p))))} (wkK {s = 1} {d = j} {t = (fst (snd (snd p)))} (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 1} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp))))))))))) (wkK {s = 0} {d = (w5 (renTm vs j))} {t = v₅} (wkK {s = 0} {d = (w4 (renTm vs j))} {t = v₄} (wkK {s = 0} {d = (w3 (renTm vs j))} {t = v₃} (wkK {s = 0} {d = (w2 (renTm vs j))} {t = v₂} (wkK {s = 0} {d = (w1 (renTm vs j))} {t = v₁} (wkK {s = 0} {d = (renTm vs j)} {t = v₀} (hereTy {m = j}))))))) (wkK {s = 1} {d = (w4 (renTm vs (w1 j)))} {t = v₄} (wkK {s = 1} {d = (w3 (renTm vs (w1 j)))} {t = v₃} (wkK {s = 1} {d = (w2 (renTm vs (w1 j)))} {t = v₂} (wkK {s = 1} {d = (w1 (renTm vs (w1 j)))} {t = v₁} (wkK {s = 1} {d = (renTm vs (w1 j))} {t = v₀} (hereTm {m = (w1 j)})))))) (wkK {s = 1} {d = (w3 (renTm vs (w2 j)))} {t = v₃} (wkK {s = 1} {d = (w2 (renTm vs (w2 j)))} {t = v₂} (wkK {s = 1} {d = (w1 (renTm vs (w2 j)))} {t = v₁} (wkK {s = 1} {d = (renTm vs (w2 j))} {t = v₀} (hereTm {m = (w2 j)}))))) (wkK {s = 1} {d = (renTm vs (w5 j))} {t = v₀} (hereTm {m = (w5 j)})) (hereTm {m = (w6 j)})))))))))
+okT⊢tr₂ {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okT⊢tr₂⁽0⁾ {_} {j} {(fst c)} {(snd c)} {(fst p)} {(fst (snd p))} {(fst (snd (snd p)))} dj (⊢ctxOf dc) (⊢tyOf dc) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 1} (⊢recFst {s = 1} {k = 1} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp)) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 1} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp))) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 1} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp)))))
 
 r⊢tr : Row
 r⊢tr = record { R = λ qs j p c → rows (⌜ T⊢tr₁ qs j p c ⌝ᵗ ∷ ⌜ T⊢tr₂ qs j p c ⌝ᵗ ∷ ⌜ TCVat 13 qs j p c ⌝ᵗ ∷ [])
@@ -1946,8 +2081,23 @@ T⊢ap qs j p c = T⊢ap⁽0⁾ j (fst c) (snd c) (fst p) (fst (snd p)) (fst (sn
 T⊢ap-law : TelLaw T⊢ap
 T⊢ap-law σ qs j p c = T⊢ap⁽0⁾-sub σ j (fst c) (snd c) (fst p) (fst (snd p)) (fst (snd (snd p)))
 
+okT⊢ap⁽4⁾ : {Ξ : Ctx} {J G X F0 F1 F2 E0 E1 E2 E3 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ F0 ∷ K 1 J → Ξ ⊢ F1 ∷ K 1 (nsuc J) → Ξ ⊢ F2 ∷ K 1 J → Ξ ⊢ E0 ∷ K 1 J → Ξ ⊢ E2 ∷ K 1 J → Ξ ⊢ E3 ∷ K 1 J → TelOK Ξ JT (T⊢ap⁽4⁾ J G X F0 F1 F2 E0 E1 E2 E3)
+okT⊢ap⁽4⁾ {Ξ} {J} {G} {X} {F0} {F1} {F2} {E0} {E1} {E2} {E3} dJ dG dX dF0 dF1 dF2 dE0 dE2 dE3 = (okT⊢apI {_} {J} {G} {X} {F0} {F1} {F2} {E0} {E2} {E3} dJ dG dX dF0 dF1 dF2 dE0 dE2 dE3)
+
+okT⊢ap⁽3⁾ : {Ξ : Ctx} {J G X F0 F1 F2 E0 E1 E2 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ F0 ∷ K 1 J → Ξ ⊢ F1 ∷ K 1 (nsuc J) → Ξ ⊢ F2 ∷ K 1 J → Ξ ⊢ E0 ∷ K 1 J → Ξ ⊢ E2 ∷ K 1 J → TelOK Ξ JT (T⊢ap⁽3⁾ J G X F0 F1 F2 E0 E1 E2)
+okT⊢ap⁽3⁾ {Ξ} {J} {G} {X} {F0} {F1} {F2} {E0} {E1} {E2} dJ dG dX dF0 dF1 dF2 dE0 dE2 = okσJ (okC⊢ap_3I {_} {J} dJ) (okT⊢ap⁽4⁾ {_} {(w1 J)} {(w1 G)} {(w1 X)} {(w1 F0)} {(w1 F1)} {(w1 F2)} {(w1 E0)} {(w1 E1)} {(w1 E2)} {v₀} (wkN {t = J} dJ) (wkG {d = J} {g = G} dG) (wkK {s = 0} {d = J} {t = X} dX) (wkK {s = 1} {d = J} {t = F0} dF0) (wkK {s = 1} {d = (nsuc J)} {t = F1} dF1) (wkK {s = 1} {d = J} {t = F2} dF2) (wkK {s = 1} {d = J} {t = E0} dE0) (wkK {s = 1} {d = J} {t = E2} dE2) (hereTm {m = J}))
+
+okT⊢ap⁽2⁾ : {Ξ : Ctx} {J G X F0 F1 F2 E0 E1 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ F0 ∷ K 1 J → Ξ ⊢ F1 ∷ K 1 (nsuc J) → Ξ ⊢ F2 ∷ K 1 J → Ξ ⊢ E0 ∷ K 1 J → TelOK Ξ JT (T⊢ap⁽2⁾ J G X F0 F1 F2 E0 E1)
+okT⊢ap⁽2⁾ {Ξ} {J} {G} {X} {F0} {F1} {F2} {E0} {E1} dJ dG dX dF0 dF1 dF2 dE0 = okσJ (okC⊢ap_2I {_} {J} dJ) (okT⊢ap⁽3⁾ {_} {(w1 J)} {(w1 G)} {(w1 X)} {(w1 F0)} {(w1 F1)} {(w1 F2)} {(w1 E0)} {(w1 E1)} {v₀} (wkN {t = J} dJ) (wkG {d = J} {g = G} dG) (wkK {s = 0} {d = J} {t = X} dX) (wkK {s = 1} {d = J} {t = F0} dF0) (wkK {s = 1} {d = (nsuc J)} {t = F1} dF1) (wkK {s = 1} {d = J} {t = F2} dF2) (wkK {s = 1} {d = J} {t = E0} dE0) (hereTm {m = J}))
+
+okT⊢ap⁽1⁾ : {Ξ : Ctx} {J G X F0 F1 F2 E0 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ F0 ∷ K 1 J → Ξ ⊢ F1 ∷ K 1 (nsuc J) → Ξ ⊢ F2 ∷ K 1 J → Ξ ⊢ E0 ∷ K 1 J → TelOK Ξ JT (T⊢ap⁽1⁾ J G X F0 F1 F2 E0)
+okT⊢ap⁽1⁾ {Ξ} {J} {G} {X} {F0} {F1} {F2} {E0} dJ dG dX dF0 dF1 dF2 dE0 = okσJ (okC⊢ap_1I {_} {J} {E0} dJ dE0) (okT⊢ap⁽2⁾ {_} {(w1 J)} {(w1 G)} {(w1 X)} {(w1 F0)} {(w1 F1)} {(w1 F2)} {(w1 E0)} {v₀} (wkN {t = J} dJ) (wkG {d = J} {g = G} dG) (wkK {s = 0} {d = J} {t = X} dX) (wkK {s = 1} {d = J} {t = F0} dF0) (wkK {s = 1} {d = (nsuc J)} {t = F1} dF1) (wkK {s = 1} {d = J} {t = F2} dF2) (wkK {s = 1} {d = J} {t = E0} dE0))
+
+okT⊢ap⁽0⁾ : {Ξ : Ctx} {J G X F0 F1 F2 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ F0 ∷ K 1 J → Ξ ⊢ F1 ∷ K 1 (nsuc J) → Ξ ⊢ F2 ∷ K 1 J → TelOK Ξ JT (T⊢ap⁽0⁾ J G X F0 F1 F2)
+okT⊢ap⁽0⁾ {Ξ} {J} {G} {X} {F0} {F1} {F2} dJ dG dX dF0 dF1 dF2 = okσJ (okC⊢ap_0I {_} {J} dJ) (okT⊢ap⁽1⁾ {_} {(w1 J)} {(w1 G)} {(w1 X)} {(w1 F0)} {(w1 F1)} {(w1 F2)} {v₀} (wkN {t = J} dJ) (wkG {d = J} {g = G} dG) (wkK {s = 0} {d = J} {t = X} dX) (wkK {s = 1} {d = J} {t = F0} dF0) (wkK {s = 1} {d = (nsuc J)} {t = F1} dF1) (wkK {s = 1} {d = J} {t = F2} dF2) (hereTm {m = J}))
+
 okT⊢ap : {Ξ : Ctx} {qs j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ qs ∷ El ⌜TSig⌝ → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ p ∷ PayV sh-kap ((tag 1) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CTat ((tag 1) ,ₚ j)) → TelOK Ξ JT (T⊢ap qs j p c)
-okT⊢ap {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okσJ (okC⊢ap_0I {_} {j} dj) (okσJ (okC⊢ap_1I {_} {(w1 j)} {v₀} (wkN {t = j} dj) (hereTm {m = j})) (okσJ (okC⊢ap_2I {_} {(w2 j)} (wkN {t = (w1 j)} (wkN {t = j} dj))) (okσJ (okC⊢ap_3I {_} {(w3 j)} (wkN {t = (w2 j)} (wkN {t = (w1 j)} (wkN {t = j} dj)))) (okT⊢apI {_} {(w4 j)} {(w4 (fst c))} {(w4 (snd c))} {(w4 (fst p))} {(w4 (fst (snd p)))} {(w4 (fst (snd (snd p))))} {v₃} {v₁} {v₀} (wkN {t = (w3 j)} (wkN {t = (w2 j)} (wkN {t = (w1 j)} (wkN {t = j} dj)))) (wkG {d = (w3 j)} {g = (w3 (fst c))} (wkG {d = (w2 j)} {g = (w2 (fst c))} (wkG {d = (w1 j)} {g = (w1 (fst c))} (wkG {d = j} {g = (fst c)} (⊢ctxOf dc))))) (wkK {s = 0} {d = (w3 j)} {t = (w3 (snd c))} (wkK {s = 0} {d = (w2 j)} {t = (w2 (snd c))} (wkK {s = 0} {d = (w1 j)} {t = (w1 (snd c))} (wkK {s = 0} {d = j} {t = (snd c)} (⊢tyOf dc))))) (wkK {s = 1} {d = (w3 j)} {t = (w3 (fst p))} (wkK {s = 1} {d = (w2 j)} {t = (w2 (fst p))} (wkK {s = 1} {d = (w1 j)} {t = (w1 (fst p))} (wkK {s = 1} {d = j} {t = (fst p)} (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 1 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp)))))) (wkK {s = 1} {d = (w3 (nsuc j))} {t = (w3 (fst (snd p)))} (wkK {s = 1} {d = (w2 (nsuc j))} {t = (w2 (fst (snd p)))} (wkK {s = 1} {d = (w1 (nsuc j))} {t = (w1 (fst (snd p)))} (wkK {s = 1} {d = (nsuc j)} {t = (fst (snd p))} (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 1} (⊢recFst {s = 1} {k = 1} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 1 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp))))))) (wkK {s = 1} {d = (w3 j)} {t = (w3 (fst (snd (snd p))))} (wkK {s = 1} {d = (w2 j)} {t = (w2 (fst (snd (snd p))))} (wkK {s = 1} {d = (w1 j)} {t = (w1 (fst (snd (snd p))))} (wkK {s = 1} {d = j} {t = (fst (snd (snd p)))} (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 1} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 1 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp)))))))) (wkK {s = 1} {d = (w2 (renTm vs j))} {t = v₂} (wkK {s = 1} {d = (w1 (renTm vs j))} {t = v₁} (wkK {s = 1} {d = (renTm vs j)} {t = v₀} (hereTm {m = j})))) (wkK {s = 1} {d = (renTm vs (w2 j))} {t = v₀} (hereTm {m = (w2 j)})) (hereTm {m = (w3 j)}))))))
+okT⊢ap {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okT⊢ap⁽0⁾ {_} {j} {(fst c)} {(snd c)} {(fst p)} {(fst (snd p))} {(fst (snd (snd p)))} dj (⊢ctxOf dc) (⊢tyOf dc) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 1 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp)) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 1} (⊢recFst {s = 1} {k = 1} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 1 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp))) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 1} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 1 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp)))))
 
 r⊢ap : Row
 r⊢ap = record { R = λ qs j p c → rows (⌜ T⊢ap qs j p c ⌝ᵗ ∷ ⌜ TCVat 14 qs j p c ⌝ᵗ ∷ [])
@@ -1991,8 +2141,11 @@ T⊢cId qs j q c = T⊢cId⁽0⁾ j (fst c) (fst (snd c)) (fst (snd (snd c))) (f
 T⊢cId-law : TelLaw T⊢cId
 T⊢cId-law σ qs j q c = T⊢cId⁽0⁾-sub σ j (fst c) (fst (snd c)) (fst (snd (snd c))) (fst (snd (snd (snd c))))
 
+okT⊢cId⁽0⁾ : {Ξ : Ctx} {J G F0 F1 F2 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ F0 ∷ K 1 J → Ξ ⊢ F1 ∷ K 1 J → Ξ ⊢ F2 ∷ K 1 J → TelOK Ξ JT (T⊢cId⁽0⁾ J G F0 F1 F2)
+okT⊢cId⁽0⁾ {Ξ} {J} {G} {F0} {F1} {F2} dJ dG dF0 dF1 dF2 = (okT⊢cIdI {_} {J} {G} {F0} {F1} {F2} dJ dG dF0 dF1 dF2)
+
 okT⊢cId : {Ξ : Ctx} {qs j q c : RTm ⌊ Ξ ⌋} → Ξ ⊢ qs ∷ El ⌜TSig⌝ → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ q ∷ PayV sh-kU ((tag 0) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CIat sh-kcId ((tag 0) ,ₚ j)) → TelOK Ξ JT (T⊢cId qs j q c)
-okT⊢cId {Ξ} {qs} {j} {q} {c} dqs dj dq dc = (okT⊢cIdI {_} {j} {(fst c)} {(fst (snd c))} {(fst (snd (snd c)))} {(fst (snd (snd (snd c))))} dj (⊢gI sh-kcId dc) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} (⊢pI sh-kcId dc))) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} (⊢pI sh-kcId dc)))) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} (⊢pI sh-kcId dc))))))
+okT⊢cId {Ξ} {qs} {j} {q} {c} dqs dj dq dc = (okT⊢cId⁽0⁾ {_} {j} {(fst c)} {(fst (snd c))} {(fst (snd (snd c)))} {(fst (snd (snd (snd c))))} dj (⊢gI sh-kcId dc) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} (⊢pI sh-kcId dc))) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} (⊢pI sh-kcId dc)))) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} (⊢pI sh-kcId dc))))))
 
 rT⊢cIdI : Row
 rT⊢cIdI = defRow₀ T⊢cId T⊢cId-law
@@ -2041,8 +2194,11 @@ T⊢idrefl qs j p c = T⊢idrefl⁽0⁾ j (fst c) (snd c) (fst p) (fst (snd p))
 T⊢idrefl-law : TelLaw T⊢idrefl
 T⊢idrefl-law σ qs j p c = T⊢idrefl⁽0⁾-sub σ j (fst c) (snd c) (fst p) (fst (snd p))
 
+okT⊢idrefl⁽0⁾ : {Ξ : Ctx} {J G X F0 F1 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ F0 ∷ K 1 J → Ξ ⊢ F1 ∷ K 1 J → TelOK Ξ JT (T⊢idrefl⁽0⁾ J G X F0 F1)
+okT⊢idrefl⁽0⁾ {Ξ} {J} {G} {X} {F0} {F1} dJ dG dX dF0 dF1 = (okT⊢idreflI {_} {J} {G} {X} {F0} {F1} dJ dG dX dF0 dF1)
+
 okT⊢idrefl : {Ξ : Ctx} {qs j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ qs ∷ El ⌜TSig⌝ → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ p ∷ PayV sh-kidrefl ((tag 1) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CTat ((tag 1) ,ₚ j)) → TelOK Ξ JT (T⊢idrefl qs j p c)
-okT⊢idrefl {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okT⊢idreflI {_} {j} {(fst c)} {(snd c)} {(fst p)} {(fst (snd p))} dj (⊢ctxOf dc) (⊢tyOf dc) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} dp)) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} dp))))
+okT⊢idrefl {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okT⊢idrefl⁽0⁾ {_} {j} {(fst c)} {(snd c)} {(fst p)} {(fst (snd p))} dj (⊢ctxOf dc) (⊢tyOf dc) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} dp)) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} dp))))
 
 r⊢idrefl : Row
 r⊢idrefl = record { R = λ qs j p c → rows (⌜ T⊢idrefl qs j p c ⌝ᵗ ∷ ⌜ TCVat 16 qs j p c ⌝ᵗ ∷ [])
@@ -2170,8 +2326,20 @@ T⊢jsub qs j p c = T⊢jsub⁽0⁾ j (fst c) (snd c) (fst p) (fst (snd p)) (fst
 T⊢jsub-law : TelLaw T⊢jsub
 T⊢jsub-law σ qs j p c = T⊢jsub⁽0⁾-sub σ j (fst c) (snd c) (fst p) (fst (snd p)) (fst (snd (snd p)))
 
+okT⊢jsub⁽3⁾ : {Ξ : Ctx} {J G X F0 F1 F2 E0 E1 E2 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ F0 ∷ K 1 (nsuc J) → Ξ ⊢ F1 ∷ K 1 J → Ξ ⊢ F2 ∷ K 1 J → Ξ ⊢ E0 ∷ K 0 J → Ξ ⊢ E1 ∷ K 1 J → Ξ ⊢ E2 ∷ K 1 J → TelOK Ξ JT (T⊢jsub⁽3⁾ J G X F0 F1 F2 E0 E1 E2)
+okT⊢jsub⁽3⁾ {Ξ} {J} {G} {X} {F0} {F1} {F2} {E0} {E1} {E2} dJ dG dX dF0 dF1 dF2 dE0 dE1 dE2 = (okT⊢jsubI {_} {J} {G} {X} {F0} {F1} {F2} {E0} {E1} {E2} dJ dG dX dF0 dF1 dF2 dE0 dE1 dE2)
+
+okT⊢jsub⁽2⁾ : {Ξ : Ctx} {J G X F0 F1 F2 E0 E1 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ F0 ∷ K 1 (nsuc J) → Ξ ⊢ F1 ∷ K 1 J → Ξ ⊢ F2 ∷ K 1 J → Ξ ⊢ E0 ∷ K 0 J → Ξ ⊢ E1 ∷ K 1 J → TelOK Ξ JT (T⊢jsub⁽2⁾ J G X F0 F1 F2 E0 E1)
+okT⊢jsub⁽2⁾ {Ξ} {J} {G} {X} {F0} {F1} {F2} {E0} {E1} dJ dG dX dF0 dF1 dF2 dE0 dE1 = okσJ (okC⊢jsub_2I {_} {J} dJ) (okT⊢jsub⁽3⁾ {_} {(w1 J)} {(w1 G)} {(w1 X)} {(w1 F0)} {(w1 F1)} {(w1 F2)} {(w1 E0)} {(w1 E1)} {v₀} (wkN {t = J} dJ) (wkG {d = J} {g = G} dG) (wkK {s = 0} {d = J} {t = X} dX) (wkK {s = 1} {d = (nsuc J)} {t = F0} dF0) (wkK {s = 1} {d = J} {t = F1} dF1) (wkK {s = 1} {d = J} {t = F2} dF2) (wkK {s = 0} {d = J} {t = E0} dE0) (wkK {s = 1} {d = J} {t = E1} dE1) (hereTm {m = J}))
+
+okT⊢jsub⁽1⁾ : {Ξ : Ctx} {J G X F0 F1 F2 E0 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ F0 ∷ K 1 (nsuc J) → Ξ ⊢ F1 ∷ K 1 J → Ξ ⊢ F2 ∷ K 1 J → Ξ ⊢ E0 ∷ K 0 J → TelOK Ξ JT (T⊢jsub⁽1⁾ J G X F0 F1 F2 E0)
+okT⊢jsub⁽1⁾ {Ξ} {J} {G} {X} {F0} {F1} {F2} {E0} dJ dG dX dF0 dF1 dF2 dE0 = okσJ (okC⊢jsub_1I {_} {J} dJ) (okT⊢jsub⁽2⁾ {_} {(w1 J)} {(w1 G)} {(w1 X)} {(w1 F0)} {(w1 F1)} {(w1 F2)} {(w1 E0)} {v₀} (wkN {t = J} dJ) (wkG {d = J} {g = G} dG) (wkK {s = 0} {d = J} {t = X} dX) (wkK {s = 1} {d = (nsuc J)} {t = F0} dF0) (wkK {s = 1} {d = J} {t = F1} dF1) (wkK {s = 1} {d = J} {t = F2} dF2) (wkK {s = 0} {d = J} {t = E0} dE0) (hereTm {m = J}))
+
+okT⊢jsub⁽0⁾ : {Ξ : Ctx} {J G X F0 F1 F2 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ F0 ∷ K 1 (nsuc J) → Ξ ⊢ F1 ∷ K 1 J → Ξ ⊢ F2 ∷ K 1 J → TelOK Ξ JT (T⊢jsub⁽0⁾ J G X F0 F1 F2)
+okT⊢jsub⁽0⁾ {Ξ} {J} {G} {X} {F0} {F1} {F2} dJ dG dX dF0 dF1 dF2 = okσJ (okC⊢jsub_0I {_} {J} dJ) (okT⊢jsub⁽1⁾ {_} {(w1 J)} {(w1 G)} {(w1 X)} {(w1 F0)} {(w1 F1)} {(w1 F2)} {v₀} (wkN {t = J} dJ) (wkG {d = J} {g = G} dG) (wkK {s = 0} {d = J} {t = X} dX) (wkK {s = 1} {d = (nsuc J)} {t = F0} dF0) (wkK {s = 1} {d = J} {t = F1} dF1) (wkK {s = 1} {d = J} {t = F2} dF2) (hereTy {m = J}))
+
 okT⊢jsub : {Ξ : Ctx} {qs j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ qs ∷ El ⌜TSig⌝ → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ p ∷ PayV sh-kjsub ((tag 1) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CTat ((tag 1) ,ₚ j)) → TelOK Ξ JT (T⊢jsub qs j p c)
-okT⊢jsub {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okσJ (okC⊢jsub_0I {_} {j} dj) (okσJ (okC⊢jsub_1I {_} {(w1 j)} (wkN {t = j} dj)) (okσJ (okC⊢jsub_2I {_} {(w2 j)} (wkN {t = (w1 j)} (wkN {t = j} dj))) (okT⊢jsubI {_} {(w3 j)} {(w3 (fst c))} {(w3 (snd c))} {(w3 (fst p))} {(w3 (fst (snd p)))} {(w3 (fst (snd (snd p))))} {v₂} {v₁} {v₀} (wkN {t = (w2 j)} (wkN {t = (w1 j)} (wkN {t = j} dj))) (wkG {d = (w2 j)} {g = (w2 (fst c))} (wkG {d = (w1 j)} {g = (w1 (fst c))} (wkG {d = j} {g = (fst c)} (⊢ctxOf dc)))) (wkK {s = 0} {d = (w2 j)} {t = (w2 (snd c))} (wkK {s = 0} {d = (w1 j)} {t = (w1 (snd c))} (wkK {s = 0} {d = j} {t = (snd c)} (⊢tyOf dc)))) (wkK {s = 1} {d = (w2 (nsuc j))} {t = (w2 (fst p))} (wkK {s = 1} {d = (w1 (nsuc j))} {t = (w1 (fst p))} (wkK {s = 1} {d = (nsuc j)} {t = (fst p)} (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 1} (⊢recFst {s = 1} {k = 1} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp))))) (wkK {s = 1} {d = (w2 j)} {t = (w2 (fst (snd p)))} (wkK {s = 1} {d = (w1 j)} {t = (w1 (fst (snd p)))} (wkK {s = 1} {d = j} {t = (fst (snd p))} (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 1} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp)))))) (wkK {s = 1} {d = (w2 j)} {t = (w2 (fst (snd (snd p))))} (wkK {s = 1} {d = (w1 j)} {t = (w1 (fst (snd (snd p))))} (wkK {s = 1} {d = j} {t = (fst (snd (snd p)))} (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 1} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp))))))) (wkK {s = 0} {d = (w1 (renTm vs j))} {t = v₁} (wkK {s = 0} {d = (renTm vs j)} {t = v₀} (hereTy {m = j}))) (wkK {s = 1} {d = (renTm vs (w1 j))} {t = v₀} (hereTm {m = (w1 j)})) (hereTm {m = (w2 j)})))))
+okT⊢jsub {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okT⊢jsub⁽0⁾ {_} {j} {(fst c)} {(snd c)} {(fst p)} {(fst (snd p))} {(fst (snd (snd p)))} dj (⊢ctxOf dc) (⊢tyOf dc) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 1} (⊢recFst {s = 1} {k = 1} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp)) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 1} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp))) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 1} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp)))))
 
 r⊢jsub : Row
 r⊢jsub = record { R = λ qs j p c → rows (⌜ T⊢jsub qs j p c ⌝ᵗ ∷ ⌜ TCVat 17 qs j p c ⌝ᵗ ∷ [])
@@ -2215,8 +2383,11 @@ T⊢unit qs j q c = T⊢unit⁽0⁾
 T⊢unit-law : TelLaw T⊢unit
 T⊢unit-law σ qs j q c = T⊢unit⁽0⁾-sub σ 
 
+okT⊢unit⁽0⁾ : {Ξ : Ctx} → TelOK Ξ JT (T⊢unit⁽0⁾)
+okT⊢unit⁽0⁾ {Ξ}   = (okT⊢unitI {_})
+
 okT⊢unit : {Ξ : Ctx} {qs j q c : RTm ⌊ Ξ ⌋} → Ξ ⊢ qs ∷ El ⌜TSig⌝ → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ q ∷ PayV sh-kUnit ((tag 0) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CIat sh-kunit ((tag 0) ,ₚ j)) → TelOK Ξ JT (T⊢unit qs j q c)
-okT⊢unit {Ξ} {qs} {j} {q} {c} dqs dj dq dc = (okT⊢unitI {_})
+okT⊢unit {Ξ} {qs} {j} {q} {c} dqs dj dq dc = (okT⊢unit⁽0⁾ {_}  )
 
 rT⊢unitI : Row
 rT⊢unitI = defRow₀ T⊢unit T⊢unit-law
@@ -2265,8 +2436,11 @@ T⊢nzero qs j q c = T⊢nzero⁽0⁾
 T⊢nzero-law : TelLaw T⊢nzero
 T⊢nzero-law σ qs j q c = T⊢nzero⁽0⁾-sub σ 
 
+okT⊢nzero⁽0⁾ : {Ξ : Ctx} → TelOK Ξ JT (T⊢nzero⁽0⁾)
+okT⊢nzero⁽0⁾ {Ξ}   = (okT⊢nzeroI {_})
+
 okT⊢nzero : {Ξ : Ctx} {qs j q c : RTm ⌊ Ξ ⌋} → Ξ ⊢ qs ∷ El ⌜TSig⌝ → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ q ∷ PayV sh-kNat ((tag 0) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CIat sh-knzero ((tag 0) ,ₚ j)) → TelOK Ξ JT (T⊢nzero qs j q c)
-okT⊢nzero {Ξ} {qs} {j} {q} {c} dqs dj dq dc = (okT⊢nzeroI {_})
+okT⊢nzero {Ξ} {qs} {j} {q} {c} dqs dj dq dc = (okT⊢nzero⁽0⁾ {_}  )
 
 rT⊢nzeroI : Row
 rT⊢nzeroI = defRow₀ T⊢nzero T⊢nzero-law
@@ -2315,8 +2489,11 @@ T⊢nsuc qs j q c = T⊢nsuc⁽0⁾ j (fst c) (fst (snd c))
 T⊢nsuc-law : TelLaw T⊢nsuc
 T⊢nsuc-law σ qs j q c = T⊢nsuc⁽0⁾-sub σ j (fst c) (fst (snd c))
 
+okT⊢nsuc⁽0⁾ : {Ξ : Ctx} {J G F0 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ F0 ∷ K 1 J → TelOK Ξ JT (T⊢nsuc⁽0⁾ J G F0)
+okT⊢nsuc⁽0⁾ {Ξ} {J} {G} {F0} dJ dG dF0 = (okT⊢nsucI {_} {J} {G} {F0} dJ dG dF0)
+
 okT⊢nsuc : {Ξ : Ctx} {qs j q c : RTm ⌊ Ξ ⌋} → Ξ ⊢ qs ∷ El ⌜TSig⌝ → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ q ∷ PayV sh-kNat ((tag 0) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CIat sh-knsuc ((tag 0) ,ₚ j)) → TelOK Ξ JT (T⊢nsuc qs j q c)
-okT⊢nsuc {Ξ} {qs} {j} {q} {c} dqs dj dq dc = (okT⊢nsucI {_} {j} {(fst c)} {(fst (snd c))} dj (⊢gI sh-knsuc dc) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢pI sh-knsuc dc))))
+okT⊢nsuc {Ξ} {qs} {j} {q} {c} dqs dj dq dc = (okT⊢nsuc⁽0⁾ {_} {j} {(fst c)} {(fst (snd c))} dj (⊢gI sh-knsuc dc) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢pI sh-knsuc dc))))
 
 rT⊢nsucI : Row
 rT⊢nsucI = defRow₀ T⊢nsuc T⊢nsuc-law
@@ -2393,8 +2570,14 @@ T⊢natrec qs j p c = T⊢natrec⁽0⁾ j (fst c) (snd c) (fst p) (fst (snd p)) 
 T⊢natrec-law : TelLaw T⊢natrec
 T⊢natrec-law σ qs j p c = T⊢natrec⁽0⁾-sub σ j (fst c) (snd c) (fst p) (fst (snd p)) (fst (snd (snd p)))
 
+okT⊢natrec⁽1⁾ : {Ξ : Ctx} {J G X F0 F1 F2 E0 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ F0 ∷ K 1 J → Ξ ⊢ F1 ∷ K 1 (nsuc (nsuc J)) → Ξ ⊢ F2 ∷ K 1 J → Ξ ⊢ E0 ∷ K 0 (nsuc J) → TelOK Ξ JT (T⊢natrec⁽1⁾ J G X F0 F1 F2 E0)
+okT⊢natrec⁽1⁾ {Ξ} {J} {G} {X} {F0} {F1} {F2} {E0} dJ dG dX dF0 dF1 dF2 dE0 = (okT⊢natrecI {_} {J} {G} {X} {F0} {F1} {F2} {E0} dJ dG dX dF0 dF1 dF2 dE0)
+
+okT⊢natrec⁽0⁾ : {Ξ : Ctx} {J G X F0 F1 F2 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ F0 ∷ K 1 J → Ξ ⊢ F1 ∷ K 1 (nsuc (nsuc J)) → Ξ ⊢ F2 ∷ K 1 J → TelOK Ξ JT (T⊢natrec⁽0⁾ J G X F0 F1 F2)
+okT⊢natrec⁽0⁾ {Ξ} {J} {G} {X} {F0} {F1} {F2} dJ dG dX dF0 dF1 dF2 = okσJ (okC⊢natrec_0I {_} {J} dJ) (okT⊢natrec⁽1⁾ {_} {(w1 J)} {(w1 G)} {(w1 X)} {(w1 F0)} {(w1 F1)} {(w1 F2)} {v₀} (wkN {t = J} dJ) (wkG {d = J} {g = G} dG) (wkK {s = 0} {d = J} {t = X} dX) (wkK {s = 1} {d = J} {t = F0} dF0) (wkK {s = 1} {d = (nsuc (nsuc J))} {t = F1} dF1) (wkK {s = 1} {d = J} {t = F2} dF2) (hereTy {m = (nsuc J)}))
+
 okT⊢natrec : {Ξ : Ctx} {qs j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ qs ∷ El ⌜TSig⌝ → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ p ∷ PayV sh-knatrec ((tag 1) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CTat ((tag 1) ,ₚ j)) → TelOK Ξ JT (T⊢natrec qs j p c)
-okT⊢natrec {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okσJ (okC⊢natrec_0I {_} {j} dj) (okT⊢natrecI {_} {(w1 j)} {(w1 (fst c))} {(w1 (snd c))} {(w1 (fst p))} {(w1 (fst (snd p)))} {(w1 (fst (snd (snd p))))} {v₀} (wkN {t = j} dj) (wkG {d = j} {g = (fst c)} (⊢ctxOf dc)) (wkK {s = 0} {d = j} {t = (snd c)} (⊢tyOf dc)) (wkK {s = 1} {d = j} {t = (fst p)} (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 2 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp))) (wkK {s = 1} {d = (nsuc (nsuc j))} {t = (fst (snd p))} (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 2} (⊢recFst {s = 1} {k = 2} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 2 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp)))) (wkK {s = 1} {d = j} {t = (fst (snd (snd p)))} (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 2} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 2 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp))))) (hereTy {m = (nsuc j)})))
+okT⊢natrec {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okT⊢natrec⁽0⁾ {_} {j} {(fst c)} {(snd c)} {(fst p)} {(fst (snd p))} {(fst (snd (snd p)))} dj (⊢ctxOf dc) (⊢tyOf dc) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 2 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp)) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 2} (⊢recFst {s = 1} {k = 2} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 2 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp))) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 2} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 2 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp)))))
 
 r⊢natrec : Row
 r⊢natrec = record { R = λ qs j p c → rows (⌜ T⊢natrec qs j p c ⌝ᵗ ∷ ⌜ TCVat 21 qs j p c ⌝ᵗ ∷ [])
@@ -2438,8 +2621,11 @@ T⊢con qs j q c = T⊢con⁽0⁾ j (fst c) (fst (snd c)) (fst q) (fst (snd q)) 
 T⊢con-law : TelLaw T⊢con
 T⊢con-law σ qs j q c = T⊢con⁽0⁾-sub σ j (fst c) (fst (snd c)) (fst q) (fst (snd q)) (fst (snd (snd q)))
 
+okT⊢con⁽0⁾ : {Ξ : Ctx} {J G F0 Q0 Q1 Q2 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ F0 ∷ K 1 J → Ξ ⊢ Q0 ∷ K 1 J → Ξ ⊢ Q1 ∷ K 1 J → Ξ ⊢ Q2 ∷ K 1 J → TelOK Ξ JT (T⊢con⁽0⁾ J G F0 Q0 Q1 Q2)
+okT⊢con⁽0⁾ {Ξ} {J} {G} {F0} {Q0} {Q1} {Q2} dJ dG dF0 dQ0 dQ1 dQ2 = (okT⊢conI {_} {J} {G} {F0} {Q0} {Q1} {Q2} dJ dG dF0 dQ0 dQ1 dQ2)
+
 okT⊢con : {Ξ : Ctx} {qs j q c : RTm ⌊ Ξ ⌋} → Ξ ⊢ qs ∷ El ⌜TSig⌝ → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ q ∷ PayV sh-kIMu ((tag 0) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CIat sh-kcon ((tag 0) ,ₚ j)) → TelOK Ξ JT (T⊢con qs j q c)
-okT⊢con {Ξ} {qs} {j} {q} {c} dqs dj dq dc = (okT⊢conI {_} {j} {(fst c)} {(fst (snd c))} {(fst q)} {(fst (snd q))} {(fst (snd (snd q)))} dj (⊢gI sh-kcon dc) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢pI sh-kcon dc))) (⊢atDepthSK {sg = KSig} {a = tag 0} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dq)) (⊢atDepthSK {sg = KSig} {a = tag 0} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dq))) (⊢atDepthSK {sg = KSig} {a = tag 0} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dq)))))
+okT⊢con {Ξ} {qs} {j} {q} {c} dqs dj dq dc = (okT⊢con⁽0⁾ {_} {j} {(fst c)} {(fst (snd c))} {(fst q)} {(fst (snd q))} {(fst (snd (snd q)))} dj (⊢gI sh-kcon dc) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢pI sh-kcon dc))) (⊢atDepthSK {sg = KSig} {a = tag 0} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dq)) (⊢atDepthSK {sg = KSig} {a = tag 0} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dq))) (⊢atDepthSK {sg = KSig} {a = tag 0} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dq)))))
 
 rT⊢conI : Row
 rT⊢conI = defRow₀ T⊢con T⊢con-law
@@ -2544,8 +2730,17 @@ T⊢ielim qs j p c = T⊢ielim⁽0⁾ j (fst c) (snd c) (fst p) (fst (snd p)) (f
 T⊢ielim-law : TelLaw T⊢ielim
 T⊢ielim-law σ qs j p c = T⊢ielim⁽0⁾-sub σ j (fst c) (snd c) (fst p) (fst (snd p)) (fst (snd (snd p))) (fst (snd (snd (snd p))))
 
+okT⊢ielim⁽2⁾ : {Ξ : Ctx} {J G X F0 F1 F2 F3 E0 E1 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ F0 ∷ K 1 J → Ξ ⊢ F1 ∷ K 1 J → Ξ ⊢ F2 ∷ K 1 J → Ξ ⊢ F3 ∷ K 1 J → Ξ ⊢ E0 ∷ K 1 J → Ξ ⊢ E1 ∷ K 0 (nsuc (nsuc J)) → TelOK Ξ JT (T⊢ielim⁽2⁾ J G X F0 F1 F2 F3 E0 E1)
+okT⊢ielim⁽2⁾ {Ξ} {J} {G} {X} {F0} {F1} {F2} {F3} {E0} {E1} dJ dG dX dF0 dF1 dF2 dF3 dE0 dE1 = (okT⊢ielimI {_} {J} {G} {X} {F0} {F1} {F2} {F3} {E0} {E1} dJ dG dX dF0 dF1 dF2 dF3 dE0 dE1)
+
+okT⊢ielim⁽1⁾ : {Ξ : Ctx} {J G X F0 F1 F2 F3 E0 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ F0 ∷ K 1 J → Ξ ⊢ F1 ∷ K 1 J → Ξ ⊢ F2 ∷ K 1 J → Ξ ⊢ F3 ∷ K 1 J → Ξ ⊢ E0 ∷ K 1 J → TelOK Ξ JT (T⊢ielim⁽1⁾ J G X F0 F1 F2 F3 E0)
+okT⊢ielim⁽1⁾ {Ξ} {J} {G} {X} {F0} {F1} {F2} {F3} {E0} dJ dG dX dF0 dF1 dF2 dF3 dE0 = okσJ (okC⊢ielim_1I {_} {J} dJ) (okT⊢ielim⁽2⁾ {_} {(w1 J)} {(w1 G)} {(w1 X)} {(w1 F0)} {(w1 F1)} {(w1 F2)} {(w1 F3)} {(w1 E0)} {v₀} (wkN {t = J} dJ) (wkG {d = J} {g = G} dG) (wkK {s = 0} {d = J} {t = X} dX) (wkK {s = 1} {d = J} {t = F0} dF0) (wkK {s = 1} {d = J} {t = F1} dF1) (wkK {s = 1} {d = J} {t = F2} dF2) (wkK {s = 1} {d = J} {t = F3} dF3) (wkK {s = 1} {d = J} {t = E0} dE0) (hereTy {m = (nsuc (nsuc J))}))
+
+okT⊢ielim⁽0⁾ : {Ξ : Ctx} {J G X F0 F1 F2 F3 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ F0 ∷ K 1 J → Ξ ⊢ F1 ∷ K 1 J → Ξ ⊢ F2 ∷ K 1 J → Ξ ⊢ F3 ∷ K 1 J → TelOK Ξ JT (T⊢ielim⁽0⁾ J G X F0 F1 F2 F3)
+okT⊢ielim⁽0⁾ {Ξ} {J} {G} {X} {F0} {F1} {F2} {F3} dJ dG dX dF0 dF1 dF2 dF3 = okσJ (okC⊢ielim_0I {_} {J} dJ) (okT⊢ielim⁽1⁾ {_} {(w1 J)} {(w1 G)} {(w1 X)} {(w1 F0)} {(w1 F1)} {(w1 F2)} {(w1 F3)} {v₀} (wkN {t = J} dJ) (wkG {d = J} {g = G} dG) (wkK {s = 0} {d = J} {t = X} dX) (wkK {s = 1} {d = J} {t = F0} dF0) (wkK {s = 1} {d = J} {t = F1} dF1) (wkK {s = 1} {d = J} {t = F2} dF2) (wkK {s = 1} {d = J} {t = F3} dF3) (hereTm {m = J}))
+
 okT⊢ielim : {Ξ : Ctx} {qs j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ qs ∷ El ⌜TSig⌝ → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ p ∷ PayV sh-kielim ((tag 1) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CTat ((tag 1) ,ₚ j)) → TelOK Ξ JT (T⊢ielim qs j p c)
-okT⊢ielim {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okσJ (okC⊢ielim_0I {_} {j} dj) (okσJ (okC⊢ielim_1I {_} {(w1 j)} (wkN {t = j} dj)) (okT⊢ielimI {_} {(w2 j)} {(w2 (fst c))} {(w2 (snd c))} {(w2 (fst p))} {(w2 (fst (snd p)))} {(w2 (fst (snd (snd p))))} {(w2 (fst (snd (snd (snd p)))))} {v₁} {v₀} (wkN {t = (w1 j)} (wkN {t = j} dj)) (wkG {d = (w1 j)} {g = (w1 (fst c))} (wkG {d = j} {g = (fst c)} (⊢ctxOf dc))) (wkK {s = 0} {d = (w1 j)} {t = (w1 (snd c))} (wkK {s = 0} {d = j} {t = (snd c)} (⊢tyOf dc))) (wkK {s = 1} {d = (w1 j)} {t = (w1 (fst p))} (wkK {s = 1} {d = j} {t = (fst p)} (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp)))) (wkK {s = 1} {d = (w1 j)} {t = (w1 (fst (snd p)))} (wkK {s = 1} {d = j} {t = (fst (snd p))} (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp))))) (wkK {s = 1} {d = (w1 j)} {t = (w1 (fst (snd (snd p))))} (wkK {s = 1} {d = j} {t = (fst (snd (snd p)))} (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp)))))) (wkK {s = 1} {d = (w1 j)} {t = (w1 (fst (snd (snd (snd p)))))} (wkK {s = 1} {d = j} {t = (fst (snd (snd (snd p))))} (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp))))))) (wkK {s = 1} {d = (renTm vs j)} {t = v₀} (hereTm {m = j})) (hereTy {m = (nsuc (nsuc (w1 j)))}))))
+okT⊢ielim {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okT⊢ielim⁽0⁾ {_} {j} {(fst c)} {(snd c)} {(fst p)} {(fst (snd p))} {(fst (snd (snd p)))} {(fst (snd (snd (snd p))))} dj (⊢ctxOf dc) (⊢tyOf dc) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp)) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp))) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp)))) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp))))))
 
 r⊢ielim : Row
 r⊢ielim = record { R = λ qs j p c → rows (⌜ T⊢ielim qs j p c ⌝ᵗ ∷ ⌜ TCVat 23 qs j p c ⌝ᵗ ∷ [])
@@ -2589,8 +2784,11 @@ T⊢dI qs j q c = T⊢dI⁽0⁾ j (fst c) (fst q)
 T⊢dI-law : TelLaw T⊢dI
 T⊢dI-law σ qs j q c = T⊢dI⁽0⁾-sub σ j (fst c) (fst q)
 
+okT⊢dI⁽0⁾ : {Ξ : Ctx} {J G Q0 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ Q0 ∷ K 1 J → TelOK Ξ JT (T⊢dI⁽0⁾ J G Q0)
+okT⊢dI⁽0⁾ {Ξ} {J} {G} {Q0} dJ dG dQ0 = (okT⊢dII {_} {J} {G} {Q0} dJ dG dQ0)
+
 okT⊢dI : {Ξ : Ctx} {qs j q c : RTm ⌊ Ξ ⌋} → Ξ ⊢ qs ∷ El ⌜TSig⌝ → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ q ∷ PayV sh-kDesc ((tag 0) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CIat sh-kdI ((tag 0) ,ₚ j)) → TelOK Ξ JT (T⊢dI qs j q c)
-okT⊢dI {Ξ} {qs} {j} {q} {c} dqs dj dq dc = (okT⊢dII {_} {j} {(fst c)} {(fst q)} dj (⊢gI sh-kdI dc) (⊢atDepthSK {sg = KSig} {a = tag 0} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} dq)))
+okT⊢dI {Ξ} {qs} {j} {q} {c} dqs dj dq dc = (okT⊢dI⁽0⁾ {_} {j} {(fst c)} {(fst q)} dj (⊢gI sh-kdI dc) (⊢atDepthSK {sg = KSig} {a = tag 0} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} dq)))
 
 rT⊢dII : Row
 rT⊢dII = defRow₀ T⊢dI T⊢dI-law
@@ -2639,8 +2837,11 @@ T⊢dS qs j q c = T⊢dS⁽0⁾ j (fst c) (fst (snd c)) (fst (snd (snd c))) (fst
 T⊢dS-law : TelLaw T⊢dS
 T⊢dS-law σ qs j q c = T⊢dS⁽0⁾-sub σ j (fst c) (fst (snd c)) (fst (snd (snd c))) (fst q)
 
+okT⊢dS⁽0⁾ : {Ξ : Ctx} {J G F0 F1 Q0 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ F0 ∷ K 1 J → Ξ ⊢ F1 ∷ K 1 J → Ξ ⊢ Q0 ∷ K 1 J → TelOK Ξ JT (T⊢dS⁽0⁾ J G F0 F1 Q0)
+okT⊢dS⁽0⁾ {Ξ} {J} {G} {F0} {F1} {Q0} dJ dG dF0 dF1 dQ0 = (okT⊢dSI {_} {J} {G} {F0} {F1} {Q0} dJ dG dF0 dF1 dQ0)
+
 okT⊢dS : {Ξ : Ctx} {qs j q c : RTm ⌊ Ξ ⌋} → Ξ ⊢ qs ∷ El ⌜TSig⌝ → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ q ∷ PayV sh-kDesc ((tag 0) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CIat sh-kdS ((tag 0) ,ₚ j)) → TelOK Ξ JT (T⊢dS qs j q c)
-okT⊢dS {Ξ} {qs} {j} {q} {c} dqs dj dq dc = (okT⊢dSI {_} {j} {(fst c)} {(fst (snd c))} {(fst (snd (snd c)))} {(fst q)} dj (⊢gI sh-kdS dc) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢pI sh-kdS dc))) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢pI sh-kdS dc)))) (⊢atDepthSK {sg = KSig} {a = tag 0} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} dq)))
+okT⊢dS {Ξ} {qs} {j} {q} {c} dqs dj dq dc = (okT⊢dS⁽0⁾ {_} {j} {(fst c)} {(fst (snd c))} {(fst (snd (snd c)))} {(fst q)} dj (⊢gI sh-kdS dc) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢pI sh-kdS dc))) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢pI sh-kdS dc)))) (⊢atDepthSK {sg = KSig} {a = tag 0} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} dq)))
 
 rT⊢dSI : Row
 rT⊢dSI = defRow₀ T⊢dS T⊢dS-law
@@ -2689,8 +2890,11 @@ T⊢dR qs j q c = T⊢dR⁽0⁾ j (fst c) (fst (snd c)) (fst (snd (snd c))) (fst
 T⊢dR-law : TelLaw T⊢dR
 T⊢dR-law σ qs j q c = T⊢dR⁽0⁾-sub σ j (fst c) (fst (snd c)) (fst (snd (snd c))) (fst q)
 
+okT⊢dR⁽0⁾ : {Ξ : Ctx} {J G F0 F1 Q0 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ F0 ∷ K 1 J → Ξ ⊢ F1 ∷ K 1 J → Ξ ⊢ Q0 ∷ K 1 J → TelOK Ξ JT (T⊢dR⁽0⁾ J G F0 F1 Q0)
+okT⊢dR⁽0⁾ {Ξ} {J} {G} {F0} {F1} {Q0} dJ dG dF0 dF1 dQ0 = (okT⊢dRI {_} {J} {G} {F0} {F1} {Q0} dJ dG dF0 dF1 dQ0)
+
 okT⊢dR : {Ξ : Ctx} {qs j q c : RTm ⌊ Ξ ⌋} → Ξ ⊢ qs ∷ El ⌜TSig⌝ → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ q ∷ PayV sh-kDesc ((tag 0) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CIat sh-kdR ((tag 0) ,ₚ j)) → TelOK Ξ JT (T⊢dR qs j q c)
-okT⊢dR {Ξ} {qs} {j} {q} {c} dqs dj dq dc = (okT⊢dRI {_} {j} {(fst c)} {(fst (snd c))} {(fst (snd (snd c)))} {(fst q)} dj (⊢gI sh-kdR dc) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢pI sh-kdR dc))) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢pI sh-kdR dc)))) (⊢atDepthSK {sg = KSig} {a = tag 0} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} dq)))
+okT⊢dR {Ξ} {qs} {j} {q} {c} dqs dj dq dc = (okT⊢dR⁽0⁾ {_} {j} {(fst c)} {(fst (snd c))} {(fst (snd (snd c)))} {(fst q)} dj (⊢gI sh-kdR dc) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢pI sh-kdR dc))) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢pI sh-kdR dc)))) (⊢atDepthSK {sg = KSig} {a = tag 0} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} dq)))
 
 rT⊢dRI : Row
 rT⊢dRI = defRow₀ T⊢dR T⊢dR-law
@@ -2739,8 +2943,11 @@ T⊢dpay qs j q c = T⊢dpay⁽0⁾ j (fst c) (fst (snd c)) (fst (snd (snd c))) 
 T⊢dpay-law : TelLaw T⊢dpay
 T⊢dpay-law σ qs j q c = T⊢dpay⁽0⁾-sub σ j (fst c) (fst (snd c)) (fst (snd (snd c))) (fst (snd (snd (snd c))))
 
+okT⊢dpay⁽0⁾ : {Ξ : Ctx} {J G F0 F1 F2 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ F0 ∷ K 1 J → Ξ ⊢ F1 ∷ K 1 J → Ξ ⊢ F2 ∷ K 1 J → TelOK Ξ JT (T⊢dpay⁽0⁾ J G F0 F1 F2)
+okT⊢dpay⁽0⁾ {Ξ} {J} {G} {F0} {F1} {F2} dJ dG dF0 dF1 dF2 = (okT⊢dpayI {_} {J} {G} {F0} {F1} {F2} dJ dG dF0 dF1 dF2)
+
 okT⊢dpay : {Ξ : Ctx} {qs j q c : RTm ⌊ Ξ ⌋} → Ξ ⊢ qs ∷ El ⌜TSig⌝ → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ q ∷ PayV sh-kU ((tag 0) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CIat sh-kdpay ((tag 0) ,ₚ j)) → TelOK Ξ JT (T⊢dpay qs j q c)
-okT⊢dpay {Ξ} {qs} {j} {q} {c} dqs dj dq dc = (okT⊢dpayI {_} {j} {(fst c)} {(fst (snd c))} {(fst (snd (snd c)))} {(fst (snd (snd (snd c))))} dj (⊢gI sh-kdpay dc) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} (⊢pI sh-kdpay dc))) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} (⊢pI sh-kdpay dc)))) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} (⊢pI sh-kdpay dc))))))
+okT⊢dpay {Ξ} {qs} {j} {q} {c} dqs dj dq dc = (okT⊢dpay⁽0⁾ {_} {j} {(fst c)} {(fst (snd c))} {(fst (snd (snd c)))} {(fst (snd (snd (snd c))))} dj (⊢gI sh-kdpay dc) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} (⊢pI sh-kdpay dc))) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} (⊢pI sh-kdpay dc)))) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} (⊢pI sh-kdpay dc))))))
 
 rT⊢dpayI : Row
 rT⊢dpayI = defRow₀ T⊢dpay T⊢dpay-law
@@ -2845,8 +3052,17 @@ T⊢dih qs j p c = T⊢dih⁽0⁾ j (fst c) (snd c) (fst p) (fst (snd p)) (fst (
 T⊢dih-law : TelLaw T⊢dih
 T⊢dih-law σ qs j p c = T⊢dih⁽0⁾-sub σ j (fst c) (snd c) (fst p) (fst (snd p)) (fst (snd (snd p))) (fst (snd (snd (snd p))))
 
+okT⊢dih⁽2⁾ : {Ξ : Ctx} {J G X F0 F1 F2 F3 E0 E1 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ F0 ∷ K 1 J → Ξ ⊢ F1 ∷ K 1 J → Ξ ⊢ F2 ∷ K 1 J → Ξ ⊢ F3 ∷ K 1 J → Ξ ⊢ E0 ∷ K 1 J → Ξ ⊢ E1 ∷ K 0 (nsuc (nsuc J)) → TelOK Ξ JT (T⊢dih⁽2⁾ J G X F0 F1 F2 F3 E0 E1)
+okT⊢dih⁽2⁾ {Ξ} {J} {G} {X} {F0} {F1} {F2} {F3} {E0} {E1} dJ dG dX dF0 dF1 dF2 dF3 dE0 dE1 = (okT⊢dihI {_} {J} {G} {X} {F0} {F1} {F2} {F3} {E0} {E1} dJ dG dX dF0 dF1 dF2 dF3 dE0 dE1)
+
+okT⊢dih⁽1⁾ : {Ξ : Ctx} {J G X F0 F1 F2 F3 E0 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ F0 ∷ K 1 J → Ξ ⊢ F1 ∷ K 1 J → Ξ ⊢ F2 ∷ K 1 J → Ξ ⊢ F3 ∷ K 1 J → Ξ ⊢ E0 ∷ K 1 J → TelOK Ξ JT (T⊢dih⁽1⁾ J G X F0 F1 F2 F3 E0)
+okT⊢dih⁽1⁾ {Ξ} {J} {G} {X} {F0} {F1} {F2} {F3} {E0} dJ dG dX dF0 dF1 dF2 dF3 dE0 = okσJ (okC⊢dih_1I {_} {J} dJ) (okT⊢dih⁽2⁾ {_} {(w1 J)} {(w1 G)} {(w1 X)} {(w1 F0)} {(w1 F1)} {(w1 F2)} {(w1 F3)} {(w1 E0)} {v₀} (wkN {t = J} dJ) (wkG {d = J} {g = G} dG) (wkK {s = 0} {d = J} {t = X} dX) (wkK {s = 1} {d = J} {t = F0} dF0) (wkK {s = 1} {d = J} {t = F1} dF1) (wkK {s = 1} {d = J} {t = F2} dF2) (wkK {s = 1} {d = J} {t = F3} dF3) (wkK {s = 1} {d = J} {t = E0} dE0) (hereTy {m = (nsuc (nsuc J))}))
+
+okT⊢dih⁽0⁾ : {Ξ : Ctx} {J G X F0 F1 F2 F3 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ F0 ∷ K 1 J → Ξ ⊢ F1 ∷ K 1 J → Ξ ⊢ F2 ∷ K 1 J → Ξ ⊢ F3 ∷ K 1 J → TelOK Ξ JT (T⊢dih⁽0⁾ J G X F0 F1 F2 F3)
+okT⊢dih⁽0⁾ {Ξ} {J} {G} {X} {F0} {F1} {F2} {F3} dJ dG dX dF0 dF1 dF2 dF3 = okσJ (okC⊢dih_0I {_} {J} dJ) (okT⊢dih⁽1⁾ {_} {(w1 J)} {(w1 G)} {(w1 X)} {(w1 F0)} {(w1 F1)} {(w1 F2)} {(w1 F3)} {v₀} (wkN {t = J} dJ) (wkG {d = J} {g = G} dG) (wkK {s = 0} {d = J} {t = X} dX) (wkK {s = 1} {d = J} {t = F0} dF0) (wkK {s = 1} {d = J} {t = F1} dF1) (wkK {s = 1} {d = J} {t = F2} dF2) (wkK {s = 1} {d = J} {t = F3} dF3) (hereTm {m = J}))
+
 okT⊢dih : {Ξ : Ctx} {qs j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ qs ∷ El ⌜TSig⌝ → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ p ∷ PayV sh-kdih ((tag 1) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CTat ((tag 1) ,ₚ j)) → TelOK Ξ JT (T⊢dih qs j p c)
-okT⊢dih {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okσJ (okC⊢dih_0I {_} {j} dj) (okσJ (okC⊢dih_1I {_} {(w1 j)} (wkN {t = j} dj)) (okT⊢dihI {_} {(w2 j)} {(w2 (fst c))} {(w2 (snd c))} {(w2 (fst p))} {(w2 (fst (snd p)))} {(w2 (fst (snd (snd p))))} {(w2 (fst (snd (snd (snd p)))))} {v₁} {v₀} (wkN {t = (w1 j)} (wkN {t = j} dj)) (wkG {d = (w1 j)} {g = (w1 (fst c))} (wkG {d = j} {g = (fst c)} (⊢ctxOf dc))) (wkK {s = 0} {d = (w1 j)} {t = (w1 (snd c))} (wkK {s = 0} {d = j} {t = (snd c)} (⊢tyOf dc))) (wkK {s = 1} {d = (w1 j)} {t = (w1 (fst p))} (wkK {s = 1} {d = j} {t = (fst p)} (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp)))) (wkK {s = 1} {d = (w1 j)} {t = (w1 (fst (snd p)))} (wkK {s = 1} {d = j} {t = (fst (snd p))} (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp))))) (wkK {s = 1} {d = (w1 j)} {t = (w1 (fst (snd (snd p))))} (wkK {s = 1} {d = j} {t = (fst (snd (snd p)))} (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp)))))) (wkK {s = 1} {d = (w1 j)} {t = (w1 (fst (snd (snd (snd p)))))} (wkK {s = 1} {d = j} {t = (fst (snd (snd (snd p))))} (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp))))))) (wkK {s = 1} {d = (renTm vs j)} {t = v₀} (hereTm {m = j})) (hereTy {m = (nsuc (nsuc (w1 j)))}))))
+okT⊢dih {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okT⊢dih⁽0⁾ {_} {j} {(fst c)} {(snd c)} {(fst p)} {(fst (snd p))} {(fst (snd (snd p)))} {(fst (snd (snd (snd p))))} dj (⊢ctxOf dc) (⊢tyOf dc) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp)) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp))) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp)))) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp))))))
 
 r⊢dih : Row
 r⊢dih = record { R = λ qs j p c → rows (⌜ T⊢dih qs j p c ⌝ᵗ ∷ ⌜ TCVat 28 qs j p c ⌝ᵗ ∷ [])
@@ -2918,8 +3134,14 @@ T⊢fzero qs j p c = T⊢fzero⁽0⁾ j (fst c) (snd c)
 T⊢fzero-law : TelLaw T⊢fzero
 T⊢fzero-law σ qs j p c = T⊢fzero⁽0⁾-sub σ j (fst c) (snd c)
 
+okT⊢fzero⁽1⁾ : {Ξ : Ctx} {J G X E0 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ E0 ∷ K 1 J → TelOK Ξ JT (T⊢fzero⁽1⁾ J G X E0)
+okT⊢fzero⁽1⁾ {Ξ} {J} {G} {X} {E0} dJ dG dX dE0 = (okT⊢fzeroI {_} {J} {G} {X} {E0} dJ dG dX dE0)
+
+okT⊢fzero⁽0⁾ : {Ξ : Ctx} {J G X : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → TelOK Ξ JT (T⊢fzero⁽0⁾ J G X)
+okT⊢fzero⁽0⁾ {Ξ} {J} {G} {X} dJ dG dX = okσJ (okC⊢fzero_0I {_} {J} dJ) (okT⊢fzero⁽1⁾ {_} {(w1 J)} {(w1 G)} {(w1 X)} {v₀} (wkN {t = J} dJ) (wkG {d = J} {g = G} dG) (wkK {s = 0} {d = J} {t = X} dX) (hereTm {m = J}))
+
 okT⊢fzero : {Ξ : Ctx} {qs j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ qs ∷ El ⌜TSig⌝ → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ p ∷ PayV sh-kfzero ((tag 1) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CTat ((tag 1) ,ₚ j)) → TelOK Ξ JT (T⊢fzero qs j p c)
-okT⊢fzero {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okσJ (okC⊢fzero_0I {_} {j} dj) (okT⊢fzeroI {_} {(w1 j)} {(w1 (fst c))} {(w1 (snd c))} {v₀} (wkN {t = j} dj) (wkG {d = j} {g = (fst c)} (⊢ctxOf dc)) (wkK {s = 0} {d = j} {t = (snd c)} (⊢tyOf dc)) (hereTm {m = j})))
+okT⊢fzero {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okT⊢fzero⁽0⁾ {_} {j} {(fst c)} {(snd c)} dj (⊢ctxOf dc) (⊢tyOf dc))
 
 r⊢fzero : Row
 r⊢fzero = record { R = λ qs j p c → rows (⌜ T⊢fzero qs j p c ⌝ᵗ ∷ ⌜ TCVat 29 qs j p c ⌝ᵗ ∷ [])
@@ -2991,8 +3213,14 @@ T⊢fsuc qs j p c = T⊢fsuc⁽0⁾ j (fst c) (snd c) (fst p)
 T⊢fsuc-law : TelLaw T⊢fsuc
 T⊢fsuc-law σ qs j p c = T⊢fsuc⁽0⁾-sub σ j (fst c) (snd c) (fst p)
 
+okT⊢fsuc⁽1⁾ : {Ξ : Ctx} {J G X F0 E0 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ F0 ∷ K 1 J → Ξ ⊢ E0 ∷ K 1 J → TelOK Ξ JT (T⊢fsuc⁽1⁾ J G X F0 E0)
+okT⊢fsuc⁽1⁾ {Ξ} {J} {G} {X} {F0} {E0} dJ dG dX dF0 dE0 = (okT⊢fsucI {_} {J} {G} {X} {F0} {E0} dJ dG dX dF0 dE0)
+
+okT⊢fsuc⁽0⁾ : {Ξ : Ctx} {J G X F0 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ F0 ∷ K 1 J → TelOK Ξ JT (T⊢fsuc⁽0⁾ J G X F0)
+okT⊢fsuc⁽0⁾ {Ξ} {J} {G} {X} {F0} dJ dG dX dF0 = okσJ (okC⊢fsuc_0I {_} {J} dJ) (okT⊢fsuc⁽1⁾ {_} {(w1 J)} {(w1 G)} {(w1 X)} {(w1 F0)} {v₀} (wkN {t = J} dJ) (wkG {d = J} {g = G} dG) (wkK {s = 0} {d = J} {t = X} dX) (wkK {s = 1} {d = J} {t = F0} dF0) (hereTm {m = J}))
+
 okT⊢fsuc : {Ξ : Ctx} {qs j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ qs ∷ El ⌜TSig⌝ → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ p ∷ PayV sh-kfsuc ((tag 1) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CTat ((tag 1) ,ₚ j)) → TelOK Ξ JT (T⊢fsuc qs j p c)
-okT⊢fsuc {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okσJ (okC⊢fsuc_0I {_} {j} dj) (okT⊢fsucI {_} {(w1 j)} {(w1 (fst c))} {(w1 (snd c))} {(w1 (fst p))} {v₀} (wkN {t = j} dj) (wkG {d = j} {g = (fst c)} (⊢ctxOf dc)) (wkK {s = 0} {d = j} {t = (snd c)} (⊢tyOf dc)) (wkK {s = 1} {d = j} {t = (fst p)} (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} dp))) (hereTm {m = j})))
+okT⊢fsuc {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okT⊢fsuc⁽0⁾ {_} {j} {(fst c)} {(snd c)} {(fst p)} dj (⊢ctxOf dc) (⊢tyOf dc) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} dp)))
 
 r⊢fsuc : Row
 r⊢fsuc = record { R = λ qs j p c → rows (⌜ T⊢fsuc qs j p c ⌝ᵗ ∷ ⌜ TCVat 30 qs j p c ⌝ᵗ ∷ [])
@@ -3092,8 +3320,17 @@ T⊢fcase qs j p c = T⊢fcase⁽0⁾ j (fst c) (snd c) (fst p) (fst (snd p)) (f
 T⊢fcase-law : TelLaw T⊢fcase
 T⊢fcase-law σ qs j p c = T⊢fcase⁽0⁾-sub σ j (fst c) (snd c) (fst p) (fst (snd p)) (fst (snd (snd p)))
 
+okT⊢fcase⁽2⁾ : {Ξ : Ctx} {J G X F0 F1 F2 E0 E1 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ F0 ∷ K 1 J → Ξ ⊢ F1 ∷ K 1 J → Ξ ⊢ F2 ∷ K 1 (nsuc J) → Ξ ⊢ E0 ∷ K 1 J → Ξ ⊢ E1 ∷ K 0 (nsuc J) → TelOK Ξ JT (T⊢fcase⁽2⁾ J G X F0 F1 F2 E0 E1)
+okT⊢fcase⁽2⁾ {Ξ} {J} {G} {X} {F0} {F1} {F2} {E0} {E1} dJ dG dX dF0 dF1 dF2 dE0 dE1 = (okT⊢fcaseI {_} {J} {G} {X} {F0} {F1} {F2} {E0} {E1} dJ dG dX dF0 dF1 dF2 dE0 dE1)
+
+okT⊢fcase⁽1⁾ : {Ξ : Ctx} {J G X F0 F1 F2 E0 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ F0 ∷ K 1 J → Ξ ⊢ F1 ∷ K 1 J → Ξ ⊢ F2 ∷ K 1 (nsuc J) → Ξ ⊢ E0 ∷ K 1 J → TelOK Ξ JT (T⊢fcase⁽1⁾ J G X F0 F1 F2 E0)
+okT⊢fcase⁽1⁾ {Ξ} {J} {G} {X} {F0} {F1} {F2} {E0} dJ dG dX dF0 dF1 dF2 dE0 = okσJ (okC⊢fcase_1I {_} {J} dJ) (okT⊢fcase⁽2⁾ {_} {(w1 J)} {(w1 G)} {(w1 X)} {(w1 F0)} {(w1 F1)} {(w1 F2)} {(w1 E0)} {v₀} (wkN {t = J} dJ) (wkG {d = J} {g = G} dG) (wkK {s = 0} {d = J} {t = X} dX) (wkK {s = 1} {d = J} {t = F0} dF0) (wkK {s = 1} {d = J} {t = F1} dF1) (wkK {s = 1} {d = (nsuc J)} {t = F2} dF2) (wkK {s = 1} {d = J} {t = E0} dE0) (hereTy {m = (nsuc J)}))
+
+okT⊢fcase⁽0⁾ : {Ξ : Ctx} {J G X F0 F1 F2 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ F0 ∷ K 1 J → Ξ ⊢ F1 ∷ K 1 J → Ξ ⊢ F2 ∷ K 1 (nsuc J) → TelOK Ξ JT (T⊢fcase⁽0⁾ J G X F0 F1 F2)
+okT⊢fcase⁽0⁾ {Ξ} {J} {G} {X} {F0} {F1} {F2} dJ dG dX dF0 dF1 dF2 = okσJ (okC⊢fcase_0I {_} {J} dJ) (okT⊢fcase⁽1⁾ {_} {(w1 J)} {(w1 G)} {(w1 X)} {(w1 F0)} {(w1 F1)} {(w1 F2)} {v₀} (wkN {t = J} dJ) (wkG {d = J} {g = G} dG) (wkK {s = 0} {d = J} {t = X} dX) (wkK {s = 1} {d = J} {t = F0} dF0) (wkK {s = 1} {d = J} {t = F1} dF1) (wkK {s = 1} {d = (nsuc J)} {t = F2} dF2) (hereTm {m = J}))
+
 okT⊢fcase : {Ξ : Ctx} {qs j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ qs ∷ El ⌜TSig⌝ → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ p ∷ PayV sh-kfcase ((tag 1) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CTat ((tag 1) ,ₚ j)) → TelOK Ξ JT (T⊢fcase qs j p c)
-okT⊢fcase {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okσJ (okC⊢fcase_0I {_} {j} dj) (okσJ (okC⊢fcase_1I {_} {(w1 j)} (wkN {t = j} dj)) (okT⊢fcaseI {_} {(w2 j)} {(w2 (fst c))} {(w2 (snd c))} {(w2 (fst p))} {(w2 (fst (snd p)))} {(w2 (fst (snd (snd p))))} {v₁} {v₀} (wkN {t = (w1 j)} (wkN {t = j} dj)) (wkG {d = (w1 j)} {g = (w1 (fst c))} (wkG {d = j} {g = (fst c)} (⊢ctxOf dc))) (wkK {s = 0} {d = (w1 j)} {t = (w1 (snd c))} (wkK {s = 0} {d = j} {t = (snd c)} (⊢tyOf dc))) (wkK {s = 1} {d = (w1 j)} {t = (w1 (fst p))} (wkK {s = 1} {d = j} {t = (fst p)} (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 1 ∷ʰ []ʰ)} dp)))) (wkK {s = 1} {d = (w1 j)} {t = (w1 (fst (snd p)))} (wkK {s = 1} {d = j} {t = (fst (snd p))} (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 1 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 1 ∷ʰ []ʰ)} dp))))) (wkK {s = 1} {d = (w1 (nsuc j))} {t = (w1 (fst (snd (snd p))))} (wkK {s = 1} {d = (nsuc j)} {t = (fst (snd (snd p)))} (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 1} (⊢recFst {s = 1} {k = 1} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 1 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 1 ∷ʰ []ʰ)} dp)))))) (wkK {s = 1} {d = (renTm vs j)} {t = v₀} (hereTm {m = j})) (hereTy {m = (nsuc (w1 j))}))))
+okT⊢fcase {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okT⊢fcase⁽0⁾ {_} {j} {(fst c)} {(snd c)} {(fst p)} {(fst (snd p))} {(fst (snd (snd p)))} dj (⊢ctxOf dc) (⊢tyOf dc) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 1 ∷ʰ []ʰ)} dp)) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 1 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 1 ∷ʰ []ʰ)} dp))) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 1} (⊢recFst {s = 1} {k = 1} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 1 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 1 ∷ʰ []ʰ)} dp)))))
 
 r⊢fcase : Row
 r⊢fcase = record { R = λ qs j p c → rows (⌜ T⊢fcase qs j p c ⌝ᵗ ∷ ⌜ TCVat 31 qs j p c ⌝ᵗ ∷ [])
@@ -3165,8 +3402,14 @@ T⊢fcase0 qs j p c = T⊢fcase0⁽0⁾ j (fst c) (snd c) (fst p)
 T⊢fcase0-law : TelLaw T⊢fcase0
 T⊢fcase0-law σ qs j p c = T⊢fcase0⁽0⁾-sub σ j (fst c) (snd c) (fst p)
 
+okT⊢fcase0⁽1⁾ : {Ξ : Ctx} {J G X F0 E0 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ F0 ∷ K 1 J → Ξ ⊢ E0 ∷ K 0 (nsuc J) → TelOK Ξ JT (T⊢fcase0⁽1⁾ J G X F0 E0)
+okT⊢fcase0⁽1⁾ {Ξ} {J} {G} {X} {F0} {E0} dJ dG dX dF0 dE0 = (okT⊢fcase0I {_} {J} {G} {X} {F0} {E0} dJ dG dX dF0 dE0)
+
+okT⊢fcase0⁽0⁾ : {Ξ : Ctx} {J G X F0 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ F0 ∷ K 1 J → TelOK Ξ JT (T⊢fcase0⁽0⁾ J G X F0)
+okT⊢fcase0⁽0⁾ {Ξ} {J} {G} {X} {F0} dJ dG dX dF0 = okσJ (okC⊢fcase0_0I {_} {J} dJ) (okT⊢fcase0⁽1⁾ {_} {(w1 J)} {(w1 G)} {(w1 X)} {(w1 F0)} {v₀} (wkN {t = J} dJ) (wkG {d = J} {g = G} dG) (wkK {s = 0} {d = J} {t = X} dX) (wkK {s = 1} {d = J} {t = F0} dF0) (hereTy {m = (nsuc J)}))
+
 okT⊢fcase0 : {Ξ : Ctx} {qs j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ qs ∷ El ⌜TSig⌝ → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ p ∷ PayV sh-kfcase0 ((tag 1) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CTat ((tag 1) ,ₚ j)) → TelOK Ξ JT (T⊢fcase0 qs j p c)
-okT⊢fcase0 {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okσJ (okC⊢fcase0_0I {_} {j} dj) (okT⊢fcase0I {_} {(w1 j)} {(w1 (fst c))} {(w1 (snd c))} {(w1 (fst p))} {v₀} (wkN {t = j} dj) (wkG {d = j} {g = (fst c)} (⊢ctxOf dc)) (wkK {s = 0} {d = j} {t = (snd c)} (⊢tyOf dc)) (wkK {s = 1} {d = j} {t = (fst p)} (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} dp))) (hereTy {m = (nsuc j)})))
+okT⊢fcase0 {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okT⊢fcase0⁽0⁾ {_} {j} {(fst c)} {(snd c)} {(fst p)} dj (⊢ctxOf dc) (⊢tyOf dc) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} dp)))
 
 r⊢fcase0 : Row
 r⊢fcase0 = record { R = λ qs j p c → rows (⌜ T⊢fcase0 qs j p c ⌝ᵗ ∷ ⌜ TCVat 32 qs j p c ⌝ᵗ ∷ [])
@@ -3294,8 +3537,20 @@ T⊢psplit qs j p c = T⊢psplit⁽0⁾ j (fst c) (snd c) (fst p) (fst (snd p))
 T⊢psplit-law : TelLaw T⊢psplit
 T⊢psplit-law σ qs j p c = T⊢psplit⁽0⁾-sub σ j (fst c) (snd c) (fst p) (fst (snd p))
 
+okT⊢psplit⁽3⁾ : {Ξ : Ctx} {J G X F0 F1 E0 E1 E2 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ F0 ∷ K 1 (nsuc (nsuc J)) → Ξ ⊢ F1 ∷ K 1 J → Ξ ⊢ E0 ∷ K 0 J → Ξ ⊢ E1 ∷ K 0 (nsuc J) → Ξ ⊢ E2 ∷ K 0 (nsuc J) → TelOK Ξ JT (T⊢psplit⁽3⁾ J G X F0 F1 E0 E1 E2)
+okT⊢psplit⁽3⁾ {Ξ} {J} {G} {X} {F0} {F1} {E0} {E1} {E2} dJ dG dX dF0 dF1 dE0 dE1 dE2 = (okT⊢psplitI {_} {J} {G} {X} {F0} {F1} {E0} {E1} {E2} dJ dG dX dF0 dF1 dE0 dE1 dE2)
+
+okT⊢psplit⁽2⁾ : {Ξ : Ctx} {J G X F0 F1 E0 E1 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ F0 ∷ K 1 (nsuc (nsuc J)) → Ξ ⊢ F1 ∷ K 1 J → Ξ ⊢ E0 ∷ K 0 J → Ξ ⊢ E1 ∷ K 0 (nsuc J) → TelOK Ξ JT (T⊢psplit⁽2⁾ J G X F0 F1 E0 E1)
+okT⊢psplit⁽2⁾ {Ξ} {J} {G} {X} {F0} {F1} {E0} {E1} dJ dG dX dF0 dF1 dE0 dE1 = okσJ (okC⊢psplit_2I {_} {J} dJ) (okT⊢psplit⁽3⁾ {_} {(w1 J)} {(w1 G)} {(w1 X)} {(w1 F0)} {(w1 F1)} {(w1 E0)} {(w1 E1)} {v₀} (wkN {t = J} dJ) (wkG {d = J} {g = G} dG) (wkK {s = 0} {d = J} {t = X} dX) (wkK {s = 1} {d = (nsuc (nsuc J))} {t = F0} dF0) (wkK {s = 1} {d = J} {t = F1} dF1) (wkK {s = 0} {d = J} {t = E0} dE0) (wkK {s = 0} {d = (nsuc J)} {t = E1} dE1) (hereTy {m = (nsuc J)}))
+
+okT⊢psplit⁽1⁾ : {Ξ : Ctx} {J G X F0 F1 E0 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ F0 ∷ K 1 (nsuc (nsuc J)) → Ξ ⊢ F1 ∷ K 1 J → Ξ ⊢ E0 ∷ K 0 J → TelOK Ξ JT (T⊢psplit⁽1⁾ J G X F0 F1 E0)
+okT⊢psplit⁽1⁾ {Ξ} {J} {G} {X} {F0} {F1} {E0} dJ dG dX dF0 dF1 dE0 = okσJ (okC⊢psplit_1I {_} {J} dJ) (okT⊢psplit⁽2⁾ {_} {(w1 J)} {(w1 G)} {(w1 X)} {(w1 F0)} {(w1 F1)} {(w1 E0)} {v₀} (wkN {t = J} dJ) (wkG {d = J} {g = G} dG) (wkK {s = 0} {d = J} {t = X} dX) (wkK {s = 1} {d = (nsuc (nsuc J))} {t = F0} dF0) (wkK {s = 1} {d = J} {t = F1} dF1) (wkK {s = 0} {d = J} {t = E0} dE0) (hereTy {m = (nsuc J)}))
+
+okT⊢psplit⁽0⁾ : {Ξ : Ctx} {J G X F0 F1 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ X ∷ K 0 J → Ξ ⊢ F0 ∷ K 1 (nsuc (nsuc J)) → Ξ ⊢ F1 ∷ K 1 J → TelOK Ξ JT (T⊢psplit⁽0⁾ J G X F0 F1)
+okT⊢psplit⁽0⁾ {Ξ} {J} {G} {X} {F0} {F1} dJ dG dX dF0 dF1 = okσJ (okC⊢psplit_0I {_} {J} dJ) (okT⊢psplit⁽1⁾ {_} {(w1 J)} {(w1 G)} {(w1 X)} {(w1 F0)} {(w1 F1)} {v₀} (wkN {t = J} dJ) (wkG {d = J} {g = G} dG) (wkK {s = 0} {d = J} {t = X} dX) (wkK {s = 1} {d = (nsuc (nsuc J))} {t = F0} dF0) (wkK {s = 1} {d = J} {t = F1} dF1) (hereTy {m = J}))
+
 okT⊢psplit : {Ξ : Ctx} {qs j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ qs ∷ El ⌜TSig⌝ → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ p ∷ PayV sh-kpsplit ((tag 1) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CTat ((tag 1) ,ₚ j)) → TelOK Ξ JT (T⊢psplit qs j p c)
-okT⊢psplit {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okσJ (okC⊢psplit_0I {_} {j} dj) (okσJ (okC⊢psplit_1I {_} {(w1 j)} (wkN {t = j} dj)) (okσJ (okC⊢psplit_2I {_} {(w2 j)} (wkN {t = (w1 j)} (wkN {t = j} dj))) (okT⊢psplitI {_} {(w3 j)} {(w3 (fst c))} {(w3 (snd c))} {(w3 (fst p))} {(w3 (fst (snd p)))} {v₂} {v₁} {v₀} (wkN {t = (w2 j)} (wkN {t = (w1 j)} (wkN {t = j} dj))) (wkG {d = (w2 j)} {g = (w2 (fst c))} (wkG {d = (w1 j)} {g = (w1 (fst c))} (wkG {d = j} {g = (fst c)} (⊢ctxOf dc)))) (wkK {s = 0} {d = (w2 j)} {t = (w2 (snd c))} (wkK {s = 0} {d = (w1 j)} {t = (w1 (snd c))} (wkK {s = 0} {d = j} {t = (snd c)} (⊢tyOf dc)))) (wkK {s = 1} {d = (w2 (nsuc (nsuc j)))} {t = (w2 (fst p))} (wkK {s = 1} {d = (w1 (nsuc (nsuc j)))} {t = (w1 (fst p))} (wkK {s = 1} {d = (nsuc (nsuc j))} {t = (fst p)} (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 2} (⊢recFst {s = 1} {k = 2} {sh = (rec 1 0 ∷ʰ []ʰ)} dp))))) (wkK {s = 1} {d = (w2 j)} {t = (w2 (fst (snd p)))} (wkK {s = 1} {d = (w1 j)} {t = (w1 (fst (snd p)))} (wkK {s = 1} {d = j} {t = (fst (snd p))} (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 2} {sh = (rec 1 0 ∷ʰ []ʰ)} dp)))))) (wkK {s = 0} {d = (w1 (renTm vs j))} {t = v₁} (wkK {s = 0} {d = (renTm vs j)} {t = v₀} (hereTy {m = j}))) (wkK {s = 0} {d = (renTm vs (nsuc (w1 j)))} {t = v₀} (hereTy {m = (nsuc (w1 j))})) (hereTy {m = (nsuc (w2 j))})))))
+okT⊢psplit {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okT⊢psplit⁽0⁾ {_} {j} {(fst c)} {(snd c)} {(fst p)} {(fst (snd p))} dj (⊢ctxOf dc) (⊢tyOf dc) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 2} (⊢recFst {s = 1} {k = 2} {sh = (rec 1 0 ∷ʰ []ʰ)} dp)) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 2} {sh = (rec 1 0 ∷ʰ []ʰ)} dp))))
 
 r⊢psplit : Row
 r⊢psplit = record { R = λ qs j p c → rows (⌜ T⊢psplit qs j p c ⌝ᵗ ∷ ⌜ TCVat 33 qs j p c ⌝ᵗ ∷ [])
@@ -3339,8 +3594,11 @@ T⊢cNat qs j q c = T⊢cNat⁽0⁾
 T⊢cNat-law : TelLaw T⊢cNat
 T⊢cNat-law σ qs j q c = T⊢cNat⁽0⁾-sub σ 
 
+okT⊢cNat⁽0⁾ : {Ξ : Ctx} → TelOK Ξ JT (T⊢cNat⁽0⁾)
+okT⊢cNat⁽0⁾ {Ξ}   = (okT⊢cNatI {_})
+
 okT⊢cNat : {Ξ : Ctx} {qs j q c : RTm ⌊ Ξ ⌋} → Ξ ⊢ qs ∷ El ⌜TSig⌝ → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ q ∷ PayV sh-kU ((tag 0) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CIat sh-kcNat ((tag 0) ,ₚ j)) → TelOK Ξ JT (T⊢cNat qs j q c)
-okT⊢cNat {Ξ} {qs} {j} {q} {c} dqs dj dq dc = (okT⊢cNatI {_})
+okT⊢cNat {Ξ} {qs} {j} {q} {c} dqs dj dq dc = (okT⊢cNat⁽0⁾ {_}  )
 
 rT⊢cNatI : Row
 rT⊢cNatI = defRow₀ T⊢cNat T⊢cNat-law
@@ -3389,8 +3647,11 @@ T⊢cIMu qs j q c = T⊢cIMu⁽0⁾ j (fst c) (fst (snd c)) (fst (snd (snd c))) 
 T⊢cIMu-law : TelLaw T⊢cIMu
 T⊢cIMu-law σ qs j q c = T⊢cIMu⁽0⁾-sub σ j (fst c) (fst (snd c)) (fst (snd (snd c))) (fst (snd (snd (snd c))))
 
+okT⊢cIMu⁽0⁾ : {Ξ : Ctx} {J G F0 F1 F2 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ F0 ∷ K 1 J → Ξ ⊢ F1 ∷ K 1 J → Ξ ⊢ F2 ∷ K 1 J → TelOK Ξ JT (T⊢cIMu⁽0⁾ J G F0 F1 F2)
+okT⊢cIMu⁽0⁾ {Ξ} {J} {G} {F0} {F1} {F2} dJ dG dF0 dF1 dF2 = (okT⊢cIMuI {_} {J} {G} {F0} {F1} {F2} dJ dG dF0 dF1 dF2)
+
 okT⊢cIMu : {Ξ : Ctx} {qs j q c : RTm ⌊ Ξ ⌋} → Ξ ⊢ qs ∷ El ⌜TSig⌝ → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ q ∷ PayV sh-kU ((tag 0) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CIat sh-kcIMu ((tag 0) ,ₚ j)) → TelOK Ξ JT (T⊢cIMu qs j q c)
-okT⊢cIMu {Ξ} {qs} {j} {q} {c} dqs dj dq dc = (okT⊢cIMuI {_} {j} {(fst c)} {(fst (snd c))} {(fst (snd (snd c)))} {(fst (snd (snd (snd c))))} dj (⊢gI sh-kcIMu dc) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} (⊢pI sh-kcIMu dc))) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} (⊢pI sh-kcIMu dc)))) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} (⊢pI sh-kcIMu dc))))))
+okT⊢cIMu {Ξ} {qs} {j} {q} {c} dqs dj dq dc = (okT⊢cIMu⁽0⁾ {_} {j} {(fst c)} {(fst (snd c))} {(fst (snd (snd c)))} {(fst (snd (snd (snd c))))} dj (⊢gI sh-kcIMu dc) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} (⊢pI sh-kcIMu dc))) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} (⊢pI sh-kcIMu dc)))) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} (⊢pI sh-kcIMu dc))))))
 
 rT⊢cIMuI : Row
 rT⊢cIMuI = defRow₀ T⊢cIMu T⊢cIMu-law
@@ -3439,8 +3700,11 @@ T⊢cFin qs j q c = T⊢cFin⁽0⁾ j (fst c) (fst (snd c))
 T⊢cFin-law : TelLaw T⊢cFin
 T⊢cFin-law σ qs j q c = T⊢cFin⁽0⁾-sub σ j (fst c) (fst (snd c))
 
+okT⊢cFin⁽0⁾ : {Ξ : Ctx} {J G F0 : RTm ⌊ Ξ ⌋} → Ξ ⊢ J ∷ El ⌜Nat⌝ → Ξ ⊢ G ∷ KCtx J → Ξ ⊢ F0 ∷ K 1 J → TelOK Ξ JT (T⊢cFin⁽0⁾ J G F0)
+okT⊢cFin⁽0⁾ {Ξ} {J} {G} {F0} dJ dG dF0 = (okT⊢cFinI {_} {J} {G} {F0} dJ dG dF0)
+
 okT⊢cFin : {Ξ : Ctx} {qs j q c : RTm ⌊ Ξ ⌋} → Ξ ⊢ qs ∷ El ⌜TSig⌝ → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ q ∷ PayV sh-kU ((tag 0) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CIat sh-kcFin ((tag 0) ,ₚ j)) → TelOK Ξ JT (T⊢cFin qs j q c)
-okT⊢cFin {Ξ} {qs} {j} {q} {c} dqs dj dq dc = (okT⊢cFinI {_} {j} {(fst c)} {(fst (snd c))} dj (⊢gI sh-kcFin dc) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢pI sh-kcFin dc))))
+okT⊢cFin {Ξ} {qs} {j} {q} {c} dqs dj dq dc = (okT⊢cFin⁽0⁾ {_} {j} {(fst c)} {(fst (snd c))} dj (⊢gI sh-kcFin dc) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢pI sh-kcFin dc))))
 
 rT⊢cFinI : Row
 rT⊢cFinI = defRow₀ T⊢cFin T⊢cFin-law
@@ -3489,8 +3753,11 @@ T⊢cUnit qs j q c = T⊢cUnit⁽0⁾
 T⊢cUnit-law : TelLaw T⊢cUnit
 T⊢cUnit-law σ qs j q c = T⊢cUnit⁽0⁾-sub σ 
 
+okT⊢cUnit⁽0⁾ : {Ξ : Ctx} → TelOK Ξ JT (T⊢cUnit⁽0⁾)
+okT⊢cUnit⁽0⁾ {Ξ}   = (okT⊢cUnitI {_})
+
 okT⊢cUnit : {Ξ : Ctx} {qs j q c : RTm ⌊ Ξ ⌋} → Ξ ⊢ qs ∷ El ⌜TSig⌝ → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ q ∷ PayV sh-kU ((tag 0) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CIat sh-kcUnit ((tag 0) ,ₚ j)) → TelOK Ξ JT (T⊢cUnit qs j q c)
-okT⊢cUnit {Ξ} {qs} {j} {q} {c} dqs dj dq dc = (okT⊢cUnitI {_})
+okT⊢cUnit {Ξ} {qs} {j} {q} {c} dqs dj dq dc = (okT⊢cUnit⁽0⁾ {_}  )
 
 rT⊢cUnitI : Row
 rT⊢cUnitI = defRow₀ T⊢cUnit T⊢cUnit-law

@@ -69,7 +69,7 @@ con⟶lam {Ξ} {qs} {j} {f0} {e0} {r0} dqs dj df0 de0 dr0 =
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶lam⁽0⁾ j ((klam e0)) f0)
-    okT0 = (Redₘ.okσ (okC⟶lam_0I {_} {j} dj) (okT⟶lamI {_} {(w1 j)} {(w1 ((klam e0)))} {(w1 f0)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((klam e0))} (⊢klam dj de0)) (wkK {s = 1} {d = (nsuc j)} {t = f0} df0) (hereTm {m = (nsuc j)})))
+    okT0 = (okT⟶lam⁽0⁾ {_} {j} {((klam e0))} {f0} dj (⊢klam dj de0) df0)
     okB : TelOK Ξ Redₘ.J (T⟶lam⁽1⁾ j ((klam e0)) f0 e0)
     okB = (okT⟶lamI {_} {j} {((klam e0))} {f0} {e0} dj (⊢klam dj de0) df0 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (klam e0)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶lam⁽0⁾ j ((klam e0)) f0 ⌝ᵗ)
@@ -92,7 +92,7 @@ con⟶app₁ {Ξ} {qs} {j} {f0} {f1} {e0} {r0} dqs dj df0 df1 de0 dr0 =
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶app₁⁽0⁾ j ((kapp e0 f1)) f0 f1)
-    okT0 = (Redₘ.okσ (okC⟶app₁_0I {_} {j} dj) (okT⟶app₁I {_} {(w1 j)} {(w1 ((kapp e0 f1)))} {(w1 f0)} {(w1 f1)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((kapp e0 f1))} (⊢kapp dj de0 df1)) (wkK {s = 1} {d = j} {t = f0} df0) (wkK {s = 1} {d = j} {t = f1} df1) (hereTm {m = j})))
+    okT0 = (okT⟶app₁⁽0⁾ {_} {j} {((kapp e0 f1))} {f0} {f1} dj (⊢kapp dj de0 df1) df0 df1)
     okB : TelOK Ξ Redₘ.J (T⟶app₁⁽1⁾ j ((kapp e0 f1)) f0 f1 e0)
     okB = (okT⟶app₁I {_} {j} {((kapp e0 f1))} {f0} {f1} {e0} dj (⊢kapp dj de0 df1) df0 df1 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (kapp e0 f1)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶app₁⁽0⁾ j ((kapp e0 f1)) f0 f1 ⌝ᵗ)
@@ -115,7 +115,7 @@ con⟶app₂ {Ξ} {qs} {j} {f0} {f1} {e0} {r0} dqs dj df0 df1 de0 dr0 =
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶app₂⁽0⁾ j ((kapp f0 e0)) f0 f1)
-    okT0 = (Redₘ.okσ (okC⟶app₂_0I {_} {j} dj) (okT⟶app₂I {_} {(w1 j)} {(w1 ((kapp f0 e0)))} {(w1 f0)} {(w1 f1)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((kapp f0 e0))} (⊢kapp dj df0 de0)) (wkK {s = 1} {d = j} {t = f0} df0) (wkK {s = 1} {d = j} {t = f1} df1) (hereTm {m = j})))
+    okT0 = (okT⟶app₂⁽0⁾ {_} {j} {((kapp f0 e0))} {f0} {f1} dj (⊢kapp dj df0 de0) df0 df1)
     okB : TelOK Ξ Redₘ.J (T⟶app₂⁽1⁾ j ((kapp f0 e0)) f0 f1 e0)
     okB = (okT⟶app₂I {_} {j} {((kapp f0 e0))} {f0} {f1} {e0} dj (⊢kapp dj df0 de0) df0 df1 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (kapp f0 e0)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶app₂⁽0⁾ j ((kapp f0 e0)) f0 f1 ⌝ᵗ)
@@ -138,7 +138,7 @@ con⟶pair₁ {Ξ} {qs} {j} {f0} {f1} {e0} {r0} dqs dj df0 df1 de0 dr0 =
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶pair₁⁽0⁾ j ((kpair e0 f1)) f0 f1)
-    okT0 = (Redₘ.okσ (okC⟶pair₁_0I {_} {j} dj) (okT⟶pair₁I {_} {(w1 j)} {(w1 ((kpair e0 f1)))} {(w1 f0)} {(w1 f1)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((kpair e0 f1))} (⊢kpair dj de0 df1)) (wkK {s = 1} {d = j} {t = f0} df0) (wkK {s = 1} {d = j} {t = f1} df1) (hereTm {m = j})))
+    okT0 = (okT⟶pair₁⁽0⁾ {_} {j} {((kpair e0 f1))} {f0} {f1} dj (⊢kpair dj de0 df1) df0 df1)
     okB : TelOK Ξ Redₘ.J (T⟶pair₁⁽1⁾ j ((kpair e0 f1)) f0 f1 e0)
     okB = (okT⟶pair₁I {_} {j} {((kpair e0 f1))} {f0} {f1} {e0} dj (⊢kpair dj de0 df1) df0 df1 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (kpair e0 f1)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶pair₁⁽0⁾ j ((kpair e0 f1)) f0 f1 ⌝ᵗ)
@@ -161,7 +161,7 @@ con⟶pair₂ {Ξ} {qs} {j} {f0} {f1} {e0} {r0} dqs dj df0 df1 de0 dr0 =
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶pair₂⁽0⁾ j ((kpair f0 e0)) f0 f1)
-    okT0 = (Redₘ.okσ (okC⟶pair₂_0I {_} {j} dj) (okT⟶pair₂I {_} {(w1 j)} {(w1 ((kpair f0 e0)))} {(w1 f0)} {(w1 f1)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((kpair f0 e0))} (⊢kpair dj df0 de0)) (wkK {s = 1} {d = j} {t = f0} df0) (wkK {s = 1} {d = j} {t = f1} df1) (hereTm {m = j})))
+    okT0 = (okT⟶pair₂⁽0⁾ {_} {j} {((kpair f0 e0))} {f0} {f1} dj (⊢kpair dj df0 de0) df0 df1)
     okB : TelOK Ξ Redₘ.J (T⟶pair₂⁽1⁾ j ((kpair f0 e0)) f0 f1 e0)
     okB = (okT⟶pair₂I {_} {j} {((kpair f0 e0))} {f0} {f1} {e0} dj (⊢kpair dj df0 de0) df0 df1 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (kpair f0 e0)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶pair₂⁽0⁾ j ((kpair f0 e0)) f0 f1 ⌝ᵗ)
@@ -184,7 +184,7 @@ con⟶absurd₁ {Ξ} {qs} {j} {f0} {f1} {e0} {r0} dqs dj df0 df1 de0 dr0 =
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶absurd₁⁽0⁾ j ((kabsurd e0 f1)) f0 f1)
-    okT0 = (Redₘ.okσ (okC⟶absurd₁_0I {_} {j} dj) (okT⟶absurd₁I {_} {(w1 j)} {(w1 ((kabsurd e0 f1)))} {(w1 f0)} {(w1 f1)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((kabsurd e0 f1))} (⊢kabsurd dj de0 df1)) (wkK {s = 1} {d = j} {t = f0} df0) (wkK {s = 1} {d = j} {t = f1} df1) (hereTm {m = j})))
+    okT0 = (okT⟶absurd₁⁽0⁾ {_} {j} {((kabsurd e0 f1))} {f0} {f1} dj (⊢kabsurd dj de0 df1) df0 df1)
     okB : TelOK Ξ Redₘ.J (T⟶absurd₁⁽1⁾ j ((kabsurd e0 f1)) f0 f1 e0)
     okB = (okT⟶absurd₁I {_} {j} {((kabsurd e0 f1))} {f0} {f1} {e0} dj (⊢kabsurd dj de0 df1) df0 df1 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (kabsurd e0 f1)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶absurd₁⁽0⁾ j ((kabsurd e0 f1)) f0 f1 ⌝ᵗ)
@@ -207,7 +207,7 @@ con⟶absurd₂ {Ξ} {qs} {j} {f0} {f1} {e0} {r0} dqs dj df0 df1 de0 dr0 =
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶absurd₂⁽0⁾ j ((kabsurd f0 e0)) f0 f1)
-    okT0 = (Redₘ.okσ (okC⟶absurd₂_0I {_} {j} dj) (okT⟶absurd₂I {_} {(w1 j)} {(w1 ((kabsurd f0 e0)))} {(w1 f0)} {(w1 f1)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((kabsurd f0 e0))} (⊢kabsurd dj df0 de0)) (wkK {s = 1} {d = j} {t = f0} df0) (wkK {s = 1} {d = j} {t = f1} df1) (hereTm {m = j})))
+    okT0 = (okT⟶absurd₂⁽0⁾ {_} {j} {((kabsurd f0 e0))} {f0} {f1} dj (⊢kabsurd dj df0 de0) df0 df1)
     okB : TelOK Ξ Redₘ.J (T⟶absurd₂⁽1⁾ j ((kabsurd f0 e0)) f0 f1 e0)
     okB = (okT⟶absurd₂I {_} {j} {((kabsurd f0 e0))} {f0} {f1} {e0} dj (⊢kabsurd dj df0 de0) df0 df1 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (kabsurd f0 e0)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶absurd₂⁽0⁾ j ((kabsurd f0 e0)) f0 f1 ⌝ᵗ)
@@ -230,7 +230,7 @@ con⟶ordtr₁ {Ξ} {qs} {j} {f0} {f1} {f2} {f3} {f4} {e0} {r0} dqs dj df0 df1 d
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶ordtr₁⁽0⁾ j ((kordtr e0 f1 f2 f3 f4)) f0 f1 f2 f3 f4)
-    okT0 = (Redₘ.okσ (okC⟶ordtr₁_0I {_} {j} dj) (okT⟶ordtr₁I {_} {(w1 j)} {(w1 ((kordtr e0 f1 f2 f3 f4)))} {(w1 f0)} {(w1 f1)} {(w1 f2)} {(w1 f3)} {(w1 f4)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((kordtr e0 f1 f2 f3 f4))} (⊢kordtr dj de0 df1 df2 df3 df4)) (wkK {s = 1} {d = j} {t = f0} df0) (wkK {s = 1} {d = j} {t = f1} df1) (wkK {s = 1} {d = j} {t = f2} df2) (wkK {s = 1} {d = j} {t = f3} df3) (wkK {s = 1} {d = j} {t = f4} df4) (hereTm {m = j})))
+    okT0 = (okT⟶ordtr₁⁽0⁾ {_} {j} {((kordtr e0 f1 f2 f3 f4))} {f0} {f1} {f2} {f3} {f4} dj (⊢kordtr dj de0 df1 df2 df3 df4) df0 df1 df2 df3 df4)
     okB : TelOK Ξ Redₘ.J (T⟶ordtr₁⁽1⁾ j ((kordtr e0 f1 f2 f3 f4)) f0 f1 f2 f3 f4 e0)
     okB = (okT⟶ordtr₁I {_} {j} {((kordtr e0 f1 f2 f3 f4))} {f0} {f1} {f2} {f3} {f4} {e0} dj (⊢kordtr dj de0 df1 df2 df3 df4) df0 df1 df2 df3 df4 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (kordtr e0 f1 f2 f3 f4)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶ordtr₁⁽0⁾ j ((kordtr e0 f1 f2 f3 f4)) f0 f1 f2 f3 f4 ⌝ᵗ)
@@ -253,7 +253,7 @@ con⟶ordtr₂ {Ξ} {qs} {j} {f0} {f1} {f2} {f3} {f4} {e0} {r0} dqs dj df0 df1 d
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶ordtr₂⁽0⁾ j ((kordtr f0 e0 f2 f3 f4)) f0 f1 f2 f3 f4)
-    okT0 = (Redₘ.okσ (okC⟶ordtr₂_0I {_} {j} dj) (okT⟶ordtr₂I {_} {(w1 j)} {(w1 ((kordtr f0 e0 f2 f3 f4)))} {(w1 f0)} {(w1 f1)} {(w1 f2)} {(w1 f3)} {(w1 f4)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((kordtr f0 e0 f2 f3 f4))} (⊢kordtr dj df0 de0 df2 df3 df4)) (wkK {s = 1} {d = j} {t = f0} df0) (wkK {s = 1} {d = j} {t = f1} df1) (wkK {s = 1} {d = j} {t = f2} df2) (wkK {s = 1} {d = j} {t = f3} df3) (wkK {s = 1} {d = j} {t = f4} df4) (hereTm {m = j})))
+    okT0 = (okT⟶ordtr₂⁽0⁾ {_} {j} {((kordtr f0 e0 f2 f3 f4))} {f0} {f1} {f2} {f3} {f4} dj (⊢kordtr dj df0 de0 df2 df3 df4) df0 df1 df2 df3 df4)
     okB : TelOK Ξ Redₘ.J (T⟶ordtr₂⁽1⁾ j ((kordtr f0 e0 f2 f3 f4)) f0 f1 f2 f3 f4 e0)
     okB = (okT⟶ordtr₂I {_} {j} {((kordtr f0 e0 f2 f3 f4))} {f0} {f1} {f2} {f3} {f4} {e0} dj (⊢kordtr dj df0 de0 df2 df3 df4) df0 df1 df2 df3 df4 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (kordtr f0 e0 f2 f3 f4)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶ordtr₂⁽0⁾ j ((kordtr f0 e0 f2 f3 f4)) f0 f1 f2 f3 f4 ⌝ᵗ)
@@ -276,7 +276,7 @@ con⟶ordtr₃ {Ξ} {qs} {j} {f0} {f1} {f2} {f3} {f4} {e0} {r0} dqs dj df0 df1 d
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶ordtr₃⁽0⁾ j ((kordtr f0 f1 e0 f3 f4)) f0 f1 f2 f3 f4)
-    okT0 = (Redₘ.okσ (okC⟶ordtr₃_0I {_} {j} dj) (okT⟶ordtr₃I {_} {(w1 j)} {(w1 ((kordtr f0 f1 e0 f3 f4)))} {(w1 f0)} {(w1 f1)} {(w1 f2)} {(w1 f3)} {(w1 f4)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((kordtr f0 f1 e0 f3 f4))} (⊢kordtr dj df0 df1 de0 df3 df4)) (wkK {s = 1} {d = j} {t = f0} df0) (wkK {s = 1} {d = j} {t = f1} df1) (wkK {s = 1} {d = j} {t = f2} df2) (wkK {s = 1} {d = j} {t = f3} df3) (wkK {s = 1} {d = j} {t = f4} df4) (hereTm {m = j})))
+    okT0 = (okT⟶ordtr₃⁽0⁾ {_} {j} {((kordtr f0 f1 e0 f3 f4))} {f0} {f1} {f2} {f3} {f4} dj (⊢kordtr dj df0 df1 de0 df3 df4) df0 df1 df2 df3 df4)
     okB : TelOK Ξ Redₘ.J (T⟶ordtr₃⁽1⁾ j ((kordtr f0 f1 e0 f3 f4)) f0 f1 f2 f3 f4 e0)
     okB = (okT⟶ordtr₃I {_} {j} {((kordtr f0 f1 e0 f3 f4))} {f0} {f1} {f2} {f3} {f4} {e0} dj (⊢kordtr dj df0 df1 de0 df3 df4) df0 df1 df2 df3 df4 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (kordtr f0 f1 e0 f3 f4)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶ordtr₃⁽0⁾ j ((kordtr f0 f1 e0 f3 f4)) f0 f1 f2 f3 f4 ⌝ᵗ)
@@ -299,7 +299,7 @@ con⟶ordtr₄ {Ξ} {qs} {j} {f0} {f1} {f2} {f3} {f4} {e0} {r0} dqs dj df0 df1 d
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶ordtr₄⁽0⁾ j ((kordtr f0 f1 f2 e0 f4)) f0 f1 f2 f3 f4)
-    okT0 = (Redₘ.okσ (okC⟶ordtr₄_0I {_} {j} dj) (okT⟶ordtr₄I {_} {(w1 j)} {(w1 ((kordtr f0 f1 f2 e0 f4)))} {(w1 f0)} {(w1 f1)} {(w1 f2)} {(w1 f3)} {(w1 f4)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((kordtr f0 f1 f2 e0 f4))} (⊢kordtr dj df0 df1 df2 de0 df4)) (wkK {s = 1} {d = j} {t = f0} df0) (wkK {s = 1} {d = j} {t = f1} df1) (wkK {s = 1} {d = j} {t = f2} df2) (wkK {s = 1} {d = j} {t = f3} df3) (wkK {s = 1} {d = j} {t = f4} df4) (hereTm {m = j})))
+    okT0 = (okT⟶ordtr₄⁽0⁾ {_} {j} {((kordtr f0 f1 f2 e0 f4))} {f0} {f1} {f2} {f3} {f4} dj (⊢kordtr dj df0 df1 df2 de0 df4) df0 df1 df2 df3 df4)
     okB : TelOK Ξ Redₘ.J (T⟶ordtr₄⁽1⁾ j ((kordtr f0 f1 f2 e0 f4)) f0 f1 f2 f3 f4 e0)
     okB = (okT⟶ordtr₄I {_} {j} {((kordtr f0 f1 f2 e0 f4))} {f0} {f1} {f2} {f3} {f4} {e0} dj (⊢kordtr dj df0 df1 df2 de0 df4) df0 df1 df2 df3 df4 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (kordtr f0 f1 f2 e0 f4)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶ordtr₄⁽0⁾ j ((kordtr f0 f1 f2 e0 f4)) f0 f1 f2 f3 f4 ⌝ᵗ)
@@ -322,7 +322,7 @@ con⟶ordtr₅ {Ξ} {qs} {j} {f0} {f1} {f2} {f3} {f4} {e0} {r0} dqs dj df0 df1 d
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶ordtr₅⁽0⁾ j ((kordtr f0 f1 f2 f3 e0)) f0 f1 f2 f3 f4)
-    okT0 = (Redₘ.okσ (okC⟶ordtr₅_0I {_} {j} dj) (okT⟶ordtr₅I {_} {(w1 j)} {(w1 ((kordtr f0 f1 f2 f3 e0)))} {(w1 f0)} {(w1 f1)} {(w1 f2)} {(w1 f3)} {(w1 f4)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((kordtr f0 f1 f2 f3 e0))} (⊢kordtr dj df0 df1 df2 df3 de0)) (wkK {s = 1} {d = j} {t = f0} df0) (wkK {s = 1} {d = j} {t = f1} df1) (wkK {s = 1} {d = j} {t = f2} df2) (wkK {s = 1} {d = j} {t = f3} df3) (wkK {s = 1} {d = j} {t = f4} df4) (hereTm {m = j})))
+    okT0 = (okT⟶ordtr₅⁽0⁾ {_} {j} {((kordtr f0 f1 f2 f3 e0))} {f0} {f1} {f2} {f3} {f4} dj (⊢kordtr dj df0 df1 df2 df3 de0) df0 df1 df2 df3 df4)
     okB : TelOK Ξ Redₘ.J (T⟶ordtr₅⁽1⁾ j ((kordtr f0 f1 f2 f3 e0)) f0 f1 f2 f3 f4 e0)
     okB = (okT⟶ordtr₅I {_} {j} {((kordtr f0 f1 f2 f3 e0))} {f0} {f1} {f2} {f3} {f4} {e0} dj (⊢kordtr dj df0 df1 df2 df3 de0) df0 df1 df2 df3 df4 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (kordtr f0 f1 f2 f3 e0)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶ordtr₅⁽0⁾ j ((kordtr f0 f1 f2 f3 e0)) f0 f1 f2 f3 f4 ⌝ᵗ)
@@ -345,7 +345,7 @@ con⟶fst₁ {Ξ} {qs} {j} {f0} {e0} {r0} dqs dj df0 de0 dr0 =
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶fst₁⁽0⁾ j ((kfst e0)) f0)
-    okT0 = (Redₘ.okσ (okC⟶fst₁_0I {_} {j} dj) (okT⟶fst₁I {_} {(w1 j)} {(w1 ((kfst e0)))} {(w1 f0)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((kfst e0))} (⊢kfst dj de0)) (wkK {s = 1} {d = j} {t = f0} df0) (hereTm {m = j})))
+    okT0 = (okT⟶fst₁⁽0⁾ {_} {j} {((kfst e0))} {f0} dj (⊢kfst dj de0) df0)
     okB : TelOK Ξ Redₘ.J (T⟶fst₁⁽1⁾ j ((kfst e0)) f0 e0)
     okB = (okT⟶fst₁I {_} {j} {((kfst e0))} {f0} {e0} dj (⊢kfst dj de0) df0 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (kfst e0)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶fst₁⁽0⁾ j ((kfst e0)) f0 ⌝ᵗ)
@@ -368,7 +368,7 @@ con⟶snd₁ {Ξ} {qs} {j} {f0} {e0} {r0} dqs dj df0 de0 dr0 =
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶snd₁⁽0⁾ j ((ksnd e0)) f0)
-    okT0 = (Redₘ.okσ (okC⟶snd₁_0I {_} {j} dj) (okT⟶snd₁I {_} {(w1 j)} {(w1 ((ksnd e0)))} {(w1 f0)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((ksnd e0))} (⊢ksnd dj de0)) (wkK {s = 1} {d = j} {t = f0} df0) (hereTm {m = j})))
+    okT0 = (okT⟶snd₁⁽0⁾ {_} {j} {((ksnd e0))} {f0} dj (⊢ksnd dj de0) df0)
     okB : TelOK Ξ Redₘ.J (T⟶snd₁⁽1⁾ j ((ksnd e0)) f0 e0)
     okB = (okT⟶snd₁I {_} {j} {((ksnd e0))} {f0} {e0} dj (⊢ksnd dj de0) df0 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (ksnd e0)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶snd₁⁽0⁾ j ((ksnd e0)) f0 ⌝ᵗ)
@@ -391,7 +391,7 @@ con⟶cPi₁ {Ξ} {qs} {j} {f0} {f1} {e0} {r0} dqs dj df0 df1 de0 dr0 =
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶cPi₁⁽0⁾ j ((kcPi e0 f1)) f0 f1)
-    okT0 = (Redₘ.okσ (okC⟶cPi₁_0I {_} {j} dj) (okT⟶cPi₁I {_} {(w1 j)} {(w1 ((kcPi e0 f1)))} {(w1 f0)} {(w1 f1)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((kcPi e0 f1))} (⊢kcPi dj de0 df1)) (wkK {s = 1} {d = j} {t = f0} df0) (wkK {s = 1} {d = (nsuc j)} {t = f1} df1) (hereTm {m = j})))
+    okT0 = (okT⟶cPi₁⁽0⁾ {_} {j} {((kcPi e0 f1))} {f0} {f1} dj (⊢kcPi dj de0 df1) df0 df1)
     okB : TelOK Ξ Redₘ.J (T⟶cPi₁⁽1⁾ j ((kcPi e0 f1)) f0 f1 e0)
     okB = (okT⟶cPi₁I {_} {j} {((kcPi e0 f1))} {f0} {f1} {e0} dj (⊢kcPi dj de0 df1) df0 df1 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (kcPi e0 f1)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶cPi₁⁽0⁾ j ((kcPi e0 f1)) f0 f1 ⌝ᵗ)
@@ -414,7 +414,7 @@ con⟶cPi₂ {Ξ} {qs} {j} {f0} {f1} {e0} {r0} dqs dj df0 df1 de0 dr0 =
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶cPi₂⁽0⁾ j ((kcPi f0 e0)) f0 f1)
-    okT0 = (Redₘ.okσ (okC⟶cPi₂_0I {_} {j} dj) (okT⟶cPi₂I {_} {(w1 j)} {(w1 ((kcPi f0 e0)))} {(w1 f0)} {(w1 f1)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((kcPi f0 e0))} (⊢kcPi dj df0 de0)) (wkK {s = 1} {d = j} {t = f0} df0) (wkK {s = 1} {d = (nsuc j)} {t = f1} df1) (hereTm {m = (nsuc j)})))
+    okT0 = (okT⟶cPi₂⁽0⁾ {_} {j} {((kcPi f0 e0))} {f0} {f1} dj (⊢kcPi dj df0 de0) df0 df1)
     okB : TelOK Ξ Redₘ.J (T⟶cPi₂⁽1⁾ j ((kcPi f0 e0)) f0 f1 e0)
     okB = (okT⟶cPi₂I {_} {j} {((kcPi f0 e0))} {f0} {f1} {e0} dj (⊢kcPi dj df0 de0) df0 df1 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (kcPi f0 e0)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶cPi₂⁽0⁾ j ((kcPi f0 e0)) f0 f1 ⌝ᵗ)
@@ -437,7 +437,7 @@ con⟶cSg₁ {Ξ} {qs} {j} {f0} {f1} {e0} {r0} dqs dj df0 df1 de0 dr0 =
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶cSg₁⁽0⁾ j ((kcSg e0 f1)) f0 f1)
-    okT0 = (Redₘ.okσ (okC⟶cSg₁_0I {_} {j} dj) (okT⟶cSg₁I {_} {(w1 j)} {(w1 ((kcSg e0 f1)))} {(w1 f0)} {(w1 f1)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((kcSg e0 f1))} (⊢kcSg dj de0 df1)) (wkK {s = 1} {d = j} {t = f0} df0) (wkK {s = 1} {d = (nsuc j)} {t = f1} df1) (hereTm {m = j})))
+    okT0 = (okT⟶cSg₁⁽0⁾ {_} {j} {((kcSg e0 f1))} {f0} {f1} dj (⊢kcSg dj de0 df1) df0 df1)
     okB : TelOK Ξ Redₘ.J (T⟶cSg₁⁽1⁾ j ((kcSg e0 f1)) f0 f1 e0)
     okB = (okT⟶cSg₁I {_} {j} {((kcSg e0 f1))} {f0} {f1} {e0} dj (⊢kcSg dj de0 df1) df0 df1 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (kcSg e0 f1)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶cSg₁⁽0⁾ j ((kcSg e0 f1)) f0 f1 ⌝ᵗ)
@@ -460,7 +460,7 @@ con⟶cSg₂ {Ξ} {qs} {j} {f0} {f1} {e0} {r0} dqs dj df0 df1 de0 dr0 =
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶cSg₂⁽0⁾ j ((kcSg f0 e0)) f0 f1)
-    okT0 = (Redₘ.okσ (okC⟶cSg₂_0I {_} {j} dj) (okT⟶cSg₂I {_} {(w1 j)} {(w1 ((kcSg f0 e0)))} {(w1 f0)} {(w1 f1)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((kcSg f0 e0))} (⊢kcSg dj df0 de0)) (wkK {s = 1} {d = j} {t = f0} df0) (wkK {s = 1} {d = (nsuc j)} {t = f1} df1) (hereTm {m = (nsuc j)})))
+    okT0 = (okT⟶cSg₂⁽0⁾ {_} {j} {((kcSg f0 e0))} {f0} {f1} dj (⊢kcSg dj df0 de0) df0 df1)
     okB : TelOK Ξ Redₘ.J (T⟶cSg₂⁽1⁾ j ((kcSg f0 e0)) f0 f1 e0)
     okB = (okT⟶cSg₂I {_} {j} {((kcSg f0 e0))} {f0} {f1} {e0} dj (⊢kcSg dj df0 de0) df0 df1 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (kcSg f0 e0)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶cSg₂⁽0⁾ j ((kcSg f0 e0)) f0 f1 ⌝ᵗ)
@@ -483,7 +483,7 @@ con⟶cHom₁ {Ξ} {qs} {j} {f0} {f1} {f2} {e0} {r0} dqs dj df0 df1 df2 de0 dr0 
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶cHom₁⁽0⁾ j ((kcHom e0 f1 f2)) f0 f1 f2)
-    okT0 = (Redₘ.okσ (okC⟶cHom₁_0I {_} {j} dj) (okT⟶cHom₁I {_} {(w1 j)} {(w1 ((kcHom e0 f1 f2)))} {(w1 f0)} {(w1 f1)} {(w1 f2)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((kcHom e0 f1 f2))} (⊢kcHom dj de0 df1 df2)) (wkK {s = 1} {d = j} {t = f0} df0) (wkK {s = 1} {d = j} {t = f1} df1) (wkK {s = 1} {d = j} {t = f2} df2) (hereTm {m = j})))
+    okT0 = (okT⟶cHom₁⁽0⁾ {_} {j} {((kcHom e0 f1 f2))} {f0} {f1} {f2} dj (⊢kcHom dj de0 df1 df2) df0 df1 df2)
     okB : TelOK Ξ Redₘ.J (T⟶cHom₁⁽1⁾ j ((kcHom e0 f1 f2)) f0 f1 f2 e0)
     okB = (okT⟶cHom₁I {_} {j} {((kcHom e0 f1 f2))} {f0} {f1} {f2} {e0} dj (⊢kcHom dj de0 df1 df2) df0 df1 df2 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (kcHom e0 f1 f2)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶cHom₁⁽0⁾ j ((kcHom e0 f1 f2)) f0 f1 f2 ⌝ᵗ)
@@ -506,7 +506,7 @@ con⟶cHom₂ {Ξ} {qs} {j} {f0} {f1} {f2} {e0} {r0} dqs dj df0 df1 df2 de0 dr0 
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶cHom₂⁽0⁾ j ((kcHom f0 e0 f2)) f0 f1 f2)
-    okT0 = (Redₘ.okσ (okC⟶cHom₂_0I {_} {j} dj) (okT⟶cHom₂I {_} {(w1 j)} {(w1 ((kcHom f0 e0 f2)))} {(w1 f0)} {(w1 f1)} {(w1 f2)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((kcHom f0 e0 f2))} (⊢kcHom dj df0 de0 df2)) (wkK {s = 1} {d = j} {t = f0} df0) (wkK {s = 1} {d = j} {t = f1} df1) (wkK {s = 1} {d = j} {t = f2} df2) (hereTm {m = j})))
+    okT0 = (okT⟶cHom₂⁽0⁾ {_} {j} {((kcHom f0 e0 f2))} {f0} {f1} {f2} dj (⊢kcHom dj df0 de0 df2) df0 df1 df2)
     okB : TelOK Ξ Redₘ.J (T⟶cHom₂⁽1⁾ j ((kcHom f0 e0 f2)) f0 f1 f2 e0)
     okB = (okT⟶cHom₂I {_} {j} {((kcHom f0 e0 f2))} {f0} {f1} {f2} {e0} dj (⊢kcHom dj df0 de0 df2) df0 df1 df2 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (kcHom f0 e0 f2)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶cHom₂⁽0⁾ j ((kcHom f0 e0 f2)) f0 f1 f2 ⌝ᵗ)
@@ -529,7 +529,7 @@ con⟶cHom₃ {Ξ} {qs} {j} {f0} {f1} {f2} {e0} {r0} dqs dj df0 df1 df2 de0 dr0 
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶cHom₃⁽0⁾ j ((kcHom f0 f1 e0)) f0 f1 f2)
-    okT0 = (Redₘ.okσ (okC⟶cHom₃_0I {_} {j} dj) (okT⟶cHom₃I {_} {(w1 j)} {(w1 ((kcHom f0 f1 e0)))} {(w1 f0)} {(w1 f1)} {(w1 f2)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((kcHom f0 f1 e0))} (⊢kcHom dj df0 df1 de0)) (wkK {s = 1} {d = j} {t = f0} df0) (wkK {s = 1} {d = j} {t = f1} df1) (wkK {s = 1} {d = j} {t = f2} df2) (hereTm {m = j})))
+    okT0 = (okT⟶cHom₃⁽0⁾ {_} {j} {((kcHom f0 f1 e0))} {f0} {f1} {f2} dj (⊢kcHom dj df0 df1 de0) df0 df1 df2)
     okB : TelOK Ξ Redₘ.J (T⟶cHom₃⁽1⁾ j ((kcHom f0 f1 e0)) f0 f1 f2 e0)
     okB = (okT⟶cHom₃I {_} {j} {((kcHom f0 f1 e0))} {f0} {f1} {f2} {e0} dj (⊢kcHom dj df0 df1 de0) df0 df1 df2 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (kcHom f0 f1 e0)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶cHom₃⁽0⁾ j ((kcHom f0 f1 e0)) f0 f1 f2 ⌝ᵗ)
@@ -552,7 +552,7 @@ con⟶hrefl₁ {Ξ} {qs} {j} {f0} {f1} {e0} {r0} dqs dj df0 df1 de0 dr0 =
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶hrefl₁⁽0⁾ j ((khrefl e0 f1)) f0 f1)
-    okT0 = (Redₘ.okσ (okC⟶hrefl₁_0I {_} {j} dj) (okT⟶hrefl₁I {_} {(w1 j)} {(w1 ((khrefl e0 f1)))} {(w1 f0)} {(w1 f1)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((khrefl e0 f1))} (⊢khrefl dj de0 df1)) (wkK {s = 1} {d = j} {t = f0} df0) (wkK {s = 1} {d = j} {t = f1} df1) (hereTm {m = j})))
+    okT0 = (okT⟶hrefl₁⁽0⁾ {_} {j} {((khrefl e0 f1))} {f0} {f1} dj (⊢khrefl dj de0 df1) df0 df1)
     okB : TelOK Ξ Redₘ.J (T⟶hrefl₁⁽1⁾ j ((khrefl e0 f1)) f0 f1 e0)
     okB = (okT⟶hrefl₁I {_} {j} {((khrefl e0 f1))} {f0} {f1} {e0} dj (⊢khrefl dj de0 df1) df0 df1 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (khrefl e0 f1)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶hrefl₁⁽0⁾ j ((khrefl e0 f1)) f0 f1 ⌝ᵗ)
@@ -575,7 +575,7 @@ con⟶hrefl₂ {Ξ} {qs} {j} {f0} {f1} {e0} {r0} dqs dj df0 df1 de0 dr0 =
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶hrefl₂⁽0⁾ j ((khrefl f0 e0)) f0 f1)
-    okT0 = (Redₘ.okσ (okC⟶hrefl₂_0I {_} {j} dj) (okT⟶hrefl₂I {_} {(w1 j)} {(w1 ((khrefl f0 e0)))} {(w1 f0)} {(w1 f1)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((khrefl f0 e0))} (⊢khrefl dj df0 de0)) (wkK {s = 1} {d = j} {t = f0} df0) (wkK {s = 1} {d = j} {t = f1} df1) (hereTm {m = j})))
+    okT0 = (okT⟶hrefl₂⁽0⁾ {_} {j} {((khrefl f0 e0))} {f0} {f1} dj (⊢khrefl dj df0 de0) df0 df1)
     okB : TelOK Ξ Redₘ.J (T⟶hrefl₂⁽1⁾ j ((khrefl f0 e0)) f0 f1 e0)
     okB = (okT⟶hrefl₂I {_} {j} {((khrefl f0 e0))} {f0} {f1} {e0} dj (⊢khrefl dj df0 de0) df0 df1 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (khrefl f0 e0)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶hrefl₂⁽0⁾ j ((khrefl f0 e0)) f0 f1 ⌝ᵗ)
@@ -598,7 +598,7 @@ con⟶tr₁ {Ξ} {qs} {j} {f0} {f1} {f2} {e0} {r0} dqs dj df0 df1 df2 de0 dr0 =
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶tr₁⁽0⁾ j ((ktr e0 f1 f2)) f0 f1 f2)
-    okT0 = (Redₘ.okσ (okC⟶tr₁_0I {_} {j} dj) (okT⟶tr₁I {_} {(w1 j)} {(w1 ((ktr e0 f1 f2)))} {(w1 f0)} {(w1 f1)} {(w1 f2)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((ktr e0 f1 f2))} (⊢ktr dj de0 df1 df2)) (wkK {s = 1} {d = (nsuc j)} {t = f0} df0) (wkK {s = 1} {d = j} {t = f1} df1) (wkK {s = 1} {d = j} {t = f2} df2) (hereTm {m = (nsuc j)})))
+    okT0 = (okT⟶tr₁⁽0⁾ {_} {j} {((ktr e0 f1 f2))} {f0} {f1} {f2} dj (⊢ktr dj de0 df1 df2) df0 df1 df2)
     okB : TelOK Ξ Redₘ.J (T⟶tr₁⁽1⁾ j ((ktr e0 f1 f2)) f0 f1 f2 e0)
     okB = (okT⟶tr₁I {_} {j} {((ktr e0 f1 f2))} {f0} {f1} {f2} {e0} dj (⊢ktr dj de0 df1 df2) df0 df1 df2 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (ktr e0 f1 f2)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶tr₁⁽0⁾ j ((ktr e0 f1 f2)) f0 f1 f2 ⌝ᵗ)
@@ -621,7 +621,7 @@ con⟶tr₂ {Ξ} {qs} {j} {f0} {f1} {f2} {e0} {r0} dqs dj df0 df1 df2 de0 dr0 =
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶tr₂⁽0⁾ j ((ktr f0 e0 f2)) f0 f1 f2)
-    okT0 = (Redₘ.okσ (okC⟶tr₂_0I {_} {j} dj) (okT⟶tr₂I {_} {(w1 j)} {(w1 ((ktr f0 e0 f2)))} {(w1 f0)} {(w1 f1)} {(w1 f2)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((ktr f0 e0 f2))} (⊢ktr dj df0 de0 df2)) (wkK {s = 1} {d = (nsuc j)} {t = f0} df0) (wkK {s = 1} {d = j} {t = f1} df1) (wkK {s = 1} {d = j} {t = f2} df2) (hereTm {m = j})))
+    okT0 = (okT⟶tr₂⁽0⁾ {_} {j} {((ktr f0 e0 f2))} {f0} {f1} {f2} dj (⊢ktr dj df0 de0 df2) df0 df1 df2)
     okB : TelOK Ξ Redₘ.J (T⟶tr₂⁽1⁾ j ((ktr f0 e0 f2)) f0 f1 f2 e0)
     okB = (okT⟶tr₂I {_} {j} {((ktr f0 e0 f2))} {f0} {f1} {f2} {e0} dj (⊢ktr dj df0 de0 df2) df0 df1 df2 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (ktr f0 e0 f2)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶tr₂⁽0⁾ j ((ktr f0 e0 f2)) f0 f1 f2 ⌝ᵗ)
@@ -644,7 +644,7 @@ con⟶tr₃ {Ξ} {qs} {j} {f0} {f1} {f2} {e0} {r0} dqs dj df0 df1 df2 de0 dr0 =
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶tr₃⁽0⁾ j ((ktr f0 f1 e0)) f0 f1 f2)
-    okT0 = (Redₘ.okσ (okC⟶tr₃_0I {_} {j} dj) (okT⟶tr₃I {_} {(w1 j)} {(w1 ((ktr f0 f1 e0)))} {(w1 f0)} {(w1 f1)} {(w1 f2)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((ktr f0 f1 e0))} (⊢ktr dj df0 df1 de0)) (wkK {s = 1} {d = (nsuc j)} {t = f0} df0) (wkK {s = 1} {d = j} {t = f1} df1) (wkK {s = 1} {d = j} {t = f2} df2) (hereTm {m = j})))
+    okT0 = (okT⟶tr₃⁽0⁾ {_} {j} {((ktr f0 f1 e0))} {f0} {f1} {f2} dj (⊢ktr dj df0 df1 de0) df0 df1 df2)
     okB : TelOK Ξ Redₘ.J (T⟶tr₃⁽1⁾ j ((ktr f0 f1 e0)) f0 f1 f2 e0)
     okB = (okT⟶tr₃I {_} {j} {((ktr f0 f1 e0))} {f0} {f1} {f2} {e0} dj (⊢ktr dj df0 df1 de0) df0 df1 df2 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (ktr f0 f1 e0)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶tr₃⁽0⁾ j ((ktr f0 f1 e0)) f0 f1 f2 ⌝ᵗ)
@@ -667,7 +667,7 @@ con⟶ap₁ {Ξ} {qs} {j} {f0} {f1} {f2} {e0} {r0} dqs dj df0 df1 df2 de0 dr0 =
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶ap₁⁽0⁾ j ((kap e0 f1 f2)) f0 f1 f2)
-    okT0 = (Redₘ.okσ (okC⟶ap₁_0I {_} {j} dj) (okT⟶ap₁I {_} {(w1 j)} {(w1 ((kap e0 f1 f2)))} {(w1 f0)} {(w1 f1)} {(w1 f2)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((kap e0 f1 f2))} (⊢kap dj de0 df1 df2)) (wkK {s = 1} {d = j} {t = f0} df0) (wkK {s = 1} {d = (nsuc j)} {t = f1} df1) (wkK {s = 1} {d = j} {t = f2} df2) (hereTm {m = j})))
+    okT0 = (okT⟶ap₁⁽0⁾ {_} {j} {((kap e0 f1 f2))} {f0} {f1} {f2} dj (⊢kap dj de0 df1 df2) df0 df1 df2)
     okB : TelOK Ξ Redₘ.J (T⟶ap₁⁽1⁾ j ((kap e0 f1 f2)) f0 f1 f2 e0)
     okB = (okT⟶ap₁I {_} {j} {((kap e0 f1 f2))} {f0} {f1} {f2} {e0} dj (⊢kap dj de0 df1 df2) df0 df1 df2 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (kap e0 f1 f2)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶ap₁⁽0⁾ j ((kap e0 f1 f2)) f0 f1 f2 ⌝ᵗ)
@@ -690,7 +690,7 @@ con⟶ap₂ {Ξ} {qs} {j} {f0} {f1} {f2} {e0} {r0} dqs dj df0 df1 df2 de0 dr0 =
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶ap₂⁽0⁾ j ((kap f0 e0 f2)) f0 f1 f2)
-    okT0 = (Redₘ.okσ (okC⟶ap₂_0I {_} {j} dj) (okT⟶ap₂I {_} {(w1 j)} {(w1 ((kap f0 e0 f2)))} {(w1 f0)} {(w1 f1)} {(w1 f2)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((kap f0 e0 f2))} (⊢kap dj df0 de0 df2)) (wkK {s = 1} {d = j} {t = f0} df0) (wkK {s = 1} {d = (nsuc j)} {t = f1} df1) (wkK {s = 1} {d = j} {t = f2} df2) (hereTm {m = (nsuc j)})))
+    okT0 = (okT⟶ap₂⁽0⁾ {_} {j} {((kap f0 e0 f2))} {f0} {f1} {f2} dj (⊢kap dj df0 de0 df2) df0 df1 df2)
     okB : TelOK Ξ Redₘ.J (T⟶ap₂⁽1⁾ j ((kap f0 e0 f2)) f0 f1 f2 e0)
     okB = (okT⟶ap₂I {_} {j} {((kap f0 e0 f2))} {f0} {f1} {f2} {e0} dj (⊢kap dj df0 de0 df2) df0 df1 df2 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (kap f0 e0 f2)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶ap₂⁽0⁾ j ((kap f0 e0 f2)) f0 f1 f2 ⌝ᵗ)
@@ -713,7 +713,7 @@ con⟶ap₃ {Ξ} {qs} {j} {f0} {f1} {f2} {e0} {r0} dqs dj df0 df1 df2 de0 dr0 =
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶ap₃⁽0⁾ j ((kap f0 f1 e0)) f0 f1 f2)
-    okT0 = (Redₘ.okσ (okC⟶ap₃_0I {_} {j} dj) (okT⟶ap₃I {_} {(w1 j)} {(w1 ((kap f0 f1 e0)))} {(w1 f0)} {(w1 f1)} {(w1 f2)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((kap f0 f1 e0))} (⊢kap dj df0 df1 de0)) (wkK {s = 1} {d = j} {t = f0} df0) (wkK {s = 1} {d = (nsuc j)} {t = f1} df1) (wkK {s = 1} {d = j} {t = f2} df2) (hereTm {m = j})))
+    okT0 = (okT⟶ap₃⁽0⁾ {_} {j} {((kap f0 f1 e0))} {f0} {f1} {f2} dj (⊢kap dj df0 df1 de0) df0 df1 df2)
     okB : TelOK Ξ Redₘ.J (T⟶ap₃⁽1⁾ j ((kap f0 f1 e0)) f0 f1 f2 e0)
     okB = (okT⟶ap₃I {_} {j} {((kap f0 f1 e0))} {f0} {f1} {f2} {e0} dj (⊢kap dj df0 df1 de0) df0 df1 df2 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (kap f0 f1 e0)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶ap₃⁽0⁾ j ((kap f0 f1 e0)) f0 f1 f2 ⌝ᵗ)
@@ -736,7 +736,7 @@ con⟶cId₁ {Ξ} {qs} {j} {f0} {f1} {f2} {e0} {r0} dqs dj df0 df1 df2 de0 dr0 =
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶cId₁⁽0⁾ j ((kcId e0 f1 f2)) f0 f1 f2)
-    okT0 = (Redₘ.okσ (okC⟶cId₁_0I {_} {j} dj) (okT⟶cId₁I {_} {(w1 j)} {(w1 ((kcId e0 f1 f2)))} {(w1 f0)} {(w1 f1)} {(w1 f2)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((kcId e0 f1 f2))} (⊢kcId dj de0 df1 df2)) (wkK {s = 1} {d = j} {t = f0} df0) (wkK {s = 1} {d = j} {t = f1} df1) (wkK {s = 1} {d = j} {t = f2} df2) (hereTm {m = j})))
+    okT0 = (okT⟶cId₁⁽0⁾ {_} {j} {((kcId e0 f1 f2))} {f0} {f1} {f2} dj (⊢kcId dj de0 df1 df2) df0 df1 df2)
     okB : TelOK Ξ Redₘ.J (T⟶cId₁⁽1⁾ j ((kcId e0 f1 f2)) f0 f1 f2 e0)
     okB = (okT⟶cId₁I {_} {j} {((kcId e0 f1 f2))} {f0} {f1} {f2} {e0} dj (⊢kcId dj de0 df1 df2) df0 df1 df2 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (kcId e0 f1 f2)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶cId₁⁽0⁾ j ((kcId e0 f1 f2)) f0 f1 f2 ⌝ᵗ)
@@ -759,7 +759,7 @@ con⟶cId₂ {Ξ} {qs} {j} {f0} {f1} {f2} {e0} {r0} dqs dj df0 df1 df2 de0 dr0 =
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶cId₂⁽0⁾ j ((kcId f0 e0 f2)) f0 f1 f2)
-    okT0 = (Redₘ.okσ (okC⟶cId₂_0I {_} {j} dj) (okT⟶cId₂I {_} {(w1 j)} {(w1 ((kcId f0 e0 f2)))} {(w1 f0)} {(w1 f1)} {(w1 f2)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((kcId f0 e0 f2))} (⊢kcId dj df0 de0 df2)) (wkK {s = 1} {d = j} {t = f0} df0) (wkK {s = 1} {d = j} {t = f1} df1) (wkK {s = 1} {d = j} {t = f2} df2) (hereTm {m = j})))
+    okT0 = (okT⟶cId₂⁽0⁾ {_} {j} {((kcId f0 e0 f2))} {f0} {f1} {f2} dj (⊢kcId dj df0 de0 df2) df0 df1 df2)
     okB : TelOK Ξ Redₘ.J (T⟶cId₂⁽1⁾ j ((kcId f0 e0 f2)) f0 f1 f2 e0)
     okB = (okT⟶cId₂I {_} {j} {((kcId f0 e0 f2))} {f0} {f1} {f2} {e0} dj (⊢kcId dj df0 de0 df2) df0 df1 df2 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (kcId f0 e0 f2)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶cId₂⁽0⁾ j ((kcId f0 e0 f2)) f0 f1 f2 ⌝ᵗ)
@@ -782,7 +782,7 @@ con⟶cId₃ {Ξ} {qs} {j} {f0} {f1} {f2} {e0} {r0} dqs dj df0 df1 df2 de0 dr0 =
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶cId₃⁽0⁾ j ((kcId f0 f1 e0)) f0 f1 f2)
-    okT0 = (Redₘ.okσ (okC⟶cId₃_0I {_} {j} dj) (okT⟶cId₃I {_} {(w1 j)} {(w1 ((kcId f0 f1 e0)))} {(w1 f0)} {(w1 f1)} {(w1 f2)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((kcId f0 f1 e0))} (⊢kcId dj df0 df1 de0)) (wkK {s = 1} {d = j} {t = f0} df0) (wkK {s = 1} {d = j} {t = f1} df1) (wkK {s = 1} {d = j} {t = f2} df2) (hereTm {m = j})))
+    okT0 = (okT⟶cId₃⁽0⁾ {_} {j} {((kcId f0 f1 e0))} {f0} {f1} {f2} dj (⊢kcId dj df0 df1 de0) df0 df1 df2)
     okB : TelOK Ξ Redₘ.J (T⟶cId₃⁽1⁾ j ((kcId f0 f1 e0)) f0 f1 f2 e0)
     okB = (okT⟶cId₃I {_} {j} {((kcId f0 f1 e0))} {f0} {f1} {f2} {e0} dj (⊢kcId dj df0 df1 de0) df0 df1 df2 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (kcId f0 f1 e0)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶cId₃⁽0⁾ j ((kcId f0 f1 e0)) f0 f1 f2 ⌝ᵗ)
@@ -805,7 +805,7 @@ con⟶idrefl₁ {Ξ} {qs} {j} {f0} {f1} {e0} {r0} dqs dj df0 df1 de0 dr0 =
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶idrefl₁⁽0⁾ j ((kidrefl e0 f1)) f0 f1)
-    okT0 = (Redₘ.okσ (okC⟶idrefl₁_0I {_} {j} dj) (okT⟶idrefl₁I {_} {(w1 j)} {(w1 ((kidrefl e0 f1)))} {(w1 f0)} {(w1 f1)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((kidrefl e0 f1))} (⊢kidrefl dj de0 df1)) (wkK {s = 1} {d = j} {t = f0} df0) (wkK {s = 1} {d = j} {t = f1} df1) (hereTm {m = j})))
+    okT0 = (okT⟶idrefl₁⁽0⁾ {_} {j} {((kidrefl e0 f1))} {f0} {f1} dj (⊢kidrefl dj de0 df1) df0 df1)
     okB : TelOK Ξ Redₘ.J (T⟶idrefl₁⁽1⁾ j ((kidrefl e0 f1)) f0 f1 e0)
     okB = (okT⟶idrefl₁I {_} {j} {((kidrefl e0 f1))} {f0} {f1} {e0} dj (⊢kidrefl dj de0 df1) df0 df1 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (kidrefl e0 f1)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶idrefl₁⁽0⁾ j ((kidrefl e0 f1)) f0 f1 ⌝ᵗ)
@@ -828,7 +828,7 @@ con⟶idrefl₂ {Ξ} {qs} {j} {f0} {f1} {e0} {r0} dqs dj df0 df1 de0 dr0 =
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶idrefl₂⁽0⁾ j ((kidrefl f0 e0)) f0 f1)
-    okT0 = (Redₘ.okσ (okC⟶idrefl₂_0I {_} {j} dj) (okT⟶idrefl₂I {_} {(w1 j)} {(w1 ((kidrefl f0 e0)))} {(w1 f0)} {(w1 f1)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((kidrefl f0 e0))} (⊢kidrefl dj df0 de0)) (wkK {s = 1} {d = j} {t = f0} df0) (wkK {s = 1} {d = j} {t = f1} df1) (hereTm {m = j})))
+    okT0 = (okT⟶idrefl₂⁽0⁾ {_} {j} {((kidrefl f0 e0))} {f0} {f1} dj (⊢kidrefl dj df0 de0) df0 df1)
     okB : TelOK Ξ Redₘ.J (T⟶idrefl₂⁽1⁾ j ((kidrefl f0 e0)) f0 f1 e0)
     okB = (okT⟶idrefl₂I {_} {j} {((kidrefl f0 e0))} {f0} {f1} {e0} dj (⊢kidrefl dj df0 de0) df0 df1 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (kidrefl f0 e0)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶idrefl₂⁽0⁾ j ((kidrefl f0 e0)) f0 f1 ⌝ᵗ)
@@ -851,7 +851,7 @@ con⟶jsub₁ {Ξ} {qs} {j} {f0} {f1} {f2} {e0} {r0} dqs dj df0 df1 df2 de0 dr0 
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶jsub₁⁽0⁾ j ((kjsub e0 f1 f2)) f0 f1 f2)
-    okT0 = (Redₘ.okσ (okC⟶jsub₁_0I {_} {j} dj) (okT⟶jsub₁I {_} {(w1 j)} {(w1 ((kjsub e0 f1 f2)))} {(w1 f0)} {(w1 f1)} {(w1 f2)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((kjsub e0 f1 f2))} (⊢kjsub dj de0 df1 df2)) (wkK {s = 1} {d = (nsuc j)} {t = f0} df0) (wkK {s = 1} {d = j} {t = f1} df1) (wkK {s = 1} {d = j} {t = f2} df2) (hereTm {m = (nsuc j)})))
+    okT0 = (okT⟶jsub₁⁽0⁾ {_} {j} {((kjsub e0 f1 f2))} {f0} {f1} {f2} dj (⊢kjsub dj de0 df1 df2) df0 df1 df2)
     okB : TelOK Ξ Redₘ.J (T⟶jsub₁⁽1⁾ j ((kjsub e0 f1 f2)) f0 f1 f2 e0)
     okB = (okT⟶jsub₁I {_} {j} {((kjsub e0 f1 f2))} {f0} {f1} {f2} {e0} dj (⊢kjsub dj de0 df1 df2) df0 df1 df2 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (kjsub e0 f1 f2)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶jsub₁⁽0⁾ j ((kjsub e0 f1 f2)) f0 f1 f2 ⌝ᵗ)
@@ -874,7 +874,7 @@ con⟶jsub₂ {Ξ} {qs} {j} {f0} {f1} {f2} {e0} {r0} dqs dj df0 df1 df2 de0 dr0 
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶jsub₂⁽0⁾ j ((kjsub f0 e0 f2)) f0 f1 f2)
-    okT0 = (Redₘ.okσ (okC⟶jsub₂_0I {_} {j} dj) (okT⟶jsub₂I {_} {(w1 j)} {(w1 ((kjsub f0 e0 f2)))} {(w1 f0)} {(w1 f1)} {(w1 f2)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((kjsub f0 e0 f2))} (⊢kjsub dj df0 de0 df2)) (wkK {s = 1} {d = (nsuc j)} {t = f0} df0) (wkK {s = 1} {d = j} {t = f1} df1) (wkK {s = 1} {d = j} {t = f2} df2) (hereTm {m = j})))
+    okT0 = (okT⟶jsub₂⁽0⁾ {_} {j} {((kjsub f0 e0 f2))} {f0} {f1} {f2} dj (⊢kjsub dj df0 de0 df2) df0 df1 df2)
     okB : TelOK Ξ Redₘ.J (T⟶jsub₂⁽1⁾ j ((kjsub f0 e0 f2)) f0 f1 f2 e0)
     okB = (okT⟶jsub₂I {_} {j} {((kjsub f0 e0 f2))} {f0} {f1} {f2} {e0} dj (⊢kjsub dj df0 de0 df2) df0 df1 df2 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (kjsub f0 e0 f2)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶jsub₂⁽0⁾ j ((kjsub f0 e0 f2)) f0 f1 f2 ⌝ᵗ)
@@ -897,7 +897,7 @@ con⟶jsub₃ {Ξ} {qs} {j} {f0} {f1} {f2} {e0} {r0} dqs dj df0 df1 df2 de0 dr0 
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶jsub₃⁽0⁾ j ((kjsub f0 f1 e0)) f0 f1 f2)
-    okT0 = (Redₘ.okσ (okC⟶jsub₃_0I {_} {j} dj) (okT⟶jsub₃I {_} {(w1 j)} {(w1 ((kjsub f0 f1 e0)))} {(w1 f0)} {(w1 f1)} {(w1 f2)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((kjsub f0 f1 e0))} (⊢kjsub dj df0 df1 de0)) (wkK {s = 1} {d = (nsuc j)} {t = f0} df0) (wkK {s = 1} {d = j} {t = f1} df1) (wkK {s = 1} {d = j} {t = f2} df2) (hereTm {m = j})))
+    okT0 = (okT⟶jsub₃⁽0⁾ {_} {j} {((kjsub f0 f1 e0))} {f0} {f1} {f2} dj (⊢kjsub dj df0 df1 de0) df0 df1 df2)
     okB : TelOK Ξ Redₘ.J (T⟶jsub₃⁽1⁾ j ((kjsub f0 f1 e0)) f0 f1 f2 e0)
     okB = (okT⟶jsub₃I {_} {j} {((kjsub f0 f1 e0))} {f0} {f1} {f2} {e0} dj (⊢kjsub dj df0 df1 de0) df0 df1 df2 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (kjsub f0 f1 e0)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶jsub₃⁽0⁾ j ((kjsub f0 f1 e0)) f0 f1 f2 ⌝ᵗ)
@@ -920,7 +920,7 @@ con⟶nsuc {Ξ} {qs} {j} {f0} {e0} {r0} dqs dj df0 de0 dr0 =
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶nsuc⁽0⁾ j ((knsuc e0)) f0)
-    okT0 = (Redₘ.okσ (okC⟶nsuc_0I {_} {j} dj) (okT⟶nsucI {_} {(w1 j)} {(w1 ((knsuc e0)))} {(w1 f0)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((knsuc e0))} (⊢knsuc dj de0)) (wkK {s = 1} {d = j} {t = f0} df0) (hereTm {m = j})))
+    okT0 = (okT⟶nsuc⁽0⁾ {_} {j} {((knsuc e0))} {f0} dj (⊢knsuc dj de0) df0)
     okB : TelOK Ξ Redₘ.J (T⟶nsuc⁽1⁾ j ((knsuc e0)) f0 e0)
     okB = (okT⟶nsucI {_} {j} {((knsuc e0))} {f0} {e0} dj (⊢knsuc dj de0) df0 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (knsuc e0)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶nsuc⁽0⁾ j ((knsuc e0)) f0 ⌝ᵗ)
@@ -943,7 +943,7 @@ con⟶natrec₁ {Ξ} {qs} {j} {f0} {f1} {f2} {e0} {r0} dqs dj df0 df1 df2 de0 dr
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶natrec₁⁽0⁾ j ((knatrec e0 f1 f2)) f0 f1 f2)
-    okT0 = (Redₘ.okσ (okC⟶natrec₁_0I {_} {j} dj) (okT⟶natrec₁I {_} {(w1 j)} {(w1 ((knatrec e0 f1 f2)))} {(w1 f0)} {(w1 f1)} {(w1 f2)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((knatrec e0 f1 f2))} (⊢knatrec dj de0 df1 df2)) (wkK {s = 1} {d = j} {t = f0} df0) (wkK {s = 1} {d = (nsuc (nsuc j))} {t = f1} df1) (wkK {s = 1} {d = j} {t = f2} df2) (hereTm {m = j})))
+    okT0 = (okT⟶natrec₁⁽0⁾ {_} {j} {((knatrec e0 f1 f2))} {f0} {f1} {f2} dj (⊢knatrec dj de0 df1 df2) df0 df1 df2)
     okB : TelOK Ξ Redₘ.J (T⟶natrec₁⁽1⁾ j ((knatrec e0 f1 f2)) f0 f1 f2 e0)
     okB = (okT⟶natrec₁I {_} {j} {((knatrec e0 f1 f2))} {f0} {f1} {f2} {e0} dj (⊢knatrec dj de0 df1 df2) df0 df1 df2 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (knatrec e0 f1 f2)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶natrec₁⁽0⁾ j ((knatrec e0 f1 f2)) f0 f1 f2 ⌝ᵗ)
@@ -966,7 +966,7 @@ con⟶natrec₂ {Ξ} {qs} {j} {f0} {f1} {f2} {e0} {r0} dqs dj df0 df1 df2 de0 dr
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶natrec₂⁽0⁾ j ((knatrec f0 e0 f2)) f0 f1 f2)
-    okT0 = (Redₘ.okσ (okC⟶natrec₂_0I {_} {j} dj) (okT⟶natrec₂I {_} {(w1 j)} {(w1 ((knatrec f0 e0 f2)))} {(w1 f0)} {(w1 f1)} {(w1 f2)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((knatrec f0 e0 f2))} (⊢knatrec dj df0 de0 df2)) (wkK {s = 1} {d = j} {t = f0} df0) (wkK {s = 1} {d = (nsuc (nsuc j))} {t = f1} df1) (wkK {s = 1} {d = j} {t = f2} df2) (hereTm {m = (nsuc (nsuc j))})))
+    okT0 = (okT⟶natrec₂⁽0⁾ {_} {j} {((knatrec f0 e0 f2))} {f0} {f1} {f2} dj (⊢knatrec dj df0 de0 df2) df0 df1 df2)
     okB : TelOK Ξ Redₘ.J (T⟶natrec₂⁽1⁾ j ((knatrec f0 e0 f2)) f0 f1 f2 e0)
     okB = (okT⟶natrec₂I {_} {j} {((knatrec f0 e0 f2))} {f0} {f1} {f2} {e0} dj (⊢knatrec dj df0 de0 df2) df0 df1 df2 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (knatrec f0 e0 f2)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶natrec₂⁽0⁾ j ((knatrec f0 e0 f2)) f0 f1 f2 ⌝ᵗ)
@@ -989,7 +989,7 @@ con⟶natrec₃ {Ξ} {qs} {j} {f0} {f1} {f2} {e0} {r0} dqs dj df0 df1 df2 de0 dr
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶natrec₃⁽0⁾ j ((knatrec f0 f1 e0)) f0 f1 f2)
-    okT0 = (Redₘ.okσ (okC⟶natrec₃_0I {_} {j} dj) (okT⟶natrec₃I {_} {(w1 j)} {(w1 ((knatrec f0 f1 e0)))} {(w1 f0)} {(w1 f1)} {(w1 f2)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((knatrec f0 f1 e0))} (⊢knatrec dj df0 df1 de0)) (wkK {s = 1} {d = j} {t = f0} df0) (wkK {s = 1} {d = (nsuc (nsuc j))} {t = f1} df1) (wkK {s = 1} {d = j} {t = f2} df2) (hereTm {m = j})))
+    okT0 = (okT⟶natrec₃⁽0⁾ {_} {j} {((knatrec f0 f1 e0))} {f0} {f1} {f2} dj (⊢knatrec dj df0 df1 de0) df0 df1 df2)
     okB : TelOK Ξ Redₘ.J (T⟶natrec₃⁽1⁾ j ((knatrec f0 f1 e0)) f0 f1 f2 e0)
     okB = (okT⟶natrec₃I {_} {j} {((knatrec f0 f1 e0))} {f0} {f1} {f2} {e0} dj (⊢knatrec dj df0 df1 de0) df0 df1 df2 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (knatrec f0 f1 e0)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶natrec₃⁽0⁾ j ((knatrec f0 f1 e0)) f0 f1 f2 ⌝ᵗ)
@@ -1012,7 +1012,7 @@ con⟶con {Ξ} {qs} {j} {f0} {e0} {r0} dqs dj df0 de0 dr0 =
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶con⁽0⁾ j ((kcon e0)) f0)
-    okT0 = (Redₘ.okσ (okC⟶con_0I {_} {j} dj) (okT⟶conI {_} {(w1 j)} {(w1 ((kcon e0)))} {(w1 f0)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((kcon e0))} (⊢kcon dj de0)) (wkK {s = 1} {d = j} {t = f0} df0) (hereTm {m = j})))
+    okT0 = (okT⟶con⁽0⁾ {_} {j} {((kcon e0))} {f0} dj (⊢kcon dj de0) df0)
     okB : TelOK Ξ Redₘ.J (T⟶con⁽1⁾ j ((kcon e0)) f0 e0)
     okB = (okT⟶conI {_} {j} {((kcon e0))} {f0} {e0} dj (⊢kcon dj de0) df0 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (kcon e0)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶con⁽0⁾ j ((kcon e0)) f0 ⌝ᵗ)
@@ -1035,7 +1035,7 @@ con⟶ielim₁ {Ξ} {qs} {j} {f0} {f1} {f2} {f3} {e0} {r0} dqs dj df0 df1 df2 df
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶ielim₁⁽0⁾ j ((kielim e0 f1 f2 f3)) f0 f1 f2 f3)
-    okT0 = (Redₘ.okσ (okC⟶ielim₁_0I {_} {j} dj) (okT⟶ielim₁I {_} {(w1 j)} {(w1 ((kielim e0 f1 f2 f3)))} {(w1 f0)} {(w1 f1)} {(w1 f2)} {(w1 f3)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((kielim e0 f1 f2 f3))} (⊢kielim dj de0 df1 df2 df3)) (wkK {s = 1} {d = j} {t = f0} df0) (wkK {s = 1} {d = j} {t = f1} df1) (wkK {s = 1} {d = j} {t = f2} df2) (wkK {s = 1} {d = j} {t = f3} df3) (hereTm {m = j})))
+    okT0 = (okT⟶ielim₁⁽0⁾ {_} {j} {((kielim e0 f1 f2 f3))} {f0} {f1} {f2} {f3} dj (⊢kielim dj de0 df1 df2 df3) df0 df1 df2 df3)
     okB : TelOK Ξ Redₘ.J (T⟶ielim₁⁽1⁾ j ((kielim e0 f1 f2 f3)) f0 f1 f2 f3 e0)
     okB = (okT⟶ielim₁I {_} {j} {((kielim e0 f1 f2 f3))} {f0} {f1} {f2} {f3} {e0} dj (⊢kielim dj de0 df1 df2 df3) df0 df1 df2 df3 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (kielim e0 f1 f2 f3)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶ielim₁⁽0⁾ j ((kielim e0 f1 f2 f3)) f0 f1 f2 f3 ⌝ᵗ)
@@ -1058,7 +1058,7 @@ con⟶ielim₂ {Ξ} {qs} {j} {f0} {f1} {f2} {f3} {e0} {r0} dqs dj df0 df1 df2 df
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶ielim₂⁽0⁾ j ((kielim f0 e0 f2 f3)) f0 f1 f2 f3)
-    okT0 = (Redₘ.okσ (okC⟶ielim₂_0I {_} {j} dj) (okT⟶ielim₂I {_} {(w1 j)} {(w1 ((kielim f0 e0 f2 f3)))} {(w1 f0)} {(w1 f1)} {(w1 f2)} {(w1 f3)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((kielim f0 e0 f2 f3))} (⊢kielim dj df0 de0 df2 df3)) (wkK {s = 1} {d = j} {t = f0} df0) (wkK {s = 1} {d = j} {t = f1} df1) (wkK {s = 1} {d = j} {t = f2} df2) (wkK {s = 1} {d = j} {t = f3} df3) (hereTm {m = j})))
+    okT0 = (okT⟶ielim₂⁽0⁾ {_} {j} {((kielim f0 e0 f2 f3))} {f0} {f1} {f2} {f3} dj (⊢kielim dj df0 de0 df2 df3) df0 df1 df2 df3)
     okB : TelOK Ξ Redₘ.J (T⟶ielim₂⁽1⁾ j ((kielim f0 e0 f2 f3)) f0 f1 f2 f3 e0)
     okB = (okT⟶ielim₂I {_} {j} {((kielim f0 e0 f2 f3))} {f0} {f1} {f2} {f3} {e0} dj (⊢kielim dj df0 de0 df2 df3) df0 df1 df2 df3 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (kielim f0 e0 f2 f3)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶ielim₂⁽0⁾ j ((kielim f0 e0 f2 f3)) f0 f1 f2 f3 ⌝ᵗ)
@@ -1081,7 +1081,7 @@ con⟶ielim₃ {Ξ} {qs} {j} {f0} {f1} {f2} {f3} {e0} {r0} dqs dj df0 df1 df2 df
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶ielim₃⁽0⁾ j ((kielim f0 f1 e0 f3)) f0 f1 f2 f3)
-    okT0 = (Redₘ.okσ (okC⟶ielim₃_0I {_} {j} dj) (okT⟶ielim₃I {_} {(w1 j)} {(w1 ((kielim f0 f1 e0 f3)))} {(w1 f0)} {(w1 f1)} {(w1 f2)} {(w1 f3)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((kielim f0 f1 e0 f3))} (⊢kielim dj df0 df1 de0 df3)) (wkK {s = 1} {d = j} {t = f0} df0) (wkK {s = 1} {d = j} {t = f1} df1) (wkK {s = 1} {d = j} {t = f2} df2) (wkK {s = 1} {d = j} {t = f3} df3) (hereTm {m = j})))
+    okT0 = (okT⟶ielim₃⁽0⁾ {_} {j} {((kielim f0 f1 e0 f3))} {f0} {f1} {f2} {f3} dj (⊢kielim dj df0 df1 de0 df3) df0 df1 df2 df3)
     okB : TelOK Ξ Redₘ.J (T⟶ielim₃⁽1⁾ j ((kielim f0 f1 e0 f3)) f0 f1 f2 f3 e0)
     okB = (okT⟶ielim₃I {_} {j} {((kielim f0 f1 e0 f3))} {f0} {f1} {f2} {f3} {e0} dj (⊢kielim dj df0 df1 de0 df3) df0 df1 df2 df3 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (kielim f0 f1 e0 f3)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶ielim₃⁽0⁾ j ((kielim f0 f1 e0 f3)) f0 f1 f2 f3 ⌝ᵗ)
@@ -1104,7 +1104,7 @@ con⟶ielim₄ {Ξ} {qs} {j} {f0} {f1} {f2} {f3} {e0} {r0} dqs dj df0 df1 df2 df
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶ielim₄⁽0⁾ j ((kielim f0 f1 f2 e0)) f0 f1 f2 f3)
-    okT0 = (Redₘ.okσ (okC⟶ielim₄_0I {_} {j} dj) (okT⟶ielim₄I {_} {(w1 j)} {(w1 ((kielim f0 f1 f2 e0)))} {(w1 f0)} {(w1 f1)} {(w1 f2)} {(w1 f3)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((kielim f0 f1 f2 e0))} (⊢kielim dj df0 df1 df2 de0)) (wkK {s = 1} {d = j} {t = f0} df0) (wkK {s = 1} {d = j} {t = f1} df1) (wkK {s = 1} {d = j} {t = f2} df2) (wkK {s = 1} {d = j} {t = f3} df3) (hereTm {m = j})))
+    okT0 = (okT⟶ielim₄⁽0⁾ {_} {j} {((kielim f0 f1 f2 e0))} {f0} {f1} {f2} {f3} dj (⊢kielim dj df0 df1 df2 de0) df0 df1 df2 df3)
     okB : TelOK Ξ Redₘ.J (T⟶ielim₄⁽1⁾ j ((kielim f0 f1 f2 e0)) f0 f1 f2 f3 e0)
     okB = (okT⟶ielim₄I {_} {j} {((kielim f0 f1 f2 e0))} {f0} {f1} {f2} {f3} {e0} dj (⊢kielim dj df0 df1 df2 de0) df0 df1 df2 df3 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (kielim f0 f1 f2 e0)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶ielim₄⁽0⁾ j ((kielim f0 f1 f2 e0)) f0 f1 f2 f3 ⌝ᵗ)
@@ -1127,7 +1127,7 @@ con⟶dS₁ {Ξ} {qs} {j} {f0} {f1} {e0} {r0} dqs dj df0 df1 de0 dr0 =
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶dS₁⁽0⁾ j ((kdS e0 f1)) f0 f1)
-    okT0 = (Redₘ.okσ (okC⟶dS₁_0I {_} {j} dj) (okT⟶dS₁I {_} {(w1 j)} {(w1 ((kdS e0 f1)))} {(w1 f0)} {(w1 f1)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((kdS e0 f1))} (⊢kdS dj de0 df1)) (wkK {s = 1} {d = j} {t = f0} df0) (wkK {s = 1} {d = j} {t = f1} df1) (hereTm {m = j})))
+    okT0 = (okT⟶dS₁⁽0⁾ {_} {j} {((kdS e0 f1))} {f0} {f1} dj (⊢kdS dj de0 df1) df0 df1)
     okB : TelOK Ξ Redₘ.J (T⟶dS₁⁽1⁾ j ((kdS e0 f1)) f0 f1 e0)
     okB = (okT⟶dS₁I {_} {j} {((kdS e0 f1))} {f0} {f1} {e0} dj (⊢kdS dj de0 df1) df0 df1 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (kdS e0 f1)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶dS₁⁽0⁾ j ((kdS e0 f1)) f0 f1 ⌝ᵗ)
@@ -1150,7 +1150,7 @@ con⟶dS₂ {Ξ} {qs} {j} {f0} {f1} {e0} {r0} dqs dj df0 df1 de0 dr0 =
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶dS₂⁽0⁾ j ((kdS f0 e0)) f0 f1)
-    okT0 = (Redₘ.okσ (okC⟶dS₂_0I {_} {j} dj) (okT⟶dS₂I {_} {(w1 j)} {(w1 ((kdS f0 e0)))} {(w1 f0)} {(w1 f1)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((kdS f0 e0))} (⊢kdS dj df0 de0)) (wkK {s = 1} {d = j} {t = f0} df0) (wkK {s = 1} {d = j} {t = f1} df1) (hereTm {m = j})))
+    okT0 = (okT⟶dS₂⁽0⁾ {_} {j} {((kdS f0 e0))} {f0} {f1} dj (⊢kdS dj df0 de0) df0 df1)
     okB : TelOK Ξ Redₘ.J (T⟶dS₂⁽1⁾ j ((kdS f0 e0)) f0 f1 e0)
     okB = (okT⟶dS₂I {_} {j} {((kdS f0 e0))} {f0} {f1} {e0} dj (⊢kdS dj df0 de0) df0 df1 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (kdS f0 e0)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶dS₂⁽0⁾ j ((kdS f0 e0)) f0 f1 ⌝ᵗ)
@@ -1173,7 +1173,7 @@ con⟶dR₁ {Ξ} {qs} {j} {f0} {f1} {e0} {r0} dqs dj df0 df1 de0 dr0 =
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶dR₁⁽0⁾ j ((kdR e0 f1)) f0 f1)
-    okT0 = (Redₘ.okσ (okC⟶dR₁_0I {_} {j} dj) (okT⟶dR₁I {_} {(w1 j)} {(w1 ((kdR e0 f1)))} {(w1 f0)} {(w1 f1)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((kdR e0 f1))} (⊢kdR dj de0 df1)) (wkK {s = 1} {d = j} {t = f0} df0) (wkK {s = 1} {d = j} {t = f1} df1) (hereTm {m = j})))
+    okT0 = (okT⟶dR₁⁽0⁾ {_} {j} {((kdR e0 f1))} {f0} {f1} dj (⊢kdR dj de0 df1) df0 df1)
     okB : TelOK Ξ Redₘ.J (T⟶dR₁⁽1⁾ j ((kdR e0 f1)) f0 f1 e0)
     okB = (okT⟶dR₁I {_} {j} {((kdR e0 f1))} {f0} {f1} {e0} dj (⊢kdR dj de0 df1) df0 df1 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (kdR e0 f1)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶dR₁⁽0⁾ j ((kdR e0 f1)) f0 f1 ⌝ᵗ)
@@ -1196,7 +1196,7 @@ con⟶dR₂ {Ξ} {qs} {j} {f0} {f1} {e0} {r0} dqs dj df0 df1 de0 dr0 =
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶dR₂⁽0⁾ j ((kdR f0 e0)) f0 f1)
-    okT0 = (Redₘ.okσ (okC⟶dR₂_0I {_} {j} dj) (okT⟶dR₂I {_} {(w1 j)} {(w1 ((kdR f0 e0)))} {(w1 f0)} {(w1 f1)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((kdR f0 e0))} (⊢kdR dj df0 de0)) (wkK {s = 1} {d = j} {t = f0} df0) (wkK {s = 1} {d = j} {t = f1} df1) (hereTm {m = j})))
+    okT0 = (okT⟶dR₂⁽0⁾ {_} {j} {((kdR f0 e0))} {f0} {f1} dj (⊢kdR dj df0 de0) df0 df1)
     okB : TelOK Ξ Redₘ.J (T⟶dR₂⁽1⁾ j ((kdR f0 e0)) f0 f1 e0)
     okB = (okT⟶dR₂I {_} {j} {((kdR f0 e0))} {f0} {f1} {e0} dj (⊢kdR dj df0 de0) df0 df1 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (kdR f0 e0)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶dR₂⁽0⁾ j ((kdR f0 e0)) f0 f1 ⌝ᵗ)
@@ -1219,7 +1219,7 @@ con⟶dpay₁ {Ξ} {qs} {j} {f0} {f1} {f2} {e0} {r0} dqs dj df0 df1 df2 de0 dr0 
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶dpay₁⁽0⁾ j ((kdpay e0 f1 f2)) f0 f1 f2)
-    okT0 = (Redₘ.okσ (okC⟶dpay₁_0I {_} {j} dj) (okT⟶dpay₁I {_} {(w1 j)} {(w1 ((kdpay e0 f1 f2)))} {(w1 f0)} {(w1 f1)} {(w1 f2)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((kdpay e0 f1 f2))} (⊢kdpay dj de0 df1 df2)) (wkK {s = 1} {d = j} {t = f0} df0) (wkK {s = 1} {d = j} {t = f1} df1) (wkK {s = 1} {d = j} {t = f2} df2) (hereTm {m = j})))
+    okT0 = (okT⟶dpay₁⁽0⁾ {_} {j} {((kdpay e0 f1 f2))} {f0} {f1} {f2} dj (⊢kdpay dj de0 df1 df2) df0 df1 df2)
     okB : TelOK Ξ Redₘ.J (T⟶dpay₁⁽1⁾ j ((kdpay e0 f1 f2)) f0 f1 f2 e0)
     okB = (okT⟶dpay₁I {_} {j} {((kdpay e0 f1 f2))} {f0} {f1} {f2} {e0} dj (⊢kdpay dj de0 df1 df2) df0 df1 df2 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (kdpay e0 f1 f2)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶dpay₁⁽0⁾ j ((kdpay e0 f1 f2)) f0 f1 f2 ⌝ᵗ)
@@ -1242,7 +1242,7 @@ con⟶dpay₂ {Ξ} {qs} {j} {f0} {f1} {f2} {e0} {r0} dqs dj df0 df1 df2 de0 dr0 
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶dpay₂⁽0⁾ j ((kdpay f0 e0 f2)) f0 f1 f2)
-    okT0 = (Redₘ.okσ (okC⟶dpay₂_0I {_} {j} dj) (okT⟶dpay₂I {_} {(w1 j)} {(w1 ((kdpay f0 e0 f2)))} {(w1 f0)} {(w1 f1)} {(w1 f2)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((kdpay f0 e0 f2))} (⊢kdpay dj df0 de0 df2)) (wkK {s = 1} {d = j} {t = f0} df0) (wkK {s = 1} {d = j} {t = f1} df1) (wkK {s = 1} {d = j} {t = f2} df2) (hereTm {m = j})))
+    okT0 = (okT⟶dpay₂⁽0⁾ {_} {j} {((kdpay f0 e0 f2))} {f0} {f1} {f2} dj (⊢kdpay dj df0 de0 df2) df0 df1 df2)
     okB : TelOK Ξ Redₘ.J (T⟶dpay₂⁽1⁾ j ((kdpay f0 e0 f2)) f0 f1 f2 e0)
     okB = (okT⟶dpay₂I {_} {j} {((kdpay f0 e0 f2))} {f0} {f1} {f2} {e0} dj (⊢kdpay dj df0 de0 df2) df0 df1 df2 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (kdpay f0 e0 f2)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶dpay₂⁽0⁾ j ((kdpay f0 e0 f2)) f0 f1 f2 ⌝ᵗ)
@@ -1265,7 +1265,7 @@ con⟶dpay₃ {Ξ} {qs} {j} {f0} {f1} {f2} {e0} {r0} dqs dj df0 df1 df2 de0 dr0 
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶dpay₃⁽0⁾ j ((kdpay f0 f1 e0)) f0 f1 f2)
-    okT0 = (Redₘ.okσ (okC⟶dpay₃_0I {_} {j} dj) (okT⟶dpay₃I {_} {(w1 j)} {(w1 ((kdpay f0 f1 e0)))} {(w1 f0)} {(w1 f1)} {(w1 f2)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((kdpay f0 f1 e0))} (⊢kdpay dj df0 df1 de0)) (wkK {s = 1} {d = j} {t = f0} df0) (wkK {s = 1} {d = j} {t = f1} df1) (wkK {s = 1} {d = j} {t = f2} df2) (hereTm {m = j})))
+    okT0 = (okT⟶dpay₃⁽0⁾ {_} {j} {((kdpay f0 f1 e0))} {f0} {f1} {f2} dj (⊢kdpay dj df0 df1 de0) df0 df1 df2)
     okB : TelOK Ξ Redₘ.J (T⟶dpay₃⁽1⁾ j ((kdpay f0 f1 e0)) f0 f1 f2 e0)
     okB = (okT⟶dpay₃I {_} {j} {((kdpay f0 f1 e0))} {f0} {f1} {f2} {e0} dj (⊢kdpay dj df0 df1 de0) df0 df1 df2 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (kdpay f0 f1 e0)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶dpay₃⁽0⁾ j ((kdpay f0 f1 e0)) f0 f1 f2 ⌝ᵗ)
@@ -1288,7 +1288,7 @@ con⟶dih₁ {Ξ} {qs} {j} {f0} {f1} {f2} {f3} {e0} {r0} dqs dj df0 df1 df2 df3 
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶dih₁⁽0⁾ j ((kdih e0 f1 f2 f3)) f0 f1 f2 f3)
-    okT0 = (Redₘ.okσ (okC⟶dih₁_0I {_} {j} dj) (okT⟶dih₁I {_} {(w1 j)} {(w1 ((kdih e0 f1 f2 f3)))} {(w1 f0)} {(w1 f1)} {(w1 f2)} {(w1 f3)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((kdih e0 f1 f2 f3))} (⊢kdih dj de0 df1 df2 df3)) (wkK {s = 1} {d = j} {t = f0} df0) (wkK {s = 1} {d = j} {t = f1} df1) (wkK {s = 1} {d = j} {t = f2} df2) (wkK {s = 1} {d = j} {t = f3} df3) (hereTm {m = j})))
+    okT0 = (okT⟶dih₁⁽0⁾ {_} {j} {((kdih e0 f1 f2 f3))} {f0} {f1} {f2} {f3} dj (⊢kdih dj de0 df1 df2 df3) df0 df1 df2 df3)
     okB : TelOK Ξ Redₘ.J (T⟶dih₁⁽1⁾ j ((kdih e0 f1 f2 f3)) f0 f1 f2 f3 e0)
     okB = (okT⟶dih₁I {_} {j} {((kdih e0 f1 f2 f3))} {f0} {f1} {f2} {f3} {e0} dj (⊢kdih dj de0 df1 df2 df3) df0 df1 df2 df3 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (kdih e0 f1 f2 f3)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶dih₁⁽0⁾ j ((kdih e0 f1 f2 f3)) f0 f1 f2 f3 ⌝ᵗ)
@@ -1311,7 +1311,7 @@ con⟶dih₂ {Ξ} {qs} {j} {f0} {f1} {f2} {f3} {e0} {r0} dqs dj df0 df1 df2 df3 
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶dih₂⁽0⁾ j ((kdih f0 e0 f2 f3)) f0 f1 f2 f3)
-    okT0 = (Redₘ.okσ (okC⟶dih₂_0I {_} {j} dj) (okT⟶dih₂I {_} {(w1 j)} {(w1 ((kdih f0 e0 f2 f3)))} {(w1 f0)} {(w1 f1)} {(w1 f2)} {(w1 f3)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((kdih f0 e0 f2 f3))} (⊢kdih dj df0 de0 df2 df3)) (wkK {s = 1} {d = j} {t = f0} df0) (wkK {s = 1} {d = j} {t = f1} df1) (wkK {s = 1} {d = j} {t = f2} df2) (wkK {s = 1} {d = j} {t = f3} df3) (hereTm {m = j})))
+    okT0 = (okT⟶dih₂⁽0⁾ {_} {j} {((kdih f0 e0 f2 f3))} {f0} {f1} {f2} {f3} dj (⊢kdih dj df0 de0 df2 df3) df0 df1 df2 df3)
     okB : TelOK Ξ Redₘ.J (T⟶dih₂⁽1⁾ j ((kdih f0 e0 f2 f3)) f0 f1 f2 f3 e0)
     okB = (okT⟶dih₂I {_} {j} {((kdih f0 e0 f2 f3))} {f0} {f1} {f2} {f3} {e0} dj (⊢kdih dj df0 de0 df2 df3) df0 df1 df2 df3 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (kdih f0 e0 f2 f3)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶dih₂⁽0⁾ j ((kdih f0 e0 f2 f3)) f0 f1 f2 f3 ⌝ᵗ)
@@ -1334,7 +1334,7 @@ con⟶dih₃ {Ξ} {qs} {j} {f0} {f1} {f2} {f3} {e0} {r0} dqs dj df0 df1 df2 df3 
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶dih₃⁽0⁾ j ((kdih f0 f1 e0 f3)) f0 f1 f2 f3)
-    okT0 = (Redₘ.okσ (okC⟶dih₃_0I {_} {j} dj) (okT⟶dih₃I {_} {(w1 j)} {(w1 ((kdih f0 f1 e0 f3)))} {(w1 f0)} {(w1 f1)} {(w1 f2)} {(w1 f3)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((kdih f0 f1 e0 f3))} (⊢kdih dj df0 df1 de0 df3)) (wkK {s = 1} {d = j} {t = f0} df0) (wkK {s = 1} {d = j} {t = f1} df1) (wkK {s = 1} {d = j} {t = f2} df2) (wkK {s = 1} {d = j} {t = f3} df3) (hereTm {m = j})))
+    okT0 = (okT⟶dih₃⁽0⁾ {_} {j} {((kdih f0 f1 e0 f3))} {f0} {f1} {f2} {f3} dj (⊢kdih dj df0 df1 de0 df3) df0 df1 df2 df3)
     okB : TelOK Ξ Redₘ.J (T⟶dih₃⁽1⁾ j ((kdih f0 f1 e0 f3)) f0 f1 f2 f3 e0)
     okB = (okT⟶dih₃I {_} {j} {((kdih f0 f1 e0 f3))} {f0} {f1} {f2} {f3} {e0} dj (⊢kdih dj df0 df1 de0 df3) df0 df1 df2 df3 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (kdih f0 f1 e0 f3)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶dih₃⁽0⁾ j ((kdih f0 f1 e0 f3)) f0 f1 f2 f3 ⌝ᵗ)
@@ -1357,7 +1357,7 @@ con⟶dih₄ {Ξ} {qs} {j} {f0} {f1} {f2} {f3} {e0} {r0} dqs dj df0 df1 df2 df3 
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶dih₄⁽0⁾ j ((kdih f0 f1 f2 e0)) f0 f1 f2 f3)
-    okT0 = (Redₘ.okσ (okC⟶dih₄_0I {_} {j} dj) (okT⟶dih₄I {_} {(w1 j)} {(w1 ((kdih f0 f1 f2 e0)))} {(w1 f0)} {(w1 f1)} {(w1 f2)} {(w1 f3)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((kdih f0 f1 f2 e0))} (⊢kdih dj df0 df1 df2 de0)) (wkK {s = 1} {d = j} {t = f0} df0) (wkK {s = 1} {d = j} {t = f1} df1) (wkK {s = 1} {d = j} {t = f2} df2) (wkK {s = 1} {d = j} {t = f3} df3) (hereTm {m = j})))
+    okT0 = (okT⟶dih₄⁽0⁾ {_} {j} {((kdih f0 f1 f2 e0))} {f0} {f1} {f2} {f3} dj (⊢kdih dj df0 df1 df2 de0) df0 df1 df2 df3)
     okB : TelOK Ξ Redₘ.J (T⟶dih₄⁽1⁾ j ((kdih f0 f1 f2 e0)) f0 f1 f2 f3 e0)
     okB = (okT⟶dih₄I {_} {j} {((kdih f0 f1 f2 e0))} {f0} {f1} {f2} {f3} {e0} dj (⊢kdih dj df0 df1 df2 de0) df0 df1 df2 df3 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (kdih f0 f1 f2 e0)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶dih₄⁽0⁾ j ((kdih f0 f1 f2 e0)) f0 f1 f2 f3 ⌝ᵗ)
@@ -1380,7 +1380,7 @@ con⟶fsuc {Ξ} {qs} {j} {f0} {e0} {r0} dqs dj df0 de0 dr0 =
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶fsuc⁽0⁾ j ((kfsuc e0)) f0)
-    okT0 = (Redₘ.okσ (okC⟶fsuc_0I {_} {j} dj) (okT⟶fsucI {_} {(w1 j)} {(w1 ((kfsuc e0)))} {(w1 f0)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((kfsuc e0))} (⊢kfsuc dj de0)) (wkK {s = 1} {d = j} {t = f0} df0) (hereTm {m = j})))
+    okT0 = (okT⟶fsuc⁽0⁾ {_} {j} {((kfsuc e0))} {f0} dj (⊢kfsuc dj de0) df0)
     okB : TelOK Ξ Redₘ.J (T⟶fsuc⁽1⁾ j ((kfsuc e0)) f0 e0)
     okB = (okT⟶fsucI {_} {j} {((kfsuc e0))} {f0} {e0} dj (⊢kfsuc dj de0) df0 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (kfsuc e0)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶fsuc⁽0⁾ j ((kfsuc e0)) f0 ⌝ᵗ)
@@ -1403,7 +1403,7 @@ con⟶fcase₁ {Ξ} {qs} {j} {f0} {f1} {f2} {e0} {r0} dqs dj df0 df1 df2 de0 dr0
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶fcase₁⁽0⁾ j ((kfcase e0 f1 f2)) f0 f1 f2)
-    okT0 = (Redₘ.okσ (okC⟶fcase₁_0I {_} {j} dj) (okT⟶fcase₁I {_} {(w1 j)} {(w1 ((kfcase e0 f1 f2)))} {(w1 f0)} {(w1 f1)} {(w1 f2)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((kfcase e0 f1 f2))} (⊢kfcase dj de0 df1 df2)) (wkK {s = 1} {d = j} {t = f0} df0) (wkK {s = 1} {d = j} {t = f1} df1) (wkK {s = 1} {d = (nsuc j)} {t = f2} df2) (hereTm {m = j})))
+    okT0 = (okT⟶fcase₁⁽0⁾ {_} {j} {((kfcase e0 f1 f2))} {f0} {f1} {f2} dj (⊢kfcase dj de0 df1 df2) df0 df1 df2)
     okB : TelOK Ξ Redₘ.J (T⟶fcase₁⁽1⁾ j ((kfcase e0 f1 f2)) f0 f1 f2 e0)
     okB = (okT⟶fcase₁I {_} {j} {((kfcase e0 f1 f2))} {f0} {f1} {f2} {e0} dj (⊢kfcase dj de0 df1 df2) df0 df1 df2 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (kfcase e0 f1 f2)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶fcase₁⁽0⁾ j ((kfcase e0 f1 f2)) f0 f1 f2 ⌝ᵗ)
@@ -1426,7 +1426,7 @@ con⟶fcase₂ {Ξ} {qs} {j} {f0} {f1} {f2} {e0} {r0} dqs dj df0 df1 df2 de0 dr0
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶fcase₂⁽0⁾ j ((kfcase f0 e0 f2)) f0 f1 f2)
-    okT0 = (Redₘ.okσ (okC⟶fcase₂_0I {_} {j} dj) (okT⟶fcase₂I {_} {(w1 j)} {(w1 ((kfcase f0 e0 f2)))} {(w1 f0)} {(w1 f1)} {(w1 f2)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((kfcase f0 e0 f2))} (⊢kfcase dj df0 de0 df2)) (wkK {s = 1} {d = j} {t = f0} df0) (wkK {s = 1} {d = j} {t = f1} df1) (wkK {s = 1} {d = (nsuc j)} {t = f2} df2) (hereTm {m = j})))
+    okT0 = (okT⟶fcase₂⁽0⁾ {_} {j} {((kfcase f0 e0 f2))} {f0} {f1} {f2} dj (⊢kfcase dj df0 de0 df2) df0 df1 df2)
     okB : TelOK Ξ Redₘ.J (T⟶fcase₂⁽1⁾ j ((kfcase f0 e0 f2)) f0 f1 f2 e0)
     okB = (okT⟶fcase₂I {_} {j} {((kfcase f0 e0 f2))} {f0} {f1} {f2} {e0} dj (⊢kfcase dj df0 de0 df2) df0 df1 df2 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (kfcase f0 e0 f2)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶fcase₂⁽0⁾ j ((kfcase f0 e0 f2)) f0 f1 f2 ⌝ᵗ)
@@ -1449,7 +1449,7 @@ con⟶fcase₃ {Ξ} {qs} {j} {f0} {f1} {f2} {e0} {r0} dqs dj df0 df1 df2 de0 dr0
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶fcase₃⁽0⁾ j ((kfcase f0 f1 e0)) f0 f1 f2)
-    okT0 = (Redₘ.okσ (okC⟶fcase₃_0I {_} {j} dj) (okT⟶fcase₃I {_} {(w1 j)} {(w1 ((kfcase f0 f1 e0)))} {(w1 f0)} {(w1 f1)} {(w1 f2)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((kfcase f0 f1 e0))} (⊢kfcase dj df0 df1 de0)) (wkK {s = 1} {d = j} {t = f0} df0) (wkK {s = 1} {d = j} {t = f1} df1) (wkK {s = 1} {d = (nsuc j)} {t = f2} df2) (hereTm {m = (nsuc j)})))
+    okT0 = (okT⟶fcase₃⁽0⁾ {_} {j} {((kfcase f0 f1 e0))} {f0} {f1} {f2} dj (⊢kfcase dj df0 df1 de0) df0 df1 df2)
     okB : TelOK Ξ Redₘ.J (T⟶fcase₃⁽1⁾ j ((kfcase f0 f1 e0)) f0 f1 f2 e0)
     okB = (okT⟶fcase₃I {_} {j} {((kfcase f0 f1 e0))} {f0} {f1} {f2} {e0} dj (⊢kfcase dj df0 df1 de0) df0 df1 df2 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (kfcase f0 f1 e0)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶fcase₃⁽0⁾ j ((kfcase f0 f1 e0)) f0 f1 f2 ⌝ᵗ)
@@ -1472,7 +1472,7 @@ con⟶fcase0 {Ξ} {qs} {j} {f0} {e0} {r0} dqs dj df0 de0 dr0 =
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶fcase0⁽0⁾ j ((kfcase0 e0)) f0)
-    okT0 = (Redₘ.okσ (okC⟶fcase0_0I {_} {j} dj) (okT⟶fcase0I {_} {(w1 j)} {(w1 ((kfcase0 e0)))} {(w1 f0)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((kfcase0 e0))} (⊢kfcase0 dj de0)) (wkK {s = 1} {d = j} {t = f0} df0) (hereTm {m = j})))
+    okT0 = (okT⟶fcase0⁽0⁾ {_} {j} {((kfcase0 e0))} {f0} dj (⊢kfcase0 dj de0) df0)
     okB : TelOK Ξ Redₘ.J (T⟶fcase0⁽1⁾ j ((kfcase0 e0)) f0 e0)
     okB = (okT⟶fcase0I {_} {j} {((kfcase0 e0))} {f0} {e0} dj (⊢kfcase0 dj de0) df0 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (kfcase0 e0)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶fcase0⁽0⁾ j ((kfcase0 e0)) f0 ⌝ᵗ)
@@ -1495,7 +1495,7 @@ con⟶psplit₁ {Ξ} {qs} {j} {f0} {f1} {e0} {r0} dqs dj df0 df1 de0 dr0 =
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶psplit₁⁽0⁾ j ((kpsplit e0 f1)) f0 f1)
-    okT0 = (Redₘ.okσ (okC⟶psplit₁_0I {_} {j} dj) (okT⟶psplit₁I {_} {(w1 j)} {(w1 ((kpsplit e0 f1)))} {(w1 f0)} {(w1 f1)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((kpsplit e0 f1))} (⊢kpsplit dj de0 df1)) (wkK {s = 1} {d = (nsuc (nsuc j))} {t = f0} df0) (wkK {s = 1} {d = j} {t = f1} df1) (hereTm {m = (nsuc (nsuc j))})))
+    okT0 = (okT⟶psplit₁⁽0⁾ {_} {j} {((kpsplit e0 f1))} {f0} {f1} dj (⊢kpsplit dj de0 df1) df0 df1)
     okB : TelOK Ξ Redₘ.J (T⟶psplit₁⁽1⁾ j ((kpsplit e0 f1)) f0 f1 e0)
     okB = (okT⟶psplit₁I {_} {j} {((kpsplit e0 f1))} {f0} {f1} {e0} dj (⊢kpsplit dj de0 df1) df0 df1 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (kpsplit e0 f1)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶psplit₁⁽0⁾ j ((kpsplit e0 f1)) f0 f1 ⌝ᵗ)
@@ -1518,7 +1518,7 @@ con⟶psplit₂ {Ξ} {qs} {j} {f0} {f1} {e0} {r0} dqs dj df0 df1 de0 dr0 =
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶psplit₂⁽0⁾ j ((kpsplit f0 e0)) f0 f1)
-    okT0 = (Redₘ.okσ (okC⟶psplit₂_0I {_} {j} dj) (okT⟶psplit₂I {_} {(w1 j)} {(w1 ((kpsplit f0 e0)))} {(w1 f0)} {(w1 f1)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((kpsplit f0 e0))} (⊢kpsplit dj df0 de0)) (wkK {s = 1} {d = (nsuc (nsuc j))} {t = f0} df0) (wkK {s = 1} {d = j} {t = f1} df1) (hereTm {m = j})))
+    okT0 = (okT⟶psplit₂⁽0⁾ {_} {j} {((kpsplit f0 e0))} {f0} {f1} dj (⊢kpsplit dj df0 de0) df0 df1)
     okB : TelOK Ξ Redₘ.J (T⟶psplit₂⁽1⁾ j ((kpsplit f0 e0)) f0 f1 e0)
     okB = (okT⟶psplit₂I {_} {j} {((kpsplit f0 e0))} {f0} {f1} {e0} dj (⊢kpsplit dj df0 de0) df0 df1 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (kpsplit f0 e0)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶psplit₂⁽0⁾ j ((kpsplit f0 e0)) f0 f1 ⌝ᵗ)
@@ -1541,7 +1541,7 @@ con⟶cIMu₁ {Ξ} {qs} {j} {f0} {f1} {f2} {e0} {r0} dqs dj df0 df1 df2 de0 dr0 
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶cIMu₁⁽0⁾ j ((kcIMu e0 f1 f2)) f0 f1 f2)
-    okT0 = (Redₘ.okσ (okC⟶cIMu₁_0I {_} {j} dj) (okT⟶cIMu₁I {_} {(w1 j)} {(w1 ((kcIMu e0 f1 f2)))} {(w1 f0)} {(w1 f1)} {(w1 f2)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((kcIMu e0 f1 f2))} (⊢kcIMu dj de0 df1 df2)) (wkK {s = 1} {d = j} {t = f0} df0) (wkK {s = 1} {d = j} {t = f1} df1) (wkK {s = 1} {d = j} {t = f2} df2) (hereTm {m = j})))
+    okT0 = (okT⟶cIMu₁⁽0⁾ {_} {j} {((kcIMu e0 f1 f2))} {f0} {f1} {f2} dj (⊢kcIMu dj de0 df1 df2) df0 df1 df2)
     okB : TelOK Ξ Redₘ.J (T⟶cIMu₁⁽1⁾ j ((kcIMu e0 f1 f2)) f0 f1 f2 e0)
     okB = (okT⟶cIMu₁I {_} {j} {((kcIMu e0 f1 f2))} {f0} {f1} {f2} {e0} dj (⊢kcIMu dj de0 df1 df2) df0 df1 df2 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (kcIMu e0 f1 f2)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶cIMu₁⁽0⁾ j ((kcIMu e0 f1 f2)) f0 f1 f2 ⌝ᵗ)
@@ -1564,7 +1564,7 @@ con⟶cIMu₂ {Ξ} {qs} {j} {f0} {f1} {f2} {e0} {r0} dqs dj df0 df1 df2 de0 dr0 
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶cIMu₂⁽0⁾ j ((kcIMu f0 e0 f2)) f0 f1 f2)
-    okT0 = (Redₘ.okσ (okC⟶cIMu₂_0I {_} {j} dj) (okT⟶cIMu₂I {_} {(w1 j)} {(w1 ((kcIMu f0 e0 f2)))} {(w1 f0)} {(w1 f1)} {(w1 f2)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((kcIMu f0 e0 f2))} (⊢kcIMu dj df0 de0 df2)) (wkK {s = 1} {d = j} {t = f0} df0) (wkK {s = 1} {d = j} {t = f1} df1) (wkK {s = 1} {d = j} {t = f2} df2) (hereTm {m = j})))
+    okT0 = (okT⟶cIMu₂⁽0⁾ {_} {j} {((kcIMu f0 e0 f2))} {f0} {f1} {f2} dj (⊢kcIMu dj df0 de0 df2) df0 df1 df2)
     okB : TelOK Ξ Redₘ.J (T⟶cIMu₂⁽1⁾ j ((kcIMu f0 e0 f2)) f0 f1 f2 e0)
     okB = (okT⟶cIMu₂I {_} {j} {((kcIMu f0 e0 f2))} {f0} {f1} {f2} {e0} dj (⊢kcIMu dj df0 de0 df2) df0 df1 df2 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (kcIMu f0 e0 f2)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶cIMu₂⁽0⁾ j ((kcIMu f0 e0 f2)) f0 f1 f2 ⌝ᵗ)
@@ -1587,7 +1587,7 @@ con⟶cIMu₃ {Ξ} {qs} {j} {f0} {f1} {f2} {e0} {r0} dqs dj df0 df1 df2 de0 dr0 
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶cIMu₃⁽0⁾ j ((kcIMu f0 f1 e0)) f0 f1 f2)
-    okT0 = (Redₘ.okσ (okC⟶cIMu₃_0I {_} {j} dj) (okT⟶cIMu₃I {_} {(w1 j)} {(w1 ((kcIMu f0 f1 e0)))} {(w1 f0)} {(w1 f1)} {(w1 f2)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((kcIMu f0 f1 e0))} (⊢kcIMu dj df0 df1 de0)) (wkK {s = 1} {d = j} {t = f0} df0) (wkK {s = 1} {d = j} {t = f1} df1) (wkK {s = 1} {d = j} {t = f2} df2) (hereTm {m = j})))
+    okT0 = (okT⟶cIMu₃⁽0⁾ {_} {j} {((kcIMu f0 f1 e0))} {f0} {f1} {f2} dj (⊢kcIMu dj df0 df1 de0) df0 df1 df2)
     okB : TelOK Ξ Redₘ.J (T⟶cIMu₃⁽1⁾ j ((kcIMu f0 f1 e0)) f0 f1 f2 e0)
     okB = (okT⟶cIMu₃I {_} {j} {((kcIMu f0 f1 e0))} {f0} {f1} {f2} {e0} dj (⊢kcIMu dj df0 df1 de0) df0 df1 df2 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (kcIMu f0 f1 e0)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶cIMu₃⁽0⁾ j ((kcIMu f0 f1 e0)) f0 f1 f2 ⌝ᵗ)
@@ -1610,7 +1610,7 @@ con⟶cFin {Ξ} {qs} {j} {f0} {e0} {r0} dqs dj df0 de0 dr0 =
     okRest : {J' : RTm ⌊ Ξ ⌋} {T : Tel ⌊ Ξ ⌋} → TelOK Ξ Redₘ.J (tρ J' T) → TelOK Ξ Redₘ.J T
     okRest (ok-ρ _ o) = o
     okT0 : TelOK Ξ Redₘ.J (T⟶cFin⁽0⁾ j ((kcFin e0)) f0)
-    okT0 = (Redₘ.okσ (okC⟶cFin_0I {_} {j} dj) (okT⟶cFinI {_} {(w1 j)} {(w1 ((kcFin e0)))} {(w1 f0)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = j} {t = ((kcFin e0))} (⊢kcFin dj de0)) (wkK {s = 1} {d = j} {t = f0} df0) (hereTm {m = j})))
+    okT0 = (okT⟶cFin⁽0⁾ {_} {j} {((kcFin e0))} {f0} dj (⊢kcFin dj de0) df0)
     okB : TelOK Ξ Redₘ.J (T⟶cFin⁽1⁾ j ((kcFin e0)) f0 e0)
     okB = (okT⟶cFinI {_} {j} {((kcFin e0))} {f0} {e0} dj (⊢kcFin dj de0) df0 de0)
     dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ j) (kcFin e0)) ,ₚ unit) ∷ El (dpay Redₘ.J (⟶F.DF qs) ⌜ T⟶cFin⁽0⁾ j ((kcFin e0)) f0 ⌝ᵗ)
