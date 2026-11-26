@@ -716,7 +716,7 @@ d_val_1126 v0 v1 v2 v3 v4
              (coe
                 MAlonzo.Code.Once.LinCore.FromExpr.du_Co_666 (coe v0)
                 (coe (0 :: Integer)) (coe v6) (coe v7))
-             (MAlonzo.Code.Once.LinCore.FromExpr.d_Lq_2920
+             (MAlonzo.Code.Once.LinCore.FromExpr.d_Lq_2950
                 (coe v0) (coe v1) (coe v3) (coe (0 :: Integer)) (coe v5) (coe v6)
                 (coe v7) (coe v2) (coe v11))
              (coe du_eraseL_688 (coe v0) (coe (0 :: Integer)) (coe v6) (coe v7))
@@ -739,7 +739,7 @@ d_k'45'val_1150 v0 v1 v2 v3 v4
         -> coe
              MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1156
              (coe
-                MAlonzo.Code.Once.LinCore.FromExpr.du_Lq'45'blk_2934 (coe v0)
+                MAlonzo.Code.Once.LinCore.FromExpr.du_Lq'45'blk_2964 (coe v0)
                 (coe v1) (coe v3) (coe (0 :: Integer)) (coe v5) (coe v6) (coe v2)
                 (coe v11))
              (coe du_k'45'eraseL_716 (coe v6) (coe v7))
