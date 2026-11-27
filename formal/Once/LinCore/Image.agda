@@ -32,6 +32,8 @@ open import Data.Nat using (ℕ)
 open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; Σ; _,_)
+import Data.Bool
+import Data.Unit
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.LinCore.Flat using (Base)
 
@@ -287,6 +289,57 @@ copyᴵ (Ct l X)     = eapp ⨾ call (kcopy X) ⨾ epop ⨾ tag₁ ⨾ end
 copyᴵ (Fn k g A B) = ccopy ⨾ end
 copyᴵ (Nu F)       = ncopy ⨾ end
 
+-- ★ D503: a layer whose one recursive position comes LAST in each branch (a
+-- list's `K A * Id`, a counter's `K Unit + Id`): its free is a loop, constant
+-- stack — each round frees the cell and what precedes the position, then goes
+-- on with the child (the order `Events.freeAll` frees in)
+data Tail : LF → Set where
+  t-id   : Tail Idf
+  t-one  : Tail Kone
+  t-zero : Tail Kzero
+  t-b    : ∀ {b} → Tail (Kb b)
+  t-μ    : ∀ {G} → Tail (Kμ G)
+  t-pair : ∀ {G H} → Data.Bool.T (Data.Bool.not (hasId G)) → Tail H → Tail (G ⊗f H)
+  t-sum  : ∀ {G H} → Tail G → Tail H → Tail (G ⊕f H)
+
+private
+  noId? : (G : LF) → Maybe (Data.Bool.T (Data.Bool.not (hasId G)))
+  noId? G = dec (hasId G)
+    where
+      dec : (b : Data.Bool.Bool) → Maybe (Data.Bool.T (Data.Bool.not b))
+      dec Data.Bool.false = just Data.Unit.tt
+      dec Data.Bool.true  = nothing
+
+  both₂ : ∀ {X Y Z : Set} → (X → Y → Z) → Maybe X → Maybe Y → Maybe Z
+  both₂ h (just x) (just y) = just (h x y)
+  both₂ h (just x) nothing  = nothing
+  both₂ h nothing  _        = nothing
+
+tail? : (G : LF) → Maybe (Tail G)
+tail? Idf      = just t-id
+tail? Kone     = just t-one
+tail? Kzero    = just t-zero
+tail? (Kb b)   = just t-b
+tail? (Kμ G)   = just t-μ
+tail? (G ⊗f H) = both₂ t-pair (noId? G) (tail? H)
+tail? (G ⊕f H) = both₂ t-sum (tail? G) (tail? H)
+
+-- a round's layer: what precedes the recursive position freed, then done (`inl`) or its child (`inr`)
+peel : ∀ {F} G → Tail G → ∀ {Es S U} → Codeᴵ (Es ∣ (One ⊕t μt F) ∷ S) U → Codeᴵ (Es ∣ LF∙ G (μt F) ∷ S) U
+peel Idf      t-id         k = prim ε linr ⨾ k
+peel Kone     t-one        k = prim ε linl ⨾ k
+peel Kzero    t-zero       k = stuck ⨾ k
+peel {F} (Kb b) t-b        k = call (kfree (Bt b)) ⨾ prim ε linl ⨾ k
+peel {F} (Kμ G) t-μ        k = call (kfree (μt G)) ⨾ prim ε linl ⨾ k
+peel {F} (G ⊗f H) (t-pair n t) k =
+  unpair ⨾ call (kfree (LF∙ G (μt F))) ⨾ pair ⨾ prim ε lul ⨾ peel H t k
+peel (G ⊕f H) (t-sum a b) k = case (peel G a k) (peel H b k)
+
+-- a μ's free: a loop over its layers where they are `Tail`, else a call per cell
+freeμ : ∀ F → Maybe (Tail F) → Block (bsig nothing (μt F) One)
+freeμ F (just t) = elift ⨾ loop (prim ε lOutμ ⨾ peel F t end) ⨾ epop ⨾ end
+freeμ F nothing  = prim ε lOutμ ⨾ call (kfree (LF∙ F (μt F))) ⨾ end
+
 -- a FREE of every cell of the operand, by its type: a cell, then what it
 -- held (`Events.freeAll`)
 freeᴵ : ∀ A → Block (bsig nothing A One)
@@ -295,7 +348,7 @@ freeᴵ Zero         = stuck ⨾ end
 freeᴵ (A ⊗t B)     = unpair ⨾ call (kfree A) ⨾ swap ⨾ call (kfree B) ⨾ pair ⨾ prim ε lul ⨾ end
 freeᴵ (A ⊕t B)     = case (call (kfree A) ⨾ end) (call (kfree B) ⨾ end)
 freeᴵ (Bt b)       = prim ε drop ⨾ end
-freeᴵ (μt F)       = prim ε lOutμ ⨾ call (kfree (LF∙ F (μt F))) ⨾ end
+freeᴵ (μt F)       = freeμ F (tail? F)
 freeᴵ (Ct l X)     = untag₁ ⨾ call (kfree X) ⨾ end
 freeᴵ (Fn k g A B) = cfree ⨾ end
 freeᴵ (Nu F)       = nfree ⨾ end

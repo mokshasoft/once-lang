@@ -27,7 +27,7 @@ open import Agda.Builtin.Equality using (_≡_; refl)
 open import Agda.Builtin.Sigma using (Σ; _,_; fst; snd)
 open import Data.Unit using (tt)
 open import Data.Product using (_×_)
-open import Data.Maybe using (just; nothing)
+open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Empty using (⊥-elim)
 open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (subst; sym; cong; trans)
@@ -434,11 +434,37 @@ mutual
                        (thenL (after (freeS b (mone ∷ˢ []ˢ) n) i-pair) (leaf (i-prim r-λ) [])))
   freeB (minl a) n = pre i-case₁ (freeS a []ˢ n)
   freeB (minr b) n = pre i-case₂ (freeS b []ˢ n)
-  freeB (mmu i v) n = then (leaf (i-prim r-Outμ) (k-free ∷ [])) (freeS v []ˢ n)
+  freeB (mmu {F} i v) n = freeMu (tail? F) i v n
   freeB (mct x) n = pre i-untag₁ (freeS x []ˢ n)
   -- ★ a cell: its trampoline (D436) frees it, then frees what it held
   freeB (mfn i lam x) n = called′ i-cfree (then (leaf i-fopen (k-free ∷ [])) (freeS x []ˢ n)) doneO
   freeB (mnu i p) n = called′ i-nfree (then (leaf i-fopenν (k-free ∷ [])) (freeS p []ˢ n)) doneO
+
+  -- ★ D503: a μ's free — a loop over its layers where they are `Tail` (a round: the cell,
+  -- what precedes the recursive position, then the next round on the child), else a call per cell
+  freeMu : ∀ {T F} (t : Maybe (Tail F)) i (w : MV (LF∙ F (μt F))) {r : Ret ([] ∣ One ∷ []) T} (n : ℕ)
+         → OutI (freeμ F t) r ([]ᵉ ∥ mmu i w ∷ˢ []ˢ) n (freeAll (mmu i w)) end r ([]ᵉ ∥ mone ∷ˢ []ˢ) n 0
+  freeMu nothing  i w n = then (leaf (i-prim r-Outμ) (k-free ∷ [])) (freeS w []ˢ n)
+  freeMu {F = F} (just t) i w n = pre i-elift (after (roundS F t i w n) i-epop)
+
+  roundS : ∀ {T} F (t : Tail F) i (w : MV (LF∙ F (μt F))) {E Es S U} {es : Slots (E ∷ Es)} {os : Stk S}
+           {k : Codeᴵ (E ∷ Es ∣ One ∷ S) U} {r : Ret U T} (n : ℕ)
+         → OutI (loop (prim ε lOutμ ⨾ peel F t end) ⨾ k) r (es ∥ mmu i w ∷ˢ os) n (freeAll (mmu i w)) k r (es ∥ mone ∷ˢ os) n 0
+  roundS F t i w n = pre i-loop (then (leaf (i-prim r-Outμ) (k-free ∷ [])) (peelS F t F t w n))
+
+  peelS : ∀ {T} F (tF : Tail F) G (t : Tail G) (x : MV (LF∙ G (μt F))) {E Es S U} {es : Slots (E ∷ Es)} {os : Stk S}
+          {k : Codeᴵ (E ∷ Es ∣ One ∷ S) U} {r : Ret U T} (n : ℕ)
+        → OutI (peel G t end) (case k (loop (prim ε lOutμ ⨾ peel F tF end) ⨾ k) ∷ⁱ r) (es ∥ x ∷ˢ os) n (freeAll x)
+               k r (es ∥ mone ∷ˢ os) n 0
+  peelS F tF Idf      t-id   (mmu i w) n = pre (i-prim r-inr) (pre i-reti (pre i-case₂ (roundS F tF i w n)))
+  peelS F tF Kone     t-one  mone      n = pre (i-prim r-inl) (pre i-reti (pre i-case₁ doneO))
+  peelS F tF Kzero    t-zero ()        n
+  peelS F tF (Kb b)   t-b    x {os = os} n = thenL (freeS x os n) (pre (i-prim r-inl) (pre i-reti (pre i-case₁ doneO)))
+  peelS F tF (Kμ G)   t-μ    x {os = os} n = thenL (freeS x os n) (pre (i-prim r-inl) (pre i-reti (pre i-case₁ doneO)))
+  peelS F tF (G ⊗f H) (t-pair nn t) (mpair g h) {os = os} n =
+    pre i-unpair (then (freeS g (h ∷ˢ os) n) (pre i-pair (pre (i-prim r-λ) (peelS F tF H t h n))))
+  peelS F tF (G ⊕f H) (t-sum a b) (minl x) n = pre i-case₁ (peelS F tF G a x n)
+  peelS F tF (G ⊕f H) (t-sum a b) (minr x) n = pre i-case₂ (peelS F tF H b x n)
 
 ------------------------------------------------------------------------
 -- 5. MORE COMBINATORS: a view around, a call by outcome, a cut, the run's

@@ -25950,3 +25950,21 @@ tree's HEIGHT, not its size (the weak case: a degenerate tree, height = size). L
 trees by POINTER REVERSAL — a free by rotating the tree in place, a copy by reversing pointers on the way down and
 restoring them: constant stack and no extra memory for all data. Rejected: a heap work-list (a free would then
 allocate, so freeing could itself run out of memory — at odds with D502).
+
+**D503 stage 1 built** (2026-11-27): `Image.freeμ` — a μ whose layer is `Tail` (its recursive position last in
+each branch: `K A * Id`, `K Unit + Id`) frees by a LOOP (`peel` frees what precedes the position, then done or
+the child); other layers as before. Proofs: `ImageSim.freeMu`/`roundS`/`peelS` (the loop runs `Events.freeAll`,
+by induction on the list), `Keys.peel-in`/`freeμ-in` (the parts' frees are in the universe, `tys-cl`),
+`NoCell.freeμ-nc`, `CopyCode.freeμ-c`. Measured (x86_64, one 8 MiB region for cells and stack): building a list
+and dropping it whole failed at 100000 elements before (the free's frames met the cells), now runs to the
+cells' room (200000 ok, 500000 exhausted: 12 MB of cells). Test: `compiler/test/free-long-list.once`. Found: a
+FOLD over a list (`cata`, `travᴵ` calls the fold block per child) still holds a frame per element (sum of
+200000 exhausted) — the next recursion to remove (D502's list).
+
+**D500 corrected: two false positives** (2026-11-27), found when the free test above warned: plan 0.157 D6's own
+`step p = case (next p) (stop p) (fst p == 0)` was named twice. (1) A case combinator applied at once is a
+BRANCH — the bridge distributes the context to its arms (`appL`'s `cp?` path) and splits nothing — but its own
+split was a site: now `sitesFn` keeps only its arms' sites there. (2) A closure owning its captures was a site
+whenever it was many-use; it copies only on a LENT call (D498), so it is a site only at a lent-called type, as
+`CF` requires. The corpus scan had skipped the benchmarks (their `BENCH_N` placeholder does not parse); with it
+filled in, the whole corpus checks with no site. `LinearSpec` tests the step loop.

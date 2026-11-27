@@ -68,9 +68,32 @@ branching =
   , "main = exit@S (left (tree 1))"
   ]
 
+-- plan 0.157 D6's example: `step p = case (next p) (stop p) (fst p == 0)` is linear (one owning use
+-- per path, the arms alternatives, the test a read) — no false "case combinator" or "closure" site
+stepLoop :: [T.Text]
+stepLoop =
+  [ "import I.Linux.Syscalls as S"
+  , ""
+  , "stop : Int * Mu (K Unit + K Int * Id) -> Unit -> Int + Void"
+  , "stop p _ = inl 7"
+  , ""
+  , "next : Int * Mu (K Unit + K Int * Id) -> Unit -> Void + Int * Mu (K Unit + K Int * Id)"
+  , "next p _ = inr (fst p - 1, In (inr (fst p, snd p)))"
+  , ""
+  , "step : Int * Mu (K Unit + K Int * Id) -> Int + Int * Mu (K Unit + K Int * Id)"
+  , "step p = case (next p) (stop p) (fst p == 0)"
+  , ""
+  , "main : Eff Unit Void"
+  , "main = exit@S . (ana step . (\\_ -> (10, In (inl unit))))"
+  ]
+
 linearTests :: TestTree
 linearTests = testGroup "Linearity warning (D500)"
-  [ testCase "a branching unfold is named: each observation copies its coalgebra" $ do
+  [ testCase "the plan's step loop is linear: no warning" $ do
+      err <- typeCheckStderr (T.unlines stepLoop)
+      assertBool ("expected no not-linear warning, got: " ++ err)
+                 (not ("not linear" `isInfixOf` err))
+  , testCase "a branching unfold is named: each observation copies its coalgebra" $ do
       err <- typeCheckStderr (T.unlines branching)
       assertBool ("expected a not-linear warning, got: " ++ err)
                  ("not linear" `isInfixOf` err && "unfold whose layer branches" `isInfixOf` err)

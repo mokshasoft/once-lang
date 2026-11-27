@@ -159,13 +159,27 @@ module Good (lc : LTy → Bool) where
   copy-c (Fn k g A B) ()
   copy-c (Nu F)       ()
 
+  -- (D503: a μ's free loop calls only frees)
+  peel-c : ∀ {F} G (t : Tail G) {Es S U} {k : Codeᴵ (Es ∣ (One ⊕t μt F) ∷ S) U} → CC k → CC (peel G t k)
+  peel-c Idf      t-id         ck = (tt , tt) , ck
+  peel-c Kone     t-one        ck = (tt , tt) , ck
+  peel-c Kzero    t-zero       ck = tt , ck
+  peel-c (Kb b)   t-b          ck = tt , (tt , tt) , ck
+  peel-c (Kμ G)   t-μ          ck = tt , (tt , tt) , ck
+  peel-c (G ⊗f H) (t-pair n t) ck = tt , tt , tt , (tt , tt) , peel-c H t ck
+  peel-c (G ⊕f H) (t-sum a b)  ck = peel-c G a ck , peel-c H b ck
+
+  freeμ-c : ∀ F (t : Maybe (Tail F)) → CC (freeμ F t)
+  freeμ-c F (just t) = tt , ((tt , tt) , peel-c F t tt) , tt , tt
+  freeμ-c F nothing  = (tt , tt) , tt , tt
+
   free-c : ∀ A → CC (freeᴵ A)
   free-c One          = tt
   free-c Zero         = _
   free-c (A ⊗t B)     = _
   free-c (A ⊕t B)     = _
   free-c (Bt b)       = _
-  free-c (μt F)       = _
+  free-c (μt F)       = freeμ-c F (tail? F)
   free-c (Ct l X)     = _
   free-c (Fn k g A B) = _
   free-c (Nu F)       = _

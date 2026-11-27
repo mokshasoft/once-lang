@@ -1,0 +1,28 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+-- Plan 0.157 D503: A LONG LIST IS FREED IN CONSTANT STACK. A loop conses 200000
+-- cells, then the program drops the list whole (`stop` ignores it), so every
+-- cell goes through the list's free block. That block was a call per cell (a
+-- frame per element: the stack met the cells at about 100000); it is now a loop
+-- over the list's layers (`Image.freeμ`, the layer `K Unit + K Int * Id` is
+-- `Tail`), so the run's only limit is the cells' room.
+--
+-- Expected: exit code 7.
+
+import I.Linux.Syscalls as S
+
+stop : Int * Mu (K Unit + K Int * Id) -> Unit -> Int + Void
+stop p _ = inl 7
+
+next : Int * Mu (K Unit + K Int * Id) -> Unit -> Void + Int * Mu (K Unit + K Int * Id)
+next p _ = inr (fst p - 1, In (inr (fst p, snd p)))
+
+step : Int * Mu (K Unit + K Int * Id) -> Int + Int * Mu (K Unit + K Int * Id)
+step p = case (next p) (stop p) (fst p == 0)
+
+build : Eff (Int * Mu (K Unit + K Int * Id)) Int
+build = ana step
+
+main : Eff Unit Void
+main = exit@S . (build . (\_ -> (200000, In (inl unit))))

@@ -159,13 +159,27 @@ copy-nc (Ct l X)     = tt , tt , tt , tt , tt
 copy-nc (Fn k g A B) = tt , tt
 copy-nc (Nu F)       = tt , tt
 
+-- (D503: a μ's free loop — its rounds have no cell part either)
+peel-nc : ∀ {F} G (t : Tail G) {Es S U} {k : Codeᴵ (Es ∣ (One ⊕t μt F) ∷ S) U} → NoCellC k → NoCellC (peel G t k)
+peel-nc Idf      t-id         ck = tt , ck
+peel-nc Kone     t-one        ck = tt , ck
+peel-nc Kzero    t-zero       ck = tt , ck
+peel-nc (Kb b)   t-b          ck = tt , tt , ck
+peel-nc (Kμ G)   t-μ          ck = tt , tt , ck
+peel-nc (G ⊗f H) (t-pair n t) ck = tt , tt , tt , tt , peel-nc H t ck
+peel-nc (G ⊕f H) (t-sum a b)  ck = peel-nc G a ck , peel-nc H b ck
+
+freeμ-nc : ∀ F (t : Data.Maybe.Maybe (Tail F)) → NoCellC (freeμ F t)
+freeμ-nc F (Data.Maybe.just t) = tt , (tt , peel-nc F t tt) , tt , tt
+freeμ-nc F Data.Maybe.nothing  = tt , tt , tt
+
 free-nc : ∀ A → NoCellC (freeᴵ A)
 free-nc One          = tt
 free-nc Zero         = tt , tt
 free-nc (A ⊗t B)     = tt , tt , tt , tt , tt , tt , tt
 free-nc (A ⊕t B)     = (tt , tt) , (tt , tt)
 free-nc (Bt b)       = tt , tt
-free-nc (μt F)       = tt , tt , tt
+free-nc (μt F)       = freeμ-nc F (tail? F)
 free-nc (Ct l X)     = tt , tt , tt
 free-nc (Fn k g A B) = tt , tt
 free-nc (Nu F)       = tt , tt

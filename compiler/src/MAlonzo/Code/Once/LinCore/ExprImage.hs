@@ -55,7 +55,7 @@ d_imageAt_10 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430]
 d_imageAt_10 v0 v1 v2 v3
   = coe
-      MAlonzo.Code.Once.LinCore.Lower.du_image_3096 (coe v0)
+      MAlonzo.Code.Once.LinCore.Lower.du_image_3142 (coe v0)
       (coe MAlonzo.Code.Once.LinCore.Loader.d_bw_6)
       (coe
          MAlonzo.Code.Once.LinCore.ExprBuild.d_L_1418
@@ -77,7 +77,7 @@ d_imageAt_10 v0 v1 v2 v3
          (coe v2) (coe v3))
       (coe MAlonzo.Code.Once.LinCore.Loader.d_ldConst_10)
       (coe
-         MAlonzo.Code.Once.LinCore.Keys.d_univ_2802 (coe v0)
+         MAlonzo.Code.Once.LinCore.Keys.d_univ_2840 (coe v0)
          (coe MAlonzo.Code.Once.LinCore.Loader.d_bw_6)
          (coe
             MAlonzo.Code.Once.LinCore.ExprBuild.d_L_1418
@@ -111,7 +111,7 @@ d_blocksAt_18 v0 v1 v2 v3
   = coe
       MAlonzo.Code.Once.LinCore.ImageBlocks.du_imageBlocks_70
       (coe
-         MAlonzo.Code.Once.LinCore.Keys.d_univ_2802 (coe v0)
+         MAlonzo.Code.Once.LinCore.Keys.d_univ_2840 (coe v0)
          (coe MAlonzo.Code.Once.LinCore.Loader.d_bw_6)
          (coe
             MAlonzo.Code.Once.LinCore.ExprBuild.d_L_1418
@@ -244,9 +244,9 @@ d_lc_98 ::
   MAlonzo.Code.Once.LinCore.Core.T_LTy_178 -> Bool
 d_lc_98 v0 v1 v2 v3
   = coe
-      MAlonzo.Code.Once.LinCore.Keys.d_lct_2512
+      MAlonzo.Code.Once.LinCore.Keys.d_lct_2550
       (coe
-         MAlonzo.Code.Once.LinCore.Keys.d_univ_2802 (coe v0)
+         MAlonzo.Code.Once.LinCore.Keys.d_univ_2840 (coe v0)
          (coe MAlonzo.Code.Once.LinCore.Loader.d_bw_6)
          (coe
             MAlonzo.Code.Once.LinCore.ExprBuild.d_L_1418
@@ -345,7 +345,7 @@ d_perDef_110 v0 v1 v2 v3 v4
                                     (coe du_vars_104 (coe v7)) (")" :: Data.Text.Text))))))
               _ -> MAlonzo.RTE.mazUnreachableError))
       (coe
-         MAlonzo.Code.Once.LinCore.Linear.d_sites_352 (coe v0)
+         MAlonzo.Code.Once.LinCore.Linear.d_sites_370 (coe v0)
          (coe d_lc_98 (coe v0) (coe v1) (coe v2) (coe v3))
          (coe (0 :: Integer))
          (coe
@@ -416,9 +416,9 @@ d_cellCopies_144 v0 v1 v2 v3
   = coe
       du_cellCopyIdx_124
       (coe
-         MAlonzo.Code.Once.LinCore.Keys.du_allK_2790
+         MAlonzo.Code.Once.LinCore.Keys.du_allK_2828
          (coe
-            MAlonzo.Code.Once.LinCore.Keys.d_univ_2802 (coe v0)
+            MAlonzo.Code.Once.LinCore.Keys.d_univ_2840 (coe v0)
             (coe MAlonzo.Code.Once.LinCore.Loader.d_bw_6)
             (coe
                MAlonzo.Code.Once.LinCore.ExprBuild.d_L_1418

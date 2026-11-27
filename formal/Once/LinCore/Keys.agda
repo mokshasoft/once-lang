@@ -816,13 +816,30 @@ module In (U : Univ) where
   copy-in (Fn k g A B) h = tt , tt
   copy-in (Nu F)       h = tt , tt
 
+  -- ★ D503: a round of a μ's free loop frees the parts before the recursive position:
+  -- each a part of the layer, so in the universe (`tys-cl`, again and again)
+  peel-in : ∀ {F} G (t : Tail G) {Es S V} {k : Codeᴵ (Es ∣ (One ⊕t μt F) ∷ S) V}
+          → LF∙ G (μt F) ∈ tys U → CIn k → CIn (peel G t k)
+  peel-in Idf      t-id         m ck = tt , ck
+  peel-in Kone     t-one        m ck = tt , ck
+  peel-in Kzero    t-zero       m ck = tt , ck
+  peel-in (Kb b)   t-b          m ck = inF m , tt , ck
+  peel-in (Kμ G)   t-μ          m ck = inF m , tt , ck
+  peel-in (G ⊗f H) (t-pair n t) m ck =
+    tt , inF (tys-cl U m (here refl)) , tt , tt , peel-in H t (tys-cl U m (there (here refl))) ck
+  peel-in (G ⊕f H) (t-sum a b)  m ck = peel-in G a (tys-cl U m (here refl)) ck , peel-in H b (tys-cl U m (there (here refl))) ck
+
+  freeμ-in : ∀ F (t : Maybe (Tail F)) → LF∙ F (μt F) ∈ tys U → CIn (freeμ F t)
+  freeμ-in F (just t) m = tt , (tt , peel-in F t m tt) , tt , tt
+  freeμ-in F nothing  m = tt , inF m , tt
+
   free-in : ∀ T → comps T ⊆ tys U → BIn (kf T)
   free-in One          h = tt
   free-in Zero         h = tt , tt
   free-in (A ⊗t B)     h = tt , inF (h (here refl)) , tt , inF (h (there (here refl))) , tt , tt , tt
   free-in (A ⊕t B)     h = (inF (h (here refl)) , tt) , (inF (h (there (here refl))) , tt)
   free-in (Bt b)       h = tt , tt
-  free-in (μt F)       h = tt , inF (h (here refl)) , tt
+  free-in (μt F)       h = freeμ-in F (tail? F) (h (here refl))
   free-in (Ct l X)     h = tt , inF (h (here refl)) , tt
   free-in (Fn k g A B) h = tt , tt
   free-in (Nu F)       h = tt , tt
