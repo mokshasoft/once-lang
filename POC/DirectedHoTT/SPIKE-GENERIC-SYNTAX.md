@@ -89,6 +89,39 @@ cleaner, and is it faster or slower to check AT THE USE SITE? Inputs:
     copies defeat syntactic equality (PLAN-REF's 100 → 540 s).
 - **How it is measured.** S6 (below, revised) and S7.
 
+## 2b. If the encoding is slow: a Spec/implementation correspondence
+
+The generic syntax `Tm K` and a hand-written datatype (today's `RTm`) are
+both the initial algebra of the signature's functor, so they are related
+by a unique isomorphism. That gives a fallback that keeps the generic layer
+AND today's use-site performance:
+- **Spec:** the generic syntax. Every structural theorem is proved there
+  once (fusion, identity, congruence, typing preservation, the congruence
+  cases of reduction).
+- **Implementation:** the concrete datatype with hand-written `renTm`/`subTm`.
+  The metatheory, the libraries and the Knot work on it, so the Knot's terms
+  keep today's size.
+- **Bridge, one module:** per former, the encode/decode clause (the
+  isomorphism) and one `cong`-plus-IH clause per operation (hand-written
+  `renTm`/`subTm` agree with the generic traversal). It is mechanical, about
+  4 lines per former instead of about 17 lines of proof.
+- **Transfer:** each generic theorem becomes a lemma stated on concrete
+  terms. Its proof goes through the isomorphism once, in the bridge; use
+  sites see only the concrete statement, with no casts. This transports
+  propositions once, not data at every use site.
+
+Options, best first: (1) the generic syntax is the only syntax, if S6 says
+it is fast enough; (2) this split; (3) the concrete datatype and the bridge
+generated from the signature by reflection (`unquoteDecl data`), checked,
+so nothing is added to the trusted base. (2) is also the shape that fits
+master's hand-written `Tm S m n`.
+
+S6 runs on a separate branch (`spike-generic-syntax`) after a fresh cold
+baseline on `dt-dhott-poc`. Its first measurement is the TRANSITIONAL state
+(every module kept, on the new encoding), which measures the encoding's cost
+honestly; modules S5 makes obsolete are measured again by their
+replacements.
+
 ## 3. Consequences recorded elsewhere
 
 - PLAN-GRADED D11: the spike runs before G1, because G1's usage fields
