@@ -444,9 +444,10 @@ The pipeline is:
 > DT kernel → (erase usage 0) → master's graded core → (`Lq`) → `LinCore`
 
 So the DT kernel never meets `LinCore` directly. Its obligation is the
-erasure theorem into master's core. ROADMAP R5's "allocation-aware
-evaluator" and its `NbEPLinCore` blueprint are master's now; fix those
-ROADMAP lines in PLAN-GRADED.
+erasure theorem into master's core (PLAN-GRADED §3 calls it EXTRACTION,
+since the POC's `Metatheory/Erasure` already names another map). ROADMAP R5's
+"allocation-aware evaluator" and its `NbEPLinCore` blueprint were master's;
+the ROADMAP was corrected 2026-11-27.
 
 **Direction.** Stays on master. The POC's claim that "dup-free code
 allocates nothing" (ROADMAP §6) should be stated against this core, not
