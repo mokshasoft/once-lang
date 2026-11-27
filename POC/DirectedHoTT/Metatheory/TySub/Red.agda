@@ -83,7 +83,7 @@ open import DirectedHoTT.Spec.Variance
         ; nnh-Σ; nnh-Id; nnh-Π; nnh-Hom; nnh-IMu; nonatc→hd; stkC?→hd
         ; occ-εwkTm )
 open import DirectedHoTT.Spec.Reduction 𝒮
-  using ( _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; El-⌜Hom⌝; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ
+  using ( ⟶head; ⟶cong; _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; El-⌜Hom⌝; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ
         ; ξ-Σʳ; Hom-U; Hom-Π; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ; _⟶_; β; βfst; βsnd
         ; ξ-lam; ξ-appˡ; ξ-appʳ; ξ-pairˡ; ξ-pairʳ; ξ-absurdᶜ; ξ-absurdᵉ
         ; ordtr-z; ordtr-szz; ordtr-ssz; ordtr-szs; ordtr-sss; ξ-ordtrᵃ
@@ -706,10 +706,10 @@ occ-red {x = x} (ξ-jsubᵉ {d = d} {p = p} r) e =
                    (occ-red r (∨-false₂ (occTm x p) (∨-false₂ (occTm (vs x) d) e))))
 
 posc-red : {d d' : RTm (Γ ∙)} → PosC vz d → d ⟶ d' → PosC vz d'
-posc-red posc-var ()
+posc-red posc-var (⟶head ())
 posc-red (posc-Hom hc ha) (ξ-⌜Hom⌝ᶜ r) = posc-Hom (occ-red r hc) ha
 posc-red (posc-Hom hc ha) (ξ-⌜Hom⌝ˡ r) = posc-Hom hc (occ-red r ha)
-posc-red (posc-Hom hc ha) (ξ-⌜Hom⌝ʳ ())
+posc-red (posc-Hom hc ha) (ξ-⌜Hom⌝ʳ (⟶head ()))
 ------------------------------------------------------------------------
 -- ★★★ THE INDEXED NATURALITY LAYER.
 --
