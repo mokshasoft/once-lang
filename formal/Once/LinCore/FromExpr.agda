@@ -46,7 +46,7 @@ open import Once.Spec.Name using (CanonicalName; bare)
 import Once.Spec.Context as SC
 open import Once.Spec.Context using (Ctx; Usage; []; _∷_; _+ᵘ_; _*ᵘ_; _⊑ᵘ_; _⊑∷_; zeroUsage; singleUse)
 open import Once.Context
-  using (⟦_⟧ᶜ; _↾_; _⊔ᵘ_; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ;
+  using (⟦_⟧ᶜ; _↾_; _⊔ᵘ_; ⊑ᵘ-trans; ⊑ᵘ-refl; ⊑ᵘ-*One; ⊑ᵘ-*Many; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ;
          z≤z; z≤o; z≤m; o≤o; o≤m; m≤m)
 open import Once.IRTy using (IRTy; ⌊_⌋; ⌊⟧T-commute; ⌊wk₀⌋)
 import Once.IRTy as I
@@ -551,6 +551,15 @@ shared? (Γ SC.▸ A) (q₁ ∷ Ψ₁) (q₂ ∷ Ψ₂) = (used? q₁ ∧ used? 
 rdx? : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} (Ψa Ψb : Usage n) (e : Expr Γ Ψ A) → Maybe (Rd e)
 rdx? {Γ = Γ} Ψa Ψb e = if shared? Γ Ψa Ψb then keepRd true (rd? e) else nothing
 
+-- ★ D499: a lambda's captures, some owning cells (a lent call of a closure that owns them copies them)
+capCells? : ∀ {m n} (Γ : Ctx m n) → Usage n → Bool
+capCells? SC.∅          []      = false
+capCells? (Γ SC.▸ A) (q ∷ Ψ) = (used? q ∧ not (flat? A)) ∨ capCells? Γ Ψ
+
+-- a lambda's body as a read of its captures and argument: only where the captures own cells
+rdl? : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A B : Ty m} {q′} (e : Expr (Γ SC.▸ A) (q′ ∷ Ψ) B) → Maybe (Rd e)
+rdl? {Γ = Γ} {Ψ} e = if capCells? Γ Ψ then keepRd true (rd? e) else nothing
+
 ------------------------------------------------------------------------
 -- 5c. ★ D481 (B1): WHAT EVALUATES AT ONCE. The IR builds both arms of a case
 -- combinator before the case (`copairIR ∘ ⟨ f , g ⟩`). An arm whose evaluation
@@ -796,6 +805,25 @@ module _ {L : Cx} (rs : Rs L) where
   k-castΦ : ∀ {m n} {Γ : Ctx m n} {Φ Φ′ : Usage n} {B} (e : Φ ≡ Φ′) {t : LTm L (Co Γ Φ) B} → Blk t → Blk (castΦ {Γ = Γ} e t)
   k-castΦ refl β = β
 
+  -- ★ D499: a closure whose body READS its captures (lent) beside its argument, then frees the
+  -- argument: a lent call of it copies nothing
+  readB : ∀ {X A B} (r : Tm L (X ⊗t A) One B) → Tm L X A B
+  readB r = (lul ∘l (drop ⊗l lid)) ∘l lend r ∘l ρl⁻
+
+  readClo : ∀ {X A B} (π : G.Purity) (r : Tm L (X ⊗t A) One B) → Blk r → LTm L X (Fn many (grade π) A B)
+  readClo π r ρ = llamω (readB r) (gdL π (λ { refl → k-∘ (k-∘ k-lul (k-⊗ k-drop k-id)) (k-∘ (k-lend ρ) k-ρ⁻) }))
+
+  -- a lambda: read where its body is a read (`rdl?`), else its body owns the captures (`clo`)
+  lamOr : ∀ {R : Set} {X A B} (π : G.Purity) (b : LTm L (X ⊗t A) B) → Blk b → Maybe R
+        → (rt : R → Tm L (X ⊗t A) One B) → (∀ d → Blk (rt d)) → LTm L X (Fn many (grade π) A B)
+  lamOr π b β nothing  rt kt = clo π b β
+  lamOr π b β (just d) rt kt = readClo π (rt d) (kt d)
+
+  k-lamOr : ∀ {R : Set} {X A B} (π : G.Purity) (b : LTm L (X ⊗t A) B) (β : Blk b) (md : Maybe R)
+            (rt : R → Tm L (X ⊗t A) One B) (kt : ∀ d → Blk (rt d)) → Blk (lamOr π b β md rt kt)
+  k-lamOr π b β nothing  rt kt = k-lamωᶜ
+  k-lamOr π b β (just d) rt kt = k-lamω
+
   -- ★ D494: a fork's arm as the fork runs it: the projection it takes of the
   -- argument, what the fork's closure keeps for it, and its run on that part
   record ArmD {m n} (Γ : Ctx m n) (Ψ : Usage n) (A B : Ty m) (π : G.Purity) : Set where
@@ -919,9 +947,9 @@ module _ {L : Cx} (rs : Rs L) where
   Lq (lam {q' = G.Zero} {π = π} G.Zero _ e) = clo π (Lq e ∘l ρl ∘l (lid ⊗l drop)) (k-∘ (Lq-blk e) (k-∘ k-ρ (k-⊗ k-id k-drop)))
   Lq (lam {q' = G.Zero} {π = π} G.One  _ e) = clo π (Lq e ∘l ρl ∘l (lid ⊗l drop)) (k-∘ (Lq-blk e) (k-∘ k-ρ (k-⊗ k-id k-drop)))
   Lq (lam {q' = G.Zero} {π = π} G.Many _ e) = clo π (Lq e ∘l ρl ∘l (lid ⊗l drop)) (k-∘ (Lq-blk e) (k-∘ k-ρ (k-⊗ k-id k-drop)))
-  Lq (lam {q' = G.One}  {π = π} G.One  _ e) = clo π (Lq e) (Lq-blk e)
-  Lq (lam {q' = G.One}  {π = π} G.Many _ e) = clo π (Lq e) (Lq-blk e)
-  Lq (lam {q' = G.Many} {π = π} G.Many _ e) = clo π (Lq e) (Lq-blk e)
+  Lq (lam {q' = G.One}  {π = π} G.One  _ e) = lamOr π (Lq e) (Lq-blk e) (rdl? e) (λ d → Rt d (⊑ᵘ-refl _)) (λ d → k-Rt d (⊑ᵘ-refl _))
+  Lq (lam {q' = G.One}  {π = π} G.Many _ e) = lamOr π (Lq e) (Lq-blk e) (rdl? e) (λ d → Rt d (⊑ᵘ-refl _)) (λ d → k-Rt d (⊑ᵘ-refl _))
+  Lq (lam {q' = G.Many} {π = π} G.Many _ e) = lamOr π (Lq e) (Lq-blk e) (rdl? e) (λ d → Rt d (⊑ᵘ-refl _)) (λ d → k-Rt d (⊑ᵘ-refl _))
   -- an application: the context SPLIT between the function and the argument
   Lq {Γ = Γ} (app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = G.Zero} f x) =
     castΦ {Γ = Γ} (sym (erase-arg-usage Ψ₁ Ψ₂)) (apω ∘l (Lq f ⊗l lid) ∘l ρl⁻)
@@ -1005,9 +1033,9 @@ module _ {L : Cx} (rs : Rs L) where
   Lq-blk (lam {q' = G.Zero} G.Zero _ e) = k-lamωᶜ
   Lq-blk (lam {q' = G.Zero} G.One  _ e) = k-lamωᶜ
   Lq-blk (lam {q' = G.Zero} G.Many _ e) = k-lamωᶜ
-  Lq-blk (lam {q' = G.One}  G.One  _ e) = k-lamωᶜ
-  Lq-blk (lam {q' = G.One}  G.Many _ e) = k-lamωᶜ
-  Lq-blk (lam {q' = G.Many} G.Many _ e) = k-lamωᶜ
+  Lq-blk (lam {q' = G.One}  {π = π} G.One  _ e) = k-lamOr π (Lq e) (Lq-blk e) (rdl? e) (λ d → Rt d (⊑ᵘ-refl _)) (λ d → k-Rt d (⊑ᵘ-refl _))
+  Lq-blk (lam {q' = G.One}  {π = π} G.Many _ e) = k-lamOr π (Lq e) (Lq-blk e) (rdl? e) (λ d → Rt d (⊑ᵘ-refl _)) (λ d → k-Rt d (⊑ᵘ-refl _))
+  Lq-blk (lam {q' = G.Many} {π = π} G.Many _ e) = k-lamOr π (Lq e) (Lq-blk e) (rdl? e) (λ d → Rt d (⊑ᵘ-refl _)) (λ d → k-Rt d (⊑ᵘ-refl _))
   Lq-blk {Γ = Γ} (app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = G.Zero} f x) =
     k-castΦ {Γ = Γ} (sym (erase-arg-usage Ψ₁ Ψ₂)) (k-∘ k-apω (k-∘ (k-⊗ (Lq-blk f) k-id) k-ρ⁻))
   Lq-blk {Γ = Γ} (app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = G.One} f x) =

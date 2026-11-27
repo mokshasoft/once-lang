@@ -716,7 +716,7 @@ d_val_1214 v0 v1 v2 v3 v4
              (coe
                 MAlonzo.Code.Once.LinCore.FromExpr.du_Co_754 (coe v0)
                 (coe (0 :: Integer)) (coe v6) (coe v7))
-             (MAlonzo.Code.Once.LinCore.FromExpr.d_Lq_3694
+             (MAlonzo.Code.Once.LinCore.FromExpr.d_Lq_3852
                 (coe v0) (coe v1) (coe v3) (coe (0 :: Integer)) (coe v5) (coe v6)
                 (coe v7) (coe v2) (coe v11))
              (coe du_eraseL_776 (coe v0) (coe (0 :: Integer)) (coe v6) (coe v7))
@@ -738,10 +738,9 @@ d_k'45'val_1238 v0 v1 v2 v3 v4
       MAlonzo.Code.Once.CompileSrc.C_src_38 v5 v6 v7 v9 v10 v11
         -> coe
              MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1166
-             (coe
-                MAlonzo.Code.Once.LinCore.FromExpr.du_Lq'45'blk_3708 (coe v0)
-                (coe v1) (coe v3) (coe (0 :: Integer)) (coe v5) (coe v6) (coe v2)
-                (coe v11))
+             (MAlonzo.Code.Once.LinCore.FromExpr.d_Lq'45'blk_3866
+                (coe v0) (coe v1) (coe v3) (coe (0 :: Integer)) (coe v5) (coe v6)
+                (coe v7) (coe v2) (coe v11))
              (coe du_k'45'eraseL_804 (coe v6) (coe v7))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.LinCore.ExprBuild.sgOf

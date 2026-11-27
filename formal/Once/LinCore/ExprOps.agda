@@ -187,7 +187,7 @@ module Ops (Σι : ISig) where
   ok-bind G.Many = tt
 
   open import Once.LinCore.FromExpr fmt
-    using (ty; Rs; Lq; castΦ; opL; numL; sigL; mapT; callM; refL; coeL; coeR; clo; wrap; wrap₀; layerEq)
+    using (ty; Rs; Lq; castΦ; opL; numL; sigL; mapT; callM; refL; coeL; coeR; clo; wrap; wrap₀; layerEq; lamOr; rdl?)
   open import Once.Surface.Elaborate using (elaborate; numIR; sigOpIR)
   open import Once.TypeCheck.Table using (mapIR)
   open import Once.Surface.Map
@@ -217,7 +217,7 @@ module Ops (Σι : ISig) where
   open import Once.Denotation.SurfaceRefs using (Refs)
   open import Once.Surface.CoerceIR using (voidFree?)
   open import Once.Surface.Properties using (erase-arg-usage)
-  open import Once.Context using (_⊔ᵘ_; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-+ʳ)
+  open import Once.Context using (_⊔ᵘ_; ⊑ᵘ-trans; ⊑ᵘ-refl; ⊑ᵘ-*One; ⊑ᵘ-*Many; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-+ʳ)
   open import Once.Spec.Context using (_*ᵘ_; zeroUsage)
   open import Once.Spec.Name using (bare)
   open import Once.IRTy using (⌊wk₀⌋)
@@ -403,6 +403,13 @@ module Ops (Σι : ISig) where
     ok-splitP pj-snd pj-fst = _
     ok-splitP pj-snd pj-snd = _
 
+    -- ★ D499: a lambda, its body read or owned
+    ok-lamOr : ∀ {R : Set} {X A B} (π : G.Purity) {b : LTm L (X ⊗t A) B} {β : Blk b} (md : Maybe R)
+               {rt : R → Tm L (X ⊗t A) One B} {kt : ∀ d → Blk (rt d)}
+             → OK Dc b → (∀ d → OK Dc (rt d)) → OK Dc (lamOr rs π b β md rt kt)
+    ok-lamOr π nothing  ob or = ok-clo ob
+    ok-lamOr π (just d) ob or = ok-clo ((tt , (tt , tt)) , (or d , tt))
+
     ok-Lq : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} (e : S.Expr Γ Ψ A) → DRefs e → OK Dc (Lq rs e)
 
     -- ★ D494: an arm's keep and its run
@@ -429,9 +436,9 @@ module Ops (Σι : ISig) where
     ok-Lq (S.lam {q' = G.Zero} G.Zero _ e) r = ok-clo (ok-Lq e r , _)
     ok-Lq (S.lam {q' = G.Zero} G.One  _ e) r = ok-clo (ok-Lq e r , _)
     ok-Lq (S.lam {q' = G.Zero} G.Many _ e) r = ok-clo (ok-Lq e r , _)
-    ok-Lq (S.lam {q' = G.One}  G.One  _ e) r = ok-clo (ok-Lq e r)
-    ok-Lq (S.lam {q' = G.One}  G.Many _ e) r = ok-clo (ok-Lq e r)
-    ok-Lq (S.lam {q' = G.Many} G.Many _ e) r = ok-clo (ok-Lq e r)
+    ok-Lq (S.lam {q' = G.One}  {π = π} G.One  _ e) r = ok-lamOr π (rdl? e) (ok-Lq e r) (λ d → ok-Rt d (⊑ᵘ-refl _))
+    ok-Lq (S.lam {q' = G.One}  {π = π} G.Many _ e) r = ok-lamOr π (rdl? e) (ok-Lq e r) (λ d → ok-Rt d (⊑ᵘ-refl _))
+    ok-Lq (S.lam {q' = G.Many} {π = π} G.Many _ e) r = ok-lamOr π (rdl? e) (ok-Lq e r) (λ d → ok-Rt d (⊑ᵘ-refl _))
     ok-Lq {Γ = Γ} (S.app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = G.Zero} f x) (rf , rx) =
       ok-castΦ {Γ = Γ} (sym (erase-arg-usage Ψ₁ Ψ₂)) (_ , ((ok-Lq f rf , tt) , tt))
     ok-Lq {Γ = Γ} (S.app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = G.One} f x) (rf , rx) =

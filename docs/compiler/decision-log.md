@@ -25777,3 +25777,23 @@ entry where its type is lent-called, else the owned entry (`lentW`; never dispat
 
 **Measured** (vs D497, 108 programs, x86_64): `.text` 0.84x, emitted instructions 0.80x, calls 0.75x, frames
 0.81x, room checks 0.81x; run time 1.00x on every program (the pruned entries were never entered).
+
+## D499 — A LAMBDA THAT ONLY READS ITS CAPTURES READS THEM LENT (2026-11-27, proposed — unattended, for the user's review; plan 0.157 S2, D6)
+
+**The problem.** After D498 the corpus's last two copying lent entries were lambdas that capture a closure and
+only call it (`twice f x = f (f x)`'s inner lambda; `cata-fn-carrier`'s `nodeF`): a `llamωᶜ` (its body owns its
+captures), so a lent call of it copied them. Under D6 such a lambda is linear (its captures are only read).
+
+**The decision.** A lambda whose body is a read (D477/D495: paths, literals, numbers, pairs, calls of closures
+at a path, `flatRd` leaves) and whose captures own cells (`capCells?`) compiles to `llamω (readB r)`, `readB r =
+(lul ∘ (drop ⊗ id)) ∘ lend r ∘ ρ⁻`: the read `r = Rt d` runs over its captures LENT beside its argument, then the
+argument is freed. Otherwise as before (`clo`). `FromExpr.lamOr`/`readClo`/`rdl?`.
+
+**Proved.** `FromExprOk.rel-lamOr` (by `rel-cloL`), `lentRead` (by `rt-eq` and `wv-refl`); `ExprOps.ok-lamOr`.
+
+**Measured** (vs D498, x86_64): corpus run 1.00x, `.text` 1.00x; `once stats` copying lent entries 2 -> 0 (none
+left in the corpus); `cata-fn-carrier` 0.94x; slower `layer4-twice` 1.09x, `layer4-fn-as-arg` 1.15x — both
+one-shot feature tests, where the lambda is called OWNED once: its owned entry is the lent body then a free of
+the captures (`o-bg`), where the old owned body consumed the captured closure in its last call. The fix, if
+workloads show it: an `Own` case for `readB` whose read's LAST call takes its closure owned (`levω`), at
+D493's five sites.

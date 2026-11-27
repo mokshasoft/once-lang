@@ -70,10 +70,10 @@ open import Once.LinCore.NbEPLinCore fmt ans
 open Sem using (Lᶜ; cataC; travC)
 open import Once.LinCore.FromExpr fmt using (ty; Co; weak; split; carryL; mixL; apω; var-at; bindL; Rs; Lq; castΦ; opL; numL; sigL; cast; clo; callM; refL; mapT; layerEq; dist; coeL; coeR)
 open import Once.LinCore.FromExpr fmt using (Pth; p-var; p-fst; p-snd; p-mfst; p-msnd; mq; Rd; rd-path; rd-int; rd-float; rd-num; rd-pair; rd-coe; rd-app; coeRd; rd?; rdw?; rdx?; pth?; lv; Rp; Rt; lentS; scrutL; pairL)
-open import Once.LinCore.FromExpr fmt using (Im; im-var; im-lam; im-closed; im-coe; im-app1; im-appω; ImF; imf-lam; imf-closed; CP; cp; cp?; appL; appR; appS; scrutA)
+open import Once.LinCore.FromExpr fmt using (Im; im-var; im-lam; im-closed; im-coe; im-app1; im-appω; ImF; imf-lam; imf-closed; CP; cp; cp?; appL; appR; appS; scrutA; lamOr; rdl?)
 open import Once.LinCore.FromExpr fmt using (IsPj; pj-id; pj-fst; pj-snd; PjL; pjl; Arm; arm-map; arm-comp; arm?; pjT; rdFst; rdSnd; splitP; ArmD; armOf; forkB; forkL)
 open import Once.Surface.Elaborate using (copairIR)
-open import Once.Context using (_⊔ᵘ_; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ)
+open import Once.Context using (_⊔ᵘ_; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-refl)
 open import Once.Surface.Map using (mp-id; mp-fst; mp-snd; mp-terminal; mp-inl; mp-inr; mp-initial; mp-apply; mp-In; mp-Out; mp-toFloat)
 open import Once.TypeCheck.Table using (mapIR)
 open import Once.IRTy using (⌊⟧T-commute; WellFormedFI; ⟦_⟧TI; μ-type; ν-type)
@@ -221,6 +221,13 @@ wv {Γ = Γ SC.▸ A} (z≤m ⊑∷ p) (x , a) = wv {Γ = Γ} p x
 wv {Γ = Γ SC.▸ A} (o≤o ⊑∷ p) (x , a) = wv {Γ = Γ} p x , a
 wv {Γ = Γ SC.▸ A} (o≤m ⊑∷ p) (x , a) = wv {Γ = Γ} p x , a
 wv {Γ = Γ SC.▸ A} (m≤m ⊑∷ p) (x , a) = wv {Γ = Γ} p x , a
+
+-- (D499: restriction to the whole usage is the context itself)
+wv-refl : ∀ {m n} {Γ : Ctx m n} (Ψ : Usage n) (x : ⟦ Co Γ Ψ ⟧) → wv {Γ = Γ} (⊑ᵘ-refl Ψ) x ≡ x
+wv-refl {Γ = SC.∅}       []           x       = refl
+wv-refl {Γ = Γ SC.▸ A} (G.Zero ∷ Ψ) x       = wv-refl {Γ = Γ} Ψ x
+wv-refl {Γ = Γ SC.▸ A} (G.One  ∷ Ψ) (x , a) = cong (_, a) (wv-refl {Γ = Γ} Ψ x)
+wv-refl {Γ = Γ SC.▸ A} (G.Many ∷ Ψ) (x , a) = cong (_, a) (wv-refl {Γ = Γ} Ψ x)
 
 rv : ∀ {m n} {Γ : Ctx m n} {Ψ Ψ′ : Usage n} → Ψ ⊑ᵘ Ψ′ → ⟦ ⌊ ⟦ Γ ↾ Ψ′ ⟧ᶜ ⌋ ⟧ᴰᴵ → ⟦ ⌊ ⟦ Γ ↾ Ψ ⟧ᶜ ⌋ ⟧ᴰᴵ
 rv {Γ = SC.∅}       []         x = x
@@ -1728,6 +1735,24 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRT
   RefOK x A = Rel (refL rs A (bare x)) (refIR A (bare x))
 
   -- ★★ THE BRIDGE'S MEANING: for every expression whose references are related
+  -- ★ D499: a lambda whose body is a read: the read, run lent beside the argument, means the body
+  lentRead : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A B : Ty m} {q′} (e : Expr (Γ SC.▸ A) (q′ ∷ Ψ) B) (d : Rd e)
+             (x : ⟦ Co (Γ SC.▸ A) (q′ ∷ Ψ) ⟧)
+           → Lᶜ δ (Rt {L} {Γ = Γ SC.▸ A} d (⊑ᵘ-refl (q′ ∷ Ψ))) x tt ≈ Lᶜ δ (Lq rs e) tt x
+  lentRead {Γ = Γ} {Ψ} {q′ = q′} e d x =
+    subst (λ z → Lᶜ δ (Rt {L} {Γ = Γ SC.▸ _} d (⊑ᵘ-refl (q′ ∷ Ψ))) x tt ≈ Lᶜ δ (Lq rs e) tt z)
+          (wv-refl {Γ = Γ SC.▸ _} (q′ ∷ Ψ) x) (rt-eq d (⊑ᵘ-refl (q′ ∷ Ψ)) x)
+
+  rel-lamOr : ∀ {R : Set} {X A B : IRTy} (π : G.Purity) {b : LTm L (⟪ X ⟫ ⊗t ⟪ A ⟫) ⟪ B ⟫} {β : Blk b} (md : Maybe R)
+                {rt : R → Tm L (⟪ X ⟫ ⊗t ⟪ A ⟫) One ⟪ B ⟫} {kt : ∀ d → Blk (rt d)} {b′ : M.IR (X I.* A) B}
+            → Rel b b′ → (∀ d x a → Lᶜ δ (rt d) (x , a) tt ≈ Lᶜ δ b tt (x , a))
+            → Rel (lamOr rs π b β md rt kt) (M.curry {π = π} b′)
+  rel-lamOr π nothing  rb h = rel-cloG π _ rb
+  rel-lamOr π (just d) {rt = rt} rb h = rel-cloL π _ (λ {x} w {a} wa →
+    ≈-≈R (≈-blk refl (≈-trans (bind-assoc (Lᶜ δ (rt d) (x , a) tt) _ _)
+                       (≈-trans (>>=-cong ≈-refl (λ v → ≈-blk refl ≈-refl)) (≈-trans bind-return (h d x a)))))
+         (relOf rb (w , wa)))
+
   Lq-ok : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} (e : Expr Γ Ψ A)
         → Refs (λ _ _ → ⊤) RefOK RefOK e → Goal e
   -- ★ D494: a fork's arm, by what it takes
@@ -1745,9 +1770,9 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRT
   Lq-ok (lam {q' = G.Zero} {π = π} G.Zero _ e) r = rel-cloG π _ (rel-∘ (Lq-ok e r) rel-fst)
   Lq-ok (lam {q' = G.Zero} {π = π} G.One  _ e) r = rel-cloG π _ (rel-∘ (Lq-ok e r) rel-fst)
   Lq-ok (lam {q' = G.Zero} {π = π} G.Many _ e) r = rel-cloG π _ (rel-∘ (Lq-ok e r) rel-fst)
-  Lq-ok (lam {q' = G.One}  {π = π} G.One  _ e) r = rel-cloG π _ (Lq-ok e r)
-  Lq-ok (lam {q' = G.One}  {π = π} G.Many _ e) r = rel-cloG π _ (Lq-ok e r)
-  Lq-ok (lam {q' = G.Many} {π = π} G.Many _ e) r = rel-cloG π _ (Lq-ok e r)
+  Lq-ok (lam {q' = G.One}  {π = π} G.One  _ e) r = rel-lamOr π (rdl? e) (Lq-ok e r) (λ d x a → lentRead e d (x , a))
+  Lq-ok (lam {q' = G.One}  {π = π} G.Many _ e) r = rel-lamOr π (rdl? e) (Lq-ok e r) (λ d x a → lentRead e d (x , a))
+  Lq-ok (lam {q' = G.Many} {π = π} G.Many _ e) r = rel-lamOr π (rdl? e) (Lq-ok e r) (λ d x a → lentRead e d (x , a))
   Lq-ok (app {q = G.Zero} f x) (rf , rx) = ok-app0 f x (Lq-ok f rf)
   Lq-ok {Γ = Γ} (app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = G.One} f x) (rf , rx) =
     rel-app Γ Ψ₁ Ψ₂ (G.One *ᵘ Ψ₂) (⊑ᵘ-*One Ψ₂) (Lq-ok f rf) (Lq-ok x rx)
