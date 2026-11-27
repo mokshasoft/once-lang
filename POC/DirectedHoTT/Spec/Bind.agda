@@ -23,8 +23,8 @@
 --     commuting square, and weakening and single substitution through it.
 --
 -- ★ ENCODING (2026-11-27, measured by `POC/tmp/TermProbe*.agda`): a node
---   holds the PRODUCT `⟦ fields c ⟧ Γ`, computed from the field list, whose
---   constructors carry NO indices; and a field's scope is computed by matching
+--   holds the PRODUCT `⟦ fields c ⟧ Γ`, computed from the field list, a
+--   record with η whose constructors carry NO indices; and a field's scope is computed by matching
 --   on its binder depth (0, 1, 2, then the general case), so a depth-k field
 --   has the type `Tm s Γ`, `Tm s (Γ ∙)`, … syntactically. An argument list
 --   indexed by the computed field list, or field types `Tm s (Γ ⋯ k)`, leave
@@ -71,13 +71,20 @@ _⋯_ : Cx → ℕ → Cx
 -- The syntax of a signature
 ------------------------------------------------------------------------
 
--- the fields' products: data, not records, and with no indices
-data ⟨⟩ᶠ : Set where
-  ⟨⟩ : ⟨⟩ᶠ
+-- the fields' products: RECORDS with η and no indices. η matters: a
+-- function defined on the formers (pattern synonyms) reduces on `node c xs`
+-- for a variable `xs`, so a case it refutes by computation needs no clause,
+-- as with the old constructors (data products left `xs` unsplit and the case
+-- open: `POC/tmp/TermProbe8.agda`).
+record ⟨⟩ᶠ : Set where
+  constructor ⟨⟩
 
 infixr 5 _⊗_ _,ᶠ_
-data _⊗_ (A B : Set) : Set where
-  _,ᶠ_ : A → B → A ⊗ B
+record _⊗_ (A B : Set) : Set where
+  constructor _,ᶠ_
+  field
+    fstᶠ : A
+    sndᶠ : B
 
 -- named, so a signature can be applied ONCE (`module KS = Syn KSig`): its
 -- `node`/`var` then fix the signature, which pattern synonyms cannot name
