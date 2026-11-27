@@ -39,6 +39,11 @@ open import DirectedHoTT.Spec.Variance
 --   `single`, `⌊_⌋`, … — two heads for one function, compared by evaluating
 --   (Gcd/LeEq 4 s → 1057 s).  Import them from Spec.Base (tools/base_unshare.py).
 open import DirectedHoTT.Spec.Base
+import DirectedHoTT.Spec.Syntax as Sx
+open import DirectedHoTT.Spec.Syntax using ( KSig )
+import DirectedHoTT.Spec.Bind as G
+open import DirectedHoTT.Prelude using ( _,_; inj₁; inj₂ )
+open import DirectedHoTT.Spec.BindRed KSig using ( module Red )
 
 private
   variable
@@ -48,80 +53,33 @@ private
 -- Reduction — the directed `Hom`. β on terms; congruence onto types.
 ------------------------------------------------------------------------
 
-infix 3 _⟶_ _⟶ᵀ_
-data _⟶_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
-  β       : (t : RTm (Γ ∙)) (u : RTm Γ) → app (lam t) u ⟶ subTm (single u) t
-  βfst    : (a b : RTm Γ) → fst (pair a b) ⟶ a
-  βsnd    : (a b : RTm Γ) → snd (pair a b) ⟶ b
-  ξ-lam   : {t t' : RTm (Γ ∙)} → t ⟶ t' → lam t ⟶ lam t'
-  ξ-appˡ  : {t t' u : RTm Γ} → t ⟶ t' → app t u ⟶ app t' u
-  ξ-appʳ  : {t u u' : RTm Γ} → u ⟶ u' → app t u ⟶ app t u'
-  ξ-pairˡ : {a a' b : RTm Γ} → a ⟶ a' → pair a b ⟶ pair a' b
-  ξ-pairʳ : {a b b' : RTm Γ} → b ⟶ b' → pair a b ⟶ pair a b'
-  -- ★★ WF-axis stage D: EX FALSO has NO root rule.  Its scrutinee can
-  -- never become canonical (that is `consistency`), so `absurd e` is
-  -- permanently NEUTRAL and only its scrutinee develops.
-  -- ★★ WF-axis: ORDER TRANSPORT — ≤-transitivity at OPEN naturals.
-  -- Five root rules, splitting on `a`, then `u`, then `t`.  Rule 4 is
-  -- stage D's first real customer: there `p : Hom Nat (nsuc a') nzero`
-  -- has ALREADY computed to `base`, so ex falso applies and the code
-  -- works out exactly — `El (⌜Hom⌝ ⌜Nat⌝ a' u')` reduces to the result
-  -- type `Hom Nat a' u'`.
-  ordtr-z   : (t u p q : RTm Γ) → ordtr nzero t u p q ⟶ unit
-  ordtr-szz : (a p q : RTm Γ) → ordtr (nsuc a) nzero nzero p q ⟶ p
-  ordtr-ssz : (a t p q : RTm Γ) → ordtr (nsuc a) (nsuc t) nzero p q ⟶ q
-  ordtr-szs : (a u p q : RTm Γ) →
-              ordtr (nsuc a) nzero (nsuc u) p q ⟶ absurd (⌜Hom⌝ ⌜Nat⌝ a u) p
-  ordtr-sss : (a t u p q : RTm Γ) →
-              ordtr (nsuc a) (nsuc t) (nsuc u) p q ⟶ ordtr a t u p q
-  ξ-ordtrᵃ : {a a' t u p q : RTm Γ} → a ⟶ a' → ordtr a t u p q ⟶ ordtr a' t u p q
-  ξ-ordtrᵗ : {a t t' u p q : RTm Γ} → t ⟶ t' → ordtr a t u p q ⟶ ordtr a t' u p q
-  ξ-ordtrᵘ : {a t u u' p q : RTm Γ} → u ⟶ u' → ordtr a t u p q ⟶ ordtr a t u' p q
-  ξ-ordtrᵖ : {a t u p p' q : RTm Γ} → p ⟶ p' → ordtr a t u p q ⟶ ordtr a t u p' q
-  ξ-ordtrq : {a t u p q q' : RTm Γ} → q ⟶ q' → ordtr a t u p q ⟶ ordtr a t u p q'
-  ξ-absurdᶜ : {c c' e : RTm Γ} → c ⟶ c' → absurd c e ⟶ absurd c' e
-  ξ-absurdᵉ : {c e e' : RTm Γ} → e ⟶ e' → absurd c e ⟶ absurd c e'
-  ξ-fst   : {p p' : RTm Γ} → p ⟶ p' → fst p ⟶ fst p'
-  ξ-snd   : {p p' : RTm Γ} → p ⟶ p' → snd p ⟶ snd p'
-  ξ-⌜Π⌝ˡ  : {c c' : RTm Γ} {d : RTm (Γ ∙)} → c ⟶ c' → ⌜Π⌝ c d ⟶ ⌜Π⌝ c' d
-  ξ-⌜Π⌝ʳ  : {c : RTm Γ} {d d' : RTm (Γ ∙)} → d ⟶ d' → ⌜Π⌝ c d ⟶ ⌜Π⌝ c d'
-  ξ-⌜Σ⌝ˡ  : {c c' : RTm Γ} {d : RTm (Γ ∙)} → c ⟶ c' → ⌜Σ⌝ c d ⟶ ⌜Σ⌝ c' d
-  ξ-⌜Σ⌝ʳ  : {c : RTm Γ} {d d' : RTm (Γ ∙)} → d ⟶ d' → ⌜Σ⌝ c d ⟶ ⌜Σ⌝ c d'
-  -- ★ W2 eliminator (SpikeHomRefl + SpikeTr).  `tr` is an ELIMINATOR OF
-  -- ITS PATH, so its rules are keyed on the path's canonical form
-  -- (SpikeTr: the motive-keyed variants have unjoinable raw critical
-  -- pairs).  J fires only where `hrefl` is canonical.
-  --
-  -- ⚠ CONSOLIDATION FINDING (2026-08-01), correcting SpikeTr/SpikeHomRefl:
-  -- `⌜Hom⌝` is NOT a uniformly stuck head.  A `⌜Hom⌝` code whose ambient
-  -- SPINE bottoms out in `⌜Π⌝` (`⌜Hom⌝ⁿ (⌜Π⌝ …) …` — higher paths over
-  -- function-type paths) decodes to a type that unfolds pointwise to a
-  -- `Π`, so `hrefl` there is not canonical — `hrefl`'s unfolding is a
-  -- SPINE-RECURSIVE family, not the single `⌜Π⌝` clause SpikeHomRefl
-  -- measured, and J at `⌜Hom⌝` needs spine-stuckness — an unbounded-depth
-  -- key no finite pattern expresses.  HIGHER PATHS WERE ALREADY UNSCOPED
-  -- in this kernel (see `Hom`'s note in NbEPDirDBPi), so the whole
-  -- CANONICITY PACKAGE is deferred to that work item as one unit — the
-  -- `hrefl` unfold family (incl. `hrefl-Π`), J at `⌜Hom⌝` codes, and
-  -- `tr-pw` — with the clean shape being a pair of spine judgments
-  -- (`Pw`/`StkC`) premising the rules.  The `swp`/`extR vs` renaming
-  -- bridges in SR/Conf are kept, pre-paid.  Until then `hrefl` is
-  -- OPERATIONALLY INERT (congruences only) — the LR treats it as neutral,
-  -- exactly as long as it has no computation.  This tower's LR is
-  -- SN-based (weak normalization + decidability, not canonicity), so
-  -- nothing below needs the deferred rules.
-  -- ⚠ STAGE 3 RE-KEYING (2026-08-02): J is keyed on the MOTIVE too — it
-  -- fires only at `⌜Hom⌝`-headed motives.  At a `var`-motive (the
-  -- tautological case, ambient ≅ `U`) a path can NEVER be a typed
-  -- `hrefl` (`Hom U t u` unfolds toward `Π` while `Hom (El c) s s` is
-  -- headed for a stuck `Hom` — the shapes clash under confluence), so
-  -- the un-keyed rule was never typed-exercised; keying it makes the
-  -- configuration PERMANENTLY STUCK, hence LR-neutral — which is what
-  -- dissolves SpikeTrLR's taut obstruction and lets `⊢trU` merge below.
-  tr-J-base : (c a m : RTm (Γ ∙)) (s e : RTm Γ) →
-              tr (⌜Hom⌝ c a m) (hrefl ⌜base⌝ s) e ⟶ e
-  tr-J-Σ    : (c a m : RTm (Γ ∙)) (c₁ : RTm Γ) (c₂ : RTm (Γ ∙)) (s e : RTm Γ) →
-              tr (⌜Hom⌝ c a m) (hrefl (⌜Σ⌝ c₁ c₂) s) e ⟶ e
+------------------------------------------------------------------------
+-- ★ GENERIC REDUCTION (SPIKE-GENERIC-SYNTAX S8, branch spike-generic-syntax):
+--   ONE relation over both sorts — `Spec/BindRed`'s single CONGRUENCE rule
+--   (every former, every subterm position) plus the CONTRACTIONS `_▷_`
+--   below, which are the kernel's computation rules (their text unchanged,
+--   arrow `▷`). The old 88 congruence rules were exactly that uniform
+--   congruence (measured: every former, every position), so nothing that
+--   reduces changes. `_⟶_`/`_⟶ᵀ_` are the relation at the two sorts, and
+--   every old rule name is a pattern synonym below.
+------------------------------------------------------------------------
+
+infix 3 _▷_
+data _▷_ : ∀ {s Γ} → G.Tm KSig s Γ → G.Tm KSig s Γ → Set where
+  βʳ       : (t : RTm (Γ ∙)) (u : RTm Γ) → app (lam t) u ▷ subTm (single u) t
+  βfstʳ    : (a b : RTm Γ) → fst (pair a b) ▷ a
+  βsndʳ    : (a b : RTm Γ) → snd (pair a b) ▷ b
+  ordtr-zʳ   : (t u p q : RTm Γ) → ordtr nzero t u p q ▷ unit
+  ordtr-szzʳ : (a p q : RTm Γ) → ordtr (nsuc a) nzero nzero p q ▷ p
+  ordtr-sszʳ : (a t p q : RTm Γ) → ordtr (nsuc a) (nsuc t) nzero p q ▷ q
+  ordtr-szsʳ : (a u p q : RTm Γ) →
+              ordtr (nsuc a) nzero (nsuc u) p q ▷ absurd (⌜Hom⌝ ⌜Nat⌝ a u) p
+  ordtr-sssʳ : (a t u p q : RTm Γ) →
+              ordtr (nsuc a) (nsuc t) (nsuc u) p q ▷ ordtr a t u p q
+  tr-J-baseʳ : (c a m : RTm (Γ ∙)) (s e : RTm Γ) →
+              tr (⌜Hom⌝ c a m) (hrefl ⌜base⌝ s) e ▷ e
+  tr-J-Σʳ    : (c a m : RTm (Γ ∙)) (c₁ : RTm Γ) (c₂ : RTm (Γ ∙)) (s e : RTm Γ) →
+              tr (⌜Hom⌝ c a m) (hrefl (⌜Σ⌝ c₁ c₂) s) e ▷ e
   -- ★ the two-former kernel: `⌜Id⌝` is a stable J-able shape.
   -- ★ stage C: J fires at `⌜Unit⌝` — a stable shape, so this is the
   -- `tr-J-base` pattern verbatim.  ⚠ THERE IS DELIBERATELY NO
@@ -131,10 +89,10 @@ data _⟶_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
   -- NbEPDirDBVar and the counterexample in SPIKE-WF.md §7.  Ordered
   -- types are not J-able; transport along an order path is the tt-path
   -- (≤-coercion) rule instead.
-  tr-J-Unit : (c a m : RTm (Γ ∙)) (s e : RTm Γ) →
-              tr (⌜Hom⌝ c a m) (hrefl ⌜Unit⌝ s) e ⟶ e
-  tr-J-Id   : (c a m : RTm (Γ ∙)) (c₁ a₁ b₁ : RTm Γ) (s e : RTm Γ) →
-              tr (⌜Hom⌝ c a m) (hrefl (⌜Id⌝ c₁ a₁ b₁) s) e ⟶ e
+  tr-J-Unitʳ : (c a m : RTm (Γ ∙)) (s e : RTm Γ) →
+              tr (⌜Hom⌝ c a m) (hrefl ⌜Unit⌝ s) e ▷ e
+  tr-J-Idʳ   : (c a m : RTm (Γ ∙)) (c₁ a₁ b₁ : RTm Γ) (s e : RTm Γ) →
+              tr (⌜Hom⌝ c a m) (hrefl (⌜Id⌝ c₁ a₁ b₁) s) e ▷ e
   -- ★★★ AND ITS INDEXED TWIN (PLAN-INDEXED §10.4).  ⚠ NOT optional, and
   --   not symmetry-for-its-own-sake: WITHOUT it a closed
   --   `tr (⌜Hom⌝ c a m) (hrefl (⌜IMu⌝ D I i) s) e` is STUCK, and that
@@ -144,16 +102,16 @@ data _⟶_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
   --   order rules are `Nat`-only), so J at it is as sound as at `Mu D`.
   --   Found by writing `trCS`; the classifiers had it wrong three ways
   --   (`stkC?`, `stkA?`, `stablecd?`) and only the metatheorem noticed.
-  tr-J-IMu  : {I D iˣ : RTm Γ} (c a m : RTm (Γ ∙))
+  tr-J-IMuʳ  : {I D iˣ : RTm Γ} (c a m : RTm (Γ ∙))
               (s e : RTm Γ) →
-              tr (⌜Hom⌝ c a m) (hrefl (⌜IMu⌝ I D iˣ) s) e ⟶ e
+              tr (⌜Hom⌝ c a m) (hrefl (⌜IMu⌝ I D iˣ) s) e ▷ e
   -- ★ tags: `Hom (Fin n)` computes nothing either, so J fires there too.
-  tr-J-Fin  : {n : RTm Γ} (c a m : RTm (Γ ∙)) (s e : RTm Γ) →
-              tr (⌜Hom⌝ c a m) (hrefl (⌜Fin⌝ n) s) e ⟶ e
+  tr-J-Finʳ  : {n : RTm Γ} (c a m : RTm (Γ ∙)) (s e : RTm Γ) →
+              tr (⌜Hom⌝ c a m) (hrefl (⌜Fin⌝ n) s) e ▷ e
   -- directed univalence computing a third time: transport at the
   -- tautological motive along a (canonical) universe path is application
-  tr-taut   : (f : RTm (Γ ∙)) (e : RTm Γ) →
-              tr (var vz) (lam f) e ⟶ app (lam f) e
+  tr-tautʳ   : (f : RTm (Γ ∙)) (e : RTm Γ) →
+              tr (var vz) (lam f) e ▷ app (lam f) e
   -- ★ W2b (G1, SpikeCanon): the CANONICITY PACKAGE.  Three rules, each
   -- keyed by a Boolean classifier (`NbEPDirDBVar`) — the spine
   -- recursion lives in the total function `pwBody`, never in the
@@ -162,17 +120,16 @@ data _⟶_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
   --
   -- `hrefl` at a pw-able code unfolds POINTWISE (hrefl-Π is the ⌜Π⌝
   -- instance; the whole ⌜Hom⌝ⁿ(⌜Π⌝…) family is this one rule):
-  hrefl-pw : (C s : RTm Γ) → pw? C ≡ true →
-             hrefl C s ⟶
-             lam (hrefl (pwBody C) (app (renTm vs s) (var vz)))
+  hrefl-pwʳ : (C s : RTm Γ) → pw? C ≡ true →
+             hrefl C s ▷              lam (hrefl (pwBody C) (app (renTm vs s) (var vz)))
   -- ★ PLAN-FAITHFUL F6 (2026-10-03): the ORDER's reflexivity computes in
   --   lockstep with its type (`Hom-Nat-z`, `Hom-Nat-ss`).  Without these,
   --   `hrefl ⌜Nat⌝ nzero` is a closed NORMAL inhabitant of `Unit` other
   --   than `unit` — `Unit` was not canonical.  Keyed on the endpoint's
   --   head, like the order rules; `⌜Nat⌝` is neither `pw?` nor `stkC?`,
   --   so nothing overlaps (`hrefl-pw`, `tr-J-*`, `ap-J`).
-  hrefl-Nat-z : hrefl ⌜Nat⌝ (nzero {Γ}) ⟶ unit
-  hrefl-Nat-s : (m : RTm Γ) → hrefl ⌜Nat⌝ (nsuc m) ⟶ hrefl ⌜Nat⌝ m
+  hrefl-Nat-zʳ : hrefl ⌜Nat⌝ (nzero {Γ}) ▷ unit
+  hrefl-Nat-sʳ : (m : RTm Γ) → hrefl ⌜Nat⌝ (nsuc m) ▷ hrefl ⌜Nat⌝ m
   -- J at Hom-codes over PERMANENTLY-STABLE spines (excludes ⌜Π⌝-able
   -- codes — those paths unfold to lambdas — and neutrals, which
   -- substitution could make ⌜Π⌝-able).
@@ -185,191 +142,228 @@ data _⟶_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
   -- path: the decode there is `Hom Nat a b`, whose own homs have a
   -- `Hom` ambient and so can never fire an order rule.  Ordered types
   -- are not J-able; homs OVER them are.
-  tr-J-Hom : (c a m : RTm (Γ ∙)) (c₁ a₁ b₁ s e : RTm Γ) →
+  tr-J-Homʳ : (c a m : RTm (Γ ∙)) (c₁ a₁ b₁ s e : RTm Γ) →
              stkA? c₁ ≡ true →
-             tr (⌜Hom⌝ c a m) (hrefl (⌜Hom⌝ c₁ a₁ b₁) s) e ⟶ e
+             tr (⌜Hom⌝ c a m) (hrefl (⌜Hom⌝ c₁ a₁ b₁) s) e ▷ e
   -- POINTWISE TRANSPORT: the transported function's value at x is the
   -- inner transport of `e·x` along the path's body `f`, at the
   -- pointwise motive (keyed on the literal `var vz` endpoint, like
   -- taut — every typed instance has it):
-  tr-pw    : (c a f : RTm (Γ ∙)) (e : RTm Γ) → pw? c ≡ true →
-             tr (⌜Hom⌝ c a (var vz)) (lam f) e ⟶
-             lam (tr (⌜Hom⌝ (renTm pwShift (pwBody c))
+  tr-pwʳ    : (c a f : RTm (Γ ∙)) (e : RTm Γ) → pw? c ≡ true →
+             tr (⌜Hom⌝ c a (var vz)) (lam f) e ▷              lam (tr (⌜Hom⌝ (renTm pwShift (pwBody c))
                             (app (renTm vs a) (var (vs vz)))
                             (var vz))
                      f
                      (app (renTm vs e) (var vz)))
-  ξ-⌜Hom⌝ᶜ : {c c' a b : RTm Γ} → c ⟶ c' → ⌜Hom⌝ c a b ⟶ ⌜Hom⌝ c' a b
-  ξ-⌜Hom⌝ˡ : {c a a' b : RTm Γ} → a ⟶ a' → ⌜Hom⌝ c a b ⟶ ⌜Hom⌝ c a' b
-  ξ-⌜Hom⌝ʳ : {c a b b' : RTm Γ} → b ⟶ b' → ⌜Hom⌝ c a b ⟶ ⌜Hom⌝ c a b'
-  ξ-hreflᶜ : {c c' t : RTm Γ} → c ⟶ c' → hrefl c t ⟶ hrefl c' t
-  ξ-hreflᵃ : {c t t' : RTm Γ} → t ⟶ t' → hrefl c t ⟶ hrefl c t'
-  ξ-trᵈ    : {d d' : RTm (Γ ∙)} {p e : RTm Γ} → d ⟶ d' → tr d p e ⟶ tr d' p e
-  ξ-trᵖ    : {d : RTm (Γ ∙)} {p p' e : RTm Γ} → p ⟶ p' → tr d p e ⟶ tr d p' e
-  ξ-trᵉ    : {d : RTm (Γ ∙)} {p e e' : RTm Γ} → e ⟶ e' → tr d p e ⟶ tr d p e'
-  -- ★ directed `ap` (SpikeAp): J at stable path-codes — the SAME key as
-  -- `tr-J-Hom`, so the raw overlap with `hrefl-pw` is empty (`stk⊥pw`).
-  ap-J     : (cB : RTm Γ) (b : RTm (Γ ∙)) (c₁ s : RTm Γ) →
+  ap-Jʳ     : (cB : RTm Γ) (b : RTm (Γ ∙)) (c₁ s : RTm Γ) →
              stkC? c₁ ≡ true →
-             ap cB b (hrefl c₁ s) ⟶ hrefl cB (subTm (single s) b)
-  ξ-apᶜ    : {c c' : RTm Γ} {b : RTm (Γ ∙)} {p : RTm Γ} →
-             c ⟶ c' → ap c b p ⟶ ap c' b p
-  ξ-apᵇ    : {c : RTm Γ} {b b' : RTm (Γ ∙)} {p : RTm Γ} →
-             b ⟶ b' → ap c b p ⟶ ap c b' p
-  ξ-apᵖ    : {c : RTm Γ} {b : RTm (Γ ∙)} {p p' : RTm Γ} →
-             p ⟶ p' → ap c b p ⟶ ap c b p'
-  -- ★ the two-former kernel (SPIKE-TWOFORMER): subst-style J at an
-  -- UNRESTRICTED family — UNKEYED, safe because `idrefl` is inert.
-  jsub-refl : (d : RTm (Γ ∙)) (c s e : RTm Γ) →
-              jsub d (idrefl c s) e ⟶ e
-  ξ-⌜Id⌝ᶜ  : {c c' a b : RTm Γ} → c ⟶ c' → ⌜Id⌝ c a b ⟶ ⌜Id⌝ c' a b
-  ξ-⌜Id⌝ˡ  : {c a a' b : RTm Γ} → a ⟶ a' → ⌜Id⌝ c a b ⟶ ⌜Id⌝ c a' b
-  ξ-⌜Id⌝ʳ  : {c a b b' : RTm Γ} → b ⟶ b' → ⌜Id⌝ c a b ⟶ ⌜Id⌝ c a b'
-  -- ★ S7b step 2: a finite set's size is a Nat TERM
-  ξ-⌜Fin⌝  : {n n' : RTm Γ} → n ⟶ n' → ⌜Fin⌝ n ⟶ ⌜Fin⌝ n'
-  ξ-idreflᶜ : {c c' t : RTm Γ} → c ⟶ c' → idrefl c t ⟶ idrefl c' t
-  ξ-idreflᵃ : {c t t' : RTm Γ} → t ⟶ t' → idrefl c t ⟶ idrefl c t'
-  ξ-jsubᵈ  : {d d' : RTm (Γ ∙)} {p e : RTm Γ} → d ⟶ d' → jsub d p e ⟶ jsub d' p e
-  ξ-jsubᵖ  : {d : RTm (Γ ∙)} {p p' e : RTm Γ} → p ⟶ p' → jsub d p e ⟶ jsub d p' e
-  ξ-jsubᵉ  : {d : RTm (Γ ∙)} {p e e' : RTm Γ} → e ⟶ e' → jsub d p e ⟶ jsub d p e'
-  -- ★ WF-axis stage A (SPIKE-WF): Nat's recursor, keyed on the
-  -- CANONICAL HEAD of the scrutinee — terminating because the
-  -- recursive call is at the numeral's predecessor.
-  natrec-zero : (z : RTm Γ) (s : RTm ((Γ ∙) ∙)) →
-                natrec z s nzero ⟶ z
-  natrec-suc  : (z : RTm Γ) (s : RTm ((Γ ∙) ∙)) (n : RTm Γ) →
-                natrec z s (nsuc n) ⟶
-                subTm (single (natrec z s n)) (subTm (extS (single n)) s)
-  ξ-nsuc    : {n n' : RTm Γ} → n ⟶ n' → nsuc n ⟶ nsuc n'
-  ξ-natrecᶻ : {z z' : RTm Γ} {s : RTm ((Γ ∙) ∙)} {n : RTm Γ} →
-              z ⟶ z' → natrec z s n ⟶ natrec z' s n
-  ξ-natrecˢ : {z : RTm Γ} {s s' : RTm ((Γ ∙) ∙)} {n : RTm Γ} →
-              s ⟶ s' → natrec z s n ⟶ natrec z s' n
-  ξ-natrecⁿ : {z : RTm Γ} {s : RTm ((Γ ∙) ∙)} {n n' : RTm Γ} →
-              n ⟶ n' → natrec z s n ⟶ natrec z s n'
-  -- ★★ LEVITATED INDUCTIVE FAMILIES.  THE ι-RULE: keyed on `con p` ONLY —
-  --   it fires at ANY description (SPIKE-LEVITATION S1b: the method is a
-  --   Π, so a neutral `D` needs no guard).  The hypotheses are `dih`,
-  --   which computes on the telescope head and is stuck on a neutral one.
-  ι         : (D i e p : RTm Γ) →
-              ielim D i e (con p) ⟶ app (app (app e i) p) (dih D e (app D i) p)
+             ap cB b (hrefl c₁ s) ▷ hrefl cB (subTm (single s) b)
+  jsub-reflʳ : (d : RTm (Γ ∙)) (c s e : RTm Γ) →
+              jsub d (idrefl c s) e ▷ e
+  natrec-zeroʳ : (z : RTm Γ) (s : RTm ((Γ ∙) ∙)) →
+                natrec z s nzero ▷ z
+  natrec-sucʳ  : (z : RTm Γ) (s : RTm ((Γ ∙) ∙)) (n : RTm Γ) →
+                natrec z s (nsuc n) ▷                 subTm (single (natrec z s n)) (subTm (extS (single n)) s)
+  ιʳ         : (D i e p : RTm Γ) →
+              ielim D i e (con p) ▷ app (app (app e i) p) (dih D e (app D i) p)
   -- the payload CODE of a telescope: nothing at `dι` (D493: the index is
   --   the FIBRE's, not an equation), a Σ at `dσ`, a Σ over the family at
   --   `dρ`.
-  dpay-ι    : (I D : RTm Γ) → dpay I D dι ⟶ ⌜Unit⌝
-  dpay-σ    : (I D S f : RTm Γ) →
-              dpay I D (dσ S f) ⟶
-              ⌜Σ⌝ S (dpay (renTm vs I) (renTm vs D) (app (renTm vs f) (var vz)))
-  dpay-ρ    : (I D j C : RTm Γ) →
-              dpay I D (dρ j C) ⟶
-              ⌜Σ⌝ (⌜IMu⌝ I D j) (dpay (renTm vs I) (renTm vs D) (renTm vs C))
+  dpay-ιʳ    : (I D : RTm Γ) → dpay I D dι ▷ ⌜Unit⌝
+  dpay-σʳ    : (I D S f : RTm Γ) →
+              dpay I D (dσ S f) ▷               ⌜Σ⌝ S (dpay (renTm vs I) (renTm vs D) (app (renTm vs f) (var vz)))
+  dpay-ρʳ    : (I D j C : RTm Γ) →
+              dpay I D (dρ j C) ▷               ⌜Σ⌝ (⌜IMu⌝ I D j) (dpay (renTm vs I) (renTm vs D) (renTm vs C))
   -- the hypotheses: one recursive call per `dρ`, AT ITS OWN INDEX `j`
-  dih-ι     : (D e p : RTm Γ) → dih D e dι p ⟶ unit
-  dih-σ     : (D e S f p : RTm Γ) → dih D e (dσ S f) p ⟶ dih D e (app f (fst p)) (snd p)
-  dih-ρ     : (D e j C p : RTm Γ) →
-              dih D e (dρ j C) p ⟶ pair (ielim D j e (fst p)) (dih D e C (snd p))
+  dih-ιʳ     : (D e p : RTm Γ) → dih D e dι p ▷ unit
+  dih-σʳ     : (D e S f p : RTm Γ) → dih D e (dσ S f) p ▷ dih D e (app f (fst p)) (snd p)
+  dih-ρʳ     : (D e j C p : RTm Γ) →
+              dih D e (dρ j C) p ▷ pair (ielim D j e (fst p)) (dih D e C (snd p))
   -- tags and Σ-induction
-  fcase-z   : (a : RTm Γ) (b : RTm (Γ ∙)) → fcase fzero a b ⟶ a
-  fcase-s   : (t a : RTm Γ) (b : RTm (Γ ∙)) → fcase (fsuc t) a b ⟶ subTm (single t) b
-  psplit-β  : (b : RTm ((Γ ∙) ∙)) (x y : RTm Γ) → psplit b (pair x y) ⟶ subTm (single2 x y) b
+  fcase-zʳ   : (a : RTm Γ) (b : RTm (Γ ∙)) → fcase fzero a b ▷ a
+  fcase-sʳ   : (t a : RTm Γ) (b : RTm (Γ ∙)) → fcase (fsuc t) a b ▷ subTm (single t) b
+  psplit-βʳ  : (b : RTm ((Γ ∙) ∙)) (x y : RTm Γ) → psplit b (pair x y) ▷ subTm (single2 x y) b
   -- ★ δ: a reference is a projection from the signature, and unfolds to
   --   its body (PLAN-REF, D501).  The body is closed, so the rule is
   --   context-free; a name beyond the signature is stuck.
-  δref      : {Δ : Cx} (d : ℕ) → d <ˢ Defs.size 𝒮 → ref {Δ} d ⟶ εwkTm {Δ} (Defs.body 𝒮 d)
+  δrefʳ      : {Δ : Cx} (d : ℕ) → d <ˢ Defs.size 𝒮 → ref {Δ} d ▷ εwkTm {Δ} (Defs.body 𝒮 d)
   -- congruences
-  ξ-⌜IMu⌝ᴵ  : {I I' D i : RTm Γ} → I ⟶ I' → ⌜IMu⌝ I D i ⟶ ⌜IMu⌝ I' D i
-  ξ-⌜IMu⌝ᴰ  : {I D D' i : RTm Γ} → D ⟶ D' → ⌜IMu⌝ I D i ⟶ ⌜IMu⌝ I D' i
-  ξ-⌜IMu⌝ⁱ  : {I D i i' : RTm Γ} → i ⟶ i' → ⌜IMu⌝ I D i ⟶ ⌜IMu⌝ I D i'
-  ξ-con     : {p p' : RTm Γ} → p ⟶ p' → con p ⟶ con p'
-  ξ-ielimᴰ  : {D D' i e t : RTm Γ} → D ⟶ D' → ielim D i e t ⟶ ielim D' i e t
-  ξ-ielimⁱ  : {D i i' e t : RTm Γ} → i ⟶ i' → ielim D i e t ⟶ ielim D i' e t
-  ξ-ielimᵉ  : {D i e e' t : RTm Γ} → e ⟶ e' → ielim D i e t ⟶ ielim D i e' t
-  ξ-ielimᵗ  : {D i e t t' : RTm Γ} → t ⟶ t' → ielim D i e t ⟶ ielim D i e t'
-  ξ-dσˢ     : {S S' f : RTm Γ} → S ⟶ S' → dσ S f ⟶ dσ S' f
-  ξ-dσᶠ     : {S f f' : RTm Γ} → f ⟶ f' → dσ S f ⟶ dσ S f'
-  ξ-dρʲ     : {j j' C : RTm Γ} → j ⟶ j' → dρ j C ⟶ dρ j' C
-  ξ-dρᶜ     : {j C C' : RTm Γ} → C ⟶ C' → dρ j C ⟶ dρ j C'
-  ξ-dpayᴵ   : {I I' D C : RTm Γ} → I ⟶ I' → dpay I D C ⟶ dpay I' D C
-  ξ-dpayᴰ   : {I D D' C : RTm Γ} → D ⟶ D' → dpay I D C ⟶ dpay I D' C
-  ξ-dpayᶜ   : {I D C C' : RTm Γ} → C ⟶ C' → dpay I D C ⟶ dpay I D C'
-  ξ-dihᴰ    : {D D' e C p : RTm Γ} → D ⟶ D' → dih D e C p ⟶ dih D' e C p
-  ξ-dihᵉ    : {D e e' C p : RTm Γ} → e ⟶ e' → dih D e C p ⟶ dih D e' C p
-  ξ-dihᶜ    : {D e C C' p : RTm Γ} → C ⟶ C' → dih D e C p ⟶ dih D e C' p
-  ξ-dihᵖ    : {D e C p p' : RTm Γ} → p ⟶ p' → dih D e C p ⟶ dih D e C p'
-  ξ-fsuc    : {t t' : RTm Γ} → t ⟶ t' → fsuc t ⟶ fsuc t'
-  ξ-fcaseᵗ  : {t t' a : RTm Γ} {b : RTm (Γ ∙)} → t ⟶ t' → fcase t a b ⟶ fcase t' a b
-  ξ-fcaseᵃ  : {t a a' : RTm Γ} {b : RTm (Γ ∙)} → a ⟶ a' → fcase t a b ⟶ fcase t a' b
-  ξ-fcaseᵇ  : {t a : RTm Γ} {b b' : RTm (Γ ∙)} → b ⟶ b' → fcase t a b ⟶ fcase t a b'
-  ξ-fcase0  : {t t' : RTm Γ} → t ⟶ t' → fcase0 t ⟶ fcase0 t'
-  ξ-psplitᵇ : {b b' : RTm ((Γ ∙) ∙)} {q : RTm Γ} → b ⟶ b' → psplit b q ⟶ psplit b' q
-  ξ-psplitᵍ : {b : RTm ((Γ ∙) ∙)} {q q' : RTm Γ} → q ⟶ q' → psplit b q ⟶ psplit b q'
-
-data _⟶ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
-  El-⌜base⌝ : El (⌜base⌝ {Γ}) ⟶ᵀ base
-  El-⌜Π⌝    : (c : RTm Γ) (d : RTm (Γ ∙)) → El (⌜Π⌝ c d) ⟶ᵀ Π (El c) (El d)
-  El-⌜Σ⌝    : (c : RTm Γ) (d : RTm (Γ ∙)) → El (⌜Σ⌝ c d) ⟶ᵀ Σ' (El c) (El d)
+  El-⌜base⌝ʳ : El (⌜base⌝ {Γ}) ▷ base
+  El-⌜Π⌝ʳ    : (c : RTm Γ) (d : RTm (Γ ∙)) → El (⌜Π⌝ c d) ▷ Π (El c) (El d)
+  El-⌜Σ⌝ʳ    : (c : RTm Γ) (d : RTm (Γ ∙)) → El (⌜Σ⌝ c d) ▷ Σ' (El c) (El d)
   -- W2 eliminator: the `⌜Hom⌝` code decodes to the `Hom` former
   -- (hom-sets of small types are small; still no code for `U`)
-  El-⌜Hom⌝  : (c a b : RTm Γ) → El (⌜Hom⌝ c a b) ⟶ᵀ Hom (El c) a b
-  El-⌜Id⌝   : (c a b : RTm Γ) → El (⌜Id⌝ c a b) ⟶ᵀ Id (El c) a b
+  El-⌜Hom⌝ʳ  : (c a b : RTm Γ) → El (⌜Hom⌝ c a b) ▷ Hom (El c) a b
+  El-⌜Id⌝ʳ   : (c a b : RTm Γ) → El (⌜Id⌝ c a b) ▷ Id (El c) a b
   -- ★ stage C (N-in): the datatype codes decode.
-  El-⌜Nat⌝  : El (⌜Nat⌝ {Γ}) ⟶ᵀ Nat
-  El-⌜IMu⌝  : {I D i : RTm Γ} → El (⌜IMu⌝ I D i) ⟶ᵀ IMu I D i
-  El-⌜Fin⌝  : {n : RTm Γ} → El (⌜Fin⌝ n) ⟶ᵀ Fin n
+  El-⌜Nat⌝ʳ  : El (⌜Nat⌝ {Γ}) ▷ Nat
+  El-⌜IMu⌝ʳ  : {I D i : RTm Γ} → El (⌜IMu⌝ I D i) ▷ IMu I D i
+  El-⌜Fin⌝ʳ  : {n : RTm Γ} → El (⌜Fin⌝ n) ▷ Fin n
   -- ★★ the hypotheses' TYPE computes on the telescope head (S3).
-  DIh-ι : (D : RTm Γ) (M : RTy ((Γ ∙) ∙)) (p : RTm Γ) → DIh D M dι p ⟶ᵀ Unit
-  DIh-σ : (D : RTm Γ) (M : RTy ((Γ ∙) ∙)) (S f p : RTm Γ) →
-          DIh D M (dσ S f) p ⟶ᵀ DIh D M (app f (fst p)) (snd p)
-  DIh-ρ : (D : RTm Γ) (M : RTy ((Γ ∙) ∙)) (j C p : RTm Γ) →
-          DIh D M (dρ j C) p ⟶ᵀ
-          Σ' (iinst j (fst p) M)
+  DIh-ιʳ : (D : RTm Γ) (M : RTy ((Γ ∙) ∙)) (p : RTm Γ) → DIh D M dι p ▷ Unit
+  DIh-σʳ : (D : RTm Γ) (M : RTy ((Γ ∙) ∙)) (S f p : RTm Γ) →
+          DIh D M (dσ S f) p ▷ DIh D M (app f (fst p)) (snd p)
+  DIh-ρʳ : (D : RTm Γ) (M : RTy ((Γ ∙) ∙)) (j C p : RTm Γ) →
+          DIh D M (dρ j C) p ▷           Σ' (iinst j (fst p) M)
              (DIh (renTm vs D) (renTy (extR (extR vs)) M) (renTm vs C) (snd (renTm vs p)))
-  El-⌜Unit⌝ : El (⌜Unit⌝ {Γ}) ⟶ᵀ Unit
-  ξ-El : {t t' : RTm Γ} → t ⟶ t' → El t ⟶ᵀ El t'
-  ξ-Πˡ : {A A' : RTy Γ} {B : RTy (Γ ∙)} → A ⟶ᵀ A' → Π A B ⟶ᵀ Π A' B
-  ξ-Πʳ : {A : RTy Γ} {B B' : RTy (Γ ∙)} → B ⟶ᵀ B' → Π A B ⟶ᵀ Π A B'
-  ξ-Σˡ : {A A' : RTy Γ} {B : RTy (Γ ∙)} → A ⟶ᵀ A' → Σ' A B ⟶ᵀ Σ' A' B
-  ξ-Σʳ : {A : RTy Γ} {B B' : RTy (Γ ∙)} → B ⟶ᵀ B' → Σ' A B ⟶ᵀ Σ' A B'
-  -- ★ W2: `Hom` COMPUTES, like `El` (SpikeHomTy's clauses, promoted).
-  -- `Hom-U` is DIRECTED UNIVALENCE as a computation rule: a path between
-  -- codes IS a map between their decodings.  `Hom-Π` is the POINTWISE family
-  -- (item 2: naturality is not carried; item 3: it must not be).  There is
-  -- deliberately NO rule at `base` (discrete by generation, item 4), none at
-  -- `Σ'` (its unfolding needs transport, a term former W2's eliminator will
-  -- introduce — deferred, not dropped), none at a stuck `El`, none at `Hom`.
-  -- ★★ WF-axis stage B (SPIKE-WF §2): THE COMPUTING ORDER.  On `Nat`
-  -- the DIRECTED structure IS the order — `Hom Nat m n` does not
-  -- represent `m ≤ n`, it COMPUTES to it.  The rules are keyed on the
-  -- ENDPOINTS' constructor heads (not on the ambient, as `Hom-U` and
-  -- `Hom-Π` are), which is what makes `Nat` an ORDERED inductive.
-  --
-  -- `base` is the empty type here: it has no closed inhabitants
-  -- (`consistency`, NbEPDirDBCanon), so a false inequality is
-  -- refuted by the kernel's own consistency theorem.
-  Hom-Nat-z  : (n : RTm Γ) → Hom Nat nzero n ⟶ᵀ Unit
-  Hom-Nat-sz : (m : RTm Γ) → Hom Nat (nsuc m) nzero ⟶ᵀ base
-  Hom-Nat-ss : (m n : RTm Γ) → Hom Nat (nsuc m) (nsuc n) ⟶ᵀ Hom Nat m n
-  Hom-U : (c d : RTm Γ) → Hom U c d ⟶ᵀ Π (El c) (El (renTm vs d))
-  Hom-Π : (A : RTy Γ) (B : RTy (Γ ∙)) (f g : RTm Γ) →
-          Hom (Π A B) f g ⟶ᵀ
-          Π A (Hom B (app (renTm vs f) (var vz)) (app (renTm vs g) (var vz)))
-  ξ-Homᵀ : {A A' : RTy Γ} {t u : RTm Γ} → A ⟶ᵀ A' → Hom A t u ⟶ᵀ Hom A' t u
-  ξ-Homˡ : {A : RTy Γ} {t t' u : RTm Γ} → t ⟶ t' → Hom A t u ⟶ᵀ Hom A t' u
-  ξ-Homʳ : {A : RTy Γ} {t u u' : RTm Γ} → u ⟶ u' → Hom A t u ⟶ᵀ Hom A t u'
-  ξ-Idᵀ  : {A A' : RTy Γ} {t u : RTm Γ} → A ⟶ᵀ A' → Id A t u ⟶ᵀ Id A' t u
-  ξ-Idˡ  : {A : RTy Γ} {t t' u : RTm Γ} → t ⟶ t' → Id A t u ⟶ᵀ Id A t' u
-  ξ-Idʳ  : {A : RTy Γ} {t u u' : RTm Γ} → u ⟶ u' → Id A t u ⟶ᵀ Id A t u'
-  -- ★ the formers that carry terms need congruences (a type-level `sr`
-  --   preserves types on the nose; retyping after an index step needs these).
-  ξ-IMuᴵ  : {I I' D i : RTm Γ} → I ⟶ I' → IMu I D i ⟶ᵀ IMu I' D i
-  ξ-IMuᴰ  : {I D D' i : RTm Γ} → D ⟶ D' → IMu I D i ⟶ᵀ IMu I D' i
-  ξ-IMuⁱ  : {I D i i' : RTm Γ} → i ⟶ i' → IMu I D i ⟶ᵀ IMu I D i'
-  ξ-Desc  : {I I' : RTm Γ} → I ⟶ I' → Desc I ⟶ᵀ Desc I'
-  ξ-Fin   : {n n' : RTm Γ} → n ⟶ n' → Fin n ⟶ᵀ Fin n'
-  ξ-DIhᴰ  : {D D' C p : RTm Γ} {M : RTy ((Γ ∙) ∙)} → D ⟶ D' → DIh D M C p ⟶ᵀ DIh D' M C p
-  ξ-DIhᴹ  : {D C p : RTm Γ} {M M' : RTy ((Γ ∙) ∙)} → M ⟶ᵀ M' → DIh D M C p ⟶ᵀ DIh D M' C p
-  ξ-DIhᶜ  : {D C C' p : RTm Γ} {M : RTy ((Γ ∙) ∙)} → C ⟶ C' → DIh D M C p ⟶ᵀ DIh D M C' p
-  ξ-DIhᵖ  : {D C p p' : RTm Γ} {M : RTy ((Γ ∙) ∙)} → p ⟶ p' → DIh D M C p ⟶ᵀ DIh D M C p'
+  El-⌜Unit⌝ʳ : El (⌜Unit⌝ {Γ}) ▷ Unit
+  Hom-Nat-zʳ  : (n : RTm Γ) → Hom Nat nzero n ▷ Unit
+  Hom-Nat-szʳ : (m : RTm Γ) → Hom Nat (nsuc m) nzero ▷ base
+  Hom-Nat-ssʳ : (m n : RTm Γ) → Hom Nat (nsuc m) (nsuc n) ▷ Hom Nat m n
+  Hom-Uʳ : (c d : RTm Γ) → Hom U c d ▷ Π (El c) (El (renTm vs d))
+  Hom-Πʳ : (A : RTy Γ) (B : RTy (Γ ∙)) (f g : RTm Γ) →
+          Hom (Π A B) f g ▷           Π A (Hom B (app (renTm vs f) (var vz)) (app (renTm vs g) (var vz)))
+
+open Red _▷_ public renaming ( _⟶_ to _⟶ᴳ_ ) using ( ⟶head; ⟶cong; Step )
+
+infix 3 _⟶_ _⟶ᵀ_
+_⟶_ : {Γ : Cx} → RTm Γ → RTm Γ → Set
+t ⟶ u = t ⟶ᴳ u
+
+_⟶ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set
+A ⟶ᵀ B = A ⟶ᴳ B
+
+-- the old rule names: contractions, then congruence (former, position)
+pattern β t u = ⟶head (βʳ t u)
+pattern βfst a b = ⟶head (βfstʳ a b)
+pattern βsnd a b = ⟶head (βsndʳ a b)
+pattern ξ-lam r = ⟶cong {c = Sx.`lam} (inj₁ (r , refl))
+pattern ξ-appˡ r = ⟶cong {c = Sx.`app} (inj₁ (r , refl))
+pattern ξ-appʳ r = ⟶cong {c = Sx.`app} (inj₂ (refl , inj₁ (r , refl)))
+pattern ξ-pairˡ r = ⟶cong {c = Sx.`pair} (inj₁ (r , refl))
+pattern ξ-pairʳ r = ⟶cong {c = Sx.`pair} (inj₂ (refl , inj₁ (r , refl)))
+pattern ordtr-z t u p q = ⟶head (ordtr-zʳ t u p q)
+pattern ordtr-szz a p q = ⟶head (ordtr-szzʳ a p q)
+pattern ordtr-ssz a t p q = ⟶head (ordtr-sszʳ a t p q)
+pattern ordtr-szs a u p q = ⟶head (ordtr-szsʳ a u p q)
+pattern ordtr-sss a t u p q = ⟶head (ordtr-sssʳ a t u p q)
+pattern ξ-ordtrᵃ r = ⟶cong {c = Sx.`ordtr} (inj₁ (r , refl))
+pattern ξ-ordtrᵗ r = ⟶cong {c = Sx.`ordtr} (inj₂ (refl , inj₁ (r , refl)))
+pattern ξ-ordtrᵘ r = ⟶cong {c = Sx.`ordtr} (inj₂ (refl , inj₂ (refl , inj₁ (r , refl))))
+pattern ξ-ordtrᵖ r = ⟶cong {c = Sx.`ordtr} (inj₂ (refl , inj₂ (refl , inj₂ (refl , inj₁ (r , refl)))))
+pattern ξ-ordtrq r = ⟶cong {c = Sx.`ordtr} (inj₂ (refl , inj₂ (refl , inj₂ (refl , inj₂ (refl , inj₁ (r , refl))))))
+pattern ξ-absurdᶜ r = ⟶cong {c = Sx.`absurd} (inj₁ (r , refl))
+pattern ξ-absurdᵉ r = ⟶cong {c = Sx.`absurd} (inj₂ (refl , inj₁ (r , refl)))
+pattern ξ-fst r = ⟶cong {c = Sx.`fst} (inj₁ (r , refl))
+pattern ξ-snd r = ⟶cong {c = Sx.`snd} (inj₁ (r , refl))
+pattern ξ-⌜Π⌝ˡ r = ⟶cong {c = Sx.`⌜Π⌝} (inj₁ (r , refl))
+pattern ξ-⌜Π⌝ʳ r = ⟶cong {c = Sx.`⌜Π⌝} (inj₂ (refl , inj₁ (r , refl)))
+pattern ξ-⌜Σ⌝ˡ r = ⟶cong {c = Sx.`⌜Σ⌝} (inj₁ (r , refl))
+pattern ξ-⌜Σ⌝ʳ r = ⟶cong {c = Sx.`⌜Σ⌝} (inj₂ (refl , inj₁ (r , refl)))
+pattern tr-J-base c a m s e = ⟶head (tr-J-baseʳ c a m s e)
+pattern tr-J-Σ c a m c₁ c₂ s e = ⟶head (tr-J-Σʳ c a m c₁ c₂ s e)
+pattern tr-J-Unit c a m s e = ⟶head (tr-J-Unitʳ c a m s e)
+pattern tr-J-Id c a m c₁ a₁ b₁ s e = ⟶head (tr-J-Idʳ c a m c₁ a₁ b₁ s e)
+pattern tr-J-IMu {I} {D} {iˣ} c a m s e = ⟶head (tr-J-IMuʳ {I = I} {D = D} {iˣ = iˣ} c a m s e)
+pattern tr-J-Fin {n} c a m s e = ⟶head (tr-J-Finʳ {n = n} c a m s e)
+pattern tr-taut f e = ⟶head (tr-tautʳ f e)
+pattern hrefl-pw C s h1 = ⟶head (hrefl-pwʳ C s h1)
+pattern hrefl-Nat-z = ⟶head (hrefl-Nat-zʳ)
+pattern hrefl-Nat-s m = ⟶head (hrefl-Nat-sʳ m)
+pattern tr-J-Hom c a m c₁ a₁ b₁ s e h1 = ⟶head (tr-J-Homʳ c a m c₁ a₁ b₁ s e h1)
+pattern tr-pw c a f e h1 = ⟶head (tr-pwʳ c a f e h1)
+pattern ξ-⌜Hom⌝ᶜ r = ⟶cong {c = Sx.`⌜Hom⌝} (inj₁ (r , refl))
+pattern ξ-⌜Hom⌝ˡ r = ⟶cong {c = Sx.`⌜Hom⌝} (inj₂ (refl , inj₁ (r , refl)))
+pattern ξ-⌜Hom⌝ʳ r = ⟶cong {c = Sx.`⌜Hom⌝} (inj₂ (refl , inj₂ (refl , inj₁ (r , refl))))
+pattern ξ-hreflᶜ r = ⟶cong {c = Sx.`hrefl} (inj₁ (r , refl))
+pattern ξ-hreflᵃ r = ⟶cong {c = Sx.`hrefl} (inj₂ (refl , inj₁ (r , refl)))
+pattern ξ-trᵈ r = ⟶cong {c = Sx.`tr} (inj₁ (r , refl))
+pattern ξ-trᵖ r = ⟶cong {c = Sx.`tr} (inj₂ (refl , inj₁ (r , refl)))
+pattern ξ-trᵉ r = ⟶cong {c = Sx.`tr} (inj₂ (refl , inj₂ (refl , inj₁ (r , refl))))
+pattern ap-J cB b c₁ s h1 = ⟶head (ap-Jʳ cB b c₁ s h1)
+pattern ξ-apᶜ r = ⟶cong {c = Sx.`ap} (inj₁ (r , refl))
+pattern ξ-apᵇ r = ⟶cong {c = Sx.`ap} (inj₂ (refl , inj₁ (r , refl)))
+pattern ξ-apᵖ r = ⟶cong {c = Sx.`ap} (inj₂ (refl , inj₂ (refl , inj₁ (r , refl))))
+pattern jsub-refl d c s e = ⟶head (jsub-reflʳ d c s e)
+pattern ξ-⌜Id⌝ᶜ r = ⟶cong {c = Sx.`⌜Id⌝} (inj₁ (r , refl))
+pattern ξ-⌜Id⌝ˡ r = ⟶cong {c = Sx.`⌜Id⌝} (inj₂ (refl , inj₁ (r , refl)))
+pattern ξ-⌜Id⌝ʳ r = ⟶cong {c = Sx.`⌜Id⌝} (inj₂ (refl , inj₂ (refl , inj₁ (r , refl))))
+pattern ξ-⌜Fin⌝ r = ⟶cong {c = Sx.`⌜Fin⌝} (inj₁ (r , refl))
+pattern ξ-idreflᶜ r = ⟶cong {c = Sx.`idrefl} (inj₁ (r , refl))
+pattern ξ-idreflᵃ r = ⟶cong {c = Sx.`idrefl} (inj₂ (refl , inj₁ (r , refl)))
+pattern ξ-jsubᵈ r = ⟶cong {c = Sx.`jsub} (inj₁ (r , refl))
+pattern ξ-jsubᵖ r = ⟶cong {c = Sx.`jsub} (inj₂ (refl , inj₁ (r , refl)))
+pattern ξ-jsubᵉ r = ⟶cong {c = Sx.`jsub} (inj₂ (refl , inj₂ (refl , inj₁ (r , refl))))
+pattern natrec-zero z s = ⟶head (natrec-zeroʳ z s)
+pattern natrec-suc z s n = ⟶head (natrec-sucʳ z s n)
+pattern ξ-nsuc r = ⟶cong {c = Sx.`nsuc} (inj₁ (r , refl))
+pattern ξ-natrecᶻ r = ⟶cong {c = Sx.`natrec} (inj₁ (r , refl))
+pattern ξ-natrecˢ r = ⟶cong {c = Sx.`natrec} (inj₂ (refl , inj₁ (r , refl)))
+pattern ξ-natrecⁿ r = ⟶cong {c = Sx.`natrec} (inj₂ (refl , inj₂ (refl , inj₁ (r , refl))))
+pattern ι D i e p = ⟶head (ιʳ D i e p)
+pattern dpay-ι I D = ⟶head (dpay-ιʳ I D)
+pattern dpay-σ I D S f = ⟶head (dpay-σʳ I D S f)
+pattern dpay-ρ I D j C = ⟶head (dpay-ρʳ I D j C)
+pattern dih-ι D e p = ⟶head (dih-ιʳ D e p)
+pattern dih-σ D e S f p = ⟶head (dih-σʳ D e S f p)
+pattern dih-ρ D e j C p = ⟶head (dih-ρʳ D e j C p)
+pattern fcase-z a b = ⟶head (fcase-zʳ a b)
+pattern fcase-s t a b = ⟶head (fcase-sʳ t a b)
+pattern psplit-β b x y = ⟶head (psplit-βʳ b x y)
+pattern δref {Δ} d h1 = ⟶head (δrefʳ {Δ = Δ} d h1)
+pattern ξ-⌜IMu⌝ᴵ r = ⟶cong {c = Sx.`⌜IMu⌝} (inj₁ (r , refl))
+pattern ξ-⌜IMu⌝ᴰ r = ⟶cong {c = Sx.`⌜IMu⌝} (inj₂ (refl , inj₁ (r , refl)))
+pattern ξ-⌜IMu⌝ⁱ r = ⟶cong {c = Sx.`⌜IMu⌝} (inj₂ (refl , inj₂ (refl , inj₁ (r , refl))))
+pattern ξ-con r = ⟶cong {c = Sx.`con} (inj₁ (r , refl))
+pattern ξ-ielimᴰ r = ⟶cong {c = Sx.`ielim} (inj₁ (r , refl))
+pattern ξ-ielimⁱ r = ⟶cong {c = Sx.`ielim} (inj₂ (refl , inj₁ (r , refl)))
+pattern ξ-ielimᵉ r = ⟶cong {c = Sx.`ielim} (inj₂ (refl , inj₂ (refl , inj₁ (r , refl))))
+pattern ξ-ielimᵗ r = ⟶cong {c = Sx.`ielim} (inj₂ (refl , inj₂ (refl , inj₂ (refl , inj₁ (r , refl)))))
+pattern ξ-dσˢ r = ⟶cong {c = Sx.`dσ} (inj₁ (r , refl))
+pattern ξ-dσᶠ r = ⟶cong {c = Sx.`dσ} (inj₂ (refl , inj₁ (r , refl)))
+pattern ξ-dρʲ r = ⟶cong {c = Sx.`dρ} (inj₁ (r , refl))
+pattern ξ-dρᶜ r = ⟶cong {c = Sx.`dρ} (inj₂ (refl , inj₁ (r , refl)))
+pattern ξ-dpayᴵ r = ⟶cong {c = Sx.`dpay} (inj₁ (r , refl))
+pattern ξ-dpayᴰ r = ⟶cong {c = Sx.`dpay} (inj₂ (refl , inj₁ (r , refl)))
+pattern ξ-dpayᶜ r = ⟶cong {c = Sx.`dpay} (inj₂ (refl , inj₂ (refl , inj₁ (r , refl))))
+pattern ξ-dihᴰ r = ⟶cong {c = Sx.`dih} (inj₁ (r , refl))
+pattern ξ-dihᵉ r = ⟶cong {c = Sx.`dih} (inj₂ (refl , inj₁ (r , refl)))
+pattern ξ-dihᶜ r = ⟶cong {c = Sx.`dih} (inj₂ (refl , inj₂ (refl , inj₁ (r , refl))))
+pattern ξ-dihᵖ r = ⟶cong {c = Sx.`dih} (inj₂ (refl , inj₂ (refl , inj₂ (refl , inj₁ (r , refl)))))
+pattern ξ-fsuc r = ⟶cong {c = Sx.`fsuc} (inj₁ (r , refl))
+pattern ξ-fcaseᵗ r = ⟶cong {c = Sx.`fcase} (inj₁ (r , refl))
+pattern ξ-fcaseᵃ r = ⟶cong {c = Sx.`fcase} (inj₂ (refl , inj₁ (r , refl)))
+pattern ξ-fcaseᵇ r = ⟶cong {c = Sx.`fcase} (inj₂ (refl , inj₂ (refl , inj₁ (r , refl))))
+pattern ξ-fcase0 r = ⟶cong {c = Sx.`fcase0} (inj₁ (r , refl))
+pattern ξ-psplitᵇ r = ⟶cong {c = Sx.`psplit} (inj₁ (r , refl))
+pattern ξ-psplitᵍ r = ⟶cong {c = Sx.`psplit} (inj₂ (refl , inj₁ (r , refl)))
+pattern El-⌜base⌝ = ⟶head (El-⌜base⌝ʳ)
+pattern El-⌜Π⌝ c d = ⟶head (El-⌜Π⌝ʳ c d)
+pattern El-⌜Σ⌝ c d = ⟶head (El-⌜Σ⌝ʳ c d)
+pattern El-⌜Hom⌝ c a b = ⟶head (El-⌜Hom⌝ʳ c a b)
+pattern El-⌜Id⌝ c a b = ⟶head (El-⌜Id⌝ʳ c a b)
+pattern El-⌜Nat⌝ = ⟶head (El-⌜Nat⌝ʳ)
+pattern El-⌜IMu⌝ {I} {D} {i} = ⟶head (El-⌜IMu⌝ʳ {I = I} {D = D} {i = i})
+pattern El-⌜Fin⌝ {n} = ⟶head (El-⌜Fin⌝ʳ {n = n})
+pattern DIh-ι D M p = ⟶head (DIh-ιʳ D M p)
+pattern DIh-σ D M S f p = ⟶head (DIh-σʳ D M S f p)
+pattern DIh-ρ D M j C p = ⟶head (DIh-ρʳ D M j C p)
+pattern El-⌜Unit⌝ = ⟶head (El-⌜Unit⌝ʳ)
+pattern ξ-El r = ⟶cong {c = Sx.`El} (inj₁ (r , refl))
+pattern ξ-Πˡ r = ⟶cong {c = Sx.`Π} (inj₁ (r , refl))
+pattern ξ-Πʳ r = ⟶cong {c = Sx.`Π} (inj₂ (refl , inj₁ (r , refl)))
+pattern ξ-Σˡ r = ⟶cong {c = Sx.`Σ'} (inj₁ (r , refl))
+pattern ξ-Σʳ r = ⟶cong {c = Sx.`Σ'} (inj₂ (refl , inj₁ (r , refl)))
+pattern Hom-Nat-z n = ⟶head (Hom-Nat-zʳ n)
+pattern Hom-Nat-sz m = ⟶head (Hom-Nat-szʳ m)
+pattern Hom-Nat-ss m n = ⟶head (Hom-Nat-ssʳ m n)
+pattern Hom-U c d = ⟶head (Hom-Uʳ c d)
+pattern Hom-Π A B f g = ⟶head (Hom-Πʳ A B f g)
+pattern ξ-Homᵀ r = ⟶cong {c = Sx.`Hom} (inj₁ (r , refl))
+pattern ξ-Homˡ r = ⟶cong {c = Sx.`Hom} (inj₂ (refl , inj₁ (r , refl)))
+pattern ξ-Homʳ r = ⟶cong {c = Sx.`Hom} (inj₂ (refl , inj₂ (refl , inj₁ (r , refl))))
+pattern ξ-Idᵀ r = ⟶cong {c = Sx.`Id} (inj₁ (r , refl))
+pattern ξ-Idˡ r = ⟶cong {c = Sx.`Id} (inj₂ (refl , inj₁ (r , refl)))
+pattern ξ-Idʳ r = ⟶cong {c = Sx.`Id} (inj₂ (refl , inj₂ (refl , inj₁ (r , refl))))
+pattern ξ-IMuᴵ r = ⟶cong {c = Sx.`IMu} (inj₁ (r , refl))
+pattern ξ-IMuᴰ r = ⟶cong {c = Sx.`IMu} (inj₂ (refl , inj₁ (r , refl)))
+pattern ξ-IMuⁱ r = ⟶cong {c = Sx.`IMu} (inj₂ (refl , inj₂ (refl , inj₁ (r , refl))))
+pattern ξ-Desc r = ⟶cong {c = Sx.`Desc} (inj₁ (r , refl))
+pattern ξ-Fin r = ⟶cong {c = Sx.`Fin} (inj₁ (r , refl))
+pattern ξ-DIhᴰ r = ⟶cong {c = Sx.`DIh} (inj₁ (r , refl))
+pattern ξ-DIhᴹ r = ⟶cong {c = Sx.`DIh} (inj₂ (refl , inj₁ (r , refl)))
+pattern ξ-DIhᶜ r = ⟶cong {c = Sx.`DIh} (inj₂ (refl , inj₂ (refl , inj₁ (r , refl))))
+pattern ξ-DIhᵖ r = ⟶cong {c = Sx.`DIh} (inj₂ (refl , inj₂ (refl , inj₂ (refl , inj₁ (r , refl)))))
 
 infix 3 _⟶*_
 data _⟶*_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where

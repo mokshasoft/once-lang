@@ -80,6 +80,7 @@ import DirectedHoTT.Spec.Annotated
 import DirectedHoTT.Spec.AnnotatedDesc
 import DirectedHoTT.Spec.Base
 import DirectedHoTT.Spec.Bind
+import DirectedHoTT.Spec.BindRed
 import DirectedHoTT.Spec.Grade
 import DirectedHoTT.Spec.Reduction
 import DirectedHoTT.Spec.Scope
