@@ -17,6 +17,8 @@ import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
                     rem64, lt64, eq64, word64FromNat, word64ToNat)
 import qualified MAlonzo.RTE
 import qualified Data.Text
+import qualified MAlonzo.Code.Agda.Builtin.List
+import qualified MAlonzo.Code.Agda.Builtin.Maybe
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Data.Bool.Base
@@ -29,8 +31,10 @@ import qualified MAlonzo.Code.Once.CCC.Codegen.AllocExpandClasses
 import qualified MAlonzo.Code.Once.CCC.Codegen.RoomChecks
 import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
 import qualified MAlonzo.Code.Once.CompileSrc
+import qualified MAlonzo.Code.Once.LinCore.CopyFree
 import qualified MAlonzo.Code.Once.LinCore.Core
 import qualified MAlonzo.Code.Once.LinCore.ExprBuild
+import qualified MAlonzo.Code.Once.LinCore.Image
 import qualified MAlonzo.Code.Once.LinCore.ImageBlocks
 import qualified MAlonzo.Code.Once.LinCore.Keys
 import qualified MAlonzo.Code.Once.LinCore.Linear
@@ -357,3 +361,84 @@ d_perDef_110 v0 v1 v2 v3 v4
          (coe
             MAlonzo.Code.Once.CompileSrc.d_expr_36
             (coe MAlonzo.Code.Once.CompileSrc.d_csSrc_1024 (coe v4))))
+-- Once.LinCore.ExprImage.cellCopyIdx
+d_cellCopyIdx_124 ::
+  MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
+  [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] -> Integer -> [Integer]
+d_cellCopyIdx_124 ~v0 v1 v2 = du_cellCopyIdx_124 v1 v2
+du_cellCopyIdx_124 ::
+  [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] -> Integer -> [Integer]
+du_cellCopyIdx_124 v0 v1
+  = case coe v0 of
+      [] -> coe v0
+      (:) v2 v3
+        -> case coe v2 of
+             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v4 v5
+               -> let v6
+                        = coe
+                            du_cellCopyIdx_124 (coe v3)
+                            (coe addInt (coe (1 :: Integer)) (coe v1)) in
+                  coe
+                    (case coe v5 of
+                       MAlonzo.Code.Once.LinCore.Image.C_kcopy_1008
+                         -> case coe v4 of
+                              MAlonzo.Code.Once.LinCore.Image.C_bsig_948 v8 v9 v10
+                                -> case coe v8 of
+                                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v11
+                                       -> coe
+                                            MAlonzo.Code.Data.List.Base.du__'43''43'__32
+                                            (coe
+                                               MAlonzo.Code.Data.Bool.Base.du_if_then_else__44
+                                               (coe
+                                                  MAlonzo.Code.Once.LinCore.CopyFree.du_cells_724
+                                                  (coe v11))
+                                               (coe
+                                                  MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+                                                  (coe v1)
+                                                  (coe
+                                                     MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))
+                                               (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))
+                                            (coe
+                                               du_cellCopyIdx_124 (coe v3)
+                                               (coe addInt (coe (1 :: Integer)) (coe v1)))
+                                     _ -> coe v6
+                              _ -> MAlonzo.RTE.mazUnreachableError
+                       _ -> coe v6)
+             _ -> MAlonzo.RTE.mazUnreachableError
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.LinCore.ExprImage.cellCopies
+d_cellCopies_144 ::
+  MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
+  [MAlonzo.Code.Once.CompileSrc.T_CompiledSrc_1012] ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+  MAlonzo.Code.Once.Spec.Sub.T__'60''58'__8 -> [Integer]
+d_cellCopies_144 v0 v1 v2 v3
+  = coe
+      du_cellCopyIdx_124
+      (coe
+         MAlonzo.Code.Once.LinCore.Keys.du_allK_2790
+         (coe
+            MAlonzo.Code.Once.LinCore.Keys.d_univ_2802 (coe v0)
+            (coe MAlonzo.Code.Once.LinCore.Loader.d_bw_6)
+            (coe
+               MAlonzo.Code.Once.LinCore.ExprBuild.d_L_1418
+               (coe
+                  MAlonzo.Code.Once.LinCore.ExprBuild.d_exprTable_1426 (coe v0)
+                  (coe v1)))
+            (coe
+               MAlonzo.Code.Once.LinCore.ExprBuild.d_defs_1420
+               (coe
+                  MAlonzo.Code.Once.LinCore.ExprBuild.d_exprTable_1426 (coe v0)
+                  (coe v1)))
+            (coe MAlonzo.Code.Once.LinCore.Core.C_One_180)
+            (coe MAlonzo.Code.Once.LinCore.Core.C_One_180)
+            (coe MAlonzo.Code.Once.LinCore.Core.C_One_180)
+            (coe
+               MAlonzo.Code.Once.LinCore.ExprBuild.du_mainCore_1640 (coe v0)
+               (coe
+                  MAlonzo.Code.Once.LinCore.ExprBuild.d_rs_1422
+                  (coe
+                     MAlonzo.Code.Once.LinCore.ExprBuild.d_exprTable_1426 (coe v0)
+                     (coe v1)))
+               (coe v2) (coe v3))))
+      (coe (0 :: Integer))

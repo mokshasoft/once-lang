@@ -94,7 +94,7 @@ open import Once.Format.Proof using (VerifiedFormatter; verifiedFormatter)
 open import Once.Inspect.Proof using (VerifiedInspector; verifiedInspector)
 open import Once.Extract.Names.Proof using (VerifiedLoader; verifiedLoader)
 open import Once.Adequacy.SpecCheck using (VerifiedChecker; verifiedChecker)
-open import Once.Implementation using (NoLeak)
+open import Once.Implementation using (NoLeak; NoCopy)
 
 -- The correctness theorem, on the Spec (plan 0.121, D332): the compiler's own
 -- (`Compile.correctᵈ`, over its working language) carried to the Spec's source,
@@ -168,5 +168,9 @@ once-no-leak = NoLeak
 -- by `LinCore.LinearCF.linear-cf` clause for clause the bridge), and along any
 -- run of its image no step calls a copy at a type with cells or copies a closure
 -- or a ν (`LinCore.NoCopyImage`, by `LinCore.CopyRun`'s invariant). Owed: the
--- flat run's form, `Implementation.NoCopy` beside `NoLeak` (D501 route (3)).
+-- flat run's form, `Implementation.NoCopy` beside `NoLeak` (D501 route (3),
+-- plan 0.157 S2 step 8): a named statement, not a premise, as `once-no-leak`.
 import Once.LinCore.NoCopyImage
+
+once-no-copy : Set₁
+once-no-copy = NoCopy

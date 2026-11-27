@@ -8,7 +8,7 @@
 -- and nothing but `Once.Certified` imports it (`make implementation-gate`).
 -- A claim's proof lives elsewhere and becomes a field of `CertifiedBuild`.
 --
--- The claims: `NoLeak` (below). Next: plan 0.138's layout claim.
+-- The claims: `NoLeak` and `NoCopy` (below). Next: `BoundedStack` (D502), plan 0.138's layout claim.
 ------------------------------------------------------------------------
 
 ------------------------------------------------------------------------
@@ -76,6 +76,10 @@ open import Once.Compile using (EffUU)
 open import Once.Compile.Emit using (entry-owner)
 import Once.LinCore.ExprBuild
 import Once.LinCore.ExprImage
+import Once.LinCore.Lower
+import Once.LinCore.Loader
+open import Once.CCC.Label using (e-fn; e-thunk)
+open import Data.List.Membership.Propositional using (_∈_)
 import Once.Adequacy.ArchCorrectness.FlatCore.RunContext as RunContext
 
 ------------------------------------------------------------------------
@@ -137,6 +141,15 @@ module Run (FS : FrameSemantics) (prog : AbstractTrace) where
       -- one the state still holds — nothing allocated is garbage
       reachable  : ∀ k r → Live fs₀ k r → Reach (at fs₀ k) r
 
+  -- D501: the run enters none of the blocks `js` (by their index in the image's
+  -- universe: a block's entry `e-fn (nameOf j)`, its trampoline's `e-thunk (tl j)`).
+  -- A block is entered only by its entry instruction (calls target entry labels,
+  -- a block ends in a return): entering none, the run is never inside one.
+  record CopyFree (js : List ℕ) (fs₀ : FlatState) : Set where
+    field
+      no-entry : ∀ k j b → j ∈ js → ¬ Executes fs₀ k (instr-ctrl (c-entry (e-fn (Once.LinCore.Lower.nameOf (fs-numerics FS) Once.LinCore.Loader.bw j)) b))
+      no-tramp : ∀ k j b → j ∈ js → ¬ Executes fs₀ k (instr-ctrl (c-entry (e-thunk (Once.LinCore.Lower.tl (fs-numerics FS) Once.LinCore.Loader.bw j)) b))
+
 ------------------------------------------------------------------------
 -- The claim: every run of every program image the compiler emits
 ------------------------------------------------------------------------
@@ -155,3 +168,26 @@ NoLeak =
     in ∀ (fs₀ : FlatMachine.FlatState {FS})
   → RC.EntryLike fs₀ → frame-slots (FlatMachine.FlatState.falloc {FS} fs₀) ≡ 0
   → Run.LeakFree FS (EmittedImage FS srcs pm) fs₀
+
+------------------------------------------------------------------------
+-- NoCopy — a linear program runs without a copy (plan 0.157 D6, D500, D501).
+--
+-- Linearity is not enforced; it is GUARANTEED to pay: a program the compiler
+-- gives no "not linear (a copy here)" warning (`LinCore.ExprImage.linearSites`
+-- empty: what `--require-linear` refuses otherwise) never copies a value with
+-- cells. A copy at a type without cells is words (D6's exemption by type), so
+-- the claim is about the copy blocks at types with cells (`ExprImage.cellCopies`):
+-- no run of the image, from an entry state as `NoLeak`'s, enters one.
+-- (The image level is proved, `LinCore.NoCopyImage`; the flat run's, owed.)
+------------------------------------------------------------------------
+
+NoCopy : Set₁
+NoCopy =
+  ∀ (FS : FrameSemantics) (m : Resolved) (srcs : List CompiledSrc) → srcModule Heap false m ≡ inj₂ srcs
+  → ∀ {T : Type} (pm : T <: EffUU) → mainOf srcs ≡ just (T , pm)
+  → Once.LinCore.ExprImage.linearSites (fs-numerics FS) (Once.LinCore.ExprBuild.srcOrder (fs-numerics FS) srcs []) pm ≡ []
+  → let module RC = RunContext entry-owner FS (frame-word FS) refl
+    in ∀ (fs₀ : FlatMachine.FlatState {FS})
+  → RC.EntryLike fs₀ → frame-slots (FlatMachine.FlatState.falloc {FS} fs₀) ≡ 0
+  → Run.CopyFree FS (EmittedImage FS srcs pm)
+      (Once.LinCore.ExprImage.cellCopies (fs-numerics FS) (Once.LinCore.ExprBuild.srcOrder (fs-numerics FS) srcs []) pm) fs₀

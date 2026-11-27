@@ -25921,3 +25921,9 @@ copy-free program's image reaches is good, so `no-cell-copy`, `no-ccopy`, `no-nc
 — with `no-copy-core`: no "not linear" warning ⇒ along any run of the compiled program's image no step calls a
 copy at a type with cells, nor copies a closure or a ν; `Certified` imports it. Split at the 60 s cap:
 `CopyCode` (38 s) / `CopyRun`. Owed: route (3), the flat run (`Implementation.NoCopy`).
+
+**D501, the statement** (2026-11-27): `Implementation.NoCopy` — `NoLeak`'s quantification, the premise "no
+`not linear` warning" (`ExprImage.linearSites … ≡ []`), concluding `Run.CopyFree`: no step of the run executes the
+entry of a block among `ExprImage.cellCopies` (the universe's `kcopy A` with `cells A`, by index: the block's
+`e-fn (nameOf j)`, its trampoline's `e-thunk (tl j)`). `Certified` names it `once-no-copy`, owed as
+`once-no-leak` is (plan 0.157 S2 step 8: the flat forms together); `make implementation-gate` OK.

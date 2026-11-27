@@ -32,6 +32,9 @@ import Once.LinCore.ExprBuild
 import Once.LinCore.Lower
 import Once.LinCore.Keys
 import Once.LinCore.ImageBlocks
+import Once.LinCore.Image
+import Once.LinCore.CopyFree
+import Data.Product
 import Once.CCC.Codegen.AllocExpand
 import Once.CCC.Codegen.AllocExpandClasses
 
@@ -97,3 +100,19 @@ linearSites tl pm = L.concatMap perDef tl
     perDef c = L.map (λ { (k , vs) → nameOf c Str.++ ": " Str.++ k Str.++ (if L.null vs then "" else " (variables " Str.++ vars vs Str.++ ")") })
                      (Once.LinCore.Linear.sites fmt lc (Once.CompileSrc.Src.expr (CompiledSrc.csSrc c)))
       where open import Data.Bool using (if_then_else_)
+
+-- ★ D501: the image's copy blocks at a type with cells, by their index in the universe's keys
+-- (`Lower.nameOf j` names a block's entry, `Lower.tl j` its trampoline's): what `NoCopy` says no run enters
+private
+  cellCopyIdx : List (Data.Product.Σ (Once.LinCore.Image.BSig fmt bw) (Once.LinCore.Image.Key fmt bw)) → Data.Nat.ℕ → List Data.Nat.ℕ
+  cellCopyIdx L.[]                                  j = L.[]
+  cellCopyIdx ((_ , Once.LinCore.Image.kcopy A) L.∷ ks) j =
+    (if Once.LinCore.CopyFree.cells fmt A then j L.∷ L.[] else L.[]) L.++ cellCopyIdx ks (Data.Nat.suc j)
+    where open import Data.Bool using (if_then_else_)
+  {-# CATCHALL #-}
+  cellCopyIdx (_ L.∷ ks)                            j = cellCopyIdx ks (Data.Nat.suc j)
+
+cellCopies : List CompiledSrc → ∀ {T : Type} → T <: EffUU → List Data.Nat.ℕ
+cellCopies tl pm =
+  cellCopyIdx (Once.LinCore.Keys.allK fmt bw (Once.LinCore.Keys.univ fmt bw (Once.LinCore.ExprBuild.ETProg.defs (Once.LinCore.ExprBuild.exprTable fmt tl))
+    (Once.LinCore.ExprBuild.mainCore fmt (Once.LinCore.ExprBuild.ETProg.rs (Once.LinCore.ExprBuild.exprTable fmt tl)) pm))) 0
