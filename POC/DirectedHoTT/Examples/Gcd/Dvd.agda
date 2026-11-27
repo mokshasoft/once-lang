@@ -24,11 +24,9 @@ module DirectedHoTT.Examples.Gcd.Dvd where
 import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; cong; cong₂ )
+open import DirectedHoTT.Spec.Scope using ( Cx; _∙; vz; vs )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; _∙; vz; vs
-        ; RTy; RTm; Nat; U; El; Σ'
-        ; var; fst; snd; ⌜Nat⌝; nzero; nsuc; Π; app; Hom; natrec; subTy
-        ; subTm; renTm; renTy; Ren; extR; extS )
+  using ( RTy; RTm; Nat; U; El; Σ'; var; fst; snd; ⌜Nat⌝; nzero; nsuc; Π; app; Hom; natrec; subTy; subTm; renTm; renTy; Ren; extR; extS )
 open Lib0.Spec-Typing
   using ( _⊢_∷_; _⊢ty_; ⊢var; ⊢fst; ⊢snd; ⊢nzero; ⊢nsuc; ⊢lam; ⊢app; ty-Hom
         ; ty-Nat; ty-Π; ty-El; ⊢⌜Nat⌝; ⊢conv; _≅ᵀ_; csymᵀ; natrec-zero; _⟶*_

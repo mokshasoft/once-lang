@@ -16,7 +16,7 @@
 module DirectedHoTT.Examples.SigBuild where
 open import DirectedHoTT.Prelude using ( ⊥ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
-open import DirectedHoTT.Spec.Syntax using ( ε; vz )
+open import DirectedHoTT.Spec.Scope using ( ε; vz )
 open import DirectedHoTT.Spec.Annotated using ( ATm; base )
 open import DirectedHoTT.Algorithm.Surface
 open import DirectedHoTT.Metatheory.Signature using ( WfSig; consistencyˢ )

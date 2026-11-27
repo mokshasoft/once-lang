@@ -38,6 +38,7 @@ module DirectedHoTT.Examples.Knot.Exact (𝒮 : Defs) (wf : WfK 𝒮) (core : Co
 
 
 open import DirectedHoTT.Prelude using ( _≡_; Σ; _,_; _×_ )
+open import DirectedHoTT.Spec.Scope
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
 open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮)
 -- ★ the ENCODED judgement is the one at the bound 𝓃 (PLAN-REF K4); the

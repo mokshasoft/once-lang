@@ -42,7 +42,8 @@ module DirectedHoTT.Examples.Agree where
 import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 open import DirectedHoTT.Prelude using ( _≡_; refl )
-open import DirectedHoTT.Spec.Syntax using ( Cx; _∙; RTy; RTm; U; Nat )
+open import DirectedHoTT.Spec.Scope using ( Cx; _∙ )
+open import DirectedHoTT.Spec.Syntax using ( RTy; RTm; U; Nat )
 open Lib0.Spec-Typing using ( _⊢_∷_; _⊢ty_ )
 open Lib0.Lib-Amrec using ( aStepT; module AmTΠ )
 -- ⚠ the primed forms moved to `…LibAmrecRen` (2026-08-21) — keeping them in

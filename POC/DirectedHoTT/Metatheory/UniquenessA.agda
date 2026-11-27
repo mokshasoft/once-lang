@@ -26,6 +26,7 @@
 
 {-# OPTIONS --safe #-}
 open import DirectedHoTT.Prelude using ( _≡_; refl; sym; cong; subst; Σ; _,_; _×_; inj₁; inj₂ )
+open import DirectedHoTT.Spec.Scope
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Annotated
 open import DirectedHoTT.Spec.Signature using ( Sig )

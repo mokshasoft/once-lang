@@ -12,7 +12,7 @@ module DirectedHoTT.Examples.SigCoreEval where
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import Agda.Builtin.List using ( List; []; _∷_ )
 open import Agda.Builtin.Bool using ( Bool; true; false )
-open import DirectedHoTT.Spec.Syntax using ( ε; _∙; vz; vs )
+open import DirectedHoTT.Spec.Scope using ( ε; _∙; vz; vs )
 open import DirectedHoTT.Spec.Signature using ( Sig; kernel )
 import DirectedHoTT.Spec.Syntax as R
 open import DirectedHoTT.Prelude using ( _,_ )

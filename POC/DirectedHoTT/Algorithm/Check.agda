@@ -46,6 +46,7 @@ open import DirectedHoTT.Prelude using ( _≡_; refl; Σ; _,_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import Agda.Builtin.Maybe using ( Maybe; just; nothing )
 open import Agda.Builtin.Bool using ( Bool; true; false )
+open import DirectedHoTT.Spec.Scope
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing 𝒮 n
 open import DirectedHoTT.Metatheory.RedCong 𝒮

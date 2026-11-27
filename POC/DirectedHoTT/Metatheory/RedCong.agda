@@ -40,22 +40,15 @@ module DirectedHoTT.Metatheory.RedCong (𝒮 : Defs) where
 open import DirectedHoTT.Prelude
   using ( _≡_; refl; sym; trans; subst; cong; cong₂; Σ; _,_; _×_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
+open import DirectedHoTT.Spec.Scope using ( Cx; ε; _∙; Var; vz; vs )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; Var; vz; vs; RTm; var; lam; app; pair; fst; snd; absurd
-        ; ordtr; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap; ⌜Id⌝; idrefl; jsub
-        ; unit; nzero; nsuc; natrec; natrec-cong₃; ⌜Nat⌝; ⌜Unit⌝; subTm-subTm
-        ; ⌜Hom⌝-cong₃; tr-cong₃; ap-cong₃; ⌜Id⌝-cong₃; jsub-cong₃; Ren; extR
-        ; renTm; renTm-renTm; renTm-cong; Sub; extS; subTm; renTm-subTm
-        ; subTm-renTm; subTm-cong; _ᵣ∘ₛ_; _ₛ∘ᵣ_; _∘ᵣ_; Desc; dι; dρ; con; IMu
-        ; ielim; ⌜IMu⌝; εwkTm; RTy; El; Π; Σ'; Hom; Id; DIh; ⌜Fin⌝; dσ; dpay
-        ; dih; fzero; fsuc; fcase; fcase0; psplit; cong₄; cong₃
-        ; ref; εwkTm-ren )
+  using ( RTm; var; lam; app; pair; fst; snd; absurd; ordtr; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap; ⌜Id⌝; idrefl; jsub; unit; nzero; nsuc; natrec; natrec-cong₃; ⌜Nat⌝; ⌜Unit⌝; subTm-subTm; ⌜Hom⌝-cong₃; tr-cong₃; ap-cong₃; ⌜Id⌝-cong₃; jsub-cong₃; Ren; extR; renTm; renTm-renTm; renTm-cong; Sub; extS; subTm; renTm-subTm; subTm-renTm; subTm-cong; _ᵣ∘ₛ_; _ₛ∘ᵣ_; _∘ᵣ_; Desc; dι; dρ; con; IMu; ielim; ⌜IMu⌝; εwkTm; RTy; El; Π; Σ'; Hom; Id; DIh; ⌜Fin⌝; dσ; dpay; dih; fzero; fsuc; fcase; fcase0; psplit; cong₄; cong₃; ref; εwkTm-ren )
 open import DirectedHoTT.Spec.Variance
   using ( 𝔹; true; false; pw?; stkC?; stkA?; pwBody; pwShift; pw?-ren
         ; stkC?-ren; stkA?-ren; pwBody-ren; pw?-sub; stkC?-sub; stkA?-sub
         ; pwBody-sub; pw⊥stk; pw⊥stkA; stkC?→stkA? )
 open import DirectedHoTT.Spec.Reduction 𝒮
-  using ( _⟶_; β; βfst; βsnd; ξ-lam; ξ-appˡ; ξ-appʳ; ξ-pairˡ; ξ-pairʳ
+  using ( ⟶head; ⟶cong; _⟶_; β; βfst; βsnd; ξ-lam; ξ-appˡ; ξ-appʳ; ξ-pairˡ; ξ-pairʳ
         ; ξ-absurdᶜ; ξ-absurdᵉ; ordtr-z; ordtr-szz; ordtr-ssz; ordtr-szs
         ; ordtr-sss; ξ-ordtrᵃ; ξ-ordtrᵗ; ξ-ordtrᵘ; ξ-ordtrᵖ; ξ-ordtrq; ξ-fst
         ; ξ-snd; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ; tr-J-base; tr-J-Σ; tr-J-Id
@@ -709,7 +702,8 @@ stkA?-red {C = absurd _ _} _ ()
 stkA?-red {C = ordtr _ _ _ _ _} _ ()
 stkA?-red {C = fst _} _ ()
 stkA?-red {C = snd _} _ ()
-stkA?-red {C = ⌜base⌝} () _
+stkA?-red {C = ⌜base⌝} (⟶head ()) _
+stkA?-red {C = ⌜base⌝} (⟶cong ()) _
 stkA?-red {C = ⌜Π⌝ _ _} _ ()
 stkA?-red {C = hrefl _ _} _ ()
 stkA?-red {C = tr _ _ _} _ ()
@@ -732,8 +726,10 @@ stkA?-red {C = fsuc _} _ ()
 stkA?-red {C = fcase _ _ _} _ ()
 stkA?-red {C = fcase0 _} _ ()
 stkA?-red {C = psplit _ _} _ ()
-stkA?-red {C = ⌜Nat⌝} () _
-stkA?-red {C = ⌜Unit⌝} () _
+stkA?-red {C = ⌜Nat⌝} (⟶head ()) _
+stkA?-red {C = ⌜Nat⌝} (⟶cong ()) _
+stkA?-red {C = ⌜Unit⌝} (⟶head ()) _
+stkA?-red {C = ⌜Unit⌝} (⟶cong ()) _
 stkA?-red (ξ-⌜IMu⌝ᴵ r) h = refl
 stkA?-red (ξ-⌜IMu⌝ᴰ r) h = refl
 stkA?-red (ξ-⌜IMu⌝ⁱ r) h = refl
@@ -759,7 +755,8 @@ stkC?-red {C = absurd _ _} _ ()
 stkC?-red {C = ordtr _ _ _ _ _} _ ()
 stkC?-red {C = fst _} _ ()
 stkC?-red {C = snd _} _ ()
-stkC?-red {C = ⌜base⌝} () _
+stkC?-red {C = ⌜base⌝} (⟶head ()) _
+stkC?-red {C = ⌜base⌝} (⟶cong ()) _
 stkC?-red {C = ⌜Π⌝ _ _} _ ()
 stkC?-red {C = hrefl _ _} _ ()
 stkC?-red {C = tr _ _ _} _ ()
@@ -783,7 +780,8 @@ stkC?-red {C = fcase _ _ _} _ ()
 stkC?-red {C = fcase0 _} _ ()
 stkC?-red {C = psplit _ _} _ ()
 stkC?-red {C = ⌜Nat⌝} _ ()
-stkC?-red {C = ⌜Unit⌝} () _
+stkC?-red {C = ⌜Unit⌝} (⟶head ()) _
+stkC?-red {C = ⌜Unit⌝} (⟶cong ()) _
 stkC?-red (ξ-⌜IMu⌝ᴵ r) h = refl
 stkC?-red (ξ-⌜IMu⌝ᴰ r) h = refl
 stkC?-red (ξ-⌜IMu⌝ⁱ r) h = refl

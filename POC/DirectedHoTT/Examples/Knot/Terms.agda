@@ -17,6 +17,7 @@ open import DirectedHoTT.Spec.Base hiding ( _,,_; _×_ )
 module DirectedHoTT.Examples.Knot.Terms (𝒮 : Defs) (wf : WfK 𝒮) where
 
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
+open import DirectedHoTT.Spec.Scope
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮)
 open import DirectedHoTT.Lib.NatCode 𝒮 (Defs.size 𝒮) using ( toI; fromI; ⊢isuc )

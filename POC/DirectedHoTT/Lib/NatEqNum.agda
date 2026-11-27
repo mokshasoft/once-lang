@@ -40,7 +40,8 @@ module DirectedHoTT.Lib.NatEqNum (𝒮 : Defs) (n : ℕ) where
 
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Prelude using ( _≡_; refl; cong; cong₂; trans )
-open import DirectedHoTT.Spec.Syntax using ( Cx; RTm )
+open import DirectedHoTT.Spec.Scope using ( Cx )
+open import DirectedHoTT.Spec.Syntax using ( RTm )
 open import DirectedHoTT.Spec.Typing 𝒮 n
   using ( _⟶*_; done; step; natrec-zero; natrec-suc )
 open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( ⟶*-natrecⁿ; ⟶*-natrecᶻ )

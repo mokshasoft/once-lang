@@ -14,7 +14,8 @@ module DirectedHoTT.Examples.NbEKDTest where
 open import DirectedHoTT.Prelude using ( _≡_; refl; sym )
 open import Agda.Builtin.Bool using ( Bool; true; false )
 open import Agda.Builtin.List using ( List; []; _∷_ )
-open import DirectedHoTT.Spec.Syntax using ( ε; ∅ᴷ )
+open import DirectedHoTT.Spec.Scope using ( ε )
+open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 import DirectedHoTT.Spec.Syntax as R
 open import DirectedHoTT.Examples.Sig0 using ( wf₀; ok₀ )
 -- the Lib's terms carry no references: read at the empty signature

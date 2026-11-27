@@ -12,7 +12,7 @@ module tmp.GenSyn where
 open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; cong )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import Agda.Builtin.List using ( List; []; _∷_ )
-open import DirectedHoTT.Spec.Syntax using ( Cx; ε; _∙; Var; vz; vs )
+open import DirectedHoTT.Spec.Scope using ( Cx; ε; _∙; Var; vz; vs )
 
 ------------------------------------------------------------------------
 -- Binding signatures

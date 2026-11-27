@@ -18,6 +18,7 @@ module DirectedHoTT.Examples.Knot.LookupAgree (𝒮 : Defs) (wf : WfK 𝒮) wher
 
 
 open import DirectedHoTT.Prelude using ( Σ; _,_ )
+open import DirectedHoTT.Spec.Scope
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮)
 open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( red→≅ᵀ; stepᵀ; ⟶ᵀ*-Idʳ )

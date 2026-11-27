@@ -26,6 +26,7 @@ module DirectedHoTT.Algorithm.ConvLazyNbE (𝒮 : Defs) (tbl : Tbl) (tok : TO.Tb
 open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; Σ; _,_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import Agda.Builtin.Maybe using ( Maybe; just; nothing )
+open import DirectedHoTT.Spec.Scope
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Reduction 𝒮
 open import DirectedHoTT.Algorithm.ConvLazy 𝒮 using ( cong≅; cong≅ᵗ; cong≅ᵀ )

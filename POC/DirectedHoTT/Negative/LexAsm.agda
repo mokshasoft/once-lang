@@ -21,12 +21,9 @@
 open import DirectedHoTT.Spec.Base using ( Ctx; _▹_; here; nrs; single; there; wk-single; ⌊_⌋ )
 module DirectedHoTT.Negative.LexAsm where
 open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; cong; subst )
+open import DirectedHoTT.Spec.Scope using ( Cx; ε; _∙; Var; vz; vs )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; Var; vz; vs
-        ; RTy; El; Hom; Nat
-        ; RTm; var; nzero; nsuc; natrec; lam; app
-        ; Π; renTy; subTy; renTm; subTm; extS
-        ; subTm-renTm; subTm-subTm; subTm-id )
+  using ( RTy; El; Hom; Nat; RTm; var; nzero; nsuc; natrec; lam; app; Π; renTy; subTy; renTm; subTm; extS; subTm-renTm; subTm-subTm; subTm-id )
 open import DirectedHoTT.Spec.Typing
   using ( _⊢_∷_; ⊢var; ⊢natrec; ⊢lam; ⊢app; ⊢nzero; ty-Nat )
 open import DirectedHoTT.Lib.Strong using ( ⊢le-refl; reflTm )

@@ -28,6 +28,7 @@ module DirectedHoTT.Examples.Knot.RefCon (𝒮 : Defs) (wf : WfK 𝒮) (core : C
 
 
 open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; cong )
+open import DirectedHoTT.Spec.Scope
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
 open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮)
 open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( red→≅ᵀ; ⟶ᵀ*-El; ⟶*-⌜Id⌝ʳ; ⟶*-natrecᶻ; ⟶*-dpayᶜ )

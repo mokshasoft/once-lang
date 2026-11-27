@@ -22,11 +22,9 @@ module DirectedHoTT.Examples.Nat where
 import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 open import DirectedHoTT.Prelude using ( _≡_; refl )
+open import DirectedHoTT.Spec.Scope using ( Cx; ε; _∙; Var; vz; vs )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; Var; vz; vs
-        ; RTy; base; U; El; Id; Unit; Nat
-        ; RTm; var; unit; nzero; nsuc; natrec; idrefl; jsub
-        ; subTm )
+  using ( RTy; base; U; El; Id; Unit; Nat; RTm; var; unit; nzero; nsuc; natrec; idrefl; jsub; subTm )
 -- ★ the PRIMITIVES now live in `…LibNat`; re-exported so every existing
 --   importer of this module keeps working unchanged.
 open Lib0.Lib-Nat using ( plusTm; ⊢plus )

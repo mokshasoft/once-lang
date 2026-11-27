@@ -62,11 +62,9 @@ module DirectedHoTT.Examples.AmrecInst where
 import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 open import DirectedHoTT.Prelude using ( _≡_; refl; sym; subst )
+open import DirectedHoTT.Spec.Scope using ( Cx; ε; _∙; Var; vz; vs )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; Var; vz; vs
-        ; RTy; El; Nat; U; Hom
-        ; RTm; var; lam; app; nzero; nsuc; ⌜Nat⌝
-        ; Π; Sub; subTy; subTm; renTy; renTm )
+  using ( RTy; El; Nat; U; Hom; RTm; var; lam; app; nzero; nsuc; ⌜Nat⌝; Π; Sub; subTy; subTm; renTy; renTm )
 open Lib0.Spec-Typing
   using ( _⊢_∷_; ⊢var; ⊢conv; ⊢nzero; ⊢nsuc; ⊢lam; ⊢app; ⊢⌜Nat⌝; _⊢ty_; ty-El
         ; ty-Nat; ty-U; ty-Π; ty-Hom; _⟶_; β; _⟶ᵀ_; El-⌜Nat⌝; ξ-El; _≅ᵀ_

@@ -42,6 +42,7 @@ module DirectedHoTT.Examples.WkFin where
 import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 open import DirectedHoTT.Prelude using ( cong )
+open import DirectedHoTT.Spec.Scope
 open import DirectedHoTT.Spec.Syntax
 open Lib0.Spec-Typing
 open Lib0.Metatheory-TySub using ( ⊢-cast; wk-cancel-tm )

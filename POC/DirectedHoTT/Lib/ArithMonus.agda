@@ -34,12 +34,9 @@ open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Base using ( Ctx; _▹_; here; nrs; single; there; wk-single; ⌊_⌋; ◇ )
 module DirectedHoTT.Lib.ArithMonus (𝒮 : Defs) (n : ℕ) where
 open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; cong; cong₂ )
+open import DirectedHoTT.Spec.Scope using ( Cx; ε; _∙; vz; vs )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; vz; vs
-        ; RTy; Hom; Nat; El; Π; base
-        ; RTm; var; nzero; nsuc; natrec; ordtr; unit; lam; app; absurd
-        ; pair; snd
-        ; renTm; subTy; subTm; Sub; extS )
+  using ( RTy; Hom; Nat; El; Π; base; RTm; var; nzero; nsuc; natrec; ordtr; unit; lam; app; absurd; pair; snd; renTm; subTy; subTm; Sub; extS )
 import DirectedHoTT.Spec.Typing 𝒮 n as ᴵTyping
 open ᴵTyping using ( _⊢_∷_; _⊢ty_; ⊢var; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec; ⊢ordtr; ty-Nat
         ; ty-Hom; _≅ᵀ_; csymᵀ; Hom-Nat-ss; Hom-Nat-sz; ⊢absurd; _⟶_; _⟶*_

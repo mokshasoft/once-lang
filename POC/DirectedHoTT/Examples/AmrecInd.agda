@@ -44,8 +44,9 @@ open import DirectedHoTT.Spec.Base using ( Ctx; _▹_; ⌊_⌋ )
 module DirectedHoTT.Examples.AmrecInd where
 import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
+open import DirectedHoTT.Spec.Scope using ( Cx; _∙ )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; _∙; RTy; RTm; El; U; Nat; unit; ⌜Unit⌝ )
+  using ( RTy; RTm; El; U; Nat; unit; ⌜Unit⌝ )
 open Lib0.Spec-Typing
   using ( _⊢_∷_; _⊢ty_; ⊢unit; ⊢conv; ⊢⌜Unit⌝; csymᵀ; credᵀ; El-⌜Unit⌝ )
 open Lib0.Lib-Amrec

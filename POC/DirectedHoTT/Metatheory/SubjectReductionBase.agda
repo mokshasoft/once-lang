@@ -38,17 +38,9 @@ open import DirectedHoTT.Spec.Base using ( iinst; single; single2; swp; wk-singl
 module DirectedHoTT.Metatheory.SubjectReductionBase (𝒮 : Defs) where
 open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; subst; cong; cong₂ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
+open import DirectedHoTT.Spec.Scope using ( Cx; ε; _∙; Var; vz; vs )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; Var; vz; vs; RTy; base; U; Π; Σ'; El; Hom; RTm; var; lam
-        ; app; ⌜Π⌝; ⌜Hom⌝; hrefl; tr; ap; ⌜Id⌝; idrefl; jsub; nzero; nsuc
-        ; natrec; natrec-cong₃; ⌜Nat⌝; ⌜Unit⌝; ⌜Hom⌝-cong₃; tr-cong₃; ap-cong₃
-        ; ⌜Id⌝-cong₃; jsub-cong₃; Ren; extR; Sub; subTy; subTm; extS; _∘ₛ_
-        ; _ₛ∘ᵣ_; _ᵣ∘ₛ_; renTm; subTm-subTm; subTm-cong; subTm-renTm; subTm-id
-        ; renTm-subTm; renTm-renTm; renTm-cong; Desc; con; IMu; ielim; ⌜IMu⌝
-        ; εwkTm; ⌜Σ⌝; ⌜Fin⌝; dι; dσ; dρ; dpay; dih; fzero; fsuc; fcase; fcase0
-        ; psplit; DIh; Fin; pair; fst; snd; unit; renTy; subTy-subTy
-        ; subTy-cong; subTy-renTy; renTy-subTy; subTy-id; cong₄; cong₃
-        ; ref; εwkTm-sub )
+  using ( RTy; base; U; Π; Σ'; El; Hom; RTm; var; lam; app; ⌜Π⌝; ⌜Hom⌝; hrefl; tr; ap; ⌜Id⌝; idrefl; jsub; nzero; nsuc; natrec; natrec-cong₃; ⌜Nat⌝; ⌜Unit⌝; ⌜Hom⌝-cong₃; tr-cong₃; ap-cong₃; ⌜Id⌝-cong₃; jsub-cong₃; Ren; extR; Sub; subTy; subTm; extS; _∘ₛ_; _ₛ∘ᵣ_; _ᵣ∘ₛ_; renTm; subTm-subTm; subTm-cong; subTm-renTm; subTm-id; renTm-subTm; renTm-renTm; renTm-cong; Desc; con; IMu; ielim; ⌜IMu⌝; εwkTm; ⌜Σ⌝; ⌜Fin⌝; dι; dσ; dρ; dpay; dih; fzero; fsuc; fcase; fcase0; psplit; DIh; Fin; pair; fst; snd; unit; renTy; subTy-subTy; subTy-cong; subTy-renTy; renTy-subTy; subTy-id; cong₄; cong₃; ref; εwkTm-sub )
 open import DirectedHoTT.Spec.Variance
   using ( ren-as-sub )
 open import DirectedHoTT.Spec.Variance

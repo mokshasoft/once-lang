@@ -27,6 +27,7 @@ module DirectedHoTT.Examples.Knot.Ref (𝒮 : Defs) (wf : WfK 𝒮) where
 
 
 open import DirectedHoTT.Prelude using ( _≡_; trans; cong; cong₂ )
+open import DirectedHoTT.Spec.Scope
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
 open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮)
 open import DirectedHoTT.Lib.Sugar 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf) using ( []; _∷_; tag; lt-z; lt-s; AllD; []ᵈ; _∷ᵈ_; _,ₚ_ )

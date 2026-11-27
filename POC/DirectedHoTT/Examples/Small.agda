@@ -32,10 +32,9 @@ module DirectedHoTT.Examples.Small where
 import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 open import DirectedHoTT.Prelude using ( _≡_; refl; ⊥ )
+open import DirectedHoTT.Spec.Scope using ( Cx; ε; _∙ )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; RTy; base; U; El; Hom; Unit; Nat
-        ; RTm; ⌜Hom⌝; ⌜Nat⌝; ⌜Unit⌝; absurd
-        ; unit; nzero; nsuc )
+  using ( RTy; base; U; El; Hom; Unit; Nat; RTm; ⌜Hom⌝; ⌜Nat⌝; ⌜Unit⌝; absurd; unit; nzero; nsuc )
 open import DirectedHoTT.Spec.Variance using ( NoNatC )
 open Lib0.Spec-Typing
   using ( _⟶ᵀ_; El-⌜Nat⌝; El-⌜Unit⌝; El-⌜Hom⌝; ξ-Homᵀ; Hom-Nat-z; Hom-Nat-sz

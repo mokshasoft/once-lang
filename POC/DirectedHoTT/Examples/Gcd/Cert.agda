@@ -34,12 +34,9 @@ module DirectedHoTT.Examples.Gcd.Cert where
 import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 open import DirectedHoTT.Prelude using ( _≡_; refl; trans; cong; cong₂; sym; subst )
+open import DirectedHoTT.Spec.Scope using ( Cx; ε; _∙; vz; vs )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; vz; vs
-        ; RTy; El; Hom; Nat; Π
-        ; RTm; var; nzero; nsuc; natrec; lam; app; pair; fst; snd; ⌜Nat⌝
-        ; Sub; subTm; subTy; extS; renTm; _∘ₛ_
-        ; subTy-subTy; subTy-cong; subTm-subTm )
+  using ( RTy; El; Hom; Nat; Π; RTm; var; nzero; nsuc; natrec; lam; app; pair; fst; snd; ⌜Nat⌝; Sub; subTm; subTy; extS; renTm; _∘ₛ_; subTy-subTy; subTy-cong; subTm-subTm )
 open Lib0.Spec-Typing
   using ( _⊢_∷_; _⊢ty_; ⊢var; ⊢natrec; ⊢nzero; ⊢nsuc; ⊢conv; csymᵀ; _⟶*_; ⊢fst
         ; ⊢snd; ⊢pair; ty-Nat )

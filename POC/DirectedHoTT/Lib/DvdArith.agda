@@ -32,13 +32,9 @@ open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Base using ( Ctx; _▹_; here; nrs; single; there; wk-single; ⌊_⌋ )
 module DirectedHoTT.Lib.DvdArith (𝒮 : Defs) (n : ℕ) where
 open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; cong; cong₂; subst )
+open import DirectedHoTT.Spec.Scope using ( Cx; _∙; vz; vs )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; _∙; vz; vs
-        ; RTy; El; Id; Nat; U; Unit; base; Π; lam; app; ⌜Unit⌝; ⌜base⌝; unit
-        ; ⌜Σ⌝; Sub
-        ; RTm; var; nzero; nsuc; natrec; idrefl; jsub; ⌜Id⌝; ⌜Nat⌝
-        ; pair; fst; snd; absurd
-        ; subTy; subTm; renTy; renTm; Ren; extS; extR )
+  using ( RTy; El; Id; Nat; U; Unit; base; Π; lam; app; ⌜Unit⌝; ⌜base⌝; unit; ⌜Σ⌝; Sub; RTm; var; nzero; nsuc; natrec; idrefl; jsub; ⌜Id⌝; ⌜Nat⌝; pair; fst; snd; absurd; subTy; subTm; renTy; renTm; Ren; extS; extR )
 open import DirectedHoTT.Spec.Typing 𝒮 n
   using ( _⊢_∷_; _⊢ty_; ⊢var; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec; ⊢idrefl; ⊢jsub
         ; ⊢⌜Id⌝; ⊢⌜Nat⌝; ty-Id; ty-El; ty-Nat; ty-U; ty-Π; ⊢⌜Unit⌝; ⊢⌜base⌝

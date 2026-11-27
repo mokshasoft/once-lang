@@ -26,6 +26,7 @@ module DirectedHoTT.Examples.Knot.PredsDecode (𝒮 : Defs) (wf : WfK 𝒮) (cor
 
 open import DirectedHoTT.Prelude using ( _≡_; refl; Σ; _,_; _×_; ⊥; ⊥-elim )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
+open import DirectedHoTT.Spec.Scope
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮)
 open import DirectedHoTT.Spec.Variance using ( 𝔹; true; false; stkA?; stkC?; flat?; NoNatC; nnc-base; nnc-Unit; nnc-Fin; nnc-Σ; nnc-Id; nnc-Π; nnc-Hom )

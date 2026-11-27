@@ -25,6 +25,7 @@ module DirectedHoTT.Lib.PatDecode (𝒮 : Defs) (wf : WfK 𝒮) where
 
 open import DirectedHoTT.Prelude using ( _≡_; refl; ⊥-elim )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
+open import DirectedHoTT.Spec.Scope
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
 open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮)
 open import DirectedHoTT.Metatheory.LogicalRelation 𝒮 using ( IsNormal )

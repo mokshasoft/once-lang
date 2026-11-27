@@ -24,6 +24,7 @@ module DirectedHoTT.Examples.Knot.SubEnv (𝒮 : Defs) (wf : WfK 𝒮) where
 
 open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; cong; cong₂ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
+open import DirectedHoTT.Spec.Scope
 open import DirectedHoTT.Spec.Syntax
 import DirectedHoTT.Lib.NatCode 𝒮 (Defs.size 𝒮) as ᴵNatCode
 open ᴵNatCode using ( fromI )

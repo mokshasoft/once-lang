@@ -26,6 +26,7 @@ open import Agda.Builtin.Maybe using ( Maybe; just; nothing )
 _∧_ : Bool → Bool → Bool
 true  ∧ b = b
 false ∧ b = false
+open import DirectedHoTT.Spec.Scope
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Variance using ( pwBody; pwShift )
 open import DirectedHoTT.Spec.Base using ( single )

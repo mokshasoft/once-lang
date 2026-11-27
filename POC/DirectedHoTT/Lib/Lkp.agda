@@ -43,7 +43,8 @@ open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; _<ˢ?_ )
 open import DirectedHoTT.Spec.Base using ( Ctx; _∋_∷_; _▹_; here; there; ⌊_⌋ )
 module DirectedHoTT.Lib.Lkp (𝒮 : Defs) where
 
-open import DirectedHoTT.Spec.Syntax using ( Cx; Var; vz; vs; RTy; renTy )
+open import DirectedHoTT.Spec.Scope using ( Cx; Var; vz; vs )
+open import DirectedHoTT.Spec.Syntax using ( RTy; renTy )
 
 -- the type at a variable, COMPUTED
 lkp : (Γ : Ctx) (x : Var ⌊ Γ ⌋) → RTy ⌊ Γ ⌋
@@ -62,7 +63,7 @@ lkp (Γ ▹ B) (vs x) = renTy vs (lkp Γ x)
 ------------------------------------------------------------------------
 
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
-open import DirectedHoTT.Spec.Syntax using ( _∙ )
+open import DirectedHoTT.Spec.Scope using ( _∙ )
 
 _+∙_ : Cx → ℕ → Cx
 Γ +∙ zero  = Γ

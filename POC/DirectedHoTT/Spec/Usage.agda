@@ -23,7 +23,7 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Spec.Usage where
 open import DirectedHoTT.Prelude using ( _≡_; refl; cong; trans )
-open import DirectedHoTT.Spec.Syntax using ( Cx; ε; _∙; Var; vz; vs )
+open import DirectedHoTT.Spec.Scope using ( Cx; ε; _∙; Var; vz; vs )
 open import DirectedHoTT.Spec.Grade
 
 ------------------------------------------------------------------------

@@ -28,9 +28,9 @@ open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Base using ( Ctx; here; ⌊_⌋ )
 module DirectedHoTT.Lib.Id (𝒮 : Defs) (n : ℕ) where
 open import DirectedHoTT.Prelude using ( _≡_; refl; sym; cong )
+open import DirectedHoTT.Spec.Scope using ( Cx; vz; vs )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; RTm; El; U; var; vz; vs; jsub; Id; ⌜Id⌝; idrefl; ⌜Id⌝-cong₃
-        ; renTm )
+  using ( RTm; El; U; var; jsub; Id; ⌜Id⌝; idrefl; ⌜Id⌝-cong₃; renTm )
 open import DirectedHoTT.Spec.Typing 𝒮 n
   using ( _⊢_∷_; ⊢var; ⊢jsub; ⊢⌜Id⌝; ⊢idrefl; ⊢conv; csymᵀ; credᵀ; El-⌜Id⌝ )
 open import DirectedHoTT.Metatheory.TySub 𝒮 n using ( ⊢wk; ⊢-cast; wk-cancel-tm )

@@ -25,9 +25,9 @@ open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 open import DirectedHoTT.Examples.Gcd.Dvd public
 
 open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; cong; cong₂ )
+open import DirectedHoTT.Spec.Scope using ( Cx; _∙; vz; vs )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; _∙; vz; vs; RTy; RTm; El; Nat; Hom
-        ; var; nzero; nsuc; fst; snd; app; subTm; subTy )
+  using ( RTy; RTm; El; Nat; Hom; var; nzero; nsuc; fst; snd; app; subTm; subTy )
 open Lib0.Spec-Typing
   using ( _⊢_∷_; ⊢var; ⊢nzero; ⊢nsuc; ⊢lam; ⊢conv; csymᵀ; _⟶*_; step; done
         ; βfst; βsnd )

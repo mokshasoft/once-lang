@@ -28,8 +28,9 @@ open import DirectedHoTT.Spec.Base using ( Ctx; _▹_; here; there; ⌊_⌋; ◇
 module DirectedHoTT.Examples.AckKernel where
 import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
+open import DirectedHoTT.Spec.Scope using ( Cx; ε; _∙; vz; vs )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; RTy; Nat; RTm; var; vz; vs; nzero; nsuc; natrec; lam; app; Π )
+  using ( RTy; Nat; RTm; var; nzero; nsuc; natrec; lam; app; Π )
 open Lib0.Spec-Typing
   using ( _⊢_∷_; ⊢var; ⊢nzero; ⊢nsuc; ⊢natrec; ⊢lam; ⊢app; ty-Nat; ty-Π )
 

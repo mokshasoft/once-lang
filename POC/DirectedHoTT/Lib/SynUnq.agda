@@ -33,6 +33,7 @@ module DirectedHoTT.Lib.SynUnq (𝒮 : Defs) (wf : WfK 𝒮) where
 
 open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; cong; cong₂; subst; Σ; _,_; _×_; ⊥; ⊥-elim; _⊎_; inj₁; inj₂ )
 open import Agda.Builtin.Nat using ( zero; suc; _+_ ) renaming ( Nat to ℕ )
+open import DirectedHoTT.Spec.Scope
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮)
 open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( ⟶ᵀ*-El; red→≅ᵀ; ⟶*-dpayᶜ )

@@ -22,7 +22,8 @@
 {-# OPTIONS --safe #-}
 open import DirectedHoTT.Spec.Base using ( Ctx; ⌊_⌋ )
 module DirectedHoTT.Negative.PairLex where
-open import DirectedHoTT.Spec.Syntax using ( Cx; RTm; RTy; Nat; ⌜Nat⌝ )
+open import DirectedHoTT.Spec.Scope using ( Cx )
+open import DirectedHoTT.Spec.Syntax using ( RTm; RTy; Nat; ⌜Nat⌝ )
 open import DirectedHoTT.Spec.Typing
   using ( _⊢_∷_; _⊢ty_; ⊢nsuc; ⊢⌜Nat⌝; ty-Nat; ty-Hom; ty-El; ty-Π )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )

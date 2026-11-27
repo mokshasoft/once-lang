@@ -22,9 +22,9 @@ open import DirectedHoTT.Spec.Base using ( Ctx; _▹_; here; single; wk-single; 
 module DirectedHoTT.Lib.Mul (𝒮 : Defs) (n : ℕ) where
 open import DirectedHoTT.Prelude
   using ( _≡_; refl; sym; trans; cong; cong₂; subst )
+open import DirectedHoTT.Spec.Scope using ( Cx; _∙; vz )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; _∙; RTm; var; vz; nzero; nsuc; natrec; Nat; Sub; subTm
-        ; Ren; renTm; extS )
+  using ( RTm; var; nzero; nsuc; natrec; Nat; Sub; subTm; Ren; renTm; extS )
 import DirectedHoTT.Spec.Typing 𝒮 n as ᴵTyping
 open ᴵTyping using ( _⊢_∷_; ⊢var; ⊢nzero; ⊢natrec; ty-Nat; _⟶*_; done; step; natrec-zero
         ; natrec-suc )

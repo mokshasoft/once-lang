@@ -28,10 +28,9 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Negative.LexCMot where
 open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; cong )
+open import DirectedHoTT.Spec.Scope using ( Cx; _∙; vz; vs )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; _∙; vz; vs; Ren
-        ; RTy; El; Hom; Nat
-        ; RTm; var; Π; renTy; renTm )
+  using ( Ren; RTy; El; Hom; Nat; RTm; var; Π; renTy; renTm )
 open import DirectedHoTT.Negative.LexC
 
 -- ★ THE OUTER MOTIVE, as a combinator.  `lexAuxMot` is `Π Nat (auxBody …)`

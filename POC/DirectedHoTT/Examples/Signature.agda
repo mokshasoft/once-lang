@@ -24,7 +24,8 @@
 module DirectedHoTT.Examples.Signature where
 open import DirectedHoTT.Prelude using ( _≡_; refl; _,_; ⊤; tt; ⊥ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
-open import DirectedHoTT.Spec.Syntax using ( Cx; ε; vz; RTm; lam; app; nsuc; nzero; var; ⌜Nat⌝; Nat; El; ref; <-here; <-there )
+open import DirectedHoTT.Spec.Scope using ( Cx; ε; vz )
+open import DirectedHoTT.Spec.Syntax using ( RTm; lam; app; nsuc; nzero; var; ⌜Nat⌝; Nat; El; ref; <-here; <-there )
 open import DirectedHoTT.Spec.Annotated
 open import DirectedHoTT.Spec.Signature
 open import DirectedHoTT.Metatheory.Signature

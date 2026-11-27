@@ -19,7 +19,8 @@ module DirectedHoTT.Examples.ScopedDepth where
 import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 open import DirectedHoTT.Examples.Sig0 using ( wf₀; ok₀; refs₀; tbl₀; tok₀ )
-open import DirectedHoTT.Spec.Syntax using ( Cx; RTm; Nat; El; ⌜Nat⌝; ielim )
+open import DirectedHoTT.Spec.Scope using ( Cx )
+open import DirectedHoTT.Spec.Syntax using ( RTm; Nat; El; ⌜Nat⌝; ielim )
 open Lib0.Spec-Typing using ( _⊢_∷_; ty-Nat; ⊢⌜Nat⌝; ⊢ielim )
 open Lib0.Lib-Sugar using ( methₗ )
 open Lib0.Lib-TelFold using ( depthAlg; foldMs; ⊢foldE )

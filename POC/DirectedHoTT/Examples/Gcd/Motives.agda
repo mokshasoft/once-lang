@@ -27,7 +27,8 @@ module DirectedHoTT.Examples.Gcd.Motives where
 import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 open import DirectedHoTT.Prelude using ( _≡_; refl )
-open import DirectedHoTT.Spec.Syntax using ( Cx; RTm; El; Nat; nzero; nsuc )
+open import DirectedHoTT.Spec.Scope using ( Cx )
+open import DirectedHoTT.Spec.Syntax using ( RTm; El; Nat; nzero; nsuc )
 open Lib0.Spec-Typing
   using ( _⊢_∷_; ⊢conv; csymᵀ )
 open Lib0.Metatheory-RedCong using ( red→≅ᵀ )

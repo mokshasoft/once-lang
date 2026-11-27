@@ -22,6 +22,7 @@ open import DirectedHoTT.Spec.Base hiding ( _,,_; _×_ )
 module DirectedHoTT.Metatheory.NormalShape (𝒮 : Defs) where
 
 open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; Σ; _,_; ⊥-elim )
+open import DirectedHoTT.Spec.Scope
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Reduction 𝒮
 open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( _⟶ᵀ*_; doneᵀ; stepᵀ )

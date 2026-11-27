@@ -33,10 +33,9 @@ module DirectedHoTT.Examples.Gcd.IndG where
 import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; cong; cong₂ )
+open import DirectedHoTT.Spec.Scope using ( Cx; _∙; vz; vs )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; _∙; vz; vs; RTy; RTm; El; U; Nat; Hom; Π
-        ; var; fst; snd; app; nzero; nsuc; natrec; ⌜Nat⌝
-        ; subTm; subTy; renTm; renTy; Ren; Sub; extR; extS )
+  using ( RTy; RTm; El; U; Nat; Hom; Π; var; fst; snd; app; nzero; nsuc; natrec; ⌜Nat⌝; subTm; subTy; renTm; renTy; Ren; Sub; extR; extS )
 open Lib0.Spec-Typing using ( _⊢_∷_; _⊢ty_; ⊢var; ⊢fst; ⊢snd; ⊢nzero; ⊢nsuc; βfst; βsnd; ⊢lam
         ; ⊢app; ty-Hom; ty-Nat; ty-Π; ty-El; ⊢⌜Nat⌝; ⊢conv; _≅ᵀ_; csymᵀ; _⟶*_
         ; step; done; natrec-suc; ⊢pair; ctrnᵀ )

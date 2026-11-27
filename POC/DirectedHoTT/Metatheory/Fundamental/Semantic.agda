@@ -24,17 +24,9 @@ open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
 open import DirectedHoTT.Prelude
   using ( _≡_; refl; sym; trans; cong; cong₂; subst; Σ; _,_; _×_; ⊥; ⊥-elim )
 
+open import DirectedHoTT.Spec.Scope using ( Cx; ε; _∙; Var; vz; vs )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; Var; vz; vs; RTy; base; U; Π; Σ'; El; Hom; Id; Hom-cong₃
-        ; Id-cong₃; ⌜Hom⌝-cong₃; tr-cong₃; ap-cong₃; ⌜Id⌝-cong₃; jsub-cong₃
-        ; RTm; var; lam; app; pair; fst; snd; absurd; ordtr; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝
-        ; ⌜Hom⌝; hrefl; tr; ap; ⌜Id⌝; idrefl; jsub; Unit; Nat; unit; nzero
-        ; nsuc; natrec; natrec-cong₃; ⌜Nat⌝; ⌜Unit⌝; Desc; Ren; extR; renTy
-        ; renTm; Sub; subTy; subTm; extS; idₛ; _∘ᵣ_; subTy-cong; subTm-cong
-        ; subTy-renTy; subTm-renTm; renTy-subTy; renTm-subTm; subTy-subTy
-        ; subTm-subTm; subTy-id; subTm-id; renTm-renTm; renTm-cong; IMu; ielim
-        ; ⌜IMu⌝; εwkTm; DIh; Fin; con; ⌜Fin⌝; dι; dσ; dρ; dpay; dih; fzero
-        ; fsuc; fcase; fcase0; psplit )
+  using ( RTy; base; U; Π; Σ'; El; Hom; Id; Hom-cong₃; Id-cong₃; ⌜Hom⌝-cong₃; tr-cong₃; ap-cong₃; ⌜Id⌝-cong₃; jsub-cong₃; RTm; var; lam; app; pair; fst; snd; absurd; ordtr; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap; ⌜Id⌝; idrefl; jsub; Unit; Nat; unit; nzero; nsuc; natrec; natrec-cong₃; ⌜Nat⌝; ⌜Unit⌝; Desc; Ren; extR; renTy; renTm; Sub; subTy; subTm; extS; idₛ; _∘ᵣ_; subTy-cong; subTm-cong; subTy-renTy; subTm-renTm; renTy-subTy; renTm-subTm; subTy-subTy; subTm-subTm; subTy-id; subTm-id; renTm-renTm; renTm-cong; IMu; ielim; ⌜IMu⌝; εwkTm; DIh; Fin; con; ⌜Fin⌝; dι; dσ; dρ; dpay; dih; fzero; fsuc; fcase; fcase0; psplit )
 open import DirectedHoTT.Spec.Reduction 𝒮
   using ( _⟶_; _⟶*_; done; step; β; βfst; βsnd; ξ-lam; ξ-appˡ; ξ-appʳ; ξ-pairˡ
         ; ξ-pairʳ; ξ-absurdᶜ; ξ-absurdᵉ; ordtr-z; ordtr-szz; ordtr-ssz
@@ -1661,7 +1653,8 @@ ne-nostk (ne-ordtr _) = refl
 ------------------------------------------------------------------------
 
 open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
-open import DirectedHoTT.Spec.Syntax using ( εwkTy; ref; Var; Cx )
+open import DirectedHoTT.Spec.Scope using ( Var; Cx )
+open import DirectedHoTT.Spec.Syntax using ( εwkTy; ref )
 
 RefsOK : ℕ → Set
 RefsOK m = ∀ {Ξ : Cx} {d} → d <ˢ m → Var Ξ → Rel (εwkTy {Ξ} (Defs.type 𝒮 d)) (ref d)

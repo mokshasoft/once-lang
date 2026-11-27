@@ -41,17 +41,9 @@ module DirectedHoTT.Metatheory.Confluence (𝒮 : Defs) where
 open import DirectedHoTT.Prelude
   using ( _≡_; refl; sym; trans; subst; cong; cong₂; Σ; _,_; _×_; ⊥; ⊥-elim; Dec; yes; no )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
+open import DirectedHoTT.Spec.Scope using ( Cx; ε; _∙; Var; vz; vs )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; Var; vz; vs; RTm; var; lam; app; pair; fst; snd; absurd
-        ; ordtr; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap; ⌜Id⌝; idrefl; jsub
-        ; unit; nzero; nsuc; natrec; natrec-cong₃; ⌜Nat⌝; ⌜Unit⌝; subTm-subTm
-        ; ⌜Hom⌝-cong₃; tr-cong₃; ap-cong₃; ⌜Id⌝-cong₃; jsub-cong₃; Ren; extR
-        ; renTm; renTm-renTm; renTm-cong; Sub; extS; subTm; renTm-subTm
-        ; subTm-renTm; subTm-cong; _ᵣ∘ₛ_; _ₛ∘ᵣ_; _∘ᵣ_; dι; dρ; con; IMu; ielim
-        ; ⌜IMu⌝; εwkTm; RTy; ⌜Fin⌝; dσ; dpay; dih; fzero; fsuc; fcase; fcase0
-        ; psplit; cong₄; cong₃
-        ; ref; εwkTm-ren; εwkTm-sub; Defs; _<ˢ_; _<ˢ?_
-        ; εsub )
+  using ( RTm; var; lam; app; pair; fst; snd; absurd; ordtr; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap; ⌜Id⌝; idrefl; jsub; unit; nzero; nsuc; natrec; natrec-cong₃; ⌜Nat⌝; ⌜Unit⌝; subTm-subTm; ⌜Hom⌝-cong₃; tr-cong₃; ap-cong₃; ⌜Id⌝-cong₃; jsub-cong₃; Ren; extR; renTm; renTm-renTm; renTm-cong; Sub; extS; subTm; renTm-subTm; subTm-renTm; subTm-cong; _ᵣ∘ₛ_; _ₛ∘ᵣ_; _∘ᵣ_; dι; dρ; con; IMu; ielim; ⌜IMu⌝; εwkTm; RTy; ⌜Fin⌝; dσ; dpay; dih; fzero; fsuc; fcase; fcase0; psplit; cong₄; cong₃; ref; εwkTm-ren; εwkTm-sub; Defs; _<ˢ_; _<ˢ?_; εsub )
 open import DirectedHoTT.Spec.Variance
   using ( 𝔹; true; false; pw?; stkC?; stkA?; pwBody; pwShift; pw?-ren
         ; stkC?-ren; stkA?-ren; pwBody-ren; pw?-sub; stkC?-sub; stkA?-sub

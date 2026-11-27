@@ -37,6 +37,7 @@ open ᴵLogicalRelation using ( stablecd? )
 open import DirectedHoTT.Prelude
   using ( _≡_; refl; sym; trans; cong; cong₂; subst; Σ; _,_; _×_; ⊤ )
 
+open import DirectedHoTT.Spec.Scope
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Reduction 𝒮
 import DirectedHoTT.Metatheory.RedCong 𝒮 as ᴵRedCong

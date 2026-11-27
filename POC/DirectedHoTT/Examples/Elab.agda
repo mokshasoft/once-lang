@@ -18,7 +18,7 @@
 module DirectedHoTT.Examples.Elab where
 open import DirectedHoTT.Prelude using ( ⊤; ⊥ )
 open import Agda.Builtin.Maybe using ( Maybe; just; nothing )
-open import DirectedHoTT.Spec.Syntax using ( vz; vs )
+open import DirectedHoTT.Spec.Scope using ( vz; vs )
 open import DirectedHoTT.Spec.Annotated using ( ATy; Π; Σ'; Nat; Unit; Fin )
 import DirectedHoTT.Spec.Annotated as AN
 open import DirectedHoTT.Algorithm.Surface
@@ -37,7 +37,7 @@ pattern v₀ = var vz
 private
   -- the annotated bodies of Σ₃, as δ hints for weak-head evaluation
   open import DirectedHoTT.Spec.Annotated as A using ( ATm )
-  open import DirectedHoTT.Spec.Syntax using ( ε )
+  open import DirectedHoTT.Spec.Scope using ( ε )
   open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
   hints : ℕ → ATm ε
   hints 0 = A.lam A.Nat (A.nsuc (A.var vz))

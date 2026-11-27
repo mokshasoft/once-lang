@@ -37,8 +37,9 @@ module DirectedHoTT.Lib.AmrecClosed (𝒮 : Defs) (wf : WfK 𝒮) where
 
 -- ★ PLAN-REF: at a well-formed signature, all its names
 
+open import DirectedHoTT.Spec.Scope using ( ε; _∙ )
 open import DirectedHoTT.Spec.Syntax
-  using ( ε; _∙; RTy; RTm; U; Nat; natrec; app; subTm; extS )
+  using ( RTy; RTm; U; Nat; natrec; app; subTm; extS )
 open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮)
   using ( _⊢_∷_; _⊢ty_; _⟶*_ )
 open import DirectedHoTT.Metatheory.TySub 𝒮 (Defs.size 𝒮) using ( ⊢[] )

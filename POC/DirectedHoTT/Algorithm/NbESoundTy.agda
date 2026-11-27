@@ -31,6 +31,7 @@ module DirectedHoTT.Algorithm.NbESoundTy (𝒮 : Defs) (tbl : Tbl) (tok : TO.Tbl
 open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; cong; cong₂; _×_; _,_; ⊤; tt )
 open import Agda.Builtin.Nat using ( zero; suc; _<_; _==_ ) renaming ( Nat to ℕ )
 open import Agda.Builtin.Bool using ( Bool; true; false )
+open import DirectedHoTT.Spec.Scope
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Reduction 𝒮
 open import DirectedHoTT.Metatheory.TySub.Red 𝒮 using ( wk-cancel; wk-cancel-tm; ⟶ᵀ-ren )

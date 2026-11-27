@@ -54,7 +54,7 @@ open import DirectedHoTT.Prelude
 open import Agda.Builtin.Nat using ( zero; suc; _==_ ) renaming ( Nat to ℕ )
 open import Agda.Builtin.Bool using ( Bool; true; false )
 open import Agda.Builtin.List using ( List; []; _∷_ )
-open import DirectedHoTT.Spec.Scope public
+open import DirectedHoTT.Spec.Scope using ( Cx; ε; _∙; Var; vz; vs )
 import DirectedHoTT.Spec.Bind as G
 open G using ( fld; fnat )
 

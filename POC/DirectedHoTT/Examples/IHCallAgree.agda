@@ -36,8 +36,9 @@ module DirectedHoTT.Examples.IHCallAgree where
 import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 open import DirectedHoTT.Prelude using ( _≡_; refl )
+open import DirectedHoTT.Spec.Scope using ( Cx; _∙; vz; vs )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; _∙; RTm; RTy; El; Id; var; vz; vs; fst; snd; app; ⌜Nat⌝ )
+  using ( RTm; RTy; El; Id; var; fst; snd; app; ⌜Nat⌝ )
 open Lib0.Lib-Wk using ( w )
 open Lib0.Lib-Pair using ( PairT )
 open Lib0.Lib-Rec using ( aIHTat'; rec1T' )

@@ -42,7 +42,7 @@
 module DirectedHoTT.Examples.SigCore where
 open import Agda.Builtin.Nat using ( zero; suc; _-_ ) renaming ( Nat to ℕ )
 open import Agda.Builtin.List using ( List; []; _∷_ )
-open import DirectedHoTT.Spec.Syntax using ( Cx; ε; _∙; vz; vs )
+open import DirectedHoTT.Spec.Scope using ( Cx; ε; _∙; vz; vs )
 open import DirectedHoTT.Metatheory.Signature using ( WfSig )
 open import DirectedHoTT.Algorithm.Surface
 open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )

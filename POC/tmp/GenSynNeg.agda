@@ -1,7 +1,7 @@
 {-# OPTIONS --safe #-}
 module tmp.GenSynNeg where
 open import DirectedHoTT.Prelude using ( _≡_; refl )
-open import DirectedHoTT.Spec.Syntax using ( Var; vz; vs; _∙; ε )
+open import DirectedHoTT.Spec.Scope using ( Var; vz; vs; _∙; ε )
 open import tmp.GenSyn
 open import tmp.GenSynFrag
 open Trav K

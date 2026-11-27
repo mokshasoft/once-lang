@@ -8,6 +8,7 @@
 {-# OPTIONS --safe #-}
 open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; cong; subst; Σ; _,_; _×_ )
 open import Agda.Builtin.Bool using ( Bool; true; false )
+open import DirectedHoTT.Spec.Scope
 open import DirectedHoTT.Spec.Syntax
 import DirectedHoTT.Spec.Bind as G
 open import tmp.RedGen KSig

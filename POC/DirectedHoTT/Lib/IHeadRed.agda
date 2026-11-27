@@ -50,7 +50,8 @@ open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
 import DirectedHoTT.Spec.Typing as Ty
 module DirectedHoTT.Lib.IHeadRed (𝒮 : Defs) (n : ℕ) (ok : Ty.EntriesOK 𝒮 n) where
 open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
-open import DirectedHoTT.Spec.Syntax using ( Cx; RTm; ielim; app; dih; pair )
+open import DirectedHoTT.Spec.Scope using ( Cx )
+open import DirectedHoTT.Spec.Syntax using ( RTm; ielim; app; dih; pair )
 open import DirectedHoTT.Spec.Typing 𝒮 n using ( _⟶*_ )
 -- ⚠ `_»_` is NOT imported: it is a LOCAL infix alias for `⟶*-trans`,
 --   redefined in 10+ Knot modules.  A library lemma must not depend

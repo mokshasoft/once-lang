@@ -27,6 +27,7 @@ module DirectedHoTT.Examples.Knot.JudgeDecodeTy (𝒮 : Defs) (wf : WfK 𝒮) (c
 
 open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; cong; cong₂; subst; Σ; _,_; _×_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
+open import DirectedHoTT.Spec.Scope
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮)
 -- ★ the ENCODED judgement is the one at the bound 𝓃 (PLAN-REF K4); the

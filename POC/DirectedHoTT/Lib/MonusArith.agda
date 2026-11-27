@@ -31,11 +31,9 @@ open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Base using ( Ctx; _▹_; here; nrs; single; there; wk-single; ⌊_⌋ )
 module DirectedHoTT.Lib.MonusArith (𝒮 : Defs) (n : ℕ) where
 open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; cong; cong₂ )
+open import DirectedHoTT.Spec.Scope using ( Cx; _∙; vz; vs )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; _∙; vz; vs
-        ; RTy; El; Id; Nat; U
-        ; RTm; var; nzero; nsuc; natrec; jsub; ⌜Id⌝; ⌜Nat⌝; pair; fst; snd
-        ; subTy; subTm; renTy; renTm; Ren; Sub; extS )
+  using ( RTy; El; Id; Nat; U; RTm; var; nzero; nsuc; natrec; jsub; ⌜Id⌝; ⌜Nat⌝; pair; fst; snd; subTy; subTm; renTy; renTm; Ren; Sub; extS )
 open import DirectedHoTT.Spec.Typing 𝒮 n
   using ( _⊢_∷_; _⊢ty_; ⊢var; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec; ⊢jsub; ⊢⌜Id⌝
         ; ⊢⌜Nat⌝; csymᵀ; ctrnᵀ; ξ-Idˡ; ξ-Idʳ; natrec-zero; natrec-suc; _⟶*_

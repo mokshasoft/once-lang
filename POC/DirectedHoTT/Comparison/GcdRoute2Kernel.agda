@@ -47,12 +47,9 @@
 open import DirectedHoTT.Spec.Base using ( Ctx; _▹_; here; nrs; single; there; ⌊_⌋; ◇ )
 module DirectedHoTT.Comparison.GcdRoute2Kernel where
 import DirectedHoTT.Examples.Lib0 as Lib0
+open import DirectedHoTT.Spec.Scope using ( Cx; ε; _∙; vz; vs )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; vz; vs
-        ; RTy; El; Hom; Nat; Π
-        ; RTm; var; nzero; nsuc; natrec; lam; app; absurd; ordtr
-        ; fst; snd; ⌜Nat⌝
-        ; renTy; renTm; subTy; subTm )
+  using ( RTy; El; Hom; Nat; Π; RTm; var; nzero; nsuc; natrec; lam; app; absurd; ordtr; fst; snd; ⌜Nat⌝; renTy; renTm; subTy; subTm )
 open Lib0.Spec-Typing
   using ( _⊢_∷_; _⊢ty_; ⊢var; ⊢nzero; ⊢nsuc; ⊢natrec; ⊢lam; ⊢app; ⊢fst; ⊢snd
         ; ⊢⌜Nat⌝; _⟶*_; done; step; β; ξ-appˡ; natrec-suc; ty-Nat; ty-Hom

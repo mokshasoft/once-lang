@@ -37,11 +37,9 @@
 open import DirectedHoTT.Spec.Base using ( Ctx; _▹_; here; nrs; single; there; ⌊_⌋; ◇ )
 module DirectedHoTT.Negative.LexPair where
 open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; cong )
+open import DirectedHoTT.Spec.Scope using ( Cx; ε; _∙; Var; vz; vs )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; Var; vz; vs
-        ; RTy; El; Hom; Nat; U; Σ'
-        ; RTm; var; nzero; nsuc; natrec; lam; app; pair; fst; snd; ⌜Nat⌝
-        ; Π; renTy; renTm; subTy; subTm )
+  using ( RTy; El; Hom; Nat; U; Σ'; RTm; var; nzero; nsuc; natrec; lam; app; pair; fst; snd; ⌜Nat⌝; Π; renTy; renTm; subTy; subTm )
 open import DirectedHoTT.Spec.Typing
   using ( _⊢_∷_; ⊢var; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec; ⊢lam; ⊢app; ⊢pair; ⊢fst
         ; ⊢snd; ⊢⌜Nat⌝; _⊢ty_; ty-Nat; ty-Hom; ty-El; ty-Π; ty-Σ; _≅ᵀ_; csymᵀ

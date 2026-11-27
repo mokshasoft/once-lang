@@ -70,14 +70,9 @@ open Lib0.Lib-Wk
         ; wᶠ-nrs; wᶠ²-single; nrs-wTy; ren-wᶠ; wᶠ-single; wᶠ¹-single )
 open Lib0.Lib-Rec using ( aIHT-ren )
 module W = Lib0.Lib-Wk
+open import DirectedHoTT.Spec.Scope using ( Cx; ε; _∙; Var; vz; vs )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; Var; vz; vs; Ren
-        ; RTy; El; Hom; Nat; U
-        ; RTm; var; nzero; nsuc; natrec; absurd; ordtr; lam; app
-        ; Π; renTy; renTm; subTy; subTm; Sub; extS; extR
-        ; subTy-renTy; subTy-id; subTm-renTm; subTm-id; subTm-cong
-        ; renTm-renTm; renTy-renTy; renTm-cong; renTy-cong; idₛ
-        ; renTy-subTy; renTm-subTm )
+  using ( Ren; RTy; El; Hom; Nat; U; RTm; var; nzero; nsuc; natrec; absurd; ordtr; lam; app; Π; renTy; renTm; subTy; subTm; Sub; extS; extR; subTy-renTy; subTy-id; subTm-renTm; subTm-id; subTm-cong; renTm-renTm; renTy-renTy; renTm-cong; renTy-cong; idₛ; renTy-subTy; renTm-subTm )
 open Lib0.Spec-Typing
   using ( _⊢_∷_; ⊢var; ⊢nzero; ⊢nsuc; ⊢natrec; _⟶*_; done; step; β
         ; natrec-zero; natrec-suc; ⊢lam; ⊢app; _⊢ty_; ty-Nat; ty-Hom; ty-El

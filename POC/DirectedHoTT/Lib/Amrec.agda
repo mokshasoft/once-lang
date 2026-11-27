@@ -45,14 +45,9 @@ open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Base using ( Ctx; _∋_∷_; _▹_; here; nrs; single; there; wk-single; ⌊_⌋; ◇ )
 module DirectedHoTT.Lib.Amrec (𝒮 : Defs) (n : ℕ) where
 open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; cong; cong₂; subst )
+open import DirectedHoTT.Spec.Scope using ( Cx; ε; _∙; Var; vz; vs )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; Var; vz; vs; Ren
-        ; RTy; El; Hom; Nat; U; Id
-        ; RTm; var; nzero; nsuc; natrec; absurd; ordtr; lam; app
-        ; Π; renTy; renTm; subTy; subTm; Sub; extS; extR
-        ; subTy-renTy; subTy-id; subTm-renTm; subTm-id; subTm-cong
-        ; renTm-renTm; renTy-renTy; renTm-cong; renTy-cong; subTy-cong; idₛ
-        ; renTy-subTy; renTm-subTm; ordtr-cong₅; Id-cong₃ )
+  using ( Ren; RTy; El; Hom; Nat; U; Id; RTm; var; nzero; nsuc; natrec; absurd; ordtr; lam; app; Π; renTy; renTm; subTy; subTm; Sub; extS; extR; subTy-renTy; subTy-id; subTm-renTm; subTm-id; subTm-cong; renTm-renTm; renTy-renTy; renTm-cong; renTy-cong; subTy-cong; idₛ; renTy-subTy; renTm-subTm; ordtr-cong₅; Id-cong₃ )
 open import DirectedHoTT.Spec.Typing 𝒮 n
   using ( _⊢_∷_; ⊢var; ⊢nzero; ⊢nsuc; ⊢natrec; _⟶*_; done; step; β; ξ-appˡ
         ; natrec-zero; natrec-suc; ⊢lam; ⊢app; _⊢ty_; ⊢conv; csymᵀ; ctrnᵀ

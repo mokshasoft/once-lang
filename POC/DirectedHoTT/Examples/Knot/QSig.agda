@@ -29,6 +29,7 @@ module DirectedHoTT.Examples.Knot.QSig (𝒮 : Defs) (wf : WfK 𝒮) where
 
 
 open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; cong; cong₂; subst )
+open import DirectedHoTT.Spec.Scope
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
 open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮)
 open import DirectedHoTT.Metatheory.TySub 𝒮 (Defs.size 𝒮) using ( ⊢-cast; ⊢wk )

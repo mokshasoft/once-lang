@@ -22,6 +22,7 @@ open import DirectedHoTT.Prelude using ( _≡_; refl; _×_; _,_; ⊤; tt )
 open import Agda.Builtin.Nat using ( zero; suc; _<_; _==_ ) renaming ( Nat to ℕ )
 open import Agda.Builtin.Bool using ( Bool; true; false )
 open import Agda.Builtin.Maybe using ( Maybe; just; nothing )
+open import DirectedHoTT.Spec.Scope
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Algorithm.NbE tbl
 open import DirectedHoTT.Algorithm.NbERead

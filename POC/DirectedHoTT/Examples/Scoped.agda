@@ -36,6 +36,7 @@ open import DirectedHoTT.Examples.Sig0 using ( wf₀; ok₀; refs₀; tbl₀; to
 open Lib0.Metatheory-TySub using ( ⊢wk )
 open import DirectedHoTT.Prelude using ( _≡_; refl; sym; subst )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
+open import DirectedHoTT.Spec.Scope
 open import DirectedHoTT.Spec.Syntax
 open Lib0.Spec-Typing
 open Lib0.Metatheory-RedCong using ( ⟶*-trans; ⟶*-nsuc )

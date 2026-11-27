@@ -57,6 +57,7 @@ open import Agda.Builtin.Maybe using ( Maybe; just; nothing )
 open import DirectedHoTT.Spec.Variance
   using ( 𝔹; true; false; occTm; flat?; NoNatC; nnc-base; nnc-Unit; nnc-Fin
         ; nnc-Σ; nnc-Id; nnc-Π; nnc-Hom )
+open import DirectedHoTT.Spec.Scope
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Annotated
 open import DirectedHoTT.Spec.Signature using ( Sig; kernel; _<ˢ_; <-here; <-there; <ˢ-zero )

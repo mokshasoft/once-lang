@@ -2,7 +2,7 @@
 -- (the variable and the λ swap their tags).
 {-# OPTIONS --safe #-}
 open import DirectedHoTT.Prelude using ( _≡_; refl )
-open import DirectedHoTT.Spec.Syntax using ( ε; vz )
+open import DirectedHoTT.Spec.Scope using ( ε; vz )
 import DirectedHoTT.Spec.Syntax as S
 open import tmp.GenSyn
 open import tmp.GenSynFrag

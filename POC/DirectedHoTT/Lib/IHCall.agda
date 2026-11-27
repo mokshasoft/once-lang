@@ -44,11 +44,9 @@ open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Base using ( Ctx; _▹_; single; wk-single; ⌊_⌋ )
 module DirectedHoTT.Lib.IHCall (𝒮 : Defs) (n : ℕ) where
 open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; cong; cong₂ )
+open import DirectedHoTT.Spec.Scope using ( Cx; _∙; vz; vs )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; _∙; vz; vs
-        ; RTy; El; Nat; Hom; Π
-        ; RTm; var; lam; app; nsuc
-        ; subTy; subTm; renTy; renTm; Ren; Sub; extS; extR )
+  using ( RTy; El; Nat; Hom; Π; RTm; var; lam; app; nsuc; subTy; subTm; renTy; renTm; Ren; Sub; extS; extR )
 open import DirectedHoTT.Spec.Typing 𝒮 n
   using ( _⊢_∷_; _⊢ty_; ⊢lam; ⊢app; ⊢nsuc; ty-Π; ty-Hom; ty-Nat )
 open import DirectedHoTT.Metatheory.TySub 𝒮 n using ( ⊢-cast )

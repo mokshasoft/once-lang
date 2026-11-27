@@ -50,15 +50,9 @@ open import DirectedHoTT.Prelude
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 import DirectedHoTT.Spec.Reduction 𝒮 as ᴵReduction
 open ᴵReduction using ( δref )
+open import DirectedHoTT.Spec.Scope using ( Cx; ε; _∙; Var; vz; vs )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; Var; vz; vs; RTy; base; U; Π; Σ'; El; Hom; RTm; var; lam
-        ; app; pair; fst; snd; absurd; ordtr; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl
-        ; tr; ap; Id; ⌜Id⌝; idrefl; jsub; Unit; Nat; unit; nzero; nsuc; natrec
-        ; natrec-cong₃; ⌜Nat⌝; ⌜Unit⌝; Ren; extR; Sub; subTy; subTm; extS
-        ; renTm; subTm-renTm; subTm-id; Hom-cong₃; ⌜Hom⌝-cong₃; Desc; con; dι
-        ; dρ; εwkTy; IMu; ielim; ⌜IMu⌝; εwkTm
-        ; DIh; Fin; ⌜Fin⌝; dσ; dpay; dih; fzero; fsuc; fcase; fcase0; psplit; cong₄; cong₃
-        ; ref )
+  using ( RTy; base; U; Π; Σ'; El; Hom; RTm; var; lam; app; pair; fst; snd; absurd; ordtr; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap; Id; ⌜Id⌝; idrefl; jsub; Unit; Nat; unit; nzero; nsuc; natrec; natrec-cong₃; ⌜Nat⌝; ⌜Unit⌝; Ren; extR; Sub; subTy; subTm; extS; renTm; subTm-renTm; subTm-id; Hom-cong₃; ⌜Hom⌝-cong₃; Desc; con; dι; dρ; εwkTy; IMu; ielim; ⌜IMu⌝; εwkTm; DIh; Fin; ⌜Fin⌝; dσ; dpay; dih; fzero; fsuc; fcase; fcase0; psplit; cong₄; cong₃; ref )
 open ᴵReduction using ( _⟶_; β; βfst; βsnd; ξ-lam; ξ-appˡ; ξ-appʳ; ξ-pairˡ; ξ-pairʳ
         ; ξ-absurdᶜ; ξ-absurdᵉ; ordtr-z; ordtr-szz; ordtr-ssz; ordtr-szs
         ; ordtr-sss; ξ-ordtrᵃ; ξ-ordtrᵗ; ξ-ordtrᵘ; ξ-ordtrᵖ; ξ-ordtrq; ξ-fst

@@ -21,16 +21,9 @@ open import DirectedHoTT.Spec.Syntax using ( Defs )
 module DirectedHoTT.Spec.Reduction (𝒮 : Defs) where
 open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
+open import DirectedHoTT.Spec.Scope using ( Cx; ε; _∙; Var; vz; vs )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; Var; vz; vs; RTy; base; U; Π; Σ'; El; Hom; RTm; var; lam; app
-        ; pair; fst; snd; absurd; ordtr; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap
-        ; Id; ⌜Id⌝; idrefl; jsub
-        ; Unit; Nat; unit; nzero; nsuc; natrec; extS; ⌜Nat⌝; ⌜Unit⌝
-        ; Ren; extR; Sub; subTy; subTm; renTy; renTm
-        ; subTy-subTy; subTy-cong; renTy-subTy; subTm-renTm; subTm-id
-        ; εwkTy; εwk-ren; εwk-sub; εwkTm
-        ; IMu; Desc; DIh; Fin; ⌜IMu⌝; ⌜Fin⌝; con; ielim; dι; dσ; dρ; dpay; dih
-        ; fzero; fsuc; fcase; fcase0; psplit; ref; Defs; _<ˢ_ )
+  using ( RTy; base; U; Π; Σ'; El; Hom; RTm; var; lam; app; pair; fst; snd; absurd; ordtr; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap; Id; ⌜Id⌝; idrefl; jsub; Unit; Nat; unit; nzero; nsuc; natrec; extS; ⌜Nat⌝; ⌜Unit⌝; Ren; extR; Sub; subTy; subTm; renTy; renTm; subTy-subTy; subTy-cong; renTy-subTy; subTm-renTm; subTm-id; εwkTy; εwk-ren; εwk-sub; εwkTm; IMu; Desc; DIh; Fin; ⌜IMu⌝; ⌜Fin⌝; con; ielim; dι; dσ; dρ; dpay; dih; fzero; fsuc; fcase; fcase0; psplit; ref; Defs; _<ˢ_ )
 open import DirectedHoTT.Spec.Variance
   using ( 𝔹; true; false; occTm; pw?; stkC?; stkA?; flat?; pwBody; pwShift
         ; NoNatC; nnc-base; nnc-Unit; nnc-Π; nnc-Σ; nnc-Hom; nnc-Id )
@@ -214,7 +207,15 @@ data _▷_ : ∀ {s Γ} → G.Tm KSig s Γ → G.Tm KSig s Γ → Set where
   Hom-Πʳ : (A : RTy Γ) (B : RTy (Γ ∙)) (f g : RTm Γ) →
           Hom (Π A B) f g ▷           Π A (Hom B (app (renTm vs f) (var vz)) (app (renTm vs g) (var vz)))
 
-open Red _▷_ public renaming ( _⟶_ to _⟶ᴳ_ ) using ( ⟶head; ⟶cong; Step )
+-- the generic relation at the kernel's contractions (a module alias, no
+-- re-export: its two rules are pattern synonyms, the relation a definition)
+module R = Red _▷_
+pattern ⟶head r = R.⟶head r
+pattern ⟶cong {c} st = R.⟶cong {c = c} st
+
+infix 3 _⟶ᴳ_
+_⟶ᴳ_ : ∀ {s Γ} → G.Tm KSig s Γ → G.Tm KSig s Γ → Set
+t ⟶ᴳ u = R._⟶_ t u
 
 infix 3 _⟶_ _⟶ᵀ_
 _⟶_ : {Γ : Cx} → RTm Γ → RTm Γ → Set

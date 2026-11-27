@@ -35,7 +35,8 @@
 open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; _<ˢ?_ )
 module DirectedHoTT.Lib.RedChain (𝒮 : Defs) where
 
-open import DirectedHoTT.Spec.Syntax using ( Cx; RTm )
+open import DirectedHoTT.Spec.Scope using ( Cx )
+open import DirectedHoTT.Spec.Syntax using ( RTm )
 open import DirectedHoTT.Spec.Reduction 𝒮 using ( _⟶*_ )
 open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( ⟶*-trans )
 

@@ -42,6 +42,7 @@ module DirectedHoTT.Lib.Decode (𝒮 : Defs) (wf : WfK 𝒮) where
 
 open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; cong; subst; Σ; _,_; _×_; ⊥; ⊥-elim )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
+open import DirectedHoTT.Spec.Scope
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
 open import DirectedHoTT.Spec.Syntax using ( Fin )
 open import DirectedHoTT.Lib.NatNum 𝒮 (Defs.size 𝒮) using ( num )

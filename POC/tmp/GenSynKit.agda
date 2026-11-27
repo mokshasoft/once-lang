@@ -11,7 +11,7 @@
 open import tmp.GenSyn
 module tmp.GenSynKit (Σ : Sig) where
 open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; cong )
-open import DirectedHoTT.Spec.Syntax using ( Cx; _∙; Var; vz; vs )
+open import DirectedHoTT.Spec.Scope using ( Cx; _∙; Var; vz; vs )
 open import Agda.Builtin.Nat using ( zero; suc )
 open Trav Σ
 open Kit

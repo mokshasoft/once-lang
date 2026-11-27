@@ -28,10 +28,9 @@ module DirectedHoTT.Examples.DvdArith where
 import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; cong )
+open import DirectedHoTT.Spec.Scope using ( Cx; ε; _∙; vz; vs )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; vz; vs
-        ; RTy; Nat; base
-        ; RTm; var; nzero; nsuc; app )
+  using ( RTy; Nat; base; RTm; var; nzero; nsuc; app )
 open Lib0.Spec-Typing
   using ( _⊢_∷_; _⊢ty_; ⊢var; ⊢conv; ⊢nzero; ⊢nsuc; _⟶*_; done; step
         ; natrec-zero; natrec-suc; csymᵀ )

@@ -42,11 +42,9 @@ open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 open import DirectedHoTT.Examples.Sig0 using ( wf₀; ok₀; refs₀; tbl₀; tok₀ )
 open import DirectedHoTT.Prelude
   using ( _≡_; refl; sym; trans; cong; subst; ⊥ )
+open import DirectedHoTT.Spec.Scope using ( Cx; ε; _∙; Var; vz; vs )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; Var; vz; vs
-        ; RTy; base; U; Π; Σ'; El; Hom
-        ; RTm; var; lam; app; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap
-        ; renTm; renTy; subTm; ⌜Hom⌝-cong₃ )
+  using ( RTy; base; U; Π; Σ'; El; Hom; RTm; var; lam; app; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap; renTm; renTy; subTm; ⌜Hom⌝-cong₃ )
 open import DirectedHoTT.Spec.Variance
   using ( occ-ren-tm; avoids-wk; NoNatC; nonatc-ren; nnc-base )
 open Lib0.Spec-Typing

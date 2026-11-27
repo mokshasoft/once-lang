@@ -32,10 +32,9 @@ module DirectedHoTT.Examples.Gcd.LeEq where
 import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 open import DirectedHoTT.Prelude using ( _≡_; refl; trans; cong; cong₂; sym; subst )
+open import DirectedHoTT.Spec.Scope using ( Cx; _∙; vz; vs )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; _∙; RTy; El; Hom; Nat; Id; RTm; nsuc; pair; fst; snd; ⌜Nat⌝; Ren; renTy
-        ; var; vz; vs; lam; app; Sub; extS; subTm; subTy; natrec; nzero
-        ; renTm; extR; subTm-renTm; subTm-cong; subTm-id )
+  using ( RTy; El; Hom; Nat; Id; RTm; nsuc; pair; fst; snd; ⌜Nat⌝; Ren; renTy; var; lam; app; Sub; extS; subTm; subTy; natrec; nzero; renTm; extR; subTm-renTm; subTm-cong; subTm-id )
 open Lib0.Spec-Typing
   using ( _⊢_∷_; ⊢pair; ⊢nsuc; ⊢conv; ty-Nat; csymᵀ; ⊢lam; ⊢app; ⊢var; ⊢natrec
         ; _≅ᵀ_; El-⌜Nat⌝; ⊢nzero; done; ty-Hom )

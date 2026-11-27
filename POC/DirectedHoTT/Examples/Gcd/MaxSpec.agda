@@ -34,8 +34,9 @@ import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 
 open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; cong )
+open import DirectedHoTT.Spec.Scope using ( Cx; _∙; vz; vs )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; _∙; vz; vs; RTm; El; var; fst; snd; app; ⌜Nat⌝; subTm; Nat )
+  using ( RTm; El; var; fst; snd; app; ⌜Nat⌝; subTm; Nat )
 open Lib0.Spec-Typing using ( _⊢_∷_; ⊢⌜Nat⌝ )
 open Lib0.Lib-Pair using ( PairT; ⊢PairT )
 open Lib0.Lib-Max

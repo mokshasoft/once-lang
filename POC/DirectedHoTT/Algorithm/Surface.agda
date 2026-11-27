@@ -23,7 +23,8 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Algorithm.Surface where
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
-open import DirectedHoTT.Spec.Syntax using ( Cx; _∙; Var; vz; vs; Ren; extR )
+open import DirectedHoTT.Spec.Scope using ( Cx; _∙; Var; vz; vs )
+open import DirectedHoTT.Spec.Syntax using ( Ren; extR )
 import DirectedHoTT.Spec.Syntax as R
 
 data STy : Cx → Set

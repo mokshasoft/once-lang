@@ -1,5 +1,6 @@
 {-# OPTIONS --safe #-}
 module tmp.TermProbe where
+open import DirectedHoTT.Spec.Scope
 open import DirectedHoTT.Spec.Syntax
 import DirectedHoTT.Spec.Bind as G
 private variable Γ : Cx

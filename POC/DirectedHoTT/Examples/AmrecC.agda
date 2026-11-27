@@ -43,11 +43,9 @@ open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; cong; cong₂ )
 open Lib0.Lib-Wk using ( cong₄; nrs-w; ren-w; ren-w²; sub-w; sub-w²; w )
 open Lib0.Lib-Rec using ( rec1T; rec1T-ren; rec1T-sub )
+open import DirectedHoTT.Spec.Scope using ( Cx; ε; _∙; Var; vz; vs )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; Var; vz; vs; Ren
-        ; RTy; El; Hom; Nat; U
-        ; RTm; var; nzero; nsuc; natrec; absurd; ordtr; lam; app
-        ; Π; renTy; renTm; subTy; subTm; Sub; extS; extR )
+  using ( Ren; RTy; El; Hom; Nat; U; RTm; var; nzero; nsuc; natrec; absurd; ordtr; lam; app; Π; renTy; renTm; subTy; subTm; Sub; extS; extR )
 open Lib0.Spec-Typing
   using ( _⊢_∷_; ⊢var; ⊢nzero; ⊢nsuc; ⊢natrec; ⊢lam; ⊢app; _⊢ty_; ty-Nat
         ; ty-Hom; ty-El; ty-Π )

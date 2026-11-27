@@ -28,6 +28,7 @@ module DirectedHoTT.Examples.Knot.RefJudge (𝒮 : Defs) (wf : WfK 𝒮) (core :
 
 
 open import DirectedHoTT.Prelude using ( _≡_; refl; trans; cong; cong₂ )
+open import DirectedHoTT.Spec.Scope
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
 open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮)
 open import DirectedHoTT.Lib.Sugar 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf) using ( []; _∷_; tag; lt-z; lt-s; AllD; []ᵈ; _∷ᵈ_; v₀; _,ₚ_ )

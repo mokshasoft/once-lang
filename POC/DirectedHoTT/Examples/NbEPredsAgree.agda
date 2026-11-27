@@ -23,7 +23,8 @@ module DirectedHoTT.Examples.NbEPredsAgree (𝒮 : Defs) (wf : WfK 𝒮) (core :
 open import DirectedHoTT.Prelude using ( _≡_; refl )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import Agda.Builtin.Bool using ( Bool; true; false )
-open import DirectedHoTT.Spec.Syntax using ( ε; _∙; vz; vs; unit )
+open import DirectedHoTT.Spec.Scope using ( ε; _∙; vz; vs )
+open import DirectedHoTT.Spec.Syntax using ( unit )
 import DirectedHoTT.Spec.Syntax as R
 open import DirectedHoTT.Algorithm.DecEq using ( Dec; _≟Tm_; yes; no )
 import DirectedHoTT.Examples.PredsCore as P

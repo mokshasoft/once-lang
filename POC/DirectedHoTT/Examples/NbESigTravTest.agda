@@ -17,7 +17,7 @@ module DirectedHoTT.Examples.NbESigTravTest where
 open import DirectedHoTT.Prelude using ( _≡_; refl; _×_; _,_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import Agda.Builtin.List using ( List; []; _∷_ )
-open import DirectedHoTT.Spec.Syntax using ( ε; _∙; vz; vs )
+open import DirectedHoTT.Spec.Scope using ( ε; _∙; vz; vs )
 import DirectedHoTT.Spec.Syntax as R
 import DirectedHoTT.Spec.Base as Ty
 open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )

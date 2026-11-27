@@ -23,7 +23,8 @@
 {-# OPTIONS --safe #-}
 open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; _<ˢ?_ )
 module DirectedHoTT.Lib.NatVal (𝒮 : Defs) where
-open import DirectedHoTT.Spec.Syntax using ( RTm; ε; nzero; nsuc )
+open import DirectedHoTT.Spec.Scope using ( ε )
+open import DirectedHoTT.Spec.Syntax using ( RTm; nzero; nsuc )
 open import DirectedHoTT.Spec.Reduction 𝒮 using ( _⟶*_ )
 
 data NatVal (n : RTm ε) : Set where

@@ -17,6 +17,7 @@ open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; _<ˢ?_ )
 open import DirectedHoTT.Spec.Base hiding ( _,,_; _×_ )
 module DirectedHoTT.Algorithm.ConvCong (𝒮 : Defs) where
 open import Agda.Builtin.Nat using ( Nat )
+open import DirectedHoTT.Spec.Scope
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Reduction 𝒮
 open import DirectedHoTT.Algorithm.ConvLazy 𝒮 using ( cong≅ )

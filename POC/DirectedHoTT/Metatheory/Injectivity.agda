@@ -31,14 +31,9 @@ module DirectedHoTT.Metatheory.Injectivity (𝒮 : Defs) where
 open import DirectedHoTT.Prelude
   using ( _≡_; refl; sym; trans; subst; Σ; _,_; _×_ ; cong₂; ⊥ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
+open import DirectedHoTT.Spec.Scope using ( Cx; ε; _∙; vz; vs )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; RTy; base; U; Π; Σ'; El; Hom; RTm; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝
-        ; ⌜Hom⌝; hrefl; tr; ap; Id; ⌜Id⌝; idrefl; jsub; var; lam; app; pair
-        ; fst; snd; absurd; ordtr; vz; vs; renTm; Unit; Nat; unit; nzero; nsuc
-        ; natrec; ⌜Nat⌝; ⌜Unit⌝; Desc; con; IMu; ielim; ⌜IMu⌝; εwkTm; Fin
-        ; ⌜Fin⌝; DIh; dι; dσ; dρ; renTy; extR; extS; Ren; cong₄; Sub; subTy
-        ; subTm; dpay; dih; fzero; fsuc; fcase; fcase0; psplit
-        ; ref )
+  using ( RTy; base; U; Π; Σ'; El; Hom; RTm; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap; Id; ⌜Id⌝; idrefl; jsub; var; lam; app; pair; fst; snd; absurd; ordtr; renTm; Unit; Nat; unit; nzero; nsuc; natrec; ⌜Nat⌝; ⌜Unit⌝; Desc; con; IMu; ielim; ⌜IMu⌝; εwkTm; Fin; ⌜Fin⌝; DIh; dι; dσ; dρ; renTy; extR; extS; Ren; cong₄; Sub; subTy; subTm; dpay; dih; fzero; fsuc; fcase; fcase0; psplit; ref )
 open import DirectedHoTT.Spec.Reduction 𝒮
   using ( _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; El-⌜Hom⌝; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ
         ; ξ-Σʳ; Hom-U; Hom-Π; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ; El-⌜Id⌝; ξ-Idᵀ; ξ-Idˡ

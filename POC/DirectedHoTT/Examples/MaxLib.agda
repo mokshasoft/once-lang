@@ -31,8 +31,9 @@ module DirectedHoTT.Examples.MaxLib where
 import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 
+open import DirectedHoTT.Spec.Scope using ( Cx; ε )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; RTm; El; Nat; nzero; nsuc )
+  using ( RTm; El; Nat; nzero; nsuc )
 open Lib0.Spec-Typing
   using ( _⊢_∷_; _⊢ty_; _≅ᵀ_; _⟶*_; done; step; ⊢nzero; ⊢nsuc; natrec-zero )
 open Lib0.Lib-Max

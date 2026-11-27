@@ -31,6 +31,7 @@ module DirectedHoTT.Examples.Knot.SigWfAgree (𝒮 : Defs) (wf : WfK 𝒮) (core
 
 open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; cong; cong₂; Σ; _,_; _×_; tt )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
+open import DirectedHoTT.Spec.Scope
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
 open import DirectedHoTT.Spec.SigWf using ( WfUpTo )
 import DirectedHoTT.Spec.Typing as Ty

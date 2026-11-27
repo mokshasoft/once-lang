@@ -47,11 +47,9 @@ open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Base using ( Ctx; _▹_; here; nrs; single; there; wk-single; ⌊_⌋ )
 module DirectedHoTT.Lib.AmrecInd (𝒮 : Defs) (n : ℕ) where
 open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; cong; cong₂; subst )
+open import DirectedHoTT.Spec.Scope using ( Cx; _∙; vz; vs; Var )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; _∙; RTy; RTm; El; U; Nat; Hom; Π; var; vz; vs; Var; app; nsuc; nzero; natrec
-        ; lam; absurd; jsub; Id; ⌜Id⌝; idrefl; ⌜Id⌝-cong₃; ordtr; unit
-        ; subTm; subTy; renTy; renTm; Ren; extR; extS; renTy-renTy; Sub
-        ; subTm-subTm; subTm-renTm; subTm-cong )
+  using ( RTy; RTm; El; U; Nat; Hom; Π; var; app; nsuc; nzero; natrec; lam; absurd; jsub; Id; ⌜Id⌝; idrefl; ⌜Id⌝-cong₃; ordtr; unit; subTm; subTy; renTy; renTm; Ren; extR; extS; renTy-renTy; Sub; subTm-subTm; subTm-renTm; subTm-cong )
 open import DirectedHoTT.Spec.Typing 𝒮 n
   using ( _⊢_∷_; _⊢ty_; ⊢var; ⊢app; ⊢nsuc; ⊢lam; ⊢nzero; ⊢jsub; ty-El; ty-Π
         ; ty-Hom; ty-Nat; ⊢⌜Id⌝; ⊢idrefl; ⊢conv; csymᵀ; credᵀ; El-⌜Id⌝; ⊢ordtr

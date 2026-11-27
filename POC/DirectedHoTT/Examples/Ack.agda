@@ -38,11 +38,9 @@ open import DirectedHoTT.Spec.Base using ( Ctx; _▹_; here; ⌊_⌋; ◇ )
 module DirectedHoTT.Examples.Ack where
 import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
+open import DirectedHoTT.Spec.Scope using ( Cx; ε; _∙; Var; vz; vs )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; Var; vz; vs
-        ; RTy; El; Nat; U; Σ'
-        ; RTm; var; lam; fst; snd; ⌜Σ⌝; ⌜Nat⌝
-        ; Π )
+  using ( RTy; El; Nat; U; Σ'; RTm; var; lam; fst; snd; ⌜Σ⌝; ⌜Nat⌝; Π )
 open Lib0.Spec-Typing
   using ( _⟶ᵀ_; El-⌜Σ⌝; El-⌜Nat⌝; _⊢_∷_; ⊢var; ⊢lam; ⊢fst; ⊢snd; ⊢conv; ⊢⌜Nat⌝
         ; ⊢⌜Σ⌝; _⊢ty_; ty-El )

@@ -68,20 +68,9 @@ module DirectedHoTT.Metatheory.TySub.Red (𝒮 : Defs) where
 open import DirectedHoTT.Prelude
   using ( _≡_; refl; sym; trans; subst; cong; cong₂; Σ; _,_; _×_ ; ⊥ )
 open import Agda.Builtin.Nat using ( zero; suc; _+_ ) renaming ( Nat to ℕ )
+open import DirectedHoTT.Spec.Scope using ( Cx; ε; _∙; Var; vz; vs )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; Var; Thin; keep; thinR; vz; vs; RTy; base; U; Π; Σ'; El
-        ; Hom; RTm; var; lam; app; pair; fst; snd; absurd; ordtr; ⌜base⌝; ⌜Π⌝
-        ; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap; Id; ⌜Id⌝; idrefl; jsub; Id-cong₃
-        ; ⌜Id⌝-cong₃; jsub-cong₃; Unit; Nat; unit; nzero; nsuc; natrec; ⌜Nat⌝
-        ; ⌜Unit⌝; Ren; extR; renTm; renTy; Sub; extS; subTm; subTy; idₛ; _∘ᵣ_
-        ; _ₛ∘ᵣ_; _ᵣ∘ₛ_; _∘ₛ_; subTy-renTy; renTy-subTy; subTy-subTy
-        ; renTy-renTy; subTy-cong; renTy-cong; subTy-id; subTm-renTm; subTm-id
-        ; subTm-cong; renTm-renTm; renTm-subTm; ⌜Hom⌝-cong₃; Hom-cong₃
-        ; ordtr-cong₅; Desc; con; dι; dρ; IMu; ielim; ⌜IMu⌝; εwkTy; εwk-ren
-        ; εwk-sub; εwkTm; εwkTm-ren; εwkTm-sub; subTm-subTm; DIh; Fin; ⌜Fin⌝
-        ; dσ; dpay; dih; fzero; fsuc; fcase; fcase0; psplit; cong₃; cong₄
-        ; renTm-cong
-        ; ref )
+  using ( Thin; keep; thinR; RTy; base; U; Π; Σ'; El; Hom; RTm; var; lam; app; pair; fst; snd; absurd; ordtr; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap; Id; ⌜Id⌝; idrefl; jsub; Id-cong₃; ⌜Id⌝-cong₃; jsub-cong₃; Unit; Nat; unit; nzero; nsuc; natrec; ⌜Nat⌝; ⌜Unit⌝; Ren; extR; renTm; renTy; Sub; extS; subTm; subTy; idₛ; _∘ᵣ_; _ₛ∘ᵣ_; _ᵣ∘ₛ_; _∘ₛ_; subTy-renTy; renTy-subTy; subTy-subTy; renTy-renTy; subTy-cong; renTy-cong; subTy-id; subTm-renTm; subTm-id; subTm-cong; renTm-renTm; renTm-subTm; ⌜Hom⌝-cong₃; Hom-cong₃; ordtr-cong₅; Desc; con; dι; dρ; IMu; ielim; ⌜IMu⌝; εwkTy; εwk-ren; εwk-sub; εwkTm; εwkTm-ren; εwkTm-sub; subTm-subTm; DIh; Fin; ⌜Fin⌝; dσ; dpay; dih; fzero; fsuc; fcase; fcase0; psplit; cong₃; cong₄; renTm-cong; ref )
 open import DirectedHoTT.Spec.Variance
   using ( 𝔹; true; false; _∨_; occTm; ∨-false; ∨-false₁; ∨-false₂; occ-ren-eq
         ; occ-sub; eqv; Avoids; occ-ren-tm; avoids-wk; PosC; posc-var

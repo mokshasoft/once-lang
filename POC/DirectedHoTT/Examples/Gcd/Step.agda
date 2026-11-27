@@ -49,12 +49,9 @@ module DirectedHoTT.Examples.Gcd.Step where
 import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 open import DirectedHoTT.Prelude using ( _≡_; refl; trans; cong; cong₂; subst; sym )
+open import DirectedHoTT.Spec.Scope using ( Cx; ε; _∙; vz; vs; Var )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; vz; vs
-        ; RTy; El; Hom; Nat; Π
-        ; RTm; var; nzero; nsuc; natrec; lam; app; pair; fst; snd; ⌜Nat⌝
-        ; subTm; subTy; renTm; renTy; subTm-renTm; subTm-id; subTm-subTm; subTm-cong; extS
-        ; Sub; Ren; Var; idₛ; renTm-renTm; _∘ᵣ_ )
+  using ( RTy; El; Hom; Nat; Π; RTm; var; nzero; nsuc; natrec; lam; app; pair; fst; snd; ⌜Nat⌝; subTm; subTy; renTm; renTy; subTm-renTm; subTm-id; subTm-subTm; subTm-cong; extS; Sub; Ren; idₛ; renTm-renTm; _∘ᵣ_ )
 open Lib0.Spec-Typing
   using ( _⊢_∷_; _⊢ty_; ⊢var; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec; ⊢lam; ⊢app; ⊢pair
         ; ⊢fst; ⊢snd; ⊢⌜Nat⌝; ty-Nat; ty-Hom; ty-El; ty-Π; _≅ᵀ_; csymᵀ; ξ-nsuc

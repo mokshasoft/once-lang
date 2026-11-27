@@ -22,6 +22,7 @@ module DirectedHoTT.Lib.SynRen (𝒮 : Defs) (𝓃 : ℕ) (ok : Ty.EntriesOK �
 open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; cong; subst )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import Agda.Builtin.Bool using ( Bool; true; false )
+open import DirectedHoTT.Spec.Scope
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing 𝒮 𝓃
 open import DirectedHoTT.Metatheory.TySub 𝒮 𝓃 using ( ⊢wk; ⊢-cast )

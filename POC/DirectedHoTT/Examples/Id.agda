@@ -32,11 +32,9 @@ import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 open import DirectedHoTT.Prelude
   using ( _≡_; refl; sym; trans; cong; subst )
+open import DirectedHoTT.Spec.Scope using ( Cx; ε; _∙; Var; vz; vs )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; Var; vz; vs
-        ; RTy; base; U; Π; Σ'; El; Hom; Id
-        ; RTm; var; lam; app; ⌜base⌝; ⌜Hom⌝; ⌜Id⌝; hrefl; idrefl; jsub
-        ; renTm; renTy; subTm; ⌜Id⌝-cong₃; ⌜Hom⌝-cong₃ )
+  using ( RTy; base; U; Π; Σ'; El; Hom; Id; RTm; var; lam; app; ⌜base⌝; ⌜Hom⌝; ⌜Id⌝; hrefl; idrefl; jsub; renTm; renTy; subTm; ⌜Id⌝-cong₃; ⌜Hom⌝-cong₃ )
 open import DirectedHoTT.Spec.Variance
   using ( occ-ren-tm; avoids-wk )
 open Lib0.Spec-Typing

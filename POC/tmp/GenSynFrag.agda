@@ -8,7 +8,7 @@ module tmp.GenSynFrag where
 open import DirectedHoTT.Prelude using ( _≡_; refl )
 open import Agda.Builtin.List using ( List; []; _∷_ )
 open import Agda.Builtin.Nat using ( zero; suc )
-open import DirectedHoTT.Spec.Syntax using ( Cx; ε; _∙; Var; vz; vs )
+open import DirectedHoTT.Spec.Scope using ( Cx; ε; _∙; Var; vz; vs )
 open import tmp.GenSyn
 
 data Srt : Set where tm ty : Srt

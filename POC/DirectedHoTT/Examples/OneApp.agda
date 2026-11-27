@@ -27,9 +27,9 @@ module DirectedHoTT.Examples.OneApp where
 import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 open import DirectedHoTT.Prelude using ( _≡_; refl; trans; cong )
+open import DirectedHoTT.Spec.Scope using ( Cx; _∙ )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; _∙; RTy; El; Id; RTm; app; ⌜Nat⌝
-        ; Ren; renTm; renTy; subTm; subTy; extR; nrs )
+  using ( RTy; El; Id; RTm; app; ⌜Nat⌝; Ren; renTm; renTy; subTm; subTy; extR; nrs )
 open Lib0.Spec-Typing using ( _⊢_∷_ )
 open Lib0.Metatheory-TySub using ( Ren⊢ )
 open Lib0.Lib-Rec using ( aIHTat )
@@ -39,7 +39,8 @@ open import DirectedHoTT.Examples.Gcd.Step using ( gcdStp; msr )
 open import DirectedHoTT.Examples.Gcd.StepExtA using ( gcdStepExt )
 open Lib0.Lib-Amrec using ( module AmTΠ; Prv; wR )
 open Lib0.Spec-Typing using ( _⊢ty_; ⊢nzero; ⊢nsuc; ⊢var )
-open import DirectedHoTT.Spec.Syntax using ( nzero; nsuc; var; vs; vz; Π; Nat )
+open import DirectedHoTT.Spec.Scope using ( vs; vz )
+open import DirectedHoTT.Spec.Syntax using ( nzero; nsuc; var; Π; Nat )
 open Lib0.Lib-Wk using ( w )
 open Lib0.Lib-Pair using ( ⊢PairT )
 open Lib0.Spec-Typing using ( ⊢⌜Nat⌝ )

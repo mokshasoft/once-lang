@@ -6,7 +6,7 @@
 open import DirectedHoTT.Prelude using ( _≡_; refl )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import Agda.Builtin.Maybe using ( Maybe; just; nothing )
-open import DirectedHoTT.Spec.Syntax using ( Cx; ε; _∙; Var; vz; vs )
+open import DirectedHoTT.Spec.Scope using ( Cx; ε; _∙; Var; vz; vs )
 import DirectedHoTT.Spec.Syntax as S
 open import tmp.GenSyn
 open import tmp.GenSynFrag

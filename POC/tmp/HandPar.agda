@@ -7,7 +7,7 @@
 {-# OPTIONS --safe #-}
 module tmp.HandPar where
 open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; cong )
-open import DirectedHoTT.Spec.Syntax using ( Cx; _∙; Var; vz; vs )
+open import DirectedHoTT.Spec.Scope using ( Cx; _∙; Var; vz; vs )
 open import tmp.HandFrag
 
 infix 4 _⇒_ _⇒ᵀ_

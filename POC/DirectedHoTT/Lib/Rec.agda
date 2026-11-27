@@ -27,11 +27,9 @@ open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Base using ( single )
 module DirectedHoTT.Lib.Rec (𝒮 : Defs) (n : ℕ) where
 open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; cong )
+open import DirectedHoTT.Spec.Scope using ( Cx; _∙; vz; vs )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; _∙; vz; vs; Ren
-        ; RTy; El; Hom; Nat
-        ; RTm; var; nsuc; app
-        ; Π; renTy; renTm; subTy; subTm; Sub; extS; extR )
+  using ( Ren; RTy; El; Hom; Nat; RTm; var; nsuc; app; Π; renTy; renTm; subTy; subTm; Sub; extS; extR )
 open import DirectedHoTT.Lib.Wk 𝒮 n
   using ( w; wᶠ; cong₄; sub-w; sub-w²; ren-w; ren-w²; wk-singleTy; wᶠ-single
         ; ren-wTy; ren-wᶠ )

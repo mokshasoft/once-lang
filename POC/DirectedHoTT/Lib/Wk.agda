@@ -33,13 +33,9 @@ open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Base using ( Ctx; _∋_∷_; _▹_; here; nrs; single; there; wk-single; ⌊_⌋ )
 module DirectedHoTT.Lib.Wk (𝒮 : Defs) (n : ℕ) where
 open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; cong )
+open import DirectedHoTT.Spec.Scope using ( Cx; ε; _∙; Var; vz; vs )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; Var; vz; vs; Ren
-        ; RTy; El; Hom; Nat; U
-        ; RTm; var; nzero; nsuc
-        ; Π; renTy; renTm; subTy; subTm; Sub; extS; extR
-        ; subTm-renTm; renTm-subTm; renTm-renTm; subTm-id; subTm-cong
-        ; subTy-renTy; subTy-id; renTy-renTy; renTy-subTy; renTm-cong; idₛ )
+  using ( Ren; RTy; El; Hom; Nat; U; RTm; var; nzero; nsuc; Π; renTy; renTm; subTy; subTm; Sub; extS; extR; subTm-renTm; renTm-subTm; renTm-renTm; subTm-id; subTm-cong; subTy-renTy; subTy-id; renTy-renTy; renTy-subTy; renTm-cong; idₛ )
 open import DirectedHoTT.Spec.Typing 𝒮 n
   using ( _⊢_∷_ )
 open import DirectedHoTT.Metatheory.TySub 𝒮 n

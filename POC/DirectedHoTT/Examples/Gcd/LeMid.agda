@@ -33,10 +33,9 @@ module DirectedHoTT.Examples.Gcd.LeMid where
 import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 open Lib0.Metatheory-SubjectReductionBase using ( subTy-comm )
+open import DirectedHoTT.Spec.Scope using ( Cx; _∙; vs; vz; Var )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; _∙; RTm; RTy; Nat; pair; nsuc; nzero; natrec; app
-        ; subTm; subTy; extS; renTm; vs; var; vz; _∘ₛ_; subTy-subTy; subTy-cong; Var; Sub
-        ; Π; El; ⌜Nat⌝ )
+  using ( RTm; RTy; Nat; pair; nsuc; nzero; natrec; app; subTm; subTy; extS; renTm; var; _∘ₛ_; subTy-subTy; subTy-cong; Sub; Π; El; ⌜Nat⌝ )
 open Lib0.Spec-Typing using ( _⟶*_; _⟶_; β; βfst; βsnd; ξ-appˡ; natrec-suc; natrec-zero )
 open Lib0.Metatheory-RedCong using ( ⟶*-appˡ; ⟶*-natrecⁿ )
 open Lib0.Lib-Monus using ( monusTm )

@@ -29,7 +29,7 @@ module DirectedHoTT.Examples.Knot.Core (𝒮 : Defs) (wf : WfK 𝒮) where
 
 
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
-open import DirectedHoTT.Spec.Syntax using ( ε; vz; vs )
+open import DirectedHoTT.Spec.Scope using ( ε; vz; vs )
 import DirectedHoTT.Spec.Syntax as R
 import DirectedHoTT.Spec.Base as B
 open import DirectedHoTT.Metatheory.Signature using ( WfSig )

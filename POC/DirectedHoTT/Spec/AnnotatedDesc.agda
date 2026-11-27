@@ -22,6 +22,7 @@
 {-# OPTIONS --safe #-}
 open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; cong; cong₂ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
+open import DirectedHoTT.Spec.Scope
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Base
   using ( single; single2; pairS; fsucS; iinst; methS; wk2M; MethTy; DescF )

@@ -27,12 +27,9 @@ module DirectedHoTT.Examples.Gcd.Eqs where
 import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 open import DirectedHoTT.Prelude using ( _≡_; refl; trans; cong; cong₂; sym; subst )
+open import DirectedHoTT.Spec.Scope using ( Cx; ε; _∙; vz; vs; vz; vs )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; vz; vs
-        ; RTy; El; Hom; Nat; Π; Id
-        ; RTm; var; nzero; nsuc; natrec; lam; app; pair; fst; snd; ⌜Nat⌝; ordtr
-        ; vz; vs
-        ; Ren; renTm; renTy; Sub; subTm; subTy; extR; extS )
+  using ( RTy; El; Hom; Nat; Π; Id; RTm; var; nzero; nsuc; natrec; lam; app; pair; fst; snd; ⌜Nat⌝; ordtr; Ren; renTm; renTy; Sub; subTm; subTy; extR; extS )
 open Lib0.Spec-Typing using ( _⊢_∷_; _⊢ty_; ⊢var; ⊢app; Π; El; ⌜Nat⌝; _⟶_; _⟶*_; done; step; ⊢conv
         ; csymᵀ; _≅ᵀ_; ξ-natrecⁿ; ξ-natrecᶻ; βfst; βsnd; natrec-suc )
 open Lib0.Metatheory-TySub using ( ⊢wk; ⊢-cast; ⊢[] )

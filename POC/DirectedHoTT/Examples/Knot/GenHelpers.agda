@@ -17,6 +17,7 @@ module DirectedHoTT.Examples.Knot.GenHelpers (𝒮 : Defs) (wf : WfK 𝒮) where
 
 
 open import DirectedHoTT.Prelude using ( _≡_; refl; trans; cong )
+open import DirectedHoTT.Spec.Scope
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Metatheory.SubjectReductionBase 𝒮 using () renaming ( wk-sub to wkS )
 open import DirectedHoTT.Lib.Sugar 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf) using ( Cons; []; _∷_ )

@@ -40,7 +40,8 @@ open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; _<ˢ?_ )
 module DirectedHoTT.Algorithm.DecideConversion (𝒮 : Defs) where
 open import DirectedHoTT.Prelude
   using ( _≡_; refl; sym; trans; ¬_; ⊥; ⊥-elim; Σ; _,_; _×_ )
-open import DirectedHoTT.Spec.Syntax using ( Cx; ε; _∙; Var; vz; vs; RTm; var; lam; app )
+open import DirectedHoTT.Spec.Scope using ( Cx; ε; _∙; Var; vz; vs )
+open import DirectedHoTT.Spec.Syntax using ( RTm; var; lam; app )
 open import DirectedHoTT.Spec.Reduction 𝒮
   using ( _⟶_; β; ξ-lam; _⟶*_; done; step; _≅_; cred; crfl; csym; ctrn )
 open import DirectedHoTT.Metatheory.Confluence 𝒮 using ( church-rosser )

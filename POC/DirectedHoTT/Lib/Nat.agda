@@ -27,8 +27,9 @@ open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; _<ˢ?_ )
 open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Base using ( Ctx; here; ⌊_⌋ )
 module DirectedHoTT.Lib.Nat (𝒮 : Defs) (n : ℕ) where
+open import DirectedHoTT.Spec.Scope using ( Cx; vz )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; RTm; var; vz; nsuc; natrec; Nat )
+  using ( RTm; var; nsuc; natrec; Nat )
 open import DirectedHoTT.Spec.Typing 𝒮 n
   using ( _⊢_∷_; ⊢var; ⊢nsuc; ⊢natrec; ty-Nat )
 

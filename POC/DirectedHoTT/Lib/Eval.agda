@@ -45,8 +45,9 @@ module DirectedHoTT.Lib.Eval (𝒮 : Defs) where
 
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Prelude using ( Σ; _,_; _≡_; refl )
+open import DirectedHoTT.Spec.Scope using ( Cx; ε; vz )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; RTm; var; vz; lam; app; pair; fst; snd; subTm; unit )
+  using ( RTm; var; lam; app; pair; fst; snd; subTm; unit )
 open import DirectedHoTT.Spec.Reduction 𝒮
   using ( _⟶_; _⟶*_; done; step; β; βfst; βsnd )
 open import DirectedHoTT.Metatheory.RedCong 𝒮

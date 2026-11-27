@@ -21,6 +21,7 @@ module DirectedHoTT.Lib.Size (𝒮 : Defs) (wf : WfK 𝒮) where
 
 
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
+open import DirectedHoTT.Spec.Scope
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
 open import DirectedHoTT.Prelude using ( _≡_; refl )
 open import DirectedHoTT.Metatheory.Canonicity 𝒮 wf using ( sz; _≤_; s≤s; ≤-refl; ≤-trans; ≤-suc; un≤; ≤+ˡ; ≤+ʳ )

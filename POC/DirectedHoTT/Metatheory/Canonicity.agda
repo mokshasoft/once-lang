@@ -61,17 +61,9 @@ open import DirectedHoTT.Prelude
   using ( _≡_; refl; sym; trans; cong; subst; Σ; _,_; _×_; ⊥; ⊥-elim
         ; _⊎_; inj₁; inj₂; cong₂ )
 open import Agda.Builtin.Nat using ( zero; suc; _+_ ) renaming ( Nat to ℕ )
+open import DirectedHoTT.Spec.Scope using ( Cx; ε; _∙; Var; vz; vs )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; Var; vz; vs
-        ; RTy; base; U; Π; Σ'; El; Hom; Id; Unit; Nat; IMu; Desc; DIh; Fin
-        ; RTm; var; lam; app; pair; fst; snd; absurd; ordtr
-        ; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap; ⌜Id⌝; idrefl; jsub
-        ; unit; nzero; nsuc; natrec; ⌜Nat⌝; ⌜Unit⌝
-        ; con; ielim; ⌜IMu⌝; ⌜Fin⌝; dι; dσ; dρ; dpay; dih; fzero; fsuc; fcase; fcase0; psplit
-        ; Ren; renTm; renTy; Sub; subTm; subTy
-        ; renTm-subTm; subTm-id
-        ; subTy-renTy; subTy-cong; subTy-id
-        ; ref )
+  using ( RTy; base; U; Π; Σ'; El; Hom; Id; Unit; Nat; IMu; Desc; DIh; Fin; RTm; var; lam; app; pair; fst; snd; absurd; ordtr; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap; ⌜Id⌝; idrefl; jsub; unit; nzero; nsuc; natrec; ⌜Nat⌝; ⌜Unit⌝; con; ielim; ⌜IMu⌝; ⌜Fin⌝; dι; dσ; dρ; dpay; dih; fzero; fsuc; fcase; fcase0; psplit; Ren; renTm; renTy; Sub; subTm; subTy; renTm-subTm; subTm-id; subTy-renTy; subTy-cong; subTy-id; ref )
 open import DirectedHoTT.Spec.Variance
   using ( 𝔹; true; false; pw?; stkC?; stkA?; flat→stk; pw?-ren; occTm; subTm-occ
         ; NoNatC; NoNatHd; nonatc→hd; nonatc-sub; stkC?→stkA?; stkC?→hd )

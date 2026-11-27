@@ -17,7 +17,7 @@
 module DirectedHoTT.Algorithm.Surface.Notation where
 open import Agda.Builtin.Nat using ( zero; suc; _-_ ) renaming ( Nat to ℕ )
 open import Agda.Builtin.List using ( List; []; _∷_ )
-open import DirectedHoTT.Spec.Syntax using ( Cx; ε; _∙; vz; vs )
+open import DirectedHoTT.Spec.Scope using ( Cx; ε; _∙; vz; vs )
 open import DirectedHoTT.Algorithm.Surface
 
 pattern v₀ = var vz

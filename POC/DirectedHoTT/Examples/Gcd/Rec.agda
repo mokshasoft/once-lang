@@ -18,11 +18,9 @@ module DirectedHoTT.Examples.Gcd.Rec where
 import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 open import DirectedHoTT.Prelude using ( _≡_; refl; trans; cong; sym )
+open import DirectedHoTT.Spec.Scope using ( Cx; ε; _∙; vz; vs )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; vz; vs
-        ; RTy; El; Hom; Nat; Id
-        ; RTm; var; nzero; nsuc; app; pair; fst; snd; ⌜Nat⌝
-        ; subTm )
+  using ( RTy; El; Hom; Nat; Id; RTm; var; nzero; nsuc; app; pair; fst; snd; ⌜Nat⌝; subTm )
 open Lib0.Spec-Typing
   using ( _⊢_∷_; ⊢app; ⊢nsuc; ⊢nzero; ⊢conv; csymᵀ; _⟶*_; done )
 open Lib0.Metatheory-TySub using ( ⊢-cast; ⊢[] )

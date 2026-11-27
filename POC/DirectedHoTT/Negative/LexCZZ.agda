@@ -44,11 +44,9 @@
 open import DirectedHoTT.Spec.Base using ( Ctx; _▹_; here; single; there; wk-single; ⌊_⌋; ◇ )
 module DirectedHoTT.Negative.LexCZZ where
 open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; cong )
+open import DirectedHoTT.Spec.Scope using ( Cx; ε; _∙; Var; vz; vs )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; Var; vz; vs; Ren
-        ; RTy; El; Hom; Nat; U
-        ; RTm; var; nzero; nsuc; absurd; ordtr; lam; app
-        ; Π; renTy; renTm; subTy; subTm; Sub; extS; extR )
+  using ( Ren; RTy; El; Hom; Nat; U; RTm; var; nzero; nsuc; absurd; ordtr; lam; app; Π; renTy; renTm; subTy; subTm; Sub; extS; extR )
 open import DirectedHoTT.Spec.Typing
   using ( _⊢_∷_; ⊢var; ⊢nzero; ⊢nsuc; ⊢lam; ⊢app; _⊢ty_; ty-Nat; ty-Hom; ty-El )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast )

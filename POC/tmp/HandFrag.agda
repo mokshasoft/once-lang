@@ -8,7 +8,7 @@
 module tmp.HandFrag where
 open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; cong; cong₂ )
 open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
-open import DirectedHoTT.Spec.Syntax using ( Cx; ε; _∙; Var; vz; vs )
+open import DirectedHoTT.Spec.Scope using ( Cx; ε; _∙; Var; vz; vs )
 
 cong₃ : ∀ {A B C D : Set} (f : A → B → C → D) {a a′ b b′ c c′} → a ≡ a′ → b ≡ b′ → c ≡ c′ → f a b c ≡ f a′ b′ c′
 cong₃ f refl refl refl = refl

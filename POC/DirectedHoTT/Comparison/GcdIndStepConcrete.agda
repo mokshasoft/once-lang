@@ -41,9 +41,9 @@ import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Examples.Gcd.DvdL public
 open import DirectedHoTT.Examples.Gcd.DvdLs public
 open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; cong; cong₂ )
+open import DirectedHoTT.Spec.Scope using ( Cx; _∙; vz; vs )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; _∙; vz; vs; RTy; RTm; El; Nat; Hom; Π
-        ; var; nzero; nsuc; fst; snd; app; natrec; ⌜Nat⌝; Sub; subTm; subTy; extS )
+  using ( RTy; RTm; El; Nat; Hom; Π; var; nzero; nsuc; fst; snd; app; natrec; ⌜Nat⌝; Sub; subTm; subTy; extS )
 open Lib0.Spec-Typing
   using ( _⊢_∷_; _⊢ty_; ⊢var; ⊢nsuc; ⊢fst; ⊢snd; ⊢app; ⊢natrec; ⊢conv; _≅ᵀ_
         ; csymᵀ; ty-Π )

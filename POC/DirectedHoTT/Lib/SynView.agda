@@ -24,6 +24,7 @@ module DirectedHoTT.Lib.SynView (𝒮 : Defs) (n : ℕ) (ok : Ty.EntriesOK 𝒮 
 
 open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; cong; cong₂; subst )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
+open import DirectedHoTT.Spec.Scope
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing 𝒮 n
 import DirectedHoTT.Metatheory.RedCong 𝒮 as ᴵRedCong

@@ -31,6 +31,7 @@ open import Agda.Builtin.Unit using ( ⊤ )
 
 -- the empty handler list (re-exported for the generated dispatchers)
 open import Agda.Builtin.Unit public using ( tt )
+open import DirectedHoTT.Spec.Scope
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
 open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮)
 open import DirectedHoTT.Metatheory.LogicalRelation 𝒮 using ( IsNormal )

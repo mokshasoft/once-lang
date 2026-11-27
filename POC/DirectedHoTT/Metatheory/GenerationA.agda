@@ -25,6 +25,7 @@
 open import DirectedHoTT.Prelude using ( _≡_; refl; Σ; _,_; _×_; _⊎_; inj₁; inj₂ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Variance using ( true; false; occTm; flat?; NoNatC )
+open import DirectedHoTT.Spec.Scope
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Annotated
 open import DirectedHoTT.Spec.Signature using ( Sig; _<ˢ_ )

@@ -27,8 +27,10 @@ module DirectedHoTT.Spec.Signature where
 open import DirectedHoTT.Prelude using ( _≡_; refl; cong; ¬_ )
 open import Agda.Builtin.Nat using ( zero; suc; _==_ ) renaming ( Nat to ℕ )
 open import Agda.Builtin.Bool using ( Bool; true; false )
+open import DirectedHoTT.Spec.Scope
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Annotated
+open import DirectedHoTT.Spec.Scope
 open import DirectedHoTT.Spec.Syntax public using ( _<ˢ_; <-here; <-there; <ˢ-zero; _<ˢ?_ )
 
 record Entry : Set where

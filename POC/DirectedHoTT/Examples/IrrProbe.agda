@@ -29,11 +29,9 @@ module DirectedHoTT.Examples.IrrProbe where
 import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 open import DirectedHoTT.Prelude using ( _≡_; refl; trans; cong; sym; subst )
+open import DirectedHoTT.Spec.Scope using ( Cx; ε; _∙; vz; vs )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; vz; vs
-        ; RTy; El; Hom; Nat; Π
-        ; RTm; var; nsuc; lam; app; fst; snd; ⌜Nat⌝
-        ; subTm; subTy; renTm; extR )
+  using ( RTy; El; Hom; Nat; Π; RTm; var; nsuc; lam; app; fst; snd; ⌜Nat⌝; subTm; subTy; renTm; extR )
 open Lib0.Spec-Typing
   using ( _⊢_∷_; ⊢var; ⊢lam; ⊢app; ⊢fst; ⊢snd; _⟶*_; done; step; β; ξ-appˡ
         ; ⊢idrefl; ⊢⌜Nat⌝ )

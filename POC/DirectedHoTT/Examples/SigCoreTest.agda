@@ -16,7 +16,7 @@ open import DirectedHoTT.Examples.Sig0 using ( wf₀; ok₀; refs₀; tbl₀; to
 open import DirectedHoTT.Prelude using ( _≡_; refl; _×_; _,_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import Agda.Builtin.List using ( List; []; _∷_ )
-open import DirectedHoTT.Spec.Syntax using ( ε; _∙; vz; vs )
+open import DirectedHoTT.Spec.Scope using ( ε; _∙; vz; vs )
 import DirectedHoTT.Spec.Syntax as R
 open import DirectedHoTT.Lib.NatNum ∅ᴷ 0 using ( num )
 open import DirectedHoTT.Lib.Sugar ∅ᴷ 0 ok₀ using ( tag )

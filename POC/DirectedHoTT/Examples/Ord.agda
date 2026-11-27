@@ -28,9 +28,9 @@ import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 open import DirectedHoTT.Examples.Sig0 using ( wf₀; ok₀; refs₀; tbl₀; tok₀ )
 open import DirectedHoTT.Prelude using ( _≡_; refl; ⊥ )
+open import DirectedHoTT.Spec.Scope using ( Cx; ε; _∙ )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; RTy; base; U; El; Hom; Unit; Nat
-        ; RTm; unit; nzero; nsuc; absurd; ordtr )
+  using ( RTy; base; U; El; Hom; Unit; Nat; RTm; unit; nzero; nsuc; absurd; ordtr )
 open Lib0.Spec-Typing
   using ( _⟶ᵀ_; Hom-Nat-z; Hom-Nat-sz; Hom-Nat-ss; _≅ᵀ_; credᵀ; csymᵀ; ctrnᵀ
         ; _⟶_; _⟶*_; done; step; ordtr-z; ordtr-sss; _⊢_∷_; ⊢unit; ⊢conv

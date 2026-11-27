@@ -32,12 +32,9 @@
 open import DirectedHoTT.Spec.Base using ( Ctx; _▹_; here; nrs; single; there; wk-single; ⌊_⌋; ◇ )
 module DirectedHoTT.Negative.LexC where
 open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; cong; subst; ⊥ )
+open import DirectedHoTT.Spec.Scope using ( Cx; ε; _∙; Var; vz; vs )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; Var; vz; vs
-        ; RTy; base; U; El; Hom; Unit; Nat
-        ; RTm; var; unit; nzero; nsuc; natrec; absurd; ordtr; ⌜Hom⌝; ⌜Nat⌝
-        ; Ren; Π; lam; app; renTy; renTm; subTy; subTm; Sub; extS; extR
-        ; subTm-renTm; renTm-subTm; renTm-renTm; subTm-id; idₛ )
+  using ( RTy; base; U; El; Hom; Unit; Nat; RTm; var; unit; nzero; nsuc; natrec; absurd; ordtr; ⌜Hom⌝; ⌜Nat⌝; Ren; Π; lam; app; renTy; renTm; subTy; subTm; Sub; extS; extR; subTm-renTm; renTm-subTm; renTm-renTm; subTm-id; idₛ )
 open import DirectedHoTT.Spec.Typing
   using ( _⟶ᵀ_; Hom-Nat-sz; Hom-Nat-ss; _≅ᵀ_; credᵀ; csymᵀ; ctrnᵀ; _⊢_∷_; ⊢var
         ; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec; ⊢lam; ⊢app; ⊢absurd; ⊢ordtr; _⊢ty_

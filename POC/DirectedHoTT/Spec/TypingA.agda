@@ -33,6 +33,7 @@
 
 {-# OPTIONS --safe #-}
 open import DirectedHoTT.Prelude using ( _≡_; refl )
+open import DirectedHoTT.Spec.Scope
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Variance using ( 𝔹; true; false; occTm; NoNatC; flat? )
 open import DirectedHoTT.Spec.Base

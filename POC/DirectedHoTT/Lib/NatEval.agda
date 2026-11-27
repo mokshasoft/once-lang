@@ -43,7 +43,8 @@ module DirectedHoTT.Lib.NatEval (𝒮 : Defs) (wf : WfK 𝒮) where
 -- ★ PLAN-REF: at a well-formed signature, all its names
 
 open import DirectedHoTT.Prelude using ( ⊥-elim )
-open import DirectedHoTT.Spec.Syntax using ( RTm; ε; Nat )
+open import DirectedHoTT.Spec.Scope using ( ε )
+open import DirectedHoTT.Spec.Syntax using ( RTm; Nat )
 open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮) using ( _⊢_∷_; c-◇ )
 open import DirectedHoTT.Metatheory.LogicalRelation 𝒮 using ( mkWN )
 open import DirectedHoTT.Metatheory.Fundamental 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf) (Entries.refsᵂ 𝒮 wf) using ( wnorm )

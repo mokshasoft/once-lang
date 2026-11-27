@@ -18,6 +18,7 @@ module DirectedHoTT.Examples.Knot.Sz (𝒮 : Defs) (wf : WfK 𝒮) where
 
 
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
+open import DirectedHoTT.Spec.Scope
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
 open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮)
 open import DirectedHoTT.Lib.Sugar 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf) using ( conₗ; tag; Lt; _,ₚ_ )

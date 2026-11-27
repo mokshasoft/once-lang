@@ -36,9 +36,9 @@ open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; _<ˢ?_ )
 open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Base using ( Ctx; _▹_; here; single; wk-single; ⌊_⌋ )
 module DirectedHoTT.Lib.Dvd (𝒮 : Defs) (n : ℕ) where
+open import DirectedHoTT.Spec.Scope using ( Cx; _∙; vz )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; _∙; RTy; RTm; Σ'; Nat; var; vz; pair; fst; snd; subTy; nzero; nsuc
-        ; U; El; Id; ⌜Σ⌝; ⌜Id⌝; ⌜Nat⌝ )
+  using ( RTy; RTm; Σ'; Nat; var; pair; fst; snd; subTy; nzero; nsuc; U; El; Id; ⌜Σ⌝; ⌜Id⌝; ⌜Nat⌝ )
 open import DirectedHoTT.Prelude using ( _≡_; sym; trans; cong; cong₂ )
 open import DirectedHoTT.Lib.Strong 𝒮 n using ( natAsEl; elAsNat )
 open import DirectedHoTT.Spec.Typing 𝒮 n

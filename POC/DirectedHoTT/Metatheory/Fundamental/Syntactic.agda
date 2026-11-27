@@ -21,19 +21,9 @@ open import DirectedHoTT.Prelude
   using ( _≡_; refl; sym; trans; cong; cong₂; subst; Σ; _,_; _×_; ⊥; ⊥-elim )
 
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
+open import DirectedHoTT.Spec.Scope using ( Cx; ε; _∙; Var; vz; vs )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; Var; vz; vs; RTy; base; U; Π; Σ'; El; Hom; Id; Hom-cong₃
-        ; Id-cong₃; ⌜Hom⌝-cong₃; tr-cong₃; ap-cong₃; ⌜Id⌝-cong₃; jsub-cong₃
-        ; RTm; var; lam; app; pair; fst; snd; absurd; ordtr; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝
-        ; ⌜Hom⌝; hrefl; tr; ap; ⌜Id⌝; idrefl; jsub; Unit; Nat; unit; nzero
-        ; nsuc; natrec; natrec-cong₃; ⌜Nat⌝; ⌜Unit⌝; ordtr-cong₅; Ren; extR
-        ; renTy; renTm; Sub; subTy; subTm; extS; idₛ; _∘ᵣ_; subTy-cong
-        ; subTm-cong; subTy-renTy; subTm-renTm; renTy-subTy; renTm-subTm
-        ; subTy-subTy; subTm-subTm; subTy-id; subTm-id; renTm-renTm
-        ; renTm-cong; Desc; con; IMu; ielim; ⌜IMu⌝; εwkTm; cong₃; DIh; Fin
-        ; ⌜Fin⌝; dι; dσ; dρ; dpay; dih; fzero; fsuc; fcase; fcase0; psplit
-        ; cong₄
-        ; ref; εwkTm-ren )
+  using ( RTy; base; U; Π; Σ'; El; Hom; Id; Hom-cong₃; Id-cong₃; ⌜Hom⌝-cong₃; tr-cong₃; ap-cong₃; ⌜Id⌝-cong₃; jsub-cong₃; RTm; var; lam; app; pair; fst; snd; absurd; ordtr; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap; ⌜Id⌝; idrefl; jsub; Unit; Nat; unit; nzero; nsuc; natrec; natrec-cong₃; ⌜Nat⌝; ⌜Unit⌝; ordtr-cong₅; Ren; extR; renTy; renTm; Sub; subTy; subTm; extS; idₛ; _∘ᵣ_; subTy-cong; subTm-cong; subTy-renTy; subTm-renTm; renTy-subTy; renTm-subTm; subTy-subTy; subTm-subTm; subTy-id; subTm-id; renTm-renTm; renTm-cong; Desc; con; IMu; ielim; ⌜IMu⌝; εwkTm; cong₃; DIh; Fin; ⌜Fin⌝; dι; dσ; dρ; dpay; dih; fzero; fsuc; fcase; fcase0; psplit; cong₄; ref; εwkTm-ren )
 open import DirectedHoTT.Spec.Reduction 𝒮
   using ( _⟶_; _⟶*_; done; step; β; βfst; βsnd; ξ-lam; ξ-appˡ; ξ-appʳ; ξ-pairˡ
         ; ξ-pairʳ; ξ-absurdᶜ; ξ-absurdᵉ; ordtr-z; ordtr-szz; ordtr-ssz

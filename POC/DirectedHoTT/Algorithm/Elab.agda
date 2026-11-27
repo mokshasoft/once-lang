@@ -43,7 +43,8 @@ open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import Agda.Builtin.Maybe using ( Maybe; just; nothing )
 open import Agda.Builtin.String using ( String; primStringAppend )
 open import DirectedHoTT.Algorithm.Result
-open import DirectedHoTT.Spec.Syntax using ( Cx; ε; _∙; Var; vz; vs; extR )
+open import DirectedHoTT.Spec.Scope using ( Cx; ε; _∙; Var; vz; vs )
+open import DirectedHoTT.Spec.Syntax using ( extR )
 open import DirectedHoTT.Spec.Annotated
 open import DirectedHoTT.Spec.Signature using ( Sig; kernel )
 open import DirectedHoTT.Spec.SigWf using ( WfK )

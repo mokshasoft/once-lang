@@ -58,6 +58,7 @@ open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 open import DirectedHoTT.Examples.Sig0 using ( wf₀; ok₀; refs₀; tbl₀; tok₀ )
 open import Agda.Builtin.Nat using ( zero; suc )
 open import DirectedHoTT.Prelude using ( _,_; Σ )
+open import DirectedHoTT.Spec.Scope
 open import DirectedHoTT.Spec.Syntax
 open Lib0.Spec-Typing
 open Lib0.Metatheory-TySub using ( ⊢wk )

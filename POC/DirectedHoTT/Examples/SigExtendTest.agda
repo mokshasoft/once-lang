@@ -15,7 +15,7 @@
 module DirectedHoTT.Examples.SigExtendTest where
 open import DirectedHoTT.Prelude using ( _≡_; refl )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
-open import DirectedHoTT.Spec.Syntax using ( ε; vz; vs )
+open import DirectedHoTT.Spec.Scope using ( ε; vz; vs )
 import DirectedHoTT.Spec.Syntax as R
 open import DirectedHoTT.Spec.Signature using ( Sig; kernel )
 open import DirectedHoTT.Metatheory.Signature using ( WfSig )
