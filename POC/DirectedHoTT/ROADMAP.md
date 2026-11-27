@@ -180,6 +180,8 @@ Not transferable:
 - The newest `HANDOFF-*.md` (2026-11-26): session state.
 - `INPUT-DATA-AND-STRUCTURES.md`: what master's plan 0.147 asks of this
   kernel (§7).
+- `SPIKE-GENERIC-SYNTAX.md` (2026-11-27): the kernel's syntax as a binding
+  signature, one kit traversal; runs before PLAN-GRADED's G1 (D11).
 - `PLAN-GRADED.md`: R5 — the graded dependent judgment, extraction into
   master's core, and the DT-side items of MASTER-DT-ABSTRACTIONS.
 - `MASTER-DT-ABSTRACTIONS.md` (2026-11-27): each difference from master, which

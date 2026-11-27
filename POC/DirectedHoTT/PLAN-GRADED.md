@@ -378,6 +378,8 @@ G1–G4 are the core of R5. G5–G7 can run in any order once G3 is green.
 | D8 | Visibility granularity: per module (= a contiguous segment) or per entry? | Per module, if the contiguity check in §5 holds |
 | D9 | Directed transport at run time: only where its extraction is the identity? | Yes |
 | D10 | The graded judgment as a σ = 1 layer over today's `⊢` (Atkey), with a forgetful bridge (§2.1)? | Yes: today's metatheory is reused, and the 18 0-only rules stay as they are |
+| D11 | Generic syntax first: the Spec's syntax as a binding signature with one kit traversal (SPIKE-GENERIC-SYNTAX), before G1? | Yes, decided by the spike: S1–S2 green 2026-11-27; S3–S6 decide |
+| D12 | Diamond imports (§5): flat levels re-levelled at link time, or segment-relative `ref` addresses? | Flat levels, IF D11 lands: re-levelling is then one kit instance with generic lemmas, and `ref`, the NbE table and the Knot are unchanged |
 
 ## 12. Done when
 
@@ -391,6 +393,7 @@ G1–G4 are the core of R5. G5–G7 can run in any order once G3 is green.
 
 ## 13. Next step
 
-G0: bring D1–D10 to the user. The two read-only checks are done (§2.1, §5).
+G0: bring D1–D12 to the user. The generic-syntax spike (D11,
+`SPIKE-GENERIC-SYNTAX.md`) runs first: S1–S2 are green, S3 is next. The two read-only checks are done (§2.1, §5).
 Meanwhile, the decision-free groundwork: master's usage semiring and usage
 vectors, copied into the POC with their laws.
