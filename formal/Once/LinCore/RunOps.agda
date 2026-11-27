@@ -83,6 +83,12 @@ module _ (D : Sig → Set) where
      ok-⊹ (tmGot ds (ownT p) ⊹ tmGot ds (ownT q)) ∅
        (ok-⊹ (tmGot ds (ownT p)) (tmGot ds (ownT q)) (ok-own ds p (okˡ {tmGot ds f} {tmGot ds g} k)) (ok-own ds q (okʳ {tmGot ds f} {tmGot ds g} k)))
        (λ ())
+   ok-own ds (o-fork {X₁ = X₁} {X₂ = X₂} {A₁ = A₁} {A₂ = A₂} {f = f} {g = g} {s = s} p q) k =
+     ok-⊹ (tmGot ds (ownT p) ⊹ tmGot ds (ownT q)) (tmGot ds (mixO ∘l lend (bsnd s)))
+       (ok-⊹ (tmGot ds (ownT p)) (tmGot ds (ownT q))
+         (ok-own ds p (okˡ {tmGot ds f} {tmGot ds g} (okˡ {tmGot ds f ⊹ tmGot ds g} {tmGot ds s} k)))
+         (ok-own ds q (okʳ {tmGot ds f} {tmGot ds g} (okˡ {tmGot ds f ⊹ tmGot ds g} {tmGot ds s} k))))
+       (ok-⊹ (tmGot ds (mixO {X₁ = X₁} {X₂} {A₁} {A₂})) (tmGot ds s) (λ ()) (okʳ {tmGot ds f ⊹ tmGot ds g} {tmGot ds s} k))
 
   -- a term with its table
   TmOK : ∀ {Γ} → Defs Γ → ∀ {E A B} → Tm Γ E A B → Set

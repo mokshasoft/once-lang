@@ -481,6 +481,9 @@ module In (U : Univ) where
    own-got (o-snd o)     gb tX = ⊹-join (own-got o gb (tyR tX)) (⊹-join (⊹-join ∅⊑ (⊹-join (tyL tX) ∅⊑)) ∅⊑)
    own-got (o-split p q) gb tX = ⊹-join (own-got p (⊹ˡ gb) (tyL tX)) (⊹-join (⊹-join ∅⊑ (own-got q (⊹ʳ gb) (tyR tX))) ∅⊑)
    own-got (o-case p q)  gb tX = ⊹-join (⊹-join (own-got p (⊹ˡ gb) tX) (own-got q (⊹ʳ gb) tX)) ∅⊑
+   own-got (o-fork p q)  gb tX =
+     ⊹-join (⊹-join (own-got p (⊹ˡ (⊹ˡ gb)) (tyL tX)) (own-got q (⊹ʳ (⊹ˡ gb)) (tyR tX)))
+            (⊹-join (⊹-join ∅⊑ (⊹-join (⊹-join ∅⊑ (⊹-join ∅⊑ (⊹-join (⊹-join ∅⊑ ∅⊑) ∅⊑))) ∅⊑)) (⊹ʳ gb))
 
   inCc : ∀ {T} → T ∈ cts U → kc T ∈ allK U
   inCc m = inC (cts⊆ U m)

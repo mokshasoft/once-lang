@@ -25641,3 +25641,13 @@ scrutinee): unnecessary here, since the alternative is a copy of the whole.
 routes by `dup` as before, but its body `(bfst ap ⊗l bsnd ap) ∘l splitP` is no shape of D493's `ownOf`: the
 owned entry falls back to `o-bg` (the lent body, then a free of the closure), where `llamωᶜ`'s owned body
 consumed the held closures. Fix: an `Own` case for the fork's shape (amendment below, when built).
+
+**Amended (2026-11-27): the fork's owned entry consumes what it holds.** `Core.Own` gains `o-fork` for
+`(bfst f ⊗l bsnd g) ∘l s`: the routing `s` runs lent on the environment (`lend (bsnd s)`), `mixO` puts each
+half of the environment beside its part of the argument (words moved, nothing run), then each arm runs owned,
+`f` first (`ownT p ⊗l ownT q`); an arm that is a held closure (`bev`) is applied by `levω`, its environment
+moved in. Proved at D493's five sites: meaning (`Bisim.own-≈`), ops (`RunOps.ok-own`), keys (`Keys.own-got`),
+totality (`Total.goOwn` with `lendR`, `mixR`, outside `go` so the recursion stays structural), the block
+(`own-blk`). Measured vs D494: run 1.00x, `.text` 1.00x, none slower, best 0.90x; `pair-arm-order-emit`
+2100 -> 1900 (D493: 1906), `answer-two-reads` 1611 -> 1530 (D493: 1514). Note: `LinCore.GlobalDispatchW` checks
+in 57 s alone (77 s inside the keepgoing process), untouched here but near the 60 s cap.

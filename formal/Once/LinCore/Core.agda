@@ -638,6 +638,17 @@ data Own {Γ} : ∀ {X A B} → Tm Γ X A B → Set where
   o-split : ∀ {X₁ X₂ A B C} {f : Tm Γ X₁ B C} {g : Tm Γ X₂ A B} → Own f → Own g
           → Own (bfst {E₂ = X₂} f ∘l bsnd {E₁ = X₁} g)
   o-case  : ∀ {X A B C} {f : Tm Γ X A C} {g : Tm Γ X B C} → Own f → Own g → Own (lcase f g)
+  -- ★ D494 amended: a fork (`(bfst f ⊗l bsnd g) ∘l s`): the routing run lent, then
+  -- each arm owned on its half of the environment and its part of the argument
+  o-fork  : ∀ {X₁ X₂ A A₁ A₂ B C} {f : Tm Γ X₁ A₁ B} {g : Tm Γ X₂ A₂ C} {s : Tm Γ (X₁ ⊗t X₂) A (A₁ ⊗t A₂)}
+          → Own f → Own g → Own ((bfst {E₂ = X₂} f ⊗l bsnd {E₁ = X₁} g) ∘l s)
+
+-- the halves of the environment beside the parts of the argument
+mixO : ∀ {Γ X₁ X₂ A₁ A₂} → Tm Γ One ((X₁ ⊗t X₂) ⊗t (A₁ ⊗t A₂)) ((X₁ ⊗t A₁) ⊗t (X₂ ⊗t A₂))
+mixO = lassoc⁻ ∘l ((lid ⊗l (lassoc ∘l ((lswap ⊗l lid) ∘l lassoc⁻))) ∘l lassoc)
+
+k-mixO : ∀ {Γ X₁ X₂ A₁ A₂} → Blk (mixO {Γ} {X₁} {X₂} {A₁} {A₂})
+k-mixO = k-∘ k-assoc⁻ (k-∘ (k-⊗ k-id (k-∘ k-assoc (k-∘ (k-⊗ k-swap k-id) k-assoc⁻))) k-assoc)
 
 ownT : ∀ {Γ X A B} {b : Tm Γ X A B} → Own b → Tm Γ One (X ⊗t A) B
 ownT {b = b} o-bg   = ownBg b
@@ -646,6 +657,7 @@ ownT (o-fst o)      = ownT o ∘l ((ρl ∘l (lid ⊗l drop)) ⊗l lid)
 ownT (o-snd o)      = ownT o ∘l ((lul ∘l (drop ⊗l lid)) ⊗l lid)
 ownT (o-split p q)  = ownT p ∘l ((lid ⊗l ownT q) ∘l lassoc)
 ownT (o-case p q)   = lcase (ownT p) (ownT q) ∘l ldist
+ownT (o-fork {s = s} p q) = (ownT p ⊗l ownT q) ∘l (mixO ∘l lend (bsnd s))
 
 own-blk : ∀ {Γ X A B} {b : Tm Γ X A B} (o : Own b) → Blk b → Blk (ownT o)
 own-blk {b = b} o-bg β                      = ownBg-gd {g = act} b β
@@ -654,6 +666,7 @@ own-blk (o-fst o) (k-fst β)                 = k-∘ (own-blk o β) (k-⊗ (k-�
 own-blk (o-snd o) (k-snd β)                 = k-∘ (own-blk o β) (k-⊗ (k-∘ k-lul (k-⊗ k-drop k-id)) k-id)
 own-blk (o-split p q) (k-∘ (k-fst β) (k-snd β′)) = k-∘ (own-blk p β) (k-∘ (k-⊗ k-id (own-blk q β′)) k-assoc)
 own-blk (o-case p q) (k-case β β′)          = k-∘ (k-case (own-blk p β) (own-blk q β′)) k-dist
+own-blk (o-fork p q) (k-∘ (k-⊗ (k-fst β) (k-snd β′)) βs) = k-∘ (k-⊗ (own-blk p β) (own-blk q β′)) (k-∘ k-mixO (k-lend (k-snd βs)))
 
 own-gd : ∀ {Γ g X A B} {b : Tm Γ X A B} (o : Own b) → Gd g b → Gd g (ownT o)
 own-gd {g = act} o β = own-blk o β
@@ -666,6 +679,7 @@ ownOf (bfst f)          = o-fst (ownOf f)
 ownOf (bsnd f)          = o-snd (ownOf f)
 ownOf (bfst f ∘l bsnd g) = o-split (ownOf f) (ownOf g)
 ownOf (lcase f g)       = o-case (ownOf f) (ownOf g)
+ownOf ((bfst f ⊗l bsnd g) ∘l s) = o-fork (ownOf f) (ownOf g)
 {-# CATCHALL #-}
 ownOf b                 = o-bg
 

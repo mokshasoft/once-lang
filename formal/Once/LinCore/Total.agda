@@ -617,6 +617,29 @@ module _ (W : World) where
     (ran (stop y) t₂ rg σ₂ w l₂ s₂ sp₂ wo₂ , _) →
       (ran (stop y) (t₁ ++ t₂) (r-⊗ rf (go-on (fm-stop rg))) σ₂ w l₂ (≤-trans s₂ s₁) (l₁ , sp₁ , sp₂) (wtr-++ t₁ wo₁ wo₂) , tt)
 
+  -- ★ D494 amended: a body run lent beside the environment it reads (`go`'s `lend`, given the body's run)
+  lendR : ∀ {Γ} {ds : Defs Γ} {X A B} {s : Tm Γ X A B} {x : MV X} {a : MV A} {n k σ}
+        → Good X x → Ran⁺ ds s x a n k σ → Ran⁺ ds (lend (bsnd s)) mone (mpair x a) n k σ
+  lendR gx (ran (gives w n′) t r σ₁ _ l s sp wo , gw) = (ran _ t (r-lend (fm-gives (r-snd r))) σ₁ tt l s sp wo , (gx , gw))
+  lendR gx (ran (stop y) t r σ₁ c l s sp wo , _) = (ran (stop y) t (r-lend (fm-stop (r-snd r))) σ₁ c l s sp wo , tt)
+
+  -- the halves of the environment beside the parts of the argument: words moved, nothing run
+  mixR : ∀ {Γ} {ds : Defs Γ} {X₁ X₂ A₁ A₂} (u : MV ((X₁ ⊗t X₂) ⊗t (A₁ ⊗t A₂))) n k (σ : WSt)
+       → Good ((X₁ ⊗t X₂) ⊗t (A₁ ⊗t A₂)) u → Ran⁺ ds mixO mone u n k σ
+  mixR (mpair (mpair x₁ x₂) (mpair a₁ a₂)) n k σ ((g₁ , g₂) , (h₁ , h₂)) =
+    seqR (seqR (ran _ _ r-α σ tt k ≤-refl refl refl , (g₁ , (g₂ , (h₁ , h₂))))
+               (λ { (mpair x₁′ (mpair x₂′ (mpair a₁′ a₂′))) n₁ l₁ σ₁ (g₁′ , (g₂′ , (h₁′ , h₂′))) →
+                      parR (ran _ _ r-id σ₁ tt l₁ ≤-refl refl refl , g₁′)
+                           (λ n₂ l₂ σ₂ →
+                              seqR (seqR (ran _ _ r-α⁻ σ₂ tt l₂ ≤-refl refl refl , ((g₂′ , h₁′) , h₂′))
+                                         (λ { (mpair (mpair x₂″ a₁″) a₂″) n₃ l₃ σ₃ ((g₂″ , h₁″) , h₂″) →
+                                                parR (ran _ _ r-swap σ₃ tt l₃ ≤-refl refl refl , (h₁″ , g₂″))
+                                                     (λ n₄ l₄ σ₄ → ran _ _ r-id σ₄ tt l₄ ≤-refl refl refl , h₂″) }))
+                                   (λ { (mpair (mpair a₁‴ x₂‴) a₂‴) n₃ l₃ σ₃ ((h₁‴ , g₂‴) , h₂‴) →
+                                          ran _ _ r-α σ₃ tt l₃ ≤-refl refl refl , (h₁‴ , (g₂‴ , h₂‴)) })) }))
+         (λ { (mpair x₁′ (mpair a₁′ (mpair x₂′ a₂′))) n₁ l₁ σ₁ (g₁′ , (h₁′ , (g₂′ , h₂′))) →
+                ran _ _ r-α⁻ σ₁ tt l₁ ≤-refl refl refl , ((g₁′ , h₁′) , (g₂′ , h₂′)) })
+
   -- a many-use closure applied owned: by its goodness, no recursive call
   evωR : ∀ {Γ} {ds : Defs Γ} {E g A B} (e : MV E) (f : MV (Fn many g A B)) (a : MV A) n k (σ : WSt)
        → Good (Fn many g A B) f → Good A a → Ran⁺ ds (levω {g = g}) e (mpair f a) n k σ
@@ -747,6 +770,10 @@ module _ (W : World) where
         seqR (ran _ _ r-dist₁ σ tt k ≤-refl refl refl , (gx , ga)) (caseK f g p q)
       goOwn _ (o-case {f = f} {g = g} p q) k x (minr b) n σ gx gb =
         seqR (ran _ _ r-dist₂ σ tt k ≤-refl refl refl , (gx , gb)) (caseK f g p q)
+      goOwn ((bfst f ⊗l bsnd g) ∘l s) (o-fork p q) k x a n σ gx ga =
+        seqR (seqR (lendR gx (go k s x a n σ gx ga)) (λ u n₁ l₁ σ₁ gu → mixR u n₁ l₁ σ₁ gu))
+             (λ { (mpair (mpair x₁ a₁) (mpair x₂ a₂)) n₁ l₁ σ₁ ((g₁ , h₁) , (g₂ , h₂)) →
+                    parR (goOwn f p l₁ x₁ a₁ n₁ σ₁ g₁ h₁) (λ n₂ l₂ σ₂ → goOwn g q l₂ x₂ a₂ n₂ σ₂ g₂ h₂) })
 
       -- the arms, owned, after distributing
       caseK : ∀ {X A B C} (f : Tm Γ X A C) (g : Tm Γ X B C) (p : Own f) (q : Own g)
