@@ -418,7 +418,7 @@ ren-dρ-inv ⌜Unit⌝ ()
 walk-anti : {ρ : Ren Θ Ξ} {C p : RTm Θ} {C' p' : RTm Ξ} →
             Walk C' p' → C' ≡ renTm ρ C → p' ≡ renTm ρ p → Walk C p
 walk-anti (w-ne n) refl refl = w-ne (sne-anti n)
-walk-anti (w-exp r k) refl ep with snr-anti r
+walk-anti {ρ = ρ} (w-exp r k) refl ep with snr-anti {ρ = ρ} r
 ... | C₀ , (r₀ , e₀) = w-exp r₀ (walk-anti k e₀ ep)
 walk-anti {C = C} w-ι e ep with ren-dι-inv C e
 ... | refl = w-ι

@@ -332,10 +332,10 @@ sn-anti {t = unit}     _              = sn-unit
 sn-anti {t = nzero}    _              = sn-nzero
 sn-anti {t = nsuc n}   (sn-nsuc h)    = sn-nsuc (sn-anti h)
 sn-anti {t = natrec z w n} (sn-ne nt) = sn-ne (sne-anti nt)
-sn-anti {t = natrec z w n} (sn-exp r h) with snr-anti r
+sn-anti {ρ = ρ} {t = natrec z w n} (sn-exp r h) with snr-anti {ρ = ρ} {t = natrec z w n} r
 ... | t' , (r' , refl) = sn-exp r' (sn-anti h)
 sn-anti {t = ielim D i ms t₀} (sn-ne nt) = sn-ne (sne-anti nt)
-sn-anti {t = ielim D i ms t₀} (sn-exp r h) with snr-anti r
+sn-anti {ρ = ρ} {t = ielim D i ms t₀} (sn-exp r h) with snr-anti {ρ = ρ} {t = ielim D i ms t₀} r
 ... | t' , (r' , refl) = sn-exp r' (sn-anti h)
 sn-anti {t = lam s}    (sn-lam h)     = sn-lam (sn-anti h)
 sn-anti {t = pair a b} (sn-pair ha hb) = sn-pair (sn-anti ha) (sn-anti hb)
@@ -349,36 +349,36 @@ sn-anti {t = ⌜Σ⌝ c d}  (sn-cΣ hc hd)  = sn-cΣ (sn-anti hc) (sn-anti hd)
 sn-anti {t = ⌜Hom⌝ c a b} (sn-cH hc ha hb) =
   sn-cH (sn-anti hc) (sn-anti ha) (sn-anti hb)
 sn-anti {t = hrefl c t} (sn-ne n)     = sn-ne (sne-anti n)
-sn-anti {t = hrefl c t} (sn-exp r h) with snr-anti r
+sn-anti {ρ = ρ} {t = hrefl c t} (sn-exp r h) with snr-anti {ρ = ρ} {t = hrefl c t} r
 ... | t' , (r' , refl) = sn-exp r' (sn-anti h)
 sn-anti {t = tr d p e}  (sn-ne n)     = sn-ne (sne-anti n)
-sn-anti {t = tr d p e}  (sn-exp r h) with snr-anti r
+sn-anti {ρ = ρ} {t = tr d p e}  (sn-exp r h) with snr-anti {ρ = ρ} {t = tr d p e} r
 ... | t' , (r' , refl) = sn-exp r' (sn-anti h)
 sn-anti {t = ap c b p}  (sn-ne n)     = sn-ne (sne-anti n)
-sn-anti {t = ap c b p}  (sn-exp r h) with snr-anti r
+sn-anti {ρ = ρ} {t = ap c b p}  (sn-exp r h) with snr-anti {ρ = ρ} {t = ap c b p} r
 ... | t' , (r' , refl) = sn-exp r' (sn-anti h)
 sn-anti {t = ⌜Id⌝ c a b} (sn-cId hc ha hb) =
   sn-cId (sn-anti hc) (sn-anti ha) (sn-anti hb)
 sn-anti {t = idrefl c t} (sn-idrefl hc ht) =
   sn-idrefl (sn-anti hc) (sn-anti ht)
 sn-anti {t = jsub d p e}  (sn-ne n)     = sn-ne (sne-anti n)
-sn-anti {t = jsub d p e}  (sn-exp r h) with snr-anti r
+sn-anti {ρ = ρ} {t = jsub d p e}  (sn-exp r h) with snr-anti {ρ = ρ} {t = jsub d p e} r
 ... | t' , (r' , refl) = sn-exp r' (sn-anti h)
 sn-anti {t = app t u}  (sn-ne n)      = sn-ne (sne-anti n)
 sn-anti {t = absurd c e} (sn-ne n)     = sn-ne (sne-anti n)
 sn-anti {t = ordtr a t u p q} (sn-ne n) = sn-ne (sne-anti n)
-sn-anti {t = ordtr a t u p q} (sn-exp r h) with snr-anti r
+sn-anti {ρ = ρ} {t = ordtr a t u p q} (sn-exp r h) with snr-anti {ρ = ρ} {t = ordtr a t u p q} r
 ... | t' , (r' , refl) = sn-exp r' (sn-anti h)
 sn-anti {t = fst p}    (sn-ne n)      = sn-ne (sne-anti n)
 sn-anti {t = snd p}    (sn-ne n)      = sn-ne (sne-anti n)
-sn-anti {t = app t u}  (sn-exp r h) with snr-anti r
+sn-anti {ρ = ρ} {t = app t u}  (sn-exp r h) with snr-anti {ρ = ρ} {t = app t u} r
 ... | t' , (r' , refl) = sn-exp r' (sn-anti h)
 -- ★ ex falso never head-reduces — it is a permanent neutral — so the
 -- head-expansion case is vacuous.
 sn-anti {t = absurd c e} (sn-exp () h)
-sn-anti {t = fst p}    (sn-exp r h) with snr-anti r
+sn-anti {ρ = ρ} {t = fst p}    (sn-exp r h) with snr-anti {ρ = ρ} {t = fst p} r
 ... | t' , (r' , refl) = sn-exp r' (sn-anti h)
-sn-anti {t = snd p}    (sn-exp r h) with snr-anti r
+sn-anti {ρ = ρ} {t = snd p}    (sn-exp r h) with snr-anti {ρ = ρ} {t = snd p} r
 ... | t' , (r' , refl) = sn-exp r' (sn-anti h)
 -- ★★ LEVITATED FAMILIES: the constructors and codes recurse into their
 --   parts; the eliminators are `natrec`'s two rows (neutral / expansion),
@@ -392,20 +392,20 @@ sn-anti {t = dρ j C}   (sn-dρ h₁ h₂)   = sn-dρ (sn-anti h₁) (sn-anti h�
 sn-anti {t = fzero}    _               = sn-fzero
 sn-anti {t = fsuc t₀}  (sn-fsuc h)     = sn-fsuc (sn-anti h)
 sn-anti {t = dpay I D C} (sn-ne nt) = sn-ne (sne-anti nt)
-sn-anti {t = dpay I D C} (sn-exp r h) with snr-anti r
+sn-anti {ρ = ρ} {t = dpay I D C} (sn-exp r h) with snr-anti {ρ = ρ} {t = dpay I D C} r
 ... | t' , (r' , refl) = sn-exp r' (sn-anti h)
 sn-anti {t = dih D e C p} (sn-ne nt) = sn-ne (sne-anti nt)
-sn-anti {t = dih D e C p} (sn-exp r h) with snr-anti r
+sn-anti {ρ = ρ} {t = dih D e C p} (sn-exp r h) with snr-anti {ρ = ρ} {t = dih D e C p} r
 ... | t' , (r' , refl) = sn-exp r' (sn-anti h)
 sn-anti {t = fcase t₀ a b} (sn-ne nt) = sn-ne (sne-anti nt)
-sn-anti {t = fcase t₀ a b} (sn-exp r h) with snr-anti r
+sn-anti {ρ = ρ} {t = fcase t₀ a b} (sn-exp r h) with snr-anti {ρ = ρ} {t = fcase t₀ a b} r
 ... | t' , (r' , refl) = sn-exp r' (sn-anti h)
 sn-anti {t = fcase0 t₀} (sn-ne nt) = sn-ne (sne-anti nt)
 sn-anti {t = fcase0 t₀} (sn-exp () h)
 sn-anti {Ξ = Ξ} {ρ = ρ} {t = ref n} (sn-exp (snr-δ p) h) with εwkTm {Γ = Ξ} (Defs.body 𝒮 n) | εwkTm-ren ρ (Defs.body 𝒮 n) | h
 ... | _ | refl | h' = sn-exp (snr-δ p) (sn-anti {ρ = ρ} {t = εwkTm (Defs.body 𝒮 n)} h')
 sn-anti {t = psplit b q} (sn-ne nt) = sn-ne (sne-anti nt)
-sn-anti {t = psplit b q} (sn-exp r h) with snr-anti r
+sn-anti {ρ = ρ} {t = psplit b q} (sn-exp r h) with snr-anti {ρ = ρ} {t = psplit b q} r
 ... | t' , (r' , refl) = sn-exp r' (sn-anti h)
 
 snr-anti {t = natrec z w nzero} (snr-natrec-zero hw) =
@@ -464,9 +464,9 @@ snr-anti {t = snd (pair a b)}   (snr-βsnd h) =
 snr-anti {t = snd p} (snr-snd r) = lift↑ (λ t' → snd t') snr-snd (λ _ → refl) (snr-anti r)
 snr-anti {t = hrefl ⌜Nat⌝ nzero} snr-hrefl-Nat-z = unit , (snr-hrefl-Nat-z , refl)
 snr-anti {t = hrefl ⌜Nat⌝ (nsuc m)} snr-hrefl-Nat-s = hrefl ⌜Nat⌝ m , (snr-hrefl-Nat-s , refl)
-snr-anti {t = hrefl ⌜Nat⌝ s} (snr-hreflᵃ r) with snr-anti {t = s} r
+snr-anti {ρ = ρ} {t = hrefl ⌜Nat⌝ s} (snr-hreflᵃ r) with snr-anti {ρ = ρ} {t = s} r
 ... | s' , (r' , refl) = hrefl ⌜Nat⌝ s' , (snr-hreflᵃ r' , refl)
-snr-anti {t = hrefl c s} (snr-hreflᶜ σ) with csr-anti σ
+snr-anti {ρ = ρ} {t = hrefl c s} (snr-hreflᶜ σ) with csr-anti {ρ = ρ} σ
 ... | c' , (σ' , refl) = hrefl c' s , (snr-hreflᶜ σ' , refl)
 snr-anti {ρ = ρ} {t = hrefl c s} (snr-hrefl-pw kp) =
   lam (hrefl (pwBody c) (app (renTm vs s) (var vz)))
@@ -495,7 +495,7 @@ snr-anti {ρ = ρ} {t = tr (⌜Hom⌝ c a m) (hrefl (⌜Hom⌝ c₁ a₁ b₁) s
                   (sn-anti hs) (trans (sym (stkA?-ren ρ c₁)) kh)
       , refl )
 snr-anti {ρ = ρ} {t = tr (⌜Hom⌝ c a (var vz)) (lam f) e}
-         (snr-tr-mot σ) with csr-anti σ
+         (snr-tr-mot σ) with csr-anti {ρ = extR ρ} {t = c} σ
 ... | c' , (σ' , refl) =
       tr (⌜Hom⌝ c' a (var vz)) (lam f) e , (snr-tr-mot σ' , refl)
 snr-anti {ρ = ρ} {t = tr (⌜Hom⌝ c a (var vz)) (lam f) e}
@@ -595,20 +595,20 @@ csr-anti {t = fzero} (csr-here ())
 csr-anti {t = fsuc _} (csr-here ())
 csr-anti {t = fcase0 _} (csr-here ())
 csr-anti {t = ⌜Fin⌝ _} (csr-here ())
-csr-anti {t = natrec z w n} (csr-here r) with snr-anti r
+csr-anti {ρ = ρ} {t = natrec z w n} (csr-here r) with snr-anti {ρ = ρ} r
 ... | t' , (r' , refl) = t' , (csr-here r' , refl)
-csr-anti {t = dpay _ _ _} (csr-here r) with snr-anti r
+csr-anti {ρ = ρ} {t = dpay _ _ _} (csr-here r) with snr-anti {ρ = ρ} r
 ... | t' , (r' , refl) = t' , (csr-here r' , refl)
-csr-anti {t = dih _ _ _ _} (csr-here r) with snr-anti r
+csr-anti {ρ = ρ} {t = dih _ _ _ _} (csr-here r) with snr-anti {ρ = ρ} r
 ... | t' , (r' , refl) = t' , (csr-here r' , refl)
-csr-anti {t = fcase _ _ _} (csr-here r) with snr-anti r
+csr-anti {ρ = ρ} {t = fcase _ _ _} (csr-here r) with snr-anti {ρ = ρ} r
 ... | t' , (r' , refl) = t' , (csr-here r' , refl)
 csr-anti {ρ = ρ} {t = ref n} (csr-here (snr-δ p)) = εwkTm (Defs.body 𝒮 n) , (csr-here (snr-δ p) , sym (εwkTm-ren ρ (Defs.body 𝒮 n)))
-csr-anti {t = psplit _ _} (csr-here r) with snr-anti r
+csr-anti {ρ = ρ} {t = psplit _ _} (csr-here r) with snr-anti {ρ = ρ} r
 ... | t' , (r' , refl) = t' , (csr-here r' , refl)
-csr-anti {t = ielim D i ms t₀} (csr-here r) with snr-anti r
+csr-anti {ρ = ρ} {t = ielim D i ms t₀} (csr-here r) with snr-anti {ρ = ρ} r
 ... | t' , (r' , refl) = t' , (csr-here r' , refl)
-csr-anti {t = ordtr a t u p q} (csr-here r) with snr-anti r
+csr-anti {ρ = ρ} {t = ordtr a t u p q} (csr-here r) with snr-anti {ρ = ρ} r
 ... | t' , (r' , refl) = t' , (csr-here r' , refl)
 csr-anti {t = lam _} (csr-here ())
 csr-anti {t = pair _ _} (csr-here ())
@@ -619,24 +619,24 @@ csr-anti {t = ⌜Unit⌝ } (csr-here ())
 csr-anti {t = ⌜IMu⌝ Dⁱ Iⁱ i } (csr-here ())
 csr-anti {t = ⌜Π⌝ _ _} (csr-here ())
 csr-anti {t = ⌜Σ⌝ _ _} (csr-here ())
-csr-anti {t = app f u} (csr-here r) with snr-anti r
+csr-anti {ρ = ρ} {t = app f u} (csr-here r) with snr-anti {ρ = ρ} r
 ... | t' , (r' , refl) = t' , (csr-here r' , refl)
-csr-anti {t = fst q} (csr-here r) with snr-anti r
+csr-anti {ρ = ρ} {t = fst q} (csr-here r) with snr-anti {ρ = ρ} r
 ... | t' , (r' , refl) = t' , (csr-here r' , refl)
-csr-anti {t = snd q} (csr-here r) with snr-anti r
+csr-anti {ρ = ρ} {t = snd q} (csr-here r) with snr-anti {ρ = ρ} r
 ... | t' , (r' , refl) = t' , (csr-here r' , refl)
-csr-anti {t = ap c b p} (csr-here r) with snr-anti r
+csr-anti {ρ = ρ} {t = ap c b p} (csr-here r) with snr-anti {ρ = ρ} r
 ... | t' , (r' , refl) = t' , (csr-here r' , refl)
 csr-anti {t = ⌜Id⌝ c a b} (csr-here ())
 csr-anti {t = idrefl c t} (csr-here ())
-csr-anti {t = jsub d p e} (csr-here r) with snr-anti r
+csr-anti {ρ = ρ} {t = jsub d p e} (csr-here r) with snr-anti {ρ = ρ} r
 ... | t' , (r' , refl) = t' , (csr-here r' , refl)
-csr-anti {t = hrefl _ _} (csr-here r) with snr-anti r
+csr-anti {ρ = ρ} {t = hrefl _ _} (csr-here r) with snr-anti {ρ = ρ} r
 ... | t' , (r' , refl) = t' , (csr-here r' , refl)
-csr-anti {t = tr _ _ _} (csr-here r) with snr-anti r
+csr-anti {ρ = ρ} {t = tr _ _ _} (csr-here r) with snr-anti {ρ = ρ} r
 ... | t' , (r' , refl) = t' , (csr-here r' , refl)
 csr-anti {t = ⌜Hom⌝ c a b} (csr-here ())
-csr-anti {t = ⌜Hom⌝ c a b} (csr-hom σ) with csr-anti σ
+csr-anti {ρ = ρ} {t = ⌜Hom⌝ c a b} (csr-hom σ) with csr-anti {ρ = ρ} σ
 ... | c' , (σ' , refl) = ⌜Hom⌝ c' a b , (csr-hom σ' , refl)
 
 ------------------------------------------------------------------------
