@@ -60,6 +60,7 @@ What follows from this:
 | 8 | Codata | ν, `unfold`, `iter` as core formers (servers) | none | A pure, productive ν at 0 for proofs (and for reifying `eff`) | master keeps its runtime story; DT adds ν at 0 |
 | 9 | Base types | `Int` at the target's width, `Float` at its format, effectful operations | unary `Nat` only | Width-parametric word and float MODELS in the DT kernel, erasing to master's primitives | master → DT (the spec) |
 | 10 | Equality | none in the core | `Id`, directed `Hom`, `tr`, `ap` | Proof-level only, at 0; laws stated as `Hom` | DT → master (as the logic) |
+| 12 | Definition identity | `CanonicalName` (module path + name); the program flattened into one telescope, indices assigned after flattening, `defName : Fin s → CanonicalName`; diamonds by name | levels only; each segment checked once over ONE base, so diamonds are not expressible | Names as identity, levels as the kernel's O(1) representation, re-levelling at link time computed from the names | master → DT (PLAN-GRADED §5) |
 | 11 | Linear core | `LinCore`: point-free, simply typed, explicit `dup`/`drop` | none (`NbEPLinCore` was its seed) | Master's; the DT kernel reaches it only through erasure | stays on master |
 
 ## 2. Usage grades (QTT)
@@ -81,6 +82,24 @@ The difference between 1 and ω is information about the program, and the
 linear core needs it. Both belong in one semiring, as in master.
 
 **Direction.** Master → DT. The POC's judgment becomes `Γ ⊢[ Ψ ] t ∷ A`.
+
+**The layering, and the reading of D468 it gives (2026-11-27).** Atkey's
+QTT has a judgment at σ = 0 in which usage is ignored. In the POC that is
+today's `Spec/Typing`, unchanged. The graded judgment is a σ = 1 layer over
+it: new rules only for the rules that may run, with their 0-premises left
+in the σ = 0 judgment, and a forgetful theorem from graded to ungraded
+(PLAN-GRADED §2.1, D10).
+- **For the integration on master.** D468 says "the dependent kernel extends
+  master's judgment". Its precise reading: master's graded judgment is the
+  σ = 1 layer, the POC's plain dependent judgment is the σ = 0 base (types,
+  indices, proofs), and master's rules gain 0-premises into that base.
+  Master's rules are not rewritten into dependent rules.
+- **Optional, for master today.** An argument at quantity `Zero` is a full
+  graded subderivation, which every L1 pass and `Lq` traverses and must
+  prove erased (plan 0.146: "the pass erases `Zero`"). Typed in an ungraded
+  judgment instead, it would be absent from graded derivations, so erased
+  by construction. The cost is an ungraded judgment in master's Spec plus a
+  forgetful theorem. Decide after counting the `Zero` uses on master.
 
 **Open.** How usage meets the dependent eliminators (`ielim`'s motive and
 methods, `natrec`, `split`), and how it meets the Knot. Each rule of the

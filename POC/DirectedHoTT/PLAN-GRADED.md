@@ -233,6 +233,18 @@ attribute, abstract types as existential packages. The kernel's side:
     renaming on `ref`, still to write. Master has import DAGs (plan 0.154),
     so this is needed before the kernel meets real libraries. It is not
     needed for visibility itself.
+  - **The fix comes from master (2026-11-27): names.** Master's identity of
+    a definition is its `CanonicalName` (`Spec/Name`). The CLI loads all
+    transitive imports into one module map with a cycle check, and the
+    verified `resolveImports` flattens them. The core telescope gets its
+    indices after flattening (`defName : Fin s → CanonicalName`), so a
+    diamond is one set of entries. In the POC: each entry carries its
+    canonical name; a checked module is a segment RELATIVE TO ITS IMPORTS;
+    linking computes the linear order and the level renaming from the
+    names. The kernel keeps levels (O(1) `ref`, PLAN-REF's reason), and the
+    re-levelling is the renaming the names determine. Unlike master, which
+    re-elaborates the flattened program, a segment's check is reused
+    through the renaming.
 - **NbE.** The value table (`Algorithm/NbE/TblOK`) unfolds only visible
   entries. Soundness (`nbe-sound`) is restated relative to a visibility.
 - **Conservativity** (S5's δ-elimination) holds per segment: a segment that
