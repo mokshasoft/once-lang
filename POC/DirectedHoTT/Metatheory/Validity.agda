@@ -39,6 +39,7 @@ module DirectedHoTT.Metatheory.Validity (𝒮 : Defs) (n : ℕ) (ok : Ty.Entries
 open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; cong; subst; Σ; _,_; _×_ )
 open import DirectedHoTT.Spec.Scope
 open import DirectedHoTT.Spec.Syntax
+  using ( Defs; El; Fin; Nat; RTm; RTy; _<ˢ?_; _<ˢ_; `El; `Fin; app; extR; fst; idₛ; nsuc; pair; renTm; renTy; subTm; subTy; subTy-cong; subTy-id; subTy-renTy; var; Π; Σ'; εwkTy; ⌜base⌝ )
 open import DirectedHoTT.Spec.Typing 𝒮 n
 open import DirectedHoTT.Metatheory.SubjectReduction 𝒮 n ok
   using ( sr; gen-⌜Π⌝; gen-⌜Σ⌝; gen-⌜Hom⌝; gen-⌜Id⌝; gen-⌜IMu⌝; gen-⌜Fin⌝; gen-nsuc
