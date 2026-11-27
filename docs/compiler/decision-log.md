@@ -25590,3 +25590,12 @@ recursion stays structural; a many-use closure's goodness now has both halves (l
 **Considered.** Carrying the owned body in the closure (`llamω b γ b₁ γ₁ (w : OwnOf b b₁)`): structural
 for `Total` at once, but 78 sites change and the bridge must supply `b₁`; the computed certificate keeps the
 core's syntax and costs one recursion in `Total`.
+
+**Measured** (x86_64, 107 programs without alloc-forever). Against D492: loop-emit 0.71x, the compose
+chains 0.82x (layer0-compose, layer4-id-compose-chain, answer-two-reads), 7 programs 1.03–1.12x slower
+(halt-ends-trace 1.12x, opt-rules 1.11x, float-arith/float-div 1.06x). Against the build before D480's
+amendment (`perf-rdw`): none slower, the folds 0.42–0.5x; `once stats`' closures with cell environments 210
+-> 47 over the corpus. The 7 are frees, not work: traced per symbol (qemu, one instruction per block), their
+allocations are the same and the extra instructions are the free routines (opt-rules: 48 -> 138). Each owned
+entry now frees its closure's cell as it consumes it; D492 freed the chain after the lent run, which a
+program that halts inside it (`exit`) never reached. Memory is freed sooner: what a server wants.
