@@ -79,6 +79,7 @@ import DirectedHoTT.Metatheory.Validity
 import DirectedHoTT.Spec.Annotated
 import DirectedHoTT.Spec.AnnotatedDesc
 import DirectedHoTT.Spec.Base
+import DirectedHoTT.Spec.Grade
 import DirectedHoTT.Spec.Reduction
 import DirectedHoTT.Spec.SigExtend
 import DirectedHoTT.Spec.SigWf
@@ -86,4 +87,5 @@ import DirectedHoTT.Spec.Signature
 import DirectedHoTT.Spec.Syntax
 import DirectedHoTT.Spec.Typing
 import DirectedHoTT.Spec.TypingA
+import DirectedHoTT.Spec.Usage
 import DirectedHoTT.Spec.Variance
