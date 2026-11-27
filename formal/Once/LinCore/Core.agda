@@ -61,6 +61,7 @@ open import Data.Unit using (⊤; tt)
 open import Data.Product using (_×_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Nat using (ℕ; zero; suc)
+open import Data.Bool using (Bool; true; false; _∨_)
 open import Agda.Builtin.Equality using (_≡_; refl)
 import Once.LinCore.Flat
 open import Once.Spec.Numerics using (TargetNum)
@@ -579,8 +580,38 @@ mapNu F (Kμ G)   S = lid
 mapNu F (G ⊕f H) S = lcase (linl ∘l mapNu F G S) (linr ∘l mapNu F H S)
 mapNu F (G ⊗f H) S = mapNu F G S ⊗l mapNu F H S
 
+-- ★ D496: a layer's seed positions
+hasId : LF → Bool
+hasId Idf      = true
+hasId Kone     = false
+hasId Kzero    = false
+hasId (Kb b)   = false
+hasId (Kμ G)   = false
+hasId (G ⊕f H) = hasId G ∨ hasId H
+hasId (G ⊗f H) = hasId G ∨ hasId H
+
+-- ★ D496: the coalgebra OWNED into the layer: a seed position takes it, a
+-- constant frees it, a sum distributes it; a product gives it to the side
+-- with seed positions (the right if it has some) and lends it to the other,
+-- which copies it only at its own seed positions (`strL`). A layer with one
+-- seed position per branch (a stream, a server's round) copies nothing.
+strO : ∀ {Γ} F G S → LTm Γ (Coalg F S ⊗t LF∙ G S) (LF∙ G (Coalg F S ⊗t S))
+-- (c , (g , h)): the owned coalgebra to the right (`true`) or the left (`false`)
+strP : ∀ {Γ} F G H S → Bool → LTm Γ (Coalg F S ⊗t (LF∙ G S ⊗t LF∙ H S)) (LF∙ G (Coalg F S ⊗t S) ⊗t LF∙ H (Coalg F S ⊗t S))
+strO F Idf      S = lid
+strO F Kone     S = lul ∘l (drop ⊗l lid)
+strO F Kzero    S = lul ∘l (drop ⊗l lid)
+strO F (Kb b)   S = lul ∘l (drop ⊗l lid)
+strO F (Kμ G)   S = lul ∘l (drop ⊗l lid)
+strO F (G ⊕f H) S = lcase (linl ∘l strO F G S) (linr ∘l strO F H S) ∘l ldist
+strO F (G ⊗f H) S = strP F G H S (hasId H)
+strP F G H S true  =
+  (lid ⊗l strO F H S) ∘l lassoc ∘l (lswap ⊗l lid) ∘l lassoc⁻ ∘l lend (strL F G S ⊗l lid)
+strP F G H S false =
+  (strO F G S ⊗l lid) ∘l lassoc⁻ ∘l lend (lid ⊗l strL F H S)
+
 obsT : ∀ {Γ} F S → LTm Γ (Coalg F S ⊗t S) (LF∙ F (Nu F))
-obsT F S = mapNu F F S ∘l lul ∘l (drop ⊗l lid) ∘l lend (strL F F S) ∘l lend (bsnd bev)
+obsT F S = mapNu F F S ∘l strO F F S ∘l lend (bsnd bev)
 
 -- a coalgebra's meaning, on the functor's values
 cohc : ∀ F S → ⟦ Coalg F S ⟧ → ⟦ S ⟧ → T (FS F ⟦ S ⟧)

@@ -638,6 +638,27 @@ module In (U : Univ) where
   strL-got d F (G ⊕f H) S c = ⊹-join (⊹-join ∅⊑ (strL-got d F G S c)) (⊹-join ∅⊑ (strL-got d F H S c))
   strL-got d F (G ⊗f H) S c = ⊹-join (strL-got d F G S c) (strL-got d F H S c)
 
+  -- ★ D496: the owned form names the coalgebra's free, and the lent form's copies
+  dropC-got : ∀ {Γ} (d : Defs Γ) F S → Coalg F S ∈ tys U → (t! (Coalg F S)) ⊑U
+  dropC-got d F S c = sub (λ ()) (one c) (λ ()) (λ ()) (λ ()) (λ ())
+
+  mutual
+    strO-got : ∀ {Γ} (d : Defs Γ) F G S → Coalg F S ∈ tys U → tmGot d (strO F G S) ⊑U
+    strO-got d F Idf      S c = ∅⊑
+    strO-got d F Kone     S c = ⊹-join ∅⊑ (⊹-join (dropC-got d F S c) ∅⊑)
+    strO-got d F Kzero    S c = ⊹-join ∅⊑ (⊹-join (dropC-got d F S c) ∅⊑)
+    strO-got d F (Kb b)   S c = ⊹-join ∅⊑ (⊹-join (dropC-got d F S c) ∅⊑)
+    strO-got d F (Kμ G)   S c = ⊹-join ∅⊑ (⊹-join (dropC-got d F S c) ∅⊑)
+    strO-got d F (G ⊕f H) S c = ⊹-join (⊹-join (⊹-join ∅⊑ (strO-got d F G S c)) (⊹-join ∅⊑ (strO-got d F H S c))) ∅⊑
+    strO-got d F (G ⊗f H) S c = strP-got d F G H S (hasId H) c
+
+    strP-got : ∀ {Γ} (d : Defs Γ) F G H S b → Coalg F S ∈ tys U → tmGot d (strP F G H S b) ⊑U
+    strP-got d F G H S true  c =
+      ⊹-join (⊹-join ∅⊑ (strO-got d F H S c))
+             (⊹-join ∅⊑ (⊹-join (⊹-join ∅⊑ ∅⊑) (⊹-join ∅⊑ (⊹-join (strL-got d F G S c) ∅⊑))))
+    strP-got d F G H S false c =
+      ⊹-join (⊹-join (strO-got d F G S c) ∅⊑) (⊹-join ∅⊑ (⊹-join ∅⊑ (strL-got d F H S c)))
+
   mapNu-got : ∀ {Γ} (d : Defs Γ) F G S → (F , S) ∈ nus U → (_ , ε) ∈ obs U → tmGot d (mapNu F G S) ⊑U
   mapNu-got d F Idf      S n o = sub (λ ()) (λ ()) (one n) (one o) (λ ()) (λ ())
   mapNu-got d F Kone     S n o = ∅⊑
@@ -650,9 +671,7 @@ module In (U : Univ) where
   obs-in : ∀ {Γ} (d : Defs Γ) F S → (F , S) ∈ nus U → Coalg F S ∈ tys U → (_ , ε) ∈ obs U → BIn (_ , kobs d F S)
   obs-in d F S n c o =
     tt , comp-in d (obsT F S)
-           (⊹-join (mapNu-got d F F S n o)
-             (⊹-join ∅⊑ (⊹-join (⊹-join (sub (λ ()) (one c) (λ ()) (λ ()) (λ ()) (λ ())) ∅⊑)
-                                 (⊹-join (strL-got d F F S c) ∅⊑))))
+           (⊹-join (mapNu-got d F F S n o) (⊹-join (strO-got d F F S c) ∅⊑))
            (tt , tt)
 
   -- a body, a fold, a label: inside when what they name is

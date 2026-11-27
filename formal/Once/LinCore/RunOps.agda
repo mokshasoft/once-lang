@@ -22,6 +22,7 @@ open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
+open import Data.Bool using (true; false)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; sym)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.IR.Semantics.Trace using (FFIAnswers)
@@ -186,10 +187,33 @@ module _ (D : Sig → Set) where
   mapNu-ok ds F (G ⊕f H) S m = either (ps (tmGot ds (mapNu F G S))) m (mapNu-ok ds F G S) (mapNu-ok ds F H S)
   mapNu-ok ds F (G ⊗f H) S m = either (ps (tmGot ds (mapNu F G S))) m (mapNu-ok ds F G S) (mapNu-ok ds F H S)
 
+  -- ★ D496: the owned form names no op either
+  strO-ok : ∀ {Γ} (ds : Defs Γ) F G S → Ok (tmGot ds (strO F G S))
+  strP-ok : ∀ {Γ} (ds : Defs Γ) F G H S b → Ok (tmGot ds (strP F G H S b))
+  strO-ok ds F Idf      S ()
+  strO-ok ds F Kone     S ()
+  strO-ok ds F Kzero    S ()
+  strO-ok ds F (Kb b)   S ()
+  strO-ok ds F (Kμ G)   S ()
+  strO-ok ds F (G ⊕f H) S =
+    ok-⊹ ((∅ ⊹ tmGot ds (strO F G S)) ⊹ (∅ ⊹ tmGot ds (strO F H S))) ∅
+      (ok-⊹ (∅ ⊹ tmGot ds (strO F G S)) (∅ ⊹ tmGot ds (strO F H S))
+        (ok-⊹ ∅ (tmGot ds (strO F G S)) (λ ()) (strO-ok ds F G S)) (ok-⊹ ∅ (tmGot ds (strO F H S)) (λ ()) (strO-ok ds F H S)))
+      (λ ())
+  strO-ok ds F (G ⊗f H) S = strP-ok ds F G H S (hasId H)
+  strP-ok ds F G H S true =
+    ok-⊹ (∅ ⊹ tmGot ds (strO F H S)) (∅ ⊹ ((∅ ⊹ ∅) ⊹ (∅ ⊹ (tmGot ds (strL F G S) ⊹ ∅))))
+      (ok-⊹ ∅ (tmGot ds (strO F H S)) (λ ()) (strO-ok ds F H S))
+      (ok-⊹ ∅ ((∅ ⊹ ∅) ⊹ (∅ ⊹ (tmGot ds (strL F G S) ⊹ ∅))) (λ ()) (ok-⊹ (∅ ⊹ ∅) (∅ ⊹ (tmGot ds (strL F G S) ⊹ ∅)) (λ ()) (ok-⊹ ∅ (tmGot ds (strL F G S) ⊹ ∅) (λ ()) (ok-⊹ (tmGot ds (strL F G S)) ∅ (strL-ok ds F G S) (λ ())))))
+  strP-ok ds F G H S false =
+    ok-⊹ (tmGot ds (strO F G S) ⊹ ∅) (∅ ⊹ (∅ ⊹ tmGot ds (strL F H S)))
+      (ok-⊹ (tmGot ds (strO F G S)) ∅ (strO-ok ds F G S) (λ ()))
+      (ok-⊹ ∅ (∅ ⊹ tmGot ds (strL F H S)) (λ ()) (ok-⊹ ∅ (tmGot ds (strL F H S)) (λ ()) (strL-ok ds F H S)))
+
   obsT-ok : ∀ {Γ} (ds : Defs Γ) F S → Ok (tmGot ds (obsT F S))
   obsT-ok ds F S m =
     either (ps (tmGot ds (mapNu F F S))) m (mapNu-ok ds F F S)
-      (λ m′ → either (ps (tmGot ds (strL F F S))) m′ (strL-ok ds F F S) (λ ()))
+      (λ m′ → either (ps (tmGot ds (strO F F S))) m′ (strO-ok ds F F S) (λ ()))
 
   -- ★★ a run of D's ops on D's values cuts only at D's ops, and gives D's values
   mutual

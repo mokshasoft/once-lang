@@ -25686,3 +25686,32 @@ read (`g (fst p)` read in place): not needed by the corpus's copies; later, with
 **Measured** (vs D494 amended, 108 programs, x86_64): run 1.00x, `.text` 1.00x, none slower;
 `cata-fn-carrier` 0.70x, `layer4-twice` 0.87x. `once stats` over the corpus: dups 7 -> 5, dup-cells 2 -> 0
 (no `dup` at a type with cells left), bcopy-cells 0; clo-cells 31 (the `llamωᶜ` lent entries, next).
+
+## D496 — A STREAM'S OBSERVATION MOVES ITS COALGEBRA INTO THE LAYER: NO COPY WHERE A BRANCH HAS ONE SEED (2026-11-27, proposed — unattended, for the user's review; plan 0.157 S2, D6)
+
+**The problem.** Observing a ν (`Core.obsT`) applied the coalgebra lent, then `strL` copied it beside every
+seed of the layer (`bsnd bcopy`) and dropped the original: per observation, a copy and a free of the
+coalgebra's closure cell, where the layer of a stream (`A ⊗ Id`) or a server's round has exactly one seed. Under
+D6 such a program is linear (the coalgebra has one owning use per layer), so `NoCopy` cannot hold while every
+observation copies — a copy at a type with cells on every ana-based program (the plan 0.146 note "copy-then-drop
+of a stream's coalgebra per observation; a refinement could move it instead").
+
+**The decision.** `obsT F S = mapNu F F S ∘l strO F F S ∘l lend (bsnd bev)`: the coalgebra is applied lent,
+then OWNED into the layer (`strO`): a seed takes it (`lid`), a constant frees it, a sum distributes it
+(`ldist`, D492); a product gives it to the side with seeds (the right if `hasId` of it, else the left) and lends
+it to the other side, which copies it only at its own seeds (the old `strL`, now only there). A layer with at
+most one seed per branch copies nothing; a branching layer (`Id ⊗ Id`) copies once per extra seed, as needed.
+
+**Proved.** Meaning: `Grade.strO-coh` (the owned form means the same layer, `strM`), `obs-coh` over the shorter
+chain. Totality: `Total.strORun` (from goodness, by `gp-∘`/`gp-⊗`/`gp-lend`/`gp-free`, GaveP composed),
+`observe`. Keys: `strO-got`. Ops: `RunOps.strO-ok`. Table-freeness: `ObsTable.strO-tf` (`TF` gains `ldist`,
+`lassoc`, `lassoc⁻`, `lswap`), `rt-strO`; the image's simulation: `ImageSimRun.simTF` cases.
+
+**Measured** (before the proofs, x86_64): `nu-ana-deep` 1307 -> 922 (0.71x), `ana-capture` 3574 -> 2722
+(0.76x); `loop-sum` unchanged (its rounds are the core's `iter`, not an observation). Checking cost:
+`ObsTable` 44 s -> 55 s alone (five more `TF` formers in `run-tf`/`plain-tf`), under the cap.
+`LinCore.GlobalDispatch` was already at the cap before D496 (59.9 s profiled at D495; 65.4 s after, its
+larger Core interface): split by its independent groups, the calls (`GlobalDispatch`, 36 s alone) and the cell
+opens and observations (`GlobalDispatchO`, 47 s), as `WordStep` uses them.
+Gate (after the proofs): run 1.00x, `.text` 1.00x vs D495, none slower; `nu-ana-deep` 0.71x, `ana-capture`
+0.76x, `s0151-bare-maps` 0.96x.

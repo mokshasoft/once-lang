@@ -47,7 +47,7 @@ open import Once.LinCore.ImageRun fmt ans bw using (Ret; []ʳ; frm;
   i-unpair; i-pair; i-swap; i-unit; i-prim; i-opend; i-untag; i-case₁; i-case₂; i-elend; i-eunlend; i-elift; i-efst; i-esnd;
   i-eout; i-ecase₁; i-ecase₂; i-eapp; i-epop; i-call; i-reti; i-icall; i-icallω; i-oncify; i-iobs; i-nopen; i-open1; i-openω)
 -- a ν is observed at the empty table (D442)
-open import Once.LinCore.ObsTable fmt ans bw using (TF; tf-id; tf-∘; tf-⊗; tf-case; tf-inl; tf-inr; tf-lul; tf-lul⁻; tf-drop; tf-lend; tf-bsnd; tf-bcopy; tf-bev; tf-unf; rt; obsT-tf; rt-obsT)
+open import Once.LinCore.ObsTable fmt ans bw using (TF; tf-id; tf-∘; tf-⊗; tf-case; tf-inl; tf-inr; tf-lul; tf-lul⁻; tf-drop; tf-lend; tf-bsnd; tf-bcopy; tf-bev; tf-unf; tf-dist; tf-α; tf-α⁻; tf-swap; rt; obsT-tf; rt-obsT)
 open import Once.LinCore.ImageSim fmt ans bw using (StepsI; done; loops; oneI; PausedI; paused; OutI; out; HaltIf; SimRI; sim-code;
   pre; preH; preR; preL; preLH; preLR; after; leaf; then; thenH; thenR; called′; calledH; calledR; calledR′; calledRω; around; tmpR;
   P-[]H; O-[]; doneO; copyS; freeS; look-key1; look-keyω; start)
@@ -283,6 +283,14 @@ mutual
     pre i-swap (after (after (simTF rg w pg (ctx es eq (a′ ∷ˢ os) (swap ⨾ pair ⨾ k) ρ)) i-swap) i-pair)
   rightTF w@(tf-unf) rg pg es eq {a′} os k ρ =
     pre i-swap (after (after (simTF rg w pg (ctx es eq (a′ ∷ˢ os) (swap ⨾ pair ⨾ k) ρ)) i-swap) i-pair)
+  rightTF w@(tf-dist) rg pg es eq {a′} os k ρ =
+    pre i-swap (after (after (simTF rg w pg (ctx es eq (a′ ∷ˢ os) (swap ⨾ pair ⨾ k) ρ)) i-swap) i-pair)
+  rightTF w@(tf-α) rg pg es eq {a′} os k ρ =
+    pre i-swap (after (after (simTF rg w pg (ctx es eq (a′ ∷ˢ os) (swap ⨾ pair ⨾ k) ρ)) i-swap) i-pair)
+  rightTF w@(tf-α⁻) rg pg es eq {a′} os k ρ =
+    pre i-swap (after (after (simTF rg w pg (ctx es eq (a′ ∷ˢ os) (swap ⨾ pair ⨾ k) ρ)) i-swap) i-pair)
+  rightTF w@(tf-swap) rg pg es eq {a′} os k ρ =
+    pre i-swap (after (after (simTF rg w pg (ctx es eq (a′ ∷ˢ os) (swap ⨾ pair ⨾ k) ρ)) i-swap) i-pair)
 
   rightTFS : ∀ {Γ} {ds : Defs Γ} {E B B′} {g : Tm Γ E B B′} {e c n t y} (wg : TF g)
            → (rg : Run ds g e c n (stop y) t) → Plain rg
@@ -303,6 +311,10 @@ mutual
   rightTFS w@(tf-bcopy) rg pg es eq {a′} os k ρ = preH _ i-swap (simTF rg w pg (ctx es eq (a′ ∷ˢ os) (swap ⨾ pair ⨾ k) ρ))
   rightTFS w@(tf-bev) rg pg es eq {a′} os k ρ = preH _ i-swap (simTF rg w pg (ctx es eq (a′ ∷ˢ os) (swap ⨾ pair ⨾ k) ρ))
   rightTFS w@(tf-unf) rg pg es eq {a′} os k ρ = preH _ i-swap (simTF rg w pg (ctx es eq (a′ ∷ˢ os) (swap ⨾ pair ⨾ k) ρ))
+  rightTFS w@(tf-dist) rg pg es eq {a′} os k ρ = preH _ i-swap (simTF rg w pg (ctx es eq (a′ ∷ˢ os) (swap ⨾ pair ⨾ k) ρ))
+  rightTFS w@(tf-α) rg pg es eq {a′} os k ρ = preH _ i-swap (simTF rg w pg (ctx es eq (a′ ∷ˢ os) (swap ⨾ pair ⨾ k) ρ))
+  rightTFS w@(tf-α⁻) rg pg es eq {a′} os k ρ = preH _ i-swap (simTF rg w pg (ctx es eq (a′ ∷ˢ os) (swap ⨾ pair ⨾ k) ρ))
+  rightTFS w@(tf-swap) rg pg es eq {a′} os k ρ = preH _ i-swap (simTF rg w pg (ctx es eq (a′ ∷ˢ os) (swap ⨾ pair ⨾ k) ρ))
 
   -- ★ a TABLE-FREE term's run, on its code at the empty table (D442): as
   -- `simI`, by the run (the observation's block is `kobs ε`)
@@ -334,6 +346,11 @@ mutual
   simTF (r-snd {e₂ = e₂} {o = o} r) (tf-bsnd wf) fr (ctx es eq os k ρ) = around o (i-esnd eq) (simTF r wf fr (ctx (vw e₂ es) refl os _ ρ))
   simTF (r-copy {n = n}) tf-bcopy fr (ctx es refl os k ρ) = copyS (see es) refl os n
   simTF r-unf tf-unf fr (ctx es eq os k ρ) = leaf (i-prim r-unf) (k-alloc ∷ [])
+  simTF r-dist₁ tf-dist fr (ctx es eq os k ρ) = leaf (i-prim r-dist₁) []
+  simTF r-dist₂ tf-dist fr (ctx es eq os k ρ) = leaf (i-prim r-dist₂) []
+  simTF r-α tf-α fr (ctx es eq os k ρ) = leaf (i-prim r-α) []
+  simTF r-α⁻ tf-α⁻ fr (ctx es eq os k ρ) = leaf (i-prim r-α⁻) []
+  simTF r-swap tf-swap fr (ctx es eq os k ρ) = leaf (i-prim r-swap) []
   simTF (r-bev {B = B} {ds′ = ds′} {b = b} {γ = γ} {i = i} {x} {a} {o} {n} r) tf-bev p (ctx es eq os k ρ) =
     calledR′ o (i-icallω eq) (bevR o (calledRω o (simI r p (ctx (vw x []ᵉ) refl []ˢ end (frm {t = just _} (epop ⨾ end) (vw x E′) []ˢ R′)))))
     where

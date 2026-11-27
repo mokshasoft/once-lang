@@ -29,6 +29,7 @@ open import Agda.Builtin.Sigma using (Σ; _,_; fst; snd)
 open import Agda.Builtin.Equality using (_≡_; refl)
 open import Relation.Binary.PropositionalEquality using (trans; cong; cong₂; subst; sym)
 open import Data.Empty using (⊥; ⊥-elim)
+open import Data.Bool using (true; false)
 open import Data.Product using (_×_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
@@ -443,6 +444,65 @@ module _ (W : World) where
       (gaveP {t = t₂} r₂ h₂ fr₂ q₂) → gaveP (r-⊗ r₁ (go-on (fm-gives r₂))) (h₁ , h₂) (λ k → (k , fr₁ k , fr₂ k))
                                        (trans (ios-++ t₁ t₂) (cong₂ _++_ q₁ q₂))
 
+  -- ★ D496: runs that give a good value at once, composed
+  GaveG : ∀ {Γ} (ds : Defs Γ) {E A B} (f : Tm Γ E A B) (e : MV E) (v : MV A) (n : ℕ) → Set
+  GaveG ds {B = B} f e v n = GaveP ds f e v n (Good B)
+
+  gp-∘ : ∀ {Γ} {ds : Defs Γ} {E A B C} {f : Tm Γ E B C} {g : Tm Γ E A B} {e : MV E} {v : MV A} {n}
+       → GaveG ds g e v n → (∀ (u : MV B) n′ → Good B u → GaveG ds f e u n′) → GaveG ds (f ∘l g) e v n
+  gp-∘ (gaveP {w = u} {n′ = n₁} {t = t₁} r₁ g₁ s₁ q₁) k = case k u n₁ g₁ of λ where
+    (gaveP {t = t₂} r₂ g₂ s₂ q₂) → gaveP (r-∘ r₁ (go-on r₂)) g₂ (λ l → (l , s₁ l , s₂ l)) (trans (ios-++ t₁ t₂) (cong₂ _++_ q₁ q₂))
+
+  gp-⊗ : ∀ {Γ} {ds : Defs Γ} {E A B C D} {f : Tm Γ E A B} {g : Tm Γ E C D} {e : MV E} {a : MV A} {c : MV C} {n}
+       → GaveG ds f e a n → (∀ n′ → GaveG ds g e c n′) → GaveG ds (f ⊗l g) e (mpair a c) n
+  gp-⊗ (gaveP {n′ = n₁} {t = t₁} r₁ g₁ s₁ q₁) k = case k n₁ of λ where
+    (gaveP {t = t₂} r₂ g₂ s₂ q₂) → gaveP (r-⊗ r₁ (go-on (fm-gives r₂))) (g₁ , g₂) (λ l → (l , s₁ l , s₂ l)) (trans (ios-++ t₁ t₂) (cong₂ _++_ q₁ q₂))
+
+  gp-lend : ∀ {Γ} {ds : Defs Γ} {E X A B} {b : Tm Γ (E ⊗t X) A B} {e : MV E} {x : MV X} {a : MV A} {n}
+          → Good X x → GaveG ds b (mpair e x) a n → GaveG ds (lend b) e (mpair x a) n
+  gp-lend gx (gaveP r g s q) = gaveP (r-lend (fm-gives r)) (gx , g) s q
+
+  gp-drop : ∀ {Γ} {ds : Defs Γ} {E A} {e : MV E} (v : MV A) n → GaveG ds (drop {A = A}) e v n
+  gp-drop v n = gaveP r-drop tt (λ k → refl) (ios-freeAll v)
+
+  -- the coalgebra freed beside a constant
+  gp-free : ∀ {Γ} {ds : Defs Γ} {C X} (c : MV C) (x : MV X) → Good X x → ∀ n → GaveG ds (lul ∘l (drop ⊗l lid)) mone (mpair c x) n
+  gp-free c x gx n =
+    gp-∘ (gp-⊗ (gp-drop c n) (λ n′ → gaveP r-id gx (λ k → refl) refl))
+         (λ { (mpair mone x′) n′ (_ , gx′) → gaveP r-λ gx′ (λ k → refl) refl })
+
+  -- ★ D496: the coalgebra owned into the layer (`strO`), its run from goodness
+  strORun : ∀ {Γ} (ds : Defs Γ) {F S} G (c : MV (Coalg F S)) → Good (Coalg F S) c
+          → (w : MV (LF∙ G S)) → Good (LF∙ G S) w → ∀ n → GaveG ds (strO F G S) mone (mpair c w) n
+  strPRun : ∀ {Γ} (ds : Defs Γ) {F S} G H b (c : MV (Coalg F S)) → Good (Coalg F S) c
+          → (w : MV (LF∙ G S)) → Good (LF∙ G S) w → (w′ : MV (LF∙ H S)) → Good (LF∙ H S) w′ → ∀ n
+          → GaveG ds (strP F G H S b) mone (mpair c (mpair w w′)) n
+  strORun ds Idf      c gc s gs n = gaveP r-id (gc , gs) (λ k → refl) refl
+  strORun ds Kone     c gc w gw n = gp-free c w gw n
+  strORun ds Kzero    c gc () gw n
+  strORun ds (Kb b)   c gc w gw n = gp-free c w gw n
+  strORun ds (Kμ G)   c gc w gw n = gp-free c w gw n
+  strORun ds (G ⊕f H) c gc (minl w) gw n = case strORun ds G c gc w gw n of λ where
+    (gaveP {t = t} r g fr q) → gaveP (r-∘ r-dist₁ (go-on (r-case₁ (r-∘ r (go-on r-inl))))) g (λ k → (k , refl , (k , fr k , refl)))
+                                     (trans (ios-++ t []) (cong (_++ []) q))
+  strORun ds (G ⊕f H) c gc (minr w) gw n = case strORun ds H c gc w gw n of λ where
+    (gaveP {t = t} r g fr q) → gaveP (r-∘ r-dist₂ (go-on (r-case₂ (r-∘ r (go-on r-inr))))) g (λ k → (k , refl , (k , fr k , refl)))
+                                     (trans (ios-++ t []) (cong (_++ []) q))
+  strORun ds (G ⊗f H) c gc (mpair w w′) (g₁ , g₂) n = strPRun ds G H (hasId H) c gc w g₁ w′ g₂ n
+  strPRun ds {F} {S} G H true c gc w gw w′ gw′ n =
+    gp-∘ (gp-∘ (gp-∘ (gp-∘ (gp-lend gc (gp-⊗ (strRun ds G c gc w gw n) (λ n′ → gaveP r-id gw′ (λ k → refl) refl)))
+                           (λ { (mpair c′ (mpair v v′)) n′ (gc′ , (gv , gv′)) → gaveP r-α⁻ ((gc′ , gv) , gv′) (λ k → refl) refl }))
+                     (λ { (mpair (mpair c′ v) v′) n′ ((gc′ , gv) , gv′) →
+                            gp-⊗ (gaveP r-swap (gv , gc′) (λ k → refl) refl) (λ n″ → gaveP r-id gv′ (λ k → refl) refl) }))
+               (λ { (mpair (mpair v c′) v′) n′ ((gv , gc′) , gv′) → gaveP r-α (gv , (gc′ , gv′)) (λ k → refl) refl }))
+         (λ { (mpair v (mpair c′ v′)) n′ (gv , (gc′ , gv′)) →
+                gp-⊗ (gaveP r-id gv (λ k → refl) refl) (λ n″ → strORun ds H c′ gc′ v′ gv′ n″) })
+  strPRun ds {F} {S} G H false c gc w gw w′ gw′ n =
+    gp-∘ (gp-∘ (gp-lend gc (gp-⊗ (gaveP r-id gw (λ k → refl) refl) (λ n′ → strRun ds H c gc w′ gw′ n′)))
+               (λ { (mpair c′ (mpair v v′)) n′ (gc′ , (gv , gv′)) → gaveP r-α⁻ ((gc′ , gv) , gv′) (λ k → refl) refl }))
+         (λ { (mpair (mpair c′ v) v′) n′ ((gc′ , gv) , gv′) →
+                gp-⊗ (strORun ds G c′ gc′ v gv n′) (λ n″ → gaveP r-id gv′ (λ k → refl) refl) })
+
   -- each pair of a layer a ν: the values, at a counter, and their run
   mapV : ∀ {F S} G → MV (LF∙ G (Coalg F S ⊗t S)) → ℕ → MV (LF∙ G (Nu F)) × ℕ
   mapV {F} {S} Idf p n   = (mnu (szν F S , n) p , suc n)
@@ -506,43 +566,27 @@ module _ (W : World) where
               (k : ℕ) n (σ : WSt) → Σ (Ran ds (lout {F = F}) e (mnu i p) n k σ) (λ r → GoodLO F (Ran.out r))
     observe {F} {S} (mpair (mfn j (cω ds′ b γ) x) s) (gc , gs) i ds e k n σ = case proj₁ gc x (~-refl x) k s n σ gs of λ where
       (ran (stop y) t rb σ₁ cz l sp sps wo , _) →
-        ( ran (stop y) _ (r-nout (r-∘ (r-∘ (r-∘ (r-∘ (r-lend (fm-stop (r-snd (r-bev rb)))) stopped) stopped) stopped) stopped))
-              σ₁ cz l sp sps
-              (wtr-[] ((((peek j ∷ t) ++ []) ++ []) ++ []) (wtr-[] (((peek j ∷ t) ++ []) ++ []) (wtr-[] ((peek j ∷ t) ++ []) (wtr-[] (peek j ∷ t) wo))))
+        ( ran (stop y) _ (r-nout (r-∘ (r-∘ (r-lend (fm-stop (r-snd (r-bev rb)))) stopped) stopped))
+              σ₁ cz l sp sps (wtr-[] ((peek j ∷ t) ++ []) (wtr-[] (peek j ∷ t) wo))
         , tt )
-      (ran (gives w n₁) t rb σ₁ _ l sp sps wo , gw) → case strRun ds F (mfn j (cω ds′ b γ) x) gc w gw n₁ of λ where
+      (ran (gives w n₁) t rb σ₁ _ l sp sps wo , gw) → case strORun ds F (mfn j (cω ds′ b γ) x) gc w gw n₁ of λ where
         (gaveP {w = w₂} {n′ = n₂} {t = t₂} r₂ g₂ fr₂ q₂) →
-          ( ran _ _ (r-nout (r-∘ (r-∘ (r-∘ (r-∘ (r-lend (fm-gives (r-snd (r-bev rb)))) (go-on (r-lend (fm-gives r₂))))
-                                             (go-on (r-⊗ r-drop (go-on (fm-gives r-id)))))
-                                      (go-on r-λ))
-                               (go-on (snd (mapRun ds {F} {S} F w₂ n₂)))))
-                σ₁ tt l sp (l , (l , (l , (l , sps , fr₂ l) , (l , refl , refl)) , refl) , map-free ds {F} {S} F w₂ n₂ l)
-                (wtr-++ ((((peek j ∷ t) ++ t₂) ++ (freeAll (mfn j (cω ds′ b γ) x) ++ [])) ++ [])
-                        (wtr-++ (((peek j ∷ t) ++ t₂) ++ (freeAll (mfn j (cω ds′ b γ) x) ++ []))
-                                (wtr-++ ((peek j ∷ t) ++ t₂) (wtr-++ (peek j ∷ t) wo (wtr-quiet t₂ q₂))
-                                        (wtr-quiet (freeAll (mfn j (cω ds′ b γ) x) ++ []) (trans (ios-++ (freeAll (mfn j (cω ds′ b γ) x)) []) (cong (_++ []) (ios-freeAll (mfn j (cω ds′ b γ) x))))))
-                                refl)
+          ( ran _ _ (r-nout (r-∘ (r-∘ (r-lend (fm-gives (r-snd (r-bev rb)))) (go-on r₂)) (go-on (snd (mapRun ds {F} {S} F w₂ n₂)))))
+                σ₁ tt l sp (l , (l , sps , fr₂ l) , map-free ds {F} {S} F w₂ n₂ l)
+                (wtr-++ ((peek j ∷ t) ++ t₂) (wtr-++ (peek j ∷ t) wo (wtr-quiet t₂ q₂))
                         (wtr-quiet (fst (mapRun ds {F} {S} F w₂ n₂)) (map-quiet ds {F} {S} F w₂ n₂)))
           , layerGood F w₂ g₂ n₂ )
 
     observe {F} {S} (mpair (mfn j (cωᶜ ds′ b₀ γ) x) s) (gc , gs) i ds e k n σ = case cinRanG (gc (fst (copy x n)) (copy-~ x n) k s (fst (snd (copy x n))) σ gs) of λ where
       (ran (stop y) t rb σ₁ cz l sp sps wo , _) →
-        ( ran (stop y) _ (r-nout (r-∘ (r-∘ (r-∘ (r-∘ (r-lend (fm-stop (r-snd (r-bevᶜ rb)))) stopped) stopped) stopped) stopped))
-              σ₁ cz l sp sps
-              (wtr-[] ((((peek j ∷ t) ++ []) ++ []) ++ []) (wtr-[] (((peek j ∷ t) ++ []) ++ []) (wtr-[] ((peek j ∷ t) ++ []) (wtr-[] (peek j ∷ t) wo))))
+        ( ran (stop y) _ (r-nout (r-∘ (r-∘ (r-lend (fm-stop (r-snd (r-bevᶜ rb)))) stopped) stopped))
+              σ₁ cz l sp sps (wtr-[] ((peek j ∷ t) ++ []) (wtr-[] (peek j ∷ t) wo))
         , tt )
-      (ran (gives w n₁) t rb σ₁ _ l sp sps wo , gw) → case strRun ds F (mfn j (cωᶜ ds′ b₀ γ) x) gc w gw n₁ of λ where
+      (ran (gives w n₁) t rb σ₁ _ l sp sps wo , gw) → case strORun ds F (mfn j (cωᶜ ds′ b₀ γ) x) gc w gw n₁ of λ where
         (gaveP {w = w₂} {n′ = n₂} {t = t₂} r₂ g₂ fr₂ q₂) →
-          ( ran _ _ (r-nout (r-∘ (r-∘ (r-∘ (r-∘ (r-lend (fm-gives (r-snd (r-bevᶜ rb)))) (go-on (r-lend (fm-gives r₂))))
-                                             (go-on (r-⊗ r-drop (go-on (fm-gives r-id)))))
-                                      (go-on r-λ))
-                               (go-on (snd (mapRun ds {F} {S} F w₂ n₂)))))
-                σ₁ tt l sp (l , (l , (l , (l , sps , fr₂ l) , (l , refl , refl)) , refl) , map-free ds {F} {S} F w₂ n₂ l)
-                (wtr-++ ((((peek j ∷ t) ++ t₂) ++ (freeAll (mfn j (cωᶜ ds′ b₀ γ) x) ++ [])) ++ [])
-                        (wtr-++ (((peek j ∷ t) ++ t₂) ++ (freeAll (mfn j (cωᶜ ds′ b₀ γ) x) ++ []))
-                                (wtr-++ ((peek j ∷ t) ++ t₂) (wtr-++ (peek j ∷ t) wo (wtr-quiet t₂ q₂))
-                                        (wtr-quiet (freeAll (mfn j (cωᶜ ds′ b₀ γ) x) ++ []) (trans (ios-++ (freeAll (mfn j (cωᶜ ds′ b₀ γ) x)) []) (cong (_++ []) (ios-freeAll (mfn j (cωᶜ ds′ b₀ γ) x))))))
-                                refl)
+          ( ran _ _ (r-nout (r-∘ (r-∘ (r-lend (fm-gives (r-snd (r-bevᶜ rb)))) (go-on r₂)) (go-on (snd (mapRun ds {F} {S} F w₂ n₂)))))
+                σ₁ tt l sp (l , (l , sps , fr₂ l) , map-free ds {F} {S} F w₂ n₂ l)
+                (wtr-++ ((peek j ∷ t) ++ t₂) (wtr-++ (peek j ∷ t) wo (wtr-quiet t₂ q₂))
                         (wtr-quiet (fst (mapRun ds {F} {S} F w₂ n₂)) (map-quiet ds {F} {S} F w₂ n₂)))
           , layerGood F w₂ g₂ n₂ )
 

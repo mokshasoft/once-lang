@@ -42,6 +42,7 @@ open import Once.LinCore.NbEPLinCore fmt ans
 open Sem using (Lᶜ; cataC; travC; Lᴮ; cataB; travB)
 open import Once.LinCore.Bisim fmt ans
   using (_≈_; module _≈_; Bl; ≈ret; ≈call; ≈halt; ≈-refl; ≈-trans; ≈-blk; Bl-refl; >>=-cong; iter-cong)
+open import Data.Bool using (true; false)
 open _≈_ using (block≈)
 
 ------------------------------------------------------------------------
@@ -233,6 +234,28 @@ module _ {Γ : Cx} (ρ : Env Γ) (F : LF) (S : LTy) where
   map-coh (G ⊕f H) (inj₂ y) = bind≈ (map-coh H y) (λ _ → ret≈)
   map-coh (G ⊗f H) (x , y)  = bind≈ (map-coh G x) (λ a′ → fmap≈ (a′ ,_) (map-coh H y))
 
+  -- ★ D496: the owned form means the same layer
+  strO-coh : ∀ G (c : ⟦ C ⟧) w → Lᶜ ρ (strO F G S) tt (c , w) ≈ emb (ret (strM G c w))
+  strP-coh : ∀ G H b (c : ⟦ C ⟧) g h → Lᶜ ρ (strP F G H S b) tt (c , (g , h)) ≈ emb (ret (strM G c g , strM H c h))
+  strO-coh Idf      c s        = ret≈
+  strO-coh Kone     c x        = bind≈ (bind≈ ret≈ (λ a′ → fmap≈ (a′ ,_) ret≈)) (λ _ → ret≈)
+  strO-coh Kzero    c ()
+  strO-coh (Kb b)   c x        = bind≈ (bind≈ ret≈ (λ a′ → fmap≈ (a′ ,_) ret≈)) (λ _ → ret≈)
+  strO-coh (Kμ G)   c x        = bind≈ (bind≈ ret≈ (λ a′ → fmap≈ (a′ ,_) ret≈)) (λ _ → ret≈)
+  strO-coh (G ⊕f H) c (inj₁ x) = ≈-trans (same refl) (bind≈ (strO-coh G c x) (λ _ → ret≈))
+  strO-coh (G ⊕f H) c (inj₂ y) = ≈-trans (same refl) (bind≈ (strO-coh H c y) (λ _ → ret≈))
+  strO-coh (G ⊗f H) c (g , h)  = strP-coh G H (hasId H) c g h
+  strP-coh G H true c g h =
+    bind≈ (bind≈ (bind≈ (bind≈ (fmap≈ (c ,_) (bind≈ (str-coh G c g) (λ g′ → fmap≈ (g′ ,_) ret≈)))
+                               (λ _ → ret≈))
+                        (λ _ → bind≈ ret≈ (λ a′ → fmap≈ (a′ ,_) ret≈)))
+                 (λ _ → ret≈))
+          (λ x → bind≈ ret≈ (λ a′ → fmap≈ (a′ ,_) (strO-coh H (fst (snd x)) (snd (snd x)))))
+  strP-coh G H false c g h =
+    bind≈ (bind≈ (fmap≈ (c ,_) (bind≈ ret≈ (λ a′ → fmap≈ (a′ ,_) (str-coh H c h))))
+                 (λ _ → ret≈))
+          (λ x → bind≈ (strO-coh G (fst (fst x)) (snd (fst x))) (λ a′ → fmap≈ (a′ ,_) ret≈))
+
   -- at each value, the core's layer is the Spec's
   pointwise : ∀ G (c : ⟦ C ⟧) w
             → mapM G (strM G c w) ≡ coh⁻¹ G (Nu F) (mapN F G (cohc F S c) (coh G S w))
@@ -248,10 +271,7 @@ module _ {Γ : Cx} (ρ : Env Γ) (F : LF) (S : LTy) where
   -- the coalgebra's block, followed by the layer's pieces, is the Spec's
   -- observation of the unfold, block for block
   chain : ∀ (c : ⟦ C ⟧) (m : T ⟦ LF∙ F S ⟧)
-        → Bl (embB (bindT (bindT (bindT (bindT (fmapT (c ,_) m)
-                                                 (λ p → ret (fst p , strM F (fst p) (snd p))))
-                                          (λ q → ret (tt , snd q)))
-                                   (λ r → ret (snd r)))
+        → Bl (embB (bindT (bindT (fmapT (c ,_) m) (λ p → ret (strM F (fst p) (snd p))))
                             (λ w → ret (mapM F w))))
              (embB (fmapT (coh⁻¹ F (Nu F)) (treeN F (cohc F S c) (fmapT (coh F S) m))))
   chain c (ret w)      = subst (λ z → Bl (ret (inj₁ z)) (ret (inj₁ _))) (sym (pointwise F c w)) ≈ret
@@ -261,9 +281,6 @@ module _ {Γ : Cx} (ρ : Env Γ) (F : LF) (S : LTy) where
   obs-coh : ∀ (c : ⟦ C ⟧) (s : ⟦ S ⟧) {E} (e : ⟦ E ⟧)
           → Lᶜ ρ (obsT F S) tt (c , s) ≈ Lᶜ ρ (lout {F = F} {E = E}) e (anaN F (cohc F S c) s)
   obs-coh c s e =
-    ≈-trans (bind≈ (bind≈ (bind≈ (bind≈ (fmap≈ (c ,_) ≈-refl)
-                                        (λ p → fmap≈ (fst p ,_) (str-coh F (fst p) (snd p))))
-                                 (λ q → same refl))
-                          (λ r → ret≈))
+    ≈-trans (bind≈ (bind≈ (fmap≈ (c ,_) ≈-refl) (λ p → strO-coh F (fst p) (snd p)))
                    (map-coh F))
             (mk≈ (chain c (c s)))

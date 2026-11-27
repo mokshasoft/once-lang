@@ -331,32 +331,32 @@ d_at_82 v0 v1
                                             MAlonzo.Code.Data.String.Base.d__'43''43'__20
                                             (coe
                                                MAlonzo.Code.Data.Nat.Show.d_show_56
-                                               (MAlonzo.Code.Once.Measure.Copies.d_dups_716
+                                               (MAlonzo.Code.Once.Measure.Copies.d_dups_722
                                                   (coe
-                                                     MAlonzo.Code.Once.Measure.Copies.du_defs_818
+                                                     MAlonzo.Code.Once.Measure.Copies.du_defs_824
                                                      (coe
-                                                        MAlonzo.Code.Once.LinCore.ExprBuild.d_L_1388
+                                                        MAlonzo.Code.Once.LinCore.ExprBuild.d_L_1394
                                                         (coe
-                                                           MAlonzo.Code.Once.LinCore.ExprBuild.d_exprTable_1396
+                                                           MAlonzo.Code.Once.LinCore.ExprBuild.d_exprTable_1402
                                                            (coe
                                                               MAlonzo.Code.Once.Target.Arch.d_arch'45'numerics_62
                                                               (coe
                                                                  MAlonzo.Code.Once.Target.Arch.C_x86'45'64_8))
                                                            (coe
-                                                              MAlonzo.Code.Once.LinCore.ExprBuild.du_srcOrder_1566
+                                                              MAlonzo.Code.Once.LinCore.ExprBuild.du_srcOrder_1572
                                                               (coe v0)
                                                               (coe
                                                                  MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))))
                                                      (coe
-                                                        MAlonzo.Code.Once.LinCore.ExprBuild.d_defs_1390
+                                                        MAlonzo.Code.Once.LinCore.ExprBuild.d_defs_1396
                                                         (coe
-                                                           MAlonzo.Code.Once.LinCore.ExprBuild.d_exprTable_1396
+                                                           MAlonzo.Code.Once.LinCore.ExprBuild.d_exprTable_1402
                                                            (coe
                                                               MAlonzo.Code.Once.Target.Arch.d_arch'45'numerics_62
                                                               (coe
                                                                  MAlonzo.Code.Once.Target.Arch.C_x86'45'64_8))
                                                            (coe
-                                                              MAlonzo.Code.Once.LinCore.ExprBuild.du_srcOrder_1566
+                                                              MAlonzo.Code.Once.LinCore.ExprBuild.du_srcOrder_1572
                                                               (coe v0)
                                                               (coe
                                                                  MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)))))))
@@ -367,32 +367,32 @@ d_at_82 v0 v1
                                                   MAlonzo.Code.Data.String.Base.d__'43''43'__20
                                                   (coe
                                                      MAlonzo.Code.Data.Nat.Show.d_show_56
-                                                     (MAlonzo.Code.Once.Measure.Copies.d_dup'45'cells_718
+                                                     (MAlonzo.Code.Once.Measure.Copies.d_dup'45'cells_724
                                                         (coe
-                                                           MAlonzo.Code.Once.Measure.Copies.du_defs_818
+                                                           MAlonzo.Code.Once.Measure.Copies.du_defs_824
                                                            (coe
-                                                              MAlonzo.Code.Once.LinCore.ExprBuild.d_L_1388
+                                                              MAlonzo.Code.Once.LinCore.ExprBuild.d_L_1394
                                                               (coe
-                                                                 MAlonzo.Code.Once.LinCore.ExprBuild.d_exprTable_1396
+                                                                 MAlonzo.Code.Once.LinCore.ExprBuild.d_exprTable_1402
                                                                  (coe
                                                                     MAlonzo.Code.Once.Target.Arch.d_arch'45'numerics_62
                                                                     (coe
                                                                        MAlonzo.Code.Once.Target.Arch.C_x86'45'64_8))
                                                                  (coe
-                                                                    MAlonzo.Code.Once.LinCore.ExprBuild.du_srcOrder_1566
+                                                                    MAlonzo.Code.Once.LinCore.ExprBuild.du_srcOrder_1572
                                                                     (coe v0)
                                                                     (coe
                                                                        MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))))
                                                            (coe
-                                                              MAlonzo.Code.Once.LinCore.ExprBuild.d_defs_1390
+                                                              MAlonzo.Code.Once.LinCore.ExprBuild.d_defs_1396
                                                               (coe
-                                                                 MAlonzo.Code.Once.LinCore.ExprBuild.d_exprTable_1396
+                                                                 MAlonzo.Code.Once.LinCore.ExprBuild.d_exprTable_1402
                                                                  (coe
                                                                     MAlonzo.Code.Once.Target.Arch.d_arch'45'numerics_62
                                                                     (coe
                                                                        MAlonzo.Code.Once.Target.Arch.C_x86'45'64_8))
                                                                  (coe
-                                                                    MAlonzo.Code.Once.LinCore.ExprBuild.du_srcOrder_1566
+                                                                    MAlonzo.Code.Once.LinCore.ExprBuild.du_srcOrder_1572
                                                                     (coe v0)
                                                                     (coe
                                                                        MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)))))))
@@ -403,32 +403,32 @@ d_at_82 v0 v1
                                                         MAlonzo.Code.Data.String.Base.d__'43''43'__20
                                                         (coe
                                                            MAlonzo.Code.Data.Nat.Show.d_show_56
-                                                           (MAlonzo.Code.Once.Measure.Copies.d_bcopy'45'cells_720
+                                                           (MAlonzo.Code.Once.Measure.Copies.d_bcopy'45'cells_726
                                                               (coe
-                                                                 MAlonzo.Code.Once.Measure.Copies.du_defs_818
+                                                                 MAlonzo.Code.Once.Measure.Copies.du_defs_824
                                                                  (coe
-                                                                    MAlonzo.Code.Once.LinCore.ExprBuild.d_L_1388
+                                                                    MAlonzo.Code.Once.LinCore.ExprBuild.d_L_1394
                                                                     (coe
-                                                                       MAlonzo.Code.Once.LinCore.ExprBuild.d_exprTable_1396
+                                                                       MAlonzo.Code.Once.LinCore.ExprBuild.d_exprTable_1402
                                                                        (coe
                                                                           MAlonzo.Code.Once.Target.Arch.d_arch'45'numerics_62
                                                                           (coe
                                                                              MAlonzo.Code.Once.Target.Arch.C_x86'45'64_8))
                                                                        (coe
-                                                                          MAlonzo.Code.Once.LinCore.ExprBuild.du_srcOrder_1566
+                                                                          MAlonzo.Code.Once.LinCore.ExprBuild.du_srcOrder_1572
                                                                           (coe v0)
                                                                           (coe
                                                                              MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))))
                                                                  (coe
-                                                                    MAlonzo.Code.Once.LinCore.ExprBuild.d_defs_1390
+                                                                    MAlonzo.Code.Once.LinCore.ExprBuild.d_defs_1396
                                                                     (coe
-                                                                       MAlonzo.Code.Once.LinCore.ExprBuild.d_exprTable_1396
+                                                                       MAlonzo.Code.Once.LinCore.ExprBuild.d_exprTable_1402
                                                                        (coe
                                                                           MAlonzo.Code.Once.Target.Arch.d_arch'45'numerics_62
                                                                           (coe
                                                                              MAlonzo.Code.Once.Target.Arch.C_x86'45'64_8))
                                                                        (coe
-                                                                          MAlonzo.Code.Once.LinCore.ExprBuild.du_srcOrder_1566
+                                                                          MAlonzo.Code.Once.LinCore.ExprBuild.du_srcOrder_1572
                                                                           (coe v0)
                                                                           (coe
                                                                              MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)))))))
@@ -437,32 +437,32 @@ d_at_82 v0 v1
                                                            (" clo-cells=" :: Data.Text.Text)
                                                            (coe
                                                               MAlonzo.Code.Data.Nat.Show.d_show_56
-                                                              (MAlonzo.Code.Once.Measure.Copies.d_clo'45'cells_722
+                                                              (MAlonzo.Code.Once.Measure.Copies.d_clo'45'cells_728
                                                                  (coe
-                                                                    MAlonzo.Code.Once.Measure.Copies.du_defs_818
+                                                                    MAlonzo.Code.Once.Measure.Copies.du_defs_824
                                                                     (coe
-                                                                       MAlonzo.Code.Once.LinCore.ExprBuild.d_L_1388
+                                                                       MAlonzo.Code.Once.LinCore.ExprBuild.d_L_1394
                                                                        (coe
-                                                                          MAlonzo.Code.Once.LinCore.ExprBuild.d_exprTable_1396
+                                                                          MAlonzo.Code.Once.LinCore.ExprBuild.d_exprTable_1402
                                                                           (coe
                                                                              MAlonzo.Code.Once.Target.Arch.d_arch'45'numerics_62
                                                                              (coe
                                                                                 MAlonzo.Code.Once.Target.Arch.C_x86'45'64_8))
                                                                           (coe
-                                                                             MAlonzo.Code.Once.LinCore.ExprBuild.du_srcOrder_1566
+                                                                             MAlonzo.Code.Once.LinCore.ExprBuild.du_srcOrder_1572
                                                                              (coe v0)
                                                                              (coe
                                                                                 MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))))
                                                                     (coe
-                                                                       MAlonzo.Code.Once.LinCore.ExprBuild.d_defs_1390
+                                                                       MAlonzo.Code.Once.LinCore.ExprBuild.d_defs_1396
                                                                        (coe
-                                                                          MAlonzo.Code.Once.LinCore.ExprBuild.d_exprTable_1396
+                                                                          MAlonzo.Code.Once.LinCore.ExprBuild.d_exprTable_1402
                                                                           (coe
                                                                              MAlonzo.Code.Once.Target.Arch.d_arch'45'numerics_62
                                                                              (coe
                                                                                 MAlonzo.Code.Once.Target.Arch.C_x86'45'64_8))
                                                                           (coe
-                                                                             MAlonzo.Code.Once.LinCore.ExprBuild.du_srcOrder_1566
+                                                                             MAlonzo.Code.Once.LinCore.ExprBuild.du_srcOrder_1572
                                                                              (coe v0)
                                                                              (coe
                                                                                 MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))))))))))))))))))))
@@ -489,7 +489,7 @@ d_im_96 v0 v1 v2
          MAlonzo.Code.Once.Target.Arch.d_arch'45'numerics_62
          (coe MAlonzo.Code.Once.Target.Arch.C_x86'45'64_8))
       (coe
-         MAlonzo.Code.Once.LinCore.ExprBuild.du_srcOrder_1566 (coe v0)
+         MAlonzo.Code.Once.LinCore.ExprBuild.du_srcOrder_1572 (coe v0)
          (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))
       (coe v1) (coe v2)
 -- Once.Measure._.imc
@@ -507,7 +507,7 @@ d_imc_98 v0 v1 v2
       (coe
          MAlonzo.Code.Once.CCC.Codegen.AllocExpandClasses.C_alloc'45'pool_382)
       (coe
-         MAlonzo.Code.Once.LinCore.ExprBuild.du_srcOrder_1566 (coe v0)
+         MAlonzo.Code.Once.LinCore.ExprBuild.du_srcOrder_1572 (coe v0)
          (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))
       v1 v2
 -- Once.Measure.stats-src

@@ -32,6 +32,7 @@ open import Once.LinCore.Events fmt ans bw
 open import Once.LinCore.Values fmt bw
 open import Once.LinCore.Machine fmt ans bw using (Plain)
 open import Data.Unit using (tt)
+open import Data.Bool using (true; false)
 open import Data.Product using (_,_)
 
 ------------------------------------------------------------------------
@@ -53,6 +54,11 @@ data TF {Γ : Cx} : ∀ {E A B} → Tm Γ E A B → Set where
   tf-bcopy : ∀ {E} → TF (bcopy {E = E})
   tf-bev   : ∀ {g A B} → TF (bev {g = g} {A = A} {B = B})
   tf-unf   : ∀ {F S E} → TF (lunf {F = F} {S = S} {E = E})
+  -- (D496: the owned observation's routing)
+  tf-dist  : ∀ {X A B E} → TF (ldist {X = X} {A = A} {B = B} {E = E})
+  tf-α     : ∀ {A B C E} → TF (lassoc {A = A} {B = B} {C = C} {E = E})
+  tf-α⁻    : ∀ {A B C E} → TF (lassoc⁻ {A = A} {B = B} {C = C} {E = E})
+  tf-swap  : ∀ {A B E} → TF (lswap {A = A} {B = B} {E = E})
 
 rt : ∀ {Γ Δ E A B} {t : Tm Γ E A B} → TF t → Tm Δ E A B
 rt tf-id         = lid
@@ -69,6 +75,10 @@ rt (tf-bsnd f)   = bsnd (rt f)
 rt tf-bcopy      = bcopy
 rt tf-bev        = bev
 rt tf-unf        = lunf
+rt tf-dist       = ldist
+rt tf-α          = lassoc
+rt tf-α⁻         = lassoc⁻
+rt tf-swap       = lswap
 
 ------------------------------------------------------------------------
 -- 2. ★ ITS RUNS AT ONE TABLE ARE ITS RUNS AT ANOTHER.
@@ -96,6 +106,11 @@ module _ {Γ Δ} {ds : Defs Γ} {ds′ : Defs Δ} where
     run-tf (r-bev r) tf-bev              = r-bev r
     run-tf (r-bevᶜ r) tf-bev              = r-bevᶜ r
     run-tf r-unf tf-unf                  = r-unf
+    run-tf r-dist₁ tf-dist               = r-dist₁
+    run-tf r-dist₂ tf-dist               = r-dist₂
+    run-tf r-α tf-α                      = r-α
+    run-tf r-α⁻ tf-α⁻                    = r-α⁻
+    run-tf r-swap tf-swap                = r-swap
 
     then-tf : ∀ {E B C} {f : Tm Γ E B C} {e o₁ o τ} → Then (Run ds f e) o₁ o τ → (w : TF f) → Then (Run ds′ (rt {Δ = Δ} w) e) o₁ o τ
     then-tf (go-on r) w = go-on (run-tf r w)
@@ -134,8 +149,23 @@ mapNu-tf F (Kμ G)   S = tf-id
 mapNu-tf F (G ⊕f H) S = tf-case (tf-∘ tf-inl (mapNu-tf F G S)) (tf-∘ tf-inr (mapNu-tf F H S))
 mapNu-tf F (G ⊗f H) S = tf-⊗ (mapNu-tf F G S) (mapNu-tf F H S)
 
+-- ★ D496: the owned form
+strO-tf : ∀ {Γ} F G S → TF (strO {Γ} F G S)
+strP-tf : ∀ {Γ} F G H S b → TF (strP {Γ} F G H S b)
+strO-tf F Idf      S = tf-id
+strO-tf F Kone     S = tf-∘ tf-lul (tf-⊗ tf-drop tf-id)
+strO-tf F Kzero    S = tf-∘ tf-lul (tf-⊗ tf-drop tf-id)
+strO-tf F (Kb b)   S = tf-∘ tf-lul (tf-⊗ tf-drop tf-id)
+strO-tf F (Kμ G)   S = tf-∘ tf-lul (tf-⊗ tf-drop tf-id)
+strO-tf F (G ⊕f H) S = tf-∘ (tf-case (tf-∘ tf-inl (strO-tf F G S)) (tf-∘ tf-inr (strO-tf F H S))) tf-dist
+strO-tf F (G ⊗f H) S = strP-tf F G H S (hasId H)
+strP-tf F G H S true  =
+  tf-∘ (tf-⊗ tf-id (strO-tf F H S)) (tf-∘ tf-α (tf-∘ (tf-⊗ tf-swap tf-id) (tf-∘ tf-α⁻ (tf-lend (tf-⊗ (strL-tf F G S) tf-id)))))
+strP-tf F G H S false =
+  tf-∘ (tf-⊗ (strO-tf F G S) tf-id) (tf-∘ tf-α⁻ (tf-lend (tf-⊗ tf-id (strL-tf F H S))))
+
 obsT-tf : ∀ {Γ} F S → TF (obsT {Γ} F S)
-obsT-tf F S = tf-∘ (mapNu-tf F F S) (tf-∘ tf-lul (tf-∘ (tf-⊗ tf-drop tf-id) (tf-∘ (tf-lend (strL-tf F F S)) (tf-lend (tf-bsnd tf-bev)))))
+obsT-tf F S = tf-∘ (mapNu-tf F F S) (tf-∘ (strO-tf F F S) (tf-lend (tf-bsnd tf-bev)))
 
 rt-strL : ∀ {Γ Δ} F G S → rt {Γ} {Δ} (strL-tf {Γ} F G S) ≡ strL {Δ} F G S
 rt-strL F Idf      S = refl
@@ -155,8 +185,22 @@ rt-mapNu F (Kμ G)   S = refl
 rt-mapNu F (G ⊕f H) S = cong₂ (λ x y → lcase (linl ∘l x) (linr ∘l y)) (rt-mapNu F G S) (rt-mapNu F H S)
 rt-mapNu F (G ⊗f H) S = cong₂ _⊗l_ (rt-mapNu F G S) (rt-mapNu F H S)
 
+rt-strO : ∀ {Γ Δ} F G S → rt {Γ} {Δ} (strO-tf {Γ} F G S) ≡ strO {Δ} F G S
+rt-strP : ∀ {Γ Δ} F G H S b → rt {Γ} {Δ} (strP-tf {Γ} F G H S b) ≡ strP {Δ} F G H S b
+rt-strO F Idf      S = refl
+rt-strO F Kone     S = refl
+rt-strO F Kzero    S = refl
+rt-strO F (Kb b)   S = refl
+rt-strO F (Kμ G)   S = refl
+rt-strO F (G ⊕f H) S = cong₂ (λ x y → lcase (linl ∘l x) (linr ∘l y) ∘l ldist) (rt-strO F G S) (rt-strO F H S)
+rt-strO F (G ⊗f H) S = rt-strP F G H S (hasId H)
+rt-strP F G H S true  =
+  cong₂ (λ o l → (lid ⊗l o) ∘l lassoc ∘l (lswap ⊗l lid) ∘l lassoc⁻ ∘l lend (l ⊗l lid)) (rt-strO F H S) (rt-strL F G S)
+rt-strP F G H S false =
+  cong₂ (λ o l → (o ⊗l lid) ∘l lassoc⁻ ∘l lend (lid ⊗l l)) (rt-strO F G S) (rt-strL F H S)
+
 rt-obsT : ∀ {Γ Δ} F S → rt {Γ} {Δ} (obsT-tf {Γ} F S) ≡ obsT {Δ} F S
-rt-obsT F S = cong₂ (λ m s → m ∘l lul ∘l (drop ⊗l lid) ∘l lend s ∘l lend (bsnd bev)) (rt-mapNu F F S) (rt-strL F F S)
+rt-obsT F S = cong₂ (λ m s → m ∘l s ∘l lend (bsnd bev)) (rt-mapNu F F S) (rt-strO F F S)
 
 -- ★ D442: observing a ν at one table is observing it at any other
 obs-tbl : ∀ {Γ Δ} {ds : Defs Γ} {ds′ : Defs Δ} {F S} {p : MV (Coalg F S ⊗t S)} {n o t}
@@ -194,6 +238,11 @@ module _ {Γ Δ} {ds : Defs Γ} {ds′ : Defs Δ} where
   plain-tf (r-bev r) tf-bev p                               = p
   plain-tf (r-bevᶜ r) tf-bev p                               = p
   plain-tf r-unf tf-unf p                                   = tt
+  plain-tf r-dist₁ tf-dist p                                = tt
+  plain-tf r-dist₂ tf-dist p                                = tt
+  plain-tf r-α tf-α p                                       = tt
+  plain-tf r-α⁻ tf-α⁻ p                                     = tt
+  plain-tf r-swap tf-swap p                                 = tt
 
 plain-subst : ∀ {Δ} {ds′ : Defs Δ} {E A B} {t t′ : Tm Δ E A B} {e a n o τ} (eq : t ≡ t′) (r : Run ds′ t e a n o τ)
             → Plain r → Plain (subst (λ u → Run ds′ u e a n o τ) eq r)
