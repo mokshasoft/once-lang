@@ -148,7 +148,7 @@ data Step {T : Sh} : ∀ {sh sh′} → Code sh T → Cfg sh → ℕ → Trace �
   s-applyω : ∀ {Es g X A B S} {k : Code (Es ∣ B ∷ S) T} {Δ} {ds′ : Defs Δ} {b : Tm Δ X A B} {γ : Gd g b}
                {es i x a os n}
            → Step (applyω ⨾ k) (es ∥ mpair (mfn i (cω ds′ b γ) x) a ∷ˢ os) n (free i ∷ [])
-                  (enter ⨾ elift ⨾ comp ds′ (ownBg b) (epop ⨾ leave ⨾ k)) (es ∥ mpair x a ∷ˢ os) n
+                  (enter ⨾ elift ⨾ comp ds′ (ownω b) (epop ⨾ leave ⨾ k)) (es ∥ mpair x a ∷ˢ os) n
   s-nopen  : ∀ {Γ} {ds : Defs Γ} {F S Es S′} {k : Code (Es ∣ LF∙ F (Nu F) ∷ S′) T} {es i} {p : MV (Coalg F S ⊗t S)} {os n}
            → Step (nopen ds ⨾ k) (es ∥ mnu i p ∷ˢ os) n (free i ∷ [])
                   (elift ⨾ comp ds (obsT F S) (epop ⨾ k)) (es ∥ p ∷ˢ os) n

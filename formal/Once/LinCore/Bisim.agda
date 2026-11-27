@@ -20,6 +20,7 @@ open import Agda.Builtin.Equality using (_≡_; refl)
 open import Relation.Binary.PropositionalEquality using (sym; subst)
 open import Agda.Builtin.Sigma using (Σ; _,_)
 open import Data.Product using (_×_)
+open import Data.Unit using (tt)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Sum.Relation.Binary.Pointwise using (Pointwise)
   renaming (inj₁ to ⊎₁; inj₂ to ⊎₂)
@@ -284,3 +285,46 @@ TR-emb a b p = go a b (blockR p)
   go (call s x k) (halt s′ y)   ()
   go (halt s x)   (ret y)       ()
   go (halt s x)   (call s′ y k) ()
+
+------------------------------------------------------------------------
+-- THE MONAD: a bind of a return is its continuation, by `block`'s
+-- definition; binds associate, block by block (moved from `FromExprOk`)
+------------------------------------------------------------------------
+
+ret-bind : ∀ {X Y} {x : X} {k : X → T∞ Y} → (return∞ x >>=∞ k) ≈ k x
+block≈ (ret-bind {x = x} {k = k}) = Bl-refl (block (k x))
+
+-- the monad's associativity, block by block
+mutual
+  bind-assoc : ∀ {X Y Z} (m : T∞ X) (k : X → T∞ Y) (h : Y → T∞ Z) → ((m >>=∞ k) >>=∞ h) ≈ (m >>=∞ λ x → k x >>=∞ h)
+  block≈ (bind-assoc m k h) = assocB (block m) k h
+
+  assocB : ∀ {X Y Z} (b : T (X ⊎ T∞ X)) (k : X → T∞ Y) (h : Y → T∞ Z)
+         → Bl (bindBlock (bindBlock b k) h) (bindBlock b (λ x → k x >>=∞ h))
+  assocB (ret (inj₁ x)) k h = Bl-refl (bindBlock (block (k x)) h)
+  assocB (ret (inj₂ m)) k h = ≈step (bind-assoc m k h)
+  assocB (call s a c)   k h = ≈call (λ y → assocB (c y) k h)
+  assocB (halt s a)     k h = ≈halt
+
+------------------------------------------------------------------------
+-- ★ D493: a lent body's owned form means what the body means
+------------------------------------------------------------------------
+
+own-≈ : ∀ {Δ} (ρ : Env Δ) {X A B} {b : Tm Δ X A B} (o : Own b) (x : ⟦ X ⟧) (a : ⟦ A ⟧)
+      → Sem.Lᶜ ρ (ownT o) tt (x , a) ≈ Sem.Lᶜ ρ b x a
+own-≈ ρ {X} {A} {B} {b} o-bg x a =
+  pair-drop {m = Sem.Lᶜ ρ b x a} (x ,_) (Sem.Lᶜ ρ (lul {A = B} {E = One} ∘l (drop {A = X} ⊗l lid {A = B})) tt) (λ _ → refl)
+own-≈ ρ o-ev f a = ≈-refl
+own-≈ ρ (o-fst o) (x₁ , x₂) a = ≈-blk refl (own-≈ ρ o x₁ a)
+own-≈ ρ (o-snd o) (x₁ , x₂) a = ≈-blk refl (own-≈ ρ o x₂ a)
+own-≈ ρ (o-split p q) (x₁ , x₂) a =
+  ≈-blk refl
+    (≈-trans (bind-assoc (Sem.Lᶜ ρ (ownT q) tt (x₂ , a)) (λ y → return∞ (x₁ , y)) (Sem.Lᶜ ρ (ownT p) tt))
+             (>>=-cong (own-≈ ρ q x₂ a) (λ y → ≈-trans ret-bind (own-≈ ρ p x₁ y))))
+own-≈ ρ (o-case p q) x (inj₁ a) = ≈-blk refl (own-≈ ρ p x a)
+own-≈ ρ (o-case p q) x (inj₂ b) = ≈-blk refl (own-≈ ρ q x b)
+
+-- …and so does the opaque owned entry
+ownω-≈ : ∀ {Δ} (ρ : Env Δ) {X A B} (b : Tm Δ X A B) (x : ⟦ X ⟧) (a : ⟦ A ⟧)
+       → Sem.Lᶜ ρ (ownω b) tt (x , a) ≈ Sem.Lᶜ ρ b x a
+ownω-≈ ρ b x a = subst (λ t → Sem.Lᶜ ρ t tt (x , a) ≈ Sem.Lᶜ ρ b x a) (sym (ownω-≡ b)) (own-≈ ρ (ownOf b) x a)

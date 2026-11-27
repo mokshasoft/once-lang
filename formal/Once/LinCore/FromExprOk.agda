@@ -99,7 +99,7 @@ open import Once.LinCore.Grade fmt ans using (blk-coh)
 open import Once.IRTy using (IRTy; _⇛[_]_)
 import Once.IRTy as I
 open import Once.LinCore.Bridge fmt ans using (W)
-open import Once.LinCore.Bisim fmt ans using (_≈_; Bl; Bl-refl; ≈step; ≈call; ≈halt; ≈-refl; ≈-trans; ≈-sym; >>=-cong; _≈[_]_; ret≈R; >>=-congR; ≈-≈R; ≈R-≈; pair-drop; ≈haltR; iter-congR; module _≈_; module _≈[_]_)
+open import Once.LinCore.Bisim fmt ans using (_≈_; Bl; Bl-refl; ret-bind; bind-assoc; assocB; ≈step; ≈call; ≈halt; ≈-refl; ≈-trans; ≈-sym; >>=-cong; _≈[_]_; ret≈R; >>=-congR; ≈-≈R; ≈R-≈; pair-drop; ≈haltR; iter-congR; module _≈_; module _≈[_]_)
 open _≈[_]_ using (blockR)
 open _≈_ using (block≈)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -108,21 +108,6 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 -- 1. THE MONAD: a bind of a return is its continuation, by `block`'s
 -- definition.
 ------------------------------------------------------------------------
-
-ret-bind : ∀ {X Y} {x : X} {k : X → T∞ Y} → (return∞ x >>=∞ k) ≈ k x
-block≈ (ret-bind {x = x} {k = k}) = Bl-refl (block (k x))
-
--- the monad's associativity, block by block
-mutual
-  bind-assoc : ∀ {X Y Z} (m : T∞ X) (k : X → T∞ Y) (h : Y → T∞ Z) → ((m >>=∞ k) >>=∞ h) ≈ (m >>=∞ λ x → k x >>=∞ h)
-  block≈ (bind-assoc m k h) = assocB (block m) k h
-
-  assocB : ∀ {X Y Z} (b : T (X ⊎ T∞ X)) (k : X → T∞ Y) (h : Y → T∞ Z)
-         → Bl (bindBlock (bindBlock b k) h) (bindBlock b (λ x → k x >>=∞ h))
-  assocB (ret (inj₁ x)) k h = Bl-refl (bindBlock (block (k x)) h)
-  assocB (ret (inj₂ m)) k h = ≈step (bind-assoc m k h)
-  assocB (call s a c)   k h = ≈call (λ y → assocB (c y) k h)
-  assocB (halt s a)     k h = ≈halt
 
 -- a computation that returns at once, bound
 bind-pure : ∀ {X Y} {m : T∞ X} {x : X} {k : X → T∞ Y} → m ≈ return∞ x → (m >>=∞ k) ≈ k x

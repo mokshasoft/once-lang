@@ -625,6 +625,65 @@ ownBg-gd : ∀ {Γ g X A B} (b : Tm Γ X A B) → Gd g b → Gd g (ownBg b)
 ownBg-gd {g = act} b β = k-∘ (k-∘ k-lul (k-⊗ k-drop k-id)) (k-lend (k-snd β))
 ownBg-gd {g = eff} b γ = tt
 
+-- ★ D493: a lent body's OWNED form, where it can do better than lending then
+-- freeing (`ownBg`): a closure it reads is applied owned (`bev` ↦ `levω`: its
+-- environment moved in, never copied); a half it does not read is freed first;
+-- the two halves of a pair, read by the two sides of a composition, each
+-- consumed by its side; a case's environment distributed into its arms.
+data Own {Γ} : ∀ {X A B} → Tm Γ X A B → Set where
+  o-bg    : ∀ {X A B} {b : Tm Γ X A B} → Own b
+  o-ev    : ∀ {g A B} → Own (bev {g = g} {A} {B})
+  o-fst   : ∀ {X₁ X₂ A B} {f : Tm Γ X₁ A B} → Own f → Own (bfst {E₂ = X₂} f)
+  o-snd   : ∀ {X₁ X₂ A B} {f : Tm Γ X₂ A B} → Own f → Own (bsnd {E₁ = X₁} f)
+  o-split : ∀ {X₁ X₂ A B C} {f : Tm Γ X₁ B C} {g : Tm Γ X₂ A B} → Own f → Own g
+          → Own (bfst {E₂ = X₂} f ∘l bsnd {E₁ = X₁} g)
+  o-case  : ∀ {X A B C} {f : Tm Γ X A C} {g : Tm Γ X B C} → Own f → Own g → Own (lcase f g)
+
+ownT : ∀ {Γ X A B} {b : Tm Γ X A B} → Own b → Tm Γ One (X ⊗t A) B
+ownT {b = b} o-bg   = ownBg b
+ownT o-ev           = levω
+ownT (o-fst o)      = ownT o ∘l ((ρl ∘l (lid ⊗l drop)) ⊗l lid)
+ownT (o-snd o)      = ownT o ∘l ((lul ∘l (drop ⊗l lid)) ⊗l lid)
+ownT (o-split p q)  = ownT p ∘l ((lid ⊗l ownT q) ∘l lassoc)
+ownT (o-case p q)   = lcase (ownT p) (ownT q) ∘l ldist
+
+own-blk : ∀ {Γ X A B} {b : Tm Γ X A B} (o : Own b) → Blk b → Blk (ownT o)
+own-blk {b = b} o-bg β                      = ownBg-gd {g = act} b β
+own-blk o-ev k-bev                          = k-evω
+own-blk (o-fst o) (k-fst β)                 = k-∘ (own-blk o β) (k-⊗ (k-∘ k-ρ (k-⊗ k-id k-drop)) k-id)
+own-blk (o-snd o) (k-snd β)                 = k-∘ (own-blk o β) (k-⊗ (k-∘ k-lul (k-⊗ k-drop k-id)) k-id)
+own-blk (o-split p q) (k-∘ (k-fst β) (k-snd β′)) = k-∘ (own-blk p β) (k-∘ (k-⊗ k-id (own-blk q β′)) k-assoc)
+own-blk (o-case p q) (k-case β β′)          = k-∘ (k-case (own-blk p β) (own-blk q β′)) k-dist
+
+own-gd : ∀ {Γ g X A B} {b : Tm Γ X A B} (o : Own b) → Gd g b → Gd g (ownT o)
+own-gd {g = act} o β = own-blk o β
+own-gd {g = eff} o γ = tt
+
+-- the certificate the lowering takes: the shapes above, `ownBg` elsewhere
+ownOf : ∀ {Γ X A B} (b : Tm Γ X A B) → Own b
+ownOf bev               = o-ev
+ownOf (bfst f)          = o-fst (ownOf f)
+ownOf (bsnd f)          = o-snd (ownOf f)
+ownOf (bfst f ∘l bsnd g) = o-split (ownOf f) (ownOf g)
+ownOf (lcase f g)       = o-case (ownOf f) (ownOf g)
+{-# CATCHALL #-}
+ownOf b                 = o-bg
+
+-- a many-use closure's owned entry
+-- (opaque: the image's conversions compare keys without unfolding the certificate;
+-- `ownω-≡` where its form is needed)
+opaque
+  ownω : ∀ {Γ X A B} → Tm Γ X A B → Tm Γ One (X ⊗t A) B
+  ownω b = ownT (ownOf b)
+
+opaque
+  unfolding ownω
+  ownω-≡ : ∀ {Γ X A B} (b : Tm Γ X A B) → ownω b ≡ ownT (ownOf b)
+  ownω-≡ b = refl
+
+  own-gdb : ∀ {Γ g X A B} (b : Tm Γ X A B) → Gd g b → Gd g (ownω b)
+  own-gdb b γ = own-gd (ownOf b) γ
+
 -- its grade
 cin-gd : ∀ {Γ g X A B} (b₀ : Tm Γ One (X ⊗t A) B) → Gd g b₀ → Gd g (cin b₀)
 cin-gd {g = act} b₀ β = k-cin β

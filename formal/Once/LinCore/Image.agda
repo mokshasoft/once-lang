@@ -101,12 +101,12 @@ key-of (cωᶜ ds b₀ γ) = _ , kbodyω ds (cin b₀) (cin-gd b₀ γ)
 -- one's: its owned body), the block of the one-shot closure it becomes (`once-of`)
 okey : ∀ {k g X A B} → Lam k g X A B → Σ BSig Key
 okey (c1 ds b γ)   = _ , kbody1 ds b γ
-okey (cω ds b γ)   = _ , kbody1 ds (ownBg b) (ownBg-gd b γ)
+okey (cω ds b γ)   = _ , kbody1 ds (ownω b) (own-gdb b γ)
 okey (cωᶜ ds b₀ γ) = _ , kbody1 ds b₀ γ
 
 -- ★ D480: a many-use closure's owned body's block (its owned entry calls it)
 key1-of : ∀ {g X A B} → Lam many g X A B → Σ BSig Key
-key1-of (cω ds b γ) = _ , kbody1 ds (ownBg b) (ownBg-gd b γ)
+key1-of (cω ds b γ) = _ , kbody1 ds (ownω b) (own-gdb b γ)
 key1-of (cωᶜ ds b₀ γ) = _ , kbody1 ds b₀ γ
 
 -- the trampoline a closure's code word enters

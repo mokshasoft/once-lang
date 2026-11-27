@@ -125,7 +125,7 @@ data Lam : Kd → Gr → LTy → LTy → LTy → Set where
 
 -- ★ D480: a many-use closure as the one-shot closure of its owned body (its owned call's)
 once-of : ∀ {g X A B} → Lam many g X A B → Lam once g X A B
-once-of (cω ds b γ)   = c1 ds (ownBg b) (ownBg-gd b γ)
+once-of (cω ds b γ)   = c1 ds (ownω b) (own-gdb b γ)
 once-of (cωᶜ ds b₀ γ) = c1 ds b₀ γ
 
 

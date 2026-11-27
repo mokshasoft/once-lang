@@ -60,7 +60,7 @@ module Keep (U : Univ) where
 
   LamIn : ∀ {k g X A B} → Lam k g X A B → Set
   LamIn (c1 {X = X} ds b γ) = (_ , kbody1 ds b γ) ∈ allK U × X ∈ cts U
-  LamIn (cω {X = X} ds b γ) = (_ , kbodyω ds b γ) ∈ allK U × X ∈ cts U × (_ , kbody1 ds (ownBg b) (ownBg-gd b γ)) ∈ allK U
+  LamIn (cω {X = X} ds b γ) = (_ , kbodyω ds b γ) ∈ allK U × X ∈ cts U × (_ , kbody1 ds (ownω b) (own-gdb b γ)) ∈ allK U
   LamIn (cωᶜ {X = X} ds b₀ γ) = (_ , kbodyω ds (cin b₀) (cin-gd b₀ γ)) ∈ allK U × X ∈ cts U × (_ , kbody1 ds b₀ γ) ∈ allK U
 
   lam-X : ∀ {k g X A B} (lam : Lam k g X A B) → LamIn lam → X ∈ cts U

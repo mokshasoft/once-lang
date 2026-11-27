@@ -270,7 +270,7 @@ tmGot ds (bapp p)            = k! (_ , keyω ds p)
 tmGot ds (dup {A = A})       = t! A
 tmGot ds (drop {A = A})      = t! A
 tmGot ds (llam {X = X} b γ)  = k! (_ , kbody1 ds b γ) ⊹ c! X ⊹ tmGot ds b
-tmGot ds (llamω {X = X} b γ) = k! (_ , kbodyω ds b γ) ⊹ c! X ⊹ tmGot ds b ⊹ k! (_ , kbody1 ds (ownBg b) (ownBg-gd b γ))
+tmGot ds (llamω {X = X} b γ) = k! (_ , kbodyω ds b γ) ⊹ c! X ⊹ tmGot ds b ⊹ k! (_ , kbody1 ds (ownω b) (own-gdb b γ))
 -- (D480: a many-use closure also names its owned body, its owned entry's)
 tmGot ds (llamωᶜ {X = X} b₀ γ) = k! (_ , kbodyω ds (cin b₀) (cin-gd b₀ γ)) ⊹ c! X ⊹ tmGot ds b₀ ⊹ k! (_ , kbody1 ds b₀ γ)
 tmGot ds (lunf {F = F} {S})  = n! (F , S) ⊹ o! (_ , ε)
@@ -316,6 +316,8 @@ record Univ : Set where
     -- ★ D486: the types cells hold (each among `tys`)
     cts  : List LTy
     cts⊆ : ∀ {T} → T ∈ cts → T ∈ tys
+    -- (D493: closed under a copy's or a free's parts, for any universe built by `close`)
+    tys-cl : ∀ {T} → T ∈ tys → comps T ⊆ tys
 open Univ
 
 -- a collection's cell types: its closures' environments, its ν's contents
@@ -366,15 +368,37 @@ find A (x ∷ xs) w = find-step (eqT A x) (eqT-ok A x) (λ e → subst (λ y →
 -- ★ D487: the universe from its lists, the deduplicated ones passed once (computed once, shared by
 -- the fields and by `cts⊆`'s search; performance-patterns B1); `R` and `C`, the raw lists, only
 -- in the witness
+-- (opaque: a universe is compared field by field; this witness is never computed)
+opaque
+  dd-cl : ∀ (R C D : List LTy) → dd (R ++ C) ≡ D → (∀ {T} → T ∈ R ++ C → comps T ⊆ R ++ C)
+        → ∀ {T} → T ∈ D → comps T ⊆ D
+  dd-cl R C D eD cl {T} m {C′} c = find C′ D (subst (λ Z → C′ ∈ Z) eD (dd⁺ (cl (dd⁻ (R ++ C) (subst (λ Z → T ∈ Z) (sym eD) m)) c)))
+
 closeD : List AKey → (D : List LTy) → List NS → List DS → List Sig → (Cd : List LTy)
-       → (R C : List LTy) → dd (R ++ C) ≡ D → dd C ≡ Cd → Univ
-closeD K D N O P Cd R C eD eC =
+       → (R C : List LTy) → dd (R ++ C) ≡ D → dd C ≡ Cd → (∀ {T} → T ∈ R ++ C → comps T ⊆ R ++ C) → Univ
+closeD K D N O P Cd R C eD eC cl =
   univ′ K D N O P Cd (λ {T} m → find T D (subst (λ Z → T ∈ Z) eD (dd⁺ (∈-++⁺ʳ R (dd⁻ C (subst (λ Z → T ∈ Z) (sym eC) m))))))
+    (dd-cl R C D eD cl)
+
+-- a collection's types, closed under the parts (the raw lists of `close`; sealed, performance-patterns A8)
+opaque
+  rg-cl : ∀ g {T} → T ∈ cmap subs (ts g) ++ cmap (λ n → subs (cty n)) (ns g)
+        → comps T ⊆ cmap subs (ts g) ++ cmap (λ n → subs (cty n)) (ns g)
+  rg-cl g {T} m c =
+    [ (λ p → let (R , r , q) = ∈-cmap⁻ (ts g) p in ∈-++⁺ˡ (∈-cmap⁺ (ts g) r (closed R q c)))
+    , (λ p → let (n , r , q) = ∈-cmap⁻ (ns g) p in ∈-++⁺ʳ (cmap subs (ts g)) (∈-cmap⁺ (ns g) r (closed (cty n) q c)))
+    ]′ (∈-++⁻ (cmap subs (ts g)) m)
+
+  rgc-cl : ∀ g {T} → T ∈ (cmap subs (ts g) ++ cmap (λ n → subs (cty n)) (ns g)) ++ (cs g ++ map cty (ns g))
+         → comps T ⊆ (cmap subs (ts g) ++ cmap (λ n → subs (cty n)) (ns g)) ++ (cs g ++ map cty (ns g))
+  rgc-cl g {T} m c =
+    [ (λ p → ∈-++⁺ˡ (rg-cl g p c)) , (λ p → ∈-++⁺ˡ (rg-cl g (close-cts g p) c)) ]′
+      (∈-++⁻ (cmap subs (ts g) ++ cmap (λ n → subs (cty n)) (ns g)) m)
 
 close : Got → Univ
 close g = closeD (ks g) (dd ((cmap subs (ts g) ++ cmap (λ n → subs (cty n)) (ns g)) ++ (cs g ++ map cty (ns g))))
                  (ns g) ((_ , ε) ∷ os g) (ps g) (dd (cs g ++ map cty (ns g)))
-                 (cmap subs (ts g) ++ cmap (λ n → subs (cty n)) (ns g)) (cs g ++ map cty (ns g)) refl refl
+                 (cmap subs (ts g) ++ cmap (λ n → subs (cty n)) (ns g)) (cs g ++ map cty (ns g)) refl refl (rgc-cl g)
 
 allK : Univ → List AKey
 allK U = keys U ++ map kc (tys U) ++ map kf (tys U) ++ obsK (obs U) (nus U)
@@ -437,6 +461,27 @@ module In (U : Univ) where
   ct⊑ : ∀ {X} → c! X ⊑U → t! X ⊑U
   ct⊑ g = sub (λ ()) (λ { (here refl) → cts⊆ U (gc g (here refl)) ; (there ()) }) (λ ()) (λ ()) (λ ()) (λ ())
 
+  -- a type among the universe's is a copied and freed type; so are its parts
+  ty⊑ : ∀ {T} → T ∈ tys U → t! T ⊑U
+  ty⊑ p = sub (λ ()) (λ { (here refl) → p ; (there ()) }) (λ ()) (λ ()) (λ ()) (λ ())
+
+  tyL : ∀ {X₁ X₂} → t! (X₁ ⊗t X₂) ⊑U → t! X₁ ⊑U
+  tyL g = ty⊑ (tys-cl U (gt g (here refl)) (here refl))
+
+  tyR : ∀ {X₁ X₂} → t! (X₁ ⊗t X₂) ⊑U → t! X₂ ⊑U
+  tyR g = ty⊑ (tys-cl U (gt g (here refl)) (there (here refl)))
+
+  -- ★ D493: a body's owned form needs what the body needs, and the frees of the
+  -- environment's parts it drops (sealed: evidence in types, performance-patterns A3)
+  opaque
+   own-got : ∀ {Γ} {ds : Defs Γ} {X A B} {b : Tm Γ X A B} (o : Own b) → tmGot ds b ⊑U → t! X ⊑U → tmGot ds (ownT o) ⊑U
+   own-got o-bg          gb tX = ⊹-join (⊹-join ∅⊑ (⊹-join tX ∅⊑)) gb
+   own-got o-ev          gb tX = ∅⊑
+   own-got (o-fst o)     gb tX = ⊹-join (own-got o gb (tyL tX)) (⊹-join (⊹-join ∅⊑ (⊹-join ∅⊑ (tyR tX))) ∅⊑)
+   own-got (o-snd o)     gb tX = ⊹-join (own-got o gb (tyR tX)) (⊹-join (⊹-join ∅⊑ (⊹-join (tyL tX) ∅⊑)) ∅⊑)
+   own-got (o-split p q) gb tX = ⊹-join (own-got p (⊹ˡ gb) (tyL tX)) (⊹-join (⊹-join ∅⊑ (own-got q (⊹ʳ gb) (tyR tX))) ∅⊑)
+   own-got (o-case p q)  gb tX = ⊹-join (⊹-join (own-got p (⊹ˡ gb) tX) (own-got q (⊹ʳ gb) tX)) ∅⊑
+
   inCc : ∀ {T} → T ∈ cts U → kc T ∈ allK U
   inCc m = inC (cts⊆ U m)
 
@@ -450,7 +495,7 @@ module In (U : Univ) where
 
   PrimIn : ∀ {Γ} → Defs Γ → ∀ {E A B} → Tm Γ E A B → Set
   PrimIn ds (llam {X = X} b γ)  = (_ , kbody1 ds b γ) ∈ allK U × X ∈ cts U
-  PrimIn ds (llamω {X = X} b γ) = (_ , kbodyω ds b γ) ∈ allK U × X ∈ cts U × (_ , kbody1 ds (ownBg b) (ownBg-gd b γ)) ∈ allK U
+  PrimIn ds (llamω {X = X} b γ) = (_ , kbodyω ds b γ) ∈ allK U × X ∈ cts U × (_ , kbody1 ds (ownω b) (own-gdb b γ)) ∈ allK U
   PrimIn ds (llamωᶜ {X = X} b₀ γ) = (_ , kbodyω ds (cin b₀) (cin-gd b₀ γ)) ∈ allK U × X ∈ cts U × (_ , kbody1 ds b₀ γ) ∈ allK U
   PrimIn ds (lunf {F = F} {S})  = (F , S) ∈ nus U × (_ , ε) ∈ obs U
   PrimIn ds ρl        = ⊤
@@ -653,18 +698,18 @@ module In (U : Univ) where
   tm-good (llam b γ) d g (there m)    = tm-good b d (⊹ʳ (⊹ʳ g)) m
   tm-good {ds = ds} (llamω b γ) d g (here refl) = bodyω-in {ds = ds} {b = b} {γ = γ} (⊹ˡ (⊹ʳ (⊹ʳ g)))
   tm-good {ds = ds} (llamω {X = X} b γ) d g (there m) =
-    [ (λ p → tm-good b d (⊹ˡ (⊹ʳ (⊹ʳ g))) p) , own ]′ (∈-++⁻ (ks (tmGot ds b)) m)
+    [ (λ p → tm-good b d (⊹ˡ (⊹ʳ (⊹ʳ g))) p) , ownK ]′ (∈-++⁻ (ks (tmGot ds b)) m)
     where
-      own : ∀ {κ} → κ ∈ (_ , kbody1 ds (ownBg b) (ownBg-gd b γ)) ∷ [] → BIn κ
-      own (here refl) = body1-in {ds = ds} {b = ownBg b} {γ = ownBg-gd b γ}
-                          (⊹-join (⊹-join ∅⊑ (⊹-join (ct⊑ (⊹ˡ (⊹ʳ g))) ∅⊑)) (⊹ˡ (⊹ʳ (⊹ʳ g))))
+      ownK : ∀ {κ} → κ ∈ (_ , kbody1 ds (ownω b) (own-gdb b γ)) ∷ [] → BIn κ
+      ownK (here refl) = body1-in {ds = ds} {b = ownω b} {γ = own-gdb b γ}
+                          (subst (λ t → tmGot ds t ⊑U) (sym (ownω-≡ b)) (own-got (ownOf b) (⊹ˡ (⊹ʳ (⊹ʳ g))) (ct⊑ (⊹ˡ (⊹ʳ g)))))
   tm-good {ds = ds} (llamωᶜ {X = X} b₀ γ) d g (here refl) =
     bodyω-in {ds = ds} {b = cin b₀} {γ = cin-gd b₀ γ} (⊹-join (⊹ˡ (⊹ʳ (⊹ʳ g))) (⊹-join (⊹-join (ct⊑ (⊹ˡ (⊹ʳ g))) ∅⊑) ∅⊑))
   tm-good {ds = ds} (llamωᶜ {X = X} b₀ γ) d g (there m) =
-    [ (λ p → tm-good b₀ d (⊹ˡ (⊹ʳ (⊹ʳ g))) p) , own ]′ (∈-++⁻ (ks (tmGot ds b₀)) m)
+    [ (λ p → tm-good b₀ d (⊹ˡ (⊹ʳ (⊹ʳ g))) p) , ownKᶜ ]′ (∈-++⁻ (ks (tmGot ds b₀)) m)
     where
-      own : ∀ {κ} → κ ∈ (_ , kbody1 ds b₀ γ) ∷ [] → BIn κ
-      own (here refl) = body1-in {ds = ds} {b = b₀} {γ = γ} (⊹ˡ (⊹ʳ (⊹ʳ g)))
+      ownKᶜ : ∀ {κ} → κ ∈ (_ , kbody1 ds b₀ γ) ∷ [] → BIn κ
+      ownKᶜ (here refl) = body1-in {ds = ds} {b = b₀} {γ = γ} (⊹ˡ (⊹ʳ (⊹ʳ g)))
   tm-good lid d g ()
   tm-good ρl d g ()
   tm-good ρl⁻ d g ()
@@ -725,8 +770,8 @@ module In (U : Univ) where
   tm-all {ds = ds} (llamω b γ) d g =
     bodyω-in {ds = ds} {b = b} {γ = γ} (⊹ˡ (⊹ʳ (⊹ʳ g)))
     ∷ ++⁺ (tm-all b d (⊹ˡ (⊹ʳ (⊹ʳ g))))
-          (body1-in {ds = ds} {b = ownBg b} {γ = ownBg-gd b γ}
-             (⊹-join (⊹-join ∅⊑ (⊹-join (ct⊑ (⊹ˡ (⊹ʳ g))) ∅⊑)) (⊹ˡ (⊹ʳ (⊹ʳ g)))) ∷ [])
+          (body1-in {ds = ds} {b = ownω b} {γ = own-gdb b γ}
+             (subst (λ t → tmGot ds t ⊑U) (sym (ownω-≡ b)) (own-got (ownOf b) (⊹ˡ (⊹ʳ (⊹ʳ g))) (ct⊑ (⊹ˡ (⊹ʳ g))))) ∷ [])
   tm-all {ds = ds} (llamωᶜ b₀ γ) d g =
     bodyω-in {ds = ds} {b = cin b₀} {γ = cin-gd b₀ γ} (⊹-join (⊹ˡ (⊹ʳ (⊹ʳ g))) (⊹-join (⊹-join (ct⊑ (⊹ˡ (⊹ʳ g))) ∅⊑) ∅⊑))
     ∷ ++⁺ (tm-all b₀ d (⊹ˡ (⊹ʳ (⊹ʳ g)))) (body1-in {ds = ds} {b = b₀} {γ = γ} (⊹ˡ (⊹ʳ (⊹ʳ g))) ∷ [])

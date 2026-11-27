@@ -39,7 +39,10 @@ its cap is a failure to report and fix, never a run to wait out.
 7. **Pattern lambdas in a big mutual block** become functions in the termination graph: use an
    irrefutable `let (a , b) = e in …` for single-clause record matches.
 8. **Inline `[ f , g ]′ (∈-++⁻ …)` in a proof that occurs in types** is walked at each
-   comparison: seal it (`opaque`) or use a named helper.
+   comparison: seal it (`opaque`) or use a named helper. D493 (2026-11-26): `Keys.rg-cl`,
+   `own-got` and `RunOps.ok-own` (evidence with `∈-++⁻` splits, inside the universe and the
+   key evidence) took `LinCore.Apex` from 33 s to 117 s; sealing the owned entry (`ownω`) and
+   the lemma taking them was not enough, as their arguments are still compared. Sealed: 43 s.
 9. **Interface load**: importing a large walk (the front end) into an apex module can exceed
    the memory cap on import alone; take its facts as a record premise instead.
 10. **Large literals in proofs: make the constant `opaque`.** A literal used as the

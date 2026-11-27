@@ -78,7 +78,7 @@ open import Once.IR.Semantics.Trace using (T; ret; call; halt; CallOp; HaltOp)
 open import Once.IR.Semantics.Iterative using (T∞; return∞; bindBlock; iterBlock)
 open import Once.LinCore.NbEPLinCore fmt ans
 open Sem using (Lᶜ; travC; Lg)
-open import Once.LinCore.Bisim fmt ans using (Bl; ≈ret; ≈step; ≈call; ≈halt; module _≈_; pair-drop)
+open import Once.LinCore.Bisim fmt ans using (Bl; ≈ret; ≈step; ≈call; ≈halt; module _≈_; pair-drop; ownω-≈)
 open _≈_ using (block≈)
 open import Once.LinCore.Grade fmt ans using (blk-coh; obs-coh)
 open import Once.LinCore.Values fmt bw
@@ -266,7 +266,7 @@ data Run {Γ} ds where
           → Run ds′ b₀ mone (mpair x a) n o t
           → Run ds (levω {g = g}) e (mpair (mfn i (cωᶜ ds′ b₀ γ) x) a) n o (free i ∷ t)
   r-evω   : ∀ {E g X A B Δ} {ds′ : Defs Δ} {b : Tm Δ X A B} {γ : Gd g b} {e : MV E} {i x a o n t}
-          → Run ds′ (ownBg b) mone (mpair x a) n o t
+          → Run ds′ (ownω b) mone (mpair x a) n o t
           → Run ds (levω {g = g}) e (mpair (mfn i (cω ds′ b γ) x) a) n o (free i ∷ t)
   -- ★ THE FINAL COALGEBRA: building a ν moves its coalgebra and seed into a
   -- fresh cell; observing one frees the cell and runs `obsT` on them (the
@@ -612,8 +612,7 @@ sound (r-bevᶜ {g = g} {ds′ = ds′} {b₀ = b₀} {γ = γ} {x = x} {a = a} 
 sound (r-evωᶜ {g = g} {ds′ = ds′} {b₀ = b₀} {γ = γ} {x = x} {a = a} r) = up-Lg g ⟦ ds′ ⟧D b₀ γ tt (er x , er a) (sound r)
 sound (r-evω {g = g} {X = X} {B = B} {ds′ = ds′} {b = b} {γ = γ} {x = x} {a = a} r) =
   up-Lg g ⟦ ds′ ⟧D b γ (er x) (er a)
-    (RB-Bl (block≈ (pair-drop {m = Lᶜ ⟦ ds′ ⟧D b (er x) (er a)} (er x ,_)
-                              (Lᶜ ⟦ ds′ ⟧D (lul {A = B} {E = One} ∘l (drop {A = X} ⊗l lid {A = B})) tt) (λ _ → refl))) (sound r))
+    (RB-Bl (block≈ (ownω-≈ ⟦ ds′ ⟧D b (er x) (er a))) (sound r))
 sound r-unf = b-ret
 sound {ds = ds} (r-nout {E = E} {F} {S} {e = e} {p = p} r) =
   RB-Bl (block≈ (obs-coh ⟦ ds ⟧D F S (fst (er p)) (snd (er p)) {E} (er e))) (sound r)

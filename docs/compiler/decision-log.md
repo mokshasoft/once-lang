@@ -25563,3 +25563,30 @@ word blocks, shared) and `ldist-sim` (the configuration after is the distributed
   user to decide. Reading the tag costs the same either way.
 * *A case with a context* (`lcaseX : Tm E (X ⊗ A) C → Tm E (X ⊗ B) C → Tm E (X ⊗ (A ⊕ B)) C`) instead of
   `ldist`: the same power, but a branch where `ldist` needs none; `ldist ⨾ lcase` is the same code.
+
+## D493 — A MANY-USE CLOSURE'S OWNED ENTRY CONSUMES WHAT IT HOLDS (2026-11-26, proposed — unattended, for the user's review; plan 0.157 S2; amends D480)
+
+**The regression it removes.** D480 (amended) made `comp'`, `copair'`, `cata` and `loop` closures READ the
+closures they hold (`llamω`, lent bodies), so a fold's layer copies nothing. But a `llamω`'s OWNED call (its
+last use, `levω`) ran `ownBg b`: the lent body, then a free of the environment. The held closures were then
+applied LENT, and a user lambda (`llamωᶜ`, the bridge's every lambda) applied lent copies its environment:
+compose chains ran 1.07–1.35x slower than before the amendment (loop-emit 1.35x, layer0-compose 1.22x).
+
+**The decision.** A lent body's owned form is chosen by a certificate, `Core.Own b` (computed: `ownOf b`):
+* `bev ↦ levω`: a held closure applied owned, its environment moved in (never copied);
+* `bfst f`, `bsnd f`: the half not read is freed FIRST, the other half's owned form runs;
+* `bfst f ∘ bsnd g` (a composition of the two halves): both owned, `g` on its half, then `f` on its;
+* `lcase f g`: the environment distributed into the arms (`ldist`, D492), each arm owned;
+* anything else: `ownBg` (lent, then freed), as before.
+`own b = ownT (ownOf b)` is the owned entry everywhere `ownBg b` was (the image's key, the machine's
+`applyω`, the run rule `r-evω`). `comp'`'s owned call is now `g` owned then `f` owned; `copair'`'s frees the
+arm it does not take.
+
+**Proved.** Meaning: `Bisim.own-≈ : Lᶜ (ownT o) tt (x , a) ≈ Lᶜ b x a` (by induction on the certificate;
+`ret-bind`, `bind-assoc` moved to `Bisim`), used by `Events.sound` and `BudgetSound`. Totality: `Total.goOwn`
+builds the owned run from the body's SUBTERMS (`go`) and the pieces' runs (`seqR`, `parR`, `evωR`), so the
+recursion stays structural; a many-use closure's goodness now has both halves (lent runs, owned runs).
+
+**Considered.** Carrying the owned body in the closure (`llamω b γ b₁ γ₁ (w : OwnOf b b₁)`): structural
+for `Total` at once, but 78 sites change and the bridge must supply `b₁`; the computed certificate keeps the
+core's syntax and costs one recursion in `Total`.

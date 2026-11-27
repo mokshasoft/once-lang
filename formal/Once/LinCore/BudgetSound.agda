@@ -51,7 +51,7 @@ open import Once.LinCore.NbEPLinCore fmt ans
 open Sem using (Lᶜ; travC; Lg)
 open import Once.LinCore.Events fmt ans bw
 open import Once.LinCore.Values fmt bw
-open import Once.LinCore.Bisim fmt ans using (_≈_; Bl; ≈ret; ≈step; ≈call; ≈halt; module _≈_; pair-drop)
+open import Once.LinCore.Bisim fmt ans using (_≈_; Bl; ≈ret; ≈step; ≈call; ≈halt; module _≈_; pair-drop; ownω-≈)
 open _≈_ using (block≈)
 open import Once.LinCore.Total fmt ans bw using (World; WTr)
 open import Once.LinCore.Spends fmt ans bw using (UnCut; UnCutM)
@@ -326,8 +326,7 @@ module S (ι : Interp) where
          trans (up-run-cin g ⟦ ds′ ⟧D b γ (er x) (er a) k h) e₁ , hist-cong _ refl hi
     soundₖ (r-evω {g = g} {X = X} {B = B} {ds′ = ds′} {b = b} {γ = γ} {x = x} {a = a} r) {k} sp u {h} w = let (e₁ , hi) = soundₖ r sp u w in
          trans (up-run g ⟦ ds′ ⟧D b γ (er x) (er a) k h)
-           (trans (sym (run-≈ k (pair-drop {m = Lᶜ ⟦ ds′ ⟧D b (er x) (er a)} (er x ,_)
-                                            (Lᶜ ⟦ ds′ ⟧D (lul {A = B} {E = One} ∘l (drop {A = X} ⊗l lid {A = B})) tt) (λ _ → refl)) h)) e₁)
+           (trans (sym (run-≈ k (ownω-≈ ⟦ ds′ ⟧D b (er x) (er a)) h)) e₁)
          , hist-cong _ refl hi
     soundₖ (r-unf {F = F} {S = S} {n = n}) sp u w = leaf (alloc (szν F S , n) ∷ []) refl sp refl w
     soundₖ {ds = ds} (r-nout {E = E} {F} {S} {e = e} {p = p} r) {k} sp u {h} w = let (e₁ , hi) = soundₖ r sp u w in

@@ -22,7 +22,7 @@ open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; sym)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.IR.Semantics.Trace using (FFIAnswers)
 open import Once.LinCore.Flat using (Base)
@@ -34,7 +34,7 @@ open import Once.LinCore.Flat using (funit; fvoid; fw; _f*_; _f+_; Base)
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw
 open import Once.LinCore.Values fmt bw
-open import Once.LinCore.Keys fmt bw using (Got; _⊹_; k!; t!; ps; tmGot; defsGot)
+open import Once.LinCore.Keys fmt bw using (Got; _⊹_; ∅; k!; t!; ps; tmGot; defsGot)
 open import Once.LinCore.Image fmt bw using (kbody1)
 open import Once.LinCore.Spends fmt ans bw using (CutsIn; CutsInM)
 open import Once.LinCore.Total fmt ans bw using (_~_; ~one; ~pair; ~inl; ~inr; ~base; ~mu; ~ct; ~fn; ~nu; copy-~)
@@ -57,6 +57,32 @@ module _ (D : Sig → Set) where
       go : ∀ {s} → (s ∈ ps (tmGot ds b₀)) ⊎ (s ∈ []) → D s
       go (inj₁ p) = k p
       go (inj₂ ())
+
+  -- (sealed: evidence in types, performance-patterns A3, A8)
+  opaque
+   ok-⊹ : ∀ G H → Ok G → Ok H → Ok (G ⊹ H)
+   ok-⊹ G H a b m = go (∈-++⁻ (ps G) m)
+     where
+       go : ∀ {s} → (s ∈ ps G) ⊎ (s ∈ ps H) → D s
+       go (inj₁ p) = a p
+       go (inj₂ p) = b p
+
+   -- (D493: a body's owned form runs its ops and no others)
+   ok-own : ∀ {Γ} (ds : Defs Γ) {X A B} {b : Tm Γ X A B} (o : Own b) → Ok (tmGot ds b) → Ok (tmGot ds (ownT o))
+   ok-own ds {X} {A} {B} {b} o-bg k =
+     ok-⊹ (tmGot ds (lul {A = B} {E = One} ∘l (drop {A = X} ⊗l lid {A = B}))) (tmGot ds b) (λ ()) k
+   ok-own ds o-ev k = λ ()
+   ok-own ds {X₁ ⊗t X₂} {A} (o-fst {f = f} o) k =
+     ok-⊹ (tmGot ds (ownT o)) (tmGot ds ((ρl ∘l (lid {A = X₁} ⊗l drop {A = X₂})) ⊗l lid {A = A} {E = One})) (ok-own ds o k) (λ ())
+   ok-own ds {X₁ ⊗t X₂} {A} (o-snd {f = f} o) k =
+     ok-⊹ (tmGot ds (ownT o)) (tmGot ds ((lul ∘l (drop {A = X₁} ⊗l lid {A = X₂})) ⊗l lid {A = A} {E = One})) (ok-own ds o k) (λ ())
+   ok-own ds (o-split {f = f} {g = g} p q) k =
+     ok-⊹ (tmGot ds (ownT p)) (tmGot ds (ownT q) ⊹ ∅) (ok-own ds p (okˡ {tmGot ds f} {tmGot ds g} k))
+       (ok-⊹ (tmGot ds (ownT q)) ∅ (ok-own ds q (okʳ {tmGot ds f} {tmGot ds g} k)) (λ ()))
+   ok-own ds (o-case {f = f} {g = g} p q) k =
+     ok-⊹ (tmGot ds (ownT p) ⊹ tmGot ds (ownT q)) ∅
+       (ok-⊹ (tmGot ds (ownT p)) (tmGot ds (ownT q)) (ok-own ds p (okˡ {tmGot ds f} {tmGot ds g} k)) (ok-own ds q (okʳ {tmGot ds f} {tmGot ds g} k)))
+       (λ ())
 
   -- a term with its table
   TmOK : ∀ {Γ} → Defs Γ → ∀ {E A B} → Tm Γ E A B → Set
@@ -218,13 +244,13 @@ module _ (D : Sig → Set) where
     run-ok (r-copy {e = e} {n}) _ ek vk = tt , vok-~ (copy-~ e n) ek
     run-ok (r-bapp q r) (_ , td) ek vk = let (td′ , tb) = look-ok q td in run-ok r (tb , td′) ek vk
     run-ok {ds = ds} (r-lam {X = X} {b = b}) (tf , td) ek vk = tt , ((tf , td) , vk)
-    run-ok {ds = ds} (r-lamω {X = X} {b = b} {γ = γ}) (tf , td) ek vk = tt , ((okˡ {tmGot ds b} {k! (_ , kbody1 ds (ownBg b) (ownBg-gd b γ))} tf , td) , vk)
+    run-ok {ds = ds} (r-lamω {X = X} {b = b} {γ = γ}) (tf , td) ek vk = tt , ((okˡ {tmGot ds b} {k! (_ , kbody1 ds (ownω b) (own-gdb b γ))} tf , td) , vk)
     run-ok {ds = ds} (r-lamωᶜ {X = X} {b₀ = b₀} {γ = γ}) (tf , td) ek vk = tt , ((okˡ {tmGot ds b₀} {k! (_ , kbody1 ds b₀ γ)} tf , td) , vk)
     run-ok (r-ev r) _ ek ((lk , vx) , va) = run-ok r lk tt (vx , va)
     run-ok (r-bev r) _ (lk , vx) va = run-ok r lk vx va
     run-ok {ds = ds} (r-bevᶜ {ds′ = ds′} {b₀ = b₀} r) _ ((ok₀ , td) , vx) va = run-ok r (ok-cin ds′ b₀ ok₀ , td) vx va
     run-ok (r-evωᶜ r) _ ek ((lk , vx) , va) = run-ok r lk tt (vx , va)
-    run-ok (r-evω r) _ ek ((lk , vx) , va) = run-ok r lk tt (vx , va)
+    run-ok (r-evω {ds′ = ds′} {b = b} r) _ ek (((ok₀ , td) , vx) , va) = run-ok r (subst (λ t → Ok (tmGot ds′ t)) (sym (ownω-≡ b)) (ok-own ds′ (ownOf b) ok₀) , td) tt (vx , va)
     run-ok r-unf _ ek vk = tt , vk
     run-ok {ds = ds} (r-nout {F = F} {S = S} r) (_ , td) ek vk = run-ok r (obsT-ok ds F S , td) tt vk
     run-ok r-const _ ek vk = tt , tt

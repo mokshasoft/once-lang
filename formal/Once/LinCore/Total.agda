@@ -27,9 +27,9 @@
 
 open import Agda.Builtin.Sigma using (Σ; _,_; fst; snd)
 open import Agda.Builtin.Equality using (_≡_; refl)
-open import Relation.Binary.PropositionalEquality using (trans; cong; cong₂)
+open import Relation.Binary.PropositionalEquality using (trans; cong; cong₂; subst; sym)
 open import Data.Empty using (⊥; ⊥-elim)
-open import Data.Product using (_×_)
+open import Data.Product using (_×_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Data.Nat using (ℕ; zero; suc; _≤_; _<_)
@@ -319,9 +319,12 @@ module _ (W : World) where
     Good (Fn once g A B) (mfn i (c1 ds b γ) x) =
       ∀ x′ → x′ ~ x → ∀ (k : ℕ) a n (σ : WSt) → Good A a
       → Σ (Ran ds b mone (mpair x′ a) n k σ) (λ r → GoodO B (Ran.out r))
+    -- (D493: lent, its body's run; applied owned, its owned form's)
     Good (Fn many g A B) (mfn i (cω ds b γ) x) =
-      ∀ x′ → x′ ~ x → ∀ (k : ℕ) a n (σ : WSt) → Good A a
-      → Σ (Ran ds b x′ a n k σ) (λ r → GoodO B (Ran.out r))
+      (∀ x′ → x′ ~ x → ∀ (k : ℕ) a n (σ : WSt) → Good A a
+        → Σ (Ran ds b x′ a n k σ) (λ r → GoodO B (Ran.out r)))
+      × (∀ x′ → x′ ~ x → ∀ (k : ℕ) a n (σ : WSt) → Good A a
+        → Σ (Ran ds (ownω b) mone (mpair x′ a) n k σ) (λ r → GoodO B (Ran.out r)))
     -- (D480: a kept owned body: good as a one-shot closure's)
     Good (Fn many g A B) (mfn i (cωᶜ ds b₀ γ) x) =
       ∀ x′ → x′ ~ x → ∀ (k : ℕ) a n (σ : WSt) → Good A a
@@ -351,7 +354,7 @@ module _ (W : World) where
   good-~ (~mu p)     g        = tt
   good-~ (~ct p)     g        = good-~ p g
   good-~ (~fn {c = c1 ds b γ} p) g = λ x″ q → g x″ (~-trans q p)
-  good-~ (~fn {c = cω ds b γ} p) g = λ x″ q → g x″ (~-trans q p)
+  good-~ (~fn {c = cω ds b γ} p) g = (λ x″ q → proj₁ g x″ (~-trans q p)) , (λ x″ q → proj₂ g x″ (~-trans q p))
   good-~ (~fn {c = cωᶜ ds b₀ γ} p) g = λ x″ q → g x″ (~-trans q p)
   good-~ (~nu p)     g        = goodNu~ (~nu p) g
 
@@ -501,7 +504,7 @@ module _ (W : World) where
     -- one observation: the coalgebra (good) on the seed, then the layer
     observe : ∀ {F S} (p : MV (Coalg F S ⊗t S)) → Good (Coalg F S ⊗t S) p → ∀ i {Γ} (ds : Defs Γ) {E} (e : MV E)
               (k : ℕ) n (σ : WSt) → Σ (Ran ds (lout {F = F}) e (mnu i p) n k σ) (λ r → GoodLO F (Ran.out r))
-    observe {F} {S} (mpair (mfn j (cω ds′ b γ) x) s) (gc , gs) i ds e k n σ = case gc x (~-refl x) k s n σ gs of λ where
+    observe {F} {S} (mpair (mfn j (cω ds′ b γ) x) s) (gc , gs) i ds e k n σ = case proj₁ gc x (~-refl x) k s n σ gs of λ where
       (ran (stop y) t rb σ₁ cz l sp sps wo , _) →
         ( ran (stop y) _ (r-nout (r-∘ (r-∘ (r-∘ (r-∘ (r-lend (fm-stop (r-snd (r-bev rb)))) stopped) stopped) stopped) stopped))
               σ₁ cz l sp sps
@@ -594,6 +597,34 @@ module _ (W : World) where
   -- sub-run that stopped. The evaluator never stops on its own.
   ------------------------------------------------------------------------
 
+  -- ★ D493: a composite run from its pieces' runs (`go`'s `∘` and `⊗`, given the pieces)
+  seqR : ∀ {Γ} {ds : Defs Γ} {E A B C} {f : Tm Γ E B C} {g : Tm Γ E A B} {e : MV E} {v : MV A} {n k σ}
+       → Ran⁺ ds g e v n k σ
+       → (∀ (u : MV B) n₁ l₁ (σ₁ : WSt) → Good B u → Ran⁺ ds f e u n₁ l₁ σ₁)
+       → Ran⁺ ds (f ∘l g) e v n k σ
+  seqR (ran (gives u n₁) t₁ rg σ₁ _ l₁ s₁ sp₁ wo₁ , gu) kf = case kf u n₁ l₁ σ₁ gu of λ where
+    (ran o t₂ rf σ₂ c l₂ s₂ sp₂ wo₂ , gw) → (ran o (t₁ ++ t₂) (r-∘ rg (go-on rf)) σ₂ c l₂ (≤-trans s₂ s₁) (l₁ , sp₁ , sp₂) (wtr-++ t₁ wo₁ wo₂) , gw)
+  seqR (ran (stop y) t rg σ₁ c l₁ s₁ sp₁ wo₁ , _) kf = (ran (stop y) (t ++ []) (r-∘ rg stopped) σ₁ c l₁ s₁ sp₁ (wtr-[] t wo₁) , tt)
+
+  parR : ∀ {Γ} {ds : Defs Γ} {E A B C D} {f : Tm Γ E A B} {g : Tm Γ E C D} {e : MV E} {a : MV A} {c : MV C} {n k σ}
+       → Ran⁺ ds f e a n k σ
+       → (∀ n₁ l₁ (σ₁ : WSt) → Ran⁺ ds g e c n₁ l₁ σ₁)
+       → Ran⁺ ds (f ⊗l g) e (mpair a c) n k σ
+  parR (ran (stop y) t rf σ₁ w l₁ s₁ sp₁ wo₁ , _) kg = (ran (stop y) (t ++ []) (r-⊗ rf stopped) σ₁ w l₁ s₁ sp₁ (wtr-[] t wo₁) , tt)
+  parR (ran (gives a′ n₁) t₁ rf σ₁ _ l₁ s₁ sp₁ wo₁ , ga′) kg = case kg n₁ l₁ σ₁ of λ where
+    (ran (gives c′ n₂) t₂ rg σ₂ _ l₂ s₂ sp₂ wo₂ , gc′) →
+      (ran _ (t₁ ++ t₂) (r-⊗ rf (go-on (fm-gives rg))) σ₂ tt l₂ (≤-trans s₂ s₁) (l₁ , sp₁ , sp₂) (wtr-++ t₁ wo₁ wo₂) , (ga′ , gc′))
+    (ran (stop y) t₂ rg σ₂ w l₂ s₂ sp₂ wo₂ , _) →
+      (ran (stop y) (t₁ ++ t₂) (r-⊗ rf (go-on (fm-stop rg))) σ₂ w l₂ (≤-trans s₂ s₁) (l₁ , sp₁ , sp₂) (wtr-++ t₁ wo₁ wo₂) , tt)
+
+  -- a many-use closure applied owned: by its goodness, no recursive call
+  evωR : ∀ {Γ} {ds : Defs Γ} {E g A B} (e : MV E) (f : MV (Fn many g A B)) (a : MV A) n k (σ : WSt)
+       → Good (Fn many g A B) f → Good A a → Ran⁺ ds (levω {g = g}) e (mpair f a) n k σ
+  evωR e (mfn i (cωᶜ ds′ b₀ γ) x) a n k σ gf ga = case gf x (~-refl x) k a n σ ga of λ where
+    (ran o t rb σ₁ c l s sp wo , gw) → (ran o (free i ∷ t) (r-evωᶜ rb) σ₁ c l s sp wo , gw)
+  evωR e (mfn i (cω ds′ b γ) x) a n k σ gf ga = case proj₂ gf x (~-refl x) k a n σ ga of λ where
+    (ran o t rb σ₁ c l s sp wo , gw) → (ran o (free i ∷ t) (r-evω rb) σ₁ c l s sp wo , gw)
+
   module Eval {Γ} (ds : Defs Γ) (ρ : REnv ds) where
     mutual
       go : ∀ {E A B} (k : ℕ) (f : Tm Γ E A B) (e : MV E) (v : MV A) (n : ℕ) (σ : WSt)
@@ -659,11 +690,14 @@ module _ (W : World) where
       go k (llam b γ) e x n σ ge gx =
         (ran _ _ r-lam σ tt k ≤-refl refl refl , λ x′ p k′ a n′ σ′ ga → go k′ b mone (mpair x′ a) n′ σ′ tt (good-~ p gx , ga))
       go k (llamω b γ) e x n σ ge gx =
-        (ran _ _ r-lamω σ tt k ≤-refl refl refl , λ x′ p k′ a n′ σ′ ga → go k′ b x′ a n′ σ′ (good-~ p gx) ga)
+        (ran _ _ r-lamω σ tt k ≤-refl refl refl
+        , (λ x′ p k′ a n′ σ′ ga → go k′ b x′ a n′ σ′ (good-~ p gx) ga)
+        , (λ x′ p k′ a n′ σ′ ga → subst (λ t → Ran⁺ ds t mone (mpair x′ a) n′ k′ σ′) (sym (ownω-≡ b))
+                                     (goOwn b (ownOf b) k′ x′ a n′ σ′ (good-~ p gx) ga)))
       -- applying one runs it, by its goodness: no recursive call
       go k lev e (mpair (mfn i (c1 ds′ b γ) x) a) n σ ge (gf , ga) = case gf x (~-refl x) k a n σ ga of λ where
         (ran o t rb σ₁ c l s sp wo , gw) → (ran o (free i ∷ t) (r-ev rb) σ₁ c l s sp wo , gw)
-      go k bev (mfn i (cω ds′ b γ) x) a n σ gf ga = case gf x (~-refl x) k a n σ ga of λ where
+      go k bev (mfn i (cω ds′ b γ) x) a n σ gf ga = case proj₁ gf x (~-refl x) k a n σ ga of λ where
         (ran o t rb σ₁ c l s sp wo , gw) → (ran o (peek i ∷ t) (r-bev rb) σ₁ c l s sp wo , gw)
       -- ★ D480: a kept owned body: built, good as a one-shot closure; lent, its run on a copy;
       -- applied owned, its run on the environment (a plain closure's: lent, then freed)
@@ -673,10 +707,7 @@ module _ (W : World) where
         (r₀ , gw) → let R = cinRan r₀ in
           (ran (Ran.out R) (peek i ∷ Ran.trace R) (r-bevᶜ (Ran.run R)) (Ran.after R) (Ran.cause R) (Ran.left R) (Ran.spent R)
                (Ran.spends R) (Ran.world R) , gw)
-      go k levω e (mpair (mfn i (cωᶜ ds′ b₀ γ) x) a) n σ ge (gf , ga) = case gf x (~-refl x) k a n σ ga of λ where
-        (ran o t rb σ₁ c l s sp wo , gw) → (ran o (free i ∷ t) (r-evωᶜ rb) σ₁ c l s sp wo , gw)
-      go k levω e (mpair (mfn i (cω ds′ b γ) x) a) n σ ge (gf , ga) = case ownRanG (gf x (~-refl x) k a n σ ga) of λ where
-        (ran o t rb σ₁ c l s sp wo , gw) → (ran o (free i ∷ t) (r-evω rb) σ₁ c l s sp wo , gw)
+      go k levω e (mpair f a) n σ ge (gf , ga) = evωR e f a n k σ gf ga
       -- ★ a ν: built, it is good (by `goodν`); observed, it runs by its
       -- goodness: no recursive call
       go k lunf e p n σ ge gp = (ran _ _ r-unf σ tt k ≤-refl refl refl , goodν p gp _)
@@ -688,6 +719,43 @@ module _ (W : World) where
         (opran t (inj₂ halted) p σ₁ c ow) → (ran _ _ (r-opend p) σ₁ tt k ≤-refl refl ow , tt)
         (opran t (inj₂ exhausted) p σ₁ c ow) → (ran _ _ (r-opend p) σ₁ (cut-spent c) k ≤-refl (c , refl) ow , tt)
       go k (liter f φ) e a n σ ge ga = loop k (<-wellFounded k) f φ e a n σ ge ga
+
+      -- ★ D493: a many-use body run OWNED, by its certificate: the pieces' runs, the
+      -- body's subterms by `go` (so the recursion stays structural)
+      goOwn : ∀ {X A B} (b : Tm Γ X A B) (o : Own b) (k : ℕ) (x : MV X) (a : MV A) (n : ℕ) (σ : WSt)
+            → Good X x → Good A a → Ran⁺ ds (ownT o) mone (mpair x a) n k σ
+      goOwn b o-bg k x a n σ gx ga = ownRanG (go k b x a n σ gx ga)
+      goOwn _ o-ev k f a n σ gf ga = evωR mone f a n k σ gf ga
+      goOwn _ (o-fst {f = f} o) k (mpair x₁ x₂) a n σ (g₁ , g₂) ga =
+        seqR (parR (seqR (parR (ran _ _ r-id σ tt k ≤-refl refl refl , g₁)
+                               (λ n₁ l₁ σ₁ → ran _ _ r-drop σ₁ tt l₁ ≤-refl refl (wtr-quiet (freeAll x₂) (ios-freeAll x₂)) , tt))
+                         (λ { (mpair x₁′ mone) n₁ l₁ σ₁ (g₁′ , _) → ran _ _ r-ρ σ₁ tt l₁ ≤-refl refl refl , g₁′ }))
+                   (λ n₁ l₁ σ₁ → ran _ _ r-id σ₁ tt l₁ ≤-refl refl refl , ga))
+             (λ { (mpair x₁′ a′) n₁ l₁ σ₁ (g₁′ , ga′) → goOwn f o l₁ x₁′ a′ n₁ σ₁ g₁′ ga′ })
+      goOwn _ (o-snd {f = f} o) k (mpair x₁ x₂) a n σ (g₁ , g₂) ga =
+        seqR (parR (seqR (parR (ran _ _ r-drop σ tt k ≤-refl refl (wtr-quiet (freeAll x₁) (ios-freeAll x₁)) , tt)
+                               (λ n₁ l₁ σ₁ → ran _ _ r-id σ₁ tt l₁ ≤-refl refl refl , g₂))
+                         (λ { (mpair mone x₂′) n₁ l₁ σ₁ (_ , g₂′) → ran _ _ r-λ σ₁ tt l₁ ≤-refl refl refl , g₂′ }))
+                   (λ n₁ l₁ σ₁ → ran _ _ r-id σ₁ tt l₁ ≤-refl refl refl , ga))
+             (λ { (mpair x₂′ a′) n₁ l₁ σ₁ (g₂′ , ga′) → goOwn f o l₁ x₂′ a′ n₁ σ₁ g₂′ ga′ })
+      goOwn _ (o-split {f = f} {g = g} p q) k (mpair x₁ x₂) a n σ (g₁ , g₂) ga =
+        seqR (seqR (ran _ _ r-α σ tt k ≤-refl refl refl , (g₁ , (g₂ , ga)))
+                   (λ { (mpair x₁′ (mpair x₂′ a′)) n₁ l₁ σ₁ (g₁′ , (g₂′ , ga′)) →
+                          parR (ran _ _ r-id σ₁ tt l₁ ≤-refl refl refl , g₁′) (λ n₂ l₂ σ₂ → goOwn g q l₂ x₂′ a′ n₂ σ₂ g₂′ ga′) }))
+             (λ { (mpair x₁′ b′) n₁ l₁ σ₁ (g₁′ , gb′) → goOwn f p l₁ x₁′ b′ n₁ σ₁ g₁′ gb′ })
+      goOwn _ (o-case {f = f} {g = g} p q) k x (minl a) n σ gx ga =
+        seqR (ran _ _ r-dist₁ σ tt k ≤-refl refl refl , (gx , ga)) (caseK f g p q)
+      goOwn _ (o-case {f = f} {g = g} p q) k x (minr b) n σ gx gb =
+        seqR (ran _ _ r-dist₂ σ tt k ≤-refl refl refl , (gx , gb)) (caseK f g p q)
+
+      -- the arms, owned, after distributing
+      caseK : ∀ {X A B C} (f : Tm Γ X A C) (g : Tm Γ X B C) (p : Own f) (q : Own g)
+            → ∀ (u : MV ((X ⊗t A) ⊕t (X ⊗t B))) n₁ l₁ (σ₁ : WSt) → Good ((X ⊗t A) ⊕t (X ⊗t B)) u
+            → Ran⁺ ds (lcase (ownT p) (ownT q)) mone u n₁ l₁ σ₁
+      caseK f g p q (minl (mpair x a)) n₁ l₁ σ₁ (gx , ga) = case goOwn f p l₁ x a n₁ σ₁ gx ga of λ where
+        (ran o t r σ₂ c l s sp wo , gw) → (ran o t (r-case₁ r) σ₂ c l s sp wo , gw)
+      caseK f g p q (minr (mpair x b)) n₁ l₁ σ₁ (gx , gb) = case goOwn g q l₁ x b n₁ σ₁ gx gb of λ where
+        (ran o t r σ₂ c l s sp wo , gw) → (ran o t (r-case₂ r) σ₂ c l s sp wo , gw)
 
       -- ★ the loop (D449): a round on the budget; a continuing round spends a unit of it, and
       -- with none left the run ends `exhausted` (as master's `approx`: a step per continuing
@@ -757,7 +825,8 @@ module _ (W : World) where
   allGood (mfn i (c1 ds b γ) x) =
     λ x′ p k a n σ ga → Eval.go ds (runners ds) k b mone (mpair x′ a) n σ tt (good-~ p (allGood x) , ga)
   allGood (mfn i (cω ds b γ) x) =
-    λ x′ p k a n σ ga → Eval.go ds (runners ds) k b x′ a n σ (good-~ p (allGood x)) ga
+    (λ x′ p k a n σ ga → Eval.go ds (runners ds) k b x′ a n σ (good-~ p (allGood x)) ga)
+    , (λ x′ p k a n σ ga → Eval.go ds (runners ds) k (ownω b) mone (mpair x′ a) n σ tt (good-~ p (allGood x) , ga))
   allGood (mfn i (cωᶜ ds b₀ γ) x) =
     λ x′ p k a n σ ga → Eval.go ds (runners ds) k b₀ mone (mpair x′ a) n σ tt (good-~ p (allGood x) , ga)
 

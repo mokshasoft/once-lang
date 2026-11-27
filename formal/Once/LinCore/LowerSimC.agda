@@ -302,7 +302,7 @@ module SimC {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
   -- ★ `llamω`
   llamω-sim : ∀ prog (fs : FlatState) (φ : Frame) {Γ} {ds : Defs Γ} {g X A B Es S} {b : Tm Γ X A B} {γ : Gd g b}
                {es : Slots Es} {os : Stk S} {x : MV X}
-           → (kb : (_ , kbodyω ds b γ) ∈ allK U) (xt : X ∈ cts U) (ko : (_ , kbody1 ds (ownBg b) (ownBg-gd b γ)) ∈ allK U)
+           → (kb : (_ , kbodyω ds b γ) ∈ allK U) (xt : X ∈ cts U) (ko : (_ , kbody1 ds (ownω b) (own-gdb b γ)) ∈ allK U)
            → (∀ j → AllocState.next-heap-ref (falloc fs) ≤ serial j → cntE es j ≡ 0 × cntS (x ∷ˢ os) j ≡ 0)
            → AllocState.freed (falloc fs) (AllocState.next-heap-ref (falloc fs)) ≡ false
            → Seg prog (fpc fs) (headerTr (wsz X) (tl (idx kb)) (tl (idx (inCc xt))) (tl (idx (inFc xt))) (tl (idx ko))
