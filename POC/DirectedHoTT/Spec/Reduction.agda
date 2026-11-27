@@ -49,30 +49,30 @@ private
 ------------------------------------------------------------------------
 -- ★ GENERIC REDUCTION (SPIKE-GENERIC-SYNTAX S8, branch spike-generic-syntax):
 --   ONE relation over both sorts — `Spec/BindRed`'s single CONGRUENCE rule
---   (every former, every subterm position) plus the CONTRACTIONS `_▷_`
+--   (every former, every subterm position) plus the CONTRACTIONS `_⊳_`
 --   below, which are the kernel's computation rules (their text unchanged,
---   arrow `▷`). The old 88 congruence rules were exactly that uniform
+--   arrow `⊳`). The old 88 congruence rules were exactly that uniform
 --   congruence (measured: every former, every position), so nothing that
 --   reduces changes. `_⟶_`/`_⟶ᵀ_` are the relation at the two sorts, and
 --   every old rule name is a pattern synonym below.
 ------------------------------------------------------------------------
 
-infix 3 _▷_
-data _▷_ : ∀ {s Γ} → G.Tm KSig s Γ → G.Tm KSig s Γ → Set where
-  βʳ       : (t : RTm (Γ ∙)) (u : RTm Γ) → app (lam t) u ▷ subTm (single u) t
-  βfstʳ    : (a b : RTm Γ) → fst (pair a b) ▷ a
-  βsndʳ    : (a b : RTm Γ) → snd (pair a b) ▷ b
-  ordtr-zʳ   : (t u p q : RTm Γ) → ordtr nzero t u p q ▷ unit
-  ordtr-szzʳ : (a p q : RTm Γ) → ordtr (nsuc a) nzero nzero p q ▷ p
-  ordtr-sszʳ : (a t p q : RTm Γ) → ordtr (nsuc a) (nsuc t) nzero p q ▷ q
+infix 3 _⊳_
+data _⊳_ : ∀ {s Γ} → G.Tm KSig s Γ → G.Tm KSig s Γ → Set where
+  βʳ       : (t : RTm (Γ ∙)) (u : RTm Γ) → app (lam t) u ⊳ subTm (single u) t
+  βfstʳ    : (a b : RTm Γ) → fst (pair a b) ⊳ a
+  βsndʳ    : (a b : RTm Γ) → snd (pair a b) ⊳ b
+  ordtr-zʳ   : (t u p q : RTm Γ) → ordtr nzero t u p q ⊳ unit
+  ordtr-szzʳ : (a p q : RTm Γ) → ordtr (nsuc a) nzero nzero p q ⊳ p
+  ordtr-sszʳ : (a t p q : RTm Γ) → ordtr (nsuc a) (nsuc t) nzero p q ⊳ q
   ordtr-szsʳ : (a u p q : RTm Γ) →
-              ordtr (nsuc a) nzero (nsuc u) p q ▷ absurd (⌜Hom⌝ ⌜Nat⌝ a u) p
+              ordtr (nsuc a) nzero (nsuc u) p q ⊳ absurd (⌜Hom⌝ ⌜Nat⌝ a u) p
   ordtr-sssʳ : (a t u p q : RTm Γ) →
-              ordtr (nsuc a) (nsuc t) (nsuc u) p q ▷ ordtr a t u p q
+              ordtr (nsuc a) (nsuc t) (nsuc u) p q ⊳ ordtr a t u p q
   tr-J-baseʳ : (c a m : RTm (Γ ∙)) (s e : RTm Γ) →
-              tr (⌜Hom⌝ c a m) (hrefl ⌜base⌝ s) e ▷ e
+              tr (⌜Hom⌝ c a m) (hrefl ⌜base⌝ s) e ⊳ e
   tr-J-Σʳ    : (c a m : RTm (Γ ∙)) (c₁ : RTm Γ) (c₂ : RTm (Γ ∙)) (s e : RTm Γ) →
-              tr (⌜Hom⌝ c a m) (hrefl (⌜Σ⌝ c₁ c₂) s) e ▷ e
+              tr (⌜Hom⌝ c a m) (hrefl (⌜Σ⌝ c₁ c₂) s) e ⊳ e
   -- ★ the two-former kernel: `⌜Id⌝` is a stable J-able shape.
   -- ★ stage C: J fires at `⌜Unit⌝` — a stable shape, so this is the
   -- `tr-J-base` pattern verbatim.  ⚠ THERE IS DELIBERATELY NO
@@ -83,9 +83,9 @@ data _▷_ : ∀ {s Γ} → G.Tm KSig s Γ → G.Tm KSig s Γ → Set where
   -- types are not J-able; transport along an order path is the tt-path
   -- (≤-coercion) rule instead.
   tr-J-Unitʳ : (c a m : RTm (Γ ∙)) (s e : RTm Γ) →
-              tr (⌜Hom⌝ c a m) (hrefl ⌜Unit⌝ s) e ▷ e
+              tr (⌜Hom⌝ c a m) (hrefl ⌜Unit⌝ s) e ⊳ e
   tr-J-Idʳ   : (c a m : RTm (Γ ∙)) (c₁ a₁ b₁ : RTm Γ) (s e : RTm Γ) →
-              tr (⌜Hom⌝ c a m) (hrefl (⌜Id⌝ c₁ a₁ b₁) s) e ▷ e
+              tr (⌜Hom⌝ c a m) (hrefl (⌜Id⌝ c₁ a₁ b₁) s) e ⊳ e
   -- ★★★ AND ITS INDEXED TWIN (PLAN-INDEXED §10.4).  ⚠ NOT optional, and
   --   not symmetry-for-its-own-sake: WITHOUT it a closed
   --   `tr (⌜Hom⌝ c a m) (hrefl (⌜IMu⌝ D I i) s) e` is STUCK, and that
@@ -97,14 +97,14 @@ data _▷_ : ∀ {s Γ} → G.Tm KSig s Γ → G.Tm KSig s Γ → Set where
   --   (`stkC?`, `stkA?`, `stablecd?`) and only the metatheorem noticed.
   tr-J-IMuʳ  : {I D iˣ : RTm Γ} (c a m : RTm (Γ ∙))
               (s e : RTm Γ) →
-              tr (⌜Hom⌝ c a m) (hrefl (⌜IMu⌝ I D iˣ) s) e ▷ e
+              tr (⌜Hom⌝ c a m) (hrefl (⌜IMu⌝ I D iˣ) s) e ⊳ e
   -- ★ tags: `Hom (Fin n)` computes nothing either, so J fires there too.
   tr-J-Finʳ  : {n : RTm Γ} (c a m : RTm (Γ ∙)) (s e : RTm Γ) →
-              tr (⌜Hom⌝ c a m) (hrefl (⌜Fin⌝ n) s) e ▷ e
+              tr (⌜Hom⌝ c a m) (hrefl (⌜Fin⌝ n) s) e ⊳ e
   -- directed univalence computing a third time: transport at the
   -- tautological motive along a (canonical) universe path is application
   tr-tautʳ   : (f : RTm (Γ ∙)) (e : RTm Γ) →
-              tr (var vz) (lam f) e ▷ app (lam f) e
+              tr (var vz) (lam f) e ⊳ app (lam f) e
   -- ★ W2b (G1, SpikeCanon): the CANONICITY PACKAGE.  Three rules, each
   -- keyed by a Boolean classifier (`NbEPDirDBVar`) — the spine
   -- recursion lives in the total function `pwBody`, never in the
@@ -114,15 +114,15 @@ data _▷_ : ∀ {s Γ} → G.Tm KSig s Γ → G.Tm KSig s Γ → Set where
   -- `hrefl` at a pw-able code unfolds POINTWISE (hrefl-Π is the ⌜Π⌝
   -- instance; the whole ⌜Hom⌝ⁿ(⌜Π⌝…) family is this one rule):
   hrefl-pwʳ : (C s : RTm Γ) → pw? C ≡ true →
-             hrefl C s ▷              lam (hrefl (pwBody C) (app (renTm vs s) (var vz)))
+             hrefl C s ⊳              lam (hrefl (pwBody C) (app (renTm vs s) (var vz)))
   -- ★ PLAN-FAITHFUL F6 (2026-10-03): the ORDER's reflexivity computes in
   --   lockstep with its type (`Hom-Nat-z`, `Hom-Nat-ss`).  Without these,
   --   `hrefl ⌜Nat⌝ nzero` is a closed NORMAL inhabitant of `Unit` other
   --   than `unit` — `Unit` was not canonical.  Keyed on the endpoint's
   --   head, like the order rules; `⌜Nat⌝` is neither `pw?` nor `stkC?`,
   --   so nothing overlaps (`hrefl-pw`, `tr-J-*`, `ap-J`).
-  hrefl-Nat-zʳ : hrefl ⌜Nat⌝ (nzero {Γ}) ▷ unit
-  hrefl-Nat-sʳ : (m : RTm Γ) → hrefl ⌜Nat⌝ (nsuc m) ▷ hrefl ⌜Nat⌝ m
+  hrefl-Nat-zʳ : hrefl ⌜Nat⌝ (nzero {Γ}) ⊳ unit
+  hrefl-Nat-sʳ : (m : RTm Γ) → hrefl ⌜Nat⌝ (nsuc m) ⊳ hrefl ⌜Nat⌝ m
   -- J at Hom-codes over PERMANENTLY-STABLE spines (excludes ⌜Π⌝-able
   -- codes — those paths unfold to lambdas — and neutrals, which
   -- substitution could make ⌜Π⌝-able).
@@ -137,79 +137,79 @@ data _▷_ : ∀ {s Γ} → G.Tm KSig s Γ → G.Tm KSig s Γ → Set where
   -- are not J-able; homs OVER them are.
   tr-J-Homʳ : (c a m : RTm (Γ ∙)) (c₁ a₁ b₁ s e : RTm Γ) →
              stkA? c₁ ≡ true →
-             tr (⌜Hom⌝ c a m) (hrefl (⌜Hom⌝ c₁ a₁ b₁) s) e ▷ e
+             tr (⌜Hom⌝ c a m) (hrefl (⌜Hom⌝ c₁ a₁ b₁) s) e ⊳ e
   -- POINTWISE TRANSPORT: the transported function's value at x is the
   -- inner transport of `e·x` along the path's body `f`, at the
   -- pointwise motive (keyed on the literal `var vz` endpoint, like
   -- taut — every typed instance has it):
   tr-pwʳ    : (c a f : RTm (Γ ∙)) (e : RTm Γ) → pw? c ≡ true →
-             tr (⌜Hom⌝ c a (var vz)) (lam f) e ▷              lam (tr (⌜Hom⌝ (renTm pwShift (pwBody c))
+             tr (⌜Hom⌝ c a (var vz)) (lam f) e ⊳              lam (tr (⌜Hom⌝ (renTm pwShift (pwBody c))
                             (app (renTm vs a) (var (vs vz)))
                             (var vz))
                      f
                      (app (renTm vs e) (var vz)))
   ap-Jʳ     : (cB : RTm Γ) (b : RTm (Γ ∙)) (c₁ s : RTm Γ) →
              stkC? c₁ ≡ true →
-             ap cB b (hrefl c₁ s) ▷ hrefl cB (subTm (single s) b)
+             ap cB b (hrefl c₁ s) ⊳ hrefl cB (subTm (single s) b)
   jsub-reflʳ : (d : RTm (Γ ∙)) (c s e : RTm Γ) →
-              jsub d (idrefl c s) e ▷ e
+              jsub d (idrefl c s) e ⊳ e
   natrec-zeroʳ : (z : RTm Γ) (s : RTm ((Γ ∙) ∙)) →
-                natrec z s nzero ▷ z
+                natrec z s nzero ⊳ z
   natrec-sucʳ  : (z : RTm Γ) (s : RTm ((Γ ∙) ∙)) (n : RTm Γ) →
-                natrec z s (nsuc n) ▷                 subTm (single (natrec z s n)) (subTm (extS (single n)) s)
+                natrec z s (nsuc n) ⊳                 subTm (single (natrec z s n)) (subTm (extS (single n)) s)
   ιʳ         : (D i e p : RTm Γ) →
-              ielim D i e (con p) ▷ app (app (app e i) p) (dih D e (app D i) p)
+              ielim D i e (con p) ⊳ app (app (app e i) p) (dih D e (app D i) p)
   -- the payload CODE of a telescope: nothing at `dι` (D493: the index is
   --   the FIBRE's, not an equation), a Σ at `dσ`, a Σ over the family at
   --   `dρ`.
-  dpay-ιʳ    : (I D : RTm Γ) → dpay I D dι ▷ ⌜Unit⌝
+  dpay-ιʳ    : (I D : RTm Γ) → dpay I D dι ⊳ ⌜Unit⌝
   dpay-σʳ    : (I D S f : RTm Γ) →
-              dpay I D (dσ S f) ▷               ⌜Σ⌝ S (dpay (renTm vs I) (renTm vs D) (app (renTm vs f) (var vz)))
+              dpay I D (dσ S f) ⊳               ⌜Σ⌝ S (dpay (renTm vs I) (renTm vs D) (app (renTm vs f) (var vz)))
   dpay-ρʳ    : (I D j C : RTm Γ) →
-              dpay I D (dρ j C) ▷               ⌜Σ⌝ (⌜IMu⌝ I D j) (dpay (renTm vs I) (renTm vs D) (renTm vs C))
+              dpay I D (dρ j C) ⊳               ⌜Σ⌝ (⌜IMu⌝ I D j) (dpay (renTm vs I) (renTm vs D) (renTm vs C))
   -- the hypotheses: one recursive call per `dρ`, AT ITS OWN INDEX `j`
-  dih-ιʳ     : (D e p : RTm Γ) → dih D e dι p ▷ unit
-  dih-σʳ     : (D e S f p : RTm Γ) → dih D e (dσ S f) p ▷ dih D e (app f (fst p)) (snd p)
+  dih-ιʳ     : (D e p : RTm Γ) → dih D e dι p ⊳ unit
+  dih-σʳ     : (D e S f p : RTm Γ) → dih D e (dσ S f) p ⊳ dih D e (app f (fst p)) (snd p)
   dih-ρʳ     : (D e j C p : RTm Γ) →
-              dih D e (dρ j C) p ▷ pair (ielim D j e (fst p)) (dih D e C (snd p))
+              dih D e (dρ j C) p ⊳ pair (ielim D j e (fst p)) (dih D e C (snd p))
   -- tags and Σ-induction
-  fcase-zʳ   : (a : RTm Γ) (b : RTm (Γ ∙)) → fcase fzero a b ▷ a
-  fcase-sʳ   : (t a : RTm Γ) (b : RTm (Γ ∙)) → fcase (fsuc t) a b ▷ subTm (single t) b
-  psplit-βʳ  : (b : RTm ((Γ ∙) ∙)) (x y : RTm Γ) → psplit b (pair x y) ▷ subTm (single2 x y) b
+  fcase-zʳ   : (a : RTm Γ) (b : RTm (Γ ∙)) → fcase fzero a b ⊳ a
+  fcase-sʳ   : (t a : RTm Γ) (b : RTm (Γ ∙)) → fcase (fsuc t) a b ⊳ subTm (single t) b
+  psplit-βʳ  : (b : RTm ((Γ ∙) ∙)) (x y : RTm Γ) → psplit b (pair x y) ⊳ subTm (single2 x y) b
   -- ★ δ: a reference is a projection from the signature, and unfolds to
   --   its body (PLAN-REF, D501).  The body is closed, so the rule is
   --   context-free; a name beyond the signature is stuck.
-  δrefʳ      : {Δ : Cx} (d : ℕ) → d <ˢ Defs.size 𝒮 → ref {Δ} d ▷ εwkTm {Δ} (Defs.body 𝒮 d)
+  δrefʳ      : {Δ : Cx} (d : ℕ) → d <ˢ Defs.size 𝒮 → ref {Δ} d ⊳ εwkTm {Δ} (Defs.body 𝒮 d)
   -- congruences
-  El-⌜base⌝ʳ : El (⌜base⌝ {Γ}) ▷ base
-  El-⌜Π⌝ʳ    : (c : RTm Γ) (d : RTm (Γ ∙)) → El (⌜Π⌝ c d) ▷ Π (El c) (El d)
-  El-⌜Σ⌝ʳ    : (c : RTm Γ) (d : RTm (Γ ∙)) → El (⌜Σ⌝ c d) ▷ Σ' (El c) (El d)
+  El-⌜base⌝ʳ : El (⌜base⌝ {Γ}) ⊳ base
+  El-⌜Π⌝ʳ    : (c : RTm Γ) (d : RTm (Γ ∙)) → El (⌜Π⌝ c d) ⊳ Π (El c) (El d)
+  El-⌜Σ⌝ʳ    : (c : RTm Γ) (d : RTm (Γ ∙)) → El (⌜Σ⌝ c d) ⊳ Σ' (El c) (El d)
   -- W2 eliminator: the `⌜Hom⌝` code decodes to the `Hom` former
   -- (hom-sets of small types are small; still no code for `U`)
-  El-⌜Hom⌝ʳ  : (c a b : RTm Γ) → El (⌜Hom⌝ c a b) ▷ Hom (El c) a b
-  El-⌜Id⌝ʳ   : (c a b : RTm Γ) → El (⌜Id⌝ c a b) ▷ Id (El c) a b
+  El-⌜Hom⌝ʳ  : (c a b : RTm Γ) → El (⌜Hom⌝ c a b) ⊳ Hom (El c) a b
+  El-⌜Id⌝ʳ   : (c a b : RTm Γ) → El (⌜Id⌝ c a b) ⊳ Id (El c) a b
   -- ★ stage C (N-in): the datatype codes decode.
-  El-⌜Nat⌝ʳ  : El (⌜Nat⌝ {Γ}) ▷ Nat
-  El-⌜IMu⌝ʳ  : {I D i : RTm Γ} → El (⌜IMu⌝ I D i) ▷ IMu I D i
-  El-⌜Fin⌝ʳ  : {n : RTm Γ} → El (⌜Fin⌝ n) ▷ Fin n
+  El-⌜Nat⌝ʳ  : El (⌜Nat⌝ {Γ}) ⊳ Nat
+  El-⌜IMu⌝ʳ  : {I D i : RTm Γ} → El (⌜IMu⌝ I D i) ⊳ IMu I D i
+  El-⌜Fin⌝ʳ  : {n : RTm Γ} → El (⌜Fin⌝ n) ⊳ Fin n
   -- ★★ the hypotheses' TYPE computes on the telescope head (S3).
-  DIh-ιʳ : (D : RTm Γ) (M : RTy ((Γ ∙) ∙)) (p : RTm Γ) → DIh D M dι p ▷ Unit
+  DIh-ιʳ : (D : RTm Γ) (M : RTy ((Γ ∙) ∙)) (p : RTm Γ) → DIh D M dι p ⊳ Unit
   DIh-σʳ : (D : RTm Γ) (M : RTy ((Γ ∙) ∙)) (S f p : RTm Γ) →
-          DIh D M (dσ S f) p ▷ DIh D M (app f (fst p)) (snd p)
+          DIh D M (dσ S f) p ⊳ DIh D M (app f (fst p)) (snd p)
   DIh-ρʳ : (D : RTm Γ) (M : RTy ((Γ ∙) ∙)) (j C p : RTm Γ) →
-          DIh D M (dρ j C) p ▷           Σ' (iinst j (fst p) M)
+          DIh D M (dρ j C) p ⊳           Σ' (iinst j (fst p) M)
              (DIh (renTm vs D) (renTy (extR (extR vs)) M) (renTm vs C) (snd (renTm vs p)))
-  El-⌜Unit⌝ʳ : El (⌜Unit⌝ {Γ}) ▷ Unit
-  Hom-Nat-zʳ  : (n : RTm Γ) → Hom Nat nzero n ▷ Unit
-  Hom-Nat-szʳ : (m : RTm Γ) → Hom Nat (nsuc m) nzero ▷ base
-  Hom-Nat-ssʳ : (m n : RTm Γ) → Hom Nat (nsuc m) (nsuc n) ▷ Hom Nat m n
-  Hom-Uʳ : (c d : RTm Γ) → Hom U c d ▷ Π (El c) (El (renTm vs d))
+  El-⌜Unit⌝ʳ : El (⌜Unit⌝ {Γ}) ⊳ Unit
+  Hom-Nat-zʳ  : (n : RTm Γ) → Hom Nat nzero n ⊳ Unit
+  Hom-Nat-szʳ : (m : RTm Γ) → Hom Nat (nsuc m) nzero ⊳ base
+  Hom-Nat-ssʳ : (m n : RTm Γ) → Hom Nat (nsuc m) (nsuc n) ⊳ Hom Nat m n
+  Hom-Uʳ : (c d : RTm Γ) → Hom U c d ⊳ Π (El c) (El (renTm vs d))
   Hom-Πʳ : (A : RTy Γ) (B : RTy (Γ ∙)) (f g : RTm Γ) →
-          Hom (Π A B) f g ▷           Π A (Hom B (app (renTm vs f) (var vz)) (app (renTm vs g) (var vz)))
+          Hom (Π A B) f g ⊳           Π A (Hom B (app (renTm vs f) (var vz)) (app (renTm vs g) (var vz)))
 
 -- the generic relation at the kernel's contractions (a module alias, no
 -- re-export: its two rules are pattern synonyms, the relation a definition)
-module R = Red _▷_
+module R = Red _⊳_
 pattern ⟶head r = R.⟶head r
 pattern ⟶cong {c} st = R.⟶cong {c = c} st
 
