@@ -45,7 +45,7 @@ open import Once.LinCore.Core fmt using (LTy; Fn; many; One; Nu)
 open import Once.LinCore.CopyFree fmt using (coCopies)
 open import Once.LinCore.FromIR fmt using (grade)
 open import Once.LinCore.FromExpr fmt
-  using (ty; flat?; used?; capCells?; rdl?; rdw?; rdx?; pth?; cp?; CP; arm?; Arm; arm-map; arm-comp; PjL; pjl; IsPj; pj-id; pj-fst; pj-snd)
+  using (ty; flat?; used?; capCells?; rdl?; rdw?; rdx?; pth?; cp?; CP; cp; arm?; Arm; arm-map; arm-comp; PjL; pjl; IsPj; pj-id; pj-fst; pj-snd)
 
 ------------------------------------------------------------------------
 -- 1. A SITE: what is owned twice, and which variables (de Bruijn, innermost 0).
@@ -115,9 +115,9 @@ module _ (lc : LTy → Bool) where
   -- a closure over captures: does it consume them where that copies?
   cloSite : ∀ {m n} (Γ : Ctx m n) (Ψ : Usage n) (q : G.Quantity) (read : Bool) (T : LTy) → List Site
   cloSite Γ Ψ q read T =
-    if not read ∧ (isMany q ∨ lc T)
-    then site (if isMany q then "a many-use closure consumes its captures on each call"
-               else "a closure consumes its captures and the program calls closures of its type lent") (capIx Γ Ψ)
+    -- (only a LENT call copies them, D498: owned, the closure is applied once and consumed)
+    if not read ∧ lc T
+    then site "a closure consumes its captures and the program calls closures of its type lent" (capIx Γ Ψ)
     else []
 
   -- an application at `Many`: a case combinator branches (its arms distributed; the argument
@@ -148,6 +148,11 @@ module _ (lc : LTy → Bool) where
   {-# CATCHALL #-}
   mapSite _ = []
 
+  -- the function of an application at `Many`: a case combinator applied at once is a BRANCH
+  -- (the bridge distributes the context to its arms, no split of its own), else as it stands
+  sitesFn : ∀ {m n} {Γ : Ctx m n} {Ψ₁ : Usage n} {A B : Ty m} (f : Expr Γ Ψ₁ (A ⇒[ G.mk-kind G.Many G.pure ] B))
+          → Maybe (CP f) → List Site
+
   sites : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} → Expr Γ Ψ A → List Site
   sites (var i) = []
   sites {Γ = Γ} (lam {Ψ = Ψ} {q' = G.Zero} {π = π} {A = A} {B = B} q _ e) =
@@ -159,7 +164,7 @@ module _ (lc : LTy → Bool) where
   sites (app {q = G.Zero} f x) = sites f
   sites {Γ = Γ} (app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = G.One} f x) =
     sites f ++ sites x ++ splitSite Γ "the function and the argument of an application" Ψ₁ (G.One *ᵘ Ψ₂)
-  sites (app {q = G.Many} f x) = sites f ++ sites x ++ appSite f x (cp? f)
+  sites (app {q = G.Many} f x) = sitesFn f (cp? f) ++ sites x ++ appSite f x (cp? f)
   sites {Γ = Γ} (effApp {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {B = B} {q = G.Zero} {π = π} f x) =
     sites f ++ cloSite Γ Ψ₁ G.One false (Fn many (grade π) One (ty B))
   sites {Γ = Γ} (effApp {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {B = B} {q = G.One} {π = π} f x) =
@@ -210,6 +215,9 @@ module _ (lc : LTy → Bool) where
     sites coalg ++ heldSite "an unfold over its coalgebra, called lent" (ty (A ⇒[ G.mk-kind G.Many π₀ ] Once.Spec.Type.ν F φ))
     ++ nuSite (ty (Once.Spec.Type.ν F φ))
   sites (loop round) = sites round
+
+  sitesFn (copair' f g) (just (cp _ _)) = sites f ++ sites g
+  sitesFn f             nothing         = sites f
 
   -- ★ `Linear₀`: no site
   linear? : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} → Expr Γ Ψ A → Bool

@@ -339,7 +339,7 @@ module _ (lc : LTy → Bool) {L : Cx} where
   -- a closure owning its captures: at a lent-called type only if they have no cells
   cloC : ∀ {m n} (Γ : Ctx m n) (Ψ : Usage n) (q : G.Quantity) (U : LTy)
        → cloSite lc Γ Ψ q false U ≡ [] → T (not (lc U)) ⊎ NC (Co Γ Ψ)
-  cloC Γ Ψ q U s = Data.Sum.map not-∨ʳ (capC Γ Ψ) (ifSite (isMany q ∨ lc U) s)
+  cloC Γ Ψ q U s = Data.Sum.map (λ t → t) (capC Γ Ψ) (ifSite (lc U) s)
 
   cf-lamOr : (rs : Rs L) → ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A B : Ty m} {R : Set} (q : G.Quantity) (π : G.Purity)
              (b : LTm L (Co Γ Ψ ⊗t ty A) (ty B)) (β : Blk b) (md : Maybe R)
@@ -414,7 +414,7 @@ module _ (lc : LTy → Bool) {L : Cx} where
 
     cf-Lq : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} (e : Expr Γ Ψ A) → sites lc e ≡ [] → CF lc (Lq rs e)
     cf-appL : ∀ {m n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B : Ty m} (f : Expr Γ Ψ₁ (A ⇒[ G.mk-kind G.Many G.pure ] B)) (x : Expr Γ Ψ₂ A)
-              (c : Maybe (CP f)) → sites lc f ≡ [] → sites lc x ≡ [] → appSite lc f x c ≡ [] → CF lc (appL rs f x c)
+              (c : Maybe (CP f)) → sitesFn lc f c ≡ [] → sites lc x ≡ [] → appSite lc f x c ≡ [] → CF lc (appL rs f x c)
     cf-armOf : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A B : Ty m} {π} (f : Expr Γ Ψ (A ⇒[ G.mk-kind G.Many π ] B)) (a : Maybe (Arm f))
              → sites lc f ≡ [] → CF lc (ArmD.env (armOf rs f a)) × CF lc (ArmD.ap (armOf rs f a))
 
@@ -426,7 +426,7 @@ module _ (lc : LTy → Bool) {L : Cx} where
       cf-appR f x (pth? f) (rdx? Ψ₁ Ψ₂ x) (rdx-flat Ψ₁ Ψ₂ x) (cf-Lq f sf) (cf-Lq x sx) sa
     cf-appL {Γ = Γ} (copair' f g) x (just (cp _ _)) sf sx sa =
       ((tt , ((cf-Lq f (proj₁ (++-[] (sites lc f) sf)) , cf-weak {Γ = Γ} _) , tt))
-      , (tt , ((cf-Lq g (proj₁ (++-[] (sites lc g) (proj₂ (++-[] (sites lc f) sf)))) , cf-weak {Γ = Γ} _) , tt)))
+      , (tt , ((cf-Lq g (proj₂ (++-[] (sites lc f) sf)) , cf-weak {Γ = Γ} _) , tt)))
       , (tt , cf-scrutA x (rdw? x) (rdw-flat x) (cf-Lq x sx) sa)
 
     cf-Lq {Γ = Γ} (var i) s = cf-var {Γ = Γ} i
@@ -447,7 +447,7 @@ module _ (lc : LTy → Bool) {L : Cx} where
       let (a , r) = ++-[] (sites lc f) s ; (b , c) = ++-[] (sites lc x) r in
       tt , ((cf-Lq f a , (cf-Lq x b , cf-weak {Γ = Γ} _)) , cf-split Γ Ψ₁ _ (site-[] _ _ c))
     cf-Lq (app {q = G.Many} f x) s =
-      let (a , r) = ++-[] (sites lc f) s ; (b , c) = ++-[] (sites lc x) r in
+      let (a , r) = ++-[] (sitesFn lc f (cp? f)) s ; (b , c) = ++-[] (sites lc x) r in
       cf-appL f x (cp? f) a b c
     cf-Lq {Γ = Γ} (effApp {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = G.Zero} f x) s =
       let (a , b) = ++-[] (sites lc f) s in
