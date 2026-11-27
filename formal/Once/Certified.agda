@@ -94,7 +94,7 @@ open import Once.Format.Proof using (VerifiedFormatter; verifiedFormatter)
 open import Once.Inspect.Proof using (VerifiedInspector; verifiedInspector)
 open import Once.Extract.Names.Proof using (VerifiedLoader; verifiedLoader)
 open import Once.Adequacy.SpecCheck using (VerifiedChecker; verifiedChecker)
-open import Once.Implementation using (NoLeak; NoCopy)
+open import Once.Implementation using (NoLeak; NoCopy; BoundedStack)
 
 -- The correctness theorem, on the Spec (plan 0.121, D332): the compiler's own
 -- (`Compile.correctᵈ`, over its working language) carried to the Spec's source,
@@ -174,3 +174,10 @@ import Once.LinCore.NoCopyImage
 
 once-no-copy : Set₁
 once-no-copy = NoCopy
+
+-- Plan 0.157 D502 (the user's) — THE STACK NEVER SLOWLY GROWS
+-- (`Implementation.BoundedStack`: at every step the stack in use is exactly the
+-- active calls' frames, each a static size of the point it is at). Stated and
+-- owed, beside `NoLeak` and `NoCopy` (plan 0.157 S2 step 8, the flat forms).
+once-bounded-stack : Set₁
+once-bounded-stack = BoundedStack

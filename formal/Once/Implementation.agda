@@ -8,7 +8,7 @@
 -- and nothing but `Once.Certified` imports it (`make implementation-gate`).
 -- A claim's proof lives elsewhere and becomes a field of `CertifiedBuild`.
 --
--- The claims: `NoLeak` and `NoCopy` (below). Next: `BoundedStack` (D502), plan 0.138's layout claim.
+-- The claims: `NoLeak`, `BoundedStack` and `NoCopy` (below). Next: plan 0.138's layout claim.
 ------------------------------------------------------------------------
 
 ------------------------------------------------------------------------
@@ -56,7 +56,7 @@ open import Relation.Nullary using (¬_)
 open import Once.CCC.FrameSemantics using (FrameSemantics; module FrameSemantics)
 open FrameSemantics using (frame-word)
 open import Once.CCC.Machine.SMCore
-open AllocState using (next-heap-ref; frame-slots)
+open AllocState using (next-heap-ref; frame-slots; saved-frames)
 open LocState using (halted; left; regs)
 open import Once.CCC.Machine.Locations using (AtDynamic)
 open import Once.CCC.Machine.Flat
@@ -80,6 +80,8 @@ import Once.LinCore.Lower
 import Once.LinCore.Loader
 open import Once.CCC.Label using (e-fn; e-thunk)
 open import Data.List.Membership.Propositional using (_∈_)
+open import Data.List.Relation.Binary.Pointwise using (Pointwise)
+open import Data.Product using (proj₂)
 import Once.Adequacy.ArchCorrectness.FlatCore.RunContext as RunContext
 
 ------------------------------------------------------------------------
@@ -141,6 +143,14 @@ module Run (FS : FrameSemantics) (prog : AbstractTrace) where
       -- one the state still holds — nothing allocated is garbage
       reachable  : ∀ k r → Live fs₀ k r → Reach (at fs₀ k) r
 
+  -- D502: the stack the state holds is its active calls' frames, each the size a
+  -- static `F` gives the point it is at: the current frame `F` of the pc, every
+  -- saved frame `F` of its pending return (the caller's frame, restored there)
+  record FramesAt (F : ℕ → ℕ) (fs : FlatState) : Set where
+    field
+      current : frame-slots (falloc fs) ≡ F (fpc fs)
+      saved   : Pointwise (λ fr r → proj₂ fr ≡ F r) (saved-frames (falloc fs)) (FlatState.fret fs)
+
   -- D501: the run enters none of the blocks `js` (by their index in the image's
   -- universe: a block's entry `e-fn (nameOf j)`, its trampoline's `e-thunk (tl j)`).
   -- A block is entered only by its entry instruction (calls target entry labels,
@@ -168,6 +178,33 @@ NoLeak =
     in ∀ (fs₀ : FlatMachine.FlatState {FS})
   → RC.EntryLike fs₀ → frame-slots (FlatMachine.FlatState.falloc {FS} fs₀) ≡ 0
   → Run.LeakFree FS (EmittedImage FS srcs pm) fs₀
+
+------------------------------------------------------------------------
+-- BoundedStack — the stack never slowly grows (plan 0.157 D502, the user's).
+--
+-- `NoLeak` says nothing about the stack (frames are only its roots), and static
+-- per-function depths (D490) do not rule out slow growth: a loop round leaving a
+-- word, a return not restoring the stack exactly, a trampoline path leaving one.
+-- The claim: for each program there is ONE static map `F` from program points to
+-- frame sizes such that at every step of every run the stack in use is exactly
+-- the active calls' frames, the current one `F` of the pc, each saved one `F` of
+-- its pending return. The depth is then a function of where the run is (its pc
+-- and its pending returns), never of how long it has run: a loop's rounds hold
+-- the same frames; without recursion the bound is one constant (the image is
+-- finite, so `F` takes finitely many values on it). A stop the Spec allows (room
+-- exhausted) is still a failure for a controller; this rules out reaching it by
+-- growth.
+------------------------------------------------------------------------
+
+BoundedStack : Set₁
+BoundedStack =
+  ∀ (FS : FrameSemantics) (m : Resolved) (srcs : List CompiledSrc) → srcModule Heap false m ≡ inj₂ srcs
+  → ∀ {T : Type} (pm : T <: EffUU) → mainOf srcs ≡ just (T , pm)
+  → ∃[ F ] (let module RC = RunContext entry-owner FS (frame-word FS) refl
+            in ∀ (fs₀ : FlatMachine.FlatState {FS})
+            → RC.EntryLike fs₀ → frame-slots (FlatMachine.FlatState.falloc {FS} fs₀) ≡ 0
+            → ∀ k → halted (FlatMachine.FlatState.floc {FS} (Run.at FS (EmittedImage FS srcs pm) fs₀ k)) ≡ false
+            → Run.FramesAt FS (EmittedImage FS srcs pm) F (Run.at FS (EmittedImage FS srcs pm) fs₀ k))
 
 ------------------------------------------------------------------------
 -- NoCopy — a linear program runs without a copy (plan 0.157 D6, D500, D501).

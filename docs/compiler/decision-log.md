@@ -25934,3 +25934,10 @@ entry of a block among `ExprImage.cellCopies` (the universe's `kcopy A` with `ce
 (the call mode's theorem, `NewImageC`), `ApexFile` (either mode's file, `NewImageF`: `file-at`, `file-wf-at`,
 which `Top` takes). `fetch-∈`/`∈-fetch` moved to `Apex`'s top level (both modes use them). Slowest now:
 `Top` 54 s, `ApexCH` 51 s.
+
+**D502, the statement** (2026-11-27): `Implementation.BoundedStack` — for each program ONE static map `F` from
+program points to frame sizes (`∃[ F ]` before the runs), such that at every step of every run from an entry
+state (no saved frames, no pending return: `EntryLike`) the current frame has `F` of the pc slots and the saved
+frames are, one for one, `F` of the pending returns (`Run.FramesAt`, `Pointwise` over `saved-frames` and `fret`:
+a frame per pending return, none left over). The depth is a function of where the run is; a return restores the
+caller's frame at its return point, so the two clauses agree. Stated, owed (`Certified.once-bounded-stack`).
