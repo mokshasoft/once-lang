@@ -22,7 +22,7 @@
 --      would have to invert; the congruence case is one generic case.
 
 {-# OPTIONS --safe #-}
-open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; cong; Σ; _,_; _×_; _⊎_; inj₁; inj₂; ⊥ )
+open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; cong; Σ; _,_; _×_; _⊎_; inj₁; inj₂; ⊥; ⊤ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import Agda.Builtin.List using ( List; []; _∷_ )
 open import DirectedHoTT.Spec.Scope
@@ -70,6 +70,41 @@ module Red (_▷_ : ∀ {s Γ} → Tmᴮ s Γ → Tmᴮ s Γ → Set) where
   Step (fld s (suc (suc zero)) ∷ fs)     (x ,ᶠ xs) (y ,ᶠ ys) = ((x ⟶ y) × (xs ≡ ys)) ⊎ ((x ≡ y) × Step fs xs ys)
   Step (fld s (suc (suc (suc k))) ∷ fs)  (x ,ᶠ xs) (y ,ᶠ ys) = ((x ⟶ y) × (xs ≡ ys)) ⊎ ((x ≡ y) × Step fs xs ys)
   Step (fnat ∷ fs)                       (n ,ᶠ xs) (m ,ᶠ ys) = (n ≡ m) × Step fs xs ys
+
+  ----------------------------------------------------------------------
+  -- normal forms, FIELDWISE: a node none of whose fields steps is normal
+  -- exactly when it is no contraction (one lemma for every former)
+  ----------------------------------------------------------------------
+
+  Normal : ∀ {s Γ} → Tmᴮ s Γ → Set
+  Normal t = ∀ {u} → t ⟶ u → ⊥
+
+  AllNormal : ∀ fs {Γ} → ⟦ fs ⟧ᴮ Γ → Set
+  AllNormal []                               _         = ⊤
+  AllNormal (fld s zero ∷ fs)                (x ,ᶠ xs) = Normal x × AllNormal fs xs
+  AllNormal (fld s (suc zero) ∷ fs)          (x ,ᶠ xs) = Normal x × AllNormal fs xs
+  AllNormal (fld s (suc (suc zero)) ∷ fs)    (x ,ᶠ xs) = Normal x × AllNormal fs xs
+  AllNormal (fld s (suc (suc (suc k))) ∷ fs) (x ,ᶠ xs) = Normal x × AllNormal fs xs
+  AllNormal (fnat ∷ fs)                      (_ ,ᶠ xs) = AllNormal fs xs
+
+  Step-normal : ∀ fs {Γ} {xs ys : ⟦ fs ⟧ᴮ Γ} → AllNormal fs xs → Step fs xs ys → ⊥
+  Step-normal [] _ ()
+  Step-normal (fld s zero ∷ fs)                (n , _) (inj₁ (r , _))  = n r
+  Step-normal (fld s zero ∷ fs)                (_ , a) (inj₂ (_ , st)) = Step-normal fs a st
+  Step-normal (fld s (suc zero) ∷ fs)          (n , _) (inj₁ (r , _))  = n r
+  Step-normal (fld s (suc zero) ∷ fs)          (_ , a) (inj₂ (_ , st)) = Step-normal fs a st
+  Step-normal (fld s (suc (suc zero)) ∷ fs)    (n , _) (inj₁ (r , _))  = n r
+  Step-normal (fld s (suc (suc zero)) ∷ fs)    (_ , a) (inj₂ (_ , st)) = Step-normal fs a st
+  Step-normal (fld s (suc (suc (suc k))) ∷ fs) (n , _) (inj₁ (r , _))  = n r
+  Step-normal (fld s (suc (suc (suc k))) ∷ fs) (_ , a) (inj₂ (_ , st)) = Step-normal fs a st
+  Step-normal (fnat ∷ fs)                      a       (_ , st)        = Step-normal fs a st
+
+  -- (the result is stated at a given `u`, so a use site's expected type
+  --  fixes `c`/`xs` before the fields are checked)
+  node-normal : ∀ {s Γ} {c : Con Σᴮ s} {xs : ⟦ fields Σᴮ c ⟧ᴮ Γ} {u}
+              → (∀ {v} → node c xs ▷ v → ⊥) → AllNormal (fields Σᴮ c) xs → node c xs ⟶ u → ⊥
+  node-normal h a (⟶head r)  = h r
+  node-normal h a (⟶cong st) = Step-normal _ a st
 
   ----------------------------------------------------------------------
   -- renaming PRESERVES reduction (the rules supply: it preserves ▷)

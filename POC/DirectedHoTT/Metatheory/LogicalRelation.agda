@@ -50,6 +50,7 @@ open import DirectedHoTT.Prelude
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 import DirectedHoTT.Spec.Reduction 𝒮 as ᴵReduction
 open ᴵReduction using ( δref )
+open ᴵReduction.R using ( node-normal )
 open import DirectedHoTT.Spec.Scope using ( Cx; ε; _∙; Var; vz; vs )
 open import DirectedHoTT.Spec.Syntax
   using ( module KS; KCon; ⌜Nat⌝; ⌜Unit⌝; ty; `base; `U; `Π; `Σ'; `El; `Hom; `Unit; `Nat; `Id; `IMu; `Desc; `DIh; `Fin; RTy; base; U; Π; Σ'; El; Hom; RTm; var; lam; app; pair; fst; snd; absurd; ordtr; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap; Id; ⌜Id⌝; idrefl; jsub; Unit; Nat; unit; nzero; nsuc; natrec; natrec-cong₃; Ren; extR; Sub; subTy; subTm; extS; renTm; subTm-renTm; subTm-id; Hom-cong₃; ⌜Hom⌝-cong₃; Desc; con; dι; dρ; εwkTy; IMu; ielim; ⌜IMu⌝; εwkTm; DIh; Fin; ⌜Fin⌝; dσ; dpay; dih; fzero; fsuc; fcase; fcase0; psplit; cong₄; cong₃; ref )
@@ -5573,8 +5574,7 @@ wne (sne-absurd snc sne₀) with wn snc | wn sne₀
             nrm' (sne-absurd snc₁ sn₁)
   where
     nrm' : IsNormal (absurd c₁ n₁)
-    nrm' (ξ-absurdᶜ q) = nmc q
-    nrm' (ξ-absurdᵉ q) = nm₁ q
+    nrm' = node-normal (λ ()) (nmc , (nm₁ , tt))
 wne (sne-fst n) with wne n
 ... | mkWNe n₁ r₁ nm₁ ne₁ = mkWNe (fst n₁) (⟶*-fst r₁) (fst-nrm ne₁ nm₁) (sne-fst ne₁)
 wne (sne-snd n) with wne n
@@ -5596,20 +5596,7 @@ wne (sne-tr {d = d} {p = p} d₀ p₀ e₀ key) with wn d₀ | wn p₀ | wn e₀
     key' = trstk?-red-p* {d = n₁} r₂ (trstk?-red-d* {p = p} r₁ key)
 
     nrm' : IsNormal (tr n₁ n₂ n₃)
-    nrm' (tr-J-base _ _ _ _ _)  = ⊥-elim (f≢t key')
-    nrm' (tr-J-Σ _ _ _ _ _ _ _) = ⊥-elim (f≢t key')
-    nrm' (tr-J-Id _ _ _ _ _ _ _ _) = ⊥-elim (f≢t key')
-    nrm' (tr-J-Unit _ _ _ _ _) = ⊥-elim (f≢t key')
-    nrm' (tr-J-Fin _ _ _ _ _) = ⊥-elim (f≢t key')
-    nrm' (tr-J-IMu _ _ _ _ _) = ⊥-elim (f≢t key')
-    nrm' (tr-taut _ _)      = ⊥-elim (f≢t key')
-    nrm' (tr-J-Hom _ _ _ c₁ _ _ _ _ kh) =
-      f≢t (trans (sym (stkA?⊥dead c₁ kh)) key')
-    nrm' (tr-pw c₁ _ _ _ kp) =
-      f≢t (trans (sym (nopw⊥pw c₁ (deadmot→nopw c₁ key'))) kp)
-    nrm' (ξ-trᵈ q) = nm₁ q
-    nrm' (ξ-trᵖ q) = nm₂ q
-    nrm' (ξ-trᵉ q) = nm₃ q
+    nrm' = node-normal (λ r → ne¬⊳ (sne→ne (sne-tr sn₁ sn₂ sn₃ key')) r) (nm₁ , (nm₂ , (nm₃ , tt)))
 wne (sne-ap {b = b} c₀ b₀ p₀ key) with wn c₀ | wn b₀ | wn p₀
 ... | mkWN n₁ r₁ nm₁ sn₁ | mkWN n₂ r₂ nm₂ sn₂ | mkWN n₃ r₃ nm₃ sn₃ =
       mkWNe (ap n₁ n₂ n₃)
@@ -5620,10 +5607,7 @@ wne (sne-ap {b = b} c₀ b₀ p₀ key) with wn c₀ | wn b₀ | wn p₀
     key' = apstk?-red* r₃ key
 
     nrm' : IsNormal (ap n₁ n₂ n₃)
-    nrm' (ap-J _ _ c₁ _ kh) = f≢t (trans (sym (stk⊥dead c₁ kh)) key')
-    nrm' (ξ-apᶜ q) = nm₁ q
-    nrm' (ξ-apᵇ q) = nm₂ q
-    nrm' (ξ-apᵖ q) = nm₃ q
+    nrm' = node-normal (λ r → ne¬⊳ (sne→ne (sne-ap sn₁ sn₂ sn₃ key')) r) (nm₁ , (nm₂ , (nm₃ , tt)))
 wne (sne-jsub {d = d} {p = p} d₀ p₀ e₀ key) with wn d₀ | wn p₀ | wn e₀
 ... | mkWN n₁ r₁ nm₁ sn₁ | mkWN n₂ r₂ nm₂ sn₂ | mkWN n₃ r₃ nm₃ sn₃ =
       mkWNe (jsub n₁ n₂ n₃)
@@ -5635,10 +5619,7 @@ wne (sne-jsub {d = d} {p = p} d₀ p₀ e₀ key) with wn d₀ | wn p₀ | wn e�
     key' = idstk?-red* r₂ key
 
     nrm' : IsNormal (jsub n₁ n₂ n₃)
-    nrm' (jsub-refl _ _ _ _) = f≢t key'
-    nrm' (ξ-jsubᵈ q) = nm₁ q
-    nrm' (ξ-jsubᵖ q) = nm₂ q
-    nrm' (ξ-jsubᵉ q) = nm₃ q
+    nrm' = node-normal (λ r → ne¬⊳ (sne→ne (sne-jsub sn₁ sn₂ sn₃ key')) r) (nm₁ , (nm₂ , (nm₃ , tt)))
 wne (sne-natrec {z = z} {w = w} {n = n} z₀ w₀ n₀ key)
   with wn z₀ | wn w₀ | wn n₀
 ... | mkWN n₁ r₁ nm₁ sn₁ | mkWN n₂ r₂ nm₂ sn₂ | mkWN n₃ r₃ nm₃ sn₃ =
@@ -5651,11 +5632,7 @@ wne (sne-natrec {z = z} {w = w} {n = n} z₀ w₀ n₀ key)
     key' = natstk?-red* r₃ key
 
     nrm' : IsNormal (natrec n₁ n₂ n₃)
-    nrm' (natrec-zero _ _)    = f≢t key'
-    nrm' (natrec-suc _ _ _)   = f≢t key'
-    nrm' (ξ-natrecᶻ q) = nm₁ q
-    nrm' (ξ-natrecˢ q) = nm₂ q
-    nrm' (ξ-natrecⁿ q) = nm₃ q
+    nrm' = node-normal (λ r → ne¬⊳ (sne→ne (sne-natrec sn₁ sn₂ sn₃ key')) r) (nm₁ , (nm₂ , (nm₃ , tt)))
 -- ★★ WF stage E: five subterms to normalize, but only the three BOUNDS
 -- carry the key — and once they are normal, all five root rules are
 -- refuted by `key'` computing to `false ≡ true`, exactly as `natrec`'s
@@ -5673,11 +5650,7 @@ wne (sne-ielim a0₀ a1₀ a2₀ a3₀ key)
     key' = mustk?-red* r3 key
 
     nrm' : IsNormal (ielim n0 n1 n2 n3)
-    nrm' (ι _ _ _ _) = f≢t key'
-    nrm' (ξ-ielimᴰ q) = nm0 q
-    nrm' (ξ-ielimⁱ q) = nm1 q
-    nrm' (ξ-ielimᵉ q) = nm2 q
-    nrm' (ξ-ielimᵗ q) = nm3 q
+    nrm' = node-normal (λ r → ne¬⊳ (sne→ne (sne-ielim sn0 sn1 sn2 sn3 key')) r) (nm0 , (nm1 , (nm2 , (nm3 , tt))))
 wne (sne-dpay a0₀ a1₀ a2₀ key)
   with wn a0₀ | wn a1₀ | wn a2₀
 ... | mkWN n0 r0 nm0 sn0 | mkWN n1 r1 nm1 sn1 | mkWN n2 r2 nm2 sn2 =
@@ -5688,12 +5661,7 @@ wne (sne-dpay a0₀ a1₀ a2₀ key)
     key' = dstk?-red* r2 key
 
     nrm' : IsNormal (dpay n0 n1 n2)
-    nrm' (dpay-ι _ _) = f≢t key'
-    nrm' (dpay-σ _ _ _ _) = f≢t key'
-    nrm' (dpay-ρ _ _ _ _) = f≢t key'
-    nrm' (ξ-dpayᴵ q) = nm0 q
-    nrm' (ξ-dpayᴰ q) = nm1 q
-    nrm' (ξ-dpayᶜ q) = nm2 q
+    nrm' = node-normal (λ r → ne¬⊳ (sne→ne (sne-dpay sn0 sn1 sn2 key')) r) (nm0 , (nm1 , (nm2 , tt)))
 wne (sne-dih a0₀ a1₀ a2₀ a3₀ key)
   with wn a0₀ | wn a1₀ | wn a2₀ | wn a3₀
 ... | mkWN n0 r0 nm0 sn0 | mkWN n1 r1 nm1 sn1 | mkWN n2 r2 nm2 sn2 | mkWN n3 r3 nm3 sn3 =
@@ -5704,13 +5672,7 @@ wne (sne-dih a0₀ a1₀ a2₀ a3₀ key)
     key' = dstk?-red* r2 key
 
     nrm' : IsNormal (dih n0 n1 n2 n3)
-    nrm' (dih-ι _ _ _) = f≢t key'
-    nrm' (dih-σ _ _ _ _ _) = f≢t key'
-    nrm' (dih-ρ _ _ _ _ _) = f≢t key'
-    nrm' (ξ-dihᴰ q) = nm0 q
-    nrm' (ξ-dihᵉ q) = nm1 q
-    nrm' (ξ-dihᶜ q) = nm2 q
-    nrm' (ξ-dihᵖ q) = nm3 q
+    nrm' = node-normal (λ r → ne¬⊳ (sne→ne (sne-dih sn0 sn1 sn2 sn3 key')) r) (nm0 , (nm1 , (nm2 , (nm3 , tt))))
 wne (sne-fcase a0₀ a1₀ a2₀ key)
   with wn a0₀ | wn a1₀ | wn a2₀
 ... | mkWN n0 r0 nm0 sn0 | mkWN n1 r1 nm1 sn1 | mkWN n2 r2 nm2 sn2 =
@@ -5721,11 +5683,7 @@ wne (sne-fcase a0₀ a1₀ a2₀ key)
     key' = finstk?-red* r0 key
 
     nrm' : IsNormal (fcase n0 n1 n2)
-    nrm' (fcase-z _ _) = f≢t key'
-    nrm' (fcase-s _ _ _) = f≢t key'
-    nrm' (ξ-fcaseᵗ q) = nm0 q
-    nrm' (ξ-fcaseᵃ q) = nm1 q
-    nrm' (ξ-fcaseᵇ q) = nm2 q
+    nrm' = node-normal (λ r → ne¬⊳ (sne→ne (sne-fcase sn0 sn1 sn2 key')) r) (nm0 , (nm1 , (nm2 , tt)))
 wne (sne-fcase0 a0₀)
   with wn a0₀
 ... | mkWN n0 r0 nm0 sn0 =
@@ -5733,7 +5691,7 @@ wne (sne-fcase0 a0₀)
             nrm' (sne-fcase0 sn0)
   where
     nrm' : IsNormal (fcase0 n0)
-    nrm' (ξ-fcase0 q) = nm0 q
+    nrm' = node-normal (λ ()) (nm0 , tt)
 wne (sne-psplit a0₀ a1₀)
   with wn a0₀ | wne a1₀
 ... | mkWN n0 r0 nm0 sn0 | mkWNe n1 r1 nm1 ne1 =
@@ -5741,9 +5699,7 @@ wne (sne-psplit a0₀ a1₀)
             nrm' (sne-psplit sn0 ne1)
   where
     nrm' : IsNormal (psplit n0 n1)
-    nrm' (psplit-β _ _ _) = sne-nopair ne1
-    nrm' (ξ-psplitᵇ q) = nm0 q
-    nrm' (ξ-psplitᵍ q) = nm1 q
+    nrm' = node-normal (λ r → ne¬⊳ (sne→ne (sne-psplit sn0 ne1)) r) (nm0 , (nm1 , tt))
 wne (sne-ordtr {a = a} {t = t} {u = u} a₀ t₀ u₀ p₀ q₀ key)
   with wn a₀ | wn t₀ | wn u₀ | wn p₀ | wn q₀
 ... | mkWN n₁ r₁ nm₁ sn₁ | mkWN n₂ r₂ nm₂ sn₂ | mkWN n₃ r₃ nm₃ sn₃
@@ -5761,16 +5717,7 @@ wne (sne-ordtr {a = a} {t = t} {u = u} a₀ t₀ u₀ p₀ q₀ key)
                (ordstk?-red*ᵃ {a = a} {t = t} {u = u} r₁ key))
 
     nrm' : IsNormal (ordtr n₁ n₂ n₃ n₄ n₅)
-    nrm' (ordtr-z _ _ _ _)     = f≢t key'
-    nrm' (ordtr-szz _ _ _)     = f≢t key'
-    nrm' (ordtr-ssz _ _ _ _)   = f≢t key'
-    nrm' (ordtr-szs _ _ _ _)   = f≢t key'
-    nrm' (ordtr-sss _ _ _ _ _) = f≢t key'
-    nrm' (ξ-ordtrᵃ q) = nm₁ q
-    nrm' (ξ-ordtrᵗ q) = nm₂ q
-    nrm' (ξ-ordtrᵘ q) = nm₃ q
-    nrm' (ξ-ordtrᵖ q) = nm₄ q
-    nrm' (ξ-ordtrq q) = nm₅ q
+    nrm' = node-normal (λ r → ne¬⊳ (sne→ne (sne-ordtr sn₁ sn₂ sn₃ sn₄ sn₅ key')) r) (nm₁ , (nm₂ , (nm₃ , (nm₄ , (nm₅ , tt)))))
 
 wn (sn-ne n) with wne n
 ... | mkWNe n₁ r₁ nm₁ ne₁ = mkWN n₁ r₁ nm₁ (sn-ne ne₁)
@@ -5778,15 +5725,14 @@ wn (sn-lam s) with wn s
 ... | mkWN n₁ r₁ nm₁ sn₁ = mkWN (lam n₁) (⟶*-lam r₁) nrm' (sn-lam sn₁)
   where
     nrm' : IsNormal (lam n₁)
-    nrm' (ξ-lam q) = nm₁ q
+    nrm' = node-normal (λ ()) (nm₁ , tt)
 wn (sn-pair a b) with wn a | wn b
 ... | mkWN n₁ r₁ nm₁ sn₁ | mkWN n₂ r₂ nm₂ sn₂ =
       mkWN (pair n₁ n₂) (⟶*-trans (⟶*-pairˡ r₁) (⟶*-pairʳ r₂)) nrm'
            (sn-pair sn₁ sn₂)
   where
     nrm' : IsNormal (pair n₁ n₂)
-    nrm' (ξ-pairˡ q) = nm₁ q
-    nrm' (ξ-pairʳ q) = nm₂ q
+    nrm' = node-normal (λ ()) (nm₁ , (nm₂ , tt))
 wn sn-cb = mkWN ⌜base⌝ done (λ { (⟶head ()) ; (⟶cong ()) }) sn-cb
 wn sn-cNat = mkWN ⌜Nat⌝ done (λ { (⟶head ()) ; (⟶cong ()) }) sn-cNat
 wn sn-cUnit = mkWN ⌜Unit⌝ done (λ { (⟶head ()) ; (⟶cong ()) }) sn-cUnit
@@ -5795,28 +5741,24 @@ wn (sn-cIMu a0₀ a1₀ a2₀) with wn a0₀ | wn a1₀ | wn a2₀
       mkWN (⌜IMu⌝ n0 n1 n2) (⟶*-trans (⟶*-⌜IMu⌝ᴵ r0) (⟶*-trans (⟶*-⌜IMu⌝ᴰ r1) (⟶*-⌜IMu⌝ⁱ r2))) nrm' (sn-cIMu sn0 sn1 sn2)
   where
     nrm' : IsNormal (⌜IMu⌝ n0 n1 n2)
-    nrm' (ξ-⌜IMu⌝ᴵ q) = nm0 q
-    nrm' (ξ-⌜IMu⌝ᴰ q) = nm1 q
-    nrm' (ξ-⌜IMu⌝ⁱ q) = nm2 q
+    nrm' = node-normal (λ ()) (nm0 , (nm1 , (nm2 , tt)))
 wn (sn-cFin a) with wn a
 ... | mkWN n₁ r₁ nm₁ sn₁ = mkWN (⌜Fin⌝ n₁) (⟶*-⌜Fin⌝ r₁) nrm' (sn-cFin sn₁)
   where
     nrm' : IsNormal (⌜Fin⌝ n₁)
-    nrm' (ξ-⌜Fin⌝ q) = nm₁ q
+    nrm' = node-normal (λ ()) (nm₁ , tt)
 wn (sn-cΠ c d) with wn c | wn d
 ... | mkWN n₁ r₁ nm₁ sn₁ | mkWN n₂ r₂ nm₂ sn₂ =
       mkWN (⌜Π⌝ n₁ n₂) (⟶*-trans (⟶*-⌜Π⌝ˡ r₁) (⟶*-⌜Π⌝ʳ r₂)) nrm' (sn-cΠ sn₁ sn₂)
   where
     nrm' : IsNormal (⌜Π⌝ n₁ n₂)
-    nrm' (ξ-⌜Π⌝ˡ q) = nm₁ q
-    nrm' (ξ-⌜Π⌝ʳ q) = nm₂ q
+    nrm' = node-normal (λ ()) (nm₁ , (nm₂ , tt))
 wn (sn-cΣ c d) with wn c | wn d
 ... | mkWN n₁ r₁ nm₁ sn₁ | mkWN n₂ r₂ nm₂ sn₂ =
       mkWN (⌜Σ⌝ n₁ n₂) (⟶*-trans (⟶*-⌜Σ⌝ˡ r₁) (⟶*-⌜Σ⌝ʳ r₂)) nrm' (sn-cΣ sn₁ sn₂)
   where
     nrm' : IsNormal (⌜Σ⌝ n₁ n₂)
-    nrm' (ξ-⌜Σ⌝ˡ q) = nm₁ q
-    nrm' (ξ-⌜Σ⌝ʳ q) = nm₂ q
+    nrm' = node-normal (λ ()) (nm₁ , (nm₂ , tt))
 wn (sn-cId c a b) with wn c | wn a | wn b
 ... | mkWN n₁ r₁ nm₁ sn₁ | mkWN n₂ r₂ nm₂ sn₂ | mkWN n₃ r₃ nm₃ sn₃ =
       mkWN (⌜Id⌝ n₁ n₂ n₃)
@@ -5824,9 +5766,7 @@ wn (sn-cId c a b) with wn c | wn a | wn b
            nrm' (sn-cId sn₁ sn₂ sn₃)
   where
     nrm' : IsNormal (⌜Id⌝ n₁ n₂ n₃)
-    nrm' (ξ-⌜Id⌝ᶜ q) = nm₁ q
-    nrm' (ξ-⌜Id⌝ˡ q) = nm₂ q
-    nrm' (ξ-⌜Id⌝ʳ q) = nm₃ q
+    nrm' = node-normal (λ ()) (nm₁ , (nm₂ , (nm₃ , tt)))
 wn (sn-idrefl c t) with wn c | wn t
 ... | mkWN n₁ r₁ nm₁ sn₁ | mkWN n₂ r₂ nm₂ sn₂ =
       mkWN (idrefl n₁ n₂)
@@ -5834,8 +5774,7 @@ wn (sn-idrefl c t) with wn c | wn t
            nrm' (sn-idrefl sn₁ sn₂)
   where
     nrm' : IsNormal (idrefl n₁ n₂)
-    nrm' (ξ-idreflᶜ q) = nm₁ q
-    nrm' (ξ-idreflᵃ q) = nm₂ q
+    nrm' = node-normal (λ ()) (nm₁ , (nm₂ , tt))
 wn (sn-cH c a b) with wn c | wn a | wn b
 ... | mkWN n₁ r₁ nm₁ sn₁ | mkWN n₂ r₂ nm₂ sn₂ | mkWN n₃ r₃ nm₃ sn₃ =
       mkWN (⌜Hom⌝ n₁ n₂ n₃)
@@ -5843,22 +5782,20 @@ wn (sn-cH c a b) with wn c | wn a | wn b
            nrm' (sn-cH sn₁ sn₂ sn₃)
   where
     nrm' : IsNormal (⌜Hom⌝ n₁ n₂ n₃)
-    nrm' (ξ-⌜Hom⌝ᶜ q) = nm₁ q
-    nrm' (ξ-⌜Hom⌝ˡ q) = nm₂ q
-    nrm' (ξ-⌜Hom⌝ʳ q) = nm₃ q
+    nrm' = node-normal (λ ()) (nm₁ , (nm₂ , (nm₃ , tt)))
 wn sn-unit  = mkWN unit done (λ { (⟶head ()) ; (⟶cong ()) }) sn-unit
 wn sn-nzero = mkWN nzero done (λ { (⟶head ()) ; (⟶cong ()) }) sn-nzero
 wn (sn-nsuc h) with wn h
 ... | mkWN n₁ r₁ nm₁ sn₁ = mkWN (nsuc n₁) (⟶*-nsuc r₁) nrm' (sn-nsuc sn₁)
   where
     nrm' : IsNormal (nsuc n₁)
-    nrm' (ξ-nsuc q) = nm₁ q
+    nrm' = node-normal (λ ()) (nm₁ , tt)
 wn (sn-con a0₀) with wn a0₀
 ... | mkWN n0 r0 nm0 sn0 =
       mkWN (con n0) (⟶*-con r0) nrm' (sn-con sn0)
   where
     nrm' : IsNormal (con n0)
-    nrm' (ξ-con q) = nm0 q
+    nrm' = node-normal (λ ()) (nm0 , tt)
 wn sn-dι = mkWN dι done nrm' sn-dι
   where
     nrm' : IsNormal dι
@@ -5869,22 +5806,20 @@ wn (sn-dσ a0₀ a1₀) with wn a0₀ | wn a1₀
       mkWN (dσ n0 n1) (⟶*-trans (⟶*-dσˢ r0) (⟶*-dσᶠ r1)) nrm' (sn-dσ sn0 sn1)
   where
     nrm' : IsNormal (dσ n0 n1)
-    nrm' (ξ-dσˢ q) = nm0 q
-    nrm' (ξ-dσᶠ q) = nm1 q
+    nrm' = node-normal (λ ()) (nm0 , (nm1 , tt))
 wn (sn-dρ a0₀ a1₀) with wn a0₀ | wn a1₀
 ... | mkWN n0 r0 nm0 sn0 | mkWN n1 r1 nm1 sn1 =
       mkWN (dρ n0 n1) (⟶*-trans (⟶*-dρʲ r0) (⟶*-dρᶜ r1)) nrm' (sn-dρ sn0 sn1)
   where
     nrm' : IsNormal (dρ n0 n1)
-    nrm' (ξ-dρʲ q) = nm0 q
-    nrm' (ξ-dρᶜ q) = nm1 q
+    nrm' = node-normal (λ ()) (nm0 , (nm1 , tt))
 wn sn-fzero = mkWN fzero done (λ { (⟶head ()) ; (⟶cong ()) }) sn-fzero
 wn (sn-fsuc a0₀) with wn a0₀
 ... | mkWN n0 r0 nm0 sn0 =
       mkWN (fsuc n0) (⟶*-fsuc r0) nrm' (sn-fsuc sn0)
   where
     nrm' : IsNormal (fsuc n0)
-    nrm' (ξ-fsuc q) = nm0 q
+    nrm' = node-normal (λ ()) (nm0 , tt)
 wn (sn-exp r h) with wn h
 ... | mkWN n₁ r₁ nm₁ sn₁ = mkWN n₁ (step (snr→⟶ r) r₁) nm₁ sn₁
 
