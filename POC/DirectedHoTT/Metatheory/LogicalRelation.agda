@@ -152,7 +152,7 @@ homheaded? _             = false
 --   key per eliminator family.  The names below are its keys.
 open import DirectedHoTT.Metatheory.Stuck
   using ( Key; stk; spineK; stablecdK; stableAK; pathK; nopwK; deadK; apK; idK; natK; natcK; muK
-        ; finK; dK; var?; pick; ordstk?; ordS?; trstk?; trlam?; hstk?; homv; hreflv; apv )
+        ; finK; dK; var?; pick; ordstk?; ordS?; trstk?; trlam?; motv; vz?; hstk?; homv; hreflv; apv )
 
 spine? stablecd? stableA? pathstk? nopw? deadmot? apstk? idstk? natstk? natcstk? : RTm Γ → 𝔹
 dstk? finstk? mustk? : RTm Γ → 𝔹
@@ -438,6 +438,19 @@ pick-both false hx hy = hy
 
 pick-false : {b x y : 𝔹} → b ≡ false → pick b x y ≡ true → y ≡ true
 pick-false refl h = h
+
+pickˡ-mono : (b : 𝔹) {x x' y : 𝔹} → (x ≡ true → x' ≡ true) → pick b x y ≡ true → pick b x' y ≡ true
+pickˡ-mono true  f h = f h
+pickˡ-mono false f h = h
+
+var?-ren : (ρ : Ren Γ Δ) (t : RTm Γ) → var? (renTm ρ t) ≡ var? t
+var?-ren ρ (var x)       = refl
+var?-ren ρ (KS.node c _) = refl
+
+vz?-ren : (ρ : Ren Γ Δ) (b : RTm (Γ ∙)) → vz? (renTm (extR ρ) b) ≡ vz? b
+vz?-ren ρ (var vz)       = refl
+vz?-ren ρ (var (vs x))   = refl
+vz?-ren ρ (KS.node c _)  = refl
 
 -- a variable never reduces
 red-nonvar : {t t' : RTm Γ} → t ⟶ t' → var? t ≡ false
@@ -1101,45 +1114,9 @@ trstk?-red-d {p = ordtr a₂ t₂ u₂ p₂ q₂} r h = h
 -- ⚠ these two reduce the MOTIVE to an arbitrary subterm, which may
 -- well be a `var` — so the catch-all no longer applies and the row
 -- needs `trstk-hrefl-any`, which covers every motive at once.
-trstk?-red-d {p = lam f} (ξ-⌜Hom⌝ᶜ {b = var vz} rc) h = deadmot?-red rc h
-trstk?-red-d {p = lam f} (ξ-⌜Hom⌝ᶜ {b = var (vs x)} rc) h = h
-trstk?-red-d {p = lam f} (ξ-⌜Hom⌝ᶜ {b = (lam w)} rc) ()
-trstk?-red-d {p = lam f} (ξ-⌜Hom⌝ᶜ {b = (app w₁ w₂)} rc) ()
-trstk?-red-d {p = lam f} (ξ-⌜Hom⌝ᶜ {b = (pair w₁ w₂)} rc) ()
-trstk?-red-d {p = lam f} (ξ-⌜Hom⌝ᶜ {b = (fst w)} rc) ()
-trstk?-red-d {p = lam f} (ξ-⌜Hom⌝ᶜ {b = (snd w)} rc) ()
-trstk?-red-d {p = lam f} (ξ-⌜Hom⌝ᶜ {b = ⌜base⌝} rc) ()
-trstk?-red-d {p = lam f} (ξ-⌜Hom⌝ᶜ {b = (⌜Π⌝ w₁ w₂)} rc) ()
-trstk?-red-d {p = lam f} (ξ-⌜Hom⌝ᶜ {b = (⌜Σ⌝ w₁ w₂)} rc) ()
-trstk?-red-d {p = lam f} (ξ-⌜Hom⌝ᶜ {b = (⌜Hom⌝ w₁ w₂ w₃)} rc) ()
-trstk?-red-d {p = lam f} (ξ-⌜Hom⌝ᶜ {b = (hrefl w₁ w₂)} rc) ()
-trstk?-red-d {p = lam f} (ξ-⌜Hom⌝ᶜ {b = (tr w₁ w₂ w₃)} rc) ()
-trstk?-red-d {p = lam f} (ξ-⌜Hom⌝ˡ {b = var vz} ra) h = h
-trstk?-red-d {p = lam f} (ξ-⌜Hom⌝ˡ {b = var (vs x)} ra) h = h
-trstk?-red-d {p = lam f} (ξ-⌜Hom⌝ˡ {b = (lam w)} ra) ()
-trstk?-red-d {p = lam f} (ξ-⌜Hom⌝ˡ {b = (app w₁ w₂)} ra) ()
-trstk?-red-d {p = lam f} (ξ-⌜Hom⌝ˡ {b = (pair w₁ w₂)} ra) ()
-trstk?-red-d {p = lam f} (ξ-⌜Hom⌝ˡ {b = (fst w)} ra) ()
-trstk?-red-d {p = lam f} (ξ-⌜Hom⌝ˡ {b = (snd w)} ra) ()
-trstk?-red-d {p = lam f} (ξ-⌜Hom⌝ˡ {b = ⌜base⌝} ra) ()
-trstk?-red-d {p = lam f} (ξ-⌜Hom⌝ˡ {b = (⌜Π⌝ w₁ w₂)} ra) ()
-trstk?-red-d {p = lam f} (ξ-⌜Hom⌝ˡ {b = (⌜Σ⌝ w₁ w₂)} ra) ()
-trstk?-red-d {p = lam f} (ξ-⌜Hom⌝ˡ {b = (⌜Hom⌝ w₁ w₂ w₃)} ra) ()
-trstk?-red-d {p = lam f} (ξ-⌜Hom⌝ˡ {b = (hrefl w₁ w₂)} ra) ()
-trstk?-red-d {p = lam f} (ξ-⌜Hom⌝ˡ {b = (tr w₁ w₂ w₃)} ra) ()
-trstk?-red-d {p = lam f} (ξ-⌜Hom⌝ʳ {b = var vz} (⟶head ())) h
-trstk?-red-d {p = lam f} (ξ-⌜Hom⌝ʳ {b = var (vs x)} (⟶head ())) h
-trstk?-red-d {p = lam f} (ξ-⌜Hom⌝ʳ {b = (lam w)} rb) ()
-trstk?-red-d {p = lam f} (ξ-⌜Hom⌝ʳ {b = (app w₁ w₂)} rb) ()
-trstk?-red-d {p = lam f} (ξ-⌜Hom⌝ʳ {b = (pair w₁ w₂)} rb) ()
-trstk?-red-d {p = lam f} (ξ-⌜Hom⌝ʳ {b = (fst w)} rb) ()
-trstk?-red-d {p = lam f} (ξ-⌜Hom⌝ʳ {b = (snd w)} rb) ()
-trstk?-red-d {p = lam f} (ξ-⌜Hom⌝ʳ {b = ⌜base⌝} rb) ()
-trstk?-red-d {p = lam f} (ξ-⌜Hom⌝ʳ {b = (⌜Π⌝ w₁ w₂)} rb) ()
-trstk?-red-d {p = lam f} (ξ-⌜Hom⌝ʳ {b = (⌜Σ⌝ w₁ w₂)} rb) ()
-trstk?-red-d {p = lam f} (ξ-⌜Hom⌝ʳ {b = (⌜Hom⌝ w₁ w₂ w₃)} rb) ()
-trstk?-red-d {p = lam f} (ξ-⌜Hom⌝ʳ {b = (hrefl w₁ w₂)} rb) ()
-trstk?-red-d {p = lam f} (ξ-⌜Hom⌝ʳ {b = (tr w₁ w₂ w₃)} rb) ()
+trstk?-red-d {p = lam f} (ξ-⌜Hom⌝ᶜ {b = b} rc) h = pickˡ-mono (var? b) (pickˡ-mono (vz? b) (deadmot?-red rc)) h
+trstk?-red-d {p = lam f} (ξ-⌜Hom⌝ˡ ra) h = h
+trstk?-red-d {p = lam f} (ξ-⌜Hom⌝ʳ rb) h = ⊥-elim (f≢t (pick-false (red-nonvar rb) h))
 trstk?-red-d {p = lam f} (β _ _) ()
 trstk?-red-d {p = lam f} (βfst _ _) ()
 trstk?-red-d {p = lam f} (βsnd _ _) ()
@@ -2988,44 +2965,8 @@ trlam?-ren ρ ⌜Nat⌝        = refl
 trlam?-ren ρ ⌜Unit⌝       = refl
 trlam?-ren ρ (⌜Π⌝ c d)    = refl
 trlam?-ren ρ (⌜Σ⌝ c d)    = refl
-trlam?-ren ρ (⌜Hom⌝ c a (var vz))     = stk-ren deadK (extR ρ) c
-trlam?-ren ρ (⌜Hom⌝ c a (var (vs x))) = refl
-trlam?-ren ρ (⌜Hom⌝ c a (lam m))      = refl
-trlam?-ren ρ (⌜Hom⌝ c a (app m₁ m₂))  = refl
-trlam?-ren ρ (⌜Hom⌝ c a (pair m₁ m₂)) = refl
-trlam?-ren ρ (⌜Hom⌝ c a (absurd m₁ m₂)) = refl
-trlam?-ren ρ (⌜Hom⌝ c a (ordtr m₁ m₂ m₃ m₄ m₅)) = refl
-trlam?-ren ρ (⌜Hom⌝ c a (fst m))      = refl
-trlam?-ren ρ (⌜Hom⌝ c a (snd m))      = refl
-trlam?-ren ρ (⌜Hom⌝ c a ⌜base⌝)       = refl
-trlam?-ren ρ (⌜Hom⌝ c a ⌜Nat⌝)        = refl
-trlam?-ren ρ (⌜Hom⌝ c a ⌜Unit⌝)       = refl
-trlam?-ren ρ (⌜Hom⌝ c a (⌜Π⌝ m₁ m₂))  = refl
-trlam?-ren ρ (⌜Hom⌝ c a (⌜Σ⌝ m₁ m₂))  = refl
-trlam?-ren ρ (⌜Hom⌝ c a (⌜Hom⌝ m₁ m₂ m₃)) = refl
-trlam?-ren ρ (⌜Hom⌝ c a (hrefl m₁ m₂))    = refl
-trlam?-ren ρ (⌜Hom⌝ c a (tr m₁ m₂ m₃))    = refl
-trlam?-ren ρ (⌜Hom⌝ c a (ap m₁ m₂ m₃))    = refl
-trlam?-ren ρ (⌜Hom⌝ c a (⌜Id⌝ m₁ m₂ m₃))  = refl
-trlam?-ren ρ (⌜Hom⌝ c a (idrefl m₁ m₂))   = refl
-trlam?-ren ρ (⌜Hom⌝ c a (jsub m₁ m₂ m₃))  = refl
-trlam?-ren ρ (⌜Hom⌝ c a unit)             = refl
-trlam?-ren ρ (⌜Hom⌝ c a nzero)            = refl
-trlam?-ren ρ (⌜Hom⌝ c a (nsuc m))         = refl
-trlam?-ren ρ (⌜Hom⌝ c a (con m₁)) = refl
-trlam?-ren ρ (⌜Hom⌝ c a dι) = refl
-trlam?-ren ρ (⌜Hom⌝ c a (dσ m₁ m₂)) = refl
-trlam?-ren ρ (⌜Hom⌝ c a (dρ m₁ m₂)) = refl
-trlam?-ren ρ (⌜Hom⌝ c a (dpay m₁ m₂ m₃)) = refl
-trlam?-ren ρ (⌜Hom⌝ c a (dih m₁ m₂ m₃ m₄)) = refl
-trlam?-ren ρ (⌜Hom⌝ c a fzero) = refl
-trlam?-ren ρ (⌜Hom⌝ c a (fsuc m₁)) = refl
-trlam?-ren ρ (⌜Hom⌝ c a (fcase m₁ m₂ m₃)) = refl
-trlam?-ren ρ (⌜Hom⌝ c a (fcase0 m₁)) = refl
-trlam?-ren ρ (⌜Hom⌝ c a (psplit m₁ m₂)) = refl
-trlam?-ren ρ (⌜Hom⌝ c a (ref n)) = refl
-trlam?-ren ρ (⌜Hom⌝ c a (⌜Fin⌝ n₀)) = refl
-trlam?-ren ρ (⌜Hom⌝ c a (natrec m₁ m₂ m₃)) = refl
+trlam?-ren ρ (⌜Hom⌝ c a b) =
+  pick≡ (var?-ren (extR ρ) b) (pick≡ (vz?-ren ρ b) (stk-ren deadK (extR ρ) c) refl) refl
 trlam?-ren ρ (hrefl c t)  = refl
 trlam?-ren ρ (tr d p e)   = refl
 trlam?-ren ρ (ap c b p)   = refl
@@ -3037,8 +2978,8 @@ trlam?-ren ρ nzero        = refl
 trlam?-ren ρ (nsuc n)     = refl
 trlam?-ren ρ (natrec z w n) = refl
 trlam?-ren ρ (⌜IMu⌝ Dˣ Iˣ iˣ)       = refl
-trlam?-ren ρ (⌜Hom⌝ c a (ielim mD iˣ mm mt)) = refl
-trlam?-ren ρ (⌜Hom⌝ c a (⌜IMu⌝ Dˣ Iˣ iˣ)) = refl
+trlam?-ren ρ (⌜Hom⌝ c a b) =
+  pick≡ (var?-ren (extR ρ) b) (pick≡ (vz?-ren ρ b) (stk-ren deadK (extR ρ) c) refl) refl
 trlam?-ren ρ (ielim D iˣ ms t) = refl
 trlam?-ren ρ (⌜Fin⌝ n) = refl
 trlam?-ren ρ (con p) = refl

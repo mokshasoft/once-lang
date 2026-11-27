@@ -87,6 +87,8 @@ ordstk? : RTm Γ → RTm Γ → RTm Γ → 𝔹
 ordS?   : 𝔹 → RTm Γ → 𝔹
 trstk?  : RTm (Γ ∙) → RTm Γ → 𝔹
 trlam?  : RTm (Γ ∙) → 𝔹
+motv    : RTm (Γ ∙) → RTm (Γ ∙) → 𝔹
+vz?     : RTm (Γ ∙) → 𝔹
 hstk?   : RTm Γ → RTm Γ → 𝔹
 homv    : Key → RTm Γ → 𝔹                -- ⌜Hom⌝ c _ _, by its code
 hreflv  : Key → RTm Γ → RTm Γ → 𝔹        -- hrefl c t
@@ -142,8 +144,15 @@ trstk? d (lam f)     = trlam? d
 trstk? d (hrefl c s) = pick (var? d) (stk nopwK c) (stk stablecdK c)
 trstk? d p           = stk pathK p
 
-trlam? (⌜Hom⌝ c a (var vz))     = stk deadK c
-trlam? (⌜Hom⌝ c a (var (vs x))) = true
-trlam? _                        = false
+trlam? (⌜Hom⌝ c a b) = motv c b
+trlam? _             = false
+
+-- a ⌜Hom⌝ motive's endpoint: the bound variable (dead iff its code is),
+-- another variable (stuck), anything else (not stuck).  Asked through
+-- `var?`/`vz?` so proofs never enumerate the endpoint's head.
+motv c b = pick (var? b) (pick (vz? b) (stk deadK c) true) false
+
+vz? (var vz) = true
+vz? _        = false
 
 hstk? c t = pick (stk nopwK c) (pick (stk natK t) true (stk natcK c)) false
