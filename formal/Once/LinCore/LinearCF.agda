@@ -506,8 +506,8 @@ module _ (lc : LTy → Bool) {L : Cx} where
       ((_ , inj₁ (ifHeld _ c)) , inj₁ (ifHeld _ b)) , cf-Lq f a
     cf-Lq {Γ = Γ} (cata {F = F} {A = A} wfF alg) s = cf-cast (layerEq F wfF A) refl tt , (cf-Lq alg s , cf-weak {Γ = Γ} _)
     cf-Lq {Γ = Γ} (ana {F = F} {A = A} wfF coalg) s =
-      let (a , b) = ++-[] (sites lc coalg) s in
-      ((tt , (cf-cast refl (cong (Fn many act (ty A)) (layerEq F wfF A)) tt , tt)) , inj₁ (ifHeld _ b)) , (cf-Lq coalg a , cf-weak {Γ = Γ} _)
+      let (a , r) = ++-[] (sites lc coalg) s ; (b , c) = ++-[] (heldSite lc _ _) r in
+      ((ifHeld _ c , (cf-cast refl (cong (Fn many act (ty A)) (layerEq F wfF A)) tt , tt)) , inj₁ (ifHeld _ b)) , (cf-Lq coalg a , cf-weak {Γ = Γ} _)
     cf-Lq {Γ = Γ} (loop round) s = tt , (cf-Lq round s , cf-weak {Γ = Γ} _)
 
     -- ★ D500: the checker's `Linear₀` (no warning) ⇒ the bridge copies nothing

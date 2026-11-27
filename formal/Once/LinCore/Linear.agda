@@ -41,7 +41,8 @@ open import Once.Context using (_⊔ᵘ_)
 open import Once.Surface.Map
 open import Once.Surface.Syntax
 
-open import Once.LinCore.Core fmt using (LTy; Fn; many; One)
+open import Once.LinCore.Core fmt using (LTy; Fn; many; One; Nu)
+open import Once.LinCore.CopyFree fmt using (coCopies)
 open import Once.LinCore.FromIR fmt using (grade)
 open import Once.LinCore.FromExpr fmt
   using (ty; flat?; used?; capCells?; rdl?; rdw?; rdx?; pth?; cp?; CP; arm?; Arm; arm-map; arm-comp; PjL; pjl; IsPj; pj-id; pj-fst; pj-snd)
@@ -133,6 +134,12 @@ module _ (lc : LTy → Bool) where
   heldSite : String → LTy → List Site
   heldSite k T = if lc T then (k , []) ∷ [] else []
 
+  -- ★ a ν whose layer branches: each observation copies its coalgebra (`Core.strO`, D496)
+  nuSite : LTy → List Site
+  nuSite (Nu F) = if coCopies F then ("an unfold whose layer branches: each observation copies its coalgebra" , []) ∷ [] else []
+  {-# CATCHALL #-}
+  nuSite _      = []
+
   -- a structure map whose code builds such a closure (`FromExpr.mapT`)
   mapSite : ∀ {m} {A B : Ty m} → Map A B → List Site
   mapSite {B = B} (mp-apply _ _ (G.fin G.actᶠ)) = heldSite "an action suspended over a closure, called lent" (ty B)
@@ -201,6 +208,7 @@ module _ (lc : LTy → Bool) where
   sites (cata wfF alg) = sites alg
   sites (ana {F = F} {A = A} {π₀ = π₀} {φ = φ} wfF coalg) =
     sites coalg ++ heldSite "an unfold over its coalgebra, called lent" (ty (A ⇒[ G.mk-kind G.Many π₀ ] Once.Spec.Type.ν F φ))
+    ++ nuSite (ty (Once.Spec.Type.ν F φ))
   sites (loop round) = sites round
 
   -- ★ `Linear₀`: no site

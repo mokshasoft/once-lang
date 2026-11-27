@@ -53,9 +53,28 @@ readTwice =
   , "main = exit@S (twice (\\y -> y + 1) 40)"
   ]
 
+-- a branching unfold: observing a layer with two seeds copies the coalgebra (D496, D501)
+branching :: [T.Text]
+branching =
+  [ "import I.Linux.Syscalls as S"
+  , ""
+  , "tree : Int -> Nu (K Int * (Id * Id))"
+  , "tree = ana (\\s -> (s, (s + s, s + s + 1)))"
+  , ""
+  , "left : Nu (K Int * (Id * Id)) -> Int"
+  , "left v = fst (Out (fst (snd (Out v))))"
+  , ""
+  , "main : Act Unit Void"
+  , "main = exit@S (left (tree 1))"
+  ]
+
 linearTests :: TestTree
 linearTests = testGroup "Linearity warning (D500)"
-  [ accepts "a value owned twice compiles" twiceOwned
+  [ testCase "a branching unfold is named: each observation copies its coalgebra" $ do
+      err <- typeCheckStderr (T.unlines branching)
+      assertBool ("expected a not-linear warning, got: " ++ err)
+                 ("not linear" `isInfixOf` err && "unfold whose layer branches" `isInfixOf` err)
+  , accepts "a value owned twice compiles" twiceOwned
   , testCase "and is named: not linear, a copy here" $ do
       err <- typeCheckStderr (T.unlines twiceOwned)
       assertBool ("expected a not-linear warning, got: " ++ err)

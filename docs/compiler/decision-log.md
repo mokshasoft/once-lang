@@ -25859,3 +25859,53 @@ each copies its environment when called lent; and a lambda at a `Zero` arrow is 
 warnings print as before, and a "not linear (a copy here)" warning then refuses the program (exit 1,
 `CLI.emitWarnings`). A program it accepts has, by `NoCopyCore.no-copy-core`, a core that names no copy of cells.
 Tests: `LinearSpec` (refuses the twice-owned list, accepts `twice f x = f (f x)`).
+
+**D501 (proposed, unattended; for the user's review) — `NoCopy`'s machine half: its statement and its route**
+(2026-11-27, plan 0.157 S2 step 4). D6 has `Run.CopyFree`: "no state of the run is inside a copy block".
+*The statement.* A copy block at a type without cells copies words (D6's exemption by type), so the claim is
+about the CELL copy keys: `kcopy A` with `cells A`, and its closure trampoline (`trampC`, entered as
+`e-thunk (tl j)`). A block is entered only by its entry instruction (calls target entry labels; a block ends
+in a return, nothing falls into the next), so `CopyFree` says: no step of the run executes the entry of a cell
+copy key (`c-entry (e-fn (nameOf j))` or `c-entry (e-thunk (tl j))`, `j` such a key's index). The keys come from
+the image's universe (`ExprImage`, beside `EmittedImage`). `NoCopy` = `NoLeak`'s quantification, with the
+premise "no `not linear` warning" (`ExprImage.linearSites (srcOrder srcs []) pm ≡ []`), concluding `CopyFree`.
+Stated in `Implementation` beside `NoLeak`; named in `Certified` as owed until proved, as `NoLeak` is.
+*The route.* (1) static, on the universe: the keys outside the cell copies form a CALL-CLOSED set — their code
+(the start, every `kbody1`/`kbodyω`/`kfold`/… block) calls only keys of the set. From `no-copy-core` (the
+table and `main` are `CF`), `llamωᶜ`'s lent entry existing only at a lent-called type (D498, where `CF` makes
+its environment cell-free), and `CF b → CF (ownω b)` for `llamω`'s owned entry. (2) dynamic, on the image run:
+`ImagePt.placed-always` refined — every point a run reaches is in the start or in a key of a call-closed set.
+(3) the word layer's relation (the flat `pc` is the point's address) carries it to the flat run. Alternative
+rejected: stating `CopyFree` as "no allocation outside a construction of the source" — that is S4's cost claim,
+stronger and later.
+
+**D501 route (1), first part, and a finding** (2026-11-27): `CopyFree` gains the owned and lent entries —
+`cf-ownω` (`CF b → CF (ownω b)`, by `Own`'s cases: the owned entry only moves what the lent body reads) and
+`cf-cin` (a lent entry `cin b₀` copies its environment: words when `NC X`). FINDING: observing a ν whose layer
+BRANCHES copies its coalgebra (D496's `strL` lends it to the side without the owned coalgebra, which `bcopy`s it at
+each of its seeds): `kobs`'s code `obsT F S` names a cell copy, invisible to D500's checker. Now `CF (lunf {F})`
+requires `¬ coCopies F` (a product whose lent side has seeds), `cf-obsT` proves the observation copy-free
+otherwise, and the checker names it at `ana` ("an unfold whose layer branches: each observation copies its
+coalgebra", not tied to lent calls: every observation copies). Test: `LinearSpec` (`Nu (K Int * (Id * Id))`).
+The corpus's unfolds have one seed per layer: still no site.
+
+**D502 (decided by the user, 2026-11-27) — `BoundedStack`, beside `NoLeak` and `NoCopy`; no recursion in generated
+code.** The user: "What I wanted to rule out was a codegen that slowly increased stack usage … some stack is
+data-dependent and in that area there could be bugs that do not free the stack correctly"; a stop the Spec allows
+(room exhausted) is still a failure for a robot controller.
+*The claim (the user's, made precise).* `NoLeak` says nothing about the stack (frames are only its roots), and
+static per-function depths (D490) do not rule out slow growth: a loop round that leaves a word, a return that
+does not restore the stack exactly, a trampoline path that leaves one, all grow the stack under correct
+per-function bounds. `BoundedStack`: at every step of every run, the stack in use is exactly the frames of the
+calls still active, each within its function's static size (D490's table). The depth is then a function of
+where the run is, never of how long it has run: a loop's rounds start at the same depth, a program without
+recursion has one constant bound. Stated in `Implementation` beside `NoLeak`, owed in `Certified` until proved,
+by the same run machinery (`KeysRun`-style invariants, the word layer). The D490 certificate's soundness is to
+be checked for what it already gives (per-instruction depth within a function, believed).
+*The goal (the user: "we should try to get all recursion out of the codegen").* The generated blocks that recurse
+over data — a copy and a free per cell (`copyᴵ`, `freeᴵ`), a fold's traversal (`travᴵ`) — become loops, as earlier
+recursions did (D483–D487), so their stack cost is constant and only the program's own recursion (its folds'
+nesting) is data-dependent.
+*With `NoLeak`, toward S4's headline claim:* stack and heap in use are functions of the current state, so a
+program whose live data per round is bounded runs in bounded memory: in a region of that size it never stops
+(plan 0.157 S4, the space claim).

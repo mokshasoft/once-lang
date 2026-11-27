@@ -42,22 +42,13 @@ open import Once.LinCore.FromIR fmt using (⟪_⟫; grade)
 open import Once.LinCore.FromExpr fmt using (Rs; ty)
 open import Once.LinCore.ExprBuild fmt using (eraseL; dc; val; bodyOf; exprTable; ETProg; module ETProg; mainCore; srcOrder)
 open import Once.LinCore.Linear fmt using (sites)
-open import Once.LinCore.CopyFree fmt using (CF)
+open import Once.LinCore.CopyFree fmt using (CF; CFD)
 open import Once.LinCore.LinearCF fmt using (linear-cf; cf-cast; cf-callM; ++-[])
 open import Once.LinCore.Loader using (bw)
 import Once.LinCore.Keys
 import Once.LinCore.ExprImage
 
 module _ (lc : LTy → Bool) where
-
-  -- a body, a table: no copy of cells in any of it
-  CFB : ∀ {L σ} → Body L σ → Set
-  CFB (b1 t _) = CF lc t
-  CFB (bω t _) = CF lc t
-
-  CFD : ∀ {L} → Defs L → Set
-  CFD ε        = ⊤
-  CFD (ds ▸ b) = CFD ds × CFB b
 
   -- a definition the checker passes (no warning)
   LinearSrc : CompiledSrc → Set
@@ -88,7 +79,7 @@ module _ (lc : LTy → Bool) where
     cf-cast lc {L} (cong ⟪_⟫ (cong ⌊_⌋ δ₀)) refl (linear-cf lc rs e h , cf-eraseL Γ Ψ)
 
   -- ★ the table of a program whose definitions the checker passes
-  cf-table : ∀ (tl : List CompiledSrc) → All LinearSrc tl → CFD (ETProg.defs (exprTable tl))
+  cf-table : ∀ (tl : List CompiledSrc) → All LinearSrc tl → CFD lc (ETProg.defs (exprTable tl))
   cf-table []       []       = tt
   cf-table (c ∷ cs) (h ∷ hs) =
     cf-table cs hs , (cf-dc (CompiledSrc.csType c) (cf-val (ETProg.rs (exprTable cs)) (CompiledSrc.csSrc c) h) , tt)
