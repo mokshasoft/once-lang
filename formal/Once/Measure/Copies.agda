@@ -30,18 +30,7 @@ open import Data.List using (List)
 import Data.List as L
 
 open import Once.LinCore.Core fmt
-
--- a type whose values own cells
-cells : LTy → Bool
-cells One        = false
-cells Zero       = false
-cells (Bt _)     = false
-cells (A ⊗t B)   = cells A ∨ cells B
-cells (A ⊕t B)   = cells A ∨ cells B
-cells (Ct _ X)   = cells X
-cells (Fn _ _ _ _) = true
-cells (Nu _)     = true
-cells (μt _)     = true
+open import Once.LinCore.CopyFree fmt using (cells)
 
 record Copies : Set where
   constructor copies

@@ -77,6 +77,7 @@ library
       MAlonzo.Code.Once.LinCore.Layout
       MAlonzo.Code.Once.LinCore.Lent
       MAlonzo.Code.Once.LinCore.Linear
+      MAlonzo.Code.Once.LinCore.CopyFree
       MAlonzo.Code.Once.LinCore.Loader
       MAlonzo.Code.Once.LinCore.Lower
       MAlonzo.Code.Once.LinCore.TyEq

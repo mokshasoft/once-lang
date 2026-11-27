@@ -161,3 +161,11 @@ once-certified = record
 -- proved, its proof becomes a field of `CertifiedBuild` beside `correctness`.
 once-no-leak : Set₁
 once-no-leak = NoLeak
+
+-- Plan 0.157 S2 step 3 (D6, D500) — THE BRIDGE HALF OF `NoCopy`, PROVED: a
+-- program `once check` gives no "not linear (a copy here)" warning has a core
+-- table and a `main` that name no copy of cells (`LinCore.NoCopyCore.no-copy-core`,
+-- by `LinCore.LinearCF.linear-cf` clause for clause the bridge). The machine
+-- half — no run of the emitted image enters a copy block, `Implementation.NoCopy`
+-- beside `NoLeak` — is owed (plan 0.157 S2 step 4).
+open import Once.LinCore.NoCopyCore using (no-copy-core)

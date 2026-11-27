@@ -34,6 +34,7 @@ open import Data.String using (String)
 
 import Once.Spec.Grade as G
 open import Once.Spec.Type using (Ty; _⇒[_]_)
+import Once.Spec.Type
 import Once.Spec.Context as SC
 open import Once.Spec.Context using (Ctx; Usage; []; _∷_; _+ᵘ_; _*ᵘ_)
 open import Once.Context using (_⊔ᵘ_)
@@ -43,7 +44,7 @@ open import Once.Surface.Syntax
 open import Once.LinCore.Core fmt using (LTy; Fn; many; One)
 open import Once.LinCore.FromIR fmt using (grade)
 open import Once.LinCore.FromExpr fmt
-  using (ty; flat?; used?; capCells?; rdl?; rdw?; rdx?; pth?; cp?; arm?; Arm; arm-map; arm-comp; PjL; pjl; IsPj; pj-id; pj-fst; pj-snd)
+  using (ty; flat?; used?; capCells?; rdl?; rdw?; rdx?; pth?; cp?; CP; arm?; Arm; arm-map; arm-comp; PjL; pjl; IsPj; pj-id; pj-fst; pj-snd)
 
 ------------------------------------------------------------------------
 -- 1. A SITE: what is owned twice, and which variables (de Bruijn, innermost 0).
@@ -67,8 +68,8 @@ site : String → List ℕ → List Site
 site k []         = []
 site k vs@(_ ∷ _) = (k , vs) ∷ []
 
-split : ∀ {m n} (Γ : Ctx m n) → String → Usage n → Usage n → List Site
-split Γ k Ψ₁ Ψ₂ = site k (sharedIx Γ Ψ₁ Ψ₂)
+splitSite : ∀ {m n} (Γ : Ctx m n) → String → Usage n → Usage n → List Site
+splitSite Γ k Ψ₁ Ψ₂ = site k (sharedIx Γ Ψ₁ Ψ₂)
 
 isJust : ∀ {X : Set} → Maybe X → Bool
 isJust (just _) = true
@@ -83,7 +84,7 @@ isMany G.Zero = false
 -- 2. A FORK'S ARMS: overlapping parts of the argument (`FromExpr.splitP`).
 ------------------------------------------------------------------------
 
-private
+module _ where
   -- two projections that take overlapping parts with cells (a copy of the smaller)
   ov : ∀ {m} {A Af Ag : Ty m} {pf : Map A Af} {pg : Map A Ag} → IsPj pf → IsPj pg → Bool
   ov (pj-id {A = A})  pj-id        = not (flat? A)
@@ -118,52 +119,64 @@ module _ (lc : LTy → Bool) where
                else "a closure consumes its captures and the program calls closures of its type lent") (capIx Γ Ψ)
     else []
 
+  -- an application at `Many`: a case combinator branches (its arms distributed; the argument
+  -- read or split off); else the argument read in place where it saves a copy (`appR`), or the split
+  appSite : ∀ {m n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B : Ty m} (f : Expr Γ Ψ₁ (A ⇒[ G.mk-kind G.Many G.pure ] B))
+            (x : Expr Γ Ψ₂ A) → Maybe (CP f) → List Site
+  appSite {Γ = Γ} {Ψ₁} {Ψ₂} f x (just _) =
+    if isJust (rdw? x) then [] else splitSite Γ "a case combinator and its argument" Ψ₁ (G.Many *ᵘ Ψ₂)
+  appSite {Γ = Γ} {Ψ₁} {Ψ₂} f x nothing =
+    if isJust (pth? f) ∧ isJust (rdx? Ψ₁ Ψ₂ x) then []
+    else splitSite Γ "the function and the argument of an application" Ψ₁ (G.Many *ᵘ Ψ₂)
+
+  -- a closure whose environment holds a closure or a ν (so owns cells), at type `T`
+  heldSite : String → LTy → List Site
+  heldSite k T = if lc T then (k , []) ∷ [] else []
+
+  -- a structure map whose code builds such a closure (`FromExpr.mapT`)
+  mapSite : ∀ {m} {A B : Ty m} → Map A B → List Site
+  mapSite {B = B} (mp-apply _ _ (G.fin G.actᶠ)) = heldSite "an action suspended over a closure, called lent" (ty B)
+  mapSite {B = B} (mp-apply _ _ G.eff)          = heldSite "an action suspended over a closure, called lent" (ty B)
+  mapSite {B = B} (mp-Out _ G.actᶠ _)           = heldSite "an unfolding suspended over its stream, called lent" (ty B)
+  {-# CATCHALL #-}
+  mapSite _ = []
+
   sites : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} → Expr Γ Ψ A → List Site
   sites (var i) = []
   sites {Γ = Γ} (lam {Ψ = Ψ} {q' = G.Zero} {π = π} {A = A} {B = B} q _ e) =
-    sites e ++ cloSite Γ Ψ q false (Fn many (grade π) (ty A) (ty B))
+    sites e ++ cloSite Γ Ψ q false (ty (A ⇒[ G.mk-kind q π ] B))
   sites {Γ = Γ} (lam {Ψ = Ψ} {q' = G.One} {π = π} {A = A} {B = B} q _ e) =
-    sites e ++ cloSite Γ Ψ q (isJust (rdl? e)) (Fn many (grade π) (ty A) (ty B))
+    sites e ++ cloSite Γ Ψ q (isJust (rdl? e)) (ty (A ⇒[ G.mk-kind q π ] B))
   sites {Γ = Γ} (lam {Ψ = Ψ} {q' = G.Many} {π = π} {A = A} {B = B} q _ e) =
-    sites e ++ cloSite Γ Ψ q (isJust (rdl? e)) (Fn many (grade π) (ty A) (ty B))
+    sites e ++ cloSite Γ Ψ q (isJust (rdl? e)) (ty (A ⇒[ G.mk-kind q π ] B))
   sites (app {q = G.Zero} f x) = sites f
   sites {Γ = Γ} (app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = G.One} f x) =
-    sites f ++ sites x ++ split Γ "the function and the argument of an application" Ψ₁ (G.One *ᵘ Ψ₂)
-  sites {Γ = Γ} (app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = G.Many} f x) =
-    sites f ++ sites x ++ appSite (cp? f)
-    where
-      -- a case combinator branches (its arms distributed; the argument read or split off);
-      -- else the argument read in place where it saves a copy (`appR`), or the split
-      appSite : Maybe _ → List Site
-      appSite (just _) =
-        if isJust (rdw? x) then [] else split Γ "a case combinator and its argument" Ψ₁ (G.Many *ᵘ Ψ₂)
-      appSite nothing =
-        if isJust (pth? f) ∧ isJust (rdx? Ψ₁ Ψ₂ x) then []
-        else split Γ "the function and the argument of an application" Ψ₁ (G.Many *ᵘ Ψ₂)
+    sites f ++ sites x ++ splitSite Γ "the function and the argument of an application" Ψ₁ (G.One *ᵘ Ψ₂)
+  sites (app {q = G.Many} f x) = sites f ++ sites x ++ appSite f x (cp? f)
   sites {Γ = Γ} (effApp {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {B = B} {q = G.Zero} {π = π} f x) =
     sites f ++ cloSite Γ Ψ₁ G.One false (Fn many (grade π) One (ty B))
   sites {Γ = Γ} (effApp {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {B = B} {q = G.One} {π = π} f x) =
-    sites f ++ sites x ++ split Γ "the function and the argument of a suspended application" Ψ₁ (G.One *ᵘ Ψ₂)
+    sites f ++ sites x ++ splitSite Γ "the function and the argument of a suspended application" Ψ₁ (G.One *ᵘ Ψ₂)
     ++ cloSite Γ (Ψ₁ +ᵘ (G.One *ᵘ Ψ₂)) G.One false (Fn many (grade π) One (ty B))
   sites {Γ = Γ} (effApp {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {B = B} {q = G.Many} {π = π} f x) =
-    sites f ++ sites x ++ split Γ "the function and the argument of a suspended application" Ψ₁ (G.Many *ᵘ Ψ₂)
+    sites f ++ sites x ++ splitSite Γ "the function and the argument of a suspended application" Ψ₁ (G.Many *ᵘ Ψ₂)
     ++ cloSite Γ (Ψ₁ +ᵘ (G.Many *ᵘ Ψ₂)) G.One false (Fn many (grade π) One (ty B))
   sites {Γ = Γ} (pair {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) =
-    sites a ++ sites b ++ (if isJust (rdw? a) then [] else split Γ "the two components of a pair" Ψ₁ Ψ₂)
+    sites a ++ sites b ++ (if isJust (rdw? a) then [] else splitSite Γ "the two components of a pair" Ψ₁ Ψ₂)
   sites (fst' p) = sites p
   sites (snd' p) = sites p
   sites (inl' a) = sites a
   sites (inr' b) = sites b
   sites {Γ = Γ} (case' {Ψs = Ψs} {Ψₗ = Ψₗ} {Ψᵣ = Ψᵣ} s l r) =
     sites s ++ sites l ++ sites r
-    ++ (if isJust (rdw? s) then [] else split Γ "a case's scrutinee and its arms" Ψs (Ψₗ ⊔ᵘ Ψᵣ))
+    ++ (if isJust (rdw? s) then [] else splitSite Γ "a case's scrutinee and its arms" Ψs (Ψₗ ⊔ᵘ Ψᵣ))
   sites unit = []
   sites (absurd v) = sites v
   sites (let' {q = G.Zero} e1 e2) = sites e2
   sites {Γ = Γ} (let' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = G.One} e1 e2) =
-    sites e1 ++ sites e2 ++ split Γ "a let's body and its binding" Ψ₂ (G.One *ᵘ Ψ₁)
+    sites e1 ++ sites e2 ++ splitSite Γ "a let's body and its binding" Ψ₂ (G.One *ᵘ Ψ₁)
   sites {Γ = Γ} (let' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = G.Many} e1 e2) =
-    sites e1 ++ sites e2 ++ split Γ "a let's body and its binding" Ψ₂ (G.Many *ᵘ Ψ₁)
+    sites e1 ++ sites e2 ++ splitSite Γ "a let's body and its binding" Ψ₂ (G.Many *ᵘ Ψ₁)
   sites (int n) = []
   sites (float d) = []
   sites (num h o e) = sites e
@@ -172,19 +185,22 @@ module _ (lc : LTy → Bool) where
   sites (closure name) = []
   sites (poly name _) = []
   sites (closed e) = sites e
-  sites (lift-morphism mp) = []
-  sites (morph-app mp x) = sites x
+  sites (lift-morphism mp) = mapSite mp
+  sites (morph-app mp x) = sites x ++ mapSite mp
   sites {Γ = Γ} (comp' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f g) =
-    sites f ++ sites g ++ split Γ "the two closures of a composition" Ψ₁ (G.Many *ᵘ Ψ₂)
+    sites f ++ sites g ++ splitSite Γ "the two closures of a composition" Ψ₁ (G.Many *ᵘ Ψ₂)
   sites {Γ = Γ} (copair' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f g) =
-    sites f ++ sites g ++ split Γ "the two arms of a case combinator" Ψ₁ Ψ₂
+    sites f ++ sites g ++ splitSite Γ "the two arms of a case combinator" Ψ₁ Ψ₂
   sites {Γ = Γ} (fork' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f g) =
-    sites f ++ sites g ++ split Γ "the two arms of a fork" Ψ₁ Ψ₂
+    sites f ++ sites g ++ splitSite Γ "the two arms of a fork" Ψ₁ Ψ₂
     ++ (if armK (arm? f) (λ p → armK (arm? g) (λ q → ov p q))
         then ("a fork's two arms take overlapping parts of its argument" , []) ∷ [] else [])
-  sites (curry' f) = sites f
+  sites (curry' {A = A} {B = B} {C = C} {π₀ = π₀} {π = π} f) =
+    sites f ++ heldSite "a curried closure over its function, called lent" (ty (A ⇒[ G.mk-kind G.Many π₀ ] (B ⇒[ G.mk-kind G.Many π ] C)))
+    ++ heldSite "a curried closure over its function and first argument, called lent" (ty (B ⇒[ G.mk-kind G.Many π ] C))
   sites (cata wfF alg) = sites alg
-  sites (ana wfF coalg) = sites coalg
+  sites (ana {F = F} {A = A} {π₀ = π₀} {φ = φ} wfF coalg) =
+    sites coalg ++ heldSite "an unfold over its coalgebra, called lent" (ty (A ⇒[ G.mk-kind G.Many π₀ ] Once.Spec.Type.ν F φ))
   sites (loop round) = sites round
 
   -- ★ `Linear₀`: no site

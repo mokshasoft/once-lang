@@ -25842,3 +25842,15 @@ clause for clause the bridge (`sites`, `linear?`), at the program's lent-called 
 before the check, so a site is named by the definition it ends up in; variable NAMES come with the binders
 (next: `lam`/`let'`/`case'` carry their source name, an implicit argument, so patterns are untouched).
 Still owed: the bridge lemma `Linear₀ → CopyFree`, `NoCopy`, `--require-linear`.
+
+**D500 built, the bridge lemma** (2026-11-27): `LinCore/CopyFree.agda` — `CF lc t`, a core term that names no
+copy of cells: no `dup` or `bcopy` at a type with cells, no `llamωᶜ` owning cells at a lent-called type (`lc`,
+D498). `LinCore/LinearCF.agda` — `linear-cf : Linear.sites lc e ≡ [] → CF lc (Lq rs e)`, by induction beside
+`Lq`, clause for clause (the split `dup`s exactly where `sharedIx` says; reads copy out only at flat types,
+`keepRd`; a fork's `splitP` exactly where `ov` says). `LinCore/NoCopyCore.agda` — `no-copy-core`: no warning
+(`ExprImage.linearSites` empty) ⇒ the program's whole core table and `main` are `CF`; `Certified` imports it, so
+`make certified` checks it. Writing the proof found three gaps in the checker, now sites: `curry'` and `ana`
+build closures over a closure, and `mapT` suspends an action or an unfolding over one (`heldSite`, `mapSite`) —
+each copies its environment when called lent; and a lambda at a `Zero` arrow is tested at its erased type
+(`ty (A ⇒[ k ] B)`, `Fn … One B`), not at `Fn … A B`. The corpus still has no site. Owed: the machine half,
+`Implementation.NoCopy` (step 4: no run enters a copy block), and `--require-linear`.
