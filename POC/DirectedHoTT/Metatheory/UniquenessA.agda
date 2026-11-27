@@ -28,6 +28,8 @@
 open import DirectedHoTT.Prelude using ( _≡_; refl; sym; cong; subst; Σ; _,_; _×_; inj₁; inj₂ )
 open import DirectedHoTT.Spec.Scope
 open import DirectedHoTT.Spec.Syntax
+  using ( RTy; subTy )
+import DirectedHoTT.Spec.Syntax as C
 open import DirectedHoTT.Spec.Annotated
 open import DirectedHoTT.Spec.Signature using ( Sig )
 open import DirectedHoTT.Spec.Signature using ( kernel )

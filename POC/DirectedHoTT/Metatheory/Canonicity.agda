@@ -119,10 +119,14 @@ data Inert {Γ : Cx} : RTy Γ → Hd → Set where
   in-Fin  : {n : RTm Γ} → Inert (Fin n) hFin
 
 inert-red : {Γ : Cx} {A B : RTy Γ} {h : Hd} → Inert A h → A ⟶ᵀ B → Inert B h
-inert-red in-base ()
-inert-red in-U    ()
-inert-red in-Unit ()
-inert-red in-Nat  ()
+inert-red in-base (⟶head ())
+inert-red in-base (⟶cong ())
+inert-red in-U    (⟶head ())
+inert-red in-U    (⟶cong ())
+inert-red in-Unit (⟶head ())
+inert-red in-Unit (⟶cong ())
+inert-red in-Nat  (⟶head ())
+inert-red in-Nat  (⟶cong ())
 inert-red in-Fin  (ξ-Fin _) = in-Fin
 inert-red in-Π (ξ-Πˡ _) = in-Π
 inert-red in-Π (ξ-Πʳ _) = in-Π
@@ -289,7 +293,8 @@ homU-inv : {Γ : Cx} {t u : RTm Γ} {C : RTy Γ} → Hom U t u ⟶ᵀ* C →
            (Σ (RTm Γ) (λ t' → Σ (RTm Γ) (λ u' → C ≡ Hom U t' u')))
            ⊎ (Σ (RTy Γ) (λ P → Σ (RTy (Γ ∙)) (λ Q → C ≡ Π P Q)))
 homU-inv doneᵀ = inj₁ (_ , (_ , refl))
-homU-inv (stepᵀ (ξ-Homᵀ ()) rest)
+homU-inv (stepᵀ (ξ-Homᵀ (⟶head ())) rest)
+homU-inv (stepᵀ (ξ-Homᵀ (⟶cong ())) rest)
 homU-inv (stepᵀ (ξ-Homˡ r) rest) = homU-inv rest
 homU-inv (stepᵀ (ξ-Homʳ r) rest) = homU-inv rest
 homU-inv (stepᵀ (Hom-U c d) rest) with Π-reduct rest
@@ -328,17 +333,21 @@ data NatHomShape {Γ : Cx} : RTy Γ → Set where
 
 nathom-red : {Γ : Cx} {A A' : RTy Γ} → NatHomShape A → A ⟶ᵀ A' → NatHomShape A'
 nathom-red nhs-el (ξ-Homᵀ El-⌜Nat⌝) = nhs-hom
-nathom-red nhs-el (ξ-Homᵀ (ξ-El ()))
+nathom-red nhs-el (ξ-Homᵀ (ξ-El (⟶head ())))
+nathom-red nhs-el (ξ-Homᵀ (ξ-El (⟶cong ())))
 nathom-red nhs-el (ξ-Homˡ _) = nhs-el
 nathom-red nhs-el (ξ-Homʳ _) = nhs-el
-nathom-red nhs-hom (ξ-Homᵀ ())
+nathom-red nhs-hom (ξ-Homᵀ (⟶head ()))
+nathom-red nhs-hom (ξ-Homᵀ (⟶cong ()))
 nathom-red nhs-hom (ξ-Homˡ _) = nhs-hom
 nathom-red nhs-hom (ξ-Homʳ _) = nhs-hom
 nathom-red nhs-hom (Hom-Nat-z _)    = nhs-Unit
 nathom-red nhs-hom (Hom-Nat-sz _)   = nhs-base
 nathom-red nhs-hom (Hom-Nat-ss _ _) = nhs-hom
-nathom-red nhs-Unit ()
-nathom-red nhs-base ()
+nathom-red nhs-Unit (⟶head ())
+nathom-red nhs-Unit (⟶cong ())
+nathom-red nhs-base (⟶head ())
+nathom-red nhs-base (⟶cong ())
 
 nathom-star : {Γ : Cx} {A A' : RTy Γ} → NatHomShape A → A ⟶ᵀ* A' → NatHomShape A'
 nathom-star h doneᵀ       = h
@@ -392,7 +401,8 @@ nsuc-inj refl = refl
 
 nzero-nf : {Γ : Cx} {w : RTm Γ} → nzero {Γ} ⟶* w → w ≡ nzero
 nzero-nf done       = refl
-nzero-nf (step () _)
+nzero-nf (step (⟶head ()) _)
+nzero-nf (step (⟶cong ()) _)
 
 nsuc-red* : {Γ : Cx} {m w : RTm Γ} → nsuc m ⟶* w →
             Σ (RTm Γ) (λ m' → (w ≡ nsuc m') × (m ⟶* m'))
@@ -1457,7 +1467,8 @@ consistency d with wnorm c-◇ d
 -- `nzero` is a value: no rule fires on it, so it is its own only reduct.
 zeroNF : {C : RTm ε} → nzero ⟶* C → C ≡ nzero
 zeroNF done       = refl
-zeroNF (step () _)
+zeroNF (step (⟶head ()) _)
+zeroNF (step (⟶cong ()) _)
 
 -- `nsuc` is INERT: only `ξ-nsuc` applies, so the head survives.
 sucRed : {n : RTm ε} {C : RTm ε} → nsuc n ⟶* C →
@@ -1515,7 +1526,8 @@ homUnit→Nat (stepᵀ (Hom-U _ _) rest) with Π-reduct rest
 homUnit→Nat (stepᵀ (Hom-Π _ _ _ _) rest) with Π-reduct rest
 ... | mkΠRed _ _ () _ _
 homUnit→Nat (stepᵀ (Hom-Nat-z _) rest) = doneᵀ
-homUnit→Nat (stepᵀ (Hom-Nat-sz _) (stepᵀ () _))
+homUnit→Nat (stepᵀ (Hom-Nat-sz _) (stepᵀ (⟶head ()) _))
+homUnit→Nat (stepᵀ (Hom-Nat-sz _) (stepᵀ (⟶cong ()) _))
 homUnit→Nat (stepᵀ (Hom-Nat-ss _ _) rest) = doneᵀ
 
 private
