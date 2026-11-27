@@ -25818,3 +25818,9 @@ theorem is stated for `Linear₀` and widens with it.
 that is not linear"; D6: "the compiler names those places"): the complement of `Linear₀`, computed by the same
 checker — each place, the definition, the variable and its type ("copied here"). No warning ⇔ `Linear₀` ⇒
 `NoCopy`: a program without the warning is proved to copy nothing. Later, `--require-linear` makes it an error.
+
+**D500 decided** (the user, 2026-11-27: "yes to all"): the warning is built from the same `Linear₀` checker the
+theorem uses (no warning ⇔ `Linear₀` ⇒ `NoCopy`), never from the bridge's copy counts; it names the definition,
+the variable and its two owning uses; a many-use closure that consumes a capture on each call is the other form
+of non-linearity and is named too; `--require-linear` (the warning an error) follows. The corpus is reported by
+kind (feature tests apart from workloads and the sized benchmarks, `perf-compare.sh`).
