@@ -2026,6 +2026,32 @@ csr-stk⊥ {t = tr _ _ _} () _
 noSnrIdrefl : {Γ : Cx} {c s u : RTm Γ} → SNRed (idrefl c s) u → ⊥
 noSnrIdrefl ()
 
+-- ★ an `hrefl` at an INERT code (a type former's code, which neither
+--   head-steps nor is pointwise) has no head step.  The J rules' path is
+--   such an `hrefl`; `snr-det` refutes the overlap through these, so it
+--   never splits the nested derivation itself.
+hrefl-base⊥ : {s u : RTm Γ} → SNRed (hrefl ⌜base⌝ s) u → ⊥
+hrefl-base⊥ (snr-hreflᶜ (csr-here ()))
+hrefl-base⊥ (snr-hrefl-pw ())
+hrefl-Unit⊥ : {s u : RTm Γ} → SNRed (hrefl ⌜Unit⌝ s) u → ⊥
+hrefl-Unit⊥ (snr-hreflᶜ (csr-here ()))
+hrefl-Unit⊥ (snr-hrefl-pw ())
+hrefl-IMu⊥ : {I D i s u : RTm Γ} → SNRed (hrefl (⌜IMu⌝ I D i) s) u → ⊥
+hrefl-IMu⊥ (snr-hreflᶜ (csr-here ()))
+hrefl-IMu⊥ (snr-hrefl-pw ())
+hrefl-Fin⊥ : {n s u : RTm Γ} → SNRed (hrefl (⌜Fin⌝ n) s) u → ⊥
+hrefl-Fin⊥ (snr-hreflᶜ (csr-here ()))
+hrefl-Fin⊥ (snr-hrefl-pw ())
+hrefl-Σ⊥ : {c₁ : RTm Γ} {c₂ : RTm (Γ ∙)} {s u : RTm Γ} → SNRed (hrefl (⌜Σ⌝ c₁ c₂) s) u → ⊥
+hrefl-Σ⊥ (snr-hreflᶜ (csr-here ()))
+hrefl-Σ⊥ (snr-hrefl-pw ())
+hrefl-Id⊥ : {c₁ a₁ b₁ s u : RTm Γ} → SNRed (hrefl (⌜Id⌝ c₁ a₁ b₁) s) u → ⊥
+hrefl-Id⊥ (snr-hreflᶜ (csr-here ()))
+hrefl-Id⊥ (snr-hrefl-pw ())
+-- the order's code: no code step (its `hrefl` rules are the Nat ones)
+csr-Nat⊥ : {c' : RTm Γ} → CSR ⌜Nat⌝ c' → ⊥
+csr-Nat⊥ (csr-here ())
+
 snr-det : {t u u' : RTm Γ} → SNRed t u → SNRed t u' → u ≡ u'
 csr-det : {t u u' : RTm Γ} → CSR t u → CSR t u' → u ≡ u'
 snr-det (snr-β _)    (snr-β _)     = refl
@@ -2045,20 +2071,20 @@ snr-det (snr-snd r)  (snr-snd r')  = cong snd (snr-det r r')
 snr-det (snr-hreflᶜ {t = t} σ) (snr-hreflᶜ σ') =
   cong (λ z → hrefl z t) (csr-det σ σ')
 snr-det (snr-J-base _ _) (snr-J-base _ _) = refl
-snr-det (snr-J-base _ _) (snr-trᵖ (snr-hreflᶜ (csr-here ())))
-snr-det (snr-trᵖ (snr-hreflᶜ (csr-here ()))) (snr-J-base _ _)
+snr-det (snr-J-base _ _) (snr-trᵖ r) = ⊥-elim (hrefl-base⊥ r)
+snr-det (snr-trᵖ r) (snr-J-base _ _) = ⊥-elim (hrefl-base⊥ r)
 snr-det (snr-J-Unit _ _) (snr-J-Unit _ _) = refl
 snr-det (snr-J-Fin _ _) (snr-J-Fin _ _) = refl
 snr-det (snr-J-IMu _ _) (snr-J-IMu _ _) = refl
-snr-det (snr-J-Unit _ _) (snr-trᵖ (snr-hreflᶜ (csr-here ())))
-snr-det (snr-J-IMu _ _) (snr-trᵖ (snr-hreflᶜ (csr-here ())))
-snr-det (snr-J-Fin _ _) (snr-trᵖ (snr-hreflᶜ (csr-here ())))
-snr-det (snr-trᵖ (snr-hreflᶜ (csr-here ()))) (snr-J-Unit _ _)
-snr-det (snr-trᵖ (snr-hreflᶜ (csr-here ()))) (snr-J-IMu _ _)
-snr-det (snr-trᵖ (snr-hreflᶜ (csr-here ()))) (snr-J-Fin _ _)
+snr-det (snr-J-Unit _ _) (snr-trᵖ r) = ⊥-elim (hrefl-Unit⊥ r)
+snr-det (snr-J-IMu _ _) (snr-trᵖ r) = ⊥-elim (hrefl-IMu⊥ r)
+snr-det (snr-J-Fin _ _) (snr-trᵖ r) = ⊥-elim (hrefl-Fin⊥ r)
+snr-det (snr-trᵖ r) (snr-J-Unit _ _) = ⊥-elim (hrefl-Unit⊥ r)
+snr-det (snr-trᵖ r) (snr-J-IMu _ _) = ⊥-elim (hrefl-IMu⊥ r)
+snr-det (snr-trᵖ r) (snr-J-Fin _ _) = ⊥-elim (hrefl-Fin⊥ r)
 snr-det (snr-J-Σ _ _ _ _) (snr-J-Σ _ _ _ _) = refl
-snr-det (snr-J-Σ _ _ _ _) (snr-trᵖ (snr-hreflᶜ (csr-here ())))
-snr-det (snr-trᵖ (snr-hreflᶜ (csr-here ()))) (snr-J-Σ _ _ _ _)
+snr-det (snr-J-Σ _ _ _ _) (snr-trᵖ r) = ⊥-elim (hrefl-Σ⊥ r)
+snr-det (snr-trᵖ r) (snr-J-Σ _ _ _ _) = ⊥-elim (hrefl-Σ⊥ r)
 snr-det snr-taut snr-taut = refl
 snr-det snr-taut (snr-trᵖ ())
 snr-det (snr-trᵖ {d = d} {e = e} r) (snr-trᵖ r') =
@@ -2074,12 +2100,12 @@ snr-det snr-hrefl-Nat-z (snr-hreflᵃ ())
 snr-det (snr-hreflᵃ ()) snr-hrefl-Nat-z
 snr-det snr-hrefl-Nat-s (snr-hreflᵃ ())
 snr-det (snr-hreflᵃ ()) snr-hrefl-Nat-s
-snr-det snr-hrefl-Nat-z (snr-hreflᶜ (csr-here ()))
-snr-det (snr-hreflᶜ (csr-here ())) snr-hrefl-Nat-z
-snr-det snr-hrefl-Nat-s (snr-hreflᶜ (csr-here ()))
-snr-det (snr-hreflᶜ (csr-here ())) snr-hrefl-Nat-s
-snr-det (snr-hreflᵃ _) (snr-hreflᶜ (csr-here ()))
-snr-det (snr-hreflᶜ (csr-here ())) (snr-hreflᵃ _)
+snr-det snr-hrefl-Nat-z (snr-hreflᶜ σ) = ⊥-elim (csr-Nat⊥ σ)
+snr-det (snr-hreflᶜ σ) snr-hrefl-Nat-z = ⊥-elim (csr-Nat⊥ σ)
+snr-det snr-hrefl-Nat-s (snr-hreflᶜ σ) = ⊥-elim (csr-Nat⊥ σ)
+snr-det (snr-hreflᶜ σ) snr-hrefl-Nat-s = ⊥-elim (csr-Nat⊥ σ)
+snr-det (snr-hreflᵃ _) (snr-hreflᶜ σ) = ⊥-elim (csr-Nat⊥ σ)
+snr-det (snr-hreflᶜ σ) (snr-hreflᵃ _) = ⊥-elim (csr-Nat⊥ σ)
 snr-det (snr-hrefl-pw kp) (snr-hreflᶜ σ)
   with trans (sym (csr-nonpw σ)) kp
 ... | ()
@@ -2097,16 +2123,6 @@ snr-det (snr-J-Hom {c₁ = c₁} _ _ _ _ _ ks) (snr-trᵖ (snr-hrefl-pw kp))
 snr-det (snr-trᵖ (snr-hrefl-pw kp)) (snr-J-Hom {c₁ = c₁} _ _ _ _ _ ks)
   with trans (sym (stkA?⊥pw c₁ ks)) kp
 ... | ()
-snr-det (snr-J-base _ _) (snr-trᵖ (snr-hrefl-pw ()))
-snr-det (snr-trᵖ (snr-hrefl-pw ())) (snr-J-base _ _)
-snr-det (snr-J-Unit _ _) (snr-trᵖ (snr-hrefl-pw ()))
-snr-det (snr-J-IMu _ _) (snr-trᵖ (snr-hrefl-pw ()))
-snr-det (snr-J-Fin _ _) (snr-trᵖ (snr-hrefl-pw ()))
-snr-det (snr-trᵖ (snr-hrefl-pw ())) (snr-J-Unit _ _)
-snr-det (snr-trᵖ (snr-hrefl-pw ())) (snr-J-IMu _ _)
-snr-det (snr-trᵖ (snr-hrefl-pw ())) (snr-J-Fin _ _)
-snr-det (snr-J-Σ _ _ _ _) (snr-trᵖ (snr-hrefl-pw ()))
-snr-det (snr-trᵖ (snr-hrefl-pw ())) (snr-J-Σ _ _ _ _)
 snr-det (snr-tr-pw _ _ _) (snr-tr-pw _ _ _) = refl
 snr-det (snr-tr-mot {a = a} {f = f} {e = e} σ) (snr-tr-mot σ') =
   cong (λ z → tr (⌜Hom⌝ z a (var vz)) (lam f) e) (csr-det σ σ')
@@ -2137,10 +2153,8 @@ snr-det (snr-jsubᵖ r) (snr-jsub-refl _ _ _) = ⊥-elim (noSnrIdrefl r)
 snr-det (snr-jsubᵖ r) (snr-jsubᵖ r') with snr-det r r'
 ... | refl = refl
 snr-det (snr-J-Id _ _ _ _ _) (snr-J-Id _ _ _ _ _) = refl
-snr-det (snr-J-Id _ _ _ _ _) (snr-trᵖ (snr-hreflᶜ (csr-here ())))
-snr-det (snr-trᵖ (snr-hreflᶜ (csr-here ()))) (snr-J-Id _ _ _ _ _)
-snr-det (snr-J-Id _ _ _ _ _) (snr-trᵖ (snr-hrefl-pw ()))
-snr-det (snr-trᵖ (snr-hrefl-pw ())) (snr-J-Id _ _ _ _ _)
+snr-det (snr-J-Id _ _ _ _ _) (snr-trᵖ r) = ⊥-elim (hrefl-Id⊥ r)
+snr-det (snr-trᵖ r) (snr-J-Id _ _ _ _ _) = ⊥-elim (hrefl-Id⊥ r)
 -- ★ WF stage A: the recursor's rules are keyed on the numeral head, so
 -- a firing rule and a scrutinee step can never overlap (`nzero`/`nsuc`
 -- have no head step).
