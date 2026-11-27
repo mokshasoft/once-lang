@@ -52,12 +52,12 @@ What follows from this:
 | # | Item | Master | DT POC | Better abstraction (proposed) | Direction |
 |---|---|---|---|---|---|
 | 2 | Usage grades (QTT) | `0 ≤ 1 ≤ ω`, affine, `⊢sub-use` | none | Full QTT in one judgment; the dependent rules only distinguish 0 from runtime | master → DT |
-| 3 | Effects | a grade on the judgment, `⊢ t ∷ A ! π`, with `M pure = Id`, `M act = T`, `M eff = T∞` | none at all | **Open fork.** Lean: effects as a TYPE (the graded monad), with a pure kernel | DT → master if the lean holds; master's semantics stays |
+| 3 | Effects | a grade on the judgment, `⊢ t ∷ A ! π`, with `M pure = Id`, `M act = T`, `M eff = T∞` | none at all | **Decided 2026-11-27: (A), master's form, on both branches.** Usage 0 keeps types pure; the DT kernel adds a 0-only reification of a computation into its tree | master → DT; no master plan |
 | 4 | Signature references | `ref` typed from a schema, never unfolds | `ref` unfolds by δ; references are projections (D501) | One `ref`, with δ visible only inside the segment that may see the body | DT → master |
 | 5 | Data | polynomial codes `K`/`Id`/`⊕`/`⊗`, no index; one μ, one fold | one former `IMu` over levitated, FIBRED, indexed descriptions | Fibred descriptions; master's grammar is their erasable single-sorted fragment | DT → master (the former); runtime layout unchanged |
 | 6 | Polymorphism | type variables in a kinding context `Δ` | Π over `U` at usage 0 | Π over `U` at 0; `Δ` remains the erasure target | DT → master |
-| 7 | Subtyping | `Spec/Sub`: canonical coercions (`Void`, effect order), at most one derivation | none | Coercions inserted by the elaborator; no subtyping in the kernel | master → DT surface only |
-| 8 | Codata | ν, `unfold`, `iter` as core formers (servers) | none | A pure, productive ν at 0; `unfold` and `iter` become library definitions over ν | both, if §3 goes to types |
+| 7 | Subtyping | `Spec/Sub`: canonical coercions (`Void`, effect order), at most one derivation | none | `⊢sub-eff` in the judgment; type-level `<:` possibly inserted by the elaborator | master → DT |
+| 8 | Codata | ν, `unfold`, `iter` as core formers (servers) | none | A pure, productive ν at 0 for proofs (and for reifying `eff`) | master keeps its runtime story; DT adds ν at 0 |
 | 9 | Base types | `Int` at the target's width, `Float` at its format, effectful operations | unary `Nat` only | Width-parametric word and float MODELS in the DT kernel, erasing to master's primitives | master → DT (the spec) |
 | 10 | Equality | none in the core | `Id`, directed `Hom`, `tr`, `ap` | Proof-level only, at 0; laws stated as `Hom` | DT → master (as the logic) |
 | 11 | Linear core | `LinCore`: point-free, simply typed, explicit `dup`/`drop` | none (`NbEPLinCore` was its seed) | Master's; the DT kernel reaches it only through erasure | stays on master |
@@ -123,21 +123,52 @@ over `IMu`, and well-founded recursion.
   (B), and dependent variants exist (Vákár; Ahman). It is the heaviest of
   the three, but worth weighing before deciding.
 
-**Lean: (B).** It keeps the dependent kernel pure, it matches the stance,
-and master's semantics already is (B). What changes on master:
-- `Spec/Core/Typing` loses `! π` and gains the monad type.
-- `⊢sub-eff` becomes the monad morphisms as functions.
-- `LinCore`'s `Gr` is read from types.
+**Decided 2026-11-27: (A), on both branches.** An earlier lean towards (B)
+was withdrawn for three reasons:
 
-The user has said that redoing master's proofs for a better effect
-abstraction is acceptable.
+- **The same model.** (A) and (B) both mean morphisms in the Kleisli
+  category of a graded, strong monad. Master's graded arrow
+  `A ⇒[ q, π ] B` already is the internal Kleisli exponential
+  `A → M π B`, and `Unit ⇒[ π ] B` is a suspended computation. (B)
+  internalises nothing that (A) lacks. (A) is fine-grain call-by-value,
+  (B) is Moggi's monadic form, and both embed in CBPV.
+- **The grade is not dead weight.** Types, motives and indices sit at usage
+  0, and 0 ⇒ pure, so types are pure as a consequence of usage, with no
+  extra side condition. The grade does real work in the computational
+  positions: a runtime fold with effectful methods (master's `foldM`) has a
+  pure motive and effectful methods.
+- **Codegen.** Taken literally, (B) makes `M π B` a value and `bind` a
+  function, so every sequencing step risks a thunk. In (A) a computation is
+  not a value: sequencing is evaluation order, and an effect is a call.
+  (B) reaches parity only by being compiled back into (A).
 
-**Open.**
-- Whether `M pure A` is `A` by conversion or only by an isomorphism.
-- Where `positionGrade` (0 ⇒ pure) goes once effects are a type: it becomes
-  automatic, because a 0-term is a term of the pure kernel.
-- Whether the linear core's cost picture changes when the bind structure is
-  explicit.
+**What (B) seemed to offer is a separate feature: effects as data that can
+be eliminated.**
+- *For proofs:* a 0-only REIFICATION rule. If `⊢ c ∷ A ! act`, then at 0,
+  `tree c : T A`, with `T` an ordinary datatype in the DT kernel. It never
+  runs and erases. `T∞` needs ν (§8).
+- *For programs: handlers.* These are orthogonal to (A) versus (B).
+  Plotkin and Pretnar's handlers are algebra homomorphisms out of the free
+  model, and they are presented in direct style (Koka, Eff, OCaml 5), i.e.
+  on (A). What they need from the Spec is an effect grade that says WHICH
+  operations a computation may perform (a row, or a subset of the
+  signature), so that `handle` can remove the handled ones. Master's grade
+  is a three-point chain over one global signature.
+  - Free monads over operations that return answers put functions in
+    recursive positions (`Read : (Int → X) → X`). `LinCore`'s functor codes
+    exclude those, and in the DT kernel they need an infinitary `dπ`,
+    which has not been spiked (G2).
+  - **Cost depends on how the continuation is used.** A tail-resumptive
+    handler (state, reader, logging, mocked input) compiles to a direct
+    call with no allocation. A one-shot continuation needs a closure or a
+    stack segment. A multi-shot one (nondeterminism) copies the
+    continuation. The usage grade on the continuation tells the compiler
+    which case applies.
+  - Master already has handlers at one level: a signature's
+    Interpretation per Host (plan 0.96), chosen at link time.
+
+**Open.** Whether user handlers are wanted, and when. They need a
+signature-indexed effect grade, a separate Spec change with its own plan.
 
 ## 4. Signature references
 
@@ -267,11 +298,10 @@ type. The surface already composes each branch with its conversion.
 
 **Principled reading.** Master's subtyping is coherent (one derivation),
 which is good design. Its content is the effect order plus `Void`.
-- If effects become a type (§3, option B), the effect part is a family of
-  functions, the monad morphisms, and an arrow coercion is η-expansion
-  around one. The subtyping judgment becomes coercive: inserted by the
-  elaborator, not a rule of the kernel. Luo's coercive subtyping is this
-  shape.
+- §3 decided (A), so `⊢sub-eff` stays in the judgment. An arrow coercion
+  is still η-expansion around it, so the type-level `<:` may be inserted
+  by the elaborator rather than be a rule of the kernel (Luo's coercive
+  subtyping). Decide that in PLAN-GRADED.
 - Subtyping inside a dependent kernel would complicate conversion, which is
   the reason to keep it out.
 
@@ -300,12 +330,10 @@ stream unfold".
   at 0 and therefore pure.
 - To prove things about servers, the logic needs a pure, productive ν at 0,
   with bisimulation, and conversion that never unfolds a ν eagerly.
-- If effects are a type (§3, option B), `T∞` is a ν, and `iter` is its
-  unfold: a library definition, not a former. That simplifies both
-  branches.
+- The reification rule (§3) needs `T∞` as a ν for `eff` computations.
 
-**Direction.** Pending §3. Master keeps its runtime story (defunctionalised
-ν, D425) either way.
+**Direction.** Master keeps its runtime story (`unfold` and `iter` as
+formers, ν defunctionalised by D425). The DT kernel adds a pure ν at 0.
 
 **Open.** Is ν in scope for R5, or later? Proofs about `eff` programs need
 it, and proofs about `act` programs do not.
@@ -392,8 +420,8 @@ proved again elsewhere.
 
 ## 12. For the user
 
-1. **Effects (§3):** (A) a judgment grade, (B) a type, or (C) CBPV. The lean
-   is (B).
+1. **Effects (§3):** decided 2026-11-27, (A). Still open: whether user
+   handlers (a signature-indexed effect grade) are wanted, and when.
 2. **Codata (§8):** a pure ν at 0 in R5, or later?
 3. **Base types (§9):** a primitive `Word w` with computation rules, or a
    library model with a trusted erasure table? Binary naturals in the
