@@ -25715,3 +25715,27 @@ larger Core interface): split by its independent groups, the calls (`GlobalDispa
 opens and observations (`GlobalDispatchO`, 47 s), as `WordStep` uses them.
 Gate (after the proofs): run 1.00x, `.text` 1.00x vs D495, none slower; `nu-ana-deep` 0.71x, `ana-capture`
 0.76x, `s0151-bare-maps` 0.96x.
+
+## D497 — A COERCED ARROW READS THE CLOSURE IT HOLDS: NO COPY PER LENT CALL (2026-11-27, proposed — unattended, for the user's review; plan 0.157 S2, D6)
+
+**The problem.** A conversion along a subtyping derivation of an arrow (`FromExpr.wrap`/`wrap₀`, the
+`coeL (sub-arr …)` clauses: an `Act` arm used at `Eff`, a purity or grade widening) built a `llamωᶜ` closure over
+the converted closure, whose body owned it (`g ∘ apω ∘ (id ⊗ f)`): each LENT call of the coerced arrow — a
+loop's round, a fold's algebra, a lent combinator's arm — copied the held closure (D480's `cin`). They were
+16 of the corpus's 31 `clo-cells` (`once stats` now lists each site, `clo-sites`: environment type and body
+head), and in the loops a copy per round.
+
+**The decision.** The coerced arrow is `llamω (blift g ∘l bev ∘l blift f)`: it reads the closure it holds,
+applying it lent. Its OWNED entry applies it owned: `Own` gains two generic cases, a lifted conversion after an
+owned body (`o-lift`: `blift g ∘l ownT p`) and before one (`o-pre`: `ownT p ∘l (lid ⊗l blift f)`), found by a
+view (`LiftV`) so `ownOf` splits only on `_∘l_` (matching both arguments of `_∘l_` makes Agda's case tree
+split the right one under every left constructor, a stuck unification). The owned entry of the coercion is then
+`blift g ∘l levω ∘l (lid ⊗l blift f)`: the held closure moved in, consumed.
+
+**Proved.** `Own` cases at D493's five sites (`own-blk`, `Bisim.own-≈`, `Keys.own-got`, `RunOps.ok-own`,
+`Total.goOwn` with `liftR`); the bridge: `FromExprOk.rel-coeL` by `rel-cloL` and `lent≈` (the lent body means
+the owned one); `ExprOps.ok-coeL`.
+
+**Measured** (before the gate, x86_64, vs D496): run 0.62x over the corpus (all of it `alloc-forever`, 0.62x:
+its round's coerced arrow was copied each round), `loop-sum` 0.88x, `s0151-cata-pure-alg` 0.89x, none slower,
+`.text` 1.00x; clo-cells 31 -> 15.

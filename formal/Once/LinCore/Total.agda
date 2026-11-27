@@ -667,6 +667,11 @@ module _ (W : World) where
   lendR gx (ran (gives w n′) t r σ₁ _ l s sp wo , gw) = (ran _ t (r-lend (fm-gives (r-snd r))) σ₁ tt l s sp wo , (gx , gw))
   lendR gx (ran (stop y) t r σ₁ c l s sp wo , _) = (ran (stop y) t (r-lend (fm-stop (r-snd r))) σ₁ c l s sp wo , tt)
 
+  -- ★ D497: a lifted conversion's run is its run at no environment
+  liftR : ∀ {Γ} {ds : Defs Γ} {E A B} {g : Tm Γ One A B} {e : MV E} {u : MV A} {n k σ}
+        → Ran⁺ ds g mone u n k σ → Ran⁺ ds (blift {E = E} g) e u n k σ
+  liftR (ran o t r σ₁ c l s sp wo , gw) = (ran o t (r-lift r) σ₁ c l s sp wo , gw)
+
   -- the halves of the environment beside the parts of the argument: words moved, nothing run
   mixR : ∀ {Γ} {ds : Defs Γ} {X₁ X₂ A₁ A₂} (u : MV ((X₁ ⊗t X₂) ⊗t (A₁ ⊗t A₂))) n k (σ : WSt)
        → Good ((X₁ ⊗t X₂) ⊗t (A₁ ⊗t A₂)) u → Ran⁺ ds mixO mone u n k σ
@@ -818,6 +823,11 @@ module _ (W : World) where
         seqR (seqR (lendR gx (go k s x a n σ gx ga)) (λ u n₁ l₁ σ₁ gu → mixR u n₁ l₁ σ₁ gu))
              (λ { (mpair (mpair x₁ a₁) (mpair x₂ a₂)) n₁ l₁ σ₁ ((g₁ , h₁) , (g₂ , h₂)) →
                     parR (goOwn f p l₁ x₁ a₁ n₁ σ₁ g₁ h₁) (λ n₂ l₂ σ₂ → goOwn g q l₂ x₂ a₂ n₂ σ₂ g₂ h₂) })
+      goOwn (blift g ∘l t) (o-lift p) k x a n σ gx ga =
+        seqR (goOwn t p k x a n σ gx ga) (λ u n₁ l₁ σ₁ gu → liftR (go l₁ g mone u n₁ σ₁ tt gu))
+      goOwn (t ∘l blift f) (o-pre p) k x a n σ gx ga =
+        seqR (parR (ran _ _ r-id σ tt k ≤-refl refl refl , gx) (λ n₁ l₁ σ₁ → liftR (go l₁ f mone a n₁ σ₁ tt ga)))
+             (λ { (mpair x′ b′) n₁ l₁ σ₁ (gx′ , gb′) → goOwn t p l₁ x′ b′ n₁ σ₁ gx′ gb′ })
 
       -- the arms, owned, after distributing
       caseK : ∀ {X A B C} (f : Tm Γ X A C) (g : Tm Γ X B C) (p : Own f) (q : Own g)

@@ -323,24 +323,26 @@ module _ {L : Cx} where
   -- is re-wrapped, at the target's grade
   wrap : ∀ {π π′ X X′ Y Y′} → π G.⊑π π′ → (f : LTm L X′ X) → Blk f → (g : LTm L Y Y′) → Blk g
        → LTm L (Fn many (grade π) X Y) (Fn many (grade π′) X′ Y′)
-  wrap r f φ g γ = llamωᶜ (g ∘l apω ∘l (lid ⊗l f)) (gd r)
+  -- (D497: the closure it holds is READ — applied lent, `bev` — so a lent call
+  -- copies nothing; its owned entry applies it owned, `Own.o-lift`/`o-pre`)
+  wrap r f φ g γ = llamω (blift g ∘l bev ∘l blift f) (gd r)
     where
-      gd : ∀ {π π′} (r : π G.⊑π π′) → Gd (grade π′) (g ∘l apω {g = grade π} ∘l (lid ⊗l f))
-      gd G.⊑-pure = k-∘ γ (k-∘ k-apω (k-⊗ k-id φ))
-      gd G.⊑-pa   = k-∘ γ (k-∘ k-apω (k-⊗ k-id φ))
-      gd G.⊑-act  = k-∘ γ (k-∘ k-apω (k-⊗ k-id φ))
+      gd : ∀ {π π′} (r : π G.⊑π π′) → Gd (grade π′) (blift g ∘l bev {g = grade π} ∘l blift f)
+      gd G.⊑-pure = k-∘ (k-lift γ) (k-∘ k-bev (k-lift φ))
+      gd G.⊑-pa   = k-∘ (k-lift γ) (k-∘ k-bev (k-lift φ))
+      gd G.⊑-act  = k-∘ (k-lift γ) (k-∘ k-bev (k-lift φ))
       gd G.⊑-pe   = tt
       gd G.⊑-ae   = tt
       gd G.⊑-eff  = tt
 
   wrap₀ : ∀ {π π′ Y Y′} → π G.⊑π π′ → (g : LTm L Y Y′) → Blk g
         → LTm L (Fn many (grade π) One Y) (Fn many (grade π′) One Y′)
-  wrap₀ r g γ = llamωᶜ (g ∘l apω) (gd r)
+  wrap₀ r g γ = llamω (blift g ∘l bev) (gd r)
     where
-      gd : ∀ {π π′} (r : π G.⊑π π′) → Gd (grade π′) (g ∘l apω {g = grade π})
-      gd G.⊑-pure = k-∘ γ k-apω
-      gd G.⊑-pa   = k-∘ γ k-apω
-      gd G.⊑-act  = k-∘ γ k-apω
+      gd : ∀ {π π′} (r : π G.⊑π π′) → Gd (grade π′) (blift g ∘l bev {g = grade π})
+      gd G.⊑-pure = k-∘ (k-lift γ) k-bev
+      gd G.⊑-pa   = k-∘ (k-lift γ) k-bev
+      gd G.⊑-act  = k-∘ (k-lift γ) k-bev
       gd G.⊑-pe   = tt
       gd G.⊑-ae   = tt
       gd G.⊑-eff  = tt
@@ -365,9 +367,9 @@ module _ {L : Cx} where
   k-coeL sub-unit   = k-id
   k-coeL sub-int    = k-id
   k-coeL sub-float  = k-id
-  k-coeL (sub-arr {q = G.Zero} a b r) = k-lamωᶜ
-  k-coeL (sub-arr {q = G.One}  a b r) = k-lamωᶜ
-  k-coeL (sub-arr {q = G.Many} a b r) = k-lamωᶜ
+  k-coeL (sub-arr {q = G.Zero} a b r) = k-lamω
+  k-coeL (sub-arr {q = G.One}  a b r) = k-lamω
+  k-coeL (sub-arr {q = G.Many} a b r) = k-lamω
   k-coeL (sub-* a b) = k-⊗ (k-coeL a) (k-coeL b)
   k-coeL (sub-+ a b) = k-case (k-∘ k-inl (k-coeL a)) (k-∘ k-inr (k-coeL b))
   k-coeL sub-μ      = k-id

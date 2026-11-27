@@ -90,6 +90,11 @@ module _ (D : Sig → Set) where
          (ok-own ds p (okˡ {tmGot ds f} {tmGot ds g} (okˡ {tmGot ds f ⊹ tmGot ds g} {tmGot ds s} k)))
          (ok-own ds q (okʳ {tmGot ds f} {tmGot ds g} (okˡ {tmGot ds f ⊹ tmGot ds g} {tmGot ds s} k))))
        (ok-⊹ (tmGot ds (mixO {X₁ = X₁} {X₂} {A₁} {A₂})) (tmGot ds s) (λ ()) (okʳ {tmGot ds f ⊹ tmGot ds g} {tmGot ds s} k))
+   ok-own ds (o-lift {g = g} {t = t} p) k =
+     ok-⊹ (tmGot ds g) (tmGot ds (ownT p)) (okˡ {tmGot ds g} {tmGot ds t} k) (ok-own ds p (okʳ {tmGot ds g} {tmGot ds t} k))
+   ok-own ds (o-pre {t = t} {f = f} p) k =
+     ok-⊹ (tmGot ds (ownT p)) (∅ ⊹ tmGot ds f) (ok-own ds p (okˡ {tmGot ds t} {tmGot ds f} k))
+       (ok-⊹ ∅ (tmGot ds f) (λ ()) (okʳ {tmGot ds t} {tmGot ds f} k))
 
   -- a term with its table
   TmOK : ∀ {Γ} → Defs Γ → ∀ {E A B} → Tm Γ E A B → Set

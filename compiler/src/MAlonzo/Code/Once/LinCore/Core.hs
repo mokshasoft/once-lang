@@ -1385,15 +1385,16 @@ data T_Own_1880
     C_o'45'snd_1924 T_Own_1880 |
     C_o'45'split_1940 T_Own_1880 T_Own_1880 |
     C_o'45'case_1954 T_Own_1880 T_Own_1880 |
-    C_o'45'fork_1976 T_Own_1880 T_Own_1880
+    C_o'45'fork_1976 T_Own_1880 T_Own_1880 |
+    C_o'45'lift_1990 T_Own_1880 | C_o'45'pre_2004 T_Own_1880
 -- Once.LinCore.Core.mixO
-d_mixO_1988 ::
+d_mixO_2016 ::
   T_Cx_728 ->
   T_LTy_178 -> T_LTy_178 -> T_LTy_178 -> T_LTy_178 -> T_Tm_758
-d_mixO_1988 ~v0 v1 v2 v3 v4 = du_mixO_1988 v1 v2 v3 v4
-du_mixO_1988 ::
+d_mixO_2016 ~v0 v1 v2 v3 v4 = du_mixO_2016 v1 v2 v3 v4
+du_mixO_2016 ::
   T_LTy_178 -> T_LTy_178 -> T_LTy_178 -> T_LTy_178 -> T_Tm_758
-du_mixO_1988 v0 v1 v2 v3
+du_mixO_2016 v0 v1 v2 v3
   = coe
       C__'8728'l__796
       (coe
@@ -1422,12 +1423,12 @@ du_mixO_1988 v0 v1 v2 v3
                   (coe C_lassoc'8315'_852))))
          (coe C_lassoc_842))
 -- Once.LinCore.Core.k-mixO
-d_k'45'mixO_2000 ::
+d_k'45'mixO_2028 ::
   T_Cx_728 ->
   T_LTy_178 -> T_LTy_178 -> T_LTy_178 -> T_LTy_178 -> T_Blk_768
-d_k'45'mixO_2000 ~v0 ~v1 ~v2 ~v3 ~v4 = du_k'45'mixO_2000
-du_k'45'mixO_2000 :: T_Blk_768
-du_k'45'mixO_2000
+d_k'45'mixO_2028 ~v0 ~v1 ~v2 ~v3 ~v4 = du_k'45'mixO_2028
+du_k'45'mixO_2028 :: T_Blk_768
+du_k'45'mixO_2028
   = coe
       C_k'45''8728'_1166 (coe C_k'45'assoc'8315'_1226)
       (coe
@@ -1443,16 +1444,16 @@ du_k'45'mixO_2000
                   (coe C_k'45'assoc'8315'_1226))))
          (coe C_k'45'assoc_1216))
 -- Once.LinCore.Core.ownT
-d_ownT_2012 ::
+d_ownT_2040 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   T_Cx_728 ->
   T_LTy_178 ->
   T_LTy_178 -> T_LTy_178 -> T_Tm_758 -> T_Own_1880 -> T_Tm_758
-d_ownT_2012 ~v0 ~v1 v2 v3 v4 v5 v6 = du_ownT_2012 v2 v3 v4 v5 v6
-du_ownT_2012 ::
+d_ownT_2040 ~v0 ~v1 v2 v3 v4 v5 v6 = du_ownT_2040 v2 v3 v4 v5 v6
+du_ownT_2040 ::
   T_LTy_178 ->
   T_LTy_178 -> T_LTy_178 -> T_Tm_758 -> T_Own_1880 -> T_Tm_758
-du_ownT_2012 v0 v1 v2 v3 v4
+du_ownT_2040 v0 v1 v2 v3 v4
   = case coe v4 of
       C_o'45'bg_1892
         -> coe
@@ -1470,7 +1471,7 @@ du_ownT_2012 v0 v1 v2 v3 v4
                     C_bfst_994 v17
                       -> coe
                            C__'8728'l__796 (coe C__'8855't__184 (coe v11) (coe v1))
-                           (coe du_ownT_2012 (coe v11) (coe v1) (coe v2) (coe v17) (coe v10))
+                           (coe du_ownT_2040 (coe v11) (coe v1) (coe v2) (coe v17) (coe v10))
                            (coe
                               C__'8855'l__808
                               (coe
@@ -1487,7 +1488,7 @@ du_ownT_2012 v0 v1 v2 v3 v4
                     C_bsnd_1004 v17
                       -> coe
                            C__'8728'l__796 (coe C__'8855't__184 (coe v12) (coe v1))
-                           (coe du_ownT_2012 (coe v12) (coe v1) (coe v2) (coe v17) (coe v10))
+                           (coe du_ownT_2040 (coe v12) (coe v1) (coe v2) (coe v17) (coe v10))
                            (coe
                               C__'8855'l__808
                               (coe
@@ -1509,7 +1510,7 @@ du_ownT_2012 v0 v1 v2 v3 v4
                                     -> coe
                                          C__'8728'l__796 (coe C__'8855't__184 (coe v14) (coe v17))
                                          (coe
-                                            du_ownT_2012 (coe v14) (coe v17) (coe v2) (coe v26)
+                                            du_ownT_2040 (coe v14) (coe v17) (coe v2) (coe v26)
                                             (coe v12))
                                          (coe
                                             C__'8728'l__796
@@ -1519,7 +1520,7 @@ du_ownT_2012 v0 v1 v2 v3 v4
                                             (coe
                                                C__'8855'l__808 (coe C_lid_786)
                                                (coe
-                                                  du_ownT_2012 (coe v15) (coe v1) (coe v17)
+                                                  du_ownT_2040 (coe v15) (coe v1) (coe v17)
                                                   (coe v31) (coe v13)))
                                             (coe C_lassoc_842))
                                   _ -> MAlonzo.RTE.mazUnreachableError
@@ -1538,8 +1539,8 @@ du_ownT_2012 v0 v1 v2 v3 v4
                               (coe C__'8855't__184 (coe v0) (coe v14)))
                            (coe
                               C_lcase_898
-                              (coe du_ownT_2012 (coe v0) (coe v13) (coe v2) (coe v19) (coe v11))
-                              (coe du_ownT_2012 (coe v0) (coe v14) (coe v2) (coe v20) (coe v12)))
+                              (coe du_ownT_2040 (coe v0) (coe v13) (coe v2) (coe v19) (coe v11))
+                              (coe du_ownT_2040 (coe v0) (coe v14) (coe v2) (coe v20) (coe v12)))
                            (coe C_ldist_914)
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -1571,10 +1572,10 @@ du_ownT_2012 v0 v1 v2 v3 v4
                                                               (coe
                                                                  C__'8855'l__808
                                                                  (coe
-                                                                    du_ownT_2012 (coe v17) (coe v27)
+                                                                    du_ownT_2040 (coe v17) (coe v27)
                                                                     (coe v19) (coe v40) (coe v15))
                                                                  (coe
-                                                                    du_ownT_2012 (coe v18) (coe v28)
+                                                                    du_ownT_2040 (coe v18) (coe v28)
                                                                     (coe v20) (coe v45) (coe v16)))
                                                               (coe
                                                                  C__'8728'l__796
@@ -1637,21 +1638,42 @@ du_ownT_2012 v0 v1 v2 v3 v4
                            _ -> MAlonzo.RTE.mazUnreachableError
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
+      C_o'45'lift_1990 v11
+        -> case coe v3 of
+             C__'8728'l__796 v13 v16 v17
+               -> case coe v16 of
+                    C_blift_984 v21
+                      -> coe
+                           C__'8728'l__796 v13 (coe C_blift_984 v21)
+                           (coe du_ownT_2040 (coe v0) (coe v1) (coe v13) (coe v17) (coe v11))
+                    _ -> MAlonzo.RTE.mazUnreachableError
+             _ -> MAlonzo.RTE.mazUnreachableError
+      C_o'45'pre_2004 v11
+        -> case coe v3 of
+             C__'8728'l__796 v13 v16 v17
+               -> case coe v17 of
+                    C_blift_984 v21
+                      -> coe
+                           C__'8728'l__796 (coe C__'8855't__184 (coe v0) (coe v13))
+                           (coe du_ownT_2040 (coe v0) (coe v13) (coe v2) (coe v16) (coe v11))
+                           (coe C__'8855'l__808 (coe C_lid_786) (coe C_blift_984 v21))
+                    _ -> MAlonzo.RTE.mazUnreachableError
+             _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.LinCore.Core.own-blk
-d_own'45'blk_2046 ::
+d_own'45'blk_2082 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   T_Cx_728 ->
   T_LTy_178 ->
   T_LTy_178 ->
   T_LTy_178 -> T_Tm_758 -> T_Own_1880 -> T_Blk_768 -> T_Blk_768
-d_own'45'blk_2046 ~v0 ~v1 v2 v3 v4 v5 v6 v7
-  = du_own'45'blk_2046 v2 v3 v4 v5 v6 v7
-du_own'45'blk_2046 ::
+d_own'45'blk_2082 ~v0 ~v1 v2 v3 v4 v5 v6 v7
+  = du_own'45'blk_2082 v2 v3 v4 v5 v6 v7
+du_own'45'blk_2082 ::
   T_LTy_178 ->
   T_LTy_178 ->
   T_LTy_178 -> T_Tm_758 -> T_Own_1880 -> T_Blk_768 -> T_Blk_768
-du_own'45'blk_2046 v0 v1 v2 v3 v4 v5
+du_own'45'blk_2082 v0 v1 v2 v3 v4 v5
   = case coe v4 of
       C_o'45'bg_1892 -> coe du_ownBg'45'gd_1862 (coe C_act_158) (coe v5)
       C_o'45'ev_1900 -> coe seq (coe v5) (coe C_k'45'evω_1504)
@@ -1665,7 +1687,7 @@ du_own'45'blk_2046 v0 v1 v2 v3 v4 v5
                              -> coe
                                   C_k'45''8728'_1166
                                   (coe
-                                     du_own'45'blk_2046 (coe v12) (coe v1) (coe v2) (coe v18)
+                                     du_own'45'blk_2082 (coe v12) (coe v1) (coe v2) (coe v18)
                                      (coe v11) (coe v24))
                                   (coe
                                      C_k'45''8855'_1182
@@ -1688,7 +1710,7 @@ du_own'45'blk_2046 v0 v1 v2 v3 v4 v5
                              -> coe
                                   C_k'45''8728'_1166
                                   (coe
-                                     du_own'45'blk_2046 (coe v13) (coe v1) (coe v2) (coe v18)
+                                     du_own'45'blk_2082 (coe v13) (coe v1) (coe v2) (coe v18)
                                      (coe v11) (coe v24))
                                   (coe
                                      C_k'45''8855'_1182
@@ -1719,7 +1741,7 @@ du_own'45'blk_2046 v0 v1 v2 v3 v4 v5
                                                          -> coe
                                                               C_k'45''8728'_1166
                                                               (coe
-                                                                 du_own'45'blk_2046 (coe v15)
+                                                                 du_own'45'blk_2082 (coe v15)
                                                                  (coe v18) (coe v2) (coe v27)
                                                                  (coe v13) (coe v46))
                                                               (coe
@@ -1728,7 +1750,7 @@ du_own'45'blk_2046 v0 v1 v2 v3 v4 v5
                                                                     C_k'45''8855'_1182
                                                                     (coe C_k'45'id_1152)
                                                                     (coe
-                                                                       du_own'45'blk_2046 (coe v16)
+                                                                       du_own'45'blk_2082 (coe v16)
                                                                        (coe v1) (coe v18) (coe v32)
                                                                        (coe v14) (coe v52)))
                                                                  (coe C_k'45'assoc_1216))
@@ -1751,10 +1773,10 @@ du_own'45'blk_2046 v0 v1 v2 v3 v4 v5
                                   (coe
                                      C_k'45'case_1276
                                      (coe
-                                        du_own'45'blk_2046 (coe v0) (coe v14) (coe v2) (coe v20)
+                                        du_own'45'blk_2082 (coe v0) (coe v14) (coe v2) (coe v20)
                                         (coe v12) (coe v28))
                                      (coe
-                                        du_own'45'blk_2046 (coe v0) (coe v15) (coe v2) (coe v21)
+                                        du_own'45'blk_2082 (coe v0) (coe v15) (coe v2) (coe v21)
                                         (coe v13) (coe v29)))
                                   (coe C_k'45'dist_1292)
                            _ -> MAlonzo.RTE.mazUnreachableError
@@ -1788,7 +1810,7 @@ du_own'45'blk_2046 v0 v1 v2 v3 v4 v5
                                                                                           (coe
                                                                                              C_k'45''8855'_1182
                                                                                              (coe
-                                                                                                du_own'45'blk_2046
+                                                                                                du_own'45'blk_2082
                                                                                                 (coe
                                                                                                    v18)
                                                                                                 (coe
@@ -1802,7 +1824,7 @@ du_own'45'blk_2046 v0 v1 v2 v3 v4 v5
                                                                                                 (coe
                                                                                                    v69))
                                                                                              (coe
-                                                                                                du_own'45'blk_2046
+                                                                                                du_own'45'blk_2082
                                                                                                 (coe
                                                                                                    v19)
                                                                                                 (coe
@@ -1859,156 +1881,234 @@ du_own'45'blk_2046 v0 v1 v2 v3 v4 v5
                            _ -> MAlonzo.RTE.mazUnreachableError
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
+      C_o'45'lift_1990 v12
+        -> case coe v3 of
+             C__'8728'l__796 v14 v17 v18
+               -> case coe v5 of
+                    C_k'45''8728'_1166 v25 v26
+                      -> case coe v25 of
+                           C_k'45'lift_1370 v31
+                             -> coe
+                                  C_k'45''8728'_1166 (coe C_k'45'lift_1370 v31)
+                                  (coe
+                                     du_own'45'blk_2082 (coe v0) (coe v1) (coe v14) (coe v18)
+                                     (coe v12) (coe v26))
+                           _ -> MAlonzo.RTE.mazUnreachableError
+                    _ -> MAlonzo.RTE.mazUnreachableError
+             _ -> MAlonzo.RTE.mazUnreachableError
+      C_o'45'pre_2004 v12
+        -> case coe v3 of
+             C__'8728'l__796 v14 v17 v18
+               -> case coe v5 of
+                    C_k'45''8728'_1166 v25 v26
+                      -> case coe v26 of
+                           C_k'45'lift_1370 v31
+                             -> coe
+                                  C_k'45''8728'_1166
+                                  (coe
+                                     du_own'45'blk_2082 (coe v0) (coe v14) (coe v2) (coe v17)
+                                     (coe v12) (coe v25))
+                                  (coe
+                                     C_k'45''8855'_1182 (coe C_k'45'id_1152)
+                                     (coe C_k'45'lift_1370 v31))
+                           _ -> MAlonzo.RTE.mazUnreachableError
+                    _ -> MAlonzo.RTE.mazUnreachableError
+             _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.LinCore.Core.own-gd
-d_own'45'gd_2100 ::
+d_own'45'gd_2148 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   T_Cx_728 ->
   T_Gr_156 ->
   T_LTy_178 ->
   T_LTy_178 ->
   T_LTy_178 -> T_Tm_758 -> T_Own_1880 -> AgdaAny -> AgdaAny
-d_own'45'gd_2100 ~v0 ~v1 v2 v3 v4 v5 v6 v7 v8
-  = du_own'45'gd_2100 v2 v3 v4 v5 v6 v7 v8
-du_own'45'gd_2100 ::
+d_own'45'gd_2148 ~v0 ~v1 v2 v3 v4 v5 v6 v7 v8
+  = du_own'45'gd_2148 v2 v3 v4 v5 v6 v7 v8
+du_own'45'gd_2148 ::
   T_Gr_156 ->
   T_LTy_178 ->
   T_LTy_178 ->
   T_LTy_178 -> T_Tm_758 -> T_Own_1880 -> AgdaAny -> AgdaAny
-du_own'45'gd_2100 v0 v1 v2 v3 v4 v5 v6
+du_own'45'gd_2148 v0 v1 v2 v3 v4 v5 v6
   = case coe v0 of
       C_act_158
         -> coe
-             du_own'45'blk_2046 (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
+             du_own'45'blk_2082 (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
              (coe v6)
       C_eff_160 -> coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8
       _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.LinCore.Core.LiftV
+d_LiftV_2166 a0 a1 a2 a3 a4 a5 = ()
+data T_LiftV_2166 = C_lv'45'lift_2178 | C_lv'45'other_2188
+-- Once.LinCore.Core.liftView
+d_liftView_2200 ::
+  MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
+  T_Cx_728 ->
+  T_LTy_178 -> T_LTy_178 -> T_LTy_178 -> T_Tm_758 -> T_LiftV_2166
+d_liftView_2200 ~v0 ~v1 ~v2 ~v3 ~v4 v5 = du_liftView_2200 v5
+du_liftView_2200 :: T_Tm_758 -> T_LiftV_2166
+du_liftView_2200 v0
+  = let v1 = coe C_lv'45'other_2188 in
+    coe
+      (case coe v0 of
+         C_blift_984 v5 -> coe C_lv'45'lift_2178
+         _ -> coe v1)
 -- Once.LinCore.Core.ownOf
-d_ownOf_2120 ::
+d_ownOf_2216 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   T_Cx_728 ->
   T_LTy_178 -> T_LTy_178 -> T_LTy_178 -> T_Tm_758 -> T_Own_1880
-d_ownOf_2120 ~v0 ~v1 v2 v3 v4 v5 = du_ownOf_2120 v2 v3 v4 v5
-du_ownOf_2120 ::
-  T_LTy_178 -> T_LTy_178 -> T_LTy_178 -> T_Tm_758 -> T_Own_1880
-du_ownOf_2120 v0 v1 v2 v3
-  = let v4 = coe C_o'45'bg_1892 in
+d_ownOf_2216 v0 v1 v2 v3 v4 v5
+  = let v6 = coe C_o'45'bg_1892 in
     coe
-      (case coe v3 of
-         C__'8728'l__796 v6 v9 v10
-           -> case coe v9 of
-                C__'8855'l__808 v16 v17
-                  -> case coe v2 of
-                       C__'8855't__184 v18 v19
-                         -> case coe v6 of
-                              C__'8855't__184 v20 v21
-                                -> case coe v16 of
-                                     C_bfst_994 v26
-                                       -> case coe v0 of
-                                            C__'8855't__184 v27 v28
-                                              -> case coe v17 of
-                                                   C_bsnd_1004 v33
-                                                     -> coe
-                                                          C_o'45'fork_1976
-                                                          (coe
-                                                             du_ownOf_2120 (coe v27) (coe v20)
-                                                             (coe v18) (coe v26))
-                                                          (coe
-                                                             du_ownOf_2120 (coe v28) (coe v21)
-                                                             (coe v19) (coe v33))
-                                                   _ -> coe v4
-                                            _ -> coe v4
-                                     _ -> coe v4
-                              _ -> coe v4
-                       _ -> coe v4
-                C_bfst_994 v15
-                  -> case coe v0 of
-                       C__'8855't__184 v16 v17
-                         -> case coe v10 of
-                              C_bsnd_1004 v22
-                                -> coe
-                                     C_o'45'split_1940
-                                     (coe du_ownOf_2120 (coe v16) (coe v6) (coe v2) (coe v15))
-                                     (coe du_ownOf_2120 (coe v17) (coe v1) (coe v6) (coe v22))
-                              _ -> coe v4
-                       _ -> coe v4
-                _ -> coe v4
-         C_lcase_898 v9 v10
-           -> case coe v1 of
-                C__'8853't__186 v11 v12
+      (case coe v5 of
+         C__'8728'l__796 v8 v11 v12
+           -> let v13
+                    = d_ownSeq_2232
+                        (coe v0) (coe v1) (coe v2) (coe v3) (coe v8) (coe v4) (coe v11)
+                        (coe v12) (coe du_liftView_2200 (coe v11))
+                        (coe du_liftView_2200 (coe v12)) in
+              coe
+                (case coe v11 of
+                   C__'8855'l__808 v19 v20
+                     -> case coe v4 of
+                          C__'8855't__184 v21 v22
+                            -> case coe v8 of
+                                 C__'8855't__184 v23 v24
+                                   -> case coe v19 of
+                                        C_bfst_994 v29
+                                          -> case coe v2 of
+                                               C__'8855't__184 v30 v31
+                                                 -> case coe v20 of
+                                                      C_bsnd_1004 v36
+                                                        -> coe
+                                                             C_o'45'fork_1976
+                                                             (d_ownOf_2216
+                                                                (coe v0) (coe v1) (coe v30)
+                                                                (coe v23) (coe v21) (coe v29))
+                                                             (d_ownOf_2216
+                                                                (coe v0) (coe v1) (coe v31)
+                                                                (coe v24) (coe v22) (coe v36))
+                                                      _ -> coe v13
+                                               _ -> coe v13
+                                        _ -> coe v13
+                                 _ -> coe v13
+                          _ -> coe v13
+                   C_bfst_994 v18
+                     -> case coe v2 of
+                          C__'8855't__184 v19 v20
+                            -> case coe v12 of
+                                 C_bsnd_1004 v25
+                                   -> coe
+                                        C_o'45'split_1940
+                                        (d_ownOf_2216
+                                           (coe v0) (coe v1) (coe v19) (coe v8) (coe v4) (coe v18))
+                                        (d_ownOf_2216
+                                           (coe v0) (coe v1) (coe v20) (coe v3) (coe v8) (coe v25))
+                                 _ -> coe v13
+                          _ -> coe v13
+                   _ -> coe v13)
+         C_lcase_898 v11 v12
+           -> case coe v3 of
+                C__'8853't__186 v13 v14
                   -> coe
                        C_o'45'case_1954
-                       (coe du_ownOf_2120 (coe v0) (coe v11) (coe v2) (coe v9))
-                       (coe du_ownOf_2120 (coe v0) (coe v12) (coe v2) (coe v10))
-                _ -> coe v4
-         C_bfst_994 v9
-           -> case coe v0 of
-                C__'8855't__184 v10 v11
+                       (d_ownOf_2216
+                          (coe v0) (coe v1) (coe v2) (coe v13) (coe v4) (coe v11))
+                       (d_ownOf_2216
+                          (coe v0) (coe v1) (coe v2) (coe v14) (coe v4) (coe v12))
+                _ -> coe v6
+         C_bfst_994 v11
+           -> case coe v2 of
+                C__'8855't__184 v12 v13
                   -> coe
                        C_o'45'fst_1912
-                       (coe du_ownOf_2120 (coe v10) (coe v1) (coe v2) (coe v9))
-                _ -> coe v4
-         C_bsnd_1004 v9
-           -> case coe v0 of
-                C__'8855't__184 v10 v11
+                       (d_ownOf_2216
+                          (coe v0) (coe v1) (coe v12) (coe v3) (coe v4) (coe v11))
+                _ -> coe v6
+         C_bsnd_1004 v11
+           -> case coe v2 of
+                C__'8855't__184 v12 v13
                   -> coe
                        C_o'45'snd_1924
-                       (coe du_ownOf_2120 (coe v11) (coe v1) (coe v2) (coe v9))
-                _ -> coe v4
+                       (d_ownOf_2216
+                          (coe v0) (coe v1) (coe v13) (coe v3) (coe v4) (coe v11))
+                _ -> coe v6
          C_bev_1084
-           -> case coe v0 of
-                C_Fn_190 v8 v9 v10 v11 -> coe C_o'45'ev_1900
-                _ -> coe v4
-         _ -> coe v4)
+           -> case coe v2 of
+                C_Fn_190 v10 v11 v12 v13 -> coe C_o'45'ev_1900
+                _ -> coe v6
+         _ -> coe v6)
+-- Once.LinCore.Core.ownSeq
+d_ownSeq_2232 ::
+  MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
+  T_Cx_728 ->
+  T_LTy_178 ->
+  T_LTy_178 ->
+  T_LTy_178 ->
+  T_LTy_178 ->
+  T_Tm_758 -> T_Tm_758 -> T_LiftV_2166 -> T_LiftV_2166 -> T_Own_1880
+d_ownSeq_2232 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
+  = case coe v8 of
+      C_lv'45'lift_2178
+        -> coe
+             C_o'45'lift_1990
+             (d_ownOf_2216
+                (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v7))
+      C_lv'45'other_2188
+        -> case coe v9 of
+             C_lv'45'lift_2178
+               -> coe
+                    C_o'45'pre_2004
+                    (d_ownOf_2216
+                       (coe v0) (coe v1) (coe v2) (coe v4) (coe v5) (coe v6))
+             C_lv'45'other_2188 -> coe C_o'45'bg_1892
+             _ -> MAlonzo.RTE.mazUnreachableError
+      _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.LinCore.Core.ownω
-d_ownω_2150 ::
+d_ownω_2274 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   T_Cx_728 ->
   T_LTy_178 -> T_LTy_178 -> T_LTy_178 -> T_Tm_758 -> T_Tm_758
-d_ownω_2150 ~v0 ~v1 v2 v3 v4 v5 = du_ownω_2150 v2 v3 v4 v5
-du_ownω_2150 ::
-  T_LTy_178 -> T_LTy_178 -> T_LTy_178 -> T_Tm_758 -> T_Tm_758
-du_ownω_2150 v0 v1 v2 v3
+d_ownω_2274 v0 v1 v2 v3 v4 v5
   = coe
-      du_ownT_2012 (coe v0) (coe v1) (coe v2) (coe v3)
-      (coe du_ownOf_2120 (coe v0) (coe v1) (coe v2) (coe v3))
+      du_ownT_2040 (coe v2) (coe v3) (coe v4) (coe v5)
+      (coe
+         d_ownOf_2216 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5))
 -- Once.LinCore.Core.ownω-≡
-d_ownω'45''8801'_2164 ::
+d_ownω'45''8801'_2288 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   T_Cx_728 ->
   T_LTy_178 ->
   T_LTy_178 ->
   T_LTy_178 ->
   T_Tm_758 -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_ownω'45''8801'_2164 = erased
+d_ownω'45''8801'_2288 = erased
 -- Once.LinCore.Core.own-gdb
-d_own'45'gdb_2180 ::
+d_own'45'gdb_2304 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   T_Cx_728 ->
   T_Gr_156 ->
   T_LTy_178 ->
   T_LTy_178 -> T_LTy_178 -> T_Tm_758 -> AgdaAny -> AgdaAny
-d_own'45'gdb_2180 ~v0 ~v1 v2 v3 v4 v5 v6 v7
-  = du_own'45'gdb_2180 v2 v3 v4 v5 v6 v7
-du_own'45'gdb_2180 ::
-  T_Gr_156 ->
-  T_LTy_178 ->
-  T_LTy_178 -> T_LTy_178 -> T_Tm_758 -> AgdaAny -> AgdaAny
-du_own'45'gdb_2180 v0 v1 v2 v3 v4 v5
+d_own'45'gdb_2304 v0 v1 v2 v3 v4 v5 v6 v7
   = coe
-      du_own'45'gd_2100 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
-      (coe du_ownOf_2120 (coe v1) (coe v2) (coe v3) (coe v4)) (coe v5)
+      du_own'45'gd_2148 (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
+      (coe
+         d_ownOf_2216 (coe v0) (coe v1) (coe v3) (coe v4) (coe v5) (coe v6))
+      (coe v7)
 -- Once.LinCore.Core.cin-gd
-d_cin'45'gd_2198 ::
+d_cin'45'gd_2322 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   T_Cx_728 ->
   T_Gr_156 ->
   T_LTy_178 ->
   T_LTy_178 -> T_LTy_178 -> T_Tm_758 -> AgdaAny -> AgdaAny
-d_cin'45'gd_2198 ~v0 ~v1 v2 ~v3 ~v4 ~v5 ~v6 v7
-  = du_cin'45'gd_2198 v2 v7
-du_cin'45'gd_2198 :: T_Gr_156 -> AgdaAny -> AgdaAny
-du_cin'45'gd_2198 v0 v1
+d_cin'45'gd_2322 ~v0 ~v1 v2 ~v3 ~v4 ~v5 ~v6 v7
+  = du_cin'45'gd_2322 v2 v7
+du_cin'45'gd_2322 :: T_Gr_156 -> AgdaAny -> AgdaAny
+du_cin'45'gd_2322 v0 v1
   = case coe v0 of
       C_act_158
         -> coe
@@ -2021,44 +2121,44 @@ du_cin'45'gd_2198 v0 v1
       C_eff_160 -> coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.LinCore.Core.Body
-d_Body_2210 a0 a1 a2 = ()
-data T_Body_2210
-  = C_b1_2224 T_Tm_758 AgdaAny | C_bω_2236 T_Tm_758 AgdaAny
+d_Body_2334 a0 a1 a2 = ()
+data T_Body_2334
+  = C_b1_2348 T_Tm_758 AgdaAny | C_bω_2360 T_Tm_758 AgdaAny
 -- Once.LinCore.Core.Defs
-d_Defs_2238 a0 a1 = ()
-data T_Defs_2238
-  = C_ε_2240 | C__'9656'__2246 T_Defs_2238 T_Body_2210
+d_Defs_2362 a0 a1 = ()
+data T_Defs_2362
+  = C_ε_2364 | C__'9656'__2370 T_Defs_2362 T_Body_2334
 -- Once.LinCore.Core.Look
-d_Look_2256 a0 a1 a2 a3 a4 a5 a6 a7 a8 = ()
-data T_Look_2256
-  = C_lk'45'here_2266 | C_lk'45'there_2288 T_Look_2256
+d_Look_2380 a0 a1 a2 a3 a4 a5 a6 a7 a8 = ()
+data T_Look_2380
+  = C_lk'45'here_2390 | C_lk'45'there_2412 T_Look_2380
 -- Once.LinCore.Core.Env
-d_Env_2290 a0 a1 = ()
-data T_Env_2290
-  = C_ε_2292 |
-    C__'9656'__2298 T_Env_2290 (AgdaAny -> AgdaAny -> AgdaAny)
+d_Env_2414 a0 a1 = ()
+data T_Env_2414
+  = C_ε_2416 |
+    C__'9656'__2422 T_Env_2414 (AgdaAny -> AgdaAny -> AgdaAny)
 -- Once.LinCore.Core.lookup
-d_lookup_2306 ::
+d_lookup_2430 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   T_Cx_728 ->
   Integer ->
   T_Sg_704 ->
-  T_Env_2290 ->
+  T_Env_2414 ->
   T__'8715''91'_'93'__738 -> AgdaAny -> AgdaAny -> AgdaAny
-d_lookup_2306 ~v0 v1 ~v2 ~v3 v4 v5 = du_lookup_2306 v1 v4 v5
-du_lookup_2306 ::
+d_lookup_2430 ~v0 v1 ~v2 ~v3 v4 v5 = du_lookup_2430 v1 v4 v5
+du_lookup_2430 ::
   T_Cx_728 ->
-  T_Env_2290 ->
+  T_Env_2414 ->
   T__'8715''91'_'93'__738 -> AgdaAny -> AgdaAny -> AgdaAny
-du_lookup_2306 v0 v1 v2
+du_lookup_2430 v0 v1 v2
   = case coe v1 of
-      C_ε_2292 -> coe (\ v3 v4 -> MAlonzo.RTE.mazUnreachableError)
-      C__'9656'__2298 v5 v6
+      C_ε_2416 -> coe (\ v3 v4 -> MAlonzo.RTE.mazUnreachableError)
+      C__'9656'__2422 v5 v6
         -> case coe v0 of
              C__'9656'__732 v7 v8
                -> case coe v2 of
                     C_here_744 -> coe v6
-                    C_there_754 v13 -> coe du_lookup_2306 (coe v7) (coe v5) (coe v13)
+                    C_there_754 v13 -> coe du_lookup_2430 (coe v7) (coe v5) (coe v13)
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError

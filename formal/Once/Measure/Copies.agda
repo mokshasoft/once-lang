@@ -22,6 +22,8 @@ open import Data.Bool using (Bool; true; false; _∨_; if_then_else_)
 open import Data.Nat using (ℕ; suc; _+_)
 open import Data.Nat.Show using (show)
 open import Data.String using (String; _++_)
+open import Data.List using (List)
+import Data.List as L
 
 open import Once.LinCore.Core fmt
 
@@ -79,6 +81,60 @@ body (bω t _) = tm t
 defs : ∀ {Γ} → Defs Γ → Copies
 defs ε        = none
 defs (ds ▸ b) = defs ds ⊞ body b
+
+-- ★ plan 0.157 S2: where the closures that copy their environment on a lent call are:
+-- each `llamωᶜ` whose environment owns cells, by its environment's type and its body's head
+showT : LTy → String
+showT One          = "1"
+showT Zero         = "0"
+showT (Bt _)       = "w"
+showT (A ⊗t B)     = "(" ++ showT A ++ "*" ++ showT B ++ ")"
+showT (A ⊕t B)     = "(" ++ showT A ++ "+" ++ showT B ++ ")"
+showT (Ct _ X)     = "C" ++ showT X
+showT (Fn _ _ _ _) = "Fn"
+showT (Nu _)       = "Nu"
+showT (μt _)       = "Mu"
+
+private
+  headOf : ∀ {Γ E A B} → Tm Γ E A B → String
+  headOf (f ∘l g)   = headOf f ++ "." ++ headOf g
+  headOf (f ⊗l g)   = "<" ++ headOf f ++ "|" ++ headOf g ++ ">"
+  headOf lunf       = "unf"
+  headOf lid        = "id"
+  headOf lassoc     = "a"
+  headOf (lapp _)   = "app"
+  {-# CATCHALL #-}
+  headOf _          = "_"
+
+  sitesT : ∀ {Γ E A B} → Tm Γ E A B → List String
+  sitesT (f ∘l g)          = sitesT f L.++ sitesT g
+  sitesT (f ⊗l g)          = sitesT f L.++ sitesT g
+  sitesT (lcase f g)       = sitesT f L.++ sitesT g
+  sitesT (lcata F f)       = sitesT f
+  sitesT (lend f)          = sitesT f
+  sitesT (blift f)         = sitesT f
+  sitesT (bfst f)          = sitesT f
+  sitesT (bsnd f)          = sitesT f
+  sitesT (bcaseE f g)      = sitesT f L.++ sitesT g
+  sitesT (bout f)          = sitesT f
+  sitesT (llam b _)        = sitesT b
+  sitesT (llamω b _)       = sitesT b
+  sitesT (llamωᶜ {X = X} b _) =
+    (if cells X then (showT X ++ ":" ++ headOf b) L.∷ L.[] else L.[]) L.++ sitesT b
+  sitesT (liter f _)       = sitesT f
+  {-# CATCHALL #-}
+  sitesT _                 = L.[]
+
+  sitesB : ∀ {Γ σ} → Body Γ σ → List String
+  sitesB (b1 t _) = sitesT t
+  sitesB (bω t _) = sitesT t
+
+clo-sites : ∀ {Γ} → Defs Γ → List String
+clo-sites ε        = L.[]
+clo-sites (ds ▸ b) = clo-sites ds L.++ sitesB b
+
+show-sites : List String → String
+show-sites xs = "clo-sites:" ++ L.foldr (λ s acc → " " ++ s ++ acc) "" xs
 
 show-copies : Copies → String
 show-copies (copies a b c d) =

@@ -339,6 +339,9 @@ own-≈ ρ (o-fork {s = s} p q) (x₁ , x₂) a =
     (≈-trans (bind-assoc (Sem.Lᶜ ρ s (x₁ , x₂) a) _ _)
       (>>=-cong ≈-refl (λ { (a₁ , a₂) →
         ≈-blk refl (>>=-cong (own-≈ ρ p x₁ a₁) (λ b → >>=-cong (own-≈ ρ q x₂ a₂) (λ _ → ≈-refl))) })))
+own-≈ ρ (o-lift p) x a = >>=-cong (own-≈ ρ p x a) (λ _ → ≈-refl)
+own-≈ ρ (o-pre {f = f} p) x a =
+  ≈-blk refl (≈-trans (bind-assoc (Sem.Lᶜ ρ f tt a) _ _) (>>=-cong ≈-refl (λ b → ≈-trans ret-bind (own-≈ ρ p x b))))
 
 -- …and so does the opaque owned entry
 ownω-≈ : ∀ {Δ} (ρ : Env Δ) {X A B} (b : Tm Δ X A B) (x : ⟦ X ⟧) (a : ⟦ A ⟧)

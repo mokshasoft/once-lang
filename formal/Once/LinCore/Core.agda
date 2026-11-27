@@ -673,6 +673,9 @@ data Own {Γ} : ∀ {X A B} → Tm Γ X A B → Set where
   -- each arm owned on its half of the environment and its part of the argument
   o-fork  : ∀ {X₁ X₂ A A₁ A₂ B C} {f : Tm Γ X₁ A₁ B} {g : Tm Γ X₂ A₂ C} {s : Tm Γ (X₁ ⊗t X₂) A (A₁ ⊗t A₂)}
           → Own f → Own g → Own ((bfst {E₂ = X₂} f ⊗l bsnd {E₁ = X₁} g) ∘l s)
+  -- ★ D497: a conversion after, or before, an owned body (a coerced arrow's `g ∘ f a ∘ h`)
+  o-lift  : ∀ {X A B C} {g : Tm Γ One B C} {t : Tm Γ X A B} → Own t → Own (blift {E = X} g ∘l t)
+  o-pre   : ∀ {X A B C} {t : Tm Γ X B C} {f : Tm Γ One A B} → Own t → Own (t ∘l blift {E = X} f)
 
 -- the halves of the environment beside the parts of the argument
 mixO : ∀ {Γ X₁ X₂ A₁ A₂} → Tm Γ One ((X₁ ⊗t X₂) ⊗t (A₁ ⊗t A₂)) ((X₁ ⊗t A₁) ⊗t (X₂ ⊗t A₂))
@@ -689,6 +692,8 @@ ownT (o-snd o)      = ownT o ∘l ((lul ∘l (drop ⊗l lid)) ⊗l lid)
 ownT (o-split p q)  = ownT p ∘l ((lid ⊗l ownT q) ∘l lassoc)
 ownT (o-case p q)   = lcase (ownT p) (ownT q) ∘l ldist
 ownT (o-fork {s = s} p q) = (ownT p ⊗l ownT q) ∘l (mixO ∘l lend (bsnd s))
+ownT (o-lift {g = g} p) = blift g ∘l ownT p
+ownT (o-pre {f = f} p)  = ownT p ∘l (lid ⊗l blift f)
 
 own-blk : ∀ {Γ X A B} {b : Tm Γ X A B} (o : Own b) → Blk b → Blk (ownT o)
 own-blk {b = b} o-bg β                      = ownBg-gd {g = act} b β
@@ -698,13 +703,26 @@ own-blk (o-snd o) (k-snd β)                 = k-∘ (own-blk o β) (k-⊗ (k-�
 own-blk (o-split p q) (k-∘ (k-fst β) (k-snd β′)) = k-∘ (own-blk p β) (k-∘ (k-⊗ k-id (own-blk q β′)) k-assoc)
 own-blk (o-case p q) (k-case β β′)          = k-∘ (k-case (own-blk p β) (own-blk q β′)) k-dist
 own-blk (o-fork p q) (k-∘ (k-⊗ (k-fst β) (k-snd β′)) βs) = k-∘ (k-⊗ (own-blk p β) (own-blk q β′)) (k-∘ k-mixO (k-lend (k-snd βs)))
+own-blk (o-lift p) (k-∘ (k-lift γ) β)        = k-∘ (k-lift γ) (own-blk p β)
+own-blk (o-pre p) (k-∘ β (k-lift φ))         = k-∘ (own-blk p β) (k-⊗ k-id (k-lift φ))
 
 own-gd : ∀ {Γ g X A B} {b : Tm Γ X A B} (o : Own b) → Gd g b → Gd g (ownT o)
 own-gd {g = act} o β = own-blk o β
 own-gd {g = eff} o γ = tt
 
+-- (D497: whether a term is a lifted conversion, a view so `ownOf` splits only on `_∘l_`)
+data LiftV {Γ} : ∀ {X A B} → Tm Γ X A B → Set where
+  lv-lift  : ∀ {X A B} {f : Tm Γ One A B} → LiftV (blift {E = X} f)
+  lv-other : ∀ {X A B} {t : Tm Γ X A B} → LiftV t
+
+liftView : ∀ {Γ X A B} (t : Tm Γ X A B) → LiftV t
+liftView (blift f) = lv-lift
+{-# CATCHALL #-}
+liftView t         = lv-other
+
 -- the certificate the lowering takes: the shapes above, `ownBg` elsewhere
 ownOf : ∀ {Γ X A B} (b : Tm Γ X A B) → Own b
+ownSeq : ∀ {Γ X A B C} (t : Tm Γ X B C) (g : Tm Γ X A B) → LiftV t → LiftV g → Own (t ∘l g)
 ownOf bev               = o-ev
 ownOf (bfst f)          = o-fst (ownOf f)
 ownOf (bsnd f)          = o-snd (ownOf f)
@@ -712,7 +730,12 @@ ownOf (bfst f ∘l bsnd g) = o-split (ownOf f) (ownOf g)
 ownOf (lcase f g)       = o-case (ownOf f) (ownOf g)
 ownOf ((bfst f ⊗l bsnd g) ∘l s) = o-fork (ownOf f) (ownOf g)
 {-# CATCHALL #-}
+ownOf (t ∘l g)          = ownSeq t g (liftView t) (liftView g)
+{-# CATCHALL #-}
 ownOf b                 = o-bg
+ownSeq _ g lv-lift  _        = o-lift (ownOf g)
+ownSeq t _ lv-other lv-lift  = o-pre (ownOf t)
+ownSeq t g lv-other lv-other = o-bg
 
 -- a many-use closure's owned entry
 -- (opaque: the image's conversions compare keys without unfolding the certificate;

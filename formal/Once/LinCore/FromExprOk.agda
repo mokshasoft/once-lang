@@ -101,7 +101,7 @@ open import Once.LinCore.Grade fmt ans using (blk-coh)
 open import Once.IRTy using (IRTy; _⇛[_]_)
 import Once.IRTy as I
 open import Once.LinCore.Bridge fmt ans using (W)
-open import Once.LinCore.Bisim fmt ans using (_≈_; Bl; Bl-refl; ret-bind; bind-return; bind-assoc; assocB; ≈step; ≈call; ≈halt; ≈-refl; ≈-trans; ≈-sym; >>=-cong; _≈[_]_; ret≈R; >>=-congR; ≈-≈R; ≈R-≈; pair-drop; ≈haltR; iter-congR; module _≈_; module _≈[_]_)
+open import Once.LinCore.Bisim fmt ans using (_≈_; Bl; Bl-refl; ≈-blk; ret-bind; bind-return; bind-assoc; assocB; ≈step; ≈call; ≈halt; ≈-refl; ≈-trans; ≈-sym; >>=-cong; _≈[_]_; ret≈R; >>=-congR; ≈-≈R; ≈R-≈; pair-drop; ≈haltR; iter-congR; module _≈_; module _≈[_]_)
 open _≈[_]_ using (blockR)
 open _≈_ using (block≈)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -1568,14 +1568,26 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRT
     ≈-≈R ret-bind (≈R-≈ (>>=-congR (relOf rf wx) (λ r → ret≈R (wF , r)))
                         (≈-sym (≈-trans ret-bind (>>=-cong ret-bind (λ _ → ≈-refl))))) }
 
+  -- ★ D497: a coerced arrow's lent body (the closure read) means its owned body (the closure moved in)
+  lent≈ : ∀ {g X X′ Y Y′} (f : LTm L X′ X) (h : LTm L Y Y′) (c : ⟦ Fn many g X Y ⟧) (a : ⟦ X′ ⟧)
+        → Lᶜ δ (blift h ∘l bev {g = g} ∘l blift f) c a ≈ Lᶜ δ (h ∘l apω {g = g} ∘l (lid ⊗l f)) tt (c , a)
+  lent≈ f h c a =
+    ≈-sym (≈-blk refl (>>=-cong (≈-trans (bind-assoc (Lᶜ δ f tt a) _ _) (>>=-cong ≈-refl (λ b → ret-bind))) (λ _ → ≈-refl)))
+
   rel-coeL : ∀ {m} {A B : Ty m} (p : A <: B) → Rel (coeL {L} p) (coeIR p)
   rel-coeL sub-void   = rel-zero
   rel-coeL sub-unit   = rel-id
   rel-coeL sub-int    = rel-id
   rel-coeL sub-float  = rel-id
-  rel-coeL (sub-arr {q = G.Zero} {π = π} {π′ = π′} a b r) = rel-cloG π′ _ (rel-∘ (rel-coeL b) (rel-apω {π = π}))
-  rel-coeL (sub-arr {q = G.One}  {π = π} {π′ = π′} a b r) = rel-cloG π′ _ (rel-∘ (rel-coeL b) (rel-∘ (rel-apω {π = π}) (rel-arg (rel-coeL a))))
-  rel-coeL (sub-arr {q = G.Many} {π = π} {π′ = π′} a b r) = rel-cloG π′ _ (rel-∘ (rel-coeL b) (rel-∘ (rel-apω {π = π}) (rel-arg (rel-coeL a))))
+  -- (D497: the coerced arrow reads the closure it holds; its lent body means the owned one)
+  rel-coeL (sub-arr {q = G.Zero} {π = π} {π′ = π′} a b r) =
+    rel-cloL π′ _ (λ w wa → relOf (rel-∘ (rel-coeL b) (rel-apω {π = π})) (w , wa))
+  rel-coeL (sub-arr {q = G.One}  {π = π} {π′ = π′} a b r) =
+    rel-cloL π′ _ (λ {x} w {a₀} wa → ≈-≈R (lent≈ (coeL a) (coeL b) x a₀)
+                                      (relOf (rel-∘ (rel-coeL b) (rel-∘ (rel-apω {π = π}) (rel-arg (rel-coeL a)))) (w , wa)))
+  rel-coeL (sub-arr {q = G.Many} {π = π} {π′ = π′} a b r) =
+    rel-cloL π′ _ (λ {x} w {a₀} wa → ≈-≈R (lent≈ (coeL a) (coeL b) x a₀)
+                                      (relOf (rel-∘ (rel-coeL b) (rel-∘ (rel-apω {π = π}) (rel-arg (rel-coeL a)))) (w , wa)))
   rel-coeL (sub-* a b) = mkRel λ { {x , y} {x′ , y′} (wx , wy) →
     ≈R-≈ (>>=-congR (relOf (rel-coeL a) wx) (λ r → >>=-congR (relOf (rel-coeL b) wy) (λ r′ → ret≈R (r , r′))))
          (≈-sym (>>=-cong ret-bind (λ _ → >>=-cong ret-bind (λ _ → ≈-refl)))) }

@@ -277,9 +277,9 @@ module Ops (Σι : ISig) where
   ok-coeL sub-unit   = tt
   ok-coeL sub-int    = tt
   ok-coeL sub-float  = tt
-  ok-coeL (sub-arr {q = G.Zero} a b r) = ok-clo (ok-coeL b , _)
-  ok-coeL (sub-arr {q = G.One}  a b r) = ok-clo (ok-coeL b , (_ , (tt , ok-coeL a)))
-  ok-coeL (sub-arr {q = G.Many} a b r) = ok-clo (ok-coeL b , (_ , (tt , ok-coeL a)))
+  ok-coeL (sub-arr {q = G.Zero} a b r) = ok-clo (ok-coeL b , tt)
+  ok-coeL (sub-arr {q = G.One}  a b r) = ok-clo (ok-coeL b , (tt , ok-coeL a))
+  ok-coeL (sub-arr {q = G.Many} a b r) = ok-clo (ok-coeL b , (tt , ok-coeL a))
   ok-coeL (sub-* a b) = ok-coeL a , ok-coeL b
   ok-coeL (sub-+ a b) = (tt , ok-coeL a) , (tt , ok-coeL b)
   ok-coeL sub-μ      = tt
