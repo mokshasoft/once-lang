@@ -496,7 +496,7 @@ module ElimSem {I D I₀ e : RTm Ξ} {M : RTy ((Ξ ∙) ∙)}
        (MotC j u hj snu mm) ⊩₁∋ ielim D j e u
   dihSem : {C : RTm Ξ} (KC : IKInterp ⊩I C) {p : RTm Ξ}
            (l : ILift (ikpredsOf KC) (Mem KF) p) →
-           (dihTy KF MotC KC l) ⊩₁∋ dih D e C p
+           (dihTy {M = M} KF MotC KC l) ⊩₁∋ dih D e C p
 
   go j u hj snu (imm-ne nt) =
     CR3₁ (MotC j u hj snu (imm-ne nt))
@@ -522,27 +522,27 @@ module ElimSem {I D I₀ e : RTm Ξ} {M : RTy ((Ξ ∙) ∙)}
                        (projl (emb-coh (payInterp₀ cI crfl ⊩I KF Kj)) p
                               (liftPay₀ cI crfl ⊩I KF Kj l)))
     a₃ = relTy (meth-inst (dih D e (app D j) p) p j M)
-               (⊩₁-app (dfst a₂) (dihTy KF MotC Kj l) (dsnd a₂) (dihSem Kj l))
+               (⊩₁-app (dfst a₂) (dihTy {M = M} KF MotC Kj l) (dsnd a₂) (dihSem Kj l))
 
   dihSem (iki-ne n) {p = p} l =
     sn-ne (sne-dih snD snE (sn-ne n) l (sne→dstk n))
   dihSem (iki-exp r k) l =
-    bwd₁-mem⁻ (stepᵀ (ξ-DIhᶜ (snr→⟶ r)) doneᵀ) (dihTy KF MotC k l)
-      (exp₁ (dihTy KF MotC k l) (snr-dihᶜ r) (dihSem k l))
+    bwd₁-mem⁻ (stepᵀ (ξ-DIhᶜ (snr→⟶ r)) doneᵀ) (dihTy {M = M} KF MotC k l)
+      (exp₁ (dihTy {M = M} KF MotC k l) (snr-dihᶜ r) (dihSem k l))
   dihSem iki-ι l =
     sn-exp (snr-dih-ι snD snE l) sn-unit
   dihSem (iki-σ sS sf w k) {p = p} (sn , (q , rest)) =
-    bwd₁-mem⁻ (stepᵀ (DIh-σ _ _ _ _ _) doneᵀ) (dihTy KF MotC (k (fst p) q) rest)
-      (exp₁ (dihTy KF MotC (k (fst p) q) rest) (snr-dih-σ sS) (dihSem (k (fst p) q) rest))
+    bwd₁-mem⁻ (stepᵀ (DIh-σ _ _ _ _ _) doneᵀ) (dihTy {M = M} KF MotC (k (fst p) q) rest)
+      (exp₁ (dihTy {M = M} KF MotC (k (fst p) q) rest) (snr-dih-σ sS) (dihSem (k (fst p) q) rest))
   dihSem (iki-ρ {j = j'} {C = C} sj vj k) {p = p} (sn , ((snf , m) , rest)) =
-    exp₁ (dihTy KF MotC (iki-ρ sj vj k) (sn , ((snf , m) , rest))) snr-dih-ρ
+    exp₁ (dihTy {M = M} KF MotC (iki-ρ sj vj k) (sn , ((snf , m) , rest))) snr-dih-ρ
       (sem-pair (stepᵀ (DIh-ρ D M j' C p) doneᵀ) (MotC j' (fst p) vj snf m)
-                (λ u r → ⊩₁cast (sym (wk-cancel u (DIh D M C (snd p)))) (dihTy KF MotC k rest))
+                (λ u r → ⊩₁cast (sym (wk-cancel u (DIh D M C (snd p)))) (dihTy {M = M} KF MotC k rest))
                 {a = ielim D j' e (fst p)} {b = dih D e C (snd p)}
-                (CR1₁ (MotC j' (fst p) vj snf m) hf) (CR1₁ (dihTy KF MotC k rest) hs)
+                (CR1₁ (MotC j' (fst p) vj snf m) hf) (CR1₁ (dihTy {M = M} KF MotC k rest) hs)
                 hf
                 (⊩₁cast-mem (sym (wk-cancel (ielim D j' e (fst p)) (DIh D M C (snd p))))
-                            (dihTy KF MotC k rest) hs))
+                            (dihTy {M = M} KF MotC k rest) hs))
     where
     hf = go j' (fst p) vj snf m
     hs = dihSem k rest
