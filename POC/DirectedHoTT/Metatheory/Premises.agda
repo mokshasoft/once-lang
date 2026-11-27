@@ -178,7 +178,7 @@ MethG-wf {Δ} {I} {D} {C} {M} {s} dI dD dC dM ds =
     dM₂ : motCtx Δ₂ (renTm vs (renTm vs I)) (renTm vs (renTm vs D)) ⊢ty wk2M M
     dM₂ = subst (λ a → motCtx Δ₂ a (renTm vs (renTm vs D)) ⊢ty wk2M M) (sym (renTm-renTm I))
             (subst (λ b → motCtx Δ₂ (renTm (λ x → vs (vs x)) I) b ⊢ty wk2M M) (sym (renTm-renTm D))
-              (mot-ren (w2⊢ {B = El I} {B' = P₁}) dM))
+              (mot-ren {I = I} {D = D} (w2⊢ {B = El I} {B' = P₁}) dM))
     hm : Sub⊢ (motCtx Δ I D) (MethCtx Δ I D M C) (methSg s)
     hm here =
       ⊢-cast (cong₂ (λ a b → IMu a b (var (vs (vs vz)))) (sym (methSg-wk s I)) (sym (methSg-wk s D))) ds
