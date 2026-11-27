@@ -60,8 +60,11 @@ What follows from this:
 | 8 | Codata | ν, `unfold`, `iter` as core formers (servers) | none | A pure, productive ν at 0 for proofs (and for reifying `eff`) | master keeps its runtime story; DT adds ν at 0 |
 | 9 | Base types | `Int` at the target's width, `Float` at its format, effectful operations | unary `Nat` only | Width-parametric word and float MODELS in the DT kernel, erasing to master's primitives | master → DT (the spec) |
 | 10 | Equality | none in the core | `Id`, directed `Hom`, `tr`, `ap` | Proof-level only, at 0; laws stated as `Hom` | DT → master (as the logic) |
-| 12 | Definition identity | `CanonicalName` (module path + name); the program flattened into one telescope, indices assigned after flattening, `defName : Fin s → CanonicalName`; diamonds by name | levels only; each segment checked once over ONE base, so diamonds are not expressible | Names as identity, levels as the kernel's O(1) representation, re-levelling at link time computed from the names | master → DT (PLAN-GRADED §5) |
 | 11 | Linear core | `LinCore`: point-free, simply typed, explicit `dup`/`drop` | none (`NbEPLinCore` was its seed) | Master's; the DT kernel reaches it only through erasure | stays on master |
+| 12 | Definition identity | `CanonicalName` (module path + name); the program flattened into one telescope, indices assigned after flattening, `defName : Fin s → CanonicalName`; diamonds by name | levels only; each segment checked once over ONE base, so diamonds are not expressible | Names as identity, levels as the kernel's O(1) representation, re-levelling at link time computed from the names | master → DT (PLAN-GRADED §5) |
+| 13 | Variance | per-parameter variance planned for nested fields (0.147 §3.4), `mapᶜ` for covariant parameters, arrow contravariance in `Spec/Sub`: three separate places | one polarity judgment `Pos x B` / `Neg x B` (`Spec/Variance`) | One polarity judgment serving all three | DT → master (input to plan 0.158) |
+| 14 | Laws and optimisations | `Spec/Equivalence`: symmetric (a partial equivalence of observations) | directed `Hom`: transitivity and congruence (`ap`), provably no symmetry (`SpikeNoSym`) | A directed refinement relation for certified rewrites | DT → master (as a relation in the Spec, proved in Agda) |
+| 15 | Coercions | `Spec/Sub`: canonical coercions, at most one derivation, closed under the formers | transport along a universe path is application (`⊢trU`, directed univalence) | Coercions are paths in the universe; coherence is uniqueness of the path | framing only, no change |
 
 ## 2. Usage grades (QTT)
 
@@ -471,6 +474,47 @@ the ROADMAP was corrected 2026-11-27.
 **Direction.** Stays on master. The POC's claim that "dup-free code
 allocates nothing" (ROADMAP §6) should be stated against this core, not
 proved again elsewhere.
+
+## 12a. What the homotopy part gives master without dependent types
+
+Added 2026-11-27 (rows 13–15).
+
+**Variance (row 13).** The POC's `Spec/Variance` is a syntactic polarity
+judgment: Π flips its domain, Σ is covariant, `Hom` is contravariant in its
+first endpoint and covariant in its second. Master needs exactly this in
+three places that it currently treats separately:
+- plan 0.147 §3.4's variance per parameter, which makes nested fields
+  positive;
+- the functor action `mapᶜ`, which exists exactly for covariant parameters;
+- `Spec/Sub`'s arrow contravariance.
+
+One judgment serves all three, with no dependent types. It belongs in plan
+0.158 (nesting) or plan 0.147's Types patch.
+
+**Directed laws (row 14).** An optimisation is ORIENTED ("replace `t` by
+`u`"). It must hold in every context and must not be usable backwards. The
+kernel's `Hom` has exactly that structure: transitivity composes passes,
+`ap` applies a rewrite inside a term, and there is no symmetry (`sym` is
+false at the universe, `SpikeNoSym`). For master's optimizer (plan 0.129),
+this gives a principled statement:
+- each pass is a directed refinement;
+- passes compose;
+- a pass applies in every context;
+- the relation may be refined by cost ("the same observations, at most the
+  same cost").
+
+Plan 0.147 §5 already lists "laws as directed paths". Its reading
+`Hom t u = t ⟶* u` is marked "to evaluate" there, so it is not
+established. Without dependent types, this would be a relation in master's
+Spec proved in Agda, not a type in Once.
+
+**Coercions (row 15).** Transport along a path in the universe is
+application (`⊢trU`). Read on master, `Spec/Sub`'s canonical coercions are
+the inhabitants of `Hom U A B`, its "at most one derivation" is uniqueness
+of the path, and closure under the type formers is transport and `ap`,
+with variance choosing the direction. This explains master's rules but
+does not change them. It is the same structure plan 0.147 §3.5 uses for
+derived structure by transport along a declaration's isomorphism.
 
 ## 12. For the user
 
