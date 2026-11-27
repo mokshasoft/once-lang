@@ -25797,3 +25797,24 @@ one-shot feature tests, where the lambda is called OWNED once: its owned entry i
 the captures (`o-bg`), where the old owned body consumed the captured closure in its last call. The fix, if
 workloads show it: an `Own` case for `readB` whose read's LAST call takes its closure owned (`levω`), at
 D493's five sites.
+
+## D500 — `Linear`, FIRST STAGE: THE USES THE BRIDGE READS; ITS COMPLEMENT IS THE "COPIED HERE" WARNING (2026-11-27, proposed — unattended, for the user's review; plan 0.157 S2 step 3, D6)
+
+**The question.** D6 defines `Linear` on the checked program: no cell-owning variable owned twice on a path,
+where a READ is a projection to a copyable value, a comparison, a tag test, or passing the value to a
+function that only reads it "computed over the whole program". The last kind needs functions that take a
+parameter LENT — a calling convention the bridge does not have (a definition's argument is owned). And `NoCopy`
+needs `Linear → the bridge copies nothing`, so `Linear` may be no wider than what the bridge reads.
+
+**The decision.** Stage it. `Linear₀` (decidable, on `Expr`, by the usages the type checker gives): at every
+place the context is split between two uses (a pair, an application, a `let`, a combinator's parts, a case's
+scrutinee and arms), every variable both sides use has a copyable type (no cells), UNLESS that place reads in
+place (D477/D481/D494/D495: the read forms `Rd`, the fork's projections); and every many-use lambda whose
+captures own cells has a read body (D499). `Linear₀ ⊆` D6's `Linear`; reads through whole-program read-only
+parameters are the next stage (with lent parameters, a calling-convention change: its own D-entry). The
+theorem is stated for `Linear₀` and widens with it.
+
+**The warning** (the user, 2026-11-27: "most real programs should be linear … a warning when it sees something
+that is not linear"; D6: "the compiler names those places"): the complement of `Linear₀`, computed by the same
+checker — each place, the definition, the variable and its type ("copied here"). No warning ⇔ `Linear₀` ⇒
+`NoCopy`: a program without the warning is proved to copy nothing. Later, `--require-linear` makes it an error.
