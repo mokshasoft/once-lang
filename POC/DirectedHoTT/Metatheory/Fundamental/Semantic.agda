@@ -28,7 +28,7 @@ open import DirectedHoTT.Spec.Scope using ( Cx; ε; _∙; Var; vz; vs )
 open import DirectedHoTT.Spec.Syntax
   using ( RTy; base; U; Π; Σ'; El; Hom; Id; Hom-cong₃; Id-cong₃; ⌜Hom⌝-cong₃; tr-cong₃; ap-cong₃; ⌜Id⌝-cong₃; jsub-cong₃; RTm; var; lam; app; pair; fst; snd; absurd; ordtr; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap; ⌜Id⌝; idrefl; jsub; Unit; Nat; unit; nzero; nsuc; natrec; natrec-cong₃; ⌜Nat⌝; ⌜Unit⌝; Desc; Ren; extR; renTy; renTm; Sub; subTy; subTm; extS; idₛ; _∘ᵣ_; subTy-cong; subTm-cong; subTy-renTy; subTm-renTm; renTy-subTy; renTm-subTm; subTy-subTy; subTm-subTm; subTy-id; subTm-id; renTm-renTm; renTm-cong; IMu; ielim; ⌜IMu⌝; εwkTm; DIh; Fin; con; ⌜Fin⌝; dι; dσ; dρ; dpay; dih; fzero; fsuc; fcase; fcase0; psplit )
 open import DirectedHoTT.Spec.Reduction 𝒮
-  using ( _⟶_; _⟶*_; done; step; β; βfst; βsnd; ξ-lam; ξ-appˡ; ξ-appʳ; ξ-pairˡ
+  using ( ⟶head; ⟶cong; _⟶_; _⟶*_; done; step; β; βfst; βsnd; ξ-lam; ξ-appˡ; ξ-appʳ; ξ-pairˡ
         ; ξ-pairʳ; ξ-absurdᶜ; ξ-absurdᵉ; ordtr-z; ordtr-szz; ordtr-ssz
         ; ordtr-szs; ordtr-sss; ξ-ordtrᵃ; ξ-ordtrᵗ; ξ-ordtrᵘ; ξ-ordtrᵖ
         ; ξ-ordtrq; ξ-fst; ξ-snd; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ; ξ-⌜Hom⌝ᶜ
@@ -74,9 +74,9 @@ open import DirectedHoTT.Metatheory.LogicalRelation 𝒮
         ; snr-J-Id; snr-J-Unit; snr-taut; snr-trᵖ; snr-ap-J; snr-apᵖ
         ; snr-jsub-refl; snr-jsubᵖ; snr-natrec-zero; snr-natrec-suc
         ; snr-natrecⁿ; sne-natrec; ne-natrec; sn-unit; sn-nzero; sn-nsuc
-        ; sne-ordtr; ne-ordtr; ordstk?; NatMem; nm-ne; nm-zero; nm-suc; nm-exp
+        ; sne-ordtr; ne-ordtr; NatMem; nm-ne; nm-zero; nm-suc; nm-exp
         ; natmem-whred; ⊩₁Unit; ⊩₁Nat; natstk?-ren; natstk?-red; sne→natstk
-        ; sne→natcstk; natcstk?; natstk?; hstk?; hstk-mk; hstk-nopw; pick; pick-orR; pick-orL
+        ; sne→natcstk; natcstk?; natstk?; hstk-mk; hstk-nopw; pick-orR; pick-orL
         ; snr-hrefl-Nat-z; snr-hrefl-Nat-s; snr-hreflᵃ
         ; sn-whred; homNatSem; homNatSem₀; hns₀-in; bwd₀-mem⁻; StkHd; sh-Hom
         ; sh-NatH; homnat?; trstk?-ren; apstk?-ren; idstk?-ren; nopw?-ren
@@ -90,8 +90,8 @@ open import DirectedHoTT.Metatheory.LogicalRelation 𝒮
         ; payHomT; _⟶snr*_; snr-done; snr-step; ⊩₀_; ⊩₀base; ⊩₀ne; ⊩₀Π; ⊩₀Σ
         ; ⊩₀Hom; _⊩₀∋_; bwd₀; exp₁; ⊩₀Unit; ⊩₀Nat; ⊩₀IMu; ⊩₁IMu; base-nf
         ; Unit-nf; Nat-nf; El-ne-reduct; mkElNe; Hom-stk-reduct; mkHomStk
-        ; trlam?; sne→spine; snr→⟶; exp₀; f≢t; mem-whred₁; homSem₀
-        ; homSem₀-mem-endpoints; sne→stablecd; sne→stableA; trstk?; ⊩₁_
+        ; sne→spine; snr→⟶; exp₀; f≢t; mem-whred₁; homSem₀
+        ; homSem₀-mem-endpoints; sne→stablecd; sne→stableA; ⊩₁_
         ; ⊩₁base; ⊩₁U; ⊩₁ne; ⊩₁Π; ⊩₁Σ; ⊩₁Hom; _⊩₁∋_; bwd₁; irrel₁; conv₁; CR1₀
         ; CR1₁; CR3₀; CR3₁; emb; emb-coh; sem-conv; sem-lam; sem-app; sem-fst
         ; sem-snd; sem-pair; sem-El; sem-⌜base⌝; sem-⌜Π⌝; sem-⌜Σ⌝; sem-⌜Hom⌝
@@ -101,6 +101,7 @@ open import DirectedHoTT.Metatheory.LogicalRelation 𝒮
         ; sne-dih; sne-dpay; sne-fcase; sne-fcase0; sne-psplit; Fin-nf; nopw?
         ; stablecd?; stableA?; deadmot?; ne-dih; ne-dpay; ne-fcase; ne-fcase0
         ; ne-psplit )
+open import DirectedHoTT.Metatheory.Stuck using ( pick; ordstk?; trstk?; trlam?; hstk? )
 
 open import DirectedHoTT.Metatheory.Fundamental.Syntactic 𝒮
 
@@ -1404,7 +1405,7 @@ semTr x₀ {X = X} (⊩₀Π {F = F} {G = G} q Fc Gc) {CT = CT} lk snCT payR
         (⌜Hom⌝-cong₃
           (trans (cong (subTm (extS (single v)))
                        (trans (cong (renTm pwShift) (pwBody-ren vs cT* key₀))
-                              pwvs))
+                              (pwvs {X = pwBody cT*})))
                  (wk-sub-tm (single v) (pwBody cT*)))
           (cong₂ app (trans (wk-sub-tm (single v) (renTm vs aP))
                             (cong (renTm vs) (wk-cancel-tm v aP)))
@@ -1506,7 +1507,8 @@ flatred {c = absurd _ _} _ ()
 flatred {c = ordtr _ _ _ _ _} _ ()
 flatred {c = fst _} _ ()
 flatred {c = snd _} _ ()
-flatred {c = ⌜base⌝} () _
+flatred {c = ⌜base⌝} (⟶head ()) _
+flatred {c = ⌜base⌝} (⟶cong ()) _
 flatred {c = ⌜Π⌝ _ _} _ ()
 flatred {c = ⌜Σ⌝ _ _} _ ()
 flatred {c = hrefl _ _} _ ()
@@ -1570,8 +1572,10 @@ stkel-red (se-el {c = ⌜Unit⌝} k) El-⌜Unit⌝ = se-Unit
 stkel-red (se-el {c = ⌜Nat⌝} k) El-⌜Nat⌝ = se-Nat
 stkel-red (se-el k) El-⌜IMu⌝ = se-IMu
 stkel-red (se-el k) El-⌜Fin⌝ = se-Fin
-stkel-red se-Unit ()
-stkel-red se-Nat ()
+stkel-red se-Unit (⟶head ())
+stkel-red se-Unit (⟶cong ())
+stkel-red se-Nat (⟶head ())
+stkel-red se-Nat (⟶cong ())
 stkel-red se-Fin (ξ-Fin _) = se-Fin
 stkel-red se-IMu (ξ-IMuᴵ r) = se-IMu
 stkel-red se-IMu (ξ-IMuᴰ r) = se-IMu
@@ -1618,7 +1622,8 @@ ett-red (et-hom h) (ξ-Homʳ r) = et-hom h
 ett-red (et-hom se-Nat) (Hom-Nat-z _)    = et-Unit
 ett-red (et-hom se-Nat) (Hom-Nat-sz _)   = et-base
 ett-red (et-hom se-Nat) (Hom-Nat-ss _ _) = et-hom se-Nat
-ett-red et-Unit ()
+ett-red et-Unit (⟶head ())
+ett-red et-Unit (⟶cong ())
 
 ett-star : {A A' : RTy Ξ} → ElStkT A → A ⟶ᵀ* A' → ElStkT A'
 ett-star h doneᵀ       = h

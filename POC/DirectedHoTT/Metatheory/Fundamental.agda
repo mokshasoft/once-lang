@@ -67,7 +67,7 @@ open import DirectedHoTT.Metatheory.SubjectReduction 𝒮 n ok
         ; via-Π; hom-to-Π; U-reduct; ≅ᵀ-Homᵀ; gen-var )
 open import DirectedHoTT.Metatheory.LogicalRelation 𝒮
   using ( SNe; sne-var; sne-app; sne-absurd; sne-fst; sne-snd; sne-hrefl
-        ; hstk-nopw; hstk-mk; pick-orL; hstk?; hstk?-red*ᶜ; sne→natcstk; sne→natstk; snr-hrefl-Nat-z; snr-hrefl-Nat-s; snr-hreflᵃ
+        ; hstk-nopw; hstk-mk; pick-orL; hstk?-red*ᶜ; sne→natcstk; sne→natstk; snr-hrefl-Nat-z; snr-hrefl-Nat-s; snr-hreflᵃ
         ; sne-tr; sne-ap; sne-jsub; Ne; ne-var; ne-app; ne-absurd; ne-fst
         ; ne-snd; ne-hrefl; ne-tr; ne-ap; ne-jsub; homSem₁; SN; sn-ne; sn-lam
         ; sn-pair; sn-cb; sn-cΠ; sn-cΣ; sn-cH; sn-cId; sn-idrefl; sn-exp
@@ -89,9 +89,9 @@ open import DirectedHoTT.Metatheory.LogicalRelation 𝒮
         ; payChain; payT-exp; payT-whred; payT-irrel; payT-cast; payT-code
         ; payHomT; _⟶snr*_; snr-done; snr-step; ⊩₀_; ⊩₀base; ⊩₀ne; ⊩₀Π; ⊩₀Σ
         ; ⊩₀Hom; _⊩₀∋_; bwd₀; exp₁; ⊩₀Unit; ⊩₀Nat; base-nf; Unit-nf; Nat-nf
-        ; El-ne-reduct; mkElNe; Hom-stk-reduct; mkHomStk; nopw?; trlam?
+        ; El-ne-reduct; mkElNe; Hom-stk-reduct; mkHomStk; nopw?
         ; stablecd?; stableA?; idstk?; sne→spine; snr→⟶; exp₀; f≢t; mem-whred₁
-        ; homSem₀; homSem₀-mem-endpoints; sne→stablecd; sne→stableA; trstk?
+        ; homSem₀; homSem₀-mem-endpoints; sne→stablecd; sne→stableA
         ; ⊩₁_; ⊩₁base; ⊩₁U; ⊩₁ne; ⊩₁Π; ⊩₁Σ; ⊩₁Hom; _⊩₁∋_; bwd₁; irrel₁; conv₁
         ; CR1₀; CR1₁; CR3₀; CR3₁; emb; emb-coh; sem-conv; sem-lam; sem-app
         ; sem-fst; sem-snd; sem-pair; sem-El; sem-⌜base⌝; sem-⌜Π⌝; sem-⌜Σ⌝
@@ -105,6 +105,7 @@ open import DirectedHoTT.Metatheory.LogicalRelation 𝒮
         ; sn-fzero; sne-fcase0; fm-exp; fm-ne; fm-suc; sne-dih; sne-dpay
         ; snr-J-Fin; ⊩₁DIhNe
         ; snr-δ )
+open import DirectedHoTT.Metatheory.Stuck using ( trstk?; trlam?; hstk? )
 
 open import DirectedHoTT.Metatheory.Fundamental.Syntactic 𝒮
 open import DirectedHoTT.Metatheory.Fundamental.Semantic 𝒮
