@@ -151,7 +151,7 @@ homheaded? _             = false
 --   key per eliminator family.  The names below are its keys.
 open import DirectedHoTT.Metatheory.Stuck
   using ( Key; stk; spineK; stablecdK; stableAK; pathK; nopwK; deadK; apK; idK; natK; natcK; muK
-        ; finK; dK; var?; pick; ordstk?; ordS?; trstk?; trlam?; hstk? )
+        ; finK; dK; var?; pick; ordstk?; ordS?; trstk?; trlam?; hstk?; homv; hreflv; apv )
 
 spine? stablecd? stableA? pathstk? nopw? deadmot? apstk? idstk? natstk? natcstk? : RTm Γ → 𝔹
 dstk? finstk? mustk? : RTm Γ → 𝔹
@@ -2600,172 +2600,82 @@ dι≢dρ ()
 dσ≢dρ : {S f j C : RTm Γ} → dσ S f ≡ dρ j C → ⊥
 dσ≢dρ ()
 
--- extractors for `fund`'s path analysis: strict neutrals are safe spine
--- heads and stable codes.
+-- extractors for `fund`'s neutral cases: a strict neutral is stuck at
+-- every key whose `hrefl` row is blind to the code (all but the three W2
+-- path keys, which look at `hrefl`'s code and are not neutral-stuck).
+Blind : Key → Set
+Blind pathK = ⊥
+Blind apK   = ⊥
+Blind deadK = ⊥
+Blind _     = ⊤
+
+hsne : (k : Key) {ok : Blind k} {c t : RTm Γ} → hstk? c t ≡ true → hreflv k c t ≡ true
+hsne spineK kn = kn
+hsne pathK {()} kn
+hsne apK   {()} kn
+hsne deadK {()} kn
+hsne stablecdK kn = refl
+hsne stableAK  kn = refl
+hsne nopwK     kn = refl
+hsne idK       kn = refl
+hsne natK      kn = refl
+hsne natcK     kn = refl
+hsne muK       kn = refl
+hsne finK      kn = refl
+hsne dK        kn = refl
+
+apv-ok : (k : Key) {p : RTm Γ} → stk apK p ≡ true → apv k p ≡ true
+apv-ok nopwK     h = refl
+apv-ok spineK    h = h
+apv-ok stablecdK h = h
+apv-ok stableAK  h = h
+apv-ok pathK     h = h
+apv-ok deadK     h = h
+apv-ok apK       h = h
+apv-ok idK       h = h
+apv-ok natK      h = h
+apv-ok natcK     h = h
+apv-ok muK       h = h
+apv-ok finK      h = h
+apv-ok dK        h = h
+
+sne→ : (k : Key) {ok : Blind k} {t : RTm Γ} → SNe t → stk k t ≡ true
+sne→ k (sne-var x)                 = refl
+sne→ k (sne-app n _)               = sne→ spineK n
+sne→ k (sne-absurd _ _)            = refl
+sne→ k (sne-fst n)                 = sne→ spineK n
+sne→ k (sne-snd n)                 = sne→ spineK n
+sne→ k {ok} (sne-hrefl _ _ kn)     = hsne k {ok} kn
+sne→ k (sne-tr _ _ _ key)          = key
+sne→ k (sne-ap _ _ _ key)          = apv-ok k key
+sne→ k (sne-jsub _ _ _ key)        = key
+sne→ k (sne-natrec _ _ _ key)      = key
+sne→ k (sne-ielim _ _ _ _ key)     = key
+sne→ k (sne-dpay _ _ _ key)        = key
+sne→ k (sne-dih _ _ _ _ key)       = key
+sne→ k (sne-fcase _ _ _ key)       = key
+sne→ k (sne-fcase0 _)              = refl
+sne→ k (sne-psplit _ n)            = sne→ spineK n
+sne→ k (sne-ordtr _ _ _ _ _ key)   = key
+
+-- the old names
 sne→spine : {t : RTm Γ} → SNe t → spine? t ≡ true
-sne→spine (sne-var x)        = refl
-sne→spine (sne-app n _)      = sne→spine n
-sne→spine (sne-absurd _ _)     = refl
-sne→spine (sne-fst n)        = sne→spine n
-sne→spine (sne-snd n)        = sne→spine n
-sne→spine (sne-hrefl _ _ kn) = kn
-sne→spine (sne-tr _ _ _ key) = key
-sne→spine (sne-ap _ _ _ key) = key
-sne→spine (sne-jsub _ _ _ key) = key
-sne→spine (sne-natrec _ _ _ key) = key
-sne→spine (sne-ielim _ _ _ _ key) = key
-sne→spine (sne-dpay _ _ _ key) = key
-sne→spine (sne-dih _ _ _ _ key) = key
-sne→spine (sne-fcase _ _ _ key) = key
-sne→spine (sne-fcase0 _) = refl
-sne→spine (sne-psplit _ n) = sne→spine n
-sne→spine (sne-ordtr _ _ _ _ _ key) = key
-
--- ★ the `stableA?` peer.  A strict neutral is never ⌜Nat⌝- or
--- ⌜Hom⌝-headed, so `stableA?` and `stablecd?` agree once the head is
--- exposed — every row is the same term.
--- ★ INDUCTIVE TYPES: the `mustk?` peer, which `⊢elim`'s neutral case
--- needs to feed `sne-elim`.  `mustk?` and `spine?` agree on every neutral
--- former except `hrefl`, where `mustk?` is unconditionally `true` — so
--- every row is either `refl`, the sub-derivation's `spine?`, or the
--- carried key, exactly as in `sne→stableA` below.
+sne→spine = sne→ spineK
 sne→mustk : {t : RTm Γ} → SNe t → mustk? t ≡ true
-sne→mustk (sne-var x)             = refl
-sne→mustk (sne-app n _)           = sne→spine n
-sne→mustk (sne-absurd _ _)        = refl
-sne→mustk (sne-fst n)             = sne→spine n
-sne→mustk (sne-snd n)             = sne→spine n
-sne→mustk (sne-hrefl _ _ _)       = refl
-sne→mustk (sne-tr _ _ _ key)      = key
-sne→mustk (sne-ap _ _ _ key)      = key
-sne→mustk (sne-jsub _ _ _ key)    = key
-sne→mustk (sne-natrec _ _ _ key)  = key
-sne→mustk (sne-ielim _ _ _ _ key) = key
-sne→mustk (sne-dpay _ _ _ key) = key
-sne→mustk (sne-dih _ _ _ _ key) = key
-sne→mustk (sne-fcase _ _ _ key) = key
-sne→mustk (sne-fcase0 _) = refl
-sne→mustk (sne-psplit _ n) = sne→spine n
-sne→mustk (sne-ordtr _ _ _ _ _ key) = key
-
+sne→mustk = sne→ muK
 sne→stableA : {t : RTm Γ} → SNe t → stableA? t ≡ true
-sne→stableA (sne-var x)        = refl
-sne→stableA (sne-app n _)      = sne→spine n
-sne→stableA (sne-absurd _ _)     = refl
-sne→stableA (sne-fst n)        = sne→spine n
-sne→stableA (sne-snd n)        = sne→spine n
-sne→stableA (sne-hrefl _ _ _)    = refl
-sne→stableA (sne-tr _ _ _ key) = key
-sne→stableA (sne-ap _ _ _ key) = key
-sne→stableA (sne-jsub _ _ _ key) = key
-sne→stableA (sne-natrec _ _ _ key) = key
-sne→stableA (sne-ielim _ _ _ _ key) = key
-sne→stableA (sne-dpay _ _ _ key) = key
-sne→stableA (sne-dih _ _ _ _ key) = key
-sne→stableA (sne-fcase _ _ _ key) = key
-sne→stableA (sne-fcase0 _) = refl
-sne→stableA (sne-psplit _ n) = sne→spine n
-sne→stableA (sne-ordtr _ _ _ _ _ key) = key
-
+sne→stableA = sne→ stableAK
 sne→stablecd : {t : RTm Γ} → SNe t → stablecd? t ≡ true
-sne→stablecd (sne-var x)        = refl
-sne→stablecd (sne-app n _)      = sne→spine n
-sne→stablecd (sne-absurd _ _)     = refl
-sne→stablecd (sne-fst n)        = sne→spine n
-sne→stablecd (sne-snd n)        = sne→spine n
-sne→stablecd (sne-hrefl _ _ _)    = refl
-sne→stablecd (sne-tr _ _ _ key) = key
-sne→stablecd (sne-ap _ _ _ key) = key
-sne→stablecd (sne-jsub _ _ _ key) = key
-sne→stablecd (sne-natrec _ _ _ key) = key
-sne→stablecd (sne-ielim _ _ _ _ key) = key
-sne→stablecd (sne-dpay _ _ _ key) = key
-sne→stablecd (sne-dih _ _ _ _ key) = key
-sne→stablecd (sne-fcase _ _ _ key) = key
-sne→stablecd (sne-fcase0 _) = refl
-sne→stablecd (sne-psplit _ n) = sne→spine n
-sne→stablecd (sne-ordtr _ _ _ _ _ key) = key
-
--- ★ WF stage A: a strict neutral is never a numeral — the extractor
--- `fund`'s `⊢natrec` neutral branch needs.
+sne→stablecd = sne→ stablecdK
 sne→natstk : {t : RTm Γ} → SNe t → natstk? t ≡ true
-sne→natstk (sne-var x)          = refl
-sne→natstk (sne-app n _)        = sne→spine n
-sne→natstk (sne-absurd _ _)       = refl
-sne→natstk (sne-fst n)          = sne→spine n
-sne→natstk (sne-snd n)          = sne→spine n
-sne→natstk (sne-hrefl _ _ _)    = refl
-sne→natstk (sne-tr _ _ _ key)   = key
-sne→natstk (sne-ap _ _ _ key)   = key
-sne→natstk (sne-jsub _ _ _ key) = key
-sne→natstk (sne-natrec _ _ _ key) = key
-sne→natstk (sne-ielim _ _ _ _ key) = key
-sne→natstk (sne-dpay _ _ _ key) = key
-sne→natstk (sne-dih _ _ _ _ key) = key
-sne→natstk (sne-fcase _ _ _ key) = key
-sne→natstk (sne-fcase0 _) = refl
-sne→natstk (sne-psplit _ n) = sne→spine n
-sne→natstk (sne-ordtr _ _ _ _ _ key) = key
-
--- ★ F6: a neutral never becomes `⌜Nat⌝` either
+sne→natstk = sne→ natK
 sne→natcstk : {t : RTm Γ} → SNe t → natcstk? t ≡ true
-sne→natcstk (sne-var x)          = refl
-sne→natcstk (sne-app n _)        = sne→spine n
-sne→natcstk (sne-absurd _ _)       = refl
-sne→natcstk (sne-fst n)          = sne→spine n
-sne→natcstk (sne-snd n)          = sne→spine n
-sne→natcstk (sne-hrefl _ _ _)    = refl
-sne→natcstk (sne-tr _ _ _ key)   = key
-sne→natcstk (sne-ap _ _ _ key)   = key
-sne→natcstk (sne-jsub _ _ _ key) = key
-sne→natcstk (sne-natrec _ _ _ key) = key
-sne→natcstk (sne-ielim _ _ _ _ key) = key
-sne→natcstk (sne-dpay _ _ _ key) = key
-sne→natcstk (sne-dih _ _ _ _ key) = key
-sne→natcstk (sne-fcase _ _ _ key) = key
-sne→natcstk (sne-fcase0 _) = refl
-sne→natcstk (sne-psplit _ n) = sne→spine n
-sne→natcstk (sne-ordtr _ _ _ _ _ key) = key
-
--- ★★ LEVITATED FAMILIES: the telescope and tag peers, for `fund`'s neutral
---   `dpay`/`dih`/`fcase` cases.  Every row is `sne→natstk`'s.
+sne→natcstk = sne→ natcK
 sne→dstk : {t : RTm Γ} → SNe t → dstk? t ≡ true
-sne→dstk (sne-var x)          = refl
-sne→dstk (sne-app n _)        = sne→spine n
-sne→dstk (sne-absurd _ _)       = refl
-sne→dstk (sne-fst n)          = sne→spine n
-sne→dstk (sne-snd n)          = sne→spine n
-sne→dstk (sne-hrefl _ _ _)    = refl
-sne→dstk (sne-tr _ _ _ key)   = key
-sne→dstk (sne-ap _ _ _ key)   = key
-sne→dstk (sne-jsub _ _ _ key) = key
-sne→dstk (sne-natrec _ _ _ key) = key
-sne→dstk (sne-ielim _ _ _ _ key) = key
-sne→dstk (sne-dpay _ _ _ key) = key
-sne→dstk (sne-dih _ _ _ _ key) = key
-sne→dstk (sne-fcase _ _ _ key) = key
-sne→dstk (sne-fcase0 _) = refl
-sne→dstk (sne-psplit _ n) = sne→spine n
-sne→dstk (sne-ordtr _ _ _ _ _ key) = key
-
+sne→dstk = sne→ dK
 sne→finstk : {t : RTm Γ} → SNe t → finstk? t ≡ true
-sne→finstk (sne-var x)          = refl
-sne→finstk (sne-app n _)        = sne→spine n
-sne→finstk (sne-absurd _ _)       = refl
-sne→finstk (sne-fst n)          = sne→spine n
-sne→finstk (sne-snd n)          = sne→spine n
-sne→finstk (sne-hrefl _ _ _)    = refl
-sne→finstk (sne-tr _ _ _ key)   = key
-sne→finstk (sne-ap _ _ _ key)   = key
-sne→finstk (sne-jsub _ _ _ key) = key
-sne→finstk (sne-natrec _ _ _ key) = key
-sne→finstk (sne-ielim _ _ _ _ key) = key
-sne→finstk (sne-dpay _ _ _ key) = key
-sne→finstk (sne-dih _ _ _ _ key) = key
-sne→finstk (sne-fcase _ _ _ key) = key
-sne→finstk (sne-fcase0 _) = refl
-sne→finstk (sne-psplit _ n) = sne→spine n
-sne→finstk (sne-ordtr _ _ _ _ _ key) = key
+sne→finstk = sne→ finK
+
 
 -- renaming preserves every classifier ON THE NOSE — the entire
 -- anti-renaming bill for the shape layer.
@@ -2811,97 +2721,127 @@ homheaded?-ren ρ (fcase0 t) = refl
 homheaded?-ren ρ (psplit b q) = refl
 homheaded?-ren ρ (ref d) = refl
 
-spine?-ren    : (ρ : Ren Γ Δ) (t : RTm Γ) → spine? (renTm ρ t) ≡ spine? t
+hstk?-ren     : (ρ : Ren Γ Δ) (c t : RTm Γ) → hstk? (renTm ρ c) (renTm ρ t) ≡ hstk? c t
+stk-ren       : (k : Key) (ρ : Ren Γ Δ) (t : RTm Γ) → stk k (renTm ρ t) ≡ stk k t
+homv-ren      : (k : Key) (ρ : Ren Γ Δ) (c : RTm Γ) → homv k (renTm ρ c) ≡ homv k c
+hreflv-ren    : (k : Key) (ρ : Ren Γ Δ) (c t : RTm Γ) →
+                hreflv k (renTm ρ c) (renTm ρ t) ≡ hreflv k c t
+apv-ren       : (k : Key) (ρ : Ren Γ Δ) (p : RTm Γ) → apv k (renTm ρ p) ≡ apv k p
 -- the order's renaming stability, shared by all nine classifiers.
 ordstk?-ren   : (ρ : Ren Γ Δ) (a t u : RTm Γ) →
                 ordstk? (renTm ρ a) (renTm ρ t) (renTm ρ u) ≡ ordstk? a t u
 ordS?-ren     : (b : 𝔹) (ρ : Ren Γ Δ) (u : RTm Γ) →
                 ordS? b (renTm ρ u) ≡ ordS? b u
-stableA?-ren  : (ρ : Ren Γ Δ) (t : RTm Γ) →
-                stableA? (renTm ρ t) ≡ stableA? t
-stablecd?-ren : (ρ : Ren Γ Δ) (t : RTm Γ) →
-                stablecd? (renTm ρ t) ≡ stablecd? t
-apstk?-ren    : (ρ : Ren Γ Δ) (t : RTm Γ) →
-                apstk? (renTm ρ t) ≡ apstk? t
-natstk?-ren   : (ρ : Ren Γ Δ) (t : RTm Γ) → natstk? (renTm ρ t) ≡ natstk? t
-natcstk?-ren  : (ρ : Ren Γ Δ) (t : RTm Γ) → natcstk? (renTm ρ t) ≡ natcstk? t
-dstk?-ren     : (ρ : Ren Γ Δ) (t : RTm Γ) → dstk? (renTm ρ t) ≡ dstk? t
-finstk?-ren   : (ρ : Ren Γ Δ) (t : RTm Γ) → finstk? (renTm ρ t) ≡ finstk? t
-mustk?-ren    : (ρ : Ren Γ Δ) (t : RTm Γ) → mustk? (renTm ρ t) ≡ mustk? t
-idstk?-ren    : (ρ : Ren Γ Δ) (t : RTm Γ) →
-                idstk? (renTm ρ t) ≡ idstk? t
-pathstk?-ren  : (ρ : Ren Γ Δ) (t : RTm Γ) →
-                pathstk? (renTm ρ t) ≡ pathstk? t
 trstk?-ren    : (ρ : Ren Γ Δ) (d : RTm (Γ ∙)) (p : RTm Γ) →
                 trstk? (renTm (extR ρ) d) (renTm ρ p) ≡ trstk? d p
-nopw?-ren     : (ρ : Ren Γ Δ) (t : RTm Γ) → nopw? (renTm ρ t) ≡ nopw? t
-deadmot?-ren  : (ρ : Ren Γ Δ) (t : RTm Γ) →
-                deadmot? (renTm ρ t) ≡ deadmot? t
 trlam?-ren    : (ρ : Ren Γ Δ) (d : RTm (Γ ∙)) →
                 trlam? (renTm (extR ρ) d) ≡ trlam? d
 
-spine?-ren ρ (var x)       = refl
-spine?-ren ρ (lam t)       = refl
-spine?-ren ρ (app t u)     = spine?-ren ρ t
-spine?-ren ρ (pair a b)    = refl
-spine?-ren ρ (absurd c e)       = refl
-spine?-ren ρ (ordtr a t u p q) = ordstk?-ren ρ a t u
-spine?-ren ρ (fst t)       = spine?-ren ρ t
-spine?-ren ρ (snd t)       = spine?-ren ρ t
-spine?-ren ρ ⌜base⌝        = refl
-spine?-ren ρ ⌜Nat⌝ = refl
-spine?-ren ρ ⌜Unit⌝ = refl
-spine?-ren ρ (⌜Π⌝ c d)     = refl
-spine?-ren ρ (⌜Σ⌝ c d)     = refl
-spine?-ren ρ (⌜Hom⌝ c a b) = refl
-spine?-ren ρ (hrefl c t)   =
-  pick≡ (nopw?-ren ρ c) (pick≡ (natstk?-ren ρ t) refl (natcstk?-ren ρ c)) refl
-spine?-ren ρ (tr d p e)    = trstk?-ren ρ d p
-spine?-ren ρ (ap c b p)    = apstk?-ren ρ p
-spine?-ren ρ (⌜Id⌝ c a b)  = refl
-spine?-ren ρ (idrefl c t)  = refl
-spine?-ren ρ (jsub d p e)  = idstk?-ren ρ p
-spine?-ren ρ unit          = refl
-spine?-ren ρ nzero         = refl
-spine?-ren ρ (nsuc n)      = refl
-spine?-ren ρ (natrec z s n) = natstk?-ren ρ n
-spine?-ren ρ (⌜IMu⌝ Dˣ Iˣ iˣ) = refl
-spine?-ren ρ (ielim D iˣ ms t) = mustk?-ren ρ t
-spine?-ren ρ (⌜Fin⌝ n) = refl
-spine?-ren ρ (con p) = refl
-spine?-ren ρ dι = refl
-spine?-ren ρ (dσ S f) = refl
-spine?-ren ρ (dρ j C) = refl
-spine?-ren ρ (dpay I D C) = dstk?-ren ρ C
-spine?-ren ρ (dih D e C p) = dstk?-ren ρ C
-spine?-ren ρ fzero = refl
-spine?-ren ρ (fsuc t) = refl
-spine?-ren ρ (fcase t a b) = finstk?-ren ρ t
-spine?-ren ρ (fcase0 t) = refl
-spine?-ren ρ (psplit b q) = spine?-ren ρ q
-spine?-ren ρ (ref d) = refl
+hstk?-ren ρ c t = pick≡ (stk-ren nopwK ρ c) (pick≡ (stk-ren natK ρ t) refl (stk-ren natcK ρ c)) refl
+
+stk-ren k ρ (var x)            = refl
+stk-ren k ρ (lam t)            = refl
+stk-ren k ρ (app t u)          = stk-ren spineK ρ t
+stk-ren k ρ (pair a b)         = refl
+stk-ren k ρ (absurd c e)       = refl
+stk-ren k ρ (ordtr a t u p q)  = ordstk?-ren ρ a t u
+stk-ren k ρ (fst t)            = stk-ren spineK ρ t
+stk-ren k ρ (snd t)            = stk-ren spineK ρ t
+stk-ren k ρ ⌜base⌝             = refl
+stk-ren k ρ ⌜Nat⌝              = refl
+stk-ren k ρ ⌜Unit⌝             = refl
+stk-ren k ρ (⌜Π⌝ c d)          = refl
+stk-ren k ρ (⌜Σ⌝ c d)          = refl
+stk-ren k ρ (⌜Hom⌝ c a b)      = homv-ren k ρ c
+stk-ren k ρ (hrefl c t)        = hreflv-ren k ρ c t
+stk-ren k ρ (tr d p e)         = trstk?-ren ρ d p
+stk-ren k ρ (ap c b p)         = apv-ren k ρ p
+stk-ren k ρ (⌜Id⌝ c a b)       = refl
+stk-ren k ρ (idrefl c t)       = refl
+stk-ren k ρ (jsub d p e)       = stk-ren idK ρ p
+stk-ren k ρ unit               = refl
+stk-ren k ρ nzero              = refl
+stk-ren k ρ (nsuc n)           = refl
+stk-ren k ρ (natrec z s n)     = stk-ren natK ρ n
+stk-ren k ρ (⌜IMu⌝ Dˣ Iˣ iˣ)   = refl
+stk-ren k ρ (ielim D iˣ ms t)  = stk-ren muK ρ t
+stk-ren k ρ (⌜Fin⌝ n)          = refl
+stk-ren k ρ (con p)            = refl
+stk-ren k ρ dι                 = refl
+stk-ren k ρ (dσ S f)           = refl
+stk-ren k ρ (dρ j C)           = refl
+stk-ren k ρ (dpay I D C)       = stk-ren dK ρ C
+stk-ren k ρ (dih D e C p)      = stk-ren dK ρ C
+stk-ren k ρ fzero              = refl
+stk-ren k ρ (fsuc t)           = refl
+stk-ren k ρ (fcase t a b)      = stk-ren finK ρ t
+stk-ren k ρ (fcase0 t)         = refl
+stk-ren k ρ (psplit b q)       = stk-ren spineK ρ q
+stk-ren k ρ (ref d)            = refl
+
+homv-ren stablecdK ρ c = stk-ren stableAK ρ c
+homv-ren stableAK  ρ c = stk-ren stableAK ρ c
+homv-ren nopwK     ρ c = stk-ren nopwK ρ c
+homv-ren deadK     ρ c = stk-ren deadK ρ c
+homv-ren spineK    ρ c = refl
+homv-ren pathK     ρ c = refl
+homv-ren apK       ρ c = refl
+homv-ren idK       ρ c = refl
+homv-ren natK      ρ c = refl
+homv-ren natcK     ρ c = refl
+homv-ren muK       ρ c = refl
+homv-ren finK      ρ c = refl
+homv-ren dK        ρ c = refl
+
+hreflv-ren spineK    ρ c t = hstk?-ren ρ c t
+hreflv-ren pathK     ρ c t = stk-ren stablecdK ρ c
+hreflv-ren apK       ρ c t = stk-ren stablecdK ρ c
+hreflv-ren deadK     ρ c t = stk-ren deadK ρ c
+hreflv-ren stablecdK ρ c t = refl
+hreflv-ren stableAK  ρ c t = refl
+hreflv-ren nopwK     ρ c t = refl
+hreflv-ren idK       ρ c t = refl
+hreflv-ren natK      ρ c t = refl
+hreflv-ren natcK     ρ c t = refl
+hreflv-ren muK       ρ c t = refl
+hreflv-ren finK      ρ c t = refl
+hreflv-ren dK        ρ c t = refl
+
+apv-ren nopwK     ρ p = refl
+apv-ren spineK    ρ p = stk-ren apK ρ p
+apv-ren stablecdK ρ p = stk-ren apK ρ p
+apv-ren stableAK  ρ p = stk-ren apK ρ p
+apv-ren pathK     ρ p = stk-ren apK ρ p
+apv-ren deadK     ρ p = stk-ren apK ρ p
+apv-ren apK       ρ p = stk-ren apK ρ p
+apv-ren idK       ρ p = stk-ren apK ρ p
+apv-ren natK      ρ p = stk-ren apK ρ p
+apv-ren natcK     ρ p = stk-ren apK ρ p
+apv-ren muK       ρ p = stk-ren apK ρ p
+apv-ren finK      ρ p = stk-ren apK ρ p
+apv-ren dK        ρ p = stk-ren apK ρ p
 
 ordS?-ren true  ρ u = refl
-ordS?-ren false ρ u = natstk?-ren ρ u
+ordS?-ren false ρ u = stk-ren natK ρ u
 
 ordstk?-ren ρ nzero t u = refl
 ordstk?-ren ρ (nsuc a₀) t u =
-  trans (cong (λ b → ordS? b (renTm ρ u)) (natstk?-ren ρ t))
+  trans (cong (λ b → ordS? b (renTm ρ u)) (stk-ren natK ρ t))
         (ordS?-ren (natstk? t) ρ u)
 -- every other head of the bound falls to `ordstk?`'s catch-all
--- `natstk? a`, so each row is `natstk?-ren ρ a` — the enumeration is
+-- `natstk? a`, so each row is `stk-ren natK ρ a` — the enumeration is
 -- irreducible (nothing pins `a`'s head) but every row is mechanical.
 -- ★ the `ordtr` row recurses into `ordstk?-ren` DIRECTLY rather than
--- bouncing through `natstk?-ren` — same term, but structurally
+-- bouncing through `stk-ren natK` — same term, but structurally
 -- decreasing, which keeps the mutual block's termination graph trivial.
 ordstk?-ren ρ (var x) t u          = refl
 ordstk?-ren ρ (lam a₀) t u         = refl
-ordstk?-ren ρ (app a₀ a₁) t u      = spine?-ren ρ a₀
+ordstk?-ren ρ (app a₀ a₁) t u      = stk-ren spineK ρ a₀
 ordstk?-ren ρ (pair a₀ a₁) t u     = refl
 ordstk?-ren ρ (absurd a₀ a₁) t u   = refl
 ordstk?-ren ρ (ordtr a₀ t₀ u₀ p₀ q₀) t u = ordstk?-ren ρ a₀ t₀ u₀
-ordstk?-ren ρ (fst a₀) t u         = spine?-ren ρ a₀
-ordstk?-ren ρ (snd a₀) t u         = spine?-ren ρ a₀
+ordstk?-ren ρ (fst a₀) t u         = stk-ren spineK ρ a₀
+ordstk?-ren ρ (snd a₀) t u         = stk-ren spineK ρ a₀
 ordstk?-ren ρ ⌜base⌝ t u           = refl
 ordstk?-ren ρ ⌜Nat⌝ t u            = refl
 ordstk?-ren ρ ⌜Unit⌝ t u           = refl
@@ -2910,592 +2850,111 @@ ordstk?-ren ρ (⌜Σ⌝ a₀ a₁) t u      = refl
 ordstk?-ren ρ (⌜Hom⌝ a₀ a₁ a₂) t u = refl
 ordstk?-ren ρ (hrefl a₀ a₁) t u    = refl
 ordstk?-ren ρ (tr a₀ a₁ a₂) t u    = trstk?-ren ρ a₀ a₁
-ordstk?-ren ρ (ap a₀ a₁ a₂) t u    = apstk?-ren ρ a₂
+ordstk?-ren ρ (ap a₀ a₁ a₂) t u    = stk-ren apK ρ a₂
 ordstk?-ren ρ (⌜Id⌝ a₀ a₁ a₂) t u  = refl
 ordstk?-ren ρ (idrefl a₀ a₁) t u   = refl
-ordstk?-ren ρ (jsub a₀ a₁ a₂) t u  = idstk?-ren ρ a₁
+ordstk?-ren ρ (jsub a₀ a₁ a₂) t u  = stk-ren idK ρ a₁
 ordstk?-ren ρ unit t u             = refl
-ordstk?-ren ρ (natrec a₀ a₁ a₂) t u = natstk?-ren ρ a₂
+ordstk?-ren ρ (natrec a₀ a₁ a₂) t u = stk-ren natK ρ a₂
 ordstk?-ren ρ (⌜IMu⌝ Dˣ Iˣ iˣ) t u           = refl
-ordstk?-ren ρ (ielim D iˣ ms a₀) t u = mustk?-ren ρ a₀
+ordstk?-ren ρ (ielim D iˣ ms a₀) t u = stk-ren muK ρ a₀
 ordstk?-ren ρ (⌜Fin⌝ n) t u = refl
 ordstk?-ren ρ (con p) t u = refl
 ordstk?-ren ρ dι t u = refl
 ordstk?-ren ρ (dσ S f) t u = refl
 ordstk?-ren ρ (dρ j C) t u = refl
-ordstk?-ren ρ (dpay I D C) t u = dstk?-ren ρ C
-ordstk?-ren ρ (dih D e C p) t u = dstk?-ren ρ C
+ordstk?-ren ρ (dpay I D C) t u = stk-ren dK ρ C
+ordstk?-ren ρ (dih D e C p) t u = stk-ren dK ρ C
 ordstk?-ren ρ fzero t u = refl
 ordstk?-ren ρ (fsuc t₀) t u = refl
-ordstk?-ren ρ (fcase t₀ a b) t u = finstk?-ren ρ t₀
+ordstk?-ren ρ (fcase t₀ a b) t u = stk-ren finK ρ t₀
 ordstk?-ren ρ (fcase0 t₀) t u = refl
-ordstk?-ren ρ (psplit b q) t u = spine?-ren ρ q
+ordstk?-ren ρ (psplit b q) t u = stk-ren spineK ρ q
 ordstk?-ren ρ (ref d) t u = refl
 
--- ★ the `stableA?` peer of `stablecd?-ren`.
-stableA?-ren ρ (var x)       = refl
-stableA?-ren ρ (lam t)       = refl
-stableA?-ren ρ (app t u)     = spine?-ren ρ t
-stableA?-ren ρ (pair a b)    = refl
-stableA?-ren ρ (absurd c e)       = refl
-stableA?-ren ρ (ordtr a t u p q) = ordstk?-ren ρ a t u
-stableA?-ren ρ (fst t)       = spine?-ren ρ t
-stableA?-ren ρ (snd t)       = spine?-ren ρ t
-stableA?-ren ρ ⌜base⌝        = refl
-stableA?-ren ρ ⌜Nat⌝ = refl
-stableA?-ren ρ ⌜Unit⌝ = refl
-stableA?-ren ρ (⌜Π⌝ c d)     = refl
-stableA?-ren ρ (⌜Σ⌝ c d)     = refl
-stableA?-ren ρ (⌜Hom⌝ c a b) = stableA?-ren ρ c
-stableA?-ren ρ (hrefl c t)   = refl
-stableA?-ren ρ (tr d p e)    = trstk?-ren ρ d p
-stableA?-ren ρ (ap c b p)    = apstk?-ren ρ p
-stableA?-ren ρ (⌜Id⌝ c a b)  = refl
-stableA?-ren ρ (idrefl c t)  = refl
-stableA?-ren ρ (jsub d p e)  = idstk?-ren ρ p
-stableA?-ren ρ unit          = refl
-stableA?-ren ρ nzero         = refl
-stableA?-ren ρ (nsuc n)      = refl
-stableA?-ren ρ (natrec z s n) = natstk?-ren ρ n
-stableA?-ren ρ (⌜IMu⌝ Dˣ Iˣ iˣ) = refl
-stableA?-ren ρ (ielim D iˣ ms t) = mustk?-ren ρ t
-stableA?-ren ρ (⌜Fin⌝ n) = refl
-stableA?-ren ρ (con p) = refl
-stableA?-ren ρ dι = refl
-stableA?-ren ρ (dσ S f) = refl
-stableA?-ren ρ (dρ j C) = refl
-stableA?-ren ρ (dpay I D C) = dstk?-ren ρ C
-stableA?-ren ρ (dih D e C p) = dstk?-ren ρ C
-stableA?-ren ρ fzero = refl
-stableA?-ren ρ (fsuc t) = refl
-stableA?-ren ρ (fcase t a b) = finstk?-ren ρ t
-stableA?-ren ρ (fcase0 t) = refl
-stableA?-ren ρ (psplit b q) = spine?-ren ρ q
-stableA?-ren ρ (ref d) = refl
+-- ★ the `stableA?` peer of `stk-ren stablecdK`.
 
-stablecd?-ren ρ (var x)       = refl
-stablecd?-ren ρ (lam t)       = refl
-stablecd?-ren ρ (app t u)     = spine?-ren ρ t
-stablecd?-ren ρ (pair a b)    = refl
-stablecd?-ren ρ (absurd c e)       = refl
-stablecd?-ren ρ (ordtr a t u p q) = ordstk?-ren ρ a t u
-stablecd?-ren ρ (fst t)       = spine?-ren ρ t
-stablecd?-ren ρ (snd t)       = spine?-ren ρ t
-stablecd?-ren ρ ⌜base⌝        = refl
-stablecd?-ren ρ ⌜Nat⌝ = refl
-stablecd?-ren ρ ⌜Unit⌝ = refl
-stablecd?-ren ρ (⌜Π⌝ c d)     = refl
-stablecd?-ren ρ (⌜Σ⌝ c d)     = refl
-stablecd?-ren ρ (⌜Hom⌝ c a b) = stableA?-ren ρ c
-stablecd?-ren ρ (hrefl c t)   = refl
-stablecd?-ren ρ (tr d p e)    = trstk?-ren ρ d p
-stablecd?-ren ρ (ap c b p)    = apstk?-ren ρ p
-stablecd?-ren ρ (⌜Id⌝ c a b)  = refl
-stablecd?-ren ρ (idrefl c t)  = refl
-stablecd?-ren ρ (jsub d p e)  = idstk?-ren ρ p
-stablecd?-ren ρ unit          = refl
-stablecd?-ren ρ nzero         = refl
-stablecd?-ren ρ (nsuc n)      = refl
-stablecd?-ren ρ (natrec z s n) = natstk?-ren ρ n
-stablecd?-ren ρ (⌜IMu⌝ Dˣ Iˣ iˣ) = refl
-stablecd?-ren ρ (ielim D iˣ ms t) = mustk?-ren ρ t
-stablecd?-ren ρ (⌜Fin⌝ n) = refl
-stablecd?-ren ρ (con p) = refl
-stablecd?-ren ρ dι = refl
-stablecd?-ren ρ (dσ S f) = refl
-stablecd?-ren ρ (dρ j C) = refl
-stablecd?-ren ρ (dpay I D C) = dstk?-ren ρ C
-stablecd?-ren ρ (dih D e C p) = dstk?-ren ρ C
-stablecd?-ren ρ fzero = refl
-stablecd?-ren ρ (fsuc t) = refl
-stablecd?-ren ρ (fcase t a b) = finstk?-ren ρ t
-stablecd?-ren ρ (fcase0 t) = refl
-stablecd?-ren ρ (psplit b q) = spine?-ren ρ q
-stablecd?-ren ρ (ref d) = refl
 
-pathstk?-ren ρ (var x)       = refl
-pathstk?-ren ρ (lam t)       = refl
-pathstk?-ren ρ (app t u)     = spine?-ren ρ t
-pathstk?-ren ρ (pair a b)    = refl
-pathstk?-ren ρ (absurd c e)       = refl
-pathstk?-ren ρ (ordtr a t u p q) = ordstk?-ren ρ a t u
-pathstk?-ren ρ (fst t)       = spine?-ren ρ t
-pathstk?-ren ρ (snd t)       = spine?-ren ρ t
-pathstk?-ren ρ ⌜base⌝        = refl
-pathstk?-ren ρ ⌜Nat⌝ = refl
-pathstk?-ren ρ ⌜Unit⌝ = refl
-pathstk?-ren ρ (⌜Π⌝ c d)     = refl
-pathstk?-ren ρ (⌜Σ⌝ c d)     = refl
-pathstk?-ren ρ (⌜Hom⌝ c a b) = refl
-pathstk?-ren ρ (hrefl c t)   = stablecd?-ren ρ c
-pathstk?-ren ρ (tr d p e)    = trstk?-ren ρ d p
-pathstk?-ren ρ (ap c b p)    = apstk?-ren ρ p
-pathstk?-ren ρ (⌜Id⌝ c a b)  = refl
-pathstk?-ren ρ (idrefl c t)  = refl
-pathstk?-ren ρ (jsub d p e)  = idstk?-ren ρ p
-pathstk?-ren ρ unit          = refl
-pathstk?-ren ρ nzero         = refl
-pathstk?-ren ρ (nsuc n)      = refl
-pathstk?-ren ρ (natrec z s n) = natstk?-ren ρ n
-pathstk?-ren ρ (⌜IMu⌝ Dˣ Iˣ iˣ) = refl
-pathstk?-ren ρ (ielim D iˣ ms t) = mustk?-ren ρ t
-pathstk?-ren ρ (⌜Fin⌝ n) = refl
-pathstk?-ren ρ (con p) = refl
-pathstk?-ren ρ dι = refl
-pathstk?-ren ρ (dσ S f) = refl
-pathstk?-ren ρ (dρ j C) = refl
-pathstk?-ren ρ (dpay I D C) = dstk?-ren ρ C
-pathstk?-ren ρ (dih D e C p) = dstk?-ren ρ C
-pathstk?-ren ρ fzero = refl
-pathstk?-ren ρ (fsuc t) = refl
-pathstk?-ren ρ (fcase t a b) = finstk?-ren ρ t
-pathstk?-ren ρ (fcase0 t) = refl
-pathstk?-ren ρ (psplit b q) = spine?-ren ρ q
-pathstk?-ren ρ (ref d) = refl
-
-apstk?-ren ρ (var x)       = refl
-apstk?-ren ρ (lam t)       = refl
-apstk?-ren ρ (app t u)     = spine?-ren ρ t
-apstk?-ren ρ (pair a b)    = refl
-apstk?-ren ρ (absurd c e)       = refl
-apstk?-ren ρ (ordtr a t u p q) = ordstk?-ren ρ a t u
-apstk?-ren ρ (fst t)       = spine?-ren ρ t
-apstk?-ren ρ (snd t)       = spine?-ren ρ t
-apstk?-ren ρ ⌜base⌝        = refl
-apstk?-ren ρ ⌜Nat⌝ = refl
-apstk?-ren ρ ⌜Unit⌝ = refl
-apstk?-ren ρ (⌜Π⌝ c d)     = refl
-apstk?-ren ρ (⌜Σ⌝ c d)     = refl
-apstk?-ren ρ (⌜Hom⌝ c a b) = refl
-apstk?-ren ρ (hrefl c t)   = stablecd?-ren ρ c
-apstk?-ren ρ (tr d p e)    = trstk?-ren ρ d p
-apstk?-ren ρ (ap c b p)    = apstk?-ren ρ p
-apstk?-ren ρ (⌜Id⌝ c a b)  = refl
-apstk?-ren ρ (idrefl c t)  = refl
-apstk?-ren ρ (jsub d p e)  = idstk?-ren ρ p
-apstk?-ren ρ unit          = refl
-apstk?-ren ρ nzero         = refl
-apstk?-ren ρ (nsuc n)      = refl
-apstk?-ren ρ (natrec z s n) = natstk?-ren ρ n
-apstk?-ren ρ (⌜IMu⌝ Dˣ Iˣ iˣ) = refl
-apstk?-ren ρ (ielim D iˣ ms t) = mustk?-ren ρ t
-apstk?-ren ρ (⌜Fin⌝ n) = refl
-apstk?-ren ρ (con p) = refl
-apstk?-ren ρ dι = refl
-apstk?-ren ρ (dσ S f) = refl
-apstk?-ren ρ (dρ j C) = refl
-apstk?-ren ρ (dpay I D C) = dstk?-ren ρ C
-apstk?-ren ρ (dih D e C p) = dstk?-ren ρ C
-apstk?-ren ρ fzero = refl
-apstk?-ren ρ (fsuc t) = refl
-apstk?-ren ρ (fcase t a b) = finstk?-ren ρ t
-apstk?-ren ρ (fcase0 t) = refl
-apstk?-ren ρ (psplit b q) = spine?-ren ρ q
-apstk?-ren ρ (ref d) = refl
-
-idstk?-ren ρ (var x)       = refl
-idstk?-ren ρ (lam t)       = refl
-idstk?-ren ρ (app t u)     = spine?-ren ρ t
-idstk?-ren ρ (pair a b)    = refl
-idstk?-ren ρ (absurd c e)       = refl
-idstk?-ren ρ (ordtr a t u p q) = ordstk?-ren ρ a t u
-idstk?-ren ρ (fst t)       = spine?-ren ρ t
-idstk?-ren ρ (snd t)       = spine?-ren ρ t
-idstk?-ren ρ ⌜base⌝        = refl
-idstk?-ren ρ ⌜Nat⌝ = refl
-idstk?-ren ρ ⌜Unit⌝ = refl
-idstk?-ren ρ (⌜Π⌝ c d)     = refl
-idstk?-ren ρ (⌜Σ⌝ c d)     = refl
-idstk?-ren ρ (⌜Hom⌝ c a b) = refl
-idstk?-ren ρ (⌜Id⌝ c a b)  = refl
-idstk?-ren ρ (hrefl c t)   = refl
-idstk?-ren ρ (idrefl c t)  = refl
-idstk?-ren ρ (tr d p e)    = trstk?-ren ρ d p
-idstk?-ren ρ (ap c b p)    = apstk?-ren ρ p
-idstk?-ren ρ (jsub d p e)  = idstk?-ren ρ p
-idstk?-ren ρ unit          = refl
-idstk?-ren ρ nzero         = refl
-idstk?-ren ρ (nsuc n)      = refl
-idstk?-ren ρ (natrec z s n) = natstk?-ren ρ n
-idstk?-ren ρ (⌜IMu⌝ Dˣ Iˣ iˣ) = refl
-idstk?-ren ρ (ielim D iˣ ms t) = mustk?-ren ρ t
-idstk?-ren ρ (⌜Fin⌝ n) = refl
-idstk?-ren ρ (con p) = refl
-idstk?-ren ρ dι = refl
-idstk?-ren ρ (dσ S f) = refl
-idstk?-ren ρ (dρ j C) = refl
-idstk?-ren ρ (dpay I D C) = dstk?-ren ρ C
-idstk?-ren ρ (dih D e C p) = dstk?-ren ρ C
-idstk?-ren ρ fzero = refl
-idstk?-ren ρ (fsuc t) = refl
-idstk?-ren ρ (fcase t a b) = finstk?-ren ρ t
-idstk?-ren ρ (fcase0 t) = refl
-idstk?-ren ρ (psplit b q) = spine?-ren ρ q
-idstk?-ren ρ (ref d) = refl
-
-natstk?-ren ρ (var x)       = refl
-natstk?-ren ρ (lam t)       = refl
-natstk?-ren ρ (app t u)     = spine?-ren ρ t
-natstk?-ren ρ (pair a b)    = refl
-natstk?-ren ρ (absurd c e)       = refl
-natstk?-ren ρ (ordtr a t u p q) = ordstk?-ren ρ a t u
-natstk?-ren ρ (fst t)       = spine?-ren ρ t
-natstk?-ren ρ (snd t)       = spine?-ren ρ t
-natstk?-ren ρ ⌜base⌝        = refl
-natstk?-ren ρ ⌜Nat⌝ = refl
-natstk?-ren ρ ⌜Unit⌝ = refl
-natstk?-ren ρ (⌜Π⌝ c d)     = refl
-natstk?-ren ρ (⌜Σ⌝ c d)     = refl
-natstk?-ren ρ (⌜Hom⌝ c a b) = refl
-natstk?-ren ρ (⌜Id⌝ c a b)  = refl
-natstk?-ren ρ (hrefl c t)   = refl
-natstk?-ren ρ (idrefl c t)  = refl
-natstk?-ren ρ (tr d p e)    = trstk?-ren ρ d p
-natstk?-ren ρ (ap c b p)    = apstk?-ren ρ p
-natstk?-ren ρ (jsub d p e)  = idstk?-ren ρ p
-natstk?-ren ρ unit          = refl
-natstk?-ren ρ nzero         = refl
-natstk?-ren ρ (nsuc n)      = refl
-natstk?-ren ρ (natrec z s n) = natstk?-ren ρ n
-natstk?-ren ρ (⌜IMu⌝ Dˣ Iˣ iˣ) = refl
-natstk?-ren ρ (ielim D iˣ ms t) = mustk?-ren ρ t
-natstk?-ren ρ (⌜Fin⌝ n) = refl
-natstk?-ren ρ (con p) = refl
-natstk?-ren ρ dι = refl
-natstk?-ren ρ (dσ S f) = refl
-natstk?-ren ρ (dρ j C) = refl
-natstk?-ren ρ (dpay I D C) = dstk?-ren ρ C
-natstk?-ren ρ (dih D e C p) = dstk?-ren ρ C
-natstk?-ren ρ fzero = refl
-natstk?-ren ρ (fsuc t) = refl
-natstk?-ren ρ (fcase t a b) = finstk?-ren ρ t
-natstk?-ren ρ (fcase0 t) = refl
-natstk?-ren ρ (psplit b q) = spine?-ren ρ q
-natstk?-ren ρ (ref d) = refl
-
-natcstk?-ren ρ (var x)       = refl
-natcstk?-ren ρ (lam t)       = refl
-natcstk?-ren ρ (app t u)     = spine?-ren ρ t
-natcstk?-ren ρ (pair a b)    = refl
-natcstk?-ren ρ (absurd c e)       = refl
-natcstk?-ren ρ (ordtr a t u p q) = ordstk?-ren ρ a t u
-natcstk?-ren ρ (fst t)       = spine?-ren ρ t
-natcstk?-ren ρ (snd t)       = spine?-ren ρ t
-natcstk?-ren ρ ⌜base⌝        = refl
-natcstk?-ren ρ ⌜Nat⌝ = refl
-natcstk?-ren ρ ⌜Unit⌝ = refl
-natcstk?-ren ρ (⌜Π⌝ c d)     = refl
-natcstk?-ren ρ (⌜Σ⌝ c d)     = refl
-natcstk?-ren ρ (⌜Hom⌝ c a b) = refl
-natcstk?-ren ρ (⌜Id⌝ c a b)  = refl
-natcstk?-ren ρ (hrefl c t)   = refl
-natcstk?-ren ρ (idrefl c t)  = refl
-natcstk?-ren ρ (tr d p e)    = trstk?-ren ρ d p
-natcstk?-ren ρ (ap c b p)    = apstk?-ren ρ p
-natcstk?-ren ρ (jsub d p e)  = idstk?-ren ρ p
-natcstk?-ren ρ unit          = refl
-natcstk?-ren ρ nzero         = refl
-natcstk?-ren ρ (nsuc n)      = refl
-natcstk?-ren ρ (natrec z s n) = natstk?-ren ρ n
-natcstk?-ren ρ (⌜IMu⌝ Dˣ Iˣ iˣ) = refl
-natcstk?-ren ρ (ielim D iˣ ms t) = mustk?-ren ρ t
-natcstk?-ren ρ (⌜Fin⌝ n) = refl
-natcstk?-ren ρ (con p) = refl
-natcstk?-ren ρ dι = refl
-natcstk?-ren ρ (dσ S f) = refl
-natcstk?-ren ρ (dρ j C) = refl
-natcstk?-ren ρ (dpay I D C) = dstk?-ren ρ C
-natcstk?-ren ρ (dih D e C p) = dstk?-ren ρ C
-natcstk?-ren ρ fzero = refl
-natcstk?-ren ρ (fsuc t) = refl
-natcstk?-ren ρ (fcase t a b) = finstk?-ren ρ t
-natcstk?-ren ρ (fcase0 t) = refl
-natcstk?-ren ρ (psplit b q) = spine?-ren ρ q
-natcstk?-ren ρ (ref d) = refl
-
--- ★ F6: the `hrefl` key under renaming
-hstk?-ren : (ρ : Ren Γ Δ) (c t : RTm Γ) → hstk? (renTm ρ c) (renTm ρ t) ≡ hstk? c t
-hstk?-ren ρ c t = pick≡ (nopw?-ren ρ c) (pick≡ (natstk?-ren ρ t) refl (natcstk?-ren ρ c)) refl
-
-dstk?-ren ρ (var x)       = refl
-dstk?-ren ρ (lam t)       = refl
-dstk?-ren ρ (app t u)     = spine?-ren ρ t
-dstk?-ren ρ (pair a b)    = refl
-dstk?-ren ρ (absurd c e)       = refl
-dstk?-ren ρ (ordtr a t u p q) = ordstk?-ren ρ a t u
-dstk?-ren ρ (fst t)       = spine?-ren ρ t
-dstk?-ren ρ (snd t)       = spine?-ren ρ t
-dstk?-ren ρ ⌜base⌝        = refl
-dstk?-ren ρ ⌜Nat⌝ = refl
-dstk?-ren ρ ⌜Unit⌝ = refl
-dstk?-ren ρ (⌜Π⌝ c d)     = refl
-dstk?-ren ρ (⌜Σ⌝ c d)     = refl
-dstk?-ren ρ (⌜Hom⌝ c a b) = refl
-dstk?-ren ρ (⌜Id⌝ c a b)  = refl
-dstk?-ren ρ (hrefl c t)   = refl
-dstk?-ren ρ (idrefl c t)  = refl
-dstk?-ren ρ (tr d p e)    = trstk?-ren ρ d p
-dstk?-ren ρ (ap c b p)    = apstk?-ren ρ p
-dstk?-ren ρ (jsub d p e)  = idstk?-ren ρ p
-dstk?-ren ρ unit          = refl
-dstk?-ren ρ nzero         = refl
-dstk?-ren ρ (nsuc n)      = refl
-dstk?-ren ρ (natrec z s n) = natstk?-ren ρ n
-dstk?-ren ρ (⌜IMu⌝ Dˣ Iˣ iˣ) = refl
-dstk?-ren ρ (ielim D iˣ ms t) = mustk?-ren ρ t
-dstk?-ren ρ (⌜Fin⌝ n) = refl
-dstk?-ren ρ (con p) = refl
-dstk?-ren ρ dι = refl
-dstk?-ren ρ (dσ S f) = refl
-dstk?-ren ρ (dρ j C) = refl
-dstk?-ren ρ (dpay I D C) = dstk?-ren ρ C
-dstk?-ren ρ (dih D e C p) = dstk?-ren ρ C
-dstk?-ren ρ fzero = refl
-dstk?-ren ρ (fsuc t) = refl
-dstk?-ren ρ (fcase t a b) = finstk?-ren ρ t
-dstk?-ren ρ (fcase0 t) = refl
-dstk?-ren ρ (psplit b q) = spine?-ren ρ q
-dstk?-ren ρ (ref d) = refl
-
-finstk?-ren ρ (var x)       = refl
-finstk?-ren ρ (lam t)       = refl
-finstk?-ren ρ (app t u)     = spine?-ren ρ t
-finstk?-ren ρ (pair a b)    = refl
-finstk?-ren ρ (absurd c e)       = refl
-finstk?-ren ρ (ordtr a t u p q) = ordstk?-ren ρ a t u
-finstk?-ren ρ (fst t)       = spine?-ren ρ t
-finstk?-ren ρ (snd t)       = spine?-ren ρ t
-finstk?-ren ρ ⌜base⌝        = refl
-finstk?-ren ρ ⌜Nat⌝ = refl
-finstk?-ren ρ ⌜Unit⌝ = refl
-finstk?-ren ρ (⌜Π⌝ c d)     = refl
-finstk?-ren ρ (⌜Σ⌝ c d)     = refl
-finstk?-ren ρ (⌜Hom⌝ c a b) = refl
-finstk?-ren ρ (⌜Id⌝ c a b)  = refl
-finstk?-ren ρ (hrefl c t)   = refl
-finstk?-ren ρ (idrefl c t)  = refl
-finstk?-ren ρ (tr d p e)    = trstk?-ren ρ d p
-finstk?-ren ρ (ap c b p)    = apstk?-ren ρ p
-finstk?-ren ρ (jsub d p e)  = idstk?-ren ρ p
-finstk?-ren ρ unit          = refl
-finstk?-ren ρ nzero         = refl
-finstk?-ren ρ (nsuc n)      = refl
-finstk?-ren ρ (natrec z s n) = natstk?-ren ρ n
-finstk?-ren ρ (⌜IMu⌝ Dˣ Iˣ iˣ) = refl
-finstk?-ren ρ (ielim D iˣ ms t) = mustk?-ren ρ t
-finstk?-ren ρ (⌜Fin⌝ n) = refl
-finstk?-ren ρ (con p) = refl
-finstk?-ren ρ dι = refl
-finstk?-ren ρ (dσ S f) = refl
-finstk?-ren ρ (dρ j C) = refl
-finstk?-ren ρ (dpay I D C) = dstk?-ren ρ C
-finstk?-ren ρ (dih D e C p) = dstk?-ren ρ C
-finstk?-ren ρ fzero = refl
-finstk?-ren ρ (fsuc t) = refl
-finstk?-ren ρ (fcase t a b) = finstk?-ren ρ t
-finstk?-ren ρ (fcase0 t) = refl
-finstk?-ren ρ (psplit b q) = spine?-ren ρ q
-finstk?-ren ρ (ref d) = refl
-
--- ★ INDUCTIVE TYPES: `mustk?`'s naturality — `natstk?-ren`'s clone, since
+-- ★ INDUCTIVE TYPES: `mustk?`'s naturality — `stk-ren natK`'s clone, since
 --   the two keys agree on every head that renaming can see.
-mustk?-ren ρ (var x)       = refl
-mustk?-ren ρ (lam t)       = refl
-mustk?-ren ρ (app t u)     = spine?-ren ρ t
-mustk?-ren ρ (pair a b)    = refl
-mustk?-ren ρ (absurd c e)       = refl
-mustk?-ren ρ (ordtr a t u p q) = ordstk?-ren ρ a t u
-mustk?-ren ρ (fst t)       = spine?-ren ρ t
-mustk?-ren ρ (snd t)       = spine?-ren ρ t
-mustk?-ren ρ ⌜base⌝        = refl
-mustk?-ren ρ ⌜Nat⌝ = refl
-mustk?-ren ρ ⌜Unit⌝ = refl
-mustk?-ren ρ (⌜Π⌝ c d)     = refl
-mustk?-ren ρ (⌜Σ⌝ c d)     = refl
-mustk?-ren ρ (⌜Hom⌝ c a b) = refl
-mustk?-ren ρ (⌜Id⌝ c a b)  = refl
-mustk?-ren ρ (hrefl c t)   = refl
-mustk?-ren ρ (idrefl c t)  = refl
-mustk?-ren ρ (tr d p e)    = trstk?-ren ρ d p
-mustk?-ren ρ (ap c b p)    = apstk?-ren ρ p
-mustk?-ren ρ (jsub d p e)  = idstk?-ren ρ p
-mustk?-ren ρ unit          = refl
-mustk?-ren ρ nzero         = refl
-mustk?-ren ρ (nsuc n)      = refl
-mustk?-ren ρ (natrec z s n) = natstk?-ren ρ n
-mustk?-ren ρ (⌜IMu⌝ Dˣ Iˣ iˣ) = refl
-mustk?-ren ρ (ielim D iˣ ms t) = mustk?-ren ρ t
-mustk?-ren ρ (⌜Fin⌝ n) = refl
-mustk?-ren ρ (con p) = refl
-mustk?-ren ρ dι = refl
-mustk?-ren ρ (dσ S f) = refl
-mustk?-ren ρ (dρ j C) = refl
-mustk?-ren ρ (dpay I D C) = dstk?-ren ρ C
-mustk?-ren ρ (dih D e C p) = dstk?-ren ρ C
-mustk?-ren ρ fzero = refl
-mustk?-ren ρ (fsuc t) = refl
-mustk?-ren ρ (fcase t a b) = finstk?-ren ρ t
-mustk?-ren ρ (fcase0 t) = refl
-mustk?-ren ρ (psplit b q) = spine?-ren ρ q
-mustk?-ren ρ (ref d) = refl
 
 trstk?-ren ρ d (var x)       = refl
 trstk?-ren ρ d (lam f)       = trlam?-ren ρ d
-trstk?-ren ρ d (app t u)     = spine?-ren ρ t
+trstk?-ren ρ d (app t u)     = stk-ren spineK ρ t
 trstk?-ren ρ d (pair a b)    = refl
 trstk?-ren ρ d (absurd c e)       = refl
 trstk?-ren ρ d (ordtr a t u p q)  = ordstk?-ren ρ a t u
-trstk?-ren ρ d (fst t)       = spine?-ren ρ t
-trstk?-ren ρ d (snd t)       = spine?-ren ρ t
+trstk?-ren ρ d (fst t)       = stk-ren spineK ρ t
+trstk?-ren ρ d (snd t)       = stk-ren spineK ρ t
 trstk?-ren ρ d ⌜base⌝        = refl
 trstk?-ren ρ d ⌜Nat⌝ = refl
 trstk?-ren ρ d ⌜Unit⌝ = refl
 trstk?-ren ρ d (⌜Π⌝ c e)     = refl
 trstk?-ren ρ d (⌜Σ⌝ c e)     = refl
 trstk?-ren ρ d (⌜Hom⌝ c a b) = refl
-trstk?-ren ρ (absurd d₂ e₂) (hrefl c t)   = stablecd?-ren ρ c
-trstk?-ren ρ (ordtr d₁ d₂ d₃ d₄ d₅) (hrefl c t) = stablecd?-ren ρ c
-trstk?-ren ρ (var x) (hrefl c t)          = nopw?-ren ρ c
-trstk?-ren ρ (lam b) (hrefl c t)          = stablecd?-ren ρ c
-trstk?-ren ρ (app f u) (hrefl c t)        = stablecd?-ren ρ c
-trstk?-ren ρ (pair a b) (hrefl c t)       = stablecd?-ren ρ c
-trstk?-ren ρ (fst q) (hrefl c t)          = stablecd?-ren ρ c
-trstk?-ren ρ (snd q) (hrefl c t)          = stablecd?-ren ρ c
-trstk?-ren ρ ⌜base⌝ (hrefl c t)           = stablecd?-ren ρ c
-trstk?-ren ρ ⌜Nat⌝ (hrefl c t)            = stablecd?-ren ρ c
-trstk?-ren ρ ⌜Unit⌝ (hrefl c t)           = stablecd?-ren ρ c
-trstk?-ren ρ (⌜Π⌝ c₁ d₁) (hrefl c t)      = stablecd?-ren ρ c
-trstk?-ren ρ (⌜Σ⌝ c₁ d₁) (hrefl c t)      = stablecd?-ren ρ c
-trstk?-ren ρ (⌜Hom⌝ c₁ a₁ b₁) (hrefl c t) = stablecd?-ren ρ c
-trstk?-ren ρ (hrefl c₁ t₁) (hrefl c t)    = stablecd?-ren ρ c
-trstk?-ren ρ (tr d₁ p₁ e₁) (hrefl c t)    = stablecd?-ren ρ c
-trstk?-ren ρ (ap c₁ b₁ p₁) (hrefl c t)    = stablecd?-ren ρ c
-trstk?-ren ρ (⌜Id⌝ c₁ a₁ b₁) (hrefl c t)  = stablecd?-ren ρ c
-trstk?-ren ρ (idrefl c₁ t₁) (hrefl c t)   = stablecd?-ren ρ c
-trstk?-ren ρ (jsub d₁ p₁ e₁) (hrefl c t)  = stablecd?-ren ρ c
-trstk?-ren ρ unit (hrefl c t)             = stablecd?-ren ρ c
-trstk?-ren ρ nzero (hrefl c t)            = stablecd?-ren ρ c
-trstk?-ren ρ (nsuc d₁) (hrefl c t)        = stablecd?-ren ρ c
-trstk?-ren ρ (natrec d₁ d₂ d₃) (hrefl c t) = stablecd?-ren ρ c
+trstk?-ren ρ (absurd d₂ e₂) (hrefl c t)   = stk-ren stablecdK ρ c
+trstk?-ren ρ (ordtr d₁ d₂ d₃ d₄ d₅) (hrefl c t) = stk-ren stablecdK ρ c
+trstk?-ren ρ (var x) (hrefl c t)          = stk-ren nopwK ρ c
+trstk?-ren ρ (lam b) (hrefl c t)          = stk-ren stablecdK ρ c
+trstk?-ren ρ (app f u) (hrefl c t)        = stk-ren stablecdK ρ c
+trstk?-ren ρ (pair a b) (hrefl c t)       = stk-ren stablecdK ρ c
+trstk?-ren ρ (fst q) (hrefl c t)          = stk-ren stablecdK ρ c
+trstk?-ren ρ (snd q) (hrefl c t)          = stk-ren stablecdK ρ c
+trstk?-ren ρ ⌜base⌝ (hrefl c t)           = stk-ren stablecdK ρ c
+trstk?-ren ρ ⌜Nat⌝ (hrefl c t)            = stk-ren stablecdK ρ c
+trstk?-ren ρ ⌜Unit⌝ (hrefl c t)           = stk-ren stablecdK ρ c
+trstk?-ren ρ (⌜Π⌝ c₁ d₁) (hrefl c t)      = stk-ren stablecdK ρ c
+trstk?-ren ρ (⌜Σ⌝ c₁ d₁) (hrefl c t)      = stk-ren stablecdK ρ c
+trstk?-ren ρ (⌜Hom⌝ c₁ a₁ b₁) (hrefl c t) = stk-ren stablecdK ρ c
+trstk?-ren ρ (hrefl c₁ t₁) (hrefl c t)    = stk-ren stablecdK ρ c
+trstk?-ren ρ (tr d₁ p₁ e₁) (hrefl c t)    = stk-ren stablecdK ρ c
+trstk?-ren ρ (ap c₁ b₁ p₁) (hrefl c t)    = stk-ren stablecdK ρ c
+trstk?-ren ρ (⌜Id⌝ c₁ a₁ b₁) (hrefl c t)  = stk-ren stablecdK ρ c
+trstk?-ren ρ (idrefl c₁ t₁) (hrefl c t)   = stk-ren stablecdK ρ c
+trstk?-ren ρ (jsub d₁ p₁ e₁) (hrefl c t)  = stk-ren stablecdK ρ c
+trstk?-ren ρ unit (hrefl c t)             = stk-ren stablecdK ρ c
+trstk?-ren ρ nzero (hrefl c t)            = stk-ren stablecdK ρ c
+trstk?-ren ρ (nsuc d₁) (hrefl c t)        = stk-ren stablecdK ρ c
+trstk?-ren ρ (natrec d₁ d₂ d₃) (hrefl c t) = stk-ren stablecdK ρ c
 trstk?-ren ρ d (tr e q w)    = trstk?-ren ρ e q
-trstk?-ren ρ d (ap c b p)    = apstk?-ren ρ p
+trstk?-ren ρ d (ap c b p)    = stk-ren apK ρ p
 trstk?-ren ρ d (⌜Id⌝ c a b)  = refl
 trstk?-ren ρ d (idrefl c t)  = refl
-trstk?-ren ρ d (jsub d₁ p e) = idstk?-ren ρ p
+trstk?-ren ρ d (jsub d₁ p e) = stk-ren idK ρ p
 trstk?-ren ρ d unit          = refl
 trstk?-ren ρ d nzero         = refl
 trstk?-ren ρ d (nsuc n)      = refl
-trstk?-ren ρ d (natrec z w n) = natstk?-ren ρ n
+trstk?-ren ρ d (natrec z w n) = stk-ren natK ρ n
 trstk?-ren ρ d (⌜IMu⌝ Dˣ Iˣ iˣ) = refl
-trstk?-ren ρ (⌜IMu⌝ Dˣ Iˣ iˣ) (hrefl c t)           = stablecd?-ren ρ c
-trstk?-ren ρ (ielim dD iˣ dm dt) (hrefl c t)   = stablecd?-ren ρ c
-trstk?-ren ρ d (ielim D iˣ ms t) = mustk?-ren ρ t
+trstk?-ren ρ (⌜IMu⌝ Dˣ Iˣ iˣ) (hrefl c t)           = stk-ren stablecdK ρ c
+trstk?-ren ρ (ielim dD iˣ dm dt) (hrefl c t)   = stk-ren stablecdK ρ c
+trstk?-ren ρ d (ielim D iˣ ms t) = stk-ren muK ρ t
 trstk?-ren ρ d (⌜Fin⌝ n) = refl
 trstk?-ren ρ d (con p) = refl
 trstk?-ren ρ d dι = refl
 trstk?-ren ρ d (dσ S f) = refl
 trstk?-ren ρ d (dρ j C) = refl
-trstk?-ren ρ d (dpay I D C) = dstk?-ren ρ C
-trstk?-ren ρ d (dih D e C p) = dstk?-ren ρ C
+trstk?-ren ρ d (dpay I D C) = stk-ren dK ρ C
+trstk?-ren ρ d (dih D e C p) = stk-ren dK ρ C
 trstk?-ren ρ d fzero = refl
 trstk?-ren ρ d (fsuc t) = refl
-trstk?-ren ρ d (fcase t a b) = finstk?-ren ρ t
+trstk?-ren ρ d (fcase t a b) = stk-ren finK ρ t
 trstk?-ren ρ d (fcase0 t) = refl
-trstk?-ren ρ d (psplit b q) = spine?-ren ρ q
+trstk?-ren ρ d (psplit b q) = stk-ren spineK ρ q
 trstk?-ren ρ d (ref n) = refl
-trstk?-ren ρ (⌜Fin⌝ n) (hrefl c t) = stablecd?-ren ρ c
-trstk?-ren ρ (con p) (hrefl c t) = stablecd?-ren ρ c
-trstk?-ren ρ dι (hrefl c t) = stablecd?-ren ρ c
-trstk?-ren ρ (dσ S f) (hrefl c t) = stablecd?-ren ρ c
-trstk?-ren ρ (dρ j C) (hrefl c t) = stablecd?-ren ρ c
-trstk?-ren ρ (dpay I D C) (hrefl c t) = stablecd?-ren ρ c
-trstk?-ren ρ (dih D e C p) (hrefl c t) = stablecd?-ren ρ c
-trstk?-ren ρ fzero (hrefl c t) = stablecd?-ren ρ c
-trstk?-ren ρ (fsuc t₀) (hrefl c t) = stablecd?-ren ρ c
-trstk?-ren ρ (fcase t₀ a b) (hrefl c t) = stablecd?-ren ρ c
-trstk?-ren ρ (fcase0 t₀) (hrefl c t) = stablecd?-ren ρ c
-trstk?-ren ρ (psplit b q) (hrefl c t) = stablecd?-ren ρ c
-trstk?-ren ρ (ref n) (hrefl c t) = stablecd?-ren ρ c
-
-nopw?-ren ρ (var x)       = refl
-nopw?-ren ρ (lam t)       = refl
-nopw?-ren ρ (app t u)     = spine?-ren ρ t
-nopw?-ren ρ (pair a b)    = refl
-nopw?-ren ρ (absurd c e)       = refl
-nopw?-ren ρ (ordtr a t u p q) = ordstk?-ren ρ a t u
-nopw?-ren ρ (fst t)       = spine?-ren ρ t
-nopw?-ren ρ (snd t)       = spine?-ren ρ t
-nopw?-ren ρ ⌜base⌝        = refl
-nopw?-ren ρ ⌜Nat⌝ = refl
-nopw?-ren ρ ⌜Unit⌝ = refl
-nopw?-ren ρ (⌜Π⌝ c d)     = refl
-nopw?-ren ρ (⌜Σ⌝ c d)     = refl
-nopw?-ren ρ (⌜Hom⌝ c a b) = nopw?-ren ρ c
-nopw?-ren ρ (hrefl c t)   = refl
-nopw?-ren ρ (tr d p e)    = trstk?-ren ρ d p
-nopw?-ren ρ (ap c b p)    = refl
-nopw?-ren ρ (⌜Id⌝ c a b)  = refl
-nopw?-ren ρ (idrefl c t)  = refl
-nopw?-ren ρ (jsub d p e)  = idstk?-ren ρ p
-nopw?-ren ρ unit          = refl
-nopw?-ren ρ nzero         = refl
-nopw?-ren ρ (nsuc n)      = refl
-nopw?-ren ρ (natrec z s n) = natstk?-ren ρ n
-nopw?-ren ρ (⌜IMu⌝ Dˣ Iˣ iˣ) = refl
-nopw?-ren ρ (ielim D iˣ ms t) = mustk?-ren ρ t
-nopw?-ren ρ (⌜Fin⌝ n) = refl
-nopw?-ren ρ (con p) = refl
-nopw?-ren ρ dι = refl
-nopw?-ren ρ (dσ S f) = refl
-nopw?-ren ρ (dρ j C) = refl
-nopw?-ren ρ (dpay I D C) = dstk?-ren ρ C
-nopw?-ren ρ (dih D e C p) = dstk?-ren ρ C
-nopw?-ren ρ fzero = refl
-nopw?-ren ρ (fsuc t) = refl
-nopw?-ren ρ (fcase t a b) = finstk?-ren ρ t
-nopw?-ren ρ (fcase0 t) = refl
-nopw?-ren ρ (psplit b q) = spine?-ren ρ q
-nopw?-ren ρ (ref d) = refl
-
-deadmot?-ren ρ (var x)       = refl
-deadmot?-ren ρ (lam t)       = refl
-deadmot?-ren ρ (app t u)     = spine?-ren ρ t
-deadmot?-ren ρ (pair a b)    = refl
-deadmot?-ren ρ (absurd c e)       = refl
-deadmot?-ren ρ (ordtr a t u p q) = ordstk?-ren ρ a t u
-deadmot?-ren ρ (fst t)       = spine?-ren ρ t
-deadmot?-ren ρ (snd t)       = spine?-ren ρ t
-deadmot?-ren ρ ⌜base⌝        = refl
-deadmot?-ren ρ ⌜Nat⌝ = refl
-deadmot?-ren ρ ⌜Unit⌝ = refl
-deadmot?-ren ρ (⌜Π⌝ c d)     = refl
-deadmot?-ren ρ (⌜Σ⌝ c d)     = refl
-deadmot?-ren ρ (⌜Hom⌝ c a b) = deadmot?-ren ρ c
-deadmot?-ren ρ (hrefl c t)   = deadmot?-ren ρ c
-deadmot?-ren ρ (tr d p e)    = trstk?-ren ρ d p
-deadmot?-ren ρ (ap c b p)    = apstk?-ren ρ p
-deadmot?-ren ρ (⌜Id⌝ c a b)  = refl
-deadmot?-ren ρ (idrefl c t)  = refl
-deadmot?-ren ρ (jsub d p e)  = idstk?-ren ρ p
-deadmot?-ren ρ unit          = refl
-deadmot?-ren ρ nzero         = refl
-deadmot?-ren ρ (nsuc n)      = refl
-deadmot?-ren ρ (natrec z s n) = natstk?-ren ρ n
-deadmot?-ren ρ (⌜IMu⌝ Dˣ Iˣ iˣ) = refl
-deadmot?-ren ρ (ielim D iˣ ms t) = mustk?-ren ρ t
-deadmot?-ren ρ (⌜Fin⌝ n) = refl
-deadmot?-ren ρ (con p) = refl
-deadmot?-ren ρ dι = refl
-deadmot?-ren ρ (dσ S f) = refl
-deadmot?-ren ρ (dρ j C) = refl
-deadmot?-ren ρ (dpay I D C) = dstk?-ren ρ C
-deadmot?-ren ρ (dih D e C p) = dstk?-ren ρ C
-deadmot?-ren ρ fzero = refl
-deadmot?-ren ρ (fsuc t) = refl
-deadmot?-ren ρ (fcase t a b) = finstk?-ren ρ t
-deadmot?-ren ρ (fcase0 t) = refl
-deadmot?-ren ρ (psplit b q) = spine?-ren ρ q
-deadmot?-ren ρ (ref d) = refl
+trstk?-ren ρ (⌜Fin⌝ n) (hrefl c t) = stk-ren stablecdK ρ c
+trstk?-ren ρ (con p) (hrefl c t) = stk-ren stablecdK ρ c
+trstk?-ren ρ dι (hrefl c t) = stk-ren stablecdK ρ c
+trstk?-ren ρ (dσ S f) (hrefl c t) = stk-ren stablecdK ρ c
+trstk?-ren ρ (dρ j C) (hrefl c t) = stk-ren stablecdK ρ c
+trstk?-ren ρ (dpay I D C) (hrefl c t) = stk-ren stablecdK ρ c
+trstk?-ren ρ (dih D e C p) (hrefl c t) = stk-ren stablecdK ρ c
+trstk?-ren ρ fzero (hrefl c t) = stk-ren stablecdK ρ c
+trstk?-ren ρ (fsuc t₀) (hrefl c t) = stk-ren stablecdK ρ c
+trstk?-ren ρ (fcase t₀ a b) (hrefl c t) = stk-ren stablecdK ρ c
+trstk?-ren ρ (fcase0 t₀) (hrefl c t) = stk-ren stablecdK ρ c
+trstk?-ren ρ (psplit b q) (hrefl c t) = stk-ren stablecdK ρ c
+trstk?-ren ρ (ref n) (hrefl c t) = stk-ren stablecdK ρ c
 
 trlam?-ren ρ (var vz)     = refl
 trlam?-ren ρ (var (vs x)) = refl
@@ -3514,7 +2973,7 @@ trlam?-ren ρ ⌜Nat⌝        = refl
 trlam?-ren ρ ⌜Unit⌝       = refl
 trlam?-ren ρ (⌜Π⌝ c d)    = refl
 trlam?-ren ρ (⌜Σ⌝ c d)    = refl
-trlam?-ren ρ (⌜Hom⌝ c a (var vz))     = deadmot?-ren (extR ρ) c
+trlam?-ren ρ (⌜Hom⌝ c a (var vz))     = stk-ren deadK (extR ρ) c
 trlam?-ren ρ (⌜Hom⌝ c a (var (vs x))) = refl
 trlam?-ren ρ (⌜Hom⌝ c a (lam m))      = refl
 trlam?-ren ρ (⌜Hom⌝ c a (app m₁ m₂))  = refl
@@ -3579,6 +3038,34 @@ trlam?-ren ρ (fcase t a b) = refl
 trlam?-ren ρ (fcase0 t) = refl
 trlam?-ren ρ (psplit b q) = refl
 trlam?-ren ρ (ref d) = refl
+
+-- the keyed renaming lemma under the old names
+spine?-ren : (ρ : Ren Γ Δ) (t : RTm Γ) → spine? (renTm ρ t) ≡ spine? t
+spine?-ren = stk-ren spineK
+stablecd?-ren : (ρ : Ren Γ Δ) (t : RTm Γ) → stablecd? (renTm ρ t) ≡ stablecd? t
+stablecd?-ren = stk-ren stablecdK
+stableA?-ren : (ρ : Ren Γ Δ) (t : RTm Γ) → stableA? (renTm ρ t) ≡ stableA? t
+stableA?-ren = stk-ren stableAK
+pathstk?-ren : (ρ : Ren Γ Δ) (t : RTm Γ) → pathstk? (renTm ρ t) ≡ pathstk? t
+pathstk?-ren = stk-ren pathK
+nopw?-ren : (ρ : Ren Γ Δ) (t : RTm Γ) → nopw? (renTm ρ t) ≡ nopw? t
+nopw?-ren = stk-ren nopwK
+deadmot?-ren : (ρ : Ren Γ Δ) (t : RTm Γ) → deadmot? (renTm ρ t) ≡ deadmot? t
+deadmot?-ren = stk-ren deadK
+apstk?-ren : (ρ : Ren Γ Δ) (t : RTm Γ) → apstk? (renTm ρ t) ≡ apstk? t
+apstk?-ren = stk-ren apK
+idstk?-ren : (ρ : Ren Γ Δ) (t : RTm Γ) → idstk? (renTm ρ t) ≡ idstk? t
+idstk?-ren = stk-ren idK
+natstk?-ren : (ρ : Ren Γ Δ) (t : RTm Γ) → natstk? (renTm ρ t) ≡ natstk? t
+natstk?-ren = stk-ren natK
+natcstk?-ren : (ρ : Ren Γ Δ) (t : RTm Γ) → natcstk? (renTm ρ t) ≡ natcstk? t
+natcstk?-ren = stk-ren natcK
+mustk?-ren : (ρ : Ren Γ Δ) (t : RTm Γ) → mustk? (renTm ρ t) ≡ mustk? t
+mustk?-ren = stk-ren muK
+finstk?-ren : (ρ : Ren Γ Δ) (t : RTm Γ) → finstk? (renTm ρ t) ≡ finstk? t
+finstk?-ren = stk-ren finK
+dstk?-ren : (ρ : Ren Γ Δ) (t : RTm Γ) → dstk? (renTm ρ t) ≡ dstk? t
+dstk?-ren = stk-ren dK
 
 
 record ElNe {Γ} (A : RTy Γ) : Set where
