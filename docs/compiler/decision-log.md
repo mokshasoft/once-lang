@@ -25599,3 +25599,45 @@ amendment (`perf-rdw`): none slower, the folds 0.42–0.5x; `once stats`' closur
 allocations are the same and the extra instructions are the free routines (opt-rules: 48 -> 138). Each owned
 entry now frees its closure's cell as it consumes it; D492 freed the chain after the lent run, which a
 program that halts inside it (`exit`) never reached. Memory is freed sooner: what a server wants.
+
+## D494 — A FORK'S ARMS TAKE WHAT THEY USE: HALVES SPLIT, A HALF READ, A COPY ONLY WHERE BOTH NEED THE SAME CELLS (2026-11-27, proposed — unattended, for the user's review; plan 0.157 S2, D6)
+
+**The problem.** `pair f g` (a fork, `fork'`) applied to `x` ran `f x` and `g x` on two copies of `x`: the
+bridge's fork closure began with `dup`. After D492/D493 the fork was the source of 6 of the corpus's 9
+remaining `dup`s, and the only one at a type with cells in a loop: `loop-forever-list`'s
+`pair (emit@E . fst) id` copied the whole list every round to print its head. Under D6 that program is
+linear (`fst` is a read of a copyable half; the list has one owning use), so `NoCopy` must not see a copy.
+
+**The decision.** An arm is classified by what it takes of the argument (`FromExpr.arm?`): a projection
+(`lift-morphism` of `id`, `fst`, `snd`: `IsPj`), a closure after a projection (`comp' h (lift-morphism p)`),
+or anything else, the whole closure on the whole argument. The fork's closure keeps only what the arms keep
+(`ArmD`: nothing for a projection, `h` for a closure after one, the closure otherwise), and routes the
+argument by the two projections (`splitP`):
+* `fst`/`snd` (or `snd`/`fst`): the pair split (`lid`, `lswap`) — no copy, no closure;
+* a half and the whole (`fst`/`id`, `id`/`snd`, …): the half READ beside the whole (`lend`, `bcopy` of that
+  half: its words when it has no cells), the whole moved on;
+* the same part twice: that part taken, then copied (`dup` of the part only);
+* the whole twice: `dup`, as before.
+A projection runs nothing, so taking it first keeps the arms' order (`f` runs before `g`, as in `forkIR`).
+Only projections decompose: a map that runs something (`apply`, `Out`, `In`) stays inside its arm. The fork
+closure is now `llamω` (it reads what it keeps), so a lent call of it copies nothing either.
+
+No flatness test: copying a half out (`bcopy`) is never worse than copying the whole (`dup`), at any type.
+
+**Proved.** Meaning (`FromExprOk.ok-fork`): what the fork keeps for an arm, run on the arm's part, is the
+IR's closure of the arm applied to the whole argument (`ArmR`); each kind of arm keeps such a thing
+(`armOk-all`, `armOk-map`, `armOk-comp`); the routing returns `(p x , q x)` at once (`p-splitP`); the
+closure is related through that relation (`cloLR`, `rel-cloL` generalized to any relation on the
+environment). `Bisim.bind-return` (the monad's right unit) added. Ops: `ExprOps.ok-splitP`, `ok-armOf`.
+Every downstream proof is generic over terms.
+
+**Considered.** (a) A rewrite of the arms at the `Expr` level (a fork of projections into a lambda): the
+existing pair/read machinery would not see through `app h (fst x)`. (b) Deciding reads by flatness (as D477's
+scrutinee): unnecessary here, since the alternative is a copy of the whole.
+
+**Measured** (vs D493, 108 programs, x86_64): run 1.00x, `.text` 0.99x; `loop-forever-list` copies nothing
+(`once stats`: dups 1 -> 0, dup-cells 1 -> 0); `nu-ana-deep` 0.48x, `loop-emit` 0.84x; slower:
+`pair-arm-order-emit` 1.10x, `answer-two-reads` 1.06x. Both have arms that are not projections, so the fork
+routes by `dup` as before, but its body `(bfst ap ⊗l bsnd ap) ∘l splitP` is no shape of D493's `ownOf`: the
+owned entry falls back to `o-bg` (the lent body, then a free of the closure), where `llamωᶜ`'s owned body
+consumed the held closures. Fix: an `Own` case for the fork's shape (amendment below, when built).

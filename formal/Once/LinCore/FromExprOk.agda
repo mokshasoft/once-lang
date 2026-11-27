@@ -70,6 +70,7 @@ open Sem using (Lᶜ; cataC; travC)
 open import Once.LinCore.FromExpr fmt using (ty; Co; weak; split; carryL; mixL; apω; var-at; bindL; Rs; Lq; castΦ; opL; numL; sigL; cast; clo; callM; refL; mapT; layerEq; dist; coeL; coeR)
 open import Once.LinCore.FromExpr fmt using (Pth; p-var; p-fst; p-snd; p-mfst; p-msnd; mq; Rd; rd-path; rd-int; rd-float; rd-num; rd-pair; rd-coe; coeRd; rd?; rdw?; lv; Rp; Rt; lentS; scrutL; pairL)
 open import Once.LinCore.FromExpr fmt using (Im; im-var; im-lam; im-closed; im-coe; im-app1; im-appω; ImF; imf-lam; imf-closed; CP; cp; cp?; appL; scrutA)
+open import Once.LinCore.FromExpr fmt using (IsPj; pj-id; pj-fst; pj-snd; PjL; pjl; Arm; arm-map; arm-comp; arm?; pjT; rdFst; rdSnd; splitP; ArmD; armOf; forkB; forkL)
 open import Once.Surface.Elaborate using (copairIR)
 open import Once.Context using (_⊔ᵘ_; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ)
 open import Once.Surface.Map using (mp-id; mp-fst; mp-snd; mp-terminal; mp-inl; mp-inr; mp-initial; mp-apply; mp-In; mp-Out; mp-toFloat)
@@ -99,7 +100,7 @@ open import Once.LinCore.Grade fmt ans using (blk-coh)
 open import Once.IRTy using (IRTy; _⇛[_]_)
 import Once.IRTy as I
 open import Once.LinCore.Bridge fmt ans using (W)
-open import Once.LinCore.Bisim fmt ans using (_≈_; Bl; Bl-refl; ret-bind; bind-assoc; assocB; ≈step; ≈call; ≈halt; ≈-refl; ≈-trans; ≈-sym; >>=-cong; _≈[_]_; ret≈R; >>=-congR; ≈-≈R; ≈R-≈; pair-drop; ≈haltR; iter-congR; module _≈_; module _≈[_]_)
+open import Once.LinCore.Bisim fmt ans using (_≈_; Bl; Bl-refl; ret-bind; bind-return; bind-assoc; assocB; ≈step; ≈call; ≈halt; ≈-refl; ≈-trans; ≈-sym; >>=-cong; _≈[_]_; ret≈R; >>=-congR; ≈-≈R; ≈R-≈; pair-drop; ≈haltR; iter-congR; module _≈_; module _≈[_]_)
 open _≈[_]_ using (blockR)
 open _≈_ using (block≈)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -116,6 +117,12 @@ bind-pure p = ≈-trans (>>=-cong p (λ _ → ≈-refl)) ret-bind
 ------------------------------------------------------------------------
 -- 2. PURE TERMS: a term whose meaning returns a value at once.
 ------------------------------------------------------------------------
+
+-- ★ D494: a projection's value
+pjv : ∀ {m} {A B : Ty m} {mp : Map A B} → IsPj mp → ⟦ ty A ⟧ → ⟦ ty B ⟧
+pjv pj-id  x = x
+pjv pj-fst x = fst x
+pjv pj-snd x = snd x
 
 module _ {L : Cx} (δ : Env L) where
 
@@ -155,6 +162,26 @@ module _ {L : Cx} (δ : Env L) where
 
   p-drop : ∀ {E A} → Pure (drop {A = A} {E}) (λ _ → tt)
   p-drop e a = ≈-refl
+
+  -- ★ D494: a projection, a half read beside the whole, and the fork's routing
+  p-pjT : ∀ {m E} {A B : Ty m} {mp : Map A B} (p : IsPj mp) → Pure (pjT {L} {E = E} p) (pjv p)
+  p-pjT pj-id  e x = ≈-refl
+  p-pjT pj-fst e x = bind-pure (≈-trans ret-bind ret-bind)
+  p-pjT pj-snd e x = bind-pure (≈-trans ret-bind ret-bind)
+
+  -- (each case proved on its own term: a composite's value functions are not
+  -- solved by unification once `Lᶜ` has run the term)
+  p-splitP : ∀ {m E} {A Af Ag : Ty m} {pf : Map A Af} {pg : Map A Ag} (p : IsPj pf) (q : IsPj pg)
+           → Pure (splitP {L} {E = E} p q) (λ x → pjv p x , pjv q x)
+  p-splitP pj-id  pj-id  e x = ≈-refl
+  p-splitP pj-id  pj-fst e x = ≈-trans (bind-pure ≈-refl) ret-bind
+  p-splitP pj-id  pj-snd e x = ≈-trans (bind-pure ≈-refl) ret-bind
+  p-splitP pj-fst pj-id  e x = bind-pure (≈-trans (bind-pure ≈-refl) ret-bind)
+  p-splitP pj-fst pj-fst e x = bind-pure (bind-pure (≈-trans ret-bind ret-bind))
+  p-splitP pj-fst pj-snd e x = ≈-refl
+  p-splitP pj-snd pj-id  e x = bind-pure (≈-trans (bind-pure ≈-refl) ret-bind)
+  p-splitP pj-snd pj-fst e x = ≈-refl
+  p-splitP pj-snd pj-snd e x = bind-pure (bind-pure (≈-trans ret-bind ret-bind))
 
 ------------------------------------------------------------------------
 -- 3. PURE IR: the same on master's side.
@@ -643,22 +670,68 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRT
              (≈-sym (≈-trans (>>=-cong (≈-trans (bind-pure ret-bind) (>>=-cong (bind-pure (≈-trans (bind-pure ret-bind) ret-bind)) (λ _ → ≈-refl))) (λ _ → ≈-refl))
                              (≈-trans (bind-assoc _ _ _) (>>=-cong ≈-refl (λ _ → ret-bind)))))
 
-  -- ★ the fork's body: the argument copied, each closure applied to one copy
-  forkB : ∀ {π} {A B C : IRTy}
-        → Rel ((apω {g = grade π} {⟪ A ⟫} {⟪ B ⟫} ⊗l apω {g = grade π} {⟪ A ⟫} {⟪ C ⟫}) ∘l mixL ∘l (lid ⊗l dup))
-              M.⟨ M.apply {A} {B} {π} M.∘ M.⟨ M.fst M.∘ M.fst , M.snd ⟩ , M.apply {A} {C} {π} M.∘ M.⟨ M.snd M.∘ M.fst , M.snd ⟩ ⟩
-  forkB {π} {A} {B} {C} = mkRel λ { {(f , g) , a} {(f′ , g′) , a′} ((wf , wg) , wa) →
-    ≈-≈R (≈-trans (bind-pure (≈-trans (bind-pure (≈-trans ret-bind ret-bind))
-                                      (mix-pure δ {E = One} {X = Fn many (grade π) ⟪ A ⟫ ⟪ B ⟫} {Y = Fn many (grade π) ⟪ A ⟫ ⟪ C ⟫} {Z = ⟪ A ⟫} {U = ⟪ A ⟫} tt _)))
-                  (>>=-cong (apω-≈ {grade π} {⟪ A ⟫} {⟪ B ⟫} f a) (λ b → >>=-cong (apω-≈ {grade π} {⟪ A ⟫} {⟪ C ⟫} g a) (λ _ → ≈-refl))))
-      (≈R-≈ (>>=-congR (wf wa) (λ r → >>=-congR (wg wa) (λ r′ → ret≈R (r , r′))))
+  ------------------------------------------------------------------------
+  -- ★ D494: THE FORK, BY ITS ARMS. What the fork keeps for an arm, run on
+  -- the arm's part of an argument, is the IR's closure of the arm applied to
+  -- the whole argument (`ArmR`); each kind of arm keeps such a thing
+  -- (`ArmOK`); the routing returns the parts at once (`p-splitP`).
+  ------------------------------------------------------------------------
+
+  ArmR : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A B : Ty m} {π} (a : ArmD rs Γ Ψ A B π)
+       → ⟦ ArmD.Ek a ⟧ → ⟦ ⌊ A ⌋ I.⇛[ π ] ⌊ B ⌋ ⟧ᴰᴵ → Set
+  ArmR {A = A} {B} a e fv = ∀ {x x′} → W ⌊ A ⌋ x x′ → Lᶜ δ (ArmD.ap a) e (pjv (ArmD.pj a) x) ≈[ W ⌊ B ⌋ ] fv x′
+
+  ArmOK : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A B : Ty m} {π} (f : Expr Γ Ψ (A ⇒[ G.mk-kind G.Many π ] B)) → Maybe (Arm f) → Set
+  ArmOK {Γ = Γ} {Ψ} f d = ∀ {γ γ′} → W ⌊ ⟦ Γ ↾ Ψ ⟧ᶜ ⌋ γ γ′
+                         → Lᶜ δ (ArmD.env (armOf rs f d)) tt γ ≈[ ArmR (armOf rs f d) ] evalᴰ fmt ρ (elaborate am f) γ′
+
+  -- a projection's map returns its part at once
+  mapT-pj : ∀ {m} {A B : Ty m} {mp : Map A B} (p : IsPj mp) → Pure δ (mapT {L} mp) (pjv p)
+  mapT-pj pj-id  e x = ≈-refl
+  mapT-pj pj-fst e x = bind-pure (≈-trans ret-bind ret-bind)
+  mapT-pj pj-snd e x = bind-pure (≈-trans ret-bind ret-bind)
+
+  -- the fork's body on what it keeps, against `forkIR`'s: each arm on its part, in order
+  forkB-≈ : ∀ {m n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B C : Ty m} {π} (af : ArmD rs Γ Ψ₁ A B π) (ag : ArmD rs Γ Ψ₂ A C π)
+              {ef eg fv gv} → ArmR af ef fv → ArmR ag eg gv
+          → ∀ {x x′} → W ⌊ A ⌋ x x′
+          → Lᶜ δ (forkB rs af ag) (ef , eg) x
+            ≈[ W (⌊ B ⌋ I.* ⌊ C ⌋) ] evalᴰ fmt ρ (M.⟨ M.apply {⌊ A ⌋} {⌊ B ⌋} {π} M.∘ M.⟨ M.fst M.∘ M.fst , M.snd ⟩
+                                                 , M.apply {⌊ A ⌋} {⌊ C ⌋} {π} M.∘ M.⟨ M.snd M.∘ M.fst , M.snd ⟩ ⟩) ((fv , gv) , x′)
+  forkB-≈ af ag {ef} {eg} rf rg {x} wx =
+    ≈-≈R (bind-pure (p-splitP δ (ArmD.pj af) (ArmD.pj ag) (ef , eg) x))
+      (≈R-≈ (>>=-congR (rf wx) (λ r → >>=-congR (rg wx) (λ r′ → ret≈R (r , r′))))
             (≈-sym (>>=-cong (bind-pure (≈-trans (bind-pure ret-bind) ret-bind))
-                             (λ _ → >>=-cong (bind-pure (≈-trans (bind-pure ret-bind) ret-bind)) (λ _ → ≈-refl))))) }
+                             (λ _ → >>=-cong (bind-pure (≈-trans (bind-pure ret-bind) ret-bind)) (λ _ → ≈-refl)))))
+
+  -- a closure whose body reads what it keeps, related through any relation on what it keeps
+  cloLR : ∀ (π : G.Purity) {Xc : LTy} {X A B : IRTy} {b : Tm L Xc ⟪ A ⟫ ⟪ B ⟫} {b′ : M.IR (X I.* A) B}
+            (γ : Gd (grade π) b) (R : ⟦ Xc ⟧ → ⟦ X ⟧ᴰᴵ → Set)
+        → (∀ {x x′} → R x x′ → ∀ {a a′} → W A a a′ → Lᶜ δ b x a ≈[ W B ] evalᴰ fmt ρ b′ (x′ , a′))
+        → ∀ {x x′} → R x x′ → Lᶜ δ (llamω {E = One} b γ) tt x ≈[ W (A I.⇛[ π ] B) ] evalᴰ fmt ρ (M.curry {π = π} b′) x′
+  cloLR (G.fin φ) γ R rb {x} r = ret≈R (λ {a} {a′} wa → ≈-≈R (≈-sym (blk-coh δ γ x a)) (rb r wa))
+  cloLR G.eff     γ R rb r = ret≈R (λ wa → rb r wa)
 
   ok-fork : ∀ {m n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B C : Ty m} {π}
               (f : Expr Γ Ψ₁ (A ⇒[ G.mk-kind G.Many π ] B)) (g : Expr Γ Ψ₂ (A ⇒[ G.mk-kind G.Many π ] C))
-            → Goal f → Goal g → Goal (fork' f g)
-  ok-fork {Γ = Γ} {Ψ₁} {Ψ₂} {π = π} f g rf rg = rel-∘ (rel-cloG π _ forkB) (rel-pair am Γ Ψ₁ Ψ₂ rf rg)
+            → ArmOK f (arm? f) → ArmOK g (arm? g) → Goal (fork' f g)
+  ok-fork {Γ = Γ} {Ψ₁} {Ψ₂} {A} {B} {C} {π} f g af ag = mkRel λ {x} {x′} w → let sw = split-W Γ Ψ₁ Ψ₂ w in
+    ≈-≈R (bind-pure (split-pure δ Γ Ψ₁ Ψ₂ tt x))
+      (>>=-congR
+        (≈R-≈ (>>=-congR {R = ArmR AF} (af (proj₁ sw))
+                         (λ r → >>=-congR {R = ArmR AG} (ag (proj₂ sw))
+                                  (λ r′ → ret≈R {R = λ e e′ → ArmR AF (proj₁ e) (proj₁ e′) × ArmR AG (proj₂ e) (proj₂ e′)}
+                                                ((λ {_} {_} → r) , (λ {_} {_} → r′)))))
+              (≈-sym (>>=-cong (bind-pure (restrict-pure ρ am {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) x′))
+                               (λ _ → >>=-cong (bind-pure (restrict-pure ρ am {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) x′)) (λ _ → ≈-refl)))))
+        (cloLR π {X = (⌊ A ⌋ I.⇛[ π ] ⌊ B ⌋) I.* (⌊ A ⌋ I.⇛[ π ] ⌊ C ⌋)} {A = ⌊ A ⌋} {B = ⌊ B ⌋ I.* ⌊ C ⌋}
+               {b′ = M.⟨ M.apply {⌊ A ⌋} {⌊ B ⌋} {π} M.∘ M.⟨ M.fst M.∘ M.fst , M.snd ⟩
+                       , M.apply {⌊ A ⌋} {⌊ C ⌋} {π} M.∘ M.⟨ M.snd M.∘ M.fst , M.snd ⟩ ⟩}
+               _ (λ e e′ → ArmR AF (proj₁ e) (proj₁ e′) × ArmR AG (proj₂ e) (proj₂ e′))
+               (λ r wa → forkB-≈ AF AG (proj₁ r) (proj₂ r) wa)))
+    where
+      AF = armOf rs f (arm? f)
+      AG = armOf rs g (arm? g)
 
   -- ★ the curried: a closure that builds a closure, whose body applies the
   -- first to the pair
@@ -866,6 +939,48 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRT
   rel-map (mp-Out F G.pureᶠ w)          = rel-Out F G.pureᶠ w
   rel-map (mp-Out F G.actᶠ w)           = rel-cloG G.act _ (rel-∘ (rel-Out F G.actᶠ w) rel-ρ)
   rel-map mp-toFloat                    = rel-op i2f-info
+
+  -- the projection, against the IR's map, on related arguments
+  pj-W : ∀ {m} {A B : Ty m} {mp : Map A B} (p : IsPj mp) {x x′} → W ⌊ A ⌋ x x′
+       → return∞ (pjv p x) ≈[ W ⌊ B ⌋ ] evalᴰ fmt ρ (mapIR mp) x′
+  pj-W {mp = mp} p {x} wx = ≈-≈R (≈-sym (mapT-pj p tt x)) (relOf (rel-map mp) wx)
+
+  -- the whole closure, on the whole argument: its relation is the arm's
+  armOk-all : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A B : Ty m} {π} (f : Expr Γ Ψ (A ⇒[ G.mk-kind G.Many π ] B))
+            → Goal f → ArmOK f nothing
+  armOk-all f rf w = relOf rf w
+
+  -- a projection: nothing kept, the part itself
+  armOk-map : ∀ {m n} {Γ : Ctx m n} {A B : Ty m} {π} {mp : Map A B} (p : IsPj mp)
+            → ArmOK (lift-morphism {Γ = Γ} {π = π} mp) (just (arm-map (pjl p)))
+  armOk-map {mp = mp} p w = ret≈R (λ {x} {x′} wx → ≈R-≈ (pj-W p wx) (≈-sym ret-bind))
+
+  -- the IR's composite applied: the inner closure, then the outer
+  comp-ev : ∀ {π} {A B C : IRTy} (hv : ⟦ B I.⇛[ π ] C ⟧ᴰᴵ) (mv : ⟦ A I.⇛[ π ] B ⟧ᴰᴵ) (a′ : ⟦ A ⟧ᴰᴵ)
+          → evalᴰ fmt ρ (M.apply {B} {C} {π} M.∘ M.⟨ M.fst M.∘ M.fst , M.apply {A} {B} {π} M.∘ M.⟨ M.snd M.∘ M.fst , M.snd ⟩ ⟩) ((hv , mv) , a′)
+            ≈ (mv a′ >>=∞ hv)
+  comp-ev hv mv a′ =
+    ≈-trans (>>=-cong (≈-trans (bind-pure ret-bind) (>>=-cong (bind-pure (≈-trans (bind-pure ret-bind) ret-bind)) (λ _ → ≈-refl))) (λ _ → ≈-refl))
+            (≈-trans (bind-assoc _ _ _) (>>=-cong ≈-refl (λ _ → ret-bind)))
+
+  -- a closure after a projection: the closure kept, run on the part
+  armOk-comp : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A A′ B : Ty m} {π} (h : Expr Γ Ψ (A′ ⇒[ G.mk-kind G.Many π ] B))
+               {mp : Map A A′} (p : IsPj mp) → Goal h
+             → ArmOK (comp' h (lift-morphism {Γ = Γ} {π = π} mp)) (just (arm-comp h (pjl p)))
+  armOk-comp {Γ = Γ} {Ψ} {A} {A′} {B} {π} h {mp} p rh {γ} {γ′} w =
+    ≈-≈R (≈-trans (bind-pure (weak-pure δ {E = One} {Γ = Γ} q tt γ)) (≈-sym bind-return))
+      (≈R-≈ (>>=-congR (relOf rh (weak-W {Γ = Γ} q w))
+                       (λ {e} {hv} wh → ret≈R (λ {x} {x′} wx →
+                          ≈-≈R (≈-sym ret-bind)
+                            (≈R-≈ (>>=-congR (pj-W p wx) (λ wy → wh wy))
+                                  (≈-sym (≈-trans (comp-ev {π} {⌊ A ⌋} {⌊ A′ ⌋} {⌊ B ⌋} hv _ x′) (>>=-cong ret-bind (λ _ → ≈-refl))))))))
+            (≈-sym (≈-trans (>>=-cong (>>=-cong (bind-pure (restrict-pure ρ am {Γ = Γ} q γ′))
+                                                (λ _ → bind-pure (≈-trans (bind-pure (restrict-pure ρ am {Γ = Γ} q′ γ′)) ≈-refl)))
+                                      (λ _ → ≈-refl))
+                            (≈-trans (bind-assoc _ _ _) (>>=-cong ≈-refl (λ _ → ret-bind))))))
+    where
+      q  = ⊑ᵘ-+ˡ Ψ (G.Many *ᵘ SC.zeroUsage)
+      q′ = ⊑ᵘ-trans (⊑ᵘ-*Many SC.zeroUsage) (⊑ᵘ-+ʳ Ψ (G.Many *ᵘ SC.zeroUsage))
 
   ok-lift : ∀ {m n} {Γ : Ctx m n} {A B : Ty m} {π} (mp : Map A B) → Goal (lift-morphism {Γ = Γ} {π = π} mp)
   ok-lift {π = π} mp = rel-cloG π _ (rel-∘ (rel-map mp) rel-snd)
@@ -1494,6 +1609,12 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRT
   -- ★★ THE BRIDGE'S MEANING: for every expression whose references are related
   Lq-ok : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} (e : Expr Γ Ψ A)
         → Refs (λ _ _ → ⊤) RefOK RefOK e → Goal e
+  -- ★ D494: a fork's arm, by what it takes
+  armOk : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A B : Ty m} {π} (f : Expr Γ Ψ (A ⇒[ G.mk-kind G.Many π ] B))
+          (d : Maybe (Arm f)) → Refs (λ _ _ → ⊤) RefOK RefOK f → ArmOK f d
+  armOk f nothing r = armOk-all f (Lq-ok f r)
+  armOk {Γ = Γ} {π = π} _ (just (arm-map (pjl p))) r = armOk-map {Γ = Γ} {π = π} p
+  armOk _ (just (arm-comp h (pjl p))) (rh , _) = armOk-comp h p (Lq-ok h rh)
   -- an application at `Many`, a branch where `appL` makes one (D481 B1)
   ok-appL : ∀ {m n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B : Ty m}
               (f : Expr Γ Ψ₁ (A ⇒[ G.mk-kind G.Many G.pure ] B)) (x : Expr Γ Ψ₂ A) (md : Maybe (CP f))
@@ -1536,7 +1657,7 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRT
   Lq-ok (morph-app mp x) (_ , r) = ok-mapp mp x (Lq-ok x r)
   Lq-ok (comp' f g) (rf , rg) = ok-comp f g (Lq-ok f rf) (Lq-ok g rg)
   Lq-ok (copair' f g) (rf , rg) = ok-copair f g (Lq-ok f rf) (Lq-ok g rg)
-  Lq-ok (fork' f g) (rf , rg) = ok-fork f g (Lq-ok f rf) (Lq-ok g rg)
+  Lq-ok (fork' f g) (rf , rg) = ok-fork f g (armOk f (arm? f) rf) (armOk g (arm? g) rg)
   Lq-ok (curry' f) r = ok-curry f (Lq-ok f r)
   Lq-ok (cata wf alg) r = ok-cata wf alg (Lq-ok alg r)
   Lq-ok (ana wf c) r = ok-ana wf c (Lq-ok c r)

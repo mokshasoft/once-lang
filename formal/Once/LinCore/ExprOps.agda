@@ -143,7 +143,8 @@ import Once.Spec.Grade as G
 import Data.Fin
 open import Once.LinCore.FromExpr fmt
   using (weak; split; carryL; mixL; var-at; bindL; apω; dist; cast;
-         Pth; p-var; p-fst; p-snd; p-mfst; p-msnd; Rd; rd-path; rd-int; rd-float; rd-num; rd-pair; rd-coe; coeRd; rd?; rdw?; lv; Rp; Rt; lentS; scrutL; pairL; scrutA; appL; cp?; CP; cp)
+         Pth; p-var; p-fst; p-snd; p-mfst; p-msnd; Rd; rd-path; rd-int; rd-float; rd-num; rd-pair; rd-coe; coeRd; rd?; rdw?; lv; Rp; Rt; lentS; scrutL; pairL; scrutA; appL; cp?; CP; cp;
+         IsPj; pj-id; pj-fst; pj-snd; PjL; pjl; Arm; arm-map; arm-comp; arm?; splitP; ArmD; armOf)
 open import Once.LinCore.PassTr fmt using (copyIn)
 
 module Ops (Σι : ISig) where
@@ -201,7 +202,7 @@ module Ops (Σι : ISig) where
   open import Once.Arith.SigOp.Builders using (numInfo; value-info; arrow-info)
   open import Once.Spec.Name using (CanonicalName)
   open import Data.Maybe using (Maybe; just; nothing)
-  open import Data.Product using (Σ; proj₁)
+  open import Data.Product using (Σ; proj₁; proj₂)
   open import Relation.Binary.PropositionalEquality using (sym; cong)
   open import Relation.Nullary using (Dec; yes; no)
   open import Once.Surface.CoerceIR using (VoidFree; erase-eq)
@@ -387,7 +388,29 @@ module Ops (Σι : ISig) where
     ok-pairL {Γ = Γ} {Ψ₁} {Ψ₂} a b (just d) oa ob =
       (tt , ob) , (tt , ((ok-weak {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) , tt) , (ok-Rt d (Once.Context.⊑ᵘ-+ˡ Ψ₁ Ψ₂) , tt)))
 
+    -- ★ D494: a fork's routing runs no op
+    ok-splitP : ∀ {m E} {A Af Ag : Ty m} {pf : Map A Af} {pg : Map A Ag} (p : IsPj pf) (q : IsPj pg)
+              → OK Dc (splitP {L} {E = E} p q)
+    ok-splitP pj-id  pj-id  = _
+    ok-splitP pj-id  pj-fst = _
+    ok-splitP pj-id  pj-snd = _
+    ok-splitP pj-fst pj-id  = _
+    ok-splitP pj-fst pj-fst = _
+    ok-splitP pj-fst pj-snd = _
+    ok-splitP pj-snd pj-id  = _
+    ok-splitP pj-snd pj-fst = _
+    ok-splitP pj-snd pj-snd = _
+
     ok-Lq : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} (e : S.Expr Γ Ψ A) → DRefs e → OK Dc (Lq rs e)
+
+    -- ★ D494: an arm's keep and its run
+    ok-armOf : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A B : Ty m} {π} (f : S.Expr Γ Ψ (A ST.⇒[ G.mk-kind G.Many π ] B))
+               (d : Maybe (Arm f)) → DRefs f
+             → OK Dc (ArmD.env (armOf rs f d)) × OK Dc (ArmD.ap (armOf rs f d))
+    ok-armOf f nothing r = ok-Lq f r , tt
+    ok-armOf _ (just (arm-map (pjl p))) r = tt , tt
+    ok-armOf {Γ = Γ} _ (just (arm-comp {Ψ₁ = Ψ} h (pjl p))) (rh , _) =
+      (ok-Lq h rh , ok-weak {Γ = Γ} (Once.Context.⊑ᵘ-+ˡ Ψ (G.Many *ᵘ zeroUsage))) , tt
 
     -- D481 B1: an argument as a scrutinee, and an application at `Many` (a branch where `appL` makes one)
     ok-scrutA : ∀ {m n} {Γ : Ctx m n} {Φ Ψs : Usage n} {S : Ty m} (s : S.Expr Γ Ψs S) (d : Maybe (Rd s))
@@ -449,7 +472,10 @@ module Ops (Σι : ISig) where
     ok-Lq {Γ = Γ} (S.copair' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f g) (rf , rg) =
       _ , ((ok-Lq f rf , ok-Lq g rg) , ok-split Γ Ψ₁ Ψ₂)
     ok-Lq {Γ = Γ} (S.fork' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f g) (rf , rg) =
-      ok-clo ((_ , _) , (_ , (tt , tt))) , ((ok-Lq f rf , ok-Lq g rg) , ok-split Γ Ψ₁ Ψ₂)
+      (((proj₂ (ok-armOf f (arm? f) rf) , proj₂ (ok-armOf g (arm? g) rg))
+         , ok-splitP (ArmD.pj (armOf rs f (arm? f))) (ArmD.pj (armOf rs g (arm? g))))
+       , (proj₁ (ok-armOf f (arm? f) rf) , proj₁ (ok-armOf g (arm? g) rg)))
+      , ok-split Γ Ψ₁ Ψ₂
     ok-Lq (S.curry' f) r = ok-clo (ok-clo (_ , tt)) , ok-Lq f r
     ok-Lq {Γ = Γ} (S.cata {Ψ = Ψ} {F = F} {A = A} wfF alg) r =
       ok-cast (layerEq F wfF A) refl {t = bev} tt , (ok-Lq alg r , ok-weak {Γ = Γ} (⊑ᵘ-*Many Ψ))

@@ -128,6 +128,17 @@ mutual
   pair-drop-Bl h k e (call s x c)   = ≈call (λ y → pair-drop-Bl h k e (c y))
   pair-drop-Bl h k e (halt s x)     = ≈halt
 
+-- a bind into `return∞` is the computation itself (the monad's right unit)
+mutual
+  bind-return : ∀ {X : Set} {m : T∞ X} → (m >>=∞ return∞) ≈ m
+  block≈ (bind-return {m = m}) = bind-return-Bl (block m)
+
+  bind-return-Bl : ∀ {X : Set} (b : T (X ⊎ T∞ X)) → Bl (bindBlock b return∞) b
+  bind-return-Bl (ret (inj₁ x)) = ≈ret
+  bind-return-Bl (ret (inj₂ m)) = ≈step bind-return
+  bind-return-Bl (call s x c)   = ≈call (λ y → bind-return-Bl (c y))
+  bind-return-Bl (halt s x)     = ≈halt
+
 ------------------------------------------------------------------------
 -- 2. ★ BISIMILARITY UP TO A RELATION on the values returned.
 ------------------------------------------------------------------------

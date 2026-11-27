@@ -559,6 +559,50 @@ cp? (copair' f g) = both cp (im? f) (im? g)
 {-# CATCHALL #-}
 cp? _ = nothing
 
+------------------------------------------------------------------------
+-- 5d. ★ D494: A FORK'S ARMS, BY WHAT THEY TAKE OF THE ARGUMENT. A fork
+-- `pair f g` applied to `x` ran `f x` and `g x` on two copies of `x` (`dup`).
+-- An arm that is a projection, or a closure after one (`h . fst`), takes only
+-- that part: arms on the two halves of a pair split it (no copy), an arm that
+-- reads a half without cells copies that half's words (a read, D477), and
+-- only two arms that need the same cells still copy them. A projection runs
+-- nothing, so taking it first keeps the arms' order.
+------------------------------------------------------------------------
+
+-- a projection: a map that only takes a part
+data IsPj {m} : ∀ {A B : Ty m} → Map A B → Set where
+  pj-id  : ∀ {A} → IsPj (mp-id {A = A})
+  pj-fst : ∀ {A B} → IsPj (mp-fst {A = A} {B = B})
+  pj-snd : ∀ {A B} → IsPj (mp-snd {A = A} {B = B})
+
+pj? : ∀ {m} {A B : Ty m} (mp : Map A B) → Maybe (IsPj mp)
+pj? mp-id  = just pj-id
+pj? mp-fst = just pj-fst
+pj? mp-snd = just pj-snd
+{-# CATCHALL #-}
+pj? _      = nothing
+
+-- a projection as a closure (`lift-morphism`)
+data PjL {m n} {Γ : Ctx m n} : ∀ {Ψ : Usage n} {T : Ty m} → Expr Γ Ψ T → Set where
+  pjl : ∀ {A B π} {mp : Map A B} → IsPj mp → PjL (lift-morphism {Γ = Γ} {π = π} mp)
+
+pjl? : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {T : Ty m} (e : Expr Γ Ψ T) → Maybe (PjL e)
+pjl? (lift-morphism mp) = Data.Maybe.map pjl (pj? mp)
+{-# CATCHALL #-}
+pjl? _ = nothing
+
+-- an arm: a projection, or a closure after one
+data Arm {m n} {Γ : Ctx m n} : ∀ {Ψ : Usage n} {T : Ty m} → Expr Γ Ψ T → Set where
+  arm-map  : ∀ {Ψ T} {f : Expr Γ Ψ T} → PjL f → Arm f
+  arm-comp : ∀ {Ψ₁ Ψ₂ A B C π} (h : Expr Γ Ψ₁ (B ⇒[ G.mk-kind G.Many π ] C)) {g : Expr Γ Ψ₂ (A ⇒[ G.mk-kind G.Many π ] B)}
+           → PjL g → Arm (comp' h g)
+
+arm? : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {T : Ty m} (f : Expr Γ Ψ T) → Maybe (Arm f)
+arm? (lift-morphism mp) = Data.Maybe.map arm-map (pjl? (lift-morphism mp))
+arm? (comp' h g)        = Data.Maybe.map (arm-comp h) (pjl? g)
+{-# CATCHALL #-}
+arm? _ = nothing
+
 module _ {L : Cx} where
 
   -- the variable's slot, inside a lent context: `t` reads it
@@ -630,6 +674,58 @@ module _ {L : Cx} where
   k-lentS : ∀ {m n} {Γ : Ctx m n} {Ψs Φ : Usage n} {S : Ty m} {s : Expr Γ Ψs S} (d : Rd s) → Blk (lentS {Γ = Γ} {Ψs} {Φ} d)
   k-lentS {Γ = Γ} {Ψs} {Φ} d = k-∘ (k-⊗ (k-weak {Γ = Γ} (⊑ᵘ-+ʳ Ψs Φ)) k-id) (k-∘ (k-lend (k-snd (k-Rt d (⊑ᵘ-+ˡ Ψs Φ)))) k-ρ⁻)
 
+  -- ★ D494: a projection, under any lent environment
+  pjT : ∀ {m E} {A B : Ty m} {mp : Map A B} → IsPj mp → Tm L E (ty A) (ty B)
+  pjT pj-id  = lid
+  pjT pj-fst = ρl ∘l (lid ⊗l drop)
+  pjT pj-snd = lul ∘l (drop ⊗l lid)
+
+  k-pjT : ∀ {m E} {A B : Ty m} {mp : Map A B} (p : IsPj mp) → Blk (pjT {E = E} p)
+  k-pjT pj-id  = k-id
+  k-pjT pj-fst = k-∘ k-ρ (k-⊗ k-id k-drop)
+  k-pjT pj-snd = k-∘ k-lul (k-⊗ k-drop k-id)
+
+  -- a half of a pair, read in place beside it: only that half is copied out
+  -- (its words where it has no cells)
+  rdFst : ∀ {E X Y} → Tm L E (X ⊗t Y) ((X ⊗t Y) ⊗t X)
+  rdFst = lend (bsnd (bfst bcopy)) ∘l ρl⁻
+
+  rdSnd : ∀ {E X Y} → Tm L E (X ⊗t Y) ((X ⊗t Y) ⊗t Y)
+  rdSnd = lend (bsnd (bsnd bcopy)) ∘l ρl⁻
+
+  k-rdFst : ∀ {E X Y} → Blk (rdFst {E} {X} {Y})
+  k-rdFst = k-∘ (k-lend (k-snd (k-fst k-copy))) k-ρ⁻
+
+  k-rdSnd : ∀ {E X Y} → Blk (rdSnd {E} {X} {Y})
+  k-rdSnd = k-∘ (k-lend (k-snd (k-snd k-copy))) k-ρ⁻
+
+  -- ★ the argument routed to two arms by their projections: the halves of a
+  -- pair split, a half both need read beside the whole, a copy only where both
+  -- take the same part
+  splitP : ∀ {m E} {A Af Ag : Ty m} {pf : Map A Af} {pg : Map A Ag} → IsPj pf → IsPj pg
+         → Tm L E (ty A) (ty Af ⊗t ty Ag)
+  splitP pj-id  pj-id  = dup
+  splitP pj-id  pj-fst = rdFst
+  splitP pj-id  pj-snd = rdSnd
+  splitP pj-fst pj-id  = lswap ∘l rdFst
+  splitP (pj-fst {A = X} {B = Y}) pj-fst = dup ∘l pjT (pj-fst {A = X} {B = Y})
+  splitP pj-fst pj-snd = lid
+  splitP pj-snd pj-id  = lswap ∘l rdSnd
+  splitP pj-snd pj-fst = lswap
+  splitP (pj-snd {A = X} {B = Y}) pj-snd = dup ∘l pjT (pj-snd {A = X} {B = Y})
+
+  k-splitP : ∀ {m E} {A Af Ag : Ty m} {pf : Map A Af} {pg : Map A Ag} (p : IsPj pf) (q : IsPj pg)
+           → Blk (splitP {E = E} p q)
+  k-splitP pj-id  pj-id  = k-dup
+  k-splitP pj-id  pj-fst = k-rdFst
+  k-splitP pj-id  pj-snd = k-rdSnd
+  k-splitP pj-fst pj-id  = k-∘ k-swap k-rdFst
+  k-splitP (pj-fst {A = X} {B = Y}) pj-fst = k-∘ k-dup (k-pjT (pj-fst {A = X} {B = Y}))
+  k-splitP pj-fst pj-snd = k-id
+  k-splitP pj-snd pj-id  = k-∘ k-swap k-rdSnd
+  k-splitP pj-snd pj-fst = k-swap
+  k-splitP (pj-snd {A = X} {B = Y}) pj-snd = k-∘ k-dup (k-pjT (pj-snd {A = X} {B = Y}))
+
 ------------------------------------------------------------------------
 -- 6. ★★ THE BRIDGE: `Lq⟦_⟧`, clause for clause `elaborate`, a block.
 ------------------------------------------------------------------------
@@ -644,8 +740,48 @@ module _ {L : Cx} (rs : Rs L) where
   k-castΦ : ∀ {m n} {Γ : Ctx m n} {Φ Φ′ : Usage n} {B} (e : Φ ≡ Φ′) {t : LTm L (Co Γ Φ) B} → Blk t → Blk (castΦ {Γ = Γ} e t)
   k-castΦ refl β = β
 
+  -- ★ D494: a fork's arm as the fork runs it: the projection it takes of the
+  -- argument, what the fork's closure keeps for it, and its run on that part
+  record ArmD {m n} (Γ : Ctx m n) (Ψ : Usage n) (A B : Ty m) (π : G.Purity) : Set where
+    constructor armD
+    field
+      Ap    : Ty m
+      pm    : Map A Ap
+      pj    : IsPj pm
+      Ek    : LTy
+      env   : LTm L (Co Γ Ψ) Ek
+      k-env : Blk env
+      ap    : Tm L Ek (ty Ap) (ty B)
+      k-ap  : ∀ {φ} → π ≡ G.fin φ → Blk ap
+
+  -- the fork's body: the argument routed by the arms' projections, each arm run on its part
+  forkB : ∀ {m n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B C : Ty m} {π} (af : ArmD Γ Ψ₁ A B π) (ag : ArmD Γ Ψ₂ A C π)
+        → Tm L (ArmD.Ek af ⊗t ArmD.Ek ag) (ty A) (ty B ⊗t ty C)
+  forkB af ag = (bfst (ArmD.ap af) ⊗l bsnd (ArmD.ap ag)) ∘l splitP (ArmD.pj af) (ArmD.pj ag)
+
+  k-forkB : ∀ {m n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B C : Ty m} {π} (af : ArmD Γ Ψ₁ A B π) (ag : ArmD Γ Ψ₂ A C π)
+          → ∀ {φ} → π ≡ G.fin φ → Blk (forkB af ag)
+  k-forkB af ag e = k-∘ (k-⊗ (k-fst (ArmD.k-ap af e)) (k-snd (ArmD.k-ap ag e))) (k-splitP (ArmD.pj af) (ArmD.pj ag))
+
+  -- the fork: a closure that reads what it keeps (`llamω`), over what each arm keeps
+  forkL : ∀ {m n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B C : Ty m} (π : G.Purity) (af : ArmD Γ Ψ₁ A B π) (ag : ArmD Γ Ψ₂ A C π)
+        → LTm L (Co Γ Ψ₁ ⊗t Co Γ Ψ₂) (Fn many (grade π) (ty A) (ty B ⊗t ty C))
+  forkL π af ag = llamω (forkB af ag) (gdL π (k-forkB af ag)) ∘l (ArmD.env af ⊗l ArmD.env ag)
+
+  k-forkL : ∀ {m n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B C : Ty m} (π : G.Purity) (af : ArmD Γ Ψ₁ A B π) (ag : ArmD Γ Ψ₂ A C π)
+          → Blk (forkL π af ag)
+  k-forkL π af ag = k-∘ k-lamω (k-⊗ (ArmD.k-env af) (ArmD.k-env ag))
+
   Lq : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} → Expr Γ Ψ A → LTm L (Co Γ Ψ) (ty A)
   Lq-blk : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} (e : Expr Γ Ψ A) → Blk (Lq e)
+  -- ★ D494: an arm, by what it takes (`arm?`); else the whole closure, on the whole argument
+  armOf : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A B : Ty m} {π} (f : Expr Γ Ψ (A ⇒[ G.mk-kind G.Many π ] B))
+        → Maybe (Arm f) → ArmD Γ Ψ A B π
+  armOf f nothing = armD _ mp-id pj-id _ (Lq f) (Lq-blk f) bev (λ { refl → k-bev })
+  armOf _ (just (arm-map (pjl p))) = armD _ _ p _ lid k-id lid (λ _ → k-id)
+  armOf {Γ = Γ} _ (just (arm-comp {Ψ₁ = Ψ} h (pjl p))) =
+    armD _ _ p _ (Lq h ∘l weak {Γ = Γ} (⊑ᵘ-+ˡ Ψ (G.Many *ᵘ zeroUsage)))
+         (k-∘ (Lq-blk h) (k-weak {Γ = Γ} (⊑ᵘ-+ˡ Ψ (G.Many *ᵘ zeroUsage)))) bev (λ { refl → k-bev })
   -- a case's scrutinee and the arms' share beside it: read in place (D477), else split off
   scrutL : ∀ {m n} {Γ : Ctx m n} {Ψs Φ : Usage n} {S : Ty m} (s : Expr Γ Ψs S) → Maybe (Rd s)
          → LTm L (Co Γ (Ψs +ᵘ Φ)) (Co Γ Φ ⊗t ty S)
@@ -769,10 +905,9 @@ module _ {L : Cx} (rs : Rs L) where
   Lq {Γ = Γ} (copair' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {π = π} f g) =
     llamω (lcase (bfst bev) (bsnd bev)) (gdL π (λ { refl → k-case (k-fst k-bev) (k-snd k-bev) }))
     ∘l (Lq f ⊗l Lq g) ∘l split Γ Ψ₁ Ψ₂
+  -- ★ D494: the fork, by what its arms take of the argument
   Lq {Γ = Γ} (fork' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {π = π} f g) =
-    llamωᶜ ((apω ⊗l apω) ∘l mixL ∘l (lid ⊗l dup))
-          (gdB π (λ { refl → k-∘ (k-⊗ k-apω k-apω) (k-∘ k-mixL (k-⊗ k-id k-dup)) }))
-    ∘l (Lq f ⊗l Lq g) ∘l split Γ Ψ₁ Ψ₂
+    forkL π (armOf f (arm? f)) (armOf g (arm? g)) ∘l split Γ Ψ₁ Ψ₂
   Lq (curry' {π₀ = π₀} {π = π} f) =
     clo π₀ (llamωᶜ (apω ∘l lassoc) (gdB π (λ { refl → k-∘ k-apω k-assoc }))) k-lamωᶜ
     ∘l Lq f
@@ -839,7 +974,8 @@ module _ {L : Cx} (rs : Rs L) where
   Lq-blk {Γ = Γ} (comp' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f g) =
     k-∘ k-lamω (k-∘ (k-⊗ (Lq-blk f) (k-∘ (Lq-blk g) (k-weak {Γ = Γ} (⊑ᵘ-*Many Ψ₂)))) (k-split Γ Ψ₁ (G.Many *ᵘ Ψ₂)))
   Lq-blk {Γ = Γ} (copair' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f g) = k-∘ k-lamω (k-∘ (k-⊗ (Lq-blk f) (Lq-blk g)) (k-split Γ Ψ₁ Ψ₂))
-  Lq-blk {Γ = Γ} (fork' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f g) = k-∘ k-lamωᶜ (k-∘ (k-⊗ (Lq-blk f) (Lq-blk g)) (k-split Γ Ψ₁ Ψ₂))
+  Lq-blk {Γ = Γ} (fork' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {π = π} f g) =
+    k-∘ (k-forkL π (armOf f (arm? f)) (armOf g (arm? g))) (k-split Γ Ψ₁ Ψ₂)
   Lq-blk (curry' f) = k-∘ k-lamωᶜ (Lq-blk f)
   Lq-blk {Γ = Γ} (cata {Ψ = Ψ} wfF alg) = k-∘ k-lamω (k-∘ (Lq-blk alg) (k-weak {Γ = Γ} (⊑ᵘ-*Many Ψ)))
   Lq-blk {Γ = Γ} (ana {Ψ = Ψ} wfF coalg) = k-∘ k-lamωᶜ (k-∘ (Lq-blk coalg) (k-weak {Γ = Γ} (⊑ᵘ-*Many Ψ)))
