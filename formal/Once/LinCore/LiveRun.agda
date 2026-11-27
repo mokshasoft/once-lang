@@ -226,7 +226,7 @@ module _ {FS : FrameSemantics} where
   own-cases : ∀ {T} → LocalCases {Level.zero} {T}
   own-cases = record
     { P        = λ {r = r} {r′ = r′} _ → ∀ j → OwnR r′ j ≡ OwnR r j
-    ; unpair′  = λ _ → refl ; pair′ = λ _ → refl ; swap′ = λ _ → refl ; unit′ = λ _ → refl
+    ; unpair′  = λ _ → refl ; pair′ = λ _ → refl ; swap′ = λ _ → refl ; xchg′ = λ _ → refl ; unit′ = λ _ → refl
     ; prim′    = λ _ _ _ → refl
     ; untag′   = λ _ → refl ; untag₁′ = λ _ → refl ; tag₁′ = λ _ → refl
     ; case₁′   = λ _ → refl ; case₂′ = λ _ → refl

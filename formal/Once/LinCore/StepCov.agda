@@ -75,6 +75,7 @@ step-covered (i-opend _) = pc-op
 step-covered i-unpair = tt
 step-covered i-pair = tt
 step-covered i-swap = tt
+step-covered (i-xchg _) = tt
 step-covered i-unit = tt
 step-covered i-untag = tt
 step-covered i-oncify = tt

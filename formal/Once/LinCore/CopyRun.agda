@@ -33,7 +33,7 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; Σ)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; sym)
 
 open import Once.LinCore.Core fmt
 open import Once.LinCore.Code fmt bw using (Sh; _∣_)
@@ -118,6 +118,9 @@ module Keep′ (U : Univ) where
   tag-c (G ⊕f H) (minr x)     v = tag-c H x v
   tag-c (G ⊗f H) (mpair x x′) (v , v′) = tag-c G x v , tag-c H x′ v′
 
+  vc-subst : ∀ {A B} (e : A ≡ B) (x : MV A) → VC x → VC (subst MV e x)
+  vc-subst refl x p = p
+
   mvF-c : ∀ a (y : ⟦ a ⟧f) → VC (mvF a y)
   mvF-c funit    y        = tt
   mvF-c fvoid    ()
@@ -189,6 +192,7 @@ module Keep′ (U : Univ) where
   keep′ i-unpair K (_ , ck) R (E , (a , b) , os) = ck , R , E , a , b , os
   keep′ i-pair   K (_ , ck) R (E , a , b , os)   = ck , R , E , (a , b) , os
   keep′ i-swap   K (_ , ck) R (E , a , b , os)   = ck , R , E , b , a , os
+  keep′ (i-xchg {e = e} (xg {v = v} {w = w})) K (_ , ck) R (E , a , b , os) = ck , R , E , vc-subst (sym e) w b , vc-subst e v a , os
   keep′ i-unit   K (_ , ck) R (E , os)           = ck , R , E , tt , os
   keep′ (i-prim run) (p , _) ((d , c) , ck) R (E , v , os) = ck , R , E , prim-c run p d c v , os
   keep′ (i-opend _) K (_ , ck) R (E , v , os)    = tt , R , E , os

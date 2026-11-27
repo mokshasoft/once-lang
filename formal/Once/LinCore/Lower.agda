@@ -285,6 +285,11 @@ module Lowering (U : Univ)
   lowI φ j m epop ev    = [] , m
   lowI φ j m stuck ev   = [] , m
   lowI φ j m (swap {A = A} {B} {S}) ev = swapMv (Tp φ (A ∷ B ∷ S)) (wsz A) (wsz B) , m
+  -- ★ D505: the exchange — the node's pointer to `Input1`, its old words to scratch below the
+  -- stack, the new layer's words into the node, the old ones into the layer's slots
+  lowI φ j m (xchg {F = F} {L} {S} e) ev =
+    let bot = Tp φ S ; wL = wsz L ; p = (bot ∸ wL) ∸ 1 ; sc = p ∸ wL
+    in restore-input p ∷ mvPS 0 sc wL ++ mvSP (bot ∸ wL) 0 wL ++ mvSS sc (bot ∸ wL) wL , m
   lowI φ j m (prim ds {S = S} g) ev = lowP ds g φ S ev , m
   lowI φ j m (elend {E} {Es} {X} {A} {S}) ev =
     let e = ws Es ; wE = wsz E

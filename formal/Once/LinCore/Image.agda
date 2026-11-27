@@ -33,6 +33,7 @@ open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; Σ; _,_)
 import Data.Bool
+open import Relation.Binary.PropositionalEquality using (_≡_)
 import Data.Unit
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.LinCore.Flat using (Base)
@@ -155,6 +156,11 @@ data Insᴵ : Sh → Sh → Set where
   -- ★ D480: a many-use closure made the one-shot closure of its owned body (word 4 into word 1),
   -- for its owned call (`levω`: `oncify ⨾ icall`)
   oncify  : ∀ {Es g A B S} → Insᴵ (Es ∣ (Fn many g A B ⊗t A) ∷ S) (Es ∣ (Fn once g A B ⊗t A) ∷ S)
+  -- ★ D505: a node's contents EXCHANGED in place — the cell kept (its id, no event), its old
+  -- layer handed back, the new one in its place: a fold's pointer reversal. The run owns the
+  -- node (the fold consumes it), so no other value sees it rewired.
+  -- (the layer a variable `L`, its equation carried: a computed type in the index trips coverage)
+  xchg    : ∀ {Es F L S} → LF∙ F (μt F) ≡ L → Insᴵ (Es ∣ μt F ∷ L ∷ S) (Es ∣ μt F ∷ L ∷ S)
   iobs    : ∀ {Γ} (ds : Defs Γ) {Es F S} → Insᴵ (Es ∣ Nu F ∷ S) (Es ∣ LF∙ F (Nu F) ∷ S)
   ccopy   : ∀ {Es k g A B S} → Insᴵ (Fn k g A B ∷ Es ∣ One ∷ S) (Fn k g A B ∷ Es ∣ Fn k g A B ∷ S)
   ncopy   : ∀ {Es F S} → Insᴵ (Nu F ∷ Es ∣ One ∷ S) (Nu F ∷ Es ∣ Nu F ∷ S)

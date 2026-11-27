@@ -239,6 +239,10 @@ module NoLabels {FS : FrameSemantics} where
     lowI-nl φ j m stuck ei _   = []
     lowI-nl φ j m (swap {A = A} {B} {S}) ei _ =
       swapMv-nl (Tp φ (A ∷ B ∷ S)) (wsz A) (wsz B)
+    -- (D505: the exchange's moves)
+    lowI-nl φ j m (xchg {F = F} {L} {S} e) ei _ =
+      let bot = Tp φ S ; wL = wsz L ; p = (bot ∸ wL) ∸ 1 ; sc = p ∸ wL
+      in refl ∷ nl (mvPS 0 sc wL) (mvPS-nl 0 sc wL) (nl (mvSP (bot ∸ wL) 0 wL) (mvSP-nl (bot ∸ wL) 0 wL) (mvSS-nl sc (bot ∸ wL) wL))
     lowI-nl φ j m (prim ds {S = S} g) ei _ = lowP-nl ds g φ S ei
     lowI-nl φ j m (elend {E} {Es} {X} {A} {S}) ei _ =
       let e = ws Es ; wE = wsz E

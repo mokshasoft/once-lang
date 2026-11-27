@@ -24,6 +24,7 @@ open import Data.Maybe using (just; nothing)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Product using (_,_; proj₁; proj₂)
 open import Agda.Builtin.Equality using (_≡_; refl)
+open import Relation.Binary.PropositionalEquality using (subst; sym)
 open import Data.Empty using (⊥)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.IR.Semantics.Trace using (FFIAnswers)
@@ -62,11 +63,20 @@ data Ret : Sh → Sh → Set where
 ------------------------------------------------------------------------
 -- 2. ONE STEP.
 ------------------------------------------------------------------------
+-- ★ D505: what an exchange does to a node and a layer: the node keeps its id, the layers trade places
+-- (its own relation: the step's indices stay variables, which coverage over `StepI` needs)
+data Xchg {F L} (e : LF∙ F (μt F) ≡ L) : MV (μt F) → MV L → MV (μt F) → MV L → Set where
+  xg : ∀ {i} {v : MV (LF∙ F (μt F))} {w : MV L} → Xchg e (mmu i v) w (mmu i (subst MV (sym e) w)) (subst MV e v)
+
 
 data StepI {T : Sh} : ∀ {sh U sh′ U′} → Codeᴵ sh U → Ret U T → Cfg sh → ℕ → Trace
                     → Codeᴵ sh′ U′ → Ret U′ T → Cfg sh′ → ℕ → Set where
   i-unpair : ∀ {Es A B S U} {k : Codeᴵ (Es ∣ A ∷ B ∷ S) U} {r : Ret U T} {es} {a : MV A} {b : MV B} {os n}
            → StepI (unpair ⨾ k) r (es ∥ mpair a b ∷ˢ os) n [] k r (es ∥ a ∷ˢ b ∷ˢ os) n
+  -- ★ D505: the exchange — the node keeps its id; no event
+  i-xchg   : ∀ {Es F L S U} {e : LF∙ F (μt F) ≡ L} {k : Codeᴵ (Es ∣ μt F ∷ L ∷ S) U} {r : Ret U T} {es}
+               {x x′ : MV (μt F)} {a a′ : MV L} {os n}
+           → Xchg e x a x′ a′ → StepI (xchg e ⨾ k) r (es ∥ x ∷ˢ a ∷ˢ os) n [] k r (es ∥ x′ ∷ˢ a′ ∷ˢ os) n
   i-pair   : ∀ {Es A B S U} {k : Codeᴵ (Es ∣ (A ⊗t B) ∷ S) U} {r : Ret U T} {es} {a : MV A} {b : MV B} {os n}
            → StepI (pair ⨾ k) r (es ∥ a ∷ˢ b ∷ˢ os) n [] k r (es ∥ mpair a b ∷ˢ os) n
   i-swap   : ∀ {Es A B S U} {k : Codeᴵ (Es ∣ B ∷ A ∷ S) U} {r : Ret U T} {es} {a : MV A} {b : MV B} {os n}

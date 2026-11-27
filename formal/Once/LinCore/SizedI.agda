@@ -27,7 +27,7 @@ open import Data.Maybe using (just; nothing)
 open import Data.List using (_∷_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Unit using (⊤; tt)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; sym)
 open import Once.LinCore.Core fmt
 open import Once.LinCore.Values fmt bw
 open import Once.LinCore.Events fmt ans bw
@@ -54,6 +54,13 @@ WSR []ʳ             = ⊤
 WSR (frm k es os r) = WSE es × (WSS os × WSR r)
 WSR (k ∷ⁱ r)        = WSR r
 
+-- (D505: an exchange keeps the node's id and its functor, so its size)
+ws-subst : ∀ {A B} (e : A ≡ B) (x : MV A) → WS x → WS (subst MV e x)
+ws-subst refl x p = p
+
+ws-xchg : ∀ {F L} {e : LF∙ F (μt F) ≡ L} {x x′ : MV (μt F)} {a a′ : MV L} → Xchg e x a x′ a′ → WS x → WS a → WS x′ × WS a′
+ws-xchg {e = e} (xg {v = v} {w = w}) (sz , wv) wa = (sz , ws-subst (sym e) w wa) , ws-subst e v wv
+
 ws-see : ∀ {E Es} (es : Slots (E ∷ Es)) → WSE es → WS (see es)
 ws-see (vw e es)   (w , _) = w
 ws-see (ln e x es) (w , _) = w
@@ -75,6 +82,7 @@ ws-stepI : ∀ {T sh U sh′ U′} {c : Codeᴵ sh U} {r : Ret U T} {m n t} {c�
 ws-stepI i-unpair (we , ((wa , wb) , wo)) wr = (we , (wa , (wb , wo))) , wr
 ws-stepI i-pair (we , (wa , (wb , wo))) wr = (we , ((wa , wb) , wo)) , wr
 ws-stepI i-swap (we , (wa , (wb , wo))) wr = (we , (wb , (wa , wo))) , wr
+ws-stepI (i-xchg g) (we , (wa , (wb , wo))) wr = (we , (proj₁ (ws-xchg g wa wb) , (proj₂ (ws-xchg g wa wb) , wo))) , wr
 ws-stepI i-unit (we , wo) wr = (we , (tt , wo)) , wr
 ws-stepI (i-prim run) (we , (wv , wo)) wr = (we , (ws-run run tt wv , wo)) , wr
 ws-stepI (i-opend _) (we , (_ , wo)) wr = (we , wo) , wr

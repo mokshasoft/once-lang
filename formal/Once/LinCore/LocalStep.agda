@@ -268,6 +268,7 @@ module Steps {FS : FrameSemantics} (U : Univ)
     ; unpair′  = λ s → record { sub = next s ; carry = λ P x → x }
     ; pair′    = λ s → record { sub = next s ; carry = λ P x → x }
     ; swap′    = λ s → record { sub = next s ; carry = λ P x → x }
+    ; xchg′    = λ _ s → record { sub = next s ; carry = λ P x → x }
     ; unit′    = λ s → record { sub = next s ; carry = λ P x → x }
     ; prim′    = λ _ _ s → record { sub = next s ; carry = λ P x → x }
     ; untag′   = λ s → record { sub = next s ; carry = λ P x → x }

@@ -26,7 +26,7 @@ open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; sym)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.IR.Semantics.Trace using (FFIAnswers)
 open import Once.LinCore.Flat using (Base)
@@ -123,6 +123,10 @@ module Keep (U : Univ) where
   tag-in (G ⊕f H) (minr x)     v = tag-in H x v
   tag-in (G ⊗f H) (mpair x x′) (v , v′) = tag-in G x v , tag-in H x′ v′
 
+  -- (D505: a value moved across its layer's equation is as inside)
+  vin-subst : ∀ {A B} (e : A ≡ B) (x : MV A) → VIn x → VIn (subst MV e x)
+  vin-subst refl x p = p
+
   mvF-in : ∀ a (y : ⟦ a ⟧f) → VIn (mvF a y)
   mvF-in funit    y        = tt
   mvF-in fvoid    ()
@@ -192,6 +196,7 @@ module Keep (U : Univ) where
     keep i-unpair (_ , ck) R (E , (a , b) , os) = ck , R , E , a , b , os
     keep i-pair   (_ , ck) R (E , a , b , os)   = ck , R , E , (a , b) , os
     keep i-swap   (_ , ck) R (E , a , b , os)   = ck , R , E , b , a , os
+    keep (i-xchg {e = e} (xg {v = v} {w = w})) (_ , ck) R (E , a , b , os) = ck , R , E , vin-subst (sym e) w b , vin-subst e v a , os
     keep i-unit   (_ , ck) R (E , os)           = ck , R , E , tt , os
     keep (i-prim run) (p , ck) R (E , v , os)   = ck , R , E , prim-in run p v , os
     keep (i-opend _) (_ , ck) R (E , v , os)    = tt , R , E , os

@@ -57,6 +57,7 @@ LocalI : ∀ {sh sh′} → Insᴵ sh sh′ → Set
 LocalI unpair       = ⊤
 LocalI pair         = ⊤
 LocalI swap         = ⊤
+LocalI (xchg _)     = ⊤
 LocalI unit         = ⊤
 LocalI (prim ds g)  = NotOp g
 LocalI untag        = ⊤
@@ -257,6 +258,7 @@ module _ {ℓ : Level} {T : Sh} where
   covered-elim C st@i-unpair      v = CoveredCases.loc C st v
   covered-elim C st@i-pair        v = CoveredCases.loc C st v
   covered-elim C st@i-swap        v = CoveredCases.loc C st v
+  covered-elim C st@(i-xchg _)    v = CoveredCases.loc C st v
   covered-elim C st@i-unit        v = CoveredCases.loc C st v
   covered-elim C st@(i-prim _)    (pc-loc v) = CoveredCases.loc C st v
   covered-elim C (i-prim run)     pc-op      = CoveredCases.op C run
@@ -305,6 +307,10 @@ module _ {ℓ : Level} {T : Sh} where
             → P (i-pair {k = k} {r = r} {es = es} {a = a} {b = b} {os = os} {n = n})
       swap′ : ∀ {Es A B S U} {k : Codeᴵ (Es ∣ B ∷ A ∷ S) U} {r : Ret U T} {es : Slots Es} {a : MV A} {b : MV B} {os : Stk S} {n}
             → P (i-swap {k = k} {r = r} {es = es} {a = a} {b = b} {os = os} {n = n})
+      -- (D505: the exchange)
+      xchg′ : ∀ {Es F L S U} {e : LF∙ F (μt F) ≡ L} {k : Codeᴵ (Es ∣ μt F ∷ L ∷ S) U} {r : Ret U T} {es : Slots Es}
+                {x x′ : MV (μt F)} {a a′ : MV L} {os : Stk S} {n} (g : Xchg e x a x′ a′)
+            → P (i-xchg {k = k} {r = r} {es = es} {os = os} {n = n} g)
       unit′ : ∀ {Es S U} {k : Codeᴵ (Es ∣ One ∷ S) U} {r : Ret U T} {es : Slots Es} {os : Stk S} {n}
             → P (i-unit {k = k} {r = r} {es = es} {os = os} {n = n})
       prim′ : ∀ {Γ} {ds : Defs Γ} {Es A B S U} {g : LTm Γ A B} {k : Codeᴵ (Es ∣ B ∷ S) U} {r : Ret U T} {es : Slots Es}
@@ -363,6 +369,7 @@ module _ {ℓ : Level} {T : Sh} where
   local-elim C i-unpair                  _ = LocalCases.unpair′ C
   local-elim C i-pair                    _ = LocalCases.pair′ C
   local-elim C i-swap                    _ = LocalCases.swap′ C
+  local-elim C (i-xchg g)                _ = LocalCases.xchg′ C g
   local-elim C i-unit                    _ = LocalCases.unit′ C
   local-elim C (i-prim run)              l = LocalCases.prim′ C run l
   local-elim C i-untag                   _ = LocalCases.untag′ C

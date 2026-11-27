@@ -159,6 +159,7 @@ module Places {sh₀ U₀} (c₀ : Codeᴵ sh₀ U₀) where
   place i-unpair      P R = nxt P , R
   place i-pair        P R = nxt P , R
   place i-swap        P R = nxt P , R
+  place (i-xchg _)    P R = nxt P , R
   place i-unit        P R = nxt P , R
   place (i-prim _)    P R = nxt P , R
   place (i-opend _)   P R = halt , R
