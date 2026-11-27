@@ -43,7 +43,7 @@ open import DirectedHoTT.Prelude
 open import DirectedHoTT.Spec.Scope using ( Cx; ε; _∙; Var; vz; vs )
 open import DirectedHoTT.Spec.Syntax using ( RTm; var; lam; app )
 open import DirectedHoTT.Spec.Reduction 𝒮
-  using ( _⟶_; β; ξ-lam; _⟶*_; done; step; _≅_; cred; crfl; csym; ctrn )
+  using ( ⟶head; ⟶cong; _⟶_; β; ξ-lam; _⟶*_; done; step; _≅_; cred; crfl; csym; ctrn )
 open import DirectedHoTT.Metatheory.Confluence 𝒮 using ( church-rosser )
 
 private
@@ -105,10 +105,10 @@ tv = var vz
 tl = lam (var vz)
 
 var-normal : IsNormal tv
-var-normal ()
+var-normal (⟶head ())
 
 lam-normal : IsNormal tl
-lam-normal (ξ-lam ())
+lam-normal (ξ-lam (⟶head ()))
 
 var≇lam : ¬ (tv ≅ tl)
 var≇lam c with conv-normal-≡ c var-normal lam-normal

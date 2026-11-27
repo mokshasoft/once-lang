@@ -53,7 +53,7 @@ open ᴵReduction using ( δref )
 open import DirectedHoTT.Spec.Scope using ( Cx; ε; _∙; Var; vz; vs )
 open import DirectedHoTT.Spec.Syntax
   using ( RTy; base; U; Π; Σ'; El; Hom; RTm; var; lam; app; pair; fst; snd; absurd; ordtr; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap; Id; ⌜Id⌝; idrefl; jsub; Unit; Nat; unit; nzero; nsuc; natrec; natrec-cong₃; ⌜Nat⌝; ⌜Unit⌝; Ren; extR; Sub; subTy; subTm; extS; renTm; subTm-renTm; subTm-id; Hom-cong₃; ⌜Hom⌝-cong₃; Desc; con; dι; dρ; εwkTy; IMu; ielim; ⌜IMu⌝; εwkTm; DIh; Fin; ⌜Fin⌝; dσ; dpay; dih; fzero; fsuc; fcase; fcase0; psplit; cong₄; cong₃; ref )
-open ᴵReduction using ( _⟶_; β; βfst; βsnd; ξ-lam; ξ-appˡ; ξ-appʳ; ξ-pairˡ; ξ-pairʳ
+open ᴵReduction using ( ⟶head; ⟶cong; _⟶_; β; βfst; βsnd; ξ-lam; ξ-appˡ; ξ-appʳ; ξ-pairˡ; ξ-pairʳ
         ; ξ-absurdᶜ; ξ-absurdᵉ; ordtr-z; ordtr-szz; ordtr-ssz; ordtr-szs
         ; ordtr-sss; ξ-ordtrᵃ; ξ-ordtrᵗ; ξ-ordtrᵘ; ξ-ordtrᵖ; ξ-ordtrq; ξ-fst
         ; ξ-snd; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ; ξ-⌜Hom⌝ᶜ; ξ-⌜Hom⌝ˡ; ξ-⌜Hom⌝ʳ
@@ -1010,7 +1010,7 @@ pick-false refl h = h
 
 -- a variable never reduces
 red-nonvar : {t t' : RTm Γ} → t ⟶ t' → var? t ≡ false
-red-nonvar {t = var _} ()
+red-nonvar {t = var _} (⟶head ())
 red-nonvar {t = (lam t)} _ = refl
 red-nonvar {t = (app t u)} _ = refl
 red-nonvar {t = (pair a b)} _ = refl
@@ -1086,7 +1086,7 @@ trstk?-red-d  : {d d' : RTm (Γ ∙)} {p : RTm Γ} → d ⟶ d' →
 trstk?-red-p  : {d : RTm (Γ ∙)} {p p' : RTm Γ} → p ⟶ p' →
                 trstk? d p ≡ true → trstk? d p' ≡ true
 
-homheaded?-red {t = var _} () _   -- forces the source-head split first (see RedCong's `stkA?-red`)
+homheaded?-red {t = var _} (⟶head ()) _   -- forces the source-head split first (see RedCong's `stkA?-red`)
 homheaded?-red (β _ _) ()
 homheaded?-red (βfst _ _) ()
 homheaded?-red (βsnd _ _) ()
@@ -1118,7 +1118,7 @@ homheaded?-red (ξ-trᵈ _) ()
 homheaded?-red (ξ-trᵖ _) ()
 homheaded?-red (ξ-trᵉ _) ()
 
-spine?-red {t = var _} () _   -- forces the source-head split first (see RedCong's `stkA?-red`)
+spine?-red {t = var _} (⟶head ()) _   -- forces the source-head split first (see RedCong's `stkA?-red`)
 spine?-red (β _ _) ()
 spine?-red (βfst _ _) ()
 spine?-red (βsnd _ _) ()
