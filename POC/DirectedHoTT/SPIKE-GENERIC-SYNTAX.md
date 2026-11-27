@@ -27,7 +27,7 @@
 | S2 | A kernel-shaped fragment (two sorts, binders of depth 1 and 2, a `nat` field for `ref`) with pattern synonyms; the definitional equalities the metatheory relies on | `Π-stable`, `lam-ren`, `natrec-sub` (double binder), `ref-sub`, `var-sub`, a concrete β-substitution, all by `refl`; a negative control fails ON CONVERSION | ✅ `tmp/GenSynFrag.agda`; control `tmp/GenSynNeg.agda` fails with `var vz != ref 1`, its positive twin passes |
 | S3 | Typing over the generic syntax: (a) the fragment's typing rules by hand, its substitution-typing lemma using the generic fusion; (b) ONE typing-preservation lemma for every kit, given a typed kit | (a) shorter than the hand-written control, no slower; (b) states and proves for the fragment | ✅ (b), 2026-11-27: `tmp/GenSynKit.agda` (150 lines) proves once, for every SYNTACTIC kit (fresh variable `var vz`, weakening `ren vs`): fusion with renaming and substitution on both sides, simulation (the traversal IS a substitution), one commuting square, and weakening and single substitution through it. `tmp/GenSynTy.agda` (181 lines): the fragment's typing (`var`, `lam`, `app`, `nzero`, `nsuc`, `natrec` with its double binder, `conv`; `U`, `Nat`, `El`, `Π`) and ONE lemma `pres` for every typed kit; `⊢wk` and `Sub⊢` are its two instances (substitution built on weakening), and β's typed environment `single⊢` a corollary. Each rule's case is one to six lines and uses only the generic lemmas, no per-former equation. Conversion stability under any kit comes from simulation. Both check in about 3 s. (a)'s timing control is deferred to S4, where a hand-written twin is built anyway |
 | S4 | A semantic proof over the encoded syntax: one lemma that cases on terms (β subject reduction, or a parallel-reduction substitution lemma) | reads like the hand-written one; Agda time within the ±12% noise floor of a hand-written control on the same fragment | ✅ correctness and readability, 2026-11-27; timing below resolution at this size. Lemma: parallel reduction's substitution lemma (Takahashi), with β and natrec's two ι rules (one substitutes under two binders). Generic `tmp/GenSynPar.agda`: ONE congruence rule `⇒con` for every former, the lemma once for every kit with a value relation, renaming and substitution as instances; its β/ι cases read exactly like the hand-written ones, and all 14 formers' congruence is one line. Control `tmp/HandFrag.agda` + `tmp/HandPar.agda`: per-former renaming, substitution, four fusion lemmas, identity, four commutation lemmas, and the lemma twice. Non-blank lines: generic, signature-specific 54 + 92 = 146 vs hand 212 + 78 = 290; the generic infrastructure (`GenSyn` + `GenSynKit`, 244) is paid once for every signature. Per former: about 2 lines generic, about 17 by hand, so the infrastructure pays for itself from about 20 formers (the kernel has about 60). All three modules check in about 3 s wall-clock including start-up: too small to separate, so timing waits for S6 |
-| S5 | The Knot link: the Knot's object-level signature and the Spec's syntax as two interpretations of ONE signature; one generic decoder (object term → meta term) and one agreement theorem, for every signature | proved for the fragment, with no per-constructor clause | ⬜ — the largest prize |
+| S5 | The Knot link: the Knot's object-level signature and the Spec's syntax as two interpretations of ONE signature; one generic decoder (object term → meta term) and one agreement theorem, for every signature | proved for the fragment, with no per-constructor clause | 🟡 part 1 ✅ 2026-11-27: the Knot's object level is ALREADY generic (`Lib/SynTravRed`, `Lib/SynUnq` over trees `STm`); what is per former is the BRIDGE from the Spec's hand-written `RTm`/`RTy` (generated `Terms`, `Unquote` 2445 lines, `RenAgree`, `SubAgree`, from rows parsed out of `Spec/Syntax`). `tmp/GenSynQuote.agda`: the quotation of the generic syntax into the kernel's own terms in `Lib/SynUnq`'s exact encoding, ONE definition for every signature, with closedness and injectivity proved once. A signature supplies only an `Enum` (tag, decoder, round trip: three lines per former, no case analysis on pairs). `tmp/GenSynQuoteFrag.agda`: the fragment's `Enum`, `lam`/`Π`+`El`/`ref` quotations by `refl`, injectivity as an instance; `tmp/GenSynQuoteNeg.agda` (swapped tags) fails on conversion. Design note: the Spec keeps O(1) named tags; `STm`'s positional `NthG`/`NthSh` proofs (unary, up to ~50 deep per node) stay object-side. Part 2 ⬜: renaming/substitution agreement generically (object traversal at `⌜ t ⌝` reduces to `⌜ ren ρ t ⌝`), over `Lib/SynTravRed` |
 | S6 | Measure at scale, AT THE USE SITES: (a) a fresh cold-sweep baseline first (the last `sweep-cold.log` was in `/tmp` and did not survive the power cut); (b) the full kernel signature, `Spec/Syntax` switched on a scratch branch with pattern synonyms keeping its API; (c) cold times of the metatheory (`Confluence`, `SubjectReduction`, `TySub`) and of the Knot's heaviest modules (`RedCompDecode` 211 s, `RedDecodeXi` 177 s, `JudgeDecodeTm` 141 s, `RedXiConGen` 122 s, `JudgeConGen` 66 s) against (a); (d) where slower, `agda-profile.sh` on that module before any verdict | no module slower beyond the ±12% noise floor; or, where slower, a profiled cause with a fix | ⬜ |
 | S7 | Inventory of the libraries: for each of the 66 `Lib/` modules and the Knot's families, does it (i) disappear (a per-former fact the generic layer now proves), (ii) shrink, (iii) stay as is, or (iv) need rework; with line counts before and after for (i)–(ii) | a table; every (iv) with a reason | ⬜ |
 
@@ -87,6 +87,16 @@ cleaner, and is it faster or slower to check AT THE USE SITE? Inputs:
     their cost on the Knot's large concrete terms is unmeasured.
   - Instance copies: the kit is a record, and my notes record that instance
     copies defeat syntactic equality (PLAN-REF's 100 → 540 s).
+  - IMPLICITS (the user, 2026-11-27: "implicit params usually hurt
+    performance"). Benign: implicits fixed by an explicit argument's type
+    (`Γ`/`Δ` from `ρ : Env K Γ Δ`, the sort from `Tm Σ s Γ`). Risky: ones
+    solved against a COMPUTED index: (i) `Args Σ Γ (fields Σ c)`, where
+    matching `t ∷ʳ as` unifies `rec s k ∷ fs` with the computed field list
+    (the "computed-index cost is solve order" case, 267×); (ii) the
+    quotation's target scope `{Θ}`, fixed only by the expected type (as in
+    `Lib/SynUnq` today). Rule for the switch: the Spec's public syntax keeps
+    an implicit only where an explicit argument's type fixes it; S6 profiles
+    (i) and (ii) first.
 - **How it is measured.** S6 (below, revised) and S7.
 
 ## 2b. If the encoding is slow: a Spec/implementation correspondence
@@ -109,6 +119,11 @@ AND today's use-site performance:
   terms. Its proof goes through the isomorphism once, in the bridge; use
   sites see only the concrete statement, with no casts. This transports
   propositions once, not data at every use site.
+
+**Decided (the user, 2026-11-27): (2) only if S6 shows performance needs
+it.** "A completely general abstraction is better most of the times ...
+Full generalization beats partial" (the POC's measurements agree:
+"half-generalization is the worst case", 147 s / 350 s-OOM / 5 s).
 
 Options, best first: (1) the generic syntax is the only syntax, if S6 says
 it is fast enough; (2) this split; (3) the concrete datatype and the bridge
