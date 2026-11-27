@@ -25833,3 +25833,12 @@ the source's terms ("closure of type T consumes its captures; the program calls 
 Variable NAMES are not in the checked `Expr` (de Bruijn indices over the Spec's type-only context): the first
 warning names the definition, the variable's type and binder position and the two uses; names follow with a
 name table from the type checker.
+
+**D500 built, first part** (2026-11-27): `LinCore/Linear.agda` — the sites where the program is not linear,
+clause for clause the bridge (`sites`, `linear?`), at the program's lent-called types (`ExprImage.linearSites`);
+`once check`/`build` print each as `warning: not linear (a copy here): <definition>: <what owns it twice>
+(variables #i)` (`Warnings.linearWarnings`), and `once stats` lists them. The corpus has none. Tests:
+`LinearSpec` (a pair of a list warns; `twice f x = f (f x)` does not). Definitions are inlined into `main`
+before the check, so a site is named by the definition it ends up in; variable NAMES come with the binders
+(next: `lam`/`let'`/`case'` carry their source name, an implicit argument, so patterns are untouched).
+Still owed: the bridge lemma `Linear₀ → CopyFree`, `NoCopy`, `--require-linear`.

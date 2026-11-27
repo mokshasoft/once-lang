@@ -17,6 +17,7 @@ import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
                     rem64, lt64, eq64, word64FromNat, word64ToNat)
 import qualified MAlonzo.RTE
 import qualified Data.Text
+import qualified MAlonzo.Code.Agda.Builtin.Bool
 import qualified MAlonzo.Code.Agda.Builtin.List
 import qualified MAlonzo.Code.Agda.Builtin.Maybe
 import qualified MAlonzo.Code.Agda.Builtin.Nat
@@ -28,14 +29,20 @@ import qualified MAlonzo.Code.Data.List.Base
 import qualified MAlonzo.Code.Data.Nat.Base
 import qualified MAlonzo.Code.Data.Nat.Show
 import qualified MAlonzo.Code.Data.String.Base
+import qualified MAlonzo.Code.Data.Sum.Base
 import qualified MAlonzo.Code.Once.Compile
+import qualified MAlonzo.Code.Once.CompileSrc
 import qualified MAlonzo.Code.Once.Float.Word
+import qualified MAlonzo.Code.Once.IR
+import qualified MAlonzo.Code.Once.LinCore.ExprBuild
+import qualified MAlonzo.Code.Once.LinCore.ExprImage
 import qualified MAlonzo.Code.Once.Parser.Lexer
 import qualified MAlonzo.Code.Once.Parser.Module.Core
 import qualified MAlonzo.Code.Once.Parser.Token
 import qualified MAlonzo.Code.Once.Spec.Float.Decimal
 import qualified MAlonzo.Code.Once.Spec.Float.Dyadic
 import qualified MAlonzo.Code.Once.Spec.Float.Value
+import qualified MAlonzo.Code.Once.Spec.Numerics
 import qualified MAlonzo.Code.Once.Target.Arch
 
 -- Once.Warnings.ExactQ
@@ -572,39 +579,131 @@ du_go_374 v0
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe C_FloatIdentityEq_60 (coe v1)) (coe du_go_374 (coe v2))
       _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Warnings.linearWarnings
+d_linearWarnings_380 ::
+  MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
+  MAlonzo.Code.Once.Parser.Module.Core.T_Resolved_8 ->
+  [MAlonzo.Code.Agda.Builtin.String.T_String_6]
+d_linearWarnings_380 v0 v1
+  = coe
+      du_bySrcs_406 (coe v0)
+      (coe
+         MAlonzo.Code.Once.CompileSrc.d_srcModule_1760
+         (coe MAlonzo.Code.Once.IR.C_Heap_8)
+         (coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8) (coe v1))
+-- Once.Warnings._.fmt
+d_fmt_390 ::
+  MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
+  MAlonzo.Code.Once.Parser.Module.Core.T_Resolved_8 ->
+  MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6
+d_fmt_390 v0 ~v1 = du_fmt_390 v0
+du_fmt_390 ::
+  MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
+  MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6
+du_fmt_390 v0
+  = coe MAlonzo.Code.Once.Target.Arch.d_arch'45'numerics_62 (coe v0)
+-- Once.Warnings._.render
+d_render_392 ::
+  MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
+  MAlonzo.Code.Once.Parser.Module.Core.T_Resolved_8 ->
+  MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
+  MAlonzo.Code.Agda.Builtin.String.T_String_6
+d_render_392 ~v0 ~v1 v2 = du_render_392 v2
+du_render_392 ::
+  MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
+  MAlonzo.Code.Agda.Builtin.String.T_String_6
+du_render_392 v0
+  = coe
+      MAlonzo.Code.Data.String.Base.d__'43''43'__20
+      ("warning: not linear (a copy here): " :: Data.Text.Text) v0
+-- Once.Warnings._.byMain
+d_byMain_396 ::
+  MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
+  MAlonzo.Code.Once.Parser.Module.Core.T_Resolved_8 ->
+  [MAlonzo.Code.Once.CompileSrc.T_CompiledSrc_1012] ->
+  Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
+  [MAlonzo.Code.Agda.Builtin.String.T_String_6]
+d_byMain_396 v0 ~v1 v2 v3 = du_byMain_396 v0 v2 v3
+du_byMain_396 ::
+  MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
+  [MAlonzo.Code.Once.CompileSrc.T_CompiledSrc_1012] ->
+  Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
+  [MAlonzo.Code.Agda.Builtin.String.T_String_6]
+du_byMain_396 v0 v1 v2
+  = case coe v2 of
+      MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v3
+        -> case coe v3 of
+             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v4 v5
+               -> coe
+                    MAlonzo.Code.Data.List.Base.du_map_22 (coe du_render_392)
+                    (coe
+                       MAlonzo.Code.Once.LinCore.ExprImage.d_linearSites_88
+                       (coe du_fmt_390 (coe v0))
+                       (coe
+                          MAlonzo.Code.Once.LinCore.ExprBuild.du_srcOrder_1596 (coe v1)
+                          (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))
+                       (coe v4) (coe v5))
+             _ -> MAlonzo.RTE.mazUnreachableError
+      MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
+        -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Warnings._.bySrcs
+d_bySrcs_406 ::
+  MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
+  MAlonzo.Code.Once.Parser.Module.Core.T_Resolved_8 ->
+  MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
+  [MAlonzo.Code.Agda.Builtin.String.T_String_6]
+d_bySrcs_406 v0 ~v1 v2 = du_bySrcs_406 v0 v2
+du_bySrcs_406 ::
+  MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
+  MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
+  [MAlonzo.Code.Agda.Builtin.String.T_String_6]
+du_bySrcs_406 v0 v1
+  = case coe v1 of
+      MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v2
+        -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
+      MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v2
+        -> coe
+             du_byMain_396 (coe v0) (coe v2)
+             (coe MAlonzo.Code.Once.CompileSrc.d_mainOf_1810 (coe v2))
+      _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Warnings.warningsFor
-d_warningsFor_380 ::
+d_warningsFor_410 ::
   MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Resolved_8 ->
   [MAlonzo.Code.Agda.Builtin.String.T_String_6]
-d_warningsFor_380 v0 v1 v2
+d_warningsFor_410 v0 v1 v2
   = coe
-      du_go_392
+      MAlonzo.Code.Data.List.Base.du__'43''43'__32
       (coe
-         MAlonzo.Code.Data.List.Base.du__'43''43'__32
-         (coe
-            d_roundingWarnings_240 (coe v0)
-            (coe
-               MAlonzo.Code.Once.Parser.Lexer.d_tokenize_1066
-               (coe MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12 v1)))
+         du_go_422
          (coe
             MAlonzo.Code.Data.List.Base.du__'43''43'__32
-            (coe d_loopWarnings_352 (coe v2)) (coe d_eqWarnings_366 (coe v2))))
+            (coe
+               d_roundingWarnings_240 (coe v0)
+               (coe
+                  MAlonzo.Code.Once.Parser.Lexer.d_tokenize_1066
+                  (coe MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12 v1)))
+            (coe
+               MAlonzo.Code.Data.List.Base.du__'43''43'__32
+               (coe d_loopWarnings_352 (coe v2))
+               (coe d_eqWarnings_366 (coe v2)))))
+      (coe d_linearWarnings_380 (coe v0) (coe v2))
 -- Once.Warnings._.go
-d_go_392 ::
+d_go_422 ::
   MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Resolved_8 ->
   [T_Warning_16] -> [MAlonzo.Code.Agda.Builtin.String.T_String_6]
-d_go_392 ~v0 ~v1 ~v2 v3 = du_go_392 v3
-du_go_392 ::
+d_go_422 ~v0 ~v1 ~v2 v3 = du_go_422 v3
+du_go_422 ::
   [T_Warning_16] -> [MAlonzo.Code.Agda.Builtin.String.T_String_6]
-du_go_392 v0
+du_go_422 v0
   = case coe v0 of
       [] -> coe v0
       (:) v1 v2
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-             (coe d_renderWarning_316 (coe v1)) (coe du_go_392 (coe v2))
+             (coe d_renderWarning_316 (coe v1)) (coe du_go_422 (coe v2))
       _ -> MAlonzo.RTE.mazUnreachableError

@@ -19,7 +19,10 @@ open import Data.String using (String)
 open import Once.Spec.Type using (Type)
 open import Once.Spec.Sub using (_<:_)
 open import Once.Compile using (EffUU)
-open import Once.CompileSrc using (CompiledSrc)
+open import Once.CompileSrc using (CompiledSrc; module CompiledSrc)
+import Once.CompileSrc
+import Once.Spec.Name
+import Data.Nat
 open import Once.CCC.Machine.SMCore using (AbstractTrace)
 open import Once.CCC.Codegen.RoomChecks using (room-checks)
 open import Once.Arith.Machine.IR using (ArithBlock)
@@ -72,3 +75,25 @@ fileAt B a inl tl pm ex = Backend.file B (room-checks (imageAtₘ inl a tl pm)) 
 -- verified bound (D488) removes the checks a bounded program does not need.
 fileAtᵘ : (B : Backend) → Once.CCC.Codegen.AllocExpandClasses.Alloc → Bool → List CompiledSrc → ∀ {T : Type} → T <: EffUU → List String → Backend.File B
 fileAtᵘ B a inl tl pm ex = Backend.file B (imageAtₘ inl a tl pm) (file-table (Backend.payload B) (blocksAt tl pm)) ex
+
+-- ★ D500: where the program is not linear (`Linear.sites`), by definition, at the program's
+-- lent-called closure types (D498: its universe's)
+import Once.LinCore.Linear
+import Data.List as L
+import Data.String as Str
+import Data.Nat.Show
+open import Data.Product using (_,_)
+
+linearSites : List CompiledSrc → ∀ {T : Type} → T <: EffUU → List String
+linearSites tl pm = L.concatMap perDef tl
+  where
+    lc = Once.LinCore.Keys.Univ.lct (Once.LinCore.Keys.univ fmt bw (Once.LinCore.ExprBuild.ETProg.defs (Once.LinCore.ExprBuild.exprTable fmt tl))
+           (Once.LinCore.ExprBuild.mainCore fmt (Once.LinCore.ExprBuild.ETProg.rs (Once.LinCore.ExprBuild.exprTable fmt tl)) pm))
+    nameOf : CompiledSrc → String
+    nameOf c = Str.intersperse "." (Once.Spec.Name.CanonicalName.parts (CompiledSrc.csName c))
+    vars : L.List Data.Nat.ℕ → String
+    vars vs = Str.intersperse ", " (L.map (λ i → "#" Str.++ Data.Nat.Show.show i) vs)
+    perDef : CompiledSrc → List String
+    perDef c = L.map (λ { (k , vs) → nameOf c Str.++ ": " Str.++ k Str.++ (if L.null vs then "" else " (variables " Str.++ vars vs Str.++ ")") })
+                     (Once.LinCore.Linear.sites fmt lc (Once.CompileSrc.Src.expr (CompiledSrc.csSrc c)))
+      where open import Data.Bool using (if_then_else_)

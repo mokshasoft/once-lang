@@ -5,6 +5,7 @@ import Test.Tasty.Runners (NumThreads (..))
 
 import ArithSpec (arithTests)
 import FloatSpec (floatTests)
+import LinearSpec (linearTests)
 import FmtSpec (fmtTests)
 import ImportSpec (importTests)
 import FloatEmitSpec (floatEmitTests)
@@ -56,6 +57,7 @@ main = defaultMain $ localOption (NumThreads 1) $ testGroup "Once"
   , layer5Tests
   , arithTests
   , floatTests
+  , linearTests
   , floatEmitTests
   , litRangeTests
   , optimizeTests

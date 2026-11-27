@@ -99,7 +99,9 @@ private
                (Once.Measure.Copies.defs (arch-numerics x86-64) tbl)
           Data.String.++ "\n" Data.String.++ Once.Measure.Copies.show-sites (arch-numerics x86-64)
                (Once.Measure.Copies.clo-sites (arch-numerics x86-64) tbl)
-          Data.String.++ "\n" Data.String.++ Once.Measure.Copies.lent-reach (arch-numerics x86-64) tbl)
+          Data.String.++ "\n" Data.String.++ Once.Measure.Copies.lent-reach (arch-numerics x86-64) tbl
+          Data.String.++ Data.List.foldr (λ s acc → "\nnot linear: " Data.String.++ s Data.String.++ acc) ""
+               (Once.LinCore.ExprImage.linearSites (arch-numerics x86-64) (Once.LinCore.ExprBuild.srcOrder (arch-numerics x86-64) srcs []) pm))
     where tbl = Once.LinCore.ExprBuild.ETProg.defs (Once.LinCore.ExprBuild.exprTable (arch-numerics x86-64)
                   (Once.LinCore.ExprBuild.srcOrder (arch-numerics x86-64) srcs []))
           im = Once.LinCore.ExprImage.imageAt (arch-numerics x86-64)

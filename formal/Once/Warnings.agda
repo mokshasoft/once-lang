@@ -63,6 +63,13 @@ open import Once.Parser.Lexer using (tokenize)
 open import Data.String using (toList)
 open import Once.Compile using (silentRoundDefs; floatIdentityEqDefs)
 open import Once.Parser.Module.Core using (Resolved)
+import Once.CompileSrc
+import Once.IR
+import Once.Target.Arch
+import Once.LinCore.ExprImage
+import Once.LinCore.ExprBuild
+import Data.Sum
+import Data.List
 open import Once.Spec.Float.Decimal using (signedDecimal)
 open import Once.Spec.Surface.Syntax using (Module; mkModule; Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport)
 
@@ -364,9 +371,25 @@ eqWarnings m = go (floatIdentityEqDefs m)
 -- | The compiler's entry point: every rounding warning this module has for
 -- this target, rendered. `Once.Compile` re-exports it and the CLI prints it,
 -- which is what keeps this module ON the apex path rather than beside it.
+-- ★ D500 (decided by the user): where the program is NOT linear (`LinCore.Linear`): a value
+-- owned twice is copied there. No such warning means `Linear₀`, the premise of `NoCopy`.
+linearWarnings : Arch → Resolved → List String
+linearWarnings arch m = bySrcs (Once.CompileSrc.srcModule Once.IR.Heap false m)
+  where
+    fmt = Once.Target.Arch.arch-numerics arch
+    render : String → String
+    render s = "warning: not linear (a copy here): " <> s
+    byMain : List Once.CompileSrc.CompiledSrc → Maybe _ → List String
+    byMain srcs (just (T , pm)) =
+      Data.List.map render (Once.LinCore.ExprImage.linearSites fmt (Once.LinCore.ExprBuild.srcOrder fmt srcs []) pm)
+    byMain srcs nothing = []
+    bySrcs : String Data.Sum.⊎ List Once.CompileSrc.CompiledSrc → List String
+    bySrcs (Data.Sum.inj₁ _)    = []
+    bySrcs (Data.Sum.inj₂ srcs) = byMain srcs (Once.CompileSrc.mainOf srcs)
+
 warningsFor : Arch → String → Resolved → List String
 warningsFor arch src m =
-  go (roundingWarnings arch (tokenize (toList src)) ++ loopWarnings m ++ eqWarnings m)
+  go (roundingWarnings arch (tokenize (toList src)) ++ loopWarnings m ++ eqWarnings m) ++ linearWarnings arch m
   where
     go : List Warning → List String
     go []       = []
