@@ -52,8 +52,8 @@ import DirectedHoTT.Spec.Reduction 𝒮 as ᴵReduction
 open ᴵReduction using ( δref )
 open import DirectedHoTT.Spec.Scope using ( Cx; ε; _∙; Var; vz; vs )
 open import DirectedHoTT.Spec.Syntax
-  using ( module KS; KCon; ⌜Nat⌝; ⌜Unit⌝; ty; `base; `U; `Π; `Σ'; `El; `Hom; `Unit; `Nat; `Id; `IMu; `Desc; `DIh; `Fin; RTy; base; U; Π; Σ'; El; Hom; RTm; var; lam; app; pair; fst; snd; absurd; ordtr; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap; Id; ⌜Id⌝; idrefl; jsub; Unit; Nat; unit; nzero; nsuc; natrec; natrec-cong₃; ⌜Nat⌝; ⌜Unit⌝; Ren; extR; Sub; subTy; subTm; extS; renTm; subTm-renTm; subTm-id; Hom-cong₃; ⌜Hom⌝-cong₃; Desc; con; dι; dρ; εwkTy; IMu; ielim; ⌜IMu⌝; εwkTm; DIh; Fin; ⌜Fin⌝; dσ; dpay; dih; fzero; fsuc; fcase; fcase0; psplit; cong₄; cong₃; ref )
-open ᴵReduction using ( _⊳_; ⟶head; ⟶cong; _⟶_; β; βfst; βsnd; ξ-lam; ξ-appˡ; ξ-appʳ; ξ-pairˡ; ξ-pairʳ
+  using ( module KS; KCon; ⌜Nat⌝; ⌜Unit⌝; ty; `base; `U; `Π; `Σ'; `El; `Hom; `Unit; `Nat; `Id; `IMu; `Desc; `DIh; `Fin; RTy; base; U; Π; Σ'; El; Hom; RTm; var; lam; app; pair; fst; snd; absurd; ordtr; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap; Id; ⌜Id⌝; idrefl; jsub; Unit; Nat; unit; nzero; nsuc; natrec; natrec-cong₃; Ren; extR; Sub; subTy; subTm; extS; renTm; subTm-renTm; subTm-id; Hom-cong₃; ⌜Hom⌝-cong₃; Desc; con; dι; dρ; εwkTy; IMu; ielim; ⌜IMu⌝; εwkTm; DIh; Fin; ⌜Fin⌝; dσ; dpay; dih; fzero; fsuc; fcase; fcase0; psplit; cong₄; cong₃; ref )
+open ᴵReduction using ( _⊳_; ap-Jʳ; dih-ιʳ; dih-ρʳ; dih-σʳ; dpay-ιʳ; dpay-ρʳ; dpay-σʳ; fcase-sʳ; fcase-zʳ; hrefl-Nat-sʳ; hrefl-Nat-zʳ; hrefl-pwʳ; jsub-reflʳ; natrec-sucʳ; natrec-zeroʳ; ordtr-sssʳ; ordtr-sszʳ; ordtr-szsʳ; ordtr-szzʳ; ordtr-zʳ; psplit-βʳ; tr-J-Homʳ; tr-J-baseʳ; tr-J-Σʳ; tr-pwʳ; tr-tautʳ; βfstʳ; βsndʳ; βʳ; ιʳ; ⟶head; ⟶cong; _⟶_; β; βfst; βsnd; ξ-lam; ξ-appˡ; ξ-appʳ; ξ-pairˡ; ξ-pairʳ
         ; ξ-absurdᶜ; ξ-absurdᵉ; ordtr-z; ordtr-szz; ordtr-ssz; ordtr-szs
         ; ordtr-sss; ξ-ordtrᵃ; ξ-ordtrᵗ; ξ-ordtrᵘ; ξ-ordtrᵖ; ξ-ordtrq; ξ-fst
         ; ξ-snd; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ; ξ-⌜Hom⌝ᶜ; ξ-⌜Hom⌝ˡ; ξ-⌜Hom⌝ʳ
@@ -2449,86 +2449,86 @@ data Ne {Γ} : RTm Γ → Set where
   ne-fcase0 : {t : RTm Γ} → Ne (fcase0 t)
   ne-psplit : {b : RTm ((Γ ∙) ∙)} {q : RTm Γ} → Ne q → Ne (psplit b q)
 
+-- ★ a neutral is not a redex: every contraction is refuted by the
+--   neutral's key (or its head).  `ne-red`, the normality lemmas and
+--   every other consumer refute `⟶head` through this one lemma.
+ne¬⊳ : {t t' : RTm Γ} → Ne t → t ⊳ t' → ⊥
+ne¬⊳ (ne-var x) ()
+ne¬⊳ (ne-app ()) (βʳ _ _)
+ne¬⊳ (ne-fst ()) (βfstʳ _ _)
+ne¬⊳ (ne-snd ()) (βsndʳ _ _)
+ne¬⊳ (ne-hrefl kn) (hrefl-pwʳ C t kp) =
+  (f≢t (trans (sym (nopw⊥pw C (hstk-nopw C t kn))) kp))
+ne¬⊳ (ne-hrefl ()) hrefl-Nat-zʳ
+ne¬⊳ (ne-hrefl ()) (hrefl-Nat-sʳ _)
+ne¬⊳ (ne-tr ()) (tr-J-baseʳ _ _ _ _ _)
+ne¬⊳ (ne-tr ()) (tr-J-Σʳ _ _ _ _ _ _ _)
+ne¬⊳ (ne-tr ()) (tr-tautʳ _ _)
+ne¬⊳ (ne-tr key) (tr-J-Homʳ _ _ _ c₁ _ _ _ _ kh) =
+  (f≢t (trans (sym (stkA?⊥dead c₁ kh)) key))
+ne¬⊳ (ne-tr key) (tr-pwʳ c₁ _ _ _ kp) =
+  (f≢t (trans (sym (nopw⊥pw c₁ (deadmot→nopw c₁ key))) kp))
+ne¬⊳ (ne-ap key) (ap-Jʳ _ _ c₁ _ kh) =
+  (f≢t (trans (sym (stk⊥dead c₁ kh)) key))
+ne¬⊳ (ne-jsub key) (jsub-reflʳ _ c₁ _ _) =
+  (f≢t key)
+ne¬⊳ (ne-natrec ()) (natrec-zeroʳ _ _)
+ne¬⊳ (ne-natrec ()) (natrec-sucʳ _ _ _)
+ne¬⊳ (ne-ielim ()) (ιʳ _ _ _ _)
+ne¬⊳ (ne-dpay ()) (dpay-ιʳ _ _)
+ne¬⊳ (ne-dpay ()) (dpay-σʳ _ _ _ _)
+ne¬⊳ (ne-dpay ()) (dpay-ρʳ _ _ _ _)
+ne¬⊳ (ne-dih ()) (dih-ιʳ _ _ _)
+ne¬⊳ (ne-dih ()) (dih-σʳ _ _ _ _ _)
+ne¬⊳ (ne-dih ()) (dih-ρʳ _ _ _ _ _)
+ne¬⊳ (ne-fcase ()) (fcase-zʳ _ _)
+ne¬⊳ (ne-fcase ()) (fcase-sʳ _ _ _)
+ne¬⊳ (ne-psplit ()) (psplit-βʳ _ _ _)
+ne¬⊳ (ne-ordtr ()) (ordtr-zʳ _ _ _ _)
+ne¬⊳ (ne-ordtr ()) (ordtr-szzʳ _ _ _)
+ne¬⊳ (ne-ordtr ()) (ordtr-sszʳ _ _ _ _)
+ne¬⊳ (ne-ordtr ()) (ordtr-szsʳ _ _ _ _)
+ne¬⊳ (ne-ordtr ()) (ordtr-sssʳ _ _ _ _ _)
+
 ne-red : {t t' : RTm Γ} → Ne t → t ⟶ t' → Ne t'
-ne-red (ne-var x) (⟶head ())
+ne-red n (⟶head r) = ⊥-elim (ne¬⊳ n r)
 ne-red (ne-app n) (ξ-appˡ r) = ne-app (ne-red n r)
 ne-red (ne-app n) (ξ-appʳ r) = ne-app n
--- a neutral is no introduction, so no β-rule fires
-ne-red (ne-app ()) (β _ _)
 ne-red ne-absurd (ξ-absurdᶜ r) = ne-absurd
 ne-red ne-absurd (ξ-absurdᵉ r) = ne-absurd
 ne-red (ne-fst n) (ξ-fst r)  = ne-fst (ne-red n r)
 ne-red (ne-snd n) (ξ-snd r)  = ne-snd (ne-red n r)
-ne-red (ne-fst ()) (βfst _ _)
-ne-red (ne-snd ()) (βsnd _ _)
 ne-red (ne-hrefl {t = t} kn) (ξ-hreflᶜ r) = ne-hrefl (hstk?-redᶜ t r kn)
 ne-red (ne-hrefl {c = c} kn) (ξ-hreflᵃ r) = ne-hrefl (hstk?-redᵃ c r kn)
-ne-red (ne-hrefl kn) (hrefl-pw C t kp) =
-  ⊥-elim (f≢t (trans (sym (nopw⊥pw C (hstk-nopw C t kn))) kp))
-ne-red (ne-hrefl ()) hrefl-Nat-z
-ne-red (ne-hrefl ()) (hrefl-Nat-s _)
-ne-red (ne-tr ()) (tr-J-base _ _ _ _ _)
-ne-red (ne-tr ()) (tr-J-Σ _ _ _ _ _ _ _)
-ne-red (ne-tr ()) (tr-taut _ _)
-ne-red (ne-tr key) (tr-J-Hom _ _ _ c₁ _ _ _ _ kh) =
-  ⊥-elim (f≢t (trans (sym (stkA?⊥dead c₁ kh)) key))
-ne-red (ne-tr key) (tr-pw c₁ _ _ _ kp) =
-  ⊥-elim (f≢t (trans (sym (nopw⊥pw c₁ (deadmot→nopw c₁ key))) kp))
 ne-red (ne-tr key) (ξ-trᵈ {p = p} r) = ne-tr (trstk?-red-d {p = p} r key)
 ne-red (ne-tr key) (ξ-trᵖ {d = d} r) = ne-tr (trstk?-red-p {d = d} r key)
 ne-red (ne-tr key) (ξ-trᵉ r) = ne-tr key
-ne-red (ne-ap key) (ap-J _ _ c₁ _ kh) =
-  ⊥-elim (f≢t (trans (sym (stk⊥dead c₁ kh)) key))
 ne-red (ne-ap key) (ξ-apᶜ r) = ne-ap key
 ne-red (ne-ap key) (ξ-apᵇ r) = ne-ap key
 ne-red (ne-ap key) (ξ-apᵖ r) = ne-ap (apstk?-red r key)
-ne-red (ne-jsub key) (jsub-refl _ c₁ _ _) =
-  ⊥-elim (f≢t key)
 ne-red (ne-jsub key) (ξ-jsubᵈ r) = ne-jsub key
 ne-red (ne-jsub key) (ξ-jsubᵖ r) = ne-jsub (idstk?-red r key)
 ne-red (ne-jsub key) (ξ-jsubᵉ r) = ne-jsub key
-ne-red (ne-natrec ()) (natrec-zero _ _)
-ne-red (ne-natrec ()) (natrec-suc _ _ _)
 ne-red (ne-natrec key) (ξ-natrecᶻ r) = ne-natrec key
 ne-red (ne-natrec key) (ξ-natrecˢ r) = ne-natrec key
 ne-red (ne-natrec key) (ξ-natrecⁿ r) = ne-natrec (natstk?-red r key)
--- ★★ LEVITATED FAMILIES: each root rule refuted by the key, the scrutinee
--- ξ moves the key, every other ξ leaves it alone.
-ne-red (ne-ielim ()) (ι _ _ _ _)
 ne-red (ne-ielim key) (ξ-ielimᴰ r) = ne-ielim key
 ne-red (ne-ielim key) (ξ-ielimⁱ r) = ne-ielim key
 ne-red (ne-ielim key) (ξ-ielimᵉ r) = ne-ielim key
 ne-red (ne-ielim key) (ξ-ielimᵗ r) = ne-ielim (mustk?-red r key)
-ne-red (ne-dpay ()) (dpay-ι _ _)
-ne-red (ne-dpay ()) (dpay-σ _ _ _ _)
-ne-red (ne-dpay ()) (dpay-ρ _ _ _ _)
 ne-red (ne-dpay key) (ξ-dpayᴵ r) = ne-dpay key
 ne-red (ne-dpay key) (ξ-dpayᴰ r) = ne-dpay key
 ne-red (ne-dpay key) (ξ-dpayᶜ r) = ne-dpay (dstk?-red r key)
-ne-red (ne-dih ()) (dih-ι _ _ _)
-ne-red (ne-dih ()) (dih-σ _ _ _ _ _)
-ne-red (ne-dih ()) (dih-ρ _ _ _ _ _)
 ne-red (ne-dih key) (ξ-dihᴰ r) = ne-dih key
 ne-red (ne-dih key) (ξ-dihᵉ r) = ne-dih key
 ne-red (ne-dih key) (ξ-dihᶜ r) = ne-dih (dstk?-red r key)
 ne-red (ne-dih key) (ξ-dihᵖ r) = ne-dih key
-ne-red (ne-fcase ()) (fcase-z _ _)
-ne-red (ne-fcase ()) (fcase-s _ _ _)
 ne-red (ne-fcase key) (ξ-fcaseᵗ r) = ne-fcase (finstk?-red r key)
 ne-red (ne-fcase key) (ξ-fcaseᵃ r) = ne-fcase key
 ne-red (ne-fcase key) (ξ-fcaseᵇ r) = ne-fcase key
 ne-red ne-fcase0 (ξ-fcase0 r) = ne-fcase0
-ne-red (ne-psplit ()) (psplit-β _ _ _)
 ne-red (ne-psplit n) (ξ-psplitᵇ r) = ne-psplit n
 ne-red (ne-psplit n) (ξ-psplitᵍ r) = ne-psplit (ne-red n r)
--- ★★ WF stage E: the five root rules are refuted by the key, the three
--- bound congruences move it, and the two PROOF congruences leave it
--- alone — `ordstk?` does not mention `p`/`q`.
-ne-red (ne-ordtr ()) (ordtr-z _ _ _ _)
-ne-red (ne-ordtr ()) (ordtr-szz _ _ _)
-ne-red (ne-ordtr ()) (ordtr-ssz _ _ _ _)
-ne-red (ne-ordtr ()) (ordtr-szs _ _ _ _)
-ne-red (ne-ordtr ()) (ordtr-sss _ _ _ _ _)
 ne-red (ne-ordtr key) (ξ-ordtrᵃ {a = a} {a' = a'} {t = t} {u = u} r) =
   ne-ordtr (ordstk?-redᵃ {a = a} {a' = a'} {t = t} {u = u} r key)
 ne-red (ne-ordtr key) (ξ-ordtrᵗ {a = a} {t = t} {t' = t'} {u = u} r) =
@@ -3214,6 +3214,28 @@ joinW c p q with church-rosserᵀ c
 ...     | E , (D₁E , D₂E) =
           E , (⟶ᵀ*-trans w₁D₁ D₁E , ⟶ᵀ*-trans w₂D₂ D₂E)
 
+-- ★ a join of two Π (Σ') reducts inverts to convertible domains and
+--   codomains.  The four-level inversion lives HERE, once, outside the
+--   recursive `irrel` blocks (which used to inline it at every site).
+Π≅ : {A B F F' : RTy Γ} {G G' : RTy (Γ ∙)} → A ≅ᵀ B → A ⟶ᵀ* Π F G → B ⟶ᵀ* Π F' G' →
+     (F ≅ᵀ F') × (G ≅ᵀ G')
+Π≅ c p q with joinW c p q
+... | E , (πE₁ , πE₂) with Π-reduct πE₁ | Π-reduct πE₂
+...   | mkΠRed F₁ G₁ eq₁ rF₁ rG₁ | mkΠRed F₂ G₂ eq₂ rF₂ rG₂
+        with Πinj≡ (trans (sym eq₁) eq₂)
+...       | (refl , refl) = ctrnᵀ (red→≅ᵀ rF₁) (csymᵀ (red→≅ᵀ rF₂))
+                          , ctrnᵀ (red→≅ᵀ rG₁) (csymᵀ (red→≅ᵀ rG₂))
+
+Σ≅ : {A B F F' : RTy Γ} {G G' : RTy (Γ ∙)} → A ≅ᵀ B → A ⟶ᵀ* Σ' F G → B ⟶ᵀ* Σ' F' G' →
+     (F ≅ᵀ F') × (G ≅ᵀ G')
+Σ≅ c p q with joinW c p q
+... | E , (σE₁ , σE₂) with Σ-reduct σE₁ | Σ-reduct σE₂
+...   | mkΣRed F₁ G₁ eq₁ rF₁ rG₁ | mkΣRed F₂ G₂ eq₂ rF₂ rG₂
+        with Σinj≡ (trans (sym eq₁) eq₂)
+...       | (refl , refl) = ctrnᵀ (red→≅ᵀ rF₁) (csymᵀ (red→≅ᵀ rF₂))
+                          , ctrnᵀ (red→≅ᵀ rG₁) (csymᵀ (red→≅ᵀ rG₂))
+
+
 ------------------------------------------------------------------------
 -- 3. LEVEL 0 — SMALL types: the decodings of codes.  NO `U`.
 ------------------------------------------------------------------------
@@ -3774,63 +3796,49 @@ irrel₀ c R@(⊩₀Σ p _ _) S@(⊩₀Hom q s) = ⊥-elim (irrel₀✗ c R S (�
 irrel₀ c R@(⊩₀Hom p s) S@(⊩₀Σ q _ _) = ⊥-elim (irrel₀✗ c R S (λ ()))
 
 -- the real case: confluence forces convertible domain AND codomain.
-irrel₀ c (⊩₀Π p ⊩F ⊩G) (⊩₀Π q ⊩F' ⊩G') with joinW c p q
-... | E , (πE₁ , πE₂) with Π-reduct πE₁ | Π-reduct πE₂
-...   | mkΠRed F₁ G₁ eq₁ rF₁ rG₁ | mkΠRed F₂ G₂ eq₂ rF₂ rG₂
-        with Πinj≡ (trans (sym eq₁) eq₂)
-...       | (refl , refl) =
+irrel₀ c (⊩₀Π p ⊩F ⊩G) (⊩₀Π q ⊩F' ⊩G') =
             (λ t h → (projl h , λ u r' →
                projl (irrel₀ (≅ᵀ-sub (single u)
-                               (ctrnᵀ (red→≅ᵀ rG₁) (csymᵀ (red→≅ᵀ rG₂))))
-                             (⊩G u (projr (irrel₀ (ctrnᵀ (red→≅ᵀ rF₁)
-                                                         (csymᵀ (red→≅ᵀ rF₂)))
+                               (projr (Π≅ c p q)))
+                             (⊩G u (projr (irrel₀ (projl (Π≅ c p q))
                                                   ⊩F ⊩F') u r'))
                              (⊩G' u r'))
                      (app t u)
-                     (projr h u (projr (irrel₀ (ctrnᵀ (red→≅ᵀ rF₁)
-                                                      (csymᵀ (red→≅ᵀ rF₂)))
+                     (projr h u (projr (irrel₀ (projl (Π≅ c p q))
                                                ⊩F ⊩F') u r'))))
           , (λ t h → (projl h , λ u r →
                projr (irrel₀ (≅ᵀ-sub (single u)
-                               (ctrnᵀ (red→≅ᵀ rG₁) (csymᵀ (red→≅ᵀ rG₂))))
+                               (projr (Π≅ c p q)))
                              (⊩G u r)
-                             (⊩G' u (projl (irrel₀ (ctrnᵀ (red→≅ᵀ rF₁)
-                                                          (csymᵀ (red→≅ᵀ rF₂)))
+                             (⊩G' u (projl (irrel₀ (projl (Π≅ c p q))
                                                    ⊩F ⊩F') u r)))
                      (app t u)
-                     (projr h u (projl (irrel₀ (ctrnᵀ (red→≅ᵀ rF₁)
-                                                      (csymᵀ (red→≅ᵀ rF₂)))
+                     (projr h u (projl (irrel₀ (projl (Π≅ c p q))
                                                ⊩F ⊩F') u r))))
 
 -- the `Σ'/Σ'` case: same shape as `Π/Π`, but the second component's type
 -- depends on the FIRST, so the domain transfer has to happen before the
 -- codomain one can even be stated.
-irrel₀ c (⊩₀Σ p ⊩F ⊩G) (⊩₀Σ q ⊩F' ⊩G') with joinW c p q
-... | E , (σE₁ , σE₂) with Σ-reduct σE₁ | Σ-reduct σE₂
-...   | mkΣRed F₁ G₁ eq₁ rF₁ rG₁ | mkΣRed F₂ G₂ eq₂ rF₂ rG₂
-        with Σinj≡ (trans (sym eq₁) eq₂)
-...       | (refl , refl) =
+irrel₀ c (⊩₀Σ p ⊩F ⊩G) (⊩₀Σ q ⊩F' ⊩G') =
             (λ t h →
                (projl h
-               , ( projl (irrel₀ (ctrnᵀ (red→≅ᵀ rF₁) (csymᵀ (red→≅ᵀ rF₂))) ⊩F ⊩F')
+               , ( projl (irrel₀ (projl (Σ≅ c p q)) ⊩F ⊩F')
                          (fst t) (dfst (projr h))
                  , projl (irrel₀ (≅ᵀ-sub (single (fst t))
-                                   (ctrnᵀ (red→≅ᵀ rG₁) (csymᵀ (red→≅ᵀ rG₂))))
+                                   (projr (Σ≅ c p q)))
                                  (⊩G (fst t) (dfst (projr h)))
                                  (⊩G' (fst t)
-                                   (projl (irrel₀ (ctrnᵀ (red→≅ᵀ rF₁)
-                                                         (csymᵀ (red→≅ᵀ rF₂)))
+                                   (projl (irrel₀ (projl (Σ≅ c p q))
                                                   ⊩F ⊩F') (fst t) (dfst (projr h)))))
                          (snd t) (dsnd (projr h)) )))
           , (λ t h →
                (projl h
-               , ( projr (irrel₀ (ctrnᵀ (red→≅ᵀ rF₁) (csymᵀ (red→≅ᵀ rF₂))) ⊩F ⊩F')
+               , ( projr (irrel₀ (projl (Σ≅ c p q)) ⊩F ⊩F')
                          (fst t) (dfst (projr h))
                  , projr (irrel₀ (≅ᵀ-sub (single (fst t))
-                                   (ctrnᵀ (red→≅ᵀ rG₁) (csymᵀ (red→≅ᵀ rG₂))))
+                                   (projr (Σ≅ c p q)))
                                  (⊩G (fst t)
-                                   (projr (irrel₀ (ctrnᵀ (red→≅ᵀ rF₁)
-                                                         (csymᵀ (red→≅ᵀ rF₂)))
+                                   (projr (irrel₀ (projl (Σ≅ c p q))
                                                   ⊩F ⊩F') (fst t) (dfst (projr h))))
                                  (⊩G' (fst t) (dfst (projr h))))
                          (snd t) (dsnd (projr h)) )))
@@ -3975,54 +3983,63 @@ iliftK K₁ K₂ d₁ d₂ (iki-ρ _ _ _) (iki-σ _ _ _ _) c₁ c₂ t l with d�
 -- 3b. FORWARD TRANSFER at level 0, and hence transfer along CONVERSION.
 ------------------------------------------------------------------------
 
-fwd₀ : {A B : RTy Γ} → A ⟶ᵀ* B → ⊩₀ A → ⊩₀ B
+-- the clauses of `fwd₀` that do not recurse: one with-free entry per head
+-- in the recursive block, the inversions outside it.
+Flat₀ : {A : RTy Γ} → ⊩₀ A → Set
+Flat₀ (⊩₀Π _ _ _) = ⊥
+Flat₀ (⊩₀Σ _ _ _) = ⊥
+Flat₀ _ = ⊤
 
-fwd₀ p (⊩₀base q) with confluentᵀ p q
+fwd₀-flat : {A B : RTy Γ} → A ⟶ᵀ* B → (R : ⊩₀ A) → Flat₀ R → ⊩₀ B
+fwd₀-flat p (⊩₀Π _ _ _) ()
+fwd₀-flat p (⊩₀Σ _ _ _) ()
+fwd₀-flat p (⊩₀base q) _ with confluentᵀ p q
 ... | E , (bE , baseE) with base-nf baseE
 ...   | refl = ⊩₀base bE
-
-fwd₀ p (⊩₀ne q n) with confluentᵀ p q
+fwd₀-flat p (⊩₀ne q n) _ with confluentᵀ p q
 ... | E , (bE , elE) with El-ne-reduct n elE
 ...   | mkElNe n' n'e refl = ⊩₀ne bE n'e
+fwd₀-flat p (⊩₀Hom q s) _ with confluentᵀ p q
+... | E , (bE , hE) with Hom-stk-reduct s hE
+...   | mkHomStk _ _ _ s' refl = ⊩₀Hom bE s'
+fwd₀-flat p (⊩₀Id q) _ with confluentᵀ p q
+... | E , (bE , iE) with Id-reduct iE
+...   | _ , (_ , (_ , (refl , _))) = ⊩₀Id bE
+fwd₀-flat p (⊩₀Unit q) _ with confluentᵀ p q
+... | E , (bE , uE) with Unit-nf uE
+...   | refl = ⊩₀Unit bE
+fwd₀-flat p (⊩₀Nat q) _ with confluentᵀ p q
+... | E , (bE , nE) with Nat-nf nE
+...   | refl = ⊩₀Nat bE
+fwd₀-flat p (⊩₀IMu q cI cD ci ⊩I vi K) _ with confluentᵀ p q
+... | E , (bE , mE) with IMu-reduct mE
+...   | mkIMuRed _ _ _ refl rI rD ri =
+        ⊩₀IMu bE (ctrn (csym (hom→≅ rI)) cI) (ctrn (csym (hom→≅ rD)) cD) (ctrn (csym (hom→≅ ri)) ci) ⊩I vi K
+fwd₀-flat p (⊩₀Fin q) _ with confluentᵀ p q
+... | E , (bE , mE) with Fin-nf mE
+...   | _ , refl = ⊩₀Fin bE
 
+fwd₀ : {A B : RTy Γ} → A ⟶ᵀ* B → ⊩₀ A → ⊩₀ B
 fwd₀ p (⊩₀Π q ⊩F ⊩G) with confluentᵀ p q
 ... | E , (bE , πE) with Π-reduct πE
 ...   | mkΠRed F₁ G₁ refl rF rG =
         ⊩₀Π bE (fwd₀ rF ⊩F)
               (λ u r → fwd₀ (⟶ᵀ*-sub (single u) rG)
                             (⊩G u (projr (irrel₀ (red→≅ᵀ rF) ⊩F (fwd₀ rF ⊩F)) u r)))
-
 fwd₀ p (⊩₀Σ q ⊩F ⊩G) with confluentᵀ p q
 ... | E , (bE , σE) with Σ-reduct σE
 ...   | mkΣRed F₁ G₁ refl rF rG =
         ⊩₀Σ bE (fwd₀ rF ⊩F)
               (λ u r → fwd₀ (⟶ᵀ*-sub (single u) rG)
                             (⊩G u (projr (irrel₀ (red→≅ᵀ rF) ⊩F (fwd₀ rF ⊩F)) u r)))
-
-fwd₀ p (⊩₀Hom q s) with confluentᵀ p q
-... | E , (bE , hE) with Hom-stk-reduct s hE
-...   | mkHomStk _ _ _ s' refl = ⊩₀Hom bE s'
-fwd₀ p (⊩₀Id q) with confluentᵀ p q
-... | E , (bE , iE) with Id-reduct iE
-...   | _ , (_ , (_ , (refl , _))) = ⊩₀Id bE
-
-fwd₀ p (⊩₀Unit q) with confluentᵀ p q
-... | E , (bE , uE) with Unit-nf uE
-...   | refl = ⊩₀Unit bE
-
-fwd₀ p (⊩₀Nat q) with confluentᵀ p q
-... | E , (bE , nE) with Nat-nf nE
-...   | refl = ⊩₀Nat bE
-
--- ★ the family's interpretation is of a REPRESENTATIVE, so forwarding
---   only extends the two conversions — nothing is transported.
-fwd₀ p (⊩₀IMu q cI cD ci ⊩I vi K) with confluentᵀ p q
-... | E , (bE , mE) with IMu-reduct mE
-...   | mkIMuRed _ _ _ refl rI rD ri =
-        ⊩₀IMu bE (ctrn (csym (hom→≅ rI)) cI) (ctrn (csym (hom→≅ rD)) cD) (ctrn (csym (hom→≅ ri)) ci) ⊩I vi K
-fwd₀ p (⊩₀Fin q) with confluentᵀ p q
-... | E , (bE , mE) with Fin-nf mE
-...   | _ , refl = ⊩₀Fin bE
+fwd₀ p R@(⊩₀base _) = fwd₀-flat p R tt
+fwd₀ p R@(⊩₀ne _ _) = fwd₀-flat p R tt
+fwd₀ p R@(⊩₀Hom _ _) = fwd₀-flat p R tt
+fwd₀ p R@(⊩₀Id _) = fwd₀-flat p R tt
+fwd₀ p R@(⊩₀Unit _) = fwd₀-flat p R tt
+fwd₀ p R@(⊩₀Nat _) = fwd₀-flat p R tt
+fwd₀ p R@(⊩₀IMu _ _ _ _ _ _ _) = fwd₀-flat p R tt
+fwd₀ p R@(⊩₀Fin _) = fwd₀-flat p R tt
 
 conv₀ : {A B : RTy Γ} → A ≅ᵀ B → ⊩₀ A → ⊩₀ B
 conv₀ c R with church-rosserᵀ c
@@ -4206,59 +4223,24 @@ payT-irrel cv R (⊩₀Unit _) pay = _
 payT-irrel cv R (⊩₀Nat _) pay = _
 payT-irrel cv R (⊩₀IMu _ _ _ _ _ _ _) pay = _
 payT-irrel cv R (⊩₀Fin _) pay = _
--- ★ `Mu` versus `Π`: `Mu D` is a normal form and `Π` cannot be reached
---   from it, so the join is absurd.
-payT-irrel cv (⊩₀Fin p) (⊩₀Π q _ _) pay with joinW cv p q
-... | E , (mE , πE) with Fin-nf mE
-...   | _ , refl with Π-reduct πE
-...     | mkΠRed _ _ () _ _
-payT-irrel cv (⊩₀IMu p _ _ _ _ _ _) (⊩₀Π q _ _) pay with joinW cv p q
-... | E , (mE , πE) with IMu-reduct mE
-...   | mkIMuRed _ _ _ refl _ _ _ with Π-reduct πE
-...     | mkΠRed _ _ () _ _
-payT-irrel cv (⊩₀base p) (⊩₀Π q _ _) pay with joinW cv p q
-... | E , (bE , πE) with base-nf bE
-...   | refl with Π-reduct πE
-...     | mkΠRed _ _ () _ _
-payT-irrel cv (⊩₀ne p n) (⊩₀Π q _ _) pay with joinW cv p q
-... | E , (bE , πE) with El-ne-reduct n bE
-...   | mkElNe _ _ refl with Π-reduct πE
-...     | mkΠRed _ _ () _ _
-payT-irrel cv (⊩₀Σ p _ _) (⊩₀Π q _ _) pay with joinW cv p q
-... | E , (σE , πE) with Σ-reduct σE
-...   | mkΣRed _ _ refl _ _ with Π-reduct πE
-...     | mkΠRed _ _ () _ _
-payT-irrel cv (⊩₀Hom p s) (⊩₀Π q _ _) pay with joinW cv p q
-... | E , (hE , πE) with Hom-stk-reduct s hE
-...   | mkHomStk _ _ _ _ refl with Π-reduct πE
-...     | mkΠRed _ _ () _ _
-payT-irrel cv (⊩₀Id p) (⊩₀Π q _ _) pay v r' with joinW cv p q
-... | E , (iE , πE) with Π-reduct πE
-...   | mkΠRed _ _ refl _ _ with Id-reduct iE
-...     | _ , (_ , (_ , ((), _)))
-payT-irrel cv (⊩₀Unit p) (⊩₀Π q _ _) pay with joinW cv p q
-... | E , (mE , πE) with Π-reduct πE
-...   | mkΠRed _ _ refl _ _ with Unit-nf mE
-...     | ()
-payT-irrel cv (⊩₀Nat p) (⊩₀Π q _ _) pay with joinW cv p q
-... | E , (mE , πE) with Π-reduct πE
-...   | mkΠRed _ _ refl _ _ with Nat-nf mE
-...     | ()
+-- every other head versus `Π`: a head clash.
+payT-irrel cv R@(⊩₀Fin p) S@(⊩₀Π q _ _) pay = ⊥-elim (irrel₀✗ cv R S (λ ()))
+payT-irrel cv R@(⊩₀IMu p _ _ _ _ _ _) S@(⊩₀Π q _ _) pay = ⊥-elim (irrel₀✗ cv R S (λ ()))
+payT-irrel cv R@(⊩₀base p) S@(⊩₀Π q _ _) pay = ⊥-elim (irrel₀✗ cv R S (λ ()))
+payT-irrel cv R@(⊩₀ne p n) S@(⊩₀Π q _ _) pay = ⊥-elim (irrel₀✗ cv R S (λ ()))
+payT-irrel cv R@(⊩₀Σ p _ _) S@(⊩₀Π q _ _) pay = ⊥-elim (irrel₀✗ cv R S (λ ()))
+payT-irrel cv R@(⊩₀Hom p s) S@(⊩₀Π q _ _) pay = ⊥-elim (irrel₀✗ cv R S (λ ()))
+payT-irrel cv R@(⊩₀Id p) S@(⊩₀Π q _ _) pay = ⊥-elim (irrel₀✗ cv R S (λ ()))
+payT-irrel cv R@(⊩₀Unit p) S@(⊩₀Π q _ _) pay = ⊥-elim (irrel₀✗ cv R S (λ ()))
+payT-irrel cv R@(⊩₀Nat p) S@(⊩₀Π q _ _) pay = ⊥-elim (irrel₀✗ cv R S (λ ()))
 payT-irrel cv (⊩₀Π p ⊩F ⊩G) (⊩₀Π q ⊩F' ⊩G') pay v r'
-  with joinW cv p q
-... | E , (πE₁ , πE₂) with Π-reduct πE₁ | Π-reduct πE₂
-...   | mkΠRed F₁ G₁ eq₁ rF₁ rG₁ | mkΠRed F₂ G₂ eq₂ rF₂ rG₂
-        with Πinj≡ (trans (sym eq₁) eq₂)
-...       | (refl , refl)
-          with pay v (projr (irrel₀ (ctrnᵀ (red→≅ᵀ rF₁)
-                                           (csymᵀ (red→≅ᵀ rF₂)))
+          with pay v (projr (irrel₀ (projl (Π≅ cv p q))
                                     ⊩F ⊩F') v r')
-...         | c* , (csr , (key , (snb , pb))) =
+... | c* , (csr , (key , (snb , pb))) =
             c* , (csr , (key , (snb ,
               payT-irrel (≅ᵀ-sub (single v)
-                           (ctrnᵀ (red→≅ᵀ rG₁) (csymᵀ (red→≅ᵀ rG₂))))
-                         (⊩G v (projr (irrel₀ (ctrnᵀ (red→≅ᵀ rF₁)
-                                                     (csymᵀ (red→≅ᵀ rF₂)))
+                           (projr (Π≅ cv p q)))
+                         (⊩G v (projr (irrel₀ (projl (Π≅ cv p q))
                                               ⊩F ⊩F') v r'))
                          (⊩G' v r') pb)))
 
@@ -4684,124 +4666,125 @@ irrel₁ c R@(⊩₁Σ p _ _) S@(⊩₁U q) = ⊥-elim (irrel₁✗ c R S (λ ()
 irrel₁ c R@(⊩₁Π p _ _) S@(⊩₁Σ q _ _) = ⊥-elim (irrel₁✗ c R S (λ ()))
 irrel₁ c R@(⊩₁Σ p _ _) S@(⊩₁Π q _ _) = ⊥-elim (irrel₁✗ c R S (λ ()))
 
-irrel₁ c (⊩₁Σ p ⊩F ⊩G) (⊩₁Σ q ⊩F' ⊩G') with joinW c p q
-... | E , (σE₁ , σE₂) with Σ-reduct σE₁ | Σ-reduct σE₂
-...   | mkΣRed F₁ G₁ eq₁ rF₁ rG₁ | mkΣRed F₂ G₂ eq₂ rF₂ rG₂
-        with Σinj≡ (trans (sym eq₁) eq₂)
-...       | (refl , refl) =
+irrel₁ c (⊩₁Σ p ⊩F ⊩G) (⊩₁Σ q ⊩F' ⊩G') =
             (λ t h →
                (projl h
-               , ( projl (irrel₁ (ctrnᵀ (red→≅ᵀ rF₁) (csymᵀ (red→≅ᵀ rF₂))) ⊩F ⊩F')
+               , ( projl (irrel₁ (projl (Σ≅ c p q)) ⊩F ⊩F')
                          (fst t) (dfst (projr h))
                  , projl (irrel₁ (≅ᵀ-sub (single (fst t))
-                                   (ctrnᵀ (red→≅ᵀ rG₁) (csymᵀ (red→≅ᵀ rG₂))))
+                                   (projr (Σ≅ c p q)))
                                  (⊩G (fst t) (dfst (projr h)))
                                  (⊩G' (fst t)
-                                   (projl (irrel₁ (ctrnᵀ (red→≅ᵀ rF₁)
-                                                         (csymᵀ (red→≅ᵀ rF₂)))
+                                   (projl (irrel₁ (projl (Σ≅ c p q))
                                                   ⊩F ⊩F') (fst t) (dfst (projr h)))))
                          (snd t) (dsnd (projr h)) )))
           , (λ t h →
                (projl h
-               , ( projr (irrel₁ (ctrnᵀ (red→≅ᵀ rF₁) (csymᵀ (red→≅ᵀ rF₂))) ⊩F ⊩F')
+               , ( projr (irrel₁ (projl (Σ≅ c p q)) ⊩F ⊩F')
                          (fst t) (dfst (projr h))
                  , projr (irrel₁ (≅ᵀ-sub (single (fst t))
-                                   (ctrnᵀ (red→≅ᵀ rG₁) (csymᵀ (red→≅ᵀ rG₂))))
+                                   (projr (Σ≅ c p q)))
                                  (⊩G (fst t)
-                                   (projr (irrel₁ (ctrnᵀ (red→≅ᵀ rF₁)
-                                                         (csymᵀ (red→≅ᵀ rF₂)))
+                                   (projr (irrel₁ (projl (Σ≅ c p q))
                                                   ⊩F ⊩F') (fst t) (dfst (projr h))))
                                  (⊩G' (fst t) (dfst (projr h))))
                          (snd t) (dsnd (projr h)) )))
 
 -- the real `Π` case.
-irrel₁ c (⊩₁Π p ⊩F ⊩G) (⊩₁Π q ⊩F' ⊩G') with joinW c p q
-... | E , (πE₁ , πE₂) with Π-reduct πE₁ | Π-reduct πE₂
-...   | mkΠRed F₁ G₁ eq₁ rF₁ rG₁ | mkΠRed F₂ G₂ eq₂ rF₂ rG₂
-        with Πinj≡ (trans (sym eq₁) eq₂)
-...       | (refl , refl) =
+irrel₁ c (⊩₁Π p ⊩F ⊩G) (⊩₁Π q ⊩F' ⊩G') =
             (λ t h → (projl h , λ u r' →
                projl (irrel₁ (≅ᵀ-sub (single u)
-                               (ctrnᵀ (red→≅ᵀ rG₁) (csymᵀ (red→≅ᵀ rG₂))))
-                             (⊩G u (projr (irrel₁ (ctrnᵀ (red→≅ᵀ rF₁)
-                                                         (csymᵀ (red→≅ᵀ rF₂)))
+                               (projr (Π≅ c p q)))
+                             (⊩G u (projr (irrel₁ (projl (Π≅ c p q))
                                                   ⊩F ⊩F') u r'))
                              (⊩G' u r'))
                      (app t u)
-                     (projr h u (projr (irrel₁ (ctrnᵀ (red→≅ᵀ rF₁)
-                                                      (csymᵀ (red→≅ᵀ rF₂)))
+                     (projr h u (projr (irrel₁ (projl (Π≅ c p q))
                                                ⊩F ⊩F') u r'))))
           , (λ t h → (projl h , λ u r →
                projr (irrel₁ (≅ᵀ-sub (single u)
-                               (ctrnᵀ (red→≅ᵀ rG₁) (csymᵀ (red→≅ᵀ rG₂))))
+                               (projr (Π≅ c p q)))
                              (⊩G u r)
-                             (⊩G' u (projl (irrel₁ (ctrnᵀ (red→≅ᵀ rF₁)
-                                                          (csymᵀ (red→≅ᵀ rF₂)))
+                             (⊩G' u (projl (irrel₁ (projl (Π≅ c p q))
                                                    ⊩F ⊩F') u r)))
                      (app t u)
-                     (projr h u (projl (irrel₁ (ctrnᵀ (red→≅ᵀ rF₁)
-                                                      (csymᵀ (red→≅ᵀ rF₂)))
+                     (projr h u (projl (irrel₁ (projl (Π≅ c p q))
                                                ⊩F ⊩F') u r))))
 
 ------------------------------------------------------------------------
 -- 4b. FORWARD TRANSFER and CONVERSION at level 1.
 ------------------------------------------------------------------------
 
-fwd₁ : {A B : RTy Γ} → A ⟶ᵀ* B → ⊩₁ A → ⊩₁ B
+-- the clauses of `fwd₁` that do not recurse: one with-free entry per head
+-- in the recursive block, the inversions outside it.
+Flat₁ : {A : RTy Γ} → ⊩₁ A → Set
+Flat₁ (⊩₁Π _ _ _) = ⊥
+Flat₁ (⊩₁Σ _ _ _) = ⊥
+Flat₁ _ = ⊤
 
-fwd₁ p (⊩₁base q) with confluentᵀ p q
+fwd₁-flat : {A B : RTy Γ} → A ⟶ᵀ* B → (R : ⊩₁ A) → Flat₁ R → ⊩₁ B
+fwd₁-flat p (⊩₁Π _ _ _) ()
+fwd₁-flat p (⊩₁Σ _ _ _) ()
+fwd₁-flat p (⊩₁base q) _ with confluentᵀ p q
 ... | E , (bE , baseE) with base-nf baseE
 ...   | refl = ⊩₁base bE
-
-fwd₁ p (⊩₁U q) with confluentᵀ p q
+fwd₁-flat p (⊩₁U q) _ with confluentᵀ p q
 ... | E , (uE , UE) with U-nf UE
 ...   | refl = ⊩₁U uE
-
-fwd₁ p (⊩₁ne q n) with confluentᵀ p q
+fwd₁-flat p (⊩₁ne q n) _ with confluentᵀ p q
 ... | E , (bE , elE) with El-ne-reduct n elE
 ...   | mkElNe n' n'e refl = ⊩₁ne bE n'e
+fwd₁-flat p (⊩₁Hom q s) _ with confluentᵀ p q
+... | E , (bE , hE) with Hom-stk-reduct s hE
+...   | mkHomStk _ _ _ s' refl = ⊩₁Hom bE s'
+fwd₁-flat p (⊩₁Unit q) _ with confluentᵀ p q
+... | E , (bE , uE) with Unit-nf uE
+...   | refl = ⊩₁Unit bE
+fwd₁-flat p (⊩₁Nat q) _ with confluentᵀ p q
+... | E , (bE , nE) with Nat-nf nE
+...   | refl = ⊩₁Nat bE
+fwd₁-flat p (⊩₁IMu q cI cD ci ⊩I vi K) _ with confluentᵀ p q
+... | E , (bE , mE) with IMu-reduct mE
+...   | mkIMuRed _ _ _ refl rI rD ri =
+        ⊩₁IMu bE (ctrn (csym (hom→≅ rI)) cI) (ctrn (csym (hom→≅ rD)) cD) (ctrn (csym (hom→≅ ri)) ci) ⊩I vi K
+fwd₁-flat p (⊩₁Fin q) _ with confluentᵀ p q
+... | E , (bE , mE) with Fin-nf mE
+...   | _ , refl = ⊩₁Fin bE
+fwd₁-flat p (⊩₁Desc q cI ⊩I) _ with confluentᵀ p q
+... | E , (bE , dE) with Desc-reduct dE
+...   | J , (refl , rI) = ⊩₁Desc bE (ctrn (csym (hom→≅ rI)) cI) ⊩I
+fwd₁-flat p (⊩₁DIhNe q n) _ with confluentᵀ p q
+... | E , (bE , dE) with DIhNe-reduct n dE
+...   | mkDIhNe _ _ _ _ n' refl = ⊩₁DIhNe bE n'
+fwd₁-flat p (⊩₁Id q) _ with confluentᵀ p q
+... | E , (bE , iE) with Id-reduct iE
+...   | _ , (_ , (_ , (refl , _))) = ⊩₁Id bE
 
+fwd₁ : {A B : RTy Γ} → A ⟶ᵀ* B → ⊩₁ A → ⊩₁ B
 fwd₁ p (⊩₁Π q ⊩F ⊩G) with confluentᵀ p q
 ... | E , (bE , πE) with Π-reduct πE
 ...   | mkΠRed F₁ G₁ refl rF rG =
         ⊩₁Π bE (fwd₁ rF ⊩F)
               (λ u r → fwd₁ (⟶ᵀ*-sub (single u) rG)
                             (⊩G u (projr (irrel₁ (red→≅ᵀ rF) ⊩F (fwd₁ rF ⊩F)) u r)))
-
 fwd₁ p (⊩₁Σ q ⊩F ⊩G) with confluentᵀ p q
 ... | E , (bE , σE) with Σ-reduct σE
 ...   | mkΣRed F₁ G₁ refl rF rG =
         ⊩₁Σ bE (fwd₁ rF ⊩F)
               (λ u r → fwd₁ (⟶ᵀ*-sub (single u) rG)
                             (⊩G u (projr (irrel₁ (red→≅ᵀ rF) ⊩F (fwd₁ rF ⊩F)) u r)))
+fwd₁ p R@(⊩₁base _) = fwd₁-flat p R tt
+fwd₁ p R@(⊩₁U _) = fwd₁-flat p R tt
+fwd₁ p R@(⊩₁ne _ _) = fwd₁-flat p R tt
+fwd₁ p R@(⊩₁Hom _ _) = fwd₁-flat p R tt
+fwd₁ p R@(⊩₁Unit _) = fwd₁-flat p R tt
+fwd₁ p R@(⊩₁Nat _) = fwd₁-flat p R tt
+fwd₁ p R@(⊩₁IMu _ _ _ _ _ _ _) = fwd₁-flat p R tt
+fwd₁ p R@(⊩₁Fin _) = fwd₁-flat p R tt
+fwd₁ p R@(⊩₁Desc _ _ _) = fwd₁-flat p R tt
+fwd₁ p R@(⊩₁DIhNe _ _) = fwd₁-flat p R tt
+fwd₁ p R@(⊩₁Id _) = fwd₁-flat p R tt
 
-fwd₁ p (⊩₁Hom q s) with confluentᵀ p q
-... | E , (bE , hE) with Hom-stk-reduct s hE
-...   | mkHomStk _ _ _ s' refl = ⊩₁Hom bE s'
-fwd₁ p (⊩₁Unit q) with confluentᵀ p q
-... | E , (bE , uE) with Unit-nf uE
-...   | refl = ⊩₁Unit bE
-fwd₁ p (⊩₁Nat q) with confluentᵀ p q
-... | E , (bE , nE) with Nat-nf nE
-...   | refl = ⊩₁Nat bE
-fwd₁ p (⊩₁IMu q cI cD ci ⊩I vi K) with confluentᵀ p q
-... | E , (bE , mE) with IMu-reduct mE
-...   | mkIMuRed _ _ _ refl rI rD ri =
-        ⊩₁IMu bE (ctrn (csym (hom→≅ rI)) cI) (ctrn (csym (hom→≅ rD)) cD) (ctrn (csym (hom→≅ ri)) ci) ⊩I vi K
-fwd₁ p (⊩₁Fin q) with confluentᵀ p q
-... | E , (bE , mE) with Fin-nf mE
-...   | _ , refl = ⊩₁Fin bE
-fwd₁ p (⊩₁Desc q cI ⊩I) with confluentᵀ p q
-... | E , (bE , dE) with Desc-reduct dE
-...   | J , (refl , rI) = ⊩₁Desc bE (ctrn (csym (hom→≅ rI)) cI) ⊩I
-fwd₁ p (⊩₁DIhNe q n) with confluentᵀ p q
-... | E , (bE , dE) with DIhNe-reduct n dE
-...   | mkDIhNe _ _ _ _ n' refl = ⊩₁DIhNe bE n'
-fwd₁ p (⊩₁Id q) with confluentᵀ p q
-... | E , (bE , iE) with Id-reduct iE
-...   | _ , (_ , (_ , (refl , _))) = ⊩₁Id bE
-
--- ★ the shape `⊢conv` needs.
 conv₁ : {A B : RTy Γ} → A ≅ᵀ B → ⊩₁ A → ⊩₁ B
 conv₁ c R with church-rosserᵀ c
 ... | C , (aC , bC) = bwd₁ bC (fwd₁ aC R)
@@ -5568,13 +5551,13 @@ hrefl-normal nc nt () (hrefl-Nat-s _)
 app-nrm : {t u : RTm Γ} → SNe t → IsNormal t → IsNormal u → IsNormal (app t u)
 app-nrm ne nt nu (ξ-appˡ q) = nt q
 app-nrm ne nt nu (ξ-appʳ q) = nu q
-app-nrm () nt nu (β _ _)
+app-nrm ne nt nu (⟶head r) = ne¬⊳ (ne-app (sne→ne ne)) r
 fst-nrm : {p : RTm Γ} → SNe p → IsNormal p → IsNormal (fst p)
 fst-nrm ne nm (ξ-fst q)    = nm q
-fst-nrm () nm (βfst _ _)
+fst-nrm ne nm (⟶head r) = ne¬⊳ (ne-fst (sne→ne ne)) r
 snd-nrm : {p : RTm Γ} → SNe p → IsNormal p → IsNormal (snd p)
 snd-nrm ne nm (ξ-snd q)    = nm q
-snd-nrm () nm (βsnd _ _)
+snd-nrm ne nm (⟶head r) = ne¬⊳ (ne-snd (sne→ne ne)) r
 
 wne : {t : RTm Γ} → SNe t → WNe t
 
