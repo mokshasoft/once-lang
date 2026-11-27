@@ -180,6 +180,8 @@ Not transferable:
 - The newest `HANDOFF-*.md` (2026-11-26): session state.
 - `INPUT-DATA-AND-STRUCTURES.md`: what master's plan 0.147 asks of this
   kernel (§7).
+- `MASTER-DT-ABSTRACTIONS.md` (2026-11-27): each difference from master, which
+  abstraction is better and which way it moves; the erasure stance (§0).
 - `docs/compiler/decision-log.md`: decisions D490–D501 (OCP-0009 entries). The
   evaluator design is D499.
 
