@@ -25927,3 +25927,10 @@ copy at a type with cells, nor copies a closure or a ν; `Certified` imports it.
 entry of a block among `ExprImage.cellCopies` (the universe's `kcopy A` with `cells A`, by index: the block's
 `e-fn (nameOf j)`, its trampoline's `e-thunk (tl j)`). `Certified` names it `once-no-copy`, owed as
 `once-no-leak` is (plan 0.157 S2 step 8: the flat forms together); `make implementation-gate` OK.
+
+**Build-time split (2026-11-27): `LinCore.Apex`** took 102 s (over the 60 s per-module cap; re-checked once
+`ExprImage` changed). Split along its parts, no proof changed: `Apex` (the plain image, `NewImage`), `ApexX`
+(the inline allocator mode, `NewImageX`), `ApexCH` (the call mode's helpers, `NewImageCH.ByAlloc`), `ApexC`
+(the call mode's theorem, `NewImageC`), `ApexFile` (either mode's file, `NewImageF`: `file-at`, `file-wf-at`,
+which `Top` takes). `fetch-∈`/`∈-fetch` moved to `Apex`'s top level (both modes use them). Slowest now:
+`Top` 54 s, `ApexCH` 51 s.

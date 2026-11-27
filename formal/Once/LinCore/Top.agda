@@ -50,6 +50,7 @@ import Once.IRTy
 import Once.LinCore.ExprBuild
 import Once.LinCore.ExprLinked
 import Once.LinCore.Apex
+import Once.LinCore.ApexFile
 import Once.LinCore.ExprImage
 import Once.CCC.Codegen.AllocExpandClasses
 
@@ -67,6 +68,7 @@ module Program (m : Resolved) (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit
               ; sd = subst (λ σ → Once.LinCore.ExprBuild.SrcsDecl (fs-numerics (ArchSim.FS A)) σ B₀.tl) ls B₀.sd }
 
   module N = Once.LinCore.Apex.NewImage o A tbl ir bf
+  module NF = Once.LinCore.ApexFile.NewImageF o A tbl ir bf
 
   -- ★★ the compiled program's new image on the arch has the trace of the program, and so
   -- does the file the backend writes for it
@@ -99,7 +101,7 @@ module Program (m : Resolved) (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit
     -- …so the file at them is the compiler's of them (its externs, the image's)
     at-front : N.Owed → FileTr EPm.srcs (EPm.mty , EPm.mpm)
     at-front O = subst₂ FileAt tl-eq main-eq
-                   (N.file-at a inl (image-externs (Once.LinCore.ExprImage.imageAt (fs-numerics (ArchSim.FS A)) N.IT.BF.tl N.IT.BF.mpm)) O)
+                   (NF.file-at a inl (image-externs (Once.LinCore.ExprImage.imageAt (fs-numerics (ArchSim.FS A)) N.IT.BF.tl N.IT.BF.mpm)) O)
 
     move : ∀ {s s′} → s ≡ s′ → ∀ {x y} → mainOf s ≡ just x → mainOf s′ ≡ just y → FileTr s x → FileTr s′ y
     move {s} refl e e′ t = subst (λ z → FileTr s z) (just-injective (trans (sym e) e′)) t
@@ -120,7 +122,7 @@ module Program (m : Resolved) (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit
 
   private
     wf-front : FileWf EPm.srcs (EPm.mty , EPm.mpm)
-    wf-front = subst₂ FileWfAt tl-eq main-eq (N.file-wf-at a inl)
+    wf-front = subst₂ FileWfAt tl-eq main-eq (NF.file-wf-at a inl)
 
     move-wf : ∀ {s s′} → s ≡ s′ → ∀ {x y} → mainOf s ≡ just x → mainOf s′ ≡ just y → FileWf s x → FileWf s′ y
     move-wf {s} refl e e′ w = subst (λ z → FileWf s z) (just-injective (trans (sym e) e′)) w
