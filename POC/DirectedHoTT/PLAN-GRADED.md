@@ -98,6 +98,46 @@ extraction and the linear core each need.
     anything that runs.
 - **Subsumption:** `⊢sub-use` (a term may claim more usage than it makes).
 
+### 2.1 The rules, classified (read 2026-11-27, `Spec/Typing.agda:102-294`)
+
+The term judgment has **41 rules**, and `⊢ty` has 14.
+
+- **18 rules are 0-only:** their conclusion is a code, a description or a
+  proof, so it never runs. These are `⊢ordtr`, `⊢⌜base⌝`, `⊢⌜Π⌝`, `⊢⌜Σ⌝`,
+  `⊢⌜Hom⌝`, `⊢hrefl`, `⊢tr`, `⊢ap`, `⊢⌜Id⌝`, `⊢⌜Nat⌝`, `⊢⌜IMu⌝`, `⊢⌜Fin⌝`,
+  `⊢⌜Unit⌝`, `⊢idrefl`, `⊢dι`, `⊢dσ`, `⊢dρ`, `⊢dpay`.
+- **23 rules may run:** `⊢var`, `⊢lam`, `⊢app`, `⊢pair`, `⊢absurd`,
+  `⊢fst`, `⊢snd`, `⊢trU`, `⊢jsub`, `⊢unit`, `⊢nzero`, `⊢nsuc`, `⊢natrec`,
+  `⊢con`, `⊢dih`, `⊢ielim`, `⊢fzero`, `⊢fsuc`, `⊢fcase`, `⊢fcase0`,
+  `⊢psplit`, `⊢ref`, `⊢conv`. Across them:
+  - **30 premises become 0-premises:** type, code, index and proof premises,
+    such as `natrec`'s motive, `con`'s `I D i`, and `jsub`'s endpoints and
+    path. Also `absurd`'s and `fcase0`'s refutation (ex falso needs no
+    run-time evidence).
+  - **25 premises take the conclusion's usage**, scaled where a binder or
+    an argument says so: `app`'s argument by the arrow's `q`, `pair`'s
+    first component by Σ's `q`, and the method and scrutinee premises of
+    the eliminators.
+- **Two rules need care.**
+  - `⊢trU` is transport along a universe path, which is APPLICATION of the
+    path (directed univalence). With the path at 0, it runs only where its
+    extraction is the identity (D9). In general it is therefore proof-only.
+  - `⊢fst` at run time needs Σ's first component at a nonzero usage.
+
+**A layering this suggests (proposed decision D10).** Atkey's QTT has a
+judgment at σ = 0 in which resources are ignored. That judgment is exactly
+today's `Spec/Typing`. The graded judgment `Γ ⊢[ Ψ ] t ∷ A` (σ = 1) then
+needs new rules only for the 23 rules that may run. Their 30 0-premises
+stay premises of the EXISTING judgment, and a forgetful theorem
+`⊢[ Ψ ] ⇒ ⊢` (shaped like `Metatheory/Erasure`'s bridge) carries subject
+reduction's typing part, canonicity and consistency across unchanged.
+New proofs are needed only for the usage itself: the substitution lemma
+with scaling, and subject reduction preserving `Ψ`.
+
+The 18 0-only rules, `⊢ty` and the Knot's encodings of them stay as they
+are. One raw-syntax change remains: Π, λ and Σ gain a usage field (D1),
+which every consumer of `RTm`/`RTy`, the Knot included, must carry.
+
 ## 3. Extraction into master's core
 
 The bridge to master: a theorem that a well-graded kernel term at usage 1 or
@@ -176,12 +216,23 @@ attribute, abstract types as existential packages. The kernel's side:
   - `abstract data T` hides its constructor and fold entries outside its
     segment.
   - `abstract f` does not unfold outside its segment.
-- **Check first.** 0.147 scopes `abstract` by MODULE, the kernel by SEGMENT
-  of the telescope. They agree only if each module's entries form one
-  contiguous segment. That should hold with entries in import order (each
-  module after its imports), but no document states it. Check it against
-  the signature builder (`Algorithm/SigBuild`, `Spec/SigExtend`) before
-  designing around it.
+- **Module = segment: checked 2026-11-27.** The signature is a strict
+  chain. `Algorithm/SigBuild`'s `SigExtend base …` appends one module's
+  entries to exactly ONE base, which is checked once and reused
+  (`WfSig (S ▸ˢ e) = WfSig S × EntryWf S e`). The Knot's core is such a
+  chain: `PredsCore` over `PredsFlat` over `PredsStkC` over `PredsStkA`
+  over `PwCore`. So every module is one contiguous segment by
+  construction, and 0.147's per-module `abstract` is per-segment
+  visibility.
+  - **The gap: import DAGs.** Two modules extending the same base cannot be
+    combined today. A diamond (C imports A and B, both over `core`) needs a
+    linearisation `core ▸ A ▸ B ▸ C`. Each module stays contiguous, but
+    references are LEVELS from the bottom (`d <ˢ size`), so B's entries,
+    checked over `core`, are re-levelled by `|A|` when placed after A.
+    `Metatheory/SigExt` gives monotonicity of typing; the re-levelling is a
+    renaming on `ref`, still to write. Master has import DAGs (plan 0.154),
+    so this is needed before the kernel meets real libraries. It is not
+    needed for visibility itself.
 - **NbE.** The value table (`Algorithm/NbE/TblOK`) unfolds only visible
   entries. Soundness (`nbe-sound`) is restated relative to a visibility.
 - **Conservativity** (S5's δ-elimination) holds per segment: a segment that
@@ -314,6 +365,7 @@ G1–G4 are the core of R5. G5–G7 can run in any order once G3 is green.
 | D7 | Type-level subtyping: in the kernel, or inserted by the elaborator? | Inserted by the elaborator, after the cost check in §9 |
 | D8 | Visibility granularity: per module (= a contiguous segment) or per entry? | Per module, if the contiguity check in §5 holds |
 | D9 | Directed transport at run time: only where its extraction is the identity? | Yes |
+| D10 | The graded judgment as a σ = 1 layer over today's `⊢` (Atkey), with a forgetful bridge (§2.1)? | Yes: today's metatheory is reused, and the 18 0-only rules stay as they are |
 
 ## 12. Done when
 
@@ -327,7 +379,6 @@ G1–G4 are the core of R5. G5–G7 can run in any order once G3 is green.
 
 ## 13. Next step
 
-G0: bring D1–D9 to the user. In parallel (read-only), run the §5 contiguity
-check against `Algorithm/SigBuild` and `Spec/SigExtend`, and list the places
-in `Spec/Typing.agda` where a premise is a type (those become 0-premises) or
-a term that runs (those take the conclusion's usage). That list sizes G1.
+G0: bring D1–D10 to the user. The two read-only checks are done (§2.1, §5).
+Meanwhile, the decision-free groundwork: master's usage semiring and usage
+vectors, copied into the POC with their laws.
