@@ -416,7 +416,6 @@ snr-anti {t = natrec z w n} (snr-natrecⁿ r) = lift↑ (λ n' → natrec z w n'
 -- ★ the INDEXED ι.  Same shape, one extra `SN` premise, and the equation
 --   is `ren-ifieldsⁱ` — the specialised form that already folds in
 --   `isingle-ren`, so the environment lands as `isingle (renTm ρ i)`.
-snr-anti {t = ielim D i ms t₀} (snr-ielimᵗ r) = lift↑ (λ t' → ielim D i ms t') snr-ielimᵗ (λ _ → refl) (snr-anti r)
 -- ★★ WF stage E: the bounds must be matched SHAPED, or `renTm ρ a` does
 -- not reduce and the index unification gets stuck (the `snr-βfst`
 -- SplitError is the same disease).  The serialized xi's each carry the
@@ -537,6 +536,7 @@ snr-anti {t = ap c b p} (snr-apᵖ r) = lift↑ (λ p' → ap c b p') snr-apᵖ 
 snr-anti {t = ielim D i e (con q)} (snr-ι hD hi he hq) =
   app (app (app e i) q) (dih D e (app D i) q)
   , (snr-ι (sn-anti hD) (sn-anti hi) (sn-anti he) (sn-anti hq) , refl)
+snr-anti {t = ielim D i ms t₀} (snr-ielimᵗ r) = lift↑ (λ t' → ielim D i ms t') snr-ielimᵗ (λ _ → refl) (snr-anti r)
 snr-anti {t = dpay I D dι} (snr-dpay-ι hI hD) =
   ⌜Unit⌝ , (snr-dpay-ι (sn-anti hI) (sn-anti hD) , refl)
 snr-anti {ρ = ρ} {t = dpay I D (dσ S f)} snr-dpay-σ =
