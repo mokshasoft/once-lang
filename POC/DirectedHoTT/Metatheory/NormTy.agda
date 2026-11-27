@@ -205,12 +205,12 @@ numV (ref _) = numNe (λ ()) (λ _ ())
 -- `Hom Nat t u` at a stuck `t`, and at `nsuc m` with a stuck `u`, is normal.
 nf-t : {Γ : Cx} {t u : RTm Γ} → (t ≡ nzero → ⊥) → ((k : RTm Γ) → t ≡ nsuc k → ⊥) →
        IsNormal t → IsNormal u → IsNormalᵀ (Hom Nat t u)
-nf-t z s nt nu = λ { (ξ-Homᵀ ()) ; (ξ-Homˡ q) → nt q ; (ξ-Homʳ q) → nu q
+nf-t z s nt nu = λ { (ξ-Homᵀ (⟶head ())) ; (ξ-Homᵀ (⟶cong ())) ; (ξ-Homˡ q) → nt q ; (ξ-Homʳ q) → nu q
                   ; (Hom-Nat-z _) → z refl ; (Hom-Nat-sz m) → s m refl ; (Hom-Nat-ss m _) → s m refl }
 
 nf-su : {Γ : Cx} {m u : RTm Γ} → (u ≡ nzero → ⊥) → ((k : RTm Γ) → u ≡ nsuc k → ⊥) →
         IsNormal (nsuc m) → IsNormal u → IsNormalᵀ (Hom Nat (nsuc m) u)
-nf-su z s nt nu = λ { (ξ-Homᵀ ()) ; (ξ-Homˡ q) → nt q ; (ξ-Homʳ q) → nu q
+nf-su z s nt nu = λ { (ξ-Homᵀ (⟶head ())) ; (ξ-Homᵀ (⟶cong ())) ; (ξ-Homˡ q) → nt q ; (ξ-Homʳ q) → nu q
                    ; (Hom-Nat-sz _) → z refl ; (Hom-Nat-ss _ k) → s k refl }
 
 homNF⁰ : {Γ : Ctx} → ⊢ctx Γ → (A : RTy ⌊ Γ ⌋) → Γ ⊢ty A → IsNormalᵀ A → NoU A →
@@ -225,7 +225,7 @@ homNF : {Γ : Ctx} → ⊢ctx Γ → (A : RTy ⌊ Γ ⌋) → Γ ⊢ty A → IsN
 --   never normal
 elNF wΓ (ref m) dc nc with gen-ref dc
 ... | p , _ = ⊥-elim (nc (δref m p))
-elNF wΓ ⌜base⌝ dc nc = mkWNᵁ base (stepᵀ El-⌜base⌝ doneᵀ) (λ ()) nu-base
+elNF wΓ ⌜base⌝ dc nc = mkWNᵁ base (stepᵀ El-⌜base⌝ doneᵀ) (λ { (⟶head ()) ; (⟶cong ()) }) nu-base
 elNF wΓ (⌜Π⌝ c d) dc nc =
   let (dc₁ , (dd₁ , _)) = gen-⌜Π⌝ dc
       mkWNᵁ A₁ r₁ n₁ _  = elNF wΓ c dc₁ (λ q → nc (ξ-⌜Π⌝ˡ q))
@@ -248,8 +248,8 @@ elNF wΓ (⌜Id⌝ c a b) dc nc =
       mkWNᵁ A₁ r₁ n₁ _ = elNF wΓ c dc₁ (λ q → nc (ξ-⌜Id⌝ᶜ q))
   in  mkWNᵁ (Id A₁ a b) (stepᵀ (El-⌜Id⌝ c a b) (⟶ᵀ*-Idᵀ r₁))
         (λ { (ξ-Idᵀ q) → n₁ q ; (ξ-Idˡ q) → nc (ξ-⌜Id⌝ˡ q) ; (ξ-Idʳ q) → nc (ξ-⌜Id⌝ʳ q) }) nu-Id
-elNF wΓ ⌜Nat⌝ dc nc  = mkWNᵁ Nat (stepᵀ El-⌜Nat⌝ doneᵀ) (λ ()) nu-Nat
-elNF wΓ ⌜Unit⌝ dc nc = mkWNᵁ Unit (stepᵀ El-⌜Unit⌝ doneᵀ) (λ ()) nu-Unit
+elNF wΓ ⌜Nat⌝ dc nc  = mkWNᵁ Nat (stepᵀ El-⌜Nat⌝ doneᵀ) (λ { (⟶head ()) ; (⟶cong ()) }) nu-Nat
+elNF wΓ ⌜Unit⌝ dc nc = mkWNᵁ Unit (stepᵀ El-⌜Unit⌝ doneᵀ) (λ { (⟶head ()) ; (⟶cong ()) }) nu-Unit
 elNF wΓ (⌜IMu⌝ I D i) dc nc =
   mkWNᵁ (IMu I D i) (stepᵀ El-⌜IMu⌝ doneᵀ)
     (λ { (ξ-IMuᴵ q) → nc (ξ-⌜IMu⌝ᴵ q) ; (ξ-IMuᴰ q) → nc (ξ-⌜IMu⌝ᴰ q) ; (ξ-IMuⁱ q) → nc (ξ-⌜IMu⌝ⁱ q) })
@@ -303,8 +303,8 @@ homNF⁰ wΓ (Π F G) (ty-Π dF dG) nA (nu-Π uG) t u dt du nt nu =
         (nrmΠ (λ q → nA (ξ-Πˡ q)) n) (nu-Π uH)
 -- the computing order at `Nat`
 homNF⁰ wΓ Nat dA nA uA t u dt du nt nu with numV t | numV u
-... | numZ      | _         = mkWNᵁ Unit (stepᵀ (Hom-Nat-z u) doneᵀ) (λ ()) nu-Unit
-... | numS m    | numZ      = mkWNᵁ base (stepᵀ (Hom-Nat-sz m) doneᵀ) (λ ()) nu-base
+... | numZ      | _         = mkWNᵁ Unit (stepᵀ (Hom-Nat-z u) doneᵀ) (λ { (⟶head ()) ; (⟶cong ()) }) nu-Unit
+... | numS m    | numZ      = mkWNᵁ base (stepᵀ (Hom-Nat-sz m) doneᵀ) (λ { (⟶head ()) ; (⟶cong ()) }) nu-base
 ... | numS m    | numS k    =
   let (dm , _) = gen-nsuc dt
       (dk , _) = gen-nsuc du
@@ -348,8 +348,8 @@ homNF wΓ (Π F G) (ty-Π dF dG) nA t u dt du nt nu =
         (nrmΠ (λ q → nA (ξ-Πˡ q)) n)
 -- the computing order at `Nat`
 homNF wΓ Nat dA nA t u dt du nt nu with numV t | numV u
-... | numZ      | _         = mkWNᵀ Unit (stepᵀ (Hom-Nat-z u) doneᵀ) (λ ())
-... | numS m    | numZ      = mkWNᵀ base (stepᵀ (Hom-Nat-sz m) doneᵀ) (λ ())
+... | numZ      | _         = mkWNᵀ Unit (stepᵀ (Hom-Nat-z u) doneᵀ) (λ { (⟶head ()) ; (⟶cong ()) })
+... | numS m    | numZ      = mkWNᵀ base (stepᵀ (Hom-Nat-sz m) doneᵀ) (λ { (⟶head ()) ; (⟶cong ()) })
 ... | numS m    | numS k    =
   let (dm , _) = gen-nsuc dt
       (dk , _) = gen-nsuc du
@@ -440,7 +440,7 @@ module _ {Θ : Ctx} {I D : RTm ⌊ Θ ⌋} {M : RTy ((⌊ Θ ⌋ ∙) ∙)}
         mkWN C' rC nC _ = wnorm wΞ (ren-lemma dC hρ)
         mkWN p' rp np _ = wnorm wΞ (ren-lemma dp hρ)
         wmot = c-▹ (c-▹ wΞ (ren-ty (ty-El dI) hρ))
-                   (ren-ty (ty-IMu (⊢wk dI) (⊢-cast (DescF-ren vs I) (⊢wk dD)) (⊢var here)) (Ren⊢-ext hρ))
+                   (ren-ty (ty-IMu (⊢wk {B = El I} dI) (⊢-cast (DescF-ren vs I) (⊢wk {B = El I} dD)) (⊢var here)) (Ren⊢-ext {C = El I} hρ))
         mkWNᵀ M' rM nM = subst WNᵀ (subTy-var (extR (extR ρ)) M)
                                 (motNF wmot (Sub⊢-ren (Ren⊢-ext (Ren⊢-ext hρ))))
         key = dstk?-red* rC (trans (dstk?-ren ρ C) (sne→dstk n))
@@ -448,13 +448,13 @@ module _ {Θ : Ctx} {I D : RTm ⌊ Θ ⌋} {M : RTy ((⌊ Θ ⌋ ∙) ∙)}
           (⟶ᵀ*-trans (⟶ᵀ*-DIhᴰ rD) (⟶ᵀ*-trans (⟶ᵀ*-DIhᴹ rM)
             (⟶ᵀ*-trans (⟶ᵀ*-DIhᶜ rC) (⟶ᵀ*-DIhᵖ rp))))
           (λ q → dih-stuck q key nD nM nC np)
-  dihNF (w-exp r k) dC dp {ρ = ρ} wΞ hρ =
-    stepᵀ (⟶ᵀ-ren ρ (ξ-DIhᶜ (snr→⟶ r))) doneᵀ
+  dihNF {C = C} {p = p} (w-exp r k) dC dp {ρ = ρ} wΞ hρ =
+    stepᵀ (⟶ᵀ-ren ρ {A = DIh D M C p} (ξ-DIhᶜ (snr→⟶ r))) doneᵀ
       ◁ dihNF k (sr dC (snr→⟶ r)) (⊢conv dp (credᵀ (ξ-El (ξ-dpayᶜ (snr→⟶ r))))) wΞ hρ
-  dihNF w-ι dC dp {ρ = ρ} wΞ hρ =
-    mkWNᵀ Unit (stepᵀ (⟶ᵀ-ren ρ (DIh-ι _ _ _)) doneᵀ) (λ ())
-  dihNF (w-σ k) dC dp {ρ = ρ} wΞ hρ with dσ-step dC dp
-  ... | dC' , dsnd = stepᵀ (⟶ᵀ-ren ρ (DIh-σ _ _ _ _ _)) doneᵀ ◁ dihNF k dC' dsnd wΞ hρ
+  dihNF {p = p} w-ι dC dp {ρ = ρ} wΞ hρ =
+    mkWNᵀ Unit (stepᵀ (⟶ᵀ-ren ρ (DIh-ι D M p)) doneᵀ) (λ { (⟶head ()) ; (⟶cong ()) })
+  dihNF {C = C} {p = p} (w-σ k) dC dp {ρ = ρ} wΞ hρ with dσ-step dC dp
+  ... | dC' , dsnd = stepᵀ (⟶ᵀ-ren ρ {A = DIh D M C p} (DIh-σ _ _ _ _ _)) doneᵀ ◁ dihNF k dC' dsnd wΞ hρ
   -- ★ the recursive field: the motive's instance, and the rest of the
   --   walk at the scope extended by it (a renaming, `vs ∘ᵣ ρ`).
   dihNF (w-ρ {j = j} {C = C₁} {p = p} k) dC dp {Ξ = Ξ} {ρ = ρ} wΞ hρ with dρ-step dC dp
@@ -487,10 +487,10 @@ module _ {Θ : Ctx} {I D : RTm ⌊ Θ ⌋} {M : RTy ((⌊ Θ ⌋ ∙) ∙)}
 
 normTyS : {Γ Δ : Ctx} {σ : Sub ⌊ Γ ⌋ ⌊ Δ ⌋} {A : RTy ⌊ Γ ⌋} →
           ⊢ctx Δ → Γ ⊢ty A → Sub⊢ Γ Δ σ → WNᵀ (subTy σ A)
-normTyS wΔ ty-base h = mkWNᵀ base doneᵀ (λ ())
-normTyS wΔ ty-U    h = mkWNᵀ U doneᵀ (λ ())
-normTyS wΔ ty-Unit h = mkWNᵀ Unit doneᵀ (λ ())
-normTyS wΔ ty-Nat  h = mkWNᵀ Nat doneᵀ (λ ())
+normTyS wΔ ty-base h = mkWNᵀ base doneᵀ (λ { (⟶head ()) ; (⟶cong ()) })
+normTyS wΔ ty-U    h = mkWNᵀ U doneᵀ (λ { (⟶head ()) ; (⟶cong ()) })
+normTyS wΔ ty-Unit h = mkWNᵀ Unit doneᵀ (λ { (⟶head ()) ; (⟶cong ()) })
+normTyS wΔ ty-Nat  h = mkWNᵀ Nat doneᵀ (λ { (⟶head ()) ; (⟶cong ()) })
 normTyS wΔ (ty-Fin dn) h =
   let mkWN n' rn nn _ = wnorm wΔ (sub-lemma dn h)
   in  mkWNᵀ (Fin n') (⟶ᵀ*-Fin rn) (λ { (ξ-Fin q) → nn q })
