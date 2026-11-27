@@ -52,21 +52,35 @@ def kname(src):
 
 # ------------------------------------------------------------ the parser
 def parse():
+    """The kernel's binding signature, read from `Spec/Syntax`: the constructor
+    order of `data KCon` (one sort per declaration line) and each constructor's
+    `kfields` row (SPIKE-GENERIC-SYNTAX: the syntax is generic, the variable is
+    the generic syntax's own, and it stays the first term row as before)."""
     txt = open(SYNTAX, encoding="utf-8").read()
+    m = re.search(r"^data KCon : Srt → Set where\n(.*?)(?=^\S)", txt, re.S | re.M)
+    assert m, "data KCon"
+    body = re.sub(r"--[^\n]*", "", m.group(1))
+    decls = re.findall(r"((?:\s*`[^\s:]+)+)\s*:\s*KCon (ty|tm)", body)
+    assert [d[1] for d in decls] == ["ty", "tm"], decls
+    kf = dict(re.findall(r"^kfields `(\S+)\s*=\s*(.*?)\s*$", txt, re.M))
+    def flds(spec):
+        out = []
+        for f in [x.strip() for x in spec.split("∷")]:
+            if f == "[]": continue
+            if f == "fnat": out.append(("nat",)); continue
+            mm = re.match(r"^fld (ty|tm) (\d+)$", f)
+            assert mm, f
+            out.append(("rec", 0 if mm.group(1) == "ty" else 1, int(mm.group(2))))
+        return out
     rows = []
-    for data in ("RTy", "RTm"):
-        m = re.search(r"^data %s where\n(.*?)(?=^\S)" % data, txt, re.S | re.M)
-        assert m, data
-        for line in m.group(1).split("\n"):
-            line = line.split("--")[0].rstrip()
-            mm = re.match(r"^  (\S+)\s*:\s*∀ \{Γ\} → (.*)$", line)
-            if not mm:
-                assert not line.strip(), "unparsed constructor line: %r" % line
-                continue
-            name, ty = mm.group(1), mm.group(2)
-            parts = [p.strip() for p in split_arrows(ty)]
-            assert parts[-1] == data + " Γ", (name, parts)
-            rows.append((data, name, [field(p, name) for p in parts[:-1]]))
+    for names, srt in decls:
+        data = "RTy" if srt == "ty" else "RTm"
+        if data == "RTm":
+            rows.append(("RTm", "var", [("var",)]))
+        for n in names.split():
+            n = n.lstrip("`")
+            assert n in kf, "no kfields row for %s" % n
+            rows.append((data, n, flds(kf[n])))
     return rows
 
 def split_arrows(ty):

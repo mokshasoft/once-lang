@@ -146,6 +146,9 @@ kfields `ref    = fnat ∷ []
 KSig : G.BSig
 KSig = record { Sort = Srt ; vsort = tm ; Con = KCon ; fields = kfields }
 
+-- the syntax at the kernel's signature, applied ONCE
+module KS = G.Syn KSig
+
 RTy RTm : Cx → Set
 RTy = G.Tm KSig ty
 RTm = G.Tm KSig tm
@@ -153,66 +156,66 @@ RTm = G.Tm KSig tm
 -- ★ the formers, as pattern synonyms (they read, match and apply as the
 --   old constructors did, implicit scope included)
 infixr 5 _,ᵃ_
-pattern _,ᵃ_ a as = a G.∷ᵃ as
-pattern ∎ᵃ = G.[]ᵃ
+pattern _,ᵃ_ a as = a G.,ᶠ as
+pattern ∎ᵃ = G.⟨⟩
 
-pattern base {Γ}          = G.node {Γ = Γ} `base ∎ᵃ
-pattern U {Γ}             = G.node {Γ = Γ} `U ∎ᵃ
-pattern Π {Γ} A B         = G.node {Γ = Γ} `Π (A ,ᵃ B ,ᵃ ∎ᵃ)
-pattern Σ' {Γ} A B        = G.node {Γ = Γ} `Σ' (A ,ᵃ B ,ᵃ ∎ᵃ)
-pattern El {Γ} t          = G.node {Γ = Γ} `El (t ,ᵃ ∎ᵃ)
-pattern Hom {Γ} A t u     = G.node {Γ = Γ} `Hom (A ,ᵃ t ,ᵃ u ,ᵃ ∎ᵃ)
-pattern Unit {Γ}          = G.node {Γ = Γ} `Unit ∎ᵃ
-pattern Nat {Γ}           = G.node {Γ = Γ} `Nat ∎ᵃ
-pattern Id {Γ} A t u      = G.node {Γ = Γ} `Id (A ,ᵃ t ,ᵃ u ,ᵃ ∎ᵃ)
-pattern IMu {Γ} I D i     = G.node {Γ = Γ} `IMu (I ,ᵃ D ,ᵃ i ,ᵃ ∎ᵃ)
-pattern Desc {Γ} I        = G.node {Γ = Γ} `Desc (I ,ᵃ ∎ᵃ)
-pattern DIh {Γ} D M C p   = G.node {Γ = Γ} `DIh (D ,ᵃ M ,ᵃ C ,ᵃ p ,ᵃ ∎ᵃ)
-pattern Fin {Γ} n         = G.node {Γ = Γ} `Fin (n ,ᵃ ∎ᵃ)
-pattern var {Γ} x         = G.var {Γ = Γ} x
-pattern lam {Γ} t         = G.node {Γ = Γ} `lam (t ,ᵃ ∎ᵃ)
-pattern app {Γ} t u       = G.node {Γ = Γ} `app (t ,ᵃ u ,ᵃ ∎ᵃ)
-pattern pair {Γ} a b      = G.node {Γ = Γ} `pair (a ,ᵃ b ,ᵃ ∎ᵃ)
-pattern absurd {Γ} c e    = G.node {Γ = Γ} `absurd (c ,ᵃ e ,ᵃ ∎ᵃ)
-pattern ordtr {Γ} a t u p q = G.node {Γ = Γ} `ordtr (a ,ᵃ t ,ᵃ u ,ᵃ p ,ᵃ q ,ᵃ ∎ᵃ)
-pattern fst {Γ} p         = G.node {Γ = Γ} `fst (p ,ᵃ ∎ᵃ)
-pattern snd {Γ} p         = G.node {Γ = Γ} `snd (p ,ᵃ ∎ᵃ)
-pattern ⌜base⌝ {Γ}        = G.node {Γ = Γ} `⌜base⌝ ∎ᵃ
-pattern ⌜Π⌝ {Γ} c d       = G.node {Γ = Γ} `⌜Π⌝ (c ,ᵃ d ,ᵃ ∎ᵃ)
-pattern ⌜Σ⌝ {Γ} c d       = G.node {Γ = Γ} `⌜Σ⌝ (c ,ᵃ d ,ᵃ ∎ᵃ)
-pattern ⌜Hom⌝ {Γ} c a b   = G.node {Γ = Γ} `⌜Hom⌝ (c ,ᵃ a ,ᵃ b ,ᵃ ∎ᵃ)
-pattern hrefl {Γ} c t     = G.node {Γ = Γ} `hrefl (c ,ᵃ t ,ᵃ ∎ᵃ)
-pattern tr {Γ} d p e      = G.node {Γ = Γ} `tr (d ,ᵃ p ,ᵃ e ,ᵃ ∎ᵃ)
-pattern ap {Γ} c b p      = G.node {Γ = Γ} `ap (c ,ᵃ b ,ᵃ p ,ᵃ ∎ᵃ)
-pattern ⌜Id⌝ {Γ} c a b    = G.node {Γ = Γ} `⌜Id⌝ (c ,ᵃ a ,ᵃ b ,ᵃ ∎ᵃ)
-pattern idrefl {Γ} c t    = G.node {Γ = Γ} `idrefl (c ,ᵃ t ,ᵃ ∎ᵃ)
-pattern jsub {Γ} d p e    = G.node {Γ = Γ} `jsub (d ,ᵃ p ,ᵃ e ,ᵃ ∎ᵃ)
-pattern unit {Γ}          = G.node {Γ = Γ} `unit ∎ᵃ
-pattern nzero {Γ}         = G.node {Γ = Γ} `nzero ∎ᵃ
-pattern nsuc {Γ} n        = G.node {Γ = Γ} `nsuc (n ,ᵃ ∎ᵃ)
-pattern natrec {Γ} z s n  = G.node {Γ = Γ} `natrec (z ,ᵃ s ,ᵃ n ,ᵃ ∎ᵃ)
-pattern con {Γ} p         = G.node {Γ = Γ} `con (p ,ᵃ ∎ᵃ)
-pattern ielim {Γ} D i e t = G.node {Γ = Γ} `ielim (D ,ᵃ i ,ᵃ e ,ᵃ t ,ᵃ ∎ᵃ)
-pattern dι {Γ}            = G.node {Γ = Γ} `dι ∎ᵃ
-pattern dσ {Γ} S f        = G.node {Γ = Γ} `dσ (S ,ᵃ f ,ᵃ ∎ᵃ)
-pattern dρ {Γ} j C        = G.node {Γ = Γ} `dρ (j ,ᵃ C ,ᵃ ∎ᵃ)
-pattern dpay {Γ} I D C    = G.node {Γ = Γ} `dpay (I ,ᵃ D ,ᵃ C ,ᵃ ∎ᵃ)
-pattern dih {Γ} D e C p   = G.node {Γ = Γ} `dih (D ,ᵃ e ,ᵃ C ,ᵃ p ,ᵃ ∎ᵃ)
-pattern fzero {Γ}         = G.node {Γ = Γ} `fzero ∎ᵃ
-pattern fsuc {Γ} t        = G.node {Γ = Γ} `fsuc (t ,ᵃ ∎ᵃ)
-pattern fcase {Γ} t a b   = G.node {Γ = Γ} `fcase (t ,ᵃ a ,ᵃ b ,ᵃ ∎ᵃ)
-pattern fcase0 {Γ} t      = G.node {Γ = Γ} `fcase0 (t ,ᵃ ∎ᵃ)
-pattern psplit {Γ} b q    = G.node {Γ = Γ} `psplit (b ,ᵃ q ,ᵃ ∎ᵃ)
-pattern ⌜Nat⌝ {Γ}         = G.node {Γ = Γ} `⌜Nat⌝ ∎ᵃ
-pattern ⌜IMu⌝ {Γ} I D i   = G.node {Γ = Γ} `⌜IMu⌝ (I ,ᵃ D ,ᵃ i ,ᵃ ∎ᵃ)
-pattern ⌜Fin⌝ {Γ} n       = G.node {Γ = Γ} `⌜Fin⌝ (n ,ᵃ ∎ᵃ)
-pattern ⌜Unit⌝ {Γ}        = G.node {Γ = Γ} `⌜Unit⌝ ∎ᵃ
-pattern ref {Γ} d         = G.node {Γ = Γ} `ref (d G.∷ⁿ ∎ᵃ)
+pattern base {Γ}          = KS.node {Γ = Γ} `base ∎ᵃ
+pattern U {Γ}             = KS.node {Γ = Γ} `U ∎ᵃ
+pattern Π {Γ} A B         = KS.node {Γ = Γ} `Π (A ,ᵃ B ,ᵃ ∎ᵃ)
+pattern Σ' {Γ} A B        = KS.node {Γ = Γ} `Σ' (A ,ᵃ B ,ᵃ ∎ᵃ)
+pattern El {Γ} t          = KS.node {Γ = Γ} `El (t ,ᵃ ∎ᵃ)
+pattern Hom {Γ} A t u     = KS.node {Γ = Γ} `Hom (A ,ᵃ t ,ᵃ u ,ᵃ ∎ᵃ)
+pattern Unit {Γ}          = KS.node {Γ = Γ} `Unit ∎ᵃ
+pattern Nat {Γ}           = KS.node {Γ = Γ} `Nat ∎ᵃ
+pattern Id {Γ} A t u      = KS.node {Γ = Γ} `Id (A ,ᵃ t ,ᵃ u ,ᵃ ∎ᵃ)
+pattern IMu {Γ} I D i     = KS.node {Γ = Γ} `IMu (I ,ᵃ D ,ᵃ i ,ᵃ ∎ᵃ)
+pattern Desc {Γ} I        = KS.node {Γ = Γ} `Desc (I ,ᵃ ∎ᵃ)
+pattern DIh {Γ} D M C p   = KS.node {Γ = Γ} `DIh (D ,ᵃ M ,ᵃ C ,ᵃ p ,ᵃ ∎ᵃ)
+pattern Fin {Γ} n         = KS.node {Γ = Γ} `Fin (n ,ᵃ ∎ᵃ)
+pattern var {Γ} x         = KS.var {Γ = Γ} x
+pattern lam {Γ} t         = KS.node {Γ = Γ} `lam (t ,ᵃ ∎ᵃ)
+pattern app {Γ} t u       = KS.node {Γ = Γ} `app (t ,ᵃ u ,ᵃ ∎ᵃ)
+pattern pair {Γ} a b      = KS.node {Γ = Γ} `pair (a ,ᵃ b ,ᵃ ∎ᵃ)
+pattern absurd {Γ} c e    = KS.node {Γ = Γ} `absurd (c ,ᵃ e ,ᵃ ∎ᵃ)
+pattern ordtr {Γ} a t u p q = KS.node {Γ = Γ} `ordtr (a ,ᵃ t ,ᵃ u ,ᵃ p ,ᵃ q ,ᵃ ∎ᵃ)
+pattern fst {Γ} p         = KS.node {Γ = Γ} `fst (p ,ᵃ ∎ᵃ)
+pattern snd {Γ} p         = KS.node {Γ = Γ} `snd (p ,ᵃ ∎ᵃ)
+pattern ⌜base⌝ {Γ}        = KS.node {Γ = Γ} `⌜base⌝ ∎ᵃ
+pattern ⌜Π⌝ {Γ} c d       = KS.node {Γ = Γ} `⌜Π⌝ (c ,ᵃ d ,ᵃ ∎ᵃ)
+pattern ⌜Σ⌝ {Γ} c d       = KS.node {Γ = Γ} `⌜Σ⌝ (c ,ᵃ d ,ᵃ ∎ᵃ)
+pattern ⌜Hom⌝ {Γ} c a b   = KS.node {Γ = Γ} `⌜Hom⌝ (c ,ᵃ a ,ᵃ b ,ᵃ ∎ᵃ)
+pattern hrefl {Γ} c t     = KS.node {Γ = Γ} `hrefl (c ,ᵃ t ,ᵃ ∎ᵃ)
+pattern tr {Γ} d p e      = KS.node {Γ = Γ} `tr (d ,ᵃ p ,ᵃ e ,ᵃ ∎ᵃ)
+pattern ap {Γ} c b p      = KS.node {Γ = Γ} `ap (c ,ᵃ b ,ᵃ p ,ᵃ ∎ᵃ)
+pattern ⌜Id⌝ {Γ} c a b    = KS.node {Γ = Γ} `⌜Id⌝ (c ,ᵃ a ,ᵃ b ,ᵃ ∎ᵃ)
+pattern idrefl {Γ} c t    = KS.node {Γ = Γ} `idrefl (c ,ᵃ t ,ᵃ ∎ᵃ)
+pattern jsub {Γ} d p e    = KS.node {Γ = Γ} `jsub (d ,ᵃ p ,ᵃ e ,ᵃ ∎ᵃ)
+pattern unit {Γ}          = KS.node {Γ = Γ} `unit ∎ᵃ
+pattern nzero {Γ}         = KS.node {Γ = Γ} `nzero ∎ᵃ
+pattern nsuc {Γ} n        = KS.node {Γ = Γ} `nsuc (n ,ᵃ ∎ᵃ)
+pattern natrec {Γ} z s n  = KS.node {Γ = Γ} `natrec (z ,ᵃ s ,ᵃ n ,ᵃ ∎ᵃ)
+pattern con {Γ} p         = KS.node {Γ = Γ} `con (p ,ᵃ ∎ᵃ)
+pattern ielim {Γ} D i e t = KS.node {Γ = Γ} `ielim (D ,ᵃ i ,ᵃ e ,ᵃ t ,ᵃ ∎ᵃ)
+pattern dι {Γ}            = KS.node {Γ = Γ} `dι ∎ᵃ
+pattern dσ {Γ} S f        = KS.node {Γ = Γ} `dσ (S ,ᵃ f ,ᵃ ∎ᵃ)
+pattern dρ {Γ} j C        = KS.node {Γ = Γ} `dρ (j ,ᵃ C ,ᵃ ∎ᵃ)
+pattern dpay {Γ} I D C    = KS.node {Γ = Γ} `dpay (I ,ᵃ D ,ᵃ C ,ᵃ ∎ᵃ)
+pattern dih {Γ} D e C p   = KS.node {Γ = Γ} `dih (D ,ᵃ e ,ᵃ C ,ᵃ p ,ᵃ ∎ᵃ)
+pattern fzero {Γ}         = KS.node {Γ = Γ} `fzero ∎ᵃ
+pattern fsuc {Γ} t        = KS.node {Γ = Γ} `fsuc (t ,ᵃ ∎ᵃ)
+pattern fcase {Γ} t a b   = KS.node {Γ = Γ} `fcase (t ,ᵃ a ,ᵃ b ,ᵃ ∎ᵃ)
+pattern fcase0 {Γ} t      = KS.node {Γ = Γ} `fcase0 (t ,ᵃ ∎ᵃ)
+pattern psplit {Γ} b q    = KS.node {Γ = Γ} `psplit (b ,ᵃ q ,ᵃ ∎ᵃ)
+pattern ⌜Nat⌝ {Γ}         = KS.node {Γ = Γ} `⌜Nat⌝ ∎ᵃ
+pattern ⌜IMu⌝ {Γ} I D i   = KS.node {Γ = Γ} `⌜IMu⌝ (I ,ᵃ D ,ᵃ i ,ᵃ ∎ᵃ)
+pattern ⌜Fin⌝ {Γ} n       = KS.node {Γ = Γ} `⌜Fin⌝ (n ,ᵃ ∎ᵃ)
+pattern ⌜Unit⌝ {Γ}        = KS.node {Γ = Γ} `⌜Unit⌝ ∎ᵃ
+pattern ref {Γ} d         = KS.node {Γ = Γ} `ref (d ,ᵃ ∎ᵃ)
 
 -- ★ `RTy.Fin`: the old datatype's module, where downstream code
 --   disambiguates `Fin` from the Lib's (a datatype came with one)
 module RTy where
-  pattern Fin {Γ} n = G.node {Γ = Γ} `Fin (n ,ᵃ ∎ᵃ)
+  pattern Fin {Γ} n = KS.node {Γ = Γ} `Fin (n ,ᵃ ∎ᵃ)
 
 -- the generic traversal, instantiated ONCE, here
 module KT = G.Trav KSig

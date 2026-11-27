@@ -22,6 +22,16 @@
 --     both sides, simulation (the traversal IS a substitution), one
 --     commuting square, and weakening and single substitution through it.
 --
+-- ★ ENCODING (2026-11-27, measured by `POC/tmp/TermProbe*.agda`): a node
+--   holds the PRODUCT `⟦ fields c ⟧ Γ`, computed from the field list, whose
+--   constructors carry NO indices; and a field's scope is computed by matching
+--   on its binder depth (0, 1, 2, then the general case), so a depth-k field
+--   has the type `Tm s Γ`, `Tm s (Γ ∙)`, … syntactically. An argument list
+--   indexed by the computed field list, or field types `Tm s (Γ ⋯ k)`, leave
+--   dot patterns that Agda's termination checker cannot compare with a
+--   REBUILT subterm, and recursion through `f (Π A B)` from a pattern
+--   `Hom (Π A B) t u` stops terminating; this encoding keeps it.
+--
 -- `Spec/Syntax` instantiates this at the kernel's signature, ONCE (an instance
 -- copy per use would defeat syntactic equality, PLAN-REF), and re-exports the
 -- kernel-facing names. Import this module qualified.
@@ -61,19 +71,32 @@ _⋯_ : Cx → ℕ → Cx
 -- The syntax of a signature
 ------------------------------------------------------------------------
 
-module _ (Σ : BSig) where
+-- the fields' products: data, not records, and with no indices
+data ⟨⟩ᶠ : Set where
+  ⟨⟩ : ⟨⟩ᶠ
+
+infixr 5 _⊗_ _,ᶠ_
+data _⊗_ (A B : Set) : Set where
+  _,ᶠ_ : A → B → A ⊗ B
+
+-- named, so a signature can be applied ONCE (`module KS = Syn KSig`): its
+-- `node`/`var` then fix the signature, which pattern synonyms cannot name
+module Syn (Σ : BSig) where
   data Tm : Sort Σ → Cx → Set
-  data Args (Γ : Cx) : List (Field (Sort Σ)) → Set
+  ⟦_⟧ : List (Field (Sort Σ)) → Cx → Set
 
   data Tm where
     var  : ∀ {Γ} → Var Γ → Tm (vsort Σ) Γ
-    node : ∀ {s Γ} (c : Con Σ s) → Args Γ (fields Σ c) → Tm s Γ
+    node : ∀ {s Γ} (c : Con Σ s) → ⟦ fields Σ c ⟧ Γ → Tm s Γ
 
-  infixr 5 _∷ᵃ_ _∷ⁿ_
-  data Args Γ where
-    []ᵃ  : Args Γ []
-    _∷ᵃ_ : ∀ {s k fs} → Tm s (Γ ⋯ k) → Args Γ fs → Args Γ (fld s k ∷ fs)
-    _∷ⁿ_ : ∀ {fs} → ℕ → Args Γ fs → Args Γ (fnat ∷ fs)
+  ⟦ [] ⟧ Γ                              = ⟨⟩ᶠ
+  ⟦ fld s zero ∷ fs ⟧ Γ                 = Tm s Γ ⊗ ⟦ fs ⟧ Γ
+  ⟦ fld s (suc zero) ∷ fs ⟧ Γ           = Tm s (Γ ∙) ⊗ ⟦ fs ⟧ Γ
+  ⟦ fld s (suc (suc zero)) ∷ fs ⟧ Γ     = Tm s ((Γ ∙) ∙) ⊗ ⟦ fs ⟧ Γ
+  ⟦ fld s (suc (suc (suc k))) ∷ fs ⟧ Γ  = Tm s (Γ ⋯ suc (suc (suc k))) ⊗ ⟦ fs ⟧ Γ
+  ⟦ fnat ∷ fs ⟧ Γ                       = ℕ ⊗ ⟦ fs ⟧ Γ
+
+open Syn public
 
 ------------------------------------------------------------------------
 -- Kits, the one traversal, and everything proved once
@@ -84,7 +107,7 @@ module Trav (Σ : BSig) where
   T = Tm Σ (vsort Σ)
 
   private
-    c₂ : ∀ {s k fs Γ} {a a′ : Tm Σ s (Γ ⋯ k)} {b b′ : Args Σ Γ fs} → a ≡ a′ → b ≡ b′ → (a ∷ᵃ b) ≡ (a′ ∷ᵃ b′)
+    c₂ : ∀ {A B : Set} {a a′ : A} {b b′ : B} → a ≡ a′ → b ≡ b′ → _≡_ {A ⊗ B} (a ,ᶠ b) (a′ ,ᶠ b′)
     c₂ refl refl = refl
 
   record Kit : Set₁ where
@@ -108,12 +131,15 @@ module Trav (Σ : BSig) where
     extN (suc k) ρ = ext (extN k ρ)
 
     trav  : ∀ {s Γ Δ} → Env Γ Δ → Tm Σ s Γ → Tm Σ s Δ
-    travA : ∀ {fs Γ Δ} → Env Γ Δ → Args Σ Γ fs → Args Σ Δ fs
+    travF : ∀ fs {Γ Δ} → Env Γ Δ → ⟦_⟧ Σ fs Γ → ⟦_⟧ Σ fs Δ
     trav ρ (var x)     = toTm (ρ x)
-    trav ρ (node c as) = node c (travA ρ as)
-    travA ρ []ᵃ                  = []ᵃ
-    travA ρ (_∷ᵃ_ {k = k} t as)  = trav (extN k ρ) t ∷ᵃ travA ρ as
-    travA ρ (n ∷ⁿ as)            = n ∷ⁿ travA ρ as
+    trav ρ (node c xs) = node c (travF (fields Σ c) ρ xs)
+    travF []                                ρ ⟨⟩        = ⟨⟩
+    travF (fld s zero ∷ fs)                 ρ (x ,ᶠ xs) = trav ρ x ,ᶠ travF fs ρ xs
+    travF (fld s (suc zero) ∷ fs)           ρ (x ,ᶠ xs) = trav (ext ρ) x ,ᶠ travF fs ρ xs
+    travF (fld s (suc (suc zero)) ∷ fs)     ρ (x ,ᶠ xs) = trav (ext (ext ρ)) x ,ᶠ travF fs ρ xs
+    travF (fld s (suc (suc (suc k))) ∷ fs)  ρ (x ,ᶠ xs) = trav (extN (suc (suc (suc k))) ρ) x ,ᶠ travF fs ρ xs
+    travF (fnat ∷ fs)                       ρ (n ,ᶠ xs) = n ,ᶠ travF fs ρ xs
 
   ----------------------------------------------------------------------
   -- Congruence: pointwise-equal environments traverse alike
@@ -130,12 +156,15 @@ module Trav (Σ : BSig) where
     extN-cong (suc k) h = ext-cong (extN-cong k h)
 
     trav-cong  : ∀ {s Γ Δ} {ρ ρ′ : Env K Γ Δ} → (∀ x → ρ x ≡ ρ′ x) → (t : Tm Σ s Γ) → trav K ρ t ≡ trav K ρ′ t
-    travA-cong : ∀ {fs Γ Δ} {ρ ρ′ : Env K Γ Δ} → (∀ x → ρ x ≡ ρ′ x) → (as : Args Σ Γ fs) → travA K ρ as ≡ travA K ρ′ as
+    travF-cong : ∀ fs {Γ Δ} {ρ ρ′ : Env K Γ Δ} → (∀ x → ρ x ≡ ρ′ x) → (xs : ⟦_⟧ Σ fs Γ) → travF K fs ρ xs ≡ travF K fs ρ′ xs
     trav-cong h (var x)     = cong toTm (h x)
-    trav-cong h (node c as) = cong (node c) (travA-cong h as)
-    travA-cong h []ᵃ                 = refl
-    travA-cong h (_∷ᵃ_ {k = k} t as) = c₂ (trav-cong (extN-cong k h) t) (travA-cong h as)
-    travA-cong h (n ∷ⁿ as)           = cong (n ∷ⁿ_) (travA-cong h as)
+    trav-cong h (node c xs) = cong (node c) (travF-cong (fields Σ c) h xs)
+    travF-cong []                                h ⟨⟩        = refl
+    travF-cong (fld s zero ∷ fs)                 h (x ,ᶠ xs) = c₂ (trav-cong h x) (travF-cong fs h xs)
+    travF-cong (fld s (suc zero) ∷ fs)           h (x ,ᶠ xs) = c₂ (trav-cong (extN-cong 1 h) x) (travF-cong fs h xs)
+    travF-cong (fld s (suc (suc zero)) ∷ fs)     h (x ,ᶠ xs) = c₂ (trav-cong (extN-cong 2 h) x) (travF-cong fs h xs)
+    travF-cong (fld s (suc (suc (suc k))) ∷ fs)  h (x ,ᶠ xs) = c₂ (trav-cong (extN-cong (suc (suc (suc k))) h) x) (travF-cong fs h xs)
+    travF-cong (fnat ∷ fs)                       h (n ,ᶠ xs) = cong (n ,ᶠ_) (travF-cong fs h xs)
 
   ----------------------------------------------------------------------
   -- Fusion: ONE theorem
@@ -156,13 +185,16 @@ module Trav (Σ : BSig) where
 
       fusion  : ∀ {s Γ Δ Θ} {ρ₁ : Env K₁ Γ Δ} {ρ₂ : Env K₂ Δ Θ} {ρ₃ : Env K₃ Γ Θ}
               → Rel ρ₁ ρ₂ ρ₃ → (t : Tm Σ s Γ) → trav K₂ ρ₂ (trav K₁ ρ₁ t) ≡ trav K₃ ρ₃ t
-      fusionA : ∀ {fs Γ Δ Θ} {ρ₁ : Env K₁ Γ Δ} {ρ₂ : Env K₂ Δ Θ} {ρ₃ : Env K₃ Γ Θ}
-              → Rel ρ₁ ρ₂ ρ₃ → (as : Args Σ Γ fs) → travA K₂ ρ₂ (travA K₁ ρ₁ as) ≡ travA K₃ ρ₃ as
+      fusionF : ∀ fs {Γ Δ Θ} {ρ₁ : Env K₁ Γ Δ} {ρ₂ : Env K₂ Δ Θ} {ρ₃ : Env K₃ Γ Θ}
+              → Rel ρ₁ ρ₂ ρ₃ → (xs : ⟦_⟧ Σ fs Γ) → travF K₂ fs ρ₂ (travF K₁ fs ρ₁ xs) ≡ travF K₃ fs ρ₃ xs
       fusion r (var x)     = r x
-      fusion r (node c as) = cong (node c) (fusionA r as)
-      fusionA r []ᵃ                 = refl
-      fusionA r (_∷ᵃ_ {k = k} t as) = c₂ (fusion (extN-rel k r) t) (fusionA r as)
-      fusionA r (n ∷ⁿ as)           = cong (n ∷ⁿ_) (fusionA r as)
+      fusion r (node c xs) = cong (node c) (fusionF (fields Σ c) r xs)
+      fusionF []                                r ⟨⟩        = refl
+      fusionF (fld s zero ∷ fs)                 r (x ,ᶠ xs) = c₂ (fusion r x) (fusionF fs r xs)
+      fusionF (fld s (suc zero) ∷ fs)           r (x ,ᶠ xs) = c₂ (fusion (extN-rel 1 r) x) (fusionF fs r xs)
+      fusionF (fld s (suc (suc zero)) ∷ fs)     r (x ,ᶠ xs) = c₂ (fusion (extN-rel 2 r) x) (fusionF fs r xs)
+      fusionF (fld s (suc (suc (suc k))) ∷ fs)  r (x ,ᶠ xs) = c₂ (fusion (extN-rel (suc (suc (suc k))) r) x) (fusionF fs r xs)
+      fusionF (fnat ∷ fs)                       r (n ,ᶠ xs) = cong (n ,ᶠ_) (fusionF fs r xs)
 
   ----------------------------------------------------------------------
   -- Renaming and substitution
@@ -238,12 +270,15 @@ module Trav (Σ : BSig) where
     extN-id (suc k) h = ext-id (extN-id k h)
 
   sub-id′  : ∀ {s Γ} {σ : Var Γ → T Γ} → (∀ x → σ x ≡ var x) → (t : Tm Σ s Γ) → sub σ t ≡ t
-  subA-id′ : ∀ {fs Γ} {σ : Var Γ → T Γ} → (∀ x → σ x ≡ var x) → (as : Args Σ Γ fs) → travA subK σ as ≡ as
+  subF-id′ : ∀ fs {Γ} {σ : Var Γ → T Γ} → (∀ x → σ x ≡ var x) → (xs : ⟦_⟧ Σ fs Γ) → travF subK fs σ xs ≡ xs
   sub-id′ h (var x)     = h x
-  sub-id′ h (node c as) = cong (node c) (subA-id′ h as)
-  subA-id′ h []ᵃ                 = refl
-  subA-id′ h (_∷ᵃ_ {k = k} t as) = c₂ (sub-id′ (extN-id k h) t) (subA-id′ h as)
-  subA-id′ h (n ∷ⁿ as)           = cong (n ∷ⁿ_) (subA-id′ h as)
+  sub-id′ h (node c xs) = cong (node c) (subF-id′ (fields Σ c) h xs)
+  subF-id′ []                                h ⟨⟩        = refl
+  subF-id′ (fld s zero ∷ fs)                 h (x ,ᶠ xs) = c₂ (sub-id′ h x) (subF-id′ fs h xs)
+  subF-id′ (fld s (suc zero) ∷ fs)           h (x ,ᶠ xs) = c₂ (sub-id′ (extN-id 1 h) x) (subF-id′ fs h xs)
+  subF-id′ (fld s (suc (suc zero)) ∷ fs)     h (x ,ᶠ xs) = c₂ (sub-id′ (extN-id 2 h) x) (subF-id′ fs h xs)
+  subF-id′ (fld s (suc (suc (suc k))) ∷ fs)  h (x ,ᶠ xs) = c₂ (sub-id′ (extN-id (suc (suc (suc k))) h) x) (subF-id′ fs h xs)
+  subF-id′ (fnat ∷ fs)                       h (n ,ᶠ xs) = cong (n ,ᶠ_) (subF-id′ fs h xs)
 
   sub-id : ∀ {s Γ} (t : Tm Σ s Γ) → sub var t ≡ t
   sub-id = sub-id′ (λ x → refl)
@@ -268,7 +303,7 @@ module Trav (Σ : BSig) where
   single u vz     = u
   single u (vs x) = var x
 
-  module Syn (K : Kit) (S : Syntactic K) where
+  module SynK (K : Kit) (S : Syntactic K) where
     open Kit K
     open Syntactic S
 
