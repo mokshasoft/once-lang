@@ -35,7 +35,7 @@ open import DirectedHoTT.Spec.Scope using ( Cx; ε; _∙; vz; vs )
 open import DirectedHoTT.Spec.Syntax
   using ( RTy; base; U; Π; Σ'; El; Hom; RTm; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap; Id; ⌜Id⌝; idrefl; jsub; var; lam; app; pair; fst; snd; absurd; ordtr; renTm; Unit; Nat; unit; nzero; nsuc; natrec; ⌜Nat⌝; ⌜Unit⌝; Desc; con; IMu; ielim; ⌜IMu⌝; εwkTm; Fin; ⌜Fin⌝; DIh; dι; dσ; dρ; renTy; extR; extS; Ren; cong₄; Sub; subTy; subTm; dpay; dih; fzero; fsuc; fcase; fcase0; psplit; ref )
 open import DirectedHoTT.Spec.Reduction 𝒮
-  using ( _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; El-⌜Hom⌝; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ
+  using ( ⟶head; ⟶cong; _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; El-⌜Hom⌝; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ
         ; ξ-Σʳ; Hom-U; Hom-Π; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ; El-⌜Id⌝; ξ-Idᵀ; ξ-Idˡ
         ; ξ-Idʳ; jsub-refl; ξ-⌜Id⌝ᶜ; ξ-⌜Id⌝ˡ; ξ-⌜Id⌝ʳ; Hom-Nat-z; Hom-Nat-sz
         ; Hom-Nat-ss; El-⌜Nat⌝; El-⌜Unit⌝; El-⌜IMu⌝; ξ-idreflᶜ; ξ-idreflᵃ
@@ -1054,7 +1054,8 @@ nzero≇nsuc : {n : RTm Γ} → nzero ≅ nsuc n → ⊥
 nzero≇nsuc c with church-rosser c
 ... | w , (r₁ , r₂) with nsuc-reduct r₂
 ...   | m , (refl , _) with r₁
-...     | step () _
+...     | step (⟶head ()) _
+...     | step (⟶cong ()) _
 
 -- …and `Fin` is a congruence for conversion of its index
 Fin-cong≅ : {n n' : RTm Γ} → n ≅ n' → Fin n ≅ᵀ Fin n'
