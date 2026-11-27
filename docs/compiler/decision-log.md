@@ -26001,3 +26001,20 @@ heap store into the existing block — the primitive plan 0.157 S3 (in-place upd
 need too. Performance: no allocation per element (a store instead), constant stack, the list's own memory.
 Order: check how A8's reuse is realized in the image first (it may already be such a write); then the
 instruction and its word-layer proof (the risk); then the fold's rule beside `r-cata` and its cases.
+
+**D505, a finding — BLOCKED on a decision for the user** (2026-11-28, night). The exchange instruction (a write
+into a live cell) is built through 14 modules (branch `0.146-d505-xchg-wip`, 8e7c02c8f: `Image.xchg`,
+`ImageRun.Xchg`/`i-xchg`, its lowering, frame need, labels, the image invariants `KeysRun`/`CopyRun`/`SizedI`/
+`ImagePt`, the step kinds). Two lessons on the way: a computed type in a step's index crashed Agda's unifier
+(`__IMPOSSIBLE__`, Unify.hs:656) and stalled coverage — the layer is a variable `L` with its equation, and the
+step's structure is its own relation `Xchg`, the step's indices plain variables. THE BLOCKER: its flat run cannot
+be proved as the word layer stands. Every step is accounted by `Moves.Ran`, whose `r-old` says a step leaves the
+heap below the starting counter unchanged — old blocks are never written, only freed (`lIn` writes a FRESH
+block). An in-place write into a live block is exactly what `r-old` forbids. Pointer reversal therefore needs the
+run accounting generalized to writes into blocks the step owns EXCLUSIVELY, and the proofs that compose `Ran`
+across calls (a callee must not write what a saved frame holds) re-proved under that exclusivity: plan 0.157's
+D7 (exclusive writes) and S3's in-place-update foundation — real and principled, but much bigger than D505's
+"one instruction". Options: (a) build that foundation now (D7 + `Ran` with owned writes), then D505 on it;
+(b) the fold loop by a chain of fresh cells (D504's route: no in-place writes, so no `Ran` change; a new run rule
+`r-cata-loop` through the core modules); (c) postpone the fold loop and take the other S2 steps (5: the borrow
+rule — which is D7 itself; 8: the flat forms).
