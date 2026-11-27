@@ -25739,3 +25739,25 @@ the owned one); `ExprOps.ok-coeL`.
 **Measured** (before the gate, x86_64, vs D496): run 0.62x over the corpus (all of it `alloc-forever`, 0.62x:
 its round's coerced arrow was copied each round), `loop-sum` 0.88x, `s0151-cata-pure-alg` 0.89x, none slower,
 `.text` 1.00x; clo-cells 31 -> 15.
+
+## D498 — A CLOSURE'S LENT ENTRY ONLY WHERE A LENT CALL CAN REACH IT (2026-11-27, decided by the user: "Prune lent entries"; plan 0.157 S2, D6)
+
+**The fork.** D6's route for `NoCopy` ("Linear → the bridge emits no `dup` → the image calls no copy block → no
+run enters one") fails as stated: after D494–D497 the corpus has no `dup` or `bcopy` at a type with cells, but
+every many-use closure that owns its environment (`llamωᶜ`) has a LENT entry (`cin`: its environment copied)
+in the image, whether or not any lent call can reach it — an `ana` server's closure, called only owned, keeps
+its copying entry. Options floated: (A) prune lent entries by reachability; (B) a run-level `CopyFree` (proof
+only); (C) restrict `Linear` (servers non-linear: against D6). **The user chose (A).**
+
+**The decision.** A closure type is LENT-CALLED when a lent call through a code word (`bev`, the image's
+`icallω`) at that type is reachable: in the table's bodies, in any closure's owned entry, or in the lent body of
+a closure whose own type is lent-called — a least fixpoint over the program's types (`main` is called owned, so
+its combinators' lent bodies, and what they lend, are not reached). The image emits a many-use closure's lent
+entry (its `kbodyω` key and trampoline, the cell's word 1) only at a lent-called type; the cell invariants and
+the dispatch proofs carry the condition (at an `icallω` the site's type is lent-called by construction).
+GOAL.md: nothing known at compile time is kept at run time.
+
+**Measured first** (`once stats` `lent-entries`, the fixpoint computed over the bridge's table, measurement only;
+`Measure.Copies.lent-reach`): over the corpus 637 of 812 lent entries are unreachable (78%); of the 15 copying
+ones (`llamωᶜ` with cells) 13 are unreachable. The two left (`cata-fn-carrier`, `layer4-twice`) are lambdas that
+capture a closure and are called lent: the lent-mode closure bodies (S2, next to this).

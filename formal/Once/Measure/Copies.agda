@@ -18,7 +18,11 @@ open import Once.Spec.Numerics using (TargetNum)
 
 module Once.Measure.Copies (fmt : TargetNum) where
 
-open import Data.Bool using (Bool; true; false; _∨_; if_then_else_)
+open import Data.Bool using (Bool; true; false; _∨_; _∧_; not; if_then_else_)
+open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Data.Nat using (zero)
+open import Once.LinCore.TyEq fmt using (eqT)
 open import Data.Nat using (ℕ; suc; _+_)
 open import Data.Nat.Show using (show)
 open import Data.String using (String; _++_)
@@ -135,6 +139,102 @@ clo-sites (ds ▸ b) = clo-sites ds L.++ sitesB b
 
 show-sites : List String → String
 show-sites xs = "clo-sites:" ++ L.foldr (λ s acc → " " ++ s ++ acc) "" xs
+
+-- ★ D498 (measured before it is built): which closures' LENT entries a lent call can reach.
+-- A lent call through a code word (`bev`) is at a closure type; inside a many-use closure's
+-- LENT body it counts only if that closure's type is itself lent-called (a least fixpoint);
+-- owned bodies and the table's bodies always count.
+private
+  Fact : Set
+  Fact = Maybe LTy × LTy
+
+  under? : LTy → List Fact → List Fact
+  under? T = L.map (λ { (nothing , t) → (just T , t) ; (just c , t) → (just c , t) })
+
+  facts : ∀ {Γ E A B} → Tm Γ E A B → List Fact
+  -- the owned entry's lent calls, by its certificate (`o-ev` applies owned: none)
+  factsO : ∀ {Γ E A B} (b : Tm Γ E A B) → Own b → List Fact
+  factsO b o-bg                         = facts b
+  factsO _ o-ev                         = L.[]
+  factsO (bfst f) (o-fst o)             = factsO f o
+  factsO (bsnd f) (o-snd o)             = factsO f o
+  factsO (bfst f ∘l bsnd g) (o-split p q) = factsO f p L.++ factsO g q
+  factsO (lcase f g) (o-case p q)       = factsO f p L.++ factsO g q
+  factsO ((bfst f ⊗l bsnd g) ∘l s) (o-fork p q) = factsO f p L.++ factsO g q L.++ facts s
+  factsO (blift g ∘l t) (o-lift p)      = facts g L.++ factsO t p
+  factsO (t ∘l blift f) (o-pre p)       = factsO t p L.++ facts f
+  facts (f ∘l g)          = facts f L.++ facts g
+  facts (f ⊗l g)          = facts f L.++ facts g
+  facts (lcase f g)       = facts f L.++ facts g
+  facts (lcata F f)       = facts f
+  facts (lend f)          = facts f
+  facts (blift f)         = facts f
+  facts (bfst f)          = facts f
+  facts (bsnd f)          = facts f
+  facts (bcaseE f g)      = facts f L.++ facts g
+  facts (bout f)          = facts f
+  facts (liter f _)       = facts f
+  facts (bev {g = g} {A} {B}) = (nothing , Fn many g A B) L.∷ L.[]
+  facts (llam b _)        = facts b
+  facts (llamω {g = g} {A = A} {B} b _) = under? (Fn many g A B) (facts b) L.++ factsO b (ownOf b)
+  facts (llamωᶜ b₀ _)     = facts b₀
+  {-# CATCHALL #-}
+  facts _                 = L.[]
+
+  factsB : ∀ {Γ σ} → Body Γ σ → List Fact
+  factsB (b1 t _) = facts t
+  factsB (bω t _) = facts t
+
+  factsD : ∀ {Γ} → Defs Γ → List Fact
+  factsD ε        = L.[]
+  factsD (ds ▸ b) = factsD ds L.++ factsB b
+
+  elemT : LTy → List LTy → Bool
+  elemT t = L.foldr (λ u acc → eqT t u ∨ acc) false
+
+  stepL : List Fact → List LTy → List LTy
+  stepL fs l = L.foldr (λ { (nothing , t) acc → if elemT t acc then acc else t L.∷ acc
+                          ; (just c , t) acc → if elemT c l ∧ not (elemT t acc) then t L.∷ acc else acc }) l fs
+
+  iter : ℕ → List Fact → List LTy → List LTy
+  iter zero    fs l = l
+  iter (suc k) fs l = iter k fs (stepL fs l)
+
+  -- each many-use closure: its type, whether its environment owns cells
+  closT : ∀ {Γ E A B} → Tm Γ E A B → List (LTy × Bool)
+  closT (f ∘l g)          = closT f L.++ closT g
+  closT (f ⊗l g)          = closT f L.++ closT g
+  closT (lcase f g)       = closT f L.++ closT g
+  closT (lcata F f)       = closT f
+  closT (lend f)          = closT f
+  closT (blift f)         = closT f
+  closT (bfst f)          = closT f
+  closT (bsnd f)          = closT f
+  closT (bcaseE f g)      = closT f L.++ closT g
+  closT (bout f)          = closT f
+  closT (liter f _)       = closT f
+  closT (llam b _)        = closT b
+  closT (llamω {g = g} {X} {A} {B} b _)  = (Fn many g A B , false) L.∷ closT b
+  closT (llamωᶜ {g = g} {X} {A} {B} b₀ _) = (Fn many g A B , cells X) L.∷ closT b₀
+  {-# CATCHALL #-}
+  closT _                 = L.[]
+
+  closD : ∀ {Γ} → Defs Γ → List (LTy × Bool)
+  closD ε             = L.[]
+  closD (ds ▸ b1 t _) = closD ds L.++ closT t
+  closD (ds ▸ bω t _) = closD ds L.++ closT t
+
+  count : ∀ {X : Set} → (X → Bool) → List X → ℕ
+  count p = L.foldr (λ x n → if p x then suc n else n) 0
+
+lent-reach : ∀ {Γ} → Defs Γ → String
+lent-reach ds =
+  "lent-entries: total=" ++ show (L.length cs) ++ " pruned=" ++ show (count (λ c → not (elemT (proj₁ c) l)) cs)
+  ++ " copying=" ++ show (count proj₂ cs) ++ " copying-pruned=" ++ show (count (λ c → proj₂ c ∧ not (elemT (proj₁ c) l)) cs)
+  where
+    fs = factsD ds
+    l  = iter (suc (L.length fs)) fs L.[]
+    cs = closD ds
 
 show-copies : Copies → String
 show-copies (copies a b c d) =
