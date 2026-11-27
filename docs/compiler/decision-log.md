@@ -25824,3 +25824,12 @@ theorem uses (no warning ⇔ `Linear₀` ⇒ `NoCopy`), never from the bridge's 
 the variable and its two owning uses; a many-use closure that consumes a capture on each call is the other form
 of non-linearity and is named too; `--require-linear` (the warning an error) follows. The corpus is reported by
 kind (feature tests apart from workloads and the sized benchmarks, `perf-compare.sh`).
+
+**D500 addendum** (unattended, for review): the core has one arrow (`Fn many`; the IR's arrow carries no
+multiplicity), so a one-shot lambda shares its core type with many-use ones, and D498's lent entries are by type.
+`Linear₀` therefore has one whole-program condition beside the local ones: a closure that consumes captures
+owning cells is at a type the program never calls lent (the lent-called types of D498). Its warning says so in
+the source's terms ("closure of type T consumes its captures; the program calls closures of type T lent").
+Variable NAMES are not in the checked `Expr` (de Bruijn indices over the Spec's type-only context): the first
+warning names the definition, the variable's type and binder position and the two uses; names follow with a
+name table from the type checker.
