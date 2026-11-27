@@ -34,7 +34,7 @@ open import DirectedHoTT.Prelude using ( _≡_; refl; sym; cong; subst; Σ; _,_;
 open import Agda.Builtin.Nat using ( zero; suc; _+_ ) renaming ( Nat to ℕ )
 open import Agda.Builtin.Bool using ( Bool; true; false )
 open import DirectedHoTT.Spec.Scope using ( ε )
-open import DirectedHoTT.Spec.Syntax using ( RTm; nzero )
+open import DirectedHoTT.Spec.Syntax using ( RTm )
 open import DirectedHoTT.Spec.Annotated
 open import DirectedHoTT.Spec.Signature using ( Sig; Entry; ⟨_∣_⟩; eBody; len; _▸ˢ_; ∅ˢ; kernel )
 open import DirectedHoTT.Metatheory.Signature using ( EntryWf; WfSig; wf→K )

@@ -31,6 +31,8 @@ open import Agda.Builtin.Nat using ( zero; suc; _==_; _<_ ) renaming ( Nat to �
 open import Agda.Builtin.Bool using ( Bool; true; false )
 open import DirectedHoTT.Spec.Scope
 open import DirectedHoTT.Spec.Syntax
+  using ( <-here; <-there; Defs; body; len; size; tele; ∅; _<ˢ_; _▸_ )
+import DirectedHoTT.Spec.Syntax as C
 open import DirectedHoTT.Spec.Annotated
 open import DirectedHoTT.Spec.Signature
 open import DirectedHoTT.Spec.SigWf using ( WfUpTo; WfK )
