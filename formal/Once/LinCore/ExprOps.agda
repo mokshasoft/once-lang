@@ -143,7 +143,7 @@ import Once.Spec.Grade as G
 import Data.Fin
 open import Once.LinCore.FromExpr fmt
   using (weak; split; carryL; mixL; var-at; bindL; apω; dist; cast;
-         Pth; p-var; p-fst; p-snd; p-mfst; p-msnd; Rd; rd-path; rd-int; rd-float; rd-num; rd-pair; rd-coe; coeRd; rd?; rdw?; lv; Rp; Rt; lentS; scrutL; pairL; scrutA; appL; cp?; CP; cp;
+         Pth; p-var; p-fst; p-snd; p-mfst; p-msnd; Rd; rd-path; rd-int; rd-float; rd-num; rd-pair; rd-coe; rd-app; coeRd; rd?; rdw?; rdx?; pth?; lv; Rp; Rt; lentS; scrutL; pairL; scrutA; appL; appR; cp?; CP; cp;
          IsPj; pj-id; pj-fst; pj-snd; PjL; pjl; Arm; arm-map; arm-comp; arm?; splitP; ArmD; armOf)
 open import Once.LinCore.PassTr fmt using (copyIn)
 
@@ -346,7 +346,7 @@ module Ops (Σι : ISig) where
     DRefs = Refs (DeclIn Σι) (λ _ _ → ⊤) (λ _ _ → ⊤)
 
     -- ★ D477: a scrutinee read in place runs only `numL`'s ops
-    ok-lv : ∀ {m n} {Γ : Ctx m n} {Φ : Usage n} {C} (i : Data.Fin.Fin n) (q : SC.singleUse i G.One ⊑ᵘ Φ) {t : Tm L _ One C}
+    ok-lv : ∀ {m n} {Γ : Ctx m n} {Φ : Usage n} {X C} (i : Data.Fin.Fin n) (q : SC.singleUse i G.One ⊑ᵘ Φ) {t : Tm L _ X C}
           → OK Dc t → OK Dc (lv {L} {Γ = Γ} i q t)
     ok-lv {Γ = Γ SC.▸ A} Data.Fin.zero    (o≤o ⊑∷ q) o = o
     ok-lv {Γ = Γ SC.▸ A} Data.Fin.zero    (o≤m ⊑∷ q) o = o
@@ -354,7 +354,7 @@ module Ops (Σι : ISig) where
     ok-lv {Γ = Γ SC.▸ A} (Data.Fin.suc i) (z≤o ⊑∷ q) o = ok-lv {Γ = Γ} i q o
     ok-lv {Γ = Γ SC.▸ A} (Data.Fin.suc i) (z≤m ⊑∷ q) o = ok-lv {Γ = Γ} i q o
 
-    ok-Rp : ∀ {m n} {Γ : Ctx m n} {Ψ Φ : Usage n} {A : Ty m} {C} {e : S.Expr Γ Ψ A} (d : Pth e) (q : Ψ ⊑ᵘ Φ) {t : Tm L _ One C}
+    ok-Rp : ∀ {m n} {Γ : Ctx m n} {Ψ Φ : Usage n} {A : Ty m} {X C} {e : S.Expr Γ Ψ A} (d : Pth e) (q : Ψ ⊑ᵘ Φ) {t : Tm L _ X C}
           → OK Dc t → OK Dc (Rp {L} d q t)
     ok-Rp {Γ = Γ} (p-var i) q o = ok-lv {Γ = Γ} i q o
     ok-Rp (p-fst d) q o = ok-Rp d q o
@@ -375,6 +375,8 @@ module Ops (Σι : ISig) where
         ok-coeRd c (no _)   o = ok-coeL c , o
     ok-Rt (rd-pair {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} da db) q =
       (ok-Rt da (⊑ᵘ-trans (Once.Context.⊑ᵘ-+ˡ Ψ₁ Ψ₂) q) , ok-Rt db (⊑ᵘ-trans (⊑ᵘ-+ʳ Ψ₁ Ψ₂) q)) , tt
+    ok-Rt (rd-app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} p d) q =
+      ok-Rp p _ tt , ok-Rt d _
 
     ok-scrutL : ∀ {m n} {Γ : Ctx m n} {Ψs Φ : Usage n} {S : Ty m} (s : S.Expr Γ Ψs S) (d : Maybe (Rd s))
               → OK Dc (Lq rs s) → OK Dc (scrutL rs {Γ = Γ} {Φ = Φ} s d)
@@ -421,6 +423,8 @@ module Ops (Σι : ISig) where
 
     ok-appL : ∀ {m n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B : Ty m} (f : S.Expr Γ Ψ₁ (A ST.⇒[ G.mk-kind G.Many G.pure ] B)) (x : S.Expr Γ Ψ₂ A)
               (d : Maybe (CP f)) → DRefs f → DRefs x → OK Dc (appL rs {Γ = Γ} f x d)
+    ok-appR : ∀ {m n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B : Ty m} (f : S.Expr Γ Ψ₁ (A ST.⇒[ G.mk-kind G.Many G.pure ] B)) (x : S.Expr Γ Ψ₂ A)
+              (p : Maybe (Pth f)) (d : Maybe (Rd x)) → DRefs f → DRefs x → OK Dc (appR rs {Γ = Γ} f x p d)
     ok-Lq {Γ = Γ} (S.var i) r = ok-var {Γ = Γ} i
     ok-Lq (S.lam {q' = G.Zero} G.Zero _ e) r = ok-clo (ok-Lq e r , _)
     ok-Lq (S.lam {q' = G.Zero} G.One  _ e) r = ok-clo (ok-Lq e r , _)
@@ -484,11 +488,18 @@ module Ops (Σι : ISig) where
     ok-Lq {Γ = Γ} (S.loop {Ψ = Ψ} round) r =
       _ , (ok-Lq round r , ok-weak {Γ = Γ} (⊑ᵘ-*Many Ψ))
 
-    ok-appL {Γ = Γ} {Ψ₁} {Ψ₂} f x nothing rf rx =
-      _ , ((ok-Lq f rf , (ok-Lq x rx , ok-weak {Γ = Γ} (⊑ᵘ-*Many Ψ₂))) , ok-split Γ Ψ₁ (G.Many *ᵘ Ψ₂))
+    ok-appL {Γ = Γ} {Ψ₁} {Ψ₂} f x nothing rf rx = ok-appR {Γ = Γ} f x (pth? f) (rdx? Ψ₁ Ψ₂ x) rf rx
     ok-appL {Γ = Γ} (S.copair' {Ψ₁ = Ψf} {Ψ₂ = Ψg} f g) x (just (cp _ _)) (rf , rg) rx =
       ((_ , ((ok-Lq f rf , ok-weak {Γ = Γ} (Once.Context.⊑ᵘ-+ˡ Ψf Ψg)) , tt)) , (_ , ((ok-Lq g rg , ok-weak {Γ = Γ} (⊑ᵘ-+ʳ Ψf Ψg)) , tt))) ,
       (_ , ok-scrutA {Γ = Γ} {Φ = Ψf SC.+ᵘ Ψg} x (rdw? x) (ok-Lq x rx))
+
+    -- ★ D495: an argument read in place, or the split
+    ok-appR {Γ = Γ} {Ψ₁} {Ψ₂} f x (just p) (just d) rf rx =
+      _ , ((ok-Lq f rf , tt) , ok-scrutA {Γ = Γ} {Φ = Ψ₁} x (just d) (ok-Lq x rx))
+    ok-appR {Γ = Γ} {Ψ₁} {Ψ₂} f x (just p) nothing rf rx =
+      _ , ((ok-Lq f rf , (ok-Lq x rx , ok-weak {Γ = Γ} (⊑ᵘ-*Many Ψ₂))) , ok-split Γ Ψ₁ (G.Many *ᵘ Ψ₂))
+    ok-appR {Γ = Γ} {Ψ₁} {Ψ₂} f x nothing md rf rx =
+      _ , ((ok-Lq f rf , (ok-Lq x rx , ok-weak {Γ = Γ} (⊑ᵘ-*Many Ψ₂))) , ok-split Γ Ψ₁ (G.Many *ᵘ Ψ₂))
 
 ------------------------------------------------------------------------
 -- 3. ★ THE BRIDGE'S PROGRAM (`ExprBuild`): its table and its `main` run

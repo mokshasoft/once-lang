@@ -33,7 +33,7 @@ module Once.LinCore.FromExpr (fmt : TargetNum) where
 
 open import Data.Nat using (ℕ)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Bool using (Bool; true; false; _∧_; if_then_else_)
+open import Data.Bool using (Bool; true; false; _∧_; _∨_; not; if_then_else_)
 open import Data.Product using (Σ; _,_)
 open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst; subst₂; cong)
@@ -453,6 +453,10 @@ data Rd {m n} {Γ : Ctx m n} : ∀ {Ψ : Usage n} {A : Ty m} → Expr Γ Ψ A �
   rd-pair  : ∀ {Ψ₁ Ψ₂ A B} {a : Expr Γ Ψ₁ A} {b : Expr Γ Ψ₂ B} → Rd a → Rd b → Rd (pair a b)
   -- (a check-mode conversion: the typechecker's `fst p` at its expected type)
   rd-coe   : ∀ {Ψ A B} (c : A <: B) {e : Expr Γ Ψ A} → Rd e → Rd (coerce c e)
+  -- ★ D495: a pure many-use closure at a path's end, applied to a read: a lent
+  -- call, the closure neither copied nor consumed
+  rd-app   : ∀ {Ψ₁ Ψ₂ A B} {f : Expr Γ Ψ₁ (A ⇒[ G.mk-kind G.Many G.pure ] B)} {x : Expr Γ Ψ₂ A}
+           → Pth f → Rd x → Rd (app {q = G.Many} f x)
 
 -- a morphism application's argument share (`Lq`'s `morph-app` clause restricts by it)
 mq : ∀ {n} (Ψ : Usage n) → Ψ ⊑ᵘ (zeroUsage +ᵘ (G.Many *ᵘ Ψ))
@@ -479,6 +483,12 @@ rd? (pair a b)  = rdPair (rd? a) (rd? b)
     rdPair (just x) (just y) = just (rd-pair x y)
     {-# CATCHALL #-}
     rdPair _ _ = nothing
+rd? (app {q = G.Many} f x) = rdApp (pth? f) (rd? x)
+  where
+    rdApp : Maybe (Pth f) → Maybe (Rd x) → Maybe (Rd (app f x))
+    rdApp (just p) (just y) = just (rd-app p y)
+    {-# CATCHALL #-}
+    rdApp _ _ = nothing
 {-# CATCHALL #-}
 rd? e           = Data.Maybe.map rd-path (pth? e)
 
@@ -496,8 +506,48 @@ flat? (A ST.+ B)   = flat? A ∧ flat? B
 {-# CATCHALL #-}
 flat? _            = false
 
+-- (D495: tested at what is copied out, each path's end; a call's closure is not copied)
+flatRd : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} {e : Expr Γ Ψ A} → Rd e → Bool
+flatRd {A = A} (rd-path d) = flat? A
+flatRd (rd-int z)      = true
+flatRd (rd-float d)    = true
+flatRd (rd-num h o d)  = flatRd d
+flatRd (rd-pair da db) = flatRd da ∧ flatRd db
+flatRd (rd-coe c d)    = flatRd d
+flatRd (rd-app p d)    = flatRd d
+
+-- a read that calls a closure
+appRd : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} {e : Expr Γ Ψ A} → Rd e → Bool
+appRd (rd-path d)     = false
+appRd (rd-int z)      = false
+appRd (rd-float d)    = false
+appRd (rd-num h o d)  = appRd d
+appRd (rd-pair da db) = appRd da ∨ appRd db
+appRd (rd-coe c d)    = appRd d
+appRd (rd-app p d)    = true
+
+keepRd : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} {e : Expr Γ Ψ A} → Bool → Maybe (Rd e) → Maybe (Rd e)
+keepRd calls (just d) = if flatRd d ∧ (not (appRd d) ∨ calls) then just d else nothing
+keepRd calls nothing  = nothing
+
+-- (the reads of D477: no call)
 rdw? : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} (e : Expr Γ Ψ A) → Maybe (Rd e)
-rdw? {A = A} e = if flat? A then rd? e else nothing
+rdw? e = keepRd false (rd? e)
+
+-- ★ D495: two shares that both hold a variable whose values own cells (the split `dup`s it)
+used? : G.Quantity → Bool
+used? G.Zero = false
+used? G.One  = true
+used? G.Many = true
+
+shared? : ∀ {m n} (Γ : Ctx m n) → Usage n → Usage n → Bool
+shared? SC.∅          []          []          = false
+shared? (Γ SC.▸ A) (q₁ ∷ Ψ₁) (q₂ ∷ Ψ₂) = (used? q₁ ∧ used? q₂ ∧ not (flat? A)) ∨ shared? Γ Ψ₁ Ψ₂
+
+-- a read that may call: only where it saves the copy of a shared variable with cells
+-- (a lent call of a closure that owns its environment copies that environment)
+rdx? : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} (Ψa Ψb : Usage n) (e : Expr Γ Ψ A) → Maybe (Rd e)
+rdx? {Γ = Γ} Ψa Ψb e = if shared? Γ Ψa Ψb then keepRd true (rd? e) else nothing
 
 ------------------------------------------------------------------------
 -- 5c. ★ D481 (B1): WHAT EVALUATES AT ONCE. The IR builds both arms of a case
@@ -606,16 +656,16 @@ arm? _ = nothing
 module _ {L : Cx} where
 
   -- the variable's slot, inside a lent context: `t` reads it
-  lv : ∀ {m n} {Γ : Ctx m n} {Φ : Usage n} {C : LTy} (i : Data.Fin.Fin n) → singleUse i G.One ⊑ᵘ Φ
-     → Tm L (ty (SC.lookup Γ i)) One C → Tm L (Co Γ Φ) One C
+  lv : ∀ {m n} {Γ : Ctx m n} {Φ : Usage n} {X C : LTy} (i : Data.Fin.Fin n) → singleUse i G.One ⊑ᵘ Φ
+     → Tm L (ty (SC.lookup Γ i)) X C → Tm L (Co Γ Φ) X C
   lv {Γ = Γ SC.▸ A} Data.Fin.zero    (o≤o ⊑∷ q) t = bsnd t
   lv {Γ = Γ SC.▸ A} Data.Fin.zero    (o≤m ⊑∷ q) t = bsnd t
   lv {Γ = Γ SC.▸ A} (Data.Fin.suc i) (z≤z ⊑∷ q) t = lv {Γ = Γ} i q t
   lv {Γ = Γ SC.▸ A} (Data.Fin.suc i) (z≤o ⊑∷ q) t = bfst (lv {Γ = Γ} i q t)
   lv {Γ = Γ SC.▸ A} (Data.Fin.suc i) (z≤m ⊑∷ q) t = bfst (lv {Γ = Γ} i q t)
 
-  k-lv : ∀ {m n} {Γ : Ctx m n} {Φ : Usage n} {C : LTy} (i : Data.Fin.Fin n) (q : singleUse i G.One ⊑ᵘ Φ)
-       {t : Tm L (ty (SC.lookup Γ i)) One C} → Blk t → Blk (lv {Γ = Γ} i q t)
+  k-lv : ∀ {m n} {Γ : Ctx m n} {Φ : Usage n} {X C : LTy} (i : Data.Fin.Fin n) (q : singleUse i G.One ⊑ᵘ Φ)
+       {t : Tm L (ty (SC.lookup Γ i)) X C} → Blk t → Blk (lv {Γ = Γ} i q t)
   k-lv {Γ = Γ SC.▸ A} Data.Fin.zero    (o≤o ⊑∷ q) β = k-snd β
   k-lv {Γ = Γ SC.▸ A} Data.Fin.zero    (o≤m ⊑∷ q) β = k-snd β
   k-lv {Γ = Γ SC.▸ A} (Data.Fin.suc i) (z≤z ⊑∷ q) β = k-lv {Γ = Γ} i q β
@@ -623,16 +673,16 @@ module _ {L : Cx} where
   k-lv {Γ = Γ SC.▸ A} (Data.Fin.suc i) (z≤m ⊑∷ q) β = k-fst (k-lv {Γ = Γ} i q β)
 
   -- a path's end, inside a lent context: `t` reads it
-  Rp : ∀ {m n} {Γ : Ctx m n} {Ψ Φ : Usage n} {A : Ty m} {C : LTy} {e : Expr Γ Ψ A} → Pth e → Ψ ⊑ᵘ Φ
-     → Tm L (ty A) One C → Tm L (Co Γ Φ) One C
+  Rp : ∀ {m n} {Γ : Ctx m n} {Ψ Φ : Usage n} {A : Ty m} {X C : LTy} {e : Expr Γ Ψ A} → Pth e → Ψ ⊑ᵘ Φ
+     → Tm L (ty A) X C → Tm L (Co Γ Φ) X C
   Rp {Γ = Γ} (p-var i) q t = lv {Γ = Γ} i q t
   Rp (p-fst d) q t = Rp d q (bfst t)
   Rp (p-snd d) q t = Rp d q (bsnd t)
   Rp (p-mfst {Ψ = Ψ} d) q t = Rp d (⊑ᵘ-trans (mq Ψ) q) (bfst t)
   Rp (p-msnd {Ψ = Ψ} d) q t = Rp d (⊑ᵘ-trans (mq Ψ) q) (bsnd t)
 
-  k-Rp : ∀ {m n} {Γ : Ctx m n} {Ψ Φ : Usage n} {A : Ty m} {C : LTy} {e : Expr Γ Ψ A} (d : Pth e) (q : Ψ ⊑ᵘ Φ)
-       {t : Tm L (ty A) One C} → Blk t → Blk (Rp d q t)
+  k-Rp : ∀ {m n} {Γ : Ctx m n} {Ψ Φ : Usage n} {A : Ty m} {X C : LTy} {e : Expr Γ Ψ A} (d : Pth e) (q : Ψ ⊑ᵘ Φ)
+       {t : Tm L (ty A) X C} → Blk t → Blk (Rp d q t)
   k-Rp {Γ = Γ} (p-var i) q β = k-lv {Γ = Γ} i q β
   k-Rp (p-fst d) q β = k-Rp d q (k-fst β)
   k-Rp (p-snd d) q β = k-Rp d q (k-snd β)
@@ -657,6 +707,8 @@ module _ {L : Cx} where
   Rt (rd-coe c d) q = coeRd c (voidFree? c) (Rt d q)
   Rt (rd-pair {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} da db) q =
     (Rt da (⊑ᵘ-trans (⊑ᵘ-+ˡ Ψ₁ Ψ₂) q) ⊗l Rt db (⊑ᵘ-trans (⊑ᵘ-+ʳ Ψ₁ Ψ₂) q)) ∘l lul⁻
+  Rt (rd-app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} p d) q =
+    Rp p (⊑ᵘ-trans (⊑ᵘ-+ˡ Ψ₁ (G.Many *ᵘ Ψ₂)) q) bev ∘l Rt d (⊑ᵘ-trans (⊑ᵘ-*Many Ψ₂) (⊑ᵘ-trans (⊑ᵘ-+ʳ Ψ₁ (G.Many *ᵘ Ψ₂)) q))
 
   k-Rt : ∀ {m n} {Γ : Ctx m n} {Ψ Φ : Usage n} {A : Ty m} {e : Expr Γ Ψ A} (d : Rd e) (q : Ψ ⊑ᵘ Φ) → Blk (Rt {Γ = Γ} d q)
   k-Rt (rd-path d) q = k-Rp d q k-copy
@@ -665,6 +717,8 @@ module _ {L : Cx} where
   k-Rt (rd-num h o d) q = k-∘ (k-lift (k-numL h o)) (k-Rt d q)
   k-Rt (rd-coe c d) q = k-coeRd c (voidFree? c) (k-Rt d q)
   k-Rt (rd-pair {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} da db) q = k-∘ (k-⊗ (k-Rt da (⊑ᵘ-trans (⊑ᵘ-+ˡ Ψ₁ Ψ₂) q)) (k-Rt db (⊑ᵘ-trans (⊑ᵘ-+ʳ Ψ₁ Ψ₂) q))) k-lul⁻
+  k-Rt (rd-app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} p d) q =
+    k-∘ (k-Rp p (⊑ᵘ-trans (⊑ᵘ-+ˡ Ψ₁ (G.Many *ᵘ Ψ₂)) q) k-bev) (k-Rt d (⊑ᵘ-trans (⊑ᵘ-*Many Ψ₂) (⊑ᵘ-trans (⊑ᵘ-+ʳ Ψ₁ (G.Many *ᵘ Ψ₂)) q)))
 
   -- ★ a scrutinee read in place: the context lent to it, then the arms' share kept
   lentS : ∀ {m n} {Γ : Ctx m n} {Ψs Φ : Usage n} {S : Ty m} {s : Expr Γ Ψs S} → Rd s
@@ -819,18 +873,37 @@ module _ {L : Cx} (rs : Rs L) where
        → Maybe (CP f) → LTm L (Co Γ (Ψ₁ +ᵘ (G.Many *ᵘ Ψ₂))) (ty B)
   k-appL : ∀ {m n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B : Ty m} (f : Expr Γ Ψ₁ (A ⇒[ G.mk-kind G.Many G.pure ] B)) (x : Expr Γ Ψ₂ A)
          (d : Maybe (CP f)) → Blk (appL {Γ = Γ} f x d)
-  appL {Γ = Γ} {Ψ₁} {Ψ₂} f x nothing =
-    apω ∘l (Lq f ⊗l (Lq x ∘l weak {Γ = Γ} (⊑ᵘ-*Many Ψ₂))) ∘l split Γ Ψ₁ (G.Many *ᵘ Ψ₂)
+  appR : ∀ {m n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B : Ty m} (f : Expr Γ Ψ₁ (A ⇒[ G.mk-kind G.Many G.pure ] B)) (x : Expr Γ Ψ₂ A)
+       → Maybe (Pth f) → Maybe (Rd x) → LTm L (Co Γ (Ψ₁ +ᵘ (G.Many *ᵘ Ψ₂))) (ty B)
+  k-appR : ∀ {m n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B : Ty m} (f : Expr Γ Ψ₁ (A ⇒[ G.mk-kind G.Many G.pure ] B)) (x : Expr Γ Ψ₂ A)
+         (p : Maybe (Pth f)) (d : Maybe (Rd x)) → Blk (appR {Γ = Γ} f x p d)
+  appS : ∀ {m n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B : Ty m} (f : Expr Γ Ψ₁ (A ⇒[ G.mk-kind G.Many G.pure ] B)) (x : Expr Γ Ψ₂ A)
+       → LTm L (Co Γ (Ψ₁ +ᵘ (G.Many *ᵘ Ψ₂))) (ty B)
+  k-appS : ∀ {m n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B : Ty m} (f : Expr Γ Ψ₁ (A ⇒[ G.mk-kind G.Many G.pure ] B)) (x : Expr Γ Ψ₂ A)
+         → Blk (appS {Γ = Γ} f x)
+  appL {Γ = Γ} {Ψ₁} {Ψ₂} f x nothing = appR {Γ = Γ} f x (pth? f) (rdx? Ψ₁ Ψ₂ x)
   appL {Γ = Γ} (copair' {Ψ₁ = Ψf} {Ψ₂ = Ψg} f g) x (just (cp _ _)) =
     lcase (apω ∘l ((Lq f ∘l weak {Γ = Γ} (⊑ᵘ-+ˡ Ψf Ψg)) ⊗l lid))
           (apω ∘l ((Lq g ∘l weak {Γ = Γ} (⊑ᵘ-+ʳ Ψf Ψg)) ⊗l lid))
     ∘l dist ∘l scrutA {Γ = Γ} {Φ = Ψf +ᵘ Ψg} x (rdw? x)
-  k-appL {Γ = Γ} {Ψ₁} {Ψ₂} f x nothing =
-    k-∘ k-apω (k-∘ (k-⊗ (Lq-blk f) (k-∘ (Lq-blk x) (k-weak {Γ = Γ} (⊑ᵘ-*Many Ψ₂)))) (k-split Γ Ψ₁ (G.Many *ᵘ Ψ₂)))
+  k-appL {Γ = Γ} {Ψ₁} {Ψ₂} f x nothing = k-appR {Γ = Γ} f x (pth? f) (rdx? Ψ₁ Ψ₂ x)
   k-appL {Γ = Γ} (copair' {Ψ₁ = Ψf} {Ψ₂ = Ψg} f g) x (just (cp _ _)) =
     k-∘ (k-case (k-∘ k-apω (k-⊗ (k-∘ (Lq-blk f) (k-weak {Γ = Γ} (⊑ᵘ-+ˡ Ψf Ψg))) k-id))
                 (k-∘ k-apω (k-⊗ (k-∘ (Lq-blk g) (k-weak {Γ = Γ} (⊑ᵘ-+ʳ Ψf Ψg))) k-id)))
         (k-∘ k-dist (k-scrutA {Γ = Γ} {Φ = Ψf +ᵘ Ψg} x (rdw? x)))
+  -- ★ D495: a function read off a path, its argument read in place over the lent
+  -- context first (the function evaluates at once, so the order is the IR's),
+  -- then the function's share: a variable both use is lent to the argument, not copied
+  appR {Γ = Γ} {Ψ₁} {Ψ₂} f x (just p) (just d) = apω ∘l (Lq f ⊗l lid) ∘l scrutA {Γ = Γ} {Φ = Ψ₁} x (just d)
+  appR {Γ = Γ} {Ψ₁} {Ψ₂} f x (just p) nothing = appS {Γ = Γ} f x
+  appR {Γ = Γ} {Ψ₁} {Ψ₂} f x nothing  md      = appS {Γ = Γ} f x
+  k-appR {Γ = Γ} {Ψ₁} {Ψ₂} f x (just p) (just d) = k-∘ k-apω (k-∘ (k-⊗ (Lq-blk f) k-id) (k-scrutA {Γ = Γ} {Φ = Ψ₁} x (just d)))
+  k-appR {Γ = Γ} {Ψ₁} {Ψ₂} f x (just p) nothing = k-appS {Γ = Γ} f x
+  k-appR {Γ = Γ} {Ψ₁} {Ψ₂} f x nothing  md      = k-appS {Γ = Γ} f x
+  -- the application as the IR has it: the context split
+  appS {Γ = Γ} {Ψ₁} {Ψ₂} f x = apω ∘l (Lq f ⊗l (Lq x ∘l weak {Γ = Γ} (⊑ᵘ-*Many Ψ₂))) ∘l split Γ Ψ₁ (G.Many *ᵘ Ψ₂)
+  k-appS {Γ = Γ} {Ψ₁} {Ψ₂} f x =
+    k-∘ k-apω (k-∘ (k-⊗ (Lq-blk f) (k-∘ (Lq-blk x) (k-weak {Γ = Γ} (⊑ᵘ-*Many Ψ₂)))) (k-split Γ Ψ₁ (G.Many *ᵘ Ψ₂)))
 
   scrutL {Γ = Γ} {Ψs} {Φ} s nothing  = (lid ⊗l Lq s) ∘l lswap ∘l split Γ Ψs Φ
   scrutL {Γ = Γ} {Ψs} {Φ} s (just d) = lentS {Γ = Γ} {Ψs} {Φ} d

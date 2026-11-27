@@ -25651,3 +25651,38 @@ totality (`Total.goOwn` with `lendR`, `mixR`, outside `go` so the recursion stay
 (`own-blk`). Measured vs D494: run 1.00x, `.text` 1.00x, none slower, best 0.90x; `pair-arm-order-emit`
 2100 -> 1900 (D493: 1906), `answer-two-reads` 1611 -> 1530 (D493: 1514). Note: `LinCore.GlobalDispatchW` checks
 in 57 s alone (77 s inside the keepgoing process), untouched here but near the 60 s cap.
+
+## D495 — A CALL OF A SHARED CLOSURE IS A READ: THE ARGUMENT READ IN PLACE, THE CLOSURE LENT, NOT COPIED (2026-11-27, proposed — unattended, for the user's review; plan 0.157 S2, D6)
+
+**The problem.** After D494 the corpus's only copies at a type with cells were two `dup`s of a variable used
+twice where one use only reads it: `twice f x = f (f x)` (the inner call reads `f`) and `nodeF t x =
+snd (snd t) (fst (snd t) + fst t x)` (`t` at three disjoint paths, the closure `fst t` only called). Under D6
+both are linear: applying a many-use closure is a read of it (a lent call consumes nothing), so `NoCopy` must
+not see a copy.
+
+**The decision.** D477's reads gain one form, `rd-app` (`FromExpr`): a pure many-use closure at a path's
+end, applied to a read, is a read — a lent call (`Rp p q bev ∘l Rt d q′`), the closure neither copied nor
+consumed. `lv`/`Rp` take any argument type for it. An application at `Many` whose function is a path and
+whose argument is such a read (`appR`) reads the argument over the lent context first (`scrutA`, as a case's
+scrutinee), then gives the function its share: a variable both use is lent to the argument, not split by
+`dup`. The function evaluates at once (a path), so reading the argument first is the IR's order.
+
+Gated by cost (GOAL.md: runtime, code size, memory on every option): a lent call of a closure that owns its
+environment (`llamωᶜ`) copies that environment (D480), where an owned call moves it. So a read that calls is
+taken only where it saves a copy: the function's and the argument's shares both hold a variable whose type
+owns cells (`shared?`); else the split stays, moving everything (`rdx?`). The flatness test of a read moves
+from its result type to what it copies out (`flatRd`: each path's end), the same test for D477's reads;
+`rdw?` keeps exactly those (no call) at its sites.
+
+**Proved.** Meaning (`FromExprOk`): `rt-eq (rd-app …)` — the lent call means the application whichever way
+`appR` builds it (`cp-pth`: a path is no case combinator; `pth-irr`/`rd-irr` pick the read); `rel-appR`
+against `elaborate`'s function-then-argument (`pth-I`: a path's elaboration returns at once, `scrutA-≈`).
+Ops: `ExprOps.ok-appR`, `ok-Rt (rd-app …)`.
+
+**Considered.** (a) Reads through calls everywhere (pairs, scrutinees): a lent call where the closure was
+moved can copy its environment — only taken where a copy is saved. (b) Named functions as the function of a
+read (`g (fst p)` read in place): not needed by the corpus's copies; later, with `Linear`.
+
+**Measured** (vs D494 amended, 108 programs, x86_64): run 1.00x, `.text` 1.00x, none slower;
+`cata-fn-carrier` 0.70x, `layer4-twice` 0.87x. `once stats` over the corpus: dups 7 -> 5, dup-cells 2 -> 0
+(no `dup` at a type with cells left), bcopy-cells 0; clo-cells 31 (the `llamωᶜ` lent entries, next).

@@ -31,6 +31,7 @@ open import Agda.Builtin.Sigma using (Σ; _,_; fst; snd)
 open import Data.Product using (_×_; proj₁; proj₂)
 open import Data.Unit using (⊤; tt)
 import Data.Sum.Relation.Binary.Pointwise
+import Data.Empty
 
 import Once.Spec.Grade as G
 open import Once.Spec.Type using (Ty; Type; _⇒[_]_; _+_; μ; ν; WFFun; KCtx; Fun)
@@ -68,8 +69,8 @@ open import Once.IR.Semantics.Iterative using (T∞; return∞; _>>=∞_; bindBl
 open import Once.LinCore.NbEPLinCore fmt ans
 open Sem using (Lᶜ; cataC; travC)
 open import Once.LinCore.FromExpr fmt using (ty; Co; weak; split; carryL; mixL; apω; var-at; bindL; Rs; Lq; castΦ; opL; numL; sigL; cast; clo; callM; refL; mapT; layerEq; dist; coeL; coeR)
-open import Once.LinCore.FromExpr fmt using (Pth; p-var; p-fst; p-snd; p-mfst; p-msnd; mq; Rd; rd-path; rd-int; rd-float; rd-num; rd-pair; rd-coe; coeRd; rd?; rdw?; lv; Rp; Rt; lentS; scrutL; pairL)
-open import Once.LinCore.FromExpr fmt using (Im; im-var; im-lam; im-closed; im-coe; im-app1; im-appω; ImF; imf-lam; imf-closed; CP; cp; cp?; appL; scrutA)
+open import Once.LinCore.FromExpr fmt using (Pth; p-var; p-fst; p-snd; p-mfst; p-msnd; mq; Rd; rd-path; rd-int; rd-float; rd-num; rd-pair; rd-coe; rd-app; coeRd; rd?; rdw?; rdx?; pth?; lv; Rp; Rt; lentS; scrutL; pairL)
+open import Once.LinCore.FromExpr fmt using (Im; im-var; im-lam; im-closed; im-coe; im-app1; im-appω; ImF; imf-lam; imf-closed; CP; cp; cp?; appL; appR; appS; scrutA)
 open import Once.LinCore.FromExpr fmt using (IsPj; pj-id; pj-fst; pj-snd; PjL; pjl; Arm; arm-map; arm-comp; arm?; pjT; rdFst; rdSnd; splitP; ArmD; armOf; forkB; forkL)
 open import Once.Surface.Elaborate using (copairIR)
 open import Once.Context using (_⊔ᵘ_; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ)
@@ -345,6 +346,13 @@ rd-irr (rd-path ())    (rd-coe c d′)
 rd-irr (rd-coe c d)    (rd-path ())
 rd-irr (rd-coe c d)    (rd-coe .c d′)    = cong (rd-coe c) (rd-irr d d′)
 rd-irr (rd-pair a b)   (rd-pair a′ b′)   = Relation.Binary.PropositionalEquality.cong₂ rd-pair (rd-irr a a′) (rd-irr b b′)
+rd-irr (rd-path ())    (rd-app p′ d′)
+rd-irr (rd-app p d)    (rd-path ())
+rd-irr (rd-app p d)    (rd-app p′ d′)    = Relation.Binary.PropositionalEquality.cong₂ rd-app (pth-irr p p′) (rd-irr d d′)
+
+-- (D495: a path is no case combinator)
+cp-pth : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {T : Ty m} {f : Expr Γ Ψ T} → CP f → Pth f → Data.Empty.⊥
+cp-pth (cp _ _) ()
 
 -- a variable's value in its own context
 vval : ∀ {m n} {Γ : Ctx m n} (i : Data.Fin.Fin n) → ⟦ Co Γ (singleUse i G.One) ⟧ → ⟦ ty (SC.lookup Γ i) ⟧
@@ -1048,8 +1056,8 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRT
            → Lᶜ δ t₁ e₁ a₁ ≈ Lᶜ δ t₂ e₂ a₂ → Lᶜ δ (cast {E = E₁} refl e t₁) e₁ a₁ ≈ Lᶜ δ (cast {E = E₂} refl e t₂) e₂ a₂
     cast-≈ refl t₁ t₂ h = h
 
-    lv-eq : ∀ {m n} {Γ : Ctx m n} {Φ : Usage n} {C : LTy} (i : Data.Fin.Fin n) (q : singleUse i G.One ⊑ᵘ Φ)
-            (t : Tm L (ty (SC.lookup Γ i)) One C) (e : ⟦ Co Γ Φ ⟧) (a : ⊤)
+    lv-eq : ∀ {m n} {Γ : Ctx m n} {Φ : Usage n} {X C : LTy} (i : Data.Fin.Fin n) (q : singleUse i G.One ⊑ᵘ Φ)
+            (t : Tm L (ty (SC.lookup Γ i)) X C) (e : ⟦ Co Γ Φ ⟧) (a : ⟦ X ⟧)
           → Lᶜ δ (lv {Γ = Γ} i q t) e a ≡ Lᶜ δ t (vval {Γ = Γ} i (wv {Γ = Γ} q e)) a
     lv-eq {Γ = Γ SC.▸ A} Data.Fin.zero    (o≤o ⊑∷ q) t (e , x) a = refl
     lv-eq {Γ = Γ SC.▸ A} Data.Fin.zero    (o≤m ⊑∷ q) t (e , x) a = refl
@@ -1079,8 +1087,8 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRT
       ≈-trans (bind-pure (≈-trans (bind-pure (weak-pure δ {E = One} {Γ = Γ} (mq Ψ) e x)) (path-pure d e (wv {Γ = Γ} (mq Ψ) x))))
               (bind-pure (≈-trans ret-bind ret-bind))
 
-    Rp-eq : ∀ {m n} {Γ : Ctx m n} {Ψ Φ : Usage n} {A : Ty m} {C : LTy} {e : Expr Γ Ψ A} (d : Pth e) (q : Ψ ⊑ᵘ Φ)
-            (t : Tm L (ty A) One C) (x : ⟦ Co Γ Φ ⟧) (a : ⊤) → Lᶜ δ (Rp d q t) x a ≡ Lᶜ δ t (pv d (wv {Γ = Γ} q x)) a
+    Rp-eq : ∀ {m n} {Γ : Ctx m n} {Ψ Φ : Usage n} {A : Ty m} {X C : LTy} {e : Expr Γ Ψ A} (d : Pth e) (q : Ψ ⊑ᵘ Φ)
+            (t : Tm L (ty A) X C) (x : ⟦ Co Γ Φ ⟧) (a : ⟦ X ⟧) → Lᶜ δ (Rp d q t) x a ≡ Lᶜ δ t (pv d (wv {Γ = Γ} q x)) a
     Rp-eq {Γ = Γ} (p-var i) q t x a = lv-eq {Γ = Γ} i q t x a
     Rp-eq (p-fst d) q t x a = Rp-eq d q (bfst t) x a
     Rp-eq (p-snd d) q t x a = Rp-eq d q (bsnd t) x a
@@ -1098,6 +1106,15 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRT
       ≈-trans (>>=-cong ret-bind (λ _ → ≈-refl))
         (≈-trans (bind-assoc (Lᶜ δ (Rt d (⊑ᵘ-+ˡ Ψs Φ)) x tt) _ _)
           (>>=-cong ≈-refl (λ v → ≈-trans ret-bind (≈-trans (bind-pure (weak-pure δ {E = One} {Γ = Γ} (⊑ᵘ-+ʳ Ψs Φ) tt x)) ret-bind))))
+
+    -- an argument read in place: the read, the function's share beside it
+    scrutA-≈ : ∀ {m n} {Γ : Ctx m n} {Φ Ψs : Usage n} {S : Ty m} (s : Expr Γ Ψs S) (d : Rd s) (x : ⟦ Co Γ (Φ +ᵘ (G.Many *ᵘ Ψs)) ⟧)
+             → Lᶜ δ (scrutA rs {Γ = Γ} {Φ = Φ} s (just d)) tt x
+               ≈ (Lᶜ δ (Rt d (⊑ᵘ-trans (⊑ᵘ-*Many Ψs) (⊑ᵘ-+ʳ Φ (G.Many *ᵘ Ψs)))) x tt >>=∞ λ v → return∞ (wv {Γ = Γ} (⊑ᵘ-+ˡ Φ (G.Many *ᵘ Ψs)) x , v))
+    scrutA-≈ {Γ = Γ} {Φ} {Ψs} s d x =
+      ≈-trans (>>=-cong ret-bind (λ _ → ≈-refl))
+        (≈-trans (bind-assoc (Lᶜ δ (Rt d (⊑ᵘ-trans (⊑ᵘ-*Many Ψs) (⊑ᵘ-+ʳ Φ (G.Many *ᵘ Ψs)))) x tt) _ _)
+          (>>=-cong ≈-refl (λ v → ≈-trans ret-bind (≈-trans (bind-pure (weak-pure δ {E = One} {Γ = Γ} (⊑ᵘ-+ˡ Φ (G.Many *ᵘ Ψs)) tt x)) ret-bind))))
 
 
     pairL-≈ : ∀ {m n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B : Ty m} (a : Expr Γ Ψ₁ A) (b : Expr Γ Ψ₂ B) (d : Rd a)
@@ -1151,6 +1168,60 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRT
                                          (≈-sym (rt-eq da (⊑ᵘ-+ˡ Ψ₁ Ψ₂) y))))
                                (λ u → >>=-cong (rb≈ _ eb′) (λ _ → ≈-refl)))
                      (≈-sym (pairL-≈ {Γ = Γ} a b da y))))
+    -- ★ D495: a lent call means the application, whichever way `appR` builds it
+    -- (the function's path returns at once, so reading the argument first is the same)
+    rt-eq {Γ = Γ} (rd-app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {A = Aa} {B = Bb} {f = f} {x = x′} p d) q x = byC (cp? f)
+      where
+        Φ₂ = G.Many *ᵘ Ψ₂
+        q₁ = ⊑ᵘ-trans (⊑ᵘ-+ˡ Ψ₁ Φ₂) q
+        q₂ = ⊑ᵘ-trans (⊑ᵘ-*Many Ψ₂) (⊑ᵘ-trans (⊑ᵘ-+ʳ Ψ₁ Φ₂) q)
+        r₂ = ⊑ᵘ-trans (⊑ᵘ-*Many Ψ₂) (⊑ᵘ-+ʳ Ψ₁ Φ₂)
+        y = wv {Γ = Γ} q x
+        z₁ = wv {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Φ₂) y
+        z₂ = wv {Γ = Γ} r₂ y
+        e₁ : wv {Γ = Γ} q₁ x ≡ z₁
+        e₁ = sym (wv-comp {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Φ₂) q q₁ x)
+        e₂ : wv {Γ = Γ} q₂ x ≡ z₂
+        e₂ = sym (wv-comp {Γ = Γ} r₂ q q₂ x)
+        -- the application's meaning, the function's value first
+        bv : Tm L (ty (Aa ⇒[ G.mk-kind G.Many G.pure ] Bb)) (ty Aa) (ty Bb)
+        bv = bev {g = grade G.pure}
+        Nf : ⟦ Co Γ Ψ₁ ⟧ → ⟦ Co Γ Ψ₂ ⟧ → T∞ ⟦ ty Bb ⟧
+        Nf w₁ w₂ = Lᶜ δ (Lq rs x′) tt w₂ >>=∞ λ a → Lᶜ δ bv (pv p w₁) a
+        lhs : Lᶜ δ (Rt (rd-app p d) q) x tt ≈ Nf z₁ z₂
+        lhs = >>=-cong (subst (λ w → Lᶜ δ (Rt d q₂) x tt ≈ Lᶜ δ (Lq rs x′) tt w) e₂ (rt-eq d q₂ x))
+                       (λ a → subst (λ w → Lᶜ δ (Rp p q₁ bv) x a ≈ Lᶜ δ bv (pv p w) a) e₁
+                                    (subst (λ m → m ≈ Lᶜ δ bv (pv p (wv {Γ = Γ} q₁ x)) a) (sym (Rp-eq p q₁ bv x a)) ≈-refl))
+        sv₁ = fst (sv Γ Ψ₁ Φ₂ y)
+        sv₂ = snd (sv Γ Ψ₁ Φ₂ y)
+        split-route : Lᶜ δ (appS rs {Γ = Γ} f x′) tt y ≈ Nf z₁ z₂
+        split-route =
+          ≈-trans (>>=-cong (bind-pure (split-pure δ Γ Ψ₁ Φ₂ tt y)) (λ _ → ≈-refl))
+            (≈-trans (>>=-cong (bind-pure (path-pure p tt sv₁)) (λ _ → ≈-refl))
+              (≈-trans (bind-assoc _ _ _)
+                (≈-trans (>>=-cong (bind-pure (weak-pure δ {E = One} {Γ = Γ} (⊑ᵘ-*Many Ψ₂) tt sv₂)) (λ a → ret-bind))
+                  (subst₂ (λ w₁ w₂ → Nf sv₁ (wv {Γ = Γ} (⊑ᵘ-*Many Ψ₂) sv₂) ≈ Nf w₁ w₂)
+                          (sv-l Γ Ψ₁ Φ₂ y)
+                          (trans (cong (wv {Γ = Γ} (⊑ᵘ-*Many Ψ₂)) (sv-r Γ Ψ₁ Φ₂ y)) (wv-comp {Γ = Γ} (⊑ᵘ-*Many Ψ₂) (⊑ᵘ-+ʳ Ψ₁ Φ₂) r₂ y))
+                          ≈-refl))))
+        read-route : Lᶜ δ (appR rs {Γ = Γ} f x′ (just p) (just d)) tt y ≈ Nf z₁ z₂
+        read-route =
+          ≈-trans (>>=-cong (>>=-cong (scrutA-≈ {Γ = Γ} {Φ = Ψ₁} x′ d y) (λ _ → ≈-refl)) (λ _ → ≈-refl))
+            (≈-trans (>>=-cong (bind-assoc (Lᶜ δ (Rt d r₂) y tt) _ _) (λ _ → ≈-refl))
+              (≈-trans (bind-assoc (Lᶜ δ (Rt d r₂) y tt) _ _)
+                (>>=-cong (rt-eq d r₂ y)
+                  (λ v → ≈-trans (>>=-cong ret-bind (λ _ → ≈-refl))
+                           (≈-trans (>>=-cong (bind-pure (path-pure p tt z₁)) (λ _ → ≈-refl))
+                             (≈-trans (>>=-cong ret-bind (λ _ → ≈-refl)) ret-bind))))))
+        byR : ∀ mp md → Lᶜ δ (Rt (rd-app p d) q) x tt ≈ Lᶜ δ (appR rs {Γ = Γ} f x′ mp md) tt y
+        byR (just p′) (just d′) =
+          subst₂ (λ p″ d″ → Lᶜ δ (Rt (rd-app p d) q) x tt ≈ Lᶜ δ (appR rs {Γ = Γ} f x′ (just p″) (just d″)) tt y)
+                 (pth-irr p p′) (rd-irr d d′) (≈-trans lhs (≈-sym read-route))
+        byR (just p′) nothing = ≈-trans lhs (≈-sym split-route)
+        byR nothing md        = ≈-trans lhs (≈-sym split-route)
+        byC : ∀ mc → Lᶜ δ (Rt (rd-app p d) q) x tt ≈ Lᶜ δ (appL rs {Γ = Γ} f x′ mc) tt y
+        byC nothing  = byR (pth? f) (rdx? Ψ₁ Ψ₂ x′)
+        byC (just c) = Data.Empty.⊥-elim (cp-pth c p)
 
   -- ★ a pair whose first component reads in place, against the IR's pairing
   rel-pairL : ∀ {m n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B : Ty m} (a : Expr Γ Ψ₁ A) (b : Expr Γ Ψ₂ B) (md : Maybe (Rd a))
@@ -1324,6 +1395,14 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRT
   imf-I (imf-lam {q′ = G.Many} {q = G.One}  {p = ()} _)
   imf-I (imf-closed p) = pf-closed (imf-I p)
 
+  -- ★ D495: a path's elaboration returns at once
+  pth-I : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} {e : Expr Γ Ψ A} → Pth e → PI (elaborate am e)
+  pth-I {Γ = Γ} (p-var i) = proj-pure {Γ = Γ} i
+  pth-I (p-fst d) = pi-∘ pi-fst (pth-I d)
+  pth-I (p-snd d) = pi-∘ pi-snd (pth-I d)
+  pth-I {Γ = Γ} (p-mfst {Ψ = Ψ} d) = pi-∘ pi-fst (pi-∘ (pth-I d) (pi-restrict {Γ = Γ} (mq Ψ)))
+  pth-I {Γ = Γ} (p-msnd {Ψ = Ψ} d) = pi-∘ pi-snd (pi-∘ (pth-I d) (pi-restrict {Γ = Γ} (mq Ψ)))
+
   -- a term beside a value it passes on
   rel-side : ∀ {X Y A : IRTy} {t : LTm L ⟪ X ⟫ ⟪ Y ⟫} {t′ : M.IR X Y}
            → Rel t t′ → Rel (t ⊗l lid {A = ⟪ A ⟫}) M.⟨ t′ M.∘ M.fst , M.snd ⟩
@@ -1412,6 +1491,36 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRT
               (≈-sym (≈-trans (>>=-cong (bind-pure (iprf (pi-∘ (pi-∘ (pi-curry {π = G.pure} (M.case B1 B2 M.∘ distribIR am)) (pi-pair PFl PGr)) (pi-restrict {Γ = Γ} q₁)) y))
                                         (λ _ → ≈-refl))
                         (≈-trans (bind-assoc _ _ _) (>>=-cong ≈-refl (λ _ → ret-bind))))))))
+
+  -- ★ D495: a function off a path, its argument read in place first, against the
+  -- IR's function-then-argument: the function's elaboration returns at once
+  rel-appR : ∀ {m n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B : Ty m}
+               (f : Expr Γ Ψ₁ (A ⇒[ G.mk-kind G.Many G.pure ] B)) (x : Expr Γ Ψ₂ A) (mp : Maybe (Pth f)) (md : Maybe (Rd x))
+           → Goal f → Goal x → Rel (appR rs {Γ = Γ} f x mp md) (elaborate am (app {q = G.Many} f x))
+  rel-appR {Γ = Γ} {Ψ₁} {Ψ₂} {A} {B} f x (just p) (just d) rf rx =
+    rel-≈ʳ (rel-∘ (rel-apω {π = G.pure} {⌊ A ⌋} {⌊ B ⌋}) (rel-∘ (rel-side rf) (rel-scrutA {Γ = Γ} {Φ = Ψ₁} x (just d) rx))) eq
+    where
+      q₁ = ⊑ᵘ-+ˡ Ψ₁ (G.Many *ᵘ Ψ₂)
+      q₂ = ⊑ᵘ-trans (⊑ᵘ-*Many Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (G.Many *ᵘ Ψ₂))
+      Fe = elaborate am f
+      Xe = elaborate am x
+      PFp = pth-I p
+      N = λ y → evalᴰ fmt ρ (Xe M.∘ restrictEnv {Γ = Γ} am q₂) y >>=∞ λ w → evalᴰ fmt ρ (M.apply {⌊ A ⌋} {⌊ B ⌋} {G.pure}) (ival PFp (rv {Γ = Γ} q₁ y) , w)
+      lhs : ∀ y → evalᴰ fmt ρ (M.apply {⌊ A ⌋} {⌊ B ⌋} {G.pure} M.∘ (M.⟨ Fe M.∘ M.fst {⌊ ⟦ Γ ↾ Ψ₁ ⟧ᶜ ⌋} {⌊ A ⌋} , M.snd ⟩ M.∘ M.⟨ M.id M.∘ restrictEnv {Γ = Γ} am q₁ , Xe M.∘ restrictEnv {Γ = Γ} am q₂ ⟩)) y ≈ N y
+      lhs y =
+        ≈-trans (>>=-cong (>>=-cong (bind-pure (iprf (pi-∘ pi-id (pi-restrict {Γ = Γ} q₁)) y)) (λ _ → ≈-refl)) (λ _ → ≈-refl))
+          (≈-trans (bind-assoc _ _ _) (≈-trans (bind-assoc (evalᴰ fmt ρ (Xe M.∘ restrictEnv {Γ = Γ} am q₂) y) _ _)
+            (>>=-cong ≈-refl (λ w → ≈-trans ret-bind
+               (≈-trans (>>=-cong (bind-pure (iprf (pi-∘ PFp (pi-fst {⌊ ⟦ Γ ↾ Ψ₁ ⟧ᶜ ⌋} {⌊ A ⌋})) (rv {Γ = Γ} q₁ y , w))) (λ _ → ≈-refl))
+                 (≈-trans (>>=-cong ret-bind (λ _ → ≈-refl)) ret-bind))))))
+      rhs : ∀ y → evalᴰ fmt ρ (elaborate am (app {q = G.Many} f x)) y ≈ N y
+      rhs y =
+        ≈-trans (>>=-cong (bind-pure (iprf (pi-∘ PFp (pi-restrict {Γ = Γ} q₁)) y)) (λ _ → ≈-refl))
+          (≈-trans (bind-assoc _ _ _) (>>=-cong ≈-refl (λ _ → ret-bind)))
+      eq : ∀ y → _ ≈ _
+      eq y = ≈-trans (lhs y) (≈-sym (rhs y))
+  rel-appR {Γ = Γ} {Ψ₁} {Ψ₂} f x (just p) nothing rf rx = rel-app Γ Ψ₁ Ψ₂ (G.Many *ᵘ Ψ₂) (⊑ᵘ-*Many Ψ₂) rf rx
+  rel-appR {Γ = Γ} {Ψ₁} {Ψ₂} f x nothing md rf rx      = rel-app Γ Ψ₁ Ψ₂ (G.Many *ᵘ Ψ₂) (⊑ᵘ-*Many Ψ₂) rf rx
 
   -- ★ A CASE: the scrutinee's share split off, the arms' share distributed,
   -- each arm on its share and the bound value
@@ -1664,6 +1773,6 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRT
   Lq-ok (loop round) r = ok-loop round (Lq-ok round r)
 
   ok-appL {Γ = Γ} {Ψ₁} {Ψ₂} f x nothing rf rx =
-    rel-app Γ Ψ₁ Ψ₂ (G.Many *ᵘ Ψ₂) (⊑ᵘ-*Many Ψ₂) (Lq-ok f rf) (Lq-ok x rx)
+    rel-appR {Γ = Γ} f x (pth? f) (rdx? Ψ₁ Ψ₂ x) (Lq-ok f rf) (Lq-ok x rx)
   ok-appL {Γ = Γ} (copair' f g) x (just (cp i j)) (rf , rg) rx =
     rel-appB {Γ = Γ} f g x i j (Lq-ok f rf) (Lq-ok g rg) (Lq-ok x rx)

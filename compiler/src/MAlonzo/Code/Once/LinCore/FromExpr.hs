@@ -4043,19 +4043,20 @@ d_Rd_2058 a0 a1 a2 a3 a4 a5 a6 = ()
 data T_Rd_2058
   = C_rd'45'path_2072 T_Pth_1996 | C_rd'45'int_2076 |
     C_rd'45'float_2080 | C_rd'45'num_2096 T_Rd_2058 |
-    C_rd'45'pair_2110 T_Rd_2058 T_Rd_2058 | C_rd'45'coe_2122 T_Rd_2058
+    C_rd'45'pair_2110 T_Rd_2058 T_Rd_2058 |
+    C_rd'45'coe_2122 T_Rd_2058 | C_rd'45'app_2136 T_Pth_1996 T_Rd_2058
 -- Once.LinCore.FromExpr.mq
-d_mq_2128 ::
+d_mq_2142 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   Integer ->
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
   MAlonzo.Code.Once.Spec.Context.T__'8849''7512'__84
-d_mq_2128 ~v0 v1 v2 = du_mq_2128 v1 v2
-du_mq_2128 ::
+d_mq_2142 ~v0 v1 v2 = du_mq_2142 v1 v2
+du_mq_2142 ::
   Integer ->
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
   MAlonzo.Code.Once.Spec.Context.T__'8849''7512'__84
-du_mq_2128 v0 v1
+du_mq_2142 v0 v1
   = coe
       MAlonzo.Code.Once.Context.du_'8849''7512''45'trans_180 (coe v1)
       (coe
@@ -4076,7 +4077,7 @@ du_mq_2128 v0 v1
             MAlonzo.Code.Once.Spec.Context.du__'42''7512'__72
             (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) (coe v1)))
 -- Once.LinCore.FromExpr.pth?
-d_pth'63'_2144 ::
+d_pth'63'_2158 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   Integer ->
   Integer ->
@@ -4084,10 +4085,10 @@ d_pth'63'_2144 ::
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 -> Maybe T_Pth_1996
-d_pth'63'_2144 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 v6 = du_pth'63'_2144 v6
-du_pth'63'_2144 ::
+d_pth'63'_2158 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 v6 = du_pth'63'_2158 v6
+du_pth'63'_2158 ::
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 -> Maybe T_Pth_1996
-du_pth'63'_2144 v0
+du_pth'63'_2158 v0
   = let v1 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
     coe
       (case coe v0 of
@@ -4097,11 +4098,11 @@ du_pth'63'_2144 v0
          MAlonzo.Code.Once.Surface.Syntax.C_fst''_100 v6 v7
            -> coe
                 MAlonzo.Code.Data.Maybe.Base.du_map_64 (coe C_p'45'fst_2016)
-                (coe du_pth'63'_2144 (coe v7))
+                (coe du_pth'63'_2158 (coe v7))
          MAlonzo.Code.Once.Surface.Syntax.C_snd''_112 v5 v7
            -> coe
                 MAlonzo.Code.Data.Maybe.Base.du_map_64 (coe C_p'45'snd_2026)
-                (coe du_pth'63'_2144 (coe v7))
+                (coe du_pth'63'_2158 (coe v7))
          MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_288 v4 v5 v7 v8
            -> case coe v7 of
                 MAlonzo.Code.Once.Surface.Map.C_mp'45'fst_20
@@ -4109,19 +4110,19 @@ du_pth'63'_2144 v0
                        MAlonzo.Code.Once.Spec.Type.C__'42'__22 v11 v12
                          -> coe
                               MAlonzo.Code.Data.Maybe.Base.du_map_64 (coe C_p'45'mfst_2036)
-                              (coe du_pth'63'_2144 (coe v8))
+                              (coe du_pth'63'_2158 (coe v8))
                        _ -> coe v1
                 MAlonzo.Code.Once.Surface.Map.C_mp'45'snd_26
                   -> case coe v5 of
                        MAlonzo.Code.Once.Spec.Type.C__'42'__22 v11 v12
                          -> coe
                               MAlonzo.Code.Data.Maybe.Base.du_map_64 (coe C_p'45'msnd_2046)
-                              (coe du_pth'63'_2144 (coe v8))
+                              (coe du_pth'63'_2158 (coe v8))
                        _ -> coe v1
                 _ -> coe v1
          _ -> coe v1)
 -- Once.LinCore.FromExpr.rd?
-d_rd'63'_2168 ::
+d_rd'63'_2182 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   Integer ->
   Integer ->
@@ -4129,23 +4130,30 @@ d_rd'63'_2168 ::
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 -> Maybe T_Rd_2058
-d_rd'63'_2168 ~v0 ~v1 ~v2 ~v3 ~v4 v5 v6 = du_rd'63'_2168 v5 v6
-du_rd'63'_2168 ::
+d_rd'63'_2182 ~v0 ~v1 ~v2 ~v3 ~v4 v5 v6 = du_rd'63'_2182 v5 v6
+du_rd'63'_2182 ::
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 -> Maybe T_Rd_2058
-du_rd'63'_2168 v0 v1
+du_rd'63'_2182 v0 v1
   = let v2
           = coe
               MAlonzo.Code.Data.Maybe.Base.du_map_64 (coe C_rd'45'path_2072)
-              (coe du_pth'63'_2144 (coe v1)) in
+              (coe du_pth'63'_2158 (coe v1)) in
     coe
       (case coe v1 of
+         MAlonzo.Code.Once.Surface.Syntax.C_app_54 v5 v6 v7 v9 v10 v11
+           -> case coe v9 of
+                MAlonzo.Code.Once.Spec.Grade.C_Many_12
+                  -> coe
+                       du_rdApp_2220 (coe du_pth'63'_2158 (coe v10))
+                       (coe du_rd'63'_2182 (coe v7) (coe v11))
+                _ -> coe v2
          MAlonzo.Code.Once.Surface.Syntax.C_pair_88 v5 v6 v9 v10
            -> case coe v0 of
                 MAlonzo.Code.Once.Spec.Type.C__'42'__22 v11 v12
                   -> coe
-                       du_rdPair_2192 (coe du_rd'63'_2168 (coe v11) (coe v9))
-                       (coe du_rd'63'_2168 (coe v12) (coe v10))
+                       du_rdPair_2206 (coe du_rd'63'_2182 (coe v11) (coe v9))
+                       (coe du_rd'63'_2182 (coe v12) (coe v10))
                 _ -> coe v2
          MAlonzo.Code.Once.Surface.Syntax.C_int_196 v5
            -> coe
@@ -4157,16 +4165,16 @@ du_rd'63'_2168 v0 v1
            -> coe
                 MAlonzo.Code.Data.Maybe.Base.du_map_64 (coe C_rd'45'num_2096)
                 (coe
-                   du_rd'63'_2168
+                   du_rd'63'_2182
                    (coe MAlonzo.Code.Once.Spec.Theory.du_symDom_86 (coe v6) (coe v8))
                    (coe v11))
          MAlonzo.Code.Once.Surface.Syntax.C_coerce_230 v6 v8 v9
            -> coe
                 MAlonzo.Code.Data.Maybe.Base.du_map_64 (coe C_rd'45'coe_2122)
-                (coe du_rd'63'_2168 (coe v6) (coe v9))
+                (coe du_rd'63'_2182 (coe v6) (coe v9))
          _ -> coe v2)
 -- Once.LinCore.FromExpr._.rdPair
-d_rdPair_2192 ::
+d_rdPair_2206 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   Integer ->
   Integer ->
@@ -4178,11 +4186,11 @@ d_rdPair_2192 ::
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 ->
   Maybe T_Rd_2058 -> Maybe T_Rd_2058 -> Maybe T_Rd_2058
-d_rdPair_2192 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 v10 v11
-  = du_rdPair_2192 v10 v11
-du_rdPair_2192 ::
+d_rdPair_2206 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 v10 v11
+  = du_rdPair_2206 v10 v11
+du_rdPair_2206 ::
   Maybe T_Rd_2058 -> Maybe T_Rd_2058 -> Maybe T_Rd_2058
-du_rdPair_2192 v0 v1
+du_rdPair_2206 v0 v1
   = let v2 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
     coe
       (case coe v0 of
@@ -4194,13 +4202,42 @@ du_rdPair_2192 v0 v1
                        (coe C_rd'45'pair_2110 v3 v4)
                 _ -> coe v2
          _ -> coe v2)
+-- Once.LinCore.FromExpr._.rdApp
+d_rdApp_2220 ::
+  MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
+  Integer ->
+  Integer ->
+  MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+  MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
+  MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 ->
+  Maybe T_Pth_1996 -> Maybe T_Rd_2058 -> Maybe T_Rd_2058
+d_rdApp_2220 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 v10 v11
+  = du_rdApp_2220 v10 v11
+du_rdApp_2220 ::
+  Maybe T_Pth_1996 -> Maybe T_Rd_2058 -> Maybe T_Rd_2058
+du_rdApp_2220 v0 v1
+  = let v2 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
+    coe
+      (case coe v0 of
+         MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v3
+           -> case coe v1 of
+                MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v4
+                  -> coe
+                       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                       (coe C_rd'45'app_2136 v3 v4)
+                _ -> coe v2
+         _ -> coe v2)
 -- Once.LinCore.FromExpr.flat?
-d_flat'63'_2202 ::
+d_flat'63'_2230 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   Integer -> MAlonzo.Code.Once.Spec.Type.T_Ty_8 -> Bool
-d_flat'63'_2202 ~v0 ~v1 v2 = du_flat'63'_2202 v2
-du_flat'63'_2202 :: MAlonzo.Code.Once.Spec.Type.T_Ty_8 -> Bool
-du_flat'63'_2202 v0
+d_flat'63'_2230 ~v0 ~v1 v2 = du_flat'63'_2230 v2
+du_flat'63'_2230 :: MAlonzo.Code.Once.Spec.Type.T_Ty_8 -> Bool
+du_flat'63'_2230 v0
   = let v1 = coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8 in
     coe
       (case coe v0 of
@@ -4211,18 +4248,148 @@ du_flat'63'_2202 v0
          MAlonzo.Code.Once.Spec.Type.C__'42'__22 v2 v3
            -> coe
                 MAlonzo.Code.Data.Bool.Base.d__'8743'__24
-                (coe du_flat'63'_2202 (coe v2)) (coe du_flat'63'_2202 (coe v3))
+                (coe du_flat'63'_2230 (coe v2)) (coe du_flat'63'_2230 (coe v3))
          MAlonzo.Code.Once.Spec.Type.C__'43'__24 v2 v3
            -> coe
                 MAlonzo.Code.Data.Bool.Base.d__'8743'__24
-                (coe du_flat'63'_2202 (coe v2)) (coe du_flat'63'_2202 (coe v3))
+                (coe du_flat'63'_2230 (coe v2)) (coe du_flat'63'_2230 (coe v3))
          MAlonzo.Code.Once.Spec.Type.C_Int_32
            -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
          MAlonzo.Code.Once.Spec.Type.C_Float_34
            -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
          _ -> coe v1)
+-- Once.LinCore.FromExpr.flatRd
+d_flatRd_2252 ::
+  MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
+  Integer ->
+  Integer ->
+  MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
+  MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 -> T_Rd_2058 -> Bool
+d_flatRd_2252 ~v0 ~v1 ~v2 ~v3 ~v4 v5 v6 v7
+  = du_flatRd_2252 v5 v6 v7
+du_flatRd_2252 ::
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 -> T_Rd_2058 -> Bool
+du_flatRd_2252 v0 v1 v2
+  = case coe v2 of
+      C_rd'45'path_2072 v6 -> coe du_flat'63'_2230 (coe v0)
+      C_rd'45'int_2076 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
+      C_rd'45'float_2080 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
+      C_rd'45'num_2096 v10
+        -> case coe v1 of
+             MAlonzo.Code.Once.Surface.Syntax.C_num_218 v14 v15 v16 v17 v18 v19
+               -> coe
+                    du_flatRd_2252
+                    (coe
+                       MAlonzo.Code.Once.Spec.Theory.du_symDom_86 (coe v14) (coe v16))
+                    (coe v19) (coe v10)
+             _ -> MAlonzo.RTE.mazUnreachableError
+      C_rd'45'pair_2110 v9 v10
+        -> case coe v0 of
+             MAlonzo.Code.Once.Spec.Type.C__'42'__22 v11 v12
+               -> case coe v1 of
+                    MAlonzo.Code.Once.Surface.Syntax.C_pair_88 v15 v16 v19 v20
+                      -> coe
+                           MAlonzo.Code.Data.Bool.Base.d__'8743'__24
+                           (coe du_flatRd_2252 (coe v11) (coe v19) (coe v9))
+                           (coe du_flatRd_2252 (coe v12) (coe v20) (coe v10))
+                    _ -> MAlonzo.RTE.mazUnreachableError
+             _ -> MAlonzo.RTE.mazUnreachableError
+      C_rd'45'coe_2122 v8
+        -> case coe v1 of
+             MAlonzo.Code.Once.Surface.Syntax.C_coerce_230 v12 v14 v15
+               -> coe du_flatRd_2252 (coe v12) (coe v15) (coe v8)
+             _ -> MAlonzo.RTE.mazUnreachableError
+      C_rd'45'app_2136 v9 v10
+        -> case coe v1 of
+             MAlonzo.Code.Once.Surface.Syntax.C_app_54 v13 v14 v15 v17 v18 v19
+               -> coe du_flatRd_2252 (coe v15) (coe v19) (coe v10)
+             _ -> MAlonzo.RTE.mazUnreachableError
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.LinCore.FromExpr.appRd
+d_appRd_2292 ::
+  MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
+  Integer ->
+  Integer ->
+  MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
+  MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 -> T_Rd_2058 -> Bool
+d_appRd_2292 ~v0 ~v1 ~v2 ~v3 ~v4 v5 v6 v7 = du_appRd_2292 v5 v6 v7
+du_appRd_2292 ::
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 -> T_Rd_2058 -> Bool
+du_appRd_2292 v0 v1 v2
+  = case coe v2 of
+      C_rd'45'path_2072 v6
+        -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+      C_rd'45'int_2076 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+      C_rd'45'float_2080 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+      C_rd'45'num_2096 v10
+        -> case coe v1 of
+             MAlonzo.Code.Once.Surface.Syntax.C_num_218 v14 v15 v16 v17 v18 v19
+               -> coe
+                    du_appRd_2292
+                    (coe
+                       MAlonzo.Code.Once.Spec.Theory.du_symDom_86 (coe v14) (coe v16))
+                    (coe v19) (coe v10)
+             _ -> MAlonzo.RTE.mazUnreachableError
+      C_rd'45'pair_2110 v9 v10
+        -> case coe v0 of
+             MAlonzo.Code.Once.Spec.Type.C__'42'__22 v11 v12
+               -> case coe v1 of
+                    MAlonzo.Code.Once.Surface.Syntax.C_pair_88 v15 v16 v19 v20
+                      -> coe
+                           MAlonzo.Code.Data.Bool.Base.d__'8744'__30
+                           (coe du_appRd_2292 (coe v11) (coe v19) (coe v9))
+                           (coe du_appRd_2292 (coe v12) (coe v20) (coe v10))
+                    _ -> MAlonzo.RTE.mazUnreachableError
+             _ -> MAlonzo.RTE.mazUnreachableError
+      C_rd'45'coe_2122 v8
+        -> case coe v1 of
+             MAlonzo.Code.Once.Surface.Syntax.C_coerce_230 v12 v14 v15
+               -> coe du_appRd_2292 (coe v12) (coe v15) (coe v8)
+             _ -> MAlonzo.RTE.mazUnreachableError
+      C_rd'45'app_2136 v9 v10
+        -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.LinCore.FromExpr.keepRd
+d_keepRd_2330 ::
+  MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
+  Integer ->
+  Integer ->
+  MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
+  MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 ->
+  Bool -> Maybe T_Rd_2058 -> Maybe T_Rd_2058
+d_keepRd_2330 ~v0 ~v1 ~v2 ~v3 ~v4 v5 v6 v7 v8
+  = du_keepRd_2330 v5 v6 v7 v8
+du_keepRd_2330 ::
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 ->
+  Bool -> Maybe T_Rd_2058 -> Maybe T_Rd_2058
+du_keepRd_2330 v0 v1 v2 v3
+  = case coe v3 of
+      MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v4
+        -> coe
+             MAlonzo.Code.Data.Bool.Base.du_if_then_else__44
+             (coe
+                MAlonzo.Code.Data.Bool.Base.d__'8743'__24
+                (coe du_flatRd_2252 (coe v0) (coe v1) (coe v4))
+                (coe
+                   MAlonzo.Code.Data.Bool.Base.d__'8744'__30
+                   (coe
+                      MAlonzo.Code.Data.Bool.Base.d_not_22
+                      (coe du_appRd_2292 (coe v0) (coe v1) (coe v4)))
+                   (coe v2)))
+             (coe v3) (coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)
+      MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v3
+      _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.LinCore.FromExpr.rdw?
-d_rdw'63'_2224 ::
+d_rdw'63'_2350 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   Integer ->
   Integer ->
@@ -4230,40 +4397,123 @@ d_rdw'63'_2224 ::
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 -> Maybe T_Rd_2058
-d_rdw'63'_2224 ~v0 ~v1 ~v2 ~v3 ~v4 v5 v6 = du_rdw'63'_2224 v5 v6
-du_rdw'63'_2224 ::
+d_rdw'63'_2350 ~v0 ~v1 ~v2 ~v3 ~v4 v5 v6 = du_rdw'63'_2350 v5 v6
+du_rdw'63'_2350 ::
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 -> Maybe T_Rd_2058
-du_rdw'63'_2224 v0 v1
+du_rdw'63'_2350 v0 v1
+  = coe
+      du_keepRd_2330 (coe v0) (coe v1)
+      (coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8)
+      (coe du_rd'63'_2182 (coe v0) (coe v1))
+-- Once.LinCore.FromExpr.used?
+d_used'63'_2354 ::
+  MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
+  MAlonzo.Code.Once.Spec.Grade.T_Quantity_6 -> Bool
+d_used'63'_2354 ~v0 v1 = du_used'63'_2354 v1
+du_used'63'_2354 ::
+  MAlonzo.Code.Once.Spec.Grade.T_Quantity_6 -> Bool
+du_used'63'_2354 v0
+  = case coe v0 of
+      MAlonzo.Code.Once.Spec.Grade.C_Zero_8
+        -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+      MAlonzo.Code.Once.Spec.Grade.C_One_10
+        -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
+      MAlonzo.Code.Once.Spec.Grade.C_Many_12
+        -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.LinCore.FromExpr.shared?
+d_shared'63'_2362 ::
+  MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
+  Integer ->
+  Integer ->
+  MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
+  MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
+  MAlonzo.Code.Once.Spec.Context.T_Usage_34 -> Bool
+d_shared'63'_2362 ~v0 ~v1 ~v2 v3 v4 v5
+  = du_shared'63'_2362 v3 v4 v5
+du_shared'63'_2362 ::
+  MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
+  MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
+  MAlonzo.Code.Once.Spec.Context.T_Usage_34 -> Bool
+du_shared'63'_2362 v0 v1 v2
+  = case coe v0 of
+      MAlonzo.Code.Once.Spec.Context.C_'8709'_12
+        -> coe
+             seq (coe v1)
+             (coe seq (coe v2) (coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8))
+      MAlonzo.Code.Once.Spec.Context.C__'9656'__16 v4 v5
+        -> case coe v1 of
+             MAlonzo.Code.Once.Spec.Context.C__'8759'__40 v7 v8
+               -> case coe v2 of
+                    MAlonzo.Code.Once.Spec.Context.C__'8759'__40 v10 v11
+                      -> coe
+                           MAlonzo.Code.Data.Bool.Base.d__'8744'__30
+                           (coe
+                              MAlonzo.Code.Data.Bool.Base.d__'8743'__24
+                              (coe du_used'63'_2354 (coe v7))
+                              (coe
+                                 MAlonzo.Code.Data.Bool.Base.d__'8743'__24
+                                 (coe du_used'63'_2354 (coe v10))
+                                 (coe
+                                    MAlonzo.Code.Data.Bool.Base.d_not_22
+                                    (coe du_flat'63'_2230 (coe v5)))))
+                           (coe du_shared'63'_2362 (coe v4) (coe v8) (coe v11))
+                    _ -> MAlonzo.RTE.mazUnreachableError
+             _ -> MAlonzo.RTE.mazUnreachableError
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.LinCore.FromExpr.rdx?
+d_rdx'63'_2392 ::
+  MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
+  Integer ->
+  Integer ->
+  MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
+  MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+  MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
+  MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 -> Maybe T_Rd_2058
+d_rdx'63'_2392 ~v0 ~v1 ~v2 v3 ~v4 v5 v6 v7 v8
+  = du_rdx'63'_2392 v3 v5 v6 v7 v8
+du_rdx'63'_2392 ::
+  MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+  MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
+  MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 -> Maybe T_Rd_2058
+du_rdx'63'_2392 v0 v1 v2 v3 v4
   = coe
       MAlonzo.Code.Data.Bool.Base.du_if_then_else__44
-      (coe du_flat'63'_2202 (coe v0))
-      (coe du_rd'63'_2168 (coe v0) (coe v1))
+      (coe du_shared'63'_2362 (coe v0) (coe v2) (coe v3))
+      (coe
+         du_keepRd_2330 (coe v1) (coe v4)
+         (coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10)
+         (coe du_rd'63'_2182 (coe v1) (coe v4)))
       (coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)
 -- Once.LinCore.FromExpr.Im
-d_Im_2240 a0 a1 a2 a3 a4 a5 a6 = ()
-data T_Im_2240
-  = C_im'45'var_2262 | C_im'45'lam_2284 |
-    C_im'45'closed_2294 T_Im_2240 | C_im'45'coe_2310 T_Im_2240 |
-    C_im'45'app1_2328 T_ImF_2252 T_Im_2240 |
-    C_im'45'appω_2346 T_ImF_2252 T_Im_2240
+d_Im_2412 a0 a1 a2 a3 a4 a5 a6 = ()
+data T_Im_2412
+  = C_im'45'var_2434 | C_im'45'lam_2456 |
+    C_im'45'closed_2466 T_Im_2412 | C_im'45'coe_2482 T_Im_2412 |
+    C_im'45'app1_2500 T_ImF_2424 T_Im_2412 |
+    C_im'45'appω_2518 T_ImF_2424 T_Im_2412
 -- Once.LinCore.FromExpr.ImF
-d_ImF_2252 a0 a1 a2 a3 a4 a5 a6 = ()
-data T_ImF_2252
-  = C_imf'45'lam_2370 T_Im_2240 | C_imf'45'closed_2380 T_ImF_2252
+d_ImF_2424 a0 a1 a2 a3 a4 a5 a6 = ()
+data T_ImF_2424
+  = C_imf'45'lam_2542 T_Im_2412 | C_imf'45'closed_2552 T_ImF_2424
 -- Once.LinCore.FromExpr.both
-d_both_2388 ::
+d_both_2560 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   () ->
   () ->
   () ->
   (AgdaAny -> AgdaAny -> AgdaAny) ->
   Maybe AgdaAny -> Maybe AgdaAny -> Maybe AgdaAny
-d_both_2388 ~v0 ~v1 ~v2 ~v3 v4 v5 v6 = du_both_2388 v4 v5 v6
-du_both_2388 ::
+d_both_2560 ~v0 ~v1 ~v2 ~v3 v4 v5 v6 = du_both_2560 v4 v5 v6
+du_both_2560 ::
   (AgdaAny -> AgdaAny -> AgdaAny) ->
   Maybe AgdaAny -> Maybe AgdaAny -> Maybe AgdaAny
-du_both_2388 v0 v1 v2
+du_both_2560 v0 v1 v2
   = let v3 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
     coe
       (case coe v1 of
@@ -4274,43 +4524,43 @@ du_both_2388 v0 v1 v2
                 _ -> coe v3
          _ -> coe v3)
 -- Once.LinCore.FromExpr.im?
-d_im'63'_2410 ::
+d_im'63'_2582 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   Integer ->
   Integer ->
   MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 -> Maybe T_Im_2240
-d_im'63'_2410 v0 v1 v2 v3 ~v4 v5 v6
-  = du_im'63'_2410 v0 v1 v2 v3 v5 v6
-du_im'63'_2410 ::
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 -> Maybe T_Im_2412
+d_im'63'_2582 v0 v1 v2 v3 ~v4 v5 v6
+  = du_im'63'_2582 v0 v1 v2 v3 v5 v6
+du_im'63'_2582 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   Integer ->
   Integer ->
   MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 -> Maybe T_Im_2240
-du_im'63'_2410 v0 v1 v2 v3 v4 v5
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 -> Maybe T_Im_2412
+du_im'63'_2582 v0 v1 v2 v3 v4 v5
   = let v6 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
     coe
       (case coe v5 of
          MAlonzo.Code.Once.Surface.Syntax.C_var_20 v9
            -> coe
-                MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe C_im'45'var_2262)
+                MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe C_im'45'var_2434)
          MAlonzo.Code.Once.Surface.Syntax.C_lam_38 v10 v16
            -> case coe v4 of
                 MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 v17 v18 v19
                   -> coe
-                       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe C_im'45'lam_2284)
+                       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe C_im'45'lam_2456)
                 _ -> coe v6
          MAlonzo.Code.Once.Surface.Syntax.C_app_54 v9 v10 v11 v13 v14 v15
            -> case coe v13 of
                 MAlonzo.Code.Once.Spec.Grade.C_One_10
                   -> coe
-                       du_both_2388 (coe C_im'45'app1_2328)
+                       du_both_2560 (coe C_im'45'app1_2500)
                        (coe
-                          d_imf'63'_2424 (coe v0) (coe v1) (coe v2) (coe v3) (coe v9)
+                          d_imf'63'_2596 (coe v0) (coe v1) (coe v2) (coe v3) (coe v9)
                           (coe
                              MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 (coe v11)
                              (coe
@@ -4321,13 +4571,13 @@ du_im'63'_2410 v0 v1 v2 v3 v4 v5
                              (coe v4))
                           (coe v14))
                        (coe
-                          du_im'63'_2410 (coe v0) (coe v1) (coe v2) (coe v3) (coe v11)
+                          du_im'63'_2582 (coe v0) (coe v1) (coe v2) (coe v3) (coe v11)
                           (coe v15))
                 MAlonzo.Code.Once.Spec.Grade.C_Many_12
                   -> coe
-                       du_both_2388 (coe C_im'45'appω_2346)
+                       du_both_2560 (coe C_im'45'appω_2518)
                        (coe
-                          d_imf'63'_2424 (coe v0) (coe v1) (coe v2) (coe v3) (coe v9)
+                          d_imf'63'_2596 (coe v0) (coe v1) (coe v2) (coe v3) (coe v9)
                           (coe
                              MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 (coe v11)
                              (coe
@@ -4338,33 +4588,33 @@ du_im'63'_2410 v0 v1 v2 v3 v4 v5
                              (coe v4))
                           (coe v14))
                        (coe
-                          du_im'63'_2410 (coe v0) (coe v1) (coe v2) (coe v3) (coe v11)
+                          du_im'63'_2582 (coe v0) (coe v1) (coe v2) (coe v3) (coe v11)
                           (coe v15))
                 _ -> coe v6
          MAlonzo.Code.Once.Surface.Syntax.C_coerce_230 v10 v12 v13
            -> coe
-                MAlonzo.Code.Data.Maybe.Base.du_map_64 (coe C_im'45'coe_2310)
+                MAlonzo.Code.Data.Maybe.Base.du_map_64 (coe C_im'45'coe_2482)
                 (coe
-                   du_im'63'_2410 (coe v0) (coe v1) (coe v2) (coe v3) (coe v10)
+                   du_im'63'_2582 (coe v0) (coe v1) (coe v2) (coe v3) (coe v10)
                    (coe v13))
          MAlonzo.Code.Once.Surface.Syntax.C_closed_264 v10
            -> coe
-                MAlonzo.Code.Data.Maybe.Base.du_map_64 (coe C_im'45'closed_2294)
+                MAlonzo.Code.Data.Maybe.Base.du_map_64 (coe C_im'45'closed_2466)
                 (coe
-                   du_im'63'_2410 (coe v0) (coe v1) (coe (0 :: Integer))
+                   du_im'63'_2582 (coe v0) (coe v1) (coe (0 :: Integer))
                    (coe MAlonzo.Code.Once.Spec.Context.C_'8709'_12) (coe v4)
                    (coe v10))
          _ -> coe v6)
 -- Once.LinCore.FromExpr.imf?
-d_imf'63'_2424 ::
+d_imf'63'_2596 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   Integer ->
   Integer ->
   MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 -> Maybe T_ImF_2252
-d_imf'63'_2424 v0 v1 v2 v3 v4 v5 v6
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 -> Maybe T_ImF_2424
+d_imf'63'_2596 v0 v1 v2 v3 v4 v5 v6
   = let v7 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
     coe
       (case coe v6 of
@@ -4372,44 +4622,44 @@ d_imf'63'_2424 v0 v1 v2 v3 v4 v5 v6
            -> case coe v5 of
                 MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 v18 v19 v20
                   -> coe
-                       MAlonzo.Code.Data.Maybe.Base.du_map_64 (coe C_imf'45'lam_2370)
+                       MAlonzo.Code.Data.Maybe.Base.du_map_64 (coe C_imf'45'lam_2542)
                        (coe
-                          du_im'63'_2410 (coe v0) (coe v1)
+                          du_im'63'_2582 (coe v0) (coe v1)
                           (coe addInt (coe (1 :: Integer)) (coe v2))
                           (coe MAlonzo.Code.Once.Spec.Context.C__'9656'__16 v3 v18) (coe v20)
                           (coe v17))
                 _ -> coe v7
          MAlonzo.Code.Once.Surface.Syntax.C_closed_264 v11
            -> coe
-                MAlonzo.Code.Data.Maybe.Base.du_map_64 (coe C_imf'45'closed_2380)
-                (d_imf'63'_2424
+                MAlonzo.Code.Data.Maybe.Base.du_map_64 (coe C_imf'45'closed_2552)
+                (d_imf'63'_2596
                    (coe v0) (coe v1) (coe (0 :: Integer))
                    (coe MAlonzo.Code.Once.Spec.Context.C_'8709'_12)
                    (coe MAlonzo.Code.Once.Spec.Context.C_'91''93'_36) (coe v5)
                    (coe v11))
          _ -> coe v7)
 -- Once.LinCore.FromExpr.CP
-d_CP_2466 a0 a1 a2 a3 a4 a5 a6 = ()
-data T_CP_2466 = C_cp_2490 T_Im_2240 T_Im_2240
+d_CP_2638 a0 a1 a2 a3 a4 a5 a6 = ()
+data T_CP_2638 = C_cp_2662 T_Im_2412 T_Im_2412
 -- Once.LinCore.FromExpr.cp?
-d_cp'63'_2504 ::
+d_cp'63'_2676 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   Integer ->
   Integer ->
   MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 -> Maybe T_CP_2466
-d_cp'63'_2504 v0 v1 v2 v3 ~v4 v5 v6
-  = du_cp'63'_2504 v0 v1 v2 v3 v5 v6
-du_cp'63'_2504 ::
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 -> Maybe T_CP_2638
+d_cp'63'_2676 v0 v1 v2 v3 ~v4 v5 v6
+  = du_cp'63'_2676 v0 v1 v2 v3 v5 v6
+du_cp'63'_2676 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   Integer ->
   Integer ->
   MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 -> Maybe T_CP_2466
-du_cp'63'_2504 v0 v1 v2 v3 v4 v5
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 -> Maybe T_CP_2638
+du_cp'63'_2676 v0 v1 v2 v3 v4 v5
   = let v6 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
     coe
       (case coe v5 of
@@ -4421,9 +4671,9 @@ du_cp'63'_2504 v0 v1 v2 v3 v4 v5
                          -> case coe v18 of
                               MAlonzo.Code.Once.Spec.Grade.C_mk'45'kind_90 v22 v23
                                 -> coe
-                                     du_both_2388 (coe C_cp_2490)
+                                     du_both_2560 (coe C_cp_2662)
                                      (coe
-                                        du_im'63'_2410 (coe v0) (coe v1) (coe v2) (coe v3)
+                                        du_im'63'_2582 (coe v0) (coe v1) (coe v2) (coe v3)
                                         (coe
                                            MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26
                                            (coe v20)
@@ -4434,7 +4684,7 @@ du_cp'63'_2504 v0 v1 v2 v3 v4 v5
                                            (coe v19))
                                         (coe v15))
                                      (coe
-                                        du_im'63'_2410 (coe v0) (coe v1) (coe v2) (coe v3)
+                                        du_im'63'_2582 (coe v0) (coe v1) (coe v2) (coe v3)
                                         (coe
                                            MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26
                                            (coe v21)
@@ -4449,57 +4699,57 @@ du_cp'63'_2504 v0 v1 v2 v3 v4 v5
                 _ -> coe v6
          _ -> coe v6)
 -- Once.LinCore.FromExpr.IsPj
-d_IsPj_2516 a0 a1 a2 a3 a4 = ()
-data T_IsPj_2516
-  = C_pj'45'id_2522 | C_pj'45'fst_2528 | C_pj'45'snd_2534
+d_IsPj_2688 a0 a1 a2 a3 a4 = ()
+data T_IsPj_2688
+  = C_pj'45'id_2694 | C_pj'45'fst_2700 | C_pj'45'snd_2706
 -- Once.LinCore.FromExpr.pj?
-d_pj'63'_2544 ::
+d_pj'63'_2716 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   Integer ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Once.Surface.Map.T_Map_8 -> Maybe T_IsPj_2516
-d_pj'63'_2544 ~v0 ~v1 v2 ~v3 v4 = du_pj'63'_2544 v2 v4
-du_pj'63'_2544 ::
+  MAlonzo.Code.Once.Surface.Map.T_Map_8 -> Maybe T_IsPj_2688
+d_pj'63'_2716 ~v0 ~v1 v2 ~v3 v4 = du_pj'63'_2716 v2 v4
+du_pj'63'_2716 ::
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Once.Surface.Map.T_Map_8 -> Maybe T_IsPj_2516
-du_pj'63'_2544 v0 v1
+  MAlonzo.Code.Once.Surface.Map.T_Map_8 -> Maybe T_IsPj_2688
+du_pj'63'_2716 v0 v1
   = let v2 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
     coe
       (case coe v1 of
          MAlonzo.Code.Once.Surface.Map.C_mp'45'id_14
            -> coe
-                MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe C_pj'45'id_2522)
+                MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe C_pj'45'id_2694)
          MAlonzo.Code.Once.Surface.Map.C_mp'45'fst_20
            -> case coe v0 of
                 MAlonzo.Code.Once.Spec.Type.C__'42'__22 v5 v6
                   -> coe
-                       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe C_pj'45'fst_2528)
+                       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe C_pj'45'fst_2700)
                 _ -> coe v2
          MAlonzo.Code.Once.Surface.Map.C_mp'45'snd_26
            -> case coe v0 of
                 MAlonzo.Code.Once.Spec.Type.C__'42'__22 v5 v6
                   -> coe
-                       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe C_pj'45'snd_2534)
+                       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe C_pj'45'snd_2706)
                 _ -> coe v2
          _ -> coe v2)
 -- Once.LinCore.FromExpr.PjL
-d_PjL_2556 a0 a1 a2 a3 a4 a5 a6 = ()
-newtype T_PjL_2556 = C_pjl_2572 T_IsPj_2516
+d_PjL_2728 a0 a1 a2 a3 a4 a5 a6 = ()
+newtype T_PjL_2728 = C_pjl_2744 T_IsPj_2688
 -- Once.LinCore.FromExpr.pjl?
-d_pjl'63'_2586 ::
+d_pjl'63'_2758 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   Integer ->
   Integer ->
   MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 -> Maybe T_PjL_2556
-d_pjl'63'_2586 ~v0 ~v1 ~v2 ~v3 ~v4 v5 v6 = du_pjl'63'_2586 v5 v6
-du_pjl'63'_2586 ::
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 -> Maybe T_PjL_2728
+d_pjl'63'_2758 ~v0 ~v1 ~v2 ~v3 ~v4 v5 v6 = du_pjl'63'_2758 v5 v6
+du_pjl'63'_2758 ::
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 -> Maybe T_PjL_2556
-du_pjl'63'_2586 v0 v1
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 -> Maybe T_PjL_2728
+du_pjl'63'_2758 v0 v1
   = let v2 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
     coe
       (case coe v1 of
@@ -4507,28 +4757,28 @@ du_pjl'63'_2586 v0 v1
            -> case coe v0 of
                 MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 v9 v10 v11
                   -> coe
-                       MAlonzo.Code.Data.Maybe.Base.du_map_64 (coe C_pjl_2572)
-                       (coe du_pj'63'_2544 (coe v9) (coe v8))
+                       MAlonzo.Code.Data.Maybe.Base.du_map_64 (coe C_pjl_2744)
+                       (coe du_pj'63'_2716 (coe v9) (coe v8))
                 _ -> coe v2
          _ -> coe v2)
 -- Once.LinCore.FromExpr.Arm
-d_Arm_2600 a0 a1 a2 a3 a4 a5 a6 = ()
-data T_Arm_2600
-  = C_arm'45'map_2614 T_PjL_2556 | C_arm'45'comp_2632 T_PjL_2556
+d_Arm_2772 a0 a1 a2 a3 a4 a5 a6 = ()
+data T_Arm_2772
+  = C_arm'45'map_2786 T_PjL_2728 | C_arm'45'comp_2804 T_PjL_2728
 -- Once.LinCore.FromExpr.arm?
-d_arm'63'_2646 ::
+d_arm'63'_2818 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   Integer ->
   Integer ->
   MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 -> Maybe T_Arm_2600
-d_arm'63'_2646 ~v0 ~v1 ~v2 ~v3 ~v4 v5 v6 = du_arm'63'_2646 v5 v6
-du_arm'63'_2646 ::
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 -> Maybe T_Arm_2772
+d_arm'63'_2818 ~v0 ~v1 ~v2 ~v3 ~v4 v5 v6 = du_arm'63'_2818 v5 v6
+du_arm'63'_2818 ::
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 -> Maybe T_Arm_2600
-du_arm'63'_2646 v0 v1
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 -> Maybe T_Arm_2772
+du_arm'63'_2818 v0 v1
   = let v2 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
     coe
       (case coe v1 of
@@ -4538,9 +4788,9 @@ du_arm'63'_2646 v0 v1
                   -> case coe v10 of
                        MAlonzo.Code.Once.Spec.Grade.C_mk'45'kind_90 v12 v13
                          -> coe
-                              MAlonzo.Code.Data.Maybe.Base.du_map_64 (coe C_arm'45'map_2614)
+                              MAlonzo.Code.Data.Maybe.Base.du_map_64 (coe C_arm'45'map_2786)
                               (coe
-                                 du_pjl'63'_2586
+                                 du_pjl'63'_2758
                                  (coe
                                     MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 (coe v9)
                                     (coe
@@ -4556,9 +4806,9 @@ du_arm'63'_2646 v0 v1
                   -> case coe v14 of
                        MAlonzo.Code.Once.Spec.Grade.C_mk'45'kind_90 v16 v17
                          -> coe
-                              MAlonzo.Code.Data.Maybe.Base.du_map_64 (coe C_arm'45'comp_2632)
+                              MAlonzo.Code.Data.Maybe.Base.du_map_64 (coe C_arm'45'comp_2804)
                               (coe
-                                 du_pjl'63'_2586
+                                 du_pjl'63'_2758
                                  (coe
                                     MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 (coe v13)
                                     (coe
@@ -4570,7 +4820,7 @@ du_arm'63'_2646 v0 v1
                 _ -> coe v2
          _ -> coe v2)
 -- Once.LinCore.FromExpr._.lv
-d_lv_2672 ::
+d_lv_2846 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.LinCore.Core.T_Cx_728 ->
   Integer ->
@@ -4578,20 +4828,21 @@ d_lv_2672 ::
   MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
   MAlonzo.Code.Once.LinCore.Core.T_LTy_178 ->
+  MAlonzo.Code.Once.LinCore.Core.T_LTy_178 ->
   MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
   MAlonzo.Code.Once.Spec.Context.T__'8849''7512'__84 ->
   MAlonzo.Code.Once.LinCore.Core.T_Tm_758 ->
   MAlonzo.Code.Once.LinCore.Core.T_Tm_758
-d_lv_2672 ~v0 ~v1 ~v2 ~v3 v4 v5 ~v6 v7 v8 v9
-  = du_lv_2672 v4 v5 v7 v8 v9
-du_lv_2672 ::
+d_lv_2846 ~v0 ~v1 ~v2 ~v3 v4 v5 ~v6 ~v7 v8 v9 v10
+  = du_lv_2846 v4 v5 v8 v9 v10
+du_lv_2846 ::
   MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
   MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
   MAlonzo.Code.Once.Spec.Context.T__'8849''7512'__84 ->
   MAlonzo.Code.Once.LinCore.Core.T_Tm_758 ->
   MAlonzo.Code.Once.LinCore.Core.T_Tm_758
-du_lv_2672 v0 v1 v2 v3 v4
+du_lv_2846 v0 v1 v2 v3 v4
   = case coe v0 of
       MAlonzo.Code.Once.Spec.Context.C__'9656'__16 v6 v7
         -> case coe v2 of
@@ -4611,7 +4862,7 @@ du_lv_2672 v0 v1 v2 v3 v4
                                     -> coe
                                          seq (coe v15)
                                          (coe
-                                            du_lv_2672 (coe v6) (coe v19) (coe v9) (coe v16)
+                                            du_lv_2846 (coe v6) (coe v19) (coe v9) (coe v16)
                                             (coe v4))
                                   MAlonzo.Code.Once.Spec.Grade.C_One_10
                                     -> coe
@@ -4619,7 +4870,7 @@ du_lv_2672 v0 v1 v2 v3 v4
                                          (coe
                                             MAlonzo.Code.Once.LinCore.Core.C_bfst_994
                                             (coe
-                                               du_lv_2672 (coe v6) (coe v19) (coe v9) (coe v16)
+                                               du_lv_2846 (coe v6) (coe v19) (coe v9) (coe v16)
                                                (coe v4)))
                                   MAlonzo.Code.Once.Spec.Grade.C_Many_12
                                     -> coe
@@ -4627,7 +4878,7 @@ du_lv_2672 v0 v1 v2 v3 v4
                                          (coe
                                             MAlonzo.Code.Once.LinCore.Core.C_bfst_994
                                             (coe
-                                               du_lv_2672 (coe v6) (coe v19) (coe v9) (coe v16)
+                                               du_lv_2846 (coe v6) (coe v19) (coe v9) (coe v16)
                                                (coe v4)))
                                   _ -> MAlonzo.RTE.mazUnreachableError
                            _ -> MAlonzo.RTE.mazUnreachableError
@@ -4635,7 +4886,7 @@ du_lv_2672 v0 v1 v2 v3 v4
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.LinCore.FromExpr._.k-lv
-d_k'45'lv_2736 ::
+d_k'45'lv_2912 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.LinCore.Core.T_Cx_728 ->
   Integer ->
@@ -4643,21 +4894,22 @@ d_k'45'lv_2736 ::
   MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
   MAlonzo.Code.Once.LinCore.Core.T_LTy_178 ->
+  MAlonzo.Code.Once.LinCore.Core.T_LTy_178 ->
   MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
   MAlonzo.Code.Once.Spec.Context.T__'8849''7512'__84 ->
   MAlonzo.Code.Once.LinCore.Core.T_Tm_758 ->
   MAlonzo.Code.Once.LinCore.Core.T_Blk_768 ->
   MAlonzo.Code.Once.LinCore.Core.T_Blk_768
-d_k'45'lv_2736 ~v0 ~v1 ~v2 ~v3 v4 v5 ~v6 v7 v8 ~v9 v10
-  = du_k'45'lv_2736 v4 v5 v7 v8 v10
-du_k'45'lv_2736 ::
+d_k'45'lv_2912 ~v0 ~v1 ~v2 ~v3 v4 v5 ~v6 ~v7 v8 v9 ~v10 v11
+  = du_k'45'lv_2912 v4 v5 v8 v9 v11
+du_k'45'lv_2912 ::
   MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
   MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
   MAlonzo.Code.Once.Spec.Context.T__'8849''7512'__84 ->
   MAlonzo.Code.Once.LinCore.Core.T_Blk_768 ->
   MAlonzo.Code.Once.LinCore.Core.T_Blk_768
-du_k'45'lv_2736 v0 v1 v2 v3 v4
+du_k'45'lv_2912 v0 v1 v2 v3 v4
   = case coe v0 of
       MAlonzo.Code.Once.Spec.Context.C__'9656'__16 v6 v7
         -> case coe v2 of
@@ -4678,7 +4930,7 @@ du_k'45'lv_2736 v0 v1 v2 v3 v4
                                     -> coe
                                          seq (coe v15)
                                          (coe
-                                            du_k'45'lv_2736 (coe v6) (coe v19) (coe v9) (coe v16)
+                                            du_k'45'lv_2912 (coe v6) (coe v19) (coe v9) (coe v16)
                                             (coe v4))
                                   MAlonzo.Code.Once.Spec.Grade.C_One_10
                                     -> coe
@@ -4686,7 +4938,7 @@ du_k'45'lv_2736 v0 v1 v2 v3 v4
                                          (coe
                                             MAlonzo.Code.Once.LinCore.Core.C_k'45'fst_1382
                                             (coe
-                                               du_k'45'lv_2736 (coe v6) (coe v19) (coe v9) (coe v16)
+                                               du_k'45'lv_2912 (coe v6) (coe v19) (coe v9) (coe v16)
                                                (coe v4)))
                                   MAlonzo.Code.Once.Spec.Grade.C_Many_12
                                     -> coe
@@ -4694,7 +4946,7 @@ du_k'45'lv_2736 v0 v1 v2 v3 v4
                                          (coe
                                             MAlonzo.Code.Once.LinCore.Core.C_k'45'fst_1382
                                             (coe
-                                               du_k'45'lv_2736 (coe v6) (coe v19) (coe v9) (coe v16)
+                                               du_k'45'lv_2912 (coe v6) (coe v19) (coe v9) (coe v16)
                                                (coe v4)))
                                   _ -> MAlonzo.RTE.mazUnreachableError
                            _ -> MAlonzo.RTE.mazUnreachableError
@@ -4702,7 +4954,7 @@ du_k'45'lv_2736 v0 v1 v2 v3 v4
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.LinCore.FromExpr._.Rp
-d_Rp_2800 ::
+d_Rp_2978 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.LinCore.Core.T_Cx_728 ->
   Integer ->
@@ -4712,14 +4964,15 @@ d_Rp_2800 ::
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.LinCore.Core.T_LTy_178 ->
+  MAlonzo.Code.Once.LinCore.Core.T_LTy_178 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 ->
   T_Pth_1996 ->
   MAlonzo.Code.Once.Spec.Context.T__'8849''7512'__84 ->
   MAlonzo.Code.Once.LinCore.Core.T_Tm_758 ->
   MAlonzo.Code.Once.LinCore.Core.T_Tm_758
-d_Rp_2800 ~v0 ~v1 ~v2 v3 v4 ~v5 v6 ~v7 ~v8 v9 v10 v11 v12
-  = du_Rp_2800 v3 v4 v6 v9 v10 v11 v12
-du_Rp_2800 ::
+d_Rp_2978 ~v0 ~v1 ~v2 v3 v4 ~v5 v6 ~v7 ~v8 ~v9 v10 v11 v12 v13
+  = du_Rp_2978 v3 v4 v6 v10 v11 v12 v13
+du_Rp_2978 ::
   Integer ->
   MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
@@ -4728,32 +4981,32 @@ du_Rp_2800 ::
   MAlonzo.Code.Once.Spec.Context.T__'8849''7512'__84 ->
   MAlonzo.Code.Once.LinCore.Core.T_Tm_758 ->
   MAlonzo.Code.Once.LinCore.Core.T_Tm_758
-du_Rp_2800 v0 v1 v2 v3 v4 v5 v6
+du_Rp_2978 v0 v1 v2 v3 v4 v5 v6
   = case coe v4 of
       C_p'45'var_2006
         -> case coe v3 of
              MAlonzo.Code.Once.Surface.Syntax.C_var_20 v10
-               -> coe du_lv_2672 (coe v1) (coe v2) (coe v10) (coe v5) (coe v6)
+               -> coe du_lv_2846 (coe v1) (coe v2) (coe v10) (coe v5) (coe v6)
              _ -> MAlonzo.RTE.mazUnreachableError
       C_p'45'fst_2016 v11
         -> case coe v3 of
              MAlonzo.Code.Once.Surface.Syntax.C_fst''_100 v16 v17
                -> coe
-                    du_Rp_2800 (coe v0) (coe v1) (coe v2) (coe v17) (coe v11) (coe v5)
+                    du_Rp_2978 (coe v0) (coe v1) (coe v2) (coe v17) (coe v11) (coe v5)
                     (coe MAlonzo.Code.Once.LinCore.Core.C_bfst_994 v6)
              _ -> MAlonzo.RTE.mazUnreachableError
       C_p'45'snd_2026 v11
         -> case coe v3 of
              MAlonzo.Code.Once.Surface.Syntax.C_snd''_112 v15 v17
                -> coe
-                    du_Rp_2800 (coe v0) (coe v1) (coe v2) (coe v17) (coe v11) (coe v5)
+                    du_Rp_2978 (coe v0) (coe v1) (coe v2) (coe v17) (coe v11) (coe v5)
                     (coe MAlonzo.Code.Once.LinCore.Core.C_bsnd_1004 v6)
              _ -> MAlonzo.RTE.mazUnreachableError
       C_p'45'mfst_2036 v11
         -> case coe v3 of
              MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_288 v14 v15 v17 v18
                -> coe
-                    du_Rp_2800 (coe v0) (coe v1) (coe v2) (coe v18) (coe v11)
+                    du_Rp_2978 (coe v0) (coe v1) (coe v2) (coe v18) (coe v11)
                     (coe
                        MAlonzo.Code.Once.Context.du_'8849''7512''45'trans_180 (coe v14)
                        (coe
@@ -4762,14 +5015,14 @@ du_Rp_2800 v0 v1 v2 v3 v4 v5 v6
                           (coe
                              MAlonzo.Code.Once.Spec.Context.du__'42''7512'__72
                              (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) (coe v14)))
-                       (coe v2) (coe du_mq_2128 (coe v0) (coe v14)) (coe v5))
+                       (coe v2) (coe du_mq_2142 (coe v0) (coe v14)) (coe v5))
                     (coe MAlonzo.Code.Once.LinCore.Core.C_bfst_994 v6)
              _ -> MAlonzo.RTE.mazUnreachableError
       C_p'45'msnd_2046 v11
         -> case coe v3 of
              MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_288 v14 v15 v17 v18
                -> coe
-                    du_Rp_2800 (coe v0) (coe v1) (coe v2) (coe v18) (coe v11)
+                    du_Rp_2978 (coe v0) (coe v1) (coe v2) (coe v18) (coe v11)
                     (coe
                        MAlonzo.Code.Once.Context.du_'8849''7512''45'trans_180 (coe v14)
                        (coe
@@ -4778,12 +5031,12 @@ du_Rp_2800 v0 v1 v2 v3 v4 v5 v6
                           (coe
                              MAlonzo.Code.Once.Spec.Context.du__'42''7512'__72
                              (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) (coe v14)))
-                       (coe v2) (coe du_mq_2128 (coe v0) (coe v14)) (coe v5))
+                       (coe v2) (coe du_mq_2142 (coe v0) (coe v14)) (coe v5))
                     (coe MAlonzo.Code.Once.LinCore.Core.C_bsnd_1004 v6)
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.LinCore.FromExpr._.k-Rp
-d_k'45'Rp_2860 ::
+d_k'45'Rp_3040 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.LinCore.Core.T_Cx_728 ->
   Integer ->
@@ -4793,15 +5046,17 @@ d_k'45'Rp_2860 ::
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.LinCore.Core.T_LTy_178 ->
+  MAlonzo.Code.Once.LinCore.Core.T_LTy_178 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 ->
   T_Pth_1996 ->
   MAlonzo.Code.Once.Spec.Context.T__'8849''7512'__84 ->
   MAlonzo.Code.Once.LinCore.Core.T_Tm_758 ->
   MAlonzo.Code.Once.LinCore.Core.T_Blk_768 ->
   MAlonzo.Code.Once.LinCore.Core.T_Blk_768
-d_k'45'Rp_2860 ~v0 ~v1 ~v2 v3 v4 ~v5 v6 ~v7 ~v8 v9 v10 v11 ~v12 v13
-  = du_k'45'Rp_2860 v3 v4 v6 v9 v10 v11 v13
-du_k'45'Rp_2860 ::
+d_k'45'Rp_3040 ~v0 ~v1 ~v2 v3 v4 ~v5 v6 ~v7 ~v8 ~v9 v10 v11 v12
+               ~v13 v14
+  = du_k'45'Rp_3040 v3 v4 v6 v10 v11 v12 v14
+du_k'45'Rp_3040 ::
   Integer ->
   MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
@@ -4810,33 +5065,33 @@ du_k'45'Rp_2860 ::
   MAlonzo.Code.Once.Spec.Context.T__'8849''7512'__84 ->
   MAlonzo.Code.Once.LinCore.Core.T_Blk_768 ->
   MAlonzo.Code.Once.LinCore.Core.T_Blk_768
-du_k'45'Rp_2860 v0 v1 v2 v3 v4 v5 v6
+du_k'45'Rp_3040 v0 v1 v2 v3 v4 v5 v6
   = case coe v4 of
       C_p'45'var_2006
         -> case coe v3 of
              MAlonzo.Code.Once.Surface.Syntax.C_var_20 v10
                -> coe
-                    du_k'45'lv_2736 (coe v1) (coe v2) (coe v10) (coe v5) (coe v6)
+                    du_k'45'lv_2912 (coe v1) (coe v2) (coe v10) (coe v5) (coe v6)
              _ -> MAlonzo.RTE.mazUnreachableError
       C_p'45'fst_2016 v11
         -> case coe v3 of
              MAlonzo.Code.Once.Surface.Syntax.C_fst''_100 v16 v17
                -> coe
-                    du_k'45'Rp_2860 (coe v0) (coe v1) (coe v2) (coe v17) (coe v11)
+                    du_k'45'Rp_3040 (coe v0) (coe v1) (coe v2) (coe v17) (coe v11)
                     (coe v5) (coe MAlonzo.Code.Once.LinCore.Core.C_k'45'fst_1382 v6)
              _ -> MAlonzo.RTE.mazUnreachableError
       C_p'45'snd_2026 v11
         -> case coe v3 of
              MAlonzo.Code.Once.Surface.Syntax.C_snd''_112 v15 v17
                -> coe
-                    du_k'45'Rp_2860 (coe v0) (coe v1) (coe v2) (coe v17) (coe v11)
+                    du_k'45'Rp_3040 (coe v0) (coe v1) (coe v2) (coe v17) (coe v11)
                     (coe v5) (coe MAlonzo.Code.Once.LinCore.Core.C_k'45'snd_1394 v6)
              _ -> MAlonzo.RTE.mazUnreachableError
       C_p'45'mfst_2036 v11
         -> case coe v3 of
              MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_288 v14 v15 v17 v18
                -> coe
-                    du_k'45'Rp_2860 (coe v0) (coe v1) (coe v2) (coe v18) (coe v11)
+                    du_k'45'Rp_3040 (coe v0) (coe v1) (coe v2) (coe v18) (coe v11)
                     (coe
                        MAlonzo.Code.Once.Context.du_'8849''7512''45'trans_180 (coe v14)
                        (coe
@@ -4845,14 +5100,14 @@ du_k'45'Rp_2860 v0 v1 v2 v3 v4 v5 v6
                           (coe
                              MAlonzo.Code.Once.Spec.Context.du__'42''7512'__72
                              (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) (coe v14)))
-                       (coe v2) (coe du_mq_2128 (coe v0) (coe v14)) (coe v5))
+                       (coe v2) (coe du_mq_2142 (coe v0) (coe v14)) (coe v5))
                     (coe MAlonzo.Code.Once.LinCore.Core.C_k'45'fst_1382 v6)
              _ -> MAlonzo.RTE.mazUnreachableError
       C_p'45'msnd_2046 v11
         -> case coe v3 of
              MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_288 v14 v15 v17 v18
                -> coe
-                    du_k'45'Rp_2860 (coe v0) (coe v1) (coe v2) (coe v18) (coe v11)
+                    du_k'45'Rp_3040 (coe v0) (coe v1) (coe v2) (coe v18) (coe v11)
                     (coe
                        MAlonzo.Code.Once.Context.du_'8849''7512''45'trans_180 (coe v14)
                        (coe
@@ -4861,12 +5116,12 @@ du_k'45'Rp_2860 v0 v1 v2 v3 v4 v5 v6
                           (coe
                              MAlonzo.Code.Once.Spec.Context.du__'42''7512'__72
                              (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) (coe v14)))
-                       (coe v2) (coe du_mq_2128 (coe v0) (coe v14)) (coe v5))
+                       (coe v2) (coe du_mq_2142 (coe v0) (coe v14)) (coe v5))
                     (coe MAlonzo.Code.Once.LinCore.Core.C_k'45'snd_1394 v6)
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.LinCore.FromExpr._.coeRd
-d_coeRd_2908 ::
+d_coeRd_3088 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.LinCore.Core.T_Cx_728 ->
   Integer ->
@@ -4877,9 +5132,9 @@ d_coeRd_2908 ::
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
   MAlonzo.Code.Once.LinCore.Core.T_Tm_758 ->
   MAlonzo.Code.Once.LinCore.Core.T_Tm_758
-d_coeRd_2908 v0 ~v1 v2 ~v3 v4 v5 v6 v7 v8
-  = du_coeRd_2908 v0 v2 v4 v5 v6 v7 v8
-du_coeRd_2908 ::
+d_coeRd_3088 v0 ~v1 v2 ~v3 v4 v5 v6 v7 v8
+  = du_coeRd_3088 v0 v2 v4 v5 v6 v7 v8
+du_coeRd_3088 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   Integer ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
@@ -4888,7 +5143,7 @@ du_coeRd_2908 ::
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
   MAlonzo.Code.Once.LinCore.Core.T_Tm_758 ->
   MAlonzo.Code.Once.LinCore.Core.T_Tm_758
-du_coeRd_2908 v0 v1 v2 v3 v4 v5 v6
+du_coeRd_3088 v0 v1 v2 v3 v4 v5 v6
   = case coe v5 of
       MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v7 v8
         -> if coe v7
@@ -4904,7 +5159,7 @@ du_coeRd_2908 v0 v1 v2 v3 v4 v5 v6
                        v6)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.LinCore.FromExpr._.k-coeRd
-d_k'45'coeRd_2934 ::
+d_k'45'coeRd_3114 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.LinCore.Core.T_Cx_728 ->
   Integer ->
@@ -4916,16 +5171,16 @@ d_k'45'coeRd_2934 ::
   MAlonzo.Code.Once.LinCore.Core.T_Tm_758 ->
   MAlonzo.Code.Once.LinCore.Core.T_Blk_768 ->
   MAlonzo.Code.Once.LinCore.Core.T_Blk_768
-d_k'45'coeRd_2934 ~v0 ~v1 ~v2 ~v3 v4 v5 v6 v7 ~v8 v9
-  = du_k'45'coeRd_2934 v4 v5 v6 v7 v9
-du_k'45'coeRd_2934 ::
+d_k'45'coeRd_3114 ~v0 ~v1 ~v2 ~v3 v4 v5 v6 v7 ~v8 v9
+  = du_k'45'coeRd_3114 v4 v5 v6 v7 v9
+du_k'45'coeRd_3114 ::
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Sub.T__'60''58'__8 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
   MAlonzo.Code.Once.LinCore.Core.T_Blk_768 ->
   MAlonzo.Code.Once.LinCore.Core.T_Blk_768
-du_k'45'coeRd_2934 v0 v1 v2 v3 v4
+du_k'45'coeRd_3114 v0 v1 v2 v3 v4
   = case coe v3 of
       MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v5 v6
         -> if coe v5
@@ -4940,7 +5195,7 @@ du_k'45'coeRd_2934 v0 v1 v2 v3 v4
                        v4)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.LinCore.FromExpr._.Rt
-d_Rt_2960 ::
+d_Rt_3140 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.LinCore.Core.T_Cx_728 ->
   Integer ->
@@ -4953,9 +5208,9 @@ d_Rt_2960 ::
   T_Rd_2058 ->
   MAlonzo.Code.Once.Spec.Context.T__'8849''7512'__84 ->
   MAlonzo.Code.Once.LinCore.Core.T_Tm_758
-d_Rt_2960 v0 ~v1 v2 v3 v4 ~v5 v6 v7 v8 v9 v10
-  = du_Rt_2960 v0 v2 v3 v4 v6 v7 v8 v9 v10
-du_Rt_2960 ::
+d_Rt_3140 v0 ~v1 v2 v3 v4 ~v5 v6 v7 v8 v9 v10
+  = du_Rt_3140 v0 v2 v3 v4 v6 v7 v8 v9 v10
+du_Rt_3140 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   Integer ->
   Integer ->
@@ -4966,11 +5221,11 @@ du_Rt_2960 ::
   T_Rd_2058 ->
   MAlonzo.Code.Once.Spec.Context.T__'8849''7512'__84 ->
   MAlonzo.Code.Once.LinCore.Core.T_Tm_758
-du_Rt_2960 v0 v1 v2 v3 v4 v5 v6 v7 v8
+du_Rt_3140 v0 v1 v2 v3 v4 v5 v6 v7 v8
   = case coe v7 of
       C_rd'45'path_2072 v12
         -> coe
-             du_Rp_2800 (coe v2) (coe v3) (coe v4) (coe v6) (coe v12) (coe v8)
+             du_Rp_2978 (coe v2) (coe v3) (coe v4) (coe v6) (coe v12) (coe v8)
              (coe MAlonzo.Code.Once.LinCore.Core.C_bcopy_1026)
       C_rd'45'int_2076
         -> case coe v6 of
@@ -4999,7 +5254,7 @@ du_Rt_2960 v0 v1 v2 v3 v4 v5 v6 v7 v8
                        MAlonzo.Code.Once.LinCore.Core.C_blift_984
                        (coe du_numL_1252 (coe v20) (coe v22) (coe v23) (coe v24)))
                     (coe
-                       du_Rt_2960 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
+                       du_Rt_3140 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
                        (coe
                           MAlonzo.Code.Once.Spec.Theory.du_symDom_86 (coe v20) (coe v22))
                        (coe v25) (coe v16) (coe v8))
@@ -5018,7 +5273,7 @@ du_Rt_2960 v0 v1 v2 v3 v4 v5 v6 v7 v8
                            (coe
                               MAlonzo.Code.Once.LinCore.Core.C__'8855'l__808
                               (coe
-                                 du_Rt_2960 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v17)
+                                 du_Rt_3140 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v17)
                                  (coe v25) (coe v15)
                                  (coe
                                     MAlonzo.Code.Once.Context.du_'8849''7512''45'trans_180 (coe v21)
@@ -5031,7 +5286,7 @@ du_Rt_2960 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                        (coe v21) (coe v22))
                                     (coe v8)))
                               (coe
-                                 du_Rt_2960 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v18)
+                                 du_Rt_3140 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v18)
                                  (coe v26) (coe v16)
                                  (coe
                                     MAlonzo.Code.Once.Context.du_'8849''7512''45'trans_180 (coe v22)
@@ -5050,17 +5305,74 @@ du_Rt_2960 v0 v1 v2 v3 v4 v5 v6 v7 v8
         -> case coe v6 of
              MAlonzo.Code.Once.Surface.Syntax.C_coerce_230 v18 v20 v21
                -> coe
-                    du_coeRd_2908 (coe v0) (coe v1) (coe v18) (coe v5) (coe v20)
+                    du_coeRd_3088 (coe v0) (coe v1) (coe v18) (coe v5) (coe v20)
                     (coe
                        MAlonzo.Code.Once.Surface.CoerceIR.du_voidFree'63'_350 (coe v18)
                        (coe v5) (coe v20))
                     (coe
-                       du_Rt_2960 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v18)
+                       du_Rt_3140 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v18)
                        (coe v21) (coe v14) (coe v8))
+             _ -> MAlonzo.RTE.mazUnreachableError
+      C_rd'45'app_2136 v15 v16
+        -> case coe v6 of
+             MAlonzo.Code.Once.Surface.Syntax.C_app_54 v19 v20 v21 v23 v24 v25
+               -> coe
+                    MAlonzo.Code.Once.LinCore.Core.C__'8728'l__796
+                    (MAlonzo.Code.Once.LinCore.FromIR.d_'10218'_'10219'_924
+                       (coe v0)
+                       (coe MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_56 (coe v1) (coe v21)))
+                    (coe
+                       du_Rp_2978 (coe v2) (coe v3) (coe v4) (coe v24) (coe v15)
+                       (coe
+                          MAlonzo.Code.Once.Context.du_'8849''7512''45'trans_180 (coe v19)
+                          (coe
+                             MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60 (coe v19)
+                             (coe
+                                MAlonzo.Code.Once.Spec.Context.du__'42''7512'__72
+                                (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) (coe v20)))
+                          (coe v4)
+                          (coe
+                             MAlonzo.Code.Once.Context.du_'8849''7512''45''43''737'_126
+                             (coe v19)
+                             (coe
+                                MAlonzo.Code.Once.Spec.Context.du__'42''7512'__72
+                                (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) (coe v20)))
+                          (coe v8))
+                       (coe MAlonzo.Code.Once.LinCore.Core.C_bev_1084))
+                    (coe
+                       du_Rt_3140 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v21)
+                       (coe v25) (coe v16)
+                       (coe
+                          MAlonzo.Code.Once.Context.du_'8849''7512''45'trans_180 (coe v20)
+                          (coe
+                             MAlonzo.Code.Once.Spec.Context.du__'42''7512'__72
+                             (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) (coe v20))
+                          (coe v4)
+                          (coe
+                             MAlonzo.Code.Once.Context.du_'8849''7512''45''42'Many_206
+                             (coe v20))
+                          (coe
+                             MAlonzo.Code.Once.Context.du_'8849''7512''45'trans_180
+                             (coe
+                                MAlonzo.Code.Once.Spec.Context.du__'42''7512'__72
+                                (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) (coe v20))
+                             (coe
+                                MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60 (coe v19)
+                                (coe
+                                   MAlonzo.Code.Once.Spec.Context.du__'42''7512'__72
+                                   (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) (coe v20)))
+                             (coe v4)
+                             (coe
+                                MAlonzo.Code.Once.Context.du_'8849''7512''45''43''691'_142
+                                (coe v19)
+                                (coe
+                                   MAlonzo.Code.Once.Spec.Context.du__'42''7512'__72
+                                   (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) (coe v20)))
+                             (coe v8))))
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.LinCore.FromExpr._.k-Rt
-d_k'45'Rt_3016 ::
+d_k'45'Rt_3206 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.LinCore.Core.T_Cx_728 ->
   Integer ->
@@ -5073,9 +5385,9 @@ d_k'45'Rt_3016 ::
   T_Rd_2058 ->
   MAlonzo.Code.Once.Spec.Context.T__'8849''7512'__84 ->
   MAlonzo.Code.Once.LinCore.Core.T_Blk_768
-d_k'45'Rt_3016 ~v0 ~v1 ~v2 v3 v4 ~v5 v6 v7 v8 v9 v10
-  = du_k'45'Rt_3016 v3 v4 v6 v7 v8 v9 v10
-du_k'45'Rt_3016 ::
+d_k'45'Rt_3206 ~v0 ~v1 ~v2 v3 v4 ~v5 v6 v7 v8 v9 v10
+  = du_k'45'Rt_3206 v3 v4 v6 v7 v8 v9 v10
+du_k'45'Rt_3206 ::
   Integer ->
   MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
@@ -5084,11 +5396,11 @@ du_k'45'Rt_3016 ::
   T_Rd_2058 ->
   MAlonzo.Code.Once.Spec.Context.T__'8849''7512'__84 ->
   MAlonzo.Code.Once.LinCore.Core.T_Blk_768
-du_k'45'Rt_3016 v0 v1 v2 v3 v4 v5 v6
+du_k'45'Rt_3206 v0 v1 v2 v3 v4 v5 v6
   = case coe v5 of
       C_rd'45'path_2072 v10
         -> coe
-             du_k'45'Rp_2860 (coe v0) (coe v1) (coe v2) (coe v4) (coe v10)
+             du_k'45'Rp_3040 (coe v0) (coe v1) (coe v2) (coe v4) (coe v10)
              (coe v6) (coe MAlonzo.Code.Once.LinCore.Core.C_k'45'copy_1422)
       C_rd'45'int_2076
         -> coe
@@ -5107,7 +5419,7 @@ du_k'45'Rt_3016 v0 v1 v2 v3 v4 v5 v6
                        MAlonzo.Code.Once.LinCore.Core.C_k'45'lift_1370
                        (coe du_k'45'numL_1294 (coe v18) (coe v20)))
                     (coe
-                       du_k'45'Rt_3016 (coe v0) (coe v1) (coe v2)
+                       du_k'45'Rt_3206 (coe v0) (coe v1) (coe v2)
                        (coe
                           MAlonzo.Code.Once.Spec.Theory.du_symDom_86 (coe v18) (coe v20))
                        (coe v23) (coe v14) (coe v6))
@@ -5122,7 +5434,7 @@ du_k'45'Rt_3016 v0 v1 v2 v3 v4 v5 v6
                            (coe
                               MAlonzo.Code.Once.LinCore.Core.C_k'45''8855'_1182
                               (coe
-                                 du_k'45'Rt_3016 (coe v0) (coe v1) (coe v2) (coe v15) (coe v23)
+                                 du_k'45'Rt_3206 (coe v0) (coe v1) (coe v2) (coe v15) (coe v23)
                                  (coe v13)
                                  (coe
                                     MAlonzo.Code.Once.Context.du_'8849''7512''45'trans_180 (coe v19)
@@ -5135,7 +5447,7 @@ du_k'45'Rt_3016 v0 v1 v2 v3 v4 v5 v6
                                        (coe v19) (coe v20))
                                     (coe v6)))
                               (coe
-                                 du_k'45'Rt_3016 (coe v0) (coe v1) (coe v2) (coe v16) (coe v24)
+                                 du_k'45'Rt_3206 (coe v0) (coe v1) (coe v2) (coe v16) (coe v24)
                                  (coe v14)
                                  (coe
                                     MAlonzo.Code.Once.Context.du_'8849''7512''45'trans_180 (coe v20)
@@ -5154,17 +5466,71 @@ du_k'45'Rt_3016 v0 v1 v2 v3 v4 v5 v6
         -> case coe v4 of
              MAlonzo.Code.Once.Surface.Syntax.C_coerce_230 v16 v18 v19
                -> coe
-                    du_k'45'coeRd_2934 (coe v16) (coe v3) (coe v18)
+                    du_k'45'coeRd_3114 (coe v16) (coe v3) (coe v18)
                     (coe
                        MAlonzo.Code.Once.Surface.CoerceIR.du_voidFree'63'_350 (coe v16)
                        (coe v3) (coe v18))
                     (coe
-                       du_k'45'Rt_3016 (coe v0) (coe v1) (coe v2) (coe v16) (coe v19)
+                       du_k'45'Rt_3206 (coe v0) (coe v1) (coe v2) (coe v16) (coe v19)
                        (coe v12) (coe v6))
+             _ -> MAlonzo.RTE.mazUnreachableError
+      C_rd'45'app_2136 v13 v14
+        -> case coe v4 of
+             MAlonzo.Code.Once.Surface.Syntax.C_app_54 v17 v18 v19 v21 v22 v23
+               -> coe
+                    MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1166
+                    (coe
+                       du_k'45'Rp_3040 (coe v0) (coe v1) (coe v2) (coe v22) (coe v13)
+                       (coe
+                          MAlonzo.Code.Once.Context.du_'8849''7512''45'trans_180 (coe v17)
+                          (coe
+                             MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60 (coe v17)
+                             (coe
+                                MAlonzo.Code.Once.Spec.Context.du__'42''7512'__72
+                                (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) (coe v18)))
+                          (coe v2)
+                          (coe
+                             MAlonzo.Code.Once.Context.du_'8849''7512''45''43''737'_126
+                             (coe v17)
+                             (coe
+                                MAlonzo.Code.Once.Spec.Context.du__'42''7512'__72
+                                (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) (coe v18)))
+                          (coe v6))
+                       (coe MAlonzo.Code.Once.LinCore.Core.C_k'45'bev_1480))
+                    (coe
+                       du_k'45'Rt_3206 (coe v0) (coe v1) (coe v2) (coe v19) (coe v23)
+                       (coe v14)
+                       (coe
+                          MAlonzo.Code.Once.Context.du_'8849''7512''45'trans_180 (coe v18)
+                          (coe
+                             MAlonzo.Code.Once.Spec.Context.du__'42''7512'__72
+                             (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) (coe v18))
+                          (coe v2)
+                          (coe
+                             MAlonzo.Code.Once.Context.du_'8849''7512''45''42'Many_206
+                             (coe v18))
+                          (coe
+                             MAlonzo.Code.Once.Context.du_'8849''7512''45'trans_180
+                             (coe
+                                MAlonzo.Code.Once.Spec.Context.du__'42''7512'__72
+                                (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) (coe v18))
+                             (coe
+                                MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60 (coe v17)
+                                (coe
+                                   MAlonzo.Code.Once.Spec.Context.du__'42''7512'__72
+                                   (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) (coe v18)))
+                             (coe v2)
+                             (coe
+                                MAlonzo.Code.Once.Context.du_'8849''7512''45''43''691'_142
+                                (coe v17)
+                                (coe
+                                   MAlonzo.Code.Once.Spec.Context.du__'42''7512'__72
+                                   (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) (coe v18)))
+                             (coe v6))))
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.LinCore.FromExpr._.lentS
-d_lentS_3068 ::
+d_lentS_3268 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.LinCore.Core.T_Cx_728 ->
   Integer ->
@@ -5175,9 +5541,9 @@ d_lentS_3068 ::
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 ->
   T_Rd_2058 -> MAlonzo.Code.Once.LinCore.Core.T_Tm_758
-d_lentS_3068 v0 ~v1 v2 v3 v4 v5 v6 v7 v8 v9
-  = du_lentS_3068 v0 v2 v3 v4 v5 v6 v7 v8 v9
-du_lentS_3068 ::
+d_lentS_3268 v0 ~v1 v2 v3 v4 v5 v6 v7 v8 v9
+  = du_lentS_3268 v0 v2 v3 v4 v5 v6 v7 v8 v9
+du_lentS_3268 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   Integer ->
   Integer ->
@@ -5187,7 +5553,7 @@ du_lentS_3068 ::
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 ->
   T_Rd_2058 -> MAlonzo.Code.Once.LinCore.Core.T_Tm_758
-du_lentS_3068 v0 v1 v2 v3 v4 v5 v6 v7 v8
+du_lentS_3268 v0 v1 v2 v3 v4 v5 v6 v7 v8
   = coe
       MAlonzo.Code.Once.LinCore.Core.C__'8728'l__796
       (coe
@@ -5224,7 +5590,7 @@ du_lentS_3068 v0 v1 v2 v3 v4 v5 v6 v7 v8
             (coe
                MAlonzo.Code.Once.LinCore.Core.C_bsnd_1004
                (coe
-                  du_Rt_2960 (coe v0) (coe v1) (coe v2) (coe v3)
+                  du_Rt_3140 (coe v0) (coe v1) (coe v2) (coe v3)
                   (coe
                      MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60 (coe v4)
                      (coe v5))
@@ -5234,7 +5600,7 @@ du_lentS_3068 v0 v1 v2 v3 v4 v5 v6 v7 v8
                      (coe v5)))))
          (coe MAlonzo.Code.Once.LinCore.Core.C_ρl'8315'_820))
 -- Once.LinCore.FromExpr._.k-lentS
-d_k'45'lentS_3094 ::
+d_k'45'lentS_3294 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.LinCore.Core.T_Cx_728 ->
   Integer ->
@@ -5245,9 +5611,9 @@ d_k'45'lentS_3094 ::
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 ->
   T_Rd_2058 -> MAlonzo.Code.Once.LinCore.Core.T_Blk_768
-d_k'45'lentS_3094 ~v0 ~v1 ~v2 v3 v4 v5 v6 v7 v8 v9
-  = du_k'45'lentS_3094 v3 v4 v5 v6 v7 v8 v9
-du_k'45'lentS_3094 ::
+d_k'45'lentS_3294 ~v0 ~v1 ~v2 v3 v4 v5 v6 v7 v8 v9
+  = du_k'45'lentS_3294 v3 v4 v5 v6 v7 v8 v9
+du_k'45'lentS_3294 ::
   Integer ->
   MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
@@ -5255,7 +5621,7 @@ du_k'45'lentS_3094 ::
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 ->
   T_Rd_2058 -> MAlonzo.Code.Once.LinCore.Core.T_Blk_768
-du_k'45'lentS_3094 v0 v1 v2 v3 v4 v5 v6
+du_k'45'lentS_3294 v0 v1 v2 v3 v4 v5 v6
   = coe
       MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1166
       (coe
@@ -5276,7 +5642,7 @@ du_k'45'lentS_3094 v0 v1 v2 v3 v4 v5 v6
             (coe
                MAlonzo.Code.Once.LinCore.Core.C_k'45'snd_1394
                (coe
-                  du_k'45'Rt_3016 (coe v0) (coe v1)
+                  du_k'45'Rt_3206 (coe v0) (coe v1)
                   (coe
                      MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60 (coe v2)
                      (coe v3))
@@ -5286,7 +5652,7 @@ du_k'45'lentS_3094 v0 v1 v2 v3 v4 v5 v6
                      (coe v3)))))
          (coe MAlonzo.Code.Once.LinCore.Core.C_k'45'ρ'8315'_1194))
 -- Once.LinCore.FromExpr._.pjT
-d_pjT_3114 ::
+d_pjT_3314 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.LinCore.Core.T_Cx_728 ->
   Integer ->
@@ -5294,17 +5660,17 @@ d_pjT_3114 ::
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Surface.Map.T_Map_8 ->
-  T_IsPj_2516 -> MAlonzo.Code.Once.LinCore.Core.T_Tm_758
-d_pjT_3114 v0 ~v1 v2 ~v3 ~v4 v5 ~v6 v7 = du_pjT_3114 v0 v2 v5 v7
-du_pjT_3114 ::
+  T_IsPj_2688 -> MAlonzo.Code.Once.LinCore.Core.T_Tm_758
+d_pjT_3314 v0 ~v1 v2 ~v3 ~v4 v5 ~v6 v7 = du_pjT_3314 v0 v2 v5 v7
+du_pjT_3314 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   Integer ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  T_IsPj_2516 -> MAlonzo.Code.Once.LinCore.Core.T_Tm_758
-du_pjT_3114 v0 v1 v2 v3
+  T_IsPj_2688 -> MAlonzo.Code.Once.LinCore.Core.T_Tm_758
+du_pjT_3314 v0 v1 v2 v3
   = case coe v3 of
-      C_pj'45'id_2522 -> coe MAlonzo.Code.Once.LinCore.Core.C_lid_786
-      C_pj'45'fst_2528
+      C_pj'45'id_2694 -> coe MAlonzo.Code.Once.LinCore.Core.C_lid_786
+      C_pj'45'fst_2700
         -> coe
              MAlonzo.Code.Once.LinCore.Core.C__'8728'l__796
              (coe
@@ -5316,7 +5682,7 @@ du_pjT_3114 v0 v1 v2 v3
                 MAlonzo.Code.Once.LinCore.Core.C__'8855'l__808
                 (coe MAlonzo.Code.Once.LinCore.Core.C_lid_786)
                 (coe MAlonzo.Code.Once.LinCore.Core.C_drop_872))
-      C_pj'45'snd_2534
+      C_pj'45'snd_2706
         -> coe
              MAlonzo.Code.Once.LinCore.Core.C__'8728'l__796
              (coe
@@ -5330,7 +5696,7 @@ du_pjT_3114 v0 v1 v2 v3
                 (coe MAlonzo.Code.Once.LinCore.Core.C_lid_786))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.LinCore.FromExpr._.k-pjT
-d_k'45'pjT_3128 ::
+d_k'45'pjT_3328 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.LinCore.Core.T_Cx_728 ->
   Integer ->
@@ -5338,16 +5704,16 @@ d_k'45'pjT_3128 ::
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Surface.Map.T_Map_8 ->
-  T_IsPj_2516 -> MAlonzo.Code.Once.LinCore.Core.T_Blk_768
-d_k'45'pjT_3128 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 v7
-  = du_k'45'pjT_3128 v7
-du_k'45'pjT_3128 ::
-  T_IsPj_2516 -> MAlonzo.Code.Once.LinCore.Core.T_Blk_768
-du_k'45'pjT_3128 v0
+  T_IsPj_2688 -> MAlonzo.Code.Once.LinCore.Core.T_Blk_768
+d_k'45'pjT_3328 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 v7
+  = du_k'45'pjT_3328 v7
+du_k'45'pjT_3328 ::
+  T_IsPj_2688 -> MAlonzo.Code.Once.LinCore.Core.T_Blk_768
+du_k'45'pjT_3328 v0
   = case coe v0 of
-      C_pj'45'id_2522
+      C_pj'45'id_2694
         -> coe MAlonzo.Code.Once.LinCore.Core.C_k'45'id_1152
-      C_pj'45'fst_2528
+      C_pj'45'fst_2700
         -> coe
              MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1166
              (coe MAlonzo.Code.Once.LinCore.Core.C_k'45'ρ_1188)
@@ -5355,7 +5721,7 @@ du_k'45'pjT_3128 v0
                 MAlonzo.Code.Once.LinCore.Core.C_k'45''8855'_1182
                 (coe MAlonzo.Code.Once.LinCore.Core.C_k'45'id_1152)
                 (coe MAlonzo.Code.Once.LinCore.Core.C_k'45'drop_1246))
-      C_pj'45'snd_2534
+      C_pj'45'snd_2706
         -> coe
              MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1166
              (coe MAlonzo.Code.Once.LinCore.Core.C_k'45'lul_1200)
@@ -5365,18 +5731,18 @@ du_k'45'pjT_3128 v0
                 (coe MAlonzo.Code.Once.LinCore.Core.C_k'45'id_1152))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.LinCore.FromExpr._.rdFst
-d_rdFst_3136 ::
+d_rdFst_3336 ::
   MAlonzo.Code.Once.LinCore.Core.T_Cx_728 ->
   MAlonzo.Code.Once.LinCore.Core.T_LTy_178 ->
   MAlonzo.Code.Once.LinCore.Core.T_LTy_178 ->
   MAlonzo.Code.Once.LinCore.Core.T_LTy_178 ->
   MAlonzo.Code.Once.LinCore.Core.T_Tm_758
-d_rdFst_3136 ~v0 ~v1 v2 v3 = du_rdFst_3136 v2 v3
-du_rdFst_3136 ::
+d_rdFst_3336 ~v0 ~v1 v2 v3 = du_rdFst_3336 v2 v3
+du_rdFst_3336 ::
   MAlonzo.Code.Once.LinCore.Core.T_LTy_178 ->
   MAlonzo.Code.Once.LinCore.Core.T_LTy_178 ->
   MAlonzo.Code.Once.LinCore.Core.T_Tm_758
-du_rdFst_3136 v0 v1
+du_rdFst_3336 v0 v1
   = coe
       MAlonzo.Code.Once.LinCore.Core.C__'8728'l__796
       (coe
@@ -5393,18 +5759,18 @@ du_rdFst_3136 v0 v1
                (coe MAlonzo.Code.Once.LinCore.Core.C_bcopy_1026))))
       (coe MAlonzo.Code.Once.LinCore.Core.C_ρl'8315'_820)
 -- Once.LinCore.FromExpr._.rdSnd
-d_rdSnd_3144 ::
+d_rdSnd_3344 ::
   MAlonzo.Code.Once.LinCore.Core.T_Cx_728 ->
   MAlonzo.Code.Once.LinCore.Core.T_LTy_178 ->
   MAlonzo.Code.Once.LinCore.Core.T_LTy_178 ->
   MAlonzo.Code.Once.LinCore.Core.T_LTy_178 ->
   MAlonzo.Code.Once.LinCore.Core.T_Tm_758
-d_rdSnd_3144 ~v0 ~v1 v2 v3 = du_rdSnd_3144 v2 v3
-du_rdSnd_3144 ::
+d_rdSnd_3344 ~v0 ~v1 v2 v3 = du_rdSnd_3344 v2 v3
+du_rdSnd_3344 ::
   MAlonzo.Code.Once.LinCore.Core.T_LTy_178 ->
   MAlonzo.Code.Once.LinCore.Core.T_LTy_178 ->
   MAlonzo.Code.Once.LinCore.Core.T_Tm_758
-du_rdSnd_3144 v0 v1
+du_rdSnd_3344 v0 v1
   = coe
       MAlonzo.Code.Once.LinCore.Core.C__'8728'l__796
       (coe
@@ -5421,15 +5787,15 @@ du_rdSnd_3144 v0 v1
                (coe MAlonzo.Code.Once.LinCore.Core.C_bcopy_1026))))
       (coe MAlonzo.Code.Once.LinCore.Core.C_ρl'8315'_820)
 -- Once.LinCore.FromExpr._.k-rdFst
-d_k'45'rdFst_3152 ::
+d_k'45'rdFst_3352 ::
   MAlonzo.Code.Once.LinCore.Core.T_Cx_728 ->
   MAlonzo.Code.Once.LinCore.Core.T_LTy_178 ->
   MAlonzo.Code.Once.LinCore.Core.T_LTy_178 ->
   MAlonzo.Code.Once.LinCore.Core.T_LTy_178 ->
   MAlonzo.Code.Once.LinCore.Core.T_Blk_768
-d_k'45'rdFst_3152 ~v0 ~v1 ~v2 ~v3 = du_k'45'rdFst_3152
-du_k'45'rdFst_3152 :: MAlonzo.Code.Once.LinCore.Core.T_Blk_768
-du_k'45'rdFst_3152
+d_k'45'rdFst_3352 ~v0 ~v1 ~v2 ~v3 = du_k'45'rdFst_3352
+du_k'45'rdFst_3352 :: MAlonzo.Code.Once.LinCore.Core.T_Blk_768
+du_k'45'rdFst_3352
   = coe
       MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1166
       (coe
@@ -5441,15 +5807,15 @@ du_k'45'rdFst_3152
                (coe MAlonzo.Code.Once.LinCore.Core.C_k'45'copy_1422))))
       (coe MAlonzo.Code.Once.LinCore.Core.C_k'45'ρ'8315'_1194)
 -- Once.LinCore.FromExpr._.k-rdSnd
-d_k'45'rdSnd_3160 ::
+d_k'45'rdSnd_3360 ::
   MAlonzo.Code.Once.LinCore.Core.T_Cx_728 ->
   MAlonzo.Code.Once.LinCore.Core.T_LTy_178 ->
   MAlonzo.Code.Once.LinCore.Core.T_LTy_178 ->
   MAlonzo.Code.Once.LinCore.Core.T_LTy_178 ->
   MAlonzo.Code.Once.LinCore.Core.T_Blk_768
-d_k'45'rdSnd_3160 ~v0 ~v1 ~v2 ~v3 = du_k'45'rdSnd_3160
-du_k'45'rdSnd_3160 :: MAlonzo.Code.Once.LinCore.Core.T_Blk_768
-du_k'45'rdSnd_3160
+d_k'45'rdSnd_3360 ~v0 ~v1 ~v2 ~v3 = du_k'45'rdSnd_3360
+du_k'45'rdSnd_3360 :: MAlonzo.Code.Once.LinCore.Core.T_Blk_768
+du_k'45'rdSnd_3360
   = coe
       MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1166
       (coe
@@ -5461,7 +5827,7 @@ du_k'45'rdSnd_3160
                (coe MAlonzo.Code.Once.LinCore.Core.C_k'45'copy_1422))))
       (coe MAlonzo.Code.Once.LinCore.Core.C_k'45'ρ'8315'_1194)
 -- Once.LinCore.FromExpr._.splitP
-d_splitP_3176 ::
+d_splitP_3376 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.LinCore.Core.T_Cx_728 ->
   Integer ->
@@ -5471,24 +5837,24 @@ d_splitP_3176 ::
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Surface.Map.T_Map_8 ->
   MAlonzo.Code.Once.Surface.Map.T_Map_8 ->
-  T_IsPj_2516 ->
-  T_IsPj_2516 -> MAlonzo.Code.Once.LinCore.Core.T_Tm_758
-d_splitP_3176 v0 ~v1 v2 ~v3 v4 v5 v6 ~v7 ~v8 v9 v10
-  = du_splitP_3176 v0 v2 v4 v5 v6 v9 v10
-du_splitP_3176 ::
+  T_IsPj_2688 ->
+  T_IsPj_2688 -> MAlonzo.Code.Once.LinCore.Core.T_Tm_758
+d_splitP_3376 v0 ~v1 v2 ~v3 v4 v5 v6 ~v7 ~v8 v9 v10
+  = du_splitP_3376 v0 v2 v4 v5 v6 v9 v10
+du_splitP_3376 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   Integer ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  T_IsPj_2516 ->
-  T_IsPj_2516 -> MAlonzo.Code.Once.LinCore.Core.T_Tm_758
-du_splitP_3176 v0 v1 v2 v3 v4 v5 v6
+  T_IsPj_2688 ->
+  T_IsPj_2688 -> MAlonzo.Code.Once.LinCore.Core.T_Tm_758
+du_splitP_3376 v0 v1 v2 v3 v4 v5 v6
   = case coe v5 of
-      C_pj'45'id_2522
+      C_pj'45'id_2694
         -> case coe v6 of
-             C_pj'45'id_2522 -> coe MAlonzo.Code.Once.LinCore.Core.C_dup_866
-             C_pj'45'fst_2528
+             C_pj'45'id_2694 -> coe MAlonzo.Code.Once.LinCore.Core.C_dup_866
+             C_pj'45'fst_2700
                -> case coe v2 of
                     MAlonzo.Code.Once.Spec.Type.C__'42'__22 v10 v11
                       -> coe
@@ -5516,7 +5882,7 @@ du_splitP_3176 v0 v1 v2 v3 v4 v5 v6
                                     (coe MAlonzo.Code.Once.LinCore.Core.C_bcopy_1026))))
                            (coe MAlonzo.Code.Once.LinCore.Core.C_ρl'8315'_820)
                     _ -> MAlonzo.RTE.mazUnreachableError
-             C_pj'45'snd_2534
+             C_pj'45'snd_2706
                -> case coe v2 of
                     MAlonzo.Code.Once.Spec.Type.C__'42'__22 v10 v11
                       -> coe
@@ -5546,11 +5912,11 @@ du_splitP_3176 v0 v1 v2 v3 v4 v5 v6
                            (coe MAlonzo.Code.Once.LinCore.Core.C_ρl'8315'_820)
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      C_pj'45'fst_2528
+      C_pj'45'fst_2700
         -> case coe v2 of
              MAlonzo.Code.Once.Spec.Type.C__'42'__22 v9 v10
                -> case coe v6 of
-                    C_pj'45'id_2522
+                    C_pj'45'id_2694
                       -> coe
                            MAlonzo.Code.Once.LinCore.Core.C__'8728'l__796
                            (coe
@@ -5587,20 +5953,20 @@ du_splitP_3176 v0 v1 v2 v3 v4 v5 v6
                                        MAlonzo.Code.Once.LinCore.Core.C_bfst_994
                                        (coe MAlonzo.Code.Once.LinCore.Core.C_bcopy_1026))))
                               (coe MAlonzo.Code.Once.LinCore.Core.C_ρl'8315'_820))
-                    C_pj'45'fst_2528
+                    C_pj'45'fst_2700
                       -> coe
                            MAlonzo.Code.Once.LinCore.Core.C__'8728'l__796
                            (d_ty_716 (coe v0) (coe v1) (coe v3))
                            (coe MAlonzo.Code.Once.LinCore.Core.C_dup_866)
-                           (coe du_pjT_3114 (coe v0) (coe v1) (coe v3) (coe C_pj'45'fst_2528))
-                    C_pj'45'snd_2534 -> coe MAlonzo.Code.Once.LinCore.Core.C_lid_786
+                           (coe du_pjT_3314 (coe v0) (coe v1) (coe v3) (coe C_pj'45'fst_2700))
+                    C_pj'45'snd_2706 -> coe MAlonzo.Code.Once.LinCore.Core.C_lid_786
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      C_pj'45'snd_2534
+      C_pj'45'snd_2706
         -> case coe v2 of
              MAlonzo.Code.Once.Spec.Type.C__'42'__22 v9 v10
                -> case coe v6 of
-                    C_pj'45'id_2522
+                    C_pj'45'id_2694
                       -> coe
                            MAlonzo.Code.Once.LinCore.Core.C__'8728'l__796
                            (coe
@@ -5637,18 +6003,18 @@ du_splitP_3176 v0 v1 v2 v3 v4 v5 v6
                                        MAlonzo.Code.Once.LinCore.Core.C_bsnd_1004
                                        (coe MAlonzo.Code.Once.LinCore.Core.C_bcopy_1026))))
                               (coe MAlonzo.Code.Once.LinCore.Core.C_ρl'8315'_820))
-                    C_pj'45'fst_2528 -> coe MAlonzo.Code.Once.LinCore.Core.C_lswap_860
-                    C_pj'45'snd_2534
+                    C_pj'45'fst_2700 -> coe MAlonzo.Code.Once.LinCore.Core.C_lswap_860
+                    C_pj'45'snd_2706
                       -> coe
                            MAlonzo.Code.Once.LinCore.Core.C__'8728'l__796
                            (d_ty_716 (coe v0) (coe v1) (coe v3))
                            (coe MAlonzo.Code.Once.LinCore.Core.C_dup_866)
-                           (coe du_pjT_3114 (coe v0) (coe v1) (coe v3) (coe C_pj'45'snd_2534))
+                           (coe du_pjT_3314 (coe v0) (coe v1) (coe v3) (coe C_pj'45'snd_2706))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.LinCore.FromExpr._.k-splitP
-d_k'45'splitP_3204 ::
+d_k'45'splitP_3404 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.LinCore.Core.T_Cx_728 ->
   Integer ->
@@ -5658,20 +6024,20 @@ d_k'45'splitP_3204 ::
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Surface.Map.T_Map_8 ->
   MAlonzo.Code.Once.Surface.Map.T_Map_8 ->
-  T_IsPj_2516 ->
-  T_IsPj_2516 -> MAlonzo.Code.Once.LinCore.Core.T_Blk_768
-d_k'45'splitP_3204 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 v9 v10
-  = du_k'45'splitP_3204 v9 v10
-du_k'45'splitP_3204 ::
-  T_IsPj_2516 ->
-  T_IsPj_2516 -> MAlonzo.Code.Once.LinCore.Core.T_Blk_768
-du_k'45'splitP_3204 v0 v1
+  T_IsPj_2688 ->
+  T_IsPj_2688 -> MAlonzo.Code.Once.LinCore.Core.T_Blk_768
+d_k'45'splitP_3404 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 v9 v10
+  = du_k'45'splitP_3404 v9 v10
+du_k'45'splitP_3404 ::
+  T_IsPj_2688 ->
+  T_IsPj_2688 -> MAlonzo.Code.Once.LinCore.Core.T_Blk_768
+du_k'45'splitP_3404 v0 v1
   = case coe v0 of
-      C_pj'45'id_2522
+      C_pj'45'id_2694
         -> case coe v1 of
-             C_pj'45'id_2522
+             C_pj'45'id_2694
                -> coe MAlonzo.Code.Once.LinCore.Core.C_k'45'dup_1240
-             C_pj'45'fst_2528
+             C_pj'45'fst_2700
                -> coe
                     MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1166
                     (coe
@@ -5682,7 +6048,7 @@ du_k'45'splitP_3204 v0 v1
                              MAlonzo.Code.Once.LinCore.Core.C_k'45'fst_1382
                              (coe MAlonzo.Code.Once.LinCore.Core.C_k'45'copy_1422))))
                     (coe MAlonzo.Code.Once.LinCore.Core.C_k'45'ρ'8315'_1194)
-             C_pj'45'snd_2534
+             C_pj'45'snd_2706
                -> coe
                     MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1166
                     (coe
@@ -5694,9 +6060,9 @@ du_k'45'splitP_3204 v0 v1
                              (coe MAlonzo.Code.Once.LinCore.Core.C_k'45'copy_1422))))
                     (coe MAlonzo.Code.Once.LinCore.Core.C_k'45'ρ'8315'_1194)
              _ -> MAlonzo.RTE.mazUnreachableError
-      C_pj'45'fst_2528
+      C_pj'45'fst_2700
         -> case coe v1 of
-             C_pj'45'id_2522
+             C_pj'45'id_2694
                -> coe
                     MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1166
                     (coe MAlonzo.Code.Once.LinCore.Core.C_k'45'swap_1234)
@@ -5710,17 +6076,17 @@ du_k'45'splitP_3204 v0 v1
                                 MAlonzo.Code.Once.LinCore.Core.C_k'45'fst_1382
                                 (coe MAlonzo.Code.Once.LinCore.Core.C_k'45'copy_1422))))
                        (coe MAlonzo.Code.Once.LinCore.Core.C_k'45'ρ'8315'_1194))
-             C_pj'45'fst_2528
+             C_pj'45'fst_2700
                -> coe
                     MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1166
                     (coe MAlonzo.Code.Once.LinCore.Core.C_k'45'dup_1240)
-                    (coe du_k'45'pjT_3128 (coe C_pj'45'fst_2528))
-             C_pj'45'snd_2534
+                    (coe du_k'45'pjT_3328 (coe C_pj'45'fst_2700))
+             C_pj'45'snd_2706
                -> coe MAlonzo.Code.Once.LinCore.Core.C_k'45'id_1152
              _ -> MAlonzo.RTE.mazUnreachableError
-      C_pj'45'snd_2534
+      C_pj'45'snd_2706
         -> case coe v1 of
-             C_pj'45'id_2522
+             C_pj'45'id_2694
                -> coe
                     MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1166
                     (coe MAlonzo.Code.Once.LinCore.Core.C_k'45'swap_1234)
@@ -5734,17 +6100,17 @@ du_k'45'splitP_3204 v0 v1
                                 MAlonzo.Code.Once.LinCore.Core.C_k'45'snd_1394
                                 (coe MAlonzo.Code.Once.LinCore.Core.C_k'45'copy_1422))))
                        (coe MAlonzo.Code.Once.LinCore.Core.C_k'45'ρ'8315'_1194))
-             C_pj'45'fst_2528
+             C_pj'45'fst_2700
                -> coe MAlonzo.Code.Once.LinCore.Core.C_k'45'swap_1234
-             C_pj'45'snd_2534
+             C_pj'45'snd_2706
                -> coe
                     MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1166
                     (coe MAlonzo.Code.Once.LinCore.Core.C_k'45'dup_1240)
-                    (coe du_k'45'pjT_3128 (coe C_pj'45'snd_2534))
+                    (coe du_k'45'pjT_3328 (coe C_pj'45'snd_2706))
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.LinCore.FromExpr._.castΦ
-d_castΦ_3234 ::
+d_castΦ_3434 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.LinCore.Core.T_Cx_728 ->
   (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
@@ -5761,14 +6127,14 @@ d_castΦ_3234 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.LinCore.Core.T_Tm_758 ->
   MAlonzo.Code.Once.LinCore.Core.T_Tm_758
-d_castΦ_3234 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 v10
-  = du_castΦ_3234 v10
-du_castΦ_3234 ::
+d_castΦ_3434 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 v10
+  = du_castΦ_3434 v10
+du_castΦ_3434 ::
   MAlonzo.Code.Once.LinCore.Core.T_Tm_758 ->
   MAlonzo.Code.Once.LinCore.Core.T_Tm_758
-du_castΦ_3234 v0 = coe v0
+du_castΦ_3434 v0 = coe v0
 -- Once.LinCore.FromExpr._.k-castΦ
-d_k'45'castΦ_3262 ::
+d_k'45'castΦ_3462 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.LinCore.Core.T_Cx_728 ->
   (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
@@ -5786,17 +6152,17 @@ d_k'45'castΦ_3262 ::
   MAlonzo.Code.Once.LinCore.Core.T_Tm_758 ->
   MAlonzo.Code.Once.LinCore.Core.T_Blk_768 ->
   MAlonzo.Code.Once.LinCore.Core.T_Blk_768
-d_k'45'castΦ_3262 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10 v11
-  = du_k'45'castΦ_3262 v11
-du_k'45'castΦ_3262 ::
+d_k'45'castΦ_3462 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10 v11
+  = du_k'45'castΦ_3462 v11
+du_k'45'castΦ_3462 ::
   MAlonzo.Code.Once.LinCore.Core.T_Blk_768 ->
   MAlonzo.Code.Once.LinCore.Core.T_Blk_768
-du_k'45'castΦ_3262 v0 = coe v0
+du_k'45'castΦ_3462 v0 = coe v0
 -- Once.LinCore.FromExpr._.ArmD
-d_ArmD_3280 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 = ()
-data T_ArmD_3280
-  = C_armD_3332 MAlonzo.Code.Once.Spec.Type.T_Ty_8
-                MAlonzo.Code.Once.Surface.Map.T_Map_8 T_IsPj_2516
+d_ArmD_3480 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 = ()
+data T_ArmD_3480
+  = C_armD_3532 MAlonzo.Code.Once.Spec.Type.T_Ty_8
+                MAlonzo.Code.Once.Surface.Map.T_Map_8 T_IsPj_2688
                 MAlonzo.Code.Once.LinCore.Core.T_LTy_178
                 MAlonzo.Code.Once.LinCore.Core.T_Tm_758
                 MAlonzo.Code.Once.LinCore.Core.T_Blk_768
@@ -5805,62 +6171,62 @@ data T_ArmD_3280
                  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
                  MAlonzo.Code.Once.LinCore.Core.T_Blk_768)
 -- Once.LinCore.FromExpr._.ArmD.Ap
-d_Ap_3314 :: T_ArmD_3280 -> MAlonzo.Code.Once.Spec.Type.T_Ty_8
-d_Ap_3314 v0
+d_Ap_3514 :: T_ArmD_3480 -> MAlonzo.Code.Once.Spec.Type.T_Ty_8
+d_Ap_3514 v0
   = case coe v0 of
-      C_armD_3332 v1 v2 v3 v4 v5 v6 v7 v8 -> coe v1
+      C_armD_3532 v1 v2 v3 v4 v5 v6 v7 v8 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.LinCore.FromExpr._.ArmD.pm
-d_pm_3316 :: T_ArmD_3280 -> MAlonzo.Code.Once.Surface.Map.T_Map_8
-d_pm_3316 v0
+d_pm_3516 :: T_ArmD_3480 -> MAlonzo.Code.Once.Surface.Map.T_Map_8
+d_pm_3516 v0
   = case coe v0 of
-      C_armD_3332 v1 v2 v3 v4 v5 v6 v7 v8 -> coe v2
+      C_armD_3532 v1 v2 v3 v4 v5 v6 v7 v8 -> coe v2
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.LinCore.FromExpr._.ArmD.pj
-d_pj_3318 :: T_ArmD_3280 -> T_IsPj_2516
-d_pj_3318 v0
+d_pj_3518 :: T_ArmD_3480 -> T_IsPj_2688
+d_pj_3518 v0
   = case coe v0 of
-      C_armD_3332 v1 v2 v3 v4 v5 v6 v7 v8 -> coe v3
+      C_armD_3532 v1 v2 v3 v4 v5 v6 v7 v8 -> coe v3
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.LinCore.FromExpr._.ArmD.Ek
-d_Ek_3320 ::
-  T_ArmD_3280 -> MAlonzo.Code.Once.LinCore.Core.T_LTy_178
-d_Ek_3320 v0
+d_Ek_3520 ::
+  T_ArmD_3480 -> MAlonzo.Code.Once.LinCore.Core.T_LTy_178
+d_Ek_3520 v0
   = case coe v0 of
-      C_armD_3332 v1 v2 v3 v4 v5 v6 v7 v8 -> coe v4
+      C_armD_3532 v1 v2 v3 v4 v5 v6 v7 v8 -> coe v4
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.LinCore.FromExpr._.ArmD.env
-d_env_3322 ::
-  T_ArmD_3280 -> MAlonzo.Code.Once.LinCore.Core.T_Tm_758
-d_env_3322 v0
+d_env_3522 ::
+  T_ArmD_3480 -> MAlonzo.Code.Once.LinCore.Core.T_Tm_758
+d_env_3522 v0
   = case coe v0 of
-      C_armD_3332 v1 v2 v3 v4 v5 v6 v7 v8 -> coe v5
+      C_armD_3532 v1 v2 v3 v4 v5 v6 v7 v8 -> coe v5
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.LinCore.FromExpr._.ArmD.k-env
-d_k'45'env_3324 ::
-  T_ArmD_3280 -> MAlonzo.Code.Once.LinCore.Core.T_Blk_768
-d_k'45'env_3324 v0
+d_k'45'env_3524 ::
+  T_ArmD_3480 -> MAlonzo.Code.Once.LinCore.Core.T_Blk_768
+d_k'45'env_3524 v0
   = case coe v0 of
-      C_armD_3332 v1 v2 v3 v4 v5 v6 v7 v8 -> coe v6
+      C_armD_3532 v1 v2 v3 v4 v5 v6 v7 v8 -> coe v6
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.LinCore.FromExpr._.ArmD.ap
-d_ap_3326 :: T_ArmD_3280 -> MAlonzo.Code.Once.LinCore.Core.T_Tm_758
-d_ap_3326 v0
+d_ap_3526 :: T_ArmD_3480 -> MAlonzo.Code.Once.LinCore.Core.T_Tm_758
+d_ap_3526 v0
   = case coe v0 of
-      C_armD_3332 v1 v2 v3 v4 v5 v6 v7 v8 -> coe v7
+      C_armD_3532 v1 v2 v3 v4 v5 v6 v7 v8 -> coe v7
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.LinCore.FromExpr._.ArmD.k-ap
-d_k'45'ap_3330 ::
-  T_ArmD_3280 ->
+d_k'45'ap_3530 ::
+  T_ArmD_3480 ->
   MAlonzo.Code.Once.Spec.Grade.T_Finite_34 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.LinCore.Core.T_Blk_768
-d_k'45'ap_3330 v0
+d_k'45'ap_3530 v0
   = case coe v0 of
-      C_armD_3332 v1 v2 v3 v4 v5 v6 v7 v8 -> coe v8
+      C_armD_3532 v1 v2 v3 v4 v5 v6 v7 v8 -> coe v8
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.LinCore.FromExpr._.forkB
-d_forkB_3356 ::
+d_forkB_3556 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.LinCore.Core.T_Cx_728 ->
   (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
@@ -5877,35 +6243,35 @@ d_forkB_3356 ::
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Grade.T_Purity_40 ->
-  T_ArmD_3280 ->
-  T_ArmD_3280 -> MAlonzo.Code.Once.LinCore.Core.T_Tm_758
-d_forkB_3356 v0 ~v1 ~v2 v3 ~v4 ~v5 ~v6 ~v7 v8 ~v9 ~v10 ~v11 v12 v13
-  = du_forkB_3356 v0 v3 v8 v12 v13
-du_forkB_3356 ::
+  T_ArmD_3480 ->
+  T_ArmD_3480 -> MAlonzo.Code.Once.LinCore.Core.T_Tm_758
+d_forkB_3556 v0 ~v1 ~v2 v3 ~v4 ~v5 ~v6 ~v7 v8 ~v9 ~v10 ~v11 v12 v13
+  = du_forkB_3556 v0 v3 v8 v12 v13
+du_forkB_3556 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   Integer ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  T_ArmD_3280 ->
-  T_ArmD_3280 -> MAlonzo.Code.Once.LinCore.Core.T_Tm_758
-du_forkB_3356 v0 v1 v2 v3 v4
+  T_ArmD_3480 ->
+  T_ArmD_3480 -> MAlonzo.Code.Once.LinCore.Core.T_Tm_758
+du_forkB_3556 v0 v1 v2 v3 v4
   = coe
       MAlonzo.Code.Once.LinCore.Core.C__'8728'l__796
       (coe
          MAlonzo.Code.Once.LinCore.Core.C__'8855't__184
-         (coe d_ty_716 (coe v0) (coe v1) (coe d_Ap_3314 (coe v3)))
-         (coe d_ty_716 (coe v0) (coe v1) (coe d_Ap_3314 (coe v4))))
+         (coe d_ty_716 (coe v0) (coe v1) (coe d_Ap_3514 (coe v3)))
+         (coe d_ty_716 (coe v0) (coe v1) (coe d_Ap_3514 (coe v4))))
       (coe
          MAlonzo.Code.Once.LinCore.Core.C__'8855'l__808
          (coe
-            MAlonzo.Code.Once.LinCore.Core.C_bfst_994 (d_ap_3326 (coe v3)))
+            MAlonzo.Code.Once.LinCore.Core.C_bfst_994 (d_ap_3526 (coe v3)))
          (coe
-            MAlonzo.Code.Once.LinCore.Core.C_bsnd_1004 (d_ap_3326 (coe v4))))
+            MAlonzo.Code.Once.LinCore.Core.C_bsnd_1004 (d_ap_3526 (coe v4))))
       (coe
-         du_splitP_3176 (coe v0) (coe v1) (coe v2) (coe d_Ap_3314 (coe v3))
-         (coe d_Ap_3314 (coe v4)) (coe d_pj_3318 (coe v3))
-         (coe d_pj_3318 (coe v4)))
+         du_splitP_3376 (coe v0) (coe v1) (coe v2) (coe d_Ap_3514 (coe v3))
+         (coe d_Ap_3514 (coe v4)) (coe d_pj_3518 (coe v3))
+         (coe d_pj_3518 (coe v4)))
 -- Once.LinCore.FromExpr._.k-forkB
-d_k'45'forkB_3386 ::
+d_k'45'forkB_3586 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.LinCore.Core.T_Cx_728 ->
   (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
@@ -5922,35 +6288,35 @@ d_k'45'forkB_3386 ::
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Grade.T_Purity_40 ->
-  T_ArmD_3280 ->
-  T_ArmD_3280 ->
+  T_ArmD_3480 ->
+  T_ArmD_3480 ->
   MAlonzo.Code.Once.Spec.Grade.T_Finite_34 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.LinCore.Core.T_Blk_768
-d_k'45'forkB_3386 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10 ~v11
+d_k'45'forkB_3586 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10 ~v11
                   v12 v13 v14 ~v15
-  = du_k'45'forkB_3386 v12 v13 v14
-du_k'45'forkB_3386 ::
-  T_ArmD_3280 ->
-  T_ArmD_3280 ->
+  = du_k'45'forkB_3586 v12 v13 v14
+du_k'45'forkB_3586 ::
+  T_ArmD_3480 ->
+  T_ArmD_3480 ->
   MAlonzo.Code.Once.Spec.Grade.T_Finite_34 ->
   MAlonzo.Code.Once.LinCore.Core.T_Blk_768
-du_k'45'forkB_3386 v0 v1 v2
+du_k'45'forkB_3586 v0 v1 v2
   = coe
       MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1166
       (coe
          MAlonzo.Code.Once.LinCore.Core.C_k'45''8855'_1182
          (coe
             MAlonzo.Code.Once.LinCore.Core.C_k'45'fst_1382
-            (coe d_k'45'ap_3330 v0 v2 erased))
+            (coe d_k'45'ap_3530 v0 v2 erased))
          (coe
             MAlonzo.Code.Once.LinCore.Core.C_k'45'snd_1394
-            (coe d_k'45'ap_3330 v1 v2 erased)))
+            (coe d_k'45'ap_3530 v1 v2 erased)))
       (coe
-         du_k'45'splitP_3204 (coe d_pj_3318 (coe v0))
-         (coe d_pj_3318 (coe v1)))
+         du_k'45'splitP_3404 (coe d_pj_3518 (coe v0))
+         (coe d_pj_3518 (coe v1)))
 -- Once.LinCore.FromExpr._.forkL
-d_forkL_3416 ::
+d_forkL_3616 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.LinCore.Core.T_Cx_728 ->
   (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
@@ -5967,34 +6333,34 @@ d_forkL_3416 ::
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Grade.T_Purity_40 ->
-  T_ArmD_3280 ->
-  T_ArmD_3280 -> MAlonzo.Code.Once.LinCore.Core.T_Tm_758
-d_forkL_3416 v0 ~v1 ~v2 v3 ~v4 ~v5 ~v6 ~v7 v8 ~v9 ~v10 v11 v12 v13
-  = du_forkL_3416 v0 v3 v8 v11 v12 v13
-du_forkL_3416 ::
+  T_ArmD_3480 ->
+  T_ArmD_3480 -> MAlonzo.Code.Once.LinCore.Core.T_Tm_758
+d_forkL_3616 v0 ~v1 ~v2 v3 ~v4 ~v5 ~v6 ~v7 v8 ~v9 ~v10 v11 v12 v13
+  = du_forkL_3616 v0 v3 v8 v11 v12 v13
+du_forkL_3616 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   Integer ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Grade.T_Purity_40 ->
-  T_ArmD_3280 ->
-  T_ArmD_3280 -> MAlonzo.Code.Once.LinCore.Core.T_Tm_758
-du_forkL_3416 v0 v1 v2 v3 v4 v5
+  T_ArmD_3480 ->
+  T_ArmD_3480 -> MAlonzo.Code.Once.LinCore.Core.T_Tm_758
+du_forkL_3616 v0 v1 v2 v3 v4 v5
   = coe
       MAlonzo.Code.Once.LinCore.Core.C__'8728'l__796
       (coe
          MAlonzo.Code.Once.LinCore.Core.C__'8855't__184
-         (coe d_Ek_3320 (coe v4)) (coe d_Ek_3320 (coe v5)))
+         (coe d_Ek_3520 (coe v4)) (coe d_Ek_3520 (coe v5)))
       (coe
          MAlonzo.Code.Once.LinCore.Core.C_llamω_1066
-         (coe du_forkB_3356 (coe v0) (coe v1) (coe v2) (coe v4) (coe v5))
+         (coe du_forkB_3556 (coe v0) (coe v1) (coe v2) (coe v4) (coe v5))
          (coe
             du_gdL_1356 (coe v3)
-            (\ v6 v7 -> coe du_k'45'forkB_3386 (coe v4) (coe v5) v6)))
+            (\ v6 v7 -> coe du_k'45'forkB_3586 (coe v4) (coe v5) v6)))
       (coe
          MAlonzo.Code.Once.LinCore.Core.C__'8855'l__808
-         (d_env_3322 (coe v4)) (d_env_3322 (coe v5)))
+         (d_env_3522 (coe v4)) (d_env_3522 (coe v5)))
 -- Once.LinCore.FromExpr._.k-forkL
-d_k'45'forkL_3446 ::
+d_k'45'forkL_3646 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.LinCore.Core.T_Cx_728 ->
   (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
@@ -6011,23 +6377,23 @@ d_k'45'forkL_3446 ::
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Grade.T_Purity_40 ->
-  T_ArmD_3280 ->
-  T_ArmD_3280 -> MAlonzo.Code.Once.LinCore.Core.T_Blk_768
-d_k'45'forkL_3446 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10 ~v11
+  T_ArmD_3480 ->
+  T_ArmD_3480 -> MAlonzo.Code.Once.LinCore.Core.T_Blk_768
+d_k'45'forkL_3646 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10 ~v11
                   v12 v13
-  = du_k'45'forkL_3446 v12 v13
-du_k'45'forkL_3446 ::
-  T_ArmD_3280 ->
-  T_ArmD_3280 -> MAlonzo.Code.Once.LinCore.Core.T_Blk_768
-du_k'45'forkL_3446 v0 v1
+  = du_k'45'forkL_3646 v12 v13
+du_k'45'forkL_3646 ::
+  T_ArmD_3480 ->
+  T_ArmD_3480 -> MAlonzo.Code.Once.LinCore.Core.T_Blk_768
+du_k'45'forkL_3646 v0 v1
   = coe
       MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1166
       (coe MAlonzo.Code.Once.LinCore.Core.C_k'45'lamω_1466)
       (coe
          MAlonzo.Code.Once.LinCore.Core.C_k'45''8855'_1182
-         (d_k'45'env_3324 (coe v0)) (d_k'45'env_3324 (coe v1)))
+         (d_k'45'env_3524 (coe v0)) (d_k'45'env_3524 (coe v1)))
 -- Once.LinCore.FromExpr._.Lq
-d_Lq_3464 ::
+d_Lq_3664 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.LinCore.Core.T_Cx_728 ->
   (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
@@ -6042,7 +6408,7 @@ d_Lq_3464 ::
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 ->
   MAlonzo.Code.Once.LinCore.Core.T_Tm_758
-d_Lq_3464 v0 v1 v2 v3 v4 v5 v6 v7 v8
+d_Lq_3664 v0 v1 v2 v3 v4 v5 v6 v7 v8
   = case coe v8 of
       MAlonzo.Code.Once.Surface.Syntax.C_var_20 v11
         -> coe du_var'45'at_1048 (coe v0) (coe v3) (coe v5) (coe v11)
@@ -6064,7 +6430,7 @@ d_Lq_3464 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                            (coe MAlonzo.Code.Once.Spec.Context.C__'9656'__16 v5 v19)
                                            (coe
                                               MAlonzo.Code.Once.Spec.Context.C__'8759'__40 v22 v6))
-                                        (d_Lq_3464
+                                        (d_Lq_3664
                                            (coe v0) (coe v1) (coe v2) (coe v3)
                                            (coe addInt (coe (1 :: Integer)) (coe v4))
                                            (coe MAlonzo.Code.Once.Spec.Context.C__'9656'__16 v5 v19)
@@ -6091,7 +6457,7 @@ d_Lq_3464 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                      (coe
                                         MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1166
                                         (coe
-                                           du_Lq'45'blk_3478 (coe v0) (coe v1) (coe v2) (coe v3)
+                                           du_Lq'45'blk_3678 (coe v0) (coe v1) (coe v2) (coe v3)
                                            (coe addInt (coe (1 :: Integer)) (coe v4))
                                            (coe MAlonzo.Code.Once.Spec.Context.C__'9656'__16 v5 v19)
                                            (coe v21) (coe v18))
@@ -6118,7 +6484,7 @@ d_Lq_3464 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                                (coe
                                                   MAlonzo.Code.Once.Spec.Context.C__'8759'__40 v12
                                                   v6))
-                                            (d_Lq_3464
+                                            (d_Lq_3664
                                                (coe v0) (coe v1) (coe v2) (coe v3)
                                                (coe addInt (coe (1 :: Integer)) (coe v4))
                                                (coe
@@ -6149,7 +6515,7 @@ d_Lq_3464 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                          (coe
                                             MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1166
                                             (coe
-                                               du_Lq'45'blk_3478 (coe v0) (coe v1) (coe v2) (coe v3)
+                                               du_Lq'45'blk_3678 (coe v0) (coe v1) (coe v2) (coe v3)
                                                (coe addInt (coe (1 :: Integer)) (coe v4))
                                                (coe
                                                   MAlonzo.Code.Once.Spec.Context.C__'9656'__16 v5
@@ -6168,7 +6534,7 @@ d_Lq_3464 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                     -> coe
                                          du_clo_1170 (coe v23)
                                          (coe
-                                            d_Lq_3464 (coe v0) (coe v1) (coe v2) (coe v3)
+                                            d_Lq_3664 (coe v0) (coe v1) (coe v2) (coe v3)
                                             (coe addInt (coe (1 :: Integer)) (coe v4))
                                             (coe
                                                MAlonzo.Code.Once.Spec.Context.C__'9656'__16 v5 v19)
@@ -6176,7 +6542,7 @@ d_Lq_3464 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                                MAlonzo.Code.Once.Spec.Context.C__'8759'__40 v12 v6)
                                             (coe v21) (coe v18))
                                          (coe
-                                            du_Lq'45'blk_3478 (coe v0) (coe v1) (coe v2) (coe v3)
+                                            du_Lq'45'blk_3678 (coe v0) (coe v1) (coe v2) (coe v3)
                                             (coe addInt (coe (1 :: Integer)) (coe v4))
                                             (coe
                                                MAlonzo.Code.Once.Spec.Context.C__'9656'__16 v5 v19)
@@ -6197,7 +6563,7 @@ d_Lq_3464 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                                (coe
                                                   MAlonzo.Code.Once.Spec.Context.C__'8759'__40 v12
                                                   v6))
-                                            (d_Lq_3464
+                                            (d_Lq_3664
                                                (coe v0) (coe v1) (coe v2) (coe v3)
                                                (coe addInt (coe (1 :: Integer)) (coe v4))
                                                (coe
@@ -6228,7 +6594,7 @@ d_Lq_3464 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                          (coe
                                             MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1166
                                             (coe
-                                               du_Lq'45'blk_3478 (coe v0) (coe v1) (coe v2) (coe v3)
+                                               du_Lq'45'blk_3678 (coe v0) (coe v1) (coe v2) (coe v3)
                                                (coe addInt (coe (1 :: Integer)) (coe v4))
                                                (coe
                                                   MAlonzo.Code.Once.Spec.Context.C__'9656'__16 v5
@@ -6247,7 +6613,7 @@ d_Lq_3464 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                     -> coe
                                          du_clo_1170 (coe v23)
                                          (coe
-                                            d_Lq_3464 (coe v0) (coe v1) (coe v2) (coe v3)
+                                            d_Lq_3664 (coe v0) (coe v1) (coe v2) (coe v3)
                                             (coe addInt (coe (1 :: Integer)) (coe v4))
                                             (coe
                                                MAlonzo.Code.Once.Spec.Context.C__'9656'__16 v5 v19)
@@ -6255,7 +6621,7 @@ d_Lq_3464 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                                MAlonzo.Code.Once.Spec.Context.C__'8759'__40 v12 v6)
                                             (coe v21) (coe v18))
                                          (coe
-                                            du_Lq'45'blk_3478 (coe v0) (coe v1) (coe v2) (coe v3)
+                                            du_Lq'45'blk_3678 (coe v0) (coe v1) (coe v2) (coe v3)
                                             (coe addInt (coe (1 :: Integer)) (coe v4))
                                             (coe
                                                MAlonzo.Code.Once.Spec.Context.C__'9656'__16 v5 v19)
@@ -6264,7 +6630,7 @@ d_Lq_3464 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                     -> coe
                                          du_clo_1170 (coe v23)
                                          (coe
-                                            d_Lq_3464 (coe v0) (coe v1) (coe v2) (coe v3)
+                                            d_Lq_3664 (coe v0) (coe v1) (coe v2) (coe v3)
                                             (coe addInt (coe (1 :: Integer)) (coe v4))
                                             (coe
                                                MAlonzo.Code.Once.Spec.Context.C__'9656'__16 v5 v19)
@@ -6272,7 +6638,7 @@ d_Lq_3464 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                                MAlonzo.Code.Once.Spec.Context.C__'8759'__40 v12 v6)
                                             (coe v21) (coe v18))
                                          (coe
-                                            du_Lq'45'blk_3478 (coe v0) (coe v1) (coe v2) (coe v3)
+                                            du_Lq'45'blk_3678 (coe v0) (coe v1) (coe v2) (coe v3)
                                             (coe addInt (coe (1 :: Integer)) (coe v4))
                                             (coe
                                                MAlonzo.Code.Once.Spec.Context.C__'9656'__16 v5 v19)
@@ -6316,7 +6682,7 @@ d_Lq_3464 v0 v1 v2 v3 v4 v5 v6 v7 v8
                              (coe MAlonzo.Code.Once.IRTy.C_Unit_16)))
                        (coe
                           MAlonzo.Code.Once.LinCore.Core.C__'8855'l__808
-                          (d_Lq_3464
+                          (d_Lq_3664
                              (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v11)
                              (coe
                                 MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 (coe v13)
@@ -6363,7 +6729,7 @@ d_Lq_3464 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                 (coe v12))))
                        (coe
                           MAlonzo.Code.Once.LinCore.Core.C__'8855'l__808
-                          (d_Lq_3464
+                          (d_Lq_3664
                              (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v11)
                              (coe
                                 MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 (coe v13)
@@ -6377,7 +6743,7 @@ d_Lq_3464 v0 v1 v2 v3 v4 v5 v6 v7 v8
                           (coe
                              MAlonzo.Code.Once.LinCore.Core.C__'8728'l__796
                              (coe du_Co_724 (coe v0) (coe v3) (coe v5) (coe v12))
-                             (d_Lq_3464
+                             (d_Lq_3664
                                 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v12)
                                 (coe v13) (coe v17))
                              (coe
@@ -6395,10 +6761,10 @@ d_Lq_3464 v0 v1 v2 v3 v4 v5 v6 v7 v8
                              (coe v12))))
              MAlonzo.Code.Once.Spec.Grade.C_Many_12
                -> coe
-                    d_appL_3724 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
+                    d_appL_3924 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
                     (coe v11) (coe v12) (coe v13) (coe v7) (coe v16) (coe v17)
                     (coe
-                       du_cp'63'_2504 (coe v0) (coe v3) (coe v4) (coe v5)
+                       du_cp'63'_2676 (coe v0) (coe v3) (coe v4) (coe v5)
                        (coe
                           MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 (coe v13)
                           (coe
@@ -6454,7 +6820,7 @@ d_Lq_3464 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                                  (coe v0) (coe MAlonzo.Code.Once.IRTy.C_Unit_16)))
                                            (coe
                                               MAlonzo.Code.Once.LinCore.Core.C__'8855'l__808
-                                              (d_Lq_3464
+                                              (d_Lq_3664
                                                  (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
                                                  (coe v5) (coe v11)
                                                  (coe
@@ -6472,7 +6838,7 @@ d_Lq_3464 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                      du_gdB_1334 (coe v24)
                                      (\ v25 v26 ->
                                         coe
-                                          du_'46'extendedlambda2_3894 (coe v0) (coe v1) (coe v2)
+                                          du_'46'extendedlambda2_4274 (coe v0) (coe v1) (coe v2)
                                           (coe v3) (coe v4) (coe v5) (coe v11) (coe v13) (coe v22)
                                           (coe v18) v25))
                            MAlonzo.Code.Once.Spec.Grade.C_One_10
@@ -6529,7 +6895,7 @@ d_Lq_3464 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                                     (coe v15) (coe v12))))
                                            (coe
                                               MAlonzo.Code.Once.LinCore.Core.C__'8855'l__808
-                                              (d_Lq_3464
+                                              (d_Lq_3664
                                                  (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
                                                  (coe v5) (coe v11)
                                                  (coe
@@ -6544,7 +6910,7 @@ d_Lq_3464 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                                  MAlonzo.Code.Once.LinCore.Core.C__'8728'l__796
                                                  (coe
                                                     du_Co_724 (coe v0) (coe v3) (coe v5) (coe v12))
-                                                 (d_Lq_3464
+                                                 (d_Lq_3664
                                                     (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
                                                     (coe v5) (coe v12) (coe v13) (coe v19))
                                                  (coe
@@ -6565,7 +6931,7 @@ d_Lq_3464 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                      du_gdB_1334 (coe v24)
                                      (\ v25 v26 ->
                                         coe
-                                          du_'46'extendedlambda3_3908 (coe v0) (coe v1) (coe v2)
+                                          du_'46'extendedlambda3_4288 (coe v0) (coe v1) (coe v2)
                                           (coe v3) (coe v4) (coe v5) (coe v11) (coe v12) (coe v13)
                                           (coe v22) (coe v18) (coe v19) v25))
                            MAlonzo.Code.Once.Spec.Grade.C_Many_12
@@ -6622,7 +6988,7 @@ d_Lq_3464 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                                     (coe v15) (coe v12))))
                                            (coe
                                               MAlonzo.Code.Once.LinCore.Core.C__'8855'l__808
-                                              (d_Lq_3464
+                                              (d_Lq_3664
                                                  (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
                                                  (coe v5) (coe v11)
                                                  (coe
@@ -6637,7 +7003,7 @@ d_Lq_3464 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                                  MAlonzo.Code.Once.LinCore.Core.C__'8728'l__796
                                                  (coe
                                                     du_Co_724 (coe v0) (coe v3) (coe v5) (coe v12))
-                                                 (d_Lq_3464
+                                                 (d_Lq_3664
                                                     (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
                                                     (coe v5) (coe v12) (coe v13) (coe v19))
                                                  (coe
@@ -6658,7 +7024,7 @@ d_Lq_3464 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                      du_gdB_1334 (coe v24)
                                      (\ v25 v26 ->
                                         coe
-                                          du_'46'extendedlambda4_3922 (coe v0) (coe v1) (coe v2)
+                                          du_'46'extendedlambda4_4302 (coe v0) (coe v1) (coe v2)
                                           (coe v3) (coe v4) (coe v5) (coe v11) (coe v12) (coe v13)
                                           (coe v22) (coe v18) (coe v19) v25))
                            _ -> MAlonzo.RTE.mazUnreachableError
@@ -6668,9 +7034,9 @@ d_Lq_3464 v0 v1 v2 v3 v4 v5 v6 v7 v8
         -> case coe v7 of
              MAlonzo.Code.Once.Spec.Type.C__'42'__22 v17 v18
                -> coe
-                    d_pairL_3568 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
+                    d_pairL_3768 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
                     (coe v11) (coe v12) (coe v17) (coe v18) (coe v15) (coe v16)
-                    (coe du_rdw'63'_2224 (coe v17) (coe v15))
+                    (coe du_rdw'63'_2350 (coe v17) (coe v15))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Surface.Syntax.C_fst''_100 v13 v14
         -> coe
@@ -6693,7 +7059,7 @@ d_Lq_3464 v0 v1 v2 v3 v4 v5 v6 v7 v8
                    MAlonzo.Code.Once.LinCore.Core.C__'8855'l__808
                    (coe MAlonzo.Code.Once.LinCore.Core.C_lid_786)
                    (coe MAlonzo.Code.Once.LinCore.Core.C_drop_872)))
-             (d_Lq_3464
+             (d_Lq_3664
                 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
                 (coe MAlonzo.Code.Once.Spec.Type.C__'42'__22 (coe v7) (coe v13))
                 (coe v14))
@@ -6717,7 +7083,7 @@ d_Lq_3464 v0 v1 v2 v3 v4 v5 v6 v7 v8
                    MAlonzo.Code.Once.LinCore.Core.C__'8855'l__808
                    (coe MAlonzo.Code.Once.LinCore.Core.C_drop_872)
                    (coe MAlonzo.Code.Once.LinCore.Core.C_lid_786)))
-             (d_Lq_3464
+             (d_Lq_3664
                 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
                 (coe MAlonzo.Code.Once.Spec.Type.C__'42'__22 (coe v12) (coe v7))
                 (coe v14))
@@ -6730,7 +7096,7 @@ d_Lq_3464 v0 v1 v2 v3 v4 v5 v6 v7 v8
                        (coe v0)
                        (coe MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_56 (coe v3) (coe v15)))
                     (coe MAlonzo.Code.Once.LinCore.Core.C_linl_880)
-                    (d_Lq_3464
+                    (d_Lq_3664
                        (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
                        (coe v15) (coe v14))
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -6743,7 +7109,7 @@ d_Lq_3464 v0 v1 v2 v3 v4 v5 v6 v7 v8
                        (coe v0)
                        (coe MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_56 (coe v3) (coe v16)))
                     (coe MAlonzo.Code.Once.LinCore.Core.C_linr_888)
-                    (d_Lq_3464
+                    (d_Lq_3664
                        (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
                        (coe v16) (coe v14))
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -6776,7 +7142,7 @@ d_Lq_3464 v0 v1 v2 v3 v4 v5 v6 v7 v8
                       du_Co_724 (coe v0) (coe v3)
                       (coe MAlonzo.Code.Once.Spec.Context.C__'9656'__16 v5 v16)
                       (coe MAlonzo.Code.Once.Spec.Context.C__'8759'__40 v14 v12))
-                   (d_Lq_3464
+                   (d_Lq_3664
                       (coe v0) (coe v1) (coe v2) (coe v3)
                       (coe addInt (coe (1 :: Integer)) (coe v4))
                       (coe MAlonzo.Code.Once.Spec.Context.C__'9656'__16 v5 v16)
@@ -6807,7 +7173,7 @@ d_Lq_3464 v0 v1 v2 v3 v4 v5 v6 v7 v8
                       du_Co_724 (coe v0) (coe v3)
                       (coe MAlonzo.Code.Once.Spec.Context.C__'9656'__16 v5 v17)
                       (coe MAlonzo.Code.Once.Spec.Context.C__'8759'__40 v15 v13))
-                   (d_Lq_3464
+                   (d_Lq_3664
                       (coe v0) (coe v1) (coe v2) (coe v3)
                       (coe addInt (coe (1 :: Integer)) (coe v4))
                       (coe MAlonzo.Code.Once.Spec.Context.C__'9656'__16 v5 v17)
@@ -6846,14 +7212,14 @@ d_Lq_3464 v0 v1 v2 v3 v4 v5 v6 v7 v8
                       (coe d_ty_716 (coe v0) (coe v3) (coe v16))
                       (coe d_ty_716 (coe v0) (coe v3) (coe v17))))
                 (coe MAlonzo.Code.Once.LinCore.Core.C_ldist_914)
-                (d_scrutL_3530
+                (d_scrutL_3730
                    (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v11)
                    (coe
                       MAlonzo.Code.Once.Context.du__'8852''7512'__22 (coe v12) (coe v13))
                    (coe MAlonzo.Code.Once.Spec.Type.C__'43'__24 (coe v16) (coe v17))
                    (coe v19)
                    (coe
-                      du_rdw'63'_2224
+                      du_rdw'63'_2350
                       (coe MAlonzo.Code.Once.Spec.Type.C__'43'__24 (coe v16) (coe v17))
                       (coe v19))))
       MAlonzo.Code.Once.Surface.Syntax.C_unit_164
@@ -6863,14 +7229,14 @@ d_Lq_3464 v0 v1 v2 v3 v4 v5 v6 v7 v8
              MAlonzo.Code.Once.LinCore.Core.C__'8728'l__796
              (coe MAlonzo.Code.Once.LinCore.Core.C_Zero_182)
              (coe MAlonzo.Code.Once.LinCore.Core.C_lzero_904)
-             (d_Lq_3464
+             (d_Lq_3664
                 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
                 (coe MAlonzo.Code.Once.Spec.Type.C_Void_20) (coe v13))
       MAlonzo.Code.Once.Surface.Syntax.C_let''_190 v11 v12 v13 v14 v16 v17
         -> case coe v13 of
              MAlonzo.Code.Once.Spec.Grade.C_Zero_8
                -> coe
-                    d_Lq_3464 (coe v0) (coe v1) (coe v2) (coe v3)
+                    d_Lq_3664 (coe v0) (coe v1) (coe v2) (coe v3)
                     (coe addInt (coe (1 :: Integer)) (coe v4))
                     (coe MAlonzo.Code.Once.Spec.Context.C__'9656'__16 v5 v14)
                     (coe MAlonzo.Code.Once.Spec.Context.C__'8759'__40 v13 v12) (coe v7)
@@ -6882,7 +7248,7 @@ d_Lq_3464 v0 v1 v2 v3 v4 v5 v6 v7 v8
                        du_Co_724 (coe v0) (coe v3)
                        (coe MAlonzo.Code.Once.Spec.Context.C__'9656'__16 v5 v14)
                        (coe MAlonzo.Code.Once.Spec.Context.C__'8759'__40 v13 v12))
-                    (d_Lq_3464
+                    (d_Lq_3664
                        (coe v0) (coe v1) (coe v2) (coe v3)
                        (coe addInt (coe (1 :: Integer)) (coe v4))
                        (coe MAlonzo.Code.Once.Spec.Context.C__'9656'__16 v5 v14)
@@ -6913,7 +7279,7 @@ d_Lq_3464 v0 v1 v2 v3 v4 v5 v6 v7 v8
                              (coe
                                 MAlonzo.Code.Once.LinCore.Core.C__'8728'l__796
                                 (coe du_Co_724 (coe v0) (coe v3) (coe v5) (coe v11))
-                                (d_Lq_3464
+                                (d_Lq_3664
                                    (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v11)
                                    (coe v14) (coe v16))
                                 (coe
@@ -6936,7 +7302,7 @@ d_Lq_3464 v0 v1 v2 v3 v4 v5 v6 v7 v8
                        du_Co_724 (coe v0) (coe v3)
                        (coe MAlonzo.Code.Once.Spec.Context.C__'9656'__16 v5 v14)
                        (coe MAlonzo.Code.Once.Spec.Context.C__'8759'__40 v13 v12))
-                    (d_Lq_3464
+                    (d_Lq_3664
                        (coe v0) (coe v1) (coe v2) (coe v3)
                        (coe addInt (coe (1 :: Integer)) (coe v4))
                        (coe MAlonzo.Code.Once.Spec.Context.C__'9656'__16 v5 v14)
@@ -6967,7 +7333,7 @@ d_Lq_3464 v0 v1 v2 v3 v4 v5 v6 v7 v8
                              (coe
                                 MAlonzo.Code.Once.LinCore.Core.C__'8728'l__796
                                 (coe du_Co_724 (coe v0) (coe v3) (coe v5) (coe v11))
-                                (d_Lq_3464
+                                (d_Lq_3664
                                    (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v11)
                                    (coe v14) (coe v16))
                                 (coe
@@ -7004,7 +7370,7 @@ d_Lq_3464 v0 v1 v2 v3 v4 v5 v6 v7 v8
                 (coe
                    MAlonzo.Code.Once.Spec.Theory.du_symDom_86 (coe v12) (coe v14)))
              (coe du_numL_1252 (coe v12) (coe v14) (coe v15) (coe v16))
-             (d_Lq_3464
+             (d_Lq_3664
                 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
                 (coe
                    MAlonzo.Code.Once.Spec.Theory.du_symDom_86 (coe v12) (coe v14))
@@ -7016,7 +7382,7 @@ d_Lq_3464 v0 v1 v2 v3 v4 v5 v6 v7 v8
                 MAlonzo.Code.Once.Surface.CoerceIR.du_voidFree'63'_350 (coe v12)
                 (coe v7) (coe v14))
              (coe
-                d_Lq_3464 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
+                d_Lq_3664 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
                 (coe v6) (coe v12) (coe v15))
       MAlonzo.Code.Once.Surface.Syntax.C_sigOp_238 v11 v12 v13
         -> coe
@@ -7047,7 +7413,7 @@ d_Lq_3464 v0 v1 v2 v3 v4 v5 v6 v7 v8
                 du_Co_724 (coe v0) (coe v3)
                 (coe MAlonzo.Code.Once.Spec.Context.C_'8709'_12)
                 (coe MAlonzo.Code.Once.Spec.Context.C_'91''93'_36))
-             (d_Lq_3464
+             (d_Lq_3664
                 (coe v0) (coe v1) (coe v2) (coe v3) (coe (0 :: Integer))
                 (coe MAlonzo.Code.Once.Spec.Context.C_'8709'_12)
                 (coe MAlonzo.Code.Once.Spec.Context.C_'91''93'_36) (coe v7)
@@ -7100,7 +7466,7 @@ d_Lq_3464 v0 v1 v2 v3 v4 v5 v6 v7 v8
              (coe
                 MAlonzo.Code.Once.LinCore.Core.C__'8728'l__796
                 (coe du_Co_724 (coe v0) (coe v3) (coe v5) (coe v11))
-                (d_Lq_3464
+                (d_Lq_3664
                    (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v11)
                    (coe v12) (coe v15))
                 (coe
@@ -7208,7 +7574,7 @@ d_Lq_3464 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                        (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) (coe v12))))
                               (coe
                                  MAlonzo.Code.Once.LinCore.Core.C__'8855'l__808
-                                 (d_Lq_3464
+                                 (d_Lq_3664
                                     (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v11)
                                     (coe
                                        MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 (coe v14)
@@ -7220,7 +7586,7 @@ d_Lq_3464 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                  (coe
                                     MAlonzo.Code.Once.LinCore.Core.C__'8728'l__796
                                     (coe du_Co_724 (coe v0) (coe v3) (coe v5) (coe v12))
-                                    (d_Lq_3464
+                                    (d_Lq_3664
                                        (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
                                        (coe v12)
                                        (coe
@@ -7323,7 +7689,7 @@ d_Lq_3464 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                         (coe du_Co_724 (coe v0) (coe v3) (coe v5) (coe v12)))
                                      (coe
                                         MAlonzo.Code.Once.LinCore.Core.C__'8855'l__808
-                                        (d_Lq_3464
+                                        (d_Lq_3664
                                            (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
                                            (coe v11)
                                            (coe
@@ -7335,7 +7701,7 @@ d_Lq_3464 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                                  (coe v25))
                                               (coe v21))
                                            (coe v17))
-                                        (d_Lq_3464
+                                        (d_Lq_3664
                                            (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
                                            (coe v12)
                                            (coe
@@ -7367,12 +7733,12 @@ d_Lq_3464 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                      (coe du_Co_724 (coe v0) (coe v3) (coe v5) (coe v11))
                                      (coe du_Co_724 (coe v0) (coe v3) (coe v5) (coe v12)))
                                   (coe
-                                     du_forkL_3416 (coe v0) (coe v3) (coe v19) (coe v23)
+                                     du_forkL_3616 (coe v0) (coe v3) (coe v19) (coe v23)
                                      (coe
-                                        d_armOf_3496 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
+                                        d_armOf_3696 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
                                         (coe v5) (coe v11) (coe v19) (coe v24) (coe v23) (coe v17)
                                         (coe
-                                           du_arm'63'_2646
+                                           du_arm'63'_2818
                                            (coe
                                               MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26
                                               (coe v19)
@@ -7383,10 +7749,10 @@ d_Lq_3464 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                               (coe v24))
                                            (coe v17)))
                                      (coe
-                                        d_armOf_3496 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
+                                        d_armOf_3696 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
                                         (coe v5) (coe v12) (coe v19) (coe v25) (coe v23) (coe v18)
                                         (coe
-                                           du_arm'63'_2646
+                                           du_arm'63'_2818
                                            (coe
                                               MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26
                                               (coe v19)
@@ -7500,7 +7866,7 @@ d_Lq_3464 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                                              MAlonzo.Code.Once.LinCore.Core.C_k'45'assoc_1216)))))
                                             (coe
                                                MAlonzo.Code.Once.LinCore.Core.C_k'45'lamω'7580'_1496))
-                                         (d_Lq_3464
+                                         (d_Lq_3664
                                             (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
                                             (coe v6)
                                             (coe
@@ -7558,7 +7924,7 @@ d_Lq_3464 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                   (coe
                                      MAlonzo.Code.Once.LinCore.Core.C__'8728'l__796
                                      (coe du_Co_724 (coe v0) (coe v3) (coe v5) (coe v11))
-                                     (d_Lq_3464
+                                     (d_Lq_3664
                                         (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
                                         (coe v11)
                                         (coe
@@ -7638,7 +8004,7 @@ d_Lq_3464 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                   (coe
                                      MAlonzo.Code.Once.LinCore.Core.C__'8728'l__796
                                      (coe du_Co_724 (coe v0) (coe v3) (coe v5) (coe v11))
-                                     (d_Lq_3464
+                                     (d_Lq_3664
                                         (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
                                         (coe v11)
                                         (coe
@@ -7694,7 +8060,7 @@ d_Lq_3464 v0 v1 v2 v3 v4 v5 v6 v7 v8
                     (coe
                        MAlonzo.Code.Once.LinCore.Core.C__'8728'l__796
                        (coe du_Co_724 (coe v0) (coe v3) (coe v5) (coe v11))
-                       (d_Lq_3464
+                       (d_Lq_3664
                           (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v11)
                           (coe
                              MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 (coe v15)
@@ -7717,7 +8083,7 @@ d_Lq_3464 v0 v1 v2 v3 v4 v5 v6 v7 v8
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.LinCore.FromExpr._.Lq-blk
-d_Lq'45'blk_3478 ::
+d_Lq'45'blk_3678 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.LinCore.Core.T_Cx_728 ->
   (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
@@ -7732,9 +8098,9 @@ d_Lq'45'blk_3478 ::
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 ->
   MAlonzo.Code.Once.LinCore.Core.T_Blk_768
-d_Lq'45'blk_3478 v0 v1 v2 v3 v4 v5 ~v6 v7 v8
-  = du_Lq'45'blk_3478 v0 v1 v2 v3 v4 v5 v7 v8
-du_Lq'45'blk_3478 ::
+d_Lq'45'blk_3678 v0 v1 v2 v3 v4 v5 ~v6 v7 v8
+  = du_Lq'45'blk_3678 v0 v1 v2 v3 v4 v5 v7 v8
+du_Lq'45'blk_3678 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.LinCore.Core.T_Cx_728 ->
   (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
@@ -7748,7 +8114,7 @@ du_Lq'45'blk_3478 ::
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 ->
   MAlonzo.Code.Once.LinCore.Core.T_Blk_768
-du_Lq'45'blk_3478 v0 v1 v2 v3 v4 v5 v6 v7
+du_Lq'45'blk_3678 v0 v1 v2 v3 v4 v5 v6 v7
   = case coe v7 of
       MAlonzo.Code.Once.Surface.Syntax.C_var_20 v10
         -> coe du_k'45'var'45'at_1068 (coe v5) (coe v10)
@@ -7775,7 +8141,7 @@ du_Lq'45'blk_3478 v0 v1 v2 v3 v4 v5 v6 v7
                        (coe
                           MAlonzo.Code.Once.LinCore.Core.C_k'45''8855'_1182
                           (coe
-                             du_Lq'45'blk_3478 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
+                             du_Lq'45'blk_3678 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
                              (coe v5)
                              (coe
                                 MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 (coe v12)
@@ -7797,7 +8163,7 @@ du_Lq'45'blk_3478 v0 v1 v2 v3 v4 v5 v6 v7
                        (coe
                           MAlonzo.Code.Once.LinCore.Core.C_k'45''8855'_1182
                           (coe
-                             du_Lq'45'blk_3478 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
+                             du_Lq'45'blk_3678 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
                              (coe v5)
                              (coe
                                 MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 (coe v12)
@@ -7811,7 +8177,7 @@ du_Lq'45'blk_3478 v0 v1 v2 v3 v4 v5 v6 v7
                           (coe
                              MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1166
                              (coe
-                                du_Lq'45'blk_3478 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
+                                du_Lq'45'blk_3678 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
                                 (coe v5) (coe v12) (coe v16))
                              (coe
                                 du_k'45'weak_798 (coe v5) (coe v11)
@@ -7828,10 +8194,10 @@ du_Lq'45'blk_3478 v0 v1 v2 v3 v4 v5 v6 v7
                              (coe v11))))
              MAlonzo.Code.Once.Spec.Grade.C_Many_12
                -> coe
-                    d_k'45'appL_3746 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
+                    d_k'45'appL_3946 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
                     (coe v5) (coe v10) (coe v11) (coe v12) (coe v6) (coe v15) (coe v16)
                     (coe
-                       du_cp'63'_2504 (coe v0) (coe v3) (coe v4) (coe v5)
+                       du_cp'63'_2676 (coe v0) (coe v3) (coe v4) (coe v5)
                        (coe
                           MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 (coe v12)
                           (coe
@@ -7850,9 +8216,9 @@ du_Lq'45'blk_3478 v0 v1 v2 v3 v4 v5 v6 v7
         -> case coe v6 of
              MAlonzo.Code.Once.Spec.Type.C__'42'__22 v16 v17
                -> coe
-                    d_k'45'pairL_3590 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
+                    d_k'45'pairL_3790 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
                     (coe v5) (coe v10) (coe v11) (coe v16) (coe v17) (coe v14)
-                    (coe v15) (coe du_rdw'63'_2224 (coe v16) (coe v14))
+                    (coe v15) (coe du_rdw'63'_2350 (coe v16) (coe v14))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Surface.Syntax.C_fst''_100 v12 v13
         -> coe
@@ -7865,7 +8231,7 @@ du_Lq'45'blk_3478 v0 v1 v2 v3 v4 v5 v6 v7
                    (coe MAlonzo.Code.Once.LinCore.Core.C_k'45'id_1152)
                    (coe MAlonzo.Code.Once.LinCore.Core.C_k'45'drop_1246)))
              (coe
-                du_Lq'45'blk_3478 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
+                du_Lq'45'blk_3678 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
                 (coe v5)
                 (coe MAlonzo.Code.Once.Spec.Type.C__'42'__22 (coe v6) (coe v12))
                 (coe v13))
@@ -7880,7 +8246,7 @@ du_Lq'45'blk_3478 v0 v1 v2 v3 v4 v5 v6 v7
                    (coe MAlonzo.Code.Once.LinCore.Core.C_k'45'drop_1246)
                    (coe MAlonzo.Code.Once.LinCore.Core.C_k'45'id_1152)))
              (coe
-                du_Lq'45'blk_3478 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
+                du_Lq'45'blk_3678 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
                 (coe v5)
                 (coe MAlonzo.Code.Once.Spec.Type.C__'42'__22 (coe v11) (coe v6))
                 (coe v13))
@@ -7891,7 +8257,7 @@ du_Lq'45'blk_3478 v0 v1 v2 v3 v4 v5 v6 v7
                     MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1166
                     (coe MAlonzo.Code.Once.LinCore.Core.C_k'45'inl_1254)
                     (coe
-                       du_Lq'45'blk_3478 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
+                       du_Lq'45'blk_3678 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
                        (coe v5) (coe v14) (coe v13))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Surface.Syntax.C_inr''_136 v13
@@ -7901,7 +8267,7 @@ du_Lq'45'blk_3478 v0 v1 v2 v3 v4 v5 v6 v7
                     MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1166
                     (coe MAlonzo.Code.Once.LinCore.Core.C_k'45'inr_1262)
                     (coe
-                       du_Lq'45'blk_3478 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
+                       du_Lq'45'blk_3678 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
                        (coe v5) (coe v15) (coe v13))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Surface.Syntax.C_case''_158 v10 v11 v12 v13 v14 v15 v16 v18 v19 v20
@@ -7912,7 +8278,7 @@ du_Lq'45'blk_3478 v0 v1 v2 v3 v4 v5 v6 v7
                 (coe
                    MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1166
                    (coe
-                      du_Lq'45'blk_3478 (coe v0) (coe v1) (coe v2) (coe v3)
+                      du_Lq'45'blk_3678 (coe v0) (coe v1) (coe v2) (coe v3)
                       (coe addInt (coe (1 :: Integer)) (coe v4))
                       (coe MAlonzo.Code.Once.Spec.Context.C__'9656'__16 v5 v15) (coe v6)
                       (coe v19))
@@ -7932,7 +8298,7 @@ du_Lq'45'blk_3478 v0 v1 v2 v3 v4 v5 v6 v7
                 (coe
                    MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1166
                    (coe
-                      du_Lq'45'blk_3478 (coe v0) (coe v1) (coe v2) (coe v3)
+                      du_Lq'45'blk_3678 (coe v0) (coe v1) (coe v2) (coe v3)
                       (coe addInt (coe (1 :: Integer)) (coe v4))
                       (coe MAlonzo.Code.Once.Spec.Context.C__'9656'__16 v5 v16) (coe v6)
                       (coe v20))
@@ -7952,14 +8318,14 @@ du_Lq'45'blk_3478 v0 v1 v2 v3 v4 v5 v6 v7
              (coe
                 MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1166
                 (coe MAlonzo.Code.Once.LinCore.Core.C_k'45'dist_1292)
-                (d_k'45'scrutL_3548
+                (d_k'45'scrutL_3748
                    (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v10)
                    (coe
                       MAlonzo.Code.Once.Context.du__'8852''7512'__22 (coe v11) (coe v12))
                    (coe MAlonzo.Code.Once.Spec.Type.C__'43'__24 (coe v15) (coe v16))
                    (coe v18)
                    (coe
-                      du_rdw'63'_2224
+                      du_rdw'63'_2350
                       (coe MAlonzo.Code.Once.Spec.Type.C__'43'__24 (coe v15) (coe v16))
                       (coe v18))))
       MAlonzo.Code.Once.Surface.Syntax.C_unit_164
@@ -7969,13 +8335,13 @@ du_Lq'45'blk_3478 v0 v1 v2 v3 v4 v5 v6 v7
              MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1166
              (coe MAlonzo.Code.Once.LinCore.Core.C_k'45'zero_1282)
              (coe
-                du_Lq'45'blk_3478 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
+                du_Lq'45'blk_3678 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
                 (coe v5) (coe MAlonzo.Code.Once.Spec.Type.C_Void_20) (coe v12))
       MAlonzo.Code.Once.Surface.Syntax.C_let''_190 v10 v11 v12 v13 v15 v16
         -> case coe v12 of
              MAlonzo.Code.Once.Spec.Grade.C_Zero_8
                -> coe
-                    du_Lq'45'blk_3478 (coe v0) (coe v1) (coe v2) (coe v3)
+                    du_Lq'45'blk_3678 (coe v0) (coe v1) (coe v2) (coe v3)
                     (coe addInt (coe (1 :: Integer)) (coe v4))
                     (coe MAlonzo.Code.Once.Spec.Context.C__'9656'__16 v5 v13) (coe v6)
                     (coe v16)
@@ -7983,7 +8349,7 @@ du_Lq'45'blk_3478 v0 v1 v2 v3 v4 v5 v6 v7
                -> coe
                     MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1166
                     (coe
-                       du_Lq'45'blk_3478 (coe v0) (coe v1) (coe v2) (coe v3)
+                       du_Lq'45'blk_3678 (coe v0) (coe v1) (coe v2) (coe v3)
                        (coe addInt (coe (1 :: Integer)) (coe v4))
                        (coe MAlonzo.Code.Once.Spec.Context.C__'9656'__16 v5 v13) (coe v6)
                        (coe v16))
@@ -7998,7 +8364,7 @@ du_Lq'45'blk_3478 v0 v1 v2 v3 v4 v5 v6 v7
                              (coe
                                 MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1166
                                 (coe
-                                   du_Lq'45'blk_3478 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
+                                   du_Lq'45'blk_3678 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
                                    (coe v5) (coe v13) (coe v15))
                                 (coe
                                    du_k'45'weak_798 (coe v5) (coe v10)
@@ -8017,7 +8383,7 @@ du_Lq'45'blk_3478 v0 v1 v2 v3 v4 v5 v6 v7
                -> coe
                     MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1166
                     (coe
-                       du_Lq'45'blk_3478 (coe v0) (coe v1) (coe v2) (coe v3)
+                       du_Lq'45'blk_3678 (coe v0) (coe v1) (coe v2) (coe v3)
                        (coe addInt (coe (1 :: Integer)) (coe v4))
                        (coe MAlonzo.Code.Once.Spec.Context.C__'9656'__16 v5 v13) (coe v6)
                        (coe v16))
@@ -8032,7 +8398,7 @@ du_Lq'45'blk_3478 v0 v1 v2 v3 v4 v5 v6 v7
                              (coe
                                 MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1166
                                 (coe
-                                   du_Lq'45'blk_3478 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
+                                   du_Lq'45'blk_3678 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
                                    (coe v5) (coe v13) (coe v15))
                                 (coe
                                    du_k'45'weak_798 (coe v5) (coe v10)
@@ -8063,7 +8429,7 @@ du_Lq'45'blk_3478 v0 v1 v2 v3 v4 v5 v6 v7
              MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1166
              (coe du_k'45'numL_1294 (coe v11) (coe v13))
              (coe
-                du_Lq'45'blk_3478 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
+                du_Lq'45'blk_3678 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
                 (coe v5)
                 (coe
                    MAlonzo.Code.Once.Spec.Theory.du_symDom_86 (coe v11) (coe v13))
@@ -8075,7 +8441,7 @@ du_Lq'45'blk_3478 v0 v1 v2 v3 v4 v5 v6 v7
                 MAlonzo.Code.Once.Surface.CoerceIR.du_voidFree'63'_350 (coe v11)
                 (coe v6) (coe v13))
              (coe
-                du_Lq'45'blk_3478 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
+                du_Lq'45'blk_3678 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
                 (coe v5) (coe v11) (coe v14))
       MAlonzo.Code.Once.Surface.Syntax.C_sigOp_238 v10 v11 v12
         -> coe
@@ -8100,7 +8466,7 @@ du_Lq'45'blk_3478 v0 v1 v2 v3 v4 v5 v6 v7
         -> coe
              MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1166
              (coe
-                du_Lq'45'blk_3478 (coe v0) (coe v1) (coe v2) (coe v3)
+                du_Lq'45'blk_3678 (coe v0) (coe v1) (coe v2) (coe v3)
                 (coe (0 :: Integer))
                 (coe MAlonzo.Code.Once.Spec.Context.C_'8709'_12) (coe v6)
                 (coe v11))
@@ -8114,7 +8480,7 @@ du_Lq'45'blk_3478 v0 v1 v2 v3 v4 v5 v6 v7
              (coe
                 MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1166
                 (coe
-                   du_Lq'45'blk_3478 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
+                   du_Lq'45'blk_3678 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
                    (coe v5) (coe v11) (coe v14))
                 (coe
                    du_k'45'weak_798 (coe v5) (coe v10)
@@ -8157,7 +8523,7 @@ du_Lq'45'blk_3478 v0 v1 v2 v3 v4 v5 v6 v7
                               (coe
                                  MAlonzo.Code.Once.LinCore.Core.C_k'45''8855'_1182
                                  (coe
-                                    du_Lq'45'blk_3478 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
+                                    du_Lq'45'blk_3678 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
                                     (coe v5)
                                     (coe
                                        MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 (coe v13)
@@ -8169,7 +8535,7 @@ du_Lq'45'blk_3478 v0 v1 v2 v3 v4 v5 v6 v7
                                  (coe
                                     MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1166
                                     (coe
-                                       du_Lq'45'blk_3478 (coe v0) (coe v1) (coe v2) (coe v3)
+                                       du_Lq'45'blk_3678 (coe v0) (coe v1) (coe v2) (coe v3)
                                        (coe v4) (coe v5)
                                        (coe
                                           MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26
@@ -8209,7 +8575,7 @@ du_Lq'45'blk_3478 v0 v1 v2 v3 v4 v5 v6 v7
                                      (coe
                                         MAlonzo.Code.Once.LinCore.Core.C_k'45''8855'_1182
                                         (coe
-                                           du_Lq'45'blk_3478 (coe v0) (coe v1) (coe v2) (coe v3)
+                                           du_Lq'45'blk_3678 (coe v0) (coe v1) (coe v2) (coe v3)
                                            (coe v4) (coe v5)
                                            (coe
                                               MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26
@@ -8221,7 +8587,7 @@ du_Lq'45'blk_3478 v0 v1 v2 v3 v4 v5 v6 v7
                                               (coe v20))
                                            (coe v16))
                                         (coe
-                                           du_Lq'45'blk_3478 (coe v0) (coe v1) (coe v2) (coe v3)
+                                           du_Lq'45'blk_3678 (coe v0) (coe v1) (coe v2) (coe v3)
                                            (coe v4) (coe v5)
                                            (coe
                                               MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26
@@ -8246,12 +8612,12 @@ du_Lq'45'blk_3478 v0 v1 v2 v3 v4 v5 v6 v7
                              -> coe
                                   MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1166
                                   (coe
-                                     du_k'45'forkL_3446
+                                     du_k'45'forkL_3646
                                      (coe
-                                        d_armOf_3496 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
+                                        d_armOf_3696 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
                                         (coe v5) (coe v10) (coe v18) (coe v23) (coe v22) (coe v16)
                                         (coe
-                                           du_arm'63'_2646
+                                           du_arm'63'_2818
                                            (coe
                                               MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26
                                               (coe v18)
@@ -8262,10 +8628,10 @@ du_Lq'45'blk_3478 v0 v1 v2 v3 v4 v5 v6 v7
                                               (coe v23))
                                            (coe v16)))
                                      (coe
-                                        d_armOf_3496 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
+                                        d_armOf_3696 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
                                         (coe v5) (coe v11) (coe v18) (coe v24) (coe v22) (coe v17)
                                         (coe
-                                           du_arm'63'_2646
+                                           du_arm'63'_2818
                                            (coe
                                               MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26
                                               (coe v18)
@@ -8290,7 +8656,7 @@ du_Lq'45'blk_3478 v0 v1 v2 v3 v4 v5 v6 v7
                                   MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1166
                                   (coe MAlonzo.Code.Once.LinCore.Core.C_k'45'lamω'7580'_1496)
                                   (coe
-                                     du_Lq'45'blk_3478 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
+                                     du_Lq'45'blk_3678 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
                                      (coe v5)
                                      (coe
                                         MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26
@@ -8318,7 +8684,7 @@ du_Lq'45'blk_3478 v0 v1 v2 v3 v4 v5 v6 v7
                                   (coe
                                      MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1166
                                      (coe
-                                        du_Lq'45'blk_3478 (coe v0) (coe v1) (coe v2) (coe v3)
+                                        du_Lq'45'blk_3678 (coe v0) (coe v1) (coe v2) (coe v3)
                                         (coe v4) (coe v5)
                                         (coe
                                            MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26
@@ -8353,7 +8719,7 @@ du_Lq'45'blk_3478 v0 v1 v2 v3 v4 v5 v6 v7
                            (coe
                               MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1166
                               (coe
-                                 du_Lq'45'blk_3478 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
+                                 du_Lq'45'blk_3678 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
                                  (coe v5)
                                  (coe
                                     MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 (coe v18)
@@ -8384,7 +8750,7 @@ du_Lq'45'blk_3478 v0 v1 v2 v3 v4 v5 v6 v7
                     (coe
                        MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1166
                        (coe
-                          du_Lq'45'blk_3478 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
+                          du_Lq'45'blk_3678 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
                           (coe v5)
                           (coe
                              MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 (coe v14)
@@ -8407,7 +8773,7 @@ du_Lq'45'blk_3478 v0 v1 v2 v3 v4 v5 v6 v7
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.LinCore.FromExpr._.armOf
-d_armOf_3496 ::
+d_armOf_3696 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.LinCore.Core.T_Cx_728 ->
   (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
@@ -8423,18 +8789,18 @@ d_armOf_3496 ::
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Grade.T_Purity_40 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 ->
-  Maybe T_Arm_2600 -> T_ArmD_3280
-d_armOf_3496 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11
+  Maybe T_Arm_2772 -> T_ArmD_3480
+d_armOf_3696 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11
   = case coe v11 of
       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v12
         -> case coe v12 of
-             C_arm'45'map_2614 v16
+             C_arm'45'map_2786 v16
                -> case coe v16 of
-                    C_pjl_2572 v21
+                    C_pjl_2744 v21
                       -> case coe v10 of
                            MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_276 v27
                              -> coe
-                                  C_armD_3332 (coe v8) (coe v27) (coe v21)
+                                  C_armD_3532 (coe v8) (coe v27) (coe v21)
                                   (coe
                                      du_Co_724 (coe v0) (coe v3) (coe v5)
                                      (coe MAlonzo.Code.Once.Spec.Context.d_zeroUsage_44 (coe v4)))
@@ -8446,15 +8812,15 @@ d_armOf_3496 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11
                                         coe MAlonzo.Code.Once.LinCore.Core.C_k'45'id_1152))
                            _ -> MAlonzo.RTE.mazUnreachableError
                     _ -> MAlonzo.RTE.mazUnreachableError
-             C_arm'45'comp_2632 v21
+             C_arm'45'comp_2804 v21
                -> case coe v10 of
                     MAlonzo.Code.Once.Surface.Syntax.C_comp''_306 v24 v25 v27 v30 v31
                       -> case coe v21 of
-                           C_pjl_2572 v36
+                           C_pjl_2744 v36
                              -> case coe v31 of
                                   MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_276 v42
                                     -> coe
-                                         C_armD_3332 (coe v27) (coe v42) (coe v36)
+                                         C_armD_3532 (coe v27) (coe v42) (coe v36)
                                          (coe
                                             d_ty_716 (coe v0) (coe v3)
                                             (coe
@@ -8468,7 +8834,7 @@ d_armOf_3496 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11
                                          (coe
                                             MAlonzo.Code.Once.LinCore.Core.C__'8728'l__796
                                             (coe du_Co_724 (coe v0) (coe v3) (coe v5) (coe v24))
-                                            (d_Lq_3464
+                                            (d_Lq_3664
                                                (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
                                                (coe v24)
                                                (coe
@@ -8503,7 +8869,7 @@ d_armOf_3496 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11
                                          (coe
                                             MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1166
                                             (coe
-                                               du_Lq'45'blk_3478 (coe v0) (coe v1) (coe v2) (coe v3)
+                                               du_Lq'45'blk_3678 (coe v0) (coe v1) (coe v2) (coe v3)
                                                (coe v4) (coe v5)
                                                (coe
                                                   MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26
@@ -8544,9 +8910,9 @@ d_armOf_3496 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
         -> coe
-             C_armD_3332 (coe v7)
+             C_armD_3532 (coe v7)
              (coe MAlonzo.Code.Once.Surface.Map.C_mp'45'id_14)
-             (coe C_pj'45'id_2522)
+             (coe C_pj'45'id_2694)
              (coe
                 d_ty_716 (coe v0) (coe v3)
                 (coe
@@ -8556,7 +8922,7 @@ d_armOf_3496 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11
                       (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) (coe v9))
                    (coe v8)))
              (coe
-                d_Lq_3464 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
+                d_Lq_3664 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
                 (coe v6)
                 (coe
                    MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 (coe v7)
@@ -8566,7 +8932,7 @@ d_armOf_3496 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11
                    (coe v8))
                 (coe v10))
              (coe
-                du_Lq'45'blk_3478 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
+                du_Lq'45'blk_3678 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
                 (coe v5)
                 (coe
                    MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 (coe v7)
@@ -8580,7 +8946,7 @@ d_armOf_3496 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11
                 (\ v12 v13 -> coe MAlonzo.Code.Once.LinCore.Core.C_k'45'bev_1480))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.LinCore.FromExpr._.scrutL
-d_scrutL_3530 ::
+d_scrutL_3730 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.LinCore.Core.T_Cx_728 ->
   (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
@@ -8596,11 +8962,11 @@ d_scrutL_3530 ::
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 ->
   Maybe T_Rd_2058 -> MAlonzo.Code.Once.LinCore.Core.T_Tm_758
-d_scrutL_3530 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
+d_scrutL_3730 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
   = case coe v10 of
       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v11
         -> coe
-             du_lentS_3068 (coe v0) (coe v3) (coe v4) (coe v5) (coe v6) (coe v7)
+             du_lentS_3268 (coe v0) (coe v3) (coe v4) (coe v5) (coe v6) (coe v7)
              (coe v8) (coe v9) (coe v11)
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
         -> coe
@@ -8612,7 +8978,7 @@ d_scrutL_3530 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
              (coe
                 MAlonzo.Code.Once.LinCore.Core.C__'8855'l__808
                 (coe MAlonzo.Code.Once.LinCore.Core.C_lid_786)
-                (d_Lq_3464
+                (d_Lq_3664
                    (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
                    (coe v8) (coe v9)))
              (coe
@@ -8625,7 +8991,7 @@ d_scrutL_3530 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
                 (coe du_split_882 (coe v0) (coe v3) (coe v5) (coe v6) (coe v7)))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.LinCore.FromExpr._.k-scrutL
-d_k'45'scrutL_3548 ::
+d_k'45'scrutL_3748 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.LinCore.Core.T_Cx_728 ->
   (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
@@ -8641,11 +9007,11 @@ d_k'45'scrutL_3548 ::
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 ->
   Maybe T_Rd_2058 -> MAlonzo.Code.Once.LinCore.Core.T_Blk_768
-d_k'45'scrutL_3548 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
+d_k'45'scrutL_3748 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
   = case coe v10 of
       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v11
         -> coe
-             du_k'45'lentS_3094 (coe v4) (coe v5) (coe v6) (coe v7) (coe v8)
+             du_k'45'lentS_3294 (coe v4) (coe v5) (coe v6) (coe v7) (coe v8)
              (coe v9) (coe v11)
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
         -> coe
@@ -8654,7 +9020,7 @@ d_k'45'scrutL_3548 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
                 MAlonzo.Code.Once.LinCore.Core.C_k'45''8855'_1182
                 (coe MAlonzo.Code.Once.LinCore.Core.C_k'45'id_1152)
                 (coe
-                   du_Lq'45'blk_3478 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
+                   du_Lq'45'blk_3678 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
                    (coe v5) (coe v8) (coe v9)))
              (coe
                 MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1166
@@ -8662,7 +9028,7 @@ d_k'45'scrutL_3548 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
                 (coe du_k'45'split_966 (coe v5) (coe v6) (coe v7)))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.LinCore.FromExpr._.pairL
-d_pairL_3568 ::
+d_pairL_3768 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.LinCore.Core.T_Cx_728 ->
   (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
@@ -8680,7 +9046,7 @@ d_pairL_3568 ::
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 ->
   Maybe T_Rd_2058 -> MAlonzo.Code.Once.LinCore.Core.T_Tm_758
-d_pairL_3568 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
+d_pairL_3768 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
   = case coe v12 of
       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v13
         -> coe
@@ -8692,7 +9058,7 @@ d_pairL_3568 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
              (coe
                 MAlonzo.Code.Once.LinCore.Core.C__'8855'l__808
                 (coe MAlonzo.Code.Once.LinCore.Core.C_lid_786)
-                (d_Lq_3464
+                (d_Lq_3664
                    (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v7)
                    (coe v9) (coe v11)))
              (coe
@@ -8703,7 +9069,7 @@ d_pairL_3568 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
                    (coe d_ty_716 (coe v0) (coe v3) (coe v8)))
                 (coe MAlonzo.Code.Once.LinCore.Core.C_lswap_860)
                 (coe
-                   du_lentS_3068 (coe v0) (coe v3) (coe v4) (coe v5) (coe v6) (coe v7)
+                   du_lentS_3268 (coe v0) (coe v3) (coe v4) (coe v5) (coe v6) (coe v7)
                    (coe v8) (coe v10) (coe v13)))
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
         -> coe
@@ -8714,16 +9080,16 @@ d_pairL_3568 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
                 (coe du_Co_724 (coe v0) (coe v3) (coe v5) (coe v7)))
              (coe
                 MAlonzo.Code.Once.LinCore.Core.C__'8855'l__808
-                (d_Lq_3464
+                (d_Lq_3664
                    (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
                    (coe v8) (coe v10))
-                (d_Lq_3464
+                (d_Lq_3664
                    (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v7)
                    (coe v9) (coe v11)))
              (coe du_split_882 (coe v0) (coe v3) (coe v5) (coe v6) (coe v7))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.LinCore.FromExpr._.k-pairL
-d_k'45'pairL_3590 ::
+d_k'45'pairL_3790 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.LinCore.Core.T_Cx_728 ->
   (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
@@ -8741,7 +9107,7 @@ d_k'45'pairL_3590 ::
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 ->
   Maybe T_Rd_2058 -> MAlonzo.Code.Once.LinCore.Core.T_Blk_768
-d_k'45'pairL_3590 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
+d_k'45'pairL_3790 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
   = case coe v12 of
       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v13
         -> coe
@@ -8750,13 +9116,13 @@ d_k'45'pairL_3590 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
                 MAlonzo.Code.Once.LinCore.Core.C_k'45''8855'_1182
                 (coe MAlonzo.Code.Once.LinCore.Core.C_k'45'id_1152)
                 (coe
-                   du_Lq'45'blk_3478 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
+                   du_Lq'45'blk_3678 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
                    (coe v5) (coe v9) (coe v11)))
              (coe
                 MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1166
                 (coe MAlonzo.Code.Once.LinCore.Core.C_k'45'swap_1234)
                 (coe
-                   du_k'45'lentS_3094 (coe v4) (coe v5) (coe v6) (coe v7) (coe v8)
+                   du_k'45'lentS_3294 (coe v4) (coe v5) (coe v6) (coe v7) (coe v8)
                    (coe v10) (coe v13)))
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
         -> coe
@@ -8764,15 +9130,15 @@ d_k'45'pairL_3590 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
              (coe
                 MAlonzo.Code.Once.LinCore.Core.C_k'45''8855'_1182
                 (coe
-                   du_Lq'45'blk_3478 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
+                   du_Lq'45'blk_3678 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
                    (coe v5) (coe v8) (coe v10))
                 (coe
-                   du_Lq'45'blk_3478 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
+                   du_Lq'45'blk_3678 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
                    (coe v5) (coe v9) (coe v11)))
              (coe du_k'45'split_966 (coe v5) (coe v6) (coe v7))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.LinCore.FromExpr._.scrutA
-d_scrutA_3650 ::
+d_scrutA_3850 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.LinCore.Core.T_Cx_728 ->
   (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
@@ -8788,7 +9154,7 @@ d_scrutA_3650 ::
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 ->
   Maybe T_Rd_2058 -> MAlonzo.Code.Once.LinCore.Core.T_Tm_758
-d_scrutA_3650 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
+d_scrutA_3850 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
   = case coe v10 of
       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v11
         -> coe
@@ -8835,7 +9201,7 @@ d_scrutA_3650 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
                    (coe
                       MAlonzo.Code.Once.LinCore.Core.C_bsnd_1004
                       (coe
-                         du_Rt_2960 (coe v0) (coe v3) (coe v4) (coe v5)
+                         du_Rt_3140 (coe v0) (coe v3) (coe v4) (coe v5)
                          (coe
                             MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60 (coe v6)
                             (coe
@@ -8877,7 +9243,7 @@ d_scrutA_3650 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
                 (coe
                    MAlonzo.Code.Once.LinCore.Core.C__'8728'l__796
                    (coe du_Co_724 (coe v0) (coe v3) (coe v5) (coe v7))
-                   (d_Lq_3464
+                   (d_Lq_3664
                       (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v7)
                       (coe v8) (coe v9))
                    (coe
@@ -8895,7 +9261,7 @@ d_scrutA_3650 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
                    (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) (coe v7)))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.LinCore.FromExpr._.k-scrutA
-d_k'45'scrutA_3668 ::
+d_k'45'scrutA_3868 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.LinCore.Core.T_Cx_728 ->
   (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
@@ -8911,7 +9277,7 @@ d_k'45'scrutA_3668 ::
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 ->
   Maybe T_Rd_2058 -> MAlonzo.Code.Once.LinCore.Core.T_Blk_768
-d_k'45'scrutA_3668 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
+d_k'45'scrutA_3868 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
   = case coe v10 of
       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v11
         -> coe
@@ -8938,7 +9304,7 @@ d_k'45'scrutA_3668 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
                    (coe
                       MAlonzo.Code.Once.LinCore.Core.C_k'45'snd_1394
                       (coe
-                         du_k'45'Rt_3016 (coe v4) (coe v5)
+                         du_k'45'Rt_3206 (coe v4) (coe v5)
                          (coe
                             MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60 (coe v6)
                             (coe
@@ -8972,7 +9338,7 @@ d_k'45'scrutA_3668 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
                 (coe
                    MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1166
                    (coe
-                      du_Lq'45'blk_3478 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
+                      du_Lq'45'blk_3678 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
                       (coe v5) (coe v8) (coe v9))
                    (coe
                       du_k'45'weak_798 (coe v5) (coe v7)
@@ -8989,7 +9355,7 @@ d_k'45'scrutA_3668 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
                    (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) (coe v7)))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.LinCore.FromExpr._.appL
-d_appL_3724 ::
+d_appL_3924 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.LinCore.Core.T_Cx_728 ->
   (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
@@ -9006,8 +9372,8 @@ d_appL_3724 ::
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 ->
-  Maybe T_CP_2466 -> MAlonzo.Code.Once.LinCore.Core.T_Tm_758
-d_appL_3724 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
+  Maybe T_CP_2638 -> MAlonzo.Code.Once.LinCore.Core.T_Tm_758
+d_appL_3924 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
   = case coe v12 of
       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v13
         -> coe
@@ -9079,7 +9445,7 @@ d_appL_3724 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
                                        (coe
                                           MAlonzo.Code.Once.LinCore.Core.C__'8728'l__796
                                           (coe du_Co_724 (coe v0) (coe v3) (coe v5) (coe v18))
-                                          (d_Lq_3464
+                                          (d_Lq_3664
                                              (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
                                              (coe v18)
                                              (coe
@@ -9134,7 +9500,7 @@ d_appL_3724 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
                                        (coe
                                           MAlonzo.Code.Once.LinCore.Core.C__'8728'l__796
                                           (coe du_Co_724 (coe v0) (coe v3) (coe v5) (coe v19))
-                                          (d_Lq_3464
+                                          (d_Lq_3664
                                              (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
                                              (coe v19)
                                              (coe
@@ -9182,82 +9548,24 @@ d_appL_3724 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
                                              MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_56 (coe v3)
                                              (coe v15)))))
                                  (coe MAlonzo.Code.Once.LinCore.Core.C_ldist_914)
-                                 (d_scrutA_3650
+                                 (d_scrutA_3850
                                     (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
                                     (coe
                                        MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60 (coe v18)
                                        (coe v19))
                                     (coe v7) (coe v8) (coe v11)
-                                    (coe du_rdw'63'_2224 (coe v8) (coe v11))))
+                                    (coe du_rdw'63'_2350 (coe v8) (coe v11))))
                        _ -> MAlonzo.RTE.mazUnreachableError
                 _ -> MAlonzo.RTE.mazUnreachableError)
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
         -> coe
-             MAlonzo.Code.Once.LinCore.Core.C__'8728'l__796
-             (coe
-                MAlonzo.Code.Once.LinCore.Core.C__'8855't__184
-                (coe
-                   MAlonzo.Code.Once.LinCore.Core.C_Fn_190
-                   (coe MAlonzo.Code.Once.LinCore.Core.C_many_154)
-                   (coe
-                      MAlonzo.Code.Once.LinCore.FromIR.du_grade_922
-                      (coe
-                         MAlonzo.Code.Once.Spec.Grade.C_fin_42
-                         (coe MAlonzo.Code.Once.Spec.Grade.C_pure'7584'_36)))
-                   (coe
-                      MAlonzo.Code.Once.LinCore.FromIR.d_'10218'_'10219'_924 (coe v0)
-                      (coe MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_56 (coe v3) (coe v8)))
-                   (coe d_ty_716 (coe v0) (coe v3) (coe v9)))
-                (coe
-                   MAlonzo.Code.Once.LinCore.FromIR.d_'10218'_'10219'_924 (coe v0)
-                   (coe MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_56 (coe v3) (coe v8))))
-             (coe MAlonzo.Code.Once.LinCore.Core.C_levω_1108)
-             (coe
-                MAlonzo.Code.Once.LinCore.Core.C__'8728'l__796
-                (coe
-                   MAlonzo.Code.Once.LinCore.Core.C__'8855't__184
-                   (coe du_Co_724 (coe v0) (coe v3) (coe v5) (coe v6))
-                   (coe
-                      du_Co_724 (coe v0) (coe v3) (coe v5)
-                      (coe
-                         MAlonzo.Code.Once.Spec.Context.du__'42''7512'__72
-                         (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) (coe v7))))
-                (coe
-                   MAlonzo.Code.Once.LinCore.Core.C__'8855'l__808
-                   (d_Lq_3464
-                      (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
-                      (coe
-                         MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 (coe v8)
-                         (coe
-                            MAlonzo.Code.Once.Spec.Grade.C_mk'45'kind_90
-                            (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12)
-                            (coe
-                               MAlonzo.Code.Once.Spec.Grade.C_fin_42
-                               (coe MAlonzo.Code.Once.Spec.Grade.C_pure'7584'_36)))
-                         (coe v9))
-                      (coe v10))
-                   (coe
-                      MAlonzo.Code.Once.LinCore.Core.C__'8728'l__796
-                      (coe du_Co_724 (coe v0) (coe v3) (coe v5) (coe v7))
-                      (d_Lq_3464
-                         (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v7)
-                         (coe v8) (coe v11))
-                      (coe
-                         du_weak_748 (coe v0) (coe v3) (coe v5) (coe v7)
-                         (coe
-                            MAlonzo.Code.Once.Spec.Context.du__'42''7512'__72
-                            (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) (coe v7))
-                         (coe
-                            MAlonzo.Code.Once.Context.du_'8849''7512''45''42'Many_206
-                            (coe v7)))))
-                (coe
-                   du_split_882 (coe v0) (coe v3) (coe v5) (coe v6)
-                   (coe
-                      MAlonzo.Code.Once.Spec.Context.du__'42''7512'__72
-                      (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) (coe v7))))
+             d_appR_3966 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
+             (coe v6) (coe v7) (coe v8) (coe v9) (coe v10) (coe v11)
+             (coe du_pth'63'_2158 (coe v10))
+             (coe du_rdx'63'_2392 (coe v5) (coe v8) (coe v6) (coe v7) (coe v11))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.LinCore.FromExpr._.k-appL
-d_k'45'appL_3746 ::
+d_k'45'appL_3946 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.LinCore.Core.T_Cx_728 ->
   (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
@@ -9274,8 +9582,8 @@ d_k'45'appL_3746 ::
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 ->
-  Maybe T_CP_2466 -> MAlonzo.Code.Once.LinCore.Core.T_Blk_768
-d_k'45'appL_3746 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
+  Maybe T_CP_2638 -> MAlonzo.Code.Once.LinCore.Core.T_Blk_768
+d_k'45'appL_3946 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
   = case coe v12 of
       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v13
         -> coe
@@ -9296,7 +9604,7 @@ d_k'45'appL_3746 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
                                        (coe
                                           MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1166
                                           (coe
-                                             du_Lq'45'blk_3478 (coe v0) (coe v1) (coe v2) (coe v3)
+                                             du_Lq'45'blk_3678 (coe v0) (coe v1) (coe v2) (coe v3)
                                              (coe v4) (coe v5)
                                              (coe
                                                 MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26
@@ -9327,7 +9635,7 @@ d_k'45'appL_3746 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
                                        (coe
                                           MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1166
                                           (coe
-                                             du_Lq'45'blk_3478 (coe v0) (coe v1) (coe v2) (coe v3)
+                                             du_Lq'45'blk_3678 (coe v0) (coe v1) (coe v2) (coe v3)
                                              (coe v4) (coe v5)
                                              (coe
                                                 MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26
@@ -9353,57 +9661,305 @@ d_k'45'appL_3746 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
                               (coe
                                  MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1166
                                  (coe MAlonzo.Code.Once.LinCore.Core.C_k'45'dist_1292)
-                                 (d_k'45'scrutA_3668
+                                 (d_k'45'scrutA_3868
                                     (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
                                     (coe
                                        MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60 (coe v18)
                                        (coe v19))
                                     (coe v7) (coe v8) (coe v11)
-                                    (coe du_rdw'63'_2224 (coe v8) (coe v11))))
+                                    (coe du_rdw'63'_2350 (coe v8) (coe v11))))
                        _ -> MAlonzo.RTE.mazUnreachableError
                 _ -> MAlonzo.RTE.mazUnreachableError)
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
         -> coe
-             MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1166
-             (coe MAlonzo.Code.Once.LinCore.Core.C_k'45'evω_1504)
-             (coe
-                MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1166
-                (coe
-                   MAlonzo.Code.Once.LinCore.Core.C_k'45''8855'_1182
-                   (coe
-                      du_Lq'45'blk_3478 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
-                      (coe v5)
-                      (coe
-                         MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 (coe v8)
-                         (coe
-                            MAlonzo.Code.Once.Spec.Grade.C_mk'45'kind_90
-                            (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12)
-                            (coe
-                               MAlonzo.Code.Once.Spec.Grade.C_fin_42
-                               (coe MAlonzo.Code.Once.Spec.Grade.C_pure'7584'_36)))
-                         (coe v9))
-                      (coe v10))
-                   (coe
-                      MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1166
-                      (coe
-                         du_Lq'45'blk_3478 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
-                         (coe v5) (coe v8) (coe v11))
-                      (coe
-                         du_k'45'weak_798 (coe v5) (coe v7)
-                         (coe
-                            MAlonzo.Code.Once.Spec.Context.du__'42''7512'__72
-                            (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) (coe v7))
-                         (coe
-                            MAlonzo.Code.Once.Context.du_'8849''7512''45''42'Many_206
-                            (coe v7)))))
-                (coe
-                   du_k'45'split_966 (coe v5) (coe v6)
-                   (coe
-                      MAlonzo.Code.Once.Spec.Context.du__'42''7512'__72
-                      (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) (coe v7))))
+             d_k'45'appR_3990 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
+             (coe v5) (coe v6) (coe v7) (coe v8) (coe v9) (coe v10) (coe v11)
+             (coe du_pth'63'_2158 (coe v10))
+             (coe du_rdx'63'_2392 (coe v5) (coe v8) (coe v6) (coe v7) (coe v11))
       _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.LinCore.FromExpr._.appR
+d_appR_3966 ::
+  MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
+  MAlonzo.Code.Once.LinCore.Core.T_Cx_728 ->
+  (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
+   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
+   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
+   MAlonzo.Code.Once.LinCore.Core.T_Gr_156 ->
+   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
+  Integer ->
+  Integer ->
+  MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
+  MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
+  MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 ->
+  Maybe T_Pth_1996 ->
+  Maybe T_Rd_2058 -> MAlonzo.Code.Once.LinCore.Core.T_Tm_758
+d_appR_3966 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13
+  = case coe v12 of
+      MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v14
+        -> case coe v13 of
+             MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v15
+               -> coe
+                    MAlonzo.Code.Once.LinCore.Core.C__'8728'l__796
+                    (coe
+                       MAlonzo.Code.Once.LinCore.Core.C__'8855't__184
+                       (coe
+                          MAlonzo.Code.Once.LinCore.Core.C_Fn_190
+                          (coe MAlonzo.Code.Once.LinCore.Core.C_many_154)
+                          (coe
+                             MAlonzo.Code.Once.LinCore.FromIR.du_grade_922
+                             (coe
+                                MAlonzo.Code.Once.Spec.Grade.C_fin_42
+                                (coe MAlonzo.Code.Once.Spec.Grade.C_pure'7584'_36)))
+                          (coe
+                             MAlonzo.Code.Once.LinCore.FromIR.d_'10218'_'10219'_924 (coe v0)
+                             (coe MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_56 (coe v3) (coe v8)))
+                          (coe d_ty_716 (coe v0) (coe v3) (coe v9)))
+                       (coe
+                          MAlonzo.Code.Once.LinCore.FromIR.d_'10218'_'10219'_924 (coe v0)
+                          (coe MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_56 (coe v3) (coe v8))))
+                    (coe MAlonzo.Code.Once.LinCore.Core.C_levω_1108)
+                    (coe
+                       MAlonzo.Code.Once.LinCore.Core.C__'8728'l__796
+                       (coe
+                          MAlonzo.Code.Once.LinCore.Core.C__'8855't__184
+                          (coe du_Co_724 (coe v0) (coe v3) (coe v5) (coe v6))
+                          (coe
+                             MAlonzo.Code.Once.LinCore.FromIR.d_'10218'_'10219'_924 (coe v0)
+                             (coe MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_56 (coe v3) (coe v8))))
+                       (coe
+                          MAlonzo.Code.Once.LinCore.Core.C__'8855'l__808
+                          (d_Lq_3664
+                             (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
+                             (coe
+                                MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 (coe v8)
+                                (coe
+                                   MAlonzo.Code.Once.Spec.Grade.C_mk'45'kind_90
+                                   (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12)
+                                   (coe
+                                      MAlonzo.Code.Once.Spec.Grade.C_fin_42
+                                      (coe MAlonzo.Code.Once.Spec.Grade.C_pure'7584'_36)))
+                                (coe v9))
+                             (coe v10))
+                          (coe MAlonzo.Code.Once.LinCore.Core.C_lid_786))
+                       (d_scrutA_3850
+                          (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
+                          (coe v7) (coe v8) (coe v11) (coe v13)))
+             MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
+               -> coe
+                    d_appS_4010 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
+                    (coe v6) (coe v7) (coe v8) (coe v9) (coe v10) (coe v11)
+             _ -> MAlonzo.RTE.mazUnreachableError
+      MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
+        -> coe
+             d_appS_4010 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
+             (coe v6) (coe v7) (coe v8) (coe v9) (coe v10) (coe v11)
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.LinCore.FromExpr._.k-appR
+d_k'45'appR_3990 ::
+  MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
+  MAlonzo.Code.Once.LinCore.Core.T_Cx_728 ->
+  (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
+   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
+   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
+   MAlonzo.Code.Once.LinCore.Core.T_Gr_156 ->
+   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
+  Integer ->
+  Integer ->
+  MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
+  MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
+  MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 ->
+  Maybe T_Pth_1996 ->
+  Maybe T_Rd_2058 -> MAlonzo.Code.Once.LinCore.Core.T_Blk_768
+d_k'45'appR_3990 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13
+  = case coe v12 of
+      MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v14
+        -> case coe v13 of
+             MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v15
+               -> coe
+                    MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1166
+                    (coe MAlonzo.Code.Once.LinCore.Core.C_k'45'evω_1504)
+                    (coe
+                       MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1166
+                       (coe
+                          MAlonzo.Code.Once.LinCore.Core.C_k'45''8855'_1182
+                          (coe
+                             du_Lq'45'blk_3678 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
+                             (coe v5)
+                             (coe
+                                MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 (coe v8)
+                                (coe
+                                   MAlonzo.Code.Once.Spec.Grade.C_mk'45'kind_90
+                                   (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12)
+                                   (coe
+                                      MAlonzo.Code.Once.Spec.Grade.C_fin_42
+                                      (coe MAlonzo.Code.Once.Spec.Grade.C_pure'7584'_36)))
+                                (coe v9))
+                             (coe v10))
+                          (coe MAlonzo.Code.Once.LinCore.Core.C_k'45'id_1152))
+                       (d_k'45'scrutA_3868
+                          (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
+                          (coe v7) (coe v8) (coe v11) (coe v13)))
+             MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
+               -> coe
+                    d_k'45'appS_4030 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
+                    (coe v5) (coe v6) (coe v7) (coe v8) (coe v9) (coe v10) (coe v11)
+             _ -> MAlonzo.RTE.mazUnreachableError
+      MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
+        -> coe
+             d_k'45'appS_4030 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
+             (coe v5) (coe v6) (coe v7) (coe v8) (coe v9) (coe v10) (coe v11)
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.LinCore.FromExpr._.appS
+d_appS_4010 ::
+  MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
+  MAlonzo.Code.Once.LinCore.Core.T_Cx_728 ->
+  (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
+   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
+   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
+   MAlonzo.Code.Once.LinCore.Core.T_Gr_156 ->
+   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
+  Integer ->
+  Integer ->
+  MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
+  MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
+  MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 ->
+  MAlonzo.Code.Once.LinCore.Core.T_Tm_758
+d_appS_4010 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11
+  = coe
+      MAlonzo.Code.Once.LinCore.Core.C__'8728'l__796
+      (coe
+         MAlonzo.Code.Once.LinCore.Core.C__'8855't__184
+         (coe
+            MAlonzo.Code.Once.LinCore.Core.C_Fn_190
+            (coe MAlonzo.Code.Once.LinCore.Core.C_many_154)
+            (coe
+               MAlonzo.Code.Once.LinCore.FromIR.du_grade_922
+               (coe
+                  MAlonzo.Code.Once.Spec.Grade.C_fin_42
+                  (coe MAlonzo.Code.Once.Spec.Grade.C_pure'7584'_36)))
+            (coe
+               MAlonzo.Code.Once.LinCore.FromIR.d_'10218'_'10219'_924 (coe v0)
+               (coe MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_56 (coe v3) (coe v8)))
+            (coe d_ty_716 (coe v0) (coe v3) (coe v9)))
+         (coe
+            MAlonzo.Code.Once.LinCore.FromIR.d_'10218'_'10219'_924 (coe v0)
+            (coe MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_56 (coe v3) (coe v8))))
+      (coe MAlonzo.Code.Once.LinCore.Core.C_levω_1108)
+      (coe
+         MAlonzo.Code.Once.LinCore.Core.C__'8728'l__796
+         (coe
+            MAlonzo.Code.Once.LinCore.Core.C__'8855't__184
+            (coe du_Co_724 (coe v0) (coe v3) (coe v5) (coe v6))
+            (coe
+               du_Co_724 (coe v0) (coe v3) (coe v5)
+               (coe
+                  MAlonzo.Code.Once.Spec.Context.du__'42''7512'__72
+                  (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) (coe v7))))
+         (coe
+            MAlonzo.Code.Once.LinCore.Core.C__'8855'l__808
+            (d_Lq_3664
+               (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
+               (coe
+                  MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 (coe v8)
+                  (coe
+                     MAlonzo.Code.Once.Spec.Grade.C_mk'45'kind_90
+                     (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12)
+                     (coe
+                        MAlonzo.Code.Once.Spec.Grade.C_fin_42
+                        (coe MAlonzo.Code.Once.Spec.Grade.C_pure'7584'_36)))
+                  (coe v9))
+               (coe v10))
+            (coe
+               MAlonzo.Code.Once.LinCore.Core.C__'8728'l__796
+               (coe du_Co_724 (coe v0) (coe v3) (coe v5) (coe v7))
+               (d_Lq_3664
+                  (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v7)
+                  (coe v8) (coe v11))
+               (coe
+                  du_weak_748 (coe v0) (coe v3) (coe v5) (coe v7)
+                  (coe
+                     MAlonzo.Code.Once.Spec.Context.du__'42''7512'__72
+                     (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) (coe v7))
+                  (coe
+                     MAlonzo.Code.Once.Context.du_'8849''7512''45''42'Many_206
+                     (coe v7)))))
+         (coe
+            du_split_882 (coe v0) (coe v3) (coe v5) (coe v6)
+            (coe
+               MAlonzo.Code.Once.Spec.Context.du__'42''7512'__72
+               (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) (coe v7))))
+-- Once.LinCore.FromExpr._.k-appS
+d_k'45'appS_4030 ::
+  MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
+  MAlonzo.Code.Once.LinCore.Core.T_Cx_728 ->
+  (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
+   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
+   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
+   MAlonzo.Code.Once.LinCore.Core.T_Gr_156 ->
+   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
+  Integer ->
+  Integer ->
+  MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
+  MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
+  MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 ->
+  MAlonzo.Code.Once.LinCore.Core.T_Blk_768
+d_k'45'appS_4030 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11
+  = coe
+      MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1166
+      (coe MAlonzo.Code.Once.LinCore.Core.C_k'45'evω_1504)
+      (coe
+         MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1166
+         (coe
+            MAlonzo.Code.Once.LinCore.Core.C_k'45''8855'_1182
+            (coe
+               du_Lq'45'blk_3678 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
+               (coe v5)
+               (coe
+                  MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 (coe v8)
+                  (coe
+                     MAlonzo.Code.Once.Spec.Grade.C_mk'45'kind_90
+                     (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12)
+                     (coe
+                        MAlonzo.Code.Once.Spec.Grade.C_fin_42
+                        (coe MAlonzo.Code.Once.Spec.Grade.C_pure'7584'_36)))
+                  (coe v9))
+               (coe v10))
+            (coe
+               MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1166
+               (coe
+                  du_Lq'45'blk_3678 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
+                  (coe v5) (coe v8) (coe v11))
+               (coe
+                  du_k'45'weak_798 (coe v5) (coe v7)
+                  (coe
+                     MAlonzo.Code.Once.Spec.Context.du__'42''7512'__72
+                     (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) (coe v7))
+                  (coe
+                     MAlonzo.Code.Once.Context.du_'8849''7512''45''42'Many_206
+                     (coe v7)))))
+         (coe
+            du_k'45'split_966 (coe v5) (coe v6)
+            (coe
+               MAlonzo.Code.Once.Spec.Context.du__'42''7512'__72
+               (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) (coe v7))))
 -- Once.LinCore.FromExpr._..extendedlambda2
-d_'46'extendedlambda2_3894 ::
+d_'46'extendedlambda2_4274 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.LinCore.Core.T_Cx_728 ->
   (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
@@ -9425,10 +9981,10 @@ d_'46'extendedlambda2_3894 ::
   MAlonzo.Code.Once.Spec.Grade.T_Finite_34 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.LinCore.Core.T_Blk_768
-d_'46'extendedlambda2_3894 v0 v1 v2 v3 v4 v5 v6 ~v7 v8 v9 ~v10 ~v11
+d_'46'extendedlambda2_4274 v0 v1 v2 v3 v4 v5 v6 ~v7 v8 v9 ~v10 ~v11
                            v12 ~v13 v14 ~v15
-  = du_'46'extendedlambda2_3894 v0 v1 v2 v3 v4 v5 v6 v8 v9 v12 v14
-du_'46'extendedlambda2_3894 ::
+  = du_'46'extendedlambda2_4274 v0 v1 v2 v3 v4 v5 v6 v8 v9 v12 v14
+du_'46'extendedlambda2_4274 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.LinCore.Core.T_Cx_728 ->
   (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
@@ -9445,7 +10001,7 @@ du_'46'extendedlambda2_3894 ::
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 ->
   MAlonzo.Code.Once.Spec.Grade.T_Finite_34 ->
   MAlonzo.Code.Once.LinCore.Core.T_Blk_768
-du_'46'extendedlambda2_3894 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
+du_'46'extendedlambda2_4274 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
   = coe
       MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1166
       (coe
@@ -9456,7 +10012,7 @@ du_'46'extendedlambda2_3894 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
             (coe
                MAlonzo.Code.Once.LinCore.Core.C_k'45''8855'_1182
                (coe
-                  du_Lq'45'blk_3478 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
+                  du_Lq'45'blk_3678 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
                   (coe v5)
                   (coe
                      MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 (coe v7)
@@ -9470,7 +10026,7 @@ du_'46'extendedlambda2_3894 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
             (coe MAlonzo.Code.Once.LinCore.Core.C_k'45'ρ'8315'_1194)))
       (coe MAlonzo.Code.Once.LinCore.Core.C_k'45'ρ_1188)
 -- Once.LinCore.FromExpr._..extendedlambda3
-d_'46'extendedlambda3_3908 ::
+d_'46'extendedlambda3_4288 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.LinCore.Core.T_Cx_728 ->
   (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
@@ -9492,11 +10048,11 @@ d_'46'extendedlambda3_3908 ::
   MAlonzo.Code.Once.Spec.Grade.T_Finite_34 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.LinCore.Core.T_Blk_768
-d_'46'extendedlambda3_3908 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 ~v10 ~v11
+d_'46'extendedlambda3_4288 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 ~v10 ~v11
                            v12 v13 v14 ~v15
-  = du_'46'extendedlambda3_3908
+  = du_'46'extendedlambda3_4288
       v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v12 v13 v14
-du_'46'extendedlambda3_3908 ::
+du_'46'extendedlambda3_4288 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.LinCore.Core.T_Cx_728 ->
   (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
@@ -9515,7 +10071,7 @@ du_'46'extendedlambda3_3908 ::
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 ->
   MAlonzo.Code.Once.Spec.Grade.T_Finite_34 ->
   MAlonzo.Code.Once.LinCore.Core.T_Blk_768
-du_'46'extendedlambda3_3908 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11
+du_'46'extendedlambda3_4288 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11
                             v12
   = coe
       MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1166
@@ -9527,7 +10083,7 @@ du_'46'extendedlambda3_3908 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11
             (coe
                MAlonzo.Code.Once.LinCore.Core.C_k'45''8855'_1182
                (coe
-                  du_Lq'45'blk_3478 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
+                  du_Lq'45'blk_3678 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
                   (coe v5)
                   (coe
                      MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 (coe v8)
@@ -9540,7 +10096,7 @@ du_'46'extendedlambda3_3908 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11
                (coe
                   MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1166
                   (coe
-                     du_Lq'45'blk_3478 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
+                     du_Lq'45'blk_3678 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
                      (coe v5) (coe v8) (coe v11))
                   (coe
                      du_k'45'weak_798 (coe v5) (coe v7)
@@ -9557,7 +10113,7 @@ du_'46'extendedlambda3_3908 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11
                   (coe MAlonzo.Code.Once.Spec.Grade.C_One_10) (coe v7)))))
       (coe MAlonzo.Code.Once.LinCore.Core.C_k'45'ρ_1188)
 -- Once.LinCore.FromExpr._..extendedlambda4
-d_'46'extendedlambda4_3922 ::
+d_'46'extendedlambda4_4302 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.LinCore.Core.T_Cx_728 ->
   (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
@@ -9579,11 +10135,11 @@ d_'46'extendedlambda4_3922 ::
   MAlonzo.Code.Once.Spec.Grade.T_Finite_34 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.LinCore.Core.T_Blk_768
-d_'46'extendedlambda4_3922 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 ~v10 ~v11
+d_'46'extendedlambda4_4302 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 ~v10 ~v11
                            v12 v13 v14 ~v15
-  = du_'46'extendedlambda4_3922
+  = du_'46'extendedlambda4_4302
       v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v12 v13 v14
-du_'46'extendedlambda4_3922 ::
+du_'46'extendedlambda4_4302 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.LinCore.Core.T_Cx_728 ->
   (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
@@ -9602,7 +10158,7 @@ du_'46'extendedlambda4_3922 ::
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_10 ->
   MAlonzo.Code.Once.Spec.Grade.T_Finite_34 ->
   MAlonzo.Code.Once.LinCore.Core.T_Blk_768
-du_'46'extendedlambda4_3922 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11
+du_'46'extendedlambda4_4302 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11
                             v12
   = coe
       MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1166
@@ -9614,7 +10170,7 @@ du_'46'extendedlambda4_3922 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11
             (coe
                MAlonzo.Code.Once.LinCore.Core.C_k'45''8855'_1182
                (coe
-                  du_Lq'45'blk_3478 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
+                  du_Lq'45'blk_3678 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
                   (coe v5)
                   (coe
                      MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 (coe v8)
@@ -9627,7 +10183,7 @@ du_'46'extendedlambda4_3922 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11
                (coe
                   MAlonzo.Code.Once.LinCore.Core.C_k'45''8728'_1166
                   (coe
-                     du_Lq'45'blk_3478 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
+                     du_Lq'45'blk_3678 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
                      (coe v5) (coe v8) (coe v11))
                   (coe
                      du_k'45'weak_798 (coe v5) (coe v7)
