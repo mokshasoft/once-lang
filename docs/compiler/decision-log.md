@@ -25761,3 +25761,19 @@ GOAL.md: nothing known at compile time is kept at run time.
 `Measure.Copies.lent-reach`): over the corpus 637 of 812 lent entries are unreachable (78%); of the 15 copying
 ones (`llamωᶜ` with cells) 13 are unreachable. The two left (`cata-fn-carrier`, `layer4-twice`) are lambdas that
 capture a closure and are called lent: the lent-mode closure bodies (S2, next to this).
+
+**Built** (2026-11-27). The lent-called types are a least fixpoint over the program's own name collection
+(`Keys.Got`, no second walk of the terms): `b!` a lent call in a block's own code, `?! T G` a many-use
+closure's lent body (its own calls under the closure's type), `!! G` a block that exists whatever the guard
+(an owned body, a fold's algebra), `#! G` an owned entry's lent calls (by certificate, `tmGotO`/`ownT-got`; its
+names are its body's), `l! T κ` a lent entry's key; every ν's coalgebra type is lent-called (its observation
+applies it lent). `Lent`: the fixpoint, computed and CHECKED closed, else every target type (`lent-closed`, no
+iteration bound). The universe names a lent key only at a lent-called type; `_⊑[_]` carries the guard, and
+`IIn (icallω)` requires a lent-called type — proved at every `bev` of every block (`comp-in`), so the dispatch
+(`GlobalDispatchW`) has its closure's lent entry from its own site (`At.Low.lcin`). A cell's word 1 is the lent
+entry where its type is lent-called, else the owned entry (`lentW`; never dispatched through); `Word1`,
+`LamIn`, `PrimIn` are conditional. `GlobalDispatchW` (64 s after this) split into `GlobalDispatchW`/
+`GlobalDispatchWO` (56 s, 32 s).
+
+**Measured** (vs D497, 108 programs, x86_64): `.text` 0.84x, emitted instructions 0.80x, calls 0.75x, frames
+0.81x, room checks 0.81x; run time 1.00x on every program (the pruned entries were never entered).

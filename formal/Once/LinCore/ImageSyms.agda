@@ -410,7 +410,7 @@ module Img (nm : CanonicalName) {Γ} (ds : Defs Γ) (f : LTm Γ One One)
            {FS : FrameSemantics} where
   open Program ds f using (U; blocks-in; start-in; ncty)
   open In U
-  open _⊑U using (go)
+  open _⊑[_] using (go)
   open Program′ ds f ldConst
   open Lowering U ncty ldConst
   open FlatMachine {FS} using (fetch; find-entry-sound; find-thunk-sound)

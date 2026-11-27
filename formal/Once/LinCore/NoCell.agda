@@ -46,8 +46,8 @@ open import Once.LinCore.Events fmt ans bw
 open import Once.LinCore.Values fmt bw
 open import Once.LinCore.Code fmt bw using (Sh; _∣_)
 open import Once.LinCore.Image fmt bw
-open import Once.LinCore.Keys fmt bw using (AKey; Got; ks; tmGot; defsGot; allK; univ; kc; kf; obsK; ∈-cmap⁻; module Univ)
-open Univ using (keys; tys; nus; obs)
+open import Once.LinCore.Keys fmt bw using (AKey; Got; _⊹_; ks; lentsOf; lks-All; tmGot; defsGot; allK; univ; kc; kf; obsK; ∈-cmap⁻; module Univ)
+open Univ using (keys; tys; nus; obs; lct)
 open import Once.LinCore.ImagePt fmt ans bw using (Sub; whole; next; left; right; eleft; eright; body)
 
 ------------------------------------------------------------------------
@@ -227,8 +227,8 @@ tm-nt ds (bapp p)      = keyω-nt ds p All.∷ All.[]
 tm-nt ds dup           = All.[]
 tm-nt ds drop          = All.[]
 tm-nt ds (llam b γ)    = ++⁺ (tt All.∷ All.[]) (++⁺ All.[] (tm-nt ds b))
-tm-nt ds (llamω b γ)   = ++⁺ (tt All.∷ All.[]) (++⁺ All.[] (++⁺ (tm-nt ds b) (tt All.∷ All.[])))
-tm-nt ds (llamωᶜ b₀ γ) = ++⁺ (tt All.∷ All.[]) (++⁺ All.[] (++⁺ (tm-nt ds b₀) (tt All.∷ All.[])))
+tm-nt ds (llamω b γ)   = ++⁺ All.[] (++⁺ All.[] (++⁺ (tm-nt ds b) (tt All.∷ All.[])))
+tm-nt ds (llamωᶜ b₀ γ) = ++⁺ All.[] (++⁺ All.[] (++⁺ (tm-nt ds b₀) (tt All.∷ All.[])))
 tm-nt ds lunf          = ++⁺ All.[] All.[]
 tm-nt ds lout          = All.[]
 tm-nt ds lid           = All.[]
@@ -252,6 +252,58 @@ tm-nt ds bev           = All.[]
 tm-nt ds (lconst v)    = All.[]
 tm-nt ds (lop s)       = All.[]
 
+-- ★ D498: a term's lent entries (each a body's key)
+NTl : LTy × AKey → Set
+NTl (_ , κ) = NTk κ
+
+tm-ntL : ∀ {Γ} (ds : Defs Γ) {E A B} (t : Tm Γ E A B) → All NTl (lentsOf (tmGot ds t))
+tm-ntL ds (f ∘l g)      = ++⁺ (tm-ntL ds f) (tm-ntL ds g)
+tm-ntL ds (f ⊗l g)      = ++⁺ (tm-ntL ds f) (tm-ntL ds g)
+tm-ntL ds (lcase f g)   = ++⁺ (tm-ntL ds f) (tm-ntL ds g)
+tm-ntL ds (lcata F alg) = tm-ntL ds alg
+tm-ntL ds (liter f φ)   = tm-ntL ds f
+tm-ntL ds (lend b)      = tm-ntL ds b
+tm-ntL ds (blift f)     = tm-ntL ds f
+tm-ntL ds (bfst f)      = tm-ntL ds f
+tm-ntL ds (bsnd f)      = tm-ntL ds f
+tm-ntL ds (bcaseE f g)  = ++⁺ (tm-ntL ds f) (tm-ntL ds g)
+tm-ntL ds (bout f)      = tm-ntL ds f
+tm-ntL ds (llam b γ)    = tm-ntL ds b
+tm-ntL ds (llamω b γ)   = tt All.∷ ++⁺ (tm-ntL ds b) All.[]
+tm-ntL ds (llamωᶜ b₀ γ) = tt All.∷ ++⁺ (tm-ntL ds b₀) All.[]
+tm-ntL ds (lapp p)      = All.[]
+tm-ntL ds (bapp p)      = All.[]
+tm-ntL ds bcopy         = All.[]
+tm-ntL ds dup           = All.[]
+tm-ntL ds drop          = All.[]
+tm-ntL ds lunf          = All.[]
+tm-ntL ds lout          = All.[]
+tm-ntL ds lid           = All.[]
+tm-ntL ds ρl            = All.[]
+tm-ntL ds ρl⁻           = All.[]
+tm-ntL ds lul           = All.[]
+tm-ntL ds lul⁻          = All.[]
+tm-ntL ds lassoc        = All.[]
+tm-ntL ds lassoc⁻       = All.[]
+tm-ntL ds lswap         = All.[]
+tm-ntL ds linl          = All.[]
+tm-ntL ds ldist         = All.[]
+tm-ntL ds linr          = All.[]
+tm-ntL ds lzero         = All.[]
+tm-ntL ds lIn           = All.[]
+tm-ntL ds lOutμ         = All.[]
+tm-ntL ds (lclo F p)    = All.[]
+tm-ntL ds lev           = All.[]
+tm-ntL ds levω          = All.[]
+tm-ntL ds bev           = All.[]
+tm-ntL ds (lconst v)    = All.[]
+tm-ntL ds (lop s)       = All.[]
+
+defs-ntL : ∀ {Γ} (ds : Defs Γ) → All NTl (lentsOf (defsGot ds))
+defs-ntL ε             = All.[]
+defs-ntL (ds ▸ b1 b γ) = ++⁺ (defs-ntL ds) (tm-ntL ds b)
+defs-ntL (ds ▸ bω b γ) = ++⁺ (defs-ntL ds) (tm-ntL ds b)
+
 -- a table's keys
 defs-nt : ∀ {Γ} (ds : Defs Γ) → All NTk (ks (defsGot ds))
 defs-nt ε               = All.[]
@@ -261,7 +313,9 @@ defs-nt (ds ▸ bω b γ)   = ++⁺ (defs-nt ds) (++⁺ (tt All.∷ All.[]) (tm-
 -- ★ every key of a program's universe names a block
 allK-nt : ∀ {Γ} (ds : Defs Γ) {E A B} (f : Tm Γ E A B) {κ} → κ ∈ allK (univ ds f) → NTk κ
 allK-nt ds f m = case ∈-++⁻ (keys U) m of λ where
-    (inj₁ p) → Data.List.Relation.Unary.All.lookup (++⁺ (defs-nt ds) (tm-nt ds f)) p
+    (inj₁ p) → Data.List.Relation.Unary.All.lookup
+                 (++⁺ (++⁺ (defs-nt ds) (tm-nt ds f))
+                      (lks-All {P = NTk} (lct U) (defsGot ds ⊹ tmGot ds f) (Data.List.Relation.Unary.All.map (λ n _ → n) (++⁺ (defs-ntL ds) (tm-ntL ds f))))) p
     (inj₂ p) → case ∈-++⁻ (map kc (tys U)) p of λ where
       (inj₁ q) → case ∈-map⁻ kc q of λ where
         (T , _ , refl) → tt

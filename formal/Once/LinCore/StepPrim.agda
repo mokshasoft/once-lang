@@ -312,9 +312,9 @@ module Prims {FS : FrameSemantics} (U : Univ)
               {es : Slots Es} {x : MV X} {os : Stk S} {fs}
           → Here s (es ∥ x ∷ˢ os) fs → Fresh (es ∥ x ∷ˢ os) fs → AllocState.freed (falloc fs) (AllocState.next-heap-ref (falloc fs)) ≡ false
           → Moved (next s) fs (szc X ∷ []) [] (es ∥ mfn (szc X , AllocState.next-heap-ref (falloc fs)) (cω ds b γ) x ∷ˢ os)
-  st-lamω {X = X} {S = S} s {fs = fs} H fr fz =
+  st-lamω {g = g} {X = X} {A} {B} {S = S} s {fs = fs} H fr fz =
     let ev = proj₁ (lcin (lowAt s)) in
-    straight s H _ _ (sym (len-cell (wsz X) (idx (proj₁ ev)) (idx (inCc (proj₁ (proj₂ ev)))) (idx (inFc (proj₁ (proj₂ ev)))) (idx (proj₂ (proj₂ ev))) (Tp φ S)))
+    straight s H _ _ (sym (len-cell (wsz X) (lentW (Univ.lct U (Fn many g A B)) (proj₁ ev) (idx (proj₂ (proj₂ ev)))) (idx (inCc (proj₁ (proj₂ ev)))) (idx (inFc (proj₁ (proj₂ ev)))) (idx (proj₂ (proj₂ ev))) (Tp φ S)))
       (λ sg h Bf C → drop-next (llamω-sim prog fs φ (proj₁ ev) (proj₁ (proj₂ ev)) (proj₂ (proj₂ ev)) fr fz sg h Bf C (proj₂ (shape-fits (next s)))))
 
   -- ★ D480
@@ -323,9 +323,9 @@ module Prims {FS : FrameSemantics} (U : Univ)
               {es : Slots Es} {x : MV X} {os : Stk S} {fs}
           → Here s (es ∥ x ∷ˢ os) fs → Fresh (es ∥ x ∷ˢ os) fs → AllocState.freed (falloc fs) (AllocState.next-heap-ref (falloc fs)) ≡ false
           → Moved (next s) fs (szc X ∷ []) [] (es ∥ mfn (szc X , AllocState.next-heap-ref (falloc fs)) (cωᶜ ds b₀ γ) x ∷ˢ os)
-  st-lamωᶜ {X = X} {S = S} s {fs = fs} H fr fz =
+  st-lamωᶜ {g = g} {X = X} {A} {B} {S = S} s {fs = fs} H fr fz =
     let ev = proj₁ (lcin (lowAt s)) in
-    straight s H _ _ (sym (len-cell (wsz X) (idx (proj₁ ev)) (idx (inCc (proj₁ (proj₂ ev)))) (idx (inFc (proj₁ (proj₂ ev)))) (idx (proj₂ (proj₂ ev))) (Tp φ S)))
+    straight s H _ _ (sym (len-cell (wsz X) (lentW (Univ.lct U (Fn many g A B)) (proj₁ ev) (idx (proj₂ (proj₂ ev)))) (idx (inCc (proj₁ (proj₂ ev)))) (idx (inFc (proj₁ (proj₂ ev)))) (idx (proj₂ (proj₂ ev))) (Tp φ S)))
       (λ sg h Bf C → drop-next (llamωᶜ-sim prog fs φ (proj₁ ev) (proj₁ (proj₂ ev)) (proj₂ (proj₂ ev)) fr fz sg h Bf C (proj₂ (shape-fits (next s)))))
 
   st-unf : ∀ {Γ} {ds : Defs Γ} {Es F S₀ S V} {k : Codeᴵ (Es ∣ Nu F ∷ S) V}

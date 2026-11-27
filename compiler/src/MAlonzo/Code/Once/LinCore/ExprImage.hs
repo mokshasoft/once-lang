@@ -44,7 +44,7 @@ d_imageAt_10 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2430]
 d_imageAt_10 v0 v1 v2 v3
   = coe
-      MAlonzo.Code.Once.LinCore.Lower.du_image_2950 (coe v0)
+      MAlonzo.Code.Once.LinCore.Lower.du_image_3096 (coe v0)
       (coe MAlonzo.Code.Once.LinCore.Loader.d_bw_6)
       (coe
          MAlonzo.Code.Once.LinCore.ExprBuild.d_L_1418
@@ -66,7 +66,7 @@ d_imageAt_10 v0 v1 v2 v3
          (coe v2) (coe v3))
       (coe MAlonzo.Code.Once.LinCore.Loader.d_ldConst_10)
       (coe
-         MAlonzo.Code.Once.LinCore.Keys.d_univ_2218 (coe v0)
+         MAlonzo.Code.Once.LinCore.Keys.d_univ_2802 (coe v0)
          (coe MAlonzo.Code.Once.LinCore.Loader.d_bw_6)
          (coe
             MAlonzo.Code.Once.LinCore.ExprBuild.d_L_1418
@@ -98,9 +98,9 @@ d_blocksAt_18 ::
   [MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_58]
 d_blocksAt_18 v0 v1 v2 v3
   = coe
-      MAlonzo.Code.Once.LinCore.ImageBlocks.du_imageBlocks_68
+      MAlonzo.Code.Once.LinCore.ImageBlocks.du_imageBlocks_70
       (coe
-         MAlonzo.Code.Once.LinCore.Keys.d_univ_2218 (coe v0)
+         MAlonzo.Code.Once.LinCore.Keys.d_univ_2802 (coe v0)
          (coe MAlonzo.Code.Once.LinCore.Loader.d_bw_6)
          (coe
             MAlonzo.Code.Once.LinCore.ExprBuild.d_L_1418

@@ -64,7 +64,7 @@ open import Once.LinCore.Code fmt bw using (Sh; _∣_)
 open import Once.LinCore.Image fmt bw
 open import Once.LinCore.Values fmt bw using (wsz; hdr)
 open import Once.LinCore.Keys fmt bw
-open Univ using (tys; nus; cts)
+open Univ using (tys; nus; cts; lct)
 open import Once.LinCore.Layout fmt bw
 
 -- ★ D447: the sigop an op's code runs: its own, or a compare's block
@@ -116,6 +116,15 @@ tl j = mkLabelId (nameOf j) [] 0
 idx : ∀ {A : Set} {x : A} {xs} → x ∈ xs → ℕ
 idx (here _)  = 0
 idx (there p) = suc (idx p)
+
+-- ★ D498: a many-use closure's word 1: its lent entry's index where its type is lent-called
+-- (else any index: never dispatched through)
+lentW : ∀ {A : Set} {x : A} {xs} (b : Bool) → (b ≡ true → x ∈ xs) → ℕ → ℕ
+lentW true  k d = idx (k refl)
+lentW false k d = d
+
+lentW-eq : ∀ {A : Set} {x : A} {xs} (b : Bool) (k : b ≡ true → x ∈ xs) d (e : b ≡ true) → lentW b k d ≡ idx (k e)
+lentW-eq true k d refl = refl
 
 -- a cell's header: `Values.hdr` (D471)
 
@@ -204,6 +213,7 @@ module Lowering (U : Univ)
                          ∷ instr-sigop (info (opSig s (just o))) ∷ instr-reg-op out-nz ∷ store-at-slot (bot ∸ 1) ∷ []
 
   -- a `prim`: a generator that touches at most one cell
+
   lowP : ∀ {Γ} (ds : Defs Γ) {A B} (g : LTm Γ A B) → Frame → (S : List LTy) → PrimIn ds g → AbstractTrace
   lowP ds ρl φ S p                = []
   lowP ds ρl⁻ φ S p               = []
@@ -243,13 +253,15 @@ module Lowering (U : Univ)
     let bot = Tp φ S ; wX = wsz X
     in header wX (idx kb) (idx (inCc x)) (idx (inFc x)) (idx kb) ++ mvSP (bot ∸ wX) hdr wX
        ++ mov-to-output ∷ store-at-slot (bot ∸ 1) ∷ []
-  lowP ds (llamω {X = X} b γ) φ S (kb , x , ko) =
+  -- (D498: word 1, the lent entry's index, only at a lent-called type; else the owned
+  -- entry's, never dispatched through)
+  lowP ds (llamω {g = g} {X = X} {A} {B} b γ) φ S (kb , x , ko) =
     let bot = Tp φ S ; wX = wsz X
-    in header wX (idx kb) (idx (inCc x)) (idx (inFc x)) (idx ko) ++ mvSP (bot ∸ wX) hdr wX
+    in header wX (lentW (lct U (Fn many g A B)) kb (idx ko)) (idx (inCc x)) (idx (inFc x)) (idx ko) ++ mvSP (bot ∸ wX) hdr wX
        ++ mov-to-output ∷ store-at-slot (bot ∸ 1) ∷ []
-  lowP ds (llamωᶜ {X = X} b₀ γ) φ S (kb , x , ko) =
+  lowP ds (llamωᶜ {g = g} {X = X} {A} {B} b₀ γ) φ S (kb , x , ko) =
     let bot = Tp φ S ; wX = wsz X
-    in header wX (idx kb) (idx (inCc x)) (idx (inFc x)) (idx ko) ++ mvSP (bot ∸ wX) hdr wX
+    in header wX (lentW (lct U (Fn many g A B)) kb (idx ko)) (idx (inCc x)) (idx (inFc x)) (idx ko) ++ mvSP (bot ∸ wX) hdr wX
        ++ mov-to-output ∷ store-at-slot (bot ∸ 1) ∷ []
   lowP ds (lunf {F = F} {S = S₀}) φ S (n , o) =
     let bot = Tp φ S ; wP = wsz (cty (F , S₀))

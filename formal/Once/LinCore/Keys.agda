@@ -26,7 +26,7 @@
 open import Data.Nat using (ℕ)
 open import Data.List using (List; []; _∷_; _++_; map; deduplicateᵇ)
 import Data.Bool
-open import Data.Bool using (true; false)
+open import Data.Bool using (Bool; true; false)
 import Data.List.Membership.Setoid.Properties
 open import Relation.Nullary.Decidable.Core using (T?)
 open import Data.List.Membership.Propositional using (_∈_)
@@ -34,13 +34,13 @@ open import Data.List.Membership.Propositional.Properties using (∈-++⁺ˡ; �
 open import Data.List.Relation.Unary.Any using (here; there; toSum)
 open import Data.List.Relation.Binary.Subset.Propositional using (_⊆_)
 open import Data.List.Relation.Unary.All using (All; []; _∷_; tabulate)
-open import Data.List.Relation.Unary.All.Properties using (++⁺; map⁺)
+open import Data.List.Relation.Unary.All.Properties using (++⁺; map⁺; ++⁻ˡ; ++⁻ʳ)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂; ∃)
 open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_]′)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥; ⊥-elim)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; sym; trans; setoid)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; sym; trans; setoid; cong; cong₂)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.LinCore.Flat using (Base)
 
@@ -56,6 +56,8 @@ open import Once.LinCore.Values fmt bw
 open import Once.LinCore.Code fmt bw using (Sh; _∣_)
 open import Once.LinCore.Image fmt bw
 open import Once.LinCore.TyEq fmt using (eqT; eqT-ok; eqT-refl)
+open import Once.LinCore.Lent fmt using (Fact; elemT; holds; lentTys; lent-closed; shallowO)
+open import Data.Bool using (if_then_else_)
 
 ------------------------------------------------------------------------
 -- 0. Lists.
@@ -200,11 +202,24 @@ data Got : Set where
   n!  : NS → Got
   o!  : DS → Got
   p!  : Sig → Got
+  -- ★ D498: a many-use closure's LENT entry, at the closure's type: in the universe only
+  -- where a lent call can reach that type (`Lent`)
+  l!  : LTy → AKey → Got
+  -- ★ D498: a lent call through a code word at a closure type, in the block's own code;
+  -- a many-use closure's lent body, its own lent calls guarded by the closure's type; a block
+  -- that exists whatever the guard (an owned body, a fold's algebra, an observation)
+  b!  : LTy → Got
+  ?!  : LTy → Got → Got
+  !!  : Got → Got
+  -- (only its lent calls, at no guard: an owned entry's, whose names its body's already are)
+  #!  : Got → Got
   _⊹_ : Got → Got → Got
 
 ks : Got → List AKey
 ks (k! κ)  = κ ∷ []
 ks (G ⊹ H) = ks G ++ ks H
+ks (?! _ G) = ks G
+ks (!! G)   = ks G
 {-# CATCHALL #-}
 ks _       = []
 
@@ -212,6 +227,8 @@ ts : Got → List LTy
 ts (t! T)  = T ∷ []
 ts (c! T)  = T ∷ []
 ts (G ⊹ H) = ts G ++ ts H
+ts (?! _ G) = ts G
+ts (!! G)   = ts G
 {-# CATCHALL #-}
 ts _       = []
 
@@ -219,6 +236,8 @@ ts _       = []
 cs : Got → List LTy
 cs (c! T)  = T ∷ []
 cs (G ⊹ H) = cs G ++ cs H
+cs (?! _ G) = cs G
+cs (!! G)   = cs G
 {-# CATCHALL #-}
 cs _       = []
 
@@ -230,33 +249,143 @@ cs⊆ts (c! T)  m = m
 cs⊆ts (n! _)  ()
 cs⊆ts (o! _)  ()
 cs⊆ts (p! _)  ()
+cs⊆ts (l! _ _) ()
 cs⊆ts (G ⊹ H) m = [ (λ p → ∈-++⁺ˡ (cs⊆ts G p)) , (λ p → ∈-++⁺ʳ (ts G) (cs⊆ts H p)) ]′ (∈-++⁻ (cs G) m)
+cs⊆ts (?! _ G) m = cs⊆ts G m
+cs⊆ts (!! G) m   = cs⊆ts G m
+cs⊆ts (b! _) ()
+cs⊆ts (#! _) ()
+
+-- ★ D498: the lent entries a collection names, at their closures' types; those at a lent-called type
+lentsOf : Got → List (LTy × AKey)
+lentsOf (l! T κ) = (T , κ) ∷ []
+lentsOf (G ⊹ H)  = lentsOf G ++ lentsOf H
+lentsOf (?! _ G) = lentsOf G
+lentsOf (!! G)   = lentsOf G
+{-# CATCHALL #-}
+lentsOf _        = []
+
+lks : (LTy → Bool) → Got → List AKey
+lks lc (l! T κ) = if lc T then κ ∷ [] else []
+lks lc (G ⊹ H)  = lks lc G ++ lks lc H
+lks lc (?! _ G) = lks lc G
+lks lc (!! G)   = lks lc G
+{-# CATCHALL #-}
+lks lc _        = []
+
+lks-∈ : ∀ lc G {T κ} → (T , κ) ∈ lentsOf G → lc T ≡ true → κ ∈ lks lc G
+lks-∈ lc (l! T κ) (here refl) e = subst (λ b → κ ∈ (if b then κ ∷ [] else [])) (sym e) (here refl)
+lks-∈ lc (G ⊹ H) m e = [ (λ p → ∈-++⁺ˡ (lks-∈ lc G p e)) , (λ p → ∈-++⁺ʳ (lks lc G) (lks-∈ lc H p e)) ]′ (∈-++⁻ (lentsOf G) m)
+lks-∈ lc (?! _ G) m e = lks-∈ lc G m e
+lks-∈ lc (!! G) m e   = lks-∈ lc G m e
+
+-- what holds of every lent entry holds of those at a lent-called type
+lks-All : ∀ {P : AKey → Set} lc G → All (λ p → lc (proj₁ p) ≡ true → P (proj₂ p)) (lentsOf G) → All P (lks lc G)
+lks-All {P} lc (l! T κ) (p ∷ []) = by (lc T) refl
+  where
+    by : ∀ b → lc T ≡ b → All P (if b then κ ∷ [] else [])
+    by true  e = p e ∷ []
+    by false e = []
+lks-All lc (G ⊹ H) a = ++⁺ (lks-All lc G (++⁻ˡ (lentsOf G) a)) (lks-All lc H (++⁻ʳ (lentsOf G) a))
+lks-All lc (?! _ G) a = lks-All lc G a
+lks-All lc (!! G) a   = lks-All lc G a
+lks-All lc (b! _) a   = []
+lks-All lc (#! _) a   = []
+lks-All lc ∅ a       = []
+lks-All lc (k! _) a  = []
+lks-All lc (t! _) a  = []
+lks-All lc (c! _) a  = []
+lks-All lc (n! _) a  = []
+lks-All lc (o! _) a  = []
+lks-All lc (p! _) a  = []
 
 ns : Got → List NS
 ns (n! n)  = n ∷ []
 ns (G ⊹ H) = ns G ++ ns H
+ns (?! _ G) = ns G
+ns (!! G)   = ns G
 {-# CATCHALL #-}
 ns _       = []
 
 os : Got → List DS
 os (o! d)  = d ∷ []
 os (G ⊹ H) = os G ++ os H
+os (?! _ G) = os G
+os (!! G)   = os G
 {-# CATCHALL #-}
 os _       = []
 
 ps : Got → List Sig
 ps (p! s)  = s ∷ []
 ps (G ⊹ H) = ps G ++ ps H
+ps (?! _ G) = ps G
+ps (!! G)   = ps G
 {-# CATCHALL #-}
 ps _       = []
+
+-- ★ D498: a collection's lent calls, each under the guard it is in (a lent body's own
+-- calls under its closure's type, a block that exists regardless under none)
+lentCalls : Maybe LTy → Got → List Fact
+lentCalls c (b! T)   = (c , T) ∷ []
+lentCalls c (?! S G) = lentCalls (just S) G
+lentCalls c (!! G)   = lentCalls nothing G
+lentCalls c (#! G)   = lentCalls nothing G
+lentCalls c (G ⊹ H)  = lentCalls c G ++ lentCalls c H
+{-# CATCHALL #-}
+lentCalls c _        = []
+
+-- a guard holds under a test
+holdsB : Maybe LTy → (LTy → Bool) → Bool
+holdsB nothing  lc = true
+holdsB (just S) lc = lc S
+
+-- a fact under one guard is the same fact under another, or its own (it was guarded inside)
+lentCalls-move : ∀ c₁ c₂ G {d T} → (d , T) ∈ lentCalls c₁ G → (d ≡ c₁ × (c₂ , T) ∈ lentCalls c₂ G) ⊎ ((d , T) ∈ lentCalls c₂ G)
+lentCalls-move c₁ c₂ (b! T) (here refl) = inj₁ (refl , here refl)
+lentCalls-move c₁ c₂ (?! S G) m = inj₂ m
+lentCalls-move c₁ c₂ (!! G) m   = inj₂ m
+lentCalls-move c₁ c₂ (#! G) m   = inj₂ m
+lentCalls-move c₁ c₂ (G ⊹ H) m =
+  [ (λ p → [ (λ { (e , q) → inj₁ (e , ∈-++⁺ˡ q) }) , (λ q → inj₂ (∈-++⁺ˡ q)) ]′ (lentCalls-move c₁ c₂ G p))
+  , (λ p → [ (λ { (e , q) → inj₁ (e , ∈-++⁺ʳ (lentCalls c₂ G) q) }) , (λ q → inj₂ (∈-++⁺ʳ (lentCalls c₂ G) q)) ]′ (lentCalls-move c₁ c₂ H p))
+  ]′ (∈-++⁻ (lentCalls c₁ G) m)
+
+-- the owned entry's own lent calls, as a collection
+blist : List LTy → Got
+blist []       = ∅
+blist (T ∷ ts) = b! T ⊹ blist ts
+
+-- the program's lent-called types: the least set closed under its facts (`Lent`)
+-- (every ν's observation applies its coalgebra lent: its type is lent-called)
+obsFacts : List NS → List Fact
+obsFacts []             = []
+obsFacts ((F , S) ∷ n)  = (nothing , Coalg F S) ∷ obsFacts n
+
+factsOf : Got → List Fact
+factsOf g = lentCalls nothing g ++ obsFacts (ns g)
+
+lcOf : Got → LTy → Bool
+lcOf g T = elemT T (lentTys (factsOf g))
+
+-- the two spellings of a guard holding agree
+holds-eq : ∀ c L → holdsB c (λ T → elemT T L) ≡ holds c L
+holds-eq nothing  L = refl
+holds-eq (just S) L = refl
+
+-- a ν's coalgebra type is among the observation facts
+obsF-∈ : ∀ {F S} ns → (F , S) ∈ ns → (nothing , Coalg F S) ∈ obsFacts ns
+obsF-∈ ((F , S) ∷ n) (here refl) = here refl
+obsF-∈ (_ ∷ n) (there m)         = there (obsF-∈ n m)
 
 -- a term's: what its code calls by name, the types it copies or frees, the
 -- ν's it builds, the tables it observes at; a closure's body with it
 tmGot : ∀ {Γ} → Defs Γ → ∀ {E A B} → Tm Γ E A B → Got
+-- ★ D498: a many-use closure's OWNED entry's names, by its certificate (`ownT-got`: its term's)
+tmGotO : ∀ {Γ} → Defs Γ → ∀ {X A B} (b : Tm Γ X A B) → Own b → Got
 tmGot ds (f ∘l g)            = tmGot ds f ⊹ tmGot ds g
 tmGot ds (f ⊗l g)            = tmGot ds f ⊹ tmGot ds g
 tmGot ds (lcase f g)         = tmGot ds f ⊹ tmGot ds g
-tmGot ds (lcata F alg)       = k! (_ , kfold ds F alg) ⊹ tmGot ds alg
+tmGot ds (lcata F alg)       = k! (_ , kfold ds F alg) ⊹ !! (tmGot ds alg)
 tmGot ds (liter f φ)         = tmGot ds f
 tmGot ds (lapp p)            = k! (_ , key1 ds p)
 tmGot ds (lend b)            = tmGot ds b
@@ -267,17 +396,43 @@ tmGot ds (bcaseE f g)        = tmGot ds f ⊹ tmGot ds g
 tmGot ds (bout f)            = tmGot ds f
 tmGot ds (bcopy {E = E})     = t! E
 tmGot ds (bapp p)            = k! (_ , keyω ds p)
+tmGot ds (bev {g = g} {A} {B}) = b! (Fn many g A B)
 tmGot ds (dup {A = A})       = t! A
 tmGot ds (drop {A = A})      = t! A
-tmGot ds (llam {X = X} b γ)  = k! (_ , kbody1 ds b γ) ⊹ c! X ⊹ tmGot ds b
-tmGot ds (llamω {X = X} b γ) = k! (_ , kbodyω ds b γ) ⊹ c! X ⊹ tmGot ds b ⊹ k! (_ , kbody1 ds (ownω b) (own-gdb b γ))
+tmGot ds (llam {X = X} b γ)  = k! (_ , kbody1 ds b γ) ⊹ c! X ⊹ !! (tmGot ds b)
+tmGot ds (llamω {g = g} {X = X} {A} {B} b γ) =
+  l! (Fn many g A B) (_ , kbodyω ds b γ) ⊹ c! X ⊹ ?! (Fn many g A B) (tmGot ds b)
+  ⊹ k! (_ , kbody1 ds (ownω b) (own-gdb b γ)) ⊹ #! (tmGotO ds b (ownOf b))
 -- (D480: a many-use closure also names its owned body, its owned entry's)
-tmGot ds (llamωᶜ {X = X} b₀ γ) = k! (_ , kbodyω ds (cin b₀) (cin-gd b₀ γ)) ⊹ c! X ⊹ tmGot ds b₀ ⊹ k! (_ , kbody1 ds b₀ γ)
+tmGot ds (llamωᶜ {g = g} {X = X} {A} {B} b₀ γ) =
+  l! (Fn many g A B) (_ , kbodyω ds (cin b₀) (cin-gd b₀ γ)) ⊹ c! X ⊹ !! (tmGot ds b₀) ⊹ k! (_ , kbody1 ds b₀ γ)
 tmGot ds (lunf {F = F} {S})  = n! (F , S) ⊹ o! (_ , ε)
 tmGot ds (lout {F = F})      = o! (_ , ε)
 tmGot ds (lop s)             = p! s
 {-# CATCHALL #-}
 tmGot ds _                   = ∅
+tmGotO ds {X} b o-bg          = (∅ ⊹ (t! X ⊹ ∅)) ⊹ tmGot ds b
+tmGotO ds _ o-ev              = ∅
+tmGotO ds (bfst {E₂ = X₂} f) (o-fst o) = tmGotO ds f o ⊹ ((∅ ⊹ (∅ ⊹ t! X₂)) ⊹ ∅)
+tmGotO ds (bsnd {E₁ = X₁} f) (o-snd o) = tmGotO ds f o ⊹ ((∅ ⊹ (t! X₁ ⊹ ∅)) ⊹ ∅)
+tmGotO ds (bfst f ∘l bsnd g) (o-split p q) = tmGotO ds f p ⊹ ((∅ ⊹ tmGotO ds g q) ⊹ ∅)
+tmGotO ds (lcase f g) (o-case p q) = (tmGotO ds f p ⊹ tmGotO ds g q) ⊹ ∅
+tmGotO ds ((bfst f ⊗l bsnd g) ∘l s) (o-fork p q) =
+  (tmGotO ds f p ⊹ tmGotO ds g q) ⊹ ((∅ ⊹ ((∅ ⊹ (∅ ⊹ ((∅ ⊹ ∅) ⊹ ∅))) ⊹ ∅)) ⊹ tmGot ds s)
+tmGotO ds (blift g ∘l t) (o-lift p) = tmGot ds g ⊹ tmGotO ds t p
+tmGotO ds (t ∘l blift f) (o-pre p)  = tmGotO ds t p ⊹ (∅ ⊹ tmGot ds f)
+
+-- the owned entry's names are its term's
+ownT-got : ∀ {Γ} (ds : Defs Γ) {X A B} {b : Tm Γ X A B} (o : Own b) → tmGot ds (ownT o) ≡ tmGotO ds b o
+ownT-got ds o-bg          = refl
+ownT-got ds o-ev          = refl
+ownT-got ds (o-fst o)     = cong (_⊹ _) (ownT-got ds o)
+ownT-got ds (o-snd o)     = cong (_⊹ _) (ownT-got ds o)
+ownT-got ds (o-split p q) = cong₂ (λ x y → x ⊹ ((∅ ⊹ y) ⊹ ∅)) (ownT-got ds p) (ownT-got ds q)
+ownT-got ds (o-case p q)  = cong₂ (λ x y → (x ⊹ y) ⊹ ∅) (ownT-got ds p) (ownT-got ds q)
+ownT-got ds (o-fork p q)  = cong₂ (λ x y → (x ⊹ y) ⊹ _) (ownT-got ds p) (ownT-got ds q)
+ownT-got ds (o-lift p)    = cong (_ ⊹_) (ownT-got ds p)
+ownT-got ds (o-pre p)     = cong (_⊹ _) (ownT-got ds p)
 
 -- a table's: each body's key and what the body names, at its own prefix
 defsGot : ∀ {Γ} → Defs Γ → Got
@@ -318,6 +473,8 @@ record Univ : Set where
     cts⊆ : ∀ {T} → T ∈ cts → T ∈ tys
     -- (D493: closed under a copy's or a free's parts, for any universe built by `close`)
     tys-cl : ∀ {T} → T ∈ tys → comps T ⊆ tys
+    -- ★ D498: the lent-called closure types (`Lent`): a lent entry is a key only at one
+    lct : LTy → Bool
 open Univ
 
 -- a collection's cell types: its closures' environments, its ν's contents
@@ -375,10 +532,10 @@ opaque
   dd-cl R C D eD cl {T} m {C′} c = find C′ D (subst (λ Z → C′ ∈ Z) eD (dd⁺ (cl (dd⁻ (R ++ C) (subst (λ Z → T ∈ Z) (sym eD) m)) c)))
 
 closeD : List AKey → (D : List LTy) → List NS → List DS → List Sig → (Cd : List LTy)
-       → (R C : List LTy) → dd (R ++ C) ≡ D → dd C ≡ Cd → (∀ {T} → T ∈ R ++ C → comps T ⊆ R ++ C) → Univ
-closeD K D N O P Cd R C eD eC cl =
+       → (R C : List LTy) → dd (R ++ C) ≡ D → dd C ≡ Cd → (∀ {T} → T ∈ R ++ C → comps T ⊆ R ++ C) → (LTy → Bool) → Univ
+closeD K D N O P Cd R C eD eC cl lc =
   univ′ K D N O P Cd (λ {T} m → find T D (subst (λ Z → T ∈ Z) eD (dd⁺ (∈-++⁺ʳ R (dd⁻ C (subst (λ Z → T ∈ Z) (sym eC) m))))))
-    (dd-cl R C D eD cl)
+    (dd-cl R C D eD cl) lc
 
 -- a collection's types, closed under the parts (the raw lists of `close`; sealed, performance-patterns A8)
 opaque
@@ -395,17 +552,17 @@ opaque
     [ (λ p → ∈-++⁺ˡ (rg-cl g p c)) , (λ p → ∈-++⁺ˡ (rg-cl g (close-cts g p) c)) ]′
       (∈-++⁻ (cmap subs (ts g) ++ cmap (λ n → subs (cty n)) (ns g)) m)
 
-close : Got → Univ
-close g = closeD (ks g) (dd ((cmap subs (ts g) ++ cmap (λ n → subs (cty n)) (ns g)) ++ (cs g ++ map cty (ns g))))
+close : (LTy → Bool) → Got → Univ
+close lc g = closeD (ks g ++ lks lc g) (dd ((cmap subs (ts g) ++ cmap (λ n → subs (cty n)) (ns g)) ++ (cs g ++ map cty (ns g))))
                  (ns g) ((_ , ε) ∷ os g) (ps g) (dd (cs g ++ map cty (ns g)))
-                 (cmap subs (ts g) ++ cmap (λ n → subs (cty n)) (ns g)) (cs g ++ map cty (ns g)) refl refl (rgc-cl g)
+                 (cmap subs (ts g) ++ cmap (λ n → subs (cty n)) (ns g)) (cs g ++ map cty (ns g)) refl refl (rgc-cl g) lc
 
 allK : Univ → List AKey
 allK U = keys U ++ map kc (tys U) ++ map kf (tys U) ++ obsK (obs U) (nus U)
 
 -- a program's: its table's and its main term's
 univ : ∀ {Γ} → Defs Γ → ∀ {E A B} → Tm Γ E A B → Univ
-univ ds f = close (defsGot ds ⊹ tmGot ds f)
+univ ds f = close (lcOf (defsGot ds ⊹ tmGot ds f)) (defsGot ds ⊹ tmGot ds f)
 
 module In (U : Univ) where
 
@@ -423,8 +580,8 @@ module In (U : Univ) where
     ∈-++⁺ʳ (keys U) (∈-++⁺ʳ (map kc (tys U)) (∈-++⁺ʳ (map kf (tys U))
       (∈-cmap⁺ (obs U) d (∈-map⁺ (λ n → _ , kobs ds (proj₁ n) (proj₂ n)) n))))
 
-  -- a collection inside the universe
-  record _⊑U (G : Got) : Set where
+  -- a collection inside the universe, its own lent calls under the guard `c₀` (D498)
+  record _⊑[_] (G : Got) (c₀ : Maybe LTy) : Set where
     constructor sub
     field
       gk : ks G ⊆ keys U
@@ -433,48 +590,75 @@ module In (U : Univ) where
       go : os G ⊆ obs U
       gp : ps G ⊆ ops U
       gc : cs G ⊆ cts U
-  open _⊑U
+      -- ★ D498: a lent entry at a lent-called type is a key
+      gl : ∀ {T κ} → (T , κ) ∈ lentsOf G → lct U T ≡ true → κ ∈ keys U
+      -- ★ D498: a lent call whose guard holds is at a lent-called type
+      gb : ∀ {c T} → (c , T) ∈ lentCalls c₀ G → holdsB c (lct U) ≡ true → lct U T ≡ true
+  open _⊑[_]
 
-  ⊹ˡ : ∀ {G H} → (G ⊹ H) ⊑U → G ⊑U
-  ⊹ˡ (sub a b c d p e) = sub (λ m → a (∈-++⁺ˡ m)) (λ m → b (∈-++⁺ˡ m)) (λ m → c (∈-++⁺ˡ m)) (λ m → d (∈-++⁺ˡ m)) (λ m → p (∈-++⁺ˡ m))
-                           (λ m → e (∈-++⁺ˡ m))
+  -- …at no guard: a block's own code
+  _⊑U : Got → Set
+  G ⊑U = G ⊑[ nothing ]
 
-  ⊹ʳ : ∀ {G H} → (G ⊹ H) ⊑U → H ⊑U
-  ⊹ʳ {G} (sub a b c d p e) =
+  ⊹ˡ : ∀ {G H c₀} → (G ⊹ H) ⊑[ c₀ ] → G ⊑[ c₀ ]
+  ⊹ˡ (sub a b c d p e l w) = sub (λ m → a (∈-++⁺ˡ m)) (λ m → b (∈-++⁺ˡ m)) (λ m → c (∈-++⁺ˡ m)) (λ m → d (∈-++⁺ˡ m)) (λ m → p (∈-++⁺ˡ m))
+                           (λ m → e (∈-++⁺ˡ m)) (λ m → l (∈-++⁺ˡ m)) (λ m → w (∈-++⁺ˡ m))
+
+  ⊹ʳ : ∀ {G H c₀} → (G ⊹ H) ⊑[ c₀ ] → H ⊑[ c₀ ]
+  ⊹ʳ {G} {c₀ = c₀} (sub a b c d p e l w) =
     sub (λ m → a (∈-++⁺ʳ (ks G) m)) (λ m → b (∈-++⁺ʳ (ts G) m)) (λ m → c (∈-++⁺ʳ (ns G) m)) (λ m → d (∈-++⁺ʳ (os G) m))
-        (λ m → p (∈-++⁺ʳ (ps G) m)) (λ m → e (∈-++⁺ʳ (cs G) m))
+        (λ m → p (∈-++⁺ʳ (ps G) m)) (λ m → e (∈-++⁺ʳ (cs G) m)) (λ m → l (∈-++⁺ʳ (lentsOf G) m)) (λ m → w (∈-++⁺ʳ (lentCalls c₀ G) m))
 
-  ⊹-join : ∀ {G H} → G ⊑U → H ⊑U → (G ⊹ H) ⊑U
-  ⊹-join {G} (sub a b c d p e) (sub a′ b′ c′ d′ p′ e′) =
+  ⊹-join : ∀ {G H c₀} → G ⊑[ c₀ ] → H ⊑[ c₀ ] → (G ⊹ H) ⊑[ c₀ ]
+  ⊹-join {G} {c₀ = c₀} (sub a b c d p e l w) (sub a′ b′ c′ d′ p′ e′ l′ w′) =
     sub (λ m → [ a , a′ ] (∈-++⁻ (ks G) m)) (λ m → [ b , b′ ] (∈-++⁻ (ts G) m))
         (λ m → [ c , c′ ] (∈-++⁻ (ns G) m)) (λ m → [ d , d′ ] (∈-++⁻ (os G) m)) (λ m → [ p , p′ ] (∈-++⁻ (ps G) m))
-        (λ m → [ e , e′ ] (∈-++⁻ (cs G) m))
+        (λ m → [ e , e′ ] (∈-++⁻ (cs G) m)) (λ m → [ l , l′ ] (∈-++⁻ (lentsOf G) m)) (λ m → [ w , w′ ] (∈-++⁻ (lentCalls c₀ G) m))
     where
       [_,_] : ∀ {X Y Z : Set} → (X → Z) → (Y → Z) → X ⊎ Y → Z
       [ f , g ] (inj₁ x) = f x
       [ f , g ] (inj₂ y) = g y
 
-  ∅⊑ : ∅ ⊑U
-  ∅⊑ = sub (λ ()) (λ ()) (λ ()) (λ ()) (λ ()) (λ ())
+  ∅⊑ : ∀ {c₀} → ∅ ⊑[ c₀ ]
+  ∅⊑ = sub (λ ()) (λ ()) (λ ()) (λ ()) (λ ()) (λ ()) (λ ()) (λ ())
 
   -- a cell type is a copied and freed type
-  ct⊑ : ∀ {X} → c! X ⊑U → t! X ⊑U
-  ct⊑ g = sub (λ ()) (λ { (here refl) → cts⊆ U (gc g (here refl)) ; (there ()) }) (λ ()) (λ ()) (λ ()) (λ ())
+  ct⊑ : ∀ {X c₀ c₁} → c! X ⊑[ c₀ ] → t! X ⊑[ c₁ ]
+  ct⊑ g = sub (λ ()) (λ { (here refl) → cts⊆ U (gc g (here refl)) ; (there ()) }) (λ ()) (λ ()) (λ ()) (λ ()) (λ ()) (λ ())
 
   -- a type among the universe's is a copied and freed type; so are its parts
-  ty⊑ : ∀ {T} → T ∈ tys U → t! T ⊑U
-  ty⊑ p = sub (λ ()) (λ { (here refl) → p ; (there ()) }) (λ ()) (λ ()) (λ ()) (λ ())
+  ty⊑ : ∀ {T c₀} → T ∈ tys U → t! T ⊑[ c₀ ]
+  ty⊑ p = sub (λ ()) (λ { (here refl) → p ; (there ()) }) (λ ()) (λ ()) (λ ()) (λ ()) (λ ()) (λ ())
 
-  tyL : ∀ {X₁ X₂} → t! (X₁ ⊗t X₂) ⊑U → t! X₁ ⊑U
+  -- ★ D498: a block that exists regardless: its own calls at no guard
+  !!-⊑ : ∀ {G c₀} → (!! G) ⊑[ c₀ ] → G ⊑U
+  !!-⊑ (sub a b c d p e l w) = sub a b c d p e l w
+
+  -- a lent body: its own calls under its closure's type
+  ?!-⊑ : ∀ {S G c₀} → (?! S G) ⊑[ c₀ ] → G ⊑[ just S ]
+  ?!-⊑ (sub a b c d p e l w) = sub a b c d p e l w
+
+  -- …which holds where that type is lent-called
+  unguard : ∀ {S G} → G ⊑[ just S ] → lct U S ≡ true → G ⊑U
+  unguard {S} {G} (sub a b c d p e l w) eS = sub a b c d p e l by
+    where
+      by : ∀ {c T} → (c , T) ∈ lentCalls nothing G → holdsB c (lct U) ≡ true → lct U T ≡ true
+      by {c} {T} m h = [ (λ { (refl , q) → w q eS }) , (λ q → w q h) ]′ (lentCalls-move nothing (just S) G m)
+
+  -- a lent call at a lent-called type
+  b!-⊑ : ∀ {T c₀} → lct U T ≡ true → (b! T) ⊑[ c₀ ]
+  b!-⊑ e = sub (λ ()) (λ ()) (λ ()) (λ ()) (λ ()) (λ ()) (λ ()) (λ { (here refl) h → e })
+
+  tyL : ∀ {X₁ X₂ c₀} → t! (X₁ ⊗t X₂) ⊑[ c₀ ] → t! X₁ ⊑[ c₀ ]
   tyL g = ty⊑ (tys-cl U (gt g (here refl)) (here refl))
 
-  tyR : ∀ {X₁ X₂} → t! (X₁ ⊗t X₂) ⊑U → t! X₂ ⊑U
+  tyR : ∀ {X₁ X₂ c₀} → t! (X₁ ⊗t X₂) ⊑[ c₀ ] → t! X₂ ⊑[ c₀ ]
   tyR g = ty⊑ (tys-cl U (gt g (here refl)) (there (here refl)))
 
   -- ★ D493: a body's owned form needs what the body needs, and the frees of the
   -- environment's parts it drops (sealed: evidence in types, performance-patterns A3)
   opaque
-   own-got : ∀ {Γ} {ds : Defs Γ} {X A B} {b : Tm Γ X A B} (o : Own b) → tmGot ds b ⊑U → t! X ⊑U → tmGot ds (ownT o) ⊑U
+   own-got : ∀ {Γ} {ds : Defs Γ} {X A B c₀} {b : Tm Γ X A B} (o : Own b) → tmGot ds b ⊑[ c₀ ] → t! X ⊑[ c₀ ] → tmGot ds (ownT o) ⊑[ c₀ ]
    own-got o-bg          gb tX = ⊹-join (⊹-join ∅⊑ (⊹-join tX ∅⊑)) gb
    own-got o-ev          gb tX = ∅⊑
    own-got (o-fst o)     gb tX = ⊹-join (own-got o gb (tyL tX)) (⊹-join (⊹-join ∅⊑ (⊹-join ∅⊑ (tyR tX))) ∅⊑)
@@ -486,6 +670,15 @@ module In (U : Univ) where
             (⊹-join (⊹-join ∅⊑ (⊹-join (⊹-join ∅⊑ (⊹-join ∅⊑ (⊹-join (⊹-join ∅⊑ ∅⊑) ∅⊑))) ∅⊑)) (⊹ʳ gb))
    own-got (o-lift p)    gb tX = ⊹-join (⊹ˡ gb) (own-got p (⊹ʳ gb) tX)
    own-got (o-pre p)     gb tX = ⊹-join (own-got p (⊹ˡ gb) tX) (⊹-join ∅⊑ (⊹ʳ gb))
+
+  -- ★ D498: the owned entry at no guard: its names from its body's (any guard), its own lent
+  -- calls from the facts-only collection the closure names (`#!`, `ownT-got`)
+  ownBody-⊑ : ∀ {Γ} {ds : Defs Γ} {X A B c₀ c₁} {b : Tm Γ X A B} (o : Own b) → tmGot ds b ⊑[ c₀ ] → t! X ⊑[ c₀ ]
+            → (#! (tmGotO ds b o)) ⊑[ c₁ ] → tmGot ds (ownT o) ⊑U
+  ownBody-⊑ {ds = ds} o g tX h =
+    sub (gk r) (gt r) (gn r) (go r) (gp r) (gc r) (gl r)
+        (λ {c} {T} m e → gb h (subst (λ G → (c , T) ∈ lentCalls nothing G) (ownT-got ds o) m) e)
+    where r = own-got o g tX
 
   inCc : ∀ {T} → T ∈ cts U → kc T ∈ allK U
   inCc m = inC (cts⊆ U m)
@@ -500,8 +693,10 @@ module In (U : Univ) where
 
   PrimIn : ∀ {Γ} → Defs Γ → ∀ {E A B} → Tm Γ E A B → Set
   PrimIn ds (llam {X = X} b γ)  = (_ , kbody1 ds b γ) ∈ allK U × X ∈ cts U
-  PrimIn ds (llamω {X = X} b γ) = (_ , kbodyω ds b γ) ∈ allK U × X ∈ cts U × (_ , kbody1 ds (ownω b) (own-gdb b γ)) ∈ allK U
-  PrimIn ds (llamωᶜ {X = X} b₀ γ) = (_ , kbodyω ds (cin b₀) (cin-gd b₀ γ)) ∈ allK U × X ∈ cts U × (_ , kbody1 ds b₀ γ) ∈ allK U
+  PrimIn ds (llamω {g = g} {X = X} {A} {B} b γ) =
+    (lct U (Fn many g A B) ≡ true → (_ , kbodyω ds b γ) ∈ allK U) × X ∈ cts U × (_ , kbody1 ds (ownω b) (own-gdb b γ)) ∈ allK U
+  PrimIn ds (llamωᶜ {g = g} {X = X} {A} {B} b₀ γ) =
+    (lct U (Fn many g A B) ≡ true → (_ , kbodyω ds (cin b₀) (cin-gd b₀ γ)) ∈ allK U) × X ∈ cts U × (_ , kbody1 ds b₀ γ) ∈ allK U
   PrimIn ds (lunf {F = F} {S})  = (F , S) ∈ nus U × (_ , ε) ∈ obs U
   PrimIn ds ρl        = ⊤
   PrimIn ds ρl⁻       = ⊤
@@ -529,6 +724,8 @@ module In (U : Univ) where
   IIn (prim ds g)    = PrimIn ds g
   IIn (iobs ds)     = (_ , ε) ∈ obs U
   IIn (loop c)       = CIn c
+  -- ★ D498: a lent call through a code word is at a lent-called type (its closure has a lent entry)
+  IIn (icallω {g = g} {A} {B}) = lct U (Fn many g A B) ≡ true
   {-# CATCHALL #-}
   IIn _              = ⊤
 
@@ -579,10 +776,10 @@ module In (U : Univ) where
   comp-in ds (lop s) g ck        = gp g (here refl) , ck
   comp-in ds lzero g ck          = tt , ck
   comp-in ds (llam b γ) g ck     = (inK (gk g (here refl)) , gc g (∈-++⁺ʳ [] (here refl))) , ck
-  comp-in ds (llamω b γ) g ck    = (inK (gk g (here refl)) , gc g (∈-++⁺ʳ [] (here refl)) , inK (gk (⊹ʳ (⊹ʳ (⊹ʳ g))) (here refl))) , ck
-  comp-in ds (llamωᶜ b₀ γ) g ck  = (inK (gk g (here refl)) , gc g (∈-++⁺ʳ [] (here refl)) , inK (gk (⊹ʳ (⊹ʳ (⊹ʳ g))) (here refl))) , ck
+  comp-in ds (llamω b γ) g ck    = ((λ e → inK (gl g (here refl) e)) , gc g (∈-++⁺ʳ [] (here refl)) , inK (gk (⊹ʳ (⊹ʳ (⊹ʳ g))) (here refl))) , ck
+  comp-in ds (llamωᶜ b₀ γ) g ck  = ((λ e → inK (gl g (here refl) e)) , gc g (∈-++⁺ʳ [] (here refl)) , inK (gk (⊹ʳ (⊹ʳ (⊹ʳ g))) (here refl))) , ck
   comp-in ds lev g ck            = tt , ck
-  comp-in ds bev g ck            = tt , ck
+  comp-in ds bev g ck            = gb g (here refl) refl , ck
   comp-in ds levω g ck           = tt , (tt , ck)
   comp-in ds lunf g ck           = (gn g (here refl) , go g (here refl)) , ck
   comp-in ds lout g ck           = go g (here refl) , ck
@@ -632,7 +829,7 @@ module In (U : Univ) where
 
   -- an observation names a copy and a free of the coalgebra, and the ν's it builds
   strL-got : ∀ {Γ} (d : Defs Γ) F G S → Coalg F S ∈ tys U → tmGot d (strL F G S) ⊑U
-  strL-got d F Idf      S c = ⊹-join (⊹-join (sub (λ ()) (one c) (λ ()) (λ ()) (λ ()) (λ ())) ∅⊑) ∅⊑
+  strL-got d F Idf      S c = ⊹-join (⊹-join (sub (λ ()) (one c) (λ ()) (λ ()) (λ ()) (λ ()) (λ ()) (λ ())) ∅⊑) ∅⊑
   strL-got d F Kone     S c = ∅⊑
   strL-got d F Kzero    S c = ∅⊑
   strL-got d F (Kb b)   S c = ∅⊑
@@ -642,7 +839,7 @@ module In (U : Univ) where
 
   -- ★ D496: the owned form names the coalgebra's free, and the lent form's copies
   dropC-got : ∀ {Γ} (d : Defs Γ) F S → Coalg F S ∈ tys U → (t! (Coalg F S)) ⊑U
-  dropC-got d F S c = sub (λ ()) (one c) (λ ()) (λ ()) (λ ()) (λ ())
+  dropC-got d F S c = sub (λ ()) (one c) (λ ()) (λ ()) (λ ()) (λ ()) (λ ()) (λ ())
 
   mutual
     strO-got : ∀ {Γ} (d : Defs Γ) F G S → Coalg F S ∈ tys U → tmGot d (strO F G S) ⊑U
@@ -662,7 +859,7 @@ module In (U : Univ) where
       ⊹-join (⊹-join (strO-got d F G S c) ∅⊑) (⊹-join ∅⊑ (⊹-join ∅⊑ (strL-got d F H S c)))
 
   mapNu-got : ∀ {Γ} (d : Defs Γ) F G S → (F , S) ∈ nus U → (_ , ε) ∈ obs U → tmGot d (mapNu F G S) ⊑U
-  mapNu-got d F Idf      S n o = sub (λ ()) (λ ()) (one n) (one o) (λ ()) (λ ())
+  mapNu-got d F Idf      S n o = sub (λ ()) (λ ()) (one n) (one o) (λ ()) (λ ()) (λ ()) (λ ())
   mapNu-got d F Kone     S n o = ∅⊑
   mapNu-got d F Kzero    S n o = ∅⊑
   mapNu-got d F (Kb b)   S n o = ∅⊑
@@ -670,10 +867,11 @@ module In (U : Univ) where
   mapNu-got d F (G ⊕f H) S n o = ⊹-join (⊹-join ∅⊑ (mapNu-got d F G S n o)) (⊹-join ∅⊑ (mapNu-got d F H S n o))
   mapNu-got d F (G ⊗f H) S n o = ⊹-join (mapNu-got d F G S n o) (mapNu-got d F H S n o)
 
-  obs-in : ∀ {Γ} (d : Defs Γ) F S → (F , S) ∈ nus U → Coalg F S ∈ tys U → (_ , ε) ∈ obs U → BIn (_ , kobs d F S)
-  obs-in d F S n c o =
+  obs-in : ∀ {Γ} (d : Defs Γ) F S → (F , S) ∈ nus U → Coalg F S ∈ tys U → (_ , ε) ∈ obs U → lct U (Coalg F S) ≡ true
+         → BIn (_ , kobs d F S)
+  obs-in d F S n c o lC =
     tt , comp-in d (obsT F S)
-           (⊹-join (mapNu-got d F F S n o) (⊹-join (strO-got d F F S c) ∅⊑))
+           (⊹-join (mapNu-got d F F S n o) (⊹-join (strO-got d F F S c) (b!-⊑ lC)))
            (tt , tt)
 
   -- a body, a fold, a label: inside when what they name is
@@ -695,93 +893,15 @@ module In (U : Univ) where
   keyω-in {ds = ds ▸ bω _ _} g (there p) = keyω-in (⊹ˡ g) p
   keyω-in {ds = ds ▸ bω b γ} g here      = bodyω-in {ds = ds} {b = b} {γ = γ} (⊹ʳ (⊹ʳ g))
 
-  -- ★ every key a term names has its block inside
-  tm-good : ∀ {Γ} {ds : Defs Γ} {E A B} (t : Tm Γ E A B) → defsGot ds ⊑U → tmGot ds t ⊑U
-          → ∀ {κ} → κ ∈ ks (tmGot ds t) → BIn κ
-  tm-good {ds = ds} (f ∘l h) d g m =
-    [ (λ p → tm-good f d (⊹ˡ g) p) , (λ p → tm-good h d (⊹ʳ g) p) ]′ (∈-++⁻ (ks (tmGot ds f)) m)
-  tm-good {ds = ds} (f ⊗l h) d g m =
-    [ (λ p → tm-good f d (⊹ˡ g) p) , (λ p → tm-good h d (⊹ʳ g) p) ]′ (∈-++⁻ (ks (tmGot ds f)) m)
-  tm-good {ds = ds} (lcase f h) d g m =
-    [ (λ p → tm-good f d (⊹ˡ g) p) , (λ p → tm-good h d (⊹ʳ g) p) ]′ (∈-++⁻ (ks (tmGot ds f)) m)
-  tm-good {ds = ds} (bcaseE f h) d g m =
-    [ (λ p → tm-good f d (⊹ˡ g) p) , (λ p → tm-good h d (⊹ʳ g) p) ]′ (∈-++⁻ (ks (tmGot ds f)) m)
-  tm-good (lcata F alg) d g (here refl) = tt , travI-in F (inK (gk g (here refl))) (comp-in _ alg (⊹ʳ g) tt)
-  tm-good (lcata F alg) d g (there m)   = tm-good alg d (⊹ʳ g) m
-  tm-good (liter f φ) d g m = tm-good f d g m
-  tm-good (lend b) d g m    = tm-good b d g m
-  tm-good (blift f) d g m   = tm-good f d g m
-  tm-good (bfst f) d g m    = tm-good f d g m
-  tm-good (bsnd f) d g m    = tm-good f d g m
-  tm-good (bout f) d g m    = tm-good f d g m
-  tm-good (lapp p) d g (here refl) = key1-in d p
-  tm-good (lapp p) d g (there ())
-  tm-good (bapp p) d g (here refl) = keyω-in d p
-  tm-good (bapp p) d g (there ())
-  tm-good {ds = ds} (llam b γ) d g (here refl)  = body1-in {ds = ds} {b = b} {γ = γ} (⊹ʳ (⊹ʳ g))
-  tm-good (llam b γ) d g (there m)    = tm-good b d (⊹ʳ (⊹ʳ g)) m
-  tm-good {ds = ds} (llamω b γ) d g (here refl) = bodyω-in {ds = ds} {b = b} {γ = γ} (⊹ˡ (⊹ʳ (⊹ʳ g)))
-  tm-good {ds = ds} (llamω {X = X} b γ) d g (there m) =
-    [ (λ p → tm-good b d (⊹ˡ (⊹ʳ (⊹ʳ g))) p) , ownK ]′ (∈-++⁻ (ks (tmGot ds b)) m)
-    where
-      ownK : ∀ {κ} → κ ∈ (_ , kbody1 ds (ownω b) (own-gdb b γ)) ∷ [] → BIn κ
-      ownK (here refl) = body1-in {ds = ds} {b = ownω b} {γ = own-gdb b γ}
-                          (subst (λ t → tmGot ds t ⊑U) (sym (ownω-≡ b)) (own-got (ownOf b) (⊹ˡ (⊹ʳ (⊹ʳ g))) (ct⊑ (⊹ˡ (⊹ʳ g)))))
-  tm-good {ds = ds} (llamωᶜ {X = X} b₀ γ) d g (here refl) =
-    bodyω-in {ds = ds} {b = cin b₀} {γ = cin-gd b₀ γ} (⊹-join (⊹ˡ (⊹ʳ (⊹ʳ g))) (⊹-join (⊹-join (ct⊑ (⊹ˡ (⊹ʳ g))) ∅⊑) ∅⊑))
-  tm-good {ds = ds} (llamωᶜ {X = X} b₀ γ) d g (there m) =
-    [ (λ p → tm-good b₀ d (⊹ˡ (⊹ʳ (⊹ʳ g))) p) , ownKᶜ ]′ (∈-++⁻ (ks (tmGot ds b₀)) m)
-    where
-      ownKᶜ : ∀ {κ} → κ ∈ (_ , kbody1 ds b₀ γ) ∷ [] → BIn κ
-      ownKᶜ (here refl) = body1-in {ds = ds} {b = b₀} {γ = γ} (⊹ˡ (⊹ʳ (⊹ʳ g)))
-  tm-good lid d g ()
-  tm-good ρl d g ()
-  tm-good ρl⁻ d g ()
-  tm-good lul d g ()
-  tm-good lul⁻ d g ()
-  tm-good lassoc d g ()
-  tm-good lassoc⁻ d g ()
-  tm-good lswap d g ()
-  tm-good dup d g ()
-  tm-good drop d g ()
-  tm-good linl d g ()
-  tm-good ldist d g ()
-  tm-good linr d g ()
-  tm-good lzero d g ()
-  tm-good lIn d g ()
-  tm-good lOutμ d g ()
-  tm-good (lclo F p) d g ()
-  tm-good bcopy d g ()
-  tm-good lev d g ()
-  tm-good bev d g ()
-  tm-good levω d g ()
-  tm-good lunf d g ()
-  tm-good lout d g ()
-  tm-good (lconst v) d g ()
-  tm-good (lop s) d g ()
-
-  defs-good : ∀ {Γ} {ds : Defs Γ} → defsGot ds ⊑U → ∀ {κ} → κ ∈ ks (defsGot ds) → BIn κ
-  defs-good {ds = ε} g ()
-  defs-good {ds = ds ▸ b1 b γ} g m =
-    [ (λ p → defs-good (⊹ˡ g) p)
-    , (λ q → [ (λ e → subst BIn (sym e) (body1-in {ds = ds} {b = b} {γ = γ} (⊹ʳ (⊹ʳ g))))
-             , (λ p → tm-good b (⊹ˡ g) (⊹ʳ (⊹ʳ g)) p) ]′ (toSum q))
-    ]′ (∈-++⁻ (ks (defsGot ds)) m)
-  defs-good {ds = ds ▸ bω b γ} g m =
-    [ (λ p → defs-good (⊹ˡ g) p)
-    , (λ q → [ (λ e → subst BIn (sym e) (bodyω-in {ds = ds} {b = b} {γ = γ} (⊹ʳ (⊹ʳ g))))
-             , (λ p → tm-good b (⊹ˡ g) (⊹ʳ (⊹ʳ g)) p) ]′ (toSum q))
-    ]′ (∈-++⁻ (ks (defsGot ds)) m)
-
   -- ★ D488: the same evidence for EVERY key at once, in one pass over the term (what the compiler
   -- runs: a block's evidence is looked up in it, not searched for from its membership proof, which
   -- rebuilt every enclosing subterm's key list per block; docs/performance-patterns.md B1, B2)
-  tm-all : ∀ {Γ} {ds : Defs Γ} {E A B} (t : Tm Γ E A B) → defsGot ds ⊑U → tmGot ds t ⊑U → All BIn (ks (tmGot ds t))
+  tm-all : ∀ {Γ} {ds : Defs Γ} {E A B c₀} (t : Tm Γ E A B) → defsGot ds ⊑U → tmGot ds t ⊑[ c₀ ] → All BIn (ks (tmGot ds t))
   tm-all (f ∘l h) d g     = ++⁺ (tm-all f d (⊹ˡ g)) (tm-all h d (⊹ʳ g))
   tm-all (f ⊗l h) d g     = ++⁺ (tm-all f d (⊹ˡ g)) (tm-all h d (⊹ʳ g))
   tm-all (lcase f h) d g  = ++⁺ (tm-all f d (⊹ˡ g)) (tm-all h d (⊹ʳ g))
   tm-all (bcaseE f h) d g = ++⁺ (tm-all f d (⊹ˡ g)) (tm-all h d (⊹ʳ g))
-  tm-all (lcata F alg) d g = (tt , travI-in F (inK (gk g (here refl))) (comp-in _ alg (⊹ʳ g) tt)) ∷ tm-all alg d (⊹ʳ g)
+  tm-all (lcata F alg) d g = (tt , travI-in F (inK (gk g (here refl))) (comp-in _ alg (!!-⊑ (⊹ʳ g)) tt)) ∷ tm-all alg d (!!-⊑ (⊹ʳ g))
   tm-all (liter f φ) d g  = tm-all f d g
   tm-all (lend b) d g     = tm-all b d g
   tm-all (blift f) d g    = tm-all f d g
@@ -790,15 +910,14 @@ module In (U : Univ) where
   tm-all (bout f) d g     = tm-all f d g
   tm-all (lapp p) d g     = key1-in d p ∷ []
   tm-all (bapp p) d g     = keyω-in d p ∷ []
-  tm-all {ds = ds} (llam b γ) d g = body1-in {ds = ds} {b = b} {γ = γ} (⊹ʳ (⊹ʳ g)) ∷ tm-all b d (⊹ʳ (⊹ʳ g))
+  tm-all {ds = ds} (llam b γ) d g = body1-in {ds = ds} {b = b} {γ = γ} (!!-⊑ (⊹ʳ (⊹ʳ g))) ∷ tm-all b d (!!-⊑ (⊹ʳ (⊹ʳ g)))
   tm-all {ds = ds} (llamω b γ) d g =
-    bodyω-in {ds = ds} {b = b} {γ = γ} (⊹ˡ (⊹ʳ (⊹ʳ g)))
-    ∷ ++⁺ (tm-all b d (⊹ˡ (⊹ʳ (⊹ʳ g))))
+    ++⁺ (tm-all b d (?!-⊑ (⊹ˡ (⊹ʳ (⊹ʳ g)))))
           (body1-in {ds = ds} {b = ownω b} {γ = own-gdb b γ}
-             (subst (λ t → tmGot ds t ⊑U) (sym (ownω-≡ b)) (own-got (ownOf b) (⊹ˡ (⊹ʳ (⊹ʳ g))) (ct⊑ (⊹ˡ (⊹ʳ g))))) ∷ [])
+             (subst (λ t → tmGot ds t ⊑U) (sym (ownω-≡ b))
+                    (ownBody-⊑ (ownOf b) (?!-⊑ (⊹ˡ (⊹ʳ (⊹ʳ g)))) (ct⊑ (⊹ˡ (⊹ʳ g))) (⊹ʳ (⊹ʳ (⊹ʳ (⊹ʳ g)))))) ∷ [])
   tm-all {ds = ds} (llamωᶜ b₀ γ) d g =
-    bodyω-in {ds = ds} {b = cin b₀} {γ = cin-gd b₀ γ} (⊹-join (⊹ˡ (⊹ʳ (⊹ʳ g))) (⊹-join (⊹-join (ct⊑ (⊹ˡ (⊹ʳ g))) ∅⊑) ∅⊑))
-    ∷ ++⁺ (tm-all b₀ d (⊹ˡ (⊹ʳ (⊹ʳ g)))) (body1-in {ds = ds} {b = b₀} {γ = γ} (⊹ˡ (⊹ʳ (⊹ʳ g))) ∷ [])
+    ++⁺ (tm-all b₀ d (!!-⊑ (⊹ˡ (⊹ʳ (⊹ʳ g))))) (body1-in {ds = ds} {b = b₀} {γ = γ} (!!-⊑ (⊹ˡ (⊹ʳ (⊹ʳ g)))) ∷ [])
   tm-all lid d g       = []
   tm-all ρl d g        = []
   tm-all ρl⁻ d g       = []
@@ -831,6 +950,68 @@ module In (U : Univ) where
     ++⁺ (defs-all (⊹ˡ g)) (body1-in {ds = ds} {b = b} {γ = γ} (⊹ʳ (⊹ʳ g)) ∷ tm-all b (⊹ˡ g) (⊹ʳ (⊹ʳ g)))
   defs-all {ds = ds ▸ bω b γ} g =
     ++⁺ (defs-all (⊹ˡ g)) (bodyω-in {ds = ds} {b = b} {γ = γ} (⊹ʳ (⊹ʳ g)) ∷ tm-all b (⊹ˡ g) (⊹ʳ (⊹ʳ g)))
+
+  -- ★ D498: every lent entry a term names has its block inside (needed only where its type is
+  -- lent-called, but inside at any: its body's names are)
+  BInL : LTy × AKey → Set
+  BInL (T , κ) = lct U T ≡ true → BIn κ
+
+  tm-allL : ∀ {Γ} {ds : Defs Γ} {E A B c₀} (t : Tm Γ E A B) → defsGot ds ⊑U → tmGot ds t ⊑[ c₀ ] → All BInL (lentsOf (tmGot ds t))
+  tm-allL (f ∘l h) d g     = ++⁺ (tm-allL f d (⊹ˡ g)) (tm-allL h d (⊹ʳ g))
+  tm-allL (f ⊗l h) d g     = ++⁺ (tm-allL f d (⊹ˡ g)) (tm-allL h d (⊹ʳ g))
+  tm-allL (lcase f h) d g  = ++⁺ (tm-allL f d (⊹ˡ g)) (tm-allL h d (⊹ʳ g))
+  tm-allL (bcaseE f h) d g = ++⁺ (tm-allL f d (⊹ˡ g)) (tm-allL h d (⊹ʳ g))
+  tm-allL (lcata F alg) d g = tm-allL alg d (!!-⊑ (⊹ʳ g))
+  tm-allL (liter f φ) d g  = tm-allL f d g
+  tm-allL (lend b) d g     = tm-allL b d g
+  tm-allL (blift f) d g    = tm-allL f d g
+  tm-allL (bfst f) d g     = tm-allL f d g
+  tm-allL (bsnd f) d g     = tm-allL f d g
+  tm-allL (bout f) d g     = tm-allL f d g
+  tm-allL (llam b γ) d g   = tm-allL b d (!!-⊑ (⊹ʳ (⊹ʳ g)))
+  tm-allL {ds = ds} (llamω b γ) d g =
+    (λ e → bodyω-in {ds = ds} {b = b} {γ = γ} (unguard (?!-⊑ (⊹ˡ (⊹ʳ (⊹ʳ g)))) e))
+    ∷ ++⁺ (tm-allL b d (?!-⊑ (⊹ˡ (⊹ʳ (⊹ʳ g))))) []
+  tm-allL {ds = ds} (llamωᶜ b₀ γ) d g =
+    (λ e → bodyω-in {ds = ds} {b = cin b₀} {γ = cin-gd b₀ γ}
+             (⊹-join (!!-⊑ (⊹ˡ (⊹ʳ (⊹ʳ g)))) (⊹-join (⊹-join (ct⊑ (⊹ˡ (⊹ʳ g))) ∅⊑) ∅⊑)))
+    ∷ ++⁺ (tm-allL b₀ d (!!-⊑ (⊹ˡ (⊹ʳ (⊹ʳ g))))) []
+  tm-allL (lapp p) d g     = []
+  tm-allL (bapp p) d g     = []
+  tm-allL lid d g          = []
+  tm-allL ρl d g           = []
+  tm-allL ρl⁻ d g          = []
+  tm-allL lul d g          = []
+  tm-allL lul⁻ d g         = []
+  tm-allL lassoc d g       = []
+  tm-allL lassoc⁻ d g      = []
+  tm-allL lswap d g        = []
+  tm-allL dup d g          = []
+  tm-allL drop d g         = []
+  tm-allL linl d g         = []
+  tm-allL ldist d g        = []
+  tm-allL linr d g         = []
+  tm-allL lzero d g        = []
+  tm-allL lIn d g          = []
+  tm-allL lOutμ d g        = []
+  tm-allL (lclo F p) d g   = []
+  tm-allL bcopy d g        = []
+  tm-allL lev d g          = []
+  tm-allL bev d g          = []
+  tm-allL levω d g         = []
+  tm-allL lunf d g         = []
+  tm-allL lout d g         = []
+  tm-allL (lconst v) d g   = []
+  tm-allL (lop s) d g      = []
+
+  defs-allL : ∀ {Γ} {ds : Defs Γ} → defsGot ds ⊑U → All BInL (lentsOf (defsGot ds))
+  defs-allL {ds = ε} g = []
+  defs-allL {ds = ds ▸ b1 b γ} g = ++⁺ (defs-allL (⊹ˡ g)) (tm-allL b (⊹ˡ g) (⊹ʳ (⊹ʳ g)))
+  defs-allL {ds = ds ▸ bω b γ} g = ++⁺ (defs-allL (⊹ˡ g)) (tm-allL b (⊹ˡ g) (⊹ʳ (⊹ʳ g)))
+
+  -- those at a lent-called type: the universe's lent keys
+  lks-all : ∀ lc → lc ≡ lct U → ∀ G → All BInL (lentsOf G) → All BIn (lks lc G)
+  lks-all lc refl G a = lks-All lc G a
 
   -- a key's evidence, looked up
   lookupA : ∀ {xs : List AKey} → All BIn xs → ∀ {κ} → κ ∈ xs → BIn κ
@@ -875,8 +1056,17 @@ module ProgramW {Γ} (ds : Defs Γ) (f : LTm Γ One One) (V : Univ) (eV : univ d
   inT {T} m = find T (tys U) (mv tys (dd⁺ m))
 
   g₀⊑ : g₀ ⊑U
-  g₀⊑ = sub (λ m → mv keys m) (λ {T} m → inT (∈-++⁺ˡ (∈-++⁺ˡ (∈-cmap⁺ (ts g₀) m (here refl))))) (λ m → mv nus m)
+  g₀⊑ = sub (λ m → mv keys (∈-++⁺ˡ m)) (λ {T} m → inT (∈-++⁺ˡ (∈-++⁺ˡ (∈-cmap⁺ (ts g₀) m (here refl))))) (λ m → mv nus m)
             (λ m → mv obs (there m)) (λ m → mv ops m) (λ {T} m → find T (cts U) (mv cts (dd⁺ (∈-++⁺ˡ m))))
+            (λ {T} m e → mv keys (∈-++⁺ʳ (ks g₀) (lks-∈ (lct (univ ds f)) g₀ m (trans (cong (λ W → lct W T) eV) e))))
+            (λ {c} {T} m h → subst (λ W → lct W T ≡ true) eV
+               (lent-closed (factsOf g₀) (∈-++⁺ˡ m)
+                  (trans (sym (holds-eq c (lentTys (factsOf g₀)))) (subst (λ W → holdsB c (lct W) ≡ true) (sym eV) h))))
+
+  -- ★ D498: every ν's coalgebra type is lent-called (its observation applies it lent)
+  ns-lent : ∀ {F S} → (F , S) ∈ nus U → lct U (Coalg F S) ≡ true
+  ns-lent {F} {S} n = subst (λ W → lct W (Coalg F S) ≡ true) eV
+    (lent-closed (factsOf g₀) (∈-++⁺ʳ (lentCalls nothing g₀) (obsF-∈ (ns g₀) (mv⁻ nus n))) refl)
 
   -- the types are closed under a copy's or a free's parts
   -- the closure's own types (before the cell types)
@@ -906,12 +1096,14 @@ module ProgramW {Γ} (ds : Defs Γ) (f : LTm Γ One One) (V : Univ) (eV : univ d
   -- and free, an observer's, each once), looked up per block
   blocks-all : All BIn (allK U)
   blocks-all =
-    ++⁺ (subst (λ W → All BIn (keys W)) eV (++⁺ (defs-all (⊹ˡ g₀⊑)) (tm-all f (⊹ˡ g₀⊑) (⊹ʳ g₀⊑))))
+    ++⁺ (subst (λ W → All BIn (keys W)) eV
+           (++⁺ (++⁺ (defs-all (⊹ˡ g₀⊑)) (tm-all f (⊹ˡ g₀⊑) (⊹ʳ g₀⊑)))
+                (lks-all (lct (univ ds f)) (cong lct eV) g₀ (++⁺ (defs-allL (⊹ˡ g₀⊑)) (tm-allL f (⊹ˡ g₀⊑) (⊹ʳ g₀⊑))))))
         (++⁺ (map⁺ (tabulate (λ {T} t → copy-in T (ts-closed t))))
              (++⁺ (map⁺ (tabulate (λ {T} t → free-in T (ts-closed t))))
                   (tabulate (λ r → let ((Δ , d) , o , s) = ∈-cmap⁻ (obs U) r
                                        ((F , S) , n , e) = ∈-map⁻ (λ n → _ , kobs d (proj₁ n) (proj₂ n)) s
-                                   in subst BIn (sym e) (obs-in d F S n (ns-coalg n) (mv obs (here refl)))))))
+                                   in subst BIn (sym e) (obs-in d F S n (ns-coalg n) (mv obs (here refl)) (ns-lent n))))))
 
   -- (opaque: a proof; sealed, two spellings of a block's evidence compare as one stuck term)
   opaque

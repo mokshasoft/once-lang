@@ -48,7 +48,8 @@ open BSig using (top)
 open import Once.LinCore.ImageRun fmt ans bw
 open import Once.LinCore.ImageSim fmt ans bw using (StepsI; done; _⟫_; start)
 open import Once.LinCore.Keys fmt bw
-open Univ using (tys; nus; cts)
+open Univ using (tys; nus; cts; lct)
+open import Data.Bool using (true)
 
 module Keep (U : Univ) where
   open In U
@@ -60,8 +61,10 @@ module Keep (U : Univ) where
 
   LamIn : ∀ {k g X A B} → Lam k g X A B → Set
   LamIn (c1 {X = X} ds b γ) = (_ , kbody1 ds b γ) ∈ allK U × X ∈ cts U
-  LamIn (cω {X = X} ds b γ) = (_ , kbodyω ds b γ) ∈ allK U × X ∈ cts U × (_ , kbody1 ds (ownω b) (own-gdb b γ)) ∈ allK U
-  LamIn (cωᶜ {X = X} ds b₀ γ) = (_ , kbodyω ds (cin b₀) (cin-gd b₀ γ)) ∈ allK U × X ∈ cts U × (_ , kbody1 ds b₀ γ) ∈ allK U
+  LamIn (cω {g = g} {X = X} {A} {B} ds b γ) =
+    (lct U (Fn many g A B) ≡ true → (_ , kbodyω ds b γ) ∈ allK U) × X ∈ cts U × (_ , kbody1 ds (ownω b) (own-gdb b γ)) ∈ allK U
+  LamIn (cωᶜ {g = g} {X = X} {A} {B} ds b₀ γ) =
+    (lct U (Fn many g A B) ≡ true → (_ , kbodyω ds (cin b₀) (cin-gd b₀ γ)) ∈ allK U) × X ∈ cts U × (_ , kbody1 ds b₀ γ) ∈ allK U
 
   lam-X : ∀ {k g X A B} (lam : Lam k g X A B) → LamIn lam → X ∈ cts U
   lam-X (c1 ds b γ) (_ , x) = x
@@ -220,10 +223,10 @@ module Keep (U : Univ) where
     -- cell's values name
     keep (i-icall {lam = c1 ds b γ}) (_ , ck) R (E , ((l , x) , a) , os) =
       (tt , proj₁ l , tt) , (ck , E , os , R) , tt , ((l , x) , a) , tt
-    keep (i-icallω {lam = cω ds b γ} {es = es} eq) (_ , ck) R (E , a , os) =
-      (tt , proj₁ (proj₁ (seen eq E)) , tt , tt) , (ck , E , os , R) , (see-in es E , tt) , a , tt
-    keep (i-icallω {lam = cωᶜ ds b₀ γ} {es = es} eq) (_ , ck) R (E , a , os) =
-      (tt , proj₁ (proj₁ (seen eq E)) , tt , tt) , (ck , E , os , R) , (see-in es E , tt) , a , tt
+    keep (i-icallω {lam = cω ds b γ} {es = es} eq) (lc , ck) R (E , a , os) =
+      (tt , proj₁ (proj₁ (seen eq E)) lc , tt , tt) , (ck , E , os , R) , (see-in es E , tt) , a , tt
+    keep (i-icallω {lam = cωᶜ ds b₀ γ} {es = es} eq) (lc , ck) R (E , a , os) =
+      (tt , proj₁ (proj₁ (seen eq E)) lc , tt , tt) , (ck , E , os , R) , (see-in es E , tt) , a , tt
     keep i-iobs (o , ck) R (E , (n , p) , os) = (tt , inO o n , tt) , (ck , E , os , R) , tt , (n , p) , tt
     keep (i-ccopy {lam = lam} {es = es} eq) (_ , ck) R (E , _ , os) =
       (tt , inCc (lam-X lam (proj₁ (seen eq E))) , tt , tt , tt) , (ck , E , os , R) , (see-in es E , tt) , tt , tt

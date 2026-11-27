@@ -51,7 +51,7 @@ open import Once.IR.Semantics.Trace using (T; call)
 open Sig using (info)
 open import Once.LinCore.Image fmt bw
 open import Once.LinCore.Keys fmt bw
-open Univ using (tys; nus)
+open Univ using (tys; nus; lct)
 open import Once.LinCore.Layout fmt bw
 open import Once.LinCore.Values fmt bw using (wsz; hdr)
 open import Once.LinCore.Lower fmt bw
@@ -133,7 +133,7 @@ module Free (U : Univ)
             (ldConst : ∀ {b} → Lit b → AbstractInstr)
             (ld-nj : ∀ {b} (v : Lit b) → jump-of (ldConst v) ≡ nothing) where
   open In U
-  open _⊑U using (go)
+  open _⊑[_] using (go)
   open Lowering U ncty ldConst
 
   header-nj : ∀ w jb jc jf jo → NoJ (header w jb jc jf jo)
@@ -216,10 +216,10 @@ module Free (U : Univ)
   lowP-nj ds bcopy φ S p        = []
   lowP-nj ds (llam {X = X} b γ) φ S (kb , x) =
     cell-nj (wsz X) (idx kb) (idx (inCc x)) (idx (inFc x)) (idx kb) (Tp φ S ∸ wsz X) hdr (Tp φ S ∸ 1)
-  lowP-nj ds (llamω {X = X} b γ) φ S (kb , x , ko) =
-    cell-nj (wsz X) (idx kb) (idx (inCc x)) (idx (inFc x)) (idx ko) (Tp φ S ∸ wsz X) hdr (Tp φ S ∸ 1)
-  lowP-nj ds (llamωᶜ {X = X} b₀ γ) φ S (kb , x , ko) =
-    cell-nj (wsz X) (idx kb) (idx (inCc x)) (idx (inFc x)) (idx ko) (Tp φ S ∸ wsz X) hdr (Tp φ S ∸ 1)
+  lowP-nj ds (llamω {g = g} {X = X} {A} {B} b γ) φ S (kb , x , ko) =
+    cell-nj (wsz X) (lentW (lct U (Fn many g A B)) kb (idx ko)) (idx (inCc x)) (idx (inFc x)) (idx ko) (Tp φ S ∸ wsz X) hdr (Tp φ S ∸ 1)
+  lowP-nj ds (llamωᶜ {g = g} {X = X} {A} {B} b₀ γ) φ S (kb , x , ko) =
+    cell-nj (wsz X) (lentW (lct U (Fn many g A B)) kb (idx ko)) (idx (inCc x)) (idx (inFc x)) (idx ko) (Tp φ S ∸ wsz X) hdr (Tp φ S ∸ 1)
   lowP-nj ds lev φ S p          = []
   lowP-nj ds (lunf {F = F} {S = S₀}) φ S (n , o) =
     cell-nj (wsz (cty (F , S₀))) (idx (inO o n)) (idx (inCc (ncty n))) (idx (inFc (ncty n))) (idx (inO o n)) (Tp φ S ∸ wsz (cty (F , S₀))) hdr (Tp φ S ∸ 1)
@@ -364,7 +364,7 @@ module Closed {FS : FrameSemantics} where
            (ldConst : ∀ {b} → Lit b → AbstractInstr)
            (ld-nj : ∀ {b} (v : Lit b) → jump-of (ldConst v) ≡ nothing) where
     open In U
-    open _⊑U using (go)
+    open _⊑[_] using (go)
     open Lowering U ncty ldConst
     open Free U ncty ldConst ld-nj
 

@@ -244,9 +244,9 @@ module SimC {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
   ----------------------------------------------------------------------
 
   open import Once.LinCore.Keys fmt bw using (module In; allK; kc; kf; cty; DS)
-  open Univ using (tys; nus; obs; cts)
+  open Univ using (tys; nus; obs; cts; lct)
   open In U using (inCc; inFc; inO)
-  open import Once.LinCore.Lower fmt bw using (tl; idx)
+  open import Once.LinCore.Lower fmt bw using (tl; idx; lentW; lentW-eq)
   open import Once.LinCore.Image fmt bw using (kbody1; kbodyω; kobs; key-of; bsig)
   open import Once.LinCore.Values fmt bw using (mfn; mnu; c1; cω; cωᶜ; szc; szν)
   open import Data.List.Membership.Propositional using (_∈_)
@@ -302,10 +302,10 @@ module SimC {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
   -- ★ `llamω`
   llamω-sim : ∀ prog (fs : FlatState) (φ : Frame) {Γ} {ds : Defs Γ} {g X A B Es S} {b : Tm Γ X A B} {γ : Gd g b}
                {es : Slots Es} {os : Stk S} {x : MV X}
-           → (kb : (_ , kbodyω ds b γ) ∈ allK U) (xt : X ∈ cts U) (ko : (_ , kbody1 ds (ownω b) (own-gdb b γ)) ∈ allK U)
+           → (kb : lct U (Fn many g A B) ≡ true → (_ , kbodyω ds b γ) ∈ allK U) (xt : X ∈ cts U) (ko : (_ , kbody1 ds (ownω b) (own-gdb b γ)) ∈ allK U)
            → (∀ j → AllocState.next-heap-ref (falloc fs) ≤ serial j → cntE es j ≡ 0 × cntS (x ∷ˢ os) j ≡ 0)
            → AllocState.freed (falloc fs) (AllocState.next-heap-ref (falloc fs)) ≡ false
-           → Seg prog (fpc fs) (headerTr (wsz X) (tl (idx kb)) (tl (idx (inCc xt))) (tl (idx (inFc xt))) (tl (idx ko))
+           → Seg prog (fpc fs) (headerTr (wsz X) (tl (lentW (lct U (Fn many g A B)) kb (idx ko))) (tl (idx (inCc xt))) (tl (idx (inFc xt))) (tl (idx ko))
                                 ++ mvSP ((budget φ ∸ ws S) ∸ wsz X) hdr (wsz X)
                                 ++ mov-to-output ∷ store-at-slot ((budget φ ∸ ws S) ∸ 1) ∷ [])
            → fhalted (floc fs) ≡ false → budget φ ≤ Fr fs
@@ -318,7 +318,7 @@ module SimC {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
     where
       import Data.Nat.Properties
       bot = budget φ ∸ ws S
-      lb = tl (idx kb) ; lc = tl (idx (inCc xt)) ; lf = tl (idx (inFc xt)) ; lo = tl (idx ko)
+      lb = tl (lentW (lct U (Fn many g A B)) kb (idx ko)) ; lc = tl (idx (inCc xt)) ; lf = tl (idx (inFc xt)) ; lo = tl (idx ko)
       Res = Σ FlatState λ fs′ → FlatSteps prog (12 + (nsteps (wsz X) + 2)) fs fs′
               × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ mfn (szc X , AllocState.next-heap-ref (falloc fs)) (cω ds b γ) x ∷ˢ os)
               × AllocState.next-heap-ref (falloc fs′) ≡ suc (AllocState.next-heap-ref (falloc fs)) × Ran (12 + (nsteps (wsz X) + 2)) ((hdr + wsz X) ∷ []) [] (AllocState.next-heap-ref (falloc fs)) (budget φ) fs fs′
@@ -342,7 +342,7 @@ module SimC {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
                 fs′ , st ,
                 record { c-env  = ev
                        ; c-stk  = ( cellPtr (szc X , AllocState.next-heap-ref (falloc fs)) ∷ []
-                                  , vfn (kb , refl) (xt , refl) (xt , refl) (ko , refl) (vw-frame px (λ j k c → cells j k c)) (b-cell Bd)
+                                  , vfn (λ e → kb e , cong (λ j → SV-Code (tl j)) (lentW-eq (lct U (Fn many g A B)) kb (idx ko) e)) (xt , refl) (xt , refl) (ko , refl) (vw-frame px (λ j k c → cells j k c)) (b-cell Bd)
                                   , (top , tt) )
                                 , st′
                        ; c-efit = c-efit C ; c-sfit = fit } ,
@@ -351,10 +351,10 @@ module SimC {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
   -- ★ D480: `llamωᶜ` (a closure that keeps its owned body)
   llamωᶜ-sim : ∀ prog (fs : FlatState) (φ : Frame) {Γ} {ds : Defs Γ} {g X A B Es S} {b₀ : Tm Γ One (X ⊗t A) B} {γ : Gd g b₀}
                {es : Slots Es} {os : Stk S} {x : MV X}
-           → (kb : (_ , kbodyω ds (cin b₀) (cin-gd b₀ γ)) ∈ allK U) (xt : X ∈ cts U) (ko : (_ , kbody1 ds b₀ γ) ∈ allK U)
+           → (kb : lct U (Fn many g A B) ≡ true → (_ , kbodyω ds (cin b₀) (cin-gd b₀ γ)) ∈ allK U) (xt : X ∈ cts U) (ko : (_ , kbody1 ds b₀ γ) ∈ allK U)
            → (∀ j → AllocState.next-heap-ref (falloc fs) ≤ serial j → cntE es j ≡ 0 × cntS (x ∷ˢ os) j ≡ 0)
            → AllocState.freed (falloc fs) (AllocState.next-heap-ref (falloc fs)) ≡ false
-           → Seg prog (fpc fs) (headerTr (wsz X) (tl (idx kb)) (tl (idx (inCc xt))) (tl (idx (inFc xt))) (tl (idx ko))
+           → Seg prog (fpc fs) (headerTr (wsz X) (tl (lentW (lct U (Fn many g A B)) kb (idx ko))) (tl (idx (inCc xt))) (tl (idx (inFc xt))) (tl (idx ko))
                                 ++ mvSP ((budget φ ∸ ws S) ∸ wsz X) hdr (wsz X)
                                 ++ mov-to-output ∷ store-at-slot ((budget φ ∸ ws S) ∸ 1) ∷ [])
            → fhalted (floc fs) ≡ false → budget φ ≤ Fr fs
@@ -367,7 +367,7 @@ module SimC {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
     where
       import Data.Nat.Properties
       bot = budget φ ∸ ws S
-      lb = tl (idx kb) ; lc = tl (idx (inCc xt)) ; lf = tl (idx (inFc xt)) ; lo = tl (idx ko)
+      lb = tl (lentW (lct U (Fn many g A B)) kb (idx ko)) ; lc = tl (idx (inCc xt)) ; lf = tl (idx (inFc xt)) ; lo = tl (idx ko)
       Res = Σ FlatState λ fs′ → FlatSteps prog (12 + (nsteps (wsz X) + 2)) fs fs′
               × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ mfn (szc X , AllocState.next-heap-ref (falloc fs)) (cωᶜ ds b₀ γ) x ∷ˢ os)
               × AllocState.next-heap-ref (falloc fs′) ≡ suc (AllocState.next-heap-ref (falloc fs)) × Ran (12 + (nsteps (wsz X) + 2)) ((hdr + wsz X) ∷ []) [] (AllocState.next-heap-ref (falloc fs)) (budget φ) fs fs′
@@ -391,7 +391,7 @@ module SimC {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
                 fs′ , st ,
                 record { c-env  = ev
                        ; c-stk  = ( cellPtr (szc X , AllocState.next-heap-ref (falloc fs)) ∷ []
-                                  , vfn (kb , refl) (xt , refl) (xt , refl) (ko , refl) (vw-frame px (λ j k c → cells j k c)) (b-cell Bd)
+                                  , vfn (λ e → kb e , cong (λ j → SV-Code (tl j)) (lentW-eq (lct U (Fn many g A B)) kb (idx ko) e)) (xt , refl) (xt , refl) (ko , refl) (vw-frame px (λ j k c → cells j k c)) (b-cell Bd)
                                   , (top , tt) )
                                 , st′
                        ; c-efit = c-efit C ; c-sfit = fit } ,

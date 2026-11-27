@@ -269,72 +269,30 @@ module DispW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
           → Arrives (blockᴵ (trω lam)) (frm {t = just _} {Es = Es} k es os r) (vw (see es) []ᵉ ∥ a ∷ˢ []ˢ) n fs
   gicallω {A = A} {B} {S} {k = k} {r} {lam = cω ds′ b γ} {i} {x} {es} {a} {os} {n} {fs = fs} (p-start (at s)) eq inv H nx ok I lv Fa =
     subst (λ v → Arrives (blockᴵ (ktrω ds′ b γ)) (frm {t = just _} k es os r) (vw v []ᵉ ∥ a ∷ˢ []ˢ) n fs) (sym eq)
-      (gicallω-d (d-start s) (λ c → c) eq inv (Seg-++ˡ image (fpc fs) _ _ (S.seg-at s H)) (S.Here.h-run H) (S.Here.h-slots H) (S.Here.h-cfg H)
+      (gicallω-d (d-start s) (λ c → c (proj₁ (At.Low.lcin (S.lowAt s)))) eq inv (Seg-++ˡ image (fpc fs) _ _ (S.seg-at s H)) (S.Here.h-run H) (S.Here.h-slots H) (S.Here.h-cfg H)
          (trans (cong (λ z → suc (suc (suc (suc z)))) (S.Here.h-pc H)) (trans (sym (four (S.pos s))) (sym (S.pos-next s))))
          (Data.Nat.Properties.≤-trans (Data.Nat.Properties.≤-reflexive (Data.Nat.Properties.+-distribʳ-⊔ (ws S) (wsz A) (wsz B)))
             (Data.Nat.Properties.⊔-lub (proj₂ (S.shape-fits s)) (proj₂ (S.shape-fits (next s)))))
          nx ok I lv Fa)
   gicallω {A = A} {B} {S} {k = k} {r} {lam = cω ds′ b γ} {i} {x} {es} {a} {os} {n} {fs = fs} (p-block p′ (at s)) eq inv H nx ok I lv Fa =
     subst (λ v → Arrives (blockᴵ (ktrω ds′ b γ)) (frm {t = just _} k es os r) (vw v []ᵉ ∥ a ∷ˢ []ˢ) n fs) (sym eq)
-      (gicallω-d (d-block p′ s) (λ c → c) eq inv (Seg-++ˡ image (fpc fs) _ _ (K.seg-at p′ s H)) (K.Here.h-run {p = p′} H) (K.Here.h-slots {p = p′} H) (K.Here.h-cfg {p = p′} H)
+      (gicallω-d (d-block p′ s) (λ c → c (proj₁ (At.Low.lcin (K.lowAt p′ s)))) eq inv (Seg-++ˡ image (fpc fs) _ _ (K.seg-at p′ s H)) (K.Here.h-run {p = p′} H) (K.Here.h-slots {p = p′} H) (K.Here.h-cfg {p = p′} H)
          (trans (cong (λ z → suc (suc (suc (suc z)))) (K.Here.h-pc {p = p′} H)) (trans (sym (four (K.pos p′ s))) (sym (FrK.C.pos-next p′ s))))
          (Data.Nat.Properties.≤-trans (Data.Nat.Properties.≤-reflexive (Data.Nat.Properties.+-distribʳ-⊔ (ws S) (wsz A) (wsz B)))
             (Data.Nat.Properties.⊔-lub (proj₂ (K.shape-fits p′ s)) (proj₂ (K.shape-fits p′ (next s)))))
          nx ok I lv Fa)
   gicallω {A = A} {B} {S} {k = k} {r} {lam = cωᶜ ds′ b₀ γ} {i} {x} {es} {a} {os} {n} {fs = fs} (p-start (at s)) eq inv H nx ok I lv Fa =
     subst (λ v → Arrives (blockᴵ (ktrω ds′ (cin b₀) (cin-gd b₀ γ))) (frm {t = just _} k es os r) (vw v []ᵉ ∥ a ∷ˢ []ˢ) n fs) (sym eq)
-      (gicallω-d (d-start s) (λ c → c) eq inv (Seg-++ˡ image (fpc fs) _ _ (S.seg-at s H)) (S.Here.h-run H) (S.Here.h-slots H) (S.Here.h-cfg H)
+      (gicallω-d (d-start s) (λ c → c (proj₁ (At.Low.lcin (S.lowAt s)))) eq inv (Seg-++ˡ image (fpc fs) _ _ (S.seg-at s H)) (S.Here.h-run H) (S.Here.h-slots H) (S.Here.h-cfg H)
          (trans (cong (λ z → suc (suc (suc (suc z)))) (S.Here.h-pc H)) (trans (sym (four (S.pos s))) (sym (S.pos-next s))))
          (Data.Nat.Properties.≤-trans (Data.Nat.Properties.≤-reflexive (Data.Nat.Properties.+-distribʳ-⊔ (ws S) (wsz A) (wsz B)))
             (Data.Nat.Properties.⊔-lub (proj₂ (S.shape-fits s)) (proj₂ (S.shape-fits (next s)))))
          nx ok I lv Fa)
   gicallω {A = A} {B} {S} {k = k} {r} {lam = cωᶜ ds′ b₀ γ} {i} {x} {es} {a} {os} {n} {fs = fs} (p-block p′ (at s)) eq inv H nx ok I lv Fa =
     subst (λ v → Arrives (blockᴵ (ktrω ds′ (cin b₀) (cin-gd b₀ γ))) (frm {t = just _} k es os r) (vw v []ᵉ ∥ a ∷ˢ []ˢ) n fs) (sym eq)
-      (gicallω-d (d-block p′ s) (λ c → c) eq inv (Seg-++ˡ image (fpc fs) _ _ (K.seg-at p′ s H)) (K.Here.h-run {p = p′} H) (K.Here.h-slots {p = p′} H) (K.Here.h-cfg {p = p′} H)
+      (gicallω-d (d-block p′ s) (λ c → c (proj₁ (At.Low.lcin (K.lowAt p′ s)))) eq inv (Seg-++ˡ image (fpc fs) _ _ (K.seg-at p′ s H)) (K.Here.h-run {p = p′} H) (K.Here.h-slots {p = p′} H) (K.Here.h-cfg {p = p′} H)
          (trans (cong (λ z → suc (suc (suc (suc z)))) (K.Here.h-pc {p = p′} H)) (trans (sym (four (K.pos p′ s))) (sym (FrK.C.pos-next p′ s))))
          (Data.Nat.Properties.≤-trans (Data.Nat.Properties.≤-reflexive (Data.Nat.Properties.+-distribʳ-⊔ (ws S) (wsz A) (wsz B)))
             (Data.Nat.Properties.⊔-lub (proj₂ (K.shape-fits p′ s)) (proj₂ (K.shape-fits p′ (next s)))))
          nx ok I lv Fa)
   gicallω (p-tramp p pt) eq inv (() , H) nx ok I lv Fa
-
-  -- the cell part at the trampoline's depth 0 (its point by `GlobalTrView`'s view; the
-  -- environment and stack split after it)
-  gopenω-t : ∀ {T Es g X A B S V} {k : Codeᴵ (X ∷ Fn many g A B ∷ Es ∣ S) V} {r : Ret V T}
-               {lam : Lam many g X A B} {i x} {n h fs} {σ} {κ : Key σ} {p : under κ ∈ allK U}
-               {pt : Pt (blockᴵ κ) (openω {Es = Es} {g = g} {X = X} {A = A} {B = B} {S = S} ⨾ k)} {tp : TrPt p pt}
-           → Is-tw0 tp → ∀ {es : Slots (Fn many g A B ∷ Es)} {os : Stk S} → see es ≡ mfn i lam x
-           → InvI (es ∥ os) r n h → HereTr tp (es ∥ os) fs
-           → AllocState.next-heap-ref (falloc fs) ≡ n
-           → RetOK (rtramp p) (trFin (idx p) κ) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
-           → InBlk fs → LiveG r (es ∥ os) fs → FreshAl (falloc fs)
-           → Arrives k r (vw x es ∥ os) n fs
-  gopenω-t {k = k} {r = r} {lam = lam} {i} {x} {n} {fs = fs} (it-tw0 p) {es = vw (mfn _ _ _) []ᵉ} {os = o ∷ˢ []ˢ} refl inv T0 nx ok I lv Fa =
-    case tw-open p T0 I of λ where
-      (fs′ , run , T1 , Rn) →
-        1 , fs′ , run , record { g-pt = p-tramp p (at (next whole)) ; g-here = (tw1 p , T1) ; g-next = trans (r-next Rn) nx
-                               ; g-ret = ret-step (r-keep Rn) (r-old Rn) (r-top Rn) (subst (FreshR r) (sym nx) (fresh-ret inv)) (away-[] r) ok
-                               ; g-blk = r-inb Rn I
-                               ; g-live = live-after {fs = fs} {fs′ = fs′} st₁ inv nx lv (al-of (fx Rn))
-                               ; g-fal = fresh-after Fa (al-of (fx Rn)) } , k-log (r-keep Rn)
-    where
-      E = vw (mfn i lam x) []ᵉ
-      st₁ = StepI.i-openω {k = k} {r = r} {lam = lam} {i = i} {x = x} {es = E} {os = o ∷ˢ []ˢ} {n = n} refl
-      no-al : ∀ {j} → ¬ (alloc j ∈ (peek i ∷ []))
-      no-al (here ())
-      no-al (there ())
-      fx : ∀ {fs′} → Ran 1 [] [] (AllocState.next-heap-ref (falloc fs)) 0 fs fs′ → _
-      fx {fs′} Rn = kt {t = peek i ∷ []} {fs = fs} {fs′ = fs′} [] (r-keep Rn) (λ ()) (λ ()) (inj₁ refl) (λ _ q → ⊥-elim (no-al q))
-
-  -- ★ A MANY-USE TRAMPOLINE'S CELL PART (i-openω): at its depth 0; at a root's path it is absurd (D441)
-  gopenω : ∀ {T Es g X A B S V} {k : Codeᴵ (X ∷ Fn many g A B ∷ Es ∣ S) V} {r : Ret V T}
-             {lam : Lam many g X A B} {i x} {es : Slots (Fn many g A B ∷ Es)} {os : Stk S} {n h fs}
-             (P : Pnt (openω {Es = Es} {g = g} {X = X} {A = A} {B = B} {S = S} ⨾ k)) → see es ≡ mfn i lam x
-         → InvI (es ∥ os) r n h → HereP P (es ∥ os) fs
-         → AllocState.next-heap-ref (falloc fs) ≡ n
-         → RetOK (rootOf P) (ptFin P) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
-         → InBlk fs → LiveG r (es ∥ os) fs → FreshAl (falloc fs)
-         → Arrives k r (vw x es ∥ os) n fs
-  gopenω (p-start (at s)) eq inv H nx ok I lv Fa = ⊥-elim (proj₁ (sub-nc s (comp-nc ds f tt)))
-  gopenω (p-block p (at s)) eq inv H nx ok I lv Fa = ⊥-elim (proj₁ (sub-nc s (block-nc _ (allK-nt ds f p))))
-  gopenω (p-tramp p pt) eq inv (tp , T0) nx ok I lv Fa = gopenω-t (openω-v tp) eq inv T0 nx ok I lv Fa
-

@@ -37,6 +37,7 @@ module Once.LinCore.Words
   where
 
 open import Once.LinCore.Core fmt
+open import Data.Bool using (true)
 open import Once.LinCore.Flat using (Base; ⟦_⟧b)
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw
@@ -77,8 +78,9 @@ module Rel {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
   -- call enters word 4, `okey`)
   Word1 : ∀ {k g X A B} → Lam k g X A B → W → Set
   Word1 (c1 _ _ _)     _ = ⊤
-  Word1 lam@(cω _ _ _)  w = CodeOf (key-of lam) w
-  Word1 lam@(cωᶜ _ _ _) w = CodeOf (key-of lam) w
+  -- (D498: only at a lent-called type: a lent entry is in the image only there)
+  Word1 lam@(cω {g = g} {A = A} {B} _ _ _)  w = Univ.lct U (Fn many g A B) ≡ true → CodeOf (key-of lam) w
+  Word1 lam@(cωᶜ {g = g} {A = A} {B} _ _ _) w = Univ.lct U (Fn many g A B) ≡ true → CodeOf (key-of lam) w
 
   -- ★ a value's words, its cells in the heap
   data VW (rd : HeapLocation → Maybe W) : ∀ {A} → MV A → List W → Set where

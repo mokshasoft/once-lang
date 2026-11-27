@@ -23,7 +23,7 @@
 {-# OPTIONS --guardedness #-}
 
 open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _⊔_; _≤_; s≤s; z≤n)
-open import Data.Bool using (true; false; if_then_else_)
+open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Data.Nat.Properties using (m≤m⊔n; +-identityʳ; +-suc)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
@@ -66,7 +66,7 @@ open Sig using (info)
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Image fmt bw
 open import Once.LinCore.Keys fmt bw
-open Univ using (tys; nus; ops)
+open Univ using (tys; nus; ops; lct)
 open import Once.LinCore.Layout fmt bw
 open import Once.LinCore.Values fmt bw using (wsz; hdr)
 open import Once.LinCore.Lower fmt bw
@@ -219,6 +219,21 @@ module Ok (nm : CanonicalName) (U : Univ)
     cell-ok w pb pc pf po tb tc tf to a o d =
       ++⁺ (header-ok w (idx pb) (idx pc) (idx pf) (idx po) (codeRef pb tb) (codeRef pc tc) (codeRef pf tf) (codeRef po to)) (++⁺ (mvSP-ok a o w) (✓ ∷ ✓ ∷ []))
 
+    -- ★ D498: a many-use closure's cell, its word 1 the lent entry's at a lent-called type
+    lent-ref : ∀ {ab ao} (b : Bool) (kb : b ≡ true → ab ∈ allK U) (po : ao ∈ allK U)
+             → (∀ (p : ab ∈ allK U) → TrEntry (idx p) (proj₂ ab)) → TrEntry (idx po) (proj₂ ao)
+             → OK (instr-load-code-addr (tl (lentW b kb (idx po))))
+    lent-ref true  kb po tb to = codeRef (kb refl) (tb (kb refl))
+    lent-ref false kb po tb to = codeRef po to
+
+    cellω-ok : ∀ w {ab ac af ao} (b : Bool) (kb : b ≡ true → ab ∈ allK U) (pc : ac ∈ allK U) (pf : af ∈ allK U) (po : ao ∈ allK U)
+             → (∀ (p : ab ∈ allK U) → TrEntry (idx p) (proj₂ ab)) → TrEntry (idx pc) (proj₂ ac) → TrEntry (idx pf) (proj₂ af)
+             → TrEntry (idx po) (proj₂ ao)
+             → ∀ a o d → All OK (header w (lentW b kb (idx po)) (idx pc) (idx pf) (idx po) ++ mvSP a o w ++ mov-to-output ∷ store-at-slot d ∷ [])
+    cellω-ok w b kb pc pf po tb tc tf to a o d =
+      ++⁺ (header-ok w (lentW b kb (idx po)) (idx pc) (idx pf) (idx po) (lent-ref b kb po tb to) (codeRef pc tc) (codeRef pf tf) (codeRef po to))
+          (++⁺ (mvSP-ok a o w) (✓ ∷ ✓ ∷ []))
+
     lowP-ok : ∀ {Γ} (ds : Defs Γ) {A B} (g : LTm Γ A B) φ S (p : PrimIn ds g) → All OK (lowP ds g φ S p)
     lowP-ok ds lid φ S p          = []
     lowP-ok ds (_ ∘l _) φ S p     = []
@@ -258,10 +273,10 @@ module Ok (nm : CanonicalName) (U : Univ)
     lowP-ok ds bcopy φ S p        = []
     lowP-ok ds (llam {X = X} b γ) φ S (kb , x) =
       cell-ok (wsz X) kb (inCc x) (inFc x) kb (_ , _ , refl) (_ , _ , tramp-c x) (_ , _ , tramp-f x) (_ , _ , refl) (Tp φ S ∸ wsz X) hdr (Tp φ S ∸ 1)
-    lowP-ok ds (llamω {X = X} b γ) φ S (kb , x , ko) =
-      cell-ok (wsz X) kb (inCc x) (inFc x) ko (_ , _ , refl) (_ , _ , tramp-c x) (_ , _ , tramp-f x) (_ , _ , refl) (Tp φ S ∸ wsz X) hdr (Tp φ S ∸ 1)
-    lowP-ok ds (llamωᶜ {X = X} b₀ γ) φ S (kb , x , ko) =
-      cell-ok (wsz X) kb (inCc x) (inFc x) ko (_ , _ , refl) (_ , _ , tramp-c x) (_ , _ , tramp-f x) (_ , _ , refl) (Tp φ S ∸ wsz X) hdr (Tp φ S ∸ 1)
+    lowP-ok ds (llamω {g = g} {X = X} {A} {B} b γ) φ S (kb , x , ko) =
+      cellω-ok (wsz X) (lct U (Fn many g A B)) kb (inCc x) (inFc x) ko (λ p → _ , _ , refl) (_ , _ , tramp-c x) (_ , _ , tramp-f x) (_ , _ , refl) (Tp φ S ∸ wsz X) hdr (Tp φ S ∸ 1)
+    lowP-ok ds (llamωᶜ {g = g} {X = X} {A} {B} b₀ γ) φ S (kb , x , ko) =
+      cellω-ok (wsz X) (lct U (Fn many g A B)) kb (inCc x) (inFc x) ko (λ p → _ , _ , refl) (_ , _ , tramp-c x) (_ , _ , tramp-f x) (_ , _ , refl) (Tp φ S ∸ wsz X) hdr (Tp φ S ∸ 1)
     lowP-ok ds lev φ S p          = []
     lowP-ok ds (lunf {F = F} {S = S₀}) φ S (n , o) =
       cell-ok (wsz (cty (F , S₀))) (inO o n) (inCc (ncty n)) (inFc (ncty n)) (inO o n) (_ , _ , refl) (_ , _ , tramp-c (ncty n)) (_ , _ , tramp-f (ncty n)) (_ , _ , refl)

@@ -158,7 +158,7 @@ module LabsC {FS : FrameSemantics} where
            (ldConst : ∀ {b} → Lit b → AbstractInstr)
            (ld-nl : ∀ {b} (v : Lit b) → mark (ldConst v) ≡ nothing) where
     open In U
-    open _⊑U using (go)
+    open _⊑[_] using (go)
     open Lowering U ncty ldConst
     open Free U ncty ldConst ld-nl
 
