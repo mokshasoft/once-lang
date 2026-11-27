@@ -48,7 +48,7 @@ open import DirectedHoTT.Spec.Variance
         ; occ-εwkTm
         ; nnh-Fin )
 open import DirectedHoTT.Spec.Reduction 𝒮
-  using ( _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; El-⌜Hom⌝; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ
+  using ( ⟶head; ⟶cong; _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; El-⌜Hom⌝; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ
         ; ξ-Σʳ; Hom-U; Hom-Π; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ; _⟶_; β; βfst; βsnd
         ; ξ-lam; ξ-appˡ; ξ-appʳ; ξ-pairˡ; ξ-pairʳ; ξ-absurdᶜ; ξ-absurdᵉ
         ; ordtr-z; ordtr-szz; ordtr-ssz; ordtr-szs; ordtr-sss; ξ-ordtrᵃ
@@ -153,8 +153,10 @@ open import DirectedHoTT.Metatheory.RedCong 𝒮
 -- all `nn-El` needs, and unlike `nonatc-red` it says nothing about the
 -- spine — which is what lets `⌜Hom⌝ ⌜Nat⌝ a b` through.
 nonathd-red : {c c' : RTm Γ} → NoNatHd c → c ⟶ c' → NoNatHd c'
-nonathd-red nnh-base ()
-nonathd-red nnh-Unit ()
+nonathd-red nnh-base (⟶head ())
+nonathd-red nnh-base (⟶cong ())
+nonathd-red nnh-Unit (⟶head ())
+nonathd-red nnh-Unit (⟶cong ())
 nonathd-red nnh-Fin (ξ-⌜Fin⌝ _) = nnh-Fin
 nonathd-red nnh-IMu (ξ-⌜IMu⌝ᴵ _) = nnh-IMu
 nonathd-red nnh-IMu (ξ-⌜IMu⌝ᴰ _) = nnh-IMu
@@ -171,8 +173,10 @@ nonathd-red nnh-Hom (ξ-⌜Hom⌝ˡ _) = nnh-Hom
 nonathd-red nnh-Hom (ξ-⌜Hom⌝ʳ _) = nnh-Hom
 
 nonatc-red : {c c' : RTm Γ} → NoNatC c → c ⟶ c' → NoNatC c'
-nonatc-red nnc-base ()
-nonatc-red nnc-Unit ()
+nonatc-red nnc-base (⟶head ())
+nonatc-red nnc-base (⟶cong ())
+nonatc-red nnc-Unit (⟶head ())
+nonatc-red nnc-Unit (⟶cong ())
 nonatc-red nnc-Fin (ξ-⌜Fin⌝ _) = nnc-Fin
 nonatc-red nnc-Σ (ξ-⌜Σ⌝ˡ _) = nnc-Σ
 nonatc-red nnc-Σ (ξ-⌜Σ⌝ʳ _) = nnc-Σ
@@ -200,9 +204,12 @@ data NoNat {Γ} : RTy Γ → Set where
   nn-Fin  : {n : RTm Γ} → NoNat (Fin n)
 
 nonat-red : {A A' : RTy Γ} → NoNat A → A ⟶ᵀ A' → NoNat A'
-nonat-red nn-base ()
-nonat-red nn-U ()
-nonat-red nn-Unit ()
+nonat-red nn-base (⟶head ())
+nonat-red nn-base (⟶cong ())
+nonat-red nn-U (⟶head ())
+nonat-red nn-U (⟶cong ())
+nonat-red nn-Unit (⟶head ())
+nonat-red nn-Unit (⟶cong ())
 nonat-red nn-Fin (ξ-Fin _) = nn-Fin
 nonat-red (nn-El _)  El-⌜base⌝        = nn-base
 nonat-red (nn-El _)  (El-⌜Π⌝ _ _)     = nn-Π
@@ -235,15 +242,18 @@ nonat-red nn-Id (ξ-Idˡ _) = nn-Id
 nonat-red nn-Id (ξ-Idʳ _) = nn-Id
 
 Hom-nf-Unit : {A : RTy Γ} {t u : RTm Γ} → Unit {Γ} ⟶ᵀ* Hom A t u → ⊥
-Hom-nf-Unit (stepᵀ () _)
+Hom-nf-Unit (stepᵀ (⟶head ()) _)
+Hom-nf-Unit (stepᵀ (⟶cong ()) _)
 
 Hom-nf-base : {A : RTy Γ} {t u : RTm Γ} → base {Γ} ⟶ᵀ* Hom A t u → ⊥
-Hom-nf-base (stepᵀ () _)
+Hom-nf-base (stepᵀ (⟶head ()) _)
+Hom-nf-base (stepᵀ (⟶cong ()) _)
 
 -- ★ WF stage C: `Nat` is inert, so it is its own only reduct.
 Nat-reduct : {C : RTy Γ} → Nat {Γ} ⟶ᵀ* C → C ≡ Nat
 Nat-reduct doneᵀ = refl
-Nat-reduct (stepᵀ () _)
+Nat-reduct (stepᵀ (⟶head ()) _)
+Nat-reduct (stepᵀ (⟶cong ()) _)
 
 -- ★ a `Hom`-to-`Hom` reduction transports `NoNat` FORWARD along the
 -- ambient: it is `nonat-red` iterated, with the order rules refuted at
@@ -339,9 +349,11 @@ hom-shape (stepᵀ (ξ-Homʳ r) rest)  = hom-shape rest
 hom-shape (stepᵀ (Hom-U c d) rest)     = Π-shape rest
 hom-shape (stepᵀ (Hom-Π A B f g) rest) = Π-shape rest
 hom-shape (stepᵀ (Hom-Nat-z n) doneᵀ)        = hsUnit
-hom-shape (stepᵀ (Hom-Nat-z n) (stepᵀ () _))
+hom-shape (stepᵀ (Hom-Nat-z n) (stepᵀ (⟶head ()) _))
+hom-shape (stepᵀ (Hom-Nat-z n) (stepᵀ (⟶cong ()) _))
 hom-shape (stepᵀ (Hom-Nat-sz m) doneᵀ)       = hsBase
-hom-shape (stepᵀ (Hom-Nat-sz m) (stepᵀ () _))
+hom-shape (stepᵀ (Hom-Nat-sz m) (stepᵀ (⟶head ()) _))
+hom-shape (stepᵀ (Hom-Nat-sz m) (stepᵀ (⟶cong ()) _))
 hom-shape (stepᵀ (Hom-Nat-ss m n) rest)      = hom-shape rest
 
 
@@ -410,8 +422,10 @@ data BaseAmb {Γ} : RTy Γ → Set where
 
 baseamb-red : {X Y : RTy Γ} → BaseAmb X → X ⟶ᵀ Y → BaseAmb Y
 baseamb-red ba-el El-⌜base⌝ = ba-base
-baseamb-red ba-el (ξ-El ())
-baseamb-red ba-base ()
+baseamb-red ba-el (ξ-El (⟶head ()))
+baseamb-red ba-el (ξ-El (⟶cong ()))
+baseamb-red ba-base (⟶head ())
+baseamb-red ba-base (⟶cong ())
 
 data ΣAmb {Γ} : RTy Γ → Set where
   sa-el : {c : RTm Γ} {d : RTm (Γ ∙)} → ΣAmb (El (⌜Σ⌝ c d))
@@ -426,7 +440,8 @@ data ΣAmb {Γ} : RTy Γ → Set where
 
 U-reduct : {C : RTy Γ} → U ⟶ᵀ* C → C ≡ U
 U-reduct doneᵀ        = refl
-U-reduct (stepᵀ () _)
+U-reduct (stepᵀ (⟶head ()) _)
+U-reduct (stepᵀ (⟶cong ()) _)
 
 data HomToΠ {Γ} (A : RTy Γ) (t u : RTm Γ)
             (P : RTy Γ) (Q : RTy (Γ ∙)) : Set where
@@ -670,8 +685,10 @@ stamb-red st-IMu (ξ-IMuᴰ r) = st-IMu
 stamb-red st-IMu (ξ-IMuⁱ r) = st-IMu
 stamb-red st-Fin (ξ-Fin r) = st-Fin
 stamb-red (st-el {c = ⌜Nat⌝} k) El-⌜Nat⌝ = st-Nat
-stamb-red st-Nat ()
-stamb-red st-Unit ()
+stamb-red st-Nat (⟶head ())
+stamb-red st-Nat (⟶cong ())
+stamb-red st-Unit (⟶head ())
+stamb-red st-Unit (⟶cong ())
 stamb-red st-Id (ξ-Idᵀ r) = st-Id
 stamb-red st-Id (ξ-Idˡ r) = st-Id
 stamb-red st-Id (ξ-Idʳ r) = st-Id
