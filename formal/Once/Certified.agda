@@ -162,10 +162,11 @@ once-certified = record
 once-no-leak : Set₁
 once-no-leak = NoLeak
 
--- Plan 0.157 S2 step 3 (D6, D500) — THE BRIDGE HALF OF `NoCopy`, PROVED: a
--- program `once check` gives no "not linear (a copy here)" warning has a core
--- table and a `main` that name no copy of cells (`LinCore.NoCopyCore.no-copy-core`,
--- by `LinCore.LinearCF.linear-cf` clause for clause the bridge). The machine
--- half — no run of the emitted image enters a copy block, `Implementation.NoCopy`
--- beside `NoLeak` — is owed (plan 0.157 S2 step 4).
-open import Once.LinCore.NoCopyCore using (no-copy-core)
+-- Plan 0.157 S2 steps 3–4 (D6, D500, D501) — `NoCopy` UP TO THE WORD LAYER,
+-- PROVED: a program `once check` gives no "not linear (a copy here)" warning has
+-- a core table and a `main` that name no copy of cells (`LinCore.NoCopyCore`,
+-- by `LinCore.LinearCF.linear-cf` clause for clause the bridge), and along any
+-- run of its image no step calls a copy at a type with cells or copies a closure
+-- or a ν (`LinCore.NoCopyImage`, by `LinCore.CopyRun`'s invariant). Owed: the
+-- flat run's form, `Implementation.NoCopy` beside `NoLeak` (D501 route (3)).
+import Once.LinCore.NoCopyImage

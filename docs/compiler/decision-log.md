@@ -25909,3 +25909,15 @@ nesting) is data-dependent.
 *With `NoLeak`, toward S4's headline claim:* stack and heap in use are functions of the current state, so a
 program whose live data per round is bounded runs in bounded memory: in a region of that size it never stops
 (plan 0.157 S4, the space claim).
+
+**D501 routes (1)–(2) built** (2026-11-27): `LinCore/CopyCode.agda` — GOOD keys (a body, fold or trampoline over
+`CF` terms with a `CF` table; an observation whose layer does not branch; `kcopy A` with `NC A`; any free; never
+`ktrc`) and GOOD code (calls only good keys, no `ccopy`/`ncopy`, builds only copy-free closures and ν's);
+`comp-c` (a `CF` term's code is good, case for case `compᴵ`), `block-c` (a good key's block is good code).
+`LinCore/CopyRun.agda` — good values and return stack; `keep′`, case for case `KeysRun.keep` (with `KeysRun`'s
+invariant for a prim's and a lent call's facts: an `icallω` of a closure owning its environment is at a
+lent-called type, so `CF` made the environment cell-free); `ProgramCopy.good-always`: every configuration a
+copy-free program's image reaches is good, so `no-cell-copy`, `no-ccopy`, `no-ncopy`. `LinCore/NoCopyImage.agda`
+— with `no-copy-core`: no "not linear" warning ⇒ along any run of the compiled program's image no step calls a
+copy at a type with cells, nor copies a closure or a ν; `Certified` imports it. Split at the 60 s cap:
+`CopyCode` (38 s) / `CopyRun`. Owed: route (3), the flat run (`Implementation.NoCopy`).
