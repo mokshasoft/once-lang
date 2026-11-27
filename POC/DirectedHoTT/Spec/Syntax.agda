@@ -35,6 +35,14 @@
 -- is RAW syntax (scoping enforced, typing not) — enough to settle the
 -- stability question; intrinsic typing + conversion is the next slice.
 -- `--safe`, ZERO axioms (funext-free).
+--
+-- ★ GENERIC SYNTAX (SPIKE-GENERIC-SYNTAX, branch spike-generic-syntax,
+--   2026-11-27): `RTy`/`RTm` are the two sorts of ONE binding signature,
+--   `KSig` below, over `Spec/Bind`'s generic scoped syntax. Every former is a
+--   pattern synonym (implicit `{Γ}` included), so the API is unchanged.
+--   Renaming and substitution are the generic traversal at two kits, and
+--   the congruence, fusion and identity lemmas below are corollaries of the
+--   generic ones, with their old statements.
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
@@ -45,6 +53,10 @@ open import DirectedHoTT.Prelude
 --   TAG.  It is not the object-language `Nat`.
 open import Agda.Builtin.Nat using ( zero; suc; _==_ ) renaming ( Nat to ℕ )
 open import Agda.Builtin.Bool using ( Bool; true; false )
+open import Agda.Builtin.List using ( List; []; _∷_ )
+open import DirectedHoTT.Spec.Scope public
+import DirectedHoTT.Spec.Bind as G
+open G using ( fld; fnat )
 
 -- ⚠ LOCAL: `normalizer.Syntax.Types` exports `cong₂` but not `cong₃`, and
 --   `Lib/Wk`'s copy is downstream of this module.  Three lines beats an
@@ -58,156 +70,152 @@ cong₄ : {A B C D E : Set} (f : A → B → C → D → E) {a a' : A} {b b' : B
 cong₄ f refl refl refl refl = refl
 
 ------------------------------------------------------------------------
--- Scopes (de Bruijn depth) and variables. Untyped scoping — genuine
--- dependency without the transport hell of intrinsic dependent typing.
-------------------------------------------------------------------------
-
-data Cx : Set where
-  ε  : Cx
-  _∙ : Cx → Cx
-
-data Var : Cx → Set where
-  vz : ∀ {Γ} → Var (Γ ∙)
-  vs : ∀ {Γ} → Var Γ → Var (Γ ∙)
-
-------------------------------------------------------------------------
 -- The MUTUAL dependent raw syntax: types and terms, with `El` bringing a
 -- term into a type. `Π A B` / `Σ' A B` bind one variable in `B`.
-------------------------------------------------------------------------
-
-data RTy : Cx → Set
-data RTm : Cx → Set
+--
+-- ★ ONE BINDING SIGNATURE: two sorts, the constructors of each, and each
+--   constructor's fields (`fld s k`: a subterm of sort `s` under `k` new
+--   binders; `fnat`: a meta natural). Variables live at the term sort.
 -- ★★ LEVITATION (PLAN-LEVITATION, D490–D492): descriptions are TERMS
 --   of the large type `Desc I`, so there is no separate description
 --   syntax — and renaming/substitution traverse them like any term.
+------------------------------------------------------------------------
 
-data RTy where
-  base : ∀ {Γ} → RTy Γ
-  U    : ∀ {Γ} → RTy Γ                    -- a universe (codes decode via `El`)
-  Π    : ∀ {Γ} → RTy Γ → RTy (Γ ∙) → RTy Γ
-  Σ'   : ∀ {Γ} → RTy Γ → RTy (Γ ∙) → RTy Γ
-  El   : ∀ {Γ} → RTm Γ → RTy Γ
-  -- ★ W2 (option a): the DIRECTED IDENTITY TYPE, a primitive former that
-  -- COMPUTES like `El` (SpikeHomTy): it unfolds at `U` (directed univalence as
-  -- a computation rule) and at `Π` (the pointwise family, item 2); it is STUCK
-  -- at `base` (discrete by generation, item 4), at a neutral `El`, at `Σ'`
-  -- (the unfolding needs transport in the second component — a TERM former
-  -- W2's eliminator introduces; deferred, not dropped), and at `Hom` (higher
-  -- paths, unscoped).
-  Hom  : ∀ {Γ} → RTy Γ → RTm Γ → RTm Γ → RTy Γ
-  -- ★ WF-axis stage A (SPIKE-WF): the datatype core's type formers.
-  Unit : ∀ {Γ} → RTy Γ
-  Nat  : ∀ {Γ} → RTy Γ
-  -- ★ the TWO-FORMER kernel (SPIKE-TWOFORMER): the SYMMETRIC identity
-  -- type, INERT — no type-level computation, ξ-congruences only.
-  Id   : ∀ {Γ} → RTy Γ → RTm Γ → RTm Γ → RTy Γ
-  -- ★★ INDUCTIVE FAMILIES (levitated).  `IMu I D i`: the family described
-  --   by the TERM `D : Desc I` at index `i : El I`.  The index type is a
-  --   CODE in Γ (D492).
-  IMu  : ∀ {Γ} → RTm Γ → RTm Γ → RTm Γ → RTy Γ
-  -- ★ the LARGE type of descriptions over the index code `I` (no code:
-  --   level 1, SPIKE-LEVITATION S0).
-  Desc : ∀ {Γ} → RTm Γ → RTy Γ
-  -- ★ the induction hypotheses a payload `p` of telescope `C` owes, for
-  --   the motive `M` (index, scrutinee).  Computes on the telescope head
-  --   (`_⟶ᵀ_`); stuck on a neutral telescope.
-  DIh  : ∀ {Γ} → RTm Γ → RTy ((Γ ∙) ∙) → RTm Γ → RTm Γ → RTy Γ
-  -- ★ the TAG type: a finite enumeration {0 … n-1} (constructor choice).
-  Fin  : ∀ {Γ} → RTm Γ → RTy Γ
+data Srt : Set where
+  ty tm : Srt
 
-data RTm where
-  var  : ∀ {Γ} → Var Γ → RTm Γ
-  lam  : ∀ {Γ} → RTm (Γ ∙) → RTm Γ
-  app  : ∀ {Γ} → RTm Γ → RTm Γ → RTm Γ
-  pair : ∀ {Γ} → RTm Γ → RTm Γ → RTm Γ    -- Σ introduction
-  -- ★★ WF-axis stage D: EX FALSO.  `base` had formation only — no
-  -- intro, no elim — so a false inequality COMPUTED to the empty type
-  -- but could not be USED: the impossible branch was refutable only
-  -- meta-theoretically, via `consistency`.  This is the eliminator that
-  -- turns that metatheorem into a programming technique, and it is what
-  -- strong induction needs at `Hom Nat (nsuc k) nzero ⟶ᵀ base`.
-  --
-  -- The result type lives in the DERIVATION only (the `⊢lam`/`⊢natrec`
-  -- motive pattern), so the syntax stays unary.
-  absurd : ∀ {Γ} → RTm Γ → RTm Γ → RTm Γ
-  -- ★★ WF-axis: ORDER TRANSPORT — ≤-transitivity at OPEN naturals.
-  -- `tr` cannot serve: it is endpoint-BLIND (its `t`/`u` live only in
-  -- the derivation), and at a `Nat` ambient the answer depends on them.
-  -- So `ordtr` carries all THREE endpoints in the term.
-  --                     a        t        u        p        q
-  ordtr : ∀ {Γ} → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ
-  fst  : ∀ {Γ} → RTm Γ → RTm Γ            -- Σ elimination
-  snd  : ∀ {Γ} → RTm Γ → RTm Γ
-  ⌜base⌝ : ∀ {Γ} → RTm Γ                  -- code for `base`
-  ⌜Π⌝    : ∀ {Γ} → RTm Γ → RTm (Γ ∙) → RTm Γ  -- code for `Π` (dependent codomain)
-  ⌜Σ⌝    : ∀ {Γ} → RTm Γ → RTm (Γ ∙) → RTm Γ  -- code for `Σ`
-  -- ★ W2 eliminator (SpikeHomRefl design (B) + SpikeTr): the code for
-  -- `Hom` (hom-sets of small types are small; there is still no code for
-  -- `U`), the code-annotated identity path, and directed transport with a
-  -- CODE motive — `tr d p e` transports `e` along the path `p`, with
-  -- motive `El d`; `d` binds the transported variable.
-  ⌜Hom⌝  : ∀ {Γ} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
-  hrefl  : ∀ {Γ} → RTm Γ → RTm Γ → RTm Γ
-  tr     : ∀ {Γ} → RTm (Γ ∙) → RTm Γ → RTm Γ → RTm Γ
-  -- ★ directed `ap` (SpikeAp): a term's action on a hom.  `ap cB b p` —
-  -- `cB` the TARGET code (the result reflexivity's annotation), `b` the
-  -- body (vz free), `p` the path.  Typing restricts the SOURCE ambient
-  -- to stable codes; `ap-J` is the one computation rule.
-  ap     : ∀ {Γ} → RTm Γ → RTm (Γ ∙) → RTm Γ → RTm Γ
-  -- ★ the two-former kernel: the Id code, the (code-annotated)
-  -- reflexivity, and subst-style J at an UNRESTRICTED code family.
-  ⌜Id⌝   : ∀ {Γ} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
-  idrefl : ∀ {Γ} → RTm Γ → RTm Γ → RTm Γ
-  jsub   : ∀ {Γ} → RTm (Γ ∙) → RTm Γ → RTm Γ → RTm Γ
-  -- ★ WF-axis stage A: unit, numerals, and the TYPE-motived recursor
-  -- (motive in the derivation only, the ⊢lam pattern; `s` binds the
-  -- number then the IH).
-  unit   : ∀ {Γ} → RTm Γ
-  nzero  : ∀ {Γ} → RTm Γ
-  nsuc   : ∀ {Γ} → RTm Γ → RTm Γ
-  natrec : ∀ {Γ} → RTm Γ → RTm ((Γ ∙) ∙) → RTm Γ → RTm Γ
-  -- ★★ INDUCTIVE FAMILIES (levitated, one-telescope form).
-  --   `con p`           a constructor: the payload of the WHOLE telescope
-  --                     (constructor choice is its first, tag, field).
-  --   `ielim D i e t`   eliminate at index `i` with ONE method `e`; the
-  --                     motive lives in the derivation (the ⊢natrec pattern).
-  con   : ∀ {Γ} → RTm Γ → RTm Γ
-  ielim : ∀ {Γ} → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ
-  -- ★ telescopes (D493, FIBRED — a family's description is a FUNCTION of
-  --   the index, `D : Π (El I) (Desc I)`): end / a field of code `S` then
-  --   the rest as a FUNCTION of it / a recursive field at index `j`.  Strict
-  --   positivity is the GRAMMAR: `dρ` names an index, never a family.
-  dι    : ∀ {Γ} → RTm Γ
-  dσ    : ∀ {Γ} → RTm Γ → RTm Γ → RTm Γ
-  dρ    : ∀ {Γ} → RTm Γ → RTm Γ → RTm Γ
-  -- ★ the payload CODE of telescope `C`, recursion into `IMu I D`
-  --   (`dpay I D C`), and the IH tuple (`dih D e C p`).
-  dpay  : ∀ {Γ} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
-  dih   : ∀ {Γ} → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ
-  -- ★ tags: `fzero`, `fsuc`, the case split of Fin (n+1) ≅ 1 + Fin n
-  --   (motive in the derivation), and the elimination of the empty Fin 0.
-  fzero  : ∀ {Γ} → RTm Γ
-  fsuc   : ∀ {Γ} → RTm Γ → RTm Γ
-  fcase  : ∀ {Γ} → RTm Γ → RTm Γ → RTm (Γ ∙) → RTm Γ
-  fcase0 : ∀ {Γ} → RTm Γ → RTm Γ
-  -- ★ Σ-INDUCTION (D490): `psplit b q`, `b` binds both halves.
-  psplit : ∀ {Γ} → RTm ((Γ ∙) ∙) → RTm Γ → RTm Γ
-  -- ★ WF-axis stage C (N-in): `Nat` becomes SMALL — it gets a code, so
-  -- it can appear in `U`-families.  That is what unlocks Id-rewriting
-  -- AT `Nat` (`jsub` needs a code family), cong-at-ℕ, and ≤ as a
-  -- transportable relation.
-  ⌜Nat⌝  : ∀ {Γ} → RTm Γ
-  -- ★ the CODE of a family at an index: families are SMALL, so they
-  --   nest (a field of code `⌜IMu⌝ …`) and are `amrec` carriers.
-  ⌜IMu⌝  : ∀ {Γ} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
-  ⌜Fin⌝  : ∀ {Γ} → RTm Γ → RTm Γ
-  ⌜Unit⌝ : ∀ {Γ} → RTm Γ
-  -- ★ A DEFINITION (PLAN-REF, D501): a PROJECTION from the signature —
-  --   the definition context.  It carries no body: δ unfolds it to the
-  --   signature's body (`Spec/Reduction.δref`), and renaming and
-  --   substitution leave it alone.  A reference is O(1) syntax; a body is
-  --   touched only when δ fires.
-  ref    : ∀ {Γ} → ℕ → RTm Γ
+data KCon : Srt → Set where
+  `base `U `Π `Σ' `El `Hom `Unit `Nat `Id `IMu `Desc `DIh `Fin : KCon ty
+  `lam `app `pair `absurd `ordtr `fst `snd `⌜base⌝ `⌜Π⌝ `⌜Σ⌝ `⌜Hom⌝ `hrefl `tr `ap
+    `⌜Id⌝ `idrefl `jsub `unit `nzero `nsuc `natrec `con `ielim `dι `dσ `dρ `dpay `dih
+    `fzero `fsuc `fcase `fcase0 `psplit `⌜Nat⌝ `⌜IMu⌝ `⌜Fin⌝ `⌜Unit⌝ `ref : KCon tm
+
+kfields : ∀ {s} → KCon s → List (G.Field Srt)
+kfields `base   = []
+kfields `U      = []
+kfields `Π      = fld ty 0 ∷ fld ty 1 ∷ []
+kfields `Σ'     = fld ty 0 ∷ fld ty 1 ∷ []
+kfields `El     = fld tm 0 ∷ []
+kfields `Hom    = fld ty 0 ∷ fld tm 0 ∷ fld tm 0 ∷ []
+kfields `Unit   = []
+kfields `Nat    = []
+kfields `Id     = fld ty 0 ∷ fld tm 0 ∷ fld tm 0 ∷ []
+kfields `IMu    = fld tm 0 ∷ fld tm 0 ∷ fld tm 0 ∷ []
+kfields `Desc   = fld tm 0 ∷ []
+kfields `DIh    = fld tm 0 ∷ fld ty 2 ∷ fld tm 0 ∷ fld tm 0 ∷ []
+kfields `Fin    = fld tm 0 ∷ []
+kfields `lam    = fld tm 1 ∷ []
+kfields `app    = fld tm 0 ∷ fld tm 0 ∷ []
+kfields `pair   = fld tm 0 ∷ fld tm 0 ∷ []
+kfields `absurd = fld tm 0 ∷ fld tm 0 ∷ []
+kfields `ordtr  = fld tm 0 ∷ fld tm 0 ∷ fld tm 0 ∷ fld tm 0 ∷ fld tm 0 ∷ []
+kfields `fst    = fld tm 0 ∷ []
+kfields `snd    = fld tm 0 ∷ []
+kfields `⌜base⌝ = []
+kfields `⌜Π⌝    = fld tm 0 ∷ fld tm 1 ∷ []
+kfields `⌜Σ⌝    = fld tm 0 ∷ fld tm 1 ∷ []
+kfields `⌜Hom⌝  = fld tm 0 ∷ fld tm 0 ∷ fld tm 0 ∷ []
+kfields `hrefl  = fld tm 0 ∷ fld tm 0 ∷ []
+kfields `tr     = fld tm 1 ∷ fld tm 0 ∷ fld tm 0 ∷ []
+kfields `ap     = fld tm 0 ∷ fld tm 1 ∷ fld tm 0 ∷ []
+kfields `⌜Id⌝   = fld tm 0 ∷ fld tm 0 ∷ fld tm 0 ∷ []
+kfields `idrefl = fld tm 0 ∷ fld tm 0 ∷ []
+kfields `jsub   = fld tm 1 ∷ fld tm 0 ∷ fld tm 0 ∷ []
+kfields `unit   = []
+kfields `nzero  = []
+kfields `nsuc   = fld tm 0 ∷ []
+kfields `natrec = fld tm 0 ∷ fld tm 2 ∷ fld tm 0 ∷ []
+kfields `con    = fld tm 0 ∷ []
+kfields `ielim  = fld tm 0 ∷ fld tm 0 ∷ fld tm 0 ∷ fld tm 0 ∷ []
+kfields `dι     = []
+kfields `dσ     = fld tm 0 ∷ fld tm 0 ∷ []
+kfields `dρ     = fld tm 0 ∷ fld tm 0 ∷ []
+kfields `dpay   = fld tm 0 ∷ fld tm 0 ∷ fld tm 0 ∷ []
+kfields `dih    = fld tm 0 ∷ fld tm 0 ∷ fld tm 0 ∷ fld tm 0 ∷ []
+kfields `fzero  = []
+kfields `fsuc   = fld tm 0 ∷ []
+kfields `fcase  = fld tm 0 ∷ fld tm 0 ∷ fld tm 1 ∷ []
+kfields `fcase0 = fld tm 0 ∷ []
+kfields `psplit = fld tm 2 ∷ fld tm 0 ∷ []
+kfields `⌜Nat⌝  = []
+kfields `⌜IMu⌝  = fld tm 0 ∷ fld tm 0 ∷ fld tm 0 ∷ []
+kfields `⌜Fin⌝  = fld tm 0 ∷ []
+kfields `⌜Unit⌝ = []
+kfields `ref    = fnat ∷ []
+
+KSig : G.BSig
+KSig = record { Sort = Srt ; vsort = tm ; Con = KCon ; fields = kfields }
+
+RTy RTm : Cx → Set
+RTy = G.Tm KSig ty
+RTm = G.Tm KSig tm
+
+-- ★ the formers, as pattern synonyms (they read, match and apply as the
+--   old constructors did, implicit scope included)
+infixr 5 _,ᵃ_
+pattern _,ᵃ_ a as = a G.∷ᵃ as
+pattern ∎ᵃ = G.[]ᵃ
+
+pattern base {Γ}          = G.node {Γ = Γ} `base ∎ᵃ
+pattern U {Γ}             = G.node {Γ = Γ} `U ∎ᵃ
+pattern Π {Γ} A B         = G.node {Γ = Γ} `Π (A ,ᵃ B ,ᵃ ∎ᵃ)
+pattern Σ' {Γ} A B        = G.node {Γ = Γ} `Σ' (A ,ᵃ B ,ᵃ ∎ᵃ)
+pattern El {Γ} t          = G.node {Γ = Γ} `El (t ,ᵃ ∎ᵃ)
+pattern Hom {Γ} A t u     = G.node {Γ = Γ} `Hom (A ,ᵃ t ,ᵃ u ,ᵃ ∎ᵃ)
+pattern Unit {Γ}          = G.node {Γ = Γ} `Unit ∎ᵃ
+pattern Nat {Γ}           = G.node {Γ = Γ} `Nat ∎ᵃ
+pattern Id {Γ} A t u      = G.node {Γ = Γ} `Id (A ,ᵃ t ,ᵃ u ,ᵃ ∎ᵃ)
+pattern IMu {Γ} I D i     = G.node {Γ = Γ} `IMu (I ,ᵃ D ,ᵃ i ,ᵃ ∎ᵃ)
+pattern Desc {Γ} I        = G.node {Γ = Γ} `Desc (I ,ᵃ ∎ᵃ)
+pattern DIh {Γ} D M C p   = G.node {Γ = Γ} `DIh (D ,ᵃ M ,ᵃ C ,ᵃ p ,ᵃ ∎ᵃ)
+pattern Fin {Γ} n         = G.node {Γ = Γ} `Fin (n ,ᵃ ∎ᵃ)
+pattern var {Γ} x         = G.var {Γ = Γ} x
+pattern lam {Γ} t         = G.node {Γ = Γ} `lam (t ,ᵃ ∎ᵃ)
+pattern app {Γ} t u       = G.node {Γ = Γ} `app (t ,ᵃ u ,ᵃ ∎ᵃ)
+pattern pair {Γ} a b      = G.node {Γ = Γ} `pair (a ,ᵃ b ,ᵃ ∎ᵃ)
+pattern absurd {Γ} c e    = G.node {Γ = Γ} `absurd (c ,ᵃ e ,ᵃ ∎ᵃ)
+pattern ordtr {Γ} a t u p q = G.node {Γ = Γ} `ordtr (a ,ᵃ t ,ᵃ u ,ᵃ p ,ᵃ q ,ᵃ ∎ᵃ)
+pattern fst {Γ} p         = G.node {Γ = Γ} `fst (p ,ᵃ ∎ᵃ)
+pattern snd {Γ} p         = G.node {Γ = Γ} `snd (p ,ᵃ ∎ᵃ)
+pattern ⌜base⌝ {Γ}        = G.node {Γ = Γ} `⌜base⌝ ∎ᵃ
+pattern ⌜Π⌝ {Γ} c d       = G.node {Γ = Γ} `⌜Π⌝ (c ,ᵃ d ,ᵃ ∎ᵃ)
+pattern ⌜Σ⌝ {Γ} c d       = G.node {Γ = Γ} `⌜Σ⌝ (c ,ᵃ d ,ᵃ ∎ᵃ)
+pattern ⌜Hom⌝ {Γ} c a b   = G.node {Γ = Γ} `⌜Hom⌝ (c ,ᵃ a ,ᵃ b ,ᵃ ∎ᵃ)
+pattern hrefl {Γ} c t     = G.node {Γ = Γ} `hrefl (c ,ᵃ t ,ᵃ ∎ᵃ)
+pattern tr {Γ} d p e      = G.node {Γ = Γ} `tr (d ,ᵃ p ,ᵃ e ,ᵃ ∎ᵃ)
+pattern ap {Γ} c b p      = G.node {Γ = Γ} `ap (c ,ᵃ b ,ᵃ p ,ᵃ ∎ᵃ)
+pattern ⌜Id⌝ {Γ} c a b    = G.node {Γ = Γ} `⌜Id⌝ (c ,ᵃ a ,ᵃ b ,ᵃ ∎ᵃ)
+pattern idrefl {Γ} c t    = G.node {Γ = Γ} `idrefl (c ,ᵃ t ,ᵃ ∎ᵃ)
+pattern jsub {Γ} d p e    = G.node {Γ = Γ} `jsub (d ,ᵃ p ,ᵃ e ,ᵃ ∎ᵃ)
+pattern unit {Γ}          = G.node {Γ = Γ} `unit ∎ᵃ
+pattern nzero {Γ}         = G.node {Γ = Γ} `nzero ∎ᵃ
+pattern nsuc {Γ} n        = G.node {Γ = Γ} `nsuc (n ,ᵃ ∎ᵃ)
+pattern natrec {Γ} z s n  = G.node {Γ = Γ} `natrec (z ,ᵃ s ,ᵃ n ,ᵃ ∎ᵃ)
+pattern con {Γ} p         = G.node {Γ = Γ} `con (p ,ᵃ ∎ᵃ)
+pattern ielim {Γ} D i e t = G.node {Γ = Γ} `ielim (D ,ᵃ i ,ᵃ e ,ᵃ t ,ᵃ ∎ᵃ)
+pattern dι {Γ}            = G.node {Γ = Γ} `dι ∎ᵃ
+pattern dσ {Γ} S f        = G.node {Γ = Γ} `dσ (S ,ᵃ f ,ᵃ ∎ᵃ)
+pattern dρ {Γ} j C        = G.node {Γ = Γ} `dρ (j ,ᵃ C ,ᵃ ∎ᵃ)
+pattern dpay {Γ} I D C    = G.node {Γ = Γ} `dpay (I ,ᵃ D ,ᵃ C ,ᵃ ∎ᵃ)
+pattern dih {Γ} D e C p   = G.node {Γ = Γ} `dih (D ,ᵃ e ,ᵃ C ,ᵃ p ,ᵃ ∎ᵃ)
+pattern fzero {Γ}         = G.node {Γ = Γ} `fzero ∎ᵃ
+pattern fsuc {Γ} t        = G.node {Γ = Γ} `fsuc (t ,ᵃ ∎ᵃ)
+pattern fcase {Γ} t a b   = G.node {Γ = Γ} `fcase (t ,ᵃ a ,ᵃ b ,ᵃ ∎ᵃ)
+pattern fcase0 {Γ} t      = G.node {Γ = Γ} `fcase0 (t ,ᵃ ∎ᵃ)
+pattern psplit {Γ} b q    = G.node {Γ = Γ} `psplit (b ,ᵃ q ,ᵃ ∎ᵃ)
+pattern ⌜Nat⌝ {Γ}         = G.node {Γ = Γ} `⌜Nat⌝ ∎ᵃ
+pattern ⌜IMu⌝ {Γ} I D i   = G.node {Γ = Γ} `⌜IMu⌝ (I ,ᵃ D ,ᵃ i ,ᵃ ∎ᵃ)
+pattern ⌜Fin⌝ {Γ} n       = G.node {Γ = Γ} `⌜Fin⌝ (n ,ᵃ ∎ᵃ)
+pattern ⌜Unit⌝ {Γ}        = G.node {Γ = Γ} `⌜Unit⌝ ∎ᵃ
+pattern ref {Γ} d         = G.node {Γ = Γ} `ref (d G.∷ⁿ ∎ᵃ)
+
+-- ★ `RTy.Fin`: the old datatype's module, where downstream code
+--   disambiguates `Fin` from the Lib's (a datatype came with one)
+module RTy where
+  pattern Fin {Γ} n = G.node {Γ = Γ} `Fin (n ,ᵃ ∎ᵃ)
+
+-- the generic traversal, instantiated ONCE, here
+module KT = G.Trav KSig
 
 private
   variable
@@ -221,8 +229,7 @@ Ren : Cx → Cx → Set
 Ren Γ Δ = Var Γ → Var Δ
 
 extR : Ren Γ Δ → Ren (Γ ∙) (Δ ∙)
-extR ρ vz     = vz
-extR ρ (vs x) = vs (ρ x)
+extR = KT.ext KT.renK
 
 -- ★ A THINNING — an order-preserving embedding, as FIRST-ORDER data.
 --   Where a renaming is any function on variables, a thinning can only
@@ -244,61 +251,9 @@ thinR (keep θ) (vs x) = vs (thinR θ x)
 thinR (drop θ) x      = vs (thinR θ x)
 
 renTy : Ren Γ Δ → RTy Γ → RTy Δ
+renTy = KT.ren
 renTm : Ren Γ Δ → RTm Γ → RTm Δ
-renTy ρ Unit       = Unit
-renTy ρ Nat        = Nat
-renTy ρ base     = base
-renTy ρ U        = U
-renTy ρ (Π A B)  = Π (renTy ρ A) (renTy (extR ρ) B)
-renTy ρ (Σ' A B) = Σ' (renTy ρ A) (renTy (extR ρ) B)
-renTy ρ (El t)   = El (renTm ρ t)
-renTy ρ (Hom A t u) = Hom (renTy ρ A) (renTm ρ t) (renTm ρ u)
-renTy ρ (Id A t u) = Id (renTy ρ A) (renTm ρ t) (renTm ρ u)
-renTy ρ (IMu I D i) = IMu (renTm ρ I) (renTm ρ D) (renTm ρ i)
-renTy ρ (Desc I) = Desc (renTm ρ I)
-renTy ρ (DIh D M C p) = DIh (renTm ρ D) (renTy (extR (extR ρ)) M) (renTm ρ C) (renTm ρ p)
-renTy ρ (Fin n) = Fin (renTm ρ n)
-renTm ρ (var x)   = var (ρ x)
-renTm ρ (lam t)   = lam (renTm (extR ρ) t)
-renTm ρ (app t u)  = app (renTm ρ t) (renTm ρ u)
-renTm ρ (pair a b) = pair (renTm ρ a) (renTm ρ b)
-renTm ρ (absurd c e) = absurd (renTm ρ c) (renTm ρ e)
-renTm ρ (ordtr a t u p q) =
-  ordtr (renTm ρ a) (renTm ρ t) (renTm ρ u) (renTm ρ p) (renTm ρ q)
-renTm ρ (fst p)    = fst (renTm ρ p)
-renTm ρ (snd p)    = snd (renTm ρ p)
-renTm ρ ⌜base⌝     = ⌜base⌝
-renTm ρ (⌜Π⌝ c d)  = ⌜Π⌝ (renTm ρ c) (renTm (extR ρ) d)
-renTm ρ (⌜Σ⌝ c d)  = ⌜Σ⌝ (renTm ρ c) (renTm (extR ρ) d)
-renTm ρ (⌜Hom⌝ c a b) = ⌜Hom⌝ (renTm ρ c) (renTm ρ a) (renTm ρ b)
-renTm ρ (⌜Id⌝ c a b) = ⌜Id⌝ (renTm ρ c) (renTm ρ a) (renTm ρ b)
-renTm ρ (hrefl c t)   = hrefl (renTm ρ c) (renTm ρ t)
-renTm ρ (idrefl c t)   = idrefl (renTm ρ c) (renTm ρ t)
-renTm ρ (tr d p e)    = tr (renTm (extR ρ) d) (renTm ρ p) (renTm ρ e)
-renTm ρ (jsub d p e)    = jsub (renTm (extR ρ) d) (renTm ρ p) (renTm ρ e)
-renTm ρ (ap c b p)    = ap (renTm ρ c) (renTm (extR ρ) b) (renTm ρ p)
-renTm ρ ⌜Nat⌝         = ⌜Nat⌝
-renTm ρ (⌜IMu⌝ I D i) = ⌜IMu⌝ (renTm ρ I) (renTm ρ D) (renTm ρ i)
-renTm ρ (⌜Fin⌝ n) = ⌜Fin⌝ (renTm ρ n)
-renTm ρ (con p) = con (renTm ρ p)
-renTm ρ (ielim D i e t) = ielim (renTm ρ D) (renTm ρ i) (renTm ρ e) (renTm ρ t)
-renTm ρ dι = dι
-renTm ρ (dσ S f) = dσ (renTm ρ S) (renTm ρ f)
-renTm ρ (dρ j C) = dρ (renTm ρ j) (renTm ρ C)
-renTm ρ (dpay I D C) = dpay (renTm ρ I) (renTm ρ D) (renTm ρ C)
-renTm ρ (dih D e C p) = dih (renTm ρ D) (renTm ρ e) (renTm ρ C) (renTm ρ p)
-renTm ρ fzero = fzero
-renTm ρ (fsuc t) = fsuc (renTm ρ t)
-renTm ρ (fcase t a b) = fcase (renTm ρ t) (renTm ρ a) (renTm (extR ρ) b)
-renTm ρ (fcase0 t) = fcase0 (renTm ρ t)
-renTm ρ (psplit b q) = psplit (renTm (extR (extR ρ)) b) (renTm ρ q)
-renTm ρ (ref d) = ref d
-renTm ρ ⌜Unit⌝        = ⌜Unit⌝
-renTm ρ unit          = unit
-renTm ρ nzero         = nzero
-renTm ρ (nsuc n)      = nsuc (renTm ρ n)
-renTm ρ (natrec z s n) =
-  natrec (renTm ρ z) (renTm (extR (extR ρ)) s) (renTm ρ n)
+renTm = KT.ren
 
 ------------------------------------------------------------------------
 -- Parallel substitutions (variable-for-term) and their action.
@@ -308,70 +263,17 @@ Sub : Cx → Cx → Set
 Sub Γ Δ = Var Γ → RTm Δ
 
 extS : Sub Γ Δ → Sub (Γ ∙) (Δ ∙)
-extS σ vz     = var vz
-extS σ (vs x) = renTm vs (σ x)
+extS = KT.ext KT.subK
 
 subTy : Sub Γ Δ → RTy Γ → RTy Δ
+subTy = KT.sub
 subTm : Sub Γ Δ → RTm Γ → RTm Δ
-subTy σ Unit       = Unit
-subTy σ Nat        = Nat
-subTy σ base     = base
-subTy σ U        = U
-subTy σ (Π A B)  = Π (subTy σ A) (subTy (extS σ) B)
-subTy σ (Σ' A B) = Σ' (subTy σ A) (subTy (extS σ) B)
-subTy σ (El t)   = El (subTm σ t)
-subTy σ (Hom A t u) = Hom (subTy σ A) (subTm σ t) (subTm σ u)
-subTy σ (Id A t u) = Id (subTy σ A) (subTm σ t) (subTm σ u)
-subTy σ (IMu I D i) = IMu (subTm σ I) (subTm σ D) (subTm σ i)
-subTy σ (Desc I) = Desc (subTm σ I)
-subTy σ (DIh D M C p) = DIh (subTm σ D) (subTy (extS (extS σ)) M) (subTm σ C) (subTm σ p)
-subTy σ (Fin n) = Fin (subTm σ n)
-subTm σ (var x)   = σ x
-subTm σ (lam t)   = lam (subTm (extS σ) t)
-subTm σ (app t u)  = app (subTm σ t) (subTm σ u)
-subTm σ (pair a b) = pair (subTm σ a) (subTm σ b)
-subTm σ (absurd c e) = absurd (subTm σ c) (subTm σ e)
-subTm σ (ordtr a t u p q) =
-  ordtr (subTm σ a) (subTm σ t) (subTm σ u) (subTm σ p) (subTm σ q)
-subTm σ (fst p)    = fst (subTm σ p)
-subTm σ (snd p)    = snd (subTm σ p)
-subTm σ ⌜base⌝     = ⌜base⌝
-subTm σ (⌜Π⌝ c d)  = ⌜Π⌝ (subTm σ c) (subTm (extS σ) d)
-subTm σ (⌜Σ⌝ c d)  = ⌜Σ⌝ (subTm σ c) (subTm (extS σ) d)
-subTm σ (⌜Hom⌝ c a b) = ⌜Hom⌝ (subTm σ c) (subTm σ a) (subTm σ b)
-subTm σ (⌜Id⌝ c a b) = ⌜Id⌝ (subTm σ c) (subTm σ a) (subTm σ b)
-subTm σ (hrefl c t)   = hrefl (subTm σ c) (subTm σ t)
-subTm σ (idrefl c t)   = idrefl (subTm σ c) (subTm σ t)
-subTm σ (tr d p e)    = tr (subTm (extS σ) d) (subTm σ p) (subTm σ e)
-subTm σ (jsub d p e)    = jsub (subTm (extS σ) d) (subTm σ p) (subTm σ e)
-subTm σ (ap c b p)    = ap (subTm σ c) (subTm (extS σ) b) (subTm σ p)
-subTm σ ⌜Nat⌝         = ⌜Nat⌝
-subTm σ (⌜IMu⌝ I D i) = ⌜IMu⌝ (subTm σ I) (subTm σ D) (subTm σ i)
-subTm σ (⌜Fin⌝ n) = ⌜Fin⌝ (subTm σ n)
-subTm σ (con p) = con (subTm σ p)
-subTm σ (ielim D i e t) = ielim (subTm σ D) (subTm σ i) (subTm σ e) (subTm σ t)
-subTm σ dι = dι
-subTm σ (dσ S f) = dσ (subTm σ S) (subTm σ f)
-subTm σ (dρ j C) = dρ (subTm σ j) (subTm σ C)
-subTm σ (dpay I D C) = dpay (subTm σ I) (subTm σ D) (subTm σ C)
-subTm σ (dih D e C p) = dih (subTm σ D) (subTm σ e) (subTm σ C) (subTm σ p)
-subTm σ fzero = fzero
-subTm σ (fsuc t) = fsuc (subTm σ t)
-subTm σ (fcase t a b) = fcase (subTm σ t) (subTm σ a) (subTm (extS σ) b)
-subTm σ (fcase0 t) = fcase0 (subTm σ t)
-subTm σ (psplit b q) = psplit (subTm (extS (extS σ)) b) (subTm σ q)
-subTm σ (ref d) = ref d
-subTm σ ⌜Unit⌝        = ⌜Unit⌝
-subTm σ unit          = unit
-subTm σ nzero         = nzero
-subTm σ (nsuc n)      = nsuc (subTm σ n)
-subTm σ (natrec z s n) =
-  natrec (subTm σ z) (subTm (extS (extS σ)) s) (subTm σ n)
+subTm = KT.sub
 
 -- Identity and the four composition operators (explicit-index, genuine
 -- Ren/Sub — same shape as NbEPDirDB).
 idₛ : Sub Γ Γ
-idₛ = var
+idₛ x = var x
 
 infixr 8 _∘ᵣ_ _ₛ∘ᵣ_ _ᵣ∘ₛ_ _∘ₛ_
 _∘ᵣ_ : Ren Δ Θ → Ren Γ Δ → Ren Γ Θ
@@ -460,7 +362,9 @@ _ = λ σ → refl
 
 ------------------------------------------------------------------------
 -- ...and it is a COHERENT strict calculus: the mutual substitution laws.
--- Congruence under pointwise-equal renamings/substitutions (funext-free).
+-- ★ GENERIC (SPIKE-GENERIC-SYNTAX): each is a corollary of `Spec/Bind`'s
+--   congruence, fusion and identity, proved once for every signature; the
+--   statements are the hand-written calculus's.
 ------------------------------------------------------------------------
 
 extR-cong : {ρ ρ' : Ren Γ Δ} → (∀ (x : Var Γ) → ρ x ≡ ρ' x) →
@@ -470,86 +374,10 @@ extR-cong h (vs x) = cong vs (h x)
 
 renTy-cong : {ρ ρ' : Ren Γ Δ} → (∀ (x : Var Γ) → ρ x ≡ ρ' x) →
              (A : RTy Γ) → renTy ρ A ≡ renTy ρ' A
+renTy-cong = KT.Cong.trav-cong KT.renK
 renTm-cong : {ρ ρ' : Ren Γ Δ} → (∀ (x : Var Γ) → ρ x ≡ ρ' x) →
              (t : RTm Γ) → renTm ρ t ≡ renTm ρ' t
-renTy-cong h base     = refl
-renTy-cong h Unit     = refl
-renTy-cong h Nat      = refl
-renTy-cong h U        = refl
-renTy-cong h (Π A B)  = cong₂ Π (renTy-cong h A) (renTy-cong (extR-cong h) B)
-renTy-cong h (Σ' A B) = cong₂ Σ' (renTy-cong h A) (renTy-cong (extR-cong h) B)
-renTy-cong h (El t)   = cong El (renTm-cong h t)
-renTy-cong h (Hom A t u) =
-  Hom-cong₃ (renTy-cong h A) (renTm-cong h t) (renTm-cong h u)
-renTy-cong h (Id A t u) =
-  Id-cong₃ (renTy-cong h A) (renTm-cong h t) (renTm-cong h u)
-renTy-cong h (IMu I D i) =
-  cong₃ IMu (renTm-cong h I) (renTm-cong h D) (renTm-cong h i)
-renTy-cong h (Desc I) =
-  cong Desc (renTm-cong h I)
-renTy-cong h (DIh D M C p) =
-  cong₄ DIh (renTm-cong h D) (renTy-cong (extR-cong (extR-cong h)) M) (renTm-cong h C) (renTm-cong h p)
-renTy-cong h (Fin n) =
-  cong Fin (renTm-cong h n)
-renTm-cong h (var x)   = cong var (h x)
-renTm-cong h (lam t)   = cong lam (renTm-cong (extR-cong h) t)
-renTm-cong h (app t u)  = cong₂ app (renTm-cong h t) (renTm-cong h u)
-renTm-cong h (pair a b) = cong₂ pair (renTm-cong h a) (renTm-cong h b)
-renTm-cong h (absurd c e)    = cong₂ absurd (renTm-cong h c) (renTm-cong h e)
-renTm-cong h (ordtr a t u p q)    = ordtr-cong₅ (renTm-cong h a) (renTm-cong h t) (renTm-cong h u) (renTm-cong h p) (renTm-cong h q)
-renTm-cong h (fst p)    = cong fst (renTm-cong h p)
-renTm-cong h (snd p)    = cong snd (renTm-cong h p)
-renTm-cong h ⌜base⌝     = refl
-renTm-cong h ⌜Nat⌝      = refl
-renTm-cong h (⌜IMu⌝ I D i) =
-  cong₃ ⌜IMu⌝ (renTm-cong h I) (renTm-cong h D) (renTm-cong h i)
-renTm-cong h (⌜Fin⌝ n) =
-  cong ⌜Fin⌝ (renTm-cong h n)
-renTm-cong h (con p) =
-  cong con (renTm-cong h p)
-renTm-cong h (ielim D i e t) =
-  cong₄ ielim (renTm-cong h D) (renTm-cong h i) (renTm-cong h e) (renTm-cong h t)
-renTm-cong h dι =
-  refl
-renTm-cong h (dσ S f) =
-  cong₂ dσ (renTm-cong h S) (renTm-cong h f)
-renTm-cong h (dρ j C) =
-  cong₂ dρ (renTm-cong h j) (renTm-cong h C)
-renTm-cong h (dpay I D C) =
-  cong₃ dpay (renTm-cong h I) (renTm-cong h D) (renTm-cong h C)
-renTm-cong h (dih D e C p) =
-  cong₄ dih (renTm-cong h D) (renTm-cong h e) (renTm-cong h C) (renTm-cong h p)
-renTm-cong h fzero =
-  refl
-renTm-cong h (fsuc t) =
-  cong fsuc (renTm-cong h t)
-renTm-cong h (fcase t a b) =
-  cong₃ fcase (renTm-cong h t) (renTm-cong h a) (renTm-cong (extR-cong h) b)
-renTm-cong h (fcase0 t) =
-  cong fcase0 (renTm-cong h t)
-renTm-cong h (psplit b q) =
-  cong₂ psplit (renTm-cong (extR-cong (extR-cong h)) b) (renTm-cong h q)
-renTm-cong h (ref d) = refl
-renTm-cong h ⌜Unit⌝     = refl
-renTm-cong h unit      = refl
-renTm-cong h nzero     = refl
-renTm-cong h (nsuc n)  = cong nsuc (renTm-cong h n)
-renTm-cong h (natrec z s₂ n) =
-  natrec-cong₃ (renTm-cong h z) (renTm-cong (extR-cong (extR-cong h)) s₂) (renTm-cong h n)
-renTm-cong h (⌜Π⌝ c d)  = cong₂ ⌜Π⌝ (renTm-cong h c) (renTm-cong (extR-cong h) d)
-renTm-cong h (⌜Σ⌝ c d)  = cong₂ ⌜Σ⌝ (renTm-cong h c) (renTm-cong (extR-cong h) d)
-renTm-cong h (⌜Hom⌝ c a b) =
-  ⌜Hom⌝-cong₃ (renTm-cong h c) (renTm-cong h a) (renTm-cong h b)
-renTm-cong h (⌜Id⌝ c a b) =
-  ⌜Id⌝-cong₃ (renTm-cong h c) (renTm-cong h a) (renTm-cong h b)
-renTm-cong h (hrefl c t)   = cong₂ hrefl (renTm-cong h c) (renTm-cong h t)
-renTm-cong h (idrefl c t)   = cong₂ idrefl (renTm-cong h c) (renTm-cong h t)
-renTm-cong h (tr d p e)    =
-  tr-cong₃ (renTm-cong (extR-cong h) d) (renTm-cong h p) (renTm-cong h e)
-renTm-cong h (jsub d p e)    =
-  jsub-cong₃ (renTm-cong (extR-cong h) d) (renTm-cong h p) (renTm-cong h e)
-renTm-cong h (ap c b p)    =
-  ap-cong₃ (renTm-cong h c) (renTm-cong (extR-cong h) b) (renTm-cong h p)
+renTm-cong = KT.Cong.trav-cong KT.renK
 
 extS-cong : {σ σ' : Sub Γ Δ} → (∀ (x : Var Γ) → σ x ≡ σ' x) →
             ∀ (x : Var (Γ ∙)) → extS σ x ≡ extS σ' x
@@ -558,91 +386,10 @@ extS-cong h (vs x) = cong (renTm vs) (h x)
 
 subTy-cong : {σ σ' : Sub Γ Δ} → (∀ (x : Var Γ) → σ x ≡ σ' x) →
              (A : RTy Γ) → subTy σ A ≡ subTy σ' A
+subTy-cong = KT.Cong.trav-cong KT.subK
 subTm-cong : {σ σ' : Sub Γ Δ} → (∀ (x : Var Γ) → σ x ≡ σ' x) →
              (t : RTm Γ) → subTm σ t ≡ subTm σ' t
-subTy-cong h base     = refl
-subTy-cong h Unit     = refl
-subTy-cong h Nat      = refl
-subTy-cong h U        = refl
-subTy-cong h (Π A B)  = cong₂ Π (subTy-cong h A) (subTy-cong (extS-cong h) B)
-subTy-cong h (Σ' A B) = cong₂ Σ' (subTy-cong h A) (subTy-cong (extS-cong h) B)
-subTy-cong h (El t)   = cong El (subTm-cong h t)
-subTy-cong h (Hom A t u) =
-  Hom-cong₃ (subTy-cong h A) (subTm-cong h t) (subTm-cong h u)
-subTy-cong h (Id A t u) =
-  Id-cong₃ (subTy-cong h A) (subTm-cong h t) (subTm-cong h u)
-subTy-cong h (IMu I D i) =
-  cong₃ IMu (subTm-cong h I) (subTm-cong h D) (subTm-cong h i)
-subTy-cong h (Desc I) =
-  cong Desc (subTm-cong h I)
-subTy-cong h (DIh D M C p) =
-  cong₄ DIh (subTm-cong h D) (subTy-cong (extS-cong (extS-cong h)) M) (subTm-cong h C) (subTm-cong h p)
-subTy-cong h (Fin n) =
-  cong Fin (subTm-cong h n)
-subTm-cong h (var x)   = h x
-subTm-cong h (lam t)   = cong lam (subTm-cong (extS-cong h) t)
-subTm-cong h (app t u)  = cong₂ app (subTm-cong h t) (subTm-cong h u)
-subTm-cong h (pair a b) = cong₂ pair (subTm-cong h a) (subTm-cong h b)
-subTm-cong h (absurd c e)    = cong₂ absurd (subTm-cong h c) (subTm-cong h e)
-subTm-cong h (ordtr a t u p q)    = ordtr-cong₅ (subTm-cong h a) (subTm-cong h t) (subTm-cong h u) (subTm-cong h p) (subTm-cong h q)
-subTm-cong h (fst p)    = cong fst (subTm-cong h p)
-subTm-cong h (snd p)    = cong snd (subTm-cong h p)
-subTm-cong h ⌜base⌝     = refl
-subTm-cong h ⌜Nat⌝      = refl
-subTm-cong h (⌜IMu⌝ I D i) =
-  cong₃ ⌜IMu⌝ (subTm-cong h I) (subTm-cong h D) (subTm-cong h i)
-subTm-cong h (⌜Fin⌝ n) =
-  cong ⌜Fin⌝ (subTm-cong h n)
-subTm-cong h (con p) =
-  cong con (subTm-cong h p)
-subTm-cong h (ielim D i e t) =
-  cong₄ ielim (subTm-cong h D) (subTm-cong h i) (subTm-cong h e) (subTm-cong h t)
-subTm-cong h dι =
-  refl
-subTm-cong h (dσ S f) =
-  cong₂ dσ (subTm-cong h S) (subTm-cong h f)
-subTm-cong h (dρ j C) =
-  cong₂ dρ (subTm-cong h j) (subTm-cong h C)
-subTm-cong h (dpay I D C) =
-  cong₃ dpay (subTm-cong h I) (subTm-cong h D) (subTm-cong h C)
-subTm-cong h (dih D e C p) =
-  cong₄ dih (subTm-cong h D) (subTm-cong h e) (subTm-cong h C) (subTm-cong h p)
-subTm-cong h fzero =
-  refl
-subTm-cong h (fsuc t) =
-  cong fsuc (subTm-cong h t)
-subTm-cong h (fcase t a b) =
-  cong₃ fcase (subTm-cong h t) (subTm-cong h a) (subTm-cong (extS-cong h) b)
-subTm-cong h (fcase0 t) =
-  cong fcase0 (subTm-cong h t)
-subTm-cong h (psplit b q) =
-  cong₂ psplit (subTm-cong (extS-cong (extS-cong h)) b) (subTm-cong h q)
-subTm-cong h (ref d) = refl
-subTm-cong h ⌜Unit⌝     = refl
-subTm-cong h unit      = refl
-subTm-cong h nzero     = refl
-subTm-cong h (nsuc n)  = cong nsuc (subTm-cong h n)
-subTm-cong h (natrec z s₂ n) =
-  natrec-cong₃ (subTm-cong h z) (subTm-cong (extS-cong (extS-cong h)) s₂) (subTm-cong h n)
-subTm-cong h (⌜Π⌝ c d)  = cong₂ ⌜Π⌝ (subTm-cong h c) (subTm-cong (extS-cong h) d)
-subTm-cong h (⌜Σ⌝ c d)  = cong₂ ⌜Σ⌝ (subTm-cong h c) (subTm-cong (extS-cong h) d)
-subTm-cong h (⌜Hom⌝ c a b) =
-  ⌜Hom⌝-cong₃ (subTm-cong h c) (subTm-cong h a) (subTm-cong h b)
-subTm-cong h (⌜Id⌝ c a b) =
-  ⌜Id⌝-cong₃ (subTm-cong h c) (subTm-cong h a) (subTm-cong h b)
-subTm-cong h (hrefl c t)   = cong₂ hrefl (subTm-cong h c) (subTm-cong h t)
-subTm-cong h (idrefl c t)   = cong₂ idrefl (subTm-cong h c) (subTm-cong h t)
-subTm-cong h (tr d p e)    =
-  tr-cong₃ (subTm-cong (extS-cong h) d) (subTm-cong h p) (subTm-cong h e)
-subTm-cong h (jsub d p e)    =
-  jsub-cong₃ (subTm-cong (extS-cong h) d) (subTm-cong h p) (subTm-cong h e)
-subTm-cong h (ap c b p)    =
-  ap-cong₃ (subTm-cong h c) (subTm-cong (extS-cong h) b) (subTm-cong h p)
-
-------------------------------------------------------------------------
--- The four mutual fusion lemmas (each a type/term pair). Binder cases bridge
--- lift-then-compose vs compose-then-lift via a pointwise ext-lemma + `*-cong`.
-------------------------------------------------------------------------
+subTm-cong = KT.Cong.trav-cong KT.subK
 
 -- ren ∘ ren.
 extr-extr : (ρ' : Ren Δ Θ) (ρ : Ren Γ Δ) (x : Var (Γ ∙)) →
@@ -652,98 +399,10 @@ extr-extr ρ' ρ (vs x) = refl
 
 renTy-renTy : {ρ' : Ren Δ Θ} {ρ : Ren Γ Δ} (A : RTy Γ) →
               renTy ρ' (renTy ρ A) ≡ renTy (ρ' ∘ᵣ ρ) A
+renTy-renTy {ρ' = ρ'} {ρ} = KT.ren-ren ρ ρ'
 renTm-renTm : {ρ' : Ren Δ Θ} {ρ : Ren Γ Δ} (t : RTm Γ) →
               renTm ρ' (renTm ρ t) ≡ renTm (ρ' ∘ᵣ ρ) t
-renTy-renTy base     = refl
-renTy-renTy Unit     = refl
-renTy-renTy Nat      = refl
-renTy-renTy U        = refl
-renTy-renTy {ρ' = ρ'} {ρ} (Π A B) =
-  cong₂ Π (renTy-renTy A) (trans (renTy-renTy B) (renTy-cong (extr-extr ρ' ρ) B))
-renTy-renTy {ρ' = ρ'} {ρ} (Σ' A B) =
-  cong₂ Σ' (renTy-renTy A) (trans (renTy-renTy B) (renTy-cong (extr-extr ρ' ρ) B))
-renTy-renTy (El t)   = cong El (renTm-renTm t)
-renTy-renTy (Hom A t u) =
-  Hom-cong₃ (renTy-renTy A) (renTm-renTm t) (renTm-renTm u)
-renTy-renTy (Id A t u) =
-  Id-cong₃ (renTy-renTy A) (renTm-renTm t) (renTm-renTm u)
-renTy-renTy {ρ' = ρ'} {ρ} (IMu I D i) =
-  cong₃ IMu (renTm-renTm I) (renTm-renTm D) (renTm-renTm i)
-renTy-renTy {ρ' = ρ'} {ρ} (Desc I) =
-  cong Desc (renTm-renTm I)
-renTy-renTy {ρ' = ρ'} {ρ} (DIh D M C p) =
-  cong₄ DIh (renTm-renTm D) (trans (renTy-renTy M) (renTy-cong (λ x → trans (extr-extr (extR ρ') (extR ρ) x) (extR-cong (extr-extr ρ' ρ) x)) M)) (renTm-renTm C) (renTm-renTm p)
-renTy-renTy {ρ' = ρ'} {ρ} (Fin n) =
-  cong Fin (renTm-renTm n)
-renTm-renTm (var x)   = refl
-renTm-renTm {ρ' = ρ'} {ρ} (lam t) =
-  cong lam (trans (renTm-renTm t) (renTm-cong (extr-extr ρ' ρ) t))
-renTm-renTm (app t u)  = cong₂ app (renTm-renTm t) (renTm-renTm u)
-renTm-renTm (pair a b) = cong₂ pair (renTm-renTm a) (renTm-renTm b)
-renTm-renTm (absurd c e)    = cong₂ absurd (renTm-renTm c) (renTm-renTm e)
-renTm-renTm (ordtr a t u p q)    = ordtr-cong₅ (renTm-renTm a) (renTm-renTm t) (renTm-renTm u) (renTm-renTm p) (renTm-renTm q)
-renTm-renTm (fst p)    = cong fst (renTm-renTm p)
-renTm-renTm (snd p)    = cong snd (renTm-renTm p)
-renTm-renTm ⌜base⌝     = refl
-renTm-renTm ⌜Nat⌝      = refl
-renTm-renTm {ρ' = ρ'} {ρ} (⌜IMu⌝ I D i) =
-  cong₃ ⌜IMu⌝ (renTm-renTm I) (renTm-renTm D) (renTm-renTm i)
-renTm-renTm {ρ' = ρ'} {ρ} (⌜Fin⌝ n) =
-  cong ⌜Fin⌝ (renTm-renTm n)
-renTm-renTm {ρ' = ρ'} {ρ} (con p) =
-  cong con (renTm-renTm p)
-renTm-renTm {ρ' = ρ'} {ρ} (ielim D i e t) =
-  cong₄ ielim (renTm-renTm D) (renTm-renTm i) (renTm-renTm e) (renTm-renTm t)
-renTm-renTm {ρ' = ρ'} {ρ} dι =
-  refl
-renTm-renTm {ρ' = ρ'} {ρ} (dσ S f) =
-  cong₂ dσ (renTm-renTm S) (renTm-renTm f)
-renTm-renTm {ρ' = ρ'} {ρ} (dρ j C) =
-  cong₂ dρ (renTm-renTm j) (renTm-renTm C)
-renTm-renTm {ρ' = ρ'} {ρ} (dpay I D C) =
-  cong₃ dpay (renTm-renTm I) (renTm-renTm D) (renTm-renTm C)
-renTm-renTm {ρ' = ρ'} {ρ} (dih D e C p) =
-  cong₄ dih (renTm-renTm D) (renTm-renTm e) (renTm-renTm C) (renTm-renTm p)
-renTm-renTm {ρ' = ρ'} {ρ} fzero =
-  refl
-renTm-renTm {ρ' = ρ'} {ρ} (fsuc t) =
-  cong fsuc (renTm-renTm t)
-renTm-renTm {ρ' = ρ'} {ρ} (fcase t a b) =
-  cong₃ fcase (renTm-renTm t) (renTm-renTm a) (trans (renTm-renTm b) (renTm-cong (extr-extr ρ' ρ) b))
-renTm-renTm {ρ' = ρ'} {ρ} (fcase0 t) =
-  cong fcase0 (renTm-renTm t)
-renTm-renTm {ρ' = ρ'} {ρ} (psplit b q) =
-  cong₂ psplit (trans (renTm-renTm b) (renTm-cong (λ x → trans (extr-extr (extR ρ') (extR ρ) x) (extR-cong (extr-extr ρ' ρ) x)) b)) (renTm-renTm q)
-renTm-renTm (ref d) = refl
-renTm-renTm ⌜Unit⌝     = refl
-renTm-renTm unit       = refl
-renTm-renTm nzero      = refl
-renTm-renTm (nsuc n)   = cong nsuc (renTm-renTm n)
-renTm-renTm {ρ' = ρ'} {ρ} (natrec z s n) =
-  natrec-cong₃ (renTm-renTm z)
-    (trans (renTm-renTm s)
-           (renTm-cong (λ x → trans (extr-extr (extR ρ') (extR ρ) x) (extR-cong (extr-extr ρ' ρ) x)) s))
-    (renTm-renTm n)
-renTm-renTm {ρ' = ρ'} {ρ} (⌜Π⌝ c d) =
-  cong₂ ⌜Π⌝ (renTm-renTm c) (trans (renTm-renTm d) (renTm-cong (extr-extr ρ' ρ) d))
-renTm-renTm {ρ' = ρ'} {ρ} (⌜Σ⌝ c d) =
-  cong₂ ⌜Σ⌝ (renTm-renTm c) (trans (renTm-renTm d) (renTm-cong (extr-extr ρ' ρ) d))
-renTm-renTm (⌜Hom⌝ c a b) =
-  ⌜Hom⌝-cong₃ (renTm-renTm c) (renTm-renTm a) (renTm-renTm b)
-renTm-renTm (⌜Id⌝ c a b) =
-  ⌜Id⌝-cong₃ (renTm-renTm c) (renTm-renTm a) (renTm-renTm b)
-renTm-renTm (hrefl c t)   = cong₂ hrefl (renTm-renTm c) (renTm-renTm t)
-renTm-renTm (idrefl c t)   = cong₂ idrefl (renTm-renTm c) (renTm-renTm t)
-renTm-renTm {ρ' = ρ'} {ρ} (tr d p e) =
-  tr-cong₃ (trans (renTm-renTm d) (renTm-cong (extr-extr ρ' ρ) d))
-           (renTm-renTm p) (renTm-renTm e)
-renTm-renTm {ρ' = ρ'} {ρ} (jsub d p e) =
-  jsub-cong₃ (trans (renTm-renTm d) (renTm-cong (extr-extr ρ' ρ) d))
-           (renTm-renTm p) (renTm-renTm e)
-renTm-renTm {ρ' = ρ'} {ρ} (ap c b p) =
-  ap-cong₃ (renTm-renTm c)
-           (trans (renTm-renTm b) (renTm-cong (extr-extr ρ' ρ) b))
-           (renTm-renTm p)
+renTm-renTm {ρ' = ρ'} {ρ} = KT.ren-ren ρ ρ'
 
 -- sub ∘ ren.
 exts-extr : (σ : Sub Δ Θ) (ρ : Ren Γ Δ) (x : Var (Γ ∙)) →
@@ -753,300 +412,36 @@ exts-extr σ ρ (vs x) = refl
 
 subTy-renTy : {σ : Sub Δ Θ} {ρ : Ren Γ Δ} (A : RTy Γ) →
               subTy σ (renTy ρ A) ≡ subTy (σ ₛ∘ᵣ ρ) A
+subTy-renTy {σ = σ} {ρ} = KT.sub-ren ρ σ
 subTm-renTm : {σ : Sub Δ Θ} {ρ : Ren Γ Δ} (t : RTm Γ) →
               subTm σ (renTm ρ t) ≡ subTm (σ ₛ∘ᵣ ρ) t
-subTy-renTy base     = refl
-subTy-renTy Unit     = refl
-subTy-renTy Nat      = refl
-subTy-renTy U        = refl
-subTy-renTy {σ = σ} {ρ} (Π A B) =
-  cong₂ Π (subTy-renTy A) (trans (subTy-renTy B) (subTy-cong (exts-extr σ ρ) B))
-subTy-renTy {σ = σ} {ρ} (Σ' A B) =
-  cong₂ Σ' (subTy-renTy A) (trans (subTy-renTy B) (subTy-cong (exts-extr σ ρ) B))
-subTy-renTy (El t)   = cong El (subTm-renTm t)
-subTy-renTy (Hom A t u) =
-  Hom-cong₃ (subTy-renTy A) (subTm-renTm t) (subTm-renTm u)
-subTy-renTy (Id A t u) =
-  Id-cong₃ (subTy-renTy A) (subTm-renTm t) (subTm-renTm u)
-subTy-renTy {σ = σ} {ρ} (IMu I D i) =
-  cong₃ IMu (subTm-renTm I) (subTm-renTm D) (subTm-renTm i)
-subTy-renTy {σ = σ} {ρ} (Desc I) =
-  cong Desc (subTm-renTm I)
-subTy-renTy {σ = σ} {ρ} (DIh D M C p) =
-  cong₄ DIh (subTm-renTm D) (trans (subTy-renTy M) (subTy-cong (λ x → trans (exts-extr (extS σ) (extR ρ) x) (extS-cong (exts-extr σ ρ) x)) M)) (subTm-renTm C) (subTm-renTm p)
-subTy-renTy {σ = σ} {ρ} (Fin n) =
-  cong Fin (subTm-renTm n)
-subTm-renTm (var x)   = refl
-subTm-renTm {σ = σ} {ρ} (lam t) =
-  cong lam (trans (subTm-renTm t) (subTm-cong (exts-extr σ ρ) t))
-subTm-renTm (app t u)  = cong₂ app (subTm-renTm t) (subTm-renTm u)
-subTm-renTm (pair a b) = cong₂ pair (subTm-renTm a) (subTm-renTm b)
-subTm-renTm (absurd c e)    = cong₂ absurd (subTm-renTm c) (subTm-renTm e)
-subTm-renTm (ordtr a t u p q)    = ordtr-cong₅ (subTm-renTm a) (subTm-renTm t) (subTm-renTm u) (subTm-renTm p) (subTm-renTm q)
-subTm-renTm (fst p)    = cong fst (subTm-renTm p)
-subTm-renTm (snd p)    = cong snd (subTm-renTm p)
-subTm-renTm ⌜base⌝     = refl
-subTm-renTm ⌜Nat⌝      = refl
-subTm-renTm {σ = σ} {ρ} (⌜IMu⌝ I D i) =
-  cong₃ ⌜IMu⌝ (subTm-renTm I) (subTm-renTm D) (subTm-renTm i)
-subTm-renTm {σ = σ} {ρ} (⌜Fin⌝ n) =
-  cong ⌜Fin⌝ (subTm-renTm n)
-subTm-renTm {σ = σ} {ρ} (con p) =
-  cong con (subTm-renTm p)
-subTm-renTm {σ = σ} {ρ} (ielim D i e t) =
-  cong₄ ielim (subTm-renTm D) (subTm-renTm i) (subTm-renTm e) (subTm-renTm t)
-subTm-renTm {σ = σ} {ρ} dι =
-  refl
-subTm-renTm {σ = σ} {ρ} (dσ S f) =
-  cong₂ dσ (subTm-renTm S) (subTm-renTm f)
-subTm-renTm {σ = σ} {ρ} (dρ j C) =
-  cong₂ dρ (subTm-renTm j) (subTm-renTm C)
-subTm-renTm {σ = σ} {ρ} (dpay I D C) =
-  cong₃ dpay (subTm-renTm I) (subTm-renTm D) (subTm-renTm C)
-subTm-renTm {σ = σ} {ρ} (dih D e C p) =
-  cong₄ dih (subTm-renTm D) (subTm-renTm e) (subTm-renTm C) (subTm-renTm p)
-subTm-renTm {σ = σ} {ρ} fzero =
-  refl
-subTm-renTm {σ = σ} {ρ} (fsuc t) =
-  cong fsuc (subTm-renTm t)
-subTm-renTm {σ = σ} {ρ} (fcase t a b) =
-  cong₃ fcase (subTm-renTm t) (subTm-renTm a) (trans (subTm-renTm b) (subTm-cong (exts-extr σ ρ) b))
-subTm-renTm {σ = σ} {ρ} (fcase0 t) =
-  cong fcase0 (subTm-renTm t)
-subTm-renTm {σ = σ} {ρ} (psplit b q) =
-  cong₂ psplit (trans (subTm-renTm b) (subTm-cong (λ x → trans (exts-extr (extS σ) (extR ρ) x) (extS-cong (exts-extr σ ρ) x)) b)) (subTm-renTm q)
-subTm-renTm (ref d) = refl
-subTm-renTm ⌜Unit⌝     = refl
-subTm-renTm unit       = refl
-subTm-renTm nzero      = refl
-subTm-renTm (nsuc n)   = cong nsuc (subTm-renTm n)
-subTm-renTm {σ = σ} {ρ} (natrec z s n) =
-  natrec-cong₃ (subTm-renTm z)
-    (trans (subTm-renTm s)
-           (subTm-cong (λ x → trans (exts-extr (extS σ) (extR ρ) x) (extS-cong (exts-extr σ ρ) x)) s))
-    (subTm-renTm n)
-subTm-renTm {σ = σ} {ρ} (⌜Π⌝ c d) =
-  cong₂ ⌜Π⌝ (subTm-renTm c) (trans (subTm-renTm d) (subTm-cong (exts-extr σ ρ) d))
-subTm-renTm {σ = σ} {ρ} (⌜Σ⌝ c d) =
-  cong₂ ⌜Σ⌝ (subTm-renTm c) (trans (subTm-renTm d) (subTm-cong (exts-extr σ ρ) d))
-subTm-renTm (⌜Hom⌝ c a b) =
-  ⌜Hom⌝-cong₃ (subTm-renTm c) (subTm-renTm a) (subTm-renTm b)
-subTm-renTm (⌜Id⌝ c a b) =
-  ⌜Id⌝-cong₃ (subTm-renTm c) (subTm-renTm a) (subTm-renTm b)
-subTm-renTm (hrefl c t)   = cong₂ hrefl (subTm-renTm c) (subTm-renTm t)
-subTm-renTm (idrefl c t)   = cong₂ idrefl (subTm-renTm c) (subTm-renTm t)
-subTm-renTm {σ = σ} {ρ} (tr d p e) =
-  tr-cong₃ (trans (subTm-renTm d) (subTm-cong (exts-extr σ ρ) d))
-           (subTm-renTm p) (subTm-renTm e)
-subTm-renTm {σ = σ} {ρ} (jsub d p e) =
-  jsub-cong₃ (trans (subTm-renTm d) (subTm-cong (exts-extr σ ρ) d))
-           (subTm-renTm p) (subTm-renTm e)
-subTm-renTm {σ = σ} {ρ} (ap c b p) =
-  ap-cong₃ (subTm-renTm c)
-           (trans (subTm-renTm b) (subTm-cong (exts-extr σ ρ) b))
-           (subTm-renTm p)
+subTm-renTm {σ = σ} {ρ} = KT.sub-ren ρ σ
 
 -- ren ∘ sub.
 extr-exts : (ρ : Ren Δ Θ) (σ : Sub Γ Δ) (x : Var (Γ ∙)) →
             (extR ρ ᵣ∘ₛ extS σ) x ≡ extS (ρ ᵣ∘ₛ σ) x
 extr-exts ρ σ vz     = refl
-extr-exts ρ σ (vs x) = trans (renTm-renTm (σ x)) (sym (renTm-renTm (σ x)))
+extr-exts ρ σ (vs x) = trans (KT.ren-ren vs (extR ρ) (σ x)) (sym (KT.ren-ren ρ vs (σ x)))
 
 renTy-subTy : {ρ : Ren Δ Θ} {σ : Sub Γ Δ} (A : RTy Γ) →
               renTy ρ (subTy σ A) ≡ subTy (ρ ᵣ∘ₛ σ) A
+renTy-subTy {ρ = ρ} {σ} = KT.ren-sub σ ρ
 renTm-subTm : {ρ : Ren Δ Θ} {σ : Sub Γ Δ} (t : RTm Γ) →
               renTm ρ (subTm σ t) ≡ subTm (ρ ᵣ∘ₛ σ) t
-renTy-subTy base     = refl
-renTy-subTy Unit     = refl
-renTy-subTy Nat      = refl
-renTy-subTy U        = refl
-renTy-subTy {ρ = ρ} {σ} (Π A B) =
-  cong₂ Π (renTy-subTy A) (trans (renTy-subTy B) (subTy-cong (extr-exts ρ σ) B))
-renTy-subTy {ρ = ρ} {σ} (Σ' A B) =
-  cong₂ Σ' (renTy-subTy A) (trans (renTy-subTy B) (subTy-cong (extr-exts ρ σ) B))
-renTy-subTy (El t)   = cong El (renTm-subTm t)
-renTy-subTy (Hom A t u) =
-  Hom-cong₃ (renTy-subTy A) (renTm-subTm t) (renTm-subTm u)
-renTy-subTy (Id A t u) =
-  Id-cong₃ (renTy-subTy A) (renTm-subTm t) (renTm-subTm u)
-renTy-subTy {ρ = ρ} {σ} (IMu I D i) =
-  cong₃ IMu (renTm-subTm I) (renTm-subTm D) (renTm-subTm i)
-renTy-subTy {ρ = ρ} {σ} (Desc I) =
-  cong Desc (renTm-subTm I)
-renTy-subTy {ρ = ρ} {σ} (DIh D M C p) =
-  cong₄ DIh (renTm-subTm D) (trans (renTy-subTy M) (subTy-cong (λ x → trans (extr-exts (extR ρ) (extS σ) x) (extS-cong (extr-exts ρ σ) x)) M)) (renTm-subTm C) (renTm-subTm p)
-renTy-subTy {ρ = ρ} {σ} (Fin n) =
-  cong Fin (renTm-subTm n)
-renTm-subTm (var x)   = refl
-renTm-subTm {ρ = ρ} {σ} (lam t) =
-  cong lam (trans (renTm-subTm t) (subTm-cong (extr-exts ρ σ) t))
-renTm-subTm (app t u)  = cong₂ app (renTm-subTm t) (renTm-subTm u)
-renTm-subTm (pair a b) = cong₂ pair (renTm-subTm a) (renTm-subTm b)
-renTm-subTm (absurd c e) = cong₂ absurd (renTm-subTm c) (renTm-subTm e)
-renTm-subTm (ordtr a t u p q) = ordtr-cong₅ (renTm-subTm a) (renTm-subTm t) (renTm-subTm u) (renTm-subTm p) (renTm-subTm q)
-renTm-subTm (fst p)    = cong fst (renTm-subTm p)
-renTm-subTm (snd p)    = cong snd (renTm-subTm p)
-renTm-subTm ⌜base⌝     = refl
-renTm-subTm ⌜Nat⌝      = refl
-renTm-subTm {ρ = ρ} {σ} (⌜IMu⌝ I D i) =
-  cong₃ ⌜IMu⌝ (renTm-subTm I) (renTm-subTm D) (renTm-subTm i)
-renTm-subTm {ρ = ρ} {σ} (⌜Fin⌝ n) =
-  cong ⌜Fin⌝ (renTm-subTm n)
-renTm-subTm {ρ = ρ} {σ} (con p) =
-  cong con (renTm-subTm p)
-renTm-subTm {ρ = ρ} {σ} (ielim D i e t) =
-  cong₄ ielim (renTm-subTm D) (renTm-subTm i) (renTm-subTm e) (renTm-subTm t)
-renTm-subTm {ρ = ρ} {σ} dι =
-  refl
-renTm-subTm {ρ = ρ} {σ} (dσ S f) =
-  cong₂ dσ (renTm-subTm S) (renTm-subTm f)
-renTm-subTm {ρ = ρ} {σ} (dρ j C) =
-  cong₂ dρ (renTm-subTm j) (renTm-subTm C)
-renTm-subTm {ρ = ρ} {σ} (dpay I D C) =
-  cong₃ dpay (renTm-subTm I) (renTm-subTm D) (renTm-subTm C)
-renTm-subTm {ρ = ρ} {σ} (dih D e C p) =
-  cong₄ dih (renTm-subTm D) (renTm-subTm e) (renTm-subTm C) (renTm-subTm p)
-renTm-subTm {ρ = ρ} {σ} fzero =
-  refl
-renTm-subTm {ρ = ρ} {σ} (fsuc t) =
-  cong fsuc (renTm-subTm t)
-renTm-subTm {ρ = ρ} {σ} (fcase t a b) =
-  cong₃ fcase (renTm-subTm t) (renTm-subTm a) (trans (renTm-subTm b) (subTm-cong (extr-exts ρ σ) b))
-renTm-subTm {ρ = ρ} {σ} (fcase0 t) =
-  cong fcase0 (renTm-subTm t)
-renTm-subTm {ρ = ρ} {σ} (psplit b q) =
-  cong₂ psplit (trans (renTm-subTm b) (subTm-cong (λ x → trans (extr-exts (extR ρ) (extS σ) x) (extS-cong (extr-exts ρ σ) x)) b)) (renTm-subTm q)
-renTm-subTm (ref d) = refl
-renTm-subTm ⌜Unit⌝     = refl
-renTm-subTm unit       = refl
-renTm-subTm nzero      = refl
-renTm-subTm (nsuc n)   = cong nsuc (renTm-subTm n)
-renTm-subTm {ρ = ρ} {σ} (natrec z s n) =
-  natrec-cong₃ (renTm-subTm z)
-    (trans (renTm-subTm s)
-           (subTm-cong (λ x → trans (extr-exts (extR ρ) (extS σ) x) (extS-cong (extr-exts ρ σ) x)) s))
-    (renTm-subTm n)
-renTm-subTm {ρ = ρ} {σ} (⌜Π⌝ c d) =
-  cong₂ ⌜Π⌝ (renTm-subTm c) (trans (renTm-subTm d) (subTm-cong (extr-exts ρ σ) d))
-renTm-subTm {ρ = ρ} {σ} (⌜Σ⌝ c d) =
-  cong₂ ⌜Σ⌝ (renTm-subTm c) (trans (renTm-subTm d) (subTm-cong (extr-exts ρ σ) d))
-renTm-subTm (⌜Hom⌝ c a b) =
-  ⌜Hom⌝-cong₃ (renTm-subTm c) (renTm-subTm a) (renTm-subTm b)
-renTm-subTm (⌜Id⌝ c a b) =
-  ⌜Id⌝-cong₃ (renTm-subTm c) (renTm-subTm a) (renTm-subTm b)
-renTm-subTm (hrefl c t)   = cong₂ hrefl (renTm-subTm c) (renTm-subTm t)
-renTm-subTm (idrefl c t)   = cong₂ idrefl (renTm-subTm c) (renTm-subTm t)
-renTm-subTm {ρ = ρ} {σ} (tr d p e) =
-  tr-cong₃ (trans (renTm-subTm d) (subTm-cong (extr-exts ρ σ) d))
-           (renTm-subTm p) (renTm-subTm e)
-renTm-subTm {ρ = ρ} {σ} (jsub d p e) =
-  jsub-cong₃ (trans (renTm-subTm d) (subTm-cong (extr-exts ρ σ) d))
-           (renTm-subTm p) (renTm-subTm e)
-renTm-subTm {ρ = ρ} {σ} (ap c b p) =
-  ap-cong₃ (renTm-subTm c)
-           (trans (renTm-subTm b) (subTm-cong (extr-exts ρ σ) b))
-           (renTm-subTm p)
+renTm-subTm {ρ = ρ} {σ} = KT.ren-sub σ ρ
 
 -- sub ∘ sub.
 exts-exts : (τ : Sub Δ Θ) (σ : Sub Γ Δ) (x : Var (Γ ∙)) →
             (extS τ ∘ₛ extS σ) x ≡ extS (τ ∘ₛ σ) x
 exts-exts τ σ vz     = refl
-exts-exts τ σ (vs x) = trans (subTm-renTm (σ x)) (sym (renTm-subTm (σ x)))
+exts-exts τ σ (vs x) = trans (KT.sub-ren vs (extS τ) (σ x)) (sym (KT.ren-sub τ vs (σ x)))
 
 subTy-subTy : {τ : Sub Δ Θ} {σ : Sub Γ Δ} (A : RTy Γ) →
               subTy τ (subTy σ A) ≡ subTy (τ ∘ₛ σ) A
+subTy-subTy {τ = τ} {σ} = KT.sub-sub σ τ
 subTm-subTm : {τ : Sub Δ Θ} {σ : Sub Γ Δ} (t : RTm Γ) →
               subTm τ (subTm σ t) ≡ subTm (τ ∘ₛ σ) t
-subTy-subTy base     = refl
-subTy-subTy Unit     = refl
-subTy-subTy Nat      = refl
-subTy-subTy U        = refl
-subTy-subTy {τ = τ} {σ} (Π A B) =
-  cong₂ Π (subTy-subTy A) (trans (subTy-subTy B) (subTy-cong (exts-exts τ σ) B))
-subTy-subTy {τ = τ} {σ} (Σ' A B) =
-  cong₂ Σ' (subTy-subTy A) (trans (subTy-subTy B) (subTy-cong (exts-exts τ σ) B))
-subTy-subTy (El t)   = cong El (subTm-subTm t)
-subTy-subTy (Hom A t u) =
-  Hom-cong₃ (subTy-subTy A) (subTm-subTm t) (subTm-subTm u)
-subTy-subTy (Id A t u) =
-  Id-cong₃ (subTy-subTy A) (subTm-subTm t) (subTm-subTm u)
-subTy-subTy {τ = τ} {σ} (IMu I D i) =
-  cong₃ IMu (subTm-subTm I) (subTm-subTm D) (subTm-subTm i)
-subTy-subTy {τ = τ} {σ} (Desc I) =
-  cong Desc (subTm-subTm I)
-subTy-subTy {τ = τ} {σ} (DIh D M C p) =
-  cong₄ DIh (subTm-subTm D) (trans (subTy-subTy M) (subTy-cong (λ x → trans (exts-exts (extS τ) (extS σ) x) (extS-cong (exts-exts τ σ) x)) M)) (subTm-subTm C) (subTm-subTm p)
-subTy-subTy {τ = τ} {σ} (Fin n) =
-  cong Fin (subTm-subTm n)
-subTm-subTm (var x)   = refl
-subTm-subTm {τ = τ} {σ} (lam t) =
-  cong lam (trans (subTm-subTm t) (subTm-cong (exts-exts τ σ) t))
-subTm-subTm (app t u)  = cong₂ app (subTm-subTm t) (subTm-subTm u)
-subTm-subTm (pair a b) = cong₂ pair (subTm-subTm a) (subTm-subTm b)
-subTm-subTm (absurd c e)    = cong₂ absurd (subTm-subTm c) (subTm-subTm e)
-subTm-subTm (ordtr a t u p q)    = ordtr-cong₅ (subTm-subTm a) (subTm-subTm t) (subTm-subTm u) (subTm-subTm p) (subTm-subTm q)
-subTm-subTm (fst p)    = cong fst (subTm-subTm p)
-subTm-subTm (snd p)    = cong snd (subTm-subTm p)
-subTm-subTm ⌜base⌝     = refl
-subTm-subTm ⌜Nat⌝      = refl
-subTm-subTm {τ = τ} {σ} (⌜IMu⌝ I D i) =
-  cong₃ ⌜IMu⌝ (subTm-subTm I) (subTm-subTm D) (subTm-subTm i)
-subTm-subTm {τ = τ} {σ} (⌜Fin⌝ n) =
-  cong ⌜Fin⌝ (subTm-subTm n)
-subTm-subTm {τ = τ} {σ} (con p) =
-  cong con (subTm-subTm p)
-subTm-subTm {τ = τ} {σ} (ielim D i e t) =
-  cong₄ ielim (subTm-subTm D) (subTm-subTm i) (subTm-subTm e) (subTm-subTm t)
-subTm-subTm {τ = τ} {σ} dι =
-  refl
-subTm-subTm {τ = τ} {σ} (dσ S f) =
-  cong₂ dσ (subTm-subTm S) (subTm-subTm f)
-subTm-subTm {τ = τ} {σ} (dρ j C) =
-  cong₂ dρ (subTm-subTm j) (subTm-subTm C)
-subTm-subTm {τ = τ} {σ} (dpay I D C) =
-  cong₃ dpay (subTm-subTm I) (subTm-subTm D) (subTm-subTm C)
-subTm-subTm {τ = τ} {σ} (dih D e C p) =
-  cong₄ dih (subTm-subTm D) (subTm-subTm e) (subTm-subTm C) (subTm-subTm p)
-subTm-subTm {τ = τ} {σ} fzero =
-  refl
-subTm-subTm {τ = τ} {σ} (fsuc t) =
-  cong fsuc (subTm-subTm t)
-subTm-subTm {τ = τ} {σ} (fcase t a b) =
-  cong₃ fcase (subTm-subTm t) (subTm-subTm a) (trans (subTm-subTm b) (subTm-cong (exts-exts τ σ) b))
-subTm-subTm {τ = τ} {σ} (fcase0 t) =
-  cong fcase0 (subTm-subTm t)
-subTm-subTm {τ = τ} {σ} (psplit b q) =
-  cong₂ psplit (trans (subTm-subTm b) (subTm-cong (λ x → trans (exts-exts (extS τ) (extS σ) x) (extS-cong (exts-exts τ σ) x)) b)) (subTm-subTm q)
-subTm-subTm (ref d) = refl
-subTm-subTm ⌜Unit⌝     = refl
-subTm-subTm unit       = refl
-subTm-subTm nzero      = refl
-subTm-subTm (nsuc n)   = cong nsuc (subTm-subTm n)
-subTm-subTm {τ = τ} {σ} (natrec z s n) =
-  natrec-cong₃ (subTm-subTm z)
-    (trans (subTm-subTm s)
-           (subTm-cong (λ x → trans (exts-exts (extS τ) (extS σ) x) (extS-cong (exts-exts τ σ) x)) s))
-    (subTm-subTm n)
-subTm-subTm {τ = τ} {σ} (⌜Π⌝ c d) =
-  cong₂ ⌜Π⌝ (subTm-subTm c) (trans (subTm-subTm d) (subTm-cong (exts-exts τ σ) d))
-subTm-subTm {τ = τ} {σ} (⌜Σ⌝ c d) =
-  cong₂ ⌜Σ⌝ (subTm-subTm c) (trans (subTm-subTm d) (subTm-cong (exts-exts τ σ) d))
-subTm-subTm (⌜Hom⌝ c a b) =
-  ⌜Hom⌝-cong₃ (subTm-subTm c) (subTm-subTm a) (subTm-subTm b)
-subTm-subTm (⌜Id⌝ c a b) =
-  ⌜Id⌝-cong₃ (subTm-subTm c) (subTm-subTm a) (subTm-subTm b)
-subTm-subTm (hrefl c t)   = cong₂ hrefl (subTm-subTm c) (subTm-subTm t)
-subTm-subTm (idrefl c t)   = cong₂ idrefl (subTm-subTm c) (subTm-subTm t)
-subTm-subTm {τ = τ} {σ} (tr d p e) =
-  tr-cong₃ (trans (subTm-subTm d) (subTm-cong (exts-exts τ σ) d))
-           (subTm-subTm p) (subTm-subTm e)
-subTm-subTm {τ = τ} {σ} (jsub d p e) =
-  jsub-cong₃ (trans (subTm-subTm d) (subTm-cong (exts-exts τ σ) d))
-           (subTm-subTm p) (subTm-subTm e)
-subTm-subTm {τ = τ} {σ} (ap c b p) =
-  ap-cong₃ (subTm-subTm c)
-           (trans (subTm-subTm b) (subTm-cong (exts-exts τ σ) b))
-           (subTm-subTm p)
+subTm-subTm {τ = τ} {σ} = KT.sub-sub σ τ
 
 -- Identity: `exts` preserves `idₛ`, hence `subTy idₛ = id`.
 exts-id : (x : Var (Γ ∙)) → extS idₛ x ≡ idₛ x
@@ -1054,84 +449,9 @@ exts-id vz     = refl
 exts-id (vs x) = refl
 
 subTy-id : (A : RTy Γ) → subTy idₛ A ≡ A
+subTy-id = KT.sub-id
 subTm-id : (t : RTm Γ) → subTm idₛ t ≡ t
-subTy-id base     = refl
-subTy-id Unit     = refl
-subTy-id Nat      = refl
-subTy-id U        = refl
-subTy-id (Π A B)  = cong₂ Π (subTy-id A) (trans (subTy-cong exts-id B) (subTy-id B))
-subTy-id (Σ' A B) = cong₂ Σ' (subTy-id A) (trans (subTy-cong exts-id B) (subTy-id B))
-subTy-id (El t)   = cong El (subTm-id t)
-subTy-id (Hom A t u) = Hom-cong₃ (subTy-id A) (subTm-id t) (subTm-id u)
-subTy-id (Id A t u) = Id-cong₃ (subTy-id A) (subTm-id t) (subTm-id u)
-subTy-id (IMu I D i) =
-  cong₃ IMu (subTm-id I) (subTm-id D) (subTm-id i)
-subTy-id (Desc I) =
-  cong Desc (subTm-id I)
-subTy-id (DIh D M C p) =
-  cong₄ DIh (subTm-id D) (trans (subTy-cong (λ x → trans (extS-cong exts-id x) (exts-id x)) M) (subTy-id M)) (subTm-id C) (subTm-id p)
-subTy-id (Fin n) =
-  cong Fin (subTm-id n)
-subTm-id (var x)   = refl
-subTm-id (lam t)   = cong lam (trans (subTm-cong exts-id t) (subTm-id t))
-subTm-id (app t u)  = cong₂ app (subTm-id t) (subTm-id u)
-subTm-id (pair a b) = cong₂ pair (subTm-id a) (subTm-id b)
-subTm-id (absurd c e)    = cong₂ absurd (subTm-id c) (subTm-id e)
-subTm-id (ordtr a t u p q)    = ordtr-cong₅ (subTm-id a) (subTm-id t) (subTm-id u) (subTm-id p) (subTm-id q)
-subTm-id (fst p)    = cong fst (subTm-id p)
-subTm-id (snd p)    = cong snd (subTm-id p)
-subTm-id ⌜base⌝     = refl
-subTm-id ⌜Nat⌝      = refl
-subTm-id (⌜IMu⌝ I D i) =
-  cong₃ ⌜IMu⌝ (subTm-id I) (subTm-id D) (subTm-id i)
-subTm-id (⌜Fin⌝ n) =
-  cong ⌜Fin⌝ (subTm-id n)
-subTm-id (con p) =
-  cong con (subTm-id p)
-subTm-id (ielim D i e t) =
-  cong₄ ielim (subTm-id D) (subTm-id i) (subTm-id e) (subTm-id t)
-subTm-id dι =
-  refl
-subTm-id (dσ S f) =
-  cong₂ dσ (subTm-id S) (subTm-id f)
-subTm-id (dρ j C) =
-  cong₂ dρ (subTm-id j) (subTm-id C)
-subTm-id (dpay I D C) =
-  cong₃ dpay (subTm-id I) (subTm-id D) (subTm-id C)
-subTm-id (dih D e C p) =
-  cong₄ dih (subTm-id D) (subTm-id e) (subTm-id C) (subTm-id p)
-subTm-id fzero =
-  refl
-subTm-id (fsuc t) =
-  cong fsuc (subTm-id t)
-subTm-id (fcase t a b) =
-  cong₃ fcase (subTm-id t) (subTm-id a) (trans (subTm-cong exts-id b) (subTm-id b))
-subTm-id (fcase0 t) =
-  cong fcase0 (subTm-id t)
-subTm-id (psplit b q) =
-  cong₂ psplit (trans (subTm-cong (λ x → trans (extS-cong exts-id x) (exts-id x)) b) (subTm-id b)) (subTm-id q)
-subTm-id (ref d) = refl
-subTm-id ⌜Unit⌝     = refl
-subTm-id unit       = refl
-subTm-id nzero      = refl
-subTm-id (nsuc n)   = cong nsuc (subTm-id n)
-subTm-id (natrec z s n) =
-  natrec-cong₃ (subTm-id z)
-    (trans (subTm-cong (λ x → trans (extS-cong exts-id x) (exts-id x)) s)
-           (subTm-id s))
-    (subTm-id n)
-subTm-id (⌜Π⌝ c d)  = cong₂ ⌜Π⌝ (subTm-id c) (trans (subTm-cong exts-id d) (subTm-id d))
-subTm-id (⌜Σ⌝ c d)  = cong₂ ⌜Σ⌝ (subTm-id c) (trans (subTm-cong exts-id d) (subTm-id d))
-subTm-id (⌜Hom⌝ c a b) = ⌜Hom⌝-cong₃ (subTm-id c) (subTm-id a) (subTm-id b)
-subTm-id (⌜Id⌝ c a b) = ⌜Id⌝-cong₃ (subTm-id c) (subTm-id a) (subTm-id b)
-subTm-id (hrefl c t)   = cong₂ hrefl (subTm-id c) (subTm-id t)
-subTm-id (idrefl c t)   = cong₂ idrefl (subTm-id c) (subTm-id t)
-subTm-id (tr d p e)    =
-  tr-cong₃ (trans (subTm-cong exts-id d) (subTm-id d)) (subTm-id p) (subTm-id e)
-subTm-id (jsub d p e)    =
-  jsub-cong₃ (trans (subTm-cong exts-id d) (subTm-id d)) (subTm-id p) (subTm-id e)
-subTm-id (ap c b p)    =
-  ap-cong₃ (subTm-id c) (trans (subTm-cong exts-id b) (subTm-id b)) (subTm-id p)
+subTm-id = KT.sub-id
 
 
 
