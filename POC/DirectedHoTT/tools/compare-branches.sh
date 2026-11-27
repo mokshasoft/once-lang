@@ -89,6 +89,26 @@ tw = (sum(num(b[m], 'wall_s') for m in both), sum(num(c[m], 'wall_s') for m in b
 tr = (sum(num(b[m], 'maxrss_mb') for m in both), sum(num(c[m], 'maxrss_mb') for m in both))
 pk = (max([num(b[m], 'maxrss_mb') for m in both] or [0]), max([num(c[m], 'maxrss_mb') for m in both] or [0]))
 pct = lambda x, y: f"{(y / x - 1):+.1%}" if x else "n/a"
+# ★ USE SITES FIRST (the user, 2026-11-27): kernel and library cost is paid once and
+#   amortised; what decides is build time and memory where the abstractions are USED.
+def group(m):
+    p = m.split('.')
+    if len(p) > 1 and p[1] == 'Examples': return 'use sites (Examples/, the Knot)'
+    if len(p) > 1 and p[1] == 'Comparison': return 'comparison benchmarks'
+    if len(p) > 1 and p[1] == 'Lib': return 'libraries (Lib/)'
+    if len(p) > 1 and p[1] == 'Trust': return 'trust roots'
+    return 'kernel (Spec/, Metatheory/, Algorithm/)'
+ORDER = ['use sites (Examples/, the Knot)', 'libraries (Lib/)', 'kernel (Spec/, Metatheory/, Algorithm/)',
+         'comparison benchmarks', 'trust roots']
+print("## By group (use sites first)\n")
+print(f"| group | modules | wall `{B}` | wall `{C}` | change | peak RSS `{B}` | peak RSS `{C}` |\n|---|---|---|---|---|---|---|")
+for g in ORDER:
+    ms = [m for m in both if group(m) == g]
+    if not ms: continue
+    w0 = sum(num(b[m], 'wall_s') for m in ms); w1 = sum(num(c[m], 'wall_s') for m in ms)
+    r0 = max(num(b[m], 'maxrss_mb') for m in ms); r1 = max(num(c[m], 'maxrss_mb') for m in ms)
+    print(f"| {g} | {len(ms)} | {w0:.0f} | {w1:.0f} | {w1-w0:+.0f} ({pct(w0, w1)}) | {r0:.0f} | {r1:.0f} |")
+print()
 print(f"## Totals over the {len(both)} modules measured in both\n")
 print(f"| | `{B}` | `{C}` | change |\n|---|---|---|---|")
 print(f"| wall (s) | {tw[0]:.0f} | {tw[1]:.0f} | {tw[1]-tw[0]:+.0f} ({pct(*tw)}) |")
@@ -100,11 +120,12 @@ for title, key, floor, unit in (("Wall time", 'wall_s', mins, 's'), ("Peak RSS",
         x, y = num(b[m], key), num(c[m], key)
         if beyond(x, y, floor): rows.append((y - x, m, x, y))
     rows.sort(key=lambda z: -z[0])
-    print(f"## {title} beyond the noise floor ({len(rows)})\n")
+    print(f"## {title} beyond the noise floor ({len(rows)}), use sites first\n")
     if not rows: print("(none)\n"); continue
-    print(f"| module | `{B}` {unit} | `{C}` {unit} | change | ratio |\n|---|---|---|---|---|")
+    rows.sort(key=lambda z: (ORDER.index(group(z[1])), -z[0]))
+    print(f"| group | module | `{B}` {unit} | `{C}` {unit} | change | ratio |\n|---|---|---|---|---|---|")
     for d, m, x, y in rows:
-        print(f"| {m} | {x:.0f} | {y:.0f} | {d:+.0f} | {y / x:.2f}× {'WORSE' if d > 0 else 'better'} |")
+        print(f"| {group(m).split(' ')[0]} | {m} | {x:.0f} | {y:.0f} | {d:+.0f} | {y / x:.2f}× {'WORSE' if d > 0 else 'better'} |")
     print()
 rung = [m for m in both if b[m]['rung'] != c[m]['rung']]
 print(f"## Collector rung differs ({len(rung)})\n")
