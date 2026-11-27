@@ -29,6 +29,8 @@ open import Agda.Builtin.Nat using ( zero; suc; _==_ ) renaming ( Nat to ℕ )
 open import Agda.Builtin.Bool using ( Bool; true; false )
 open import DirectedHoTT.Spec.Scope
 open import DirectedHoTT.Spec.Syntax
+  using ( <-here; <-there; <ˢ-zero; Def; DefTele; Defs; RTm; _<ˢ?_; _<ˢ_; _▸_; `ref; body; kBody; kType; len; lookupK; pickK; size; tele; ∅; mkK; ⟨_∣_⟩ )
+import DirectedHoTT.Spec.Syntax as C
 open import DirectedHoTT.Spec.Annotated
 open import DirectedHoTT.Spec.Scope
 open import DirectedHoTT.Spec.Syntax public using ( _<ˢ_; <-here; <-there; <ˢ-zero; _<ˢ?_ )
@@ -52,8 +54,8 @@ pickE false x y = y
 
 lookupE : ℕ → Tele → ℕ → Entry
 lookupE (suc n) (T ▸ e) d = pickE (d == n) e (lookupE n T d)
-lookupE zero    _       d = ⟨ Unit ∣ unit ⟩
-lookupE (suc n) ∅       d = ⟨ Unit ∣ unit ⟩
+lookupE zero    _       d = ⟨ Unit ∣ C.unit ⟩
+lookupE (suc n) ∅       d = ⟨ Unit ∣ C.unit ⟩
 
 record Sig : Set where
   constructor mkSig
