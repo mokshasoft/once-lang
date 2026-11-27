@@ -29,12 +29,13 @@ parseArgs _                     = Nothing
 -- | `check [--target ARCH] [-o FILE] FILE`: the warnings are the target's
 -- (default: the host's, as `build`).
 parseCheck :: [String] -> Maybe Command
-parseCheck = go hostTarget []
+parseCheck = go False hostTarget []
   where
-    go _ acc ("--target" : a : rest) = parseTarget a >>= \t' -> go (Just t') acc rest
-    go t acc (x : rest)              = go t (acc ++ [x]) rest
-    go t acc []                      = parseStageArgs acc >>= \(i, o) ->
-      Just $ Check CheckOptions { checkInput = i, checkOutput = o, checkTarget = t }
+    go r _ acc ("--target" : a : rest) = parseTarget a >>= \t' -> go r (Just t') acc rest
+    go _ t acc ("--require-linear" : rest) = go True t acc rest
+    go r t acc (x : rest)              = go r t (acc ++ [x]) rest
+    go r t acc []                      = parseStageArgs acc >>= \(i, o) ->
+      Just $ Check CheckOptions { checkInput = i, checkOutput = o, checkTarget = t, checkRequireLinear = r }
 
 -- | `fmt [--check | --stdout] FILE...` (`--stdout` takes one file).
 parseFmt :: [String] -> Maybe Command
@@ -75,6 +76,7 @@ data BuildConfig = BuildConfig
   , bcAlloc     :: Bridge.Alloc
   , bcInlineAlloc :: Bool
   , bcUnchecked :: Bool
+  , bcRequireLinear :: Bool
   , bcStrata    :: Maybe String
   , bcInterp    :: Maybe String
   , bcExplicit  :: [(InterpType, String)]
@@ -93,6 +95,7 @@ defaultBuildConfig = BuildConfig
   , bcAlloc     = Bridge.AllocSlab
   , bcInlineAlloc = False  -- D482: the allocator is a call; `--inline-alloc` inlines it
   , bcUnchecked = False    -- D489: room checks on; `--unchecked` drops them (outside the proof)
+  , bcRequireLinear = False  -- D500: `--require-linear` refuses a program that is not linear
   , bcStrata    = Nothing
   , bcInterp    = Nothing
   , bcExplicit  = []
@@ -119,6 +122,7 @@ parseBuild args = go args defaultBuildConfig
         , buildAlloc     = bcAlloc cfg
         , buildInlineAlloc = bcInlineAlloc cfg
         , buildUnchecked = bcUnchecked cfg
+        , buildRequireLinear = bcRequireLinear cfg
         , buildStrata    = bcStrata cfg
         , buildInterp    = bcInterp cfg
         , buildExplicitInterps = bcExplicit cfg
@@ -136,6 +140,7 @@ parseBuild args = go args defaultBuildConfig
     go ("--alloc=pool" : rest) cfg = go rest cfg { bcAlloc = Bridge.AllocPool }
     go ("--inline-alloc" : rest) cfg = go rest cfg { bcInlineAlloc = True }
     go ("--unchecked" : rest) cfg = go rest cfg { bcUnchecked = True }
+    go ("--require-linear" : rest) cfg = go rest cfg { bcRequireLinear = True }
     go ("--strata" : s : rest) cfg = go rest cfg { bcStrata = Just s }
     go ("--interp" : i : rest) cfg = go rest cfg { bcInterp = Just i }
     go ("--host" : h : rest) cfg = go rest cfg { bcHost = h }
@@ -185,6 +190,7 @@ usage = do
   TIO.putStrLn "  --inline-alloc      Inline the allocator at each site (default: a call)"
   TIO.putStrLn "  --unchecked         No room checks: running out of memory is NOT detected and the"
   TIO.putStrLn "                      verification does not cover the build (for comparison, trusted inputs)"
+  TIO.putStrLn "  --require-linear    Refuse a program that is not linear (a value with cells copied; D500)"
   TIO.putStrLn "  --strata PATH       Path to Strata directory for imports"
   TIO.putStrLn "  --interp PATH       Interpretation path (deprecated)"
   TIO.putStrLn "  -I:TYPE MODULE      Link interpretation (e.g., -I:x86_64 I.Linux.Syscalls)"

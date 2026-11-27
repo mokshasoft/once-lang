@@ -25854,3 +25854,8 @@ build closures over a closure, and `mapT` suspends an action or an unfolding ove
 each copies its environment when called lent; and a lambda at a `Zero` arrow is tested at its erased type
 (`ty (A ⇒[ k ] B)`, `Fn … One B`), not at `Fn … A B`. The corpus still has no site. Owed: the machine half,
 `Implementation.NoCopy` (step 4: no run enters a copy block), and `--require-linear`.
+
+**D500 built, `--require-linear`** (2026-11-27): `once check` and `once build` take `--require-linear`: the
+warnings print as before, and a "not linear (a copy here)" warning then refuses the program (exit 1,
+`CLI.emitWarnings`). A program it accepts has, by `NoCopyCore.no-copy-core`, a core that names no copy of cells.
+Tests: `LinearSpec` (refuses the twice-owned list, accepts `twice f x = f (f x)`).

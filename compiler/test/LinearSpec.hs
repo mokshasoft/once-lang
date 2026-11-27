@@ -11,7 +11,12 @@ import Test.Tasty
 import Test.Tasty.HUnit (testCase, assertBool)
 import Data.List (isInfixOf)
 import qualified Data.Text as T
+import qualified Data.Text.IO as TIO
+import System.Exit (ExitCode(..))
+import System.IO (hClose)
+import System.IO.Temp (withSystemTempFile)
 
+import Backend.Common (runOnce)
 import TypeErrorSpec (accepts, typeCheckStderr)
 
 list :: [T.Text]
@@ -60,4 +65,18 @@ linearTests = testGroup "Linearity warning (D500)"
       err <- typeCheckStderr (T.unlines readTwice)
       assertBool ("expected no not-linear warning, got: " ++ err)
                  (not ("not linear" `isInfixOf` err))
+  , testCase "--require-linear refuses the value owned twice" $ do
+      (code, _, err) <- checkRequiring twiceOwned
+      assertBool ("expected a refusal, got: " ++ show code ++ " " ++ err)
+                 (code /= ExitSuccess && "--require-linear" `isInfixOf` err)
+  , testCase "--require-linear accepts the linear program" $ do
+      (code, _, err) <- checkRequiring readTwice
+      assertBool ("expected acceptance, got: " ++ show code ++ " " ++ err) (code == ExitSuccess)
   ]
+
+-- `once check --require-linear` on a program
+checkRequiring :: [T.Text] -> IO (ExitCode, String, String)
+checkRequiring source = withSystemTempFile "linear.once" $ \path handle -> do
+  TIO.hPutStr handle (T.unlines source)
+  hClose handle
+  runOnce ["check", "--require-linear", path]

@@ -140,6 +140,7 @@ data BuildOptions = BuildOptions
   , buildAlloc     :: Bridge.Alloc                -- ^ D470: the cell allocator (`--alloc`, default: slab)
   , buildInlineAlloc :: Bool                      -- ^ D482: inline the allocator at each site (`--inline-alloc`; default: a call)
   , buildUnchecked :: Bool                        -- ^ D489: no room checks (`--unchecked`): OUTSIDE the proof
+  , buildRequireLinear :: Bool                    -- ^ D500: refuse a program that is not linear (`--require-linear`)
   -- Future options (not yet wired to Agda)
   , buildStrata    :: Maybe FilePath              -- ^ Strata directory path
   , buildInterp    :: Maybe FilePath              -- ^ Legacy interpretation path
@@ -154,6 +155,7 @@ data CheckOptions = CheckOptions
   { checkInput  :: FilePath
   , checkOutput :: Maybe FilePath
   , checkTarget :: Maybe Target   -- ^ whose warnings to report (default: the host, as `build`)
+  , checkRequireLinear :: Bool    -- ^ D500: refuse a program that is not linear (`--require-linear`)
   } deriving (Eq, Show)
 
 ------------------------------------------------------------------------
@@ -227,7 +229,7 @@ runCheck opts = do
       TIO.putStrLn $ "Error: " <> T.pack err
       exitFailure
     Right (mod_, _, _) -> do
-      mapM_ (\arch -> emitWarnings arch source mod_) (checkTarget opts >>= bridgeArch)
+      mapM_ (\arch -> emitWarnings (checkRequireLinear opts) arch source mod_) (checkTarget opts >>= bridgeArch)
       case Inspect.check mod_ of
         Right () -> do
           emitStage (checkOutput opts) "Typecheck OK\n"
@@ -334,8 +336,18 @@ runBuild opts = do
 --
 -- Arch-relative on purpose (D113): the same literal is exact at one target's
 -- format and rounded at another's.
-emitWarnings :: Bridge.Arch -> T.Text -> Bridge.Resolved -> IO ()
-emitWarnings arch src m = mapM_ (hPutStrLn stderr . T.unpack) (Bridge.moduleWarnings arch src m)
+--
+-- D500: with `--require-linear` (the first argument), a "not linear (a copy
+-- here)" warning (`Once.Warnings.linearWarnings`) refuses the program: no such
+-- warning is the premise of the bridge half of `NoCopy` (`LinCore.NoCopyCore`).
+emitWarnings :: Bool -> Bridge.Arch -> T.Text -> Bridge.Resolved -> IO ()
+emitWarnings requireLinear arch src m = do
+  let ws = Bridge.moduleWarnings arch src m
+  mapM_ (hPutStrLn stderr . T.unpack) ws
+  when (requireLinear && any (notLinearPrefix `T.isPrefixOf`) ws) $ do
+    hPutStrLn stderr "Error: --require-linear: the program is not linear (a value with cells is copied; see above)"
+    exitFailure
+  where notLinearPrefix = T.pack "warning: not linear"
 
 -- | The assembly of a resolved module: the verified compiler's file (plan 0.146
 -- D466: the linear core's image of a program, `Once.LinCore.Emit.assemblyCore`).
@@ -350,7 +362,7 @@ assemblyOf opts arch mod_ = do
 runVerifiedBuild :: BuildOptions -> FilePath -> Bridge.Arch -> T.Text -> Bridge.Resolved
                  -> FilePath -> [[T.Text]] -> IO ()
 runVerifiedBuild opts outputBase arch source mod_ strataDir importPaths = do
-  emitWarnings arch source mod_
+  emitWarnings (buildRequireLinear opts) arch source mod_
   asm <- assemblyOf opts arch mod_
   case asm of
     Right asmText -> do
@@ -450,7 +462,7 @@ runImageBuild opts = do
     (mod_, strataDir, importPaths) <- orDie "Error" =<< loadAndResolve input (buildStrata opts) source
     unless (Bridge.isProgram mod_) $
       orDie "Error" (Left (input ++ " defines no `main`, so it cannot be a program of an image"))
-    emitWarnings arch source mod_
+    emitWarnings (buildRequireLinear opts) arch source mod_
     asm <- assemblyOf opts arch mod_
     asmText <- orDie "Compilation error" (either (Left . T.unpack) Right asm)
     let base    = outputBase ++ ".p" ++ show n
