@@ -975,12 +975,12 @@ sem-trU {Ξ = Ξ} {σ = σ} {p = p₀} {e = e₀} {t = t₀} {u = u₀} dt du dp
     ( dfst z , exp₁ (dfst z) (snr-trᵖ r) (dsnd z) )
     where z = piCase q ⊩F ⊩G rt ru rEt rEu snp'
                      (mem-whred₁ (⊩₁Π q ⊩F ⊩G) r hp')
-  piCase {u₁ = u₁} q ⊩F ⊩G rt ru rEt rEu {lam f} (sn-lam snf) hp' =
+  piCase {G = G} {u₁ = u₁} q ⊩F ⊩G rt ru rEt rEu {lam f} (sn-lam snf) hp' =
     ( R_result , exp₁ R_result snr-taut m-res )
     where
     he-F = projl (irrel₁ (red→≅ᵀ (⟶ᵀ*-trans (⟶ᵀ*-El rt) rEt)) R_e ⊩F)
                  eI he
-    cG : El uI ≅ᵀ subTy (single eI) _
+    cG : El uI ≅ᵀ subTy (single eI) G
     cG = red→≅ᵀ
            (⟶ᵀ*-trans (⟶ᵀ*-El ru)
              (subst (λ z → El z ⟶ᵀ* _) (wk-cancel-tm eI u₁)
@@ -1428,7 +1428,7 @@ fund-ty {σ = σ} (ty-IMu {I = I} dI dD di) x₀ ρ =
   where ⊩I = sem-El doneᵀ (uSem (fund dI x₀ ρ))
 fund-ty (ty-Desc dI) x₀ ρ = ⊩₁Desc doneᵀ crfl (sem-El doneᵀ (uSem (fund dI x₀ ρ)))
 fund-ty (ty-Fin dn) x₀ ρ = ⊩₁Fin doneᵀ
-fund-ty {σ = σ} (ty-DIh {I = I} dI dD dM dC dp) x₀ ρ = dihTy KF (motSem dM x₀ ρ crfl ⊩I KF) KC l
+fund-ty {σ = σ} (ty-DIh {I = I} {D = D} dI dD dM dC dp) x₀ ρ = dihTy KF (motSem {D = D} dM x₀ ρ crfl ⊩I KF) KC l
   where
     ⊩I = sem-El doneᵀ (uSem (fund dI x₀ ρ))
     KF = famInterp crfl ⊩I (relTy (DescF-sub σ I) (fund dD x₀ ρ))
@@ -1498,7 +1498,7 @@ fund {σ = σ} (⊢con {I = I} {D = D} {i = i} dI dD di dp) x₀ ρ =
                                        (dsnd (fund dp x₀ ρ))))
 fund {σ = σ} (⊢ielim {I = I} {D = D} {M = M} {e = e} {i = i} {t = t} dI dD dM de di dt) x₀ ρ =
       relTy (sym (iinst-sub σ M i t))
-            ( motSem dM x₀ ρ crfl ⊩I KF (subTm σ i) (subTm σ t) hi (projl ht) (projr ht)
+            ( motSem {D = D} dM x₀ ρ crfl ⊩I KF (subTm σ i) (subTm σ t) hi (projl ht) (projr ht)
             , go (subTm σ i) (subTm σ t) hi (projl ht) (projr ht) )
   where
     ⊩I = sem-El doneᵀ (uSem (fund dI x₀ ρ))
@@ -1508,9 +1508,9 @@ fund {σ = σ} (⊢ielim {I = I} {D = D} {M = M} {e = e} {i = i} {t = t} dI dD d
     hi = elIdx crfl ⊩I (fund di x₀ ρ)
     ht = projl (irrel₁ crflᵀ (dfst (fund dt x₀ ρ)) (⊩₁IMu doneᵀ crfl crfl crfl ⊩I hi KF))
                (subTm σ t) (dsnd (fund dt x₀ ρ))
-    open ElimSem crfl ⊩I (CR1₁ (dfst hD) (dsnd hD)) KF (motSem dM x₀ ρ crfl ⊩I KF) (dfst hₑ₀) (dsnd hₑ₀)
+    open ElimSem {D = subTm σ D} {M = subTy (extS (extS σ)) M} crfl ⊩I (CR1₁ (dfst hD) (dsnd hD)) KF (motSem {D = D} dM x₀ ρ crfl ⊩I KF) (dfst hₑ₀) (dsnd hₑ₀)
 fund {σ = σ} (⊢dih {I = I} {D = D} {M = M} {e = e} dI dD dM de dC dp) x₀ ρ =
-      ( dihTy KF (motSem dM x₀ ρ crfl ⊩I KF) KC l , dihSem KC l )
+      ( dihTy KF (motSem {D = D} dM x₀ ρ crfl ⊩I KF) KC l , dihSem KC l )
   where
     ⊩I = sem-El doneᵀ (uSem (fund dI x₀ ρ))
     hD = relTy (DescF-sub σ I) (fund dD x₀ ρ)
@@ -1521,7 +1521,7 @@ fund {σ = σ} (⊢dih {I = I} {D = D} {M = M} {e = e} dI dD dM de dC dp) x₀ �
     l = payLift₀ crfl crfl ⊩I KF KC
           (projr (emb-coh R₀) _ (projl (irrel₁ crflᵀ (dfst (fund dp x₀ ρ)) (emb R₀)) _
                                        (dsnd (fund dp x₀ ρ))))
-    open ElimSem crfl ⊩I (CR1₁ (dfst hD) (dsnd hD)) KF (motSem dM x₀ ρ crfl ⊩I KF) (dfst hₑ₀) (dsnd hₑ₀)
+    open ElimSem {D = subTm σ D} {M = subTy (extS (extS σ)) M} crfl ⊩I (CR1₁ (dfst hD) (dsnd hD)) KF (motSem {D = D} dM x₀ ρ crfl ⊩I KF) (dfst hₑ₀) (dsnd hₑ₀)
 fund (⊢dι dI) x₀ ρ =
   ( ⊩₁Desc doneᵀ crfl (sem-El doneᵀ (uSem (fund dI x₀ ρ))) , iki-ι )
 fund (⊢dρ dI dj dC) x₀ ρ =
@@ -1578,7 +1578,7 @@ fund (⊢psplit dA dB dP dq db) x₀ ρ =
   sem-psplit dA dB dP dq db (fund-ty dA) (fund-ty dB) (fund-ty dP) (fund dq) (fund db) x₀ ρ
 
 fund {Ξ = Ξ} {σ = σ} (⊢lam {B = B} {t = s} tyA d) x₀ ρ =
-  ( ⊩₁Π doneᵀ ⊩F ⊩G , sem-lam doneᵀ ⊩F ⊩G sns f )
+  ( ⊩₁Π doneᵀ ⊩F ⊩G , sem-lam {G = subTy (extS σ) B} doneᵀ ⊩F ⊩G sns f )
   where
     ⊩F = fund-ty tyA x₀ ρ
 
@@ -1610,7 +1610,7 @@ fund {σ = σ} (⊢app {B = B} {u = u} d₁ d₂) x₀ ρ =
                 (dsnd (fund d₁ x₀ ρ)) (dsnd (fund d₂ x₀ ρ)))
 
 fund {Ξ = Ξ} {σ = σ} (⊢pair {B = B} {a = a} {b = b} tyB d₁ d₂) x₀ ρ =
-  ( ⊩₁Σ doneᵀ ⊩F ⊩G , sem-pair doneᵀ ⊩F ⊩G sna snb ra rb )
+  ( ⊩₁Σ doneᵀ ⊩F ⊩G , sem-pair {G = subTy (extS σ) B} doneᵀ ⊩F ⊩G sna snb ra rb )
   where
     ⊩F = dfst (fund d₁ x₀ ρ)
     ra = dsnd (fund d₁ x₀ ρ)

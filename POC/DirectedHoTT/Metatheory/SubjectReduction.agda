@@ -50,7 +50,7 @@ open import DirectedHoTT.Spec.Variance
         ; occ-εwkTm
         ; nnh-Fin )
 open import DirectedHoTT.Spec.Typing 𝒮 n
-  using ( _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; El-⌜Hom⌝; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ
+  using ( ⟶head; ⟶cong; _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; El-⌜Hom⌝; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ
         ; ξ-Σʳ; Hom-U; Hom-Π; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ; _⟶_; β; βfst; βsnd
         ; ξ-lam; ξ-appˡ; ξ-appʳ; ξ-pairˡ; ξ-pairʳ; ξ-absurdᶜ; ξ-absurdᵉ
         ; ordtr-z; ordtr-szz; ordtr-ssz; ordtr-szs; ordtr-sss; ξ-ordtrᵃ
@@ -1261,7 +1261,7 @@ sr d (ξ-hreflᵃ r) with gen-hrefl d
             (csymᵀ (ctrnᵀ cH (ctrnᵀ (credᵀ (ξ-Homˡ r)) (credᵀ (ξ-Homʳ r)))))
 sr d (ξ-trᵈ r) with gen-tr d
 ... | tgU (mkTrInvU refl t u dt du dp de cC) with r
-...   | ()
+...   | (⟶head ())
 sr d (ξ-trᵈ r) | tgC (mkTrInv cM aM refl A t u dcM daM dvM ncM hcM haM dt du dp de cC)
   with hom-step r
 ...   | hsᶜ rc =
@@ -1274,7 +1274,7 @@ sr d (ξ-trᵈ r) | tgC (mkTrInv cM aM refl A t u dcM daM dvM ncM hcM haM dt du 
         ⊢conv (⊢tr dcM (sr daM ra) dvM ncM hcM (occ-red ra haM) dt du dp
                    (⊢conv de (credᵀ (ξ-El (⟶-sub (single t) r)))))
               (csymᵀ (ctrnᵀ cC (credᵀ (ξ-El (⟶-sub (single u) r)))))
-...   | hsʳ ()
+...   | hsʳ (⟶head ())
 sr d (ξ-trᵖ r) with gen-tr d
 ... | tgC (mkTrInv cM aM refl A t u dcM daM dvM ncM hcM haM dt du dp de cC) =
       ⊢conv (⊢tr dcM daM dvM ncM hcM haM dt du (sr dp r) de) (csymᵀ cC)
