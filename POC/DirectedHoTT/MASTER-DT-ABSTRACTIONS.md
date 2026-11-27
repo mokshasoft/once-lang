@@ -53,8 +53,8 @@ What follows from this:
 |---|---|---|---|---|---|
 | 2 | Usage grades (QTT) | `0 ≤ 1 ≤ ω`, affine, `⊢sub-use` | none | Full QTT in one judgment; the dependent rules only distinguish 0 from runtime | master → DT |
 | 3 | Effects | a grade on the judgment, `⊢ t ∷ A ! π`, with `M pure = Id`, `M act = T`, `M eff = T∞` | none at all | **Decided 2026-11-27: (A), master's form, on both branches.** Usage 0 keeps types pure; the DT kernel adds a 0-only reification of a computation into its tree | master → DT; no master plan |
-| 4 | Signature references | `ref` typed from a schema, never unfolds | `ref` unfolds by δ; references are projections (D501) | One `ref`, with δ visible only inside the segment that may see the body | DT → master |
-| 5 | Data | polynomial codes `K`/`Id`/`⊕`/`⊗`, no index; one μ, one fold | one former `IMu` over levitated, FIBRED, indexed descriptions | Fibred descriptions; master's grammar is their erasable single-sorted fragment | DT → master (the former); runtime layout unchanged |
+| 4 | Signature references | `ref` typed from a schema, never unfolds | `ref` unfolds by δ; references are projections (D501) | One `ref`, with δ visible only inside the segment that may see the body | DT → master; master's side already decided (plan 0.147 §3.1.4, §5) |
+| 5 | Data | polynomial codes `K`/`Id`/`⊕`/`⊗`, no index; one μ, one fold | one former `IMu` over levitated, FIBRED, indexed descriptions | One SORTED former on both; master's grammar is the erasable finite-sort fragment; nesting by composition | DT → master (plan 0.158); DT owes a nesting former |
 | 6 | Polymorphism | type variables in a kinding context `Δ` | Π over `U` at usage 0 | Π over `U` at 0; `Δ` remains the erasure target | DT → master |
 | 7 | Subtyping | `Spec/Sub`: canonical coercions (`Void`, effect order), at most one derivation | none | `⊢sub-eff` in the judgment; type-level `<:` possibly inserted by the elaborator | master → DT |
 | 8 | Codata | ν, `unfold`, `iter` as core formers (servers) | none | A pure, productive ν at 0 for proofs (and for reifying `eff`) | master keeps its runtime story; DT adds ν at 0 |
@@ -167,8 +167,28 @@ be eliminated.**
   - Master already has handlers at one level: a signature's
     Interpretation per Host (plan 0.96), chosen at link time.
 
-**Open.** Whether user handlers are wanted, and when. They need a
-signature-indexed effect grade, a separate Spec change with its own plan.
+**OCP-0007 (capability-graded effects) is that grade.** It rejects monad
+layers and free monads for the reason (A) is kept (one graded category, no
+lifting), and its §7 already presupposes pure in-language handlers for
+`State`, `Error`, `NonDet`. The refinement that joins it with handlers:
+- the NEEDED grade is a set of OPERATIONS (union bottom-up, OCP-0007 §5) times
+  finiteness; master's chain is its image when the operations are forgotten
+  (`pure` = (∅, finite), `act` = (S, finite), `eff` = (S, may diverge));
+- capabilities are the image of that set under the deployment POLICY, a
+  join-preserving map from operations to capabilities, applied once at the
+  grant site (OCP-0007 §2's separation made structural: graded monads move
+  along morphisms of their gradings, Katsumata 2014);
+- an operation is discharged by HANDLING (interpreted in Once, removed from
+  the set before the policy sees it) or by GRANTING (authority from root).
+
+Stacks of known handlers inline: never-resuming (`Error`) and tail-resumptive
+(`State`, `Reader`, logging, mocked IO) handlers cost no allocation, so such
+stacks are free at run time; only multi-shot handlers (`NonDet`) allocate.
+Parameterised capabilities (`Connect[host]`) are grades indexed by 0-terms,
+and a use-once capability is a zero-word token at usage 1: both fit §0.
+
+**Open.** Whether to turn OCP-0007 plus handlers into a master plan (a Spec
+change of the grade lattice, generalising today's chain).
 
 ## 4. Signature references
 
@@ -192,7 +212,10 @@ may see the body. Master's `ref` is the case where nothing sees the body.
 Under the stance, δ only ever runs in conversion, at 0. The compiled
 program just calls the entry, as master does.
 
-**Direction.** DT → master, adding visibility by segment.
+**Direction.** DT → master, adding visibility by segment. Master's side is
+already decided: plan 0.147 §3.1.4 (one `abstract` attribute, the
+Mitchell–Plotkin reading) and §5 (δ scoped by segment). No new master plan;
+the work left is the DT kernel's δ visibility.
 
 **Open.** The form of the visibility (per segment, per entry, or by module
 boundary), and its interaction with D501's projections.
@@ -260,8 +283,19 @@ The case-tree rule lets the kernel keep fibring without giving up erasure.
   one former and one fold rule for all of the above, instead of a separate
   design for each.
 
-**Direction.** DT → master for the former. Master's functor grammar becomes
-the erasable fragment, stated as a theorem.
+**A gap on the DT side: nesting.** Plan 0.147 §3.4 designs nested positive
+fields (`data Rose a = Node a (List (Rose a))`) as "a fragment of the DT
+kernel's `Desc`". It is not one yet: `dρ j C` names an index, never a
+family, so a field cannot apply a declared type to the recursive position.
+The principled fix is a nesting former, a field `F ∘ X` with `F` covariant in
+the parameter (premise: `Spec/Variance`'s `Pos`). Elaborating nesting into
+mutual sorts instead would make `List`'s functions inapplicable to the
+children (copies, or a conversion).
+
+**Direction.** DT → master for the former: plan 0.158 (one sorted data
+former, nesting by composition, Bekić as a theorem; it reopens 0.147 §3.4).
+Master's functor grammar becomes the erasable fragment, stated as a
+theorem. The DT kernel owes the nesting former.
 
 **Open.**
 - The erasure function on `IMu` and its proof.
