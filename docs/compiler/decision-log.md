@@ -25941,3 +25941,12 @@ state (no saved frames, no pending return: `EntryLike`) the current frame has `F
 frames are, one for one, `F` of the pending returns (`Run.FramesAt`, `Pointwise` over `saved-frames` and `fret`:
 a frame per pending return, none left over). The depth is a function of where the run is; a return restores the
 caller's frame at its return point, so the two clauses agree. Stated, owed (`Certified.once-bounded-stack`).
+
+**D503 (decided by the user, 2026-11-27) — no recursion in generated code, first stage: LINEAR LAYERS AS LOOPS.**
+The free and copy blocks recurse once per cell (`freeᴵ (μt F)` calls `kfree` of the layer, which calls `kfree
+(μt F)` again: a list of length n holds n frames). A μ whose layer has ONE recursive position (lists, streams,
+counters) becomes a loop: constant stack whatever the length. Trees keep their recursion for now — depth the
+tree's HEIGHT, not its size (the weak case: a degenerate tree, height = size). Later stage (recorded in the plan):
+trees by POINTER REVERSAL — a free by rotating the tree in place, a copy by reversing pointers on the way down and
+restoring them: constant stack and no extra memory for all data. Rejected: a heap work-list (a free would then
+allocate, so freeing could itself run out of memory — at odds with D502).
