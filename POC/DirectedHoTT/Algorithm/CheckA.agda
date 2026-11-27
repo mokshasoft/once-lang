@@ -59,6 +59,8 @@ open import DirectedHoTT.Spec.Variance
         ; nnc-Σ; nnc-Id; nnc-Π; nnc-Hom )
 open import DirectedHoTT.Spec.Scope
 open import DirectedHoTT.Spec.Syntax
+  using ( <-here; <-there; <ˢ-zero; Defs; RTm; RTy; _<ˢ_; `Π; renTm; renTy; size; subTy; subTy-id; subTy-renTy; _<ˢ?_ )
+import DirectedHoTT.Spec.Syntax as C
 open import DirectedHoTT.Spec.Annotated
 open import DirectedHoTT.Spec.Signature using ( Sig; kernel; _<ˢ_; <-here; <-there; <ˢ-zero )
 open import DirectedHoTT.Spec.SigWf using ( WfK )
@@ -132,116 +134,116 @@ private
 
 liftTy : {Γ : Cx} → RTy Γ → ATy Γ
 liftTm : {Γ : Cx} → RTm Γ → ATm Γ
-liftTy base = base
-liftTy U = U
-liftTy (Π x0 x1) = Π (liftTy x0) (liftTy x1)
-liftTy (Σ' x0 x1) = Σ' (liftTy x0) (liftTy x1)
-liftTy (El x0) = El (liftTm x0)
-liftTy (Hom x0 x1 x2) = Hom (liftTy x0) (liftTm x1) (liftTm x2)
-liftTy Unit = Unit
-liftTy Nat = Nat
-liftTy (Id x0 x1 x2) = Id (liftTy x0) (liftTm x1) (liftTm x2)
-liftTy (IMu x0 x1 x2) = IMu (liftTm x0) (liftTm x1) (liftTm x2)
-liftTy (Desc x0) = Desc (liftTm x0)
-liftTy (DIh x0 x1 x2 x3) = DIh nzero (liftTm x0) (liftTy x1) (liftTm x2) (liftTm x3)
-liftTy (Fin x0) = Fin (liftTm x0)
-liftTm (var x0) = var x0
-liftTm (lam x0) = lam base (liftTm x0)
-liftTm (app x0 x1) = app (liftTm x0) (liftTm x1)
-liftTm (pair x0 x1) = pair base base (liftTm x0) (liftTm x1)
-liftTm (absurd x0 x1) = absurd (liftTm x0) (liftTm x1)
-liftTm (ordtr x0 x1 x2 x3 x4) = ordtr (liftTm x0) (liftTm x1) (liftTm x2) (liftTm x3) (liftTm x4)
-liftTm (fst x0) = fst (liftTm x0)
-liftTm (snd x0) = snd (liftTm x0)
-liftTm ⌜base⌝ = ⌜base⌝
-liftTm (⌜Π⌝ x0 x1) = ⌜Π⌝ (liftTm x0) (liftTm x1)
-liftTm (⌜Σ⌝ x0 x1) = ⌜Σ⌝ (liftTm x0) (liftTm x1)
-liftTm (⌜Hom⌝ x0 x1 x2) = ⌜Hom⌝ (liftTm x0) (liftTm x1) (liftTm x2)
-liftTm (hrefl x0 x1) = hrefl (liftTm x0) (liftTm x1)
-liftTm (tr x0 x1 x2) = tr base nzero nzero (liftTm x0) (liftTm x1) (liftTm x2)
-liftTm (ap x0 x1 x2) = ap nzero nzero nzero (liftTm x0) (liftTm x1) (liftTm x2)
-liftTm (⌜Id⌝ x0 x1 x2) = ⌜Id⌝ (liftTm x0) (liftTm x1) (liftTm x2)
-liftTm (idrefl x0 x1) = idrefl (liftTm x0) (liftTm x1)
-liftTm (jsub x0 x1 x2) = jsub base nzero nzero (liftTm x0) (liftTm x1) (liftTm x2)
-liftTm unit = unit
-liftTm nzero = nzero
-liftTm (nsuc x0) = nsuc (liftTm x0)
-liftTm (natrec x0 x1 x2) = natrec base (liftTm x0) (liftTm x1) (liftTm x2)
-liftTm ⌜Nat⌝ = ⌜Nat⌝
-liftTm ⌜Unit⌝ = ⌜Unit⌝
-liftTm (⌜IMu⌝ x0 x1 x2) = ⌜IMu⌝ (liftTm x0) (liftTm x1) (liftTm x2)
-liftTm (⌜Fin⌝ x0) = ⌜Fin⌝ (liftTm x0)
-liftTm (con x0) = con nzero nzero nzero (liftTm x0)
-liftTm (ielim x0 x1 x2 x3) = ielim nzero (liftTm x0) base (liftTm x1) (liftTm x2) (liftTm x3)
-liftTm dι = dι nzero
-liftTm (dσ x0 x1) = dσ nzero (liftTm x0) (liftTm x1)
-liftTm (dρ x0 x1) = dρ nzero (liftTm x0) (liftTm x1)
-liftTm (dpay x0 x1 x2) = dpay (liftTm x0) (liftTm x1) (liftTm x2)
-liftTm (dih x0 x1 x2 x3) = dih nzero (liftTm x0) base (liftTm x1) (liftTm x2) (liftTm x3)
-liftTm fzero = fzero nzero
-liftTm (fsuc x0) = fsuc nzero (liftTm x0)
-liftTm (fcase x0 x1 x2) = fcase nzero base (liftTm x0) (liftTm x1) (liftTm x2)
-liftTm (fcase0 x0) = fcase0 base (liftTm x0)
-liftTm (psplit x0 x1) = psplit base base base (liftTm x0) (liftTm x1)
-liftTm (ref d) = ref d
+liftTy C.base = base
+liftTy C.U = U
+liftTy (C.Π x0 x1) = Π (liftTy x0) (liftTy x1)
+liftTy (C.Σ' x0 x1) = Σ' (liftTy x0) (liftTy x1)
+liftTy (C.El x0) = El (liftTm x0)
+liftTy (C.Hom x0 x1 x2) = Hom (liftTy x0) (liftTm x1) (liftTm x2)
+liftTy C.Unit = Unit
+liftTy C.Nat = Nat
+liftTy (C.Id x0 x1 x2) = Id (liftTy x0) (liftTm x1) (liftTm x2)
+liftTy (C.IMu x0 x1 x2) = IMu (liftTm x0) (liftTm x1) (liftTm x2)
+liftTy (C.Desc x0) = Desc (liftTm x0)
+liftTy (C.DIh x0 x1 x2 x3) = DIh nzero (liftTm x0) (liftTy x1) (liftTm x2) (liftTm x3)
+liftTy (C.Fin x0) = Fin (liftTm x0)
+liftTm (C.var x0) = var x0
+liftTm (C.lam x0) = lam base (liftTm x0)
+liftTm (C.app x0 x1) = app (liftTm x0) (liftTm x1)
+liftTm (C.pair x0 x1) = pair base base (liftTm x0) (liftTm x1)
+liftTm (C.absurd x0 x1) = absurd (liftTm x0) (liftTm x1)
+liftTm (C.ordtr x0 x1 x2 x3 x4) = ordtr (liftTm x0) (liftTm x1) (liftTm x2) (liftTm x3) (liftTm x4)
+liftTm (C.fst x0) = fst (liftTm x0)
+liftTm (C.snd x0) = snd (liftTm x0)
+liftTm C.⌜base⌝ = ⌜base⌝
+liftTm (C.⌜Π⌝ x0 x1) = ⌜Π⌝ (liftTm x0) (liftTm x1)
+liftTm (C.⌜Σ⌝ x0 x1) = ⌜Σ⌝ (liftTm x0) (liftTm x1)
+liftTm (C.⌜Hom⌝ x0 x1 x2) = ⌜Hom⌝ (liftTm x0) (liftTm x1) (liftTm x2)
+liftTm (C.hrefl x0 x1) = hrefl (liftTm x0) (liftTm x1)
+liftTm (C.tr x0 x1 x2) = tr base nzero nzero (liftTm x0) (liftTm x1) (liftTm x2)
+liftTm (C.ap x0 x1 x2) = ap nzero nzero nzero (liftTm x0) (liftTm x1) (liftTm x2)
+liftTm (C.⌜Id⌝ x0 x1 x2) = ⌜Id⌝ (liftTm x0) (liftTm x1) (liftTm x2)
+liftTm (C.idrefl x0 x1) = idrefl (liftTm x0) (liftTm x1)
+liftTm (C.jsub x0 x1 x2) = jsub base nzero nzero (liftTm x0) (liftTm x1) (liftTm x2)
+liftTm C.unit = unit
+liftTm C.nzero = nzero
+liftTm (C.nsuc x0) = nsuc (liftTm x0)
+liftTm (C.natrec x0 x1 x2) = natrec base (liftTm x0) (liftTm x1) (liftTm x2)
+liftTm C.⌜Nat⌝ = ⌜Nat⌝
+liftTm C.⌜Unit⌝ = ⌜Unit⌝
+liftTm (C.⌜IMu⌝ x0 x1 x2) = ⌜IMu⌝ (liftTm x0) (liftTm x1) (liftTm x2)
+liftTm (C.⌜Fin⌝ x0) = ⌜Fin⌝ (liftTm x0)
+liftTm (C.con x0) = con nzero nzero nzero (liftTm x0)
+liftTm (C.ielim x0 x1 x2 x3) = ielim nzero (liftTm x0) base (liftTm x1) (liftTm x2) (liftTm x3)
+liftTm C.dι = dι nzero
+liftTm (C.dσ x0 x1) = dσ nzero (liftTm x0) (liftTm x1)
+liftTm (C.dρ x0 x1) = dρ nzero (liftTm x0) (liftTm x1)
+liftTm (C.dpay x0 x1 x2) = dpay (liftTm x0) (liftTm x1) (liftTm x2)
+liftTm (C.dih x0 x1 x2 x3) = dih nzero (liftTm x0) base (liftTm x1) (liftTm x2) (liftTm x3)
+liftTm C.fzero = fzero nzero
+liftTm (C.fsuc x0) = fsuc nzero (liftTm x0)
+liftTm (C.fcase x0 x1 x2) = fcase nzero base (liftTm x0) (liftTm x1) (liftTm x2)
+liftTm (C.fcase0 x0) = fcase0 base (liftTm x0)
+liftTm (C.psplit x0 x1) = psplit base base base (liftTm x0) (liftTm x1)
+liftTm (C.ref d) = ref d
 
 -- ★ only for NORMAL forms; each subterm's normality comes through its
 --   congruence rule (a reference is a name in both layers: it lifts and
 --   erases to itself)
 era-liftTy : {Γ : Cx} (A : RTy Γ) → IsNormalᵀ A → ⌈ liftTy A ⌉ᵀ ≡ A
 era-liftTm : {Γ : Cx} (t : RTm Γ) → IsNormal t → ⌈ liftTm t ⌉ ≡ t
-era-liftTy base n = refl
-era-liftTy U n = refl
-era-liftTy (Π x0 x1) n = cong2 (λ a0 a1 → Π a0 a1) (era-liftTy x0 (λ s → n (ξ-Πˡ s))) (era-liftTy x1 (λ s → n (ξ-Πʳ s)))
-era-liftTy (Σ' x0 x1) n = cong2 (λ a0 a1 → Σ' a0 a1) (era-liftTy x0 (λ s → n (ξ-Σˡ s))) (era-liftTy x1 (λ s → n (ξ-Σʳ s)))
-era-liftTy (El x0) n = cong1 (λ a0 → El a0) (era-liftTm x0 (λ s → n (ξ-El s)))
-era-liftTy (Hom x0 x1 x2) n = cong3 (λ a0 a1 a2 → Hom a0 a1 a2) (era-liftTy x0 (λ s → n (ξ-Homᵀ s))) (era-liftTm x1 (λ s → n (ξ-Homˡ s))) (era-liftTm x2 (λ s → n (ξ-Homʳ s)))
-era-liftTy Unit n = refl
-era-liftTy Nat n = refl
-era-liftTy (Id x0 x1 x2) n = cong3 (λ a0 a1 a2 → Id a0 a1 a2) (era-liftTy x0 (λ s → n (ξ-Idᵀ s))) (era-liftTm x1 (λ s → n (ξ-Idˡ s))) (era-liftTm x2 (λ s → n (ξ-Idʳ s)))
-era-liftTy (IMu x0 x1 x2) n = cong3 (λ a0 a1 a2 → IMu a0 a1 a2) (era-liftTm x0 (λ s → n (ξ-IMuᴵ s))) (era-liftTm x1 (λ s → n (ξ-IMuᴰ s))) (era-liftTm x2 (λ s → n (ξ-IMuⁱ s)))
-era-liftTy (Desc x0) n = cong1 (λ a0 → Desc a0) (era-liftTm x0 (λ s → n (ξ-Desc s)))
-era-liftTy (DIh x0 x1 x2 x3) n = cong4 (λ a0 a1 a2 a3 → DIh a0 a1 a2 a3) (era-liftTm x0 (λ s → n (ξ-DIhᴰ s))) (era-liftTy x1 (λ s → n (ξ-DIhᴹ s))) (era-liftTm x2 (λ s → n (ξ-DIhᶜ s))) (era-liftTm x3 (λ s → n (ξ-DIhᵖ s)))
-era-liftTy (Fin x0) n = cong1 (λ a0 → Fin a0) (era-liftTm x0 (λ s → n (ξ-Fin s)))
-era-liftTm (var x0) n = refl
-era-liftTm (lam x0) n = cong1 (λ a0 → lam a0) (era-liftTm x0 (λ s → n (ξ-lam s)))
-era-liftTm (app x0 x1) n = cong2 (λ a0 a1 → app a0 a1) (era-liftTm x0 (λ s → n (ξ-appˡ s))) (era-liftTm x1 (λ s → n (ξ-appʳ s)))
-era-liftTm (pair x0 x1) n = cong2 (λ a0 a1 → pair a0 a1) (era-liftTm x0 (λ s → n (ξ-pairˡ s))) (era-liftTm x1 (λ s → n (ξ-pairʳ s)))
-era-liftTm (absurd x0 x1) n = cong2 (λ a0 a1 → absurd a0 a1) (era-liftTm x0 (λ s → n (ξ-absurdᶜ s))) (era-liftTm x1 (λ s → n (ξ-absurdᵉ s)))
-era-liftTm (ordtr x0 x1 x2 x3 x4) n = cong5 (λ a0 a1 a2 a3 a4 → ordtr a0 a1 a2 a3 a4) (era-liftTm x0 (λ s → n (ξ-ordtrᵃ s))) (era-liftTm x1 (λ s → n (ξ-ordtrᵗ s))) (era-liftTm x2 (λ s → n (ξ-ordtrᵘ s))) (era-liftTm x3 (λ s → n (ξ-ordtrᵖ s))) (era-liftTm x4 (λ s → n (ξ-ordtrq s)))
-era-liftTm (fst x0) n = cong1 (λ a0 → fst a0) (era-liftTm x0 (λ s → n (ξ-fst s)))
-era-liftTm (snd x0) n = cong1 (λ a0 → snd a0) (era-liftTm x0 (λ s → n (ξ-snd s)))
-era-liftTm ⌜base⌝ n = refl
-era-liftTm (⌜Π⌝ x0 x1) n = cong2 (λ a0 a1 → ⌜Π⌝ a0 a1) (era-liftTm x0 (λ s → n (ξ-⌜Π⌝ˡ s))) (era-liftTm x1 (λ s → n (ξ-⌜Π⌝ʳ s)))
-era-liftTm (⌜Σ⌝ x0 x1) n = cong2 (λ a0 a1 → ⌜Σ⌝ a0 a1) (era-liftTm x0 (λ s → n (ξ-⌜Σ⌝ˡ s))) (era-liftTm x1 (λ s → n (ξ-⌜Σ⌝ʳ s)))
-era-liftTm (⌜Hom⌝ x0 x1 x2) n = cong3 (λ a0 a1 a2 → ⌜Hom⌝ a0 a1 a2) (era-liftTm x0 (λ s → n (ξ-⌜Hom⌝ᶜ s))) (era-liftTm x1 (λ s → n (ξ-⌜Hom⌝ˡ s))) (era-liftTm x2 (λ s → n (ξ-⌜Hom⌝ʳ s)))
-era-liftTm (hrefl x0 x1) n = cong2 (λ a0 a1 → hrefl a0 a1) (era-liftTm x0 (λ s → n (ξ-hreflᶜ s))) (era-liftTm x1 (λ s → n (ξ-hreflᵃ s)))
-era-liftTm (tr x0 x1 x2) n = cong3 (λ a0 a1 a2 → tr a0 a1 a2) (era-liftTm x0 (λ s → n (ξ-trᵈ s))) (era-liftTm x1 (λ s → n (ξ-trᵖ s))) (era-liftTm x2 (λ s → n (ξ-trᵉ s)))
-era-liftTm (ap x0 x1 x2) n = cong3 (λ a0 a1 a2 → ap a0 a1 a2) (era-liftTm x0 (λ s → n (ξ-apᶜ s))) (era-liftTm x1 (λ s → n (ξ-apᵇ s))) (era-liftTm x2 (λ s → n (ξ-apᵖ s)))
-era-liftTm (⌜Id⌝ x0 x1 x2) n = cong3 (λ a0 a1 a2 → ⌜Id⌝ a0 a1 a2) (era-liftTm x0 (λ s → n (ξ-⌜Id⌝ᶜ s))) (era-liftTm x1 (λ s → n (ξ-⌜Id⌝ˡ s))) (era-liftTm x2 (λ s → n (ξ-⌜Id⌝ʳ s)))
-era-liftTm (idrefl x0 x1) n = cong2 (λ a0 a1 → idrefl a0 a1) (era-liftTm x0 (λ s → n (ξ-idreflᶜ s))) (era-liftTm x1 (λ s → n (ξ-idreflᵃ s)))
-era-liftTm (jsub x0 x1 x2) n = cong3 (λ a0 a1 a2 → jsub a0 a1 a2) (era-liftTm x0 (λ s → n (ξ-jsubᵈ s))) (era-liftTm x1 (λ s → n (ξ-jsubᵖ s))) (era-liftTm x2 (λ s → n (ξ-jsubᵉ s)))
-era-liftTm unit n = refl
-era-liftTm nzero n = refl
-era-liftTm (nsuc x0) n = cong1 (λ a0 → nsuc a0) (era-liftTm x0 (λ s → n (ξ-nsuc s)))
-era-liftTm (natrec x0 x1 x2) n = cong3 (λ a0 a1 a2 → natrec a0 a1 a2) (era-liftTm x0 (λ s → n (ξ-natrecᶻ s))) (era-liftTm x1 (λ s → n (ξ-natrecˢ s))) (era-liftTm x2 (λ s → n (ξ-natrecⁿ s)))
-era-liftTm ⌜Nat⌝ n = refl
-era-liftTm ⌜Unit⌝ n = refl
-era-liftTm (⌜IMu⌝ x0 x1 x2) n = cong3 (λ a0 a1 a2 → ⌜IMu⌝ a0 a1 a2) (era-liftTm x0 (λ s → n (ξ-⌜IMu⌝ᴵ s))) (era-liftTm x1 (λ s → n (ξ-⌜IMu⌝ᴰ s))) (era-liftTm x2 (λ s → n (ξ-⌜IMu⌝ⁱ s)))
-era-liftTm (⌜Fin⌝ x0) n = cong1 (λ a0 → ⌜Fin⌝ a0) (era-liftTm x0 (λ s → n (ξ-⌜Fin⌝ s)))
-era-liftTm (con x0) n = cong1 (λ a0 → con a0) (era-liftTm x0 (λ s → n (ξ-con s)))
-era-liftTm (ielim x0 x1 x2 x3) n = cong4 (λ a0 a1 a2 a3 → ielim a0 a1 a2 a3) (era-liftTm x0 (λ s → n (ξ-ielimᴰ s))) (era-liftTm x1 (λ s → n (ξ-ielimⁱ s))) (era-liftTm x2 (λ s → n (ξ-ielimᵉ s))) (era-liftTm x3 (λ s → n (ξ-ielimᵗ s)))
-era-liftTm dι n = refl
-era-liftTm (dσ x0 x1) n = cong2 (λ a0 a1 → dσ a0 a1) (era-liftTm x0 (λ s → n (ξ-dσˢ s))) (era-liftTm x1 (λ s → n (ξ-dσᶠ s)))
-era-liftTm (dρ x0 x1) n = cong2 (λ a0 a1 → dρ a0 a1) (era-liftTm x0 (λ s → n (ξ-dρʲ s))) (era-liftTm x1 (λ s → n (ξ-dρᶜ s)))
-era-liftTm (dpay x0 x1 x2) n = cong3 (λ a0 a1 a2 → dpay a0 a1 a2) (era-liftTm x0 (λ s → n (ξ-dpayᴵ s))) (era-liftTm x1 (λ s → n (ξ-dpayᴰ s))) (era-liftTm x2 (λ s → n (ξ-dpayᶜ s)))
-era-liftTm (dih x0 x1 x2 x3) n = cong4 (λ a0 a1 a2 a3 → dih a0 a1 a2 a3) (era-liftTm x0 (λ s → n (ξ-dihᴰ s))) (era-liftTm x1 (λ s → n (ξ-dihᵉ s))) (era-liftTm x2 (λ s → n (ξ-dihᶜ s))) (era-liftTm x3 (λ s → n (ξ-dihᵖ s)))
-era-liftTm fzero n = refl
-era-liftTm (fsuc x0) n = cong1 (λ a0 → fsuc a0) (era-liftTm x0 (λ s → n (ξ-fsuc s)))
-era-liftTm (fcase x0 x1 x2) n = cong3 (λ a0 a1 a2 → fcase a0 a1 a2) (era-liftTm x0 (λ s → n (ξ-fcaseᵗ s))) (era-liftTm x1 (λ s → n (ξ-fcaseᵃ s))) (era-liftTm x2 (λ s → n (ξ-fcaseᵇ s)))
-era-liftTm (fcase0 x0) n = cong1 (λ a0 → fcase0 a0) (era-liftTm x0 (λ s → n (ξ-fcase0 s)))
-era-liftTm (ref d) n = refl
-era-liftTm (psplit x0 x1) n = cong2 (λ a0 a1 → psplit a0 a1) (era-liftTm x0 (λ s → n (ξ-psplitᵇ s))) (era-liftTm x1 (λ s → n (ξ-psplitᵍ s)))
+era-liftTy C.base n = refl
+era-liftTy C.U n = refl
+era-liftTy (C.Π x0 x1) n = cong2 (λ a0 a1 → C.Π a0 a1) (era-liftTy x0 (λ s → n (ξ-Πˡ s))) (era-liftTy x1 (λ s → n (ξ-Πʳ s)))
+era-liftTy (C.Σ' x0 x1) n = cong2 (λ a0 a1 → C.Σ' a0 a1) (era-liftTy x0 (λ s → n (ξ-Σˡ s))) (era-liftTy x1 (λ s → n (ξ-Σʳ s)))
+era-liftTy (C.El x0) n = cong1 (λ a0 → C.El a0) (era-liftTm x0 (λ s → n (ξ-El s)))
+era-liftTy (C.Hom x0 x1 x2) n = cong3 (λ a0 a1 a2 → C.Hom a0 a1 a2) (era-liftTy x0 (λ s → n (ξ-Homᵀ s))) (era-liftTm x1 (λ s → n (ξ-Homˡ s))) (era-liftTm x2 (λ s → n (ξ-Homʳ s)))
+era-liftTy C.Unit n = refl
+era-liftTy C.Nat n = refl
+era-liftTy (C.Id x0 x1 x2) n = cong3 (λ a0 a1 a2 → C.Id a0 a1 a2) (era-liftTy x0 (λ s → n (ξ-Idᵀ s))) (era-liftTm x1 (λ s → n (ξ-Idˡ s))) (era-liftTm x2 (λ s → n (ξ-Idʳ s)))
+era-liftTy (C.IMu x0 x1 x2) n = cong3 (λ a0 a1 a2 → C.IMu a0 a1 a2) (era-liftTm x0 (λ s → n (ξ-IMuᴵ s))) (era-liftTm x1 (λ s → n (ξ-IMuᴰ s))) (era-liftTm x2 (λ s → n (ξ-IMuⁱ s)))
+era-liftTy (C.Desc x0) n = cong1 (λ a0 → C.Desc a0) (era-liftTm x0 (λ s → n (ξ-Desc s)))
+era-liftTy (C.DIh x0 x1 x2 x3) n = cong4 (λ a0 a1 a2 a3 → C.DIh a0 a1 a2 a3) (era-liftTm x0 (λ s → n (ξ-DIhᴰ s))) (era-liftTy x1 (λ s → n (ξ-DIhᴹ s))) (era-liftTm x2 (λ s → n (ξ-DIhᶜ s))) (era-liftTm x3 (λ s → n (ξ-DIhᵖ s)))
+era-liftTy (C.Fin x0) n = cong1 (λ a0 → C.Fin a0) (era-liftTm x0 (λ s → n (ξ-Fin s)))
+era-liftTm (C.var x0) n = refl
+era-liftTm (C.lam x0) n = cong1 (λ a0 → C.lam a0) (era-liftTm x0 (λ s → n (ξ-lam s)))
+era-liftTm (C.app x0 x1) n = cong2 (λ a0 a1 → C.app a0 a1) (era-liftTm x0 (λ s → n (ξ-appˡ s))) (era-liftTm x1 (λ s → n (ξ-appʳ s)))
+era-liftTm (C.pair x0 x1) n = cong2 (λ a0 a1 → C.pair a0 a1) (era-liftTm x0 (λ s → n (ξ-pairˡ s))) (era-liftTm x1 (λ s → n (ξ-pairʳ s)))
+era-liftTm (C.absurd x0 x1) n = cong2 (λ a0 a1 → C.absurd a0 a1) (era-liftTm x0 (λ s → n (ξ-absurdᶜ s))) (era-liftTm x1 (λ s → n (ξ-absurdᵉ s)))
+era-liftTm (C.ordtr x0 x1 x2 x3 x4) n = cong5 (λ a0 a1 a2 a3 a4 → C.ordtr a0 a1 a2 a3 a4) (era-liftTm x0 (λ s → n (ξ-ordtrᵃ s))) (era-liftTm x1 (λ s → n (ξ-ordtrᵗ s))) (era-liftTm x2 (λ s → n (ξ-ordtrᵘ s))) (era-liftTm x3 (λ s → n (ξ-ordtrᵖ s))) (era-liftTm x4 (λ s → n (ξ-ordtrq s)))
+era-liftTm (C.fst x0) n = cong1 (λ a0 → C.fst a0) (era-liftTm x0 (λ s → n (ξ-fst s)))
+era-liftTm (C.snd x0) n = cong1 (λ a0 → C.snd a0) (era-liftTm x0 (λ s → n (ξ-snd s)))
+era-liftTm C.⌜base⌝ n = refl
+era-liftTm (C.⌜Π⌝ x0 x1) n = cong2 (λ a0 a1 → C.⌜Π⌝ a0 a1) (era-liftTm x0 (λ s → n (ξ-⌜Π⌝ˡ s))) (era-liftTm x1 (λ s → n (ξ-⌜Π⌝ʳ s)))
+era-liftTm (C.⌜Σ⌝ x0 x1) n = cong2 (λ a0 a1 → C.⌜Σ⌝ a0 a1) (era-liftTm x0 (λ s → n (ξ-⌜Σ⌝ˡ s))) (era-liftTm x1 (λ s → n (ξ-⌜Σ⌝ʳ s)))
+era-liftTm (C.⌜Hom⌝ x0 x1 x2) n = cong3 (λ a0 a1 a2 → C.⌜Hom⌝ a0 a1 a2) (era-liftTm x0 (λ s → n (ξ-⌜Hom⌝ᶜ s))) (era-liftTm x1 (λ s → n (ξ-⌜Hom⌝ˡ s))) (era-liftTm x2 (λ s → n (ξ-⌜Hom⌝ʳ s)))
+era-liftTm (C.hrefl x0 x1) n = cong2 (λ a0 a1 → C.hrefl a0 a1) (era-liftTm x0 (λ s → n (ξ-hreflᶜ s))) (era-liftTm x1 (λ s → n (ξ-hreflᵃ s)))
+era-liftTm (C.tr x0 x1 x2) n = cong3 (λ a0 a1 a2 → C.tr a0 a1 a2) (era-liftTm x0 (λ s → n (ξ-trᵈ s))) (era-liftTm x1 (λ s → n (ξ-trᵖ s))) (era-liftTm x2 (λ s → n (ξ-trᵉ s)))
+era-liftTm (C.ap x0 x1 x2) n = cong3 (λ a0 a1 a2 → C.ap a0 a1 a2) (era-liftTm x0 (λ s → n (ξ-apᶜ s))) (era-liftTm x1 (λ s → n (ξ-apᵇ s))) (era-liftTm x2 (λ s → n (ξ-apᵖ s)))
+era-liftTm (C.⌜Id⌝ x0 x1 x2) n = cong3 (λ a0 a1 a2 → C.⌜Id⌝ a0 a1 a2) (era-liftTm x0 (λ s → n (ξ-⌜Id⌝ᶜ s))) (era-liftTm x1 (λ s → n (ξ-⌜Id⌝ˡ s))) (era-liftTm x2 (λ s → n (ξ-⌜Id⌝ʳ s)))
+era-liftTm (C.idrefl x0 x1) n = cong2 (λ a0 a1 → C.idrefl a0 a1) (era-liftTm x0 (λ s → n (ξ-idreflᶜ s))) (era-liftTm x1 (λ s → n (ξ-idreflᵃ s)))
+era-liftTm (C.jsub x0 x1 x2) n = cong3 (λ a0 a1 a2 → C.jsub a0 a1 a2) (era-liftTm x0 (λ s → n (ξ-jsubᵈ s))) (era-liftTm x1 (λ s → n (ξ-jsubᵖ s))) (era-liftTm x2 (λ s → n (ξ-jsubᵉ s)))
+era-liftTm C.unit n = refl
+era-liftTm C.nzero n = refl
+era-liftTm (C.nsuc x0) n = cong1 (λ a0 → C.nsuc a0) (era-liftTm x0 (λ s → n (ξ-nsuc s)))
+era-liftTm (C.natrec x0 x1 x2) n = cong3 (λ a0 a1 a2 → C.natrec a0 a1 a2) (era-liftTm x0 (λ s → n (ξ-natrecᶻ s))) (era-liftTm x1 (λ s → n (ξ-natrecˢ s))) (era-liftTm x2 (λ s → n (ξ-natrecⁿ s)))
+era-liftTm C.⌜Nat⌝ n = refl
+era-liftTm C.⌜Unit⌝ n = refl
+era-liftTm (C.⌜IMu⌝ x0 x1 x2) n = cong3 (λ a0 a1 a2 → C.⌜IMu⌝ a0 a1 a2) (era-liftTm x0 (λ s → n (ξ-⌜IMu⌝ᴵ s))) (era-liftTm x1 (λ s → n (ξ-⌜IMu⌝ᴰ s))) (era-liftTm x2 (λ s → n (ξ-⌜IMu⌝ⁱ s)))
+era-liftTm (C.⌜Fin⌝ x0) n = cong1 (λ a0 → C.⌜Fin⌝ a0) (era-liftTm x0 (λ s → n (ξ-⌜Fin⌝ s)))
+era-liftTm (C.con x0) n = cong1 (λ a0 → C.con a0) (era-liftTm x0 (λ s → n (ξ-con s)))
+era-liftTm (C.ielim x0 x1 x2 x3) n = cong4 (λ a0 a1 a2 a3 → C.ielim a0 a1 a2 a3) (era-liftTm x0 (λ s → n (ξ-ielimᴰ s))) (era-liftTm x1 (λ s → n (ξ-ielimⁱ s))) (era-liftTm x2 (λ s → n (ξ-ielimᵉ s))) (era-liftTm x3 (λ s → n (ξ-ielimᵗ s)))
+era-liftTm C.dι n = refl
+era-liftTm (C.dσ x0 x1) n = cong2 (λ a0 a1 → C.dσ a0 a1) (era-liftTm x0 (λ s → n (ξ-dσˢ s))) (era-liftTm x1 (λ s → n (ξ-dσᶠ s)))
+era-liftTm (C.dρ x0 x1) n = cong2 (λ a0 a1 → C.dρ a0 a1) (era-liftTm x0 (λ s → n (ξ-dρʲ s))) (era-liftTm x1 (λ s → n (ξ-dρᶜ s)))
+era-liftTm (C.dpay x0 x1 x2) n = cong3 (λ a0 a1 a2 → C.dpay a0 a1 a2) (era-liftTm x0 (λ s → n (ξ-dpayᴵ s))) (era-liftTm x1 (λ s → n (ξ-dpayᴰ s))) (era-liftTm x2 (λ s → n (ξ-dpayᶜ s)))
+era-liftTm (C.dih x0 x1 x2 x3) n = cong4 (λ a0 a1 a2 a3 → C.dih a0 a1 a2 a3) (era-liftTm x0 (λ s → n (ξ-dihᴰ s))) (era-liftTm x1 (λ s → n (ξ-dihᵉ s))) (era-liftTm x2 (λ s → n (ξ-dihᶜ s))) (era-liftTm x3 (λ s → n (ξ-dihᵖ s)))
+era-liftTm C.fzero n = refl
+era-liftTm (C.fsuc x0) n = cong1 (λ a0 → C.fsuc a0) (era-liftTm x0 (λ s → n (ξ-fsuc s)))
+era-liftTm (C.fcase x0 x1 x2) n = cong3 (λ a0 a1 a2 → C.fcase a0 a1 a2) (era-liftTm x0 (λ s → n (ξ-fcaseᵗ s))) (era-liftTm x1 (λ s → n (ξ-fcaseᵃ s))) (era-liftTm x2 (λ s → n (ξ-fcaseᵇ s)))
+era-liftTm (C.fcase0 x0) n = cong1 (λ a0 → C.fcase0 a0) (era-liftTm x0 (λ s → n (ξ-fcase0 s)))
+era-liftTm (C.ref d) n = refl
+era-liftTm (C.psplit x0 x1) n = cong2 (λ a0 a1 → C.psplit a0 a1) (era-liftTm x0 (λ s → n (ξ-psplitᵇ s))) (era-liftTm x1 (λ s → n (ξ-psplitᵍ s)))
 
 ------------------------------------------------------------------------
 -- 1. Erased-side tools.
@@ -260,7 +262,7 @@ Inf Γ t = Σ (ATy ⌊ Γ ⌋ᴬ) (λ A → Γ ⊢ᴬ t ∷ A)
 
 -- the step substitution of `natrec` is well-typed (the kernel never needed
 -- this lemma: `⊢natrec` takes its step's type as given)
-nrs⊢ : {Δ : Ctx} {M : RTy (⌊ Δ ⌋ ∙)} → Sub⊢ (Δ ▹ Nat) ((Δ ▹ Nat) ▹ M) nrs
+nrs⊢ : {Δ : Ctx} {M : RTy (⌊ Δ ⌋ ∙)} → Sub⊢ (Δ ▹ C.Nat) ((Δ ▹ C.Nat) ▹ M) nrs
 nrs⊢ here = ⊢nsuc (⊢var (there here))
 nrs⊢ {M = M} (there {A = A₀} v) = ⊢-cast (sym eq) (⊢var (there (there v)))
   where
@@ -348,43 +350,43 @@ fromInf wΓ (no ¬inf)     B dB = no (λ d → ¬inf (B , d))
 ------------------------------------------------------------------------
 
 private
-  cong₂Π : {Δ : Cx} {F F' : RTy Δ} {G G' : RTy (Δ ∙)} → F ≡ F' → G ≡ G' → Π F G ≡ Π F' G'
+  cong₂Π : {Δ : Cx} {F F' : RTy Δ} {G G' : RTy (Δ ∙)} → F ≡ F' → G ≡ G' → C.Π F G ≡ C.Π F' G'
   cong₂Π refl refl = refl
 
-  cong₂Σ : {Δ : Cx} {F F' : RTy Δ} {G G' : RTy (Δ ∙)} → F ≡ F' → G ≡ G' → Σ' F G ≡ Σ' F' G'
+  cong₂Σ : {Δ : Cx} {F F' : RTy Δ} {G G' : RTy (Δ ∙)} → F ≡ F' → G ≡ G' → C.Σ' F G ≡ C.Σ' F' G'
   cong₂Σ refl refl = refl
 
 -- is a type literally a `Π` / a `Σ'`?  (one clause per former: a
 -- catch-all clause could not refute)
-isΠ? : {Δ : Cx} (N : RTy Δ) → Dec (Σ (RTy Δ) (λ F → Σ (RTy (Δ ∙)) (λ G → N ≡ Π F G)))
-isΠ? base          = no (λ { (_ , (_ , ())) })
-isΠ? U             = no (λ { (_ , (_ , ())) })
-isΠ? (Π F G)       = yes (F , (G , refl))
-isΠ? (Σ' F G)      = no (λ { (_ , (_ , ())) })
-isΠ? (El c)        = no (λ { (_ , (_ , ())) })
-isΠ? (Hom A t u)   = no (λ { (_ , (_ , ())) })
-isΠ? Unit          = no (λ { (_ , (_ , ())) })
-isΠ? Nat           = no (λ { (_ , (_ , ())) })
-isΠ? (Id A t u)    = no (λ { (_ , (_ , ())) })
-isΠ? (IMu I D i)   = no (λ { (_ , (_ , ())) })
-isΠ? (Desc I)      = no (λ { (_ , (_ , ())) })
-isΠ? (DIh D M C p) = no (λ { (_ , (_ , ())) })
-isΠ? (Fin n)       = no (λ { (_ , (_ , ())) })
+isΠ? : {Δ : Cx} (N : RTy Δ) → Dec (Σ (RTy Δ) (λ F → Σ (RTy (Δ ∙)) (λ G → N ≡ C.Π F G)))
+isΠ? C.base          = no (λ { (_ , (_ , ())) })
+isΠ? C.U             = no (λ { (_ , (_ , ())) })
+isΠ? (C.Π F G)       = yes (F , (G , refl))
+isΠ? (C.Σ' F G)      = no (λ { (_ , (_ , ())) })
+isΠ? (C.El c)        = no (λ { (_ , (_ , ())) })
+isΠ? (C.Hom A t u)   = no (λ { (_ , (_ , ())) })
+isΠ? C.Unit          = no (λ { (_ , (_ , ())) })
+isΠ? C.Nat           = no (λ { (_ , (_ , ())) })
+isΠ? (C.Id A t u)    = no (λ { (_ , (_ , ())) })
+isΠ? (C.IMu I D i)   = no (λ { (_ , (_ , ())) })
+isΠ? (C.Desc I)      = no (λ { (_ , (_ , ())) })
+isΠ? (C.DIh D M C p) = no (λ { (_ , (_ , ())) })
+isΠ? (C.Fin n)       = no (λ { (_ , (_ , ())) })
 
-isΣ? : {Δ : Cx} (N : RTy Δ) → Dec (Σ (RTy Δ) (λ F → Σ (RTy (Δ ∙)) (λ G → N ≡ Σ' F G)))
-isΣ? base          = no (λ { (_ , (_ , ())) })
-isΣ? U             = no (λ { (_ , (_ , ())) })
-isΣ? (Π F G)       = no (λ { (_ , (_ , ())) })
-isΣ? (Σ' F G)      = yes (F , (G , refl))
-isΣ? (El c)        = no (λ { (_ , (_ , ())) })
-isΣ? (Hom A t u)   = no (λ { (_ , (_ , ())) })
-isΣ? Unit          = no (λ { (_ , (_ , ())) })
-isΣ? Nat           = no (λ { (_ , (_ , ())) })
-isΣ? (Id A t u)    = no (λ { (_ , (_ , ())) })
-isΣ? (IMu I D i)   = no (λ { (_ , (_ , ())) })
-isΣ? (Desc I)      = no (λ { (_ , (_ , ())) })
-isΣ? (DIh D M C p) = no (λ { (_ , (_ , ())) })
-isΣ? (Fin n)       = no (λ { (_ , (_ , ())) })
+isΣ? : {Δ : Cx} (N : RTy Δ) → Dec (Σ (RTy Δ) (λ F → Σ (RTy (Δ ∙)) (λ G → N ≡ C.Σ' F G)))
+isΣ? C.base          = no (λ { (_ , (_ , ())) })
+isΣ? C.U             = no (λ { (_ , (_ , ())) })
+isΣ? (C.Π F G)       = no (λ { (_ , (_ , ())) })
+isΣ? (C.Σ' F G)      = yes (F , (G , refl))
+isΣ? (C.El c)        = no (λ { (_ , (_ , ())) })
+isΣ? (C.Hom A t u)   = no (λ { (_ , (_ , ())) })
+isΣ? C.Unit          = no (λ { (_ , (_ , ())) })
+isΣ? C.Nat           = no (λ { (_ , (_ , ())) })
+isΣ? (C.Id A t u)    = no (λ { (_ , (_ , ())) })
+isΣ? (C.IMu I D i)   = no (λ { (_ , (_ , ())) })
+isΣ? (C.Desc I)      = no (λ { (_ , (_ , ())) })
+isΣ? (C.DIh D M C p) = no (λ { (_ , (_ , ())) })
+isΣ? (C.Fin n)       = no (λ { (_ , (_ , ())) })
 
 record ΠV (Γ : ACtx) (t : ATm ⌊ Γ ⌋ᴬ) : Set where
   constructor πv
@@ -428,7 +430,7 @@ viewΣslow {T = T} wΓ d with nfOf wΓ d
 -- ★ S7a: the views, FIRST by evaluation.  The domain's well-formedness is
 --   a function call (`domΠ`), so it is computed only if something asks.
 domΠ : {t : ATm ⌊ Γ ⌋ᴬ} {T : ATy ⌊ Γ ⌋ᴬ} {F : RTy ⌊ Γ ⌋ᴬ} {G : RTy (⌊ Γ ⌋ᴬ ∙)} →
-       ⊢ctx ⌈ Γ ⌉ᶜ → Γ ⊢ᴬ t ∷ T → ⌈ T ⌉ᵀ ⟶ᵀ* Π F G → Nfᵀ (Π F G) → ⌈ Γ ⌉ᶜ ⊢ty F
+       ⊢ctx ⌈ Γ ⌉ᶜ → Γ ⊢ᴬ t ∷ T → ⌈ T ⌉ᵀ ⟶ᵀ* C.Π F G → Nfᵀ (C.Π F G) → ⌈ Γ ⌉ᶜ ⊢ty F
 domΠ wΓ d r n with validity wΓ (erase d)
 ... | wf A' c dA' with church-rosserᵀ (ctrnᵀ (csymᵀ c) (red→≅ᵀ r))
 ...   | C , (r₁ , r₂) with nf-stuckᵀ n r₂
@@ -460,7 +462,7 @@ viewΣeval {T = T} wΓ d with evalᵀ evalFuel ⌈ T ⌉ᵀ
 --   readback, certified normal (`Algorithm/ConvNbE`), convertible with the
 --   type; the evaluation route only if the readback is not certified
 domΠ≅ : {t : ATm ⌊ Γ ⌋ᴬ} {T : ATy ⌊ Γ ⌋ᴬ} {F : RTy ⌊ Γ ⌋ᴬ} {G : RTy (⌊ Γ ⌋ᴬ ∙)} →
-        ⊢ctx ⌈ Γ ⌉ᶜ → Γ ⊢ᴬ t ∷ T → ⌈ T ⌉ᵀ ≅ᵀ Π F G → Nfᵀ (Π F G) → ⌈ Γ ⌉ᶜ ⊢ty F
+        ⊢ctx ⌈ Γ ⌉ᶜ → Γ ⊢ᴬ t ∷ T → ⌈ T ⌉ᵀ ≅ᵀ C.Π F G → Nfᵀ (C.Π F G) → ⌈ Γ ⌉ᶜ ⊢ty F
 domΠ≅ wΓ d cv n with validity wΓ (erase d)
 ... | wf A' c dA' with church-rosserᵀ (ctrnᵀ (csymᵀ c) cv)
 ...   | C , (r₁ , r₂) with nf-stuckᵀ n r₂
@@ -497,11 +499,11 @@ viewΣ {T = T} wΓ d = viewΣby wΓ d (nbeNf ⌈ T ⌉ᵀ)
 
 -- the motive's context, erased, is well-formed
 motCtx-wf : {Γ : ACtx} {I D : ATm ⌊ Γ ⌋ᴬ} → ⊢ctx ⌈ Γ ⌉ᶜ →
-            ⌈ Γ ⌉ᶜ ⊢ ⌈ I ⌉ ∷ U → ⌈ Γ ⌉ᶜ ⊢ ⌈ D ⌉ ∷ DescF ⌈ I ⌉ → ⊢ctx ⌈ motCtxᴬ Γ I D ⌉ᶜ
+            ⌈ Γ ⌉ᶜ ⊢ ⌈ I ⌉ ∷ C.U → ⌈ Γ ⌉ᶜ ⊢ ⌈ D ⌉ ∷ DescF ⌈ I ⌉ → ⊢ctx ⌈ motCtxᴬ Γ I D ⌉ᶜ
 motCtx-wf {Γ} {I} {D} wΓ dI dD =
   c-▹ (c-▹ wΓ (ty-El dI))
-      (subst (λ a → (⌈ Γ ⌉ᶜ ▹ El ⌈ I ⌉) ⊢ty IMu a ⌈ renTmᴬ vs D ⌉ (var vz)) (sym (era-renTm vs I))
-        (subst (λ b → (⌈ Γ ⌉ᶜ ▹ El ⌈ I ⌉) ⊢ty IMu (renTm vs ⌈ I ⌉) b (var vz)) (sym (era-renTm vs D))
+      (subst (λ a → (⌈ Γ ⌉ᶜ ▹ C.El ⌈ I ⌉) ⊢ty C.IMu a ⌈ renTmᴬ vs D ⌉ (C.var vz)) (sym (era-renTm vs I))
+        (subst (λ b → (⌈ Γ ⌉ᶜ ▹ C.El ⌈ I ⌉) ⊢ty C.IMu (renTm vs ⌈ I ⌉) b (C.var vz)) (sym (era-renTm vs D))
           (ty-IMu (⊢wk dI) (⊢wkD dD) (⊢var here))))
 
 -- ★ D493: an annotated description's derivation, erased, at `DescF`
@@ -509,14 +511,14 @@ eD : {Γ : ACtx} (I : ATm ⌊ Γ ⌋ᴬ) {D : ATm ⌊ Γ ⌋ᴬ} → Γ ⊢ᴬ D
 eD I dD = ⊢-cast (era-DescF I) (erase dD)
 
 -- ★ D493: the type of a description is well-formed
-wfDF : {Γ : ACtx} {I : ATm ⌊ Γ ⌋ᴬ} → ⌈ Γ ⌉ᶜ ⊢ ⌈ I ⌉ ∷ U → ⌈ Γ ⌉ᶜ ⊢ty ⌈ DescFᴬ I ⌉ᵀ
+wfDF : {Γ : ACtx} {I : ATm ⌊ Γ ⌋ᴬ} → ⌈ Γ ⌉ᶜ ⊢ ⌈ I ⌉ ∷ C.U → ⌈ Γ ⌉ᶜ ⊢ty ⌈ DescFᴬ I ⌉ᵀ
 wfDF {Γ} {I} dI =
   subst (λ Z → ⌈ Γ ⌉ᶜ ⊢ty Z) (sym (era-DescF I)) (ty-Π (ty-El dI) (ty-Desc (⊢wk dI)))
 
 -- …and so is its fibre over a valid index
-wfFib : {Γ : ACtx} {I D i : ATm ⌊ Γ ⌋ᴬ} → ⌈ Γ ⌉ᶜ ⊢ ⌈ I ⌉ ∷ U → ⌈ Γ ⌉ᶜ ⊢ ⌈ D ⌉ ∷ DescF ⌈ I ⌉ →
-        ⌈ Γ ⌉ᶜ ⊢ ⌈ i ⌉ ∷ El ⌈ I ⌉ → ⌈ Γ ⌉ᶜ ⊢ app ⌈ D ⌉ ⌈ i ⌉ ∷ Desc ⌈ I ⌉
-wfFib {I = I} {i = i} dI dD di = ⊢-cast (cong Desc (wk-cancel-tm ⌈ i ⌉ ⌈ I ⌉)) (⊢app dD di)
+wfFib : {Γ : ACtx} {I D i : ATm ⌊ Γ ⌋ᴬ} → ⌈ Γ ⌉ᶜ ⊢ ⌈ I ⌉ ∷ C.U → ⌈ Γ ⌉ᶜ ⊢ ⌈ D ⌉ ∷ DescF ⌈ I ⌉ →
+        ⌈ Γ ⌉ᶜ ⊢ ⌈ i ⌉ ∷ C.El ⌈ I ⌉ → ⌈ Γ ⌉ᶜ ⊢ C.app ⌈ D ⌉ ⌈ i ⌉ ∷ C.Desc ⌈ I ⌉
+wfFib {I = I} {i = i} dI dD di = ⊢-cast (cong C.Desc (wk-cancel-tm ⌈ i ⌉ ⌈ I ⌉)) (⊢app dD di)
 
 ------------------------------------------------------------------------
 -- 3. ★ The checker — a DECISION procedure (PLAN-BIDI §3a C4).
@@ -543,13 +545,13 @@ decTrue true  = yes refl
 decTrue false = no (λ ())
 
 noNatC? : {Δ : Cx} (c : RTm Δ) → Maybe (NoNatC c)
-noNatC? ⌜base⌝        = just nnc-base
-noNatC? ⌜Unit⌝        = just nnc-Unit
-noNatC? (⌜Fin⌝ n)     = just nnc-Fin
-noNatC? (⌜Σ⌝ c d)     = just nnc-Σ
-noNatC? (⌜Id⌝ c a b)  = just nnc-Id
-noNatC? (⌜Π⌝ c d)     = noNatC? d >>= λ nd → just (nnc-Π nd)
-noNatC? (⌜Hom⌝ c a b) = noNatC? c >>= λ nc → just (nnc-Hom nc)
+noNatC? C.⌜base⌝        = just nnc-base
+noNatC? C.⌜Unit⌝        = just nnc-Unit
+noNatC? (C.⌜Fin⌝ n)     = just nnc-Fin
+noNatC? (C.⌜Σ⌝ c d)     = just nnc-Σ
+noNatC? (C.⌜Id⌝ c a b)  = just nnc-Id
+noNatC? (C.⌜Π⌝ c d)     = noNatC? d >>= λ nd → just (nnc-Π nd)
+noNatC? (C.⌜Hom⌝ c a b) = noNatC? c >>= λ nc → just (nnc-Hom nc)
 noNatC? _             = nothing
 
 -- …and it misses nothing: by induction on the witness
@@ -564,8 +566,8 @@ noNatC?-complete nnc-Unit ()
 noNatC?-complete nnc-Fin  ()
 noNatC?-complete nnc-Σ    ()
 noNatC?-complete nnc-Id   ()
-noNatC?-complete {c = ⌜Π⌝ _ d}   (nnc-Π nd)  e = noNatC?-complete nd (bind-just-nothing (noNatC? d) e)
-noNatC?-complete {c = ⌜Hom⌝ c _ _} (nnc-Hom nc) e = noNatC?-complete nc (bind-just-nothing (noNatC? c) e)
+noNatC?-complete {c = C.⌜Π⌝ _ d}   (nnc-Π nd)  e = noNatC?-complete nd (bind-just-nothing (noNatC? d) e)
+noNatC?-complete {c = C.⌜Hom⌝ c _ _} (nnc-Hom nc) e = noNatC?-complete nc (bind-just-nothing (noNatC? c) e)
 
 decNoNatC : {Δ : Cx} (c : RTm Δ) → Dec (NoNatC c)
 decNoNatC c = go (noNatC? c) refl
@@ -744,7 +746,7 @@ inferᴬ Γ wΓ (tr A t u d p e) with trShape A d
   bind (checkᴬ Γ wΓ p (Hom A t u) (ty-Hom (erase-ty dA) (erase dt) (erase du)))
        (λ { (_ , w) → let (_ , (_ , (_ , (_ , (_ , (_ , (_ , (_ , (_ , (dp , _)))))))))) = genᴬ-tr w in dp }) λ dp →
   bind (checkᴬ Γ wΓ e (El (subTmᴬ (singleᴬ t) (⌜Hom⌝ c a (var vz))))
-         (subst (λ Z → ⌈ Γ ⌉ᶜ ⊢ty El Z) (sym (sub1ᵗ t (⌜Hom⌝ c a (var vz))))
+         (subst (λ Z → ⌈ Γ ⌉ᶜ ⊢ty C.El Z) (sym (sub1ᵗ t (⌜Hom⌝ c a (var vz))))
                 (ty-El (⊢[] (⊢⌜Hom⌝ (erase dc) (erase da) (erase dv)) (erase dt)))))
        (λ { (_ , w) → let (_ , (_ , (_ , (_ , (_ , (_ , (_ , (_ , (_ , (_ , (de , _))))))))))) = genᴬ-tr w in de }) λ de →
   yes (El (subTmᴬ (singleᴬ u) (⌜Hom⌝ c a (var vz))) , ⊢ᴬtr dA dc da dv nn o₁ o₂ dt du dp de)
@@ -830,7 +832,7 @@ inferᴬ Γ wΓ (ap cA t u cB b p) =
        (λ { (_ , w) → let (_ , (fl , (_ , (_ , (_ , (_ , (_ , _))))))) = genᴬ-ap w in fl }) λ fl →
   bind (checkᴬ Γ wΓ cB U ty-U)
        (λ { (_ , w) → let (_ , (_ , (dcB , (_ , (_ , (_ , (_ , _))))))) = genᴬ-ap w in dcB }) λ dcB →
-  bind (checkᴬ (Γ ▹ᴬ El cA) (c-▹ wΓ (ty-El (erase dcA))) b (El (renTmᴬ vs cB)) (subst (λ Z → ⌈ Γ ▹ᴬ El cA ⌉ᶜ ⊢ty El Z) (sym (era-renTm vs cB)) (ty-El (⊢wk (erase dcB)))))
+  bind (checkᴬ (Γ ▹ᴬ El cA) (c-▹ wΓ (ty-El (erase dcA))) b (El (renTmᴬ vs cB)) (subst (λ Z → ⌈ Γ ▹ᴬ El cA ⌉ᶜ ⊢ty C.El Z) (sym (era-renTm vs cB)) (ty-El (⊢wk (erase dcB)))))
        (λ { (_ , w) → let (_ , (_ , (_ , (db , (_ , (_ , (_ , _))))))) = genᴬ-ap w in db }) λ db →
   bind (checkᴬ Γ wΓ t (El cA) (ty-El (erase dcA)))
        (λ { (_ , w) → let (_ , (_ , (_ , (_ , (dt , (_ , (_ , _))))))) = genᴬ-ap w in dt }) λ dt →
@@ -850,7 +852,7 @@ inferᴬ Γ wΓ (jsub A t u d p e) =
        (λ { (_ , w) → let (_ , (_ , (_ , (_ , (dp , (_ , _)))))) = genᴬ-jsub w in dp }) λ dp →
   bind (checkᴬ (Γ ▹ᴬ A) (c-▹ wΓ (erase-ty dA)) d U ty-U)
        (λ { (_ , w) → let (_ , (dd , (_ , (_ , (_ , (_ , _)))))) = genᴬ-jsub w in dd }) λ dd →
-  bind (checkᴬ Γ wΓ e (El (subTmᴬ (singleᴬ t) d)) (subst (λ Z → ⌈ Γ ⌉ᶜ ⊢ty El Z) (sym (sub1ᵗ t d)) (ty-El (⊢[] (erase dd) (erase dt)))))
+  bind (checkᴬ Γ wΓ e (El (subTmᴬ (singleᴬ t) d)) (subst (λ Z → ⌈ Γ ⌉ᶜ ⊢ty C.El Z) (sym (sub1ᵗ t d)) (ty-El (⊢[] (erase dd) (erase dt)))))
        (λ { (_ , w) → let (_ , (_ , (_ , (_ , (_ , (de , _)))))) = genᴬ-jsub w in de }) λ de →
   yes (El (subTmᴬ (singleᴬ u) d) , ⊢ᴬjsub dA dd dt du dp de)
 inferᴬ Γ wΓ unit  =
@@ -896,7 +898,7 @@ inferᴬ Γ wΓ (dσ I S f) =
        (λ { (_ , w) → let (dI , (_ , (_ , _))) = genᴬ-dσ w in dI }) λ dI →
   bind (checkᴬ Γ wΓ S U ty-U)
        (λ { (_ , w) → let (_ , (dS , (_ , _))) = genᴬ-dσ w in dS }) λ dS →
-  bind (checkᴬ Γ wΓ f (Π (El S) (Desc (renTmᴬ vs I))) (ty-Π (ty-El (erase dS)) (subst (λ Z → (⌈ Γ ⌉ᶜ ▹ El ⌈ S ⌉) ⊢ty Desc Z) (sym (era-renTm vs I)) (ty-Desc (⊢wk (erase dI))))))
+  bind (checkᴬ Γ wΓ f (Π (El S) (Desc (renTmᴬ vs I))) (ty-Π (ty-El (erase dS)) (subst (λ Z → (⌈ Γ ⌉ᶜ ▹ C.El ⌈ S ⌉) ⊢ty C.Desc Z) (sym (era-renTm vs I)) (ty-Desc (⊢wk (erase dI))))))
        (λ { (_ , w) → let (_ , (_ , (df , _))) = genᴬ-dσ w in df }) λ df →
   yes (Desc I , ⊢ᴬdσ dI dS df)
 inferᴬ Γ wΓ (dρ I j C) =
