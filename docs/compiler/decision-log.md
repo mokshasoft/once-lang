@@ -25968,3 +25968,22 @@ split was a site: now `sitesFn` keeps only its arms' sites there. (2) A closure 
 whenever it was many-use; it copies only on a LENT call (D498), so it is a site only at a lent-called type, as
 `CF` requires. The corpus scan had skipped the benchmarks (their `BENCH_N` placeholder does not parse); with it
 filled in, the whole corpus checks with no site. `LinearSpec` tests the step loop.
+
+**D504 (decided by the user, 2026-11-27) — the fold over a list as a LOOP.** A `cata` over a list holds a frame
+per element (`travᴵ` calls the fold block per child): summing 200000 elements exhausts the 8 MiB region. The
+user chose the loop (over keeping the recursion, and over a copy loop first); "free when the value goes out of
+scope" stays the rule — what changes is how long a cell is in scope.
+*The loop.* DOWN: each node is opened (`lOutμ`, its cell freed) and what the algebra will need of it (the layer
+minus the recursive position) is pushed on a REVERSED CHAIN, a cell each (`lIn`); BACK: each chain cell is
+opened (freed) and the algebra runs on it and the result so far. Constant stack; the cells in use are the
+list's (with the slab allocator the chain cell takes the slot the node just left). Literally in place — the
+node's own cell rewired — needs cell reuse in the image, plan 0.157 S3 (after the borrow rule, D7): then the
+chain becomes the reversal itself.
+*The semantics.* `Run` already has two rules for a fold, the compiler picking (`r-cata`, `r-cata-reuse`, A8); the
+loop is a third, `r-cata-loop`, for the layers it covers: its events are the loop's (per element a free and an
+alloc down, a free and the algebra's events back). Every module over `Run`'s rules takes a case (15:
+`Events.sound`, `Total`, the budget and spend accounting, `ImageSimRun`, …), as `r-cata-reuse` did; `Total`
+builds the loop's rule where the compiler emits the loop, so the image and the run agree.
+*Scope, first stage:* list-shaped layers `G ⊕ (C ⊗ Id)` and `G ⊕ Id` (`G`, `C` without recursive position:
+lists, options chains, counters); other layers keep the recursion. Measured with `list-build-sum` (it folds a
+list at three sizes) and a fold of 200000 elements.
