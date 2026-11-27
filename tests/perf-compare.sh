@@ -4,7 +4,7 @@
 # (plan 0.146 §5 item 8 b, D476). x86_64, native; needs `perf` (user-mode instructions retired).
 #
 #   tests/perf-compare.sh measure OUTDIR [ONCE]   # OUTDIR/perf.tsv, OUTDIR/bench.tsv
-#   tests/perf-compare.sh compare A_DIR B_DIR     # totals, ratios, the benchmarks' growth
+#   tests/perf-compare.sh compare A_DIR B_DIR     # totals, by kind (feature tests apart), outliers, the benchmarks' growth
 #   tests/perf-compare.sh master OUTDIR           # measure origin/master (a cached worktree) and this tree
 # PERF_BRANCH_FLAGS: extra `once build` flags for THIS tree's compiler (e.g. `--unchecked`, D489;
 # master's compiler gets none).
@@ -103,6 +103,22 @@ for i, name in enumerate(h[1:]):
     print(f"  {name:11s} {sa:>12d} {sb:>12d} {r}")
 rs = sorted(int(B[k][0]) / int(A[k][0]) for k in common if int(A[k][0]) > 0)
 if rs: print(f"run ratio per program: min {rs[0]:.2f}x median {statistics.median(rs):.2f}x max {rs[-1]:.2f}x")
+# the corpus by kind: compiler/test holds FEATURE tests (one-shot, startup-dominated: a guard against
+# pathological regressions, not evidence for a cost decision); examples and tests are closer to workloads;
+# the benchmarks (below) are measured at sizes
+groups = [("feature (compiler/test)", "compiler_test_"), ("examples", "examples_"), ("tests", "tests_")]
+print("== by kind (run, .text; B/A)")
+for label, pre in groups:
+    ks = [k for k in common if k.startswith(pre)]
+    if not ks: continue
+    ra = sum(int(A[k][0]) for k in ks); rb = sum(int(B[k][0]) for k in ks)
+    ta = sum(int(A[k][1]) for k in ks); tb = sum(int(B[k][1]) for k in ks)
+    print(f"  {label:24s} {len(ks):4d} programs   run {rb/ra if ra else 0:5.2f}x   .text {tb/ta if ta else 0:5.2f}x")
+out = [(int(B[k][0]) / int(A[k][0]), k) for k in common if int(A[k][0]) > 0]
+out = sorted(x for x in out if x[0] > 1.10 or x[0] < 0.90)
+if out:
+    print("== programs outside ±10% (run, B/A)")
+    for r, k in out: print(f"  {r:5.2f}x  {k}")
 PY
   echo "== benchmarks (run at each N; status 0 = finished)"
   join -t$'\t' <(tail -n+2 "$a/bench.tsv" | awk -F'\t' '{print $1"@"$2"\t"$3"\t"$4}' | sort) \
