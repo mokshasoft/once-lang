@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ============================================================================
-# Compare two versions of the POC module by module: COLD sweep times.
+# Compare two versions of the POC module by module: wall time AND memory.
 #
 # Usage (from anywhere in the repo):
 #   POC/DirectedHoTT/tools/compare-branches.sh [BASE] [CAND] [OUTDIR]
@@ -8,144 +8,118 @@
 #     CAND    default spike-generic-syntax
 #     OUTDIR  default ~/.cache/once-lang5-compare/<BASE>-vs-<CAND>
 #
-# Meant to run OFFLINE, on a quiet machine (overnight): two cold sweeps of
-# about an hour each, ONE AFTER THE OTHER (two agda builds at once OOM-kill
-# each other, see LESSONS / the memory notes).
+# Meant to run OFFLINE, on a quiet machine (overnight): every module of each
+# ref is checked cold, one per Agda process, ONE REF AFTER THE OTHER.
 #
-# For each ref:
-#   * a git worktree at OUTDIR/wt/<ref>, detached at the ref, with an EMPTY
-#     `POC/_build`, so the sweep is cold (its stamps live in `_build`);
-#   * the ref's OWN `tools/sweep.sh` (the two module sets differ), run under
-#     this checkout's `tools/mem-guard.sh`: it yields to other agda jobs and
-#     restarts by itself, and the sweep's content-keyed stamps make a
-#     restart resume instead of start over;
-#   * its own TMPDIR, because the sweep writes per-module logs to
-#     `${TMPDIR:-/tmp}/dhott-sweep` and the two runs must not share it.
+# Each side is `tools/agda-profile-modules.py --ref <ref>` (this checkout's
+# copy, so both refs are measured by the same profiler): the ref's POC tree is
+# staged by `git archive` with an empty `_build`, every module is checked in
+# its own process under the cgroup cap, and wall time, peak RSS, max
+# residency, allocation and the RTS rung that worked are recorded. It WAITS
+# while another session's agda runs, so a busy machine delays the run instead
+# of distorting it, and a rerun RESUMES (rows keyed by content).
 #
-# Then the per-module times are joined into OUTDIR/compare.md:
-#   * every module in both, sorted by the change, flagged where the change is
-#     beyond the noise floor (default ±12%, and at least 2 s: one sample each,
-#     and a 3 s module moves by a second for nothing);
+# Then OUTDIR/compare.md joins the two `profile.tsv`:
+#   * totals (wall, and the sum of peaks as a crude memory total);
+#   * modules beyond the noise floor, for wall time and for peak RSS
+#     (defaults ±12%, and at least 2 s / 100 MB: one sample each);
+#   * modules that needed the compacting collector on one side only;
 #   * modules only in one version (the switch may delete or add modules);
-#   * failures, kills and refusals (a refused sweep EXITS 0: the ALL GREEN
-#     line is what counts, not the exit code);
-#   * totals.
+#   * failures, OOMs and blocked modules;
+#   * every module, by wall-time change.
 #
 # Options (environment):
-#   NOISE=0.12  MINDELTA=2    the noise floor
-#   SKIP_GEN=1                pass SWEEP_SKIP_GEN_CHECK=1 to both sweeps
-#                             (the spike branch's generators may lag)
-#   ONLY=cand|base            run one side only (e.g. to redo a failed run);
-#                             the other side's earlier result is reused
-#   ONLY=report               run no sweep; rebuild compare.md from the logs
+#   NOISE=0.12  MINS=2  MINMB=100   the noise floor
+#   ONLY=base|cand                  measure one side only (the other is reused)
+#   ONLY=report                     measure nothing; rebuild compare.md
+#   PROFILE_MEM_MAX, PROFILE_SWAP_MAX, PROFILE_RTS   passed to the profiler
 #
-# Nothing is committed or pushed; the worktrees are left for inspection
-# (`git worktree remove OUTDIR/wt/<ref>` to delete them).
+# Nothing in your checkout is touched; the staged trees stay in OUTDIR.
 # ============================================================================
 set -uo pipefail
 
 BASE="${1:-dt-dhott-poc}"
 CAND="${2:-spike-generic-syntax}"
-REPO="$(git -C "$(dirname "$0")" rev-parse --show-toplevel)"
-OUT="${3:-$HOME/.cache/once-lang5-compare/${BASE//\//_}-vs-${CAND//\//_}}"
-GUARD="$REPO/POC/DirectedHoTT/tools/mem-guard.sh"
-NOISE="${NOISE:-0.12}"; MINDELTA="${MINDELTA:-2}"
-mkdir -p "$OUT/wt"
+HERE="$(cd "$(dirname "$0")" && pwd)"
+PROF="$HERE/agda-profile-modules.py"
+lab() { echo "${1//[^A-Za-z0-9._-]/_}"; }
+OUT="${3:-$HOME/.cache/once-lang5-compare/$(lab "$BASE")-vs-$(lab "$CAND")}"
+mkdir -p "$OUT"
 
-side() {  # side REF -> runs a cold sweep of REF, writes OUT/<name>.{sweep.log,times.tsv}
-  local ref="$1" name="${1//\//_}" wt="$OUT/wt/${1//\//_}"
-  git -C "$REPO" rev-parse --verify --quiet "$ref^{commit}" >/dev/null \
-    || { echo "== unknown ref: $ref" >&2; return 2; }
-  if [ -d "$wt" ]; then
-    git -C "$wt" checkout --quiet --detach "$ref" || return 2
-  else
-    git -C "$REPO" worktree add --quiet --detach "$wt" "$ref" || return 2
-  fi
-  rm -rf "$wt/POC/_build"                        # COLD: interfaces and stamps
-  mkdir -p "$OUT/$name.tmp"
-  echo "== $ref ($(git -C "$wt" rev-parse --short HEAD)): cold sweep, log $OUT/$name.sweep.log"
-  ( cd "$wt/POC" && TMPDIR="$OUT/$name.tmp" \
-      ${SKIP_GEN:+SWEEP_SKIP_GEN_CHECK=1} \
-      "$GUARD" "$OUT/$name.guard.log" -- ./DirectedHoTT/tools/sweep.sh ) \
-    > "$OUT/$name.sweep.log" 2>&1
-  echo "   sweep exit $?; $(grep -E '^== ' "$OUT/$name.sweep.log" | tail -1)"
-  # per-module lines: "[ n/N] Tag   ok  12s ..." / "ok (-A8m -c) 12s" / FAILED / KILLED / BLOCKED
-  python3 - "$OUT/$name.sweep.log" > "$OUT/$name.times.tsv" <<'PY'
-import re, sys
-pat = re.compile(r'\[\s*\d+/\d+\]\s+(\S+)\s+(.*)$')
-for line in open(sys.argv[1], errors='replace'):
-    m = pat.search(line)
-    if not m: continue
-    tag, rest = m.group(1), m.group(2)
-    t = re.search(r'\bok\b(?:\s*\([^)]*\))?\s+(\d+)s', rest)
-    if t:   print(f"{tag}\tok\t{t.group(1)}")
-    elif 'cached' in rest:  print(f"{tag}\tcached\t")
-    elif 'BLOCKED' in rest: print(f"{tag}\tblocked\t")
-    else:   print(f"{tag}\tfailed\t")
-PY
+side() {
+  local ref="$1" w="$OUT/$(lab "$1")"
+  echo "== measuring $ref -> $w/profile.tsv (log $w.log)"
+  "$PROF" --ref "$ref" --work "$w" > "$w.log" 2>&1
+  echo "   profiler exit $? ($(grep -c . "$w/profile.tsv" 2>/dev/null || echo 0) rows)"
 }
 
 case "${ONLY:-}" in
-  cand) side "$CAND" ;;
-  base) side "$BASE" ;;
+  base)   side "$BASE" ;;
+  cand)   side "$CAND" ;;
   report) ;;
-  *)    side "$BASE"; side "$CAND" ;;
+  *)      side "$BASE"; side "$CAND" ;;
 esac
 
-python3 - "$OUT" "${BASE//\//_}" "${CAND//\//_}" "$BASE" "$CAND" "$NOISE" "$MINDELTA" > "$OUT/compare.md" <<'PY'
+python3 - "$OUT/$(lab "$BASE")/profile.tsv" "$OUT/$(lab "$CAND")/profile.tsv" "$BASE" "$CAND" \
+         "${NOISE:-0.12}" "${MINS:-2}" "${MINMB:-100}" > "$OUT/compare.md" <<'PY'
 import sys, os
-out, bn, cn, B, C, noise, mind = sys.argv[1:8]; noise = float(noise); mind = int(mind)
-def load(n):
-    d = {}
-    p = os.path.join(out, n + '.times.tsv')
-    if os.path.exists(p):
-        for l in open(p):
-            tag, st, s = (l.rstrip('\n').split('\t') + ['', ''])[:3]
-            d[tag] = (st, int(s) if s else None)
-    return d
-b, c = load(bn), load(cn)
-def last(n):
-    p = os.path.join(out, n + '.sweep.log')
-    if not os.path.exists(p): return '(no log)'
-    ls = [l.strip() for l in open(p, errors='replace') if l.startswith('== ')]
-    return ls[-1] if ls else '(no verdict line: refused or interrupted?)'
-print(f"# Cold sweep, module by module: `{B}` vs `{C}`\n")
-print(f"- `{B}`: {last(bn)}\n- `{C}`: {last(cn)}")
-print(f"- noise floor: ±{noise:.0%} and at least {mind} s (one sample each)\n")
-both = [t for t in b if t in c and b[t][0] == 'ok' and c[t][0] == 'ok']
-rows = []
-for t in both:
-    x, y = b[t][1], c[t][1]
-    d = y - x
-    r = (y / x) if x else float('inf')
-    flag = ''
-    if abs(d) >= mind and x and abs(r - 1) > noise:
-        flag = 'SLOWER' if d > 0 else 'faster'
-    rows.append((d, t, x, y, r, flag))
-rows.sort(key=lambda z: -z[0])
-tb = sum(z[2] for z in rows); tc = sum(z[3] for z in rows)
-print(f"## Totals over the {len(rows)} modules in both\n")
+pb, pc, B, C, noise, mins, minmb = sys.argv[1:8]
+noise, mins, minmb = float(noise), float(mins), float(minmb)
+def load(p):
+    rows = {}
+    if not os.path.exists(p): return rows
+    L = open(p, encoding='utf-8').read().splitlines()
+    if not L: return rows
+    head = L[0].split('\t')
+    for l in L[1:]:
+        v = l.split('\t')
+        if len(v) == len(head): rows[v[0]] = dict(zip(head, v))
+    return rows
+def num(r, k):
+    try: return float(r.get(k) or 0)
+    except ValueError: return 0.0
+b, c = load(pb), load(pc)
+print(f"# Module by module: `{B}` vs `{C}`\n")
+print(f"- `{B}`: {len(b)} rows ({pb})\n- `{C}`: {len(c)} rows ({pc})")
+print(f"- noise floor: ±{noise:.0%}, and at least {mins:g} s / {minmb:g} MB (one sample each)\n")
+both = sorted(m for m in b if m in c and b[m]['status'] == 'ok' and c[m]['status'] == 'ok')
+def beyond(x, y, floor):
+    return abs(y - x) >= floor and x > 0 and abs(y / x - 1) > noise
+tw = (sum(num(b[m], 'wall_s') for m in both), sum(num(c[m], 'wall_s') for m in both))
+tr = (sum(num(b[m], 'maxrss_mb') for m in both), sum(num(c[m], 'maxrss_mb') for m in both))
+pk = (max([num(b[m], 'maxrss_mb') for m in both] or [0]), max([num(c[m], 'maxrss_mb') for m in both] or [0]))
+pct = lambda x, y: f"{(y / x - 1):+.1%}" if x else "n/a"
+print(f"## Totals over the {len(both)} modules measured in both\n")
 print(f"| | `{B}` | `{C}` | change |\n|---|---|---|---|")
-print(f"| seconds | {tb} | {tc} | {tc - tb:+d} ({(tc / tb - 1) if tb else 0:+.1%}) |\n")
-print("## Beyond the noise floor\n")
-sig = [z for z in rows if z[5]]
-if sig:
-    print(f"| module | `{B}` s | `{C}` s | change | ratio |\n|---|---|---|---|---|")
-    for d, t, x, y, r, f in sig:
-        print(f"| {t} | {x} | {y} | {d:+d} | {r:.2f}× {f} |")
-else:
-    print("(none)")
-print("\n## Only in one version\n")
-ob = sorted(t for t in b if t not in c); oc = sorted(t for t in c if t not in b)
-print(f"- only in `{B}` ({len(ob)}): " + (', '.join(ob) or '—'))
+print(f"| wall (s) | {tw[0]:.0f} | {tw[1]:.0f} | {tw[1]-tw[0]:+.0f} ({pct(*tw)}) |")
+print(f"| sum of peak RSS (MB) | {tr[0]:.0f} | {tr[1]:.0f} | {tr[1]-tr[0]:+.0f} ({pct(*tr)}) |")
+print(f"| largest peak RSS (MB) | {pk[0]:.0f} | {pk[1]:.0f} | {pk[1]-pk[0]:+.0f} |\n")
+for title, key, floor, unit in (("Wall time", 'wall_s', mins, 's'), ("Peak RSS", 'maxrss_mb', minmb, 'MB')):
+    rows = []
+    for m in both:
+        x, y = num(b[m], key), num(c[m], key)
+        if beyond(x, y, floor): rows.append((y - x, m, x, y))
+    rows.sort(key=lambda z: -z[0])
+    print(f"## {title} beyond the noise floor ({len(rows)})\n")
+    if not rows: print("(none)\n"); continue
+    print(f"| module | `{B}` {unit} | `{C}` {unit} | change | ratio |\n|---|---|---|---|---|")
+    for d, m, x, y in rows:
+        print(f"| {m} | {x:.0f} | {y:.0f} | {d:+.0f} | {y / x:.2f}× {'WORSE' if d > 0 else 'better'} |")
+    print()
+rung = [m for m in both if b[m]['rung'] != c[m]['rung']]
+print(f"## Collector rung differs ({len(rung)})\n")
+print('\n'.join(f"- {m}: `{B}` {b[m]['rung']}, `{C}` {c[m]['rung']}" for m in rung) or "(none)")
+ob = sorted(m for m in b if m not in c); oc = sorted(m for m in c if m not in b)
+print(f"\n## Only in one version\n\n- only in `{B}` ({len(ob)}): " + (', '.join(ob) or '—'))
 print(f"- only in `{C}` ({len(oc)}): " + (', '.join(oc) or '—'))
-print("\n## Not measured (failed, blocked, cached)\n")
+print("\n## Not ok (failed, OOM, blocked)\n")
 for n, d in ((B, b), (C, c)):
-    bad = sorted(f"{t} ({v[0]})" for t, v in d.items() if v[0] != 'ok')
+    bad = sorted(f"{m} ({r['status']})" for m, r in d.items() if r['status'] != 'ok')
     print(f"- `{n}`: " + (', '.join(bad) or '—'))
-print("\n## All modules in both, by change\n")
-print(f"| module | `{B}` s | `{C}` s | change |\n|---|---|---|---|")
-for d, t, x, y, r, f in rows:
-    print(f"| {t} | {x} | {y} | {d:+d} |")
+print(f"\n## Every module measured in both, by wall-time change\n")
+print(f"| module | wall `{B}` | wall `{C}` | Δ s | rss `{B}` | rss `{C}` | Δ MB |\n|---|---|---|---|---|---|---|")
+for m in sorted(both, key=lambda m: num(b[m], 'wall_s') - num(c[m], 'wall_s')):
+    x, y, p, q = num(b[m], 'wall_s'), num(c[m], 'wall_s'), num(b[m], 'maxrss_mb'), num(c[m], 'maxrss_mb')
+    print(f"| {m} | {x:.0f} | {y:.0f} | {y-x:+.0f} | {p:.0f} | {q:.0f} | {q-p:+.0f} |")
 PY
 echo "== report: $OUT/compare.md"
