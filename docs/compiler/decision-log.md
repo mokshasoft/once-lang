@@ -25987,3 +25987,17 @@ builds the loop's rule where the compiler emits the loop, so the image and the r
 *Scope, first stage:* list-shaped layers `G ⊕ (C ⊗ Id)` and `G ⊕ Id` (`G`, `C` without recursive position:
 lists, options chains, counters); other layers keep the recursion. Measured with `list-build-sum` (it folds a
 list at three sizes) and a fold of 200000 elements.
+
+**D505 (decided by the user, 2026-11-27) — the fold over a list by POINTER REVERSAL, supersedes D504's chain.**
+Weighed: (R) a third fold rule with a chain of fresh cells (D504) — extra cells per element, a fold-specific
+semantics; (S) heap scratch cells woven like temporaries — but cells carry ids, and woven allocations shift the
+ids of the run's own cells, so scratch cells would have to be id-free and need new image instructions anyway.
+Chosen: REVERSAL. The fold keeps each node's own cell, rewires its link to the previous node on the way down,
+and frees it on the way back once the algebra has used its element. Its trace is `r-cata`'s own events with
+each node's `free` moved from the way down to after its algebra step — no new cells, no new ids. Sound for the
+reason A8 (`r-cata-reuse`) is: the fold owns the list it consumes, so no other value sees a node while it is
+rewired. Needs ONE new image instruction — a write into a cell the run owns (its link, in place), lowered to a
+heap store into the existing block — the primitive plan 0.157 S3 (in-place updates) and D503 stage 2 (trees)
+need too. Performance: no allocation per element (a store instead), constant stack, the list's own memory.
+Order: check how A8's reuse is realized in the image first (it may already be such a write); then the
+instruction and its word-layer proof (the risk); then the fold's rule beside `r-cata` and its cases.
