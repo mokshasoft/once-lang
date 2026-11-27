@@ -69,6 +69,7 @@ import DirectedHoTT.Metatheory.RedCong
 import DirectedHoTT.Metatheory.SigExt
 import DirectedHoTT.Metatheory.SigMono
 import DirectedHoTT.Metatheory.Signature
+import DirectedHoTT.Metatheory.Stuck
 import DirectedHoTT.Metatheory.SubjectReduction
 import DirectedHoTT.Metatheory.SubjectReduction.Red
 import DirectedHoTT.Metatheory.SubjectReductionBase

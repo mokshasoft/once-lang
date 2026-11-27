@@ -147,597 +147,27 @@ homheaded? _             = false
 --   row).  Asked through `var?` and `pick`, `trstk?` splits on the PATH
 --   alone, so a proof about it never enumerates the motive's head
 --   (`redex-views-kill-head-enumeration`: trstk?-red-p was 208 clauses).
-var? : RTm Γ → 𝔹
-var? (var _) = true
-var? _       = false
-
-pick : 𝔹 → 𝔹 → 𝔹 → 𝔹
-pick true  x y = x
-pick false x y = y
+-- ★ the stuckness analysis is KEYED (Metatheory/Stuck): one function, a
+--   key per eliminator family.  The names below are its keys.
+open import DirectedHoTT.Metatheory.Stuck
+  using ( Key; stk; spineK; stablecdK; stableAK; pathK; nopwK; deadK; apK; idK; natK; natcK; muK
+        ; finK; dK; var?; pick; ordstk?; ordS?; trstk?; trlam?; hstk? )
 
 spine? stablecd? stableA? pathstk? nopw? deadmot? apstk? idstk? natstk? natcstk? : RTm Γ → 𝔹
--- ★★ LEVITATION: the telescope key (`dpay`/`dih` fire on a `dι`/`dσ`/`dρ`
---   telescope and nothing else) and the tag key (`fcase` fires on
---   `fzero`/`fsuc`).  Both are `natstk?`'s shape, constructors moved.
-dstk? finstk? : RTm Γ → 𝔹
--- ★ INDUCTIVE TYPES: `Mu`'s stuckness key, the exact analogue of
---   `natstk?`.  `elim` fires only on a `con` scrutinee, so it is stuck
---   forever exactly when the scrutinee can never become one.
-mustk? : RTm Γ → 𝔹
-ordstk? : RTm Γ → RTm Γ → RTm Γ → 𝔹
-ordS? : 𝔹 → RTm Γ → 𝔹
-trstk? : RTm (Γ ∙) → RTm Γ → 𝔹
-trlam? : RTm (Γ ∙) → 𝔹
--- ★ F6: an `hrefl` HEAD is stuck when its code never becomes pw-able
---   (`hrefl-pw`) AND it never fires the order rules (`hrefl-Nat-z/s`):
---   its argument never becomes a numeral, or its code never `⌜Nat⌝`.
-hstk? : RTm Γ → RTm Γ → 𝔹
-
-spine? (var x)        = true
-spine? (app t u)      = spine? t
-spine? (absurd c e)        = true
-spine? (ordtr a t u p q)        = ordstk? a t u
-spine? (fst t)        = spine? t
-spine? (snd t)        = spine? t
-spine? (⌜Π⌝ c d)      = true
-spine? (⌜Hom⌝ c a b)  = true
--- W2b: an hrefl HEAD stays inert only if its code can never become
--- pw-able (else hrefl-pw turns it into a lam and the spine β-fires).
-spine? (hrefl c t)    = hstk? c t
-spine? (tr d p e)     = trstk? d p
-spine? (ap c b p)     = apstk? p
-spine? (⌜Id⌝ c a b)   = true
-spine? (idrefl c t)   = true
-spine? (jsub d p e)   = idstk? p
--- ★ WF stage A: `natrec` is an eliminator — a spine head exactly when
--- its SCRUTINEE can never become a numeral.
-spine? (natrec z s n) = natstk? n
--- ★ INDUCTIVE TYPES: `con` is CANONICAL, so it is not a spine head (it
---   falls where `nzero`/`nsuc` fall); a stuck `elim` IS one, exactly as
---   a stuck `natrec` is.  ⚠ Leaving these to the catch-all would answer
---   `false` for `elim` and silently misclassify `app (elim …) u`.
--- ⚠⚠ EXPLICIT, NOT INHERITED.  The catch-all below answers `false`, which
---   is RIGHT for `icon` (matching `con`) and WRONG for `ielim`: an `ielim`
---   with a stuck scrutinee IS a spine, exactly as `elim` is.  check-formers
---   check 3 lists this default; its warning — "CONFIRM each default rather
---   than inherit it" — is the whole reason this was caught.
-spine? (ielim D i e t)  = mustk? t
-spine? (dpay I D C)   = dstk? C
-spine? (dih D e C p)    = dstk? C
-spine? (fcase t a b)    = finstk? t
-spine? (fcase0 t)       = true
-spine? (psplit b q)     = spine? q
--- a definition is a REDEX (δ), never a stuck spine
-spine? (ref n)        = false
-spine? _              = false
-
--- W2b: `stablecd?` is now DEAD-CODE-ness — the code can never fire a
--- J rule (⌜base⌝/⌜Σ⌝/stk-⌜Hom⌝ excluded, as before) NOR the pointwise
--- unfold (⌜Π⌝ and pw-⌜Hom⌝ excluded, NEW).
--- ★★ SpikeNatJ: the ⌜Hom⌝-WRAPPED deadness.  `stablecd? (⌜Hom⌝ c a b)`
--- asks whether the WRAPPER fires, and the wrapper's J key is `stkA? c`
--- (see `tr-J-Hom`) — so ⌜Nat⌝ under a ⌜Hom⌝ is ALIVE even though a bare
--- ⌜Nat⌝ is dead.  Everything else delegates.
-stableA? ⌜Nat⌝          = false
-stableA? (⌜Hom⌝ c a b)  = stableA? c
-stableA? t              = stablecd? t
-
-stablecd? (var x)       = true
-stablecd? (lam t)       = true
-stablecd? (app t u)     = spine? t
-stablecd? (pair a b)    = true
-stablecd? (absurd c e)       = true
-stablecd? (ordtr a t u p q)       = ordstk? a t u
-stablecd? (fst t)       = spine? t
-stablecd? (snd t)       = spine? t
-stablecd? (⌜Hom⌝ c a b) = stableA? c
-stablecd? (hrefl c t)   = true
-stablecd? (ap c b p)    = apstk? p
-stablecd? (idrefl c t)  = true
-stablecd? (jsub d p e)  = idstk? p
-stablecd? (tr d p e)    = trstk? d p
-stablecd? unit           = true
-stablecd? nzero          = true
-stablecd? (nsuc n)       = true
-stablecd? (natrec z s n) = natstk? n
--- ★ INDUCTIVE TYPES: ⚠ these two are NOT the catch-all.  `sne→stablecd`
---   obliges every NEUTRAL to be a stable code, and a stuck `elim` is a
---   neutral — so it must answer `mustk?`, exactly as a stuck `natrec`
---   answers `natstk?`.  Inheriting `false` here makes that lemma
---   UNPROVABLE (and `stableA?` inherits this row through its own
---   catch-all `stableA? t = stablecd? t`).
--- ⚠⚠ BOTH EXPLICIT.  The catch-all answers `false`, which contradicts
---   `con`'s `true` AND `elim`'s `mustk? t`.  Two silently wrong defaults.
--- ★★ WF stage C: ⌜Nat⌝ is DEAD.  Since the retraction of `tr-J-Nat`
--- (`stkC? ⌜Nat⌝ = false`) NO rule fires on a `hrefl ⌜Nat⌝ s` path —
--- not J, not `ap-J`, not `tr-pw`/`tr-taut` (those need a lam path) —
--- so the eliminators over it are stuck forever.  ⌜Unit⌝ is NOT dead:
--- it is `stkC?`, so J and `ap-J` do fire (`stk⊥dead ⌜Unit⌝` needs
--- exactly `false` there, which the catch-all supplies).
--- This row is what lets `codeNorm` stay TWO-way: ⌜Nat⌝ — neither `pw?`
--- nor `stkC?`, the third code kind — is a DEAD code, so it lands in
--- `cf-dead` rather than needing a third `CodeFate` arm.
-stablecd? ⌜Nat⌝         = true
-stablecd? (con p)          = true
-stablecd? (ielim D i e t)  = mustk? t
-stablecd? dι           = true
-stablecd? (dσ S f)         = true
-stablecd? (dρ j C)         = true
-stablecd? (dpay I D C)   = dstk? C
-stablecd? (dih D e C p)    = dstk? C
-stablecd? fzero            = true
-stablecd? (fsuc t)         = true
-stablecd? (fcase t a b)    = finstk? t
-stablecd? (fcase0 t)       = true
-stablecd? (psplit b q)     = spine? q
-stablecd? (ref n)        = false
-stablecd? _             = false
-
--- ★ INDUCTIVE TYPES: `elim` fires on a `con` scrutinee and nothing
---   else, so every OTHER head is junk-dead and the eliminators recurse
---   into their own keys — `natstk?`'s shape, one constructor moved.
-mustk? (var x)        = true
-mustk? (lam t)        = true
-mustk? (app t u)      = spine? t
-mustk? (pair a b)     = true
-mustk? (absurd c e)   = true
-mustk? (ordtr a t u p q) = ordstk? a t u
-mustk? (fst t)        = spine? t
-mustk? (snd t)        = spine? t
-mustk? ⌜base⌝         = true
-mustk? ⌜Nat⌝          = true
-mustk? ⌜Unit⌝         = true
-mustk? (⌜Π⌝ c d)      = true
-mustk? (⌜Σ⌝ c d)      = true
-mustk? (⌜Hom⌝ c a b)  = true
-mustk? (⌜Id⌝ c a b)   = true
-mustk? (hrefl c t)    = true
-mustk? (idrefl c t)   = true
-mustk? (tr d p e)     = trstk? d p
-mustk? (ap c b p)     = apstk? p
-mustk? (jsub d p e)   = idstk? p
-mustk? unit           = true
-mustk? nzero          = true
-mustk? (nsuc n)       = true
-mustk? (natrec z s n) = natstk? n
-mustk? (⌜IMu⌝ I D i)    = true
-mustk? (⌜Fin⌝ n)        = true
-mustk? (con p)          = false
-mustk? (ielim D i e t)  = mustk? t
-mustk? dι           = true
-mustk? (dσ S f)         = true
-mustk? (dρ j C)         = true
-mustk? (dpay I D C)   = dstk? C
-mustk? (dih D e C p)    = dstk? C
-mustk? fzero            = true
-mustk? (fsuc t)         = true
-mustk? (fcase t a b)    = finstk? t
-mustk? (fcase0 t)       = true
-mustk? (psplit b q)     = spine? q
-mustk? (ref d)         = false
-
-pathstk? (var x)        = true
-pathstk? (lam t)        = false
-pathstk? (app t u)      = spine? t
-pathstk? (pair a b)     = true
-pathstk? (absurd c e)        = true
-pathstk? (ordtr a t u p q)        = ordstk? a t u
-pathstk? (fst t)        = spine? t
-pathstk? (snd t)        = spine? t
-pathstk? ⌜base⌝         = true
-pathstk? ⌜Nat⌝ = true
-pathstk? ⌜Unit⌝ = true
-pathstk? (⌜Π⌝ c d)      = true
-pathstk? (⌜Σ⌝ c d)      = true
-pathstk? (⌜Hom⌝ c a b)  = true
-pathstk? (hrefl c t)    = stablecd? c
-pathstk? (tr d p e)     = trstk? d p
-pathstk? (ap c b p)     = apstk? p
-pathstk? (⌜Id⌝ c a b)   = true
-pathstk? (idrefl c t)   = true
-pathstk? (jsub d p e)   = idstk? p
-pathstk? unit           = true
-pathstk? nzero          = true
-pathstk? (nsuc n)       = true
-pathstk? (natrec z s n) = natstk? n
-pathstk? (⌜IMu⌝ I D i)    = true
-pathstk? (⌜Fin⌝ n)        = true
-pathstk? (con p)          = true
-pathstk? (ielim D i e t)  = mustk? t
-pathstk? dι           = true
-pathstk? (dσ S f)         = true
-pathstk? (dρ j C)         = true
-pathstk? (dpay I D C)   = dstk? C
-pathstk? (dih D e C p)    = dstk? C
-pathstk? fzero            = true
-pathstk? (fsuc t)         = true
-pathstk? (fcase t a b)    = finstk? t
-pathstk? (fcase0 t)       = true
-pathstk? (psplit b q)     = spine? q
-pathstk? (ref d)         = false
-
--- ★ the two-former kernel: `jsub` is stuck forever iff its PATH never
--- becomes an `idrefl`: everything except idrefl itself is junk-stuck
--- (idrefl is inert, hrefl-paths only ever unfold to lams — still
--- stuck), and the eliminators recurse.
-idstk? (var x)        = true
-idstk? (lam t)        = true
-idstk? (app t u)      = spine? t
-idstk? (pair a b)     = true
-idstk? (absurd c e)        = true
-idstk? (ordtr a t u p q)        = ordstk? a t u
-idstk? (fst t)        = spine? t
-idstk? (snd t)        = spine? t
-idstk? ⌜base⌝         = true
-idstk? ⌜Nat⌝ = true
-idstk? ⌜Unit⌝ = true
-idstk? (⌜Π⌝ c d)      = true
-idstk? (⌜Σ⌝ c d)      = true
-idstk? (⌜Hom⌝ c a b)  = true
-idstk? (⌜Id⌝ c a b)   = true
-idstk? (hrefl c t)    = true
-idstk? (idrefl c t)   = false
-idstk? (tr d p e)     = trstk? d p
-idstk? (ap c b p)     = apstk? p
-idstk? (jsub d p e)   = idstk? p
-idstk? unit           = true
-idstk? nzero          = true
-idstk? (nsuc n)       = true
-idstk? (natrec z s n) = natstk? n
-idstk? (⌜IMu⌝ I D i)    = true
-idstk? (⌜Fin⌝ n)        = true
-idstk? (con p)          = true
-idstk? (ielim D i e t)  = mustk? t
-idstk? dι           = true
-idstk? (dσ S f)         = true
-idstk? (dρ j C)         = true
-idstk? (dpay I D C)   = dstk? C
-idstk? (dih D e C p)    = dstk? C
-idstk? fzero            = true
-idstk? (fsuc t)         = true
-idstk? (fcase t a b)    = finstk? t
-idstk? (fcase0 t)       = true
-idstk? (psplit b q)     = spine? q
-idstk? (ref d)         = false
-
--- ★ directed `ap` (SpikeAp): `ap` is stuck forever iff its PATH never
--- becomes a canonical hrefl the J rule fires on: lam paths have NO ap
--- rule (permanently stuck), hrefl paths are stuck iff their code is
--- DEAD (`stablecd?` — never `stkC?`-true, never pw-able).
-apstk? (var x)        = true
-apstk? (lam t)        = true
-apstk? (app t u)      = spine? t
-apstk? (pair a b)     = true
-apstk? (absurd c e)        = true
-apstk? (ordtr a t u p q)        = ordstk? a t u
-apstk? (fst t)        = spine? t
-apstk? (snd t)        = spine? t
-apstk? ⌜base⌝         = true
-apstk? ⌜Nat⌝ = true
-apstk? ⌜Unit⌝ = true
-apstk? (⌜Π⌝ c d)      = true
-apstk? (⌜Σ⌝ c d)      = true
-apstk? (⌜Hom⌝ c a b)  = true
-apstk? (hrefl c t)    = stablecd? c
-apstk? (tr d p e)     = trstk? d p
-apstk? (ap c b p)     = apstk? p
-apstk? (⌜Id⌝ c a b)   = true
-apstk? (idrefl c t)   = true
-apstk? (jsub d p e)   = idstk? p
-apstk? unit           = true
-apstk? nzero          = true
-apstk? (nsuc n)       = true
-apstk? (natrec z s n) = natstk? n
-apstk? (⌜IMu⌝ I D i)    = true
-apstk? (⌜Fin⌝ n)        = true
-apstk? (con p)          = true
-apstk? (ielim D i e t)  = mustk? t
-apstk? dι           = true
-apstk? (dσ S f)         = true
-apstk? (dρ j C)         = true
-apstk? (dpay I D C)   = dstk? C
-apstk? (dih D e C p)    = dstk? C
-apstk? fzero            = true
-apstk? (fsuc t)         = true
-apstk? (fcase t a b)    = finstk? t
-apstk? (fcase0 t)       = true
-apstk? (psplit b q)     = spine? q
-apstk? (ref d)         = false
-
--- W2b: a lam path fires tr-pw at a pw-able-⌜Hom⌝ motive with the
--- LITERAL `var vz` endpoint — stuck only when the code can never
--- become pw (`nopw?`); a non-vz VAR endpoint never matches the rule.
--- (Other motive/endpoint shapes are conservatively not-stuck.)
-trstk? d (lam f)                        = trlam? d
--- J is ⌜Hom⌝-MOTIVE-KEYED (stage 3): at a `var` motive an `hrefl` path
--- is stuck unless its CODE can become pw (then hrefl-pw → lam → taut).
-trstk? d (hrefl c s) = pick (var? d) (nopw? c) (stablecd? c)
-trstk? d p           = pathstk? p
-
--- W2b: codes that can NEVER become pw-able (closed under reduction —
--- constructor heads are stable, spines stay spines, and the hrefl-pw
--- unfold turns an hrefl-head into a lam-head, both dead).
--- the lam-path motive dispatch (path-major so `trstk? d (lam f)`
--- reduces at abstract motives).
-trlam? (⌜Hom⌝ c a (var vz))     = deadmot? c
-trlam? (⌜Hom⌝ c a (var (vs x))) = true
-trlam? _                        = false
-
--- W2b final frontier: motive codes that are SPINE-DEAD (no CSR step
--- ever — `snr-tr-mot` normalizes the others) AND pw-immune.  The
--- hrefl clause RECURSES: an hrefl-code is dead iff its own code is
--- (a live inner code feeds snr-hreflᶜ/hrefl-pw through csr-here).
-deadmot? (var x)        = true
-deadmot? (lam t)        = true
-deadmot? (app t u)      = spine? t
-deadmot? (pair a b)     = true
-deadmot? (absurd c e)        = true
-deadmot? (ordtr a t u p q)        = ordstk? a t u
-deadmot? (fst t)        = spine? t
-deadmot? (snd t)        = spine? t
-deadmot? ⌜base⌝         = true
-deadmot? ⌜Nat⌝ = true
-deadmot? ⌜Unit⌝ = true
-deadmot? (⌜Π⌝ c d)      = false
-deadmot? (⌜Σ⌝ c d)      = true
-deadmot? (⌜Hom⌝ c a b)  = deadmot? c
-deadmot? (hrefl c t)    = deadmot? c
-deadmot? (tr d p e)     = trstk? d p
-deadmot? (ap c b p)     = apstk? p
-deadmot? (⌜Id⌝ c a b)   = true
-deadmot? (idrefl c t)   = true
-deadmot? (jsub d p e)   = idstk? p
-deadmot? unit           = true
-deadmot? nzero          = true
-deadmot? (nsuc n)       = true
-deadmot? (natrec z s n) = natstk? n
-deadmot? (⌜IMu⌝ I D i)    = true
-deadmot? (⌜Fin⌝ n)        = true
-deadmot? (con p)          = true
-deadmot? (ielim D i e t)  = mustk? t
-deadmot? dι           = true
-deadmot? (dσ S f)         = true
-deadmot? (dρ j C)         = true
-deadmot? (dpay I D C)   = dstk? C
-deadmot? (dih D e C p)    = dstk? C
-deadmot? fzero            = true
-deadmot? (fsuc t)         = true
-deadmot? (fcase t a b)    = finstk? t
-deadmot? (fcase0 t)       = true
-deadmot? (psplit b q)     = spine? q
-deadmot? (ref d)         = false
-
-nopw? (var x)        = true
-nopw? (lam t)        = true
-nopw? (app t u)      = spine? t
-nopw? (pair a b)     = true
-nopw? (absurd c e)        = true
-nopw? (ordtr a t u p q)        = ordstk? a t u
-nopw? (fst t)        = spine? t
-nopw? (snd t)        = spine? t
-nopw? ⌜base⌝         = true
-nopw? ⌜Nat⌝ = true
-nopw? ⌜Unit⌝ = true
-nopw? (⌜Π⌝ c d)      = false
-nopw? (⌜Σ⌝ c d)      = true
-nopw? (⌜Hom⌝ c a b)  = nopw? c
-nopw? (hrefl c t)    = true
-nopw? (tr d p e)     = trstk? d p
-nopw? (ap c b p)     = true
-nopw? (⌜Id⌝ c a b)   = true
-nopw? (idrefl c t)   = true
-nopw? (jsub d p e)   = idstk? p
-nopw? unit           = true
-nopw? nzero          = true
-nopw? (nsuc n)       = true
-nopw? (natrec z s n) = natstk? n
-nopw? (⌜IMu⌝ I D i)    = true
-nopw? (⌜Fin⌝ n)        = true
-nopw? (con p)          = true
-nopw? (ielim D i e t)  = mustk? t
-nopw? dι           = true
-nopw? (dσ S f)         = true
-nopw? (dρ j C)         = true
-nopw? (dpay I D C)   = dstk? C
-nopw? (dih D e C p)    = dstk? C
-nopw? fzero            = true
-nopw? (fsuc t)         = true
-nopw? (fcase t a b)    = finstk? t
-nopw? (fcase0 t)       = true
-nopw? (psplit b q)     = spine? q
-nopw? (ref d)         = false
-
--- ★ WF stage A: `natrec` fires only on a NUMERAL scrutinee, so it is
--- stuck forever exactly when the scrutinee can never become one —
--- every constructor head but `nzero`/`nsuc` is junk-dead, and the
--- eliminators recurse into their own stuckness keys.
-natstk? (var x)        = true
-natstk? (lam t)        = true
-natstk? (app t u)      = spine? t
-natstk? (pair a b)     = true
-natstk? (absurd c e)        = true
-natstk? (ordtr a t u p q)        = ordstk? a t u
-natstk? (fst t)        = spine? t
-natstk? (snd t)        = spine? t
-natstk? ⌜base⌝         = true
-natstk? ⌜Nat⌝ = true
-natstk? ⌜Unit⌝ = true
-natstk? (⌜Π⌝ c d)      = true
-natstk? (⌜Σ⌝ c d)      = true
-natstk? (⌜Hom⌝ c a b)  = true
-natstk? (⌜Id⌝ c a b)   = true
-natstk? (hrefl c t)    = true
-natstk? (idrefl c t)   = true
-natstk? (tr d p e)     = trstk? d p
-natstk? (ap c b p)     = apstk? p
-natstk? (jsub d p e)   = idstk? p
-natstk? unit           = true
-natstk? nzero          = false
-natstk? (nsuc n)       = false
-natstk? (natrec z s n) = natstk? n
-natstk? (⌜IMu⌝ I D i)    = true
-natstk? (⌜Fin⌝ n)        = true
-natstk? (con p)          = true
-natstk? (ielim D i e t)  = mustk? t
-natstk? dι           = true
-natstk? (dσ S f)         = true
-natstk? (dρ j C)         = true
-natstk? (dpay I D C)   = dstk? C
-natstk? (dih D e C p)    = dstk? C
-natstk? fzero            = true
-natstk? (fsuc t)         = true
-natstk? (fcase t a b)    = finstk? t
-natstk? (fcase0 t)       = true
-natstk? (psplit b q)     = spine? q
-natstk? (ref d)         = false
-
--- ★ F6 (2026-10-03): the CODE key of `hrefl`'s order rules — a code that
---   can never become `⌜Nat⌝`.  `natstk?` with the constructors moved:
---   `⌜Nat⌝` is the live head, the numerals are inert.
-hstk? c t = pick (nopw? c) (pick (natstk? t) true (natcstk? c)) false
-
-natcstk? (var x)        = true
-natcstk? (lam t)        = true
-natcstk? (app t u)      = spine? t
-natcstk? (pair a b)     = true
-natcstk? (absurd c e)        = true
-natcstk? (ordtr a t u p q)        = ordstk? a t u
-natcstk? (fst t)        = spine? t
-natcstk? (snd t)        = spine? t
-natcstk? ⌜base⌝         = true
-natcstk? ⌜Nat⌝ = false
-natcstk? ⌜Unit⌝ = true
-natcstk? (⌜Π⌝ c d)      = true
-natcstk? (⌜Σ⌝ c d)      = true
-natcstk? (⌜Hom⌝ c a b)  = true
-natcstk? (⌜Id⌝ c a b)   = true
-natcstk? (hrefl c t)    = true
-natcstk? (idrefl c t)   = true
-natcstk? (tr d p e)     = trstk? d p
-natcstk? (ap c b p)     = apstk? p
-natcstk? (jsub d p e)   = idstk? p
-natcstk? unit           = true
-natcstk? nzero          = true
-natcstk? (nsuc n)       = true
-natcstk? (natrec z s n) = natstk? n
-natcstk? (⌜IMu⌝ I D i)    = true
-natcstk? (⌜Fin⌝ n)        = true
-natcstk? (con p)          = true
-natcstk? (ielim D i e t)  = mustk? t
-natcstk? dι           = true
-natcstk? (dσ S f)         = true
-natcstk? (dρ j C)         = true
-natcstk? (dpay I D C)   = dstk? C
-natcstk? (dih D e C p)    = dstk? C
-natcstk? fzero            = true
-natcstk? (fsuc t)         = true
-natcstk? (fcase t a b)    = finstk? t
-natcstk? (fcase0 t)       = true
-natcstk? (psplit b q)     = spine? q
-natcstk? (ref d)         = false
-
-dstk? (var x)          = true
-dstk? (lam t)          = true
-dstk? (app t u)        = spine? t
-dstk? (pair a b)       = true
-dstk? (absurd c e)     = true
-dstk? (ordtr a t u p q) = ordstk? a t u
-dstk? (fst t)          = spine? t
-dstk? (snd t)          = spine? t
-dstk? ⌜base⌝           = true
-dstk? ⌜Nat⌝            = true
-dstk? ⌜Unit⌝           = true
-dstk? (⌜Π⌝ c d)        = true
-dstk? (⌜Σ⌝ c d)        = true
-dstk? (⌜Hom⌝ c a b)    = true
-dstk? (⌜Id⌝ c a b)     = true
-dstk? (hrefl c t)      = true
-dstk? (idrefl c t)     = true
-dstk? (tr d p e)       = trstk? d p
-dstk? (ap c b p)       = apstk? p
-dstk? (jsub d p e)     = idstk? p
-dstk? unit             = true
-dstk? nzero            = true
-dstk? (nsuc n)         = true
-dstk? (natrec z s n)   = natstk? n
-dstk? (⌜IMu⌝ I D i)    = true
-dstk? (⌜Fin⌝ n)        = true
-dstk? (con p)          = true
-dstk? (ielim D i e t)  = mustk? t
-dstk? dι           = false
-dstk? (dσ S f)         = false
-dstk? (dρ j C)         = false
-dstk? (dpay I D C)   = dstk? C
-dstk? (dih D e C p)    = dstk? C
-dstk? fzero            = true
-dstk? (fsuc t)         = true
-dstk? (fcase t a b)    = finstk? t
-dstk? (fcase0 t)       = true
-dstk? (psplit b q)     = spine? q
-dstk? (ref d)         = false
-
-finstk? (var x)          = true
-finstk? (lam t)          = true
-finstk? (app t u)        = spine? t
-finstk? (pair a b)       = true
-finstk? (absurd c e)     = true
-finstk? (ordtr a t u p q) = ordstk? a t u
-finstk? (fst t)          = spine? t
-finstk? (snd t)          = spine? t
-finstk? ⌜base⌝           = true
-finstk? ⌜Nat⌝            = true
-finstk? ⌜Unit⌝           = true
-finstk? (⌜Π⌝ c d)        = true
-finstk? (⌜Σ⌝ c d)        = true
-finstk? (⌜Hom⌝ c a b)    = true
-finstk? (⌜Id⌝ c a b)     = true
-finstk? (hrefl c t)      = true
-finstk? (idrefl c t)     = true
-finstk? (tr d p e)       = trstk? d p
-finstk? (ap c b p)       = apstk? p
-finstk? (jsub d p e)     = idstk? p
-finstk? unit             = true
-finstk? nzero            = true
-finstk? (nsuc n)         = true
-finstk? (natrec z s n)   = natstk? n
-finstk? (⌜IMu⌝ I D i)    = true
-finstk? (⌜Fin⌝ n)        = true
-finstk? (con p)          = true
-finstk? (ielim D i e t)  = mustk? t
-finstk? dι           = true
-finstk? (dσ S f)         = true
-finstk? (dρ j C)         = true
-finstk? (dpay I D C)   = dstk? C
-finstk? (dih D e C p)    = dstk? C
-finstk? fzero            = false
-finstk? (fsuc t)         = false
-finstk? (fcase t a b)    = finstk? t
-finstk? (fcase0 t)       = true
-finstk? (psplit b q)     = spine? q
-finstk? (ref d)         = false
-
--- ★ THE ORDER'S STUCKNESS, and it must mirror `_⁺`'s dispatch EXACTLY:
--- `a`, then `u`, then `t`.  `ordtr` is NOT like `absurd` — `absurd` has
--- no root rule and is unconditionally neutral, whereas `ordtr` fires as
--- soon as its bounds are numerals, so a blanket `true` here would make
--- `spine?-red (ordtr-z …)` demand `false ≡ true`.
---
--- Every one of the five root rules is then refuted DEFINITIONALLY: each
--- fires only on numeral bounds, and `natstk?` of a numeral is `false`.
-ordstk? nzero t u    = false
-ordstk? (nsuc a) t u = ordS? (natstk? t) u
-ordstk? a t u        = natstk? a
-
--- ★ under a `nsuc` bound the order fires exactly when BOTH remaining
--- bounds are literal, i.e. when neither is `natstk?` — so this is just a
--- disjunction, keyed on `natstk? t` to keep it inside the mutual block
--- without pulling `_∨_` into scope.
---
--- ⚠ keeping the dispatch OUT of `ordstk?`'s `nsuc` clause is what makes
--- `ordstk?-redᵃ`'s `ξ-nsuc` row just `h`: `ordstk? (nsuc a) t u` and
--- `ordstk? (nsuc a') t u` are then SYNTACTICALLY the same term.
-ordS? true  u = true
-ordS? false u = natstk? u
+dstk? finstk? mustk? : RTm Γ → 𝔹
+spine?    = stk spineK
+stablecd? = stk stablecdK
+stableA?  = stk stableAK
+pathstk?  = stk pathK
+nopw?     = stk nopwK
+deadmot?  = stk deadK
+apstk?    = stk apK
+idstk?    = stk idK
+natstk?   = stk natK
+natcstk?  = stk natcK
+dstk?     = stk dK
+finstk?   = stk finK
+mustk?    = stk muK
 
 f≢t : false ≡ true → ⊥
 f≢t ()
@@ -1056,7 +486,7 @@ red-nonvar {t = (ref d)} _ = refl
 --   source head before the derivation (see RedCong's `stkA?-red`, 100 s → 5.5 s).
 homheaded?-red : {t t' : RTm Γ} → t ⟶ t' →
                  homheaded? t ≡ true → homheaded? t' ≡ true
-spine?-red    : {t t' : RTm Γ} → t ⟶ t' → spine? t ≡ true → spine? t' ≡ true
+stk-red       : (k : Key) {t t' : RTm Γ} → t ⟶ t' → stk k t ≡ true → stk k t' ≡ true
 -- the order's three, one per bound it can get stuck on.  `ᵖ`/`q` need
 -- none: `ordstk?` does not mention the proofs.
 ordstk?-redᵃ  : {a a' t u : RTm Γ} → a ⟶ a' →
@@ -1065,22 +495,6 @@ ordstk?-redᵗ  : {a t t' u : RTm Γ} → t ⟶ t' →
                 ordstk? a t u ≡ true → ordstk? a t' u ≡ true
 ordstk?-redᵘ  : {a t u u' : RTm Γ} → u ⟶ u' →
                 ordstk? a t u ≡ true → ordstk? a t u' ≡ true
-stableA?-red  : {t t' : RTm Γ} → t ⟶ t' →
-                stableA? t ≡ true → stableA? t' ≡ true
-stablecd?-red : {t t' : RTm Γ} → t ⟶ t' →
-                stablecd? t ≡ true → stablecd? t' ≡ true
-pathstk?-red  : {t t' : RTm Γ} → t ⟶ t' →
-                pathstk? t ≡ true → pathstk? t' ≡ true
-nopw?-red     : {t t' : RTm Γ} → t ⟶ t' → nopw? t ≡ true → nopw? t' ≡ true
-apstk?-red    : {t t' : RTm Γ} → t ⟶ t' → apstk? t ≡ true → apstk? t' ≡ true
-idstk?-red    : {t t' : RTm Γ} → t ⟶ t' → idstk? t ≡ true → idstk? t' ≡ true
-natstk?-red   : {t t' : RTm Γ} → t ⟶ t' → natstk? t ≡ true → natstk? t' ≡ true
-natcstk?-red  : {t t' : RTm Γ} → t ⟶ t' → natcstk? t ≡ true → natcstk? t' ≡ true
-mustk?-red    : {t t' : RTm Γ} → t ⟶ t' → mustk? t ≡ true → mustk? t' ≡ true
-dstk?-red     : {t t' : RTm Γ} → t ⟶ t' → dstk? t ≡ true → dstk? t' ≡ true
-finstk?-red   : {t t' : RTm Γ} → t ⟶ t' → finstk? t ≡ true → finstk? t' ≡ true
-deadmot?-red  : {t t' : RTm Γ} → t ⟶ t' →
-                deadmot? t ≡ true → deadmot? t' ≡ true
 trstk?-red-d  : {d d' : RTm (Γ ∙)} {p : RTm Γ} → d ⟶ d' →
                 trstk? d p ≡ true → trstk? d' p ≡ true
 trstk?-red-p  : {d : RTm (Γ ∙)} {p p' : RTm Γ} → p ⟶ p' →
@@ -1118,1167 +532,260 @@ homheaded?-red (ξ-trᵈ _) ()
 homheaded?-red (ξ-trᵖ _) ()
 homheaded?-red (ξ-trᵉ _) ()
 
-spine?-red {t = var _} (⟶head ()) _   -- forces the source-head split first (see RedCong's `stkA?-red`)
-spine?-red (β _ _) ()
-spine?-red (βfst _ _) ()
-spine?-red (βsnd _ _) ()
-spine?-red (ξ-lam _) ()
-spine?-red (ξ-appˡ r) h = spine?-red r h
-spine?-red (ξ-appʳ r) h = h
-spine?-red (ξ-pairˡ _) ()
-spine?-red (ξ-pairʳ _) ()
-spine?-red (ξ-absurdᶜ _) h = refl
-spine?-red (ξ-absurdᵉ _) h = refl
-spine?-red (ξ-fst r) h = spine?-red r h
-spine?-red (ξ-snd r) h = spine?-red r h
-spine?-red (ξ-⌜Π⌝ˡ r) h = h
-spine?-red (ξ-⌜Π⌝ʳ r) h = h
-spine?-red (ξ-⌜Σ⌝ˡ _) ()
-spine?-red (ξ-⌜Σ⌝ʳ _) ()
-spine?-red (ξ-⌜Hom⌝ᶜ r) h = h
-spine?-red (ξ-⌜Hom⌝ˡ r) h = h
-spine?-red (ξ-⌜Hom⌝ʳ r) h = h
-spine?-red (ξ-hreflᶜ {c = c} {c'} {t} r) h =
-  hstk-mk c' t (nopw?-red r (hstk-nopw c t h))
-    (pick-or {a = natstk? t} {b = natcstk? c} {a' = natstk? t} {b' = natcstk? c'} (λ k → k) (natcstk?-red r) (hstk-ord c t h))
-spine?-red (ξ-hreflᵃ {c = c} {t} {t'} r) h =
+stk-red k {t = var _} (⟶head ()) _   -- forces the source-head split first (see RedCong's `stkA?-red`)
+stk-red k (β _ _) ()
+stk-red k (βfst _ _) ()
+stk-red k (βsnd _ _) ()
+stk-red k (ξ-lam _) h = h
+stk-red k (ξ-appˡ r) h = stk-red spineK r h
+stk-red k (ξ-appʳ _) h = h
+stk-red k (ξ-pairˡ _) h = h
+stk-red k (ξ-pairʳ _) h = h
+stk-red k (ξ-absurdᶜ _) h = h
+stk-red k (ξ-absurdᵉ _) h = h
+stk-red k (ξ-fst r) h = stk-red spineK r h
+stk-red k (ξ-snd r) h = stk-red spineK r h
+stk-red k (ξ-⌜Π⌝ˡ _) h = h
+stk-red k (ξ-⌜Π⌝ʳ _) h = h
+stk-red k (ξ-⌜Σ⌝ˡ _) h = h
+stk-red k (ξ-⌜Σ⌝ʳ _) h = h
+stk-red spineK (ξ-⌜Hom⌝ᶜ r) h = h
+stk-red stablecdK (ξ-⌜Hom⌝ᶜ r) h = stk-red stableAK r h
+stk-red stableAK (ξ-⌜Hom⌝ᶜ r) h = stk-red stableAK r h
+stk-red pathK (ξ-⌜Hom⌝ᶜ r) h = h
+stk-red nopwK (ξ-⌜Hom⌝ᶜ r) h = stk-red nopwK r h
+stk-red deadK (ξ-⌜Hom⌝ᶜ r) h = stk-red deadK r h
+stk-red apK (ξ-⌜Hom⌝ᶜ r) h = h
+stk-red idK (ξ-⌜Hom⌝ᶜ r) h = h
+stk-red natK (ξ-⌜Hom⌝ᶜ r) h = h
+stk-red natcK (ξ-⌜Hom⌝ᶜ r) h = h
+stk-red muK (ξ-⌜Hom⌝ᶜ r) h = h
+stk-red finK (ξ-⌜Hom⌝ᶜ r) h = h
+stk-red dK (ξ-⌜Hom⌝ᶜ r) h = h
+stk-red k (ξ-⌜Hom⌝ˡ _) h = h
+stk-red k (ξ-⌜Hom⌝ʳ _) h = h
+stk-red spineK (ξ-hreflᶜ {c = c} {c'} {t} r) h =
+  hstk-mk c' t (stk-red nopwK r (hstk-nopw c t h))
+    (pick-or {a = natstk? t} {b = natcstk? c} {a' = natstk? t} {b' = natcstk? c'} (λ k → k) (stk-red natcK r) (hstk-ord c t h))
+stk-red stablecdK (ξ-hreflᶜ r) h = h
+stk-red stableAK (ξ-hreflᶜ r) h = h
+stk-red pathK (ξ-hreflᶜ r) h = stk-red stablecdK r h
+stk-red nopwK (ξ-hreflᶜ r) h = h
+stk-red deadK (ξ-hreflᶜ r) h = stk-red deadK r h
+stk-red apK (ξ-hreflᶜ r) h = stk-red stablecdK r h
+stk-red idK (ξ-hreflᶜ r) h = h
+stk-red natK (ξ-hreflᶜ r) h = h
+stk-red natcK (ξ-hreflᶜ r) h = h
+stk-red muK (ξ-hreflᶜ r) h = h
+stk-red finK (ξ-hreflᶜ r) h = h
+stk-red dK (ξ-hreflᶜ r) h = h
+stk-red spineK (ξ-hreflᵃ {c = c} {t} {t'} r) h =
   hstk-mk c t' (hstk-nopw c t h)
-    (pick-or {a = natstk? t} {b = natcstk? c} {a' = natstk? t'} {b' = natcstk? c} (natstk?-red r) (λ k → k) (hstk-ord c t h))
-spine?-red (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (nopw⊥pw C₀ (hstk-nopw C₀ s₀ h))) kp))
-spine?-red hrefl-Nat-z ()
-spine?-red (hrefl-Nat-s _) ()
-spine?-red (tr-J-base _ _ _ _ _) ()
-spine?-red (tr-J-Σ _ _ _ _ _ _ _) ()
-spine?-red (tr-J-Hom _ _ _ c₁ _ _ _ _ kh) h = ⊥-elim (f≢t (trans (sym (stkA?⊥dead c₁ kh)) h))
-spine?-red (tr-taut _ _) ()
-spine?-red (tr-pw c₁ _ _ _ kp) h = ⊥-elim (f≢t (trans (sym (nopw⊥pw c₁ (deadmot→nopw c₁ h))) kp))
-spine?-red (ξ-trᵈ {p = p₀} r) h = trstk?-red-d {p = p₀} r h
-spine?-red (ξ-trᵖ {d = d₀} r) h = trstk?-red-p {d = d₀} r h
-spine?-red (ξ-trᵉ r) h = h
-spine?-red (ap-J _ _ c₁ _ key) h =
+    (pick-or {a = natstk? t} {b = natcstk? c} {a' = natstk? t'} {b' = natcstk? c} (stk-red natK r) (λ k → k) (hstk-ord c t h))
+stk-red stablecdK (ξ-hreflᵃ r) h = h
+stk-red stableAK (ξ-hreflᵃ r) h = h
+stk-red pathK (ξ-hreflᵃ r) h = h
+stk-red nopwK (ξ-hreflᵃ r) h = h
+stk-red deadK (ξ-hreflᵃ r) h = h
+stk-red apK (ξ-hreflᵃ r) h = h
+stk-red idK (ξ-hreflᵃ r) h = h
+stk-red natK (ξ-hreflᵃ r) h = h
+stk-red natcK (ξ-hreflᵃ r) h = h
+stk-red muK (ξ-hreflᵃ r) h = h
+stk-red finK (ξ-hreflᵃ r) h = h
+stk-red dK (ξ-hreflᵃ r) h = h
+stk-red spineK (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (nopw⊥pw C₀ (hstk-nopw C₀ s₀ h))) kp))
+stk-red stablecdK (hrefl-pw C₀ s₀ kp) h = refl
+stk-red stableAK (hrefl-pw C₀ s₀ kp) h = refl
+stk-red pathK (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
+stk-red nopwK (hrefl-pw C₀ s₀ kp) h = refl
+stk-red deadK (hrefl-pw C₀ s₀ kp) h =
+  ⊥-elim (f≢t (trans (sym (nopw⊥pw C₀ (deadmot→nopw C₀ h))) kp))
+stk-red apK (hrefl-pw C₀ s₀ kp) h = refl
+stk-red idK (hrefl-pw C₀ s₀ kp) h = refl
+stk-red natK (hrefl-pw C₀ s₀ kp) h = refl
+stk-red natcK (hrefl-pw C₀ s₀ kp) h = refl
+stk-red muK (hrefl-pw C₀ s₀ kp) h = refl
+stk-red finK (hrefl-pw C₀ s₀ kp) h = refl
+stk-red dK (hrefl-pw C₀ s₀ kp) h = refl
+stk-red spineK hrefl-Nat-z ()
+stk-red stablecdK hrefl-Nat-z h = refl
+stk-red stableAK hrefl-Nat-z h = refl
+stk-red pathK hrefl-Nat-z h = refl
+stk-red nopwK hrefl-Nat-z h = refl
+stk-red deadK hrefl-Nat-z h = refl
+stk-red apK hrefl-Nat-z h = refl
+stk-red idK hrefl-Nat-z h = refl
+stk-red natK hrefl-Nat-z h = refl
+stk-red natcK hrefl-Nat-z h = refl
+stk-red muK hrefl-Nat-z h = refl
+stk-red finK hrefl-Nat-z h = refl
+stk-red dK hrefl-Nat-z h = refl
+stk-red spineK (hrefl-Nat-s _) ()
+stk-red stablecdK (hrefl-Nat-s _) h = h
+stk-red stableAK (hrefl-Nat-s _) h = h
+stk-red pathK (hrefl-Nat-s _) h = h
+stk-red nopwK (hrefl-Nat-s _) h = h
+stk-red deadK (hrefl-Nat-s _) h = h
+stk-red apK (hrefl-Nat-s _) h = h
+stk-red idK (hrefl-Nat-s _) h = h
+stk-red natK (hrefl-Nat-s _) h = h
+stk-red natcK (hrefl-Nat-s _) h = h
+stk-red muK (hrefl-Nat-s _) h = h
+stk-red finK (hrefl-Nat-s _) h = h
+stk-red dK (hrefl-Nat-s _) h = h
+stk-red k (tr-J-base _ _ _ _ _) ()
+stk-red k (tr-J-Σ _ _ _ _ _ _ _) ()
+stk-red k (tr-J-Hom _ _ _ c₁ _ _ _ _ kh) h = ⊥-elim (f≢t (trans (sym (stkA?⊥dead c₁ kh)) h))
+stk-red k (tr-taut _ _) ()
+stk-red k (tr-pw c₁ _ _ _ kp) h = ⊥-elim (f≢t (trans (sym (nopw⊥pw c₁ (deadmot→nopw c₁ h))) kp))
+stk-red k (ξ-trᵈ {p = p₀} r) h = trstk?-red-d {p = p₀} r h
+stk-red k (ξ-trᵖ {d = d₀} r) h = trstk?-red-p {d = d₀} r h
+stk-red k (ξ-trᵉ _) h = h
+stk-red spineK (ap-J _ _ c₁ _ key) h =
   ⊥-elim (f≢t (trans (sym (stk⊥dead c₁ key)) h))
-spine?-red (ξ-apᶜ r) h = h
-spine?-red (ξ-apᵇ r) h = h
-spine?-red (ξ-apᵖ r) h = apstk?-red r h
-spine?-red (tr-J-Id _ _ _ _ _ _ _ _) ()
-spine?-red (jsub-refl _ _ _ _) ()
-spine?-red (ξ-⌜Id⌝ᶜ r) h = h
-spine?-red (ξ-⌜Id⌝ˡ r) h = h
-spine?-red (ξ-⌜Id⌝ʳ r) h = h
-spine?-red (ξ-⌜Fin⌝ r) h = h
-spine?-red (ξ-idreflᶜ r) h = h
-spine?-red (ξ-idreflᵃ r) h = h
-spine?-red (ξ-jsubᵈ r) h = h
-spine?-red (ξ-jsubᵖ r) h = idstk?-red r h
-spine?-red (ξ-jsubᵉ r) h = h
-spine?-red (natrec-zero _ _) ()
-spine?-red (natrec-suc _ _ _) ()
-spine?-red (ξ-nsuc r) ()
-spine?-red (ξ-natrecᶻ r) h = h
-spine?-red (ξ-natrecˢ r) h = h
-spine?-red (ξ-natrecⁿ r) h = natstk?-red r h
+stk-red stablecdK (ap-J _ _ c₁ _ key) h =
+  ⊥-elim (f≢t (trans (sym (stk⊥dead c₁ key)) h))
+stk-red stableAK (ap-J _ _ c₁ _ key) h =
+  ⊥-elim (f≢t (trans (sym (stk⊥dead c₁ key)) h))
+stk-red pathK (ap-J _ _ c₁ _ key) h =
+  ⊥-elim (f≢t (trans (sym (stk⊥dead c₁ key)) h))
+stk-red nopwK (ap-J _ _ _ _ _) h = refl
+stk-red deadK (ap-J _ _ c₁ _ key) h =
+  ⊥-elim (f≢t (trans (sym (stk⊥dead c₁ key)) h))
+stk-red apK (ap-J _ _ c₁ _ key) h =
+  ⊥-elim (f≢t (trans (sym (stk⊥dead c₁ key)) h))
+stk-red idK (ap-J _ _ c₁ _ key) h =
+  ⊥-elim (f≢t (trans (sym (stk⊥dead c₁ key)) h))
+stk-red natK (ap-J _ _ c₁ _ key) h =
+  ⊥-elim (f≢t (trans (sym (stk⊥dead c₁ key)) h))
+stk-red natcK (ap-J _ _ c₁ _ key) h =
+  ⊥-elim (f≢t (trans (sym (stk⊥dead c₁ key)) h))
+stk-red muK (ap-J _ _ c₁ _ key) h =
+  ⊥-elim (f≢t (trans (sym (stk⊥dead c₁ key)) h))
+stk-red finK (ap-J _ _ c₁ _ key) h =
+  ⊥-elim (f≢t (trans (sym (stk⊥dead c₁ key)) h))
+stk-red dK (ap-J _ _ c₁ _ key) h =
+  ⊥-elim (f≢t (trans (sym (stk⊥dead c₁ key)) h))
+stk-red k (ξ-apᶜ _) h = h
+stk-red k (ξ-apᵇ _) h = h
+stk-red spineK (ξ-apᵖ r) h = stk-red apK r h
+stk-red stablecdK (ξ-apᵖ r) h = stk-red apK r h
+stk-red stableAK (ξ-apᵖ r) h = stk-red apK r h
+stk-red pathK (ξ-apᵖ r) h = stk-red apK r h
+stk-red nopwK (ξ-apᵖ r) h = h
+stk-red deadK (ξ-apᵖ r) h = stk-red apK r h
+stk-red apK (ξ-apᵖ r) h = stk-red apK r h
+stk-red idK (ξ-apᵖ r) h = stk-red apK r h
+stk-red natK (ξ-apᵖ r) h = stk-red apK r h
+stk-red natcK (ξ-apᵖ r) h = stk-red apK r h
+stk-red muK (ξ-apᵖ r) h = stk-red apK r h
+stk-red finK (ξ-apᵖ r) h = stk-red apK r h
+stk-red dK (ξ-apᵖ r) h = stk-red apK r h
+stk-red k (tr-J-Id _ _ _ _ _ _ _ _) ()
+stk-red k (jsub-refl _ _ _ _) ()
+stk-red k (ξ-⌜Id⌝ᶜ _) h = h
+stk-red k (ξ-⌜Id⌝ˡ _) h = h
+stk-red k (ξ-⌜Id⌝ʳ _) h = h
+stk-red k (ξ-⌜Fin⌝ _) h = h
+stk-red k (ξ-idreflᶜ _) h = h
+stk-red k (ξ-idreflᵃ _) h = h
+stk-red k (ξ-jsubᵈ _) h = h
+stk-red k (ξ-jsubᵖ r) h = stk-red idK r h
+stk-red k (ξ-jsubᵉ _) h = h
+stk-red k (natrec-zero _ _) ()
+stk-red k (natrec-suc _ _ _) ()
+stk-red k (ξ-nsuc _) h = h
+stk-red k (ξ-natrecᶻ _) h = h
+stk-red k (ξ-natrecˢ _) h = h
+stk-red k (ξ-natrecⁿ r) h = stk-red natK r h
+stk-red k (ξ-ielimᵗ r) h = stk-red muK r h
+stk-red k (ξ-ielimⁱ _) h = h
+stk-red k (ordtr-z _ _ _ _) ()
+stk-red k (ordtr-szz _ _ _) ()
+stk-red k (ordtr-ssz _ _ _ _) ()
+stk-red k (ordtr-szs _ _ _ _) ()
+stk-red k (ordtr-sss _ _ _ _ _) ()
+stk-red k (ξ-ordtrᵃ {a = a} {a' = a'} {t = t} {u = u} r) h = ordstk?-redᵃ {a = a} {a' = a'} {t = t} {u = u} r h
+stk-red k (ξ-ordtrᵗ {a = a} {t = t} {t' = t'} {u = u} r) h = ordstk?-redᵗ {a = a} {t = t} {t' = t'} {u = u} r h
+stk-red k (ξ-ordtrᵘ {a = a} {t = t} {u = u} {u' = u'} r) h = ordstk?-redᵘ {a = a} {t = t} {u = u} {u' = u'} r h
+stk-red k (ξ-ordtrᵖ _) h = h
+stk-red k (ξ-ordtrq _) h = h
+stk-red k (ι _ _ _ _) ()
+stk-red k (dpay-ι _ _) ()
+stk-red k (dpay-σ _ _ _ _) ()
+stk-red k (dpay-ρ _ _ _ _) ()
+stk-red k (dih-ι _ _ _) ()
+stk-red k (dih-σ _ _ _ _ _) ()
+stk-red k (dih-ρ _ _ _ _ _) ()
+stk-red k (fcase-z _ _) ()
+stk-red k (fcase-s _ _ _) ()
+stk-red k (psplit-β _ _ _) ()
+stk-red k (ξ-⌜IMu⌝ᴵ _) h = h
+stk-red k (ξ-⌜IMu⌝ᴰ _) h = h
+stk-red k (ξ-⌜IMu⌝ⁱ _) h = h
+stk-red k (ξ-con _) h = h
+stk-red k (ξ-ielimᴰ _) h = h
+stk-red k (ξ-ielimᵉ _) h = h
+stk-red k (ξ-dσˢ _) h = h
+stk-red k (ξ-dσᶠ _) h = h
+stk-red k (ξ-dρʲ _) h = h
+stk-red k (ξ-dρᶜ _) h = h
+stk-red k (ξ-dpayᴵ _) h = h
+stk-red k (ξ-dpayᴰ _) h = h
+stk-red k (ξ-dpayᶜ r) h = stk-red dK r h
+stk-red k (ξ-dihᴰ _) h = h
+stk-red k (ξ-dihᵉ _) h = h
+stk-red k (ξ-dihᶜ r) h = stk-red dK r h
+stk-red k (ξ-dihᵖ _) h = h
+stk-red k (ξ-fsuc _) h = h
+stk-red k (ξ-fcaseᵗ r) h = stk-red finK r h
+stk-red k (ξ-fcaseᵃ _) h = h
+stk-red k (ξ-fcaseᵇ _) h = h
+stk-red k (ξ-fcase0 _) h = h
+stk-red k (ξ-psplitᵇ _) h = h
+stk-red k (ξ-psplitᵍ r) h = stk-red spineK r h
+
+
 -- ★ INDUCTIVE TYPES: a stuck `elim` is a spine head, so this mirrors
 --   `natrec`'s rows exactly — and ι UNSTICKS it, hence the absurdity.
-spine?-red (ξ-ielimᵗ r) h = mustk?-red r h
-spine?-red (ξ-ielimⁱ r) h = h
-spine?-red (ordtr-z _ _ _ _) ()
-spine?-red (ordtr-szz _ _ _) ()
-spine?-red (ordtr-ssz _ _ _ _) ()
-spine?-red (ordtr-szs _ _ _ _) ()
-spine?-red (ordtr-sss _ _ _ _ _) ()
-spine?-red (ξ-ordtrᵃ {a = a} {a' = a'} {t = t} {u = u} r) h = ordstk?-redᵃ {a = a} {a' = a'} {t = t} {u = u} r h
-spine?-red (ξ-ordtrᵗ {a = a} {t = t} {t' = t'} {u = u} r) h = ordstk?-redᵗ {a = a} {t = t} {t' = t'} {u = u} r h
-spine?-red (ξ-ordtrᵘ {a = a} {t = t} {u = u} {u' = u'} r) h = ordstk?-redᵘ {a = a} {t = t} {u = u} {u' = u'} r h
-spine?-red (ξ-ordtrᵖ r) h = h
-spine?-red (ξ-ordtrq r) h = h
-spine?-red (ι _ _ _ _) ()
-spine?-red (dpay-ι _ _) ()
-spine?-red (dpay-σ _ _ _ _) ()
-spine?-red (dpay-ρ _ _ _ _) ()
-spine?-red (dih-ι _ _ _) ()
-spine?-red (dih-σ _ _ _ _ _) ()
-spine?-red (dih-ρ _ _ _ _ _) ()
-spine?-red (fcase-z _ _) ()
-spine?-red (fcase-s _ _ _) ()
-spine?-red (psplit-β _ _ _) ()
-spine?-red (ξ-⌜IMu⌝ᴵ _) ()
-spine?-red (ξ-⌜IMu⌝ᴰ _) ()
-spine?-red (ξ-⌜IMu⌝ⁱ _) ()
-spine?-red (ξ-con _) ()
-spine?-red (ξ-ielimᴰ r) h = h
-spine?-red (ξ-ielimᵉ r) h = h
-spine?-red (ξ-dσˢ _) ()
-spine?-red (ξ-dσᶠ _) ()
-spine?-red (ξ-dρʲ _) ()
-spine?-red (ξ-dρᶜ _) ()
-spine?-red (ξ-dpayᴵ r) h = h
-spine?-red (ξ-dpayᴰ r) h = h
-spine?-red (ξ-dpayᶜ r) h = dstk?-red r h
-spine?-red (ξ-dihᴰ r) h = h
-spine?-red (ξ-dihᵉ r) h = h
-spine?-red (ξ-dihᶜ r) h = dstk?-red r h
-spine?-red (ξ-dihᵖ r) h = h
-spine?-red (ξ-fsuc _) ()
-spine?-red (ξ-fcaseᵗ r) h = finstk?-red r h
-spine?-red (ξ-fcaseᵃ r) h = h
-spine?-red (ξ-fcaseᵇ r) h = h
-spine?-red (ξ-fcase0 r) h = h
-spine?-red (ξ-psplitᵇ r) h = h
-spine?-red (ξ-psplitᵍ r) h = spine?-red r h
 
 -- ★ the `stableA?` peer of `stablecd?-red`: identical except that the
 -- ⌜Hom⌝-code congruence recurses into ITSELF, so ⌜Nat⌝ under a ⌜Hom⌝
 -- keeps its `false` verdict.  Every other row delegates definitionally.
-stableA?-red {t = var _} (⟶head ()) _   -- forces the source-head split first (see RedCong's `stkA?-red`)
-stableA?-red (β _ _) ()
-stableA?-red (βfst _ _) ()
-stableA?-red (βsnd _ _) ()
-stableA?-red (ξ-lam r) h = h
-stableA?-red (ξ-appˡ r) h = spine?-red r h
-stableA?-red (ξ-appʳ r) h = h
-stableA?-red (ξ-pairˡ r) h = h
-stableA?-red (ξ-pairʳ r) h = h
-stableA?-red (ξ-absurdᶜ _) h = refl
-stableA?-red (ξ-absurdᵉ _) h = refl
-stableA?-red (ξ-fst r) h = spine?-red r h
-stableA?-red (ξ-snd r) h = spine?-red r h
-stableA?-red (ξ-⌜Π⌝ˡ _) ()
-stableA?-red (ξ-⌜Π⌝ʳ _) ()
-stableA?-red (ξ-⌜Σ⌝ˡ _) ()
-stableA?-red (ξ-⌜Σ⌝ʳ _) ()
-stableA?-red (ξ-⌜Hom⌝ᶜ r) h = stableA?-red r h
-stableA?-red (ξ-⌜Hom⌝ˡ r) h = h
-stableA?-red (ξ-⌜Hom⌝ʳ r) h = h
-stableA?-red (ξ-hreflᶜ r) h = h
-stableA?-red (ξ-hreflᵃ r) h = h
-stableA?-red (hrefl-pw C₀ s₀ kp) h = refl
-stableA?-red hrefl-Nat-z h = refl
-stableA?-red (hrefl-Nat-s _) h = h
-stableA?-red (tr-J-base _ _ _ _ _) ()
-stableA?-red (tr-J-Σ _ _ _ _ _ _ _) ()
-stableA?-red (tr-J-Hom _ _ _ c₁ _ _ _ _ kh) h = ⊥-elim (f≢t (trans (sym (stkA?⊥dead c₁ kh)) h))
-stableA?-red (tr-taut _ _) ()
-stableA?-red (tr-pw c₁ _ _ _ kp) h = ⊥-elim (f≢t (trans (sym (nopw⊥pw c₁ (deadmot→nopw c₁ h))) kp))
-stableA?-red (ξ-trᵈ {p = p₀} r) h = trstk?-red-d {p = p₀} r h
-stableA?-red (ξ-trᵖ {d = d₀} r) h = trstk?-red-p {d = d₀} r h
-stableA?-red (ξ-trᵉ r) h = h
-stableA?-red (ap-J _ _ c₁ _ key) h =
-  ⊥-elim (f≢t (trans (sym (stk⊥dead c₁ key)) h))
-stableA?-red (ξ-apᶜ r) h = h
-stableA?-red (ξ-apᵇ r) h = h
-stableA?-red (ξ-apᵖ r) h = apstk?-red r h
-stableA?-red (tr-J-Id _ _ _ _ _ _ _ _) ()
-stableA?-red (jsub-refl _ _ _ _) ()
-stableA?-red (ξ-⌜Id⌝ᶜ r) ()
-stableA?-red (ξ-⌜Id⌝ˡ r) ()
-stableA?-red (ξ-⌜Id⌝ʳ r) ()
-stableA?-red (ξ-⌜Fin⌝ r) h = h
-stableA?-red (ξ-idreflᶜ r) h = h
-stableA?-red (ξ-idreflᵃ r) h = h
-stableA?-red (ξ-jsubᵈ r) h = h
-stableA?-red (ξ-jsubᵖ r) h = idstk?-red r h
-stableA?-red (ξ-jsubᵉ r) h = h
-stableA?-red (natrec-zero _ _) ()
-stableA?-red (natrec-suc _ _ _) ()
-stableA?-red (ξ-nsuc r) h = refl
-stableA?-red (ξ-natrecᶻ r) h = h
-stableA?-red (ξ-natrecˢ r) h = h
-stableA?-red (ξ-natrecⁿ r) h = natstk?-red r h
-stableA?-red (ξ-con r) h = refl
-stableA?-red (ξ-ielimᵗ r) h = mustk?-red r h
-stableA?-red (ξ-ielimⁱ r) h = h
-stableA?-red (ordtr-z _ _ _ _) ()
-stableA?-red (ordtr-szz _ _ _) ()
-stableA?-red (ordtr-ssz _ _ _ _) ()
-stableA?-red (ordtr-szs _ _ _ _) ()
-stableA?-red (ordtr-sss _ _ _ _ _) ()
-stableA?-red (ξ-ordtrᵃ {a = a} {a' = a'} {t = t} {u = u} r) h = ordstk?-redᵃ {a = a} {a' = a'} {t = t} {u = u} r h
-stableA?-red (ξ-ordtrᵗ {a = a} {t = t} {t' = t'} {u = u} r) h = ordstk?-redᵗ {a = a} {t = t} {t' = t'} {u = u} r h
-stableA?-red (ξ-ordtrᵘ {a = a} {t = t} {u = u} {u' = u'} r) h = ordstk?-redᵘ {a = a} {t = t} {u = u} {u' = u'} r h
-stableA?-red (ξ-ordtrᵖ r) h = h
-stableA?-red (ξ-ordtrq r) h = h
-stableA?-red (ι _ _ _ _) ()
-stableA?-red (dpay-ι _ _) ()
-stableA?-red (dpay-σ _ _ _ _) ()
-stableA?-red (dpay-ρ _ _ _ _) ()
-stableA?-red (dih-ι _ _ _) ()
-stableA?-red (dih-σ _ _ _ _ _) ()
-stableA?-red (dih-ρ _ _ _ _ _) ()
-stableA?-red (fcase-z _ _) ()
-stableA?-red (fcase-s _ _ _) ()
-stableA?-red (psplit-β _ _ _) ()
-stableA?-red (ξ-⌜IMu⌝ᴵ _) ()
-stableA?-red (ξ-⌜IMu⌝ᴰ _) ()
-stableA?-red (ξ-⌜IMu⌝ⁱ _) ()
-stableA?-red (ξ-ielimᴰ r) h = h
-stableA?-red (ξ-ielimᵉ r) h = h
-stableA?-red (ξ-dσˢ r) h = h
-stableA?-red (ξ-dσᶠ r) h = h
-stableA?-red (ξ-dρʲ r) h = h
-stableA?-red (ξ-dρᶜ r) h = h
-stableA?-red (ξ-dpayᴵ r) h = h
-stableA?-red (ξ-dpayᴰ r) h = h
-stableA?-red (ξ-dpayᶜ r) h = dstk?-red r h
-stableA?-red (ξ-dihᴰ r) h = h
-stableA?-red (ξ-dihᵉ r) h = h
-stableA?-red (ξ-dihᶜ r) h = dstk?-red r h
-stableA?-red (ξ-dihᵖ r) h = h
-stableA?-red (ξ-fsuc r) h = h
-stableA?-red (ξ-fcaseᵗ r) h = finstk?-red r h
-stableA?-red (ξ-fcaseᵃ r) h = h
-stableA?-red (ξ-fcaseᵇ r) h = h
-stableA?-red (ξ-fcase0 r) h = h
-stableA?-red (ξ-psplitᵇ r) h = h
-stableA?-red (ξ-psplitᵍ r) h = spine?-red r h
 
-stablecd?-red {t = var _} (⟶head ()) _   -- forces the source-head split first (see RedCong's `stkA?-red`)
-stablecd?-red (β _ _) ()
-stablecd?-red (βfst _ _) ()
-stablecd?-red (βsnd _ _) ()
-stablecd?-red (ξ-lam r) h = h
-stablecd?-red (ξ-appˡ r) h = spine?-red r h
-stablecd?-red (ξ-appʳ r) h = h
-stablecd?-red (ξ-pairˡ r) h = h
-stablecd?-red (ξ-pairʳ r) h = h
-stablecd?-red (ξ-absurdᶜ _) h = refl
-stablecd?-red (ξ-absurdᵉ _) h = refl
-stablecd?-red (ξ-fst r) h = spine?-red r h
-stablecd?-red (ξ-snd r) h = spine?-red r h
-stablecd?-red (ξ-⌜Π⌝ˡ _) ()
-stablecd?-red (ξ-⌜Π⌝ʳ _) ()
-stablecd?-red (ξ-⌜Σ⌝ˡ _) ()
-stablecd?-red (ξ-⌜Σ⌝ʳ _) ()
-stablecd?-red (ξ-⌜Hom⌝ᶜ r) h = stableA?-red r h
-stablecd?-red (ξ-⌜Hom⌝ˡ r) h = h
-stablecd?-red (ξ-⌜Hom⌝ʳ r) h = h
-stablecd?-red (ξ-hreflᶜ r) h = h
-stablecd?-red (ξ-hreflᵃ r) h = h
-stablecd?-red (hrefl-pw C₀ s₀ kp) h = refl
-stablecd?-red hrefl-Nat-z h = refl
-stablecd?-red (hrefl-Nat-s _) h = h
-stablecd?-red (tr-J-base _ _ _ _ _) ()
-stablecd?-red (tr-J-Σ _ _ _ _ _ _ _) ()
-stablecd?-red (tr-J-Hom _ _ _ c₁ _ _ _ _ kh) h = ⊥-elim (f≢t (trans (sym (stkA?⊥dead c₁ kh)) h))
-stablecd?-red (tr-taut _ _) ()
-stablecd?-red (tr-pw c₁ _ _ _ kp) h = ⊥-elim (f≢t (trans (sym (nopw⊥pw c₁ (deadmot→nopw c₁ h))) kp))
-stablecd?-red (ξ-trᵈ {p = p₀} r) h = trstk?-red-d {p = p₀} r h
-stablecd?-red (ξ-trᵖ {d = d₀} r) h = trstk?-red-p {d = d₀} r h
-stablecd?-red (ξ-trᵉ r) h = h
-stablecd?-red (ap-J _ _ c₁ _ key) h =
-  ⊥-elim (f≢t (trans (sym (stk⊥dead c₁ key)) h))
-stablecd?-red (ξ-apᶜ r) h = h
-stablecd?-red (ξ-apᵇ r) h = h
-stablecd?-red (ξ-apᵖ r) h = apstk?-red r h
-stablecd?-red (tr-J-Id _ _ _ _ _ _ _ _) ()
-stablecd?-red (jsub-refl _ _ _ _) ()
-stablecd?-red (ξ-⌜Id⌝ᶜ r) ()
-stablecd?-red (ξ-⌜Id⌝ˡ r) ()
-stablecd?-red (ξ-⌜Id⌝ʳ r) ()
-stablecd?-red (ξ-⌜Fin⌝ r) h = h
-stablecd?-red (ξ-idreflᶜ r) h = h
-stablecd?-red (ξ-idreflᵃ r) h = h
-stablecd?-red (ξ-jsubᵈ r) h = h
-stablecd?-red (ξ-jsubᵖ r) h = idstk?-red r h
-stablecd?-red (ξ-jsubᵉ r) h = h
-stablecd?-red (natrec-zero _ _) ()
-stablecd?-red (natrec-suc _ _ _) ()
-stablecd?-red (ξ-nsuc r) h = refl
-stablecd?-red (ξ-natrecᶻ r) h = h
-stablecd?-red (ξ-natrecˢ r) h = h
-stablecd?-red (ξ-natrecⁿ r) h = natstk?-red r h
-stablecd?-red (ξ-con r) h = refl
-stablecd?-red (ξ-ielimᵗ r) h = mustk?-red r h
-stablecd?-red (ξ-ielimⁱ r) h = h
-stablecd?-red (ordtr-z _ _ _ _) ()
-stablecd?-red (ordtr-szz _ _ _) ()
-stablecd?-red (ordtr-ssz _ _ _ _) ()
-stablecd?-red (ordtr-szs _ _ _ _) ()
-stablecd?-red (ordtr-sss _ _ _ _ _) ()
-stablecd?-red (ξ-ordtrᵃ {a = a} {a' = a'} {t = t} {u = u} r) h = ordstk?-redᵃ {a = a} {a' = a'} {t = t} {u = u} r h
-stablecd?-red (ξ-ordtrᵗ {a = a} {t = t} {t' = t'} {u = u} r) h = ordstk?-redᵗ {a = a} {t = t} {t' = t'} {u = u} r h
-stablecd?-red (ξ-ordtrᵘ {a = a} {t = t} {u = u} {u' = u'} r) h = ordstk?-redᵘ {a = a} {t = t} {u = u} {u' = u'} r h
-stablecd?-red (ξ-ordtrᵖ r) h = h
-stablecd?-red (ξ-ordtrq r) h = h
-stablecd?-red (ι _ _ _ _) ()
-stablecd?-red (dpay-ι _ _) ()
-stablecd?-red (dpay-σ _ _ _ _) ()
-stablecd?-red (dpay-ρ _ _ _ _) ()
-stablecd?-red (dih-ι _ _ _) ()
-stablecd?-red (dih-σ _ _ _ _ _) ()
-stablecd?-red (dih-ρ _ _ _ _ _) ()
-stablecd?-red (fcase-z _ _) ()
-stablecd?-red (fcase-s _ _ _) ()
-stablecd?-red (psplit-β _ _ _) ()
-stablecd?-red (ξ-⌜IMu⌝ᴵ _) ()
-stablecd?-red (ξ-⌜IMu⌝ᴰ _) ()
-stablecd?-red (ξ-⌜IMu⌝ⁱ _) ()
-stablecd?-red (ξ-ielimᴰ r) h = h
-stablecd?-red (ξ-ielimᵉ r) h = h
-stablecd?-red (ξ-dσˢ r) h = h
-stablecd?-red (ξ-dσᶠ r) h = h
-stablecd?-red (ξ-dρʲ r) h = h
-stablecd?-red (ξ-dρᶜ r) h = h
-stablecd?-red (ξ-dpayᴵ r) h = h
-stablecd?-red (ξ-dpayᴰ r) h = h
-stablecd?-red (ξ-dpayᶜ r) h = dstk?-red r h
-stablecd?-red (ξ-dihᴰ r) h = h
-stablecd?-red (ξ-dihᵉ r) h = h
-stablecd?-red (ξ-dihᶜ r) h = dstk?-red r h
-stablecd?-red (ξ-dihᵖ r) h = h
-stablecd?-red (ξ-fsuc r) h = h
-stablecd?-red (ξ-fcaseᵗ r) h = finstk?-red r h
-stablecd?-red (ξ-fcaseᵃ r) h = h
-stablecd?-red (ξ-fcaseᵇ r) h = h
-stablecd?-red (ξ-fcase0 r) h = h
-stablecd?-red (ξ-psplitᵇ r) h = h
-stablecd?-red (ξ-psplitᵍ r) h = spine?-red r h
 
-pathstk?-red {t = var _} (⟶head ()) _   -- forces the source-head split first (see RedCong's `stkA?-red`)
-pathstk?-red (β _ _) ()
-pathstk?-red (βfst _ _) ()
-pathstk?-red (βsnd _ _) ()
-pathstk?-red (ξ-lam _) ()
-pathstk?-red (ξ-appˡ r) h = spine?-red r h
-pathstk?-red (ξ-appʳ r) h = h
-pathstk?-red (ξ-pairˡ r) h = h
-pathstk?-red (ξ-pairʳ r) h = h
-pathstk?-red (ξ-absurdᶜ _) h = refl
-pathstk?-red (ξ-absurdᵉ _) h = refl
-pathstk?-red (ξ-fst r) h = spine?-red r h
-pathstk?-red (ξ-snd r) h = spine?-red r h
-pathstk?-red (ξ-⌜Π⌝ˡ r) h = h
-pathstk?-red (ξ-⌜Π⌝ʳ r) h = h
-pathstk?-red (ξ-⌜Σ⌝ˡ r) h = h
-pathstk?-red (ξ-⌜Σ⌝ʳ r) h = h
-pathstk?-red (ξ-⌜Hom⌝ᶜ r) h = h
-pathstk?-red (ξ-⌜Hom⌝ˡ r) h = h
-pathstk?-red (ξ-⌜Hom⌝ʳ r) h = h
-pathstk?-red (ξ-hreflᶜ r) h = stablecd?-red r h
-pathstk?-red (ξ-hreflᵃ r) h = h
-pathstk?-red (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
-pathstk?-red hrefl-Nat-z h = refl
-pathstk?-red (hrefl-Nat-s _) h = h
-pathstk?-red (tr-J-base _ _ _ _ _) ()
-pathstk?-red (tr-J-Σ _ _ _ _ _ _ _) ()
-pathstk?-red (tr-J-Hom _ _ _ c₁ _ _ _ _ kh) h = ⊥-elim (f≢t (trans (sym (stkA?⊥dead c₁ kh)) h))
-pathstk?-red (tr-taut _ _) ()
-pathstk?-red (tr-pw c₁ _ _ _ kp) h = ⊥-elim (f≢t (trans (sym (nopw⊥pw c₁ (deadmot→nopw c₁ h))) kp))
-pathstk?-red (ξ-trᵈ {p = p₀} r) h = trstk?-red-d {p = p₀} r h
-pathstk?-red (ξ-trᵖ {d = d₀} r) h = trstk?-red-p {d = d₀} r h
-pathstk?-red (ξ-trᵉ r) h = h
-pathstk?-red (ap-J _ _ c₁ _ key) h =
-  ⊥-elim (f≢t (trans (sym (stk⊥dead c₁ key)) h))
-pathstk?-red (ξ-apᶜ r) h = h
-pathstk?-red (ξ-apᵇ r) h = h
-pathstk?-red (ξ-apᵖ r) h = apstk?-red r h
-pathstk?-red (tr-J-Id _ _ _ _ _ _ _ _) ()
-pathstk?-red (jsub-refl _ _ _ _) ()
-pathstk?-red (ξ-⌜Id⌝ᶜ r) h = h
-pathstk?-red (ξ-⌜Id⌝ˡ r) h = h
-pathstk?-red (ξ-⌜Id⌝ʳ r) h = h
-pathstk?-red (ξ-⌜Fin⌝ r) h = h
-pathstk?-red (ξ-idreflᶜ r) h = h
-pathstk?-red (ξ-idreflᵃ r) h = h
-pathstk?-red (ξ-jsubᵈ r) h = h
-pathstk?-red (ξ-jsubᵖ r) h = idstk?-red r h
-pathstk?-red (ξ-jsubᵉ r) h = h
-pathstk?-red (natrec-zero _ _) ()
-pathstk?-red (natrec-suc _ _ _) ()
-pathstk?-red (ξ-nsuc r) h = refl
-pathstk?-red (ξ-natrecᶻ r) h = h
-pathstk?-red (ξ-natrecˢ r) h = h
-pathstk?-red (ξ-natrecⁿ r) h = natstk?-red r h
-pathstk?-red (ordtr-z _ _ _ _) ()
-pathstk?-red (ordtr-szz _ _ _) ()
-pathstk?-red (ordtr-ssz _ _ _ _) ()
-pathstk?-red (ordtr-szs _ _ _ _) ()
-pathstk?-red (ordtr-sss _ _ _ _ _) ()
-pathstk?-red (ξ-ordtrᵃ {a = a} {a' = a'} {t = t} {u = u} r) h = ordstk?-redᵃ {a = a} {a' = a'} {t = t} {u = u} r h
-pathstk?-red (ξ-ordtrᵗ {a = a} {t = t} {t' = t'} {u = u} r) h = ordstk?-redᵗ {a = a} {t = t} {t' = t'} {u = u} r h
-pathstk?-red (ξ-ordtrᵘ {a = a} {t = t} {u = u} {u' = u'} r) h = ordstk?-redᵘ {a = a} {t = t} {u = u} {u' = u'} r h
-pathstk?-red (ξ-ordtrᵖ r) h = h
-pathstk?-red (ξ-ordtrq r) h = h
-pathstk?-red (ξ-con r) h = refl
-pathstk?-red (ξ-ielimᵗ r) h = mustk?-red r h
-pathstk?-red (ξ-ielimⁱ r) h = h
-pathstk?-red (ι _ _ _ _) ()
-pathstk?-red (dpay-ι _ _) ()
-pathstk?-red (dpay-σ _ _ _ _) ()
-pathstk?-red (dpay-ρ _ _ _ _) ()
-pathstk?-red (dih-ι _ _ _) ()
-pathstk?-red (dih-σ _ _ _ _ _) ()
-pathstk?-red (dih-ρ _ _ _ _ _) ()
-pathstk?-red (fcase-z _ _) ()
-pathstk?-red (fcase-s _ _ _) ()
-pathstk?-red (psplit-β _ _ _) ()
-pathstk?-red (ξ-⌜IMu⌝ᴵ r) h = h
-pathstk?-red (ξ-⌜IMu⌝ᴰ r) h = h
-pathstk?-red (ξ-⌜IMu⌝ⁱ r) h = h
-pathstk?-red (ξ-ielimᴰ r) h = h
-pathstk?-red (ξ-ielimᵉ r) h = h
-pathstk?-red (ξ-dσˢ r) h = h
-pathstk?-red (ξ-dσᶠ r) h = h
-pathstk?-red (ξ-dρʲ r) h = h
-pathstk?-red (ξ-dρᶜ r) h = h
-pathstk?-red (ξ-dpayᴵ r) h = h
-pathstk?-red (ξ-dpayᴰ r) h = h
-pathstk?-red (ξ-dpayᶜ r) h = dstk?-red r h
-pathstk?-red (ξ-dihᴰ r) h = h
-pathstk?-red (ξ-dihᵉ r) h = h
-pathstk?-red (ξ-dihᶜ r) h = dstk?-red r h
-pathstk?-red (ξ-dihᵖ r) h = h
-pathstk?-red (ξ-fsuc r) h = h
-pathstk?-red (ξ-fcaseᵗ r) h = finstk?-red r h
-pathstk?-red (ξ-fcaseᵃ r) h = h
-pathstk?-red (ξ-fcaseᵇ r) h = h
-pathstk?-red (ξ-fcase0 r) h = h
-pathstk?-red (ξ-psplitᵇ r) h = h
-pathstk?-red (ξ-psplitᵍ r) h = spine?-red r h
 
 -- ★ `ap`-stuckness is closed under reduction: the J key clashes with
 -- the dead-code key; the pw/taut unfoldings land on LAM paths, which
 -- are permanently ap-stuck (unlike `pathstk?`, where lams are live).
-apstk?-red {t = var _} (⟶head ()) _   -- forces the source-head split first (see RedCong's `stkA?-red`)
-apstk?-red (β _ _) ()
-apstk?-red (βfst _ _) ()
-apstk?-red (βsnd _ _) ()
-apstk?-red (ξ-lam r) h = h
-apstk?-red (ξ-appˡ r) h = spine?-red r h
-apstk?-red (ξ-appʳ r) h = h
-apstk?-red (ξ-pairˡ r) h = h
-apstk?-red (ξ-pairʳ r) h = h
-apstk?-red (ξ-absurdᶜ _) h = refl
-apstk?-red (ξ-absurdᵉ _) h = refl
-apstk?-red (ξ-fst r) h = spine?-red r h
-apstk?-red (ξ-snd r) h = spine?-red r h
-apstk?-red (ξ-⌜Π⌝ˡ r) h = h
-apstk?-red (ξ-⌜Π⌝ʳ r) h = h
-apstk?-red (ξ-⌜Σ⌝ˡ r) h = h
-apstk?-red (ξ-⌜Σ⌝ʳ r) h = h
-apstk?-red (ξ-⌜Hom⌝ᶜ r) h = h
-apstk?-red (ξ-⌜Hom⌝ˡ r) h = h
-apstk?-red (ξ-⌜Hom⌝ʳ r) h = h
-apstk?-red (ξ-hreflᶜ r) h = stablecd?-red r h
-apstk?-red (ξ-hreflᵃ r) h = h
-apstk?-red (hrefl-pw C₀ s₀ kp) h = refl
-apstk?-red hrefl-Nat-z h = refl
-apstk?-red (hrefl-Nat-s _) h = h
-apstk?-red (tr-J-base _ _ _ _ _) ()
-apstk?-red (tr-J-Σ _ _ _ _ _ _ _) ()
-apstk?-red (tr-J-Hom _ _ _ c₁ _ _ _ _ kh) h =
-  ⊥-elim (f≢t (trans (sym (stkA?⊥dead c₁ kh)) h))
-apstk?-red (tr-taut _ _) ()
-apstk?-red (tr-pw _ _ _ _ _) h = refl
-apstk?-red (ξ-trᵈ {p = p₀} r) h = trstk?-red-d {p = p₀} r h
-apstk?-red (ξ-trᵖ {d = d₀} r) h = trstk?-red-p {d = d₀} r h
-apstk?-red (ξ-trᵉ r) h = h
-apstk?-red (ap-J _ _ c₁ _ key) h =
-  ⊥-elim (f≢t (trans (sym (stk⊥dead c₁ key)) h))
-apstk?-red (ξ-apᶜ r) h = h
-apstk?-red (ξ-apᵇ r) h = h
-apstk?-red (ξ-apᵖ r) h = apstk?-red r h
-apstk?-red (tr-J-Id _ _ _ _ _ _ _ _) ()
-apstk?-red (jsub-refl _ _ _ _) ()
-apstk?-red (ξ-⌜Id⌝ᶜ r) h = h
-apstk?-red (ξ-⌜Id⌝ˡ r) h = h
-apstk?-red (ξ-⌜Id⌝ʳ r) h = h
-apstk?-red (ξ-⌜Fin⌝ r) h = h
-apstk?-red (ξ-idreflᶜ r) h = h
-apstk?-red (ξ-idreflᵃ r) h = h
-apstk?-red (ξ-jsubᵈ r) h = h
-apstk?-red (ξ-jsubᵖ r) h = idstk?-red r h
-apstk?-red (ξ-jsubᵉ r) h = h
-apstk?-red (natrec-zero _ _) ()
-apstk?-red (natrec-suc _ _ _) ()
-apstk?-red (ξ-nsuc r) h = refl
-apstk?-red (ξ-natrecᶻ r) h = h
-apstk?-red (ξ-natrecˢ r) h = h
-apstk?-red (ξ-natrecⁿ r) h = natstk?-red r h
-apstk?-red (ordtr-z _ _ _ _) ()
-apstk?-red (ordtr-szz _ _ _) ()
-apstk?-red (ordtr-ssz _ _ _ _) ()
-apstk?-red (ordtr-szs _ _ _ _) ()
-apstk?-red (ordtr-sss _ _ _ _ _) ()
-apstk?-red (ξ-ordtrᵃ {a = a} {a' = a'} {t = t} {u = u} r) h = ordstk?-redᵃ {a = a} {a' = a'} {t = t} {u = u} r h
-apstk?-red (ξ-ordtrᵗ {a = a} {t = t} {t' = t'} {u = u} r) h = ordstk?-redᵗ {a = a} {t = t} {t' = t'} {u = u} r h
-apstk?-red (ξ-ordtrᵘ {a = a} {t = t} {u = u} {u' = u'} r) h = ordstk?-redᵘ {a = a} {t = t} {u = u} {u' = u'} r h
-apstk?-red (ξ-ordtrᵖ r) h = h
-apstk?-red (ξ-ordtrq r) h = h
-apstk?-red (ξ-con r) h = refl
-apstk?-red (ξ-ielimᵗ r) h = mustk?-red r h
-apstk?-red (ξ-ielimⁱ r) h = h
-apstk?-red (ι _ _ _ _) ()
-apstk?-red (dpay-ι _ _) ()
-apstk?-red (dpay-σ _ _ _ _) ()
-apstk?-red (dpay-ρ _ _ _ _) ()
-apstk?-red (dih-ι _ _ _) ()
-apstk?-red (dih-σ _ _ _ _ _) ()
-apstk?-red (dih-ρ _ _ _ _ _) ()
-apstk?-red (fcase-z _ _) ()
-apstk?-red (fcase-s _ _ _) ()
-apstk?-red (psplit-β _ _ _) ()
-apstk?-red (ξ-⌜IMu⌝ᴵ r) h = h
-apstk?-red (ξ-⌜IMu⌝ᴰ r) h = h
-apstk?-red (ξ-⌜IMu⌝ⁱ r) h = h
-apstk?-red (ξ-ielimᴰ r) h = h
-apstk?-red (ξ-ielimᵉ r) h = h
-apstk?-red (ξ-dσˢ r) h = h
-apstk?-red (ξ-dσᶠ r) h = h
-apstk?-red (ξ-dρʲ r) h = h
-apstk?-red (ξ-dρᶜ r) h = h
-apstk?-red (ξ-dpayᴵ r) h = h
-apstk?-red (ξ-dpayᴰ r) h = h
-apstk?-red (ξ-dpayᶜ r) h = dstk?-red r h
-apstk?-red (ξ-dihᴰ r) h = h
-apstk?-red (ξ-dihᵉ r) h = h
-apstk?-red (ξ-dihᶜ r) h = dstk?-red r h
-apstk?-red (ξ-dihᵖ r) h = h
-apstk?-red (ξ-fsuc r) h = h
-apstk?-red (ξ-fcaseᵗ r) h = finstk?-red r h
-apstk?-red (ξ-fcaseᵃ r) h = h
-apstk?-red (ξ-fcaseᵇ r) h = h
-apstk?-red (ξ-fcase0 r) h = h
-apstk?-red (ξ-psplitᵇ r) h = h
-apstk?-red (ξ-psplitᵍ r) h = spine?-red r h
 
 -- ★ jsub-stuckness is closed under reduction (the idstk? mirror).
-idstk?-red {t = var _} (⟶head ()) _   -- forces the source-head split first (see RedCong's `stkA?-red`)
-idstk?-red (β _ _) ()
-idstk?-red (βfst _ _) ()
-idstk?-red (βsnd _ _) ()
-idstk?-red (ξ-lam r) h = h
-idstk?-red (ξ-appˡ r) h = spine?-red r h
-idstk?-red (ξ-appʳ r) h = h
-idstk?-red (ξ-pairˡ r) h = h
-idstk?-red (ξ-pairʳ r) h = h
-idstk?-red (ξ-absurdᶜ _) h = refl
-idstk?-red (ξ-absurdᵉ _) h = refl
-idstk?-red (ξ-fst r) h = spine?-red r h
-idstk?-red (ξ-snd r) h = spine?-red r h
-idstk?-red (ξ-⌜Π⌝ˡ r) h = h
-idstk?-red (ξ-⌜Π⌝ʳ r) h = h
-idstk?-red (ξ-⌜Σ⌝ˡ r) h = h
-idstk?-red (ξ-⌜Σ⌝ʳ r) h = h
-idstk?-red (ξ-⌜Hom⌝ᶜ r) h = h
-idstk?-red (ξ-⌜Hom⌝ˡ r) h = h
-idstk?-red (ξ-⌜Hom⌝ʳ r) h = h
-idstk?-red (ξ-hreflᶜ r) h = h
-idstk?-red (ξ-hreflᵃ r) h = h
-idstk?-red (hrefl-pw C₀ s₀ kp) h = refl
-idstk?-red hrefl-Nat-z h = refl
-idstk?-red (hrefl-Nat-s _) h = h
-idstk?-red (tr-J-base _ _ _ _ _) ()
-idstk?-red (tr-J-Σ _ _ _ _ _ _ _) ()
-idstk?-red (tr-J-Hom _ _ _ c₁ _ _ _ _ kh) h =
-  ⊥-elim (f≢t (trans (sym (stkA?⊥dead c₁ kh)) h))
-idstk?-red (tr-taut _ _) ()
-idstk?-red (tr-pw _ _ _ _ _) h = refl
-idstk?-red (ξ-trᵈ {p = p₀} r) h = trstk?-red-d {p = p₀} r h
-idstk?-red (ξ-trᵖ {d = d₀} r) h = trstk?-red-p {d = d₀} r h
-idstk?-red (ξ-trᵉ r) h = h
-idstk?-red (ap-J _ _ c₁ _ key) h =
-  ⊥-elim (f≢t (trans (sym (stk⊥dead c₁ key)) h))
-idstk?-red (ξ-apᶜ r) h = h
-idstk?-red (ξ-apᵇ r) h = h
-idstk?-red (ξ-apᵖ r) h = apstk?-red r h
-idstk?-red (tr-J-Id _ _ _ _ _ _ _ _) ()
-idstk?-red (jsub-refl _ _ _ _) ()
-idstk?-red (ξ-⌜Id⌝ᶜ r) h = h
-idstk?-red (ξ-⌜Id⌝ˡ r) h = h
-idstk?-red (ξ-⌜Id⌝ʳ r) h = h
-idstk?-red (ξ-⌜Fin⌝ r) h = h
-idstk?-red (ξ-idreflᶜ r) h = h
-idstk?-red (ξ-idreflᵃ r) h = h
-idstk?-red (ξ-jsubᵈ r) h = h
-idstk?-red (ξ-jsubᵖ r) h = idstk?-red r h
-idstk?-red (ξ-jsubᵉ r) h = h
-idstk?-red (natrec-zero _ _) ()
-idstk?-red (natrec-suc _ _ _) ()
-idstk?-red (ξ-nsuc r) h = refl
-idstk?-red (ξ-natrecᶻ r) h = h
-idstk?-red (ξ-natrecˢ r) h = h
-idstk?-red (ξ-natrecⁿ r) h = natstk?-red r h
-idstk?-red (ordtr-z _ _ _ _) ()
-idstk?-red (ordtr-szz _ _ _) ()
-idstk?-red (ordtr-ssz _ _ _ _) ()
-idstk?-red (ordtr-szs _ _ _ _) ()
-idstk?-red (ordtr-sss _ _ _ _ _) ()
-idstk?-red (ξ-ordtrᵃ {a = a} {a' = a'} {t = t} {u = u} r) h = ordstk?-redᵃ {a = a} {a' = a'} {t = t} {u = u} r h
-idstk?-red (ξ-ordtrᵗ {a = a} {t = t} {t' = t'} {u = u} r) h = ordstk?-redᵗ {a = a} {t = t} {t' = t'} {u = u} r h
-idstk?-red (ξ-ordtrᵘ {a = a} {t = t} {u = u} {u' = u'} r) h = ordstk?-redᵘ {a = a} {t = t} {u = u} {u' = u'} r h
-idstk?-red (ξ-ordtrᵖ r) h = h
-idstk?-red (ξ-ordtrq r) h = h
-idstk?-red (ξ-con r) h = refl
-idstk?-red (ξ-ielimᵗ r) h = mustk?-red r h
-idstk?-red (ξ-ielimⁱ r) h = h
-idstk?-red (ι _ _ _ _) ()
-idstk?-red (dpay-ι _ _) ()
-idstk?-red (dpay-σ _ _ _ _) ()
-idstk?-red (dpay-ρ _ _ _ _) ()
-idstk?-red (dih-ι _ _ _) ()
-idstk?-red (dih-σ _ _ _ _ _) ()
-idstk?-red (dih-ρ _ _ _ _ _) ()
-idstk?-red (fcase-z _ _) ()
-idstk?-red (fcase-s _ _ _) ()
-idstk?-red (psplit-β _ _ _) ()
-idstk?-red (ξ-⌜IMu⌝ᴵ r) h = h
-idstk?-red (ξ-⌜IMu⌝ᴰ r) h = h
-idstk?-red (ξ-⌜IMu⌝ⁱ r) h = h
-idstk?-red (ξ-ielimᴰ r) h = h
-idstk?-red (ξ-ielimᵉ r) h = h
-idstk?-red (ξ-dσˢ r) h = h
-idstk?-red (ξ-dσᶠ r) h = h
-idstk?-red (ξ-dρʲ r) h = h
-idstk?-red (ξ-dρᶜ r) h = h
-idstk?-red (ξ-dpayᴵ r) h = h
-idstk?-red (ξ-dpayᴰ r) h = h
-idstk?-red (ξ-dpayᶜ r) h = dstk?-red r h
-idstk?-red (ξ-dihᴰ r) h = h
-idstk?-red (ξ-dihᵉ r) h = h
-idstk?-red (ξ-dihᶜ r) h = dstk?-red r h
-idstk?-red (ξ-dihᵖ r) h = h
-idstk?-red (ξ-fsuc r) h = h
-idstk?-red (ξ-fcaseᵗ r) h = finstk?-red r h
-idstk?-red (ξ-fcaseᵃ r) h = h
-idstk?-red (ξ-fcaseᵇ r) h = h
-idstk?-red (ξ-fcase0 r) h = h
-idstk?-red (ξ-psplitᵇ r) h = h
-idstk?-red (ξ-psplitᵍ r) h = spine?-red r h
 
-natstk?-red {t = var _} (⟶head ()) _   -- forces the source-head split first (see RedCong's `stkA?-red`)
-natstk?-red (β _ _) ()
-natstk?-red (βfst _ _) ()
-natstk?-red (βsnd _ _) ()
-natstk?-red (ξ-lam r) h = h
-natstk?-red (ξ-appˡ r) h = spine?-red r h
-natstk?-red (ξ-appʳ r) h = h
-natstk?-red (ξ-pairˡ r) h = h
-natstk?-red (ξ-pairʳ r) h = h
-natstk?-red (ξ-absurdᶜ _) h = refl
-natstk?-red (ξ-absurdᵉ _) h = refl
-natstk?-red (ξ-fst r) h = spine?-red r h
-natstk?-red (ξ-snd r) h = spine?-red r h
-natstk?-red (ξ-⌜Π⌝ˡ r) h = h
-natstk?-red (ξ-⌜Π⌝ʳ r) h = h
-natstk?-red (ξ-⌜Σ⌝ˡ r) h = h
-natstk?-red (ξ-⌜Σ⌝ʳ r) h = h
-natstk?-red (ξ-⌜Hom⌝ᶜ r) h = h
-natstk?-red (ξ-⌜Hom⌝ˡ r) h = h
-natstk?-red (ξ-⌜Hom⌝ʳ r) h = h
-natstk?-red (ξ-hreflᶜ r) h = h
-natstk?-red (ξ-hreflᵃ r) h = h
-natstk?-red (hrefl-pw C₀ s₀ kp) h = refl
-natstk?-red hrefl-Nat-z h = refl
-natstk?-red (hrefl-Nat-s _) h = h
-natstk?-red (tr-J-base _ _ _ _ _) ()
-natstk?-red (tr-J-Σ _ _ _ _ _ _ _) ()
-natstk?-red (tr-J-Hom _ _ _ c₁ _ _ _ _ kh) h =
-  ⊥-elim (f≢t (trans (sym (stkA?⊥dead c₁ kh)) h))
-natstk?-red (tr-taut _ _) ()
-natstk?-red (tr-pw _ _ _ _ _) h = refl
-natstk?-red (ξ-trᵈ {p = p₀} r) h = trstk?-red-d {p = p₀} r h
-natstk?-red (ξ-trᵖ {d = d₀} r) h = trstk?-red-p {d = d₀} r h
-natstk?-red (ξ-trᵉ r) h = h
-natstk?-red (ap-J _ _ c₁ _ key) h =
-  ⊥-elim (f≢t (trans (sym (stk⊥dead c₁ key)) h))
-natstk?-red (ξ-apᶜ r) h = h
-natstk?-red (ξ-apᵇ r) h = h
-natstk?-red (ξ-apᵖ r) h = apstk?-red r h
-natstk?-red (tr-J-Id _ _ _ _ _ _ _ _) ()
-natstk?-red (jsub-refl _ _ _ _) ()
-natstk?-red (ξ-⌜Id⌝ᶜ r) h = h
-natstk?-red (ξ-⌜Id⌝ˡ r) h = h
-natstk?-red (ξ-⌜Id⌝ʳ r) h = h
-natstk?-red (ξ-⌜Fin⌝ r) h = h
-natstk?-red (ξ-idreflᶜ r) h = refl
-natstk?-red (ξ-idreflᵃ r) h = refl
-natstk?-red (ξ-jsubᵈ r) h = h
-natstk?-red (ξ-jsubᵖ r) h = idstk?-red r h
-natstk?-red (ξ-jsubᵉ r) h = h
-natstk?-red (natrec-zero _ _) ()
-natstk?-red (natrec-suc _ _ _) ()
-natstk?-red (ξ-nsuc r) ()
-natstk?-red (ξ-natrecᶻ r) h = h
-natstk?-red (ξ-natrecˢ r) h = h
-natstk?-red (ξ-natrecⁿ r) h = natstk?-red r h
-natstk?-red (ordtr-z _ _ _ _) ()
-natstk?-red (ordtr-szz _ _ _) ()
-natstk?-red (ordtr-ssz _ _ _ _) ()
-natstk?-red (ordtr-szs _ _ _ _) ()
-natstk?-red (ordtr-sss _ _ _ _ _) ()
-natstk?-red (ξ-ordtrᵃ {a = a} {a' = a'} {t = t} {u = u} r) h = ordstk?-redᵃ {a = a} {a' = a'} {t = t} {u = u} r h
-natstk?-red (ξ-ordtrᵗ {a = a} {t = t} {t' = t'} {u = u} r) h = ordstk?-redᵗ {a = a} {t = t} {t' = t'} {u = u} r h
-natstk?-red (ξ-ordtrᵘ {a = a} {t = t} {u = u} {u' = u'} r) h = ordstk?-redᵘ {a = a} {t = t} {u = u} {u' = u'} r h
-natstk?-red (ξ-ordtrᵖ r) h = h
-natstk?-red (ξ-ordtrq r) h = h
-natstk?-red (ξ-con r) h = refl
-natstk?-red (ξ-ielimᵗ r) h = mustk?-red r h
-natstk?-red (ξ-ielimⁱ r) h = h
-natstk?-red (ι _ _ _ _) ()
-natstk?-red (dpay-ι _ _) ()
-natstk?-red (dpay-σ _ _ _ _) ()
-natstk?-red (dpay-ρ _ _ _ _) ()
-natstk?-red (dih-ι _ _ _) ()
-natstk?-red (dih-σ _ _ _ _ _) ()
-natstk?-red (dih-ρ _ _ _ _ _) ()
-natstk?-red (fcase-z _ _) ()
-natstk?-red (fcase-s _ _ _) ()
-natstk?-red (psplit-β _ _ _) ()
-natstk?-red (ξ-⌜IMu⌝ᴵ r) h = h
-natstk?-red (ξ-⌜IMu⌝ᴰ r) h = h
-natstk?-red (ξ-⌜IMu⌝ⁱ r) h = h
-natstk?-red (ξ-ielimᴰ r) h = h
-natstk?-red (ξ-ielimᵉ r) h = h
-natstk?-red (ξ-dσˢ r) h = h
-natstk?-red (ξ-dσᶠ r) h = h
-natstk?-red (ξ-dρʲ r) h = h
-natstk?-red (ξ-dρᶜ r) h = h
-natstk?-red (ξ-dpayᴵ r) h = h
-natstk?-red (ξ-dpayᴰ r) h = h
-natstk?-red (ξ-dpayᶜ r) h = dstk?-red r h
-natstk?-red (ξ-dihᴰ r) h = h
-natstk?-red (ξ-dihᵉ r) h = h
-natstk?-red (ξ-dihᶜ r) h = dstk?-red r h
-natstk?-red (ξ-dihᵖ r) h = h
-natstk?-red (ξ-fsuc r) h = h
-natstk?-red (ξ-fcaseᵗ r) h = finstk?-red r h
-natstk?-red (ξ-fcaseᵃ r) h = h
-natstk?-red (ξ-fcaseᵇ r) h = h
-natstk?-red (ξ-fcase0 r) h = h
-natstk?-red (ξ-psplitᵇ r) h = h
-natstk?-red (ξ-psplitᵍ r) h = spine?-red r h
 
-natcstk?-red {t = var _} (⟶head ()) _   -- forces the source-head split first (see RedCong's `stkA?-red`)
-natcstk?-red (β _ _) ()
-natcstk?-red (βfst _ _) ()
-natcstk?-red (βsnd _ _) ()
-natcstk?-red (ξ-lam r) h = h
-natcstk?-red (ξ-appˡ r) h = spine?-red r h
-natcstk?-red (ξ-appʳ r) h = h
-natcstk?-red (ξ-pairˡ r) h = h
-natcstk?-red (ξ-pairʳ r) h = h
-natcstk?-red (ξ-absurdᶜ _) h = refl
-natcstk?-red (ξ-absurdᵉ _) h = refl
-natcstk?-red (ξ-fst r) h = spine?-red r h
-natcstk?-red (ξ-snd r) h = spine?-red r h
-natcstk?-red (ξ-⌜Π⌝ˡ r) h = h
-natcstk?-red (ξ-⌜Π⌝ʳ r) h = h
-natcstk?-red (ξ-⌜Σ⌝ˡ r) h = h
-natcstk?-red (ξ-⌜Σ⌝ʳ r) h = h
-natcstk?-red (ξ-⌜Hom⌝ᶜ r) h = h
-natcstk?-red (ξ-⌜Hom⌝ˡ r) h = h
-natcstk?-red (ξ-⌜Hom⌝ʳ r) h = h
-natcstk?-red (ξ-hreflᶜ r) h = h
-natcstk?-red (ξ-hreflᵃ r) h = h
-natcstk?-red (hrefl-pw C₀ s₀ kp) h = refl
-natcstk?-red hrefl-Nat-z h = refl
-natcstk?-red (hrefl-Nat-s _) h = h
-natcstk?-red (tr-J-base _ _ _ _ _) ()
-natcstk?-red (tr-J-Σ _ _ _ _ _ _ _) ()
-natcstk?-red (tr-J-Hom _ _ _ c₁ _ _ _ _ kh) h =
-  ⊥-elim (f≢t (trans (sym (stkA?⊥dead c₁ kh)) h))
-natcstk?-red (tr-taut _ _) ()
-natcstk?-red (tr-pw _ _ _ _ _) h = refl
-natcstk?-red (ξ-trᵈ {p = p₀} r) h = trstk?-red-d {p = p₀} r h
-natcstk?-red (ξ-trᵖ {d = d₀} r) h = trstk?-red-p {d = d₀} r h
-natcstk?-red (ξ-trᵉ r) h = h
-natcstk?-red (ap-J _ _ c₁ _ key) h =
-  ⊥-elim (f≢t (trans (sym (stk⊥dead c₁ key)) h))
-natcstk?-red (ξ-apᶜ r) h = h
-natcstk?-red (ξ-apᵇ r) h = h
-natcstk?-red (ξ-apᵖ r) h = apstk?-red r h
-natcstk?-red (tr-J-Id _ _ _ _ _ _ _ _) ()
-natcstk?-red (jsub-refl _ _ _ _) ()
-natcstk?-red (ξ-⌜Id⌝ᶜ r) h = h
-natcstk?-red (ξ-⌜Id⌝ˡ r) h = h
-natcstk?-red (ξ-⌜Id⌝ʳ r) h = h
-natcstk?-red (ξ-⌜Fin⌝ r) h = h
-natcstk?-red (ξ-idreflᶜ r) h = refl
-natcstk?-red (ξ-idreflᵃ r) h = refl
-natcstk?-red (ξ-jsubᵈ r) h = h
-natcstk?-red (ξ-jsubᵖ r) h = idstk?-red r h
-natcstk?-red (ξ-jsubᵉ r) h = h
-natcstk?-red (natrec-zero _ _) ()
-natcstk?-red (natrec-suc _ _ _) ()
-natcstk?-red (ξ-nsuc r) h = h
-natcstk?-red (ξ-natrecᶻ r) h = h
-natcstk?-red (ξ-natrecˢ r) h = h
-natcstk?-red (ξ-natrecⁿ r) h = natstk?-red r h
-natcstk?-red (ordtr-z _ _ _ _) ()
-natcstk?-red (ordtr-szz _ _ _) ()
-natcstk?-red (ordtr-ssz _ _ _ _) ()
-natcstk?-red (ordtr-szs _ _ _ _) ()
-natcstk?-red (ordtr-sss _ _ _ _ _) ()
-natcstk?-red (ξ-ordtrᵃ {a = a} {a' = a'} {t = t} {u = u} r) h = ordstk?-redᵃ {a = a} {a' = a'} {t = t} {u = u} r h
-natcstk?-red (ξ-ordtrᵗ {a = a} {t = t} {t' = t'} {u = u} r) h = ordstk?-redᵗ {a = a} {t = t} {t' = t'} {u = u} r h
-natcstk?-red (ξ-ordtrᵘ {a = a} {t = t} {u = u} {u' = u'} r) h = ordstk?-redᵘ {a = a} {t = t} {u = u} {u' = u'} r h
-natcstk?-red (ξ-ordtrᵖ r) h = h
-natcstk?-red (ξ-ordtrq r) h = h
-natcstk?-red (ξ-con r) h = refl
-natcstk?-red (ξ-ielimᵗ r) h = mustk?-red r h
-natcstk?-red (ξ-ielimⁱ r) h = h
-natcstk?-red (ι _ _ _ _) ()
-natcstk?-red (dpay-ι _ _) ()
-natcstk?-red (dpay-σ _ _ _ _) ()
-natcstk?-red (dpay-ρ _ _ _ _) ()
-natcstk?-red (dih-ι _ _ _) ()
-natcstk?-red (dih-σ _ _ _ _ _) ()
-natcstk?-red (dih-ρ _ _ _ _ _) ()
-natcstk?-red (fcase-z _ _) ()
-natcstk?-red (fcase-s _ _ _) ()
-natcstk?-red (psplit-β _ _ _) ()
-natcstk?-red (ξ-⌜IMu⌝ᴵ r) h = h
-natcstk?-red (ξ-⌜IMu⌝ᴰ r) h = h
-natcstk?-red (ξ-⌜IMu⌝ⁱ r) h = h
-natcstk?-red (ξ-ielimᴰ r) h = h
-natcstk?-red (ξ-ielimᵉ r) h = h
-natcstk?-red (ξ-dσˢ r) h = h
-natcstk?-red (ξ-dσᶠ r) h = h
-natcstk?-red (ξ-dρʲ r) h = h
-natcstk?-red (ξ-dρᶜ r) h = h
-natcstk?-red (ξ-dpayᴵ r) h = h
-natcstk?-red (ξ-dpayᴰ r) h = h
-natcstk?-red (ξ-dpayᶜ r) h = dstk?-red r h
-natcstk?-red (ξ-dihᴰ r) h = h
-natcstk?-red (ξ-dihᵉ r) h = h
-natcstk?-red (ξ-dihᶜ r) h = dstk?-red r h
-natcstk?-red (ξ-dihᵖ r) h = h
-natcstk?-red (ξ-fsuc r) h = h
-natcstk?-red (ξ-fcaseᵗ r) h = finstk?-red r h
-natcstk?-red (ξ-fcaseᵃ r) h = h
-natcstk?-red (ξ-fcaseᵇ r) h = h
-natcstk?-red (ξ-fcase0 r) h = h
-natcstk?-red (ξ-psplitᵇ r) h = h
-natcstk?-red (ξ-psplitᵍ r) h = spine?-red r h
 
-mustk?-red {t = var _} (⟶head ()) _   -- forces the source-head split first (see RedCong's `stkA?-red`)
-mustk?-red (β _ _) ()
-mustk?-red (βfst _ _) ()
-mustk?-red (βsnd _ _) ()
-mustk?-red (ξ-lam r) h = h
-mustk?-red (ξ-appˡ r) h = spine?-red r h
-mustk?-red (ξ-appʳ r) h = h
-mustk?-red (ξ-pairˡ r) h = h
-mustk?-red (ξ-pairʳ r) h = h
-mustk?-red (ξ-absurdᶜ _) h = refl
-mustk?-red (ξ-absurdᵉ _) h = refl
-mustk?-red (ξ-fst r) h = spine?-red r h
-mustk?-red (ξ-snd r) h = spine?-red r h
-mustk?-red (ξ-⌜Π⌝ˡ r) h = h
-mustk?-red (ξ-⌜Π⌝ʳ r) h = h
-mustk?-red (ξ-⌜Σ⌝ˡ r) h = h
-mustk?-red (ξ-⌜Σ⌝ʳ r) h = h
-mustk?-red (ξ-⌜Hom⌝ᶜ r) h = h
-mustk?-red (ξ-⌜Hom⌝ˡ r) h = h
-mustk?-red (ξ-⌜Hom⌝ʳ r) h = h
-mustk?-red (ξ-hreflᶜ r) h = h
-mustk?-red (ξ-hreflᵃ r) h = h
-mustk?-red (hrefl-pw C₀ s₀ kp) h = refl
-mustk?-red hrefl-Nat-z h = refl
-mustk?-red (hrefl-Nat-s _) h = h
-mustk?-red (tr-J-base _ _ _ _ _) ()
-mustk?-red (tr-J-Σ _ _ _ _ _ _ _) ()
-mustk?-red (tr-J-Hom _ _ _ c₁ _ _ _ _ kh) h =
-  ⊥-elim (f≢t (trans (sym (stkA?⊥dead c₁ kh)) h))
-mustk?-red (tr-taut _ _) ()
-mustk?-red (tr-pw _ _ _ _ _) h = refl
-mustk?-red (ξ-trᵈ {p = p₀} r) h = trstk?-red-d {p = p₀} r h
-mustk?-red (ξ-trᵖ {d = d₀} r) h = trstk?-red-p {d = d₀} r h
-mustk?-red (ξ-trᵉ r) h = h
-mustk?-red (ap-J _ _ c₁ _ key) h =
-  ⊥-elim (f≢t (trans (sym (stk⊥dead c₁ key)) h))
-mustk?-red (ξ-apᶜ r) h = h
-mustk?-red (ξ-apᵇ r) h = h
-mustk?-red (ξ-apᵖ r) h = apstk?-red r h
-mustk?-red (tr-J-Id _ _ _ _ _ _ _ _) ()
-mustk?-red (jsub-refl _ _ _ _) ()
-mustk?-red (ξ-⌜Id⌝ᶜ r) h = h
-mustk?-red (ξ-⌜Id⌝ˡ r) h = h
-mustk?-red (ξ-⌜Id⌝ʳ r) h = h
-mustk?-red (ξ-⌜Fin⌝ r) h = h
-mustk?-red (ξ-idreflᶜ r) h = refl
-mustk?-red (ξ-idreflᵃ r) h = refl
-mustk?-red (ξ-jsubᵈ r) h = h
-mustk?-red (ξ-jsubᵖ r) h = idstk?-red r h
-mustk?-red (ξ-jsubᵉ r) h = h
-mustk?-red (natrec-zero _ _) ()
-mustk?-red (natrec-suc _ _ _) ()
-mustk?-red (ξ-nsuc r) h = refl
-mustk?-red (ξ-natrecᶻ r) h = h
-mustk?-red (ξ-natrecˢ r) h = h
-mustk?-red (ξ-natrecⁿ r) h = natstk?-red r h
-mustk?-red (ordtr-z _ _ _ _) ()
-mustk?-red (ordtr-szz _ _ _) ()
-mustk?-red (ordtr-ssz _ _ _ _) ()
-mustk?-red (ordtr-szs _ _ _ _) ()
-mustk?-red (ordtr-sss _ _ _ _ _) ()
-mustk?-red (ξ-ordtrᵃ {a = a} {a' = a'} {t = t} {u = u} r) h = ordstk?-redᵃ {a = a} {a' = a'} {t = t} {u = u} r h
-mustk?-red (ξ-ordtrᵗ {a = a} {t = t} {t' = t'} {u = u} r) h = ordstk?-redᵗ {a = a} {t = t} {t' = t'} {u = u} r h
-mustk?-red (ξ-ordtrᵘ {a = a} {t = t} {u = u} {u' = u'} r) h = ordstk?-redᵘ {a = a} {t = t} {u = u} {u' = u'} r h
-mustk?-red (ξ-ordtrᵖ r) h = h
-mustk?-red (ξ-ordtrq r) h = h
 -- ★ the four rows that are not `natstk?-red`'s: `con` is the head that
 --   UNSTICKS an `elim`, so it is the one place these two keys differ.
-mustk?-red (ξ-con r) ()
-mustk?-red (ξ-ielimᵗ r) h = mustk?-red r h
-mustk?-red (ξ-ielimⁱ r) h = h
-mustk?-red (ι _ _ _ _) ()
-mustk?-red (dpay-ι _ _) ()
-mustk?-red (dpay-σ _ _ _ _) ()
-mustk?-red (dpay-ρ _ _ _ _) ()
-mustk?-red (dih-ι _ _ _) ()
-mustk?-red (dih-σ _ _ _ _ _) ()
-mustk?-red (dih-ρ _ _ _ _ _) ()
-mustk?-red (fcase-z _ _) ()
-mustk?-red (fcase-s _ _ _) ()
-mustk?-red (psplit-β _ _ _) ()
-mustk?-red (ξ-⌜IMu⌝ᴵ r) h = h
-mustk?-red (ξ-⌜IMu⌝ᴰ r) h = h
-mustk?-red (ξ-⌜IMu⌝ⁱ r) h = h
-mustk?-red (ξ-ielimᴰ r) h = h
-mustk?-red (ξ-ielimᵉ r) h = h
-mustk?-red (ξ-dσˢ r) h = h
-mustk?-red (ξ-dσᶠ r) h = h
-mustk?-red (ξ-dρʲ r) h = h
-mustk?-red (ξ-dρᶜ r) h = h
-mustk?-red (ξ-dpayᴵ r) h = h
-mustk?-red (ξ-dpayᴰ r) h = h
-mustk?-red (ξ-dpayᶜ r) h = dstk?-red r h
-mustk?-red (ξ-dihᴰ r) h = h
-mustk?-red (ξ-dihᵉ r) h = h
-mustk?-red (ξ-dihᶜ r) h = dstk?-red r h
-mustk?-red (ξ-dihᵖ r) h = h
-mustk?-red (ξ-fsuc r) h = h
-mustk?-red (ξ-fcaseᵗ r) h = finstk?-red r h
-mustk?-red (ξ-fcaseᵃ r) h = h
-mustk?-red (ξ-fcaseᵇ r) h = h
-mustk?-red (ξ-fcase0 r) h = h
-mustk?-red (ξ-psplitᵇ r) h = h
-mustk?-red (ξ-psplitᵍ r) h = spine?-red r h
 
-dstk?-red {t = var _} (⟶head ()) _   -- forces the source-head split first (see RedCong's `stkA?-red`)
-dstk?-red (β _ _) ()
-dstk?-red (βfst _ _) ()
-dstk?-red (βsnd _ _) ()
-dstk?-red (ξ-lam r) h = h
-dstk?-red (ξ-appˡ r) h = spine?-red r h
-dstk?-red (ξ-appʳ r) h = h
-dstk?-red (ξ-pairˡ r) h = h
-dstk?-red (ξ-pairʳ r) h = h
-dstk?-red (ξ-absurdᶜ _) h = refl
-dstk?-red (ξ-absurdᵉ _) h = refl
-dstk?-red (ξ-fst r) h = spine?-red r h
-dstk?-red (ξ-snd r) h = spine?-red r h
-dstk?-red (ξ-⌜Π⌝ˡ r) h = h
-dstk?-red (ξ-⌜Π⌝ʳ r) h = h
-dstk?-red (ξ-⌜Σ⌝ˡ r) h = h
-dstk?-red (ξ-⌜Σ⌝ʳ r) h = h
-dstk?-red (ξ-⌜Hom⌝ᶜ r) h = h
-dstk?-red (ξ-⌜Hom⌝ˡ r) h = h
-dstk?-red (ξ-⌜Hom⌝ʳ r) h = h
-dstk?-red (ξ-hreflᶜ r) h = h
-dstk?-red (ξ-hreflᵃ r) h = h
-dstk?-red (hrefl-pw C₀ s₀ kp) h = refl
-dstk?-red hrefl-Nat-z h = refl
-dstk?-red (hrefl-Nat-s _) h = h
-dstk?-red (tr-J-base _ _ _ _ _) ()
-dstk?-red (tr-J-Σ _ _ _ _ _ _ _) ()
-dstk?-red (tr-J-Hom _ _ _ c₁ _ _ _ _ kh) h =
-  ⊥-elim (f≢t (trans (sym (stkA?⊥dead c₁ kh)) h))
-dstk?-red (tr-taut _ _) ()
-dstk?-red (tr-pw _ _ _ _ _) h = refl
-dstk?-red (ξ-trᵈ {p = p₀} r) h = trstk?-red-d {p = p₀} r h
-dstk?-red (ξ-trᵖ {d = d₀} r) h = trstk?-red-p {d = d₀} r h
-dstk?-red (ξ-trᵉ r) h = h
-dstk?-red (ap-J _ _ c₁ _ key) h =
-  ⊥-elim (f≢t (trans (sym (stk⊥dead c₁ key)) h))
-dstk?-red (ξ-apᶜ r) h = h
-dstk?-red (ξ-apᵇ r) h = h
-dstk?-red (ξ-apᵖ r) h = apstk?-red r h
-dstk?-red (tr-J-Id _ _ _ _ _ _ _ _) ()
-dstk?-red (jsub-refl _ _ _ _) ()
-dstk?-red (ξ-⌜Id⌝ᶜ r) h = h
-dstk?-red (ξ-⌜Id⌝ˡ r) h = h
-dstk?-red (ξ-⌜Id⌝ʳ r) h = h
-dstk?-red (ξ-⌜Fin⌝ r) h = h
-dstk?-red (ξ-idreflᶜ r) h = refl
-dstk?-red (ξ-idreflᵃ r) h = refl
-dstk?-red (ξ-jsubᵈ r) h = h
-dstk?-red (ξ-jsubᵖ r) h = idstk?-red r h
-dstk?-red (ξ-jsubᵉ r) h = h
-dstk?-red (natrec-zero _ _) ()
-dstk?-red (natrec-suc _ _ _) ()
-dstk?-red (ξ-nsuc r) h = refl
-dstk?-red (ξ-natrecᶻ r) h = h
-dstk?-red (ξ-natrecˢ r) h = h
-dstk?-red (ξ-natrecⁿ r) h = natstk?-red r h
-dstk?-red (ordtr-z _ _ _ _) ()
-dstk?-red (ordtr-szz _ _ _) ()
-dstk?-red (ordtr-ssz _ _ _ _) ()
-dstk?-red (ordtr-szs _ _ _ _) ()
-dstk?-red (ordtr-sss _ _ _ _ _) ()
-dstk?-red (ξ-ordtrᵃ {a = a} {a' = a'} {t = t} {u = u} r) h = ordstk?-redᵃ {a = a} {a' = a'} {t = t} {u = u} r h
-dstk?-red (ξ-ordtrᵗ {a = a} {t = t} {t' = t'} {u = u} r) h = ordstk?-redᵗ {a = a} {t = t} {t' = t'} {u = u} r h
-dstk?-red (ξ-ordtrᵘ {a = a} {t = t} {u = u} {u' = u'} r) h = ordstk?-redᵘ {a = a} {t = t} {u = u} {u' = u'} r h
-dstk?-red (ξ-ordtrᵖ r) h = h
-dstk?-red (ξ-ordtrq r) h = h
 -- ★ the four rows that are not `natstk?-red`'s: `con` is the head that
 --   UNSTICKS an `elim`, so it is the one place these two keys differ.
-dstk?-red (ι _ _ _ _) ()
-dstk?-red (dpay-ι _ _) ()
-dstk?-red (dpay-σ _ _ _ _) ()
-dstk?-red (dpay-ρ _ _ _ _) ()
-dstk?-red (dih-ι _ _ _) ()
-dstk?-red (dih-σ _ _ _ _ _) ()
-dstk?-red (dih-ρ _ _ _ _ _) ()
-dstk?-red (fcase-z _ _) ()
-dstk?-red (fcase-s _ _ _) ()
-dstk?-red (psplit-β _ _ _) ()
-dstk?-red (ξ-⌜IMu⌝ᴵ r) h = h
-dstk?-red (ξ-⌜IMu⌝ᴰ r) h = h
-dstk?-red (ξ-⌜IMu⌝ⁱ r) h = h
-dstk?-red (ξ-con r) h = h
-dstk?-red (ξ-ielimᴰ r) h = h
-dstk?-red (ξ-ielimⁱ r) h = h
-dstk?-red (ξ-ielimᵉ r) h = h
-dstk?-red (ξ-ielimᵗ r) h = mustk?-red r h
-dstk?-red (ξ-dσˢ _) ()
-dstk?-red (ξ-dσᶠ _) ()
-dstk?-red (ξ-dρʲ _) ()
-dstk?-red (ξ-dρᶜ _) ()
-dstk?-red (ξ-dpayᴵ r) h = h
-dstk?-red (ξ-dpayᴰ r) h = h
-dstk?-red (ξ-dpayᶜ r) h = dstk?-red r h
-dstk?-red (ξ-dihᴰ r) h = h
-dstk?-red (ξ-dihᵉ r) h = h
-dstk?-red (ξ-dihᶜ r) h = dstk?-red r h
-dstk?-red (ξ-dihᵖ r) h = h
-dstk?-red (ξ-fsuc r) h = h
-dstk?-red (ξ-fcaseᵗ r) h = finstk?-red r h
-dstk?-red (ξ-fcaseᵃ r) h = h
-dstk?-red (ξ-fcaseᵇ r) h = h
-dstk?-red (ξ-fcase0 r) h = h
-dstk?-red (ξ-psplitᵇ r) h = h
-dstk?-red (ξ-psplitᵍ r) h = spine?-red r h
 
-finstk?-red {t = var _} (⟶head ()) _   -- forces the source-head split first (see RedCong's `stkA?-red`)
-finstk?-red (β _ _) ()
-finstk?-red (βfst _ _) ()
-finstk?-red (βsnd _ _) ()
-finstk?-red (ξ-lam r) h = h
-finstk?-red (ξ-appˡ r) h = spine?-red r h
-finstk?-red (ξ-appʳ r) h = h
-finstk?-red (ξ-pairˡ r) h = h
-finstk?-red (ξ-pairʳ r) h = h
-finstk?-red (ξ-absurdᶜ _) h = refl
-finstk?-red (ξ-absurdᵉ _) h = refl
-finstk?-red (ξ-fst r) h = spine?-red r h
-finstk?-red (ξ-snd r) h = spine?-red r h
-finstk?-red (ξ-⌜Π⌝ˡ r) h = h
-finstk?-red (ξ-⌜Π⌝ʳ r) h = h
-finstk?-red (ξ-⌜Σ⌝ˡ r) h = h
-finstk?-red (ξ-⌜Σ⌝ʳ r) h = h
-finstk?-red (ξ-⌜Hom⌝ᶜ r) h = h
-finstk?-red (ξ-⌜Hom⌝ˡ r) h = h
-finstk?-red (ξ-⌜Hom⌝ʳ r) h = h
-finstk?-red (ξ-hreflᶜ r) h = h
-finstk?-red (ξ-hreflᵃ r) h = h
-finstk?-red (hrefl-pw C₀ s₀ kp) h = refl
-finstk?-red hrefl-Nat-z h = refl
-finstk?-red (hrefl-Nat-s _) h = h
-finstk?-red (tr-J-base _ _ _ _ _) ()
-finstk?-red (tr-J-Σ _ _ _ _ _ _ _) ()
-finstk?-red (tr-J-Hom _ _ _ c₁ _ _ _ _ kh) h =
-  ⊥-elim (f≢t (trans (sym (stkA?⊥dead c₁ kh)) h))
-finstk?-red (tr-taut _ _) ()
-finstk?-red (tr-pw _ _ _ _ _) h = refl
-finstk?-red (ξ-trᵈ {p = p₀} r) h = trstk?-red-d {p = p₀} r h
-finstk?-red (ξ-trᵖ {d = d₀} r) h = trstk?-red-p {d = d₀} r h
-finstk?-red (ξ-trᵉ r) h = h
-finstk?-red (ap-J _ _ c₁ _ key) h =
-  ⊥-elim (f≢t (trans (sym (stk⊥dead c₁ key)) h))
-finstk?-red (ξ-apᶜ r) h = h
-finstk?-red (ξ-apᵇ r) h = h
-finstk?-red (ξ-apᵖ r) h = apstk?-red r h
-finstk?-red (tr-J-Id _ _ _ _ _ _ _ _) ()
-finstk?-red (jsub-refl _ _ _ _) ()
-finstk?-red (ξ-⌜Id⌝ᶜ r) h = h
-finstk?-red (ξ-⌜Id⌝ˡ r) h = h
-finstk?-red (ξ-⌜Id⌝ʳ r) h = h
-finstk?-red (ξ-⌜Fin⌝ r) h = h
-finstk?-red (ξ-idreflᶜ r) h = refl
-finstk?-red (ξ-idreflᵃ r) h = refl
-finstk?-red (ξ-jsubᵈ r) h = h
-finstk?-red (ξ-jsubᵖ r) h = idstk?-red r h
-finstk?-red (ξ-jsubᵉ r) h = h
-finstk?-red (natrec-zero _ _) ()
-finstk?-red (natrec-suc _ _ _) ()
-finstk?-red (ξ-nsuc r) h = refl
-finstk?-red (ξ-natrecᶻ r) h = h
-finstk?-red (ξ-natrecˢ r) h = h
-finstk?-red (ξ-natrecⁿ r) h = natstk?-red r h
-finstk?-red (ordtr-z _ _ _ _) ()
-finstk?-red (ordtr-szz _ _ _) ()
-finstk?-red (ordtr-ssz _ _ _ _) ()
-finstk?-red (ordtr-szs _ _ _ _) ()
-finstk?-red (ordtr-sss _ _ _ _ _) ()
-finstk?-red (ξ-ordtrᵃ {a = a} {a' = a'} {t = t} {u = u} r) h = ordstk?-redᵃ {a = a} {a' = a'} {t = t} {u = u} r h
-finstk?-red (ξ-ordtrᵗ {a = a} {t = t} {t' = t'} {u = u} r) h = ordstk?-redᵗ {a = a} {t = t} {t' = t'} {u = u} r h
-finstk?-red (ξ-ordtrᵘ {a = a} {t = t} {u = u} {u' = u'} r) h = ordstk?-redᵘ {a = a} {t = t} {u = u} {u' = u'} r h
-finstk?-red (ξ-ordtrᵖ r) h = h
-finstk?-red (ξ-ordtrq r) h = h
 -- ★ the four rows that are not `natstk?-red`'s: `con` is the head that
 --   UNSTICKS an `elim`, so it is the one place these two keys differ.
-finstk?-red (ι _ _ _ _) ()
-finstk?-red (dpay-ι _ _) ()
-finstk?-red (dpay-σ _ _ _ _) ()
-finstk?-red (dpay-ρ _ _ _ _) ()
-finstk?-red (dih-ι _ _ _) ()
-finstk?-red (dih-σ _ _ _ _ _) ()
-finstk?-red (dih-ρ _ _ _ _ _) ()
-finstk?-red (fcase-z _ _) ()
-finstk?-red (fcase-s _ _ _) ()
-finstk?-red (psplit-β _ _ _) ()
-finstk?-red (ξ-⌜IMu⌝ᴵ r) h = h
-finstk?-red (ξ-⌜IMu⌝ᴰ r) h = h
-finstk?-red (ξ-⌜IMu⌝ⁱ r) h = h
-finstk?-red (ξ-con r) h = h
-finstk?-red (ξ-ielimᴰ r) h = h
-finstk?-red (ξ-ielimⁱ r) h = h
-finstk?-red (ξ-ielimᵉ r) h = h
-finstk?-red (ξ-ielimᵗ r) h = mustk?-red r h
-finstk?-red (ξ-dσˢ r) h = h
-finstk?-red (ξ-dσᶠ r) h = h
-finstk?-red (ξ-dρʲ r) h = h
-finstk?-red (ξ-dρᶜ r) h = h
-finstk?-red (ξ-dpayᴵ r) h = h
-finstk?-red (ξ-dpayᴰ r) h = h
-finstk?-red (ξ-dpayᶜ r) h = dstk?-red r h
-finstk?-red (ξ-dihᴰ r) h = h
-finstk?-red (ξ-dihᵉ r) h = h
-finstk?-red (ξ-dihᶜ r) h = dstk?-red r h
-finstk?-red (ξ-dihᵖ r) h = h
-finstk?-red (ξ-fsuc _) ()
-finstk?-red (ξ-fcaseᵗ r) h = finstk?-red r h
-finstk?-red (ξ-fcaseᵃ r) h = h
-finstk?-red (ξ-fcaseᵇ r) h = h
-finstk?-red (ξ-fcase0 r) h = h
-finstk?-red (ξ-psplitᵇ r) h = h
-finstk?-red (ξ-psplitᵍ r) h = spine?-red r h
 
 ordstk?-redᵃ {a = var _} (⟶head ()) _   -- forces the source-head split first (see RedCong's `stkA?-red`)
 ordstk?-redᵃ (β _ _) ()
 ordstk?-redᵃ (βfst _ _) ()
 ordstk?-redᵃ (βsnd _ _) ()
 ordstk?-redᵃ (ξ-lam r) h = h
-ordstk?-redᵃ (ξ-appˡ r) h = spine?-red r h
+ordstk?-redᵃ (ξ-appˡ r) h = stk-red spineK r h
 ordstk?-redᵃ (ξ-appʳ r) h = h
 ordstk?-redᵃ (ξ-pairˡ r) h = h
 ordstk?-redᵃ (ξ-pairʳ r) h = h
 ordstk?-redᵃ (ξ-absurdᶜ _) h = refl
 ordstk?-redᵃ (ξ-absurdᵉ _) h = refl
-ordstk?-redᵃ (ξ-fst r) h = spine?-red r h
-ordstk?-redᵃ (ξ-snd r) h = spine?-red r h
+ordstk?-redᵃ (ξ-fst r) h = stk-red spineK r h
+ordstk?-redᵃ (ξ-snd r) h = stk-red spineK r h
 ordstk?-redᵃ (ξ-⌜Π⌝ˡ r) h = h
 ordstk?-redᵃ (ξ-⌜Π⌝ʳ r) h = h
 ordstk?-redᵃ (ξ-⌜Σ⌝ˡ r) h = h
@@ -2304,7 +811,7 @@ ordstk?-redᵃ (ap-J _ _ c₁ _ key) h =
   ⊥-elim (f≢t (trans (sym (stk⊥dead c₁ key)) h))
 ordstk?-redᵃ (ξ-apᶜ r) h = h
 ordstk?-redᵃ (ξ-apᵇ r) h = h
-ordstk?-redᵃ (ξ-apᵖ r) h = apstk?-red r h
+ordstk?-redᵃ (ξ-apᵖ r) h = stk-red apK r h
 ordstk?-redᵃ (tr-J-Id _ _ _ _ _ _ _ _) ()
 ordstk?-redᵃ (jsub-refl _ _ _ _) ()
 ordstk?-redᵃ (ξ-⌜Id⌝ᶜ r) h = h
@@ -2314,7 +821,7 @@ ordstk?-redᵃ (ξ-⌜Fin⌝ r) h = h
 ordstk?-redᵃ (ξ-idreflᶜ r) h = refl
 ordstk?-redᵃ (ξ-idreflᵃ r) h = refl
 ordstk?-redᵃ (ξ-jsubᵈ r) h = h
-ordstk?-redᵃ (ξ-jsubᵖ r) h = idstk?-red r h
+ordstk?-redᵃ (ξ-jsubᵖ r) h = stk-red idK r h
 ordstk?-redᵃ (ξ-jsubᵉ r) h = h
 ordstk?-redᵃ (natrec-zero _ _) ()
 ordstk?-redᵃ (natrec-suc _ _ _) ()
@@ -2325,9 +832,9 @@ ordstk?-redᵃ (natrec-suc _ _ _) ()
 ordstk?-redᵃ (ξ-nsuc r) h = h
 ordstk?-redᵃ (ξ-natrecᶻ r) h = h
 ordstk?-redᵃ (ξ-natrecˢ r) h = h
-ordstk?-redᵃ (ξ-natrecⁿ r) h = natstk?-red r h
+ordstk?-redᵃ (ξ-natrecⁿ r) h = stk-red natK r h
 ordstk?-redᵃ (ξ-con r) h = refl
-ordstk?-redᵃ (ξ-ielimᵗ r) h = mustk?-red r h
+ordstk?-redᵃ (ξ-ielimᵗ r) h = stk-red muK r h
 ordstk?-redᵃ (ξ-ielimⁱ r) h = h
 ordstk?-redᵃ (ordtr-z _ _ _ _) ()
 ordstk?-redᵃ (ordtr-szz _ _ _) ()
@@ -2360,18 +867,18 @@ ordstk?-redᵃ (ξ-dρʲ r) h = h
 ordstk?-redᵃ (ξ-dρᶜ r) h = h
 ordstk?-redᵃ (ξ-dpayᴵ r) h = h
 ordstk?-redᵃ (ξ-dpayᴰ r) h = h
-ordstk?-redᵃ (ξ-dpayᶜ r) h = dstk?-red r h
+ordstk?-redᵃ (ξ-dpayᶜ r) h = stk-red dK r h
 ordstk?-redᵃ (ξ-dihᴰ r) h = h
 ordstk?-redᵃ (ξ-dihᵉ r) h = h
-ordstk?-redᵃ (ξ-dihᶜ r) h = dstk?-red r h
+ordstk?-redᵃ (ξ-dihᶜ r) h = stk-red dK r h
 ordstk?-redᵃ (ξ-dihᵖ r) h = h
 ordstk?-redᵃ (ξ-fsuc r) h = h
-ordstk?-redᵃ (ξ-fcaseᵗ r) h = finstk?-red r h
+ordstk?-redᵃ (ξ-fcaseᵗ r) h = stk-red finK r h
 ordstk?-redᵃ (ξ-fcaseᵃ r) h = h
 ordstk?-redᵃ (ξ-fcaseᵇ r) h = h
 ordstk?-redᵃ (ξ-fcase0 r) h = h
 ordstk?-redᵃ (ξ-psplitᵇ r) h = h
-ordstk?-redᵃ (ξ-psplitᵍ r) h = spine?-red r h
+ordstk?-redᵃ (ξ-psplitᵍ r) h = stk-red spineK r h
 
 -- `t` and `u` are inert under a reduction of the other, so these two
 -- must case on `a` — its head is what selects `ordstk?`'s clause, and a
@@ -2381,7 +888,7 @@ ordstk?-redᵃ (ξ-psplitᵍ r) h = spine?-red r h
 ordstk?-redᵗ {t = var _} (⟶head ()) _   -- forces the source-head split first (see RedCong's `stkA?-red`)
 ordstk?-redᵗ {a = nzero} r ()
 ordstk?-redᵗ {a = nsuc a₀} {t = t} {t' = t'} r h =
-  ordS?-monoᵇ (natstk? t) (natstk? t') (natstk?-red r) _ h
+  ordS?-monoᵇ (natstk? t) (natstk? t') (stk-red natK r) _ h
 ordstk?-redᵗ {a = var x₂} r h = h
 ordstk?-redᵗ {a = lam a} r h = h
 ordstk?-redᵗ {a = app a a₁} r h = h
@@ -2421,7 +928,7 @@ ordstk?-redᵗ {a = psplit a a₁} r h = h
 ordstk?-redᵘ {u = var _} (⟶head ()) _   -- forces the source-head split first (see RedCong's `stkA?-red`)
 ordstk?-redᵘ {a = nzero} r ()
 ordstk?-redᵘ {a = nsuc a₀} {t = t} r h =
-  ordS?-monoᵘ (natstk? t) (natstk?-red r) h
+  ordS?-monoᵘ (natstk? t) (stk-red natK r) h
 ordstk?-redᵘ {a = var x₂} r h = h
 ordstk?-redᵘ {a = lam a} r h = h
 ordstk?-redᵘ {a = app a a₁} r h = h
@@ -2459,211 +966,36 @@ ordstk?-redᵘ {a = fcase a a₁ a₂} r h = h
 ordstk?-redᵘ {a = fcase0 a} r h = h
 ordstk?-redᵘ {a = psplit a a₁} r h = h
 
-nopw?-red {t = var _} (⟶head ()) _   -- forces the source-head split first (see RedCong's `stkA?-red`)
-nopw?-red (β _ _) ()
-nopw?-red (βfst _ _) ()
-nopw?-red (βsnd _ _) ()
-nopw?-red (ξ-lam r) h = h
-nopw?-red (ξ-appˡ r) h = spine?-red r h
-nopw?-red (ξ-appʳ r) h = h
-nopw?-red (ξ-pairˡ r) h = h
-nopw?-red (ξ-pairʳ r) h = h
-nopw?-red (ξ-absurdᶜ _) h = refl
-nopw?-red (ξ-absurdᵉ _) h = refl
-nopw?-red (ξ-fst r) h = spine?-red r h
-nopw?-red (ξ-snd r) h = spine?-red r h
-nopw?-red (ξ-⌜Π⌝ˡ _) ()
-nopw?-red (ξ-⌜Π⌝ʳ _) ()
-nopw?-red (ξ-⌜Σ⌝ˡ r) h = h
-nopw?-red (ξ-⌜Σ⌝ʳ r) h = h
-nopw?-red (ξ-⌜Hom⌝ᶜ r) h = nopw?-red r h
-nopw?-red (ξ-⌜Hom⌝ˡ r) h = h
-nopw?-red (ξ-⌜Hom⌝ʳ r) h = h
-nopw?-red (ξ-hreflᶜ r) h = h
-nopw?-red (ξ-hreflᵃ r) h = h
-nopw?-red (hrefl-pw C₀ s₀ kp) h = refl
-nopw?-red hrefl-Nat-z h = refl
-nopw?-red (hrefl-Nat-s _) h = h
-nopw?-red (tr-J-base _ _ _ _ _) ()
-nopw?-red (tr-J-Σ _ _ _ _ _ _ _) ()
-nopw?-red (tr-J-Hom _ _ _ c₁ _ _ _ _ kh) h = ⊥-elim (f≢t (trans (sym (stkA?⊥dead c₁ kh)) h))
-nopw?-red (tr-taut _ _) ()
-nopw?-red (tr-pw c₁ _ _ _ kp) h = ⊥-elim (f≢t (trans (sym (nopw⊥pw c₁ (deadmot→nopw c₁ h))) kp))
-nopw?-red (ξ-trᵈ {p = p₀} r) h = trstk?-red-d {p = p₀} r h
-nopw?-red (ξ-trᵖ {d = d₀} r) h = trstk?-red-p {d = d₀} r h
-nopw?-red (ξ-trᵉ r) h = h
-nopw?-red (ap-J _ _ _ _ _) h = refl
-nopw?-red (ξ-apᶜ r) h = h
-nopw?-red (ξ-apᵇ r) h = h
-nopw?-red (ξ-apᵖ r) h = h
-nopw?-red (tr-J-Id _ _ _ _ _ _ _ _) ()
-nopw?-red (jsub-refl _ _ _ _) ()
-nopw?-red (ξ-⌜Id⌝ᶜ r) h = h
-nopw?-red (ξ-⌜Id⌝ˡ r) h = h
-nopw?-red (ξ-⌜Id⌝ʳ r) h = h
-nopw?-red (ξ-⌜Fin⌝ r) h = h
-nopw?-red (ξ-idreflᶜ r) h = h
-nopw?-red (ξ-idreflᵃ r) h = h
-nopw?-red (ξ-jsubᵈ r) h = h
-nopw?-red (ξ-jsubᵖ r) h = idstk?-red r h
-nopw?-red (ξ-jsubᵉ r) h = h
-nopw?-red (natrec-zero _ _) ()
-nopw?-red (natrec-suc _ _ _) ()
-nopw?-red (ξ-nsuc r) h = refl
-nopw?-red (ξ-natrecᶻ r) h = h
-nopw?-red (ξ-natrecˢ r) h = h
-nopw?-red (ξ-natrecⁿ r) h = natstk?-red r h
-nopw?-red (ordtr-z _ _ _ _) ()
-nopw?-red (ordtr-szz _ _ _) ()
-nopw?-red (ordtr-ssz _ _ _ _) ()
-nopw?-red (ordtr-szs _ _ _ _) ()
-nopw?-red (ordtr-sss _ _ _ _ _) ()
-nopw?-red (ξ-ordtrᵃ {a = a} {a' = a'} {t = t} {u = u} r) h = ordstk?-redᵃ {a = a} {a' = a'} {t = t} {u = u} r h
-nopw?-red (ξ-ordtrᵗ {a = a} {t = t} {t' = t'} {u = u} r) h = ordstk?-redᵗ {a = a} {t = t} {t' = t'} {u = u} r h
-nopw?-red (ξ-ordtrᵘ {a = a} {t = t} {u = u} {u' = u'} r) h = ordstk?-redᵘ {a = a} {t = t} {u = u} {u' = u'} r h
-nopw?-red (ξ-ordtrᵖ r) h = h
-nopw?-red (ξ-ordtrq r) h = h
-nopw?-red (ξ-con r) h = refl
-nopw?-red (ξ-ielimᵗ r) h = mustk?-red r h
-nopw?-red (ξ-ielimⁱ r) h = h
-nopw?-red (ι _ _ _ _) ()
-nopw?-red (dpay-ι _ _) ()
-nopw?-red (dpay-σ _ _ _ _) ()
-nopw?-red (dpay-ρ _ _ _ _) ()
-nopw?-red (dih-ι _ _ _) ()
-nopw?-red (dih-σ _ _ _ _ _) ()
-nopw?-red (dih-ρ _ _ _ _ _) ()
-nopw?-red (fcase-z _ _) ()
-nopw?-red (fcase-s _ _ _) ()
-nopw?-red (psplit-β _ _ _) ()
-nopw?-red (ξ-⌜IMu⌝ᴵ r) h = h
-nopw?-red (ξ-⌜IMu⌝ᴰ r) h = h
-nopw?-red (ξ-⌜IMu⌝ⁱ r) h = h
-nopw?-red (ξ-ielimᴰ r) h = h
-nopw?-red (ξ-ielimᵉ r) h = h
-nopw?-red (ξ-dσˢ r) h = h
-nopw?-red (ξ-dσᶠ r) h = h
-nopw?-red (ξ-dρʲ r) h = h
-nopw?-red (ξ-dρᶜ r) h = h
-nopw?-red (ξ-dpayᴵ r) h = h
-nopw?-red (ξ-dpayᴰ r) h = h
-nopw?-red (ξ-dpayᶜ r) h = dstk?-red r h
-nopw?-red (ξ-dihᴰ r) h = h
-nopw?-red (ξ-dihᵉ r) h = h
-nopw?-red (ξ-dihᶜ r) h = dstk?-red r h
-nopw?-red (ξ-dihᵖ r) h = h
-nopw?-red (ξ-fsuc r) h = h
-nopw?-red (ξ-fcaseᵗ r) h = finstk?-red r h
-nopw?-red (ξ-fcaseᵃ r) h = h
-nopw?-red (ξ-fcaseᵇ r) h = h
-nopw?-red (ξ-fcase0 r) h = h
-nopw?-red (ξ-psplitᵇ r) h = h
-nopw?-red (ξ-psplitᵍ r) h = spine?-red r h
 
-deadmot?-red {t = var _} (⟶head ()) _   -- forces the source-head split first (see RedCong's `stkA?-red`)
-deadmot?-red (β _ _) ()
-deadmot?-red (βfst _ _) ()
-deadmot?-red (βsnd _ _) ()
-deadmot?-red (ξ-lam r) h = h
-deadmot?-red (ξ-appˡ r) h = spine?-red r h
-deadmot?-red (ξ-appʳ r) h = h
-deadmot?-red (ξ-pairˡ r) h = h
-deadmot?-red (ξ-pairʳ r) h = h
-deadmot?-red (ξ-absurdᶜ _) h = refl
-deadmot?-red (ξ-absurdᵉ _) h = refl
-deadmot?-red (ξ-fst r) h = spine?-red r h
-deadmot?-red (ξ-snd r) h = spine?-red r h
-deadmot?-red (ξ-⌜Π⌝ˡ _) ()
-deadmot?-red (ξ-⌜Π⌝ʳ _) ()
-deadmot?-red (ξ-⌜Σ⌝ˡ r) h = refl
-deadmot?-red (ξ-⌜Σ⌝ʳ r) h = refl
-deadmot?-red (ξ-⌜Hom⌝ᶜ r) h = deadmot?-red r h
-deadmot?-red (ξ-⌜Hom⌝ˡ r) h = h
-deadmot?-red (ξ-⌜Hom⌝ʳ r) h = h
-deadmot?-red (ξ-hreflᶜ r) h = deadmot?-red r h
-deadmot?-red (ξ-hreflᵃ r) h = h
-deadmot?-red (hrefl-pw C₀ s₀ kp) h =
-  ⊥-elim (f≢t (trans (sym (nopw⊥pw C₀ (deadmot→nopw C₀ h))) kp))
-deadmot?-red hrefl-Nat-z h = refl
-deadmot?-red (hrefl-Nat-s _) h = h
-deadmot?-red (tr-J-base _ _ _ _ _) ()
-deadmot?-red (tr-J-Σ _ _ _ _ _ _ _) ()
-deadmot?-red (tr-J-Hom _ _ _ c₁ _ _ _ _ kh) h =
-  ⊥-elim (f≢t (trans (sym (stkA?⊥dead c₁ kh)) h))
-deadmot?-red (tr-taut _ _) ()
-deadmot?-red (tr-pw c₁ _ _ _ kp) h =
-  ⊥-elim (f≢t (trans (sym (nopw⊥pw c₁ (deadmot→nopw c₁ h))) kp))
-deadmot?-red (ξ-trᵈ {p = p₀} r) h = trstk?-red-d {p = p₀} r h
-deadmot?-red (ξ-trᵖ {d = d₀} r) h = trstk?-red-p {d = d₀} r h
-deadmot?-red (ξ-trᵉ r) h = h
-deadmot?-red (ap-J _ _ c₁ _ key) h =
-  ⊥-elim (f≢t (trans (sym (stk⊥dead c₁ key)) h))
-deadmot?-red (ξ-apᶜ r) h = h
-deadmot?-red (ξ-apᵇ r) h = h
-deadmot?-red (ξ-apᵖ r) h = apstk?-red r h
-deadmot?-red (tr-J-Id _ _ _ _ _ _ _ _) ()
-deadmot?-red (jsub-refl _ _ _ _) ()
-deadmot?-red (ξ-⌜Id⌝ᶜ r) h = h
-deadmot?-red (ξ-⌜Id⌝ˡ r) h = h
-deadmot?-red (ξ-⌜Id⌝ʳ r) h = h
-deadmot?-red (ξ-⌜Fin⌝ r) h = h
-deadmot?-red (ξ-idreflᶜ r) h = h
-deadmot?-red (ξ-idreflᵃ r) h = h
-deadmot?-red (ξ-jsubᵈ r) h = h
-deadmot?-red (ξ-jsubᵖ r) h = idstk?-red r h
-deadmot?-red (ξ-jsubᵉ r) h = h
-deadmot?-red (natrec-zero _ _) ()
-deadmot?-red (natrec-suc _ _ _) ()
-deadmot?-red (ξ-nsuc r) h = refl
-deadmot?-red (ξ-natrecᶻ r) h = h
-deadmot?-red (ξ-natrecˢ r) h = h
-deadmot?-red (ξ-natrecⁿ r) h = natstk?-red r h
-deadmot?-red (ordtr-z _ _ _ _) ()
-deadmot?-red (ordtr-szz _ _ _) ()
-deadmot?-red (ordtr-ssz _ _ _ _) ()
-deadmot?-red (ordtr-szs _ _ _ _) ()
-deadmot?-red (ordtr-sss _ _ _ _ _) ()
-deadmot?-red (ξ-ordtrᵃ {a = a} {a' = a'} {t = t} {u = u} r) h = ordstk?-redᵃ {a = a} {a' = a'} {t = t} {u = u} r h
-deadmot?-red (ξ-ordtrᵗ {a = a} {t = t} {t' = t'} {u = u} r) h = ordstk?-redᵗ {a = a} {t = t} {t' = t'} {u = u} r h
-deadmot?-red (ξ-ordtrᵘ {a = a} {t = t} {u = u} {u' = u'} r) h = ordstk?-redᵘ {a = a} {t = t} {u = u} {u' = u'} r h
-deadmot?-red (ξ-ordtrᵖ r) h = h
-deadmot?-red (ξ-ordtrq r) h = h
-deadmot?-red (ξ-con r) h = refl
-deadmot?-red (ξ-ielimᵗ r) h = mustk?-red r h
-deadmot?-red (ξ-ielimⁱ r) h = h
-deadmot?-red (ι _ _ _ _) ()
-deadmot?-red (dpay-ι _ _) ()
-deadmot?-red (dpay-σ _ _ _ _) ()
-deadmot?-red (dpay-ρ _ _ _ _) ()
-deadmot?-red (dih-ι _ _ _) ()
-deadmot?-red (dih-σ _ _ _ _ _) ()
-deadmot?-red (dih-ρ _ _ _ _ _) ()
-deadmot?-red (fcase-z _ _) ()
-deadmot?-red (fcase-s _ _ _) ()
-deadmot?-red (psplit-β _ _ _) ()
-deadmot?-red (ξ-⌜IMu⌝ᴵ r) h = h
-deadmot?-red (ξ-⌜IMu⌝ᴰ r) h = h
-deadmot?-red (ξ-⌜IMu⌝ⁱ r) h = h
-deadmot?-red (ξ-ielimᴰ r) h = h
-deadmot?-red (ξ-ielimᵉ r) h = h
-deadmot?-red (ξ-dσˢ r) h = h
-deadmot?-red (ξ-dσᶠ r) h = h
-deadmot?-red (ξ-dρʲ r) h = h
-deadmot?-red (ξ-dρᶜ r) h = h
-deadmot?-red (ξ-dpayᴵ r) h = h
-deadmot?-red (ξ-dpayᴰ r) h = h
-deadmot?-red (ξ-dpayᶜ r) h = dstk?-red r h
-deadmot?-red (ξ-dihᴰ r) h = h
-deadmot?-red (ξ-dihᵉ r) h = h
-deadmot?-red (ξ-dihᶜ r) h = dstk?-red r h
-deadmot?-red (ξ-dihᵖ r) h = h
-deadmot?-red (ξ-fsuc r) h = h
-deadmot?-red (ξ-fcaseᵗ r) h = finstk?-red r h
-deadmot?-red (ξ-fcaseᵃ r) h = h
-deadmot?-red (ξ-fcaseᵇ r) h = h
-deadmot?-red (ξ-fcase0 r) h = h
-deadmot?-red (ξ-psplitᵇ r) h = h
-deadmot?-red (ξ-psplitᵍ r) h = spine?-red r h
+
+-- the keyed lemma under the old names (the consumers use these)
+spine?-red : {t t' : RTm Γ} → t ⟶ t' → spine? t ≡ true → spine? t' ≡ true
+spine?-red = stk-red spineK
+stablecd?-red : {t t' : RTm Γ} → t ⟶ t' → stablecd? t ≡ true → stablecd? t' ≡ true
+stablecd?-red = stk-red stablecdK
+stableA?-red : {t t' : RTm Γ} → t ⟶ t' → stableA? t ≡ true → stableA? t' ≡ true
+stableA?-red = stk-red stableAK
+pathstk?-red : {t t' : RTm Γ} → t ⟶ t' → pathstk? t ≡ true → pathstk? t' ≡ true
+pathstk?-red = stk-red pathK
+nopw?-red : {t t' : RTm Γ} → t ⟶ t' → nopw? t ≡ true → nopw? t' ≡ true
+nopw?-red = stk-red nopwK
+deadmot?-red : {t t' : RTm Γ} → t ⟶ t' → deadmot? t ≡ true → deadmot? t' ≡ true
+deadmot?-red = stk-red deadK
+apstk?-red : {t t' : RTm Γ} → t ⟶ t' → apstk? t ≡ true → apstk? t' ≡ true
+apstk?-red = stk-red apK
+idstk?-red : {t t' : RTm Γ} → t ⟶ t' → idstk? t ≡ true → idstk? t' ≡ true
+idstk?-red = stk-red idK
+natstk?-red : {t t' : RTm Γ} → t ⟶ t' → natstk? t ≡ true → natstk? t' ≡ true
+natstk?-red = stk-red natK
+natcstk?-red : {t t' : RTm Γ} → t ⟶ t' → natcstk? t ≡ true → natcstk? t' ≡ true
+natcstk?-red = stk-red natcK
+mustk?-red : {t t' : RTm Γ} → t ⟶ t' → mustk? t ≡ true → mustk? t' ≡ true
+mustk?-red = stk-red muK
+finstk?-red : {t t' : RTm Γ} → t ⟶ t' → finstk? t ≡ true → finstk? t' ≡ true
+finstk?-red = stk-red finK
+dstk?-red : {t t' : RTm Γ} → t ⟶ t' → dstk? t ≡ true → dstk? t' ≡ true
+dstk?-red = stk-red dK
+
 
 -- dead codes are pw-immune (deadness subsumes the weaker key).
 -- ★ the `stableA?` peer.  ⌜Nat⌝ is ABSURD here — `stableA? ⌜Nat⌝`
