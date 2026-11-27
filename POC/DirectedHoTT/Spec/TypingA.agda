@@ -35,6 +35,8 @@
 open import DirectedHoTT.Prelude using ( _≡_; refl )
 open import DirectedHoTT.Spec.Scope
 open import DirectedHoTT.Spec.Syntax
+  using ( _<ˢ_; `Desc; `ref; body; size; subTm; subTy )
+import DirectedHoTT.Spec.Syntax as C
 open import DirectedHoTT.Spec.Variance using ( 𝔹; true; false; occTm; NoNatC; flat? )
 open import DirectedHoTT.Spec.Base
   using ( Ctx; ◇; _▹_; ⌊_⌋; _×_; _,,_; single; nrs )

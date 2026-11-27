@@ -29,6 +29,8 @@ open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; cong; subst; �
 open import Agda.Builtin.Nat using ( zero )
 open import DirectedHoTT.Spec.Scope
 open import DirectedHoTT.Spec.Syntax
+  using ( RTy; `ref; size; εwkTy )
+import DirectedHoTT.Spec.Syntax as C
 open import DirectedHoTT.Spec.Annotated
 open import DirectedHoTT.Spec.Signature using ( Sig; kernel; kernel-type )
 open import DirectedHoTT.Spec.SigWf using ( WfK )
@@ -58,10 +60,10 @@ erase-ty : {A : ATy ⌊ Γ ⌋ᴬ} → Γ ⊢tyᴬ A → ⌈ Γ ⌉ᶜ ⊢ty ⌈
 motCtx-era : {Γ : ACtx} {I D : ATm ⌊ Γ ⌋ᴬ} {M : RTy ((⌊ Γ ⌋ᴬ ∙) ∙)} →
              ⌈ motCtxᴬ Γ I D ⌉ᶜ ⊢ty M → motCtx ⌈ Γ ⌉ᶜ ⌈ I ⌉ ⌈ D ⌉ ⊢ty M
 motCtx-era {Γ} {I} {D} {M} d =
-  subst (λ Z → ((⌈ Γ ⌉ᶜ ▹ El ⌈ I ⌉) ▹ Z) ⊢ty M)
+  subst (λ Z → ((⌈ Γ ⌉ᶜ ▹ C.El ⌈ I ⌉) ▹ Z) ⊢ty M)
         (cong₂' (era-renTm vs I) (era-renTm vs D)) d
   where
-  cong₂' : ∀ {a a' b b'} → a ≡ a' → b ≡ b' → IMu a b (var vz) ≡ IMu a' b' (var vz)
+  cong₂' : ∀ {a a' b b'} → a ≡ a' → b ≡ b' → C.IMu a b (C.var vz) ≡ C.IMu a' b' (C.var vz)
   cong₂' refl refl = refl
 
 erase (⊢ᴬvar v) = ⊢var (erase-∋ v)
@@ -82,16 +84,16 @@ erase (⊢ᴬ⌜Hom⌝ dc da db) = ⊢⌜Hom⌝ (erase dc) (erase da) (erase db)
 erase (⊢ᴬhrefl dc dt) = ⊢hrefl (erase dc) (erase dt)
 erase (⊢ᴬtrU dt du dp de) = ⊢trU (erase dt) (erase du) (erase dp) (erase de)
 erase (⊢ᴬtr {c = c} {a = a} {t = t} {u = u} dA dc da dvz nn o₁ o₂ dt du dp de) =
-  ⊢-cast (cong El (sym (sub1ᵗ u (⌜Hom⌝ c a (var vz)))))
+  ⊢-cast (cong C.El (sym (sub1ᵗ u (⌜Hom⌝ c a (var vz)))))
     (⊢tr (erase dc) (erase da) (erase dvz) nn o₁ o₂ (erase dt) (erase du) (erase dp)
-         (⊢-cast (cong El (sub1ᵗ t (⌜Hom⌝ c a (var vz)))) (erase de)))
+         (⊢-cast (cong C.El (sub1ᵗ t (⌜Hom⌝ c a (var vz)))) (erase de)))
 erase (⊢ᴬap {cB = cB} {b = b} {t = t} {u = u} dcA fl dcB db dt du dp) =
   ⊢-cast (cong₂' (sym (sub1ᵗ t b)) (sym (sub1ᵗ u b)))
     (⊢ap (erase dcA) fl (erase dcB)
-         (⊢-cast (cong El (era-renTm vs cB)) (erase db))
+         (⊢-cast (cong C.El (era-renTm vs cB)) (erase db))
          (erase dt) (erase du) (erase dp))
   where
-  cong₂' : ∀ {x x' y y'} → x ≡ x' → y ≡ y' → Hom (El ⌈ cB ⌉) x y ≡ Hom (El ⌈ cB ⌉) x' y'
+  cong₂' : ∀ {x x' y y'} → x ≡ x' → y ≡ y' → C.Hom (C.El ⌈ cB ⌉) x y ≡ C.Hom (C.El ⌈ cB ⌉) x' y'
   cong₂' refl refl = refl
 erase (⊢ᴬ⌜Id⌝ dc da db) = ⊢⌜Id⌝ (erase dc) (erase da) (erase db)
 erase ⊢ᴬ⌜Nat⌝ = ⊢⌜Nat⌝
@@ -100,7 +102,7 @@ erase (⊢ᴬ⌜Fin⌝ dn) = ⊢⌜Fin⌝ (erase dn)
 erase (⊢ᴬdι dI) = ⊢dι (erase dI)
 erase (⊢ᴬdσ {I = I} {S = S} dI dS df) =
   ⊢dσ (erase dI) (erase dS)
-      (⊢-cast (cong (λ z → Π (El ⌈ S ⌉) (Desc z)) (era-renTm vs I)) (erase df))
+      (⊢-cast (cong (λ z → C.Π (C.El ⌈ S ⌉) (C.Desc z)) (era-renTm vs I)) (erase df))
 erase (⊢ᴬdρ dI dj dC) = ⊢dρ (erase dI) (erase dj) (erase dC)
 erase (⊢ᴬdpay {I = I} dI dD dC) = ⊢dpay (erase dI) (⊢-cast (era-DescF I) (erase dD)) (erase dC)
 erase (⊢ᴬcon {I = I} dI dD di dp) = ⊢con (erase dI) (⊢-cast (era-DescF I) (erase dD)) (erase di) (erase dp)
@@ -126,9 +128,9 @@ erase (⊢ᴬpsplit {A = A} {B = B} {P = P} {q = q} dA dB dP dq db) =
 erase ⊢ᴬ⌜Unit⌝ = ⊢⌜Unit⌝
 erase (⊢ᴬidrefl dc dt) = ⊢idrefl (erase dc) (erase dt)
 erase (⊢ᴬjsub {d = d} {t = t} {u = u} dA dd dt du dp de) =
-  ⊢-cast (cong El (sym (sub1ᵗ u d)))
+  ⊢-cast (cong C.El (sym (sub1ᵗ u d)))
     (⊢jsub (erase dd) (erase dt) (erase du) (erase dp)
-           (⊢-cast (cong El (sub1ᵗ t d)) (erase de)))
+           (⊢-cast (cong C.El (sub1ᵗ t d)) (erase de)))
 erase ⊢ᴬunit = ⊢unit
 erase ⊢ᴬnzero = ⊢nzero
 erase (⊢ᴬnsuc d) = ⊢nsuc (erase d)
