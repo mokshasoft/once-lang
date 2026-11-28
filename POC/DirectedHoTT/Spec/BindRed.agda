@@ -40,7 +40,7 @@ private
 
 ren-node : ∀ {s Γ Δ} (ρ : Var Γ → Var Δ) (t : Tmᴮ s Γ) {c : Con Σᴮ s} {ys : ⟦ fields Σᴮ c ⟧ᴮ Δ}
          → ren ρ t ≡ node c ys
-         → Σ (⟦ fields Σᴮ c ⟧ᴮ Γ) (λ xs → (t ≡ node c xs) × (travF renK (fields Σᴮ c) ρ xs ≡ ys))
+         → Σ (⟦ fields Σᴮ c ⟧ᴮ Γ) (λ xs → (t ≡ node c xs) × (renF (fields Σᴮ c) ρ xs ≡ ys))
 ren-node ρ (var x)     ()
 ren-node ρ (node c xs) refl = xs , (refl , refl)
 
@@ -113,7 +113,7 @@ module Red (_▷_ : ∀ {s Γ} → Tmᴮ s Γ → Tmᴮ s Γ → Set) where
   module Forward (▷-ren : ∀ {s Γ Δ} (ρ : Var Γ → Var Δ) {a b : Tmᴮ s Γ} → a ▷ b → ren ρ a ▷ ren ρ b) where
     ⟶-ren  : ∀ {s Γ Δ} (ρ : Var Γ → Var Δ) {a b : Tmᴮ s Γ} → a ⟶ b → ren ρ a ⟶ ren ρ b
     Step-ren : ∀ fs {Γ Δ} (ρ : Var Γ → Var Δ) {xs ys : ⟦ fs ⟧ᴮ Γ}
-             → Step fs xs ys → Step fs (travF renK fs ρ xs) (travF renK fs ρ ys)
+             → Step fs xs ys → Step fs (renF fs ρ xs) (renF fs ρ ys)
     ⟶-ren ρ (⟶head r) = ⟶head (▷-ren ρ r)
     ⟶-ren ρ (⟶cong {c = c} st) = ⟶cong (Step-ren (fields Σᴮ c) ρ st)
     Step-ren [] ρ ()
@@ -143,8 +143,8 @@ module Red (_▷_ : ∀ {s Γ} → Tmᴮ s Γ → Tmᴮ s Γ → Set) where
     ⟶-anti : ∀ {s Γ Δ} (ρ : Var Γ → Var Δ) {a b : Tmᴮ s Δ} → a ⟶ b → (t : Tmᴮ s Γ) → a ≡ ren ρ t
            → Σ (Tmᴮ s Γ) (λ u → (t ⟶ u) × (b ≡ ren ρ u))
     Step-anti : ∀ fs {Γ Δ} (ρ : Var Γ → Var Δ) {xs ys : ⟦ fs ⟧ᴮ Δ} → Step fs xs ys → (zs : ⟦ fs ⟧ᴮ Γ)
-              → xs ≡ travF renK fs ρ zs
-              → Σ (⟦ fs ⟧ᴮ Γ) (λ ws → Step fs zs ws × (ys ≡ travF renK fs ρ ws))
+              → xs ≡ renF fs ρ zs
+              → Σ (⟦ fs ⟧ᴮ Γ) (λ ws → Step fs zs ws × (ys ≡ renF fs ρ ws))
     ⟶-anti ρ (⟶head r) t e with ▷-anti ρ r t e
     ... | u , (r′ , e′) = u , (⟶head r′ , e′)
     ⟶-anti ρ (⟶cong {c = c} st) t e with ren-node ρ t (sym e)

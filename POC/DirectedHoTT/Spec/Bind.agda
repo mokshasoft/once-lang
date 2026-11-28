@@ -210,8 +210,33 @@ module Trav (Σ : BSig) where
   renK : Kit
   renK = record { V = Var ; wkV = vs ; v0 = vz ; toTm = var }
 
-  ren : ∀ {s Γ Δ} → (Var Γ → Var Δ) → Tm Σ s Γ → Tm Σ s Δ
-  ren = trav renK
+  -- renaming by its OWN recursion: every clause is constructor-headed, so Agda
+  -- inverts it (`ren ρ ?X = ren ρ A` solves `?X`); `trav renK` is kit-generic
+  -- and does not.  `ren≡` is the bridge to the kit traversal.
+  ren  : ∀ {s Γ Δ} → (Var Γ → Var Δ) → Tm Σ s Γ → Tm Σ s Δ
+  renF : ∀ fs {Γ Δ} → (Var Γ → Var Δ) → ⟦_⟧ Σ fs Γ → ⟦_⟧ Σ fs Δ
+  ren ρ (var x)     = var (ρ x)
+  ren ρ (node c xs) = node c (renF (fields Σ c) ρ xs)
+  renF []                                ρ ⟨⟩        = ⟨⟩
+  renF (fld s zero ∷ fs)                 ρ (x ,ᶠ xs) = ren ρ x ,ᶠ renF fs ρ xs
+  renF (fld s (suc zero) ∷ fs)           ρ (x ,ᶠ xs) = ren (ext renK ρ) x ,ᶠ renF fs ρ xs
+  renF (fld s (suc (suc zero)) ∷ fs)     ρ (x ,ᶠ xs) = ren (ext renK (ext renK ρ)) x ,ᶠ renF fs ρ xs
+  renF (fld s (suc (suc (suc k))) ∷ fs)  ρ (x ,ᶠ xs) = ren (extN renK (suc (suc (suc k))) ρ) x ,ᶠ renF fs ρ xs
+  renF (fnat ∷ fs)                       ρ (n ,ᶠ xs) = n ,ᶠ renF fs ρ xs
+
+  ren≡  : ∀ {s Γ Δ} (ρ : Var Γ → Var Δ) (t : Tm Σ s Γ) → ren ρ t ≡ trav renK ρ t
+  renF≡ : ∀ fs {Γ Δ} (ρ : Var Γ → Var Δ) (xs : ⟦_⟧ Σ fs Γ) → renF fs ρ xs ≡ travF renK fs ρ xs
+  ren≡ ρ (var x)     = refl
+  ren≡ ρ (node c xs) = cong (node c) (renF≡ (fields Σ c) ρ xs)
+  renF≡ []                                ρ ⟨⟩        = refl
+  renF≡ (fld s zero ∷ fs)                 ρ (x ,ᶠ xs) = c₂ (ren≡ ρ x) (renF≡ fs ρ xs)
+  renF≡ (fld s (suc zero) ∷ fs)           ρ (x ,ᶠ xs) = c₂ (ren≡ (ext renK ρ) x) (renF≡ fs ρ xs)
+  renF≡ (fld s (suc (suc zero)) ∷ fs)     ρ (x ,ᶠ xs) = c₂ (ren≡ (ext renK (ext renK ρ)) x) (renF≡ fs ρ xs)
+  renF≡ (fld s (suc (suc (suc k))) ∷ fs)  ρ (x ,ᶠ xs) = c₂ (ren≡ (extN renK (suc (suc (suc k))) ρ) x) (renF≡ fs ρ xs)
+  renF≡ (fnat ∷ fs)                       ρ (n ,ᶠ xs) = cong (n ,ᶠ_) (renF≡ fs ρ xs)
+
+  ren-cong : ∀ {s Γ Δ} {ρ ρ′ : Var Γ → Var Δ} → (∀ x → ρ x ≡ ρ′ x) → (t : Tm Σ s Γ) → ren ρ t ≡ ren ρ′ t
+  ren-cong h t = trans (ren≡ _ t) (trans (Cong.trav-cong renK h t) (sym (ren≡ _ t)))
 
   subK : Kit
   subK = record { V = T ; wkV = ren vs ; v0 = var vz ; toTm = λ t → t }
@@ -225,7 +250,9 @@ module Trav (Σ : BSig) where
 
   ren-ren : ∀ {s Γ Δ Θ} (ρ₁ : Var Γ → Var Δ) (ρ₂ : Var Δ → Var Θ) (t : Tm Σ s Γ)
           → ren ρ₂ (ren ρ₁ t) ≡ ren (λ x → ρ₂ (ρ₁ x)) t
-  ren-ren ρ₁ ρ₂ = Fusion.fusion renK renK renK er (λ x → refl)
+  ren-ren ρ₁ ρ₂ t =
+    trans (trans (ren≡ ρ₂ (ren ρ₁ t)) (cong (trav renK ρ₂) (ren≡ ρ₁ t)))
+          (trans (Fusion.fusion renK renK renK er (λ x → refl) t) (sym (ren≡ _ t)))
     where
     er : ∀ {Γ Δ Θ} {ρ₁ : Var Γ → Var Δ} {ρ₂ : Var Δ → Var Θ} {ρ₃ : Var Γ → Var Θ}
        → Fusion.Rel renK renK renK ρ₁ ρ₂ ρ₃ → Fusion.Rel renK renK renK (ext renK ρ₁) (ext renK ρ₂) (ext renK ρ₃)
@@ -234,7 +261,7 @@ module Trav (Σ : BSig) where
 
   sub-ren : ∀ {s Γ Δ Θ} (ρ : Var Γ → Var Δ) (σ : Var Δ → T Θ) (t : Tm Σ s Γ)
           → sub σ (ren ρ t) ≡ sub (λ x → σ (ρ x)) t
-  sub-ren ρ σ = Fusion.fusion renK subK subK er (λ x → refl)
+  sub-ren ρ σ t = trans (cong (sub σ) (ren≡ ρ t)) (Fusion.fusion renK subK subK er (λ x → refl) t)
     where
     er : ∀ {Γ Δ Θ} {ρ₁ : Var Γ → Var Δ} {ρ₂ : Var Δ → T Θ} {ρ₃ : Var Γ → T Θ}
        → Fusion.Rel renK subK subK ρ₁ ρ₂ ρ₃ → Fusion.Rel renK subK subK (ext renK ρ₁) (ext subK ρ₂) (ext subK ρ₃)
@@ -243,14 +270,15 @@ module Trav (Σ : BSig) where
 
   ren-sub : ∀ {s Γ Δ Θ} (σ : Var Γ → T Δ) (ρ : Var Δ → Var Θ) (t : Tm Σ s Γ)
           → ren ρ (sub σ t) ≡ sub (λ x → ren ρ (σ x)) t
-  ren-sub σ ρ = Fusion.fusion subK renK subK er (λ x → refl)
+  ren-sub σ ρ t = trans (ren≡ ρ (sub σ t)) (Fusion.fusion subK renK subK er (λ x → sym (ren≡ ρ (σ x))) t)
     where
     er : ∀ {Γ Δ Θ} {ρ₁ : Var Γ → T Δ} {ρ₂ : Var Δ → Var Θ} {ρ₃ : Var Γ → T Θ}
        → Fusion.Rel subK renK subK ρ₁ ρ₂ ρ₃ → Fusion.Rel subK renK subK (ext subK ρ₁) (ext renK ρ₂) (ext subK ρ₃)
     er r vz = refl
     er {ρ₁ = ρ₁} {ρ₂} {ρ₃} r (vs x) =
-      trans (ren-ren vs (ext renK ρ₂) (ρ₁ x))
-            (trans (sym (ren-ren ρ₂ vs (ρ₁ x))) (cong (ren vs) (r x)))
+      trans (sym (ren≡ (ext renK ρ₂) (ren vs (ρ₁ x))))
+      (trans (ren-ren vs (ext renK ρ₂) (ρ₁ x))
+      (trans (sym (ren-ren ρ₂ vs (ρ₁ x))) (cong (ren vs) (trans (ren≡ ρ₂ (ρ₁ x)) (r x)))))
 
   sub-sub : ∀ {s Γ Δ Θ} (σ₁ : Var Γ → T Δ) (σ₂ : Var Δ → T Θ) (t : Tm Σ s Γ)
           → sub σ₂ (sub σ₁ t) ≡ sub (λ x → sub σ₂ (σ₁ x)) t
@@ -316,7 +344,7 @@ module Trav (Σ : BSig) where
 
     K-ren : ∀ {s Γ Δ Θ} (ρ : Var Γ → Var Δ) (ρ′ : Env K Δ Θ) (t : Tm Σ s Γ)
           → trav K ρ′ (ren ρ t) ≡ trav K (λ x → ρ′ (ρ x)) t
-    K-ren ρ ρ′ = Fusion.fusion renK K K er (λ x → refl)
+    K-ren ρ ρ′ t = trans (cong (trav K ρ′) (ren≡ ρ t)) (Fusion.fusion renK K K er (λ x → refl) t)
       where
       er : ∀ {Γ Δ Θ} {ρ₁ : Var Γ → Var Δ} {ρ₂ : Env K Δ Θ} {ρ₃ : Env K Γ Θ}
          → Fusion.Rel renK K K ρ₁ ρ₂ ρ₃ → Fusion.Rel renK K K (ext renK ρ₁) (ext K ρ₂) (ext K ρ₃)
@@ -327,16 +355,17 @@ module Trav (Σ : BSig) where
     ren-K : ∀ {s Γ Δ Θ} (ρ′ : Env K Γ Δ) (ρ : Var Δ → Var Θ) (ρ₃ : Env K Γ Θ)
           → (∀ x → ren ρ (toTm (ρ′ x)) ≡ toTm (ρ₃ x))
           → (t : Tm Σ s Γ) → ren ρ (trav K ρ′ t) ≡ trav K ρ₃ t
-    ren-K ρ′ ρ ρ₃ h = Fusion.fusion K renK K er h
+    ren-K ρ′ ρ ρ₃ h t = trans (ren≡ ρ (trav K ρ′ t)) (Fusion.fusion K renK K er (λ x → trans (sym (ren≡ ρ _)) (h x)) t)
       where
       er : ∀ {Γ Δ Θ} {ρ₁ : Env K Γ Δ} {ρ₂ : Var Δ → Var Θ} {ρ₃ : Env K Γ Θ}
          → Fusion.Rel K renK K ρ₁ ρ₂ ρ₃ → Fusion.Rel K renK K (ext K ρ₁) (ext renK ρ₂) (ext K ρ₃)
-      er r vz = trans (cong (ren (ext renK _)) toTm-v0) (sym toTm-v0)
+      er r vz = trans (cong (trav renK (ext renK _)) toTm-v0) (sym toTm-v0)
       er {ρ₁ = ρ₁} {ρ₂} {ρ₃} r (vs x) =
-        trans (cong (ren (ext renK ρ₂)) (toTm-wk (ρ₁ x)))
+        trans (cong (trav renK (ext renK ρ₂)) (toTm-wk (ρ₁ x)))
+        (trans (sym (ren≡ (ext renK ρ₂) (ren vs (toTm (ρ₁ x)))))
         (trans (ren-ren vs (ext renK ρ₂) (toTm (ρ₁ x)))
         (trans (sym (ren-ren ρ₂ vs (toTm (ρ₁ x))))
-        (trans (cong (ren vs) (r x)) (sym (toTm-wk (ρ₃ x))))))
+        (trans (cong (ren vs) (trans (ren≡ ρ₂ (toTm (ρ₁ x))) (r x))) (sym (toTm-wk (ρ₃ x)))))))
 
     K-sub : ∀ {s Γ Δ Θ} (σ : Var Γ → T Δ) (ρ : Env K Δ Θ) (t : Tm Σ s Γ)
           → trav K ρ (sub σ t) ≡ sub (λ x → trav K ρ (σ x)) t

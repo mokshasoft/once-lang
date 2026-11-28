@@ -377,10 +377,10 @@ extR-cong h (vs x) = cong vs (h x)
 
 renTy-cong : {ρ ρ' : Ren Γ Δ} → (∀ (x : Var Γ) → ρ x ≡ ρ' x) →
              (A : RTy Γ) → renTy ρ A ≡ renTy ρ' A
-renTy-cong = KT.Cong.trav-cong KT.renK
+renTy-cong = KT.ren-cong
 renTm-cong : {ρ ρ' : Ren Γ Δ} → (∀ (x : Var Γ) → ρ x ≡ ρ' x) →
              (t : RTm Γ) → renTm ρ t ≡ renTm ρ' t
-renTm-cong = KT.Cong.trav-cong KT.renK
+renTm-cong = KT.ren-cong
 
 extS-cong : {σ σ' : Sub Γ Δ} → (∀ (x : Var Γ) → σ x ≡ σ' x) →
             ∀ (x : Var (Γ ∙)) → extS σ x ≡ extS σ' x
