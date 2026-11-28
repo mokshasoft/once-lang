@@ -297,6 +297,7 @@ module S (ι : Interp) where
                           (trans (up-run g ⟦ ds′ ⟧D b γ tt (er x , er a) k h) e₁) , hi
     soundₖ (r-cata rm th) sp u w = soundCata rm th sp u w
     soundₖ (r-cata-reuse rm th) () u w
+    soundₖ (r-cata-late rm th) () u w
     soundₖ {ds = ds} (r-lend {b = b} {e = e} {x = x} {a = a} (fm-gives {t = t} r)) {k} sp u {h} w = let (e₁ , hi) = soundₖ r sp u w in
          trans (run-fmap h k (Lᶜ ⟦ ds ⟧D b (er e , er x) (er a)) (er x ,_)) (cong (mapAp (er x ,_)) e₁) , hi
     soundₖ {ds = ds} (r-lend {b = b} {e = e} {x = x} {a = a} (fm-stop {y = y} {t = t} r)) {k} sp u {h} w = let (e₁ , hi) = soundₖ r sp u w in

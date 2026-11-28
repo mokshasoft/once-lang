@@ -35,6 +35,7 @@ open import Once.LinCore.Core fmt
 open import Once.LinCore.Flat using (funit; Base)
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw
+open import Once.LinCore.Frame fmt ans bw
 open import Once.LinCore.Values fmt bw
 open import Once.LinCore.Total fmt ans bw
 open import Once.LinCore.Pass fmt ans

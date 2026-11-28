@@ -115,6 +115,7 @@ ws-run r-Outμ we (_ , wv) = wv
 ws-run (r-clo {F = F} {x = x}) we wx = ws-tag F x wx
 ws-run (r-app _ r) we (wx , wa) = ws-run r tt (wx , wa)
 ws-run (r-cata rm (go-on ra)) we (_ , wv) = ws-run ra we (ws-map rm we wv)
+ws-run (r-cata-late rm (go-on ra)) we (_ , wv) = ws-run ra we (ws-map rm we wv)
 ws-run (r-cata-reuse rm (go-on (fm-gives rg))) we (wi , wv) = wi , ws-run rg we (ws-map rm we wv)
 ws-run (r-lend (fm-gives r)) we (wx , wa) = wx , ws-run r (we , wx) wa
 ws-run (r-lift r) we wa = ws-run r tt wa

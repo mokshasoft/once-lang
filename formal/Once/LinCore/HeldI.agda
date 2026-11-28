@@ -47,6 +47,7 @@ open import Once.LinCore.Flat using (Base)
 open import Once.IR.Semantics.Trace using (T)
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw
+open import Once.LinCore.Frame fmt ans bw using (exchange)
 open import Once.LinCore.Values fmt bw
 open import Once.LinCore.SizedI fmt ans bw using (WSC; WSR; ws-stepI; ws-start)
 open import Once.LinCore.Machine fmt ans bw using (op-NoT)

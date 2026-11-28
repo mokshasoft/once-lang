@@ -268,6 +268,8 @@ module _ (D : Sig → Set) where
       tt , proj₂ (run-ok rg (tf , td) ek (proj₂ (map-ok rm (tf , td) ek vk)))
     run-ok (r-cata-reuse rm (go-on (fm-stop rg))) tm ek vk = tt , tt
     run-ok (r-cata-reuse rm stopped) tm ek vk = tt , tt
+    run-ok (r-cata-late rm (go-on ra)) (tf , td) ek vk = tt , proj₂ (run-ok ra (tf , td) ek (proj₂ (map-ok rm (tf , td) ek vk)))
+    run-ok (r-cata-late rm stopped) tm ek vk = tt , tt
     run-ok (r-lend (fm-gives r)) tm ek (vx , va) = let (c , ow) = run-ok r tm (ek , vx) va in c , (vx , ow)
     run-ok (r-lend (fm-stop r)) tm ek (vx , va) = proj₁ (run-ok r tm (ek , vx) va) , tt
     run-ok (r-lift r) tm ek vk = run-ok r tm tt vk

@@ -67,6 +67,7 @@ open import Once.LinCore.Flat using (Base)
 open import Once.IR.Semantics.Trace using (T)
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw
+open import Once.LinCore.Frame fmt ans bw
 open import Once.LinCore.Values fmt bw
 open import Once.LinCore.Temps fmt ans bw
 open import Once.LinCore.Code fmt bw
@@ -368,6 +369,7 @@ mutual
   Plain (r-cata rm (go-on ra))          = PlainM rm × Plain ra
   Plain (r-cata rm stopped)             = PlainM rm
   Plain (r-cata-reuse rm th)            = ⊥
+  Plain (r-cata-late rm th)             = ⊥
   Plain (r-lend (fm-gives r))           = Plain r
   Plain (r-lend (fm-stop r))            = Plain r
   Plain (r-lift r)                      = Plain r
@@ -471,6 +473,7 @@ sim (r-cata rm (go-on {o = o} ra)) (pm , pa) es eq os k =
 sim (r-cata rm stopped) pm es eq os k =
   thenP (leaf s-fold (k-free ∷ [])) (framedP (P-[] (simM rm pm es eq os _)))
 sim (r-cata-reuse rm th) () es eq os k
+sim (r-cata-late rm th) () es eq os k
 sim (r-lend {x = x} (fm-gives r)) fr es refl os k = pre s-elend (after (sim r fr (ln (see es) x es) refl os _) s-eunlend)
 sim (r-lend {x = x} (fm-stop r))  fr es refl os k = preP s-elend (sim r fr (ln (see es) x es) refl os _)
 sim (r-lift {o = o} r) fr es eq os k = around o s-elift (sim r fr (vw mone es) refl os _)

@@ -163,6 +163,7 @@ module Keep′ (U : Univ) where
   prim-c (r-app _ _) () d c v
   prim-c (r-cata _ _) () d c v
   prim-c (r-cata-reuse _ _) () d c v
+  prim-c (r-cata-late _ _) () d c v
   prim-c (r-lend _) () d c v
   prim-c (r-lift _) () d c v
   prim-c (r-fst _) () d c v

@@ -34,9 +34,10 @@ open import Once.LinCore.Core fmt using (Defs; LF∙; LTm; LTy; One; Tm; ε; cin
 open import Once.LinCore.Events fmt ans bw using (Outcome; Run; RunMap; gives; stop; go-on; stopped; again; done; fm-gives; fm-stop;
   m-id; m-one; m-b; m-μ; m-inl; m-inr; m-pair;
   r-id; r-∘; r-⊗; r-ρ; r-ρ⁻; r-λ; r-λ⁻; r-α; r-α⁻; r-swap; r-dup; r-drop; r-inl; r-inr; r-dist₁; r-dist₂; r-case₁; r-case₂; r-In; r-Outμ; r-clo;
-  r-app; r-cata; r-cata-reuse; r-lend; r-lift; r-fst; r-snd; r-caseE₁; r-caseE₂; r-out; r-copy; r-bapp; r-lam; r-lamω; r-unf;
+  r-app; r-cata; r-cata-reuse; r-cata-late; r-lend; r-lift; r-fst; r-snd; r-caseE₁; r-caseE₂; r-out; r-copy; r-bapp; r-lam; r-lamω; r-unf;
   r-nout; r-ev; r-bev; r-lamωᶜ; r-bevᶜ; r-evωᶜ; r-evω; r-const; r-op; r-opend; r-iter; r-exh; r-cut; r-tmp;
-  halted; exhausted; ios; ios-weave; io-call; io-halt; OK; OK-weave; Pre; exchange; noleak; play; play-weave; lent₀)
+  halted; exhausted; ios; ios-weave; io-call; io-halt; OK; OK-weave; Pre; play; play-weave; lent₀)
+open import Once.LinCore.Frame fmt ans bw using (exchange; noleak)
 open import Once.LinCore.Values fmt bw using (MV; mpair; Trace; TBal; TEv; TLeg; alloc; free; peek; io; stp; tmp; mone)
 open import Once.LinCore.Temps fmt ans bw using (NoT-Bal; TOK-≼; erase; erase-NoT; erase-clean; k-alloc; k-free; k-peek; plain; weave-post)
 open import Once.LinCore.Machine fmt ans bw using (Plain; PlainM; op-NoT)
@@ -157,6 +158,7 @@ mutual
   simI (r-cata {e = e} rm stopped) pm (ctx es eq os k ρ) =
     calledH _ i-call (thenH _ (leaf (i-prim r-Outμ) (k-free ∷ [])) (P-[]H _ (simMI rm pm (ctx (vw (see es) []ᵉ) eq []ˢ _ (frm {t = just _} k es os ρ)))))
   simI (r-cata-reuse rm th) () (ctx es eq os k ρ)
+  simI (r-cata-late rm th) () (ctx es eq os k ρ)
   simI (r-lend {x = x} (fm-gives r)) fr (ctx es refl os k ρ) =
     pre i-elend (after (simI r fr (ctx (ln (see es) x es) refl os _ ρ)) i-eunlend)
   simI (r-lend {x = x} (fm-stop r)) fr (ctx es refl os k ρ) = preH _ i-elend (simI r fr (ctx (ln (see es) x es) refl os _ ρ))

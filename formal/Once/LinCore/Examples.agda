@@ -82,6 +82,7 @@ open import Once.IR.Semantics.Trace using (CallOp; HaltOp)
 open import Once.LinCore.NbEPLinCore fmt₀ ans₀
 open Sem using (Lᶜ)
 open import Once.LinCore.Events fmt₀ ans₀ bw
+open import Once.LinCore.Frame fmt₀ ans₀ bw
 open import Once.LinCore.Values fmt₀ bw
 open import Once.LinCore.Act fmt₀ ans₀ bw
 open import Once.LinCore.Temps fmt₀ ans₀ bw

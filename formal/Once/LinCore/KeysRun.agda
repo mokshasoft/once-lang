@@ -169,6 +169,7 @@ module Keep (U : Univ) where
   prim-in (r-app _ _) () v
   prim-in (r-cata _ _) () v
   prim-in (r-cata-reuse _ _) () v
+  prim-in (r-cata-late _ _) () v
   prim-in (r-lend _) () v
   prim-in (r-lift _) () v
   prim-in (r-fst _) () v

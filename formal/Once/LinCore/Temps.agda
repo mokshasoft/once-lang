@@ -115,6 +115,14 @@ NoT = All Kept
 erase-++ : ∀ t₁ t₂ → erase (t₁ ++ t₂) ≡ erase t₁ ++ erase t₂
 erase-++ = cmap-++ keep
 
+-- D507: the late free is kept
+erase-late : ∀ {B} i (o : Outcome B) → erase (lateFree i o) ≡ lateFree i o
+erase-late i (gives _ _) = refl
+erase-late i (stop _)    = refl
+
+late-erase : ∀ {B} i t₁ t₂ (o : Outcome B) → (erase t₁ ++ erase t₂) ++ lateFree i o ≡ erase ((t₁ ++ t₂) ++ lateFree i o)
+late-erase i t₁ t₂ o = sym (trans (erase-++ (t₁ ++ t₂) (lateFree i o)) (cong₂ _++_ (erase-++ t₁ t₂) (erase-late i o)))
+
 erase-≼ : ∀ {t′ t} → t′ ≼ t → erase t′ ≼ erase t
 erase-≼ = cmap-≼ keep
 
@@ -183,6 +191,10 @@ plain (r-cata {i = i} {t₁ = t₁} {t₂} rm (go-on ra)) =
   retrace (cong (free i ∷_) (sym (erase-++ t₁ t₂))) (r-cata (plain-map rm) (go-on (plain ra)))
 plain (r-cata {i = i} {t₁ = t₁} rm stopped) =
   retrace (cong (free i ∷_) (sym (erase-++ t₁ []))) (r-cata (plain-map rm) stopped)
+plain (r-cata-late {i = i} {t₁ = t₁} {t₂} rm (go-on {o = o} ra)) =
+  retrace (late-erase i t₁ t₂ o) (r-cata-late (plain-map rm) (go-on (plain ra)))
+plain (r-cata-late {A = A} {i = i} {t₁ = t₁} rm (stopped {y = y})) =
+  retrace (late-erase i t₁ [] (stop {A} y)) (r-cata-late (plain-map rm) stopped)
 plain (r-cata-reuse {t₁ = t₁} {t₂} rm (go-on (fm-gives rg))) =
   retrace (sym (erase-++ t₁ t₂)) (r-cata-reuse (plain-map rm) (go-on (fm-gives (plain rg))))
 plain (r-cata-reuse {t₁ = t₁} {t₂} rm (go-on (fm-stop rg))) =
@@ -393,6 +405,11 @@ TPost-free : ∀ {B} (o : Outcome B) i t → TPost o t → TPost o (free i ∷ t
 TPost-free (gives _ _) i t (ok , z) = ((tt , ok) , z)
 TPost-free (stop _)    i t ok      = (tt , ok)
 
+-- D507: a late free keeps the claim
+TPost-late : ∀ {B} (o : Outcome B) i t → TPost o t → TPost o (t ++ lateFree i o)
+TPost-late o@(gives _ _) i t p = IsSubmonoid.∙-∈ balanced {t} {free i ∷ []} p (TPost-free o i [] (IsSubmonoid.ε-∈ balanced))
+TPost-late (stop _)      i t p = IsSubmonoid.∙-∈ legal {t} {[]} p tt
+
 TPost-peek : ∀ {B} (o : Outcome B) i t → TPost o t → TPost o (peek i ∷ t)
 TPost-peek (gives _ _) i t (ok , z) = ((tt , ok) , z)
 TPost-peek (stop _)    i t ok      = (tt , ok)
@@ -498,6 +515,8 @@ tsound r-clo = bal[]
 tsound (r-app q r) = tsound r
 tsound (r-cata {i = i} {t₁ = t₁} {t₂} rm (go-on {o = o} ra)) = TPost-free o i (t₁ ++ t₂) (Bal-++ o t₁ t₂ (tsound-map rm) (tsound ra))
 tsound (r-cata {A = A} {i = i} {t₁ = t₁} rm (stopped {y = y})) = TPost-free (stop {A} y) i (t₁ ++ []) (leg-[] t₁ (tsound-map rm))
+tsound (r-cata-late {i = i} {t₁ = t₁} {t₂} rm (go-on {o = o} ra)) = TPost-late o i (t₁ ++ t₂) (Bal-++ o t₁ t₂ (tsound-map rm) (tsound ra))
+tsound (r-cata-late {A = A} {i = i} {t₁ = t₁} rm (stopped {y = y})) = TPost-late (stop {A} y) i (t₁ ++ []) (leg-[] t₁ (tsound-map rm))
 tsound (r-cata-reuse {t₁ = t₁} {t₂} rm (go-on (fm-gives rg))) = IsSubmonoid.∙-∈ balanced {t₁} {t₂} (tsound-map rm) (tsound rg)
 tsound (r-cata-reuse {t₁ = t₁} {t₂} rm (go-on (fm-stop rg))) = IsSubmonoid.∙-∈ legal {t₁} {t₂} (fst (tsound-map rm)) (tsound rg)
 tsound (r-cata-reuse {t₁ = t₁} rm stopped) = leg-[] t₁ (tsound-map rm)

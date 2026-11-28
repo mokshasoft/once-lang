@@ -81,6 +81,7 @@ mutual
   gives-nh r-clo = []
   gives-nh (r-app q r) = gives-nh r
   gives-nh (r-cata {t₁ = t₁} {t₂} rm (go-on ra)) = nh-++ t₁ t₂ (gives-nhM′ rm) (gives-nh ra)
+  gives-nh (r-cata-late {i = i} {t₁ = t₁} {t₂} rm (go-on ra)) = nh-++ (t₁ ++ t₂) (free i ∷ []) (nh-++ t₁ t₂ (gives-nhM′ rm) (gives-nh ra)) []
   gives-nh (r-cata-reuse {t₁ = t₁} {t₂} rm (go-on (fm-gives rg))) = nh-++ t₁ t₂ (gives-nhM′ rm) (gives-nh rg)
   gives-nh (r-lend (fm-gives r)) = gives-nh r
   gives-nh (r-lift r) = gives-nh r

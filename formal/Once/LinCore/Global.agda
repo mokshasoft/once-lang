@@ -49,7 +49,7 @@ module Once.LinCore.Global
 open import Once.LinCore.Core fmt using (_⊗t_; Defs; FS; Fn; Gd; LF∙; LTm; Nu; One; Tm; lit; many; module Defs; module Tm)
 open import Once.LinCore.Flat using (Base; ⟦_⟧b; Lit)
 open import Once.IR.Semantics.Trace using (T; call)
-open import Once.LinCore.Events fmt ans bw using (cnt; ds; halted; p-halt; st; Γ; freesOf)
+open import Once.LinCore.Events fmt ans bw using (cnt; ds; halted; p-halt; Γ; freesOf)
 open import Once.LinCore.Values fmt bw using (Id; MV; Trace; mfn; mnu; mpair; serial; module MV; hdr; wsz; alloc; tmp)
 open import Once.LinCore.Code fmt bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots; []ᵉ; vw; see; Cfg; _∥_)
 open import Once.LinCore.Image fmt bw using (_⊳_; _⨾_; BSig; Codeᴵ; Insᴵ; Key; blockᴵ; bsig; call; end; epop; halted; ktr1; ktrc; ktrf; ktro; ktrω; reclose; module BSig; module Codeᴵ; module Insᴵ; module Key)

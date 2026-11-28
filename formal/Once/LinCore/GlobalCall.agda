@@ -40,7 +40,7 @@ module Once.LinCore.GlobalCall
 open import Once.LinCore.Core fmt using (Defs; FS; LTm; One; module Defs)
 open import Once.LinCore.Flat using (Base; ⟦_⟧b; Lit)
 open import Once.IR.Semantics.Trace using (T; call)
-open import Once.LinCore.Events fmt ans bw using (ds; p-halt; st; Γ)
+open import Once.LinCore.Events fmt ans bw using (ds; p-halt; Γ)
 open import Once.LinCore.Values fmt bw using (MV; Trace; serial; module MV; wsz)
 open import Once.LinCore.Code fmt bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots; []ᵉ; vw; see; Cfg; _∥_)
 open import Once.LinCore.Image fmt bw using (_⊳_; _⨾_; Codeᴵ; Key; blockᴵ; bsig; call; case; topv; module Codeᴵ; module Key)

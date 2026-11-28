@@ -41,7 +41,7 @@ open import Once.LinCore.Core fmt using (_⊗t_; Coalg; Defs; FS; Fn; LTm; Nu; O
 open import Once.LinCore.Flat using (Base; ⟦_⟧b; Lit)
 open import Once.IR.Semantics.Trace using (T)
 open Sg using (kd)
-open import Once.LinCore.Events fmt ans bw using (ds; halted; kd; p-halt; Γ; cnt; δ; δ-same)
+open import Once.LinCore.Events fmt ans bw using (ds; halted; p-halt; Γ; cnt; δ; δ-same)
 open import Once.LinCore.Values fmt bw using (Lam; MV; Trace; mfn; mnu; serial; module Lam; module MV; wsz; Id; hdr; free; alloc)
 open import Data.Nat.Tactic.RingSolver using (solve-∀)
 open import Data.List.Relation.Unary.Any using (here; there)
