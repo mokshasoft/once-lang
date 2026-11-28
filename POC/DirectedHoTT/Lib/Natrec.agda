@@ -108,10 +108,10 @@ module _ {Γ : Ctx} {M : RTy (⌊ Γ ⌋ ∙)} where
   ((Γ ▹ Nat) ▹ M) ⊢ s ∷ subTy nrs M →
   (Γ ▹ A) ⊢ natrec (w z) (renTm (extR (extR vs)) s) (var vz) ∷ M
 ⊢natrec-var-at {M = M} dn dM dz ds =
-  ⊢-cast nv-at
+  ⊢-cast (nv-at {M = M})
     (⊢natrec (ren-ty dM (Ren⊢-ext wR-id))
-             (⊢-cast (sym nv-z) (⊢wk dz))
-             (⊢-cast (sym nv-s) (ren-lemma ds (Ren⊢-ext (Ren⊢-ext wR-id))))
+             (⊢-cast (sym (nv-z {M = M})) (⊢wk dz))
+             (⊢-cast (sym (nv-s {M = M})) (ren-lemma ds (Ren⊢-ext (Ren⊢-ext wR-id))))
              dn)
   where wR-id = wR Ren⊢-id
 
@@ -169,10 +169,10 @@ Sub⊢-∘ {σ = σ} {τ = τ} σ⊢ τ⊢ {A = A} v =
              Sub⊢ Γ Δ σ → Δ ⊢ n ∷ Nat →
              Δ ⊢ natrec (subTm σ z) (subTm (extS (extS σ)) s) n
                ∷ subTy (single n) (subTy (extS σ) M)
-⊢natrec-at dM dz ds σ⊢ dn =
+⊢natrec-at {σ = σ} {M = M} dM dz ds σ⊢ dn =
   ⊢natrec (sub-ty dM (Sub⊢-ext σ⊢))
-          (⊢-cast (sym na-z) (sub-lemma dz σ⊢))
-          (⊢-cast (sym na-s) (sub-lemma ds (Sub⊢-ext (Sub⊢-ext σ⊢))))
+          (⊢-cast (sym (na-z {σ = σ} {M = M})) (sub-lemma dz σ⊢))
+          (⊢-cast (sym (na-s {σ = σ} {M = M})) (sub-lemma ds (Sub⊢-ext (Sub⊢-ext σ⊢))))
           dn
 ------------------------------------------------------------------------
 -- ★★★ AT A VARIABLE SCRUTINEE, *UNDER A SUBSTITUTION* — and ITERABLE.
@@ -203,10 +203,10 @@ Sub⊢-∘ {σ = σ} {τ = τ} σ⊢ τ⊢ {A = A} v =
                      (renTm (extR (extR vs)) (subTm (extS (extS σ)) s))
                      (var vz)
     ∷ subTy (extS σ) M
-⊢natrec-var-push σ⊢ dM dz ds =
+⊢natrec-var-push {σ = σ} {M = M} σ⊢ dM dz ds =
   ⊢natrec-var (sub-ty dM (Sub⊢-ext σ⊢))
-              (⊢-cast (sym na-z) (sub-lemma dz σ⊢))
-              (⊢-cast (sym na-s) (sub-lemma ds (Sub⊢-ext (Sub⊢-ext σ⊢))))
+              (⊢-cast (sym (na-z {σ = σ} {M = M})) (sub-lemma dz σ⊢))
+              (⊢-cast (sym (na-s {σ = σ} {M = M})) (sub-lemma ds (Sub⊢-ext (Sub⊢-ext σ⊢))))
 
 ------------------------------------------------------------------------
 -- ★★★ …AND THE ITERABLE FORM.  Takes a `natrec`-at-a-variable TYPING and
