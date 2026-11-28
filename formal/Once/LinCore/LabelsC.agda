@@ -193,6 +193,7 @@ module LabsC {FS : FrameSemantics} where
       lowI-ok φ j m i@epop ei    = plainOk refl (lowI-nl φ j m i ei tt)
       lowI-ok φ j m i@stuck ei   = plainOk refl (lowI-nl φ j m i ei tt)
       lowI-ok φ j m i@swap ei    = plainOk refl (lowI-nl φ j m i ei tt)
+      lowI-ok φ j m i@(xchg _) ei = plainOk refl (lowI-nl φ j m i ei tt)
       lowI-ok φ j m i@(prim ds g) ei = plainOk refl (lowI-nl φ j m i ei tt)
       lowI-ok φ j m i@elend ei   = plainOk refl (lowI-nl φ j m i ei tt)
       lowI-ok φ j m i@eunlend ei = plainOk refl (lowI-nl φ j m i ei tt)

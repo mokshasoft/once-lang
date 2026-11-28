@@ -245,6 +245,9 @@ module Free (U : Univ)
   lowI-nj φ j m stuck ei _   = []
   lowI-nj φ j m (swap {A = A} {B} {S}) ei _ =
     swapMv-nj (Tp φ (A ∷ B ∷ S)) (wsz A) (wsz B)
+  lowI-nj φ j m (xchg {F = F} {L} {S} e) ei _ =
+    let bot = Tp φ S ; wL = wsz L ; p = (bot ∸ wL) ∸ 1 ; sc = p ∸ wL
+    in refl ∷ nj (mvPS 0 sc wL) (mvPS-nj 0 sc wL) (nj (mvSP (bot ∸ wL) 0 wL) (mvSP-nj (bot ∸ wL) 0 wL) (mvSS-nj sc (bot ∸ wL) wL))
   lowI-nj φ j m (prim ds {S = S} g) ei _ = lowP-nj ds g φ S ei
   lowI-nj φ j m (elend {E} {Es} {X} {A} {S}) ei _ =
     let e = ws Es ; wE = wsz E
@@ -404,6 +407,7 @@ module Closed {FS : FrameSemantics} where
       lowI-cov φ j m i@epop ei    = plain φ j m i ei tt
       lowI-cov φ j m i@stuck ei   = plain φ j m i ei tt
       lowI-cov φ j m i@swap ei    = plain φ j m i ei tt
+      lowI-cov φ j m i@(xchg _) ei = plain φ j m i ei tt
       lowI-cov φ j m i@(prim ds g) ei = plain φ j m i ei tt
       lowI-cov φ j m i@elend ei   = plain φ j m i ei tt
       lowI-cov φ j m i@eunlend ei = plain φ j m i ei tt

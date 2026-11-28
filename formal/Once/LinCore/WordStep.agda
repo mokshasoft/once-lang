@@ -228,6 +228,7 @@ module StepR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       local-0 unpair l = refl
       local-0 pair l = refl
       local-0 swap l = refl
+      local-0 (xchg _) l = refl
       local-0 unit l = refl
       local-0 untag l = refl
       local-0 untag₁ l = refl

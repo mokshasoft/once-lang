@@ -16,7 +16,7 @@
 {-# OPTIONS --guardedness #-}
 
 open import Data.Bool using (true)
-open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _⊔_; _≤_)
+open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _⊔_; _≤_; s≤s)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Relation.Unary.Any using (here; there)
@@ -26,7 +26,8 @@ open import Data.Unit using (tt)
 open import Data.Bool using (false)
 open import Function using (case_of_)
 open import Relation.Nullary using (¬_)
-open import Data.Sum using (inj₁)
+open import Data.Sum using (inj₁; [_,_]′)
+open import Data.List.Membership.Propositional.Properties using (∈-++⁻)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 open import Once.Spec.Numerics using (TargetNum)
@@ -891,6 +892,23 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                          ≡ LocState.stackMem (floc fs) (AllocState.current-frame (falloc fs)) x
   top-at {fs′ = fs′} K tp x le = trans (cong (λ g → LocState.stackMem (floc fs′) g x) (sym (k-frame K))) (tp x le)
 
+  -- ★ D506: a block written in place is a cell the configuration holds, so (one
+  -- owner per cell) no saved frame's
+  held-apart : ∀ {T sh U′} {m : Cfg sh} {r : Ret U′ T} {n h} → InvI m r n h
+             → ∀ {wl} → (∀ {q} → q ∈ wl → Σ Id λ i → serial i ≡ q × 1 ≤ Owned m i)
+             → ∀ j → 1 ≤ OwnR r j → ¬ (serial j ∈ wl)
+  held-apart {m = m} {r} inv hd j qj w = two≰1 (Data.Nat.Properties.≤-trans two (InvH.i-le1 (i-h inv) i))
+    where
+      i = proj₁ (hd w)
+      oi = proj₂ (proj₂ (hd w))
+      hi = subst (1 ≤_) (sym (InvH.i-exact (i-h inv) i)) (Data.Nat.Properties.≤-trans oi (Data.Nat.Properties.m≤m+n (Owned m i) (OwnR r i)))
+      hj = subst (1 ≤_) (sym (InvH.i-exact (i-h inv) j)) (Data.Nat.Properties.≤-trans qj (Data.Nat.Properties.m≤n+m (OwnR r j) (Owned m j)))
+      ij = InvH.i-ser (i-h inv) i j hi hj (proj₁ (proj₂ (hd w)))
+      two = subst (2 ≤_) (sym (InvH.i-exact (i-h inv) i))
+              (Data.Nat.Properties.+-mono-≤ oi (subst (λ z → 1 ≤ OwnR r z) (sym ij) qj))
+      two≰1 : 2 ≤ 1 → ⊥
+      two≰1 (s≤s ())
+
   module AtRoot (ld : ∀ {b} (v : Lit b) (fs : FlatState)
                      → FlatMachine.flat-exec-instr {FS} (ldConst v) image fs
                        ≡ record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Output (wordOf (lit v)) } ; fpc = suc (FlatMachine.FlatState.fpc fs) })
@@ -926,21 +944,24 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                      ; lp-live = λ i p → lv i (seen-owned (Cfg.envs m) (Cfg.opds m) r (InvH.i-sees (i-h inv)) i p)
                      ; lp-ws = proj₁ (i-ws inv) ; lp-fal = F }
         fin : LS.Out (LS.succ st l s) fs _ _ _ → _
-        fin (N , fs′ , run , H′ , fx , nx′ , old , tp) =
+        fin (N , fs′ , run , H′ , fx , nx′ , (wl , hd , old) , tp) =
           N , fs′ , run , H′ , nx′ ,
           ctx-keep K (LS.Succ.carry (LS.succ′ st l s) (λ fin r₀ → RetOK R fin r₀ _ _ _ fs′)
-            (ret-top (k-other K) (λ x le → top-at K tp x (subst (_≤ x) eφ le)) old frR af ok)) ,
+            (ret-top (k-other K) (λ x le → top-at K tp x (subst (_≤ x) eφ le)) old frR afw ok)) ,
           k-inb K I , k-log K , live-after st inv nx lv (al-of fx) , fresh-after F (al-of fx)
           where
             K = keepT fx
             inv′ = proj₂ (inv-stepI st inv)
             -- the saved frames' cells are held after (a local step keeps them), so none is a block it freed
-            af : AwayR r (freesOf t)
-            af = away-of r {fl = freesOf t} (InvH.i-seesR (i-h inv))
-                   (λ j q → away-local {FS} {t = t} {h = h} {j = j} (proj₁ (inv-stepI st inv)) (InvH.i-ser (i-h inv)) (kshape fx)
+            nf : ∀ j → 1 ≤ OwnR r j → ¬ (serial j ∈ freesOf t)
+            nf j q = away-local {FS} {t = t} {h = h} {j = j} (proj₁ (inv-stepI st inv)) (InvH.i-ser (i-h inv)) (kshape fx)
                               (subst (1 ≤_) (sym (InvH.i-exact (i-h inv′) j))
                                  (Data.Nat.Properties.≤-trans (subst (1 ≤_) (sym (local-ownR {FS} st l j)) q)
-                                    (Data.Nat.Properties.m≤n+m (OwnR r′ j) (Owned m′ j)))))
+                                    (Data.Nat.Properties.m≤n+m (OwnR r′ j) (Owned m′ j))))
+            -- ★ D506: the written blocks too (held by the next configuration)
+            afw : AwayR r (wl ++ freesOf t)
+            afw = away-of r {fl = wl ++ freesOf t} (InvH.i-seesR (i-h inv))
+                    (λ j q m → [ held-apart inv′ hd j (subst (1 ≤_) (sym (local-ownR {FS} st l j)) q) , nf j q ]′ (∈-++⁻ wl m))
 
   -- ★ a step with no events, its run freeing nothing and allocating nothing: liveness kept
   live-quiet : ∀ {T sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m′ n′ h fs fs′}

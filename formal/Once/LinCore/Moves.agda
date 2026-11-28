@@ -25,7 +25,7 @@ open import Data.Nat using (_≡ᵇ_)
 open import Data.Nat.Properties using (≡ᵇ⇒≡)
 open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_]′)
 open import Data.List.Membership.Propositional using (_∈_)
-open import Data.List.Membership.Propositional.Properties using (∈-++⁺ˡ; ∈-++⁺ʳ)
+open import Data.List.Membership.Propositional.Properties using (∈-++⁺ˡ; ∈-++⁺ʳ; ∈-++⁻)
 open import Data.List.Relation.Unary.Any using (here)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 open import Data.Unit using (⊤; tt)
@@ -1049,16 +1049,24 @@ BornAt : List ℕ → ℕ → (ℕ → ℕ) → Set
 BornAt []       s bs = ⊤
 BornAt (k ∷ bl) s bs = bs s ≡ k × BornAt bl (suc s) bs
 
--- `n` steps, allocating blocks of sizes `bl`, freeing the blocks `fl` (D470/D471)
-record Ran (n : ℕ) (bl fl : List ℕ) (lo hi : ℕ) (fs fs′ : FlatState) : Set where
+-- `n` steps, allocating blocks of sizes `bl`, freeing the blocks `fl` (D470/D471),
+-- writing in place the old blocks `wl` (D506: blocks of cells the step owns; kept
+-- apart from `fl`, so the free accounting stays exact)
+record RanW (n : ℕ) (bl fl wl : List ℕ) (lo hi : ℕ) (fs fs′ : FlatState) : Set where
   field
     r-keep : Keep fl fs fs′
     r-pc   : fpc fs′ ≡ n + fpc fs
     r-next : AllocState.next-heap-ref (falloc fs′) ≡ length bl + AllocState.next-heap-ref (falloc fs)
     r-born : BornAt bl (AllocState.next-heap-ref (falloc fs)) (AllocState.block-size (falloc fs′))
-    r-old  : Old lo fl fs fs′
+    r-old  : Old lo (wl ++ fl) fs fs′
     r-top  : ∀ x → hi Data.Nat.≤ x → slot fs′ x ≡ slot fs x
-open Ran
+open RanW
+
+-- a run writing no old block (every step before D506)
+Ran : ℕ → List ℕ → List ℕ → ℕ → ℕ → FlatState → FlatState → Set
+Ran n bl fl = RanW n bl fl []
+
+module Ran = RanW
 
 -- D471: a block freed by the run is one of `fl`
 r-unfr : ∀ {n bl fl lo hi fs fs′} → Ran n bl fl lo hi fs fs′ → ∀ r → AllocState.freed (falloc fs′) r ≡ true → AllocState.freed (falloc fs) r ≡ true ⊎ r ∈ fl
@@ -1161,6 +1169,27 @@ born-++ (k ∷ bl₁) bl₂ s {bs₂} {bs₃} (e , b₁) kp b₂ =
 ran-refl : ∀ {lo hi fs} → Ran 0 [] [] lo hi fs fs
 ran-refl = record { r-keep = keep-refl ; r-pc = refl ; r-next = refl ; r-born = tt ; r-old = λ _ _ _ → refl ; r-top = λ _ _ → refl }
 
+-- D506: the exempt blocks of each part are exempt in the whole
+wl-fl₁ : ∀ {A : Set} (wl₁ wl₂ fl₁ fl₂ : List A) {x} → x ∈ wl₁ ++ fl₁ → x ∈ (wl₁ ++ wl₂) ++ (fl₁ ++ fl₂)
+wl-fl₁ wl₁ wl₂ fl₁ fl₂ m = [ (λ w → ∈-++⁺ˡ (∈-++⁺ˡ w)) , (λ f → ∈-++⁺ʳ (wl₁ ++ wl₂) (∈-++⁺ˡ f)) ]′ (∈-++⁻ wl₁ m)
+
+wl-fl₂ : ∀ {A : Set} (wl₁ wl₂ fl₁ fl₂ : List A) {x} → x ∈ wl₂ ++ fl₂ → x ∈ (wl₁ ++ wl₂) ++ (fl₁ ++ fl₂)
+wl-fl₂ wl₁ wl₂ fl₁ fl₂ m = [ (λ w → ∈-++⁺ˡ (∈-++⁺ʳ wl₁ w)) , (λ f → ∈-++⁺ʳ (wl₁ ++ wl₂) (∈-++⁺ʳ fl₁ f)) ]′ (∈-++⁻ wl₂ m)
+
+ranW-trans : ∀ {n₁ n₂ bl₁ bl₂ fl₁ fl₂ wl₁ wl₂ lo hi fs₁ fs₂ fs₃} → RanW n₁ bl₁ fl₁ wl₁ lo hi fs₁ fs₂ → RanW n₂ bl₂ fl₂ wl₂ lo hi fs₂ fs₃
+           → RanW (n₁ + n₂) (bl₁ ++ bl₂) (fl₁ ++ fl₂) (wl₁ ++ wl₂) lo hi fs₁ fs₃
+ranW-trans {n₁} {n₂} {bl₁} {bl₂} {fl₁} {fl₂} {wl₁} {wl₂} {fs₁ = fs₁} {fs₂} {fs₃} R₁ R₂ = record
+  { r-keep = keep-trans (r-keep R₁) (r-keep R₂)
+  ; r-pc   = add-trans n₁ n₂ (r-pc R₁) (r-pc R₂)
+  ; r-next = trans (add-trans (length bl₁) (length bl₂) (r-next R₁) (r-next R₂))
+                   (cong (_+ AllocState.next-heap-ref (falloc fs₁)) (sym (length-++ bl₁)))
+  ; r-born = born-++ bl₁ bl₂ (AllocState.next-heap-ref (falloc fs₁)) (r-born R₁)
+               (λ r lt → k-size (r-keep R₂) r (subst (r <_) (sym (r-next R₁)) lt))
+               (subst (λ s → BornAt bl₂ s (AllocState.block-size (falloc fs₃))) (r-next R₁) (r-born R₂))
+  ; r-old  = λ hl lt nf → trans (r-old R₂ hl lt (λ m → nf (wl-fl₂ wl₁ wl₂ fl₁ fl₂ m))) (r-old R₁ hl lt (λ m → nf (wl-fl₁ wl₁ wl₂ fl₁ fl₂ m)))
+  ; r-top  = λ x le → trans (r-top R₂ x le) (r-top R₁ x le)
+  }
+
 ran-trans : ∀ {n₁ n₂ bl₁ bl₂ fl₁ fl₂ lo hi fs₁ fs₂ fs₃} → Ran n₁ bl₁ fl₁ lo hi fs₁ fs₂ → Ran n₂ bl₂ fl₂ lo hi fs₂ fs₃
           → Ran (n₁ + n₂) (bl₁ ++ bl₂) (fl₁ ++ fl₂) lo hi fs₁ fs₃
 ran-trans {n₁} {n₂} {bl₁} {bl₂} {fl₁} {fl₂} {fs₁ = fs₁} {fs₂} {fs₃} R₁ R₂ = record
@@ -1201,6 +1230,22 @@ ranW {fs = fs} {fs′} M h hc d ib = record
   ; r-top = λ x _ → trans (cong (λ g → stackMem (floc fs′) g x) (cong current-frame (w-alloc M)))
                           (w-rest M (AtStack (current-frame (falloc fs)) x) (hc x))
   }
+
+-- ★ D506: a move into the old block `q` (a cell the step owns): every other
+-- block below `lo` as it was; `q` is the run's written list
+ranWO : ∀ {lo hi fs fs′ a o n} (q : ℕ) → MovedW fs fs′ (AtDynamic (heap-loc (mkHeapRef q) 0)) a o n
+      → (InBlk fs → InBlk fs′)
+      → RanW (ln n) [] [] (q ∷ []) lo hi fs fs′
+ranWO {fs = fs} {fs′} q M ib = record
+  { r-keep = keepW M (λ f x _ k _ ()) ib ; r-pc = w-pc M ; r-next = cong AllocState.next-heap-ref (w-alloc M) ; r-born = tt
+  ; r-old = λ hl lt nf → w-rest M (AtDynamic hl) (λ k _ e → nf (here (cong (λ l → ref-of l) e)))
+  ; r-top = λ x _ → trans (cong (λ g → stackMem (floc fs′) g x) (cong current-frame (w-alloc M)))
+                          (w-rest M (AtStack (current-frame (falloc fs)) x) (λ k _ ()))
+  }
+  where
+    ref-of : ValueLocation FS → ℕ
+    ref-of (AtDynamic hl′) = Once.Memory.HeapAddress.HeapRef.ref-id (Once.Memory.HeapAddress.HeapLocation.heap-ref hl′)
+    ref-of (AtStack _ _) = q
 
 -- a block's words are not below its own reference
 fresh-block : ∀ r hl o → Once.Memory.HeapAddress.HeapRef.ref-id (Once.Memory.HeapAddress.HeapLocation.heap-ref hl) Data.Nat.< r

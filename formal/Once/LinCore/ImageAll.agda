@@ -299,6 +299,9 @@ module Ok (nm : CanonicalName) (U : Univ)
       lowI-ok φ j m stuck ei   = []
       lowI-ok φ j m (swap {A = A} {B} {S}) ei =
         swapMv-ok (Tp φ (A ∷ B ∷ S)) (wsz A) (wsz B)
+      lowI-ok φ j m (xchg {F = F} {L} {S} e) ei =
+        let bot = Tp φ S ; wL = wsz L ; p = (bot ∸ wL) ∸ 1 ; sc = p ∸ wL
+        in ✓ ∷ ++⁺ (mvPS-ok 0 sc wL) (++⁺ (mvSP-ok (bot ∸ wL) 0 wL) (mvSS-ok sc (bot ∸ wL) wL))
       lowI-ok φ j m (prim ds {S = S} g) ei = lowP-ok ds g φ S ei
       lowI-ok φ j m (elend {E} {Es} {X} {A} {S}) ei =
         let e = ws Es ; wE = wsz E

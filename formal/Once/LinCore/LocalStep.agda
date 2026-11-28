@@ -65,7 +65,8 @@ open import Once.LinCore.SizedI fmt ans bw using (WSC)
 open import Once.LinCore.LiveRun fmt ans bw using (LiveId; FreshAl; StepFx; kt)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Bool using (Bool; true; false)
-open import Data.List using (List)
+open import Data.List using (List; _++_)
+open import Once.LinCore.Held fmt ans bw using (Owned; own; held)
 open import Data.Nat using (z≤n; s≤s; _<_)
 open import Data.Nat.Properties using (m≤n+m; ≰⇒>; ≤-refl)
 open import Relation.Binary.PropositionalEquality using (subst; subst₂; sym)
@@ -106,9 +107,17 @@ module Steps {FS : FrameSemantics} (U : Univ)
   -- (D471: and the flat run freed only blocks of the step's frees; a
   -- record, so the trace is an index unification can read)
 
+  -- D506: blocks written in place are blocks of cells the next configuration holds
+  Held : ∀ {sh} → Cfg sh → List ℕ → Set
+  Held m′ wl = ∀ {q} → q ∈ wl → Σ Id λ i → serial i ≡ q × 1 ≤ Owned m′ i
+
+  -- the old blocks as they were, but the frees and the writes (D506)
+  OldH : ∀ {sh} → Cfg sh → ℕ → List ℕ → FlatState → FlatState → Set
+  OldH m′ lo fl fs fs′ = Σ (List ℕ) λ wl → Held m′ wl × Old lo (wl ++ fl) fs fs′
+
   Out : ∀ {sh U′} {c : Codeᴵ sh U′} → Sub root c → FlatState → ℕ → Cfg sh → Trace → Set
   Out s′ fs n′ m′ t = Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps prog N fs fs′ × Here s′ m′ fs′ × StepFx t fs fs′
-                    × AllocState.next-heap-ref (falloc fs′) ≡ n′ × Old (AllocState.next-heap-ref (falloc fs)) (freesOf t) fs fs′
+                    × AllocState.next-heap-ref (falloc fs′) ≡ n′ × OldH m′ (AllocState.next-heap-ref (falloc fs)) (freesOf t) fs fs′
                     × (∀ x → budget φ ≤ x → slot fs′ x ≡ slot fs x)
 
   -- ★ what a local step needs of where it starts: nothing held at or past the
@@ -130,19 +139,25 @@ module Steps {FS : FrameSemantics} (U : Univ)
          → (∀ i → ¬ alloc i ∈ t)
          → AllocState.next-heap-ref (falloc fs) ≡ n → Out s′ fs n m′ t
     out0 {fs = fs} {fl = fl} {t = t} (N , fs′ , st , H′ , K , nx′ , _ , o , tp) sub bl na nx =
-      N , fs′ , st , H′ , kt fl K sub bl (inj₂ na) (λ i m → ⊥-elim (na i m)) , trans nx′ nx , old-widen {lo = AllocState.next-heap-ref (falloc fs)} {fl = fl} {fl′ = freesOf t} {fs = fs} {fs′ = fs′} sub o , tp
+      N , fs′ , st , H′ , kt fl K sub bl (inj₂ na) (λ i m → ⊥-elim (na i m)) , trans nx′ nx , ([] , (λ ()) , old-widen {lo = AllocState.next-heap-ref (falloc fs)} {fl = fl} {fl′ = freesOf t} {fs = fs} {fs′ = fs′} sub o) , tp
 
     -- a step with no events
     out00 : ∀ {sh U′} {c : Codeᴵ sh U′} {s′ : Sub root c} {fs n m′} → Moved s′ fs [] [] m′
           → AllocState.next-heap-ref (falloc fs) ≡ n → Out s′ fs n m′ []
-    out00 {fs = fs} (N , fs′ , st , H′ , K , nx′ , _ , o , tp) nx = N , fs′ , st , H′ , kt [] K (λ ()) (λ ()) (inj₁ refl) (λ _ ()) , trans nx′ nx , old-widen {lo = AllocState.next-heap-ref (falloc fs)} {fl = []} {fl′ = []} {fs = fs} {fs′ = fs′} (λ ()) o , tp
+    out00 {fs = fs} (N , fs′ , st , H′ , K , nx′ , _ , o , tp) nx = N , fs′ , st , H′ , kt [] K (λ ()) (λ ()) (inj₁ refl) (λ _ ()) , trans nx′ nx , ([] , (λ ()) , old-widen {lo = AllocState.next-heap-ref (falloc fs)} {fl = []} {fl′ = []} {fs = fs} {fs′ = fs′} (λ ()) o) , tp
+
+    -- ★ D506: a step with no events writing in place blocks of cells it still holds
+    outW : ∀ {sh U′} {c : Codeᴵ sh U′} {s′ : Sub root c} {fs n m′ wl} → Moved′ s′ fs [] [] wl m′ → Held m′ wl
+         → AllocState.next-heap-ref (falloc fs) ≡ n → Out s′ fs n m′ []
+    outW {fs = fs} {wl = wl} (N , fs′ , st , H′ , K , nx′ , _ , o , tp) hd nx =
+      N , fs′ , st , H′ , kt [] K (λ ()) (λ ()) (inj₁ refl) (λ _ ()) , trans nx′ nx , (wl , hd , o) , tp
 
     -- a step allocating one cell, at the counter (a fresh block: not freed)
     out1 : ∀ {sh U′} {c : Codeᴵ sh U′} {s′ : Sub root c} {fs n m′ k} → Moved s′ fs (k ∷ []) [] m′
          → FreshAl (falloc fs)
          → AllocState.next-heap-ref (falloc fs) ≡ n → Out s′ fs (suc n) m′ (alloc (k , n) ∷ [])
     out1 {fs = fs} (N , fs′ , st , H′ , K , nx′ , (b , _) , o , tp) F nx =
-      N , fs′ , st , H′ , kt [] K (λ ()) (λ ()) (inj₁ refl) fresh-sz , trans nx′ (cong suc nx) , old-widen {lo = AllocState.next-heap-ref (falloc fs)} {fl = []} {fl′ = []} {fs = fs} {fs′ = fs′} (λ ()) o , tp
+      N , fs′ , st , H′ , kt [] K (λ ()) (λ ()) (inj₁ refl) fresh-sz , trans nx′ (cong suc nx) , ([] , (λ ()) , old-widen {lo = AllocState.next-heap-ref (falloc fs)} {fl = []} {fl′ = []} {fs = fs} {fs′ = fs′} (λ ()) o) , tp
       where
         nx₀ = AllocState.next-heap-ref (falloc fs)
         unfreed : ∀ bb → AllocState.freed (falloc fs′) nx₀ ≡ bb → AllocState.freed (falloc fs′) nx₀ ≡ false
@@ -162,10 +177,11 @@ module Steps {FS : FrameSemantics} (U : Univ)
     -- temporaries woven in free no block of the run's
     out-weave : ∀ {sh U′} {c : Codeᴵ sh U′} {s′ : Sub root c} {fs n m′ t ts t′} → Weave tmp t ts t′
               → Out s′ fs n m′ t → Out s′ fs n m′ t′
-    out-weave {fs = fs} {t = t} {t′ = t′} w (N , fs′ , st , H′ , kt fl K sub bl sh B , nx , o , tp) =
+    out-weave {fs = fs} {t = t} {t′ = t′} w (N , fs′ , st , H′ , kt fl K sub bl sh B , nx , (wl , hd , o) , tp) =
       N , fs′ , st , H′ , kt fl K (λ {q} m → subst (q ∈_) (sym (cmap-weave evFree (λ _ → refl) w)) (sub m)) bl
                              ([ (λ e → inj₁ (trans (cmap-weave evFree (λ _ → refl) w) e)) , (λ na → inj₂ (λ i m → na i (unweave w m))) ]′ sh)
-                             (λ i m → B i (unweave w m)) , nx , old-widen {lo = AllocState.next-heap-ref (falloc fs)} {fl = freesOf t} {fl′ = freesOf t′} {fs = fs} {fs′ = fs′} (λ {q} m → subst (q ∈_) (sym (cmap-weave evFree (λ _ → refl) w)) m) o , tp
+                             (λ i m → B i (unweave w m)) , nx
+      , (wl , hd , subst (λ z → Old (AllocState.next-heap-ref (falloc fs)) (wl ++ z) fs fs′) (sym (cmap-weave evFree (λ _ → refl) w)) o) , tp
       where
         unweave : ∀ {t ts t′ i} → Weave tmp t ts t′ → alloc i ∈ t′ → alloc i ∈ t
         unweave (w-run w′) (here e) = here e
@@ -299,6 +315,20 @@ module Steps {FS : FrameSemantics} (U : Univ)
        → (st : StepI c r m n t c′ r′ m′ n′) → Local st → Sub root c → Sub root c′
   succ st l s = Succ.sub (succ′ st l s)
 
+  -- ★ D505/D506: the exchange — the node's block written in place, a cell the next
+  -- configuration still holds (the top of the stack)
+  xchg-step : ∀ {Es F L S V} {e : LF∙ F (μt F) ≡ L} {k : Codeᴵ (Es ∣ μt F ∷ L ∷ S) V} (s : Sub root (xchg e ⨾ k))
+                {es : Slots Es} {x x′ : MV (μt F)} {a a′ : MV L} {os : Stk S} {n fs} {U′ T} {r : Ret U′ T}
+            → Xchg e x a x′ a′
+            → Here s (es ∥ x ∷ˢ a ∷ˢ os) fs → AllocState.next-heap-ref (falloc fs) ≡ n → LocPre (es ∥ x ∷ˢ a ∷ˢ os) r n fs
+            → Out (next s) fs n (es ∥ x′ ∷ˢ a′ ∷ˢ os) []
+  xchg-step {e = refl} s {es = es} {os = os} (xg {i = i} {v} {w}) H nx fr =
+    outW (st-xchg s H lv (subst (serial i <_) (sym nx) (held-below (lp-inv fr) i top)) (apart-top (lp-inv fr)))
+         (λ { (here refl) → i , refl , top1 (own es i) i (held (v ∷ˢ os) i) ; (there ()) }) nx
+    where
+      top = top1 (cntE es i) i (cntS (w ∷ˢ os) i)
+      lv = trans (proj₁ (lp-live fr i top)) (proj₁ (proj₁ (proj₂ (lp-ws fr)))) , proj₂ (lp-live fr i top)
+
   -- what a local step owes: from `Here` at its path, `Here` at the next
   StepM : ∀ {T} → Motive {Level.zero} {T}
   StepM {c = c} {r = r} {m = m} {n = n} {t = t} {m′ = m′} {n′ = n′} st =
@@ -311,6 +341,7 @@ module Steps {FS : FrameSemantics} (U : Univ)
     ; unpair′  = λ _ s H nx fr → out00 (st-unpair s H) nx
     ; pair′    = λ _ s H nx fr → out00 (st-pair s H) nx
     ; swap′    = λ _ s H nx fr → out00 (st-swap s H) nx
+    ; xchg′    = λ g _ s H nx fr → xchg-step s g H nx fr
     ; unit′    = λ _ s H nx fr → out00 (st-unit s H) nx
     ; prim′    = λ run no _ s H nx fr → prim-step s ld run no H nx fr
     ; untag′   = λ _ s H nx fr → out00 (st-untag s H) nx

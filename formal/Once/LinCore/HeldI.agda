@@ -228,6 +228,13 @@ enter-inv t {r = r} es a os inv =
             q = solve-∀
     e = λ i → rr (own (topv t es) i) (own es i) (cnt a i) (held os i) (OwnR r i) (own-topv t es i)
 
+-- D505: the exchange keeps every count (the node keeps its id, the layers trade places)
+xchg-held : ∀ {F L} {e : LF∙ F (μt F) ≡ L} {x x′ : MV (μt F)} {a a′ : MV L} → Xchg e x a x′ a′
+          → ∀ i H → cnt x i + (cnt a i + H) ≡ cnt x′ i + (cnt a′ i + H)
+xchg-held {e = refl} (xg {i = j} {v} {w}) i H = r (δ j i) (cnt v i) (cnt w i) H
+  where r : ∀ D V W H → (D + V) + (W + H) ≡ (D + W) + (V + H)
+        r = solve-∀
+
 inv-stepH : ∀ {T sh U sh′ U′} {c : Codeᴵ sh U} {r : Ret U T} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T} {m m′ n n′ t h}
           → StepI c r m n t c′ r′ m′ n′ → InvH m r n h → OK t h × InvH m′ r′ n′ (play t h)
 inv-stepH (i-unpair {es = es} {a = a} {b = b} {os = os}) inv =
@@ -242,6 +249,8 @@ inv-stepH (i-swap {es = es} {a = a} {b = b} {os = os}) inv =
   (tt , same inv (λ i → cong (own es i +_) (r (cnt a i) (cnt b i) (held os i))) (i-sees inv))
   where r : ∀ A B H → A + (B + H) ≡ B + (A + H)
         r = solve-∀
+inv-stepH (i-xchg {es = es} {os = os} g) inv =
+  (tt , same inv (λ i → cong (own es i +_) (xchg-held g i (held os i))) (i-sees inv))
 inv-stepH i-unit inv = (tt , same inv (λ i → refl) (i-sees inv))
 inv-stepH (i-prim run) inv = prim-inv run inv
 inv-stepH {r = r} {h = h} (i-opend {s = s} {es = es} {x = x} {os = os} p) inv =

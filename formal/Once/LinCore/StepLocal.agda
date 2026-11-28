@@ -31,6 +31,7 @@ open import Data.Bool using (false; true)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
+open import Relation.Nullary using (¬_)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.IR.Semantics.Trace using (FFIAnswers)
 open import Once.LinCore.Flat using (Base)
@@ -57,7 +58,9 @@ open Univ using (tys; nus)
 open import Once.LinCore.Layout fmt bw
 open Frame using (EP; OP)
 open import Once.LinCore.Lower fmt bw
-open import Once.LinCore.MoveCode using (mvSS; mvSSd)
+open import Once.LinCore.MoveCode using (mvSS; mvSSd; mvPS; mvSP)
+open import Once.LinCore.Live fmt bw using (LiveB)
+open import Once.LinCore.LowerSimX fmt ans bw using (module SimX)
 open import Once.LinCore.Words fmt ans bw
 open import Once.LinCore.LowerSim fmt ans bw
 open import Once.LinCore.LowerSimD fmt ans bw using (module SimD)
@@ -148,7 +151,8 @@ module Loc {FS : FrameSemantics} (U : Univ)
   open CfgW
   open Fetch {FS} using (in-seg)
   open SimD {FS} U wordOf using (case₁-sim; case₂-sim; ecase₁-sim; ecase₂-sim)
-  open import Once.LinCore.Moves {FS} using (Seg; Seg-++ˡ; slot; Keep; Ran; Old; ran-refl; ranS; MovedS; module Keep; module Ran; BornAt)
+  open SimX {FS} U wordOf using (xchg-sim)
+  open import Once.LinCore.Moves {FS} using (Seg; Seg-++ˡ; slot; Keep; Ran; RanW; Old; ran-refl; ranS; MovedS; module Keep; module Ran; BornAt)
   open Ran using (r-keep; r-pc; r-next; r-born; r-old; r-top)
   open Keep using (k-slots; k-halt)
   open FlatMachine {FS} using (FlatState; find-label; module FlatState)
@@ -221,28 +225,35 @@ module Loc {FS : FrameSemantics} (U : Univ)
       (sym (trans (cong (_+ length (insC s)) (trans (pos-def s) (length-++ pR))) (+-assoc (length pR) (length pS) (length (insC s)))))))
 
   -- what a step's lemma gives: its steps, the next configuration, a straight run
+  -- (D506: writing in place the old blocks `wl`)
+  Gives′ : ∀ {s′} → (fs : FlatState) → ℕ → List ℕ → List ℕ → List ℕ → Cfg s′ → Set
+  Gives′ fs N bl fl wl m′ = Σ FlatState λ fs′ → FlatSteps prog N fs fs′ × CfgW (heapMem (floc fs′)) (slot fs′) φ m′ × RanW N bl fl wl (AllocState.next-heap-ref (falloc fs)) (budget φ) fs fs′
+
   Gives : ∀ {s′} → (fs : FlatState) → ℕ → List ℕ → List ℕ → Cfg s′ → Set
-  Gives fs N bl fl m′ = Σ FlatState λ fs′ → FlatSteps prog N fs fs′ × CfgW (heapMem (floc fs′)) (slot fs′) φ m′ × Ran N bl fl (AllocState.next-heap-ref (falloc fs)) (budget φ) fs fs′
+  Gives fs N bl fl = Gives′ fs N bl fl []
 
   -- what the local theorem gives
-  Moved : ∀ {s′ V} {k : Codeᴵ s′ V} → Sub root k → FlatState → List ℕ → List ℕ → Cfg s′ → Set
-  Moved s′ fs bl fl m′ = Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps prog N fs fs′ × Here s′ m′ fs′ × Keep fl fs fs′
+  Moved′ : ∀ {s′ V} {k : Codeᴵ s′ V} → Sub root k → FlatState → List ℕ → List ℕ → List ℕ → Cfg s′ → Set
+  Moved′ s′ fs bl fl wl m′ = Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps prog N fs fs′ × Here s′ m′ fs′ × Keep fl fs fs′
                      × AllocState.next-heap-ref (falloc fs′) ≡ length bl + AllocState.next-heap-ref (falloc fs)
-                     × BornAt bl (AllocState.next-heap-ref (falloc fs)) (AllocState.block-size (falloc fs′)) × Old (AllocState.next-heap-ref (falloc fs)) fl fs fs′
+                     × BornAt bl (AllocState.next-heap-ref (falloc fs)) (AllocState.block-size (falloc fs′)) × Old (AllocState.next-heap-ref (falloc fs)) (wl ++ fl) fs fs′
                      × (∀ x → budget φ ≤ x → slot fs′ x ≡ slot fs x)
 
-  straight : ∀ {sa sb V} {i : Insᴵ sa sb} {k : Codeᴵ sb V} (s : Sub root (i ⨾ k)) {m : Cfg sa} {m′ : Cfg sb} {fs} (H : Here s m fs)
-           → (N : ℕ) (bl : List ℕ) {fl : List ℕ} → N ≡ length (insC s)
-           → (Seg prog (fpc fs) (insC s) → LocState.halted (floc fs) ≡ false
-              → budget φ ≤ AllocState.frame-slots (falloc fs) → CfgW (heapMem (floc fs)) (slot fs) φ m → Gives fs N bl fl m′)
-           → Moved (next s) fs bl fl m′
-  straight s {fs = fs} H N bl {fl} eN sim = finish (sim (Seg-++ˡ prog (fpc fs) (insC s) _ (seg-at s H)) (h-run H) Bf (h-cfg H))
+  Moved : ∀ {s′ V} {k : Codeᴵ s′ V} → Sub root k → FlatState → List ℕ → List ℕ → Cfg s′ → Set
+  Moved s′ fs bl fl = Moved′ s′ fs bl fl []
+
+  straight′ : ∀ {sa sb V} {i : Insᴵ sa sb} {k : Codeᴵ sb V} (s : Sub root (i ⨾ k)) {m : Cfg sa} {m′ : Cfg sb} {fs} (H : Here s m fs)
+            → (N : ℕ) (bl : List ℕ) {fl wl : List ℕ} → N ≡ length (insC s)
+            → (Seg prog (fpc fs) (insC s) → LocState.halted (floc fs) ≡ false
+               → budget φ ≤ AllocState.frame-slots (falloc fs) → CfgW (heapMem (floc fs)) (slot fs) φ m → Gives′ fs N bl fl wl m′)
+            → Moved′ (next s) fs bl fl wl m′
+  straight′ s {fs = fs} H N bl {fl} {wl} eN sim = finish (sim (Seg-++ˡ prog (fpc fs) (insC s) _ (seg-at s H)) (h-run H) Bf (h-cfg H))
     where
       -- B1.7b: the frame's regions are inside the reservation (its two save slots above them)
       Bf : budget φ ≤ AllocState.frame-slots (falloc fs)
       Bf = subst (budget φ ≤_) (sym (h-slots H))
              (Data.Nat.Properties.≤-trans (Data.Nat.Properties.n≤1+n (budget φ)) (Data.Nat.Properties.n≤1+n (suc (budget φ))))
-      finish : Gives fs N bl fl _ → Moved (next s) fs bl fl _
+      finish : Gives′ fs N bl fl wl _ → Moved′ (next s) fs bl fl wl _
       finish (fs′ , st , C′ , Rn) =
         N , fs′ , st ,
         record { h-pc  = trans (r-pc Rn) (trans (cong (N +_) (h-pc H)) (trans (+-comm N (pos s))
@@ -250,6 +261,13 @@ module Loc {FS : FrameSemantics} (U : Univ)
                ; h-run = trans (k-halt (r-keep Rn)) (h-run H)
                ; h-cfg = C′ ; h-slots = trans (k-slots (r-keep Rn)) (h-slots H) }
         , r-keep Rn , r-next Rn , r-born Rn , r-old Rn , r-top Rn
+
+  straight : ∀ {sa sb V} {i : Insᴵ sa sb} {k : Codeᴵ sb V} (s : Sub root (i ⨾ k)) {m : Cfg sa} {m′ : Cfg sb} {fs} (H : Here s m fs)
+           → (N : ℕ) (bl : List ℕ) {fl : List ℕ} → N ≡ length (insC s)
+           → (Seg prog (fpc fs) (insC s) → LocState.halted (floc fs) ≡ false
+              → budget φ ≤ AllocState.frame-slots (falloc fs) → CfgW (heapMem (floc fs)) (slot fs) φ m → Gives fs N bl fl m′)
+           → Moved (next s) fs bl fl m′
+  straight s H N bl {fl} eN sim = straight′ s H N bl {fl} {[]} eN sim
 
   -- an instruction with no code: the same state, the next configuration
   empty : ∀ {sa sb V} {i : Insᴵ sa sb} {k : Codeᴵ sb V} (s : Sub root (i ⨾ k)) {m : Cfg sa} {m′ : Cfg sb} {fs} (H : Here s m fs)
@@ -344,6 +362,22 @@ module Loc {FS : FrameSemantics} (U : Univ)
   st-swap {A = A} {B} {S} s {fs = fs} H =
     straight s H _ [] refl
       (λ sg h Bf C → swapMv-sim prog fs φ sg h Bf C (proj₂ (ins-fits s)))
+
+  -- ★ D505/D506: the exchange — the node's block written in place (the run's written list)
+  st-xchg : ∀ {Es F S V} {k : Codeᴵ (Es ∣ μt F ∷ LF∙ F (μt F) ∷ S) V} (s : Sub root (xchg refl ⨾ k))
+              {es : Slots Es} {i} {v w : MV (LF∙ F (μt F))} {os : Stk S} {fs}
+          → Here s (es ∥ mmu i v ∷ˢ w ∷ˢ os) fs
+          → LiveB (falloc fs) (1 ⊔ wsz (LF∙ F (μt F))) i
+          → serial i Data.Nat.< AllocState.next-heap-ref (falloc fs)
+          → (∀ j → 1 ≤ cntE es j + (cnt v j + (cnt w j + cntS os j)) → ¬ serial j ≡ serial i)
+          → Moved′ (next s) fs [] [] (serial i ∷ []) (es ∥ mmu i w ∷ˢ v ∷ˢ os)
+  st-xchg {F = F} {S} s {fs = fs} H lv lt nd =
+    let bot = Tp φ S ; wL = wsz (LF∙ F (μt F)) ; p = (bot ∸ wL) ∸ 1 ; sc = p ∸ wL in
+    straight′ s H _ []
+      (sym (cong suc (trans (length-++ (mvPS 0 sc wL))
+                             (cong₂ _+_ (len-mvPS 0 sc wL)
+                                        (trans (length-++ (mvSP (bot ∸ wL) 0 wL)) (cong₂ _+_ (len-mvSP (bot ∸ wL) 0 wL) (len-mvSS sc (bot ∸ wL) wL)))))))
+      (λ sg h Bf C → xchg-sim prog fs φ sg h Bf C (proj₂ (ins-fits s)) lv lt nd)
 
   st-elend : ∀ {E Es X A S V} {k : Codeᴵ ((E ⊗t X) ∷ E ∷ Es ∣ A ∷ S) V} (s : Sub root (elend ⨾ k))
                {es : Slots (E ∷ Es)} {x : MV X} {a : MV A} {os : Stk S} {fs}
