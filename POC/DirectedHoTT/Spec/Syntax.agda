@@ -232,7 +232,7 @@ Ren : Cx → Cx → Set
 Ren Γ Δ = Var Γ → Var Δ
 
 extR : Ren Γ Δ → Ren (Γ ∙) (Δ ∙)
-extR = KT.ext KT.renK
+extR = KT.extR
 
 -- ★ A THINNING — an order-preserving embedding, as FIRST-ORDER data.
 --   Where a renaming is any function on variables, a thinning can only

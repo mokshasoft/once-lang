@@ -119,11 +119,11 @@ module Red (_▷_ : ∀ {s Γ} → Tmᴮ s Γ → Tmᴮ s Γ → Set) where
     Step-ren [] ρ ()
     Step-ren (fld s zero ∷ fs) ρ (inj₁ (r , refl)) = inj₁ (⟶-ren ρ r , refl)
     Step-ren (fld s zero ∷ fs) ρ (inj₂ (refl , st)) = inj₂ (refl , Step-ren fs ρ st)
-    Step-ren (fld s (suc zero) ∷ fs) ρ (inj₁ (r , refl)) = inj₁ (⟶-ren (ext renK ρ) r , refl)
+    Step-ren (fld s (suc zero) ∷ fs) ρ (inj₁ (r , refl)) = inj₁ (⟶-ren (extR ρ) r , refl)
     Step-ren (fld s (suc zero) ∷ fs) ρ (inj₂ (refl , st)) = inj₂ (refl , Step-ren fs ρ st)
-    Step-ren (fld s (suc (suc zero)) ∷ fs) ρ (inj₁ (r , refl)) = inj₁ (⟶-ren (ext renK (ext renK ρ)) r , refl)
+    Step-ren (fld s (suc (suc zero)) ∷ fs) ρ (inj₁ (r , refl)) = inj₁ (⟶-ren (extR (extR ρ)) r , refl)
     Step-ren (fld s (suc (suc zero)) ∷ fs) ρ (inj₂ (refl , st)) = inj₂ (refl , Step-ren fs ρ st)
-    Step-ren (fld s (suc (suc (suc k))) ∷ fs) ρ (inj₁ (r , refl)) = inj₁ (⟶-ren (extN renK (suc (suc (suc k))) ρ) r , refl)
+    Step-ren (fld s (suc (suc (suc k))) ∷ fs) ρ (inj₁ (r , refl)) = inj₁ (⟶-ren (extRN (suc (suc (suc k))) ρ) r , refl)
     Step-ren (fld s (suc (suc (suc k))) ∷ fs) ρ (inj₂ (refl , st)) = inj₂ (refl , Step-ren fs ρ st)
     Step-ren (fnat ∷ fs) ρ (refl , st) = refl , Step-ren fs ρ st
 
@@ -155,15 +155,15 @@ module Red (_▷_ : ∀ {s Γ} → Tmᴮ s Γ → Tmᴮ s Γ → Set) where
     ... | w , (r′ , refl) = (w ,ᶠ zs) , (inj₁ (r′ , refl) , refl)
     Step-anti (fld s zero ∷ fs) ρ (inj₂ (refl , st)) (z ,ᶠ zs) refl with Step-anti fs ρ st zs refl
     ... | ws , (st′ , refl) = (z ,ᶠ ws) , (inj₂ (refl , st′) , refl)
-    Step-anti (fld s (suc zero) ∷ fs) ρ (inj₁ (r , refl)) (z ,ᶠ zs) refl with ⟶-anti (ext renK ρ) r z refl
+    Step-anti (fld s (suc zero) ∷ fs) ρ (inj₁ (r , refl)) (z ,ᶠ zs) refl with ⟶-anti (extR ρ) r z refl
     ... | w , (r′ , refl) = (w ,ᶠ zs) , (inj₁ (r′ , refl) , refl)
     Step-anti (fld s (suc zero) ∷ fs) ρ (inj₂ (refl , st)) (z ,ᶠ zs) refl with Step-anti fs ρ st zs refl
     ... | ws , (st′ , refl) = (z ,ᶠ ws) , (inj₂ (refl , st′) , refl)
-    Step-anti (fld s (suc (suc zero)) ∷ fs) ρ (inj₁ (r , refl)) (z ,ᶠ zs) refl with ⟶-anti (ext renK (ext renK ρ)) r z refl
+    Step-anti (fld s (suc (suc zero)) ∷ fs) ρ (inj₁ (r , refl)) (z ,ᶠ zs) refl with ⟶-anti (extR (extR ρ)) r z refl
     ... | w , (r′ , refl) = (w ,ᶠ zs) , (inj₁ (r′ , refl) , refl)
     Step-anti (fld s (suc (suc zero)) ∷ fs) ρ (inj₂ (refl , st)) (z ,ᶠ zs) refl with Step-anti fs ρ st zs refl
     ... | ws , (st′ , refl) = (z ,ᶠ ws) , (inj₂ (refl , st′) , refl)
-    Step-anti (fld s (suc (suc (suc k))) ∷ fs) ρ (inj₁ (r , refl)) (z ,ᶠ zs) refl with ⟶-anti (extN renK (suc (suc (suc k))) ρ) r z refl
+    Step-anti (fld s (suc (suc (suc k))) ∷ fs) ρ (inj₁ (r , refl)) (z ,ᶠ zs) refl with ⟶-anti (extRN (suc (suc (suc k))) ρ) r z refl
     ... | w , (r′ , refl) = (w ,ᶠ zs) , (inj₁ (r′ , refl) , refl)
     Step-anti (fld s (suc (suc (suc k))) ∷ fs) ρ (inj₂ (refl , st)) (z ,ᶠ zs) refl with Step-anti fs ρ st zs refl
     ... | ws , (st′ , refl) = (z ,ᶠ ws) , (inj₂ (refl , st′) , refl)

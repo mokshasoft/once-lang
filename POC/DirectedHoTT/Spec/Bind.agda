@@ -213,26 +213,41 @@ module Trav (Σ : BSig) where
   -- renaming by its OWN recursion: every clause is constructor-headed, so Agda
   -- inverts it (`ren ρ ?X = ren ρ A` solves `?X`); `trav renK` is kit-generic
   -- and does not.  `ren≡` is the bridge to the kit traversal.
+  extR : ∀ {Γ Δ} → (Var Γ → Var Δ) → Var (Γ ∙) → Var (Δ ∙)
+  extR ρ vz     = vz
+  extR ρ (vs x) = vs (ρ x)
+
+  extRN : ∀ k {Γ Δ} → (Var Γ → Var Δ) → Var (Γ ⋯ k) → Var (Δ ⋯ k)
+  extRN zero    ρ = ρ
+  extRN (suc k) ρ = extR (extRN k ρ)
+
+  extRN≡ : ∀ k {Γ Δ} (ρ : Var Γ → Var Δ) (x : Var (Γ ⋯ k)) → extRN k ρ x ≡ extN renK k ρ x
+  extRN≡ zero    ρ x      = refl
+  extRN≡ (suc k) ρ vz     = refl
+  extRN≡ (suc k) ρ (vs x) = cong vs (extRN≡ k ρ x)
+
   ren  : ∀ {s Γ Δ} → (Var Γ → Var Δ) → Tm Σ s Γ → Tm Σ s Δ
   renF : ∀ fs {Γ Δ} → (Var Γ → Var Δ) → ⟦_⟧ Σ fs Γ → ⟦_⟧ Σ fs Δ
   ren ρ (var x)     = var (ρ x)
   ren ρ (node c xs) = node c (renF (fields Σ c) ρ xs)
   renF []                                ρ ⟨⟩        = ⟨⟩
   renF (fld s zero ∷ fs)                 ρ (x ,ᶠ xs) = ren ρ x ,ᶠ renF fs ρ xs
-  renF (fld s (suc zero) ∷ fs)           ρ (x ,ᶠ xs) = ren (ext renK ρ) x ,ᶠ renF fs ρ xs
-  renF (fld s (suc (suc zero)) ∷ fs)     ρ (x ,ᶠ xs) = ren (ext renK (ext renK ρ)) x ,ᶠ renF fs ρ xs
-  renF (fld s (suc (suc (suc k))) ∷ fs)  ρ (x ,ᶠ xs) = ren (extN renK (suc (suc (suc k))) ρ) x ,ᶠ renF fs ρ xs
+  renF (fld s (suc zero) ∷ fs)           ρ (x ,ᶠ xs) = ren (extR ρ) x ,ᶠ renF fs ρ xs
+  renF (fld s (suc (suc zero)) ∷ fs)     ρ (x ,ᶠ xs) = ren (extR (extR ρ)) x ,ᶠ renF fs ρ xs
+  renF (fld s (suc (suc (suc k))) ∷ fs)  ρ (x ,ᶠ xs) = ren (extRN (suc (suc (suc k))) ρ) x ,ᶠ renF fs ρ xs
   renF (fnat ∷ fs)                       ρ (n ,ᶠ xs) = n ,ᶠ renF fs ρ xs
 
   ren≡  : ∀ {s Γ Δ} (ρ : Var Γ → Var Δ) (t : Tm Σ s Γ) → ren ρ t ≡ trav renK ρ t
   renF≡ : ∀ fs {Γ Δ} (ρ : Var Γ → Var Δ) (xs : ⟦_⟧ Σ fs Γ) → renF fs ρ xs ≡ travF renK fs ρ xs
+  ren≡ᵏ : ∀ k {s Γ Δ} (ρ : Var Γ → Var Δ) (t : Tm Σ s (Γ ⋯ k)) → ren (extRN k ρ) t ≡ trav renK (extN renK k ρ) t
+  ren≡ᵏ k ρ t = trans (ren≡ (extRN k ρ) t) (Cong.trav-cong renK (extRN≡ k ρ) t)
   ren≡ ρ (var x)     = refl
   ren≡ ρ (node c xs) = cong (node c) (renF≡ (fields Σ c) ρ xs)
   renF≡ []                                ρ ⟨⟩        = refl
   renF≡ (fld s zero ∷ fs)                 ρ (x ,ᶠ xs) = c₂ (ren≡ ρ x) (renF≡ fs ρ xs)
-  renF≡ (fld s (suc zero) ∷ fs)           ρ (x ,ᶠ xs) = c₂ (ren≡ (ext renK ρ) x) (renF≡ fs ρ xs)
-  renF≡ (fld s (suc (suc zero)) ∷ fs)     ρ (x ,ᶠ xs) = c₂ (ren≡ (ext renK (ext renK ρ)) x) (renF≡ fs ρ xs)
-  renF≡ (fld s (suc (suc (suc k))) ∷ fs)  ρ (x ,ᶠ xs) = c₂ (ren≡ (extN renK (suc (suc (suc k))) ρ) x) (renF≡ fs ρ xs)
+  renF≡ (fld s (suc zero) ∷ fs)           ρ (x ,ᶠ xs) = c₂ (ren≡ᵏ 1 ρ x) (renF≡ fs ρ xs)
+  renF≡ (fld s (suc (suc zero)) ∷ fs)     ρ (x ,ᶠ xs) = c₂ (ren≡ᵏ 2 ρ x) (renF≡ fs ρ xs)
+  renF≡ (fld s (suc (suc (suc k))) ∷ fs)  ρ (x ,ᶠ xs) = c₂ (ren≡ᵏ (suc (suc (suc k))) ρ x) (renF≡ fs ρ xs)
   renF≡ (fnat ∷ fs)                       ρ (n ,ᶠ xs) = cong (n ,ᶠ_) (renF≡ fs ρ xs)
 
   ren-cong : ∀ {s Γ Δ} {ρ ρ′ : Var Γ → Var Δ} → (∀ x → ρ x ≡ ρ′ x) → (t : Tm Σ s Γ) → ren ρ t ≡ ren ρ′ t
