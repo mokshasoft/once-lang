@@ -26018,3 +26018,14 @@ D7 (exclusive writes) and S3's in-place-update foundation — real and principle
 (b) the fold loop by a chain of fresh cells (D504's route: no in-place writes, so no `Ran` change; a new run rule
 `r-cata-loop` through the core modules); (c) postpone the fold loop and take the other S2 steps (5: the borrow
 rule — which is D7 itself; 8: the flat forms).
+
+**D506 (decided by the user, 2026-11-28) — option (a): the run accounting gains OWNED WRITES, then D505 on it.**
+The user: "how will we achieve linear optimizations (in-place writes) unless we can do them?" — in-place writes
+are what linearity is for, so (b) only defers the foundation and (c) reorders it. The closer look shrinks the
+blocker: `Ran` already exempts its free list `fl` from `r-old`, and the global proofs already show a saved
+frame's values never reach `fl` (`AwayR r fl`, from `apart-core`, `GlobalDispatchF`) — the cross-call
+exclusivity D7 asks for, proved for frees. A write into a cell of the consumed value is the same argument.
+The form: `Ran` gains a written list `wl` beside `fl` (kept apart so the free accounting, `AlFx`, stays exact);
+`Old` exempts `fl ++ wl`; every existing step has `wl = []`; the frame-apartness proofs extend from `fl` to
+`wl`; then the exchange step (`xchg-sim`, the parked branch) and the fold loop. Stop if the apartness of `wl`
+needs more than `apart-core` gives — that remainder is D7's borrow count, the user's to schedule.
