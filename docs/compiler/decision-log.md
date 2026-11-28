@@ -26061,3 +26061,20 @@ gives the algebra step on `inr (c , acc)`, then `node` is opened (freed): its la
 `inl unit`, which exists only when the base is `One` (lists, counters; the corpus's folds). Other layers keep
 the recursion (as D503's free loop). Alternatives weighed: free the first node early (its free not late — a
 second rule), or a sum-typed carry (the node's type is fixed to its layer). Measured: a fold of 200000.
+
+**D507, the design of the loop's chain** (2026-11-28). The image's fold block for a list layer becomes the loop
+(`blockᴵ (kfold ds F alg) = foldᴵ ds F alg (loopL? F)`, the old block when `nothing`; `LoopL F`: `Kone ⊕f (G ⊗f Idf)`
+with `G` free of `Idf` — LISTS first; counters `Kone ⊕f Idf` next). The rule the run uses must then be the one
+the block realizes, so the choice threads through the chain the apex already has: `Total` builds `r-cata-late`
+where `loopL? F` is `just`, `r-cata` where `nothing`; `Spends`/`UnCut` give the late rule real cases (its rounds a
+lower bound, as D503's free loop: `OutI`'s `j ≤ loops`) and refuse `r-cata` at a loop layer; `spends-plain` hands
+that evidence to `Plain` (`r-cata`: `loopL? F ≡ nothing`; `r-cata-late`: `LoopL F`); `ImageSimRun` simulates
+`r-cata` by the old block (`sim-code` on the evidence) and `r-cata-late` by the loop (a new module, by induction
+on the late fold with a SPINE of the outer nodes' pending algebra runs, discharged by the back loop). A16's
+reference machine (`Machine.sim`, used by `Examples`) cannot run the late trace: its `Plain` stays without the
+late rule (`Plain` takes a flag: the image's allows it, the reference machine's not).
+The loop's code (all instructions proved): entry `unit; linl; swap; pair`; DOWN round `unpair; xchg; swap; case`
+— `inl`: `pair; lul; linl` (exit with the base node) — `inr`: `unpair; swap; pair; pair; lα; unpair; swap; linr;
+swap; pair; linr` (continue with `(next , inr (c , node))`); base `unit; linl; ⟨alg⟩; swap; lOutμ; swap; pair`;
+BACK round `unpair; swap; case` — `inl`: `pair; lul; linl` (exit with the accumulator) — `inr`: `unpair; swap; pair;
+pair; lα; unpair; swap; linr; ⟨alg⟩; swap; lOutμ; swap; pair; linr`.
