@@ -462,7 +462,8 @@ leaf₂z =
                   (prvOk idPrf))))
   where
     dμ = ⊢plus ⊢nzero (⊢nsuc (⊢var (there here)))
-    idPrf = idOfRed (red₂z _ (var (vs (vs vz)))) (red₂z _ (var (vs vz)))
+    sb₂ = subTm (extS (extS (single nzero))) (renTm (extR (extR vs)) gcdInn2)
+    idPrf = idOfRed (red₂z sb₂ (var (vs (vs vz)))) (red₂z sb₂ (var (vs vz)))
               (prv _ (⊢idrefl ⊢⌜Nat⌝
                         (asP (⊢nsuc (⊢var (there (there (there (there here)))))))))
 
