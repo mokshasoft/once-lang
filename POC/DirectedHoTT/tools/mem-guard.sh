@@ -37,15 +37,15 @@
 # "Foreign" = an agda process outside CMD's process group.  Kills go to
 # that process group only, never machine-wide.
 #
-# Tunables (env): START_MB (4500), SHARE_START_MB (3000), STOP_MB (3000),
+# Tunables (env): START_MB (1500), SHARE_START_MB (3000), STOP_MB (1500 — never above START_MB, or a start stops at once),
 # RESERVE_MB (1500),
 # SETTLE (60), POLL (3), SHARE (1).
 set -u
 set -m   # job control: each run of CMD gets its own process group, pgid = its pid
 [ "$#" -ge 3 ] && [ "$2" = "--" ] || { echo "usage: $0 LOG -- CMD [ARGS...]" >&2; exit 2; }
 LOG="$1"; shift 2
-START_MB="${START_MB:-4500}"
-STOP_MB="${STOP_MB:-3000}"
+START_MB="${START_MB:-1500}"
+STOP_MB="${STOP_MB:-1500}"
 RESERVE_MB="${RESERVE_MB:-1500}"
 SHARE_START_MB="${SHARE_START_MB:-3000}"
 SHARE="${SHARE:-1}"
