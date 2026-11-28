@@ -26029,3 +26029,35 @@ The form: `Ran` gains a written list `wl` beside `fl` (kept apart so the free ac
 `Old` exempts `fl ++ wl`; every existing step has `wl = []`; the frame-apartness proofs extend from `fl` to
 `wl`; then the exchange step (`xchg-sim`, the parked branch) and the fold loop. Stop if the apartness of `wl`
 needs more than `apart-core` gives — that remainder is D7's borrow count, the user's to schedule.
+
+**D506 built** (2026-11-28, branch `0.146-d505-xchg-wip`, 6a3ffaa40). The foundation was smaller than the night's
+finding feared: no borrow count was needed. Cross-call exclusivity of a write is the image invariant already in
+hand — each cell has at most one owner (`InvH.i-le1`) and one live cell per serial (`i-ser`) — so a block the
+step writes, being a cell the next configuration holds, is no saved frame's (`Global.held-apart`, beside the
+free list's `away-local`). The form: `Moves.RanW n bl fl wl` (`r-old : Old lo (wl ++ fl)`), `Ran` its `[]` case
+(every existing step unchanged, `[] ++ fl` reducing to `fl`); `ranWO q` a move into the old block `q`;
+`LocalStep.Out`'s old blocks as they were but the frees and the writes, the writes held (`OldH`, `Held`);
+`StepLocal.Moved′`/`straight′`. The exchange's flat step: `LowerSimX.xchg-sim` (pointer to `Input1`, the node's
+words to scratch below the stack, the layer's into the node, scratch into the layer's slots), `st-xchg`,
+`xchg-step`. The cone checks (881 modules). Lesson again: a function over `StepI` or `Insᴵ` with no clause for
+the new constructor makes Agda's coverage checker split on it and run away or crash (`HeldI` 144 s →
+`__IMPOSSIBLE__`, `StepIos` > 180 s) — give the clause, with the constructor's own relation (`Xchg`) matched in
+a lemma of its own (`xchg-held`). D7's borrow count stays for borrows (`lend`), not for owned writes.
+Next: D505's fold rule beside `r-cata` and the image loop over `xchg`.
+
+**D507 (proposed — unattended, for the user's review; D505's form) — the fold loop's rule is `r-cata` with the free
+LATE, and stage 1 is the layers `One ⊕ (C ⊗ Id)` and `One ⊕ Id`.**
+*The rule.* `r-cata`'s trace is `free i ∷ (t₁ ++ t₂)` (the node, then the children's folds, then the algebra);
+`r-cata-late`'s is `(t₁ ++ t₂) ++ free i ∷ []` — the same premises, the node freed after its algebra step. It is
+D505's "each node's free moved after its algebra step", and general (any layer), so the fold's semantics gains
+one rule, not a list-specific one; sound for A8's reason (the fold owns the node, no value sees it meanwhile).
+The compiler picks it where it emits the loop (as `r-cata-reuse`); 14 modules over `Run`'s rules take a case.
+*The loop* (image): DOWN, the state is the node and a CARRIED layer; the node is exchanged with it (`xchg`: the
+node now holds the carried layer — the previous element and the previous node, so the links are reversed), and
+its old layer `inr (c , next)` gives the next carried layer `inr (c , node)` and the next node. At the base
+node, the algebra runs on its layer and the base node is opened (freed). BACK, the carried layer `inr (c , node)`
+gives the algebra step on `inr (c , acc)`, then `node` is opened (freed): its layer is the next carried one.
+*Why stage 1 is `One ⊕ …`:* the FIRST node needs a carried layer that ends the way back — the base layer
+`inl unit`, which exists only when the base is `One` (lists, counters; the corpus's folds). Other layers keep
+the recursion (as D503's free loop). Alternatives weighed: free the first node early (its free not late — a
+second rule), or a sum-typed carry (the node's type is fixed to its layer). Measured: a fold of 200000.
